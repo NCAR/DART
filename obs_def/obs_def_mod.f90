@@ -823,19 +823,18 @@ end subroutine get_expected_obs_from_def
 !----------------------------------------------------------------------------
 
 subroutine get_expected_obs_from_def_distrib_state(key, obs_def, obs_kind_ind, ens_index, &
-   state, state_time, isprior, obs_val, istatus, assimilate_this_ob, evaluate_this_ob, states_for_identity_obs, state_ens_handle, win)
+   state_time, isprior, istatus, assimilate_this_ob, evaluate_this_ob,   &
+   expected_obs, state_ens_handle, win)
 
 ! Compute forward operator for a particular obs_def
 integer,            intent(in)  :: key
 type(obs_def_type), intent(in)  :: obs_def
 integer,            intent(in)  :: obs_kind_ind, ens_index
-real(r8),           intent(in)  :: state(:)
 type(time_type),    intent(in)  :: state_time
 logical,            intent(in)  :: isprior
-real(r8),           intent(out) :: obs_val
 integer,            intent(out) :: istatus
 logical,            intent(out) :: assimilate_this_ob, evaluate_this_ob
-real(r8),           intent(out) :: states_for_identity_obs(:)
+real(r8),           intent(out) :: expected_obs(:)
 type(ensemble_type),  intent(in) :: state_ens_handle
 integer,            intent(in)  :: win !< mpi communication window
 
@@ -888,9 +887,9 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
       ! inserted here by the DART preprocess program.
 
          case(RAW_STATE_1D_INTEGRAL)
-            call get_expected_1d_integral(state, location, obs_def%key, obs_val, istatus)
+           ! call get_expected_1d_integral(state, location, obs_def%key, obs_val, istatus)
       case(RAW_STATE_VARIABLE)
-         call interpolate_distrib(state, location, KIND_RAW_STATE_VARIABLE, obs_val, istatus, states_for_identity_obs, state_ens_handle, win)
+         call interpolate_distrib(location, KIND_RAW_STATE_VARIABLE, istatus, expected_obs, state_ens_handle, win)
 
       ! If the observation kind is not available, it is an error. The DART
       ! preprocess program should provide code for all available kinds.
@@ -901,7 +900,7 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
    end select
 else
    ! Not computing forward operator for this kind
-   obs_val = missing_r8
+   expected_obs = missing_r8
    istatus = 0
 endif
 

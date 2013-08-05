@@ -333,23 +333,21 @@ end function interactive_obs_sequence
 
 !> @brief Compute forward operator for set of obs in sequence for distributed state vector. 
 !> @todo does this need to be for a set of obs?
-subroutine get_expected_obs_distrib_state(seq, keys, ens_index, state, state_time, isprior, &
-   obs_vals, istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, win, states_for_identity_obs)
+subroutine get_expected_obs_distrib_state(seq, keys, ens_index, state_time, isprior, &
+   istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, win, expected_obs)
 
 use mpi_utilities_mod, only : datasize ! This is here rather than at the top because the mpi_get calls will most likely get wraped up inside mpi_utilities
 
 type(obs_sequence_type), intent(in)    :: seq
 integer,                 intent(in)    :: keys(:)
 integer,                 intent(in)    :: ens_index
-real(r8),                intent(in)    :: state(:)
 type(time_type),         intent(in)    :: state_time
 logical,                 intent(in)    :: isprior
-real(r8),                intent(out)   :: obs_vals(:)
 integer,                 intent(out)   :: istatus
 logical,                 intent(out)   :: assimilate_this_ob, evaluate_this_ob
 !HK
 type(ensemble_type),     intent(in)    :: state_ens_handle
-real(r8), dimension(:),  intent(inout) :: states_for_identity_obs !> @todo needs to be 2d for a set of obs
+real(r8), dimension(:),  intent(inout) :: expected_obs !> @todo needs to be 2d for a set of obs
 integer, intent(in)                    :: win !< window for mpi remote memory access
 
 integer              :: num_obs, i
@@ -381,14 +379,10 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
 
    ! Check in kind for negative for identity obs
    if(obs_kind_ind < 0) then
-      if ( -obs_kind_ind > size(state) ) call error_handler(E_ERR, &
+      if ( -obs_kind_ind > state_ens_handle%num_vars ) call error_handler(E_ERR, &
          'get_expected_obs', &
          'identity obs is outside of state vector ', &
          source, revision, revdate)
-
-      !obs_vals(i) = state(-1 * obs_kind_ind) ! assumes that task has the whole state vector
-                                              ! Not true if you have more tasks than copies
-      obs_vals(i) = 27 ! HK dummy
 
       ! Find which task has the element of state vector
       call get_var_owner_index(-1*obs_kind_ind, owner_of_state, element_index) ! pe
@@ -396,14 +390,14 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
 
       if (my_task_id() == owner_of_state) then
 
-         states_for_identity_obs = state_ens_handle%copies(:, element_index)
+         expected_obs = state_ens_handle%copies(:, element_index)
 
       else
 
          target_disp = ( element_index - 1) * state_ens_handle%num_copies
 
          call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0 , win, ierr)
-         call mpi_get(states_for_identity_obs, state_ens_handle%num_copies, datasize, owner_of_state, target_disp, state_ens_handle%num_copies, datasize, win, ierr)
+         call mpi_get(expected_obs, state_ens_handle%num_copies, datasize, owner_of_state, target_disp, state_ens_handle%num_copies, datasize, win, ierr)
          call mpi_win_unlock(owner_of_state, win, ierr)
 
       endif
@@ -411,14 +405,13 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
       assimilate_this_ob = .true.; evaluate_this_ob = .false.
    
    else ! do forward operator for this kind
-      !> @todo can't do this yet
       !> Q. Do we loop around copies here? This would mean ens_size*times the comumication
       !> The alternative is to alter the code in model_mod.f90 to work on arrays of ensemble size.
-
+      !> Currently looping in model_mod.f90 for lorenz_96 
 
       call get_expected_obs_from_def_distrib_state(keys(i), obs_def, obs_kind_ind, &
-         ens_index, state, state_time, isprior, obs_vals(i), istatus, &
-         assimilate_this_ob, evaluate_this_ob, states_for_identity_obs, state_ens_handle, win)
+         ens_index, state_time, isprior, istatus, &
+         assimilate_this_ob, evaluate_this_ob, expected_obs, state_ens_handle, win)
 
 
    endif

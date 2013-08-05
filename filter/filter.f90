@@ -558,14 +558,14 @@ AdvanceTime : do
    call timestamp_message('Transposing all ens_handles to copy complete before get_obs_ens_distrib_state')
    call all_vars_to_all_copies(ens_handle)
    call all_vars_to_all_copies(forward_op_ens_handle)
-   call all_vars_to_all_copies(obs_ens_handle)
+   call all_vars_to_all_copies(obs_ens_handle) !HK for comparison
 
    allocate(results(obs_ens_handle%num_copies, obs_ens_handle%my_num_vars))
 
     start = MPI_WTIME()
 
       call get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, &
-      seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
+      seq, keys, obs_val_index, input_qc_index, &
       OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       results, isprior=.true.)
 
@@ -576,14 +576,13 @@ AdvanceTime : do
     start = MPI_WTIME()
 
       call get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, &
-      seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
+      seq, keys, obs_val_index, input_qc_index, &
       OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       results, isprior=.true.)
 
     finish = MPI_WTIME()
 
     if (my_task_id() == 0) print*, 'get_obs_ens_distrib_state ', finish-start
-
 
    ! HK do these results need to be recorded to file?
     write(task_str, '(i10)') ens_handle%my_pe
@@ -594,7 +593,7 @@ AdvanceTime : do
     open(15, file=file_obscopies, status ='unknown')
     open(20, file=file_results, status ='unknown') ! error if you already have results files
 
-    do i = 1, obs_ens_handle%num_copies - 6
+    do i = 1, obs_ens_handle%num_copies - 4
        write(15, *) obs_ens_handle%copies(i,:)
        write(20, *) results(i,:)
     enddo
@@ -1371,7 +1370,7 @@ end subroutine filter_ensemble_inflate
 !> Helen is working on this to use a distributed forward operator using MPI remote memeory
 !> access
 subroutine get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, seq, keys, &
-   obs_val_index, input_qc_index, num_obs_in_set, &
+   obs_val_index, input_qc_index, &
    OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, results, isprior)
 
 use mpi_utilities_mod, only : datasize
@@ -1380,7 +1379,7 @@ type(ensemble_type),     intent(in)    :: ens_handle
 type(ensemble_type),     intent(inout) :: obs_ens_handle, forward_op_ens_handle 
 type(obs_sequence_type), intent(in)    :: seq
 integer,                 intent(in)    :: keys(:)
-integer,                 intent(in)    :: obs_val_index, input_qc_index, num_obs_in_set
+integer,                 intent(in)    :: obs_val_index, input_qc_index
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
 logical,                 intent(in)    :: isprior
@@ -1405,8 +1404,9 @@ pointer (p, duplicate_copies)
 
 !HK 
 real(r8), dimension(:,:), intent(inout) :: results
-real(r8), allocatable                   :: states_for_identity_obs(:) !Also regular obs now?
+real(r8), allocatable                   :: expected_obs(:) !Also regular obs now?
 integer global_obs_num
+type(time_type)                         :: dummy_time
 
 ! Loop through my copies and compute expected value
 my_num_copies = get_my_num_copies(obs_ens_handle)
@@ -1436,16 +1436,15 @@ do ii = 1, ens_handle%my_num_vars
 enddo
 
 ! make some room for state vectors
-allocate(states_for_identity_obs(ens_handle%num_copies))
+allocate(expected_obs(ens_handle%num_copies))
 
 ! Loop through all observations in the set
 ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
 
-   !j needs to be converted to a global observation number
-   global_obs_num = obs_ens_handle%my_vars(j)
+   global_obs_num = obs_ens_handle%my_vars(j) ! convert the local obs number to global obs number
 
    ! Get the information on this observation by placing it in temporary
-   call get_obs_from_key(seq, keys(global_obs_num), observation) !HK
+   call get_obs_from_key(seq, keys(global_obs_num), observation)
    call get_obs_def(observation, obs_def)
    ! Check to see if this observation fails input qc test
    call get_qc(observation, input_qc, input_qc_index)
@@ -1454,7 +1453,7 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
    ! PAR THIS SUBROUTINE SHOULD EVENTUALLY GO IN THE QUALITY CONTROL MODULE
    if(.not. input_qc_ok(input_qc(1), input_qc_threshold)) then
       ! The forward operator value is set to -99 if prior qc was failed
-      forward_op_ens_handle%vars(j, :) = -99
+      !forward_op_ens_handle%vars(j, :) = -99 ! not J anymore
 
       !> @todo remove this loop
       !do k=1, my_num_copies
@@ -1465,9 +1464,8 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
       !      (global_ens_index /= OBS_GLOBAL_QC_COPY)) then
       !      obs_ens_handle%vars(j, k) = missing_r8
       !  endif
-
-
       !enddo
+
       ! No need to do anything else for a failed observation
       cycle ALL_OBSERVATIONS
    endif
@@ -1476,45 +1474,48 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
    call get_obs_values(observation, obs_value(1:1), obs_val_index)
    obs_err_var = get_obs_def_error_variance(obs_def)
 
-   ! Loop through all copies stored by this process and set values as needed
-   ! HK removed the loop k = 1, my_num_copies
-   k = 1  ! HK dummy k for now
-   !global_ens_index = obs_ens_handle%my_copies(k)
-    global_ens_index = 1
+   global_ens_index = 1 ! HK where is this used?
 
-   ! If I have a copy that is a standard ensemble member, compute expected value
-   ! HK FORWARD OPERATOR
-      ! temporaries to avoid passing array sections which was slow on PGI compiler
-      thiskey(1) = keys(global_obs_num)
-      call get_expected_obs_distrib_state(seq, thiskey, &
-         global_ens_index, ens_handle%vars(:, k), ens_handle%time(1), isprior, &
-         thisvar, istatus, assimilate_this_ob, evaluate_this_ob, ens_handle, win, states_for_identity_obs)
-      !obs_ens_handle%vars(j, k) = thisvar(1) !> @todo No longer j
-
-      ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
-      ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
-      ! in the forward operator evaluation field
-      if(istatus == 0) then
-         if ((assimilate_this_ob .or. evaluate_this_ob) .and. (thisvar(1) == missing_r8)) then
-            write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
-            call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
-         endif
-         if(assimilate_this_ob) then
-         !   forward_op_ens_handle%vars(j, k) = 0
-         else if(evaluate_this_ob) then
-          !  forward_op_ens_handle%vars(j, k) = -1
-         else
-          !  forward_op_ens_handle%vars(j, k) = -2
-         endif
-      else if (istatus < 0) then
-         write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
+   ! HK Distributed forward operator
+   ! temporaries to avoid passing array sections which was slow on PGI compiler
+   thiskey(1) = keys(global_obs_num)
+   call get_expected_obs_distrib_state(seq, thiskey, &
+     global_ens_index, dummy_time, isprior, &
+     istatus, assimilate_this_ob, evaluate_this_ob, ens_handle, win, expected_obs)
+ 
+   ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
+   ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
+   ! in the forward operator evaluation field
+   if(istatus == 0) then
+      ! Should this be expected_obs(:), a loop around num_copies, or just expected_obs(1)?
+      ! Q. can the forward operator fail for some copies, but not others?
+      if ((assimilate_this_ob .or. evaluate_this_ob) .and. (expected_obs(1) == missing_r8)) then
+         write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
          call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
-      else
-         !forward_op_ens_handle%vars(j, k) = istatus
       endif
+      if(assimilate_this_ob) then
+      ! forward_op_ens_handle%vars(j,k), where k was copy number - not applicable now
+         !forward_op_ens_handle%copies(:, j) = 0 
+      else if(evaluate_this_ob) then
+         !forward_op_ens_handle%copies(:, j) = -1
+      else
+         !forward_op_ens_handle%copies(:, j) = -2
+      endif
+   else if (istatus < 0) then
+      write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
+      call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+   else
+      !forward_op_ens_handle%vars(j, :) = istatus
+   endif
+
+   results(:, j) = expected_obs
+
+   ! update copy for error variance and for oberved value
+   results(OBS_ERR_VAR_COPY, j) = obs_err_var
+   results(OBS_VAL_COPY, j) = obs_value(1)
 
    ! Otherwise, see if this is the copy for error variance or observed value
-   !> @todo fix these
+   !> @todo check these are taken care of with the code immediately above.
    !else if(global_ens_index == OBS_ERR_VAR_COPY) then
       ! This copy is the instrument observation error variance; read and store
       !obs_ens_handle%vars(j, k) = obs_err_var
@@ -1523,13 +1524,11 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
       ! This copy is the observation from the instrument; read and store
       !obs_ens_handle%vars(j, k) = obs_value(1)
 
-    results(:, j) = states_for_identity_obs
-
 end do ALL_OBSERVATIONS
 
 call mpi_win_free(win, ierr)
 call MPI_FREE_MEM(duplicate_copies, ierr) ! not p 
-deallocate(states_for_identity_obs)
+deallocate(expected_obs)
 
 end subroutine get_obs_ens_distrib_state
 

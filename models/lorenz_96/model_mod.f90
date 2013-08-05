@@ -296,7 +296,7 @@ end do
 end subroutine model_interpolate
 
 !> distributed version of model interpolate
-subroutine model_interpolate_distrib(x, state_ens_handle, win, location, itype, obs_val, istatus, states_for_identity_obs)
+subroutine model_interpolate_distrib(state_ens_handle, win, location, itype, istatus, expected_obs)
 !------------------------------------------------------------------
 !
 ! Interpolates from state vector x to the location. It's not particularly
@@ -308,18 +308,17 @@ subroutine model_interpolate_distrib(x, state_ens_handle, win, location, itype, 
 ! Argument itype is not used here because there is only one type of variable.
 ! Type is needed to allow swap consistency with more complex models.
 
+! Helen Kershaw - Aim: to not require the whole state vector
+
 use mpi_utilities_mod, only : datasize ! This is here rather than at the top because the mpi_get calls will most likely get wraped up inside mpi_utilities
 
-
-real(r8),                intent(in) :: x(:)
 type(location_type),     intent(in) :: location
 integer,                 intent(in) :: itype
-real(r8),                intent(out) :: obs_val !< needs to be an assumed array?
 integer,                intent(out) :: istatus
 !HK
 type(ensemble_type),     intent(in) :: state_ens_handle
 integer, intent(in)                 :: win !< window for mpi remote memory access
-real(r8), intent(out)               :: states_for_identity_obs(:)
+real(r8), intent(out)               :: expected_obs(:)
 
 integer :: lower_index, upper_index, i
 real(r8) :: lctn, lctnfrac
@@ -394,7 +393,7 @@ endif
 
 do ii = 1, state_ens_handle%num_copies
 
-   states_for_identity_obs(ii) = (1.0_r8 - lctnfrac) * x_lower(ii) + lctnfrac * x_upper(ii)
+   expected_obs(ii) = (1.0_r8 - lctnfrac) * x_lower(ii) + lctnfrac * x_upper(ii)
 
 enddo
 
