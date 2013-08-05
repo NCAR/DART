@@ -76,116 +76,131 @@ For a more general purpose tool, see the
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / obs_common_subset_nml / </em> 
- filename_seq1, filename_seq_list1, 
- filename_seq2, filename_seq_list2,
- filename_seq3, filename_seq_list3, 
- filename_seq4, filename_seq_list4,
- filename_out_suffix, print_only, calendar
+&obs_common_subset_nml
+ filename_seq1       = '',
+ filename_seq_list1  = '',
+ filename_seq2       = '',
+ filename_seq_list2  = '',
+ filename_out_suffix = '.common' ,
+ print_only          = .false.,
+ calendar            = 'Gregorian',
+/
 </pre>
 </div>
 
-<div class=indent1><!-- Description -->
+<br />
+<br />
 
-<P>
-This <em class=code>&amp;obs_common_subset</em> namelist is read from 
-the <em class=file>input.nml</em> file.
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>filename_seq1</TD>
-    <!--  type  --><TD>character(len=129), dimension(500)</TD>
-    <!--descript--><TD>The array of names of the observation sequence 
-                       files to process.  This list is the first of the
-                       set of corresponding pairs.
-                       Default: ''</TD></TR>
-<TR><!--contents--><TD valign=top>filename_seq_list1</TD>
-    <!--  type  --><TD>character(len=129)</TD>
-    <!--descript--><TD>An alternative way to specify one or more input
-                       observation sequence files. 
-                       The name of a text file which contains, one per line,
-                       the names of the observation sequence files to process.
-                       You can only specify one of filename_seq1 OR 
-                       filename_seq_list1, not both.
-                       Default: ''</TD></TR>
-<TR><!--contents--><TD valign=top>filename_seq2</TD>
-    <!--  type  --><TD>character(len=129), dimension(500)</TD>
-    <!--descript--><TD>The array of names of the corresponding 
-                       observation sequence files to process.  This list is the
-                       second of the set of corresponding pairs.
-                       Default: ''</TD></TR>
-<TR><!--contents--><TD valign=top>filename_seq_list2</TD>
-    <!--  type  --><TD>character(len=129)</TD>
-    <!--descript--><TD>An alternative way to specify one or more input
-                       observation sequence files. 
-                       The name of a text file which contains, one per line,
-                       observation sequence files to process.
-                       You can only specify one of filename_seq2 OR 
-                       filename_seq_list2, not both.
-                       Default: ''</TD></TR>
-<TR><!--contents--><TD valign=top>filename_seq3</TD>
-    <!--  type  --><TD>character(len=129), dimension(500)</TD>
-    <!--descript--><TD>The array of names of the corresponding to a possible third set
-                       observation sequence files to process.  
-                       Default: ''</TD></TR>
-<TR><!--contents--><TD valign=top>filename_seq_list3</TD>
-    <!--  type  --><TD>character(len=129)</TD>
-    <!--descript--><TD>An alternative way to specify one or more input
-                       observation sequence files, same constraints as filename_seq_list2. 
-                       filename_seq3 and filename_seq_list3 may be ''.
-                       <strong>NOTE</strong>: if they are both '', it is illegal to specify
-                       either filename_seq4 or filename_seq_list4.
-                       Default: ''</TD></TR>
-<TR><!--contents--><TD valign=top>filename_seq4</TD>
-    <!--  type  --><TD>character(len=129), dimension(500)</TD>
-    <!--descript--><TD>The array of names of the corresponding to a possible fourth set
-                       observation sequence files to process.  
-                       Default: ''</TD></TR>
-<TR><!--contents--><TD valign=top>filename_seq_list4</TD>
-    <!--  type  --><TD>character(len=129)</TD>
-    <!--descript--><TD>An alternative way to specify one or more input
-                       observation sequence files, same constraints as filename_seq_list2. 
-                       filename_seq4 and filename_seq_list4 may be ''.
-                       Default: ''</TD></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top>filename_out_suffix</TD>
-    <!--  type  --><TD>character(len=32)</TD>
-    <!--descript--><TD>A string to be appended to each of the input observation
-                       sequence file names to create the output files.
-                       Default: '.common'</TD></TR>
-<TR><!--contents--><TD valign=top>print_only</TD>
-    <!--  type  --><TD>logical</TD>
-    <!--descript--><TD>If .TRUE. do not create the output files, but print 
-         a summary of the number and types of each observation in each of
-         the input and output files.
-                       Default: .false.</TD></TR>
-<TR><!--contents--><TD valign=top>calendar</TD>
-    <!--  type  --><TD>character(len=32)</TD>
-    <!--descript--><TD>Set to the name of the calendar; only controls the
-         printed output for the dates of the first and last observations in 
-         the file.  Set this to "no_calendar" if the 
-         observations are not using any calendar.
-                       Default "gregorian".</TD></TR>
+<TR><TD>filename_seq1</TD>
+    <TD>character(len=129), dimension(500)</TD>
+    <TD>The array of names of the observation sequence files to process.  
+This list is the first of the set of corresponding pairs.
+</TD></TR>
 
+<TR><TD>filename_seq_list1</TD>
+    <TD>character(len=129)</TD>
+    <TD>An alternative way to specify one or more input
+observation sequence files.  The name of a text file which contains, one per
+line, the names of the observation sequence files to process.  You can only
+specify one of filename_seq1 OR filename_seq_list1, not both.
+</TD></TR>
+
+<TR><TD>filename_seq2</TD>
+    <TD>character(len=129), dimension(500)</TD>
+    <TD>The array of names of the corresponding observation sequence files to process.  
+This list is the second of the set of corresponding pairs.
+<TD></TR>
+
+<TR><TD>filename_seq_list2</TD>
+    <TD>character(len=129)</TD>
+    <TD>An alternative way to specify one or more input
+observation sequence files.  The name of a text file which contains, one per
+line, observation sequence files to process.  You can only specify one of
+filename_seq2 OR filename_seq_list2, not both.
+<TD></TR>
+
+<TR><TD>filename_seq3</TD>
+    <TD>character(len=129), dimension(500)</TD>
+    <TD>The array of names of the corresponding to a possible third set
+observation sequence files to process.  
+</TD></TR>
+
+<TR><TD>filename_seq_list3</TD>
+    <TD>character(len=129)</TD>
+    <TD>An alternative way to specify one or more input observation sequence 
+files, same constraints as filename_seq_list2.  filename_seq3 and
+filename_seq_list3 may be '&nbsp;'.  <strong>NOTE</strong>: if they are both '&nbsp;', 
+it is illegal to specify either filename_seq4 or filename_seq_list4.
+</TD></TR>
+
+<TR><TD>filename_seq4</TD>
+    <TD>character(len=129), dimension(500)</TD>
+    <TD>The array of names of the corresponding to a possible fourth set
+observation sequence files to process.  
+</TD></TR>
+
+<TR><TD>filename_seq_list4</TD>
+    <TD>character(len=129)</TD>
+    <TD>An alternative way to specify one or more input
+observation sequence files, same constraints as filename_seq_list2. 
+filename_seq4 and filename_seq_list4 may be '&nbsp;'.
+<TD></TR>
+
+<TR><TD>filename_out_suffix</TD>
+    <TD>character(len=32)</TD>
+    <TD>A string to be appended to each of the input observation
+sequence file names to create the output files.
+<TD></TR>
+
+<TR><TD>print_only</TD>
+    <TD>logical</TD>
+    <TD>If .TRUE. do not create the output files, but print 
+a summary of the number and types of each observation in each of
+the input and output files.
+</TD></TR>
+
+<TR><TD>calendar</TD>
+    <TD>character(len=32)</TD>
+    <TD>Set to the name of the calendar; only controls the
+printed output for the dates of the first and last observations in 
+the file.  Set this to "no_calendar" if the observations are not 
+using any calendar.
+</TD></TR>
+
+</TBODY> 
 </TABLE>
-
 </div>
-<br>
+
+<br />
+<br />
 
 <!--==================================================================-->
 
 <A NAME="Building"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>BUILDING</H2>
 
 <P>
@@ -212,7 +227,7 @@ to be edited to include all the required observation types first.
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 types_mod
@@ -227,7 +242,7 @@ obs_sequence_mod
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL><LI><em class="file">input.nml</em></LI>
     <LI>The input files specified in the <em class="code">filename_seq</em>
@@ -241,7 +256,7 @@ obs_sequence_mod
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li> none </li>
@@ -252,7 +267,7 @@ obs_sequence_mod
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -295,7 +310,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 Long laundry list of things this tool could do, including:
@@ -311,7 +326,7 @@ Long laundry list of things this tool could do, including:
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

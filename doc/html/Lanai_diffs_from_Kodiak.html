@@ -258,6 +258,7 @@ since the Kodiak release.
 
 
 <UL>
+<LI>The mkmf-generated Makefiles now take care of calling 'fixsystem' if needed so the mpi utilities code compiles without further user intervention.</LI>
 <LI>Make the default input.nml for the Lorenz 96 and Lorenz 63 model gives good assimilation results. Rename the original input.nml to input.workshop.nml. The workshop_setup script renames it back before doing anything else so this won't break the workshop instructions. Simplify all the workshop_setup.csh scripts to do the minimal work needed by the DART tutorial.</LI>
 <LI>Updates to the models/template directory with the start of a full 3d geophysical model template. Still under construction.</LI>
 <LI>Move the pdf files in the tutorial directory up a level. routines that generate diagrams/figures are moved to the DAReS/group/DART_tutorial dir. framemaker files removed because we don't have a working version to update or read them with.</LI>

@@ -47,38 +47,47 @@
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Filenames that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / cov_cutoff_nml / </em> select_localization
+&amp;cov_cutoff_nml
+   select_localization = 1  
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>select_localization</TD>
-    <!--  type  --><TD valign=top>integer<br>
-                                  <em class="unit">&nbsp;</em></TD>
-    <!--descript--><TD>Selects the localization function. [Default: 1] <BR>
-                   1 = Gaspari-Cohn 5th order polynomial with halfwidth c. <BR>
-                   2 = Boxcar with halfwidth c (goes to 0&nbsp;for&nbsp;z_in&nbsp;&#60;&nbsp;2c). <BR>
-                   3 = ramped boxcar. Has value 1&nbsp;for&nbsp;z_in &#60;&nbsp;c and then 
-                   reduces linearly to&nbsp;0&nbsp;at&nbsp;z_in&nbsp;=&nbsp;2c.  </TD></TR>
+<TBODY valign=top>
+<TR><TD>select_localization</TD>
+    <TD>integer<br>
+    <TD>Selects the localization function.
+        <UL style="list-style: none;">
+        <LI>1 = Gaspari-Cohn 5th order polynomial with halfwidth c.</LI>
+        <LI>2 = Boxcar with halfwidth c (goes to 0 for z_in &#60; 2c).</LI>
+        <LI>3 = Ramped Boxcar. Has value 1 for z_in &#60; c and then 
+                    reduces linearly to 0 at z_in = 2c.  </LI>
+        </UL>
+</TD></TR>
 </TABLE>
 
 </div>
@@ -87,7 +96,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -104,7 +113,7 @@ location_mod
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -188,7 +197,7 @@ functions.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <TABLE border=0 >
 <TR><TH>filename</TH>
@@ -202,7 +211,7 @@ functions.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ol>
 <li>Gaspari and Cohn, 1999, QJRMS, <b>125</b>, 723-757.  (eqn. 4.10)</li>
@@ -213,7 +222,7 @@ functions.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -236,7 +245,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time
@@ -247,7 +256,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -258,7 +267,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>
