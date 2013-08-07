@@ -48,7 +48,7 @@ create_real_obs, as described in
 <!--==================================================================-->
 
 <A NAME="Instructions"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>INSTRUCTIONS</H2>
 <P>
 The prep_bufr package is free-standing and has not been completely
@@ -182,12 +182,11 @@ the ../exe directory.
 
 <P>
 Platforms tested:
-The code has been tested on NCAR systems: 
 </P>
-<UL><LI> Coral (Aspen Systems Linux cluster), </LI>
-    <LI> Ocotillo.mmm (Linux), </LI>
-    <LI> Tempest (SGI running IRIX), </LI>
-    <LI> Bluesky (IBM Power4 cluster running AIX).</LI>
+<UL><LI> Linux clusters with Intel, PGI, Pathscale, GNU Fortran, </LI>
+    <LI> Mac OS X with Intel, GNU Fortran, </LI>
+    <LI> SGI Altix with Intel </LI>
+    <LI> Cray with Intel, Cray Fortran.</LI>
     </UL>
 
 <H4 class=indent1> The byte-swapping program convert_bufr/grabbufr.f</H4>
@@ -372,7 +371,7 @@ the create_obs_seq.csh script in step 2.
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <P>
 This is a piece of code that is intended to be 'close' to the original,
@@ -386,68 +385,108 @@ This code does not use any DART modules.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / prep_bufr_nml / </em> &amp;
-obs_window, obs_window_cw, otype_use, qctype_use, land_temp_error, 
-land_wind_error, land_moist_error
+&amp;prep_bufr_nml
+   obs_window       = 1.5,
+   obs_window_upa   = 1.5,
+   obs_window_air   = 1.5,
+   obs_window_sfc   = 0.8,
+   obs_window_cw    = 1.5,
+   land_temp_error  = 2.5,
+   land_wind_error  = 3.5,
+   land_moist_error = 0.2,
+   otype_use        = missing,
+   qctype_use       = missing,
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top>obs_window                      </TD>
-    <!--  type  --><TD valign=top>real                            </TD>
-    <!--descript--><TD valign=top>Window of time to include observations 
-                       (hours).  Default is 0.8 hours</TD></TR>
+<TR><TD> obs_window </TD>
+    <TD> real </TD>
+    <TD>Window of time to include observations.  If > 0, overrides all the
+other more specific window sizes.  Set to -1.0 to use different time windows
+for different obs types.  The window is +/- this number of hours, 
+so the total window size is twice this value.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>obs_window_cw                   </TD>
-    <!--  type  --><TD valign=top>real                            </TD>
-    <!--descript--><TD valign=top>Window of time to include cloud wind 
-                       observations (hours).  Default is 1.5 hours.</TD></TR>
+<TR><TD> obs_window_upa </TD>
+    <TD> real </TD>
+    <TD>Window of time to include sonde observations (+/- hours) 
+if obs_window is < 0, otherwise ignored.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>otype_use                       </TD>
-    <!--  type  --><TD valign=top>real                            </TD>
-    <!--descript--><TD valign=top>Report Types to extract from bufr 
-                       file.  Default is none.</TD></TR>
+<TR><TD> obs_window_air </TD>
+    <TD> real </TD>
+    <TD>Window of time to include aircraft observations (+/- hours)
+if obs_window is < 0, otherwise ignored.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>qctype_use                       </TD>
-    <!--  type  --><TD valign=top>integer                          </TD>
-    <!--descript--><TD valign=top>QC types to include from the bufr 
-                       file.  Default is none.</TD></TR>
+<TR><TD> obs_window_sfc </TD>
+    <TD> real </TD>
+    <TD>Window of time to include surface observations (+/- hours)
+if obs_window is < 0, otherwise ignored.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>land_temp_error                  </TD>
-    <!--  type  --><TD valign=top>real                             </TD>
-    <!--descript--><TD valign=top>observation error for land surface 
-                       temperature observations when none is in the 
-                       file.  Default is 2.5 K.</TD></TR>
+<TR><TD> obs_window_cw </TD>
+    <TD> real </TD>
+    <TD>Window of time to include cloud wind observations (+/- hours)
+if obs_window is < 0, otherwise ignored.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>land_wind_error                  </TD>
-    <!--  type  --><TD valign=top>real                             </TD>
-    <!--descript--><TD valign=top>observation error for land surface
-                       wind observations when none is in the file.
-                       Default is 3.5 m/s.</TD></TR>
+<TR><TD> otype_use </TD>
+    <TD> real(300) </TD>
+    <TD>Report Types to extract from bufr file.  If unspecified, all types
+will be converted.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>land_moisture_error              </TD>
-    <!--  type  --><TD valign=top>real                             </TD>
-    <!--descript--><TD valign=top>observation error for land surface
-                       moisture observations when none is in the 
-                       file.  Default is 20%.</TD></TR>
+<TR><TD> qctype_use </TD>
+    <TD> integer(300) </TD>
+    <TD>QC types to include from the bufr file.  If unspecified, all QC
+values will be accepted.
+</TD></TR>
+
+<TR><TD> land_temp_error </TD>
+    <TD> real </TD>
+    <TD>observation error for land surface temperature observations when none 
+is in the input file.
+</TD></TR>
+
+<TR><TD> land_wind_error </TD>
+    <TD> real </TD>
+    <TD>observation error for land surface wind observations when none 
+is in the input file.
+</TD></TR>
+
+<TR><TD> land_moisture_error </TD>
+    <TD> real </TD>
+    <TD>observation error for land surface moisture observations when none 
+is in the input file.
+</TD></TR>
 
 </TABLE>
 
@@ -459,7 +498,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL><LI>input file(s); NCEP BUFR  observation files named using ObsBase 
         with the  "yymmddhh" date tag on the end.  Input to grabbufr if big- to 
@@ -475,7 +514,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 DART/observations/NCEP/prep_bufr/docs/*  (NCEP text files describing the BUFR files)
 
@@ -484,7 +523,7 @@ DART/observations/NCEP/prep_bufr/docs/*  (NCEP text files describing the BUFR fi
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <P>
 this space intentionally left blank
@@ -500,7 +539,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 Further development to get observations directly from original
@@ -512,7 +551,7 @@ Further development to get observations directly from original
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

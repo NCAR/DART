@@ -2,14 +2,14 @@
           "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
-<TITLE>module model_mod (pe2lyr)</TITLE>
+<TITLE>module model_mod (CLM)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
 <link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<H1>MODULE model_mod (pe2lyr)</H1>
+<H1>MODULE model_mod (CLM)</H1>
 
 <table border=0 summary="" cellpadding=5>
 <tr>
@@ -36,21 +36,91 @@
 
 <H2>Overview</H2>
 
-
-
 <P>
-DART standard interfaces for a two-layer isentropic primitive equation model.
-<br><br>
-The 16 public interfaces are standardized for all DART compliant models.
-These interfaces allow DART to advance the model, get the model state and
-metadata describing this state, find state variables that are close to a 
-given location, and do spatial interpolation for model state variables.
-<br><br>
-This model is a 2-layer, isentropic, primitive equation model on a sphere.
-TODO: add more detail here, including equations, etc.
-<br><br>
-Contact: Jeffrey.S.Whitaker@noaa.gov
+This is the DART interface code to the Community Land Model (CLM).
+It is run as part of the CESM framework.  See the CESM
+<a href="../CESM/model_mod.html">model_mod</a> documentation for
+more information on how to configure and set up a CLM run.
 </P>
+
+<P> TIM WILL ADD MORE INFO HERE </P>
+<P> TIM WILL ADD MORE INFO HERE </P>
+<P> TIM WILL ADD MORE INFO HERE </P>
+
+<!--===================== DESCRIPTION OF A NAMELIST =====================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;model_nml 
+  output_state_vector = .false.
+  channel_center = 45.0
+  channel_width = 40.0
+  assimilation_period_days = 0
+  assimilation_period_seconds = 21600
+  debug = .false.
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR><TD>output_state_vector</TD>
+    <TD>logical</TD>
+    <TD>If .true. write state vector as a 1D array to the diagnostic
+output file.  If .false. break state vector up into fields before
+writing to the outputfile.</TD>
+</TR>
+
+<TR><TD>channel_center</TD>
+    <TD>real(r8)</TD>
+    <TD>Channel center</TD>
+</TR>
+<TR><TD>channel_width</TD>
+    <TD>real(r8)</TD>
+    <TD>Channel width</TD>
+</TR>
+<TR><TD>assimilation_period_days</TD>
+    <TD>integer</TD>
+    <TD>Number of days for timestep</TD>
+</TR>
+<TR><TD>assimilation_period_seconds</TD>
+    <TD>integer</TD>
+    <TD>Number of seconds for timestep</TD>
+</TR>
+<TR><TD>debug</TD>
+    <TD>logical</TD>
+    <TD>Set to .true. for more output</TD>
+</TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
 
 <!--==================================================================-->
 
@@ -60,9 +130,8 @@ Contact: Jeffrey.S.Whitaker@noaa.gov
 <PRE>
 types_mod
 time_manager_mod
-utilities_mod
-random_seq_mod
 threed_sphere/location_mod
+utilities_mod
 </PRE>
 
 <!--==================================================================-->
@@ -118,13 +187,7 @@ integer :: <em class=code>get_model_size</em>
 <!-- Description -->
 
 <P>
-Returns the size of the model as an integer.  For this model
-the default grid size is 96 (lon) by 48 (lat) by 2 levels, and
-3 variables (U, V, Z) at each grid location, for a total size  
-of 27,648.  There are alternative include files which, if included
-at compile time instead of the default file, defines a grid at twice and
-4 times this resolution.  They have corresponding truncation values
-of T63 and T127 (the default grid uses T31).
+Returns the length of the model state vector.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -189,26 +252,8 @@ integer, optional,   intent(out) :: <em class=optionalcode> var_type </em>
 <!-- Description -->
 
 <P>
-Returns metadata about a given element, indexed by 
-<em class=code>index_in</em>, in the model state vector.
-The <em class=code>location</em> defines where the state variable is 
-located.
-<br><br>
-For this model, the default grid is a global 
-lat/lon grid, 96 (lon) by 48 (lat)
-by 2 levels.  The variable types are U, V, and Z:
-</P>
-<UL>
-<LI> 1 = TYPE_u
-<LI> 2 = TYPE_v
-<LI> 901 = TYPE_z
-</UL>
-<P>
-Grids at twice and 4 times the resolution can be compiled in instead by
-using one of the alternative header files (see
-<em class=code>resolt31.h</em> (the default), 
-<em class=code>resolt63.h</em>, and
-<em class=code>resolt127.h</em>).
+Returns metadata about a given element, indexed by index_in, in the model 
+state vector. The location defines where the state variable is located.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -220,7 +265,8 @@ using one of the alternative header files (see
     <TD>The location of state variable element.</TD></TR>
 
 <TR><TD valign=top><em class=optionalcode>var_type</em></TD>
-    <TD>The type of the state variable element.</TD></TR>
+    <TD>Returns the type (always 1) of the indexed state 
+        variable as an optional argument.</TD></TR>
 
 </TABLE>
 
@@ -246,9 +292,7 @@ integer,                intent(out) :: <em class=code>istatus</em>
 <!-- Description -->
 
 <P>
-Given a state vector, a location, and a model state variable type,
-interpolates the state variable field to that location and returns 
-the value in obs_val. The istatus variable is always returned as 0 (OK).
+Given model state, returns the value interpolated to a given location.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -260,14 +304,13 @@ the value in obs_val. The istatus variable is always returned as 0 (OK).
     <TD>Location to which to interpolate.</TD></TR>
 
 <TR><TD valign=top><em class=code>itype</em></TD>
-    <TD>Type of state field to be interpolated.</TD></TR>
+    <TD> Not used.</TD></TR>
 
 <TR><TD valign=top><em class=code>obs_val</em></TD>
     <TD> The interpolated value from the model.</TD></TR>
 
 <TR><TD valign=top><em class=code>istatus</em></TD>
-    <TD>Integer value returning 0 for successful, other values can 
-    be defined for various failures.</TD></TR>
+    <TD>Quality control information, always returned 0.</TD></TR>
 
 </TABLE>
 
@@ -289,11 +332,7 @@ type(time_type) :: <em class=code>get_model_time_step</em>
 <!-- Description -->
 
 <P>
-Returns the the time step of the model; the smallest increment
-in time that the model is capable of advancing the state in a given
-implementation.  For this model the default value is 20 minutes (1200 seconds),
-but also comes with header files with times steps of 10 and
-5 minutes (for higher grid resolution and truncation constants).
+Returns the time step (forecast length) of the model;
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -318,13 +357,10 @@ but also comes with header files with times steps of 10 and
 <!-- Description -->
 
 <P>
-Used for runtime initialization of a model, for instance calculating
-storage requirements, initializing model parameters, etc.  This is the
-first call made to a model by any DART compliant assimilation routines.
-<br><br>
-In this model, it allocates space for the grid, and
-initializes the grid locations, data values, and various parameters,
-including spherical harmonic weights.
+Used for runtime initialization of model; 
+reads namelist, initializes model parameters, etc.
+This is the first call made to the model by any 
+DART-compliant assimilation routine.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -345,7 +381,7 @@ including spherical harmonic weights.
 <!-- Description -->
 
 <P>
-A stub since the pe2lyr model does no cleanup.
+A stub.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -369,8 +405,9 @@ type(time_type), intent(out) :: <em class=code>time</em>
 <!-- Description -->
 
 <P>
-Returns the time at which the model will start if no input initial
-conditions are to be used.  This model sets the time to 0.
+Returns the time at which the model will start 
+if no input initial conditions are 
+to be used. This is used to spin-up the model from rest.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -398,10 +435,8 @@ real(r8), dimension(:), intent(out) :: <em class=code>x</em>
 <!-- Description -->
 
 <P>
-Returns default initial conditions for model; generally used for
-spinning up initial model states.  This model sets the default
-state vector based on the initialized fields in the model.
-(TODO: which are what?)
+Returns default initial conditions for the model; 
+generally used for spinning up initial model states.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -430,11 +465,11 @@ integer, intent(in) :: <em class=code>ncFileID</em>
 <!-- Description -->
 
 <P>
-This routine writes the model-specific attributes to a netCDF file. 
-This includes coordinate variables and any metadata, but NOT
-the model state vector.
-This model writes out the data as U, V, and Z arrays on a lat/lon/height
-grid, so the attributes are organized in the same way.
+Function to write model specific attributes to a netCDF file. At present, DART 
+is using the NetCDF format to output diagnostic information. This is not a 
+requirement, and models could choose to provide output in other formats. 
+This function writes the metadata associated with the model to a NetCDF 
+file opened to a file identified by ncFileID.  
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -469,9 +504,9 @@ integer,                intent(in) :: <em class=code>timeindex</em>
 <!-- Description -->
 
 <P>
-This routine writes the model-specific state vector (data) to a netCDF file. 
-This model writes out the data as U, V, and Z arrays on a lat/lon/height
-grid.
+Writes a copy of the state variables to a netCDF file. Multiple copies
+of the state for a given time are supported, allowing, for instance,
+a single file to include multiple ensemble estimates of the state.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -513,10 +548,7 @@ logical,                intent(out) :: <em class=code>interf_provided</em>
 <!-- Description -->
 
 <P>
-Given a model state vector, perturbs this vector. Used to generate initial
-conditions for spinning up ensembles. This model has no code to generate
-these values, so it returns <em class=code>interf_provided</em> as .false.
-and the default algorithms in filter are then used by the calling code.
+Given a model state, produces a perturbed model state.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -525,7 +557,7 @@ and the default algorithms in filter are then used by the calling code.
     <TD>State vector to be perturbed.</TD></TR>
 
 <TR><TD valign=top><em class=code>pert_state</em></TD>
-    <TD>Perturbed state vector</TD></TR>
+    <TD>Perturbed state vector: NOT returned.</TD></TR>
 
 <TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>Returned false; interface is not implemented.</TD></TR>
@@ -551,24 +583,10 @@ real(r8),             intent(in)    :: <em class=code>maxdist</em>
 <!-- Description -->
 
 <P>
-In distance computations any two locations closer than the
-given <em class=code>maxdist</em> will be considered close
-by the <em class=code>get_close_obs()</em> routine.
-Pass-through to the 3-D sphere locations module. See
+Pass-through to the 3D Sphere locations module. See
 <A HREF="../../location/threed_sphere/location_mod.html#get_close_maxdist_init">
 get_close_maxdist_init()</A> for the documentation of this subroutine.
 </P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>gc&nbsp;&nbsp;</em></TD>
-    <TD>The get_close_type which stores precomputed information
-        about the locations to speed up searching</TD></TR>
-
-<TR><TD valign=top><em class=code>maxdist&nbsp;&nbsp;</em></TD>
-    <TD>Anything closer than this will be considered close.</TD></TR>
-
-</TABLE>
 
 </div>
 <br>
@@ -590,7 +608,7 @@ type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
 <!-- Description -->
 
 <P>
-Pass-through to the 3-D sphere locations module. See
+Pass-through to the 3D Sphere locations module. See
 <A HREF="../../location/threed_sphere/location_mod.html#get_close_obs_init">
 get_close_obs_init()</A> for the documentation of this subroutine.
 </P>
@@ -622,13 +640,7 @@ real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
 <!-- Description -->
 
 <P>
-Given a location and kind, compute the distances to all other locations 
-in the <em class=code>obs</em> list.  The return values are the number
-of items which are within maxdist of the base, the index numbers in the 
-original obs list, and optionally the distances.  The <em class=code>gc</em>
-contains precomputed information to speed the computations.
-<br><br>
-Pass-through to the 3-D sphere locations module. See
+Pass-through to the 3D Sphere locations module. See
 <A HREF="../../location/threed_sphere/location_mod.html#get_close_obs">
 get_close_obs()</A> for the documentation of this subroutine.
 </P>
@@ -651,7 +663,7 @@ real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
 <!-- Description -->
 
 <P>
-Stub only. Not needed by this model.
+A NULL INTERFACE in this model.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -664,15 +676,6 @@ Stub only. Not needed by this model.
 </div>
 <br>
 
-<!--===================== DESCRIPTION OF A NAMELIST =====================-->
-
-<A NAME="Namelist"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-
-<P>
-This model currently has no values settable by namelist.
-</P>
-
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
@@ -680,10 +683,22 @@ This model currently has no values settable by namelist.
 <A NAME="FilesUsed"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
-<UL><LI>The model source is in pe2lyr_mod.f90, and the spherical
-harmonic code is in spharmt_mod.f90.   The various resolution settings
-are in resolt31.h, resolt63.h, and resolt127.h.
-</UL>
+
+<TABLE border=0 >
+<TR><TH align=left>filename</TH>
+    <TH align=left>purpose</TH></TR>
+<TR><TD>input.nml</TD>
+    <TD>to read the model_mod namelist</TD></TR>
+<TR><TD>Prior_Diag.nc</TD>
+    <TD>the time-history of the model state before assimilation</TD></TR>
+<TR><TD>Posterior_Diag.nc&nbsp;</TD>
+    <TD>the time-history of the model state after assimilation</TD></TR>
+<TR><TD>dart_log.out [default name]</TD>
+    <TD>the run-time diagnostic output</TD></TR>
+<TR><TD>dart_log.nml [default name]</TD>
+    <TD>the record of all the namelists actually USED - 
+        contains the default values</TD></TR>
+</TABLE>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
@@ -692,10 +707,12 @@ are in resolt31.h, resolt63.h, and resolt127.h.
 <A NAME="References"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
+
 <P>
-Zou, X., Barcilon, A., Navon, I.M., Whitaker, J., Cacuci, D.G.. 1993:
-An Adjoint Sensitivity Study of Blocking in a Two-Layer Isentropic Model.
-Monthly Weather Review: Vol. 121, No. 10, pp. 2833-2857.
+The underlying model is described in:<br />
+Hakim, Gregory J., 2000: Role of Nonmodal Growth and Nonlinearity in 
+Cyclogenesis Initial-Value Problems. J. Atmos. Sci., 57, 2951-2967.
+doi: 10.1175/1520-0469(2000)057<2951:RONGAN>2.0.CO;2
 </P>
 
 <!--==================================================================-->
@@ -705,10 +722,18 @@ Monthly Weather Review: Vol. 121, No. 10, pp. 2833-2857.
 <A NAME="Errors"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
-
-<P>
-N/A
-</P>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH>
+    <TH>Message</TH>
+    <TH>Comment</TH></TR>
+<TR><!-- routine --><TD VALIGN=top> nc_write_model_atts<BR>
+                                    nc_write_model_vars</TD>
+    <!-- message --><TD VALIGN=top>Various netCDF-f90 interface error messages</TD>
+    <!-- comment --><TD VALIGN=top>From one of the netCDF calls in the named routine</TD>
+</TR>
+</TABLE>
+</div>
 
 <H2>KNOWN BUGS</H2>
 <P>

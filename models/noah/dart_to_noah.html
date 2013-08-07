@@ -10,6 +10,8 @@
 <BODY>
 <A NAME="TOP"></A>
 
+<H1>PROGRAM <em class=program>dart_to_noah</em></H1>
+
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
@@ -32,9 +34,7 @@
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
 
-<H1>PROGRAM <em class=program>dart_to_noah</em></H1>
-
-
+<H2>Overview</H2>
 
 <P>
    <em class=program>dart_to_noah</em> is the program that <strong>overwrites</strong>
@@ -142,8 +142,7 @@ prematurely terminating the namelist.
 </div>
 
 <div>
-<!-- Description -->
-<TABLE border=0 cellpadding=3 width=100% summary='dart_to_noah namelist description'>
+<TABLE border=0 cellpadding=10 width=100% summary='dart_to_noah namelist description'>
 <THEAD align=left>
 <TR><TH>Contents    </TH>
     <TH>Type        </TH>
@@ -151,47 +150,37 @@ prematurely terminating the namelist.
 </THEAD>
 
 <TBODY valign=top>
-<TR><!--contents--><TD valign=top>dart_to_noah_input_file   </TD>
-    <!--  type  --><TD valign=top>character(len=128)</TD>
-    <!--descript--><TD>The name of the DART file containing the model state
-                       to insert into the NOAH restart file.
-                       </TD></TR>
+<TR><TD>dart_to_noah_input_file   </TD>
+    <TD>character(len=128)</TD>
+    <TD>The name of the DART file containing the model state to insert into the
+NOAH restart file.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>skip_variables   </TD>
-    <!--  type  --><TD valign=top>character(len=32)::<br />
-                              dimension(40)</TD>
-    <!--descript--><TD>The list of NOAH variables that <strong>must not</strong> be
-                       updated in the NOAH restart file even if they were used to 
-                       create the DART state vector. Be aware that these variables WILL
-                       be modified in <em class=file>Posterior_Diag.nc</em> so you can see
-                       the assimilated state. 
-                       </TD></TR>
+<TR><TD>skip_variables   </TD>
+    <TD>character(len=32) ::<br />
+               dimension(40)</TD>
+    <TD>The list of NOAH variables that <strong>must not</strong> be updated in
+the NOAH restart file even if they were used to create the DART state vector.
+Be aware that these variables WILL be modified in 
+<em class=file>Posterior_Diag.nc</em> so you can see the assimilated state.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>advance_time_present</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>switch to control the ability to read a DART file
-                       containing TWO timestamps in the file header.
-		       If you are converting a DART initial conditions or
-		       restart file - this should be
-		       <em class=code>.false.</em> - these files have a
-		       single timestamp describing the valid time of the
-		       model state.
-		       <br />
-		       <br />
-		       If <em class=code>.true.</em>, TWO timestamps are
-		       expected to be the DART file header.  In this case, a
-		       namelist for NOAH (called <em class=file>noah_in.DART</em>)
-		       is created that contains the
-		       <em class=code>&amp;time_manager_nml</em> settings
-		       appropriate to advance NOAH to the time
-		       requested by DART.
-                       </TD></TR>
+<TR><TD>advance_time_present</TD>
+    <TD>logical</TD>
+    <TD> If you are converting a DART initial conditions or restart file this
+should be <em class=code>.false.</em>; these files have a single timestamp
+describing the valid time of the model state.  If <em class=code>.true.</em>,
+TWO timestamps are expected to be the DART file header.  In this case, a
+namelist for NOAH (called <em class=file>noah_in.DART</em>) is created that
+contains the <em class=code>&amp;time_manager_nml</em> settings appropriate
+to advance NOAH to the time requested by DART.
+</TD></TR>
+
 </TBODY>
 </TABLE>
 
 </div>
 <br />
-
 
 
 <div class=namelist>
@@ -220,8 +209,8 @@ in the <a href="model_mod.html#Namelist">noah model_mod</a>, but the most import
 variables for <em class=program>noah_to_dart</em> are repeated here.
 </P>
 <div>
-<!-- Description -->
-<TABLE border=0 cellpadding=3 width=100% summary='partial model_mod namelist description'>
+
+<TABLE border=0 cellpadding=10 width=100% summary='partial model_mod namelist description'>
 <THEAD align=left>
 <TR><TH>Contents    </TH>
     <TH>Type        </TH>
@@ -229,20 +218,20 @@ variables for <em class=program>noah_to_dart</em> are repeated here.
 </THEAD>
 
 <TBODY valign=top>
-<TR><!--contents--><TD valign=top>noah_netcdf_filename   </TD>
-    <!--  type  --><TD valign=top>character(len=128)   </TD>
-    <!--descript--><TD>The name of the NOAH RESTART file to use to
-                       create the DART state vector. For convenience, the
-                       <em class=program>advance_model.csh</em> script usually
-                       links the most recent restart file to a static name.
-                       </TD></TR>
+<TR><TD>noah_netcdf_filename   </TD>
+    <TD>character(len=128)   </TD>
+    <TD>The name of the NOAH RESTART file to use to create the DART state vector.
+For convenience, the <em class=program>advance_model.csh</em> script usually
+links the most recent restart file to a static name.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>noah_state_variables   </TD>
-    <!--  type  --><TD valign=top>character(len=32)::<br />
-                              dimension(2,40)   </TD>
-    <!--descript--><TD>The list of variable names in the NOAH restart file to use to
-                       create the DART state vector and their corresponding DART kinds.
-                       </TD></TR>
+<TR><TD>noah_state_variables   </TD>
+    <TD>character(len=32)::<br />
+        dimension(2,40)   </TD>
+    <TD>The list of variable names in the NOAH restart file to use to
+create the DART state vector and their corresponding DART kinds.
+</TD></TR>
+
 </TBODY>
 </TABLE>
 </div>
@@ -275,28 +264,8 @@ variables for <em class=program>noah_to_dart</em> are repeated here.
 
 <div class=namelist>
 <pre>
-<em class=call>namelist / NOAHLSM_OFFLINE / </em>khour, &amp;
-                                            forcing_timestep, &amp;
-                                            noah_timestep, &amp;
-                                            output_timestep, &amp;
-                                            restart_frequency_hours, &amp;
-                                            split_output_count
-</pre>
-</div>
-<P>
-The <em class=code>NOAHLSM_OFFLINE</em> namelist is read from 
-<em class=file>namelist.hrldas</em> - only those variables important for
-<em class=program>noah_to_dart</em> are repeated here. The interpretations
-are exactly as described in the NOAH documentation. <br />
-<strong>The values in the following example are the only values expected to work.</strong>
-Change these at your own risk!
-</P>
-
-<H3 class=indent1>Example of namelist from <em class=file>namelist.hrldas</em></H3>
-<div>
-<pre>
 &amp;NOAHLSM_OFFLINE
-   ...
+   ...  
    KHOUR                   = 1
    FORCING_TIMESTEP        = 3600
    NOAH_TIMESTEP           = 3600
@@ -304,9 +273,19 @@ Change these at your own risk!
    RESTART_FREQUENCY_HOURS = 1
    SPLIT_OUTPUT_COUNT      = 1
    ...
-  /
+/
 </pre>
 </div>
+
+<P>
+The <em class=code>NOAHLSM_OFFLINE</em> namelist is read from 
+<em class=file>namelist.hrldas</em> - only those variables important for
+<em class=program>noah_to_dart</em> are repeated here. The interpretations
+are exactly as described in the NOAH documentation. <br />
+<strong>The values listed above are the only values expected to work.</strong>
+Change these at your own risk!
+</P>
+
 <br />
 
 <!--==================================================================-->

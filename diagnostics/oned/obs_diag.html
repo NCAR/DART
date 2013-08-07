@@ -201,28 +201,43 @@
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / obs_diag_nml / </em> &amp;
-     obs_sequence_name, obs_sequence_list, bin_width_days, bin_width_seconds, &amp;
-     init_skip_days, init_skip_seconds, max_num_bins, Nregions, lonlim1, lonlim2, reg_names, &amp;
-     create_rank_histogram, outliers_in_histogram, trusted_obs, verbose
+&amp;obs_diag_nml
+   obs_sequence_name     = 'obs_seq.final',
+   obs_sequence_list     = '',
+   bin_width_days        = -1,
+   bin_width_seconds     = -1,
+   init_skip_days        = 0,
+   init_skip_seconds     = 0,
+   max_num_bins          = 9999,
+   trusted_obs           = 'null',
+   Nregions              = 3,
+   lonlim1               = 0.00, 0.00, 0.50, -1.0,
+   lonlim2               = 1.01, 0.50, 1.01, -1.0,
+   reg_names             = 'whole', 'yin', 'yang', 'bogus',
+   create_rank_histogram = .true.,
+   outliers_in_histogram = .true.,
+   verbose               = .false.
+   /
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
 <P>
-This namelist is read in a file called <em class=file>input.nml</em>.
 The allowable ranges for the region boundaries are: lon [0.0, 1.0).
 The 1D locations are conceived as the distance around a unit sphere.
 An observation with a location exactly ON a region boundary cannot 
@@ -239,135 +254,129 @@ An observation with a location exactly ON a region boundary cannot
    One of them has to be an empty string ... i.e. <em class="code">''</em>.
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TR><!--contents--><TD valign=top>   obs_sequence_name </TD>
-    <!--  type  --><TD valign=top>   character         </TD>
-    <!--descript--><TD>Name of the observation sequence file(s). <br />
-            This may be a relative or absolute filename. If the filename
-            contains a '/', the filename is considered to be comprised of
-            everything to the right, and a directory structure to the left.
-            The directory structure is then queried to see if it can be
-            incremented to handle a sequence of observation files.
-            The default behavior of <em class="program">obs_diag</em>
-            is to look for additional files to include until the files
-            are exhausted or an <em class=file>obs_seq.final</em> file
-            is found that contains observations beyond the timeframe of
-            interest.<br />e.g. 'obsdir_001/obs_seq.final' will cause
-            <em class="program">obs_diag</em> to look for
-            'obsdir_002/obs_seq.final', and so on.<br />
-            If this is set, <em class=code>obs_sequence_list</em> 
-            must be set to a null string ('').<br />
-            Default: 'obs_seq.final'</TD></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top>   obs_sequence_list </TD>
-    <!--  type  --><TD valign=top>   character         </TD>
-    <!--descript--><TD>Name of an ascii text file which contains a list
-            of one or more observation sequence files, one per line.
-            If this is specified, <em class=code>obs_sequence_name</em>
-            must be set to a null string ('').  Can be created by any method, 
-            including sending the output of the 'ls' command to a file, 
-            a text editor, or another program.  If this is set, 
-            <em class=code>obs_sequence_name</em> 
-            must be set to a null string ('').<br />
-            Default: '' - an empty string.</TD></TR>
+<TR><TD> obs_sequence_name </TD>
+    <TD> character </TD>
+    <TD>Name of the observation sequence file(s). <br /> 
+This may be a relative or absolute filename. If the filename contains a '/',
+the filename is considered to be comprised of everything to the right, and a
+directory structure to the left.  The directory structure is then queried to
+see if it can be incremented to handle a sequence of observation files.  The
+default behavior of <em class="program">obs_diag</em> is to look for
+additional files to include until the files are exhausted or an 
+<em class=file>obs_seq.final</em> file is found that contains observations beyond
+the timeframe of interest.<br />e.g. 'obsdir_001/obs_seq.final' will cause
+<em class="program">obs_diag</em> to look for 'obsdir_002/obs_seq.final', and so on.
+<br /> 
+If this is set, <em class=code>obs_sequence_list</em> must be set to a null string ('&nbsp;').
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>bin_width_days, bin_width_seconds</TD>
-    <!--  type  --><TD valign=top>integer         </TD>
-    <!--descript--><TD>Specifies the width of the analysis window. All 
-	    observations within a window centered at the observation time 
-	    +/- bin_width_[days,seconds] is used. If both values are 0 - 
-            half the separation between observation times as defined in 
-            the observation sequence file is used for the bin width
-            (i.e. all observations used).<br />
-            Default: 0, 0</TD></TR>  
+<TR><TD> obs_sequence_list </TD>
+    <TD> character </TD>
+    <TD>Name of an ascii text file which contains a list of one or more
+observation sequence files, one per line.  If this is specified, 
+<em class=code>obs_sequence_name</em> must be set to a null string ('&nbsp;').
+Can be created by any method, including sending the output of the 'ls'
+command to a file, a text editor, or another program.  If this is set, 
+<em class=code>obs_sequence_name</em> must be set to a null string ('&nbsp;').
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>init_skip_days, init_skip_seconds</TD>
-    <!--  type  --><TD valign=top>integer </TD>
-    <!--descript--><TD>Ignore all observations before this time.
-	    This allows one to skip the 'spinup' or stabilization 
-            period of an assimilation.
-            <br />
-            Default: 0, 0</TD></TR>  
+<TR><TD> bin_width_days, bin_width_seconds </TD>
+    <TD> integer </TD>
+    <TD>Specifies the width of the analysis window. All observations within a
+window centered at the observation time +/- bin_width_[days,seconds] is used.
+If both values are 0, half the separation between observation times as
+defined in the observation sequence file is used for the bin width (i.e. all
+observations used). 
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>   max_num_bins  </TD>
-    <!--  type  --><TD valign=top>   integer       </TD>
-    <!--descript--><TD>This provides a way to restrict the number of
-            temporal bins. If <em class=code>max_num_bins</em> is set 
-            to '10', only 10 timesteps will be output - provided
-            there are that many.
-            <br />
-            Default: 9999</TD></TR>
+<TR><TD> init_skip_days, init_skip_seconds </TD>
+    <TD> integer </TD>
+    <TD>Ignore all observations before this time.  This allows one to skip the
+'spinup' or stabilization period of an assimilation.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>Nregions  </TD>
-    <!--  type  --><TD valign=top>integer   </TD>
-    <!--descript--><TD>The number of regions for the unit circle for which
-            you'd like observation-space diagnostics. If 4 is not enough,
-            increase <em class=code>MaxRegions</em> in 
-            <em class=file>obs_diag.f90</em> and recompile.
-	    <br />
-	    Default: 4</TD></TR>  
+<TR><TD> max_num_bins </TD>
+    <TD> integer </TD>
+    <TD>This provides a way to restrict the number of temporal bins. If 
+<em class=code>max_num_bins</em> is set to '10', only 10 timesteps will be output,
+provided there are that many.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>lonlim1          </TD>
-    <!--  type  --><TD valign=top>real(r8) array of length(4)</TD>
-    <!--descript--><TD>starting value of coordinates defining 'regions'.
-	    A value of -1 indicates the start of 'no region'.<br />
-	    Default is (/ 0.00, 0.00, 0.50, -1.0/)</TD></TR>  
+<TR><TD> Nregions </TD>
+    <TD> integer </TD>
+    <TD>The number of regions for the unit circle for which you'd like
+observation-space diagnostics. If 4 is not enough increase 
+<em class=code>MaxRegions</em> in <em class=file>obs_diag.f90</em> and recompile.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>lonlim2      </TD>
-    <!--  type  --><TD valign=top>real(r8) array of length(4)</TD>
-    <!--descript--><TD>ending value of coordinates defining 'regions'.
-	    A value of -1 indicates the end of 'no region'.<br />
-	    Default is (/ 1.01, 0.50, 1.01, -1.0/)</TD></TR>  
+<TR><TD> lonlim1 </TD>
+    <TD> real(r8) array of length(Nregions) </TD>
+    <TD>starting value of coordinates defining 'regions'.  A value of -1
+indicates the start of 'no region'.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>reg_names      </TD>
-    <!--  type  --><TD valign=top>character(len=6), dimension(4)</TD>
-    <!--descript--><TD>Array of names for each of the regions.
-	    The default example has the unit circle as a whole and divided 
-	    into two equal parts, so there are only three regions.<br />
-	    Default: 'whole','yin','yang','bogus' </TD></TR> 
+<TR><TD> lonlim2 </TD>
+    <TD> real(r8) array of length(Nregions) </TD>
+    <TD>ending value of coordinates defining 'regions'.  A value of -1 indicates
+the end of 'no region'.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>create_rank_histogram</TD>
-    <!--  type  --><TD valign=top>   logical   </TD>
-    <!--descript--><TD>Determines whether or not to create the rank histogram IFF
-            the observation sequence file has individual ensemble members - as 
-            determined by <em class=file>input.nml</em>
-            <em class=code>&amp;filter_nml:num_output_obs_members</em><br />
-            Default: .true. </TD></TR>
+<TR><TD> reg_names </TD>
+    <TD> character(len=6), dimension(Nregions) </TD>
+<TD>Array of names for each of the regions.  The default example has the unit
+circle as a whole and divided into two equal parts, so there are only three
+regions.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>outliers_in_histogram</TD>
-    <!--  type  --><TD valign=top>   logical   </TD>
-    <!--descript--><TD>Determines whether or not to use observations that
-            have been rejected by the outlier threshhold mechanism in the
-            calculation of the rank histogram.<br />
-            Default: .true. </TD></TR>
+<TR><TD> create_rank_histogram </TD>
+    <TD> logical </TD>
+    <TD>Determines whether or not to create the rank histogram IFF the
+observation sequence file has individual ensemble members.  Number of output
+observation values is set when running filter in the &amp;filter_nml namelist
+item: <em class=code>&amp;filter_nml:num_output_obs_members</em>
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>trusted_obs      </TD>
-    <!--  type  --><TD valign=top>character(len=32), dimension(5)</TD>
-    <!--descript--><TD>Array of names for observation TYPES that will be included in
-            the statistics if at all possible 
-            (i.e. the forward observation operator succeeds). For 1D observations
-            (which are all fake ... ) the only choices are 'RAW_STATE_VARIABLE' 
-            and/or 'RAW_STATE_1D_INTEGRAL'<br />
-            Default: 'null' </TD></TR> 
+<TR><TD> outliers_in_histogram </TD>
+    <TD> logical </TD>
+    <TD>Determines whether or not to use observations that have been rejected by
+the outlier threshhold mechanism in the calculation of the rank histogram.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>verbose      </TD>
-    <!--  type  --><TD valign=top>logical      </TD>
-    <!--descript--><TD>switch controlling amount of run-time output.<br />
-	    Default is .false. (suppress most output)</TD></TR>
+<TR><TD> trusted_obs </TD>
+    <TD> character(len=32), dimension(5) </TD>
+    <TD>Array of names for observation TYPES that will be included in the
+statistics if at all possible (i.e. the forward observation operator
+succeeds). For 1D observations the only choices in the code as distributed
+are 'RAW_STATE_VARIABLE' and/or 'RAW_STATE_1D_INTEGRAL'.  (Additional 1D
+observation types can be added by the user.)
+</TD></TR>
 
+<TR><TD> verbose </TD>
+    <TD> logical </TD>
+    <TD>switch controlling amount of run-time output.
+</TD></TR>
+
+</TBODY> 
 </TABLE>
-
 </div>
+
+<br />
 <br />
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES DIRECTLY USED</H2>
 <PRE>
 types_mod
@@ -394,7 +403,7 @@ null_mpi_utilities_mod
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL>
    <LI>input namelist; <em class=file>input.nml</em>
@@ -476,7 +485,7 @@ may be truncated.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ol>
 <li> none </li>
@@ -487,7 +496,7 @@ may be truncated.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -514,7 +523,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none.
@@ -525,7 +534,7 @@ none.
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -536,7 +545,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

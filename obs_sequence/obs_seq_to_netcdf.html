@@ -169,14 +169,14 @@ the timeframe of interest.<BR>e.g. 'obsdir_001/obs_seq.final' will cause <em
 class="program">obs_seq_to_netcdf</em> to look for
 'obsdir_002/obs_seq.final', and so on.
 <br />
-If this is specified, 'obs_sequence_list' must be set to ' '.
+If this is specified, 'obs_sequence_list' must be set to '&nbsp;'.
 </TD></TR>
 
 <TR><TD> obs_sequence_list  </TD>
     <TD> character(len=129) </TD>
 <TD>Name of an ascii text file which contains a list of one or more
 observation sequence files, one per line.  If this is specified,
-'obs_sequence_name' must be set to ' '.  Can be created by any method,
+'obs_sequence_name' must be set to '&nbsp;'.  Can be created by any method,
 including sending the output of the 'ls' command to a file, a text editor, or
 another program.  
 </TD></TR>
@@ -225,105 +225,105 @@ like "Africa".
 </TABLE>
 </div>
 
-<br />
-<br />
+<H4>The Schedule Namelist</H4>
 
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
-
-<A NAME="Namelist2"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>schedule NAMELIST</H2>
-<div class=namelist>
-<pre>
-<em class=call>namelist / schedule_nml / </em> &amp;
-   calendar, first_bin_start, first_bin_end, last_bin_end, &amp;
-   bin_interval_days, bin_interval_seconds, max_num_bins, print_table
-</pre>
-</div>
-
-<H3 class=indent1>Discussion</H3>
-
-<P>This namelist is read in a file called <em class=file>input.nml</em>.
-   The default values specify one giant 'bin'.
-   <br />
-   <br />
-   If the <em class="code">print_table</em> variable is 'true', a summary
-   of the assimilation schedule will be written to the screen. Hopefully,
-   a picture will be worth a thousand words ...
+<P>The default values specify one giant 'bin'.
+</P><P>
+If the <em class="code">print_table</em> variable is 'true' a summary
+of the assimilation schedule will be written to the screen.
 </P>
 
 <center>
 <img src="../doc/images/schedule.png" alt="DART assimilation schedule" height=200>
 </center>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<div class=namelist>
+<pre>
+&amp;schedule_nml
+   calendar       = 'Gregorian',
+   first_bin_start =  1601,  1,  1,  0,  0,  0,
+   first_bin_end   =  2999,  1,  1,  0,  0,  0,
+   last_bin_end    =  2999,  1,  1,  0,  0,  0,
+   bin_interval_days    = 1000000,   
+   bin_interval_seconds = 0, 
+   max_num_bins         = 1000,
+   print_table          = .true.
+  /
+</pre>
+</div>
 
-<TR><!--contents--><TD valign=top> calendar  </TD>
-    <!--  type  --><TD valign=top> character(len=32) </TD>
-    <!--descript--><TD>Type of calendar to use to interpret dates.<BR>
-                       May be any type supported by the 
-                       <em class="program">time_manager_mod</em>.
-                       The string is case-INsensitive.
-	               Default 'Gregorian'</TD></TR>  
+<br />
+<br />
 
-<TR><!--contents--><TD valign=top> first_bin_start </TD>
-    <!--  type  --><TD valign=top> integer, dimension(6) </TD>
-    <!--descript--><TD>the first time of the first assimilation period.
-            The six integers are: year, month, day, hour, hour, minute, 
-            second -- in that order.<br>
-            Default: 1601, 1, 1, 0, 0, 0</TD></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TR><!--contents--><TD valign=top> first_bin_end  </TD>
-    <!--  type  --><TD valign=top> integer, dimension(6) </TD>
-    <!--descript--><TD>the end of the first assimilation period.
-            The six integers are: year, month, day, hour, hour, minute,
-            second -- in that order.<br>
-            Default: 2999, 1, 1, 0, 0, 0</TD></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top> last_bin_end  </TD>
-    <!--  type  --><TD valign=top> integer, dimension(6) </TD>
-    <!--descript--><TD>the approximate end of the last assimilation period.
-            The six integers are: year, month, day, hour, hour, minute,
-            second -- in that order. This does not need to be exact,
-            the values from <em class=code>last_bin_end</em>, 
-            <em class=code>bin_interval_days</em>, and
-            <em class=code>bin_interval_seconds</em> are used to derive the
-            assimilation schedule. The assimilation periods are repeated and  
-            will stop on or before the time defined by
-            <em class=code>last_bin_end</em>. 
-            See also <em class=code>max_num_bins</em>.<BR>
-            Default: 2999, 1, 1, 0, 0, 0</TD></TR>
+<TR><TD> calendar  </TD>
+    <TD> character(len=32) </TD>
+    <TD>Type of calendar to use to interpret dates.  May be any type supported by
+the <em class="program">time_manager_mod</em>.  The string is case-insensitive.
+</TD></TR>  
 
-<TR><!--contents--><TD valign=top> bin_interval_days, bin_interval_seconds </TD>
-    <!--  type  --><TD valign=top> integer </TD>
-    <!--descript--><TD>Collectively, <em class=code>bin_interval_days</em> 
-            and <em class=code>bin_interval_seconds</em> define the time 
-            between the start of successive assimilation windows. It is
-            not possible to define a bin_interval such that there are 
-	    overlapping bins (i.e. you can't use the same observations 
-	    more than once). The default is 6 hours. <BR>
-            Default: <em class=code>bin_interval_days</em> == 1000000, and <br />
-            <em class=code>bin_interval_seconds</em> == 0 <br /></TD></TR>
+<TR><TD> first_bin_start </TD>
+    <TD> integer, dimension(6) </TD>
+    <TD>the first time of the first assimilation period.  The six integers are:
+year, month, day, hour, hour, minute, second -- in that order.
+</TD></TR>  
 
-<TR><!--contents--><TD valign=top> max_num_bins </TD>
-    <!--  type  --><TD valign=top> integer </TD>
-    <!--descript--><TD>An alternate way to specify the maximum number of
-            assimilation periods.  The assimilation bin is repeated by 
-	    the bin_interval until one of two things happens: either 
-	    the last time of interest is encountered (defined by 
-	    <em class=code>last_bin_end</em>) or the maximum number 
-	    of assimilation periods has been reached (defined by 
-	    <em class=code>max_num_bins</em>).<BR>
-            Default: 1000</TD></TR>
+<TR><TD> first_bin_end  </TD>
+    <TD> integer, dimension(6) </TD>
+    <TD>the end of the first assimilation period.  The six integers are: year,
+month, day, hour, hour, minute, second -- in that order.
+</TD></TR>  
 
-<TR><!--contents--><TD valign=top> print_table </TD>
-    <!--  type  --><TD valign=top> logical </TD>
-    <!--descript--><TD>Prints the assimilation schedule.<BR>
-            Default: .false. </TD></TR>  
+<TR><TD> last_bin_end  </TD>
+    <TD> integer, dimension(6) </TD>
+    <TD>the approximate end of the last assimilation period.  The six integers
+are: year, month, day, hour, hour, minute, second -- in that order. This does
+not need to be exact, the values from <em class=code>last_bin_end</em>, 
+<em class=code>bin_interval_days</em>, and <em class=code>bin_interval_seconds</em> 
+are used to derive the assimilation schedule. The assimilation periods are
+repeated and will stop on or before the time defined by <em class=code>last_bin_end</em>.  
+See also <em class=code>max_num_bins</em>.  
+</TD></TR>  
+
+<TR><TD> bin_interval_days, bin_interval_seconds </TD>
+    <TD> integer </TD>
+    <TD>Collectively, <em class=code>bin_interval_days</em> and 
+<em class=code>bin_interval_seconds</em> define the time between the start of
+successive assimilation windows. It is not possible to define a bin_interval
+such that there are overlapping bins (i.e. you can't use the same
+observations more than once).
+</TD></TR>  
+
+<TR><TD> max_num_bins </TD>
+    <TD> integer </TD>
+    <TD>An alternate way to specify the maximum number of assimilation periods.
+The assimilation bin is repeated by the bin_interval until one of two things
+happens: either the last time of interest is encountered (defined by 
+<em class=code>last_bin_end</em>) or the maximum number of assimilation periods
+has been reached (defined by <em class=code>max_num_bins</em>).
+</TD></TR>  
+
+<TR><TD> print_table </TD>
+    <TD> logical </TD>
+    <TD>Prints the assimilation schedule.
+</TD></TR>  
+
+</TBODY> 
 </TABLE>
+</div>
+
+<br />
+<br />
+
 
 <H3 class="indent1">Example</H3>
 <P>The following example illustrates the fact the <em class="code">last_bin_end</em>
