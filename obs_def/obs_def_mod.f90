@@ -44,13 +44,14 @@ use    utilities_mod, only : register_module, error_handler,               &
 use     location_mod, only : location_type, set_location, get_location
 use  assim_model_mod, only : interpolate, interpolate_distrib !HK
 use   cov_cutoff_mod, only : comp_cov_factor
+use data_structure_mod, only : ensemble_type
 
 implicit none
 
 ! These are the required interfaces for an obs_def module.
 public :: write_1d_integral, read_1d_integral, &
           interactive_1d_integral, get_expected_1d_integral, &
-          set_1d_integral
+          set_1d_integral, get_expected_1d_integral_distrib
 
 ! Storage for the special information required for observations of this type
 integer               :: num_1d_integral_obs = 0     ! current count of obs
@@ -316,6 +317,104 @@ end subroutine get_expected_1d_integral
 
 !----------------------------------------------------------------------
 
+subroutine get_expected_1d_integral_distrib(location, igrkey, expected_obs, istatus, state_ens_handle, win)
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: igrkey
+real(r8),            intent(out) :: expected_obs(:)
+integer,             intent(out) :: istatus
+integer,             intent(in)  :: win !< mpi communication window
+type(ensemble_type),  intent(in) :: state_ens_handle
+
+
+! The forward operator interface for this type of observation.  It is
+! called with a state vector, a location, and a key to identify which
+! observation is being processed.  The return 'val' is the expected
+! observation value, and istatus is the return code.  0 is ok,
+! > 0 signals an error, and < 0 values are reserved for system use.
+! The call to 'interpolate()' below calls the forward operator in
+! whatever model this code has been compiled with.
+
+type(location_type) :: location2
+integer             :: i, j
+real(r8)            :: range, loc, bottom, dx, x, dist !sum, dist, weight, weight_sum
+real(r8), allocatable  :: sum(:), weight(:), weight_sum(:)
+
+if ( .not. module_initialized ) call initialize_module
+
+! Make sure key is within valid range
+call check_valid_key(igrkey, 'GIVEN', 'get_expected_1d_integral')
+
+allocate(sum(state_ens_handle%num_copies), weight(state_ens_handle%num_copies), &
+   weight_sum(state_ens_handle%num_copies))
+
+
+! Figure out the total range of the integrated funtion (1 is max)
+range = 4.0_r8 * half_width(igrkey)
+if(range > 1.0_r8) range = 1.0_r8
+if(debug) print*, 'range is ', range
+
+! Get the location value
+loc = get_location(location)
+if(debug) print*, 'loc base is ', loc
+
+! Compute the bottom and top of the range
+bottom = loc - range / 2.0_r8
+if(bottom < 0.0_r8) bottom = bottom + 1.0_r8
+if(debug) print*, 'bottom is ', bottom
+
+! Next figure out where to put all the points
+dx = range / (num_points(igrkey) - 1)
+if(debug) print*, 'dx is ', dx
+
+! Loop to compute the value at each point, then multiply by localization
+! to get weighted integral
+sum(:) = 0.0_r8
+weight_sum(:) = 0.0_r8
+do i = 1, num_points(igrkey)
+
+   x = bottom + (i - 1) * dx
+   if(x > 1.0_r8) x = x - 1.0_r8
+   if(debug) print*, 'location for int ', i, 'is ', x
+   location2 = set_location(x)
+   call interpolate_distrib(location2, 1, istatus, expected_obs, state_ens_handle, win)
+
+   if(debug) print*, 'model forward operator for ', i, ' returns ', expected_obs
+   if (istatus /= 0) then
+      if(debug) print*, 'forward operator returned error, returning'
+      expected_obs(:) = missing_r8
+      return
+   endif
+   dist = abs(loc - x)
+   if(dist > 0.5_r8) dist = 1.0_r8 - dist
+   if(debug) print*, 'dist ', i, dist
+
+   ! loop for each copy
+   do j = 1, state_ens_handle%num_copies
+
+      weight(j) = comp_cov_factor(dist, half_width(igrkey), &
+      localization_override = localization_type(igrkey))
+      if(debug) print*, 'weight ', i, weight(j)
+      sum(j) = sum(j) + weight(j) * expected_obs(j)
+      weight_sum(j) = weight_sum(j) + weight(j)
+
+   end do
+
+enddo
+
+expected_obs = sum / weight_sum
+
+deallocate(sum, weight, weight_sum)
+
+if(debug) print*, 'get_expected_1d_integral key is ', igrkey
+if(debug) print*, 'metadata values are: ', half_width(igrkey), num_points(igrkey), localization_type(igrkey)
+if(debug) print*, 'return value for forward operator is ', expected_obs
+if(debug) print*, 'return status (0 good; >0 error; <0 reserved for system use) is ', istatus
+
+end subroutine get_expected_1d_integral_distrib
+
+
+!----------------------------------------------------------------------
+
 subroutine set_1d_integral(integral_half_width, num_eval_pts, localize_type, igrkey, istatus)
 
 ! inputs are: half width of integral
@@ -471,7 +570,8 @@ use obs_kind_mod, only : KIND_1D_INTEGRAL
 ! here so the generic obs_def_mod has access to the code.
 
    use obs_def_1d_state_mod, only : write_1d_integral, read_1d_integral, &
-                                     interactive_1d_integral, get_expected_1d_integral
+                                     interactive_1d_integral, get_expected_1d_integral, &
+                                     get_expected_1d_integral_distrib
 
 !----------------------------------------------------------------------
 ! End of any obs_def_xxx_mod specific use statements
@@ -887,7 +987,7 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
       ! inserted here by the DART preprocess program.
 
          case(RAW_STATE_1D_INTEGRAL)
-           ! call get_expected_1d_integral(state, location, obs_def%key, obs_val, istatus)
+            call get_expected_1d_integral_distrib(location, obs_def%key, expected_obs, istatus, state_ens_handle, win)
       case(RAW_STATE_VARIABLE)
          call interpolate_distrib(location, KIND_RAW_STATE_VARIABLE, istatus, expected_obs, state_ens_handle, win)
 
