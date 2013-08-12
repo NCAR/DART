@@ -12,16 +12,16 @@
 #
 # This script integrates DART with a pre-existing CESM multi-instance case.
 # It must be run from a valid CASEROOT directory. If the case was created
-# using one of the DART scripts, this script should be staged in the 
+# using one of the DART scripts, this script should be staged in the
 # CASEROOT directory automatically, and DARTROOT is set at that time.
 #
 # CAM, POP, and CLM are all active and going to be assimilated separately.
 # CESM starts and stops to allow for CAM to assimilate every 6 hours.
-# The individual assimilation scripts control how often each model component 
+# The individual assimilation scripts control how often each model component
 # performs its own assimilation.
 #
 # This script will build the DART executables if they are not found.
-# 
+#
 # There are many CESM binary files in big-endian format, and DART reads
 # some of them, so you MUST compile DART accordingly e.g.,
 # ifort -convert big_endian
@@ -37,8 +37,8 @@
 #       inflation
 #       sampling error correction
 # -- Run this script.
-# -- Edit the DART input.nml that appears in the $CASEROOT directory.
-# -- Submit the job using $CASEROOT/${CASE}.submit
+# -- Edit the DART input.nml that appears in the ${CASEROOT} directory.
+# -- Submit the job using ${CASEROOT}/${CASE}.submit
 #
 # ==============================================================================
 # Get the environment of the case - defines number of instances/ensemble size ...
@@ -57,12 +57,12 @@ set num_instances = $NINST_ATM
 
 # DARTROOT is set by the DART CESM_configure scripts. Under certain
 # situations, you may need to set this manually. It should reference the
-# base portion of the DART code tree. 
+# base portion of the DART code tree.
 
 setenv DARTROOT  BOGUS_DART_ROOT_STRING
 
 # ==============================================================================
-# Some 
+# Some
 # ==============================================================================
 
 set nonomatch       # suppress "rm" warnings if wildcard does not match anything
@@ -106,7 +106,7 @@ foreach VAR ( CASEROOT DARTROOT )
 end
 
 # ==============================================================================
-# Make sure the DART executables exist or build them if we can't find them. 
+# Make sure the DART executables exist or build them if we can't find them.
 # The DART input.nml in the model directory IS IMPORTANT during this part
 # because it defines what observation types are supported.
 # ==============================================================================
@@ -114,9 +114,10 @@ end
 foreach MODEL ( cam clm CESM POP )
    set targetdir = $DARTROOT/models/$MODEL/work
    if ( ! -x $targetdir/filter ) then
+      echo ""
       echo "WARNING: executable file 'filter' not found."
       echo "         Looking for: $targetdir/filter "
-      echo "         Trying to rebuild all model files now."
+      echo "         Trying to rebuild all executables for $MODEL now ..."
       (cd $targetdir; ./quickbuild.csh -mpi)
       if ( ! -x $targetdir/filter ) then
          echo "ERROR: executable file 'filter' not found."
@@ -200,7 +201,7 @@ chmod 0755 refresh_dart_files
 ./refresh_dart_files
 
 # ==============================================================================
-# Ensure the DART namelists are consistent with the ensemble size, 
+# Ensure the DART namelists are consistent with the ensemble size,
 # suggest settings for num members in the output diagnostics files, etc.
 # The user is free to update these after setup and before running.
 # ==============================================================================
@@ -216,33 +217,35 @@ cat << EndOfText >! update_dart_namelists
 # Ensure that the input.nml ensemble size matches the number of instances.
 # WARNING: the output files contain ALL ensemble members ==> BIG
 
-ex cam_input.nml <<ex_end
-g;ens_size ;s;= .*;= $NINST_ATM;
-g;num_output_state_members ;s;= .*;= $NINST_ATM;
-g;num_output_obs_members ;s;= .*;= $NINST_ATM;
+ex input.nml <<ex_end
+g;ens_size ;s;= .*;= ${num_instances};
+g;num_output_state_members ;s;= .*;= ${num_instances};
+g;num_output_obs_members ;s;= .*;= ${num_instances};
 wq
 ex_end
 
+ex cam_input.nml <<ex_end
+g;ens_size ;s;= .*;= ${NINST_ATM};
+g;num_output_state_members ;s;= .*;= ${NINST_ATM};
+g;num_output_obs_members ;s;= .*;= ${NINST_ATM};
+wq
+ex_end
+
+# CLM requires the CASE to be able to find the right *.h1.* file if need be.
+
 ex clm_input.nml <<ex_end
-g;ens_size ;s;= .*;= $NINST_LND;
-g;num_output_state_members ;s;= .*;= $NINST_LND;
-g;num_output_obs_members ;s;= .*;= $NINST_LND;
-g;casename ;s;= .*;= "../$CASE",;
+g;ens_size ;s;= .*;= ${NINST_LND};
+g;num_output_state_members ;s;= .*;= ${NINST_LND};
+g;num_output_obs_members ;s;= .*;= ${NINST_LND};
+g;casename ;s;= .*;= "../${CASE}",;
 wq
 ex_end
 
 # num_output_state_members intentionally not set for POP.
 
 ex pop_input.nml <<ex_end
-g;ens_size ;s;= .*;= $NINST_OCN;
-g;num_output_obs_members ;s;= .*;= $NINST_OCN;
-wq
-ex_end
-
-ex input.nml <<ex_end
-g;ens_size ;s;= .*;= $num_instances;
-g;num_output_state_members ;s;= .*;= $num_instances;
-g;num_output_obs_members ;s;= .*;= $num_instances;
+g;ens_size ;s;= .*;= ${NINST_OCN};
+g;num_output_obs_members ;s;= .*;= ${NINST_OCN};
 wq
 ex_end
 
@@ -274,8 +277,8 @@ foreach N ( cam_input.nml pop_input.nml clm_input.nml input.nml )
    set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
    set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
    set SECSTRING = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
-  
-   if ( $SECSTRING == true ) then
+
+   if ( ${SECSTRING} == true ) then
       set SAMP_ERR_FILE = ${DARTROOT}/system_simulation/final_full_precomputed_tables/final_full.${num_instances}
       if (  -e   ${SAMP_ERR_FILE} ) then
          ${COPY} ${SAMP_ERR_FILE} .
@@ -334,7 +337,7 @@ endif
 date >! ${RUNDIR}/make_cam_inflation_cookie
 
 # ==============================================================================
-# Creating the code to add to the *.run script to call DART. 
+# Creating the code to add to the *.run script to call DART.
 # ==============================================================================
 
 cat << "EndOfText" >! add_to_run.txt
