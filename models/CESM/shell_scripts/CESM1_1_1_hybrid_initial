@@ -50,36 +50,42 @@
 # data volume is quite large and you should become comfortable using CESM's restart
 # capability to re-stage files in your RUN directory
 #
-# To perform assimilation, it is required only to insert a few dozen lines into the
-# CASEROOT/*.run script. This, and the required setup, is performed in
-# CESM_DART_config - which can be run at a later date. e.g. you can use this
-# script to advance this ensemble from 2004-01-01 to 2004-02-01 and then run
-# CESM_DART_config to augment the existing run script, modify STOP_N to 24 hours,
-# and start assimilating observationg at midnight from 2004-02-01 on ...
+# CASEROOT/CESM_DART_config will augment the CESM case with the required setup
+# and configuration to perform a DART assimilation. CASEROOT/CESM_DART_config 
+# will insert a few dozen lines into the ${CASE}.run script after it makes a backup
+# copy.  This, and the required setup, can be run at a later date. e.g. you can
+# advance an ensemble from 2004-01-01 to 2004-02-01 and then run
+# CESM_DART_config to augment the existing run script, modify STOP_N to 6 hours,
+# and start assimilating observations when CESM stops at 2004-02-01 06Z ...
 #
 # This script relies heavily on the information in:
 # http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html
 #
 # ---------------------
-# How to set up the script
+# How to use this script.
 # ---------------------
 #
-# -- Either edit and run this script in the $DART/models/CESM/shell_scripts
-#    directory where it first appears,
+# -- You will have to read and understand the script in its entirety.
+#    You will have to modify things outside this script.
+#    This script sets up a CESM multi-instance run as we understand them and
+#    it has almost nothing to do with DART. This is intentional.
+#
+# -- Edit and run this script in the $DART/models/CESM/shell_scripts directory
 #    or copy it to somewhere that it will be preserved and run it there.
-#    It will create a 'case' directory, where the model will be built,
-#    and an execution directory, where each forecast and assimilation will
+#    It will create a CESM 'CASE' directory, where the model will be built,
+#    and an execution directory, where each forecast (and assimilation) will
 #    take place.  The short term archiver will use a third directory for
 #    storage of model output until it can be moved to long term storage (HPSS)
+#
 # -- Examine the whole script to identify things to change for your experiments.
-# -- Provide any initial files needed by your run:
-#       inflation
-#       sampling error correction
-#       CESM initial ensemble
-#       ...
+#
+# -- Provide the CESM initial ensemble needed by your run.
+#
 # -- Run this script.
-# -- Edit the DART input.nml that appears in the $CASEROOT directory.
-# -- Submit the job using $CASEROOT/${case}.submit
+#
+# -- If you want to run DART, read and understand ${CASEROOT}/CESM_DART_config
+#
+# -- Submit the job using ${CASEROOT}/${CASE}.submit
 #
 # ---------------------
 # Important features
@@ -106,7 +112,7 @@
 #    script names; so consider it's length and information content.
 # num_instances:  Number of ensemble members
 
-setenv case                 cesm_assim2
+setenv case                 cesm_multi
 setenv compset              B_2000_CAM5
 setenv resolution           0.9x1.25_gx1v6
 setenv cesmtag              cesm1_1_1
@@ -164,7 +170,8 @@ set POP_stagedir = /glade/p/work/aliciak/DART_IC/CCSM4_ensembles/rest/2004-01-01
 # assim_n       Number of time units between assimilations
 #
 # If the long-term archiver is off, you get a chance to examine the files before
-# you
+# they get moved to long-term storage. You can always submit $CASE.l_archive
+# whenever you want to free up space in the short-term archive directory.  
 #
 # ==============================================================================
 
@@ -181,10 +188,11 @@ setenv long_term_archiver  off
 # queue      can be changed during a series by changing the ${case}.run
 # timewall   can be changed during a series by changing the ${case}.run
 #
-# TJH: 30 instances with 900 pes took about 30 minutes on yellowstone.
+# TJH: Advancing 30 instances for 72 hours with 900 pes
+#      took about 30 minutes on yellowstone.
 # ==============================================================================
 
-setenv ACCOUNT      P86850054
+setenv ACCOUNT      P8685xxxx
 setenv queue        economy
 setenv timewall     1:00
 
@@ -221,7 +229,7 @@ endsw
 # VAR is the shell variable name, DIR is the value
 # ==============================================================================
 
-foreach VAR ( cesmroot dartroot )
+foreach VAR ( cesmroot dartroot RTM_stagedir CLM_stagedir CAM_stagedir POP_stagedir )
    set DIR = `eval echo \${$VAR}`
    if ( ! -d $DIR ) then
       echo "ERROR: directory '$DIR' not found"
