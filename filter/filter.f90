@@ -579,58 +579,32 @@ AdvanceTime : do
       call get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, &
       seq, keys, obs_val_index, input_qc_index, &
       OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-      results, write_flag, isprior=.true.)
-
-      if (write_flag) then
-
-         ! HK do these results need to be recorded to file?
-         write(task_str, '(i10)') ens_handle%my_pe
-
-         file_obscopies = TRIM('bad_obscopies' // TRIM(ADJUSTL(task_str)))
-         file_results = TRIM('bad_results' // TRIM(ADJUSTL(task_str)))
-
-         open(15, file=file_obscopies, status ='unknown')
-         open(20, file=file_results, status ='unknown')
-
-         do i = 1, obs_ens_handle%num_copies - 4
-              write(15, *) obs_ens_handle%copies(i,:)
-              write(20, *) results(i,:)
-         enddo
-
-         close(15)
-         close(20)
-
-      endif
-
-      call task_sync()
-
-      if(my_task_id() == 0 ) print*, 'rep ', ii
+      results, isprior=.true.)
 
    enddo
 
    finish = MPI_WTIME()
 
-    if (my_task_id() == 0) print*, 'get_obs_ens_distrib_state ', (finish-start)/reps
+   if (my_task_id() == 0) print*, 'get_obs_ens_distrib_state ', (finish-start)/reps
 
-    ! HK do these results need to be recorded to file?
-     write(task_str, '(i10)') ens_handle%my_pe
+   ! HK do these results need to be recorded to file?
+   write(task_str, '(i10)') ens_handle%my_pe
 
-     file_obscopies = TRIM('obscopies' // TRIM(ADJUSTL(task_str)))
-     file_results = TRIM('results' // TRIM(ADJUSTL(task_str)))
+   file_obscopies = TRIM('obscopies' // TRIM(ADJUSTL(task_str)))
+   file_results = TRIM('results' // TRIM(ADJUSTL(task_str)))
 
-     open(15, file=file_obscopies, status ='unknown')
-     open(20, file=file_results, status ='unknown')
+   open(15, file=file_obscopies, status ='unknown')
+   open(20, file=file_results, status ='unknown')
 
-     do i = 1, obs_ens_handle%num_copies - 4
-        write(15, *) obs_ens_handle%copies(i,:)
-        write(20, *) results(i,:)
-     enddo
+   do i = 1, obs_ens_handle%num_copies - 4
+      write(15, *) obs_ens_handle%copies(i,:)
+      write(20, *) results(i,:)
+   enddo
 
-     close(15)
-     close(20)
+   close(15)
+   close(20)
 
-
-     deallocate(results)
+   deallocate(results)
 
     goto 10011
 
@@ -1404,7 +1378,7 @@ end subroutine filter_ensemble_inflate
 !> access
 subroutine get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, seq, keys, &
    obs_val_index, input_qc_index, &
-   OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, results, write_flag, isprior)
+   OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, results, isprior)
 
 use mpi_utilities_mod, only : datasize
 
@@ -1416,8 +1390,6 @@ integer,                 intent(in)    :: obs_val_index, input_qc_index
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
 logical,                 intent(in)    :: isprior
-
-logical, intent(out) :: write_flag
 
 real(r8)           :: input_qc(1), obs_value(1), obs_err_var, thisvar(1)
 integer            :: j, k, my_num_copies, istatus , global_ens_index, thiskey(1)
@@ -1443,12 +1415,6 @@ real(r8), dimension(:,:), intent(out) :: results
 real(r8), allocatable                   :: expected_obs(:) !Also regular obs now?
 integer global_obs_num
 type(time_type)                         :: dummy_time
-
-!HK debug
-real(r8), allocatable :: res_one(:)
-write_flag = .false.
-
-allocate(res_one(ens_handle%num_copies))
 
 ! Loop through my copies and compute expected value
 my_num_copies = get_my_num_copies(obs_ens_handle)
@@ -1552,31 +1518,6 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
 
    results(:, j) = expected_obs
 
-   do k = 1, ens_handle%num_copies - 6
-
-      if(expected_obs(k) /= obs_ens_handle%copies(k, j)) then
-
-         print*, 'incorrect expected obs rank ', my_task_id(), 'observation ', j, 'global obs num ', global_obs_num, 'k ', k
-
-         write_flag = .true.
-
-      endif
-
-   enddo
- 
-   if (j == 1) then
-       res_one = expected_obs
-   else ! check whether results(:,1) has been overwritten
-
-      do k = 1, ens_handle%num_copies - 6
-
-         if(res_one(k) /= results(k, 1)) then
-            print*, 'results has been overwritten rank', my_task_id(), 'obs j= ', j
-         endif
-      enddo
-
-   endif
-
    ! update copy for error variance and for oberved value
    results(OBS_ERR_VAR_COPY, j) = obs_err_var
    results(OBS_VAL_COPY, j) = obs_value(1)
@@ -1596,8 +1537,6 @@ end do ALL_OBSERVATIONS
 call mpi_win_free(win, ierr)
 call MPI_FREE_MEM(duplicate_copies, ierr) ! not p 
 deallocate(expected_obs)
-
-deallocate(res_one)
 
 end subroutine get_obs_ens_distrib_state
 

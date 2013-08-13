@@ -401,7 +401,7 @@ do i = 1, num_points(igrkey)
 
 enddo
 
-expected_obs = sum / weight_sum
+expected_obs(:) = sum(:) / weight_sum(:)
 
 deallocate(sum, weight, weight_sum)
 
@@ -1000,7 +1000,7 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
    end select
 else
    ! Not computing forward operator for this kind
-   expected_obs = missing_r8
+   expected_obs(:) = missing_r8
    istatus = 0
 endif
 
