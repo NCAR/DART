@@ -205,6 +205,10 @@ logical                 :: ds, all_gone
 
 ! HK
 real(r8), allocatable   :: results(:,:)
+integer                 :: ii, reps
+
+!HK debug
+logical :: write_flag
 
 call filter_initialize_modules_used()
 
@@ -544,16 +548,22 @@ AdvanceTime : do
    ! and obs_values. ens_size is the number of regular ensemble members,
    ! not the number of copies
 
+   reps = 10 
+
    start = MPI_WTIME()
 
-   call get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, &
-      seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
-      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-      isprior=.true.)
+   do ii = 1, reps 
+
+      call get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, &
+         seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
+         OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+         isprior=.true.)
+ 
+   enddo
 
    finish = MPI_WTIME()
 
-   if (my_task_id() == 0) print*, 'get_obs_ens ', finish-start !> do we need all tasks
+   if (my_task_id() == 0) print*, 'get_obs_ens average ', (finish-start)/reps !> do we need all tasks
 
    call timestamp_message('Transposing all ens_handles to copy complete before get_obs_ens_distrib_state')
    call all_vars_to_all_copies(ens_handle)
@@ -562,46 +572,67 @@ AdvanceTime : do
 
    allocate(results(obs_ens_handle%num_copies, obs_ens_handle%my_num_vars))
 
-    start = MPI_WTIME()
+   start = MPI_WTIME()
+
+   do ii = 1, reps 
 
       call get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, &
       seq, keys, obs_val_index, input_qc_index, &
       OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-      results, isprior=.true.)
+      results, write_flag, isprior=.true.)
 
-    finish = MPI_WTIME()
+      if (write_flag) then
 
-    if (my_task_id() == 0) print*, 'get_obs_ens_distrib_state ', finish-start
+         ! HK do these results need to be recorded to file?
+         write(task_str, '(i10)') ens_handle%my_pe
 
-    start = MPI_WTIME()
+         file_obscopies = TRIM('bad_obscopies' // TRIM(ADJUSTL(task_str)))
+         file_results = TRIM('bad_results' // TRIM(ADJUSTL(task_str)))
 
-      call get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, &
-      seq, keys, obs_val_index, input_qc_index, &
-      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-      results, isprior=.true.)
+         open(15, file=file_obscopies, status ='unknown')
+         open(20, file=file_results, status ='unknown')
 
-    finish = MPI_WTIME()
+         do i = 1, obs_ens_handle%num_copies - 4
+              write(15, *) obs_ens_handle%copies(i,:)
+              write(20, *) results(i,:)
+         enddo
 
-    if (my_task_id() == 0) print*, 'get_obs_ens_distrib_state ', finish-start
+         close(15)
+         close(20)
 
-   ! HK do these results need to be recorded to file?
-    write(task_str, '(i10)') ens_handle%my_pe
+      endif
 
-    file_obscopies = TRIM('obscopies' // TRIM(ADJUSTL(task_str)))
-    file_results = TRIM('results' // TRIM(ADJUSTL(task_str)))
+      call task_sync()
 
-    open(15, file=file_obscopies, status ='unknown')
-    open(20, file=file_results, status ='unknown') ! error if you already have results files
+      if(my_task_id() == 0 ) print*, 'rep ', ii
 
-    do i = 1, obs_ens_handle%num_copies - 4
-       write(15, *) obs_ens_handle%copies(i,:)
-       write(20, *) results(i,:)
-    enddo
+   enddo
 
-    close(15)
-    close(20)
+   finish = MPI_WTIME()
 
-    deallocate(results)
+    if (my_task_id() == 0) print*, 'get_obs_ens_distrib_state ', (finish-start)/reps
+
+    ! HK do these results need to be recorded to file?
+     write(task_str, '(i10)') ens_handle%my_pe
+
+     file_obscopies = TRIM('obscopies' // TRIM(ADJUSTL(task_str)))
+     file_results = TRIM('results' // TRIM(ADJUSTL(task_str)))
+
+     open(15, file=file_obscopies, status ='unknown')
+     open(20, file=file_results, status ='unknown')
+
+     do i = 1, obs_ens_handle%num_copies - 4
+        write(15, *) obs_ens_handle%copies(i,:)
+        write(20, *) results(i,:)
+     enddo
+
+     close(15)
+     close(20)
+
+
+     deallocate(results)
+
+    goto 10011
 
    ! Although they are integer, keys are one 'copy' of obs ensemble 
    ! (the last one?)
@@ -859,6 +890,8 @@ if(output_restart_mean) &
 
 if(ds) call smoother_write_restart(1, ens_size)
 call trace_message('After  writing state restart files if requested')
+
+10011 continue
 
 ! Give the model_mod code a chance to clean up. 
 call trace_message('Before end_model call')
@@ -1371,7 +1404,7 @@ end subroutine filter_ensemble_inflate
 !> access
 subroutine get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, seq, keys, &
    obs_val_index, input_qc_index, &
-   OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, results, isprior)
+   OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, results, write_flag, isprior)
 
 use mpi_utilities_mod, only : datasize
 
@@ -1384,10 +1417,13 @@ integer,                 intent(in)    :: OBS_ERR_VAR_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
 logical,                 intent(in)    :: isprior
 
+logical, intent(out) :: write_flag
+
 real(r8)           :: input_qc(1), obs_value(1), obs_err_var, thisvar(1)
 integer            :: j, k, my_num_copies, istatus , global_ens_index, thiskey(1)
 logical            :: evaluate_this_ob, assimilate_this_ob
 type(obs_def_type) :: obs_def
+
 
 ! Assumed that both ensembles are var complete and copy complete
 ! Each PE must loop to compute its copies of the forward operators
@@ -1403,10 +1439,16 @@ real(r8) duplicate_copies(*)
 pointer (p, duplicate_copies)
 
 !HK 
-real(r8), dimension(:,:), intent(inout) :: results
+real(r8), dimension(:,:), intent(out) :: results
 real(r8), allocatable                   :: expected_obs(:) !Also regular obs now?
 integer global_obs_num
 type(time_type)                         :: dummy_time
+
+!HK debug
+real(r8), allocatable :: res_one(:)
+write_flag = .false.
+
+allocate(res_one(ens_handle%num_copies))
 
 ! Loop through my copies and compute expected value
 my_num_copies = get_my_num_copies(obs_ens_handle)
@@ -1422,9 +1464,6 @@ window_size = ens_handle%num_copies*ens_handle%my_num_vars*sizedouble
 p = malloc(ens_handle%num_copies*ens_handle%my_num_vars)
 call MPI_ALLOC_MEM(window_size, MPI_INFO_NULL, p, ierr)
 
-! expose local memory to RMA operation by other process in a communicator.
-call mpi_win_create(duplicate_copies, window_size, sizedouble, MPI_INFO_NULL, mpi_comm_world, win, ierr)
-
 ! create a duplicate copies array for remote memory access
 ! Doing this because you cannot use a cray pointer with an allocatable array
 count = 1
@@ -1434,6 +1473,9 @@ do ii = 1, ens_handle%my_num_vars
       count = count + 1
    enddo
 enddo
+
+! expose local memory to RMA operation by other process in a communicator.
+call mpi_win_create(duplicate_copies, window_size, sizedouble, MPI_INFO_NULL, mpi_comm_world, win, ierr)
 
 ! make some room for state vectors
 allocate(expected_obs(ens_handle%num_copies))
@@ -1510,6 +1552,31 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
 
    results(:, j) = expected_obs
 
+   do k = 1, ens_handle%num_copies - 6
+
+      if(expected_obs(k) /= obs_ens_handle%copies(k, j)) then
+
+         print*, 'incorrect expected obs rank ', my_task_id(), 'observation ', j, 'global obs num ', global_obs_num, 'k ', k
+
+         write_flag = .true.
+
+      endif
+
+   enddo
+ 
+   if (j == 1) then
+       res_one = expected_obs
+   else ! check whether results(:,1) has been overwritten
+
+      do k = 1, ens_handle%num_copies - 6
+
+         if(res_one(k) /= results(k, 1)) then
+            print*, 'results has been overwritten rank', my_task_id(), 'obs j= ', j
+         endif
+      enddo
+
+   endif
+
    ! update copy for error variance and for oberved value
    results(OBS_ERR_VAR_COPY, j) = obs_err_var
    results(OBS_VAL_COPY, j) = obs_value(1)
@@ -1529,6 +1596,8 @@ end do ALL_OBSERVATIONS
 call mpi_win_free(win, ierr)
 call MPI_FREE_MEM(duplicate_copies, ierr) ! not p 
 deallocate(expected_obs)
+
+deallocate(res_one)
 
 end subroutine get_obs_ens_distrib_state
 
