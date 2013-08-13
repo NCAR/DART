@@ -27,8 +27,8 @@
 </tr>
 </table>
 
-<a href="#NewModels">New Models or Changes to Existing Models</a> /
 <a href="#Changes">Changes to Core DART routines</a> /
+<a href="#NewModels">New Models or Changes to Existing Models</a> /
 <a href="#ForwardOps">New or Changed Forward Operators</a> /
 <a href="#ObsConvert">Observation Converters</a> /
 <a href="#Diagnostics">New or Updated DART Diagnostics</a> /
@@ -51,90 +51,6 @@ include installation instructions, a walk-through of running
 one of the low-order models, the diagnostics, and a description
 of non-backward compatible changes.
 </P>
-
-<!--==================================================================-->
-<br />
-<br />
-<A NAME="NewModels"></A>
-<hr />
-<H2>New Models or Changes to Existing Models</H2>
-<P>
-Several new models have been incorporated into DART.  This section details
-both changes to existing models and descriptions of new models that have
-been added since the Kodiak release.
-</P>
-
-<UL>
-<LI>Support for components under the CESM framework:
-<UL>
-<LI>Added support for the Community Land Model (CLM).</LI>
-<LI>Added support to run the Community Atmospheric Model (CAM) under the 
-CESM framework.</LI>
-<LI>Added support for the CESM 1.1.1 release for CAM, POP, CLM: includes
-experiment setup scripts and assimilation scripts.</LI>
-<LI>CAM, POP, and/or CLM can be assimilated either individually or
-in combination while running under the CESM framework.
-If assimilating into multiple components, 
-they are assimilated sequentially with observations only affecting
-a single component directly. Other components are indirectly affected
-through interactions with the coupler.</LI>
-<LI>Setup scripts are provided to configure a CESM experiment using
-the multi-instance feature of CESM to support ensembles for assimilation.</LI>
-<LI>POP state vector contains potential temperature; observations from the
-World Ocean Database are in-situ or sensible temperature.  The model_mod
-now corrects for this.
-<UL>
-<LI>The state vector has all along contained potential temperature and not
-in-situ (sensible) temperature. The observations from the World Ocean
-Database are of sensible temperature. Changed the specific kind in the
-model_mod to be <tt>KIND_POTENTIAL_TEMPERATURE</tt> and added new code to
-convert from potential to in-situ temperature. Differences for even the
-deeper obs (4-5km) is still small ( ~ 0.2 degree). (in-situ or sensible
-temperature is what you measure with a regular thermometer.)</LI>
-</UL>
-</LI>
-<LI>Support for the SE core (HOMME) of CAM has been developed but
-<strong>is not</strong> part of the current release.  Contact the
-DART group if you have an interest in running this configuration of CAM.</LI>
-</UL>
-</LI>
-<LI>Changes to the WRF model_mod:
-<UL>
-<LI>Allow advanced microphysics schemes (needed interpolation for 7 new kinds)</LI>
-<LI>Interpolation in the vertical is done in log(p) instead of linear
-pressure space.  log(p) is the default, but a compile-time variable can
-restore the linear interpolation.</LI>
-<LI>Added support in the namelist to avoid writing updated fields back into
-the wrf netcdf files. The fields are still updated during the assimilation
-but the updated data is not written back to the wrfinput file during the
-dart_to_wrf step.</LI>
-<LI>Fixed an obscure bug in the vertical convert routine of the wrf model_mod
-that would occasionally fail to convert an obs. This would make tiny
-differences in the output as the number of mpi tasks change. No quantitative
-differences in the results but they were not bitwise compatible before and they
-are again now.</LI>
-</UL>
-</LI>
-<LI>Added support for the MPAS_ATM and MPAS_OCN models.
-<UL>
-<LI>Added interpolation routines for the voroni-tesselation grid (roughly hexagonal)
-<LI>Includes vertical conversion routines for vertical localization.
-<LI>Added code to the mpas_atm model to interpolate specific humidity and
-pressure, so we can assimilate GPS obs now.</LI>
-</UL>
-</LI>
-<LI>Added support for the 'SQG' uniform PV two-surface QC+1 spectral model.</LI>
-<LI>Added support for a flux-transport solar dynamo model.</LI>
-<LI>Added support for the NOAH land model.</LI>
-<LI>Added support for the NAAPS model.</LI>
-<LI>Added model_mod interface code for the NOGAPS model to the SVN repository.</LI>
-<LI>Simple advection model:
-<UL>
-<LI>Fix where the random number seed is set in the models/simple_advection
-model_mod - it needed to be sooner than it was being called.</LI>
-</UL>
-</LI>
-</UL>
 
 <!--==================================================================-->
 
@@ -209,6 +125,91 @@ same 'start_from_restart_file' as subsequent steps.</LI>
 </LI>
 </UL>
 
+
+<!--==================================================================-->
+<br />
+<br />
+<A NAME="NewModels"></A>
+<hr />
+<H2>New Models or Changes to Existing Models</H2>
+<P>
+Several new models have been incorporated into DART.  This section details
+both changes to existing models and descriptions of new models that have
+been added since the Kodiak release.
+</P>
+
+<UL>
+<LI>Support for components under the CESM framework:
+<UL>
+<LI>Added support for the Community Land Model (CLM).</LI>
+<LI>Added support to run the Community Atmospheric Model (CAM) under the 
+CESM framework.</LI>
+<LI>Added support for the CESM 1.1.1 release for CAM, POP, CLM: includes
+experiment setup scripts and assimilation scripts.</LI>
+<LI>CAM, POP, and/or CLM can be assimilated either individually or
+in combination while running under the CESM framework.
+If assimilating into multiple components, 
+they are assimilated sequentially with observations only affecting
+a single component directly. Other components are indirectly affected
+through interactions with the coupler.</LI>
+<LI>Setup scripts are provided to configure a CESM experiment using
+the multi-instance feature of CESM to support ensembles for assimilation.</LI>
+<LI>POP state vector contains potential temperature; observations from the
+World Ocean Database are in-situ or sensible temperature.  The model_mod
+now corrects for this.
+<UL>
+<LI>The state vector has all along contained potential temperature and not
+in-situ (sensible) temperature. The observations from the World Ocean
+Database are of sensible temperature. Changed the specific kind in the
+model_mod to be <tt>KIND_POTENTIAL_TEMPERATURE</tt> and added new code to
+convert from potential to in-situ temperature. Differences for even the
+deeper obs (4-5km) is still small ( ~ 0.2 degree). (in-situ or sensible
+temperature is what you measure with a regular thermometer.)</LI>
+</UL>
+</LI>
+<LI>Support for the SE core (HOMME) of CAM has been developed but
+<strong>is not</strong> part of the current release.  Contact the
+DART group if you have an interest in running this configuration of CAM.</LI>
+</UL>
+</LI>
+<LI>Changes to the WRF model_mod:
+<UL>
+<LI>Allow advanced microphysics schemes (needed interpolation for 7 new kinds)</LI>
+<LI>Interpolation in the vertical is done in log(p) instead of linear
+pressure space.  log(p) is the default, but a compile-time variable can
+restore the linear interpolation.</LI>
+<LI>Added support in the namelist to avoid writing updated fields back into
+the wrf netcdf files. The fields are still updated during the assimilation
+but the updated data is not written back to the wrfinput file during the
+dart_to_wrf step.</LI>
+<LI>Fixed an obscure bug in the vertical convert routine of the wrf model_mod
+that would occasionally fail to convert an obs. This would make tiny
+differences in the output as the number of mpi tasks change. No quantitative
+differences in the results but they were not bitwise compatible before and they
+are again now.</LI>
+</UL>
+</LI>
+<LI>Added support for the MPAS_ATM and MPAS_OCN models.
+<UL>
+<LI>Added interpolation routines for the voroni-tesselation grid (roughly hexagonal)
+<LI>Includes vertical conversion routines for vertical localization.
+<LI>Added code to the mpas_atm model to interpolate specific humidity and
+pressure, so we can assimilate GPS obs now.</LI>
+</UL>
+</LI>
+<LI>Added support for the 'SQG' uniform PV two-surface QC+1 spectral model.</LI>
+<LI>Added support for a flux-transport solar dynamo model.</LI>
+<LI>Added support for the GITM upper atmosphere model.</LI>
+<LI>Added support for the NOAH land model.</LI>
+<LI>Added support for the NAAPS model.</LI>
+<LI>Added model_mod interface code for the NOGAPS model to the SVN repository.</LI>
+<LI>Simple advection model:
+<UL>
+<LI>Fix where the random number seed is set in the models/simple_advection
+model_mod - it needed to be sooner than it was being called.</LI>
+</UL>
+</LI>
+</UL>
 
 <!--==================================================================-->
 
