@@ -522,7 +522,7 @@ AdvanceTime : do
       call trace_message('After  prior inflation damping and prep')
    endif
 
-   ! Back to state space for diagnostics if required
+   ! Back to state space for forward operator computations
    call all_copies_to_all_vars(ens_handle) 
 
    call     trace_message('Before computing prior observation values')
