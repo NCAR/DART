@@ -80,7 +80,7 @@
 # cutoff of 0.03 (radians) is about 200km
 &assim_tools_nml
    filter_kind                     = 1,
-   cutoff                          = 1.00,
+   cutoff                          = 0.05,
    allow_missing_in_state          = .true.,
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
@@ -132,8 +132,8 @@
 # the CLM namelist for the .h1. files.
 &obs_def_tower_nml
    casename    = '../clm_dart',
-   debug       = .true.
-   hist_nhtfrq = -24,
+   hist_nhtfrq = -HISTORY_OUTPUT_INTERVAL,
+   debug       = .false.
    /
 
 
@@ -275,13 +275,12 @@
 &obs_diag_nml
    obs_sequence_name = '',
    obs_sequence_list = 'obs_seq_files.txt',
-   first_bin_center =  2002,11, 2, 0, 0, 0 ,
-   last_bin_center  =  2003,02, 1, 0, 0, 0 ,
-   bin_separation   =     0, 0, 1, 0, 0, 0 ,
-   bin_width        =     0, 0, 1, 0, 0, 0 ,
-   time_to_skip     =     0, 0, 0, 0, 0, 0 ,
+   first_bin_center =  2004, 1,  1, 0, 0, 0 ,
+   last_bin_center  =  2004, 1,  8, 0, 0, 0 ,
+   bin_separation   =     0, 0,  1, 0, 0, 0 ,
+   bin_width        =     0, 0,  1, 0, 0, 0 ,
+   time_to_skip     =     0, 0,  0, 0, 0, 0 ,
    max_num_bins     = 1000,
-   rat_cri            = 3.0,
    input_qc_threshold = 1,
    Nregions   = 4,
    lonlim1    =     0.0,     0.0,    0.0,  180.0,
@@ -289,7 +288,7 @@
    latlim1    =   -90.0,     0.0,  -90.0,  -90.0,
    latlim2    =     0.0,    90.0,   90.0,   90.0,
    reg_names  = 'South', 'North', 'East', 'West',
-   hlevel =  0.0,  0.05, 0.1, 0.2, 0.50, 1.0, 2.0, 5.0, 10.0, 20.0, 40.0,
+   hlevel_edges =  0.0, 1.0, 2.0, 5.0, 10.0, 40.0,
    print_mismatched_locs = .false.,
    create_rank_histogram = .true.,
    verbose               = .true.,
