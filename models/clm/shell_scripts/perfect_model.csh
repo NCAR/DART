@@ -26,7 +26,6 @@ switch ("`hostname`")
       set REMOVE = '/usr/local/bin/rm -fr'
 
       set BASEOBSDIR = /glade/proj3/image/Observations/FluxTower
-      set DARTDIR    = ${HOME}/svn/DART/dev
    breaksw
 
    case ys*:
@@ -36,8 +35,27 @@ switch ("`hostname`")
       set   LINK = 'ln -fvs'
       set REMOVE = 'rm -fr'
 
-      set BASEOBSDIR = /glade/p/image/Observations/FluxTower
-      set DARTDIR    = ${HOME}/svn/DART/dev
+      set BASEOBSDIR = /glade/p/image/Observations/land
+   breaksw
+
+   case lone*:
+      # UT lonestar
+      set   MOVE = '/bin/mv -fv'
+      set   COPY = '/bin/cp -fv --preserve=timestamps'
+      set   LINK = '/bin/ln -fvs'
+      set REMOVE = '/bin/rm -fr'
+
+      set BASEOBSDIR = ${WORK}/DART/observations/snow/work/obs_seqs
+   breaksw
+
+   case la*:
+      # LBNL "lawrencium"
+      set   MOVE = 'mv -fv'
+      set   COPY = 'cp -fv --preserve=timestamps'
+      set   LINK = 'ln -fvs'
+      set REMOVE = 'rm -fr'
+
+      set BASEOBSDIR = /your/observation/directory/here
    breaksw
 
    default:
@@ -48,33 +66,18 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /scratch/scratchdirs/nscollin/ACARS
-      set DARTDIR    = ${HOME}/devel
    breaksw
 endsw
 
-# Create temporary working directory for the assimilation
-set temp_dir = assimilate_clm
-echo "temp_dir is $temp_dir"
-
-# Create a clean temporary directory and go there
-if ( -d $temp_dir ) then
-   ${REMOVE} $temp_dir/*
-else
-   mkdir -p $temp_dir
-endif
-cd $temp_dir
-
 #-------------------------------------------------------------------------
 # Determine time of model state ... from file name of first member
-# of the form "./${CASE}.clm2_${ensemble_member}.r.2000-01-06-00000.nc"
+# of the form "./${CASE}.clm2.r.2000-01-06-00000.nc"
 #
 # Piping stuff through 'bc' strips off any preceeding zeros.
 #-------------------------------------------------------------------------
 
-set FILE = `head -1 ../rpointer.lnd`
-set FILE = $FILE:t
+set FILE = `head -n 1 rpointer.lnd`
 set FILE = $FILE:r
-set MYCASE = `echo $FILE | sed -e "s#\..*##"`
 set LND_DATE_EXT = `echo $FILE:e`
 set LND_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
 set LND_YEAR     = `echo $LND_DATE[1] | bc`
@@ -86,18 +89,42 @@ set LND_HOUR     = `echo $LND_DATE[4] / 3600 | bc`
 echo "valid time of model is $LND_YEAR $LND_MONTH $LND_DAY $LND_SECONDS (seconds)"
 echo "valid time of model is $LND_YEAR $LND_MONTH $LND_DAY $LND_HOUR (hours)"
 
+#-------------------------------------------------------------------------
+# Create temporary working directory for the assimilation and go there
+#-------------------------------------------------------------------------
+
+set temp_dir = assimilate_clm
+echo "temp_dir is $temp_dir"
+
+if ( -d $temp_dir ) then
+   ${REMOVE} $temp_dir/*
+else
+   mkdir -p $temp_dir
+endif
+cd $temp_dir
+
 #-----------------------------------------------------------------------------
 # Get observation sequence file ... or die right away.
 # The observation file names have a time that matches the stopping time of CLM.
+#
+# The CLM observations are stowed in two sets of directories.
+# If you are stopping every 24 hours or more, the obs are in directories like YYYYMM.
+# In all other situations the observations come from directories like YYYYMM_6H.
+# The only ugly part here is if the first advance and subsequent advances are
+# not the same length. The observations _may_ come from different directories.
+#
 # The contents of the file must match the history file contents if one is using 
 # the obs_def_tower_mod or could be the 'traditional' +/- 12Z ... or both.
 # Since the history file contains the previous days' history ... so must the obs file.
 #-----------------------------------------------------------------------------
 
-set YYYYMMDD = `printf %04d%02d%02d ${LND_YEAR} ${LND_MONTH} ${LND_DAY}`
-set YYYYMM   = `printf %04d%02d     ${LND_YEAR} ${LND_MONTH}`
-set OBSFNAME = `printf obs_seq.%04d-%02d-%02d-%05d ${LND_YEAR} ${LND_MONTH} ${LND_DAY} ${LND_SECONDS}`
-set OBS_FILE = ${BASEOBSDIR}/${YYYYMM}/${OBSFNAME}
+if ($STOP_N >= 24) then
+   set OBSDIR = `printf %04d%02d    ${LND_YEAR} ${LND_MONTH}`
+else
+   set OBSDIR = `printf %04d%02d_6H ${LND_YEAR} ${LND_MONTH}`
+endif
+
+set OBS_FILE = ${BASEOBSDIR}/${OBSDIR}/obs_seq.${LND_DATE_EXT}
 
 if (  -e   ${OBS_FILE} ) then
    ${COPY} ${OBS_FILE} obs_seq.in
@@ -121,13 +148,6 @@ else
    exit -2
 endif
 
-# Modify the DART input.nml such that casename is always correct.
-
-ex input.nml <<ex_end
-g;casename ;s;= .*;= "../$MYCASE",;
-wq
-ex_end
-
 echo "`date` -- END COPY BLOCK"
 
 #=========================================================================
@@ -148,16 +168,16 @@ set member = 1
    mkdir -p $MYTEMPDIR
    cd $MYTEMPDIR
 
+   # make sure there are no old output logs hanging around
+   $REMOVE output.${member}.clm_to_dart
+
+   set  LND_RESTART_FILENAME = ${CASE}.clm2.r.${LND_DATE_EXT}.nc
+   set  LND_HISTORY_FILENAME = ${CASE}.clm2.h0.${LND_DATE_EXT}.nc
+   set OBS1_HISTORY_FILENAME = ${CASE}.clm2.h1.${LND_DATE_EXT}.nc
+   set OBS2_HISTORY_FILENAME = ${CASE}.clm2_0001.h1.${LND_DATE_EXT}.nc
    set DART_IC_FILENAME = perfect_ics
 
    sed -e "s/dart_ics/..\/${DART_IC_FILENAME}/" < ../input.nml >! input.nml
-
-   set POINTER_FILENAME = rpointer.lnd
-
-   set  LND_RESTART_FILENAME = `head -1 ../../${POINTER_FILENAME}`
-   set  LND_HISTORY_FILENAME = `echo ${LND_RESTART_FILENAME} | sed "s/\.r\./\.h0\./"`
-   set OBS1_HISTORY_FILENAME = `echo ${LND_RESTART_FILENAME} | sed "s/\.r\./\.h1\./"`
-   set OBS2_HISTORY_FILENAME = `echo ${LND_RESTART_FILENAME} | sed "s/\.r\./_0001\.h1\./"`
 
    ${LINK} ../../$LND_RESTART_FILENAME clm_restart.nc
    ${LINK} ../../$LND_HISTORY_FILENAME clm_history.nc
@@ -214,8 +234,8 @@ echo "`date` -- END CLM-TO-DART"
 
 # clm always needs a clm_restart.nc, clm_history.nc for geometry information, etc.
 
-set LND_RESTART_FILENAME = `head -1 ../rpointer.lnd`
-set LND_HISTORY_FILENAME = `echo ${LND_RESTART_FILENAME} | sed "s/\.r\./\.h0\./"`
+set LND_RESTART_FILENAME = ${CASE}.clm2.r.${LND_DATE_EXT}.nc
+set LND_HISTORY_FILENAME = ${CASE}.clm2.h0.${LND_DATE_EXT}.nc
 
 ${LINK} ../$LND_RESTART_FILENAME clm_restart.nc
 ${LINK} ../$LND_HISTORY_FILENAME clm_history.nc
