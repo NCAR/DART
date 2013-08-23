@@ -194,7 +194,7 @@ setenv assim_n             24
 #      an assimilation step took about 10 minutes on yellowstone.
 # ==============================================================================
 
-setenv ACCOUNT      P86850054
+setenv ACCOUNT      P8685xxxx
 setenv queue        economy
 setenv timewall     1:00
 
