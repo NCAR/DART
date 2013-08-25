@@ -27,54 +27,1542 @@
 !----------------------------------------------------------------------
 
 !---------------------------------------------------------------------------  
-! Start of code inserted from ../../../obs_def/obs_def_1d_state_mod.f90
+!No module code needed for ../../../obs_def/obs_def_reanalysis_bufr_mod.f90
+!---------------------------------------------------------------------------  
+!---------------------------------------------------------------------------  
+! Start of code inserted from ../../../obs_def/obs_def_radar_mod.f90
 !---------------------------------------------------------------------------  
                                                                               
-module obs_def_1d_state_mod
+module obs_def_radar_mod
 
-! This code currently does not require a namelist, but to add one search for
-! the string 'NML' and comment in the code lines in the 4 marked sections.
-
-use        types_mod, only : r8, missing_r8
-use    utilities_mod, only : register_module, error_handler,               &
-                             E_ERR, E_MSG, ascii_file_format !,            &
-                             ! find_namelist_in_file, check_namelist_read, &
-                             ! nmlfileunit, do_nml_file, do_nml_term
-                             !! Routines only needed for namelist support. NML1
-use     location_mod, only : location_type, set_location, get_location
-use  assim_model_mod, only : interpolate, interpolate_distrib !HK
-use   cov_cutoff_mod, only : comp_cov_factor
-use data_structure_mod, only : ensemble_type
+use        types_mod, only : r8, missing_r8, PI, deg2rad
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+                             check_namelist_read, find_namelist_in_file,   &
+                             nmlfileunit, do_output, do_nml_file, do_nml_term, &
+                             ascii_file_format
+use     location_mod, only : location_type, write_location, read_location, &
+                             interactive_location, get_location
+use  assim_model_mod, only : interpolate
+use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
+                             KIND_TEMPERATURE, KIND_VERTICAL_VELOCITY,     &
+                             KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY,    &
+                             KIND_GRAUPEL_MIXING_RATIO,                    &
+                             KIND_SNOW_MIXING_RATIO,                       &
+                             KIND_POWER_WEIGHTED_FALL_SPEED,               &
+                             KIND_RADAR_REFLECTIVITY
 
 implicit none
+private
 
-! These are the required interfaces for an obs_def module.
-public :: write_1d_integral, read_1d_integral, &
-          interactive_1d_integral, get_expected_1d_integral, &
-          set_1d_integral, get_expected_1d_integral_distrib
-
-! Storage for the special information required for observations of this type
-integer               :: num_1d_integral_obs = 0     ! current count of obs
-integer               :: max_1d_integral_obs = 1000  ! allocation size limit
-real(r8), allocatable :: half_width(:)         ! metadata storage
-integer,  allocatable :: num_points(:)         ! ditto
-integer,  allocatable :: localization_type(:)  ! ditto
-
-
-! Set to .true. to get debugging output
-logical :: debug = .false.
-
+public :: read_radar_ref, get_expected_radar_ref,                          &
+          read_radial_vel, write_radial_vel, interactive_radial_vel,       &
+          get_expected_radial_vel, get_obs_def_radial_vel, set_radial_vel, &
+          get_expected_fall_velocity
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma/obs_def/obs_def_1d_state_mod.f90 $"
+   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma/obs_def/obs_def_radar_mod.f90 $"
+character(len=32 ), parameter :: revision = "$Revision: 6256 $"
+character(len=128), parameter :: revdate  = "$Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $"
+
+logical :: module_initialized = .false.
+
+! Derived type for radial velocity.  Contains auxiliary information stored
+! with each obs of this type; used to compute the forward operator.
+! See more extensive comments in the interactive_radial_vel() routine for
+! expected units, etc.  Technically, the radar location is unused in the
+! forward operators currently in this code, but it may be useful for post
+! processing or diagnostics, especially if multiple radar locations are
+! in the same file.
+type radial_vel_type
+   private
+   type(location_type) :: radar_location      ! location of radar
+   real(r8)            :: beam_direction(3)   ! direction of beam
+   real(r8)            :: nyquist_velocity    ! nyquist velocity
+end type radial_vel_type
+
+! Cumulative index into radial velocity metadata array
+integer :: velkeycount = 0
+
+! For error message content
+character(len=129) :: msgstring
+
+! Values which are initialized at run time so some can be changed by
+! namelist.  After initialization, treated as parameters (values not changed).
+
+! Note that the value of gravity is hardcoded here.  The value for gravity
+! used in the model should match this value.   See additional comments
+! below in the initialize_constants() subroutine.
+
+real(r8) :: param_gravity     ! gravitational acceleration (m s^-2)
+
+                              ! empirical constants:
+real(r8) :: param_a           ! 10^^18 * a (const in rain fall speed eqn)
+real(r8) :: param_b           !          b (const in rain fall speed eqn)
+real(r8) :: param_c           ! 10^^18 * c (const in snow fall speed eqn)
+real(r8) :: param_d           !          d (const in snow fall speed eqn)
+
+real(r8) :: param_CD          ! drag coefficient for graupel/hail
+real(r8) :: param_rhos0       ! reference density (kg m^-3) in emperical
+                              !  dropsize-fall speed eqn
+real(r8) :: param_e           ! parameter in graupel/hail fall speed eqn
+
+                              ! results of gamma function applied to:
+real(r8) :: param_gam7b       !   (7+b)
+real(r8) :: param_gam7d       !   (7+d)
+real(r8) :: param_gam7f       !   (7+0.5)
+
+                              ! exponents in equations for:
+real(r8) :: param_powr        !   rain fall speed
+real(r8) :: param_pows        !   snow fall speed
+real(r8) :: param_powg_dry    !   dry graupel/hail fall speed
+real(r8) :: param_powg_wet    !   wet graupel/hail fall speed
+
+                              ! parameters in the equations for:
+real(r8) :: param_fs_r        !   rain fall speed
+real(r8) :: param_fs_wet_s    !   wet snow fall speed
+real(r8) :: param_fs_dry_s    !   dry snow fall speed
+real(r8) :: param_fs_wet_g    !   wet graupel/hail fall speed
+real(r8) :: param_fs_dry_g    !   dry graupel/hail fall speed
+
+                              ! parameters in the equations for:
+real(r8) :: param_refl_r      !   reflectivity from rain
+real(r8) :: param_refl_wet_s  !   reflectivity from wet snow
+real(r8) :: param_refl_dry_s  !   reflectivity from dry snow
+real(r8) :: param_refl_wet_g  !   reflectivity from wet graupel/hail
+real(r8) :: param_refl_dry_g  !   reflectivity from dry graupel/hail
+
+!-------------------------------------------------------------
+! Namelist with default values
+!
+! Obsolete: convert_to_dbz and dbz_threshold
+!  convert_to_dbz and dbz_threshold have both been removed from the namelist.
+!  Values will always be converted to dBZ, and threshold was only used to
+!  ensure the log() call never saw a real 0.0_r8.  Please remove these
+!  values from your namelist to avoid a run-time error.
+!
+! There are two replicated sets of 3 namelist values below.
+! In each case, there is 1 logical value and 2 numeric values.
+! If the logical is false, the numeric values are ignored.
+! If true, then the 2 numeric values are:
+!  1) a threshold value.  If the observation or forward operator value is
+!     less than this threshold, it will be set to a different value.
+!  2) the value it should be set to.
+! The value is separate from the threshold to allow, for example, the option
+! of setting all values below -20 dBZ to -40 dBZ.
+!
+! If the observation value or the forward operator already has a value of
+! missing_r8 it is assumed either the istatus is marked as failed (for the
+! forward operator) or that the QC (quality control) flag is set to not
+! assimilate this observation and that value is left unchanged regardless of
+! the setting on the apply_ref_limit flag.  Note however that it is not a
+! good idea to reset a good but small observation value to missing_r8 -- do
+! not use it as the lowest_reflectivity setting.
+!
+! The next 3 namelist items apply to the incoming observation values.
+! They are in the namelist so they can be changed at runtime, instead
+! of set only when the observation file is originally generated.
+!
+! apply_ref_limit_to_obs:
+!  Logical.  If .TRUE. replace all reflectivity values less than
+!  "reflectivity_limit_obs" with "lowest_reflectivity_obs" value.
+!  If .FALSE. leave all values as-is.  Defaults to .FALSE.
+!
+! reflectivity_limit_obs:
+!  The threshold value.  Observed reflectivity values less than this
+!  threshold will be set to the "lowest_reflectivity_obs" value.
+!  Units are dBZ.  Defaults to -10.0.
+!
+! lowest_reflectivity_obs:
+!  The 'set-to' value.  Observed reflectivity values less than the
+!  threshold will be set to this value.  Units are dBZ.  Defaults to -10.0.
+!
+! The next 3 namelist items apply to the forward operator values (the returned
+! value from each ensemble member predicting what the observation value should
+! be given the current state in this particular member).
+!
+! apply_ref_limit_to_fwd_op:
+!  Same as "apply_ref_limit_to_obs", but for the forward operator.
+!
+! reflectivity_limit_fwd_op:
+!  Same as "reflectivity_limit_obs", but for the forward operator values.
+!
+! lowest_reflectivity_fwd_op:
+!  Same as "lowest_reflectivity_obs", but for the forward operator values.
+!
+! max_radial_vel_obs:
+!  Integer value.  Maximum number of observations of this type to support at
+!  run time.  This is combined total of all obs_seq files, for example the
+!  observation diagnostic program potentially opens multiple obs_seq.final
+!  files, or the obs merge program can also open multiple obs files.
+!  Default is 1,000,000 observations.
+!
+! dielectric_factor:
+!  According to Smith (1984), there are two choices for the dielectric
+!  factor, depending on how the snow particle sizes are specified.
+!  If melted raindrop diameters are used, then the factor is 0.224.  If
+!  equivalent ice sphere diameters are used, then the factor is 0.189.
+!  Since the common convention is to use melted raindrop diameters, the
+!  default here is 0.224.
+!
+! n0_rain, n0_graupel, n0_snow:
+!  Intercept parameters (m^-4) for size distributions of each hydrometeor.
+!  The defaults below are for the Lin et al. microphysics scheme
+!  with the Hobbs settings for graupel/hail.  (The Hobbs graupel settings
+!  are also the default for the Lin scheme in WRF 2.2 and 3.0.)
+!
+! rho_rain, rho_graupel, rho_snow:
+!  Density (kg m^-3) of each hydrometeor type.  The defaults below are for the
+!  Lin et al. microphysics scheme with the Hobbs setting for graupel/hail.
+!
+! allow_wet_graupel:
+!  Logical.  It is difficult to predict/diagnose whether graupel/hail has a
+!  wet or dry surface.  Even when the temperature is above freezing,
+!  evaporation and/or absorption can still result in a dry surface.  This
+!  issue is important because the reflectivity from graupel with a wet surface
+!  is significantly greater than that from graupel with a dry surface.
+!  Currently, the user has two options for how to compute graupel
+!  reflectivity.  If allow_wet_graupel is .false. (the default), then graupel
+!  is always assumed to be dry.  If allow_wet_graupel is .true., then graupel
+!  is assumed to be wet (dry) when the temperature is above (below) freezing.
+!  A consequence is that a sharp gradient in reflectivity will be produced at
+!  the freezing level.  In the future, it might be better to provide the
+!  option of having a transition layer.
+!
+! microphysics_type:
+!  Integer. Tells obs_def_radar_mod what microphysical scheme is employed
+!  to enable some smarter decisions in handling fall velocity and radar
+!  reflectivity.
+!   1  - Kessler scheme
+!   2  - Lin et al. microphysics  (default)
+!   3  - User selected scheme where 10 cm reflectivity and power weighted fall
+!        velocity are expected in the state vector (failure if not found)
+!   4  - User selected scheme where only power weighted fall velocity is
+!        expected (failure if not found)
+!   5  - User selected scheme where only reflectivity is expected (failure
+!        if not found)
+!  -1  - ASSUME FALL VELOCITY IS ZERO, allows over-riding the failure modes
+!        above if reflectivity and/or fall velocity are not available but a
+!        result is desired for testing purposes only.
+!
+! allow_dbztowt_conv:
+!  Logical. Flag to enable use of the dbztowt routine where reflectivity is
+!  available, but not the power-weighted fall velocity. This scheme uses
+!  emperical relations between reflectivity and fall velocity, with poor
+!  accuracy for highly reflective, low density particles (such as water coated
+!  snow aggregates). Expect questionable accuracy in radial velocity from
+!  the forward operator with high elevation angles where ice is present in
+!  the model state.
+
+logical  :: apply_ref_limit_to_obs     = .false.
+real(r8) :: reflectivity_limit_obs     = -10.0_r8
+real(r8) :: lowest_reflectivity_obs    = -10.0_r8
+logical  :: apply_ref_limit_to_fwd_op  = .false.
+real(r8) :: reflectivity_limit_fwd_op  = -10.0_r8
+real(r8) :: lowest_reflectivity_fwd_op = -10.0_r8
+integer  :: max_radial_vel_obs         = 1000000
+logical  :: allow_wet_graupel          = .false.
+integer  :: microphysics_type          = 2
+logical  :: allow_dbztowt_conv         = .false.
+
+
+! Constants which depend on the microphysics scheme used.  Should be set
+! in the namelist to match the case being run.
+
+real(r8) :: dielectric_factor =  0.224_r8
+real(r8) :: n0_rain           =  8.0e6_r8
+real(r8) :: n0_graupel        =  4.0e6_r8
+real(r8) :: n0_snow           =  3.0e6_r8
+real(r8) :: rho_rain          = 1000.0_r8
+real(r8) :: rho_graupel       =  400.0_r8
+real(r8) :: rho_snow          =  100.0_r8
+
+
+namelist /obs_def_radar_mod_nml/ apply_ref_limit_to_obs,     &
+                                 reflectivity_limit_obs,     &
+                                 lowest_reflectivity_obs,    &
+                                 apply_ref_limit_to_fwd_op,  &
+                                 reflectivity_limit_fwd_op,  &
+                                 lowest_reflectivity_fwd_op, &
+                                 max_radial_vel_obs,         &
+                                 allow_wet_graupel,          &
+                                 dielectric_factor,          &
+                                 microphysics_type,          &
+                                 allow_dbztowt_conv,         &
+                                 n0_rain,                    &
+                                 n0_graupel,                 &
+                                 n0_snow,                    &
+                                 rho_rain,                   &
+                                 rho_graupel,                &
+                                 rho_snow
+
+
+! Module global storage for auxiliary obs data, allocated in init routine
+type(radial_vel_type), allocatable :: radial_vel_data(:)
+
+contains
+
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
+! Start of executable routines
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
+
+subroutine initialize_module
+
+! Called once to set values and allocate space
+
+integer :: iunit, io, rc
+
+! Prevent multiple calls from executing this code more than once.
+if (module_initialized) return
+
+module_initialized = .true.
+
+! Log the version of this source file.
+call register_module(source, revision, revdate)
+
+! Read the namelist entry.
+call find_namelist_in_file("input.nml", "obs_def_radar_mod_nml", iunit)
+read(iunit, nml = obs_def_radar_mod_nml, iostat = io)
+call check_namelist_read(iunit, io, "obs_def_radar_mod_nml")
+
+! Record the namelist values used for the run ...
+if (do_nml_file()) write(nmlfileunit, nml=obs_def_radar_mod_nml)
+if (do_nml_term()) write(     *     , nml=obs_def_radar_mod_nml)
+
+! Consistency warning; print a message if the thresholds and lower values
+! are going to be used and are different.
+call check_namelist_limits(apply_ref_limit_to_obs,     &
+                           reflectivity_limit_obs,     &
+                           lowest_reflectivity_obs,    &
+                           apply_ref_limit_to_fwd_op,  &
+                           reflectivity_limit_fwd_op,  &
+                           lowest_reflectivity_fwd_op)
+
+! Allocate space for the auxiliary information associated with each obs
+! This code must be placed after reading the namelist, so the user can
+! increase or decrease the number of obs supported and use more or less
+! memory at run time.
+allocate(radial_vel_data(max_radial_vel_obs), stat = rc)
+if (rc /= 0) then
+   write(msgstring, *) 'initial allocation failed for radial vel obs data,', &
+                       'itemcount = ', max_radial_vel_obs
+   call error_handler(E_ERR,'initialize_module', msgstring, &
+                      source, revision, revdate)
+endif
+
+! Set the module global values that do not change during the run.
+! This code uses some values which are set in the namelist, so this call
+! *must* happen after the namelist read above.
+call initialize_constants()
+
+! Log the values used for the constants.
+call print_constants()
+
+end subroutine initialize_module
+
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
+! Radial velocity section
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
+
+subroutine read_radial_vel(velkey, ifile, fform)
+
+! Main read subroutine for the radial velocity observation auxiliary data.
+
+integer,          intent(out)          :: velkey
+integer,          intent(in)           :: ifile
+character(len=*), intent(in), optional :: fform
+
+character(len=8)    :: header
+logical             :: is_asciifile
+type(location_type) :: radar_location
+real(r8)            :: beam_direction(3)
+real(r8)            :: nyquist_velocity
+integer             :: oldkey
+
+! radar_location: Refers to the lat/lon/height/vertical coordinate option
+!   for the radar. Its type is defined through location_type in location_mod.
+!   Uses the read_location function in location_mod.
+!
+! beam_direction: This is a 3-element array specific to the radar module:
+!     beam_direction(1) = sin(azimuth)*cos(elevation)
+!     beam_direction(2) = cos(azimuth)*cos(elevation)
+!     beam_direction(3) = sin(elevation)
+
+if ( .not. module_initialized ) call initialize_module
+
+is_asciifile = ascii_file_format(fform)
+
+if (is_asciifile) then
+      ! Read the character identifier for verbose formatted output
+      read(ifile, FMT="(a8)") header
+      if(header /= 'platform') then
+         call error_handler(E_ERR,'read_radial_vel', &
+              "Expected location header 'platform' in input file", &
+              source, revision, revdate)
+      endif
+endif
+
+! read_location is a DART library routine that expects an optional string
+! arg, but the other two read routines are local to this module and we can
+! tell them exactly what format to be reading because we already know it.
+radar_location   = read_location        (ifile, fform)
+beam_direction   = read_beam_direction  (ifile, is_asciifile)
+nyquist_velocity = read_nyquist_velocity(ifile, is_asciifile)
+
+! Read in the velkey for this particular observation, however, it will
+! be discarded and a new, unique key will be generated in the set routine.
+if (is_asciifile) then
+   read(ifile, *) oldkey
+else
+   read(ifile) oldkey
+endif
+
+! Generate new unique radial velocity observation key, and set the contents
+! of the private defined type.
+call set_radial_vel(velkey, radar_location, beam_direction, nyquist_velocity)
+
+end subroutine read_radial_vel
+
+!----------------------------------------------------------------------
+
+subroutine write_radial_vel(velkey, ifile, fform)
+
+! Write radial velocity auxiliary information to the obs_seq file.
+
+integer,          intent(in)           :: velkey, ifile
+character(len=*), intent(in), optional :: fform
+
+logical             :: is_asciifile
+type(location_type) :: radar_location
+real(r8)            :: beam_direction(3)
+real(r8)            :: nyquist_velocity
+
+if ( .not. module_initialized ) call initialize_module
+
+! Simple error check on key number before accessing the array
+call velkey_out_of_range(velkey)
+
+is_asciifile = ascii_file_format(fform)
+
+if (is_asciifile) then
+   ! Write the 5 character identifier for verbose formatted output
+   write(ifile, "('platform')")
+endif
+
+! Extract the values for this key and call the appropriate write routines.
+radar_location    = radial_vel_data(velkey)%radar_location
+beam_direction(:) = radial_vel_data(velkey)%beam_direction(:)
+nyquist_velocity  = radial_vel_data(velkey)%nyquist_velocity
+
+! write_location routine is part of the DART library and wants the optional
+! format string argument.  The other two routines are local to this module,
+! and we have already figured out if it is a unformatted/binary file or
+! formatted/ascii, so go ahead and pass that info directly down to the routines.
+call         write_location(ifile, radar_location,    fform)
+call   write_beam_direction(ifile, beam_direction(:), is_asciifile)
+call write_nyquist_velocity(ifile, nyquist_velocity,  is_asciifile)
+
+! Write out the velkey used for this run, however this will be discarded
+! when this observation is read in and a new key will be generated.
+! (It may be useful for correlating error messages or identifying particular
+! observations so we are leaving it as part of the aux data.)
+if (is_asciifile) then
+   write(ifile, *) velkey
+else
+   write(ifile) velkey
+endif
+
+end subroutine write_radial_vel
+
+!----------------------------------------------------------------------
+
+function read_beam_direction(ifile, is_asciiformat)
+
+! Reads beam_direction from file that was written by write_beam_direction.
+! See read_radial_vel for additional discussion.
+
+integer, intent(in) :: ifile
+logical, intent(in) :: is_asciiformat
+real(r8)            :: read_beam_direction(3)
+
+character(len=5)   :: header
+real(r8)           :: beam_direction(3)
+
+if ( .not. module_initialized ) call initialize_module
+
+
+if (is_asciiformat) then
+   read(ifile, "(a5)" ) header
+
+   if(header /= 'dir3d') then
+      write(msgstring,*)"Expected beam_direction header 'dir3d' in input file, got ", header
+      call error_handler(E_ERR, 'read_beam_direction', msgstring, source, revision, revdate)
+   endif
+   ! Now read the beam_direction data value into temporaries
+   read(ifile, *) beam_direction(1), beam_direction(2), beam_direction(3)
+else
+   ! No header label, just the binary direction values.
+   read(ifile)    beam_direction(1), beam_direction(2), beam_direction(3)
+endif
+
+! Check for illegal values
+if (minval(beam_direction) < -1.0_r8 .or. maxval(beam_direction) > 1.0_r8) then
+   write(msgstring,*) "beam_direction value must be between -1 and 1, got: ", &
+                       beam_direction(1), beam_direction(2), beam_direction(3)
+   call error_handler(E_ERR, 'read_beam_direction', msgstring, &
+                      source, revision, revdate)
+endif
+
+! set function return value
+read_beam_direction(:) = beam_direction(:)
+
+end function read_beam_direction
+
+!----------------------------------------------------------------------
+
+subroutine write_beam_direction(ifile, beam_direction, is_asciiformat)
+
+! Writes beam_direction to obs file.
+
+integer,  intent(in) :: ifile
+real(r8), intent(in) :: beam_direction(3)
+logical,  intent(in) :: is_asciiformat
+
+if ( .not. module_initialized ) call initialize_module
+
+if (is_asciiformat) then
+   write(ifile, "('dir3d')" )
+   write(ifile, *) beam_direction(1), beam_direction(2), beam_direction(3)
+else
+   write(ifile)    beam_direction(1), beam_direction(2), beam_direction(3)
+endif
+
+end subroutine write_beam_direction
+
+!----------------------------------------------------------------------
+
+function read_nyquist_velocity(ifile, is_asciiformat)
+
+! Reads Nyquist velocity from file that was written by write_nyquist_velocity.
+! See read_radial_vel for additional discussion.
+
+integer, intent(in) :: ifile
+logical, intent(in) :: is_asciiformat
+real(r8)            :: read_nyquist_velocity
+
+if ( .not. module_initialized ) call initialize_module
+
+if (is_asciiformat) then
+   read(ifile, *) read_nyquist_velocity
+else
+   read(ifile)    read_nyquist_velocity
+endif
+
+! Check for illegal values; must be non-negative.
+if (read_nyquist_velocity < 0.0_r8) then
+   write(msgstring,*) "bad value for nyquist velocity: ", read_nyquist_velocity
+   call error_handler(E_ERR, 'read_nyquist_velocity', msgstring, &
+                      source, revision, revdate)
+endif
+end function read_nyquist_velocity
+
+!----------------------------------------------------------------------
+
+subroutine write_nyquist_velocity(ifile, nyquist_velocity, is_asciiformat)
+
+! Writes Nyquist velocity to obs file.
+
+integer,  intent(in) :: ifile
+real(r8), intent(in) :: nyquist_velocity
+logical,  intent(in) :: is_asciiformat
+
+if ( .not. module_initialized ) call initialize_module
+
+if (is_asciiformat) then
+   write(ifile, *) nyquist_velocity
+else
+   write(ifile)    nyquist_velocity
+endif
+
+end subroutine write_nyquist_velocity
+
+!----------------------------------------------------------------------
+
+subroutine get_obs_def_radial_vel(velkey, radar_location, beam_direction, &
+                                  nyquist_velocity)
+
+! Return the auxiliary contents of a given radial velocity observation
+
+integer,             intent(in)  :: velkey
+type(location_type), intent(out) :: radar_location
+real(r8),            intent(out) :: beam_direction(3)
+real(r8),            intent(out) :: nyquist_velocity
+
+! Simple error check on key number before accessing the array
+call velkey_out_of_range(velkey)
+
+radar_location    = radial_vel_data(velkey)%radar_location
+beam_direction    = radial_vel_data(velkey)%beam_direction(:)
+nyquist_velocity  = radial_vel_data(velkey)%nyquist_velocity
+
+end subroutine get_obs_def_radial_vel
+
+!----------------------------------------------------------------------
+
+subroutine set_radial_vel(velkey, radar_location, beam_direction, nyquist_velocity)
+
+! Common code to increment the current key count, and set the private
+! contents of this observation's auxiliary data.
+
+integer,             intent(out) :: velkey
+type(location_type), intent(in)  :: radar_location
+real(r8),            intent(in)  :: beam_direction(3)
+real(r8),            intent(in)  :: nyquist_velocity
+
+if ( .not. module_initialized ) call initialize_module
+
+! The total velocity metadata key count from all sequences
+velkeycount = velkeycount + 1
+velkey = velkeycount             ! set the return value
+
+! Simple error check on key number before accessing the array
+! This errors out if too key value now too large.
+call velkey_out_of_range(velkey)
+
+radial_vel_data(velkey)%radar_location    = radar_location
+radial_vel_data(velkey)%beam_direction(:) = beam_direction(:)
+radial_vel_data(velkey)%nyquist_velocity  = nyquist_velocity
+
+end subroutine set_radial_vel
+
+!----------------------------------------------------------------------
+
+subroutine interactive_radial_vel(velkey)
+
+! Interactively reads in auxiliary information for a radial velocity obs.
+
+integer, intent(out) :: velkey
+
+! Uses interactive_location of DART location_mod, plus the local subroutines
+! interactive_beam_direction and set_radial_vel.
+! See read_radial_vel for more information.
+
+! velkey is internally incremented in the set routine, and only counts
+! the index for this specialized observation kind.
+
+type(location_type)  :: location
+real(r8)             :: beam_direction(3)
+real(r8)             :: nyquist_velocity
+
+if ( .not. module_initialized ) call initialize_module
+
+!Note: Obs location will subsequently be read in by the standard DART module
+! "interactive_obs_def". No check is performed here whether radar location,
+! obs location, and beam direction are self-consistent. It is the user's
+! responsibility to make sure that they are.  This set of information
+! does overspecify the problem slightly, but it is expensive to compute
+! the true beam direction because of bending of the beam and earth curvature.
+
+
+write(*, *)
+write(*, *) 'Beginning to inquire for information on radar location.'
+write(*, *)
+write(*, *) 'WARNING!! Make sure that you select 3 (height) for the vertical'
+write(*, *) 'coordinate option and enter height in geopotential height (gpm).'
+write(*, *) 'This location is where the radar source is located.  The later'
+write(*, *) 'location question will be asking about where the observation'
+write(*, *) 'itself is located.'
+write(*, *)
+
+call interactive_location(location)
+
+write(*, *)
+write(*, *) 'Beginning to inquire for information on radar beam direction.'
+write(*, *)
+
+call interactive_beam_direction(beam_direction)
+
+write(*, *)
+write(*, *) 'Beginning to inquire for information on radar Nyquist velocity.'
+write(*, *)
+
+call interactive_nyquist_velocity(nyquist_velocity)
+
+
+call set_radial_vel(velkey, location, beam_direction, nyquist_velocity)
+
+write(*, *)
+write(*, *) 'End of specialized section for radial velocity.'
+write(*, *) 'You will now have to enter the regular obs information.'
+write(*, *)
+
+end subroutine interactive_radial_vel
+
+!----------------------------------------------------------------------
+
+subroutine interactive_beam_direction(beam_direction)
+
+! Prompt for beam direction information in azimuth/elevation degrees.
+
+real(r8), intent(out) :: beam_direction(3)
+
+real(r8) :: az, el
+
+az = -1.0
+do while (az < 0.0 .or. az > 360.0)
+   write(*, *) 'Input the beam direction azimuth in degrees (0 <= az <= 360):'
+   read(*, *) az
+end do
+
+el = -1.0
+do while (el < 0.0 .or. el > 90.0)
+   write(*, *) 'Input the beam direction elevation in degrees (0 <= el <= 90):'
+   read(*, *) el
+end do
+
+! Convert to radians and compute the actual values stored with the observation.
+az = az * deg2rad
+el = el * deg2rad
+
+beam_direction(1) = sin(az) * cos(el)
+beam_direction(2) = cos(az) * cos(el)
+beam_direction(3) = sin(el)
+
+end subroutine interactive_beam_direction
+
+!----------------------------------------------------------------------
+
+subroutine interactive_nyquist_velocity(nyquist_velocity)
+
+! Prompt for Nyquist velocity
+
+real(r8), intent(out) :: nyquist_velocity
+
+nyquist_velocity = -1.0
+
+do while (nyquist_velocity < 0.0)
+   write(*, *) 'Input Nyquist velocity for this obs point in m/sec'
+   write(*, *) '(Typical values are 10-100 m/s, must be >= 0):'
+   read(*, *)  nyquist_velocity
+end do
+
+end subroutine interactive_nyquist_velocity
+
+!----------------------------------------------------------------------
+
+subroutine get_expected_radial_vel(state_vector, location, velkey, &
+                                   radial_vel, istatus)
+
+! This is the main forward operator routine for radar Doppler velocity.
+
+real(r8),            intent(in)  :: state_vector(:)
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: velkey
+real(r8),            intent(out) :: radial_vel
+integer,             intent(out) :: istatus
+
+
+! Given a location and the state vector from one of the ensemble members,
+! compute the model-predicted radial velocity that would be observed
+! at that location.  The value is returned in 'radial_vel'.
+! 'istatus' is the return code.  0 is success; any positive value signals an
+! error (different values can be used to indicate different error types).
+! Negative istatus values are reserved for internal use only by DART.
+!
+! The along-beam component of the 3-d air velocity is computed from the
+! u, v, and w fields plus the beam_direction.  The along-beam component
+! of power-weighted precipitation fall velocity is added to the result.
+!
+! Reference: Lin et al., 1983 (J. Climate Appl.Meteor., 1065-1092)
+
+
+real(r8) :: u, v, w, qr, qg, qs, rho, temp, precip_fall_speed
+real(r8) :: debug_location(3)
+logical  :: debug = .false.   ! set to .true. to enable debug printout
+
+if ( .not. module_initialized ) call initialize_module
+
+! Simple error check on key number before accessing the array
+call velkey_out_of_range(velkey)
+
+call interpolate(state_vector, location, KIND_U_WIND_COMPONENT, u, istatus)
+if (istatus /= 0) then
+   radial_vel = missing_r8
+   return
+endif
+call interpolate(state_vector, location, KIND_V_WIND_COMPONENT, v, istatus)
+if (istatus /= 0) then
+   radial_vel = missing_r8
+   return
+endif
+call interpolate(state_vector, location, KIND_VERTICAL_VELOCITY, w, istatus)
+if (istatus /= 0) then
+   radial_vel = missing_r8
+   return
+endif
+
+call get_expected_fall_velocity(state_vector, location, precip_fall_speed, istatus)
+if (istatus /= 0) then
+   radial_vel = missing_r8
+   return
+endif
+
+radial_vel = radial_vel_data(velkey)%beam_direction(1) * u +    &
+             radial_vel_data(velkey)%beam_direction(2) * v +    &
+             radial_vel_data(velkey)%beam_direction(3) * (w-precip_fall_speed)
+
+! Good return code.  Reset possible istatus error from trying to compute
+! weighted fall speed directly.
+istatus = 0
+
+if (debug) then
+   debug_location = get_location(location)
+   print *
+   print *, 'radial velocity key: ', velkey
+   print *, 'obs location (deg): ', debug_location(1),         &
+                                    debug_location(2),         debug_location(3)
+   print *, 'obs location (rad): ', debug_location(1)*deg2rad, &
+                                    debug_location(2)*deg2rad, debug_location(3)
+   print *, 'interpolated u: ', u
+   print *, 'interpolated v: ', v
+   print *, 'interpolated w: ', w
+   print *, 'interp or derived fall speed: ', precip_fall_speed
+   print *, 'final radial_vel: ', radial_vel
+   print *, 'istatus: ', istatus
+endif
+
+end subroutine get_expected_radial_vel
+
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
+! Expected fall velocity section
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
+
+subroutine get_expected_fall_velocity(state_vector, location,  &
+                                      precip_fall_speed, istatus)
+
+! This is the main forward operator routine for the expected
+! fall velocity, and it also used as part of computing expected
+! radial velocity.
+
+real(r8),            intent(in)  :: state_vector(:)
+type(location_type), intent(in)  :: location
+real(r8),            intent(out) :: precip_fall_speed
+integer,             intent(out) :: istatus
+
+! Local vars
+real(r8) :: qr, qg, qs, rho, temp, refl
+logical, save :: first_time = .true.
+
+! If the model can return the precipitation fall speed directly, let it do
+! so. Otherwise, attempt to compute if Kessler or Lin type microphysics,
+! or see if the dbztowt routine is desired. Note that the computation for
+! Lin and Kessler is expected to be reasonably accurate for 10cm radar.
+
+! Should we check microphysics_type var or just go ahead and try to get a value?
+istatus = 0
+precip_fall_speed = 0.0_r8
+call interpolate(state_vector, location, KIND_POWER_WEIGHTED_FALL_SPEED, &
+                 precip_fall_speed, istatus)
+
+! If able to get value, return here.
+if (istatus == 0) return
+
+! If the user explicitly wanted to interpolate in the field, try to complain
+! if it could not.  Note that the interp could fail for other reasons.
+if (microphysics_type == 3 .or. microphysics_type == 4) then
+   ! Could return a specific istatus code here to indicate this condition.
+   if (first_time) then
+      call error_handler(E_MSG,'get_expected_fall_velocity', &
+                         'interpolate failed. Fall Speed may NOT be in state vector', '', '', '')
+      first_time = .false.
+   endif
+   return
+endif
+
+! If not in the state vector, try to calculate it here based on the
+! setting of the microphysics_type namelist.
+
+! if Kessler or Lin we can compute the fall velocity
+if (microphysics_type == 1 .or. microphysics_type == 2) then
+   call interpolate(state_vector, location, KIND_RAINWATER_MIXING_RATIO, qr, istatus)
+   if (istatus /= 0) then
+      precip_fall_speed = missing_r8
+      return
+   endif
+   if (microphysics_type == 2) then
+      call interpolate(state_vector, location, KIND_GRAUPEL_MIXING_RATIO, qg, istatus)
+      if (istatus /= 0) then
+         precip_fall_speed = missing_r8
+         return
+      endif
+      call interpolate(state_vector, location, KIND_SNOW_MIXING_RATIO, qs, istatus)
+      if (istatus /= 0) then
+         precip_fall_speed = missing_r8
+         return
+      endif
+   endif
+   ! Done with Lin et al specific calls
+   call interpolate(state_vector, location, KIND_DENSITY, rho, istatus)
+   if (istatus /= 0) then
+      precip_fall_speed = missing_r8
+      return
+   endif
+   call interpolate(state_vector, location, KIND_TEMPERATURE, temp, istatus)
+   if (istatus /= 0) then
+      precip_fall_speed = missing_r8
+      return
+   endif
+   call get_LK_precip_fall_speed(qr, qg, qs, rho, temp, precip_fall_speed)
+   ! Done with Lin et al or Kessler -
+else if (microphysics_type == 5 .and. allow_dbztowt_conv) then
+   ! Provided reflectivity field - will estimate fall velocity using empirical relations
+   call get_expected_radar_ref(state_vector, location, refl, istatus)
+   if (istatus /= 0) then
+      precip_fall_speed = missing_r8
+      return
+   endif
+   call interpolate(state_vector, location, KIND_DENSITY, rho, istatus)
+   if (istatus /= 0) then
+      precip_fall_speed = missing_r8
+      return
+   endif
+   precip_fall_speed = dbztowt(refl, rho, missing_r8)
+else if (microphysics_type < 0) then
+   ! User requested setting fall velocity to zero - use with caution
+   precip_fall_speed = 0.0_r8
+else
+   ! Couldn't manage to compute a fall velocity
+   precip_fall_speed = missing_r8
+   istatus = 2
+endif
+
+
+end subroutine get_expected_fall_velocity
+
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
+! Radar reflectivity
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
+
+subroutine read_radar_ref(obsvalue, refkey)
+
+! Main read subroutine for radar reflectivity observations.
+! Reflectivity obs have no auxiliary data to read, but this routine
+! may optionally alter the observation value at run time.
+
+real(r8),         intent(inout)        :: obsvalue
+integer,          intent(out)          :: refkey
+
+
+if ( .not. module_initialized ) call initialize_module
+
+! Unused, but set to a known value.
+refkey = 0
+
+! Alter observation value, if namelist settings request it.
+if ((apply_ref_limit_to_obs) .and. &
+    (obsvalue < reflectivity_limit_obs) .and. (obsvalue /= missing_r8)) then
+   obsvalue = lowest_reflectivity_obs
+endif
+
+end subroutine read_radar_ref
+
+!----------------------------------------------------------------------
+
+subroutine get_expected_radar_ref(state_vector, location, ref, istatus)
+
+! The main forward operator routine for radar reflectivity observations.
+
+real(r8),            intent(in)  :: state_vector(:)
+type(location_type), intent(in)  :: location
+real(r8),            intent(out) :: ref
+integer,             intent(out) :: istatus
+
+! Given a location and the state vector from one of the ensemble members,
+! compute the model-predicted radar reflectivity that would be observed
+! at that location.  The returned value is in dBZ.
+
+! If apply_ref_limit_to_fwd_op, reflectivity values which are below
+! reflectivity_limit_fwd_op will be set to lowest_reflectivity_fwd_op.
+
+! "interpolate()" ultimately calls model_mod routine "model_interpolate()"
+! to get model values of qr, qg, qs, rho, and temp at the ob location. Then
+! the routine "get_LK_reflectivity()" is called to compute the radar reflectivity
+! factor value, Z, that corresponds to the hydrometeor and thermodynamic values.
+
+real(r8)      :: qr, qg, qs, rho, temp
+real(r8)      :: debug_location(3)
+logical       :: debug = .false.  ! set to .true. to enable debug printout
+logical, save :: first_time = .true.
+
+if ( .not. module_initialized ) call initialize_module
+
+! Start with known values before calling interpolate routines.
+qr   = 0.0_r8
+qg   = 0.0_r8
+qs   = 0.0_r8
+rho  = 0.0_r8
+temp = 0.0_r8
+
+! If the model can return radar reflectivity data directly, give it a chance
+! to do so.  Otherwise, compute the various fields individually and then do
+! the computation here.  Note that the computation here is accurate only
+! for the simple single-moment microphysics schemes (e.g., Kessler or Lin).
+
+! Try to draw from state vector first
+call interpolate(state_vector, location, KIND_RADAR_REFLECTIVITY, ref, istatus)
+if (istatus /= 0) then
+
+   ! If the user explicitly wanted to interpolate in the field, try to complain
+   ! if it could not.  Note that the interp could fail for other reasons.
+   if (microphysics_type == 3 .or. microphysics_type == 5) then
+      ! Could return a specific istatus code here to indicate this condition.
+      if (first_time) then
+         call error_handler(E_MSG,'get_expected_radar_ref', &
+                            'interpolate failed. Reflectivity may NOT be in state vector', '', '', '')
+         first_time = .false.
+      endif
+      return
+   endif
+
+   if (microphysics_type == 1 .or. microphysics_type == 2) then
+
+      call interpolate(state_vector, location, KIND_RAINWATER_MIXING_RATIO, &
+                       qr, istatus)
+      if (istatus /= 0) then
+         ref = missing_r8
+         return
+      endif
+
+      if (microphysics_type == 2) then
+         ! Also need some ice vars
+         call interpolate(state_vector, location, KIND_GRAUPEL_MIXING_RATIO, &
+                          qg, istatus)
+         if (istatus /= 0) then
+            ref = missing_r8
+            return
+         endif
+
+         call interpolate(state_vector, location, KIND_SNOW_MIXING_RATIO, &
+                          qs, istatus)
+         if (istatus /= 0) then
+            ref = missing_r8
+            return
+         endif
+      endif
+      call interpolate(state_vector, location, KIND_DENSITY, rho, istatus)
+      if (istatus /= 0) then
+         ref = missing_r8
+         return
+      endif
+
+      call interpolate(state_vector, location, KIND_TEMPERATURE, temp, istatus)
+      if (istatus /= 0) then
+         ref = missing_r8
+         return
+      endif
+
+      call get_LK_reflectivity(qr, qg, qs, rho, temp, ref)
+
+      ! Always convert to dbz.  Make sure the value, before taking the logarithm,
+      ! is always slightly positive.
+      ! tiny() is a fortran intrinsic function that is > 0 by a very small amount.
+
+      ref = 10.0_r8 * log10(max(tiny(ref), ref))
+   else
+      ! not in state vector and not Lin et al or Kessler so can't do reflectivity
+      ref = missing_r8
+   endif
+endif
+
+if ((apply_ref_limit_to_fwd_op) .and. &
+    (ref < reflectivity_limit_fwd_op) .and. (ref /= missing_r8)) then
+   ref = lowest_reflectivity_fwd_op
+endif
+
+! Do not return a missing data value with a successful return code.
+if (ref == missing_r8 .and. istatus == 0) then
+   istatus = 1
+endif
+
+if (debug) then
+   debug_location = get_location(location)
+   print *
+   print *, 'obs location (deg): ', debug_location(1),         &
+                                    debug_location(2),         debug_location(3)
+   print *, 'obs location (rad): ', debug_location(1)*deg2rad, &
+                                    debug_location(2)*deg2rad, debug_location(3)
+   print *, 'interpolated qr: ', qr
+   print *, 'interpolated qg: ', qg
+   print *, 'interpolated qs: ', qs
+   print *, 'interpolated rho: ', rho
+   print *, 'interpolated temp: ', temp
+   print *, 'final reflectivity: ', ref
+   print *, 'istatus: ', istatus
+endif
+
+end subroutine get_expected_radar_ref
+
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
+! Helper routines
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
+
+subroutine get_LK_reflectivity(qr, qg, qs, rho, temp, ref)
+
+! Computes the equivalent radar reflectivity factor in mm^6 m^-3 for
+! simple single-moment microphysics schemes such as the Kessler and
+! Lin et al. schemes.  (Note:  the equivalent reflectivity factor is usually
+! called simply "reflectivity" throughout this code.)  For more details
+! about the computations, see the initialize_constants subroutine and
+! the references below.
+
+real(r8), intent(in)  :: qr, qg, qs ! rain,graupel,snow mixing ratios (kg kg^-1)
+real(r8), intent(in)  :: rho        ! air density (kg m^-3)
+real(r8), intent(in)  :: temp       ! air temperature (K)
+real(r8), intent(out) :: ref        ! equivalent reflectivity factor (mm^6 m^-3)
+
+! References: Ferrier, 1994 (JAS, 249-280)
+!             Gilmore et al., 2004 (MWR, 2610-2627)
+!             Lin et al., 1983 (JCAM, 1065-1092)
+!             Smith 1984 (JCAM, 1258-1260)
+!             Smith at al., 1975 (JAM, 1156-1165)
+!             Caya, "Radar observations in DART" (DART subversion repository)
+
+real(r8) :: precip
+
+if ( .not. module_initialized ) call initialize_module
+
+ref = 0.0_r8
+
+! RAIN
+if ( qr >= 1.0e-6_r8 ) then
+   precip = rho * qr
+   ref = ref + param_refl_r * (precip**1.75_r8)
+endif
+
+! HAIL / GRAUPEL
+! The exponent 1.6625 is 1.75*0.95.  The 0.95 factor is included as an
+! approximation for Mie scattering (Smith et al. 1975).  This approximation
+! is appropriate for a 10-cm wavelength radar.
+
+if ( qg >= 1.0e-6_r8 ) then
+    precip = rho * qg
+    if (.not. allow_wet_graupel .or. temp < 273.15_r8) then
+       ref = ref + param_refl_dry_g * (precip**1.75_r8)
+    else
+       ref = ref + param_refl_wet_g * (precip**1.6625_r8)
+    endif
+endif
+
+! SNOW
+if ( qs >= 1.0e-6_r8 ) then
+   precip = rho * qs
+   if ( temp < 273.15_r8 ) then
+      ref = ref + param_refl_dry_s * (precip**1.75_r8)
+   else
+      ref = ref + param_refl_wet_s * (precip**1.75_r8)
+   endif
+endif
+
+end subroutine get_LK_reflectivity
+
+!----------------------------------------------------------------------
+
+subroutine get_LK_precip_fall_speed(qr, qg, qs, rho, temp, precip_fall_speed)
+
+! Computes power-weighted precipitation fall speed in m s^-1 for simple single-
+! moment microphysics schemes such as the Kessler and Lin et al. schemes.
+! For more details, see the initialize_constants subroutine and the
+! references below.
+
+real(r8), intent(in)  :: qr, qg, qs        ! rain,graupel,snow mixing ratios (kg kg^-1)
+real(r8), intent(in)  :: rho               ! air density (kg m^-3)
+real(r8), intent(in)  :: temp              ! air temperature (K)
+real(r8), intent(out) :: precip_fall_speed ! power-weighted precip. fall speed (m s^-1)
+
+! References: Ferrier, 1994 (JAS, 249-280)
+!             Gilmore et al., 2004 (MWR, 2610-2627)
+!             Lin et al., 1983 (JCAM, 1065-1092)
+!             Smith 1984 (JCAM, 1258-1260)
+!             Smith at al., 1975 (JAM, 1156-1165)
+!             Caya, "Radar observations in DART" (DART subversion repository)
+
+! alpha is the adjustment for air density in the emperical
+! dropsize-fall speed equation
+real(r8) :: precip_r, precip_s, precip_g, alpha, ref
+
+if ( .not. module_initialized ) call initialize_module
+
+precip_r = rho * qr
+precip_s = rho * qs
+precip_g = rho * qg
+alpha    = sqrt(param_rhos0/rho)
+
+precip_fall_speed = 0.0_r8
+
+! RAIN
+if (qr >= 1.0e-6_r8) then
+   precip_fall_speed = precip_fall_speed + alpha * param_fs_r * (precip_r**param_powr)
+endif
+
+! HAIL/GRAUPEL
+if (qg >= 1.0e-6_r8) then
+   if (.not. allow_wet_graupel .or. temp < 273.15_r8) then
+      precip_fall_speed = precip_fall_speed + sqrt(param_e/rho) * &
+                          param_fs_dry_g * (precip_g**param_powg_dry)
+   else
+      precip_fall_speed = precip_fall_speed + sqrt(param_e/rho) * &
+                          param_fs_wet_g * ((precip_g/(PI*rho_graupel))**param_powg_wet)
+   endif
+endif
+
+! SNOW
+if (qs >= 1.0e-6_r8) then
+   if ( temp < 273.15_r8 ) then
+      precip_fall_speed = precip_fall_speed + alpha * param_fs_dry_s * &
+                          (precip_s**param_pows)
+   else
+      precip_fall_speed = precip_fall_speed + alpha * param_fs_wet_s * &
+                          (precip_s**param_pows)
+   endif
+endif
+
+if (precip_fall_speed > 0.0_r8) then
+   call get_LK_reflectivity(qr, qg, qs, rho, temp, ref)
+   if (ref > 0.0_r8) then
+      precip_fall_speed = precip_fall_speed/ref
+   else
+      precip_fall_speed = 0.0_r8
+   endif
+endif
+
+end subroutine get_LK_precip_fall_speed
+
+!----------------------------------------------------------------------
+
+function dbztowt(rf, rho, spval)
+
+! Convert reflectivity (in DBZ, not Z) to terminal fall speed.
+! (Code from the pyncommas system - author D. Dowell)
+
+real(r8), intent(in)  :: rf           ! reflectivity (dBZ)
+real(r8), intent(in)  :: rho          ! density (km/m**3)
+real(r8), intent(in)  :: spval        ! bad/missing data flag
+real(r8)              :: dbztowt
+
+! Local vars
+real(r8) :: refl         ! reflectivity (Z)
+
+if ( (rf == spval) .or. (rho == spval) ) then
+   dbztowt = spval
+else
+   ! Convert back to Z for this calculation.
+   refl = 10.0**(0.1*rf)
+   ! Original code used opposite sign - be careful if updating.
+   dbztowt = 2.6 * refl**0.107 * (1.2/rho)**0.4
+endif
+
+end function dbztowt
+
+!----------------------------------------------------------------------
+
+subroutine initialize_constants()
+
+! Initialize module global constants.
+
+! IMPORTANT: Uses namelist values, so this routine cannot be called until
+! after the namelist has been read.
+
+! NOTE: gravity is currently hardcoded here.  We should find a way to let the
+! model have input if it uses a slightly different value for G, or if it is
+! working on a different planet with an entirely different set of constants.
+! Question:  how much impact on the results does changing G have?
+!
+! Most of the constants below are used for the computation of reflectivity and
+! power-weighted precipitation fall speed from the model state.  Only simple
+! single-moment microphysics schemes, such as the Kessler and Lin et al.
+! schemes, are currently supported.  For these schemes, rain, snow, and
+! graupel/hail are assumed to have inverse exponential size distributions:
+!
+!    n(D)=n0*exp(-lambda*D),
+!
+! where D is the particle diameter, n is the number of particles per unit
+! volume and per particle size interval, n0 is the intercept parameter, and
+! lambda is the slope parameter.  Lambda is a function of the model-predicted
+! hydrometeor mixing ratio and air density.
+!
+! For Rayleigh scattering from a spherical raindrop, the reflectivity is
+! proportional to the 6th moment of the raindrop's diameter.  The basic form of
+! the complicated expressions below comes from integrating this relationship
+! between reflectivity and diameter over the entire distribution of hydrometeor
+! sizes.  Complications arise because not all hydrometeors are spherical, and
+! returned power depends significantly on whether hydrometeors have a wet or
+! dry surface.  In addition, for large hailstones, Mie scattering rather than
+! Rayleigh scattering must be considered.
+!
+! References: Ferrier, 1994 (JAS, 249-280)
+!             Gilmore et al., 2004 (MWR, 2610-2627)
+!             Lin et al., 1983 (JCAM, 1065-1092)
+!             Smith 1984 (JCAM, 1258-1260)
+!             Smith at al., 1975 (JAM, 1156-1165)
+!             Caya, "Radar observations in DART" (DART subversion repository)
+
+
+! In general, the value used for gravity here should match the value used
+! for gravity in the model.
+param_gravity  = 9.81_r8        ! Acceleration of gravity (m s^-2)
+param_a        = 8.42e20_r8
+param_b        = 0.8_r8
+param_c        = 4.84e18_r8
+param_d        = 0.25_r8
+param_CD       = 0.6_r8
+param_rhos0    = 1.0_r8
+param_e        = 4.0_r8*param_gravity*rho_graupel/(3.0_r8*param_CD)
+
+param_gam7b    = 3376.92_r8
+param_gam7d    = 1155.38_r8
+param_gam7f    = 1871.25_r8
+param_powr     = (7.0_r8 + param_b)/4.0_r8
+param_pows     = (7.0_r8 + param_d)/4.0_r8
+param_powg_dry = (7.0_r8 + 0.5_r8) /4.0_r8
+param_powg_wet = 1.7875_r8
+
+
+! In the expressions for power-weighted precipitation fall speed for each
+! hydrometeor category, the following parameters are computed from the
+! constants that do not vary in time and space.  These equations are rather
+! complicated, so refer to "Radar observations in DART" by A. Caya for details.
+! (A pdf of this paper is in the DART subversion repository.)
+! The 0.95 exponenent in the equation for param_fs_wet_g is an approximation
+! for the effects of Mie scattering (Smith et al. 1975).  This approximation
+! is appropriate for a 10-cm wavelength radar.
+
+param_fs_r     = n0_rain * param_a * param_gam7b / &
+                 (PI * rho_rain * n0_rain)**param_powr
+
+param_fs_wet_s = n0_snow * param_c * param_gam7d / &
+                 (PI * rho_snow * n0_snow)**param_pows
+
+param_fs_dry_s = dielectric_factor * ((rho_snow/rho_rain)**2.0_r8) * &
+                 param_fs_wet_s
+
+param_fs_wet_g = ((7.2e20_r8)**0.95_r8) * param_gam7f / &
+                 (720.0_r8 * (n0_graupel**0.8375_r8))
+
+param_fs_dry_g = 1.0e18_r8 * dielectric_factor *                               &
+                 ((rho_graupel/rho_rain)**2.0_r8) * n0_graupel * param_gam7f / &
+                 (PI * rho_graupel * n0_graupel)**param_powg_dry
+
+! In the expressions for reflectivity for each hydrometeor category, the
+! following parameters are computed from the constants that do not vary in time
+! and space.  Computing these parameters now means that the equations in the
+! get_LK_reflectivity subroutine will have the following simple form:
+!
+!   ref = param_refl_r * (rho*qr)**1.75.
+!
+! The 0.95 exponenent in the equation for param_refl_wet_g is an approximation
+! for the effects of Mie scattering (Smith et al. 1975).  This approximation is
+! appropriate for a 10-cm wavelength radar.
+
+param_refl_r     = 7.2e20_r8 / (((PI*rho_rain)**1.75_r8)*(n0_rain**0.75_r8))
+
+param_refl_wet_s = 7.2e20_r8 / (((PI*rho_snow)**1.75_r8)*(n0_snow**0.75_r8))
+
+param_refl_dry_s = dielectric_factor * ((rho_snow/rho_rain)**2.0_r8) * &
+                 param_refl_wet_s
+
+param_refl_wet_g = (7.2e20_r8/(((PI*rho_graupel)**1.75_r8) * &
+                 (n0_graupel**0.75_r8)))**0.95_r8
+
+param_refl_dry_g = dielectric_factor * ((rho_graupel/rho_rain)**2.0_r8) * &
+                 7.2e20_r8 / (((PI*rho_graupel)**1.75_r8)*(n0_graupel**0.75_r8))
+
+
+
+end subroutine initialize_constants
+
+!----------------------------------------------------------------------
+
+subroutine print_constants()
+
+! Log the constants set in the code.
+! Prints to both the log file and standard output.
+
+! The values in this list which are also in the namelist will have their
+! values written by the write(nml=) code, but this routine includes all
+! the fixed constants so they are written in one place, both to standard
+! output and the log file. Using the correct values is critical to doing
+! the appropriate computation, so some duplication is probably a good thing.
+
+write(msgstring, *) 'Constants used in the obs_def_radar module:'
+call error_handler(E_MSG,'', msgstring, '', '', '')
+
+call pr_con(dielectric_factor , "dielectric_factor" )
+call pr_con(n0_rain           , "n0_rain"           )
+call pr_con(n0_graupel        , "n0_graupel"        )
+call pr_con(n0_snow           , "n0_snow"           )
+call pr_con(rho_rain          , "rho_rain"          )
+call pr_con(rho_graupel       , "rho_graupel"       )
+call pr_con(rho_snow          , "rho_snow"          )
+call pr_con(param_gravity     , "param_gravity"     )
+call pr_con(param_a           , "param_a"           )
+call pr_con(param_b           , "param_b"           )
+call pr_con(param_c           , "param_c"           )
+call pr_con(param_d           , "param_d"           )
+call pr_con(param_CD          , "param_CD"          )
+call pr_con(param_rhos0       , "param_rhos0"       )
+call pr_con(param_e           , "param_e"           )
+call pr_con(param_gam7b       , "param_gam7b"       )
+call pr_con(param_gam7d       , "param_gam7d"       )
+call pr_con(param_gam7f       , "param_gam7f"       )
+call pr_con(param_powr        , "param_powr"        )
+call pr_con(param_pows        , "param_pows"        )
+call pr_con(param_powg_dry    , "param_powg_dry"    )
+call pr_con(param_powg_wet    , "param_powg_wet"    )
+call pr_con(param_fs_r        , "param_fs_r"        )
+call pr_con(param_fs_wet_s    , "param_fs_wet_s"    )
+call pr_con(param_fs_dry_s    , "param_fs_dry_s"    )
+call pr_con(param_fs_wet_g    , "param_fs_wet_g"    )
+call pr_con(param_fs_dry_g    , "param_fs_dry_g"    )
+call pr_con(param_refl_r      , "param_refl_r"        )
+call pr_con(param_refl_wet_s  , "param_refl_wet_s"    )
+call pr_con(param_refl_dry_s  , "param_refl_dry_s"    )
+call pr_con(param_refl_wet_g  , "param_refl_wet_g"    )
+call pr_con(param_refl_dry_g  , "param_refl_dry_g"    )
+
+end subroutine print_constants
+
+!----------------------------------------------------------------------
+
+subroutine pr_con(c_val, c_str)
+
+! Utility routine to print a string and value
+
+real(r8),         intent(in) :: c_val
+character(len=*), intent(in) :: c_str
+
+write(msgstring, "(A30,A,ES28.8)") c_str, " = ", c_val
+call error_handler(E_MSG,'', msgstring, '', '', '')
+
+end subroutine pr_con
+
+!----------------------------------------------------------------------
+
+subroutine velkey_out_of_range(velkey)
+
+! Range check velkey and trigger a fatal error if larger than allocated array.
+
+integer, intent(in) :: velkey
+
+! fine -- no problem.
+if (velkey <= max_radial_vel_obs) return
+
+! Bad news.  Tell the user.
+write(msgstring, *) 'velkey (',velkey,') exceeds max_radial_vel_obs (', &
+                     max_radial_vel_obs,')'
+call error_handler(E_MSG,'set_radial_vel', msgstring, '', '', '')
+call error_handler(E_ERR,'set_radial_vel', &
+                   'Increase max_radial_vel_obs in namelist', &
+                   source, revision, revdate)
+
+end subroutine velkey_out_of_range
+
+!----------------------------------------------------------------------
+
+subroutine check_namelist_limits(apply_ref_limit_to_obs, &
+   reflectivity_limit_obs, lowest_reflectivity_obs, apply_ref_limit_to_fwd_op,&
+   reflectivity_limit_fwd_op, lowest_reflectivity_fwd_op)
+
+! Consistency warning; print a message if the thresholds and lower values
+! are going to be used and are different.
+
+logical,  intent(in) :: apply_ref_limit_to_obs
+real(r8), intent(in) :: reflectivity_limit_obs
+real(r8), intent(in) :: lowest_reflectivity_obs
+logical,  intent(in) :: apply_ref_limit_to_fwd_op
+real(r8), intent(in) :: reflectivity_limit_fwd_op
+real(r8), intent(in) :: lowest_reflectivity_fwd_op
+
+! The point here is to gently remind the user if they are setting different
+! limits on the actual observation values and the forward operator, since
+! that may be what they intend, but it isn't something they should be doing
+! by mistake.  But we don't want to be annoying, so this code only prints
+! informative messages to the log file and does not stop with an error.
+
+! If neither limit is being enforced, return silently.
+if (.not. apply_ref_limit_to_obs .and. .not. apply_ref_limit_to_fwd_op) return
+
+! If both are on, and the limits and set-to values are the same, fine also.
+if (apply_ref_limit_to_obs .and. apply_ref_limit_to_fwd_op) then
+   if ((reflectivity_limit_obs  == reflectivity_limit_fwd_op) .and. &
+       (lowest_reflectivity_obs == lowest_reflectivity_fwd_op)) return
+endif
+
+! Either only one of the limits is on, and/or the limits or set-to
+! values do not match.  Print something to the log file to note that they
+! are not the same.
+if (apply_ref_limit_to_obs) then
+   write(msgstring, *) 'reflectivity obs values less than ', &
+      reflectivity_limit_obs, 'will be set to', lowest_reflectivity_obs
+else
+   write(msgstring, *) 'reflectivity obs values will be processed unchanged'
+endif
+call error_handler(E_MSG,'check_namelist_limits', msgstring, '', '', '')
+
+if (apply_ref_limit_to_fwd_op) then
+   write(msgstring, *) 'reflectivity forward operator values less than ', &
+      reflectivity_limit_fwd_op, 'will be set to', lowest_reflectivity_fwd_op
+else
+   write(msgstring, *) 'reflectivity forward operator values will be processed unchanged'
+endif
+call error_handler(E_MSG,'check_namelist_limits', msgstring, '', '', '')
+
+end subroutine check_namelist_limits
+
+!----------------------------------------------------------------------
+
+end module obs_def_radar_mod
+                                                                              
+!---------------------------------------------------------------------------  
+! End of code inserted from ../../../obs_def/obs_def_radar_mod.f90
+!---------------------------------------------------------------------------  
+!---------------------------------------------------------------------------  
+!No module code needed for ../../../obs_def/obs_def_metar_mod.f90
+!---------------------------------------------------------------------------  
+!---------------------------------------------------------------------------  
+! Start of code inserted from ../../../obs_def/obs_def_dew_point_mod.f90
+!---------------------------------------------------------------------------  
+                                                                              
+module obs_def_dew_point_mod
+
+use        types_mod, only : r8, missing_r8, t_kelvin
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
+use     location_mod, only : location_type, set_location, get_location , write_location, &
+                             read_location
+use  assim_model_mod, only : interpolate
+use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_VAPOR_MIXING_RATIO, KIND_PRESSURE
+
+implicit none
+private
+
+public :: get_expected_dew_point
+
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma/obs_def/obs_def_dew_point_mod.f90 $"
 character(len=32 ), parameter :: revision = "$Revision: 6256 $"
 character(len=128), parameter :: revdate  = "$Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $"
 
 logical, save :: module_initialized = .false.
-
-!! To enable the namelist, comment this in.  NML2
-!namelist /one_d_integral_nml/  debug, max_1d_integral_obs
 
 contains
 
@@ -82,426 +1570,1190 @@ contains
 
 subroutine initialize_module
 
-! Anything in this routine is executed exactly once.  It could be used
-! to read in a namelist, precompute values needed later, etc.
-! Currently this routine logs the version information and allocates
-! space for the metadata arrays.
-
-!! Only needed if you've commented in the namelist code.  NML3
-!integer :: iunit, io
-
-! Execute the code here just once
-if (module_initialized) return
-
-! Logs version information to file.
 call register_module(source, revision, revdate)
-
-! To enable a namelist (e.g to set max number of obs, or to turn
-! on the debug messages at run time, or whatever) search for 'NML'
-! and comment in the 4 code sections marked with that string.  NML4
-!
-!! Read the namelist input
-!call find_namelist_in_file("input.nml", "one_d_integral_nml", iunit)
-!read(iunit, nml = one_d_integral_nml, iostat = io)
-!call check_namelist_read(iunit, io, "one_d_integral_nml")
-!
-!! Record the namelist values used for the run
-!if (do_nml_file()) write(nmlfileunit, nml=one_d_integral_nml)
-!if (do_nml_term()) write(     *     , nml=one_d_integral_nml)
-
-! Allocate space for the metadata
-allocate(half_width(max_1d_integral_obs),  &
-         num_points(max_1d_integral_obs),  &
-         localization_type(max_1d_integral_obs))
-
 module_initialized = .true.
-if(debug) print*, 'module initialized'
+
+end subroutine initialize_module
+
+
+
+subroutine get_expected_dew_point(state_vector, location, key, td, istatus)
+
+real(r8),            intent(in)  :: state_vector(:)
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: key
+real(r8),            intent(out) :: td               ! dewpoint (K)
+integer,             intent(out) :: istatus
+
+integer  :: ipres
+real(r8) :: qv                            ! water vapor mixing ratio (kg/kg)
+real(r8) :: e_mb                          ! water vapor pressure (mb)
+real(r8), PARAMETER :: e_min = 0.001_r8   ! threshold for minimum vapor pressure (mb),
+                                          !   to avoid problems near zero in Bolton's equation
+real(r8) :: p_Pa                          ! pressure (Pa)
+real(r8) :: p_mb                          ! pressure (mb)
+
+character(len=129) :: errstring
+
+if ( .not. module_initialized ) call initialize_module
+
+if(key == 1) then
+   ipres = KIND_PRESSURE
+elseif(key == 2) then
+   ipres = KIND_SURFACE_PRESSURE
+else
+   write(errstring,*)'key has to be 1 (upper levels) or 2 (2-meter), got ',key
+   call error_handler(E_ERR,'get_expected_dew_point', errstring, &
+        source, revision, revdate)
+endif
+
+call interpolate(state_vector, location, ipres, p_Pa, istatus)
+if (istatus /= 0) then
+   td = missing_r8
+   return
+endif
+call interpolate(state_vector, location, KIND_VAPOR_MIXING_RATIO, qv, istatus)
+if (istatus /= 0) then
+   td = missing_r8
+   return
+endif
+if (qv < 0.0_r8 .or. qv >= 1.0_r8) then
+   td = missing_r8
+   if (istatus == 0) istatus = 1
+   return
+endif
+
+!------------------------------------------------------------------------------
+!  Compute water vapor pressure.
+!------------------------------------------------------------------------------
+
+p_mb = p_Pa * 0.01_r8
+
+e_mb = qv * p_mb / (0.622_r8 + qv)
+e_mb = max(e_mb, e_min)
+
+!------------------------------------------------------------------------------
+!  Use Bolton's approximation to compute dewpoint.
+!------------------------------------------------------------------------------
+
+td = t_kelvin + (243.5_r8 / ((17.67_r8 / log(e_mb/6.112_r8)) - 1.0_r8) )
+
+end subroutine get_expected_dew_point
+
+!----------------------------------------------------------------------------
+
+end module obs_def_dew_point_mod
+                                                                              
+!---------------------------------------------------------------------------  
+! End of code inserted from ../../../obs_def/obs_def_dew_point_mod.f90
+!---------------------------------------------------------------------------  
+!---------------------------------------------------------------------------  
+! Start of code inserted from ../../../obs_def/obs_def_rel_humidity_mod.f90
+!---------------------------------------------------------------------------  
+                                                                              
+module obs_def_rel_humidity_mod
+
+use        types_mod, only : r8, missing_r8, L_over_Rv
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
+use     location_mod, only : location_type, set_location, get_location, write_location, &
+                             read_location, vert_is_pressure
+use  assim_model_mod, only : interpolate
+use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_PRESSURE, KIND_VAPOR_MIXING_RATIO
+
+implicit none
+private
+
+public :: get_expected_relative_humidity
+
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma/obs_def/obs_def_rel_humidity_mod.f90 $"
+character(len=32 ), parameter :: revision = "$Revision: 6256 $"
+character(len=128), parameter :: revdate  = "$Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $"
+
+logical, save       :: module_initialized   = .false.
+logical, save       :: first_time_warn_low  = .true.
+logical, save       :: first_time_warn_high = .true.
+character(len=64)   :: msgstring
+real(r8), parameter :: MIN_VALUE = 1.0e-9
+real(r8), parameter :: MAX_VALUE = 1.1
+
+contains
+
+!----------------------------------------------------------------------
+
+subroutine initialize_module
+
+call register_module(source, revision, revdate)
+module_initialized = .true.
 
 end subroutine initialize_module
 
 !----------------------------------------------------------------------------
 
-subroutine write_1d_integral(igrkey, ifile, fform)
- integer,          intent(in)           :: igrkey, ifile
- character(len=*), intent(in), optional :: fform
+subroutine get_expected_relative_humidity(state_vector, location, rh, istatus)
 
-! Write out the additional data associated with this observation.
-! The obs is identified by the incoming 'key' argument.
-
-logical :: is_ascii
-
-if ( .not. module_initialized ) call initialize_module
-
-! Make sure key value is within valid range -- it will be used as an index below.
-call check_valid_key(igrkey, 'GIVEN', 'write_1d_integral')
-
-is_ascii = ascii_file_format(fform)
-if(debug) print*, 'write_1d_integral: ascii format = ', is_ascii
-
-! Write out the half_width, num_points, and localization_type for each
-! observation embedded in the observation.  The old key is written out
-! for tracking/debug use if needed.
-
-if (is_ascii) then
-   write(ifile, *) half_width(igrkey), num_points(igrkey), localization_type(igrkey)
-   write(ifile, *) igrkey
-else
-   write(ifile)    half_width(igrkey), num_points(igrkey), localization_type(igrkey)
-   write(ifile)    igrkey
-endif
-if(debug) print*, 'writing out metadata for 1D integral obs ', igrkey
-if(debug) print*, 'metadata values are: ', half_width(igrkey), num_points(igrkey), localization_type(igrkey)
-
-end subroutine write_1d_integral
-
-!----------------------------------------------------------------------
-
-subroutine read_1d_integral(igrkey, ifile, fform)
- integer,          intent(out)          :: igrkey
- integer,          intent(in)           :: ifile
- character(len=*), intent(in), optional :: fform
-
-! Read in the additional data associated with this observation.
-! The key value in the file will be read and then discarded, and a new key
-! will be generated based on the next available index in the metadata arrays.
-! Notice that key is intent(out) here, not (in) as in some other routines.
-
-logical            :: is_ascii
-integer            :: ignored_igrkey
-
-if ( .not. module_initialized ) call initialize_module
-
-! Increment the counter so all key values are unique
-num_1d_integral_obs = num_1d_integral_obs + 1
-
-! Set the return value for the key, and use it as the index below
-igrkey = num_1d_integral_obs
-
-! Make sure key is within valid range
-call check_valid_key(igrkey, 'GENERATED', 'read_1d_integral')
-
-is_ascii = ascii_file_format(fform)
-if(debug) print*, 'read_1d_integral: ascii format = ', is_ascii
-
-! Read in the additional metadata for this observation, and discard the old key.
-if (is_ascii) then
-   read(ifile, *) half_width(igrkey), num_points(igrkey), localization_type(igrkey)
-   read(ifile, *) ignored_igrkey
-else
-   read(ifile)    half_width(igrkey), num_points(igrkey), localization_type(igrkey)
-   read(ifile)    ignored_igrkey
-endif
-if(debug) print*, 'read in metadata for 1D integral obs ', igrkey
-if(debug) print*, 'metadata values are: ', half_width(igrkey), num_points(igrkey), localization_type(igrkey)
-
-if(debug) print *, 'ignoring old key', ignored_igrkey
-if(debug) print *, 'return key set to ', igrkey
-
-end subroutine read_1d_integral
-
-!----------------------------------------------------------------------
-
-subroutine interactive_1d_integral(igrkey)
- integer, intent(out) :: igrkey
-
-! Initializes the specialized part of a 1d_integral observation.
-! A new key will be generated based on the next available index
-! in the metadata arrays.
-
-
-if ( .not. module_initialized ) call initialize_module
-
-! Increment the counter so all key values are unique
-num_1d_integral_obs = num_1d_integral_obs + 1
-
-! Set the return value for the key, and use it as the index below
-igrkey = num_1d_integral_obs
-
-! Make sure key is within valid range
-call check_valid_key(igrkey, 'GENERATED', 'interactive_1d_integral')
-
-! Prompt for input for the three required metadata items
-write(*, *) 'Creating an interactive_1d_integral observation'
-
-write(*, *) 'Input half width of integral '
- read(*, *) half_width(igrkey)
-
-write(*, *) 'Input the number of evaluation points (5-20 recommended) '
- read(*, *) num_points(igrkey)
-
-write(*, *) 'Input localization type: 1=Gaspari-Cohn; 2=Boxcar; 3=Ramped Boxcar'
- read(*, *) localization_type(igrkey)
-
-if(debug) print *, 'return key set to ', igrkey
-
-end subroutine interactive_1d_integral
-
-!----------------------------------------------------------------------
-
-subroutine get_expected_1d_integral(state, location, igrkey, val, istatus)
- real(r8),            intent(in)  :: state(:)
- type(location_type), intent(in)  :: location
- integer,             intent(in)  :: igrkey
- real(r8),            intent(out) :: val
- integer,             intent(out) :: istatus
-
-! The forward operator interface for this type of observation.  It is
-! called with a state vector, a location, and a key to identify which
-! observation is being processed.  The return 'val' is the expected
-! observation value, and istatus is the return code.  0 is ok,
-! > 0 signals an error, and < 0 values are reserved for system use.
-! The call to 'interpolate()' below calls the forward operator in
-! whatever model this code has been compiled with.
-
-type(location_type) :: location2
-integer             :: i
-real(r8)            :: range, loc, bottom, dx, x, sum, dist, weight, weight_sum
-
-if ( .not. module_initialized ) call initialize_module
-
-! Make sure key is within valid range
-call check_valid_key(igrkey, 'GIVEN', 'get_expected_1d_integral')
-
-! Figure out the total range of the integrated funtion (1 is max)
-range = 4.0_r8 * half_width(igrkey)
-if(range > 1.0_r8) range = 1.0_r8
-if(debug) print*, 'range is ', range
-
-! Get the location value
-loc = get_location(location)
-if(debug) print*, 'loc base is ', loc
-
-! Compute the bottom and top of the range
-bottom = loc - range / 2.0_r8
-if(bottom < 0.0_r8) bottom = bottom + 1.0_r8
-if(debug) print*, 'bottom is ', bottom
-
-! Next figure out where to put all the points
-dx = range / (num_points(igrkey) - 1)
-if(debug) print*, 'dx is ', dx
-
-! Loop to compute the value at each point, then multiply by localization
-! to get weighted integral
-sum = 0.0_r8
-weight_sum = 0.0_r8
-do i = 1, num_points(igrkey)
-   x = bottom + (i - 1) * dx
-   if(x > 1.0_r8) x = x - 1.0_r8
-if(debug) print*, 'location for int ', i, 'is ', x
-   location2 = set_location(x)
-   call interpolate(state, location2, 1, val, istatus)
-if(debug) print*, 'model forward operator for ', i, ' returns ', val
-   if (istatus /= 0) then
-if(debug) print*, 'forward operator returned error, returning'
-      val = missing_r8
-      return
-   endif
-   dist = abs(loc - x)
-   if(dist > 0.5_r8) dist = 1.0_r8 - dist
-if(debug) print*, 'dist ', i, dist
-   weight = comp_cov_factor(dist, half_width(igrkey), &
-      localization_override = localization_type(igrkey))
-if(debug) print*, 'weight ', i, weight
-   sum = sum + weight * val
-   weight_sum = weight_sum + weight
-end do
-
-val = sum / weight_sum
-
-if(debug) print*, 'get_expected_1d_integral key is ', igrkey
-if(debug) print*, 'metadata values are: ', half_width(igrkey), num_points(igrkey), localization_type(igrkey)
-if(debug) print*, 'return value for forward operator is ', val
-if(debug) print*, 'return status (0 good; >0 error; <0 reserved for system use) is ', istatus
-
-end subroutine get_expected_1d_integral
-
-!----------------------------------------------------------------------
-
-subroutine get_expected_1d_integral_distrib(location, igrkey, expected_obs, istatus, state_ens_handle, win)
+real(r8),            intent(in)  :: state_vector(:)
 type(location_type), intent(in)  :: location
-integer,             intent(in)  :: igrkey
-real(r8),            intent(out) :: expected_obs(:)
+real(r8),            intent(out) :: rh     ! relative humidity (fraction)
 integer,             intent(out) :: istatus
-integer,             intent(in)  :: win !< mpi communication window
-type(ensemble_type),  intent(in) :: state_ens_handle
 
-
-! The forward operator interface for this type of observation.  It is
-! called with a state vector, a location, and a key to identify which
-! observation is being processed.  The return 'val' is the expected
-! observation value, and istatus is the return code.  0 is ok,
-! > 0 signals an error, and < 0 values are reserved for system use.
-! The call to 'interpolate()' below calls the forward operator in
-! whatever model this code has been compiled with.
-
-type(location_type) :: location2
-integer             :: i, j
-real(r8)            :: range, loc, bottom, dx, x, dist !sum, dist, weight, weight_sum
-real(r8), allocatable  :: sum(:), weight(:), weight_sum(:)
+real(r8) :: qvap, tmpk, xyz(3), pres, es, qsat
 
 if ( .not. module_initialized ) call initialize_module
 
-! Make sure key is within valid range
-call check_valid_key(igrkey, 'GIVEN', 'get_expected_1d_integral')
-
-allocate(sum(state_ens_handle%num_copies), weight(state_ens_handle%num_copies), &
-   weight_sum(state_ens_handle%num_copies))
-
-
-! Figure out the total range of the integrated funtion (1 is max)
-range = 4.0_r8 * half_width(igrkey)
-if(range > 1.0_r8) range = 1.0_r8
-if(debug) print*, 'range is ', range
-
-! Get the location value
-loc = get_location(location)
-if(debug) print*, 'loc base is ', loc
-
-! Compute the bottom and top of the range
-bottom = loc - range / 2.0_r8
-if(bottom < 0.0_r8) bottom = bottom + 1.0_r8
-if(debug) print*, 'bottom is ', bottom
-
-! Next figure out where to put all the points
-dx = range / (num_points(igrkey) - 1)
-if(debug) print*, 'dx is ', dx
-
-! Loop to compute the value at each point, then multiply by localization
-! to get weighted integral
-sum(:) = 0.0_r8
-weight_sum(:) = 0.0_r8
-do i = 1, num_points(igrkey)
-
-   x = bottom + (i - 1) * dx
-   if(x > 1.0_r8) x = x - 1.0_r8
-   if(debug) print*, 'location for int ', i, 'is ', x
-   location2 = set_location(x)
-   call interpolate_distrib(location2, 1, istatus, expected_obs, state_ens_handle, win)
-
-   if(debug) print*, 'model forward operator for ', i, ' returns ', expected_obs
-   if (istatus /= 0) then
-      if(debug) print*, 'forward operator returned error, returning'
-      expected_obs(:) = missing_r8
-      return
-   endif
-   dist = abs(loc - x)
-   if(dist > 0.5_r8) dist = 1.0_r8 - dist
-   if(debug) print*, 'dist ', i, dist
-
-   ! loop for each copy
-   do j = 1, state_ens_handle%num_copies
-
-      weight(j) = comp_cov_factor(dist, half_width(igrkey), &
-      localization_override = localization_type(igrkey))
-      if(debug) print*, 'weight ', i, weight(j)
-      sum(j) = sum(j) + weight(j) * expected_obs(j)
-      weight_sum(j) = weight_sum(j) + weight(j)
-
-   end do
-
-enddo
-
-expected_obs(:) = sum(:) / weight_sum(:)
-
-deallocate(sum, weight, weight_sum)
-
-if(debug) print*, 'get_expected_1d_integral key is ', igrkey
-if(debug) print*, 'metadata values are: ', half_width(igrkey), num_points(igrkey), localization_type(igrkey)
-if(debug) print*, 'return value for forward operator is ', expected_obs
-if(debug) print*, 'return status (0 good; >0 error; <0 reserved for system use) is ', istatus
-
-end subroutine get_expected_1d_integral_distrib
-
-
-!----------------------------------------------------------------------
-
-subroutine set_1d_integral(integral_half_width, num_eval_pts, localize_type, igrkey, istatus)
-
-! inputs are: half width of integral
-!             the number of evaluation points (5-20 recommended)
-!             localization type: 1=Gaspari-Cohn; 2=Boxcar; 3=Ramped Boxcar
-
- real(r8), intent(in)  :: integral_half_width
- integer,  intent(in)  :: num_eval_pts
- integer,  intent(in)  :: localize_type
- integer,  intent(out) :: igrkey
- integer,  intent(out) :: istatus
-
-! Available to be called by a program creating these types of observations.
-! Notice that igrkey is intent(out) here, not (in) as in some other routines.
-! Sets the additional metadata for this obs, increments the key, and returns
-! the new value.  This key value should be set in the obs_def derived type by
-! calling set_obs_def_key().   Notice that this is different from the main
-! observation key, which all observation entries have.  This key is specific
-! to this observation type and is used to index into the metadata for only
-! this type of obs.
-
-if ( .not. module_initialized ) call initialize_module
-
-! Increment the counter so all key values are unique
-num_1d_integral_obs = num_1d_integral_obs + 1
-
-! Set the return value for the key, and use it as the index below
-igrkey = num_1d_integral_obs
-
-! Make sure key is within valid range
-call check_valid_key(igrkey, 'GENERATED', 'set_1d_integral')
-
-! Set the corresponding values in the module global arrays
-half_width(igrkey) = integral_half_width
-num_points(igrkey) = num_eval_pts
-localization_type(igrkey) = localize_type
-
-istatus = 0
-
-if(debug) print*, 'setting metadata for 1D integral obs ', igrkey
-if(debug) print*, 'metadata values are: ', half_width(igrkey), num_points(igrkey), localization_type(igrkey)
-
-if(debug) print*, 'return key set to ', igrkey
-if(debug) print*, 'return status (0 good; >0 error; <0 reserved for system use) is ', istatus
-
-end subroutine set_1d_integral
-
-!----------------------------------------------------------------------
-
-subroutine check_valid_key(igrkey, what, fromwhere)
- integer, intent(in)          :: igrkey
- character(len=*), intent(in) :: what, fromwhere
-
-! Internal subroutine that verifies that we haven't incremented the key value
-! past the size of the allocated space, or that a routine hasn't been called
-! with a out-of-range key (which would indicate an internal error of some kind).
-! If an error is found, an fatal message is printed and this routine doesn't return.
-! The 'what' argument is either 'GIVEN' for a key value that's passed in from
-! another routine; or 'GENERATED' for one we have just made and are planning to
-! return to the caller.  The 'fromwhere' argument is the name of the calling
-! subroutine so the error message can report where it was called from.
-
-character(len=128) :: msgstring
-
-if (igrkey <= 0 .or. igrkey > max_1d_integral_obs) then
-   if (what == 'GENERATED' .and. igrkey > max_1d_integral_obs) then
-      ! generating a new key and ran out of space
-      write(msgstring, *)'Out of space, max_1d_integral_obs limit ',max_1d_integral_obs
-      call error_handler(E_ERR,trim(fromwhere),msgstring,source,revision,revdate, &
-                         text2='Increase value of max_1d_integral_obs in obs_def_1d_state_mod')
+!  interpolate the mixing ratio to the location
+call interpolate(state_vector, location, KIND_VAPOR_MIXING_RATIO, qvap, istatus)
+if (istatus /= 0 .or. qvap < 0.0_r8) then
+   if (istatus == 0) then
+      qvap = epsilon(0.0_r8)
    else
-      ! called with a bad key or a negative key generated somehow. "shouldn't happen".
-      write(msgstring, *)'Key is ',igrkey,' must be between 1 and ',max_1d_integral_obs
-      call error_handler(E_ERR,trim(fromwhere),msgstring,source,revision,revdate, &
-                         text2='Internal error: Invalid key value in RAW_STATE_1D_INTEGRAL obs')
+      rh = missing_r8
+      if (istatus == 0) istatus = 99
+      return
    endif
 endif
 
-end subroutine
+!  interpolate the temperature to the desired location
+call interpolate(state_vector, location, KIND_TEMPERATURE, tmpk, istatus)
+if (istatus /= 0 .or. tmpk <= 0.0_r8) then
+   rh = missing_r8
+   if (istatus == 0) istatus = 99
+   return
+endif
+
+!  interpolate the pressure, if observation location is not pressure
+if ( vert_is_pressure(location) ) then
+   xyz = get_location(location)
+   pres = xyz(3)
+else
+   ! pressure comes back in pascals (not hPa or mb)
+   call interpolate(state_vector, location, KIND_PRESSURE, pres, istatus)
+   if (istatus /= 0 .or. pres <= 0.0_r8 .or. pres >= 120000.0_r8)  then
+      rh = missing_r8
+      if (istatus == 0) istatus = 99
+      return
+   endif
+endif
+
+!  Compute the rh
+es   = 611.0_r8 * exp(L_over_Rv * (1.0_r8 / 273.0_r8 - 1.0_r8 / tmpk))
+qsat = 0.622_r8 * es / (pres - es)
+rh   = qvap / qsat
+
+!  Check for unreasonable values and return limits
+if (rh < MIN_VALUE) then
+   if (first_time_warn_low) then
+      write(msgstring, '(A,F12.6)') 'values lower than low limit detected, e.g.', rh
+      call error_handler(E_MSG,'get_expected_relative_humidity', msgstring,      &
+                         text2='all values lower than 1e-9 will be set to 1e-9', &
+                         text3='this message will only print once')
+      first_time_warn_low = .false.
+   endif
+   rh = MIN_VALUE
+endif
+
+if (rh > MAX_VALUE) then
+   if (first_time_warn_high) then
+      write(msgstring, '(A,F12.6)') 'values higher than high limit detected, e.g.', rh
+      call error_handler(E_MSG,'get_expected_relative_humidity', msgstring,      &
+                         text2='all values larger than 1.1 will be set to 1.1', &
+                         text3='this message will only print once')
+      first_time_warn_high = .false.
+   endif
+   rh = MAX_VALUE
+endif
+
+return
+end subroutine get_expected_relative_humidity
+
+!----------------------------------------------------------------------------
+
+end module obs_def_rel_humidity_mod
+                                                                              
+!---------------------------------------------------------------------------  
+! End of code inserted from ../../../obs_def/obs_def_rel_humidity_mod.f90
+!---------------------------------------------------------------------------  
+!---------------------------------------------------------------------------  
+! Start of code inserted from ../../../obs_def/obs_def_altimeter_mod.f90
+!---------------------------------------------------------------------------  
+                                                                              
+module obs_def_altimeter_mod
+
+use        types_mod, only : r8, missing_r8, t_kelvin
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
+use     location_mod, only : location_type, set_location, get_location , write_location, &
+                             read_location
+use  assim_model_mod, only : interpolate
+use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_SURFACE_ELEVATION
+
+implicit none
+private
+
+public :: get_expected_altimeter, compute_altimeter
+
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma/obs_def/obs_def_altimeter_mod.f90 $"
+character(len=32 ), parameter :: revision = "$Revision: 6256 $"
+character(len=128), parameter :: revdate  = "$Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $"
+
+logical, save :: module_initialized = .false.
+
+contains
 
 !----------------------------------------------------------------------
 
-end module obs_def_1d_state_mod
+subroutine initialize_module
+
+call register_module(source, revision, revdate)
+module_initialized = .true.
+
+end subroutine initialize_module
+
+
+subroutine get_expected_altimeter(state_vector, location, altimeter_setting, istatus)
+
+real(r8),            intent(in)  :: state_vector(:)
+type(location_type), intent(in)  :: location
+real(r8),            intent(out) :: altimeter_setting     ! altimeter (hPa)
+integer,             intent(out) :: istatus
+
+real(r8) :: psfc                ! surface pressure value   (Pa)
+real(r8) :: hsfc                ! surface elevation level  (m above SL)
+
+if ( .not. module_initialized ) call initialize_module
+
+!  interpolate the surface pressure to the desired location
+call interpolate(state_vector, location, KIND_SURFACE_PRESSURE, psfc, istatus)
+if (istatus /= 0) then
+   altimeter_setting = missing_r8
+   return
+endif
+
+!  interpolate the surface elevation to the desired location
+call interpolate(state_vector, location, KIND_SURFACE_ELEVATION, hsfc, istatus)
+if (istatus /= 0) then
+   altimeter_setting = missing_r8
+   return
+endif
+
+!  Compute the altimeter setting given surface pressure and height, altimeter is hPa
+altimeter_setting = compute_altimeter(psfc * 0.01_r8, hsfc)
+
+if (altimeter_setting < 880.0_r8 .or. altimeter_setting >= 1100.0_r8) then
+   altimeter_setting = missing_r8
+   if (istatus == 0) istatus = 1
+   return
+endif
+
+return
+end subroutine get_expected_altimeter
+
+
+function compute_altimeter(psfc, hsfc)
+
+real(r8), parameter :: k1 = 0.190284_r8
+real(r8), parameter :: k2 = 8.4228807E-5_r8
+
+real(r8), intent(in) :: psfc  !  (hPa)
+real(r8), intent(in) :: hsfc  !  (m above MSL)
+
+real(r8) :: compute_altimeter !  (hPa)
+
+compute_altimeter = ((psfc - 0.3_r8) ** k1 + k2 * hsfc) ** (1.0_r8 / k1)
+
+return
+end function compute_altimeter
+
+!----------------------------------------------------------------------------
+
+end module obs_def_altimeter_mod
 
                                                                               
 !---------------------------------------------------------------------------  
-! End of code inserted from ../../../obs_def/obs_def_1d_state_mod.f90
+! End of code inserted from ../../../obs_def/obs_def_altimeter_mod.f90
+!---------------------------------------------------------------------------  
+!---------------------------------------------------------------------------  
+! Start of code inserted from ../../../obs_def/obs_def_gps_mod.f90
+!---------------------------------------------------------------------------  
+                                                                              
+module obs_def_gps_mod
+
+use        types_mod, only : r8, missing_r8, RAD2DEG, DEG2RAD, PI
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+                             file_exist, open_file, close_file, nmlfileunit, &
+                             check_namelist_read, find_namelist_in_file, &
+                             do_output, do_nml_file, do_nml_term, &
+                             ascii_file_format
+use     location_mod, only : location_type, set_location, get_location, &
+                             write_location, read_location, vert_is_height, &
+                             VERTISHEIGHT
+use time_manager_mod, only : time_type, read_time, write_time, &
+                             set_time, set_time_missing, interactive_time
+use  assim_model_mod, only : interpolate
+
+use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
+                             KIND_V_WIND_COMPONENT, KIND_SURFACE_PRESSURE, &
+                             KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
+                             KIND_PRESSURE, KIND_GPSRO
+
+implicit none
+private
+
+public :: set_gpsro_ref, get_gpsro_ref, write_gpsro_ref, read_gpsro_ref, &
+          get_expected_gpsro_ref, interactive_gpsro_ref
+
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma/obs_def/obs_def_gps_mod.f90 $"
+character(len=32 ), parameter :: revision = "$Revision: 6256 $"
+character(len=128), parameter :: revdate  = "$Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $"
+
+logical, save :: module_initialized = .false.
+
+! Storage for the special information required for GPS RO observations
+!
+
+! Because we are currently only generating one observation type
+! (GPSRO_REFRACTIVITY), there must be enough of these to cover all gps
+! obs in all obs_seq files that are read in (e.g. for obs_diag if you
+! cover multiple days or weeks, you must have enough room for all of them.)
+! the local operator needs none of this additional info; the best approach
+! would be to keep a single KIND_GPSRO, but make 2 observation types.
+! the local has no additional metadata; the nonlocal needs one of these
+! allocated and filled in.
+integer :: max_gpsro_obs = 100000
+
+type gps_nonlocal_type
+   private
+   character(len=6) :: gpsro_ref_form
+   real(r8)         :: ray_direction(3)
+   real(r8)         :: rfict
+   real(r8)         :: step_size
+   real(r8)         :: ray_top
+end type gps_nonlocal_type
+
+type(gps_nonlocal_type), allocatable :: gps_data(:)
+
+namelist /obs_def_gps_nml/ max_gpsro_obs
+
+character(len=129) :: string1, string2
+integer  :: ii
+integer  :: keycount
+
+contains
+
+!------------------------------------------------------------------------------
+
+
+  subroutine initialize_module
+!------------------------------------------------------------------------------
+!
+! initialize global gps private key number and allocate space for obs data
+integer :: rc, iunit
+
+
+call register_module(source, revision, revdate)
+module_initialized = .true.
+
+! global count of all gps observations from any input file
+keycount = 0
+
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "obs_def_gps_nml", iunit)
+read(iunit, nml = obs_def_gps_nml, iostat = rc)
+call check_namelist_read(iunit, rc, "obs_def_gps_nml")
+
+! Record the namelist values used for the run ...
+if (do_nml_file()) write(nmlfileunit, nml=obs_def_gps_nml)
+if (do_nml_term()) write(     *     , nml=obs_def_gps_nml)
+
+! find max number of gps obs which can be stored, and initialize type
+allocate(gps_data(max_gpsro_obs), stat = rc)
+if (rc /= 0) then
+   write(string1, *) 'initial allocation failed for gps observation data,', &
+                       'itemcount = ', max_gpsro_obs
+   call error_handler(E_ERR,'initialize_module', string1, &
+                      source, revision, revdate)
+endif
+
+end subroutine initialize_module
+
+
+
+ subroutine set_gpsro_ref(gpskey, nx, ny, nz, rfict0, ds, htop, subset0)
+!------------------------------------------------------------------------------
+!
+! increment key and set all private data for this observation
+
+integer,          intent(out) :: gpskey
+real(r8),         intent(in)  :: nx, ny, nz, rfict0, ds, htop
+character(len=6), intent(in)  :: subset0
+
+if ( .not. module_initialized ) call initialize_module
+
+keycount = keycount + 1
+gpskey = keycount
+
+if(gpskey > max_gpsro_obs) then
+   write(string1, *) 'key (',gpskey,') exceeds max_gpsro_obs (',max_gpsro_obs,')'
+   string2 = 'Increase max_gpsro_obs in input.nml &obs_def_gps_nml namelist.'
+   call error_handler(E_ERR,'read_gpsro_ref', string1, &
+                      source, revision, revdate, text2=string2)
+endif
+
+gps_data(gpskey)%ray_direction(1) = nx
+gps_data(gpskey)%ray_direction(2) = ny
+gps_data(gpskey)%ray_direction(3) = nz
+gps_data(gpskey)%gpsro_ref_form   = subset0
+
+gps_data(gpskey)%rfict     = rfict0
+gps_data(gpskey)%step_size = ds
+gps_data(gpskey)%ray_top   = htop
+
+end subroutine set_gpsro_ref
+
+
+ subroutine get_gpsro_ref(gpskey, nx, ny, nz, rfict0, ds, htop, subset0)
+!------------------------------------------------------------------------------
+!
+! return all private data for this observation
+
+integer,          intent(in)  :: gpskey
+real(r8),         intent(out) :: nx, ny, nz, rfict0, ds, htop
+character(len=6), intent(out) :: subset0
+
+if ( .not. module_initialized ) call initialize_module
+
+if (gpskey < 1 .or. gpskey > keycount) then
+   write(string1, *) 'key (',gpskey,') out of valid range (1<=key<=',keycount,')'
+   call error_handler(E_ERR,'get_gpsro_ref', string1, &
+                      source, revision, revdate)
+endif
+
+nx = gps_data(gpskey)%ray_direction(1)
+ny = gps_data(gpskey)%ray_direction(2)
+nz = gps_data(gpskey)%ray_direction(3)
+subset0 = gps_data(gpskey)%gpsro_ref_form
+
+rfict0 = gps_data(gpskey)%rfict
+ds     = gps_data(gpskey)%step_size
+htop   = gps_data(gpskey)%ray_top
+
+end subroutine get_gpsro_ref
+
+
+
+ subroutine write_gpsro_ref(gpskey, ifile, fform)
+!------------------------------------------------------------------------------
+!
+
+integer,          intent(in)           :: gpskey, ifile
+character(len=*), intent(in), optional :: fform
+
+
+if ( .not. module_initialized ) call initialize_module
+
+! Write the 5 character identifier for verbose formatted output
+! Write out the obs_def key for this observation
+if (ascii_file_format(fform)) then
+   write(ifile,11) gpskey
+   write(ifile, *) gps_data(gpskey)%rfict, gps_data(gpskey)%step_size, &
+                   gps_data(gpskey)%ray_top, &
+                  (gps_data(gpskey)%ray_direction(ii), ii=1, 3), &
+                   gps_data(gpskey)%gpsro_ref_form
+11  format('gpsroref', i8)
+else
+   write(ifile) gpskey
+   write(ifile) gps_data(gpskey)%rfict, gps_data(gpskey)%step_size, &
+                gps_data(gpskey)%ray_top, &
+               (gps_data(gpskey)%ray_direction(ii), ii=1, 3), &
+                gps_data(gpskey)%gpsro_ref_form
+endif
+
+end subroutine write_gpsro_ref
+
+
+
+ subroutine read_gpsro_ref(gpskey, ifile, fform)
+!------------------------------------------------------------------------------
+!
+! Every GPS observation has its own (metadata) gpskey.
+! When you read multiple gps observation sequence files, it is necessary
+! to track the total number of metadata gpskeys read, not just the number
+! in the current file.
+!
+
+integer,          intent(out)          :: gpskey
+integer,          intent(in)           :: ifile
+character(len=*), intent(in), optional :: fform
+
+integer :: keyin    ! the metadata key in the current obs sequence
+
+real(r8) :: nx, ny, nz, rfict0, ds, htop
+character(len=6) :: subset0
+character(len=8) :: header
+
+if ( .not. module_initialized ) call initialize_module
+
+if (ascii_file_format(fform)) then
+   read(ifile, FMT='(a8, i8)') header, keyin    ! throw away keyin
+   if(header /= 'gpsroref') then
+       call error_handler(E_ERR,'read_gpsro_ref', &
+       'Expected header "gpsroref" in input file', source, revision, revdate)
+   endif
+   read(ifile, *) rfict0, ds, htop, nx, ny, nz, subset0
+else
+   read(ifile) keyin          ! read and throw away
+   read(ifile) rfict0, ds, htop, nx, ny, nz, subset0
+endif
+
+
+! increment key and set all private data for this observation
+call set_gpsro_ref(gpskey, nx, ny, nz, rfict0, ds, htop, subset0)
+
+end subroutine read_gpsro_ref
+
+
+subroutine interactive_gpsro_ref(gpskey)
+!----------------------------------------------------------------------
+!
+! Interactively prompt for the info needed to create a gps refractivity
+! observation.  Increments the key number and returns it.
+
+integer, intent(out) :: gpskey
+
+real(r8) :: nx, ny, nz, rfict0, ds, htop
+character(len=6) :: subset0
+integer :: gpstype
+
+
+if ( .not. module_initialized ) call initialize_module
+
+!Now interactively obtain reflectivity type information
+! valid choices are local or non-local
+
+write(*, *)
+write(*, *) 'Beginning to inquire information on reflectivity type.'
+write(*, *)
+
+100 continue
+write(*, *) 'Enter 1 for local refractivity (GPSREF)'
+write(*, *) 'Enter 2 for non-local refractivity/excess phase delay (GPSEXC)'
+write(*, *)
+
+read(*,*) gpstype
+
+select case (gpstype)
+   case (1)
+      subset0 = 'GPSREF'
+   case (2)
+      subset0 = 'GPSEXC'
+   case default
+      write(*,*) 'Bad value, must enter 1 or 2'
+      goto 100
+end select
+
+if (gpstype == 2) then
+    ! FIXME:  i have no idea what valid values are for any
+   !  of the following items, so i cannot add any error checking or
+   !  guidance for the user.
+
+   write(*, *)
+   write(*, *) 'Enter X, Y, Z value for ray direction'
+   write(*, *)
+   read(*,*) nx, ny, nz
+
+   write(*, *)
+   write(*, *) 'Enter local curvature radius'
+   write(*, *)
+   read(*,*) rfict0
+
+   write(*, *)
+   write(*, *) 'Enter step size'
+   write(*, *)
+   read(*,*) ds
+
+   write(*, *)
+   write(*, *) 'Enter ray top'
+   write(*, *)
+   read(*,*) htop
+else
+   nx = 0.0
+   ny = 0.0
+   nz = 0.0
+   rfict0 = 0.0
+   ds = 0.0
+   htop = 0.0
+endif
+
+! increment key and set all private data for this observation
+call set_gpsro_ref(gpskey, nx, ny, nz, rfict0, ds, htop, subset0)
+
+write(*, *)
+write(*, *) 'End of specialized section for gps observation data.'
+write(*, *) 'You will now have to enter the regular obs information.'
+write(*, *)
+
+end subroutine interactive_gpsro_ref
+
+ subroutine get_expected_gpsro_ref(state_vector, location, gpskey, ro_ref, istatus)
+!------------------------------------------------------------------------------
+!
+! Purpose: Calculate GPS RO local refractivity or non_local (integrated)
+!          refractivity (excess phase, Sergey Sokolovskiy et al., 2005)
+!------------------------------------------------------------------------------
+!
+! inputs:
+!    state_vector:    DART state vector
+!
+! output parameters:
+!    ro_ref: modeled local refractivity (N-1)*1.0e6 or non_local
+!            refractivity (excess phase, m)
+!            (according to the input data parameter subset)
+!    istatus:  =0 normal; =1 outside of domain.
+!------------------------------------------------------------------------------
+!  Author: Hui Liu
+!  Version 1.1: June 15, 2004: Initial version CAM
+!
+!  Version 1.2: July 29, 2005: revised for new obs_def and WRF
+!------------------------------------------------------------------------------
+implicit none
+
+real(r8),            intent(in)  :: state_vector(:)
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: gpskey
+real(r8),            intent(out) :: ro_ref
+integer,             intent(out) :: istatus
+
+! local variables
+
+real(r8) :: nx, ny, nz       ! unit tangent direction of ray at perigee
+real(r8) :: xo, yo, zo       ! perigee location in Cartesian coordinate
+
+real(r8) :: ref_perigee, ref00, ref1, ref2, dist_to_perigee
+real(r8) :: phase
+real(r8) :: xx, yy, zz, height1, lat1, lon1, delta_phase1, delta_phase2
+
+integer  :: iter, istatus0
+real(r8) :: lon, lat, height, obsloc(3)
+
+if ( .not. module_initialized ) call initialize_module
+
+if ( .not. vert_is_height(location)) then
+   write(string1, *) 'vertical location must be height; gps obs key ', gpskey
+   call error_handler(E_ERR,'get_expected_gpsro_ref', string1, &
+                      source, revision, revdate)
+endif
+
+obsloc   = get_location(location)
+
+
+lon      = obsloc(1)                       ! degree: 0 to 360
+lat      = obsloc(2)                       ! degree: -90 to 90
+height   = obsloc(3)                       ! (m)
+
+! calculate refractivity at perigee
+
+call ref_local(state_vector, location, height, lat, lon, ref_perigee, istatus0)
+! if istatus > 0, the interpolation failed and we should return failure now.
+if(istatus0 > 0) then
+   istatus = istatus0
+   ro_ref = missing_r8
+   return
+endif
+
+choose: if(gps_data(gpskey)%gpsro_ref_form == 'GPSREF') then
+    ! use local refractivity
+
+    ro_ref = ref_perigee * 1.0e6      ! in (N-1)*1.0e6, same with obs
+
+else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
+
+    ! otherwise, use non_local refractivity(excess phase delay)
+
+    ! Initialization
+    phase = 0.0_r8
+    dist_to_perigee =  0.0_r8   ! distance to perigee from a point of the ray
+
+    nx = gps_data(gpskey)%ray_direction(1)
+    ny = gps_data(gpskey)%ray_direction(2)
+    nz = gps_data(gpskey)%ray_direction(3)
+
+    ! convert location of the perigee from geodetic to Cartesian coordinate
+
+    call geo2carte (height, lat, lon, xo, yo, zo, gps_data(gpskey)%rfict )
+
+    ! currently, use a straight line passing the perigee point as ray model.
+    ! later, more sophisticated ray models can be used.
+    !
+    ! Start the horizontal integrate of the model refractivity along a
+    ! straight line path in cartesian coordinate
+    !
+    ! (x-xo)/a = (y-yo)/b = (z-zo)/c,  (a,b,c) is the line direction
+
+    ref1 = ref_perigee
+    ref2 = ref_perigee
+
+    iter = 0
+    do
+
+       iter = iter + 1
+       dist_to_perigee = dist_to_perigee + gps_data(gpskey)%step_size
+
+       !  integrate to one direction of the ray for one step
+       xx = xo + dist_to_perigee * nx
+       yy = yo + dist_to_perigee * ny
+       zz = zo + dist_to_perigee * nz
+
+       ! convert the location of the point to geodetic coordinates
+       ! height(m), lat, lon(deg)
+
+       call carte2geo(xx, yy, zz, height1, lat1, lon1, gps_data(gpskey)%rfict )
+       if (height1 >= gps_data(gpskey)%ray_top) exit
+
+       ! get the refractivity at this ray point(ref00)
+       call ref_local(state_vector, location, height1, lat1, lon1, ref00, istatus0)
+       ! when any point of the ray is problematic, return failure
+       if(istatus0 > 0) then
+         istatus = istatus0
+         ro_ref = missing_r8
+         return
+       endif
+
+       ! get the excess phase due to this ray interval
+       delta_phase1 = (ref1 + ref00) * gps_data(gpskey)%step_size * 0.5_r8
+
+       ! save the refractivity for integration of next ray interval
+       ref1 = ref00
+
+       ! integrate to the other direction of the ray
+       xx = xo - dist_to_perigee * nx
+       yy = yo - dist_to_perigee * ny
+       zz = zo - dist_to_perigee * nz
+
+       call carte2geo (xx, yy, zz, height1, lat1, lon1, gps_data(gpskey)%rfict )
+
+       ! get the refractivity at this ray point(ref00)
+       call ref_local(state_vector, location, height1, lat1, lon1, ref00, istatus0)
+       ! when any point of the ray is problematic, return failure
+       if(istatus0 > 0) then
+         istatus = istatus0
+         ro_ref = missing_r8
+         return
+       endif
+
+       ! get the excess phase due to this ray interval
+       delta_phase2 = (ref2 + ref00) * gps_data(gpskey)%step_size * 0.5_r8
+
+       ! save the refractivity for integration of next ray interval
+       ref2 = ref00
+
+       phase = phase + delta_phase1 + delta_phase2
+       ! print*, 'phase= ',  phase, delta_phase1, delta_phase2
+
+    end do
+
+    ! finish the integration of the excess phase along the ray
+
+    ro_ref = phase    ! in m
+
+    ! print*, 'xx = ', lon, lat, height, ro_ref
+
+endif choose
+
+! if the original height was too high, for example.  do not return a
+! negative or 0 excess phase or refractivity.
+if (ro_ref == missing_r8 .or. ro_ref <= 0.0_r8) then
+   istatus = 5
+   ro_ref = missing_r8
+   return
+endif
+
+! ended ok, return local refractivity or non-local excess phase accumulated value
+istatus = 0
+
+end subroutine get_expected_gpsro_ref
+
+
+
+ subroutine ref_local(state_vector, location, height, lat, lon, ref00, istatus0)
+!------------------------------------------------------------------------------
+!
+! Calculate local refractivity at any GPS ray point (height, lat, lon)
+!
+! inputs:
+!    height, lat, lon:  GPS observation location (units: m, degree)
+!
+! output:
+!    ref00: modeled local refractivity at ray point(unit: N-1, ~1.0e-4 to e-6)
+!
+!------------------------------------------------------------------------------
+implicit none
+
+real(r8), intent(in) :: state_vector(:)
+real(r8), intent(in) :: lon, lat, height
+
+real(r8), intent(out) :: ref00
+integer,  intent(out) :: istatus0
+
+real(r8), parameter::  rd = 287.05_r8, rv = 461.51_r8, c1 = 77.6d-6 , &
+                       c2 = 3.73d-1,  rdorv = rd/rv
+real(r8) :: lon2, t, q, p, tv, ew
+type(location_type) :: location, location2
+integer :: which_vert
+
+if ( .not. module_initialized ) call initialize_module
+
+! for integration of GPS ray path beyond the wraparound point
+lon2 = lon
+if(lon > 360.0_r8 ) lon2 = lon - 360.0_r8
+if(lon <   0.0_r8 ) lon2 = lon + 360.0_r8
+
+which_vert = VERTISHEIGHT
+location2 = set_location(lon2, lat, height,  which_vert)
+
+! set return values assuming failure, so we can simply return if any
+! of the interpolation calls below fail.
+istatus0 = 3
+ref00 = missing_r8
+
+call interpolate(state_vector, location2,  KIND_TEMPERATURE,       t, istatus0)
+if (istatus0 > 0) return
+call interpolate(state_vector, location2,  KIND_SPECIFIC_HUMIDITY, q, istatus0)
+if (istatus0 > 0) return
+call interpolate(state_vector, location2,  KIND_PRESSURE,          p, istatus0)
+if (istatus0 > 0) return
+
+!  required variable units for calculation of GPS refractivity
+!   t :  Kelvin, from top to bottom
+!   q :  kg/kg, from top to bottom
+!   p :  mb
+
+p     = p * 0.01_r8      ! to mb
+
+tv    = t * (1.0_r8+(rv/rd - 1.0_r8)*q)         ! virtual temperature
+ew    = q * p/(rdorv + (1.0_r8-rdorv)*q )
+ref00 = c1*p/t + c2*ew/(t**2)              ! (N-1)
+
+! now we have succeeded, set istatus to good
+istatus0 = 0
+
+end subroutine ref_local
+
+
+ subroutine geo2carte (s1, s2, s3, x1, x2, x3, rfict0)
+!------------------------------------------------------------------------------
+!
+!  Converts geodetical coordinates to cartesian with a reference sphere
+!------------------------------------------------------------------------------
+!  input parameters:
+!   s - geodetical coordinates
+!        (height (m), latitude (degree), longitude (degree))
+!                     -90 to 90           0 to 360
+!  output parameters:
+!   x - cartesian coordinates (m) connected with the earth(x, y, z-coordinate)
+!------------------------------------------------------------------------------
+implicit none
+real(r8), intent(in)  :: s1, s2, s3, rfict0    ! units: m
+real(r8), intent(out) ::   x1, x2 ,x3
+real(r8) :: g3, g4
+
+if ( .not. module_initialized ) call initialize_module
+
+g3 = s1 + rfict0
+g4 = g3 * cos(s2*DEG2RAD)
+x1 = g4 * cos(s3*DEG2RAD)
+x2 = g4 * sin(s3*DEG2RAD)
+x3 = g3 * sin(s2*DEG2RAD)
+
+end subroutine geo2carte
+
+
+ subroutine carte2geo (x1, x2, x3, s1, s2, s3, rfict0)
+!------------------------------------------------------------------------------
+!
+!  Converts cartesian coordinates to geodetical.
+!
+!   input parameters:
+!        x - cartesian coordinates (x, y, z-coordinate, unit: m)
+!
+!   output parameters:
+!        s - geodetical coordinates
+!            (height (m), latitude (deg), longitude (deg))
+!                          -90 to 90         0 to 360
+!------------------------------------------------------------------------------
+implicit none
+real(r8), intent(in)  :: x1, x2, x3, rfict0
+real(r8), intent(out) :: s1, s2, s3
+
+real(r8), parameter :: crcl  = 2.0_r8 * PI, &
+                       crcl2 = 4.0_r8 * PI
+
+real(r8) :: rho, sphi, azmth
+
+if ( .not. module_initialized ) call initialize_module
+
+rho   = sqrt (x1**2 + x2**2 + x3**2 )
+sphi  = x3/rho
+s1    = rho - rfict0
+s2    = asin (sphi)
+azmth = atan2 (x2, x1)
+s3    = mod((azmth + crcl2), crcl)
+
+s2    = s2 * RAD2DEG
+s3    = s3 * RAD2DEG
+
+end  subroutine carte2geo
+
+end module obs_def_gps_mod
+
+                                                                              
+!---------------------------------------------------------------------------  
+! End of code inserted from ../../../obs_def/obs_def_gps_mod.f90
+!---------------------------------------------------------------------------  
+!---------------------------------------------------------------------------  
+! Start of code inserted from ../../../obs_def/obs_def_vortex_mod.f90
+!---------------------------------------------------------------------------  
+                                                                              
+module obs_def_vortex_mod
+
+use        types_mod, only : r8, missing_r8, ps0, PI, gravity
+use    utilities_mod, only : register_module, error_handler, E_ERR
+use     location_mod, only : location_type, write_location, read_location
+use  assim_model_mod, only : interpolate
+use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
+                             KIND_TEMPERATURE, KIND_VERTICAL_VELOCITY, &
+                             KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY, &
+                             KIND_VORTEX_LAT, KIND_VORTEX_LON, KIND_VORTEX_PMIN, &
+                             KIND_VORTEX_WMAX
+
+implicit none
+private
+
+public :: get_expected_vortex_info
+
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma/obs_def/obs_def_vortex_mod.f90 $"
+character(len=32 ), parameter :: revision = "$Revision: 6256 $"
+character(len=128), parameter :: revdate  = "$Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $"
+
+logical, save :: module_initialized = .false.
+
+! Storage for the special information required for observations of this type
+integer, parameter  :: max_vortex_obs = 3000
+
+contains
+
+!----------------------------------------------------------------------
+
+subroutine initialize_module
+
+call register_module(source, revision, revdate)
+module_initialized = .true.
+
+end subroutine initialize_module
+
+!----------------------------------------------------------------------
+
+subroutine get_expected_vortex_info(state_vector, location, vinfo, whichinfo, istatus)
+
+!
+! Return vortex info according to whichinfo
+! whichinfo='lat', vinfo = center lat
+! whichinfo='lon', vinfo = center lon
+! whichinfo='pmi', vinfo =  minimum sea level pressure
+!
+
+real(r8),            intent(in)  :: state_vector(:)
+type(location_type), intent(in)  :: location
+character(len=3),    intent(in)  :: whichinfo
+real(r8),            intent(out) :: vinfo
+integer,             intent(out) :: istatus
+
+if ( .not. module_initialized ) call initialize_module
+
+if (whichinfo == 'lat') then
+   call interpolate(state_vector, location, KIND_VORTEX_LAT, vinfo, istatus)
+else if (whichinfo == 'lon') then
+   call interpolate(state_vector, location, KIND_VORTEX_LON, vinfo, istatus)
+else if (whichinfo == 'pmi') then
+   call interpolate(state_vector, location, KIND_VORTEX_PMIN, vinfo, istatus)
+else if (whichinfo == 'wma') then
+   call interpolate(state_vector, location, KIND_VORTEX_WMAX, vinfo, istatus)
+else
+endif
+
+if (istatus /= 0) then
+   vinfo = missing_r8
+   return
+endif
+
+end subroutine get_expected_vortex_info
+
+end module obs_def_vortex_mod
+                                                                              
+!---------------------------------------------------------------------------  
+! End of code inserted from ../../../obs_def/obs_def_vortex_mod.f90
+!---------------------------------------------------------------------------  
+!---------------------------------------------------------------------------  
+! Start of code inserted from ../../../obs_def/obs_def_gts_mod.f90
+!---------------------------------------------------------------------------  
+                                                                              
+module obs_def_gts_mod
+
+use        types_mod, only : r8, missing_r8, gravity, gas_constant, gas_constant_v
+use    utilities_mod, only : register_module
+use     location_mod, only : location_type, set_location, get_location , &
+                             VERTISSURFACE, VERTISPRESSURE, VERTISHEIGHT
+use  assim_model_mod, only : interpolate
+use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE
+
+implicit none
+private
+
+public :: get_expected_thickness
+
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma/obs_def/obs_def_gts_mod.f90 $"
+character(len=32 ), parameter :: revision = "$Revision: 6256 $"
+character(len=128), parameter :: revdate  = "$Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $"
+
+logical, save :: module_initialized = .false.
+
+contains
+
+
+
+subroutine initialize_module
+!-----------------------------------------------------------------------------
+call register_module(source, revision, revdate)
+module_initialized = .true.
+
+end subroutine initialize_module
+
+
+
+subroutine get_expected_thickness(state_vector, location, thickness, istatus)
+!-----------------------------------------------------------------------------
+! inputs:
+!    state_vector:    DART state vector
+!
+! output parameters:
+!    thickness: modeled satem thickness between the specified layers. (unit: m)
+!    istatus:  =0 normal; =1 outside of domain.
+!---------------------------------------------
+! Hui Liu  NCAR/IMAGE  April 9, 2008
+!---------------------------------------------
+implicit none
+
+real(r8),            intent(in)  :: state_vector(:)
+type(location_type), intent(in)  :: location
+real(r8),            intent(out) :: thickness
+integer,             intent(out) :: istatus
+
+! local variables
+
+integer, parameter :: nlevel = 9, num_press_int = 10
+integer  :: istatus0, istatus2,  k
+real(r8) :: lon, lat, pressure, obsloc(3), obs_level(nlevel), press(num_press_int+1)
+real(r8) :: press_top, press_bot, press_int
+
+data  obs_level/85000.0, 70000.0, 50000.0, 40000.0, 30000.0, 25000.0, 20000.0, 15000.0, 10000.0/
+
+real(r8), parameter::  rdrv1 = gas_constant_v/gas_constant - 1.0_r8
+
+real(r8) :: lon2, t, q, tv, p
+type(location_type) :: location2
+integer :: which_vert
+
+if ( .not. module_initialized ) call initialize_module
+
+obsloc   = get_location(location)
+lon      = obsloc(1)                       ! degree: 0 to 360
+lat      = obsloc(2)                       ! degree: -90 to 90
+pressure = obsloc(3)                       ! (Pa)
+
+press_bot = -999.9_r8
+press_top = -999.9_r8
+
+! find the bottom and top of the layer -
+! The 'bottom' is defined to be the incoming observation value.
+! The 'top' is the next higher observation level.
+! If the bottom is the highest observation level;
+! there is no top, and it is an ERROR.
+
+if(pressure > obs_level(1) ) then
+   press_bot = pressure
+   press_top = obs_level(1)
+endif
+
+do k = 1, nlevel-1
+   if( abs(pressure - obs_level(k)) < 0.01_r8 ) then
+      press_bot = obs_level(k)
+      press_top = obs_level(k+1)
+      exit
+   endif
+end do
+
+!  define the vertical intervals for the integration of Tv. Use 10 sub_layers
+!  for the vertical integration.
+
+press_int = (press_bot - press_top)/num_press_int
+
+press(1) = press_bot
+do k=2, num_press_int+1
+   press(k) =  press(1) - press_int * (k-1)
+end do
+
+!   define the location of the interpolated points.
+
+lon2 = lon
+if(lon > 360.0_r8 ) lon2 = lon - 360.0_r8
+if(lon <   0.0_r8 ) lon2 = lon + 360.0_r8
+
+which_vert = VERTISPRESSURE
+istatus0  = 0
+istatus2  = 0
+thickness = 0.0_r8
+
+do k=2, num_press_int+1, 2
+   p = press(k)
+   location2 = set_location(lon2, lat, p,  which_vert)
+
+   call interpolate(state_vector, location2,  KIND_TEMPERATURE,       t, istatus0)
+   call interpolate(state_vector, location2,  KIND_SPECIFIC_HUMIDITY, q, istatus2)
+
+   if(istatus0 > 0 .or. istatus2 > 0  ) then
+      istatus = 1
+      thickness = missing_r8
+   endif
+
+   ! t :  Kelvin, from top to bottom
+   ! q :  kg/kg, from top to bottom
+
+   tv    = t * (1.0_r8 + rdrv1 * q )         ! virtual temperature
+   thickness = thickness + gas_constant/gravity * tv * log(press(k-1)/press(k+1))
+
+   ! expected values are around 1 KM; this is a check for
+   ! wildly out of range values.
+   if( abs(thickness) > 10000.0_r8 ) then
+      istatus = 2
+      thickness = missing_r8
+   endif
+end do
+
+return
+end subroutine get_expected_thickness
+
+
+end module obs_def_gts_mod
+                                                                              
+!---------------------------------------------------------------------------  
+! End of code inserted from ../../../obs_def/obs_def_gts_mod.f90
 !---------------------------------------------------------------------------  
 
 !----------------------------------------------------------------------
@@ -532,8 +2784,12 @@ use  assim_model_mod, only : get_state_meta_data, interpolate, interpolate_distr
 use     obs_kind_mod, only : assimilate_this_obs_kind, evaluate_this_obs_kind, &
                              max_obs_kinds, get_obs_kind_name, map_def_index, &
                              get_kind_from_menu
-
 use data_structure_mod, only : ensemble_type
+
+!HK temporary
+use mpi_utilities_mod, only    : my_task_id
+
+
 
 !----------------------------------------------------------------------
 ! This list is autogenerated by the 'preprocess' program.  To add types
@@ -546,11 +2802,136 @@ use data_structure_mod, only : ensemble_type
 
 !---------------------------------------------------------------------------  
                                                                               
-use obs_kind_mod, only : RAW_STATE_VARIABLE
-use obs_kind_mod, only : RAW_STATE_1D_INTEGRAL
+use obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT
+use obs_kind_mod, only : RADIOSONDE_V_WIND_COMPONENT
+use obs_kind_mod, only : RADIOSONDE_SURFACE_PRESSURE
+use obs_kind_mod, only : RADIOSONDE_TEMPERATURE
+use obs_kind_mod, only : RADIOSONDE_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : DROPSONDE_U_WIND_COMPONENT
+use obs_kind_mod, only : DROPSONDE_V_WIND_COMPONENT
+use obs_kind_mod, only : DROPSONDE_SURFACE_PRESSURE
+use obs_kind_mod, only : DROPSONDE_TEMPERATURE
+use obs_kind_mod, only : DROPSONDE_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : AIRCRAFT_U_WIND_COMPONENT
+use obs_kind_mod, only : AIRCRAFT_V_WIND_COMPONENT
+use obs_kind_mod, only : AIRCRAFT_TEMPERATURE
+use obs_kind_mod, only : AIRCRAFT_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : ACARS_U_WIND_COMPONENT
+use obs_kind_mod, only : ACARS_V_WIND_COMPONENT
+use obs_kind_mod, only : ACARS_TEMPERATURE
+use obs_kind_mod, only : ACARS_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : MARINE_SFC_U_WIND_COMPONENT
+use obs_kind_mod, only : MARINE_SFC_V_WIND_COMPONENT
+use obs_kind_mod, only : MARINE_SFC_TEMPERATURE
+use obs_kind_mod, only : MARINE_SFC_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : LAND_SFC_U_WIND_COMPONENT
+use obs_kind_mod, only : LAND_SFC_V_WIND_COMPONENT
+use obs_kind_mod, only : LAND_SFC_TEMPERATURE
+use obs_kind_mod, only : LAND_SFC_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : SAT_U_WIND_COMPONENT
+use obs_kind_mod, only : SAT_V_WIND_COMPONENT
+use obs_kind_mod, only : ATOV_TEMPERATURE
+use obs_kind_mod, only : AIRS_TEMPERATURE
+use obs_kind_mod, only : AIRS_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : DOPPLER_RADIAL_VELOCITY
+use obs_kind_mod, only : RADAR_REFLECTIVITY
+use obs_kind_mod, only : RADAR_CLEARAIR_REFLECTIVITY
+use obs_kind_mod, only : PRECIPITATION_FALL_SPEED
+use obs_kind_mod, only : METAR_U_10_METER_WIND
+use obs_kind_mod, only : METAR_V_10_METER_WIND
+use obs_kind_mod, only : METAR_TEMPERATURE_2_METER
+use obs_kind_mod, only : METAR_SPECIFIC_HUMIDITY_2_METER
+use obs_kind_mod, only : METAR_SURFACE_PRESSURE
+use obs_kind_mod, only : METAR_POT_TEMP_2_METER
+use obs_kind_mod, only : DEWPOINT
+use obs_kind_mod, only : DEWPOINT_2_METER
+use obs_kind_mod, only : BUOY_DEWPOINT
+use obs_kind_mod, only : SHIP_DEWPOINT
+use obs_kind_mod, only : SYNOP_DEWPOINT
+use obs_kind_mod, only : AIREP_DEWPOINT
+use obs_kind_mod, only : AMDAR_DEWPOINT
+use obs_kind_mod, only : PILOT_DEWPOINT
+use obs_kind_mod, only : BOGUS_DEWPOINT
+use obs_kind_mod, only : AIRS_DEWPOINT
+use obs_kind_mod, only : METAR_DEWPOINT_2_METER
+use obs_kind_mod, only : RADIOSONDE_DEWPOINT
+use obs_kind_mod, only : DROPSONDE_DEWPOINT
+use obs_kind_mod, only : AIRCRAFT_DEWPOINT
+use obs_kind_mod, only : ACARS_DEWPOINT
+use obs_kind_mod, only : MARINE_SFC_DEWPOINT
+use obs_kind_mod, only : LAND_SFC_DEWPOINT
+use obs_kind_mod, only : RADIOSONDE_RELATIVE_HUMIDITY
+use obs_kind_mod, only : DROPSONDE_RELATIVE_HUMIDITY
+use obs_kind_mod, only : AIRCRAFT_RELATIVE_HUMIDITY
+use obs_kind_mod, only : ACARS_RELATIVE_HUMIDITY
+use obs_kind_mod, only : MARINE_SFC_RELATIVE_HUMIDITY
+use obs_kind_mod, only : LAND_SFC_RELATIVE_HUMIDITY
+use obs_kind_mod, only : METAR_RELATIVE_HUMIDITY_2_METER
+use obs_kind_mod, only : AIRS_RELATIVE_HUMIDITY
+use obs_kind_mod, only : RADIOSONDE_SURFACE_ALTIMETER
+use obs_kind_mod, only : DROPSONDE_SURFACE_ALTIMETER
+use obs_kind_mod, only : MARINE_SFC_ALTIMETER
+use obs_kind_mod, only : LAND_SFC_ALTIMETER
+use obs_kind_mod, only : METAR_ALTIMETER
+use obs_kind_mod, only : TEMPERATURE
+use obs_kind_mod, only : SPECIFIC_HUMIDITY
+use obs_kind_mod, only : PRESSURE
+use obs_kind_mod, only : GPSRO_REFRACTIVITY
+use obs_kind_mod, only : VORTEX_LAT
+use obs_kind_mod, only : VORTEX_LON
+use obs_kind_mod, only : VORTEX_PMIN
+use obs_kind_mod, only : VORTEX_WMAX
+use obs_kind_mod, only : BUOY_U_WIND_COMPONENT
+use obs_kind_mod, only : BUOY_V_WIND_COMPONENT
+use obs_kind_mod, only : BUOY_SURFACE_PRESSURE
+use obs_kind_mod, only : BUOY_TEMPERATURE
+use obs_kind_mod, only : SHIP_U_WIND_COMPONENT
+use obs_kind_mod, only : SHIP_V_WIND_COMPONENT
+use obs_kind_mod, only : SHIP_SURFACE_PRESSURE
+use obs_kind_mod, only : SHIP_TEMPERATURE
+use obs_kind_mod, only : SYNOP_U_WIND_COMPONENT
+use obs_kind_mod, only : SYNOP_V_WIND_COMPONENT
+use obs_kind_mod, only : SYNOP_SURFACE_PRESSURE
+use obs_kind_mod, only : SYNOP_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : SYNOP_TEMPERATURE
+use obs_kind_mod, only : AIREP_U_WIND_COMPONENT
+use obs_kind_mod, only : AIREP_V_WIND_COMPONENT
+use obs_kind_mod, only : AIREP_PRESSURE
+use obs_kind_mod, only : AIREP_TEMPERATURE
+use obs_kind_mod, only : AMDAR_U_WIND_COMPONENT
+use obs_kind_mod, only : AMDAR_V_WIND_COMPONENT
+use obs_kind_mod, only : AMDAR_PRESSURE
+use obs_kind_mod, only : AMDAR_TEMPERATURE
+use obs_kind_mod, only : PILOT_U_WIND_COMPONENT
+use obs_kind_mod, only : PILOT_V_WIND_COMPONENT
+use obs_kind_mod, only : PILOT_PRESSURE
+use obs_kind_mod, only : PILOT_TEMPERATURE
+use obs_kind_mod, only : BOGUS_U_WIND_COMPONENT
+use obs_kind_mod, only : BOGUS_V_WIND_COMPONENT
+use obs_kind_mod, only : BOGUS_PRESSURE
+use obs_kind_mod, only : BOGUS_TEMPERATURE
+use obs_kind_mod, only : PROFILER_U_WIND_COMPONENT
+use obs_kind_mod, only : PROFILER_V_WIND_COMPONENT
+use obs_kind_mod, only : PROFILER_PRESSURE
+use obs_kind_mod, only : SATEM_THICKNESS
                                                                               
-use obs_kind_mod, only : KIND_RAW_STATE_VARIABLE
-use obs_kind_mod, only : KIND_1D_INTEGRAL
+use obs_kind_mod, only : KIND_U_WIND_COMPONENT
+use obs_kind_mod, only : KIND_V_WIND_COMPONENT
+use obs_kind_mod, only : KIND_SURFACE_PRESSURE
+use obs_kind_mod, only : KIND_TEMPERATURE
+use obs_kind_mod, only : KIND_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : KIND_VELOCITY
+use obs_kind_mod, only : KIND_RADAR_REFLECTIVITY
+use obs_kind_mod, only : KIND_POWER_WEIGHTED_FALL_SPEED
+use obs_kind_mod, only : KIND_POTENTIAL_TEMPERATURE
+use obs_kind_mod, only : KIND_DEWPOINT
+use obs_kind_mod, only : KIND_RELATIVE_HUMIDITY
+use obs_kind_mod, only : KIND_PRESSURE
+use obs_kind_mod, only : KIND_GPSRO
+use obs_kind_mod, only : KIND_VORTEX_LAT
+use obs_kind_mod, only : KIND_VORTEX_LON
+use obs_kind_mod, only : KIND_VORTEX_PMIN
+use obs_kind_mod, only : KIND_VORTEX_WMAX
                                                                               
 !---------------------------------------------------------------------------  
                                                                               
@@ -569,9 +2950,17 @@ use obs_kind_mod, only : KIND_1D_INTEGRAL
 ! will have been added above, and now a use statement will be generated
 ! here so the generic obs_def_mod has access to the code.
 
-   use obs_def_1d_state_mod, only : write_1d_integral, read_1d_integral, &
-                                     interactive_1d_integral, get_expected_1d_integral, &
-                                     get_expected_1d_integral_distrib
+  use obs_def_radar_mod, only : write_radial_vel, read_radial_vel,           &
+                            interactive_radial_vel, get_expected_radial_vel, &
+                            read_radar_ref, get_expected_radar_ref,          &
+                            get_expected_fall_velocity
+   use obs_def_dew_point_mod, only : get_expected_dew_point
+   use obs_def_rel_humidity_mod, only : get_expected_relative_humidity
+   use obs_def_altimeter_mod, only : get_expected_altimeter, compute_altimeter
+  use obs_def_gps_mod, only : get_expected_gpsro_ref, interactive_gpsro_ref, &
+                              read_gpsro_ref, write_gpsro_ref
+   use obs_def_vortex_mod, only : get_expected_vortex_info
+   use obs_def_gts_mod, only : get_expected_thickness
 
 !----------------------------------------------------------------------
 ! End of any obs_def_xxx_mod specific use statements
@@ -900,10 +3289,193 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
       ! CASE statements and algorithms for specific observation kinds are
       ! inserted here by the DART preprocess program.
 
-         case(RAW_STATE_1D_INTEGRAL)
-            call get_expected_1d_integral(state, location, obs_def%key, obs_val, istatus)
-      case(RAW_STATE_VARIABLE)
-         call interpolate(state, location, KIND_RAW_STATE_VARIABLE, obs_val, istatus)
+  case(DOPPLER_RADIAL_VELOCITY)
+     call get_expected_radial_vel(state, location, obs_def%key, obs_val, istatus)
+  case(RADAR_REFLECTIVITY)
+     call get_expected_radar_ref(state, location, obs_val, istatus)
+  case(RADAR_CLEARAIR_REFLECTIVITY)
+     call get_expected_radar_ref(state, location, obs_val, istatus)
+  case(PRECIPITATION_FALL_SPEED)
+     call get_expected_fall_velocity(state, location, obs_val, istatus)
+         case(DEWPOINT)
+            call get_expected_dew_point(state, location, 1, obs_val, istatus)
+         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT, AIRS_DEWPOINT)
+            call get_expected_dew_point(state, location, 1, obs_val, istatus)
+         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
+            call get_expected_dew_point(state, location, 1, obs_val, istatus)
+
+         case(DEWPOINT_2_METER)
+            call get_expected_dew_point(state, location, 2, obs_val, istatus)
+         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT)
+            call get_expected_dew_point(state, location, 2, obs_val, istatus)
+         case(MARINE_SFC_DEWPOINT, LAND_SFC_DEWPOINT)
+            call get_expected_dew_point(state, location, 2, obs_val, istatus)
+         case(METAR_DEWPOINT_2_METER)
+            call get_expected_dew_point(state, location, 2, obs_val, istatus)
+         case(RADIOSONDE_RELATIVE_HUMIDITY, DROPSONDE_RELATIVE_HUMIDITY, &
+              AIRCRAFT_RELATIVE_HUMIDITY,   ACARS_RELATIVE_HUMIDITY,     &
+              MARINE_SFC_RELATIVE_HUMIDITY, LAND_SFC_RELATIVE_HUMIDITY,  &
+              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY)
+            call get_expected_relative_humidity(state, location, obs_val, istatus)
+         case(RADIOSONDE_SURFACE_ALTIMETER, DROPSONDE_SURFACE_ALTIMETER, MARINE_SFC_ALTIMETER, &
+              LAND_SFC_ALTIMETER, METAR_ALTIMETER)
+            call get_expected_altimeter(state, location, obs_val, istatus)
+         case(GPSRO_REFRACTIVITY)
+            call get_expected_gpsro_ref(state, location, obs_def%key, obs_val, istatus)
+         case(VORTEX_LAT)
+            call get_expected_vortex_info(state, location, obs_val, 'lat',istatus)
+         case(VORTEX_LON)
+            call get_expected_vortex_info(state, location, obs_val, 'lon',istatus)
+         case(VORTEX_PMIN)
+            call get_expected_vortex_info(state, location, obs_val, 'pmi',istatus)
+         case(VORTEX_WMAX)
+            call get_expected_vortex_info(state, location, obs_val, 'wma',istatus)
+         case(SATEM_THICKNESS)
+            call get_expected_thickness(state, location, obs_val, istatus)
+      case(RADIOSONDE_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(RADIOSONDE_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(RADIOSONDE_SURFACE_PRESSURE)
+         call interpolate(state, location, KIND_SURFACE_PRESSURE, obs_val, istatus)
+      case(RADIOSONDE_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(RADIOSONDE_SPECIFIC_HUMIDITY)
+         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
+      case(DROPSONDE_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(DROPSONDE_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(DROPSONDE_SURFACE_PRESSURE)
+         call interpolate(state, location, KIND_SURFACE_PRESSURE, obs_val, istatus)
+      case(DROPSONDE_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(DROPSONDE_SPECIFIC_HUMIDITY)
+         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
+      case(AIRCRAFT_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(AIRCRAFT_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(AIRCRAFT_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(AIRCRAFT_SPECIFIC_HUMIDITY)
+         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
+      case(ACARS_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(ACARS_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(ACARS_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(ACARS_SPECIFIC_HUMIDITY)
+         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
+      case(MARINE_SFC_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(MARINE_SFC_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(MARINE_SFC_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(MARINE_SFC_SPECIFIC_HUMIDITY)
+         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
+      case(LAND_SFC_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(LAND_SFC_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(LAND_SFC_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(LAND_SFC_SPECIFIC_HUMIDITY)
+         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
+      case(SAT_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(SAT_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(ATOV_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(AIRS_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(AIRS_SPECIFIC_HUMIDITY)
+         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
+      case(METAR_U_10_METER_WIND)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(METAR_V_10_METER_WIND)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(METAR_TEMPERATURE_2_METER)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(METAR_SPECIFIC_HUMIDITY_2_METER)
+         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
+      case(METAR_SURFACE_PRESSURE)
+         call interpolate(state, location, KIND_SURFACE_PRESSURE, obs_val, istatus)
+      case(METAR_POT_TEMP_2_METER)
+         call interpolate(state, location, KIND_POTENTIAL_TEMPERATURE, obs_val, istatus)
+      case(TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(SPECIFIC_HUMIDITY)
+         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
+      case(PRESSURE)
+         call interpolate(state, location, KIND_PRESSURE, obs_val, istatus)
+      case(BUOY_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(BUOY_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(BUOY_SURFACE_PRESSURE)
+         call interpolate(state, location, KIND_SURFACE_PRESSURE, obs_val, istatus)
+      case(BUOY_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(SHIP_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(SHIP_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(SHIP_SURFACE_PRESSURE)
+         call interpolate(state, location, KIND_SURFACE_PRESSURE, obs_val, istatus)
+      case(SHIP_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(SYNOP_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(SYNOP_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(SYNOP_SURFACE_PRESSURE)
+         call interpolate(state, location, KIND_SURFACE_PRESSURE, obs_val, istatus)
+      case(SYNOP_SPECIFIC_HUMIDITY)
+         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
+      case(SYNOP_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(AIREP_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(AIREP_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(AIREP_PRESSURE)
+         call interpolate(state, location, KIND_PRESSURE, obs_val, istatus)
+      case(AIREP_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(AMDAR_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(AMDAR_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(AMDAR_PRESSURE)
+         call interpolate(state, location, KIND_PRESSURE, obs_val, istatus)
+      case(AMDAR_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(PILOT_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(PILOT_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(PILOT_PRESSURE)
+         call interpolate(state, location, KIND_PRESSURE, obs_val, istatus)
+      case(PILOT_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(BOGUS_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(BOGUS_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(BOGUS_PRESSURE)
+         call interpolate(state, location, KIND_PRESSURE, obs_val, istatus)
+      case(BOGUS_TEMPERATURE)
+         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
+      case(PROFILER_U_WIND_COMPONENT)
+         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
+      case(PROFILER_V_WIND_COMPONENT)
+         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
+      case(PROFILER_PRESSURE)
+         call interpolate(state, location, KIND_PRESSURE, obs_val, istatus)
 
       ! If the observation kind is not available, it is an error. The DART
       ! preprocess program should provide code for all available kinds.
@@ -923,8 +3495,7 @@ end subroutine get_expected_obs_from_def
 !----------------------------------------------------------------------------
 
 subroutine get_expected_obs_from_def_distrib_state(key, obs_def, obs_kind_ind, ens_index, &
-   state_time, isprior, istatus, assimilate_this_ob, evaluate_this_ob,   &
-   expected_obs, state_ens_handle, win)
+   state_time, isprior, istatus, assimilate_this_ob, evaluate_this_ob, expected_obs, state_ens_handle, win)
 
 ! Compute forward operator for a particular obs_def
 integer,            intent(in)  :: key
@@ -934,14 +3505,17 @@ type(time_type),    intent(in)  :: state_time
 logical,            intent(in)  :: isprior
 integer,            intent(out) :: istatus
 logical,            intent(out) :: assimilate_this_ob, evaluate_this_ob
-real(r8),           intent(out) :: expected_obs(:)
-type(ensemble_type),  intent(in) :: state_ens_handle
-integer,            intent(in)  :: win !< mpi communication window
 
 type(location_type) :: location
 type(time_type)     :: obs_time
 integer             :: obs_key
 real(r8)            :: error_var
+
+!HK
+real(r8), intent(out) :: expected_obs(:)
+integer, intent(in) :: win !> window for one sided communication
+type(ensemble_type) state_ens_handle
+
 
 ! Load up the assimilate and evaluate status for this observation kind
 assimilate_this_ob = assimilate_this_obs_kind(obs_kind_ind)
@@ -986,11 +3560,10 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
       ! CASE statements and algorithms for specific observation kinds are
       ! inserted here by the DART preprocess program.
 
-         case(RAW_STATE_1D_INTEGRAL)
-            call get_expected_1d_integral_distrib(location, obs_def%key, expected_obs, istatus, state_ens_handle, win)
-      case(RAW_STATE_VARIABLE)
-         call interpolate_distrib(location, KIND_RAW_STATE_VARIABLE, istatus, expected_obs, state_ens_handle, win)
-
+      ! DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF INSERTED HERE
+      case(RADIOSONDE_SPECIFIC_HUMIDITY)
+         call interpolate_distrib(location, KIND_SPECIFIC_HUMIDITY, istatus, expected_obs, state_ens_handle, win)
+         !print*, 'completed interpolate_distrib rank ', my_task_id()
       ! If the observation kind is not available, it is an error. The DART
       ! preprocess program should provide code for all available kinds.
       case DEFAULT
@@ -1085,9 +3658,189 @@ select case(obs_def%kind)
    ! an observation sequence file. Case code to do this is inserted here by
    ! the DART preprocess program.
 
-      case(RAW_STATE_1D_INTEGRAL)
-         call read_1d_integral(obs_def%key, ifile, fform)
-   case(RAW_STATE_VARIABLE)
+   case(DOPPLER_RADIAL_VELOCITY)
+      call read_radial_vel(obs_def%key, ifile, fform)
+   case(RADAR_REFLECTIVITY)
+      call read_radar_ref(obs_val, obs_def%key)
+  case(RADAR_CLEARAIR_REFLECTIVITY)
+      call read_radar_ref(obs_val, obs_def%key)
+   case(PRECIPITATION_FALL_SPEED)
+      continue
+         case(DEWPOINT, DEWPOINT_2_METER)
+            continue
+         case(METAR_DEWPOINT_2_METER)
+            continue
+         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT)
+            continue
+         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT, AIRS_DEWPOINT)
+            continue
+         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
+            continue
+         case(MARINE_SFC_DEWPOINT, LAND_SFC_DEWPOINT)
+            continue
+         case(RADIOSONDE_RELATIVE_HUMIDITY, DROPSONDE_RELATIVE_HUMIDITY, &
+              AIRCRAFT_RELATIVE_HUMIDITY,   ACARS_RELATIVE_HUMIDITY,     &
+              MARINE_SFC_RELATIVE_HUMIDITY, LAND_SFC_RELATIVE_HUMIDITY,  &
+              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY)
+            continue
+         case(RADIOSONDE_SURFACE_ALTIMETER, DROPSONDE_SURFACE_ALTIMETER, MARINE_SFC_ALTIMETER, &
+              LAND_SFC_ALTIMETER, METAR_ALTIMETER)
+            continue
+         case(GPSRO_REFRACTIVITY)
+            call read_gpsro_ref(obs_def%key, ifile, fform)
+      case(VORTEX_LAT)
+         continue
+      case(VORTEX_LON)
+         continue
+      case(VORTEX_PMIN)
+         continue
+      case(VORTEX_WMAX)
+         continue
+ case(SATEM_THICKNESS)
+      continue
+   case(RADIOSONDE_U_WIND_COMPONENT)
+      continue
+   case(RADIOSONDE_V_WIND_COMPONENT)
+      continue
+   case(RADIOSONDE_SURFACE_PRESSURE)
+      continue
+   case(RADIOSONDE_TEMPERATURE)
+      continue
+   case(RADIOSONDE_SPECIFIC_HUMIDITY)
+      continue
+   case(DROPSONDE_U_WIND_COMPONENT)
+      continue
+   case(DROPSONDE_V_WIND_COMPONENT)
+      continue
+   case(DROPSONDE_SURFACE_PRESSURE)
+      continue
+   case(DROPSONDE_TEMPERATURE)
+      continue
+   case(DROPSONDE_SPECIFIC_HUMIDITY)
+      continue
+   case(AIRCRAFT_U_WIND_COMPONENT)
+      continue
+   case(AIRCRAFT_V_WIND_COMPONENT)
+      continue
+   case(AIRCRAFT_TEMPERATURE)
+      continue
+   case(AIRCRAFT_SPECIFIC_HUMIDITY)
+      continue
+   case(ACARS_U_WIND_COMPONENT)
+      continue
+   case(ACARS_V_WIND_COMPONENT)
+      continue
+   case(ACARS_TEMPERATURE)
+      continue
+   case(ACARS_SPECIFIC_HUMIDITY)
+      continue
+   case(MARINE_SFC_U_WIND_COMPONENT)
+      continue
+   case(MARINE_SFC_V_WIND_COMPONENT)
+      continue
+   case(MARINE_SFC_TEMPERATURE)
+      continue
+   case(MARINE_SFC_SPECIFIC_HUMIDITY)
+      continue
+   case(LAND_SFC_U_WIND_COMPONENT)
+      continue
+   case(LAND_SFC_V_WIND_COMPONENT)
+      continue
+   case(LAND_SFC_TEMPERATURE)
+      continue
+   case(LAND_SFC_SPECIFIC_HUMIDITY)
+      continue
+   case(SAT_U_WIND_COMPONENT)
+      continue
+   case(SAT_V_WIND_COMPONENT)
+      continue
+   case(ATOV_TEMPERATURE)
+      continue
+   case(AIRS_TEMPERATURE)
+      continue
+   case(AIRS_SPECIFIC_HUMIDITY)
+      continue
+   case(METAR_U_10_METER_WIND)
+      continue
+   case(METAR_V_10_METER_WIND)
+      continue
+   case(METAR_TEMPERATURE_2_METER)
+      continue
+   case(METAR_SPECIFIC_HUMIDITY_2_METER)
+      continue
+   case(METAR_SURFACE_PRESSURE)
+      continue
+   case(METAR_POT_TEMP_2_METER)
+      continue
+   case(TEMPERATURE)
+      continue
+   case(SPECIFIC_HUMIDITY)
+      continue
+   case(PRESSURE)
+      continue
+   case(BUOY_U_WIND_COMPONENT)
+      continue
+   case(BUOY_V_WIND_COMPONENT)
+      continue
+   case(BUOY_SURFACE_PRESSURE)
+      continue
+   case(BUOY_TEMPERATURE)
+      continue
+   case(SHIP_U_WIND_COMPONENT)
+      continue
+   case(SHIP_V_WIND_COMPONENT)
+      continue
+   case(SHIP_SURFACE_PRESSURE)
+      continue
+   case(SHIP_TEMPERATURE)
+      continue
+   case(SYNOP_U_WIND_COMPONENT)
+      continue
+   case(SYNOP_V_WIND_COMPONENT)
+      continue
+   case(SYNOP_SURFACE_PRESSURE)
+      continue
+   case(SYNOP_SPECIFIC_HUMIDITY)
+      continue
+   case(SYNOP_TEMPERATURE)
+      continue
+   case(AIREP_U_WIND_COMPONENT)
+      continue
+   case(AIREP_V_WIND_COMPONENT)
+      continue
+   case(AIREP_PRESSURE)
+      continue
+   case(AIREP_TEMPERATURE)
+      continue
+   case(AMDAR_U_WIND_COMPONENT)
+      continue
+   case(AMDAR_V_WIND_COMPONENT)
+      continue
+   case(AMDAR_PRESSURE)
+      continue
+   case(AMDAR_TEMPERATURE)
+      continue
+   case(PILOT_U_WIND_COMPONENT)
+      continue
+   case(PILOT_V_WIND_COMPONENT)
+      continue
+   case(PILOT_PRESSURE)
+      continue
+   case(PILOT_TEMPERATURE)
+      continue
+   case(BOGUS_U_WIND_COMPONENT)
+      continue
+   case(BOGUS_V_WIND_COMPONENT)
+      continue
+   case(BOGUS_PRESSURE)
+      continue
+   case(BOGUS_TEMPERATURE)
+      continue
+   case(PROFILER_U_WIND_COMPONENT)
+      continue
+   case(PROFILER_V_WIND_COMPONENT)
+      continue
+   case(PROFILER_PRESSURE)
       continue
 
 ! A negative value means identity observations, just move along
@@ -1156,9 +3909,189 @@ select case(obs_def%kind)
    ! an observation sequence file. Case code to do this is inserted here by
    ! the DART preprocess program.
 
-      case(RAW_STATE_1D_INTEGRAL)
-         call write_1d_integral(obs_def%key, ifile, fform)
-   case(RAW_STATE_VARIABLE)
+   case(DOPPLER_RADIAL_VELOCITY)
+      call write_radial_vel(obs_def%key, ifile, fform)
+   case(RADAR_REFLECTIVITY)
+      continue
+   case(RADAR_CLEARAIR_REFLECTIVITY)
+      continue
+   case(PRECIPITATION_FALL_SPEED)
+      continue
+         case(DEWPOINT, DEWPOINT_2_METER)
+            continue
+         case(METAR_DEWPOINT_2_METER)
+            continue
+         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT)
+            continue
+         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT, AIRS_DEWPOINT)
+            continue
+         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
+            continue
+         case(MARINE_SFC_DEWPOINT, LAND_SFC_DEWPOINT)
+            continue
+         case(RADIOSONDE_RELATIVE_HUMIDITY, DROPSONDE_RELATIVE_HUMIDITY, &
+              AIRCRAFT_RELATIVE_HUMIDITY,   ACARS_RELATIVE_HUMIDITY,     &
+              MARINE_SFC_RELATIVE_HUMIDITY, LAND_SFC_RELATIVE_HUMIDITY,  &
+              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY)
+            continue
+         case(RADIOSONDE_SURFACE_ALTIMETER, DROPSONDE_SURFACE_ALTIMETER, MARINE_SFC_ALTIMETER, &
+              LAND_SFC_ALTIMETER, METAR_ALTIMETER)
+            continue
+         case(GPSRO_REFRACTIVITY)
+            call write_gpsro_ref(obs_def%key, ifile, fform)
+      case(VORTEX_LAT)
+         continue
+      case(VORTEX_LON)
+         continue
+      case(VORTEX_PMIN)
+         continue
+      case(VORTEX_WMAX)
+         continue
+ case(SATEM_THICKNESS)
+      continue
+   case(RADIOSONDE_U_WIND_COMPONENT)
+      continue
+   case(RADIOSONDE_V_WIND_COMPONENT)
+      continue
+   case(RADIOSONDE_SURFACE_PRESSURE)
+      continue
+   case(RADIOSONDE_TEMPERATURE)
+      continue
+   case(RADIOSONDE_SPECIFIC_HUMIDITY)
+      continue
+   case(DROPSONDE_U_WIND_COMPONENT)
+      continue
+   case(DROPSONDE_V_WIND_COMPONENT)
+      continue
+   case(DROPSONDE_SURFACE_PRESSURE)
+      continue
+   case(DROPSONDE_TEMPERATURE)
+      continue
+   case(DROPSONDE_SPECIFIC_HUMIDITY)
+      continue
+   case(AIRCRAFT_U_WIND_COMPONENT)
+      continue
+   case(AIRCRAFT_V_WIND_COMPONENT)
+      continue
+   case(AIRCRAFT_TEMPERATURE)
+      continue
+   case(AIRCRAFT_SPECIFIC_HUMIDITY)
+      continue
+   case(ACARS_U_WIND_COMPONENT)
+      continue
+   case(ACARS_V_WIND_COMPONENT)
+      continue
+   case(ACARS_TEMPERATURE)
+      continue
+   case(ACARS_SPECIFIC_HUMIDITY)
+      continue
+   case(MARINE_SFC_U_WIND_COMPONENT)
+      continue
+   case(MARINE_SFC_V_WIND_COMPONENT)
+      continue
+   case(MARINE_SFC_TEMPERATURE)
+      continue
+   case(MARINE_SFC_SPECIFIC_HUMIDITY)
+      continue
+   case(LAND_SFC_U_WIND_COMPONENT)
+      continue
+   case(LAND_SFC_V_WIND_COMPONENT)
+      continue
+   case(LAND_SFC_TEMPERATURE)
+      continue
+   case(LAND_SFC_SPECIFIC_HUMIDITY)
+      continue
+   case(SAT_U_WIND_COMPONENT)
+      continue
+   case(SAT_V_WIND_COMPONENT)
+      continue
+   case(ATOV_TEMPERATURE)
+      continue
+   case(AIRS_TEMPERATURE)
+      continue
+   case(AIRS_SPECIFIC_HUMIDITY)
+      continue
+   case(METAR_U_10_METER_WIND)
+      continue
+   case(METAR_V_10_METER_WIND)
+      continue
+   case(METAR_TEMPERATURE_2_METER)
+      continue
+   case(METAR_SPECIFIC_HUMIDITY_2_METER)
+      continue
+   case(METAR_SURFACE_PRESSURE)
+      continue
+   case(METAR_POT_TEMP_2_METER)
+      continue
+   case(TEMPERATURE)
+      continue
+   case(SPECIFIC_HUMIDITY)
+      continue
+   case(PRESSURE)
+      continue
+   case(BUOY_U_WIND_COMPONENT)
+      continue
+   case(BUOY_V_WIND_COMPONENT)
+      continue
+   case(BUOY_SURFACE_PRESSURE)
+      continue
+   case(BUOY_TEMPERATURE)
+      continue
+   case(SHIP_U_WIND_COMPONENT)
+      continue
+   case(SHIP_V_WIND_COMPONENT)
+      continue
+   case(SHIP_SURFACE_PRESSURE)
+      continue
+   case(SHIP_TEMPERATURE)
+      continue
+   case(SYNOP_U_WIND_COMPONENT)
+      continue
+   case(SYNOP_V_WIND_COMPONENT)
+      continue
+   case(SYNOP_SURFACE_PRESSURE)
+      continue
+   case(SYNOP_SPECIFIC_HUMIDITY)
+      continue
+   case(SYNOP_TEMPERATURE)
+      continue
+   case(AIREP_U_WIND_COMPONENT)
+      continue
+   case(AIREP_V_WIND_COMPONENT)
+      continue
+   case(AIREP_PRESSURE)
+      continue
+   case(AIREP_TEMPERATURE)
+      continue
+   case(AMDAR_U_WIND_COMPONENT)
+      continue
+   case(AMDAR_V_WIND_COMPONENT)
+      continue
+   case(AMDAR_PRESSURE)
+      continue
+   case(AMDAR_TEMPERATURE)
+      continue
+   case(PILOT_U_WIND_COMPONENT)
+      continue
+   case(PILOT_V_WIND_COMPONENT)
+      continue
+   case(PILOT_PRESSURE)
+      continue
+   case(PILOT_TEMPERATURE)
+      continue
+   case(BOGUS_U_WIND_COMPONENT)
+      continue
+   case(BOGUS_V_WIND_COMPONENT)
+      continue
+   case(BOGUS_PRESSURE)
+      continue
+   case(BOGUS_TEMPERATURE)
+      continue
+   case(PROFILER_U_WIND_COMPONENT)
+      continue
+   case(PROFILER_V_WIND_COMPONENT)
+      continue
+   case(PROFILER_PRESSURE)
       continue
 
    ! A negative value means identity observations, just move along
@@ -1201,9 +4134,189 @@ select case(obs_def%kind)
    ! define an observation. Case code to do this is inserted here by the
    ! DART preprocess program.
 
-      case(RAW_STATE_1D_INTEGRAL)
-         call interactive_1d_integral(obs_def%key)
-   case(RAW_STATE_VARIABLE)
+   case(DOPPLER_RADIAL_VELOCITY)
+      call interactive_radial_vel(obs_def%key)
+   case(RADAR_REFLECTIVITY)
+      continue
+   case(PRECIPITATION_FALL_SPEED)
+      continue
+   case(RADAR_CLEARAIR_REFLECTIVITY)
+      continue
+         case(DEWPOINT, DEWPOINT_2_METER)
+            continue
+         case(METAR_DEWPOINT_2_METER)
+            continue
+         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT)
+            continue
+         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT, AIRS_DEWPOINT)
+            continue
+         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
+            continue
+         case(MARINE_SFC_DEWPOINT, LAND_SFC_DEWPOINT)
+            continue
+         case(RADIOSONDE_RELATIVE_HUMIDITY, DROPSONDE_RELATIVE_HUMIDITY, &
+              AIRCRAFT_RELATIVE_HUMIDITY,   ACARS_RELATIVE_HUMIDITY,     &
+              MARINE_SFC_RELATIVE_HUMIDITY, LAND_SFC_RELATIVE_HUMIDITY,  &
+              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY)
+            continue
+         case(RADIOSONDE_SURFACE_ALTIMETER, DROPSONDE_SURFACE_ALTIMETER, MARINE_SFC_ALTIMETER, &
+              LAND_SFC_ALTIMETER, METAR_ALTIMETER)
+            continue
+         case(GPSRO_REFRACTIVITY)
+            call interactive_gpsro_ref(obs_def%key)
+      case(VORTEX_LAT)
+         continue
+      case(VORTEX_LON)
+         continue
+      case(VORTEX_PMIN)
+         continue
+      case(VORTEX_WMAX)
+         continue
+ case(SATEM_THICKNESS)
+      continue
+   case(RADIOSONDE_U_WIND_COMPONENT)
+      continue
+   case(RADIOSONDE_V_WIND_COMPONENT)
+      continue
+   case(RADIOSONDE_SURFACE_PRESSURE)
+      continue
+   case(RADIOSONDE_TEMPERATURE)
+      continue
+   case(RADIOSONDE_SPECIFIC_HUMIDITY)
+      continue
+   case(DROPSONDE_U_WIND_COMPONENT)
+      continue
+   case(DROPSONDE_V_WIND_COMPONENT)
+      continue
+   case(DROPSONDE_SURFACE_PRESSURE)
+      continue
+   case(DROPSONDE_TEMPERATURE)
+      continue
+   case(DROPSONDE_SPECIFIC_HUMIDITY)
+      continue
+   case(AIRCRAFT_U_WIND_COMPONENT)
+      continue
+   case(AIRCRAFT_V_WIND_COMPONENT)
+      continue
+   case(AIRCRAFT_TEMPERATURE)
+      continue
+   case(AIRCRAFT_SPECIFIC_HUMIDITY)
+      continue
+   case(ACARS_U_WIND_COMPONENT)
+      continue
+   case(ACARS_V_WIND_COMPONENT)
+      continue
+   case(ACARS_TEMPERATURE)
+      continue
+   case(ACARS_SPECIFIC_HUMIDITY)
+      continue
+   case(MARINE_SFC_U_WIND_COMPONENT)
+      continue
+   case(MARINE_SFC_V_WIND_COMPONENT)
+      continue
+   case(MARINE_SFC_TEMPERATURE)
+      continue
+   case(MARINE_SFC_SPECIFIC_HUMIDITY)
+      continue
+   case(LAND_SFC_U_WIND_COMPONENT)
+      continue
+   case(LAND_SFC_V_WIND_COMPONENT)
+      continue
+   case(LAND_SFC_TEMPERATURE)
+      continue
+   case(LAND_SFC_SPECIFIC_HUMIDITY)
+      continue
+   case(SAT_U_WIND_COMPONENT)
+      continue
+   case(SAT_V_WIND_COMPONENT)
+      continue
+   case(ATOV_TEMPERATURE)
+      continue
+   case(AIRS_TEMPERATURE)
+      continue
+   case(AIRS_SPECIFIC_HUMIDITY)
+      continue
+   case(METAR_U_10_METER_WIND)
+      continue
+   case(METAR_V_10_METER_WIND)
+      continue
+   case(METAR_TEMPERATURE_2_METER)
+      continue
+   case(METAR_SPECIFIC_HUMIDITY_2_METER)
+      continue
+   case(METAR_SURFACE_PRESSURE)
+      continue
+   case(METAR_POT_TEMP_2_METER)
+      continue
+   case(TEMPERATURE)
+      continue
+   case(SPECIFIC_HUMIDITY)
+      continue
+   case(PRESSURE)
+      continue
+   case(BUOY_U_WIND_COMPONENT)
+      continue
+   case(BUOY_V_WIND_COMPONENT)
+      continue
+   case(BUOY_SURFACE_PRESSURE)
+      continue
+   case(BUOY_TEMPERATURE)
+      continue
+   case(SHIP_U_WIND_COMPONENT)
+      continue
+   case(SHIP_V_WIND_COMPONENT)
+      continue
+   case(SHIP_SURFACE_PRESSURE)
+      continue
+   case(SHIP_TEMPERATURE)
+      continue
+   case(SYNOP_U_WIND_COMPONENT)
+      continue
+   case(SYNOP_V_WIND_COMPONENT)
+      continue
+   case(SYNOP_SURFACE_PRESSURE)
+      continue
+   case(SYNOP_SPECIFIC_HUMIDITY)
+      continue
+   case(SYNOP_TEMPERATURE)
+      continue
+   case(AIREP_U_WIND_COMPONENT)
+      continue
+   case(AIREP_V_WIND_COMPONENT)
+      continue
+   case(AIREP_PRESSURE)
+      continue
+   case(AIREP_TEMPERATURE)
+      continue
+   case(AMDAR_U_WIND_COMPONENT)
+      continue
+   case(AMDAR_V_WIND_COMPONENT)
+      continue
+   case(AMDAR_PRESSURE)
+      continue
+   case(AMDAR_TEMPERATURE)
+      continue
+   case(PILOT_U_WIND_COMPONENT)
+      continue
+   case(PILOT_V_WIND_COMPONENT)
+      continue
+   case(PILOT_PRESSURE)
+      continue
+   case(PILOT_TEMPERATURE)
+      continue
+   case(BOGUS_U_WIND_COMPONENT)
+      continue
+   case(BOGUS_V_WIND_COMPONENT)
+      continue
+   case(BOGUS_PRESSURE)
+      continue
+   case(BOGUS_TEMPERATURE)
+      continue
+   case(PROFILER_U_WIND_COMPONENT)
+      continue
+   case(PROFILER_V_WIND_COMPONENT)
+      continue
+   case(PROFILER_PRESSURE)
       continue
 
    ! A negative value means identity observations, just move along

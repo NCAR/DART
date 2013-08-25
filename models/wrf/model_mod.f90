@@ -67,6 +67,9 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               get_raw_obs_kind_index, get_num_raw_obs_kinds, &
                               get_raw_obs_kind_name
 
+!HK should model_mod know about the number of copies?
+use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
+
 ! FIXME:
 ! the kinds KIND_CLOUD_LIQUID_WATER should be KIND_CLOUDWATER_MIXING_RATIO, 
 ! and kind KIND_CLOUD_ICE should be KIND_ICE_MIXING_RATIO, but for backwards
@@ -85,6 +88,10 @@ use misc_definitions_module, only : PROJ_LATLON, PROJ_MERC, PROJ_LC, PROJ_PS, PR
 
 use netcdf
 use typesizes
+
+use mpi !HK
+
+use mpi_utilities_mod, only : datasize
 
 implicit none
 private
@@ -106,7 +113,8 @@ public ::  get_model_size,                    &
            get_close_obs,                     &
            ens_mean_for_model,                &
            get_close_maxdist_init,            &
-           get_close_obs_init
+           get_close_obs_init,                &
+           model_interpolate_distrib !HK
 
 !  public stubs 
 public ::  adv_1step,       &
@@ -1092,6 +1100,9 @@ else
       ! Ob is by pressure: get corresponding mass level zloc from
       ! computed column pressure profile
       call get_model_pressure_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_p)
+
+      !print*, 'v_p regular', v_p
+
       ! get pressure vertical co-ordinate
       call pres_to_zk(xyz_loc(3), v_p, wrf%dom(id)%bt,zloc,is_lev0)
       if(debug .and. obs_kind /= KIND_SURFACE_PRESSURE) &
@@ -3151,6 +3162,766 @@ deallocate(v_h, v_p)
 
 end subroutine model_interpolate
 
+!--------------------------------------------------------------------
+!> Distributed version of model interpolate
+!> obs_kind is called as location type in assim model model
+!
+! Should this code be simplified so there is not so much repetition?
+! This is the main forward operator subroutine for WRF.
+! Given an ob (its DART location and kind), the corresponding model
+! value is computed at nearest i,j,k. Thus, first i,j,k is obtained
+! from ob lon,lat,z and then the state value that corresponds to
+! the ob kind is interpolated.
+!
+! No location conversions are carried out in this subroutine. See
+! get_close_obs, where ob vertical location information is converted
+! to the requested vertical coordinate type.
+subroutine model_interpolate_distrib(state_ens_handle, win, location, obs_kind, istatus, expected_obs)
+
+! x:       Full DART state vector relevant to what's being updated
+!          in the filter (mean or individual members).
+! istatus: Returned 0 if everything is OK, >0 if error occured.
+!                   1 = missing domain id
+!                   2 = bad vertical level
+!                   3 = unsupported obs kind
+!                  10 = polar observation while restrict_polar namelist true
+!                  99 = unknown reason (reached end of routine with missing_r8
+!                       as obs_val)
+
+! modified 26 June 2006 to accomodate vortex attributes
+! modified 13 December 2006 to accomodate changes for the mpi version
+! modified 22 October 2007 to accomodate global WRF (3.0)
+! modified 18 November 2008 to allow unknown kinds to return without stopping
+! modified  5 February 2010 to add circulation calc for vortex obs
+
+! Helen Kershaw - Aim: to not require the whole state vector
+
+! arguments
+type(location_type), intent(in) :: location
+integer,             intent(in) :: obs_kind
+integer,            intent(out) :: istatus
+!HK
+type(ensemble_type),     intent(in) :: state_ens_handle
+integer, intent(in)                 :: win !< window for mpi remote memory access
+real(r8), intent(out)               :: expected_obs(:)
+real(r8), allocatable               :: v
+!HK dummmies
+real(r8) x(10) !< dummy x so you can compile
+real(r8) obs_val !< dummy x so you can compile
+
+
+! local
+logical, parameter  :: debug = .false.
+logical, parameter  :: restrict_polar = .false.
+logical, parameter  :: use_old_vortex = .true.   ! set to .false. to use circ code
+real(r8), parameter :: drad = pi / 18.0_r8
+real(r8)            :: xloc, yloc, xloc_u, yloc_v, xyz_loc(3)
+integer             :: i, i_u, j, j_v, k2
+real(r8)            :: dx,dy,dxm,dym,dx_u,dxm_u,dy_v,dym_v
+real(r8)            :: utrue,vtrue,ugrid,vgrid
+integer             :: id
+logical             :: surf_var
+real(r8), allocatable :: a1(:) !HK
+real(r8), allocatable :: zloc(:) !HK
+integer, allocatable  :: k(:) !HK
+real(r8), allocatable :: dz(:), dzm(:) !HK
+
+! from getCorners
+integer, dimension(2) :: ll, lr, ul, ur, ll_v, lr_v, ul_v, ur_v
+integer            :: rc, ill, ilr, iul, iur, i1, i2
+
+!real(r8), dimension(2) :: fld !> what is fld
+real(r8), allocatable  :: fld(:,:)
+real(r8), allocatable, dimension(:,:) :: v_h, v_p
+
+! local vars, used in finding sea-level pressure and vortex center
+real(r8), allocatable, dimension(:)   :: t1d, p1d, qv1d, z1d
+real(r8), allocatable, dimension(:,:) :: vfld, pp, pd, uwnd, vwnd, vort
+real(r8), allocatable, dimension(:)   :: x1d, y1d, xx1d, yy1d
+integer  :: center_search_half_size, center_track_xmin, center_track_ymin, &
+            center_track_xmax, center_track_ymax, circ_half_size, &
+            circ_xmin, circ_xmax, circ_ymin, circ_ymax, xlen, ylen, &
+            xxlen, yylen, ii1, ii2, cxlen, cylen, imax, jmax
+real(r8) :: clat, clon, cxloc, cyloc, vcrit, magwnd, maxwspd, circ, &
+            circ_half_length, asum, distgrid, dgi1, dgi2
+
+! local vars, used in calculating density, pressure, height
+real(r8)              :: rho1 , rho2 , rho3, rho4
+real(r8)              :: pres1, pres2, pres3, pres4, pres
+logical, allocatable  :: is_lev0(:) !HK
+
+! local var for terrain elevation check for surface stations 
+real(r8)            :: mod_sfc_elevation
+
+
+!HK 
+real(r8),  allocatable :: x_ill(:), x_iul(:), x_ilr(:), x_iur(:)
+integer                :: e
+
+allocate(x_ill(state_ens_handle%num_copies -6), x_iul(state_ens_handle%num_copies -6), x_ilr(state_ens_handle%num_copies -6), x_iur(state_ens_handle%num_copies -6))
+allocate(fld(2,state_ens_handle%num_copies -6), a1(state_ens_handle%num_copies -6))
+allocate(zloc(state_ens_handle%num_copies -6), is_lev0(state_ens_handle%num_copies -6))
+allocate(k(state_ens_handle%num_copies -6), dz(state_ens_handle%num_copies -6), dzm(state_ens_handle%num_copies -6))
+
+! Initialize stuff
+istatus = 0
+fld(:,:) = missing_r8
+obs_val = missing_r8 !> to be removed
+expected_obs(:) = missing_r8  !> array of obs_vals
+
+! If identity observation (obs_kind < 0), then no need to interpolate
+if ( obs_kind < 0 ) then
+
+   ! identity observation -> -(obs_kind)=DART state vector index
+   ! obtain state value directly from index
+
+   ! HK This is no longer true with a distributed state vector
+   !obs_val = x(-1*obs_kind)
+   call error_handler(E_ERR, 'model_interpolate', 'identity obs in model interpolate', source, revision, revdate)
+
+! Otherwise, we need to do interpolation
+else
+
+   ! Is this a valid kind to interpolate?  Set up in the static_init_model code,
+   ! based on entries in wrf_state_vector namelist item.
+   if (.not. in_state_vector(obs_kind)) then
+      write(errstring, *) 'cannot interpolate ' // trim(get_raw_obs_kind_name(obs_kind)) &
+                           // ' with the current WRF arrays in state vector'
+      call error_handler(E_ERR, 'model_interpolate', errstring, &
+                                 source, revision, revdate)
+   endif
+
+   ! Unravel location_type information
+   xyz_loc = get_location(location)
+
+   !----------------------------------
+   ! 0. Prelude to Interpolation
+   !----------------------------------
+   
+   ! 0.a Horizontal stuff
+
+   ! first obtain domain id, and mass points (i,j)
+! JPH --- scm is only defined for d1
+   if ( .not. scm ) then
+      call get_domain_info(xyz_loc(1),xyz_loc(2),id,xloc,yloc)
+   else
+      id = 1
+      xloc = 1.0_r8
+      yloc = 1.0_r8
+   endif
+
+   ! check that we obtained a valid domain id number
+   if (id==0) then
+      istatus = 1
+      return
+   endif
+
+   if ( debug ) then
+     write(*,*) 'retreiving obs kind ',obs_kind,' on domain ',id
+   endif
+
+   !*****************************************************************************
+   ! Check polar-b.c. constraints -- if restrict_polar = .true., then we are not 
+   !   processing observations poleward of the 1st or last mass grid points.
+   ! If we have tried to pass a polar observation, then exit with istatus = 10
+   if ( wrf%dom(id)%polar .and. restrict_polar ) then
+      if ( yloc < 1.0_r8 .or. yloc >= real(wrf%dom(id)%sn,r8) ) then
+
+         ! Perhaps write to dart_log.out?
+         write(errstring,*)'Obs cannot be polar with restrict_polar on: yloc = ',yloc
+         call error_handler(E_WARN,'model_interpolate', errstring, &
+              source, revision, revdate)
+
+         istatus = 10  ! istatus 10, if it's not used, will mean the observation is too polar
+         print*, 'model_mod.f90 :: model_interpolate :: No polar observations!  istatus = ', istatus
+         return
+      endif
+   endif
+   !*****************************************************************************
+   
+   ! print info if debugging
+   if(debug) then
+      i = xloc
+      j = yloc
+      print*,xyz_loc(2), xyz_loc(1), xloc,yloc
+      write(*,*) ' corners of lat '
+      write(*,*) wrf%dom(id)%latitude(i,j),wrf%dom(id)%latitude(i+1,j),  &
+           wrf%dom(id)%latitude(i,j+1), &
+           wrf%dom(id)%latitude(i+1,j+1)
+      write(*,*) ' corners of long '
+      write(*,*) wrf%dom(id)%longitude(i,j),wrf%dom(id)%longitude(i+1,j),  &
+           wrf%dom(id)%longitude(i,j+1), &
+           wrf%dom(id)%longitude(i+1,j+1)
+   endif
+   
+   ! get integer (west/south) grid point and distances to neighboring grid points
+   ! distances are used as weights to carry out horizontal interpolations
+   call toGrid(xloc,i,dx,dxm)
+   call toGrid(yloc,j,dy,dym)
+   
+   ! 0.b Vertical stuff
+
+   if ( debug ) then
+      write(*,*) 'vert_is_pressure ',vert_is_pressure(location)
+      write(*,*) 'vert_is_height ',vert_is_height(location)
+   endif
+
+   ! HK
+   ! Allocate both a vertical height and vertical pressure coordinate -- 0:bt x ens_size
+   allocate(v_h(0:wrf%dom(id)%bt, state_ens_handle%num_copies - 6), v_p(0:wrf%dom(id)%bt, state_ens_handle%num_copies -6 ))
+
+   ! Set surf_var to .false. and then change in vert_is_surface section if necessary
+   surf_var = .false.
+
+   ! Determine corresponding model level for obs location
+   ! This depends on the obs vertical coordinate
+   !   From this we get a meaningful z-direction real-valued index number
+   if(vert_is_level(location)) then
+      ! Ob is by model level
+      zloc = xyz_loc(3)
+
+   elseif(vert_is_pressure(location)) then
+      ! Ob is by pressure: get corresponding mass level zloc from
+      ! computed column pressure profile
+      call get_model_pressure_profile_distrib(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,id,v_p,state_ens_handle, win, state_ens_handle%num_copies - 6)
+
+      !print*, 'v_p distrib ', v_p
+
+! testing get_model_pressure_profile_distrib
+!      istatus = 0
+!      expected_obs = -9
+!      return
+
+      ! get pressure vertical co-ordinate
+      call pres_to_zk_distrib(xyz_loc(3), v_p, wrf%dom(id)%bt, state_ens_handle%num_copies -6, zloc,is_lev0)
+      if(debug .and. obs_kind /= KIND_SURFACE_PRESSURE) &
+                print*,' obs is by pressure and zloc,lev0 =',zloc, is_lev0
+      if(debug) print*,'model pressure profile'
+      if(debug) print*,v_p
+      
+      ! If location is above model surface but below the lowest sigma level,
+      ! the default is to reject it.  But if the namelist value is true, then
+      ! accept the observation and later on extrapolate the values from levels
+      ! 1 and 2 downward.
+
+      !HK ensemble loop, however do you reject the obs for all ensembles later anyway?
+
+      do e = 1,state_ens_handle%num_copies - 6
+
+         if (is_lev0(e)) then
+            ! the pres_to_zk() routine has returned a valid zloc in case we
+            ! want to use it.  the default is to reject the observation and so
+            ! we overwrite it with missing -- but, if the namelist value is set
+            ! to true, leave zloc alone.
+            if (.not. allow_obs_below_vol) zloc(e) = missing_r8
+               if (debug .and. .not. allow_obs_below_vol) print*, 'setting zloc missing'
+
+            ! else need to set a qc here?
+         endif
+
+      enddo
+         
+   elseif(vert_is_height(location)) then
+
+      print*, '****** ALERT: commented out this section ******'
+
+      !! Ob is by height: get corresponding mass level zloc from
+      !! computed column height profile
+      !call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
+      !! get height vertical co-ordinate
+      !!call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc,is_lev0)
+      !if(debug) print*,' obs is by height and zloc,lev0 =',zloc, is_lev0
+      !if(debug) print*,'model height profile'
+      !if(debug) print*,v_h
+
+      !! If location is above model surface but below the lowest sigma level,
+      !! the default is to reject it.  But if the namelist value is true, then
+      !! accept the observation and later on extrapolate the values from levels
+      !! 1 and 2 downward.
+      !if (is_lev0) then
+      !   ! the height_to_zk() routine has returned a valid zloc in case we
+      !   ! want to use it.  the default is to reject the observation and so
+      !   ! we overwrite it with missing.  but if the namelist value is set
+      !   ! to true, leave zloc alone.
+      !   if (.not. allow_obs_below_vol) zloc = missing_r8
+      !   if (debug .and. .not. allow_obs_below_vol) print*, 'setting zloc missing'
+      !   ! else need to set a qc here?
+      !endif
+   
+   elseif(vert_is_surface(location)) then
+      zloc = 1.0_r8
+      surf_var = .true.
+      if(debug) print*,' obs is at the surface = ', xyz_loc(3)
+
+      ! if you want to have a distance check to see if the station height
+      ! is too far away from the model surface height, here is the place to
+      ! reject the observation.
+
+      ! Elevation check function drawn from Ryan's wrf preprocessing code. 
+      ! The elevation is now passed in instead of calling model_interpolate:
+      ! sfc_elev_max_diff  - if < 0 routine is skipped.
+      ! mod_sfc_elevation  - interpolated model surface height at the lowest
+      !                    - model layer.
+      ! z_loc - the third array element of xyz_loc
+      ! the station elevation against the estimated model surface height at the
+      ! station location, the maximum difference in elevation allowed (m), and the
+      ! observation location. There is no check for whether the third element for
+      ! the xyz_loc array is anything other than station height in meters. The
+      ! function returns a logical where .true. means the obs station elevation
+      ! 'passed' the height check. Here, if a height check fails, set an istatus
+      ! of '1' and bail out of this routine. 
+      if ( sfc_elev_max_diff >= 0 ) then
+      ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) then
+
+            call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                print*, 'model_mod.f90 :: model_interpolate :: getCorners HGT for sfc rc = ', rc
+
+            ! Interpolation for the HGT field -- HGT is NOT part of state vector x, but rather
+            !   in the associated domain meta data
+            mod_sfc_elevation = dym*( dxm*wrf%dom(id)%hgt(ll(1), ll(2)) + &
+                                       dx*wrf%dom(id)%hgt(lr(1), lr(2)) ) + &
+                                 dy*( dxm*wrf%dom(id)%hgt(ul(1), ul(2)) + &
+                                       dx*wrf%dom(id)%hgt(ur(1), ur(2)) )
+         endif
+         if ( .not. height_diff_check(sfc_elev_max_diff,xyz_loc(3),mod_sfc_elevation) ) zloc = missing_r8
+      endif
+
+   elseif(vert_is_undef(location)) then
+      ! the zloc value should not be used since there is no actual vertical
+      ! location for this observation, but give zloc a valid value to avoid
+      ! the error checks below for missing_r8
+      zloc  = 0.0_r8
+      if(debug) print*,' obs height is intentionally undefined'
+
+   else
+      write(errstring,*) 'wrong option for which_vert ', &
+                         nint(query_location(location,'which_vert'))
+      call error_handler(E_ERR,'model_interpolate', errstring, &
+           source, revision, revdate)
+
+   endif
+
+
+   ! Deal with missing vertical coordinates -- return with istatus .ne. 0
+   ! HK This is annoying.  Back to earlier question of QC if one ensemble fails do we
+   ! disguard all the obervations?
+   if(any(zloc == missing_r8)) then
+      obs_val = missing_r8
+      istatus = 2
+      deallocate(v_h, v_p)
+      return
+   endif
+
+   ! HK Q.What is k?
+   ! Set a working integer k value -- if (int(zloc) < 1), then k = 1
+   k = max(1,int(zloc)) !HK k is now ensemble size
+   print*, 'k ', k
+
+   ! The big horizontal interp loop below computes the data values in the level
+   ! below and above the actual location, and then does a separate vertical
+   ! interpolation (if the obs is not a 2d surface obs).  The two values are
+   ! stored in fld(1:2).  Set them to missing here, and if the code below cannot
+   ! compute a value, it can just drop out and not have to explicitly set it to
+   ! missing anymore.
+   fld(:,:) = missing_r8 !HK
+
+   !----------------------------------
+   ! 1. Horizontal Interpolation 
+   !----------------------------------
+
+   ! This part is the forward operator -- compute desired model state value for given point.
+
+   ! Strategy is to do the horizontal interpolation on two different levels in the
+   !   vertical, and then to do the vertical interpolation afterwards, since it depends on
+   !   what the vertical coordinate is
+
+   ! Large if-structure to select on obs_kind of desired field....
+   ! Table of Contents:
+   ! 1.a Horizontal Winds (U, V, U10, V10)
+   ! 1.b Sensible Temperature (T, T2)
+   ! 1.c Potential Temperature (Theta, TH2)
+   ! 1.d Density (Rho)
+   ! 1.e Vertical Wind (W)
+   ! 1.f Specific Humidity (SH, SH2)
+   ! 1.g Vapor Mixing Ratio (QV, Q2)
+   ! 1.h Rainwater Mixing Ratio (QR)
+   ! 1.i.1 Graupel Mixing Ratio (QG)
+   ! 1.i.2 Hail Mixing Ratio (QH)
+   ! 1.j Snow Mixing Ratio (QS)
+   ! 1.k Ice Mixing Ratio (QI)
+   ! 1.l Cloud Mixing Ratio (QC)
+   ! 1.m Droplet Number Concentration (QNDRP)
+   ! 1.n Ice Number Concentration (QNICE)
+   ! 1.o Snow Number Concentration (QNSNOW)
+   ! 1.p Rain Number Concentration (QNRAIN)
+   ! 1.q.1 Graupel Number Concentration (QNGRAUPEL) 
+   ! 1.q.2 Hail Number Concentration (QNHAIL)
+   ! 1.r Previous time step condensational heating (H_DIABATIC)
+   ! 1.s Reflectivity weighted precip fall speed (FALL_SPD_Z_WEIGHTED)
+   ! 1.t Pressure (P)
+   ! 1.u Vortex Center Stuff from Yongsheng
+   ! 1.v.1 Radar Reflectivity (REFL_10CM)
+   ! 1.v.2 Differential Reflectivity (DIFF_REFL_10CM)
+   ! 1.v.3 Specific Differential Phase (SPEC_DIFF_10CM)
+   ! 1.w Geopotential Height (GZ)
+   ! 1.x Surface Elevation (HGT)
+   ! 1.y Surface Skin Temperature (TSK)
+   ! 1.z Land Mask (XLAND)
+
+   ! NEWVAR:  Currently you have to add a new case here to tell the code what
+   !   field inside the state vector you will be interpolating in.  the eventual
+   !   plan is for there to be a default case which all simple interps fall into,
+   !   but for now we still have to add code.
+
+   ! NOTE: the previous version of this code checked for surface observations with the syntax:
+   !          "if(.not. vert_is_surface(location) .or. .not. surf_var) then"
+   !   We identified this as redundant because surf_var is changed from .false. only by
+   !     the above code (section 0.b), which must be traced through before one can arrive
+   !     at the following forward operator code.  Hence, we can remove the call to 
+   !     vert_is_surface.
+
+   !-----------------------------------------------------
+   ! 1.a Horizontal Winds (U, V, U10, V10)
+
+   ! We need one case structure for both U & V because they comprise a vector which could need
+   !   transformation depending on the map projection (hence, the call to gridwind_to_truewind)
+   if( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) then   ! U, V
+
+   !-----------------------------------------------------
+   ! 1.b Sensible Temperature (T, T2)
+
+   elseif ( obs_kind == KIND_TEMPERATURE ) then
+
+   !-----------------------------------------------------
+   ! 1.c Potential Temperature (Theta, TH2)
+
+   ! Note:  T is perturbation potential temperature (potential temperature - ts0)
+   !   TH2 is potential temperature at 2 m
+   elseif ( obs_kind == KIND_POTENTIAL_TEMPERATURE ) then
+
+   !-----------------------------------------------------
+   ! 1.d Density (Rho)
+
+   !-----------------------------------------------------
+   ! 1.e Vertical Wind (W)
+
+   !-----------------------------------------------------
+   ! 1.f Specific Humidity (SH, SH2)
+   !> @todo Distributed forward operator for specific humidity
+   ! Look at me
+   ! Convert water vapor mixing ratio to specific humidity:
+   else if( obs_kind == KIND_SPECIFIC_HUMIDITY ) then
+
+       ! This is for 3D specific humidity -- surface spec humidity later
+      if(.not. surf_var) then
+
+         !> @todo check how many different ks you have.
+         K_LOOP: do e = 1, state_ens_handle%num_copies -6
+
+         ! First confirm that vapor mixing ratio is in the DART state vector
+         if ( wrf%dom(id)%type_qv >= 0 ) then
+
+            ! Check to make sure retrieved integer gridpoints are in valid range
+            if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+                 boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+                 boundsCheck( k(e), .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+      
+               call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+               if ( rc .ne. 0 ) &
+                    print*, 'model_mod.f90 :: model_interpolate :: getCorners SH rc = ', rc
+
+                ! Interpolation for SH field at level k
+               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k(e), wrf%dom(id)%type_qv)
+               call get_state(x_ill, ill, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
+               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k(e), wrf%dom(id)%type_qv)
+               call get_state(x_iul, iul, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
+               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k(e), wrf%dom(id)%type_qv)
+               call get_state(x_ilr, ilr, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
+               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k(e), wrf%dom(id)%type_qv)
+               call get_state(x_iur, iur, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
+               a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+               fld(1,e) = a1(e) /(1.0_r8 + a1(e))
+               
+               ! Interpolation for SH field at level k+1
+               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k(e)+1, wrf%dom(id)%type_qv)
+               call get_state(x_ill, ill, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
+               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k(e)+1, wrf%dom(id)%type_qv)
+               call get_state(x_iul, iul, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
+               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k(e)+1, wrf%dom(id)%type_qv)
+               call get_state(x_ilr, ilr, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
+               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k(e)+1, wrf%dom(id)%type_qv)
+               call get_state(x_iur, iur, win, state_ens_handle, state_ens_handle%num_copies - 6)
+               
+               a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+               fld(2,e) = a1(e) /(1.0_r8 + a1(e))
+
+            endif
+         endif
+
+       enddo K_LOOP
+
+      ! This is for surface specific humidity (calculated from Q2)
+      else
+         
+         ! confirm that field is in the DART state vector
+         if ( wrf%dom(id)%type_q2 >= 0 ) then
+
+            ! Check to make sure retrieved integer gridpoints are in valid range
+            if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+                   boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) &
+                   .or. wrf%dom(id)%scm ) then
+               
+               call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+               if ( rc .ne. 0 ) &
+                    print*, 'model_mod.f90 :: model_interpolate :: getCorners SH2 rc = ', rc
+
+               ! Interpolation for the SH2 field
+               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, wrf%dom(id)%type_q2)
+               call get_state(x_ill, ill, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
+               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, wrf%dom(id)%type_q2)
+               call get_state(x_iul, iul, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
+               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_q2)
+               call get_state(x_ilr, ilr, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
+               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_q2)
+               call get_state(x_iur, iur, win, state_ens_handle, state_ens_handle%num_copies - 6)
+               
+               a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+               fld(1,:) = a1 /(1.0_r8 + a1)
+
+            endif
+         endif
+      endif
+
+
+   !-----------------------------------------------------
+   ! 1.g Vapor Mixing Ratio (QV, Q2)
+   else if( obs_kind == KIND_VAPOR_MIXING_RATIO ) then
+
+   !-----------------------------------------------------
+   ! 1.h Rainwater Mixing Ratio (QR)
+   else if( obs_kind == KIND_RAINWATER_MIXING_RATIO ) then
+
+   !-----------------------------------------------------
+   ! 1.i.1 Graupel Mixing Ratio (QG)
+   else if( obs_kind == KIND_GRAUPEL_MIXING_RATIO ) then
+
+   !-----------------------------------------------------
+   ! 1.i.2 Hail Mixing Ratio (QH)
+   else if( obs_kind == KIND_HAIL_MIXING_RATIO ) then
+
+   !-----------------------------------------------------
+   ! 1.j Snow Mixing Ratio (QS)
+   else if( obs_kind == KIND_SNOW_MIXING_RATIO ) then
+
+   !-----------------------------------------------------
+   ! 1.k Ice Mixing Ratio (QI)
+   else if( obs_kind == KIND_CLOUD_ICE) then  ! really KIND_ICE_MIXING_RATIO
+
+  
+   !-----------------------------------------------------
+   ! 1.l Cloud Mixing Ratio (QC)
+
+   ! Cloud water mixing ratio added for forward radiative transfer model calculations.
+  
+   else if( obs_kind == KIND_CLOUD_LIQUID_WATER ) then ! really    
+
+   !-----------------------------------------------------
+   ! 1.m Droplet Number Concentration (QNDRP)
+   else if( obs_kind == KIND_DROPLET_NUMBER_CONCENTR ) then 
+
+   !-----------------------------------------------------
+   ! 1.n Ice Number Concentration (QNICE)
+   else if( obs_kind == KIND_ICE_NUMBER_CONCENTRATION ) then
+
+   !-----------------------------------------------------
+   ! 1.o Snow Number Concentration (QNSNOW)
+   else if( obs_kind == KIND_SNOW_NUMBER_CONCENTR ) then
+
+   !----------------------------------------------------
+   ! 1.p Rain Number Concentration (QNRAIN)
+   else if( obs_kind == KIND_RAIN_NUMBER_CONCENTR ) then
+
+    !-----------------------------------------------------
+   ! 1.q.1 Graupel Number Concentration (QNGRAUPEL)
+   else if( obs_kind == KIND_GRAUPEL_NUMBER_CONCENTR ) then
+
+   ! 1.q.2 Hail Number Concentration (QNHAIL)
+   else if( obs_kind == KIND_HAIL_NUMBER_CONCENTR ) then
+
+   !-----------------------------------------------------
+   ! 1.r Previous time step condensational heating (H_DIABATIC)
+   else if( obs_kind == KIND_CONDENSATIONAL_HEATING ) then
+   !-----------------------------------------------------
+   ! 1.s Reflectivity weighted precip fall speed (FALL_SPD_Z_WEIGHTED)
+   else if( obs_kind == KIND_POWER_WEIGHTED_FALL_SPEED ) then
+
+   !-----------------------------------------------------
+   ! 1.t Pressure (P)
+   else if( obs_kind == KIND_PRESSURE .or. obs_kind == KIND_SURFACE_PRESSURE ) then
+
+   !-----------------------------------------------------
+   ! 1.u Vortex Center Stuff from Yongsheng
+
+ !*****************************************************************************
+! END OF VERBATIM BIT
+!*****************************************************************************
+
+   !-----------------------------------------------------
+   ! 1.v.1 Radar Reflectivity (REFL_10CM)
+   else if( obs_kind == KIND_RADAR_REFLECTIVITY ) then
+
+   !-----------------------------------------------------
+   ! 1.v.2 Differential Reflectivity (DIFF_REFL_10CM)
+   else if( obs_kind == KIND_DIFFERENTIAL_REFLECTIVITY ) then
+
+    !-----------------------------------------------------
+   ! 1.v.3 Specific Differential Phase (SPEC_DIFF_10CM)
+   else if( obs_kind == KIND_SPECIFIC_DIFFERENTIAL_PHASE ) then
+
+ 
+   !-----------------------------------------------------
+   ! 1.w Geopotential Height (GZ)
+
+   !   GZ is on the ZNW grid (bottom_top_stagger), so its bottom-most level is defined to
+   !   be at eta = 1 (the surface).  Thus, we have a 3D variable that contains a surface
+   !   variable; the same is true for W as well.  If one wants to observe the surface value
+   !   of either of these variables, then one can simply operate on the full 3D field 
+   !   (toGrid below should return dz ~ 0 and dzm ~ 1) 
+   else if( obs_kind == KIND_GEOPOTENTIAL_HEIGHT ) then
+
+     !-----------------------------------------------------
+   ! 1.x Surface Elevation (HGT)
+
+   ! Surface Elevation has been added by Ryan Torn to accommodate altimeter observations.
+   !   HGT is not in the dart_ind vector, so get it from wrf%dom(id)%hgt.
+   else if( obs_kind == KIND_SURFACE_ELEVATION ) then
+
+   !-----------------------------------------------------
+   ! 1.y Surface Skin Temperature (TSK)
+   
+   else if( obs_kind == KIND_SKIN_TEMPERATURE ) then
+
+   !-----------------------------------------------------
+   ! 1.z Land Mask (XLAND)
+
+   ! Land Mask has been added to accommodate satellite observations.
+   !   XLAND is not in the dart_ind vector, so get it from wrf%dom(id)%land
+   else if( obs_kind == KIND_LANDMASK ) then
+
+
+   !-----------------------------------------------------
+   ! If obs_kind is not negative (for identity obs), or if it is not one of the above 15
+   !   explicitly checked-for kinds, then set error istatus and missing_r8.
+   else
+
+      expected_obs = missing_r8
+      istatus = 3
+      if (debug) print*, 'unrecognized obs KIND, value = ', obs_kind
+      deallocate(v_h, v_p)
+      return
+
+   endif
+
+
+   !----------------------------------
+   ! 2. Vertical Interpolation 
+   !----------------------------------
+
+   ! Do vertical interpolation -- only for non-surface, non-identity obs.  
+
+   ! The previous section (1. Horizontal Interpolation) has produced a variable called
+   !   "fld", which nominally has two entries in it.  3D fields have hopefully produced
+   !   2 non-zero entries, whereas surface fields only have filled the first entry.
+   ! If a full 3D field, then do vertical interpolation between sandwiched model levels
+   !   (k and k+1).
+
+   ! Check to make sure that we did something sensible in the Horizontal Interpolation 
+   !   section above.  All valid obs_kinds will have changed fld(1,:).
+   if ( fld(1,1) == missing_r8 ) then !HK should be any?
+
+      expected_obs = missing_r8
+
+   ! We purposefully changed fld(1,:), so continue onward
+   else
+
+      ! If a surface variable, or a variable with no particular vertical location
+      ! (basically the entire column) then no need to do any vertical interpolation
+      if ( surf_var .or. vert_is_undef(location) ) then 
+
+         !obs_val = fld(1)
+          expected_obs = fld(1,:) !HK
+
+      ! If an interior variable, then we DO need to do vertical interpolation
+      else
+
+         ! First make sure fld(2,:) is no longer a missing value
+         if ( fld(2,1) == missing_r8 ) then !HK should be any?
+
+            expected_obs = missing_r8
+
+         ! Do vertical interpolation -- at this point zloc is >= 1 unless
+         ! the namelist value allow_obs_below_vol is true, in which case
+         ! it is >= 0, and < 1 is a request to extrapolate.  
+         else
+
+            ! Get fractional distances between grid points
+            call toGrid_distrib(zloc, state_ens_handle%num_copies - 6, k, dz, dzm)
+            if (debug) print*, 'zloc, k, dz, dzm = ', zloc, k, dz, dzm
+            if (debug) print*, 'fld(1,:), fld(2,:) = ', fld(1,:), fld(2,:)
+
+            ! If you get here and zloc < 1.0, then k will be 0, and
+            ! we should extrapolate.  fld(1,:) and fld(2,:) where computed
+            ! at levels 1 and 2.
+
+            do e = 1, state_ens_handle%num_copies -6 
+
+               if (k(e) >= 1) then
+                  ! Linearly interpolate between grid points
+                  expected_obs(e) = dzm(e)*fld(1,e) + dz(e)*fld(2,e)
+                  if (debug) print*, 'interpolated obs_val = ', expected_obs(e)
+               else
+                  ! Extrapolate below first level.
+                  expected_obs(e) = fld(1,e) - (fld(2,e)-fld(1,e))*dzm(e)
+                  if (debug) print*, 'extrapolated obs_val = ', expected_obs(e)
+               endif
+            enddo
+
+         endif
+      endif
+   endif
+
+endif  ! end of "if ( obs_kind < 0 )"
+
+
+! Now that we are done, check to see if a missing value somehow 
+! made it through without already having set an error return code.
+if ( obs_val == missing_r8 .and. istatus == 0 ) then
+   istatus = 99
+endif
+
+! Pring the observed value if in debug mode
+if(debug) then
+  print*,'model_interpolate() return value for obs_kind ',obs_kind, ' = ',obs_val
+endif
+
+! Deallocate variables before exiting
+deallocate(v_h, v_p)
+deallocate(x_ill, x_iul, x_ilr, x_iur)
+
+end subroutine model_interpolate_distrib
 
 !#######################################################################
 
@@ -5021,6 +5792,26 @@ end subroutine toGrid
 
 !#######################################################################
 
+subroutine toGrid_distrib(x, ens_size, j, dx, dxm)
+
+!  Transfer obs. x to grid j and calculate its
+!  distance to grid j and j+1
+
+  integer,  intent(in)  :: ens_size
+  real(r8), intent(in)  :: x(ens_size)
+  real(r8), intent(out) :: dx(ens_size), dxm(ens_size)
+  integer,  intent(out) :: j(ens_size)
+
+  j = int (x)
+
+  dx = x - real (j)
+
+  dxm= 1.0_r8 - dx
+
+end subroutine toGrid_distrib
+
+!#######################################################################
+
 subroutine pres_to_zk(pres, mdl_v, n3, zk, lev0)
 
 ! Calculate the model level "zk" on half (mass) levels,
@@ -5066,6 +5857,61 @@ subroutine pres_to_zk(pres, mdl_v, n3, zk, lev0)
   enddo
 
 end subroutine pres_to_zk
+
+!#######################################################################
+
+subroutine pres_to_zk_distrib(pres, mdl_v, n3, ens_size, zk, lev0)
+! Calculate the model level "zk" on half (mass) levels,
+! corresponding to pressure "pres".
+
+  integer,  intent(in)  :: n3
+  real(r8), intent(in)  :: pres
+  integer,  intent(in)  :: ens_size
+  real(r8), intent(in)  :: mdl_v(0:n3, ens_size)
+  real(r8), intent(out) :: zk(ens_size)
+  logical,  intent(out) :: lev0(ens_size)
+
+  integer  :: k, e
+
+  zk = missing_r8
+  lev0 = .false.
+
+  do e = 1, ens_size
+
+     ! if out of range completely, return missing_r8 and lev0 false
+     if (pres > mdl_v(0,e) .or. pres < mdl_v(n3,e)) then
+        ! do nothing, keep zk(e) = missing_r8 and lev0(e) = false
+
+     ! if above surface but below lowest sigma level, return the
+     ! sigma value but set lev0 true
+     elseif(pres <= mdl_v(0,e) .and. pres > mdl_v(1,e)) then
+        lev0(e) = .true.
+        if (log_vert_interp) then
+           zk(e) = (log(mdl_v(0,e)) - log(pres))/(log(mdl_v(0,e)) - log(mdl_v(1,e)))
+        else
+           zk(e) = (mdl_v(0,e) - pres)/(mdl_v(0,e) - mdl_v(1,e))
+        endif
+
+     else
+
+        ! find the 2 sigma levels the value is between and return that
+        ! as a real number, including the fraction between the levels.
+        do k = 1, n3-1
+           if(pres <= mdl_v(k,e) .and. pres >= mdl_v(k+1,e)) then
+              if (log_vert_interp) then
+                 zk(e) = real(k) + (log(mdl_v(k,e)) - log(pres))/(log(mdl_v(k,e)) - log(mdl_v(k+1,e)))
+              else
+                 zk(e) = real(k) + (mdl_v(k,e) - pres)/(mdl_v(k,e) - mdl_v(k+1,e))
+              endif
+              exit
+           endif
+        enddo
+
+     endif
+
+  enddo
+
+end subroutine pres_to_zk_distrib
 
 !#######################################################################
 
@@ -5189,6 +6035,173 @@ else
 endif
 
 end subroutine get_model_pressure_profile
+
+!#######################################################
+
+subroutine get_model_pressure_profile_distrib(i,j,dx,dy,dxm,dym,n,id,v_p, state_ens_handle, win, ens_size)
+
+! Calculate the full model pressure profile on half (mass) levels,
+! horizontally interpolated at the observation location.
+
+integer,  intent(in)  :: i,j,n,id
+real(r8), intent(in)  :: dx,dy,dxm,dym
+integer, intent(in)   :: ens_size
+real(r8), intent(out) :: v_p(0:n, ens_size)
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer, intent(in) :: win
+integer ierr
+integer e !> for ensemble loop
+integer owner_of_state, element_index
+integer(KIND=MPI_ADDRESS_KIND) target_disp
+
+integer, dimension(2) :: ll, lr, ul, ur
+integer  :: ill,ilr,iul,iur,k, rc
+real(r8), allocatable :: pres1(:), pres2(:), pres3(:), pres4(:)
+logical  :: debug = .false.
+
+!HK 
+real(r8), allocatable :: x_ill(:), x_ilr(:), x_iul(:), x_iur(:)
+
+
+
+allocate(pres1(ens_size), pres2(ens_size), pres3(ens_size), pres4(ens_size))
+allocate(x_ill(ens_size), x_ilr(ens_size), x_iul(ens_size), x_iur(ens_size))
+
+if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+     boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) then
+
+   call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+   if ( rc .ne. 0 ) &
+        print*, 'model_mod.f90 :: get_model_pressure_profile :: getCorners rc = ', rc
+
+   do k=1,n
+      pres1 = model_pressure_t_distrib(ll(1), ll(2), k,id,state_ens_handle, win, ens_size)
+      pres2 = model_pressure_t_distrib(lr(1), lr(2), k,id,state_ens_handle, win, ens_size)
+      pres3 = model_pressure_t_distrib(ul(1), ul(2), k,id,state_ens_handle, win, ens_size)
+      pres4 = model_pressure_t_distrib(ur(1), ur(2), k,id,state_ens_handle, win, ens_size)
+
+      v_p(k, :) = interp_4pressure_distrib(pres1, pres2, pres3, pres4, dx, dxm, dy, dym, ens_size)
+   enddo
+
+
+ !  print*, 'passed this one, rank ', my_task_id()
+
+
+   if (debug) &
+        print*, 'model_mod.f90 :: get_model_pressure_profile :: n, v_p() ', n, v_p(1:n, :)
+
+   if ( wrf%dom(id)%type_ps >= 0 ) then
+
+      ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, wrf%dom(id)%type_ps)
+      ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_ps)
+      iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, wrf%dom(id)%type_ps)
+      iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_ps)
+
+      ! I'm not quite sure where this comes from, but I will trust them on it....
+      ! HK distributed version
+
+      !> @todo get rid of this copypasta
+      ! Find out which task has the element of state vector - This should be a subroutine in mpi_utilites
+      call get_var_owner_index(ill, owner_of_state, element_index) ! pe
+      owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
+      if (my_task_id() == owner_of_state) then
+         x_ill = state_ens_handle%copies(1:ens_size, element_index)
+      else
+         target_disp = (element_index - 1) * state_ens_handle%num_copies
+         call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
+         call mpi_get(x_ill, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
+         call mpi_win_unlock(owner_of_state, win, ierr)
+      endif
+
+      ! Find out which task has the element of state vector - This should be a subroutine in mpi_utilites
+      call get_var_owner_index(ilr, owner_of_state, element_index) ! pe
+      owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
+      if (my_task_id() == owner_of_state) then
+         x_ilr = state_ens_handle%copies(1:ens_size, element_index)
+      else
+         target_disp = (element_index - 1) * state_ens_handle%num_copies
+         call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
+         call mpi_get(x_ilr, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
+         call mpi_win_unlock(owner_of_state, win, ierr)
+      endif
+
+      ! Find out which task has the element of state vector - This should be a subroutine in mpi_utilites
+      call get_var_owner_index(iul, owner_of_state, element_index) ! pe
+      owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
+      if (my_task_id() == owner_of_state) then
+         x_iul = state_ens_handle%copies(1:ens_size, element_index)
+      else
+         target_disp = (element_index - 1) * state_ens_handle%num_copies
+         call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
+         call mpi_get(x_iul, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
+         call mpi_win_unlock(owner_of_state, win, ierr)
+      endif
+
+      ! Find out which task has the element of state vector - This should be a subroutine in mpi_utilites
+      call get_var_owner_index(iur, owner_of_state, element_index) ! pe
+      owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
+      if (my_task_id() == owner_of_state) then
+          x_iur = state_ens_handle%copies(1:ens_size, element_index)
+      else
+         target_disp = (element_index - 1) * state_ens_handle%num_copies
+         call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
+         call mpi_get(x_iur, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
+         call mpi_win_unlock(owner_of_state, win, ierr)
+      endif
+
+!return
+
+      ! Do you have to do this per ensemble
+      !> @todo This is messy
+      do e = 1,ens_size
+
+         if ( x_ill(e) /= 0.0_r8 .and. x_ilr(e) /= 0.0_r8 .and. x_iul(e) /= 0.0_r8 .and. &
+              x_iur(e) /= 0.0_r8 ) then
+
+            !> @todo I think this in incorrect. How is it working?
+            !print*, 'sizes ', size(pres1(e:e)), 'v_p(0, :)', size(v_p(0, :))
+            v_p(0,e:e) = interp_4pressure_distrib(x_ill(e:e), x_ilr(e:e), x_iul(e:e), x_iur(e:e), dx, dxm, dy, dym, 1)
+
+         else
+
+            pres1(e:e) = model_pressure_t_distrib(ll(1), ll(2), 2,id,state_ens_handle, win, 1)
+            pres2(e:e) = model_pressure_t_distrib(lr(1), lr(2), 2,id,state_ens_handle, win, 1)
+            pres3(e:e) = model_pressure_t_distrib(ul(1), ul(2), 2,id,state_ens_handle, win, 1)
+            pres4(e:e) = model_pressure_t_distrib(ur(1), ur(2), 2,id,state_ens_handle, win, 1)
+
+            !> @todo I think this in incorrect. How is it working?
+            v_p(0,e:e) = interp_4pressure_distrib(pres1(e:e), pres2(e:e), pres3(e:e), pres4(e:e), dx, dxm, dy, dym, 1, &
+                  extrapolate=.true., edgep=v_p(1,e))
+           ! print*, 'passed this one too, rank ', my_task_id(), 'e ', e
+
+         endif
+
+      enddo
+
+   else
+
+      pres1 = model_pressure_t_distrib(ll(1), ll(2), 2,id,state_ens_handle, win, ens_size)
+      pres2 = model_pressure_t_distrib(lr(1), lr(2), 2,id,state_ens_handle, win, ens_size)
+      pres3 = model_pressure_t_distrib(ul(1), ul(2), 2,id,state_ens_handle, win, ens_size)
+      pres4 = model_pressure_t_distrib(ur(1), ur(2), 2,id,state_ens_handle, win, ens_size)
+
+      v_p(0,:) = interp_4pressure_distrib(pres1, pres2, pres3, pres4, dx, dxm, dy, dym, ens_size, &
+              extrapolate=.true., edgep=v_p(1,:))
+      ! print*, 'passed this one also, rank ', my_task_id()
+
+   endif
+
+   if (debug) &
+        print*, 'model_mod.f90 :: get_model_pressure_profile :: v_p(0) ', v_p(0, :)
+else
+
+   v_p(:,:) = missing_r8
+
+endif
+
+deallocate(pres1, pres2, pres3, pres4, x_ill, x_ilr, x_iul, x_iur)
+
+end subroutine get_model_pressure_profile_distrib
 
 !#######################################################
 
@@ -5528,6 +6541,96 @@ end function model_pressure_t
 
 !#######################################################
 
+function model_pressure_t_distrib(i,j,k,id,state_ens_handle, win, ens_size)
+
+! Calculate total pressure on mass point (half (mass) levels, T-point).
+
+integer, intent(in) :: ens_size
+integer,  intent(in)  :: i,j,k,id
+real(r8) :: model_pressure_t_distrib(ens_size)
+!HK
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer, intent(in) :: win
+
+real (kind=r8), PARAMETER    :: rd_over_rv = gas_constant / gas_constant_v
+real (kind=r8), PARAMETER    :: cpovcv = 1.4_r8        ! cp / (cp - gas_constant)
+
+integer  :: iqv !> I think this is i for index
+integer  :: it !> change to array
+real(r8) :: qvf1(ens_size),rho(ens_size), x_iqv(ens_size), x_it(ens_size)
+
+!HK
+integer                        :: ierr
+integer(KIND=MPI_ADDRESS_KIND) :: target_disp ! must be mpi_address_kind to avoid seg faults on some systems
+integer owner_of_state
+integer element_index
+
+model_pressure_t_distrib = missing_r8
+
+! Adapted the code from WRF module_big_step_utilities_em.F ----
+!         subroutine calc_p_rho_phi      Y.-R. Guo (10/20/2004)
+
+! Simplification: alb*mub = (phb(i,j,k+1) - phb(i,j,k))/dnw(k)
+
+if (wrf%dom(id)%type_qv < 0 .or. wrf%dom(id)%type_t < 0) then
+  call error_handler(E_ERR, 'model_pressure_t:', &
+      'BOTH QVAPOR and T must be in state vector to compute total pressure', &
+       source, revision, revdate)
+endif
+
+iqv = wrf%dom(id)%dart_ind(i,j,k,wrf%dom(id)%type_qv)
+it  = wrf%dom(id)%dart_ind(i,j,k,wrf%dom(id)%type_t)
+
+! Find out which task has the element of state vector
+call get_var_owner_index(iqv, owner_of_state, element_index) ! pe
+owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
+
+!print*, 'var owner index A ', owner_of_state, 'element ', element_index, 'my rank ', my_task_id()
+
+if (my_task_id() == owner_of_state) then
+
+    x_iqv = state_ens_handle%copies(1:ens_size, element_index)
+else
+
+   target_disp = (element_index - 1) * state_ens_handle%num_copies
+
+   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
+   call mpi_get(x_iqv, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
+   call mpi_win_unlock(owner_of_state, win, ierr)
+
+endif
+
+! Find out which task has the element of state vector
+call get_var_owner_index(it, owner_of_state, element_index) ! pe
+owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
+
+!print*, 'var owner index B ', owner_of_state, 'element ', element_index, 'my rank ', my_task_id()
+
+if (my_task_id() == owner_of_state) then
+
+    x_it = state_ens_handle%copies(1:ens_size, element_index)
+else
+
+   target_disp = (element_index - 1) * state_ens_handle%num_copies
+
+   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
+   call mpi_get(x_it, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
+   call mpi_win_unlock(owner_of_state, win, ierr)
+
+endif
+
+qvf1(:) = 1.0_r8 + x_iqv(:) / rd_over_rv
+
+rho(:) = model_rho_t_distrib(i,j,k,id,state_ens_handle, win, ens_size)
+
+! .. total pressure:
+model_pressure_t_distrib = ps0 * ( (gas_constant*(ts0+x_it)*qvf1) / &
+     (ps0/rho) )**cpovcv
+
+end function model_pressure_t_distrib
+
+!#######################################################
+
 function model_pressure_s(i,j,id,x)
 
 ! compute pressure at surface at mass point
@@ -5680,6 +6783,81 @@ endif
 
 end function interp_4pressure
 
+
+!#######################################################
+
+function interp_4pressure_distrib(p1, p2, p3, p4, dx, dxm, dy, dym, ens_size, extrapolate, edgep)
+ 
+! given 4 corners of a quad, where the p1, p2, p3 and p4 points are
+! respectively:  lower left, lower right, upper left, upper right
+! and dx is the distance in x, dxm is 1.0-dx, dy is distance in y
+! and dym is 1.0-dy, interpolate the pressure while converted to log.
+! if extrapolate is true, extrapolate where edgep is the edge pressure
+! and the 4 points and dx/dy give the location of the inner point.
+
+integer, intent(in)                :: ens_size
+real(r8), intent(in)               :: p1(ens_size), p2(ens_size), p3(ens_size), p4(ens_size)
+real(r8), intent(in)               :: dx, dxm, dy, dym
+logical,  intent(in), optional     :: extrapolate
+real(r8), intent(in), optional     :: edgep(ens_size)
+real(r8)                           :: interp_4pressure_distrib(ens_size)
+
+logical  :: do_interp
+real(r8) :: intermediate(ens_size)
+real(r8) :: l1(ens_size), l2(ens_size), l3(ens_size), l4(ens_size)
+
+!HK
+integer :: i
+
+! default is to do interpolation; only extrapolate if the optional
+! arg is specified and if it is true.  for extrapolation 'edgep' is
+! required; it is unused for interpolation.
+do_interp = .true.
+if (present(extrapolate)) then
+   if (extrapolate) do_interp = .false.
+endif
+
+if (.not. do_interp .and. .not. present(edgep)) then
+  call error_handler(E_ERR, 'interp_4pressure:', &
+      'edgep must be specified for extrapolation.  internal error.', &
+       source, revision, revdate)
+endif
+
+if (log_horz_interpQ) then
+   l1 = log(p1)
+   l2 = log(p2)
+   l3 = log(p3)
+   l4 = log(p4)
+endif
+
+
+! once we like the results, remove the log_horz_interpQ test.
+if (do_interp) then
+   if (log_horz_interpQ) then
+      interp_4pressure_distrib = exp(dym*( dxm*l1 + dx*l2 ) + dy*( dxm*l3 + dx*l4 ))
+   else
+      interp_4pressure_distrib = dym*( dxm*p1 + dx*p2 ) + dy*( dxm*p3 + dx*p4 )
+   endif
+else
+   if (log_horz_interpQ) then
+      intermediate = (3.0_r8*log(edgep) - &
+                 dym*( dxm*l1 + dx*l2 ) - dy*( dxm*l3 + dx*l4 ))/2.0_r8
+
+      do i = 1, size(intermediate)
+         if (intermediate(i) <= 0.0_r8) then
+            interp_4pressure_distrib(i) = edgep(i) !> @todo is this correct?
+         else
+            interp_4pressure_distrib(i) = exp(intermediate(i))
+         endif
+      enddo
+   else
+      interp_4pressure_distrib = (3.0_r8*edgep - &
+                 dym*( dxm*p1 + dx*p2 ) - dy*( dxm*p3 + dx*p4 ))/2.0_r8
+   endif
+endif
+
+end function interp_4pressure_distrib
+
 !#######################################################
 
 function model_rho_t(i,j,k,id,x)
@@ -5718,6 +6896,108 @@ ph_e = ( (x(iphp1) + wrf%dom(id)%phb(i,j,k+1)) &
 model_rho_t = - (wrf%dom(id)%mub(i,j)+x(imu)) / ph_e
 
 end function model_rho_t
+
+!#######################################################
+
+function model_rho_t_distrib(i,j,k,id,state_ens_handle, win, ens_size)
+
+! Calculate the total density on mass point (half (mass) levels, T-point).
+
+integer, intent(in) :: ens_size
+integer,  intent(in)  :: i,j,k,id
+real(r8) :: model_rho_t_distrib(ens_size)
+!HK
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer, intent(in) :: win
+
+integer  :: imu,iph,iphp1
+real(r8) :: ph_e(ens_size), x_imu(ens_size), x_iph(ens_size), x_iphp1(ens_size)
+
+!HK
+integer                        :: ierr
+integer(KIND=MPI_ADDRESS_KIND) :: target_disp ! must be mpi_address_kind to avoid seg faults on some systems
+integer owner_of_state
+integer element_index
+
+model_rho_t_distrib(:) = missing_r8
+
+! Adapted the code from WRF module_big_step_utilities_em.F ----
+!         subroutine calc_p_rho_phi      Y.-R. Guo (10/20/2004)
+
+! Simplification: alb*mub = (phb(i,j,k+1) - phb(i,j,k))/dnw(k)
+
+if (wrf%dom(id)%type_mu < 0 .or. wrf%dom(id)%type_gz < 0) then
+  call error_handler(E_ERR, 'model_rho_t:', &
+      'BOTH MU and PH must be in state vector to compute total density', &
+       source, revision, revdate)
+endif
+
+imu   = wrf%dom(id)%dart_ind(i,j,1,  wrf%dom(id)%type_mu)
+! Find out which task has the element of state vector
+call get_var_owner_index(imu, owner_of_state, element_index) ! pe
+owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
+
+if (my_task_id() == owner_of_state) then
+
+    x_imu = state_ens_handle%copies(1:ens_size, element_index)
+
+else
+
+   target_disp = (element_index - 1) * state_ens_handle%num_copies
+
+   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
+   call mpi_get(x_imu, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
+   call mpi_win_unlock(owner_of_state, win, ierr)
+
+endif
+
+iph   = wrf%dom(id)%dart_ind(i,j,k,  wrf%dom(id)%type_gz)
+! Find out which task has the element of state vector
+call get_var_owner_index(iph, owner_of_state, element_index) ! pe
+owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
+
+if (my_task_id() == owner_of_state) then
+
+    x_iph = state_ens_handle%copies(1:ens_size, element_index)
+
+else
+
+   target_disp = (element_index - 1) * state_ens_handle%num_copies
+
+   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
+   call mpi_get(x_iph, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
+   call mpi_win_unlock(owner_of_state, win, ierr)
+
+endif
+
+iphp1 = wrf%dom(id)%dart_ind(i,j,k+1,wrf%dom(id)%type_gz)
+! Find out which task has the element of state vector
+call get_var_owner_index(iphp1, owner_of_state, element_index) ! pe
+owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
+
+if (my_task_id() == owner_of_state) then
+
+    x_iphp1 = state_ens_handle%copies(1:ens_size, element_index)
+
+else
+
+   target_disp = (element_index - 1) * state_ens_handle%num_copies
+
+   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
+   call mpi_get(x_iphp1, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
+   call mpi_win_unlock(owner_of_state, win, ierr)
+
+endif
+
+
+ph_e = ( (x_iphp1 + wrf%dom(id)%phb(i,j,k+1)) &
+       - (x_iph   + wrf%dom(id)%phb(i,j,k  )) ) / wrf%dom(id)%dnw(k)
+
+! now calculate rho = - mu / dphi/deta
+
+model_rho_t_distrib(:) = - (wrf%dom(id)%mub(i,j)+x_imu) / ph_e
+
+end function model_rho_t_distrib
 
 !#######################################################
 
@@ -8474,7 +9754,34 @@ function compute_geometric_height(geopot, lat)
 
 end function compute_geometric_height
 
+!-------------------------------------------------------------------------
+subroutine get_state(x, ill, win, state_ens_handle, ens_size)
 
+integer, intent(in)              :: ill
+integer, intent(in)              :: ens_size
+type(ensemble_type), intent(in)  :: state_ens_handle
+real(r8), intent(out)             :: x(ens_size)
+integer, intent(in)              :: win
+
+integer                          :: owner_of_state
+integer                          :: element_index
+integer(KIND=MPI_ADDRESS_KIND)   :: target_disp
+integer                          :: ierr
+
+call get_var_owner_index(ill, owner_of_state, element_index) ! pe
+owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
+
+if (my_task_id() == owner_of_state) then
+   x = state_ens_handle%copies(1:ens_size, element_index)
+else
+   target_disp = (element_index - 1) * state_ens_handle%num_copies
+   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
+   call mpi_get(x, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
+   call mpi_win_unlock(owner_of_state, win, ierr)
+endif
+
+end subroutine get_state
+!--------------------------------------------------------------------------
 
 end module model_mod
 

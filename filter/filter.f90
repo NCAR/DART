@@ -548,7 +548,7 @@ AdvanceTime : do
    ! and obs_values. ens_size is the number of regular ensemble members,
    ! not the number of copies
 
-   reps = 10 
+   reps = 1 
 
    start = MPI_WTIME()
 
@@ -722,9 +722,6 @@ AdvanceTime : do
    call     trace_message('Before computing posterior observation values')
    call timestamp_message('Before computing posterior observation values')
 
-  call timestamp_message('Transposing ens_handle to copy complete before get_obs_ens')
-   call all_vars_to_all_copies(ens_handle)
-
    ! Compute the ensemble of posterior observations, load up the obs_err_var 
    ! and obs_values.  ens_size is the number of regular ensemble members, 
    ! not the number of copies
@@ -733,10 +730,7 @@ AdvanceTime : do
       OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       isprior=.false.)
 
-    call timestamp_message('Transposing ens_handle back to var complete after get_obs_ens')
-    call all_copies_to_all_vars(ens_handle)
-
-   call timestamp_message('After  computing posterior observation values')
+    call timestamp_message('After  computing posterior observation values')
    call     trace_message('After  computing posterior observation values')
 
    if(ds) then
