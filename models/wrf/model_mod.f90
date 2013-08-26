@@ -3509,7 +3509,8 @@ else
    ! HK This is annoying.  Back to earlier question of QC if one ensemble fails do we
    ! disguard all the obervations?
    if(any(zloc == missing_r8)) then
-      obs_val = missing_r8
+      print*, 'One of the ensembles has failed the vertical co ordinate rank', my_task_id()
+      expected_obs = missing_r8 !HK this is redundant? expected_obs is initialized to missing_r8
       istatus = 2
       deallocate(v_h, v_p)
       return
@@ -6084,82 +6085,32 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t 
    enddo
 
 
- !  print*, 'passed this one, rank ', my_task_id()
-
-
    if (debug) &
         print*, 'model_mod.f90 :: get_model_pressure_profile :: n, v_p() ', n, v_p(1:n, :)
 
    if ( wrf%dom(id)%type_ps >= 0 ) then
 
       ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, wrf%dom(id)%type_ps)
+      call get_state(x_ill, ill, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
       ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_ps)
+      call get_state(x_ilr, ilr, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
       iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, wrf%dom(id)%type_ps)
+      call get_state(x_iul, iul, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
       iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_ps)
+      call get_state(x_iur, iur, win, state_ens_handle, state_ens_handle%num_copies - 6)
 
       ! I'm not quite sure where this comes from, but I will trust them on it....
-      ! HK distributed version
 
-      !> @todo get rid of this copypasta
-      ! Find out which task has the element of state vector - This should be a subroutine in mpi_utilites
-      call get_var_owner_index(ill, owner_of_state, element_index) ! pe
-      owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
-      if (my_task_id() == owner_of_state) then
-         x_ill = state_ens_handle%copies(1:ens_size, element_index)
-      else
-         target_disp = (element_index - 1) * state_ens_handle%num_copies
-         call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
-         call mpi_get(x_ill, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
-         call mpi_win_unlock(owner_of_state, win, ierr)
-      endif
-
-      ! Find out which task has the element of state vector - This should be a subroutine in mpi_utilites
-      call get_var_owner_index(ilr, owner_of_state, element_index) ! pe
-      owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
-      if (my_task_id() == owner_of_state) then
-         x_ilr = state_ens_handle%copies(1:ens_size, element_index)
-      else
-         target_disp = (element_index - 1) * state_ens_handle%num_copies
-         call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
-         call mpi_get(x_ilr, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
-         call mpi_win_unlock(owner_of_state, win, ierr)
-      endif
-
-      ! Find out which task has the element of state vector - This should be a subroutine in mpi_utilites
-      call get_var_owner_index(iul, owner_of_state, element_index) ! pe
-      owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
-      if (my_task_id() == owner_of_state) then
-         x_iul = state_ens_handle%copies(1:ens_size, element_index)
-      else
-         target_disp = (element_index - 1) * state_ens_handle%num_copies
-         call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
-         call mpi_get(x_iul, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
-         call mpi_win_unlock(owner_of_state, win, ierr)
-      endif
-
-      ! Find out which task has the element of state vector - This should be a subroutine in mpi_utilites
-      call get_var_owner_index(iur, owner_of_state, element_index) ! pe
-      owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
-      if (my_task_id() == owner_of_state) then
-          x_iur = state_ens_handle%copies(1:ens_size, element_index)
-      else
-         target_disp = (element_index - 1) * state_ens_handle%num_copies
-         call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
-         call mpi_get(x_iur, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
-         call mpi_win_unlock(owner_of_state, win, ierr)
-      endif
-
-!return
-
-      ! Do you have to do this per ensemble
+      ! Do you have to do this per ensemble? 
       !> @todo This is messy
       do e = 1,ens_size
 
          if ( x_ill(e) /= 0.0_r8 .and. x_ilr(e) /= 0.0_r8 .and. x_iul(e) /= 0.0_r8 .and. &
               x_iur(e) /= 0.0_r8 ) then
 
-            !> @todo I think this in incorrect. How is it working?
-            !print*, 'sizes ', size(pres1(e:e)), 'v_p(0, :)', size(v_p(0, :))
             v_p(0,e:e) = interp_4pressure_distrib(x_ill(e:e), x_ilr(e:e), x_iul(e:e), x_iur(e:e), dx, dxm, dy, dym, 1)
 
          else
@@ -6169,10 +6120,8 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t 
             pres3(e:e) = model_pressure_t_distrib(ul(1), ul(2), 2,id,state_ens_handle, win, 1)
             pres4(e:e) = model_pressure_t_distrib(ur(1), ur(2), 2,id,state_ens_handle, win, 1)
 
-            !> @todo I think this in incorrect. How is it working?
             v_p(0,e:e) = interp_4pressure_distrib(pres1(e:e), pres2(e:e), pres3(e:e), pres4(e:e), dx, dxm, dy, dym, 1, &
                   extrapolate=.true., edgep=v_p(1,e))
-           ! print*, 'passed this one too, rank ', my_task_id(), 'e ', e
 
          endif
 
@@ -6187,7 +6136,6 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t 
 
       v_p(0,:) = interp_4pressure_distrib(pres1, pres2, pres3, pres4, dx, dxm, dy, dym, ens_size, &
               extrapolate=.true., edgep=v_p(1,:))
-      ! print*, 'passed this one also, rank ', my_task_id()
 
    endif
 
@@ -6579,45 +6527,10 @@ if (wrf%dom(id)%type_qv < 0 .or. wrf%dom(id)%type_t < 0) then
 endif
 
 iqv = wrf%dom(id)%dart_ind(i,j,k,wrf%dom(id)%type_qv)
+call get_state(x_iqv, iqv, win, state_ens_handle, ens_size)
+
 it  = wrf%dom(id)%dart_ind(i,j,k,wrf%dom(id)%type_t)
-
-! Find out which task has the element of state vector
-call get_var_owner_index(iqv, owner_of_state, element_index) ! pe
-owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
-
-!print*, 'var owner index A ', owner_of_state, 'element ', element_index, 'my rank ', my_task_id()
-
-if (my_task_id() == owner_of_state) then
-
-    x_iqv = state_ens_handle%copies(1:ens_size, element_index)
-else
-
-   target_disp = (element_index - 1) * state_ens_handle%num_copies
-
-   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
-   call mpi_get(x_iqv, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
-   call mpi_win_unlock(owner_of_state, win, ierr)
-
-endif
-
-! Find out which task has the element of state vector
-call get_var_owner_index(it, owner_of_state, element_index) ! pe
-owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
-
-!print*, 'var owner index B ', owner_of_state, 'element ', element_index, 'my rank ', my_task_id()
-
-if (my_task_id() == owner_of_state) then
-
-    x_it = state_ens_handle%copies(1:ens_size, element_index)
-else
-
-   target_disp = (element_index - 1) * state_ens_handle%num_copies
-
-   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
-   call mpi_get(x_it, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
-   call mpi_win_unlock(owner_of_state, win, ierr)
-
-endif
+call get_state(x_it, it, win, state_ens_handle, ens_size)
 
 qvf1(:) = 1.0_r8 + x_iqv(:) / rd_over_rv
 
@@ -6933,62 +6846,13 @@ if (wrf%dom(id)%type_mu < 0 .or. wrf%dom(id)%type_gz < 0) then
 endif
 
 imu   = wrf%dom(id)%dart_ind(i,j,1,  wrf%dom(id)%type_mu)
-! Find out which task has the element of state vector
-call get_var_owner_index(imu, owner_of_state, element_index) ! pe
-owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
-
-if (my_task_id() == owner_of_state) then
-
-    x_imu = state_ens_handle%copies(1:ens_size, element_index)
-
-else
-
-   target_disp = (element_index - 1) * state_ens_handle%num_copies
-
-   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
-   call mpi_get(x_imu, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
-   call mpi_win_unlock(owner_of_state, win, ierr)
-
-endif
+call get_state(x_imu, imu, win, state_ens_handle, ens_size)
 
 iph   = wrf%dom(id)%dart_ind(i,j,k,  wrf%dom(id)%type_gz)
-! Find out which task has the element of state vector
-call get_var_owner_index(iph, owner_of_state, element_index) ! pe
-owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
-
-if (my_task_id() == owner_of_state) then
-
-    x_iph = state_ens_handle%copies(1:ens_size, element_index)
-
-else
-
-   target_disp = (element_index - 1) * state_ens_handle%num_copies
-
-   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
-   call mpi_get(x_iph, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
-   call mpi_win_unlock(owner_of_state, win, ierr)
-
-endif
+call get_state(x_iph, iph, win, state_ens_handle, ens_size)
 
 iphp1 = wrf%dom(id)%dart_ind(i,j,k+1,wrf%dom(id)%type_gz)
-! Find out which task has the element of state vector
-call get_var_owner_index(iphp1, owner_of_state, element_index) ! pe
-owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
-
-if (my_task_id() == owner_of_state) then
-
-    x_iphp1 = state_ens_handle%copies(1:ens_size, element_index)
-
-else
-
-   target_disp = (element_index - 1) * state_ens_handle%num_copies
-
-   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
-   call mpi_get(x_iphp1, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
-   call mpi_win_unlock(owner_of_state, win, ierr)
-
-endif
-
+call get_state(x_iphp1, iphp1, win, state_ens_handle, ens_size)
 
 ph_e = ( (x_iphp1 + wrf%dom(id)%phb(i,j,k+1)) &
        - (x_iph   + wrf%dom(id)%phb(i,j,k  )) ) / wrf%dom(id)%dnw(k)
