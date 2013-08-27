@@ -70,6 +70,8 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
 !HK should model_mod know about the number of copies?
 use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
 
+use sort_mod, only : sort
+
 ! FIXME:
 ! the kinds KIND_CLOUD_LIQUID_WATER should be KIND_CLOUDWATER_MIXING_RATIO, 
 ! and kind KIND_CLOUD_ICE should be KIND_ICE_MIXING_RATIO, but for backwards
@@ -3256,18 +3258,23 @@ real(r8)            :: mod_sfc_elevation
 
 !HK 
 real(r8),  allocatable :: x_ill(:), x_iul(:), x_ilr(:), x_iur(:)
-integer                :: e
+integer                :: e, count, uk !> index varibles for loop
+integer, allocatable   :: uniquek(:), ksort(:)
+real(r8), allocatable  :: failedcopies(:)
 
 allocate(x_ill(state_ens_handle%num_copies -6), x_iul(state_ens_handle%num_copies -6), x_ilr(state_ens_handle%num_copies -6), x_iur(state_ens_handle%num_copies -6))
 allocate(fld(2,state_ens_handle%num_copies -6), a1(state_ens_handle%num_copies -6))
 allocate(zloc(state_ens_handle%num_copies -6), is_lev0(state_ens_handle%num_copies -6))
 allocate(k(state_ens_handle%num_copies -6), dz(state_ens_handle%num_copies -6), dzm(state_ens_handle%num_copies -6))
+allocate(ksort(state_ens_handle%num_copies -6))
+allocate(failedcopies(state_ens_handle%num_copies -6))
 
 ! Initialize stuff
 istatus = 0
 fld(:,:) = missing_r8
 obs_val = missing_r8 !> to be removed
 expected_obs(:) = missing_r8  !> array of obs_vals
+failedcopies(:) = 1
 
 ! If identity observation (obs_kind < 0), then no need to interpolate
 if ( obs_kind < 0 ) then
@@ -3507,19 +3514,27 @@ else
 
    ! Deal with missing vertical coordinates -- return with istatus .ne. 0
    ! HK This is annoying.  Back to earlier question of QC if one ensemble fails do we
-   ! disguard all the obervations?
-   if(any(zloc == missing_r8)) then
-      print*, 'One of the ensembles has failed the vertical co ordinate rank', my_task_id()
-      expected_obs = missing_r8 !HK this is redundant? expected_obs is initialized to missing_r8
-      istatus = 2
-      deallocate(v_h, v_p)
-      return
-   endif
+   ! discard all the obervations?
+   ! For now, to replicate the original code behaviour keep track of the failed copies
 
-   ! HK Q.What is k?
+   ! ********* bail out early code **********
+   !if(any(zloc == missing_r8)) then
+   !   print*, 'One of the ensembles has failed the vertical co ordinate rank', my_task_id()
+   !   expected_obs = missing_r8 !HK this is redundant? expected_obs is initialized to missing_r8
+   !   istatus = 2
+   !   deallocate(v_h, v_p)
+   !   return
+   !endif
+   ! ********* endof bail out early code ********
+
+   do e = 1, state_ens_handle%num_copies - 6
+      if(zloc(e) == missing_r8) then
+          failedcopies(e) = missing_r8
+      endif
+   enddo
+
    ! Set a working integer k value -- if (int(zloc) < 1), then k = 1
    k = max(1,int(zloc)) !HK k is now ensemble size
-   print*, 'k ', k
 
    ! The big horizontal interp loop below computes the data values in the level
    ! below and above the actual location, and then does a separate vertical
@@ -3616,60 +3631,93 @@ else
    ! Convert water vapor mixing ratio to specific humidity:
    else if( obs_kind == KIND_SPECIFIC_HUMIDITY ) then
 
-       ! This is for 3D specific humidity -- surface spec humidity later
+      ! This is for 3D specific humidity -- surface spec humidity later
       if(.not. surf_var) then
 
-         !> @todo check how many different ks you have.
-         K_LOOP: do e = 1, state_ens_handle%num_copies -6
+         ! Find the unique k values
+         ksort = sort(k)
+
+         count = 1
+         do e = 2, state_ens_handle%num_copies - 6
+            if ( ksort(e) /= ksort(e-1) ) count = count + 1
+         enddo
+
+         allocate(uniquek(count))
+ 
+         uk = 1
+         do e = 1, state_ens_handle%num_copies - 6
+            if ( all(uniquek /= k(e)) ) then
+               uniquek(uk) = k(e)
+               uk = uk + 1
+            endif
+         enddo
 
          ! First confirm that vapor mixing ratio is in the DART state vector
          if ( wrf%dom(id)%type_qv >= 0 ) then
 
-            ! Check to make sure retrieved integer gridpoints are in valid range
-            if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
-                 boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
-                 boundsCheck( k(e), .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
-      
-               call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-               if ( rc .ne. 0 ) &
-                    print*, 'model_mod.f90 :: model_interpolate :: getCorners SH rc = ', rc
+            !> @todo check how many different ks you have.
+            UNIQUEK_LOOP: do uk = 1, count ! for the different ks
 
-                ! Interpolation for SH field at level k
-               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k(e), wrf%dom(id)%type_qv)
-               call get_state(x_ill, ill, win, state_ens_handle, state_ens_handle%num_copies - 6)
+               ! Check to make sure retrieved integer gridpoints are in valid range
+               if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+                    boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+                    boundsCheck( k(uk), .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
 
-               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k(e), wrf%dom(id)%type_qv)
-               call get_state(x_iul, iul, win, state_ens_handle, state_ens_handle%num_copies - 6)
+                  call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+                  if ( rc .ne. 0 ) &
+                       print*, 'model_mod.f90 :: model_interpolate :: getCorners SH rc = ', rc
 
-               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k(e), wrf%dom(id)%type_qv)
-               call get_state(x_ilr, ilr, win, state_ens_handle, state_ens_handle%num_copies - 6)
+                  ! Interpolation for SH field at level k
+                  ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k(uk), wrf%dom(id)%type_qv)
+                  call get_state(x_ill, ill, win, state_ens_handle, state_ens_handle%num_copies - 6)
 
-               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k(e), wrf%dom(id)%type_qv)
-               call get_state(x_iur, iur, win, state_ens_handle, state_ens_handle%num_copies - 6)
+                  iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k(uk), wrf%dom(id)%type_qv)
+                  call get_state(x_iul, iul, win, state_ens_handle, state_ens_handle%num_copies - 6)
 
-               a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
-               fld(1,e) = a1(e) /(1.0_r8 + a1(e))
-               
-               ! Interpolation for SH field at level k+1
-               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k(e)+1, wrf%dom(id)%type_qv)
-               call get_state(x_ill, ill, win, state_ens_handle, state_ens_handle%num_copies - 6)
+                  ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k(uk), wrf%dom(id)%type_qv)
+                  call get_state(x_ilr, ilr, win, state_ens_handle, state_ens_handle%num_copies - 6)
 
-               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k(e)+1, wrf%dom(id)%type_qv)
-               call get_state(x_iul, iul, win, state_ens_handle, state_ens_handle%num_copies - 6)
+                  iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k(uk), wrf%dom(id)%type_qv)
+                  call get_state(x_iur, iur, win, state_ens_handle, state_ens_handle%num_copies - 6)
 
-               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k(e)+1, wrf%dom(id)%type_qv)
-               call get_state(x_ilr, ilr, win, state_ens_handle, state_ens_handle%num_copies - 6)
+                  do e = 1, state_ens_handle%num_copies - 6
 
-               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k(e)+1, wrf%dom(id)%type_qv)
-               call get_state(x_iur, iur, win, state_ens_handle, state_ens_handle%num_copies - 6)
-               
-               a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
-               fld(2,e) = a1(e) /(1.0_r8 + a1(e))
+                     if ( k(e) == uniquek(uk) ) then ! interpolate only if it is the correct k
+                        a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+                        fld(1,e) = a1(e) /(1.0_r8 + a1(e))
+                     endif
 
-            endif
+                  enddo
+
+                  ! Interpolation for SH field at level k+1
+                  ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k(uk)+1, wrf%dom(id)%type_qv)
+                  call get_state(x_ill, ill, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
+                  iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k(uk)+1, wrf%dom(id)%type_qv)
+                  call get_state(x_iul, iul, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
+                  ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k(uk)+1, wrf%dom(id)%type_qv)
+                  call get_state(x_ilr, ilr, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
+                  iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k(uk)+1, wrf%dom(id)%type_qv)
+                  call get_state(x_iur, iur, win, state_ens_handle, state_ens_handle%num_copies - 6)
+
+                  do e = 1, state_ens_handle%num_copies - 6
+
+                     if ( k(e) == uniquek(uk) ) then ! interpolate only if it is the correct
+                        a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+                        fld(2,e) = a1(e) /(1.0_r8 + a1(e))
+                     endif
+
+                  enddo
+
+              endif
+
+            enddo UNIQUEK_LOOP
+
          endif
 
-       enddo K_LOOP
+         deallocate(uniquek)
 
       ! This is for surface specific humidity (calculated from Q2)
       else
@@ -3850,44 +3898,46 @@ else
    !   (k and k+1).
 
    ! Check to make sure that we did something sensible in the Horizontal Interpolation 
-   !   section above.  All valid obs_kinds will have changed fld(1,:).
-   if ( fld(1,1) == missing_r8 ) then !HK should be any?
+   !   section above.  All valid obs_kinds will have changed fld(1,e).
 
-      expected_obs = missing_r8
+   !HK I am unsure as to whether this should be done on the array expected_obs or one ensemble
+   ! member (e) at a time.
+   do e = 1, state_ens_handle%num_copies -6
 
-   ! We purposefully changed fld(1,:), so continue onward
-   else
+      if ( fld(1,e) == missing_r8 ) then
 
-      ! If a surface variable, or a variable with no particular vertical location
-      ! (basically the entire column) then no need to do any vertical interpolation
-      if ( surf_var .or. vert_is_undef(location) ) then 
+         expected_obs(e) = missing_r8
+   
+      else ! We purposefully changed fld(1,e), so continue onward
 
-         !obs_val = fld(1)
-          expected_obs = fld(1,:) !HK
+         ! If a surface variable, or a variable with no particular vertical location
+         ! (basically the entire column) then no need to do any vertical interpolation
+         if ( surf_var .or. vert_is_undef(location) ) then
 
-      ! If an interior variable, then we DO need to do vertical interpolation
-      else
+            !obs_val = fld(1)
+             expected_obs(e) = fld(1,e) !HK
 
-         ! First make sure fld(2,:) is no longer a missing value
-         if ( fld(2,1) == missing_r8 ) then !HK should be any?
-
-            expected_obs = missing_r8
-
-         ! Do vertical interpolation -- at this point zloc is >= 1 unless
-         ! the namelist value allow_obs_below_vol is true, in which case
-         ! it is >= 0, and < 1 is a request to extrapolate.  
+         ! If an interior variable, then we DO need to do vertical interpolation
          else
 
-            ! Get fractional distances between grid points
-            call toGrid_distrib(zloc, state_ens_handle%num_copies - 6, k, dz, dzm)
-            if (debug) print*, 'zloc, k, dz, dzm = ', zloc, k, dz, dzm
-            if (debug) print*, 'fld(1,:), fld(2,:) = ', fld(1,:), fld(2,:)
+            ! First make sure fld(2,:) is no longer a missing value
+            if ( fld(2,e) == missing_r8 ) then !HK should be any?
 
-            ! If you get here and zloc < 1.0, then k will be 0, and
-            ! we should extrapolate.  fld(1,:) and fld(2,:) where computed
-            ! at levels 1 and 2.
+               expected_obs(e) = missing_r8
 
-            do e = 1, state_ens_handle%num_copies -6 
+            ! Do vertical interpolation -- at this point zloc is >= 1 unless
+            ! the namelist value allow_obs_below_vol is true, in which case
+            ! it is >= 0, and < 1 is a request to extrapolate.
+            else
+
+               ! Get fractional distances between grid points
+               call toGrid(zloc(e), k(e), dz(e), dzm(e))
+               if (debug) print*, 'zloc(e), k(e), dz(e), dzm(e) = ', zloc(e), k(e), dz(e), dzm(e)
+               if (debug) print*, 'fld(1,e), fld(2,e) = ', fld(1,e), fld(2,e)
+
+               ! If you get here and zloc < 1.0, then k will be 0, and
+               ! we should extrapolate.  fld(1,:) and fld(2,:) where computed
+               ! at levels 1 and 2.
 
                if (k(e) >= 1) then
                   ! Linearly interpolate between grid points
@@ -3898,18 +3948,21 @@ else
                   expected_obs(e) = fld(1,e) - (fld(2,e)-fld(1,e))*dzm(e)
                   if (debug) print*, 'extrapolated obs_val = ', expected_obs(e)
                endif
-            enddo
 
+            endif
          endif
       endif
-   endif
+
+      ! Fill in failed copies
+      if ( failedcopies(e) == missing_r8 ) expected_obs(e) = missing_r8
+
+   enddo
 
 endif  ! end of "if ( obs_kind < 0 )"
 
-
 ! Now that we are done, check to see if a missing value somehow 
 ! made it through without already having set an error return code.
-if ( obs_val == missing_r8 .and. istatus == 0 ) then
+if ( any(expected_obs == missing_r8) .and. istatus == 0 ) then
    istatus = 99
 endif
 
@@ -3921,6 +3974,7 @@ endif
 ! Deallocate variables before exiting
 deallocate(v_h, v_p)
 deallocate(x_ill, x_iul, x_ilr, x_iur)
+deallocate(failedcopies)
 
 end subroutine model_interpolate_distrib
 
@@ -5794,7 +5848,7 @@ end subroutine toGrid
 !#######################################################################
 
 subroutine toGrid_distrib(x, ens_size, j, dx, dxm)
-
+!HK I don't think you need this
 !  Transfer obs. x to grid j and calculate its
 !  distance to grid j and j+1
 
