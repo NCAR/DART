@@ -88,6 +88,21 @@ the end of filter.f90 to evaluate the outlier threshold.  The user can add
 code to that routine to change the threshold based on observation type or
 values as they wish.  If .false. the default filter outlier threshold code
 will be called and the user routine ignored.</LI>
+<LI>If your <em class=file>model_mod.f90</em> provides a customized 
+<em class=code>get_close_obs()</em> routine that makes use of the 
+types/kinds arguments for either the base location or the close location list, 
+there is an important change in this release.  The fifth
+argument to the <em class=code>get_close_obs()</em> call is now a list of 
+generic kinds corresponding to the location list.  The fourth argument to
+the <em class=code>get_dist()</em> routine is now also a generic kind and
+not a specific type.  In previous versions of the system the list
+of close locations was sometimes a list of specific types and other
+times a list of generic kinds. The system now
+always passes generic kinds for the close locations list for consistency.
+The base location and specific type remains the same as before.  If you
+have a <em class=code>get_close_obs()</em> routine in your <em class=file>
+model_mod.f90</em> file and have questions about usage, 
+<a href="mailto:dart@ucar.edu">contact</a> the DART development team.</LI>
 <LI>Filter will call the end_model() subroutine in the model_mod for
 the first time.  It should have been called all along, but was not.</LI>
 <LI>Added a time sort routine in the time_manager_mod.</LI>

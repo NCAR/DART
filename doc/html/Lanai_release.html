@@ -1991,6 +1991,22 @@ using a potential temperature field in the state vector.  The code now
 correctly does the conversion from potential temperature to sensible (in-situ)
 temperature during the forward operator process.</li>
 
+<li>If your <em class=file>model_mod.f90</em> provides a customized 
+<em class=code>get_close_obs()</em> routine that makes use of the 
+types/kinds arguments for either the base location or the close location list,
+there is an important change in this release.  The fifth
+argument to the <em class=code>get_close_obs()</em> call is now a list of 
+generic kinds corresponding to the location list.  The fourth argument to
+the <em class=code>get_dist()</em> routine is now also a generic kind and
+not a specific type.  In previous versions of the system the list
+of close locations was sometimes a list of specific types and other
+times a list of generic kinds. The system now
+always passes generic kinds for the close locations list for consistency.
+The base location and specific type remains the same as before.  If you
+have a <em class=code>get_close_obs()</em> routine in your <em class=file>
+model_mod.f90</em> file and have questions about usage, 
+<a href="mailto:dart@ucar.edu">contact</a> the DART development team.</li>
+
 <li>The simple_advection model was incorrectly calling the random number
 generator initialization routines after generating some random numbers.
 It now correctly initializes the generator before getting any random values.</li>
@@ -2009,7 +2025,8 @@ long-term archiving have been converted to call HSI (HPSS) commands.</li>
 which are too close to the poles.  If the superob radius includes either pole,
 the computation of an average obs location becomes more complicated than the
 existing code is prepared to deal with.  (If this case is of interest to you,
-write the DART development team.  We have ideas on how to implement this.)</li>
+<a href="mailto:dart@ucar.edu">contact</a> the DART development team.  
+We have ideas on how to implement this.)</li>
 
 <li>The default namelist values for the 'obs_seq_to_netcdf' program has changed
 so the default is a single large time bin, which means you don't have to know
@@ -2096,13 +2113,18 @@ Set this namelist item to .false. to recover the previous behavior.</li>
 
 <li>Missing values in state
     <ul><li>In some models there are values which are not valid in all ensemble members.
-        With this release it is possible to indicate that it is ok to have missing values
-        in the state vector.  There is a namelist item <em class=code>allow_missing_in_state</em>
+        With this release there is limited support for this in DART.  There are still
+        serious questions about what the correct results should be if the ensemble
+        count for some state vector item is smaller than the total ensemble size.
+        Nevertheless, with this release we have implemented support for missing
+        state vector values in the CLM Land model.
+        There is a new namelist item <em class=code>allow_missing_in_clm</em>
         in the &amp;assim_tools_nml namelist.  Setting this to .true. will allow DART to
         avoid updating any state vector items in which one or more of the ensemble members
-        have a missing value.  Inflation cannot be enabled with this option, and all
+        in CLM have a missing value.  Inflation will be disabled for any state vector
+        items where one or more ensemble members have missing values. All CLM
         forward operators must test for and be prepared to return with a failed forward
-        operator code if any of the values it requires are missing.
+        operator code if any of the interpolation items it requires are missing.
         See the documentation
         <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/assim_tools/assim_tools_mod.html#Namelist">Website</a> 
         or <a href="../../assim_tools/assim_tools_mod.html#Namelist">local file</a>
