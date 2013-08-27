@@ -57,7 +57,7 @@ use assim_model_mod,      only : get_state_meta_data, get_close_maxdist_init,   
 implicit none
 private
 
-public :: filter_assim, set_assim_tools_trace
+public :: filter_assim, set_assim_tools_trace, get_missing_ok_status
 
 ! Indicates if module initialization subroutine has been called yet
 logical :: module_initialized = .false.
@@ -125,8 +125,8 @@ logical  :: gaussian_likelihood_tails       = .false.
 ! Some models are allowed to have MISSING_R8 values in the DART state vector.
 ! If they are encountered, it is not necessarily a FATAL error.
 ! Most of the time, if a MISSING_R8 is encountered, DART should die.
-! CLM and POP (more?) should have allow_missing_in_state = .true.
-logical  :: allow_missing_in_state = .false.
+! CLM and POP (more?) should have allow_missing_in_clm = .true.
+logical  :: allow_missing_in_clm = .false.
 
 ! Not in the namelist; this var disables the experimental
 ! linear and spherical case code in the adaptive localization 
@@ -139,7 +139,7 @@ namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails, &
    output_localization_diagnostics, localization_diagnostics_file,         &
    special_localization_obs_types, special_localization_cutoffs,           &
-   allow_missing_in_state
+   allow_missing_in_clm
 
 !============================================================================
 
@@ -154,6 +154,9 @@ integer :: num_special_cutoff, type_index
 logical :: namelist_cache_override = .false.
 
 call register_module(source, revision, revdate)
+
+! do this up front
+module_initialized = .true.
 
 ! give these guys initial values at runtime *before* we read
 ! in the namelist.  this is to help detect how many items are
@@ -346,10 +349,7 @@ call prepare_to_update_copies(ens_handle)
 call prepare_to_update_copies(obs_ens_handle)
 
 ! Initialize assim_tools_module if needed
-if(.not. module_initialized) then
-   call assim_tools_init
-   module_initialized = .true.
-endif
+if (.not. module_initialized) call assim_tools_init()
 
 ! filter kinds 1 and 8 return sorted increments, however non-deterministic
 ! inflation can scramble these. the sort is expensive, so help users get better 
@@ -778,7 +778,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       !! or this, for performance reasons?  it won't warn you if there are missing
       ! values when you don't expect them, but it also won't do the any() unless
       ! the namelist says you might expect to see them.
-      !if ( allow_missing_in_state ) then
+      !if ( allow_missing_in_clm ) then
       !   ! Some models can take evasive action if one or more of the ensembles have
       !   ! a missing value. Generally means 'do nothing' (as opposed to DIE) 
       !   missing_in_state = any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)
@@ -791,12 +791,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       missing_in_state = any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)
       
       if ( missing_in_state ) then
-         if ( allow_missing_in_state ) then
+         if ( allow_missing_in_clm ) then
             cycle STATE_UPDATE
          else
             ! FIXME ... at some point ... convey which instances are missing
             write(msgstring,*)'Encountered a MISSING_R8 in DART at state index ',state_index
-            write(msgstring2,*)'namelist value of allow_missing_in_state (.false.) &
+            write(msgstring2,*)'namelist value of allow_missing_in_clm (.false.) &
                             &implies a fatal error.'
             call error_handler(E_ERR, 'filter_assim', msgstring, &
                source, revision, revdate, text2=msgstring2)
@@ -2454,11 +2454,28 @@ subroutine set_assim_tools_trace(execution_level, timestamp_level)
 ! (right now, only > 0 prints anything and it doesn't matter how
 ! large the value is.)
 
+! Initialize assim_tools_module if needed
+if (.not. module_initialized) call assim_tools_init()
 
 print_trace_details = execution_level
 print_timestamps    = timestamp_level
 
 end subroutine set_assim_tools_trace
+
+!------------------------------------------------------------------------
+
+function get_missing_ok_status()
+ logical :: get_missing_ok_status
+
+! see if the namelist variable allows missing values in the
+! model state or not.
+
+! Initialize assim_tools_module if needed
+if (.not. module_initialized) call assim_tools_init()
+
+get_missing_ok_status = allow_missing_in_clm
+
+end function get_missing_ok_status
 
 !--------------------------------------------------------------------
 

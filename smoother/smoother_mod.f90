@@ -22,7 +22,7 @@ use time_manager_mod,     only : time_type, operator(==), print_time
 use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
                                  netcdf_file_type, init_diag_output, finalize_diag_output,   &
                                  aoutput_diagnostics
-use assim_tools_mod,      only : filter_assim
+use assim_tools_mod,      only : filter_assim, get_missing_ok_status
 use obs_sequence_mod,     only : obs_sequence_type
 use adaptive_inflate_mod, only : adaptive_inflate_type, adaptive_inflate_init, &
                                  do_varying_ss_inflate, do_single_ss_inflate
@@ -109,14 +109,19 @@ subroutine init_smoother(ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
 type(ensemble_type), intent(inout) :: ens_handle
 integer,             intent(in) :: POST_INF_COPY, POST_INF_SD_COPY
 
+logical :: allow_missing
+
 ! static_init_smoother initializes module and read namelist
 if ( .not. module_initialized ) call static_init_smoother()
+
+! find out if it is ok to have missing values in the state vector
+allow_missing = get_missing_ok_status()
 
 ! Initialize a null adaptive_inflate type since inflation is not done at lags
 ! NOTE: Using ens_handle here (not lag_handle) so it doesn't die for 0 lag choice
 if(num_lags > 0) call adaptive_inflate_init(lag_inflate, 0, .false., .false., .false., &
    .true., 'no_lag_inflate', 'no_lag_inflate', 'no_lag_inflate', 1.0_r8, 0.0_r8,       &
-   1.0_r8, 1.0_r8, 0.0_r8, ens_handle, POST_INF_COPY, POST_INF_SD_COPY, "Lag")
+   1.0_r8, 1.0_r8, 0.0_r8, ens_handle, POST_INF_COPY, POST_INF_SD_COPY, allow_missing, "Lag")
 
 end subroutine init_smoother
 

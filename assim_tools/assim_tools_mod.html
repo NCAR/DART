@@ -303,7 +303,7 @@ prematurely terminating the namelist.
    rectangular_quadrature          = .true.,
    gaussian_likelihood_tails       = .false.,
    close_obs_caching               = .true.,
-   allow_missing_in_state          = .false.
+   allow_missing_in_clm            = .false.
    special_localization_obs_types  = "",
    special_localization_cutoffs    = -1,
 /
@@ -470,14 +470,18 @@ that uses the types/kinds of the obs to adjust the distances.
 
 
 <TR>
- <TD> allow_missing_in_state </TD>
+ <TD> allow_missing_in_clm </TD>
  <TD> logical </TD>
  <TD> If true, missing values (MISSING_R8 as defined in the types_mod.f90
 file) are allowed in the state vector.  Model interpolation routines
 must be written to recognize this value and fail the interpolation. 
 During assimilation any state vector items where one or more of the 
 ensemble members are missing will be skipped and their values will 
-be unchanged by the assimilation.
+be unchanged by the assimilation.  The system currently has limited
+support for this option; the CLM model has been tested and is known
+to work.  Other users with models which would benefit from setting missing
+values in the state vector are encouraged to contact
+<a href="mailto:dart@ucar.edu">dart at ucar.edu</a>.
  </TD> </TR>
 
 </TBODY>

@@ -17,7 +17,7 @@
    rectangular_quadrature          = .true.,
    gaussian_likelihood_tails       = .false.,
    close_obs_caching               = .true.,
-   allow_missing_in_state          = .false.
+   allow_missing_in_clm            = .false.
 /
 
 # specify these in the same order, the same number of items

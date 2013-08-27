@@ -360,7 +360,10 @@ do i = 1, num_obs
          'identity obs is outside of state vector ', &
          source, revision, revdate)
       obs_vals(i) = state(-1 * obs_kind_ind)
+      ! fixme: we currently have no option to eval only identity obs,
+      ! or select to skip their assimilation via namelist.
       assimilate_this_ob = .true.; evaluate_this_ob = .false.
+     if (obs_vals(i) == missing_r8) istatus = 1
 ! Otherwise do forward operator for this kind
    else
       call get_expected_obs_from_def(keys(i), obs_def, obs_kind_ind, &
