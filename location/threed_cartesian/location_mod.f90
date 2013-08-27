@@ -117,27 +117,31 @@ real(r8) :: radius     ! used only for converting points on a sphere into x,y,z 
 ! If maxdist stays the same, don't need to do box distance calculations
 integer :: last_maxdist = -1.0
 
-integer :: nx               = 10
-integer :: ny               = 10
-integer :: nz               = 10
-
 !-----------------------------------------------------------------
 ! Namelist with default values
 
+! boxes or octree - FIXME: OCTREE NOT WORKING COMPLETELY YET!! DO NOT USE.
+logical :: use_octree       = .false.  ! if false, use regular boxes
+
+! Option for verification using exhaustive search, and debugging
+logical :: compare_to_correct = .true.    ! normally false
 logical :: output_box_info  = .false.
 integer :: print_box_level  = 0
-! tuning options
+
+! tuning options for octree
 integer :: nboxes           = 1000 ! suggestion for max number of nodes
 integer :: maxdepth         = 4    ! suggestion for max tree depth
 integer :: filled           = 10   ! threshold at which you quit splitting
-logical :: use_octree       = .true.  ! if false, use regular boxes
 
-! Option for verification using exhaustive search
-logical :: compare_to_correct = .true.    ! normally false
+! for boxes
+integer :: nx               = 10   ! box counts in each dimension
+integer :: ny               = 10
+integer :: nz               = 10
 
 namelist /location_nml/ &
    filled, nboxes, maxdepth, use_octree, &
-   compare_to_correct, output_box_info, print_box_level
+   compare_to_correct, output_box_info, print_box_level,
+   nx, ny, nz
 
 !-----------------------------------------------------------------
 
@@ -189,14 +193,11 @@ function get_dist(loc1, loc2, type1, kind2)
 
 ! returns the distance between 2 locations 
 
-! In spite of the names, the 3rd and 4th argument are actually specific types
-! (e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_TEMPERATURE).  The types are part of
-! the interface in case user-code wants to do a more sophisticated distance
-! calculation based on the base or target types.  In the usual case this
-! code still doesn't use the types, but there's an undocumented feature that
-! allows you to maintain the original vertical normalization even when
-! changing the cutoff distance in the horizontal.  For that to work we
-! do need to know the type, and we use the type of loc1 to control it.
+! the names are correct here - the first location gets the corresponding
+! specific type; the second location gets a generic kind.
+! these are included in case user-code wants to do a more sophisticated
+! distance computation based on the kinds or types. The DART lib code
+! doesn't use either of these.
 ! 
 
 type(location_type), intent(in) :: loc1, loc2
@@ -2216,19 +2217,19 @@ end function vert_is_scale_height
 
 function has_vertical_localization()
  
-! Return the (opposite) namelist setting for horiz_dist_only.
+! this module doesn't support horiz_dist_only
 
 logical :: has_vertical_localization
 
 if ( .not. module_initialized ) call initialize_module
 
-has_vertical_localization = .true.
+has_vertical_localization = .false.
 
 end function has_vertical_localization
 
 
 !----------------------------------------------------------------------------
-! end of location/channel/location_mod.f90
+! end of location/threed_cartesian/location_mod.f90
 !----------------------------------------------------------------------------
 
 end module location_mod

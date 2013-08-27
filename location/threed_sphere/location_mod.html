@@ -349,7 +349,7 @@ prematurely terminating the namelist.
    approximate_distance            = .false.,
    nlon                            = 71,
    nlat                            = 36,
-   output_box_info                 = .false.,
+   output_box_info     = .false.,
    maintain_original_vert          = .false.,
 /
 </pre>
@@ -633,7 +633,7 @@ location from a location type and returns in a 3 element real array.
 <div class=routine>
 <em class=call> var = set_location(lon, lat, vert_loc, which_vert) </em>
 <pre>
-type(location_type)   :: <em class=code>set_location</em>
+type(location_type) :: <em class=code>set_location</em>
 real(r8), intent(in)    :: <em class=code>lon</em>
 real(r8), intent(in)    :: <em class=code>lat</em>
 real(r8), intent(in)    :: <em class=code>vert_loc</em>
@@ -950,12 +950,12 @@ when completely done with getting distances between locations.
 <A NAME="get_close_obs"></A>
 <br>
 <div class=routine>
-<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind, 
+<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_type, 
                obs, obs_kind, num_close, close_ind, dist) </em>
 <pre>
 type(get_close_type),              intent(in)  :: <em class=code>gc</em>
 type(location_type),               intent(in)  :: <em class=code>base_obs_loc</em>
-integer,                           intent(in)  :: <em class=code>base_obs_kind</em>
+integer,                           intent(in)  :: <em class=code>base_obs_type</em>
 type(location_type), dimension(:), intent(in)  :: <em class=code>obs</em>
 integer,             dimension(:), intent(in)  :: <em class=code>obs_kind</em>
 integer,                           intent(out) :: <em class=code>num_close</em>
@@ -979,6 +979,15 @@ be called and then the two initialization routines must be called
 before using <em class=code>get_close_obs()</em> again.
 </P>
 <P>
+Note that the base location is passed with the specific type associated
+with that location.  The list of potential close locations is matched
+with a list of generic kinds.  This is because in the current usage in
+the DART system the base location is always associated with an actual
+observation, which has both a specific type and generic kind.  The list
+of potentially close locations is used both for other observation locations
+but also for state variable locations which only have a generic kind.
+</P>
+<P>
 If called without the optional <em class=optionalcode>dist</em> argument,
 all locations that are potentially close are returned, which is likely a
 superset of the locations that are within the threshold distance specified in
@@ -996,12 +1005,12 @@ or not depending on the setting of <em class=code>horiz_dist_only</em>.
         locations close to a given location.</TD></TR>
 <TR><TD valign=top><em class=code>base_obs_loc</em></TD>
     <TD>Single given location.</TD></TR>
-<TR><TD valign=top><em class=code>base_obs_kind</em></TD>
-    <TD>Kind of the single location.</TD></TR>
+<TR><TD valign=top><em class=code>base_obs_type</em></TD>
+    <TD>Specific type of the single location.</TD></TR>
 <TR><TD valign=top><em class=code>obs</em></TD>
     <TD>List of locations from which close ones are to be found.</TD></TR>
 <TR><TD valign=top><em class=code>obs_kind</em></TD>
-    <TD>Kind associated with locations in obs list.</TD></TR>
+    <TD>Generic kind associated with locations in obs list.</TD></TR>
 <TR><TD valign=top><em class=code>num_close</em></TD>
     <TD>Number of locations close to the given location.</TD></TR>
 <TR><TD valign=top><em class=code>close_ind</em></TD>
@@ -1051,12 +1060,12 @@ with the new locations list.
 <br>
 <div class=routine>
 <em class=call>var = get_dist(loc1, loc2,
- <em class=optionalcode>[, kind1, kind2, no_vert]</em>) </em>
+ <em class=optionalcode>[, type1, kind2, no_vert]</em>) </em>
 <pre>
 real(r8)                        :: get_dist
 type(location_type), intent(in) :: <em class=code>loc1</em>
 type(location_type), intent(in) :: <em class=code>loc2</em>
-integer, optional,   intent(in) :: <em class=optionalcode>kind1</em>
+integer, optional,   intent(in) :: <em class=optionalcode>type1</em>
 integer, optional,   intent(in) :: <em class=optionalcode>kind2</em>
 logical, optional,   intent(in) :: <em class=optionalcode>no_vert </em>
 </pre>
@@ -1081,9 +1090,9 @@ value in the namelist and controls whether
 vertical distance is included or not.
 </P>
 <P>
-The kind arguments are not used by the default location code, but
+The type and kind arguments are not used by the default location code, but
 are available to any user-supplied distance routines which want to
-do specialized calculations based on the kinds associated with each
+do specialized calculations based on the types/kinds associated with each
 of the two locations.
 </P>
 
@@ -1092,10 +1101,10 @@ of the two locations.
     <TD>First of two locations to compute distance between.</TD></TR>
 <TR><TD valign=top><em class=code>loc2</em></TD>
     <TD>Second of two locations to compute distance between.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>kind1</em></TD>
-    <TD>DART kind associated with location 1.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>type1</em></TD>
+    <TD>DART specific type associated with location 1.</TD></TR>
 <TR><TD valign=top><em class=optionalcode>kind2</em></TD>
-    <TD>DART kind associated with location 2.</TD></TR>
+    <TD>DART generic kind associated with location 2.</TD></TR>
 
 <TR><TD valign=top><em class=optionalcode>no_vert</em></TD>
     <TD>If true, no vertical component to distance. If false, vertical
@@ -1573,7 +1582,7 @@ The use of 'obs' in all these routine names should probably be
 changed to 'loc' since there is no particular dependence that
 they be observations.  They may need to have an associated DART
 kind, but these routines are used for DART state vector entries
-so it's often misleading to call them 'obs'.
+so it's misleading to always call them 'obs'.
 </P>
 
 <!--==================================================================-->
