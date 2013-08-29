@@ -62,8 +62,8 @@ function comp_cov_factor(z_in, c, obs_loc, obs_type, target_loc, target_kind, &
 ! distance and then decreases linearly to 0 at twice the half-width 
 ! distance.
 
-! Additional information is passed in about the location and kind of the
-! observation and the location and kind of the variable being targeted for
+! Additional information is passed in about the location and specific type of the
+! observation and the location and generic kind of the variable being targeted for
 ! increments. These can be used for more refined algorithms that want to 
 ! make the cutoff a function of these additional arguments. 
 

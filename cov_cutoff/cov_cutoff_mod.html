@@ -134,14 +134,14 @@ location_mod
 <div class=routine>
 <em class=call> var = comp_cov_factor(z_in, c
      <em class=optionalcode>[,&nbsp;obs_loc]
-     [,&nbsp;obs_kind] [,&nbsp;target_loc] [,&nbsp;target_kind] 
+     [,&nbsp;obs_type] [,&nbsp;target_loc] [,&nbsp;target_kind] 
      [,&nbsp;localization_override]</em>) </em>
 <pre>
 real(r8)                                  :: <em class=code>comp_cov_factor</em>
 real(r8), intent(in)                      :: <em class=code>z_in</em>
 real(r8), intent(in)                      :: <em class=code>c</em>
 type(location_type), optional, intent(in) :: <em class=optionalcode>obs_loc</em>
-integer, optional, intent(in)             :: <em class=optionalcode>obs_kind</em>
+integer, optional, intent(in)             :: <em class=optionalcode>obs_type</em>
 type(location_type), optional, intent(in) :: <em class=optionalcode>target_loc</em>
 integer, optional, intent(in)             :: <em class=optionalcode>target_kind</em>
 integer, optional, intent(in)             :: <em class=optionalcode>localization_override</em>
@@ -156,7 +156,7 @@ Returns a weighting factor for observation and a target variable (state or
 observation) separated by distance z_in and with a half-width distance, c.
 Three options are provided and controlled by a namelist parameter. The
 optional argument localization_override controls the type of localization
-function if present. The optional arguments obs_loc, obs_kind and
+function if present. The optional arguments obs_loc, obs_type and
 target_loc, target_kind are not used in the default code. They are made
 available for users who may want to design more sophisticated localization
 functions.
@@ -172,12 +172,12 @@ functions.
         half-width of functions used here.</TD></TR>
 <TR><TD valign=top><em class=optionalcode>obs_loc</em></TD>
     <TD>Location of the observation.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>obs_kind</em></TD>
-    <TD>Observation kind.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>obs_type</em></TD>
+    <TD>Observation specific type.</TD></TR>
 <TR><TD valign=top><em class=optionalcode>target_loc</em></TD>
     <TD>Location of target.</TD></TR>
 <TR><TD valign=top><em class=optionalcode>target_kind</em></TD>
-    <TD>Kind of target.</TD></TR>
+    <TD>Generic kind of target.</TD></TR>
 <TR><TD valign=top><em class=optionalcode>localization_override&nbsp;&nbsp;</em></TD>
     <TD>Controls localization type if present. Same values as for 
          namelist control.</TD></TR>
