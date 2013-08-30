@@ -44,8 +44,8 @@ then
 elif [ $CPLAT = linux ]
 then
 # possible different compiler choices
-#   cc=cc; ff=pgf90
-#   cc=icc; ff=ifort
+#   cc='cc -O'; ff='pgf90 -O'
+#   cc='icc -O'; ff='ifort -O'
     cc='gcc -DUNDERSCORE -O'; ff='ifort -O'
 elif [ $CPLAT = aix ]
 then
