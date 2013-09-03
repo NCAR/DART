@@ -152,8 +152,8 @@ obsloop: do    ! no end limit - have the loop break when input ends
    
    if (debug) print *, 'next observation located at lon, lat = ', lon, lat
    
-   ! date format is: ccyy-mm-dd_hh:nn:ss
-   read(date_string, "(I4,5(1X,I2))", iostat=rcio) year, month, day, hour, minute, second
+   ! date format is: dd-mm-ccyy_hh:nn:ss
+   read(date_string, "(2(I2,1X),I4,3(1X,I2))", iostat=rcio) day, month, year, hour, minute, second
    if (rcio /= 0) then 
       if (debug) print *, 'got bad read code getting next time value, rcio = ', rcio
       if (debug) print *, 'line number ', lcount, ' input line was:'
