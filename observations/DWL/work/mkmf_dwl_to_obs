@@ -6,8 +6,8 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p text_to_obs -t ../../../mkmf/mkmf.template   \
- -a "../../.." path_names_text_to_obs
+../../../mkmf/mkmf -p dwl_to_obs -t ../../../mkmf/mkmf.template   \
+ -a "../../.." path_names_dwl_to_obs
 
 exit $status
 

@@ -50,9 +50,10 @@ namelist /dwl_to_obs_nml/ max_obs, text_input_file, obs_out_file
 
 ! local variables
 
-logical, parameter :: debug = .false.  ! set to .true. to print info
+logical, parameter :: debug = .true.  ! set to .true. to print info
 
 character (len=129) :: input_line
+character (len=20)  :: date_string
 
 integer :: oday, osec, rcio, iunit, otype
 integer :: year, month, day, hour, minute, second
@@ -135,12 +136,13 @@ obsloop: do    ! no end limit - have the loop break when input ends
    if (rcio /= 0) then 
       if (debug) print *, 'line number ', lcount
       if (debug) print *, 'got bad read code from input file, rcio = ', rcio
+      if (debug) print *, '(bad read expected if end of file)'
       exit obsloop
    endif
 
-   read(input_line, *, iostat=rcio) lat, lon, vert, &
-                                  year, month, day, hour, minute, second, &
-                                  uwnd, vwnd, werr
+   ! extract the different values from the input line
+   read(input_line, *, iostat=rcio) lon, lat, vert, date_string, &
+                                    uwnd, vwnd, werr
    if (rcio /= 0) then 
       if (debug) print *, 'got bad read code getting next wind obs, rcio = ', rcio
       if (debug) print *, 'line number ', lcount, ' input line was:'
@@ -148,7 +150,20 @@ obsloop: do    ! no end limit - have the loop break when input ends
       exit obsloop
    endif
    
-   if (debug) print *, 'next observation located at lat, lon = ', lat, lon
+   if (debug) print *, 'next observation located at lon, lat = ', lon, lat
+   
+   ! date format is: ccyy-mm-dd_hh:nn:ss
+   read(date_string, "(I4,5(1X,I2))", iostat=rcio) year, month, day, hour, minute, second
+   if (rcio /= 0) then 
+      if (debug) print *, 'got bad read code getting next time value, rcio = ', rcio
+      if (debug) print *, 'line number ', lcount, ' input line was:'
+      if (debug) print *, trim(input_line)
+      exit obsloop
+   endif
+   
+   if (debug) print *, 'next observation is at time ', year, month, day, hour, minute, second
+   if (debug) print *, 'next observation values/err ', uwnd, vwnd, werr
+
 
    ! check the lat/lon values to see if they are ok
    if ( lat >  90.0_r8 .or. lat <  -90.0_r8 ) cycle obsloop
