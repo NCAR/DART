@@ -8,10 +8,11 @@ The first two numbers are the latitude/longitude locations.
 
 The next is the vertical elevation, in height in meters.
 
-Then the time of the observation - year, month, day, hour, minute,
-second.  
+Then the time of the observation - day, month, year, hour, minute,
+second, in this format: dd-mm-ccyy_hh:mm:ss  
 
-The last values are the actual observation values and an error
-estimate. The wind speeds and errors are in m/s.
+The last 3 values are the actual 2 wind observation values,
+U and V,  and an error estimate. The wind speeds and errors 
+are in m/s.
 
 
