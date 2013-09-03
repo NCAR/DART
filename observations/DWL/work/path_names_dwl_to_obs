@@ -1,4 +1,4 @@
-observations/dwl/dwl_to_obs.f90
+observations/DWL/dwl_to_obs.f90
 location/threed_sphere/location_mod.f90
 obs_sequence/obs_sequence_mod.f90
 obs_kind/obs_kind_mod.f90
