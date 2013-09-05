@@ -11,7 +11,7 @@
    text_input_file = 'dwldata.input'
    obs_out_file    = 'obs_seq.out' 
    max_obs         = 100000
-   add_data        = .true.
+   add_obs_data    = .true.
    debug           = .false.
  /
 
