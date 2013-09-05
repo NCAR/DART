@@ -41,16 +41,16 @@ implicit none
 ! the max possible number of obs needs to be specified but it will only 
 ! write out the actual number created.
 
-integer             :: max_obs         = 100000  !  max number of obs in one file
 character(len=128)  :: text_input_file = 'dwldata.input'  ! default input name
 character(len=128)  :: obs_out_file    = 'obs_seq.out'    ! default output name
+integer             :: max_obs         = 100000   !  max number of obs in one file
+logical             :: add_obs_data    = .true.   ! .false. makes empty observations
+logical             :: debug           = .false.  ! .true. prints more info
 
-namelist /dwl_to_obs_nml/ max_obs, text_input_file, obs_out_file
+namelist /dwl_to_obs_nml/ max_obs, text_input_file, obs_out_file, add_obs_data, debug
 
 
 ! local variables
-
-logical, parameter :: debug = .true.  ! set to .true. to print info
 
 character (len=129) :: input_line
 character (len=20)  :: date_string
@@ -91,10 +91,19 @@ iunit = open_file(text_input_file, 'formatted', 'read')
 if (debug) print *, 'opened input file ' // trim(text_input_file)
 
 
-! each observation in this series will have a single observation value 
-! and a quality control flag. 
-num_copies = 1
-num_qc     = 1
+if (add_obs_data) then
+   print *, 'adding observation values from text file to output'
+
+   ! each observation in this series will have a single observation value 
+   ! and a quality control flag. 
+   num_copies = 1
+   num_qc     = 1
+else
+   print *, 'creating no-data observations at the requested locations'
+
+   num_copies = 0
+   num_qc     = 0
+endif
 
 ! call the initialization code, and initialize two empty observation types
 call static_init_obs_sequence()
@@ -106,10 +115,12 @@ first_obs = .true.
 ! on number of obs.  increase the size if too small.
 call init_obs_sequence(obs_seq, num_copies, num_qc, max_obs)
 
-! the first one needs to contain the string 'observation' and the
-! second needs the string 'QC'.
-call set_copy_meta_data(obs_seq, 1, 'observation')
-call set_qc_meta_data(obs_seq, 1, 'Data QC')
+if (add_obs_data) then
+   ! the first one needs to contain the string 'observation' and the
+   ! second needs the string 'QC'.
+   call set_copy_meta_data(obs_seq, 1, 'observation')
+   call set_qc_meta_data(obs_seq, 1, 'Data QC')
+endif
 
 ! Set the DART data quality control.   0 is good data. 
 ! increasingly larger QC values are more questionable quality data.
@@ -184,11 +195,16 @@ obsloop: do    ! no end limit - have the loop break when input ends
 
    ! vertical in height in meters
 
-   call create_3d_obs(lat, lon, vert, VERTISHEIGHT, uwnd, &
+   ! if you want to create different obs types for clear air vs cloud,
+   ! change the DWL_x_WIND_COMPONENT below to what you need.  it must be
+   ! defined in obs_def/obs_def_dwl_mod.f90, and then quickbuild.csh must
+   ! be run again.
+
+   call create_3d_obs(add_obs_data, lat, lon, vert, VERTISHEIGHT, uwnd, &
                          DWL_U_WIND_COMPONENT, werr, oday, osec, qc, obs)
    call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
    
-   call create_3d_obs(lat, lon, vert, VERTISHEIGHT, vwnd, &
+   call create_3d_obs(add_obs_data, lat, lon, vert, VERTISHEIGHT, vwnd, &
                          DWL_V_WIND_COMPONENT, werr, oday, osec, qc, obs)
    call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
@@ -218,6 +234,7 @@ contains
 !             qc value, and that this obs type has no additional required
 !             data (e.g. gps and radar obs need additional data per obs)
 !
+!    add_data - if .false. create the location, time, err, kind only - no data
 !    lat   - latitude of observation
 !    lon   - longitude of observation
 !    vval  - vertical coordinate
@@ -234,7 +251,7 @@ contains
 !     adapted for more generic use 11 Mar 2010, nancy collins, ncar/image
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine create_3d_obs(lat, lon, vval, vkind, obsv, okind, oerr, day, sec, qc, obs)
+subroutine create_3d_obs(add_data, lat, lon, vval, vkind, obsv, okind, oerr, day, sec, qc, obs)
 use        types_mod, only : r8
 use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
                              set_obs_def_error_variance, set_obs_def_location
@@ -242,6 +259,7 @@ use obs_sequence_mod, only : obs_type, set_obs_values, set_qc, set_obs_def
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : set_location
 
+ logical,        intent(in)    :: add_data
  integer,        intent(in)    :: okind, vkind, day, sec
  real(r8),       intent(in)    :: lat, lon, vval, obsv, oerr, qc
  type(obs_type), intent(inout) :: obs
@@ -255,10 +273,12 @@ call set_obs_def_time(obs_def, set_time(sec, day))
 call set_obs_def_error_variance(obs_def, oerr * oerr)
 call set_obs_def(obs, obs_def)
 
-obs_val(1) = obsv
-call set_obs_values(obs, obs_val)
-qc_val(1)  = qc
-call set_qc(obs, qc_val)
+if (add_data) then
+   obs_val(1) = obsv
+   call set_obs_values(obs, obs_val)
+   qc_val(1)  = qc
+   call set_qc(obs, qc_val)
+endif
 
 end subroutine create_3d_obs
 
