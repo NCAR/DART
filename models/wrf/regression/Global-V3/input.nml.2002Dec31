@@ -205,7 +205,6 @@
    hlevel       = 5000,
    mlevel       = 5,
    obs_select         = 1,
-   rat_cri            = 5000.0,
    input_qc_threshold = 4.0,
    Nregions   = 1,
    lonlim1    =   0.0,   0.0,   0.0, 235.0,

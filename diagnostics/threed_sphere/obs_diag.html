@@ -315,7 +315,7 @@ prematurely terminating the namelist.
    bin_width        =     0, 0, 0, 6, 0, 0 ,
    time_to_skip     =     0, 0, 0, 6, 0, 0 ,
    max_num_bins     = 1000,
-   rat_cri            = 3.0,
+   <em class=removed>rat_cri            = 3.0,</em>
    input_qc_threshold = 3.0,
    trusted_obs        = 'null',
    Nregions   = 4,
@@ -449,8 +449,13 @@ If you'd like to change that see the routine <em class="routine">Rmidpoints2edge
 </TD></TR>
 
 <TR><TD> <em class=removed>rat_cri</em> </TD>
-    <TD> <em class=removed>real</em </TD>
-    <TD>No longer supported.
+    <TD> <em class=removed>real</em> </TD>
+    <TD>Deprecated. This was useful before the advent of the DART QC mechanism,
+        which has been in place for years now. The only thing <em class=code>rat_cri</em>
+        did was to count how many observations were 'far' away from the ensemble, 
+        something the DART QC codes convey much better. The histogram of the magnitude 
+        of the innovations is still in <em class=file>LargeInnov.txt</em>&nbsp;.
+        
 </TD></TR>
 
 <TR><TD> input_qc_threshold </TD>
@@ -566,11 +571,12 @@ sort_mod
     <LI><em class="file">dart_log.out</em> list directed output 
         from the obs_diag.</LI>
     <LI><em class="file">LargeInnov.txt</em> contains the distance ratio 
-	histogram -- useful for estimating rat_cri.</LI>
+	histogram -- useful for estimating the distribution of the 
+        magnitudes of the innovations.</LI>
     <LI><em class=removed>observation_locations.xxx.dat contains the
     locations for all the observation in temporal bin "xxx". These are 
     only created if the namelist variable 
-    print_obs_locations is set to .true.</em> 
+    <am class=code>print_obs_locations</em> is set to .true.</em> 
 	</LI>
 </UL>
 

@@ -17,7 +17,6 @@
    bin_width        =     0, 0, 0, 6, 0, 0 ,
    time_to_skip     =     0, 0, 0, 6, 0, 0 ,
    max_num_bins     = 1000,
-   rat_cri            = 3.0,
    input_qc_threshold = 3.0,
    trusted_obs        = 'null',
    Nregions   = 4,
@@ -29,5 +28,6 @@
    print_mismatched_locs = .false.,
    create_rank_histogram = .false.,
    outliers_in_histogram = .false.,
-   verbose               = .false.  /
+   verbose               = .false.
+   /
 

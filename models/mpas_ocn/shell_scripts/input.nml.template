@@ -241,7 +241,6 @@
    obs_sequence_name  = 'obs_seq.final',
    iskip_days         = 0,
    obs_select         = 1,
-   rat_cri            = 4.0,
    input_qc_threshold = 3.0,
    bin_width_seconds = 0,
    lonlim1   = 0.0, 0.0, 0.5, -1.0,

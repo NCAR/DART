@@ -211,7 +211,6 @@
    bin_width        =     0, 0, 0, 6, 0, 0 ,
    time_to_skip     =     0, 0, 0, 0, 0, 0 ,
    max_num_bins     = 1000,
-   rat_cri            = 5000.0,
    input_qc_threshold = 4.0,
    Nregions   = 1,
    plevel     = 1000.0, 925.0, 850.0, 700.0, 500.0, 400.0, 300.0, 250.0, 200.0, 150.0, 100.0,  70.0,
