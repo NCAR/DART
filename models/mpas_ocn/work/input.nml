@@ -22,7 +22,7 @@
    /
 
 &filter_nml
-   async                    = 0,
+   async                    = 2,
    adv_ens_command          = "./advance_model.csh",
    ens_size                 = 3,
    start_from_restart       = .false.,
@@ -37,8 +37,8 @@
    first_obs_seconds        = -1,
    last_obs_days            = -1,
    last_obs_seconds         = -1,
-   num_output_state_members = 0,
-   num_output_obs_members   = 0,
+   num_output_state_members = 2,
+   num_output_obs_members   = 2,
    output_interval          = 1,
    num_groups               = 1,
    input_qc_threshold       =  3.0,
@@ -58,11 +58,11 @@
    inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
    inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
    inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.6,                     0.0,
+   inf_damping                 = 0.9,                     1.0,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_sd_lower_bound          = 0.6,                     0.0
    /
 
 &mpi_utilities_nml
@@ -311,7 +311,6 @@
    bin_width        =     0, 0, 0, 6, 0, 0 ,
    time_to_skip     =     0, 0, 0, 0, 0, 0 ,
    max_num_bins     = 1000,
-   input_qc_threshold = 3.0,
    Nregions   = 3,
    lonlim1    = 285.0,  20.0, 120.0,
    lonlim2    =  20.0, 120.0, 270.0,
