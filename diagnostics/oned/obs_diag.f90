@@ -154,6 +154,7 @@ integer :: init_skip_seconds  = 0
 logical :: verbose               = .false.
 logical :: outliers_in_histogram = .true.
 logical :: create_rank_histogram = .true.
+logical :: use_zero_error_obs    = .false.
 
 ! index 1 == region 1 == [0.0, 1.0) i.e. Entire domain
 ! index 2 == region 2 == [0.0, 0.5)
@@ -171,7 +172,7 @@ namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list,  &
                         init_skip_days, init_skip_seconds, max_num_bins, &
                         Nregions, lonlim1, lonlim2, reg_names, &
                         verbose, outliers_in_histogram,        &
-                        create_rank_histogram, trusted_obs
+                        create_rank_histogram, trusted_obs, use_zero_error_obs
 
 !-----------------------------------------------------------------------
 ! Variables used to accumulate the statistics.
@@ -545,7 +546,6 @@ ObsFileLoop : do ifile=1, Nfiles
          flavor      = get_obs_kind(obs_def) ! this is (almost) always [1,max_obs_kinds]
          obs_time    = get_obs_def_time(obs_def)
          obs_loc     = get_obs_def_location(obs_def)
-         obs_err_var = get_obs_def_error_variance(obs_def)
          rlocation   = get_location(obs_loc)
 
          ! Check to make sure we are past the burn-in 
@@ -555,6 +555,12 @@ ObsFileLoop : do ifile=1, Nfiles
          trusted = .false.
          if ( num_trusted > 0 ) then
             trusted = is_observation_trusted( get_obs_kind_name(flavor) )
+         endif
+
+         if ( use_zero_error_obs ) then
+            obs_err_var = 0.0_r8
+         else
+            obs_err_var = get_obs_def_error_variance(obs_def)
          endif
 
          ! Check to see if it is an identity observation.
@@ -1362,12 +1368,19 @@ MetaDataLoop : do i=1, get_num_copies(seq)
 
    metadata = get_copy_meta_data(seq,i)
 
-   if(index(metadata, 'observation'              ) > 0) obs_copy_index = i
+   if ( use_zero_error_obs ) then
+      if(index(metadata, 'truth'       ) > 0) obs_copy_index = i
+   else
+      if(index(metadata, 'observation' ) > 0) obs_copy_index = i
+   endif
+
    if(index(metadata, 'prior ensemble mean'      ) > 0) prior_mean_index = i
    if(index(metadata, 'posterior ensemble mean'  ) > 0) posterior_mean_index = i
    if(index(metadata, 'prior ensemble spread'    ) > 0) prior_spread_index = i
    if(index(metadata, 'posterior ensemble spread') > 0) posterior_spread_index = i
-   if(index(metadata, 'prior ensemble member'    ) > 0) then
+
+   if(index(metadata, 'prior ensemble member'    ) > 0 .and. &
+      create_rank_histogram ) then
          ens_count  = ens_count + 1
          ens_copy_index(ens_count) = i
    endif
@@ -1384,10 +1397,6 @@ enddo QCMetaDataLoop
 ! Make sure we find an index for each of them.
 !--------------------------------------------------------------------
 
-if (         obs_copy_index < 0 ) then
-   write(msgstring1,*)'metadata:observation not found'
-   call error_handler(E_MSG,'SetIndices',msgstring1)
-endif
 if (       prior_mean_index < 0 ) then
    write(msgstring1,*)'metadata:prior ensemble mean not found'
    call error_handler(E_MSG,'SetIndices',msgstring1)
@@ -1408,25 +1417,34 @@ if (          org_qc_index < 0 ) then
    write(msgstring1,*)'metadata:Quality Control not found'
    call error_handler(E_MSG,'SetIndices',msgstring1)
 endif
-if ( any( (/obs_copy_index, prior_mean_index, posterior_mean_index, &
-            prior_spread_index, posterior_spread_index, &
-            org_qc_index /) < 0) ) then
-   write(msgstring1,*)'metadata incomplete'
-   call error_handler(E_ERR,'SetIndices',msgstring1,source,revision,revdate)
-endif
-
 if (         dart_qc_index < 0 ) then
    write(msgstring1,*)'metadata:DART quality control not found'
+   call error_handler(E_MSG,'SetIndices',msgstring1)
+endif
+
+! Only require obs_index to be present; this allows the program
+! to be run on obs_seq.in files which have no means or spread.
+
+if ( obs_copy_index < 0 ) then
+   if ( use_zero_error_obs ) then
+      write(msgstring1,*)'metadata:truth       not found'
+   else
+      write(msgstring1,*)'metadata:observation not found'
+   endif
    call error_handler(E_MSG,'SetIndices',msgstring1)
 endif
 
 !--------------------------------------------------------------------
 ! Echo what we found. If we want to.
 !--------------------------------------------------------------------
-
 if (verbose) then
-   write(msgstring1,'(''observation          index '',i2,'' metadata '',a)') &
+   if ( use_zero_error_obs ) then
+      write(msgstring1,'(''truth                index '',i2,'' metadata '',a)') &
         obs_copy_index, trim(adjustl(get_copy_meta_data(seq,obs_copy_index)))
+   else
+      write(msgstring1,'(''observation          index '',i2,'' metadata '',a)') &
+        obs_copy_index, trim(adjustl(get_copy_meta_data(seq,obs_copy_index)))
+   endif
    call error_handler(E_MSG,'SetIndices',msgstring1,source,revision,revdate)
    
    write(msgstring1,'(''prior mean           index '',i2,'' metadata '',a)') &

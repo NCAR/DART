@@ -311,12 +311,17 @@
    bin_width        =     0, 0, 0, 6, 0, 0 ,
    time_to_skip     =     0, 0, 0, 0, 0, 0 ,
    max_num_bins     = 1000,
+   trusted_obs      = 'null',
    Nregions   = 3,
    lonlim1    = 285.0,  20.0, 120.0,
    lonlim2    =  20.0, 120.0, 270.0,
    latlim1    = -90.0, -90.0, -90.0,
    latlim2    =  90.0,  25.0,  90.0,
    reg_names  = 'Atlantic', 'Indian', 'Pacific',
+   create_rank_histogram = .true.,
+   outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
+   verbose               = .true.
    /
 
 

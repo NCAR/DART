@@ -308,13 +308,17 @@
    last_bin_center  = 2010,10,23,12,00,00
    bin_width        =    0, 0, 1,00,00,00
    time_to_skip     =    0, 0, 0,00,00,00
+   trusted_obs      = 'null',
    nregions  = 1
    lonlim1   =   0.0,
    lonlim2   = 360.0,
    latlim1   = -90.0
    latlim2   =  90.0
    reg_names = 'global',
-   verbose   = .true.
+   create_rank_histogram = .true.,
+   outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
+   verbose               = .true.
   /
 
 
