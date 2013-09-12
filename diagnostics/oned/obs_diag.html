@@ -230,11 +230,6 @@
     <li>discontinued the use of <em class=code>rat_cri</em> and
         <em class=code>input_qc_threshold</em> namelist variables.
         Their functionality was replaced by the DART QC mechanism long ago.
-        The netCDF file variables <b>NbadIZ</b> and <b>NbigQC</b> still
-        exist (so as to keep the structure of the obs_diag_output file
-        constant for the stragglers) but contain meaningless values.
-        The 'M' release of DART will remove these variables from the
-        obs_diag_output file.
         </li><br />
      <li>The creation of the rank histogram (if possible) is now
         namelist-controlled by
