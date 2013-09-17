@@ -196,7 +196,7 @@ setenv assim_n             24
 
 setenv ACCOUNT      P8685xxxx
 setenv queue        economy
-setenv timewall     1:00
+setenv timewall     0:30
 
 # ==============================================================================
 # set these standard commands based on the machine you are running on.
@@ -293,7 +293,7 @@ if (   -e CESM_DART_config ) then
 else
    echo "WARNING: the script to configure for data assimilation is not available."
    echo "         CESM_DART_config should be present locally or in"
-   echo "         ${dartroot}/models/CESM/shell_scripts/"
+   echo "         ${dartroot}/models/clm/shell_scripts/"
    echo "         You can stage this script later, but you must manually edit it"
    echo "         to reflect the location of the DART code tree."
 endif
@@ -316,7 +316,7 @@ foreach FILE ( *xml )
    endif
 end
 
-if ( $num_instances < 10) then
+if ($num_instances < 10) then
 
    # This is only for the purpose of debugging the code.
    @ atm_tasks = $ptile * $num_instances * 4
@@ -343,13 +343,13 @@ endif
 # echo "task partitioning ... perhaps ... atm // ocn // lnd+ice+glc+rof"
 # presently, all components run 'serially' - one after another.
 echo ""
-echo "ATM  gets $atm_tasks"
-echo "LND  gets $lnd_tasks"
-echo "ICE  gets $ice_tasks"
-echo "OCN  gets $ocn_tasks"
-echo "CPL  gets $cpl_tasks"
-echo "GLC  gets $glc_tasks"
-echo "ROF  gets $rof_tasks"
+echo "ATM gets $atm_tasks"
+echo "LND gets $lnd_tasks"
+echo "ICE gets $ice_tasks"
+echo "OCN gets $ocn_tasks"
+echo "CPL gets $cpl_tasks"
+echo "GLC gets $glc_tasks"
+echo "ROF gets $rof_tasks"
 echo ""
 
 ./xmlchange NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks,NINST_ATM=$num_instances
@@ -543,24 +543,24 @@ endif
 while ($inst <= $num_instances)
 
    # following the CESM strategy for 'inst_string'
-   set inst_string  = `printf _%04d $inst`
+   set inst_string = `printf _%04d $inst`
 
    # ===========================================================================
    set fname = "user_nl_datm${inst_string}"
    # ===========================================================================
 
-   echo "dtlimit = 1.5, 1.5, 1.5"                    >> $fname
-   echo "fillalgo = 'nn', 'nn', 'nn'"                >> $fname
-   echo "fillmask = 'nomask','nomask','nomask'"      >> $fname
-   echo "mapalgo = 'bilinear','bilinear','bilinear'" >> $fname
-   echo "mapmask = 'nomask','nomask','nomask'"       >> $fname
-   echo "streams = 'datm.streams.txt.CPLHIST3HrWx.Solar$inst_string             $stream_year_align $stream_year_first $stream_year_last'," >> $fname
-   echo "          'datm.streams.txt.CPLHIST3HrWx.Precip$inst_string            $stream_year_align $stream_year_first $stream_year_last'," >> $fname
-   echo "          'datm.streams.txt.CPLHIST3HrWx.nonSolarNonPrecip$inst_string $stream_year_align $stream_year_first $stream_year_last'"  >> $fname
-   echo "taxmode = 'cycle','cycle','cycle'"          >> $fname
-   echo "tintalgo = 'coszen','nearest','linear'"     >> $fname
-   echo "restfils = 'unset'"                         >> $fname
-   echo "restfilm = 'unset'"                         >> $fname
+   echo "dtlimit  = 1.5, 1.5, 1.5"                    >> $fname
+   echo "fillalgo = 'nn', 'nn', 'nn'"                 >> $fname
+   echo "fillmask = 'nomask','nomask','nomask'"       >> $fname
+   echo "mapalgo  = 'bilinear','bilinear','bilinear'" >> $fname
+   echo "mapmask  = 'nomask','nomask','nomask'"       >> $fname
+   echo "streams  = 'datm.streams.txt.CPLHIST3HrWx.Solar$inst_string             $stream_year_align $stream_year_first $stream_year_last'," >> $fname
+   echo "           'datm.streams.txt.CPLHIST3HrWx.Precip$inst_string            $stream_year_align $stream_year_first $stream_year_last'," >> $fname
+   echo "           'datm.streams.txt.CPLHIST3HrWx.nonSolarNonPrecip$inst_string $stream_year_align $stream_year_first $stream_year_last'"  >> $fname
+   echo "taxmode  = 'cycle','cycle','cycle'"          >> $fname
+   echo "tintalgo = 'coszen','nearest','linear'"      >> $fname
+   echo "restfils = 'unset'"                          >> $fname
+   echo "restfilm = 'unset'"                          >> $fname
 
    # ===========================================================================
    set fname = "user_nl_clm${inst_string}"
@@ -613,9 +613,18 @@ end
 # "To modify the contents of a stream txt file, first use preview_namelists to
 #  obtain the contents of the stream txt files in CaseDocs, and then place a copy
 #  of the modified stream txt file in $CASEROOT with the string user_ prepended."
+#
+# -or-
+#
+# we copy a template stream txt file from the
+# $dartroot/models/clm/shell_scripts directory and modify one for each instance.
+#
 # ==============================================================================
 
 ./preview_namelists
+
+# This gives us a stream txt file for each instance that we can
+# modify for our own purpose.
 
 foreach FILE (CaseDocs/*streams*)
    set FNAME = $FILE:t
@@ -635,7 +644,7 @@ foreach FILE (CaseDocs/*streams*)
 
 end
 
-# Replace each default stream txt file with one that uses the CLM DATM
+# Replace each default stream txt file with one that uses the CAM DATM
 # conditions for a default year and modify the instance number.
 
 foreach FNAME (user*streams*)
@@ -643,7 +652,7 @@ foreach FNAME (user*streams*)
    @ instance_index = $#name_parse
    @ filename_index = $#name_parse - 1
    set streamname = $name_parse[$filename_index]
-   set instance   = $name_parse[$instance_index]
+   set   instance = $name_parse[$instance_index]
 
    if (-e $dartroot/models/clm/shell_scripts/user_$streamname*template) then
 
@@ -734,7 +743,8 @@ echo "   (on yellowstone) If the ${case}.run script still contains:"
 echo '   #BSUB -R "select[scratch_ok > 0]"'
 echo "   around line 9, delete it."
 echo ""
-echo "3) configure and execute the ${caseroot}/CESM_DART_config script."
+echo "3) If you want to assimilate 'right away', configure and execute"
+echo "   the ${caseroot}/CESM_DART_config script."
 echo ""
 echo "3) Verify the contents of env_run.xml and submit the CESM job:"
 echo "   ./${case}.submit"
@@ -746,9 +756,9 @@ echo ""
 echo "5) To extend the run in $assim_n '"$stop_option"' steps,"
 echo "   change the env_run.xml variables:"
 echo ""
-echo "  ./xmlchange CONTINUE_RUN=TRUE"
-echo "  ./xmlchange RESUBMIT=<number_of_cycles_to_run>"
-echo "  ./xmlchange STOP_N=$assim_n"
+echo "   ./xmlchange CONTINUE_RUN=TRUE"
+echo "   ./xmlchange RESUBMIT=<number_of_cycles_to_run>"
+echo "   ./xmlchange STOP_N=$assim_n"
 echo ""
 
 exit 0

@@ -174,7 +174,7 @@ ${COPY} ${DARTROOT}/models/clm/work/input.nml         ${CASEROOT}/.
 # The first time this is executed, the update namlist script does not exist.
 
 if [[ -x update_dart_namelists ]]; then
-  ./update_dart_namelists
+       ./update_dart_namelists
 fi
 
 exit 0
