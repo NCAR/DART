@@ -13,7 +13,7 @@
    restart_in_file_name  = "perfect_ics",
    restart_out_file_name = "perfect_restart",
    obs_seq_in_file_name  = "obs_seq.in",
-   obs_seq_out_file_name = "obs_seq.perfect",
+   obs_seq_out_file_name = "obs_seq.out",
    adv_ens_command       = "./advance_model.csh"
    output_timestamps     = .false.,
    trace_execution       = .false.,
@@ -59,11 +59,11 @@
    inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
    inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
    inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.6,                     0.6,
+   inf_damping                 = 0.9,                     0.9,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_sd_lower_bound          = 0.6,                     0.6
   /
 
 &smoother_nml
