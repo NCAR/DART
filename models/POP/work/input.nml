@@ -186,8 +186,8 @@
 # Gregorian: 12 Z 1 January 2000 <==> DART: 145731 days 43200 seconds
 
 &restart_file_tool_nml
-   input_file_name              = "filter_restart",
-   output_file_name             = "filter_updated_restart",
+   input_file_name              = "dart_input",
+   output_file_name             = "dart_output",
    ens_size                     = 1,
    single_restart_file_in       = .true.,
    single_restart_file_out      = .true.,
