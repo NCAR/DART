@@ -107,7 +107,7 @@ setenv cesmtag              cesm1_1_1
 #
 # mach            Computer name
 # cesmroot        Location of the cesm code base
-#                 For cesm1_1 on yellowstone
+#                 For cesm1_1_1 on yellowstone
 # caseroot        Your (future) cesm case directory, where this CESM+DART will be built.
 #                    Preferably not a frequently scrubbed location.
 #                    This script will delete any existing caseroot, so this script,
@@ -130,6 +130,8 @@ setenv dartroot     /glade/u/home/${USER}/svn/DART/trunk
 
 # ==============================================================================
 # configure settings
+# The reference case has dates in it.
+# For a 'hybrid' start, these may be unrelated to the refyear, refmon, refday.
 # ==============================================================================
 
 setenv run_refcase 80_member_freerun_one_degree
@@ -283,6 +285,10 @@ if ( $status != 0 ) then
    echo "ERROR: Case could not be created."
    exit -1
 endif
+
+# preserve a copy of this script as it was run
+set ThisFileName = $0:t
+${COPY} $ThisFileName ${caseroot}/${ThisFileName}.original
 
 # ==============================================================================
 # Record the DARTROOT directory and copy the DART setup script to CASEROOT.
@@ -538,7 +544,7 @@ endif
 while ($inst <= 1)
 
    # following the CESM strategy for 'inst_string'
-   set inst_string  = ''
+   set inst_string = ''
 
    # ===========================================================================
    set fname = "user_nl_datm${inst_string}"
@@ -757,6 +763,11 @@ echo ""
 echo "   ./xmlchange CONTINUE_RUN=TRUE"
 echo "   ./xmlchange RESUBMIT=<number_of_cycles_to_run>"
 echo "   ./xmlchange STOP_N=$assim_n"
+echo ""
+echo "Check the streams listed in the streams text files.  If more or different"
+echo 'dates need to be added, then do this in the $CASEROOT/user_*files*'
+echo "then invoke 'preview_namelists' so you can check the information in the"
+echo "CaseDocs or ${rundir} directories."
 echo ""
 
 exit 0
