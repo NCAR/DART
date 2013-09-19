@@ -282,7 +282,7 @@ end
 # place, the cookie file must be 'eaten' so that subsequent assimilations do not
 # overwrite whatever _should_ be there.
 
-date >! ${RUNDIR}/make_pop_inflation_cookie
+date >! ${RUNDIR}/pop_inflation_cookie
 
 # ==============================================================================
 # Creating the code to add to the *.run script to call DART.

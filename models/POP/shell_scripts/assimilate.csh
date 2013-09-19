@@ -184,7 +184,7 @@ endif
 # 1) Create the initial files offline with values of unity by using
 #    'fill_inflation_restart' and stage them with the appropriate names
 #    in the RUNDIR.
-# 2) create a cookie file called RUNDIR/make_cam_inflation_cookie
+# 2) create a cookie file called RUNDIR/pop_inflation_cookie
 #    The existence of this file will cause this script to set the
 #    namelist appropriately. This script will 'eat' the cookie file
 #    to prevent this from happening for subsequent executions. If the
@@ -236,7 +236,7 @@ if ( $PRIOR_INF > 0 ) then
       # we are not using an existing inflation file.
       echo "inf_flavor(1) = $PRIOR_INF, using namelist values."
 
-   else if ( -e ../make_pop_inflation_cookie ) then
+   else if ( -e ../pop_inflation_cookie ) then
       # We want to use an existing inflation file, but this is
       # the first assimilation so there is no existing inflation
       # file. This is the signal we need to to coerce the namelist
@@ -279,7 +279,7 @@ if ( $POSTE_INF > 0 ) then
       # we are not using an existing inflation file.
       echo "inf_flavor(2) = $POSTE_INF, using namelist values."
 
-   else if ( -e ../make_pop_inflation_cookie ) then
+   else if ( -e ../pop_inflation_cookie ) then
       # We want to use an existing inflation file, but this is
       # the first assimilation so there is no existing inflation
       # file. This is the signal we need to to coerce the namelist
@@ -314,7 +314,7 @@ else
 endif
 
 # Eat the cookie regardless
-${REMOVE} ../make_pop_inflation_cookie
+${REMOVE} ../pop_inflation_cookie
 
 #=========================================================================
 # Block 4: Convert N POP restart files to DART initial condition files.

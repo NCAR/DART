@@ -119,7 +119,7 @@ endif
 echo "`date` -- END COPY BLOCK"
 
 # Eat the cookie regardless
-${REMOVE} ../make_pop_inflation_cookie
+${REMOVE} ../pop_inflation_cookie
 
 #=========================================================================
 # Block 2: convert 1 pop restart file to a DART initial conditions file.

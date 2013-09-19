@@ -233,6 +233,10 @@ if ( $status != 0 ) then
    exit -1
 endif
 
+# preserve a copy of this script as it was run
+set ThisFileName = $0:t
+${COPY} $ThisFileName ${caseroot}/${ThisFileName}.original
+
 # ==============================================================================
 # Record the DARTROOT directory and copy the DART setup script to CASEROOT.
 # CESM_DART_config can be run at some later date if desired, but it presumes
