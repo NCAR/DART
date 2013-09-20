@@ -1,4 +1,4 @@
-#!/bin/csh
+#!/bin/csh -f
 #
 # DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -11,7 +11,7 @@
 # ---------------------
 #
 # This script is designed to set up, stage, and build a multi-instance run of CESM
-# using a B compset where CAM, POP, and CLM are all active. The initial states 
+# using a B compset where CAM, POP, and CLM are all active. The initial states
 # come from a single multi-instance reference case so a CESM hybrid setup is used.
 # While not required for CESM, POP is configured to write out netCDF restart files
 # because they are required by DART (if you are going to assimilate ocean obs).
@@ -27,7 +27,7 @@
 # capability to re-stage files in your RUN directory
 #
 # CASEROOT/CESM_DART_config will augment the CESM case with the required setup
-# and configuration to perform a DART assimilation. CASEROOT/CESM_DART_config 
+# and configuration to perform a DART assimilation. CASEROOT/CESM_DART_config
 # will insert a few dozen lines into the ${CASE}.run script after it makes a backup
 # copy.  This, and the required setup, can be run at a later date. e.g. you can
 # advance an ensemble from 2004-01-01 to 2004-02-01 and then run
@@ -59,7 +59,7 @@
 #
 # -- Run this script.
 #
-# -- If you want to run DART, read and understand ${CASEROOT}/CESM_DART_config
+# -- If you want to run DART; read, understand, and execute ${CASEROOT}/CESM_DART_config
 #
 # -- Submit the job using ${CASEROOT}/${CASE}.submit
 #
@@ -83,12 +83,12 @@
 # ====  Set case options
 # ==============================================================================
 
-# case will be used many ways;
+# the value of "case" will be used many ways;
 #    directory and file names, both locally and on HPSS, and
 #    script names; so consider it's length and information content.
 # num_instances:  Number of ensemble members
 
-setenv case                 cesm_assim
+setenv case                 cesm_6h_hybrid
 setenv compset              B_2000_CAM5
 setenv resolution           0.9x1.25_gx1v6
 setenv cesmtag              cesm1_1_1
@@ -99,7 +99,7 @@ setenv num_instances        30
 #
 # mach            Computer name
 # cesmroot        Location of the cesm code base
-#                 For cesm1_1 on yellowstone
+#                 For cesm1_1_1 on yellowstone
 # caseroot        Your (future) cesm case directory, where this CESM+DART will be built.
 #                    Preferably not a frequently scrubbed location.
 #                    This script will delete any existing caseroot, so this script,
@@ -121,7 +121,9 @@ setenv archdir      /glade/scratch/${USER}/archive/${case}
 setenv dartroot     /glade/u/home/${USER}/svn/DART/trunk
 
 # ==============================================================================
-# configure settings ... run_startdate format is yyyy-mm-dd
+# configure settings
+# The reference case has dates in it.
+# For a 'hybrid' start, these may be unrelated to the refyear, refmon, refday.
 # ==============================================================================
 
 setenv run_refcase cesm_hybrid
@@ -133,7 +135,7 @@ setenv run_refdate $refyear-$refmon-$refday
 
 # THIS IS THE LOCATION of the 'reference case'.
 
-set stagedir = /glade/scratch/thoar/archive/${run_refcase}/rest/${run_refdate}-${run_reftod}
+set stagedir = /glade/p/image/CESM_initial_ensemble/rest/2004-01-10-00000
 
 # ==============================================================================
 # runtime settings --  How many assimilation steps will be done after this one
@@ -146,16 +148,16 @@ set stagedir = /glade/scratch/thoar/archive/${run_refcase}/rest/${run_refdate}-$
 #
 # If the long-term archiver is off, you get a chance to examine the files before
 # they get moved to long-term storage. You can always submit $CASE.l_archive
-# whenever you want to free up space in the short-term archive directory.  
+# whenever you want to free up space in the short-term archive directory.
 #
 # ==============================================================================
 
-setenv resubmit            8
-setenv stop_option         nhours
-setenv stop_n              6
-setenv assim_n             6
 setenv short_term_archiver on
 setenv long_term_archiver  off
+setenv resubmit            0
+setenv stop_option         nhours
+setenv stop_n              12
+setenv assim_n             6
 
 # ==============================================================================
 # job settings
@@ -169,7 +171,7 @@ setenv long_term_archiver  off
 
 setenv ACCOUNT      P8685xxxx
 setenv queue        economy
-setenv timewall     0:20
+setenv timewall     0:30
 
 # ==============================================================================
 # set these standard commands based on the machine you are running on.
@@ -247,6 +249,10 @@ if ( $status != 0 ) then
    exit -1
 endif
 
+# preserve a copy of this script as it was run
+set ThisFileName = $0:t
+${COPY} $ThisFileName ${caseroot}/${ThisFileName}.original
+
 # ==============================================================================
 # Record the DARTROOT directory and copy the DART setup script to CASEROOT.
 # CESM_DART_config can be run at some later date if desired, but it presumes
@@ -259,7 +265,8 @@ if ( ! -e CESM_DART_config ) then
 endif
 
 if (   -e CESM_DART_config ) then
-   sed -e "s#BOGUS_DART_ROOT_STRING#$dartroot#" < CESM_DART_config >! temp.$$
+   sed -e "s#BOGUS_DART_ROOT_STRING#$dartroot#" \
+       -e "s#HISTORY_OUTPUT_INTERVAL#$assim_n#" < CESM_DART_config >! temp.$$
    ${MOVE} temp.$$ ${caseroot}/CESM_DART_config
    chmod 755       ${caseroot}/CESM_DART_config
 else
@@ -288,54 +295,54 @@ foreach FILE ( *xml )
    endif
 end
 
-if ( $num_instances < 10) then
+if ($num_instances < 10) then
 
    # This is only for the purpose of debugging the code.
    @ atm_tasks = $ptile * $num_instances * 4
-   @ ocn_tasks = $ptile * $num_instances * 4
    @ lnd_tasks = $ptile * $num_instances * 4
-   @ ice_tasks = $ptile * $num_instances * 1
+   @ ice_tasks = $ptile * $num_instances
+   @ ocn_tasks = $ptile * $num_instances * 4
+   @ cpl_tasks = $ptile * $num_instances
    @ glc_tasks = $ptile * $num_instances
    @ rof_tasks = $ptile * $num_instances
-   @ cpl_tasks = $ptile * 4
 
 else
 
    # This works, but a more efficient layout should be used
    @ atm_tasks = $ptile * $num_instances * 2
-   @ ocn_tasks = $ptile * $num_instances * 2
    @ lnd_tasks = $ptile * $num_instances * 2
    @ ice_tasks = $ptile * $num_instances
+   @ ocn_tasks = $ptile * $num_instances * 2
+   @ cpl_tasks = $ptile * $num_instances
    @ glc_tasks = $ptile * $num_instances
    @ rof_tasks = $ptile * $num_instances
-   @ cpl_tasks = $ptile * $num_instances
 
 endif
 
 # echo "task partitioning ... perhaps ... atm // ocn // lnd+ice+glc+rof"
 # presently, all components run 'serially' - one after another.
 echo ""
-echo "ATM  gets $atm_tasks"
-echo "CPL  gets $cpl_tasks"
-echo "ICE  gets $ice_tasks"
-echo "LND  gets $lnd_tasks"
-echo "GLC  gets $glc_tasks"
-echo "DROF gets $rof_tasks"
-echo "OCN  gets $ocn_tasks"
+echo "ATM gets $atm_tasks"
+echo "LND gets $lnd_tasks"
+echo "ICE gets $ice_tasks"
+echo "OCN gets $ocn_tasks"
+echo "CPL gets $cpl_tasks"
+echo "GLC gets $glc_tasks"
+echo "ROF gets $rof_tasks"
 echo ""
 
-./xmlchange NTHRDS_CPL=$nthreads,NTASKS_CPL=$cpl_tasks
-./xmlchange NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=1
 ./xmlchange NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks,NINST_ATM=$num_instances
 ./xmlchange NTHRDS_LND=$nthreads,NTASKS_LND=$lnd_tasks,NINST_LND=$num_instances
 ./xmlchange NTHRDS_ICE=$nthreads,NTASKS_ICE=$ice_tasks,NINST_ICE=$num_instances
-./xmlchange NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=$num_instances
 ./xmlchange NTHRDS_OCN=$nthreads,NTASKS_OCN=$ocn_tasks,NINST_OCN=$num_instances
+./xmlchange NTHRDS_CPL=$nthreads,NTASKS_CPL=$cpl_tasks
+./xmlchange NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=1
+./xmlchange NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=$num_instances
 ./xmlchange ROOTPE_ATM=0
-./xmlchange ROOTPE_OCN=0
-./xmlchange ROOTPE_CPL=0
 ./xmlchange ROOTPE_LND=0
 ./xmlchange ROOTPE_ICE=0
+./xmlchange ROOTPE_OCN=0
+./xmlchange ROOTPE_CPL=0
 ./xmlchange ROOTPE_GLC=0
 ./xmlchange ROOTPE_ROF=0
 
@@ -356,7 +363,14 @@ echo ""
 # TJH:
 # DART's CAM implementation causes a bit more complexity. DART only uses CAM _initial_
 # files, not RESTART files, so there are sourcemods to force a hybrid start for CAM to
-# read initial files - even when CONTINUE_RUN = TRUE.
+# read initial files - even when CONTINUE_RUN = TRUE. A hybrid start is better for POP
+# because the velocities are used rather than just T,S. A hybrid start is also more
+# desirable because initial values can be specified for ROF - as opposed to just zeros.
+#
+# The RUN_REFCASE/REFDATE/REFTOD  are used by CLM & RTM to specify the namelist input
+# filenames - BUT - their buildnml scripts do not use the INSTANCE, so they all specify
+# the same (single) filename. This is remedied by using patched [clm,rtm].buildnml.csh
+# scripts that exist in the SourceMods directory.
 
 ./xmlchange RUN_TYPE=hybrid
 ./xmlchange RUN_STARTDATE=$run_refdate
@@ -373,12 +387,15 @@ echo ""
 ./xmlchange STOP_N=$stop_n
 ./xmlchange CONTINUE_RUN=FALSE
 ./xmlchange RESUBMIT=$resubmit
+
 ./xmlchange PIO_TYPENAME=pnetcdf
 
 # This sets the ocean coupling time to 6 hours.
 # All related namelist settings are based on this value.
 ./xmlchange OCN_NCPL=4
 
+# There is no compset that has everything we want,
+# so we are also turning on the CLM biogeochemistry.
 ./xmlchange CLM_CONFIG_OPTS='-bgc cn'
 
 if ($short_term_archiver == 'off') then
@@ -434,7 +451,7 @@ switch ( $BATCH )
       set    QUEUE=`grep BSUB ${case}.run | grep -e '-q' `
       sed -e "s/$TIMEWALL[3]/$timewall/" \
           -e "s/ptile=[0-9][0-9]*/ptile=$ptile/" \
-          -e "s/$QUEUE[3]/$queue/" < ${case}.run >> temp.$$
+          -e "s/$QUEUE[3]/$queue/" < ${case}.run >! temp.$$
           ${MOVE} temp.$$ ${case}.run
           chmod 755       ${case}.run
    breaksw
@@ -443,114 +460,6 @@ switch ( $BATCH )
 
    breaksw
 endsw
-
-# ==============================================================================
-# Modify namelist templates for each instance. This is a bit of a nuisance in
-# that we are pulling in restart and initial files from 'all over the place'
-# and each model component has a different strategy.
-#
-# In a hybrid run with CONTINUE_RUN = FALSE (i.e. just starting up):
-#
-# CAM has been forced to read initial files - specified by namelist var:ncdata
-# POP reads from pointer files
-# CICE reads from namelist variable 'ice_ic'
-# CLM builds its own 'finidat' value from the REFCASE variables but in CESM1_1_1
-#     it does not use the instance string. There is a patch for clm.buildnml.csh
-# RTM reads from namelist variable 'finidat_rtm', but rtm.buildnml.csh also is buggy.
-#
-# All of these must later on be staged with these same filenames.
-# OR - all these namelists can be changed to match whatever has been staged.
-# MAKE SURE THE STAGING SECTION OF THIS SCRIPT MATCHES THESE VALUES.
-# ==============================================================================
-
-@ inst = 1
-while ($inst <= $num_instances)
-
-   # instance now includes the leading underscore
-   set instance  = `printf _%04d $inst`
-
-   # ===========================================================================
-   set fname = "user_nl_cam${instance}"
-   # ===========================================================================
-   # For a HOP TEST ... empty_htapes = .false.
-   # For a HOP TEST ... use a default fincl1
-   # FIXME ... add documentation for configuring CAM history files
-
-   echo " inithist      = '6-HOURLY'"                   >> ${fname}
-   echo " ncdata        = 'cam_initial${instance}.nc'"  >> ${fname}
-   echo " empty_htapes  = .true. "                      >> ${fname}
-   echo " fincl1        = 'PHIS:I' "                    >> ${fname}
-   echo " nhtfrq        = -$assim_n "                   >> ${fname}
-   echo " mfilt         = 1 "                           >> ${fname}
-
-   # ===========================================================================
-   set fname = "user_nl_clm${instance}"
-   # ===========================================================================
-
-   # Customize the land namelists
-   # The filename is built using the REFCASE/REFDATE/REFTOD information.
-   #
-   # This is the time to consider how DART and CESM will interact.  If you intend
-   # on assimilating flux tower observations (nominally at 30min intervals),
-   # then it is required to create a .h1. file with the instantaneous flux
-   # variables every 30 minutes. Despite being in a namelist, these values
-   # HAVE NO EFFECT once CONTINUE_RUN = TRUE so now is the time to set these.
-   #
-   # DART's forward observation operators for these fluxes just reads them
-   # from the .h1. file rather than trying to create them from the subset of
-   # CLM variables that are available in the DART state vector.
-   #
-   # For a HOP TEST ... hist_empty_htapes = .false.
-   # For a HOP TEST ... use a default hist_fincl1
-   #
-   # FIXME ... add documentation for configuring CLM history files
-
-   @ thirtymin = $assim_n * 2
-
-   echo "hist_empty_htapes = .true."                 >> $fname
-   echo "hist_fincl1 = 'NEP'"                        >> $fname
-   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R'"  >> $fname
-   echo "hist_nhtfrq = -$assim_n,1,"                 >> $fname
-   echo "hist_mfilt  = 1,$thirtymin"                 >> $fname
-   echo "hist_avgflag_pertape = 'A','A'"             >> $fname
-
-   # ===========================================================================
-   set fname = "user_nl_pop2${instance}"
-   # ===========================================================================
-
-   # POP Namelists
-   # GIVEN: init_ts_option = 'ccsm_hybrid'  when  RUN_TYPE=hybrid, then
-   #
-   # init_ts_suboption = 'data_assim'   --> non bit-for-bit restarting (assimilation mode)
-   # init_ts_suboption = 'rest'         --> default behavior
-   #
-   # No matter the setting of init_ts_suboption, POP always uses the
-   # 'data_assim' behavior when RUN_TYPE=hybrid and CONTINUE_RUN=FALSE.
-   # As soon as CONTINUE_RUN=TRUE, the value becomes important.
-   #
-   # For a HOP TEST ... Would like to have restart files every day, not just for end.
-   # For a HOP TEST (untested)... tavg_file_freq_opt = 'nmonth' 'nday' 'once'"
-
-   echo "init_ts_suboption = 'rest'" >> $fname
-
-   # ===========================================================================
-   set fname = "user_nl_cice${instance}"
-   # ===========================================================================
-   # CICE Namelists
-
-   echo "ice_ic = '${run_refcase}.cice${instance}.r.${run_refdate}-${run_reftod}.nc'" >> $fname
-
-   # ===========================================================================
-   set fname = "user_nl_rtm${instance}"
-   # ===========================================================================
-   # RIVER RUNOFF CAN START FROM AN OLD CLM RESTART FILE
-   # you can specify the RTM filename here and override the settings from
-   # RUN_REFCASE/RUN_REFDATE/RUN_REFTOD (something you cannot do with CLM).
-
-   echo "finidat_rtm = '${run_refcase}.rtm${instance}.r.${run_refdate}-${run_reftod}.nc'" >> $fname
-
-   @ inst ++
-end
 
 # ==============================================================================
 # Update source files.
@@ -602,6 +511,129 @@ if ( -d ~/${cesmtag} ) then
 
 endif
 
+# ==============================================================================
+# Modify namelist templates for each instance. This is a bit of a nuisance in
+# that we are pulling in restart and initial files from 'all over the place'
+# and each model component has a different strategy.
+#
+# In a hybrid run with CONTINUE_RUN = FALSE (i.e. just starting up):
+#
+# CAM has been forced to read initial files - specified by namelist var:ncdata
+# POP reads from pointer files
+# CICE reads from namelist variable 'ice_ic'
+# CLM builds its own 'finidat' value from the REFCASE variables but in CESM1_1_1
+#     it does not use the instance string. There is a patch for clm.buildnml.csh
+# RTM reads from namelist variable 'finidat_rtm', but rtm.buildnml.csh also is buggy.
+#
+# All of these must later on be staged with these same filenames.
+# OR - all these namelists can be changed to match whatever has been staged.
+# MAKE SURE THE STAGING SECTION OF THIS SCRIPT MATCHES THESE VALUES.
+# ==============================================================================
+
+@ inst = 1
+while ($inst <= $num_instances)
+
+   # following the CESM strategy for 'inst_string'
+   set inst_string = `printf _%04d $inst`
+
+
+   # ===========================================================================
+   set fname = "user_nl_cam${inst_string}"
+   # ===========================================================================
+   # For a HOP TEST ... empty_htapes = .false.
+   # For a HOP TEST ... use a default fincl1
+   # FIXME ... add documentation for configuring CAM history files
+
+   echo " inithist      = '6-HOURLY'"                   >> ${fname}
+   echo " ncdata        = 'cam_initial${inst_string}.nc'"  >> ${fname}
+   echo " empty_htapes  = .true. "                      >> ${fname}
+   echo " fincl1        = 'PHIS:I' "                    >> ${fname}
+   echo " nhtfrq        = -$assim_n "                   >> ${fname}
+   echo " mfilt         = 1 "                           >> ${fname}
+
+   # ===========================================================================
+   set fname = "user_nl_clm${inst_string}"
+   # ===========================================================================
+
+   # Customize the land namelists
+   # The filename is built using the REFCASE/REFDATE/REFTOD information.
+   #
+   # This is the time to consider how DART and CESM will interact.  If you intend
+   # on assimilating flux tower observations (nominally at 30min intervals),
+   # then it is required to create a .h1. file with the instantaneous flux
+   # variables every 30 minutes. Despite being in a namelist, these values
+   # HAVE NO EFFECT once CONTINUE_RUN = TRUE so now is the time to set these.
+   #
+   # DART's forward observation operators for these fluxes just reads them
+   # from the .h1. file rather than trying to create them from the subset of
+   # CLM variables that are available in the DART state vector.
+   #
+   # For a HOP TEST ... hist_empty_htapes = .false.
+   # For a HOP TEST ... use a default hist_fincl1
+   #
+   # FIXME ... add documentation for configuring CLM history files
+
+   @ thirtymin = $assim_n * 2
+
+   echo "hist_empty_htapes = .true."                 >> $fname
+   echo "hist_fincl1 = 'NEP'"                        >> $fname
+   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R'"  >> $fname
+   echo "hist_nhtfrq = -$assim_n,1,"                 >> $fname
+   echo "hist_mfilt  = 1,$thirtymin"                 >> $fname
+   echo "hist_avgflag_pertape = 'A','A'"             >> $fname
+
+   # ===========================================================================
+   set fname = "user_nl_pop2${inst_string}"
+   # ===========================================================================
+
+   # POP Namelists
+   # GIVEN: init_ts_option = 'ccsm_hybrid'  when  RUN_TYPE=hybrid, then
+   #
+   # init_ts_suboption = 'data_assim'   --> non bit-for-bit restarting (assimilation mode)
+   # init_ts_suboption = 'rest'         --> default behavior
+   #
+   # No matter the setting of init_ts_suboption, POP always uses the
+   # 'data_assim' behavior when RUN_TYPE=hybrid and CONTINUE_RUN=FALSE.
+   # As soon as CONTINUE_RUN=TRUE, the value becomes important.
+   #
+   # For a HOP TEST ... Would like to have restart files every day, not just for end.
+   # For a HOP TEST (untested)... tavg_file_freq_opt = 'nmonth' 'nday' 'once'"
+   #
+   # DEFAULT values for these are:
+   # tavg_file_freq_opt = 'nmonth' 'nmonth' 'once'
+   # tavg_freq_opt      = 'nmonth' 'nday'   'once'
+   # The  first entry indicates we get a monthly average once a month.
+   # The second entry indicates we get a monthly average as it is being created.
+   # The  third entry indicates  we get a daily timeslice
+   #
+   # IFF values for these are:
+   # tavg_file_freq_opt = 'nmonth' 'never' 'never'
+   # tavg_freq_opt      = 'nmonth' 'never' 'never'
+   # The  first entry indicates we get a monthly average once a month, and thats all we get..
+   
+   echo "init_ts_suboption  = 'data_assim'"             >> $fname
+   echo "tavg_file_freq_opt = 'nmonth' 'never' 'never'" >> $fname
+   echo "tavg_freq_opt      = 'nmonth' 'never' 'never'" >> $fname
+
+   # ===========================================================================
+   set fname = "user_nl_cice${inst_string}"
+   # ===========================================================================
+   # CICE Namelists
+
+   echo "ice_ic = '${run_refcase}.cice${inst_string}.r.${run_refdate}-${run_reftod}.nc'" >> $fname
+
+   # ===========================================================================
+   set fname = "user_nl_rtm${inst_string}"
+   # ===========================================================================
+   # RIVER RUNOFF CAN START FROM AN OLD CLM RESTART FILE
+   # you can specify the RTM filename here and override the settings from
+   # RUN_REFCASE/RUN_REFDATE/RUN_REFTOD (something you cannot do with CLM).
+
+   echo "finidat_rtm = '${run_refcase}.rtm${inst_string}.r.${run_refdate}-${run_reftod}.nc'" >> $fname
+
+   @ inst ++
+end
+
 ./preview_namelists
 
 # ==============================================================================
@@ -616,7 +648,8 @@ cat << EndOfText >! stage_initial_cesm_files
 cd ${rundir}
 
 echo ''
-echo 'Copying the restart files from the staging directory.'
+echo 'Copying the restart files from the staging directory'
+echo 'into the CESM run directory and relinking the CAM static names.'
 echo ''
 
 ${COPY} ${stagedir}/* .
@@ -674,15 +707,18 @@ echo ""
 echo "3) Verify the contents of env_run.xml and submit the CESM job:"
 echo "   ./${case}.submit"
 echo ""
-echo "4) After the job has run, make sure it worked and that "
-echo "   POP is creating netCDF restart files."
+echo "4) After the job has run, check to make sure it worked and that"
+echo "   a: POP is creating netCDF restart files,"
+echo "   b: the right restart files exist in the run directory,"
+echo "   c: (if you're running DART) the archive dart/hist directory has the DART output,"
+echo "   d: everything is working correctly ..."
 echo ""
 echo "5) To extend the run in $assim_n '"$stop_option"' steps,"
 echo "   change the env_run.xml variables:"
 echo ""
-echo "  ./xmlchange CONTINUE_RUN=TRUE"
-echo "  ./xmlchange RESUBMIT=<number_of_cycles_to_run>"
-echo "  ./xmlchange STOP_N=$assim_n"
+echo "   ./xmlchange CONTINUE_RUN=TRUE"
+echo "   ./xmlchange RESUBMIT=<number_of_cycles_to_run>"
+echo "   ./xmlchange STOP_N=$assim_n"
 echo ""
 
 exit 0
