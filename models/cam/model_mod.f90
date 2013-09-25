@@ -189,7 +189,7 @@ use utilities_mod,     only : open_file, close_file, find_namelist_in_file, chec
                               register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG,  &
                               logfileunit, nmlfileunit, do_output, nc_check, get_unit, do_nml_file, &
                               do_nml_term
-use mpi_utilities_mod, only : my_task_id, task_count
+use mpi_utilities_mod, only : my_task_id, task_count, datasize !HK
 
 !-------------------------------------------------------------------------
 use location_mod,      only : location_type, get_location, set_location, query_location,         &
@@ -259,6 +259,11 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_
 
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
+use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
+
+use mpi !HK this needs to go away
+
+
 ! end of use statements
 !==============================================================================================
 !
@@ -275,7 +280,7 @@ public ::                                                            &
    nc_write_model_atts, nc_write_model_vars,                         &
    init_conditions, init_time, adv_1step, end_model,                 &
    get_close_maxdist_init, get_close_obs_init, get_close_obs,        &
-   ens_mean_for_model
+   ens_mean_for_model, model_interpolate_distrib !HK
 
 public ::                                                            &
    model_type, prog_var_to_vector, vector_to_prog_var,               &
@@ -547,10 +552,17 @@ real(r8), allocatable :: ps(:, :)           ! surface pressure used to calc P an
 real(r8), allocatable :: ps_stagr_lon(:, :) ! ps used to calc P profiles & heights on grid staggered
                                             !    East-West (i.e. for VS) relative to ps
 real(r8), allocatable :: ps_stagr_lat(:, :) ! ps used to calc P profiles & heights on grid staggered
+
+! HK DISTRUBUTED
+logical               :: alloc_ps_distrib=.true.    ! Flag whether to alloc space for ps[_stagr]
+real(r8), allocatable :: ps_distrib(:, :, :)           ! surface pressure used to calc P and height profiles.
+real(r8), allocatable :: ps_stagr_lon_distrib(:, :, :) ! ps used to calc P profiles & heights on grid staggered
+                                            !    East-West (i.e. for VS) relative to ps
+real(r8), allocatable :: ps_stagr_lat_distrib(:, :, :) ! ps used to calc P profiles & heights on grid staggered
                                             !    North-South (i.e. for US) relative to ps
 ! height
 ! Surface potential; used for calculation of geometric heights.
-logical               :: alloc_phis=.true.    ! Flag whether to allocate space for phis[_stagr] 
+logical               :: alloc_phis=.true.    ! Flag whether to allocate space for phis[_stagr]
 real(r8), allocatable :: phis(:, :)           ! surface geopotential
 real(r8), allocatable :: phis_stagr_lon(:, :) ! surface geopotential staggered as for ps
 real(r8), allocatable :: phis_stagr_lat(:, :) ! surface geopotential staggered as for ps
@@ -559,7 +571,8 @@ real(r8), allocatable :: phis_stagr_lat(:, :) ! surface geopotential staggered a
 ! real(r8), allocatable :: model_h(:, :, :) ! cartesian heights of model levels
 
 ! columns of pressure and model level heights for use in convert_vert
-real(r8), allocatable :: p_col(:), model_h(:) 
+real(r8), allocatable :: p_col(:), model_h(:)
+real(r8), allocatable :: p_col_distrib(:, :)
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 ! CAM3 array 'cflds' is filled with simple loops over state_names_xxx, 
@@ -2899,6 +2912,9 @@ end if
 !! This is a problem for lon = 359, for example.  It's not in the range of slon. 
 !------------------------------------------------------------------------------
 
+
+!HK lon_lat_lev is from lon_lat_lev = get_location(location) (lon,lat,lev)
+
 ! Compute bracketing lon indices
 ! Define a local longitude to deal with CAM's wierd staggered longitude grid.
 temp_lon = lon_lat_lev(1)
@@ -2959,6 +2975,8 @@ else
    lat_fract = (lon_lat_lev(2) - lat_below) / (lat_above - lat_below)
 end if
 
+!HK you have now got the indices for the lat long box around the observation
+
 ! Now, need to find the values for the four corners
 ! determine the vertical coordinate: model level, pressure, or height
 ! Future?; this assumes that obs with a vertical location have 2 horizontal locations too.
@@ -2995,14 +3013,14 @@ elseif (vert_is_level(location)) then
 elseif (vert_is_pressure(location)) then
    ! which_vert is pressure for this obs
    pressure = lon_lat_lev(3)
-      call get_val_pressure                  &
-      (vals(1,1),x,lon_ind_below,lat_ind_below,pressure,obs_type,vstatus)
-   if (vstatus /= 1) call get_val_pressure   &
-      (vals(1,2),x,lon_ind_below,lat_ind_above,pressure,obs_type,vstatus)
-   if (vstatus /= 1) call get_val_pressure   &
-      (vals(2,1),x,lon_ind_above,lat_ind_below,pressure,obs_type,vstatus)
-   if (vstatus /= 1) call get_val_pressure   &
-      (vals(2,2),x,lon_ind_above,lat_ind_above,pressure,obs_type,vstatus)
+   call get_val_pressure(vals(1,1),x,lon_ind_below,lat_ind_below,pressure,obs_type,vstatus)
+   if (vstatus /= 1) call get_val_pressure(vals(1,2),x,lon_ind_below,lat_ind_above,pressure,obs_type,vstatus)
+   if (vstatus /= 1) call get_val_pressure(vals(2,1),x,lon_ind_above,lat_ind_below,pressure,obs_type,vstatus)
+   if (vstatus /= 1) call get_val_pressure(vals(2,2),x,lon_ind_above,lat_ind_above,pressure,obs_type,vstatus)
+
+!if (my_task_id() == 0) then
+!   print*, 'from get_val_pressure ', vals
+!endif
 
 elseif (vert_is_height(location)) then
    ! which_vert is height for this obs
@@ -3056,6 +3074,290 @@ end if
 
 end subroutine model_interpolate
 
+!----------------------------------------------------------------------
+!> Distributed version of model_interpolate
+subroutine model_interpolate_distrib(state_ens_handle, win, location, obs_type, istatus, interp_val)
+!=======================================================================
+
+type(ensemble_type), intent(in) :: state_ens_handle
+integer,             intent(in) :: win !> window for one sided communication
+type(location_type), intent(in) :: location
+integer,             intent(in) :: obs_type
+integer,            intent(out) :: istatus
+real(r8),           intent(out) :: interp_val(:)
+
+integer  :: i, e
+real(r8) :: bot_lon, top_lon, delta_lon,                                &
+            lon_below, lat_below, lat_above, lev_below,                 &
+            lon_fract, lat_fract, temp_lon,            &
+            lon_lat_lev(3), level, pressure, height
+
+real(r8), allocatable :: val_11(:), val_12(:), val_21(:), val_22(:), a(:, :)
+integer,  allocatable :: vstatus(:), istatus_distrib(:)
+
+integer  :: s_type, s_type_01d,s_type_2d,s_type_3d,   &
+            lon_ind_below, lon_ind_above, lat_ind_below, lat_ind_above, &
+            num_lons
+character (len=8)   :: lon_name, lat_name, lev_name
+integer   :: ens_size
+integer, allocatable :: track_vstatus(:)
+
+
+! Would it be better to pass state as prog_var_type (model state type) to here?
+! As opposed to the stripped state vector. YES. This would give time interp.
+! capability here; do we really want this or should it be pushed up?
+
+! istatus   meaning                  return expected obs?   assimilate?
+! 0         obs and model are fine;  yes                    yes
+! 1         fatal problem;           no                     no
+! 2         exclude valid obs        yes                    no
+! 3         unfamiliar obs type      no                     no
+
+! These are fields which were observed, and will have 3d locations, but the 
+! corresponding state-vector component could, conceivably, be missing one of the dimensions.
+! The only use for such fields I have thought of is parameterization tuning.
+! Such fields would not have observations associated with them.
+! for now I will assume that observed fields are not missing any dimensions.
+! PS is missing lev, although we have never assimilated those obs.
+
+! model_interpolate will continue to use state passed to it;
+!    recalc p_col and model_h columns as needed.
+!    no need to convert to a standard vert coord; no distance calc involved.
+
+
+ens_size = state_ens_handle%num_copies 
+allocate(val_11(ens_size),val_12(ens_size), val_21(ens_size), val_22(ens_size))
+allocate(a(ens_size, 2))
+allocate(vstatus(ens_size), istatus_distrib(ens_size))
+allocate(track_vstatus(ens_size))
+
+! Start with no errors in 
+istatus = 0
+vstatus(:) = 0
+istatus_distrib(:) = 0
+val_11 = MISSING_R8
+val_12 = MISSING_R8
+val_21 = MISSING_R8
+val_22 = MISSING_R8
+
+! Always fill the ps arrays with the state vector here, since most obs and vertical locations
+!    will need that info.  "Always" allows ens_mean_for_model to set ps arrays once for all
+!    of the get_close_obs calls, without having to remove the ps arrays contents at the end
+!    of the get_close_obs calls, which is hard to identify.
+!call set_ps_arrays(x)
+call set_ps_arrays_distrib(win, state_ens_handle, ens_size)
+
+!print*, '****** commented out set_ps_arrays(x) ******'
+
+! Get the observation (horizontal) position, in degrees 
+lon_lat_lev = get_location(location)
+
+! check whether model_mod can interpolate the requested variable
+! Pressure (3d) can't be specified as a state vector field (so s_type will = MISSING_I), 
+! but can be calculated for CAM, so obs_type = KIND_PRESSURE is acceptable.
+s_type = dart_to_cam_kinds(obs_type)
+
+if (s_type == MISSING_I .and. &
+   (obs_type .ne. KIND_PRESSURE) .and.  (obs_type .ne. KIND_SURFACE_ELEVATION)) then
+   istatus = 3
+! should be MISSING_R8 ?
+   interp_val = MISSING_R8
+! check
+   write(*,*) 'Wrong type of obs = ', obs_type
+   return
+end if
+
+! Get lon and lat grid specs
+
+! Set [lon,lat,lev] names to a default, which will be overwritten for variables
+! in the state vector, but not for other acceptable variables (3D pressure, surface
+! elevation, ...?)
+lon_name = 'lon     '
+lat_name = 'lat     '
+! ? How to separate the 3D from 2D 'other' variables?
+!   Can't do it automatically/generically because they're not part of state vector
+!   and that info isn't coming from DART.
+if (obs_type .eq. KIND_SURFACE_ELEVATION) then
+   lev_name = 'none    '
+elseif (obs_type .eq. KIND_PRESSURE) then
+   lev_name = 'lev     '
+endif
+
+! There can't be any 0d or 1d ob fields, so lump them together for elimination in this search.
+s_type_01d = state_num_0d + state_num_1d
+! Positions within the rank 2 and 3 fields
+s_type_2d = s_type - s_type_01d
+s_type_3d = s_type_2d - state_num_2d
+
+if (s_type == MISSING_I .and. &
+   (obs_type .eq. KIND_PRESSURE) .or.  (obs_type .eq. KIND_SURFACE_ELEVATION)) then
+   ! use defaults lon_name and lat_name set above
+elseif (s_type <= state_num_0d + state_num_1d) then
+   ! error; can't deal with observed variables that are 0 or 1D in model_mod.
+   istatus = 3
+   interp_val = MISSING_R8 
+   write(*,*) 'Cannot handle 0 or 1d state vars, s_type = ', s_type
+   return
+elseif (s_type_2d > 0 .and. s_type_2d <= state_num_2d) then
+   lon_name = dim_names(s_dimid_2d(1,s_type_2d))
+   lat_name = dim_names(s_dimid_2d(2,s_type_2d))
+   lev_name = 'none    '
+elseif (s_type_3d > 0 .and. s_type_3d <= state_num_3d) then
+   lon_name = dim_names(s_dimid_3d(2,s_type_3d))
+   lat_name = dim_names(s_dimid_3d(3,s_type_3d))
+   lev_name = dim_names(s_dimid_3d(1,s_type_3d))
+else
+   istatus = 3
+   interp_val = MISSING_R8 
+   write(*,*) 'Unexpected state type value, s_type = ', s_type
+   return
+end if
+
+!------------------------------------------------------------------------------
+! Gack!
+! staggered longitudes; slon (4x5 fv grid) = [-2.5, 2.5,...,352.5]  !
+!                        lon ( "         ) = [    0.,  5.,...,  355.]
+!! This is a problem for lon = 359, for example.  It's not in the range of slon. 
+!------------------------------------------------------------------------------
+
+
+!HK lon_lat_lev is from lon_lat_lev = get_location(location) (lon,lat,lev)
+
+! Compute bracketing lon indices
+! Define a local longitude to deal with CAM's wierd staggered longitude grid.
+temp_lon = lon_lat_lev(1)
+
+if (lon_name == 'lon     ') then
+   num_lons  = lon%length
+   bot_lon   = lon%vals(1)
+   top_lon   = lon%vals(num_lons)
+   delta_lon = lon%vals(2) - lon%vals(1)
+elseif (lon_name == 'slon    ') then
+   num_lons  = slon%length
+   bot_lon   = slon%vals(1)
+   top_lon   = slon%vals(num_lons)
+   delta_lon = slon%vals(2) - slon%vals(1)
+   ! Make certain longitudes conform to the wierd CAM staggered grid.
+   if ((lon_lat_lev(1) - top_lon) >= delta_lon) temp_lon = lon_lat_lev(1) - 360._r8
+end if
+
+if (temp_lon >= bot_lon .and. temp_lon <= top_lon) then
+   ! adding the 1 makes up for subtracting the bot_lon.
+   lon_ind_below = int((temp_lon - bot_lon) / delta_lon) + 1
+   lon_ind_above = lon_ind_below + 1
+   lon_fract = (temp_lon - ((lon_ind_below - 1) * delta_lon + bot_lon)) / delta_lon
+else
+! At wraparound point
+   lon_ind_above = 1
+   lon_ind_below = num_lons
+! never happens; lon starts with 0, slon starts with -2.5 for 4x5 FV grid
+!   if (temp_lon < bot_lon) temp_lon = temp_lon + 360.0_r8
+   lon_fract = (temp_lon - top_lon) / delta_lon
+end if
+
+
+! Next, compute neighboring lat rows
+! NEED TO BE VERY CAREFUL ABOUT POLES; WHAT'S BEING DONE MAY BE WRONG
+! Inefficient search used for latitudes in Gaussian grid. Might want to speed up.
+! CAM-FV; lat = -90., ...   ,90.
+!        slat =   -88.,...,88.
+
+call coord_index(lat_name, lon_lat_lev(2), lat_ind_above, lat_ind_below)
+
+if (lat_ind_above == lat_ind_below) then
+   if (lat_ind_above == 1) then
+      lat_fract = 0.0_r8
+   else                     !both must be equal to the max (s)lat index
+      lat_fract = 1.0_r8
+   end if
+else
+   if (lat_ind_above < lat_ind_below) then
+      ! switch order
+      i = lat_ind_above
+      lat_ind_above = lat_ind_below
+      lat_ind_below = i
+   end if     
+   ! only lat_xxx is changed by these calls
+   call coord_val(lat_name, lat_ind_below, lon_below, lat_below, lev_below)
+   call coord_val(lat_name, lat_ind_above, lon_below, lat_above, lev_below)
+   lat_fract = (lon_lat_lev(2) - lat_below) / (lat_above - lat_below)
+end if
+
+!HK you have now got the indices for the lat long box around the observation
+
+! Now, need to find the values for the four corners
+! determine the vertical coordinate: model level, pressure, or height
+! Future?; this assumes that obs with a vertical location have 2 horizontal locations too.
+!          The state vector may have fields for which this isn't true, but no obs we've seen
+!          so far violate this assumption.  It would have to be a synthetic obs, like some
+!          sort of average.  
+if (obs_type == KIND_SURFACE_ELEVATION) then
+
+elseif (vert_is_level(location)) then
+
+elseif (vert_is_pressure(location)) then
+   ! which_vert is pressure for this obs
+   pressure = lon_lat_lev(3)
+   call get_val_pressure_distrib(val_11, state_ens_handle, win, lon_ind_below, lat_ind_below, pressure, obs_type,vstatus)
+   track_vstatus = vstatus
+
+   call get_val_pressure_distrib(val_12, state_ens_handle, win, lon_ind_below, lat_ind_above, pressure, obs_type,vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
+   enddo
+
+   call get_val_pressure_distrib(val_21, state_ens_handle, win, lon_ind_above, lat_ind_below, pressure, obs_type,vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 ) track_vstatus(e) = vstatus(e)
+   enddo
+
+   call get_val_pressure_distrib(val_22, state_ens_handle, win, lon_ind_above, lat_ind_above, pressure, obs_type,vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 ) track_vstatus(e) = vstatus(e)
+   enddo
+   vstatus = track_vstatus
+
+elseif (vert_is_height(location)) then
+
+elseif (vert_is_surface(location)) then
+
+! Need option for vert_is_undefined
+else
+   write(*,*) '   No vert option chosen!'
+
+end if
+
+! HK loop around ensembles
+do e = 1, ens_size
+   ! lat is already converted to degrees by get_location
+   if (abs(lon_lat_lev(2)) > max_obs_lat_degree .and. vstatus(e) /= 1) then
+      istatus_distrib(e) = 4
+   else
+      istatus_distrib(e) = vstatus(e)
+   end if
+
+   ! indices of vals are (longitude, latitude)
+   if (istatus_distrib(e) /= 1) then
+      a(e, 1) = lon_fract * val_21(e) + (1.0_r8 - lon_fract) * val_11(e)
+      a(e, 2) = lon_fract * val_22(e) + (1.0_r8 - lon_fract) * val_12(e)
+
+      interp_val(e) = lat_fract * a(e, 2) + (1.0_r8 - lat_fract) * a(e, 1)
+
+   else
+      interp_val(e) = MISSING_R8
+   end if
+
+enddo
+
+istatus = maxval(istatus_distrib) !> @todo
+
+! Set the element of ps that's tested elsewhere back to MISSING_R8, to signal
+! other routines to calculate the ps arrays for themselves
+! Currently (10/26/06) this flag is not used.
+! ps(1,1) = MISSING_R8
+
+end subroutine model_interpolate_distrib
+!-----------------------------------------------------------------------
 
 ! Pobs
    subroutine get_val_level(val, x, lon_index, lat_index, level, obs_kind, istatus)
@@ -3167,6 +3469,8 @@ vstatus = 0
 
 ! Need to get the surface pressure at this point. 
 ! Find out whether the observed field is a staggered in CAM.
+!    - HK haven't we checked this already in model_interpolate?
+
 ! Check whether the state vector has wind components on staggered grids, i.e. whether CAM is FV.
 ! find_name returns 0 if the field name is not found in the cflds list.
 ! Add more staggered variables later?
@@ -3186,7 +3490,7 @@ elseif (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS      ', cflds) /= 
 else
    ! A-grid ps can be retrieved from state vector, which was used to define ps on entry to 
    ! model_interpolate.
-   p_surf = ps(lon_index, lat_index)
+   p_surf = ps(lon_index, lat_index) !HK does everyone have ps, or just tasks with ensemble members?
 end if
 !   if (vstatus > 0) then
 !      val = MISSING_R8
@@ -3259,6 +3563,139 @@ end if
 
 end subroutine get_val_pressure
 
+!---------------------------------------------------------------------------------------------
+!> Distributed version of get_val_pressure
+subroutine get_val_pressure_distrib(val, state_ens_handle, win, lon_index, lat_index, pressure, obs_kind, istatus)
+! Gets the vertically interpolated value on pressure for variable obs_kind
+! at lon_index, lat_index horizontal grid point
+!
+! This version excludes observations below lowest level pressure and above
+! highest level pressure.
+
+
+real(r8),            intent(out) :: val(:)
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: win !> mpi one-sided communication window
+real(r8),            intent(in)  :: pressure
+integer,             intent(in)  :: lon_index, lat_index, obs_kind
+integer,             intent(out) :: istatus(:)
+
+real(r8), allocatable :: bot_val(:), top_val(:), p_surf(:), frac(:)
+integer, allocatable  :: bot_lev(:), top_lev(:)
+integer               :: i, vstatus, num_levs
+integer               :: ens_size, e
+
+ens_size = state_ens_handle%num_copies
+num_levs = dim_sizes(find_name('lev     ',dim_names))
+
+allocate(bot_val(ens_size), top_val(ens_size), p_surf(ens_size), frac(ens_size))
+allocate(p_col_distrib(ens_size, num_levs))
+allocate(bot_lev(ens_size), top_lev(ens_size)) !> @todo HK I don't know why you need two values, one is just + 1 to the other
+
+! No errors to start with
+istatus = 0
+vstatus = 0
+
+! Need to get the surface pressure at this point. 
+! Find out whether the observed field is a staggered in CAM.
+!    - HK haven't we checked this already in model_interpolate?
+
+! Check whether the state vector has wind components on staggered grids, i.e. whether CAM is FV.
+! find_name returns 0 if the field name is not found in the cflds list.
+! Add more staggered variables later?
+! Can I make a more generic test; loop over all KIND_s, then check whether any of the 
+!    associated dimensions are staggered?   Sounds too expensive to be worth it. . .?
+
+
+   ! ps defined on lat grid (-90...90, nlat = nslat + 1), 
+   !    need it on staggered lat grid, which starts half a grid spacing north
+   ! What about poles?  
+   !    It's OK; ps is defined on the 'lat' grid, which runs [-90...90], 
+   !    while staggered US is on the 'slat' grid, defined only *inside* this range.
+
+
+if(obs_kind == KIND_U_WIND_COMPONENT .and. find_name('US      ', cflds) /= 0) then
+   p_surf = ps_stagr_lat(lon_index, lat_index)
+elseif (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS      ', cflds) /= 0) then
+   ! lon =     0...     255 (for 5 degree grid)
+   !slon = -2.5 ... 252.5
+   p_surf = ps_stagr_lon(lon_index, lat_index)
+else   ! A-grid ps can be retrieved from state vector, which was used to define ps on entry to model_interpolate.
+   p_surf = ps_distrib(:, lon_index, lat_index) !HK does everyone have ps, or just tasks with ensemble members?
+end if
+
+! Next, get the pressures on the levels for this ps
+! Assuming we'll only need pressures on model mid-point levels, not interface levels.
+! This pressure column will be for the correct grid for obs_kind, since p_surf was taken
+!     from the grid-correct ps[_stagr] grid
+call plevs_cam_distrib(p_surf, num_levs, p_col_distrib, ens_size)
+
+! check for out of bounds pressure
+do e = 1, ens_size
+
+   if (pressure <= p_col_distrib(e,1) .or. pressure >= p_col_distrib(e,num_levs)) then
+      ! Exclude obs below the model's lowest level and above the highest level
+      ! We *could* possibly use ps and p(num_levs) to interpolate for points below the lowest level.
+      istatus(e) = 1
+      val(e) = MISSING_R8
+
+   else
+
+      if (pressure < highest_obs_pressure_mb * 100.0_r8) then
+         ! Exclude from assimilation the obs above a user specified level
+         ! but still calculate the expected obs.
+         istatus(e) = 2
+      endif
+
+      do i =2, num_levs
+         if (pressure < p_col_distrib(e,i)) then
+            top_lev(e) = i -1
+            bot_lev(e) = i
+            frac(e) = (p_col_distrib(e,i) - pressure) / (p_col_distrib(e,i) - p_col_distrib(e, i-1))
+            exit
+         endif
+      enddo
+   endif
+enddo
+
+! Pobs
+if (obs_kind == KIND_PRESSURE) then
+   ! can't get pressure on levels from state vector; get it from p_col instead
+   ! get_val_pressure is called for 4 different columns, which will have different p_cols
+   ! for each ps is on A-grid, so no need to check for staggered grids
+   do e = 1, ens_size
+      if(istatus(e) == 0 .or. istatus(e) == 2 ) then
+         bot_val(e) = p_col_distrib((e), bot_lev(e))
+         top_val(e) = p_col_distrib((e), top_lev(e))
+         val(e) = (1.0_r8 - frac(e)) * bot_val(e) + frac(e) * top_val(e)
+      endif
+   enddo
+
+else
+
+  ! need to grab values for each bot_val
+  do e = 1, ens_size ! HK you only need to do this for distinct bot_vals
+     if(istatus(e) == 0  .or. istatus(e) == 2) then
+
+        call get_val_distrib(bot_val, state_ens_handle, ens_size, win, lon_index, lat_index, bot_lev(e), obs_kind, vstatus)
+        if (vstatus == 0) call get_val_distrib(top_val, state_ens_handle, ens_size, win, lon_index, lat_index, top_lev(e), obs_kind, vstatus)
+        if (vstatus == 0) then
+            val(e) = (1.0_r8 - frac(e)) * bot_val(e) + frac(e) * top_val(e)
+        else
+           istatus(e) = 1
+           val(e) = MISSING_R8
+        end if
+
+     endif
+
+  enddo
+
+end if
+
+deallocate(bot_val, top_val, p_surf, frac, p_col_distrib)
+deallocate(bot_lev, top_lev)
+
+end subroutine get_val_pressure_distrib
 
 
    subroutine get_val_height(val, vec, lon_index, lat_index, height, obs_kind, istatus)
@@ -3430,6 +3867,37 @@ return
 end subroutine get_val
 
 
+!=======================================================================
+subroutine get_val_distrib(val, state_ens_handle, ens_size, win, lon_index, lat_index, level, obs_kind, istatus)
+
+integer,             intent(in)  :: ens_size !> how may pieces of state to grab
+real(r8),            intent(out) :: val(ens_size)
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: win !> window for mpi one-sided communication
+integer,             intent(in)  :: lon_index, lat_index, level, obs_kind
+integer,             intent(out) :: istatus
+
+integer :: indx, field_type
+
+! No errors to start with
+istatus = 0
+
+field_type = dart_to_cam_kinds(obs_kind)
+if (field_type <= 0 .or. &
+    field_type > state_num_0d + state_num_1d + state_num_2d + state_num_3d) then
+   istatus = 1
+   val = 0.0_r8
+   return
+end if
+
+indx = index_from_grid(level, lon_index, lat_index, field_type)
+if (indx > state_ens_handle%num_vars) print*, 'DEATH ', indx, 'level ', level, 'lon_index ', lon_index, 'lat_index ', lat_index, 'field_type ', field_type
+!val = x(indx)
+call get_state(val, indx, win, state_ens_handle, ens_size)
+
+return
+
+end subroutine get_val_distrib
 
 ! End of model_interpolate section
 
@@ -4483,6 +4951,72 @@ end if
 
 end subroutine set_ps_arrays
 
+!> Distributed version of set_ps_arrays.  Currently keeping ens_size * ps_array 
+!> on each processor. This is a limiting factor for memory usage. @todo Another idea would be
+!> to distribute ps itself, so each task hand ens_size * a fraction of ps_array
+!> Or don't build this array, just grab the surface pressures when you need them.
+subroutine set_ps_arrays_distrib(win, state_ens_handle, ens_size)
+!=====================================================================
+
+integer, intent(in) :: win !> window for mpi
+type(ensemble_type), intent(in) :: state_ens_handle
+integer, intent(in) :: ens_size
+
+integer :: ind, m,n, slon_index, slat_index, lon_index, lat_index, &
+           fld_index_2d, fld_index
+
+lon_index  = find_name('lon     ',dim_names)
+lat_index  = find_name('lat     ',dim_names)
+slon_index = find_name('slon    ',dim_names)
+slat_index = find_name('slat    ',dim_names)
+
+if (alloc_ps_distrib) then
+   allocate (ps_distrib(ens_size, dim_sizes(lon_index), dim_sizes(lat_index)))
+   if (slon_index /= 0) allocate( ps_stagr_lon_distrib(ens_size, dim_sizes(slon_index), dim_sizes( lat_index)))
+   if (slat_index /= 0) allocate( ps_stagr_lat_distrib(ens_size, dim_sizes( lon_index), dim_sizes(slat_index)))
+   alloc_ps_distrib = .false.
+end if
+
+!> @todo index from grid
+
+! assign values to ps grids for use by the rest of the module.
+! assuming ps is the first 2D field in state_num_2d
+fld_index_2d = find_name('PS      ',state_names_2d)
+fld_index    = find_name('PS      ',cflds)
+ind = index_from_grid(1,1,1,fld_index) -1
+do n=1,s_dim_2d(2,fld_index_2d)
+   do m=1,s_dim_2d(1,fld_index_2d)
+      ind = ind + 1
+      call get_state(ps_distrib(:, m, n), ind, win, state_ens_handle, ens_size)
+   end do
+end do
+
+!HK what was this for?
+! ps(1:s_dim_2d(1,1), 1:s_dim_2d(2,1)) = var%vars_2d(1:s_dim_2d(1,1),1:s_dim_2d(2,1), 1)
+
+if (slon_index /= 0) then
+   do n=1,dim_sizes( lat_index)
+      ! The first element of slon is 1/2 grid obs *west* of lon(1) (which
+      ! = 0. longitude)
+      ! Make p[hi]s_stagr_lon line up with the slon array.
+      ! The index to the second ps can be either slon or lon because num_slon = num_lon
+      ps_stagr_lon_distrib(:,1,n) = .5 * (ps_distrib(:,1,n) + ps_distrib(:,dim_sizes(slon_index),n))
+      do m=2,dim_sizes(slon_index)
+         ps_stagr_lon_distrib(:,m,n) = .5 * (ps_distrib(:,m-1,n) + ps_distrib(:,m,n))
+      end do
+   end do
+end if
+
+if (slat_index /= 0) then
+   do n=1,dim_sizes(slat_index)
+      do m=1,dim_sizes(lon_index)
+         ps_stagr_lat_distrib(:,m,n) = .5 * (ps_distrib(:,m,n) + ps_distrib(:,m,n+1))
+      end do
+   end do
+end if
+
+end subroutine set_ps_arrays_distrib
+
 
    subroutine plevs_cam (p_surf, num_levs, pmid )
 !=======================================================================
@@ -4527,6 +5061,50 @@ return
 
 end subroutine plevs_cam
 
+!> Distributed version of plevs_cam
+subroutine plevs_cam_distrib(p_surf, num_levs, pmid, ens_size)
+!=======================================================================
+!
+! Purpose:
+! Define the pressures of the interfaces and midpoints from the
+! coordinate definitions and the surface pressure.
+!
+! Method:
+!
+! Author: B. Boville (plevs0), 
+!         Kevin Raeder modified  8/1/03 to use hy[ab][im] from within module
+!         rather than in a common block, for use in DART,
+!
+!-----------------------------------------------------------------------
+
+! coef; commented these out
+!  use shr_kind_mod, only: r8 => shr_kind_r8
+!  use pmgrid
+
+! coef; commented these out
+! #include <comhyb.h>
+
+!-----------------------------------------------------------------------
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: p_surf(ens_size)        ! Surface pressure (pascals)
+integer,  intent(in)  :: num_levs
+real(r8), intent(out) :: pmid(ens_size, num_levs)   ! Pressure at model levels
+!-----------------------------------------------------------------------
+
+!---------------------------Local workspace-----------------------------
+  integer k             ! Longitude, level indices
+!-----------------------------------------------------------------------
+!
+! Set midpoint pressures and layer thicknesses
+!
+! coef
+do k=1,num_levs
+   pmid(:,k) = hyam%vals(k)*P0%vals(1) + hybm%vals(k)*p_surf
+end do
+
+return
+
+end subroutine plevs_cam_distrib
 
 !===============================================================================
    subroutine model_heights(vec, p_surf, lon_index, lat_index, num_levs, &
@@ -5089,6 +5667,37 @@ time = set_time(0, 0)
 
 end subroutine init_time
 
+!-------------------------------------------------------------------------
+
+!> Gets all copies of an element of the state vector from the process who owns it
+!> Assumes ensemble complete
+subroutine get_state(x, ill, win, state_ens_handle, ens_size)
+
+integer, intent(in)              :: ill !> index into state vector
+integer, intent(in)              :: ens_size !> number of copies
+type(ensemble_type), intent(in)  :: state_ens_handle
+real(r8), intent(out)             :: x(ens_size) !> all copies of an element of the state vector
+integer, intent(in)              :: win !> mpi window
+
+integer                          :: owner_of_state !> task who owns the state
+integer                          :: element_index !> local index of element
+integer(KIND=MPI_ADDRESS_KIND)   :: target_disp
+integer                          :: ierr
+
+call get_var_owner_index(ill, owner_of_state, element_index) ! pe
+
+owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
+
+if (my_task_id() == owner_of_state) then
+   x = state_ens_handle%copies(1:ens_size, element_index)
+else
+   target_disp = (element_index - 1) * state_ens_handle%num_copies
+   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
+   call mpi_get(x, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
+   call mpi_win_unlock(owner_of_state, win, ierr)
+endif
+
+end subroutine get_state
 
 
 !#######################################################################
