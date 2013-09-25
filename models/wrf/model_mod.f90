@@ -3668,16 +3668,16 @@ else
                        print*, 'model_mod.f90 :: model_interpolate :: getCorners SH rc = ', rc
 
                   ! Interpolation for SH field at level k
-                  ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k(uk), wrf%dom(id)%type_qv)
+                  ill = wrf%dom(id)%dart_ind(ll(1), ll(2), uniquek(uk), wrf%dom(id)%type_qv)
                   call get_state(x_ill, ill, win, state_ens_handle, state_ens_handle%num_copies - 6)
 
-                  iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k(uk), wrf%dom(id)%type_qv)
+                  iul = wrf%dom(id)%dart_ind(ul(1), ul(2), uniquek(uk), wrf%dom(id)%type_qv)
                   call get_state(x_iul, iul, win, state_ens_handle, state_ens_handle%num_copies - 6)
 
-                  ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k(uk), wrf%dom(id)%type_qv)
+                  ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), uniquek(uk), wrf%dom(id)%type_qv)
                   call get_state(x_ilr, ilr, win, state_ens_handle, state_ens_handle%num_copies - 6)
 
-                  iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k(uk), wrf%dom(id)%type_qv)
+                  iur = wrf%dom(id)%dart_ind(ur(1), ur(2), uniquek(uk), wrf%dom(id)%type_qv)
                   call get_state(x_iur, iur, win, state_ens_handle, state_ens_handle%num_copies - 6)
 
                   do e = 1, state_ens_handle%num_copies - 6
@@ -3690,16 +3690,16 @@ else
                   enddo
 
                   ! Interpolation for SH field at level k+1
-                  ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k(uk)+1, wrf%dom(id)%type_qv)
+                  ill = wrf%dom(id)%dart_ind(ll(1), ll(2), uniquek(uk)+1, wrf%dom(id)%type_qv)
                   call get_state(x_ill, ill, win, state_ens_handle, state_ens_handle%num_copies - 6)
 
-                  iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k(uk)+1, wrf%dom(id)%type_qv)
+                  iul = wrf%dom(id)%dart_ind(ul(1), ul(2), uniquek(uk)+1, wrf%dom(id)%type_qv)
                   call get_state(x_iul, iul, win, state_ens_handle, state_ens_handle%num_copies - 6)
 
-                  ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k(uk)+1, wrf%dom(id)%type_qv)
+                  ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), uniquek(uk)+1, wrf%dom(id)%type_qv)
                   call get_state(x_ilr, ilr, win, state_ens_handle, state_ens_handle%num_copies - 6)
 
-                  iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k(uk)+1, wrf%dom(id)%type_qv)
+                  iur = wrf%dom(id)%dart_ind(ur(1), ur(2), uniquek(uk)+1, wrf%dom(id)%type_qv)
                   call get_state(x_iur, iur, win, state_ens_handle, state_ens_handle%num_copies - 6)
 
                   do e = 1, state_ens_handle%num_copies - 6
@@ -3962,7 +3962,7 @@ endif  ! end of "if ( obs_kind < 0 )"
 
 ! Now that we are done, check to see if a missing value somehow 
 ! made it through without already having set an error return code.
-if ( any(expected_obs == missing_r8) .and. istatus == 0 ) then
+if ( any(expected_obs(1:state_ens_handle%num_copies -6) == missing_r8) .and. istatus == 0 ) then
    istatus = 99
 endif
 
