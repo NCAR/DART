@@ -3145,7 +3145,7 @@ val_22 = MISSING_R8
 !    of the get_close_obs calls, without having to remove the ps arrays contents at the end
 !    of the get_close_obs calls, which is hard to identify.
 !call set_ps_arrays(x)
-call set_ps_arrays_distrib(win, state_ens_handle, ens_size)
+!call set_ps_arrays_distrib(win, state_ens_handle, ens_size)
 
 !print*, '****** commented out set_ps_arrays(x) ******'
 
@@ -3621,7 +3621,8 @@ elseif (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS      ', cflds) /= 
    !slon = -2.5 ... 252.5
    p_surf = ps_stagr_lon(lon_index, lat_index)
 else   ! A-grid ps can be retrieved from state vector, which was used to define ps on entry to model_interpolate.
-   p_surf = ps_distrib(:, lon_index, lat_index) !HK does everyone have ps, or just tasks with ensemble members?
+   !p_surf = ps_distrib(:, lon_index, lat_index)
+   p_surf = get_surface_pressure(win, state_ens_handle, ens_size, lon_index, lat_index)
 end if
 
 ! Next, get the pressures on the levels for this ps
@@ -5698,6 +5699,29 @@ else
 endif
 
 end subroutine get_state
+
+!> This is supposed to replace set_ps_arrays_distrib
+function get_surface_pressure(win, state_ens_handle, ens_size, lon_ind, lat_ind)
+
+integer,             intent(in)  :: ens_size
+integer,             intent(in)  :: win
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: lon_ind
+integer,             intent(in)  :: lat_ind
+
+real(r8) :: get_surface_pressure(ens_size)
+integer  :: ifld !> pressure field index
+integer  :: ind !> index into state vector
+
+ifld = find_name('PS      ',cflds)
+
+! find index into state
+ind = index_from_grid(1, lon_ind, lat_ind, ifld)
+
+! get correct piece of state
+call get_state(get_surface_pressure, ind, win, state_ens_handle, ens_size)
+
+end function get_surface_pressure
 
 
 !#######################################################################

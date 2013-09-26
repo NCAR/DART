@@ -571,6 +571,7 @@ AdvanceTime : do
    call all_vars_to_all_copies(obs_ens_handle) !HK for comparison
 
    allocate(results(obs_ens_handle%num_copies, obs_ens_handle%my_num_vars))
+   results = missing_r8 !> @todo is this needed? Yes
 
    start = MPI_WTIME()
 
