@@ -1370,10 +1370,33 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
       ! DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF INSERTED HERE
       case(RADIOSONDE_TEMPERATURE)
          call interpolate_distrib(location, KIND_TEMPERATURE, istatus, expected_obs, state_ens_handle, win)
+      case(ACARS_TEMPERATURE)
+         call interpolate_distrib(location, KIND_TEMPERATURE, istatus, expected_obs, state_ens_handle, win)
+      case(AIRCRAFT_TEMPERATURE)
+         call interpolate_distrib(location, KIND_TEMPERATURE, istatus, expected_obs, state_ens_handle, win)
+      case(RADIOSONDE_U_WIND_COMPONENT)
+         call interpolate_distrib(location, KIND_U_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+      case(RADIOSONDE_V_WIND_COMPONENT)
+         call interpolate_distrib(location, KIND_V_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+      case(AIRCRAFT_U_WIND_COMPONENT)
+         call interpolate_distrib(location, KIND_U_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+      case(AIRCRAFT_V_WIND_COMPONENT)
+         call interpolate_distrib(location, KIND_V_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+      case(ACARS_U_WIND_COMPONENT)
+         call interpolate_distrib(location, KIND_U_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+      case(ACARS_V_WIND_COMPONENT)
+         call interpolate_distrib(location, KIND_V_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+      case(SAT_U_WIND_COMPONENT)
+         call interpolate_distrib(location, KIND_U_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+      case(SAT_V_WIND_COMPONENT)
+         call interpolate_distrib(location, KIND_V_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
+
+
+
       ! If the observation kind is not available, it is an error. The DART
       ! preprocess program should provide code for all available kinds.
       case DEFAULT
-         call error_handler(E_ERR, 'get_expected_obs_from_def', &
+         call error_handler(E_ERR, 'get_expected_obs_from_def_distrib_state', &
             'Attempt to evaluate or assimilate undefined obs_kind type.', &
              source, revision, revdate)
    end select

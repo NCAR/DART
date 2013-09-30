@@ -572,7 +572,7 @@ real(r8), allocatable :: phis_stagr_lat(:, :) ! surface geopotential staggered a
 
 ! columns of pressure and model level heights for use in convert_vert
 real(r8), allocatable :: p_col(:), model_h(:)
-real(r8), allocatable :: p_col_distrib(:, :)
+real(r8), allocatable :: p_col_distrib(:, :), model_h_distrib(:,:)
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 ! CAM3 array 'cflds' is filled with simple loops over state_names_xxx, 
@@ -3318,6 +3318,25 @@ elseif (vert_is_pressure(location)) then
    vstatus = track_vstatus
 
 elseif (vert_is_height(location)) then
+   height = lon_lat_lev(3)
+   call get_val_height_distrib(val_11, state_ens_handle, win, lon_ind_below, lat_ind_below, height, obs_type, vstatus)
+   track_vstatus = vstatus
+
+   call get_val_height_distrib(val_12, state_ens_handle, win, lon_ind_below, lat_ind_above, height, obs_type, vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
+   enddo
+
+   call get_val_height_distrib(val_21, state_ens_handle, win, lon_ind_above, lat_ind_below, height, obs_type, vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
+   enddo
+
+   call get_val_height_distrib(val_22, state_ens_handle, win, lon_ind_above, lat_ind_above, height, obs_type, vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
+   enddo
+
 
 elseif (vert_is_surface(location)) then
 
@@ -3582,17 +3601,18 @@ integer,             intent(out) :: istatus(:)
 
 real(r8), allocatable :: bot_val(:), top_val(:), p_surf(:), frac(:)
 integer, allocatable  :: bot_lev(:), top_lev(:)
-integer               :: i, vstatus, num_levs
+integer               :: i, vstatus, num_levs, slon_index
 integer               :: ens_size, e
 
 ens_size = state_ens_handle%num_copies
 num_levs = dim_sizes(find_name('lev     ',dim_names))
+slon_index = find_name('slon    ',dim_names)
 
 allocate(bot_val(ens_size), top_val(ens_size), p_surf(ens_size), frac(ens_size))
 allocate(p_col_distrib(ens_size, num_levs))
 allocate(bot_lev(ens_size), top_lev(ens_size)) !> @todo HK I don't know why you need two values, one is just + 1 to the other
 
-! No errors to start with
+! No errors to start with !HK is this wise?
 istatus = 0
 vstatus = 0
 
@@ -3615,13 +3635,22 @@ vstatus = 0
 
 
 if(obs_kind == KIND_U_WIND_COMPONENT .and. find_name('US      ', cflds) /= 0) then
-   p_surf = ps_stagr_lat(lon_index, lat_index)
+   !p_surf = ps_stagr_lat(lon_index, lat_index)
+   p_surf = 0.5*(get_surface_pressure(win,state_ens_handle,ens_size, lon_index, lat_index) + &
+                 get_surface_pressure(win,state_ens_handle,ens_size, lon_index, lat_index +1) )
+
 elseif (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS      ', cflds) /= 0) then
    ! lon =     0...     255 (for 5 degree grid)
    !slon = -2.5 ... 252.5
-   p_surf = ps_stagr_lon(lon_index, lat_index)
+   !p_surf = ps_stagr_lon(lon_index, lat_index)
+   if ( lon_index == 1 ) then
+      p_surf = 0.5*(get_surface_pressure(win,state_ens_handle,ens_size, lon_index, lat_index) + &
+                 get_surface_pressure(win,state_ens_handle,ens_size, dim_sizes(slon_index), lat_index) )
+   else
+      p_surf = 0.5*(get_surface_pressure(win,state_ens_handle,ens_size, lon_index -1, lat_index) + &
+                 get_surface_pressure(win,state_ens_handle,ens_size, lon_index, lat_index) )
+   endif
 else   ! A-grid ps can be retrieved from state vector, which was used to define ps on entry to model_interpolate.
-   !p_surf = ps_distrib(:, lon_index, lat_index)
    p_surf = get_surface_pressure(win, state_ens_handle, ens_size, lon_index, lat_index)
 end if
 
@@ -3666,8 +3695,8 @@ if (obs_kind == KIND_PRESSURE) then
    ! for each ps is on A-grid, so no need to check for staggered grids
    do e = 1, ens_size
       if(istatus(e) == 0 .or. istatus(e) == 2 ) then
-         bot_val(e) = p_col_distrib((e), bot_lev(e))
-         top_val(e) = p_col_distrib((e), top_lev(e))
+         bot_val(e) = p_col_distrib(e, bot_lev(e))
+         top_val(e) = p_col_distrib(e, top_lev(e))
          val(e) = (1.0_r8 - frac(e)) * bot_val(e) + frac(e) * top_val(e)
       endif
    enddo
@@ -3814,7 +3843,7 @@ else
 
       ! Next, get the values on the levels for this ps
       ! ps is on A-grid, so no need to check for staggered grids
-      call plevs_cam (p_surf, num_levs, p_col)
+      call plevs_cam (p_surf, num_levs, p_col) !HK Why are you calling this again?
 
       bot_val = p_col(bot_lev)
       top_val = p_col(top_lev)
@@ -3835,6 +3864,167 @@ end if
 
 end subroutine get_val_height
 
+!> Distributed version of get height
+subroutine get_val_height_distrib(val, state_ens_handle, win, lon_index, lat_index, height, obs_kind, istatus)
+!=======================================================================
+!
+! Gets the vertically interpolated value on height for variable obs_kind
+! at lon_index, lat_index horizontal grid point
+!
+! written by Kevin Raeder, based on code from Hui Liu 4/28/2006 and get_val_pressure
+!         from Jeff Anderson
+!
+! This version excludes observations below lowest level height and above
+! highest level height.
+! 
+
+real(r8),            intent(out) :: val(:)
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: win
+real(r8),            intent(in)  :: height
+integer,             intent(in)  :: lon_index, lat_index, obs_kind
+integer,             intent(out) :: istatus(:)
+
+real(r8), allocatable :: bot_val(:), top_val(:), p_surf(:), frac(:)
+integer,  allocatable :: top_lev(:), bot_lev(:)
+integer               :: i, vstatus, num_levs, slon_index
+integer               :: ens_size, e
+
+logical  :: stagr_lon, stagr_lat
+
+ens_size = state_ens_handle%num_copies
+slon_index = find_name('slon    ',dim_names)
+
+allocate(model_h_distrib(ens_size, num_levs))
+allocate(bot_val(ens_size), top_val(ens_size), p_surf(ens_size), frac(ens_size))
+allocate(p_col_distrib(ens_size, num_levs))
+allocate(bot_lev(ens_size), top_lev(ens_size)) !> @todo HK I don't know why you need two values, one is just + 1 to the other
+
+! No errors to start with
+istatus = 0
+vstatus = 0
+stagr_lon = .false.
+stagr_lat = .false.
+
+! Need to get the surface pressure at this point for dcz2. 
+! Assuming we'll only need pressures on model mid-point levels, not interface levels.
+num_levs = dim_sizes(find_name('lev     ',dim_names))
+
+! Need to get the surface pressure at this point. 
+! Check whether the state vector has wind components on staggered grids, i.e. whether CAM is FV.
+! find_name returns 0 is the field name is not found in the cflds list.
+! See get_val_press for more documentation.
+if     (obs_kind == KIND_U_WIND_COMPONENT .and. find_name('US      ', cflds) /= 0) then  
+   p_surf = 0.5*(get_surface_pressure(win,state_ens_handle,ens_size, lon_index, lat_index) + &
+                 get_surface_pressure(win,state_ens_handle,ens_size, lon_index, lat_index +1) )
+   stagr_lat = .true.
+elseif (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS      ', cflds) /= 0) then
+   if ( lon_index == 1 ) then
+      p_surf = 0.5*(get_surface_pressure(win,state_ens_handle,ens_size, lon_index, lat_index) + &
+                 get_surface_pressure(win,state_ens_handle,ens_size, dim_sizes(slon_index), lat_index) )
+   else
+      p_surf = 0.5*(get_surface_pressure(win,state_ens_handle,ens_size, 1, lat_index) + &
+                 get_surface_pressure(win,state_ens_handle,ens_size, lon_index -1, lat_index) )
+   endif
+   stagr_lon = .true.
+else
+   p_surf = get_surface_pressure(win, state_ens_handle, ens_size, lon_index, lat_index)
+end if
+
+! Next, get the heights on the levels for this ps
+
+! merge/MPI
+! We want to use the new vec for each new ob on height because the state was updated 
+! for all previous obs, and we want to use the most up to date state to get the best location.
+
+call model_heights_distrib(state_ens_handle, win, ens_size, p_surf, lon_index, lat_index, num_levs, stagr_lon, stagr_lat, model_h, vstatus)
+
+! debug
+! write(logfileunit,'(A,6F7.0,/(10F7.0))') 'heights = ',(model_h(i), i=1,num_levs)
+
+! Interpolate in vertical to get two bounding levels
+
+do e = 1, ens_size
+
+   if (height >= model_h_distrib(e, 1) .or. height <= model_h_distrib(e, num_levs)) then
+      ! Exclude obs below the model's lowest level and above the highest level
+      istatus(e) = 1
+      val(e) = MISSING_R8
+
+   else
+      ! This should be redefined every time(?), not just for the first (arbitrary) entry.
+      !   if (highest_obs_height_m == MISSING_R8) then
+      call plevs_cam_distrib(p_surf, num_levs, p_col_distrib, ens_size)
+      do i=1,num_levs
+         if (p_col_distrib(e,i) > highest_obs_pressure_mb*100.0_r8) then
+            highest_obs_height_m = model_h_distrib(e, i)
+            exit
+         endif
+      end do
+
+      if (height > highest_obs_height_m ) then
+         ! Exclude from assimilation the obs above a user specified level
+         ! but still calculate the expected obs.
+         istatus(e) = 2
+      else
+         istatus(e) = 0
+      endif
+
+      ! Search down through heights
+      do i = 2, num_levs
+         if (height > model_h_distrib(e, i)) then
+            top_lev(e) = i -1
+            bot_lev(e) = i
+            frac(e) = (model_h_distrib(e, i) - height      ) / &
+                   (model_h_distrib(e, i) - model_h_distrib(e, i-1))
+            exit
+         endif
+      end do
+    endif
+
+enddo
+
+! Pobs HK what is the point of all these Pobs comments?
+if (obs_kind == KIND_PRESSURE) then
+   ! Observing a pressure on a height surface sounds silly.  But for completeness:
+   ! get_val_height is called for 4 different columns, which will have different p_cols for each.
+   ! It's also requested by obs_def_gps_mod.
+
+   ! Next, get the values on the levels for this ps
+   ! ps is on A-grid, so no need to check for staggered grids
+   print*, '****** I do not think you have to call plevs_cam again'
+   !call plevs_cam_distrib(p_surf, num_levs, p_col, ens_size) !HK Why are you calling this again?
+
+   do e = 1, ens_size
+      bot_val(e) = p_col_distrib(e, bot_lev(e))
+      top_val(e) = p_col_distrib(e, top_lev(e))
+      val(e) = (1.0_r8 - frac(e)) * bot_val(e) + frac(e) * top_val(e)
+   enddo
+
+else
+
+   do e = 1, ens_size
+      if(istatus(e) == 0  .or. istatus(e) == 2) then
+
+         call get_val_distrib(bot_val, state_ens_handle, ens_size, win, lon_index, lat_index, bot_lev(e), obs_kind, vstatus)
+         if (vstatus == 0) call get_val_distrib(bot_val, state_ens_handle, ens_size, win, lon_index, lat_index, bot_lev(e), obs_kind, vstatus)
+         if (vstatus == 0) then
+            val = (1.0_r8 - frac) * bot_val + frac * top_val
+         else
+            istatus(e) = 1
+            val(e) = MISSING_R8
+         endif
+
+      endif
+   enddo
+
+end if
+
+deallocate(bot_val, top_val, p_surf, frac, p_col_distrib)
+deallocate(bot_lev, top_lev)
+deallocate(model_h_distrib)
+
+end subroutine get_val_height_distrib
 
 
    subroutine get_val(val, x, lon_index, lat_index, level, obs_kind, istatus)
@@ -5229,13 +5419,143 @@ end do
 
 end subroutine  model_heights
 
+!> Distributed version of model heights
+subroutine model_heights_distrib(state_ens_handle, win, ens_size, p_surf, lon_index, &
+              lat_index, num_levs, stagr_lon, stagr_lat, model_h, istatus)
+!===============================================================================
+! This routine calculates geometrical height (m) at mid-layers of the CAM model
+!
+! was Hui's dcz2ccm1
+!    has globally defined inputs: HK do we want these?
+!          hyam(num_levs),hybm(num_levs),hyai(num_levs),hybi(num_levs) - 
+!          hybrid vertical coefficients, top to bottom. (P = P0*hyam + ps*hybm)
+!             P0 - Hybrid base pressure (pascals)
+! Kevin Raeder converted to single column version 4/28/2006
+!              removed longitude dimension entirely and extra arrays 10/2006
+
+! type(model_type), intent(in) :: Var
+integer,             intent(in)  :: ens_size
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: win
+real(r8),            intent(in)  :: p_surf(ens_size)
+integer,             intent(in)  :: lon_index, lat_index, num_levs
+logical,             intent(in)  :: stagr_lon, stagr_lat
+integer,             intent(out) :: istatus
+
+! OUTPUT: geometrical height at midlayer (m)  hui liu /03/29/2004 added.
+real(r8),      intent(out) ::  model_h(ens_size, num_levs)
+
+! local variables; ps must be dimensioned as an array because dcz2 has it that way
+!HK what does this comment mean
+real(r8) :: phi(num_levs)
+real(r8) :: tv(ens_size, num_levs), q(ens_size, num_levs), t(ens_size, num_levs)
+real(r8) :: pmln(num_levs+1), hyba(num_levs+1,2), hybb(num_levs+1,2), pterm(num_levs)
+real(r8) :: phi_surf, ht_tmp, rd, rv, rr_factor, local_lat
+            
+integer :: k, i, vstatus, e
+logical :: stagr_lat_local
+
+istatus = 0
+vstatus = 0
+! Scratch arrays
+
+rd = 287.05_r8
+rv = 461.51_r8
+rr_factor = (rv/rd) - 1.0_r8
+
+model_h = 0.0_r8
+phi     = 0.0_r8
+pterm   = 0.0_r8
+
+! copy to temporary arrays
+
+!    All arrays except hyba, hybb are oriented top to bottom
+!    modified to be consistent with CAM3.0 where hyai, hyam are top to bottom
+!    H Liu, 04/05/2004
+
+! interface=1 extra level at model bottom
+k = num_levs +1
+hyba(1,1) = hyai%vals(k)
+hybb(1,1) = hybi%vals(k)
+!   hyam(26) = 0 -> hyba(2,2) = 0, so it would be safe to set hyba(1,2) = 0.
+!   This element is referenced below, but not ultimately used.
+hyba(1,2) = 0.0_r8
+hybb(1,2) = 1.0_r8
+! hybX go from bottom to top; b coeffs multiply sigma, and coord is pure sigma
+!      at the bottom, so hybb = 1.0 there.
+
+! mid-points=2; note that hyXm(num_levs + 1) is not defined (= MISSING_R8)
+do k = 2,num_levs +1
+   i = num_levs +2 - k
+   hyba(k,1) = hyai%vals(i)
+   hybb(k,1) = hybi%vals(i)
+   hyba(k,2) = hyam%vals(i)
+   hybb(k,2) = hybm%vals(i)
+end do
+
+stagr_lat_local = stagr_lat
+if (stagr_lat) then
+   phi_surf = phis_stagr_lat(lon_index, lat_index)
+   local_lat = slat%vals(lat_index)
+   ! Don't look for points farther north for interpolation
+   if (lat_index == dim_sizes(find_name('slat    ',dim_names))) stagr_lat_local = .false.
+elseif (stagr_lon) then
+   phi_surf = phis_stagr_lon(lon_index, lat_index)
+   local_lat = lat%vals(lat_index)
+else
+   phi_surf = phis(lon_index, lat_index)
+   local_lat = lat%vals(lat_index)
+end if
+
+! merge/MPI
+call get_interp_prof_distrib(state_ens_handle, win, ens_size, q, num_levs, &
+         lon_index, lat_index, stagr_lon, stagr_lat_local, TYPE_Q, vstatus)
+call get_interp_prof_distrib(state_ens_handle, win, ens_size, t, num_levs, &
+         lon_index, lat_index, stagr_lon, stagr_lat_local, TYPE_T, vstatus)
+
+!**** HK I think vstatus from get_interp_prof is always 0
+! Calculate tv for this column, for use by dcz2
+!if (vstatus == 0) then
+!   do k = 1, num_levs
+!      tv(k) = t(k)*(1.0_r8 + rr_factor*q(k))
+!   end do
+!elseif (vstatus > 0) then
+!   istatus = 1
+!   return
+!end if
+!************************
+
+! Calculate tv for this column, for use by dcz2
+do e = 1, ens_size
+   do k = 1, num_levs
+      tv(e, k) = t(e, k)*(1.0_r8 + rr_factor*q(e, k))
+   end do
+enddo
+
+do e = 1, ens_size
+   call dcz2(p_surf(e), phi_surf, tv, P0%vals(1) ,hyba, hybb, num_levs, pmln, pterm, phi)
+enddo
+
+! used; hybb, hyba, hprb
+! calced in dcz2;  pmln, pterm , zslice
+
+do e = 1, ens_size
+   do k = 1,num_levs
+      ht_tmp = phi(k) * 0.001_r8 ! convert to km for following call only
+      model_h(e, k) = gph2gmh(ht_tmp, local_lat) * 1000.0_r8 ! convert back to m
+   end do
+enddo
+
+end subroutine  model_heights_distrib
+
+!====================================================================
 
    subroutine get_interp_prof (prof, vec, num_levs, lon_index, lat_index, stagr_lon, stagr_lat, &
                             kind_cam, vstatus)
 !=====================================================================
 
 real(r8), intent(out) :: prof(num_levs) 
-integer,  intent(out) :: vstatus
+integer,  intent(out) :: vstatus !> Where is this?
 ! type(model_type), intent(in) :: state
 real(r8), intent(in)  :: vec(:)
 integer,  intent(in)  :: kind_cam, num_levs, lon_index, lat_index
@@ -5319,7 +5639,120 @@ end do
 
 end subroutine get_interp_prof
 
-! 
+!> Distributed version of get_interp_prof
+subroutine get_interp_prof_distrib(state_ens_handle, win, ens_size, prof, &
+              num_levs, lon_index, lat_index, stagr_lon, stagr_lat, kind_cam, vstatus)
+!=====================================================================
+
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: win
+integer,             intent(in)  :: ens_size
+real(r8),            intent(out) :: prof(ens_size, num_levs)
+integer,             intent(out) :: vstatus ! HK I don't think this is used
+integer,             intent(in)  :: kind_cam, num_levs, lon_index, lat_index
+logical,             intent(in)  :: stagr_lon, stagr_lat
+
+real(r8)  :: var_00(ens_size, num_levs), var_01(ens_size, num_levs)
+real(r8)  :: var_10(ens_size, num_levs), var_11(ens_size, num_levs)
+real(r8)  :: weight
+integer   :: k, lon_index_local, vec_ind, l
+!integer :: fld_index
+!character :: cfld
+
+! So far only called from model_heights to get T and Q profiles for Tv calculation.
+! If the point at which we need T and Q is a staggered US or VS point, 
+! then T and Q must be interpolated to that point.
+! lon_index and lat_index are the indices of the point at which we need the profiles,
+!   not necessarily one of the points where the profiles exist.
+! stagr_xx tells where to look for profiles and what interpolating to do.
+! staggered longitudes have indices the same as the next eastward  (+) unstaggered longitudes
+! Staggered latitudes  have indices the same as the next southward (-) unstaggered lats.
+! The indices called for here look wierd, but think of it this way;
+!    a point which is staggered from the usual grid has the same indices as the unstaggered point
+!    to it's southeast.  The northwest corner of the box is then one higher latitude, 
+!    and one less (westward) longitude.
+! Pole points should be handled in the calling routine by passing the correct stagr_xx, 
+! so that this program can count on having values for all the lat and lon indices referenced.
+
+vstatus = 0
+var_00 = 0._r8
+var_10 = 0._r8
+var_01 = 0._r8
+var_11 = 0._r8
+
+! Find the profile with the same lat and lon index
+
+!  For now this only handles interpolations of 3D fields.
+! fld_index = find_name(cflds(kind_cam), state_names_3d)
+! if (fld_index == 0)  fld_index = find_name(cflds(dart_to_cam_kinds(kind_dart)), state_names_2d)
+! if (fld_index == 0)  fld_index = find_name(cflds(dart_to_cam_kinds(kind_dart)), state_names_1d)
+
+! Always do the nearest point
+!   var(1:num_levs,0,0) = state%vars_3d(1:num_levs ,lon_index,lat_index, fld_index)
+! index_from_grid wants kind within whole state vector, not 3d fields
+!     vec_ind = index_from_grid(1,lon_index   ,lat_index   , fld_index)
+vec_ind = index_from_grid(1,lon_index   ,lat_index   , kind_cam)
+
+!var(1:num_levs,0,0) = vec(vec_ind:vec_ind +num_levs -1)
+do l = vec_ind, vec_ind + num_levs -1
+  call get_state(var_00, l, win, state_ens_handle, ens_size)
+enddo
+
+weight = 1.0_r8
+
+if (stagr_lat) then
+   ! Find the profile to the north
+   ! var(1:num_levs,0,1) = state%vars_3d(1:num_levs ,lon_index  ,lat_index +1, fld_index)
+   vec_ind = index_from_grid(1,lon_index   ,lat_index +1, kind_cam)
+   !var(1:num_levs,0,1) = vec(vec_ind:vec_ind +num_levs -1)
+   do l = vec_ind, vec_ind + num_levs -1
+      call get_state(var_01, l, win, state_ens_handle, ens_size)
+   enddo
+
+   ! This weighting is not strictly correct for Gaussian latitudes, 
+   ! but is correct for CAM-FV, which has equally spaced latitudes.
+   weight = weight / 2.0_r8
+end if
+
+if (stagr_lon) then
+   ! Find the profile to the west
+   if (lon_index == 1) then
+      ! handle the Greenwich meridion points.
+      ! Yes, the index should equal the dimension size in this case.
+      ! The dimension size is for the unstaggered grid, since that's where T and q are.
+      lon_index_local = dim_sizes(find_name('lon     ',dim_names))
+      ! var(1:num_levs,1,0) = state%vars_3d(1:num_levs ,lon_index_local,lat_index, fld_index)
+   else
+      lon_index_local = lon_index -1
+      ! var(1:num_levs,1,0) = state%vars_3d(1:num_levs ,lon_index_local,lat_index, fld_index)
+   end if
+   vec_ind = index_from_grid(1,lon_index_local ,lat_index, kind_cam)
+   !var(1:num_levs,1,0) = vec(vec_ind:vec_ind +num_levs -1)
+   do l = vec_ind, vec_ind + num_levs -1
+     call get_state(var_10, l, win, state_ens_handle, ens_size)
+   enddo
+
+   weight = weight / 2.0_r8
+end if
+
+if (stagr_lon .and. stagr_lat) then
+   ! Find the profile to the northwest
+   ! var(1:num_levs,1,1) = state%vars_3d(1:num_levs ,lon_index_local,lat_index +1, fld_index)
+   vec_ind = index_from_grid(1,lon_index_local ,lat_index +1, kind_cam)
+   !var(1:num_levs,1,1) = vec(vec_ind:vec_ind +num_levs -1)
+   do l = vec_ind, vec_ind + num_levs -1
+     call get_state(var_00, l, win, state_ens_handle, ens_size)
+   enddo
+
+end if
+
+do k = 1,num_levs
+   prof(:, k) = weight * (var_00(:,k) + var_10(:,k) + var_01(:,k) + var_11(:,k))
+end do
+
+end subroutine get_interp_prof_distrib
+
+!
 ! height
 !=====================================================================
    subroutine dcz2(p_surf,phis0,tv,hprb,hyba,hybb,kmax,pmln, pterm,z2)
