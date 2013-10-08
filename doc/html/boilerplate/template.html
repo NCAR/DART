@@ -18,7 +18,7 @@ To use at another directory level in the tree, all 4 relative references
 
 <H1>PROGRM OR MODULE name_of_thing</H1>
 
-<table border=0 summary="" cellpadding=5>
+<table border=0 summary="dart header" cellpadding=5>
 <tr>
     <td valign=middle>
     <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
@@ -56,8 +56,10 @@ Explain in general terms what this is.
 <!-- Description of the namelist                                      -->
 <!--==================================================================-->
 
+<!-- see the html programs in DART/doc/html/boilerplate to generate this table -->
+
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
 <P>
 DART namelists are
@@ -68,40 +70,50 @@ always read from file <em class=file>input.nml</em>.
 Character strings that contain a '/' must be
 enclosed in quotes to prevent them from prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>&amp;bob_nml</em>
-  bob1 = 2
-  bob3 = 4,
+&amp;NAMELIST_NML 
+   name=value,
+   name=value, 
+   name=value
 /
 </pre>
 </div>
-
-<div class=indent1>
-<!-- Description -->
 
 <P>
 Any comments about the namelist as a whole.
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<br />
+<br />
 
-<TR><!--contents--><TD valign=top>bob1</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>what it does, what valid values are.
-                       Default value is XX</TD></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> 
+</TR>
+</THEAD>
 
+<TBODY valign=top>
+<TR><TD>name</TD>
+    <TD>type</TD>
+    <TD>(often multi-line) description
+    </TD>
+</TR>
 <!-- repeat until done -->
+</TBODY>
 </TABLE>
+
 </div>
+<br />
 
 <!--==================================================================-->
 
 <A NAME="ModulesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 types_mod
@@ -112,39 +124,35 @@ ensemble_manager_mod
 </PRE>
 
 <!--==================================================================-->
-<!--Note to authors. The first row of the table is different.         -->
-<!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
-<!-- see the html programs in DART/doc/html to generate this table -->
+<!-- see the html programs in DART/doc/html/boilerplate to generate this table -->
 
-<TABLE>
-<TR><TD><em class=call>use adaptive_inflate_mod, only : </em></TD>
-                   <TD><A HREF="#tag">subr/function name  </A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#tag2">name2</A></TD></TR>
+<TABLE summary='public interfaces'>
+<TR><TD><em class=call>use this_module_name_mod, only : </em></TD>
+                   <TD><A HREF="#tag"> subr/function name  </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#tag2"> name2 </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#tag3"> name3 </A></TD></TR>
+<!-- repeat until done -->
 </TABLE>
 
 <P>
-Optional namelist interface
-<a href="#Namelist"><em class=code>&amp;bob_nml</em></a>
-may be read from file <em class=file>input.nml</em>.
-</P>
-
-<P>
-   A note about documentation style. 
-   Optional arguments are enclosed in brackets 
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
    <em class=optionalcode>[like this]</em>.
 </P>
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
+<!-- see the html programs in DART/doc/html/boilerplate to generate this table -->
+
 <A NAME="subroutine1"></A>
-<br>
+<br />
 <div class=routine>
-<em class=call> call subroutine1(arg1, <em class=optionalcode>[, arg2]</em>)</em>
+<em class=call> subroutine subroutine1(arg1, <em class=optionalcode>[, arg2]</em>)</em>
 <pre>
 real(r8),           intent(in) :: <em class=code>arg1</em>
 real(r8), optional, intent(in) :: <em class=optionalcode>arg2</em>
@@ -158,28 +166,34 @@ real(r8), optional, intent(in) :: <em class=optionalcode>arg2</em>
 describe what this subroutine does.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>arg1 &nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument details" cellpadding=3>
+<TBODY valign=top>
+<TR><TD><em class=code> arg1 </em></TD>
     <TD>Describe arg1.
-    </TD></TR>
-<TR><TD valign=top><em class=optionalcode>arg2 &nbsp;&nbsp;</em></TD>
+    </TD>
+</TR>
+<TR><TD><em class=optionalcode> arg2 </em></TD>
     <TD>Describe optional arg2.
-    </TD></TR>
+    </TD>
+</TR>
+<!-- repeat until done -->
+</TBODY>
 </TABLE>
 
 </div>
-<br>
-
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
+<!-- see the html programs in DART/doc/html/boilerplate to generate this table -->
+
 <A NAME="function1"></A>
-<br>
+<br />
 <div class=routine>
-<em class=call> var = function1(arg1) </em>
+<em class=call> function function1(arg1) </em>
 <pre>
-logical,                           :: <em class=code>function1</em>
-adaptive_inflate_type, intent(in)  :: <em class=code>arg1</em>
+logical,             :: <em class=code>function1</em>
+integer, intent(in)  :: <em class=code>arg1</em>
 </pre>
 </div>
 
@@ -190,22 +204,27 @@ adaptive_inflate_type, intent(in)  :: <em class=code>arg1</em>
 Describe function.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>function1 &nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument details" cellpadding=3>
+<TBODY valign=top>
+<TR><TD><em class=code> function1 </em></TD>
     <TD>describe what this function returns
     </TD></TR>
-<TR><TD valign=top><em class=code>arg1 &nbsp;&nbsp;</em></TD>
+<TR><TD><em class=code> arg1 </em></TD>
     <TD>describe function argument
     </TD></TR>
+<!-- repeat until done -->
+</TBODY>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
 
+<!-- see the html programs in DART/doc/html/boilerplate to generate this table -->
+
 <A NAME="bob_type"></A>
-<br>
+<br />
 <div class=type><pre>
 <em class=call>type bob_type</em>
    private
@@ -222,29 +241,36 @@ end type bob_type
 describe bob
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Component      </TH>
-    <TH align=left>Description    </TH></TR>
+<TABLE border=0 cellpadding=3 width=100% summary='derived type'>
+<THEAD align=left>
+<TR><TH> Component </TH>
+    <TH> Description </TH>
+</TR>
+</THEAD>
 
-<TR><TD valign=top> bob1</TD>
+<TBODY valign=top>
+<TR><TD> bob1 </TD>
     <TD> Describe bob1.
-    </TD></TR>
+    </TD>
+</TR>
 
-<TR><TD valign=top> bob2</TD>
+<TR><TD> bob2 </TD>
     <TD> Describe bob2.
-    </TD></TR>
-
+    </TD>
+</TR>
+<!-- repeat until done -->
+</TBODY>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 
 <P>
@@ -257,7 +283,7 @@ describe files used by code
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li>author, title.
@@ -274,19 +300,22 @@ doi: nn.yyyy/rest_of_number </a><br />
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100% summary='error codes'>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>subroutine_name</TD>
-    <!-- message --><TD VALIGN=top>error message text
+<TBODY valign=top>
+<TR><!-- routine --><TD>subroutine_name</TD>
+    <!-- message --><TD>error message text
                    </TD>
-    <!-- comment --><TD VALIGN=top>what it means to the end user.
+    <!-- comment --><TD>what it means to the end user.
                     </TD>
 </TR>
+<!-- repeat until done -->
 
+</TBODY>
 </TABLE>
 </div>
 
@@ -300,7 +329,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time
@@ -311,7 +340,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 no discussion
@@ -322,23 +351,23 @@ no discussion
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright 2004 - 2013 UCAR.<br>
-This open source software is provided by UCAR, "as is",<br>
-without charge, subject to all terms of use at<br>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
 
-<TABLE border=0 cellpadding=0 width=100% summary="">
+<TABLE border=0 cellpadding=0 width=100% summary="subversion information">
 <TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+<TR><TD valign=top>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->
