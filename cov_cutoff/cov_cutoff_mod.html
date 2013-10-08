@@ -74,12 +74,13 @@ prematurely terminating the namelist.
 <THEAD align=left>
 <TR><TH> Item </TH>
     <TH> Type </TH>
-    <TH> Description </TH> </TR>
+    <TH> Description </TH> 
+</TR>
 </THEAD>
 
 <TBODY valign=top>
 <TR><TD>select_localization</TD>
-    <TD>integer<br>
+    <TD>integer</TD>
     <TD>Selects the localization function.
         <UL style="list-style: none;">
         <LI>1 = Gaspari-Cohn 5th order polynomial with halfwidth c.</LI>
@@ -87,7 +88,8 @@ prematurely terminating the namelist.
         <LI>3 = Ramped Boxcar. Has value 1 for z_in &#60; c and then 
                     reduces linearly to 0 at z_in = 2c.  </LI>
         </UL>
-</TD></TR>
+    </TD>
+</TR>
 </TABLE>
 
 </div>
@@ -116,7 +118,7 @@ location_mod
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
-<TABLE>
+<TABLE summary='modules used'>
 <TR><TD><em class=call>use cov_factor_mod, only : </em></TD>
     <TD><A HREF="#comp_cov_factor">comp_cov_factor</A> </TD></TR>
 </TABLE>
@@ -162,7 +164,7 @@ available for users who may want to design more sophisticated localization
 functions.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+<TABLE width=100% border=0 summary="function arguments" cellpadding=3>
 <TR><TD valign=top><em class=code>var</em></TD>
     <TD>Weighting factor.</TD></TR>
 <TR><TD valign=top><em class=code>z_in</em></TD>
@@ -178,7 +180,7 @@ functions.
     <TD>Location of target.</TD></TR>
 <TR><TD valign=top><em class=optionalcode>target_kind</em></TD>
     <TD>Generic kind of target.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>localization_override&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=optionalcode>localization_override</em></TD>
     <TD>Controls localization type if present. Same values as for 
          namelist control.</TD></TR>
 </TABLE>
@@ -193,7 +195,7 @@ functions.
 <A NAME="FilesUsed"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
-<TABLE border=0 >
+<TABLE border=0 summary="files used">
 <TR><TH>filename</TH>
     <TH>purpose</TH></TR>
 <TR><TD>input.nml</TD>
@@ -219,7 +221,7 @@ functions.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100% summary="errors">
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>comp_cov_factor</TD>
@@ -277,7 +279,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+<TR><TD valign=top>Change history:</TD><TD> try "svn log" or "svn diff"</TD></TR>
 </TABLE>
 
 <!--==================================================================-->
