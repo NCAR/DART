@@ -10,6 +10,11 @@
 # changes to this script such that the same script can be used
 # on multiple platforms. This will help us maintain the script.
 
+# if you are skipping the POP or CLM assimilations you can simply
+# comment out the calls to the xxx_assimilate.csh scripts.  however
+# if you are skipping the CAM assimilation you must replace the
+# call below with a call to ${CASEROOT}/cam_no_assimilate.csh
+
 echo "`date` -- BEGIN CESM ASSIMILATE"
 
 ${CASEROOT}/cam_assimilate.csh
