@@ -11,7 +11,7 @@
 
 <H1>MODULE ensemble_manager_mod</H1>
 
-<table border=0 summary="" cellpadding=5>
+<table border=0 summary="dart logo" cellpadding=5>
 <tr>
     <td valign=middle>
     <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
@@ -225,7 +225,7 @@ may improve performance.
 </table>
 </div>
 
-<br>
+<br />
 
 <!--==================================================================-->
 
@@ -296,7 +296,7 @@ sort_mod
 <!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
 
 <A NAME="ensemble_type"></A>
-<BR>
+<br />
 <div class=type>
 <pre>
 <em class=call>type ensemble_type</em>
@@ -400,12 +400,12 @@ used throughout DART.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="init_ensemble_manager"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call init_ensemble_manager(ens_handle, num_copies, num_vars
 <em class=optionalcode>[,&nbsp;distribution_type_in]</em>
@@ -427,7 +427,7 @@ Initializes an instance of an ensemble. Storage is allocated and the
 size descriptions in the ensemble_type are initialized.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
 <TR><TD valign=top><em class=code>ens_handle</em></TD>
     <TD>Handle for the ensemble being initialized</TD></TR>
 <TR><TD valign=top><em class=code>num_copies</em></TD>
@@ -445,12 +445,12 @@ size descriptions in the ensemble_type are initialized.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="read_ensemble_restart"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call read_ensemble_restart(ens_handle, start_copy, end_copy, 
    start_from_restart, file_name
@@ -488,33 +488,33 @@ If the input is multiple files each MPI task reads the copies it stores
 directly and independently.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle of ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>start_copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>start_copy </em></TD>
     <TD>Global index of first of continguous set of copies to be read.</TD></TR>
-<TR><TD valign=top><em class=code>end_copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>end_copy </em></TD>
     <TD>Global index of last of contiguous set of copies to be read, 
        copies(start_copy:end_copy).</TD></TR>
-<TR><TD valign=top><em class=code>start_from_restart&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>start_from_restart </em></TD>
     <TD>If true, read all copies from file. If false, read one copy and perturb
  to get required number.</TD></TR>
-<TR><TD valign=top><em class=code>file_name&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>file_name </em></TD>
     <TD>Name of file from which to read.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>init_time&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=optionalcode>init_time </em></TD>
     <TD>If present, set time of all copies read to this value.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>force_single_file&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=optionalcode>force_single_file </em></TD>
     <TD>If present and true, force the read to be from a single file which 
       contains all copies.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="write_ensemble_restart"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call write_ensemble_restart(ens_handle, file_name, start_copy, 
  end_copy <em class=optionalcode>[,&nbsp;force_single_file]</em>) </em>
@@ -545,28 +545,30 @@ If the output is to multiple files each MPI task writes the copies it stores
 directly and independently.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
-    <TD>Handle of ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>file_name&nbsp;&nbsp;</em></TD>
-    <TD>Name of file from which to read.</TD></TR>
-<TR><TD valign=top><em class=code>start_copy&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD><em class=code> ens_handle </em></TD>
+    <TD>Handle of ensemble.</TD>
+</TR>
+<TR><TD><em class=code> file_name </em></TD>
+    <TD>Name of file from which to read.</TD>
+</TR>
+<TR><TD valign=top><em class=code>start_copy </em></TD>
     <TD>Global index of first of continguous set of copies to be written.</TD></TR>
-<TR><TD valign=top><em class=code>end_copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>end_copy </em></TD>
     <TD>Global index of last of contiguous set of copies to be written, 
           copies(start_copy:end_copy).</TD></TR>
-<TR><TD valign=top><em class=optionalcode>force_single_file&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=optionalcode>force_single_file </em></TD>
     <TD>If present and true, force the write to be to a single file which 
      contains all copies.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_copy"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call get_copy(receiving_pe, ens_handle, copy, vars
 <em class=optionalcode>[,&nbsp;mtime]</em>) </em>
@@ -591,30 +593,30 @@ a single processor to do things with the entire state vector.
 Data is only returned in vars on the receiving PE; vars on all other PEs is unset.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>receiving_pe&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>receiving_pe </em></TD>
     <TD>This process ends up with the requested copy of the state 
          vector.</TD></TR>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>copy </em></TD>
     <TD>The global index of the copy of the state vector that is to be 
          retrieved.</TD></TR>
-<TR><TD valign=top><em class=code>vars&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>vars </em></TD>
     <TD>One dimensional array in which the requested copy of the state vector 
          is returned. Data is only returned in vars on the receiving PE;
          vars on all other PEs is unset.  </TD></TR>
-<TR><TD valign=top><em class=optionalcode>mtime&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=optionalcode>mtime </em></TD>
     <TD>If present returns the time of the requested copy.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="put_copy"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call put_copy(sending_pe, ens_handle, copy, vars
 <em class=optionalcode>[,&nbsp;mtime]</em>) </em>
@@ -641,29 +643,29 @@ process by this subroutine.  Only the data in vars on the sending PE
 is processed; vars on all other PEs is ignored.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>sending_pe&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>sending_pe </em></TD>
     <TD>This process sends the copy of the state vector.</TD></TR>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>copy </em></TD>
     <TD>The global index of the copy of the state vector that is to be sent. 
 </TD></TR>
-<TR><TD valign=top><em class=code>vars&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>vars </em></TD>
     <TD>One dimensional array in which the requested copy of the state vector 
         is located. Only the data in vars on the sending PE
         is processed; vars on all other PEs is ignored.  </TD></TR>
-<TR><TD valign=top><em class=optionalcode>mtime&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=optionalcode>mtime </em></TD>
     <TD>If present send the time of the copy.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="broadcast_copy"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call broadcast_copy(ens_handle, copy, arraydata)</em>
 <pre>
@@ -685,24 +687,24 @@ This is a collective routine, which means it must be called by
 all processes in the job.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>copy </em></TD>
     <TD>The global index of the copy of the state vector that is to be sent. 
 </TD></TR>
-<TR><TD valign=top><em class=code>arraydata&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>arraydata </em></TD>
     <TD>One dimensional array into which the requested copy of the state vector 
         will be copied on all PEs, including the sending PE.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="set_ensemble_time"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call set_ensemble_time(ens_handle, indx, mtime) </em>
 <pre>
@@ -725,23 +727,23 @@ can be called to see if you are the owning task for a given global copy number,
 and to get the local index number for that copy.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>indx&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>indx </em></TD>
     <TD>The local index of the copy of the state vector that is to be set. 
 </TD></TR>
-<TR><TD valign=top><em class=code>mtime&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>mtime </em></TD>
     <TD>The time to set for this copy. </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_ensemble_time"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call get_ensemble_time(ens_handle, indx, mtime) </em>
 <pre>
@@ -764,18 +766,18 @@ and to get the local index number for that copy.
 <a href="#get_copy_time">get_copy_time()</a> which uses global copy numbers. -->
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>indx&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>indx </em></TD>
     <TD>The local index of the copy to retrieve the time from.
 </TD></TR>
-<TR><TD valign=top><em class=code>mtime&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>mtime </em></TD>
     <TD>The returned time value. </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--
 
@@ -785,7 +787,7 @@ and it's close to a release, so leave it out for now.
 ....===================== DESCRIPTION OF A ROUTINE =====================...
 
 <A NAME="set_copy_time"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call set_copy_time(ens_handle, copy, mtime) </em>
 <pre>
@@ -807,18 +809,18 @@ This routine must be called by all processes and with the same mtime
 but only the process that stores the requested copy will do the update.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>copy </em></TD>
     <TD>The global number of the copy that is to be set. 
 </TD></TR>
-<TR><TD valign=top><em class=code>mtime&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>mtime </em></TD>
     <TD>The time to set for this copy. </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 ....===================== DESCRIPTION OF A ROUTINE =====================...
 
@@ -827,7 +829,7 @@ stores the copy will return it, unless we do some communication.
 should we make it communicate?
 
 <A NAME="get_copy_time"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call get_copy_time(ens_handle, copy, mtime) </em>
 <pre>
@@ -851,18 +853,18 @@ must be combined with a call to get_copy_owner_index() to see if
 you are the owner.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>copy </em></TD>
     <TD>The global index of the copy to retrieve the time from.
 </TD></TR>
-<TR><TD valign=top><em class=code>mtime&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>mtime </em></TD>
     <TD>The returned time value. </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 -->
 
@@ -870,7 +872,7 @@ you are the owner.
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="end_ensemble_manager"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call end_ensemble_manager(ens_handle) </em>
 <pre>
@@ -885,18 +887,18 @@ type(ensemble_type), intent(in)  :: <em class=code>ens_handle</em>
 Frees up storage associated with an ensemble.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="duplicate_ens"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call duplicate_ens(ens1, ens2, duplicate_time) </em>
 <pre>
@@ -925,17 +927,17 @@ the copies.
         Data from the vars array will be replicated.</TD></TR>
 <TR><TD valign=top><em class=code>ens2</em></TD>
     <TD>Ensemble handle of ensemble into which ens1 vars data will be copied.</TD></TR>
-<TR><TD valign=top><em class=code>duplicate_time&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>duplicate_time &nbsp;</em></TD>
     <TD>If true, copy the times from ens1 into ens2, else leave ens2 times unchanged.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_my_num_copies"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> var = get_my_num_copies(ens_handle) </em>
 <pre>
@@ -954,21 +956,21 @@ variables for a subset of copies.  Same as num_copies if running
 with only a single process.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>var </em></TD>
     <TD>Returns the number of copies stored by this process when storing all 
         variables for a subset of copies. </TD></TR>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_my_num_vars"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> var = get_my_num_vars(ens_handle) </em>
 <pre>
@@ -986,21 +988,21 @@ copies of a subset of variables.  Same as num_vars if running
 with only a single process.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>var </em></TD>
     <TD>Returns the number of vars stored by this process when storing all 
 copies of a subset of variables. </TD></TR>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_my_copies"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call get_my_copies(ens_handle, copies) </em>
 <pre>
@@ -1017,21 +1019,21 @@ Returns a list of the global copy numbers stored on this process
 when storing subset of copies of all variables.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>copies&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>copies </em></TD>
     <TD>List of all copies stored by this process when storing subset of copies
  of all variables.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_my_vars"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call get_my_vars(ens_handle, vars) </em>
 <pre>
@@ -1048,21 +1050,21 @@ Returns a list of the global variable numbers stored on this process
 when storing all copies of a subset of variables.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>vars&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>vars </em></TD>
     <TD>List of all variables stored on this process when storing all copies
  of a subset of variables.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_copy_owner_index"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call get_copy_owner_index(copy_number, owner, owners_index) </em>
 <pre>
@@ -1081,23 +1083,23 @@ stores this copy when all variables of a subset of copies are stored and
 the local storage index for this copy on that process.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
 <TR><TD valign=top><em class=code>copy_number</em></TD>
     <TD>Global index of a copy from an ensemble.</TD></TR>
 <TR><TD valign=top><em class=code>owner</em></TD>
     <TD>Process Element (PE) that stores this copy when each has all 
          variables of a subset of copies.</TD></TR>
-<TR><TD valign=top><em class=code>owners_index&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>owners_index &nbsp;</em></TD>
     <TD>Local storage index for this copy on the owning process.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_var_owner_index"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call get_var_owner_index(var_number, owner, owners_index) </em>
 <pre>
@@ -1116,23 +1118,23 @@ stores this variable when all copies of a subset of variables are stored and
 the local storage index for this variable on that process.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
 <TR><TD valign=top><em class=code>var_number</em></TD>
     <TD>Global index of a variable in the vector from an ensemble.</TD></TR>
 <TR><TD valign=top><em class=code>owner</em></TD>
     <TD>Process Element (PE) that stores this variable when each has all 
          copies of subset of variables.</TD></TR>
-<TR><TD valign=top><em class=code>owners_index&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>owners_index &nbsp;</em></TD>
     <TD>Local storage index for this variable on the owning process.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="all_vars_to_all_copies"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call all_vars_to_all_copies(ens_handle, label) </em>
 <pre>
@@ -1167,21 +1169,21 @@ equivalent until the next update to either the copies or the
 vars arrays, so either can be used as a data source.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>The handle of the ensemble being transposed.</TD></TR>
-<TR><TD valign=top><em class=code>label&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>label </em></TD>
     <TD>A character string label.  If present, a timestamp with this
         label is printed at the start and end of the transpose. </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="all_copies_to_all_vars"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call all_copies_to_all_vars(ens_handle, label) </em>
 <pre>
@@ -1217,21 +1219,21 @@ vars arrays, so either can be used as a data source.
 </P>
 
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>The handle of the ensemble being transposed.</TD></TR>
-<TR><TD valign=top><em class=code>label&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>label </em></TD>
     <TD>A character string label.  If present, a timestamp with this
         label is printed at the start and end of the transpose. </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="compute_copy_mean"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call compute_copy_mean(ens_handle,  start_copy, end_copy, mean_copy) </em>
 <pre>
@@ -1256,24 +1258,24 @@ It updates the copies array with the mean, so after this call the copies
 array data is more current and the vars data is stale.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>start_copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>start_copy </em></TD>
     <TD>Global index of first copy in mean and sd computation.</TD></TR>
-<TR><TD valign=top><em class=code>end_copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>end_copy </em></TD>
     <TD>Global index of last copy in mean and sd computation.</TD></TR>
-<TR><TD valign=top><em class=code>mean_copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>mean_copy </em></TD>
     <TD>Global index of copy into which mean is written.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="compute_copy_mean_sd"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call compute_copy_mean_sd(ens_handle, start_copy, end_copy, mean_copy, sd_copy) </em>
 <pre>
@@ -1300,26 +1302,26 @@ array data is more current and the vars data is stale.
 </P>
 
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>start_copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>start_copy </em></TD>
     <TD>Global index of first copy in mean and sd computation.</TD></TR>
-<TR><TD valign=top><em class=code>end_copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>end_copy </em></TD>
     <TD>Global index of last copy in mean and sd computation.</TD></TR>
-<TR><TD valign=top><em class=code>mean_copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>mean_copy </em></TD>
     <TD>Global index of copy into which mean is written.</TD></TR>
-<TR><TD valign=top><em class=code>sd_copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>sd_copy </em></TD>
     <TD>Global index of copy into which standard deviation is written.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="compute_copy_mean_var"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call compute_copy_mean_var(ens_handle, start_copy, end_copy, mean_copy, var_copy) </em>
 <pre>
@@ -1345,26 +1347,26 @@ It updates the copies arrays with the mean and variance, so after this call the 
 array data is more current and the vars data is stale.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>start_copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>start_copy </em></TD>
     <TD>Global index of first copy in mean and sd computation.</TD></TR>
-<TR><TD valign=top><em class=code>end_copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>end_copy </em></TD>
     <TD>Global index of last copy in mean and sd computation.</TD></TR>
-<TR><TD valign=top><em class=code>mean_copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>mean_copy </em></TD>
     <TD>Global index of copy into which mean is written.</TD></TR>
-<TR><TD valign=top><em class=code>var_copy&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>var_copy </em></TD>
     <TD>Global index of copy into which variance is written.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="prepare_to_update_vars"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call prepare_to_update_vars(ens_handle) </em>
 <pre>
@@ -1403,18 +1405,18 @@ internal consistency checks have an accurate accounting of
 the representations.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for the ensemble being accessed directly.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="prepare_to_update_copies"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call prepare_to_update_copies(ens_handle) </em>
 <pre>
@@ -1453,18 +1455,18 @@ internal consistency checks have an accurate accounting of
 the representations.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for the ensemble being accessed directly.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="prepare_to_read_from_vars"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call prepare_to_read_from_vars(ens_handle) </em>
 <pre>
@@ -1503,18 +1505,18 @@ internal consistency checks have an accurate accounting of
 the representations.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for the ensemble being accessed directly.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="prepare_to_read_from_copies"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call prepare_to_read_from_copies(ens_handle) </em>
 <pre>
@@ -1553,18 +1555,18 @@ internal consistency checks have an accurate accounting of
 the representations.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for the ensemble being accessed directly.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="prepare_to_write_to_vars"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call prepare_to_write_to_vars(ens_handle) </em>
 <pre>
@@ -1606,18 +1608,18 @@ internal consistency checks have an accurate accounting of
 the representations.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for the ensemble being accessed directly.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="prepare_to_write_to_copies"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call prepare_to_write_to_copies(ens_handle) </em>
 <pre>
@@ -1659,13 +1661,13 @@ internal consistency checks have an accurate accounting of
 the representations.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for the ensemble being accessed directly.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--==================================================================-->
 
@@ -1690,7 +1692,7 @@ the representations.
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_max_num_copies"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> var = get_max_num_copies(num_copies) </em>
 <pre>
@@ -1709,21 +1711,21 @@ Depends on distribution_type with only option 1 currently implemented.
 Used to get size for creating storage to receive a list of the copies on a PE.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>var </em></TD>
     <TD>Returns the largest number of copies any an individual PE when
         var complete.  </TD></TR>
-<TR><TD valign=top><em class=code>num_copies&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>num_copies </em></TD>
     <TD>Total number of copies in the ensemble.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_max_num_vars"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> var = get_max_num_vars(num_vars) </em>
 <pre>
@@ -1742,21 +1744,21 @@ Depends on distribution_type with only option 1 currently implemented.
 Used to get size for creating storage to receive a list of the vars on a PE.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>var </em></TD>
     <TD>Returns the largest number of vars any an individual PE when
         copy complete.  </TD></TR>
-<TR><TD valign=top><em class=code>num_copies&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>num_copies </em></TD>
     <TD>Total number of vars in an ensemble vector.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="set_up_ens_distribution"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call set_up_ens_distribution(ens_handle) </em>
 <pre>
@@ -1775,18 +1777,18 @@ This puts every Nth var or copy on a given processor where N is the
 total number of processes. 
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_var_list"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call get_var_list(num_vars, pe, var_list, pes_num_vars) </em>
 <pre>
@@ -1807,28 +1809,28 @@ var_list must be dimensioned large enough to hold all vars.
 Depends on distribution_type with only option 1 currently implemented.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>num_vars&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>num_vars </em></TD>
     <TD>
     </TD></TR>
-<TR><TD valign=top><em class=code>pe&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>pe </em></TD>
     <TD>
     </TD></TR>
-<TR><TD valign=top><em class=code>var_list(:)&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>var_list(:) </em></TD>
     <TD>
     </TD></TR>
-<TR><TD valign=top><em class=code>pes_num_vars&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>pes_num_vars </em></TD>
     <TD>
     </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_copy_list"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call get_copy_list(num_copies, pe, copy_list, pes_num_copies) </em>
 <pre>
@@ -1849,28 +1851,28 @@ copy_list must be dimensioned large enough to hold all copies.
 Depends on distribution_type with only option 1 currently implemented.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>num_copies&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>num_copies </em></TD>
     <TD>
     </TD></TR>
-<TR><TD valign=top><em class=code>pe&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>pe </em></TD>
     <TD>
     </TD></TR>
-<TR><TD valign=top><em class=code>copy_list(:)&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>copy_list(:) </em></TD>
     <TD>
     </TD></TR>
-<TR><TD valign=top><em class=code>pes_num_copies&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>pes_num_copies </em></TD>
     <TD>
     </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="timestamp_message"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call timestamp_message(msg
 <em class=optionalcode>[,&nbsp;sync]</em>
@@ -1892,16 +1894,16 @@ If alltasks is present and true, all tasks print the time.  The
 default is only task 0 prints a timestamp.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>msg&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>msg </em></TD>
     <TD> character string to prepend to the time info
     </TD></TR>
-<TR><TD valign=top><em class=optionalcode>sync&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=optionalcode>sync </em></TD>
     <TD> if present and true, execute an MPI_Barrier() to sync all MPI tasks
          before printing the time.  this means the time will be the
          value of the slowest of the tasks to reach this point.
     </TD></TR>
-<TR><TD valign=top><em class=optionalcode>alltasks&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=optionalcode>alltasks </em></TD>
     <TD> if present and true, have all tasks print out a timestamp.
          the default is for just task 0 to print.  the usual combination
          is either sync=true and alltasks=false, or sync=false and alltasks=true.
@@ -1909,12 +1911,12 @@ default is only task 0 prints a timestamp.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="print_ens_handle"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call print_ens_handle(ens_handle, force, label)</em>
 <pre>
@@ -1935,26 +1937,26 @@ to true to force printing.  The optional string label can help
 provide context for the output.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>The derived type to print information about.
     </TD></TR>
-<TR><TD valign=top><em class=code>force&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>force </em></TD>
     <TD>If the <em class=code>debug</em> namelist item is false, set
         this to true to enable printing.
     </TD></TR>
-<TR><TD valign=top><em class=code>label&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>label </em></TD>
     <TD>Optional string label to print to provide context for the output.
     </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="assign_tasks_to_pes"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call assign_tasks_to_pes(ens_handle, nEns_members, layout_type) </em>
 <pre>
@@ -1977,24 +1979,24 @@ Possible options:
   2. Round-robin on the nodes
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code> </em></TD>
     <TD>
     </TD></TR>
-<TR><TD valign=top><em class=code>&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code> </em></TD>
     <TD>
     </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="round_robin"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call round_robin(ens_handle)</em>
 <pre>
@@ -2013,18 +2015,18 @@ If you want to break the assumption that pe 0 = task 0, this routine is a good
 place to start. Test with the smoother.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="create_pe_to_task_list"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call create_pe_to_task_list(ens_handle)</em>
 <pre>
@@ -2041,18 +2043,18 @@ Creates the <em class=code>ens_handle%pe_to_task_list</em>.
 otherwise this routine will just return nonsense.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="calc_tasks_on_each_node"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call calc_tasks_on_each_node(nodes, last_node_task_number)</em>
 <pre>
@@ -2072,22 +2074,22 @@ The last node may have fewer tasks, for example, if ptile = 16 and the number of
 mpi tasks = 17
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>nodes&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>nodes </em></TD>
     <TD>
     </TD></TR>
-<TR><TD valign=top><em class=code>last_node_task_number&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>last_node_task_number </em></TD>
     <TD>
     </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="simple_layout"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call simple_layout(ens_handle, n)</em>
 <pre>
@@ -2104,21 +2106,21 @@ assigns the arrays task_to_pe_list and pe_to_task list for the simple layout
 where my_pe = my_task_id()
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>n&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>n </em></TD>
     <TD>
     </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="sort_task_list"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call sort_task_list(i, idx, n)</em>
 <pre>
@@ -2135,25 +2137,25 @@ integer, intent(out)   :: <em class=code>idx(n)</em> ! index of sorted array
 sorts an array and returns the sorted array, and the index of the original array
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>n&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>n </em></TD>
     <TD>
     </TD></TR>
-<TR><TD valign=top><em class=code>x(n)&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>x(n) </em></TD>
     <TD>
     </TD></TR>
-<TR><TD valign=top><em class=code>idx(n)&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>idx(n) </em></TD>
     <TD>
     </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="map_pe_to_task"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call map_pe_to_task(ens_handle, p)</em>
 <pre>
@@ -2169,21 +2171,21 @@ integer,             intent(in) :: <em class=code>p</em>
 Return the physical task for my_pe
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>p&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>p </em></TD>
     <TD>The MPI task corresponding to the given PE number
     </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="map_task_to_pe"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call> call map_task_to_pe(ens_handle, t)</em>
 <pre>
@@ -2199,16 +2201,16 @@ integer,             intent(in) :: <em class=code>t</em>
 Return my_pe corresponding to the physical task
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle </em></TD>
     <TD>Handle for an ensemble.</TD></TR>
-<TR><TD valign=top><em class=code>t&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>t </em></TD>
     <TD>Return the PE corresponding to the given MPI task number.
     </TD></TR>
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -2342,14 +2344,14 @@ N/A
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright 2004 - 2013 UCAR.<br>
-This open source software is provided by UCAR, "as is",<br>
-without charge, subject to all terms of use at<br>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
 
-<TABLE border=0 cellpadding=0 width=100% summary="">
+<TABLE border=0 cellpadding=0 width=100% summary="subversion information">
 <TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
