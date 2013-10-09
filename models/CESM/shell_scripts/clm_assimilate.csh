@@ -9,9 +9,10 @@
 # This block is an attempt to localize all the machine-specific
 # changes to this script such that the same script can be used
 # on multiple platforms. This will help us maintain the script.
+# Search below for TIMECHECK to see what times this script will
+# assimilate.
 
 echo "`date` -- BEGIN CLM_ASSIMILATE"
-echo "this version assimilates only when hour is 0Z"
 
 set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
@@ -82,21 +83,21 @@ echo "valid time of model is $LND_YEAR $LND_MONTH $LND_DAY $LND_HOUR (hours)"
 # If not, return before assimilating.
 #-------------------------------------------------------------------------
 
-if ( $LND_HOUR != 0  &&  $LND_HOUR != 6  &&  $LND_HOUR != 12  &&  $LND_HOUR != 18) then
+## TIMECHECK:
+if ( $LND_HOUR == 0 || $LND_HOUR == 6 || $LND_HOUR == 12 || $LND_HOUR == 18 ) then
+   echo "Hour is $LND_HOUR so we are assimilating the land"
+else
    echo "Hour is not 0,6,12 or 18Z so we are skipping the land assimilation"
    echo "`date` -- END CLM_ASSIMILATE"
    exit 0
-else
-   echo "Hour is $LND_HOUR so we are assimilating the land"
 endif
 
-# if you want to only assimilate at 0Z each day, substitute the
-# following two lines for the longer test above.  we have flux tower
-# observations which need to be assimilated every 6 hours; if you
-# aren't going to assimilate them and are only assimilating some obs type
-# that is only available once a day, you can change to this test instead.
-#if ( $LND_HOUR != 0 ) then
-#   echo "Hour is not 0Z so we are skipping the land assimilation"
+# we have flux tower observations which can be assimilated every 6 hours,
+# but if you want to only assimilate at 0Z each day, change the LND_HOUR
+# check to this one:
+#    if ( $LND_HOUR == 0 ) then
+# and the message in the else clause to this:
+#       echo "Hour is not 0Z so we are skipping the land assimilation"
 
 #-------------------------------------------------------------------------
 # Create temporary working directory for the assimilation and go there

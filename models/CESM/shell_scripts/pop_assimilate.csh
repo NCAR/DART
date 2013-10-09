@@ -9,9 +9,10 @@
 # This block is an attempt to localize all the machine-specific
 # changes to this script such that the same script can be used
 # on multiple platforms. This will help us maintain the script.
+# Search below for TIMECHECK to see what times this script will
+# assimilate.
 
 echo "`date` -- BEGIN POP_ASSIMILATE"
-echo "this version assimilates only when hour is 0Z"
 
 set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
@@ -84,8 +85,15 @@ echo "valid time of model is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_HOUR (hours)"
 # restart configuration for pop (data_assim or rest).
 #-------------------------------------------------------------------------
 
+## TIMECHECK:
 ${REMOVE} ${CASEROOT}/user_nl_pop2_*back
-if ( $OCN_HOUR != 0 ) then
+if ( $OCN_HOUR == 0 ) then
+   echo "Hour is $OCN_HOUR so we are assimilating the ocean"
+   foreach nml ( ${CASEROOT}/user_nl_pop2_* )
+      ${MOVE} $nml ${nml}.back
+      sed -e "s/'rest'/'data_assim'/" ${nml}.back >! $nml
+   end
+else
    echo "Hour is not 0Z so we are skipping the ocean assimilation"
    foreach nml ( ${CASEROOT}/user_nl_pop2_* )
       ${MOVE} $nml ${nml}.back
@@ -93,12 +101,6 @@ if ( $OCN_HOUR != 0 ) then
    end
    echo "`date` -- END POP_ASSIMILATE"
    exit 0
-else
-   echo "Hour is $OCN_HOUR so we are assimilating the ocean"
-   foreach nml ( ${CASEROOT}/user_nl_pop2_* )
-      ${MOVE} $nml ${nml}.back
-      sed -e "s/'rest'/'data_assim'/" ${nml}.back >! $nml
-   end
 endif
 
 #-------------------------------------------------------------------------

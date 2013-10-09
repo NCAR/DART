@@ -9,9 +9,10 @@
 # This block is an attempt to localize all the machine-specific
 # changes to this script such that the same script can be used
 # on multiple platforms. This will help us maintain the script.
+# Search below for TIMECHECK to see what times this script will
+# assimilate.
 
 echo "`date` -- BEGIN CAM_ASSIMILATE"
-echo "custom version assimilates at 0,6,12,18Z"
 
 set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
@@ -82,12 +83,13 @@ echo "valid time of model is $ATM_YEAR $ATM_MONTH $ATM_DAY $ATM_HOUR (hours)"
 # If not, return before assimilating.
 #-------------------------------------------------------------------------
 
-if ( $ATM_HOUR != 0  &&  $ATM_HOUR != 6  &&  $ATM_HOUR != 12  &&  $ATM_HOUR != 18) then
+## TIMECHECK:
+if ( $ATM_HOUR == 0 || $ATM_HOUR == 6 || $ATM_HOUR == 12 || $ATM_HOUR == 18) then
+   echo "Hour is $ATM_HOUR so we are assimilating the atmosphere"
+else
    echo "Hour is not 0,6,12 or 18Z so we are skipping the atmosphere assimilation"
    echo "`date` -- END CAM_ASSIMILATE"
    exit 0
-else
-   echo "Hour is $ATM_HOUR so we are assimilating the atmosphere"
 endif
 
 #-------------------------------------------------------------------------
