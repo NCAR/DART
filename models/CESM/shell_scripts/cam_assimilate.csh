@@ -512,11 +512,11 @@ cd ${RUNDIR}
 set member = 1
 while ( ${member} <= ${ensemble_size} )
 
-   set n4 = `printf %04d $member`
+   set inst_string = `printf _%04d $member`
 
-   set ATM_INITIAL_FILENAME = `printf ${MYCASE}.cam_%04d.i.${ATM_DATE_EXT}.nc  ${member}`
+   set ATM_INITIAL_FILENAME = ${MYCASE}.cam${inst_string}.i.${ATM_DATE_EXT}.nc
 
-   ${LINK} ${ATM_INITIAL_FILENAME} cam_initial_${n4}.nc || exit -9
+   ${LINK} ${ATM_INITIAL_FILENAME} cam_initial${inst_string}.nc || exit -9
 
    @ member++
 
