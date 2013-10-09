@@ -26,7 +26,6 @@ switch ("`hostname`")
       set REMOVE = '/usr/local/bin/rm -fr'
 
       set BASEOBSDIR = /glade/proj3/image/Observations/ACARS
-      set    DARTDIR = ${HOME}/svn/DART/trunk
       set  LAUNCHCMD = mpirun.lsf
    breaksw
 
@@ -38,7 +37,6 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /glade/p/image/Observations/ACARS
-      set    DARTDIR = ${HOME}/svn/DART/trunk
       set  LAUNCHCMD = mpirun.lsf
    breaksw
 
@@ -50,7 +48,6 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /scratch/scratchdirs/nscollin/ACARS
-      set    DARTDIR = ${HOME}/trunk
       set  LAUNCHCMD = "aprun -n $NTASKS"
    breaksw
 endsw
@@ -142,7 +139,7 @@ set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
 set SECSTRING = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
 
 if ( $SECSTRING == true ) then
-   set SAMP_ERR_FILE = ${DARTDIR}/system_simulation/final_full_precomputed_tables/final_full.${ensemble_size}
+   set SAMP_ERR_FILE = ${CASEROOT}/final_full.${ensemble_size}
    if (  -e   ${SAMP_ERR_FILE} ) then
       ${COPY} ${SAMP_ERR_FILE} .
    else
