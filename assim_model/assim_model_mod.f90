@@ -691,7 +691,7 @@ implicit none
 
 type(location_type), intent(in) :: location
 integer,             intent(in) :: loctype
-integer,            intent(out) :: istatus
+integer,            intent(out) :: istatus(:)
 real(r8),            intent(out) :: expected_obs(:)
 integer,             intent(in)  :: win
 

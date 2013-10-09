@@ -3083,7 +3083,7 @@ type(ensemble_type), intent(in) :: state_ens_handle
 integer,             intent(in) :: win !> window for one sided communication
 type(location_type), intent(in) :: location
 integer,             intent(in) :: obs_type
-integer,            intent(out) :: istatus
+integer,            intent(out) :: istatus(:)
 real(r8),           intent(out) :: interp_val(:)
 
 integer  :: i, e
@@ -3336,7 +3336,7 @@ elseif (vert_is_height(location)) then
    do e = 1, ens_size
       if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
    enddo
-
+   vstatus = track_vstatus
 
 elseif (vert_is_surface(location)) then
 
@@ -3368,7 +3368,8 @@ do e = 1, ens_size
 
 enddo
 
-istatus = maxval(istatus_distrib) !> @todo
+!> @todo Sort out istatus
+istatus = istatus_distrib(1:state_ens_handle%num_copies -6)
 
 ! Set the element of ps that's tested elsewhere back to MISSING_R8, to signal
 ! other routines to calculate the ps arrays for themselves
@@ -4082,7 +4083,6 @@ if (field_type <= 0 .or. &
 end if
 
 indx = index_from_grid(level, lon_index, lat_index, field_type)
-if (indx > state_ens_handle%num_vars) print*, 'DEATH ', indx, 'level ', level, 'lon_index ', lon_index, 'lat_index ', lat_index, 'field_type ', field_type
 !val = x(indx)
 call get_state(val, indx, win, state_ens_handle, ens_size)
 

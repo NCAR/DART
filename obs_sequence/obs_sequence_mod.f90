@@ -343,7 +343,7 @@ integer,                 intent(in)    :: keys(:)
 integer,                 intent(in)    :: ens_index
 type(time_type),         intent(in)    :: state_time
 logical,                 intent(in)    :: isprior
-integer,                 intent(out)   :: istatus
+integer,                 intent(out)   :: istatus(:)
 logical,                 intent(out)   :: assimilate_this_ob, evaluate_this_ob
 !HK
 type(ensemble_type),     intent(in)    :: state_ens_handle

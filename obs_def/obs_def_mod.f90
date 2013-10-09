@@ -1311,7 +1311,7 @@ type(obs_def_type), intent(in)  :: obs_def
 integer,            intent(in)  :: obs_kind_ind, ens_index
 type(time_type),    intent(in)  :: state_time
 logical,            intent(in)  :: isprior
-integer,            intent(out) :: istatus
+integer,            intent(out) :: istatus(:)
 logical,            intent(out) :: assimilate_this_ob, evaluate_this_ob
 
 type(location_type) :: location
