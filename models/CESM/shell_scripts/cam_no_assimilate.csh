@@ -36,7 +36,6 @@ set ensemble_size = ${NINST_ATM}
 set FILE = `head -n 1 rpointer.atm_0001`
 set FILE = $FILE:t
 set FILE = $FILE:r
-set MYCASE = `echo $FILE | sed -e "s#\..*##"`
 set ATM_DATE_EXT = `echo $FILE:e`
 
 #=========================================================================
@@ -52,7 +51,7 @@ while ( ${member} <= ${ensemble_size} )
 
    set inst_string = `printf _%04d $member`
 
-   set ATM_INITIAL_FILENAME = ${MYCASE}.cam${inst_string}.i.${ATM_DATE_EXT}.nc
+   set ATM_INITIAL_FILENAME = ${CASE}.cam${inst_string}.i.${ATM_DATE_EXT}.nc
 
    ${LINK} ${ATM_INITIAL_FILENAME} cam_initial${inst_string}.nc || exit -9
 
