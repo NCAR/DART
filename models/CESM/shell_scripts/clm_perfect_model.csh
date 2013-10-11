@@ -9,6 +9,8 @@
 # This block is an attempt to localize all the machine-specific
 # changes to this script such that the same script can be used
 # on multiple platforms. This will help us maintain the script.
+# Search below for TIMECHECK to see what times this script will
+# run.
 
 echo "`date` -- BEGIN GENERATE CLM TRUE STATE"
 
@@ -90,7 +92,7 @@ echo "valid time of model is $LND_YEAR $LND_MONTH $LND_DAY $LND_SECONDS (seconds
 echo "valid time of model is $LND_YEAR $LND_MONTH $LND_DAY $LND_HOUR (hours)"
 
 #-------------------------------------------------------------------------
-# Determine if current time is an perfect model time.
+# Determine if current time is a perfect model time.
 # If not, return before doing anything.
 #-------------------------------------------------------------------------
 
@@ -99,7 +101,7 @@ if ( $LND_HOUR == 0 || $LND_HOUR == 6 || $LND_HOUR == 12 || $LND_HOUR == 18 ) th
    echo "Hour is $LND_HOUR so we are generating perfect obs for the land"
 else
    echo "Hour is not 0,6,12 or 18Z so we are skipping generating perfect obs for the land"
-   echo "`date` -- END   GENERATE TRUE STATE"
+   echo "`date` -- END   GENERATE CLM TRUE STATE"
    exit 0
 endif
 
@@ -148,7 +150,7 @@ endif
 set OBS_FILE = ${BASEOBSDIR}/${OBSDIR}/obs_seq.${LND_DATE_EXT}
 
 if (  -e   ${OBS_FILE} ) then
-   ${COPY} ${OBS_FILE} obs_seq.in
+   ${LINK} ${OBS_FILE} obs_seq.in
 else
    echo "ERROR ... no observation file $OBS_FILE"
    echo "ERROR ... no observation file $OBS_FILE"
@@ -156,56 +158,35 @@ else
 endif
 
 #=========================================================================
-# Block 1: Populate a run-time directory with the input needed to run DART.
-#=========================================================================
-
-echo "`date` -- BEGIN COPY BLOCK"
-
-if (  -e   ${CASEROOT}/clm_input.nml ) then
-   ${COPY} ${CASEROOT}/clm_input.nml input.nml
-else
-   echo "ERROR ... DART required file ${CASEROOT}/clm_input.nml not found ... ERROR"
-   echo "ERROR ... DART required file ${CASEROOT}/clm_input.nml not found ... ERROR"
-   exit -2
-endif
-
-echo "`date` -- END COPY BLOCK"
-
-#=========================================================================
-# Block 2: convert 1 clm restart file to a DART initial conditions file.
-# At the end of the block, we have a DART restart file  perfect_ics
-# that came from the pointer file ../rpointer.lnd_0001
+# Block 1: Populate a run-time directory with the input needed to run DART,
+# and Block 2: Convert 1 CLM restart file to DART initial conditions file.
+# At the end of the block, we have DART initial condition file  perfect_ics
+# that came from pointer file ../rpointer.lnd
 #
-# DART namelist settings appropriate/required:
+# REQUIRED DART namelist settings:
 # &perfect_model_obs_nml:  restart_in_file_name    = 'perfect_ics'
 # &clm_to_dart_nml:        clm_to_dart_output_file = 'dart_ics'
 #=========================================================================
 
 echo "`date` -- BEGIN CLM-TO-DART"
 
-set member = 1
-
-   set MYTEMPDIR = member_${member}
-   mkdir -p $MYTEMPDIR
-   cd $MYTEMPDIR
+   if ( ! -e   ${CASEROOT}/clm_input.nml ) then
+      echo "ERROR ... DART required file ${CASEROOT}/clm_input.nml not found ... ERROR"
+      echo "ERROR ... DART required file ${CASEROOT}/clm_input.nml not found ... ERROR"
+      exit -2
+   endif
 
    # make sure there are no old output logs hanging around
-   $REMOVE output.${member}.clm_to_dart
+   $REMOVE output.clm_to_dart
 
-   set  LND_RESTART_FILENAME = ${CASE}.clm2.r.${LND_DATE_EXT}.nc
-   set  LND_HISTORY_FILENAME = ${CASE}.clm2.h0.${LND_DATE_EXT}.nc
-   set OBS1_HISTORY_FILENAME = ${CASE}.clm2.h1.${LND_DATE_EXT}.nc
-   set OBS2_HISTORY_FILENAME = ${CASE}.clm2_0001.h1.${LND_DATE_EXT}.nc
+   set  LND_RESTART_FILENAME = ../${CASE}.clm2.r.${LND_DATE_EXT}.nc
+   set  LND_HISTORY_FILENAME = ../${CASE}.clm2.h0.${LND_DATE_EXT}.nc
    set DART_IC_FILENAME = perfect_ics
 
-   sed -e "s/dart_ics/..\/${DART_IC_FILENAME}/" < ../input.nml >! input.nml
+   sed -e "s#dart_ics#${DART_IC_FILENAME}#" < ${CASEROOT}/clm_input.nml >! input.nml
 
-   ${LINK} ../../$LND_RESTART_FILENAME clm_restart.nc
-   ${LINK} ../../$LND_HISTORY_FILENAME clm_history.nc
-
-   if (-e $OBS1_HISTORY_FILENAME) then
-      ${LINK} ../../$OBS1_HISTORY_FILENAME $OBS2_HISTORY_FILENAME
-   endif
+   ${LINK} $LND_RESTART_FILENAME clm_restart.nc
+   ${LINK} $LND_HISTORY_FILENAME clm_history.nc
 
    # patch the CLM restart files to ensure they have the proper
    # _FillValue and missing_value attributes.
@@ -220,30 +201,28 @@ set member = 1
 #  ncatted -O -a    _FillValue,T_SOISNO,o,d,1.0e+36   clm_restart.nc
 #  ncatted -O -a missing_value,T_SOISNO,o,d,1.0e+36   clm_restart.nc
 
-   ${EXEROOT}/clm_to_dart >! output.${member}.clm_to_dart
+   ${EXEROOT}/clm_to_dart >! output.clm_to_dart 
 
    if ($status != 0) then
       echo "ERROR ... DART died in 'clm_to_dart' ... ERROR"
       echo "ERROR ... DART died in 'clm_to_dart' ... ERROR"
-      exit -3
+      exit -6
    endif
-
-   cd ..
 
 echo "`date` -- END CLM-TO-DART"
 
 #=========================================================================
-# Block 3: Advance the model and harvest the synthetic observations.
-# Will result in a single file : 'perfect_restart' which we don't need
-# for a perfect model experiment with CESM.
+# Block 3: Run perfect_model_obs and harvest the synthetic observations
+# and diagnostic files.
 #
 # DART namelist settings required:
 # &perfect_model_obs_nml:           async                  = 0,
-# &perfect_model_obs_nml:           adv_ens_command        = "./no_model_advance.csh",
+# &perfect_model_obs_nml:           adv_ens_command        = "no_advance_script",
+# &perfect_model_obs_nml:           output_restart         = .false.,
 # &perfect_model_obs_nml:           restart_in_file_name   = 'perfect_ics'
-# &perfect_model_obs_nml:           restart_out_file_name  = 'perfect_restart'
+# &perfect_model_obs_nml:           restart_out_file_name  = 'not_created'
 # &perfect_model_obs_nml:           obs_sequence_in_name   = 'obs_seq.in'
-# &perfect_model_obs_nml:           obs_sequence_out_name  = 'obs_seq.out'
+# &perfect_model_obs_nml:           obs_sequence_out_name  = 'obs_seq.perfect'
 # &perfect_model_obs_nml:           init_time_days         = -1,
 # &perfect_model_obs_nml:           init_time_seconds      = -1,
 # &perfect_model_obs_nml:           first_obs_days         = -1,
@@ -253,27 +232,24 @@ echo "`date` -- END CLM-TO-DART"
 #
 #=========================================================================
 
-# clm always needs a clm_restart.nc, clm_history.nc for geometry information, etc.
-
-set LND_RESTART_FILENAME = ${CASE}.clm2.r.${LND_DATE_EXT}.nc
-set LND_HISTORY_FILENAME = ${CASE}.clm2.h0.${LND_DATE_EXT}.nc
-
-${LINK} ../$LND_RESTART_FILENAME clm_restart.nc
-${LINK} ../$LND_HISTORY_FILENAME clm_history.nc
 
 echo "`date` -- BEGIN CLM PERFECT_MODEL_OBS"
-${EXEROOT}/perfect_model_obs_clm || exit -4
+${EXEROOT}/perfect_model_obs_clm || exit -7
 echo "`date` -- END   CLM PERFECT_MODEL_OBS"
 
-${MOVE} True_State.nc    ../clm_True_State.${LND_DATE_EXT}.nc
-${MOVE} obs_seq.out      ../clm_obs_seq.${LND_DATE_EXT}.out
-${MOVE} dart_log.out     ../clm_dart_log.${LND_DATE_EXT}.out
+
+${MOVE} True_State.nc      ../clm_True_State.${LND_DATE_EXT}.nc
+${MOVE} Prior_Diag.nc      ../clm_Prior_Diag.${LND_DATE_EXT}.nc
+${MOVE} Posterior_Diag.nc  ../clm_Posterior_Diag.${LND_DATE_EXT}.nc
+${MOVE} obs_seq.perfect    ../clm_obs_seq.${LND_DATE_EXT}.perfect
+${MOVE} dart_log.out       ../clm_dart_log.${LND_DATE_EXT}.out
 
 #=========================================================================
-# Block 4: Update the clm restart files.
+# Block 4: Update the clm restart file
 #=========================================================================
 
 # not needed ... perfect_model_obs does not update the model state.
+
 
 #-------------------------------------------------------------------------
 # Cleanup

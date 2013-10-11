@@ -10,7 +10,7 @@
 # changes to this script such that the same script can be used
 # on multiple platforms. This will help us maintain the script.
 # Search below for TIMECHECK to see what times this script will
-# evaluate obs.
+# run.
 
 echo "`date` -- BEGIN GENERATE POP TRUE STATE"
 
@@ -82,7 +82,7 @@ if ( $OCN_HOUR == 0 ) then
    echo "Hour is $OCN_HOUR so we are generating perfect obs for the ocean"
 else
    echo "Hour is not 0Z so we are skipping generating perfect obs for the ocean"
-   echo "`date` -- END   GENERATE TRUE STATE"
+   echo "`date` -- END   GENERATE POP TRUE STATE"
    exit 0
 endif
 
@@ -110,7 +110,7 @@ set OBSFNAME = `printf obs_seq.0Z.%04d%02d%02d ${OCN_YEAR} ${OCN_MONTH} ${OCN_DA
 set OBS_FILE = ${BASEOBSDIR}/${YYYYMM}/${OBSFNAME}
 
 if (  -e   ${OBS_FILE} ) then
-   ${COPY} ${OBS_FILE} obs_seq.in
+   ${LINK} ${OBS_FILE} obs_seq.in
 else
    echo "ERROR ... no observation file $OBS_FILE"
    echo "ERROR ... no observation file $OBS_FILE"
@@ -118,57 +118,37 @@ else
 endif
 
 #=========================================================================
-# Block 1: Populate a run-time directory with the input needed to run DART.
-#=========================================================================
-
-echo "`date` -- BEGIN COPY BLOCK"
-
-if (  -e   ${CASEROOT}/input.nml ) then
-   ${COPY} ${CASEROOT}/input.nml .
-else
-   echo "ERROR ... DART required file ${CASEROOT}/input.nml not found ... ERROR"
-   echo "ERROR ... DART required file ${CASEROOT}/input.nml not found ... ERROR"
-   exit -2
-endif
-
-echo "`date` -- END COPY BLOCK"
-
-# Eat the cookie regardless
-${REMOVE} ../pop_inflation_cookie
-
-#=========================================================================
-# Block 2: convert 1 pop restart file to a DART initial conditions file.
-# At the end of the block, we have a DART restart file  perfect_ics
-# that came from the pointer file ../rpointer.ocn.restart
+# Block 1: Populate a run-time directory with the input needed to run DART,
+# and Block 2: Convert 1 POP restart file to DART initial conditions file.
+# At the end of the block, we have DART initial condition file  perfect_ics
+# that came from pointer file ../rpointer.ocn.restart
 #
-# DART namelist settings appropriate/required:
+# REQUIRED DART namelist settings:
 # &perfect_model_obs_nml:  restart_in_file_name    = 'perfect_ics'
 # &pop_to_dart_nml:        pop_to_dart_output_file = 'dart_ics'
 #=========================================================================
 
 echo "`date` -- BEGIN POP-TO-DART"
 
-set member = 1
-
-   set MYTEMPDIR = member_${member}
-   mkdir -p $MYTEMPDIR
-   cd $MYTEMPDIR
+   if ( ! -e   ${CASEROOT}/pop_input.nml ) then
+      echo "ERROR ... DART required file ${CASEROOT}/pop_input.nml not found ... ERROR"
+      echo "ERROR ... DART required file ${CASEROOT}/pop_input.nml not found ... ERROR"
+      exit -2
+   endif
 
    # make sure there are no old output logs hanging around
-   $REMOVE output.${member}.pop_to_dart
+   $REMOVE output.pop_to_dart
 
-   set OCN_RESTART_FILENAME = ${CASE}.pop.r.${OCN_DATE_EXT}.nc
-   set     OCN_NML_FILENAME = pop2_in
+   set OCN_RESTART_FILENAME = ../${CASE}.pop.r.${OCN_DATE_EXT}.nc
+   set     OCN_NML_FILENAME = ../pop2_in
    set     DART_IC_FILENAME = perfect_ics
-   set    DART_RESTART_FILE = perfect_restart
 
-   sed -e "s#dart_ics#../${DART_IC_FILENAME}#" \
-       -e "s#dart_restart#../${DART_RESTART_FILE}#" < ../input.nml >! input.nml
+   sed -e "s#dart_ics#${DART_IC_FILENAME}#" < ${CASEROOT}/pop_input.nml >! input.nml
 
-   ${LINK} ../../$OCN_RESTART_FILENAME pop.r.nc
-   ${LINK} ../../$OCN_NML_FILENAME     pop_in
+   ${LINK} $OCN_RESTART_FILENAME pop.r.nc
+   ${LINK} $OCN_NML_FILENAME     pop_in
 
-   ${EXEROOT}/pop_to_dart >! output.${member}.pop_to_dart
+   ${EXEROOT}/pop_to_dart >! output.pop_to_dart
 
    if ($status != 0) then
       echo "ERROR ... DART died in 'pop_to_dart' ... ERROR"
@@ -181,17 +161,17 @@ set member = 1
 echo "`date` -- END POP-TO-DART"
 
 #=========================================================================
-# Block 3: Advance the model and harvest the synthetic observations.
-# Will result in a single file : 'perfect_restart' which we don't need
-# for a perfect model experiment with CESM.
+# Block 3: Run perfect_model_obs and harvest the synthetic observations
+# and diagnostic files.
 #
 # DART namelist settings required:
 # &perfect_model_obs_nml:           async                  = 0,
-# &perfect_model_obs_nml:           adv_ens_command        = "./no_model_advance.csh",
+# &perfect_model_obs_nml:           adv_ens_command        = "no_advance_script",
+# &perfect_model_obs_nml:           output_restart         = .false.,
 # &perfect_model_obs_nml:           restart_in_file_name   = 'perfect_ics'
-# &perfect_model_obs_nml:           restart_out_file_name  = 'perfect_restart'
+# &perfect_model_obs_nml:           restart_out_file_name  = 'not_created'
 # &perfect_model_obs_nml:           obs_sequence_in_name   = 'obs_seq.in'
-# &perfect_model_obs_nml:           obs_sequence_out_name  = 'obs_seq.out'
+# &perfect_model_obs_nml:           obs_sequence_out_name  = 'obs_seq.perfect'
 # &perfect_model_obs_nml:           init_time_days         = -1,
 # &perfect_model_obs_nml:           init_time_seconds      = -1,
 # &perfect_model_obs_nml:           first_obs_days         = -1,
@@ -201,26 +181,24 @@ echo "`date` -- END POP-TO-DART"
 #
 #=========================================================================
 
-# POP always needs a pop_in and a pop.r.nc to start.
 
-set OCN_RESTART_FILENAME = ${CASE}.pop.r.${OCN_DATE_EXT}.nc
+echo "`date` -- BEGIN POP PERFECT_MODEL_OBS"
+${EXEROOT}/perfect_model_obs_pop || exit -7
+echo "`date` -- END   POP PERFECT_MODEL_OBS"
 
-${LINK} ../$OCN_RESTART_FILENAME pop.r.nc
-${LINK} ../pop2_in               pop_in
 
-echo "`date` -- BEGIN PERFECT_MODEL_OBS"
-${EXEROOT}/perfect_model_obs || exit -4
-echo "`date` -- END   PERFECT_MODEL_OBS"
-
-${MOVE} True_State.nc    ../pop_True_State.${OCN_DATE_EXT}.nc
-${MOVE} obs_seq.out      ../pop_obs_seq.${OCN_DATE_EXT}.out
-${MOVE} dart_log.out     ../pop_dart_log.${OCN_DATE_EXT}.out
+${MOVE} True_State.nc      ../pop_True_State.${OCN_DATE_EXT}.nc
+${MOVE} Prior_Diag.nc      ../pop_Prior_Diag.${OCN_DATE_EXT}.nc
+${MOVE} Posterior_Diag.nc  ../pop_Posterior_Diag.${OCN_DATE_EXT}.nc
+${MOVE} obs_seq.perfect    ../pop_obs_seq.${OCN_DATE_EXT}.perfect
+${MOVE} dart_log.out       ../pop_dart_log.${OCN_DATE_EXT}.out
 
 #=========================================================================
 # Block 4: Update the pop restart files.
 #=========================================================================
 
 # not needed ... perfect_model_obs does not update the model state.
+
 
 #-------------------------------------------------------------------------
 # Cleanup

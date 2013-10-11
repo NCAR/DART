@@ -52,13 +52,13 @@ switch ("`hostname`")
 endsw
 
 #-------------------------------------------------------------------------
-# Determine time of model state ... from file name of first member
-# of the form "./${CASE}.cam_${ensemble_member}.i.2000-01-06-00000.nc"
+# Determine time of model state ... from file name
+# of the form "./${CASE}.cam.i.2000-01-06-00000.nc"
 #
 # Piping stuff through 'bc' strips off any preceeding zeros.
 #-------------------------------------------------------------------------
 
-set FILE = `head -n 1 rpointer.atm_0001`
+set FILE = `head -n 1 rpointer.atm`
 set FILE = $FILE:t
 set FILE = $FILE:r
 set ATM_DATE_EXT = `echo $FILE:e`
@@ -82,7 +82,7 @@ if ( $ATM_HOUR == 0 || $ATM_HOUR == 6 || $ATM_HOUR == 12 || $ATM_HOUR == 18) the
    echo "Hour is $ATM_HOUR so we are generating perfect obs for the atmosphere"
 else
    echo "Hour is not 0,6,12 or 18Z so we are skipping generating perfect obs for the atmosphere"
-   echo "`date` -- END CAM_ASSIMILATE"
+   echo "`date` -- END   GENERATE CAM TRUE STATE"
    exit 0
 endif
 
@@ -118,25 +118,10 @@ else
 endif
 
 #=========================================================================
-# Block 1: Populate a run-time directory with the input needed to run DART.
-#=========================================================================
-
-echo "`date` -- BEGIN COPY BLOCK"
-
-if (  -e   ${CASEROOT}/cam_input.nml ) then
-   ${COPY} ${CASEROOT}/cam_input.nml input.nml
-else
-   echo "ERROR ... DART required file ${CASEROOT}/cam_input.nml not found ... ERROR"
-   echo "ERROR ... DART required file ${CASEROOT}/cam_input.nml not found ... ERROR"
-   exit -2
-endif
-
-echo "`date` -- END COPY BLOCK"
-
-#=========================================================================
-# Block 2: Convert 1 CAM restart file to DART initial conditions file.
+# Block 1: Populate a run-time directory with the input needed to run DART,
+# and Block 2: Convert 1 CAM restart file to DART initial conditions file.
 # At the end of the block, we have DART initial condition file  perfect_ics
-# that came from pointer file ../rpointer.atm_0001
+# that came from pointer file ../rpointer.atm
 #
 # REQUIRED DART namelist settings:
 # &perfect_model_obs_nml:  restart_in_file_name    = 'perfect_ics'
@@ -145,51 +130,49 @@ echo "`date` -- END COPY BLOCK"
 
 echo "`date` -- BEGIN CAM-TO-DART"
 
-set member = 1
-
-   set MYTEMPDIR = member_${member}
-   mkdir -p $MYTEMPDIR
-   cd $MYTEMPDIR
+   if ( ! -e   ${CASEROOT}/cam_input.nml ) then
+      echo "ERROR ... DART required file ${CASEROOT}/cam_input.nml not found ... ERROR"
+      echo "ERROR ... DART required file ${CASEROOT}/cam_input.nml not found ... ERROR"
+      exit -2
+   endif
 
    # Turns out the .h0. files are timestamped with the START of the
    # run, which is *not* ATM_DATE_EXT ...  I just link to a whatever
    # is convenient (since the info is static).
    # make sure there are no old output logs hanging around
-   $REMOVE output.${member}.cam_to_dart
+   $REMOVE output.cam_to_dart
 
-   set ATM_INITIAL_FILENAME = "../../${CASE}.cam.i.${ATM_DATE_EXT}.nc"
-   set ATM_HISTORY_FILENAME = `ls -1t ../../${CASE}.cam*.h0.* | head -n 1`
-   set     DART_IC_FILENAME = `printf filter_ics.%04d     ${member}`
-   set    DART_RESTART_FILE = `printf filter_restart.%04d ${member}`
+   set ATM_INITIAL_FILENAME = "../${CASE}.cam.i.${ATM_DATE_EXT}.nc"
+   set ATM_HISTORY_FILENAME = `ls -1t ../${CASE}.cam*.h0.* | head -n 1`
+   set     DART_IC_FILENAME = perfect_ics
 
-   sed -e "s#dart_ics#../${DART_IC_FILENAME}#" \
-       -e "s#dart_restart#../${DART_RESTART_FILE}#" < ../input.nml >! input.nml
+   sed -e "s#dart_ics#${DART_IC_FILENAME}#" < ${CASEROOT}/cam_input.nml >! input.nml
 
    ${LINK} $ATM_INITIAL_FILENAME caminput.nc
    ${LINK} $ATM_HISTORY_FILENAME cam_phis.nc
 
-   ${EXEROOT}/cam_to_dart >! output.${member}.cam_to_dart 
+   ${EXEROOT}/cam_to_dart >! output.cam_to_dart 
 
    if ($status != 0) then
-   echo "ERROR ... DART died in 'cam_to_dart' ... ERROR"
-   echo "ERROR ... DART died in 'cam_to_dart' ... ERROR"
-   exit -6
-endif
+      echo "ERROR ... DART died in 'cam_to_dart' ... ERROR"
+      echo "ERROR ... DART died in 'cam_to_dart' ... ERROR"
+      exit -6
+   endif
 
 echo "`date` -- END CAM-TO-DART"
 
 #=========================================================================
-# Block 3: Advance the model and harvest the synthetic observations.
-# Will result in a single file : 'perfect_restart' which we don't need
-# for a perfect model experiment with CESM.
+# Block 3: Run perfect_model_obs and harvest the synthetic observations
+# and diagnostic files.
 #
 # DART namelist settings required:
 # &perfect_model_obs_nml:           async                  = 0,
-# &perfect_model_obs_nml:           adv_ens_command        = "./no_model_advance.csh",
+# &perfect_model_obs_nml:           adv_ens_command        = "no_advance_script",
+# &perfect_model_obs_nml:           output_restart         = .false.,
 # &perfect_model_obs_nml:           restart_in_file_name   = 'perfect_ics'
-# &perfect_model_obs_nml:           restart_out_file_name  = 'perfect_restart'
+# &perfect_model_obs_nml:           restart_out_file_name  = 'not_created'
 # &perfect_model_obs_nml:           obs_sequence_in_name   = 'obs_seq.in'
-# &perfect_model_obs_nml:           obs_sequence_out_name  = 'obs_seq.out'
+# &perfect_model_obs_nml:           obs_sequence_out_name  = 'obs_seq.perfect'
 # &perfect_model_obs_nml:           init_time_days         = -1,
 # &perfect_model_obs_nml:           init_time_seconds      = -1,
 # &perfect_model_obs_nml:           first_obs_days         = -1,
@@ -199,22 +182,16 @@ echo "`date` -- END CAM-TO-DART"
 #
 #=========================================================================
 
-# CAM:static_init_model() always needs a caminput.nc and a cam_phis.nc
-# for geometry information, etc.
-
-set ATM_INITIAL_FILENAME = ../${CASE}.cam.i.${ATM_DATE_EXT}.nc
-set ATM_HISTORY_FILENAME = `ls -1t ../${CASE}.cam*.h0.* | head -n 1`
-
-${LINK} $ATM_INITIAL_FILENAME caminput.nc
-${LINK} $ATM_HISTORY_FILENAME cam_phis.nc
 
 echo "`date` -- BEGIN CAM PERFECT_MODEL_OBS"
-${LAUNCHCMD} ${EXEROOT}/perfect_model_obs_cam || exit -7
+${EXEROOT}/perfect_model_obs_cam || exit -7
 echo "`date` -- END   CAM PERFECT_MODEL_OBS"
 
+
+${MOVE} True_State.nc      ../cam_True_State.${ATM_DATE_EXT}.nc
 ${MOVE} Prior_Diag.nc      ../cam_Prior_Diag.${ATM_DATE_EXT}.nc
 ${MOVE} Posterior_Diag.nc  ../cam_Posterior_Diag.${ATM_DATE_EXT}.nc
-${MOVE} obs_seq.final      ../cam_obs_seq.${ATM_DATE_EXT}.final
+${MOVE} obs_seq.perfect    ../cam_obs_seq.${ATM_DATE_EXT}.perfect
 ${MOVE} dart_log.out       ../cam_dart_log.${ATM_DATE_EXT}.out
 
 #=========================================================================
@@ -233,7 +210,6 @@ cd ${RUNDIR}
 
    ${LINK} ${ATM_INITIAL_FILENAME} cam_initial.nc || exit -9
 
-end
 
 #-------------------------------------------------------------------------
 # Cleanup
