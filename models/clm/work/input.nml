@@ -1,6 +1,6 @@
 &perfect_model_obs_nml
    start_from_restart    = .true.,
-   output_restart        = .true.,
+   output_restart        = .false.,
    async                 = 0,
    init_time_days        = -1,
    init_time_seconds     = -1,
@@ -13,15 +13,14 @@
    restart_in_file_name  = "perfect_ics",
    restart_out_file_name = "perfect_restart",
    obs_seq_in_file_name  = "obs_seq.in",
-   obs_seq_out_file_name = "obs_seq.out",
-   adv_ens_command       = "./ha_ha_ha.csh"
+   obs_seq_out_file_name = "obs_seq.perfect",
+   adv_ens_command       = "no_advance_script"
    output_timestamps     = .false.,
    trace_execution       = .false.,
-   output_forward_op_errors = .true.,
+   output_forward_op_errors = .false.,
    print_every_nth_obs   = -1,
    silence               = .false.,
    /
-
 
 &filter_nml
    async                    = 0,
