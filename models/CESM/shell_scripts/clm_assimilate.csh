@@ -66,7 +66,6 @@ set ensemble_size = ${NINST_LND}
 set FILE = `head -n 1 rpointer.lnd_0001`
 set FILE = $FILE:t
 set FILE = $FILE:r
-set MYCASE = `echo $FILE | sed -e "s#\..*##"`
 set LND_DATE_EXT = `echo $FILE:e`
 set LND_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
 set LND_YEAR     = `echo $LND_DATE[1] | bc`

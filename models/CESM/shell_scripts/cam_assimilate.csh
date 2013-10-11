@@ -66,7 +66,6 @@ set ensemble_size = ${NINST_ATM}
 set FILE = `head -n 1 rpointer.atm_0001`
 set FILE = $FILE:t
 set FILE = $FILE:r
-set MYCASE = `echo $FILE | sed -e "s#\..*##"`
 set ATM_DATE_EXT = `echo $FILE:e`
 set ATM_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
 set ATM_YEAR     = `echo $ATM_DATE[1] | bc`
@@ -366,8 +365,8 @@ while ( ${member} <= ${ensemble_size} )
    # make sure there are no old output logs hanging around
    $REMOVE output.${member}.cam_to_dart
 
-   set ATM_INITIAL_FILENAME = `printf ../../${MYCASE}.cam_%04d.i.${ATM_DATE_EXT}.nc ${member}`
-   set ATM_HISTORY_FILENAME = `ls -1t ../../${MYCASE}.cam*.h0.* | head -n 1`
+   set ATM_INITIAL_FILENAME = `printf ../../${CASE}.cam_%04d.i.${ATM_DATE_EXT}.nc ${member}`
+   set ATM_HISTORY_FILENAME = `ls -1t ../../${CASE}.cam*.h0.* | head -n 1`
    set     DART_IC_FILENAME = `printf filter_ics.%04d     ${member}`
    set    DART_RESTART_FILE = `printf filter_restart.%04d ${member}`
 
@@ -420,8 +419,8 @@ echo "`date` -- END CAM-TO-DART for all ${ensemble_size} members."
 # CAM:static_init_model() always needs a caminput.nc and a cam_phis.nc
 # for geometry information, etc.
 
-set ATM_INITIAL_FILENAME = ../${MYCASE}.cam_0001.i.${ATM_DATE_EXT}.nc
-set ATM_HISTORY_FILENAME = `ls -1t ../${MYCASE}.cam*.h0.* | head -n 1`
+set ATM_INITIAL_FILENAME = ../${CASE}.cam_0001.i.${ATM_DATE_EXT}.nc
+set ATM_HISTORY_FILENAME = `ls -1t ../${CASE}.cam*.h0.* | head -n 1`
 
 ${LINK} $ATM_INITIAL_FILENAME caminput.nc
 ${LINK} $ATM_HISTORY_FILENAME cam_phis.nc
@@ -514,7 +513,7 @@ while ( ${member} <= ${ensemble_size} )
 
    set inst_string = `printf _%04d $member`
 
-   set ATM_INITIAL_FILENAME = ${MYCASE}.cam${inst_string}.i.${ATM_DATE_EXT}.nc
+   set ATM_INITIAL_FILENAME = ${CASE}.cam${inst_string}.i.${ATM_DATE_EXT}.nc
 
    ${LINK} ${ATM_INITIAL_FILENAME} cam_initial${inst_string}.nc || exit -9
 

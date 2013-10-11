@@ -66,7 +66,6 @@ set ensemble_size = ${NINST_OCN}
 set FILE = `head -n 1 rpointer.ocn_0001.restart`
 set FILE = $FILE:t
 set FILE = $FILE:r
-set MYCASE = `echo $FILE | sed -e "s#\..*##"`
 set OCN_DATE_EXT = `echo $FILE:e`
 set OCN_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
 set OCN_YEAR     = `echo $OCN_DATE[1] | bc`
@@ -375,7 +374,7 @@ while ( ${member} <= ${ensemble_size} )
    # make sure there are no old output logs hanging around
    $REMOVE output.${member}.pop_to_dart
 
-   set OCN_RESTART_FILENAME = `printf ${MYCASE}.pop_%04d.r.${OCN_DATE_EXT}.nc  ${member}`
+   set OCN_RESTART_FILENAME = `printf ${CASE}.pop_%04d.r.${OCN_DATE_EXT}.nc  ${member}`
    set     OCN_NML_FILENAME = `printf pop2_in_%04d        ${member}`
    set     DART_IC_FILENAME = `printf filter_ics.%04d     ${member}`
    set    DART_RESTART_FILE = `printf filter_restart.%04d ${member}`
