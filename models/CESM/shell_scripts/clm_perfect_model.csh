@@ -239,8 +239,6 @@ echo "`date` -- END   CLM PERFECT_MODEL_OBS"
 
 
 ${MOVE} True_State.nc      ../clm_True_State.${LND_DATE_EXT}.nc
-${MOVE} Prior_Diag.nc      ../clm_Prior_Diag.${LND_DATE_EXT}.nc
-${MOVE} Posterior_Diag.nc  ../clm_Posterior_Diag.${LND_DATE_EXT}.nc
 ${MOVE} obs_seq.perfect    ../clm_obs_seq.${LND_DATE_EXT}.perfect
 ${MOVE} dart_log.out       ../clm_dart_log.${LND_DATE_EXT}.out
 

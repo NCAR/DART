@@ -189,8 +189,6 @@ echo "`date` -- END   CAM PERFECT_MODEL_OBS"
 
 
 ${MOVE} True_State.nc      ../cam_True_State.${ATM_DATE_EXT}.nc
-${MOVE} Prior_Diag.nc      ../cam_Prior_Diag.${ATM_DATE_EXT}.nc
-${MOVE} Posterior_Diag.nc  ../cam_Posterior_Diag.${ATM_DATE_EXT}.nc
 ${MOVE} obs_seq.perfect    ../cam_obs_seq.${ATM_DATE_EXT}.perfect
 ${MOVE} dart_log.out       ../cam_dart_log.${ATM_DATE_EXT}.out
 

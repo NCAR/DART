@@ -188,8 +188,6 @@ echo "`date` -- END   POP PERFECT_MODEL_OBS"
 
 
 ${MOVE} True_State.nc      ../pop_True_State.${OCN_DATE_EXT}.nc
-${MOVE} Prior_Diag.nc      ../pop_Prior_Diag.${OCN_DATE_EXT}.nc
-${MOVE} Posterior_Diag.nc  ../pop_Posterior_Diag.${OCN_DATE_EXT}.nc
 ${MOVE} obs_seq.perfect    ../pop_obs_seq.${OCN_DATE_EXT}.perfect
 ${MOVE} dart_log.out       ../pop_dart_log.${OCN_DATE_EXT}.out
 
