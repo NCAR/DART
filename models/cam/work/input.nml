@@ -58,7 +58,7 @@
    restart_in_file_name  = "perfect_ics",
    restart_out_file_name = "perfect_restart",
    obs_seq_in_file_name  = "obs_seq.in",
-   obs_seq_out_file_name = "obs_seq.out",
+   obs_seq_out_file_name = "obs_seq.perfect",
    adv_ens_command       = "no_advance_script"
    output_timestamps     = .false.,
    trace_execution       = .false.,
