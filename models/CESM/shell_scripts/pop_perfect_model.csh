@@ -156,8 +156,6 @@ echo "`date` -- BEGIN POP-TO-DART"
       exit -3
    endif
 
-   cd ..
-
 echo "`date` -- END POP-TO-DART"
 
 #=========================================================================
