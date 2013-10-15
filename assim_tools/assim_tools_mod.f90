@@ -34,7 +34,8 @@ use       reg_factor_mod, only : comp_reg_factor
 
 use         location_mod, only : location_type, get_close_type, get_close_obs_destroy,    &
                                  operator(==), set_location_missing, write_location,      &
-                                 LocationDims, vert_is_surface, has_vertical_localization
+                                 LocationDims, vert_is_surface, has_vertical_localization, &
+                                 location_type_distrib, copy_location_type !HK
 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,             & 
                                  compute_copy_mean_var, get_var_owner_index,              &
@@ -52,7 +53,9 @@ use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,         
 use time_manager_mod,     only : time_type, get_time
 
 use assim_model_mod,      only : get_state_meta_data, get_close_maxdist_init,             &
-                                 get_close_obs_init, get_close_obs
+                                 get_close_obs_init, get_close_obs, get_close_obs_distrib !HK
+
+use mpi !HK temporary
 
 implicit none
 private
@@ -280,6 +283,8 @@ subroutine filter_assim(ens_handle, obs_ens_handle, obs_seq, keys,           &
    OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START,            &
    OBS_PRIOR_VAR_END, inflate_only)
 
+use mpi_utilities_mod, only : datasize
+
 type(ensemble_type),         intent(inout) :: ens_handle, obs_ens_handle
 type(obs_sequence_type),     intent(in)    :: obs_seq
 integer,                     intent(in)    :: keys(:)
@@ -329,6 +334,7 @@ character(len = 102)  :: base_loc_text   ! longest location formatting possible
 type(location_type)  :: my_obs_loc(obs_ens_handle%my_num_vars)
 type(location_type)  :: base_obs_loc, last_base_obs_loc, last_base_states_loc
 type(location_type)  :: my_state_loc(ens_handle%my_num_vars), dummyloc
+type(location_type_distrib) :: my_state_loc_distrib(ens_handle%my_num_vars)
 type(get_close_type) :: gc_obs, gc_state
 type(obs_type)       :: observation
 type(obs_def_type)   :: obs_def
@@ -341,6 +347,13 @@ logical :: local_obs_inflate
 logical :: get_close_buffering
 logical :: missing_in_state
 
+! HK Remote memory access
+integer :: ierr, sizedouble, count, win, ii, jj
+integer(KIND=MPI_ADDRESS_KIND) :: window_size ! These must be mpi_address_kind to avoid a segmentation fault on some systems
+integer status(MPI_STATUS_SIZE)
+real(r8) duplicate_copies(*)
+pointer (p, duplicate_copies)
+
 ! we are going to read/write the copies array
 call prepare_to_update_copies(ens_handle)
 call prepare_to_update_copies(obs_ens_handle)
@@ -350,6 +363,30 @@ if(.not. module_initialized) then
    call assim_tools_init
    module_initialized = .true.
 endif
+
+!HK make window for mpi one-sided communication
+
+! allocate some RDMA accessible memory
+! using MPI_ALLOC_MEM because the MPI standard allows vendors to require MPI_ALLOC_MEM for remote memory access
+call mpi_type_size(datasize, sizedouble, ierr)
+window_size = ens_handle%num_copies*ens_handle%my_num_vars*sizedouble
+p = malloc(ens_handle%num_copies*ens_handle%my_num_vars)
+call MPI_ALLOC_MEM(window_size, MPI_INFO_NULL, p, ierr)
+
+! create a duplicate copies array for remote memory access
+! Doing this because you cannot use a cray pointer with an allocatable array
+count = 1
+do ii = 1, ens_handle%my_num_vars
+   do jj = 1, ens_handle%num_copies
+      duplicate_copies(count) = ens_handle%copies(jj, ii) ! can't use vector assignment with a cray pointer
+      count = count + 1
+   enddo
+enddo
+
+! expose local memory to RMA operation by other process in a communicator.
+call mpi_win_create(duplicate_copies, window_size, sizedouble, MPI_INFO_NULL, mpi_comm_world, win, ierr)
+
+
 
 ! filter kinds 1 and 8 return sorted increments, however non-deterministic
 ! inflation can scramble these. the sort is expensive, so help users get better 
@@ -444,6 +481,9 @@ call get_my_vars(ens_handle, my_state_indx)
 do i = 1, ens_handle%my_num_vars
    call get_state_meta_data(my_state_indx(i), my_state_loc(i), my_state_kind(i))
 end do
+
+! HK Aim: to reduce the commication by removing the duplicate calls to convert_vert
+call copy_location_type(my_state_loc, my_state_loc_distrib, ens_handle%my_num_vars)
 
 ! PAR: MIGHT BE BETTER TO HAVE ONE PE DEDICATED TO COMPUTING 
 ! INCREMENTS. OWNING PE WOULD SHIP IT'S PRIOR TO THIS ONE
@@ -650,18 +690,21 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! to shrink it, and so we need to know this before doing get_close() for the
    ! state space (even though the state space increments will be computed and
    ! applied first).
+
    if (.not. get_close_buffering) then
+      print*, '*********** WATCH OUT ***********'
       call get_close_obs(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, &
          num_close_obs, close_obs_ind, close_obs_dist)
    else
+ 
       if (base_obs_loc == last_base_obs_loc) then
          num_close_obs     = last_num_close_obs
          close_obs_ind(:)  = last_close_obs_ind(:)
          close_obs_dist(:) = last_close_obs_dist(:)
          num_close_obs_buffered = num_close_obs_buffered + 1
       else
-         call get_close_obs(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, &
-            num_close_obs, close_obs_ind, close_obs_dist)
+         !> @todo Fix this, I have just shoved in my_state_loc_distrib
+         call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_state_loc_distrib, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle, win)
          last_base_obs_loc      = base_obs_loc
          last_num_close_obs     = num_close_obs
          last_close_obs_ind(:)  = close_obs_ind(:)
@@ -669,6 +712,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          num_close_obs_calls_made = num_close_obs_calls_made +1
       endif
    endif
+
 
    ! set the cutoff default, keep a copy of the original value, and avoid
    ! looking up the cutoff in a list if the incoming obs is an identity ob
@@ -731,6 +775,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
 
    else if (output_localization_diagnostics) then
+
       ! if you aren't adapting but you still want to know how many obs are within the
       ! localization radius, set the diag output.  this could be large, use carefully.
 
@@ -752,7 +797,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Now everybody updates their close states
    ! Find state variables on my process that are close to observation being assimilated
    if (.not. get_close_buffering) then
-      call get_close_obs(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
+
+       call get_close_obs(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
          num_close_states, close_state_ind, close_state_dist)
    else
       if (base_obs_loc == last_base_states_loc) then
@@ -761,8 +807,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          close_state_dist(:) = last_close_state_dist(:)
          num_close_states_buffered = num_close_states_buffered + 1
       else
-         call get_close_obs(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
-            num_close_states, close_state_ind, close_state_dist)
+         call get_close_obs_distrib(gc_state, base_obs_loc, base_obs_type, my_state_loc, &
+                  my_state_loc_distrib, my_state_kind, num_close_states, close_state_ind,&
+                  close_state_dist, ens_handle, win)
+
          last_base_states_loc     = base_obs_loc
          last_num_close_states    = num_close_states
          last_close_state_ind(:)  = close_state_ind(:)
@@ -770,6 +818,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          num_close_states_calls_made = num_close_states_calls_made + 1 
       endif
    endif
+
 
    ! Loop through to update each of my state variables that is potentially close
    STATE_UPDATE: do j = 1, num_close_states
@@ -998,6 +1047,10 @@ endif
 if(output_localization_diagnostics .and. my_task_id() == 0) then
   call close_file(localization_unit)
 end if
+
+! get rid of mpi window
+call mpi_win_free(win, ierr)
+call MPI_FREE_MEM(duplicate_copies, ierr) ! not p
 
 end subroutine filter_assim
 

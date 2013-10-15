@@ -226,7 +226,7 @@ else
 endif
 
 ! initially no data
-ens_handle%valid = VALID_UNKNOWN
+ens_handle%valid = VALID_BOTH
 
 if(debug .and. my_task_id()==0) then
    print*, 'pe_to_task_list', ens_handle%pe_to_task_list
@@ -649,7 +649,7 @@ subroutine prepare_to_write_to_vars(ens_handle)
 
 type(ensemble_type), intent(inout) :: ens_handle
 
-ens_handle%valid = VALID_VARS
+!ens_handle%valid = VALID_VARS
 
 end subroutine prepare_to_write_to_vars
 
@@ -661,7 +661,7 @@ subroutine prepare_to_write_to_copies(ens_handle)
 
 type(ensemble_type), intent(inout) :: ens_handle
 
-ens_handle%valid = VALID_COPIES
+!ens_handle%valid = VALID_COPIES
 
 end subroutine prepare_to_write_to_copies
 
@@ -673,10 +673,10 @@ subroutine prepare_to_read_from_vars(ens_handle)
 
 type(ensemble_type), intent(in) :: ens_handle
 
-if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'prepare_to_read_from_vars', &
-        'last access not var-complete', source, revision, revdate)
-endif
+!if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
+!   call error_handler(E_ERR, 'prepare_to_read_from_vars', &
+ !       'last access not var-complete', source, revision, revdate)
+!endif
 
 end subroutine prepare_to_read_from_vars
 
@@ -688,10 +688,10 @@ subroutine prepare_to_read_from_copies(ens_handle)
 
 type(ensemble_type), intent(in) :: ens_handle
 
-if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'prepare_to_read_from_copies', &
-        'last access not copy-complete', source, revision, revdate)
-endif
+!if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
+!   call error_handler(E_ERR, 'prepare_to_read_from_copies', &
+!        'last access not copy-complete', source, revision, revdate)
+!endif
 
 end subroutine prepare_to_read_from_copies
 
@@ -704,11 +704,11 @@ subroutine prepare_to_update_vars(ens_handle)
 
 type(ensemble_type), intent(inout) :: ens_handle
 
-if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'prepare_to_update_vars', &
-        'last access not var-complete', source, revision, revdate)
-endif
-ens_handle%valid = VALID_VARS
+!if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
+!   call error_handler(E_ERR, 'prepare_to_update_vars', &
+ !       'last access not var-complete', source, revision, revdate)
+!endif
+!ens_handle%valid = VALID_VARS
 
 end subroutine prepare_to_update_vars
 
@@ -721,11 +721,11 @@ subroutine prepare_to_update_copies(ens_handle)
 
 type(ensemble_type), intent(inout) :: ens_handle
 
-if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'prepare_to_update_copies', &
-        'last access not copy-complete', source, revision, revdate)
-endif
-ens_handle%valid = VALID_COPIES
+!if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
+!   call error_handler(E_ERR, 'prepare_to_update_copies', &
+!        'last access not copy-complete', source, revision, revdate)
+!endif
+!ens_handle%valid = VALID_COPIES
 
 end subroutine prepare_to_update_copies
 
@@ -1128,19 +1128,19 @@ endif
 ! Error checking, but can't return early in case only some of the
 ! MPI tasks need to transpose.  Only if all N tasks say this is an
 ! unneeded transpose can we skip it.
-if (ens_handle%valid == VALID_BOTH) then
-   if (flag_unneeded_transposes) then
-      write(msgstring, *) 'task ', my_task_id(), ' ens_handle ', ens_handle%id_num
-      call error_handler(E_MSG, 'all_vars_to_all_copies', &
-           'vars & copies both valid, transpose not needed for this task', &
-            source, revision, revdate, text2=msgstring)
-   endif
-else if (ens_handle%valid /= VALID_VARS) then
-   write(msgstring, *) 'ens_handle ', ens_handle%id_num
-   call error_handler(E_ERR, 'all_vars_to_all_copies', &
-        'last access not var-complete', source, revision, revdate, &
-         text2=msgstring)
-endif
+!if (ens_handle%valid == VALID_BOTH) then
+!   if (flag_unneeded_transposes) then
+!      write(msgstring, *) 'task ', my_task_id(), ' ens_handle ', ens_handle%id_num
+!      call error_handler(E_MSG, 'all_vars_to_all_copies', &
+!           'vars & copies both valid, transpose not needed for this task', &
+!            source, revision, revdate, text2=msgstring)
+!   endif
+!else if (ens_handle%valid /= VALID_VARS) then
+!   write(msgstring, *) 'ens_handle ', ens_handle%id_num
+!   call error_handler(E_ERR, 'all_vars_to_all_copies', &
+!        'last access not var-complete', source, revision, revdate, &
+!         text2=msgstring)
+!endif
 
 ens_handle%valid = VALID_BOTH
 
@@ -1301,19 +1301,19 @@ endif
 ! Error checking, but can't return early in case only some of the
 ! MPI tasks need to transpose.  Only if all N tasks say this is an
 ! unneeded transpose can we skip it.
-if (ens_handle%valid == VALID_BOTH) then
-   if (flag_unneeded_transposes) then
-      write(msgstring, *) 'task ', my_task_id(), ' ens_handle ', ens_handle%id_num
-      call error_handler(E_MSG, 'all_copies_to_all_vars', &
-           'vars & copies both valid, transpose not needed for this task', &
-            source, revision, revdate, text2=msgstring)
-   endif
-else if (ens_handle%valid /= VALID_COPIES) then
-   write(msgstring, *) 'ens_handle ', ens_handle%id_num
-   call error_handler(E_ERR, 'all_copies_to_all_vars', &
-        'last access not copy-complete', source, revision, revdate, &
-         text2=msgstring)
-endif
+!if (ens_handle%valid == VALID_BOTH) then
+!   if (flag_unneeded_transposes) then
+!      write(msgstring, *) 'task ', my_task_id(), ' ens_handle ', ens_handle%id_num
+!      call error_handler(E_MSG, 'all_copies_to_all_vars', &
+!           'vars & copies both valid, transpose not needed for this task', &
+!            source, revision, revdate, text2=msgstring)
+!   endif
+!else if (ens_handle%valid /= VALID_COPIES) then
+!   write(msgstring, *) 'ens_handle ', ens_handle%id_num
+!   call error_handler(E_ERR, 'all_copies_to_all_vars', &
+!        'last access not copy-complete', source, revision, revdate, &
+!         text2=msgstring)
+!endif
 
 ens_handle%valid = VALID_BOTH
 

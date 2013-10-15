@@ -201,7 +201,7 @@ integer :: owner, owners_index
 
 ! For now, have model_size real storage for the ensemble mean, don't really want this
 ! in the long run
-real(r8), allocatable   :: ens_mean(:)
+!real(r8), allocatable   :: ens_mean(:) !RIPPED
 
 logical                 :: ds, all_gone
 
@@ -211,6 +211,7 @@ integer                 :: ii, reps
 
 !HK debug
 logical :: write_flag
+logical :: skipit = .true.
 
 call filter_initialize_modules_used()
 
@@ -298,7 +299,7 @@ call trace_message('Before setting up space for ensembles')
 model_size = get_model_size()
 
 ! Have ens_mean on all processors for distance computations, really don't want to do this
-allocate(ens_mean(model_size))
+!allocate(ens_mean(model_size)) !RIPPED
 
 call trace_message('After  setting up space for ensembles')
 
@@ -550,70 +551,20 @@ AdvanceTime : do
    ! and obs_values. ens_size is the number of regular ensemble members,
    ! not the number of copies
 
-   reps = 1 
-
-   start = MPI_WTIME()
-
-   do ii = 1, reps 
-
-      call get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, &
-         seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
-         OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-         isprior=.true.)
- 
-   enddo
-
-   finish = MPI_WTIME()
-
-   if (my_task_id() == 0) print*, 'get_obs_ens average ', (finish-start)/reps !> do we need all tasks
-
-   call timestamp_message('Transposing all ens_handles to copy complete before get_obs_ens_distrib_state')
-   call all_vars_to_all_copies(ens_handle)
-   call all_vars_to_all_copies(forward_op_ens_handle)
-   call all_vars_to_all_copies(obs_ens_handle) !HK for comparison
-
    allocate(results(obs_ens_handle%num_copies, obs_ens_handle%my_num_vars))
    results = missing_r8 !> @todo is this needed? Yes
 
-   start = MPI_WTIME()
-
-   do ii = 1, reps 
-
-      call get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, &
+   call get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, &
      seq, keys, obs_val_index, input_qc_index, &
      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
      OBS_MEAN_START, OBS_VAR_START, results, isprior=.true.)
 
-   enddo
-
-   finish = MPI_WTIME()
-
-   if (my_task_id() == 0) print*, 'get_obs_ens_distrib_state ', (finish-start)/reps
-
-   ! HK do these results need to be recorded to file?
-   write(task_str, '(i10)') ens_handle%my_pe
-
-   file_obscopies = TRIM('obscopies' // TRIM(ADJUSTL(task_str)))
-   file_results = TRIM('results' // TRIM(ADJUSTL(task_str)))
-
-   open(15, file=file_obscopies, status ='unknown')
-   open(20, file=file_results, status ='unknown')
-
-   do i = 1, obs_ens_handle%num_copies - 4
-      write(15, *) obs_ens_handle%copies(i,:)
-      write(20, *) results(i,:)
-   enddo
-
-   close(15)
-   close(20)
-
+   obs_ens_handle%copies = results
    deallocate(results)
 
-    goto 10011
-
-   ! Although they are integer, keys are one 'copy' of obs ensemble 
+   ! Although they are integer, keys are one 'copy' of obs ensemble
    ! (the last one?)
-   call put_copy(map_task_to_pe(obs_ens_handle, 0), obs_ens_handle, OBS_KEY_COPY, keys * 1.0_r8)  
+!   call put_copy(map_task_to_pe(obs_ens_handle, 0), obs_ens_handle, OBS_KEY_COPY, keys * 1.0_r8) !RIPPED
 
    ! While we're here, make sure the timestamp on the actual ensemble copy
    ! for the mean has the current time.  If the user requests it be written
@@ -625,39 +576,51 @@ AdvanceTime : do
    endif
 
    ! Make sure all tasks have a copy of the ensemble mean.
-   call broadcast_copy(ens_handle, ENS_MEAN_COPY, ens_mean)
+!   call broadcast_copy(ens_handle, ENS_MEAN_COPY, ens_mean) !RIPPED
 
    ! Now send the mean to the model_mod in case it's needed
-   call ens_mean_for_model(ens_mean)
+!   call ens_mean_for_model(ens_mean) !RIPPED
 
    call timestamp_message('After  computing prior observation values')
    call     trace_message('After  computing prior observation values')
 
    ! Do prior state space diagnostic output as required
    ! Use ens_mean which is declared model_size for temp storage in diagnostics
-   if ((output_interval > 0) .and. &
-       (time_step_number / output_interval * output_interval == time_step_number)) then
-      call trace_message('Before prior state space diagnostics')
-      call timestamp_message('Before prior state space diagnostics')
-      call filter_state_space_diagnostics(curr_ens_time, PriorStateUnit, ens_handle, &
-         model_size, num_output_state_members, &
-         output_state_mean_index, output_state_spread_index, &
-         output_inflation, ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
-         prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
-      call timestamp_message('After  prior state space diagnostics')
-      call trace_message('After  prior state space diagnostics')
-   endif
-  
+
+!*********************
+! Temporary RIPPED
+
+!   if ((output_interval > 0) .and. &
+!       (time_step_number / output_interval * output_interval == time_step_number)) then
+!      call trace_message('Before prior state space diagnostics')
+!      call timestamp_message('Before prior state space diagnostics')
+!      call filter_state_space_diagnostics(curr_ens_time, PriorStateUnit, ens_handle, &
+!         model_size, num_output_state_members, &
+!         output_state_mean_index, output_state_spread_index, &
+!         output_inflation, ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
+!         prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
+!      call timestamp_message('After  prior state space diagnostics')
+!      call trace_message('After  prior state space diagnostics')
+!   endif
+!*********************
+
    call trace_message('Before observation space diagnostics')
-   ! Do prior observation space diagnostics and associated quality control
+
+!*********************
+! Temporary RIPPED
+! The skipit is an optional arguement to skip the first part of obs_space_diagnostics
+! I can't skip the second part of obs_space_diagnostics because this is where the mean obs
+! copy ( + others ) is moved to task 0 so task 0 can update seq. 
+   !Do prior observation space diagnostics and associated quality control
    call obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, &
       seq, keys, PRIOR_DIAG, num_output_obs_members, in_obs_copy+1, &
       obs_val_index, OBS_KEY_COPY, &                                 ! new
       prior_obs_mean_index, prior_obs_spread_index, num_obs_in_set, &
       OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
-      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
+      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, skipit)
    call trace_message('After  observation space diagnostics')
-  
+!*********************
+
    ! FIXME:  i believe both copies and vars are equal at the end
    ! of the obs_space diags, so we can skip this. 
    !call all_vars_to_all_copies(obs_ens_handle)
@@ -668,12 +631,22 @@ AdvanceTime : do
    call     trace_message('Before observation assimilation')
    call timestamp_message('Before observation assimilation')
 
+   !HK destroy var complete
+   deallocate(obs_ens_handle%vars)
+   deallocate(ens_handle%vars)
+   deallocate(forward_op_ens_handle%vars)
+
    call filter_assim(ens_handle, obs_ens_handle, seq, keys, &
       ens_size, num_groups, obs_val_index, prior_inflate, &
       ENS_MEAN_COPY, ENS_SD_COPY, &
       PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
       OBS_VAR_END, inflate_only = .false.)
+
+   allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
+   allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+   allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
+
 
    call timestamp_message('After  observation assimilation')
    call     trace_message('After  observation assimilation')
@@ -728,12 +701,21 @@ AdvanceTime : do
    ! Compute the ensemble of posterior observations, load up the obs_err_var 
    ! and obs_values.  ens_size is the number of regular ensemble members, 
    ! not the number of copies
-   call get_obs_ens(ens_handle, obs_ens_handle, forward_op_ens_handle, &
-      seq, keys, obs_val_index, input_qc_index, num_obs_in_set, &
-      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-      isprior=.false.)
 
-    call timestamp_message('After  computing posterior observation values')
+   allocate(results(obs_ens_handle%num_copies, obs_ens_handle%my_num_vars))
+   results = missing_r8 !> @todo is this needed? Yes
+   ! HK You need to have the prior info for obs_space_diagnostics
+   results(OBS_GLOBAL_QC_COPY, :) = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, :)
+
+   call get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, &
+     seq, keys, obs_val_index, input_qc_index, &
+     OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
+     OBS_MEAN_START, OBS_VAR_START, results, isprior=.false.)
+
+   obs_ens_handle%copies = results
+   deallocate(results)
+
+   call timestamp_message('After  computing posterior observation values')
    call     trace_message('After  computing posterior observation values')
 
    if(ds) then
@@ -742,36 +724,38 @@ AdvanceTime : do
       call trace_message('After  computing smoother means/spread')
    endif
 
+!***********************
+! Temporary RIPPED
    ! Do posterior state space diagnostic output as required
-   if ((output_interval > 0) .and. &
-       (time_step_number / output_interval * output_interval == time_step_number)) then
-      call trace_message('Before posterior state space diagnostics')
-      call timestamp_message('Before posterior state space diagnostics')
-      call filter_state_space_diagnostics(curr_ens_time, PosteriorStateUnit, ens_handle, &
-         model_size, num_output_state_members, output_state_mean_index, &
-         output_state_spread_index, &
-         output_inflation, ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
-         post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
-      ! Cyclic storage for lags with most recent pointed to by smoother_head
-      ! ens_mean is passed to avoid extra temp storage in diagnostics
-
-      call smoother_ss_diagnostics(model_size, num_output_state_members, &
-         output_inflation, ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
-         POST_INF_COPY, POST_INF_SD_COPY)
-      call timestamp_message('After  posterior state space diagnostics')
-      call trace_message('After  posterior state space diagnostics')
-   endif
-
+   !if ((output_interval > 0) .and. &
+   !    (time_step_number / output_interval * output_interval == time_step_number)) then
+   !   call trace_message('Before posterior state space diagnostics')
+   !   call timestamp_message('Before posterior state space diagnostics')
+   !   call filter_state_space_diagnostics(curr_ens_time, PosteriorStateUnit, ens_handle, &
+   !      model_size, num_output_state_members, output_state_mean_index, &
+   !      output_state_spread_index, &
+   !      output_inflation, ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
+   !      post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
+   !   ! Cyclic storage for lags with most recent pointed to by smoother_head
+   !   ! ens_mean is passed to avoid extra temp storage in diagnostics
+   !
+   !   call smoother_ss_diagnostics(model_size, num_output_state_members, &
+   !      output_inflation, ens_mean, ENS_MEAN_COPY, ENS_SD_COPY, &
+   !      POST_INF_COPY, POST_INF_SD_COPY)
+   !   call timestamp_message('After  posterior state space diagnostics')
+   !   call trace_message('After  posterior state space diagnostics')
+   !endif
+!***********************
 
    call trace_message('Before posterior obs space diagnostics')
 
-   ! Do posterior observation space diagnostics
+     ! Do posterior observation space diagnostics
    call obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, &
       seq, keys, POSTERIOR_DIAG, num_output_obs_members, in_obs_copy+2, &
       obs_val_index, OBS_KEY_COPY, &                             ! new
       posterior_obs_mean_index, posterior_obs_spread_index, num_obs_in_set, &
       OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
-      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
+      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, skipit)
    
    call trace_message('After  posterior obs space diagnostics')
 
@@ -787,13 +771,13 @@ AdvanceTime : do
          call timestamp_message('Before computing posterior state space inflation')
 
          ! Ship the ensemble mean to the model; some models need this for computing distances
-         call broadcast_copy(ens_handle, ENS_MEAN_COPY, ens_mean)
+         !call broadcast_copy(ens_handle, ENS_MEAN_COPY, ens_mean)  !RIPPED
 
          ! Now send the mean to the model in case it's needed
-         call ens_mean_for_model(ens_mean)
+         !call ens_mean_for_model(ens_mean) !RIPPED
   
          ! Need obs to be copy complete for assimilation: IS NEXT LINE REQUIRED???
-         call all_vars_to_all_copies(obs_ens_handle)
+         !call all_vars_to_all_copies(obs_ens_handle) !RIPPED
 
          call filter_assim(ens_handle, obs_ens_handle, seq, keys, ens_size, num_groups, &
             obs_val_index, post_inflate, ENS_MEAN_COPY, ENS_SD_COPY, &
@@ -801,7 +785,7 @@ AdvanceTime : do
             OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
             OBS_VAR_END, inflate_only = .true.)
 
-         call all_copies_to_all_vars(ens_handle)
+         !call all_copies_to_all_vars(ens_handle) !RIPPED
 
          call timestamp_message('After  computing posterior state space inflation')
          call     trace_message('After  computing posterior state space inflation')
@@ -861,8 +845,6 @@ if(output_restart_mean) &
 
 if(ds) call smoother_write_restart(1, ens_size)
 call trace_message('After  writing state restart files if requested')
-
-10011 continue
 
 ! Give the model_mod code a chance to clean up. 
 call trace_message('Before end_model call')
@@ -1774,7 +1756,7 @@ subroutine obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size
    obs_val_index, OBS_KEY_COPY, &
    ens_mean_index, ens_spread_index, num_obs_in_set, &
    OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, OBS_VAL_COPY, &
-   OBS_ERR_VAR_COPY, DART_qc_index)
+   OBS_ERR_VAR_COPY, DART_qc_index, skip)
 
 ! Do prior observation space diagnostics on the set of obs corresponding to keys
 
@@ -1790,6 +1772,7 @@ type(obs_sequence_type), intent(inout) :: seq
 integer,                 intent(in)    :: OBS_MEAN_START, OBS_VAR_START
 integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, DART_qc_index
+logical,  optional, intent(in) :: skip
 
 integer               :: j, k, ens_offset, forward_min, forward_max
 integer               :: forward_unit, ivalue
@@ -1799,7 +1782,10 @@ real(r8)              :: obs_prior_mean, obs_prior_var, obs_val, obs_err_var
 real(r8)              :: rvalue(1)
 logical               :: do_outlier, good_forward_op, failed
 
-
+if (present(skip)) then
+   if (skip) goto 102 ! skip the first part of obs_diag
+   ! HK Currently ignoring the outputting the forward operator
+endif
 ! Assume that mean and spread have been computed if needed???
 ! Assume that things are copy complete???
 
@@ -1876,7 +1862,7 @@ do j = 1, obs_ens_handle%my_num_vars
    ! routine, or by forward operator code in obs_def_xxx_mod files.
    forward_max = nint(maxval(forward_op_ens_handle%copies(1:ens_size, j)))
    forward_min = nint(minval(forward_op_ens_handle%copies(1:ens_size, j)))
-
+   !print*, 'reg forward max min ', forward_max, forward_min
    ! Now do a case statement to figure out what the qc result should be
    ! For prior, have to test for a bunch of stuff
    ! FIXME: note that this case statement doesn't cover every possibility;
@@ -1908,6 +1894,7 @@ do j = 1, obs_ens_handle%my_num_vars
       ! if there is already a different qc code set, leave it alone.
       ! only if it is still successful (assim or eval, 0 or 1), then check
       ! for failing outlier test.
+      !print*, 'old do_outlier ', do_outlier
       if(do_outlier .and. (obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) < 2)) then
          obs_prior_mean = obs_ens_handle%copies(OBS_MEAN_START, j)
          obs_prior_var = obs_ens_handle%copies(OBS_VAR_START, j)
@@ -1932,7 +1919,10 @@ do j = 1, obs_ens_handle%my_num_vars
             failed = (ratio > outlier_threshold)
          endif
 
-         if (failed) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 7 
+         if (failed) then
+            !print*, 'FAILED REG'
+            obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 7
+         endif
       endif
 
    else
@@ -1974,6 +1964,8 @@ enddo
 ! PAR: NEED TO BE ABLE TO OUTPUT DETAILS OF FAILED FORWARD OBSEVATION OPERATORS
 ! OR FAILED OUTLIER, ETC. NEEDS TO BE DONE BY PE 0 ONLY. PUT IT HERE FOR FIRST
 ! BUT IN QC MOD FOR THE SECOND???  
+
+102 continue
 
 ! Make var complete for get_copy() calls below.
 call all_copies_to_all_vars(obs_ens_handle)

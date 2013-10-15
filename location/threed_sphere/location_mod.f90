@@ -42,7 +42,9 @@ public :: location_type, get_location, set_location, &
           vert_is_height, vert_is_pressure, vert_is_undef, vert_is_level, &
           vert_is_surface, vert_is_scale_height, has_vertical_localization, &
           VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
-          VERTISHEIGHT, VERTISSCALEHEIGHT, print_get_close_type, horiz_dist_only
+          VERTISHEIGHT, VERTISSCALEHEIGHT, print_get_close_type, horiz_dist_only, &
+          location_type_distrib, copy_location_type !HK
+
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -65,6 +67,15 @@ type location_type
    real(r8) :: lon, lat, vloc ! lon, lat stored in radians
    integer  :: which_vert     ! determines if by level, height, pressure, ...
 end type location_type
+
+type location_type_distrib !HK
+   !private
+   real(r8) :: lon, lat, vloc ! lon, lat stored in radians
+   integer  :: which_vert     ! determines if by level, height, pressure, ...
+   integer  :: which_vert_localize ! for localization, not sure if we need this
+   real(r8) :: localize_vloc  ! height for localization
+end type
+
 
 ! Type to facilitate efficient computation of observations close to a given location
 type get_close_type
@@ -2236,6 +2247,27 @@ has_vertical_localization = .not. horiz_dist_only
 
 end function has_vertical_localization
 
+!> trying to reduce the commication in convert vert
+!---------------------------------------------------------------------------
+subroutine copy_location_type(loc_min, loc_distrib, n)
+! This is doing more than copy, it is initiallizing the distributed version
+
+integer,                     intent(in)    :: n
+type(location_type),         intent(in)    :: loc_min(n)
+type(location_type_distrib), intent(inout) :: loc_distrib(n)
+
+integer :: i
+
+do i = 1, n
+   loc_distrib(i)%lon = loc_min(i)%lon
+   loc_distrib(i)%lat = loc_min(i)%lat
+   loc_distrib(i)%which_vert = loc_min(i)%which_vert
+enddo
+
+loc_distrib(:)%which_vert_localize = VERTISPRESSURE ! This assumes CAM watch out.
+loc_distrib(:)%localize_vloc = MISSING_R8
+
+end subroutine copy_location_type
 
 !----------------------------------------------------------------------------
 ! end of location/threed_sphere/location_mod.f90
