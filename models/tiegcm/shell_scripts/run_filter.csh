@@ -33,8 +33,8 @@
 #
 #BSUB -J filter
 #BSUB -o filter.%J.log
-#BSUB -P 35071364
-#BSUB -q regular
+#BSUB -P P3507xxxx
+#BSUB -q economy
 #BSUB -n 64
 #BSUB -R "span[ptile=64]"
 #BSUB -W 3:00
@@ -84,7 +84,7 @@ echo
 # Make a unique, (empty, clean) temporary directory.
 #----------------------------------------------------------------------
 
-setenv TMPDIR /ptmp/${user}/DART/${JOBNAME}/job_${JOBID}
+setenv TMPDIR /glade/scratch/${user}/DART/${JOBNAME}/job_${JOBID}
 
 mkdir -p ${TMPDIR}
 cd ${TMPDIR}
@@ -119,9 +119,9 @@ echo "${JOBNAME} ($JOBID) CENTRALDIR == $CENTRALDIR"
 # Set variables containing various directory names where we will GET things
 #-----------------------------------------------------------------------------
 
-set    DARTDIR = /blhome/tmatsuo/DART/models/tiegcm
-set  TIEGCMDIR = /blhome/tmatsuo/DART/models/tiegcm/tiegcm_files
-set EXPERIMENT = /ptmp/tmatsuo/DART/tiegcm/2002_03_28
+set    DARTDIR = /glade/u/home/tmatsuo/DART/models/tiegcm
+set  TIEGCMDIR = /glade/u/home/tmatsuo/DART/models/tiegcm/tiegcm_files
+set EXPERIMENT = /glade/scratch/tmatsuo/2002_03_28_tiegcm
 
 #-----------------------------------------------------------------------------
 # Get the DART executables, scripts, and input files
