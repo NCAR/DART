@@ -491,9 +491,11 @@ if(copy < 1 .or. copy > ens_handle%num_copies) then
 endif
 
 ! Make sure that vars has enough space to handle the answer
-if(size(vars) < ens_handle%num_vars) then
-   write(msgstring, *) 'Size of vars: ', size(vars), ' Must be at least ', ens_handle%num_vars
-   call error_handler(E_ERR,'get_copy', msgstring, source, revision, revdate)
+if(ens_handle%my_pe == receiving_pe) then !HK I think only the reciever needs the space
+   if(size(vars) < ens_handle%num_vars) then
+      write(msgstring, *) 'Size of vars: ', size(vars), ' Must be at least ', ens_handle%num_vars
+      call error_handler(E_ERR,'get_copy', msgstring, source, revision, revdate)
+   endif
 endif
 
 ! Figure out which PE stores this copy and what its local storage index is
