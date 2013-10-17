@@ -134,7 +134,7 @@ end
 # ==============================================================================
 
 # The standard CESM short-term archiving script may need to be altered
-# to archive addtional or subsets of things, or to reduce the amount of
+# to archive additional or subsets of things, or to reduce the amount of
 # data that is sent to the long-term archive.  Put a version of st_archive.sh
 # in  ${DARTROOT}/models/CESM/shell_scripts when/if necessary
 
@@ -146,11 +146,20 @@ else
 endif
 
 ${COPY} ${DARTROOT}/models/CESM/shell_scripts/st_archive.sh           Tools/
-${COPY} ${DARTROOT}/models/CESM/shell_scripts/assimilate.csh          .
 ${COPY} ${DARTROOT}/shell_scripts/shell_exit.sh                       .
+
+${COPY} ${DARTROOT}/models/CESM/shell_scripts/assimilate.csh          .
 ${COPY} ${DARTROOT}/models/CESM/shell_scripts/cam_assimilate.csh      .
 ${COPY} ${DARTROOT}/models/CESM/shell_scripts/pop_assimilate.csh      .
 ${COPY} ${DARTROOT}/models/CESM/shell_scripts/clm_assimilate.csh      .
+
+${COPY} ${DARTROOT}/models/CESM/shell_scripts/perfect_model.csh       .
+${COPY} ${DARTROOT}/models/CESM/shell_scripts/cam_perfect_model.csh   .
+${COPY} ${DARTROOT}/models/CESM/shell_scripts/clm_perfect_model.csh   .
+${COPY} ${DARTROOT}/models/CESM/shell_scripts/pop_perfect_model.csh   .
+
+${COPY} ${DARTROOT}/models/CESM/shell_scripts/no_assimilate.csh       .
+${COPY} ${DARTROOT}/models/CESM/shell_scripts/cam_no_assimilate.csh   .
 
 # ==============================================================================
 # Stage the DART executables in the CESM execution root directory: EXEROOT
@@ -177,27 +186,31 @@ for FILE in cam_input.nml clm_input.nml pop_input.nml input.nml; do
    fi
 done
 
-${COPY} ${DARTROOT}/models/cam/work/cam_to_dart   ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/cam/work/dart_to_cam   ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/cam/work/filter        ${EXEROOT}/filter_cam
-${COPY} ${DARTROOT}/models/cam/work/input.nml                cam_input.nml
+${COPY} ${DARTROOT}/models/cam/work/cam_to_dart        ${EXEROOT}/.
+${COPY} ${DARTROOT}/models/cam/work/dart_to_cam        ${EXEROOT}/.
+${COPY} ${DARTROOT}/models/cam/work/filter             ${EXEROOT}/filter_cam
+${COPY} ${DARTROOT}/models/cam/work/perfect_model_obs  ${EXEROOT}/perfect_model_obs_cam
+${COPY} ${DARTROOT}/models/cam/work/input.nml          cam_input.nml
 
-${COPY} ${DARTROOT}/models/clm/work/clm_to_dart   ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/clm/work/dart_to_clm   ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/clm/work/filter        ${EXEROOT}/filter_clm
-${COPY} ${DARTROOT}/models/clm/work/input.nml                clm_input.nml
+${COPY} ${DARTROOT}/models/clm/work/clm_to_dart        ${EXEROOT}/.
+${COPY} ${DARTROOT}/models/clm/work/dart_to_clm        ${EXEROOT}/.
+${COPY} ${DARTROOT}/models/clm/work/filter             ${EXEROOT}/filter_clm
+${COPY} ${DARTROOT}/models/clm/work/perfect_model_obs  ${EXEROOT}/perfect_model_obs_clm
+${COPY} ${DARTROOT}/models/clm/work/input.nml          clm_input.nml
 
-${COPY} ${DARTROOT}/models/POP/work/pop_to_dart   ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/POP/work/dart_to_pop   ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/POP/work/filter        ${EXEROOT}/filter_pop
-${COPY} ${DARTROOT}/models/POP/work/input.nml                pop_input.nml
+${COPY} ${DARTROOT}/models/POP/work/pop_to_dart        ${EXEROOT}/.
+${COPY} ${DARTROOT}/models/POP/work/dart_to_pop        ${EXEROOT}/.
+${COPY} ${DARTROOT}/models/POP/work/filter             ${EXEROOT}/filter_pop
+${COPY} ${DARTROOT}/models/POP/work/perfect_model_obs  ${EXEROOT}/perfect_model_obs_pop
+${COPY} ${DARTROOT}/models/POP/work/input.nml          pop_input.nml
 
-${COPY} ${DARTROOT}/models/CESM/work/cesm_to_dart ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/CESM/work/dart_to_cesm ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/CESM/work/filter       ${EXEROOT}/filter_cesm
-${COPY} ${DARTROOT}/models/CESM/work/input.nml               input.nml
+${COPY} ${DARTROOT}/models/CESM/work/cesm_to_dart      ${EXEROOT}/.
+${COPY} ${DARTROOT}/models/CESM/work/dart_to_cesm      ${EXEROOT}/.
+${COPY} ${DARTROOT}/models/CESM/work/filter            ${EXEROOT}/filter_cesm
+${COPY} ${DARTROOT}/models/CESM/work/perfect_model_obs ${EXEROOT}/perfect_model_obs_cesm
+${COPY} ${DARTROOT}/models/CESM/work/input.nml         input.nml
 
-# The first time this is executed, the update namlist script does not exist.
+# The first time this is executed, the update namelist script does not exist.
 
 if [[ -x update_dart_namelists ]]; then
        ./update_dart_namelists
@@ -404,7 +417,7 @@ endif
 if ( $num_instances == 1 ) then
    sed -e "s#DARTSCRIPTNAME#perfect_model.csh#" < temp.$$ >! add_to_run.txt
 else
-   sed -e "s#DARTSCRIPTNAME#assimilate.csh#" < temp.$$ >! add_to_run.txt
+   sed -e "s#DARTSCRIPTNAME#no_assimilate.csh#" < temp.$$ >! add_to_run.txt
 endif
 
 # Now that the "here" document is created,
@@ -459,6 +472,11 @@ echo "   those on your system, and submit the CESM job in the normal way."
 echo ""
 echo "4) Inflation files? Observation files for the time of interest?"
 echo ""
+echo "5) Make sure the ${CASE}.run script calls 'assimilate.csh' if you desire."
+echo "   The default behavior is to _not_ invoke DART and simply run CESM."
+echo ""
+echo "6) You can use ${CASEROOT}/stage_cesm_files"
+echo "    to stage files to restart a run." 
 
 exit 0
 
