@@ -335,6 +335,7 @@ type(location_type)  :: my_obs_loc(obs_ens_handle%my_num_vars)
 type(location_type)  :: base_obs_loc, last_base_obs_loc, last_base_states_loc
 type(location_type)  :: my_state_loc(ens_handle%my_num_vars), dummyloc
 type(location_type_distrib) :: my_state_loc_distrib(ens_handle%my_num_vars)
+type(location_type_distrib) :: my_obs_loc_distrib(obs_ens_handle%my_num_vars)
 type(get_close_type) :: gc_obs, gc_state
 type(obs_type)       :: observation
 type(obs_def_type)   :: obs_def
@@ -385,7 +386,6 @@ enddo
 
 ! expose local memory to RMA operation by other process in a communicator.
 call mpi_win_create(duplicate_copies, window_size, sizedouble, MPI_INFO_NULL, mpi_comm_world, win, ierr)
-
 
 
 ! filter kinds 1 and 8 return sorted increments, however non-deterministic
@@ -484,6 +484,7 @@ end do
 
 ! HK Aim: to reduce the commication by removing the duplicate calls to convert_vert
 call copy_location_type(my_state_loc, my_state_loc_distrib, ens_handle%my_num_vars)
+call copy_location_type(my_obs_loc, my_obs_loc_distrib, obs_ens_handle%my_num_vars)
 
 ! PAR: MIGHT BE BETTER TO HAVE ONE PE DEDICATED TO COMPUTING 
 ! INCREMENTS. OWNING PE WOULD SHIP IT'S PRIOR TO THIS ONE
@@ -703,8 +704,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          close_obs_dist(:) = last_close_obs_dist(:)
          num_close_obs_buffered = num_close_obs_buffered + 1
       else
-         !> @todo Fix this, I have just shoved in my_state_loc_distrib
-         call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_state_loc_distrib, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle, win)
+         call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_loc_distrib, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle, win)
          last_base_obs_loc      = base_obs_loc
          last_num_close_obs     = num_close_obs
          last_close_obs_ind(:)  = close_obs_ind(:)

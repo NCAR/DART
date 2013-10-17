@@ -198,8 +198,9 @@ use location_mod,      only : location_type, get_location, set_location, query_l
                               VERTISUNDEF, VERTISSURFACE, VERTISLEVEL,                           &
                               VERTISPRESSURE, VERTISHEIGHT,                                      &
                               get_close_type, get_close_maxdist_init, get_close_obs_init,        &
-                              get_dist,loc_get_close_obs => get_close_obs,                       &
-                              location_type_distrib !HK
+                              get_dist,loc_get_close_obs => get_close_obs, location_type_distrib, &
+                              get_seq_distrib_vloc, get_seq_distrib_lon, get_seq_distrib_lat,    &
+                              set_seq_distrib_vloc !HK
 
 ! get_close_maxdist_init, get_close_obs_init, can be modified here (i.e. to add vertical information
 ! to the initial distance calcs), but will need subroutine pointers like get_close_obs.
@@ -4389,6 +4390,7 @@ end do
 
 end subroutine get_close_obs
 
+!> Distributed version of get_close_obs
 subroutine get_close_obs_distrib(gc, base_obs_loc, base_obs_kind, obs_loc, obs_loc_distrib, &
                         obs_kind, num_close, close_ind, dist, state_ens_handle, win)
 !----------------------------------------------------------------------------
@@ -4479,10 +4481,10 @@ do k = 1, num_close
       ! check whether the vertical cooridnate has already been converted.
       ! HK I think there should be a better check than this
       !> @todo what is 'new_which/local_obs_which' for? - see restriction below
-      if (obs_loc_distrib(t_ind)%localize_vloc /= MISSING_R8) then
-         local_obs_array(3) = obs_loc_distrib(t_ind)%localize_vloc
-         local_obs_array(2) = obs_loc_distrib(t_ind)%lat
-         local_obs_array(1) = obs_loc_distrib(t_ind)%lon
+      if (get_seq_distrib_vloc(obs_loc_distrib(t_ind)) /= MISSING_R8) then
+         local_obs_array(3) = get_seq_distrib_vloc(obs_loc_distrib(t_ind))
+         local_obs_array(2) = get_seq_distrib_lat(obs_loc_distrib(t_ind))
+         local_obs_array(1) = get_seq_distrib_lon(obs_loc_distrib(t_ind))
          local_obs_which = 2 ! This is a fudge, needs to be corrected
          goto 100 ! Fix this
       else
@@ -4491,7 +4493,7 @@ do k = 1, num_close
          call convert_vert_distrib(state_ens_handle, win, obs_array, obs_which, local_obs_array, local_obs_which, obs_kind(t_ind))
 
          ! Fill in converted vertical coordinate to avoid redoing the vertical conversion
-          obs_loc_distrib(t_ind)%localize_vloc = local_obs_array(3)
+          call set_seq_distrib_vloc(obs_loc_distrib(t_ind), local_obs_array(3))
 
       endif
 
@@ -4808,7 +4810,6 @@ end subroutine convert_vert
 !=======================================================================
    subroutine convert_vert_distrib(state_ens_handle, win, old_array, old_which, new_array, new_which, dart_kind)
 !=======================================================================
-! subroutine convert_vert(old_loc, new_loc, dart_kind)
 !
 ! Uses model information and subroutines to convert the vertical location of an ob 
 ! (prior, model state variable, or actual ob) into the standard vertical coordinate (pressure).

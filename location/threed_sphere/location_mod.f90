@@ -43,7 +43,8 @@ public :: location_type, get_location, set_location, &
           vert_is_surface, vert_is_scale_height, has_vertical_localization, &
           VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
           VERTISHEIGHT, VERTISSCALEHEIGHT, print_get_close_type, horiz_dist_only, &
-          location_type_distrib, copy_location_type !HK
+          location_type_distrib,copy_location_type, get_seq_distrib_vloc, &
+          get_seq_distrib_lon, get_seq_distrib_lat, set_seq_distrib_vloc
 
 
 ! version controlled file description for error handling, do not edit
@@ -69,7 +70,7 @@ type location_type
 end type location_type
 
 type location_type_distrib !HK
-   !private
+   private
    real(r8) :: lon, lat, vloc ! lon, lat stored in radians
    integer  :: which_vert     ! determines if by level, height, pressure, ...
    integer  :: which_vert_localize ! for localization, not sure if we need this
@@ -2268,6 +2269,57 @@ loc_distrib(:)%which_vert_localize = VERTISPRESSURE ! This assumes CAM watch out
 loc_distrib(:)%localize_vloc = MISSING_R8
 
 end subroutine copy_location_type
+
+!----------------------------------------------------------------------------
+function get_seq_distrib_vloc(seq)
+! Returns the vertical cooridinate used in localization
+
+type(location_type_distrib) :: seq
+real(r8) :: get_seq_distrib_vloc
+
+if ( .not. module_initialized ) call initialize_module
+
+get_seq_distrib_vloc = seq%localize_vloc
+
+end function
+
+!----------------------------------------------------------------------------
+function get_seq_distrib_lat(seq)
+! Returns the vertical cooridinate used in localization
+
+type(location_type_distrib) :: seq
+real(r8) :: get_seq_distrib_lat
+
+if ( .not. module_initialized ) call initialize_module
+
+get_seq_distrib_lat = seq%lat
+
+end function
+
+!----------------------------------------------------------------------------
+function get_seq_distrib_lon(seq)
+! Returns the vertical cooridinate used in localization
+
+type(location_type_distrib) :: seq
+real(r8) :: get_seq_distrib_lon
+
+if ( .not. module_initialized ) call initialize_module
+
+get_seq_distrib_lon = seq%lon
+
+end function
+
+!----------------------------------------------------------------------------
+subroutine set_seq_distrib_vloc(seq, vloc)
+
+type(location_type_distrib) :: seq
+real(r8) :: vloc
+
+if ( .not. module_initialized ) call initialize_module
+
+seq%localize_vloc = vloc
+
+end subroutine
 
 !----------------------------------------------------------------------------
 ! end of location/threed_sphere/location_mod.f90

@@ -471,7 +471,7 @@ type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: model_size, num_output_state_members
 integer,                     intent(in)    :: output_state_mean_index, output_state_spread_index
 ! temp_ens is passed from above to avoid extra storage
-real(r8),                    intent(out)   :: temp_ens(model_size)
+real(r8),                    intent(out)   :: temp_ens(:)
 type(adaptive_inflate_type), intent(in)    :: inflate
 integer,                     intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, INF_COPY, INF_SD_COPY
 logical,                     intent(in)    :: output_inflation
