@@ -66,17 +66,6 @@ ${MOVE} input.nml.zagar input.nml
 
 ${COPY} /glade/proj3/DART/raeder/FV1deg_4.0/cam_phis.nc .
 
-# Modify the DART input.nml such that
-# the DART ensemble size matches the CESM number of instances
-# WARNING: the output files contain ALL enemble members ==> BIG
-
-ex input.nml <<ex_end
-g;ens_size ;s;= .*;= $ensemble_size;
-g;num_output_state_members ;s;= .*;= $ensemble_size;
-g;num_output_obs_members ;s;= .*;= $ensemble_size;
-wq
-ex_end
-
 #-------------------------------------------------------------------------
 # DART SAMPLING ERROR CORRECTION BLOCK
 # This stages the files needed for the sampling error correction.

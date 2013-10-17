@@ -68,7 +68,7 @@ setenv nancy_home $HOME
 setenv nancy_scratch $SCRATCH
 
 setenv mach hopp2                                       ;# machine - must match cesm names
-setenv DARTdir ${nancy_home}/devel
+setenv DARTdir ${nancy_home}/trunk
 
 setenv cesm_datadir /project/projectdirs/ccsm1/inputdata
 

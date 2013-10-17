@@ -63,7 +63,7 @@ setenv coldbuild      false
 # ================================
 
 setenv mach bluefire                                  ;# machine
-setenv DARTdir /glade/home/thoar/svn/DART/dev         ;# DART executables, scripts and input
+setenv DARTdir /glade/home/thoar/svn/DART/trunk       ;# DART executables, scripts and input
 
 setenv cesm_datadir /glade/proj3/cseg/inputdata
 setenv cesm_public  /glade/proj3/cseg                 ;# location of public CESM sandbox
