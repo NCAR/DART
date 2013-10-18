@@ -463,6 +463,7 @@ endif
 
 # The river transport model ON is useful only when using an active ocean or
 # land surface diagnostics. Setting ROF_GRID, RTM_MODE to 'null' turns off the RTM.
+# If you turn it ON, you will have to stage initial files etc.
 
 ./xmlchange ROF_GRID='null'
 ./xmlchange RTM_MODE='NULL'
@@ -555,10 +556,6 @@ if ( -d ~/${cesmtag} ) then
       ${MOVE} ${caseroot}/Buildconf/clm.buildnml.csh \
               ${caseroot}/Buildconf/clm.buildnml.csh.original
    endif
-   if ( ! -e  ${caseroot}/Buildconf/rtm.buildnml.csh.original ) then
-      ${MOVE} ${caseroot}/Buildconf/rtm.buildnml.csh \
-              ${caseroot}/Buildconf/rtm.buildnml.csh.original
-   endif
    if ( ! -e  ${caseroot}/preview_namelists.original ) then
       ${MOVE} ${caseroot}/preview_namelists \
               ${caseroot}/preview_namelists.original
@@ -566,7 +563,6 @@ if ( -d ~/${cesmtag} ) then
 
    # patch/replace the broken files
    ${COPY} ~/${cesmtag}/clm.buildnml.csh  ${caseroot}/Buildconf/.
-   ${COPY} ~/${cesmtag}/rtm.buildnml.csh  ${caseroot}/Buildconf/.
    ${COPY} ~/${cesmtag}/preview_namelists ${caseroot}/.
 
 endif
@@ -582,7 +578,6 @@ endif
 # CICE reads from namelist variable 'ice_ic'
 # CLM builds its own 'finidat' value from the REFCASE variables but in CESM1_1_1
 #     it does not use the instance string. There is a patch for clm.buildnml.csh
-# RTM reads from namelist variable 'finidat_rtm', but rtm.buildnml.csh also is buggy.
 #
 # All of these must later on be staged with these same filenames.
 # OR - all these namelists can be changed to match whatever has been staged.
@@ -657,11 +652,11 @@ while ($inst <= $num_instances)
 #      That solution can't work in hybrid mode.  See ~/Homme/notes:9/17/2013
 # KDR
 
-   echo "hist_empty_htapes = .false." >> $fname
-   echo "hist_fincl1 = 'TSA'"         >> $fname
-   echo "hist_nhtfrq = 0"             >> $fname
-   echo "hist_mfilt  = 1"             >> $fname
-   echo "hist_avgflag_pertape = 'A'"  >> $fname
+   echo "hist_empty_htapes = .true."   >> $fname
+   echo "hist_fincl1 = 'TSA'"          >> $fname
+   echo "hist_nhtfrq = -$stop_n"       >> $fname
+   echo "hist_mfilt  = 1"              >> $fname
+   echo "hist_avgflag_pertape = 'A'"   >> $fname
 
    # ===========================================================================
    set fname = "user_nl_cice${inst_string}"
@@ -669,16 +664,6 @@ while ($inst <= $num_instances)
    # CICE Namelists
 
    echo "ice_ic = '${run_refcase}.cice${inst_string}.r.${run_refdate}-${run_reftod}.nc'" >> $fname
-
-   # ===========================================================================
-   # TJH FIXME ... do we need this if we turn off the river runoff model?
-   set fname = "user_nl_rtm${inst_string}"
-   # ===========================================================================
-   # RIVER RUNOFF CAN START FROM AN OLD CLM RESTART FILE
-   # you can specify the RTM filename here and override the settings from
-   # RUN_REFCASE/RUN_REFDATE/RUN_REFTOD (something you cannot do with CLM).
-
-   echo "finidat_rtm = '${run_refcase}.rtm${inst_string}.r.${run_refdate}-${run_reftod}.nc'" >> $fname
 
    @ inst ++
 end
@@ -740,7 +725,6 @@ if ( \$CONTINUE_RUN == TRUE ) then
          echo "${CASE}.cpl.r.\${restart_time}.nc"                  >! rpointer.drv
          echo "${CASE}.clm2\${inst_string}.r.\${restart_time}.nc"  >! rpointer.lnd\${inst_string}
          echo "${CASE}.cice\${inst_string}.r.\${restart_time}.nc"  >! rpointer.ice\${inst_string}
-         echo "${CASE}.rtm\${inst_string}.r.\${restart_time}.nc"   >! rpointer.rof\${inst_string}
          echo "${CASE}.cam\${inst_string}.r.\${restart_time}.nc"   >! rpointer.atm\${inst_string}
 
 
