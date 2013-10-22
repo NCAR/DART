@@ -1,0 +1,9 @@
+&location_nml
+ min_radius =    100.0
+ max_radius = 100000.0
+ /
+
+&utilities_nml
+ module_details = .false.,
+ /
+

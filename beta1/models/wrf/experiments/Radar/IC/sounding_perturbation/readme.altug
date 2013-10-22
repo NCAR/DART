@@ -1,0 +1,32 @@
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download 
+#
+# DART $Id$
+
+November 13, 2006:
+
+Here's the procedure for using perturbed sounding data:
+
+(1) Go to DART/WRF/sounding_perturbation
+(2) Modify pert_sounding.input
+(3) Run pert_sounding
+(4) In DART/WRF, create a directory with experiment number
+(5) Move input_soundingxx files to (4)
+    Note that if you're running a control experiment (as
+    defined in prepare_ideal_IC script), base "input_sounding"
+    file should also be present in (4)
+(6) In "RUN_DIR" as defined in prepare_ideal_IC script,
+    create a directory link "sounding_files" to the
+    directory created in (4) - this will become the "SNDG_DIR"
+    as defined in prepare_ideal_IC script
+(7) In DART/WRF, run the prepare_ideal_IC script with the
+    sounding perturbation option turned on
+
+
+Here's a quick tip for checking output on Matlab:
+(Remember that the code outputs an additional file "test_sounding.output".)
+
+tt=load('test_sounding.output_exp53');
+t=reshape(tt,[51 67 4]);
+plot(std(squeeze(t(2:51,:,3)),0,1),'d-');grid on  % plots std dev of u as a function of height

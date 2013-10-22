@@ -1,0 +1,12 @@
+&convert_L2b_nml
+   l2b_file         = '',
+   datadir          = '.',
+   outputdir        = '.',
+   lon1             = 0.0, 
+   lon2             = 360.0, 
+   lat1             = -90.0, 
+   lat2             = 90.0,
+   along_track_thin = 0,
+   cross_track_thin = 0
+ /
+

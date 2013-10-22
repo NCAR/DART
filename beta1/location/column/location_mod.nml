@@ -1,0 +1,6 @@
+&location_nml
+   horiz_dist_only             = .true.,
+   vert_normalization_pressure = 100000.0, 
+   vert_normalization_height   = 10000.0,
+   vert_normalization_level    = 20.0  /
+

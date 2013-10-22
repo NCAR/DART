@@ -1,0 +1,18 @@
+
+
+! temperature error is in degrees C, salinity error in g/kg.
+&wod_to_obs_nml
+   wod_input_file       =  'XBTS2005',
+   wod_input_filelist   =  '',
+   wod_out_file         =  'obs_seq.wod',
+   avg_obs_per_file     =  500000,
+   debug                =  .false.,
+   timedebug            =  .false.,
+   print_qc_summary     =  .true.,
+   max_casts            =  -1,
+   no_output_file       =  .false.,
+   print_every_nth_cast =  -1,
+   temperature_error    =  0.5,
+   salinity_error       =  0.5, 
+ /
+

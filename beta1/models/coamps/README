@@ -1,0 +1,20 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+To use this model, you must go to the COAMPS web site 
+(at http://www.nrlmry.navy.mil/coamps-web/web/home ) 
+and download the COAMPS model.
+
+Then go into the shell_scripts directory and run
+the initialize_dart.sh script to set up the necessary
+files before trying to build the programs in the work directory.
+
+Since you have these files, we assume you have already
+downloaded the DART code.  If not, go here to register
+and get information about checking DART out from subversion:
+
+http://www.image.ucar.edu/DAReS/DART/DART_download
+

@@ -1,0 +1,31 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+The DART namelist is a subset of the COAMPS forecast namelist(s).  To
+avoid having to allocate space for all the variables in the full
+namelist, we run a program that reads in the full COAMPS namelist file
+and a file containing the subset of variables that we want pulled
+out.  This creates a second namelist file that contains only these
+values.
+
+strip_namelist program description
+----------------------------------
+Requires:
+- Perl
+Expects as arguments:
+1. The full namelist file name
+2. The file containing the list of variables to pull out of the full
+namelist
+3. The name of the new namelist
+Outputs:
+1. A file named name_of_new_namelist.nml containing the variables
+specified in the input file.
+
+Error conditions:
+- Program halts if either file #1 or #2 does not exist.
+- Program halts if output file cannot be created
+- Program prints a warning message if a variable specified is not
+found.

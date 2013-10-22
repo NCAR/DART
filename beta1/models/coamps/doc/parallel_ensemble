@@ -1,0 +1,42 @@
+#
+# DART $Id$
+#
+
+Prototyping a Parallel Ensemble Run
+-----------------------------------
+
+Current Method:
+Currently, ensemble members are run sequentially.  The
+advance_ensemble script calls the advance_model script for the first
+ensemble member, waits for its completion, then calls advance_model
+for the second ensemble member, etc.
+
+Desired Behavior:
+What we want is to be able to specify how many ensemble members we can
+run concurrently.  This will require checking out N*n processors,
+where N is the number of processors required to run 1 instance of the
+model and n is the number of concurrent runs to process.
+
+Plan:
+The ensemble is managed by keeping an array where element i
+corresponds to the ith ensemble member.  If the member has completed
+successfully, then this contains "RAN".  If the member has not yet
+run, this contains "NOTRAN".
+
+Pseudocode:
+1. Initialize member completed array (NOTRAN)
+2. Set the number of running members to zero
+3. Set the number of completed members to zero
+4. WHILE (the number of completed members < ens_size)
+   a. IF # of running members < n
+      i.   Find the next member that hasn't ran
+      ii.  Set that status to "running"
+      iii. Increment the running counter
+      iv.  Run the model
+   b. FOREACH response in the pipe (response is member number)
+      i.   Set that status to "ran"
+      ii.  Decrement the running counter
+      iii. Increment the finished counter
+
+
+  

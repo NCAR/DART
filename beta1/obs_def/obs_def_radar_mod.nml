@@ -1,0 +1,25 @@
+# Notes for obs_def_radar_mod_nml:
+# (1) Reflectivity limit can be applied to observations and/or forward operator.
+# (2) The default constants below match the WRF defaults.  They will need to 
+# be changed for other cases, depending on which microphysics scheme is used.
+# 
+
+&obs_def_radar_mod_nml
+   apply_ref_limit_to_obs      =   .false.,
+   reflectivity_limit_obs      =     -10.0,
+   lowest_reflectivity_obs     =     -10.0,
+   apply_ref_limit_to_fwd_op   =   .false.,
+   reflectivity_limit_fwd_op   =     -10.0,
+   lowest_reflectivity_fwd_op  =     -10.0,
+   max_radial_vel_obs          =   1000000,
+   allow_wet_graupel           =   .false.,
+   microphysics_type           =       2  ,
+   allow_dbztowt_conv          =   .false.,
+   dielectric_factor           =     0.224,
+   n0_rain                     =     8.0e6,
+   n0_graupel                  =     4.0e6,
+   n0_snow                     =     3.0e6,
+   rho_rain                    =    1000.0,
+   rho_graupel                 =     400.0,
+   rho_snow                    =     100.0 
+   /

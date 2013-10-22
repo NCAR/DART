@@ -1,0 +1,27 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+
+This directory contains the source for two programs that together convert 
+NCEP PREPBUFR files, which contain observational data, into the standard
+DART obs_seq (observation sequence) file format.
+
+The first is in the prep_bufr directory.  The program converts the raw
+data files into an intermediate text format.  See prep_bufr/prep_bufr.html
+for detailed documentation. The format of this directory is different
+from the standard layout of other DART directories since it mirrors
+the prepbufr distribution as closely as possible.  To build the code,
+run the 'install.sh' script.  The 'work' directory has examples and
+scripts for running the code.
+
+The second is in the ascii_to_obs directory.  The program reads the
+intermediate text format and creates a DART obs_seq file format.
+It is structured like the other DART directories; cd into the 'work'
+subdirectory and run the 'quickbuild.csh' script.  It also contains
+some example scripts for running the code.  See create_real_obs.html
+for more documentation.
+
+

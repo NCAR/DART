@@ -1,0 +1,121 @@
+# DART $Id$
+Table 11.   Reason codes associated with step "CQCHT", program code 005 (last revised 5/30/2001). 
+  
+
+KEY: 
+  IN "R.CODE" COLUMN: 
+              B - OCCURS IN ALL OPERATIONAL VERSIONS OF CQCHT. 
+              N - CURRENTLY DOES NOT OCCUR IN ANY OPERATIONAL VERSION OF CQCHT. 
+
+  IN "MNEMONIC" COLUMN: 
+                @ - SET TO ORIGINAL QUALITY MARKER UNLESS ORIGINAL QUALITY MARKER WAS 2 IN WHICH CASE SET TO 1. 
+                # - NEW VALUE CALCULATED. 
+                & - NEW VALUE CALCULATED ONLY IF ITS QUALITY MARKER IS RESET TO 1. 
+
+  
+R.CODE       MEANING                                             MNEMONICS AFFECTED AND NEW VALUE FOR OBS, Q.M. 
+=======      ==================================================  ==============================================
+
+00 B         TEMPERATURE NOT CORRECTED, OKAY.                    TRC-> TQM=1
+
+
+                                    Communication and Computation Errors
+---------------------------------------------------------------------------------------------------------------- 
+                                 Errors at a Single Interior Mandatory Level
+
+R.CODE        MEANING                                             MNEMONICS AFFECTED AND NEW VALUE FOR OBS, Q.M.
+=======       ==================================================  ==============================================
+
+01 B          SINGLE HEIGHT.                                      ZRC-> ZOB=&, ZQM=1/3/13
+ 
+02 B          SINGLE TEMPERATURE.                                 TRC-> TOB=&, TQM=1/3/13  
+ 
+03 B          HEIGHT AND TEMPERATURE AT THE SAME LEVELOR HEIGHT   TRC-> TOB=&, TQM=1/3/13 
+              AND TEMPERATURE AT THE SAMELEVEL WITH RESIDUAL      ZRC-> ZOB=&, ZQM=1/3/1
+              COMPENSATION.
+
+                                 Errors at Adjacent Mandatory Levels
+
+R.CODE        MEANING                                             MNEMONICS AFFECTED AND NEW VALUE FOR OBS, Q.M.
+=======       ==================================================  ==============================================
+
+05 B          HEIGHT, TEMPERATURE OR BOTH.                        ZRC-> ZOB=&, ZQM=1/13
+                                                                  TRC-> TOB=&, TQM=1/13
+
+                                 Computation Error in Height at Mandatory Levels
+
+R.CODE        MEANING                                             MNEMONICS AFFECTED AND NEW VALUE FOR OBS, Q.M. 
+=======       ==================================================  ==============================================
+
+06 B          HEIGHT COMPUTATION ERROR BETWEEN ANY TWO MANDATORY  ZRC-> ZOB=&, ZQM=1/3/13 
+              LEVELS.
+
+
+                                 Errors at Adjacent Mandatory Levels
+
+R.CODE        MEANING                                             MNEMONICS AFFECTED AND NEW VALUE FOR OBS, Q.M. 
+=======       ==================================================  ==============================================
+
+07 B          HEIGHT AT TWO ADJACENT LEVELS.                      ZRC-> ZOB=&, ZQM=1/3/13 
+
+08 B          TEMPERATURE AT TWO ADJACENT LEVELS.                 TRC-> TOB=&, TQM=1/3/13
+
+09 B          HEIGHT AT THE LOWER, AND TEMPERATURE AT THE UPPER   ZRC-> ZOB=&, ZQM=1/3/13 
+              OF TWO ADJACENT LEVELS.                             TRC-> TOB=&, TQM=1/3/13
+
+10 B          TEMPERATURE AT THE LOWER, AND HEIGHT AT THE UPPER   ZRC-> ZOB=&, ZQM=1/3/13 
+              OF TWO ADJACENT LEVELS.                             TRC-> TOB=&, TQM=1/3/13
+
+             
+                                  No Error
+
+R.CODE        MEANING                                             MNEMONICS AFFECTED AND NEW VALUE FOR OBS, Q.M. 
+=======       ==================================================  ==============================================
+
+15 N          AUXILIARY LEVEL IN REGIONAL-OI VERSION              ZRC-> ZOB=#, ZQM=@
+              RECALCULATED BY CQCHT (OBSOLETE).
+
+
+                                  Errors at Significant Levels
+
+R.CODE        MEANING                                             MNEMONICS AFFECTED AND NEW VALUE FOR OBS, Q.M. 
+=======       ==================================================  ==============================================
+
+20 B          SIGNIFICANT LEVEL TEMPERATURE CORRECTED.            TRC-> TOB=#, TQM=1
+ 
+21,23 B       NON-CORRECTABLE SIGNIFICANT LEVEL TEMPERATURE       TRC-> TQM=13 
+              ERRORS. 
+
+24,25 B       NON-CORRECTABLE SIGNIFICANT LEVEL TEMPERATURE       TRC-> TQM=3 
+              ERRORS.
+
+22 B          ???????????????????????????????????                 TRC-> TQM=1
+
+
+                                   Surface Errors
+
+R.CODE        MEANING                                             MNEMONICS AFFECTED AND NEW VALUE FOR OBS, Q.M. 
+=======       ==================================================  ==============================================
+
+100 B         SURFACE PRESSURE COMMUNICATION ERROR CORRECTED.     PRC-> POB=#, PQM=1
+ 
+102 B         SURFACE TEMPERATURE ERROR CORRECTED.                TRC-> TOB=#, TQM=1
+
+105 B         LIKELY SURFACE TEMPERATURE ERROR, TOO SMALL TO      TRC-> TQM=1/3/13 
+              CORRECT; OR UNDETERMINED ERROR(S), POSSIBLY IN      PRC-> PQM=1/3/13 
+              SURFACE PRESSURE.
+
+106 N         SURFACE PRESSURE OBSERVATION ERROR.                 PRC-> PQM=13
+
+
+                                    Observation Errors
+----------------------------------------------------------------------------------------------------------------
+
+R.CODE        MEANING                                             MNEMONICS AFFECTED AND NEW VALUE FOR OBS, Q.M. 
+=======       ==================================================  ==============================================
+
+30,35 B       TEMPERATURE OBSERVATION ERRORS; REJECT OR USE WITH  TRC-> TQM=3/13 
+              REDUCED WEIGHT.
+
+36,37 B       HEIGHT OBSERVATION ERRORS; REJECT OR USE WITH       ZRC-> ZQM=3/1 
+              REDUCED WEIGHT.

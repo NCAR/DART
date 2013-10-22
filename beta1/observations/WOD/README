@@ -1,0 +1,30 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+The original data files were yearly, by instrument,
+downloaded from http://dss.ucar.edu/datasets/ds285.0/
+
+We are using the STD files, which are on standard depth
+levels, and not the OBS files, which are raw and in many
+cases too dense in the vertical to be independent measurements.
+
+Look for the yearly_XXX_STD.tar files - there are about
+10 different types of obs, plus documentation.
+
+run wod_to_obs on them (in the shell_scripts dir, see runyear.ksh).
+
+then on either the DASG cluster or bluefire, go into:
+
+/ptmp/dart/Obs_sets/WOD/progs
+
+and see the makedaily.sh file for how to break the full year
+of data into daily obs files.  it has code to roll over year
+and month boundaries.  the files are daily, centered on 0Z,
+and so run from 12-24Z the previous day and then 0-12Z on the
+current day.
+
+
+

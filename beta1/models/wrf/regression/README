@@ -1,0 +1,26 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+This directory contains a collection of WRF/DART test cases.   They are intended to
+be full WRF runs, possibly too large for smaller workstations.  They cover different
+aspects of the way WRF is run -- regional vs global, different boundary conditions,
+different WRF configurations and different contents of the DART state vector.
+Sincere thanks to the users who have contributed these files. 
+
+Each subdirectory has a README file with more details on the specifics
+of the case.  Most test cases need large data files, which are not stored
+in the subversion repository.  There are pointers in the README files for
+the location of where to download the data.
+
+The current contents are:
+
+CONUS-V2: WRF Version 2, continental US.
+CONUS-V3: WRF Version 3, continental US.
+Global-V3: WRF Version 3, Global 
+Radar: WRF Version 2, surface radar obs
+
+
+

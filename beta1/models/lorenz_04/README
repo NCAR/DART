@@ -1,0 +1,371 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+
+This README was last updated June 25, 2004 by Jim Hansen.  The
+Lorenz 04 model was originally implemented in the Fiji release of
+DART.  This README has been modified for the Guam release.
+
+This file describes the Lorenz 04 model (L2k4, hereafter) and
+its current implementation within the DART framework.
+
+o For details on the L2k4 model, read the MODEL section
+  below.
+o For specifics on how L2k4 was implemented in the DART
+  framework, read the DART section below.
+o For a step-by-step tutorial on how to use the model in 
+  DART, read the EXAMPLE section below.
+
+MODEL
+
+As of the production of this README, L2k4 had not yet
+appeared in the literature.  A manuscript entitled "Designing
+Chaotic Models" is in preparation for JAS by Ed Lorenz.
+
+L2k4 is the Model III described in the above manuscript.  It 
+represents an evolution of the Lorenz 96 model and permits 
+multiple spatial and temporal scales in a single integrated
+variable.  This removes the limitation of the Lorenz 96 model
+where neighboring gridpoints were almost uncorrelated, and
+permits experiments that address representativeness error and
+resolution error.
+
+The model equations are given by
+
+      dZ_i
+      ---- = [X,X]_{K,i} + b^2 (-Y_{i-2}Y_{i-1} + Y_{i-1}Y_{i+1})
+       dt                +  c  (-Y_{i-2}X_{i-1} + Y_{i-1}X_{i+1})
+                         -  X_i - b Y_i + F,
+
+where
+
+     [X,X]_{K,i} = -W_{i-2K}W_{i-K}
+                 +  sumprime_{j=-(K/2)}^{K/2} W_{i-K+j}X_{i+K+j}/K,
+
+      W_i =  sumprime_{j=-(K/2)}^{K/2} X_{i-j}/K,
+
+and sumprime denotes a special kind of summation where the first
+and last terms are divided by 2.
+
+NOTE: The equations above are only valid for K even.  If K is odd,
+then sumprime is replaced by the traditional sum, and the K/2 limits
+of summation are replaced by (K-1)/2. THIS CODE ONLY IMPLEMENTS THE
+K EVEN SOLUTION!!!
+ 
+The variable that is integrated is Z, but the integration requires
+the variables X and Y.  They are obtained by
+      
+      X_i = sumprime_{j= -J}^{J} a_j Z_{i+j}
+      Y_i = Z_i - X_i.
+
+The "a" coefficients are given by
+
+      a_j = alpha - beta |j|,
+                 
+where
+      
+      alpha = (3J^2 + 3)/(2J^3 + 4J)
+      beta  = (4J^2 + 2)/(2J^4 + 4J^2).
+ 
+This choice of alpha and beta ensures that X_i will equal Z_i
+when Z_i varies quadratically over the interval 2J.   This choice 
+of alpha and beta means that sumprime a_j = 1 and
+sumprime (j^2) a_j = 0.
+ 
+Note that the impact of this filtering is to put large-scale
+variations into the X variable, and small-scale variations into   
+the Y variable.
+      
+The parameter names above are based on those that appear in
+Lorenz 04.  To map to what is used in the DART code, set:
+
+       F = forcing
+       b = space_time_scale
+       c = coupling
+       K = K     
+       J = smooth_steps
+
+DART
+
+Few changes were necessary to implement L2k4 in DART.  Because
+of the similarity between the Lorenz 96 model and L2k4, the
+Lorenz 96 implementation was replicated and L2k4-specific changes 
+were made.  Details are given below.  There were no additional
+modifications to make to the L2k4-specific changes when migrating
+from Fiji to Guam.  There were scripting changes that were 
+required.
+
+~/DART/models/lorenz_04/model_mod.nml
+
+	L2k4-relevant parameters were added to the namelist.
+	These include a new model size, a new forcing, and a
+	new \delta t.  In addition, parameters to set the 
+	model's space-time scale, coupling strength, averaging 
+	length scale, and smoothing length scale were added. 
+
+~/DART/models/lorenz_04/model_mod.f90
+
+	module model_mod: added the new namelist defaults,
+	defined a vector used for the production of X and Y
+	from Z in the z2xy subroutine, and defined a few
+	parameters that are used to make the comp_dt and z2xy
+	subroutines more efficient.
+
+	subroutine static_init_model(): provided values for
+	the vector used in the production of X and Y from
+	Z in the z2xy subroutine, and provided values for
+	the parameters used to make the comp_dt and z2xy
+	subroutines more efficient.
+
+	subroutine comp_dt(z, dt): this is an all-new 
+	derivatives file that is unique to L2k4.  The model
+	equations are described above in the MODEL section,
+	and are also described in the comp_dt subroutine.
+
+	subroutine z2xy(z,x,y): this is a new subroutine that
+	is needed by the comp_dt subroutine.  It takes in a
+	Z vector and decomposes it into X and Y.
+
+	function nc_write_model_atts( ncFileID ): added
+	L2k4-specific parameter values to the netCDF attributes.
+
+~/DART/models/lorenz_04/work/
+
+	It was necessary to set the lorenz_04 path in each of
+	the path_name_* files to point to the correct model_mod.f90.
+
+~/DART/models/lorenz_04/shell_scripts/
+
+	The four *.s files and the *.pl file must be copied
+	to the ../work directory.
+
+	The four *.s files perform the mkmf for each of the four
+	programs (create_fixed_network_seq, create_obs_sequence, 
+	perfect_model_obs, and filter), and perform the relevant 
+	makes.  
+
+	In order the scripts should be executed:
+
+	1) ./csh_fix.s
+	2) ./csh_seq.s
+	3) ./csh_perf.s
+	4) ./csh_filt.s
+
+	coseq.pl: This perl script can be used in conjunction with 
+	create_obs_sequence.  It generates a file called coseq.dat
+	that contains the information one would have to enter via
+	the keyboard to create_obs_sequence, but instead of having
+	to type in all those variances and component numbers, one
+	only need enter the spacing between observations and the
+	variance in the observational errors.  The script assumes
+	that the first observation location is always component
+	number 1, and that all observations have the same error
+	variance.  Once coseq.dat has been generated, it is passed 
+	to create_obs_sequence by:
+
+	./create_obs_sequence < coseq.dat
+
+~/DART/matlab/
+
+	A lorenz_04 case was added to the relevant matlab files.
+	No other changes were necessary.
+
+EXAMPLE
+
+1)  Move into the L2k4 work directory:
+
+    > cd DART/models/lorenz_04/work
+
+2)  Copy scripts into work directory:
+
+    > cp ../shell_scripts/csh_*.s .
+    > cp ../shell_scripts/coseq.pl .
+
+3)  Do all the necessary mkmf'ing and make'ing
+
+    > ./csh_fix.s
+    > ./csh_seq.s
+    > ./csh_perf.s
+    > ./csh_filt.s
+
+4)  To get a model initial condition "on the attractor" have to begin
+    by constructing observation definitions. 
+    [See http://www.cgd.ucar.edu/DAI/Fiji_release.html for explaination]
+
+    > ./create_obs_sequence
+
+	100000000	# upper bound on num obs for memory allocation
+	0		# creating a definition
+	0		# no quality control necessary
+	0		# have some obs info to input
+	-3		# means an identity obs at model component 3
+	0, 0		# time has no meaning since will run fixed_network
+	100000000	# obs error variance (ignore obs)
+	-1		# no more obs info to enter
+	set_def.out	# input file name
+
+    > ./create_fixed_network_seq
+
+	set_def.out 	# input filename
+	1		# regularly repeating time sequence
+	100		# number of observations in sequence
+	3, 0		# time of initial ob in sequence in days and seconds
+	3, 0 		# period of obs in days and seconds
+	obs_seq.in	# file name for output of obs_sequence
+
+    The DART default is to set a single model integration time step to
+    3600 seconds (one hour).  Setting an observatin period of 3 days 
+    simply means there are 72 model time steps (0.001*72 = 0.072 model
+    time units) between observations.  Note that this default can be
+    changed in the Guam release through the time_step_days and 
+    time_step_seconds parameters.
+
+5)  Construct the namelist file that will be modified throughout the
+    example:
+
+    > cp input.nml.perfect_model_obs input.nml
+    > cat input.nml.filter >> input.nml
+
+    This places both the perfect_model_obs namelist and the filter
+    namelist into the same file.
+
+6)  Edit the namelist so that a random initial condition is propagated
+    forward for a period of time and allowed to fall onto the attractor.
+
+    In input.nml, set output_restart to .true. under &perfect_model_obs_nml
+
+7)  Run perfect_model_obs
+
+    > ./perfect_model_obs
+
+8)  Copy the resulting restart file into an initial condition file:
+
+    > cp perfect_restart perfect_ics
+
+9)  Edit the namelist to reflect the new initial conditions.
+
+    In input.nml, set start_from_restart to .true. under
+    &perfect_model_obs_nml
+
+10) Generate another long run of the model, this time starting from the
+    initial condition just generated by perfect_model_obs instead of from
+    a random initial condition.  The initial ensemble will be generated
+    with respect to this trajectory in a couple steps.
+
+    > ./perfect_model_obs
+
+11) Edit the namelist to get ready for the ensemble generation.
+
+    In input.nml, set start_from_restart to .false., output_restart to 
+    .true., and num_output_state_members to 20 under &filter_nml.
+
+12) Run the filter to generate the ensemble.  The filter is still using
+    the observation information set in item 4 (1 ob every 3 days with an
+    error variance of 100000000.0).  This means that the observation is
+    ignored, and filter generates an ensemble spread across the attractor.
+
+    > ./filter
+
+13) Move the resulting truth and ensemble restart files to initial
+    condition files.
+
+    > cp perfect_restart perfect_ics
+    > cp filter_restart filter_ics
+
+14) The initial ensemble and associated truth state have been generated.
+    Time to do some real data assimilation.  The process begins by 
+    specifying the observation information.  The first step is to run
+    create_obs_sequence.  Since create_obs_sequence requires the user to
+    enter observation location and error variance information by hand,
+    a script called coseq.pl has been constructed to ease the process.
+    coseq.pl generates a file that can be input to create_obs_sequence.
+    Instead of entering each location and variance, the user enters
+    the spacing between observations and a single observation error
+    variance that is applied to all observations.
+
+    > ./coseq.pl
+
+	10		# spacing between observations
+	1.0		# observation error variance
+
+15) Redirect results of coseq.pl to create_obs_sequence
+
+    > ./create_obs_sequence < coseq.dat
+
+16) Generate the observation sequence using create_fixed_network_seq
+
+    > ./create_fixed_network_eq
+
+	set_def.out	# observation set definition file
+	1		# regularly spaced obs in time
+	100		# number of observation times
+	3, 0		# first observation at day 3
+	3, 0		# observations every three days
+	obs_seq.in	# output file for obs sequence definition
+
+    Remember, 3 days has no physical significance.  All it means
+    in this context is 72 model integration time steps.
+
+17) Produce the observations described by create_obs_set_def and
+    create_obs_sequence using perfect_model_obs.
+
+    > ./perfect_model_obs
+
+18) Adjust the namelist to do proper data assimilation.
+
+    In input.nml, set cutoff to 0.1, cov_inflate to 1.1, 
+    start_from_restart to .true., and restart_in_file_name
+    to filter_ics under &filter_nml.
+
+19) Run the filter to do the DA
+
+    > ./filter
+
+20) The usual matlab scripts can be run to view the results
+    of the data assimilation.  In addition, the bits of matlab
+    below can be used to see how the DA performed:
+
+% load the true trajectory and the analysis ensembles
+clear;pack
+ncload('True_State.nc');
+truth(:,:)=state(:,1,:);
+ncload('Posterior_Diag.nc');
+len=100;
+
+% plot ensemble mean analysis and truth at end of run
+figure(1)
+t=len;mem=21;
+s(:,:)=state(t,mem,:);   
+clf;plot(s);hold on;plot(truth(t,:),'r')
+legend('ensemble mean','truth');
+set(gca,'XLim',[0 960]);xlabel('z')
+title('Ensemble mean analysis and truth at end of run')
+
+% plot the timeseries of analysis error and expected
+% obs error in the *full* model space (not obs space)
+figure(2)
+for i=1:len
+ tt=truth(i,:);ss(:,:)=state(i,21,:);
+ d(i)=norm(tt-ss');
+ obs=tt+randn(size(tt));
+ do(i)=norm(tt-obs);
+end
+clf;plot(d);hold on;plot(do,'r');
+legend('analysis error','obs error');
+xlabel('obs steps');ylabel('RMS error wrt truth')
+title('analysis error and obs error as a function of time')
+
+% Plot entire analysis ensemble for a single gridpoint as a
+% function of time
+figure(3)
+ee(:,:)=state(:,1:20,10);
+clf;plot(ee)
+xlabel('obs steps');ylabel('z(10)')
+title('analysis ensemble of z(10) as a function of time')
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

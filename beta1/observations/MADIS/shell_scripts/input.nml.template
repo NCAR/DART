@@ -1,0 +1,27 @@
+
+&obs_sequence_tool_nml
+   filename_seq         = '',
+   filename_out         = 'obs_seq.out',
+   filename_seq_list    = 'obsflist',
+   num_input_files      = 0,
+   first_obs_days       = BDAY,
+   first_obs_seconds    = BSEC,
+   last_obs_days        = ADAY,
+   last_obs_seconds     = ASEC,
+   gregorian_cal        = .true.,
+/
+
+&utilities_nml
+ module_details = .false.
+ /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.  
+ /
+
+&obs_kind_nml
+ /
+
+&location_nml
+ /
+

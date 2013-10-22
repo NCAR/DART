@@ -1,0 +1,794 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module assim_tools_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE assim_tools_mod</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+This module provides subroutines that implement the parallel versions
+of the sequential scalar filter algorithms. These include the standard
+sequential filter as described in
+<a href="#References"> Anderson 2001, 2003 </a> along with systematic
+correction algorithms for both mean and spread. In addition, algorithms
+to do a variety of flavors of filters including the EAKF, ENKF, particle
+filter, and kernel filters are included. The parallel implementation
+that allows each observation to update all state variables that are close
+to it at the same time is described in
+<a href="#References">Anderson and Collins, 2007</a>.
+</P>
+
+<A NAME="FilterTypes"></A>
+<H4>Filter Types</H4>
+<P>
+Available observation space filter types include:
+</P>
+<ul>
+<li> 1 = EAKF (Ensemble Adjustment Kalman Filter, see
+<a href="#References"> Anderson 2001</a>)
+<li> 2 = ENKF (Ensemble Kalman Filter)
+<li> 3 = Kernel filter
+<li> 4 = Particle filter
+<li> 5 = Random draw from posterior  (talk to Jeff before using)
+<li> 6 = Deterministic draw from posterior with fixed kurtosis (ditto)
+<li> 7 = Boxcar kernel filter
+<li> 8 = Rank histogram filter (see
+<a href="#References"> Anderson 2010</a>)
+</ul>
+<P>
+We recommend using type=1, the EAKF.
+Note that although the algorithm
+is expressed in a slightly different form,
+the EAKF is identical to the
+EnSRF (Ensemble Square Root Filter)
+described by Whitaker and Hamill in 2002.
+</P>
+
+
+<A NAME="Localization"></A>
+<H4>Localization</H4>
+<P>
+<em>Localization</em> controls how far the impact of an observation extends.
+The namelist items related to localization are spread over several
+different individual namelists, so we have made a single collected
+description of them here along with some guidance on setting the values.
+</P> <P>
+This discussion centers on the mechanics of how you control
+localization in DART with the namelist items, and a little bit about
+pragmatic approaches to picking the values.  There is no discussion
+about the theory behind localization - contact Jeff Anderson for more
+details.
+Additionally, the discussion here applies specifically to models using
+the 3d-sphere location module.  The same process takes place in 1d
+models but the details of the location module namelist is different.
+</P> <P>
+The following namelist items related to 3d-sphere localization
+are all found in the <em class=file>input.nml</em> file:
+</P>
+<dl>
+<dt>
+<em>&amp;assim_tools_nml :: cutoff</em><br />
+valid values: 0.0 to infinity
+<dd>
+This is the value, in radians, of the half-width of the localization
+radius (this follows the terminology of an early paper on localization).
+For each observation, a state vector item increment is computed based
+on the covariance values.  Then a multiplier, based on the 'select_localization'
+setting (see below) decreases the increment as the distance
+between the obs and the state vector item increases.  In all cases
+if the distance exceeds 2*cutoff, the increment is 0.
+<br /> <br />
+<dt>
+<em>&amp;cov_cutoff_nml :: select_localization</em><br />
+valid values: 1=Gaspari-Cohn; 2=Boxcar; 3=Ramped Boxcar
+<dd>
+Controls the shape of the multiplier function applied to the
+computed increment as the distance increases between the obs
+and the state vector item.
+Most users use type 1 localization.
+<table border=0 summary="" cellpadding=0>
+<tr><td><ul>
+        <li>Type 1 (Gaspari-Cohn) has a value of 1 at 0 distance, 0 at 2*cutoff, and
+            decreases in an approximation of a gaussian in between.
+            <br /> <br />
+        <li>Type 2 (Boxcar) is 1 from 0 to 2*cutoff, and then 0 beyond.
+        <br /> <br />
+        <li>Type 3 (Ramped Boxcar) is 1 to cutoff and then ramps linearly down to 0 at 2*cutoff.
+        </ul>
+    </td>
+    <td><a href="../doc/images/cutoff_fig.png">
+<img src="../doc/images/cutoff_fig.png" alt="Shapes of Cutoff curves" height=240 border=0 /></a>
+     <br />Click image for larger version.
+</tr>
+</table>
+<dt>
+<em>&amp;location_nml :: horiz_dist_only</em><br />
+valid values:  .true., .false.
+<dd>
+If set to .true., then the vertical location of all items, observations
+and state vector both, are ignored when computing distances
+between pairs of locations.  This has the effect that all items within
+a vertical-cylindrical area are considered the same distance away.
+<br /> <br />
+If set to .false., then the full 3d separation is computed.  Since
+the localization is computed in radians, the 2d distance is easy
+to compute but a scaling factor must be given for the vertical
+since vertical coordinates can be in meters, pressure, or model levels.
+See below for the 'vert_normalization_xxx' namelist items.
+<br /> <br />
+<dt>
+<em>&amp;location_nml :: vert_normalization_{pressure,height,level,scale_height}</em><br />
+valid values: real numbers, in pascals, meters, index, and value respectively
+<dd>
+If 'horiz_dist_only' is set to .true., these are ignored.  If set to .false.,
+these are required.  They are the amount of that quantity that is
+equivalent to 1 radian in the horizontal.  If the model is an
+earth-based one, then one radian is roughly 6366 kilometers, so if
+vert_normalization_height is set to 6366000 meters, then the localization
+cutoff will be a perfect sphere.  If you want to localize over a larger
+distance in the vertical than horizontal, use a larger value.  If you want
+to localize more sharply in the vertical, use a smaller number.
+The type of localization used is set by which type of vertical coordinate
+the observations and state vector items have.
+<br /> <br />
+If you have observations with different vertical coordinates (e.g. pressure
+and height), or if your observations have a different vertical coordinate
+than your state vector items, or if you want to localize in a different
+type of unit than your normal vertical coordinate (e.g. your model uses
+pressure in the vertical but you wish to localize in meters), then you
+will need to modify or add a <em class=code>get_close()</em> routine
+in your <em class=file>model_mod.f90</em> file.  See the discussion in
+the <a href="../location/threed_sphere/location_mod.html">location module</a>
+documentation for how to transform vertical coordinates before localization.
+<br /> <br />
+<dt>
+<em>&amp;assim_tools_nml :: adaptive_localization_threshold</em><br />
+valid values: integer counts, or -1 to disable
+<dd>
+Used to dynamically shrink the localization cutoff in areas of dense
+observations.  If set to something larger than 0, first the number of
+other observations within 2*cutoff is computed.  If it is larger than this
+given threshold, the cutoff is decreased proportionally so if the
+observations were evenly distributed in space, the number of
+observations within 2*revised_cutoff
+would now be the threshold value.  The cutoff value is computed
+for each observation as it is assimilated, so can be different for
+each one.
+<br /> <br />
+<dt>
+<em>&amp;assim_tools_nml :: adaptive_cutoff_floor</em><br />
+valid values: 0.0 to infinity, or -1 to disable
+<dd>
+If using adaptive localization (adaptive_localization_threshold
+set to a value greater than 0), then this value can be used to
+set a minimum cutoff distance below which the adaptive code will
+not shrink.  Set to -1 to disable.  Ignored if not using
+adaptive localization.
+<br /> <br />
+<dt>
+<em>&amp;assim_tools_nml :: output_localization_diagnostics</em><br />
+valid values: .true., .false.
+<dd>
+If .true. and if adaptive localization is on, a single text line is printed
+to a file giving the original cutoff and number of observations, and the
+revised cutoff and new number of counts within this smaller cutoff for any
+observation which has nearby observations which exceed the adaptive threshold count.
+<br /> <br />
+<dt>
+<em>&amp;assim_tools_nml :: localization_diagnostics_file </em><br />
+valid values: text string
+<dd>
+Name of the file where the adaptive localization diagnostic
+information is written.
+<br /> <br />
+<dt>
+<em>&amp;assim_tools_nml :: special_localization_obs_types </em><br />
+valid values: list of 1 or more text strings
+<dd>
+The cutoff localization setting is less critical in DART than
+it might be in other situations since during the assimilation DART
+computes the covariances between observations and nearby state
+vector locations and that is the major factor in controlling the
+impact an observation has.  For conventional observations
+fine-tuning the cutoff based on observation type is not recommended
+(it is possible to do more harm than good with it).
+But in certain special cases
+there may be valid reasons to want to change the localization cutoff
+distances drastically for certain kinds of observations.  This and
+the following namelist items allow this.
+<br /> <br />
+Optional list of observation types (e.g. "RADAR_REFLECTIVITY",
+"AIRS_TEMPERATURE") which will use a different cutoff distance.
+Any observation types not listed here will use the standard cutoff
+distance (set by the 'cutoff' namelist value).  This is only
+implemented for the threed_sphere location module (the one
+used by most geophysical models.)
+<br /> <br />
+<dt>
+<em>&amp;assim_tools_nml :: special_localization_cutoffs </em><br />
+valid values: list of 1 or more real values, 0.0 to infinity
+<dd>
+A list of real values, the same length as the list of observation
+types, to be used as the cutoff value for each of the given
+observation types.  This is only
+implemented for the threed_sphere location module (the one
+used by most geophysical models.)
+</dd>
+</dl>
+<P>
+There are a large set of options for localization.  Individual cases
+may differ but in general the following guidelines might help.
+Most users use the Gaspari-Cohn covariance cutoff type.
+The value of the cutoff itself is the
+item most often changed in a sensitivity run to pick a good general
+value, and then left as-is for subsequent runs.
+Most localize in the vertical, but tend to use large values so as to
+not disturb vertical structures.
+Users do not generally use adaptive localization, unless their
+observations are very dense in some areas and sparse in others.
+</P>
+<P>
+The advice for setting good values for the cutoff value is to err
+on the larger side - to estimate for all types of observations under all
+conditions what the farthest feasible impact or correlated structure size
+would be.  The downsides of guessing too large are 1) run time is slower,
+and 2) there can be spurious correlations between state vector items and
+observations
+which aren't physically related and noise can creep into the assimilation
+results this way.   The downside of guessing too small is that state vector
+items that should get an impact from an observation won't.  This might
+disrupt organized features in a field and the model may take more time
+to recover/reconstruct the feature.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from
+prematurely terminating the namelist.
+</P>
+<div class=namelist>
+<pre>
+&amp;assim_tools_nml
+   filter_kind                     = 1,
+   cutoff                          = 0.2,
+   sort_obs_inc                    = .false.,
+   spread_restoration              = .false.,
+   sampling_error_correction       = .false.,
+   adaptive_localization_threshold = -1,
+   adaptive_cutoff_floor           = -1.0,
+   output_localization_diagnostics = .false.,
+   localization_diagnostics_file   = "localization_diagnostics",
+   print_every_nth_obs             = 0,
+   rectangular_quadrature          = .true.,
+   gaussian_likelihood_tails       = .false.,
+   close_obs_caching               = .true.,
+   allow_missing_in_clm            = .false.
+   special_localization_obs_types  = "",
+   special_localization_cutoffs    = -1,
+/
+</pre>
+</div>
+
+<div>
+
+<TABLE border=0 cellpadding=10 width=100% 
+       summary='assim_tools namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR>
+ <TD> filter_kind </TD>
+ <TD> integer </TD>
+ <TD> Selects the variant of filter to be used.
+<UL>
+ <LI>1 = EAKF</LI>
+ <LI>2 = ENKF,
+ <LI>3 = Kernel filter</LI> 
+ <LI>4 = particle filter</LI>  
+ <LI>7 = Boxcar kernel filter</LI>
+ <LI>8 = Rank Histogram Filter</LI>
+</UL>
+ </TD> </TR>
+
+<TR>
+ <TD> cutoff </TD>
+ <TD> real(r8) </TD>
+ <TD> Cutoff controls a distance dependent weight that modulates
+the impact of an observation on a state variable. The units depend
+both on the location module being used and on the covariance cutoff
+module options selected.  As defined in the original paper, this is
+the half-width; the localization goes to 0 at 2 times this value.
+ </TD> </TR>
+
+<TR>
+ <TD> sort_obs_inc </TD>
+ <TD> logical </TD>
+ <TD> If true, the final increments from obs_increment are sorted
+so that the mean increment value is as small as possible. This minimizes
+regression errors when non-deterministic filters or error correction algorithms
+are applied. HOWEVER, when using deterministic filters (filter_kind == 1 or 8)
+with no inflation or a combination of a determinstic filter and deterministic
+inflation (filter_nml:inf_deterministic = .TRUE.) sorting the increments is
+both unnecessary and expensive. A warning is printed to stdout and the log and
+the sorting is skipped.
+ </TD> </TR>
+
+<TR>
+ <TD> spread_restoration </TD>
+ <TD> logical </TD>
+ <TD> True turns on algorithm to restore amount of spread that would be
+expected to be lost if underlying obs/state variable correlation were really 0.
+ </TD> </TR>
+
+<TR>
+ <TD> sampling_error_correction </TD>
+ <TD> logical </TD>
+ <TD>
+If true, uses special input files generated by full_error.f90 in the
+system_simulation directory to reduce errors in the regression step.
+The files are generated for a specific ensemble size.
+They have the name "final_full.X" where X is the number of ensemble members,
+and most common ensemble sizes have precomputed files in that same directory.
+There is no dependence on which model is being used, only on the number of
+ensemble members.  The input file must exist in the directory where the filter
+program is executing.
+ </TD> </TR>
+
+<TR>
+ <TD> adaptive_localization_threshold </TD>
+ <TD> integer </TD>
+ <TD> Used to reduce the impact of observations in densely observed
+regions. If the number of observations close to a given observation is greater
+than the threshold number, the cutoff radius for localization is adjusted to
+try to make the number of observations close to the given observation be
+the threshold number. This should be dependent on the location module and
+is tuned for a three_dimensional spherical implementation for numerical
+weather prediction models at present.
+ </TD> </TR>
+
+<TR>
+ <TD> adaptive_cutoff_floor </TD>
+ <TD> real </TD>
+ <TD> If adaptive localization is enabled and if this value is
+greater than 0, then the adaptive cutoff distance will be set to a value no
+smaller than the distance specified here.  This guarentees a minimum cutoff
+value even in regions of very dense observations.
+ </TD> </TR>
+
+<TR>
+ <TD> output_localization_diagnostics </TD>
+ <TD> logical </TD>
+ <TD> Setting this to true. will output an additional text
+file that contains the obs key, the obs time, the obs location, the
+cutoff distance and the number of other obs which are within that radius.
+If adaptive localization is enabled, the output also contains the updated
+cutoff distance and the number of other obs within that new radius.  Without
+adaptive localization there will be a text line for each observation,
+so this file could get very large.  With adaptive localization enabled,
+there will only be one line per observation where the radius is changed,
+so the size of the file will depend on the number of changed cutoffs.
+ </TD> </TR>
+
+
+<TR>
+ <TD> localization_diagnostics_file </TD>
+ <TD> character(len=129) </TD>
+ <TD> Filename for the localization diagnostics information.
+This file will be opened in append mode, so new information will be written
+at the end of any existing data.
+ </TD> </TR>
+
+
+<TR>
+ <TD> special_localization_obs_types </TD>
+ <TD> character(len=32), dimension(:) </TD>
+ <TD> Optional list of observation types (e.g. "RADAR_REFLECTIVITY",
+"RADIOSONDE_TEMPERATURE") which will use a different cutoff
+value other than the default specified by the 'cutoff' namelist.
+This is only implemented for the 'threed_sphere' locations module.
+ </TD> </TR>
+
+
+<TR>
+ <TD> special_localization_cutoffs </TD>
+ <TD> real(r8), dimension(:) </TD>
+ <TD> Optional list of real values which must be the same
+length and in the same order as the observation types list
+given for the 'special_localization_obs_types' item.
+These values will set a different cutoff distance for localization
+based on the type of the observation currently being assimilated.
+Any observation type not in the list will use the default cutoff value.
+This is only implemented for the 'threed_sphere' locations module.
+ </TD> </TR>
+
+
+<TR>
+ <TD> print_every_nth_obs </TD>
+ <TD> integer </TD>
+ <TD> If set to a value <em class=code>N</em> greater than 0,
+the observation assimilation loop prints out a progress message
+every <em class=code>N</em>th observations.  This can be useful to
+estimate the expected run time for a large observation file,
+or to verify progress is being made in cases with suspected problems.
+ </TD> </TR>
+
+
+<TR>
+ <TD> close_obs_caching </TD>
+ <TD> logical </TD>
+ <TD> Should remain .TRUE. unless you are using
+specialized_localization_cutoffs.  In that case to get accurate
+results, set it to .FALSE..  This also needs to be .FALSE. if
+you have a get_close_obs() routine in your model_mod file
+that uses the types/kinds of the obs to adjust the distances.
+ </TD> </TR>
+
+
+<TR>
+ <TD> allow_missing_in_clm </TD>
+ <TD> logical </TD>
+ <TD> If true, missing values (MISSING_R8 as defined in the types_mod.f90
+file) are allowed in the state vector.  Model interpolation routines
+must be written to recognize this value and fail the interpolation. 
+During assimilation any state vector items where one or more of the 
+ensemble members are missing will be skipped and their values will 
+be unchanged by the assimilation.  The system currently has limited
+support for this option; the CLM model has been tested and is known
+to work.  Other users with models which would benefit from setting missing
+values in the state vector are encouraged to contact
+<a href="mailto:dart@ucar.edu">dart at ucar.edu</a>.
+ </TD> </TR>
+
+</TBODY>
+</TABLE>
+
+</div>
+<br />
+
+<!--==================================================================-->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+sort_mod
+random_seq_mod
+obs_sequence_mod
+obs_def_mod
+cov_cutoff_mod
+reg_factor_mod
+location_mod (model dependent choice)
+ensemble_manager_mod
+mpi_utilities_mod
+adaptive_inflate_mod
+time_manager_mod
+assim_model_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC INTERFACES</H2>
+
+<TABLE summary='public interface list'>
+<TR><TD><em class=call>use assim_tools_mod, only : </em></TD>
+                   <TD><A HREF="#filter_assim">filter_assim</A></TD></TR>
+</TABLE>
+
+<P>
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
+   <em class=optionalcode>[like this]</em>.
+</P>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="filter_assim"></A>
+<br />
+<div class=routine>
+<em class=call> call filter_assim(ens_handle, obs_ens_handle, obs_seq, keys,
+ens_size, num_groups, obs_val_index, inflate, ens_mean_copy, ens_sd_copy,
+ens_inf_copy, ens_inf_sd_copy, obs_key_copy, obs_global_qc_copy,
+obs_prior_mean_start, obs_prior_mean_end, obs_prior_var_start, obs_prior_var_end,
+inflate_only) </em>
+<pre>
+type(ensemble_type), intent(inout)         :: <em class=code>ens_handle</em>
+type(ensemble_type), intent(inout)         :: <em class=code>obs_ens_handle</em>
+type(obs_sequence_type), intent(in)        :: <em class=code>obs_seq</em>
+integer, intent(in)                        :: <em class=code>keys(:)</em>
+integer, intent(in)                        :: <em class=code>ens_size</em>
+integer, intent(in)                        :: <em class=code>num_groups</em>
+integer, intent(in)                        :: <em class=code>obs_val_index</em>
+type(adaptive_inflate_type), intent(inout) :: <em class=code>inflate</em>
+integer, intent(in)                        :: <em class=code>ens_mean_copy</em>
+integer, intent(in)                        :: <em class=code>ens_sd_copy</em>
+integer, intent(in)                        :: <em class=code>ens_inf_copy</em>
+integer, intent(in)                        :: <em class=code>ens_inf_sd_copy</em>
+integer, intent(in)                        :: <em class=code>obs_key_copy</em>
+integer, intent(in)                        :: <em class=code>obs_global_qc_copy</em>
+integer, intent(in)                        :: <em class=code>obs_prior_mean_start</em>
+integer, intent(in)                        :: <em class=code>obs_prior_mean_end</em>
+integer, intent(in)                        :: <em class=code>obs_prior_var_start</em>
+integer, intent(in)                        :: <em class=code>obs_prior_var_end</em>
+logical, intent(in)                        :: <em class=code>inflate_only</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Does assimilation and inflation for a set of observations that is identified
+by having integer indices listed in keys. Only the inflation is updated if
+inflation_only is true, otherwise the state is also updated.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle</em></TD>
+    <TD>Contains state variable ensemble data and description.</TD></TR>
+<TR><TD valign=top><em class=code>obs_ens_handle</em></TD>
+    <TD>Contains observation prior variable ensemble and description.</TD></TR>
+<TR><TD valign=top><em class=code>obs_seq</em></TD>
+    <TD>Contains the observation sequence including observed values and
+         error variances.</TD></TR>
+<TR><TD valign=top><em class=code>keys</em></TD>
+    <TD>A list of integer indices of observations in obs_seq that are
+         to be used at this time.</TD></TR>
+<TR><TD valign=top><em class=code>ens_size</em></TD>
+    <TD>Number of ensemble members in state and observation prior ensembles.</TD></TR>
+<TR><TD valign=top><em class=code>num_groups</em></TD>
+    <TD>Number of groups being used in assimilation.</TD></TR>
+<TR><TD valign=top><em class=code>obs_val_index</em></TD>
+    <TD>Integer index of copy in obs_seq that contains the observed
+          value from instrument.</TD></TR>
+<TR><TD valign=top><em class=code>inflate</em></TD>
+    <TD>Contains inflation values and all information about inflation
+        to be used.</TD></TR>
+<TR><TD valign=top><em class=code>ens_mean_copy</em></TD>
+    <TD>Index of copy containing ensemble mean in ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>ens_sd_copy</em></TD>
+    <TD>Index of copy containing ensemble standard deviation in ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>ens_inf_copy</em></TD>
+    <TD>Index of copy containing state space inflation in ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>ens_inf_sd_copy</em></TD>
+    <TD>Index of copy containing state space inflation standard deviation
+        in ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>obs_key_copy</em></TD>
+    <TD>Index of copy containing unique key for observation in obs_ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>obs_global_qc_copy</em></TD>
+    <TD>Index of copy containing global quality control value in
+        obs_ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>obs_prior_mean_start&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Index of copy containing first group's prior mean in obs_ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>obs_prior_mean_end</em></TD>
+    <TD>Index of copy containing last group's prior mean in obs_ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>obs_prior_var_start</em></TD>
+    <TD>Index of copy containing first group's ensemble variance in
+        obs_ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>obs_prior_var_end</em></TD>
+    <TD>Index of copy containing last group's ensemble variance in
+         obs_ens_handle.</TD></TR>
+<TR><TD valign=top><em class=code>inflate_only</em></TD>
+    <TD>True if only inflation is to be updated, and not state.</TD></TR>
+</TABLE>
+
+</div>
+<br />
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<TABLE border=0 summary='files used by this module'>
+<TR><TH>filename</TH>
+    <TH>purpose</TH></TR>
+<TR><TD>input.nml</TD>
+    <TD>to read <em class=code>assim_tools_nml</em></TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<UL>
+<li>Anderson, J. L., 2001:
+An Ensemble Adjustment Kalman Filter for Data Assimilation.
+<span style="font-style: italic;">Mon. Wea. Rev.</span>,
+<span style="font-weight: bold;">129</span>, 2884-2903.<br />
+<a href="http://dx.doi.org/10.1175/1520-0493%282001%29129%3C2884%3AAEAKFF%3E2.0.CO%3B2"
+target="_blank" >
+doi: 10.1175/1520-0493(2001)129&lt;2884:AEAKFF&gt;2.0.CO;2</a>
+<br /> <br />
+</li>
+<li>Anderson, J. L., 2003:
+A Local Least Squares Framework for Ensemble Filtering.
+<span style="font-style: italic;">Mon. Wea. Rev.</span>,
+<span style="font-weight: bold;">131</span>, 634-642.<br />
+<a href="http://dx.doi.org/10.1175/1520-0493%282003%29131%3C0634%3AALLSFF%3E2.0.CO%3B2"
+target="_blank" >
+doi: 10.1175/1520-0493(2003)131&lt;0634:ALLSFF&gt;2.0.CO;2</a>
+<br /> <br />
+</li>
+<li>Anderson, J., Collins, N., 2007:
+Scalable Implementations of Ensemble Filter Algorithms for Data Assimilation.
+<span style="font-style: italic;">Journal of Atmospheric and Oceanic Technology</span>,
+<span style="font-weight: bold;">24</span>, 1452-1463.<br />
+<a href="http://dx.doi.org/10.1175/JTECH2049.1"
+target="_blank" >doi: 10.1175/JTECH2049.1</a>
+<br /> <br />
+</li>
+<li>Anderson, J. L., 2010:
+A Non-Gaussian Ensemble Filter Update for Data Assimilation.
+<span style="font-style: italic;">Mon. Wea. Rev.</span>,
+<span style="font-weight: bold;">139</span>, 4186-4198.<br />
+<a href="http://dx.doi.org/10.1175/2010MWR3253.1"
+target="_blank" >
+doi: 10.1175/2010MWR3253.1</a>
+<br /> <br />
+</li>
+<li>Anderson, J. L., 2011:,
+Localization and Sampling Error Correction
+in Ensemble Kalman Filter Data Assimilation.
+<span style="font-style: italic;">Submitted for publication</span>, Jan 2011.
+Contact author.</li>
+
+</UL>
+<br />
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100% 
+       summary='error codes and conditions'>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>assim_tools_init</TD>
+    <!-- message --><TD VALIGN=top>cant combine spread_restoration and filter_kind ###</TD>
+    <!-- comment --><TD VALIGN=top> Spread restoration only compatible with filter_kind 1 </TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>obs_increment</TD>
+    <!-- message --><TD VALIGN=top>Illegal value of filter_kind in assim_tools namelist [1-8 OK]</TD>
+    <!-- comment --><TD VALIGN=top>Only 1-4,8 currently supported.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>obs_increment_eakf <BR>
+                                   obs_increment_ran_kf <BR>
+                                   obs_increment_det_kf </TD>
+    <!-- message --><TD VALIGN=top>Both obs_var and prior_var are zero. This is inconsistent</TD>
+    <!-- comment --><TD VALIGN=top>Product of two delta functions doesn't work.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>get_correction_from_file</TD>
+    <!-- message --><TD VALIGN=top>Use less than 10000 ensemble</TD>
+    <!-- comment --><TD VALIGN=top> File only works up to 9999 members.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>get_correction_from_file</TD>
+    <!-- message --><TD VALIGN=top>Correction file ______ does not exist.</TD>
+    <!-- comment --><TD VALIGN=top> Couldn't find the correction file in the working directory.</TD>
+</TR>
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+The current version of the systematic error correction algorithm does
+not work in a logical fashion with the parallel region assimilation
+feature.
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

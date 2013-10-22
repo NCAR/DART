@@ -1,0 +1,84 @@
+# DART $Id$
+(qm)
+
+Table 7.   Code table for observation quality markers (last revised 1/30/2002). 
+  
+Quality Marker      Definition
+        
+        0           All steps: Keep (always assimilate).  Applies to pressure, height, wind, temperature, specific humidity,
+                    rainfall rate, precipitable water and cloud top pressure.
+
+        1           All steps: Good.  Applies to pressure, height, wind, temperature, specific humidity, rainfall rate, precipitable
+                    water and cloud top pressure. 
+        
+        2           All steps: Neural or not checked (default).  Applies to pressure, height, wind, temperature, specific humidity,
+                    rainfall rate, precipitable water and cloud top pressure.
+        
+        3           All steps: Suspect.  Applies to pressure, height, wind, temperature, specific humidity, rainfall rate,
+                    precipitable water and cloud top pressure.
+
+      4-15          All steps: Rejected (don't assimilate), as defined below:
+                  
+        4           Step OIQC:  An observation with pre-existing quality marker 0 (keep) is flagged.  Applies to pressure,
+                    height, wind, temperature, specific humidity and precipitable water
+
+        5           Step OIQC:  An observation with pre-existing quality marker 1 (good) is flagged.  Applies to pressure, height,
+                    wind, temperature, specific humidity and precipitable water.
+ 
+        6           Step OIQC:  An observation with pre-existing quality marker 2 (neutral/default) is flagged.  Applies to pressure,                                height, wind, temperature, specific humidity and precipitable water.
+ 
+        7           Step OIQC:  An observation with pre-existing quality marker 3 (suspect) is flagged.  Applies to pressure, height,
+                    wind, temperature, specific humidity and precipitable water.
+                  
+        8           Step PREVENT: An observed pressure on any level is > 100 mb below model (guess) surface pressure.  Applies to
+                    pressure, height, wind, temperature and specific humidity.
+
+                    Step PREVENT: An observed pressure is < 0.  Applies to pressure, height, wind, temperature and specific humidity. 
+                    Step VIRTMP: A virtual temperature is generated from a specific humidity observation with a rejected quality  
+                    marker (> 3).  Applies to temperature.
+                  
+        9           Step PREVENT: An observed surface pressure is > 100 mb above or below model (guess) surface pressure.
+                    Applies to pressure, height, wind, temperature and specific humidity.
+
+                    Step PREVENT: An observation error is missing (applies only for AVN, FNL and CDAS networks).  Applies 
+                    to pressure, height, wind, temperature, specific humidity and precipitable water. 
+
+                    Step PREVENT: A non-pressure observation fails a limit check.  Applies to pressure, height, wind, 
+                    temperature, specific humidity and precipitable water. 
+
+                    Step PREVENT: A moisture observation is above 300 mb.  Applies to moisture.
+                
+       10           Step SYNDATA: A non-synthetic bogus mass report is in the vicinity of a tropical storm.  Applies to pressure
+                    (only) on all levels of the mass report. 
+
+                    Step PREPACQC: An AIREP or PIREP aircraft report in Table A entry AIRCFT is used to generate a superob report.  
+                    Applies to wind and temperature. 
+
+                    Data producer: A wind profiler report in Table A entry PROFLR fails both median and shear checks performed 
+                    by NOAA/FSL.  Applies to wind.
+                
+       11           NCEP/SDM: An observation with pre-existing quality marker 3 (suspect) is flagged.  Applies to pressure, height,
+                    wind, temperature and specific humidity.  This is currently not used.                                        
+
+                    Data producer: A wind profiler report in Table A entry PROFLR does not pass median and shear checks performed 
+                    by NOAA/FSL (results are inconclusive).  Applies to wind.
+                
+       12           NCEP/SDM: A non-profiler observation is on the reject list.  Applies to pressure, height, wind, temperature
+                    and specific humidity.
+
+                    Data producer: A wind profiler report in Table A entry PROFLR fails shear check performed by NOAA/FSL, but 
+                    passes median check.  Applies to wind.
+                
+       13           All automated quality control steps: A non-wind profiler observation failed one or more checks.  Applies to
+                    pressure, height, wind, temperature, specific humidity and precipitable water.
+
+                    Step CQCPROF: A wind profiler report in Table A entry PROFLR failed one or more checks.  Applies to wind. 
+
+                    Data producer: A wind profiler report in Table A entry PROFLR fails median check performed by NOAA/FSL, 
+                    but passes shear check.  Applies to wind.
+       
+       14           NCEP/SDM: An observation is assigned a purge flag.  Applies to pressure, height, wind, temperature and specific
+                    humidity. 
+                
+       15           Step PREPRO: An observation is flagged for non-use by the analysis.  Applies to pressure, height, wind,
+                    temperature, specific humidity, rainfall rate, precipitable water and cloud top pressure.

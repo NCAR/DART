@@ -1,0 +1,58 @@
+# DART $ Id: $
+
+(ITP)
+
+       Code Fig. &|  Description                                 |Tbl. R.2a 
+       U-Air Dic.)|  Country - instrument name                   | equivalent 
+                  |                                              | 
+        00 to 08  |  Not used                                    | 
+          09      |  UNSPECIFIED / UNKNOWN INSTRUMENT TYPE       |    99 
+        * 10      |  UNITED STATES - RS VIZ-A External Thermistor|   01,03 
+        * 11      |  UNITED STATES - RS VIZ-B External Thermistor|    28 
+        * 12      |  UNITED STATES - RS Space Data Corporation   |    29 
+        # 13      |  AUSTRALIA - Astor                           | 
+          14      |  UNITED STATES - Beukers Microsonde          | 
+          15      |  UNITED STATES - EEC Company type 23         | 
+          16      |  AUSTRIA - Elin                              |    23 
+          17      |  GERMANY - Graw G                            | 
+          18      |  RESERVED                                    | 
+        * 19      |  GERMANY - Graw M60                          |    07 
+          20      |  INDIA - Meteorological Service MK3          |    22 
+        # 21      |  SOUTH KOREA - Jinyang (VIZ license)         |    24 
+        * 22      |  JAPAN - Meisei RS2-80                       |    09 
+          23      |  FRANCE - Mesural FMO 1950A                  |   05,15 
+          24      |  FRANCE - Mesural FMO 1945A                  |   05,15 
+          25      |  FRANCE - Mesural MH73A                      |   05,15 
+          26      |  SWITZERLAND - Meteolabor Basora             |    25 
+        * 27      |  CIS - AVK-MRZ                               |    12 
+        * 28      |  CIS - Meteorite Marz2-1                     |    20 
+        * 29      |  CIS - Meteorite Marz2-2                     |    20 
+          30      |  JAPAN - Oki RS2-80                          | 
+        * 31      |  CANADA - Sangamo                            |    18 
+        * 32      |  CHINA - Shanghai Radio                      |    19 
+       #,*33      |  UNITED KINGDOM - Meteorological Office MK3  |    11 
+          34      |  CZECHOSLOVAKIA - Vinohrady                  |    26 
+          35      |  FINLAND - Vaisala RS18                      | 
+          36      |  FINLAND - Vaisala RS21                      | 
+        * 37      |  FINLAND - Vaisala RS80                      |    04 
+          38      |  UNITED STATES - Beukers LOCATE (Loran-C)    | 
+          39      |  GERMANY - Sprenger E076                     | 
+          40      |  GERMANY - Sprenger E084                     | 
+          41      |  GERMANY - Sprenger E085                     | 
+          42      |  GERMANY - Sprenger E086                     | 
+        * 43      |  UNITED KINGDOM - AIR IS-4A-1680             | 
+        * 44      |  UNITED KINGDOM - AIR IS-4A-1680 X           | 
+        * 45      |  RS MSS                                      |    27 
+          46      |  UNITED KINGDOM - AIR IS-4A-403              | 
+        * 47      |  JAPAN - Meisei RS2-91                       | 
+       48 to 59   |  RESERVED FOR ADDITIONAL RADIOSONDES         | 
+        * 60      |  FINLAND - Vaisala RS80/MicroCora            |    04 
+        * 61      |  FINLAND - Vaisala RS80/DigiCora or Marwin   |    04 
+        * 62      |  FINLAND - Vaisala RS80/PCCora               |    04 
+        * 63      |  FINLAND - Vaisala RS80/Star                 |    04 
+       64 to 98   |  RESERVED                                    | 
+          99      |  UNSPECIFIED ("RESERVED" in BUFR table)      | 
+                  |                                              |          . 
+
+     * - Inst. types corrected with 1991 tables (see NMC O.Note 374). 
+     # - No longer in use. 

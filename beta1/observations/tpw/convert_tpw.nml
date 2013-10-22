@@ -1,0 +1,28 @@
+&convert_tpw_nml
+   start_year          = 2008
+   start_month         = 1
+   start_day           = 1
+   total_days          = 31
+   max_obs             = 150000
+   time_bin_start      = 0.0  
+   time_bin_interval   = 0.50
+   time_bin_half_width = 0.25
+   time_bin_end        = 24.0
+   delta_lat_box       = 1.0
+   delta_lon_box       = 1.0
+   min_lon             =   0.0
+   max_lon             = 360.0
+   min_lat             = -90.0
+   max_lat             =  90.0
+   ObsBase             = '../data'
+   InfilePrefix        = 'datafile.'
+   InfileSuffix        = '.txt'
+   OutfilePrefix       = 'obs_seq.'
+   OutfileSuffix       = ''
+   observation_name    = 'MODIS_TOTAL_PRECIPITABLE_WATER'
+ /
+
+   ! alternate obs types:
+   !observation_name    = 'AQUA_TOTAL_PRECIPITABLE_WATER'
+   !observation_name    = 'TERRA_TOTAL_PRECIPITABLE_WATER'
+   !observation_name    = 'AMSR_TOTAL_PRECIPITABLE_WATER'

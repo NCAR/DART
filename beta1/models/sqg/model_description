@@ -1,0 +1,11 @@
+DART $Id$
+
+This is a uniform PV two-surface QG+1 spectral model contributed
+by Rahul Majahan. 
+
+The underlying model is described in:
+Hakim, Gregory J., 2000: Role of Nonmodal Growth and Nonlinearity in 
+Cyclogenesis Initial-Value Problems. J. Atmos. Sci., 57, 2951-2967.
+doi: 10.1175/1520-0469(2000)057<2951:RONGAN>2.0.CO;2
+
+

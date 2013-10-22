@@ -1,0 +1,10 @@
+&convert_cosmic_gps_nml
+  obs_levels(nmaxlevels) = -1.0
+  local_operator         = .true.
+  ray_ds                 = 5000.0
+  ray_htop               = 15000.0
+  gpsro_netcdf_file      = 'cosmic_gps_input.nc'
+  gpsro_netcdf_filelist  = 'cosmic_gps_input_list'
+  gpsro_out_file         = 'obs_seq.gpsro'
+/
+

@@ -1,0 +1,3 @@
+&cov_cutoff_nml
+   select_localization = 1  /
+

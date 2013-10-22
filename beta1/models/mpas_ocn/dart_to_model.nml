@@ -1,0 +1,5 @@
+&dart_to_model_nml
+   dart_to_model_input_file = 'dart_restart',
+   advance_time_present     = .true.,
+  /
+

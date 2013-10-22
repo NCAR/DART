@@ -1,0 +1,55 @@
+      <comment>
+         AK 9/12/13: Stream description template file for CAMASSIM CPL history daily Solar data at 0.9x1.25 resolution for POPDART testing
+      $Id$
+      TJH comment: the file names are not consistent through time. Be forewarned.
+      CAM_halo-O2-POP74-instance.           cpl.ha2x1dx6h.1974.nc
+      CAM_halo-O2-POP79-instance.           cpl.ha2x1dx6h.1979.nc
+      CAM_halo-O2-POP84-instance.           cpl.ha2x1dx6h.1984.nc
+      CAM_halo-O2-POP89-instance.           cpl.ha2x1dx6h.1989.nc
+      CAM_halo-O2-POP94-instance.           cpl.ha2x1dx6h.1994.nc
+      FV_greg_single-O2-POP11-instance.     cpl.ha2x1dx6h.1998.nc
+      FV_greg_single-O2-POP11-instance.     cpl.ha2x1dx6h.1999.nc
+      FV2deg_Cplr_out_single-POP15-instance.cpl.ha2x1dx6h.2000.nc
+      FV2deg_Cplr_out_single-POP15-instance.cpl.ha2x1dx6h.2001.nc
+      FV2deg_Cplr_out_single-POP15-instance.cpl.ha2x1dx6h.2002.nc
+      CAM_halo-O2-POP15-instance.           cpl.ha2x1dx6h.2003.nc
+      CAM_halo-O2-POP15-instance.           cpl.ha2x1dx6h.2004.nc
+      CAM_halo-O2-POP15-instance.           cpl.ha2x1dx6h.2005.nc
+      </comment>
+      <dataSource>
+         CPL
+      </dataSource>
+      <domainInfo>
+         <variableNames>
+            time         time
+            doma_lon     lon
+            doma_lat     lat
+            doma_area    area
+            doma_mask    mask
+         </variableNames>
+         <filePath>
+             /glade/p/image/CAMEAKF_POP_FORCING
+         </filePath>
+         <fileNames>
+             FV.domain.6havg.nc
+         </fileNames>
+      </domainInfo>
+      <fieldInfo>
+         <variableNames>
+            a2x6h_Faxa_rainc     rainc
+            a2x6h_Faxa_rainl     rainl
+            a2x6h_Faxa_snowc     snowc
+            a2x6h_Faxa_snowl     snowl
+         </variableNames>
+         <filePath>
+             /glade/p/image/CAMEAKF_POP_FORCING/6hourly
+         </filePath>
+         <fileNames>
+            CAM_halo-O2-POP15-NINST.cpl.ha2x1dx6h.2003.nc
+            CAM_halo-O2-POP15-NINST.cpl.ha2x1dx6h.2004.nc
+            CAM_halo-O2-POP15-NINST.cpl.ha2x1dx6h.2005.nc
+         </fileNames>
+         <offset>
+            -5400
+         </offset>
+      </fieldInfo>

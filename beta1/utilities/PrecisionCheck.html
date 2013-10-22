@@ -1,0 +1,261 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program PrecisionCheck</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>PrecisionCheck</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+This is a self-contained program to explore the interaction between
+the compiler options to 'autopromote' variables from one precision
+to another and the intrinsic F90 mechanism for getting consistent
+behavior without relying on autopromotion - namely, the
+<em class="code">SELECT_INT_KIND()</em> and 
+<em class="code">SELECT_REAL_KIND()</em> functions.
+The most portable code explicity types the variables to avoid relying
+on compiler flags. The core DART code abides by these rules; some pieces
+that are derived from dynamical models may have original code fragments.
+<br />
+<br />
+All that is required is to compile the single file and run the resulting
+executable. There are no required libraries - any F90 compiler should
+have no trouble with this program. There is no input of any kind.
+<br />
+<br />
+You are encouraged to view the source code. It's pretty obvious 
+what is being tested. 
+</P>
+
+<!--==================================================================-->
+
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>EXAMPLES</H2>
+<P>
+The following examples have differences from the default configuration
+highlighted in boldface. You are strongly encouraged to test your compiler
+and its autopromotion options. The Absoft compiler actually does what I 
+consider to be reasonable and logical (as long as you know that "-dp" 
+means <b>d</b>emote <b>p</b>recision). Many other compilers are surprising.
+</P>
+
+
+<H3 class="indent">PowerPC chipset : Absoft Pro Fortran 9.0</H3>
+<div class="unix">
+<pre>
+[~/DART/utilities] % <em class="input">f90 PrecisionCheck.f90</em>
+[~/DART/utilities] % <em class="input">./a.out</em>
+ 
+ This explores the use of the intrinisc SELECTED_[REAL,INT]_KIND() functions
+ and the interplay with the compiler options. You are encouraged to use the
+ "autopromotion" flags on your compiler and compare the results.
+ 
+----------------------------------------------
+ "integer"
+ DIGITS    =   31
+ HUGE      =   2147483647
+ KIND      =   4
+----------------------------------------------
+ "integer(i4)" i4 = SELECTED_INT_KIND(8)
+ DIGITS    =   31
+ HUGE      =   2147483647
+ KIND      =   4
+----------------------------------------------
+ "integer(i8)" i8 = SELECTED_INT_KIND(13)
+ DIGITS    =   63
+ HUGE      =   9223372036854775807
+ KIND      =   8
+----------------------------------------------
+ "real"
+ DIGITS    =   24
+ EPSILON   =   1.192093E-07
+ HUGE      =   3.402823E+38
+ KIND      =   4
+ PRECISION =   6
+----------------------------------------------
+ "real(r4)" r4 = SELECTED_REAL_KIND(6,30)
+ DIGITS    =   24
+ EPSILON   =   1.192093E-07
+ HUGE      =   3.402823E+38
+ KIND      =   4
+ PRECISION =   6
+----------------------------------------------
+ "real(r8)" r8 = SELECTED_REAL_KIND(13)
+ DIGITS    =   53
+ EPSILON   =   2.220446049250313E-016
+ HUGE      =   1.797693134862315E+308
+ KIND      =   8
+ PRECISION =   15
+----------------------------------------------
+ "double precision"
+ DIGITS    =   53
+ EPSILON   =   2.220446049250313E-016
+ HUGE      =   1.797693134862315E+308
+ KIND      =   8
+ PRECISION =   15
+</pre>
+</div>
+
+<H3 class="indent">PowerPC chipset : Absoft Pro Fortran 9.0 : "-dp"</H3>
+<div class="unix">
+<pre>
+[~/DART/utilities] % <em class="input">f90 -dp PrecisionCheck.f90</em>
+[~/DART/utilities] % <em class="input">./a.out</em>
+ 
+ This explores the use of the intrinisc SELECTED_[REAL,INT]_KIND() functions
+ and the interplay with the compiler options. You are encouraged to use the
+ "autopromotion" flags on your compiler and compare the results.
+ 
+----------------------------------------------
+ "integer"
+ DIGITS    =   31
+ HUGE      =   2147483647
+ KIND      =   4
+----------------------------------------------
+ "integer(i4)" i4 = SELECTED_INT_KIND(8)
+ DIGITS    =   31
+ HUGE      =   2147483647
+ KIND      =   4
+----------------------------------------------
+ "integer(i8)" i8 = SELECTED_INT_KIND(13)
+ DIGITS    =   63
+ HUGE      =   9223372036854775807
+ KIND      =   8
+----------------------------------------------
+ "real"
+ DIGITS    =   24
+ EPSILON   =   1.192093E-07
+ HUGE      =   3.402823E+38
+ KIND      =   4
+ PRECISION =   6
+----------------------------------------------
+ "real(r4)" r4 = SELECTED_REAL_KIND(6,30)
+ DIGITS    =   24
+ EPSILON   =   1.192093E-07
+ HUGE      =   3.402823E+38
+ KIND      =   4
+ PRECISION =   6
+----------------------------------------------
+ "real(r8)" r8 = SELECTED_REAL_KIND(13)
+ DIGITS    =   53
+ EPSILON   =   2.220446049250313E-016
+ HUGE      =   1.797693134862315E+308
+ KIND      =   8
+ PRECISION =   15
+----------------------------------------------
+ "double precision"
+ DIGITS    =   <b>24</b>
+ EPSILON   =   <b>1.192093E-07</b>
+ HUGE      =   <b>3.402823E+38</b>
+ KIND      =   <b>4</b>
+ PRECISION =   <b>6</b>
+</pre>
+</div>
+ 
+<H3 class="indent">PowerPC chipset : Absoft Pro Fortran 9.0 : "-N113"</H3>
+<div class="unix">
+<pre>
+[~/DART/utilities] % <em class="input">f90 -N113 PrecisionCheck.f90</em>
+[~/DART/utilities] % <em class="input">./a.out</em>
+ 
+ This explores the use of the intrinisc SELECTED_[REAL,INT]_KIND() functions
+ and the interplay with the compiler options. You are encouraged to use the
+ "autopromotion" flags on your compiler and compare the results.
+ 
+----------------------------------------------
+ "integer"
+ DIGITS    =   31
+ HUGE      =   2147483647
+ KIND      =   4
+----------------------------------------------
+ "integer(i4)" i4 = SELECTED_INT_KIND(8)
+ DIGITS    =   31
+ HUGE      =   2147483647
+ KIND      =   4
+----------------------------------------------
+ "integer(i8)" i8 = SELECTED_INT_KIND(13)
+ DIGITS    =   63
+ HUGE      =   9223372036854775807
+ KIND      =   8
+----------------------------------------------
+ "real"
+ DIGITS    =   <b>53</b>
+ EPSILON   =   <b>2.220446049250313E-016</b>
+ HUGE      =   <b>1.797693134862315E+308</b>
+ KIND      =   <b>8</b>
+ PRECISION =   <b>15</b>
+----------------------------------------------
+ "real(r4)" r4 = SELECTED_REAL_KIND(6,30)
+ DIGITS    =   24
+ EPSILON   =   1.192093E-07
+ HUGE      =   3.402823E+38
+ KIND      =   4
+ PRECISION =   6
+----------------------------------------------
+ "real(r8)" r8 = SELECTED_REAL_KIND(13)
+ DIGITS    =   53
+ EPSILON   =   2.220446049250313E-016
+ HUGE      =   1.797693134862315E+308
+ KIND      =   8
+ PRECISION =   15
+----------------------------------------------
+ "double precision"
+ DIGITS    =   53
+ EPSILON   =   2.220446049250313E-016
+ HUGE      =   1.797693134862315E+308
+ KIND      =   8
+ PRECISION =   15
+</pre>
+</div>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar     </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

@@ -1,0 +1,16 @@
+
+# different methods to compute 'distance' from mean:
+#  1 = simple absolute difference
+#  2 = normalized absolute difference
+#  3 = simple rmse difference
+#  4 = normalized rmse difference
+
+&closest_member_tool_nml
+   input_file_name        = 'filter_restart',
+   output_file_name       = 'closest_restart',
+   ens_size               = 20,
+   single_restart_file_in = .true.,
+   difference_method      = 4,
+   use_only_kinds         = '',
+ /
+

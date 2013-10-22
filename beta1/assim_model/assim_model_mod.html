@@ -1,0 +1,1691 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module assim_model_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE assim_model_mod</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+   This module acts as an intermediary between DART compliant models
+   and the filter. At one time the assim_model_type, which combines a
+   state vector and a time_type, was envisioned as being fundamental to 
+   how DART views model states. This paradigm is gradually being abandoned
+   so that model state vectors and times are handled as separate
+   data types. It is important to call static_init_assim_model before 
+   using routines in assim_model_mod. Interfaces to work with model
+   time stepping, restart files, and computations about the locations
+   of model state variables and the distance between observations and
+   state variables. Many of the interfaces are passed through nearly directly
+   to the model_mod.
+</P>
+
+
+<H3 class=indent1>NOTES</H3>
+
+<P>
+   A note about documentation style. 
+   Optional arguments are enclosed in brackets 
+   <em class=optionalcode>[like this]</em>.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;assim_model_nml
+   write_binary_restart_files = .true.,
+   netCDF_large_file_support  = .false.
+  /
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR><TD>write_binary_restart_files</TD>
+    <TD>logical</TD>
+    <TD> Write output state restart files in binary format (true)
+         or ascii (false).</TD>
+</TR>
+<TR><TD>netCDF_large_file_support</TD>
+    <TD>logical</TD>
+    <TD> Use the netCDF Large File Support (LFS) format that enables individual records
+        (i.e. all the information that has the same 'unlimited' record value) 
+        to exceed 2GB.  The only downside to using this flag is compatibility 
+        with some netCDF software. Some (but not all) software is not built 
+        with 'LFS' support.  Note it is, and has been, possible to create netCDF 
+        <strong>files</strong> larger than 2GB with a value of 
+        <em>.false</em> - which is compatible with the historical netCDF format. 
+        It is only necessary to use a value of <em>.true.</em> if the state vector 
+        is very large and you are outputting a large number of ensembles. 
+        Default is .false.</TD></TR>
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<!--==================================================================-->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+types_mod
+location_mod (model dependent choice)
+time_manager_mod
+utilities_mod
+model_mod
+netcdf
+typeSizes (part of netcdf)
+</PRE>
+
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC INTERFACES</H2>
+
+<TABLE>
+<TR><TD><em class=call>use assim_model_mod, only : </em></TD>
+<TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#aget_closest_state_time_to">aget_closest_state_time_to</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#aget_initial_condition" >aget_initial_condition</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#aoutput_diagnostics">aoutput_diagnostics</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#aread_state_restart">aread_state_restart</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#assim_model_type" >assim_model_type</A> </TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#awrite_state_restart">awrite_state_restart</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#close_restart">close_restart</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#copy_assim_model">copy_assim_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#end_assim_model">end_assim_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#finalize_diag_output">finalize_diag_output</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_closest_state_time_to" >get_closest_state_time_to</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_diag_input_copy_meta_data">get_diag_input_copy_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_initial_conditions">get_initial_condition</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_size" >get_model_size</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_state_vector">get_model_state_vector</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time" >get_model_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time_step">get_model_time_step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_state_meta_data" >get_state_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_assim_model">init_assim_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_diag_input">init_diag_input</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_diag_output" >init_diag_output</A> </TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#input_diagnostics">input_diagnostics</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#interpolate">interpolate</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_append_time">nc_append_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_get_tindex">nc_get_tindex</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_calendar_atts">nc_write_calendar_atts</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#netcdf_file_type" >netcdf_file_type</A> </TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#open_restart_read">open_restart_read</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#open_restart_write">open_restart_write</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#output_diagnostics">output_diagnostics</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_state">pert_model_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_state_restart">read_state_restart</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_model_state_vector">set_model_state_vector</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_model_time">set_model_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#static_init_assim_model" >static_init_assim_model</A> </TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#write_state_restart">write_state_restart</A></TD></TR>
+</TABLE>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="assim_model_type"></A>
+<br>
+<div class=routine>
+<pre>
+<em class=call>type assim_model_type</em>
+   private
+   real(r8), pointer   :: state_vector(:) 
+   type(time_type)     :: time
+   integer             :: model_size
+   integer             :: copyID
+end type assim_model_type
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+This type is used to represent both the state and time of a state
+from a model.
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Component   </TH>
+    <TH align=left>Description </TH></TR>
+<TR><TD valign=top> state_vector </TD>
+    <TD>A one dimensional representation of the model state vector.</TD></TR>
+<TR><TD valign=top> time         </TD>
+    <TD>The time of the model state.</TD></TR>
+<TR><TD valign=top> model_s      </TD>
+    <TD>Size of the model state vector.</TD></TR>
+<TR><TD valign=top> copyID       </TD>
+    <TD>Not used in present implementation.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="netcdf_file_type"></A>
+<br>
+<div class=routine><pre>
+<em class=call>type netcdf_file_type</em>
+   integer             :: ncid
+   integer             :: Ntimes
+   integer             :: NtimesMAX
+   real(r8), pointer   :: rtimes(:)
+   type(time_type), pointer :: times(:)
+   character(len = 80)      :: fname
+end type netcdf_file_type
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Basically, we want to keep a local mirror of the unlimited dimension
+coordinate variable (i.e. time) because dynamically querying it
+causes unacceptable performance degradation over "long" integrations.
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Component        </TH>
+    <TH align=left>Description      </TH></TR>
+<TR><TD valign=top> ncid            </TD>
+    <TD>The netcdf file unit id.    </TD></TR>
+<TR><TD valign=top> Ntimes          </TD>
+    <TD>The current working length. </TD></TR>
+<TR><TD valign=top> NtimesMAX       </TD>
+    <TD>Allocated length.           </TD></TR>
+<TR><TD valign=top> rtimes          </TD>
+    <TD>Times as real (r8).         </TD></TR>
+<TR><TD valign=top> times           </TD>
+    <TD>Times as time_types.        </TD></TR>
+<TR><TD valign=top> fname           </TD>
+    <TD>Netcdf file name.           </TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="static_init_assim_model"></A>
+<br>
+<div class=routine>
+<em class=call>call static_init_assim_model() </em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+<P>
+   Initializes the assim_model class. Must be called before any other 
+   assim_model_mod interfaces are used. Also calls the static initialization
+   for the underlying model. There are no arguments.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_diag_output"></A>
+<br>
+<div class=routine>
+<em class=call> ncFileID = init_diag_output(FileName, global_meta_data, 
+   copies_of_field_per_time, meta_data_per_copy 
+   <em class=optionalcode>[,&nbsp;lagID]</em>) </em>
+<pre>
+type(netcdf_file_type)          :: <em class=code>init_diag_output </em>
+character (len = *), intent(in) :: <em class=code>FileName </em>
+character (len = *), intent(in) :: <em class=code>global_meta_data </em>
+integer, intent(in)             :: <em class=code>copies_of_field_per_time </em>
+character (len = *), intent(in) :: <em class=code>meta_data_per_copy(copies_of_field_per_time) </em>
+integer, optional, intent(in)   :: <em class=optionalcode>lagID </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+   Initializes a netCDF file for output of state space diagnostics. A handle to 
+   the channel on which the file is opened is returned.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>ncFileID</em></TD>
+    <TD>Identifier for the netcdf file is returned.
+        This is not an integer unit number, but a derived type
+        containing additional information about the opened file.</TD></TR>
+
+<TR><TD valign=top><em class=code>FileName</em></TD>
+    <TD>Name of file to open.</TD></TR>
+
+<TR><TD valign=top><em class=code>global_meta_data</em></TD>
+    <TD>Global metadata that describes the contents of this file.</TD></TR>
+
+<TR><TD valign=top><em class=code>copies_of_field_per_time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD> Number of copies of data to be written at each time. For instance,
+         these could be the prior ensemble members, prior ensemble mean, 
+         prior ensemble spread, posterior ensemble members, posterior
+         spread and mean, etc..</TD></TR>
+
+<TR><TD valign=top><em class=code>meta_data_per_copy</em></TD>
+    <TD> Metadata describing each of the copies.</TD></TR>
+
+<TR><TD valign=top><em class=optionalcode>lagID</em></TD>
+    <TD>If using the smoother, which lag number this output is for.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_model_size"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_model_size() </em>
+<pre>
+integer :: <em class=code>get_model_size </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+  Returns the size of the model state vector. 
+  This is a direct pass through to the model_mod.   
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_closest_state_time_to"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_closest_state_time_to(assim_model, time) </em>
+<pre>
+type(time_type)                     :: <em class=code> get_closest_state_time_to </em>
+type(assim_model_type), intent(in)  :: <em class=code> assim_model </em>
+type(time_type), intent(in)         :: <em class=code> time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+  Returns the closest time that a model is capable of advancing a given state to a 
+  specified time. For instance, what is the closest time to 12GMT 01 January, 2004
+  that a model state at 00GMT 01 January, 2004 can be advanced?  If the model time
+  is past the time, the model time is returned (new feature in releases after Hawaii).
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>The closest time to which the model can be advanced is returned.</TD></TR>
+
+<TR><TD valign=top><em class=code>assim_model &nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>A model state vector and time that might be advanced.</TD></TR>
+
+<TR><TD valign=top><em class=code>time</em></TD>
+    <TD>A time that one would like to get close to with the model.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="aget_initial_condition"></A>
+<br>
+<div class=routine>
+<em class=call> call aget_initial_condition(time, x) </em>
+<pre>
+type(time_type), intent(out) :: <em class=code>time</em>
+type(r8), intent(out) :: <em class=code>x</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads an initial time and state vector from a restart format file
+into a real time and real array, which are put into an assim_model_type.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Contains time of input state vector on return</TD></TR>
+<TR><TD valign=top><em class=code>x</em></TD>
+    <TD>Contains state of input state vector on return</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_state_meta_data"></A>
+<br>
+<div class=routine>
+<em class=call> call get_state_meta_data() </em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Pass through to model_mod. 
+See model_mod documentation for arguments and description. 
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_model_time"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_model_time(assim_model) </em>
+<pre>
+type(time_type)                    :: <em class=code>get_model_time</em>
+type(assim_model_type), intent(in) :: <em class=code>assim_model</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns time from an assim_model type.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>Returned time from assim_model</TD></TR>
+<TR><TD valign=top><em class=code>assim_model&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Assim_model type from which to extract time</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_model_state_vector"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_model_state_vector(assim_model) </em>
+<pre>
+real(r8)                           :: <em class=code>get_model_state_vector(model_size)</em>
+type(assim_model_type), intent(in) :: <em class=code>assim_model</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the state vector component from an assim_model_type.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>Returned state vector</TD></TR>
+<TR><TD valign=top><em class=code>assim_model&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Input assim_model_type</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="copy_assim_model"></A>
+<br>
+<div class=routine>
+<em class=call> call copy_assim_model(model_out, model_in) </em>
+<pre>
+type(assim_model_type), intent(out) :: <em class=code>model_out</em>
+type(assim_model_type), intent(in)  :: <em class=code>model_in</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Copies one assim_model_type to another.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>model_out&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Copy.</TD></TR>
+<TR><TD valign=top><em class=code>model_in</em></TD>
+    <TD>Data to be copied.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="interpolate"></A>
+<br>
+<div class=routine>
+<em class=call> call interpolate(x, location, loctype, obs_vals, istatus) </em>
+<pre>
+real(r8),            intent(in)  :: <em class=code>x(:)</em>
+type(location_type), intent(in)  :: <em class=code>location</em>
+integer,             intent(in)  :: <em class=code>loctype</em>
+real(r8),            intent(out) :: <em class=code>obs_vals</em>
+integer,             intent(out) :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Interpolates a given model state variable type to a location given
+the model state vector. Nearly direct call to model_interpolate in
+model_mod.  See model_mod for the error return values in istatus.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>x</em></TD>
+    <TD>Model state vector.</TD></TR>
+<TR><TD valign=top><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Location to which to interpolate.</TD></TR>
+<TR><TD valign=top><em class=code>loctype</em></TD>
+    <TD>Type of variable to interpolate.</TD></TR>
+<TR><TD valign=top><em class=code>obs_vals</em></TD>
+    <TD>Returned interpolated value.</TD></TR>
+<TR><TD valign=top><em class=code>istatus</em></TD>
+    <TD>Returned as 0 if all is well, else various errors.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="set_model_time"></A>
+<br>
+<div class=routine>
+<em class=call> call set_model_time(assim_model, time) </em>
+<pre>
+type(assim_model_type), intent(inout) :: <em class=code>assim_model</em>
+type(time_type), intent(in)           :: <em class=code>time</em>
+</pre>
+</div>
+
+<!-- Description -->
+<div class=indent1>
+
+<P>
+Sets the time in an assim_model_type.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>assim_model&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Set the time in this assim_model_type.</TD></TR>
+<TR><TD valign=top><em class=code>time</em></TD>
+    <TD>Set to this time</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="set_model_state_vector"></A>
+<br>
+<div class=routine>
+<em class=call> call set_model_state_vector(assim_model, state) </em>
+<pre>
+type(assim_model_type), intent(inout) :: <em class=code>assim_model</em>
+real(r8), intent(in)                  :: <em class=code>state(:)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Set the state in an assim_model_type.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>assim_model&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Set the state vector in this assim_model_type.</TD></TR>
+<TR><TD valign=top><em class=code>state</em></TD>
+    <TD>The state vector to be inserted.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="write_state_restart"></A>
+<br>
+<div class=routine>
+<em class=call> call write_state_restart(assim_model, funit 
+<em class=optionalcode>[,&nbsp;target_time]</em>) </em>
+<pre>
+type(assim_model_type),    intent(in) :: <em class=code>assim_model</em>
+integer,                   intent(in) :: <em class=code>funit</em>
+type(time_type), optional, intent(in) :: <em class=optionalcode>target_time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Writes a restart from an assim_model_type with an optional target_time.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>assim_model&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Write a restart from this assim_model_type.</TD></TR>
+<TR><TD valign=top><em class=code>funit</em></TD>
+    <TD>Integer file unit id open for output of restart files.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>target_time</em></TD>
+    <TD>If present, put this target time at the front of the restart file.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+
+<A NAME="read_state_restart"></A>
+<br>
+<div class=routine>
+<em class=call> call read_state_restart(assim_model, funit 
+<em class=optionalcode>[,&nbsp;target_time]</em>) </em>
+<pre>
+type(assim_model_type),    intent(out) :: <em class=code>assim_model</em>
+integer,                   intent(in)  :: <em class=code>funit</em>
+type(time_type), optional, intent(out) :: <em class=optionalcode>target_time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Read a state restart file into assim_model_type. 
+Optionally read a prepended target time.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>assim_model&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Read the time and state vector from restart into this.</TD></TR>
+<TR><TD valign=top><em class=code>funit</em></TD>
+    <TD>File id that has been opened for reading restart files.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>target_time</em></TD>
+    <TD>If present, read a target time from the front of the file into this.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="output_diagnostics"></A>
+<br>
+<div class=routine>
+<em class=call> call output_diagnostics(ndFileID, state 
+<em class=optionalcode>[,&nbsp;copy_index]</em>) </em>
+<pre>
+type(netcdf_file_type), intent(inout) :: <em class=code>ndFileID</em>
+type(assim_model_type), intent(in)    :: <em class=code>state</em>
+integer, optional,      intent(in)    :: <em class=optionalcode>copy_index</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Writes one copy of the state time and vector to a netCDF file.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ndFileID</em></TD>
+    <TD>An identifier for a netCDF file</TD></TR>
+<TR><TD valign=top><em class=code>state</em></TD>
+    <TD>State vector and time</TD></TR>
+<TR><TD valign=top><em class=optionalcode>copy_index&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Which copy of state is to be output</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="end_assim_model"></A>
+<br>
+<div class=routine>
+<em class=call> call end_assim_model() </em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Called to clean-up at end of assim_model use. 
+For now just passes through to model_mod.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="input_diagnostics"></A>
+<br>
+<div class=routine>
+<em class=call> call input_diagnostics(file_id, state, copy_index) </em>
+<pre>
+integer,                intent(in)    :: <em class=code>file_id</em>
+type(assim_model_type), intent(inout) :: <em class=code>state</em>
+integer,                intent(out)   :: <em class=code>copy_index</em>
+</pre>
+</div>
+
+<div class=indent1>
+ <!-- Description -->
+
+<P>
+Used to read in a particular copy of the state vector from an open
+state diagnostics file.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>file_id</em></TD>
+    <TD>Integer descriptor (channel number) for a diagnostics file being read.</TD></TR>
+<TR><TD valign=top><em class=code>state</em></TD>
+    <TD>Assim_model_type to read in data.</TD></TR>
+<TR><TD valign=top><em class=code>copy_index&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Which copy of state to be read.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_diag_input"></A>
+<br>
+<div class=routine>
+<em class=call> var = init_diag_input(file_name, global_meta_data, model_size, 
+copies_of_field_per_time) </em>
+<pre>
+integer                       :: <em class=code>init_diag_input</em>
+character(len=*), intent(in)  :: <em class=code>file_name</em>
+character(len=*), intent(out) :: <em class=code>global_meta_data</em>
+integer,          intent(out) :: <em class=code>model_size</em>
+integer,          intent(out) :: <em class=code>copies_of_field_per_time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Opens a state diagnostic file and reads the global meta data, model size, and
+number of data copies.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>Returns the unit number on which the file is open.</TD></TR>
+<TR><TD valign=top><em class=code>file_name</em></TD>
+    <TD>File name of state diagnostic file.</TD></TR>
+<TR><TD valign=top><em class=code>global_meta_data</em></TD>
+    <TD>Global metadata string from file.</TD></TR>
+<TR><TD valign=top><em class=code>model_size</em></TD>
+    <TD>Size of model.</TD></TR>
+<TR><TD valign=top><em class=code>copies_of_field_per_time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Number of copies of the state vector at each time.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_assim_model"></A>
+<br>
+<div class=routine>
+<em class=call> call init_assim_model(state) </em>
+<pre>
+type(assim_model_type), intent(inout) :: <em class=code>state</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Creates storage for an assim_model_type.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>state&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>An assim_model_type that needs storage created.</TD></TR>
+</TABLE>
+
+</div><br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_diag_input_copy_meta_data"></A>
+<br>
+<div class=routine>
+<em class=call> call get_diag_input_copy_meta_data(file_id, model_size_out,
+num_copies, location, meta_data_per_copy) </em>
+<pre>
+integer,             intent(in)  :: <em class=code>file_id</em>
+integer,             intent(in)  :: <em class=code>model_size_out</em>
+integer,             intent(in)  :: <em class=code>num_copies</em>
+type(location_type), intent(out) :: <em class=code>location(model_size_out)</em>
+character(len = *)               :: <em class=code>meta_data_per_copy(num_copies)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads meta-data describing state vectors in a state diagnostics file.
+Given the file, the model_size, and the number of copies, returns the
+locations of each state variable and the text description of each copy.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>file_id</em></TD>
+    <TD>Integer channel open to state diagostic file being read</TD></TR>
+<TR><TD valign=top><em class=code>Model_size_out</em></TD>
+    <TD>model size</TD></TR>
+<TR><TD valign=top><em class=code>num_copies</em></TD>
+    <TD>Number of copies of state in file</TD></TR>
+<TR><TD valign=top><em class=code>location</em></TD>
+    <TD>Returned locations for state vector</TD></TR>
+<TR><TD valign=top><em class=code>meta_data_per_copy&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Meta data describing what is in each copy of state vector</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="finalize_diag_output"></A>
+<br>
+<div class=routine>
+<em class=call> var = finalize_diag_output(ncFileID) </em>
+<pre>
+integer                               :: <em class=code>finalize_diag_output</em>
+type(netcdf_file_type), intent(inout) :: <em class=code>ncFileID</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Used to complete writing on and open netcdf file. An error return is provided
+for passing to the netcdf error handling routines.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>Returns an error value.</TD></TR>
+<TR><TD valign=top><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Netcdf file id of an open file.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="aread_state_restart"></A>
+<br>
+<div class=routine>
+<em class=call> call aread_state_restart(model_time, model_state, funit 
+<em class=optionalcode>[,&nbsp;target_time]</em>) </em>
+<pre>
+type(time_type),           intent(out) :: <em class=code>model_time</em>
+real(r8),                  intent(out) :: <em class=code>model_state(:)</em>
+integer,                   intent(in)  :: <em class=code>funit</em>
+type(time_type), optional, intent(out) :: <em class=optionalcode>target_time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads a model time and state, and optionally a prepended target time,
+from a state restart file.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>model_time</em></TD>
+    <TD>Returned time of model state</TD></TR>
+<TR><TD valign=top><em class=code>model_state&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Returned model state.</TD></TR>
+<TR><TD valign=top><em class=code>funit</em></TD>
+    <TD>Channel open for reading a state restart file.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>target_time</em></TD>
+    <TD>If present, this time is read from the front of the restart file.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="aget_closest_state_time_to"></A>
+<br>
+<div class=routine>
+<em class=call> var = aget_closest_state_time_to (model_time, time) </em>
+<pre>
+type(time_type)             :: <em class=code>aget_closest_state_time_to</em>
+type(time_type), intent(in) :: <em class=code>model_time</em>
+type(time_type), intent(in) :: <em class=code>time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Computes the closest time to which a model can advance given
+the current model time and a target time. If the target time is earlier
+than the model time, the model time is returned (new feature in post Hawaii
+releases).
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>The closest model accessible time to time.</TD></TR>
+<TR><TD valign=top><em class=code>model_time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The current time of the model state.</TD></TR>
+<TR><TD valign=top><em class=code>time</em></TD>
+    <TD>The time we want to get close to.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="aoutput_diagnostics"></A>
+<br>
+<div class=routine>
+<em class=call> call aoutput_diagnostics(ncFileID, model_time, model_state 
+<em class=optionalcode>[, copy_index]</em>) </em>
+<pre>
+type(netcdf_file_type), intent(inout) :: <em class=code>ncFileID</em>
+type(time_type),        intent(in)    :: <em class=code>model_time</em>
+real(r8),               intent(in)    :: <em class=code>model_state(:)</em>
+integer, optional,      intent(in)    :: <em class=optionalcode>copy_index</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Write a state vector to a state diagnostics netcdf file.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ncFileID</em></TD>
+    <TD>Unit for a state vector netcdf file open for output.</TD></TR>
+<TR><TD valign=top><em class=code>model_time</em></TD>
+    <TD>The time of the state to be output</TD></TR>
+<TR><TD valign=top><em class=code>model_state&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>A model state vector to be output.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>copy_index</em></TD>
+    <TD>Which copy of state vector is to be written, default is copy 1</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="awrite_state_restart"></A>
+<br>
+<div class=routine>
+<em class=call> call awrite_state_restart(model_time, model_state, funit
+<em class=optionalcode>[, target_time]</em>) </em>
+<pre>
+type(time_type),           intent(in) :: <em class=code>model_time</em>
+real(r8),                  intent(in) :: <em class=code>model_state(:)</em>
+integer,                   intent(in) :: <em class=code>funit</em>
+type(time_type), optional, intent(in) :: <em class=optionalcode>target_time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Writes a model time and state vector to a restart file and optionally
+prepends a target time.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>model_time</em></TD>
+    <TD>Time of model state.</TD></TR>
+<TR><TD valign=top><em class=code>model_state</em></TD>
+    <TD>Model state vector.</TD></TR>
+<TR><TD valign=top><em class=code>funit</em></TD>
+    <TD>Channel of file open for restart output.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>target_time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>If present, time to be prepended to state time / vector.</TD></TR>
+</TABLE>
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="pert_model_state"></A>
+<br>
+<div class=routine>
+<em class=call> call pert_model_state() </em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Passes through to pert_model_state in model_mod. 
+See model_mod documentation for arguments and details.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="nc_append_time"></A>
+<br>
+<div class=routine>
+<em class=call> var = nc_append_time(ncFileID, time) </em>
+<pre>
+integer                               :: <em class=code>nc_append_time</em>
+type(netcdf_file_type), intent(inout) :: <em class=code>ncFileID</em>
+type(time_type),        intent(in)    :: <em class=code>time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Appends the time to the time coordinate variable of the netcdf file.
+The new length of the time variable is returned. Requires that time is
+a coordinate variable AND it is the unlimited dimension.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>Returns new length of time variable.</TD></TR>
+<TR><TD valign=top><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Points to open netcdf file.</TD></TR>
+<TR><TD valign=top><em class=code>time</em></TD>
+    <TD>The next time to be added to the file.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="nc_write_calendar_atts"></A>
+<br>
+<div class=routine>
+<em class=call> var = nc_write_calendar_atts(ncFileID, TimeVarID) </em>
+<pre>
+integer                            :: <em class=code>nc_write_calendar_atts</em>
+type(netcdf_file_type), intent(in) :: <em class=code>ncFileID</em>
+integer,                intent(in) :: <em class=code>TimeVarID</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Sets up the metadata for the appropriate calendar being used in the
+time manager an writes it to a netcdf file.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>Returns a netcdf error code.</TD></TR>
+<TR><TD valign=top><em class=code>ncFileID</em></TD>
+    <TD>Netcdf file id pointing to a file open for writing.</TD></TR>
+<TR><TD valign=top><em class=code>TimeVarID&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The index of the time variable in the netcdf file.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="nc_get_tindex"></A>
+<br>
+<div class=routine>
+<em class=call> var = nc_get_tindex(ncFileID, statetime) </em>
+<pre>
+integer                               :: <em class=code>nc_get_tindex</em>
+type(netcdf_file_type), intent(inout) :: <em class=code>ncFileID</em>
+type(time_type),        intent(in)    :: <em class=code>statetime</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the index of a time from the time variable in a netcdf file. This
+function has been replaced with more efficient approaches and may be
+deleted from future releases.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>The index of the time in the netcdf file.</TD></TR>
+<TR><TD valign=top><em class=code>ncFileID</em></TD>
+    <TD>File id for an open netcdf file.</TD></TR>
+<TR><TD valign=top><em class=code>statetime&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The time to be found in the netcdf file.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_model_time_step"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_model_time_step() </em>
+<pre>
+type(time_type) :: <em class=code>get_model_time_step</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+This passes through to model_mod. 
+See model_mod documentation for arguments and details.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Returns time step of model.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="open_restart_read"></A>
+<br>
+<div class=routine>
+<em class=call> var = open_restart_read(file_name) </em>
+<pre>
+integer                      :: <em class=code>open_restart_read</em>
+character(len=*), intent(in) :: <em class=code>file_name</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Opens a restart file for readig.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>Returns a file descriptor (channel number).</TD></TR>
+<TR><TD valign=top><em class=code>file_name&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Name of restart file to be open for reading.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="open_restart_write"></A>
+<br>
+<div class=routine>
+<em class=call> var = open_restart_write(file_name) </em>
+<pre>
+integer                      :: <em class=code>open_restart_write</em>
+character(len=*), intent(in) :: <em class=code>file_name</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Open a restart file for writing.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>Returns a file descriptor (channel) for a restart file.</TD></TR>
+<TR><TD valign=top><em class=code>file_name&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>File name of restart file to be opened.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="close_restart"></A>
+<br>
+<div class=routine>
+<em class=call> call close_restart(file_unit) </em>
+<pre>
+integer, intent(in) :: <em class=code>file_unit</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Closes a restart file.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>file_unit&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>File descriptor (channel number) of open restart file.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="adv_1step"></A>
+<br>
+<div class=routine>
+<em class=call> call adv_1step() </em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Advances a model by one step. 
+Pass through to model_mod. 
+See model_mod documentation for arguments and details.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_initial_conditions"></A>
+<br>
+<div class=routine>
+<em class=call> call get_initial_condition(x) </em>
+<pre>
+type(assim_model_type), intent(out) :: <em class=code>x</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Obtains an initial condition from models that support this option.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>x&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>assim_model into which an initial model state can be written.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="ens_mean_for_model"></A>
+<br>
+<div class=routine>
+<em class=call> call ens_mean_for_model(ens_mean) </em>
+<pre>
+type(r8), intent(in) :: <em class=code>ens_mean(:)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+An array of length model_size containing the ensemble means.
+This is a direct pass through to the model_mod.   
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_mean&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Array of length model_size containing the mean for each 
+        entry in the state vector.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_maxdist_init"></A>
+<br>
+<div class=routine>
+<em class=call> call get_close_maxdist_init(gc, maxdist) </em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+type(r8), intent(in)                :: <em class=code>maxdist</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Sets the threshold distance.
+Anything closer than this is deemed to be close.
+This is a direct pass through to the model_mod, 
+which in turn can pass through to the location_mod.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>gc</em></TD>
+    <TD>Data for efficiently finding close locations.</TD></TR>
+<TR><TD valign=top><em class=code>maxdist&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Anything closer than this distance is a close location.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_obs"></A>
+<br>
+<div class=routine>
+<em class=call> call get_close_obs(gc, base_obs_loc, base_obs_kind, obs,
+                obs_kind, num_close, close_ind
+<em class=optionalcode>[,&nbsp;dist]</em>) </em>
+<pre>
+type(get_close_type), intent(in)  :: <em class=code>gc</em>
+type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
+integer,              intent(in)  :: <em class=code>base_obs_kind</em>
+type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
+integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
+integer,              intent(out) :: <em class=code>num_close</em>
+integer,              intent(out) :: <em class=code>close_ind(:)</em>
+real(r8),  optional,  intent(out) :: <em class=optionalcode>dist(:)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given a single location and a list of other locations, returns the
+indices of all the locations close to the single one along with the
+number of these and the distances for the close ones.
+The observation kinds are passed in to allow more sophisticated 
+distance computations to be done if needed.
+This is a direct pass through to the model_mod, which in turn can pass 
+through to the location_mod.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>gc</em></TD>
+    <TD>Data for efficiently finding close locations.</TD></TR>
+<TR><TD valign=top><em class=code>base_obs_loc</em></TD>
+    <TD>Single given location.</TD></TR>
+<TR><TD valign=top><em class=code>base_obs_kind&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Kind of the single location.</TD></TR>
+<TR><TD valign=top><em class=code>obs</em></TD>
+    <TD>List of observations from which close ones are to be found.</TD></TR>
+<TR><TD valign=top><em class=code>obs_kind</em></TD>
+    <TD>Kind associated with observations in obs list.</TD></TR>
+<TR><TD valign=top><em class=code>num_close</em></TD>
+    <TD>Number of observations close to the given location.</TD></TR>
+<TR><TD valign=top><em class=code>close_ind</em></TD>
+    <TD>Indices of those locations that are close.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>dist</em></TD>
+    <TD>Distance between given location and the close ones 
+        identified in close_ind.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_obs_init"></A>
+<br>
+<div class=routine>
+<em class=call> call get_close_obs_init(gc, num, obs) </em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+integer,              intent(in)    :: <em class=code>num</em>
+type(location_type),  intent(in)    :: <em class=code>obs(:)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Initialize storage for efficient identification of locations close to a 
+given location.  Allocates storage for keeping track of which 'box' each 
+observation in the list is in.
+This is a direct pass through to the model_mod, 
+which in turn can pass through to the location_mod.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>gc</em></TD>
+    <TD>Data for efficiently finding close locations.</TD></TR>
+<TR><TD valign=top><em class=code>num</em></TD>
+    <TD>The number of locations in the list.</TD></TR>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The location of each element in the list, not used 
+        in 1D implementation.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<!--kdr; Should these files be listed as "used by this module"? -->
+<!--     What about diagnostics files? -->
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<TABLE border=0 >
+<TR><TH>filename&nbsp;&nbsp;&nbsp;</TH>
+    <TH>purpose/comment</TH></TR>
+<TR><TD>filter_restart</TD>
+    <TD>specified in &amp;filter_nml:restart_in_filename</TD></TR>
+<TR><TD>filter_restart</TD>
+    <TD>specified in &amp;filter_nml:restart_out_filename</TD></TR>
+<TR><TD>input.nml</TD>
+    <TD>to read namelists</TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>init_diag_output</TD>
+    <!-- message --><TD VALIGN=top>Compiler does not support required kinds of variables.</TD>
+    <!-- comment --><TD VALIGN=top>NetCDF-f90 interface function byteSizeOK returned FALSE</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>init_diag_output and various nc_XXX</TD>
+    <!-- message --><TD VALIGN=top>various NetCDF-f90 messages</TD>
+    <!-- comment --><TD VALIGN=top>Returned by one of the NetCDF calls in this subroutine. 
+      Consult the NetCDF manual. </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>get_diag_input_copy_meta_data</TD>
+    <!-- message --><TD VALIGN=top>expected to read "locat" got ...</TD> 
+    <!-- comment --><TD VALIGN=top>The header of the metadata for the copies of the data 
+                        in diagnostic input file is not = 'locat'</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>set_model_state_vector</TD>
+    <!-- message --><TD VALIGN=top>state vector has length # 
+                      model size (#) does not match.</TD>
+    <!-- comment --><TD VALIGN=top>Check your model resolution and fields included in the state vector.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>aread_state_restart</TD>
+    <!-- message --><TD VALIGN=top>read error is : # </TD>
+    <!-- comment --><TD VALIGN=top>Unable to read model state from assim_model_state_ic# file. 
+                        # is error condition retured by read statement.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>open_restart_read</TD>
+    <!-- message --><TD VALIGN=top>OPEN status was #</TD>
+    <!-- comment --><TD VALIGN=top>Failed to open file listed for reason #.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>aoutput_diagnostics</TD>
+    <!-- message --><TD VALIGN=top>model time (d,s) (#,#) is index # in ncFileID # </TD>
+    <!-- comment --><TD VALIGN=top>Time index for file listed is &#60; 0 </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>ainput_diagnostics</TD>
+    <!-- message --><TD VALIGN=top>expected "copy", got _____'</TD>
+    <!-- comment --><TD VALIGN=top>Trying to read diagnostic state output header.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_append_time</TD>
+    <!-- message --><TD VALIGN=top>"time" expected to be rank-1</TD>
+    <!-- comment --><TD VALIGN=top>ndims /= 1 <BR>
+      The time array of the NetCDF file should be 1-dimensional</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_append_time</TD>
+    <!-- message --><TD VALIGN=top>unlimited dimension expected to be slowest-moving</TD>
+    <!-- comment --><TD VALIGN=top>dimids(1) /= unlimitedDimID</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_append_time</TD>
+    <!-- message --><TD VALIGN=top>time mirror and netcdf file time dimension out-of-sync</TD>
+    <!-- comment --><TD VALIGN=top>lngth /= ncFileId%Ntimes</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_append_time</TD>
+    <!-- message --><TD VALIGN=top>various NetCDF-f90 error messages</TD>
+    <!-- comment --><TD VALIGN=top>Returned from one of the NetCDF calls in this subroutine.
+      Consult the NetCDF manual. </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_get_tindex</TD>
+    <!-- message --><TD VALIGN=top>trouble deep ... can go no farther. Stopping.</TD>
+    <!-- comment --><TD VALIGN=top>timeindex < -1</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_get_tindex</TD>
+    <!-- message --><TD VALIGN=top>Model time preceeds earliest netCDF time.</TD>
+    <!-- comment --><TD VALIGN=top>Time of current assim_model is earlier than all the times 
+     on the NetCDF file to which the state is to be written by aoutput_diagnostics.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_get_tindex</TD>
+    <!-- message --><TD VALIGN=top>subsequent netCDF time (days, seconds) # # </TD>
+    <!-- comment --><TD VALIGN=top>Time of current assim_model is in the midst of the times 
+     on the NetCDF file to which the state is to be written by aoutput_diagnostics,
+     but doesn't match any of them.  Very bad.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_get_tindex</TD>
+    <!-- message --><TD VALIGN=top>various NetCDF-f90 error messages</TD>
+    <!-- comment --><TD VALIGN=top>Returned from one of the NetCDF calls in this subroutine.
+      Consult the NetCDF manual. </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_write_calendar_atts</TD>
+    <!-- message --><TD VALIGN=top>various NetCDF-f90 error messages</TD>
+    <!-- comment --><TD VALIGN=top>Returned from one of the NetCDF calls in this subroutine.
+      Consult the NetCDF manual. </TD>
+</TR>
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

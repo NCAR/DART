@@ -1,0 +1,12 @@
+#
+# DART $Id$
+#
+# Packages
+ &PACKAGES
+  useGMRedi=.FALSE.,
+  useKPP=.true.,
+  useECCO=.true.,
+  useEXF=.true.,
+  useOBCS=.true.,
+  useSEAICE=.false.,
+ &

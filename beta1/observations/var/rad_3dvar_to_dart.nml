@@ -1,0 +1,6 @@
+&rad_3dvar_to_dart_nml
+   var_file = 'qc_radr_3dvar_2002083100.dat',
+   obs_seq_out_file_name = 'obs_seq.out',
+   calendar_type = 3  
+/
+

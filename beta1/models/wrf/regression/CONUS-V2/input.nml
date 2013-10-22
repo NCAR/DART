@@ -1,0 +1,286 @@
+&filter_nml
+   async                    =  2,
+   adv_ens_command          = "./advance_model.csh",
+   ens_size                 =  32,
+   start_from_restart       = .true.,
+   output_restart           = .true.,
+   obs_sequence_in_name     = "obs_seq.filter_input",
+   obs_sequence_out_name    = "obs_seq.final",
+   restart_in_file_name     = "filter_ic_up",
+   restart_out_file_name    = "filter_ic_new", 
+   init_time_days           = -1,
+   init_time_seconds        = -1,
+   first_obs_days           = -1,
+   first_obs_seconds        = -1,
+   last_obs_days            = -1,
+   last_obs_seconds         = -1,
+   num_output_state_members = 2,
+   num_output_obs_members   = 0,
+   output_interval          = 1,
+   num_groups               = 1,
+   input_qc_threshold       = 4.0,
+   outlier_threshold        = 4.0,
+   output_forward_op_errors = .false.,
+   output_timestamps        = .false.,
+   output_inflation         = .true.,
+   trace_execution          = .true.,
+
+   inf_flavor                  = 2,                      0,
+   inf_initial_from_restart    = .false.,                .false.,
+   inf_sd_initial_from_restart = .false.,                .false.,
+   inf_output_restart          = .true.,                 .true.,
+   inf_deterministic           = .true.,                 .true.,
+   inf_in_file_name            = 'prior_inf_ic_old',     'post_inf_ic_old',
+   inf_out_file_name           = 'prior_inf_ic_new',     'post_inf_ic_new',
+   inf_diag_file_name          = 'prior_inf_diag',       'post_inf_diag',
+   inf_initial                 = 1.00,                   1.00,
+   inf_sd_initial              = 0.60,                   0.50,
+   inf_damping                 = 0.95,                   1.00, 
+   inf_lower_bound             = 0.50,                   1.0,
+   inf_upper_bound             = 1000000.0,              1000000.0,
+   inf_sd_lower_bound          = 0.60,                   0.10
+/
+
+&ensemble_manager_nml
+   single_restart_file_in  = .false.,
+   single_restart_file_out = .false. /
+
+&smoother_nml
+   num_lags              = 0
+   start_from_restart    = .false.
+   output_restart        = .false.
+   restart_in_file_name  = 'smoother_ics'
+   restart_out_file_name = 'smoother_restart' /
+
+&assim_tools_nml
+   filter_kind                     = 1,
+   cutoff                          = 0.16,
+   sort_obs_inc                    = .false.,
+   spread_restoration              = .false.,
+   sampling_error_correction       = .false.,         
+   print_every_nth_obs             = 1000,
+   adaptive_localization_threshold = -1 /             
+
+&cov_cutoff_nml
+   select_localization = 1  /
+
+&assim_model_nml
+   write_binary_restart_files = .true.,
+   netCDF_large_file_support  = .false.
+  /
+
+&reg_factor_nml
+   select_regression = 1,
+   input_reg_file = "time_mean_reg",
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = 'reg_diagnostics'  /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.  /
+
+&preprocess_nml
+    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
+   input_files              = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90',
+                              '../../../obs_def/obs_def_altimeter_mod.f90',
+                              '../../../obs_def/obs_def_radar_mod.f90',
+                              '../../../obs_def/obs_def_metar_mod.f90',
+                              '../../../obs_def/obs_def_dew_point_mod.f90',
+                              '../../../obs_def/obs_def_gps_mod.f90',
+                              '../../../obs_def/obs_def_gts_mod.f90',
+                              '../../../obs_def/obs_def_QuikSCAT_mod.f90',
+                              '../../../obs_def/obs_def_vortex_mod.f90'  /
+
+&obs_kind_nml
+   assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
+                                'RADIOSONDE_U_WIND_COMPONENT',
+                                'RADIOSONDE_V_WIND_COMPONENT',
+   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE'  /
+
+
+# Notes for obs_def_radar_mod_nml:
+# (1) Reflectivity limit can be applied both to observations or state (forward operator).
+# (2) Default lowest_reflectivity values DART will use (if apply_reflectivity_limit = .true.)
+#     is missing_r8. If you want to use the default, delete the line of respective
+#     lowest_reflectivity.
+# (3) As it is not clear how to assimilate Z (for now), "convert_to_dbz" is reset to .true.
+#     even if you set it to .false. here in the namelist.
+
+&obs_def_radar_mod_nml
+   convert_to_dbz             =  .true. ,
+   dbz_threshold              =   0.001 ,
+   apply_ref_limit_to_obs     = .false. ,
+   reflectivity_limit_obs     =     0.0 ,
+   lowest_reflectivity_obs    =     0.0 ,
+   apply_ref_limit_to_state   = .false. ,
+   reflectivity_limit_state   =     0.0 ,
+   lowest_reflectivity_state  =     0.0 /
+
+# The times in the namelist for the obs_diag program are vectors
+# that follow the following sequence:
+# year   month   day   hour   minute   second
+# max_num_bins can be used to specify a fixed number of bins,
+# in which case last_bin_center should be safely in the future.
+#
+# Acceptable latitudes range from  [-90,  90]
+# Acceptable longitudes range from [  0, 360]
+
+&obs_def_gps_nml
+  max_gpsro_obs = 100000,
+  / 
+
+&obs_diag_nml
+   obs_sequence_name = 'obs_seq.final',
+   obs_sequence_list = '',
+   first_bin_center =  2007, 4, 26, 00, 0, 0 ,
+   last_bin_center  =  2007, 4, 27, 00, 0, 0 ,
+   bin_separation   =     0, 0, 0, 6, 0, 0 ,
+   bin_width        =     0, 0, 0, 6, 0, 0 ,
+   time_to_skip     =     0, 0, 0, 0, 0, 0 ,
+   max_num_bins     = 1000,
+   trusted_obs      = 'null',
+   Nregions   = 1,
+   lonlim1    = 0.0,
+   lonlim2    = 360.0,
+   latlim1    = -89.0,
+   latlim2    =  89.0, 
+   reg_names  = 'Full Domain',
+   print_mismatched_locs = .false.,
+   create_rank_histogram = .true.,
+   outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
+   verbose               = .false.
+   /
+
+&restart_file_tool_nml
+   input_file_name              = "filter_ic_old",
+   output_file_name             = "filter_ic_up",
+   ens_size                     = 50,
+   single_restart_file_in       = .false.,
+   single_restart_file_out      = .false.,
+   write_binary_restart_files   = .false.,
+   overwrite_data_time          = .true.,
+   new_data_days                = 148403,
+   new_data_secs                = 21600,
+   input_is_model_advance_file  = .false.,
+   output_is_model_advance_file = .false.,
+   overwrite_advance_time       = .false.,
+   new_advance_days             = -1,
+   new_advance_secs             = -1,
+/
+
+
+&obs_sequence_tool_nml
+   num_input_files    = 2,
+   filename_seq       = 'obs_seq2007042606','obs_seq2007042612',
+   filename_out       = 'obs_seq.filter_input',
+   print_only         =  .false.,
+   first_obs_days     = -1,
+   first_obs_seconds  = -1,
+   last_obs_days      = -1,
+   last_obs_seconds   = -1,
+   min_lat            =  -90.0,
+   max_lat            =   90.0,
+   min_lon            =    0.0,
+   max_lon            =  360.0,
+   gregorian_cal      = .true.
+/
+
+! these have no defaults (or the defaults are missing_r8 which
+! cannot be represented in a namelist).  here are examples
+! of their use:
+!
+! keep only observations with a DART QC of 0:
+!   qc_metadata        = 'Dart quality control',
+!   min_qc             = 0,
+!   max_qc             = 0,
+!
+! keep only radiosonde temp obs between 250 and 300 K:
+!   copy_metadata      = 'NCEP BUFR observation',
+!   copy_type          = 'RADIOSONDE_TEMPERATURE', 
+!   min_copy           = 250.0,
+!   max_copy           = 300.0,
+!
+! keep only the U and V radiosonde winds:
+!   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT', 
+!                        'RADIOSONDE_V_WIND_COMPONENT',
+!   keep_types         = .true.,
+!
+! remove the U and V radiosonde winds:
+!   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT', 
+!                        'RADIOSONDE_V_WIND_COMPONENT',
+!   keep_types         = .false.,
+!
+
+# Notes for model_nml:
+# (1) vert_localization_coord must be one of:
+#     1 = model level
+#     2 = pressure
+#     3 = height
+# (2) see below for explanations of polar, periodic_x,
+#     periodic_y, and scm
+
+#  adv_mod_command = "mpirun.lsf -np 4 wrf.exe",
+
+&model_nml
+   default_state_variables = .false.,
+   wrf_state_variables  = 'U', 'KIND_U_WIND_COMPONENT',     'TYPE_U', 'UPDATE','999',
+                          'V', 'KIND_V_WIND_COMPONENT',     'TYPE_V', 'UPDATE','999',
+                          'W', 'KIND_VERTICAL_VELOCITY',    'TYPE_W', 'UPDATE','999',
+                          'PH','KIND_GEOPOTENTIAL_HEIGHT',  'TYPE_GZ','UPDATE','999',
+                          'T', 'KIND_POTENTIAL_TEMPERATURE','TYPE_T', 'UPDATE','999',
+                          'MU','KIND_PRESSURE',             'TYPE_MU','UPDATE','999',
+                          'PSFC','KIND_PRESSURE',           'TYPE_PS','UPDATE','999',
+                          'QVAPOR','KIND_VAPOR_MIXING_RATIO','TYPE_QV','UPDATE','999',
+   wrf_state_bounds    = 'QVAPOR','0.0','NULL','CLAMP',
+                         'QRAIN','0.0','NULL','CLAMP',
+                         'QCLOUD','0.0','NULL','CLAMP',
+                         'QGRAUPEL','0.0','NULL','CLAMP',
+                         'QSNOW','0.0','NULL','CLAMP',
+
+   output_state_vector         = .false.,
+   num_domains                 = 1,
+   calendar_type               = 3,
+   assimilation_period_seconds = 21600,
+   adv_mod_command             = './wrf.exe',
+   allow_obs_below_vol         = .false.,
+   vert_localization_coord     = 3,
+   center_search_half_length   = 500000.,
+   center_spline_grid_scale    = 10,
+   polar                       = .false.,
+   periodic_x                  = .false.,
+   periodic_y                  = .false.,
+   scm                         = .false.  /
+
+# polar and periodic_x are used in global wrf.  if polar is true, the 
+# grid interpolation routines will wrap over the north & south poles.  
+# if periodic_x is true, when the east and west edges of the grid are
+# reached the interpolation will wrap.  note this is a separate issue
+# from regional models which cross the GMT line; those grids are marked
+# as having a negative offset and do not need to wrap; this flag controls
+# what happens when the edges of the grid are reached.
+
+# the scm flag is used for the 'single column model' version of WRF.
+# it needs the periodic_x and periodic_y flags set to true, in which
+# case the X and Y directions are periodic; no collapsing of the grid
+# into a single location like the 3d-spherical polar flag implies.
+
+&location_nml
+   horiz_dist_only             = .true.,
+   vert_normalization_pressure = 100000.0, 
+   vert_normalization_height   = 10000.0,
+   vert_normalization_level    = 20.0,
+   approximate_distance        = .false.,
+   nlon                        = 71,
+   nlat                        = 36,
+   output_box_info             = .false.  /
+
+&utilities_nml
+   TERMLEVEL = 1,
+   logfilename = 'dart_log.out',
+   nmlfilename = 'dart_log.nml',
+   module_details = .false.
+/
+

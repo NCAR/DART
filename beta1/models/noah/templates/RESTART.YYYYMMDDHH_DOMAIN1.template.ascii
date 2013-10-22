@@ -1,0 +1,369 @@
+netcdf RESTART {
+dimensions:
+	Time = UNLIMITED ; // (1 currently)
+	DateStrLen = 19 ;
+	west_east = 1 ;
+	south_north = 1 ;
+	west_east_stag = 2 ;
+	south_north_stag = 2 ;
+	soil_layers_stag = 4 ;
+variables:
+	char Times(Time, DateStrLen) ;
+	float SOIL_T(Time, soil_layers_stag, south_north, west_east) ;
+		SOIL_T:MemoryOrder = "XYZ" ;
+		SOIL_T:description = "-" ;
+		SOIL_T:units = "-" ;
+		SOIL_T:stagger = "Z" ;
+	float SOIL_M(Time, soil_layers_stag, south_north, west_east) ;
+		SOIL_M:MemoryOrder = "XYZ" ;
+		SOIL_M:description = "-" ;
+		SOIL_M:units = "-" ;
+		SOIL_M:stagger = "Z" ;
+	float SOIL_W(Time, soil_layers_stag, south_north, west_east) ;
+		SOIL_W:MemoryOrder = "XYZ" ;
+		SOIL_W:description = "-" ;
+		SOIL_W:units = "-" ;
+		SOIL_W:stagger = "Z" ;
+	float QFX(Time, south_north, west_east) ;
+		QFX:MemoryOrder = "XY" ;
+		QFX:description = "-" ;
+		QFX:units = "-" ;
+		QFX:stagger = "-" ;
+	float SNODEP(Time, south_north, west_east) ;
+		SNODEP:MemoryOrder = "XY" ;
+		SNODEP:description = "-" ;
+		SNODEP:units = "-" ;
+		SNODEP:stagger = "-" ;
+	float WEASD(Time, south_north, west_east) ;
+		WEASD:MemoryOrder = "XY" ;
+		WEASD:description = "-" ;
+		WEASD:units = "-" ;
+		WEASD:stagger = "-" ;
+	float FDOWN(Time, south_north, west_east) ;
+		FDOWN:MemoryOrder = "XY" ;
+		FDOWN:description = "-" ;
+		FDOWN:units = "-" ;
+		FDOWN:stagger = "-" ;
+	float ETP(Time, south_north, west_east) ;
+		ETP:MemoryOrder = "XY" ;
+		ETP:description = "-" ;
+		ETP:units = "-" ;
+		ETP:stagger = "-" ;
+	float SKINTEMP(Time, south_north, west_east) ;
+		SKINTEMP:MemoryOrder = "XY" ;
+		SKINTEMP:description = "-" ;
+		SKINTEMP:units = "-" ;
+		SKINTEMP:stagger = "-" ;
+	float ETA(Time, south_north, west_east) ;
+		ETA:MemoryOrder = "XY" ;
+		ETA:description = "-" ;
+		ETA:units = "-" ;
+		ETA:stagger = "-" ;
+	float ETAKIN(Time, south_north, west_east) ;
+		ETAKIN:MemoryOrder = "XY" ;
+		ETAKIN:description = "-" ;
+		ETAKIN:units = "-" ;
+		ETAKIN:stagger = "-" ;
+	float CANWAT(Time, south_north, west_east) ;
+		CANWAT:MemoryOrder = "XY" ;
+		CANWAT:description = "-" ;
+		CANWAT:units = "-" ;
+		CANWAT:stagger = "-" ;
+	float GRDFLX(Time, south_north, west_east) ;
+		GRDFLX:MemoryOrder = "XY" ;
+		GRDFLX:description = "-" ;
+		GRDFLX:units = "-" ;
+		GRDFLX:stagger = "-" ;
+	float CH(Time, south_north, west_east) ;
+		CH:MemoryOrder = "XY" ;
+		CH:description = "-" ;
+		CH:units = "-" ;
+		CH:stagger = "-" ;
+	float RUNOFF1(Time, south_north, west_east) ;
+		RUNOFF1:MemoryOrder = "XY" ;
+		RUNOFF1:description = "-" ;
+		RUNOFF1:units = "-" ;
+		RUNOFF1:stagger = "-" ;
+	float RUNOFF2(Time, south_north, west_east) ;
+		RUNOFF2:MemoryOrder = "XY" ;
+		RUNOFF2:description = "-" ;
+		RUNOFF2:units = "-" ;
+		RUNOFF2:stagger = "-" ;
+	float RUNOFF3(Time, south_north, west_east) ;
+		RUNOFF3:MemoryOrder = "XY" ;
+		RUNOFF3:description = "-" ;
+		RUNOFF3:units = "-" ;
+		RUNOFF3:stagger = "-" ;
+	float EDIR(Time, south_north, west_east) ;
+		EDIR:MemoryOrder = "XY" ;
+		EDIR:description = "-" ;
+		EDIR:units = "-" ;
+		EDIR:stagger = "-" ;
+	float ETT(Time, south_north, west_east) ;
+		ETT:MemoryOrder = "XY" ;
+		ETT:description = "-" ;
+		ETT:units = "-" ;
+		ETT:stagger = "-" ;
+	float EC(Time, south_north, west_east) ;
+		EC:MemoryOrder = "XY" ;
+		EC:description = "-" ;
+		EC:units = "-" ;
+		EC:stagger = "-" ;
+	float EMISS(Time, south_north, west_east) ;
+		EMISS:MemoryOrder = "XY" ;
+		EMISS:description = "-" ;
+		EMISS:units = "-" ;
+		EMISS:stagger = "-" ;
+	float GVFMIN(Time, south_north, west_east) ;
+		GVFMIN:MemoryOrder = "XY" ;
+		GVFMIN:description = "-" ;
+		GVFMIN:units = "-" ;
+		GVFMIN:stagger = "-" ;
+	float GVFMAX(Time, south_north, west_east) ;
+		GVFMAX:MemoryOrder = "XY" ;
+		GVFMAX:description = "-" ;
+		GVFMAX:units = "-" ;
+		GVFMAX:stagger = "-" ;
+	float SNOTIME(Time, south_north, west_east) ;
+		SNOTIME:MemoryOrder = "XY" ;
+		SNOTIME:description = "-" ;
+		SNOTIME:units = "-" ;
+		SNOTIME:stagger = "-" ;
+	float Q12D(Time, south_north, west_east) ;
+		Q12D:MemoryOrder = "XY" ;
+		Q12D:description = "-" ;
+		Q12D:units = "-" ;
+		Q12D:stagger = "-" ;
+	float CHX(Time, south_north, west_east) ;
+		CHX:MemoryOrder = "XY" ;
+		CHX:description = "-" ;
+		CHX:units = "-" ;
+		CHX:stagger = "-" ;
+	float CMX(Time, south_north, west_east) ;
+		CMX:MemoryOrder = "XY" ;
+		CMX:description = "-" ;
+		CMX:units = "-" ;
+		CMX:stagger = "-" ;
+	float FPAR(Time, south_north, west_east) ;
+		FPAR:MemoryOrder = "XY" ;
+		FPAR:description = "-" ;
+		FPAR:units = "-" ;
+		FPAR:stagger = "-" ;
+	float ZNT(Time, south_north, west_east) ;
+		ZNT:MemoryOrder = "XY" ;
+		ZNT:description = "-" ;
+		ZNT:units = "-" ;
+		ZNT:stagger = "-" ;
+	float SOIL_MX(Time, south_north, west_east) ;
+		SOIL_MX:MemoryOrder = "XY" ;
+		SOIL_MX:description = "-" ;
+		SOIL_MX:units = "-" ;
+		SOIL_MX:stagger = "-" ;
+	float DEWFALL(Time, south_north, west_east) ;
+		DEWFALL:MemoryOrder = "XY" ;
+		DEWFALL:description = "-" ;
+		DEWFALL:units = "-" ;
+		DEWFALL:stagger = "-" ;
+	float DRIP(Time, south_north, west_east) ;
+		DRIP:MemoryOrder = "XY" ;
+		DRIP:description = "-" ;
+		DRIP:units = "-" ;
+		DRIP:stagger = "-" ;
+	float ESNOW(Time, south_north, west_east) ;
+		ESNOW:MemoryOrder = "XY" ;
+		ESNOW:description = "-" ;
+		ESNOW:units = "-" ;
+		ESNOW:stagger = "-" ;
+	float ACSNOM(Time, south_north, west_east) ;
+		ACSNOM:MemoryOrder = "XY" ;
+		ACSNOM:description = "-" ;
+		ACSNOM:units = "-" ;
+		ACSNOM:stagger = "-" ;
+	float ACRAIN(Time, south_north, west_east) ;
+		ACRAIN:MemoryOrder = "XY" ;
+		ACRAIN:description = "-" ;
+		ACRAIN:units = "-" ;
+		ACRAIN:stagger = "-" ;
+	float ALBED(Time, south_north, west_east) ;
+		ALBED:MemoryOrder = "XY" ;
+		ALBED:description = "-" ;
+		ALBED:units = "-" ;
+		ALBED:stagger = "-" ;
+	float SMCWLT(Time, south_north, west_east) ;
+		SMCWLT:MemoryOrder = "XY" ;
+		SMCWLT:description = "-" ;
+		SMCWLT:units = "-" ;
+		SMCWLT:stagger = "-" ;
+	float SMCREF(Time, south_north, west_east) ;
+		SMCREF:MemoryOrder = "XY" ;
+		SMCREF:description = "-" ;
+		SMCREF:units = "-" ;
+		SMCREF:stagger = "-" ;
+	float SMCMAX(Time, south_north, west_east) ;
+		SMCMAX:MemoryOrder = "XY" ;
+		SMCMAX:description = "-" ;
+		SMCMAX:units = "-" ;
+		SMCMAX:stagger = "-" ;
+	float HFX(Time, south_north, west_east) ;
+		HFX:MemoryOrder = "XY" ;
+		HFX:description = "-" ;
+		HFX:units = "-" ;
+		HFX:stagger = "-" ;
+	float RC(Time, south_north, west_east) ;
+		RC:MemoryOrder = "XY" ;
+		RC:description = "-" ;
+		RC:units = "-" ;
+		RC:stagger = "-" ;
+
+// global attributes:
+		:TITLE = "RESTART FILE FROM HRLDAS v20110427" ;
+		:missing_value = -1.e+33f ;
+		:START_DATE = "2009-01-01_00:00:00" ;
+		:MAP_PROJ = 1 ;
+		:LAT1 = 31.9085f ;
+		:LON1 = -110.8394f ;
+		:DX = 1000.f ;
+		:DY = 1000.f ;
+		:TRUELAT1 = 31.f ;
+		:TRUELAT2 = 31.f ;
+		:STAND_LON = -110.8394f ;
+		:MMINLU = "MODIFIED_IGBP_MODIS_NOAH" ;
+		:IZ0TLND = 0 ;
+		:SFCDIF_OPTION = 0 ;
+data:
+
+ Times =
+  "2009-01-01_00:00:00" ;
+
+ SOIL_T =
+  292.8018,
+  292.8018,
+  292.8018,
+  292.8018 ;
+
+ SOIL_M =
+  0.434,
+  0.434,
+  0.434,
+  0.434 ;
+
+ SOIL_W =
+  0.434,
+  0.434,
+  0.434,
+  0.434 ;
+
+ QFX =
+  0 ;
+
+ SNODEP =
+  0 ;
+
+ WEASD =
+  0 ;
+
+ FDOWN =
+  0.0 ;
+
+ ETP =
+  0.0 ;
+
+ SKINTEMP =
+  292.8018 ;
+
+ ETA =
+  0 ;
+
+ ETAKIN =
+  0.0 ;
+
+ CANWAT =
+  0.0 ;
+
+ GRDFLX =
+  0.0 ;
+
+ CH =
+  0.0 ;
+
+ RUNOFF1 =
+  0.0 ;
+
+ RUNOFF2 =
+  0.0 ;
+
+ RUNOFF3 =
+  0 ;
+
+ EDIR =
+  0 ;
+
+ ETT =
+  0 ;
+
+ EC =
+  0 ;
+
+ EMISS =
+  0.95 ;
+
+ GVFMIN =
+  0.01 ;
+
+ GVFMAX =
+  0.50 ;
+
+ SNOTIME =
+  0 ;
+
+ Q12D =
+  0.001 ;
+
+ CHX =
+  0.01 ;
+
+ CMX =
+  0.01 ;
+
+ FPAR =
+  0.24 ;
+
+ ZNT =
+  0.01 ;
+
+ SOIL_MX =
+  0.0 ;
+
+ DEWFALL =
+  0.0 ;
+
+ DRIP =
+  0 ;
+
+ ESNOW =
+  0 ;
+
+ ACSNOM =
+  0 ;
+
+ ACRAIN =
+  0 ;
+
+ ALBED =
+  0.22 ;
+
+ SMCWLT =
+  0.047 ;
+
+ SMCREF =
+  0.383 ;
+
+ SMCMAX =
+  0.434 ;
+
+ HFX =
+  0.01 ;
+
+ RC =
+  0.01 ;
+}

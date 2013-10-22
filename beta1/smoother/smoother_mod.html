@@ -1,0 +1,867 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module smoother_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE smoother_mod</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+Implements a fixed lag ensemble smoother as part of the filter. For now,
+this is done inefficiently with a separate call to 
+<em class="program">assim_tools_mod:filter_assim()</em>
+for each lag. 
+<br>
+<br>
+To enable the smoother, set the number of lags (num_lags) to something 
+larger than 0 in the <em class="program">smoother_nml</em> section of 
+your <em class="file">input.nml</em> file and run 
+<em class="program">filter</em> as before.
+</p>
+
+<div class="routine">
+<pre>
+&amp;smoother_nml
+   num_lags              = <em class="changed">10</em>,
+   start_from_restart    = .false.,
+   output_restart        = .true.,
+   restart_in_file_name  = "ics",
+   restart_out_file_name = "restart"  /
+</pre>
+</div>
+
+<P>
+In the low order models, 10 is a plausible number.
+<br>
+<br>
+In addition to generating 
+<em class="file">Prior_Diag.nc</em> and 
+<em class="file">Posterior_Diag.nc</em> files,
+files of the form 
+<em class="file">Lag_NNNNN_Diag.nc</em> will be generated.   
+Each of these has N fewer timesteps than the lag=0 run, starting at the
+same time but ending N timesteps sooner.
+The <em class="file">obs_seq.final</em> file
+and the <em class="file">Prior_Diag.nc</em> and <em
+class="file">Posterior_Diag.nc</em> files will be the same
+as the non-lagged version; the new output will be in each
+of the <em class="file">Lag_NNNNN_Diag.nc</em> files.
+</P>
+
+<A NAME="Example"></A>
+<H2>EXAMPLE</H2>
+<P>
+If you have a <em class="file">True_State.nc</em> file and want to 
+use the <em class="program">plot_total_err</em> matlab function 
+to plot the error, you must do the following steps to generate analogs 
+of lagged <em class="file">True_State.nc</em> files to use as a comparison.
+(The logic is not currently implemented in the matlab scripts to be able
+to compare netCDF files with unequal time coordinates.)
+<br>
+<br>
+Make N separate versions of the True_State.nc with the last N timesteps
+removed.  Using the netCDF NCO operator program 'ncks' is one way.
+If the True_State.nc file has 1000 time steps, then this command
+removes the last one:
+</P>
+<div class="unix"> 
+ncks -d time,0,998 True_State.nc True_Lag01.nc
+</div>
+<P>
+Note that the first time is at index 0, so the last timestep is index
+999 in the full file, and 998 in the truncated file.   Repeat this
+step for all N lags.  Here are NCO commands to generate 10 truth
+files for num_lags = 10, 1000 time steps in True_State.nc:
+</P>
+<div class="unix">
+ncks -d time,0,998 True_State.nc True_Lag01.nc<br>
+ncks -d time,0,997 True_State.nc True_Lag02.nc<br>
+ncks -d time,0,996 True_State.nc True_Lag03.nc<br>
+ncks -d time,0,995 True_State.nc True_Lag04.nc<br>
+ncks -d time,0,994 True_State.nc True_Lag05.nc<br>
+ncks -d time,0,993 True_State.nc True_Lag06.nc<br>
+ncks -d time,0,992 True_State.nc True_Lag07.nc<br>
+ncks -d time,0,991 True_State.nc True_Lag08.nc<br>
+ncks -d time,0,990 True_State.nc True_Lag09.nc<br>
+ncks -d time,0,989 True_State.nc True_Lag10.nc<br>
+</div>
+<P>
+Here is an example matlab session which plots the lag=0 results
+and then odd numbered lags from 1 to 9.  It uses the
+<em class="program">plot_total_err</em>
+function from the $DART/matlab directory:
+</P>
+<pre>
+datadir    = '.';
+truth_file = fullfile(datadir,'True_State.nc');
+diagn_file = fullfile(datadir,'Prior_Diag.nc');
+plot_total_err
+reply = input('original data.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag01.nc');
+diagn_file = fullfile(datadir,'Lag_00001_Diag.nc');
+plot_total_err
+reply = input('Lag 01.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag03.nc');
+diagn_file = fullfile(datadir,'Lag_00003_Diag.nc');
+plot_total_err
+reply = input('Lag 03.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag05.nc');
+diagn_file = fullfile(datadir,'Lag_00005_Diag.nc');
+plot_total_err
+reply = input('Lag 05.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag07.nc');
+diagn_file = fullfile(datadir,'Lag_00007_Diag.nc');
+plot_total_err
+reply = input('Lag 07.  hit enter to continue ');
+
+truth_file = fullfile(datadir,'True_Lag09.nc');
+diagn_file = fullfile(datadir,'Lag_00009_Diag.nc');
+plot_total_err
+reply = input('Lag 09.  hit enter to continue ');
+</pre>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;smoother_nml
+   num_lags              = 0,
+   start_from_restart    = .false.,
+   output_restart        = .false.,
+   restart_in_file_name  = 'ics',
+   restart_out_file_name = 'restart'  
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD>num_lags</TD>
+    <TD>integer</TD>
+    <TD>Number of smoother lags; &lt; 1 means no smoother. 
+</TD></TR>
+
+<TR><TD>start_from_restart</TD>
+    <TD>logical</TD>
+    <TD>True if smoother states are to come from restart file(s). 
+False if they are to be spun up from scratch. 
+</TD></TR>
+
+<TR><TD>output_restart</TD>
+    <TD>logical</TD>
+    <TD>True if restart file(s) are to be written, else false. 
+</TD></TR>
+
+<TR><TD>restart_in_file_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>String used to construct the file name from which to read restart data.
+'Lag_NNNNN_' will be prepended to the specified value to create the actual
+filename.  If each ensemble is to be read from a separate file, the .NNNN
+ensemble number will also be appended.  e.g. specifying 'ics' here results in
+'Lag_00001_ics' if all ensemble members are read from a single file,
+'Lag_00001_ics.0001', 'Lag_00001_ics.0002', etc for multiples.
+</TD></TR>
+
+<TR><TD>restart_out_file_name&nbsp;&nbsp;&nbsp;</TD>
+    <TD>character(len=129)</TD>
+    <TD>String used to construct the file name to which to write restart data.
+'Lag_NNNNN_' will be prepended to the specified value to create the actual
+filename.  If each ensemble is to be written to a separate file, the .NNNN
+ensemble number will also be appended.  e.g. specifying 'restart' here
+results in 'Lag_00001_restart' if all ensemble members are written to a
+single file, 'Lag_00001_restart.0001', 'Lag_00001_restart.0002', etc for
+multiples.
+</TD></TR>
+
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<!--==================================================================-->
+
+<A NAME="OtherModulesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+types_mod
+mpi_utilities_mod
+utilities_mod
+ensemble_manager_mod
+time_manager_mod
+assim_model_mod
+assim_tools_mod
+obs_sequence_mod
+adaptive_inflate_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC INTERFACES</H2>
+
+<TABLE>
+<TR><TD><em class=call>use smoother_mod, only : </em></TD>
+                   <TD><A HREF="#smoother_read_restart">smoother_read_restart</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#advance_smoother">advance_smoother</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#smoother_gen_copy_meta_data">smoother_gen_copy_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#smoother_write_restart">smoother_write_restart</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_smoother">init_smoother</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#do_smoothing">do_smoothing</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#smoother_mean_spread">smoother_mean_spread</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#smoother_assim">smoother_assim</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#filter_state_space_diagnostics">filter_state_space_diagnostics</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#smoother_ss_diagnostics">smoother_ss_diagnostics</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#smoother_end">smoother_end</A></TD></TR>
+</TABLE>
+
+<P>
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
+   <em class=optionalcode>[like this]</em>.
+</P>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="smoother_read_restart"></A>
+<br>
+<div class=routine>
+<em class=call> call smoother_read_restart(ens_handle, ens_size, model_size, 
+ time1, init_time_days) </em>
+<pre>
+type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
+integer, intent(in)                :: <em class=code>ens_size</em>
+integer, intent(in)                :: <em class=code>model_size</em>
+type(time_type), intent(inout)     :: <em class=code>time1</em>
+integer, intent(in)                :: <em class=code>init_time_days</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads in ensemble of states for all lag estimates from a restart file.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Handle of ensemble manager structure of single state; 
+       copied into all lags for startup.</TD></TR>
+<TR><TD valign=top><em class=code>ens_size&nbsp;&nbsp;</em></TD>
+    <TD>Size of the ensemble.</TD></TR>
+<TR><TD valign=top><em class=code>model_size&nbsp;&nbsp;</em></TD>
+    <TD>Size of the model state vector.</TD></TR>
+<TR><TD valign=top><em class=code>time1&nbsp;&nbsp;</em></TD>
+    <TD>Overwrite the time in the restart file with this value if 
+        init_time_days is non-negative.</TD></TR>
+<TR><TD valign=top><em class=code>init_time_days&nbsp;&nbsp;</em></TD>
+    <TD>If non-negative, use time1 instead of time in restart file.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="advance_smoother"></A>
+<br>
+<div class=routine>
+<em class=call> call advance_smoother(ens_handle) </em>
+<pre>
+type(ensemble_type), intent(in) :: <em class=code>ens_handle</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Advances smoother state estimates at all lags forward in time. This
+entails copying the most recent smoother state, contained in
+ens_handle, into the lag 1 smoother state and pushing back all other
+lags by 1 (i.e. lag 1 becomes lag 2, etc.).
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Ensemble handle with most recent filtered state.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="smoother_gen_copy_meta_data"></A>
+<br>
+<div class=routine>
+<em class=call> call smoother_gen_copy_meta_data(num_output_state_members,
+   output_inflation) </em>
+<pre>
+integer, intent(in) :: <em class=code>num_output_state_members</em>
+logical, intent(in) :: <em class=code>output_inflation</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Initializes the metadata required for the smoother state space diagnostic
+files.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>num_output_state_members&nbsp;&nbsp;</em></TD>
+    <TD>Number of copies of smoother state vector that should be in state space
+      diagnostic output.</TD></TR>
+<TR><TD valign=top><em class=code>output_inflation&nbsp;&nbsp;</em></TD>
+    <TD>True if smoother state space output should include inflation values.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="smoother_write_restart"></A>
+<br>
+<div class=routine>
+<em class=call> call smoother_write_restart(start_copy, end_copy) </em>
+<pre>
+integer, intent(in) :: <em class=code>start_copy</em>
+integer, intent(in) :: <em class=code>end_copy</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Outputs restart files for all lags of smoother state. Integer arguments
+specify the start and end global indices of a continguous set of copies that
+contain the ensemble members.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>start_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of ensemble copy that starts the actual ensemble members
+      for smoother.</TD></TR>
+<TR><TD valign=top><em class=code>end_copy&nbsp;&nbsp;</em></TD>
+    <TD>Global index of ensemble copy that ends the actual ensemble members for
+ smoother.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_smoother"></A>
+<br>
+<div class=routine>
+<em class=call> call init_smoother(ens_handle, POST_INF_COPY, POST_INF_SD_COPY) </em>
+<pre>
+type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
+integer, intent(in)                :: <em class=code>POST_INF_COPY</em>
+integer, intent(in)                :: <em class=code>POST_INF_SD_COPY</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Initializes the storage needed for a smoother. Also initializes an adaptive
+inflation type that does NO inflation (not currently supported for smoothers).
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>An ensemble handle for the filter that contains information about 
+       ensemble and model size.</TD></TR>
+<TR><TD valign=top><em class=code>POST_INF_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index of ensemble copy that holds posterior state space 
+      inflation values.</TD></TR>
+<TR><TD valign=top><em class=code>POST_INF_SD_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index of ensemble copy that holds posterior inflation standard 
+      deviation values.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="do_smoothing"></A>
+<br>
+<div class=routine>
+<em class=call> var = do_smoothing() </em>
+<pre>
+logical, intent(out) :: <em class=code>do_smoothing</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns true if smoothing is to be done, else false.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>do_smoothing&nbsp;&nbsp;</em></TD>
+    <TD>Returns true if smoothing is to be done.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="smoother_mean_spread"></A>
+<br>
+<div class=routine>
+<em class=call> call smoother_mean_spread(ens_size,ENS_MEAN_COPY,ENS_SD_COPY,
+     output_state_ens_mean,output_state_ens_spread) </em>
+<pre>
+integer, intent(in) :: <em class=code>ens_size</em>
+integer, intent(in) :: <em class=code>ENS_MEAN_COPY</em>
+integer, intent(in) :: <em class=code>ENS_SD_COPY</em>
+logical, intent(in) :: <em class=code>output_state_ens_mean</em>
+logical, intent(in) :: <em class=code>output_state_ens_spread</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Computes the ensemble mean (and spread if required) of all state variables
+for all lagged ensembles. Spread is only computed if it is required for
+output.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_size&nbsp;&nbsp;</em></TD>
+    <TD>Size of ensemble.</TD></TR>
+<TR><TD valign=top><em class=code>ENS_MEAN_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index of copy that stores ensemble mean.</TD></TR>
+<TR><TD valign=top><em class=code>ENS_SD_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index of copy that stores ensemble spread.</TD></TR>
+<TR><TD valign=top><em class=code>output_state_ens_mean&nbsp;&nbsp;</em></TD>
+    <TD>True if the ensemble mean is to be output to state diagnostic file.</TD></TR>
+<TR><TD valign=top><em class=code>output_state_ens_spread&nbsp;&nbsp;</em></TD>
+    <TD>True if ensemble spread is to be output to state diagnostic file.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="smoother_assim"></A>
+<br>
+<div class=routine>
+<em class=call> call smoother_assim(obs_ens_handle, seq, keys, ens_size, 
+  num_groups, obs_val_index, ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, 
+  PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_PRIOR_MEAN_START, 
+  OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START, OBS_PRIOR_VAR_END) </em>
+<pre>
+type(ensemble_type), intent(inout)  :: <em class=code>obs_ens_handle</em>
+type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
+integer, dimension(:), intent(in)   :: <em class=code>keys</em>
+integer, intent(in)                 :: <em class=code>ens_size</em>
+integer, intent(in)                 :: <em class=code>num_groups</em>
+integer, intent(in)                 :: <em class=code>obs_val_index</em>
+integer, intent(in)                 :: <em class=code>ENS_MEAN_COPY</em>
+integer, intent(in)                 :: <em class=code>ENS_SD_COPY</em>
+integer, intent(in)                 :: <em class=code>PRIOR_INF_COPY</em>
+integer, intent(in)                 :: <em class=code>PRIOR_INF_SD_COPY</em>
+integer, intent(in)                 :: <em class=code>OBS_KEY_COPY</em>
+integer, intent(in)                 :: <em class=code>OBS_GLOBAL_QC_COPY</em>
+integer, intent(in)                 :: <em class=code>OBS_PRIOR_MEAN_START</em>
+integer, intent(in)                 :: <em class=code>OBS_PRIOR_MEAN_END</em>
+integer, intent(in)                 :: <em class=code>OBS_PRIOR_VAR_START</em>
+integer, intent(in)                 :: <em class=code>OBS_PRIOR_VAR_END</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Does assimilation of a set of observations for each smoother lag.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>obs_ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Handle for ensemble manager holding prior estimates of observations.</TD></TR>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>Observation sequence being assimilated.</TD></TR>
+<TR><TD valign=top><em class=code>keys&nbsp;&nbsp;</em></TD>
+    <TD>A one dimensional array containing indices in seq of observations to as
+similate at current time.</TD></TR>
+<TR><TD valign=top><em class=code>ens_size&nbsp;&nbsp;</em></TD>
+    <TD>Ensemble size.</TD></TR>
+<TR><TD valign=top><em class=code>num_groups&nbsp;&nbsp;</em></TD>
+    <TD>Number of groups in filter.</TD></TR>
+<TR><TD valign=top><em class=code>obs_val_index&nbsp;&nbsp;</em></TD>
+    <TD>Integer index of copy of data in seq that contains the observed value 
+      from instruments.</TD></TR>
+<TR><TD valign=top><em class=code>ENS_MEAN_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index in smoother's state ensemble that holds ensemble mean.</TD></TR>
+<TR><TD valign=top><em class=code>ENS_SD_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index in smoother's state ensemble that holds ensemble standard deviation.</TD></TR>
+<TR><TD valign=top><em class=code>PRIOR_INF_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index in obs_ens_handle that holds inflation values (not used for smoother).</TD></TR>
+<TR><TD valign=top><em class=code>PRIOR_INF_SD_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index in obs_ens_handle that holds inflation sd values (not used
+ for smoother).</TD></TR>
+<TR><TD valign=top><em class=code>OBS_KEY_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index in obs_ens_handle that holds the key for the observation.</TD></TR>
+<TR><TD valign=top><em class=code>OBS_GLOBAL_QC_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index in obs_ens_handle that holds the quality control value.</TD></TR>
+<TR><TD valign=top><em class=code>OBS_PRIOR_MEAN_START&nbsp;&nbsp;</em></TD>
+    <TD>Global index in obs_ens_handle that holds the first group's prior mean.  </TD></TR>
+<TR><TD valign=top><em class=code>OBS_PRIOR_MEAN_END&nbsp;&nbsp;</em></TD>
+    <TD>Global index in obs_ens_handle that holds the last group's prior mean.</TD></TR>
+<TR><TD valign=top><em class=code>OBS_PRIOR_VAR_START&nbsp;&nbsp;</em></TD>
+    <TD>Global index in obs_ens_handle that holds the first group's prior variance.</TD></TR>
+<TR><TD valign=top><em class=code>OBS_PRIOR_VAR_END&nbsp;&nbsp;</em></TD>
+    <TD>Global index in obs_ens_handle that holds the last group's prior variance.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="filter_state_space_diagnostics"></A>
+<br>
+<div class=routine>
+<em class=call> call filter_state_space_diagnostics(out_unit, ens_handle, 
+model_size, num_output_state_members, output_state_mean_index, 
+output_state_spread_index, output_inflation, temp_ens,
+ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY) </em>
+<pre>
+type(netcdf_file_type), intent(inout)   :: <em class=code>out_unit</em>
+type(ensemble_type), intent(inout)      :: <em class=code>ens_handle</em>
+integer, intent(in)                     :: <em class=code>model_size</em>
+integer, intent(in)                     :: <em class=code>num_output_state_members</em>
+integer, intent(in)                     :: <em class=code>output_state_mean_index</em>
+integer, intent(in)                     :: <em class=code>output_state_spread_index</em>
+logical, intent(in)                     :: <em class=code>output_inflation</em>
+real(r8), intent(out)                   :: <em class=code>temp_ens(model_size)</em>
+integer, intent(in)                     :: <em class=code>ENS_MEAN_COPY</em>
+integer, intent(in)                     :: <em class=code>ENS_SD_COPY</em>
+type(adaptive_inflate_type), intent(in) :: <em class=code>inflate</em>
+integer, intent(in)                     :: <em class=code>INF_COPY</em>
+integer, intent(in)                     :: <em class=code>INF_SD_COPY</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Writes state space diagnostic values including ensemble members, mean and
+spread, and inflation mean and spread to a netcdf file.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>out_unit&nbsp;&nbsp;</em></TD>
+    <TD>Descriptor for the netcdf file being written.</TD></TR>
+<TR><TD valign=top><em class=code>ens_handle&nbsp;&nbsp;</em></TD>
+    <TD>Ensemble handle whose state space values are to be written.</TD></TR>
+<TR><TD valign=top><em class=code>model_size&nbsp;&nbsp;</em></TD>
+    <TD>Size of the model state vector.</TD></TR>
+<TR><TD valign=top><em class=code>num_output_state_members&nbsp;&nbsp;</em></TD>
+    <TD>Number of individual state members to be output.</TD></TR>
+<TR><TD valign=top><em class=code>output_state_mean_index&nbsp;&nbsp;</em></TD>
+    <TD>Index in netcdf file for ensemble mean.</TD></TR>
+<TR><TD valign=top><em class=code>output_state_spread_index&nbsp;&nbsp;</em></TD>
+    <TD>Index in netcdf file for ensemble spread.</TD></TR>
+<TR><TD valign=top><em class=code>output_inflation&nbsp;&nbsp;</em></TD>
+    <TD>True if the inflation values are to be output. Default is .TRUE.</TD></TR>
+<TR><TD valign=top><em class=code>temp_ens&nbsp;&nbsp;</em></TD>
+    <TD>Storage passed in to avoid having to allocate extra space.</TD></TR>
+<TR><TD valign=top><em class=code>ENS_MEAN_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index in ens_handle for ensemble mean.</TD></TR>
+<TR><TD valign=top><em class=code>ENS_SD_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index in ens_handle for ensemble spread.</TD></TR>
+<TR><TD valign=top><em class=code>inflate&nbsp;&nbsp;</em></TD>
+    <TD>Contains description and values of state space inflation.</TD></TR>
+<TR><TD valign=top><em class=code>INF_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index in ens_handle of inflation values.</TD></TR>
+<TR><TD valign=top><em class=code>INF_SD_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index in ens_handle of inflation standard deviation values.</TD>
+</TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="smoother_ss_diagnostics"></A>
+<br>
+<div class=routine>
+<em class=call> call smoother_ss_diagnostics(model_size, 
+num_output_state_members, output_inflation, temp_ens, 
+ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY) </em>
+<pre>
+integer, intent(in)   :: <em class=code>model_size</em>
+integer, intent(in)   :: <em class=code>num_output_state_members</em>
+logical, intent(in)   :: <em class=code>output_inflation</em>
+real(r8), intent(out) :: <em class=code>temp_ens(model_size)</em>
+integer, intent(in)   :: <em class=code>ENS_MEAN_COPY</em>
+integer, intent(in)   :: <em class=code>ENS_SD_COPY</em>
+integer, intent(in)   :: <em class=code>POST_INF_COPY</em>
+integer, intent(in)   :: <em class=code>POST_INF_SD_COPY</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Outputs state space diagnostics files for all smoother lags.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>model_size&nbsp;&nbsp;</em></TD>
+    <TD>Size of the model state vector.</TD></TR>
+<TR><TD valign=top><em class=code>num_output_state_members&nbsp;&nbsp;</em></TD>
+    <TD>Number of state copies to be output in the state space diagnostics file.</TD></TR>
+<TR><TD valign=top><em class=code>output_inflation&nbsp;&nbsp;</em></TD>
+    <TD>True if the inflation values are to be output. Default is .TRUE.</TD></TR>
+<TR><TD valign=top><em class=code>temp_ens&nbsp;&nbsp;</em></TD>
+    <TD>Storage passed in to avoid having to allocate extra space.</TD></TR>
+<TR><TD valign=top><em class=code>ENS_MEAN_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index of the ensemble mean in the lag smoother ensemble handles. </TD></TR>
+<TR><TD valign=top><em class=code>ENS_SD_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index of the ensemble spread in the lag smoother ensemble handles.</TD></TR>
+<TR><TD valign=top><em class=code>POST_INF_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index of the inflation value in the lag smoother ensemble handles
+       (not currently used).</TD></TR>
+<TR><TD valign=top><em class=code>POST_INF_SD_COPY&nbsp;&nbsp;</em></TD>
+    <TD>Global index of the inflation spread in the lag smoother ensemble 
+      handles (not currently used).</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="smoother_end"></A>
+<br>
+<div class=routine>
+<em class=call> call smoother_end() </em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Releases storage allocated for smoother.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="smoother_inc_lags"></A>
+<br>
+<div class=routine>
+<em class=call> call smoother_inc_lags() </em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Increments the number of lags that are in use for smoother. Used when
+a smoother is being started up and there have not been enough times to
+propagate the state to all requested lags.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+</TABLE>
+
+</div>
+<br>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL><LI>input.nml</LI>
+    <LI>smoother initial condition files</LI>
+    <LI>smoother restart files</LI>
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<!-- FIXME 
+should put a reference to any of Shree's papers here -->
+<ol>
+<li> none </li>
+</ol>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>smoother_gen_copy_meta_data</TD>
+    <!-- message --><TD VALIGN=top>output metadata in smoother needs ensemble size < 10000, not ###</TD>
+    <!-- comment --><TD VALIGN=top>Can't output more than 9999 copies.</TD>
+</TR>
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

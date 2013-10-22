@@ -1,0 +1,75 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+The module reg_factor_mod is an attempt to deal with sampling errors
+in ensemble filters using a hierarchical Monte Carlo approach in which
+a group of ensembles is used and the group's sample of the regression
+factor between an observation and a state variable is used to compute
+an error estimate. The presence of error generally means that the regression
+factor should be reduced by some factor in order to give the optimal 
+result. 
+
+The regression factor used here is computed as a function of the 
+group size and the ratio of the sample standard deviation to the sample
+mean of the regression coefficient. Files are generated offline for each
+desired group size and contain a list of ratios, Q, and corresponding 
+regression confidence factors. At present, files have been generated for
+groups of 2, 4, 8 and 16. 
+
+The first step in generating these files is to generate a file for an
+infinite group size using the program sys_sim401.f90. In this case, the
+only input parameter is the number of samples that are used to generate
+the regression confidence factors for a series of Q's. In the results used 
+to date, 1000000 samples are used to generate this. Results are generated
+for every 0.01 from Q = 0.0 up to 6.00. The output from this procedure can
+be found in the file undamped_base.
+
+Because the regression confidence factor as a function of Q has a very long
+but small valued tail, for computational efficiency (and error tolerance), 
+the program sys_sim401.f90 has been modified to linearly damp the tail of 
+the distribution for values of Q > 3.0 so that they approach zero for 6.0.
+The output of this procedure can be found in the file damped_base.
+
+Because of sampling error in the Monte Carlo algorithm used to compute the
+regression confidence factors as a function of Q, there is some noise in the
+results from the two steps mentioned so far, especially for values of Q 
+larger than 3.0. A simple smoother is used to reduce this noise by doing 
+7 point centered averages of the result for the damped case. These can be 
+found in the files smoothed_damped_base. 
+
+Next, an attempt is made, rather feebly, to account for additional sampling 
+error that comes from using small groups. The program sys_sim402.f90 does
+this operation. It takes as input the group size, and a sample size that is
+used to construct Monte Carlo statistics as above. Again, results used here
+make use of 1000000 samples. 
+
+sys_sim402.f90 attempts to account for the uncertainty in the sample statistics
+of Q that are obtained from a group of ensembles. It generates group size 
+samples of a distribution with mean 1.0 and standard deviation Q. It then 
+computes Q from each of these samples and finally computes the 1000000 sample
+mean value of Q. In general, for all but the smallest input Q's, the mean
+sample Q is larger. The value of the regression confidence factor for the input
+Q is computed by looking up the value for the 1000000 sample mean Q in the 
+file smoothed_damped_base. 
+
+An additional detail includes sample instability for larger values of Q in
+this algorithm. Occasionally, extremely large sample values of Q can be generated
+that dominate sample statistics. To avoid this, at a cost of some error in a
+very heuristic algorithm, a sample Q that is greater than 10000 is set equal to
+10000 before being used to compute the sample mean of Q. The output of this 
+process is found in the files regconf2, regconf4, regconf8 and regconf16. These
+files are read in by the reg_factor module when a group filter is being 
+executed and the regression confidence factor is computed by table lookup.
+
+Again, there is noise in the output, especially for larger values of input Q. This
+is smoothed using a simple centered 7 point average and the final output is in
+smooth3_regconf2, smooth3_regconf4, smooth3_regconf8 and smooth3_regconf16. The
+program smooth is used to do all the smoothing and the number 3 refers to the input
+half-width of the smoother requested by this program.
+
+
+
+

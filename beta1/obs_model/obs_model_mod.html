@@ -1,0 +1,368 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module obs_model_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE obs_model_mod</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+The code in this module computes the assimilation windows, and
+decides if the model needs to run in order for the data to be at the
+appropriate time to assimilate the next available observations.
+It also has the code to write out the current states, advance the
+model (in a variety of ways) and then read back in the updated states.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="OtherModulesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+assim_model_mod
+obs_sequence_mod
+obs_def_mod
+time_manager_mod
+ensemble_manager_mod
+mpi_utilities_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC INTERFACES</H2>
+
+<TABLE>
+<TR><TD><em class=call>use obs_model_mod, only : </em></TD>
+                   <TD><A HREF="#advance_state">advance_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#move_ahead">move_ahead</A></TD></TR>
+</TABLE>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="move_ahead"></A>
+<br>
+<div class=routine>
+<em class=call> call move_ahead(ens_handle, ens_size, seq, last_key_used,
+    window_time, key_bounds, num_obs_in_set, curr_ens_time, next_ens_time,
+    trace_messages) </em>
+<pre>
+type(ensemble_type),     intent(in)  :: <em class=code>ens_handle</em>
+integer,                 intent(in)  :: <em class=code>ens_size</em>
+type(obs_sequence_type), intent(in)  :: <em class=code>seq</em>
+integer,                 intent(in)  :: <em class=code>last_key_used</em>
+type(time_type),         intent(in)  :: <em class=code>window_time</em>
+integer, dimension(2),   intent(out) :: <em class=code>key_bounds</em>
+integer,                 intent(out) :: <em class=code>num_obs_in_set</em>
+type(time_type),         intent(out) :: <em class=code>curr_ens_time</em>
+type(time_type),         intent(out) :: <em class=code>next_ens_time</em>
+logical, optional,       intent(in)  :: <em class=code>trace_messages</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given an observation sequence and an ensemble, determines how to advance the
+model so that the next set of observations can be assimilated. Also returns
+the first and last keys and the number of observations to be assimilated at
+this time. The algorithm implemented here (one might want to have other
+variants) first finds the time of the next observation that has not been
+assimilated at a previous time. It also determines the time of the ensemble
+state vectors. It then uses information about the model's time stepping 
+capabilities to determine the time to which the model can be advanced that
+is CLOSEST to the time of the next observation. For now, this algorithm assumes
+that the model's timestep is a constant. A window of width equal to the model
+timestep is centered around the closest model time to the next observation
+and all observations in this window are added to the set to be assimilated.
+<br>
+<br>
+Previous versions of this routine also made the call which actually advanced
+the model before returning.  This is no longer true.  The routine only
+determines the time stepping and number of observations.  The calling code
+must then call advance_state() if indeed the next observation to be
+assimilated is not within the current window.  This is determined by
+comparing the current ensemble time with the next ensemble time.  If equal
+no advance is needed.  Otherwise, next ensemble time is the target time
+for advance_state().
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle  </em></TD>
+    <TD>Identifies the model state ensemble</TD></TR>
+<TR><TD valign=top><em class=code>ens_size  </em></TD>
+    <TD>Number of ensemble members</TD></TR>
+<TR><TD valign=top><em class=code>seq  </em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>last_key_used  </em></TD>
+    <TD>Identifies the last observation from the sequence that has 
+        been used</TD></TR>
+<TR><TD valign=top><em class=code>window_time  </em></TD>
+    <TD>Reserved for future use.</TD></TR>
+<TR><TD valign=top><em class=code>key_bounds  </em></TD>
+    <TD>Returned lower and upper bound on observations to be used 
+        at this time</TD></TR>
+<TR><TD valign=top><em class=code>num_obs_in_set  </em></TD>
+    <TD>Number of observations to be used at this time</TD></TR>
+<TR><TD valign=top><em class=code>curr_ens_time  </em></TD>
+    <TD>The time of the ensemble data passed into this routine.</TD>
+<TR><TD valign=top><em class=code>next_ens_time  </em></TD>
+    <TD>The time the ensemble data should be advanced to.
+        If equal to curr_ens_time, the model does not need to 
+        advance to assimilate the next observation.</TD>
+<TR><TD valign=top><em class=code>trace_messages  </em></TD>
+    <TD>Optional argument.  By default, detailed time
+        trace messages are disabled but can be turned on
+        by passing this in as .True. .  The messages will print
+        the current window times, data time, next observation
+        time, next window time, next data time, etc.</TD>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="advance_state"></A>
+<br>
+<div class=routine>
+<em class=call> call advance_state(ens_handle, ens_size, target_time, 
+                async, adv_ens_command, tasks_per_model_advance) </em>
+<pre>
+type(ensemble_type), intent(inout) :: <em class=code>ens_handle</em>
+integer, intent(in)                :: <em class=code>ens_size</em>
+type(time_type), intent(in)        :: <em class=code>target_time</em>
+integer, intent(in)                :: <em class=code>async</em>
+character(len=*), intent(in)       :: <em class=code>adv_ens_command</em>
+integer, intent(in)                :: <em class=code>tasks_per_model_advance</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Advances all ensemble size copies of an ensemble stored in ens_handle 
+to the target_time. 
+If async=0 this is done by repeated calls to 
+the <tt>adv_1step()</tt> subroutine. 
+If async=2, a call to the shell with the 
+command <em class=code>adv_ens_command</em> is used.
+If async=4, the filter program synchronizes with the MPI job shell script
+using the <tt>block_task()</tt> and <tt>restart_task()</tt> routines
+to suspend execution until all model advances have completed.
+The script can start the model advances using MPI and have it execute
+in parallel in this mode.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>ens_handle</em></TD>
+    <TD>Structure for holding ensemble information and data</TD></TR>
+<TR><TD valign=top><em class=code>ens_size</em></TD>
+    <TD>Ensemble size.</TD></TR>
+<TR><TD valign=top><em class=code>target_time</em></TD>
+    <TD>Time to which model is to be advanced.</TD></TR>
+<TR><TD valign=top><em class=code>async</em></TD>
+    <TD>How to advance model: 
+         <TABLE width=100% border=0 summary="" cellpadding=3>
+          <TR><TD>0 = subroutine adv_1step</TD></TR>
+          <TR><TD>2 = shell executes adv_ens_command</TD></TR>
+          <TR><TD>4 = MPI job script advances models and 
+                     syncs with filter task</TD></TR>
+         </TABLE> </TD></TR>
+<TR><TD valign=top><em class=code>adv_ens_command</em></TD>
+    <TD>Command to be issued to shell to advance model if async=2.</TD></TR>
+<TR><TD valign=top><em class=code>tasks_per_model_advance&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Reserved for future use.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This module does not have a namelist.
+</P>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TH align=left>filename</TH>
+    <TH align=left>purpose</TH></TR>
+<TR><TD valign=top>assim_model_state_ic<em>####</em></TD>
+    <TD>a binary representation of the state vector prepended by
+        a small header consisting of the 'advance-to' time and the
+        'valid-time' of the state vector.
+        The <em>####</em> represents the ensemble member number if 
+        <em class=code>&amp;ensemble_manager_nml</em>:
+        <em class=code>single_restart_file_out = .true.</em>.</TD></TR>
+<TR><TD valign=top>assim_model_state_ud<em>####&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>a binary representation of the state vector prepended by 
+        a small header consisting of the 'valid-time' of the state vector.
+        This is the 'updated' model state (after the model has advanced the
+        state to the desired 'advance-to' time).</TD></TR>
+<TR><TD valign=top>filter_control<em>####</em></TD>
+    <TD>a text file containing information needed to advance the ensemble members;
+        i.e., the ensemble member number, the input state vector file, the output 
+        state vector file - that sort of thing.
+        </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>move_ahead</TD>
+    <!-- message --><TD VALIGN=top>next obs time not in model time window</TD>
+    <!-- comment --><TD VALIGN=top>Error in algorithm to compute observation window</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>advance_state</TD>
+    <!-- message --><TD VALIGN=top>target time ###,### is before model_time ###,### </TD>
+    <!-- comment --><TD VALIGN=top>Target time must not be before current model time.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>advance_state</TD>
+    <!-- message --><TD VALIGN=top>Trying to use ### model states -- too many.
+            Use less than 10000 member ensemble.</TD>
+    <!-- comment --><TD VALIGN=top>Maximum of 9999 ensemble members is allowed.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>advance_state</TD>
+    <!-- message --><TD VALIGN=top>Can only have 10000 processes.</TD>
+    <!-- comment --><TD VALIGN=top> No more than 9999 processes can run.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>advance_state</TD>
+    <!-- message --><TD VALIGN=top>input.nml - async is #, must be 0, or 2.</TD>
+    <!-- comment --><TD VALIGN=top>Only 0 or 2 work for async.</TD>
+</TR>
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

@@ -1,0 +1,293 @@
+# DART $Id$
+(TYP)
+Table 3.  Code table for PREPBUFR report types used by Global CDAS/reanalysis systems (last revised 10/31/2001). 
+  
+
+Key to values in indicator ("Ind.") column: 
+        * - Currently not produced/not written into PREPBUFR files and even if it were, 
+            would not be used operationally by CDAS analysis. 
+        + - Currently written into PREPBUFR files but not used operationally by CDAS analysis. 
+        @ - Station pressure calculated from reported mean sea-level pressure and elevation 
+            via U.S. Standard Atmosphere approximation. Elevation is greater than 7.5 meters 
+            (if less than 7.5 meters, station pressure set equal to
+             sea-level pressure and report type set to 181/281). 
+        % - Reported station pressure and mean sea-level pressure BOTH missing.  
+            Station pressure is set to 1013 mb.  Elevation is less than or equal to 7.5 meters. 
+        A - Used operationally by all CDAS analysis. 
+        K - Altimeter setting is reported (never the case for synoptic). Station pressure 
+            calculated from reported altimeter setting and elevation. 
+  
+
+Listing of differences between FNL-SSI processing and CDAS processing for those types below marked "A": 
+     233/133 (ACARS aircraft): 
+               FNL - time window is +/- 3.0 hours about cycle time; CDAS - time window is +/- 1.5 hours about cycle time 
+               FNL - reports at all pressure-altitudes processed; CDAS - only reports above 2286 meters processed 
+     231/131 (ASDAR aircraft): 
+               FNL - reports at all pressure-altitudes processed; CDAS - only reports above 2286 meters processed 
+     242/252 (GMS IR/VIS satwnd): 
+               FNL - used over land everywhere; CDAS - not used over land anywhere 
+     243/253 (ESA IR/VIS satwnd): 
+               FNL - used over land everywhere; CDAS - used over land only south of 20 degrees north latitude 
+     245/246/255 (NESDIS IR/imager water vapor (cloud-top)/picture triplet satwnd): 
+               FNL - used over land everywhere; CDAS - used over land only south of 20 degrees north latitude 
+     181/281 (surface land): 
+               FNL - both METAR and SYNOPTIC; CDAS - only SYNOPTIC 
+
+------------------------------------------------------------------------------------------------------------------------  
+                                           MASS REPORTS
+------------------------------------------------------------------------------------------------------------------------
+
+Report Type   PREPBUFR Message Type  Description                                                                 Ind. 
+-----------   ---------------------  --------------------------------------------------------------------        ----         
+102           SPSSMI                 SSM/I 7-CHANNEL BRIGHTNESS TEMPERATURES (DMSP-13, DMSP-15)                  *
+
+110           ------                 currently not used                                                          n/a
+
+111           SYNDAT                 SYNTHETIC TROPICAL CYCLONE STORM CENTER PSFC, Q                             *
+ 
+120           ADPUPA                 RAWINSONDE VIRTUAL TEMPERATURE, SPECIFIC HUMIDITY, STATION PRESSURE         A
+ 
+121           ------                 currently not used                                                          n/a
+ 
+122           ADPUPA                 CLASS SOUNDING VIRTUAL TEMPERATURE, SPECIFIC HUMIDITY, STATION PRESSURE     *
+
+123           ------                 currently not used                                                          n/a
+
+124           ------                 currently not used                                                          n/a
+
+125           ------                 currently not used                                                          n/a
+
+130           AIRCFT                 AIREP AND PIREP AIRCRAFT SENSIBLE TEMPERATURE                               A 
+ 
+131           AIRCFT                 ASDAR AIRCRAFT SENSIBLE TEMPERATURE                                         A
+
+132           ADPUPA                 FLIGHT-LEVEL RECONNAISSANCE AND PROFILE DROPSONDE VIRTUAL TEMPERATURE,      A 
+                                     SPECIFIC HUMIDITY, STATION PRESSURE
+
+133           AIRCAR                 MDCARS AIRCRAFT SENSIBLE TEMPERATURE (SPECIFIC HUMIDITY FLAGGED FOR         A
+                                     NON-USE BY ANALYSIS)
+
+140           ------                 currently not used                                                          n/a
+
+141           SATWND                 INDIA IR AND VISIBLE CLOUD TEMPERATURE (INSAT-2E)                           *
+
+142           SATWND                 JMA IR AND VISIBLE CLOUD TEMPERATURE (GMS-5)                                * 
+                                     JMA IR AND VISIBLE CLOUD TEMPERATURE (GMS-5)
+
+143           SATWND                 EUMETSAT IR AND VISIBLE CLOUD TEMPERATURE (METEOSAT-5, METEOSAT-7)          *
+
+144           SATWND                 NESDIS VISIBLE CLOUD TEMPERATURE (GOES-8, GOES-10)                          *
+ 
+145           SATWND                 NESDIS IR CLOUD TEMPERATURE (GOES-8, GOES-10)                               * 
+
+146           SATWND                 NESDIS IMAGER WATER VAPOR CLOUD TEMPERATURE AT CLOUD TOP                    *
+                                     (GOES-8, GOES-10)
+ 
+147           SATWND                 NESDIS IMAGER WATER VAPOR CLOUD TEMPERATURE - DEEP LAYER                    *
+                                     (GOES-8, GOES-10)
+
+148           SATWND                 NESDIS SOUNDER WATER VAPOR CLOUD TEMPERATURE AT CLOUD TOP                   *
+                                     (GOES-8, GOES-10)
+ 
+149           SATWND                 NESDIS SOUNDER WATER VAPOR CLOUD TEMPERATURE - DEEP LAYER                   *
+                                     (GOES-8, GOES-10)
+
+150           SPSSMI                 SSM/I SUPEROBED FNOC RAIN RATE (DMSP-13, DMSP-15)                           *
+
+151           GOESND                 NESDIS SFOV CLOUD TOP PRESSURE AND TEMPERATURE, CLOUD AMOUNT                *
+                                     (GOES-8, GOES-10)
+ 
+152           SPSSMI                 SSM/I SUPEROBED NEURAL NET 3 TOTAL PRECIPITABLE WATER RETRIEVALS            *
+                                     (DMDP-13, DMSP-15)
+ 
+153           ------                 currently not used                                                          n/a
+
+154           ------                 currently not used                                                          n/a
+
+155           ------                 currently not used                                                          n/a
+
+156           GOESND                 NESDIS LAYER PRECIPITABLE WATER RETRIEVALS OVER LAND - CLEAR                *
+                                     (GOES-8, GOES-10)
+ 
+157           GOESND                 NESDIS LAYER PRECIPITABLE WATER RETRIEVALS OVER LAND- CLOUD                 * 
+                                     CORRECTED (GOES-8, GOES-10)
+ 
+158           GOESND                 NESDIS LAYER PRECIPITABLE WATER RETRIEVALS OVER OCEAN - CLEAR               *
+                                     (GOES-8, GOES-10)
+ 
+159           GOESND                 NESDIS LAYER PRECIPITABLE WATER RETRIEVALS OVER OCEAN - CLOUD               *
+                                     CORRECTED (GOES-8, GOES-10)
+ 
+160           ------                 currently not used                                                          n/a
+
+161           SATEMP                 NESDIS ATOVS VIRTUAL TEMPERATURE SOUNDINGS AT 250 KM RESOLUTION             A
+                                     OVER LAND - CLEAR (NOAA-16, CURRENTLY NOAA-15 NOT AVAILABLE)
+ 
+162           ------                 currently not used                                                          n/a
+ 
+163           SATEMP                 NESDIS ATOVS VIRTUAL TEMPERATURE SOUNDINGS AT 250 KM RESOLUTION             A
+                                     OVER LAND - CLOUDY (NOT ASSIMILATED OVER TROPICS) (NOAA-15,NOAA-16)
+ 
+164           GOESND                 NESDIS RADIANCES OVER LAND - CLEAR (GOES-8, GOES-10)                        *
+ 
+165           GOESND                 NESDIS RADIANCES OVER LAND - CLOUD CORRECTED (GOES-8, GOES-10)              *
+
+170           ------                 currently not used                                                          n/a
+ 
+171           SATEMP                 NESDIS ATOVS VIRTUAL TEMPERATURE SOUNDINGS AT 250 KM RESOLUTION             A
+                                     OVER OCEAN - CLEAR (NOAA-16, CURRENTLY NOAA-15 NOT AVAILABLE)
+ 
+172           ------                 currently not used                                                          n/a
+ 
+173           SATEMP                 NESDIS ATOVS VIRTUAL TEMPERATURE SOUNDINGS AT 250 KM RESOLUTION             A
+                                     OVER OCEAN - CLOUDY  (NOT ASSIMILATED OVER TROPICS) (NOAA-15,NOAA-16)
+ 
+174           GOESND                 NESDIS RADIANCES OVER OCEAN - CLEAR (GOES-8, GOES-10)                       *
+ 
+175           GOESND                 NESDIS RADIANCES OVER OCEAN - CLOUD CORRECTED (GOES-8, GOES-10)             *
+ 
+180           SFCSHP                 SURFACE MARINE (SHIP, BUOY, C-MAN) VIRTUAL TEMPERATURE, SPECIFIC            A
+                                     HUMIDITY, STATION PRESSURE (STATION PRESSURE REPORTED)
+ 
+181           ADPSFC                 SURFACE LAND SYNOPTIC STATION PRESSURE, SPECIFIC HUMIDITY (TEMPERATURE      A
+                                     NOT USED BY ANALYSIS) (STATION PRESSURE REPORTED)
+ 
+182           SFCSHP                 SPLASH LEVEL VIRTUAL TEMPERATURE, SPECIFIC HUMIDITY, STATION PRESSURE       A
+                                     (OVER OCEAN ONLY)
+
+183           ADPSFC, SFCSHP         SURFACE MARINE (SHIP, BUOY, C-MAN) AND LAND SYNOPTIC VIRTUAL TEMPERATURE,   +,@
+                                     SPECIFIC HUMIDITY, STATION PRESSURE (STATION PRESSURE NOT REPORTED)
+ 
+184           ------                 currently not used                                                          n/a
+
+185           ------                 currently not used                                                          n/a
+
+186           ------                 currently not used                                                          n/a
+ 
+187           ADPSFC                 SURFACE METAR VIRTUAL TEMPERATURE, SPECIFIC HUMIDITY, STATION PRESSURE      *,K 
+                                     (STATION PRESSURE NOT REPORTED)
+ 
+190           SFCBOG                 OPC/NOS POINT MEAN SEA-LEVEL PRESSURE BOGUS                                 *
+ 
+191           SFCBOG                 AUSTRALIAN PAOB MEAN SEA-LEVEL PRESSURE BOGUS                               A
+
+
+
+---------------------------------------------------------------------------------------------------------------------------  
+                                      WIND REPORTS
+---------------------------------------------------------------------------------------------------------------------------
+
+Report Type   PREPBUFR Message Type  Description                                                                 Ind. 
+-----------   ---------------------  --------------------------------------------------------------------------  ---------- 
+
+202           ------                 currently not used                                                          n/a
+
+210           SYNDAT                 SYNTHETIC TROPICAL CYCLONE U, V                                             *
+ 
+220           ADPUPA                 RAWINSONDE U, V                                                             A
+ 
+221           ADPUPA                 PIBAL U, V                                                                  A
+ 
+222           ADPUPA                 CLASS SOUNDING U, V                                                         *
+
+223           PROFLR                 WIND PROFILER U, V                                                          *
+
+224           VADWND                 NEXRAD VERTICAL AZIMUTH DISPLAY (VAD) U, V                                  *
+ 
+225           ------                 NEXRAD RADIAL U, V                                                          *
+ 
+230           AIRCFT                 AIREP AND PIREP AIRCRAFT U, V                                               A 
+ 
+231           AIRCFT                 ASDAR AIRCRAFT U, V                                                         A
+ 
+232           ADPUPA                 FLIGHT-LEVEL RECONNAISSANCE AND PROFILE DROPSONDE U, V                      A
+ 
+233           AIRCAR                 MDCARS AIRCRAFT U, V                                                        A 
+ 
+240           ------                 currently not used                                                          n/a
+ 
+241           SATWND                 INDIA IR AND VISIBLE CLOUD DRIFT U, V (INSAT-2E)                            +
+ 
+242           SATWND                 JMA IR AND VISIBLE CLOUD DRIFT U, V AT LEVELS BELOW 850 MB (GMS-5)          A
+ 
+243           SATWND                 EUMETSAT IR AND VISIBLE CLOUD DRIFT U, V AT LEVELS BELOW 850 MB             A
+                                     (METEOSAT-5, METEOSAT-7)
+ 
+244           ------                 currently not used                                                          n/a
+ 
+245           SATWND                 NESDIS IR CLOUD DRIFT U, V (GOES-8, GOES-10)                                A
+ 
+246           SATWND                 NESDIS IMAGER WATER VAPOR CLOUD U, V AT CLOUD TOP (GOES-8, GOES-10)         A
+ 
+247           SATWND                 NESDIS IMAGER WATER VAPOR CLOUD U, V - DEEP LAYER (GOES-8, GOES-10)         *
+ 
+248           SATWND                 NESDIS SOUNDER WATER VAPOR CLOUD U, V AT CLOUD TOP (GOES-8, GOES-10)        *
+ 
+249           SATWND                 NESDIS SOUNDER WATER VAPOR CLOUD U, V - DEEP LAYER (GOES-8, GOES-10)        * 
+ 
+250           SATWND                 JMA WATER VAPOR CLOUD U, V (GMS-5)                                          +
+ 
+251           SATWND                 NESDIS VISIBLE CLOUD DRIFT U, V (GOES-8, GOES-10)                           +
+ 
+252           SATWND                 JMA IR AND VISIBLE CLOUD DRIFT U, V AT LEVELS ABOVE 850 MB (GMS-5)          A 
+ 
+253           SATWND                 EUMETSAT IR AND VISIBLE CLOUD DRIFT U, V AT LEVELS ABOVE 850 MB             A
+                                     (METEOSAT-5, METEOSAT-7)
+ 
+254           SATWND                 EUMETSAT WATER VAPOR CLOUD U, V (METEOSAT-5, METEOSAT-7)                    +
+ 
+255           SATWND                 NESDIS PICTURE TRIPLET CLOUD U, V (GOES-8, GOES-10)                         A
+ 
+256           SATWND                 INDIA WATER VAPOR CLOUD U, V (INSAT-2E)                                     *
+ 
+257           ------                 currently not used                                                          n/a
+
+258           ------                 currently not used                                                          n/a
+ 
+259           ------                 currently not used                                                          n/a
+ 
+260           ------                 currently not used                                                          n/a
+ 
+261           ------                 currently not used                                                          n/a
+
+262           ------                 currently not used                                                          n/a
+ 
+263           ------                 currently not used                                                          n/a
+ 
+264           ------                 currently not used                                                          n/a
+ 
+265           ------                 currently not used                                                          n/a
+ 
+270           ------                 currently not used                                                          n/a 
+ 
+271           ------                 currently not used                                                          n/a
+ 
+272           ------                 currently not used                                                          n/a
+ 
+273           ------                 currently not used                                                          n/a
+ 
+274           ------                 currently not used                                                          n/a
+ 
+275           ------                 currently not used                                                          n/a
+ 
+280           SFCSHP                 SURFACE MARINE (SHIP, BUOY, C-MAN) U, V (STATION PRESSURE REPORTED)         A
+ 
+281           ADPSFC                 SURFACE LAND SYNOPTIC U, V (STATION PRESSURE REPORTED)                      +
+ 
+282           SFCSHP                 ATLAS BUOY U, V                                                             A,%
+ 
+283           SPSSMI                 SSM/I SUPEROBED NEURAL NET 3 WIND SPEED (DIRECTION SET TO ZERO, SPEED       * 
+                                     ASSIMILATED DIRECTLY) (DMSP-13, DMSP-15)
+ 
+284           ADPSFC, SFCSHP         SURFACE MARINE (SHIP, BUOY, C-MAN) AND LAND SYNOPTIC U, V (STATION          +,@
+                                     PRESSURE NOT REPORTED)
+ 
+285           QKSWND                 QUIKSCAT SCATTEROMETER U, V                                                 *
+ 
+286           ERS1DA                 ERS-2 SCATTEROMETER U, V                                                    *
+ 
+287           ADPSFC                 SURFACE METAR U, V (STATION PRESSURE NOT REPORTED)                          *,K
+ 
+290           ------                 currently not used                                                          n/a
+
+291           ------                 currently not used                                                          n/a

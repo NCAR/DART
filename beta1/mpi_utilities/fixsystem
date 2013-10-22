@@ -1,0 +1,132 @@
+#!/bin/sh
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+
+# usage: fixsystem [ your_fortran_command_name | -help  ]
+#         (e.g. ifort, pgf90, gfortran, g95, xlf90, etc)
+#
+# this script updates the mpi source files for any compiler-dependent
+# changes needed before building.
+# 
+# at the moment the only compiler-dependent code is the declaration
+# of the "system()" function in a fortran interface block.
+# the code uses this function to run a shell script or command and 
+# wait for the command exit code, e.g.:  rc = system("/bin/date")
+#
+# for all compilers, except gfortran, an interface block is required
+# to define the integer return from the system function.  however
+# the gfortran compiler gives an error if this block is defined.
+# this script enables and disables this interface block by
+# looking for a pair of specially formatted comment lines and
+# commenting in (or out) all the lines between those comment 
+# delimiter lines.
+#
+# the original usage of this script was without any arguments. 
+# the backwards compatibility remains for now, but is deprecated.
+# usage now is to give it a single argument - the name that the
+# fortran compiler is invoked with, e.g. ifort, xlf90, pgf90, etc.
+# it will ensure that any required changes to the source will be
+# made here before compilation.
+
+
+for f in mpi_utilities_mod.f90 null_mpi_utilities_mod.f90
+do
+
+  # figure out what state the source file is in before we start
+  export bline="`fgrep SYSTEM_BLOCK_EDIT ${f} | grep START | head -n 1`"
+  if [ "`echo $bline | grep COMMENTED_OUT`" != ""  ]; then
+    export before=out
+  elif [ "`echo $bline | grep COMMENTED_IN`" != ""  ]; then
+    export before=in
+  else
+    echo ${f} not found, or does not have the right comment string to
+    echo automatically change the system interface block via script.
+    echo Please restore original file from the subversion repository
+    echo and try again.
+    exit 1
+  fi
+
+  if [ $# = 0 ]; then
+    # no args given, swap to the other configuration.  deprecated
+    # and eventually a single argument will become required.
+    if [ $before = out ]; then
+      export todo=in
+      export compiler=non-gfortran
+    elif [ $before = in ]; then
+      export todo=out
+      export compiler=gfortran
+    else
+      echo Internal error; should not happen.  Contact DART support.
+      exit 1
+    fi
+
+  elif [ $# = 1 ]; then
+    # single arg: the name of your fortran compiler command
+    if ([ "$1" = help ] || [ "$1" = -help ] || [ "$1" = --help ]); then
+      echo "usage: $0 [ your_fortran_command_name | -help  ]"
+      echo "  e.g. $0 gfortran"
+      echo "  or   $0 ifort "
+      echo "  or   $0 pgf90 "
+      echo "  etc."
+      exit 1
+    elif [ "$1" = gfortran ]; then
+      export todo=out
+    else
+      export todo=in
+    fi
+    export compiler=$1
+
+  else
+    # too many arguments, give an error message and exit
+    echo invalid usage, more than 1 argument given to $0
+    echo "usage: $0 [ your_fortran_command_name | -help  ]"
+    echo "  e.g. $0 gfortran"
+    echo "  or   $0 ifort "
+    echo "  or   $0 pgf90 "
+    echo "  etc."
+    exit 1
+  fi
+  
+  # if we are already in the right state, loop to next file
+  if ([ $before = out ] && [ $todo = out ]); then continue; fi
+  if ([ $before = in  ] && [ $todo = in  ]); then continue; fi
+ 
+  # we do have something do to
+
+  # save original copy for backup if one does not already exist.
+  if [ ! -f ${f}.orig ]; then
+    cp -p ${f} ${f}.orig
+  fi
+  
+  # say what compiler we are doing this for, and move the existing
+  # code into a temporary file so the sed command does not overwrite it.
+  echo Setting for $compiler compiler in ${f}
+  mv ${f} tempfile
+
+  # removing comment chars, enabling interface block code
+  if [ $todo = in ]; then
+   sed -e '/SYSTEM_BLOCK_EDIT START COMMENTED_OUT/,/SYSTEM_BLOCK_EDIT END COMMENTED_OUT/s/^!//' \
+       -e '/\(SYSTEM_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_OUT/s//\1 COMMENTED_IN/' tempfile > ${f}
+  fi
+  
+  # adding comment chars, disabling interface block code
+  if [ $todo = out ]; then
+   sed -e '/SYSTEM_BLOCK_EDIT START COMMENTED_IN/,/SYSTEM_BLOCK_EDIT END COMMENTED_IN/s/^/!/' \
+       -e '/\(SYSTEM_BLOCK_EDIT [A-Z][A-Z]*\) COMMENTED_IN/s//\1 COMMENTED_OUT/' tempfile > ${f}
+  fi
+
+  \rm -f tempfile
+
+done
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

@@ -1,0 +1,33 @@
+# DART $Id$
+
+Optimization hints for DART/COAMPS
+
+When dealing with a large model with a number of configuration options,
+the methods of optimization are varied.  However, here are some general
+guidelines:
+
+1. Use single-precision instead of double-precision real numbers
+
+This can be accomplished by altering the compilation of the COAMPS code.
+Before using the resulting model for a DART run, change the C_REAL 
+parameter (which gives the size of the REAL in the COAMPS restart files)
+accordingly.
+
+2. Choose as large a timestep as possible
+
+As with any model, there are stability concerns if the timestep grows
+too large.  However, COAMPS includes a 'chekts' routine that warns the
+user if the timestep is too large for the domain configuration.  If the
+timestep exceeds what chekts thinks it should be, it will print a 
+warning in the COAMPS log file.
+
+3. Wisely partition the domain
+
+The COAMPS model is built to support domain decomposition across a large
+number of processors.  However, as with any other multiple-process application,
+there is a tradeoff between the speed gained by adding more processors
+and the speed lost by passing information between those processors.  The
+COAMPS documentation suggests that about 30 points per processor in
+each direction is optimal - this will of course depend on the particular
+configuration.  For example, a user with a 90x60 model domain would do
+well to choose 3x2 domain decomposition.  

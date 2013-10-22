@@ -1,0 +1,43 @@
+# DART $Id$
+
+Notes on adding support for COAMPS aerosols
+-------------------------------------------
+
+The aerosol restart file is a separate entity (named as 'restarta1c' vs. 
+'restarta1p') than the atmospheric restart file. The contents are variable,
+depending on the number of species and the number of sources in use.
+
+The number of passive tracer species is "mspc"
+The number of emission sites or locations is "nsrc"
+ - this is used with general point/area-source tracer emissions and
+   a regular setup with lat/lon/height of emission site locations given
+   by cntlat/cntlon/cnthgt
+The number of size bins in the dust component is "mdust"
+
+
+SIZE            NAME        DESCRIPTION
+3D*mspc         cc1         aerosol/tracer concentration
+3D*mspc         cc2         aerosol/tracer concentration
+3D*mspc         ccsrc       source production
+3D*nsrc         srcmp       source production (when using emission sites)
+3D*mspc         ccsum       mass dosage
+3D*mspc         bdcc1       boundary inflow flux/concentration
+3D*mspc         bdcc2       boundary inflow flux/concentration
+2D(x,y)         fmap        map factor in mass continuity
+1D(z)           volz        grid box volume
+3D*mdust        dustcc1     dust concentration
+3D*mdust        dustcc2     dust concentration
+3D*mdust        dustsum     dust mass dosage
+3D*mdust        dustbd1     dust boundary inflow flux/concentration
+3D*mdust        dustbd2     dust boundary inflow flux/concentration
+2D(x,y)*mdust   dustflx     dust surface flux
+2D(x,y)*mdust   dustdry     dust dry deposition flux
+2D(x,y)*mdust   dustwet     dust wet deposition flux
+3D              dustsed     dust specific sedimentation flux
+2D(x,y)         dustfrc     dust erodible fraction
+2D(x,y)         fvelmax     friction velocity threshold for dust mobilization
+mdust+1         bnddust     dust particle bin boundaries
+mdust           voldust     dust particle volume
+mdust           raddust     dust particle radius
+mdust           dendust     dust particle density
+

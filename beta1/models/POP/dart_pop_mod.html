@@ -1,0 +1,909 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module dart_pop_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE dart_pop_mod (POP)</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+   <em class=program>dart_pop_mod</em> provides a consistent collection 
+   of routines that are useful for multiple programs e.g. 
+   <em class=program>dart_to_pop</em>,
+   <em class=program>pop_to_dart</em>, etc.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>There are no namelists unique to this module.
+It is necessary for this module to read some of the POP namelists,
+and so they are declared in this module. In one instance, DART
+will read the <em class=code>time_manager_nml</em> namelist and <b>write</b>
+an updated version to control the length of the integration of POP.
+All other information is simply read from the namelists and is used
+in the same context as POP itself. The POP documentation should be 
+consulted. <strong>Only the variables of interest to DART are described in
+this document.</strong>
+<br />
+<br />
+All namelists are read from a file named <em class=file>pop_in</em>.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="time_manager_nml"></A>
+<div class=namelist><pre>
+<em class=call>namelist /time_manager_nml/ </em> allow_leapyear, stop_count, stop_option
+</pre></div>
+<div class=indent1><!-- Description -->
+<P>
+   <em class=program>dart_to_pop</em> controls the model advance of LANL/POP
+   by creating a <em class=code>&amp;time_manager_nml</em> in 
+   <em class=file>pop_in.DART</em> <strong>IFF</strong> the DART state being 
+   converted has the 'advance_to_time' record.
+   The <em class=file>pop_in.DART</em> must be concatenated
+   with the other namelists needed by POP into a file called 
+   <em class=file>pop_in</em>&nbsp;. We have chosen to store the other 
+   namelists (which contain static information) in a file called 
+   <em class=file>pop_in.part2</em>. Initially, the 
+   <em class=code>time_manager_nml</em> is stored in a companion file called 
+   <em class=file>pop_in.part1</em> and the two files are concatenated into
+   the expected <em class=file>pop_in</em> - then, during the course of an
+   assimilation experiment, DART keeps writing out a new 
+   <em class=code>time_manager_nml</em> with new integration information - 
+   which gets appended with the static information in 
+   <em class=file>pop_in.part2</em>&nbsp;
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+
+<TR><!--contents--><TD valign=top>allow_leapyear&nbsp;&nbsp;&nbsp;</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD valign=top>DART ignores the setting of this parameter.
+    All observations must use a Gregorian calendar.
+    There are pathological cases, but if you are doing data assimilation, 
+    just use the Gregorian calendar.
+    <em class=units>[default:&nbsp;.true.]</em>
+    </TD></TR>
+
+<TR><!--contents--><TD valign=top>stop_count</TD>
+    <!--  type  --><TD valign=top>integer</TD>
+    <!--descript--><TD valign=top>the number of model advance steps to take.
+    <em class=units>[default:&nbsp;1]</em>
+    </TD></TR>
+
+<TR><!--contents--><TD valign=top>stop_option</TD>
+    <!--  type  --><TD valign=top>character(len=64)&nbsp;&nbsp;&nbsp;</TD>
+    <!--descript--><TD valign=top>The units for the number of model advance 
+    steps (<em class=code>stop_count</em>) to take.
+    <em class=units>[default:&nbsp;'ndays']</em>
+    </TD></TR>
+
+</TABLE>
+</div>
+<br />
+
+<!--==================================================================-->
+
+<A NAME="io_nml"></A>
+<div class=namelist><pre>
+<em class=call>namelist /io_nml/ </em> luse_pointer_files, pointer_filename
+</pre></div>
+
+<div class=indent1><!-- Description -->
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+
+<TR><!--contents--><TD valign=top>luse_pointer_files</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD valign=top>switch to indicate the use of pointer files 
+    or not. If <em class=code>.true.</em>, a pointer file is used to contain 
+    the name of the restart file to be used.
+    DART requires this to be <em class=code>.true</em>.
+    <em class=units>[default:&nbsp;.true.]</em>
+    </TD></TR>
+
+<TR><!--contents--><TD valign=top>pointer_filename</TD>
+    <!--  type  --><TD valign=top>character(len=100)</TD>
+    <!--descript--><TD valign=top>The name of the pointer file. All of
+    the DART scripts presume and require the use of the default.
+    Each ensmeble member gets its own pointer file.
+    <em class=units>[default:&nbsp;rpointer.ocn.[1-N].restart]</em>
+    </TD></TR>
+</TABLE>
+</div>
+<br />
+
+<!--==================================================================-->
+
+<A NAME="restart_nml"></A>
+<br />
+<div class=namelist><pre>
+<em class=call>namelist /restart_nml/ </em> restart_freq_opt, restart_freq
+</pre></div>
+
+<div class=indent1><!-- Description -->
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+
+<TR><!--contents--><TD valign=top>luse_pointer_files&nbsp;&nbsp;&nbsp;</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD valign=top>switch to indicate the use of pointer files 
+    or not. If <em class=code>.true.</em>, a pointer file is used to contain 
+    the name of the restart file to be used.
+    DART requires this to be <em class=code>.true</em>.
+    <em class=units>[default:&nbsp;.true.]</em>
+    </TD></TR>
+
+<TR><!--contents--><TD valign=top>pointer_filename</TD>
+    <!--  type  --><TD valign=top>character(len=100)&nbsp;&nbsp;&nbsp;</TD>
+    <!--descript--><TD valign=top>The name of the pointer file. All of
+    the DART scripts presume and require the use of the default.
+    Each ensmeble member gets its own pointer file.
+    <em class=units>[default:&nbsp;rpointer.ocn.[1-N].restart]</em>
+    </TD></TR>
+</TABLE>
+</div>
+<br />
+
+<!--==================================================================-->
+
+<A NAME="init_ts_nml"></A>
+<br />
+<div class=namelist><pre>
+<em class=call>namelist /init_ts_nml/ </em> init_ts_option, init_ts_file, init_ts_file_fmt
+</pre></div>
+
+<div class=indent1><!-- Description -->
+<P>
+   The <em class=program>dart_pop_mod:initialize_module()</em> routine reads
+   <em class=file>pop_in</em>&nbsp;. There are several code stubs for future
+   use that may allow for a more fully-supported POP namelist implementation. 
+   This namelist is one of them. Until further notice, 
+   the <em class=code>init_ts_nml</em> is completely ignored by DART. 
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+
+<TR><!--contents--><TD valign=top>init_ts_option</TD>
+    <!--  type  --><TD valign=top>character(len=64)</TD>
+    <!--descript--><TD valign=top>NOT USED by DART. All T,S information
+    comes from a netCDF restart file named <em class=file>pop.r.nc</em>
+    <em class=units>[default:&nbsp;'restart']</em>
+    </TD></TR>
+
+<TR><!--contents--><TD valign=top>init_ts_file</TD>
+    <!--  type  --><TD valign=top>character(len=100)&nbsp;&nbsp;&nbsp;</TD>
+    <!--descript--><TD valign=top>NOT USED by DART. All T,S information
+    comes from <em class=file>pop.r.nc</em>
+    <em class=units>[default:&nbsp;'pop.r']</em>
+    </TD></TR>
+
+<TR><!--contents--><TD valign=top>init_ts_file_fmt&nbsp;&nbsp;&nbsp;</TD>
+    <!--  type  --><TD valign=top>character(len=64)</TD>
+    <!--descript--><TD valign=top>NOT USED by DART.
+    The file format is <em class=code>'nc'</em>
+    <em class=units>[default:&nbsp;'nc']</em>
+    </TD></TR>
+</TABLE>
+</div>
+<br />
+
+<!--==================================================================-->
+
+<A NAME="domain_nml"></A>
+<br />
+<div class=namelist><pre>
+<em class=call>namelist /domain_nml/ </em> ew_boundary_type
+</pre></div>
+
+<div class=indent1><!-- Description -->
+<P>DART needs to know if the East-West domain is cyclic for spatial interpolations.
+Presently, DART has only been tested for the dipole grid, which is cyclic E-W and
+closed N-S.
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+
+<TR><!--contents--><TD valign=top>ew_boundary_type&nbsp;&nbsp;&nbsp;</TD>
+    <!--  type  --><TD valign=top>character(len=64)&nbsp;&nbsp;&nbsp;</TD>
+    <!--descript--><TD valign=top>switch to indicate whether the East-West
+    domain is cyclic or not. DART/POP has not been tested in a regional 
+    configuration, so DART requires this to be <em class=code>'cyclic'</em>.
+    <em class=units>[default:&nbsp;'cyclic']</em>
+    </TD></TR>
+
+</TABLE>
+</div>
+<br />
+
+<!--==================================================================-->
+
+<A NAME="grid_nml"></A>
+<br />
+<div class=namelist><pre>
+<em class=call>namelist /grid_nml/ </em> horiz_grid_opt,  vert_grid_opt,  topography_opt, &amp;
+                               horiz_grid_file, vert_grid_file, topography_file
+</pre></div>
+
+<div class=indent1><!-- Description -->
+<P>
+The POP grid information comes in several files:
+horizontal grid lat/lons in one, 
+the vertical grid spacing in another, and the
+topography (lowest valid vertical level) in a third.
+<br />
+<br />
+Here is what we can get from the (binary) horizontal grid file:
+</P>
+<pre>
+real(r8), dimension(:,:) :: ULAT,  &amp;! latitude  (radians) of U points
+real(r8), dimension(:,:) :: ULON,  &amp;! longitude (radians) of U points
+real(r8), dimension(:,:) :: HTN ,  &amp;! length (cm) of north edge of T box
+real(r8), dimension(:,:) :: HTE ,  &amp;! length (cm) of east  edge of T box
+real(r8), dimension(:,:) :: HUS ,  &amp;! length (cm) of south edge of U box
+real(r8), dimension(:,:) :: HUW ,  &amp;! length (cm) of west  edge of U box
+real(r8), dimension(:,:) :: ANGLE  &amp;! angle
+</pre>
+<P>
+The vertical grid file is ascii, with 3 columns/line:
+</P>
+<pre>cell thickness(in cm)   cell center(in m)   cell bottom(in m)</pre>
+<P>
+Here is what we can get from the topography file:
+</P>
+<pre>
+integer, dimension(:,:), :: KMT    &amp;! k index of deepest grid cell on T grid
+</pre>
+<P>
+These must be derived or come from someplace else ...
+</P>
+<pre>
+KMU               k index of deepest grid cell on U grid
+HT                real(r8) value of deepest valid T depth (in cm)
+HU                real(r8) value of deepest valid U depth (in cm)
+</pre>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+
+<TR><!--contents--><TD valign=top>horiz_grid_opt, vert_grid_opt, topography_opt</TD>
+    <!--  type  --><TD valign=top>character(len=64)</TD>
+    <!--descript--><TD valign=top>switch to indicate whether or not the grids
+    will come from an external file or not. DART requires ALL of these to be
+    <em class=code>'file'</em>. 
+    <em class=units>[default:&nbsp;'file']</em>
+    </TD></TR>
+
+<TR><!--contents--><TD valign=top>horiz_grid_file</TD>
+    <!--  type  --><TD valign=top>character(len=100)</TD>
+    <!--descript--><TD valign=top>The name of the binary file containing the
+    values for the horizontal grid. The <strong>dimensions</strong> of the
+    grid are read from <em class=file>pop.r.nc</em>. It would have been nice
+    to include the actual grid information in the netCDF files.
+    <em class=units>[default:&nbsp;'horiz_grid.gx3v5.r8ieee.le']</em>
+    </TD></TR>
+
+<TR><!--contents--><TD valign=top>vert_grid_file</TD>
+    <!--  type  --><TD valign=top>character(len=100)</TD>
+    <!--descript--><TD valign=top>The name of the ASCII file containing the
+    values for the vertical grid. The file must contain three columns of data
+    pertaining to the cell thickness (in cm), the cell center (in meters), and the
+    cell bottom (in meters). Again, it would have been nice
+    to include the vertical grid information in the netCDF files.
+    <em class=units>[default:&nbsp;'vert_grid.gx3v5']</em>
+    </TD></TR>
+
+<TR><!--contents--><TD valign=top>topography_grid_file</TD>
+    <!--  type  --><TD valign=top>character(len=100)</TD>
+    <!--descript--><TD valign=top>The name of the binary file containing the
+    values for the topography information. The <strong>dimensions</strong> of the
+    grid are read from <em class=file>pop.r.nc</em>.
+    <em class=units>[default:&nbsp;'topography.gx3v5.r8ieee.le']</em>
+    </TD></TR>
+</TABLE>
+</div>
+<br />
+
+<!--==================================================================-->
+
+<A NAME="OtherModulesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+
+<PRE>
+types_mod
+time_manager_mod
+utilities_mod
+typesizes
+netcdf
+</PRE>
+
+<!--==================================================================-->
+<!-- Note to authors. The first row of the table is different.        -->
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC INTERFACES</H2>
+
+<P>
+Only a select number of interfaces used are discussed here.
+Each module has its own discussion of their routines. 
+</P>
+
+<h3 class=indent1>Interface Routines</h3>
+<TABLE width=80%>
+<TR><TD><em class=call>use dart_pop_mod, only : </em></TD>
+                   <TD><A HREF="#get_pop_calendar">get_pop_calendar</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_model_time_step">set_model_time_step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_horiz_grid_dims">get_horiz_grid_dims</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_vert_grid_dim">get_vert_grid_dim</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_horiz_grid">read_horiz_grid</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_topography">read_topography</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_vert_grid">read_vert_grid</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#write_pop_namelist">write_pop_namelist</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_pop_restart_filename">get_pop_restart_filename</A></TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+<H3 class=indent1>Required Interface Routines</H3>
+<!--==================================================================-->
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_pop_calendar"></A>
+<br />
+<div class=routine>
+<em class=call>call get_pop_calendar(calstring)</em>
+<pre>
+character(len=*), intent(out) :: <em class=code>calstring</em>
+</pre>
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+Returns a string containing the type of calendar in use.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>calstring</em></TD>
+    <TD>DART/POP uses a 'gregorian' calendar.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="set_model_time_step"></A>
+<br />
+<div class=routine>
+<em class=call>poptimestep = set_model_time_step()</em>
+<pre>
+type(time_type), intent(out) :: <em class=code>poptimestep</em>
+</pre>
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+<em class=code>set_model_time_step</em>
+returns the model time step that was set in the 
+<a href="#restart_nml">restart_nml</a><em class=code>restart_freq</em>.
+This is the minimum amount of time DART thinks the POP model can advance.
+Indirectly, this specifies the minimum assimilation interval.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>poptimestep</em></TD>
+    <TD>the minimum assimilation interval</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_horiz_grid_dims"></A>
+<br />
+<div class=routine>
+<em class=call>call get_horiz_grid_dims(Nx, Ny)</em>
+<pre>
+integer, intent(out) :: <em class=code>Nx, Ny</em>
+</pre>
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+<em class=code>get_horiz_grid_dims</em>
+reads <em class=file>pop.r.nc</em> to determine the number of longitudes and
+latitudes. 
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>Nx&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>the length of the 'i' dimension in the POP restart file.
+    The number of longitudes in use.</TD></TR>
+
+<TR><TD valign=top><em class=code>Ny&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>the length of the 'j' dimension in the POP restart file.
+    The number of latitudes in use.</TD></TR>
+
+</TABLE>
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_vert_grid_dim"></A>
+<br />
+<div class="routine">
+<em class=call>call get_vert_grid_dim( Nz )</em>
+<pre>
+integer, intent(out) :: <em class=code>Nz</em>
+</pre>
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+<em class=code>get_vert_grid_dim</em>
+reads <em class=file>pop.r.nc</em> to determine the number of vertical levels
+in use. 
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>Nz&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>the length of the 'k' dimension in the POP restart file.
+    The number of vertical levels in use.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="read_horiz_grid"></A>
+<br />
+<div class="routine">
+<em class=call>call read_horiz_grid(nx, ny, ULAT, ULON, TLAT, TLON)</em>
+<pre>
+integer,                    intent(in)  :: <em class=code>nx, ny</em>
+real(r8), dimension(nx,ny), intent(out) :: <em class=code>ULAT, ULON, TLAT, TLON</em>
+</pre>
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+<em class=code>read_horiz_grid</em> reads the direct access binary files
+containing the POP grid information. 
+<strong>The first record is REQUIRED to be 'ULAT', 
+the second record is REQUIRED to be 'ULON'.</strong>
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>nx&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The number of longitudes in the grid.</TD></TR>
+
+<TR><TD valign=top><em class=code>ny&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The number of latitudes in the grid.</TD></TR>
+
+<TR><TD valign=top><em class=code>ULAT&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The matrix of latitudes for the UVEL and VVEL variables.
+        Units are degrees [-90,90].</TD></TR>
+
+<TR><TD valign=top><em class=code>ULON&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The matrix of longitudes for the UVEL and VVEL variables.
+        Units are degrees. [0,360] </TD></TR>
+
+<TR><TD valign=top><em class=code>TLAT&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The matrix of latitudes for the SALT and TEMP variables.
+        Units are degrees [-90,90].</TD></TR>
+
+<TR><TD valign=top><em class=code>TLON&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The matrix of longitudes for the SALT and TEMP variables.
+        Units are degrees. [0,360] </TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="read_topography"></A>
+<br />
+<div class="routine">
+<em class=call>call read_topography(nx, ny, KMT, KMU)</em>
+<pre>
+integer,                   intent(in)  :: <em class=code>nx, ny</em>
+integer, dimension(nx,ny), intent(out) :: <em class=code>KMT, KMU</em>
+</pre>
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+<em class=code>read_topography</em> reads the direct access binary files
+containing the POP topography information. 
+<strong>The first record is REQUIRED to be 'KMT'.</strong>
+'KMU' is calculated from 'KMT'.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>nx&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The number of longitudes in the grid.</TD></TR>
+
+<TR><TD valign=top><em class=code>ny&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The number of latitudes in the grid.</TD></TR>
+
+<TR><TD valign=top><em class=code>KMT&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The matrix containing the lowest valid depth index 
+    at grid centroids.</TD></TR>
+
+<TR><TD valign=top><em class=code>KMU&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The matrix containing the lowest valid depth index 
+    at grid corners.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="read_vert_grid"></A>
+<br />
+<div class="routine">
+<em class=call>call read_vert_grid(nz, ZC, ZG)</em>
+<pre>
+integer,                 intent(in)  :: <em class=code>nz</em>
+real(r8), dimension(nz), intent(out) :: <em class=code>ZC, ZG</em>
+</pre>
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+<em class=code>read_vert_grid</em> reads the ASCII file
+containing the information about the vertical levels.
+The file must contain three columns of data pertaining to;
+1) the cell thickness (in cm),<br />
+2) the cell center (in meters),<br /> and
+3) the cell bottom (in meters).
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>nz&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The number of vertical levels.</TD></TR>
+
+<TR><TD valign=top><em class=code>ZC&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The depth (in meters) at the grid centers.</TD></TR>
+
+<TR><TD valign=top><em class=code>ZG&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The depth (in meters) at the grid edges.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="write_pop_namelist"></A>
+<br />
+<div class="routine">
+<em class=call>call write_pop_namelist(model_time, adv_to_time)</em>
+<pre>
+type(time_type), intent(in)  :: <em class=code>model_time</em>
+type(time_type), intent(in)  :: <em class=code>adv_to_time</em>
+</pre>
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+<em class=code>write_pop_namelist</em> writes the POP namelist
+<em class=code>time_manager_nml</em> with the information necessary
+to advance POP to the next assimilation time. The namelist is written
+to a file called <em class=code>pop_in.DART</em>. Presently, DART is
+configured to minimally advance POP for 86400 seconds - i.e. 1 day. 
+The forecast length (the difference between 'model_time' and 'adv_to_time')
+must be an integer number of days with the current setup. An error will
+result if it is not.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>model_time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The 'valid' time of the current model state.</TD></TR>
+
+<TR><TD valign=top><em class=code>adv_to_time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The time of the next assimilation.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_pop_restart_filename"></A>
+<br />
+<div class="routine">
+<em class=call>call get_pop_restart_filename( filename )</em>
+<pre>
+character(len=*), intent(out) :: <em class=code>filename</em>
+</pre>
+</div>
+
+<div class=indent1><!-- Description -->
+
+<P>
+<em class=code>get_pop_restart_filename</em> returns the filename 
+containing the POP restart information. At this point the filename
+is <strong>hardwired</strong> to <em class=file>pop.r.nc</em>, 
+but may become more flexible in future versions. 
+The filename may be derived from the <em class=code>restart_nml</em> 
+but is currently ignored.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>filename&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The name of the POP restart file.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+
+<TABLE border=0 width=100%>
+<TR><TH align=left>filename</TH>
+    <TH align=left>purpose</TH></TR>
+<TR><TD>pop_in</TD>
+    <TD>to read the POP namelists</TD></TR>
+<TR><TD>pop.r.nc</TD>
+    <TD>provides grid dimensions and 'valid_time' of the model state</TD></TR>
+<TR><TD><em class=code>&amp;grid_nml</em> "horiz_grid_file"</TD>
+    <TD>contains the values of the horizontal grid</TD></TR>
+<TR><TD><em class=code>&amp;grid_nml</em> "vert_grid_file"</TD>
+    <TD>contains the number and values of the vertical levels</TD></TR>
+<TR><TD><em class=code>&amp;grid_nml</em> "topography_grid_file"</TD>
+    <TD>contains the indices of the wet/dry cells</TD></TR>
+<TR><TD>pop_in.DART</TD>
+    <TD>to control the integration of the POP model advance</TD></TR>
+</TABLE>
+<br />
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH width="50%">Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>initialize_module</TD>
+    <!-- message --><TD VALIGN=top>pop_in:init_ts_file pop.r.nc not found'
+</TD>
+    <!-- comment --><TD VALIGN=top>The POP restart file MUST be called
+    'pop.r.nc'. Make a soft link if necessary.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>get_horiz_grid_dims</TD>
+    <!-- message --><TD VALIGN=top>unable to find either 'i' or 'nlon' in file pop.r.nc</TD>
+    <!-- comment --><TD VALIGN=top>The POP restart file must contain dimensions named either 'i' or 'nlon'.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>get_horiz_grid_dims</TD>
+    <!-- message --><TD VALIGN=top>unable to find either 'j' or 'nlat' in file pop.r.nc</TD>
+    <!-- comment --><TD VALIGN=top>The POP restart file must contain dimensions named either 'j' or 'nlat'.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>set_model_time_step</TD>
+    <!-- message --><TD VALIGN=top>restart_freq_opt must be nday</TD>
+    <!-- comment --><TD VALIGN=top>Pretty self-explanatory. 
+    The POP namelist must specify the forecast length as a multiple of 'days'. 
+    </TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>write_pop_namelist</TD>
+    <!-- message --><TD VALIGN=top>adv_to_time has seconds == xxx must be zero'</TD>
+    <!-- comment --><TD VALIGN=top>DART is asking POP to advance to a time that is
+    a fraction of a day away. This should not be possible. 
+    Contact the DART developers.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>write_pop_namelist</TD>
+    <!-- message --><TD VALIGN=top>stop_option must be "nday"</TD>
+    <!-- comment --><TD VALIGN=top>the POP <em class=code>time_manager_nml:stop_option</em> 
+    is not set to 'nday'. This is required by DART.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_horiz_grid</TD>
+    <!-- message --><TD VALIGN=top>pop_in:horiz_grid_file 'XYZ' not found</TD>
+    <!-- comment --><TD VALIGN=top>The horizontal grid filename specified in
+    <em class=file>pop_in</em><em class=code>grid_nml</em> cannot be found.
+    </TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>calc_tpoints</TD>
+    <!-- message --><TD VALIGN=top>pop_in&amp;domain_nml:ew_boundary_type 'X' unknown</TD>
+    <!-- comment --><TD VALIGN=top>The <em class=code>ew_boundary_type</em> 
+    must be 'cyclic' - until DART/POP gets tested with non-cyclic domains. 
+    </TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_topography</TD>
+    <!-- message --><TD VALIGN=top>pop_in:topography_file 'XYZ' not found</TD>
+    <!-- comment --><TD VALIGN=top>The topography file specified in
+    <em class=file>pop_in</em><em class=code>grid_nml</em> cannot be found.
+    </TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_vert_grid</TD>
+    <!-- message --><TD VALIGN=top>pop_in:vert_grid_file 'XYZ' not found</TD>
+    <!-- comment --><TD VALIGN=top>The vertical grid file specified in
+    <em class=file>pop_in</em><em class=code>grid_nml</em> cannot be found.
+    </TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>read_vert_grid</TD>
+    <!-- message --><TD VALIGN=top>error reading depths, line 'X'</TD>
+    <!-- comment --><TD VALIGN=top>The vertical grid file is corrupt or
+    does not have the expected three pieces of information per line.
+    </TD>
+</TR>
+
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+There are no known bugs, but there sure is a lot of dependence on
+assimilating on daily boundaries - and the pop.r.nc file.
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

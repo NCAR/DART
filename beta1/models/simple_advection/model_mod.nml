@@ -1,0 +1,15 @@
+&model_nml
+   num_grid_points        = 10,
+   grid_spacing_meters    = 100000.0,
+   time_step_days         = 0,
+   time_step_seconds      = 3600,  
+   mean_wind              = 20.0, 
+   wind_random_amp        = 0.00027778,
+   wind_damping_rate      = 0.0000027878, 
+   lagrangian_for_wind    = .true., 
+   destruction_rate       = 0.000055556,
+   source_random_amp_frac = 0.00001,
+   source_damping_rate    = 0.0000027878,
+   source_diurnal_rel_amp = 0.05,
+   source_phase_noise     = 0.0,
+   output_state_vector  = .false./

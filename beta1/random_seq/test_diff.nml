@@ -1,0 +1,6 @@
+&test_diff_nml
+   mean  = 0.0d0,
+   sd1   = 1.0d0,
+   sd2   = 1.0d0,
+   iseed =   123  /
+

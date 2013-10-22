@@ -1,0 +1,235 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>system simulation programs</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>full_error and others</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+A collection of standalone programs for simulating
+various properties of ensembles.  The program of
+most interest here is <em class=file>full_error.f90</em>
+which generates the auxiliary information needed when
+using sampling error correction in the filter.
+</P>
+<P>
+To enable the sampling error correction algorithm in
+the filter, set the namelist item
+<a href="../assim_tools/assim_tools_mod.html#Namelist">
+&amp;assim_tools_nml :: sampling_error_correction</a>
+to true, and copy the corresponding ensemble size 
+file into the run directory.  A set of precomputed
+files for various ensemble sizes can be found in the
+<em class=file>system_simulation/full_error_precomputed_tables</em>
+directory.  To generate a file for a different ensemble
+size, build the executables in the work directory,
+set the ens_size namelist item in the input.nml namelist file,
+and run full_error.  It generates a large number of samples
+and may take between 10-40 minutes to run, depending on the
+ensemble size and the speed of your processor.
+</P>
+<P>
+Talk to Jeff Anderson about the other programs in
+this directory.
+</P>
+
+<!--==================================================================-->
+<!--============== DESCRIPTION OF A NAMELIST ========================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;full_error_nml
+  ens_size = 80, 
+  output_filename = 'final_full',
+/ 
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD>ens_size</TD>
+    <TD>integer</TD>
+    <TD>Number of ensemble members to compute sampling error for.  This
+computation is independent of any of the model details; it only depends on
+the count of ensemble members.
+</TD></TR>
+  
+<TR><TD valign=top>output_filename</TD>
+    <TD valign=top>character(len=128)</TD>
+    <TD>Basename for the output file written by this program.  The program will
+append <em class=code>.N</em> to the name, where N is the ensemble size,
+creating filenames of the form "base.8", "base.32", etc.  The base name
+should be "final_full" to match the code in the filter program which reads
+this file.
+</TD></TR>
+  
+</TABLE>
+                       
+</div>                 
+<br />                 
+
+
+
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+random_seq_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<P>
+The full_error program creates files which should be called
+<em class=file>final_full.N</em> to match the filenames expected
+by the filter program.
+</P>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li>Anderson, J. L., 2011:
+Localization and Sampling Error Correction
+in Ensemble Kalman Filter Data Assimilation.
+Submitted for publication, Jan 2011.
+Contact author.</li>
+
+</ul>
+<br />
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class="errors">
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>full_error</TD>
+    <!-- message --><TD VALIGN=top>cannot handle task counts &gt; 99999</TD>
+    <!-- comment --><TD VALIGN=top>Ensemble size must be less than 100,000. </TD></TR>
+
+<TR><!-- routine --><TD VALIGN=top>full_error</TD>
+    <!-- message --><TD VALIGN=top>empty bin</TD>
+    <!-- comment --><TD VALIGN=top>The sample size must be large enough for 
+                                   all bins to have counts</TD></TR>
+
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Descibe Future Plans.                                            -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none at this time.
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Jeff Anderson </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

@@ -1,0 +1,15 @@
+2                               ! pert_kind       -> Type of perturbation (1=sinusoidal, 2=uncorrelated gaussian, 3=read from file)
+3                               ! n_modes         -> For pert_kind=1 only: number of modes (including 0-wavenumber mode)
+0 1 2                           ! k_modes         -> For pert_kind=1 only: wavenumber of each mode (0-nyquist); leave one space in-between
+50                              ! nens            -> Number of ensemble members
+2                               ! npertvar        -> Number of sounding variables to perturb (1-4)
+3 4                             ! pertvar         -> Indices of sounding variables to perturb (as many as npertvar) 1=theta, 2=qv, 3=u, 4=v
+2.0 2.0 2.0                     ! magvar          -> Perturbation magnitudes for each variable to perturb (as many as npertvar)
+                                !                    (Note that this is overriden if std_bot or std_top are specified)
+2.0 2.0 2.0                     ! std_bot         -> Standard dev. at lowest level for each variable to perturb (as many as npertvar)
+0.0 0.0 0.0                     ! std_top         -> Standard dev. at height defined below (std_hgt) for each variable to perturb (as many as npertvar)
+11000.0 11000.0 11000.0         ! hgt_mid         -> Lower height (m) where transitioning from std_bot to std_top begins (as many as npertvar)
+13000.0 13000.0 13000.0         ! hgt_top         -> Upper height (m) where transitioning from std_bot to std_top ends (as many as npertvar)
+                                !                    (Constant std_bot from sfc to hgt_mid, linear transitioning from std_bot to std_top
+                                !                     between hgt_mid-hgt_top, constant std_top from hgt_top to highest level; if hgt_mid=hgt_top,
+                                !                     all domain will have std_bot)

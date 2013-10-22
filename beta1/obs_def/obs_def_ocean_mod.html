@@ -1,0 +1,256 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module obs_def_ocean_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE obs_def_ocean_mod</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+DART includes a flexible, powerful, and slightly complicated mechanism 
+for incorporating new types of observations. The
+<em class="file">obs_def_ocean_mod</em> module 
+being described here is used by the program 
+<em class="unix">preprocess</em>
+to insert appropriate definitions of ocean observations into the 
+<em class="file">DEFAULT_obs_def_mod.f90</em> template and 
+generate the source files
+<em class="file">obs_def_mod.f90</em> and 
+<em class="file">obs_kind_mod.f90</em>
+that are used by 
+<em class="unix">filter</em> and other DART programs.
+<br>
+<br>
+There are no code segments in this module, only definitions of observation types
+that map specific observation types to generic observation kinds. DART contains
+logic that supports a limited inheritance of attributes. If you need to interpolate 
+observations of 'FLOAT_TEMPERATURE', DART will check to see if a specific routine 
+is provided for that type, if none exists, the interpolation routine for the
+generic 'KIND_TEMPERATURE' will be used; that way one interpolation routine may
+support many observation types.
+<br>
+<br>
+The mandatory header line is followed by lines
+that have the observation type name (an all caps Fortran 90 identifier) and
+their associated generic kind identifier from the obs_kind module.
+If there is no special processing needed for an observation type,
+and no additional data needed beyond the standard contents of an observation,
+then a third word on the line, the <em class="unix">COMMON_CODE</em> will
+instruct the preprocess program to automatically generate all stubs and
+code needed for this type.  For observation types needing any special code
+or additional data, this word should not be specified and the user must
+supply the code manually. One of the future extensions of this module will
+be to support acoustic tomographic observations, which will
+necessitate specific support routines.
+</P>
+
+<H3 class="indent1">ocean variable types and their corresponding kinds</H3>
+
+<pre class="indent1">
+! BEGIN DART PREPROCESS KIND LIST
+!SALINITY,                      KIND_SALINITY,              COMMON_CODE
+!TEMPERATURE,                   KIND_TEMPERATURE,           COMMON_CODE
+!U_CURRENT_COMPONENT,           KIND_U_CURRENT_COMPONENT,   COMMON_CODE
+!V_CURRENT_COMPONENT,           KIND_V_CURRENT_COMPONENT,   COMMON_CODE
+!SEA_SURFACE_HEIGHT,            KIND_SEA_SURFACE_HEIGHT,    COMMON_CODE
+!ARGO_U_CURRENT_COMPONENT,      KIND_U_CURRENT_COMPONENT,   COMMON_CODE
+!ARGO_V_CURRENT_COMPONENT,      KIND_V_CURRENT_COMPONENT,   COMMON_CODE
+!ARGO_SALINITY,                 KIND_SALINITY,              COMMON_CODE
+!ARGO_TEMPERATURE,              KIND_TEMPERATURE,           COMMON_CODE
+!ADCP_U_CURRENT_COMPONENT,      KIND_U_CURRENT_COMPONENT,   COMMON_CODE
+!ADCP_V_CURRENT_COMPONENT,      KIND_V_CURRENT_COMPONENT,   COMMON_CODE
+!ADCP_SALINITY,                 KIND_SALINITY,              COMMON_CODE
+!ADCP_TEMPERATURE,              KIND_TEMPERATURE,           COMMON_CODE
+!FLOAT_SALINITY,                KIND_SALINITY,              COMMON_CODE
+!FLOAT_TEMPERATURE,             KIND_TEMPERATURE,           COMMON_CODE
+!DRIFTER_U_CURRENT_COMPONENT,   KIND_U_CURRENT_COMPONENT,   COMMON_CODE
+!DRIFTER_V_CURRENT_COMPONENT,   KIND_V_CURRENT_COMPONENT,   COMMON_CODE
+!DRIFTER_SALINITY,              KIND_SALINITY,              COMMON_CODE
+!DRIFTER_TEMPERATURE,           KIND_TEMPERATURE,           COMMON_CODE
+!GLIDER_U_CURRENT_COMPONENT,    KIND_U_CURRENT_COMPONENT,   COMMON_CODE
+!GLIDER_V_CURRENT_COMPONENT,    KIND_V_CURRENT_COMPONENT,   COMMON_CODE
+!GLIDER_SALINITY,               KIND_SALINITY,              COMMON_CODE
+!GLIDER_TEMPERATURE,            KIND_TEMPERATURE,           COMMON_CODE
+!MOORING_U_CURRENT_COMPONENT,   KIND_U_CURRENT_COMPONENT,   COMMON_CODE
+!MOORING_V_CURRENT_COMPONENT,   KIND_V_CURRENT_COMPONENT,   COMMON_CODE
+!MOORING_SALINITY,              KIND_SALINITY,              COMMON_CODE
+!MOORING_TEMPERATURE,           KIND_TEMPERATURE,           COMMON_CODE
+!SATELLITE_MICROWAVE_SST,       KIND_TEMPERATURE,           COMMON_CODE
+!SATELLITE_INFRARED_SST,        KIND_TEMPERATURE,           COMMON_CODE
+!SATELLITE_SSH,                 KIND_SEA_SURFACE_HEIGHT,    COMMON_CODE
+!SATELLITE_SSS,                 KIND_SALINITY,              COMMON_CODE
+! END DART PREPROCESS KIND LIST
+</pre>
+
+<P class="indent1">
+New observation types may be added to this list with no loss of generality.
+Supporting the observations and actually <strong>assimilating</strong> them 
+are somewhat different and is controlled by the 
+<em class="file">input.nml</em><em class="unix">&#38;obs_kind_nml</em>
+<a href="../obs_kind/obs_kind_mod.html#Namelist">assimilate_these_obs_types</a>
+variable.  This provides the flexibility to have an observation sequence file 
+containing many different observation types and being able to selectively 
+choose what types will be assimilated.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="OtherModulesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<P class="indent1">
+none
+</P>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC INTERFACES</H2>
+<P class="indent1">
+none
+</P>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+
+<A NAME="PublicEntities"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC COMPONENTS</H2>
+<P class="indent1">
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<P class="indent1">
+none
+</P>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<P class="indent1">
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<P class="indent1">
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<UL class="indent1">
+<LI>support acoustic tomography observations - similar to GPS soundings
+in the atmosphere. 
+Take a look at <a href="obs_def_gps_mod.f90">obs_def_gps_mod.f90</a></li>
+</UL>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

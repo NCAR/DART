@@ -1,0 +1,288 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module cov_cutoff_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE cov_cutoff_mod</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+   Computes the weight with which an observation should impact a state
+   variable that is separated by a given distance. The distance is 
+   in units determined by the location module being used.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;cov_cutoff_nml
+   select_localization = 1  
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> 
+</TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR><TD>select_localization</TD>
+    <TD>integer</TD>
+    <TD>Selects the localization function.
+        <UL style="list-style: none;">
+        <LI>1 = Gaspari-Cohn 5th order polynomial with halfwidth c.</LI>
+        <LI>2 = Boxcar with halfwidth c (goes to 0 for z_in &#60; 2c).</LI>
+        <LI>3 = Ramped Boxcar. Has value 1 for z_in &#60; c and then 
+                    reduces linearly to 0 at z_in = 2c.  </LI>
+        </UL>
+    </TD>
+</TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--==================================================================-->
+
+<A NAME="OtherModulesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+location_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC INTERFACES</H2>
+
+<TABLE summary='modules used'>
+<TR><TD><em class=call>use cov_factor_mod, only : </em></TD>
+    <TD><A HREF="#comp_cov_factor">comp_cov_factor</A> </TD></TR>
+</TABLE>
+
+<P>
+   A note about documentation style. 
+   Optional arguments are enclosed in brackets 
+   <em class=optionalcode>[like this]</em>.
+</P>
+
+<!--===================== DESCRIPTION OF A ROUTINE ========================-->
+
+<A NAME="comp_cov_factor"></A>
+<br>
+<div class=routine>
+<em class=call> var = comp_cov_factor(z_in, c
+     <em class=optionalcode>[,&nbsp;obs_loc]
+     [,&nbsp;obs_type] [,&nbsp;target_loc] [,&nbsp;target_kind] 
+     [,&nbsp;localization_override]</em>) </em>
+<pre>
+real(r8)                                  :: <em class=code>comp_cov_factor</em>
+real(r8), intent(in)                      :: <em class=code>z_in</em>
+real(r8), intent(in)                      :: <em class=code>c</em>
+type(location_type), optional, intent(in) :: <em class=optionalcode>obs_loc</em>
+integer, optional, intent(in)             :: <em class=optionalcode>obs_type</em>
+type(location_type), optional, intent(in) :: <em class=optionalcode>target_loc</em>
+integer, optional, intent(in)             :: <em class=optionalcode>target_kind</em>
+integer, optional, intent(in)             :: <em class=optionalcode>localization_override</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns a weighting factor for observation and a target variable (state or
+observation) separated by distance z_in and with a half-width distance, c.
+Three options are provided and controlled by a namelist parameter. The
+optional argument localization_override controls the type of localization
+function if present. The optional arguments obs_loc, obs_type and
+target_loc, target_kind are not used in the default code. They are made
+available for users who may want to design more sophisticated localization
+functions.
+</P>
+
+<TABLE width=100% border=0 summary="function arguments" cellpadding=3>
+<TR><TD valign=top><em class=code>var</em></TD>
+    <TD>Weighting factor.</TD></TR>
+<TR><TD valign=top><em class=code>z_in</em></TD>
+    <TD>The distance between observation and target.</TD></TR>
+<TR><TD valign=top><em class=code>c</em></TD>
+    <TD>Factor that describes localization function. Describes 
+        half-width of functions used here.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>obs_loc</em></TD>
+    <TD>Location of the observation.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>obs_type</em></TD>
+    <TD>Observation specific type.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>target_loc</em></TD>
+    <TD>Location of target.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>target_kind</em></TD>
+    <TD>Generic kind of target.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>localization_override</em></TD>
+    <TD>Controls localization type if present. Same values as for 
+         namelist control.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<TABLE border=0 summary="files used">
+<TR><TH>filename</TH>
+    <TH>purpose</TH></TR>
+<TR><TD>input.nml</TD>
+    <TD>to read <em class=code>cov_cutoff_nml</em></TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ol>
+<li>Gaspari and Cohn, 1999, QJRMS, <b>125</b>, 723-757.  (eqn. 4.10)</li>
+</ol>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100% summary="errors">
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>comp_cov_factor</TD>
+    <!-- message --><TD VALIGN=top>Illegal value of "select_localization" in cov_cutoff_mod namelist</TD>
+    <!-- comment --><TD VALIGN=top>Only values 1 through 3 select a localization function.</TD>
+</TR>
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change history:</TD><TD> try "svn log" or "svn diff"</TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

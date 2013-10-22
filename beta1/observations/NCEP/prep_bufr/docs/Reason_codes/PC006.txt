@@ -1,0 +1,18 @@
+# DART $Id$
+Table 12.   Reason codes associated with step "RADCOR", program code 006 (last revised 5/30/2001). 
+  
+
+KEY: 
+   IN "R.CODE" COLUMN: 
+               B - OCCURS IN ALL OPERATIONAL VERSIONS OF RADCOR. 
+
+   IN "MNEMONIC" COLUMN:  
+                 # - NEW VALUE CALCULATED.
+
+
+R.CODE   MEANING                                  MNEMONICS AFFECTED AND NEW VALUE FOR OBS, Q.M.
+======   =======================================  ==============================================    
+
+01 B     TEMPERATURE AND/OR HEIGHT RECALCULATED.  TRC-> TOB= # 
+                                                  ZRC-> ZOB= # 
+  

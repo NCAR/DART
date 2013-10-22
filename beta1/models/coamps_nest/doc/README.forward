@@ -1,0 +1,100 @@
+# DART $Id$
+
+==========================================
+Specification of the DART Forward Operator
+==========================================
+
+This document outlines the procedure for adding a new forward operator
+to DART to handle a new kind of observation.
+
+For starters, create a module in DART/obs_def that will hold both the
+forward operator code and the comments used by the preprocess
+program.  These are somewhat documented by DART but are elaborated on
+here.
+
+Preprocessor Commands
+---------------------
+
+DART PREPROCESS KIND LIST:
+This section describes the obs_kind for what this variable will be
+called, and also the raw variable type that it is based on.  For most
+things, these things will correspond, i.e.
+	GEOPOTENTIAL_HEIGHT, KIND_HEIGHT
+	GEOMETRIC_HEIGHT, KIND_HEIGHT
+will define two height variables - the geopotential height on a
+pressure surface and the _actual_ height on that pressure surface,
+that are both kinds of heights.
+If it is necessary to add a new raw KIND, you must add it to the
+integer parameters at the top of DEFAULT_coamps_obs_kind_mod.f90 and
+also to the string table in the initialize_module routine.
+
+DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE:
+This is where you specify the "use" statement that will accompany this
+module.  Usually this will be only the get_expected function but can
+be other helper functions if more complex behavior is needed.
+
+DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF:
+This is how the function call to the forward operator is defined.
+This takes the form of a stub case statement that will be placed in a
+larger structure to determine what action should be taken for each
+observation.  Usually, this is just a call to the get_expected
+function but again, it can be more complicated if necessary
+
+DART PREPROCESS READ_OBS_DEF:
+If we need to do anything extra to read from an observation
+definition, we insert this code here.  For the observations that we
+are dealing with, this can be "left blank" bu inserting a "continue"
+statement in the select case.
+
+DART_PREPROCESS WRITE_OBS_DEF:
+If we need to write anything extra to an observation definition file,
+we insert this code here.  For the observations that we are dealing
+with, this can be "left blank" bu inserting a "continue" statement in
+the select case. 
+
+DART PREPROCESS INTERACTIVE_OBS_DEF:
+Finally, if we need to take any other action necessary for the
+computation of this operator, this will go here.  Again, for the
+simplest obs, this is not necessary. 
+
+Module Specification
+--------------------
+The public entities of this module shoud be declared in the
+preprocessor as well.  This means that usually the module will contain
+a get_expected function but will also have an initialize_module
+function as well, with any helper functions necessary.  For each
+different variable kind in the preprocessor KIND list, we'll need some
+sort of get_expected function.
+
+For example, a function that calculated dewpoint would get the values
+for specific humidity and temperature, then calculate the dewpoint
+using thermodynamic formulas.
+
+Using the Forward Operator
+--------------------------
+In order to use the forward operator in an actual DART integration,
+the module most be included into the DART observations package.
+
+The first step is to include the module file into the input_files
+variable in the preprocessor namelist &preprocess_nml.  This should
+point to the module file created earlier.
+
+Next, run the preprocessor program.  This should adds the capability
+of the DART observations programs to reference the new module.
+
+Before we can use the module, though, we must make sure it gets
+built.  This involves adding a line to each of the path_names files in
+the DART working directory that depends on the obs_kind module (which,
+I believe, is all of them).  For example to build the forward operator
+module for innovation files from the Navy's NAVDAS system, you would
+add
+obs_def/obs_def_navdas_mod.f90
+to the path_names lists.  This can easily be accomplished by using the
+add_path_name.sh script - simply provide the above line as an
+argument.  Be careful doing this though as it may result in errors.  I
+should really fix the script so it doesn't add it to everything.
+
+Recompiling the code makes the observation operator module available.
+To make the runtime system aware, add the kind of variables that you
+want to observe to the assimilate_these_obs_types variable in the
+obs_kind_nml namelist

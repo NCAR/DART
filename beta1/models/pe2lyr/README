@@ -1,0 +1,155 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+Wed, 28 Apr 2004
+
+These are the instructions to run pe2lyr model.
+
+I) To build the model and simply test that it runs:
+
+1) Modify "DART/mkmf/mkmf.template" to match your system and compiler
+   (copy the closest template in that directory to this name and customize it).
+*  take -r8 out for the portland fortran compiler
+
+2) Go to DART/models/pe2lyr/work and run 'csh ./workshop_setup.csh'
+   This creates make files and runs make to create an assortment of
+   executables.  It also runs 'perfect_model_obs' and 'filter' before exiting.
+   These use an existing obs_seq.in file which contains 10 observations and
+   runs quickly for testing.
+
+
+II) To run an experiment with the existing grid size and with a 100 day spinup:
+
+TODO: add instructions here about using existing files checked into svn
+
+
+III) To spin up a different grid size, or to spin up the state for other than
+     the existing 100 day files:
+
+0) To change grid size, edit DART/models/pe2lyr/model_mod.f90 and include one of
+   the 3 existing 'resoltXX.h' files.  cd into 'work' and rebuild the 
+   executables by running 'csh ./workshop_setup.csh'
+
+1) Generate a single identity observation by running ./create_obs_sequence
+   and use the following inputs when prompted:
+
+     upper bound on # obs:  1
+     # copies of data:  0
+     # quality control:  0
+     -1 to quit:  1
+     var type:   -30
+     time:   0 0
+     error var:   1000000
+     input filename:  set_def.one_identity_obs
+
+2) Generate a 100 day sequence to use in spinning up the model by running
+    ./create_fixed_network_seq and using the following inputs when prompted:
+
+     input filename:  set_def.one_identity_obs
+     regular or irreg spacing:  1
+     # times in seq:   100
+     initial time:  1 0
+     period time:   1 0
+     output file:   obs_seq.100days
+
+3) Edit input.nml. In the &perfect_model_obs_nml section change or verify
+   these values are set:
+ 
+      start_from_restart = .false.
+      output_restart = .true.
+      restart_in_file_name = 'perfect_ics'
+      restart_out_file_name = 'perfect_restart'
+      obs_seq_in_file_name = 'obs_seq.100days'
+      obs_seq_out_file_name = 'obs_seq.100days.out'
+    
+4) Run ./perfect_model_obs to spin up the model.  This takes a little time.
+     The output restart file 'perfect_restart' contains the updated state after
+     the spin up, and 'True_State.nc' contains the data in U,V,Z format.
+   
+5) Generate a 50 day sequence to use as the basis for 20 ensemble members by
+    rerunning ./create_fixed_network_seq and using the following inputs:
+     
+     input filename:  set_def.one_identity_obs
+     regular or irreg spacing:  1
+     # times in seq:   50
+     initial time:  1 0
+     period time:   1 0
+     output file:   obs_seq.50days
+     
+6) Copy the updated state after spinup to the initial condition file:
+
+     cp perfect_restart perfect_ics
+
+7) Edit input.nml. In the &perfect_model_obs_nml section change or verify
+   these values are set:
+ 
+      start_from_restart = .true.
+      output_restart = .true.
+      restart_in_file_name = 'perfect_ics'
+      restart_out_file_name = 'perfect_restart'
+      obs_seq_in_file_name = 'obs_seq.50days'
+      obs_seq_out_file_name = 'obs_seq.50days.out'
+    
+8) Run ./perfect_model_obs to generate values for the 50 days of observations
+    and the 'True_State.nc' file.
+
+9) Edit input.nml. In the &filter_nml section change or verify
+   these values are set:
+ 
+      ens_size = 80
+      start_from_restart = .false.
+      output_restart = .true.
+      restart_in_file_name = 'perfect_ics'
+      restart_out_file_name = 'filter_restart'
+      obs_seq_in_file_name = 'obs_seq.50days.out'
+      obs_seq_out_file_name = 'obs_seq.final'
+    
+      inf_flavor = 0, 0
+
+8) Run ./filter to generate 80 ensembles, perturbed from the single 
+   perfect_restart file.   This step also takes a while.
+
+9) Examine the ensemble spread by using 'ncview Prior_Diag.nc' and examining 
+    copy 2 of the u, v, and z fields.
+
+10) If the ensemble spread is not enough, rerun ./perfect_model_obs 
+    and ./filter starting with the final states from the previous step:
+
+    cp perfect_restart perfect_ics
+    ./perfect_model_obs
+    cp filter_restart filter_ics
+    edit input.nml:
+       set restart_in_file_name = 'filter_ics'
+       set start_from_restart = .true.
+    ./filter
+   
+
+--- updated only to here ----
+
+the copy below in old step 9 should still happen, and then the ic files
+can be used as the basis of further experiments.
+
+* ens_size should be consistant with future run for real obs
+
+9) cp perfect_restart perfect_ics
+   cp filter_restart filter_ics
+
+*  perfect_ics, filter_ics is very important for future test.
+ test always can start from here
+
+10) simulate obs_seq.in_151 is a file containing 362 obs for each day 
+    (151 days total). ** THIS FILE IS NOT CONVERTED TO THE CURRENT OBS FORMAT
+    those 362 obs locations come from Jeff Whitaker's expts,
+    so test result can be compared with what we already have. 
+
+11) change obs_seq_in_file_name = "obs_seq.in_151"
+    obs_seq_out_file_name = "obs_seq.out_151"  for &perfect_model_obs_nml
+    change obs_sequence_file_name = "obs_seq.out_151" for &filter_nml
+    in input.nml
+
+12) repeat step 7 and 8 with cutoff=0.25, inf_flavor=3, 0, inf_initial=1.01,
+    start_from_restart=true.
+

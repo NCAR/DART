@@ -1,0 +1,93 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+Upgrading the COAMPS Implemention of DART from Iceland to Jamaica
+-----------------------------------------------------------------
+
+DART Change Highlights:
+ * Subversion distribution
+ * filter program now adds MPI capability
+ * get_close_states offloaded from model_mod to the location module
+ * advance_ens.csh supposedly eliminated thanks to MPI
+ * added a few new raw variable types
+
+Subversion
+----------
+Since the DART code is now distributed via subversion, it doesn't make
+sense to keep a local repository of the entire DART code tree.  So,
+modify the COAMPS directory so it contains everything that was
+previously modified in the directory tree (things like locations,
+observation definitions, etc.).  This allows the COAMPS directory to
+be self-contained, and version control can continue to be used.
+
+MPI Modifications
+-----------------
+Most of these don't require any modification by the local user.  If
+MPI functionality is desired, though, need to add an MPIFC and MPILD
+variable to the mkmf template file and run mkmf_filter with the "-mpi"
+option.  I needed to copy over the new versions of the mkmf scripts
+and the path_names files from WRF to make sure that the updated
+functionality was there to handle MPI calls.  This also meant I had to
+modify makestuff.csh to handle the new module calls.
+
+Offloading get_close_states
+---------------------------
+Since this is now handled by the location module, the entire routine
+has been removed from model_mod.f90 - the replacements are
+get_close_obs, get_close_obs_init, and get_close_maxdist_init.
+However, in this initial case we will not implement them at all and
+simply use passthroughs to call the same routines in location_mod.
+
+Modifying obs_kind_mod
+----------------------
+Since we still use several of the obs_kind raw types that are not
+included by default, we need to add that capability to the default
+obs_kind_mod.f90 file.  Also, we add in the ability to map the string
+names/indices of the *raw* types to their corresponding numbers as
+well.  The default DART distribution only does this with the derived
+data types, but we need it for the dynamic state vector definition.
+Also, note that some names changed (i.e. KIND_HEIGHT ->
+KIND_GEOPOTENTIAL_HEIGHT) and the cloud water/ice mixing ratios (since
+they are now included by default).
+
+Run scripts
+-----------
+With filter now an MPI program, the DART folks have changed how they
+handle asynchronous model runs.  Previously, filter called
+advance_ens.csh, which advanced the model by repeatedly calling
+advance_model.csh based on data in a control file.  Now, there is the
+possibility that each process in filter generates its *own* control
+file, so we need to account for that.  Since I can run multiple copies
+of the model simultaneously, I've modified advance_ens.csh to a more
+generalized advance_group.csh so it's not necessarily the entire
+ensemble that is advanced - only specific ensemble members.
+
+However, the use of "async=4" (which is what we now need to use) means
+that there is a single call to the advance_group.csh script and relies
+on the existence of two named pipes in order to run properly.  These
+pipes are
+  model_to_filter.lock
+  filter_to_model.lock
+
+The run script listens on filter_to_model.lock for "finished" or
+"advance".  If it's "advance", then it calls the advance_group.csh
+script with command line options:
+  advance_group.csh CALLER_PID NUM_STATE_COPIES CONTROL_FILE
+After this is run, we need to run "wakeup_filter" that will do exactly
+what the name suggests that it does.
+
+Initialization
+--------------
+Only a few modifications to the initialize_dart.sh script were
+necessary.  Changes reflected the renaming of advance_ens.csh to
+advance_group.csh, and the removal of any assim_(filter|region)
+references.  There are several new items in the paths.config file:
+ - PBS_QUEUE_NAME   [removed: need two now]
+ - PBS_QUEUE_ENS    [added: queue to use for ensemble integration]
+ - PBS_QUEUE_FILTER [added: queue to use for filter]
+ - FILTER_PROCS     [added: number of processes for MPI filter]
+New templates have been added for this config and input.nml to reflect
+the upgrade.

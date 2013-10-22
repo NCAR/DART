@@ -1,0 +1,82 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+This is a WRF 2.2.1 regression test case, which can be used to test 
+that code changes do not break existing functions, as well as testing
+a wrf/dart initial setup.
+
+The domain is CONUS (the continental United States), 50 km resolution. 
+
+The observation files are the standard prepbufr NCEP observations, from 2007/04/26.
+
+The initial condition and boundary files are compatible with WRF version 2.2.1.
+The DART model_mod works fine with WRF 3.0 as well, and if anyone would like to
+contribute 3.0 compatible ic and boundary files, we'd be happy to take them.
+
+There are enough files to run with up to 50 ensemble members.
+
+The smaller files are here in this directory.
+
+The large data files (observations, initial conditions and boundary files) 
+are on the DART web server, at this http address:
+
+http://www.image.ucar.edu/pub/DART/WRF/regression/CONUS-V2
+
+
+Input files you need to run the test:
+
+obs_seq.tar - 4 observation files      
+
+wrfinput_d01_148403_0.tar - wrf input files for 50 ensemble members
+
+wrfbdy_148403_21600.tar - wrf boundary condition files 
+wrfbdy_148403_43200.tar
+wrfbdy_148403_64800.tar
+wrfbdy_148404_0.tar
+
+input.nml - DART Fortran namelist
+namelist.input - WRF Fortran namelist
+
+
+Executables you will need to build from the DART/WRF distribution:
+
+dart_to_wrf, wrf_to_dart - translates from WRF netcdf files to DART restart, and back
+filter - the main DART assimilation program
+wakeup_filter - only needed if you must run WRF in parallel mode
+
+
+Shell scripts that come with the DART/WRF distribution:
+
+runme_filter - shell script that starts the job
+advance_model.csh - shell script that advances the WRF model
+quickbuild.csh - shell script that builds all the executables.  run it with
+                 the single argument -nompi if you want to run it as a serial
+                 program, use -mpi (the default) to compile it to run as
+                 parallel mpi job.
+
+
+Files which are there to validate your results:
+
+Posterior_Diag.nc
+Prior_Diag.nc
+regression_plots.tar.gz
+
+
+Additional stuff to prepare to run:
+
+gen_ic_files.csh - 
+shell script that converts the set of wrfinput_d01 files to dart initial 
+condition/restart format files.  needs to be done once before the first run.
+
+obs_sequence_tool -
+You will need to run the obs_sequence_tool to combine 2 of the obs_sequence 
+files into a single larger file.   The input.nml namelist file already has 
+the right settings, just run ./obs_sequence_tool to do the merge.
+
+restart_file_tool -
+You will need to run this once to set the timestamps on the dart restart files
+to match the observation files in this directory.  The input.nml namelist file 
+already has the correct settings, just run ./restart_file_tool to do the update.

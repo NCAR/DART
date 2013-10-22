@@ -1,0 +1,16 @@
+ obs_sequence
+obs_kind_definitions
+ 1
+ 1 RAW_STATE_VARIABLE              
+  num_copies:  0  num_qc:  0
+  num_obs:  1  max_num_obs:  1
+  first:  1  last:  1
+ OBS  1
+ -1 -1 -1
+obdef
+loc1d
+   0.0000000000000000
+kind
+ 1
+     0          1
+ 0.100000000000000005E-03

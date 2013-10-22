@@ -1,0 +1,107 @@
+# DART $Id$
+
+NRL COAMPS Innovation Files
+---------------------------
+
+Data assimilation information for COAMPS operational runs are given in
+"innovation" files - these provide all the necessary information about
+the observations to include them in improving the model first guess.
+
+The files are FORTRAN formatted text files so they can be accessed
+without big/little endian regard.  Also, the file includes a header
+with grid information and the pressure levels used.
+
+The header includes:
+* grid number
+* Reference i and j points
+* Number of grid points in the horizontal and vertical
+* Reference lat/lon (location of reference i/j points)
+* Standard latitude(s) and longitude for map projection
+* Horizontal grid spacing (m)
+* Pressure levels
+
+A sample of the header and the first observation line is given below.
+========================================================================
+    igrid=              2
+     iref=            106
+     jref=             58
+       im=          26716
+       jm=              1
+       lm=             27
+   reflat=        38.0000
+   reflon=       264.0000
+   stdlt1=        60.6000
+   stdlt2=         9.8000
+   stdlon=       264.0000
+     delx=     27000.0000
+     dely=     27000.0000
+
+    pranal
+1013.20
+1000.00
+ 975.00
+ 950.00
+ 925.00
+ 900.00
+ 850.00
+ 800.00
+ 750.00
+ 700.00
+ 650.00
+ 600.00
+ 550.00
+ 500.00
+ 450.00
+ 400.00
+ 350.00
+ 300.00
+ 250.00
+ 200.00
+ 150.00
+ 100.00
+  70.00
+  50.00
+  30.00
+  20.00
+  10.00
+
+   n_boxm=      1
+     ne_ob
+     0
+    number of obs =    81014  cdtg_bk = 2004082006 tau_bk =      6
+      n       ob       bk     t_bk       iv      err       etc       lat       lon        p  vty  ity   nvp  chk      dt                pf         org  idp     q_bk
+      1  2137.00  2121.49   287.76    15.51     9.00   2137.00      6.18    284.57   792.40    1    1     5  -66  -10800  80112  msfc_lnd   d_surface     0    82.55
+========================================================================
+
+Note that the DTG for this analysis is 2004082006 with a background
+tau of 6 hours, so this analysis is valid at 2004082012.
+
+Each numbered observation consists of 19 values:
+1.  ID number (sequential)
+2.  value
+3.  Background value
+4.  Background temperature
+5.  Innovation (observation - background)
+6.  Error
+7.  Specialized parameter
+8.  Latitude (degrees)
+9.  Longitude (degrees)
+10.  Pressure (mb)
+11. Variable type
+12. Instrument type
+13. Number of values in profile
+14. Quality control value
+15. Time from analysis time (in seconds)
+16. Platform ID
+17. Database address of the original value
+18. Surface pressure change at the station
+18. Background humidity
+
+While most are self-explanatory, several remain:
+* "etc" - specialized parameter
+* "vty" - variable type (NEED KEY)
+* "ity" - instrument type (NEED KEY)
+* "chk" - quality control value
+* "nvp" - number of profile observations
+* "pf"  - platform ID
+* "org" - database address of original value

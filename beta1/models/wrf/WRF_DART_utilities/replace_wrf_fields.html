@@ -1,0 +1,256 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program replace_wrf_fields</TITLE>
+<link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css">
+<link href="../../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>replace_wrf_fields</em></H1>
+
+<table border=0 summary="dart header" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+Program to copy various fields from one WRF netCDF file to another.
+</P>
+<P>
+There are many existing utilities to process netCDF files, i.e. the 
+NCO operators and NCL scripts, which have more functionality than this
+program.  The only purpose for having this one is that it is a standalone
+program with no prerequisites or dependencies other than the netCDF libraries.  
+If you already have other tools available they can do the same functions that 
+this program does.
+</P>
+<P>
+This program copies the given data fields from the
+input file to the output file, failing if their sizes, shapes, or data types
+do not match exactly.
+The expected use is to copy fields which are updated
+by the WRF program but are not part of the DART state vector,
+for example, sea surface temperature or soil fields.
+After DART has updated the WRF restart <em class=file>wrfinput_d01</em>
+file, this program can be used to update other fields in the file
+before running the model.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;replace_wrf_fields_nml
+   fieldnames = 'SST',
+   fieldlist_file = '',
+   fail_on_missing_field = .true.
+   debug = .false.,
+   /
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+    
+<TR><TD> fieldnames </TD>
+    <TD> character(len=129) (:) </TD>
+    <TD>An array of ASCII field names to be copied from the input netCDF file to
+the output netCDF file.  The names must match exactly, and the size and shape
+of the data must be the same in the input and output files for the data to be
+copied.  If the field names are set here, the fieldlist_file item must be '&nbsp;'.
+</TD></TR>
+
+<TR><TD> fieldlist_file </TD>
+    <TD> character(len=129) </TD>
+    <TD>An alternative to an explicit list of field names to copy.  This is a
+single string, the name of a file which contains a single field name, one per
+line.  If this option is set, the fieldnames namelist item must be '&nbsp;'.
+</TD></TR>
+
+<TR><TD> fail_on_missing_field </TD>
+    <TD> logical </TD>
+    <TD>If any fields in the input list are not found in either the input or
+output netcdf files, fail if this is set to true.  If false, a warning
+message will be printed but execution will continue.
+</TD></TR>
+
+<TR><TD> debug </TD>
+    <TD> logical </TD>
+    <TD>If true, print out debugging messages about which fields are found in the
+input and output files.
+</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+parse_args_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL>
+   <LI>input namelist ; <em class=file>input.nml</em></LI>
+   <LI>Input - output WRF state netCDF files; <em class=file>wrfinput_d01,
+   wrfinput_d02, ...</em></LI>
+   <LI>fieldlist_file (if specified in namelist)</LI>
+</UL>
+
+<H3>File formats</H3>
+
+<P>This utility works on any pair of netCDF files, doing a simple read
+and copy from one to the other.
+</P>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>replace_wrf_fields</TD>
+    <!-- message --><TD VALIGN=top>Usage: echo infile.nc outfile.nc | ./replace_wrf_fields</TD>
+    <!-- comment --><TD VALIGN=top>The program did not read 2 filenames from the console.</TD></TR>
+
+<TR><!-- routine --><TD VALIGN=top>replace_wrf_fields</TD>
+    <!-- message --><TD VALIGN=top>cannot specify both fieldnames and fieldlist_file</TD>
+    <!-- comment --><TD VALIGN=top>In the namelist you must either specify an explicit list
+    of fieldnames to copy between the files, or give a single filename which contains the
+    list of field names.  You cannot specify both.</TD></TR>
+
+<TR><!-- routine --><TD VALIGN=top>replace_wrf_fields</TD>
+    <!-- message --><TD VALIGN=top><i>field</i> not found in input/output file</TD>
+    <!-- comment --><TD VALIGN=top>If 'fail_on_missing_field' is true in the namelist and
+    a field is not found in either the input or output file.</TD></TR>
+
+<TR><!-- routine --><TD VALIGN=top>replace_wrf_fields</TD>
+    <!-- message --><TD VALIGN=top><i>field</i> does not match</TD>
+    <!-- comment --><TD VALIGN=top>If the input and output files have different sizes,
+    number of dimensions, or data types, the program cannot copy the data.</TD></TR>
+
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none.
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Glen Romine, Nancy Collins </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

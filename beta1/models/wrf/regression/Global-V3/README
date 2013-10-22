@@ -1,0 +1,103 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+This is a WRF 3.0.1.1 regression test case, which can be used to test
+that code changes do not break existing functions, as well as testing
+a wrf/dart initial setup.
+
+This is a global domain; no boundary conditions required.
+The grid is 128 by 64 with 40 levels.
+
+The observation files are the standard prepbufr NCEP observations, from 2007/04/26.
+   
+There are enough files to run with 20 ensemble members.
+   
+The smaller files are here in this directory.
+   
+The large data files (observations, initial conditions and WRF tarball)
+are on the DART web server, at this http address: 
+   
+http://www.image.ucar.edu/pub/DART/WRF/regression/Global-V3
+   
+Details of the files follow.
+
+
+This the Table of Contents for the WRF3 global DART regression case
+
+1. wrfinput_d01.skamarock :: I got this file from Bill Skamarock will
+   I was visiting Boulder in October 2007.  I presume that it was
+   generated from the WPS from real meteorological data, but I myself
+   did not perform that operation.  As ncdump will show, the domain
+   is: 128 by 64 by 40. It is self-described for being valid at 12Z,
+   18 Oct 2007.
+
+   As I recall, I used wrf_to_dart to convert this wrfinput_d01 file
+   into "dart_wrf_vector", which I then simply renamed "perfect_ics".
+   I used the executable filter's ability to add small random noise to
+   generate an ensemble from perfect_ics.  I then integrated this
+   ensemble within DART using filter driven by a bogus obs_seq file
+   for about two months to yield an approximately climatological
+   ensemble valid at 12Z, 31 Dec 2007.  
+
+   We were going to use actual NWP obs valid beginning 0Z, 1 Jan 2003,
+   and running through till 0Z, 10 Jan 2003 (I think), so I used the
+   executable restart_utility to reset the timestamp of my ensemble to
+   12Z, 31 Dec 2002.
+
+2. wrf_global.tar.gz.skamarock :: This is gzipped tar file of the
+   global WRF3 code that I ran.  I got this from Bill Skamarock will
+   out in Boulder in Oct 2007.  I don't know how similiar or different
+   it is from what was released officially.  Hopefully they're
+   identical, but in case they are not, I am including this.
+
+3. namelist.input.skamarock :: This is the namelist.input that goes
+   along with the wrfinput_d01 file I got from Bill Skamarock.
+
+4. filter_ics.20021231120000 :: This is the DART input file of my
+   spun-up WRF ensemble valid at 12Z, 31 Dec 2002.  It is stored in
+   binary (native to RedHat Linux, but I don't know whether big or
+   little endian or what?).  It has an ensemble size of 20.  Note that
+   one should use "advance_global_model.csh" for 'adv_ens_command'.
+
+5. input.nml.2002Dec31 :: This is a copy of the input.nml file I used
+   when beginning the executable filter for the first two days of
+   obs_seq files.  
+
+   Note that 'outlier_threshold' = 3.0.  We found that this rejects
+   many of the obs, but gives a better evolution of the analysis.
+
+   Also, we did use adaptive inflation through the assimilation as
+   well as a localization cutoff of 0.2.
+
+6. obs_seq2003010112 - obs_seq2003010924 :: These are NOT included
+   here because they are rather large (like 40 MB each) and I
+   originally got them from Nancy.  Apparently, they are a classic set
+   of obs_seq files to test global GCMs for their NWP prowess.  I can
+   make them availabl if necessary.  Note that used the merge_obs_seq
+   tool to combine four of these files into a single 2-day file (an
+   example of this operation is included merge_obs_seq_nml within the
+   included input.nml file).
+
+7. namelist.input.wrf3.0.1.1 :: Apparently, the "dynamics" namelist
+   options have changed from between the time of Bill Skamarock's
+   original global WRF3 (see wrf_global.tar.gz.skamarock) to what is
+   now officially released from NCAR.  Here is a copy of
+   namelist.input with the dynamics namelist options worked out so it
+   will run with WRFV3.0.1.1.  Note that I had to set km_opt .ne. 0 in
+   order to get it to run, but this is clearly different than what
+   Bill Skamarock originally gave me.
+
+8. WRFV3.0.1.1.TAR.gz :: This is a copy of the tar and gzipped code
+   bundle that I got from NCAR this morning.  This is officially WRF
+   3. I'm including it simply for convenience as I assume anyone
+   working with this will either already have it or can easily get it.
+
+
+
+
+
+
+

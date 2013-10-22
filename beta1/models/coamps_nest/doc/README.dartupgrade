@@ -1,0 +1,209 @@
+# DART $Id$
+
+Upgrading the COAMPS Implementation of DART from Hawaii to Iceland
+------------------------------------------------------------------
+
+While most things remain the same (like interpolation, handling
+restart files, etc.), the new implementation of DART includes features
+like adaptive inflation and a new method of handling observations.
+
+This change in observation capability means it will be much easier to
+define and test different observation operators and create different
+experiments easily and quickly.  This requires a reworking of the use
+of various obs_kind types (which previously were simply added to the
+DART code itself) and some adaptive handling in order to accomodate
+the files produced by the DART preprocessor.
+
+Control of the preprocessor is provided in the namelist file input.nml
+in the preprocess_nml namelist.  This provides both boilerplate
+information about which files should be modified by the preprocessor
+but also which observation operator modules (e.g. dewpoint module)
+and their corresponding observation kinds should be included.  The
+only thing in this list that needs be modified is the input_files list
+- everything else is standard.
+
+Control of which observation operators are used for assimilation or
+just calculated are provided in the obs_kind_nml namelist in
+input.nml - the list is assimilate_these_obs_types.  For simple
+calculation (not assimilation) use evaluate_these_obs_types.
+
+In order to handle the varying types of observations in the restart
+file, we need to be able to convert the string type (like KIND_TEMP)
+to the numeric index that is actually used by DART.  Lucky for us,
+get_obs_kind_name and get_obs_kind_index in obs_kind_mod provide this,
+given the index or name, respectively.  This means that we simply read
+in a string from the restart information file and convert it to an
+index within coamps_util_mod.
+
+Once the variable types are stored in the restart file, we can proceed
+as before in the interpolation with very few modifications where the
+observation kind is specifically listed.  A nice modification would be
+to allow the calculations to include the variable type (like
+KIND_PERT_EXNER and KIND_MEAN_THETA) instead of the explicit variable
+names (this means that would could eliminate things like references to
+'p2' if we decide to switch to p1 or p3).  
+
+We need to add several different variable types to the DART
+observations that are easily calculated and not included in the
+standard distribution:
+	 MEAN_EXNER
+	 PERT_EXNER
+	 POTENTIAL_TEMPERATURE
+	 MEAN_POTENTIAL_TEMPERATURE
+	 CLOUD_WATER_MIXING_RATIO
+	 ICE_MIXING_RATIO
+	 [DEWPOINT_DEPRESSION]
+	 [GEOPOTENTIAL_HEIGHT]
+now included (that we had to add before) are:
+	 KIND_GRAUPEL_MIXING_RATIO
+	 KIND_SNOW_MIXING_RATIO
+
+The preprocessor wants observed variables added in the format
+    VARIABLE NAME, RAW VARIABLE TYPE
+but since we do not have some of these raw types we will have to add
+them in to compensate for it - potential temperature is actually a
+"temperature", which is included, but our pressure is in terms of an
+exner function which is not included.  This means that we should be
+creating something like DEFAULT_coamps_obs_kind_mod.F90 with our
+additional raw kinds.
+
+The raw variable types we will have to add are:
+	KIND_EXNER_FUNCTION
+	KIND_CLOUD_WATER_MIXING_RATIO
+	KIND_ICE_MIXING_RATIO
+	KIND_POTENTIAL_TEMPERATURE
+	[KIND_GEOPOTENTIAL_HEIGHT]
+When we are going through and doing the assimilation/evaluation of
+specific observation types, we DO NOT use the raw types - we need to
+create a shell around them in order to properly use them.  This has
+already been done for u/v wind, surface pressure, temperature, and
+specific humidity in the obs_def_eval_mod module.
+
+We need some way to differentiate between "actual" variables that we
+are assimilating and field mean variables.  To do this, introduce a
+logical flag as an optional argument into model_interpolate that
+allows us to specify whether the field we are interpolating is a mean
+field or not.  This means that the calls to model interpolate would
+look like
+     call model_interpolate(x, location, KIND_EXNER_FUNCTION, obs_val,
+	  istatus, .true.)
+for MEAN_EXNER and
+     call model_interpolate(x, location, KIND_EXNER_FUNCTION, obs_val,
+	  istatus, .false.)
+for PERT_EXNER.  This means that we need to update the restart_vars
+structure that is populated from the restart.vars file that allows us
+to specify whether a variable is a "mean": variable or not.  Note that
+a non-mean variable does not necessarily mean a perturbation variable
+- the temperature and mean temperature are different.
+
+For deciding what should go into the restart.vars file (either the raw
+kinds or some sort of derived types), recall that the derived types
+are for use with an observation operator, that maps model space into
+observation space.  In the DART context, this translates to
+transforming the raw variables coming from the model into the derived
+variables to be assimilated.  As in traditional data assimilation,
+this can be as simple as an identity (i.e. EVAL_U_WIND is just the
+same thing as KIND_U_WIND but is the "observation space" wrapper for
+it).  This means that take the following actions:
+      1.   Every entry in the model state vector needs a RAW type
+      2.   Need some way to convert RAW names to numbers
+      3.   All messing around with RAW kinds and conversions should be
+	   taken care of in obs_kind_mod, which we can access by using
+	   a different DEFAULT_obs_kind_mod.
+
+Things to think about:
+1.     Modifying restart file to include variable types BY NAME
+2.     Interpolator should handle RAW variable types and let the
+       specific obs_def module handle any further calculations if at
+       all possible.  For some things, we can't avoid it.
+3.     Look at if the "cdtg" needs to be used in the model_mod namelist.
+
+
+To go through the experiment procedure, we need to go through and
+create the necessary directory structure and files that the COAMPS
+DART implementation needs to run.
+1.     Pick a directory that will house the ensemble members
+2.     Copy the initialize_ensemble.sh script to that directory - it
+       will create the necessary numeric subdirectories and copy over
+       the restart and boundary condition files.
+3.     Modify the initialize_ensemble.sh script to point to the
+       location of the COAMPS data files.
+4.     Copy the COAMPS namelist used for the model run into the
+       directory.
+5.     Edit the namelist so that it looks for flat files in a
+       directory called ENSDIR that is a subdirectory of the working
+       directory.  The initialize_ensemble.sh script will replace this
+       with the correct ensemble member directory.  The COAMPS
+       namelist variable is "dsnrff" (in &dsetnl)
+6.     Create (or copy) a file called "convert.vars" - this lists the
+       variables that will be pulled out of the COAMPS namelist by the
+       strip_namelist script.  Currently, this file should contain
+       ktaust, ktauf, and cdtg (on separate lines).
+       (6a. Check running strip_namelist.pl at this point)
+7.     Copy in the restart.vars file (definition of all the variables
+       in the restart file)
+8.     Run the initialize_ensemble.sh script to create the ensemble
+       member directories.
+9.     Back in the DART directory, create the master input namelist.
+       There are examples for all the seperate programs, but it helps
+       to have a single namelist file that all the programs can use.
+       The most complete is the example namelist file for the filter
+       program - copy the perfect_model_obs_nml and the preprocess_nml
+       namelists into this file and you should have everything you
+       need to run all the DART programs.
+10.    Edit the master namelist with the parameters to suit your
+       needs.  There are some notes:
+       10a.    For COAMPS, require the "async" value to be 2 for
+	       perfect_model_obs and filter.  This allows us to...
+       10b.    Set the advance_ens_command to use qsub instead of
+	       calling the advance_ens.csh script directly.  This
+	       allows us to use the cluster queue system.
+       10c.    For the assim_tools namelist, use the parallel
+	       processing capabilities by setting do_parallel to 2,
+	       setting num_domains to a reasonable number and remember
+	       to add a qsub command to parallel_command.  To do this,
+	       you will have to build the assim_region binary.
+
+Create the initial conditions for the DART programs
+11.    Copy a restart file somewhere
+12.    Create the "convert.nml" namelist file either by stripping the
+       COAMPS namelist or just typing it yourself - should include
+       cdtg, ktaust, and ktauf.  The values for ktaust and ktauf
+       should be the same (just this once!) and reflect the time of
+       the restart file you have.
+13.    Run the trans_coamps_to_dart program.  You will need to make
+       sure that the data files the program needs (the datahd file and
+       the terrain height file) are in the local directory.
+14.    This will produce a dart_vector file.
+15.    Copy this file to the DART working directory with an easy to
+       remember name (like coamps_ics)
+
+Now, it's time to test the setup.  Start with a single observation
+experiment with a state variable that will test the ability to advance
+the model asynchronously without worrying about interpolation.
+16.    Run create_obs_sequence to set up a single state variable of
+       your choice.
+17.    Run create_fixed_network_seq.  You want to set this up with 2
+       observations - one corresponding to the time of the restart
+       file and spaced one hour apart.
+18.    Generate the observations by running perfect_model_obs.  You
+       want make sure that the &perfect_model_obs namelist points to
+       the translated restart file you created in steps 11-15.
+19.    Once you have the observations, you want to reset the ensemble
+       directory by re-running initialize_ensemble.sh - this is done
+       to copy a pristine (i.e. not monkeyed around with by DART)
+       restart file into each ensemble member directory.  DO THIS
+       EVERY TIME THAT YOU RUN A DIFFERENT PROGRAM - if you do not,
+       strange results may ensue.
+20.    Run the filter program with an ensemble size of 2.  You want to
+       make sure that this also points to the same initial conditions
+       file that you used in 18, but that start_from_restart is set to
+       false.  For the filter program, this means that you will take
+       that restart file and perturb it.  In the future when you
+       create ensemble initial conditions that you want to save, you
+       can set this to true but for now, leave it false.
+21.    If this successfully runs, then you have set up everything
+       correctly.  Re-run these tests but instead of using a state
+       variable, use an actual variable at a lat/lon location.
+
+Enjoy!
