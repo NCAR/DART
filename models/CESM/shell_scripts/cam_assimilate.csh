@@ -9,15 +9,16 @@
 # This block is an attempt to localize all the machine-specific
 # changes to this script such that the same script can be used
 # on multiple platforms. This will help us maintain the script.
+# Search below for TIMECHECK to see what times this script will
+# assimilate.
 
 echo "`date` -- BEGIN CAM_ASSIMILATE"
-echo "custom version assimilates at 0,6,12,18Z"
 
 set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
 # The FORCE options are not optional.
 # The VERBOSE options are useful for debugging though
-# some systems don't like the -v option to any of the following 
+# some systems don't like the -v option to any of the following
 switch ("`hostname`")
    case be*:
       # NCAR "bluefire"
@@ -65,7 +66,6 @@ set ensemble_size = ${NINST_ATM}
 set FILE = `head -n 1 rpointer.atm_0001`
 set FILE = $FILE:t
 set FILE = $FILE:r
-set MYCASE = `echo $FILE | sed -e "s#\..*##"`
 set ATM_DATE_EXT = `echo $FILE:e`
 set ATM_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
 set ATM_YEAR     = `echo $ATM_DATE[1] | bc`
@@ -82,12 +82,13 @@ echo "valid time of model is $ATM_YEAR $ATM_MONTH $ATM_DAY $ATM_HOUR (hours)"
 # If not, return before assimilating.
 #-------------------------------------------------------------------------
 
-if ( $ATM_HOUR != 0  &&  $ATM_HOUR != 6  &&  $ATM_HOUR != 12  &&  $ATM_HOUR != 18) then
+## TIMECHECK:
+if ( $ATM_HOUR == 0 || $ATM_HOUR == 6 || $ATM_HOUR == 12 || $ATM_HOUR == 18) then
+   echo "Hour is $ATM_HOUR so we are assimilating the atmosphere"
+else
    echo "Hour is not 0,6,12 or 18Z so we are skipping the atmosphere assimilation"
    echo "`date` -- END CAM_ASSIMILATE"
    exit 0
-else
-   echo "Hour is $ATM_HOUR so we are assimilating the atmosphere"
 endif
 
 #-------------------------------------------------------------------------
@@ -185,8 +186,8 @@ endif
 # files to be as listed above. When being archived, the filenames get a
 # unique extension (describing the assimilation time) appended to them.
 #
-# The inflation file is essentially a duplicate of the DART model state ...  
-# For the purpose of this script, they are the output of a previous assimilation, 
+# The inflation file is essentially a duplicate of the DART model state ...
+# For the purpose of this script, they are the output of a previous assimilation,
 # so they should be named something like prior_inflate_restart.YYYY-MM-DD-SSSSS
 #
 # NOTICE: inf_initial_from_restart and inf_sd_initial_from_restart are somewhat
@@ -194,10 +195,10 @@ endif
 # we want to read existing inflation files. However, the first assimilation
 # might need these to be TRUE and then subsequently be set to FALSE.
 # There are two ways to handle this.
-# 1) Create the initial files offline with values of unity by using  
+# 1) Create the initial files offline with values of unity by using
 #    'fill_inflation_restart' and stage them with the appropriate names
 #    in the RUNDIR.
-# 2) create a cookie file called RUNDIR/make_cam_inflation_cookie
+# 2) create a cookie file called RUNDIR/cam_inflation_cookie
 #    The existence of this file will cause this script to set the
 #    namelist appropriately. This script will 'eat' the cookie file
 #    to prevent this from happening for subsequent executions. If the
@@ -249,14 +250,14 @@ if ( $PRIOR_INF > 0 ) then
       # we are not using an existing inflation file.
       echo "inf_flavor(1) = $PRIOR_INF, using namelist values."
 
-   else if ( -e ../make_cam_inflation_cookie ) then
+   else if ( -e ../cam_inflation_cookie ) then
       # We want to use an existing inflation file, but this is
       # the first assimilation so there is no existing inflation
-      # file. This is the signal we need to to coerce the namelist 
+      # file. This is the signal we need to to coerce the namelist
       # to have different values for this execution ONLY.
       # Since the local namelist comes from CASEROOT each time, we're golden.
 
-      set PRIOR_TF = FALSE    
+      set PRIOR_TF = FALSE
 
 ex input.nml <<ex_end
 g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
@@ -264,7 +265,7 @@ g;inf_sd_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
 wq
 ex_end
 
-   else 
+   else
       # Look for the output from the previous assimilation
       (ls -rt1 ../cam_${PRIOR_INF_OFNAME}.* | tail -n 1 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
@@ -292,14 +293,14 @@ if ( $POSTE_INF > 0 ) then
       # we are not using an existing inflation file.
       echo "inf_flavor(2) = $POSTE_INF, using namelist values."
 
-   else if ( -e ../make_cam_inflation_cookie ) then
+   else if ( -e ../cam_inflation_cookie ) then
       # We want to use an existing inflation file, but this is
       # the first assimilation so there is no existing inflation
-      # file. This is the signal we need to to coerce the namelist 
+      # file. This is the signal we need to to coerce the namelist
       # to have different values for this execution ONLY.
       # Since the local namelist comes from CASEROOT each time, we're golden.
 
-      set POSTE_TF = FALSE    
+      set POSTE_TF = FALSE
 
 ex input.nml <<ex_end
 g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
@@ -327,7 +328,7 @@ else
 endif
 
 # Eat the cookie regardless
-${REMOVE} ../make_cam_inflation_cookie
+${REMOVE} ../cam_inflation_cookie
 
 #=========================================================================
 # Block 4: Convert N CAM restart files to DART initial condition files.
@@ -335,7 +336,7 @@ ${REMOVE} ../make_cam_inflation_cookie
 # as long as we can have unique namelists for each of them.
 #
 # At the end of the block, we have DART initial condition files  filter_ics.[1-N]
-# that came from pointer files ../rpointer.atm.[1-N].restart
+# that came from pointer files ../rpointer.atm_[1-N]
 #
 # REQUIRED DART namelist settings:
 # &filter_nml:           restart_in_file_name    = 'filter_ics'
@@ -354,24 +355,23 @@ while ( ${member} <= ${ensemble_size} )
    # Each member will do its job in its own directory.
    # That way, we can do N of them simultaneously -
 
-   # Turns out the .h0. files are timestamped with the START of the
-   # run, which is *not* ATM_DATE_EXT ...  I just link to a whatever
-   # is convenient (since the info is static).
-
    set MYTEMPDIR = member_${member}
    mkdir -p $MYTEMPDIR
    cd $MYTEMPDIR
 
+   # Turns out the .h0. files are timestamped with the START of the
+   # run, which is *not* ATM_DATE_EXT ...  I just link to a whatever
+   # is convenient (since the info is static).
    # make sure there are no old output logs hanging around
    $REMOVE output.${member}.cam_to_dart
 
-   set ATM_INITIAL_FILENAME = `printf ../../${MYCASE}.cam_%04d.i.${ATM_DATE_EXT}.nc ${member}`
-   set ATM_HISTORY_FILENAME = `ls -1t ../../${MYCASE}.cam*.h0.* | head -n 1`
+   set ATM_INITIAL_FILENAME = `printf ../../${CASE}.cam_%04d.i.${ATM_DATE_EXT}.nc ${member}`
+   set ATM_HISTORY_FILENAME = `ls -1t ../../${CASE}.cam*.h0.* | head -n 1`
    set     DART_IC_FILENAME = `printf filter_ics.%04d     ${member}`
    set    DART_RESTART_FILE = `printf filter_restart.%04d ${member}`
 
-   sed -e "s/dart_ics/..\/${DART_IC_FILENAME}/" \
-       -e "s/dart_restart/..\/${DART_RESTART_FILE}/" < ../input.nml >! input.nml
+   sed -e "s#dart_ics#../${DART_IC_FILENAME}#" \
+       -e "s#dart_restart#../${DART_RESTART_FILE}#" < ../input.nml >! input.nml
 
    ${LINK} $ATM_INITIAL_FILENAME caminput.nc
    ${LINK} $ATM_HISTORY_FILENAME cam_phis.nc
@@ -419,8 +419,8 @@ echo "`date` -- END CAM-TO-DART for all ${ensemble_size} members."
 # CAM:static_init_model() always needs a caminput.nc and a cam_phis.nc
 # for geometry information, etc.
 
-set ATM_INITIAL_FILENAME = ../${MYCASE}.cam_0001.i.${ATM_DATE_EXT}.nc
-set ATM_HISTORY_FILENAME = `ls -1t ../${MYCASE}.cam*.h0.* | head -n 1`
+set ATM_INITIAL_FILENAME = ../${CASE}.cam_0001.i.${ATM_DATE_EXT}.nc
+set ATM_HISTORY_FILENAME = `ls -1t ../${CASE}.cam*.h0.* | head -n 1`
 
 ${LINK} $ATM_INITIAL_FILENAME caminput.nc
 ${LINK} $ATM_HISTORY_FILENAME cam_phis.nc
@@ -511,11 +511,11 @@ cd ${RUNDIR}
 set member = 1
 while ( ${member} <= ${ensemble_size} )
 
-   set n4 = `printf %04d $member`
+   set inst_string = `printf _%04d $member`
 
-   set ATM_INITIAL_FILENAME = `printf ${MYCASE}.cam_%04d.i.${ATM_DATE_EXT}.nc  ${member}`
+   set ATM_INITIAL_FILENAME = ${CASE}.cam${inst_string}.i.${ATM_DATE_EXT}.nc
 
-   ${LINK} ${ATM_INITIAL_FILENAME} cam_initial_${n4}.nc || exit -9
+   ${LINK} ${ATM_INITIAL_FILENAME} cam_initial${inst_string}.nc || exit -9
 
    @ member++
 

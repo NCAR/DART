@@ -311,6 +311,7 @@
    bin_width        =     0, 0, 0, 0, 1, 0 ,
    time_to_skip     =     0, 0, 0, 0, 0, 0 ,
    max_num_bins     = 10000,
+   trusted_obs      = 'null',
    Nregions   = 1,
    lonlim1    = 0.0,  130.0, 290.0, 290,
    lonlim2    = 360.0, 270.0, 380.0, 380,
@@ -318,7 +319,9 @@
    latlim2    =  90.0,  50.0,  50.0,  50,
    reg_names  = 'Earth', 'Pacific', 'Atlantic', 'North Atlantic',
    print_mismatched_locs = .false.,
-   print_obs_locations   = .false.,
+   create_rank_histogram = .true.,
+   outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
    verbose               = .true.,
    hlevel = 0.0, 100000.0,  200000.0, 300000.0, 400000.0, 500000.0, 600000.0,
    /

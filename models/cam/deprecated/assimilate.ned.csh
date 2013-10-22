@@ -1,17 +1,23 @@
-#!/bin/csh
-#
+#!/usr/bin/tcsh
+# FIXME: where it might be on bluefire but not hopper:
+#!/usr/local/bin/tcsh
 # DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
 
-# The FORCE options are not optional.
+# The FORCE options are not optional. 
 # the VERBOSE options are useful for debugging.
-set   MOVE = '/usr/local/bin/mv -fv'
-set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
-set   LINK = '/usr/local/bin/ln -fvs'
-set REMOVE = '/usr/local/bin/rm -fr'
+set   MOVE = 'mv -fv'
+set   COPY = 'cp -fv --preserve=timestamps'
+set   LINK = 'ln -fvs'
+set REMOVE = 'rm -fr'
+# FIXME: not on hopper:
+#set   MOVE = '/usr/local/bin/mv -fv'
+#set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
+#set   LINK = '/usr/local/bin/ln -fvs'
+#set REMOVE = '/usr/local/bin/rm -fr'
 
 set ensemble_size = ${NINST_ATM}
 
@@ -45,37 +51,37 @@ echo "valid time of model is $MODEL_YEAR $MODEL_MONTH $MODEL_DAY $MODEL_HOUR (ho
 # Set variables containing various directory names where we will GET things
 #-----------------------------------------------------------------------------
 
-set DARTDIR = ${HOME}/svn/DART/dev
-set  OBSDIR = /glade/proj3/image/Observations/Synthetic/UVT_Set2_12H
+# FIXME: different for everyone
+set DARTROOT = ${HOME}/devel
+set DARTDIR = ${DARTROOT}/models/cam/work
+
+# FIXME: different on hopper
+set DART_OBS_DIR = UVT_Set2_12H
+set  OBSDIR = /scratch/scratchdirs/nscollin/Synthetic/${DART_OBS_DIR}
 
 #-------------------------------------------------------------------------
 # DART COPY BLOCK
 # Populate a run-time directory with the bits needed to run DART
 #-------------------------------------------------------------------------
 
-foreach FILE ( input.nml.zagar filter cam_to_dart dart_to_cam )
-   if (  -e   ${DARTDIR}/models/cam/work/${FILE} ) then
-      ${COPY} ${DARTDIR}/models/cam/work/${FILE} .
+foreach FILE ( input_1.nml input_n.nml filter cam_to_dart dart_to_cam )
+   if (  -e   ${DARTDIR}/${FILE} ) then
+      ${COPY} ${DARTDIR}/${FILE} .
    else
       echo "DART required file ${DARTDIR}/${FILE} not found ... ERROR"
       exit 1
    endif
 end
 
-${MOVE} input.nml.zagar input.nml
+# special: input_1.nml for first step, input_n.nml after.
+# FIXME: this should sed the few lines which are special for run 1
+# so we only have a single input.nml file running around.
+${COPY} input_1.nml input.nml
+#${COPY} input_n.nml input.nml
 
-${COPY} /glade/proj3/DART/raeder/FV1deg_4.0/cam_phis.nc .
-
-# Modify the DART input.nml such that
-# the DART ensemble size matches the CESM number of instances
-# WARNING: the output files contain ALL enemble members ==> BIG
-
-ex input.nml <<ex_end
-g;ens_size ;s;= .*;= $ensemble_size;
-g;num_output_state_members ;s;= .*;= $ensemble_size;
-g;num_output_obs_members ;s;= .*;= $ensemble_size;
-wq
-ex_end
+# FIXME: doesn't exist on hopper
+#${COPY} /glade/proj3/DART/raeder/FV1deg_4.0/cam_phis.nc .
+${COPY} $HOME/cam_phis.nc .
 
 #-------------------------------------------------------------------------
 # DART SAMPLING ERROR CORRECTION BLOCK
@@ -85,13 +91,11 @@ ex_end
 # input.nml:&assim_tools_nml:sampling_error_correction = .true.,
 #-------------------------------------------------------------------------
 
-set  MYSTRING = `grep sampling_error_correction input.nml`
-set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
-set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
-set SECSTRING = `echo $MYSTRING[2] | tr 'A-Z' 'a-z'`
+set  MYSTRING = `grep -A 50 \&assim_tools_nml input.nml | grep sampling_error_correction | head -n 1`
+set SECSTRING = `echo $MYSTRING | sed -e "s#.*= *\.\(.*\)\..*#.\1.#" | tr 'A-Z' 'a-z'`
 
-if ( $SECSTRING == true ) then
-   set SAMP_ERR_FILE = ${DARTDIR}/system_simulation/final_full_precomputed_tables/final_full.${ensemble_size}
+if ( $SECSTRING == ".true." ) then
+   set SAMP_ERR_FILE = ${DARTROOT}/system_simulation/final_full_precomputed_tables/final_full.${ensemble_size}
    if (  -e   ${SAMP_ERR_FILE} ) then
       ${COPY} ${SAMP_ERR_FILE} .
    else
@@ -145,10 +149,11 @@ set  POSTE_INF = $MYSTRING[3]
 
 set  MYSTRING = `grep inf_initial_from_restart input.nml`
 set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,]# #g"`
-set  PRIOR_TF = `echo $MYSTRING[2] | tr [A-Z] [a-z]`
-set  POSTE_TF = `echo $MYSTRING[3] | tr [A-Z] [a-z]`
+set  PRIOR_TF = `echo $MYSTRING[2] | tr 'A-Z' 'a-z'`
+set  POSTE_TF = `echo $MYSTRING[3] | tr 'A-Z' 'a-z'`
 
 # its a little tricky to remove both styles of quotes from the string.
+# (only in the cshell.  bash/ksh variants have better quoting styles)
 
 set  MYSTRING = `grep inf_in_file_name input.nml`
 set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
@@ -271,6 +276,12 @@ while ( ${member} <= ${ensemble_size} )
 end
 
 wait
+if ($status != 0) then
+   exit $status
+endif
+if ($status != 0) then
+   exit $status
+endif
 
 #-------------------------------------------------------------------------
 # Block 2: Actually run the assimilation.
@@ -303,14 +314,22 @@ ${LINK} ../$MODEL_INITIAL_FILENAME caminput.nc
 #${LINK} ../$MODEL_RESTART_FILENAME cam_restart.nc
 #${LINK} ../$MODEL_HISTORY_FILENAME cam_history.nc
 
-# stage the proper observation sequence file.
+# Determine proper observation sequence file.
 
-set OBSFNAME = `printf syn_obs_seq${MODEL_YEAR}${MODEL_MONTH}${MODEL_DAY}%02d ${MODEL_HOUR}`
-set OBS_FILE = ${OBSDIR}/${OBSFNAME}
+set OBS_FILE = ${OBSDIR}/obs_seq.${MODEL_DATE_EXT}.out
 
 ${LINK} ${OBS_FILE} obs_seq.out
 
-mpirun.lsf ./filter || exit 7
+# FIXME: removed shell vars that are undefined for PBS
+
+
+# FIXME: mpirun, mpirun.lsf, or aprun are popular choices here
+# to start filter:
+
+setenv NTASKS ${TOTALPES}
+echo starting filter executable now with ${NTASKS} MPI tasks
+aprun -n $NTASKS ./filter || exit 7
+
 
 ${MOVE} Prior_Diag.nc      ../Prior_Diag.${MODEL_DATE_EXT}.nc
 ${MOVE} Posterior_Diag.nc  ../Posterior_Diag.${MODEL_DATE_EXT}.nc
@@ -376,6 +395,9 @@ while ( ${member} <= ${ensemble_size} )
 end
 
 wait
+if ($status != 0) then
+   exit $status
+endif
 
 #-------------------------------------------------------------------------
 # Block 4: The cam files have now been updated, move them into position.
@@ -420,6 +442,15 @@ ex_end
 #-------------------------------------------------------------------------
 # Cleanup
 #-------------------------------------------------------------------------
+
+# we (dart) do not need these files, and CESM does not need them either
+# to continue a run.  if we remove them here, they do not get moved to
+# the short-term archiver.
+${REMOVE} ../*.rs.*
+${REMOVE} ../*.rh0.*
+${REMOVE} ../*.rs1.*
+${REMOVE} ../*cam.r.*
+${REMOVE} ../PET*ESMF_Logfile
 
 exit 0
 

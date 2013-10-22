@@ -202,6 +202,7 @@ logical :: print_obs_locations   = .false.
 logical :: verbose               = .false.
 logical :: outliers_in_histogram = .false.
 logical :: create_rank_histogram = .true.
+logical :: use_zero_error_obs    = .false.
 
 namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list,                 &
                        first_bin_center, last_bin_center,                     &
@@ -211,7 +212,7 @@ namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list,                 &
                        reg_names, print_mismatched_locs, print_obs_locations, &
                        create_rank_histogram, outliers_in_histogram,          &
                        plevel_edges, hlevel_edges, mlevel_edges,              &
-                       verbose, trusted_obs
+                       verbose, trusted_obs, use_zero_error_obs
 
 !-----------------------------------------------------------------------
 ! Variables used to accumulate the statistics.
@@ -689,7 +690,11 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          if(vert_is_pressure(obs_loc)) obslevel = 0.01_r8 * obsloc3(3)
 
          ! same sort of thing for the scale factors
-         obs_error_variance = get_obs_def_error_variance(obs_def)
+         if ( use_zero_error_obs ) then
+            obs_error_variance = 0.0_r8
+         else
+            obs_error_variance = get_obs_def_error_variance(obs_def)
+         endif
          obs_err_var = obs_error_variance * &
                        scale_factor(flavor) * scale_factor(flavor)
 
@@ -2306,11 +2311,15 @@ MetaDataLoop : do i=1, get_num_copies(seq)
 
    metadata = get_copy_meta_data(seq,i)
 
-   if(index(metadata,'observation'              ) > 0)              obs_index = i
+   if ( use_zero_error_obs ) then
+      if(index(metadata,'truth'        ) > 0) obs_index = i
+   else
+      if(index(metadata,'observation'  ) > 0) obs_index = i
+   endif
+
    if(index(metadata,'prior ensemble mean'      ) > 0)       prior_mean_index = i
    if(index(metadata,'posterior ensemble mean'  ) > 0)   posterior_mean_index = i
    if(index(metadata,'prior ensemble spread'    ) > 0)     prior_spread_index = i
-   if(index(metadata,'posterior ensemble spread') > 0) posterior_spread_index = i
    if(index(metadata,'posterior ensemble spread') > 0) posterior_spread_index = i
 
    if(index(metadata, 'prior ensemble member') > 0 .and. &
@@ -2363,20 +2372,28 @@ if (          dart_qc_index < 0 ) then
 endif
 
 ! Only require obs_index to be present; this allows the program
-! to be run on obs_seq.in files which have no means or spread.  You get
-! less info from them, but you can still plot locations, etc.
+! to be run on obs_seq.in files which have no means or spread.
 
 if ( obs_index < 0 ) then
-   write(string1,*)'metadata:observation not found'
+   if ( use_zero_error_obs ) then
+      write(string1,*)'metadata:truth       not found'
+   else
+      write(string1,*)'metadata:observation not found'
+   endif
    call error_handler(E_ERR,'obs_diag',string1,source,revision,revdate)
 endif
 
 !--------------------------------------------------------------------
 ! Echo what we found.
 !--------------------------------------------------------------------
-
-write(string1,'(''observation      index '',i2,'' metadata '',a)') &
+if ( use_zero_error_obs ) then
+   write(string1,'(''truth            index '',i2,'' metadata '',a)') &
      obs_index, trim(get_copy_meta_data(seq,obs_index))
+else
+   write(string1,'(''observation      index '',i2,'' metadata '',a)') &
+     obs_index, trim(get_copy_meta_data(seq,obs_index))
+endif
+
 call error_handler(E_MSG,'obs_diag',string1,source,revision,revdate)
 
 if (prior_mean_index > 0 ) then

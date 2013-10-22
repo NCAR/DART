@@ -1,6 +1,20 @@
       <comment>
          AK 9/12/13: Stream description template file for CAMASSIM CPL history daily Solar data at 0.9x1.25 resolution for POPDART testing
       $Id$
+      TJH comment: the file names are not consistent through time. Be forewarned.
+      CAM_halo-O2-POP74-instance.           cpl.ha2x1davg.1974.nc
+      CAM_halo-O2-POP79-instance.           cpl.ha2x1davg.1979.nc
+      CAM_halo-O2-POP84-instance.           cpl.ha2x1davg.1984.nc
+      CAM_halo-O2-POP89-instance.           cpl.ha2x1davg.1989.nc
+      CAM_halo-O2-POP94-instance.           cpl.ha2x1davg.1994.nc
+      FV_greg_single-O2-POP11-instance.     cpl.ha2x1davg.1998.nc
+      FV_greg_single-O2-POP11-instance.     cpl.ha2x1davg.1999.nc
+      FV2deg_Cplr_out_single-POP15-instance.cpl.ha2x1davg.2000.nc
+      FV2deg_Cplr_out_single-POP15-instance.cpl.ha2x1davg.2001.nc
+      FV2deg_Cplr_out_single-POP15-instance.cpl.ha2x1davg.2002.nc
+      CAM_halo-O2-POP15-instance.           cpl.ha2x1davg.2003.nc
+      CAM_halo-O2-POP15-instance.           cpl.ha2x1davg.2004.nc
+      CAM_halo-O2-POP15-instance.           cpl.ha2x1davg.2005.nc
       </comment>
       <dataSource>
          CPL

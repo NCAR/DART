@@ -210,11 +210,13 @@
    init_skip_days        = 0,
    init_skip_seconds     = 0,
    Nregions              = 3,
+   trusted_obs           = 'null',
    lonlim1               = 0.00, 0.00, 0.50, -1.0,
    lonlim2               = 1.01, 0.50, 1.01, -1.0,
    reg_names             = 'whole', 'yin', 'yang', 'bogus',
    create_rank_histogram = .true.,
    outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
    verbose               = .false.
    /
 

@@ -38,61 +38,40 @@
 #
 # ./${CASENAME}.*.clean_build
 # ./configure -cleanall
+#
+# ====================================================================
+# === IMPORTANT modifications to the distribution code before ANYTHING 
+# ====================================================================
+
+# had to edit the following to remove the LSB_PJL_... word too long error
+# cesm1_1_beta04/scripts/ccsm_utils/Machines/mkbatch.bluefire
+# as long as OMP_NUM_THREADS == 1 ... the default is fine.
 
 # ====================================================================
 # ====  Set case options
 # ====================================================================
 
-# ======================
-# case settings
-# ======================
-
-# beta05 is also available, but i'm still using 04 for now
-# because i have a fixed copy in my home directory.
-setenv ccsmtag        cesm1_1_beta04
-setenv case           F_PMO_3
+setenv case           Fzagar_pmo
 setenv compset        F_2000
 setenv resolution     f09_f09
+setenv ccsmtag        cesm1_1_beta04
 setenv num_instances  1
-setenv coldbuild      true
-
-# had to edit the following to remove the LSB_PJL_... word too long error
-# /glade/home/thoar/cesm1_1_beta04/scripts/ccsm_utils/Machines/mkbatch.bluefire
-# as long as OMP_NUM_THREADS == 1 ... the default is fine.
+setenv coldbuild      false
 
 # ================================
 # define machines and directories
 # ================================
 
-# my home, and temp/scratch space
-setenv nancy_home $HOME
-setenv nancy_scratch $SCRATCH
+setenv mach bluefire                                  ;# machine
+setenv DARTdir /glade/home/thoar/svn/DART/trunk       ;# DART executables, scripts and input
 
-setenv mach hopp2                                       ;# machine - must match cesm names
-setenv DARTdir ${nancy_home}/devel
-
-setenv cesm_datadir /project/projectdirs/ccsm1/inputdata
-
-setenv ccsmroot ${nancy_home}/${ccsmtag}                   ;# this is where the cesm code lives
-#setenv ccsmroot ${cesm_public}/collections/${ccsmtag}  ;# this is where the cesm code lives
-
-setenv caseroot ${nancy_home}/cases/$case                  ;## your cesm case directory
-setenv lockroot ${nancy_home}/locked_cases                 ;## locked cases
-setenv rundir   ${nancy_scratch}/${case}
-setenv archdir  ${nancy_scratch}/archive
-
-# for data files not in the public cems area
-setenv nancy_datadir ${nancy_scratch}/cesm_datafiles
-
-# ======================
-# clear out previous builds
-# ======================
-
-if ("${coldbuild}" == "true") then
-   echo "removing old files from ${caseroot} and ${rundir}"
-   \rm -fr ${caseroot}
-   \rm -fr ${rundir}
-endif
+setenv cesm_public  /glade/proj3/cseg                 ;# location of public CESM sandbox
+setenv cesm_datadir /glade/proj3/cseg/inputdata
+setenv caseroot /glade/user/thoar/cases/${case}       ;# your (future) cesm case directory
+setenv rundir  /glade/scratch/thoar/${case}           ;# (future) run-time directory
+setenv archdir /glade/scratch/thoar/archive/${case}   ;# (future) short-term archive directory
+setenv ccsmroot ${cesm_public}/collections/${ccsmtag} ;# location of the public cesm code
+setenv ccsmroot /glade/home/thoar/${ccsmtag}          ;# location of your personal cesm code
 
 # ======================
 # configure settings
@@ -116,13 +95,14 @@ setenv stop_option   nhours
 # job settings
 # ======================
 
-setenv timewall     00:40:00
+setenv proj         93300315
+setenv timewall     1:00
 setenv queue        premium
 
 # ======================
 # namelist variables
 # ======================
-# Create namelist templates that get copied once the case has been configured.
+# Create namelist templates that get copied once the case has been created.
 
 setenv this_dir `pwd`
 
@@ -146,7 +126,7 @@ EOF
 cat <<EOF >! user_nl_clm_${case}
 &clmexp
   fatmgrid = '${cesm_datadir}/lnd/clm2/griddata/griddata_0.9x1.25_070212.nc'
-  faerdep  = '${nancy_datadir}/aerosoldep_rcp4.5_monthly_1849-2104_0.9x1.25_c100407.nc'
+  faerdep  = '${cesm_datadir}/atm/cam/chem/trop_mozart_aero/aero/aerosoldep_rcp4.5_monthly_1849-2104_0.9x1.25_c100407.nc'
   outnc_large_files = .true.
 /
 EOF
@@ -160,31 +140,39 @@ EOF
 #  hist_empty_htapes = .true.
 
 # ====================================================================
-# ====  End of case options
-# ====================================================================
-
-# ====================================================================
-# Create a new case, configure, and build.
+# Create the case.
 # For list of the cases: ./create_newcase -list
 # ====================================================================
 
+# if coldbuild is false and the directory does not exist, ...
+
 if ("${coldbuild}" == "true") then
+   echo "removing old files from ${caseroot} and ${rundir}"
+   \rm -fr ${caseroot}
+   \rm -fr ${rundir}
    ${ccsmroot}/scripts/create_newcase -case ${caseroot} -mach ${mach} \
                    -res ${resolution} -compset ${compset} -skip_rundb
-   
+
    if ( $status != 0 ) then
       echo "ERROR: Case could not be created."
       exit 1
    endif
+else
+   cd ${caseroot}
+   ./configure  -cleannamelist
 endif
+
+# ====================================================================
+# Configure the case.
+# ====================================================================
 
 cd ${caseroot}
 
 ./xmlchange -file env_build.xml    -id EXEROOT        -val ${rundir}
 ./xmlchange -file env_build.xml    -id USE_ESMF_LIB   -val TRUE
-./xmlchange -file env_build.xml    -id ESMF_LIBDIR    -val ${nancy_scratch}/esmf-mpi
+#./xmlchange -file env_build.xml    -id ESMF_LIBDIR    -val ${nancy_scratch}/esmf-mpi
 
-set num_tasks_per_instance = 12
+set num_tasks_per_instance = 16
 set nthreads = 1
 @ total_nt = $num_instances * $num_tasks_per_instance
 
@@ -237,10 +225,8 @@ echo ALL ARCHIVING DISABLED
 # ====================================================================
 # Update source files if need be
 # ====================================================================
-cp ~/cesm_mods/seq*F90           $caseroot/SourceMods/src.drv
-cp ~/cesm_mods/hist*F90          $caseroot/SourceMods/src.clm
-cp ~/cesm_mods/ccsm_comp_mod.F90 $caseroot/SourceMods/src.drv
 
+\cp -rf ~/${ccsmtag}/SourceMods/* ${caseroot}/SourceMods/
 if ( $status == 0) then
    echo "FYI - Local Source Modifications used for this case:"
    ls -lr ${caseroot}/SourceMods/*
@@ -274,7 +260,8 @@ cd ${caseroot}
 \cp -f ${DARTdir}/models/cam/shell_scripts/pmo.ned.csh pmo.csh
 
 # ====================================================================
-# update the namelists and scripts as needed
+# Update the scripts that build the namelists.
+# The active components scripts need to support the multi-instance naming.
 # ====================================================================
 
 echo ''
@@ -380,24 +367,24 @@ head -$keep      ${case}.${mach}.run.orig >! ${case}.${mach}.run
 cat              add_to_run.txt           >> ${case}.${mach}.run
 tail -$lastlines ${case}.${mach}.run.orig >> ${case}.${mach}.run
 
-chmod 0755 ${case}.${mach}.run
-
 # ====================================================================
 # IMPORTANT: All resubmits must be coldstarts.
 # Change Tools/ccsm_postrun.csh line 83 to CONTINUE_RUN -val FALSE'
 # ====================================================================
 
-echo 'Changing Tools/ccsm_postrun.csh:83 to CONTINUE_RUN -val FALSE'
-echo 'so all the resubmits are coldstarts.'
-
 cd ${caseroot}/Tools
-cp ccsm_postrun.csh ccsm_postrun.orig
-sed -e '/CONTINUE_RUN/s/TRUE/FALSE/' ccsm_postrun.orig >! ccsm_postrun.csh
-chmod 0755 ccsm_postrun.csh 
 
-# if run fails, you need to back up, or you want to check what
-# the current run time is, look here:
-#   Buildconf/cpl.buildnml.csh: start_ymd, start_tod
+echo ''
+echo 'Changing Tools/ccsm_postrun.csh such that all the resubmits are coldstarts,'
+echo 'which means CONTINUE_RUN should be FALSE in ccsm_postrun.csh'
+echo ''
+
+ex ccsm_postrun.csh <<ex_end
+/use COMP_RUN_BARRIERS as surrogate for timing run logical/
+/CONTINUE_RUN/
+s;TRUE;FALSE;
+wq
+ex_end
 
 # ====================================================================
 # build
@@ -420,7 +407,9 @@ endif
 # Stage the restarts now that the run directory exists
 # ====================================================================
 
-set stagedir = ${nancy_scratch}/ned_datafiles
+# 20081031 ... /ptmp/thoar/restarts
+# 20080801 ... /glade/proj3/DART/raeder/FV1deg_4.0/Exp1/obs_0000
+set stagedir = /glade/proj3/DART/raeder/FV1deg_4.0/Exp1/obs_0000
 
 echo ''
 echo "Staging the restarts from {$stagedir}"
@@ -444,25 +433,19 @@ echo "must stage a ${rundir}/[prior,pos]_inflate_restart.YYYY-MM-DD-SSSSS"
 # Edit the run script to reflect project, queue, and wallclock
 # ====================================================================
 
+set PROJ=`grep BSUB $case.$mach.run | grep -e '-P' `
+sed s/$PROJ[3]/$proj/ < $case.$mach.run >! temp
+/bin/mv temp  $case.$mach.run
 
-if ($?proj) then
-  set PROJ=`grep '^#PBS ' $case.$mach.run | grep -e '-P' `
-  sed -e s/$PROJ[3]/$proj/ < $case.$mach.run >! temp
-  /bin/mv temp  $case.$mach.run
-endif
+set TIMEWALL=`grep BSUB $case.$mach.run | grep -e '-W' `
+sed s/$TIMEWALL[3]/$timewall/ < $case.$mach.run >! temp
+/bin/mv temp  $case.$mach.run
 
-if ($?timewall) then
-  set TIMEWALL=`grep '^#PBS ' $case.$mach.run | grep walltime `
-  sed -e /"${TIMEWALL}"/s/=.\$/=$timewall/ < $case.$mach.run >! temp
-  /bin/mv temp  $case.$mach.run
-endif
+set QUEUE=`grep BSUB $case.$mach.run | grep -e '-q' `
+sed s/$QUEUE[3]/$queue/ < $case.$mach.run >! temp
+/bin/mv temp  $case.$mach.run
 
-if ($?queue) then
-  set QUEUE=`grep '^#PBS ' $case.$mach.run | grep -e '-q' `
-  sed -e s/$QUEUE[3]/$queue/ < $case.$mach.run >! temp
-  /bin/mv temp  $case.$mach.run
-endif
-chmod 0744 $case.$mach.run
+chmod 0774 $case.$mach.run
 
 # ====================================================================
 # Submit job

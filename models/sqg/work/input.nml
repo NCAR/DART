@@ -228,8 +228,7 @@
    bin_width        =     0, 0, 0, 6, 0, 0 ,
    time_to_skip     =     0, 0, 1, 0, 0, 0 ,
    max_num_bins     = 1000,
-   rat_cri            = 3.0,
-   input_qc_threshold = 3.0,
+   trusted_obs      = 'null',
    Nregions   = 1,
    lonlim1    =   0.0,   0.0,   0.0, 235.0,
    lonlim2    = 360.0, 360.0, 360.0, 295.0,
@@ -237,6 +236,9 @@
    latlim2    =  80.0, -20.0,  20.0,  55.0,
    reg_names  = 'Mid-latitudes', 'Southern Hemisphere', 'Tropics', 'North America',
    print_mismatched_locs = .false.,
+   create_rank_histogram = .true.,
+   outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
    verbose               = .true.
   /
 

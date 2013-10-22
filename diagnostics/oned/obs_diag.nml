@@ -14,6 +14,7 @@
    reg_names             = 'whole', 'yin', 'yang', 'bogus',
    create_rank_histogram = .true.,
    outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
    verbose               = .false.
    /
 

@@ -387,6 +387,16 @@ ${COPY} ${cesmroot}/scripts/ccsm_utils/Tools/lt_archive.csh Tools/
 ${COPY} ${DARTroot}/models/cam/shell_scripts/assimilate.csh  .
 ${COPY} ${DARTroot}/models/cam/work/input.nml                .
 
+# Ensure that the input.nml ensemble size matches the number of instances.
+# WARNING: the output files contain ALL ensemble members ==> BIG
+
+ex input.nml <<ex_end
+g;ens_size ;s;= .*;= $num_instances;
+g;num_output_state_members ;s;= .*;= $num_instances;
+g;num_output_obs_members ;s;= .*;= $num_instances;
+wq
+ex_end
+
 # ====================================================================
 # Update the scripts that build the namelists.
 # The active components scripts need to support the multi-instance naming.

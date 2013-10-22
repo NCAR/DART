@@ -134,8 +134,7 @@
   bin_width             = 0, 0, 0,12, 0, 0
   time_to_skip          = 0, 0, 1, 0, 0, 0
   max_num_bins          = 1000
-  rat_cri               = 3.0
-  input_qc_threshold    = 4.0
+  trusted_obs           = 'null'
   plevel                = 1000.,850.,700.,500.,400.,300.,200.,150.,100.,50.
   nregions              = 4
   lonlim1               = 0.0,   0.0,   0.0, 235.0
@@ -144,6 +143,9 @@
   latlim2               = 80.0, -20.0,  20.0,  55.0
   reg_names             = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America'
   print_mismatched_locs = .false.
+  create_rank_histogram = .true.
+  outliers_in_histogram = .true.
+  use_zero_error_obs    = .false.
   verbose               = .false.
 /
 

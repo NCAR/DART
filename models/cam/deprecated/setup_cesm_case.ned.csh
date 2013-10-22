@@ -38,40 +38,51 @@
 #
 # ./${CASENAME}.*.clean_build
 # ./configure -cleanall
-#
-# ====================================================================
-# === IMPORTANT modifications to the distribution code before ANYTHING 
-# ====================================================================
-
-# had to edit the following to remove the LSB_PJL_... word too long error
-# cesm1_1_beta04/scripts/ccsm_utils/Machines/mkbatch.bluefire
-# as long as OMP_NUM_THREADS == 1 ... the default is fine.
 
 # ====================================================================
 # ====  Set case options
 # ====================================================================
 
-setenv case           Fzagar_pmo
+# ======================
+# case settings
+# ======================
+
+# beta05 is also available, but i'm still using 04 for now
+# because i have a fixed copy in my home directory.
+setenv ccsmtag        cesm1_1_beta04
+setenv case           F_ZAGAR3_BF
 setenv compset        F_2000
 setenv resolution     f09_f09
-setenv ccsmtag        cesm1_1_beta04
-setenv num_instances  1
-setenv coldbuild      false
+setenv num_instances  80
+
+# had to edit the following to remove the LSB_PJL_... word too long error
+# /glade/home/thoar/cesm1_1_beta04/scripts/ccsm_utils/Machines/mkbatch.bluefire
+# as long as OMP_NUM_THREADS == 1 ... the default is fine.
 
 # ================================
 # define machines and directories
 # ================================
 
-setenv mach bluefire                                  ;# machine
-setenv DARTdir /glade/home/thoar/svn/DART/dev         ;# DART executables, scripts and input
+# my home, and temp/scratch space
+setenv nancy_home $HOME
+setenv nancy_scratch $SCRATCH
 
-setenv cesm_public  /glade/proj3/cseg                 ;# location of public CESM sandbox
-setenv cesm_datadir /glade/proj3/cseg/inputdata
-setenv caseroot /glade/user/thoar/cases/${case}       ;# your (future) cesm case directory
-setenv rundir  /glade/scratch/thoar/${case}           ;# (future) run-time directory
-setenv archdir /glade/scratch/thoar/archive/${case}   ;# (future) short-term archive directory
-setenv ccsmroot ${cesm_public}/collections/${ccsmtag} ;# location of the public cesm code
-setenv ccsmroot /glade/home/thoar/${ccsmtag}          ;# location of your personal cesm code
+setenv mach hopp2                                       ;# machine - must match cesm names
+setenv DARTdir ${nancy_home}/trunk
+
+setenv cesm_datadir /project/projectdirs/ccsm1/inputdata
+
+setenv ccsmroot ${nancy_home}/${ccsmtag}                   ;# this is where the cesm code lives
+#setenv ccsmroot ${cesm_public}/collections/${ccsmtag}  ;# this is where the cesm code lives
+
+setenv caseroot ${nancy_home}/cases/$case                  ;## your cesm case directory
+setenv lockroot ${nancy_home}/locked_cases                 ;## locked cases
+setenv rundir   ${nancy_scratch}/${case}
+setenv archdir  ${nancy_scratch}/archive/${case}
+
+
+# for data files not in the public cems area
+setenv nancy_datadir ${nancy_scratch}/cesm_datafiles
 
 # ======================
 # configure settings
@@ -95,14 +106,13 @@ setenv stop_option   nhours
 # job settings
 # ======================
 
-setenv proj         93300315
-setenv timewall     1:00
-setenv queue        premium
+setenv timewall     00:59:00
+setenv queue        regular
 
 # ======================
 # namelist variables
 # ======================
-# Create namelist templates that get copied once the case has been created.
+# Create namelist templates that get copied once the case has been configured.
 
 setenv this_dir `pwd`
 
@@ -126,7 +136,7 @@ EOF
 cat <<EOF >! user_nl_clm_${case}
 &clmexp
   fatmgrid = '${cesm_datadir}/lnd/clm2/griddata/griddata_0.9x1.25_070212.nc'
-  faerdep  = '${cesm_datadir}/atm/cam/chem/trop_mozart_aero/aero/aerosoldep_rcp4.5_monthly_1849-2104_0.9x1.25_c100407.nc'
+  faerdep  = '${nancy_datadir}/aerosoldep_rcp4.5_monthly_1849-2104_0.9x1.25_c100407.nc'
   outnc_large_files = .true.
 /
 EOF
@@ -140,16 +150,23 @@ EOF
 #  hist_empty_htapes = .true.
 
 # ====================================================================
-# Create the case.
+# ====  End of case options
+# ====================================================================
+
+# ====================================================================
+# Create a new case, configure, and build.
 # For list of the cases: ./create_newcase -list
 # ====================================================================
 
-# if coldbuild is false and the directory does not exist, ...
+# ======================
+# clear out previous builds
+# ======================
 
-if ("${coldbuild}" == "true") then
+if (0) then
    echo "removing old files from ${caseroot} and ${rundir}"
    \rm -fr ${caseroot}
    \rm -fr ${rundir}
+
    ${ccsmroot}/scripts/create_newcase -case ${caseroot} -mach ${mach} \
                    -res ${resolution} -compset ${compset} -skip_rundb
 
@@ -158,22 +175,21 @@ if ("${coldbuild}" == "true") then
       exit 1
    endif
 else
+   # reconfiguring an existing case
    cd ${caseroot}
    ./configure  -cleannamelist
 endif
 
-# ====================================================================
-# Configure the case.
-# ====================================================================
+
 
 cd ${caseroot}
 
 ./xmlchange -file env_build.xml    -id EXEROOT        -val ${rundir}
 ./xmlchange -file env_build.xml    -id USE_ESMF_LIB   -val TRUE
-#./xmlchange -file env_build.xml    -id ESMF_LIBDIR    -val ${nancy_scratch}/esmf-mpi
+./xmlchange -file env_build.xml    -id ESMF_LIBDIR    -val ${nancy_scratch}/esmf-mpi
 
-set num_tasks_per_instance = 16
-set nthreads = 1
+set num_tasks_per_instance = 2
+set nthreads = 6
 @ total_nt = $num_instances * $num_tasks_per_instance
 
 ./xmlchange -file env_mach_pes.xml -id NTASKS_ATM -val $total_nt
@@ -208,12 +224,10 @@ set nthreads = 1
 # DOUT_S     is to turn on/off the short-term archiving
 # DOUT_L_MS  is to store to the HPSS (formerly "MSS")
 ./xmlchange -file env_run.xml -id DOUT_S_ROOT                -val ${archdir}
-./xmlchange -file env_run.xml -id DOUT_S                     -val FALSE
-./xmlchange -file env_run.xml -id DOUT_S_SAVE_INT_REST_FILES -val FALSE
-./xmlchange -file env_run.xml -id DOUT_L_MS                  -val FALSE
-./xmlchange -file env_run.xml -id DOUT_L_HTAR                -val FALSE
-
-echo ALL ARCHIVING DISABLED
+./xmlchange -file env_run.xml -id DOUT_S                     -val TRUE
+./xmlchange -file env_run.xml -id DOUT_S_SAVE_INT_REST_FILES -val TRUE
+./xmlchange -file env_run.xml -id DOUT_L_MS                  -val TRUE
+./xmlchange -file env_run.xml -id DOUT_L_HTAR                -val TRUE
 
 # ====================================================================
 # Create namelist template: user_nl_cam
@@ -225,8 +239,10 @@ echo ALL ARCHIVING DISABLED
 # ====================================================================
 # Update source files if need be
 # ====================================================================
+cp ~/cesm_mods/seq*F90           $caseroot/SourceMods/src.drv
+cp ~/cesm_mods/hist*F90          $caseroot/SourceMods/src.clm
+cp ~/cesm_mods/ccsm_comp_mod.F90 $caseroot/SourceMods/src.drv
 
-\cp -rf ~/${ccsmtag}/SourceMods/* ${caseroot}/SourceMods/
 if ( $status == 0) then
    echo "FYI - Local Source Modifications used for this case:"
    ls -lr ${caseroot}/SourceMods/*
@@ -247,7 +263,7 @@ if ( $status != 0 ) then
 endif
 
 # ====================================================================
-# Stage a copy of the DART pmo.csh script HERE
+# Stage a copy of the DART assimilate.csh script HERE
 # ====================================================================
 
 cd ${caseroot}
@@ -257,11 +273,10 @@ cd ${caseroot}
 # only needed for beta04 - fixed in more recent versions
 \cp -f ${ccsmroot}/scripts/ccsm_utils/Tools/lt_archive.csh Tools/lt_archive.csh
 
-\cp -f ${DARTdir}/models/cam/shell_scripts/pmo.ned.csh pmo.csh
+\cp -f ${DARTdir}/models/cam/shell_scripts/assimilate.ned.csh assimilate.csh
 
 # ====================================================================
-# Update the scripts that build the namelists.
-# The active components scripts need to support the multi-instance naming.
+# update the namelists and scripts as needed
 # ====================================================================
 
 echo ''
@@ -279,7 +294,7 @@ cp -f  clm.buildnml.csh  clm.buildnml.csh.org
 ex cam.buildnml.csh <<ex_end
 /cam_inparm/
 /ncdata/
-s;= '.*';= "cam_initial_1.nc";
+s;= '.*';= "cam_initial_\${atm_inst_counter}.nc";
 wq
 ex_end
 
@@ -288,26 +303,28 @@ ex_end
 ex cice.buildnml.csh <<ex_end
 /setup_nml/
 /ice_ic/
-s;= '.*';= "ice_restart_1.nc";
+s;= '.*';= "ice_restart_\${ice_inst_counter}.nc";
 wq
 ex_end
 
-# The CLM buildnml script needs changing in 1 place.
+# The CLM buildnml script needs changing in MANY places.
 
-ex clm.buildnml.csh <<ex_end
-/lnd_in/
+@ n = 1
+while ($n <= $num_instances)
+   set inst = `printf "%04d" $n`
+   ex clm.buildnml.csh <<ex_end
+/lnd_in_$inst/
 /finidat/
-s;= '.*';= "clm_restart_1.nc";
+s;= '.*';= "clm_restart_${n}.nc";
 wq
 ex_end
+   @ n++
+end
 
 chmod 0755 clm.buildnml.csh
 
-echo 'if you do a clean namelist, you must repeat the previous namelist update section.'
-echo ' ' 
-
 # ====================================================================
-# The *.run script must be modified to call the DART perfect model script.
+# The *.run script must be modified to call the DART assimilate script.
 # The modifications are contained in a "here" document that MUST NOT
 # expand the wildcards etc., before it is run. This is achieved by
 # double-quoting the characters used to delineate the start/stop of
@@ -317,31 +334,31 @@ echo ' '
 cd ${caseroot}
 
 echo ''
-echo 'Adding the call to pmo.csh to the *.run script.'
+echo 'Adding the call to assimilate.csh to the *.run script.'
 echo ''
 
 cat << "EndOfText" >! add_to_run.txt
 
 # -------------------------------------------------------------------------
 # START OF DART: if CESM finishes correctly (pirated from ccsm_postrun.csh);
-# perform a perfect model run with DART.
+# perform an assimilation with DART.
 # -------------------------------------------------------------------------
 
 set CplLogFile = `ls -1t cpl.log* | head -1`
 if ($CplLogFile == "") then
  echo 'ERROR: Model did not complete - no cpl.log file present - exiting'
- echo 'ERROR: Perfect model run will not be attempted.'
+ echo 'ERROR: Assimilation will not be attempted.'
  exit -4
 endif
 
 grep 'SUCCESSFUL TERMINATION' $CplLogFile
 if ( $status == 0 ) then
-  ${CASEROOT}/pmo.csh
+  ${CASEROOT}/assimilate.csh
 
   if ( $status == 0 ) then
      echo "`date` -- DART HAS FINISHED"
   else
-     echo "`date` -- DART ERROR - ABANDON HOPE"
+     echo "`date` -- DART FILTER ERROR - ABANDON HOPE"
      exit -5
   endif
 endif
@@ -367,24 +384,24 @@ head -$keep      ${case}.${mach}.run.orig >! ${case}.${mach}.run
 cat              add_to_run.txt           >> ${case}.${mach}.run
 tail -$lastlines ${case}.${mach}.run.orig >> ${case}.${mach}.run
 
+chmod 0755 ${case}.${mach}.run
+
 # ====================================================================
 # IMPORTANT: All resubmits must be coldstarts.
 # Change Tools/ccsm_postrun.csh line 83 to CONTINUE_RUN -val FALSE'
 # ====================================================================
 
+echo 'Changing Tools/ccsm_postrun.csh:83 to CONTINUE_RUN -val FALSE'
+echo 'so all the resubmits are coldstarts.'
+
 cd ${caseroot}/Tools
+cp ccsm_postrun.csh ccsm_postrun.orig
+sed -e '/CONTINUE_RUN/s/TRUE/FALSE/' ccsm_postrun.orig >! ccsm_postrun.csh
+chmod 0755 ccsm_postrun.csh 
 
-echo ''
-echo 'Changing Tools/ccsm_postrun.csh such that all the resubmits are coldstarts,'
-echo 'which means CONTINUE_RUN should be FALSE in ccsm_postrun.csh'
-echo ''
-
-ex ccsm_postrun.csh <<ex_end
-/use COMP_RUN_BARRIERS as surrogate for timing run logical/
-/CONTINUE_RUN/
-s;TRUE;FALSE;
-wq
-ex_end
+# if run fails, you need to back up, or you want to check what
+# the current run time is, look here:
+#   Buildconf/cpl.buildnml.csh: start_ymd, start_tod
 
 # ====================================================================
 # build
@@ -407,9 +424,7 @@ endif
 # Stage the restarts now that the run directory exists
 # ====================================================================
 
-# 20081031 ... /ptmp/thoar/restarts
-# 20080801 ... /glade/proj3/DART/raeder/FV1deg_4.0/Exp1/obs_0000
-set stagedir = /glade/proj3/DART/raeder/FV1deg_4.0/Exp1/obs_0000
+set stagedir = ${nancy_scratch}/ned_datafiles
 
 echo ''
 echo "Staging the restarts from {$stagedir}"
@@ -433,25 +448,31 @@ echo "must stage a ${rundir}/[prior,pos]_inflate_restart.YYYY-MM-DD-SSSSS"
 # Edit the run script to reflect project, queue, and wallclock
 # ====================================================================
 
-set PROJ=`grep BSUB $case.$mach.run | grep -e '-P' `
-sed s/$PROJ[3]/$proj/ < $case.$mach.run >! temp
-/bin/mv temp  $case.$mach.run
 
-set TIMEWALL=`grep BSUB $case.$mach.run | grep -e '-W' `
-sed s/$TIMEWALL[3]/$timewall/ < $case.$mach.run >! temp
-/bin/mv temp  $case.$mach.run
+if ($?proj) then
+  set PROJ=`grep '^#PBS ' $case.$mach.run | grep -e '-P' `
+  sed -e s/$PROJ[3]/$proj/ < $case.$mach.run >! temp
+  /bin/mv temp  $case.$mach.run
+endif
 
-set QUEUE=`grep BSUB $case.$mach.run | grep -e '-q' `
-sed s/$QUEUE[3]/$queue/ < $case.$mach.run >! temp
-/bin/mv temp  $case.$mach.run
+if ($?timewall) then
+  set TIMEWALL=`grep '^#PBS ' $case.$mach.run | grep walltime `
+  sed -e /"${TIMEWALL}"/s/=.\$/=$timewall/ < $case.$mach.run >! temp
+  /bin/mv temp  $case.$mach.run
+endif
 
-chmod 0774 $case.$mach.run
+if ($?queue) then
+  set QUEUE=`grep '^#PBS ' $case.$mach.run | grep -e '-q' `
+  sed -e s/$QUEUE[3]/$queue/ < $case.$mach.run >! temp
+  /bin/mv temp  $case.$mach.run
+endif
+chmod 0744 $case.$mach.run
 
 # ====================================================================
 # Submit job
 # ====================================================================
 
-set MYSTRING = `grep "set DARTDIR" pmo.csh`
+set MYSTRING = `grep "set DARTDIR" assimilate.csh`
 set DARTDIR = $MYSTRING[4]
 
 echo ''
