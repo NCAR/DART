@@ -490,7 +490,7 @@ endsw
 #    Ideally, using DART would not require any modifications to the model source.
 #    Until then, this script accesses sourcemods from a hardwired location.
 #    If you have additional sourcemods, they will need to be merged into any DART
-#    mods and put in the SourceMods subdirectory found in the 'case' directory.
+#    mods and put in the SourceMods subdirectory found in the 'caseroot' directory.
 # ==============================================================================
 
 if (    -d     ~/${cesmtag}/SourceMods ) then
@@ -752,14 +752,12 @@ echo ""
 echo "3) If you want to assimilate 'right away', configure and execute"
 echo "   the ${caseroot}/CESM_DART_config script."
 echo ""
-echo "3) Verify the contents of env_run.xml and submit the CESM job:"
+echo "4) Verify the contents of env_run.xml and submit the CESM job:"
 echo "   ./${case}.submit"
 echo ""
-echo "4) After the run finishes ... check the contents of the DART observation sequence file"
-echo "   ${archdir}/dart/hist/obs_seq.YYYY-MM-DD-SSSSS"
-echo "   to make sure there are good values in the file. (not -888888.)"
+echo "5) After the job has run, make sure it worked "
 echo ""
-echo "5) To extend the run in $assim_n '"$stop_option"' steps,"
+echo "6) To extend the run in $assim_n '"$stop_option"' steps,"
 echo "   change the env_run.xml variables:"
 echo ""
 echo "   ./xmlchange CONTINUE_RUN=TRUE"
