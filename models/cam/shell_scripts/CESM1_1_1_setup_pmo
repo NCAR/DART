@@ -59,12 +59,12 @@
 #
 # -- Provide the CESM initial file needed by your run.
 #
-# -- Run this script. It will modify the $CASEROOT/${case}.run script to
+# -- Run this script. It will modify the $CASEROOT/${CASE}.run script to
 #    insert a block to perform the DART operations needed to create synthetic obs.
 #
 # -- Edit the DART input.nml that appears in the $CASEROOT directory.
 #
-# -- Submit the job using ${CASEROOT}/${case}.submit
+# -- Submit the job using ${CASEROOT}/${CASE}.submit
 #
 # ---------------------
 # Important features
@@ -117,8 +117,8 @@ setenv cesmtag              cesm1_1_1
 # ==============================================================================
 
 setenv mach         yellowstone
-setenv cesm_datadir /glade/p/cesm/cseg/inputdata
 
+setenv cesm_datadir /glade/p/cesm/cseg/inputdata
 setenv cesmroot     /glade/p/cesm/cseg/collections/$cesmtag
 setenv caseroot     /glade/p/work/${USER}/cases/${case}
 setenv exeroot      /glade/scratch/${USER}/${case}/bld
@@ -158,9 +158,10 @@ setenv run_refdate $refyear-$refmon-$refday
 
 setenv SingleInstanceRefcase 0
 setenv TRUTHinstance 23
-setenv stagedir /glade/p/image/CESM_initial_ensemble/rest/${run_refdate}-${run_reftod}
+setenv CAM_stagedir /glade/p/image/CESM_initial_ensemble/rest/${run_refdate}-${run_reftod}
 
-# setenv stagedir /glade/p/work/raeder/Models/CAM_init/${run_refcase}_${run_refdate}
+# alternative reference case for different times may be available here:
+# setenv CAM_stagedir /glade/p/work/raeder/Models/CAM_init/${run_refcase}_${run_refdate}
 
 # ==============================================================================
 # runtime settings
@@ -186,7 +187,6 @@ setenv run_startdate ${start_year}-${start_month}-${start_day}
 setenv year_start    1850
 setenv year_end      2012
 
-# setenv  sst_grid ${cesm_datadir}/ocn/docn7/domain.ocn.gx1v6.090206.nc
 setenv    sst_grid ${cesm_datadir}/share/domains/domain.ocn.fv0.9x1.25_gx1v6.130409.nc
 setenv sst_dataset ${cesm_datadir}/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_1850_2011_c110307.nc
 
@@ -202,11 +202,11 @@ setenv stop_n              6
 # queue      can be changed during a series by changing the ${case}.run
 # timewall   can be changed during a series by changing the ${case}.run
 #
-# TJH: Advancing 1 instance for 6 hours with 60 pes (4 nodes)
-#      took less than 5 minutes on yellowstone.
+# TJH: Advancing 1 instance for 6 hours and creating synthetic obs took
+#      less than 3 minutes with 60 pes (4 nodes) on yellowstone.
 # ==============================================================================
 
-setenv ACCOUNT      P86850054
+setenv ACCOUNT      P8685xxxx
 setenv queue        economy
 setenv timewall     0:20
 
@@ -243,7 +243,7 @@ endsw
 # VAR is the shell variable name, DIR is the value
 # ==============================================================================
 
-foreach VAR ( cesmroot dartroot stagedir )
+foreach VAR ( cesmroot dartroot CAM_stagedir )
    set DIR = `eval echo \${$VAR}`
    if ( ! -d $DIR ) then
       echo "ERROR: directory '$DIR' not found"
@@ -744,7 +744,7 @@ endif
 # the run_refdate and the time in the filenames can be unrelated.
 #----------------------------------------------------------------------
 
-set filedir = ${stagedir}
+set filedir = ${CAM_stagedir}
 
 @ inst=1
 while (\$inst <= 1)
@@ -807,16 +807,11 @@ echo "   around line 9, delete it."
 echo ""
 echo "3) If you want to simply advance CESM without using DART, make sure the"
 echo "   ${case}.run script references the 'no_assimilate.csh' script."
-echo "   If you want to assimilate, reference the 'assimilate.csh' script."
-echo "   The default action is to assimilate."
 echo ""
 echo "4) Verify the contents of env_run.xml and submit the CESM job:"
 echo "   ./${case}.submit"
 echo ""
-echo "5) After the job has run, check to make sure it worked and that"
-echo "   a: the right restart files exist in the run directory,"
-echo "   b: (if you're running DART) the archive dart/hist directory has the DART output,"
-echo "   c: everything is working correctly ..."
+echo "5) After the job has run, check to make sure it worked."
 echo ""
 echo "6) To extend the run in $stop_n '"$stop_option"' steps,"
 echo "   change the env_run.xml variables:"
@@ -828,6 +823,8 @@ echo ""
 echo "   and"
 echo "   ./${case}.submit"
 echo ""
+
+cat ${caseroot}/DART_instructions.txt
 
 exit 0
 
