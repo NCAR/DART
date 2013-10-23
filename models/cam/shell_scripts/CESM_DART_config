@@ -267,7 +267,7 @@ foreach N ( input.nml )
 end
 
 # ==============================================================================
-# Initial setup for the default inflation scenario.
+# INFLATION : Initial setup for the default inflation scenario.
 # ==============================================================================
 # CAM usually uses adaptive state-space prior inflation. The initial settings
 # are in the filter_nml and ... during an assimilation experiment, the output
@@ -283,6 +283,9 @@ end
 # file before it performs the assimilation. After the first assimilation takes
 # place, the cookie file must be 'eaten' so that subsequent assimilations do not
 # overwrite whatever _should_ be there.
+#
+# IMPORTANT: If you stage your own inflation file, you must REMOVE the cookie
+# file from the RUNDIR directory.
 
 date >! ${RUNDIR}/cam_inflation_cookie
 
@@ -313,7 +316,7 @@ grep 'SUCCESSFUL TERMINATION' $CplLogFile
 if ( $status == 0 ) then
 
    # If you want to simply run CESM, use 'no_assimilate.csh'
-   # If you want to use DART , use 'DARTSCRIPTNAME'
+   # If you want to use DART, use 'DARTSCRIPTNAME'
    # You can only use one of the two.
 
    ${CASEROOT}/no_assimilate.csh
@@ -393,7 +396,7 @@ chmod 0744 ${CASE}.run
 
 cat << EndOfText >! DART_instructions.txt
 
-------------------------------------------------------------
+-------------------------------------------------------------------------
 
 Check the DART configuration:
 
@@ -403,21 +406,23 @@ Check the DART configuration:
 2) When you want to run DART, edit the ${CASE}.run script to
    reference "$DARTscript" instead of "no_assimilate.csh".
 
-3) Modify what you need to in the DART namelists. These are 
-   ${CASEROOT}/input.nml
+3) Modify what you need to in the DART namelist file, i.e. ${CASEROOT}/input.nml
 
 4) If you have recompiled any part of the DART system, 'refresh_dart_files'
    will copy them into the correct places.
 
-5) Make sure the observation directory names in $DARTscript match
-   those on your system, and submit the CESM job in the normal way.
+5) If you stage your own inflation files, make sure you read the INFLATION section
+   in ${CASEROOT}/CESM_DART_config
 
-6) Inflation files? Observation files for the time of interest?
+6) Make sure the observation directory names in $DARTscript match
+   those on your system.
 
-7) You can use ${CASEROOT}/stage_cesm_files
+7) Submit the CESM job in the normal way.
+
+8) You can use ${CASEROOT}/stage_cesm_files
     to stage files to restart a run.
 
-------------------------------------------------------------
+-------------------------------------------------------------------------
 
 EndOfText
 
