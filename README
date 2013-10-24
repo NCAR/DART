@@ -10,24 +10,28 @@ See the bottom of this file for quick-start instructions.
 Extensive on-line documentation is on the project web pages:
  http://www.image.ucar.edu/DAReS/DART
 
+Extensive local documentation is included in the DART subversion
+checkout.  Open 'index.html' in your browser to begin.
+
 A Matlab/PDF introduction is in the DART_LAB directory.  There are a set
 of PDF presentations, along with hands-on Matlab exercises.  This starts
 with a very basic introduction to data assimilation, and covers several
 fundamental algorithms in the system.
 
+
 A slightly more advanced tutorial in PDF format is in the tutorial
 subdirectory.  Start with the index file which explains what each
 subsection covers.
 
-The DART Kodiak release documentation is on the web:
- http://www.image.ucar.edu/DAReS/DART/Kodiak_release.html
+The DART Lanai release documentation is on the web:
+ http://www.image.ucar.edu/DAReS/DART/Lanai_release.html
 
 and also in the subversion tree here at:
- doc/html/Kodiak_release.html
+ doc/html/Lanai_release.html
 
 General documentation in HTML format is in the doc/html directory, plus
 all parts of the DART system include HTML files in the respective model
-and source directories.  There is an index.html file in the top level
+and source directories.  There is an 'index.html' file in the top level
 directory which references all the other doc files.
 
 There is a mailing list where we summarize updates to the DART repository
