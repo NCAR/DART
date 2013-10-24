@@ -452,6 +452,7 @@ endif
 ./xmlchange RTM_MODE='NULL'
 
 # level of debug output, 0=minimum, 1=normal, 2=more, 3=too much, valid values: 0,1,2,3 (integer)
+
 ./xmlchange DEBUG=FALSE
 ./xmlchange INFO_DBUG=0
 
@@ -587,21 +588,45 @@ while ($inst <= $num_instances)
    echo " nhtfrq        = -$stop_n "                      >> ${fname}
    echo " mfilt         = 1 "                             >> ${fname}
 
-   # Files specified below are because the 'default' files only
-   # contain data through 2005 and we may be interested in timeframes after that.
+   # Some of the files specified here are because the default files only
+   # contain data through 2005 and we are interested in timeframes after that.
+
+   # CAM5 does prognostic aerosols by default (which is expensive).
+   # Specifying the following causes CAM to use prescribed aerosols, which is cheaper.
+   # Prescribed aerosols on the timescales of interest to assimilation are acceptable.
 
    set chem_datapath = "${cesm_datadir}/atm/cam/chem/trop_mozart_aero"
 
-   # CAM5 does prognostic aerosols by default. If you want to prescribe them,
-   # use the following variables with your own settings ...
-   # Filenames with 'clim' in their names should specify aerodep_flx_type      = 'CYCLICAL'.
-   # Other values are 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+   echo " bndtvghg              = '${cesm_datadir}/atm/cam/ggas/ghg_hist_1765-2009_c100902.nc'" >> ${fname}
+   echo " prescribed_ozone_file = 'ozone_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"               >> ${fname}
+   echo " tracer_cnst_file      =  'oxid_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"               >> ${fname}
 
-   echo "aerodep_flx_datapath = '${chem_datapath}/aero'"                                   >> ${fname}
-   echo "aerodep_flx_file     = 'aerosoldep_rcp4.5_monthly_1849-2104_0.9x1.25_c100407.nc'" >> ${fname}
-   echo "aerodep_flx_type     = 'CYCLICAL' "                                               >> ${fname}
-   # Set if aerodep_flx_type = 'CYCLICAL'
-   echo "aerodep_flx_cycle_yr = 2000 "                                                     >> ${fname}
+   echo "aerodep_flx_datapath   = '${chem_datapath}/aero'"                                      >> ${fname}
+   echo "aerodep_flx_file       = 'aerosoldep_rcp4.5_monthly_1849-2104_0.9x1.25_c100407.nc'"    >> ${fname}
+   echo "aerodep_flx_type       = 'CYCLICAL'"                                                   >> ${fname}
+   echo "aerodep_flx_cycle_yr   = 2000"                                                         >> ${fname}
+
+   echo " ext_frc_specifier     = "                                                             >> ${fname}
+   echo " 'SO2    -> ${chem_datapath}/emis/ar5_mam3_so2_elev_1850-2010_c20100902_v12.nc',"      >> ${fname}
+   echo " 'bc_a1  -> ${chem_datapath}/emis/ar5_mam3_bc_elev_1850-2010_c20100902_v12.nc',"       >> ${fname}
+   echo " 'num_a1 -> ${chem_datapath}/emis/ar5_mam3_num_a1_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
+   echo " 'num_a2 -> ${chem_datapath}/emis/ar5_mam3_num_a2_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
+   echo " 'pom_a1 -> ${chem_datapath}/emis/ar5_mam3_oc_elev_1850-2010_c20100902_v12.nc',"       >> ${fname}
+   echo " 'so4_a1 -> ${chem_datapath}/emis/ar5_mam3_so4_a1_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
+   echo " 'so4_a2 -> ${chem_datapath}/emis/ar5_mam3_so4_a2_elev_1850-2010_c20100902_v12.nc'"    >> ${fname}
+
+   echo " srf_emis_specifier    = "                                                             >> ${fname}
+   echo " 'DMS    -> ${chem_datapath}/emis/aerocom_mam3_dms_surf_1849-2010_c20100902.nc',"      >> ${fname}
+   echo " 'SO2    -> ${chem_datapath}/emis/ar5_mam3_so2_surf_1850-2010_c20100902_v12.nc',"      >> ${fname}
+   echo " 'SOAG   -> ${chem_datapath}/emis/ar5_mam3_soag_1.5_surf_1850-2010_c20100902_v12.nc'," >> ${fname}
+   echo " 'bc_a1  -> ${chem_datapath}/emis/ar5_mam3_bc_surf_1850-2010_c20100902_v12.nc',"       >> ${fname}
+   echo " 'num_a1 -> ${chem_datapath}/emis/ar5_mam3_num_a1_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
+   echo " 'num_a2 -> ${chem_datapath}/emis/ar5_mam3_num_a2_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
+   echo " 'pom_a1 -> ${chem_datapath}/emis/ar5_mam3_oc_surf_1850-2010_c20100902_v12.nc',"       >> ${fname}
+   echo " 'so4_a1 -> ${chem_datapath}/emis/ar5_mam3_so4_a1_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
+   echo " 'so4_a2 -> ${chem_datapath}/emis/ar5_mam3_so4_a2_surf_1850-2010_c20100902_v12.nc'"    >> ${fname}
+
+   echo " solar_data_file = '${cesm_datadir}/atm/cam/solar/spectral_irradiance_Lean_1610-2009_ann_c100405.nc'" >> ${fname}
 
    # ===========================================================================
    set fname = "user_nl_clm${inst_string}"
@@ -617,24 +642,24 @@ while ($inst <= $num_instances)
    # http://www.cesm.ucar.edu/models/cesm1.1/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf
    #
    # Every 6 hours
-   # echo "hist_mfilt  = 1"              >> $fname
-   # echo "hist_nhtfrq = -$stop_n"       >> $fname
+   # echo "hist_mfilt  = 1"              >> ${fname}
+   # echo "hist_nhtfrq = -$stop_n"       >> ${fname}
    # Every month
-   # echo "hist_mfilt  = 1"              >> $fname
-   # echo "hist_nhtfrq = 0"              >> $fname
+   # echo "hist_mfilt  = 1"              >> ${fname}
+   # echo "hist_nhtfrq = 0"              >> ${fname}
 
-   echo "hist_empty_htapes = .true."   >> $fname
-   echo "hist_fincl1 = 'TSA'"          >> $fname
-   echo "hist_nhtfrq = -$stop_n"       >> $fname
-   echo "hist_mfilt  = 1"              >> $fname
-   echo "hist_avgflag_pertape = 'A'"   >> $fname
+   echo "hist_empty_htapes = .true."   >> ${fname}
+   echo "hist_fincl1 = 'TSA'"          >> ${fname}
+   echo "hist_nhtfrq = -$stop_n"       >> ${fname}
+   echo "hist_mfilt  = 1"              >> ${fname}
+   echo "hist_avgflag_pertape = 'A'"   >> ${fname}
 
    # ===========================================================================
    set fname = "user_nl_cice${inst_string}"
    # ===========================================================================
    # CICE Namelists
 
-   echo "ice_ic = '${run_refcase}.cice${inst_string}.r.${run_refdate}-${run_reftod}.nc'" >> $fname
+   echo "ice_ic = '${run_refcase}.cice${inst_string}.r.${run_refdate}-${run_reftod}.nc'" >> ${fname}
 
    @ inst ++
 end

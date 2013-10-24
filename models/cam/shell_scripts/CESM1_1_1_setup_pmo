@@ -102,9 +102,10 @@ setenv cesmtag              cesm1_1_1
 # define machines and directories
 #
 # mach            Computer name
-# cesmroot        Location of the cesm code base
+# cesm_datadir    Location of some supporting CESM data files.
+# cesmroot        Location of the CESM code base
 #                 For cesm1_1_1 on yellowstone
-# caseroot        Your (future) cesm case directory, where this CESM+DART will be built.
+# caseroot        Your (future) CESM case directory, where this CESM+DART will be built.
 #                    Preferably not a frequently scrubbed location.
 #                    This script will delete any existing caseroot, so this script,
 #                    and other useful things should be kept elsewhere.
@@ -208,7 +209,7 @@ setenv stop_n              6
 
 setenv ACCOUNT      P8685xxxx
 setenv queue        economy
-setenv timewall     0:20
+setenv timewall     0:10
 
 # ==============================================================================
 # set these standard commands based on the machine you are running on.
@@ -421,11 +422,6 @@ echo ""
 ./xmlchange NCPL_BASE_PERIOD=day
 ./xmlchange ATM_NCPL=48
 
-# TJH FIXME ... any reason to turn ON the biogeochemistry in CLM when atmos only?
-# There is no compset that has everything we want,
-# so we are also turning on the CLM biogeochemistry.
-#./xmlchange CLM_CONFIG_OPTS='-bgc cn'
-
 if ($short_term_archiver == 'off') then
    ./xmlchange DOUT_S=FALSE
 else
@@ -497,7 +493,7 @@ switch ( $BATCH )
 endsw
 
 # This is the part that modifies the run script to allow CESM to advance
-# correctly given the modifications necessary for CAM. It also copies several
+# correctly given the modifications of CAM for DART. It also copies several
 # required DART files to the caseroot directory.
 
 ./CESM_DART_config
@@ -548,16 +544,16 @@ if ( -d ~/${cesmtag} ) then
 endif
 
 # ==============================================================================
-# Modify namelist templates for each instance. This is a bit of a nuisance in
-# that we are pulling in restart and initial files from 'all over the place'
-# and each model component has a different strategy.
+# Modify namelist templates for each instance.
+# CAM SourceMods force CAM to ALWAYS read INITIAL files specified by namelist var 'ncdata'
 #
-# In a hybrid run with CONTINUE_RUN = FALSE (i.e. just starting up):
+# When CONTINUE_RUN = FALSE (i.e. just starting up):
 #
-# CAM has been forced to read initial files - specified by namelist var:ncdata
 # CICE reads from namelist variable 'ice_ic'
 # CLM builds its own 'finidat' value from the REFCASE variables but in CESM1_1_1
 #     it does not use the instance string. There is a patch for clm.buildnml.csh
+#
+# When CONTINUE_RUN = TRUE, CICE and CLM read from pointer files. 
 #
 # All of these must later on be staged with these same filenames.
 # OR - all these namelists can be changed to match whatever has been staged.
@@ -585,21 +581,45 @@ while ($inst <= 1)
    echo " nhtfrq        = -$stop_n "                      >> ${fname}
    echo " mfilt         = 1 "                             >> ${fname}
 
-   # A lot of the files specified here are because the 'default' files only
+   # Some of the files specified here are because the default files only
    # contain data through 2005 and we are interested in timeframes after that.
+
+   # CAM5 does prognostic aerosols by default (which is expensive).
+   # Specifying the following causes CAM to use prescribed aerosols, which is cheaper.
+   # Prescribed aerosols on the timescales of interest to assimilation are acceptable.
 
    set chem_datapath = "${cesm_datadir}/atm/cam/chem/trop_mozart_aero"
 
-   # CAM5 does prognostic aerosols by default. If you want to prescribe them,
-   # use the following variables with your own settings ...
-   # Filenames with 'clim' in their names should specify aerodep_flx_type      = 'CYCLICAL'.
-   # Other values are 'CYCLICAL', 'SERIAL', 'INTERP_MISSING_MONTHS', or 'FIXED'.
+   echo " bndtvghg              = '${cesm_datadir}/atm/cam/ggas/ghg_hist_1765-2009_c100902.nc'" >> ${fname}
+   echo " prescribed_ozone_file = 'ozone_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"               >> ${fname}
+   echo " tracer_cnst_file      =  'oxid_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"               >> ${fname}
 
-   echo "aerodep_flx_datapath = '${chem_datapath}/aero'"                                   >> ${fname}
-   echo "aerodep_flx_file     = 'aerosoldep_rcp4.5_monthly_1849-2104_0.9x1.25_c100407.nc'" >> ${fname}
-   echo "aerodep_flx_type     = 'CYCLICAL' "                                               >> ${fname}
-   # Set if aerodep_flx_type = 'CYCLICAL'
-   echo "aerodep_flx_cycle_yr = 2000 "                                                     >> ${fname}
+   echo "aerodep_flx_datapath   = '${chem_datapath}/aero'"                                      >> ${fname}
+   echo "aerodep_flx_file       = 'aerosoldep_rcp4.5_monthly_1849-2104_0.9x1.25_c100407.nc'"    >> ${fname}
+   echo "aerodep_flx_type       = 'CYCLICAL'"                                                   >> ${fname}
+   echo "aerodep_flx_cycle_yr   = 2000"                                                         >> ${fname}
+
+   echo " ext_frc_specifier     = "                                                             >> ${fname}
+   echo " 'SO2    -> ${chem_datapath}/emis/ar5_mam3_so2_elev_1850-2010_c20100902_v12.nc',"      >> ${fname}
+   echo " 'bc_a1  -> ${chem_datapath}/emis/ar5_mam3_bc_elev_1850-2010_c20100902_v12.nc',"       >> ${fname}
+   echo " 'num_a1 -> ${chem_datapath}/emis/ar5_mam3_num_a1_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
+   echo " 'num_a2 -> ${chem_datapath}/emis/ar5_mam3_num_a2_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
+   echo " 'pom_a1 -> ${chem_datapath}/emis/ar5_mam3_oc_elev_1850-2010_c20100902_v12.nc',"       >> ${fname}
+   echo " 'so4_a1 -> ${chem_datapath}/emis/ar5_mam3_so4_a1_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
+   echo " 'so4_a2 -> ${chem_datapath}/emis/ar5_mam3_so4_a2_elev_1850-2010_c20100902_v12.nc'"    >> ${fname}
+
+   echo " srf_emis_specifier    = "                                                             >> ${fname}
+   echo " 'DMS    -> ${chem_datapath}/emis/aerocom_mam3_dms_surf_1849-2010_c20100902.nc',"      >> ${fname}
+   echo " 'SO2    -> ${chem_datapath}/emis/ar5_mam3_so2_surf_1850-2010_c20100902_v12.nc',"      >> ${fname}
+   echo " 'SOAG   -> ${chem_datapath}/emis/ar5_mam3_soag_1.5_surf_1850-2010_c20100902_v12.nc'," >> ${fname}
+   echo " 'bc_a1  -> ${chem_datapath}/emis/ar5_mam3_bc_surf_1850-2010_c20100902_v12.nc',"       >> ${fname}
+   echo " 'num_a1 -> ${chem_datapath}/emis/ar5_mam3_num_a1_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
+   echo " 'num_a2 -> ${chem_datapath}/emis/ar5_mam3_num_a2_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
+   echo " 'pom_a1 -> ${chem_datapath}/emis/ar5_mam3_oc_surf_1850-2010_c20100902_v12.nc',"       >> ${fname}
+   echo " 'so4_a1 -> ${chem_datapath}/emis/ar5_mam3_so4_a1_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
+   echo " 'so4_a2 -> ${chem_datapath}/emis/ar5_mam3_so4_a2_surf_1850-2010_c20100902_v12.nc'"    >> ${fname}
+
+   echo " solar_data_file = '${cesm_datadir}/atm/cam/solar/spectral_irradiance_Lean_1610-2009_ann_c100405.nc'" >> ${fname}
 
    # ===========================================================================
    set fname = "user_nl_clm${inst_string}"
@@ -615,24 +635,24 @@ while ($inst <= 1)
    # http://www.cesm.ucar.edu/models/cesm1.1/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf
    #
    # Every 6 hours
-   # echo "hist_mfilt  = 1"              >> $fname
-   # echo "hist_nhtfrq = -$stop_n"       >> $fname
+   # echo "hist_mfilt  = 1"              >> ${fname}
+   # echo "hist_nhtfrq = -$stop_n"       >> ${fname}
    # Every month
-   # echo "hist_mfilt  = 1"              >> $fname
-   # echo "hist_nhtfrq = 0"              >> $fname
+   # echo "hist_mfilt  = 1"              >> ${fname}
+   # echo "hist_nhtfrq = 0"              >> ${fname}
 
-   echo "hist_empty_htapes = .true."   >> $fname
-   echo "hist_fincl1 = 'TSA'"          >> $fname
-   echo "hist_nhtfrq = -$stop_n"       >> $fname
-   echo "hist_mfilt  = 1"              >> $fname
-   echo "hist_avgflag_pertape = 'A'"   >> $fname
+   echo "hist_empty_htapes = .true."   >> ${fname}
+   echo "hist_fincl1 = 'TSA'"          >> ${fname}
+   echo "hist_nhtfrq = -$stop_n"       >> ${fname}
+   echo "hist_mfilt  = 1"              >> ${fname}
+   echo "hist_avgflag_pertape = 'A'"   >> ${fname}
 
    # ===========================================================================
    set fname = "user_nl_cice${inst_string}"
    # ===========================================================================
    # CICE Namelists
 
-   echo "ice_ic = '${run_refcase}.cice${inst_string}.r.${run_refdate}-${run_reftod}.nc'" >> $fname
+   echo "ice_ic = '${run_refcase}.cice${inst_string}.r.${run_refdate}-${run_reftod}.nc'" >> ${fname}
 
    @ inst ++
 end
@@ -679,7 +699,7 @@ if ( \$CONTINUE_RUN == TRUE ) then
 
       # the restarts should be in the short term archive directory
       # http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x1631.html#running_ccsm_restart_back
-      ${COPY} \$DOUT_S_ROOT/rest/\${restart_time}/* .
+      ${COPY} \$DOUT_S_ROOT/rest/\${restart_time}/* . || exit -1
 
    else
 
@@ -796,6 +816,7 @@ echo "   around line 9, delete it."
 echo ""
 echo "3) If you want to simply advance CESM without using DART, make sure the"
 echo "   ${case}.run script references the 'no_assimilate.csh' script."
+echo "   This is the default behavior."
 echo ""
 echo "4) Verify the contents of env_run.xml and submit the CESM job:"
 echo "   ./${case}.submit"
@@ -811,7 +832,6 @@ echo "   ./xmlchange STOP_N=$stop_n"
 echo ""
 echo "   and"
 echo "   ./${case}.submit"
-echo ""
 
 cat ${caseroot}/DART_instructions.txt
 
