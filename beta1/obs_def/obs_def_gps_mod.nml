@@ -1,4 +1,0 @@
-
-&obs_def_gps_nml
-  max_gpsro_obs = 100000,
-/ 

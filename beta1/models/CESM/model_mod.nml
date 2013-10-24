@@ -1,7 +1,0 @@
-&model_nml
-   assimilation_period_days     = 7,
-   assimilation_period_seconds  = 0,
-   model_perturbation_amplitude = 0.2,
-   output_state_vector          = .true.,
-   debug                        = 0  /
-

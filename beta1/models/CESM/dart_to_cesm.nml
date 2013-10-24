@@ -1,5 +1,0 @@
-&dart_to_cesm_nml
-   dart_to_cesm_input_file = 'dart_restart',
-   advance_time_present    = .false.
-   /
-
