@@ -519,7 +519,7 @@ else
    echo "ERROR - No SourceMods for this case."
    echo "DART requires modifications to several src files."
    echo "These files can be downloaded from:"
-   echo "http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_1_1.tar"
+   echo "http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_1_1_24Oct2013.tar"
    echo "untar these into your HOME directory - they will create a"
    echo "~/cesm_1_1_1  directory with the appropriate SourceMods structure."
    exit -4
@@ -622,17 +622,6 @@ while ($inst <= $num_instances)
    # Every month
    # echo "hist_mfilt  = 1"              >> $fname
    # echo "hist_nhtfrq = 0"              >> $fname
-
-# KDR; Was the ntapes bug fixed?
-#      That's where the CLM restart file always has dimension ntapes,
-#      but it's set = 0 for hist_empty_htapes = .true. and empty hist_fincl1,
-#      which prevents the next forecast from starting.
-#      Kluzek fixed it in some recent (<9/2013) version, but not 1_1_1.
-#      There's a supposed fix in ~/cesm1_1_1/SourceMods/src.clm/HistFileMod.F90,
-#      but it only checks whether ntapes = ntapes_on_file, and is_restart() returning 'true'.
-#      It doesn't check whether the size is 0.
-#      That solution can't work in hybrid mode.  See ~/Homme/notes:9/17/2013
-# KDR
 
    echo "hist_empty_htapes = .true."   >> $fname
    echo "hist_fincl1 = 'TSA'"          >> $fname
