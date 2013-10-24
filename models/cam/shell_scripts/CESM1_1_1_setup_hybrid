@@ -16,8 +16,8 @@
 #
 # DOCN: We are using a single data ocean.
 #
-# Because the atmosphere assimilations typically occur every 6 hours, 
-# the methodology here reflects that. All of CESM stops every 6 hours 
+# Because the atmosphere assimilations typically occur every 6 hours,
+# the methodology here reflects that. All of CESM stops every 6 hours
 # so that a CAM output file would be available for assimilation.
 #
 # This script results in a viable setup for a CESM multi-instance experiment. You
@@ -27,13 +27,13 @@
 # capability to re-stage files in your RUN directory
 #
 # CESM/DART requires some modifications to the CESM source code EVEN IF YOU ARE NOT
-# assimilating. The modifications for CAM require a modification to the 
-# CESM ${CASE}.run script. The modifications will invoke a DART script that will 
-# either assimilate or 'do nothing'. It is strongly recommended that you configure 
+# assimilating. The modifications for CAM require a modification to the
+# CESM ${CASE}.run script. The modifications will invoke a DART script that will
+# either assimilate or 'do nothing'. It is strongly recommended that you configure
 # the ${CASE}.run script to 'do nothing' initially. This is the default behavior.
 #
 # CASEROOT/CESM_DART_config will augment the CESM case with the required setup
-# and configuration to perform a DART assimilation and modify the ${CASE}.run script 
+# and configuration to perform a DART assimilation and modify the ${CASE}.run script
 # as mentioned previously - after it makes a backup copy.
 #
 # This script relies heavily on the information in:
@@ -58,7 +58,7 @@
 #    2) a run directory, where each forecast (and assimilation) will take place,
 #    3) a bld directory for the executables.
 #
-#    This script also executes ${CASEROOT}/CESM_DART_config to modify 
+#    This script also executes ${CASEROOT}/CESM_DART_config to modify
 #    the $CASEROOT/${CASE}.run script so that the SourceMods for CAM
 #    are effective. CESM_DART_config will also augment the case with all
 #    the pieces necessary to run DART when the time comes.
@@ -421,6 +421,13 @@ echo ""
 
 ./xmlchange PIO_TYPENAME=pnetcdf
 
+# The river transport model ON is useful only when using an active ocean or
+# land surface diagnostics. Setting ROF_GRID, RTM_MODE to 'null' turns off the RTM.
+# If you turn it ON, you will have to stage initial files etc.
+
+./xmlchange ROF_GRID='null'
+./xmlchange RTM_MODE='NULL'
+
 # COUPLING discussion. F compsets are 'tight' coupling.
 # Only change the ATM_NCPL ... everything is based on this one value,
 # including CAM physics and dynamics timesteps.
@@ -443,13 +450,6 @@ else
    ./xmlchange DOUT_L_MSROOT="csm/${case}"
    ./xmlchange DOUT_L_HTAR=FALSE
 endif
-
-# The river transport model ON is useful only when using an active ocean or
-# land surface diagnostics. Setting ROF_GRID, RTM_MODE to 'null' turns off the RTM.
-# If you turn it ON, you will have to stage initial files etc.
-
-./xmlchange ROF_GRID='null'
-./xmlchange RTM_MODE='NULL'
 
 # level of debug output, 0=minimum, 1=normal, 2=more, 3=too much, valid values: 0,1,2,3 (integer)
 
@@ -560,7 +560,7 @@ endif
 # CLM builds its own 'finidat' value from the REFCASE variables but in CESM1_1_1
 #     it does not use the instance string. There is a patch for clm.buildnml.csh
 #
-# When CONTINUE_RUN = TRUE, CICE and CLM read from pointer files. 
+# When CONTINUE_RUN = TRUE, CICE and CLM read from pointer files.
 #
 # All of these must later on be staged with these same filenames.
 # OR - all these namelists can be changed to match whatever has been staged.
@@ -739,9 +739,7 @@ if ( \$CONTINUE_RUN == TRUE ) then
 
    # relink the pointer file for the data ocean
    echo "${case}.docn.r.\${restart_time}.nc"    >! rpointer.ocn
-   echo ""                                      >> rpointer.ocn
    echo "${case}.docn.rs1.\${restart_time}.bin" >> rpointer.ocn
-   echo ""                                      >> rpointer.ocn
 
    exit 0
 endif
@@ -770,8 +768,8 @@ while (\$inst <= $num_instances)
    echo ''
    echo "Staging restarts for instance \$inst of $num_instances"
 
-   ${LINK} \${filedir}/${run_refcase}.clm2\${inst_string}.r.${run_refdate}-${run_reftod}.nc  . 
-   ${LINK} \${filedir}/${run_refcase}.cice\${inst_string}.r.${run_refdate}-${run_reftod}.nc  . 
+   ${LINK} \${filedir}/${run_refcase}.clm2\${inst_string}.r.${run_refdate}-${run_reftod}.nc  .
+   ${LINK} \${filedir}/${run_refcase}.cice\${inst_string}.r.${run_refdate}-${run_reftod}.nc  .
    ${LINK} \${filedir}/${run_refcase}.cam\${inst_string}.i.${run_refdate}-${run_reftod}.nc   cam_initial\${inst_string}.nc
 
    @ inst ++
