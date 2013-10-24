@@ -2,6 +2,7 @@
 #
 # This code is part of the CESM distribution,
 # So it is not protected by the DART copyright agreement.
+#
 # DART $Id$
 
 #short-term archive script - move model output out of run directory
@@ -149,6 +150,7 @@ set *Prior_Diag.*.nc;                                                           
 set *Posterior_Diag.*.nc;                                                                                             dispose ifiles_n ${sta}/dart/hist $*
 set *obs_seq.*.out;                                                                                                   dispose ifiles_n ${sta}/dart/hist $*
 set *obs_seq.*.final;                                                                                                 dispose ifiles_n ${sta}/dart/hist $*
+set *obs_seq.*.perfect;                                                                                               dispose ifiles_n ${sta}/dart/hist $*
 set *pr*inflate_restart*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null;   dispose ifiles_n ${sta}/dart/rest $*
 set *po*inflate_restart*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null;   dispose ifiles_n ${sta}/dart/rest $*
 
@@ -158,7 +160,6 @@ while [ $IDX -le $NINST_ATM ]
 do
     get_inst_suffix $IDX $NINST_ATM
     set atm${inst_suffix}.log.*;                                                                                                   dispose ifiles_n ${sta}/atm/logs $*
-#   set cam_initial_${IDX}.nc;            latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_n ${sta}/atm/rest $*
     set ${CASE}.cam*${inst_suffix}.r.*;   latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/atm/rest $*
     set ${CASE}.cam*${inst_suffix}.rs.*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/atm/rest $*
     set ${CASE}.cam*${inst_suffix}.ra.*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/atm/rest $*
@@ -280,7 +281,6 @@ do
     set ${CASE}.pop${inst_suffix}.ro.*;               latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
     set ${CASE}.pop${inst_suffix}.d?*;                                                                                                         dispose ifiles_n ${sta}/ocn/hist $*
     set ${CASE}.pop${inst_suffix}.h*;                                                                                                          dispose ifiles_n ${sta}/ocn/hist $*
-
     set ${CASE}.docn${inst_suffix}.r.* ;              latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
     set ${CASE}.docn${inst_suffix}.rs* ;              latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
     set ${CASE}.docn${inst_suffix}.h.* ;                                                                                                       dispose ifiles_n ${sta}/ocn/hist $*

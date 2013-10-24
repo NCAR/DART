@@ -16,7 +16,7 @@ set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
 # The FORCE options are not optional.
 # The VERBOSE options are useful for debugging though
-# some systems don't like the -v option to any of the following 
+# some systems don't like the -v option to any of the following
 switch ("`hostname`")
    case be*:
       # NCAR "bluefire"
@@ -161,7 +161,8 @@ echo "`date` -- END COPY BLOCK"
 # Block 2: Stage the files needed for SAMPLING ERROR CORRECTION
 #
 # The sampling error correction is a lookup table.
-# The tables are stored in the DART distribution.
+# The tables were originally in the DART distribution, but should
+# have been staged to $CASEROOT at setup time.
 # Each ensemble size has its own (static) file.
 # It is only needed if
 # input.nml:&assim_tools_nml:sampling_error_correction = .true.,
@@ -308,7 +309,7 @@ endif
 # as long as we can have unique namelists for each of them.
 #
 # At the end of the block, we have DART initial condition files  filter_ics.[1-N]
-# that came from pointer files ../rpointer.lnd_[1-N].restart
+# that came from pointer files ../rpointer.lnd_[1-N]
 #
 # REQUIRED DART namelist settings:
 # &filter_nml:           restart_in_file_name    = 'filter_ics'
@@ -339,8 +340,8 @@ while ( ${member} <= ${ensemble_size} )
    set     DART_IC_FILENAME = `printf filter_ics.%04d     ${member}`
    set    DART_RESTART_FILE = `printf filter_restart.%04d ${member}`
 
-   sed -e "s/dart_ics/..\/${DART_IC_FILENAME}/" \
-       -e "s/dart_restart/..\/${DART_RESTART_FILE}/" < ../input.nml >! input.nml
+   sed -e "s#dart_ics#../${DART_IC_FILENAME}#" \
+       -e "s#dart_restart#../${DART_RESTART_FILE}#" < ../input.nml >! input.nml
 
    ${LINK} ../../$LND_RESTART_FILENAME clm_restart.nc
    ${LINK} ../../$LND_HISTORY_FILENAME clm_history.nc

@@ -15,10 +15,8 @@
 # using one of the DART scripts, this script should be staged in the
 # CASEROOT directory automatically, and DARTROOT is set at that time.
 #
-# CAM, POP, and CLM are all active and going to be assimilated separately.
-# CESM starts and stops to allow for CAM to assimilate every 6 hours.
-# The individual assimilation scripts control how often each model component
-# performs its own assimilation.
+# CLM is the only active model component.
+# CESM starts and stops to allow for CLM to assimilate every 24 hours.
 #
 # This script will build the DART executables if they are not found.
 #
@@ -134,7 +132,7 @@ end
 # ==============================================================================
 
 # The standard CESM short-term archiving script may need to be altered
-# to archive addtional or subsets of things, or to reduce the amount of
+# to archive additional or subsets of things, or to reduce the amount of
 # data that is sent to the long-term archive.  Put a version of st_archive.sh
 # in  ${DARTROOT}/models/CESM/shell_scripts when/if necessary
 
@@ -179,7 +177,7 @@ ${COPY} ${DARTROOT}/models/clm/work/filter            ${EXEROOT}/.
 ${COPY} ${DARTROOT}/models/clm/work/perfect_model_obs ${EXEROOT}/.
 ${COPY} ${DARTROOT}/models/clm/work/input.nml         ${CASEROOT}/.
 
-# The first time this is executed, the update namlist script does not exist.
+# The first time this is executed, the update namelist script does not exist.
 
 if [[ -x update_dart_namelists ]]; then
        ./update_dart_namelists
@@ -233,7 +231,7 @@ chmod 0755 update_dart_namelists
 #
 # If it is requested and is not present ... it is an error.
 #
-# The sampling error correction is a lookup table.  Each ensemble size 
+# The sampling error correction is a lookup table.  Each ensemble size
 # has its own (static) file.  It is only needed if any
 # input.nml:&assim_tools_nml:sampling_error_correction = .true.,
 #=========================================================================

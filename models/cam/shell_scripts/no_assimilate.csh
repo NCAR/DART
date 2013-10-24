@@ -33,8 +33,12 @@ set ensemble_size = ${NINST_ATM}
 # of the form "./${CASE}.cam_${ensemble_member}.i.2000-01-06-00000.nc"
 #-------------------------------------------------------------------------
 
-set FILE = `head -n 1 rpointer.atm_0001`
-set FILE = $FILE:t
+if ( $ensemble_size == 1 ) then
+   set FILE = `head -n 1 rpointer.atm`
+else
+   set FILE = `head -n 1 rpointer.atm_0001`
+endif
+
 set FILE = $FILE:r
 set ATM_DATE_EXT = `echo $FILE:e`
 
@@ -44,18 +48,19 @@ set ATM_DATE_EXT = `echo $FILE:e`
 # the short-term archiver 'restores' the CESM files, the links are right.
 #=========================================================================
 
-set member = 1
-while ( ${member} <= ${ensemble_size} )
-
-   set inst_string = `printf _%04d $member`
-
-   set ATM_INITIAL_FILENAME = ${CASE}.cam${inst_string}.i.${ATM_DATE_EXT}.nc
-
-   ${LINK} ${ATM_INITIAL_FILENAME} cam_initial${inst_string}.nc || exit -9
-
-   @ member++
-
-end
+if ( $ensemble_size == 1 ) then
+      set inst_string = ''
+      set ATM_INITIAL_FILENAME = ${CASE}.cam${inst_string}.i.${ATM_DATE_EXT}.nc
+      ${LINK} ${ATM_INITIAL_FILENAME}    cam_initial${inst_string}.nc || exit -9
+else
+   set member = 1
+   while ( ${member} <= ${ensemble_size} )
+      set inst_string = `printf _%04d $member`
+      set ATM_INITIAL_FILENAME = ${CASE}.cam${inst_string}.i.${ATM_DATE_EXT}.nc
+      ${LINK} ${ATM_INITIAL_FILENAME}    cam_initial${inst_string}.nc || exit -9
+      @ member++
+   end
+endif
 
 echo "`date` -- END CAM_NO_ASSIMILATE"
 
