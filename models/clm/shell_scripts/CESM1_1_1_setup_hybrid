@@ -102,7 +102,7 @@
 
 # the value of "case" will be used many ways;
 #    directory and file names, both locally and on HPSS, and
-#    script names; so consider it's length and information content.
+#    script names; so consider its length and information content.
 # num_instances:  Number of ensemble members
 
 setenv case                 clm_hybrid
@@ -117,7 +117,7 @@ setenv num_instances        80
 # mach            Computer name
 # cesmroot        Location of the cesm code base
 #                 For cesm1_1_1 on yellowstone
-# caseroot        Your (future) cesm case directory, where this CESM+DART will be built.
+# caseroot        Your (future) CESM case directory, where this CESM+DART will be built.
 #                    Preferably not a frequently scrubbed location.
 #                    This script will delete any existing caseroot, so this script,
 #                    and other useful things should be kept elsewhere.
@@ -130,6 +130,7 @@ setenv num_instances        80
 # ==============================================================================
 
 setenv mach         yellowstone
+
 setenv cesmroot     /glade/p/cesm/cseg/collections/$cesmtag
 setenv caseroot     /glade/p/work/${USER}/cases/${case}
 setenv exeroot      /glade/scratch/${USER}/${case}/bld
@@ -169,7 +170,7 @@ setenv CLM_stagedir /glade/scratch/afox/archive/$run_refcase/rest/$refyear-$refm
 #               this configuration step. The run-time settings can lie.
 #
 # If the long-term archiver is off, you get a chance to examine the files before
-# they get moved to long-term storage. You can always submit $CASE.l_archive
+# they get moved to long-term storage. You can always submit $case.l_archive
 # whenever you want to free up space in the short-term archive directory.
 #
 # ==============================================================================
@@ -245,8 +246,8 @@ end
 # ==============================================================================
 # Create the case - this creates the CASEROOT directory.
 #
-# For list of the pre-defined cases: ./create_newcase -list
-# To create a variant case, see the CESM documentation and carefully
+# For list of the pre-defined component sets: ./create_newcase -list
+# To create a variant compset, see the CESM documentation and carefully
 # incorporate any needed changes into this script.
 # ==============================================================================
 
@@ -408,6 +409,7 @@ echo ""
 ./xmlchange DATM_CPLHIST_YR_END=$refyear
 
 ./xmlchange CALENDAR=GREGORIAN
+
 ./xmlchange STOP_OPTION=$stop_option
 ./xmlchange STOP_N=$stop_n
 ./xmlchange CONTINUE_RUN=FALSE
@@ -500,7 +502,7 @@ else
    echo "ERROR - No SourceMods for this case."
    echo "DART requires modifications to several src files."
    echo "These files can be downloaded from:"
-   echo "http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_1_1.tar"
+   echo "http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_1_1_24Oct2013.tar"
    echo "untar these into your HOME directory - they will create a"
    echo "~/cesm_1_1_1  directory with the appropriate SourceMods structure."
    exit -4
@@ -531,9 +533,7 @@ if ( -d ~/${cesmtag} ) then
 endif
 
 # ==============================================================================
-# Modify namelist templates for each instance. This is a bit of a nuisance in
-# that we are pulling in restart and initial files from 'all over the place'
-# and each model component has a different strategy.
+# Modify namelist templates for each instance.
 #
 # In a hybrid run with CONTINUE_RUN = FALSE (i.e. just starting up):
 #
@@ -683,41 +683,90 @@ end
 # ==============================================================================
 # Stage the restarts now that the run directory exists
 # THIS IS THE STAGING SECTION - MAKE SURE THIS MATCHES THE NAMELISTS.
-# POP/CAM/CICE read from pointer files. The others use namelist values initially.
 # ==============================================================================
 
-cat << EndOfText >! stage_initial_cesm_files
-#!/bin/sh
+cat << EndOfText >! stage_cesm_files
+#!/bin/csh -f
+# This script can be used to help restart an experiment from any previous step.
+# The files are copied to the RUN directory.
+# Set the 'restart_time' variable below to define when to restart the experiment.
+# The value of the CESM variable 'env_run.xml:CONTINUE_RUN' is used to determine
+# the origin of the files.
 
-cd ${rundir}
-
+echo 'Copying the required files to the run directory.'
+echo 'No matter what, make sure the restart_time is set to the desired time.'
 echo ''
-echo 'Copying only the required restart files from the staging directory.'
-echo 'With CONTINUE_RUN=FALSE, there are many that are not required.'
+echo 'With CONTINUE_RUN=FALSE, the files are copied from the initial ensemble directory.'
+echo 'When CONTINUE_RUN=TRUE, the files are copied from the short-term archive restart directory.'
+echo 'If the short-term archiver is OFF, all the files are already in the RUN directory and'
+echo 'just the pointer files need to be updated.'
 echo ''
 
-# This copies over only the minimum number of instances.
+cd ${caseroot}
+source ./Tools/ccsm_getenv || exit -2
+cd ${RUNDIR}
+
+set restart_time = $RUN_REFDATE-$RUN_REFTOD
+
+#----------------------------------------------------------------------
+# This block copies over a set of restart files from
+# this experiment and exits. Intended use to restart a failed run.
+#----------------------------------------------------------------------
+
+echo "continue_run is \$CONTINUE_RUN"
+
+if ( \$CONTINUE_RUN == TRUE ) then
+   if (  \$DOUT_S   == TRUE ) then
+
+      # the restarts should be in the short term archive directory
+      # www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x1631.html#running_ccsm_restart_back
+
+      ${COPY} \$DOUT_S_ROOT/rest/\${restart_time}/* . || exit -1
+
+   else
+
+      # All the required files must still be in the run directory.
+      # Just need to update the pointer files.
+
+      @ inst=1
+      while (\$inst <= $num_instances)
+         set inst_string = \`printf _%04d \$inst\`
+         echo "${case}.cpl.r.\${restart_time}.nc"                   >! rpointer.drv
+         echo "${case}.clm2\${inst_string}.r.\${restart_time}.nc"   >! rpointer.lnd\${inst_string}
+         echo "${case}.datm\${inst_string}.r.\${restart_time}.nc"   >! rpointer.atm\${inst_string}
+         echo "${case}.datm\${inst_string}.rs1.\${restart_time}.nc" >> rpointer.atm\${inst_string}
+         @ inst ++
+      end
+
+   endif
+   exit 0
+endif
+
+#----------------------------------------------------------------------
+# This block prepares the initial run directory for a startup run.
+# CLM namelists specify a relative path for the initial file.
+#
 # The reference case may more instances than we need,
 # and it certainly has more files than we need.
+# This stages only the minimum number of instances and files.
+#
+# Remember - in a hybrid case - when CONTINUE_RUN = FALSE,
+# the run_refdate and the time in the filenames can be unrelated.
+#----------------------------------------------------------------------
 
-let inst=1
-while ((\$inst <= $num_instances)); do
-   inst_string=\`printf _%04d \$inst\`
-
-   echo ''
-   echo "Staging restarts for instance \$inst of $num_instances"
-
-   ${COPY} ${CLM_stagedir}/${run_refcase}.clm2\${inst_string}.r.${run_refdate}-${run_reftod}.nc .
-
-   let inst+=1
-done
+@ inst=1
+while (\$inst <= $num_instances)
+   set inst_string = \`printf _%04d \$inst\`
+   ${LINK} ${CLM_stagedir}/${run_refcase}.clm2\${inst_string}.r.${run_refdate}-${run_reftod}.nc .
+   @ inst ++
+end
 
 exit 0
 
 EndOfText
-chmod 0755 stage_initial_cesm_files
+chmod 0755 stage_cesm_files
 
-./stage_initial_cesm_files
+./stage_cesm_files
 
 # ==============================================================================
 # build
@@ -755,7 +804,7 @@ echo ""
 echo "4) Verify the contents of env_run.xml and submit the CESM job:"
 echo "   ./${case}.submit"
 echo ""
-echo "5) After the job has run, make sure it worked "
+echo "5) After the job has run, check to make sure it worked."
 echo ""
 echo "6) To extend the run in $assim_n '"$stop_option"' steps,"
 echo "   change the env_run.xml variables:"
@@ -763,6 +812,9 @@ echo ""
 echo "   ./xmlchange CONTINUE_RUN=TRUE"
 echo "   ./xmlchange RESUBMIT=<number_of_cycles_to_run>"
 echo "   ./xmlchange STOP_N=$assim_n"
+echo ""
+echo "   and"
+echo "   ./${case}.submit"
 echo ""
 echo "Check the streams listed in the streams text files.  If more or different"
 echo 'dates need to be added, then do this in the $CASEROOT/user_*files*'
