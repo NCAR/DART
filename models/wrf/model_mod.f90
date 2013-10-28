@@ -3234,13 +3234,13 @@ real(r8), parameter :: drad = pi / 18.0_r8
 real(r8)            :: xloc, yloc, xloc_u, yloc_v, xyz_loc(3)
 integer             :: i, i_u, j, j_v, k2
 real(r8)            :: dx,dy,dxm,dym,dx_u,dxm_u,dy_v,dym_v
-real(r8)            :: utrue,vtrue
 integer             :: id
 logical             :: surf_var
 real(r8), allocatable :: a1(:) !HK
 real(r8), allocatable :: zloc(:) !HK
-integer, allocatable  :: k(:) !HK
+integer,  allocatable :: k(:) !HK
 real(r8), allocatable :: dz(:), dzm(:) !HK
+real(r8), allocatable :: utrue(:),vtrue(:) !HK
 
 ! from getCorners
 integer, dimension(2) :: ll, lr, ul, ur, ll_v, lr_v, ul_v, ur_v
@@ -3287,11 +3287,35 @@ allocate(failedcopies(ens_size))
 allocate(ugrid(ens_size), vgrid(ens_size))
 allocate(pres1(ens_size), pres2(ens_size), pres3(ens_size), pres4(ens_size), pres(ens_size))
 allocate(rho1(ens_size), rho2(ens_size), rho3(ens_size), rho4(ens_size))
+allocate(utrue(ens_size), vtrue(ens_size))
+
+id = 1
+
+! HK printing out sizes of wrf_static_data_for_dart
+!print*, '******** wrf_static_data_for_dart'
+!print*, 'znu, dn, dnw, zs, znw ', size(wrf%dom(id)%znu), size(wrf%dom(id)%dn), size(wrf%dom(id)%dnw), size(wrf%dom(id)%zs), size(wrf%dom(id)%znw)
+!print*, 'mub, hgt ', size(wrf%dom(id)%mub), size(wrf%dom(id)%hgt)
+!print*, 'latitude, latitude_u, latitude_v ', size(wrf%dom(id)%latitude), size(wrf%dom(id)%latitude_u), size(wrf%dom(id)%latitude_v)
+!print*, 'longitude, longitude_u, longitude_v ', size(wrf%dom(id)%longitude), size(wrf%dom(id)%longitude_u), size(wrf%dom(id)%longitude_v)
+!print*, 'phb ', size(wrf%dom(id)%phb)
+
+!print*, 'var_index ', size(wrf%dom(id)%var_index)
+!print*, 'var_size ', size(wrf%dom(id)%var_size)
+!print*, 'var_type ', size(wrf%dom(id)%var_type)
+!print*, 'var_index_list ', size(wrf%dom(id)%var_index_list)
+!print*, 'var_update_list ', size(wrf%dom(id)%var_update_list)
+!print*, 'dart_kind ', size(wrf%dom(id)%dart_kind)
+!print*, 'land ', size(wrf%dom(id)%land)
+!print*, 'lower_bound,upper_bound ', size(wrf%dom(id)%lower_bound), size(wrf%dom(id)%upper_bound)
+!print*, 'clamp_or_fail ', size(wrf%dom(id)%clamp_or_fail)
+!print*, 'description, units, stagger, coordinates ', size(wrf%dom(id)%description), size(wrf%dom(id)%units), size(wrf%dom(id)%stagger), size(wrf%dom(id)%coordinates)
+!print*, 'dart_ind ', size(wrf%dom(id)%dart_ind)
+
 
 ! Initialize stuff
-istatus = 0
+istatus(:) = 0
 fld(:,:) = missing_r8
-obs_val = missing_r8 !> to be removed
+!obs_val = missing_r8 !> to be removed
 expected_obs(:) = missing_r8  !> array of obs_vals
 failedcopies(:) = 1
 
@@ -3449,31 +3473,32 @@ else
          
    elseif(vert_is_height(location)) then
 
-      print*, '****** ALERT: commented out this section ******'
+      ! Ob is by height: get corresponding mass level zloc from
+      ! computed column height profile
+      call get_model_height_profile_distrib(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,id,v_h, state_ens_handle, win, ens_size)
+      ! get height vertical co-ordinate
+      do e = 1, ens_size ! HK should there be a height_to_zk_distrib?
+         call height_to_zk(xyz_loc(3), v_h(:, e), wrf%dom(id)%bt,zloc(e),is_lev0(e))
+         if(debug) print*,' obs is by height and zloc,lev0 =',zloc(e), is_lev0(e)
+         if(debug) print*,'model height profile'
+         if(debug) print*,v_h
 
-      !! Ob is by height: get corresponding mass level zloc from
-      !! computed column height profile
-      !call get_model_height_profile(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,x,id,v_h)
-      !! get height vertical co-ordinate
-      !!call height_to_zk(xyz_loc(3), v_h, wrf%dom(id)%bt,zloc,is_lev0)
-      !if(debug) print*,' obs is by height and zloc,lev0 =',zloc, is_lev0
-      !if(debug) print*,'model height profile'
-      !if(debug) print*,v_h
+         ! If location is above model surface but below the lowest sigma level,
+         ! the default is to reject it.  But if the namelist value is true, then
+         ! accept the observation and later on extrapolate the values from levels
+         ! 1 and 2 downward.
+         if (is_lev0(e)) then
+            ! the height_to_zk() routine has returned a valid zloc in case we
+            ! want to use it.  the default is to reject the observation and so
+            ! we overwrite it with missing.  but if the namelist value is set
+            ! to true, leave zloc alone.
+            if (.not. allow_obs_below_vol) zloc(e) = missing_r8
+            if (debug .and. .not. allow_obs_below_vol) print*, 'setting zloc missing member ', e
+            ! else need to set a qc here?
+         endif
 
-      !! If location is above model surface but below the lowest sigma level,
-      !! the default is to reject it.  But if the namelist value is true, then
-      !! accept the observation and later on extrapolate the values from levels
-      !! 1 and 2 downward.
-      !if (is_lev0) then
-      !   ! the height_to_zk() routine has returned a valid zloc in case we
-      !   ! want to use it.  the default is to reject the observation and so
-      !   ! we overwrite it with missing.  but if the namelist value is set
-      !   ! to true, leave zloc alone.
-      !   if (.not. allow_obs_below_vol) zloc = missing_r8
-      !   if (debug .and. .not. allow_obs_below_vol) print*, 'setting zloc missing'
-      !   ! else need to set a qc here?
-      !endif
-   
+      enddo
+
    elseif(vert_is_surface(location)) then
       zloc = 1.0_r8
       surf_var = .true.
@@ -3656,7 +3681,7 @@ else
        obs_kind == KIND_DIFFERENTIAL_REFLECTIVITY .or. &
        obs_kind == KIND_SPECIFIC_DIFFERENTIAL_PHASE ) then
 
-       call simple_interp_distrib(fld, wrf, id, i, j, k, wrf%dom(id)%type_qr, dxm, dx, dy, dym, uniquek, ens_size, state_ens_handle, win )
+       call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_ens_handle, win )
 
        if ( .not. (obs_kind /= KIND_CONDENSATIONAL_HEATING) .or. (obs_kind /= KIND_POWER_WEIGHTED_FALL_SPEED) ) then
           fld = max(0.0_r8, fld) ! Don't accept negative
@@ -3768,15 +3793,15 @@ else
                               ! Certain map projections have wind on grid different than true wind (on map)
                               !   subroutine gridwind_to_truewind is in module_map_utils.f90
                               call gridwind_to_truewind(xyz_loc(1), wrf%dom(id)%proj, ugrid(e), vgrid(e), &
-                                utrue, vtrue)
+                                utrue(e), vtrue(e))
                   
                               ! Figure out which field was the actual desired observation and store that
                               !   field as one of the two elements of "fld" (the other element is the other
                               !   k-level)
                               if( obs_kind == KIND_U_WIND_COMPONENT) then
-                                 fld(k2, e) = utrue
+                                 fld(k2, e) = utrue(e)
                               else   ! must want v
-                                 fld(k2, e) = vtrue
+                                 fld(k2, e) = vtrue(e)
                               endif
                            endif
                         enddo
@@ -3835,17 +3860,19 @@ else
 
                do e = 1, ens_size
                   call gridwind_to_truewind(xyz_loc(1), wrf%dom(id)%proj, ugrid(e), vgrid(e), &
-                       utrue, vtrue)
+                       utrue(e), vtrue(e))
+
+                  ! U10 (U at 10 meters)
+                  if( obs_kind == KIND_U_WIND_COMPONENT) then
+                     fld(1, e) = utrue(e)
+                  ! V10 (V at 10 meters)
+                  else
+                     fld(1, e) = vtrue(e)
+                  endif
+
                enddo
 
-               ! U10 (U at 10 meters)
-               if( obs_kind == KIND_U_WIND_COMPONENT) then
-                  fld(1, :) = utrue
-               ! V10 (V at 10 meters)
-               else
-                  fld(1, :) = vtrue
-               endif
-   
+
             endif
          endif
       endif
@@ -3938,31 +3965,8 @@ else
       ! This is for surface temperature (T2)
       else
          
-         if ( wrf%dom(id)%type_t2 >= 0 ) then
-
-            ! Check to make sure retrieved integer gridpoints are in valid range
-            if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
-                   boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) &
-                   .or. wrf%dom(id)%scm ) then
-   
-               call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-               if ( rc .ne. 0 ) &
-                    print*, 'model_mod.f90 :: model_interpolate :: getCorners T2 rc = ', rc
-   
-               ! Interpolation for the T2 field
-               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, wrf%dom(id)%type_t2)
-               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, wrf%dom(id)%type_t2)
-               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_t2)
-               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_t2)
-
-               call get_state(x_ill, ill, win, state_ens_handle, ens_size)
-               call get_state(x_iul, iul, win, state_ens_handle, ens_size)
-               call get_state(x_iur, iur, win, state_ens_handle, ens_size)
-               call get_state(x_ilr, ilr, win, state_ens_handle, ens_size)
-
-               fld(1, :) = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
-   
-            endif
+         if ( wrf%dom(id)%type_t2 >= 0 ) then ! HK is there a better way to do this?
+            call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_t, dxm, dx, dy, dym, ens_size, state_ens_handle, win)
          endif
       endif
 
@@ -4030,30 +4034,9 @@ else
          
          if ( wrf%dom(id)%type_th2 >= 0 ) then
 
-            ! Check to make sure retrieved integer gridpoints are in valid range
-            if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
-                   boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) &
-                   .or. wrf%dom(id)%scm ) then
-   
-               call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-               if ( rc .ne. 0 ) &
-                    print*, 'model_mod.f90 :: model_interpolate :: getCorners TH2 rc = ', rc
-   
-               ! Interpolation for the TH2 field
-               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, wrf%dom(id)%type_th2)
-               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, wrf%dom(id)%type_th2)
-               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_th2)
-               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_th2)
-
-               call get_state(x_ill, ill, win, state_ens_handle, ens_size)
-               call get_state(x_iul, iul, win, state_ens_handle, ens_size)
-               call get_state(x_ilr, ilr, win, state_ens_handle, ens_size)
-               call get_state(x_iur, iur, win, state_ens_handle, ens_size)
-
-               fld(1, :) = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+            call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_t, dxm, dx, dy, dym, ens_size, state_ens_handle, win)
    
             endif
-         endif
       endif
 
    !-----------------------------------------------------
@@ -4113,7 +4096,7 @@ else
 
       ! Adjust zloc for staggered ZNW grid (or W-grid, as compared to ZNU or M-grid)
       zloc = zloc + 0.5_r8
-      k = max(1,int(zloc)) !> @todo these are vector now
+      k = max(1,int(zloc)) 
 
      call simple_interp_distrib(fld, wrf, id, i, j, k, wrf%dom(id)%type_qr, dxm, dx, dy, dym, uniquek, ens_size, state_ens_handle, win )
 
@@ -4137,7 +4120,7 @@ else
                     boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
                     boundsCheck( uniquek(uk), .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
 
-                  call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+                  call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc ) ! HK why is this type_t
                   if ( rc .ne. 0 ) &
                        print*, 'model_mod.f90 :: model_interpolate :: getCorners SH rc = ', rc
 
@@ -4186,7 +4169,6 @@ else
          
          ! confirm that field is in the DART state vector
          if ( wrf%dom(id)%type_q2 >= 0 ) then
-
             ! Check to make sure retrieved integer gridpoints are in valid range
             if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
                    boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) &
@@ -4219,99 +4201,18 @@ else
    ! 1.g Vapor Mixing Ratio (QV, Q2)  
    else if( obs_kind == KIND_VAPOR_MIXING_RATIO ) then
 
-      do uk = 1, count
-
       ! This is for 3D vapor mixing ratio -- surface QV later
       if(.not. surf_var) then
-
-         ! First confirm that vapor mixing ratio is in the DART state vector
-         if ( wrf%dom(id)%type_qv >= 0 ) then
-      
-            ! Check to make sure retrieved integer gridpoints are in valid range
-            if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
-                 boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
-                 boundsCheck( uniquek(uk), .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
-      
-               call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-               if ( rc .ne. 0 ) &
-                    print*, 'model_mod.f90 :: model_interpolate :: getCorners QV rc = ', rc
-               
-               ! Interpolation for QV field at level k
-               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), uniquek(uk), wrf%dom(id)%type_qv)
-               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), uniquek(uk), wrf%dom(id)%type_qv)
-               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), uniquek(uk), wrf%dom(id)%type_qv)
-               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), uniquek(uk), wrf%dom(id)%type_qv)
-
-               call get_state(x_ill, ill, win, state_ens_handle, ens_size)
-               call get_state(x_ilr, ilr, win, state_ens_handle, ens_size)
-               call get_state(x_iul, iul, win, state_ens_handle, ens_size)
-               call get_state(x_iur, iur, win, state_ens_handle, ens_size)
-
-               do e = 1, ens_size
-                  if ( k(e) == uniquek(uk) ) then
-                     fld(1, e) = dym*( dxm*x_ill(e) + dx*x_ilr(e) ) + dy*( dxm*x_iul(e) + dx*x_iur(e) )
-                  endif
-               enddo
-
-               ! Interpolation for QV field at level k+1
-               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), uniquek(uk)+1, wrf%dom(id)%type_qv)
-               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), uniquek(uk)+1, wrf%dom(id)%type_qv)
-               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), uniquek(uk)+1, wrf%dom(id)%type_qv)
-               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), uniquek(uk)+1, wrf%dom(id)%type_qv)
-
-               call get_state(x_ill, ill, win, state_ens_handle, ens_size)
-               call get_state(x_iul, iul, win, state_ens_handle, ens_size)
-               call get_state(x_ilr, ilr, win, state_ens_handle, ens_size)
-               call get_state(x_iur, iur, win, state_ens_handle, ens_size)
-
-               do e = 1, ens_size
-                  if ( k(e) == uniquek(uk) ) then
-                     fld(2, e) = dym*( dxm*x_ill(e) + dx*x_ilr(e) ) + dy*( dxm*x_iul(e) + dx*x_iur(e) )
-                  endif
-               enddo
-
-            endif
-         endif
-
-      ! This is for surface QV (Q2)
-      else
-
+         call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_ens_handle, win )
+      else ! This is for surface QV (Q2)
          ! Confirm that right field is in the DART state vector
          if ( wrf%dom(id)%type_q2 >= 0 ) then
-         
-            ! Check to make sure retrieved integer gridpoints are in valid range
-            if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
-                   boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) &
-                   .or. wrf%dom(id)%scm ) then
-               
-               call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-               if ( rc .ne. 0 ) &
-                    print*, 'model_mod.f90 :: model_interpolate :: getCorners QV2 rc = ', rc
-
-               ! Interpolation for the SH2 field
-               ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, wrf%dom(id)%type_q2)
-               iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, wrf%dom(id)%type_q2)
-               ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_q2)
-               iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_q2)
-
-               call get_state(x_ill, ill, win, state_ens_handle, ens_size)
-               call get_state(x_iul, iul, win, state_ens_handle, ens_size)
-               call get_state(x_iur, iur, win, state_ens_handle, ens_size)
-               call get_state(x_ilr, ilr, win, state_ens_handle, ens_size)
-
-               do e = 1, ens_size
-                  if ( k(e) == uniquek(uk) ) then
-                     fld(1, e) = dym*( dxm*x_ill(e) + dx*x_ilr(e) ) + dy*( dxm*x_iul(e) + dx*x_iur(e) )
-                  endif
-               enddo
-
-            endif
+            !HK I am not sure what the type should be
+            call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_t, dxm, dx, dy, dym, ens_size, state_ens_handle, win)
          endif
       endif
 
-      enddo
-
-     ! Don't accept negative water vapor amounts (?)
+      ! Don't accept negative water vapor amounts (?)
      fld = max(0.0_r8, fld)
 
    !-----------------------------------------------------
@@ -4393,8 +4294,8 @@ else
                   if ( k(e) == uniquek(uk) ) then
 
                      ! I'm not quite sure where this comes from, but I will trust them on it....
-                     if ( x(ill) /= 0.0_r8 .and. x(ilr) /= 0.0_r8 .and. x(iul) /= 0.0_r8 .and. &
-                          x(iur) /= 0.0_r8 ) then
+                     if ( x_ill(e) /= 0.0_r8 .and. x_ilr(e) /= 0.0_r8 .and. x_iul(e) /= 0.0_r8 .and. &
+                          x_iur(e) /= 0.0_r8 ) then
       
                         fld(1, e) = dym*( dxm*x_ill(e) + dx*x_ilr(e) ) + dy*( dxm*x_iul(e) + dx*x_iur(e) )
       
@@ -7077,10 +6978,7 @@ integer, intent(in)   :: ens_size
 real(r8), intent(out) :: v_p(0:n, ens_size)
 type(ensemble_type), intent(in)  :: state_ens_handle
 integer, intent(in) :: win
-integer ierr
 integer e !> for ensemble loop
-integer owner_of_state, element_index
-integer(KIND=MPI_ADDRESS_KIND) target_disp
 
 integer, dimension(2) :: ll, lr, ul, ur
 integer  :: ill,ilr,iul,iur,k, rc
@@ -7089,8 +6987,6 @@ logical  :: debug = .false.
 
 !HK 
 real(r8), allocatable :: x_ill(:), x_ilr(:), x_iul(:), x_iur(:)
-
-
 
 allocate(pres1(ens_size), pres2(ens_size), pres3(ens_size), pres4(ens_size))
 allocate(x_ill(ens_size), x_ilr(ens_size), x_iul(ens_size), x_iur(ens_size))
@@ -7119,15 +7015,13 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t 
    if ( wrf%dom(id)%type_ps >= 0 ) then
 
       ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, wrf%dom(id)%type_ps)
-      call get_state(x_ill, ill, win, state_ens_handle, ens_size)
-
       ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_ps)
-      call get_state(x_ilr, ilr, win, state_ens_handle, ens_size)
-
       iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, wrf%dom(id)%type_ps)
-      call get_state(x_iul, iul, win, state_ens_handle, ens_size)
-
       iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_ps)
+
+      call get_state(x_ill, ill, win, state_ens_handle, ens_size)
+      call get_state(x_ilr, ilr, win, state_ens_handle, ens_size)
+      call get_state(x_iul, iul, win, state_ens_handle, ens_size)
       call get_state(x_iur, iur, win, state_ens_handle, ens_size)
 
       ! I'm not quite sure where this comes from, but I will trust them on it....
@@ -7971,6 +7865,102 @@ else
 endif
 
 end subroutine get_model_height_profile
+
+!#######################################################
+
+subroutine get_model_height_profile_distrib(i,j,dx,dy,dxm,dym,n,id,v_h, state_ens_handle, win, ens_size)
+
+! Calculate the model height profile on half (mass) levels,
+! horizontally interpolated at the observation location.
+! This routine used to compute geopotential heights; it now
+! computes geometric heights.
+
+integer,  intent(in)  :: i,j,n,id
+real(r8), intent(in)  :: dx,dy,dxm,dym
+integer,  intent(in)  :: ens_size
+real(r8), intent(out) :: v_h(0:n, ens_size)
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer, intent(in) :: win
+integer e !> for ensemble loop
+
+real(r8)  :: fll(n+1, ens_size), geop(ens_size), lat(ens_size)
+integer   :: ill,iul,ilr,iur,k, rc
+integer, dimension(2) :: ll, lr, ul, ur
+logical   :: debug = .false.
+
+real(r8), allocatable :: x_ill(:), x_ilr(:), x_iul(:), x_iur(:)
+
+allocate(x_ill(ens_size), x_ilr(ens_size), x_iul(ens_size), x_iur(ens_size))
+
+if (wrf%dom(id)%type_gz < 0) then
+  call error_handler(E_ERR, 'get_model_height_profile:', &
+      'PH must be in state vector to compute height profile', &
+       source, revision, revdate)
+endif
+
+if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_gz ) .and. &
+     boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_gz ) ) then
+
+   call getCorners(i, j, id, wrf%dom(id)%type_gz, ll, ul, lr, ur, rc )
+   if ( rc .ne. 0 ) &
+        print*, 'model_mod.f90 :: get_model_height_profile :: getCorners rc = ', rc
+
+   do k = 1, wrf%dom(id)%var_size(3,wrf%dom(id)%type_gz)
+
+      ill = wrf%dom(id)%dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_gz)
+      iul = wrf%dom(id)%dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_gz)
+      ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_gz)
+      iur = wrf%dom(id)%dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_gz)
+
+      call get_state(x_ill, ill, win, state_ens_handle, ens_size)
+      call get_state(x_ilr, ilr, win, state_ens_handle, ens_size)
+      call get_state(x_iul, iul, win, state_ens_handle, ens_size)
+      call get_state(x_iur, iur, win, state_ens_handle, ens_size)
+
+      geop(:) = ( dym*( dxm*( wrf%dom(id)%phb(ll(1),ll(2),k) + x_ill ) + &
+                      dx*( wrf%dom(id)%phb(lr(1),lr(2),k) + x_ilr ) ) + &
+                dy*( dxm*( wrf%dom(id)%phb(ul(1),ul(2),k) + x_iul ) + &
+                      dx*( wrf%dom(id)%phb(ur(1),ur(2),k) + x_iur ) ) )/gravity
+
+      lat(:) = ( wrf%dom(id)%latitude(ll(1),ll(2)) + &
+              wrf%dom(id)%latitude(lr(1),lr(2)) + &
+              wrf%dom(id)%latitude(ul(1),ul(2)) + &
+              wrf%dom(id)%latitude(ur(1),ur(2)) ) / 4.0_r8
+
+      do e = 1, ens_size
+         fll(k, e) = compute_geometric_height(geop(e), lat(e))
+      enddo
+
+   end do
+
+   do k=1,n
+      v_h(k, :) = 0.5_r8*(fll(k, :) + fll(k+1, :) )
+   end do
+
+   v_h(0, :) = dym*( dxm*wrf%dom(id)%hgt(ll(1), ll(2)) + &
+                   dx*wrf%dom(id)%hgt(lr(1), lr(2)) ) + &
+             dy*( dxm*wrf%dom(id)%hgt(ul(1), ul(2)) + &
+                   dx*wrf%dom(id)%hgt(ur(1), ur(2)) )
+
+   if (debug) &
+        print*, 'model_mod.f90 :: get_model_height_profile :: n, v_h() ', n, v_h(1:n, :)
+
+   if (debug) &
+        print*, 'model_mod.f90 :: get_model_height_profile :: v_h(0) ', v_h(0, :)
+ 
+! If the boundsCheck functions return an unsatisfactory integer index, then set
+!   fld as missing data
+else
+
+   print*,'Not able the get height_profile'
+   print*,i,j,dx,dy,dxm,dym,n,id,wrf%dom(id)%var_size(1,wrf%dom(id)%type_gz), &
+        wrf%dom(id)%var_size(2,wrf%dom(id)%type_gz)
+
+   v_h(:, :) =  missing_r8
+
+endif
+
+end subroutine get_model_height_profile_distrib
 
 !#######################################################
 
@@ -10842,21 +10832,27 @@ real(r8),           intent(out) :: fld(2, ens_size)
 integer               :: ill, iul, ilr, iur, rc
 integer, dimension(2) :: ll, ul, lr, ur
 integer               :: uk, e
-integer               :: ksort(ens_size)
+logical               :: in_state
+integer               :: wrf_type
 
 real(r8), dimension(ens_size) ::x_ill, x_iul, x_ilr, x_iur
 
-! Confirm that the obs kind is in the DART state vector
-if ( obs_kind_in_state_vector(obs_kind, id) ) then
+print*, 'using simple interp'
+
+! Confirm that the obs kind is in the DART state vector and return the wrf_type
+!> @todo should boundsCheck always be temperatue type? This is what it is in the original code
+call obs_kind_in_state_vector(in_state, wrf_type, obs_kind, id)
+
+if ( in_state ) then
 
    UNIQUEK_LOOP: do uk = 1, size(uniquek)
 
    ! Check to make sure retrieved integer gridpoints are in valid range
-   if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and.&
-      boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
-      boundsCheck( uniquek(uk), .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+   if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf_type ) .and.&
+      boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf_type ) .and. &
+      boundsCheck( uniquek(uk), .false.,                id, dim=3, type=wrf_type ) ) then
          
-         call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+         call getCorners(i, j, id, wrf_type, ll, ul, lr, ur, rc )
          if ( rc .ne. 0 ) &
          print*, 'model_mod.f90 :: model_interpolate :: getCorners QNSNOW rc = ', rc
                
@@ -10898,58 +10894,135 @@ if ( obs_kind_in_state_vector(obs_kind, id) ) then
 
    enddo UNIQUEK_LOOP
 
+else ! not in state
+
+   call error_handler(E_ERR, 'simple_interp_distrib', 'obs_kind is not in state vector', source, revision, revdate)
+
 endif
 
 end subroutine simple_interp_distrib
 
-!--------------------------------------------------------------------------
-!> test if an obs kind is in the state vector
-function obs_kind_in_state_vector(obs_kind, id)
+!------------------------------------------------------------------------
+!> interpolation for surface fields
+subroutine surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf_type, dxm, dx, dy, dym, ens_size, state_ens_handle, win)
 
-logical :: obs_kind_in_state_vector
-integer :: obs_kind, id
+integer,             intent(in) :: ens_size
+integer,             intent(in) :: win
+type(ensemble_type), intent(in) :: state_ens_handle
+type(wrf_dom),       intent(in) :: wrf
+integer,             intent(in) :: id
+integer,             intent(in) :: obs_kind
+integer,             intent(in) :: wrf_type !> this is beccause obs_kind does not give a unique wrf_type
+integer,             intent(in) :: i,j
+real(r8),            intent(in) :: dxm, dx, dy, dym
+real(r8),           intent(out) :: fld(2, ens_size)
 
-obs_kind_in_state_vector = .false. ! assume not in state vector
+integer               :: ill, iul, ilr, iur, rc
+integer, dimension(2) :: ll, ul, lr, ur
 
-if    ( ( obs_kind == KIND_VERTICAL_VELOCITY)             .and. ( wrf%dom(id)%type_w >= 0 ) )  then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_RAINWATER_MIXING_RATIO )      .and. ( wrf%dom(id)%type_qr >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_GRAUPEL_MIXING_RATIO )        .and. ( wrf%dom(id)%type_qg >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_HAIL_MIXING_RATIO )           .and. ( wrf%dom(id)%type_qh >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_SNOW_MIXING_RATIO )           .and. ( wrf%dom(id)%type_qs >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_CLOUD_ICE )                   .and. ( wrf%dom(id)%type_qi >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_CLOUD_LIQUID_WATER )          .and. ( wrf%dom(id)%type_qc >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_DROPLET_NUMBER_CONCENTR )     .and. ( wrf%dom(id)%type_qndrp >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_ICE_NUMBER_CONCENTRATION )    .and. ( wrf%dom(id)%type_qnice >= 0 ) )then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_SNOW_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnsnow >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_RAIN_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnrain >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_GRAUPEL_NUMBER_CONCENTR )     .and. ( wrf%dom(id)%type_qngraupel >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_HAIL_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnhail >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_CONDENSATIONAL_HEATING )      .and. ( wrf%dom(id)%type_hdiab >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_POWER_WEIGHTED_FALL_SPEED )   .and. ( wrf%dom(id)%type_fall_spd >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_RADAR_REFLECTIVITY )          .and. ( wrf%dom(id)%type_refl >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_DIFFERENTIAL_REFLECTIVITY )   .and. ( wrf%dom(id)%type_dref >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
-else if( ( obs_kind == KIND_SPECIFIC_DIFFERENTIAL_PHASE ) .and. ( wrf%dom(id)%type_spdp >= 0 ) ) then
-   obs_kind_in_state_vector = .true.
+logical               :: in_state
+
+real(r8), dimension(ens_size) ::x_ill, x_iul, x_ilr, x_iur
+
+! Check to make sure retrieved integer gridpoints are in valid range
+if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf_type ) .and. &
+       boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf_type ) ) &
+       .or. wrf%dom(id)%scm ) then
+
+  call getCorners(i, j, id, wrf_type, ll, ul, lr, ur, rc )
+  if ( rc .ne. 0 ) &
+     print*, 'model_mod.f90 :: model_interpolate :: getCorners T2 rc = ', rc
+   
+     ! Interpolation for the T2 field
+     ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, wrf%dom(id)%type_t2)
+     iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, wrf%dom(id)%type_t2)
+     ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_t2)
+     iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_t2)
+
+     call get_state(x_ill, ill, win, state_ens_handle, ens_size)
+     call get_state(x_iul, iul, win, state_ens_handle, ens_size)
+     call get_state(x_iur, iur, win, state_ens_handle, ens_size)
+     call get_state(x_ilr, ilr, win, state_ens_handle, ens_size)
+
+     fld(1, :) = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
+
 endif
 
-end function
+end subroutine surface_interp_distrib
+
+!--------------------------------------------------------------------------
+!> test if an obs kind is in the state vector and set wrf_type
+subroutine obs_kind_in_state_vector(in_state_vector, wrf_type, obs_kind, id)
+
+logical, intent(out) :: in_state_vector
+integer, intent(out) :: wrf_type !> WRF
+integer, intent(in)  :: obs_kind !> DART
+integer, intent(in)  :: id
+
+
+in_state_vector = .false. ! assume not in state vector
+
+
+if    ( ( obs_kind == KIND_VERTICAL_VELOCITY)             .and. ( wrf%dom(id)%type_w >= 0 ) )  then
+   in_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_w
+else if( ( obs_kind == KIND_RAINWATER_MIXING_RATIO )      .and. ( wrf%dom(id)%type_qr >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type =  wrf%dom(id)%type_qr
+else if( ( obs_kind == KIND_GRAUPEL_MIXING_RATIO )        .and. ( wrf%dom(id)%type_qg >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type =  wrf%dom(id)%type_qg
+else if( ( obs_kind == KIND_HAIL_MIXING_RATIO )           .and. ( wrf%dom(id)%type_qh >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type =  wrf%dom(id)%type_qh
+else if( ( obs_kind == KIND_SNOW_MIXING_RATIO )           .and. ( wrf%dom(id)%type_qs >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type =  wrf%dom(id)%type_qs
+else if( ( obs_kind == KIND_CLOUD_ICE )                   .and. ( wrf%dom(id)%type_qi >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type =  wrf%dom(id)%type_qi
+else if( ( obs_kind == KIND_CLOUD_LIQUID_WATER )          .and. ( wrf%dom(id)%type_qc >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_qc
+else if( ( obs_kind == KIND_DROPLET_NUMBER_CONCENTR )     .and. ( wrf%dom(id)%type_qndrp >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type =  wrf%dom(id)%type_qndrp
+else if( ( obs_kind == KIND_ICE_NUMBER_CONCENTRATION )    .and. ( wrf%dom(id)%type_qnice >= 0 ) )then
+   in_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_qnice
+else if( ( obs_kind == KIND_SNOW_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnsnow >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type =  wrf%dom(id)%type_qnsnow
+else if( ( obs_kind == KIND_RAIN_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnrain >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type =  wrf%dom(id)%type_qnrain
+else if( ( obs_kind == KIND_GRAUPEL_NUMBER_CONCENTR )     .and. ( wrf%dom(id)%type_qngraupel >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type =  wrf%dom(id)%type_qngraupel
+else if( ( obs_kind == KIND_HAIL_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnhail >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_qnhail
+else if( ( obs_kind == KIND_CONDENSATIONAL_HEATING )      .and. ( wrf%dom(id)%type_hdiab >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type =  wrf%dom(id)%type_hdiab
+else if( ( obs_kind == KIND_POWER_WEIGHTED_FALL_SPEED )   .and. ( wrf%dom(id)%type_fall_spd >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type =  wrf%dom(id)%type_fall_spd
+else if( ( obs_kind == KIND_RADAR_REFLECTIVITY )          .and. ( wrf%dom(id)%type_refl >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type =  wrf%dom(id)%type_refl
+else if( ( obs_kind == KIND_DIFFERENTIAL_REFLECTIVITY )   .and. ( wrf%dom(id)%type_dref >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type =  wrf%dom(id)%type_dref
+else if( ( obs_kind == KIND_SPECIFIC_DIFFERENTIAL_PHASE ) .and. ( wrf%dom(id)%type_spdp >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_spdp
+else if ( ( obs_kind == KIND_VAPOR_MIXING_RATIO )         .and. ( wrf%dom(id)%type_qv >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_qv
+endif
+
+end subroutine
 
 
 end module model_mod
