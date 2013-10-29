@@ -3683,25 +3683,25 @@ else
 
        call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_ens_handle, win )
 
-       if ( .not. (obs_kind /= KIND_CONDENSATIONAL_HEATING) .or. (obs_kind /= KIND_POWER_WEIGHTED_FALL_SPEED) ) then
+      ! don't accept negative fld
+      if (obs_kind == KIND_RAINWATER_MIXING_RATIO .or. &
+          obs_kind == KIND_GRAUPEL_MIXING_RATIO .or. &
+          obs_kind == KIND_HAIL_MIXING_RATIO .or. &
+          obs_kind == KIND_SNOW_MIXING_RATIO .or. &
+          obs_kind == KIND_CLOUD_ICE .or. &
+          obs_kind == KIND_CLOUD_LIQUID_WATER .or. &
+          obs_kind == KIND_DROPLET_NUMBER_CONCENTR .or. &
+          obs_kind == KIND_ICE_NUMBER_CONCENTRATION .or. &
+          obs_kind == KIND_SNOW_NUMBER_CONCENTR .or. &
+          obs_kind == KIND_RAIN_NUMBER_CONCENTR .or. &
+          obs_kind == KIND_GRAUPEL_NUMBER_CONCENTR .or. &
+          obs_kind == KIND_HAIL_NUMBER_CONCENTR ) then
+
           fld = max(0.0_r8, fld) ! Don't accept negative
-       endif
 
-!    ! don't accept negative fld
-!   if (obs_kind == KIND_RAINWATER_MIXING_RATIO .or. &
-!       obs_kind == KIND_GRAUPEL_MIXING_RATIO .or. &
-!       obs_kind == KIND_HAIL_MIXING_RATIO .or. &
-!       obs_kind == KIND_SNOW_MIXING_RATIO .or. &
-!       obs_kind == KIND_CLOUD_ICE .or. &
-!       obs_kind == KIND_CLOUD_LIQUID_WATER .or. &
-!       obs_kind == KIND_DROPLET_NUMBER_CONCENTR .or. &
-!       obs_kind == KIND_ICE_NUMBER_CONCENTRATION .or. &
-!       obs_kind == KIND_SNOW_NUMBER_CONCENTR .or. &
-!       obs_kind == KIND_RAIN_NUMBER_CONCENTR .or. &
-!       obs_kind == KIND_GRAUPEL_NUMBER_CONCENTR .or. &
-!       obs_kind == KIND_HAIL_NUMBER_CONCENTR .or. &
+      endif
 
-    endif
+   endif
 
    !-----------------------------------------------------
    ! 1.a Horizontal Winds (U, V, U10, V10)
@@ -3966,7 +3966,7 @@ else
       else
          
          if ( wrf%dom(id)%type_t2 >= 0 ) then ! HK is there a better way to do this?
-            call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_t, dxm, dx, dy, dym, ens_size, state_ens_handle, win)
+            call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_t2, dxm, dx, dy, dym, ens_size, state_ens_handle, win)
          endif
       endif
 
@@ -4034,7 +4034,7 @@ else
          
          if ( wrf%dom(id)%type_th2 >= 0 ) then
 
-            call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_t, dxm, dx, dy, dym, ens_size, state_ens_handle, win)
+            call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_th2, dxm, dx, dy, dym, ens_size, state_ens_handle, win)
    
             endif
       endif
@@ -4208,7 +4208,7 @@ else
          ! Confirm that right field is in the DART state vector
          if ( wrf%dom(id)%type_q2 >= 0 ) then
             !HK I am not sure what the type should be
-            call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_t, dxm, dx, dy, dym, ens_size, state_ens_handle, win)
+            call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_q2, dxm, dx, dy, dym, ens_size, state_ens_handle, win)
          endif
       endif
 
@@ -4326,20 +4326,6 @@ else
 ! END OF VERBATIM BIT
 !*****************************************************************************
 
-   !-----------------------------------------------------
-   ! 1.v.1 Radar Reflectivity (REFL_10CM)
-   else if( obs_kind == KIND_RADAR_REFLECTIVITY ) then
-      if( my_task_id() == 0 ) print*, 'no distributed version of radar reflectivity'
-
-   !-----------------------------------------------------
-   ! 1.v.2 Differential Reflectivity (DIFF_REFL_10CM)
-   else if( obs_kind == KIND_DIFFERENTIAL_REFLECTIVITY ) then
-      if( my_task_id() == 0 ) print*, 'no distributed version of differential reflectivity'
-
-    !-----------------------------------------------------
-   ! 1.v.3 Specific Differential Phase (SPEC_DIFF_10CM)
-   else if( obs_kind == KIND_SPECIFIC_DIFFERENTIAL_PHASE ) then
-      if( my_task_id() == 0 ) print*, 'no distributed version of specifit differential phase'
 
    !-----------------------------------------------------
    ! 1.w Geopotential Height (GZ)
@@ -4362,9 +4348,12 @@ else
 
    !-----------------------------------------------------
    ! 1.y Surface Skin Temperature (TSK)
-   
+
    else if( obs_kind == KIND_SKIN_TEMPERATURE ) then
-      if( my_task_id() == 0 ) print*, 'no distributed version of skin temperature'
+     ! make sure vector includes the needed field
+     if ( wrf%dom(id)%type_tsk >= 0 ) then
+        call surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf%dom(id)%type_tsk, dxm, dx, dy, dym, ens_size, state_ens_handle, win)
+     endif
 
    !-----------------------------------------------------
    ! 1.z Land Mask (XLAND)
@@ -10857,10 +10846,10 @@ if ( in_state ) then
          print*, 'model_mod.f90 :: model_interpolate :: getCorners QNSNOW rc = ', rc
                
          ! Interpolation for QNSNOW field at level k
-         ill = wrf%dom(id)%dart_ind(ll(1), ll(2), uniquek(uk), obs_kind)
-         iul = wrf%dom(id)%dart_ind(ul(1), ul(2), uniquek(uk), obs_kind)
-         ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), uniquek(uk), obs_kind)
-         iur = wrf%dom(id)%dart_ind(ur(1), ur(2), uniquek(uk), obs_kind)
+         ill = wrf%dom(id)%dart_ind(ll(1), ll(2), uniquek(uk), wrf_type)
+         iul = wrf%dom(id)%dart_ind(ul(1), ul(2), uniquek(uk), wrf_type)
+         ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), uniquek(uk), wrf_type)
+         iur = wrf%dom(id)%dart_ind(ur(1), ur(2), uniquek(uk), wrf_type)
 
          call get_state(x_ill, ill, win, state_ens_handle, ens_size)
          call get_state(x_iul, iul, win, state_ens_handle, ens_size)
@@ -10874,10 +10863,10 @@ if ( in_state ) then
          enddo
 
          ! Interpolation for QNSNOW field at level k+1
-         ill = wrf%dom(id)%dart_ind(ll(1), ll(2), uniquek(uk)+1, obs_kind)
-         iul = wrf%dom(id)%dart_ind(ul(1), ul(2), uniquek(uk)+1, obs_kind)
-         ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), uniquek(uk)+1, obs_kind)
-         iur = wrf%dom(id)%dart_ind(ur(1), ur(2), uniquek(uk)+1, obs_kind)
+         ill = wrf%dom(id)%dart_ind(ll(1), ll(2), uniquek(uk)+1, wrf_type)
+         iul = wrf%dom(id)%dart_ind(ul(1), ul(2), uniquek(uk)+1, wrf_type)
+         ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), uniquek(uk)+1, wrf_type)
+         iur = wrf%dom(id)%dart_ind(ur(1), ur(2), uniquek(uk)+1, wrf_type)
 
          call get_state(x_ill, ill, win, state_ens_handle, ens_size)
          call get_state(x_iul, iul, win, state_ens_handle, ens_size)
@@ -10904,7 +10893,7 @@ end subroutine simple_interp_distrib
 
 !------------------------------------------------------------------------
 !> interpolation for surface fields
-subroutine surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf_type, dxm, dx, dy, dym, ens_size, state_ens_handle, win)
+subroutine surface_interp_distrib(fld, wrf, id, i, j, obs_kind, wrf_surf_type, dxm, dx, dy, dym, ens_size, state_ens_handle, win)
 
 integer,             intent(in) :: ens_size
 integer,             intent(in) :: win
@@ -10912,7 +10901,7 @@ type(ensemble_type), intent(in) :: state_ens_handle
 type(wrf_dom),       intent(in) :: wrf
 integer,             intent(in) :: id
 integer,             intent(in) :: obs_kind
-integer,             intent(in) :: wrf_type !> this is beccause obs_kind does not give a unique wrf_type
+integer,             intent(in) :: wrf_surf_type !> this has to be passed in is beccause obs_kind does not give a unique wrf_type ( could check obs_kind then if surf var?)
 integer,             intent(in) :: i,j
 real(r8),            intent(in) :: dxm, dx, dy, dym
 real(r8),           intent(out) :: fld(2, ens_size)
@@ -10921,8 +10910,14 @@ integer               :: ill, iul, ilr, iur, rc
 integer, dimension(2) :: ll, ul, lr, ur
 
 logical               :: in_state
+integer               :: wrf_type
 
 real(r8), dimension(ens_size) ::x_ill, x_iul, x_ilr, x_iur
+
+! Find the wrf_type from the obs kind
+! check for in state is performed before surface_interp_distrib is called
+!> @todo should boundsCheck always be temperatue type? This is what it is in the original code
+call obs_kind_in_state_vector(in_state, wrf_type, obs_kind, id)
 
 ! Check to make sure retrieved integer gridpoints are in valid range
 if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf_type ) .and. &
@@ -10934,10 +10929,10 @@ if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf_type ) .and. 
      print*, 'model_mod.f90 :: model_interpolate :: getCorners T2 rc = ', rc
    
      ! Interpolation for the T2 field
-     ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, wrf%dom(id)%type_t2)
-     iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, wrf%dom(id)%type_t2)
-     ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_t2)
-     iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_t2)
+     ill = wrf%dom(id)%dart_ind(ll(1), ll(2), 1, wrf_surf_type)
+     iul = wrf%dom(id)%dart_ind(ul(1), ul(2), 1, wrf_surf_type)
+     ilr = wrf%dom(id)%dart_ind(lr(1), lr(2), 1, wrf_surf_type)
+     iur = wrf%dom(id)%dart_ind(ur(1), ur(2), 1, wrf_surf_type)
 
      call get_state(x_ill, ill, win, state_ens_handle, ens_size)
      call get_state(x_iul, iul, win, state_ens_handle, ens_size)
@@ -11020,9 +11015,20 @@ else if( ( obs_kind == KIND_SPECIFIC_DIFFERENTIAL_PHASE ) .and. ( wrf%dom(id)%ty
 else if ( ( obs_kind == KIND_VAPOR_MIXING_RATIO )         .and. ( wrf%dom(id)%type_qv >= 0 ) ) then
    in_state_vector = .true.
    wrf_type = wrf%dom(id)%type_qv
+else if ( ( obs_kind == KIND_TEMPERATURE )                  .and. ( wrf%dom(id)%type_t >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_t
+else if ( ( obs_kind == KIND_POTENTIAL_TEMPERATURE )        .and. ( wrf%dom(id)%type_t >= 0 ) ) then
+   in_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_t
+else if ( ( obs_kind == KIND_SKIN_TEMPERATURE )              .and. ( wrf%dom(id)%type_tsk >= 0 ) )then
+   in_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_tsk
+else
+   call error_handler(E_ERR, 'obs_kind_in_state_vector', 'not in state vector', source, revision, revdate)
 endif
 
-end subroutine
+end subroutine obs_kind_in_state_vector
 
 
 end module model_mod
