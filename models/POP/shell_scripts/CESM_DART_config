@@ -4,7 +4,7 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: CESM_DART_config 6422 2013-08-23 21:42:33Z thoar $
+# DART $Id$
 
 # ---------------------
 # Purpose
@@ -132,7 +132,7 @@ end
 # ==============================================================================
 
 # The standard CESM short-term archiving script may need to be altered
-# to archive addtional or subsets of things, or to reduce the amount of
+# to archive additional or subsets of things, or to reduce the amount of
 # data that is sent to the long-term archive.  Put a version of st_archive.sh
 # in  ${DARTROOT}/models/CESM/shell_scripts when/if necessary
 
@@ -177,7 +177,7 @@ ${COPY} ${DARTROOT}/models/POP/work/filter            ${EXEROOT}/.
 ${COPY} ${DARTROOT}/models/POP/work/perfect_model_obs ${EXEROOT}/.
 ${COPY} ${DARTROOT}/models/POP/work/input.nml         ${CASEROOT}/.
 
-# The first time this is executed, the update namlist script does not exist.
+# The first time this is executed, the update namelist script does not exist.
 
 if [[ -x update_dart_namelists ]]; then
        ./update_dart_namelists
@@ -226,7 +226,7 @@ chmod 0755 update_dart_namelists
 #
 # If it is requested and is not present ... it is an error.
 #
-# The sampling error correction is a lookup table.  Each ensemble size 
+# The sampling error correction is a lookup table.  Each ensemble size
 # has its own (static) file.  It is only needed if any
 # input.nml:&assim_tools_nml:sampling_error_correction = .true.,
 #=========================================================================
@@ -265,7 +265,7 @@ foreach N ( input.nml )
 end
 
 # ==============================================================================
-# Initial setup for the default inflation scenario.
+# INFLATION : Initial setup for the default inflation scenario.
 # ==============================================================================
 # POP may use adaptive state-space prior inflation. The initial settings
 # are in the filter_nml and ... during an assimilation experiment, the output
@@ -273,7 +273,7 @@ end
 # it is useful to specify an initial file of inflation values for the first
 # assimilation step. However, I can think of no general way to do this. The
 # utility that creates the initial inflation values (fill_inflation_restart)
-# needs the model size from model_mod. To get that, DART/POP needs 
+# needs the model size from model_mod. To get that, DART/POP needs
 # files which we generally don't have at this stage of the game (it exists after
 # a model advance). So ... until I think of something better ... I am making a
 # cookie file that indicates this is the very first assimilation. If this
@@ -281,6 +281,9 @@ end
 # file before it performs the assimilation. After the first assimilation takes
 # place, the cookie file must be 'eaten' so that subsequent assimilations do not
 # overwrite whatever _should_ be there.
+#
+# IMPORTANT: If you stage your own inflation file, you must REMOVE the cookie
+# file from the RUNDIR directory.
 
 date >! ${RUNDIR}/pop_inflation_cookie
 
@@ -397,7 +400,7 @@ echo ""
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: https://subversion.ucar.edu/DAReS/DART/trunk/models/POP/shell_scripts/CESM_DART_config $
-# $Revision: 6422 $
-# $Date: 2013-08-23 15:42:33 -0600 (Fri, 23 Aug 2013) $
+# $URL$
+# $Revision$
+# $Date$
 
