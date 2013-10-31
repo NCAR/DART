@@ -50,7 +50,7 @@ switch ("`hostname`")
 endsw
 
 #-------------------------------------------------------------------------
-# Determine time of model state ... from file name of first member
+# Determine time of model state ... from file name
 # of the form "./${MYCASE}.pop.r.2000-01-06-00000.nc"
 #
 # Piping stuff through 'bc' strips off any preceeding zeros.
@@ -72,7 +72,7 @@ echo "valid time of model is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_SECONDS (seconds
 echo "valid time of model is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_HOUR (hours)"
 
 #-------------------------------------------------------------------------
-# Create temporary working directory for the assimilation and go there
+# Create temporary working directory for the perfect model and go there
 #-------------------------------------------------------------------------
 
 set temp_dir = pmo_pop
@@ -116,7 +116,6 @@ endif
 # &perfect_model_obs_nml:  last_obs_days           = -1,
 # &perfect_model_obs_nml:  last_obs_seconds        = -1,
 # &pop_to_dart_nml:        pop_to_dart_output_file = 'dart_ics'
-#
 #=========================================================================
 
 if ( ! -e ${CASEROOT}/input.nml ) then
@@ -134,9 +133,9 @@ ${LINK} ../$OCN_RESTART_FILENAME pop.r.nc
 ${LINK} ../$OCN_NML_FILENAME     pop_in
 
 #=========================================================================
-# Block 2: convert 1 pop restart file to a DART initial conditions file.
-# At the end of the block, we have a DART restart file  perfect_ics
-# that came from the pointer file ../rpointer.ocn.restart
+# Block 2: Convert 1 POP restart file to a DART initial conditions file.
+# At the end of the block, we have DART initial condition file  perfect_ics
+# that came from the contents of the pointer file ../rpointer.ocn.restart
 #=========================================================================
 
 echo "`date` -- BEGIN POP-TO-DART"
@@ -153,9 +152,11 @@ echo "`date` -- END POP-TO-DART"
 
 #=========================================================================
 # Block 3: Advance the model and harvest the synthetic observations.
-# Will result in a single file : 'perfect_restart' which we don't need
-# for a perfect model experiment with CESM.
-#
+# output files are:
+# True_state.nc   ...... the DART state
+# obs_seq.perfect ...... the synthetic observations
+# dart_log.out    ...... run-time output of all DART routines
+# perfect_restart ...... which we don't need
 #=========================================================================
 
 echo "`date` -- BEGIN POP PERFECT_MODEL_OBS"
@@ -175,7 +176,7 @@ ${MOVE} dart_log.out     ../pop_dart_log.${OCN_DATE_EXT}.out
 echo "`date` -- END   POP PERFECT_MODEL_OBS"
 
 #=========================================================================
-# Block 4: Update the pop restart files.
+# Block 4: Update the pop restart file
 #=========================================================================
 
 # not needed ... perfect_model_obs does not update the model state.
@@ -186,6 +187,7 @@ echo "`date` -- END   POP PERFECT_MODEL_OBS"
 
 # Eat the cookie regardless
 ${REMOVE} ../pop_inflation_cookie
+${REMOVE} perfect_ics dart_log.nml
 
 echo "`date` -- END   GENERATE POP TRUE STATE"
 
