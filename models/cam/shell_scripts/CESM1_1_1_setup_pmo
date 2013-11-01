@@ -10,31 +10,34 @@
 # Purpose
 # ---------------------
 #
-# This script is designed to set up, stage, and build a single-instance run of CESM
-# using an F compset where CAM and CLM are active. The initial states
-# come from a single multi-instance reference case so a CESM hybrid setup is used.
+# This script is designed to set up, stage, and build a single-instance run
+# of CESM using an F compset where CAM and CLM are active. The initial states
+# come from a single multi-instance reference case so a CESM hybrid setup
+# is used.
 #
 # DOCN: We are using a single data ocean.
 #
-# This script has a counterpart that is a multi-instance setup for either a free
-# run or an assimilation experiment. To make it easy to maintain (and hopefully
-# understand), the two scripts are intended to parallel each other. That means this
-# script performs a lot of manipulation of the 'instance' portion of the
-# filenames, which seems unnecessary initially.
+# This script has a counterpart that is a multi-instance setup for either a
+# free run or an assimilation experiment. To make it easy to maintain (and
+# hopefully understand), the two scripts are intended to parallel each other.
+# That means this script performs a lot of manipulation of the 'instance'
+# portion of the filenames, which seems unnecessary initially.
 #
-# This script results in a viable setup for a CESM single instance experiment. You
-# are STRONGLY encouraged to run the single instance CESM a few times and experiment
-# with different settings BEFORE you try to generate 'perfect' observations.
-# You should become comfortable using CESM's restart capability to re-stage files
-# in your RUN directory.
+# CESM/DART requires some modifications to the CESM source code EVEN IF YOU
+# ARE NOT USING DART. The modifications for CAM require a change to the CESM
+# ${CASE}.run script to invoke a DART script that will allow CAM to cycle
+# correctly with the source code modifications.
 #
-# ${CASEROOT}/CESM_DART_config will augment the CESM case with the required setup
-# and configuration to use DART to harvest synthetic observations. CESM_DART_config
-# will insert a few dozen lines into the ${case}.run script after it makes a backup
-# copy.  This, and the required setup, can be run at a later date. e.g. you can
-# advance an ensemble from 2004-01-01 to 2004-02-01 and then run
-# CESM_DART_config to augment the existing run script, modify STOP_N to 6 hours,
-# and start harvesting synthetic observations when CESM stops at 2004-02-01 06Z ...
+# This script results in a viable setup for a CESM single instance experiment.
+# You are STRONGLY encouraged to run the single instance CESM a few times and
+# experiment with different settings BEFORE you try to generate 'perfect'
+# observations. You should become comfortable using CESM's restart capability
+# to re-stage files in your RUN directory.
+#
+# ${CASEROOT}/CESM_DART_config is automatically run by this script and will
+# augment the CESM case with the required setup and configuration to use DART
+# to harvest synthetic observations. CESM_DART_config will insert a few dozen
+# lines into the ${case}.run script after it makes a backup copy.
 #
 # This script relies heavily on the information in:
 # http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html
@@ -48,21 +51,23 @@
 #    This script sets up a CESM single instance run as we understand them and
 #    it has almost nothing to do with DART. This is intentional.
 #
-# -- Edit and run this script in the $DART/models/CESM/shell_scripts directory
-#    or copy it to somewhere that it will be preserved and run it there.
-#    It will create a CESM 'CASE' directory, where the model will be built,
-#    and an execution directory, where each forecast will
-#    take place.  The short term archiver will use a third directory for
-#    storage of model output until it can be moved to long term storage (HPSS)
-#
 # -- Examine the whole script to identify things to change for your experiments.
 #
-# -- Provide the CESM initial file needed by your run.
+# -- Edit this script in the $DART/models/cam/shell_scripts directory
+#    or copy it to somewhere where it will be preserved.
 #
-# -- Run this script. It will modify the $CASEROOT/${CASE}.run script to
-#    insert a block to perform the DART operations needed to create synthetic obs.
+# -- Run this script. When it is executed, it will create:
+#    1) a CESM 'CASE' directory, where the model will be built,
+#    2) a run directory, where each forecast (and assimilation) will take place,
+#    3) a bld directory for the executables.
 #
-# -- Edit the DART input.nml that appears in the $CASEROOT directory.
+#    This script also executes ${CASEROOT}/CESM_DART_config to modify
+#    the ${CASEROOT}/${CASE}.run script so that the SourceMods for CAM
+#    are effective. CESM_DART_config will also augment the case with all
+#    the pieces necessary to run DART when the time comes.
+#
+# -- (if running DART) Edit the DART input.nml that appears in the ${CASEROOT}
+#    directory.
 #
 # -- Submit the job using ${CASEROOT}/${CASE}.submit
 #
@@ -148,9 +153,9 @@ setenv run_refdate $refyear-$refmon-$refday
 #
 # TRUTHinstance: specifies the specific instance you want to define as the TRUTH.
 #                If you have an initial ensemble size of 80, 1<= instance <= 80.
-#                If you only have one CLM state ... use 1. This value is also
+#                If you only have one CAM state ... use 1. This value is also
 #                used to specify _which_ DATM streamfile to use to force the
-#                TRUTH run.
+#                TRUTH run. Do not use leading zeros.
 #
 # CAM_stagedir: specifies the location of the CAM restart file you are defining as
 #               the truth. As this state evolves in time, it will be used as the
@@ -529,11 +534,11 @@ if ( -d ~/${cesmtag} ) then
 
    # preserve the original version of the files
    if ( ! -e  ${caseroot}/Buildconf/clm.buildnml.csh.original ) then
-      ${MOVE} ${caseroot}/Buildconf/clm.buildnml.csh \
+      ${COPY} ${caseroot}/Buildconf/clm.buildnml.csh \
               ${caseroot}/Buildconf/clm.buildnml.csh.original
    endif
    if ( ! -e  ${caseroot}/preview_namelists.original ) then
-      ${MOVE} ${caseroot}/preview_namelists \
+      ${COPY} ${caseroot}/preview_namelists \
               ${caseroot}/preview_namelists.original
    endif
 
@@ -661,7 +666,6 @@ end
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists
-# THIS IS THE STAGING SECTION - MAKE SURE THIS MATCHES THE NAMELISTS.
 # ==============================================================================
 
 cat << EndOfText >! stage_cesm_files
@@ -698,27 +702,30 @@ if ( \$CONTINUE_RUN == TRUE ) then
    if (  \$DOUT_S   == TRUE ) then
 
       # the restarts should be in the short term archive directory
-      # http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x1631.html#running_ccsm_restart_back
+      # www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x1631.html#running_ccsm_restart_back
+
       ${COPY} \$DOUT_S_ROOT/rest/\${restart_time}/* . || exit -1
 
    else
 
       # All the required files must still be in the run directory.
       # Just need to update the pointer files.
+      # The loop is just to make it similar to the multi-instance case.
 
       @ inst=1
       while (\$inst <= 1)
 
          set inst_string = ''
-
-         echo "${case}.cpl.r.\${restart_time}.nc"                  >! rpointer.drv
          echo "${case}.clm2\${inst_string}.r.\${restart_time}.nc"  >! rpointer.lnd\${inst_string}
          echo "${case}.cice\${inst_string}.r.\${restart_time}.nc"  >! rpointer.ice\${inst_string}
          echo "${case}.cam\${inst_string}.r.\${restart_time}.nc"   >! rpointer.atm\${inst_string}
-
-
          @ inst ++
       end
+
+      # These have nothing to do with instances.
+      echo "${case}.cpl.r.\${restart_time}.nc"     >! rpointer.drv
+      echo "${case}.docn.r.\${restart_time}.nc"    >! rpointer.ocn
+      echo "${case}.docn.rs1.\${restart_time}.bin" >> rpointer.ocn
 
    endif
 
@@ -730,18 +737,13 @@ if ( \$CONTINUE_RUN == TRUE ) then
       @ inst ++
    end
 
-   # relink the pointer file for the data ocean
-   echo "${case}.docn.r.\${restart_time}.nc"    >! rpointer.ocn
-   echo "${case}.docn.rs1.\${restart_time}.bin" >> rpointer.ocn
-
    exit 0
 endif
 
 #----------------------------------------------------------------------
-# This block prepares the initial run directory for a startup run.
+# THIS IS THE INITIAL STAGING SECTION.
 # The CLM, CICE, ROF namelists specify a relative path for the initial file.
 # The CAM namelist specifies a static name.
-# POP uses pointer files.
 #
 # The reference case may more instances than we need,
 # and it certainly has more files than we need.
@@ -751,28 +753,26 @@ endif
 # the run_refdate and the time in the filenames can be unrelated.
 #----------------------------------------------------------------------
 
-set filedir = ${CAM_stagedir}
+set inst_string = ''
 
-@ inst=1
-while (\$inst <= 1)
-
-   set inst_string = ''
+if ( $SingleInstanceRefcase ) then
+   set true_string = ''
+else
    set true_string = \`printf _%04d $TRUTHinstance\`
+endif
 
-   echo ''
-   echo "Staging restart for instance \$inst"
+${LINK} ${CAM_stagedir}/${run_refcase}.clm2\${true_string}.r.${run_refdate}-${run_reftod}.nc  \
+                        ${run_refcase}.clm2\${inst_string}.r.${run_refdate}-${run_reftod}.nc
 
-   ${LINK} \${filedir}/${run_refcase}.clm2\${true_string}.r.${run_refdate}-${run_reftod}.nc  \
-                       ${run_refcase}.clm2\${inst_string}.r.${run_refdate}-${run_reftod}.nc
+${LINK} ${CAM_stagedir}/${run_refcase}.cice\${true_string}.r.${run_refdate}-${run_reftod}.nc  \
+                        ${run_refcase}.cice\${inst_string}.r.${run_refdate}-${run_reftod}.nc
 
-   ${LINK} \${filedir}/${run_refcase}.cice\${true_string}.r.${run_refdate}-${run_reftod}.nc  \
-                       ${run_refcase}.cice\${inst_string}.r.${run_refdate}-${run_reftod}.nc
+${LINK} ${CAM_stagedir}/${run_refcase}.cam\${true_string}.i.${run_refdate}-${run_reftod}.nc   \
+                               cam_initial\${inst_string}.nc
 
-   ${LINK} \${filedir}/${run_refcase}.cam\${true_string}.i.${run_refdate}-${run_reftod}.nc   \
-                              cam_initial\${inst_string}.nc
-
-   @ inst ++
-end
+# If you are using the river runoff model, you must specify an initial file here
+# ${LINK} ${CAM_stagedir}/${run_refcase}.rtm\${true_string}.r.${run_refdate}-${run_reftod}.nc   \
+#                         ${run_refcase}.rtm\${inst_string}.r.${run_refdate}-${run_reftod}.nc
 
 exit 0
 

@@ -151,7 +151,7 @@ setenv POP_stagedir /glade/p/image/CESM_initial_ensemble/rest/2004-01-10-00000
 # assim_n       Number of time units between assimilations
 #
 # If the long-term archiver is off, you get a chance to examine the files before
-# they get moved to long-term storage. You can always submit $CASE.l_archive
+# they get moved to long-term storage. You can always submit $case.l_archive
 # whenever you want to free up space in the short-term archive directory.
 #
 # ==============================================================================
@@ -525,15 +525,15 @@ while ($inst <= $num_instances)
    echo "fillmask = 'nomask','nomask'"      >> $fname
    echo "mapalgo  = 'bilinear','bilinear'"  >> $fname
    echo "mapmask  = 'nomask','nomask'"      >> $fname
-   echo "streams  = 'datm.streams.txt.CPLHIST3HrWx.Solar$inst_string             $stream_year_align $stream_year_first $stream_year_last'," >> $fname
-   echo "           'datm.streams.txt.CPLHIST3HrWx.nonSolarNonPrecip$inst_string $stream_year_align $stream_year_first $stream_year_last'"  >> $fname
+   echo "streams  = 'datm.streams.txt.CPLHIST3HrWx.Solar${inst_string}             $stream_year_align $stream_year_first $stream_year_last'," >> $fname
+   echo "           'datm.streams.txt.CPLHIST3HrWx.nonSolarNonPrecip${inst_string} $stream_year_align $stream_year_first $stream_year_last'"  >> $fname
    echo "taxmode  = 'cycle','cycle'"        >> $fname
    echo "tintalgo = 'linear','linear'"      >> $fname
    echo "restfils = 'unset'"                >> $fname
    echo "restfilm = 'unset'"                >> $fname
 
    # ===========================================================================
-   set fname = "user_nl_cice$inst_string"
+   set fname = "user_nl_cice${inst_string}"
    # ===========================================================================
    # CICE Namelists
    # this is only used for a hybrid start, else rpointers are used.
@@ -541,7 +541,7 @@ while ($inst <= $num_instances)
    echo "ice_ic = '${run_refcase}.cice${inst_string}.r.2004-01-10-00000.nc'" >> $fname
 
    # ===========================================================================
-   set fname = "user_nl_pop2$inst_string"
+   set fname = "user_nl_pop2${inst_string}"
    # ===========================================================================
 
    # POP Namelists
@@ -694,9 +694,7 @@ if ( \$CONTINUE_RUN == TRUE ) then
 
       @ inst=1
       while (\$inst <= $num_instances)
-
          set inst_string = \`printf _%04d \$inst\`
-         echo "${CASE}.cpl.r.\${restart_time}.nc"                    >! rpointer.drv
          echo "${CASE}.datm\${inst_string}.r.\${restart_time}.nc"    >! rpointer.atm\${inst_string}
          echo "${CASE}.datm\${inst_string}.rs1.\${restart_time}.bin" >> rpointer.atm\${inst_string}
          echo "${CASE}.drof\${inst_string}.r.\${restart_time}.nc"    >! rpointer.rof\${inst_string}
@@ -716,6 +714,10 @@ if ( \$CONTINUE_RUN == TRUE ) then
 
          @ inst ++
       end
+
+      # This has nothing to do with instances.
+      echo "${CASE}.cpl.r.\${restart_time}.nc" >! rpointer.drv
+
    endif
 
    exit 0
@@ -732,11 +734,9 @@ endif
 # and it certainly has more files than we need.
 # This stages only the minimum number of instances and files.
 #
-# Remember - when CONTINUE_RUN = FALSE,
+# Remember - in a hybrid case - when CONTINUE_RUN = FALSE,
 # the run_refdate and the time in the filenames can be unrelated.
 #----------------------------------------------------------------------
-
-set filedir = ${POP_stagedir}
 
 @ inst=1
 while (\$inst <= $num_instances)
@@ -747,9 +747,9 @@ while (\$inst <= $num_instances)
    echo "Staging restarts for instance \$inst of $num_instances"
 
    #TH: The cice fname must match that in the user_nl_cice file
-   ${LINK} \${filedir}/${run_refcase}.cice\${inst_string}.r.\${restart_time}.nc .
-   ${LINK} \${filedir}/${run_refcase}.pop\${inst_string}.r.\${restart_time}.nc  .
-   ${LINK} \${filedir}/${run_refcase}.pop\${inst_string}.ro.\${restart_time}    .
+   ${LINK} ${POP_stagedir}/${run_refcase}.cice\${inst_string}.r.\${restart_time}.nc .
+   ${LINK} ${POP_stagedir}/${run_refcase}.pop\${inst_string}.r.\${restart_time}.nc  .
+   ${LINK} ${POP_stagedir}/${run_refcase}.pop\${inst_string}.ro.\${restart_time}    .
 
    echo "${run_refcase}.pop\${inst_string}.ro.\${restart_time}"   >! rpointer.ocn\${inst_string}.ovf
    echo "${run_refcase}.pop\${inst_string}.r.\${restart_time}.nc" >! rpointer.ocn\${inst_string}.restart

@@ -56,14 +56,14 @@
 #    This script sets up a CESM single instance run as we understand them and
 #    it has almost nothing to do with DART. This is intentional.
 #
+# -- Examine the whole script to identify things to change for your experiments.
+#
 # -- Edit and run this script in the $DART/models/CESM/shell_scripts directory
 #    or copy it to somewhere that it will be preserved and run it there.
 #    It will create a CESM 'CASE' directory, where the model will be built,
 #    and an execution directory, where each forecast will
 #    take place.  The short term archiver will use a third directory for
 #    storage of model output until it can be moved to long term storage (HPSS)
-#
-# -- Examine the whole script to identify things to change for your experiments.
 #
 # -- Provide the CESM initial file needed by your run.
 #
@@ -156,7 +156,7 @@ setenv stream_year_align 2004
 #                If you have an initial ensemble size of 80, 1<= instance <= 80.
 #                If you only have one CLM state ... use 1. This value is also
 #                used to specify _which_ DATM streamfile to use to force the
-#                TRUTH run.
+#                TRUTH run. Do not use leading zeros.
 #
 # CLM_stagedir: specifies the location of the CLM restart file you are defining as
 #               the truth. As this state evolves in time, it will be used as the
@@ -394,6 +394,7 @@ echo ""
 ./xmlchange RUN_REFCASE=$run_refcase
 ./xmlchange RUN_REFDATE=$run_refdate
 ./xmlchange RUN_REFTOD=$run_reftod
+./xmlchange BRNCH_RETAIN_CASENAME=FALSE
 ./xmlchange GET_REFCASE=FALSE
 ./xmlchange EXEROOT=${exeroot}
 
@@ -513,11 +514,11 @@ if ( -d ~/${cesmtag} ) then
 
    # preserve the original version of the files
    if ( ! -e  ${caseroot}/Buildconf/clm.buildnml.csh.original ) then
-      ${MOVE} ${caseroot}/Buildconf/clm.buildnml.csh \
+      ${COPY} ${caseroot}/Buildconf/clm.buildnml.csh \
               ${caseroot}/Buildconf/clm.buildnml.csh.original
    endif
    if ( ! -e  ${caseroot}/preview_namelists.original ) then
-      ${MOVE} ${caseroot}/preview_namelists \
+      ${COPY} ${caseroot}/preview_namelists \
               ${caseroot}/preview_namelists.original
    endif
 
@@ -550,18 +551,18 @@ while ($inst <= 1)
    set fname = "user_nl_datm${inst_string}"
    # ===========================================================================
 
-   echo "dtlimit  = 1.5, 1.5, 1.5"                    >> $fname
-   echo "fillalgo = 'nn', 'nn', 'nn'"                 >> $fname
-   echo "fillmask = 'nomask','nomask','nomask'"       >> $fname
-   echo "mapalgo  = 'bilinear','bilinear','bilinear'" >> $fname
-   echo "mapmask  = 'nomask','nomask','nomask'"       >> $fname
-   echo "streams  = 'datm.streams.txt.CPLHIST3HrWx.Solar$inst_string             $stream_year_align $stream_year_first $stream_year_last'," >> $fname
-   echo "           'datm.streams.txt.CPLHIST3HrWx.Precip$inst_string            $stream_year_align $stream_year_first $stream_year_last'," >> $fname
-   echo "           'datm.streams.txt.CPLHIST3HrWx.nonSolarNonPrecip$inst_string $stream_year_align $stream_year_first $stream_year_last'"  >> $fname
-   echo "taxmode  = 'cycle','cycle','cycle'"          >> $fname
-   echo "tintalgo = 'coszen','nearest','linear'"      >> $fname
-   echo "restfils = 'unset'"                          >> $fname
-   echo "restfilm = 'unset'"                          >> $fname
+   echo "dtlimit  = 1.5, 1.5, 1.5"                    >> ${fname}
+   echo "fillalgo = 'nn', 'nn', 'nn'"                 >> ${fname}
+   echo "fillmask = 'nomask','nomask','nomask'"       >> ${fname}
+   echo "mapalgo  = 'bilinear','bilinear','bilinear'" >> ${fname}
+   echo "mapmask  = 'nomask','nomask','nomask'"       >> ${fname}
+   echo "streams  = 'datm.streams.txt.CPLHIST3HrWx.Solar$inst_string             $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
+   echo "           'datm.streams.txt.CPLHIST3HrWx.Precip$inst_string            $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
+   echo "           'datm.streams.txt.CPLHIST3HrWx.nonSolarNonPrecip$inst_string $stream_year_align $stream_year_first $stream_year_last'"  >> ${fname}
+   echo "taxmode  = 'cycle','cycle','cycle'"          >> ${fname}
+   echo "tintalgo = 'coszen','nearest','linear'"      >> ${fname}
+   echo "restfils = 'unset'"                          >> ${fname}
+   echo "restfilm = 'unset'"                          >> ${fname}
 
    # ===========================================================================
    set fname = "user_nl_clm${inst_string}"
@@ -598,13 +599,13 @@ while ($inst <= 1)
    # (tedious), the second is that the full pathname provides a means of tracking
    # the origin of the initial ensemble.
 
-   echo "dtime             = $clm_dtime,"             >> $fname
-   echo "hist_empty_htapes = .false.,"                >> $fname
-   echo "hist_fincl1 = 'NEP',"                        >> $fname
-   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R',"  >> $fname
-   echo "hist_nhtfrq = -$assim_n,1,"                  >> $fname
-   echo "hist_mfilt  = 1,$h1nsteps,"                  >> $fname
-   echo "hist_avgflag_pertape = 'A','A'"              >> $fname
+   echo "dtime             = $clm_dtime,"             >> ${fname}
+   echo "hist_empty_htapes = .false.,"                >> ${fname}
+   echo "hist_fincl1 = 'NEP',"                        >> ${fname}
+   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R',"  >> ${fname}
+   echo "hist_nhtfrq = -$assim_n,1,"                  >> ${fname}
+   echo "hist_mfilt  = 1,$h1nsteps,"                  >> ${fname}
+   echo "hist_avgflag_pertape = 'A','A'"              >> ${fname}
 
    @ inst ++
 end
@@ -638,8 +639,8 @@ foreach FILE (CaseDocs/*streams*)
          echo "Using default runoff stream.txt file ${FNAME}"
          breaksw
       default:
-         ${COPY} $FILE user_$FNAME
-         chmod   644   user_$FNAME
+         ${COPY} $FILE user_${FNAME}
+         chmod   644   user_${FNAME}
          breaksw
    endsw
 
@@ -653,24 +654,24 @@ end
 # drive the TRUTH.
 
 foreach FNAME (user*streams*)
-   set name_parse = `echo $FNAME | sed 's/\_/ /g'`
+   set name_parse = `echo ${FNAME} | sed 's/\_/ /g'`
    @ filename_index = $#name_parse
    set streamname = $name_parse[$filename_index]
    set   instance = `printf %04d $TRUTHinstance`
 
    if (-e $dartroot/models/clm/shell_scripts/user_$streamname*template) then
 
-      echo "Copying DART template for $FNAME and changing instance, refyear"
+      echo "Copying DART template for ${FNAME} and changing instance, refyear"
 
-      ${COPY} $dartroot/models/clm/shell_scripts/user_$streamname*template $FNAME
+      ${COPY} $dartroot/models/clm/shell_scripts/user_$streamname*template ${FNAME}
 
-      sed s/NINST/$instance/g   $FNAME >! out.$$
-      sed s/REFYEAR/$refyear/g  out.$$ >! $FNAME
+      sed s/NINST/$instance/g   ${FNAME} >! out.$$
+      sed s/REFYEAR/$refyear/g  out.$$ >! ${FNAME}
       \rm -f out.$$
 
    else
-      echo "DIED Looking for a DART stream txt template for $FNAME"
-      echo "DIED Looking for a DART stream txt template for $FNAME"
+      echo "DIED Looking for a DART stream txt template for ${FNAME}"
+      echo "DIED Looking for a DART stream txt template for ${FNAME}"
       exit -3
    endif
 
@@ -680,7 +681,6 @@ end
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists
-# THIS IS THE STAGING SECTION - MAKE SURE THIS MATCHES THE NAMELISTS.
 # ==============================================================================
 
 cat << EndOfText >! stage_cesm_files
@@ -725,23 +725,28 @@ if ( \$CONTINUE_RUN == TRUE ) then
 
       # All the required files must still be in the run directory.
       # Just need to update the pointer files.
-      # The loop is just to make it similar to the multi-instance case. 
+      # The loop is just to make it similar to the multi-instance case.
 
       @ inst=1
       while (\$inst <= 1)
+
          set inst_string = ''
-         echo "${case}.cpl.r.\${restart_time}.nc"                   >! rpointer.drv
          echo "${case}.clm2\${inst_string}.r.\${restart_time}.nc"   >! rpointer.lnd\${inst_string}
          echo "${case}.datm\${inst_string}.r.\${restart_time}.nc"   >! rpointer.atm\${inst_string}
          echo "${case}.datm\${inst_string}.rs1.\${restart_time}.nc" >> rpointer.atm\${inst_string}
          @ inst ++
       end
 
+      # This has nothing to do with instances.
+      echo "${case}.cpl.r.\${restart_time}.nc" >! rpointer.drv
+
    endif
+
    exit 0
 endif
 
 #----------------------------------------------------------------------
+# THIS IS THE INITIAL STAGING SECTION.
 # This block prepares the initial run directory for a startup run.
 # CLM namelists specify a relative path for the initial file.
 #
@@ -753,19 +758,16 @@ endif
 # the run_refdate and the time in the filenames can be unrelated.
 #----------------------------------------------------------------------
 
+set inst_string = ''
+
 if ( $SingleInstanceRefcase ) then
-
-   ${LINK} ${CLM_stagedir}/${run_refcase}.clm2.r.${run_refdate}-${run_reftod}.nc .
-
+   set true_string = ''
 else
-
-   set inst_string = ''
    set true_string = `printf _%04d $TRUTHinstance`
-
-   ${LINK} ${CLM_stagedir}/${run_refcase}.clm2\${true_string}.r.${run_refdate}-${run_reftod}.nc \
-                           ${run_refcase}.clm2\${inst_string}.r.${run_refdate}-${run_reftod}.nc
-
 endif
+
+${LINK} ${CLM_stagedir}/${run_refcase}.clm2\${true_string}.r.${run_refdate}-${run_reftod}.nc \
+                        ${run_refcase}.clm2\${inst_string}.r.${run_refdate}-${run_reftod}.nc
 
 exit 0
 

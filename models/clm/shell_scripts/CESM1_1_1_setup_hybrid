@@ -399,6 +399,7 @@ echo ""
 ./xmlchange RUN_REFCASE=$run_refcase
 ./xmlchange RUN_REFDATE=$run_refdate
 ./xmlchange RUN_REFTOD=$run_reftod
+./xmlchange BRNCH_RETAIN_CASENAME=FALSE
 ./xmlchange GET_REFCASE=FALSE
 ./xmlchange EXEROOT=${exeroot}
 
@@ -518,11 +519,11 @@ if ( -d ~/${cesmtag} ) then
 
    # preserve the original version of the files
    if ( ! -e  ${caseroot}/Buildconf/clm.buildnml.csh.original ) then
-      ${MOVE} ${caseroot}/Buildconf/clm.buildnml.csh \
+      ${COPY} ${caseroot}/Buildconf/clm.buildnml.csh \
               ${caseroot}/Buildconf/clm.buildnml.csh.original
    endif
    if ( ! -e  ${caseroot}/preview_namelists.original ) then
-      ${MOVE} ${caseroot}/preview_namelists \
+      ${COPY} ${caseroot}/preview_namelists \
               ${caseroot}/preview_namelists.original
    endif
 
@@ -560,9 +561,9 @@ while ($inst <= $num_instances)
    echo "fillmask = 'nomask','nomask','nomask'"       >> $fname
    echo "mapalgo  = 'bilinear','bilinear','bilinear'" >> $fname
    echo "mapmask  = 'nomask','nomask','nomask'"       >> $fname
-   echo "streams  = 'datm.streams.txt.CPLHIST3HrWx.Solar$inst_string             $stream_year_align $stream_year_first $stream_year_last'," >> $fname
-   echo "           'datm.streams.txt.CPLHIST3HrWx.Precip$inst_string            $stream_year_align $stream_year_first $stream_year_last'," >> $fname
-   echo "           'datm.streams.txt.CPLHIST3HrWx.nonSolarNonPrecip$inst_string $stream_year_align $stream_year_first $stream_year_last'"  >> $fname
+   echo "streams  = 'datm.streams.txt.CPLHIST3HrWx.Solar${inst_string}             $stream_year_align $stream_year_first $stream_year_last'," >> $fname
+   echo "           'datm.streams.txt.CPLHIST3HrWx.Precip${inst_string}            $stream_year_align $stream_year_first $stream_year_last'," >> $fname
+   echo "           'datm.streams.txt.CPLHIST3HrWx.nonSolarNonPrecip${inst_string} $stream_year_align $stream_year_first $stream_year_last'"  >> $fname
    echo "taxmode  = 'cycle','cycle','cycle'"          >> $fname
    echo "tintalgo = 'coszen','nearest','linear'"      >> $fname
    echo "restfils = 'unset'"                          >> $fname
@@ -682,7 +683,6 @@ end
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists
-# THIS IS THE STAGING SECTION - MAKE SURE THIS MATCHES THE NAMELISTS.
 # ==============================================================================
 
 cat << EndOfText >! stage_cesm_files
@@ -731,22 +731,25 @@ if ( \$CONTINUE_RUN == TRUE ) then
       @ inst=1
       while (\$inst <= $num_instances)
          set inst_string = \`printf _%04d \$inst\`
-         echo "${case}.cpl.r.\${restart_time}.nc"                   >! rpointer.drv
          echo "${case}.clm2\${inst_string}.r.\${restart_time}.nc"   >! rpointer.lnd\${inst_string}
          echo "${case}.datm\${inst_string}.r.\${restart_time}.nc"   >! rpointer.atm\${inst_string}
          echo "${case}.datm\${inst_string}.rs1.\${restart_time}.nc" >> rpointer.atm\${inst_string}
          @ inst ++
       end
 
+      # This has nothing to do with instances.
+      echo "${case}.cpl.r.\${restart_time}.nc" >! rpointer.drv
+
    endif
    exit 0
 endif
 
 #----------------------------------------------------------------------
+# THIS IS THE INITIAL STAGING SECTION.
 # This block prepares the initial run directory for a startup run.
 # CLM namelists specify a relative path for the initial file.
 #
-# The reference case may more instances than we need,
+# The reference case may contain more instances than we need,
 # and it certainly has more files than we need.
 # This stages only the minimum number of instances and files.
 #

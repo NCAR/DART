@@ -46,6 +46,8 @@
 #    This script sets up a CESM single instance run as we understand them and
 #    it has almost nothing to do with DART. This is intentional.
 #
+# -- Examine the whole script to identify things to change for your experiments.
+#
 # -- Edit and run this script in the $DART/models/CESM/shell_scripts directory
 #    or copy it to somewhere that it will be preserved and run it there.
 #    It will create a CESM 'CASE' directory, where the model will be built,
@@ -53,7 +55,6 @@
 #    take place.  The short term archiver will use a third directory for
 #    storage of model output until it can be moved to long term storage (HPSS)
 #
-# -- Examine the whole script to identify things to change for your experiments.
 #
 # -- Provide the CESM initial file needed by your run.
 #
@@ -166,7 +167,7 @@ setenv POP_stagedir /glade/p/image/CESM_initial_ensemble/rest/2004-01-10-00000
 # assim_n       Number of time units between assimilations
 #
 # If the long-term archiver is off, you get a chance to examine the files before
-# they get moved to long-term storage. You can always submit $CASE.l_archive
+# they get moved to long-term storage. You can always submit $case.l_archive
 # whenever you want to free up space in the short-term archive directory.
 #
 # ==============================================================================
@@ -520,29 +521,29 @@ while ($inst <= 1)
    set fname = "user_nl_datm${inst_string}"
    # ===========================================================================
 
-   echo "dtlimit  = 1.5, 1.5"               >> $fname
-   echo "fillalgo = 'nn', 'nn'"             >> $fname
-   echo "fillmask = 'nomask','nomask'"      >> $fname
-   echo "mapalgo  = 'bilinear','bilinear'"  >> $fname
-   echo "mapmask  = 'nomask','nomask'"      >> $fname
-   echo "streams  = 'datm.streams.txt.CPLHIST3HrWx.Solar$inst_string             $stream_year_align $stream_year_first $stream_year_last'," >> $fname
-   echo "           'datm.streams.txt.CPLHIST3HrWx.nonSolarNonPrecip$inst_string $stream_year_align $stream_year_first $stream_year_last'"  >> $fname
-   echo "taxmode  = 'cycle','cycle'"        >> $fname
-   echo "tintalgo = 'linear','linear'"      >> $fname
-   echo "restfils = 'unset'"                >> $fname
-   echo "restfilm = 'unset'"                >> $fname
+   echo "dtlimit  = 1.5, 1.5"               >> ${fname}
+   echo "fillalgo = 'nn', 'nn'"             >> ${fname}
+   echo "fillmask = 'nomask','nomask'"      >> ${fname}
+   echo "mapalgo  = 'bilinear','bilinear'"  >> ${fname}
+   echo "mapmask  = 'nomask','nomask'"      >> ${fname}
+   echo "streams  = 'datm.streams.txt.CPLHIST3HrWx.Solar${inst_string}             $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
+   echo "           'datm.streams.txt.CPLHIST3HrWx.nonSolarNonPrecip${inst_string} $stream_year_align $stream_year_first $stream_year_last'"  >> ${fname}
+   echo "taxmode  = 'cycle','cycle'"        >> ${fname}
+   echo "tintalgo = 'linear','linear'"      >> ${fname}
+   echo "restfils = 'unset'"                >> ${fname}
+   echo "restfilm = 'unset'"                >> ${fname}
 
    # ===========================================================================
-   set fname = "user_nl_cice$inst_string"
+   set fname = "user_nl_cice${inst_string}"
    # ===========================================================================
    # CICE Namelists
    # this is only used for a hybrid start, else rpointers are used.
 
    set   instance = `printf _%04d $TRUTHinstance`
-   echo "ice_ic = '${POP_stagedir}/${run_refcase}.cice${instance}.r.2004-01-10-00000.nc'" >> $fname
+   echo "ice_ic = '${POP_stagedir}/${run_refcase}.cice${instance}.r.2004-01-10-00000.nc'" >> ${fname}
 
    # ===========================================================================
-   set fname = "user_nl_pop2$inst_string"
+   set fname = "user_nl_pop2${inst_string}"
    # ===========================================================================
 
    # POP Namelists
@@ -571,7 +572,7 @@ while ($inst <= 1)
    # Default copies of SourceMods/src.pop2/ocn.*.tavg.csh files are provided in the
    # DART_SourceMods_cesm1_1_1.tar bundle.
 
-   echo "init_ts_suboption  = 'data_assim'"             >> $fname
+   echo "init_ts_suboption  = 'data_assim'" >> ${fname}
 
    @ inst ++
 end
@@ -610,8 +611,8 @@ foreach FILE (CaseDocs/*streams*)
          echo "Precipitation in nonSolarNonPrecip stream.txt file - not ${FNAME}"
          breaksw
       default:
-         ${COPY} $FILE user_$FNAME
-         chmod   644   user_$FNAME
+         ${COPY} $FILE user_${FNAME}
+         chmod   644   user_${FNAME}
          breaksw
    endsw
 
@@ -625,23 +626,23 @@ end
 # drive the TRUTH.
 
 foreach FNAME (user*streams*)
-   set name_parse = `echo $FNAME | sed 's/\_/ /g'`
+   set name_parse = `echo ${FNAME} | sed 's/\_/ /g'`
    @ filename_index = $#name_parse
    set streamname = $name_parse[$filename_index]
    set   instance = `echo $TRUTHinstance | bc`
 
    if (-e $dartroot/models/POP/shell_scripts/user_$streamname*template) then
 
-      echo "Copying DART template for $FNAME and changing instance."
+      echo "Copying DART template for ${FNAME} and changing instance."
 
-      ${COPY} $dartroot/models/POP/shell_scripts/user_$streamname*template $FNAME
+      ${COPY} $dartroot/models/POP/shell_scripts/user_$streamname*template ${FNAME}
 
-      sed s/NINST/$instance/g $FNAME >! out.$$
-      ${MOVE} out.$$ $FNAME
+      sed s/NINST/$instance/g ${FNAME} >! out.$$
+      ${MOVE} out.$$ ${FNAME}
 
    else
-      echo "DIED Looking for a DART stream txt template for $FNAME"
-      echo "DIED Looking for a DART stream txt template for $FNAME"
+      echo "DIED Looking for a DART stream txt template for ${FNAME}"
+      echo "DIED Looking for a DART stream txt template for ${FNAME}"
       exit -3
    endif
 
@@ -701,7 +702,6 @@ if ( \$CONTINUE_RUN == TRUE ) then
       while (\$inst <= 1)
 
          set inst_string = ''
-         echo "${CASE}.cpl.r.\${restart_time}.nc"                    >! rpointer.drv
          echo "${CASE}.datm\${inst_string}.r.\${restart_time}.nc"    >! rpointer.atm\${inst_string}
          echo "${CASE}.datm\${inst_string}.rs1.\${restart_time}.bin" >> rpointer.atm\${inst_string}
          echo "${CASE}.drof\${inst_string}.r.\${restart_time}.nc"    >! rpointer.rof\${inst_string}
@@ -721,6 +721,10 @@ if ( \$CONTINUE_RUN == TRUE ) then
 
          @ inst ++
       end
+
+      # This has nothing to do with instances.
+      echo "${CASE}.cpl.r.\${restart_time}.nc" >! rpointer.drv
+
    endif
 
    exit 0
@@ -737,7 +741,7 @@ endif
 # and it certainly has more files than we need.
 # This stages only the minimum number of instances and files.
 #
-# Remember - when CONTINUE_RUN = FALSE,
+# Remember - in a hybrid case - when CONTINUE_RUN = FALSE,
 # the run_refdate and the time in the filenames can be unrelated.
 #----------------------------------------------------------------------
 
