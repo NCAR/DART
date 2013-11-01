@@ -134,7 +134,7 @@ ${LINK} ../$OCN_NML_FILENAME     pop_in
 
 #=========================================================================
 # Block 2: Convert 1 POP restart file to a DART initial conditions file.
-# At the end of the block, we have DART initial condition file  perfect_ics
+# At the end of the block, we have a DART initial condition file  perfect_ics
 # that came from the contents of the pointer file ../rpointer.ocn.restart
 #=========================================================================
 
