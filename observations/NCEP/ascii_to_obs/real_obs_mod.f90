@@ -415,6 +415,7 @@ obsloop:  do
 
    ! set vertical coordinate for upper-air observations
    if (subset == 'AIRCAR' .or. subset == 'AIRCFT' .or. &
+       subset == 'SATEMP' .or.                         &
        subset == 'SATWND' .or. subset == 'ADPUPA' ) then
        vloc = lev*100.0_r8          ! convert from mb to Pascal
        which_vert = VERTISPRESSURE

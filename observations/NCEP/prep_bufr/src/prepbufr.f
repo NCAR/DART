@@ -234,7 +234,8 @@ c----------------------------------------------------------------------
      &              abs(time0)
           GO TO 200
         ENDIF 
-      ELSE IF ( subset(1:6).eq.'ADPUPA' ) THEN
+      ELSE IF (subset(1:6).eq.'ADPUPA'.or.
+     &         subset(1:6).eq.'SATEMP' ) THEN
         IF ( abs(time0) .gt. obs_window_upa ) THEN 
          if ( debug ) print*, 
      &              'upper-air outside time window, diff was: ',
@@ -343,6 +344,7 @@ c     for T & Q, the events (pc>=8) are virtual T step. The events (pc=6, 1) are
 c     set qm of j2t/j2q event according to 1st event
 c
           if((subset(1:6).eq.'ADPUPA' .or. subset(1:6).eq.'ADPSFC' .or.
+     &        subset(1:6).eq.'SATEMP' .or. 
      &        subset(1:6).eq.'SFCSHP') .and.   var(kk).eq. 'T') then
             if(j2t.ne.1) evns(7,lv, j2t, kk) = evns(7,lv, 1, kk) 
             jj = j2t
@@ -371,6 +373,7 @@ c
 c    set up the temperature observation data, use the j2t event or 1 if T
 c----------------------------------------------------------------------
         if(subset(1:6).eq.'ADPUPA' .or. subset(1:6).eq.'ADPSFC' .or.
+     &     subset(1:6).eq.'SATEMP' .or. 
      &     subset(1:6).eq.'SFCSHP' ) then
 
            toe = evns(7, lv, j2t, 3)
@@ -386,6 +389,8 @@ c----------------------------------------------------------------------
           pc_t = evns(3, lv, 1, 3)
 
         endif
+ 
+        if (pc_t < 0 .or. pc_t > 99) pc_t = 99
         if(tqm .eq. 0) toe = toe*0.9
         if(tqm .eq. 3) toe = toe*1.2
 
@@ -409,6 +414,7 @@ c----------------------------------------------------------------------
           pc_q = evns(3, lv, 1, 2)
 
         endif
+        if (pc_q < 0 .or. pc_q > 99) pc_q = 99
         if(qqm .eq. 0) qoe = qoe*0.9
         if(qqm .eq. 3) qoe = qoe*1.2
 
@@ -420,6 +426,7 @@ c----------------------------------------------------------------------
         pqm  = evns(2, lv, 1, 1) 
         pc_p = evns(3, lv, 1, 1)
 
+        if (pc_p < 0 .or. pc_p > 99) pc_p = 99
         if(pqm .eq. 0) poe = poe*0.9
         if(pqm .eq. 3) poe = poe*1.2
         ppb = evns(1, lv, 1, 1)            ! mb
@@ -439,12 +446,16 @@ c----------------------------------------------------------------------
         vob  = evns(1, lv, 1, 6) 
         vqm  = evns(2, lv, 1, 6)
         pc_v = evns(3, lv, 1, 6) 
+
+        if (pc_u < 0 .or. pc_u > 99) pc_u = 99
+        if (pc_v < 0 .or. pc_v > 99) pc_v = 99
         if(vqm .eq. 0) voe = voe*0.9
         if(vqm .eq. 3) voe = voe*1.2
 
 c    write out temperature observation from ADPUPA, AIRCAR, AIRCFT
 c----------------------------------------------------------------------
         if (subset(1:6).eq.'ADPUPA' .or. subset(1:6).eq.'AIRCAR' .or.
+     &     subset(1:6).eq.'SATEMP' .or. 
      &                                   subset(1:6).eq.'AIRCFT') then
           if (use_this_data_int(tqm,qctype_use,inum_qctype) .and. 
      &        use_this_data_int(pqm,qctype_use,inum_qctype) .and. 
@@ -457,7 +468,7 @@ c----------------------------------------------------------------------
 c    in some old files this appears to be out of range
 c    and it seems to be unused in converting to an obs_seq so
 c    i feel ok setting it to something that will fit in an I2 field.
-            if (pc_t > 99) pc_t = 99
+            if (pc_t < 0 .or. pc_t > 99) pc_t = 99
             write(lunobs, 800) tdata, ttype, tqm, subset(1:6), pc_t
             processed = .true.
 
@@ -484,7 +495,7 @@ c----------------------------------------------------------------------
             tdata(4) = zob
             tdata(5) = tob
 
-            if (pc_t > 99) pc_t = 99
+            if (pc_t < 0 .or. pc_t > 99) pc_t = 99
             write(lunobs, 800) tdata, ttype, tqm, subset(1:6), pc_t
             processed = .true.
 
@@ -520,7 +531,7 @@ c           compute the error of specific moisture based on RH obs error
 
             if (qoe .lt. 9.9) then  ! skip large qoe obs.
 
-              if (pc_q > 99) pc_q = 99
+              if (pc_q < 0 .or. pc_q > 99) pc_q = 99
               processed = .true.
 
               ! specific humidity
@@ -580,7 +591,7 @@ c             ! the T obs cannot be used for qoe
 
            if(qoe .lt. 9.9) then   ! skip large qoe obs
 
-             if (pc_q > 99) pc_q = 99
+             if (pc_q < 0 .or. pc_q > 99) pc_q = 99
              processed = .true.
 
              ! specific humidity
@@ -630,7 +641,7 @@ c----------------------------------------------------------------------
             pdata(4) = zob
             pdata(5) = pob
 
-            if (pc_p > 99) pc_p = 99
+            if (pc_p < 0 .or. pc_p > 99) pc_p = 99
             write(lunobs, 800) pdata, ptype, pqm, subset(1:6), pc_p
             processed = .true.
     
@@ -661,8 +672,8 @@ c----------------------------------------------------------------------
             vdata(5) = vob
             vdata(6) = uob
 
-            if (pc_u > 99) pc_u = 99
-            if (pc_v > 99) pc_v = 99
+            if (pc_u < 0 .or. pc_u > 99) pc_u = 99
+            if (pc_v < 0 .or. pc_v > 99) pc_v = 99
             write(lunobs, 800) udata, wtype, uqm, subset(1:6), pc_u
             write(lunobs, 800) vdata, wtype, vqm, subset(1:6), pc_v
             processed = .true.
@@ -695,8 +706,8 @@ c----------------------------------------------------------------------
             vdata(5) = vob
             vdata(6) = uob
 
-            if (pc_u > 99) pc_u = 99
-            if (pc_v > 99) pc_v = 99
+            if (pc_u < 0 .or. pc_u > 99) pc_u = 99
+            if (pc_v < 0 .or. pc_v > 99) pc_v = 99
             write(lunobs, 800) udata, wtype, uqm, subset(1:6), pc_u
             write(lunobs, 800) vdata, wtype, vqm, subset(1:6), pc_v
             processed = .true.
@@ -809,6 +820,7 @@ C
 cliu   select data type
        if(subset .ne. 'ADPUPA' .and. subset .ne. 'AIRCAR' .and.
      &    subset .ne. 'SATWND' .and. subset .ne. 'AIRCFT' .and. 
+     &    subset .ne. 'SATEMP' .and. 
      &    subset .ne. 'ADPSFC' .and. subset .ne. 'SFCSHP') go to 1000
 cliu
 
@@ -841,6 +853,7 @@ C
 cliu   select data type
        if(subst2.ne. 'ADPUPA' .and. subst2.ne. 'AIRCAR' .and. 
      &    subst2.ne. 'SATWND' .and. subst2.ne. 'AIRCFT' .and.
+     &    subst2.ne. 'SATEMP' .and. 
      &    subst2.ne. 'ADPSFC' .and. subst2.ne. 'SFCSHP') go to 2000
 c        ! careful about 2000
 cliu
