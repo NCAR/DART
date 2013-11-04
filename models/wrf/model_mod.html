@@ -44,16 +44,48 @@ Send email to
 <a href="mailto:dart@ucar.edu">dart@ucar.edu</a> to get added to the access list.
 </P>
 <P>
-The WRF model_mod reads a <em class=file>wrfinput_d01</em>
-file to get WRF grid and surface elevation information.  The actual state
-data is read from a filter initial condition/restart file (typically
-called 'filter_ics' or 'filter_restart') but the WRF input NetCDF file
-in the current directory must match the configuration used when generating
-the IC files.   See the <a href="WRF_DART_utilities/dart_to_wrf.html">wrf_to_dart</a>
+The WRF model_mod code reads the state data from a filter initial condition/restart
+file, typically called <em class=file>filter_ics</em> or <em class=file>filter_restart</em>.
+It also requires a NetCDF file named <em class=file>wrfinput_d01</em> in the
+current directory (and <em class=file>d02</em>, etc. for multiple domain cases).
+This file must be at the same resolution and have the same surface elevation
+data as the files converted to create the DART initial conditions.  No data
+will be read from this file, but the grid information must match exactly.
+See the <a href="WRF_DART_utilities/dart_to_wrf.html">wrf_to_dart</a>
 documentation for more information on how to generate DART IC/restart files
 given WRF NetCDF files.
 </P>
-<P>The 16 public interfaces
+<P>
+The model interface code supports nested WRF domains.  Data for all
+domains is read into the DART state vector.  During the computation of the
+forward operators (getting the estimated observation values from each
+ensemble member), the search starts in the domain with the highest number,
+which is generally the finest nest or one of multiple finer nests.
+The search code determines if the observation location is within the
+domain, and works its way from largest number to smallest number
+domain, ending with domain 1.  
+For example, in a 4 domain case data in the state vector that came 
+from <em class=file>wrfinput_d04</em>, then
+<em class=file>wrfinput_d03</em>, <em class=file>wrfinput_d02</em>, 
+and finally
+<em class=file>wrfinput_d01</em> are searched.
+The forward operator is computed from the first domain grid that
+contains the lat/lon of the observation.   
+During the assimilation phase, when the state values are adjusted based on 
+the correlations and assimilation increments, all points in all domains 
+that are within the localization radius are adjusted, regardless of domain.
+</P>
+<P>
+The fields from WRF that are copied into the DART state vector are
+controlled by namelist.  See below for the documentation on the &amp;model_nml
+entries.  The state vector should include all fields needed to restart
+a WRF run.  There may be additional fields needed depending on the
+microphysics scheme selected.  See the ascii file <em class=file>wrf_state_variables_table</em>
+in the <em class=file>models/wrf</em> directory for a list of
+fields that are often included in the DART state.
+</P>
+<P>
+The 16 public interfaces
 are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
@@ -108,6 +140,7 @@ prematurely terminating the namelist.
 #     1 = model level
 #     2 = pressure
 #     3 = height
+#     4 = scale height
 # (2) see bottom of this file for explanations of polar, periodic_x, 
 #     periodic_y, and scm
 # (3) calendar = 3 is GREGORIAN, which is what WRF uses.
@@ -330,8 +363,9 @@ circulation calculation is done when searching for the vortex center.
     <TD>Vertical coordinate for vertical localization.
        <UL style="list-style: none;"> 
            <LI>1 = model level</LI>
-           <LI>2 = pressure</LI>
-           <LI>3 = height</LI>
+           <LI>2 = pressure (in pascals)</LI>
+           <LI>3 = height (in meters)</LI>
+           <LI>4 = scale height (unitless)</LI>
        </UL>
 </TD></TR>
     
@@ -570,11 +604,6 @@ the highest resolution containing the observation.
     <TD>Integer flag indicating the result of the interpolation.</TD></TR>
 
 </TABLE>
-
-<P>
-As of September 9, 2004 the reflectivity observational operator is still not
-available (obs_kind = KIND_REF in obs_kind_mod).
-</P>
 
 </div>
 <br>
@@ -843,9 +872,14 @@ real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
 <!-- Description -->
 
 <P>
-Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed-sphere/location_mod.html#get_close_obs">
-get_close_obs()</A> for the documentation of this subroutine.
+Calls the 3-D sphere locations module to get a list of potentially
+close state vector points, and again for unassimilated observations.
+See <A HREF="../../location/threed-sphere/location_mod.html#get_close_obs">
+get_close_obs()</A> for the documentation of the locations module
+version of this code.  Then,
+if vertical localization is enabled, this code converts all vertical
+locations to the selected vertical type (&amp;model_nml::vert_localization_coord).
+It then computes a real 3D distance and returns it to the calling code.
 </P>
 
 </div>
@@ -897,11 +931,7 @@ type(time_type),          intent(in)    :: <em class=code> time </em>
 
 <P>
 This operation is not defined for the WRF model. 
-This interface is only required if `synchronous' model state advance 
-is supported (the model is called directly as a Fortran90 subroutine 
-from the assimilation programs). This is generally not the preferred 
-method for large models and a stub for this interface is provided for the WRF
-model.
+If called it will throw a fatal error.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -910,11 +940,8 @@ model.
     <TD>State vector of length model_size.</TD></TR>
 
 <TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Gives time of the initial model state. Needed for models that 
-have real time state requirements, for instance the computation of 
-radiational parameters. Note that DART provides a time_manager_mod 
-module that is used to support time computations throughout the
-    facility. </TD></TR>
+    <TD>Gives time of the initial model state.
+    </TD></TR>
 
 </TABLE>
 
@@ -955,10 +982,7 @@ type(time_type),        intent(in)  :: <em class=code> i_time </em>
 <!-- Description -->
 
 <P>
-Returns the time at which the model will start if 
-no input initial conditions are to be used. 
-This is frequently used to spin-up models from rest, 
-but is not meaningfully supported for the WRF model. 
+Not supported for the WRF model.
 </P>
 
 </div>
@@ -979,9 +1003,7 @@ real(r8), dimension(:), intent(out) :: <em class=code> x </em>
 <!-- Description -->
 
 <P>
-Returns default initial conditions for model; generally used for spinning up 
-initial model states. For the WRF model just return 0's since initial 
-state is always to be provided from input files.
+Not supported for the WRF model.  Will throw a fatal error if called.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
