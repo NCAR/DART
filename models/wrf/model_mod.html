@@ -56,24 +56,29 @@ documentation for more information on how to generate DART IC/restart files
 given WRF NetCDF files.
 </P>
 <P>
-The model interface code supports nested WRF domains.  Data for all
+The model interface code supports WRF configurations with multiple domains.  
+Data for all
 domains is read into the DART state vector.  During the computation of the
 forward operators (getting the estimated observation values from each
 ensemble member), the search starts in the domain with the highest number,
 which is generally the finest nest or one of multiple finer nests.
-The search code determines if the observation location is within the
-domain, and works its way from largest number to smallest number
-domain, ending with domain 1.  
-For example, in a 4 domain case data in the state vector that came 
-from <em class=file>wrfinput_d04</em>, then
+The search stops as soon as a domain contains the observation location,
+working its way from largest number to smallest number domain, ending
+with domain 1.
+For example, in a 4 domain case the data in the state vector that came 
+from <em class=file>wrfinput_d04</em> is searched first, then
 <em class=file>wrfinput_d03</em>, <em class=file>wrfinput_d02</em>, 
 and finally
-<em class=file>wrfinput_d01</em> are searched.
+<em class=file>wrfinput_d01</em>.
 The forward operator is computed from the first domain grid that
 contains the lat/lon of the observation.   
 During the assimilation phase, when the state values are adjusted based on 
 the correlations and assimilation increments, all points in all domains 
 that are within the localization radius are adjusted, regardless of domain.
+The impact of an observation on the state depends only on the distance between
+the observation and the state vector point, and the regression coefficient 
+based on the correlation between the distributions of the ensemble of state 
+vector points and the ensemble of observation forward operator values.
 </P>
 <P>
 The fields from WRF that are copied into the DART state vector are
