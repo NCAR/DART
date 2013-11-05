@@ -3,6 +3,7 @@
    logfilename    = 'dart_log.out',
    nmlfilename    = 'dart_log.nml',
    module_details = .true.,
-   print_debug    = .false.
+   print_debug    = .false.,
+   write_nml      = 'file'
 /
 

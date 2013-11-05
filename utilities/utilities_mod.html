@@ -65,7 +65,8 @@ prematurely terminating the namelist.
    logfilename    = 'dart_log.out',
    nmlfilename    = 'dart_log.nml',
    module_details = .true.,
-   print_debug    = .false.
+   print_debug    = .false.,
+   write_nml      = 'file'
 /
 </pre>
 </div>
@@ -118,6 +119,17 @@ code was used during the run.
     <TD>logical</TD>
     <TD>Setting this to .true. causes additional debug messages to print. These
 can be very verbose and by default are turned off.
+</TD></TR>
+
+<TR><TD>write_nml</TD>
+    <TD>character(len=32)</TD>
+    <TD>String which controls where to write the namelist values that
+are being used for this execution. 
+Valid values are:  'none', 'file', 'terminal', 'both'.  'none' turns
+off this write.  'file' writes a copy only to the <em class=code>nmlfilename</em>.
+Writes are always in append mode, so the most recent information will be
+at the end of an existing file.  'terminal' will write to the job's standard
+output.  'both' will write both to the nml file and the standard output unit.
 </TD></TR>
 
 </TBODY> 
