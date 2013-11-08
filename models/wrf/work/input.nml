@@ -13,7 +13,7 @@
    restart_out_file_name = "perfect_restart",
    obs_seq_in_file_name  = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
-   adv_ens_command       = "./advance_model.csh",
+   adv_ens_command       = "../shell_scripts/advance_model.csh",
    output_timestamps     = .false.,
    trace_execution       = .false.,
    output_forward_op_errors = .false.,
@@ -23,7 +23,7 @@
 
 &filter_nml
    async                    = 2,
-   adv_ens_command          = "./advance_model.csh",
+   adv_ens_command          = "../shell_scripts/advance_model.csh",
    ens_size                 = 32,
    start_from_restart       = .true.,
    output_restart           = .true.,
@@ -405,16 +405,56 @@
    /
 
 &obs_common_subset_nml
-   filename_seq1       = '',
-   filename_seq2       = '',
-   filename_seq3       = '',
-   filename_seq4       = '',
-   filename_seq_list1  = 'obs_list1.txt',
-   filename_seq_list2  = 'obs_list2.txt',
-   filename_seq_list3  = 'obs_list3.txt',
-   filename_seq_list4  = '',
-   filename_out_suffix = '.common'
-   print_only          = .false.,
-   calendar            = 'Gregorian'
+   num_to_compare_at_once = 2,
+   filename_seq           = 'obs_seq1.final', 'obs_seq2.final',
+   filename_seq_list      = '',
+   filename_out_suffix    = '.common' ,
+   calendar               = 'Gregorian',
+   print_every            = 1000,
+   dart_qc_threshold      = 3,
+   print_only             = .false.,
    /
+
+&wrf_obs_preproc_nml
+
+   file_name_input          = 'obs_seq20110901'
+   file_name_output         = 'obs_seq.europe.prev'
+  
+   overwrite_obs_time       = .false.  
+  
+   obs_boundary             = 0.0   
+   increase_bdy_error       = .false.  
+   maxobsfac                = 2.5   
+   obsdistbdy               = 1.0  
+  
+   sfc_elevation_check      = .false.  
+   sfc_elevation_tol        = 3000.0  
+   obs_pressure_top         = 0.0  
+   obs_height_top           = 2.0e10  
+  
+   include_sig_data         = .true.   
+   tc_sonde_radii           = -1.0  
+  
+   superob_aircraft         = .true.  
+   aircraft_horiz_int       = 800.0  
+   aircraft_pres_int        = 25000.0  
+  
+   superob_sat_winds        = .true.    
+   sat_wind_horiz_int       = 800.0   
+   sat_wind_pres_int        = 25000.0  
+  
+   overwrite_ncep_satwnd_qc = .false.    
+   overwrite_ncep_sfc_qc    = .false.  
+   /
+
+!  sonde_extra              = 'obs_seq.rawin'
+!  land_sfc_extra           = 'obs_seq.land_sfc'
+!  metar_extra              = 'obs_seq.metar'
+!  marine_sfc_extra         = 'obs_seq.marine'
+!  sat_wind_extra           = 'obs_seq.satwnd'
+!  profiler_extra           = 'obs_seq.profiler'
+!  gpsro_extra              = 'obs_seq.gpsro'
+!  acars_extra              = 'obs_seq.acars'
+!  trop_cyclone_extra       = 'obs_seq.tc'
+
 

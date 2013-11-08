@@ -24,7 +24,7 @@
 
 &filter_nml
    async                    = 0,
-   adv_ens_command          = "./no_advance_model.csh",
+   adv_ens_command          = "no_advance_script",
    ens_size                 =  80,
    start_from_restart       = .true.,
    output_restart           = .true.,
