@@ -37,16 +37,18 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 ! variables used to read the netcdf info
 integer, parameter :: maxd = 7
-integer :: i, j, ndims, odims, ncrc, etype, nitems
+integer :: i, j, ndims, odims, ncrc, etype, nitems, nvars, xtype
 integer :: ncinid1, ncinid2        ! netcdf id for file
 integer :: invarid1, invarid2
 integer :: dimid(maxd), dimlen(maxd), odimid(maxd), odimlen(maxd)
 character(128) :: dimname(maxd), odimname(maxd)
 integer :: nin1Dimensions, nin1Variables, nin1Attributes, in1unlimitedDimID
 integer :: nin2Dimensions, nin2Variables, nin2Attributes, in2unlimitedDimID
-real(r8) :: min1, min2, max1, max2, delmin, delmax
+real(r8) ::  min1,  min2,  max1,  max2,  delmin,  delmax
+integer  :: imin1, imin2, imax1, imax2, idelmin, idelmax
 
-! arrays for all possible dimensions
+! arrays for all possible dimensions, real and int
+real(r8)          ::  zerod1,                 zerod2
 real(r8), pointer ::   oned1(:),               oned2(:)       
 real(r8), pointer ::   twod1(:,:),             twod2(:,:)
 real(r8), pointer :: threed1(:,:,:),         threed2(:,:,:)
@@ -54,6 +56,15 @@ real(r8), pointer ::  fourd1(:,:,:,:),        fourd2(:,:,:,:)
 real(r8), pointer ::  fived1(:,:,:,:,:),      fived2(:,:,:,:,:)
 real(r8), pointer ::   sixd1(:,:,:,:,:,:),     sixd2(:,:,:,:,:,:)
 real(r8), pointer :: sevend1(:,:,:,:,:,:,:), sevend2(:,:,:,:,:,:,:)
+
+integer           ::  izerod1,                 izerod2
+integer,  pointer ::   ioned1(:),               ioned2(:)       
+integer,  pointer ::   itwod1(:,:),             itwod2(:,:)
+integer,  pointer :: ithreed1(:,:,:),         ithreed2(:,:,:)
+integer,  pointer ::  ifourd1(:,:,:,:),        ifourd2(:,:,:,:)
+integer,  pointer ::  ifived1(:,:,:,:,:),      ifived2(:,:,:,:,:)
+integer,  pointer ::   isixd1(:,:,:,:,:,:),     isixd2(:,:,:,:,:,:)
+integer,  pointer :: isevend1(:,:,:,:,:,:,:), isevend2(:,:,:,:,:,:,:)
 
 logical, save :: module_initialized = .false.
 
@@ -66,15 +77,17 @@ character(len=NF90_MAX_NAME) :: infile1, infile2
 character(len=NF90_MAX_NAME) :: nextfield
 logical :: from_file
 
-character(len=128) :: msgstring, msgstring2, tmpstring
+character(len=512) :: msgstring, msgstring2, tmpstring
 integer :: iunit, io
 logical :: debug = .false.                   ! or .true.
 logical :: fail_on_missing_field = .true.    ! or .false.
+logical :: do_all_numeric_fields = .true.    ! or .false.
 character(len=128) :: fieldnames(1000) = ''  ! something large
 character(len=128) :: fieldlist_file = ''
 
 ! fieldnames here?
 namelist /compare_states_nml/  debug, fail_on_missing_field, &
+                               do_all_numeric_fields,        &
                                fieldnames, fieldlist_file
 
 ! main code here
@@ -118,21 +131,26 @@ endif
 infile1   = argwords(1)
 infile2   = argwords(2)
 
-! make sure the namelist specifies one or the other but not both
-if (fieldnames(1) /= '' .and. fieldlist_file /= '') then
-   call error_handler(E_ERR,'compare_states', &
-       'cannot specify both fieldnames and fieldlist_file', &
-       source,revision,revdate)
-endif
-
 call error_handler(E_MSG, 'compare_states', ' reading file: '//trim(infile1))
 call error_handler(E_MSG, 'compare_states', '  and    file: '//trim(infile2))
-if (fieldlist_file /= '') then
-   call error_handler(E_MSG, 'compare_states', ' list of fields file: '//trim(fieldlist_file))
-   from_file = .true.
+if (do_all_numeric_fields) then
+   call error_handler(E_MSG, 'compare_states', ' doing all numeric fields')
 else
-   call error_handler(E_MSG, 'compare_states', ' field names specified in namelist.')
-   from_file = .false.
+   ! make sure the namelist specifies one or the other but not both
+   ! only if we aren't trying to do all fields in the file.
+   if (fieldnames(1) /= '' .and. fieldlist_file /= '') then
+      call error_handler(E_ERR,'compare_states', &
+          'cannot specify both fieldnames and fieldlist_file', &
+          source,revision,revdate)
+   endif
+   
+   if (fieldlist_file /= '') then
+      call error_handler(E_MSG, 'compare_states', ' list of fields file: '//trim(fieldlist_file))
+      from_file = .true.
+   else
+      call error_handler(E_MSG, 'compare_states', ' field names specified in namelist.')
+      from_file = .false.
+   endif
 endif
 
 !   do they exist?  can they be opened?
@@ -143,12 +161,19 @@ endif
 call nc_check(nf90_open(infile1, NF90_NOWRITE,   ncinid1), 'nf90_open', 'infile1')
 call nc_check(nf90_open(infile2, NF90_NOWRITE,   ncinid2), 'nf90_open', 'infile2')
 
-if (debug) then
-   call nc_check(nf90_inquire(ncinid1, nin1Dimensions, nin1Variables, &
-                 nin1Attributes, in1unlimitedDimID), 'nf90_inquire', 'infile1')
-   call nc_check(nf90_inquire(ncinid2, nin2Dimensions, nin2Variables, &
-                 nin2Attributes, in2unlimitedDimID), 'nf90_inquire', 'infile2')
+call nc_check(nf90_inquire(ncinid1, nin1Dimensions, nin1Variables, &
+              nin1Attributes, in1unlimitedDimID), 'nf90_inquire', 'infile1')
+call nc_check(nf90_inquire(ncinid2, nin2Dimensions, nin2Variables, &
+              nin2Attributes, in2unlimitedDimID), 'nf90_inquire', 'infile2')
 
+! for now, loop over the number of vars in file 1.  at some point we
+! should print out vars that are in 1 but not 2, and in 2 but not 1.
+! but for that we need more logic to track which vars are processed.
+! this code loops over the names in file 1 and finds them (or not)
+! in file 2 but doesn't complain about unused vars in file 2.
+nvars = nin1Variables
+
+if (debug) then
    write(msgstring, *) 'infile1 ndim, nvar, nattr:',nin1Dimensions, &
                       nin1Variables,nin1Attributes
    call error_handler(E_MSG, 'compare_states', msgstring)
@@ -160,14 +185,26 @@ endif
 !    input files to get data from
 !    list of netcdf fields to compare
 
-fieldloop : do i=1, 10000
+fieldloop : do i=1, 100000
 
-   if (from_file) then
-      nextfield = get_next_filename(fieldlist_file, i)
+   if (do_all_numeric_fields) then
+      if (i > nvars) exit fieldloop
+      call nc_check(nf90_inquire_variable(ncinid1, i, nextfield, xtype), &
+                    'nf90_inquire_variable', 'infile1')
+      if (xtype /= NF90_INT .and. xtype /= NF90_FLOAT .and. xtype /= NF90_DOUBLE) then
+         tmpstring = ' not integer, float, or double'
+         msgstring = 'skipping variable '//trim(nextfield)//','//trim(tmpstring)
+         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate) 
+         cycle fieldloop
+      endif
    else
-      nextfield = fieldnames(i)
+      if (from_file) then
+         nextfield = get_next_filename(fieldlist_file, i)
+      else
+         nextfield = fieldnames(i)
+      endif
+      if (nextfield == '') exit fieldloop
    endif
-   if (nextfield == '') exit fieldloop
 
    ! inquire in inputs for fieldname
    ncrc = nf90_inq_varid(ncinid1, trim(nextfield),  invarid1)
@@ -249,6 +286,8 @@ fieldloop : do i=1, 10000
 
 
    select case(ndims)
+      case (0)
+         write(tmpstring, '(2A)')       trim(nextfield), ' [scalar value]'
       case (1)
          write(tmpstring, '(2A,1I5,A)') trim(nextfield), '(', dimlen(1),   ')'
       case (2)
@@ -279,7 +318,152 @@ fieldloop : do i=1, 10000
    ! arrays it is hard to do much else.  we could overload a subroutine
    ! with each dimension but we'd end up with the same amount of replicated code
 
-   select case(ndims)
+   select case(xtype)
+    case(NF90_INT)
+     select case(ndims)
+      case (0)
+         call nc_check(nf90_get_var(ncinid1, invarid1, izerod1), 'nf90_get_var', 'infile1')
+         call nc_check(nf90_get_var(ncinid2, invarid2, izerod2), 'nf90_get_var', 'infile2')
+         imin1 = izerod1
+         imax1 = izerod1
+         imin2 = izerod2
+         imax2 = izerod2
+         idelmin = abs(izerod1-izerod2)
+         idelmax = abs(izerod1-izerod2)
+         if(izerod1 .ne. izerod2) then
+            nitems = 1
+         else
+            nitems = 0
+         endif
+      case (1)
+         allocate(ioned1(dimlen(1)))
+         allocate(ioned2(dimlen(1)))
+         call nc_check(nf90_get_var(ncinid1, invarid1, ioned1), 'nf90_get_var', 'infile1')
+         call nc_check(nf90_get_var(ncinid2, invarid2, ioned2), 'nf90_get_var', 'infile2')
+         imin1 = minval(ioned1)
+         imax1 = maxval(ioned1)
+         imin2 = minval(ioned2)
+         imax2 = maxval(ioned2)
+         idelmin = minval(abs(ioned1-ioned2))
+         idelmax = maxval(abs(ioned1-ioned2))
+         nitems = count(ioned1 .ne. ioned2)
+         deallocate(ioned1, ioned2)
+      case (2)
+         allocate(itwod1(dimlen(1),dimlen(2)))
+         allocate(itwod2(dimlen(1),dimlen(2)))
+         call nc_check(nf90_get_var(ncinid1, invarid1, itwod1), 'nf90_get_var', 'infile1')
+         call nc_check(nf90_get_var(ncinid2, invarid2, itwod2), 'nf90_get_var', 'infile2')
+         imin1 = minval(itwod1)
+         imax1 = maxval(itwod1)
+         imin2 = minval(itwod2)
+         imax2 = maxval(itwod2)
+         idelmin = minval(abs(itwod1-itwod2))
+         idelmax = maxval(abs(itwod1-itwod2))
+         nitems = count(itwod1 .ne. itwod2)
+         deallocate(itwod1, itwod2)
+      case (3)
+         allocate(ithreed1(dimlen(1),dimlen(2),dimlen(3)))
+         allocate(ithreed2(dimlen(1),dimlen(2),dimlen(3)))
+         call nc_check(nf90_get_var(ncinid1, invarid1, ithreed1), 'nf90_get_var', 'infile1')
+         call nc_check(nf90_get_var(ncinid2, invarid2, ithreed2), 'nf90_get_var', 'infile2')
+         imin1 = minval(ithreed1)
+         imax1 = maxval(ithreed1)
+         imin2 = minval(ithreed2)
+         imax2 = maxval(ithreed2)
+         idelmin = minval(abs(ithreed1-ithreed2))
+         idelmax = maxval(abs(ithreed1-ithreed2))
+         nitems = count(ithreed1 .ne. ithreed2)
+         deallocate(ithreed1, ithreed2)
+      case (4)
+         allocate(ifourd1(dimlen(1),dimlen(2),dimlen(3),dimlen(4)))
+         allocate(ifourd2(dimlen(1),dimlen(2),dimlen(3),dimlen(4)))
+         call nc_check(nf90_get_var(ncinid1, invarid1, ifourd1), 'nf90_get_var', 'infile1')
+         call nc_check(nf90_get_var(ncinid2, invarid2, ifourd2), 'nf90_get_var', 'infile2')
+         imin1 = minval(ifourd1)
+         imax1 = maxval(ifourd1)
+         imin2 = minval(ifourd2)
+         imax2 = maxval(ifourd2)
+         idelmin = minval(abs(ifourd1-ifourd2))
+         idelmax = maxval(abs(ifourd1-ifourd2))
+         nitems = count(ifourd1 .ne. ifourd2)
+         deallocate(ifourd1, ifourd2)
+      case (5)
+         allocate(ifived1(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5)))
+         allocate(ifived2(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5)))
+         call nc_check(nf90_get_var(ncinid1, invarid1, ifived1), 'nf90_get_var', 'infile1')
+         call nc_check(nf90_get_var(ncinid2, invarid2, ifived2), 'nf90_get_var', 'infile2')
+         imin1 = minval(ifived1)
+         imax1 = maxval(ifived1)
+         imin2 = minval(ifived2)
+         imax2 = maxval(ifived2)
+         idelmin = minval(abs(ifived1-ifived2))
+         idelmax = maxval(abs(ifived1-ifived2))
+         nitems = count(ifived1 .ne. ifived2)
+         deallocate(ifived1, ifived2)
+      case (6)
+         allocate(isixd1(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5),dimlen(6)))
+         allocate(isixd2(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5),dimlen(6)))
+         call nc_check(nf90_get_var(ncinid1, invarid1, isixd1), 'nf90_get_var', 'infile1')
+         call nc_check(nf90_get_var(ncinid2, invarid2, isixd2), 'nf90_get_var', 'infile2')
+         imin1 = minval(isixd1)
+         imax1 = maxval(isixd1)
+         imin2 = minval(isixd2)
+         imax2 = maxval(isixd2)
+         idelmin = minval(abs(isixd1-isixd2))
+         idelmax = maxval(abs(isixd1-isixd2))
+         nitems = count(isixd1 .ne. isixd2)
+         deallocate(isixd1, isixd2)
+      case (7)
+         allocate(isevend1(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5),dimlen(6),dimlen(7)))
+         allocate(isevend2(dimlen(1),dimlen(2),dimlen(3),dimlen(4),dimlen(5),dimlen(6),dimlen(7)))
+         call nc_check(nf90_get_var(ncinid1, invarid1, isevend1), 'nf90_get_var', 'infile1')
+         call nc_check(nf90_get_var(ncinid2, invarid2, isevend2), 'nf90_get_var', 'infile2')
+         imin1 = minval(isevend1)
+         imax1 = maxval(isevend1)
+         imin2 = minval(isevend2)
+         imax2 = maxval(isevend2)
+         idelmin = minval(abs(isevend1-isevend2))
+         idelmax = maxval(abs(isevend1-isevend2))
+         nitems = count(isevend1 .ne. isevend2)
+         deallocate(isevend1, isevend2)
+      case default
+         ! "really can't happen"
+         write(msgstring, *) 'array dimension is illegal value: ', ndims
+         call error_handler(E_ERR, 'compare_states', msgstring, source, revision, revdate)
+     end select
+     ! common reporting code for integers
+     if (nitems > 0) then
+        write(msgstring, *) 'arrays differ in ', nitems, ' places'
+        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        write(msgstring, *) 'min/max file1: ', imin1, imax1
+        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        write(msgstring, *) 'min/max file2: ', imin2, imax2
+        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        write(msgstring, *) 'delta min/max: ', idelmin, idelmax
+        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+     else
+        write(msgstring, *) 'arrays same'
+        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        write(msgstring, *) 'min/max value: ', imin1, imax1
+        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+     endif
+
+    case default
+     select case(ndims)
+      case (0)
+         call nc_check(nf90_get_var(ncinid1, invarid1, zerod1), 'nf90_get_var', 'infile1')
+         call nc_check(nf90_get_var(ncinid2, invarid2, zerod2), 'nf90_get_var', 'infile2')
+         min1 = zerod1
+         max1 = zerod1
+         min2 = zerod2
+         max2 = zerod2
+         delmin = abs(zerod1-zerod2)
+         delmax = abs(zerod1-zerod2)
+         if(zerod1 .ne. zerod2) then
+            nitems = 1
+         else
+            nitems = 0
+         endif
       case (1)
          allocate(oned1(dimlen(1)))
          allocate(oned2(dimlen(1)))
@@ -375,24 +559,25 @@ fieldloop : do i=1, 10000
          ! "really can't happen"
          write(msgstring, *) 'array dimension is illegal value: ', ndims
          call error_handler(E_ERR, 'compare_states', msgstring, source, revision, revdate)
-   end select
+     end select
 
-   ! common reporting code
-   if (nitems > 0) then
-      write(msgstring, *) 'arrays differ in ', nitems, ' places'
-      call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
-      write(msgstring, *) 'min/max file1: ', min1, max1
-      call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
-      write(msgstring, *) 'min/max file2: ', min2, max2
-      call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
-      write(msgstring, *) 'delta min/max: ', delmin, delmax
-      call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
-   else
-      write(msgstring, *) 'arrays same'
-      call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
-      write(msgstring, *) 'min/max value: ', min1, max1
-      call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
-   endif
+     ! common reporting code for reals
+     if (nitems > 0) then
+        write(msgstring, *) 'arrays differ in ', nitems, ' places'
+        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        write(msgstring, *) 'min/max file1: ', min1, max1
+        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        write(msgstring, *) 'min/max file2: ', min2, max2
+        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        write(msgstring, *) 'delta min/max: ', delmin, delmax
+        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+     else
+        write(msgstring, *) 'arrays same'
+        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+        write(msgstring, *) 'min/max value: ', min1, max1
+        call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
+     endif
+   end select
 
 enddo fieldloop
 
@@ -401,7 +586,9 @@ call nc_check(nf90_close(ncinid1), 'nf90_close', 'infile1')
 call nc_check(nf90_close(ncinid2), 'nf90_close', 'infile2')
 
 if (debug) then
-   write(msgstring, *) 'closing files',  trim(infile1), ' and ', trim(infile2)
+   write(msgstring, *) 'closing files ',  trim(infile1)
+   call error_handler(E_MSG, 'compare_states', msgstring)
+   write(msgstring, *) 'and ', trim(infile2)
    call error_handler(E_MSG, 'compare_states', msgstring)
 endif
 
