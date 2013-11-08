@@ -24,12 +24,12 @@ use utilities_mod, only : get_unit, close_file, register_module, error_handler, 
                           find_textfile_dims, file_to_text, timestamp, set_output, &
                           ascii_file_format, set_output
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data,  &
-                          get_model_time_step, model_interpolate, init_conditions, &
+                          get_model_time_step, init_conditions, &
                           init_time, adv_1step, end_model, nc_write_model_atts,    &
                           nc_write_model_vars, pert_model_state,                   &
                           get_close_maxdist_init, get_close_obs_init,              &
-                          get_close_obs, ens_mean_for_model, &
-                          model_interpolate_distrib, get_close_obs_distrib !HK
+                          ens_mean_for_model, model_interpolate_distrib,           &
+                          get_close_obs_distrib !HK
 
 use data_structure_mod, only : ensemble_type
 
@@ -38,7 +38,7 @@ private
 
 public :: static_init_assim_model, init_diag_output, get_model_size,                       &
           get_closest_state_time_to, get_initial_condition, get_state_meta_data,           &
-          get_model_time, get_model_state_vector, copy_assim_model, interpolate,           &
+          get_model_time, get_model_state_vector, copy_assim_model,                        &
           set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
           output_diagnostics, end_assim_model, assim_model_type, init_diag_input,          &
           input_diagnostics, get_diag_input_copy_meta_data, init_assim_model,              &
@@ -47,8 +47,8 @@ public :: static_init_assim_model, init_diag_output, get_model_size,            
           pert_model_state, netcdf_file_type, nc_append_time, nc_write_calendar_atts,      &
           nc_get_tindex, get_model_time_step, open_restart_read, open_restart_write,       &
           close_restart, adv_1step, aget_initial_condition, get_close_maxdist_init,        &
-          get_close_obs_init, get_close_obs, ens_mean_for_model, &
-          interpolate_distrib, get_close_obs_distrib ! HK
+          get_close_obs_init, ens_mean_for_model, interpolate_distrib,                     &
+          get_close_obs_distrib ! HK
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -703,34 +703,6 @@ istatus = 0
 call model_interpolate_distrib(state_ens_handle, win, location, loctype, istatus, expected_obs)
 
 end subroutine interpolate_distrib
-
-
-
-subroutine interpolate(x, location, loctype, obs_vals, istatus)
-!---------------------------------------------------------------------
-!
-! Interpolates from the state vector in an assim_model_type to the
-! location. Will need to be generalized for more complex state vector
-! types. It might be better to be passing an assim_model_type with
-! the associated time through here, but that requires changing the
-! entire observation side of the class tree. Reconsider this at a 
-! later date (JLA, 15 July, 2002). loctype for now is an integer that
-! specifies what sort of variable from the model should be interpolated.
-
-implicit none
-
-real(r8),            intent(in) :: x(:)
-type(location_type), intent(in) :: location
-integer,             intent(in) :: loctype
-real(r8),           intent(out) :: obs_vals
-integer,            intent(out) :: istatus 
-
-istatus = 0
-
-call model_interpolate(x, location, loctype, obs_vals, istatus)
-
-end subroutine interpolate
-
 
 
 subroutine set_model_time(assim_model, time)

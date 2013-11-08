@@ -42,7 +42,7 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              ascii_file_format
 use     location_mod, only : location_type, write_location, read_location, &
                              interactive_location, get_location
-use  assim_model_mod, only : interpolate
+use  assim_model_mod, only : interpolate_distrib
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                              KIND_TEMPERATURE, KIND_VERTICAL_VELOCITY,     &
                              KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY,    &
@@ -51,13 +51,15 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                              KIND_POWER_WEIGHTED_FALL_SPEED,               &
                              KIND_RADAR_REFLECTIVITY
 
+use data_structure_mod, only : ensemble_type !HK
+
 implicit none
 private
 
-public :: read_radar_ref, get_expected_radar_ref,                          &
+public :: read_radar_ref, get_expected_radar_ref_distrib,                          &
           read_radial_vel, write_radial_vel, interactive_radial_vel,       &
-          get_expected_radial_vel, get_obs_def_radial_vel, set_radial_vel, &
-          get_expected_fall_velocity
+          get_expected_radial_vel_distrib, get_obs_def_radial_vel, set_radial_vel, &
+          get_expected_fall_velocity_distrib
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -754,17 +756,17 @@ end subroutine interactive_nyquist_velocity
 
 !----------------------------------------------------------------------
 
-subroutine get_expected_radial_vel(state_vector, location, velkey, &
+subroutine get_expected_radial_vel_distrib(state_ens_handle, win, location, velkey, &
                                    radial_vel, istatus)
 
 ! This is the main forward operator routine for radar Doppler velocity.
 
-real(r8),            intent(in)  :: state_vector(:)
+type(ensemble_type) state_ens_handle
+integer, intent(in) :: win !> window for one sided communication
 type(location_type), intent(in)  :: location
 integer,             intent(in)  :: velkey
-real(r8),            intent(out) :: radial_vel
-integer,             intent(out) :: istatus
-
+real(r8),            intent(out) :: radial_vel(:)
+integer,             intent(out) :: istatus(:)
 
 ! Given a location and the state vector from one of the ensemble members,
 ! compute the model-predicted radial velocity that would be observed
@@ -779,45 +781,65 @@ integer,             intent(out) :: istatus
 !
 ! Reference: Lin et al., 1983 (J. Climate Appl.Meteor., 1065-1092)
 
-
-real(r8) :: u, v, w, qr, qg, qs, rho, temp, precip_fall_speed
 real(r8) :: debug_location(3)
 logical  :: debug = .false.   ! set to .true. to enable debug printout
+integer  :: e, ens_size
+real(r8), allocatable :: u(:), v(:), w(:), qr(:), qg(:), qs(:), rho(:), temp(:), precip_fall_speed(:)
+integer,  allocatable :: track_status(:) ! need to track the istatus of the different ensmeble members
 
 if ( .not. module_initialized ) call initialize_module
+
+ens_size = state_ens_handle%num_copies - 6 !> @todo fix this
+allocate(track_status(ens_size), u(ens_size), v(ens_size), w(ens_size))
+allocate(u(ens_size), v(ens_size), w(ens_size), qr(ens_size), qg(ens_size), &
+   qs(ens_size), rho(ens_size), temp(ens_size), precip_fall_speed(ens_size))
 
 ! Simple error check on key number before accessing the array
 call velkey_out_of_range(velkey)
 
-call interpolate(state_vector, location, KIND_U_WIND_COMPONENT, u, istatus)
-if (istatus /= 0) then
-   radial_vel = missing_r8
-   return
-endif
-call interpolate(state_vector, location, KIND_V_WIND_COMPONENT, v, istatus)
-if (istatus /= 0) then
-   radial_vel = missing_r8
-   return
-endif
-call interpolate(state_vector, location, KIND_VERTICAL_VELOCITY, w, istatus)
-if (istatus /= 0) then
-   radial_vel = missing_r8
-   return
-endif
+call interpolate_distrib(location, KIND_U_WIND_COMPONENT, istatus, u, state_ens_handle, win)
+   if ( all(istatus /= 0) ) then
+      radial_vel(:) = missing_r8
+      return
+   endif
 
-call get_expected_fall_velocity(state_vector, location, precip_fall_speed, istatus)
-if (istatus /= 0) then
-   radial_vel = missing_r8
-   return
-endif
+track_status = istatus
+
+call interpolate_distrib(location, KIND_V_WIND_COMPONENT, istatus, v, state_ens_handle, win)
+   if ( all(istatus /= 0) ) then
+      radial_vel(:) = missing_r8
+      return
+   endif
+   do e = 1, ens_size
+      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+   enddo
+
+
+call interpolate_distrib(location, KIND_VERTICAL_VELOCITY, istatus, w, state_ens_handle, win)
+   if ( all(istatus /= 0) ) then
+      radial_vel(:) = missing_r8
+      return
+   endif
+   do e = 1, ens_size
+      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+   enddo
+
+call get_expected_fall_velocity_distrib(state_ens_handle, win, location, precip_fall_speed, istatus)
+   do e = 1, ens_size
+      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+   enddo
 
 radial_vel = radial_vel_data(velkey)%beam_direction(1) * u +    &
              radial_vel_data(velkey)%beam_direction(2) * v +    &
              radial_vel_data(velkey)%beam_direction(3) * (w-precip_fall_speed)
 
+do e = 1, ens_size
+   if ( track_status (e) /= 0 ) radial_vel = missing_r8
+enddo
+
 ! Good return code.  Reset possible istatus error from trying to compute
 ! weighted fall speed directly.
-istatus = 0
+! istatus = 0 !> @todo How to do this?
 
 if (debug) then
    debug_location = get_location(location)
@@ -835,7 +857,7 @@ if (debug) then
    print *, 'istatus: ', istatus
 endif
 
-end subroutine get_expected_radial_vel
+end subroutine get_expected_radial_vel_distrib
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
@@ -843,35 +865,42 @@ end subroutine get_expected_radial_vel
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
 
-subroutine get_expected_fall_velocity(state_vector, location,  &
-                                      precip_fall_speed, istatus)
+subroutine get_expected_fall_velocity_distrib(state_ens_handle, win, &
+                location, precip_fall_speed, istatus)
 
 ! This is the main forward operator routine for the expected
 ! fall velocity, and it also used as part of computing expected
 ! radial velocity.
 
-real(r8),            intent(in)  :: state_vector(:)
+type(ensemble_type)              :: state_ens_handle
+integer, intent(in)              :: win !> window for one sided communication
 type(location_type), intent(in)  :: location
-real(r8),            intent(out) :: precip_fall_speed
-integer,             intent(out) :: istatus
+real(r8),            intent(out) :: precip_fall_speed(:)
+integer,             intent(out) :: istatus(:)
 
 ! Local vars
-real(r8) :: qr, qg, qs, rho, temp, refl
-logical, save :: first_time = .true.
-
+logical,         save :: first_time = .true.
+integer,  allocatable :: track_status(:)
+real(r8), allocatable :: qr(:), qg(:), qs(:), rho(:), temp(:), refl(:)
+integer               :: e, ens_size
 ! If the model can return the precipitation fall speed directly, let it do
 ! so. Otherwise, attempt to compute if Kessler or Lin type microphysics,
 ! or see if the dbztowt routine is desired. Note that the computation for
 ! Lin and Kessler is expected to be reasonably accurate for 10cm radar.
 
 ! Should we check microphysics_type var or just go ahead and try to get a value?
-istatus = 0
-precip_fall_speed = 0.0_r8
-call interpolate(state_vector, location, KIND_POWER_WEIGHTED_FALL_SPEED, &
-                 precip_fall_speed, istatus)
+
+ens_size = state_ens_handle%num_copies - 6
+allocate(track_status(ens_size), qr(ens_size), qg(ens_size), qs(ens_size), &
+   rho(ens_size), temp(ens_size), refl(ens_size))
+
+istatus(:) = 0
+precip_fall_speed(:) = 0.0_r8
+call interpolate_distrib(location, KIND_POWER_WEIGHTED_FALL_SPEED, istatus, &
+         precip_fall_speed, state_ens_handle, win)
 
 ! If able to get value, return here.
-if (istatus == 0) return
+if (all(istatus == 0) ) return
 
 ! If the user explicitly wanted to interpolate in the field, try to complain
 ! if it could not.  Note that the interp could fail for other reasons.
@@ -890,49 +919,86 @@ endif
 
 ! if Kessler or Lin we can compute the fall velocity
 if (microphysics_type == 1 .or. microphysics_type == 2) then
-   call interpolate(state_vector, location, KIND_RAINWATER_MIXING_RATIO, qr, istatus)
-   if (istatus /= 0) then
+   call interpolate_distrib(location, KIND_RAINWATER_MIXING_RATIO, istatus, qr, state_ens_handle, win)
+   if ( all(istatus /= 0) ) then
       precip_fall_speed = missing_r8
       return
    endif
+   do e = 1, ens_size
+      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+   enddo
+
    if (microphysics_type == 2) then
-      call interpolate(state_vector, location, KIND_GRAUPEL_MIXING_RATIO, qg, istatus)
-      if (istatus /= 0) then
+      call interpolate_distrib(location, KIND_GRAUPEL_MIXING_RATIO, istatus, qg, state_ens_handle, win)
+      if ( all(istatus /= 0) ) then
          precip_fall_speed = missing_r8
          return
       endif
-      call interpolate(state_vector, location, KIND_SNOW_MIXING_RATIO, qs, istatus)
-      if (istatus /= 0) then
+      do e = 1, ens_size
+         if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+      enddo
+
+      call interpolate_distrib(location, KIND_SNOW_MIXING_RATIO, istatus, qs, state_ens_handle, win)
+      if ( all(istatus /= 0) ) then
          precip_fall_speed = missing_r8
          return
       endif
+      do e = 1, ens_size
+         if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+      enddo
    endif
+
    ! Done with Lin et al specific calls
-   call interpolate(state_vector, location, KIND_DENSITY, rho, istatus)
-   if (istatus /= 0) then
+   call interpolate_distrib(location, KIND_DENSITY, istatus, rho, state_ens_handle, win)
+   if ( all(istatus /= 0) ) then
       precip_fall_speed = missing_r8
       return
    endif
-   call interpolate(state_vector, location, KIND_TEMPERATURE, temp, istatus)
-   if (istatus /= 0) then
+   do e = 1, ens_size
+      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+   enddo
+
+   call interpolate_distrib(location, KIND_TEMPERATURE, istatus, temp, state_ens_handle, win)
+   if ( all(istatus /= 0) ) then
       precip_fall_speed = missing_r8
       return
    endif
-   call get_LK_precip_fall_speed(qr, qg, qs, rho, temp, precip_fall_speed)
+   do e = 1, ens_size
+      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+   enddo
+
+   do e = 1, ens_size
+      if (track_status(e) /= 0 ) then
+         precip_fall_speed(e) = missing_r8
+      else
+         call get_LK_precip_fall_speed(qr(e), qg(e), qs(e), rho(e), temp(e), precip_fall_speed(e))
+      endif
+   enddo
    ! Done with Lin et al or Kessler -
+
 else if (microphysics_type == 5 .and. allow_dbztowt_conv) then
    ! Provided reflectivity field - will estimate fall velocity using empirical relations
-   call get_expected_radar_ref(state_vector, location, refl, istatus)
-   if (istatus /= 0) then
+   call get_expected_radar_ref_distrib(state_ens_handle, win, location, refl, istatus)
+   if ( all(istatus /= 0) ) then
       precip_fall_speed = missing_r8
       return
    endif
-   call interpolate(state_vector, location, KIND_DENSITY, rho, istatus)
-   if (istatus /= 0) then
+   do e = 1, ens_size
+      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+   enddo
+   call interpolate_distrib(location, KIND_DENSITY, istatus, rho, state_ens_handle, win)
+   if ( all(istatus /= 0) ) then
       precip_fall_speed = missing_r8
       return
    endif
-   precip_fall_speed = dbztowt(refl, rho, missing_r8)
+   do e = 1, ens_size
+      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+   enddo
+
+   do e = 1, ens_size ! vectorize this routine?
+      precip_fall_speed(e) = dbztowt(refl(e), rho(e), missing_r8)
+   enddo
+
 else if (microphysics_type < 0) then
    ! User requested setting fall velocity to zero - use with caution
    precip_fall_speed = 0.0_r8
@@ -943,7 +1009,7 @@ else
 endif
 
 
-end subroutine get_expected_fall_velocity
+end subroutine get_expected_fall_velocity_distrib
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
@@ -976,14 +1042,15 @@ end subroutine read_radar_ref
 
 !----------------------------------------------------------------------
 
-subroutine get_expected_radar_ref(state_vector, location, ref, istatus)
+subroutine get_expected_radar_ref_distrib(state_ens_handle, win, location, ref, istatus)
 
 ! The main forward operator routine for radar reflectivity observations.
 
-real(r8),            intent(in)  :: state_vector(:)
+integer, intent(in)              :: win !> window for one sided communication
+type(ensemble_type)              :: state_ens_handle
 type(location_type), intent(in)  :: location
-real(r8),            intent(out) :: ref
-integer,             intent(out) :: istatus
+real(r8),            intent(out) :: ref(:)
+integer,             intent(out) :: istatus(:)
 
 ! Given a location and the state vector from one of the ensemble members,
 ! compute the model-predicted radar reflectivity that would be observed
@@ -997,19 +1064,25 @@ integer,             intent(out) :: istatus
 ! the routine "get_LK_reflectivity()" is called to compute the radar reflectivity
 ! factor value, Z, that corresponds to the hydrometeor and thermodynamic values.
 
-real(r8)      :: qr, qg, qs, rho, temp
-real(r8)      :: debug_location(3)
-logical       :: debug = .false.  ! set to .true. to enable debug printout
-logical, save :: first_time = .true.
+real(r8), allocatable :: qr(:), qg(:), qs(:), rho(:), temp(:)
+real(r8)              :: debug_location(3)
+logical               :: debug = .false.  ! set to .true. to enable debug printout
+logical, save         :: first_time = .true.
+integer               :: e, ens_size
+integer, allocatable  :: track_status(:)
 
 if ( .not. module_initialized ) call initialize_module
 
+ens_size = state_ens_handle%num_copies - 6
+allocate(qr(ens_size), qg(ens_size), qs(ens_size), rho(ens_size), temp(ens_size))
+allocate(track_status(ens_size))
+
 ! Start with known values before calling interpolate routines.
-qr   = 0.0_r8
-qg   = 0.0_r8
-qs   = 0.0_r8
-rho  = 0.0_r8
-temp = 0.0_r8
+qr(:)   = 0.0_r8
+qg(:)   = 0.0_r8
+qs(:)   = 0.0_r8
+rho(:)  = 0.0_r8
+temp(:) = 0.0_r8
 
 ! If the model can return radar reflectivity data directly, give it a chance
 ! to do so.  Otherwise, compute the various fields individually and then do
@@ -1017,8 +1090,8 @@ temp = 0.0_r8
 ! for the simple single-moment microphysics schemes (e.g., Kessler or Lin).
 
 ! Try to draw from state vector first
-call interpolate(state_vector, location, KIND_RADAR_REFLECTIVITY, ref, istatus)
-if (istatus /= 0) then
+call interpolate_distrib(location, KIND_RADAR_REFLECTIVITY, istatus, ref, state_ens_handle, win)
+if ( all(istatus /= 0) ) then !< @todo  How to deal with these istatuses
 
    ! If the user explicitly wanted to interpolate in the field, try to complain
    ! if it could not.  Note that the interp could fail for other reasons.
@@ -1031,66 +1104,96 @@ if (istatus /= 0) then
       endif
       return
    endif
+endif
 
+if ( any(istatus /= 0) ) then
+   track_status = istatus
    if (microphysics_type == 1 .or. microphysics_type == 2) then
 
-      call interpolate(state_vector, location, KIND_RAINWATER_MIXING_RATIO, &
-                       qr, istatus)
-      if (istatus /= 0) then
+      call interpolate_distrib(location, KIND_RAINWATER_MIXING_RATIO, istatus, &
+                       qr, state_ens_handle, win)
+      if ( all(istatus /= 0) ) then
          ref = missing_r8
          return
       endif
+      do e = 1, ens_size
+         if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+      enddo
 
       if (microphysics_type == 2) then
          ! Also need some ice vars
-         call interpolate(state_vector, location, KIND_GRAUPEL_MIXING_RATIO, &
-                          qg, istatus)
-         if (istatus /= 0) then
+         call interpolate_distrib(location, KIND_GRAUPEL_MIXING_RATIO, istatus, &
+                          qg, state_ens_handle, win)
+         if ( all(istatus /= 0) ) then
             ref = missing_r8
             return
          endif
+         do e = 1, ens_size
+            if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+         enddo
 
-         call interpolate(state_vector, location, KIND_SNOW_MIXING_RATIO, &
-                          qs, istatus)
-         if (istatus /= 0) then
+         call interpolate_distrib(location, KIND_SNOW_MIXING_RATIO, istatus, &
+                          qs, state_ens_handle, win)
+         if ( all(istatus /= 0) ) then
             ref = missing_r8
             return
          endif
-      endif
-      call interpolate(state_vector, location, KIND_DENSITY, rho, istatus)
-      if (istatus /= 0) then
-         ref = missing_r8
-         return
+         do e = 1, ens_size
+            if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+         enddo
       endif
 
-      call interpolate(state_vector, location, KIND_TEMPERATURE, temp, istatus)
-      if (istatus /= 0) then
-         ref = missing_r8
-         return
-      endif
+      call interpolate_distrib(location, KIND_DENSITY, istatus, rho, state_ens_handle, win)
+         if ( all(istatus /= 0) ) then
+            ref = missing_r8
+            return
+         endif
+         do e = 1, ens_size
+            if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+         enddo
 
-      call get_LK_reflectivity(qr, qg, qs, rho, temp, ref)
+      call interpolate_distrib(location, KIND_TEMPERATURE, istatus, temp, state_ens_handle, win)
+         if ( all(istatus /= 0) ) then
+            ref = missing_r8
+            return
+         endif
+         do e = 1, ens_size
+            if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+         enddo
 
-      ! Always convert to dbz.  Make sure the value, before taking the logarithm,
-      ! is always slightly positive.
-      ! tiny() is a fortran intrinsic function that is > 0 by a very small amount.
+      do e = 1, ens_size
+         if (track_status(e) /= 0 ) then
+            ref(e) = missing_r8
+         else
+            call get_LK_reflectivity(qr(e), qg(e), qs(e), rho(e), temp(e), ref(e))
+            ! Always convert to dbz.  Make sure the value, before taking the logarithm,
+            ! is always slightly positive.
+            ! tiny() is a fortran intrinsic function that is > 0 by a very small amount.
+            ref(e) = 10.0_r8 * log10(max(tiny(ref(e)), ref(e)))
+         endif
+      enddo
 
-      ref = 10.0_r8 * log10(max(tiny(ref), ref))
    else
       ! not in state vector and not Lin et al or Kessler so can't do reflectivity
-      ref = missing_r8
+      ref(:) = missing_r8
    endif
 endif
 
-if ((apply_ref_limit_to_fwd_op) .and. &
-    (ref < reflectivity_limit_fwd_op) .and. (ref /= missing_r8)) then
-   ref = lowest_reflectivity_fwd_op
-endif
+do e = 1, ens_size
+   if ((apply_ref_limit_to_fwd_op) .and. &
+       (ref(e) < reflectivity_limit_fwd_op) .and. (ref(e) /= missing_r8)) then
+      ref(e) = lowest_reflectivity_fwd_op
+   endif
+enddo
 
-! Do not return a missing data value with a successful return code.
-if (ref == missing_r8 .and. istatus == 0) then
-   istatus = 1
-endif
+istatus = track_status
+
+! Do not return a missing data value with a successful return code. HK when does this happen?
+do e = 1, ens_size
+   if (ref(e) == missing_r8 .and. istatus(e) == 0) then
+      istatus(e) = 1
+   endif
+enddo
 
 if (debug) then
    debug_location = get_location(location)
@@ -1108,7 +1211,7 @@ if (debug) then
    print *, 'istatus: ', istatus
 endif
 
-end subroutine get_expected_radar_ref
+end subroutine get_expected_radar_ref_distrib
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
@@ -1548,13 +1651,17 @@ use        types_mod, only : r8, missing_r8, t_kelvin
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use     location_mod, only : location_type, set_location, get_location , write_location, &
                              read_location
-use  assim_model_mod, only : interpolate
+use  assim_model_mod, only : interpolate_distrib
 use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_VAPOR_MIXING_RATIO, KIND_PRESSURE
+
+use data_structure_mod, only : ensemble_type !HK
+
+use mpi_utilities_mod !HK temporary
 
 implicit none
 private
 
-public :: get_expected_dew_point
+public :: get_expected_dew_point_distrib
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -1577,25 +1684,30 @@ end subroutine initialize_module
 
 
 
-subroutine get_expected_dew_point(state_vector, location, key, td, istatus)
+subroutine get_expected_dew_point_distrib(state_ens_handle, win, location, key, td, istatus)
 
-real(r8),            intent(in)  :: state_vector(:)
+type(ensemble_type)              :: state_ens_handle
+integer, intent(in)              :: win !> window for one sided communication
 type(location_type), intent(in)  :: location
 integer,             intent(in)  :: key
-real(r8),            intent(out) :: td               ! dewpoint (K)
-integer,             intent(out) :: istatus
+real(r8),            intent(out) :: td(:)              ! dewpoint (K)
+integer,             intent(out) :: istatus(:)
 
 integer  :: ipres
-real(r8) :: qv                            ! water vapor mixing ratio (kg/kg)
-real(r8) :: e_mb                          ! water vapor pressure (mb)
-real(r8), PARAMETER :: e_min = 0.001_r8   ! threshold for minimum vapor pressure (mb),
+real(r8), allocatable :: qv(:)            ! water vapor mixing ratio (kg/kg)
+real(r8), allocatable :: e_mb(:)          ! water vapor pressure (mb)
+real(r8),   PARAMETER :: e_min = 0.001_r8 ! threshold for minimum vapor pressure (mb),
                                           !   to avoid problems near zero in Bolton's equation
-real(r8) :: p_Pa                          ! pressure (Pa)
-real(r8) :: p_mb                          ! pressure (mb)
-
+real(r8), allocatable :: p_Pa(:)          ! pressure (Pa)
+real(r8), allocatable :: p_mb(:)          ! pressure (mb)
+integer  :: e, ens_size
+real(r8), allocatable :: track_status(:)
 character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
+
+ens_size = state_ens_handle%num_copies -6
+allocate(qv(ens_size), p_Pa(ens_size), p_mb(ens_size), e_mb(ens_size), track_status(ens_size))
 
 if(key == 1) then
    ipres = KIND_PRESSURE
@@ -1607,26 +1719,36 @@ else
         source, revision, revdate)
 endif
 
-call interpolate(state_vector, location, ipres, p_Pa, istatus)
-if (istatus /= 0) then
-   td = missing_r8
+call interpolate_distrib(location, ipres, istatus, p_Pa, state_ens_handle, win)
+if ( all(istatus /= 0) ) then
+   td(:) = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_VAPOR_MIXING_RATIO, qv, istatus)
-if (istatus /= 0) then
-   td = missing_r8
+
+track_status = istatus
+
+call interpolate_distrib(location, KIND_VAPOR_MIXING_RATIO, istatus, qv, state_ens_handle, win)
+if ( all(istatus /= 0) ) then
+   td(:) = missing_r8
    return
 endif
-if (qv < 0.0_r8 .or. qv >= 1.0_r8) then
-   td = missing_r8
-   if (istatus == 0) istatus = 1
-   return
-endif
+
+do e = 1, ens_size
+   if (qv(e) < 0.0_r8 .or. qv(e) >= 1.0_r8) then
+      if (istatus(e) == 0) istatus(e) = 1
+   endif
+enddo
+do e = 1, ens_size
+   if (istatus(e) /= 0 ) then
+      track_status(e) = istatus(e)
+      td(e) = missing_r8
+   endif
+enddo
 
 !------------------------------------------------------------------------------
 !  Compute water vapor pressure.
 !------------------------------------------------------------------------------
-
+!HK can you get weird problems if some values are missing_r8?
 p_mb = p_Pa * 0.01_r8
 
 e_mb = qv * p_mb / (0.622_r8 + qv)
@@ -1638,7 +1760,13 @@ e_mb = max(e_mb, e_min)
 
 td = t_kelvin + (243.5_r8 / ((17.67_r8 / log(e_mb/6.112_r8)) - 1.0_r8) )
 
-end subroutine get_expected_dew_point
+do e = 1, ens_size
+  if (track_status(e) /= 0 ) td(e) = missing_r8
+enddo
+
+istatus = track_status
+
+end subroutine get_expected_dew_point_distrib
 
 !----------------------------------------------------------------------------
 
@@ -1653,17 +1781,18 @@ end module obs_def_dew_point_mod
                                                                               
 module obs_def_rel_humidity_mod
 
-use        types_mod, only : r8, missing_r8, L_over_Rv
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
-use     location_mod, only : location_type, set_location, get_location, write_location, &
+use          types_mod, only : r8, missing_r8, L_over_Rv
+use      utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
+use       location_mod, only : location_type, set_location, get_location, write_location, &
                              read_location, vert_is_pressure
-use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_PRESSURE, KIND_VAPOR_MIXING_RATIO
+use    assim_model_mod, only : interpolate_distrib
+use       obs_kind_mod, only : KIND_TEMPERATURE, KIND_PRESSURE, KIND_VAPOR_MIXING_RATIO
+use data_structure_mod, only : ensemble_type !HK
 
 implicit none
 private
 
-public :: get_expected_relative_humidity
+public :: get_expected_relative_humidity_distrib
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -1691,36 +1820,53 @@ end subroutine initialize_module
 
 !----------------------------------------------------------------------------
 
-subroutine get_expected_relative_humidity(state_vector, location, rh, istatus)
+subroutine get_expected_relative_humidity_distrib(state_ens_handle, win, location, rh, istatus)
 
-real(r8),            intent(in)  :: state_vector(:)
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: win !> window for one sided communication
 type(location_type), intent(in)  :: location
-real(r8),            intent(out) :: rh     ! relative humidity (fraction)
-integer,             intent(out) :: istatus
+real(r8),            intent(out) :: rh(:)    ! relative humidity (fraction)
+integer,             intent(out) :: istatus(:)
 
-real(r8) :: qvap, tmpk, xyz(3), pres, es, qsat
+real(r8), allocatable :: qvap(:), tmpk(:), pres(:), es(:), qsat(:)
+real(r8)              :: xyz(3)
+integer,  allocatable :: track_status(:)
+integer              :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
 
+ens_size = state_ens_handle%num_copies - 6 
+
+allocate(qvap(ens_size), tmpk(ens_size), pres(ens_size), es(ens_size), qsat(ens_size))
+allocate(track_status(ens_size))
+
 !  interpolate the mixing ratio to the location
-call interpolate(state_vector, location, KIND_VAPOR_MIXING_RATIO, qvap, istatus)
-if (istatus /= 0 .or. qvap < 0.0_r8) then
-   if (istatus == 0) then
-      qvap = epsilon(0.0_r8)
-   else
-      rh = missing_r8
-      if (istatus == 0) istatus = 99
-      return
+call interpolate_distrib(location, KIND_VAPOR_MIXING_RATIO, istatus, qvap, state_ens_handle, win)
+do e = 1, ens_size
+   if (istatus(e) /= 0 .or. qvap(e) < 0.0_r8) then
+      if (istatus(e) == 0) then
+         qvap(e) = epsilon(0.0_r8)
+      else
+         rh(e) = missing_r8
+         if (istatus(e) == 0) istatus(e) = 99 !HK early return?
+      endif
    endif
-endif
+enddo
+
+track_status = istatus
 
 !  interpolate the temperature to the desired location
-call interpolate(state_vector, location, KIND_TEMPERATURE, tmpk, istatus)
-if (istatus /= 0 .or. tmpk <= 0.0_r8) then
-   rh = missing_r8
-   if (istatus == 0) istatus = 99
-   return
-endif
+call interpolate_distrib(location, KIND_TEMPERATURE, istatus, tmpk, state_ens_handle, win)
+do e = 1, ens_size
+   if (istatus(e) /= 0 .or. tmpk(e) <= 0.0_r8) then
+      rh(e) = missing_r8
+      if (istatus(e) == 0) istatus(e) = 99
+   endif
+enddo
+
+do e = 1, ens_size
+   if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+enddo
 
 !  interpolate the pressure, if observation location is not pressure
 if ( vert_is_pressure(location) ) then
@@ -1728,44 +1874,58 @@ if ( vert_is_pressure(location) ) then
    pres = xyz(3)
 else
    ! pressure comes back in pascals (not hPa or mb)
-   call interpolate(state_vector, location, KIND_PRESSURE, pres, istatus)
-   if (istatus /= 0 .or. pres <= 0.0_r8 .or. pres >= 120000.0_r8)  then
-      rh = missing_r8
-      if (istatus == 0) istatus = 99
-      return
-   endif
+   call interpolate_distrib(location, KIND_PRESSURE, istatus, pres, state_ens_handle, win)
+   do e = 1, ens_size
+      if (istatus(e) /= 0 .or. pres(e) <= 0.0_r8 .or. pres(e) >= 120000.0_r8)  then
+         rh(e) = missing_r8
+         if (istatus(e) == 0) istatus(e) = 99
+      endif
+   enddo
 endif
 
-!  Compute the rh
+do e = 1, ens_size
+   if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+enddo
+
+!  Compute the rh - HK is having missing_r8 going to cause problems
 es   = 611.0_r8 * exp(L_over_Rv * (1.0_r8 / 273.0_r8 - 1.0_r8 / tmpk))
 qsat = 0.622_r8 * es / (pres - es)
 rh   = qvap / qsat
 
-!  Check for unreasonable values and return limits
-if (rh < MIN_VALUE) then
-   if (first_time_warn_low) then
-      write(msgstring, '(A,F12.6)') 'values lower than low limit detected, e.g.', rh
-      call error_handler(E_MSG,'get_expected_relative_humidity', msgstring,      &
-                         text2='all values lower than 1e-9 will be set to 1e-9', &
-                         text3='this message will only print once')
-      first_time_warn_low = .false.
-   endif
-   rh = MIN_VALUE
-endif
+do e = 1, ens_size
 
-if (rh > MAX_VALUE) then
-   if (first_time_warn_high) then
-      write(msgstring, '(A,F12.6)') 'values higher than high limit detected, e.g.', rh
-      call error_handler(E_MSG,'get_expected_relative_humidity', msgstring,      &
-                         text2='all values larger than 1.1 will be set to 1.1', &
-                         text3='this message will only print once')
-      first_time_warn_high = .false.
+   if (track_status(e) == 0 ) then
+      !  Check for unreasonable values and return limits
+      if (rh(e) < MIN_VALUE) then
+         if (first_time_warn_low) then
+            write(msgstring, '(A,F12.6)') 'values lower than low limit detected, e.g.', rh
+            call error_handler(E_MSG,'get_expected_relative_humidity', msgstring,      &
+                               text2='all values lower than 1e-9 will be set to 1e-9', &
+                               text3='this message will only print once')
+            first_time_warn_low = .false.
+         endif
+         rh(e) = MIN_VALUE
+      endif
+
+      if (rh(e) > MAX_VALUE) then
+         if (first_time_warn_high) then
+            write(msgstring, '(A,F12.6)') 'values higher than high limit detected, e.g.', rh
+            call error_handler(E_MSG,'get_expected_relative_humidity', msgstring,      &
+                            text2='all values larger than 1.1 will be set to 1.1', &
+                               text3='this message will only print once')
+            first_time_warn_high = .false.
+         endif
+         rh(e) = MAX_VALUE
+      endif
+   else
+      rh(e) = missing_r8 ! put missing values back in
    endif
-   rh = MAX_VALUE
-endif
+enddo
+
+deallocate(qvap, tmpk, pres, es, qsat)
 
 return
-end subroutine get_expected_relative_humidity
+end subroutine get_expected_relative_humidity_distrib
 
 !----------------------------------------------------------------------------
 
@@ -1780,17 +1940,19 @@ end module obs_def_rel_humidity_mod
                                                                               
 module obs_def_altimeter_mod
 
-use        types_mod, only : r8, missing_r8, t_kelvin
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
-use     location_mod, only : location_type, set_location, get_location , write_location, &
+use          types_mod, only : r8, missing_r8, t_kelvin
+use      utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
+use       location_mod, only : location_type, set_location, get_location , write_location, &
                              read_location
-use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_SURFACE_ELEVATION
+use    assim_model_mod, only : interpolate_distrib
+use       obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_SURFACE_ELEVATION
+use data_structure_mod, only : ensemble_type !HK
+
 
 implicit none
 private
 
-public :: get_expected_altimeter, compute_altimeter
+public :: get_expected_altimeter_distrib, compute_altimeter_distrib
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -1812,59 +1974,81 @@ module_initialized = .true.
 end subroutine initialize_module
 
 
-subroutine get_expected_altimeter(state_vector, location, altimeter_setting, istatus)
+subroutine get_expected_altimeter_distrib(state_ens_handle, win, location, altimeter_setting, istatus, n)
 
-real(r8),            intent(in)  :: state_vector(:)
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: win !> window for one sided communication
 type(location_type), intent(in)  :: location
-real(r8),            intent(out) :: altimeter_setting     ! altimeter (hPa)
-integer,             intent(out) :: istatus
+real(r8),            intent(out) :: altimeter_setting(n)     ! altimeter (hPa)
+integer,             intent(out) :: istatus(:)
+integer,             intent(in)  :: n !> get bounds error if I don't have this
 
-real(r8) :: psfc                ! surface pressure value   (Pa)
-real(r8) :: hsfc                ! surface elevation level  (m above SL)
+real(r8), allocatable :: psfc(:)                ! surface pressure value   (Pa)
+real(r8), allocatable :: hsfc(:)                ! surface elevation level  (m above SL)
+integer,  allocatable :: track_status(:)
+integer               :: e, ens_size
+real(r8), allocatable :: altimeter_temp(:)
 
 if ( .not. module_initialized ) call initialize_module
 
+ens_size = state_ens_handle%num_copies - 6
+allocate(psfc(ens_size), hsfc(ens_size), track_status(ens_size))
+allocate(altimeter_temp(ens_size))
+
 !  interpolate the surface pressure to the desired location
-call interpolate(state_vector, location, KIND_SURFACE_PRESSURE, psfc, istatus)
-if (istatus /= 0) then
-   altimeter_setting = missing_r8
-   return
-endif
+call interpolate_distrib(location, KIND_SURFACE_PRESSURE, istatus, psfc, state_ens_handle, win)
+do e = 1, ens_size
+   if (istatus(e) /= 0) then
+      altimeter_setting(e) = missing_r8
+   endif
+enddo
+track_status = istatus
 
 !  interpolate the surface elevation to the desired location
-call interpolate(state_vector, location, KIND_SURFACE_ELEVATION, hsfc, istatus)
-if (istatus /= 0) then
-   altimeter_setting = missing_r8
-   return
-endif
+call interpolate_distrib(location, KIND_SURFACE_ELEVATION, istatus, hsfc, state_ens_handle, win)
+do e = 1, ens_size
+   if (istatus(e) /= 0) then
+      altimeter_setting(e) = missing_r8
+      track_status(e) = istatus(e)
+   endif
+enddo
 
 !  Compute the altimeter setting given surface pressure and height, altimeter is hPa
-altimeter_setting = compute_altimeter(psfc * 0.01_r8, hsfc)
+altimeter_temp = compute_altimeter_distrib(psfc * 0.01_r8, hsfc, ens_size)
 
-if (altimeter_setting < 880.0_r8 .or. altimeter_setting >= 1100.0_r8) then
-   altimeter_setting = missing_r8
-   if (istatus == 0) istatus = 1
-   return
-endif
+altimeter_setting = altimeter_temp
+
+istatus = track_status
+
+do e = 1, ens_size
+   if (altimeter_setting(e) < 880.0_r8 .or. altimeter_setting(e) >= 1100.0_r8) then
+      altimeter_setting(e) = missing_r8
+      if (istatus(e) == 0) istatus(e) = 1
+   endif
+enddo
+
+deallocate(psfc, hsfc, track_status)
 
 return
-end subroutine get_expected_altimeter
+end subroutine get_expected_altimeter_distrib
 
+!----------------------------------------------------------------------
 
-function compute_altimeter(psfc, hsfc)
+function compute_altimeter_distrib(psfc, hsfc, n)
 
 real(r8), parameter :: k1 = 0.190284_r8
 real(r8), parameter :: k2 = 8.4228807E-5_r8
 
-real(r8), intent(in) :: psfc  !  (hPa)
-real(r8), intent(in) :: hsfc  !  (m above MSL)
+integer,  intent(in) :: n
+real(r8), intent(in) :: psfc(n)  !  (hPa)
+real(r8), intent(in) :: hsfc(n)  !  (m above MSL)
 
-real(r8) :: compute_altimeter !  (hPa)
+real(r8) :: compute_altimeter_distrib(n) !  (hPa)
 
-compute_altimeter = ((psfc - 0.3_r8) ** k1 + k2 * hsfc) ** (1.0_r8 / k1)
+compute_altimeter_distrib = ((psfc - 0.3_r8) ** k1 + k2 * hsfc) ** (1.0_r8 / k1)
 
 return
-end function compute_altimeter
+end function compute_altimeter_distrib
 
 !----------------------------------------------------------------------------
 
@@ -1891,18 +2075,20 @@ use     location_mod, only : location_type, set_location, get_location, &
                              VERTISHEIGHT
 use time_manager_mod, only : time_type, read_time, write_time, &
                              set_time, set_time_missing, interactive_time
-use  assim_model_mod, only : interpolate
+use  assim_model_mod, only : interpolate_distrib
 
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
                              KIND_V_WIND_COMPONENT, KIND_SURFACE_PRESSURE, &
                              KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
                              KIND_PRESSURE, KIND_GPSRO
 
+use data_structure_mod, only : ensemble_type !HK
+
 implicit none
 private
 
 public :: set_gpsro_ref, get_gpsro_ref, write_gpsro_ref, read_gpsro_ref, &
-          get_expected_gpsro_ref, interactive_gpsro_ref
+          get_expected_gpsro_ref_distrib, interactive_gpsro_ref
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -2198,7 +2384,7 @@ write(*, *)
 
 end subroutine interactive_gpsro_ref
 
- subroutine get_expected_gpsro_ref(state_vector, location, gpskey, ro_ref, istatus)
+ subroutine get_expected_gpsro_ref_distrib(state_ens_handle, win, location, gpskey, ro_ref, istatus)
 !------------------------------------------------------------------------------
 !
 ! Purpose: Calculate GPS RO local refractivity or non_local (integrated)
@@ -2221,25 +2407,38 @@ end subroutine interactive_gpsro_ref
 !------------------------------------------------------------------------------
 implicit none
 
-real(r8),            intent(in)  :: state_vector(:)
+!> @todo this is completely broken
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: win !> window for one sided communication
 type(location_type), intent(in)  :: location
 integer,             intent(in)  :: gpskey
-real(r8),            intent(out) :: ro_ref
-integer,             intent(out) :: istatus
+real(r8),            intent(out) :: ro_ref(:)
+integer,             intent(out) :: istatus(:)
 
 ! local variables
 
 real(r8) :: nx, ny, nz       ! unit tangent direction of ray at perigee
 real(r8) :: xo, yo, zo       ! perigee location in Cartesian coordinate
 
-real(r8) :: ref_perigee, ref00, ref1, ref2, dist_to_perigee
-real(r8) :: phase
-real(r8) :: xx, yy, zz, height1, lat1, lon1, delta_phase1, delta_phase2
+real(r8) :: height1, lat1, lon1
 
-integer  :: iter, istatus0
-real(r8) :: lon, lat, height, obsloc(3)
+real(r8), allocatable :: phase(:)
+real(r8), allocatable :: delta_phase1(:), delta_phase2(:)
+real(r8), allocatable :: ref_perigee(:), ref1(:), ref2(:), dist_to_perigee(:)
+real(r8), allocatable :: xx(:), yy(:), zz(:)
+integer               :: iter
+integer,  allocatable :: istatus0(:), track_status(:)
+real(r8), allocatable :: ref00(:)
+real(r8)              :: lon, lat, height, obsloc(3)
+integer               :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
+
+ens_size = state_ens_handle%num_copies -6
+allocate(istatus0(ens_size), track_status(ens_size))
+allocate(ref00(ens_size), ref_perigee(ens_size), ref1(ens_size), ref2(ens_size))
+allocate(xx(ens_size), yy(ens_size), zz(ens_size))
+allocate(delta_phase1(ens_size), delta_phase2(ens_size), phase(ens_size))
 
 if ( .not. vert_is_height(location)) then
    write(string1, *) 'vertical location must be height; gps obs key ', gpskey
@@ -2249,29 +2448,31 @@ endif
 
 obsloc   = get_location(location)
 
-
 lon      = obsloc(1)                       ! degree: 0 to 360
 lat      = obsloc(2)                       ! degree: -90 to 90
 height   = obsloc(3)                       ! (m)
 
 ! calculate refractivity at perigee
 
-call ref_local(state_vector, location, height, lat, lon, ref_perigee, istatus0)
+call ref_local_distrib(state_ens_handle, win, location, height, lat, lon, ref_perigee, istatus0)
 ! if istatus > 0, the interpolation failed and we should return failure now.
-if(istatus0 > 0) then
+
+if(all(istatus0 > 0)) then
    istatus = istatus0
    ro_ref = missing_r8
    return
 endif
 
+track_status = istatus
+
 choose: if(gps_data(gpskey)%gpsro_ref_form == 'GPSREF') then
     ! use local refractivity
-
     ro_ref = ref_perigee * 1.0e6      ! in (N-1)*1.0e6, same with obs
 
 else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
 
     ! otherwise, use non_local refractivity(excess phase delay)
+    !> @todo I have broken this.
 
     ! Initialization
     phase = 0.0_r8
@@ -2282,8 +2483,7 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
     nz = gps_data(gpskey)%ray_direction(3)
 
     ! convert location of the perigee from geodetic to Cartesian coordinate
-
-    call geo2carte (height, lat, lon, xo, yo, zo, gps_data(gpskey)%rfict )
+    call geo2carte(height, lat, lon, xo, yo, zo, gps_data(gpskey)%rfict )
 
     ! currently, use a straight line passing the perigee point as ray model.
     ! later, more sophisticated ray models can be used.
@@ -2297,12 +2497,13 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
     ref2 = ref_perigee
 
     iter = 0
-    do
+    do 
 
        iter = iter + 1
        dist_to_perigee = dist_to_perigee + gps_data(gpskey)%step_size
 
        !  integrate to one direction of the ray for one step
+       ! HK These are now different for each ensemble member
        xx = xo + dist_to_perigee * nx
        yy = yo + dist_to_perigee * ny
        zz = zo + dist_to_perigee * nz
@@ -2310,17 +2511,23 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
        ! convert the location of the point to geodetic coordinates
        ! height(m), lat, lon(deg)
 
-       call carte2geo(xx, yy, zz, height1, lat1, lon1, gps_data(gpskey)%rfict )
-       if (height1 >= gps_data(gpskey)%ray_top) exit
+       do e = 1, ens_size
+          !call carte2geo( xx(e), yy(e), zz(e), height1, lat1, lon1, gps_data(gpskey)%rfict )
+          !if (height1(e) >= gps_data(gpskey)%ray_top) exit !HK Is height1 the same for all ensemble members? NO, of course not
+         call error_handler(E_ERR, 'get_expected_gpsro_ref_distrib', 'broken Helen obs_def_mod.f90')
+       enddo
 
        ! get the refractivity at this ray point(ref00)
-       call ref_local(state_vector, location, height1, lat1, lon1, ref00, istatus0)
-       ! when any point of the ray is problematic, return failure
-       if(istatus0 > 0) then
-         istatus = istatus0
-         ro_ref = missing_r8
-         return
-       endif
+       call ref_local_distrib(state_ens_handle, win, location, height1, lat1, lon1, ref00, istatus0)
+       do e = 1, ens_size
+          ! when any point of the ray is problematic, return failure
+          if(istatus0(e) > 0) then
+            istatus(e) = istatus0(e)
+            ro_ref(e) = missing_r8
+          endif
+       enddo
+
+       track_status = istatus
 
        ! get the excess phase due to this ray interval
        delta_phase1 = (ref1 + ref00) * gps_data(gpskey)%step_size * 0.5_r8
@@ -2333,16 +2540,17 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
        yy = yo - dist_to_perigee * ny
        zz = zo - dist_to_perigee * nz
 
-       call carte2geo (xx, yy, zz, height1, lat1, lon1, gps_data(gpskey)%rfict )
+       call carte2geo( xx(e), yy(e), zz(e), height1, lat1, lon1, gps_data(gpskey)%rfict )
 
        ! get the refractivity at this ray point(ref00)
-       call ref_local(state_vector, location, height1, lat1, lon1, ref00, istatus0)
+       call ref_local_distrib(state_ens_handle, win, location, height1, lat1, lon1, ref00, istatus0)
        ! when any point of the ray is problematic, return failure
-       if(istatus0 > 0) then
-         istatus = istatus0
-         ro_ref = missing_r8
-         return
-       endif
+       do e = 1, ens_size
+          if(istatus0(e) > 0) then
+            track_status(e) = istatus0(e)
+            ro_ref(e) = missing_r8
+          endif
+       enddo
 
        ! get the excess phase due to this ray interval
        delta_phase2 = (ref2 + ref00) * gps_data(gpskey)%step_size * 0.5_r8
@@ -2363,22 +2571,28 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
 
 endif choose
 
-! if the original height was too high, for example.  do not return a
-! negative or 0 excess phase or refractivity.
-if (ro_ref == missing_r8 .or. ro_ref <= 0.0_r8) then
-   istatus = 5
-   ro_ref = missing_r8
-   return
-endif
+istatus = track_status
+
+! Putting missing_r8 back in for failed ensemble members
+do e = 1, ens_size
+   if( istatus(e) /= 0 ) ro_ref(e) = missing_r8
+   ! if the original height was too high, for example.  do not return a
+   ! negative or 0 excess phase or refractivity.
+   if (ro_ref(e) == missing_r8 .or. ro_ref(e) <= 0.0_r8) then
+      istatus(e) = 5
+      ro_ref(e) = missing_r8
+   endif
+enddo
 
 ! ended ok, return local refractivity or non-local excess phase accumulated value
-istatus = 0
+!istatus = 0 !HK This is annoying 
+!> @todo check the istatus return 
 
-end subroutine get_expected_gpsro_ref
+end subroutine get_expected_gpsro_ref_distrib
 
 
 
- subroutine ref_local(state_vector, location, height, lat, lon, ref00, istatus0)
+ subroutine ref_local_distrib(state_ens_handle, win, location, height, lat, lon, ref00, istatus0)
 !------------------------------------------------------------------------------
 !
 ! Calculate local refractivity at any GPS ray point (height, lat, lon)
@@ -2392,19 +2606,26 @@ end subroutine get_expected_gpsro_ref
 !------------------------------------------------------------------------------
 implicit none
 
-real(r8), intent(in) :: state_vector(:)
-real(r8), intent(in) :: lon, lat, height
-
-real(r8), intent(out) :: ref00
-integer,  intent(out) :: istatus0
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: win !> window for one sided communication
+real(r8),            intent(in)  :: lon, lat, height
+real(r8),            intent(out) :: ref00(:)
+integer,             intent(out) :: istatus0(:)
 
 real(r8), parameter::  rd = 287.05_r8, rv = 461.51_r8, c1 = 77.6d-6 , &
                        c2 = 3.73d-1,  rdorv = rd/rv
-real(r8) :: lon2, t, q, p, tv, ew
-type(location_type) :: location, location2
-integer :: which_vert
+
+integer,  allocatable :: track_status(:)
+integer               :: e, ens_size
+real(r8)              :: lon2
+real(r8), allocatable :: t(:), q(:), p(:), tv(:), ew(:)
+type(location_type)   :: location, location2
+integer               :: which_vert
 
 if ( .not. module_initialized ) call initialize_module
+
+ens_size = state_ens_handle%num_copies -6 ! This could be n
+allocate(t(ens_size), q(ens_size), p(ens_size), tv(ens_size), ew(ens_size), track_status(ens_size))
 
 ! for integration of GPS ray path beyond the wraparound point
 lon2 = lon
@@ -2419,12 +2640,21 @@ location2 = set_location(lon2, lat, height,  which_vert)
 istatus0 = 3
 ref00 = missing_r8
 
-call interpolate(state_vector, location2,  KIND_TEMPERATURE,       t, istatus0)
-if (istatus0 > 0) return
-call interpolate(state_vector, location2,  KIND_SPECIFIC_HUMIDITY, q, istatus0)
-if (istatus0 > 0) return
-call interpolate(state_vector, location2,  KIND_PRESSURE,          p, istatus0)
-if (istatus0 > 0) return
+call interpolate_distrib(location2,  KIND_TEMPERATURE, istatus0,  t,  state_ens_handle, win)
+if (all(istatus0 > 0)) return
+track_status = istatus0
+
+call interpolate_distrib(location2, KIND_SPECIFIC_HUMIDITY, istatus0, q, state_ens_handle, win)
+if (all(istatus0 > 0)) return
+do e = 1, ens_size
+   if ( istatus0(e) /= 0 ) track_status(e) = istatus0(e)
+enddo
+
+call interpolate_distrib(location2,  KIND_PRESSURE, istatus0, p, state_ens_handle, win)
+if (all(istatus0 > 0)) return
+do e = 1, ens_size
+   if ( istatus0(e) /= 0 ) track_status(e) = istatus0(e)
+enddo
 
 !  required variable units for calculation of GPS refractivity
 !   t :  Kelvin, from top to bottom
@@ -2437,10 +2667,14 @@ tv    = t * (1.0_r8+(rv/rd - 1.0_r8)*q)         ! virtual temperature
 ew    = q * p/(rdorv + (1.0_r8-rdorv)*q )
 ref00 = c1*p/t + c2*ew/(t**2)              ! (N-1)
 
-! now we have succeeded, set istatus to good
-istatus0 = 0
+istatus0 = track_status
 
-end subroutine ref_local
+! put failed copies back in
+do e = 1, ens_size
+   if( istatus0(e) /= 0 ) ref00(e) = missing_r8
+enddo
+
+end subroutine ref_local_distrib
 
 
  subroutine geo2carte (s1, s2, s3, x1, x2, x3, rfict0)
@@ -2522,17 +2756,19 @@ module obs_def_vortex_mod
 use        types_mod, only : r8, missing_r8, ps0, PI, gravity
 use    utilities_mod, only : register_module, error_handler, E_ERR
 use     location_mod, only : location_type, write_location, read_location
-use  assim_model_mod, only : interpolate
+use  assim_model_mod, only : interpolate_distrib
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                              KIND_TEMPERATURE, KIND_VERTICAL_VELOCITY, &
                              KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY, &
                              KIND_VORTEX_LAT, KIND_VORTEX_LON, KIND_VORTEX_PMIN, &
                              KIND_VORTEX_WMAX
 
+use data_structure_mod, only : ensemble_type !HK
+
 implicit none
 private
 
-public :: get_expected_vortex_info
+public :: get_expected_vortex_info_distrib
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -2558,7 +2794,7 @@ end subroutine initialize_module
 
 !----------------------------------------------------------------------
 
-subroutine get_expected_vortex_info(state_vector, location, vinfo, whichinfo, istatus)
+subroutine get_expected_vortex_info_distrib(state_ens_handle, win, location, vinfo, whichinfo, istatus)
 
 !
 ! Return vortex info according to whichinfo
@@ -2567,31 +2803,35 @@ subroutine get_expected_vortex_info(state_vector, location, vinfo, whichinfo, is
 ! whichinfo='pmi', vinfo =  minimum sea level pressure
 !
 
-real(r8),            intent(in)  :: state_vector(:)
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: win !> window for one sided communication
 type(location_type), intent(in)  :: location
 character(len=3),    intent(in)  :: whichinfo
-real(r8),            intent(out) :: vinfo
-integer,             intent(out) :: istatus
+real(r8),            intent(out) :: vinfo(:)
+integer,             intent(out) :: istatus(:)
+
+integer :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
 
 if (whichinfo == 'lat') then
-   call interpolate(state_vector, location, KIND_VORTEX_LAT, vinfo, istatus)
+   call interpolate_distrib(location, KIND_VORTEX_LAT, istatus, vinfo, state_ens_handle, win)
 else if (whichinfo == 'lon') then
-   call interpolate(state_vector, location, KIND_VORTEX_LON, vinfo, istatus)
+   call interpolate_distrib(location, KIND_VORTEX_LON, istatus, vinfo, state_ens_handle, win)
 else if (whichinfo == 'pmi') then
-   call interpolate(state_vector, location, KIND_VORTEX_PMIN, vinfo, istatus)
+   call interpolate_distrib(location, KIND_VORTEX_PMIN, istatus, vinfo, state_ens_handle, win)
 else if (whichinfo == 'wma') then
-   call interpolate(state_vector, location, KIND_VORTEX_WMAX, vinfo, istatus)
+   call interpolate_distrib(location, KIND_VORTEX_WMAX, istatus, vinfo, state_ens_handle, win)
 else
 endif
 
-if (istatus /= 0) then
-   vinfo = missing_r8
-   return
-endif
+do e = 1, ens_size
+   if (istatus(e) /= 0) then
+      vinfo(e) = missing_r8
+   endif
+enddo
 
-end subroutine get_expected_vortex_info
+end subroutine get_expected_vortex_info_distrib
 
 end module obs_def_vortex_mod
                                                                               
@@ -2608,13 +2848,16 @@ use        types_mod, only : r8, missing_r8, gravity, gas_constant, gas_constant
 use    utilities_mod, only : register_module
 use     location_mod, only : location_type, set_location, get_location , &
                              VERTISSURFACE, VERTISPRESSURE, VERTISHEIGHT
-use  assim_model_mod, only : interpolate
+use  assim_model_mod, only : interpolate_distrib
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE
+
+use data_structure_mod, only : ensemble_type !HK
+
 
 implicit none
 private
 
-public :: get_expected_thickness
+public :: get_expected_thickness_distrib
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -2637,7 +2880,7 @@ end subroutine initialize_module
 
 
 
-subroutine get_expected_thickness(state_vector, location, thickness, istatus)
+subroutine get_expected_thickness_distrib(state_ens_handle, win, location, thickness, istatus)
 !-----------------------------------------------------------------------------
 ! inputs:
 !    state_vector:    DART state vector
@@ -2650,27 +2893,37 @@ subroutine get_expected_thickness(state_vector, location, thickness, istatus)
 !---------------------------------------------
 implicit none
 
-real(r8),            intent(in)  :: state_vector(:)
+type(ensemble_type)              :: state_ens_handle
+integer, intent(in)              :: win !> window for one sided communication
 type(location_type), intent(in)  :: location
-real(r8),            intent(out) :: thickness
-integer,             intent(out) :: istatus
+real(r8),            intent(out) :: thickness(:)
+integer,             intent(out) :: istatus(:)
 
 ! local variables
 
+integer :: k
 integer, parameter :: nlevel = 9, num_press_int = 10
-integer  :: istatus0, istatus2,  k
 real(r8) :: lon, lat, pressure, obsloc(3), obs_level(nlevel), press(num_press_int+1)
 real(r8) :: press_top, press_bot, press_int
+
+integer,  allocatable :: istatus0(:), istatus2(:), track_status(:)
 
 data  obs_level/85000.0, 70000.0, 50000.0, 40000.0, 30000.0, 25000.0, 20000.0, 15000.0, 10000.0/
 
 real(r8), parameter::  rdrv1 = gas_constant_v/gas_constant - 1.0_r8
 
-real(r8) :: lon2, t, q, tv, p
+real(r8) :: lon2, p
 type(location_type) :: location2
 integer :: which_vert
+real(r8), allocatable :: t(:), q(:), tv(:)
+
+integer :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
+
+ens_size = state_ens_handle%num_copies -6
+
+allocate(istatus0(ens_size), istatus2(ens_size), track_status(ens_size))
 
 obsloc   = get_location(location)
 lon      = obsloc(1)                       ! degree: 0 to 360
@@ -2720,14 +2973,16 @@ istatus0  = 0
 istatus2  = 0
 thickness = 0.0_r8
 
+track_status = 0
+
 do k=2, num_press_int+1, 2
    p = press(k)
    location2 = set_location(lon2, lat, p,  which_vert)
 
-   call interpolate(state_vector, location2,  KIND_TEMPERATURE,       t, istatus0)
-   call interpolate(state_vector, location2,  KIND_SPECIFIC_HUMIDITY, q, istatus2)
+   call interpolate_distrib(location2,  KIND_TEMPERATURE,       istatus0, t, state_ens_handle, win)
+   call interpolate_distrib(location2,  KIND_SPECIFIC_HUMIDITY, istatus2, q, state_ens_handle, win)
 
-   if(istatus0 > 0 .or. istatus2 > 0  ) then
+   if(all(istatus0 > 0) .or. all(istatus2 > 0)  ) then
       istatus = 1
       thickness = missing_r8
    endif
@@ -2738,16 +2993,23 @@ do k=2, num_press_int+1, 2
    tv    = t * (1.0_r8 + rdrv1 * q )         ! virtual temperature
    thickness = thickness + gas_constant/gravity * tv * log(press(k-1)/press(k+1))
 
-   ! expected values are around 1 KM; this is a check for
-   ! wildly out of range values.
-   if( abs(thickness) > 10000.0_r8 ) then
-      istatus = 2
-      thickness = missing_r8
-   endif
+   do e = 1, ens_size
+      ! expected values are around 1 KM; this is a check for
+      ! wildly out of range values.
+      if( abs(thickness(e)) > 10000.0_r8 ) then
+         istatus(e) = 2
+         thickness(e) = missing_r8
+      endif
+      if (istatus(e) /= 0) track_status(e) = istatus(e)
+
+   enddo
+
 end do
 
+istatus = track_status
+
 return
-end subroutine get_expected_thickness
+end subroutine get_expected_thickness_distrib
 
 
 end module obs_def_gts_mod
@@ -2780,7 +3042,7 @@ use     location_mod, only : location_type, read_location, write_location, &
                              interactive_location, set_location_missing
 use time_manager_mod, only : time_type, read_time, write_time, set_time, &
                              set_time_missing, interactive_time
-use  assim_model_mod, only : get_state_meta_data, interpolate, interpolate_distrib !HK
+use  assim_model_mod, only : get_state_meta_data, interpolate_distrib !HK
 use     obs_kind_mod, only : assimilate_this_obs_kind, evaluate_this_obs_kind, &
                              max_obs_kinds, get_obs_kind_name, map_def_index, &
                              get_kind_from_menu
@@ -2950,17 +3212,25 @@ use obs_kind_mod, only : KIND_VORTEX_WMAX
 ! will have been added above, and now a use statement will be generated
 ! here so the generic obs_def_mod has access to the code.
 
-  use obs_def_radar_mod, only : write_radial_vel, read_radial_vel,           &
-                            interactive_radial_vel, get_expected_radial_vel, &
-                            read_radar_ref, get_expected_radar_ref,          &
-                            get_expected_fall_velocity
-   use obs_def_dew_point_mod, only : get_expected_dew_point
-   use obs_def_rel_humidity_mod, only : get_expected_relative_humidity
-   use obs_def_altimeter_mod, only : get_expected_altimeter, compute_altimeter
-  use obs_def_gps_mod, only : get_expected_gpsro_ref, interactive_gpsro_ref, &
-                              read_gpsro_ref, write_gpsro_ref
-   use obs_def_vortex_mod, only : get_expected_vortex_info
-   use obs_def_gts_mod, only : get_expected_thickness
+  use obs_def_radar_mod, only : write_radial_vel, read_radial_vel,            &
+                            interactive_radial_vel,                           &
+                            get_expected_radial_vel_distrib,                  &
+                            read_radar_ref, get_expected_radar_ref_distrib,   &
+                            get_expected_fall_velocity_distrib
+
+   use obs_def_dew_point_mod, only : get_expected_dew_point_distrib
+
+   use obs_def_rel_humidity_mod, only : get_expected_relative_humidity_distrib
+
+   use obs_def_altimeter_mod, only : get_expected_altimeter_distrib,          &
+                                     compute_altimeter_distrib
+
+   use obs_def_gps_mod, only : get_expected_gpsro_ref_distrib, interactive_gpsro_ref, &
+                               read_gpsro_ref, write_gpsro_ref
+
+   use obs_def_vortex_mod, only : get_expected_vortex_info_distrib
+
+   use obs_def_gts_mod, only : get_expected_thickness_distrib
 
 !----------------------------------------------------------------------
 ! End of any obs_def_xxx_mod specific use statements
@@ -2978,7 +3248,7 @@ public :: init_obs_def, get_obs_def_key, get_obs_def_location, get_obs_kind, &
    get_obs_def_time, get_obs_def_error_variance, set_obs_def_location, &
    set_obs_def_kind, set_obs_def_time, set_obs_def_error_variance, &
    set_obs_def_key, interactive_obs_def, write_obs_def, read_obs_def, &
-   obs_def_type, get_expected_obs_from_def, destroy_obs_def, copy_obs_def, &
+   obs_def_type, destroy_obs_def, copy_obs_def, &
    assignment(=), get_obs_name, &
    get_expected_obs_from_def_distrib_state !HK
 
@@ -3227,273 +3497,6 @@ end subroutine set_obs_def_time
 
 !----------------------------------------------------------------------------
 
-subroutine get_expected_obs_from_def(key, obs_def, obs_kind_ind, ens_index, &
-   state, state_time, isprior, obs_val, istatus, assimilate_this_ob, evaluate_this_ob)
-
-! Compute forward operator for a particular obs_def
-integer,            intent(in)  :: key
-type(obs_def_type), intent(in)  :: obs_def
-integer,            intent(in)  :: obs_kind_ind, ens_index
-real(r8),           intent(in)  :: state(:)
-type(time_type),    intent(in)  :: state_time
-logical,            intent(in)  :: isprior
-real(r8),           intent(out) :: obs_val
-integer,            intent(out) :: istatus
-logical,            intent(out) :: assimilate_this_ob, evaluate_this_ob
-
-type(location_type) :: location
-type(time_type)     :: obs_time
-integer             :: obs_key
-real(r8)            :: error_var
-
-! Load up the assimilate and evaluate status for this observation kind
-assimilate_this_ob = assimilate_this_obs_kind(obs_kind_ind)
-evaluate_this_ob = evaluate_this_obs_kind(obs_kind_ind)
-
-! If not being assimilated or evaluated return with missing_r8 and istatus 0
-if(assimilate_this_ob .or. evaluate_this_ob) then
-   ! for speed, access directly instead of using accessor functions
-   location  = obs_def%location
-   obs_time  = obs_def%time
-   obs_key   = obs_def%key
-   error_var = obs_def%error_variance
-
-   ! Compute the forward operator.  In spite of the variable name,
-   ! obs_kind_ind is in fact a 'type' index number.  use the function
-   ! get_obs_kind_var_type from the obs_kind_mod if you want to map
-   ! from a specific type to a generic kind.  the third argument of
-   ! a call to the 'interpolate()' function must be a kind index and
-   ! not a type.  normally the preprocess program does this for you.
-   select case(obs_kind_ind)
-
-      ! arguments available to an obs_def forward operator code are:
-      !   state        -- the entire model state vector
-      !   state_time   -- the time of the state vector data
-      !   ens_index    -- the ensemble number
-      !   location     -- observation location
-      !   obs_kind_ind -- the index of the observation specific type
-      !   obs_time     -- the time of the observation
-      !   error_var    -- the observation error variance
-      !   isprior      -- true for prior eval; false for posterior
-      !
-      ! the routine must return values for:
-      !   obs_val -- the computed forward operator value
-      !   istatus -- return code: 0=ok, >0 is error, <0 reserved for system use
-      !
-      ! to call interpolate() directly, the arg list MUST BE:
-      !  interpolate(state, location, KIND_xxx, obs_val, istatus)
-      !
-      ! the preprocess program generates lines like this automatically,
-      ! and this matches the interfaces in each model_mod.f90 file.
-      !
-      ! CASE statements and algorithms for specific observation kinds are
-      ! inserted here by the DART preprocess program.
-
-  case(DOPPLER_RADIAL_VELOCITY)
-     call get_expected_radial_vel(state, location, obs_def%key, obs_val, istatus)
-  case(RADAR_REFLECTIVITY)
-     call get_expected_radar_ref(state, location, obs_val, istatus)
-  case(RADAR_CLEARAIR_REFLECTIVITY)
-     call get_expected_radar_ref(state, location, obs_val, istatus)
-  case(PRECIPITATION_FALL_SPEED)
-     call get_expected_fall_velocity(state, location, obs_val, istatus)
-         case(DEWPOINT)
-            call get_expected_dew_point(state, location, 1, obs_val, istatus)
-         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT, AIRS_DEWPOINT)
-            call get_expected_dew_point(state, location, 1, obs_val, istatus)
-         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
-            call get_expected_dew_point(state, location, 1, obs_val, istatus)
-
-         case(DEWPOINT_2_METER)
-            call get_expected_dew_point(state, location, 2, obs_val, istatus)
-         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT)
-            call get_expected_dew_point(state, location, 2, obs_val, istatus)
-         case(MARINE_SFC_DEWPOINT, LAND_SFC_DEWPOINT)
-            call get_expected_dew_point(state, location, 2, obs_val, istatus)
-         case(METAR_DEWPOINT_2_METER)
-            call get_expected_dew_point(state, location, 2, obs_val, istatus)
-         case(RADIOSONDE_RELATIVE_HUMIDITY, DROPSONDE_RELATIVE_HUMIDITY, &
-              AIRCRAFT_RELATIVE_HUMIDITY,   ACARS_RELATIVE_HUMIDITY,     &
-              MARINE_SFC_RELATIVE_HUMIDITY, LAND_SFC_RELATIVE_HUMIDITY,  &
-              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY)
-            call get_expected_relative_humidity(state, location, obs_val, istatus)
-         case(RADIOSONDE_SURFACE_ALTIMETER, DROPSONDE_SURFACE_ALTIMETER, MARINE_SFC_ALTIMETER, &
-              LAND_SFC_ALTIMETER, METAR_ALTIMETER)
-            call get_expected_altimeter(state, location, obs_val, istatus)
-         case(GPSRO_REFRACTIVITY)
-            call get_expected_gpsro_ref(state, location, obs_def%key, obs_val, istatus)
-         case(VORTEX_LAT)
-            call get_expected_vortex_info(state, location, obs_val, 'lat',istatus)
-         case(VORTEX_LON)
-            call get_expected_vortex_info(state, location, obs_val, 'lon',istatus)
-         case(VORTEX_PMIN)
-            call get_expected_vortex_info(state, location, obs_val, 'pmi',istatus)
-         case(VORTEX_WMAX)
-            call get_expected_vortex_info(state, location, obs_val, 'wma',istatus)
-         case(SATEM_THICKNESS)
-            call get_expected_thickness(state, location, obs_val, istatus)
-      case(RADIOSONDE_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(RADIOSONDE_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(RADIOSONDE_SURFACE_PRESSURE)
-         call interpolate(state, location, KIND_SURFACE_PRESSURE, obs_val, istatus)
-      case(RADIOSONDE_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(RADIOSONDE_SPECIFIC_HUMIDITY)
-         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
-      case(DROPSONDE_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(DROPSONDE_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(DROPSONDE_SURFACE_PRESSURE)
-         call interpolate(state, location, KIND_SURFACE_PRESSURE, obs_val, istatus)
-      case(DROPSONDE_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(DROPSONDE_SPECIFIC_HUMIDITY)
-         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
-      case(AIRCRAFT_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(AIRCRAFT_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(AIRCRAFT_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(AIRCRAFT_SPECIFIC_HUMIDITY)
-         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
-      case(ACARS_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(ACARS_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(ACARS_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(ACARS_SPECIFIC_HUMIDITY)
-         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
-      case(MARINE_SFC_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(MARINE_SFC_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(MARINE_SFC_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(MARINE_SFC_SPECIFIC_HUMIDITY)
-         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
-      case(LAND_SFC_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(LAND_SFC_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(LAND_SFC_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(LAND_SFC_SPECIFIC_HUMIDITY)
-         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
-      case(SAT_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(SAT_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(ATOV_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(AIRS_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(AIRS_SPECIFIC_HUMIDITY)
-         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
-      case(METAR_U_10_METER_WIND)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(METAR_V_10_METER_WIND)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(METAR_TEMPERATURE_2_METER)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(METAR_SPECIFIC_HUMIDITY_2_METER)
-         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
-      case(METAR_SURFACE_PRESSURE)
-         call interpolate(state, location, KIND_SURFACE_PRESSURE, obs_val, istatus)
-      case(METAR_POT_TEMP_2_METER)
-         call interpolate(state, location, KIND_POTENTIAL_TEMPERATURE, obs_val, istatus)
-      case(TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(SPECIFIC_HUMIDITY)
-         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
-      case(PRESSURE)
-         call interpolate(state, location, KIND_PRESSURE, obs_val, istatus)
-      case(BUOY_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(BUOY_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(BUOY_SURFACE_PRESSURE)
-         call interpolate(state, location, KIND_SURFACE_PRESSURE, obs_val, istatus)
-      case(BUOY_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(SHIP_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(SHIP_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(SHIP_SURFACE_PRESSURE)
-         call interpolate(state, location, KIND_SURFACE_PRESSURE, obs_val, istatus)
-      case(SHIP_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(SYNOP_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(SYNOP_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(SYNOP_SURFACE_PRESSURE)
-         call interpolate(state, location, KIND_SURFACE_PRESSURE, obs_val, istatus)
-      case(SYNOP_SPECIFIC_HUMIDITY)
-         call interpolate(state, location, KIND_SPECIFIC_HUMIDITY, obs_val, istatus)
-      case(SYNOP_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(AIREP_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(AIREP_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(AIREP_PRESSURE)
-         call interpolate(state, location, KIND_PRESSURE, obs_val, istatus)
-      case(AIREP_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(AMDAR_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(AMDAR_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(AMDAR_PRESSURE)
-         call interpolate(state, location, KIND_PRESSURE, obs_val, istatus)
-      case(AMDAR_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(PILOT_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(PILOT_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(PILOT_PRESSURE)
-         call interpolate(state, location, KIND_PRESSURE, obs_val, istatus)
-      case(PILOT_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(BOGUS_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(BOGUS_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(BOGUS_PRESSURE)
-         call interpolate(state, location, KIND_PRESSURE, obs_val, istatus)
-      case(BOGUS_TEMPERATURE)
-         call interpolate(state, location, KIND_TEMPERATURE, obs_val, istatus)
-      case(PROFILER_U_WIND_COMPONENT)
-         call interpolate(state, location, KIND_U_WIND_COMPONENT, obs_val, istatus)
-      case(PROFILER_V_WIND_COMPONENT)
-         call interpolate(state, location, KIND_V_WIND_COMPONENT, obs_val, istatus)
-      case(PROFILER_PRESSURE)
-         call interpolate(state, location, KIND_PRESSURE, obs_val, istatus)
-
-      ! If the observation kind is not available, it is an error. The DART
-      ! preprocess program should provide code for all available kinds.
-      case DEFAULT
-         call error_handler(E_ERR, 'get_expected_obs_from_def', &
-            'Attempt to evaluate or assimilate undefined obs_kind type.', &
-             source, revision, revdate)
-   end select
-else
-   ! Not computing forward operator for this kind
-   obs_val = missing_r8
-   istatus = 0
-endif
-
-end subroutine get_expected_obs_from_def
-
-!----------------------------------------------------------------------------
-
 subroutine get_expected_obs_from_def_distrib_state(key, obs_def, obs_kind_ind, ens_index, &
    state_time, isprior, istatus, assimilate_this_ob, evaluate_this_ob, expected_obs, state_ens_handle, win)
 
@@ -3561,6 +3564,54 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
       ! inserted here by the DART preprocess program.
 
       ! DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF INSERTED HERE
+      case(DOPPLER_RADIAL_VELOCITY)
+         call get_expected_radial_vel_distrib(state_ens_handle, win, location, obs_def%key, expected_obs, istatus)
+      case(RADAR_REFLECTIVITY)
+         call get_expected_radar_ref_distrib(state_ens_handle, win, location, expected_obs, istatus)
+      case(RADAR_CLEARAIR_REFLECTIVITY)
+         call get_expected_radar_ref_distrib(state_ens_handle, win, location, expected_obs, istatus)
+      case(PRECIPITATION_FALL_SPEED)
+         call get_expected_fall_velocity_distrib(state_ens_handle, win, location, expected_obs, istatus)
+
+      case(DEWPOINT)
+         call get_expected_dew_point_distrib(state_ens_handle, win, location, 1, expected_obs, istatus)
+      case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT, AIRS_DEWPOINT)
+         call get_expected_dew_point_distrib(state_ens_handle, win, location, 1, expected_obs, istatus)
+      case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
+         call get_expected_dew_point_distrib(state_ens_handle, win, location, 1, expected_obs, istatus)
+      case(DEWPOINT_2_METER)
+         call get_expected_dew_point_distrib(state_ens_handle, win, location, 2, expected_obs, istatus)
+      case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT)
+         call get_expected_dew_point_distrib(state_ens_handle, win, location, 2, expected_obs, istatus)
+      case(MARINE_SFC_DEWPOINT, LAND_SFC_DEWPOINT)
+         call get_expected_dew_point_distrib(state_ens_handle, win, location, 2, expected_obs, istatus)
+      case(METAR_DEWPOINT_2_METER)
+         call get_expected_dew_point_distrib(state_ens_handle, win, location, 2, expected_obs, istatus)
+
+      case(RADIOSONDE_RELATIVE_HUMIDITY, DROPSONDE_RELATIVE_HUMIDITY, &
+           AIRCRAFT_RELATIVE_HUMIDITY,   ACARS_RELATIVE_HUMIDITY,     &
+           MARINE_SFC_RELATIVE_HUMIDITY, LAND_SFC_RELATIVE_HUMIDITY,  &
+           METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY)
+          call get_expected_relative_humidity_distrib(state_ens_handle, win, location, expected_obs, istatus)
+
+      case(RADIOSONDE_SURFACE_ALTIMETER, DROPSONDE_SURFACE_ALTIMETER, MARINE_SFC_ALTIMETER, &
+          LAND_SFC_ALTIMETER, METAR_ALTIMETER)
+          call get_expected_altimeter_distrib(state_ens_handle, win, location, expected_obs, istatus, state_ens_handle%num_copies -6)
+
+      case(GPSRO_REFRACTIVITY)
+         call get_expected_gpsro_ref_distrib(state_ens_handle, win, location, obs_def%key, expected_obs, istatus)
+
+      case(VORTEX_LAT)
+         call get_expected_vortex_info_distrib(state_ens_handle, win, location, expected_obs, 'lat',istatus)
+      case(VORTEX_LON)
+         call get_expected_vortex_info_distrib(state_ens_handle, win, location, expected_obs, 'lon',istatus)
+      case(VORTEX_PMIN)
+         call get_expected_vortex_info_distrib(state_ens_handle, win, location, expected_obs, 'pmi',istatus)
+      case(VORTEX_WMAX)
+         call get_expected_vortex_info_distrib(state_ens_handle, win, location, expected_obs, 'wma',istatus)
+      case(SATEM_THICKNESS)
+          call get_expected_thickness_distrib(state_ens_handle, win, location, expected_obs, istatus)
+
       case(PROFILER_U_WIND_COMPONENT)
          call interpolate_distrib(location, KIND_U_WIND_COMPONENT, istatus, expected_obs, state_ens_handle, win)
       case(PROFILER_V_WIND_COMPONENT)

@@ -53,7 +53,7 @@ use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,         
 use time_manager_mod,     only : time_type, get_time
 
 use assim_model_mod,      only : get_state_meta_data, get_close_maxdist_init,             &
-                                 get_close_obs_init, get_close_obs, get_close_obs_distrib !HK
+                                 get_close_obs_init, get_close_obs_distrib !HK
 
 use mpi !HK temporary
 
@@ -693,9 +693,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! applied first).
 
    if (.not. get_close_buffering) then
-      print*, '*********** WATCH OUT ***********'
-      call get_close_obs(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, &
-         num_close_obs, close_obs_ind, close_obs_dist)
+      print*, '*********** WATCH OUT no close buffering ***********'
+      !call get_close_obs(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, &
+         !num_close_obs, close_obs_ind, close_obs_dist)
    else
  
       if (base_obs_loc == last_base_obs_loc) then
@@ -798,8 +798,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Find state variables on my process that are close to observation being assimilated
    if (.not. get_close_buffering) then
 
-       call get_close_obs(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
-         num_close_states, close_state_ind, close_state_dist)
+       !call get_close_obs(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
+         !num_close_states, close_state_ind, close_state_dist)
+         print*, ' ***** WARNING ****  no close buffering '
    else
       if (base_obs_loc == last_base_states_loc) then
          num_close_states    = last_num_close_states
