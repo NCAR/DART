@@ -17,13 +17,14 @@
  
 # if you call this inline with an arg:
 if [[ $# -gt 0 ]]; then
-   EXITCODE=$1
+   export EXITCODE=$1
 fi
 
 # if you set an env var (the normal way to pass in
 # a value if using mpi):
 if [[ "$EXITCODE" == "" ]]; then
-   EXITCODE=0
+   echo "incoming EXITCODE was not set, setting to 0"
+   export EXITCODE=0
 fi
 
 echo exiting with status code $EXITCODE
