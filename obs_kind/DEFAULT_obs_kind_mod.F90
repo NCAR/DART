@@ -156,6 +156,11 @@ integer, parameter, public :: &
     KIND_OCCULTATION_REFRACTIVITY    = 57, &
     KIND_OCCULTATION_EXCESSPHASE     = 58
 
+! kind for the other way of measuring elevation
+! contrast this with geopotential height
+integer, parameter, public :: &
+    KIND_GEOMETRIC_HEIGHT            = 59
+
 ! kinds for satellite radiances (jason o.)
 integer, parameter, public :: &
     KIND_INFRARED_RADIANCE           = 60, &
@@ -207,7 +212,7 @@ integer, parameter, public :: &
 integer, parameter, public :: &
     KIND_EXNER_FUNCTION              = 85, &
     KIND_TURBULENT_KINETIC_ENERGY    = 86, &
-    KIND_TOTAL_PRECIPITABLE_WATER    = 87, & ! kind for accumulated value - total water in a column
+    KIND_TOTAL_PRECIPITABLE_WATER    = 87, & ! accumulated value - total water in a column
     KIND_VERTLEVEL                   = 88, &
     KIND_MICROWAVE_BRIGHT_TEMP       = 89
 
@@ -500,6 +505,7 @@ obs_kind_names(55) = obs_kind_type(KIND_SEA_SURFACE_PRESSURE, 'KIND_SEA_SURFACE_
 obs_kind_names(56) = obs_kind_type(KIND_W_CURRENT_COMPONENT, 'KIND_W_CURRENT_COMPONENT')
 obs_kind_names(57) = obs_kind_type(KIND_OCCULTATION_REFRACTIVITY, 'KIND_OCCULTATION_REFRACTIVITY')
 obs_kind_names(58) = obs_kind_type(KIND_OCCULTATION_EXCESSPHASE, 'KIND_OCCULTATION_EXCESSPHASE')
+obs_kind_names(59) = obs_kind_type(KIND_GEOMETRIC_HEIGHT, 'KIND_GEOMETRIC_HEIGHT')
 obs_kind_names(60) = obs_kind_type(KIND_INFRARED_RADIANCE, 'KIND_INFRARED_RADIANCE')
 obs_kind_names(61) = obs_kind_type(KIND_INFRARED_BRIGHT_TEMP, 'KIND_INFRARED_BRIGHT_TEMP')
 obs_kind_names(62) = obs_kind_type(KIND_LANDMASK, 'KIND_LANDMASK')

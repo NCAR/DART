@@ -1,3 +1,10 @@
 &utilities_nml
+   module_details = .false.,
+   write_nml = 'none'
+/
+
+&compare_states_nml
+  do_all_numeric_fields = .true.,
+  debug = .false.
 /
 

@@ -986,7 +986,7 @@ subroutine read_selection_list(select_file, select_is_seq, &
      call init_obs(obs,      copies, qcs)
      call init_obs(prev_obs, copies, qcs)
 
-     allocate(selection_list(count))
+     allocate(selection_list(count), type_wanted(max_obs_kinds))
     
      if (.not. get_first_obs(seq_in, obs)) then
          call error_handler(E_ERR,'obs_selection', &
@@ -1154,7 +1154,7 @@ subroutine destroy_selections(selection_list, selection_count)
 
   ! clean up
 
-  deallocate(selection_list)
+  deallocate(selection_list, type_wanted)
   selection_count = 0
 
 end subroutine destroy_selections

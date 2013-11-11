@@ -14,7 +14,7 @@
    restart_out_file_name = "perfect_restart",
    obs_seq_in_file_name  = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.perfect",
-   adv_ens_command       = "no_advance_script"
+   adv_ens_command       = "no_CESM_advance_script"
    output_timestamps     = .false.,
    trace_execution       = .false.,
    output_forward_op_errors = .false.,
@@ -24,7 +24,7 @@
 
 &filter_nml
    async                    = 4,
-   adv_ens_command          = "./advance_model.csh",
+   adv_ens_command          = "no_CESM_advance_script",
    ens_size                 =  23,
    start_from_restart       = .true.,
    output_restart           = .true.,

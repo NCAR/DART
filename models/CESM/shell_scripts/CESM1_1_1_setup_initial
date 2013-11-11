@@ -11,14 +11,38 @@
 # ---------------------
 #
 # This script is designed to set up, stage, and build a multi-instance run of CESM
-# using a B compset where CAM, POP, and CLM are all active. The initial states
-# come from a single multi-instance reference case so a CESM hybrid setup is used.
-# While not required for CESM, POP is configured to write out netCDF restart files
-# because they are required by DART (if you are going to assimilate ocean obs).
+# using a B compset where CAM, POP, and CLM are all active. The initial states for
+# the models come from multiple experiments so a CESM hybrid setup is used.
 #
-# Because the atmosphere assimilations typically occur every 6 hours, the methodology
-# here reflects that. All of CESM stops every 6 hours (requiring the ocean to couple
-# 4x per day) so that a CAM output file would be available for assimilation.
+# POP: uses the result of the 'b40.20th.005_ens${instance}' experiments. The POP
+#      restart files were saved as binary files, which is somewhat problematic for
+#      data assimilation. Consequently, the entire model state must be advanced for
+#      several days before a viable netCDF restart file can be produces. We advance
+#      for 72 hours.
+#
+# RTM: uses the result of the 'b40.20th.005_ens${instance}' experiments. These
+#      restart files are actually the CLM restart files from this experiment because
+#      the RTM was part of CLM when the experiment was run. The standalone version of
+#      RTM can read old CLM restart files.
+#
+# CICE: uses the result of the 'b40.20th.005_ens${instance}' experiments.
+#
+# CLM: uses the result of the 'b40.20th.005_ens${instance}' experiments - sort of.
+#      CLM has changed since then and the CLM restart files needed to be converted
+#      to the new format. I ran 'interpinic' to (essentially) reformat the files
+#      and changed the CASENAME to 'cesm_test' and used the multi-instance naming
+#      convention for the new files.
+#
+# CAM: We want to use a newer version of CAM than was used for the b40.20th.005
+#      experiments. Consequently, we took a SINGLE instance of CAM and replicated
+#      it for all the desired instances. After just a few days, the differences in
+#      the ocean and land states will induce enough variability in the CAM states.
+#
+# Much of the complexity comes from ensuring compatibility between the namelists
+# for each instance and staging of the files. The original experiments were run
+# before the multi-instance capacity was developed and the naming convention decided.
+# Consequently, there is a lot of manipulation of the 'instance' portion of the
+# filenames.
 #
 # This script results in a viable setup for a CESM multi-instance experiment. You
 # are STRONGLY encouraged to run the multi-instance CESM a few times and experiment
@@ -27,13 +51,13 @@
 # capability to re-stage files in your RUN directory
 #
 # CESM/DART requires some modifications to the CESM source code EVEN IF YOU ARE NOT
-# assimilating. The modifications for CAM require a modification to the 
-# CESM ${CASE}.run script. The modifications will invoke a DART script that will 
-# either assimilate or 'do nothing'. It is stronly recommended that you configure 
+# assimilating. The modifications for CAM require a modification to the
+# CESM ${CASE}.run script. The modifications will invoke a DART script that will
+# either assimilate or 'do nothing'. It is strongly recommended that you configure
 # the ${CASE}.run script to 'do nothing' initially.
 #
 # CASEROOT/CESM_DART_config will augment the CESM case with the required setup
-# and configuration to perform a DART assimilation and modify the ${CASE}.run script 
+# and configuration to perform a DART assimilation and modify the ${CASE}.run script
 # as mentioned previously - after it makes a backup copy.
 #
 # This script relies heavily on the information in:
@@ -48,20 +72,23 @@
 #    This script sets up a CESM multi-instance run as we understand them and
 #    it has almost nothing to do with DART. This is intentional.
 #
-# -- Edit and run this script in the $DART/models/CESM/shell_scripts directory
-#    or copy it to somewhere that it will be preserved and run it there.
-#    It will create a CESM 'CASE' directory, where the model will be built,
-#    and an execution directory, where each forecast (and assimilation) will
-#    take place.  The short term archiver will use a third directory for
-#    storage of model output until it can be moved to long term storage (HPSS)
-#
 # -- Examine the whole script to identify things to change for your experiments.
 #
-# -- Provide the CESM initial ensemble needed by your run.
+# -- Edit this script in the $DART/models/CESM/shell_scripts directory
+#    or copy it to somewhere where it will be preserved.
 #
-# -- Run this script.
+# -- Run this script. When it is executed, it will create:
+#    1) a CESM 'CASE' directory, where the model will be built,
+#    2) a run directory, where each forecast (and assimilation) will take place,
+#    3) a bld directory for the executables.
 #
-# -- Read, understand, and execute ${CASEROOT}/CESM_DART_config
+#    This script also executes ${CASEROOT}/CESM_DART_config to modify
+#    the ${CASEROOT}/${CASE}.run script so that the SourceMods for CAM
+#    are effective. CESM_DART_config will also augment the case with all
+#    the pieces necessary to run DART when the time comes.
+#
+# -- (if running DART) Edit the DART input.nml that appears in the ${CASEROOT}
+#    directory.
 #
 # -- Submit the job using ${CASEROOT}/${CASE}.submit
 #
@@ -87,10 +114,10 @@
 
 # the value of "case" will be used many ways;
 #    directory and file names, both locally and on HPSS, and
-#    script names; so consider it's length and information content.
+#    script names; so consider its length and information content.
 # num_instances:  Number of ensemble members
 
-setenv case                 cesm_6h_hybrid
+setenv case                 cesm_multi
 setenv compset              B_2000_CAM5
 setenv resolution           0.9x1.25_gx1v6
 setenv cesmtag              cesm1_1_1
@@ -102,7 +129,7 @@ setenv num_instances        30
 # mach            Computer name
 # cesmroot        Location of the cesm code base
 #                 For cesm1_1_1 on yellowstone
-# caseroot        Your (future) cesm case directory, where this CESM+DART will be built.
+# caseroot        Your (future) CESM case directory, where this CESM+DART will be built.
 #                    Preferably not a frequently scrubbed location.
 #                    This script will delete any existing caseroot, so this script,
 #                    and other useful things should be kept elsewhere.
@@ -115,6 +142,7 @@ setenv num_instances        30
 # ==============================================================================
 
 setenv mach         yellowstone
+
 setenv cesmroot     /glade/p/cesm/cseg/collections/$cesmtag
 setenv caseroot     /glade/p/work/${USER}/cases/${case}
 setenv exeroot      /glade/scratch/${USER}/${case}/bld
@@ -128,16 +156,18 @@ setenv dartroot     /glade/u/home/${USER}/svn/DART/trunk
 # For a 'hybrid' start, these may be unrelated to the refyear, refmon, refday.
 # ==============================================================================
 
-setenv run_refcase cesm_hybrid
+setenv run_refcase cesm_spinup
 setenv refyear     2004
 setenv refmon      01
-setenv refday      10
+setenv refday      01
 setenv run_reftod  00000
 setenv run_refdate $refyear-$refmon-$refday
 
-# THIS IS THE LOCATION of the 'reference case'.
-
-setenv stagedir /glade/p/image/CESM_initial_ensemble/rest/2004-01-10-00000
+# The RTM and CLM directories are hpss:~thoar/DART_CESM_ensemble_2004_01_01.tar
+set RTM_stagedir = /glade/scratch/thoar/DART_POP_RESTARTS/2004-01-01-00000
+set CLM_stagedir = /glade/scratch/thoar/DART_POP_RESTARTS/CLM_2004-01-01-00000
+set CAM_stagedir = /glade/p/cesm/cseg/inputdata/atm/cam/inic/fv
+set POP_stagedir = /glade/p/work/aliciak/DART_IC/CCSM4_ensembles/rest/2004-01-01-00000
 
 # ==============================================================================
 # runtime settings
@@ -146,6 +176,10 @@ setenv stagedir /glade/p/image/CESM_initial_ensemble/rest/2004-01-10-00000
 # stop_option   Units for determining the forecast length between assimilations
 # stop_n        Number of time units in the first forecast
 # assim_n       Number of time units between assimilations
+# clm_dtime     CLM dynamical timestep (in seconds) ... 1800 is the default
+# h1nsteps      is the number of time steps to put in a single CLM .h1. file
+#               DART needs to know this and the only time it is known is during
+#               this configuration step. The run-time settings can lie.
 #
 # If the long-term archiver is off, you get a chance to examine the files before
 # they get moved to long-term storage. You can always submit $CASE.l_archive
@@ -157,8 +191,15 @@ setenv short_term_archiver on
 setenv long_term_archiver  off
 setenv resubmit            0
 setenv stop_option         nhours
-setenv stop_n              12
+setenv stop_n              72
 setenv assim_n             6
+
+# This specifies the number of time steps available for a CLM forward obs. operator.
+# with clm_dtime = 1800 and h1nsteps = $assim_n * 3600 / $clm_dtime, the CLM .h1.
+# file is created with values every 30 minutes.
+
+@ clm_dtime = 1800
+@ h1nsteps = $assim_n * 3600 / $clm_dtime
 
 # ==============================================================================
 # job settings
@@ -166,13 +207,13 @@ setenv assim_n             6
 # queue      can be changed during a series by changing the ${case}.run
 # timewall   can be changed during a series by changing the ${case}.run
 #
-# TJH: Advancing 30 instances for 6 hours with 900 pes
-#      took less than 10 minutes on yellowstone.
+# TJH: Advancing 30 instances for 72 hours with 900 pes
+#      took about 30 minutes on yellowstone.
 # ==============================================================================
 
 setenv ACCOUNT      P8685xxxx
 setenv queue        economy
-setenv timewall     0:30
+setenv timewall     1:00
 
 # ==============================================================================
 # set these standard commands based on the machine you are running on.
@@ -207,7 +248,7 @@ endsw
 # VAR is the shell variable name, DIR is the value
 # ==============================================================================
 
-foreach VAR ( cesmroot dartroot stagedir )
+foreach VAR ( cesmroot dartroot RTM_stagedir CLM_stagedir CAM_stagedir POP_stagedir )
    set DIR = `eval echo \${$VAR}`
    if ( ! -d $DIR ) then
       echo "ERROR: directory '$DIR' not found"
@@ -219,8 +260,8 @@ end
 # ==============================================================================
 # Create the case - this creates the CASEROOT directory.
 #
-# For list of the pre-defined cases: ./create_newcase -list
-# To create a variant case, see the CESM documentation and carefully
+# For list of the pre-defined component sets: ./create_newcase -list
+# To create a variant compset, see the CESM documentation and carefully
 # incorporate any needed changes into this script.
 # ==============================================================================
 
@@ -300,22 +341,22 @@ if ($num_instances < 10) then
    # This is only for the purpose of debugging the code.
    @ atm_tasks = $ptile * $num_instances * 4
    @ lnd_tasks = $ptile * $num_instances * 4
-   @ ice_tasks = $ptile * $num_instances
+   @ ice_tasks = $ptile * $num_instances * 4
    @ ocn_tasks = $ptile * $num_instances * 4
    @ cpl_tasks = $ptile * $num_instances
    @ glc_tasks = $ptile * $num_instances
-   @ rof_tasks = $ptile * $num_instances
+   @ rof_tasks = $ptile * $num_instances * 4
 
 else
 
    # This works, but a more efficient layout should be used
    @ atm_tasks = $ptile * $num_instances * 2
    @ lnd_tasks = $ptile * $num_instances * 2
-   @ ice_tasks = $ptile * $num_instances
+   @ ice_tasks = $ptile * $num_instances * 2
    @ ocn_tasks = $ptile * $num_instances * 2
    @ cpl_tasks = $ptile * $num_instances
    @ glc_tasks = $ptile * $num_instances
-   @ rof_tasks = $ptile * $num_instances
+   @ rof_tasks = $ptile * $num_instances * 2
 
 endif
 
@@ -471,7 +512,7 @@ switch ( $BATCH )
 endsw
 
 # This is the part that modifies the run script to allow CESM to advance
-# correctly given the modifications necessary for CAM. It also copies several
+# correctly given the modifications of CAM for DART. It also copies several
 # required DART files to the caseroot directory.
 
 ./CESM_DART_config
@@ -491,7 +532,7 @@ else
    echo "ERROR - No SourceMods for this case."
    echo "DART requires modifications to several src files."
    echo "These files can be downloaded from:"
-   echo "http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_1_1.tar"
+   echo "http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_1_1_24Oct2013.tar"
    echo "untar these into your HOME directory - they will create a"
    echo "~/cesm_1_1_1  directory with the appropriate SourceMods structure."
    exit -4
@@ -507,15 +548,15 @@ if ( -d ~/${cesmtag} ) then
 
    # preserve the original version of the files
    if ( ! -e  ${caseroot}/Buildconf/clm.buildnml.csh.original ) then
-      ${MOVE} ${caseroot}/Buildconf/clm.buildnml.csh \
+      ${COPY} ${caseroot}/Buildconf/clm.buildnml.csh \
               ${caseroot}/Buildconf/clm.buildnml.csh.original
    endif
    if ( ! -e  ${caseroot}/Buildconf/rtm.buildnml.csh.original ) then
-      ${MOVE} ${caseroot}/Buildconf/rtm.buildnml.csh \
+      ${COPY} ${caseroot}/Buildconf/rtm.buildnml.csh \
               ${caseroot}/Buildconf/rtm.buildnml.csh.original
    endif
    if ( ! -e  ${caseroot}/preview_namelists.original ) then
-      ${MOVE} ${caseroot}/preview_namelists \
+      ${COPY} ${caseroot}/preview_namelists \
               ${caseroot}/preview_namelists.original
    endif
 
@@ -531,7 +572,7 @@ endif
 # that we are pulling in restart and initial files from 'all over the place'
 # and each model component has a different strategy.
 #
-# In a hybrid run with CONTINUE_RUN = FALSE (i.e. just starting up):
+# When CONTINUE_RUN = FALSE (i.e. just starting up):
 #
 # CAM has been forced to read initial files - specified by namelist var:ncdata
 # POP reads from pointer files
@@ -550,6 +591,9 @@ while ($inst <= $num_instances)
 
    # following the CESM strategy for 'inst_string'
    set inst_string = `printf _%04d $inst`
+
+   # special for some files: no leading underscore, 2 digits
+   set instance2  = `printf %02d $inst`
 
    # ===========================================================================
    set fname = "user_nl_cam${inst_string}"
@@ -578,6 +622,7 @@ while ($inst <= $num_instances)
    # then it is required to create a .h1. file with the instantaneous flux
    # variables every 30 minutes. Despite being in a namelist, these values
    # HAVE NO EFFECT once CONTINUE_RUN = TRUE so now is the time to set these.
+   # Check the value of h1nsteps considering STOP_N.
    #
    # DART's forward observation operators for these fluxes just reads them
    # from the .h1. file rather than trying to create them from the subset of
@@ -588,14 +633,13 @@ while ($inst <= $num_instances)
    #
    # FIXME ... add documentation for configuring CLM history files
 
-   @ thirtymin = $assim_n * 2
-
-   echo "hist_empty_htapes = .true."                 >> $fname
-   echo "hist_fincl1 = 'NEP'"                        >> $fname
-   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R'"  >> $fname
-   echo "hist_nhtfrq = -$assim_n,1,"                 >> $fname
-   echo "hist_mfilt  = 1,$thirtymin"                 >> $fname
-   echo "hist_avgflag_pertape = 'A','A'"             >> $fname
+   echo "dtime             = $clm_dtime,"            >> ${fname}
+   echo "hist_empty_htapes = .true."                 >> ${fname}
+   echo "hist_fincl1 = 'NEP'"                        >> ${fname}
+   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R'"  >> ${fname}
+   echo "hist_nhtfrq = -$assim_n,1,"                 >> ${fname}
+   echo "hist_mfilt  = 1,$h1nsteps"                  >> ${fname}
+   echo "hist_avgflag_pertape = 'A','A'"             >> ${fname}
 
    # ===========================================================================
    set fname = "user_nl_pop2${inst_string}"
@@ -613,6 +657,9 @@ while ($inst <= $num_instances)
    # and the CESM-specific documentation for the tavg output variables in the pop2
    # online documentation:
    # http://www.cesm.ucar.edu/models/cesm1.1/pop2/doc/users/node78.html
+   # No matter the setting of init_ts_suboption, POP always uses the
+   # 'data_assim' behavior when RUN_TYPE=hybrid and CONTINUE_RUN=FALSE.
+   # As soon as CONTINUE_RUN=TRUE, the value becomes important.
    #
    # In CESM1_1_1 keep the values for tavg_file_freq_opt and tavg_freq_opt identical.
    # pop2/trunk_tags/cesm_pop_2_1_20130412  explains the issue.
@@ -626,15 +673,23 @@ while ($inst <= $num_instances)
    #
    # Default copies of SourceMods/src.pop2/ocn.*.tavg.csh files are provided in the
    # DART_SourceMods_cesm1_1_1.tar bundle.
+   #
+   # IFF values for these are:
+   # tavg_file_freq_opt = 'nmonth' 'never' 'never'
+   # tavg_freq_opt      = 'nmonth' 'never' 'never'
+   # The  first entry indicates we get a monthly average once a month, and thats all we get..
+   #
+   # For a HOP TEST ... Would like to have restart files every day, not just for end.
+   # For a HOP TEST (untested)... tavg_file_freq_opt = 'nmonth' 'nday' 'once'"
 
-   echo "init_ts_suboption  = 'data_assim'"             >> $fname
+   echo "init_ts_suboption  = 'data_assim'" >> ${fname}
 
    # ===========================================================================
    set fname = "user_nl_cice${inst_string}"
    # ===========================================================================
    # CICE Namelists
 
-   echo "ice_ic = '${run_refcase}.cice${inst_string}.r.${run_refdate}-${run_reftod}.nc'" >> $fname
+   echo "ice_ic = 'b40.20th.005_ens${instance2}.cice.r.2004-01-01-00000.nc'" >> ${fname}
 
    # ===========================================================================
    set fname = "user_nl_rtm${inst_string}"
@@ -643,7 +698,7 @@ while ($inst <= $num_instances)
    # you can specify the RTM filename here and override the settings from
    # RUN_REFCASE/RUN_REFDATE/RUN_REFTOD (something you cannot do with CLM).
 
-   echo "finidat_rtm = '${run_refcase}.rtm${inst_string}.r.${run_refdate}-${run_reftod}.nc'" >> $fname
+   echo "finidat_rtm = 'b40.20th.005_ens${instance2}.clm2.r.2004-01-01-00000.nc'" >> ${fname}
 
    @ inst ++
 end
@@ -652,134 +707,51 @@ end
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists
-# THIS IS THE STAGING SECTION - MAKE SURE THIS MATCHES THE NAMELISTS.
-# POP reads from pointer files. The others use namelist values initially.
 # ==============================================================================
 
-cat << EndOfText >! stage_cesm_files
-#!/bin/csh -f
-# This script can be used to help restart an experiment from any previous step.
-# The files are copied to the RUN directory.
-# Set the 'restart_time' variable below to define when to restart the experiment.
-# The value of the CESM variable 'env_run.xml:CONTINUE_RUN' is used to determine
-# the origin of the files.
+cat << EndOfText >! stage_initial_cesm_files
+#!/bin/sh
 
-echo 'Copying the required files to the run directory.'
-echo 'No matter what, make sure the restart_time is set to the desired time.'
+cd ${rundir}
+
 echo ''
-echo 'With CONTINUE_RUN=FALSE, the files are copied from the initial ensemble directory.'
-echo 'When CONTINUE_RUN=TRUE, the files are copied from the short-term archive restart directory.'
-echo 'If the short-term archiver is OFF, all the files are already in the RUN directory and'
-echo 'just the pointer files need to be updated.'
+echo "Copying the restart files from the staging directories"
+echo 'into the CESM run directory and creating the pointer files.'
 echo ''
 
-cd ${caseroot}
-source ./Tools/ccsm_getenv || exit -2
-cd ${RUNDIR}
-
-set restart_time = $RUN_REFDATE-$RUN_REFTOD
-
-#----------------------------------------------------------------------
-# This block copies over a set of restart files from
-# this experiment and exits. Intended use to restart a failed run.
-#----------------------------------------------------------------------
-
-echo "continue_run is \$CONTINUE_RUN"
-
-if ( \$CONTINUE_RUN == TRUE ) then
-   if (  \$DOUT_S   == TRUE ) then
-
-      # the restarts should be in the short term archive directory
-      # http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x1631.html#running_ccsm_restart_back
-      ${COPY} \$DOUT_S_ROOT/rest/\${restart_time}/* .
-
-   else
-
-      # All the required files must still be in the run directory.
-      # Just need to update the pointer files.
-
-      @ inst=1
-      while (\$inst <= $num_instances)
-
-         set inst_string = \`printf _%04d \$inst\`
-
-         echo "${CASE}.cpl.r.\${restart_time}.nc"                 >! rpointer.drv
-         echo "${CASE}.clm2\${inst_string}.r.\${restart_time}.nc" >! rpointer.lnd\${inst_string}
-         echo "${CASE}.cice\${inst_string}.r.\${restart_time}.nc" >! rpointer.ice\${inst_string}
-         echo "${CASE}.rtm\${inst_string}.r.\${restart_time}.nc"  >! rpointer.rof\${inst_string}
-         echo "${CASE}.cam\${inst_string}.r.\${restart_time}.nc"  >! rpointer.atm\${inst_string}
-
-         echo "${CASE}.pop\${inst_string}.ro.\${restart_time}"    >! rpointer.ocn\${inst_string}.ovf
-         echo "${CASE}.pop\${inst_string}.r.\${restart_time}.nc"  >! rpointer.ocn\${inst_string}.restart
-         echo "RESTART_FMT=nc"                                    >> rpointer.ocn\${inst_string}.restart
-
-         if ( -e rpointer.ocn\${inst_string}.tavg ) then
-            echo "${CASE}.pop\${inst_string}.rh.\${restart_time}.nc" >! rpointer.ocn\${inst_string}.tavg
-         endif   
-         if ( -e rpointer.ocn\${inst_string}.tavg.2 ) then
-            echo "${CASE}.pop\${inst_string}.rh.nday1.\${restart_time}.nc" >! rpointer.ocn\${inst_string}.tavg.2
-         endif   
-
-         @ inst ++
-      end
-
-   endif
-
-   # Now that we're guaranteed to have the cam initial file, link to our hardwired name.
-   @ inst=1
-   while (\$inst <= $num_instances)
-      set inst_string = \`printf _%04d \$inst\`
-      ${LINK} ${CASE}.cam\${inst_string}.i.\${restart_time}.nc cam_initial\${inst_string}.nc
-      @ inst ++
-   end
-
-   exit 0
-endif
-
-#----------------------------------------------------------------------
-# This block prepares the initial run directory for a startup run.
-# The CLM, CICE, ROF namelists specify a relative path for the initial file.
-# The CAM namelist specifies a static name.
-# POP uses pointer files. 
-#
-# The reference case may more instances than we need,
-# and it certainly has more files than we need.
-# This stages only the minimum number of instances and files.
-#
-# Remember - in a hybrid case - when CONTINUE_RUN = FALSE,
-# the run_refdate and the time in the filenames can be unrelated.
-#----------------------------------------------------------------------
-
-set filedir = ${stagedir}
-
-@ inst=1
-while (\$inst <= $num_instances)
-
-   set inst_string = \`printf _%04d \$inst\`
+let inst=1
+while ((\$inst <= $num_instances)); do
+   n4=\`printf %04d \$inst\`
+   n2=\`printf %02d \$inst\`
 
    echo ''
    echo "Staging restarts for instance \$inst of $num_instances"
 
-   ${LINK} \${filedir}/${run_refcase}.clm2\${inst_string}.r.\${restart_time}.nc .
-   ${LINK} \${filedir}/${run_refcase}.cice\${inst_string}.r.\${restart_time}.nc .
-   ${LINK} \${filedir}/${run_refcase}.rtm\${inst_string}.r.\${restart_time}.nc  .
-   ${LINK} \${filedir}/${run_refcase}.cam\${inst_string}.i.\${restart_time}.nc  cam_initial\${inst_string}.nc
-   ${LINK} \${filedir}/${run_refcase}.pop\${inst_string}.r.\${restart_time}.nc  .
-   ${LINK} \${filedir}/${run_refcase}.pop\${inst_string}.ro.\${restart_time}    .
+   ${LINK} ${POP_stagedir}/b40.20th.005_ens\${n2}.pop.r.2004-01-01-00000      .
+   ${LINK} ${POP_stagedir}/b40.20th.005_ens\${n2}.pop.r.2004-01-01-00000.hdr  .
+   ${LINK} ${POP_stagedir}/b40.20th.005_ens\${n2}.pop.ro.2004-01-01-00000     .
+   ${LINK} ${POP_stagedir}/b40.20th.005_ens\${n2}.cice.r.2004-01-01-00000.nc  .
+   ${LINK} ${RTM_stagedir}/b40.20th.005_ens\${n2}.clm2.r.2004-01-01-00000.nc  .
 
-   echo "${run_refcase}.pop\${inst_string}.ro.\${restart_time}"   >! rpointer.ocn\${inst_string}.ovf
-   echo "${run_refcase}.pop\${inst_string}.r.\${restart_time}.nc" >! rpointer.ocn\${inst_string}.restart
-   echo "RESTART_FMT=nc"                                          >> rpointer.ocn\${inst_string}.restart
+   ${LINK} ${CAM_stagedir}/cami-mam3_0000-01-01_0.9x1.25_L30_c100618.nc  cam_initial_\${n4}.nc
 
-   @ inst ++
-end
+   ${LINK} ${CLM_stagedir}/${run_refcase}.clm2_\${n4}.r.${run_refdate}-${run_reftod}.nc .
+
+   echo "cam_initial_\${n4}.nc"                              >| rpointer.atm_\${n4}
+   echo "b40.20th.005_ens\${n2}.cice.r.2004-01-01-00000.nc"  >| rpointer.ice_\${n4}
+   echo "b40.20th.005_ens\${n2}.pop.ro.2004-01-01-00000"     >| rpointer.ocn_\${n4}.ovf
+   echo "b40.20th.005_ens\${n2}.pop.r.2004-01-01-00000"      >| rpointer.ocn_\${n4}.restart
+   echo "RESTART_FMT=bin"                                    >> rpointer.ocn_\${n4}.restart
+
+   let inst+=1
+done
 
 exit 0
 
 EndOfText
-chmod 0755 stage_cesm_files
+chmod 0755 stage_initial_cesm_files
 
-./stage_cesm_files
+./stage_initial_cesm_files
 
 # ==============================================================================
 # build
@@ -812,17 +784,16 @@ echo "   (on yellowstone) If the ${case}.run script still contains:"
 echo '   #BSUB -R "select[scratch_ok > 0]"'
 echo "   around line 9, delete it."
 echo ""
-echo "3) For reasons not clear to me, the very first advance (i.e. STOP_N)"
-echo "   (CONTINUE_RUN=FALSE) must be longer than *AT LEAST 2 TIMES* the coupling"
+echo "3) The very first CESM advance (i.e. CONTINUE_RUN=FALSE)"
+echo "   STOP_N must be longer than *AT LEAST 2 TIMES* the coupling"
 echo "   frequency between the atmosphere and ocean."
 echo "   If coupling once a day, the first advance MUST be at least 48 hours."
 echo "   If coupling 4 times a day, the first advance MUST be at least 12 hours."
 echo "   After that, STOP_N can be as short as a single coupling frequency."
 echo ""
-echo "4) If you want to simply advance CESM without using DART, make sure the"
-echo "   ${case}.run script references the 'no_assimilate.csh' script."
-echo "   If you want to assimilate, reference the 'assimilate.csh' script."
-echo "   The default action is to assimilate."
+echo "4) The default action is to simply advance CESM ... i.e. NO ASSIMILATION."
+echo "   If you want to assimilate, make sure the ${case}.run script"
+echo "   references the 'assimilate.csh' script."
 echo ""
 echo "5) Verify the contents of env_run.xml and submit the CESM job:"
 echo "   ./${case}.submit"
@@ -842,6 +813,8 @@ echo "   ./xmlchange STOP_N=$assim_n"
 echo ""
 echo "   and"
 echo "   ./${case}.submit"
+
+cat ${caseroot}/DART_instructions.txt
 
 exit 0
 
