@@ -29,7 +29,7 @@ use     model_mod, only : get_model_size, static_init_model, get_state_meta_data
                           nc_write_model_vars, pert_model_state,                   &
                           get_close_maxdist_init, get_close_obs_init,              &
                           ens_mean_for_model, model_interpolate_distrib,           &
-                          get_close_obs_distrib !HK
+                          get_close_obs_distrib, convert_base_obs_location !HK
 
 use data_structure_mod, only : ensemble_type
 
@@ -48,7 +48,7 @@ public :: static_init_assim_model, init_diag_output, get_model_size,            
           nc_get_tindex, get_model_time_step, open_restart_read, open_restart_write,       &
           close_restart, adv_1step, aget_initial_condition, get_close_maxdist_init,        &
           get_close_obs_init, ens_mean_for_model, interpolate_distrib,                     &
-          get_close_obs_distrib ! HK
+          get_close_obs_distrib, convert_base_obs_location ! HK
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &

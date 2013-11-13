@@ -118,7 +118,8 @@ public ::  get_model_size,                    &
            ens_mean_for_model,                &
            get_close_maxdist_init,            &
            get_close_obs_init,                &
-           model_interpolate_distrib !HK
+           model_interpolate_distrib,         &
+           convert_base_obs_location !HK
 
 !  public stubs 
 public ::  adv_1step,       &
@@ -2320,6 +2321,7 @@ zout = missing_r8
 ! with the requested type as out.
 if (zin == missing_r8) then
    location = set_location(xyz_loc(1),xyz_loc(2),missing_r8,ztypeout)
+   !print*, 'missing rank', my_task_id()
    return
 endif
 
@@ -2336,6 +2338,8 @@ endif
 ! but using requested vertical coord.  istatus already set above.
 if (id==0) then
    location = set_location(xyz_loc(1),xyz_loc(2),missing_r8,ztypeout)
+   !print*, 'can not find domain rank', my_task_id()
+
    return
 endif
 
@@ -2349,6 +2353,8 @@ call toGrid(yloc,j,dy,dym)
 if ( .not. boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .or. &
      .not. boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) then
    location = set_location(xyz_loc(1),xyz_loc(2),missing_r8,ztypeout)
+   !print*, 'out of bounds rank', my_task_id()
+
    return
 endif
 
@@ -2419,22 +2425,28 @@ case (VERTISLEVEL)
           goto 100
       endif
 
-      ! HK if this is a piece of state, I believe you don't need to the four corners,
-      ! the location is the lower left corner. 
-      ! compute height at all neighboring mass points and interpolate
+!***************************
+!      ! HK if this is a piece of state, I believe you don't need to the four corners,
+!      ! the location is the lower left corner.
+!      ! compute height at all neighboring mass points and interpolate
+!      hgta = model_height_w_distrib(ll(1), ll(2), k(mean_copy)  ,id,state_ens_handle, win)
+!      hgtb = model_height_w_distrib(ll(1), ll(2), k(mean_copy)+1,id,state_ens_handle, win)
+!      hgt1 = dzm*hgta + dz*hgtb
+!      hgta = model_height_w_distrib(lr(1), lr(2), k(mean_copy)  ,id,state_ens_handle, win)
+!      hgtb = model_height_w_distrib(lr(1), lr(2), k(mean_copy)+1,id,state_ens_handle, win)
+!      hgt2 = dzm*hgta + dz*hgtb
+!      hgta = model_height_w_distrib(ul(1), ul(2), k(mean_copy)  ,id,state_ens_handle, win)
+!      hgtb = model_height_w_distrib(ul(1), ul(2), k(mean_copy)+1,id,state_ens_handle, win)
+!      hgt3 = dzm*hgta + dz*hgtb
+!      hgta = model_height_w_distrib(ur(1), ur(2), k(mean_copy)  ,id,state_ens_handle, win)
+!      hgtb = model_height_w_distrib(ur(1), ur(2), k(mean_copy)+1,id,state_ens_handle, win)
+!      hgt4 = dzm*hgta + dz*hgtb
+!      zout = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
+!***************************
+
       hgta = model_height_w_distrib(ll(1), ll(2), k(mean_copy)  ,id,state_ens_handle, win)
       hgtb = model_height_w_distrib(ll(1), ll(2), k(mean_copy)+1,id,state_ens_handle, win)
-      hgt1 = dzm*hgta + dz*hgtb
-      hgta = model_height_w_distrib(lr(1), lr(2), k(mean_copy)  ,id,state_ens_handle, win)
-      hgtb = model_height_w_distrib(lr(1), lr(2), k(mean_copy)+1,id,state_ens_handle, win)
-      hgt2 = dzm*hgta + dz*hgtb
-      hgta = model_height_w_distrib(ul(1), ul(2), k(mean_copy)  ,id,state_ens_handle, win)
-      hgtb = model_height_w_distrib(ul(1), ul(2), k(mean_copy)+1,id,state_ens_handle, win)
-      hgt3 = dzm*hgta + dz*hgtb
-      hgta = model_height_w_distrib(ur(1), ur(2), k(mean_copy)  ,id,state_ens_handle, win)
-      hgtb = model_height_w_distrib(ur(1), ur(2), k(mean_copy)+1,id,state_ens_handle, win)
-      hgt4 = dzm*hgta + dz*hgtb
-      zout = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
+      zout = dzm*hgta + dz*hgtb
 
 
    ! -------------------------------------------------------
@@ -5231,6 +5243,7 @@ base_which = nint(query_location(base_obs_loc))
 if (.not. horiz_dist_only) then
    if (base_which /= wrf%dom(1)%localization_coord) then
       call vert_convert_distrib(state_ens_handle, win, base_obs_loc, base_obs_kind, istatus1)
+      call error_handler(E_ERR, 'you should not call this ', 'get_close_obs_distrib')
    elseif (base_array(3) == missing_r8) then
       istatus1 = 1
    endif
@@ -5259,7 +5272,7 @@ if (istatus1 == 0) then
          if (local_obs_which /= wrf%dom(1)%localization_coord) then
             call vert_convert_distrib(state_ens_handle, win, local_obs_loc, obs_kind(t_ind), istatus2)
             ! Store the "new" location into the original full local array
-            obs_loc(t_ind) = local_obs_loc !HK why don't you you check this before you do the vertial conversion?
+            obs_loc(t_ind) = local_obs_loc !HK Overwritting the location
          else
             istatus2 = 0
          endif
@@ -5273,6 +5286,8 @@ if (istatus1 == 0) then
       else
          dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
       endif
+
+      !print*, 'k ', k, 'rank ', my_task_id()
 
    end do
 endif
@@ -7289,6 +7304,37 @@ new_dart_ind = sum_below + extra
 
 end function new_dart_ind
 !--------------------------------------------------------------------
+!> This returns the vertical coordinate of an observation in the
+!> requested vertical localization coordinate. 
+!> Aim: to have only the process who owns the observation do this calulation, 
+!> rather than all processeses doing the same calculation in get_close_obs_distrib
+subroutine convert_base_obs_location(obs_loc, state_ens_handle, win, vert_coord, istatus)
+
+type(location_type), intent(inout) :: obs_loc
+type(ensemble_type),    intent(in) :: state_ens_handle
+integer,                intent(in) :: win
+real(r8),              intent(out) :: vert_coord
+integer,               intent(out) :: istatus
+
+real(r8), dimension(3) :: base_array
+integer                :: base_obs_kind !> @todo Should check for identity obs
+integer                :: base_which ! vertical coorardiate
+integer                :: istatus_v
+
+base_obs_kind = 1 ! dummy for now, should check for identity obs
+
+!base_which = nint(query_location(observation))
+
+!if (base_which /= wrf%dom(1)%localization_coord) then
+   call vert_convert_distrib(state_ens_handle, win, obs_loc, base_obs_kind, istatus_v)
+!endif
+
+istatus = istatus_v
+
+base_array = get_location(obs_loc)
+vert_coord = base_array(3)
+
+end subroutine convert_base_obs_location
 
 end module model_mod
 

@@ -53,7 +53,8 @@ use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,         
 use time_manager_mod,     only : time_type, get_time
 
 use assim_model_mod,      only : get_state_meta_data, get_close_maxdist_init,             &
-                                 get_close_obs_init, get_close_obs_distrib !HK
+                                 get_close_obs_init, get_close_obs_distrib,               &
+                                 convert_base_obs_location !HK
 
 use mpi !HK temporary
 
@@ -355,6 +356,11 @@ integer status(MPI_STATUS_SIZE)
 real(r8) duplicate_copies(*)
 pointer (p, duplicate_copies)
 
+! HK observation location conversion
+real(r8) :: vert_obs_loc_in_localization_coord
+integer  :: int_vert_qc
+real(r8) :: vert_qc
+
 ! we are going to read/write the copies array
 call prepare_to_update_copies(ens_handle)
 call prepare_to_update_copies(obs_ens_handle)
@@ -641,6 +647,15 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                endif
             end do
          endif SINGLE_SS_INFLATE
+
+         !HK convert the location in to the coordinate that is used for localization
+         ! Otherwise all processors are trying to convert the location for the same base obs
+         ! in get close obs.
+         ! Note, no need to do this if the qc is not ok
+         call convert_base_obs_location(base_obs_loc, ens_handle, win, vert_obs_loc_in_localization_coord, int_vert_qc)
+
+            vert_qc = real(int_vert_qc)
+
       endif IF_QC_IS_OKAY
 
       !Broadcast the info from this obs to all other processes
@@ -653,7 +668,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, &
            scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc)
       else
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc)
+         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord, scalar3=vert_qc)
       endif
 
    ! Next block is done by processes that do NOT own this observation
@@ -668,13 +683,14 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, &
             scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc)
       else
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc)
+         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord, scalar3=vert_qc)
       endif
    endif
    !-----------------------------------------------------------------------
 
    ! Everybody is doing this section, cycle if qc is bad
    if(nint(obs_qc) /= 0) cycle SEQUENTIAL_OBS
+   if(nint(vert_qc) /= 0) cycle SEQUENTIAL_OBS !HK Is this ok to skip this whole section?
 
    ! Can compute prior mean and variance of obs for each group just once here
    do group = 1, num_groups
@@ -691,6 +707,17 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! to shrink it, and so we need to know this before doing get_close() for the
    ! state space (even though the state space increments will be computed and
    ! applied first).
+
+   ! HK set converted location of observation
+   ! The owner of the observation has done the conversion to the localization coordinate, so 
+   ! every task does not have to do the same calculation ( and communication )
+
+  ! if (my_task_id() == 0 ) print*, 'which vert before', base_obs_loc%which_vert
+   base_obs_loc%vloc = vert_obs_loc_in_localization_coord
+  ! if (my_task_id() == 0 ) print*, 'which vert ', base_obs_loc%which_vert
+   base_obs_loc%which_vert = 3 !DANGER
+
+   !if (my_task_id() == 0 ) print*, 'warning :: HARDCODED pressure'
 
    if (.not. get_close_buffering) then
       print*, '*********** WATCH OUT no close buffering ***********'
