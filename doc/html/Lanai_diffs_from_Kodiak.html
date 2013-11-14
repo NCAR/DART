@@ -49,7 +49,9 @@ There is a longer companion document for this release, the
 <a href="Lanai_release.html">Lanai Release Notes</a>, which
 include installation instructions, a walk-through of running
 one of the low-order models, the diagnostics, and a description
-of non-backward compatible changes.
+of non-backward compatible changes.  See the 
+<a href="Lanai_release.html#CurrentUsers">Notes for Current Users</a>
+section for additional information on changes in this release.
 </P>
 
 <!--==================================================================-->
@@ -373,6 +375,8 @@ same order in all netcdf files.</LI>
 <LI>Fixed logic in obs_seq_verify when determining the forecast lat.</LI>
 <LI>Fixed loops inside obs_seq_coverage which were using the wrong limits on
 the loops. Fixed writing of 'ntimes' in output netcdf variable.</LI>
+<LI>The obs_common_subset tool supports comparing more than 2 obs_seq.final
+files at a time, and will loop over sets of files.</LI>
 <LI>Rewrote the algorithm in the obs_selection tool so it had better scaling
 with large numbers of obs.</LI>
 <LI>Several improvements to the 'obs_diag' program:

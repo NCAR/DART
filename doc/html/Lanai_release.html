@@ -2007,6 +2007,14 @@ have a <em class=code>get_close_obs()</em> routine in your <em class=file>
 model_mod.f90</em> file and have questions about usage, 
 <a href="mailto:dart@ucar.edu">contact</a> the DART development team.</li>
 
+<li>The <em class=program>obs_common_subset</em> program namelist has
+changed.  The program compares <em class=file>obs_seq.final</em> files
+that were produced by different runs of filter using the same input
+obs_sequence file.  The old version supported comparing only 2 files
+at a time; this version supports up to 50.  It also enforces the
+implicit assumption that the incoming obs_seq.final files are identical
+except for the DART QC and the obs values.</li>
+
 <li>The simple_advection model was incorrectly calling the random number
 generator initialization routines after generating some random numbers.
 It now correctly initializes the generator before getting any random values.</li>
