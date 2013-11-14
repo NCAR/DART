@@ -2223,7 +2223,9 @@ deallocate(uniquek)
 end subroutine model_interpolate_distrib
 
 !#######################################################################
-
+!> This is used in the filter_assim. The vertical conversion is done using the 
+!> mean state.
+!> I think at the moment you are over communicating
 subroutine vert_convert_distrib(state_ens_handle, win, location, obs_kind, istatus)
 
 ! This subroutine converts a given ob/state vertical coordinate to
@@ -2271,16 +2273,12 @@ real(r8)            :: presa, presb, psurf
 real(r8)            :: hgt1, hgt2, hgt3, hgt4, hgta, hgtb
 
 !HK
-integer               :: ens_size
-real(r8), allocatable :: zk(:)
-integer,  allocatable :: k(:)
-logical,  allocatable :: lev0(:)
-integer               :: mean_copy
+real(r8) :: zk
+integer  :: k
+logical  :: lev0
+integer  :: mean_copy
 
-ens_size = state_ens_handle%num_copies -5 ! HK we only need the mean copy (!)
-mean_copy = ens_size !> @todo sort this out
-
-allocate(zk(ens_size), lev0(ens_size), k(ens_size))
+mean_copy = state_ens_handle%num_copies -5 ! HK we only need the mean copy (!)
 
 ! assume failure.
 istatus = 1
@@ -2358,6 +2356,7 @@ if ( .not. boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%t
    return
 endif
 
+!HK Note the result is not bitwise 
 !if(my_task_id() == 0) then
 !  write(10, *) '------'
 !  write(10, *) 'xyz_loc      ', xyz_loc
@@ -2416,11 +2415,11 @@ case (VERTISLEVEL)
 
       !HK I don't think k needs to be ensemble size. There is one k output from to_grid
 
-      call toGrid(zin+0.5_r8,k(mean_copy),dz,dzm)
-      !print*, 'k(mean_copy)', k(mean_copy), 'zin ', zin
+      call toGrid(zin+0.5_r8,k,dz,dzm)
+      !print*, 'k', k, 'zin ', zin
 
       ! Check that integer height index is in valid range.  if not, bail to end
-      if(.not. boundsCheck(k(mean_copy), .false., id, dim=3, type=wrf%dom(id)%type_gz)) then
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_gz)) then
          ! print*, 'bounds check fail'
           goto 100
       endif
@@ -2444,8 +2443,8 @@ case (VERTISLEVEL)
 !      zout = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
 !***************************
 
-      hgta = model_height_w_distrib(ll(1), ll(2), k(mean_copy)  ,id,state_ens_handle, win)
-      hgtb = model_height_w_distrib(ll(1), ll(2), k(mean_copy)+1,id,state_ens_handle, win)
+      hgta = model_height_w_distrib(ll(1), ll(2), k  ,id,state_ens_handle, win)
+      hgtb = model_height_w_distrib(ll(1), ll(2), k+1,id,state_ens_handle, win)
       zout = dzm*hgta + dz*hgtb
 
 
@@ -2478,24 +2477,24 @@ case (VERTISPRESSURE)
 
    ! get model pressure profile and
    ! get pressure vertical co-ordinate in model level number
-   allocate(v_p(0:wrf%dom(id)%bt, ens_size))
+   allocate(v_p(0:wrf%dom(id)%bt, state_ens_handle%num_copies -5)) ! mean fix this
    !HK This has already been called in model interpolate
-   call get_model_pressure_profile_distrib(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,id,v_p, state_ens_handle, win, ens_size)
+   ! - not for observations that were not in the assimilate catagory
+   call get_model_pressure_profile_distrib(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,id,v_p, state_ens_handle, win, state_ens_handle%num_copies -5)
 
      !if (my_task_id() == 0) then
      !    write(10, *) v_p(:, mean_copy)
      !endif
 
-
-   call pres_to_zk_distrib(zin, v_p, wrf%dom(id)%bt, ens_size,zk, lev0)
+   call pres_to_zk(zin, v_p(:,mean_copy), wrf%dom(id)%bt, zk, lev0)
    deallocate(v_p)
 
      !if (my_task_id() == 0) then
-     !    write(10, *) zk(mean_copy)
+     !    write(10, *) zk
      !endif
 
    ! if you cannot get a model level out of the pressure profile, bail to end
-   if ( zk(mean_copy) == missing_r8 ) goto 100 !HK I don't think zk = missing_r8 even if there is an error
+   if ( zk == missing_r8 ) goto 100 !HK I don't think zk = missing_r8 even if there is an error
 
    ! convert into:
    select case (ztypeout)
@@ -2508,7 +2507,7 @@ case (VERTISPRESSURE)
       print*, '**** WARNING 3 ****'
       ! pres_to_zk() above converted pressure into a real number
       ! of vertical model levels, including the fraction.
-      zout = zk(mean_copy)
+      zout = zk
 
 
    ! -------------------------------------------------------
@@ -2518,28 +2517,31 @@ case (VERTISPRESSURE)
    case (VERTISHEIGHT)
       ! adding 0.5 to get to the staggered vertical grid
       ! because height is on staggered vertical grid
-      call toGrid(zk(mean_copy)+0.5, k(mean_copy), dz, dzm)
+      call toGrid(zk+0.5, k, dz, dzm)
 
       ! Check that integer height index is in valid range.  if not, bail to end
       !HK need to deal with k being an ensemble
       !if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_gz)) goto 100
-      if(.not. boundsCheck(k(mean_copy), .false., id, dim=3, type=wrf%dom(id)%type_gz)) goto 100
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_gz)) goto 100
+
+      ! HK should check whether this is state or not. If it is state, there is no need to 
+      ! do all four corners, it is the lower left corner.
 
       ! compute height at all neighboring mass points and interpolate
-      hgta = model_height_w_distrib(ll(1), ll(2), k(mean_copy)  ,id, state_ens_handle, win)
-      hgtb = model_height_w_distrib(ll(1), ll(2), k(mean_copy)+1,id, state_ens_handle, win)
+      hgta = model_height_w_distrib(ll(1), ll(2), k  ,id, state_ens_handle, win)
+      hgtb = model_height_w_distrib(ll(1), ll(2), k+1,id, state_ens_handle, win)
       hgt1 = dzm*hgta + dz*hgtb
-      hgta = model_height_w_distrib(lr(1), lr(2), k(mean_copy)  ,id, state_ens_handle, win)
-      hgtb = model_height_w_distrib(lr(1), lr(2), k(mean_copy)+1,id, state_ens_handle, win)
+      hgta = model_height_w_distrib(lr(1), lr(2), k  ,id, state_ens_handle, win)
+      hgtb = model_height_w_distrib(lr(1), lr(2), k+1,id, state_ens_handle, win)
       hgt2 = dzm*hgta + dz*hgtb
-      hgta = model_height_w_distrib(ul(1), ul(2), k(mean_copy)  ,id, state_ens_handle, win)
-      hgtb = model_height_w_distrib(ul(1), ul(2), k(mean_copy)+1,id, state_ens_handle, win)
+      hgta = model_height_w_distrib(ul(1), ul(2), k  ,id, state_ens_handle, win)
+      hgtb = model_height_w_distrib(ul(1), ul(2), k+1,id, state_ens_handle, win)
       hgt3 = dzm*hgta + dz*hgtb
-      hgta = model_height_w_distrib(ur(1), ur(2), k(mean_copy)  ,id, state_ens_handle, win)
-      hgtb = model_height_w_distrib(ur(1), ur(2), k(mean_copy)+1,id, state_ens_handle, win)
+      hgta = model_height_w_distrib(ur(1), ur(2), k  ,id, state_ens_handle, win)
+      hgtb = model_height_w_distrib(ur(1), ur(2), k+1,id, state_ens_handle, win)
       hgt4 = dzm*hgta + dz*hgtb
       zout = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
-
+      
      !if (my_task_id() == 0) then
      !    write(10, *) zout
      !endif
