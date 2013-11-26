@@ -98,13 +98,13 @@
 # ==============================================================================
 # case options:
 #
-# case        The value of "case" will be used many ways; directory and file names, 
-#             both locally and on HPSS, and script names; so consider its length and 
-#             information content.
-# compset     Must be one of the CESM standard names, see the CESM documentation
-#             for supported strings.
-# resolution  Sets the model grid resolution, see the CESM documentation.
-# cesmtag     The version of the CESM source code to use when building the code.
+# case          The value of "case" will be used many ways; directory and file
+#               names both locally and on HPSS, and script names; so consider
+#               its length and information content.
+# compset       Must be one of the CESM standard names, see the CESM documentation
+#               for supported strings.
+# resolution    Sets the model grid resolution, see the CESM documentation.
+# cesmtag       The version of the CESM source code to use when building the code.
 # num_instances The number of ensemble members.
 # ==============================================================================
 
@@ -153,7 +153,7 @@ setenv dartroot     /glade/u/home/${USER}/svn/DART/trunk
 # refyear    The specific date/time-of-day in the reference case that this
 # refmon     run will start from.  (Also see 'runtime settings' below for
 # refday     start_year, start_mon, start_day and start_tod.)
-# reftod 
+# reftod
 #
 # stagedir   The directory location of the reference case files.
 # ==============================================================================
@@ -184,7 +184,7 @@ setenv stagedir /glade/p/image/CESM_initial_ensemble/rest/${reftimestamp}
 #
 # resubmit      How many job steps to run on continue runs (should be 0 initially)
 # stop_option   Units for determining the forecast length between assimilations
-# first_stop_n  Number of time units in the first forecast 
+# first_stop_n  Number of time units in the first forecast
 # stop_n        Number of time units in all subsequent forecasts
 #
 # clm_dtime     CLM dynamical timestep (in seconds) ... 1800 is the default
@@ -264,7 +264,7 @@ endsw
 # have it run.  however, for running a real experiment there are still many
 # settings below this point - e.g. component namelists, history file options,
 # the processor layout, xml file options, etc - that you will almost certainly
-# want to change before doing a real science run. 
+# want to change before doing a real science run.
 # ==============================================================================
 # ==============================================================================
 
@@ -427,7 +427,7 @@ echo ""
 # namelists are changed in the hybrid run. In a hybrid initialization, the ocean
 # model does not start until the second ocean coupling (normally the second day),
 # and the coupler does a "cold start" without a restart file."
-
+#
 # TJH:
 # DART's CAM implementation causes a bit more complexity. DART only uses CAM _initial_
 # files, not RESTART files, so there are sourcemods to force a hybrid start for CAM to
@@ -542,7 +542,7 @@ endsw
 # correctly given the modifications of CAM for DART. It also copies several
 # required DART files to the caseroot directory.
 
-./CESM_DART_config
+./CESM_DART_config || exit -3
 
 # ==============================================================================
 # Update source files.
@@ -620,6 +620,7 @@ while ($inst <= $num_instances)
    # ===========================================================================
    set fname = "user_nl_cam${inst_string}"
    # ===========================================================================
+   # ATM Namelist
    # For a HOP TEST ... empty_htapes = .false.
    # For a HOP TEST ... use a default fincl1
    # inithist == 'ENDOFRUN' ensures that CAM writes an initial file every time it stops.
@@ -635,8 +636,7 @@ while ($inst <= $num_instances)
    # ===========================================================================
    set fname = "user_nl_clm${inst_string}"
    # ===========================================================================
-
-   # Customize the land namelists
+   # LAND Namelist
    # The filename is built using the REFCASE/REFDATE/REFTOD information.
    #
    # This is the time to consider how DART and CESM will interact.  If you intend
@@ -666,20 +666,19 @@ while ($inst <= $num_instances)
    # ===========================================================================
    set fname = "user_nl_pop2${inst_string}"
    # ===========================================================================
-
-   # POP Namelists
+   # POP Namelist
    # init_ts_suboption = 'data_assim'   for non bit-for-bit restarting (assimilation mode)
    # init_ts_suboption = 'rest'         --> default behavior
-#
+   #
    # README:
    # Configuring the contents of the history files for POP is best explained in
    # the section marked "POP2: TAVG Settings" in the cesm1_1_1 pop2 namelist documentation
    # http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/modelnl/nl_pop2.html
-#
+   #
    # and the CESM-specific documentation for the tavg output variables in the pop2
    # online documentation:
    # http://www.cesm.ucar.edu/models/cesm1.1/pop2/doc/users/node78.html
-#
+   #
    # In CESM1_1_1 keep the values for tavg_file_freq_opt and tavg_freq_opt identical.
    # pop2/trunk_tags/cesm_pop_2_1_20130412  explains the issue.
    #
@@ -698,14 +697,15 @@ while ($inst <= $num_instances)
    # ===========================================================================
    set fname = "user_nl_cice${inst_string}"
    # ===========================================================================
-   # CICE Namelists
+   # CICE Namelist
 
    echo "ice_ic = '${refcase}.cice${inst_string}.r.${reftimestamp}.nc'" >> ${fname}
 
    # ===========================================================================
    set fname = "user_nl_rtm${inst_string}"
    # ===========================================================================
-   # RIVER RUNOFF CAN START FROM AN OLD CLM RESTART FILE
+   # RIVERRUNOFF Namelist
+   # River runoff can start from an old clm restart file.
    # you can specify the RTM filename here and override the settings from
    # RUN_REFCASE/RUN_REFDATE/RUN_REFTOD (something you cannot do with CLM).
 
@@ -821,7 +821,7 @@ if ( \$CONTINUE_RUN == TRUE ) then
       end
 
       # There is only a single coupler restart file even in the multi-instance case.
-      echo "${case}.cpl.r.\${restart_time}.nc"     >! rpointer.drv
+      echo "${case}.cpl.r.\${restart_time}.nc" >! rpointer.drv
 
    endif
 
@@ -866,7 +866,7 @@ else     # CONTINUE_RUN == FALSE
       @ inst ++
    end
 
-   echo "All files reset to rerun the FIRST experiment step at time" $init_time
+   echo "All files set to run the FIRST experiment step at time" $init_time
 
 endif
 exit 0
