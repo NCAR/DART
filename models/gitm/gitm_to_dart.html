@@ -1,0 +1,297 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<HTML>
+<HEAD>
+<TITLE>program gitm_to_dart</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P><a href="../../index.html">DART Documentation Main Index</a><br />
+          <small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H1>PROGRAM <em class=program>gitm_to_dart</em></H1>
+
+<P> The <a href="http://ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM"
+    >Global Ionosphere Thermosphere Model (GITM)</a> is a 3-dimensional spherical 
+    code that models the Earth's thermosphere and ionosphere system using a 
+    stretched grid in latitude and altitude. For a fuller description of using
+    GITM within DART, please see the 
+    <a href="model_mod.html">DART GITM model documentation</a>.
+   <br />
+   <br />
+   <em class=program>gitm_to_dart</em> is the program that reads
+   GITM restart files (i.e. <em class=file>b?????.rst</em>) 
+   and creates a DART output/restart file
+   (e.g.&nbsp;<em class=file>perfect_ics,&nbsp;filter_ics,&nbsp;...&nbsp;</em>).
+   <br />
+   <br />
+   The list of variables used to create the DART state vector are specified in
+   the <em class="file">input.nml</em> file.
+   <br />
+   <br />
+   Conditions required for successful execution of <em class=program>gitm_to_dart</em>:
+</P>
+
+<UL>
+   <LI>a valid <em class=file>input.nml</em> namelist file for DART</LI>
+   <LI>a valid <em class=file>UAM.in</em> control file for GITM</LI>
+   <LI>a set of <em class=file>b?????.rst</em> data files for GITM</LI>
+   <LI>a <em class=file>header.rst</em> file for GITM</LI>
+   <LI>the DART/GITM interfaces must be compiled in a manner consistent 
+       with the GITM data and control files. The following GITM
+       source files are required to build <em>any</em> DART interface:
+       <ul><li>models/gitm/GITM2/src/ModConstants.f90</li>
+           <li>models/gitm/GITM2/src/ModEarth.f90</li>
+           <li>models/gitm/GITM2/src/ModKind.f90</li>
+           <li>models/gitm/GITM2/src/ModSize.f90</li>
+           <li>models/gitm/GITM2/src/ModTime.f90</li>
+           <li>models/gitm/GITM2/src/time_routines.f90</li>
+       </ul>Versions of these are included in the DART release.
+       <em class=file>ModSize.f90</em>, in particular, must match what 
+       was used to create the <em class=file>b????.rst</em> files.</LI>
+</UL>
+
+<P>
+The individual model instances are run in unique directories.
+This is also where the converter routines 
+<em class=program>gitm_to_dart</em> and
+<em class=program>dart_to_gitm</em> are run.
+This makes it easy to use a single 'static' name for the input
+and output filenames.
+<em class=program>advance_model.csh</em> is responsibile for 
+linking the appropriate files to these static filenames.
+</P>
+
+
+<P>
+The simplest way to test the converter is to compile GITM and run a single 
+model state forward using <em class=program>work/clean.sh</em>. 
+To build GITM ... download GITM and unpack the code into
+<em class=file>DART/models/gitm/GITM2</em> and follow these instructions:
+</P>
+<div class=unix>
+<pre>
+cd models/gitm/GITM2
+./Config.pl -install -compiler=ifortmpif90 -earth
+make
+cd ../work
+./clean.sh 1 1 0 150.0 170.0 1.0 
+</pre>
+</div>
+
+<P><!-- makes the 'top' link line up correctly --></P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+</P>
+<div class=namelist>
+<pre>
+&amp;gitm_to_dart_nml
+   gitm_to_dart_output_file = 'dart_ics',
+   /
+
+&amp;model_nml
+   gitm_restart_dirname         = 'advance_temp_e1/UA/restartOUT',
+   assimilation_period_days     = 0,
+   assimilation_period_seconds  = 1800,
+   model_perturbation_amplitude = 0.2,
+   output_state_vector          = .false.,
+   calendar                     = 'Gregorian',
+   debug                        = 0,
+   gitm_state_variables = 'Temperature',            'KIND_TEMPERATURE',
+                          'eTemperature',           'KIND_TEMPERATURE_ELECTRON',
+                          'ITemperature',           'KIND_TEMPERATURE_ION',
+                          'iO_3P_NDensityS',        'KIND_DENSITY_NEUTRAL_O3P',
+   ...
+</pre>
+</div>
+
+<TABLE border=0 cellpadding=3 width=100% summary='gitm_to_dart namelist description'>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH>
+</TR>
+
+<TR><!--contents--><TD valign=top>gitm_to_dart_output_file&nbsp;&nbsp;&nbsp;</TD>
+    <!--  type  --><TD valign=top>character(len=128)&nbsp;&nbsp;</TD>
+    <!--descript--><TD>The name of the DART file containing the model state
+                       derived from the GITM restart files.</TD>
+</TR>
+</TABLE>
+<br />
+
+<P>
+The full description of the <em class=code>model_nml</em> namelist is documented
+in the <a href="model_mod.html#Namelist">gitm model_mod</a>, but the most important
+variable for <em class=program>gitm_to_dart</em> is repeated here.
+</P>
+<TABLE border=0 cellpadding=3 width=100% summary='partial model_nml namelist description'>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH>
+</TR>
+
+<TR><!--contents--><TD valign=top>gitm_restart_dirname&nbsp;&nbsp;</TD>
+    <!--  type  --><TD valign=top>character(len=256)&nbsp;&nbsp;</TD>
+    <!--descript--><TD>The name of the directory containing the
+                       GITM restart files and runtime control information.</TD>
+</TR>
+
+<TR><!--contents--><TD valign=top>gitm_state_variables&nbsp;</TD>
+    <!--  type  --><TD valign=top>character(len=32),&nbsp;&nbsp;<br />
+                              dimension(2,80)   </TD>
+    <!--descript--><TD>The list of variable names in the gitm restart file to use to
+                       create the DART state vector and their corresponding DART kind.
+                       The default list is specified in 
+                       <a href="model_mod.nml">model_mod.nml</a></TD>
+</TR>
+</TABLE>
+
+<P><!-- makes the 'top' link line up correctly --></P>
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>MODULES USED</H2>
+<PRE>
+obs_def/obs_def_upper_atm_mod.f90
+assim_model/assim_model_mod.f90
+common/types_mod.f90
+location/threed_sphere/location_mod.f90
+models/gitm/GITM2/src/ModConstants.f90
+models/gitm/GITM2/src/ModEarth.f90
+models/gitm/GITM2/src/ModKind.f90
+models/gitm/GITM2/src/ModSize.f90
+models/gitm/GITM2/src/ModTime.f90
+models/gitm/GITM2/src/time_routines.f90
+models/gitm/dart_gitm_mod.f90
+models/gitm/gitm_to_dart.f90
+models/gitm/model_mod.f90
+mpi_utilities/null_mpi_utilities_mod.f90
+obs_kind/obs_kind_mod.f90
+random_seq/random_seq_mod.f90
+time_manager/time_manager_mod.f90
+utilities/utilities_mod.f90
+</PRE>
+
+<P><!-- makes the 'top' link line up correctly --></P>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES Read</H2>
+<UL>
+    <LI>gitm restart files: <em class=file>b????.rst</em></LI>
+    <LI>gitm control files: <em class=file>header.rst</em></LI>
+    <LI>gitm control files: <em class=file>UAM.in.rst</em></LI>
+    <LI>DART namelist file: <em class=file>input.nml</em></LI>
+</UL>
+
+<H2>FILES Written</H2>
+<UL><LI>DART initial conditions/restart file; e.g. <em class=file>dart_ics</em></LI>
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li>The official <em class=program>GITM</em> site is:
+can be found at <a href="http://ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM"
+                               >ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM</a>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<P>
+none - all error messages come from modules that have their own documentation.
+</P>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+None.
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change history: </TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>
