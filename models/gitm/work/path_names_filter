@@ -6,9 +6,9 @@ cov_cutoff/cov_cutoff_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
 filter/filter.f90
 location/threed_sphere/location_mod.f90
-models/gitm/GITM2/share/Library/src/ModKind.f90
 models/gitm/GITM2/src/ModConstants.f90
 models/gitm/GITM2/src/ModEarth.f90
+models/gitm/GITM2/src/ModKind.f90
 models/gitm/GITM2/src/ModSize.f90
 models/gitm/GITM2/src/ModTime.f90
 models/gitm/GITM2/src/time_routines.f90

@@ -22,7 +22,7 @@
    edit_copies          = .false.,
    new_copy_index       = -1,
    new_copy_data        = -888888.
-   edit_qc              = .false.,
+   edit_qcs             = .false.,
    new_qc_index         = -1,
    new_qc_data          = 0.
    synonymous_copy_list = '',

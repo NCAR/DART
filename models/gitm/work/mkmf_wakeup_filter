@@ -52,7 +52,7 @@ endif
 # remove temp file and now really call mkmf to generate makefile
 rm -f path_names_wakeup_filter.back
 
-../../../mkmf/mkmf -p wakeup_filter -t ../../../mkmf/mkmf.template   \
+../../../mkmf/mkmf -p wakeup_filter -t ../../../mkmf/mkmf.template \
         -a "../../.." ${wrapper_arg} path_names_wakeup_filter
 
 exit $status

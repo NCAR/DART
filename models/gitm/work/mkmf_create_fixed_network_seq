@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p create_fixed_network_seq -t ../../../mkmf/mkmf.template   \
+../../../mkmf/mkmf -p create_fixed_network_seq -t ../../../mkmf/mkmf.template \
  -a "../../.." path_names_create_fixed_network_seq
 
 exit $status
