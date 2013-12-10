@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p obs_diag -t ../../../mkmf/mkmf.template   \
+../../../mkmf/mkmf -p obs_diag -t ../../../mkmf/mkmf.template \
  -a "../../.." path_names_obs_diag
 
 exit $status

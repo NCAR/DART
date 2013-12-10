@@ -17,7 +17,7 @@
 # states are specified by data files. The initial state can come from a single
 # multi-instance reference case so a CESM hybrid setup is used.
 #
-# CLM: Under a hybrid start, CESM uses the REFCASE and REFDATE information 
+# CLM: Under a hybrid start, CESM uses the REFCASE and REFDATE information
 #      to construct the name of the CLM restart file. This script makes an effort
 #      to coordinate the staging of the file so it is consistent with CESM.
 #
@@ -32,15 +32,15 @@
 # That means this script performs a lot of manipulation of the 'instance'
 # portion of the filenames, which seems unnecessary initially.
 #
-# This script results in a viable setup for a CESM single instance experiment. You
-# are STRONGLY encouraged to run the single instance CESM a few times and experiment
-# with different settings BEFORE you try to generate 'perfect' observations.
-# You should become comfortable using CESM's restart capability to re-stage files
-# in your RUN directory.
+# This script results in a viable setup for a CESM single instance experiment.
+# You are STRONGLY encouraged to run the single instance CESM a few times and
+# experiment with different settings BEFORE you try to generate 'perfect'
+# observations. You should become comfortable using CESM's restart capability
+# to re-stage files in your RUN directory.
 #
 # ${CASEROOT}/CESM_DART_config will augment the CESM case with the required setup
 # and configuration to use DART to harvest synthetic observations. CESM_DART_config
-# will insert a few dozen lines into the ${case}.run script after it makes a backup
+# will insert a few dozen lines into the ${CASE}.run script after it makes a backup
 # copy.  This, and the required setup, can be run at a later date. e.g. you can
 # advance an ensemble from 2004-01-01 to 2004-02-01 and then run
 # CESM_DART_config to augment the existing run script, modify STOP_N to 6 hours,
@@ -99,13 +99,13 @@
 # ==============================================================================
 # case options:
 #
-# case        The value of "case" will be used many ways; directory and file names, 
-#             both locally and on HPSS, and script names; so consider its length and 
-#             information content.
-# compset     Must be one of the CESM standard names, see the CESM documentation
-#             for supported strings.
-# resolution  Sets the model grid resolution, see the CESM documentation.
-# cesmtag     The version of the CESM source code to use when building the code.
+# case          The value of "case" will be used many ways; directory and file
+#               names both locally and on HPSS, and script names; so consider
+#               its length and information content.
+# compset       Must be one of the CESM standard names, see the CESM documentation
+#               for supported strings.
+# resolution    Sets the model grid resolution, see the CESM documentation.
+# cesmtag       The version of the CESM source code to use when building the code.
 # ==============================================================================
 
 setenv case                 clm_pmo
@@ -152,21 +152,21 @@ setenv dartroot     /glade/u/home/${USER}/svn/DART/trunk
 # refyear    The specific date/time-of-day in the reference case that this
 # refmon     run will start from.  (Also see 'runtime settings' below for
 # refday     start_year, start_mon, start_day and start_tod.)
-# reftod 
+# reftod
 #
 # SingleInstanceRefcase
-#            Filenames from a multi-instance CESM run have an instance number 
+#            Filenames from a multi-instance CESM run have an instance number
 #            in them.  Filenames from a single instance CESM run do not.
-#            Setting this helps the script figure out the right filenames to 
+#            Setting this helps the script figure out the right filenames to
 #            generate when copying files from the refernenc case:
 #               1 means the restart files have no instance numbers.
 #               0 means the restart files have strings like .0001. in their names.
 #
-# TRUTHinstance  
+# TRUTHinstance
 #            If SingleInstanceRefcase is 0, this must be set to select the
 #            specific instance you want to use when selecting one instance from
-#            a multi-instance run.  e.g. If you have a reference case run 
-#            with 80 instances, 1<= TRUTHinstance <= 80.
+#            a multi-instance run.  e.g. If you have a reference case run
+#            with 80 instances, 1<= TRUTHinstance <= 80. NO LEADING ZEROS.
 #
 # stagedir   The directory location of the reference case files.
 # ==============================================================================
@@ -185,6 +185,7 @@ setenv refdate      $refyear-$refmon-$refday
 setenv reftimestamp $refyear-$refmon-$refday-$reftod
 
 setenv stagedir /glade/scratch/afox/archive/$refcase/rest/${reftimestamp}
+
 
 # ==============================================================================
 # runtime settings:
@@ -285,7 +286,7 @@ endsw
 # have it run.  however, for running a real experiment there are still many
 # settings below this point - e.g. component namelists, history file options,
 # the processor layout, xml file options, etc - that you will almost certainly
-# want to change before doing a real science run. 
+# want to change before doing a real science run.
 # ==============================================================================
 # ==============================================================================
 
@@ -434,7 +435,7 @@ echo ""
 # namelists are changed in the hybrid run. In a hybrid initialization, the ocean
 # model does not start until the second ocean coupling (normally the second day),
 # and the coupler does a "cold start" without a restart file."
-
+#
 # The RUN_REFCASE/REFDATE/REFTOD  are used by CLM & RTM to specify the namelist input
 # filenames - BUT - their buildnml scripts do not use the INSTANCE, so they all specify
 # the same (single) filename. This is remedied by using patched [clm,rtm].buildnml.csh
@@ -602,6 +603,7 @@ while ($inst <= 1)
    # ===========================================================================
    set fname = "user_nl_datm${inst_string}"
    # ===========================================================================
+   # DATM Namelist
 
    echo "dtlimit  = 1.5, 1.5, 1.5"                    >> ${fname}
    echo "fillalgo = 'nn', 'nn', 'nn'"                 >> ${fname}
@@ -619,10 +621,10 @@ while ($inst <= 1)
    # ===========================================================================
    set fname = "user_nl_clm${inst_string}"
    # ===========================================================================
-
-   # Customize the land namelists
-   # The filename is built using the REFCASE/REFDATE/REFTOD information. i.e.
-   # finidat = ${stagedir}/${case}.clm2${inst_string}.r.${reftimestamp}.nc
+   # LAND namelist
+   # With a RUN_TYPE=hybrid the finidat is automatically specified
+   # using the REFCASE/REFDATE/REFTOD information. i.e.
+   # finidat = ${stagedir}/${refcase}.clm2${inst_string}.r.${reftimestamp}.nc
    #
    # This is the time to consider how DART and CESM will interact.  If you intend
    # on assimilating flux tower observations (nominally at 30min intervals),
@@ -643,13 +645,6 @@ while ($inst <= 1)
    #
    # For a HOP TEST ... hist_empty_htapes = .false.
    # For a HOP TEST ... use a default hist_fincl1
-   #
-   # Customize the land namelists:
-   # The initial ensemble can be set by specifying the 'finidat' variable in the
-   # user_nl_clm${inst_string}. A FULL pathname to the file is required. This is nice
-   # for two reasons - one is that you don't need to copy the files and rename them
-   # (tedious), the second is that the full pathname provides a means of tracking
-   # the origin of the initial ensemble.
 
    echo "dtime             = $clm_dtime,"             >> ${fname}
    echo "hist_empty_htapes = .false.,"                >> ${fname}
@@ -700,15 +695,16 @@ end
 
 # Replace each default stream txt file with one that uses the CAM DATM
 # conditions for a default year and modify the instance number.
+# The stream files for CLM have a full 4digit instance number.
 
 foreach FNAME (user*streams*)
    set name_parse = `echo ${FNAME} | sed 's/\_/ /g'`
    @ filename_index = $#name_parse
    set streamname = $name_parse[$filename_index]
    if ( $SingleInstanceRefcase ) then
-      set true_string = ''
+      set instance = ''
    else
-      set true_string = `printf _%04d $TRUTHinstance`
+      set instance = `printf %04d $TRUTHinstance`
    endif
 
    if (-e $dartroot/models/clm/shell_scripts/user_$streamname*template) then
@@ -717,7 +713,7 @@ foreach FNAME (user*streams*)
 
       ${COPY} $dartroot/models/clm/shell_scripts/user_$streamname*template ${FNAME}
 
-      sed s/NINST/$true_string/g   ${FNAME} >! out.$$
+      sed s/NINST/$instance/g ${FNAME} >! out.$$
       sed s/REFYEAR/$refyear/g  out.$$ >! ${FNAME}
       \rm -f out.$$
 
@@ -824,7 +820,7 @@ if ( \$CONTINUE_RUN == TRUE ) then
       end
 
       # The coupler file has no instance string.
-      echo "${case}.cpl.r.\${restart_time}.nc"     >! rpointer.drv
+      echo "${case}.cpl.r.\${restart_time}.nc" >! rpointer.drv
 
    endif
 
@@ -858,7 +854,7 @@ else     # CONTINUE_RUN == FALSE
       @ inst ++
    end
 
-   echo "All files reset to rerun the FIRST experiment step at time" $init_time
+   echo "All files set to run the FIRST experiment step at time" $init_time
 
 endif
 exit 0

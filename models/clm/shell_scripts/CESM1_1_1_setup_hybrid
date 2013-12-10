@@ -17,7 +17,7 @@
 # states are specified by data files. The initial states come from a single
 # multi-instance reference case so a CESM hybrid setup is used.
 #
-# CLM: Under a hybrid start, CESM uses the REFCASE and REFDATE information 
+# CLM: Under a hybrid start, CESM uses the REFCASE and REFDATE information
 #      to construct the name of the CLM restart file. This script makes an effort
 #      to coordinate the staging of the file so it is consistent with CESM.
 #
@@ -105,9 +105,9 @@
 # ==============================================================================
 # case options:
 #
-# case          The value of "case" will be used many ways; directory and file names, 
-#               both locally and on HPSS, and script names; so consider its length and 
-#               information content.
+# case          The value of "case" will be used many ways; directory and file
+#               names both locally and on HPSS, and script names; so consider
+#               its length and information content.
 # compset       Must be one of the CESM standard names, see the CESM documentation
 #               for supported strings.
 # resolution    Sets the model grid resolution, see the CESM documentation.
@@ -160,7 +160,7 @@ setenv dartroot     /glade/u/home/${USER}/svn/DART/trunk
 # refyear    The specific date/time-of-day in the reference case that this
 # refmon     run will start from.  (Also see 'runtime settings' below for
 # refday     start_year, start_mon, start_day and start_tod.)
-# reftod 
+# reftod
 #
 # stagedir   The directory location of the reference case files.
 # ==============================================================================
@@ -276,7 +276,7 @@ endsw
 # have it run.  however, for running a real experiment there are still many
 # settings below this point - e.g. component namelists, history file options,
 # the processor layout, xml file options, etc - that you will almost certainly
-# want to change before doing a real science run. 
+# want to change before doing a real science run.
 # ==============================================================================
 # ==============================================================================
 
@@ -440,7 +440,7 @@ echo ""
 # namelists are changed in the hybrid run. In a hybrid initialization, the ocean
 # model does not start until the second ocean coupling (normally the second day),
 # and the coupler does a "cold start" without a restart file."
-
+#
 # The RUN_REFCASE/REFDATE/REFTOD  are used by CLM & RTM to specify the namelist input
 # filenames - BUT - their buildnml scripts do not use the INSTANCE, so they all specify
 # the same (single) filename. This is remedied by using patched [clm,rtm].buildnml.csh
@@ -608,6 +608,7 @@ while ($inst <= $num_instances)
    # ===========================================================================
    set fname = "user_nl_datm${inst_string}"
    # ===========================================================================
+   # DATM Namelist
 
    echo "dtlimit  = 1.5, 1.5, 1.5"                    >> ${fname}
    echo "fillalgo = 'nn', 'nn', 'nn'"                 >> ${fname}
@@ -625,10 +626,10 @@ while ($inst <= $num_instances)
    # ===========================================================================
    set fname = "user_nl_clm${inst_string}"
    # ===========================================================================
-
-   # Customize the land namelists
-   # The filename is built using the REFCASE/REFDATE/REFTOD information. i.e.
-   # finidat = ${stagedir}/${case}.clm2${inst_string}.r.${reftimestamp}.nc
+   # LAND namelist
+   # With a RUN_TYPE=hybrid the finidat is automatically specified
+   # using the REFCASE/REFDATE/REFTOD information. i.e.
+   # finidat = ${stagedir}/${refcase}.clm2${inst_string}.r.${reftimestamp}.nc
    #
    # This is the time to consider how DART and CESM will interact.  If you intend
    # on assimilating flux tower observations (nominally at 30min intervals),
@@ -649,13 +650,6 @@ while ($inst <= $num_instances)
    #
    # For a HOP TEST ... hist_empty_htapes = .false.
    # For a HOP TEST ... use a default hist_fincl1
-   #
-   # Customize the land namelists:
-   # The initial ensemble can be set by specifying the 'finidat' variable in the
-   # user_nl_clm${inst_string}. A FULL pathname to the file is required. This is nice
-   # for two reasons - one is that you don't need to copy the files and rename them
-   # (tedious), the second is that the full pathname provides a means of tracking
-   # the origin of the initial ensemble.
 
    echo "dtime             = $clm_dtime,"             >> ${fname}
    echo "hist_empty_htapes = .false.,"                >> ${fname}
@@ -720,7 +714,7 @@ foreach FNAME (user*streams*)
 
       ${COPY} $dartroot/models/clm/shell_scripts/user_$streamname*template ${FNAME}
 
-      sed s/NINST/$instance/g   ${FNAME} >! out.$$
+      sed s/NINST/$instance/g ${FNAME} >! out.$$
       sed s/REFYEAR/$refyear/g  out.$$ >! ${FNAME}
       \rm -f out.$$
 
@@ -827,7 +821,7 @@ if ( \$CONTINUE_RUN == TRUE ) then
       end
 
       # There is only a single coupler restart file even in the multi-instance case.
-      echo "${case}.cpl.r.\${restart_time}.nc"     >! rpointer.drv
+      echo "${case}.cpl.r.\${restart_time}.nc" >! rpointer.drv
 
    endif
 
@@ -854,7 +848,7 @@ else     # CONTINUE_RUN == FALSE
       @ inst ++
    end
 
-   echo "All files reset to rerun the FIRST experiment step at time" $init_time
+   echo "All files set to run the FIRST experiment step at time" $init_time
 
 endif
 exit 0

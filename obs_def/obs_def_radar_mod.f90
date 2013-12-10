@@ -738,8 +738,8 @@ if ( .not. module_initialized ) call initialize_module
 write(*, *)
 write(*, *) 'Beginning to inquire for information on radar location.'
 write(*, *)
-write(*, *) 'WARNING!! Make sure that you select 3 (height) for the vertical'
-write(*, *) 'coordinate option and enter height in geopotential height (gpm).'
+write(*, *) 'WARNING!! Make sure that you select 3 (height) for the'
+write(*, *) 'vertical coordinate option and enter height in meters.'
 write(*, *) 'This location is where the radar source is located.  The later'
 write(*, *) 'location question will be asking about where the observation'
 write(*, *) 'itself is located.'

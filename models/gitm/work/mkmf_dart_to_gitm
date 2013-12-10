@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p dart_to_gitm -t ../../../mkmf/mkmf.template   \
+../../../mkmf/mkmf -p dart_to_gitm -t ../../../mkmf/mkmf.template \
  -a "../../.." path_names_dart_to_gitm
 
 exit $status

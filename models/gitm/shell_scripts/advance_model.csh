@@ -44,6 +44,17 @@ set   num_states = $2
 set control_file = $3
 
 #----------------------------------------------------------------------
+# set up commands to supersede any user invocations
+#----------------------------------------------------------------------
+
+unalias cd
+unalias ls
+set  REMOVE = '/bin/rm -rf'
+set    COPY = '/bin/cp --preserve=timestamps'
+set    MOVE = '/bin/mv -f'
+set    LINK = '/bin/ln -sf'
+
+#----------------------------------------------------------------------
 # Block 1: copy necessary input files/executables/files common
 #          to all model advances to a clean, temporary directory.
 #          These will be used by ALL of the ensemble
@@ -58,65 +69,77 @@ set     output_file_line = 3
 
 while($state_copy <= $num_states)
 
-    set ensemble_member = `head -$ensemble_member_line $control_file | tail -1`
-    set input_file      = `head -$input_file_line      $control_file | tail -1`
-    set output_file     = `head -$output_file_line     $control_file | tail -1`
+   set ensemble_member = `head -$ensemble_member_line $control_file | tail -1`
+   set input_file      = `head -$input_file_line      $control_file | tail -1`
+   set output_file     = `head -$output_file_line     $control_file | tail -1`
 
-    # Create a unique temporary working directory for this process's stuff
-    # The run-time directory for the entire experiment is called CENTRALDIR;
-    # we need to provide a safe haven for each TASK ... in 'temp_dir'.
+   # Create a unique temporary working directory for this process's stuff
+   # The run-time directory for the entire experiment is called CENTRALDIR;
+   # we need to provide a safe haven for each TASK ... in 'temp_dir'.
 
-    set temp_dir = 'advance_temp_e'${ensemble_member}
+   set temp_dir = 'advance_temp_e'${ensemble_member}
+   cd $temp_dir  || exit 3
 
-    #making the directory is done in script called clean in work dir. CD is done later too
+   # making the directory is done in script called clean in work dir.
+   # CD is done later too
 
-    #Get the program and input.nml DONE IN start_GITM.sh
+   # Get the program and input.nml DONE IN start_GITM.sh
 
    #-------------------------------------------------------------------
    # Block 2: copy/convert the DART state vector to something the
-   #          model can ingest. In this case, just copy.
-   #          In general, there is more to it.
+   #          model can ingest.
    #
    #          * copy/link ensemble-member-specific files
    #          * convey the advance-to-time to the model
    #          * convert the DART state vector to model format
    #-------------------------------------------------------------------
 
-   mv $input_file $temp_dir/temp_ic || exit 2
-
-   #-------------------------------------------------------------------
-   # Block 3: advance the model
-   #          In this case, we are saving the run-time messages to
-   #          a LOCAL file, which makes debugging easier.
-   #          integrate_model is hardcoded to expect input in temp_ic
-   #          and it creates temp_ud as output.
-   #          Your model will likely be different.
-   #-------------------------------------------------------------------
-
-   cd $temp_dir  || exit 3
+   ${MOVE} ../$input_file dart_restart || exit 2
 
    echo 'advance_model.csh is currently in' `pwd`
-   \cp restartOUT/header.rst restartOUT.out/.
-   ./dart_to_gitm || exit 4    #convert DART ic file to GITM restart file
-   \rm UA/restartOUT/*.rst     #rm restart files so that if GITM fails while running, I'd know for sure
-   echo 'advance_model.csh: ./dart_to_gitm succeeded'
+
+   ${COPY} restartOUT/header.rst restartOUT.out/.
+
+   ./dart_to_gitm || exit 4
+
+   echo 'advance_model.csh: dart_to_gitm succeeded'
+
+   # remove restart files so that if GITM fails while running, we know for sure
+   ${REMOVE} UA/restartOUT/*.rst
+
+   #-------------------------------------------------------------------
+   # Block 3: advance GITM
+   #-------------------------------------------------------------------
 
    #create a full UAM.in (the one with start and end times)
-   cat DART_GITM_time_control.txt UAM.in > UAM.in.temporary
-   mv UAM.in.temporary UAM.in
+   cat DART_GITM_time_control.txt UAM.in >! UAM.in.temporary
+   ${MOVE} UAM.in.temporary UAM.in
 
    echo ' '    >> UAM.in
    echo '#END' >> UAM.in
+
    echo 'advance_model.csh: UAM.in was successfully created'
 
-   @ nop = 10 #changed by pbs_file
-   @ b = $nop * $ensemble_member
-   rm hf
-   head -n $b $PBS_NODEFILE | tail -n $nop > hf
-   cat hf
+   if ( $?PBS_NODEFILE ) then
 
-   #run each ensemble member in the background on separate processors specified in hf
-   (mpiexec -hostfile hf -n $nop ./GITM.exe >& ens_log.txt) &
+      # run each ensemble member in the background on separate 
+      # processor set specified in hf
+      # 'nop' is changed by pbs_file - TJH (fixme?)
+      @ nop = 10
+      @ b = $nop * $ensemble_member
+      head -n $b $PBS_NODEFILE | tail -n $nop >! hf
+      echo "member ${ensemble_member} using processors:"
+      cat hf
+
+      (mpiexec -hostfile hf -n $nop ./GITM.exe >& ens_log.txt) &
+
+   else
+
+      # Under LSF, each ensemble member gets the full processor set. 
+      # No point in running in the background
+      mpirun.lsf ./GITM.exe || exit 5
+      
+   endif
 
    cd ..
 
@@ -127,11 +150,13 @@ while($state_copy <= $num_states)
 
 end
 
-
 sleep 1
 
+# Wait for all background processes to finish.
+wait
 
-# Loop through each state again as to wait for finish and collect the ud files
+# Loop through each state again and collect the advanced files when ready
+
 set state_copy = 1
 set ensemble_member_line = 1
 set      input_file_line = 2
@@ -147,8 +172,7 @@ while($state_copy <= $num_states)
 
    cd $temp_dir || exit 6
 
-   # I don't check for temp_ud, because it might be open (exists), but be empty - GITM
-   # is still writing to it. Extra safety check
+   # Check to make sure GITM is done.
    test -e GITM.DONE
    set s = $?
    while ( $s == 1 ) #while it doesn't exist
@@ -157,21 +181,22 @@ while($state_copy <= $num_states)
       test -e GITM.DONE
       set s=$?
    end
-   rm GITM.DONE
+   ${REMOVE} GITM.DONE
 
    pwd
    echo 'advance_model.csh: Listing files because sometimes the restart files were different size.'
    echo '                   Check that they have the same size, as the blocks are equal!'
    ls -l UA/restartOUT
 
-   rm UAM.in                    #remove the used full UAM.in
-   cp UAM.in.truncated UAM.in   #prepare a truncated UAM.in for the next assimilation window
-   ./gitm_to_dart || exit 7     #convert GITM restart files to DART ud file
+   ${REMOVE} UAM.in                   # remove the used full UAM.in
+   ${COPY}   UAM.in.truncated UAM.in  # prepare a UAM.in for the next assimilation window
+   ./gitm_to_dart || exit 7           # convert GITM restart files to DART file
 
    echo 'advance_model.csh: ./gitm_to_dart successful'
 
-   # move the temp_ud into ../ (work) and name it something like filter_0003
-   mv temp_ud ../$output_file || exit 8
+   # move the updated DART state into place and give it the expected name
+   # (something like filter_0003)
+   ${MOVE} dart_ics ../$output_file || exit 8
 
    cd ..
 
@@ -186,7 +211,7 @@ end
 # exists in CENTRALDIR after all the ensemble members have been advanced,
 # it means one or more of the advances failed and is an ERROR CONDITION.
 
-\rm -rf $control_file
+${REMOVE} $control_file
 
 exit 0
 

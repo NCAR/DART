@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p create_obs_sequence -t ../../../mkmf/mkmf.template   \
+../../../mkmf/mkmf -p create_obs_sequence -t ../../../mkmf/mkmf.template \
  -a "../../.." path_names_create_obs_sequence
 
 exit $status
