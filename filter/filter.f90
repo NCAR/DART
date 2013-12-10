@@ -197,7 +197,7 @@ integer                 :: mean_owner, mean_owners_index
 integer :: owner, owners_index
 
 !HK 
-real*8 start, finish
+doubleprecision start, finish
 
 ! For now, have model_size real storage for the ensemble mean, don't really want this
 ! in the long run
@@ -574,7 +574,17 @@ AdvanceTime : do
 !   !deallocate(results)
    allocate(ens_handle%vars(ens_handle%num_vars,   ens_handle%my_num_copies))
 
-   !goto 10011 !HK bail out after forward operators
+!   write(task_str, '(i10)') ens_handle%my_pe
+!   file_obscopies = TRIM('copy_complete' // TRIM(ADJUSTL(task_str)))
+!   open(15, file=file_obscopies, status ='unknown')
+
+!   do i = 1, ens_handle%num_copies
+!      write(15, *) ens_handle%copies(i,:)
+!   enddo
+!
+!   close(15)
+
+!   goto 10011 !HK bail out after forward operators
 
    ! While we're here, make sure the timestamp on the actual ensemble copy
    ! for the mean has the current time.  If the user requests it be written
@@ -1395,7 +1405,7 @@ logical               :: do_outlier, good_forward_op, failed
 ! HK: I think it is also assumed that the ensemble members are in the same order in
 ! each of the handles
 
-allocate(istatus(ens_handle%num_copies - 6))
+allocate(istatus(ens_handle%num_copies - 5)) ! mean copy also
 
 ! Loop through my copies and compute expected value
 my_num_copies = get_my_num_copies(obs_ens_handle)
@@ -1425,7 +1435,7 @@ enddo
 call mpi_win_create(duplicate_copies, window_size, sizedouble, MPI_INFO_NULL, mpi_comm_world, win, ierr)
 
 ! make some room for state vectors
-allocate(expected_obs(ens_handle%num_copies -6))
+allocate(expected_obs(ens_handle%num_copies -5)) ! Includes the mean copy
 
 ! Loop through all observations in the set
 ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars

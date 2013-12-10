@@ -761,12 +761,12 @@ subroutine get_expected_radial_vel_distrib(state_ens_handle, win, location, velk
 
 ! This is the main forward operator routine for radar Doppler velocity.
 
-type(ensemble_type) state_ens_handle
-integer, intent(in) :: win !> window for one sided communication
-type(location_type), intent(in)  :: location
-integer,             intent(in)  :: velkey
-real(r8),            intent(out) :: radial_vel(:)
-integer,             intent(out) :: istatus(:)
+type(ensemble_type),    intent(in) :: state_ens_handle
+integer,                intent(in) :: win !> window for one sided communication
+type(location_type), intent(inout) :: location
+integer,                intent(in) :: velkey
+real(r8),              intent(out) :: radial_vel(:)
+integer,               intent(out) :: istatus(:)
 
 ! Given a location and the state vector from one of the ensemble members,
 ! compute the model-predicted radial velocity that would be observed
@@ -789,7 +789,7 @@ integer,  allocatable :: track_status(:) ! need to track the istatus of the diff
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = state_ens_handle%num_copies - 6 !> @todo fix this
+ens_size = state_ens_handle%num_copies -5 !> @todo fix this
 allocate(track_status(ens_size), u(ens_size), v(ens_size), w(ens_size))
 allocate(u(ens_size), v(ens_size), w(ens_size), qr(ens_size), qg(ens_size), &
    qs(ens_size), rho(ens_size), temp(ens_size), precip_fall_speed(ens_size))
@@ -872,11 +872,11 @@ subroutine get_expected_fall_velocity_distrib(state_ens_handle, win, &
 ! fall velocity, and it also used as part of computing expected
 ! radial velocity.
 
-type(ensemble_type)              :: state_ens_handle
-integer, intent(in)              :: win !> window for one sided communication
-type(location_type), intent(in)  :: location
-real(r8),            intent(out) :: precip_fall_speed(:)
-integer,             intent(out) :: istatus(:)
+type(ensemble_type)                :: state_ens_handle
+integer, intent(in)                :: win !> window for one sided communication
+type(location_type), intent(inout) :: location
+real(r8),            intent(out)   :: precip_fall_speed(:)
+integer,             intent(out)   :: istatus(:)
 
 ! Local vars
 logical,         save :: first_time = .true.
@@ -890,7 +890,7 @@ integer               :: e, ens_size
 
 ! Should we check microphysics_type var or just go ahead and try to get a value?
 
-ens_size = state_ens_handle%num_copies - 6
+ens_size = state_ens_handle%num_copies -5
 allocate(track_status(ens_size), qr(ens_size), qg(ens_size), qs(ens_size), &
    rho(ens_size), temp(ens_size), refl(ens_size))
 
@@ -1046,11 +1046,11 @@ subroutine get_expected_radar_ref_distrib(state_ens_handle, win, location, ref, 
 
 ! The main forward operator routine for radar reflectivity observations.
 
-integer, intent(in)              :: win !> window for one sided communication
-type(ensemble_type)              :: state_ens_handle
-type(location_type), intent(in)  :: location
-real(r8),            intent(out) :: ref(:)
-integer,             intent(out) :: istatus(:)
+integer, intent(in)                :: win !> window for one sided communication
+type(ensemble_type)                :: state_ens_handle
+type(location_type), intent(inout) :: location
+real(r8),            intent(out)   :: ref(:)
+integer,             intent(out)   :: istatus(:)
 
 ! Given a location and the state vector from one of the ensemble members,
 ! compute the model-predicted radar reflectivity that would be observed
@@ -1073,7 +1073,7 @@ integer, allocatable  :: track_status(:)
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = state_ens_handle%num_copies - 6
+ens_size = state_ens_handle%num_copies -5
 allocate(qr(ens_size), qg(ens_size), qs(ens_size), rho(ens_size), temp(ens_size))
 allocate(track_status(ens_size))
 
@@ -1686,12 +1686,12 @@ end subroutine initialize_module
 
 subroutine get_expected_dew_point_distrib(state_ens_handle, win, location, key, td, istatus)
 
-type(ensemble_type)              :: state_ens_handle
-integer, intent(in)              :: win !> window for one sided communication
-type(location_type), intent(in)  :: location
-integer,             intent(in)  :: key
-real(r8),            intent(out) :: td(:)              ! dewpoint (K)
-integer,             intent(out) :: istatus(:)
+type(ensemble_type)                :: state_ens_handle
+integer, intent(in)                :: win !> window for one sided communication
+type(location_type), intent(inout) :: location
+integer,             intent(in)    :: key
+real(r8),            intent(out)   :: td(:)              ! dewpoint (K)
+integer,             intent(out)   :: istatus(:)
 
 integer  :: ipres
 real(r8), allocatable :: qv(:)            ! water vapor mixing ratio (kg/kg)
@@ -1706,7 +1706,7 @@ character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = state_ens_handle%num_copies -6
+ens_size = state_ens_handle%num_copies -5
 allocate(qv(ens_size), p_Pa(ens_size), p_mb(ens_size), e_mb(ens_size), track_status(ens_size))
 
 if(key == 1) then
@@ -1822,11 +1822,11 @@ end subroutine initialize_module
 
 subroutine get_expected_relative_humidity_distrib(state_ens_handle, win, location, rh, istatus)
 
-type(ensemble_type), intent(in)  :: state_ens_handle
-integer,             intent(in)  :: win !> window for one sided communication
-type(location_type), intent(in)  :: location
-real(r8),            intent(out) :: rh(:)    ! relative humidity (fraction)
-integer,             intent(out) :: istatus(:)
+type(ensemble_type), intent(in)     :: state_ens_handle
+integer,             intent(in)     :: win !> window for one sided communication
+type(location_type), intent(inout)  :: location
+real(r8),            intent(out)    :: rh(:)    ! relative humidity (fraction)
+integer,             intent(out)    :: istatus(:)
 
 real(r8), allocatable :: qvap(:), tmpk(:), pres(:), es(:), qsat(:)
 real(r8)              :: xyz(3)
@@ -1835,7 +1835,7 @@ integer              :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = state_ens_handle%num_copies - 6 
+ens_size = state_ens_handle%num_copies -5
 
 allocate(qvap(ens_size), tmpk(ens_size), pres(ens_size), es(ens_size), qsat(ens_size))
 allocate(track_status(ens_size))
@@ -1974,24 +1974,23 @@ module_initialized = .true.
 end subroutine initialize_module
 
 
-subroutine get_expected_altimeter_distrib(state_ens_handle, win, location, altimeter_setting, istatus, n)
+subroutine get_expected_altimeter_distrib(state_ens_handle, win, location, altimeter_setting, istatus, ens_size)
 
-type(ensemble_type), intent(in)  :: state_ens_handle
-integer,             intent(in)  :: win !> window for one sided communication
-type(location_type), intent(in)  :: location
-real(r8),            intent(out) :: altimeter_setting(n)     ! altimeter (hPa)
-integer,             intent(out) :: istatus(:)
-integer,             intent(in)  :: n !> get bounds error if I don't have this
+type(ensemble_type), intent(in)     :: state_ens_handle
+integer,             intent(in)     :: win !> window for one sided communication
+type(location_type), intent(inout)  :: location
+integer,             intent(in)     :: ens_size !> get bounds error if I don't have this
+real(r8),            intent(out)    :: altimeter_setting(ens_size)     ! altimeter (hPa)
+integer,             intent(out)    :: istatus(:)
 
 real(r8), allocatable :: psfc(:)                ! surface pressure value   (Pa)
 real(r8), allocatable :: hsfc(:)                ! surface elevation level  (m above SL)
 integer,  allocatable :: track_status(:)
-integer               :: e, ens_size
+integer               :: e
 real(r8), allocatable :: altimeter_temp(:)
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = state_ens_handle%num_copies - 6
 allocate(psfc(ens_size), hsfc(ens_size), track_status(ens_size))
 allocate(altimeter_temp(ens_size))
 
@@ -2434,7 +2433,7 @@ integer               :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = state_ens_handle%num_copies -6
+ens_size = state_ens_handle%num_copies -5
 allocate(istatus0(ens_size), track_status(ens_size))
 allocate(ref00(ens_size), ref_perigee(ens_size), ref1(ens_size), ref2(ens_size))
 allocate(xx(ens_size), yy(ens_size), zz(ens_size))
@@ -2624,7 +2623,7 @@ integer               :: which_vert
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = state_ens_handle%num_copies -6 ! This could be n
+ens_size = state_ens_handle%num_copies -5 ! This could be n
 allocate(t(ens_size), q(ens_size), p(ens_size), tv(ens_size), ew(ens_size), track_status(ens_size))
 
 ! for integration of GPS ray path beyond the wraparound point
@@ -2803,12 +2802,12 @@ subroutine get_expected_vortex_info_distrib(state_ens_handle, win, location, vin
 ! whichinfo='pmi', vinfo =  minimum sea level pressure
 !
 
-type(ensemble_type), intent(in)  :: state_ens_handle
-integer,             intent(in)  :: win !> window for one sided communication
-type(location_type), intent(in)  :: location
-character(len=3),    intent(in)  :: whichinfo
-real(r8),            intent(out) :: vinfo(:)
-integer,             intent(out) :: istatus(:)
+type(ensemble_type), intent(in)     :: state_ens_handle
+integer,             intent(in)     :: win !> window for one sided communication
+type(location_type), intent(inout)  :: location
+character(len=3),    intent(in)     :: whichinfo
+real(r8),            intent(out)    :: vinfo(:)
+integer,             intent(out)    :: istatus(:)
 
 integer :: e, ens_size
 
@@ -2921,7 +2920,7 @@ integer :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = state_ens_handle%num_copies -6
+ens_size = state_ens_handle%num_copies -5
 
 allocate(istatus0(ens_size), istatus2(ens_size), track_status(ens_size))
 
@@ -3042,7 +3041,7 @@ use     location_mod, only : location_type, read_location, write_location, &
                              interactive_location, set_location_missing
 use time_manager_mod, only : time_type, read_time, write_time, set_time, &
                              set_time_missing, interactive_time
-use  assim_model_mod, only : get_state_meta_data, interpolate_distrib !HK
+use  assim_model_mod, only : get_state_meta_data_distrib, interpolate_distrib !HK
 use     obs_kind_mod, only : assimilate_this_obs_kind, evaluate_this_obs_kind, &
                              max_obs_kinds, get_obs_kind_name, map_def_index, &
                              get_kind_from_menu
@@ -3596,7 +3595,7 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
 
       case(RADIOSONDE_SURFACE_ALTIMETER, DROPSONDE_SURFACE_ALTIMETER, MARINE_SFC_ALTIMETER, &
           LAND_SFC_ALTIMETER, METAR_ALTIMETER)
-          call get_expected_altimeter_distrib(state_ens_handle, win, location, expected_obs, istatus, state_ens_handle%num_copies -6)
+          call get_expected_altimeter_distrib(state_ens_handle, win, location, expected_obs, istatus, state_ens_handle%num_copies -5) !mean copy as well
 
       case(GPSRO_REFRACTIVITY)
          call get_expected_gpsro_ref_distrib(state_ens_handle, win, location, obs_def%key, expected_obs, istatus)
@@ -4210,10 +4209,13 @@ endif
 end subroutine write_obs_def
 
 
-subroutine interactive_obs_def(obs_def, key)
+subroutine interactive_obs_def(state_ens_handle, win, obs_def, key)
 !---------------------------------------------------------------------------
 !
 ! Allows interactive creation of an observation
+
+type(ensemble_type), intent(in) :: state_ens_handle
+integer,             intent(in) :: win
 
 type(obs_def_type), intent(inout) :: obs_def
 integer,               intent(in) :: key
@@ -4427,7 +4429,7 @@ end select
 ! Get location from state meta_data
 if(obs_def%kind < 0) then
 ! Get the location of this from model
-   call get_state_meta_data(-1 * obs_def%kind, obs_def%location)
+   call get_state_meta_data_distrib(state_ens_handle, win, -1 * obs_def%kind, obs_def%location)
 else! Get the location
    call interactive_location(obs_def%location)
 endif

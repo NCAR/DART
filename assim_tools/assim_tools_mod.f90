@@ -52,7 +52,7 @@ use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,         
 
 use time_manager_mod,     only : time_type, get_time
 
-use assim_model_mod,      only : get_state_meta_data, get_close_maxdist_init,             &
+use assim_model_mod,      only : get_state_meta_data_distrib, get_close_maxdist_init,             &
                                  get_close_obs_init, get_close_obs_distrib,               &
                                  convert_base_obs_location !HK
 
@@ -361,6 +361,9 @@ real(r8) :: vert_obs_loc_in_localization_coord
 integer  :: int_vert_qc
 real(r8) :: vert_qc
 
+!HK timing
+double precision start, finish
+
 ! we are going to read/write the copies array
 call prepare_to_update_copies(ens_handle)
 call prepare_to_update_copies(obs_ens_handle)
@@ -473,7 +476,7 @@ Get_Obs_Locations: do i = 1, obs_ens_handle%my_num_vars
    if (my_obs_type(i) > 0) then
       my_obs_kind(i) = get_obs_kind_var_type(my_obs_type(i))
    else
-      call get_state_meta_data(-1 * my_obs_type(i), dummyloc, my_obs_kind(i))    ! identity obs
+      call get_state_meta_data_distrib(ens_handle, win, -1 * my_obs_type(i), dummyloc, my_obs_kind(i))    ! identity obs
    endif
    ! Need the time for regression diagnostics potentially; get from first observation
    if(i == 1) obs_time = get_obs_def_time(obs_def)
@@ -484,11 +487,15 @@ my_num_state = get_my_num_vars(ens_handle)
 call get_my_vars(ens_handle, my_state_indx)
 
 ! Get the location and kind of all my state variables
+start = MPI_WTIME()
 do i = 1, ens_handle%my_num_vars
-   call get_state_meta_data(my_state_indx(i), my_state_loc(i), my_state_kind(i))
+   call get_state_meta_data_distrib(ens_handle, win, my_state_indx(i), my_state_loc(i), my_state_kind(i))
 end do
+finish = MPI_WTIME()
+print*, 'get state meta data time :', finish - start, 'rank ', my_task_id()
 
 ! HK Aim: to reduce the commication by removing the duplicate calls to convert_vert
+! I don't think you need this, because the original location gets overwritten
 call copy_location_type(my_state_loc, my_state_loc_distrib, ens_handle%my_num_vars)
 call copy_location_type(my_obs_loc, my_obs_loc_distrib, obs_ens_handle%my_num_vars)
 
@@ -579,7 +586,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    if (base_obs_type > 0) then
       base_obs_kind = get_obs_kind_var_type(base_obs_type)
    else
-      call get_state_meta_data(-1 * base_obs_type, dummyloc, base_obs_kind)  ! identity obs
+      call get_state_meta_data_distrib(ens_handle, win, -1 * base_obs_type, dummyloc, base_obs_kind)  ! identity obs
    endif
    ! Get the value of the observation
    call get_obs_values(observation, obs, obs_val_index)
@@ -712,12 +719,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! The owner of the observation has done the conversion to the localization coordinate, so 
    ! every task does not have to do the same calculation ( and communication )
 
-  ! if (my_task_id() == 0 ) print*, 'which vert before', base_obs_loc%which_vert
    base_obs_loc%vloc = vert_obs_loc_in_localization_coord
-  ! if (my_task_id() == 0 ) print*, 'which vert ', base_obs_loc%which_vert
-   base_obs_loc%which_vert = 3 !DANGER
-
-   !if (my_task_id() == 0 ) print*, 'warning :: HARDCODED pressure'
+   ! if (my_task_id() == 0 ) print*, 'which vert ', base_obs_loc%which_vert
+   !> @todo vertical coordinate of obs
+   base_obs_loc%which_vert = 3 !DANGER HARDCODED 
 
    if (.not. get_close_buffering) then
       print*, '*********** WATCH OUT no close buffering ***********'
@@ -731,7 +736,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          close_obs_dist(:) = last_close_obs_dist(:)
          num_close_obs_buffered = num_close_obs_buffered + 1
       else
+         start = MPI_WTIME()
          call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_loc_distrib, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle, win)
+         finish = MPI_WTIME()
+         print*, 'obs get_obs', finish - start, 'rank ', my_task_id()
+
          last_base_obs_loc      = base_obs_loc
          last_num_close_obs     = num_close_obs
          last_close_obs_ind(:)  = close_obs_ind(:)
@@ -835,9 +844,12 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          close_state_dist(:) = last_close_state_dist(:)
          num_close_states_buffered = num_close_states_buffered + 1
       else
+         start = MPI_WTIME()
          call get_close_obs_distrib(gc_state, base_obs_loc, base_obs_type, my_state_loc, &
                   my_state_loc_distrib, my_state_kind, num_close_states, close_state_ind,&
                   close_state_dist, ens_handle, win)
+         finish = MPI_WTIME()
+         print*, 'state get_obs', finish - start, 'rank ', my_task_id()
 
          last_base_states_loc     = base_obs_loc
          last_num_close_states    = num_close_states

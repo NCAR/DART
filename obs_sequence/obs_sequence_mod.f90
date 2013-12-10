@@ -300,7 +300,8 @@ do i = 1, max_num_obs
    read(*, *) end_it_all
    if(end_it_all == -1) exit
    ! Need to have key available for specialized observation modules
-   call interactive_obs(num_copies, num_qc, obs, i)
+   !call interactive_obs(num_copies, num_qc, obs, i)
+   call error_handler(E_ERR, 'Helen has broken this :', 'look at get state meta data')
    if(i == 1) then
       call insert_obs_in_seq(interactive_obs_sequence, obs)
    else
@@ -390,7 +391,7 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
 
       if (my_task_id() == owner_of_state) then
 
-         expected_obs = state_ens_handle%copies(:, element_index)
+         expected_obs = state_ens_handle%copies(:, element_index) ! This is longer than expected obs
 
       else
 
@@ -2620,7 +2621,10 @@ end subroutine read_obs
 
 !------------------------------------------------------------------------------
 
-subroutine interactive_obs(num_copies, num_qc, obs, key)
+subroutine interactive_obs(state_ens_handle, win, num_copies, num_qc, obs, key)
+
+type(ensemble_type), intent(in) :: state_ens_handle
+integer,             intent(in) :: win
 
 integer,           intent(in) :: num_copies, num_qc, key
 type(obs_type), intent(inout) :: obs
@@ -2629,7 +2633,7 @@ integer :: i
 
 ! Does interactive initialization of an observation type
 
-call interactive_obs_def(obs%def, key)
+call interactive_obs_def(state_ens_handle, win, obs%def, key)
 do i = 1, num_copies
    write(*, *) 'Enter value ', i, 'for this observation'
    read(*, *) obs%values(i)

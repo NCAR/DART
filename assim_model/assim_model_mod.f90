@@ -23,7 +23,7 @@ use utilities_mod, only : get_unit, close_file, register_module, error_handler, 
                           check_namelist_read, nc_check, do_nml_file, do_nml_term, &
                           find_textfile_dims, file_to_text, timestamp, set_output, &
                           ascii_file_format, set_output
-use     model_mod, only : get_model_size, static_init_model, get_state_meta_data,  &
+use     model_mod, only : get_model_size, static_init_model, get_state_meta_data_distrib,  &
                           get_model_time_step, init_conditions, &
                           init_time, adv_1step, end_model, nc_write_model_atts,    &
                           nc_write_model_vars, pert_model_state,                   &
@@ -37,7 +37,7 @@ implicit none
 private
 
 public :: static_init_assim_model, init_diag_output, get_model_size,                       &
-          get_closest_state_time_to, get_initial_condition, get_state_meta_data,           &
+          get_closest_state_time_to, get_initial_condition, get_state_meta_data_distrib,   &
           get_model_time, get_model_state_vector, copy_assim_model,                        &
           set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
           output_diagnostics, end_assim_model, assim_model_type, init_diag_input,          &
@@ -689,11 +689,11 @@ subroutine interpolate_distrib(location, loctype, istatus, expected_obs, state_e
 
 implicit none
 
-type(location_type), intent(in) :: location
-integer,             intent(in) :: loctype
-integer,            intent(out) :: istatus(:)
-real(r8),            intent(out) :: expected_obs(:)
-integer,             intent(in)  :: win
+type(location_type), intent(inout) :: location
+integer,                intent(in) :: loctype
+integer,               intent(out) :: istatus(:)
+real(r8),              intent(out) :: expected_obs(:)
+integer,               intent(in)  :: win
 
 
 type(ensemble_type) :: state_ens_handle

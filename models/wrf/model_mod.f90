@@ -108,7 +108,7 @@ private
 !   of system called shell scripts to advance the model.
 
 public ::  get_model_size,                    &
-           get_state_meta_data,               &
+           get_state_meta_data_distrib,       &
            get_model_time_step,               &
            static_init_model,                 &
            pert_model_state,                  &
@@ -132,8 +132,8 @@ public ::  adv_1step,       &
 !   contained within model_mod available for public use:
 public ::  get_number_domains,       &
            get_wrf_static_data,      &
-           model_pressure,           &
-           model_height,             &
+           model_pressure_distrib,   &
+           model_height_distrib,     &
            pres_to_zk,               &
            height_to_zk,             &
            get_domain_info,          &
@@ -781,7 +781,7 @@ end function get_model_time_step
 !#######################################################################
 
 
-subroutine get_state_meta_data(index_in, location, var_type_out, id_out)
+subroutine get_state_meta_data_distrib(state_ens_handle, win, index_in, location, var_type_out, id_out)
 
 ! Given an integer index into the DART state vector structure, returns the
 ! associated location. This is not a function because the more general
@@ -791,6 +791,8 @@ subroutine get_state_meta_data(index_in, location, var_type_out, id_out)
 ! this version has an optional last argument that is never called by
 ! any of the dart code, which can return the wrf domain number.
 
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: win
 integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type_out, id_out
@@ -881,39 +883,34 @@ if(debug) write(*,*) ' Var type: ',var_type
 ! first obtain lat/lon from (ip,jp)
 call get_wrf_horizontal_location( ip, jp, var_type, id, lon, lat )
 
-!HK Not doing this conversion for now in the distributed version. Doing it on demand in vert_convert
+!HK Not doing this conversion for now in the distributed version. Doing it on demand in 
+!  vert_convert - NOPE I think that this is really slow, because each step in the sequential
+!  obs do loop is limited by the slowest processor doing vertical conversion. It makes
+!  more sense for everyone to blast through all their pieces of state. Idea: overlap this
+!  with task 0 writing the diagnostic files. 
 
 ! now convert to desired vertical coordinate (defined in the namelist)
-!if (wrf%dom(id)%localization_coord == VERTISLEVEL) then
-!   ! here we need level index of mass grid
-!   if( (var_type == wrf%dom(id)%type_w ) .or. (var_type == wrf%dom(id)%type_gz) ) then
-!      lev = real(kp) - 0.5_r8
-!   else
-!      lev = real(kp)
-!   endif
-!elseif (wrf%dom(id)%localization_coord == VERTISPRESSURE) then
-!   ! directly convert to pressure
-!   lev = model_pressure(ip,jp,kp,id,var_type,ens_mean)
-!elseif (wrf%dom(id)%localization_coord == VERTISHEIGHT) then
-!   lev = model_height(ip,jp,kp,id,var_type,ens_mean)
-!elseif (wrf%dom(id)%localization_coord == VERTISSCALEHEIGHT) then
-!   lev = -log(model_pressure(ip,jp,kp,id,var_type,ens_mean) / &
-!              model_surface_pressure(ip,jp,id,var_type,ens_mean))
-!endif
-!
-!if(debug) write(*,*) 'lon, lat, lev: ',lon, lat, lev
-!
-!! convert to DART location type
-!location = set_location(lon, lat, lev, wrf%dom(id)%localization_coord)
-
-!HK setting everything to level
-if( (var_type == wrf%dom(id)%type_w ) .or. (var_type == wrf%dom(id)%type_gz) ) then
-   lev = real(kp) - 0.5_r8
-else
-   lev = real(kp)
+if (wrf%dom(id)%localization_coord == VERTISLEVEL) then
+   ! here we need level index of mass grid
+   if( (var_type == wrf%dom(id)%type_w ) .or. (var_type == wrf%dom(id)%type_gz) ) then
+      lev = real(kp) - 0.5_r8
+   else
+      lev = real(kp)
+   endif
+elseif (wrf%dom(id)%localization_coord == VERTISPRESSURE) then
+   ! directly convert to pressure
+   lev = model_pressure_distrib(ip, jp, kp, id, var_type, state_ens_handle, win)
+elseif (wrf%dom(id)%localization_coord == VERTISHEIGHT) then
+   lev = model_height_distrib(ip, jp, kp, id, var_type, state_ens_handle, win)
+elseif (wrf%dom(id)%localization_coord == VERTISSCALEHEIGHT) then
+   lev = -log(model_pressure_distrib(ip, jp, kp, id, var_type, state_ens_handle, win) / &
+              model_surface_pressure_distrib(ip, jp, id, var_type, state_ens_handle, win))
 endif
 
-location = set_location(lon, lat, lev, VERTISLEVEL)
+if(debug) write(*,*) 'lon, lat, lev: ',lon, lat, lev
+
+! convert to DART location type
+location = set_location(lon, lat, lev, wrf%dom(id)%localization_coord)
 
 ! return DART variable kind if requested
 if(present(var_type_out)) var_type_out = dart_type
@@ -921,11 +918,13 @@ if(present(var_type_out)) var_type_out = dart_type
 ! return domain id if requested
 if(present(id_out)) id_out = id
 
-end subroutine get_state_meta_data
+end subroutine get_state_meta_data_distrib
 
 !--------------------------------------------------------------------
 !> Distributed version of model interpolate
 !> obs_kind is called as location type in assim model model
+!> Storing the mean copy level location as the observation location
+!> to save recomputation of v_p in vert_convert in get_close_obs
 !
 ! Should this code be simplified so there is not so much repetition?
 ! This is the main forward operator subroutine for WRF.
@@ -958,14 +957,14 @@ subroutine model_interpolate_distrib(state_ens_handle, win, location, obs_kind, 
 ! Helen Kershaw - Aim: to not require the whole state vector
 
 ! arguments
-type(location_type), intent(in) :: location
-integer,             intent(in) :: obs_kind
-integer,            intent(out) :: istatus(:)
+type(location_type), intent(inout) :: location !> observation location, store mean level
+integer,                intent(in) :: obs_kind
+integer,               intent(out) :: istatus(:)
 !HK
-type(ensemble_type),     intent(in) :: state_ens_handle
-integer, intent(in)                 :: win !< window for mpi remote memory access
-real(r8), intent(out)               :: expected_obs(:)
-real(r8), allocatable               :: v
+type(ensemble_type),    intent(in) :: state_ens_handle
+integer, intent(in)                :: win !< window for mpi remote memory access
+real(r8), intent(out)              :: expected_obs(:)
+real(r8), allocatable              :: v
 
 ! local
 logical, parameter  :: debug = .false.
@@ -1017,7 +1016,7 @@ integer, allocatable   :: uniquek(:), ksort(:)
 real(r8), allocatable  :: failedcopies(:)
 integer                :: ens_size
 
-ens_size = state_ens_handle%num_copies -6
+ens_size = state_ens_handle%num_copies -5 ! Now calculating mean copy also
 allocate(x_ill(ens_size), x_iul(ens_size), x_ilr(ens_size), x_iur(ens_size))
 allocate(fld(2,ens_size), a1(ens_size))
 allocate(zloc(ens_size), is_lev0(ens_size))
@@ -1209,7 +1208,13 @@ else
          endif
 
       enddo
-         
+
+      !HK store level so you don't have to repeat the get_model_pressure_profile_distib call in 
+      ! vert_convert
+      !> @todo Nice idea, but location here is not related to the location in filter_assim.
+      location = set_location(xyz_loc(1),xyz_loc(2),zloc(ens_size),VERTISLEVEL)
+
+
    elseif(vert_is_height(location)) then
 
       ! Ob is by height: get corresponding mass level zloc from
@@ -2288,7 +2293,7 @@ istatus = 1
 !> @todo This in not true anymore if you don't convert all the state variables 
 ! to the localization coordinate in get_state_meta_data
 if (obs_kind < 0) then
-   call get_state_meta_data(obs_kind,location)
+   call get_state_meta_data_distrib(state_ens_handle, win, obs_kind,location)
    istatus = 0
    return
 endif
@@ -2395,6 +2400,7 @@ select case (ztypein)
 ! ---------------------------------------------------- ---
 case (VERTISLEVEL)
 
+print*, 'vert is level'
    ! convert into:
    select case (ztypeout)
 
@@ -2424,29 +2430,23 @@ case (VERTISLEVEL)
           goto 100
       endif
 
-!***************************
-!      ! HK if this is a piece of state, I believe you don't need to the four corners,
-!      ! the location is the lower left corner.
-!      ! compute height at all neighboring mass points and interpolate
-!      hgta = model_height_w_distrib(ll(1), ll(2), k(mean_copy)  ,id,state_ens_handle, win)
-!      hgtb = model_height_w_distrib(ll(1), ll(2), k(mean_copy)+1,id,state_ens_handle, win)
-!      hgt1 = dzm*hgta + dz*hgtb
-!      hgta = model_height_w_distrib(lr(1), lr(2), k(mean_copy)  ,id,state_ens_handle, win)
-!      hgtb = model_height_w_distrib(lr(1), lr(2), k(mean_copy)+1,id,state_ens_handle, win)
-!      hgt2 = dzm*hgta + dz*hgtb
-!      hgta = model_height_w_distrib(ul(1), ul(2), k(mean_copy)  ,id,state_ens_handle, win)
-!      hgtb = model_height_w_distrib(ul(1), ul(2), k(mean_copy)+1,id,state_ens_handle, win)
-!      hgt3 = dzm*hgta + dz*hgtb
-!      hgta = model_height_w_distrib(ur(1), ur(2), k(mean_copy)  ,id,state_ens_handle, win)
-!      hgtb = model_height_w_distrib(ur(1), ur(2), k(mean_copy)+1,id,state_ens_handle, win)
-!      hgt4 = dzm*hgta + dz*hgtb
-!      zout = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
-!***************************
-
+      ! HK if this is a piece of state, I believe you don't need to the four corners,
+      ! the location is the lower left corner.
+      ! compute height at all neighboring mass points and interpolate
+      ! You have already converted the state in get_state_meta_data
       hgta = model_height_w_distrib(ll(1), ll(2), k  ,id,state_ens_handle, win)
       hgtb = model_height_w_distrib(ll(1), ll(2), k+1,id,state_ens_handle, win)
-      zout = dzm*hgta + dz*hgtb
-
+      hgt1 = dzm*hgta + dz*hgtb
+      hgta = model_height_w_distrib(lr(1), lr(2), k  ,id,state_ens_handle, win)
+      hgtb = model_height_w_distrib(lr(1), lr(2), k+1,id,state_ens_handle, win)
+      hgt2 = dzm*hgta + dz*hgtb
+      hgta = model_height_w_distrib(ul(1), ul(2), k  ,id,state_ens_handle, win)
+      hgtb = model_height_w_distrib(ul(1), ul(2), k+1,id,state_ens_handle, win)
+      hgt3 = dzm*hgta + dz*hgtb
+      hgta = model_height_w_distrib(ur(1), ur(2), k  ,id,state_ens_handle, win)
+      hgtb = model_height_w_distrib(ur(1), ur(2), k+1,id,state_ens_handle, win)
+      hgt4 = dzm*hgta + dz*hgtb
+      zout = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
 
    ! -------------------------------------------------------
    ! incoming vertical coordinate is 'model level number'
@@ -4151,6 +4151,9 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t 
 
          else
 
+            ! HK I think this is a bug, you are just  going to grab the first copy 
+            ! in each iteration of the loop
+            print*, 'bug'
             pres1(e:e) = model_pressure_t_distrib(ll(1), ll(2), 2,id,state_ens_handle, win, 1)
             pres2(e:e) = model_pressure_t_distrib(lr(1), lr(2), 2,id,state_ens_handle, win, 1)
             pres3(e:e) = model_pressure_t_distrib(ul(1), ul(2), 2,id,state_ens_handle, win, 1)
@@ -4188,41 +4191,308 @@ end subroutine get_model_pressure_profile_distrib
 
 !#######################################################
 
-function model_pressure(i,j,k,id,var_type,x)
+function model_pressure_distrib(i, j, k, id, var_type, state_ens_handle, win)
 
 ! Calculate the pressure at grid point (i,j,k), domain id.
 ! The grid is defined according to var_type.
 
-integer,  intent(in)  :: i,j,k,id,var_type
-real(r8), intent(in)  :: x(:)
-real(r8)              :: model_pressure
+type(ensemble_type), intent(in) :: state_ens_handle
+integer,             intent(in) :: win
+integer,             intent(in) :: i,j,k,id,var_type
+real(r8)                        :: model_pressure_distrib
 
-integer  :: off
-real(r8) :: pres1, pres2
+integer               :: off
+real(r8), allocatable :: pres1(:), pres2(:)
+integer               :: ens_size
 
-model_pressure = missing_r8
+ens_size = state_ens_handle%num_copies - 5 ! We need the mean copy
 
-call error_handler(E_ERR, 'model_pressure', 'I do not have a routine for this yet')
+allocate(pres1(ens_size), pres2(ens_size))
 
-end function model_pressure
+model_pressure_distrib = missing_r8
+
+! If W-grid (on ZNW levels), then we need to average in vertical, unless
+!   we are at the upper or lower boundary in which case we will extrapolate.
+if( (var_type == wrf%dom(id)%type_w) .or. (var_type == wrf%dom(id)%type_gz) ) then
+
+   if( k == 1 ) then
+
+      pres1 = model_pressure_t_distrib(i, j, k,  id, state_ens_handle, win, ens_size)
+      pres2 = model_pressure_t_distrib(i, j, k+1,id, state_ens_handle, win, ens_size)
+      model_pressure_distrib = interp_pressure(pres1(ens_size), pres2(ens_size), extrapolate=.true.)
+
+   elseif( k == wrf%dom(id)%var_size(3,wrf%dom(id)%type_w) ) then
+
+      pres1 = model_pressure_t_distrib(i,j,k-1,id, state_ens_handle, win, ens_size)
+      pres2 = model_pressure_t_distrib(i,j,k-2,id, state_ens_handle, win, ens_size)
+      model_pressure_distrib = interp_pressure(pres1(ens_size), pres2(ens_size), extrapolate=.true.)
+
+   else
+
+      pres1 = model_pressure_t_distrib(i, j, k,  id, state_ens_handle, win, ens_size)
+      pres2 = model_pressure_t_distrib(i, j, k-1,id, state_ens_handle, win, ens_size)
+      model_pressure_distrib = interp_pressure(pres1(ens_size), pres2(ens_size))
+
+   endif
+
+! If U-grid, then pressure is defined between U points, so average --
+!   averaging depends on longitude periodicity
+elseif( var_type == wrf%dom(id)%type_u ) then
+
+   if( i == wrf%dom(id)%var_size(1,wrf%dom(id)%type_u) ) then
+
+      ! Check to see if periodic in longitude
+      if ( wrf%dom(id)%periodic_x ) then
+
+         ! We are at seam in longitude, take first and last M-grid points
+         pres1 = model_pressure_t_distrib(i-1,j,k,id, state_ens_handle, win, ens_size)
+         pres2 = model_pressure_t_distrib(1,  j,k,id, state_ens_handle, win, ens_size)
+         model_pressure_distrib = interp_pressure(pres1(ens_size), pres2(ens_size), vertical=.false.)
+         
+      else
+
+         ! If not periodic, then try extrapolating
+         pres1 = model_pressure_t_distrib(i-1,j,k,id, state_ens_handle, win, ens_size)
+         pres2 = model_pressure_t_distrib(i-2,j,k,id, state_ens_handle, win, ens_size)
+         model_pressure_distrib = interp_pressure(pres1(ens_size), pres2(ens_size), extrapolate=.true., vertical=.false.)
+
+      endif
+
+   elseif( i == 1 ) then
+
+      ! Check to see if periodic in longitude
+      if ( wrf%dom(id)%periodic_x ) then
+
+         ! We are at seam in longitude, take first and last M-grid points
+         pres1 = model_pressure_t_distrib(i,             j,k,id, state_ens_handle, win, ens_size)
+         pres2 = model_pressure_t_distrib(wrf%dom(id)%we,j,k,id, state_ens_handle, win, ens_size)
+         model_pressure_distrib = interp_pressure(pres1(ens_size), pres2(ens_size), vertical=.false.)
+         
+      else
+
+         ! If not periodic, then try extrapolating
+         pres1 = model_pressure_t_distrib(i,  j,k,id, state_ens_handle, win, ens_size)
+         pres2 = model_pressure_t_distrib(i+1,j,k,id, state_ens_handle, win, ens_size)
+         model_pressure_distrib = interp_pressure(pres1(ens_size), pres2(ens_size), extrapolate=.true., vertical=.false.)
+
+      endif
+
+   else
+
+      pres1 = model_pressure_t_distrib(i,  j,k,id, state_ens_handle, win, ens_size)
+      pres2 = model_pressure_t_distrib(i-1,j,k,id, state_ens_handle, win, ens_size)
+      model_pressure_distrib = interp_pressure(pres1(ens_size), pres2(ens_size), vertical=.false.)
+
+   endif
+
+! If V-grid, then pressure is defined between V points, so average --
+!   averaging depends on polar periodicity
+elseif( var_type == wrf%dom(id)%type_v ) then
+
+   if( j == wrf%dom(id)%var_size(2,wrf%dom(id)%type_v) ) then
+
+      ! Check to see if periodic in latitude (polar)
+      if ( wrf%dom(id)%polar ) then
+
+         ! The upper corner is 180 degrees of longitude away
+         off = i + wrf%dom(id)%we/2
+         if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
+
+         pres1 = model_pressure_t_distrib(off,j-1,k,id, state_ens_handle, win, ens_size)
+         pres2 = model_pressure_t_distrib(i  ,j-1,k,id, state_ens_handle, win, ens_size)
+         model_pressure_distrib = interp_pressure(pres1(ens_size), pres2(ens_size), vertical=.false.)
+
+      ! If not periodic, then try extrapolating
+      else
+
+         pres1 = model_pressure_t_distrib(i,j-1,k,id, state_ens_handle, win, ens_size)
+         pres2 = model_pressure_t_distrib(i,j-2,k,id, state_ens_handle, win, ens_size)
+         model_pressure_distrib = interp_pressure(pres1(ens_size), pres2(ens_size), extrapolate=.true., vertical=.false.)
+
+      endif
+
+   elseif( j == 1 ) then
+
+      ! Check to see if periodic in latitude (polar)
+      if ( wrf%dom(id)%polar ) then
+
+         ! The lower corner is 180 degrees of longitude away
+         off = i + wrf%dom(id)%we/2
+         if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
+
+         pres1 = model_pressure_t_distrib(off,j,k,id, state_ens_handle, win, ens_size)
+         pres2 = model_pressure_t_distrib(i,  j,k,id, state_ens_handle, win, ens_size)
+         model_pressure_distrib = interp_pressure(pres1(ens_size), pres2(ens_size), vertical=.false.)
+
+      ! If not periodic, then try extrapolating
+      else
+
+         pres1 = model_pressure_t_distrib(i,j,  k,id, state_ens_handle, win, ens_size)
+         pres2 = model_pressure_t_distrib(i,j+1,k,id, state_ens_handle, win, ens_size)
+         model_pressure_distrib = interp_pressure(pres1(ens_size), pres2(ens_size), extrapolate=.true., vertical=.false.)
+
+      endif
+
+   else
+
+      pres1 = model_pressure_t_distrib(i,j,  k,id, state_ens_handle, win, ens_size)
+      pres2 = model_pressure_t_distrib(i,j-1,k,id, state_ens_handle, win, ens_size)
+      model_pressure_distrib = interp_pressure(pres1(ens_size), pres2(ens_size), vertical=.false.)
+
+   endif
+
+elseif( var_type == wrf%dom(id)%type_mu    .or. var_type == wrf%dom(id)%type_tslb .or. &
+        var_type == wrf%dom(id)%type_ps    .or. var_type == wrf%dom(id)%type_u10  .or. &
+        var_type == wrf%dom(id)%type_v10   .or. var_type == wrf%dom(id)%type_t2   .or. &
+        var_type == wrf%dom(id)%type_th2   .or.                                        &
+        var_type == wrf%dom(id)%type_q2    .or. var_type == wrf%dom(id)%type_tsk  .or. &
+        var_type == wrf%dom(id)%type_smois .or. var_type == wrf%dom(id)%type_sh2o) then
+
+   model_pressure_distrib = model_pressure_s_distrib(i,j,id, state_ens_handle, win)
+    
+else
+
+   pres1 = model_pressure_t_distrib(i,j,k,id, state_ens_handle, win, ens_size)
+   model_pressure_distrib = pres1(ens_size)
+
+endif
+
+
+deallocate(pres1, pres2)
+
+end function model_pressure_distrib
 
 !#######################################################
 
-function model_surface_pressure(i,j,id,var_type,x)
+function model_surface_pressure_distrib(i, j, id, var_type, state_ens_handle, win)
 
 ! Calculate the surface pressure at grid point (i,j), domain id.
 ! The grid is defined according to var_type.
 
-integer,  intent(in)  :: i,j,id,var_type
-real(r8), intent(in)  :: x(:)
-real(r8)              :: model_surface_pressure
+type(ensemble_type), intent(in) :: state_ens_handle
+integer,             intent(in) :: win
+integer,            intent(in)  :: i,j,id,var_type
+real(r8)              :: model_surface_pressure_distrib
 
 integer  :: off
 real(r8) :: pres1, pres2
 
-call error_handler(E_ERR, 'model_surface_pressure', 'I do not have a routine for this yet')
+model_surface_pressure_distrib = missing_r8
 
-end function model_surface_pressure
+
+! If U-grid, then pressure is defined between U points, so average --
+!   averaging depends on longitude periodicity
+if( var_type == wrf%dom(id)%type_u ) then
+
+   if( i == wrf%dom(id)%var_size(1,wrf%dom(id)%type_u) ) then
+
+      ! Check to see if periodic in longitude
+      if ( wrf%dom(id)%periodic_x ) then
+
+         ! We are at seam in longitude, take first and last M-grid points
+         pres1 = model_pressure_s_distrib(i-1,j,id, state_ens_handle, win)
+         pres2 = model_pressure_s_distrib(1,  j,id, state_ens_handle, win)
+         model_surface_pressure_distrib = interp_pressure(pres1, pres2, vertical=.false.)
+         
+      else
+
+         ! If not periodic, then try extrapolating
+         pres1 = model_pressure_s_distrib(i-1,j,id, state_ens_handle, win)
+         pres2 = model_pressure_s_distrib(i-2,j,id, state_ens_handle, win)
+         model_surface_pressure_distrib = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
+
+      endif
+
+   elseif( i == 1 ) then
+
+      ! Check to see if periodic in longitude
+      if ( wrf%dom(id)%periodic_x ) then
+
+         ! We are at seam in longitude, take first and last M-grid points
+         pres1 = model_pressure_s_distrib(i,             j,id, state_ens_handle, win)
+         pres2 = model_pressure_s_distrib(wrf%dom(id)%we,j,id, state_ens_handle, win)
+         model_surface_pressure_distrib = interp_pressure(pres1, pres2, vertical=.false.)
+         
+      else
+
+         ! If not periodic, then try extrapolating
+         pres1 = model_pressure_s_distrib(i,  j,id, state_ens_handle, win)
+         pres2 = model_pressure_s_distrib(i+1,j,id, state_ens_handle, win)
+         model_surface_pressure_distrib = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
+
+      endif
+
+   else
+
+      pres1 = model_pressure_s_distrib(i,  j,id, state_ens_handle, win)
+      pres2 = model_pressure_s_distrib(i-1,j,id, state_ens_handle, win)
+      model_surface_pressure_distrib = interp_pressure(pres1, pres2, vertical=.false.)
+
+   endif
+
+! If V-grid, then pressure is defined between V points, so average --
+!   averaging depends on polar periodicity
+elseif( var_type == wrf%dom(id)%type_v ) then
+
+   if( j == wrf%dom(id)%var_size(2,wrf%dom(id)%type_v) ) then
+
+      ! Check to see if periodic in latitude (polar)
+      if ( wrf%dom(id)%polar ) then
+
+         ! The upper corner is 180 degrees of longitude away
+         off = i + wrf%dom(id)%we/2
+         if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
+
+         pres1 = model_pressure_s_distrib(off,j-1,id, state_ens_handle, win)
+         pres2 = model_pressure_s_distrib(i  ,j-1,id, state_ens_handle, win)
+         model_surface_pressure_distrib = interp_pressure(pres1, pres2, vertical=.false.)
+
+      ! If not periodic, then try extrapolating
+      else
+
+         pres1 = model_pressure_s_distrib(i,j-1,id, state_ens_handle, win)
+         pres2 = model_pressure_s_distrib(i,j-2,id, state_ens_handle, win)
+         model_surface_pressure_distrib = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
+
+      endif
+
+   elseif( j == 1 ) then
+
+      ! Check to see if periodic in latitude (polar)
+      if ( wrf%dom(id)%polar ) then
+
+         ! The lower corner is 180 degrees of longitude away
+         off = i + wrf%dom(id)%we/2
+         if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
+
+         pres1 = model_pressure_s_distrib(off,j,id, state_ens_handle, win)
+         pres2 = model_pressure_s_distrib(i,  j,id, state_ens_handle, win)
+         model_surface_pressure_distrib = interp_pressure(pres1, pres2, vertical=.false.)
+
+      ! If not periodic, then try extrapolating
+      else
+
+         pres1 = model_pressure_s_distrib(i,j,  id, state_ens_handle, win)
+         pres2 = model_pressure_s_distrib(i,j+1,id, state_ens_handle, win)
+         model_surface_pressure_distrib = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
+
+      endif
+
+   else
+
+      pres1 = model_pressure_s_distrib(i,j,  id, state_ens_handle, win)
+      pres2 = model_pressure_s_distrib(i,j-1,id, state_ens_handle, win)
+      model_surface_pressure_distrib = interp_pressure(pres1, pres2, vertical=.false.)
+
+   endif
+
+else
+
+   model_surface_pressure_distrib = model_pressure_s_distrib(i,j,id, state_ens_handle, win)
+
+endif
+
+end function model_surface_pressure_distrib
 
 !#######################################################
 
@@ -4606,23 +4876,369 @@ end subroutine get_model_height_profile_distrib
 
 !#######################################################
 
-function model_height(i,j,k,id,var_type,x)
+function model_height_distrib(i,j,k,id,var_type, state_ens_handle, win)
 
 ! This routine used to compute geopotential heights; it now
 ! computes geometric heights.
 
-integer,  intent(in)  :: i,j,k,id,var_type
-real(r8), intent(in)  :: x(:)
-real(r8)              :: model_height
+type(ensemble_type), intent(in) :: state_ens_handle
+integer,             intent(in) :: win
+integer,             intent(in) :: i,j,k,id,var_type
+real(r8)                        :: model_height_distrib
 
-integer   :: i1, i2, i3, i4, off
-real(r8)  :: geop, lat
+integer               :: i1, i2, i3, i4, off
+real(r8), allocatable :: x_i1(:), x_i2(:), x_i3(:), x_i4(:)
+real(r8)              :: geop, lat
+integer               :: mean_copy
 
-model_height = missing_r8
+model_height_distrib = missing_r8
 
-call error_handler(E_ERR, 'model_height', 'I do not have a distributed version of this')
+mean_copy = state_ens_handle%num_copies -5
+allocate(x_i1(mean_copy), x_i2(mean_copy), x_i3(mean_copy), x_i4(mean_copy))
 
-end function model_height
+if (wrf%dom(id)%type_gz < 0) then
+  call error_handler(E_ERR, 'model_height:', &
+      'PH must be in state vector to compute total pressure', &
+       source, revision, revdate)
+endif
+
+! If W-grid (on ZNW levels), then we are fine because it is native to GZ
+if( (var_type == wrf%dom(id)%type_w) .or. (var_type == wrf%dom(id)%type_gz) ) then
+
+   i1 = new_dart_ind(i,j,k,wrf%dom(id)%type_gz, id)
+   call get_state(x_i1, i1, win, state_ens_handle, mean_copy)
+
+   geop = (wrf%dom(id)%phb(i,j,k)+x_i1(mean_copy))/gravity
+   model_height_distrib = compute_geometric_height(geop, wrf%dom(id)%latitude(i, j))
+
+! If U-grid, then height is defined between U points, both in horizontal 
+!   and in vertical, so average -- averaging depends on longitude periodicity
+elseif( var_type == wrf%dom(id)%type_u ) then
+
+   if( i == wrf%dom(id)%var_size(1,wrf%dom(id)%type_u) ) then
+
+      ! Check to see if periodic in longitude
+      if ( wrf%dom(id)%periodic_x ) then
+
+         ! We are at the seam in longitude, so take first and last mass points
+         i1 = new_dart_ind(i-1,j,k  ,wrf%dom(id)%type_gz, id)
+         i2 = new_dart_ind(i-1,j,k+1,wrf%dom(id)%type_gz, id)
+         i3 = new_dart_ind(1,  j,k  ,wrf%dom(id)%type_gz, id)
+         i4 = new_dart_ind(1,  j,k+1,wrf%dom(id)%type_gz, id)
+
+         call get_state(x_i1, i1, win, state_ens_handle, mean_copy)
+         call get_state(x_i2, i2, win, state_ens_handle, mean_copy)
+         call get_state(x_i3, i3, win, state_ens_handle, mean_copy)
+         call get_state(x_i4, i4, win, state_ens_handle, mean_copy)
+
+
+         geop = ( (wrf%dom(id)%phb(i-1,j,k  ) + x_i1(mean_copy)) &
+                 +(wrf%dom(id)%phb(i-1,j,k+1) + x_i2(mean_copy)) &
+                 +(wrf%dom(id)%phb(1  ,j,k  ) + x_i3(mean_copy)) &
+                 +(wrf%dom(id)%phb(1  ,j,k+1) + x_i4(mean_copy)) )/(4.0_r8*gravity)
+         
+         lat = ( wrf%dom(id)%latitude(i-1,j)  &
+                +wrf%dom(id)%latitude(i-1,j)  &
+                +wrf%dom(id)%latitude(1  ,j)  &
+                +wrf%dom(id)%latitude(1  ,j) ) / 4.0_r8
+
+         model_height_distrib = compute_geometric_height(geop, lat)
+         
+      else
+
+         ! If not periodic, then try extrapolating
+         i1 = new_dart_ind(i-1,j,k  ,wrf%dom(id)%type_gz, id)
+         i2 = new_dart_ind(i-1,j,k+1,wrf%dom(id)%type_gz, id)
+
+         call get_state(x_i1, i1, win, state_ens_handle, mean_copy)
+         call get_state(x_i2, i2, win, state_ens_handle, mean_copy)
+         call get_state(x_i3, i1 -1, win, state_ens_handle, mean_copy)
+         call get_state(x_i4, i2 -1, win, state_ens_handle, mean_copy)
+
+
+         geop = ( 3.0_r8*(wrf%dom(id)%phb(i-1,j,k  )+x_i1(mean_copy)) &
+                 +3.0_r8*(wrf%dom(id)%phb(i-1,j,k+1)+x_i2(mean_copy)) &
+                        -(wrf%dom(id)%phb(i-2,j,k  )+x_i3(mean_copy)) &
+                        -(wrf%dom(id)%phb(i-2,j,k+1)+x_i4(mean_copy)) )/(4.0_r8*gravity)
+
+         lat = ( 3.0_r8*wrf%dom(id)%latitude(i-1,j)  &
+                +3.0_r8*wrf%dom(id)%latitude(i-1,j)  &
+                       -wrf%dom(id)%latitude(i-2,j)  &
+                       -wrf%dom(id)%latitude(i-2,j)) / 4.0_r8
+
+         model_height_distrib = compute_geometric_height(geop, lat)
+
+      endif
+
+   elseif( i == 1 ) then
+
+      ! Check to see if periodic in longitude
+      if ( wrf%dom(id)%periodic_x ) then
+
+         ! We are at the seam in longitude, so take first and last mass points
+         off = wrf%dom(id)%we
+         i1 = new_dart_ind(i  ,j,k  ,wrf%dom(id)%type_gz, id)
+         i2 = new_dart_ind(i  ,j,k+1,wrf%dom(id)%type_gz, id)
+         i3 = new_dart_ind(off,j,k  ,wrf%dom(id)%type_gz, id)
+         i4 = new_dart_ind(off,j,k+1,wrf%dom(id)%type_gz, id)
+
+         call get_state(x_i1, i1, win, state_ens_handle, mean_copy)
+         call get_state(x_i2, i2, win, state_ens_handle, mean_copy)
+         call get_state(x_i3, i3, win, state_ens_handle, mean_copy)
+         call get_state(x_i4, i4, win, state_ens_handle, mean_copy)
+
+         geop = ( (wrf%dom(id)%phb(i  ,j,k  ) + x_i1(mean_copy)) &
+                 +(wrf%dom(id)%phb(i  ,j,k+1) + x_i2(mean_copy)) &
+                 +(wrf%dom(id)%phb(off,j,k  ) + x_i3(mean_copy)) &
+                 +(wrf%dom(id)%phb(off,j,k+1) + x_i4(mean_copy)) )/(4.0_r8*gravity)
+         
+         lat = ( wrf%dom(id)%latitude(i  ,j)  &
+                +wrf%dom(id)%latitude(i  ,j)  &
+                +wrf%dom(id)%latitude(off,j)  &
+                +wrf%dom(id)%latitude(off,j)) / 4.0_r8
+
+         model_height_distrib = compute_geometric_height(geop, lat)
+
+      else
+
+         ! If not periodic, then try extrapolating
+         i1 = new_dart_ind(i,j,k  ,wrf%dom(id)%type_gz, id)
+         i2 = new_dart_ind(i,j,k+1,wrf%dom(id)%type_gz, id)
+
+         call get_state(x_i1, i1, win, state_ens_handle, mean_copy)
+         call get_state(x_i2, i2, win, state_ens_handle, mean_copy)
+         call get_state(x_i3, i1 +1, win, state_ens_handle, mean_copy)
+         call get_state(x_i4, i2 +1, win, state_ens_handle, mean_copy)
+
+
+         geop = ( 3.0_r8*(wrf%dom(id)%phb(i  ,j,k  )+x_i1(mean_copy))   &
+                 +3.0_r8*(wrf%dom(id)%phb(i  ,j,k+1)+x_i2(mean_copy))   &
+                        -(wrf%dom(id)%phb(i+1,j,k  )+x_i3(mean_copy)) &
+                        -(wrf%dom(id)%phb(i+1,j,k+1)+x_i4(mean_copy)) )/(4.0_r8*gravity)
+
+         lat = ( 3.0_r8*wrf%dom(id)%latitude(i  ,j)  &
+                +3.0_r8*wrf%dom(id)%latitude(i  ,j)  &
+                       -wrf%dom(id)%latitude(i+1,j)  &
+                       -wrf%dom(id)%latitude(i+1,j)) / 4.0_r8
+
+         model_height_distrib = compute_geometric_height(geop, lat)
+
+      endif
+
+   else
+
+      i1 = new_dart_ind(i,j,k  ,wrf%dom(id)%type_gz, id)
+      i2 = new_dart_ind(i,j,k+1,wrf%dom(id)%type_gz, id)
+
+      call get_state(x_i1, i1, win, state_ens_handle, mean_copy)
+      call get_state(x_i2, i2, win, state_ens_handle, mean_copy)
+      call get_state(x_i3, i1 -1, win, state_ens_handle, mean_copy)
+      call get_state(x_i4, i2 -1, win, state_ens_handle, mean_copy)
+
+
+      geop = ( (wrf%dom(id)%phb(i  ,j,k  )+x_i1(mean_copy))   &
+              +(wrf%dom(id)%phb(i  ,j,k+1)+x_i2(mean_copy))   &
+              +(wrf%dom(id)%phb(i-1,j,k  )+x_i3(mean_copy)) &
+              +(wrf%dom(id)%phb(i-1,j,k+1)+x_i4(mean_copy)) )/(4.0_r8*gravity)
+
+      lat = (  wrf%dom(id)%latitude(i  ,j)  &
+              +wrf%dom(id)%latitude(i  ,j)  &
+              +wrf%dom(id)%latitude(i-1,j)  &
+              +wrf%dom(id)%latitude(i-1,j)) / 4.0_r8
+
+      model_height_distrib = compute_geometric_height(geop, lat)
+
+   endif
+
+! If V-grid, then pressure is defined between V points, both in horizontal 
+!   and in vertical, so average -- averaging depends on polar periodicity
+elseif( var_type == wrf%dom(id)%type_v ) then
+
+   if( j == wrf%dom(id)%var_size(2,wrf%dom(id)%type_v) ) then
+
+      ! Check to see if periodic in latitude (polar)
+      if ( wrf%dom(id)%polar ) then
+
+         ! The upper corner is 180 degrees of longitude away
+         off = i + wrf%dom(id)%we/2
+         if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
+
+         i1 = new_dart_ind(off,j-1,k  ,wrf%dom(id)%type_gz, id)
+         i2 = new_dart_ind(off,j-1,k+1,wrf%dom(id)%type_gz, id)
+         i3 = new_dart_ind(i  ,j-1,k  ,wrf%dom(id)%type_gz, id)
+         i4 = new_dart_ind(i  ,j-1,k+1,wrf%dom(id)%type_gz, id)
+
+         call get_state(x_i1, i1, win, state_ens_handle, mean_copy)
+         call get_state(x_i2, i2, win, state_ens_handle, mean_copy)
+         call get_state(x_i3, i3, win, state_ens_handle, mean_copy)
+         call get_state(x_i4, i4, win, state_ens_handle, mean_copy)
+
+         geop = ( (wrf%dom(id)%phb(off,j-1,k  )+x_i1(mean_copy)) &
+                 +(wrf%dom(id)%phb(off,j-1,k+1)+x_i2(mean_copy)) &
+                 +(wrf%dom(id)%phb(i  ,j-1,k  )+x_i3(mean_copy)) &
+                 +(wrf%dom(id)%phb(i  ,j-1,k+1)+x_i4(mean_copy)) )/(4.0_r8*gravity)
+         
+         lat = ( wrf%dom(id)%latitude(off,j-1)  &
+                +wrf%dom(id)%latitude(off,j-1)  &
+                +wrf%dom(id)%latitude(i  ,j-1)  &
+                +wrf%dom(id)%latitude(i  ,j-1)) / 4.0_r8
+
+         model_height_distrib = compute_geometric_height(geop, lat)
+
+      else
+
+         ! If not periodic, then try extrapolating
+         i1 = new_dart_ind(i,j-1,k  ,wrf%dom(id)%type_gz, id)
+         i2 = new_dart_ind(i,j-1,k+1,wrf%dom(id)%type_gz, id)
+         i3 = new_dart_ind(i,j-2,k  ,wrf%dom(id)%type_gz, id)
+         i4 = new_dart_ind(i,j-2,k+1,wrf%dom(id)%type_gz, id)
+
+         call get_state(x_i1, i1, win, state_ens_handle, mean_copy)
+         call get_state(x_i2, i2, win, state_ens_handle, mean_copy)
+         call get_state(x_i3, i3, win, state_ens_handle, mean_copy)
+         call get_state(x_i4, i4, win, state_ens_handle, mean_copy)
+
+         geop = ( 3.0_r8*(wrf%dom(id)%phb(i,j-1,k  )+x_i1(mean_copy)) &
+                 +3.0_r8*(wrf%dom(id)%phb(i,j-1,k+1)+x_i2(mean_copy)) &
+                        -(wrf%dom(id)%phb(i,j-2,k  )+x_i3(mean_copy)) &
+                        -(wrf%dom(id)%phb(i,j-2,k+1)+x_i4(mean_copy)) )/(4.0_r8*gravity)
+
+         lat = ( 3.0_r8*wrf%dom(id)%latitude(i,j-1)  &
+                +3.0_r8*wrf%dom(id)%latitude(i,j-1)  &
+                       -wrf%dom(id)%latitude(i,j-2)  &
+                       -wrf%dom(id)%latitude(i,j-2)) / 4.0_r8
+
+         model_height_distrib = compute_geometric_height(geop, lat)
+
+      endif
+
+   elseif( j == 1 ) then
+
+      ! Check to see if periodic in latitude (polar)
+      if ( wrf%dom(id)%polar ) then
+
+         ! The lower corner is 180 degrees of longitude away
+         off = i + wrf%dom(id)%we/2
+         if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
+
+         i1 = new_dart_ind(off,j,k  ,wrf%dom(id)%type_gz, id)
+         i2 = new_dart_ind(off,j,k+1,wrf%dom(id)%type_gz, id)
+         i3 = new_dart_ind(i  ,j,k  ,wrf%dom(id)%type_gz, id)
+         i4 = new_dart_ind(i  ,j,k+1,wrf%dom(id)%type_gz, id)
+
+         call get_state(x_i1, i1, win, state_ens_handle, mean_copy)
+         call get_state(x_i2, i2, win, state_ens_handle, mean_copy)
+         call get_state(x_i3, i3, win, state_ens_handle, mean_copy)
+         call get_state(x_i4, i4, win, state_ens_handle, mean_copy)
+
+         geop = ( (wrf%dom(id)%phb(off,j,k  )+x_i1(mean_copy)) &
+                 +(wrf%dom(id)%phb(off,j,k+1)+x_i2(mean_copy)) &
+                 +(wrf%dom(id)%phb(i  ,j,k  )+x_i3(mean_copy)) &
+                 +(wrf%dom(id)%phb(i  ,j,k+1)+x_i4(mean_copy)) )/(4.0_r8*gravity)
+         
+         lat = ( wrf%dom(id)%latitude(off,j)  &
+                +wrf%dom(id)%latitude(off,j)  &
+                +wrf%dom(id)%latitude(i  ,j)  &
+                +wrf%dom(id)%latitude(i  ,j)) / 4.0_r8
+
+         model_height_distrib = compute_geometric_height(geop, lat)
+
+      else
+
+         ! If not periodic, then try extrapolating
+         i1 = new_dart_ind(i,j  ,k  ,wrf%dom(id)%type_gz, id)
+         i2 = new_dart_ind(i,j  ,k+1,wrf%dom(id)%type_gz, id)
+         i3 = new_dart_ind(i,j+1,k  ,wrf%dom(id)%type_gz, id)
+         i4 = new_dart_ind(i,j+1,k+1,wrf%dom(id)%type_gz, id)
+
+         call get_state(x_i1, i1, win, state_ens_handle, mean_copy)
+         call get_state(x_i2, i2, win, state_ens_handle, mean_copy)
+         call get_state(x_i3, i3, win, state_ens_handle, mean_copy)
+         call get_state(x_i4, i4, win, state_ens_handle, mean_copy)
+
+         geop = ( 3.0_r8*(wrf%dom(id)%phb(i,j  ,k  )+x_i1(mean_copy)) &
+                 +3.0_r8*(wrf%dom(id)%phb(i,j  ,k+1)+x_i2(mean_copy)) &
+                        -(wrf%dom(id)%phb(i,j+1,k  )+x_i3(mean_copy)) &
+                        -(wrf%dom(id)%phb(i,j+1,k+1)+x_i4(mean_copy)) )/(4.0_r8*gravity)
+
+         lat = ( 3.0_r8*wrf%dom(id)%latitude(i,j  )  &
+                +3.0_r8*wrf%dom(id)%latitude(i,j  )  &
+                       -wrf%dom(id)%latitude(i,j+1)  &
+                       -wrf%dom(id)%latitude(i,j+1)) / 4.0_r8
+
+         model_height_distrib = compute_geometric_height(geop, lat)
+
+      endif
+
+   else
+
+      i1 = new_dart_ind(i,j  ,k  ,wrf%dom(id)%type_gz, id)
+      i2 = new_dart_ind(i,j  ,k+1,wrf%dom(id)%type_gz, id)
+      i3 = new_dart_ind(i,j-1,k  ,wrf%dom(id)%type_gz, id)
+      i4 = new_dart_ind(i,j-1,k+1,wrf%dom(id)%type_gz, id)
+
+      call get_state(x_i1, i1, win, state_ens_handle, mean_copy)
+      call get_state(x_i2, i2, win, state_ens_handle, mean_copy)
+      call get_state(x_i3, i3, win, state_ens_handle, mean_copy)
+      call get_state(x_i4, i4, win, state_ens_handle, mean_copy)
+
+      geop = ( (wrf%dom(id)%phb(i,j  ,k  )+x_i1(mean_copy)) &
+              +(wrf%dom(id)%phb(i,j  ,k+1)+x_i2(mean_copy)) &
+              +(wrf%dom(id)%phb(i,j-1,k  )+x_i3(mean_copy)) &
+              +(wrf%dom(id)%phb(i,j-1,k+1)+x_i4(mean_copy)) )/(4.0_r8*gravity)
+
+      lat = ( wrf%dom(id)%latitude(i,j  )  &
+             +wrf%dom(id)%latitude(i,j  )  &
+             +wrf%dom(id)%latitude(i,j-1)  &
+             +wrf%dom(id)%latitude(i,j-1)) / 4.0_r8
+
+      model_height_distrib = compute_geometric_height(geop, lat)
+
+   endif
+
+elseif( var_type == wrf%dom(id)%type_mu .or. &
+        var_type == wrf%dom(id)%type_ps .or. &
+        var_type == wrf%dom(id)%type_tsk) then
+
+   model_height_distrib = wrf%dom(id)%hgt(i,j)
+
+elseif( var_type == wrf%dom(id)%type_tslb  .or. &
+        var_type == wrf%dom(id)%type_smois .or. &
+        var_type == wrf%dom(id)%type_sh2o ) then
+
+   model_height_distrib = wrf%dom(id)%hgt(i,j) - wrf%dom(id)%zs(k)
+
+elseif( var_type == wrf%dom(id)%type_u10 .or. &
+        var_type == wrf%dom(id)%type_v10 ) then
+
+   model_height_distrib = wrf%dom(id)%hgt(i,j) + 10.0_r8
+
+elseif( var_type == wrf%dom(id)%type_t2  .or. &
+        var_type == wrf%dom(id)%type_th2 .or. &
+        var_type == wrf%dom(id)%type_q2 ) then
+
+   model_height_distrib = wrf%dom(id)%hgt(i,j) + 2.0_r8
+
+else
+
+   i1 = new_dart_ind(i,j,k  ,wrf%dom(id)%type_gz, id)
+   i2 = new_dart_ind(i,j,k+1,wrf%dom(id)%type_gz, id)
+
+   call get_state(x_i1, i1, win, state_ens_handle, mean_copy)
+   call get_state(x_i2, i2, win, state_ens_handle, mean_copy)
+
+   geop = ( (wrf%dom(id)%phb(i,j,k  )+x_i1(mean_copy)) &
+           +(wrf%dom(id)%phb(i,j,k+1)+x_i2(mean_copy)) )/(2.0_r8*gravity)
+
+   lat = wrf%dom(id)%latitude(i,j)
+
+   model_height_distrib = compute_geometric_height(geop, lat)
+
+endif
+
+deallocate(x_i1, x_i2, x_i3, x_i4)
+
+end function model_height_distrib
 
 !#######################################################
 
@@ -5192,7 +5808,7 @@ end do
 end subroutine get_domain_info
 
 !#######################################################################
-!> Distributed version of get_close_obs_distrib
+!> Distributed version of get_close_obs
 subroutine get_close_obs_distrib(gc, base_obs_loc, base_obs_kind, obs_loc, obs_loc_distrib, &
                                  obs_kind, num_close, close_ind, dist, state_ens_handle, win)
 
@@ -7335,6 +7951,9 @@ istatus = istatus_v
 
 base_array = get_location(obs_loc)
 vert_coord = base_array(3)
+
+!> @todot set location so you don't redo this calculation in get_close_obs NOPE  they are two different structures
+!obs_loc = set_location(base_array(1), base_array(2), base_array(3), wrf%dom(1)%localization_coord )
 
 end subroutine convert_base_obs_location
 
