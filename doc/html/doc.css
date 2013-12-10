@@ -246,6 +246,10 @@ em.teal{
     color:cornflowerblue; 
     font-family:sans-serif;}
 
+em.redtt{
+    color:crimson; 
+    font-family:monospace;}
+
 em{
     font-family:sans-serif;
     color:red;}
