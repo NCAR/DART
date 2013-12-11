@@ -157,12 +157,12 @@ to be easy to build on new platforms.
 </p>
 <p>
 DART has been compiled and run on Apple laptops and workstations,
-Linux clusters small and large, SGI Altix clusters, IBM Power clusters,
-IBM Intel clusters, Cray systems.
+Linux clusters small and large, SGI Altix systems, IBM Power systems,
+IBM Intel systems, Cray systems.
 </p>
 <p>
 DART has been compiled with compilers from Intel, PGI, Cray, GNU,
-Pathscale.
+IBM, Pathscale.
 </p>
 <p>
 MPI versions of DART have run under batch systems including
@@ -170,144 +170,200 @@ LSF, PBS, Moab/Torque, and Sun Grid Engine.
 </p>
 <p>
 We have run successfully on a Windows machine under the <code>cygwin</code>
-environment.  If you are interested in this, please contact us.
+environment.  If you are interested in this, please 
+<a href="mailto:dart@ucar.edu">contact us</a>.
 </p>
 
+<!-- this content comes from DART_distributions.html and should
+     be updated there and then just embedded -->
 
-      <a name="download"></a>
-      <h1>DART code distributions</h1>
-      <p>
-      DART is distributed through an anonymous-access readonly 
-      Subversion (<b>SVN</b>) repository.  This makes updates and 
-      comparisons between your sandbox and the latest, greatest version of the 
-      code trivially easy. The same cannot be said for a TAR file.
-      If you are not familiar with SVN (the client application of subversion),
-      you should take a stroll through my 
-      <a href="http://www.image.ucar.edu/~thoar/svn_primer.html">svn primer</a>.
-      If you cannot use svn (e.g. are firewalled out), please let me (Tim) know and 
-      I'll send you a tarfile as a last resort. 
-      See the <a href="#contact">contact info</a> section for email addresses.
-      <br />
-      <br />
-      Since the DART software is still an area of active research, there are
-      multiple distributions, with more on the way. We'd like to be able to contact
-      people to inform them of any bugs or updates. (This includes local users, BTW!)
-      As you can see by the timetable of distributions, you could expect to get 
-      about 2 more emails per year, so PLEASE use a real email address when signing up.
-      I solemnly swear to protect your email address like it is my own!
-      <br />
-      <br />
-      <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">download instructions for the latest release.</a>
-      <br />
-      <br />
-      <table border=0 cellpadding=2 width=100%>
-      <thead align="left" valign="top">
-      <tr><th width="15%">version</th>
-          <th width="15%">date</th>
-          <th width="15%">instructions</th>
-          <th>most noteable change(s)</th>
-      </tr>
-      </thead>
+<!-- Begin DART_distributions.html -->
 
-      <tbody align="left" valign="top">
-      <tr><!--version--><td><a href="http://www.image.ucar.edu/DAReS/DART/DART_download">lanai</a></td>
-          <!--   date--><td>6&nbsp;Dec&nbsp;2013</td>
-          <!--instruc--><td><a href="Lanai_release.html">[doc]</a></td>
-	  <!-- change--><td>Support for the CESM climate framework components, along with
-           other new models, new observation types, new diagnostics, new utilities.  
-           See documentation for more details.<br />
-                            <a href="Lanai_diffs_from_Kodiak.html">change log</a>
-                            </td></tr>
+<a name="download"></a>
+<a name="distributions" id="distributions"></a>
+<h1>DART code distributions</h1>
+<p>
+The DART code is distributed via a
+Subversion (<b>SVN</b>) repository.  Anonymous access is
+allowed, and the repository code is read-only for everyone
+except the DART development team.  DART is distributed 
+as source code, so you must be prepared to build the parts 
+of the system you need before you can run it.
+</p>
+<p>
+Using subversion makes it easy to update and
+compare your checked-out version of the code 
+with the latest repository version of the code. 
+If you are not familiar with the <em class=code>svn</em> command
+(the client application of subversion),
+you should take a stroll through Tim's
+<a href="http://www.image.ucar.edu/~thoar/svn_primer.html">svn primer</a>.
+Or there are several GUI programs that help you manage, check out,
+and merge subversion distributions.
+If you cannot use <em class=code>svn</em> 
+(e.g. because you are behind a firewall that does not
+permit subversion access), please 
+<a href="mailto:dart@ucar.edu">email the DART team</a>
+and we may be able to send you a tar file as a last resort.
+</p>
+<p>
+The DART development team keeps released versions of the code
+which are stable (don't change) except for bug fixes.  Generally
+we recommend users check out one of these versions.  The DART
+development team makes frequent updates to the trunk version of
+the code as new features are developed.  Those users who want
+to use recently added features are welcome to check out the trunk,
+but they should be prepared to work around possible
+non-backwards compatible changes and more lightly tested code
+than the released versions.
+</p>
+<p>
+DART continues to evolve.  We request that you register using 
+<a href="/DAReS/DART/DART_download">this web page</a>
+and afterwards you will be redirected to instructions on
+how to download a version of the DART code.
+Registration helps us track how many people are using our code,
+and allows us to contact current users in case of bugs or major updates.
+The DART mailing list is a <strong>very low-traffic</strong> list --
+perhaps 4 emails per year -- so PLEASE use a real email address when signing up.
+We solemnly swear to protect your email address like it is our own!
+Even local NCAR users or users who have registered in the past are
+encouraged to reregister when downloading new versions.  Thank you
+for your understanding.
+</p>
+<br />
+<table border="0" cellpadding="2" width="100%">
+<thead align="left" valign="top">
+<tr>
+<th>version</th>
+<!-- this is my attempt to make it so we don't have to put
+nbsp's between the spaces in the dates and keep them from
+wrapping. the other solution makes it really hard to
+read what the dates actually are.  but if this nowrap
+thing plus blanks doesn't work we can go back to putting
+nbsp's between the dates -->
+<th nowrap>date &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</th>
+<th>instructions</th>
+<th>most noteable change(s)</th>
+</tr>
+</thead>
+<tbody align="left" valign="top">
+<tr>
+<!--version--><td><a href="/DAReS/DART/DART_download">lanai</a></td>
+<!--   date--><td>13 Dec 2013</td>
+<!--instruc--><td><a href="Lanai_release.html">[doc]</a></td>
+<!-- change--><td>Support for the CESM climate components under the CESM framework;
+                  the MPAS models, the NOAH land model, the GITM ionosphere model,
+                  the NOGAPS atmosphere model, the NAAPS aerosol model,
+                  and the SQG surface quasi-geostrophic model.
+                  Support for many new chemistry and aerosol observation types,
+                  support for many new observations sources, many new diagnostic
+                  routines, and new utilities.<br />
+            <a href="Lanai_release.html#CurrentUsers">change log</a> </td>
+</tr>
+<tr>
+<!--version--> <td><a href="/DAReS/DART/DART_download">trunk</a></td>
+<!--   date--> <td>today</td>
+<!--instruc--> <td>included in distrib.</td>
+<!-- change--> <td>varies, use <em>svn log --revision ####:HEAD</em> to see log
+                   messages about changes since revision ####.</td>
+</tr>
+<tr>
+<!--version--><td><a href="/DAReS/DART/DART_download">kodiak</a></td>
+<!--   date--><td>30 Jun 2011</td>
+<!--instruc--><td><a href="history/Kodiak_release.html">[doc]</a></td>
+<!-- change--><td>Damped Inflation, Sampling Error Correction, Boxcar
+            Kernel Filter option, support for new models, new observation types, new
+            diagnostics, new utilities.<br />
+            <a href="history/Kodiak_release.html#CurrentUsers">change log</a> </td>
+</tr>
+<tr>
+<!--version--> <td>jamaica</td>
+<!--   date--> <td>12 Apr 2007</td>
+<!--instruc--> <td><a href="history/Jamaica_release.html">[doc]</a></td>
+<!-- change--> <td>vertical localization, extensive testing of MPI implementation,
+                   full documentation for new algorithms, new tutorial sections<br />
+                   <a href="history/Jamaica_diffs_from_I.html">change log</a> </td>
+</tr>
+<tr>
+<!--version--> <td>pre_j</td>
+<!--   date--> <td>02 Oct 2006</td>
+<!--instruc--> <td><a href="history/pre_j_release.html">[doc]</a></td>
+<!-- change--> <td>contains an updated scalable filter algorithm<br /></td>
+</tr>
+<tr>
+<!--version--> <td>post_iceland</td>
+<!--   date--> <td>20 Jun 2006</td>
+<!--instruc--> <td><a href="history/Post_Iceland_release.html">[doc]</a></td>
+<!-- change--> <td>observation-space adaptive inflation, bug fixes,<br />
+                   obs_sequence_tool support ...<br />
+                   <a href="history/PostI_diffs_from_I.html">change log</a></td>
+</tr>
+<tr>
+<!--version--> <td>iceland</td>
+<!--   date--> <td>23 Nov 2005</td>
+<!--instruc--> <td><a href="history/Iceland_release.html">[doc]</a></td>
+<!-- change--> <td>huge expansion of real observation capability<br />
+                   better namelist processing, PBL_1d available.<br />
+                   <a href="history/I_diffs_from_workshop.html">change log</a></td>
+</tr>
+<tr>
+<!--"/pub/DART/DART_pre_iceland.tar.gz"-->
+<!--version--> <td>pre_iceland</td>
+<!--   date--> <td>20 Oct 2005</td>
+<!--instruc--> <td>for developers only</td>
+<!-- change--> <td>huge expansion of real observation capability</td>
+</tr>
+<tr>
+<!--"/pub/DART/DART_workshop_2005.tar.gz"-->
+<!--version--> <td>DA workshop 2005</td>
+<!--   date--> <td>13 Jun 2005</td>
+<!--instruc--> <td>docs included in distrib.</td>
+<!-- change--> <td>tutorial directory in distribution, observation preprocessing</td>
+</tr>
+<tr>
+<!--"/pub/DART/DART_hawaii.tar.gz"-->
+<!--version--> <td>hawaii</td>
+<!--   date--> <td>28 Feb 2005</td>
+<!--instruc--> <td><a href="history/hawaii_release.html">[doc]</a></td>
+<!-- change--> <td>new filtering algorithms</td>
+</tr>
+<tr>
+<!--"/pub/DART/DART_pre_hawaii.tar.gz"-->
+<!--version--> <td>pre-hawaii</td>
+<!--   date--> <td>20 Dec 2004</td>
+<!--instruc--> <td><a href="history/pre_hawaii_release.html">[doc]</a></td>
+<!-- change--> <td>new filtering algorithms</td>
+</tr>
+<tr>
+<!--"/pub/DART/DART_guam.tar.gz">-->
+<!--version--> <td>guam</td>
+<!--   date--> <td>12 Aug 2004</td>
+<!--instruc--> <td><a href="history/Guam_release.html">[doc]</a></td>
+<!-- change--> <td>new observation modules, removing autopromotion</td>
+</tr>
+<tr>
+<!--"/pub/DART/DART_fiji_02.tar.gz"-->
+<!--version--> <td>fiji</td>
+<!--   date--> <td>29 Apr 2004</td>
+<!--instruc--> <td><a href="history/Fiji_release.html">[doc]</a></td>
+<!-- change--> <td>enhanced portability, CAM, WRF</td>
+</tr>
+<tr>
+<!--"/pub/DART/DART_ASP_Summer2003_1.tar.gz"-->
+</tr>
+<tr>
+<!--version--> <td>easter</td>
+<!--   date--> <td>8 March 2004</td>
+<!--instruc--> <td><a href="history/ASP_DART_exercise.html">[doc]</a></td>
+<!-- change--> <td>initial release</td>
+</tr>
+</tbody>
+</table>
+<br />
+<br />
 
-      <tr><!--version--><td><a href="http://www.image.ucar.edu/DAReS/DART/DART_download">trunk</a></td>
-          <!--   date--><td>today</td>
-          <!--instruc--><td>included in distrib.</td>
-	  <!-- change--><td>varies, but is anticipated to include non-backwards compatible
-             changes from the Lanai release.
-                            </td></tr>
-
-      <tr><!--version--><td>kodiak</td>
-          <!--   date--><td>30&nbsp;Jun&nbsp;2011</td>
-          <!--instruc--><td><a href="Kodiak_release.html">[doc]</a></td>
-	  <!-- change--><td>Damped Inflation, Sampling Error Correction, Boxcar 
-           Kernel Filter option, support for new models, new observation types, new
-           diagnostics, new utilities.  See documentation for more details.<br />
-                            <a href="Kodiak_release.html#CurrentUsers">change log</a>
-                            </td></tr>
-
-      <tr><!--version--><td>jamaica</td>
-          <!--   date--><td>12&nbsp;Apr&nbsp;2007</td>
-          <!--instruc--><td><a href="Jamaica_release.html">[doc]</a></td>
-	  <!-- change--><td>vertical localization, extensive testing of MPI implementation,
-	                    full documentation for new algorithms, new tutorial sections<br />
-                            <a href="Jamaica_diffs_from_I.html">change log</a>
-                            </td></tr>
-
-      <tr><!--version--><td>pre_j</td>
-          <!--   date--><td>02&nbsp;Oct&nbsp;2006</td>
-          <!--instruc--><td><a href="pre_j_release.html">[doc]</a></td>
-	  <!-- change--><td>contains an updated scalable filter algorithm<br />
-                            </td></tr>
-
-      <tr><!--version--><td>post_iceland</td>
-          <!--   date--><td>20&nbsp;Jun&nbsp;2006</td>
-          <!--instruc--><td><a href="Post_Iceland_release.html">[doc]</a></td>
-          <!-- change--><td>observation-space adaptive inflation, bug fixes,<br />
-                            merge_obs_sequence support ...<br />
-                            <a href="PostI_diffs_from_I.html">change log</a></td></tr>
-
-      <tr><!--version--><td>iceland</td>
-          <!--   date--><td>23&nbsp;Nov&nbsp;2005</td>
-          <!--instruc--><td><a href="Iceland_release.html">[doc]</a></td>
-          <!-- change--><td>huge expansion of real observation capability<br />
-                            better namelist processing, PBL_1d available.<br />
-                            <a href="I_diffs_from_workshop.html">change log</a></td></tr>
-
-      <tr><!--"/pub/DART/DART_pre_iceland.tar.gz"-->
-          <!--version--><td>pre_iceland</td>
-          <!--   date--><td>20&nbsp;Oct&nbsp;2005</td>
-          <!--instruc--><td>for developers only</td>
-          <!-- change--><td>huge expansion of real observation capability</td></tr>
-
-      <tr><!--"/pub/DART/DART_workshop_2005.tar.gz"-->
-          <!--version--><td>DA workshop 2005</td>
-          <!--   date--><td>13&nbsp;June&nbsp;2005</td>
-          <!--instruc  ><td><a href="hawaii_release.html">[doc]</a></TD-->
-          <!--instruc--><td>docs included in distrib.</td>
-          <!-- change--><td>tutorial directory in distribution, observation preprocessing</td></tr>
-
-      <tr><!--"/pub/DART/DART_hawaii.tar.gz"-->
-          <!--version--><td>hawaii</td>
-          <!--   date--><td>28&nbsp;Feb&nbsp;2005</td>
-          <!--instruc--><td><a href="hawaii_release.html">[doc]</a></td>
-          <!-- change--><td>new filtering algorithms</td></tr>
-
-      <tr><!--"/pub/DART/DART_pre_hawaii.tar.gz"-->
-          <!--version--><td>pre-hawaii</td>
-          <!--   date--><td>20&nbsp;Dec&nbsp;2004</td>
-          <!--instruc--><td><a href="pre_hawaii_release.html">[doc]</a></td>
-          <!-- change--><td>new filtering algorithms</td></tr>
-
-      <tr><!--"/pub/DART/DART_guam.tar.gz">-->
-          <!--version--><td>guam</td>
-          <!--   date--><td>12&nbsp;Aug&nbsp;2004</td>
-          <!--instruc--><td><a href="Guam_release.html">[doc]</a></td>
-          <!-- change--><td>new observation modules, removing autopromotion</td></tr>
-
-      <tr><!--"/pub/DART/DART_fiji_02.tar.gz"-->
-          <!--version--><td>fiji</td>
-          <!--   date--><td>29&nbsp;Apr&nbsp;2004</td>
-          <!--instruc--><td><a href="Fiji_release.html">[doc]</a></td>
-          <!-- change--><td>enhanced portability, CAM, WRF</td></tr>
-
-      <tr><!--"/pub/DART/DART_ASP_Summer2003_1.tar.gz"-->
-          <!--version--><td>easter</td>
-          <!--   date--><td>8&nbsp;March&nbsp;2004</td>
-          <!--instruc--><td><a href="ASP_DART_exercise.html">[doc]</a></td>
-          <!-- change--><td>initial release</td></tr>
-      </tbody>
-      </table>
-      <br />
+<!-- End DART_distributions.html -->
 
 
       <a name="teach"></a>
@@ -352,26 +408,26 @@ environment.  If you are interested in this, please contact us.
       Or if you want to contact us individually, here is our information:
       </p>
       <table width="95%"  border="0" align="center" cellpadding="0" cellspacing="0">
-      <tr><th align="left">general</th>
-          <th align="left">general/diagnostics</th>
-          <th align="left">platforms/mpi</th>
+      <tr><th align="left">lead scientist and manager</th>
+          <th align="left">general / diagnostics</th>
+          <th align="left">general / platforms / mpi</th>
+          <th align="left">large processor count systems</th>
           <th align="left">CAM</th>
           <th align="left">WRF</th>
-          <th align="left">GPS Radio Occultation</th>
       </tr>
       <tr><td>Jeff Anderson</td>
           <td>Tim Hoar</td>
           <td>Nancy Collins</td>
+          <td>Helen Kershaw</td>
           <td>Kevin Raeder</td>
           <td>Glen Romine</td>
-          <td>Hui Liu</td>
       </tr>
-      <tr><td>jla&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
-          <td>thoar&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
-          <td>nancy&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
-          <td>raeder&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
-          <td>romine&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
-          <td>hliu&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
+      <tr><td>jla&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
+          <td>thoar&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
+          <td>nancy&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
+          <td>hkershaw&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
+          <td>raeder&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
+          <td>romine&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
       </tr>
       </table>
 

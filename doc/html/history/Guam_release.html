@@ -2,61 +2,62 @@
           "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
-<TITLE>ASP Summer Colloquium DART Exercise Documentation</TITLE>
-<link rel="stylesheet" type="text/css" href="doc.css">
-<link href="../images/dart.ico" rel="shortcut icon" />
+<TITLE>DART "Guam release" Documentation</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc.css">
+<link href="../../images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
 <center>
 <A HREF="#Legalese">TERMS OF USE</A>
+<br>
+<br>
+<img src = "../../images/Dartboard7.png" alt="cool DART logo">
 </center>
 
 <!--==================================================================-->
-<H2 class=indent1>Document conventions</H2>
-<P>Anything underlined is a URL.<BR>
-<em class=file>All filenames look like this -- (typewriter font, green)</em>.<BR>
-<em class=program>Program names look like this -- (italicized font, green)</em>.<BR>
-<em class=input>user input looks like this -- (bold, magenta)</em>.
-</P>
-<div class=unix>
-commands to be typed at the command line are contained in an 
-indented gray box.
-</div>
-<P>
-And the contents of a file are enclosed in a box with a border:
-</P>
-<div class=routine>
-&amp;hypothetical_nml<BR>
-&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<BR>
-&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<BR>
-&nbsp;&nbsp;init_time_days = 0,<BR>
-&nbsp;&nbsp;init_time_seconds = 0,<BR>
-&nbsp;&nbsp;output_interval = 1   /
-</div>
+
+<H1>DART "Guam release" Documentation</H1>
+<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <!--==================================================================-->
 
 <A NAME="OVERVIEW"></A>
 <H1>Overview of DART</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
 
 <P>The Data Assimilation Research Testbed (DART) is designed to 
 facilitate the combination of assimilation algorithms, models, 
 and observation sets to allow increased understanding of all three. 
-(<A HREF="http://www.cgd.ucar.edu/DART/obs_set_specification.pdf">an 
-in-depth design discussion</A>)
-For the 
-<A HREF="http://www.asp.ucar.edu/colloquium/2003/">ASP colloquium 
-on Data Assimilation</A>, a subset of the complete DART facility was 
-used to examine ensemble filter assimilation algorithms using 
-<A HREF="#syntheticobservations">synthetic observations</A>.  
-The DART programs were compiled with the Intel 7.1 Fortran compiler 
-and run on a linux compute-server while analysis was performed with 
-Matlab on a DEC workstation. If your system is different, you will 
+The DART programs have been compiled with the Intel 7.1 Fortran compiler 
+and run on a linux compute-server. If your system is different, you will 
 definitely need to read the 
 <A HREF="#customizations">Customizations</A> section.
+</P>
+
+<P>
+<A HREF="/pub/DART/DART_guam.tar.gz">The latest software release -- "guam".</A>
+</P>
+
+<P>The <b>guam</b> release provides several new models and has a fundamentally
+different implementation of the low-level routines that will now operate on a
+much broader class of observations.  As such, the first two program units have
+changed somewhat. The strategy of these two programs units is still the same; 
+declare the characteristics of the observations and then declare the temporal nature 
+of the observations. These are still destined to be run as a back-end to some sort
+of GUI-driven interface, so virtually no work has been done to change the level of
+user interaction required to run these programs.
+</P>
+
+<P>
+The guam release has also been tested with more compilers in an attempt to 
+determine non-portable code elements. It is my experience that the largest
+impediment to portable code is the reliance on the compiler to autopromote
+<TT>real</TT> variables to one flavor or another. 
+<A HREF="/DART/PrecisionNotes.html">Different compilers perform this autopromotion in different ways</A> Using the F90 "kind" allows for much more flexible code, in that the use
+of interface procedures is possible only when two routines do not have identical
+sets of input arguments -- something that happens when the compiler autopromotes 
+32bit reals to 64bit reals, for example.
 </P>
 
 <P>DART programs can require three different types of input. 
@@ -72,8 +73,8 @@ DART specific formats to be available. For instance,
 observation set given a particular model and a description 
 of a sequence of observations requires an input file that 
 describes this observation sequence.
-At present, all DART-specific input files are inefficient but 
-human-readable ascii files. Third, many DART 
+At present, the observation files for DART are inefficient but 
+human-readable ascii files in a custom format. Third, many DART 
 modules (including main programs) make use of the Fortan90 
 namelist facility to obtain values of certain parameters 
 at run-time. All programs look for a namelist input file 
@@ -93,7 +94,8 @@ errors for other input files opened by DART programs.
 If you encounter run-time read errors, the first course of action
 should be to ensure the components of the namelist are actual components.
 Changing the names of the namelist components <strong>will</strong>
-create unpleasantries.
+create unpleasantries. DART provides a mechanism that automatically 
+generates namelists with the default values for each program to be run.  
 </P>
 
 <P>
@@ -101,28 +103,56 @@ DART uses the
 <A HREF="http://www.unidata.ucar.edu/packages/netcdf/">netCDF</A> 
 self-describing data format with a particular metadata convention to 
 describe output that is used to analyze the results of assimilation 
-experiments. These files have the extension <em class=file>.nc</em> 
+experiments.  These files have the extension <em class=file>.nc</em> 
 and can be read by a number of standard data analysis tools. 
-Three sets of tools are available to work with netCDF files for the ASP 
-colloquium. First, the simple tool <em class=program>ncview</em> is 
-provided to do rudimentary graphical display of slices of output 
-data fields. 
-<A HREF="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</A> 
-will be of most use for output of the more comprehensive models at 
-the end of the exercise set. Second, a set of tools called the 
-<A HREF="http://nco.sourceforge.net">NCO</A> tools, produced by 
-UCAR's Unidata group, are aailable to do operations like 
-concatenating, slicing, and dicing of netCDF files. 
-Finally, a set of <A HREF="http://www.mathworks.com/">Matlab</A>
+A set of <A HREF="http://www.mathworks.com/">Matlab</A>
 scripts, designed to produce graphical diagnostics from DART netCDF 
 output files are available.
+DART users have also used <A HREF="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</A> 
+to create rudimentary graphical displays of output data fields. 
+The <A HREF="http://nco.sourceforge.net">NCO</A> tools, produced by 
+UCAR's Unidata group, are available to do operations like 
+concatenating, slicing, and dicing of netCDF files. 
 </P>
+
+<!--==================================================================-->
+
+<H2 class=indent1>Document conventions</H2>
+<P>Anything underlined is a URL.<BR>
+<em class=file>All filenames look like this -- (typewriter font, green)</em>.<BR>
+<em class=program>Program names look like this -- (italicized font, green)</em>.<BR>
+<em class=input>user input looks like this -- (bold, magenta)</em>.
+</P>
+<div class=unix>
+commands to be typed at the command line are contained in an 
+indented gray box.
+</div>
+<P>
+And the contents of a file are enclosed in a box with a border:
+</P>
+<div class=routine>
+&amp;hypothetical_nml<BR>
+&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<BR>
+&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<BR>
+&nbsp;&nbsp;init_time_days = 0,<BR>
+&nbsp;&nbsp;init_time_seconds = 0,<BR>
+&nbsp;&nbsp;output_interval = 1  /
+</div>
+
+<!--==================================================================-->
+
+<A NAME="Installation"></A>
+<HR>
+<H1>Installation</H1>
 
 <P>
 This document outlines the installation of the DART software
 and the system requirements. For convenience, some of the original 
 colloquium exercises are repeated here, mostly just to check the
-installation. The entire installation process is summarized in
+installation. A few of the 
+<A HREF="/DART/dart_exercise_doc.pdf">exercises from the ASP summer 2003 Colloquium</A>
+are repeated here, primarily to serve as the verification of the installation.
+The entire installation process is summarized in
 the following steps:
 </P>
 
@@ -143,7 +173,8 @@ the following steps:
 We have tried to make the code as portable as possible, but we
 do not have access to all compilers on all platforms, so there are no
 guarantees. We are interested in your experience building the system,
-so please email me (Tim Hoar) at thoar&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu
+so please email me (Tim Hoar) thoar 'at' ucar 'dot' edu
+(trying to cut down on the spam).
 </P>
 
 <P>
@@ -170,7 +201,8 @@ platforms with the
 <A HREF="http://www.intel.com/software/products/compilers/flin">Intel Fortran
 Compiler 7.1 for Linux</A>, which is free for individual scientific use. 
 It has also been built and successfully run with the 
-<A HREF="http://www.pgroup.com">Portland Group Fortran Compiler</A>. 
+<A HREF="http://www.pgroup.com">Portland Group Fortran Compiler</A> (5.02), and again with
+the Intel 8.0.034 compiler. 
 Since recompiling the code is a necessity to experiment
 with different models, there are no binaries to distribute.
 </P>
@@ -245,16 +277,16 @@ will be needed by the makefile template, as described in the
 
 <P>
 The DART source code is distributed as a compressed tar file. 
-<A HREF="/pub/DART/DART_ASP_SUMMER_2003.tar.gz">DART_ASP_SUMMER_2003.tar.gz</A>
-[8307414 bytes]. When untarred, the source tree will begin with a 
+<A HREF="/pub/DART/DART_guam.tar.gz">DART_guam.tar.gz</A>
+[22347692 bytes]. When untarred, the source tree will begin with a 
 directory named <em class=file>DART</em> and will be approximately 
-23.5Mb. Compiling the code in this tree (as is usually the case) will
+105 Mb. Compiling the code in this tree (as is usually the case) will
 necessitate much more space.
 </P>
 
 <div class=unix>
-   gunzip <em class=file>DART_ASP_SUMMER_2003.tar.gz</em><BR>
-   tar -xvf <em class=file>DART_ASP_SUMMER_2003.tar</em><BR>
+   gunzip <em class=file>DART_guam.tar.gz</em><BR>
+   tar -xvf <em class=file>DART_guam.tar</em><BR>
 </div>
 
 <P>
@@ -286,11 +318,10 @@ piece of software that requires a user-defined input file that records
 dependencies between different source files. <em class=program>make</em> 
 then performs a hierarchy of actions when one or more of the
 source files is modified. The <em class=program>mkmf</em> utility is 
-a custom preprocessor that generates
-a <em class=program>make</em> input file 
-(named <em class=file>Makefile</em>) and is designed specifically to work
-with object-oriented Fortran90 (and other languages) for systems like
-DART.
+a custom preprocessor that generates a <em class=program>make</em> input file 
+(named <em class=file>Makefile</em>) and an example namelist <em class=file>input.nml.mkmf</em>
+with the default values. The <em class=file>Makefile</em> is designed specifically to work
+with object-oriented Fortran90 (and other languages) for systems like DART.
 </P>
 
 <P>
@@ -317,17 +348,24 @@ standard <em class=program>make</em> utility.
 Shell scripts that execute the mkmf command for all standard 
 DART executables are provided as part of the standard DART software. 
 For more information on <em class=program>mkmf</em> see 
-<A HREF="http://www.gfdl.noaa.gov/~lat/fms_public_release/public_manual_fms/havana_public_manual.html#compiling%20the%20code">the FMS mkmf description</A>
+<A HREF="http://www.gfdl.gov/fms/pubrel/j/atm_dycores/doc/dycore_public_manual.html#mkmf">the FMS mkmf description</A>.
+<BR>
+One of the benefits of using <em class=program>mkmf</em> is that it also 
+creates an example namelist file for each program. The example namelist is 
+called <em class=file>input.nml.mkmf</em>, so as not to clash with any 
+exising <em class=file>input.nml</em> that may exist in that directory.
 </P>
 
 <A NAME="template"></A>
-<H3 class=indent1>Customizing the 'mkmf.template' file</H3>
+<H3 class=indent1>Building and Customizing the 'mkmf.template' file</H3>
 
 <P>
 A series of templates for different compilers/architectures exists 
 in the <em class=file>DART/mkmf/</em> directory and have names with
 extensions that identify either the compiler, the architecture, or both. 
 This is how you inform the build process of the specifics of your system. 
+Our intent is that you copy one that is similar to your system into 
+<em class=file>mkmf.template</em> and customize it.
 For the discussion that follows, knowledge of the contents of one of these
 templates (i.e. <em class=file>mkmf.template.pgi</em>) is needed: 
 (note that only the first few lines are shown here)
@@ -388,24 +426,24 @@ reflect the location of your <em class=file>libudunits.a</em>.
 </P>
 
 <A NAME="path_names"></A>
-<H3 class=indent1>Customizing the 'path_name' file</H3>
+<H3 class=indent1>Customizing the 'path_names_*' file</H3>
 
 <P>
-Several <em class=file>path_name_*</em> files are provided in
+Several <em class=file>path_names_*</em> files are provided in
 the <em class=file>work</em> directory for each specific model, 
 in this case: <em class=file>DART/models/lorenz_63/work</em>.
 </P>
 
 <OL>
-   <LI><em class=file>path_names_create_obs_set_def</em></LI>
    <LI><em class=file>path_names_create_obs_sequence</em></LI>
+   <LI><em class=file>path_names_create_fixed_network_seq</em></LI>
    <LI><em class=file>path_names_perfect_model_obs</em></LI>
    <LI><em class=file>path_names_filter</em></LI>
 </OL>
 
 <P>
-Since each model comes with its own set of files, no customization is
-needed.
+Since each model comes with its own set of files, no further 
+customization is needed.
 </P>
 
 <!--==================================================================-->
@@ -414,7 +452,8 @@ needed.
 <HR>
 <H2>Building the Lorenz_63 DART project.</H2>
 
-<P>Currently, DART executables are constructed in a work 
+<P>
+Currently, DART executables are constructed in a <em class=file>work</em>
 subdirectory under the directory containing code for the given model.
 In the top-level DART directory, change to the L63 work 
 directory and list the contents:
@@ -423,17 +462,19 @@ directory and list the contents:
 <div class=unix>
 cd DART/models/lorenz_63/work<BR>
 ls -1
-</div><BR>
+</div>
 
+<P>
 With the result:
+</P>
+
 <PRE>filter_ics 
-input.nml 
 mkmf_create_obs_sequence 
-mkmf_create_obs_set_def 
+mkmf_create_fixed_network_seq 
 mkmf_filter 
 mkmf_perfect_model_obs 
 path_names_create_obs_sequence 
-path_names_create_obs_set_def 
+path_names_create_fixed_network_seq 
 path_names_filter 
 path_names_perfect_model_obs 
 perfect_ics</PRE>
@@ -441,8 +482,8 @@ perfect_ics</PRE>
 <P>
 There are four <em class=file>mkmf_</em><em class=italic>xxxxxx</em> 
 files for the programs 
-<em class=program>create_obs_set_def</em>, 
 <em class=program>create_obs_sequence</em>, 
+<em class=program>create_obs_fixed_network_seq</em>, 
 <em class=program>perfect_model_obs</em>, and 
 <em class=program>filter</em> along with the 
 corresponding <em class=file>path_names_</em><em class=italic>xxxxxx</em> files.
@@ -451,72 +492,70 @@ You can examine the contents of one of the
 for instance <em class=file>path_names_filter</em>, to see a list of 
 the relative paths of all files that contain Fortran90 modules 
 required for the program <em class=program>filter</em> for 
-the L63 model. All of these paths are relative to the 
-<em class=file>DART</em> directory that you copied into 
-your local storage. The first path is the main program 
+the L63 model. All of these paths are relative to your 
+<em class=file>DART</em> directory.
+The first path is the main program 
 (<em class=file>filter.f90</em>) and is followed by all 
 the Fortran90 modules used by this program.
 </P>
 
 <P>
 The <em class=program>mkmf_</em><em class=italic>xxxxxx</em> scripts 
-are considerably more cryptic and need to be modified to use the appropriate
-<em class=file>DART/mkmf/mkmf.template.</em><em class=italic>xxx</em> 
-file containing the site-specific customizations of the previous section 
-(i.e. <A HREF="#template">the template customization</A> section). 
-For example, suppose you modified 
-<em class=file>DART/mkmf/mkmf.template.ifc</em> 
-and want to create the <em class=program>create_obs_set_def</em> program.
-Simply make sure the appropriate template file 
-(<em class=file>kmf.template.ifc</em>) is referenced 
-by <em class=file>mkmf_create_obs_set_def</em>:
+are cryptic but should not need to be modified -- as long as you do not
+restructure the code tree (by moving directories, for example).
+<br>
+<br>
+The only function of the <em class=program>mkmf_</em><em class=italic>xxxxxx</em> 
+script is to generate a 
+<em class=file>Makefile</em> and an <em class=file>input.nml.mkmf</em> file.
+It is not supposed to compile anything:
 </P>
 
-<div class=routine> 
-../../../mkmf/mkmf -p create_obs_set_def -t ../../../mkmf/mkmf.template.ifc -c"-Duse_netCDF" \<BR>
- -a "../../.." path_names_create_obs_set_def
-</div><BR>
-
-and then issue the following unix commands (from the work subdirectory):<BR><BR>
-
 <div class=unix>
-csh mkmf_create_obs_set_def<BR>
+csh mkmf_create_obs_sequence<BR>
 make
 </div>
 
 <P>
 The first command generates an appropriate <em class=file>Makefile</em> and
-the second results in the compilation of a series of Fortran90 modules which
-ultimately produces an executable file: 
-<em class=program>create_obs_set_def</em>.
+the <em class=file>input.nml.create_obs_sequence_default</em> file. 
+The second command results in the compilation of a series of 
+Fortran90 modules which ultimately produces an executable file: 
+<em class=program>create_obs_sequence</em>.
 Should you need to make any changes to the 
-<em class=file>DART/mkmf/mkmf.template.ifc</em>, 
+<em class=file>DART/mkmf/mkmf.template</em>, 
 you will need to regenerate the <em class=file>Makefile</em>.  
-A series of .o and .mod files for each module compiled will also be 
-left in the work directory.
+A series of object files for each module compiled will also be 
+left in the work directory, as some of these are undoubtedly needed by the build
+of the other DART components.
 You can proceed to create the other three programs needed to work with 
 L63 in DART as follows:
 </P>
 
 <div class=unix>
-csh mkmf_create_obs_sequence<BR>
+csh mkmf_create_fixed_network_seq<BR>
 make<BR>
 csh mkmf_perfect_model_obs<BR>
 make<BR>
 csh mkmf_filter<BR>
 make
-</div><BR>
+</div>
 
+<P>
 The result (hopefully) is that four executables now 
-reside in your work directory.
+reside in your work directory. The most common problem is that the netCDF libraries
+and include files (particularly <em class=file>typesizes.mod</em>) are not found. 
+Edit the <em class=file>DART/mkmf/mkmf.template</em>,
+recreate the <em class=file>Makefile</em>, and try again.
+</P>
 
 <TABLE border=0 cellpadding=1 width=100%>
 <TR><TH>program</TH><TH>purpose</TH></TR>
-<TR><TD><em class=program>create_obs_set_def</em></TD>
+<TR><TD><em class=program>create_obs_sequence</em></TD>
     <TD>specify a (set) of observation characteristics taken 
         by a particular (set of) instruments
     </TD></TR>
-<TR><TD><em class=program>create_obs_sequence</em></TD>
+<TR><TD><em class=program>create_fixed_network_seq</em></TD>
     <TD>specify the temporal attributes of the observation sets
     </TD></TR>
 <TR><TD><em class=program>perfect_model_obs</em></TD>
@@ -534,6 +573,7 @@ reside in your work directory.
 <HR>
 <H2>Running Lorenz_63.</H2>
 
+<P>
 This initial sequence of exercises includes detailed instructions 
 on how to work with the DART code and allows investigation of the 
 basic features of one of the most famous dynamical systems, the 
@@ -545,15 +585,16 @@ To perform a synthetic observation assimilation experiment
 for the L63 model, the following steps must be performed 
 (an overview of the process is given first, 
 followed by detailed procedures for each step): 
+</P>
 
-<H3 class=indent1>Experiment Overview</H3>
+<H2 class=indent1>Experiment Overview</H2>
 <OL>
    <LI><A HREF="#integrate">Integrate the L63 model for a long time</A><br>
    starting from arbitrary initial conditions to generate a model state 
    that lies on the attractor. The ergodic nature of the L63 system 
    means a 'lengthy' integration always converges to some point on 
    the computer's finite precision representation of the model's 
-   attractor.<br><br></li>
+   attractor.<br><br></LI>
 
    <LI><A HREF="#ensemblate">Generate a set of ensemble initial conditions</A><br>
    from which to start an assimilation. Since L63 is ergodic, the 
@@ -563,42 +604,47 @@ followed by detailed procedures for each step):
    the attractor generated by step 1. This perturbed state can then be 
    integrated for a very long time until all memory of its initial 
    condition can be viewed as forgotten. Any number of ensemble 
-   initial conditions can be generated by repeating this procedure.<br><br></li>
+   initial conditions can be generated by repeating this procedure.<br><br></LI>
 
    <LI><A HREF="#simulate">Simulate a particular observing system</A><br>
-   by creating an 'observation set definition', which requires 
-   interactive input describing the details of the observations,
-   but not the observations themselves.<br><br></li>
+   by first creating an 'observation set definition' and then creating
+   an 'observation sequence'. The 'observation set definition' describes the 
+   instrumental characteristics of the observations and the 'observation sequence'
+   defines the temporal sequence of the observations.<br><br></LI>
 
-   <LI><A HREF="#generate">Generate an 'observation sequence'</A><br>
+   <LI><A HREF="#generate">Populate the 'observation sequence' with 'perfect' observations</A><br>
    by integrating the model and using the information in the 
-   'observation set definition' file to create simulated observations.
+   'observation sequence' file to create simulated observations.
    This entails operating on the model state at the 
    time of the observation with an appropriate forward operator 
    (a function that operates on the model state vector to produce 
    the expected value of the particular observation) and then adding 
    a random sample from the observation error distribution specified 
    in the observation set definition.  At the same time, diagnostic 
-   output about the 'true' state trajectory can be created.<br><br></li>
+   output about the 'true' state trajectory can be created.<br><br></LI>
 
    <LI><A HREF="#assimilate">Assimilate the synthetic observations</A><br>
-   by running the filter; diagnostic output is generated.<br><br></li>
+   by running the filter; diagnostic output is generated.<br><br></LI>
 </OL>
 
 <A NAME="integrate"></A>
 <H3 class=indent1>1. Integrate the L63 model for a 'long' time.</H3>
+
+<P>
 <em class=program>perfect_model_obs</em> integrates the model
 for all the times specified in the 'observation sequence definition' file.
 To this end, begin by creating an 'observation sequence definition' 
 file that spans a long time. Creating an 'observation sequence definition' 
 file is a two-step procedure involving 
-<em class=program>create_obs_set_def</em> followed by 
-<em class=program>create_obs_sequence</em>. After they are both run, it
+<em class=program>create_obs_sequence</em> followed by 
+<em class=program>create_fixed_network_seq</em>. After they are both run, it
 is necessary to integrate the model with <em class=program>perfect_model_obs</em>.
+</P>
+
+<H4 class=indent1>1.1 Create an observation set definition.</H4>
 
 <P>
-<strong>Create an observation set definition.</strong>
-<em class=program>create_obs_set_def</em> creates an observation 
+<em class=program>create_obs_sequence</em> creates an observation 
 set definition, the time-independent part of an observation sequence. 
 An observation set definition file only contains the 
 <em class=code>location, type,</em> 
@@ -608,17 +654,15 @@ for a related set of observations. There are no actual observations,
 nor are there any times associated with the definition.
 For spin-up, we are only interested in integrating the L63 model, 
 not in generating any particular synthetic observations. 
-Begin by creating a minimal observation set definition.
-</P>
-
-<P class=indent1>
+Begin by creating a minimal observation set definition.<BR>
+<BR> 
 In general, for the low-order models, only a single observation set need
 be defined. Next, the number of individual scalar observations 
 (like a single surface pressure observation) in the set is needed. 
 To spin-up an initial condition for the L63 model, only a  
 single observation is needed. 
 Next, the error variance for this observation must be entered. 
-Since we are not interested in this observation having any impact 
+Since we do not need (nor want) this observation to have any impact 
 on an assimilation (it will only be used for spinning up the model 
 and the ensemble), enter a very large value for the error variance. 
 An observation with a very large error variance has essentially no 
@@ -634,60 +678,94 @@ first state variable in the L63 model.
 The program will respond by terminating after generating a file 
 (generally named <em class=file>set_def.out</em>) 
 that defines the single identity observation of the first 
-state variable of the L63 model. The following is a screenshot, 
+state variable of the L63 model. The following is a screenshot 
+(much of the verbose logging has been left off for clarity),
 the user input looks <em class=input>like this</em>.
 </P>
 
 <div class=unix>
 <PRE>
-[unixprompt]$ <em class=input>./create_obs_set_def</em>
- create_obs_set_def attributes:
-    $source$
-    $revision: 2801 $
-    $date: 2007-04-04 22:11:48 -0600 (Wed, 04 Apr 2007) $
-     
- Input the filename for output of observation set_def_list? [set_def.out]
-<em class=input>set_def.out</em>
- assim_model attributes:
-    $source$
-    $revision: 2801 $
-    $date: 2007-04-04 22:11:48 -0600 (Wed, 04 Apr 2007) $
- namelist read; values are
- sigma is     10.00000000000000
- r is     28.00000000000000
- b is     2.666666666666667
- deltat is    1.0000000000000000E-002
- output_state_vector is   T
- model attributes:
-    $source$
-    $revision: 2801 $
-    $date: 2007-04-04 22:11:48 -0600 (Wed, 04 Apr 2007) $
- model size is             3
- Input the number of unique observation sets you might define
-<em class=input>1</em>
- How many observations in set             1
-<em class=input>1</em>
- Defining observation             1
+[unixprompt]$ <em class=input>./create_obs_sequence</em>
+ Initializing the utilities module.
+ Trying to read from unit           10
+ Trying to open file dart_log.out
+ 
+ Registering module :
+ $source: /home/dart/CVS.REPOS/DART/utilities/utilities_mod.f90,v $
+ $revision: 1.18 $
+ $date: 2004/06/29 15:16:40 $
+ Registration complete.
+ 
+ &amp;UTILITIES_NML
+ TERMLEVEL= 2,LOGFILENAME=dart_log.out                                          
+                                                                            
+ /
+ 
+ Registering module :
+ $source: /home/dart/CVS.REPOS/DART/obs_sequence/create_obs_sequence.f90,v $
+ $revision: 1.18 $
+ $date: 2004/05/24 15:41:46 $
+ Registration complete.
+
+ { ... }
+
+ Input upper bound on number of observations in sequence
+<em class=input>10</em>
+ 
+ Input number of copies of data (0 for just a definition)
+<em class=input>0</em>
+
+ Input number of quality control values per field (0 or greater)
+<em class=input>0</em>
+
+ input a -1 if there are no more obs 
+<em class=input>0</em>
+
+ Registering module :
+ $source: /home/dart/CVS.REPOS/DART/obs_def/obs_def_mod.f90,v $
+ $revision: 1.21 $
+ $date: 2004/06/25 16:17:43 $
+ Registration complete.
+ 
+ Registering module :
+ $source: /home/dart/CVS.REPOS/DART/obs_kind/obs_kind_mod.f90,v $
+ $revision: 1.15 $
+ $date: 2004/06/24 21:49:47 $
+ Registration complete.
+ 
+ input obs kind: u =            1  v =            2  ps =            3  t = 
+           4  qv =            5  p =            6  Td =           10  Vr = 
+         100  Ref =          101
+ input -1 times the state variable index for an identity observation
+<em class=input>-1</em>
+
+ input time in days and seconds
+<em class=input>1 0</em>
+
+ input time in days and seconds
+<em class=input>1 0</em>
+
  Input error variance for this observation definition
 <em class=input>1000000</em>
- Input an integer index if this is identity observation, else -1
-<em class=input>1</em>
- set_def.out successfully created.
- Terminating normally.
+
+ input a -1 if there are no more obs 
+<em class=input>-1</em>
+
+ Input filename for sequence (  set_def.out   usually works well)
+<em class=input> set_def.out </em>
+ write_obs_seq  opening formatted file set_def.out
+ write_obs_seq  closed file set_def.out
 </PRE>
 </div>
 
+<H4 class=indent1>1.2 Create an observation sequence definition.</H4>
 <P>
-<strong>Create an observation sequence definition.</strong>
-<em class=program>create_obs_sequence</em> creates an 'observation 
+<em class=program>create_fixed_network_seq</em> creates an 'observation 
 sequence definition' by extending the 'observation set definition'
-with the temporal attributes of the observations.
-</P>
-
-<P class=indent1>
+with the temporal attributes of the observations.<BR>
+<BR>
 The first input is the name of the file created in the previous step, 
-i.e. the name of the observation set definition that you've 
-just created. 
+i.e. the name of the observation set definition that you've just created. 
 It is possible to create sequences in which the observation sets 
 are observed at regular intervals or irregularly in time. 
 Here, all we need is a sequence that takes observations over a 
@@ -706,16 +784,21 @@ with the <em class=program>perfect_model_obs</em> program.
 
 <div class=unix>
 <PRE>
-[thoar@ghotiol work]$ <em class=input>./create_obs_sequence</em>
- create_obs_sequence attributes:
-     
-    $source$
-    $revision: 2801 $
-    $date: 2007-04-04 22:11:48 -0600 (Wed, 04 Apr 2007) $
-     
- What is name of set_def_list? [set_def.out]
+[unixprompt]$ <em class=input>./create_fixed_network_seq</em>
+
+ ...
+
+ Registering module :
+ $source: /home/dart/CVS.REPOS/DART/obs_sequence/obs_sequence_mod.f90,v $
+ $revision: 1.31 $
+ $date: 2004/06/29 15:04:37 $
+ Registration complete.
+ 
+ Input filename for network definition sequence (usually  set_def.out  )
 <em class=input>set_def.out</em>
- Setting times for obs_def             1
+
+ ...
+
  To input a regularly repeating time sequence enter 1
  To enter an irregular list of times enter 2
 <em class=input>1</em>
@@ -732,44 +815,79 @@ with the <em class=program>perfect_model_obs</em> program.
  time           998  is             0          998
  time           999  is             0          999
  time          1000  is             0         1000
- Input file name for output of obs_sequence? [obs_seq.in]
+What is output file name for sequence (  obs_seq.in   is recommended )
 <em class=input>obs_seq.in</em>
 </PRE>
 </div>
 
+
+<H4>1.3 Initialize the model onto the attractor.</H4>
 <P>
-<strong>Initialize the model onto the attractor.</strong>
-<em class=program>perfect_model_obs</em> can now advance the
-arbitrary initial state for 24,000 timesteps to move it onto the
-attractor.</P>
-<P class=indent1>
-<em class=program>perfect_model_obs</em> uses the Fortran90 namelist 
-input mechanism instead of (admittedly gory, but temporary) 
-interactive input.  In <em class=file>input.nml</em>, the namelist for 
-<em class=program>perfect_model_obs</em> the following values should be set:</P>
+   <em class=program>perfect_model_obs</em> can now advance the
+   arbitrary initial state for 24,000 timesteps to move it onto the
+   attractor.</BR>
+   <em class=program>perfect_model_obs</em> uses the Fortran90 namelist 
+   input mechanism instead of (admittedly gory, but temporary) interactive input.  
+   All of the DART software expects the namelists to found in a file called 
+   <em class=file>input.nml</em>. When you built the executable, an example namelist
+   was created <em class=file>input.nml.mkmf</em> that contains all of the namelist
+   input for the executable. If you followed the example, each namelist was saved 
+   to a unique name. We must now rename and edit the namelist file for 
+   <em class=program>perfect_model_obs</em>. 
+   Copy <em class=file>input.nml.perfect_model_obs</em>
+   to <em class=file>input.nml</em> and edit it to look like the following:
+</P>
 
 <div class=routineIndent1>
 &amp;perfect_model_obs_nml <BR>
-&nbsp;&nbsp;&nbsp;async = .false., <BR>
+&nbsp;&nbsp;&nbsp;async = 0, <BR>
 &nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in", <BR>
 &nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out", <BR>
 &nbsp;&nbsp;&nbsp;start_from_restart = .false., <BR>
-&nbsp;&nbsp;&nbsp;output_restart = .true., <BR>
+&nbsp;&nbsp;&nbsp;output_restart = <em class=changed>.true.</em>, <BR>
 &nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics", <BR>
 &nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart", <BR>
 &nbsp;&nbsp;&nbsp;init_time_days = 0, <BR>
 &nbsp;&nbsp;&nbsp;init_time_seconds = 0, <BR>
 &nbsp;&nbsp;&nbsp;output_interval = 1   /<BR>
+
+&amp;assim_tools_nml</BR>
+&nbsp;&nbsp;&nbsp;prior_spread_correction = .false.,</BR>
+&nbsp;&nbsp;&nbsp;filter_kind = 1,</BR>
+&nbsp;&nbsp;&nbsp;slope_threshold = 1.0  /</BR>
+
+&amp;cov_cutoff_nml</BR>
+&nbsp;&nbsp;&nbsp;select_localization = 1  /</BR>
+
+&amp;assim_model_nml</BR>
+&nbsp;&nbsp;&nbsp;binary_restart_files = .true.  /</BR>
+
+&amp;model_nml</BR>
+&nbsp;&nbsp;&nbsp;sigma = 10.0, </BR>
+&nbsp;&nbsp;&nbsp;r = 28.0, </BR>
+&nbsp;&nbsp;&nbsp;b = 2.6666666666667,</BR>
+&nbsp;&nbsp;&nbsp;deltat = 0.01  /</BR>
+
+&amp;utilities_nml</BR>
+&nbsp;&nbsp;&nbsp;TERMLEVEL = 1</BR>
+&nbsp;&nbsp;&nbsp;logfilename = 'dart_log.out'  /</BR>
+
 </div>
 
-<TABLE border=1; class=indent1>
+<P>
+For the moment, only two namelists warrant explanation. Each namelists is 
+covered in detail in the html files accompanying the source code for the module. 
+</P>
+
+<h3 class=indent1>perfect_model_obs_nml</h3>
+<TABLE border=1 class=indent1>
 <TR><TH>namelist variable</TH><TH>description</TH></TR>
 <TR><TD><em class=code>async</em></TD>
-    <TD>Simply ignore this. Leave it set to '.false.'</TD></TR>
+    <TD>For the lorenz_63, simply ignore this. Leave it set to '0'</TD></TR>
 
 <TR><TD><em class=code>obs_seq_in_file_name</em></TD>
     <TD>specifies the file name that results from running 
-        <em class=program>create_obs_sequence</em>, i.e. the
+        <em class=program>create_fixed_network_seq</em>, i.e. the
         'observation sequence definition' file.</TD></TR>
 
 <TR><TD><em class=code>obs_seq_out_file_name</em></TD>
@@ -802,91 +920,163 @@ interactive input.  In <em class=file>input.nml</em>, the namelist for
 
 <TR><TD><em class=code>output_interval</em></TD>
     <TD>interval at which to save the model state.</TD></TR>
-
 </TABLE>
 
-<P class=indent1>
+
+<h3 class=indent1>utilities_nml</h3>
+<TABLE class=indent1 border=1>
+<TR><TH>namelist variable</TH><TH>description</TH></TR>
+<TR><TD><em class=code>TERMLEVEL</em></TD>
+    <TD>When set to '1' the programs terminate when a 'warning' is generated.
+        When set to '2' the programs terminate only with 'fatal' errors.</TD></TR>
+
+<TR><TD><em class=code>logfilename</em></TD>
+    <TD>Run-time diagnostics are saved to this file. This namelist is used 
+        by all programs, so the file is opened in APPEND mode. Subsequent 
+        executions cause this file to grow.</TD></TR>
+</TABLE>
+
+
+<P>
 Executing <em class=program>perfect_model_obs</em> will integrate the 
 model 24,000 steps and output the resulting state in the file 
-<em class=file>perfect_restart</em>.</P>
+<em class=file>perfect_restart</em>. Interested parties can check the
+spinup in the <em class=file>True_State.nc</em> file.
+</P>
+
 <div class=unix>
 perfect_model_obs
 </div>
-
 
 <A NAME="ensemblate"></A>
 <H3 class=indent1>2. Generate a set of ensemble initial conditions.</H3>
-The set of initial conditions for a 'perfect model' experiment is 
-created by taking the spun-up state of the model 
-(available in <em class=file>perfect_restart</em>),
-running <em class=program>perfect_model_obs</em> to generate
-the 'true state' of the experiment and a corresponding set of 
-observations, and then feeding the same initial spun-up state 
-and resulting observations into <em class=program>filter</em>. 
+<P class=indent1>
+   The set of initial conditions for a 'perfect model' experiment is 
+   created by taking the spun-up state of the model 
+   (available in <em class=file>perfect_restart</em>),
+   running <em class=program>perfect_model_obs</em> to generate
+   the 'true state' of the experiment and a corresponding set of 
+   observations, and then feeding the same initial spun-up state 
+   and resulting observations into <em class=program>filter</em>. 
+   <BR><BR>
+   Generating ensemble initial conditions 
+   is achieved by changing a perfect_model_obs namelist parameter, 
+   copying <em class=file>perfect_restart</em> to 
+   <em class=file>perfect_ics</em>, and 
+   rerunning <em class=program>perfect_model_obs</em>.
+   This execution of <em class=program>perfect_model_obs</em> 
+   will advance the model state from 
+   the end of the first 24,000 steps to the end of an additional 24,000 
+   steps and place the final state in <em class=file>perfect_restart</em>.
+   The rest of the namelists in <em class=file>input.nml</em> should remain
+   unchanged.
+</P>
+   
+   <div class=routineIndent1>
+   &amp;perfect_model_obs_nml <BR>
+   &nbsp;&nbsp;&nbsp;async = 0, <BR>
+   &nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in", <BR>
+   &nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out", <BR>
+   &nbsp;&nbsp;&nbsp;start_from_restart = <em class=changed>.true.</em>, <BR>
+   &nbsp;&nbsp;&nbsp;output_restart = .true., <BR>
+   &nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics", <BR>
+   &nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart", <BR>
+   &nbsp;&nbsp;&nbsp;init_time_days = 0, <BR>
+   &nbsp;&nbsp;&nbsp;init_time_seconds = 0, <BR>
+   &nbsp;&nbsp;&nbsp;output_interval = 1   /<BR>
+   </div>
+   <BR>
+   <div class=unix>
+   cp perfect_restart perfect_ics<BR>
+   perfect_model_obs
+   </div>
 
 <P class=indent1>
-Generating ensemble initial conditions 
-is achieved by changing a perfect_model_obs namelist parameter, 
-copying <em class=file>perfect_restart</em> to 
-<em class=file>perfect_ics</em>, and 
-rerunning <em class=program>perfect_model_obs</em>.
-This execution of <em class=program>perfect_model_obs</em> 
-will advance the model state from 
-the end of the first 24,000 steps to the end of an additional 24,000 
-steps and place the final state in <em class=file>perfect_restart</em>.
+   A <em class=file>True_State.nc</em> 
+   file is also created. It contains the 'true' state of the integration.
+</P>
+
+<H4 class=indent1>Generating the ensemble</H4>
+<P class=indent1>
+   is done with the program <em class=program>filter</em>, which also uses the 
+   Fortran90 namelist mechanism for input. It is now necessary to copy the
+   <em class=file>input.nml.filter</em> namelist to <em class=file>input.nml</em> 
+   or you may simply insert the <em class=code>filter_nml</em> namelist into the
+   existing <em class=file>input.nml</em>. Having the <em class=code>perfect_model_obs</em>
+   namelist in the input.nml does not hurt anything. In fact, I generally create a single
+   <em class=file>input.nml</em> that has all the namelist blocks in it.
 </P>
 
 <div class=routineIndent1>
-&amp;perfect_model_obs_nml <BR>
-&nbsp;&nbsp;&nbsp;async = .false., <BR>
-&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in", <BR>
-&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out", <BR>
-&nbsp;&nbsp;&nbsp;start_from_restart = <em class=changed>.true.</em>, <BR>
-&nbsp;&nbsp;&nbsp;output_restart = .true., <BR>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics", <BR>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart", <BR>
-&nbsp;&nbsp;&nbsp;init_time_days = 0, <BR>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0, <BR>
-&nbsp;&nbsp;&nbsp;output_interval = 1  /
-</div>
-<BR>
-<div class=unix>
-cp perfect_restart perfect_ics<BR>
-perfect_model_obs
-</div>
-<P class=indent1>A <em class=file>True_State.nc</em> 
-file is also created. It contains the 'true' state of the integration.</P>
+&amp;perfect_model_obs_nml<BR>
+&nbsp;&nbsp;&nbsp;async = 0,<BR>
+&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in",<BR>
+&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out",<BR>
+&nbsp;&nbsp;&nbsp;start_from_restart = .true.,<BR>
+&nbsp;&nbsp;&nbsp;output_restart = .true.,<BR>
+&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<BR>
+&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart",<BR>
+&nbsp;&nbsp;&nbsp;init_time_days = 0,<BR>
+&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<BR>
+&nbsp;&nbsp;&nbsp;output_interval = 1  /<BR>
 
-<P>
-<strong>Generating the ensemble</strong>: is done with the program 
-<em class=program>filter</em>, which also uses the Fortran90 namelist 
-mechanism for input.
-<div class=routineIndent1>
-&amp;filter_nml <BR>
-&nbsp;&nbsp;&nbsp;async = .false., <BR>
-&nbsp;&nbsp;&nbsp;ens_size = 20, <BR>
-&nbsp;&nbsp;&nbsp;cutoff = 0.0, <BR>
-&nbsp;&nbsp;&nbsp;cov_inflate = 1.0, <BR>
-&nbsp;&nbsp;&nbsp;start_from_restart = .false., <BR>
-&nbsp;&nbsp;&nbsp;output_restart = .true.,  <BR>
-&nbsp;&nbsp;&nbsp;obs_sequence_file_name = "obs_seq.out", <BR>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics", <BR>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "filter_restart", <BR>
-&nbsp;&nbsp;&nbsp;init_time_days = 0, <BR>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0, <BR>
-&nbsp;&nbsp;&nbsp;output_state_ens_mean = .true.,  <BR>
-&nbsp;&nbsp;&nbsp;output_state_ens_spread = .true.,  <BR>
-&nbsp;&nbsp;&nbsp;num_output_ens_members = 20, <BR>
-&nbsp;&nbsp;&nbsp;output_interval = 1  /
+&amp;assim_tools_nml<BR>
+&nbsp;&nbsp;&nbsp;prior_spread_correction = .false.,<BR>
+&nbsp;&nbsp;&nbsp;filter_kind = 1,<BR>
+&nbsp;&nbsp;&nbsp;slope_threshold = 1.0  /<BR>
+
+&amp;cov_cutoff_nml<BR>
+&nbsp;&nbsp;&nbsp;select_localization = 1  /<BR>
+
+&amp;assim_model_nml<BR>
+&nbsp;&nbsp;&nbsp;binary_restart_files = .true.  /<BR>
+
+&amp;model_nml<BR>
+&nbsp;&nbsp;&nbsp;sigma = 10.0,<BR>
+&nbsp;&nbsp;&nbsp;r = 28.0,<BR>
+&nbsp;&nbsp;&nbsp;b = 2.6666666666667<BR>
+&nbsp;&nbsp;&nbsp;deltat = 0.01  /<BR>
+
+&amp;utilities_nml<BR>
+&nbsp;&nbsp;&nbsp;TERMLEVEL = 1<BR>
+&nbsp;&nbsp;&nbsp;logfilename = 'dart_log.out'  /<BR>
+
+&amp;reg_factor_nml<BR>
+&nbsp;&nbsp;&nbsp;select_regression = 1,<BR>
+&nbsp;&nbsp;&nbsp;input_reg_file = "time_mean_reg"  /<BR>
+
+&amp;filter_nml<BR>
+&nbsp;&nbsp;&nbsp;async = 0,<BR>
+&nbsp;&nbsp;&nbsp;ens_size = 20,<BR>
+&nbsp;&nbsp;&nbsp;cutoff = 0.20,<BR>
+&nbsp;&nbsp;&nbsp;cov_inflate = 1.00,<BR>
+&nbsp;&nbsp;&nbsp;start_from_restart = .false.,<BR>
+&nbsp;&nbsp;&nbsp;output_restart = <em class=changed>.true.</em>,<BR>
+&nbsp;&nbsp;&nbsp;obs_sequence_file_name = "obs_seq.out",<BR>
+&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics",<BR>
+&nbsp;&nbsp;&nbsp;restart_out_file_name = "filter_restart",<BR>
+&nbsp;&nbsp;&nbsp;init_time_days = 0,<BR>
+&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<BR>
+&nbsp;&nbsp;&nbsp;output_state_ens_mean = .true.,<BR>
+&nbsp;&nbsp;&nbsp;output_state_ens_spread = .true.,<BR>
+&nbsp;&nbsp;&nbsp;num_output_ens_members = <em class=changed>20</em>,<BR>
+&nbsp;&nbsp;&nbsp;output_interval = 1,<BR>
+&nbsp;&nbsp;&nbsp;num_groups = 1,<BR>
+&nbsp;&nbsp;&nbsp;confidence_slope = 0.0,<BR>
+&nbsp;&nbsp;&nbsp;output_obs_diagnostics = .false.,<BR>
+&nbsp;&nbsp;&nbsp;get_mean_reg = .false.,<BR>
+&nbsp;&nbsp;&nbsp;get_median_reg = .false.  /<BR>
+
 </div>
 
-<P class=indent1>Only the non-obvious(?) entries will be discussed.</P>
+<P class=indent1>Only the non-obvious(?) entries for 
+   <em class=code>filter_nml</em> will be discussed.</P>
 
-<TABLE border=1; class=indent1>
+<TABLE border=1; class=indent>
 <TR><TH>namelist variable</TH><TH>description</TH></TR>
 <TR><TD><em class=code>ens_size</em></TD>
     <TD>Number of ensemble members. 
-    20 is sufficient for most of the exercises.</TD></TR>
+    20 is sufficient for most of the L63 exercises.</TD></TR>
 
 <TR><TD><em class=code>cutoff</em></TD>
     <TD>to limit the impact of an observation, set to 0.0
@@ -894,18 +1084,38 @@ mechanism for input.
 
 <TR><TD><em class=code>cov_inflate</em></TD>
     <TD>A value of 1.0 results in no inflation.(spin-up)</TD></TR>
+
+<TR><TD><em class=code>start_from_restart</em></TD>
+    <TD>when '.false.', <em class=program>filter</em> will generate 
+        its own set of initial conditions. It is important to note 
+        that the filter still makes use of 
+        <em class=file>perfect_ics</em> by randomly perturbing these 
+        state variables.</TD></TR>
+
+<TR><TD><em class=code>num_output_ens_members</em></TD>
+    <TD>may be a value from 0 to <em class=code>ens_size</em></TD></TR>
+
+<TR><TD><em class=code>output_state_ens_mean</em></TD>
+    <TD>when '.true.' the mean of all ensemble members is output.</TD></TR>
+
+<TR><TD><em class=code>output_state_ens_spread</em></TD>
+    <TD>when '.true.' the spread of all ensemble members is output.</TD></TR>
+
+<TR><TD><em class=code>output_interval</em></TD>
+    <TD>  Jeff - units for interval? </TD></TR>
+
 </TABLE>
 
 <P class=indent1>
-The filter is told to generate its own ensemble initial conditions 
-since <em class=code>start_from_restart</em> is '.false.'. 
-However, it is important to note that the filter still makes use of 
-<em class=file>perfect_ics</em> which is set to be the 
-<em class=code>restart_in_file_name</em>. 
-This is the model state generated from the first 24,000 step model 
-integration by <em class=program>perfect_model_obs</em>.
-<em class=program>Filter</em> generates its ensemble initial conditions 
-by randomly perturbing the state variables of this state.
+   The filter is told to generate its own ensemble initial conditions 
+   since <em class=code>start_from_restart</em> is '.false.'. 
+   However, it is important to note that the filter still makes use of 
+   <em class=file>perfect_ics</em> which is set to be the 
+   <em class=code>restart_in_file_name</em>. 
+   This is the model state generated from the first 24,000 step model 
+   integration by <em class=program>perfect_model_obs</em>.
+   <em class=program>Filter</em> generates its ensemble initial conditions 
+   by randomly perturbing the state variables of this state.
 </P> 
 
 <P class=indent1>
@@ -947,7 +1157,9 @@ To do this, see the detailed discussion of matlab diagnostics in Appendix I.
 <A NAME="simulate"></A>
 <H3 class=indent1>3. Simulate a particular observing system.</H3>
 
-<P class=indent1>Begin by using <em class=program>create_obs_set_def</em> to 
+<em class=changed>Please note this input sequence was wrong prior to 14 Sep 2004, sorry -- TJH</em>
+
+<P class=indent1>Begin by using <em class=program>create_obs_sequence</em> to 
 generate an observation set in which each of the 3 state variables 
 of L63 is observed with an observational error variance of 1.0 
 for each observation.  To do this, use the following input 
@@ -955,29 +1167,48 @@ sequence (the text including and after # is a comment and does
 not need to be entered):</P>
 
 <TABLE class=indent1 bgcolor="#CCCCCC">
+<TR><TD><em class=input>4</em></TD>
+    <TD># upper bound on num of observations in sequence</TD></TR>
+<TR><TD><em class=input>0</em></TD>
+    <TD># number of copies of data (0 for just a definition)</TD></TR>
+<TR><TD><em class=input>0</em></TD>
+    <TD># number of quality control values per field (0 or greater)</TD></TR>
+<TR><TD><em class=input>0</em></TD>
+    <TD># -1 to exit/end observation definitions</TD></TR>
+<!-- observe state variable 1 -->
+<TR><TD><em class=input>-1</em></TD>
+    <TD># observe state variable 1</TD></TR>
+<TR><TD><em class=input>0 &nbsp; 0</em></TD>
+    <TD># time -- days, seconds </TD></TR>
+<TR><TD><em class=input>1.0</em></TD>
+    <TD># observational variance</TD></TR>
+<TR><TD><em class=input>0</em></TD>
+    <TD># -1 to exit/end observation definitions</TD></TR>
+<!-- observe state variable 2 -->
+<TR><TD><em class=input>-2</em></TD>
+    <TD># observe state variable 2</TD></TR>
+<TR><TD><em class=input>0 &nbsp; 0</em></TD>
+    <TD># time -- days, seconds </TD></TR>
+<TR><TD><em class=input>1.0</em></TD>
+    <TD># observational variance</TD></TR>
+<TR><TD><em class=input>0</em></TD>
+    <TD># -1 to exit/end observation definitions</TD></TR>
+<!-- observe state variable 3 -->
+<TR><TD><em class=input>-3</em></TD>
+    <TD># observe state variable 3</TD></TR>
+<TR><TD><em class=input>0 &nbsp; 0</em></TD>
+    <TD># time -- days, seconds </TD></TR>
+<TR><TD><em class=input>1.0</em></TD>
+    <TD># observational variance</TD></TR>
+<TR><TD><em class=input>-1</em></TD>
+    <TD># -1 to exit/end observation definitions</TD></TR>
 <TR><TD><em class=input>set_def.out</em></TD>
     <TD># Output file name</TD></TR>
-<TR><TD><em class=input>1</em></TD>
-    <TD># Number of sets</TD></TR>
-<TR><TD><em class=input>3</em></TD>
-    <TD># Number of observations in set (x, y, and z)</TD></TR>
-<TR><TD><em class=input>1.0</em></TD>
-    <TD># Variance of first observation</TD></TR>
-<TR><TD><em class=input>1</em></TD>
-    <TD># First ob is identity observation of state variable 1 (x)</TD></TR>
-<TR><TD><em class=input>1.0</em></TD>
-    <TD># Variance of second observation </TD></TR>
-<TR><TD><em class=input>2</em></TD>
-    <TD># Second is identity observation of state variable 2 (y)</TD></TR>
-<TR><TD><em class=input>1.0</em></TD>
-    <TD># Variance of third ob </TD></TR>
-<TR><TD><em class=input>3</em></TD>
-    <TD># Identity ob of third state variable (z)</TD></TR>
 </TABLE>
 
 <P class=indent1>
 Now, generate an observation sequence definition by running 
-<em class=program>create_obs_sequence</em> with the 
+<em class=program>create_fixed_network_seq</em> with the 
 following input sequence:</P>
 
 <TABLE class=indent1 bgcolor="#CCCCCC">
@@ -999,31 +1230,31 @@ following input sequence:</P>
 <H3 class=indent1>4. Generate a particular observing system and true state.</H3>
 
 <P class=indent1>
-An observation sequence file is now generated by running 
-<em class=program>perfect_model_obs</em> with the namelist 
-values (unchanged from step 2):
+   An observation sequence file is now generated by running 
+   <em class=program>perfect_model_obs</em> with the namelist 
+   values (unchanged from step 2):
 </P>
 
 <div class=routineIndent1>
-&amp;perfect_model_obs_nml <BR>
-&nbsp;&nbsp;&nbsp;async = .false., <BR>
-&nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in", <BR>
-&nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out", <BR>
-&nbsp;&nbsp;&nbsp;start_from_restart = .true., <BR>
-&nbsp;&nbsp;&nbsp;output_restart = .true., <BR>
-&nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics", <BR>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart", <BR>
-&nbsp;&nbsp;&nbsp;init_time_days = 0, <BR>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0, <BR>
-&nbsp;&nbsp;&nbsp;output_interval = 1  / 
+   &amp;perfect_model_obs_nml <BR>
+   &nbsp;&nbsp;&nbsp;async = 0, <BR>
+   &nbsp;&nbsp;&nbsp;obs_seq_in_file_name = "obs_seq.in", <BR>
+   &nbsp;&nbsp;&nbsp;obs_seq_out_file_name = "obs_seq.out", <BR>
+   &nbsp;&nbsp;&nbsp;start_from_restart = .true., <BR>
+   &nbsp;&nbsp;&nbsp;output_restart = .true., <BR>
+   &nbsp;&nbsp;&nbsp;restart_in_file_name = "perfect_ics", <BR>
+   &nbsp;&nbsp;&nbsp;restart_out_file_name = "perfect_restart", <BR>
+   &nbsp;&nbsp;&nbsp;init_time_days = 0, <BR>
+   &nbsp;&nbsp;&nbsp;init_time_seconds = 0, <BR>
+   &nbsp;&nbsp;&nbsp;output_interval = 1   /
 </div>
 
 <P class=indent1>
-This integrates the model starting from the state in 
-<em class=file>perfect_ics</em> for 1000 12-hour intervals 
-outputting synthetic observations of the three state variables 
-every 12 hours and producing a netCDF diagnostic file, 
-<em class=file>True_State.nc</em>.
+   This integrates the model starting from the state in 
+   <em class=file>perfect_ics</em> for 1000 12-hour intervals 
+   outputting synthetic observations of the three state variables 
+   every 12 hours and producing a netCDF diagnostic file, 
+   <em class=file>True_State.nc</em>.
 </P>
 
 <A NAME="assimilate"></A>
@@ -1034,22 +1265,27 @@ Finally, <em class=program>filter</em> can be run with its namelist set to:
 </P>
 
 <div class=routineIndent1>
-&amp;filter_nml <BR>
-&nbsp;&nbsp;&nbsp;async = .false., <BR>
-&nbsp;&nbsp;&nbsp;ens_size = 20, <BR>
+&amp;filter_nml<BR>
+&nbsp;&nbsp;&nbsp;async = 0,<BR>
+&nbsp;&nbsp;&nbsp;ens_size = 20,<BR>
 &nbsp;&nbsp;&nbsp;cutoff = <em class=changed>22222222.0</em>, <BR>
-&nbsp;&nbsp;&nbsp;cov_inflate = 1.0, <BR>
+&nbsp;&nbsp;&nbsp;cov_inflate = 1.00,<BR>
 &nbsp;&nbsp;&nbsp;start_from_restart = <em class=changed>.true.</em>, <BR>
-&nbsp;&nbsp;&nbsp;output_restart = .true.,  <BR>
-&nbsp;&nbsp;&nbsp;obs_sequence_file_name = "obs_seq.out", <BR>
+&nbsp;&nbsp;&nbsp;output_restart = .true.,<BR>
+&nbsp;&nbsp;&nbsp;obs_sequence_file_name = "obs_seq.out",<BR>
 &nbsp;&nbsp;&nbsp;restart_in_file_name = "<em class=changed>filter_ics</em>", <BR>
-&nbsp;&nbsp;&nbsp;restart_out_file_name = "filter_restart", <BR>
-&nbsp;&nbsp;&nbsp;init_time_days = 0, <BR>
-&nbsp;&nbsp;&nbsp;init_time_seconds = 0, <BR>
-&nbsp;&nbsp;&nbsp;output_state_ens_mean = .true.,  <BR>
-&nbsp;&nbsp;&nbsp;output_state_ens_spread = .true.,  <BR>
-&nbsp;&nbsp;&nbsp;num_output_ens_members = 20, <BR>
-&nbsp;&nbsp;&nbsp;output_interval = 1   /
+&nbsp;&nbsp;&nbsp;restart_out_file_name = "filter_restart",<BR>
+&nbsp;&nbsp;&nbsp;init_time_days = 0,<BR>
+&nbsp;&nbsp;&nbsp;init_time_seconds = 0,<BR>
+&nbsp;&nbsp;&nbsp;output_state_ens_mean = .true.,<BR>
+&nbsp;&nbsp;&nbsp;output_state_ens_spread = .true.,<BR>
+&nbsp;&nbsp;&nbsp;num_output_ens_members = 20,<BR>
+&nbsp;&nbsp;&nbsp;output_interval = 1,<BR>
+&nbsp;&nbsp;&nbsp;num_groups = 1,<BR>
+&nbsp;&nbsp;&nbsp;confidence_slope = 0.0,<BR>
+&nbsp;&nbsp;&nbsp;output_obs_diagnostics = .false.,<BR>
+&nbsp;&nbsp;&nbsp;get_mean_reg = .false.,<BR>
+&nbsp;&nbsp;&nbsp;get_median_reg = .false.  /
 </div>
 
 <P class=indent1>
@@ -1070,7 +1306,6 @@ Now try applying all of the matlab diagnostic functions described in
 <!--==================================================================-->
 <A NAME="matlab"></A>
 <!--==================================================================-->
-
 <HR>
 <H2>Matlab Diagnostics</H2>
 <P>The output files are netCDF files, and may be examined with many
@@ -1193,7 +1428,7 @@ be user-callable and should handle any of the models. All the other routines in
 <!--==================================================================-->
 <HR>
 <H2>Bias, filter divergence and covariance inflation (with the L63 model)</H2>
-
+<P>
 One of the common problems with ensemble filters is filter divergence, 
 which can also be an issue with a variety of other flavors of filters 
 including the classical Kalman filter. In filter divergence, 
@@ -1219,8 +1454,8 @@ This type of behavior is commonly detected using rank histograms
 (also known as Talagrand diagrams).
 You can see the rank histograms for the L63 initial assimilation 
 by using the matlab script <em class=program>plot_bins</em>.  
-
-<P>
+<br>
+<br>
 A simple, but surprisingly effective way of dealing with filter 
 divergence is known as covariance inflation.
 In this method, the prior ensemble estimate of the state is 
