@@ -3,8 +3,8 @@
 <html>
 <head>
 <title>DART Kodiak Release Notes</title>
-<link rel="stylesheet" type="text/css" href="doc.css" />
-<link href="dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc.css" />
+<link href="../../images/dart.ico" rel="shortcut icon" />
 </head>
 <body>
 <a name="TOP"></a>
@@ -14,12 +14,12 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../images/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <p>Jump to DART Documentation Main Index 
        <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/index.html">Website</a>  
-       or <a href="../../index.html">local file</a><br />
+       or <a href="../../../index.html">local file</a><br />
           <small><small>version information for this file: <br />
           <!-- version tag follows, do not edit -->
           $Id$</small></small>
@@ -49,7 +49,7 @@
 <strong>
 The current release of DART is named Lanai.  These release notes
 are now obsolete but are being preserved for reference purposes.
-See the <a href="Lanai_release.html">Lanai release notes</a> for
+See the <a href="../Lanai_release.html">Lanai release notes</a> for
 the most recent DART release information.
 </strong>
 </p>
@@ -283,7 +283,7 @@ After the installation, you might want to peruse the following.
 interactive tutorial (if you have Matlab available) and look at the
 DARTLAB presentation slides 
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/DART_LAB/DART_LAB.html">
-Website</a> or <a href="../../DART_LAB/DART_LAB.html">local file</a>
+Website</a> or <a href="../../../DART_LAB/DART_LAB.html">local file</a>
 in the
 <em class="file">DART_LAB</em> directory, and then take the tutorial 
 in the <em class="file">DART/tutorial</em> directory.</p>
@@ -1907,7 +1907,7 @@ There are many more options for inflation, including spatially
 and temporarily varying values, with and without damping.  See 
 the discussion of all inflation-related namelist items 
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/filter/filter.html#Inflation">Website</a> 
-or <a href="../../filter/filter.html#Inflation">local file</a>.
+or <a href="../../../filter/filter.html#Inflation">local file</a>.
 </p>
 
 
@@ -1990,7 +1990,7 @@ to be read in separately.  The new namelist items are
 <em class=code>inf_sd_initial_from_file</em>.  See the
 filter namelist documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/filter/filter.html#Namelist">Website</a> 
-or <a href="../../filter/filter.html#Namelist">local file</a>
+or <a href="../../../filter/filter.html#Namelist">local file</a>
 for more details.
 </li>
 
@@ -2001,7 +2001,7 @@ which direction you were converting.  Now we have
 <em class=program>dart_to_wrf</em> and
 <em class=program>wrf_to_dart</em> (documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/wrf/WRF_DART_utilities/dart_to_wrf.html">Website</a> 
-or <a href="../../models/wrf/WRF_DART_utilities/dart_to_wrf.html">local file</a>)
+or <a href="../../../models/wrf/WRF_DART_utilities/dart_to_wrf.html">local file</a>)
 each with a namelist to control various options.
 </li>
 
@@ -2012,10 +2012,10 @@ with no namelists, and with several specialized variants
 Now we have 
 <em class=program>cam_to_dart</em> (documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/cam/cam_to_dart.html">Website</a> 
-or <a href="../../models/cam/cam_to_dart.html">local file</a>)
+or <a href="../../../models/cam/cam_to_dart.html">local file</a>)
 and <em class=program>dart_to_cam</em> (documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/cam/dart_to_cam.html">Website</a> 
-or <a href="../../models/cam/dart_to_cam.html">local file</a>)
+or <a href="../../../models/cam/dart_to_cam.html">local file</a>)
 each with a namelist to control various options.
 </li>
 
@@ -2023,7 +2023,7 @@ each with a namelist to control various options.
 module was completely rewritten and the namelist has changed substantially.
 See the module documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_def/obs_def_radar_mod.html">Website</a> 
-or <a href="../../obs_def/obs_def_radar_mod.html">local file</a>
+or <a href="../../../obs_def/obs_def_radar_mod.html">local file</a>
 for details.
 
 For example, the defaults for the old code were:
@@ -2069,7 +2069,7 @@ WRF fields are put into the state vector.  The order of the
 field names in the list sets the order of the fields in the
 state vector.  See the WRF model_mod documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/wrf/model_mod.html#Namelist">Website</a> 
-or <a href="../../models/wrf/model_mod.html#Namelist">local file</a>
+or <a href="../../../models/wrf/model_mod.html#Namelist">local file</a>
 for details.  Although they haven't been removed
 from the namelist, the following items have no effect
 on the code anymore:
@@ -2095,7 +2095,7 @@ to match the documentation for how the namelist item
 <em class=code>input_qc_threshold</em> is handled.
 (See filter namelist documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/filter/filter.html#Namelist">Website</a> 
-or <a href="../../filter/filter.html#Namelist">local file</a>.)
+or <a href="../../../filter/filter.html#Namelist">local file</a>.)
 In the Jamaica release, observations with 
 incoming data QC values greater than
 or equal to the namelist setting were discarded.  
@@ -2109,7 +2109,7 @@ has been replaced by the more comprehensive
 <em class=program>obs_sequence_tool</em> utility.
 See the documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_sequence/obs_sequence_tool.html">Website</a> 
-or <a href="../../obs_sequence/obs_sequence_tool.html">local file</a>.
+or <a href="../../../obs_sequence/obs_sequence_tool.html">local file</a>.
 </li>
 
 <li>The prepbufr observation converter was located in the
@@ -2124,7 +2124,7 @@ into DART format.  It is now located in
 <em class=file>DART/system_simulation</em> now has a 
 namelist &amp;full_error_nml.  See the documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/system_simulation/system_simulation.html">Website</a> 
-or <a href="../../system_simulation/system_simulation.html">local file</a>
+or <a href="../../../system_simulation/system_simulation.html">local file</a>
 for more details.  Tables for 40 common ensemble sizes are
 pregenerated in the 
 <em class=file>DART/system_simulation/final_full_precomputed_tables</em> 
@@ -2174,7 +2174,7 @@ no other compilers.
 requires a namelist, <em class=code>&amp;obs_def_gps_nml</em>.  See the
 GPS documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_def/obs_def_gps_mod.html#Namelist">Website</a> 
-or <a href="../../obs_def/obs_def_gps_mod.html#Namelist">local file</a>
+or <a href="../../../obs_def/obs_def_gps_mod.html#Namelist">local file</a>
 for details on what to add.  All <em class=file>input.nml</em> files in
 the repository have had this added if they have the GPS module in their
 <em class=code>&amp;preprocess_nml</em> namelist.
@@ -2199,7 +2199,7 @@ the repository have had this added if they have the GPS module in their
         compensates for this. 
         See the inflation documentation 
         <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/filter/filter.html#Inflation">
-        Website</a> or <a href="../../filter/filter.html#Inflation">local file</a>
+        Website</a> or <a href="../../../filter/filter.html#Inflation">local file</a>
         for more details and paper references.</li></ul>
 </li>
 <li>Sampling Error Correction
@@ -2207,18 +2207,18 @@ the repository have had this added if they have the GPS module in their
         number of degrees of freedom in the system.  See the last item in this section
         of the documentation
         <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/filter/filter.html#GettingStarted">Website</a> 
-        or <a href="../../filter/filter.html#GettingStarted">local file</a>
+        or <a href="../../../filter/filter.html#GettingStarted">local file</a>
         for more details.</li></ul>
 </li>
 <li>Adaptive Localization and Localization Diagnostics
     <ul><li>See a discussion of localization-related issues
      <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/assim_tools/assim_tools_mod.html#Localization">Website</a>
-      or <a href="../../assim_tools/assim_tools_mod.html#Localization">local file</a>.</li></ul>
+      or <a href="../../../assim_tools/assim_tools_mod.html#Localization">local file</a>.</li></ul>
 </li>
 <li>Scale height vertical localization option in 3d models
     <ul><li>See a discussion of specifying vertical localization in terms of scale height
          <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/location/threed_sphere/location_mod.html#Namelist">Website</a>
-         or <a href="../../location/threed_sphere/location_mod.html#Namelist">local file</a>.
+         or <a href="../../../location/threed_sphere/location_mod.html#Namelist">local file</a>.
          See the <a href="http://en.wikipedia.org/wiki/Scale_height">Wikipedia page</a>
          for a discussion of how scale height is defined.  Note that 
          there is no support in the diagnostic Matlab routines for observations
@@ -2227,23 +2227,23 @@ the repository have had this added if they have the GPS module in their
 <li>CAM supports FV code, PBS scripting
     <ul><li>See details on the features of the CAM/DART system
          <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/cam/model_mod.html">Website</a> 
-          or <a href="../../models/cam/model_mod.html">local file</a>. </li></ul>
+          or <a href="../../../models/cam/model_mod.html">local file</a>. </li></ul>
 </li>
 <li>Boxcar Kernel Filter Option
     <ul><li>See how to select this filter option in the namelist
     <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/assim_tools/assim_tools_mod.html#FilterTypes">Website</a> 
-    or <a href="../../assim_tools/assim_tools_mod.html#FilterTypes">local file</a>. </li></ul>
+    or <a href="../../../assim_tools/assim_tools_mod.html#FilterTypes">local file</a>. </li></ul>
 
 </li>
 <li>Option for "undefined vertical location" for obs using the 3d sphere locations
     <ul><li>See how to specify this option when creating observations
     <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/location/threed_sphere/location_mod.html">Website</a> 
-    or <a href="../../location/threed_sphere/location_mod.html">local file</a>. </li></ul>
+    or <a href="../../../location/threed_sphere/location_mod.html">local file</a>. </li></ul>
 </li>
 <li>Schedule module for repeated time intervals
     <ul><li>See documentation 
     <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/time_manager/schedule_mod.html">Website</a>
-    or <a href="../../time_manager/schedule_mod.html">local file</a>. </li></ul>
+    or <a href="../../../time_manager/schedule_mod.html">local file</a>. </li></ul>
 </li>
 <li>Support for 2 different Mars calendars in time manager
     <ul><li>Gregorian Mars</li>
@@ -2256,14 +2256,14 @@ the repository have had this added if they have the GPS module in their
 the state time if they want to make use of this information
     <ul><li>See the "Get Expected Obs From Def" section of the obs_def documentation 
     <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_def/obs_def_mod.html">Website</a> 
-    or <a href="../../obs_def/obs_def_mod.html">local file</a>
+    or <a href="../../../obs_def/obs_def_mod.html">local file</a>
     for details on how to use these values. This change is fully backwards-compatible
     with existing forward operator code.</li></ul>
 </li>
 <li>Option to output all echo of namelist values to a separate log file
     <ul><li>See the utilities module documentation 
     <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/utilities/utilities_mod.html#Namelist">Website</a>
-    or <a href="../../utilities/utilities_mod.html#Namelist">local file</a>
+    or <a href="../../../utilities/utilities_mod.html#Namelist">local file</a>
     for how to select where the contents of all namelists are output.</li></ul>
 </li>
 <li>Large file support for netCDF
@@ -2275,32 +2275,32 @@ the state time if they want to make use of this information
 <li>Better support for adaptive localization
     <ul><li>See the Localization section of the assim_tools documentation 
     <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/assim_tools/assim_tools_mod.html#Localization">Website</a>
-    or <a href="../../assim_tools/assim_tools_mod.html#Localization">local file</a>
+    or <a href="../../../assim_tools/assim_tools_mod.html#Localization">local file</a>
     for details.</li></ul>
 </li>
 <li>Option to localize with different distances based on observation type
     <ul><li>See the Localization section of the assim_tools documentation
     <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/assim_tools/assim_tools_mod.html#Localization">Website</a>
-    or <a href="../../assim_tools/assim_tools_mod.html#Localization">local file</a>
+    or <a href="../../../assim_tools/assim_tools_mod.html#Localization">local file</a>
     for details.</li></ul>
 </li>
 <li>The error handler can take up to 3 lines of text so you can give more
 informative error messages on exit
     <ul><li>See the utilities module documentation
     <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/utilities/utilities_mod.html#Interface">Website</a>
-    or <a href="../../utilities/utilities_mod.html#Interface">local file</a>
+    or <a href="../../../utilities/utilities_mod.html#Interface">local file</a>
     for details.</li></ul>
 </li>
 <li>Option to output ensemble mean in restart file format when filter exits
     <ul><li>See the filter program namelist documentation
     <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/filter/filter.html#Namelist">Website</a>
-    or <a href="../../filter/filter.html#Namelist">local file</a>
+    or <a href="../../../filter/filter.html#Namelist">local file</a>
     for details.</li></ul>
 </li>
 <li>The start of a suite of forecast verification and evaluation tools
     <ul><li>See the verification tool documentation
     <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_sequence/obs_seq_verify.html">Website</a>
-    or <a href="../../obs_sequence/obs_seq_verify.html">local file</a>
+    or <a href="../../../obs_sequence/obs_seq_verify.html">local file</a>
     for details.</li></ul>
 </li>
 <li>Performance improvement in the internal transposes for very large state
@@ -2343,7 +2343,7 @@ which is found <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">here
 <li>POP Ocean Model
 <ul><li>DART interface documentation 
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/POP/model_mod.html">Website</a> or
-<a href="../../models/POP/model_mod.html">local file</a>.
+<a href="../../../models/POP/model_mod.html">local file</a>.
 Documentation for the model itself
 <a href="http://www.cesm.ucar.edu/models/ccsm2.0.1/pop/">in CESM</a>
 and <a href="http://climate.lanl.gov/Models/POP/">stand-alone version from
@@ -2354,7 +2354,7 @@ Los Alamos</a>.
 <li>NCOMMAS Mesoscale Atmospheric Model
 <ul><li>DART interface documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/NCOMMAS/model_mod.html">Website</a> or
-<a href="../../models/NCOMMAS/model_mod.html">local file</a>.
+<a href="../../../models/NCOMMAS/model_mod.html">local file</a>.
 Documentation for the model itself from NSSL, Norman, OK. is at
 <a href="http://code.google.com/p/enkf-nssl-commas">NCOMMAS</a>.
 </li></ul>
@@ -2363,7 +2363,7 @@ Documentation for the model itself from NSSL, Norman, OK. is at
 <li>COAMPS Atmosphere Model
 <ul><li>Dart interface documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/coamps_next/model_mod.html">Website</a> or
-<a href="../../models/coamps_nest/model_mod.html">local file</a>.
+<a href="../../../models/coamps_nest/model_mod.html">local file</a>.
 Documentation for the model itself is at
 <a href="http://www.nrlmry.navy.mil/coamps-web/web/home">COAMPS</a>.
 The original version of the COAMPS interface code and scripts
@@ -2393,7 +2393,7 @@ the NOGAPS/DART system, contact Jim Hansen, jim.hansen at nrlmry.navy.mil
 <li>AM2 Atmosphere Model
 <ul><li>Dart interface documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/AM2/model_mod.html">Website</a> or
-<a href="../../models/AM2/model_mod.html">local file</a>.
+<a href="../../../models/AM2/model_mod.html">local file</a>.
 The GFDL atmosphere model documentation is at
 <a href="http://data1.gfdl.noaa.gov/~arl/pubrel/m/am2/doc/">AM2</a>.
 </li></ul>
@@ -2402,7 +2402,7 @@ The GFDL atmosphere model documentation is at
 <li>MIT Global Ocean Model
 <ul><li>Dart interface documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/MITgcm_ocean/model_mod.html">Website</a> or
-<a href="../../models/MITgcm_ocean/model_mod.html">local file</a>.
+<a href="../../../models/MITgcm_ocean/model_mod.html">local file</a>.
 The <a href="http://paoc2001.mit.edu/cmi/development/ocean.htm">ocean component</a>
 of the MIT global model suite.
 </li></ul>
@@ -2411,7 +2411,7 @@ of the MIT global model suite.
 <li>Simple Advection Model
 <ul><li>Dart interface documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/simple_avection/model_mod.html">Website</a> or
-<a href="../../models/simple_avection/model_mod.html">local file</a>.
+<a href="../../../models/simple_avection/model_mod.html">local file</a>.
 A simple model of advecting tracers such as CO.
 </li></ul>
 </li>
@@ -2425,7 +2425,7 @@ A simple model of advecting tracers such as CO.
 <li>TIEgcm Thermosphere/Ionosphere Model
 <ul><li>Dart interface documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/TIEgcm/model_mod.html">Website</a> or
-<a href="../../models/TIEgcm/model_mod.html">local file</a>.
+<a href="../../../models/TIEgcm/model_mod.html">local file</a>.
 Documentation for
 the thermosphere and ionosphere model from the NCAR HAO (High Altitude 
 Observatory) Division is at
@@ -2458,7 +2458,7 @@ in the state vector.  No assumptions are made about number of moist
 variables; all WRF fields must be listed explicitly.  The conversion tools
 dart_to_wrf and wrf_to_dart (Documented here
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/wrf/WRF_DART_utilities/dart_to_wrf.html">Website</a>
-or <a href="../../models/wrf/WRF_DART_utilities/dart_to_wrf.html">local file</a>)
+or <a href="../../../models/wrf/WRF_DART_utilities/dart_to_wrf.html">local file</a>)
 use this same namelist, so it is
 simpler to avoid mismatches between the DART restart files and
 what the WRF model_mod is expecting.</li>
@@ -2545,56 +2545,56 @@ Converters for METAR, Mesonet, Rawinsondes, ACARS, Marine,
 and Satellite Wind observations.  Optionally output moisture obs
 as specific humidity, relative humidity, and/or dewpoint obs.  Documentation 
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/observations/MADIS/MADIS.html">Website</a>
-or <a href="../../observations/MADIS/MADIS.html">local file</a>.
+or <a href="../../../observations/MADIS/MADIS.html">local file</a>.
 </li>
 
 <li>SSEC
 <br />
 Convert Satellite Wind obs to DART format.  Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/observations/SSEC/SSEC.html">Website</a>
-or <a href="../../observations/SSEC/SSEC.html">local file</a>.
+or <a href="../../../observations/SSEC/SSEC.html">local file</a>.
 </li>
 
 <li>AIRS
 <br />
 Satellite observed Temperature and Moisture obs.  Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/observations/AIRS/AIRS.html">Website</a>
-or <a href="../../observations/AIRS/AIRS.html">local file</a>.
+or <a href="../../../observations/AIRS/AIRS.html">local file</a>.
 </li>
 
 <li>QUIKscat
 <br />
 Satellite observed surface winds.  Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/observations/quikscat/quikscat.html">Website</a>
-or <a href="../../observations/quikscat/quikscat.html">local file</a>.
+or <a href="../../../observations/quikscat/quikscat.html">local file</a>.
 </li>
 
 <li>GTSPP
 <br />
 Ocean obs.  Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/observations/GTSPP/GTSPP.html">Website</a>
-or <a href="../../observations/GTSPP/GTSPP.html">local file</a>.
+or <a href="../../../observations/GTSPP/GTSPP.html">local file</a>.
 </li>
 
 <li>WOD
 <br />
 World Ocean Database (currently 2009) Temperature and Salinity obs.  Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/observations/WOD/WOD.html">Website</a>
-or <a href="../../observations/WOD/WOD.html">local file</a>.
+or <a href="../../../observations/WOD/WOD.html">local file</a>.
 </li>
 
 <li>CODAR
 <br />
 High frequency radar obs of ocean surface velocity.  Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_def/obs_def_ocean_mod.f90">Website</a>
-or <a href="../../obs_def/obs_def_ocean_mod.f90">local file</a>.
+or <a href="../../../obs_def/obs_def_ocean_mod.f90">local file</a>.
 </li>
 
 <li>VAR
 <br />
 Little-r and radar obs.  Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/observations/var/var.html">Website</a>
-or <a href="../../observations/var/var.html">local file</a>.
+or <a href="../../../observations/var/var.html">local file</a>.
 </li>
 
 <li>Text
@@ -2602,21 +2602,21 @@ or <a href="../../observations/var/var.html">local file</a>.
 Reads text data files, a good template for converting obs stored in
 files without some kind of data library format (netCDF, HDF, etc).  Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/observations/text/text_to_obs.html">Website</a>
-or <a href="../../observations/text/text_to_obs.html">local file</a>.
+or <a href="../../../observations/text/text_to_obs.html">local file</a>.
 </li>
 
 <li>Altimeter
 <br />
 Altimeter observation type available from a variety of sources.  Forward operator code
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_def/obs_def_altimeter_mod.f90">Website</a>
-or <a href="../../obs_def/obs_def_altimeter_mod.f90">local file</a>.
+or <a href="../../../obs_def/obs_def_altimeter_mod.f90">local file</a>.
 </li>
 
 <li>Dewpoint
 <br />
 Dewpoint observation type available from a variety of sources.  Forward operator code
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_def/obs_def_dewpoint_mod.f90">Website</a>
-or <a href="../../obs_def/obs_def_dewpoint_mod.f90">local file</a>.
+or <a href="../../../obs_def/obs_def_dewpoint_mod.f90">local file</a>.
 </li>
 
 <li>Dropsonde
@@ -2624,14 +2624,14 @@ or <a href="../../obs_def/obs_def_dewpoint_mod.f90">local file</a>.
 Dropsonde observation type available to allow these observations to be
 distinguished from standard Radiosondes.  Type defined in code
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_def/obs_def_reanalysis_bufr_mod.f90">Website</a>
-or <a href="../../obs_def/obs_def_reanalysis_bufr_mod.f90">local file</a>.
+or <a href="../../../obs_def/obs_def_reanalysis_bufr_mod.f90">local file</a>.
 </li>
 
 <li>TES Radiances
 <br />
 TES satellite radiance observations of Mars.  Forward operator code
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_def/obs_def_TES_nadir_mod.f90">Website</a>
-or <a href="../../obs_def/obs_def_TES_nadir_mod.f90">local file</a>.
+or <a href="../../../obs_def/obs_def_TES_nadir_mod.f90">local file</a>.
 </li>
 
 <li>Hurricane/Tropical Storm Vortex Position
@@ -2639,7 +2639,7 @@ or <a href="../../obs_def/obs_def_TES_nadir_mod.f90">local file</a>.
 Storm location, minimum central pressure, and maximum windspeed.
 Currently only implemented in the WRF model_mod interface code.  Code
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/wrf/model_mod.html">Website</a>
-or <a href="../../models/wrf/model_mod.html">local file</a>.
+or <a href="../../../models/wrf/model_mod.html">local file</a>.
 </li>
 
 </ul>
@@ -2649,7 +2649,7 @@ All the observation converters have moved to their own
 top level directory <em class=file>observations</em>.
 See the overview documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/observations/observations.html">Website</a> 
-or <a href="../../observations/observations.html">local file</a> 
+or <a href="../../../observations/observations.html">local file</a> 
 for general information on creating observation
 files for use in the ensemble assimilation system.
 </p>
@@ -2664,10 +2664,10 @@ you are running a month or longer of diagnostics for a time series
 you can easily exceed the compiled in maximum.  
 See the GPS documentation for creating GPS observation files
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/observations/GPS/gps.html">Website</a>
-or <a href="../../observations/GPS/gps.html">local file</a>,
+or <a href="../../../observations/GPS/gps.html">local file</a>,
 and the forward operator documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_def/obs_def_gps_mod.html">Website</a>
-or <a href="../../obs_def/obs_def_gps_mod.html">local file</a>.
+or <a href="../../../obs_def/obs_def_gps_mod.html">local file</a>.
 There are also heavily revised scripts which download and convert multiple days
 of GPS obs at a time, with options to delete downloaded files automatically.
 The scripts are able to download GPS RO observations from any
@@ -2681,7 +2681,7 @@ creating new observation sequence files. One contains the
 default values used by NCEP, and the other contains the values
 used by ECMWF.  See the README file
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/observations/obs_error/README">Website</a>
-or <a href="../../observations/obs_error/README">local file</a>
+or <a href="../../../observations/obs_error/README">local file</a>
 for more details.
 </p>
 
@@ -2730,7 +2730,7 @@ But there's always more to add.
 <ul>
 <li>There is now a main <em class=file>index.html</em> file
     (<a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/index.html">Website</a>
-    or <a href="../../index.html">local file</a>)
+    or <a href="../../../index.html">local file</a>)
     in the DART distribution to quickly guide you to any 
     of the documentation for the routines or modules.
 </li>
@@ -2739,7 +2739,7 @@ But there's always more to add.
 <br />
 Interactive Matlab GUI experiments and Powerpoint presentation of fundamental assimilation concepts
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/DART_LAB/DART_LAB.html">Website</a>
-or <a href="../../DART_LAB/DART_LAB.html">local file</a>.
+or <a href="../../../DART_LAB/DART_LAB.html">local file</a>.
 </li>
 
 <li>link_obs.m
@@ -2748,7 +2748,7 @@ Allows one to view multiple observation attributes simultaneously and dynamicall
 select subsets of observations in one view and have those same obs highlighted 
 in the other views. Commonly called 'data brushing'.  Matlab source
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/link_obs.m">Website</a>
-or <a href="../../diagnostics/matlab/link_obs.m">local file</a>.
+or <a href="../../../diagnostics/matlab/link_obs.m">local file</a>.
 </li>
 
 <li>obs_diag
@@ -2759,7 +2759,7 @@ number of regions, the inclusion of separate copies for all DART QC values, can
 creates rank histograms from the <em class=file>obs_seq.final</em> files, if possible, and more.
 See the documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/threed_sphere/obs_diag.html">Website</a>
-or <a href="../../diagnostics/threed_sphere/obs_diag.html">local file</a>.
+or <a href="../../../diagnostics/threed_sphere/obs_diag.html">local file</a>.
 </li>
 
 <li>Comparing two (or more) experiments
@@ -2771,10 +2771,10 @@ or <a href="../../diagnostics/threed_sphere/obs_diag.html">local file</a>.
     make fair comparisons are described below.  
     Matlab source for <em class=file>two_experiments_profile.m</em> 
     <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/two_experiments_profile.m">Website</a> 
-    or <a href="../../diagnostics/matlab/two_experiments_profile.m">local file</a> 
+    or <a href="../../../diagnostics/matlab/two_experiments_profile.m">local file</a> 
     and <em class=file>two_experiments_evolution.m</em>
     <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/two_experiments_evolution.m">Website</a>
-    or <a href="../../diagnostics/matlab/two_experiments_evolution.m">local file</a>.
+    or <a href="../../../diagnostics/matlab/two_experiments_evolution.m">local file</a>.
 </li>
 
 <li>netCDF and Matlab
@@ -2801,7 +2801,7 @@ or <a href="../../diagnostics/threed_sphere/obs_diag.html">local file</a>.
     directory like <em class=program>plot_total_err</em>.
     The <em class=file>map_wrf.m</em> script 
     (<a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/wrf/matlab/map_wrf.m">Website</a> 
-    or <a href="../../models/wrf/matlab/map_wrf.m">local file</a>)
+    or <a href="../../../models/wrf/matlab/map_wrf.m">local file</a>)
     can finally plot WRF fields now that the required metadata is part of the
     <em class=file>Posterior_Diag.nc</em>,
     <em class=file>Prior_Diag.nc</em>, and (not required)
@@ -2816,7 +2816,7 @@ or <a href="../../diagnostics/threed_sphere/obs_diag.html">local file</a>.
    are on a web server because they are too large to add to the repository.
    The README files in each directory gives instructions on how to download them.
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/wrf/regression">Website</a>
-or <a href="../../models/wrf/regression">local file</a>.
+or <a href="../../../models/wrf/regression">local file</a>.
 </li>
 
 
@@ -2832,7 +2832,7 @@ or <a href="../../models/wrf/regression">local file</a>.
     by setting the namelist variable <em class=code>trace_execution</em>.
     See the details of the filter namelist
     <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/filter/filter.html">Website</a> 
-    or <a href="../../filter/filter.html">local file</a> .
+    or <a href="../../../filter/filter.html">local file</a> .
 </li>
 
 <li><em class=file>input.nml</em> contents saved
@@ -2852,7 +2852,7 @@ or <a href="../../models/wrf/regression">local file</a>.
 Better error checking in the <em class=program>utilities_mod</em>
 subroutine <em class=code>open_file()</em>.  See documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/utilities/utilities_mod.html#open_file">Website</a>
-or <a href="../../utilities/utilities_mod.html#open_file">local file</a>.
+or <a href="../../../utilities/utilities_mod.html#open_file">local file</a>.
 </li>
 
 <li>In the DART code tree, individual html pages have links back to the index page, 
@@ -2886,7 +2886,7 @@ or <a href="../../utilities/utilities_mod.html#open_file">local file</a>.
             the observation density and number of observations assimilated.
             Matlab source
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/plot_profile.m">Website</a>
-or <a href="../../diagnostics/matlab/plot_profile.m">local file</a>.
+or <a href="../../../diagnostics/matlab/plot_profile.m">local file</a>.
         </td></tr>
 
     <tr><td>plot_rmse_xxx_profile.m</td>
@@ -2894,7 +2894,7 @@ or <a href="../../diagnostics/matlab/plot_profile.m">local file</a>.
             overlay of the observation density and number of observations assimilated.
             Matlab source
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/plot_rmse_xxx_profile.m">Website</a>
-or <a href="../../diagnostics/matlab/plot_rmse_xxx_profile.m">local file</a>.
+or <a href="../../../diagnostics/matlab/plot_rmse_xxx_profile.m">local file</a>.
         </td></tr>
 
     <tr><td>plot_bias_xxx_profile.m</td>
@@ -2902,7 +2902,7 @@ or <a href="../../diagnostics/matlab/plot_rmse_xxx_profile.m">local file</a>.
             overlay of the observation density and number of observations assimilated.
             Matlab source
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/plot_bias_xxx_profile.m">Website</a>
-or <a href="../../diagnostics/matlab/plot_bias_xxx_profile.m">local file</a>.
+or <a href="../../../diagnostics/matlab/plot_bias_xxx_profile.m">local file</a>.
         </td></tr>
 
     <tr><td>two_experiments_profile.m</td>
@@ -2911,7 +2911,7 @@ or <a href="../../diagnostics/matlab/plot_bias_xxx_profile.m">local file</a>.
             in each experiment.
             Matlab source
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/two_experiments_profile.m">Website</a>
-or <a href="../../diagnostics/matlab/two_experiments_profile.m">local file</a>.
+or <a href="../../../diagnostics/matlab/two_experiments_profile.m">local file</a>.
         </td></tr>
 
     <tr><td>plot_evolution.m</td>
@@ -2919,7 +2919,7 @@ or <a href="../../diagnostics/matlab/two_experiments_profile.m">local file</a>.
             the observation density and number of observations assimilated.
             Matlab source
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/plot_evolution.m">Website</a>
-or <a href="../../diagnostics/matlab/plot_evolution.m">local file</a>.
+or <a href="../../../diagnostics/matlab/plot_evolution.m">local file</a>.
         </td></tr>
 
     <tr><td>plot_rmse_xxx_evolution.m</td>
@@ -2927,7 +2927,7 @@ or <a href="../../diagnostics/matlab/plot_evolution.m">local file</a>.
             overlay of the observation density and number of observations assimilated.
             Matlab source
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/plot_rmse_xxx_evolution.m">Website</a>
-or <a href="../../diagnostics/matlab/plot_rmse_xxx_evolution.m">local file</a>.
+or <a href="../../../diagnostics/matlab/plot_rmse_xxx_evolution.m">local file</a>.
         </td></tr>
 
     <tr><td>two_experiments_evolution.m</td>
@@ -2936,7 +2936,7 @@ or <a href="../../diagnostics/matlab/plot_rmse_xxx_evolution.m">local file</a>.
             observations assimilated in each experiment.
             Matlab source
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/two_experiments_evolution.m">Website</a>
-or <a href="../../diagnostics/matlab/two_experiments_evolution.m">local file</a>.
+or <a href="../../../diagnostics/matlab/two_experiments_evolution.m">local file</a>.
         </td></tr>
 
     <tr><td>read_obs_netcdf.m</td>
@@ -2944,7 +2944,7 @@ or <a href="../../diagnostics/matlab/two_experiments_evolution.m">local file</a>
             and a single qc - no actual observation required.
             Matlab source
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/read_obs_netcdf.m">Website</a>
-or <a href="../../diagnostics/matlab/read_obs_netcdf.m">local file</a>.
+or <a href="../../../diagnostics/matlab/read_obs_netcdf.m">local file</a>.
         </td></tr>
 
     <tr><td>plot_obs_netcdf.m</td>
@@ -2952,7 +2952,7 @@ or <a href="../../diagnostics/matlab/read_obs_netcdf.m">local file</a>.
             a DART netCDF format observation sequence file.
             Matlab source
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/plot_obs_netcdf.m">Website</a>
-or <a href="../../diagnostics/matlab/plot_obs_netcdf.m">local file</a>.
+or <a href="../../../diagnostics/matlab/plot_obs_netcdf.m">local file</a>.
         </td></tr>
 
     <tr><td>plot_obs_netcdf_diffs.m</td>
@@ -2960,17 +2960,17 @@ or <a href="../../diagnostics/matlab/plot_obs_netcdf.m">local file</a>.
             observations in a DART netCDF format observation sequence file.
             Matlab source
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/plot_obs_netcdf_diffs.m">Website</a>
-or <a href="../../diagnostics/matlab/plot_obs_netcdf_diffs.m">local file</a>.
+or <a href="../../../diagnostics/matlab/plot_obs_netcdf_diffs.m">local file</a>.
         </td></tr>
 
     <tr><td>plot_wind_vectors.m</td>
         <td>reads and plots the wind vectors of the observations in a DART netCDF format 
             observation sequence file (created by <em class=program>obs_seq_to_netcdf</em>, documentation
             <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_sequence/obs_seq_to_netcdf.html">Website</a>
-            or <a href="../../obs_sequence/obs_seq_to_netcdf.html">local file</a>)
+            or <a href="../../../obs_sequence/obs_seq_to_netcdf.html">local file</a>)
             Matlab source
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/plot_wind_vectors.m">Website</a>
-or <a href="../../diagnostics/matlab/plot_wind_vectors.m">local file</a>.
+or <a href="../../../diagnostics/matlab/plot_wind_vectors.m">local file</a>.
         </td></tr>
 
     <tr><td>link_obs.m</td>
@@ -2979,7 +2979,7 @@ or <a href="../../diagnostics/matlab/plot_wind_vectors.m">local file</a>.
             the corresponding observations are indicated in all the other views.
             Matlab source
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/link_obs.m">Website</a>
-or <a href="../../diagnostics/matlab/link_obs.m">local file</a>.
+or <a href="../../../diagnostics/matlab/link_obs.m">local file</a>.
         </td></tr>
 
     <tr><td>plot_rank_histogram.m</td>
@@ -2994,7 +2994,7 @@ or <a href="../../diagnostics/matlab/link_obs.m">local file</a>.
             web page.
             Matlab source
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/diagnostics/matlab/plot_rank_histogram.m">Website</a>
-or <a href="../../diagnostics/matlab/plot_rank_histogram.m">local file</a>.
+or <a href="../../../diagnostics/matlab/plot_rank_histogram.m">local file</a>.
         </td></tr>
     </table>
 </li>
@@ -3016,7 +3016,7 @@ or <a href="../../diagnostics/matlab/plot_rank_histogram.m">local file</a>.
     observation value and error will be converted.
     This allows for variety of new diagnostics.   Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_sequence/obs_seq_to_netcdf.html">Website</a>
-or <a href="../../obs_sequence/obs_seq_to_netcdf.html">local file</a>.
+or <a href="../../../obs_sequence/obs_seq_to_netcdf.html">local file</a>.
 </li>
 
 <li>obs_seq_coverage<br />
@@ -3025,7 +3025,7 @@ or <a href="../../obs_sequence/obs_seq_to_netcdf.html">local file</a>.
     network of observations that will be used to verify forecasts. 
     Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_sequence/obs_seq_coverage.html">Website</a>
-or <a href="../../obs_sequence/obs_seq_coverage.html">local file</a>.
+or <a href="../../../obs_sequence/obs_seq_coverage.html">local file</a>.
 </li>
 
 <li>obs_selection<br />
@@ -3036,7 +3036,7 @@ or <a href="../../obs_sequence/obs_seq_coverage.html">local file</a>.
     that will not be used in the verification.
     Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_sequence/obs_selection.html">Website</a>
-or <a href="../../obs_sequence/obs_selection.html">local file</a>.
+or <a href="../../../obs_sequence/obs_selection.html">local file</a>.
 </li>
 
 <li>obs_seq_verify<br />
@@ -3047,7 +3047,7 @@ or <a href="../../obs_sequence/obs_selection.html">local file</a>.
     <tt>METAR_U_10_METER_WIND(analysisT,&nbsp;stations,&nbsp;levels,&nbsp;copy,&nbsp;nmembers,&nbsp;forecast_lead)</tt>
     <br />Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_sequence/obs_seq_verify.html">Website</a>
-or <a href="../../obs_sequence/obs_seq_verify.html">local file</a>.
+or <a href="../../../obs_sequence/obs_seq_verify.html">local file</a>.
 </li>
 
 <li>Select common observation subsets<br />
@@ -3058,7 +3058,7 @@ files which were output from two different runs of filter.  Assumes the same
 assimilated in both experiments.  It allows for a fair comparision with the diagnostic tools.
     Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/obs_sequence/obs_common_subset.html">Website</a>
-or <a href="../../obs_sequence/obs_common_subset.html">local file</a>.
+or <a href="../../../obs_sequence/obs_common_subset.html">local file</a>.
 </li>
 
 <li>Restart File tool<br />
@@ -3069,7 +3069,7 @@ split a single file into 1-per-ensemble or the reverse, and can be used
 to convert between ASCII and binary formats.
     Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/utilities/restart_file_tool.html">Website</a>
-or <a href="../../utilities/restart_file_tool.html">local file</a>.
+or <a href="../../../utilities/restart_file_tool.html">local file</a>.
 </li>
 
 <li>Advance Time tool<br />
@@ -3083,7 +3083,7 @@ in a compiler-independent manner, and outputs in various formats depending
 on what is requested via additional flags.
     Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/time_manager/advance_time.html">Website</a>
-or <a href="../../time_manager/advance_time.html">local file</a>.
+or <a href="../../../time_manager/advance_time.html">local file</a>.
 </li>
 
 <li>WRF observation preprocessor tool<br />
@@ -3103,11 +3103,11 @@ as returned from the <em class=code>get_state_meta_data()</em> routine
 from the corresponding model interface code in <em class=file>model_mod.f90</em>
 (see subroutine documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/model_mod.html#get_state_meta_data">Website</a>
-or <a href="../../models/model_mod.html#get_state_meta_data">local file</a>)
+or <a href="../../../models/model_mod.html#get_state_meta_data">local file</a>)
 and compute the metric based only on those values.
     Tool documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/utilities/closest_member_tool.html">Website</a>
-or <a href="../../utilities/closest_member_tool.html">local file</a>.
+or <a href="../../../utilities/closest_member_tool.html">local file</a>.
 </li>
 
 <li>Fill Inflation restart file tool<br />
@@ -3119,7 +3119,7 @@ first job step can start from a restart file as all subsequent job steps do and
 allows the use of a single <em class=file>input.nml</em> file.
     Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/adaptive_inflate/fill_inflation_restart.html">Website</a>
-or <a href="../../adaptive_inflate/fill_inflation_restart.html">local file</a>.
+or <a href="../../../adaptive_inflate/fill_inflation_restart.html">local file</a>.
 </li>
 
 <li>Replace WRF fields tool<br />
@@ -3132,7 +3132,7 @@ Missing fields can be ignored or cause the program to stop
 with a fatal error depending on namelist settings.
     Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/models/wrf/WRF_DART_utilities/replace_wrf_fields.html">Website</a>
-or <a href="../../models/wrf/WRF_DART_utilities/replace_wrf_fields.html">local file</a>.
+or <a href="../../../models/wrf/WRF_DART_utilities/replace_wrf_fields.html">local file</a>.
 </li>
 
 <li>model_mod Verification/Check tool<br />
@@ -3141,7 +3141,7 @@ Tool to help when creating a new model interface file (usually named
 debugging.
     Documentation
 <a href="https://proxy.subversion.ucar.edu/DAReS/DART/releases/Kodiak/utilities/model_mod_check.html">Website</a>
-or <a href="../../utilities/model_mod_check.html">local file</a>.
+or <a href="../../../utilities/model_mod_check.html">local file</a>.
 </li>
 
 </ul>
