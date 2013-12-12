@@ -88,6 +88,11 @@
 #     -assume  byterecl ... more 'industry-standard' direct-access behavior
 #              controls what units the RECL (record length) specifier returns.
 #
+# Runtime environment variables that influence the compiler behavior:
+#
+# Make output lines for fortran write statements longer without wrapping:
+#   setenv FORT_FMT_RECL 512  (or any length)
+#
 #
 # IF YOU HAVE MORE CURRENT COMPILER INFORMATION, PLEASE SHARE IT WITH US.
 

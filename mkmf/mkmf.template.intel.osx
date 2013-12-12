@@ -9,21 +9,90 @@
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx ...
 #
-# NOTE: The intel compiler can provide a lot more
-#       information if you LEAVE the object and module files intact.
-#       Do not remove the *.o and *.mod files when debugging code.
+# FFLAGS   useful for DEBUGGING. NOTE: The intel compiler can provide a lot more
+#          information if you LEAVE the object and module files intact.
+#          Do not remove the *.o and *.mod files when debugging code.
 #
-# Building DART with the commercial Intel compiler for the iMacs:
+#     -g       include debugging information.  these are all synonyms.
+#     -debug full
+#     -debug all
+#     -O0      setting -g will make this the default (no optimization).
+#              it is possible to set -g and then explicitly set -O2 if
+#              the behavior being debugged depends on optimization changes.
+#     -ftrapuv   traps if a local variable is used before being set
+#     -C       enables all runtime checks.  -C and -check all are synonyms.
+#     -check all
+#     -check <keywords>    enables/disables more specific runtime checks.
+#           keywords:  [arg_temp_created,bounds,overflow,format,pointers,uninit]
+#     -warn <keywords>  the level of warning messages issued.
+#           keywords:  [alignments, argument_checking, declarations,
+#                      errors, fileopt, general, ignore_loc,
+#                      stderrors, truncated_source, uncalled,
+#                      uninitialized, unused, usage, all]
+#     -fp-stack-check  catches conditions where the FP stack is not correct.
+#           Typically this is when a real function is called as if it were a
+#           subroutine, OR a subroutine is called as if it were a function (return
+#           values left of FP stack OR too much data is taken off the FP stack)
+#     -vec-reportN  controls how much diagnostic output is printed about
+#                   loops vectorized by the compiler. N = 0 is silent,
+#                   N can have values up to 5.
+#     -traceback    tells the compiler to generate extra information in the
+#                   object file to provide source file traceback information
+#                   when a severe error occurs at run time
 #
-# You will need to have a version of the (free) netCDF software
-# library package:
+# FFLAGS   useful for bitwise reproducibility and accuracy control
+#          (these will slow down performance to various degrees)
+#     -fp-model precise    control how floating point roundoff is done so it is
+#                          reproducible from run to run.  in simple tests this
+#                          flag alone was enough to create bitwise reproducible
+#                          code but slowed execution significantly.
+#     -ftz        'flush to zero' underflows result in zero.  set by default if
+#                 any -O other than -O0 set, or if -fpe0 or -fpe1 set.
+#     -fpeN       controls floating point exception handling.  -fpe0 rounds underflow
+#                 to zero and traps on any other exception type.
+#     -pc80       set internal FPU precision to 64 bit significand
+#                 (default is -pc64 with 53 internal bits)
 #
-#      http://www.unidata.ucar.edu/software/netcdf
+# FFLAGS   useful for production
+#     -O2        default.  optimize without too much unrepeatable numerical games
+#     -O3        more aggressive optimizations.  check numerical differences
+#                before using this indiscriminately.
+#     -O1        if you get compile-time errors about out of memory or unable to
+#                complete compilation because of complexity, try lowering the
+#                optimization level on the offending source files.
+#     -ipo       enable optimizations between routines in separate source files
+#     -heap-arrays 10    allocate large arrays from the heap instead of putting them
+#                on the stack.  the number is the limit in KB for when arrays
+#                move from the stack to the heap.  this can help if you get stack
+#                overflow errors and cannot increase the stack size more.
+#                allocating from the stack is faster, but it's usually a smaller
+#                size than the heap.
+#     -x, -m, -ax, -mcode, -march   all these flags tell the compiler to generate
+#                processor-specific or vector instructions.  either 'man ifort' or
+#                ifort --help to see what the current list of options are and
+#                which have priority over the others.
+#                (for those running on yellowstone, -axavx will enable the advanced
+#                vector instructions available on the sandy bridge processors.)
 #
+# FFLAGS   possibly useful, not normally used by DART
+#     -fpp     run Fortran preprocessor on source files prior to compilation
+#     -free    interpret source as free-format, regardless of file extension
+#     -r8      specify default real size.  note that for DART we use explicit
+#              types on all our real values so this will not change anything
+#              inside DART.   see DART/common/types_mod.f90 if you must run
+#              with single precision reals.
+#     -convert big_endian         useful if you're on the wrong architecture.
+#              however this controls both reading and writing so you can't
+#              use it as a conversion mechanism unless you write files out
+#              in ascii format.  applies to all unformatted fortran i/o.
+#     -assume  byterecl ... more 'industry-standard' direct-access behavior
+#              controls what units the RECL (record length) specifier returns.
 #
-# users have had problems with the default stack size on OS X.
-# the -Wl,-stack_size argument below increases the stack large
-# enough to run large models.
+# Runtime environment variables that influence the compiler behavior:
+#
+# Make output lines for fortran write statements longer without wrapping:
+#   setenv FORT_FMT_RECL 512  (or any length)
+#
 #
 # IF YOU HAVE MORE CURRENT COMPILER INFORMATION, PLEASE SHARE IT WITH US.
 
@@ -57,12 +126,21 @@ INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
 
 # for Intel 9.x:
-FFLAGS  = $(INCS) -O2
-LDFLAGS = $(INCS) -Wl,-stack_size,10000000 $(LIBS)
+#FFLAGS  = $(INCS) -O2
+#LDFLAGS = $(INCS) -Wl,-stack_size,10000000 $(LIBS)
 
-# for Intel 10.x:
-#FFLAGS  = $(INCS) -O2 -m64 -heap-arrays -vec-report0 -fpe0
-#LDFLAGS = $(INCS) $(LIBS)
+# for Intel 10.x and beyond:
+FFLAGS  = $(INCS) -O2 -m64 -heap-arrays -vec-report0 
+LDFLAGS = $(INCS) $(LIBS)
+
+# for development or debugging, use this instead:
+# FFLAGS = -g -C -check noarg_temp_created -fpe0 -vec-report0 \
+#          -fp-model precise  -ftrapuv -traceback \
+#          -warn argument_checking,declarations,uncalled,unused $(INCS)
+#
+# If you get this error: libimf.so: warning: warning: feupdateenv is not implemented
+# try adding: -limf -lm to your LIBS line.
+
 
 # <next few lines under version control, do not edit>
 # $URL$

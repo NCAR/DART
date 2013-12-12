@@ -1,6 +1,4 @@
 # template for PGI f90 Compiler on Mac OS X
-# (at the time of the latest DART release there was a PGI beta compiler
-#   available for Intel-based Macs)
 #
 # DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -70,11 +68,11 @@ LD = pgf90
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS  = -O2 $(INCS)
+FFLAGS  = -O $(INCS) 
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this for flags:
-#FFLAGS = -O0 -Ktrap=fp -pc 64 $(INCS)
+#FFLAGS = -g -Ktrap=fp -pc 64 $(INCS)
 
 # <next few lines under version control, do not edit>
 # $URL$

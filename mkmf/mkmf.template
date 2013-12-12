@@ -9,74 +9,48 @@
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx ...
 #
-# Most likely NETCDF (and maybe LIBS) will need to be customized for your site
 #
+# Suggested debugging flags:
+#  -g                  add debugging information to executable
+#  -fbacktrace         runtime errors try to print out a stack backtrace
+#  -fbounds-check      add runtime-checking for out-of-range array indices
+#  -ffpe-trap=invalid,zero,overflow
+#                      stop on floating point errors
 #
-# Building DART with open-source software:
+#  earlier versions of this mkmf file listed 'precision' as one of the options on
+#  the fpe-trap line.  this is not recommended anymore as some of the gfortran internal
+#  routines will trap, as well as some perfectly valid DART computations.
 #
-# All the parts (except matlab, which is optional and only used to display results)
-# needed to build and run the DART package are now possible to get free from
-# the open-source community.  To compile and run DART, you will need:
-#
-#
-# 1. The GNU GCC 4.2.0 version of the gfortran compiler.  See this web page for
-#    information on supported platforms and downloads:
-#      http://gcc.gnu.org/wiki/GFortran
-#
-#    (Note that there is a separate G95 project which distributes an alternate
-#    open-source fortran distribution, and I have heard that others have
-#    successfully compiled other fortran code with that compiler, but we have
-#    not tried it with DART yet.)
-#
-#    NOTE: The 4.1.2 compiler made the HORRIBLE choice of changing the default
-#    record header size for unformatted writes such that it was incompatible
-#    with every existing binary file. Specifying -frecord-marker=4 is crucial
-#    to have any hope of success.
-#
-# 2. The netCDF software library package.  See:
-#      http://www.unidata.ucar.edu/software/netcdf
-#
-#    The 3.6.2 version compiled for us with this:
-#
-#     ./configure CC=gcc FC=gfortran
-#     make check
-#     make install
-#
-#    You can add the argument --prefix=/dir to configure to make the install
-#    location for the includes and libs someplace other than /usr/local.
-#
-#
-# If you want to try the *optional* parallel execution option, you will
-# need a version of the MPI libs.  There are at least two open source options:
-#
-# 3. For parallel execution, OpenMPI 1.2 from:
-#       http://www.open-mpi.org/
-#
-#     or mpich from:
-#       http://http://www-unix.mcs.anl.gov/mpi/mpich/
-#
-# Note that MPI IS NOT REQUIRED to build and run DART.
-#
-#
-# Possibly useful flags:
+# Generally not needed but possibly useful for non-DART code:
 #
 # -ffree-form          forces input file to be read as free format regardless
-#                      of what file extension is has.
+#                      of what file extension it has.
 #
-# -fdefault-real-8     force all real variables to be real*8.
+# -fdefault-real-8     force all real variables to be real*8.  not needed for DART code
+#                      since all real variables in DART are declared with a size.
 #
-# -ffpe-trap=invalid,overflow,precision,denormal,underflow
+#    NOTE: Some previous versions of the gfortran compiler (including 4.1.2)
+#    changed the record marker size to 8 bytes, which made binary files written
+#    with the 'unformatted' option unreadable by programs compiled with other
+#    compilers.  Later versions of the compiler changed the default back to 4 bytes.
+#    If you have a version that defaults to 8 byte record markers, use this 
+#    compile time flag:
+#       -frecord-marker=4
+#    If you have files written by older versions of the gfortran compiler that
+#    cannot be read now, try this compile time flag:
+#       -frecord-marker=8 
 #
+# Convert big-endian or little-endian binary files at runtime:
 #
-# NOTE: there is no compile-time convert endian flag. It is a run-time option.
+# setenv GFORTRAN_CONVERT_UNIT 'big_endian'
+#    Treats ALL units as big_endian
+#
+# setenv GFORTRAN_CONVERT_UNIT 'big_endian;native:10-20'
+#    Treats units 10-20 as big_endian but the rest are 'native' 
+#
+# for more information on unit conversions:
 # http://gcc.gnu.org/onlinedocs/gfortran/GFORTRAN_005fCONVERT_005fUNIT.html#GFORTRAN_005fCONVERT_005fUNIT
-#       To treat units 10-20 as big_endian but the rest are 'native' ...
-#       setenv GFORTRAN_CONVERT_UNIT 'big_endian;native:10-20'
 #
-#       To treat ALL units as big_endian (the 10-20 is meaningless in this instance):
-#       setenv GFORTRAN_CONVERT_UNIT 'big_endian;big_endian:10-20'
-#
-# IF YOU HAVE MORE CURRENT COMPILER INFORMATION, PLEASE SHARE IT WITH US.
 
 MPIFC = mpif90
 MPILD = mpif90
@@ -109,7 +83,7 @@ LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
 FFLAGS  = -O2 -ffree-line-length-none $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
-#FFLAGS = -O0 -fbounds-check -frecord-marker=4 -ffpe-trap=invalid -ffree-line-length-none $(INCS)
+#FFLAGS = -g -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)
 
 # <next few lines under version control, do not edit>
 # $URL$

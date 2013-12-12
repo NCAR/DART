@@ -1,6 +1,4 @@
-# Template for SGI Altix systems
-# (Altix clusters are based on Intel chips,
-#  not MIPS chips like earlier SGI systems.)
+# Template for SGI Altix systems (which are Intel-processor based)
 #
 # DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -104,6 +102,12 @@
 #     -assume  byterecl ... more 'industry-standard' direct-access behavior
 #              controls what units the RECL (record length) specifier returns.
 #
+# Runtime environment variables that influence the compiler behavior:
+#
+# Make output lines for fortran write statements longer without wrapping:
+#   setenv FORT_FMT_RECL 512  (or any length)
+#
+
 # IF YOU HAVE MORE CURRENT COMPILER INFORMATION, PLEASE SHARE IT WITH US.
 
 MPIFC = ifort
