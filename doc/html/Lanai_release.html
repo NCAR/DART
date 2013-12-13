@@ -156,7 +156,7 @@ and dicing.<br /><br />
 
 <strong>Matlab</strong>&reg;: A set of 
 <a href="http://www.mathworks.com/">Matlab&reg;</a> scripts designed to 
-produce graphical diagnostics from DART netCDF output files are also part
+produce graphical diagnostics from DART. netCDF output files are also part
 of the DART project.<br /><br />
 
 <strong>MPI</strong>: The DART system includes an MPI
@@ -284,18 +284,16 @@ in the <em class="file">DART/tutorial</em> directory.</p>
 <h3>Requirements: an F90 Compiler</h3>
 
 <p>
-The DART software has been successfully built on several Linux/x86
-platforms with several versions of the 
-<a href="http://www.intel.com/software/products/compilers/flin">Intel Fortran
-Compiler for Linux</a>, which (at one point) is/was free for individual 
-scientific use.  Also Intel Fortran for Mac OSX.
-It has also been built and successfully run with several 
-versions of each of the following:
+The DART software has been successfully built on many Linux,
+OS/X, and supercomputer platforms with compilers that include
+<a href="http://gcc.gnu.org/fortran">GNU Fortran Compiler ("gfortran")</a>
+(free), 
+<a href="http://software.intel.com/en-us/fortran-compilers">Intel Fortran
+Compiler for Linux and Mac OS/X</a>,
 <a href="http://www.pgroup.com">Portland Group Fortran Compiler</a>, 
 <a href="http://www.lahey.com">Lahey Fortran Compiler</a>, 
 <a href="http://www.pathscale.com">Pathscale Fortran Compiler</a>, 
-<a href="http://gcc.gnu.org/fortran">GNU Fortran 95 Compiler ("gfortran")</a>, 
-<a href="http://www.absoft.com">Absoft Fortran 90/95 Compiler (Mac OSX)</a>. 
+and the Cray native compiler.
 Since recompiling the code is a necessity to experiment
 with different models, there are no binaries to distribute.
 </p>
@@ -329,9 +327,6 @@ for building the library or installing from an RPM may be found at
 the netCDF home page: 
 <a href="http://www.unidata.ucar.edu/packages/netcdf/">
 http://www.unidata.ucar.edu/packages/netcdf/</a> 
-Pay particular attention to the compiler-specific patches that must 
-be applied for the Intel Fortran Compiler. (Or the PG compiler, for
-that matter.)
 </p>
 
 <p>
