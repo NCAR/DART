@@ -1,5 +1,4 @@
-# Template for Pathscale 2.0 f90 Compiler on a Linux cluster
-#  (tested to the NCAR machine 'lightning' - an Opteron cluster)
+# Template for Pathscale f90 Compiler on a Linux cluster
 #
 # DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -27,11 +26,6 @@
 #
 # IF YOU HAVE MORE CURRENT COMPILER INFORMATION, PLEASE SHARE IT WITH US.
 
-#----------------------------------------------------------------------
-# if the pathScale module is loaded, these things are already properly set.
-#MPI_HOME=/contrib/mpich-gm/1.2.6..13b-pathscale-2.0-64
-#MPIFC=$(MPI_HOME)/bin/mpif90
-#MPILD=$(MPI_HOME)/bin/mpif90
 #----------------------------------------------------------------------
 
 MPIFC = mpif90
@@ -62,11 +56,11 @@ LD = pathf90
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS  = -O2 $(INCS)
+FFLAGS  = -O $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development/debugging, use these flags instead:
-#FFLAGS = -Wuninitialized -ffortran-bounds-check -fullwarn -O0 -I$(NETCDF)/include
+#FFLAGS = -Wuninitialized -ffortran-bounds-check -fullwarn -g -I$(NETCDF)/include
 
 # <next few lines under version control, do not edit>
 # $URL$

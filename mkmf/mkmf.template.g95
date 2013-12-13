@@ -1,4 +1,4 @@
-# Template for GNU g95 on Linux or Mac OSX
+# Template for the g95 compiler on Linux or Mac OSX
 #
 # DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -9,48 +9,9 @@
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx ...
 #
-# Most likely NETCDF (and maybe LIBS) will need to be customized for your site
-#
-#
-# Building DART with open-source software:
-#
-# All the parts (except matlab, which is optional and only used to display results)
-# needed to build and run the DART package are now possible to get free from
-# the open-source community.  To compile and run DART, you will need:
-#
-#
-# 1. The g95 compiler.  See this web page for
-#    information on supported platforms and downloads:
-#      http://g95.sourceforge.net/
-#
-#    (Note that the g95 compiler is a separate project from the 'gfortran'
-#    compiler.  gfortran is part of the GNU compiler development efforts;
-#    g95 is a separately developed and supported project.)
-#
-#
-# 2. The netCDF software library package.  See:
-#      http://www.unidata.ucar.edu/software/netcdf
-#
-#    The 3.6.2 version compiled for us with this:
-#
-#     ./configure CC=gcc FC=g95
-#     make check
-#     make install
-#
-#    You can add the argument --prefix=/dir to configure to make the install
-#    location for the includes and libs someplace other than /usr/local.
-#
-#
-# If you want to try the *optional* parallel execution option, you will
-# need a version of the MPI libs.  There are at least two open source options:
-#
-# 3. For parallel execution, OpenMPI 1.2 from:
-#       http://www.open-mpi.org/
-#
-#     or mpich from:
-#       http://http://www-unix.mcs.anl.gov/mpi/mpich/
-#
-# Note that MPI IS NOT REQUIRED to build and run DART.
+# This template is for the g95 version of fortran.  This is NOT the GNU
+# gfortran compiler; this is a compiler from a separate project.
+# see http://g95.sourceforge.net for more info.
 #
 # IF YOU HAVE MORE CURRENT COMPILER INFORMATION, PLEASE SHARE IT WITH US.
 

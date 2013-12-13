@@ -20,7 +20,7 @@
 #    -O2
 #    -ap                 ensure consistent arithmetic precision
 #    -Wa,--32            pass on to loader ... (32 bit compile)
-#    --trap  trap ndp exceptions
+#    --trap              trap ndp exceptions
 #    --verbose
 #    --warn
 #    --wide
@@ -82,7 +82,7 @@ LD = lf95
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS  = -Wa,--32 --trap --wide --o2 $(INCS)
+FFLAGS  = -Wa,--32 --wide --o2 $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for debugging or development, here are some suggested flags:

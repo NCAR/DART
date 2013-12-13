@@ -94,13 +94,13 @@ LD = f90
 
 INCS =   $(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS  = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -Rb -Rc -g -p$(INCS)
+FFLAGS  = -YEXT_NAMES=LCS -YEXT_SFX=_ -altiVec -O -p$(INCS)
 LDFLAGS = -unixlib $(FFLAGS) $(LIBS)
 
 # alternate (sometimes useful) fortran flags invocations
-#FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -Rb -Rc -p$(INCS)
-#FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -N113 -f free -Rb -Rc -p$(INCS) -I$(INCS)
-#FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O0 -Rb -Rc -N26 -p$(INCS) -I$(INCS)
+#FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -g -Rb -Rc -p$(INCS)
+#FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O -N113 -f free -Rb -Rc -p$(INCS) -I$(INCS)
+#FFLAGS = -YEXT_NAMES=LCS -YEXT_SFX=_ -en -altiVec -O -Rb -Rc -N26 -p$(INCS) -I$(INCS)
 
 # <next few lines under version control, do not edit>
 # $URL$
