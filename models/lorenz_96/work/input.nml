@@ -42,7 +42,7 @@
    output_interval          = 1,
    num_groups               = 1,
    input_qc_threshold       =  3.0,
-   outlier_threshold        =  3.0,
+   outlier_threshold        = -1.0,
    enable_special_outlier_code = .false.,
    output_forward_op_errors = .false.,
    output_inflation         = .true.,
@@ -78,10 +78,6 @@
    single_restart_file_in  = .true.,
    single_restart_file_out = .true.,
    perturbation_amplitude  = 0.2,
-   flag_unneeded_transposes = .true.
-   layout = 1,
-   communication_configuration = 1,
-   debug = .false.,
    /
 
 &assim_tools_nml
@@ -143,7 +139,7 @@
    /
 
 &preprocess_nml
-          overwrite_output = .true.
+          overwrite_output = .true.,
     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
