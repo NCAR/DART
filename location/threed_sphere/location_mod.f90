@@ -64,7 +64,7 @@ integer, parameter :: VERTISHEIGHT      =  3 ! by height
 integer, parameter :: VERTISSCALEHEIGHT =  4 ! by scale height
 
 type location_type
-   private
+   !private
    real(r8) :: lon, lat, vloc ! lon, lat stored in radians
    integer  :: which_vert     ! determines if by level, height, pressure, ...
 end type location_type
