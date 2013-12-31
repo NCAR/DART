@@ -1695,27 +1695,24 @@ If you have gotten this far, you can run anything in the tutorial.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <!--==================================================================-->
 <h2>Matlab&reg; Diagnostics</h2>
-<p>The output files are netCDF files, and may be examined with many
-different software packages. We happen to use Matlab&reg;, and provide our
+<p>The output files are netCDF files and may be examined with many
+different software packages. We use Matlab&reg;, and provide our
 diagnostic scripts in the hopes that they are useful.
 </p>
 <p>
 The diagnostic scripts and underlying functions reside in two places: 
 <em class=file>DART/diagnostics/matlab</em> and
-<em class=file>DART/matlab</em>. They are reliant on the public-domain 
-<a href="http://woodshole.er.usgs.gov/staffpages/cdenham/public_html/MexCDF/nc4ml5.html" >
-netcdf toolbox</a> from 
-<em class=file>http://woodshole.er.usgs.gov/staffpages/cdenham/public_html/MexCDF/nc4ml5.html</em>
-as well as the public-domain 
-<a href="http://www.marine.csiro.au/sw/matlab-netcdf.html">CSIRO matlab/netCDF interface</a>
-from <em class=file>http://www.marine.csiro.au/sw/matlab-netcdf.html</em>.
+<em class=file>DART/matlab</em>. 
+They are reliant on the public-domain MEXNC/SNCTOOLS netCDF interface from
+<a href="http://mexcdf.sourceforge.net">http://mexcdf.sourceforge.net</a>.
 If you do not have them installed on your system and want to use Matlab to peruse netCDF,
 you must follow their installation instructions. The 'interested reader' may want to
 look at the <em class=code>DART/matlab/startup.m</em> file I use on my system.
-If you put it in your <em class=unix>$HOME/matlab</em> directory, it is invoked every time you start up Matlab.
+If you put it in your <em class=unix>$HOME/matlab</em> directory 
+it is invoked every time you start up Matlab.
 </p>
 
-<p>Once you can access the <em class=program>getnc</em> function from within Matlab,
+<p>Once you can access the <em class=program>nc_varget</em> function from within Matlab
 you can use our diagnostic scripts. It is necessary to prepend the location of
 the <em class=file>DART/matlab</em> scripts to the <em class=code>matlabpath</em>. 
 Keep in mind the location of the netcdf
@@ -1739,8 +1736,8 @@ operators on your system WILL be different from ours ... and that's OK.
   To get started, type one of these: helpwin, helpdesk, or demo.
   For product information, visit www.mathworks.com.
 
-&gt;&gt;<em class=input> which getnc</em>
-/contrib/matlab/matlab_netcdf_5_0/getnc.m
+&gt;&gt;<em class=input> which nc_varget</em>
+/contrib/matlab/snctools/4024/nc_varget.m
 &gt;&gt;<em class=input>ls *.nc</em>
 
 ans =
