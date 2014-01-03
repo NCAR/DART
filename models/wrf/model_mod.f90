@@ -7898,14 +7898,27 @@ end subroutine obs_kind_in_state_vector
 function new_dart_ind(i, j, k, ind, domain)
 
 integer :: new_dart_ind
-integer  :: i, j, k, ind, domain
+integer :: i, j, k, ind, domain ! info for the state element: x,y,z,type, domain
 integer :: Ni, Nj, Nk, sum_below, extra, types_below
+integer :: id ! domain loop type
+integer :: ivar ! variable loop index
 
-! Find sum of all variable types below this one - going to need sum of domains
-! below aswell
+! Find sum of all variable types below this one 
 sum_below = 0
 
-! I think you could do this loop once at the start of the module and store it
+! I think you could do these two loops once at the start of the module and store 
+! the results in a look up table
+
+! sum up domains below
+do id = 1, domain -1
+   do ivar = 1, wrf%dom(id)%number_of_wrf_variables
+      sum_below = sum_below + wrf%dom(id)%var_size(1, ivar) * &
+                              wrf%dom(id)%var_size(2, ivar) * &
+                              wrf%dom(id)%var_size(3, ivar)
+      enddo
+enddo
+
+! sum up variables below
 do types_below = 1, ind - 1
    sum_below = sum_below + wrf%dom(domain)%var_size(1, types_below) * &
                            wrf%dom(domain)%var_size(2, types_below) * &
