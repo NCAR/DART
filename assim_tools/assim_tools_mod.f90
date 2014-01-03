@@ -467,20 +467,10 @@ call get_my_vars(obs_ens_handle, my_obs_indx)
 call init_obs(observation, get_num_copies(obs_seq), get_num_qc(obs_seq))
 
 ! Get the locations for all of my observations 
-Get_Obs_Locations: do i = 1, obs_ens_handle%my_num_vars
-   this_obs_key = obs_ens_handle%copies(OBS_KEY_COPY, i)
-   call get_obs_from_key(obs_seq, this_obs_key, observation)
-   call get_obs_def(observation, obs_def)
-   my_obs_loc(i)  = get_obs_def_location(obs_def)
-   my_obs_type(i) = get_obs_kind(obs_def)
-   if (my_obs_type(i) > 0) then
-      my_obs_kind(i) = get_obs_kind_var_type(my_obs_type(i))
-   else
-      call get_state_meta_data_distrib(ens_handle, win, -1 * my_obs_type(i), dummyloc, my_obs_kind(i))    ! identity obs
-   endif
-   ! Need the time for regression diagnostics potentially; get from first observation
-   if(i == 1) obs_time = get_obs_def_time(obs_def)
-end do Get_Obs_Locations
+! HK I would like to move this to before the calculation of the forward operator so you could
+! overwrite the vertical location with the required localization vertical coordinate when you 
+! do the forward operator calculation
+call get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type)
 
 ! Get info on my number and indices for state
 my_num_state = get_my_num_vars(ens_handle)
@@ -2666,6 +2656,38 @@ end do
 call sum_across_tasks(local_count, count_close)
 
 end function count_close
+
+!----------------------------------------------------------------------
+!> gets the location of of all my observations
+subroutine get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type)
+
+type(ensemble_type),      intent(in)  :: obs_ens_handle
+type(obs_sequence_type),  intent(in)  :: obs_seq
+integer,                  intent(in)  :: keys(:)
+type(location_type),      intent(out) :: my_obs_loc(:)
+integer,                  intent(out) :: my_obs_type(:), my_obs_kind(:)
+
+type(obs_type) :: observation
+type(obs_def_type)   :: obs_def
+integer :: this_obs_key
+integer i
+
+Get_Obs_Locations: do i = 1, obs_ens_handle%my_num_vars
+
+   this_obs_key = keys(obs_ens_handle%my_vars(i)) ! if keys becomes a local array, this will need changing
+   call get_obs_from_key(obs_seq, this_obs_key, observation)
+   call get_obs_def(observation, obs_def)
+   my_obs_loc(i)  = get_obs_def_location(obs_def)
+   my_obs_type(i) = get_obs_kind(obs_def)
+   if (my_obs_type(i) > 0) then
+         my_obs_kind(i) = get_obs_kind_var_type(my_obs_type(i))
+   else
+      !call get_state_meta_data_distrib(ens_handle, win, -1 * my_obs_type(i), dummyloc, my_obs_kind(i))    ! identity obs
+      call error_handler(E_ERR, 'you need to create the MPI window ', 'before you can do identity obs')
+   endif
+end do Get_Obs_Locations
+
+end subroutine get_my_obs_loc
 
 !--------------------------------------------------------------------
 
