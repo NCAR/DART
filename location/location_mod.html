@@ -1,0 +1,188 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module location_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE location_mod</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+DART provides a selection of options for the coordinate system in which
+all observations and all model state vector locations are described.
+All executables are built with a single choice from the available
+location modules.  The names of these modules are all
+<em class=code>location_mod</em>.
+</P>
+
+<H2>Introduction</H2>
+
+<P>
+The core algorithms of DART work with many different models
+which have a variety of coordinate systems.  This directory
+provides code for creating, setting/getting, copying location
+information (coordinates) independently of the actual specific
+coordinate information.  It also contains distance routines
+needed by the DART algorithms.
+</P>
+<P>
+Each of the different location_mod.f90 files provides the same
+set of interfaces and defines a 'module location_mod', so by
+selecting the proper version in your path_names_xxx file you
+can compile your model code with the main DART routines.
+</P>
+<UL>
+<LI><a href="threed_sphere/location_mod.html">threed_sphere</a>:<br />
+The most frequently used version for real-world 3d models.
+It uses latitude and longitude for horizontal
+coordinates, plus a vertical coordinate which can be meters,
+pressure, model level, surface, or no specific vertical location.</LI>
+<LI><a href="oned/location_mod.html">oned</a>:<br />
+The most frequently used for small models (e.g. the Lorenz family).
+It has a cyclic domain from 0 to 1.</LI>
+<LI>others:<br />
+<UL>
+<LI><a href="threed_cartesian/location_mod.html">threed_cartesian</a>: 
+A full 3D X,Y,Z coordinate system.</LI>
+<LI>column: no x,y but 1d height, pressure, or model level for vertical.</LI>
+<LI>annulus: a hollow 3d cylinder with azimuth, radius, and depth.</LI>
+<LI>twod: a periodic 2d domain with x,y coordinates between 0 and 1.</LI>
+<LI>twod_sphere: a 2d shell with latitude, longitude pairs.</LI>
+<LI>threed: a periodic 3d domain with x,y,z coordinates between 0 and 1.</LI>
+<LI><a href="channel/location_mod.html">channel</a>: 
+a 3d domain periodic in x, limited in y, and unlimited z.</LI>
+</UL>
+</LI>
+</UL>
+<P>
+Other schemes can be added, as needed by the models.
+Possible ideas are a non-periodic version of the 1d, 2d
+cartesian versions.  Email <a href="mailto:dart@ucar.edu">dart at ucar.edu</a> 
+if you have a different coordinate scheme which we might want to support.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+Each location module option has a different namelist.  See the
+specific documentation for the location option of choice.</P> 
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL>
+<LI>none</LI>
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<P>See specific location documentation.</P>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>
