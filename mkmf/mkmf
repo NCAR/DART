@@ -137,7 +137,13 @@ if ( $opt_c ) {
 }
 print MAKEFILE "\nOTHERFLAGS = $opt_o" if $opt_o;
 print MAKEFILE "\n.DEFAULT:\n\t-touch \$@\n";
-print MAKEFILE "all: $opt_p\n"; # first target should be program, so you can type just 'make'
+#change for running 'fixsystem' automatically.  nsc 02aug2013
+#the original target for all: was simply $opt_p
+#the at sign prevents the command from being echoed to the terminal.
+print MAKEFILE "all: fixsys $opt_p\n"; # first target should be program, so you can type just 'make'
+print MAKEFILE "fixsys: \n";
+print MAKEFILE "\t@ (cd ${opt_a}mpi_utilities\; ./fixsystem \$(FC) )\n" ;
+#end change nsc 02aug2013
 
 #if cppdefs flag is present, look for changes in cppdefs
 my %chgdefs;
