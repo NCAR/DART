@@ -403,6 +403,8 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
 
       endif
 
+      ! fixme: we currently have no option to eval only identity obs,
+      ! or select to skip their assimilation via namelist.
       assimilate_this_ob = .true.; evaluate_this_ob = .false.
    
    else ! do forward operator for this kind

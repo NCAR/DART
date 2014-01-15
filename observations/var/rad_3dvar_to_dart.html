@@ -4,6 +4,7 @@
 <HEAD>
 <TITLE>program rad_3dvar_to_dart</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -13,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
@@ -24,10 +25,8 @@
 </tr>
 </table>
 
-<A HREF="#DataSources">DATA SOURCES</A> /
-<A HREF="#Programs">PROGRAMS</A> / 
-<A HREF="#Modules">MODULES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">FUTURE PLANS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
@@ -41,9 +40,69 @@
 </P>
 
 <!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;rad_3dvar_to_dart_nml
+   var_file = 'qc_radr_3dvar_2002083100.dat',
+   obs_seq_out_file_name = 'obs_seq.out',
+   calendar_type = 3  
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+    
+<TR><TD> var_file </TD>
+    <TD> character(len=129) </TD>
+    <TD>This is the name of the file containing MM5 3D-VAR 2.0 Radar observations.
+</TD></TR>
+<TR><TD> obs_seq_out_file_name </TD>
+    <TD> character(len=129) </TD>
+    <TD>File name for output observation sequence file.
+</TD></TR>
+<TR><TD> calendar_type </TD>
+    <TD> integer </TD>
+    <TD>Calendar type. We recommend using 3 (GREGORIAN).
+</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+
+<!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES DIRECTLY USED</H2>
 <PRE>
 types_mod
@@ -66,58 +125,11 @@ random_nr_mod
 </PRE>
 
 <!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
-<!--==================================================================-->
-
-<A NAME="Namelist"></A>
-<HR />
-<H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
-</P>
-<div class=namelist>
-<pre>
-<em class=call>namelist / rad_3dvar_to_dart_nml / </em> &amp;
-    var_file, obs_seq_out_file_name, calendar_type
-</pre>
-</div>
-
-<div class=indent1><!-- Description -->
-
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>var_file               </TD>
-    <!--  type  --><TD valign=top>character(len=129)         </TD>
-    <!--descript--><TD>This is the name of the file containing MM5 3D-VAR 2.0
-    Radar observations. Default is 'qc_radr_3dvar_2002083100.dat'.</TD></TR>
-<TR><!--contents--><TD valign=top>obs_seq_out_file_name        </TD>
-    <!--  type  --><TD valign=top>character(len=129)         </TD>
-    <!--descript--><TD>File name for output observation sequence 
-                       file. Default is 'obs_seq.out'.         </TD></TR>
-<TR><!--contents--><TD valign=top>calendar_type                </TD>
-    <!--  type  --><TD valign=top>integer                      </TD>
-    <!--descript--><TD>Calendar type. We recommend (GREGORIAN = 3) for
-    WRF, which is the default.</TD></TR>
-</TABLE>
-
-</div>
-<br />
-
-<!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL>
    <LI>input namelist ; <em class=file>input.nml</em>
@@ -139,7 +151,7 @@ write_binary_obs_sequence, which is the namelist entry for obs_sequence_mod.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <UL>
 <LI><A HREF="http://www.mmm.ucar.edu/wrf/WG4/">3DVAR GROUP PAGE</A>
@@ -150,7 +162,7 @@ write_binary_obs_sequence, which is the namelist entry for obs_sequence_mod.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <P>
 none
@@ -166,7 +178,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <ol>
 <LI>Use the preprocessor to include the observation list 
@@ -180,7 +192,7 @@ none
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

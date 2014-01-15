@@ -1,4 +1,5 @@
 &compare_states_nml
+  do_all_numeric_fields = .true.,
   fieldnames = '', 
   fieldlist_file = '',
   fail_on_missing_field = .true.,

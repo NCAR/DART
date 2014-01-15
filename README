@@ -10,24 +10,28 @@ See the bottom of this file for quick-start instructions.
 Extensive on-line documentation is on the project web pages:
  http://www.image.ucar.edu/DAReS/DART
 
+Extensive local documentation is included in the DART subversion
+checkout.  Open 'index.html' in your browser to begin.
+
 A Matlab/PDF introduction is in the DART_LAB directory.  There are a set
 of PDF presentations, along with hands-on Matlab exercises.  This starts
 with a very basic introduction to data assimilation, and covers several
 fundamental algorithms in the system.
 
+
 A slightly more advanced tutorial in PDF format is in the tutorial
 subdirectory.  Start with the index file which explains what each
 subsection covers.
 
-The DART Kodiak release documentation is on the web:
- http://www.image.ucar.edu/DAReS/DART/Kodiak_release.html
+The DART Lanai release documentation is on the web:
+ http://www.image.ucar.edu/DAReS/DART/Lanai_release.html
 
 and also in the subversion tree here at:
- doc/html/Kodiak_release.html
+ doc/html/Lanai_release.html
 
 General documentation in HTML format is in the doc/html directory, plus
 all parts of the DART system include HTML files in the respective model
-and source directories.  There is an index.html file in the top level
+and source directories.  There is an 'index.html' file in the top level
 directory which references all the other doc files.
 
 There is a mailing list where we summarize updates to the DART repository
@@ -54,9 +58,6 @@ or comment it out and set $NETCDF in your environment.
 *This NetCDF library must have been compiled with the same compiler
 that you use to compile DART, and must include the F90 interfaces.*
 
-If you are using gfortran, go into the 'mpi_utilities' directory and run
-the './fixsystem' shell script.
-
 Go into 'models/lorenz_63/work' and run './quickbuild.csh'.
 
 If it compiles, hooray.  Run './perfect_model_obs' and then './filter'.
@@ -68,7 +69,7 @@ around 2 and doesn't grow unbounded), you're great!  Congrats.
 
 If you are planning to run one of the larger models and want to
 test the MPI version of DART, run './quickbuild.csh -mpi'.  It will
-recompile the Lorenz 63 model without MPI and then try to build
+first compile the Lorenz 63 model without MPI and then try to build
 filter with MPI.  *The 'mpif90' command you use must have been built
 with the same version of the compiler as you are using.*
 

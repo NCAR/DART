@@ -13,7 +13,7 @@ use utilities_mod, only : error_handler, E_ERR
 ! a line of input read from a terminal/stdin, as opposed to using the
 ! (non-standard) fortran argc command line arg parsing.
 !
-! the intended use would be: 
+! an intended use could be: 
 !   % echo "a b c" | program
 ! or
 !   % cat file
@@ -24,6 +24,14 @@ use utilities_mod, only : error_handler, E_ERR
 !   a b c
 !   EOF
 !
+! OR:
+!
+!   read(unitnum, "(A256)") line
+!   call get_args_from_string(line, wordcount, words)
+!
+! the limit on the number of words and the length of each string
+! is determined by the 'words' character array that is passed in.
+! it should have already been allocated by the caller.
 !---------------------------------------------------------------------
 
 implicit none

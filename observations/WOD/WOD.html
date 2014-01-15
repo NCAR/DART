@@ -4,6 +4,7 @@
 <HEAD>
 <TITLE>WOD Observations</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -13,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
@@ -26,8 +27,8 @@
 
 <A HREF="#DataSources">DATA SOURCES</A> /
 <A HREF="#Programs">PROGRAMS</A> /
-<A HREF="#Modules">MODULES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">FUTURE PLANS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
@@ -41,8 +42,7 @@ sources, combined into a single format with uniform treatment.
 The <a href="http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html">WOD 2009 page</a> 
 has detailed information about the repository, observations, and datasets.
 The programs in this directory convert from the packed ASCII files
-found in the repository into 
-DART observation sequence (obs_seq) file format.
+found in the repository into DART observation sequence (obs_seq) file format.
 <br>
 <br>
 There are 2 sets of available files - the raw observations, and
@@ -56,7 +56,7 @@ values during the assimilation.
 <!--==================================================================-->
 
 <A NAME="DataSources"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>DATA SOURCES</H2>
 
 <P>
@@ -89,35 +89,178 @@ Available at http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html.
 <!--==================================================================-->
 
 <A NAME="Programs"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PROGRAMS</H2>
 <P>
-The data is distributed in
-a specialized packed ASCII format.
-In this directory is a program called 
-<em class=file>wodFOR.f</em> which is an example
-reader program to print out data values from
-the files.
-The program
-<em class=file>wod_to_obs</em> converts these
-packed ASCII files into DART obs_sequence files.
-<br> 
-<br>
-As with most other DART directories, the 
-<em class=file>work</em> directory contains
-a <em class=file>quickbuild.csh</em> script
-to build all necessary executables.
-<br> 
-<br>
-Namelist 
-<A HREF="#Namelist"> <em class=code>&amp;wod_to_obs_nml</em> </A>
-may be read from file <em class=file>input.nml</em>.
+The data is distributed in a specialized packed ASCII format.  In this
+directory is a program called <em class=file>wodFOR.f</em> which is an
+example reader program to print out data values from the files.  The program
+<em class=file>wod_to_obs</em> converts these packed ASCII files into DART
+obs_sequence files.
+</P> 
+<P>
+As with most other DART directories, the <em class=file>work</em> directory
+contains a <em class=file>quickbuild.csh</em> script to build all necessary
+executables.
 </P>
+
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;wod_to_obs_nml
+   wod_input_file       =  'XBTS2005',
+   wod_input_filelist   =  '',
+   wod_out_file         =  'obs_seq.wod',
+   avg_obs_per_file     =  500000,
+   debug                =  .false.,
+   timedebug            =  .false.,
+   print_qc_summary     =  .true.,
+   max_casts            =  -1,
+   no_output_file       =  .false.,
+   print_every_nth_cast =  -1,
+   temperature_error    =  0.5,
+   salinity_error       =  0.5, 
+ /
+! temperature error is in degrees C, salinity error in g/kg.
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD> wod_input_file </TD>
+    <TD> character(len=128) </TD>
+    <TD>The input filename when converting a single file.  Only one of the
+two namelist items that specify input files can have a valid value,
+so to use a single filename set the list name 'wod_input_filelist' 
+to the empty string ('&nbsp;').
+</TD></TR>
+  
+<TR><TD> wod_input_filelist </TD>
+    <TD> character(len=128) </TD>
+    <TD>To convert one or more files in a single execution create a text file
+which contains each input filename, in ascii, one filename per line.  Set
+this item to the name of that file, and set 'wod_input_file' to the empty
+string ('&nbsp;').
+</TD></TR>
+  
+<TR><TD> wod_out_file </TD>
+    <TD> character(len=128) </TD>
+    <TD>The output file to be created.  Note that unlike earlier versions of some
+converters, this program will overwrite an existing output file instead of
+appending to it.  The risk of replicated observations, which are difficult to
+detect since most of the contents are floating point numbers, outweighed the
+possible utility.
+</TD></TR>
+  
+<TR><TD> avg_obs_per_file </TD>
+    <TD> integer </TD>
+    <TD>The code needs an upper limit on the number of observations generated by
+this program.  It can be larger than the actual number of observations
+converted.  The total number of obs is computed by multiplying this number by
+the number of input files.  If you get an error because there is no more room
+to add observations to the output file, increase this number.  Do not make
+this an unreasonably huge number, however, since the code does preallocate
+space and will be slow if the number of obs becomes very large.
+</TD></TR>
+  
+<TR><TD> print_every_nth_cast </TD>
+    <TD> integer </TD>
+    <TD>If a value greater than 0, the program will print a message after
+processing every N casts.  This allows the user to monitor the progress of
+the conversion.
+</TD></TR>
+  
+<TR><TD> print_qc_summary </TD>
+    <TD> logical </TD>
+    <TD>If .TRUE. the program will print out a summary of the number of
+casts which had a non-zero quality control values (current files appear to
+use values of 1-9).
+</TD></TR>
+  
+<TR><TD> debug </TD>
+    <TD> logical </TD>
+    <TD>If .TRUE. the program will print out debugging information.
+</TD></TR>
+  
+<TR><TD> timedebug </TD>
+    <TD> logical </TD>
+    <TD>If .TRUE. the program will print out specialized time-related debugging
+information.
+</TD></TR>
+  
+<TR><TD> max_casts </TD>
+    <TD> integer </TD>
+    <TD>If a value greater than 0 the program will only convert at most
+this number of casts from each input file.  Generally only expected to be
+useful for debugging.  A negative value will convert all data from the input file.
+</TD></TR>
+  
+<TR><TD> no_output_file </TD>
+    <TD> logical </TD>
+    <TD>If .TRUE. the converter will do all the work needed to convert
+the observations, count the number of each category of QC values, etc, but
+will not create the final obs_seq file.  Can be useful if checking an input
+file for problems, or for getting QC statistics without waiting for a full
+output file to be constructed, which can be slow for large numbers of obs.
+Only expected to be useful for debugging.
+</TD></TR>
+  
+<TR><TD> temperature_error </TD>
+    <TD> real(r8) </TD>
+    <TD>The combined expected error of temperature observations from all sources,
+including instrument error, model bias, and representativeness error (e.g.
+larger or smaller grid box sizes affecting expected accuracy), in degrees
+Centigrade.  Values in output file are error variance, which will be
+this value squared.
+</TD></TR>
+  
+<TR><TD> salinity_error </TD>
+    <TD> real(r8) </TD>
+    <TD>The combined expected error of salinity observations from all sources,
+including instrument error, model bias, and representativeness error (e.g.
+larger or smaller grid box sizes affecting expected accuracy) in g/kg (psu).
+Values in output file are error variance, and use units of msu
+(kg/kg), so the numbers will be this value / 1000.0, squared.
+</TD></TR>
+  
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 types_mod
@@ -130,163 +273,10 @@ obs_def_ocean_mod
 obs_kind_mod
 </PRE>
 
-
-<!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
-<!--==================================================================-->
-
-<A NAME="Namelist"></A>
-<HR>
-<H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
-</P>
-<div class=namelist>
-<pre>
-<em class=call>namelist / wod_to_obs_nml / </em>
-   wod_input_file,    
-   wod_input_filelist, 
-   wod_out_file,
-   avg_obs_per_file,
-   debug,
-   timedebug,
-   max_casts,
-   no_output_file,
-   print_every_nth_cast,
-   print_qc_summary,
-   temperature_error,
-   salinity_error
-</pre>
-</div>
-
-<div class=indent1><!-- Description -->
-
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-  
-<TR><!--contents--><TD valign=top>wod_input_file</TD>
-    <!--  type  --><TD valign=top>character(len=128)</TD>
-    <!--descript--><TD>The input filename when converting a single file.  
-                       Only one of the 2 ways to specify input files 
-                       can have a valid value, 
-                       so to use the single filename set the list name
-                       'wod_input_filelist' to the empty string ('').
-                       Default: '../data/XBTS2005'</TD></TR>
-  
-<TR><!--contents--><TD valign=top>wod_input_filelist</TD>
-    <!--  type  --><TD valign=top>character(len=128)</TD>
-    <!--descript--><TD>To convert one or more files in a single execution
-                       create a text file which contains each input filename,
-                       in ascii, one filename per line.  Set this item to
-                       the name of that file, and set 'wod_input_file' to
-                       the empty string ('').
-                       Default: ''</TD></TR>
-  
-<TR><!--contents--><TD valign=top>wod_out_file</TD>
-    <!--  type  --><TD valign=top>character(len=128)</TD>
-    <!--descript--><TD>The output file to be created.  Note that unlike
-                       earlier versions of some converters, this program will
-                       overwrite an existing output file instead of appending 
-                       to it.  The risk of replicated observations, which are
-                       difficult to detect since most of the contents are 
-                       floating point numbers, outweighed the possible utility.
-                       Default: 'obs_seq.wod'</TD></TR>
-  
-<TR><!--contents--><TD valign=top>avg_obs_per_file</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>The code needs an upper limit on the number of observations
-                       generated by this program.  It can be larger than the actual
-                       number of observations converted.  The total number of obs
-                       is computed by multiplying this number by the number of input
-                       files.  If you get an error because there is no more room to
-                       add observations to the output file, increase this number.
-                       Do not make this an unreasonably huge number, however, since
-                       the code does preallocate space and will be slow if the number
-                       of obs becomes very large.
-                       Default: 500000</TD></TR>
-  
-<TR><!--contents--><TD valign=top>print_every_nth_cast</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>If set to a value greater than 0, the program will print a
-                       message after processing every N casts.  This allows the user 
-                       to monitor the progress of the conversion.
-                       Default: -1 (no printing)</TD></TR>
-  
-<TR><!--contents--><TD valign=top>print_qc_summary</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>If set to .TRUE., the program will print out a
-                       summary of the number of casts which had a non-zero 
-                       quality control values
-                       (current files appear to use values of 1-9).  
-                       Default: .TRUE. (print QC summary)</TD></TR>
-  
-<TR><!--contents--><TD valign=top>debug</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>If set to .TRUE., the program will print 
-                       out debugging information.
-                       Default: .FALSE. (no debug info printed) </TD></TR>
-  
-<TR><!--contents--><TD valign=top>timedebug</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>If set to .TRUE., the program will print 
-                       out specialized time-related debugging information.
-                       Default: .FALSE. (no debug info printed) </TD></TR>
-  
-<TR><!--contents--><TD valign=top>max_casts</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>If set to a value greater than 0, the program will only
-                       convert at most this number of casts from each input file.
-                       Generally only expected to be useful for debugging.
-                       Default: -1 (convert all data)</TD></TR>
-  
-<TR><!--contents--><TD valign=top>no_output_file</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>If set to .TRUE., the converter will do all the work needed
-                       to convert the observations, count the number of each category
-                       of QC values, etc, but will not create the final obs_seq file.
-                       Can be useful if checking an input file for problems, or for
-                       getting QC statistics without waiting for a full output file
-                       to be constructed, which can be slow for large numbers of obs. 
-                       Generally only expected to be useful for debugging.
-                       Default: .FALSE. (create output file)</TD></TR>
-  
-<TR><!--contents--><TD valign=top>temperature_error</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>The combined expected error of temperature observations from
-                       all sources, including instrument error, model bias, and 
-                       representativeness error (e.g. larger or smaller grid 
-                       box sizes affecting expected accuracy), in degrees Centigrade. 
-                       Default: 0.5 degrees C. Observations in output file store 
-                       error variance, which will be this value squared.</TD></TR>
-  
-<TR><!--contents--><TD valign=top>salinity_error</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>The combined expected error of salinity observations from
-                       all sources, including instrument error, model bias, and 
-                       representativeness error (e.g. larger or smaller grid 
-                       box sizes affecting expected accuracy) in g/kg (psu). 
-                       Default: 0.5 psu (g/kg). Observations in output file store 
-                       error variance, and use units of msu (kg/kg), so the values
-                       will be this value / 1000.0, squared.</TD></TR>
-  
-</TABLE>
-
-</div>
-<br>
-
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERRORS and KNOWN BUGS</H2>
 <P>
 The code for setting observation error variances is using fixed values,
@@ -300,7 +290,7 @@ values or whether there are some codes we should accept.
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 This converter is currently being used on WOD09 data, but the standard
@@ -323,7 +313,7 @@ and make the necessary changes.
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

@@ -1,11 +1,11 @@
 &obs_common_subset_nml
- filename_seq1       = '',
- filename_seq_list1  = '',
- filename_seq2       = '',
- filename_seq_list2  = '',
- filename_out_suffix = '.common' ,
- print_only          = .false.,
- calendar            = 'Gregorian',
+   num_to_compare_at_once = 2,
+   filename_seq           = '',
+   filename_seq_list      = '',
+   filename_out_suffix    = '.common' ,
+   calendar               = 'Gregorian',
+   print_every            = 1000,
+   dart_qc_threshold      = 3,
+   print_only             = .false.,
 /
-
 

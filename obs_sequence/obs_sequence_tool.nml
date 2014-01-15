@@ -1,7 +1,7 @@
 &obs_sequence_tool_nml
-   filename_seq         = 'obs_seq.one', 'obs_seq.two',
-   filename_out         = 'obs_seq.processed',
+   filename_seq         = '',
    filename_seq_list    = '',
+   filename_out         = 'obs_seq.processed',
    num_input_files      = 0,
    first_obs_days       = -1,
    first_obs_seconds    = -1,
@@ -22,7 +22,7 @@
    edit_copies          = .false.,
    new_copy_index       = -1,
    new_copy_data        = -888888.
-   edit_qc              = .false.,
+   edit_qcs             = .false.,
    new_qc_index         = -1,
    new_qc_data          = 0.
    synonymous_copy_list = '',

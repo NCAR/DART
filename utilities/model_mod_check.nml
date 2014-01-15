@@ -1,5 +1,5 @@
 &model_mod_check 
-   input_file           = "dart.ics",        
+   input_file           = "dart_ics",        
    output_file          = "check_me",
    advance_time_present = .FALSE.,
    x_ind                = -1,

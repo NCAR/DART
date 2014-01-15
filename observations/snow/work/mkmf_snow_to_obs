@@ -7,7 +7,7 @@
 # DART $Id$
 
 ../../../mkmf/mkmf -p snow_to_obs -t ../../../mkmf/mkmf.template   \
- -x -a "../../.." path_names_snow_to_obs
+ -a "../../.." path_names_snow_to_obs
 
 exit $status
 

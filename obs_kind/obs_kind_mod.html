@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>module obs_def_kind</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -145,20 +145,28 @@ parameters to the equivalent string names.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / obs_kind_nml / </em> &amp;
-    assimilate_these_obs_types,evaluate_these_obs_types
+&amp;obs_kind_nml
+   assimilate_these_obs_types = 'null',
+   evaluate_these_obs_types   = 'null'  
+ /
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
 <P>
 Controls what observation types are to be assimilated, evaluated, or
@@ -174,33 +182,49 @@ list is ignored.  Identity observations, however, are always assimilated
 if present in the obs_seq.out file.
 </P>
 
-<P>
-This namelist is read from the file <em class=file>input.nml</em>.
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>assimilate_these_obs_types</TD>
-    <!--  type  --><TD>character(len=129), dimension(:)</TD>
-    <!--descript--><TD>Names of observation types to be assimilated. 
-                   <br>Default: null</TD></TR>
-<TR><!--contents--><TD valign=top>evaluate_these_obs_types</TD>
-    <!--  type  --><TD>character(len=129), dimension(:)</TD>
-    <!--descript--><TD>Names of observation types to be evaluated only.
-                   <br>Default: null </TD></TR>
+<TBODY valign=top>
+
+<TR><TD>assimilate_these_obs_types</TD>
+    <TD>character(len=129), dimension(:)</TD>
+    <TD>Names of observation types to be assimilated.</TD></TR>
+
+<TR><TD>evaluate_these_obs_types</TD>
+    <TD>character(len=129), dimension(:)</TD>
+    <TD>Names of observation types to be evaluated only.</TD></TR>
+
+</TBODY> 
 </TABLE>
-
 </div>
-<br>
+
+<P>For example:</P>
+<pre>
+&amp;obs_kind_nml
+   assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
+                                'RADIOSONDE_U_WIND_COMPONENT',
+                                'RADIOSONDE_V_WIND_COMPONENT',
+   evaluate_these_obs_types   = 'RADIOSONDE_SURFACE_PRESSURE'  
+/
+</pre>
+would assimilate temperature and wind observations, but only
+compute the forward operators for surface pressure obs.
+
+<br />
+<br />
 
 <!--==================================================================-->
 <!-- Describe the modules used by this module.                        -->
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 utilities_mod
@@ -214,7 +238,7 @@ utilities_mod
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -800,7 +824,7 @@ in the obs_type_type table.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL>
 <LI>&amp;obs_kind_nml in input.nml
@@ -813,7 +837,7 @@ in the obs_type_type table.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li> none </li>
@@ -825,7 +849,7 @@ in the obs_type_type table.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -870,7 +894,7 @@ in the obs_type_type table.
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 The terminology has evolved since the initial version of this
@@ -907,7 +931,7 @@ select to assimilate and evaluate these as they choose.
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

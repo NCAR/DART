@@ -1,6 +1,5 @@
 &obs_kind_nml
-   assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
-                                'RADIOSONDE_U_WIND_COMPONENT',
-                                'RADIOSONDE_V_WIND_COMPONENT',
-   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE'  /
+   assimilate_these_obs_types = 'null',
+   evaluate_these_obs_types   = 'null'  
+/
 
