@@ -70,10 +70,10 @@ LD = xlf90_r
 
 INCS = -I/usr/local/lib64/r4i4 -I/usr/local/include
 LIBS = -L/usr/local/lib64/r4i4 -lnetcdf
-FFLAGS  = -qsuffix=f=f90:cpp=F90 -q64 -b64 -qarch=auto -qmaxmem=-1 -O2 $(INCS)
+FFLAGS  = -qsuffix=f=f90:cpp=F90 -q64 -b64 -qarch=auto -qmaxmem=-1 -O $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
-#FFLAGS = -qsuffix=f=f90:cpp=F90 -q64 -b64 -qarch=auto -qmaxmem=-1 -O0 -C -g -qfullpath \
+#FFLAGS = -qsuffix=f=f90:cpp=F90 -q64 -b64 -qarch=auto -qmaxmem=-1 -C -g -qfullpath \
 #         -qsigtrap=xl__trcedump -qflttrap=ov:zero:inv:en $(INCS)
 
 # <next few lines under version control, do not edit>

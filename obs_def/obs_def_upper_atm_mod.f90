@@ -4,6 +4,9 @@
 !
 ! $Id$
 
+! This module supports the observation types from the AIRS instruments.
+! http://winds.jpl.nasa.gov/missions/quikscat/index.cfm
+
 ! BEGIN DART PREPROCESS KIND LIST
 ! SAT_TEMPERATURE,           KIND_TEMPERATURE,           COMMON_CODE
 ! SAT_TEMPERATURE_ELECTRON,  KIND_TEMPERATURE_ELECTRON,  COMMON_CODE
@@ -93,22 +96,17 @@
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_upper_atm_mod
 
-! This module is used by both GITM and TIEGCM.
-! TIEGCM has not been tested with get_expected_gnd_gps_vtec()
-! If TIEGCM uses get_expected_gnd_gps_vtec(), a warning is 
-! issued to stdout and the log file. 
-
 use        types_mod, only : r8, MISSING_R8
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
-use     location_mod, only : location_type, get_location, VERTISHEIGHT, &
-                             set_location
+use     location_mod, only : location_type, get_location, set_location, &
+                             VERTISHEIGHT, VERTISLEVEL
 use  assim_model_mod, only : interpolate
 use     obs_kind_mod, only : KIND_ATOMIC_OXYGEN_MIXING_RATIO, &
                              KIND_MOLEC_OXYGEN_MIXING_RATIO, &
                              KIND_TEMPERATURE, &
                              KIND_PRESSURE, &
-                             KIND_DENSITY_ION_E, KIND_GND_GPS_VTEC
-use        model_mod, only : get_grid_val, get_gridsize
+                             KIND_DENSITY_ION_E, KIND_GND_GPS_VTEC, &
+                             KIND_GEOPOTENTIAL_HEIGHT
 
 implicit none
 private
@@ -197,7 +195,6 @@ integer,            intent(out) :: istatus
 ! 'istatus' is the return code.  0 is success; any positive value signals an
 ! error (different values can be used to indicate different error types).
 ! Negative istatus values are reserved for internal use only by DART.
-!
 
 integer  :: nLons, nLats, nAlts, iAlt
 real(r8), allocatable :: LON(:), LAT(:), ALT(:), IDensityS_ie(:) 
@@ -208,27 +205,36 @@ type(location_type) :: probe
 if ( .not. module_initialized ) call initialize_module
 
 istatus = 36 !initially bad return code
+obs_val = MISSING_R8
+
+! something larger than the expected number of vert levels in the model
+allocate(ALT(500), IDensityS_ie(500))
 
 loc_vals = get_location(location)
 
-call get_gridsize(nLons, nLats, nAlts) !get grid dimensions from model_mod.f90
-allocate( LON( nLons ))
-allocate( LAT( nLats ))
-allocate( ALT( nAlts ))
-allocate( IDensityS_ie( nAlts ))
-call get_grid_val(LON, LAT, ALT) !get grid values from model_mod.f90
+nAlts = 0
+LEVELS: do iAlt=1, size(ALT)+1
+   ! loop over levels.  if we get to one more than the allocated array size,
+   ! this model must have more levels than we expected.  increase array sizes,
+   ! recompile, and try again.
+   if (iAlt > size(ALT)) then
+      call error_handler(E_ERR, 'get_expected_gnd_gps_vtec', 'more than 500 levels in model', &
+           source, revision, revdate, &
+           text2='increase ALT, IDensityS_ie array sizes in code and recompile')
+   endif
 
-do iAlt = 1, nAlts ! at each altitude interpolate the 2D IDensityS_ie to the lon-lat where data point is located
-!+ so after this loop we will get a column centered at data point's lon-lat and at all model altitudes
-   probe = set_location(loc_vals(1), loc_vals(2), ALT(iAlt), VERTISHEIGHT) !probe is where we have data 
-    !+ (lon is in loc_vals(1), lat in (2), disregard alt (which is in (3)), as we need to get an interp-value at each alt)
+   ! At each altitude interpolate the 2D IDensityS_ie to the lon-lat where data 
+   ! point is located after this loop we will get a column centered at data 
+   ! point's lon-lat and at all model altitudes
+   probe = set_location(loc_vals(1), loc_vals(2), real(iAlt, r8), VERTISLEVEL) !probe is where we have data 
    call interpolate(state_vector, probe, KIND_DENSITY_ION_E, IDensityS_ie(iAlt), istatus) 
-   if (istatus /= 0) then
-      obs_val = MISSING_R8
-      istatus = 37 !if you saw 37 as an exit status, something went wrong in interpolate 3 lines above 
-      return
-   endif   
-enddo
+   if (istatus /= 0) exit LEVELS
+   call interpolate(state_vector, probe, KIND_GEOPOTENTIAL_HEIGHT, ALT(iAlt), istatus) 
+   if (istatus /= 0) exit LEVELS
+   nAlts = nAlts+1
+enddo LEVELS
+
+if (nAlts == 0) return
 
 tec=0.0_r8 !start with zero for the summation
 
@@ -238,13 +244,10 @@ do iAlt = 1, nAlts-1 !approximate the integral over the altitude as a sum of tra
 enddo
 obs_val = tec * 10.0**(-16) !units of TEC are "10^16" #electron/m^2 instead of just "1" #electron/m^2
 
+deallocate(ALT, IDensityS_ie)
+
 ! Good return code. 
 istatus = 0
-
-deallocate( LON ) !clean up
-deallocate( LAT )
-deallocate( ALT )
-deallocate( IDensityS_ie )
 
 end subroutine get_expected_gnd_gps_vtec
 

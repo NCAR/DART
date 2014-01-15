@@ -271,16 +271,17 @@ function get_dist(loc1, loc2, type1, kind2, no_vert)
 ! distance computation for incompatible vertical location types results 
 ! in a fatal error unless one of the vertical types is UNDEFINED.
 
-! The 3rd argument is actually a specific type, (e.g. RADIOSONDE_TEMPERATURE, 
-! AIRCRAFT_TEMPERATURE).  The 4th argument is a generic kind (e.g. KIND_TEMPERATURE).
-! The types/kinds are part of
-! the interface in case user-code wants to do a more sophisticated distance
-! calculation based on the base or target types.  In the usual case this
-! code still doesn't use the types, but there's an undocumented feature that
-! allows you to maintain the original vertical normalization even when
-! changing the cutoff distance in the horizontal.  For that to work we
-! do need to know the type, and we use the type of loc1 to control it.
-! 
+! CHANGE from previous versions:  the 3rd argument is now a specific type
+! (e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_SPECIFIC_HUMIDITY) associated
+! with loc1, while the 4th argument is a generic kind (KIND_TEMPERATURE, 
+! KIND_U_WIND_COMPONENT) associated with loc2.
+! The type and kind are part of the interface in case user-code wants to do 
+! a more sophisticated distance calculation based on the base type or target
+! kind. In the usual case this code still doesn't use the kind/type, but 
+! there is a feature that allows you to maintain the original vertical 
+! normalization even when changing the cutoff distance in the horizontal.
+! For that to work we do need to know the type, and we use the type of loc1 
+! to control it.
 
 type(location_type), intent(in) :: loc1, loc2
 integer, optional,   intent(in) :: type1, kind2
@@ -1222,8 +1223,9 @@ end subroutine get_close_maxdist_init
 subroutine get_close_obs(gc, base_obs_loc, base_obs_type, obs, obs_kind, &
    num_close, close_ind, dist)
 
-! In spite of the names, the specific types are available to do a more
-! sophisticated distance computation if needed.
+! The specific type of the base observation, plus the generic kinds list
+! for either the state or obs lists are available if a more sophisticated
+! distance computation is needed.
 
 type(get_close_type), intent(in)  :: gc
 type(location_type),  intent(in)  :: base_obs_loc, obs(:)

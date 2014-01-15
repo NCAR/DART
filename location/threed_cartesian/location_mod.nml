@@ -1,13 +1,13 @@
 &location_nml
-   horiz_dist_only                 = .true.,
-   vert_normalization_pressure     = 100000.0, 
-   vert_normalization_height       = 10000.0,
-   vert_normalization_level        = 20.0,
-   vert_normalization_scale_height = 5.0,
-   approximate_distance            = .false.,
-   nlon                            = 71,
-   nlat                            = 36,
-   output_box_info                 = .false.,
-   maintain_original_vert          = .false.,
+   use_octree          = .false.,
+   nx                  = 10,
+   ny                  = 10,
+   nz                  = 10,
+   filled              = 10,
+   nboxes              = 1000,
+   maxdepth            = 4, 
+   compare_to_correct, = .false.,
+   output_box_info     = .false.,
+   print_box_level     = 0,
 /
 

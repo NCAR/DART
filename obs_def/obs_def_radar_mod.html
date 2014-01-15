@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>module obs_def_radar_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -107,7 +107,7 @@ users can change the value in this code if necessary.</LI>
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -126,7 +126,7 @@ obs_kind_mod
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -478,115 +478,100 @@ of power-weighted precipitation fall velocity is added to the result.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-namelist /obs_def_radar_mod_nml/ &amp;
-   apply_ref_limit_to_obs,     &amp;
-   reflectivity_limit_obs,     &amp;
-   lowest_reflectivity_obs,    &amp;
-   apply_ref_limit_to_fwd_op,  &amp;
-   reflectivity_limit_fwd_op,  &amp;
-   lowest_reflectivity_fwd_op, &amp;
-   max_radial_vel_obs,         &amp;
-   allow_wet_graupel,          &amp;
-   microphysics_type           &amp;
-   allow_dbztowt_conv          &amp;
-   dielectric_factor,          &amp;
-   n0_rain,                    &amp;
-   n0_graupel,                 &amp;
-   n0_snow,                    &amp;
-   rho_rain,                   &amp;
-   rho_graupel,                &amp;
-   rho_snow
+&amp;obs_def_radar_mod_nml
+   apply_ref_limit_to_obs      =   .false.,
+   reflectivity_limit_obs      =     -10.0,
+   lowest_reflectivity_obs     =     -10.0,
+   apply_ref_limit_to_fwd_op   =   .false.,
+   reflectivity_limit_fwd_op   =     -10.0,
+   lowest_reflectivity_fwd_op  =     -10.0,
+   max_radial_vel_obs          =   1000000,
+   allow_wet_graupel           =   .false.,
+   microphysics_type           =       2  ,
+   allow_dbztowt_conv          =   .false.,
+   dielectric_factor           =     0.224,
+   n0_rain                     =     8.0e6,
+   n0_graupel                  =     4.0e6,
+   n0_snow                     =     3.0e6,
+   rho_rain                    =    1000.0,
+   rho_graupel                 =     400.0,
+   rho_snow                    =     100.0 
+   /
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
-<pre>
-&amp;obs_def_radar_mod_nml
-   apply_ref_limit_to_obs      =   .FALSE.,
-   reflectivity_limit_obs      =  -10.0_r8,
-   lowest_reflectivity_obs     =  -10.0_r8,
-   apply_ref_limit_to_fwd_op   =   .FALSE.,
-   reflectivity_limit_fwd_op   =  -10.0_r8,
-   lowest_reflectivity_fwd_op  =  -10.0_r8,
-   max_radial_vel_obs          =   1000000,
-   allow_wet_graupel           =   .FALSE.,
-   microphysics_type           =       2  ,
-   allow_dbztowt_conv          =   .FALSE.,
-   dielectric_factor           =  0.224_r8,
-   n0_rain                     =  8.0e6_r8,
-   n0_graupel                  =  4.0e6_r8,
-   n0_snow                     =  3.0e6_r8,
-   rho_rain                    = 1000.0_r8,
-   rho_graupel                 =  400.0_r8,
-   rho_snow                    =  100.0_r8
-   /
-</pre>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>apply_ref_limit_to_obs</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>
-If .TRUE. replace all reflectivity values less than
+<TBODY valign=top>
+
+<TR><TD>apply_ref_limit_to_obs</TD>
+    <TD>logical</TD>
+    <TD> If .TRUE. replace all reflectivity values less than
 "reflectivity_limit_obs" with "lowest_reflectivity_obs" value.
-If .FALSE. leave all values as-is.  Defaults to .FALSE.
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>reflectivity_limit_obs</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD> 
-The threshold value.  Observed reflectivity values less than this
+If .FALSE. leave all values as-is.
+</TD></TR>
+
+<TR><TD>reflectivity_limit_obs</TD>
+    <TD>real(r8)</TD>
+    <TD>The threshold value.  Observed reflectivity values less than this
 threshold will be set to the "lowest_reflectivity_obs" value.
-Units are dBZ.  Defaults to -10.0.
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>lowest_reflectivity_obs</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD> 
-The 'set-to' value.  Observed reflectivity values less than the
-threshold will be set to this value.  Units are dBZ.  Defaults to -10.0.
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>apply_ref_limit_to_fwd_op</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>
-Same as "apply_ref_limit_to_obs", but for the forward operator.
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>reflectivity_limit_fwd_op</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD> 
-Same as "reflectivity_limit_obs", but for the forward operator values.
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>lowest_reflectivity_fwd_op</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD> 
-Same as "lowest_reflectivity_obs", but for the forward operator values.
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>max_radial_vel_obs</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD> 
-Maximum number of observations of this type to support at
+Units are dBZ.
+</TD></TR>
+
+<TR><TD>lowest_reflectivity_obs</TD>
+    <TD>real(r8)</TD>
+    <TD>The 'set-to' value.  Observed reflectivity values less than the
+threshold will be set to this value.  Units are dBZ.
+</TD></TR>
+
+<TR><TD>apply_ref_limit_to_fwd_op</TD>
+    <TD>logical</TD>
+    <TD>Same as "apply_ref_limit_to_obs", but for the forward operator.
+</TD></TR>
+
+<TR><TD>reflectivity_limit_fwd_op</TD>
+    <TD>real(r8)</TD>
+    <TD>Same as "reflectivity_limit_obs", but for the forward operator values.
+</TD></TR>
+
+<TR><TD>lowest_reflectivity_fwd_op</TD>
+    <TD>real(r8)</TD>
+    <TD>Same as "lowest_reflectivity_obs", but for the forward operator values.
+</TD></TR>
+
+<TR><TD>max_radial_vel_obs</TD>
+    <TD>integer</TD>
+    <TD>Maximum number of observations of this type to support at
 run time.  This is combined total of all obs_seq files, for example the
 observation diagnostic program potentially opens multiple obs_seq.final
 files, or the obs merge program can also open multiple obs files.
-Default is 1,000,000 observations.
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>allow_wet_graupel</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>
-It is difficult to predict/diagnose whether graupel/hail has a
+</TD></TR>
+
+<TR><TD>allow_wet_graupel</TD>
+    <TD>logical</TD>
+    <TD>It is difficult to predict/diagnose whether graupel/hail has a
 wet or dry surface.  Even when the temperature is above freezing,
 evaporation and/or absorption can still result in a dry surface.  This
 issue is important because the reflectivity from graupel with a wet surface
@@ -598,11 +583,11 @@ is assumed to be wet (dry) when the temperature is above (below) freezing.
 A consequence is that a sharp gradient in reflectivity will be produced at
 the freezing level.  In the future, it might be better to provide the
 option of having a transition layer.
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>microphysics_type</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>
-If the state vector contains the reflectivity or the power
+</TD></TR>
+
+<TR><TD>microphysics_type</TD>
+    <TD>integer</TD>
+    <TD>If the state vector contains the reflectivity or the power
 weighted fall speed, interpolate directly from those regardless of
 the setting of this item.  If the state vector does not
 contain the fields, this value should be set to be 
@@ -610,102 +595,98 @@ compatible with whatever microphysical scheme is being
 used by the model.  If the model is using a different
 microphysical scheme but has compatible fields to the ones
 listed below, setting this value will select the scheme to use.
-<br>
-1 = Kessler scheme.
-<br>
-2 = Lin et al. microphysics  (default)
-<br>
-3 = User selected scheme where 10 cm reflectivity and power weighted fall
-        velocity are expected in the state vector (failure if not found)
-<br>
-4 = User selected scheme where only power weighted fall velocity is
-        expected (failure if not found)
-<br>
-5 = User selected scheme where only reflectivity is expected (failure
-        if not found)
-<br>
--1 = ASSUME FALL VELOCITY IS ZERO, allows over-riding the failure modes
+<UL style="list-style: none;">
+<LI>1 = Kessler scheme.</LI>
+<LI>2 = Lin et al. microphysics</LI>
+<LI>3 = User selected scheme where 10 cm reflectivity and power weighted fall
+        velocity are expected in the state vector (failure if not found)</LI>
+<LI>4 = User selected scheme where only power weighted fall velocity is
+        expected (failure if not found)</LI>
+<LI>5 = User selected scheme where only reflectivity is expected (failure
+        if not found)</LI>
+<LI>-1 = ASSUME FALL VELOCITY IS ZERO, allows over-riding the failure modes
         above if reflectivity and/or fall velocity are not available but a
-        result is desired for testing purposes only.
-<br>
-Default value is 2. 
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>allow_dbztowt_conv</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>
-Flag to enable use of the dbztowt routine where reflectivity is
+        result is desired for testing purposes only.</LI>
+</UL>
+</TD></TR>
+
+<TR><TD>allow_dbztowt_conv</TD>
+    <TD>logical</TD>
+    <TD>Flag to enable use of the dbztowt routine where reflectivity is
 available, but not the power-weighted fall velocity. This scheme uses
 emperical relations between reflectivity and fall velocity, with poor
 accuracy for highly reflective, low density particles (such as water coated
 snow aggregates). Expect questionable accuracy in radial velocity from
 the forward operator with high elevation angles where ice is present in
-the model state.  Default value is .FALSE.
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>dielectric_factor</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD> 
-According to Smith (1984), there are two choices for the dielectric
-factor, depending on how the snow particle sizes are specified.
+the model state.
+</TD></TR>
+
+<TR><TD>dielectric_factor</TD>
+    <TD>real(r8)</TD>
+    <TD>According to Smith (1984), there are two choices for the dielectric
+factor depending on how the snow particle sizes are specified.
 If melted raindrop diameters are used, then the factor is 0.224.  
 If equivalent ice sphere diameters are used, then the factor is 0.189.
-Since the common convention is to use melted raindrop diameters, the
-default here is 0.224.
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>n0_rain</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD> 
-Intercept parameters (m^-4) for size distributions of each hydrometeor.
+The default is set to use the common convention of melted raindrop diameters.
+</TD></TR>
+
+<TR><TD>n0_rain</TD>
+    <TD>real(r8)</TD>
+    <TD>Intercept parameters (m^-4) for size distributions of each hydrometeor.
 The default of 8.0e6 is for the Lin et al. microphysics scheme
 with the Hobbs settings for graupel/hail.  (The Hobbs graupel settings
 are also the default for the Lin scheme in WRF 2.2 and 3.0.)
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>n0_graupel</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD> 
-Intercept parameters (m^-4) for size distributions of each hydrometeor.
+</TD></TR>
+
+<TR><TD>n0_graupel</TD>
+    <TD>real(r8)</TD>
+    <TD>Intercept parameters (m^-4) for size distributions of each hydrometeor.
 The default of 4.0e6 is for the Lin et al. microphysics scheme
 with the Hobbs settings for graupel/hail.  (The Hobbs graupel settings
 are also the default for the Lin scheme in WRF 2.2 and 3.0.)
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>n0_snow</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD> 
-Intercept parameters (m^-4) for size distributions of each hydrometeor.
+</TD></TR>
+
+<TR><TD>n0_snow</TD>
+    <TD>real(r8)</TD>
+    <TD>Intercept parameters (m^-4) for size distributions of each hydrometeor.
 The default of 3.0e6 is for the Lin et al. microphysics scheme
 with the Hobbs settings for graupel/hail.  (The Hobbs graupel settings
 are also the default for the Lin scheme in WRF 2.2 and 3.0.)
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>rho_rain</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD> 
-Density (kg m^-3) of each hydrometeor type.  The default of 1000.0 is for 
+</TD></TR>
+
+<TR><TD>rho_rain</TD>
+    <TD>real(r8)</TD>
+    <TD>Density (kg m^-3) of each hydrometeor type.  The default of 1000.0 is for 
 the Lin et al. microphysics scheme with the Hobbs setting for graupel/hail.
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>rho_graupel</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD> 
-Density (kg m^-3) of each hydrometeor type.  The default of 400.0 is for the
+</TD></TR>
+
+<TR><TD>rho_graupel</TD>
+    <TD>real(r8)</TD>
+    <TD>Density (kg m^-3) of each hydrometeor type.  The default of 400.0 is for the
 Lin et al. microphysics scheme with the Hobbs setting for graupel/hail.
-                   </TD></TR>
-<TR><!--contents--><TD valign=top>rho_snow</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD> 
-Density (kg m^-3) of each hydrometeor type.  The default of 100.0 is for the
+</TD></TR>
+
+<TR><TD>rho_snow</TD>
+    <TD>real(r8)</TD>
+    <TD>Density (kg m^-3) of each hydrometeor type.  The default of 100.0 is for the
 Lin et al. microphysics scheme with the Hobbs setting for graupel/hail.
-                   </TD></TR>
+</TD></TR>
+
 
 <!-- FIXME: add max values, remove dbz, missing r8 probably not good val? -->
+</TBODY> 
 </TABLE>
-
 </div>
-<br>
+
+<br />
+<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL><LI>A DART observation sequence file containing Radar obs.
 </UL>
@@ -715,7 +696,7 @@ Lin et al. microphysics scheme with the Hobbs setting for graupel/hail.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <UL>
 <LI> Battan, L. J., 1973: <i>Radar Observation of the Atmosphere.</i> Univ. of Chicago Press, 324 pp.
@@ -732,7 +713,7 @@ Lin et al. microphysics scheme with the Hobbs setting for graupel/hail.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -778,7 +759,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time
@@ -789,7 +770,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 
 <TABLE>
@@ -1294,7 +1275,7 @@ of the following values: <em class=code>"unformatted", "UNFORMATTED",
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

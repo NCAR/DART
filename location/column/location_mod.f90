@@ -399,7 +399,7 @@ else if(location%which_vert == VERTISPRESSURE ) then
    read(*, *) location%vloc
    location%vloc = 100.0_r8 * location%vloc
 else if(location%which_vert == VERTISHEIGHT ) then
-   write(*, *) 'Vertical coordinate height (in gpm)'
+   write(*, *) 'Vertical coordinate height (in meters)'
    read(*, *) location%vloc
 else if(location%which_vert == VERTISSURFACE ) then
    write(*, *) 'Vertical coordinate surface height'

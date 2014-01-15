@@ -37,7 +37,7 @@ use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, 
 use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
                                  netcdf_file_type, init_diag_output, finalize_diag_output,   & 
                                  aoutput_diagnostics, ens_mean_for_model, end_assim_model
-use assim_tools_mod,      only : filter_assim, set_assim_tools_trace
+use assim_tools_mod,      only : filter_assim, set_assim_tools_trace, get_missing_ok_status
 use obs_model_mod,        only : move_ahead, advance_state, set_obs_model_trace
 use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,                &
                                  ensemble_type, get_copy, get_my_num_copies, put_copy,       &
@@ -202,7 +202,7 @@ doubleprecision start, finish
 ! For now, have model_size real storage for the ensemble mean, don't really want this
 ! in the long run
 
-logical                 :: ds, all_gone
+logical                 :: ds, all_gone, allow_missing
 
 ! HK
 real(r8), allocatable   :: results(:,:)
@@ -323,6 +323,9 @@ endif
 call timestamp_message('After  reading in ensemble restart files')
 call     trace_message('After  reading in ensemble restart files')
 
+! see what our stance is on missing values in the state vector
+allow_missing = get_missing_ok_status()
+
 call trace_message('Before initializing inflation')
 
 ! Initialize the adaptive inflation module
@@ -330,12 +333,12 @@ call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_initial_from_restar
    inf_sd_initial_from_restart(1), inf_output_restart(1), inf_deterministic(1),       &
    inf_in_file_name(1), inf_out_file_name(1), inf_diag_file_name(1), inf_initial(1),  &
    inf_sd_initial(1), inf_lower_bound(1), inf_upper_bound(1), inf_sd_lower_bound(1),  &
-   ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, 'Prior')
+   ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, allow_missing, 'Prior')
 call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart(2),  &
    inf_sd_initial_from_restart(2), inf_output_restart(2), inf_deterministic(2),       &
    inf_in_file_name(2), inf_out_file_name(2), inf_diag_file_name(2), inf_initial(2),  &
    inf_sd_initial(2), inf_lower_bound(2), inf_upper_bound(2), inf_sd_lower_bound(2),  &
-   ens_handle, POST_INF_COPY, POST_INF_SD_COPY, 'Posterior')
+   ens_handle, POST_INF_COPY, POST_INF_SD_COPY, allow_missing, 'Posterior')
 
 if (do_output()) then
    if (inf_flavor(1) > 0 .and. inf_damping(1) < 1.0_r8) then
