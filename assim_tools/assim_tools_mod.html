@@ -4,7 +4,7 @@
 <HEAD>
 <TITLE>module assim_tools_mod</TITLE>
 <link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -277,7 +277,7 @@ to recover/reconstruct the feature.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
 <P>
 This namelist is read from the file <em class=file>input.nml</em>.
@@ -303,7 +303,7 @@ prematurely terminating the namelist.
    rectangular_quadrature          = .true.,
    gaussian_likelihood_tails       = .false.,
    close_obs_caching               = .true.,
-   allow_missing_in_state          = .false.
+   allow_missing_in_clm            = .false.
    special_localization_obs_types  = "",
    special_localization_cutoffs    = -1,
 /
@@ -470,14 +470,18 @@ that uses the types/kinds of the obs to adjust the distances.
 
 
 <TR>
- <TD> allow_missing_in_state </TD>
+ <TD> allow_missing_in_clm </TD>
  <TD> logical </TD>
  <TD> If true, missing values (MISSING_R8 as defined in the types_mod.f90
 file) are allowed in the state vector.  Model interpolation routines
 must be written to recognize this value and fail the interpolation. 
 During assimilation any state vector items where one or more of the 
 ensemble members are missing will be skipped and their values will 
-be unchanged by the assimilation.
+be unchanged by the assimilation.  The system currently has limited
+support for this option; the CLM model has been tested and is known
+to work.  Other users with models which would benefit from setting missing
+values in the state vector are encouraged to contact
+<a href="mailto:dart@ucar.edu">dart at ucar.edu</a>.
  </TD> </TR>
 
 </TBODY>
@@ -489,7 +493,7 @@ be unchanged by the assimilation.
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -516,19 +520,13 @@ assim_model_mod
 <!--Note to authors. The first row of the table is different.         -->
 <!--==================================================================-->
 
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE summary='public interface list'>
 <TR><TD><em class=call>use assim_tools_mod, only : </em></TD>
                    <TD><A HREF="#filter_assim">filter_assim</A></TD></TR>
 </TABLE>
-
-<P>
-Optional namelist interface
-<A HREF="#Namelist"> <em class=code>&amp;assim_tools_nml</em> </A>
-may be read from file <em class=file>input.nml</em>.
-</P>
 
 <P>
    A note about documentation style.
@@ -635,7 +633,7 @@ inflation_only is true, otherwise the state is also updated.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <TABLE border=0 summary='files used by this module'>
 <TR><TH>filename</TH>
@@ -649,7 +647,7 @@ inflation_only is true, otherwise the state is also updated.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <UL>
 <li>Anderson, J. L., 2001:
@@ -701,7 +699,7 @@ Contact author.</li>
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100% 
@@ -749,7 +747,7 @@ feature.
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time
@@ -760,7 +758,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -771,7 +769,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>system simulation programs</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -68,52 +68,54 @@ this directory.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
 <P>
-<A HREF="#Namelist"> <em class=code>&amp;full_error_nml</em> </A>
-is always read from file <em class=file>input.nml</em>.
-</P>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
 Character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration is:
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / full_error_nml / </em>
-  ens_size,
-  output_filename
+&amp;full_error_nml
+  ens_size = 80, 
+  output_filename = 'final_full',
+/ 
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD>ens_size</TD>
+    <TD>integer</TD>
+    <TD>Number of ensemble members to compute sampling error for.  This
+computation is independent of any of the model details; it only depends on
+the count of ensemble members.
+</TD></TR>
   
-<TR><!--contents--><TD valign=top>ens_size</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>Number of ensemble members to compute
-        sampling error for.  This computation is independent
-        of any of the model details; it only depends on the
-        count of ensemble members.
-                       Default: 80</TD></TR>
-  
-<TR><!--contents--><TD valign=top>output_filename</TD>
-    <!--  type  --><TD valign=top>character(len=128)</TD>
-    <!--descript--><TD>Basename for the output file written
-        by this program.  The program will append 
-        <em class=code>.N</em> to the name, where N is the 
-        ensemble size, creating filenames
-        of the form "base.8", "base.32", etc.  The base name
-        should be "final_full" to match the code in the filter
-        program which reads this file.
-                       Default: "final_full"</TD></TR>
+<TR><TD valign=top>output_filename</TD>
+    <TD valign=top>character(len=128)</TD>
+    <TD>Basename for the output file written by this program.  The program will
+append <em class=code>.N</em> to the name, where N is the ensemble size,
+creating filenames of the form "base.8", "base.32", etc.  The base name
+should be "final_full" to match the code in the filter program which reads
+this file.
+</TD></TR>
   
 </TABLE>
                        
@@ -126,7 +128,7 @@ The namelist declaration is:
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 types_mod
@@ -139,7 +141,7 @@ random_seq_mod
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <P>
 The full_error program creates files which should be called
@@ -152,7 +154,7 @@ by the filter program.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li>Anderson, J. L., 2011:
@@ -169,7 +171,7 @@ Contact author.</li>
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class="errors">
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -197,7 +199,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time.
@@ -208,7 +210,7 @@ none at this time.
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

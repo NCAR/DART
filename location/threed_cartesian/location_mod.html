@@ -4,17 +4,17 @@
 <HEAD>
 <TITLE>module location_mod</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
-<link href="../../doc/html/dart.ico" rel="shortcut icon" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<H1>MODULE location_mod (threed_sphere)</H1>
+<H1>MODULE location_mod (threed_cartesian)</H1>
 
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
@@ -44,14 +44,20 @@ read and write location information to files.
 DART isolates all this location information into separate modules 
 so that the main algorithms can operate with the same code independent
 of whether the model uses latitude/longitude/height, 1D unit
-sphere coordinates, cylindrical coordinates, etc.  DART provides
+cartesian coordinates, cylindrical coordinates, etc.  DART provides
 about half a dozen possible coordinate systems, and others can be added.  
-The most common one for geophysical models is this one: threed_sphere.
+The most common one for geophysical models is the
+<a href="../threed_sphere/location.html">threed_sphere</a> version.
+This document describes an alternative 3D cartesian coordinate system.
+</P>
+<P><strong>Note that only one location module can be compiled into
+any single DART executable,
+and most earth observational data is generated in [latitude, longitude,
+vertical pressure or height] coordinates - the threed_sphere option.
+The cartesian and 3D sphere locations cannot be mixed or used together.</strong>
 </P> <P>
 This location module provides a representation of a physical location 
-on a 3-D spherical shell, using latitude and longitude plus a vertical
-component with choices of vertical coordinate type such as pressure or 
-height in meters.
+in an [X, Y, Z] cartesian coordinate space.
 A type that abstracts the location is provided along
 with operators to set, get, read, write, and compute distances between 
 locations. This is a member of a class of similar location modules that 
@@ -95,7 +101,7 @@ In simpler location modules (like the <em class=file>oned</em> version)
 there is no need for anything other than a brute force search between
 the base location and all available state vector locations.  However in
 the case of large geophysical models which typically
-use the <em class=file>threed_sphere</em>
+use the <em class=file>threed_cartesian</em>
 locations code, the brute-force search time is prohibitive.  
 The location code pre-processes all locations into a set of <em>bins</em>
 and then only needs to search the lists of locations in nearby bins when looking
@@ -115,7 +121,7 @@ call get_close_obs_destroy()
 </em>
 </pre>
 <P>
-In the <em class=file>threed_sphere</em> implementation the
+In the <em class=file>threed_cartesian</em> implementation the
 first routine initializes some data structures, the second one
 bins up the list of locations, and then the third one is called
 multiple times to find all locations within a given radius of
@@ -127,7 +133,7 @@ below for the specific details for each routine.
 All 4 of these routines must be present in every location module
 but in most other versions
 all but <em class=code>get_close_obs()</em> are stubs.
-In this <em class=file>threed_sphere</em> version
+In this <em class=file>threed_cartesian</em> version
 of the locations module all are fully implemented.
 </P>
 <H4>Interaction with model_mod.f90 code</H4>
@@ -175,37 +181,21 @@ routine without the <em class=code>dist</em> argument.  This returns a list
 of any potentially close locations without computing the exact distance
 from the base location.  At this point the list of locations is a copy
 and the model_mod routine is free to alter the list in any way it chooses:
-it can change the locations to make certain types of locations appear
-closer or further away from the base location; it can convert the vertical
-coordinates into a common coordinate type so that calls to the 
-<em class=code>get_dist()</em> routine can do full 3d distance computations
-and not just 2d (the vertical coordinates must match between the base
-location and the locations in the list in order to compute a 3d distance).
+for example, it can change the locations to make certain types of locations 
+appear closer or further away from the base location.
 Then typically the model_mod code loops over the list calling the
 <em class=code>get_dist()</em> routine to get the actual distances
-to be returned to the calling code.  To localize in the vertical in a
-particular unit type, this is the place where the conversion to that
-vertical unit should be done.
+to be returned to the calling code. 
 </P>
 <H4>Horizontal Distance Only</H4>
 <P>
-If <em>horiz_distance_only</em> is .true. in the namelist, then the
-vertical coordinate is ignored and only the great-circle distance
-between the two locations is computed, as if they were both on the
-surface of the sphere. 
-</P> <P>
-If <em>horiz_distance_only</em> is .false. in the namelist
-then the appropriate normalization constant determines the relative impact of
-vertical and horizontal separation.  Since only a single localization
-distance is specified, and the vertical scales might have very different
-distance characteristics, the vert_normalization_xxx values can be used
-to scale the vertical appropriately to control the desired influence 
-of observations in the vertical.
+This option is not supported for the threed_cartesian option.
 </P>
 <H4>Precomputation for Run-time Search Efficiency</H4>
 <P>
-For search efficiency all locations are pre-binned. The surface of the
-sphere is divided up into <em>nlon</em> by <em>nlat</em> boxes and the
+For search efficiency all locations are pre-binned. For the non-octree
+option, the total list of locations is divided up into <em>nx</em> by 
+<em>ny</em> by <em>nz</em> boxes and the
 index numbers of all items (both state vector entries and observations)
 are stored in the appropriate box.  
 To locate all points close to a given location, only the locations
@@ -234,92 +224,6 @@ contains a reasonable number of values, more or less evenly
 distributed across boxes. 
 The absolute numbers for best performance will certainly
 vary from case to case.
-</P> <P>
-For latitude, the <em>nlat</em> boxes are distributed evenly across the
-actual extents of the data. (Locations are in radians, so the
-maximum limits are the poles at -PI/2 and +PI/2).   
-For longitude, 
-the code automatically determines if the data is spread around more
-than half the sphere, and if so, the boxes are
-distributed evenly across the entire sphere (longitude range 0 to 2*PI).  
-If the data spans less than half the sphere in longitude, 
-the actual extent of the data is determined (including correctly
-handling the cyclic boundary at 0) and the boxes are 
-distributed only within the data extent.
-This simplifies the actual distance calculations 
-since the distance from the minimum longitude box to the
-maximum latitude box cannot be shorter going the other way around the sphere.
-<!-- (Computing distances going over the poles still must be considered.) -->
-In practice, for a global model the boxes are evenly distributed
-across the entire surface of the sphere.  
-For local or regional models, the boxes
-are distributed only across the the extent of the local grid.
-</P> <P>
-For efficiency in the case where the boxes span less than half the globe,
-the 3D location module needs to be able to determine the greatest longitude 
-difference between a base point at latitude <tt>&phi;<sub>s</sub></tt>
-and all points that are separated from that point by a central 
-angle of <tt>&theta;</tt>. 
-We might also want to know the latitude, <tt>&phi;<sub>f</sub></tt> , 
-at which the largest separation occurs. Note also that an intermediate 
-form below allows the computation of the maximum longitude difference 
-at a particular latitude.
-</P> <P>
-The central angle between a point at latitude <tt>&phi;<sub>s</sub></tt>
-and a second point at latitude <tt>&phi;<sub>f</sub></tt> that are separated 
-in longitude by <tt>&Delta;&lambda;</tt> is <br> <br>
-<tt>
-&nbsp;&nbsp;&theta; = cos<sup>-1</sup>(sin&phi;<sub>s</sub>sin&phi;<sub>f</sub> + 
-   cos&phi;<sub>s</sub>cos&phi;<sub>f</sub>cos&Delta;&lambda;) 
-</tt> <br> <br>
-Taking the cos of both sides gives <br> <br>
-<tt>
-&nbsp;&nbsp;cos&theta; = (sin&phi;<sub>s</sub>sin&phi;<sub>f</sub> +
-   cos&phi;<sub>s</sub>cos&phi;<sub>f</sub>cos&Delta;&lambda;)
-</tt> <br> <br>
-Solving for <tt>cos&Delta;&lambda;</tt> gives <br> <br>
-<tt>
-&nbsp;&nbsp;cos&Delta;&lambda; 
-    = <sup>(<i>a</i> - <i>b</i>&nbsp;sin&phi;<sub>f</sub>)</sup><big>/</big><sub>(<i>c</i>&nbsp;cos&phi;<sub>f</sub>)</sub>
-    = <sup><i>a</i></sup><big>/</big><sub><i>c</i></sub>&nbsp;sec&phi;<sub>f</sub> - 
-      <sup><i>b</i></sup><big>/</big><sub><i>c</i></sub>&nbsp;tan&phi;<sub>f</sub> 
-</tt> <br> <br>
-where <tt><i>a</i> = cos&theta;</tt> , 
-<tt><i>b</i> = sin&phi;<sub>s</sub></tt> , 
-and <tt><i>c</i> = cos&phi;<sub>s</sub></tt> . 
-We want to maximize <tt>&Delta;&lambda;</tt> which implies minimizing   
-<tt>cos&Delta;&lambda;</tt> subject to constraints. Taking the 
-derivative with respect to <tt>&phi;<sub>f</sub></tt> gives  <br> <br>
-<tt>
-&nbsp;&nbsp;<sup>(<i>d</i>&nbsp;cos&Delta;&lambda;)</sup><big>/</big><sub>(<i>d</i>&phi;<sub>f</sub>)</sub> = 
-   <sup><i>a</i></sup><big>/</big><sub><i>c</i></sub>&nbsp;sec&phi;<sub>f</sub>&nbsp;tan&phi;<sub>f</sub>
- - <sup><i>b</i></sup><big>/</big><sub><i>c</i></sub>&nbsp;sec<sup>2</sup>&phi;<sub>f</sub> = 0
-</tt> <br> <br>
-Factoring out <tt>sec&phi;<sub>f</sub></tt> which can never be 0 and using the
-definitions of <tt>sec</tt> and <tt>tan</tt> gives <br> <br>
-<tt>
-&nbsp;&nbsp;<sup>(<i>a</i>&nbsp;sin&phi;<sub>f</sub>)</sup><big>/</big><sub>(<i>c</i>&nbsp;cos&phi;<sub>f</sub>)</sub> -
-<sup><i>b</i></sup><big>/</big><sub>(<i>c</i>&nbsp;cos&phi;<sub>f</sub>)</sub> = 0
-</tt> <br> <br>
-Solving in the constrained range from 0 to PI/2 gives <br> <br>
-<tt>
-&nbsp;&nbsp; sin&phi;<sub>f</sub> = <sup><i>b</i></sup><big>/</big><sub><i>a</i></sub> = 
-   <sup>sin&phi;<sub>s</sub></sup><big>/</big><sub>cos&theta;</sub>
-</tt> <br> <br>
-So knowing 
-base point (<tt>&phi;<sub>s</sub></tt>,
-<tt>&lambda;<sub>s</sub></tt>),
-latitude <tt>&phi;<sub>f</sub></tt>, and
-distance <tt>&theta;</tt> we can use the great circle equation to find
-the longitude difference at the greatest separation point <br> <br>
-<tt>
-&nbsp;&nbsp; &Delta;&lambda; = cos<sup>-1</sup><big>(</big><sup>(<i>a</i> - 
-(<i>b</i>&nbsp;sin&phi;<sub>f</sub>))</sup> 
- <big>/</big> <sub>(<i>c</i>&nbsp;cos&phi;<sub>f</sub>)</sub><big>)</big>
-</tt> <br> <br>
-Note that if the angle between the base point and a pole is less than 
-or equal to the central angle, all longitude differences will occur 
-as the pole is approached.
 </P>
 
 <!--=====================================================================-->
@@ -327,96 +231,97 @@ as the pole is approached.
 <!--=====================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / location_nml / </em> &amp;
-   horiz_dist_only, vert_normalization_pressure, vert_normalization_height, &amp;
-   vert_normalization_level, vert_normalization_scale_height, &amp;
-   approximate_distance, nlon, nlat, output_box_info, maintain_original_vert
+&amp;location_nml
+   use_octree          = .false.,
+   nx                  = 10,
+   ny                  = 10,
+   nz                  = 10,
+   filled              = 10,
+   nboxes              = 1000,
+   maxdepth            = 4, 
+   compare_to_correct, = .false.,
+   output_box_info     = .false.,
+   print_box_level     = 0,
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
 <P>
 Items in this namelist either control the way in which distances 
 are computed and/or influence the code performance.
-This namelist is read in a file called <em class=file>input.nml</em> .
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>horiz_dist_only</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>Only compute horizontal distance component?
-                 Default: true</TD></TR>
-<TR><!--contents--><TD valign=top>vert_normalization_pressure</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>How many pascals should be equivalent distance to one 
-                       radian? Default: 100000.0</TD></TR>
-<TR><!--contents--><TD valign=top>vert_normalization_height</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>How many geopotential meters should be equal 
-                       to one radian?  Default: 10000.0</TD></TR>
-<TR><!--contents--><TD valign=top>vert_normalization_scale_height</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>How many scale heights should be equal to one radian? 
-                Default: 5.0</TD></TR>
-<TR><!--contents--><TD valign=top>vert_normalization_level</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>How many model levels should be equal to one radian? 
-                Default: 20.0</TD></TR>
-<TR><!--contents--><TD valign=top>maintain_original_vert</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>If using per-type specialized localization distances
-                (see <a href="../../assim_tools/assim_tools_mod.html#Namelist">assim_tools_mod</a>)
-                by default the vertical distances are altered also.  To maintain
-                the original vertical scaling while changing the horizontal, set this
-                to true.  Default: .false.</TD></TR>
-<TR><!--contents--><TD valign=top>approximate_distance</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD> If true, uses a table lookup for fast approximate
-           computation of distances on sphere. Distance computation can be
-           a first order cost for some spherical problems, so this can increase
-           speed significantly at a loss of some precision. Default: .false.
-                </TD></TR>
-<TR><!--contents--><TD valign=top>nlon</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD> Number of boxes (bins) created in the longitude 
-           direction.  Must be an odd number.   (See discussion above for more
-           information about this item.)
-           Default: 71 </TD></TR>
-<TR><!--contents--><TD valign=top>nlat</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD> Number of boxes (bins) created in the latitude 
-           direction.  (See discussion above for more
-           information about this item.)
-           Default: 36 </TD></TR>
-<TR><!--contents--><TD valign=top>output_box_info</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD> If true, print more details about the
-           distribution of locations across the array of boxes.
-           Default: .false. </TD></TR>
-</TABLE>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+<TH> Type </TH>
+<TH> Description </TH> </TR>
+</THEAD>
 
+<TBODY>
+
+<TR><TD>use_octree</TD>
+    <TD>logical</TD>
+    <TD>Currently must be false. The octree code bins points
+correctly but cannot do searches for all points within a specified radius.
+</TD></TR>
+
+<TR><TD>nx, ny, nz</TD>
+    <TD>integer</TD>
+    <TD>How many boxes in each dimension should be used to speed the searches.
+</TD></TR>
+
+<TR><TD>filled, nboxes, maxdepth</TD>
+    <TD>integer</TD>
+    <TD>Options for the (non-working) octree code.
+</TD></TR>
+
+<TR><TD>compare_to_correct</TD>
+    <TD>logical</TD>
+    <TD>If true, do an exhaustive search for the closest point.  Only useful
+for debugging because the performance is prohibitive.
+</TD></TR>
+
+<TR><TD>output_box_info</TD>
+    <TD>logical</TD>
+    <TD>Print out debugging info.
+</TD></TR>
+
+<TR><TD>print_box_level</TD>
+    <TD>logical</TD>
+    <TD>If output_box_info is true, how detailed should the output be.
+</TD></TR>
+
+
+</TBODY> 
+</TABLE>
 </div>
-<br>
+
+<br />
+<br />
+
 
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -432,7 +337,7 @@ random_seq_mod
 <!--Note to authors. The first row of the table is different.         -->
 <!--==================================================================-->
 
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -461,12 +366,6 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_scale_height">vert_is_scale_height</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_level">vert_is_level</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_height">vert_is_height</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISUNDEF</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISSURFACE</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISLEVEL</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISPRESSURE</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISHEIGHT</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISSCALEHEIGHT</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#equal">operator(==)</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#not_equal">operator(/=)</A></TD></TR>
 </TABLE>
@@ -491,34 +390,24 @@ must be read from file <em class=file>input.nml</em>.
 <em class=call>type location_type</em>
 <pre>
    private
-   real(r8) :: lon, lat, vloc
-   integer  :: which_vert
+   real(r8) :: x, y, z
 end type location_type
 </pre></div>
 
 <div class=indent1>
 <!-- Description -->
 
-<P>Provides an abstract representation of physical location on a 
-three-d spherical shell.
+<P>Provides an abstract representation of physical location in a 
+3D cartesian space.
 </P>
 
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>Component   </TH>
     <TH align=left>Description </TH></TR>
-<TR><TD valign=top> lon        </TD>
-    <TD>longitude in radians   </TD></TR>
-<TR><TD valign=top> lat        </TD>
-    <TD>latitude in radians    </TD></TR>
-<TR><TD valign=top> vloc       </TD>
-    <TD>vertical location, units as selected by which_vert</TD></TR>
-<TR><TD valign=top> which_vert </TD>
-    <TD>type of vertical location: -2=no specific vert location; -1=surface; 
-        1=level; 2=pressure; 3=height, 4=scale height</TD></TR>
+<TR><TD valign=top> x, y, z </TD>
+    <TD>location in each dimension </TD></TR>
 </TABLE>
 
-The vertical types have parameters defined for them so they
-can be referenced by name instead of number.
 </div>
 <br>
 
@@ -530,12 +419,14 @@ can be referenced by name instead of number.
 <em class=call>type get_close_type</em>
 <pre>
    private
-   integer  :: num
-   real(r8) :: maxdist
-   integer, pointer :: lon_offset(:, :)
-   integer, pointer :: obs_box(:)
-   integer, pointer :: count(:, :)
-   integer, pointer :: start(:, :)
+   integer, pointer  :: loc_box(:)           ! (nloc); List of loc indices in boxes
+   integer, pointer  :: count(:, :, :)       ! (nx, ny, nz); # of locs in each box
+   integer, pointer  :: start(:, :, :)       ! (nx, ny, nz); Start of list of locs in this box
+   real(r8)          :: bot_x, top_x         ! extents in x, y, z
+   real(r8)          :: bot_y, top_y
+   real(r8)          :: bot_z, top_z
+   real(r8)          :: x_width, y_width, z_width    ! widths of boxes in x,y,z
+   real(r8)          :: nboxes_x, nboxes_y, nboxes_z ! based on maxdist how far to search
 end type get_close_type
 </pre>
 </div>
@@ -546,25 +437,6 @@ end type get_close_type
 <P>
 Provides a structure for doing efficient computation of close locations.
 </P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Component   </TH>
-    <TH align=left>Description </TH></TR>
-<TR><TD valign=top> num            </TD>
-    <TD>Number of locations in list</TD></TR>
-<TR><TD valign=top> maxdist            </TD>
-    <TD>Threshhold distance. Anything closer is close.</TD></TR>
-<TR><TD valign=top> lon_offset</TD>
-    <TD>Dimensioned nlon by nlat. For a given offset in longitude boxes and difference
-        in latitudes, gives max distance from base box to a point in offset box.</TD></TR>
-<TR><TD valign=top> obs_box</TD>
-    <TD>Dimensioned num. Gives index of what box each location is in.</TD></TR>
-<TR><TD valign=top> count </TD>
-    <TD>Dimensioned nlon by nlat. Number of obs in each box.</TD></TR>
-<TR><TD valign=top> start </TD>
-    <TD>Dimensioned nlon by nlat. Index in straight storage list 
-        where obs in each box start.</TD></TR>
-</TABLE>
 
 </div>
 <br>
@@ -585,13 +457,13 @@ type(location_type), intent(in) :: <em class=code>loc</em>
 <!-- Description -->
 
 <P>
-Extracts the longitude and latitude (converted to degrees) and the vertical
-location from a location type and returns in a 3 element real array.
+Extracts the x, y, z locations
+from a location type and returns in a 3 element real array.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>get_location</em></TD>
-    <TD>The longitude and latitude (in degrees) and vertical location</TD></TR>
+    <TD>The x,y,z values</TD></TR>
 <TR><TD valign=top><em class=code>loc</em></TD>
     <TD>A location type</TD></TR>
 </TABLE>
@@ -604,13 +476,21 @@ location from a location type and returns in a 3 element real array.
 <A NAME="set_location"></A>
 <br>
 <div class=routine>
-<em class=call> var = set_location(lon, lat, vert_loc, which_vert) </em>
+<em class=call> var = set_location(x, y, z) </em> <br />
+<em class=call> var = set_location(lon, lat, height, radius) </em>
 <pre>
-type(location_type)   :: <em class=code>set_location</em>
+type(location_type) :: <em class=code>set_location</em>
+real(r8), intent(in)    :: <em class=code>x</em>
+real(r8), intent(in)    :: <em class=code>y</em>
+real(r8), intent(in)    :: <em class=code>z</em>
+</pre>
+or
+<pre>
+type(location_type) :: <em class=code>set_location</em>
 real(r8), intent(in)    :: <em class=code>lon</em>
 real(r8), intent(in)    :: <em class=code>lat</em>
-real(r8), intent(in)    :: <em class=code>vert_loc</em>
-integer,  intent(in)    :: <em class=code>which_vert</em>
+real(r8), intent(in)    :: <em class=code>height</em>
+real(r8), intent(in)    :: <em class=code>radius</em>
 </pre>
 </div>
 
@@ -618,21 +498,22 @@ integer,  intent(in)    :: <em class=code>which_vert</em>
 <!-- Description -->
 
 <P>
-Returns a location type with the input longitude and latitude (input
-in degrees) and the vertical location of type specified by which_vert.
+Returns a location type with the input [x,y,z] or allows
+the input to be specified as locations on the surface of
+a sphere with a specified radius and height above the surface.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>set_location</em></TD>
     <TD>A location type</TD></TR>
-<TR><TD valign=top><em class=code>lon</em></TD>
-    <TD>Longitude in degrees</TD></TR>
-<TR><TD valign=top><em class=code>lat</em></TD>
-    <TD>Latitude in degrees</TD></TR>
-<TR><TD valign=top><em class=code>vert_loc</em></TD>
-    <TD>Vertical location consistent with which_vert</TD></TR>
-<TR><TD valign=top><em class=code>which_vert</em></TD>
-    <TD>The vertical location type</TD></TR>
+<TR><TD valign=top><em class=code>x, y, z</em></TD>
+    <TD>Coordinates along each axis</TD></TR>
+<TR><TD valign=top><em class=code>lon, lat</em></TD>
+    <TD>Longitude, Latitude in degrees</TD></TR>
+<TR><TD valign=top><em class=code>height</em></TD>
+    <TD>Vertical location in same units as radius (e.g. meters)</TD></TR>
+<TR><TD valign=top><em class=code>radius</em></TD>
+    <TD>The radius of the sphere in same units as height (e.g. meters)</TD></TR>
 </TABLE>
 
 </div>
@@ -771,21 +652,17 @@ character(len=*), optional, intent(in) :: <em class=optionalcode>attr</em>
 <!-- Description -->
 
 <P>
-Returns the value of which_vert, latitude, longitude, or vertical location from
-a location type as selected by the string argument attr. If attr is not present
-or if it is 'WHICH_VERT', the value of which_vert is converted to real and 
-returned. Otherwise, attr='LON' returns longitude, attr='LAT' returns latitude
-and attr='VLOC' returns the vertical location. 
+Returns the value of x, y, z depending on the attribute specification.
+If attr is not present, returns 'x'.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>query_location</em></TD>
-    <TD>Returns longitude, latitude, vertical location, or which_vert 
-        (converted to real)</TD></TR>
+    <TD>Returns x, y, or z. </TD></TR>
 <TR><TD valign=top><em class=code>loc</em></TD>
     <TD>A location type</TD></TR>
 <TR><TD valign=top><em class=optionalcode>attr</em></TD>
-    <TD>Selects 'WHICH_VERT', 'LON', 'LAT' or 'VLOC'</TD></TR>
+    <TD>Selects 'X', 'Y', 'Z'.  If not specified, 'X' is returned.</TD></TR>
 </TABLE>
 
 </div>
@@ -923,12 +800,12 @@ when completely done with getting distances between locations.
 <A NAME="get_close_obs"></A>
 <br>
 <div class=routine>
-<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind, 
+<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_type, 
                obs, obs_kind, num_close, close_ind, dist) </em>
 <pre>
 type(get_close_type),              intent(in)  :: <em class=code>gc</em>
 type(location_type),               intent(in)  :: <em class=code>base_obs_loc</em>
-integer,                           intent(in)  :: <em class=code>base_obs_kind</em>
+integer,                           intent(in)  :: <em class=code>base_obs_type</em>
 type(location_type), dimension(:), intent(in)  :: <em class=code>obs</em>
 integer,             dimension(:), intent(in)  :: <em class=code>obs_kind</em>
 integer,                           intent(out) :: <em class=code>num_close</em>
@@ -952,15 +829,19 @@ be called and then the two initialization routines must be called
 before using <em class=code>get_close_obs()</em> again.
 </P>
 <P>
+Note that the base location is passed with the specific type associated
+with that location.  The list of potential close locations is matched
+with a list of generic kinds.  This is because in the current usage in
+the DART system the base location is always associated with an actual
+observation, which has both a specific type and generic kind.  The list
+of potentially close locations is used both for other observation locations
+but also for state variable locations which only have a generic kind.
+</P>
+<P>
 If called without the optional <em class=optionalcode>dist</em> argument,
 all locations that are potentially close are returned, which is likely a
 superset of the locations that are within the threshold distance specified in
-the <em class=code>get_close_maxdist_init()</em> call.  This can be
-useful to collect a list of potential locations, and then to convert
-all the vertical coordinates into one consistent unit (pressure, height
-in meters, etc), and then the list can be looped over, calling
-get_dist() directly to get the exact distance, either including vertical
-or not depending on the setting of <em class=code>horiz_dist_only</em>.
+the <em class=code>get_close_maxdist_init()</em> call. 
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -969,12 +850,12 @@ or not depending on the setting of <em class=code>horiz_dist_only</em>.
         locations close to a given location.</TD></TR>
 <TR><TD valign=top><em class=code>base_obs_loc</em></TD>
     <TD>Single given location.</TD></TR>
-<TR><TD valign=top><em class=code>base_obs_kind</em></TD>
-    <TD>Kind of the single location.</TD></TR>
+<TR><TD valign=top><em class=code>base_obs_type</em></TD>
+    <TD>Specific type of the single location.</TD></TR>
 <TR><TD valign=top><em class=code>obs</em></TD>
     <TD>List of locations from which close ones are to be found.</TD></TR>
 <TR><TD valign=top><em class=code>obs_kind</em></TD>
-    <TD>Kind associated with locations in obs list.</TD></TR>
+    <TD>Generic kind associated with locations in obs list.</TD></TR>
 <TR><TD valign=top><em class=code>num_close</em></TD>
     <TD>Number of locations close to the given location.</TD></TR>
 <TR><TD valign=top><em class=code>close_ind</em></TD>
@@ -1024,14 +905,13 @@ with the new locations list.
 <br>
 <div class=routine>
 <em class=call>var = get_dist(loc1, loc2,
- <em class=optionalcode>[, kind1, kind2, no_vert]</em>) </em>
+ <em class=optionalcode>[, type1, kind2, no_vert]</em>) </em>
 <pre>
 real(r8)                        :: get_dist
 type(location_type), intent(in) :: <em class=code>loc1</em>
 type(location_type), intent(in) :: <em class=code>loc2</em>
-integer, optional,   intent(in) :: <em class=optionalcode>kind1</em>
+integer, optional,   intent(in) :: <em class=optionalcode>type1</em>
 integer, optional,   intent(in) :: <em class=optionalcode>kind2</em>
-logical, optional,   intent(in) :: <em class=optionalcode>no_vert </em>
 </pre>
 </div>
 
@@ -1039,24 +919,12 @@ logical, optional,   intent(in) :: <em class=optionalcode>no_vert </em>
 <!-- Description -->
 
 <P>
-Returns the distance between two locations in radians. 
-If <em class=code>horiz_dist_only</em> 
-is set to .TRUE. in the locations namelist, it computes great circle 
-distance on sphere. 
-If <em class=code>horiz_dist_only</em> is false, then it
-computes an ellipsoidal distance with the horizontal component as above and
-the vertical distance determined by the types of the locations and the 
-normalization constants set by the namelist for the different vertical 
-coordinate types. The vertical normalization gives the vertical distance
-that is equally weighted as a horizontal distance of 1 radian. 
-If <em class=optionalcode>no_vert</em> is present, it overrides the 
-value in the namelist and controls whether
-vertical distance is included or not.
+Returns the distance between two locations.
 </P>
 <P>
-The kind arguments are not used by the default location code, but
+The type and kind arguments are not used by the default location code, but
 are available to any user-supplied distance routines which want to
-do specialized calculations based on the kinds associated with each
+do specialized calculations based on the types/kinds associated with each
 of the two locations.
 </P>
 
@@ -1065,14 +933,10 @@ of the two locations.
     <TD>First of two locations to compute distance between.</TD></TR>
 <TR><TD valign=top><em class=code>loc2</em></TD>
     <TD>Second of two locations to compute distance between.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>kind1</em></TD>
-    <TD>DART kind associated with location 1.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>type1</em></TD>
+    <TD>DART specific type associated with location 1.</TD></TR>
 <TR><TD valign=top><em class=optionalcode>kind2</em></TD>
-    <TD>DART kind associated with location 2.</TD></TR>
-
-<TR><TD valign=top><em class=optionalcode>no_vert</em></TD>
-    <TD>If true, no vertical component to distance. If false, vertical
-         component is included.</TD></TR>
+    <TD>DART generic kind associated with location 2.</TD></TR>
 
 <TR><TD valign=top><em class=code>var</em></TD>
     <TD>distance between loc1 and loc2.</TD></TR>
@@ -1098,15 +962,12 @@ type(location_type), intent(in) :: <em class=code>loc</em>
 <!-- Description -->
 
 <P>
-Returns true if which_vert is set to undefined, else false.
-The meaning of 'undefined' is specific; it means there is no
-particular vertical location associated with this type
-of measurement; for example a column-integrated value.
+Always returns .false.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>vert_is_undef</em></TD>
-    <TD>Returns true if vertical coordinate is set to undefined.</TD></TR>
+    <TD>Always returns .false.<TD></TR>
 <TR><TD valign=top><em class=code>loc</em></TD>
     <TD>A location type</TD></TR>
 </TABLE>
@@ -1130,12 +991,12 @@ type(location_type), intent(in) :: <em class=code>loc</em>
 <!-- Description -->
 
 <P>
-Returns true if which_vert is for surface, else false.
+Always returns .false.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>vert_is_surface</em></TD>
-    <TD>Returns true if vertical coordinate type is surface</TD></TR>
+    <TD>Always returns .false.<TD></TR>
 <TR><TD valign=top><em class=code>loc</em></TD>
     <TD>A location type</TD></TR>
 </TABLE>
@@ -1159,12 +1020,12 @@ type(location_type), intent(in) :: <em class=code>loc</em>
 <!-- Description -->
 
 <P>
-Returns true if which_vert is for pressure, else false.
+Always returns .false.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>vert_is_pressure</em></TD>
-    <TD>Returns true if vertical coordinate type is pressure</TD></TR>
+    <TD>Always returns .false.<TD></TR>
 <TR><TD valign=top><em class=code>loc</em></TD>
     <TD>A location type</TD></TR>
 </TABLE>
@@ -1188,12 +1049,12 @@ type(location_type), intent(in) :: <em class=code>loc</em>
 <!-- Description -->
 
 <P>
-Returns true if which_vert is for scale_height, else false.
+Always returns .false.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>vert_is_scale_height</em></TD>
-    <TD>Returns true if vertical coordinate type is scale_height</TD></TR>
+    <TD>Always returns .false.<TD></TR>
 <TR><TD valign=top><em class=code>loc</em></TD>
     <TD>A location type</TD></TR>
 </TABLE>
@@ -1217,12 +1078,12 @@ type(location_type), intent(in) :: <em class=code>loc</em>
 <!-- Description -->
 
 <P>
-Returns true if which_vert is for level, else false.
+Always returns .false.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>vert_is_level</em></TD>
-    <TD>Returns true if vertical coordinate type is level</TD></TR>
+    <TD>Always returns .false.<TD></TR>
 <TR><TD valign=top><em class=code>loc</em></TD>
     <TD>A location type</TD></TR>
 </TABLE>
@@ -1246,12 +1107,12 @@ type(location_type), intent(in) :: <em class=code>loc</em>
 <!-- Description -->
 
 <P>
-Returns true if which_vert is for height, else false.
+Always returns .false.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>vert_is_height</em></TD>
-    <TD>Returns true if vertical coordinate type is height</TD></TR>
+    <TD>Always returns .false.<TD></TR>
 <TR><TD valign=top><em class=code>loc</em></TD>
     <TD>A location type</TD></TR>
 </TABLE>
@@ -1274,10 +1135,7 @@ logical :: has_vertical_localization
 <!-- Description -->
 
 <P>
-Returns .TRUE. if the namelist variable <em class=code>horiz_dist_only</em>
-is .FALSE. meaning that vertical separation between locations is going to
-be computed by <em class=code>get_dist()</em> and by 
-<em class=code> get_close_obs()</em>.
+Always returns .false.
 </P>
 <P>
 This routine should perhaps be renamed to something like
@@ -1336,31 +1194,6 @@ type(location_type), intent(in) :: <em class=code>loc1, loc2</em>
 </div>
 <br>
 
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="vert_constants"></A>
-<br>
-<div class=routine>
-<pre>
-<em class=call>integer, parameter :: VERTISUNDEF       = -2</em>
-<em class=call>integer, parameter :: VERTISSURFACE     = -1</em>
-<em class=call>integer, parameter :: VERTISLEVEL       =  1</em>
-<em class=call>integer, parameter :: VERTISPRESSURE    =  2</em>
-<em class=call>integer, parameter :: VERTISHEIGHT      =  3</em>
-<em class=call>integer, parameter :: VERTISSCALEHEIGHT =  4</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Constant parameters used to differentiate vertical types.
-</P>
-
-</div>
-<br>
-
 <!--=============== DESCRIPTION OF A PUBLIC CONSTANT =================-->
 
 <A NAME="LocationDims"></A>
@@ -1390,7 +1223,7 @@ location modules.
 <br>
 <div class=routine>
 <pre>
-<em class=call>character(len=129), parameter :: LocationName = "loc3Dsphere"</em>
+<em class=call>character(len=129), parameter :: LocationName = "loc3Dcartesian"</em>
 </pre>
 </div>
 
@@ -1412,7 +1245,7 @@ A parameter to identify this location module in output metadata.
 <div class=routine>
 <pre>
 <em class=call>character(len=129), parameter :: LocationLName = <br>
-       "threed sphere locations: lon, lat, vertical"</em>
+       "threed cartesian locations: x, y, z"</em>
 </pre>
 </div>
 
@@ -1421,7 +1254,7 @@ A parameter to identify this location module in output metadata.
 
 <P>
 This is a <b>constant</b>. 
-A parameter set to "threed sphere locations: lon, lat, vertical" used 
+A parameter set to "threed cartesian locations: x, y, z" used 
 to identify this location module in output long name metadata.
 </P>
 
@@ -1433,7 +1266,7 @@ to identify this location module in output long name metadata.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <TABLE border=0 >
 <TR><TH>filename</TH>
@@ -1447,7 +1280,7 @@ to identify this location module in output long name metadata.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ol>
 <li> none </li>
@@ -1458,46 +1291,12 @@ to identify this location module in output long name metadata.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>initialize_module</TD>
-    <!-- message --><TD VALIGN=top> nlon must be odd </TD>
-    <!-- comment --><TD VALIGN=top>Tuning parameter for number of longitude boxes
-                        must be odd for algorithm to function.</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>get_dist</TD>
-    <!-- message --><TD VALIGN=top>Dont know how to compute vertical distance 
-                    for unlike vertical coordinates</TD>
-    <!-- comment --><TD VALIGN=top>Need same which_vert for distances.</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>set_location</TD>
-    <!-- message --><TD VALIGN=top>longitude (#) is not within range [0,360]</TD>
-    <!-- comment --><TD VALIGN=top>Is it really a longitude?</TD>
-</TR>
-<TR><!-- routine --><TD VALIGN=top>set_location</TD>
-    <!-- message --><TD VALIGN=top>latitude (#) is not within range [-90,90]</TD>
-    <!-- comment --><TD VALIGN=top>Is it really a latitude?</TD>
-</TR>
-<TR><!-- routine --><TD VALIGN=top>set_location</TD>
-    <!-- message --><TD VALIGN=top>which_vert (#) must be one of -2, -1, 1, 2, 3, or 4</TD>
-    <!-- comment --><TD VALIGN=top>Vertical coordinate type restricted to:<BR>
-               -2 = no specific vertical location <BR>
-               -1 = surface value <BR>
-                1 = (model) level <BR>
-                2 = pressure <BR>
-                3 = height <BR>
-                4 = scale height <BR></TD>
-</TR>
-<TR><!-- routine --><TD VALIGN=top>read_location</TD>
-    <!-- message --><TD VALIGN=top>Expected location header "loc3d" in input file, got ___</TD>
-    <!-- comment --><TD VALIGN=top>Vertical coordinate confusion involving NetCDF file.</TD>
-</TR>
 <TR><!-- routine --><TD VALIGN=top>nc_write_location</TD>
     <!-- message --><TD VALIGN=top>Various NetCDF-f90 interface error messages</TD>
     <!-- comment --><TD VALIGN=top>From one of the NetCDF calls in nc_write_location</TD>
@@ -1508,12 +1307,9 @@ to identify this location module in output long name metadata.
 
 <H2>KNOWN BUGS</H2>
 <P>
-The Hawaii and Workshop versions of this module had an error in the
-approximate distance computation. The available values in the lookup
-table for cosine were insufficient for some cases. This manifested 
-itself as potential errors, most commonly for computing distances 
-near the poles. For relatively small horizontal localizations, this 
-problem only occurred for locations very near the pole.
+The octree code works fine to store values, but the search for all
+points within a given radius of a base point is not supported. So
+for this module the 3D box option (use_octree = .false.) should be used.
 </P>
 
 <!--==================================================================-->
@@ -1521,15 +1317,11 @@ problem only occurred for locations very near the pole.
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
-Need to provide more efficient algorithms for getting close locations
-and document the nlon and nlat choices and their impact on cost.
-</P>
-<P>
-The collection of 'val = vert_is_xxx()' routines should probably be replaced
-by a single call 'val = vert_is(loc, VERTISxxx)'.
+Want to fix octree code, and make it easier to detect when bad
+combinations of tuning parameters are being used.
 </P>
 <P>
 See the note in the 'has_vertical_localization()' about a better
@@ -1546,7 +1338,7 @@ The use of 'obs' in all these routine names should probably be
 changed to 'loc' since there is no particular dependence that
 they be observations.  They may need to have an associated DART
 kind, but these routines are used for DART state vector entries
-so it's often misleading to call them 'obs'.
+so it's misleading to always call them 'obs'.
 </P>
 
 <!--==================================================================-->
@@ -1554,7 +1346,7 @@ so it's often misleading to call them 'obs'.
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -1565,7 +1357,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

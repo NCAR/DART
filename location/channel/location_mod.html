@@ -4,7 +4,7 @@
 <HEAD>
 <TITLE>module location_mod</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
-<link href="../../doc/html/dart.ico" rel="shortcut icon" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
@@ -331,96 +331,98 @@ as the pole is approached.
 <!--=====================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / location_nml / </em> &amp;
-   horiz_dist_only, vert_normalization_pressure, vert_normalization_height, &amp;
-   vert_normalization_level, vert_normalization_scale_height, &amp;
-   approximate_distance, nlon, nlat, output_box_info, maintain_original_vert
+&amp;location_nml
+   use_octree      = .false.
+   nboxes          = 1000
+   maxdepth        = 4
+   filled          = 10
+   output_box_info = .false.
+   print_box_level = 0
+   compare_to_correct = .false.
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
 <P>
 Items in this namelist either control the way in which distances 
 are computed and/or influence the code performance.
-This namelist is read in a file called <em class=file>input.nml</em> .
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>horiz_dist_only</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>Only compute horizontal distance component?
-                 Default: true</TD></TR>
-<TR><!--contents--><TD valign=top>vert_normalization_pressure</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>How many pascals should be equivalent distance to one 
-                       radian? Default: 100000.0</TD></TR>
-<TR><!--contents--><TD valign=top>vert_normalization_height</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>How many geopotential meters should be equal 
-                       to one radian?  Default: 10000.0</TD></TR>
-<TR><!--contents--><TD valign=top>vert_normalization_scale_height</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>How many scale heights should be equal to one radian? 
-                Default: 5.0</TD></TR>
-<TR><!--contents--><TD valign=top>vert_normalization_level</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>How many model levels should be equal to one radian? 
-                Default: 20.0</TD></TR>
-<TR><!--contents--><TD valign=top>maintain_original_vert</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>If using per-type specialized localization distances
-                (see <a href="../../assim_tools/assim_tools_mod.html#Namelist">assim_tools_mod</a>)
-                by default the vertical distances are altered also.  To maintain
-                the original vertical scaling while changing the horizontal, set this
-                to true.  Default: .false.</TD></TR>
-<TR><!--contents--><TD valign=top>approximate_distance</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD> If true, uses a table lookup for fast approximate
-           computation of distances on sphere. Distance computation can be
-           a first order cost for some spherical problems, so this can increase
-           speed significantly at a loss of some precision. Default: .false.
-                </TD></TR>
-<TR><!--contents--><TD valign=top>nlon</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD> Number of boxes (bins) created in the longitude 
-           direction.  Must be an odd number.   (See discussion above for more
-           information about this item.)
-           Default: 71 </TD></TR>
-<TR><!--contents--><TD valign=top>nlat</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD> Number of boxes (bins) created in the latitude 
-           direction.  (See discussion above for more
-           information about this item.)
-           Default: 36 </TD></TR>
-<TR><!--contents--><TD valign=top>output_box_info</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD> If true, print more details about the
-           distribution of locations across the array of boxes.
-           Default: .false. </TD></TR>
-</TABLE>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
+<TBODY valign=top>
+
+<TR><TD>use_octree</TD>
+    <TD>logical</TD>
+    <TD>There are two variations of search code.  For now, this must
+be set to .false.
+</TD></TR>
+
+<TR><TD>nboxes</TD>
+    <TD>integer</TD>
+    <TD>An optimization parameter which controls how many boxes 
+the space is divided up into for precomputing nearby points.
+Larger numbers use more memory but may make searching faster if
+the model contains a large grid.
+</TD></TR>
+
+<TR><TD>filled</TD>
+    <TD>integer</TD>
+    <TD>An optimization parameter for the octree code. Set the 
+lower item count limit where a box no longer splits.
+</TD></TR>
+
+<TR><TD>output_box_info</TD>
+    <TD>logical</TD>
+    <TD> If true, print more details about the distribution of locations across
+the array of boxes.
+</TD></TR>
+
+<TR><TD>print_box_level</TD>
+    <TD>integer</TD>
+    <TD>If output_box_info is true, controls the amount of output.
+</TD></TR>
+
+<TR><TD>compare_to_correct</TD>
+    <TD>logical</TD>
+    <TD>If true do an exhaustive (and slow) search to ensure the results
+are the same as using optimized search code.  Should only be used for
+debugging.
+</TD></TR>
+
+</TBODY> 
+</TABLE>
 </div>
-<br>
+
+<br />
+<br />
 
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -458,11 +460,15 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#LocationDims">LocationDims</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#LocationName">LocationName</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#LocationLName">LocationLName</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#horiz_dist_only">horiz_dist_only</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A
+HREF="#horiz_dist_only">horiz_dist_only</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_undef">vert_is_undef</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_surface">vert_is_surface</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_pressure">vert_is_pressure</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_scale_height">vert_is_scale_height</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A
+HREF="#vert_is_surface">vert_is_surface</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A
+HREF="#vert_is_pressure">vert_is_pressure</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A
+HREF="#vert_is_scale_height">vert_is_scale_height</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_level">vert_is_level</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_is_height">vert_is_height</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISUNDEF</A></TD></TR>
@@ -470,7 +476,8 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISLEVEL</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISPRESSURE</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISHEIGHT</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#vert_constants">VERTISSCALEHEIGHT</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A
+HREF="#vert_constants">VERTISSCALEHEIGHT</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#equal">operator(==)</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#not_equal">operator(/=)</A></TD></TR>
 </TABLE>
@@ -1437,7 +1444,7 @@ to identify this location module in output long name metadata.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <TABLE border=0 >
 <TR><TH>filename</TH>
@@ -1451,7 +1458,7 @@ to identify this location module in output long name metadata.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ol>
 <li> none </li>
@@ -1462,7 +1469,7 @@ to identify this location module in output long name metadata.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -1525,7 +1532,7 @@ problem only occurred for locations very near the pole.
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 Need to provide more efficient algorithms for getting close locations
@@ -1558,7 +1565,7 @@ so it's often misleading to call them 'obs'.
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -1569,7 +1576,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

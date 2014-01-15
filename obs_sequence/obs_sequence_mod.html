@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>module obs_sequence</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>    
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />          
@@ -82,7 +82,7 @@ obs_kind_mod
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -144,12 +144,6 @@ obs_kind_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#copy_obs">copy_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#copy_obs">assignment(=)</A></TD></TR>
 </TABLE>
-
-<P>
-Optional namelist interface 
-<A HREF="#Namelist"><em class=code>&amp;obs_sequence_nml</em> </A>
-may be read from file <em class=file>input.nml</em>.
-</P>
 
 <!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
 
@@ -2137,49 +2131,57 @@ is simply returned as .true.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
-<div class=namelist><pre>
-<em class=call>namelist / obs_sequence_nml / </em> &amp;
-write_binary_obs_sequence 
+
+<div class=namelist>
+<pre>
+&amp;obs_sequence_nml
+   write_binary_obs_sequence = .false.  
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
-<P>
-Namelist option control format for output. Note that the write
-format is used for intermediate files when any of the shell driven
-options for parallelization are used. 
-</P>
+<br />
+<br />
 
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>write_binary_obs_sequence</TD>
-    <!--  type  --><TD>logical</TD>
-    <!--descript--><TD>If true, write binary obs_sequence files. 
-                        Default: false</TD></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD valign=top>write_binary_obs_sequence</TD>
+    <TD>logical</TD>
+    <TD>If true, write binary obs_sequence files.
+If false, write ascii obs_sequence files.</TD></TR>
+
+</TBODY> 
 </TABLE>
-
 </div>
-<br>
+
+<br />
+<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL>
    <LI>obs_sequence_mod.nml in input.nml</LI>
@@ -2192,7 +2194,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li> none </li>
@@ -2203,7 +2205,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -2240,7 +2242,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 Future versions should automate file reading and only the write namelist 
@@ -2252,7 +2254,7 @@ parameter should remain.
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -2263,7 +2265,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

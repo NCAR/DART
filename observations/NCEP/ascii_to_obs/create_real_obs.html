@@ -4,6 +4,7 @@
 <HEAD>
 <TITLE>program create_real_obs</TITLE>
 <link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css" />
+<link href="../../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -13,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../../index.html">DART Documentation Main Index</a><br />
@@ -60,7 +61,7 @@
 <!--==================================================================-->
 
 <A NAME="Instructions"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>INSTRUCTIONS</H2>
 
 <UL>
@@ -105,41 +106,7 @@ by setting <em class=code>obs_time</em> to false.
 </P>
 
 <P>
-The default namelist values are:
-</P>
-<PRE>
-&amp;ncepobs_nml
-   year       = 2003,
-   month      = 1,
-   day        = 1,
-   tot_days   = 31,
-   max_num    = 800000,
-   select_obs = 0,
-   ObsBase    = 'temp_obs.',
-   include_specific_humidity = .true.,
-   include_relative_humidity = .false.,
-   include_dewpoint = .false.,
-   ADPUPA     = .false.,
-   AIRCAR     = .false.,
-   AIRCFT     = .false.,
-   SATEMP     = .false.,
-   SFCSHP     = .false.,
-   ADPSFC     = .false.,
-   SATWND     = .false.,
-   obs_U      = .false.,
-   obs_V      = .false.,
-   obs_T      = .false.,
-   obs_PS     = .false.,
-   obs_QV     = .false.,
-   daily_file = .true.,
-   obs_time   = .true.,
-   lon1       =   0.0,
-   lon2       = 360.0,
-   lat1       = -90.0,
-   lat2       =  90.0  /
-</PRE>
-<P>
-but generally you will want to customize this for your own use.
+Generally you will want to customize the namelist for your own use.
 For example, here is a sample namelist:
 </P>
 <PRE>
@@ -166,8 +133,10 @@ For example, here is a sample namelist:
   daily_file = .true.
   obs_time = .true.,
 /
+
 &amp;obs_sequence_nml
-  write_binary_obs_sequence = .true.  /
+  write_binary_obs_sequence = .false.  
+/
 </PRE>
 
 <P>
@@ -184,192 +153,225 @@ The output files look like "obs_seq200703dd", with dd = 1,...,31.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&amp;' and terminating with a slash '/' for all our namelist input.
-<div class=namelist><pre>
-<em class=call>namelist / ncepobs_nml / </em> &amp;
-      year, month, day, tot_days, max_num, select_obs, ObsBase,  &amp;
-      include_specific_humidity, include_relative_humidity, include_dewpoint, &amp;
-      ADPUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &amp;
-      obs_U, obs_V, obs_T, obs_PS, obs_QV, lat1, lat2, lon1, lon2, obs_time
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;ncepobs_nml
+   year       = 2003,
+   month      = 1,
+   day        = 1,
+   tot_days   = 31,
+   max_num    = 800000,
+   select_obs = 0,
+   ObsBase    = 'temp_obs.',
+   ADPUPA     = .false., 
+   AIRCAR     = .false., 
+   AIRCFT     = .false., 
+   SATEMP     = .false., 
+   SFCSHP     = .false., 
+   ADPSFC     = .false., 
+   SATWND     = .false.,
+   obs_U      = .false., 
+   obs_V      = .false., 
+   obs_T      = .false.,
+   obs_PS     = .false.,
+   obs_QV     = .false.,
+   daily_file = .true.,
+   obs_time   = .true.,
+   lon1       =   0.0,
+   lon2       = 360.0,
+   lat1       = -90.0,
+   lat2       =  90.0  
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
-
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-
-<TR><!--contents--><TD valign=top>year, month, day             </TD>
-    <!--  type  --><TD valign=top>integer                      </TD>
-    <!--descript--><TD valign=top>Beginning day of the preferred 
-                       observation period.</TD></TR> 
-
-<TR><!--contents--><TD valign=top> tot_days     </TD>
-    <!--  type  --><TD valign=top>integer       </TD>
-    <!--descript--><TD>Total days of the preferred observation period.</TD></TR>  
-
-<TR><!--contents--><TD valign=top> max_num      </TD>
-    <!--  type  --><TD valign=top>integer       </TD>
-    <!--descript--><TD>Maximum observation number for the current one 
-                       day files. Default is 800000. </TD></TR>  
-
-<TR><!--contents--><TD valign=top>select_obs    </TD>
-    <!--  type  --><TD valign=top>integer       </TD>
-    <!--descript--><TD>Controls whether to select a subset of observations 
-                       from the NCEP BUFR decoded daily ascii files. <BR />
-                       0 = All observations are selected. Default.<BR /> 
-                       1 = Select observations using the logical parameters 
-                       below.</TD></TR>
-
-<TR><!--contents--><TD valign=top>daily_file    </TD>
-    <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Controls timespan of observations in each 
-                       obs_seq file:
-                       <UL><LI>true = 24 hour spans (3:01Z to 3:00Z of 
-		               the next day). Filenames have the form 
-			       obs_seqYYYYMMDD.  Default.</LI>
-		           <LI>false = 6 hour spans (3:01Z to 9:00Z,
-                               9:01Z to 15:00Z, 15:01Z to 21:00Z, 
-			       and 21:01Z to 3:00Z of the next day.
-			       Such files have HH = 06, 12, 18, and 24 
-                               appended to their names.</LI>
-		       </UL>
-                       </TD></TR>
-
-<TR><!--contents--><TD valign=top>ObsBase             </TD>
-    <!--  type  --><TD valign=top>character(len=129)  </TD>
-    <!--descript--><TD>Path that contains the decoded NCEP BUFR daily
-                        observation files.  Must end with a '/temp_obs.'
-                       </TD></TR>
-
-<TR><!--contents--><TD valign=top>include_specific_humidity, include_relative_humidity, include_dewpoint</TD>
-    <!--  type  --><TD valign=top>logical </TD>
-    <!--descript--><TD>Controls which moisture observations are created.  The default
-                       is to create only specific humidity obs, but any, all, or none can
-                       be requested.  Set to .TRUE. to output that obs type, .FALSE.
-                       skips it. </TD></TR>
-
-<TR><!--contents--><TD valign=top>ADPUPA        </TD>
-    <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Select the NCEP type ADPUPA observations 
-                       which includes land and ship launched radiosondes 
-                       and pibals as well as a few  profile dropsonde. This 
-                       involves,  at 00Z and 12Z, about 650 - 1000 stations,
-                       and at 06Z and 18Z  (which are mostly pibals), about 
-                       150 - 400 stations. 
-                       Default is .false.</TD></TR>
-
-<TR><!--contents--><TD valign=top>AIRCFT        </TD>
-    <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Select the NCEP type AIRCFT observations, which 
-                       includes commercial, some military and 
-                       reconnaissance reports. They are flight level reports. 
-                       Default is .false.</TD></TR>
-
-<TR><!--contents--><TD valign=top>AIRCAR        </TD>
-    <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Select the NCEP type AIRCAR observations, which 
-                       includes data from aircraft takeoff and landings. 
-		       Sometimes referred to as ACARS obs.
-                       Default is .false.</TD></TR>
-
-<TR><!--contents--><TD valign=top>SATEMP        </TD>
-    <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Select the NCEP type SATEMP observations, 
-                       which includes NESDIS ATOVS virtual temperature 
-		       soundings. 
-                       Default is .false.</TD></TR>
-
-<TR><!--contents--><TD valign=top>SFCSHP        </TD>
-    <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Select the NCEP type SFCSHP observations, which 
-                       includes surface marine (ship, buoy, c-man) reports. 
-                       Default is .false.</TD></TR>
-
-<TR><!--contents--><TD valign=top>ADPSFC        </TD>
-    <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Select the NCEP type ADPSFC observations, 
-                       which includes surface land synoptic station reports. 
-                       Default is .false.</TD></TR>
-
-<TR><!--contents--><TD valign=top>SATWND        </TD>
-    <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Select the NCEP type SATWND observations, 
-                       which includes winds derived from satellite cloud 
-                       drift analysis.  Default is .false.</TD></TR>
-
-<TR><!--contents--><TD valign=top>obs_U         </TD>
-    <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Select u-component of wind observation. 
-                       Default is .false.</TD></TR>
-
-<TR><!--contents--><TD valign=top>obs_V         </TD>
-    <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Select v-component of wind observation. 
-                       Default is .false.</TD></TR>
-
-<TR><!--contents--><TD valign=top>obs_T         </TD>
-    <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Select temperature observation. 
-                       Default is .false.</TD></TR>
-
-<TR><!--contents--><TD valign=top>obs_PS        </TD>
-    <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Select surface pressure observation. 
-                       Default is .false.</TD></TR>
-
-<TR><!--contents--><TD valign=top>obs_QV        </TD>
-    <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Select specific humidity observation. 
-                       Default is .false.</TD></TR>
-
-<TR><!--contents--><TD valign=top>lon1          </TD>
-    <!--  type  --><TD valign=top>real          </TD>
-    <!--descript--><TD>lower longitude bound of observations to keep
-                       Default is 0.0</TD></TR>
-
-<TR><!--contents--><TD valign=top>lon2          </TD>
-    <!--  type  --><TD valign=top>real          </TD>
-    <!--descript--><TD>upper longitude bound of observations to keep
-                       Default is 360.0</TD></TR>
-
-<TR><!--contents--><TD valign=top>lat1          </TD>
-    <!--  type  --><TD valign=top>real          </TD>
-    <!--descript--><TD>lower latitude bound of observations to keep
-                       Default is -90.0</TD></TR>
-
-<TR><!--contents--><TD valign=top>lat2          </TD>
-    <!--  type  --><TD valign=top>real          </TD>
-    <!--descript--><TD>upper latitude bound of observations to keep
-                       Default is 90.0</TD></TR>
-
-<TR><!--contents--><TD valign=top>obs_time      </TD>
-    <!--  type  --><TD valign=top>logical       </TD>
-    <!--descript--><TD>Use the full time in the input data for the time
-                       of the output observation.  To bin all observations
-                       in the window and give them the same synoptic time 
-                       (e.g. 0Z, 6Z, 12Z, or 18Z), set this to false.
-                       Default is .true.</TD></TR>
-
-</TABLE>
-
-</div>
 <br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD> year, month, day </TD>
+    <TD> integer </TD>
+    <TD>Beginning year, month, day of the observation period.
+</TD></TR>
+
+<TR><TD> tot_days </TD>
+    <TD> integer </TD>
+    <TD>Total days in the observation period.  The converter cannot
+cross month boundaries.
+</TD></TR>
+
+<TR><TD> max_num </TD>
+    <TD> integer </TD>
+    <TD>Maximum observation number for the current one day files.
+</TD></TR>
+
+<TR><TD> select_obs </TD>
+    <TD> integer </TD>
+    <TD>Controls whether to select a subset of observations from the NCEP BUFR
+decoded daily ascii files. 
+       <UL style="list-style: none;">
+          <LI>0 = All observations are selected. </LI>
+          <LI>1 = Select observations using the logical parameters below.</LI>
+       </UL>
+</TD></TR>
+
+<TR><TD> daily_file </TD>
+    <TD> logical </TD>
+    <TD>Controls timespan of observations in each obs_seq file:
+        <UL>
+          <LI>true = 24 hour spans (3:01Z to 3:00Z of the next day). 
+              Filenames have the form obs_seqYYYYMMDD.</LI>
+	  <LI>false = 6 hour spans (3:01Z to 9:00Z, 9:01Z to 15:00Z, 
+              15:01Z to 21:00Z, and 21:01Z to 3:00Z of the next day.
+              Filenames have the form obs_seqYYYYMMDDHH, where HH
+	      is 06, 12, 18, and 24.</LI>
+        </UL>
+</TD></TR>
+
+<TR><TD> ObsBase </TD>
+    <TD> character(len=129) </TD>
+    <TD>Path that contains the decoded NCEP BUFR daily observation files.  To work
+with the example scripts this should be 'temp_obs.', or if it includes
+a pathname then it should end with a '/temp_obs.'
+
+</TD></TR>
+
+<TR><TD> include_specific_humidity, include_relative_humidity, include_dewpoint</TD>
+    <TD> logical </TD>
+    <TD>Controls which moisture observations are created.  The default is to
+create only specific humidity obs, but any, all, or none can be requested.
+Set to .TRUE. to output that obs type, .FALSE.  skips it.  
+</TD></TR>
+
+<TR><TD> ADPUPA </TD>
+    <TD> logical </TD>
+<TD>Select the NCEP type ADPUPA observations which includes land and ship
+launched radiosondes and pibals as well as a few  profile dropsonde. This
+involves,  at 00Z and 12Z, about 650 - 1000 stations, and at 06Z and 18Z
+(which are mostly pibals), about 150 - 400 stations.
+</TD></TR>
+
+<TR><TD> AIRCFT </TD>
+    <TD> logical </TD>
+    <TD>Select the NCEP type AIRCFT observations, which includes commercial, some
+military and reconnaissance reports. They are flight level reports.
+</TD></TR>
+
+<TR><TD> AIRCAR </TD>
+    <TD> logical </TD>
+    <TD>Select the NCEP type AIRCAR observations, which includes data from
+aircraft takeoff and landings.  Sometimes referred to as ACARS obs.
+</TD></TR>
+
+<TR><TD> SATEMP </TD>
+    <TD> logical </TD>
+    <TD>Select the NCEP type SATEMP observations, which includes NESDIS ATOVS
+virtual temperature soundings.
+</TD></TR>
+
+<TR><TD> SFCSHP </TD>
+    <TD> logical </TD>
+    <TD>Select the NCEP type SFCSHP observations, which includes surface marine
+(ship, buoy, c-man) reports.
+</TD></TR>
+
+<TR><TD> ADPSFC </TD>
+    <TD> logical </TD>
+    <TD>Select the NCEP type ADPSFC observations, which includes surface land
+synoptic station reports.
+</TD></TR>
+
+<TR><TD> SATWND </TD>
+    <TD> logical </TD>
+    <TD>Select the NCEP type SATWND observations, which includes winds derived
+from satellite cloud drift analysis.
+</TD></TR>
+
+<TR><TD> obs_U </TD>
+    <TD> logical </TD>
+    <TD>Select u-component of wind observations. 
+</TD></TR>
+
+<TR><TD> obs_V </TD>
+    <TD> logical </TD>
+    <TD>Select v-component of wind observations. 
+</TD></TR>
+
+<TR><TD> obs_T </TD>
+    <TD> logical </TD>
+    <TD>Select temperature observations. 
+</TD></TR>
+
+<TR><TD> obs_PS </TD>
+    <TD> logical </TD>
+    <TD>Select surface pressure observations. 
+</TD></TR>
+
+<TR><TD> obs_QV </TD>
+    <TD> logical </TD>
+    <TD>Select specific humidity observations. 
+</TD></TR>
+
+<TR><TD> lon1 </TD>
+    <TD> real </TD>
+    <TD>Western longitude bound of observations to keep.
+</TD></TR>
+
+<TR><TD> lon2 </TD>
+    <TD> real </TD>
+    <TD>Eastern longitude bound of observations to keep.  Can be less than 
+lon1 if region crosses prime meridian.
+</TD></TR>
+
+<TR><TD> lat1 </TD>
+    <TD> real </TD>
+    <TD>Lower latitude bound of observations to keep.
+</TD></TR>
+
+<TR><TD> lat2 </TD>
+    <TD> real </TD>
+    <TD>upper latitude bound of observations to keep.
+</TD></TR>
+
+<TR><TD> obs_time </TD>
+    <TD> logical </TD>
+    <TD>If .true. use the full time in the input data.  To force all observation
+times in the output to the synoptic time (e.g. 0Z, 6Z, 12Z, or 18Z) set this 
+to .false. (not recommended).
+</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 types_mod
@@ -394,7 +396,7 @@ real_obs_mod
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL>
     <LI> path_names_create_real_obs; the list of modules used in the
@@ -410,7 +412,7 @@ real_obs_mod
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li>.../DART/observations/NCEP/prep_bufr/docs/* 
@@ -422,7 +424,7 @@ real_obs_mod
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -445,7 +447,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 Further development to get observations directly from original <BR />
@@ -457,7 +459,7 @@ Further development to get observations directly from original <BR />
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

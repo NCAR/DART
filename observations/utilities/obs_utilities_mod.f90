@@ -12,7 +12,8 @@ use    utilities_mod, only : nc_check, E_MSG, E_ERR, error_handler
 use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
                              set_obs_def_error_variance, set_obs_def_location, &
                              get_obs_def_time, get_obs_def_location,           &
-                             get_obs_kind, get_obs_def_error_variance
+                             get_obs_kind, get_obs_def_error_variance,         &
+                             set_obs_def_key
 use obs_sequence_mod, only : obs_sequence_type, obs_type, insert_obs_in_seq, &
                              set_obs_values, set_qc, set_obs_def, get_qc,    &
                              get_obs_values, get_obs_def
@@ -62,8 +63,11 @@ contains
 !
 !       NOTE: assumes the code is using the threed_sphere locations module, 
 !             that the observation has a single data value and a single
-!             qc value, and that this obs type has no additional required
-!             data (e.g. gps and radar obs need additional data per obs)
+!             qc value. there is a last optional argument now; if the obs
+!             has additional metadata associated with it, the calling code
+!             should get a unique 'key' from a set metadata routine, and
+!             pass that in as the last argument to this routine.  if present
+!             it will be set in the obs_def derived type.
 !
 !    lat   - latitude of observation
 !    lon   - longitude of observation
@@ -76,15 +80,19 @@ contains
 !    sec   - gregorian second
 !    qc    - quality control value
 !    obs   - observation type
+!    key   - optional type-specific integer key from a set_metadata() routine
 !
 !     created Oct. 2007 Ryan Torn, NCAR/MMM
 !     adapted for more generic use 11 Mar 2010, nancy collins, ncar/image
+!     added optional metadata key 8 Nov 2013, nancy collins ncar/image
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine create_3d_obs(lat, lon, vval, vkind, obsv, okind, oerr, day, sec, qc, obs)
- integer, intent(in)         :: okind, vkind, day, sec
- real(r8), intent(in)        :: lat, lon, vval, obsv, oerr, qc
- type(obs_type), intent(inout) :: obs
+subroutine create_3d_obs(lat, lon, vval, vkind, obsv, okind, oerr, day, sec, qc, &
+                         obs, key)
+ integer,           intent(in)    :: okind, vkind, day, sec
+ real(r8),          intent(in)    :: lat, lon, vval, obsv, oerr, qc
+ type(obs_type),    intent(inout) :: obs
+ integer, optional, intent(in)    :: key
 
 real(r8)              :: obs_val(1), qc_val(1)
 type(obs_def_type)    :: obs_def
@@ -93,6 +101,9 @@ call set_obs_def_location(obs_def, set_location(lon, lat, vval, vkind))
 call set_obs_def_kind(obs_def, okind)
 call set_obs_def_time(obs_def, set_time(sec, day))
 call set_obs_def_error_variance(obs_def, oerr * oerr)
+if (present(key)) then
+   call set_obs_def_key(obs_def, key)
+endif
 call set_obs_def(obs, obs_def)
 
 obs_val(1) = obsv

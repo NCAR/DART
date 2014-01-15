@@ -4,6 +4,7 @@
 <HEAD>
 <TITLE>GPS Observations</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -13,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
@@ -36,13 +37,10 @@
 
 
 <P>
-GPS Radio Occultation data are being returned
-from a series of satellites as part of the
-<a href="http://www.cosmic.ucar.edu">COSMIC</a> 
-project.
-The programs in this directory extract the
-data from the distribution files and put them into
-DART observation sequence (obs_seq) file format.
+GPS Radio Occultation data are being returned from a series of satellites as
+part of the <a href="http://www.cosmic.ucar.edu">COSMIC</a> project.  The
+programs in this directory extract the data from the distribution files and
+put them into DART observation sequence (obs_seq) file format.
 </P>
 <P>
 The COSMIC satellites measure the phase delay caused
@@ -66,7 +64,7 @@ previously were poorly observed.
 <!--==================================================================-->
 
 <A NAME="DataSources"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>DATA SOURCES</H2>
 
 <P>
@@ -102,7 +100,7 @@ satellites are checked by default.
 <!--==================================================================-->
 
 <A NAME="Programs"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PROGRAMS</H2>
 
 <P>
@@ -161,96 +159,104 @@ vertical output heights are interpolated directly from the full profile.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / convert_cosmic_gps_nml / </em>
-   obs_levels, local_operator,             &amp;
-   ray_ds, ray_htop, gpsro_netcdf_file,    &amp;
-   gpsro_netcdf_filelist, gpsro_out_file
-</pre> 
+&amp;convert_cosmic_gps_nml
+  obs_levels             = -1.0
+  local_operator         = .true.
+  ray_ds                 = 5000.0
+  ray_htop               = 15000.0
+  gpsro_netcdf_file      = 'cosmic_gps_input.nc'
+  gpsro_netcdf_filelist  = 'cosmic_gps_input_list'
+  gpsro_out_file         = 'obs_seq.gpsro'
+/
+</pre>
 </div>
 
-<div class=indent1><!-- Description -->
+<br />
+<br />
 
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<TBODY valign=top>
   
-<TR><!--contents--><TD valign=top>obs_levels</TD>
-    <!--  type  --><TD valign=top>integer(200)</TD>
-    <!--descript--><TD>A series of heights, in kilometers, where observations
-                       from this profile should be interpolated.  (Note that
-                       the other distances and heights in the namelist are
-                       specified in meters.)  The values should be listed in
-                       increasing height order.
-                       Default: none</TD></TR>
+<TR><TD> obs_levels </TD>
+    <TD> integer(200) </TD>
+    <TD>A series of heights, in kilometers, where observations from this profile
+should be interpolated.  (Note that the other distances and heights in the
+namelist are specified in meters.)  The values should be listed in increasing
+height order.
+</TD></TR>
   
-<TR><!--contents--><TD valign=top>local_operator</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>If .true., compute the observation using a method
-                       which assumes all effects occur at the tangent point.
-                       If .false., integrate along the tangent line and do
-                       ray-path reconstruction.
-                       Default: .true.</TD></TR>
+<TR><TD> local_operator </TD>
+    <TD> logical </TD>
+   <TD>If .true. compute the observation using a method which assumes all
+effects occur at the tangent point.  If .false. integrate along the tangent
+line and do ray-path reconstruction.
+</TD></TR>
   
-<TR><!--contents--><TD valign=top>ray_ds</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>For the non-local operator only, the delta stepsize, 
-                       in meters, to use for the along-path integration in
-                       each direction out from the tangent point.
-                       Default: 5000.0</TD></TR>
+<TR><TD> ray_ds </TD>
+    <TD> real(r8) </TD>
+    <TD>For the non-local operator only, the delta stepsize, in meters, to use
+for the along-path integration in each direction out from the tangent point.
+</TD></TR>
   
-<TR><!--contents--><TD valign=top>ray_htop</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>For the non-local operator only, stop the integration
-                       when one of the endpoints of the next integration step
-                       goes above this height.  Specified in meters.
-                       Default: 15000.0</TD></TR>
+<TR><TD> ray_htop </TD>
+    <TD> real(r8) </TD>
+    <TD>For the non-local operator only, stop the integration when one of the
+endpoints of the next integration step goes above this height.  Specify in meters.
+</TD></TR>
   
-<TR><!--contents--><TD valign=top>gpsro_netcdf_file</TD>
-    <!--  type  --><TD valign=top>character(len=128)</TD>
-    <!--descript--><TD>The input filename when converting a single profile.  
-                       Only one of the 2 filenames can have a valid value, 
-                       so to use the single filename set the list name
-                       ('gpsro_netcdf_filelist') to the empty string ('').
-                       Default: 'cosmic_gps_input.nc'</TD></TR>
-  
-<TR><!--contents--><TD valign=top>gpsro_netcdf_filelist</TD>
-    <!--  type  --><TD valign=top>character(len=128)</TD>
-    <!--descript--><TD>To convert a series of profiles in a single execution
-                       create a text file which contains each input file,
-                       in ascii, one filename per line.  Set this item to
-                       the name of that file, and set 'gpsro_netcdf_file' to
-                       the empty string ('').
-                       Default: 'cosmic_gps_input_list'</TD></TR>
-  
-<TR><!--contents--><TD valign=top>gpsro_out_file</TD>
-    <!--  type  --><TD valign=top>character(len=128)</TD>
-    <!--descript--><TD>The output file to be created.  Note that to be
-                       compatible with earlier versions of this program, if
-                       this file already exists it will be read in and the
-                       new data will be inserted into that file.
-                       Default: 'obs_seq.gpsro'</TD></TR>
-  
-</TABLE>
+<TR><TD> gpsro_netcdf_file </TD>
+    <TD> character(len=128) </TD>
+    <TD>The input filename when converting a single profile.  Only one of the 
+file or filelist items can have a valid value, so to use the single filename
+set the list name 'gpsro_netcdf_filelist' to the empty string ('&nbsp;').
+</TD></TR>
 
+<TR><TD> gpsro_netcdf_filelist </TD>
+    <TD> character(len=128) </TD> 
+    <TD>To convert a series of profiles in a single execution create a text file
+which contains each input file, in ascii, one filename per line.  Set this
+item to the name of that file, and set 'gpsro_netcdf_file' to the empty
+string ('&nbsp;').  
+</TD></TR>
+
+<TR><TD> gpsro_out_file </TD>
+    <TD> character(len=128) </TD> 
+    <TD>The output file to be created.  To be compatible with earlier
+versions of this program, if this file already exists it will be read in and
+the new data will be appended to that file.  
+</TD></TR>
+
+</TBODY> 
+</TABLE> 
 </div>
+
+<br />
 <br />
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 types_mod
@@ -268,7 +274,7 @@ netcdf
 <!--==================================================================-->
 
 <A NAME="KnownBugs"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>KNOWN BUGS</H2>
 <P>
 Some COSMIC files seem to have internal times which differ from the
@@ -285,7 +291,7 @@ Times really outside the window can be excluded in a separate step using the
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 The current code bins the data into 200 vertical bins as a first step,
@@ -301,7 +307,7 @@ to remove the intermediate binning step.
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

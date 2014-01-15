@@ -4,7 +4,7 @@
 <HEAD>
 <TITLE>module location_mod</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
-<link href="../../doc/html/dart.ico" rel="shortcut icon" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
@@ -327,96 +327,123 @@ as the pole is approached.
 <!--=====================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / location_nml / </em> &amp;
-   horiz_dist_only, vert_normalization_pressure, vert_normalization_height, &amp;
-   vert_normalization_level, vert_normalization_scale_height, &amp;
-   approximate_distance, nlon, nlat, output_box_info, maintain_original_vert
+&amp;location_nml
+   horiz_dist_only                 = .true.,
+   vert_normalization_pressure     = 100000.0, 
+   vert_normalization_height       = 10000.0,
+   vert_normalization_level        = 20.0,
+   vert_normalization_scale_height = 5.0,
+   approximate_distance            = .false.,
+   nlon                            = 71,
+   nlat                            = 36,
+   output_box_info     = .false.,
+   maintain_original_vert          = .false.,
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
 <P>
 Items in this namelist either control the way in which distances 
 are computed and/or influence the code performance.
-This namelist is read in a file called <em class=file>input.nml</em> .
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>horiz_dist_only</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>Only compute horizontal distance component?
-                 Default: true</TD></TR>
-<TR><!--contents--><TD valign=top>vert_normalization_pressure</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>How many pascals should be equivalent distance to one 
-                       radian? Default: 100000.0</TD></TR>
-<TR><!--contents--><TD valign=top>vert_normalization_height</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>How many geopotential meters should be equal 
-                       to one radian?  Default: 10000.0</TD></TR>
-<TR><!--contents--><TD valign=top>vert_normalization_scale_height</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>How many scale heights should be equal to one radian? 
-                Default: 5.0</TD></TR>
-<TR><!--contents--><TD valign=top>vert_normalization_level</TD>
-    <!--  type  --><TD valign=top>real(r8)</TD>
-    <!--descript--><TD>How many model levels should be equal to one radian? 
-                Default: 20.0</TD></TR>
-<TR><!--contents--><TD valign=top>maintain_original_vert</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>If using per-type specialized localization distances
-                (see <a href="../../assim_tools/assim_tools_mod.html#Namelist">assim_tools_mod</a>)
-                by default the vertical distances are altered also.  To maintain
-                the original vertical scaling while changing the horizontal, set this
-                to true.  Default: .false.</TD></TR>
-<TR><!--contents--><TD valign=top>approximate_distance</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD> If true, uses a table lookup for fast approximate
-           computation of distances on sphere. Distance computation can be
-           a first order cost for some spherical problems, so this can increase
-           speed significantly at a loss of some precision. Default: .false.
-                </TD></TR>
-<TR><!--contents--><TD valign=top>nlon</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD> Number of boxes (bins) created in the longitude 
-           direction.  Must be an odd number.   (See discussion above for more
-           information about this item.)
-           Default: 71 </TD></TR>
-<TR><!--contents--><TD valign=top>nlat</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD> Number of boxes (bins) created in the latitude 
-           direction.  (See discussion above for more
-           information about this item.)
-           Default: 36 </TD></TR>
-<TR><!--contents--><TD valign=top>output_box_info</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD> If true, print more details about the
-           distribution of locations across the array of boxes.
-           Default: .false. </TD></TR>
-</TABLE>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
+<TBODY valign=top>
+
+<TR><TD>horiz_dist_only</TD>
+<TD>logical</TD>
+<TD>Only compute horizontal distance component?
+</TD></TR>
+
+<TR><TD>vert_normalization_pressure</TD>
+    <TD>real(r8)</TD>
+    <TD>How many pascals should be equivalent distance to one radian? 
+</TD></TR>
+
+<TR><TD>vert_normalization_height</TD>
+    <TD>real(r8)</TD>
+    <TD>How many geopotential meters should be equal to one radian?
+</TD></TR>
+
+<TR><TD>vert_normalization_scale_height</TD>
+    <TD>real(r8)</TD>
+    <TD>How many scale heights should be equal to one radian? 
+</TD></TR>
+
+<TR><TD>vert_normalization_level</TD>
+    <TD>real(r8)</TD>
+    <TD>How many model levels should be equal to one radian? 
+</TD></TR>
+
+<TR><TD>maintain_original_vert</TD>
+    <TD>logical</TD>
+    <TD>If using per-type specialized localization distances
+(see <a href="../../assim_tools/assim_tools_mod.html#Namelist">assim_tools_mod</a>)
+by default the vertical distances are altered also.  To maintain
+the original vertical scaling while changing the horizontal, set this to true.
+</TD></TR>
+
+<TR><TD>approximate_distance</TD>
+    <TD>logical</TD>
+    <TD> If true, uses a table lookup for fast approximate
+computation of distances on sphere. Distance computation can be
+a first order cost for some spherical problems, so this can increase
+speed significantly at a loss of some precision.
+</TD></TR>
+
+<TR><TD>nlon</TD>
+    <TD>integer</TD>
+    <TD> Number of boxes (bins) created in the longitude direction.  Must be 
+an odd number.   (See discussion above for more information about this item.)
+</TD></TR>
+
+<TR><TD>nlat</TD>
+    <TD>integer</TD>
+    <TD> Number of boxes (bins) created in the latitude direction.  (See
+discussion above for more information about this item.)
+</TD></TR>
+
+<TR><TD>output_box_info</TD>
+    <TD>logical</TD>
+    <TD> If true, print more details about the distribution of locations across
+the array of boxes.
+</TD></TR>
+
+</TBODY> 
+</TABLE>
 </div>
-<br>
+
+<br />
+<br />
+
 
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -606,7 +633,7 @@ location from a location type and returns in a 3 element real array.
 <div class=routine>
 <em class=call> var = set_location(lon, lat, vert_loc, which_vert) </em>
 <pre>
-type(location_type)   :: <em class=code>set_location</em>
+type(location_type) :: <em class=code>set_location</em>
 real(r8), intent(in)    :: <em class=code>lon</em>
 real(r8), intent(in)    :: <em class=code>lat</em>
 real(r8), intent(in)    :: <em class=code>vert_loc</em>
@@ -923,12 +950,12 @@ when completely done with getting distances between locations.
 <A NAME="get_close_obs"></A>
 <br>
 <div class=routine>
-<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind, 
+<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_type, 
                obs, obs_kind, num_close, close_ind, dist) </em>
 <pre>
 type(get_close_type),              intent(in)  :: <em class=code>gc</em>
 type(location_type),               intent(in)  :: <em class=code>base_obs_loc</em>
-integer,                           intent(in)  :: <em class=code>base_obs_kind</em>
+integer,                           intent(in)  :: <em class=code>base_obs_type</em>
 type(location_type), dimension(:), intent(in)  :: <em class=code>obs</em>
 integer,             dimension(:), intent(in)  :: <em class=code>obs_kind</em>
 integer,                           intent(out) :: <em class=code>num_close</em>
@@ -952,6 +979,15 @@ be called and then the two initialization routines must be called
 before using <em class=code>get_close_obs()</em> again.
 </P>
 <P>
+Note that the base location is passed with the specific type associated
+with that location.  The list of potential close locations is matched
+with a list of generic kinds.  This is because in the current usage in
+the DART system the base location is always associated with an actual
+observation, which has both a specific type and generic kind.  The list
+of potentially close locations is used both for other observation locations
+but also for state variable locations which only have a generic kind.
+</P>
+<P>
 If called without the optional <em class=optionalcode>dist</em> argument,
 all locations that are potentially close are returned, which is likely a
 superset of the locations that are within the threshold distance specified in
@@ -969,12 +1005,12 @@ or not depending on the setting of <em class=code>horiz_dist_only</em>.
         locations close to a given location.</TD></TR>
 <TR><TD valign=top><em class=code>base_obs_loc</em></TD>
     <TD>Single given location.</TD></TR>
-<TR><TD valign=top><em class=code>base_obs_kind</em></TD>
-    <TD>Kind of the single location.</TD></TR>
+<TR><TD valign=top><em class=code>base_obs_type</em></TD>
+    <TD>Specific type of the single location.</TD></TR>
 <TR><TD valign=top><em class=code>obs</em></TD>
     <TD>List of locations from which close ones are to be found.</TD></TR>
 <TR><TD valign=top><em class=code>obs_kind</em></TD>
-    <TD>Kind associated with locations in obs list.</TD></TR>
+    <TD>Generic kind associated with locations in obs list.</TD></TR>
 <TR><TD valign=top><em class=code>num_close</em></TD>
     <TD>Number of locations close to the given location.</TD></TR>
 <TR><TD valign=top><em class=code>close_ind</em></TD>
@@ -1024,12 +1060,12 @@ with the new locations list.
 <br>
 <div class=routine>
 <em class=call>var = get_dist(loc1, loc2,
- <em class=optionalcode>[, kind1, kind2, no_vert]</em>) </em>
+ <em class=optionalcode>[, type1, kind2, no_vert]</em>) </em>
 <pre>
 real(r8)                        :: get_dist
 type(location_type), intent(in) :: <em class=code>loc1</em>
 type(location_type), intent(in) :: <em class=code>loc2</em>
-integer, optional,   intent(in) :: <em class=optionalcode>kind1</em>
+integer, optional,   intent(in) :: <em class=optionalcode>type1</em>
 integer, optional,   intent(in) :: <em class=optionalcode>kind2</em>
 logical, optional,   intent(in) :: <em class=optionalcode>no_vert </em>
 </pre>
@@ -1054,9 +1090,9 @@ value in the namelist and controls whether
 vertical distance is included or not.
 </P>
 <P>
-The kind arguments are not used by the default location code, but
+The type and kind arguments are not used by the default location code, but
 are available to any user-supplied distance routines which want to
-do specialized calculations based on the kinds associated with each
+do specialized calculations based on the types/kinds associated with each
 of the two locations.
 </P>
 
@@ -1065,10 +1101,10 @@ of the two locations.
     <TD>First of two locations to compute distance between.</TD></TR>
 <TR><TD valign=top><em class=code>loc2</em></TD>
     <TD>Second of two locations to compute distance between.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>kind1</em></TD>
-    <TD>DART kind associated with location 1.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>type1</em></TD>
+    <TD>DART specific type associated with location 1.</TD></TR>
 <TR><TD valign=top><em class=optionalcode>kind2</em></TD>
-    <TD>DART kind associated with location 2.</TD></TR>
+    <TD>DART generic kind associated with location 2.</TD></TR>
 
 <TR><TD valign=top><em class=optionalcode>no_vert</em></TD>
     <TD>If true, no vertical component to distance. If false, vertical
@@ -1433,7 +1469,7 @@ to identify this location module in output long name metadata.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <TABLE border=0 >
 <TR><TH>filename</TH>
@@ -1447,7 +1483,7 @@ to identify this location module in output long name metadata.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ol>
 <li> none </li>
@@ -1458,7 +1494,7 @@ to identify this location module in output long name metadata.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -1521,7 +1557,7 @@ problem only occurred for locations very near the pole.
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 Need to provide more efficient algorithms for getting close locations
@@ -1546,7 +1582,7 @@ The use of 'obs' in all these routine names should probably be
 changed to 'loc' since there is no particular dependence that
 they be observations.  They may need to have an associated DART
 kind, but these routines are used for DART state vector entries
-so it's often misleading to call them 'obs'.
+so it's misleading to always call them 'obs'.
 </P>
 
 <!--==================================================================-->
@@ -1554,7 +1590,7 @@ so it's often misleading to call them 'obs'.
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -1565,7 +1601,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

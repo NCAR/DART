@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>PROGRAM perfect_model_obs</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -50,180 +50,207 @@
 <!--================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
 Character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / perfect_model_obs_nml / </em>
-start_from_restart, output_restart, async, init_time_days, init_time_seconds,
-first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds, output_interval,
-restart_in_file_name, restart_out_file_name, obs_seq_in_file_name, obs_seq_out_file_name,
-adv_ens_command, tasks_per_model_advance, obs_window_days, obs_window_seconds,
-output_forward_op_errors, output_timestamps, trace_execution, print_every_nth_obs,
-silence
+&amp;perfect_model_obs_nml
+   start_from_restart       = .false.,
+   output_restart           = .false.,
+   async                    = 0,
+   tasks_per_model_advance  = 1,
+   init_time_days           = 0,
+   init_time_seconds        = 0,
+   first_obs_days           = -1,
+   first_obs_seconds        = -1,
+   last_obs_days            = -1,
+   last_obs_seconds         = -1,
+   obs_window_days          = -1,
+   obs_window_seconds       = -1,
+   output_timestamps        = .false.,
+   trace_execution          = .false.,
+   output_forward_op_errors = .false.,
+   print_every_nth_obs      = -1,
+   silence                  = .false.,
+   output_interval          = 1,
+   restart_in_file_name     = "perfect_ics",
+   restart_out_file_name    = "perfect_restart",
+   obs_seq_in_file_name     = "obs_seq.in",
+   obs_seq_out_file_name    = "obs_seq.out",
+   adv_ens_command          = "./advance_model.csh"  
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-Controls execution of synthetic observation generation.
-</P>
 
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>start_from_restart</TD>
-    <!--  type  --><TD>logical</TD>
-    <!--descript--><TD>.true. means read starting state data from a restart file, 
-                       .false. means ask model for an initial condition.
-                       Default: .false.</TD></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top>output_restart</TD>
-    <!--  type  --><TD>logical</TD>
-    <!--descript--><TD>.true. means output a restart file.
-                       Default: .false.</TD></TR>
+<TR><TD>start_from_restart</TD>
+    <TD>logical</TD>
+    <TD>.true. means read starting state data from a restart file, 
+.false. means call model_mod routine to set initial condition data.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>async</TD>
-    <!--  type  --><TD>integer</TD>
-    <!--descript--><TD>Controls method for advancing model:
-                       0&nbsp;==&nbsp;subroutine&nbsp;call,
-                       2&nbsp;==&nbsp;shell&nbsp;command, single task model.
-                       4&nbsp;==&nbsp;shell&nbsp;command, parallel model.
-                       Default: 0</TD></TR>
+<TR><TD>output_restart</TD>
+    <TD>logical</TD>
+    <TD>.true. means output a restart file.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>init_time_days</TD>
-    <!--  type  --><TD>integer</TD>
-    <!--descript--><TD>If negative, don't use.
-                       If non-negative, override the initial data time read from restart file.
-                       Default: 0</TD></TR>
+<TR><TD>async</TD>
+    <TD>integer</TD>
+    <TD>Controls method for advancing model:
+<UL style="list-style: none;">
+<LI>0 = subroutine call</LI>
+<LI>2 = shell command, single task model</LI>
+<LI>4 = shell command, parallel model</LI>
+</UL>
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>init_time_seconds</TD>
-    <!--  type  --><TD>integer</TD>
-    <!--descript--><TD>If negative don't use. 
-                       If non-negative, override the initial data time read from restart file.
-                       Default: 0</TD></TR>
+<TR><TD>init_time_days</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+If non-negative, override the initial data time read from restart file.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>first_obs_days</TD>
-    <!--  type  --><TD>integer</TD>
-    <!--descript--><TD>If negative, don't use.
-                       If non-negative, ignore any observations before this time.
-                       Default: -1</TD></TR>
+<TR><TD>init_time_seconds</TD>
+    <TD>integer</TD>
+    <TD>If negative don't use. 
+If non-negative, override the initial data time read from restart file.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>first_obs_seconds</TD>
-    <!--  type  --><TD>integer</TD>
-    <!--descript--><TD>If negative, don't use.
-                       If non-negative, ignore any observations before this time.
-                       Default: -1</TD></TR>
+<TR><TD>first_obs_days</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+If non-negative, ignore any observations before this time.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>last_obs_days</TD>
-    <!--  type  --><TD>integer</TD>
-    <!--descript--><TD>If negative, don't use.
-                       If non-negative, ignore any observations after this time.
-                       Default: -1</TD></TR>
+<TR><TD>first_obs_seconds</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+If non-negative, ignore any observations before this time.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>last_obs_seconds</TD>
-    <!--  type  --><TD>integer</TD>
-    <!--descript--><TD>If negative, don't use.
-                       If non-negative, ignore any observations after this time.
-                       Default: -1</TD></TR>
+<TR><TD>last_obs_days</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+If non-negative, ignore any observations after this time.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>output_interval</TD>
-    <!--  type  --><TD>integer</TD>
-    <!--descript--><TD>Output state and observation diagnostics every nth 
-                       assimilation time, n is output_interval. Default: 1</TD></TR>
+<TR><TD>last_obs_seconds</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+If non-negative, ignore any observations after this time.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>restart_in_file_name</TD>
-    <!--  type  --><TD>character(len=129)</TD>
-    <!--descript--><TD>File containing state restart vector. 
-                       Default: 'perfect_ics'</TD></TR>
+<TR><TD>output_interval</TD>
+    <TD>integer</TD>
+    <TD>Output state and observation diagnostics every nth 
+assimilation time, n is output_interval.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>restart_out_file_name</TD>
-    <!--  type  --><TD>character(len=129)</TD>
-    <!--descript--><TD>File to which to write state restart state vectors. 
-                       Default: 'perfect_restart'</TD></TR>
+<TR><TD>restart_in_file_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>File containing state restart vector. 
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>obs_seq_in_file_name</TD>
-    <!--  type  --><TD>character(len=129)</TD>
-    <!--descript--><TD>File name from which to read an observation sequence.
-                       Default: 'obs_seq.in'</TD></TR>
+<TR><TD>restart_out_file_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>File to which to write state restart state vector. 
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>obs_seq_out_file_name</TD>
-    <!--  type  --><TD>character(len=129)</TD>
-    <!--descript--><TD>File name to which to write output observation sequence.
-                       Default: 'obs_seq.out'</TD></TR>
+<TR><TD>obs_seq_in_file_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>File name from which to read an observation sequence.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>adv_ens_command</TD>
-    <!--  type  --><TD>character(len=129)</TD>
-    <!--descript--><TD>Command sent to shell if async&nbsp;==&nbsp;2 or 4.
-                       Default: './advance_model.csh'</TD></TR>
+<TR><TD>obs_seq_out_file_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>File name to which to write output observation sequence.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>output_forward_op_errors</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>True means output errors from forward observation operators.
-                       This is the 'istatus' error return code from the model
-                       interpolate routine.  An ascii text file 'forward_op_errors'
-                       will be created in the current directory.  Each line will 
-                       contain an observation key number, and the istatus return code.
-                       Default: .false.</TD></TR>
+<TR><TD>adv_ens_command</TD>
+    <TD>character(len=129)</TD>
+    <TD>Command sent to shell if async == 2 or 4.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>output_timestamps</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>True means output timestamps before and after the model advance
-                       and the forward observation computation phases.
-                       Default: .false.</TD></TR>
+<TR><TD>output_forward_op_errors</TD>
+    <TD>logical</TD>
+    <TD>True means output errors from forward observation operators.
+This is the 'istatus' error return code from the model
+interpolate routine.  An ascii text file 'forward_op_errors'
+will be created in the current directory.  Each line will 
+contain an observation key number, and the istatus return code.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>trace_execution</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>True means output very detailed messages about what routines
-                       are being called in the main loop.  Useful if a job
-                       hangs or otherwise doesn't execute as expected.
-                       Default: .false.</TD></TR>
+<TR><TD>output_timestamps</TD>
+    <TD>logical</TD>
+    <TD>True means output timestamps before and after the model advance
+and the forward observation computation phases.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>silence</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>True means output almost no runtime messages.  Not recommended
-                       for general use, but can speed test programs if the execution
-                       time becomes dominated by the volume of output.
-                       Default: .false.</TD></TR>
+<TR><TD>trace_execution</TD>
+    <TD>logical</TD>
+    <TD>True means output very detailed messages about what routines
+are being called in the main loop.  Useful if a job
+hangs or otherwise doesn't execute as expected.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>tasks_per_model_advance</TD>
-    <!--  type  --><TD>integer</TD>
-    <!--descript--><TD>Reserved for future use.
-                       Default: 1</TD></TR>
+<TR><TD>silence</TD>
+    <TD>logical</TD>
+    <TD>True means output almost no runtime messages.  Not recommended
+for general use, but can speed test programs if the execution
+time becomes dominated by the volume of output.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>obs_window_days</TD>
-    <!--  type  --><TD>integer</TD>
-    <!--descript--><TD>If negative, don't use.
-                       If non-negative, reserved for future use.
-                       Default: -1</TD></TR>
+<TR><TD>tasks_per_model_advance</TD>
+    <TD>integer</TD>
+    <TD>Reserved for future use.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>obs_window_seconds</TD>
-    <!--  type  --><TD>integer</TD>
-    <!--descript--><TD>If negative, don't use.
-                       If non-negative, reserved for future use.
-                       Default: -1</TD></TR>
+<TR><TD>obs_window_days</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+If non-negative, reserved for future use.
+</TD></TR>
 
+<TR><TD>obs_window_seconds</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+If non-negative, reserved for future use.
+</TD></TR>
+
+
+</TBODY> 
 </TABLE>
-
 </div>
-<br>
+
+<br />
+<br />
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 types_mod
@@ -243,7 +270,7 @@ ensemble_manager_mod
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL><LI>observation sequence input file; name comes from obs_seq_in_file_name
    <LI>observation sequence output file; name comes from obs_seq_out_file_name
@@ -257,7 +284,7 @@ ensemble_manager_mod
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li> none </li>
@@ -268,7 +295,7 @@ ensemble_manager_mod
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -292,7 +319,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none
@@ -303,7 +330,7 @@ none
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

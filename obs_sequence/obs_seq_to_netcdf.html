@@ -4,7 +4,7 @@
 <HEAD>
 <TITLE>program obs_seq_to_netcdf</TITLE>
 <link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -107,205 +107,223 @@
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / obs_seq_to_netcdf_nml / </em> 
-   obs_sequence_name, obs_sequence_list, append_to_netcdf,
-   lonlim1, lonlim2, latlim1, latlim2, verbose
+&amp;obs_seq_to_netcdf_nml
+   obs_sequence_name = 'obs_seq.final',
+   obs_sequence_list = '',
+   append_to_netcdf  = .false.,
+   lonlim1    =    0.0,
+   lonlim2    =  360.0,
+   latlim1    =  -90.0,
+   latlim2    =   90.0,
+   verbose    = .false.  
+/
 </pre>
 </div>
 
-<H3 class=indent1>Discussion</H3>
+<br />
+<br />
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>. <BR>
-   The allowable ranges for the region boundaries are: latitude [-90.,90], 
-   longitude [0.,360.] ... but it is possible to specify a region that spans
-   the dateline by specifying the <em class="code">lonlim2</em> to be less 
-   than <em class="code">lonlim1</em>.
-   <br />
-   <br />
-   You can only specify <strong>either</strong>
-   <em class="code">obs_sequence_name</em>
-   <strong>or</strong>
-   <em class="code">obs_sequence_list</em> -- not both.
+<P>The allowable ranges for the region boundaries are: latitude [-90.,90], 
+longitude [0.,360.] ... but it is possible to specify a region that spans
+the dateline by specifying the <em class="code">lonlim2</em> to be less 
+than <em class="code">lonlim1</em>.
+</P><P>
+You can only specify <strong>either</strong> <em class="code">obs_sequence_name</em>
+<strong>or</strong> <em class="code">obs_sequence_list</em> -- not both.
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TR><!--contents--><TD valign=top> obs_sequence_name  </TD>
-    <!--  type  --><TD valign=top> character(len=129) </TD>
-    <!--descript--><TD>Name of an observation sequence file(s). 
-            This may be a relative or absolute filename. If the filename
-            contains a '/', the filename is considered to be comprised of
-            everything to the right, and a directory structure to the left.
-            The directory structure is then queried to see if it can be
-            incremented to handle a sequence of observation files.
-            The default behavior of <em class="program">obs_seq_to_netcdf</em>
-            is to look for additional files to include until the files
-            are exhausted or an <em class=file>obs_seq.final</em> file
-            is found that contains observations beyond the timeframe of
-            interest.<BR>e.g. 'obsdir_001/obs_seq.final' will cause
-            <em class="program">obs_seq_to_netcdf</em> to look for
-            'obsdir_002/obs_seq.final', and so on.
-            <br />
-            If this is specified, 'obs_sequence_list' must be set to ' '.
-	    Default 'obs_seq.final'</TD></TR>  
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top> obs_sequence_list  </TD>
-    <!--  type  --><TD valign=top> character(len=129) </TD>
-    <!--descript--><TD>Name of an ascii text file which contains a list
-            of one or more observation sequence files, one per line.
-            If this is specified, 'obs_sequence_name' must be set to ' '. 
-            Can be created by any method, including sending the output
-            of the 'ls' command to a file, a text editor, or another program.
-	    Default ' ' (an empty string).</TD></TR>  
+<TR><TD> obs_sequence_name  </TD>
+    <TD> character(len=129) </TD>
+    <TD>Name of an observation sequence file(s).  This may be a relative or
+absolute filename. If the filename contains a '/', the filename is considered
+to be comprised of everything to the right, and a directory structure to the
+left.  The directory structure is then queried to see if it can be
+incremented to handle a sequence of observation files.  The default behavior
+of <em class="program">obs_seq_to_netcdf</em> is to look for additional files
+to include until the files are exhausted or an <em
+class=file>obs_seq.final</em> file is found that contains observations beyond
+the timeframe of interest.<BR>e.g. 'obsdir_001/obs_seq.final' will cause <em
+class="program">obs_seq_to_netcdf</em> to look for
+'obsdir_002/obs_seq.final', and so on.
+<br />
+If this is specified, 'obs_sequence_list' must be set to '&nbsp;'.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>   append_to_netcdf   </TD>
-    <!--  type  --><TD valign=top>   logical   </TD>
-    <!--descript--><TD>This gives control over whether to overwrite or append to
-            an existing netcdf output file. It is envisioned that you may want
-            to combine multiple observation sequence files into one netcdf file
-            (i.e.&nbsp;<em class=code>append_to_netcdf=.true.</em>) to explore 
-            the effects on data coverage, etc. The default behavior is to create
-            a new <em class=file>obs_epoch_xxx.nc</em> file with every execution.<BR>
-            Default: .false. </TD></TR>  
+<TR><TD> obs_sequence_list  </TD>
+    <TD> character(len=129) </TD>
+<TD>Name of an ascii text file which contains a list of one or more
+observation sequence files, one per line.  If this is specified,
+'obs_sequence_name' must be set to '&nbsp;'.  Can be created by any method,
+including sending the output of the 'ls' command to a file, a text editor, or
+another program.  
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>   lonlim1   </TD>
-    <!--  type  --><TD valign=top>   real      </TD>
-    <!--descript--><TD>Westernmost longitude of the region in degrees.<BR>
-	    Default: none </TD></TR>  
+<TR><TD>   append_to_netcdf   </TD>
+    <TD>   logical   </TD>
+<TD>This gives control over whether to overwrite or append to an existing
+netcdf output file. It is envisioned that you may want to combine multiple
+observation sequence files into one netcdf file 
+(i.e. <em class=code>append_to_netcdf=.true.</em>) to explore the effects 
+on data coverage, etc. The default behavior is to create a new 
+<em class=file>obs_epoch_xxx.nc</em> file with every execution.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>   lonlim2   </TD>
-    <!--  type  --><TD valign=top>   real      </TD>
-    <!--descript--><TD>Easternmost longitude of the region in degrees.
-            <em class="new">If this value is <b>less than</b>
-	    the westernmost value, it defines a region that spans the 
-	    prime meridian. No problem.</em> It is perfectly acceptable 
-	    to specify lonlim1 = 330 , lonlim2 = 50 to identify a region
-	    like "Africa".<BR>
-	    Default: none</TD></TR>  
+<TR><TD>   lonlim1   </TD>
+    <TD>   real      </TD>
+    <TD>Westernmost longitude of the region in degrees.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>   latlim1    </TD>
-    <!--  type  --><TD valign=top>   real       </TD>
-    <!--descript--><TD>Southernmost latitude of the region in degrees.<BR>
-	    Default: none</TD></TR>  
+<TR><TD>   lonlim2   </TD>
+    <TD>   real      </TD>
+    <TD>Easternmost longitude of the region in degrees.
+<em class="new">If this value is <b>less than</b>
+the westernmost value, it defines a region that spans the 
+prime meridian. </em> It is perfectly acceptable 
+to specify lonlim1 = 330 , lonlim2 = 50 to identify a region
+like "Africa".
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>   latlim2    </TD>
-    <!--  type  --><TD valign=top>   real       </TD>
-    <!--descript--><TD>Northernmost latitude of the region in degrees.<BR>
-	    Default: none</TD></TR>  
+<TR><TD>   latlim1    </TD>
+    <TD>   real       </TD>
+    <TD>Southernmost latitude of the region in degrees.<BR>
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>   verbose   </TD>
-    <!--  type  --><TD valign=top>   logical   </TD>
-    <!--descript--><TD>Print extra info about the obs_seq_to_netcdf run.<BR>
-            Default: .false. </TD></TR>  
+<TR><TD>   latlim2    </TD>
+    <TD>   real       </TD>
+    <TD>Northernmost latitude of the region in degrees.<BR>
+</TD></TR>
 
+<TR><TD>   verbose   </TD>
+    <TD>   logical   </TD>
+    <TD>Print extra info about the obs_seq_to_netcdf run.<BR>
+</TD></TR>
+
+</TBODY> 
 </TABLE>
-
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
-
-<A NAME="Namelist2"></A>
-<HR>
-<H2>schedule NAMELIST</H2>
-<div class=namelist>
-<pre>
-<em class=call>namelist / schedule_nml / </em> &amp;
-   calendar, first_bin_start, first_bin_end, last_bin_end, &amp;
-   bin_interval_days, bin_interval_seconds, max_num_bins, print_table
-</pre>
 </div>
 
-<H3 class=indent1>Discussion</H3>
+<H4>The Schedule Namelist</H4>
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>.
-   The default values specify one giant 'bin'.
-   <br />
-   <br />
-   If the <em class="code">print_table</em> variable is 'true', a summary
-   of the assimilation schedule will be written to the screen. Hopefully,
-   a picture will be worth a thousand words ...
+<P>The default values specify one giant 'bin'.
+</P><P>
+If the <em class="code">print_table</em> variable is 'true' a summary
+of the assimilation schedule will be written to the screen.
 </P>
 
 <center>
 <img src="../doc/images/schedule.png" alt="DART assimilation schedule" height=200>
 </center>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<div class=namelist>
+<pre>
+&amp;schedule_nml
+   calendar       = 'Gregorian',
+   first_bin_start =  1601,  1,  1,  0,  0,  0,
+   first_bin_end   =  2999,  1,  1,  0,  0,  0,
+   last_bin_end    =  2999,  1,  1,  0,  0,  0,
+   bin_interval_days    = 1000000,   
+   bin_interval_seconds = 0, 
+   max_num_bins         = 1000,
+   print_table          = .true.
+  /
+</pre>
+</div>
 
-<TR><!--contents--><TD valign=top> calendar  </TD>
-    <!--  type  --><TD valign=top> character(len=32) </TD>
-    <!--descript--><TD>Type of calendar to use to interpret dates.<BR>
-                       May be any type supported by the 
-                       <em class="program">time_manager_mod</em>.
-                       The string is case-INsensitive.
-	               Default 'Gregorian'</TD></TR>  
+<br />
+<br />
 
-<TR><!--contents--><TD valign=top> first_bin_start </TD>
-    <!--  type  --><TD valign=top> integer, dimension(6) </TD>
-    <!--descript--><TD>the first time of the first assimilation period.
-            The six integers are: year, month, day, hour, hour, minute, 
-            second -- in that order.<br>
-            Default: 1601, 1, 1, 0, 0, 0</TD></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TR><!--contents--><TD valign=top> first_bin_end  </TD>
-    <!--  type  --><TD valign=top> integer, dimension(6) </TD>
-    <!--descript--><TD>the end of the first assimilation period.
-            The six integers are: year, month, day, hour, hour, minute,
-            second -- in that order.<br>
-            Default: 2999, 1, 1, 0, 0, 0</TD></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top> last_bin_end  </TD>
-    <!--  type  --><TD valign=top> integer, dimension(6) </TD>
-    <!--descript--><TD>the approximate end of the last assimilation period.
-            The six integers are: year, month, day, hour, hour, minute,
-            second -- in that order. This does not need to be exact,
-            the values from <em class=code>last_bin_end</em>, 
-            <em class=code>bin_interval_days</em>, and
-            <em class=code>bin_interval_seconds</em> are used to derive the
-            assimilation schedule. The assimilation periods are repeated and  
-            will stop on or before the time defined by
-            <em class=code>last_bin_end</em>. 
-            See also <em class=code>max_num_bins</em>.<BR>
-            Default: 2999, 1, 1, 0, 0, 0</TD></TR>
+<TR><TD> calendar  </TD>
+    <TD> character(len=32) </TD>
+    <TD>Type of calendar to use to interpret dates.  May be any type supported by
+the <em class="program">time_manager_mod</em>.  The string is case-insensitive.
+</TD></TR>  
 
-<TR><!--contents--><TD valign=top> bin_interval_days, bin_interval_seconds </TD>
-    <!--  type  --><TD valign=top> integer </TD>
-    <!--descript--><TD>Collectively, <em class=code>bin_interval_days</em> 
-            and <em class=code>bin_interval_seconds</em> define the time 
-            between the start of successive assimilation windows. It is
-            not possible to define a bin_interval such that there are 
-	    overlapping bins (i.e. you can't use the same observations 
-	    more than once). The default is 6 hours. <BR>
-            Default: <em class=code>bin_interval_days</em> == 1000000, and <br />
-            <em class=code>bin_interval_seconds</em> == 0 <br /></TD></TR>
+<TR><TD> first_bin_start </TD>
+    <TD> integer, dimension(6) </TD>
+    <TD>the first time of the first assimilation period.  The six integers are:
+year, month, day, hour, hour, minute, second -- in that order.
+</TD></TR>  
 
-<TR><!--contents--><TD valign=top> max_num_bins </TD>
-    <!--  type  --><TD valign=top> integer </TD>
-    <!--descript--><TD>An alternate way to specify the maximum number of
-            assimilation periods.  The assimilation bin is repeated by 
-	    the bin_interval until one of two things happens: either 
-	    the last time of interest is encountered (defined by 
-	    <em class=code>last_bin_end</em>) or the maximum number 
-	    of assimilation periods has been reached (defined by 
-	    <em class=code>max_num_bins</em>).<BR>
-            Default: 1000</TD></TR>
+<TR><TD> first_bin_end  </TD>
+    <TD> integer, dimension(6) </TD>
+    <TD>the end of the first assimilation period.  The six integers are: year,
+month, day, hour, hour, minute, second -- in that order.
+</TD></TR>  
 
-<TR><!--contents--><TD valign=top> print_table </TD>
-    <!--  type  --><TD valign=top> logical </TD>
-    <!--descript--><TD>Prints the assimilation schedule.<BR>
-            Default: .false. </TD></TR>  
+<TR><TD> last_bin_end  </TD>
+    <TD> integer, dimension(6) </TD>
+    <TD>the approximate end of the last assimilation period.  The six integers
+are: year, month, day, hour, hour, minute, second -- in that order. This does
+not need to be exact, the values from <em class=code>last_bin_end</em>, 
+<em class=code>bin_interval_days</em>, and <em class=code>bin_interval_seconds</em> 
+are used to derive the assimilation schedule. The assimilation periods are
+repeated and will stop on or before the time defined by <em class=code>last_bin_end</em>.  
+See also <em class=code>max_num_bins</em>.  
+</TD></TR>  
+
+<TR><TD> bin_interval_days, bin_interval_seconds </TD>
+    <TD> integer </TD>
+    <TD>Collectively, <em class=code>bin_interval_days</em> and 
+<em class=code>bin_interval_seconds</em> define the time between the start of
+successive assimilation windows. It is not possible to define a bin_interval
+such that there are overlapping bins (i.e. you can't use the same
+observations more than once).
+</TD></TR>  
+
+<TR><TD> max_num_bins </TD>
+    <TD> integer </TD>
+    <TD>An alternate way to specify the maximum number of assimilation periods.
+The assimilation bin is repeated by the bin_interval until one of two things
+happens: either the last time of interest is encountered (defined by 
+<em class=code>last_bin_end</em>) or the maximum number of assimilation periods
+has been reached (defined by <em class=code>max_num_bins</em>).
+</TD></TR>  
+
+<TR><TD> print_table </TD>
+    <TD> logical </TD>
+    <TD>Prints the assimilation schedule.
+</TD></TR>  
+
+</TBODY> 
 </TABLE>
+</div>
+
+<br />
+<br />
+
 
 <H3 class="indent1">Example</H3>
 <P>The following example illustrates the fact the <em class="code">last_bin_end</em>
@@ -382,7 +400,7 @@ smallest possible delta is added to one of the assimilation edges.
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 location_mod
@@ -410,7 +428,7 @@ obs_def_?????.f90 files.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <H3 class="indent1">Run-Time</H3>
 <UL><LI><em class="file">input.nml</em> is used for 
@@ -570,7 +588,7 @@ radiosonde surface pressure observation.
 <!--==================================================================-->
 
 <A NAME="Usage"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>USAGE</H2>
 
 <H3 class="indent1">obs_seq_to_netcdf</H3>
@@ -851,7 +869,7 @@ structure as a component in the <em class="code">obs</em> structure.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ol>
 <li> none </li>
@@ -862,7 +880,7 @@ structure as a component in the <em class="code">obs</em> structure.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -898,7 +916,7 @@ there are no obs in the desired region.
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 Extend to record all the metadata for the observations, even the
@@ -911,7 +929,7 @@ feature list a mile long.
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -922,7 +940,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

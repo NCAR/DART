@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>program fill_inflation_restart</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -36,58 +36,57 @@
 <H2>Overview</H2>
 
 <P>
-Utility program to fill in the inflation restart file with a fixed
-inflation and standard deviation value.  
+Utility program to create inflation restart files with constant values.
+Useful for a multi-step assimilation, so the values
+<em class=code>inf_initial_from_restart</em> and
+<em class=code>inf_sd_initial_from_restart</em> items in the &amp;filter_nml
+namelist can be .TRUE. from the beginning.
 </P><P>
-For a multi-jobstep run where the only difference between the
-first step and the rest is whether the inflation is read from
-the namelist or a restart file, this allows the same namelist
-to be used in all steps by constructing a restart file for
-the first job step.
-</P><P>
-The program reads 2 real values from the console and always
-writes out a file called "inflate_ics", which can be renamed
-to match the input inflation restart file in the filter namelist.
-</P><P>
-Note that if the model you're working with requires any files
-to be present in the current directory at assimilation time
-(e.g. CAM and WRF require netcdf file(s) that define the size 
-of the grid) or if the contents of the state vector are 
-settable by namelist, then all these things must be set 
-and files must be present in the current directory when
-you run this tool.  The size of the inflation restart file
-must match exactly the size of the state vector that will
-be used in the assimilation run.
-</P><P>
-Also note that the output is a binary file and should be created
-on the same platform type as your assimilation run will be done.
-You can't move binary files between processors with different
-processor types if one uses little-endian byte order and the
-other uses big-endian.  The most common incompatible pairing these
-days is between IBM Power chips that are big-endian and Intel chips 
-that are little-endian.
+This program reads two values from the console: the initial inflation value
+and the initial inflation standard deviation.  For example:
 </P>
+<pre>
+> echo 1.0 0.6 | ./fill_inflation_restart
+</pre>
+or 
+<pre>
+> fill_inflation_restart
+1.0 0.6
+>
+</pre>
+<P>
+This program uses the information from the model_mod code to determine
+the number of items in the state vector.  It must be compiled with the
+right model's model_mod, and if the items in the state vector are selectable
+by namelist options, the namelist when running this program must match
+exactly the namelist used during the assimilation run.
+</P>
+
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST ====================-->
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>No namelist</P>
-<br>
+<P>
+This program has no namelist but uses other modules in the
+system which require namelists, e.g. &amp;utilities_mod, etc.
+</P>
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 types_mod
-time_manager_mod
 utilities_mod
+ensemble_manager_mod
 assim_model_mod
+model_mod
+mpi_utilities_mod
 </PRE>
 
 <!--==================================================================-->
@@ -95,9 +94,9 @@ assim_model_mod
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
-<UL><LI>inflate_ics (output file)
+<UL><LI>writes <em class=file>inflate_ics</em>
 </UL>
 
 <!--==================================================================-->
@@ -105,7 +104,7 @@ assim_model_mod
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li> none </li>
@@ -116,11 +115,16 @@ assim_model_mod
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>write_ensemble_restart</TD>
+    <!-- message --><TD VALIGN=top>any</TD>
+    <!-- comment --><TD VALIGN=top>reports failure to write the inflation
+                                   restart file</TD></TR>
 
 </TABLE>
 </div>
@@ -135,7 +139,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none
@@ -146,7 +150,7 @@ none
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

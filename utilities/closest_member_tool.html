@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>program closest_member_tool</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -113,90 +113,103 @@ is read from file <em class=file>input.nml</em>.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / closest_member_tool_nml / </em> 
-   input_file_name, output_file_name, 
-   ens_size, single_restart_file_in, difference_method,
-   use_only_kinds
+&amp;closest_member_tool_nml
+   input_file_name        = 'filter_restart',
+   output_file_name       = 'closest_restart',
+   ens_size               = 20,
+   single_restart_file_in = .true.,
+   difference_method      = 4,
+   use_only_kinds         = '',
+ /
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-The namelist sets the behavior of this tool.
-<br>
-<br>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=10 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>input_file_name</TD>
-    <!--  type  --><TD valign=top>character</TD>
-    <!--descript--><TD valign=top>File containing the DART restart data.  If
-                  'single_restart_file_in' is .true., this is the exact filename.
-                  If 'single_restart_file_in' is .false. this is the base name and
-                  '.NNNN' will be appended to each name before being opened.
-                  Default "filter_restart"</TD></TR>
-<TR><!--contents--><TD valign=top>output_file_name</TD>
-    <!--  type  --><TD valign=top>character</TD>
-    <!--descript--><TD valign=top>File created by this program with either
-                  the ensemble number or full restart filename for the closest member.
-                  If 'single_restart_file_in' is .true., the file contains the ensemble number.
-                  If 'single_restart_file_in' is .false. the file contains the base name and
-                  '.NNNN' appended for the closest member.
-                  Default "closest_restart"</TD></TR>
-<TR><!--contents--><TD valign=top>ens_size</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD valign=top>Total number of ensemble members.
-                  Default 20</TD></TR>
-<TR><!--contents--><TD valign=top>single_restart_file_in</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD valign=top>Whether the input filename contains a single ensemble 
-                  member per file or multiple members concatinated in the same file.
-                  Default .true.</TD></TR>
-<TR><!--contents--><TD valign=top>difference_method</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD valign=top>Select which method is used
-                  to compute 'distance' from mean:
-<table>
-<tr><td>1 &nbsp;</td><td>simple absolute difference</td></tr>
-<tr><td>2</td><td>normalized absolute difference</td></tr>
-<tr><td>3</td><td>simple RMS difference</td></tr>
-<tr><td>4</td><td>normalized RMS difference</td></tr>
-</table>
+<TBODY valign=top>
 
-                  Default 4</TD></TR>
-<TR><!--contents--><TD valign=top>use_only_kinds</TD>
-    <!--  type  --><TD valign=top>character(len=32)</TD>
-    <!--descript--><TD valign=top>If unspecified, all items in the state vector
-                  contribute to the total difference.  If one or more kinds
-                  are listed here, only items in the state vector of these kinds
-                  contribute to the total difference.  These are the generic kinds,
-                  such as KIND_TEMPERATURE, KIND_U_WIND_COMPONENT, KIND_DENSITY, etc.
-                  and not specific types like RADIOSONDE_TEMPERATURE.  Consult the 
-                  model interface code to determine which possible kinds are returned by the
-          <a href="../models/model_mod.html#get_state_meta_data">get_state_meta_data()</a> routine.
-                  Default ''.</TD></TR>
+<TR><TD>input_file_name</TD>
+    <TD>character</TD>
+<TD>File containing the DART restart data.  If 'single_restart_file_in' is
+.true., this is the exact filename.  If 'single_restart_file_in' is .false.
+this is the base name and '.NNNN' will be appended to each name before being opened.
+</TD></TR>
+
+<TR><TD>output_file_name</TD>
+    <TD>character</TD>
+    <TD>File created by this program with either the ensemble number or full
+restart filename for the closest member.  If 'single_restart_file_in' is
+.true., the file contains the ensemble number.  If 'single_restart_file_in' is
+.false. the file contains the base name and '.NNNN' appended for the closest member.
+</TD></TR>
+
+<TR><TD>ens_size</TD>
+    <TD>integer</TD>
+    <TD>Total number of ensemble members.
+</TD></TR>
+
+<TR><TD>single_restart_file_in</TD>
+    <TD>logical</TD>
+    <TD>Whether the input filename contains a single ensemble member per file or
+multiple members concatinated in the same file.
+</TD></TR>
+
+<TR><TD>difference_method</TD>
+    <TD>integer</TD>
+    <TD>Select which method is used to compute 'distance' from mean:
+<UL style="list-style: none;">
+<LI>1 = simple absolute difference</LI>
+<LI>2 = normalized absolute difference</LI>
+<LI>3 = simple RMS difference</LI>
+<LI>4 = normalized RMS difference</LI>
+</UL>
+</TD></TR>
+
+<TR><TD>use_only_kinds</TD>
+    <TD>character(len=32)</TD>
+    <TD>If unspecified, all items in the state vector contribute to the total
+difference.  If one or more kinds are listed here, only items in the state
+vector of these kinds contribute to the total difference.  These are the
+generic kinds, such as KIND_TEMPERATURE, KIND_U_WIND_COMPONENT, KIND_DENSITY,
+etc. and not specific types like RADIOSONDE_TEMPERATURE.  Consult the model
+interface code to determine which possible kinds are returned by the 
+<a href="../models/model_mod.html#get_state_meta_data">get_state_meta_data()</a>
+routine.
+</TD></TR>
+
+</TBODY> 
 </TABLE>
-
 </div>
-<br>
+
+<br />
+<br />
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 types_mod
@@ -212,7 +225,7 @@ mpi_utilities_mod
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL><LI>inputfile (filter_restart, filter_restart.mean)
     <LI>closest_member_tool.nml 
@@ -223,7 +236,7 @@ mpi_utilities_mod
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li> none </li>
@@ -234,7 +247,7 @@ mpi_utilities_mod
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -257,7 +270,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none
@@ -268,7 +281,7 @@ none
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

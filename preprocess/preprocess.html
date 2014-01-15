@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>program preprocess</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -99,97 +99,101 @@ forward operator is an identity).
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
 Character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / preprocess_nml/ </em> &amp;
-  input_obs_def_mod_file, input_obs_kind_mod_file, output_obs_def_mod_file, 
-  output_obs_kind_mod_file, input_files(max_input_files) 
+&amp;preprocess_nml
+          overwrite_output = .true.,
+    input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90', 
+   output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90', 
+   input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90', 
+  output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90', 
+               input_files = '../../../obs_def/null',
+ /
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align="left" width="15%">Contents    </TH>
-    <TH align="left" width="30%">Type        </TH>
-    <TH align="left" width="55%">Description </TH></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top>input_obs_def_mod_file           </TD>
-    <!--  type  --><TD valign=top>character(len=129)<BR>
-          <em class="unit">[default: 'null']</em></TD>
-    <!--descript--><TD> Path name of input obs definition module to be
-     preprocessed. Normally this is 
-    <em class="file">DEFAULT_obs_def_mod.F90</em> in the obs_def
-     directory. This file must have the appropriate commented lines indicating
-     where the different parts of the input special obs definition modules
-     are to be inserted.  </TD></TR>
+<TR><TD>input_obs_def_mod_file </TD>
+    <TD>character(len=129)<BR>
+    <TD> Path name of input obs definition module to be preprocessed. Normally
+this is <em class="file">DEFAULT_obs_def_mod.F90</em> in the obs_def directory. 
+This file must have the appropriate commented lines indicating where the different 
+parts of the input special obs definition modules are to be inserted. 
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>output_obs_def_mod_file           </TD>
-    <!--  type  --><TD valign=top>character(len=129)<BR>
-          <em class="unit">[default: 'null']</em></TD>
-    <!--descript--><TD> Path name of output obs definition module to be
-     created by preprocessor. Normally this is 
-    <em class="file">obs_def_mod.f90</em> in the obs_def
-     directory.   </TD></TR>
+<TR><TD>output_obs_def_mod_file </TD>
+    <TD>character(len=129)<BR>
+    <TD> Path name of output obs definition module to be created by preprocessor.
+Normally this is <em class="file">obs_def_mod.f90</em> in the obs_def directory. 
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>input_obs_kind_mod_file           </TD>
-    <!--  type  --><TD valign=top>character(len=129)<BR>
-          <em class="unit">[default: 'null']</em></TD>
-    <!--descript--><TD> Path name of input obs kind module to be
-     preprocessed. Normally this is 
-    <em class="file">DEFAULT_obs_kind_mod.F90</em> in the obs_kind
-     directory. This file must have the appropriate commented lines indicating
-     where the different parts of the input special obs definition modules
-     are to be inserted.  </TD></TR>
+<TR><TD>input_obs_kind_mod_file </TD>
+    <TD>character(len=129)<BR>
+    <TD> Path name of input obs kind module to be preprocessed. Normally this is
+<em class="file">DEFAULT_obs_kind_mod.F90</em> in the obs_kind directory.
+This file must have the appropriate commented lines indicating where the
+different parts of the input special obs definition modules are to be inserted. 
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>output_obs_kind_mod_file           </TD>
-    <!--  type  --><TD valign=top>character(len=129)<BR>
-          <em class="unit">[default: 'null']</em></TD>
-    <!--descript--><TD> Path name of output obs kind module to be
-     created by the preprocessor. Normally this is 
-    <em class="file">obs_kind_mod.F90</em> in the obs_kind
-     directory.   </TD></TR>
+<TR><TD>output_obs_kind_mod_file </TD>
+    <TD>character(len=129)<BR>
+    <TD> Path name of output obs kind module to be created by the preprocessor.
+Normally this is <em class="file">obs_kind_mod.F90</em> in the obs_kind directory. 
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>input_files           </TD>
-    <!--  type  --><TD valign=top>character(len=129)(:)<BR>
-          <em class="unit">[default: 'null']</em></TD>
-    <!--descript--><TD> A list of up to max_input_files file names that contain
-     special format obs definition files that are to be incorporated into the
-     preprocessed obs_kind_mod.f90 and obs_def_mod.f90. The files must be in the
-     special obs definition format that includes commented F90 lines delimitting
-     information about the observation type(s). These files normally reside in
-     the obs_def directory in files such as 
-      <em class="file">obs_def_reanalysis_bufr_mod.f90</em>.</TD></TR>
+<TR><TD>input_files </TD>
+    <TD>character(len=129)(:)<BR>
+    <TD> A list of up to max_input_files file names that contain special format
+obs definition files that are to be incorporated into the preprocessed
+obs_kind_mod.f90 and obs_def_mod.f90. The files must be in the special obs
+definition format that includes commented F90 lines delimitting information
+about the observation type(s). These files normally reside in the obs_def
+directory in files such as <em class="file">obs_def_reanalysis_bufr_mod.f90</em>. 
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>overwrite_output </TD>
-    <!--  type  --><TD valign=top>logical<BR>
-          <em class="unit">[default: .true.]</em></TD>
-    <!--descript--><TD> If set to .true., will allow preprocess to overwrite
-     existing obs_kind_mod.f90 and obs_def_mod.f90 files without complaint.  
-     The default setting has changed from .FALSE. to .TRUE., so by default it
-     will not complain about existing files but will silently update them in place. </TD></TR>
+<TR><TD>overwrite_output </TD>
+    <TD>logical<BR>
+    <TD> If set to .true., will allow preprocess to overwrite existing
+obs_kind_mod.f90 and obs_def_mod.f90 files without complaint.  The default
+setting has changed from .FALSE. to .TRUE., so by default it will not
+complain about existing files but will silently update them in place.
+</TD></TR>
 
+
+</TBODY> 
 </TABLE>
-
 </div>
-<br>
+
+<br />
+<br />
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 types_mod
@@ -206,7 +210,7 @@ must be read from file <em class=file>input.nml</em>.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL><LI>input_obs_def_mod_file, specified by namelist; usually <em class="file">DEFAULT_obs_def_mod.F90</em>.
 <LI>output_obs_def_mod_file, specified by namelist; usually <em class="file">obs_def_mod.f90</em>.
@@ -221,7 +225,7 @@ must be read from file <em class=file>input.nml</em>.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li> none </li>
@@ -232,7 +236,7 @@ must be read from file <em class=file>input.nml</em>.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -318,7 +322,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none
@@ -329,7 +333,7 @@ none
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

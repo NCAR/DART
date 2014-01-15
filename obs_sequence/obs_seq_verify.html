@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>DART PROGRAM obs_seq_verify</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -108,118 +108,120 @@ The <a href="#Usage">USAGE</a> section has more on the actual use of
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that filenames that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / obs_seq_verify_nml / </em>
-      obs_sequence_name, obs_sequence_list, station_template,
-      netcdf_out, calendar, obtype_string, verbose
+&amp;obs_seq_verify_nml
+   obs_sequence_list = '',
+   obs_sequence_name = 'obs_seq.forecast.YYYYMMDDHH',
+   station_template  = 'obsdef_mask.nc',
+   netcdf_out        = 'forecast.nc',
+   obtype_string     = 'METAR_U_10_METER_WIND',
+   verbose           = .true.,
+   /
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>.
-<br />
-<br />
-   You can specify <strong>either</strong>
-   <em class=option>obs_sequence_name</em>
-   <strong>or</strong>
-   <em class=option>obs_sequence_list</em> -- not both.
-   One of them has to be an empty string ... i.e. <em class=option>'&nbsp;'</em>.
-   <!-- i put the space between the single quotes because otherwise it looks
-        like one double quote.  nsc  -->
+<P> You can specify <strong>either</strong> 
+<em class=option>obs_sequence_name</em> <strong>or</strong> 
+<em class=option>obs_sequence_list</em> -- not both.  One of them has to be an
+empty string ... i.e. <em class=option>'&nbsp;'</em>.  
+<!-- i put the space between the single quotes because otherwise it looks
+     like one double quote.  nsc  -->
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TR><!--contents--><TD valign=top>   obs_sequence_name </TD>
-    <!--  type  --><TD valign=top>   character(len=129)         </TD>
-    <!--descript--><TD>Name of the observation sequence file(s). <br />
-            This may be a relative or absolute filename. If the filename
-            contains a '/', the filename is considered to be comprised of
-            everything to the right, and a directory structure to the left.
-            The directory structure is then queried to see if it can be
-            incremented to handle a sequence of observation files.
-            The default behavior of <em class=program>obs_seq_verify</em>
-            is to look for additional files to include until the files
-            are exhausted or a file
-            is found that contains observations beyond the timeframe of
-            interest.<br />e.g. 'obsdir_001/obs_seq.forecast' will cause
-            <em class=program>obs_seq_verify</em> to look for
-            'obsdir_002/obs_seq.forecast', and so on.<br />
-            If this is set, <em class=option>obs_sequence_list</em> must be set to ''.
-            <br />
-            Default '' - an empty string.</TD></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top>   obs_sequence_list </TD>
-    <!--  type  --><TD valign=top>   character(len=129)         </TD>
-    <!--descript--><TD>Name of an ascii text file which contains a list
-            of one or more observation sequence files, one per line.
-            If this is specified, <em class=option>obs_sequence_name</em> must be set to ''.
-            Can be created by any method, including sending the output
-            of the 'ls' command to a file, a text editor, or another program.
-            <br />
-            Default 'obs_coverage_list.txt'</TD></TR>
+<TR><TD>   obs_sequence_name </TD>
+    <TD>   character(len=129)         </TD>
+    <TD>Name of the observation sequence file(s). <br /> 
+This may be a relative or absolute filename. If the filename contains a '/'
+the filename is considered to be comprised of everything to the right, and a
+directory structure to the left.  The directory structure is then queried to
+see if it can be incremented to handle a sequence of observation files.  The
+default behavior of <em class=program>obs_seq_verify</em> is to look for
+additional files to include until the files are exhausted or a file is found
+that contains observations beyond the timeframe of interest.<br />
+e.g.  'obsdir_001/obs_seq.forecast' will cause <em class=program>obs_seq_verify</em> 
+to look for 'obsdir_002/obs_seq.forecast', and so on.<br /> 
+If this is set, <em class=option>obs_sequence_list</em> must be set to '&nbsp;'.
 
-<TR><!--contents--><TD valign=top> station_template </TD>
-    <!--  type  --><TD valign=top> character(len=129) </TD>
-    <!--descript--><TD>The name of the netCDF file created by
-            <a href="obs_seq_coverage.html">obs_seq_coverage</a>
-            that contains the verification network description.
-            <br />
-            Default: 'obsdef_mask.nc'</TD></TR>
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> netcdf_out </TD>
-    <!--  type  --><TD valign=top> character(len=129) </TD>
-    <!--descript--><TD>The base portion of the filename of the file that will
-            contain the forecast quantities. Since each observation type of interest
-            is processed with a separate run of <em class=program>obs_seq_verify</em>,
-            the observation type string is used to create a unique output filename.
-            <br />
-            Default: 'forecast.nc'</TD></TR>
+<TR><TD>   obs_sequence_list </TD>
+    <TD>   character(len=129)         </TD>
+    <TD>Name of an ascii text file which contains a list of one or more
+observation sequence files, one per line.  If this is specified, <em
+class=option>obs_sequence_name</em> must be set to '&nbsp;'.  Can be created by any
+method, including sending the output of the 'ls' command to a file, a text
+editor, or another program.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> calendar </TD>
-    <!--  type  --><TD valign=top> character(len=129) </TD>
-    <!--descript--><TD>The type of the calendar used to interpret the dates.
-            <br />
-            Default: 'Gregorian'</TD></TR>
+<TR><TD> station_template </TD>
+    <TD> character(len=129) </TD>
+    <TD>The name of the netCDF file created by 
+<a href="obs_seq_coverage.html">obs_seq_coverage</a> that contains the
+verification network description.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> obtype_string </TD>
-    <!--  type  --><TD valign=top> character(len=32) </TD>
-    <!--descript--><TD>The observation type string that will be verified.
-            The character string must match one of the standard
-            DART observation types. This will be the name of the
-            variable in the netCDF file, and will also be used to
-            make a unique netCDF file name.
-            <br />
-            Default: '' - an empty string</TD></TR>
+<TR><TD> netcdf_out </TD>
+    <TD> character(len=129) </TD>
+    <TD>The base portion of the filename of the file that will contain the
+forecast quantities. Since each observation type of interest is processed
+with a separate run of <em class=program>obs_seq_verify</em>, the observation
+type string is used to create a unique output filename.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>   verbose   </TD>
-    <!--  type  --><TD valign=top>   logical   </TD>
-    <!--descript--><TD>Print extra run-time information.<br />
-            Default: .false. </TD></TR>
+<TR><TD> calendar </TD>
+    <TD> character(len=129) </TD>
+    <TD>The type of the calendar used to interpret the dates.
+</TD></TR>
 
+<TR><TD> obtype_string </TD>
+    <TD> character(len=32) </TD>
+    <TD>The observation type string that will be verified.  The character string
+must match one of the standard DART observation types. This will be the name
+of the variable in the netCDF file, and will also be used to make a unique
+netCDF file name.
+</TD></TR>
+
+<TR><TD>   verbose   </TD>
+    <TD>   logical   </TD>
+    <TD>Print extra run-time information.
+</TD></TR>
+
+</TBODY> 
 </TABLE>
-
 </div>
+
+<br />
 <br />
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 assim_model/assim_model_mod
@@ -243,7 +245,7 @@ utilities/utilities_mod
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL>
    <LI><em class=file>input.nml</em> is used for
@@ -279,7 +281,7 @@ utilities/utilities_mod
 <!--==================================================================-->
 
 <A NAME="Usage"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>USAGE</H2>
 
 <P>
@@ -549,7 +551,7 @@ variables:
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li> none - but this seems like a good place to start:<br />
@@ -561,7 +563,7 @@ variables:
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -641,7 +643,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 Relax the restriction requiring 100.0% temporal coverage.<br />
@@ -665,7 +667,7 @@ just outside the model domain. I'm working on that ....
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

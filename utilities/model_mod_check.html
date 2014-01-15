@@ -4,7 +4,7 @@
 <HEAD>
 <TITLE>DART program model_mod_check</TITLE>
 <link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -53,96 +53,100 @@
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that filenames that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_mod_check_nml / </em> 
-                              input_file, output_file,
-                              advance_time_present, verbose,
-                              x_ind, loc_of_interest, kind_of_interest
+&amp;model_mod_check 
+   input_file           = "dart_ics",        
+   output_file          = "check_me",
+   advance_time_present = .FALSE.,
+   x_ind                = -1,
+   loc_of_interest      = -1.0, -1.0, -1.0,
+   kind_of_interest     = 'ANY'
+   verbose              = .FALSE.,
+   /
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>.
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top> input_file </TD>
-    <!--  type  --><TD valign=top> character(len=129) </TD>
-    <!--descript--><TD>Name of a file containing DART initial conditions for
-            the model.
-	    <br />
-	    Default 'dart.ics'</TD></TR>  
+<TR><TD> input_file </TD>
+    <TD> character(len=129) </TD>
+    <TD>Name of a file containing DART initial conditions for the model.
+</TD></TR>  
 
-<TR><!--contents--><TD valign=top> output_file  </TD>
-    <!--  type  --><TD valign=top> character(len=129) </TD>
-    <!--descript--><TD>base portion of the name of the test netCDF file that
-            will exercise the DART routines that create the 
-            <em class="file">True_State.nc</em>,
-            <em class="file">Prior_Diag.nc</em>, and
-            <em class="file">Posterior_Diag.nc</em> files. The proper
-            file extension will be added.
-	    <br />
-	    Default 'check_me'</TD></TR>  
+<TR><TD> output_file  </TD>
+    <TD> character(len=129) </TD>
+    <TD>base portion of the name of the test netCDF file that will exercise the
+DART routines that create the <em class="file">True_State.nc</em>, 
+<em class="file">Prior_Diag.nc</em>, and <em class="file">Posterior_Diag.nc</em>
+files. The proper file extension will be added.
+</TD></TR>  
 
-<TR><!--contents--><TD valign=top> advance_time_present </TD>
-    <!--  type  --><TD valign=top> logical </TD>
-    <!--descript--><TD>Flag to indicate if the DART restart file has
-            the <em class="option">advance time</em> present in the file.
-	    <br />
-            Default: .FALSE.</TD></TR>  
+<TR><TD> advance_time_present </TD>
+    <TD> logical </TD>
+    <TD>Flag to indicate if the DART restart file has the 
+<em class="option">advance time</em> present in the file.
+</TD></TR>  
 
-<TR><!--contents--><TD valign=top> x_ind </TD>
-    <!--  type  --><TD valign=top> integer </TD>
-    <!--descript--><TD>integer index into the DART state vector.
-	    This will be used to test the metadata routines.
-            Answers questions about location, what variable type is stored there, etc.
-	    <br />
-            Default: -1</TD></TR>  
+<TR><TD> x_ind </TD>
+    <TD> integer </TD>
+    <TD>integer index into the DART state vector.  This will be used to test the
+metadata routines.  Answers questions about location, what variable type is
+stored there, etc.
+</TD></TR>  
 
-<TR><!--contents--><TD valign=top> loc_of_interest </TD>
-    <!--  type  --><TD valign=top> real(r8), dimension(3) </TD>
-    <!--descript--><TD>The lat/lon/level for a particular location.
-	    Tests the routine to find the closest gridpoint.
-	    <br />
-            Default: -1.0, -1.0, -1.0</TD></TR>  
+<TR><TD> loc_of_interest </TD>
+    <TD> real(r8), dimension(3) </TD>
+    <TD>The lat/lon/level for a particular location.  Tests the routine to find
+the closest gridpoint.
+</TD></TR>  
 
-<TR><!--contents--><TD valign=top> kind_of_interest </TD>
-    <!--  type  --><TD valign=top> character(len=32) </TD>
-    <!--descript--><TD>Since there are usually many state variables on the same
-            grid, it may be useful to restrict the search for a location of interest
-	    to include a particular kind of state variable.
-	    <br />
-            Default: 'ANY'</TD></TR>  
+<TR><TD> kind_of_interest </TD>
+    <TD> character(len=32) </TD>
+    <TD>Since there are usually many state variables on the same grid, it may be
+useful to restrict the search for a location of interest to include a
+particular kind of state variable.
+</TD></TR>  
 
-<TR><!--contents--><TD valign=top>   verbose   </TD>
-    <!--  type  --><TD valign=top>   logical   </TD>
-    <!--descript--><TD>Print extra info about the model_mod_check run.<br />
-            Default: .false. </TD></TR>  
+<TR><TD>   verbose   </TD>
+    <TD>   logical   </TD>
+    <TD>Print extra info about the model_mod_check run.
+</TD></TR>  
 
+
+</TBODY> 
 </TABLE>
-
 </div>
+
+<br />
 <br />
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 assim_model_mod
@@ -164,7 +168,7 @@ utilities_mod
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL><LI><em class="file">input.nml</em> is used for 
         <em class="code">model_mod_check_nml</em></LI>
@@ -187,7 +191,7 @@ utilities_mod
 <!--==================================================================-->
 
 <A NAME="Usage"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>USAGE</H2>
 
 <P>
@@ -362,7 +366,7 @@ call test_interpolate(statevector, test_pressure = 500.0_r8, &amp;
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li> none </li>
@@ -373,7 +377,7 @@ call test_interpolate(statevector, test_pressure = 500.0_r8, &amp;
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <P>There are no error conditions to check. This program is intended
@@ -394,7 +398,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>Expanded instructions on how to add a model, and how to methodically
 test piece-by-piece.
@@ -405,7 +409,7 @@ test piece-by-piece.
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

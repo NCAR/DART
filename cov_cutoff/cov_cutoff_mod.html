@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>module cov_cutoff_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -47,38 +47,49 @@
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Filenames that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / cov_cutoff_nml / </em> select_localization
+&amp;cov_cutoff_nml
+   select_localization = 1  
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> 
+</TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>select_localization</TD>
-    <!--  type  --><TD valign=top>integer<br>
-                                  <em class="unit">&nbsp;</em></TD>
-    <!--descript--><TD>Selects the localization function. [Default: 1] <BR>
-                   1 = Gaspari-Cohn 5th order polynomial with halfwidth c. <BR>
-                   2 = Boxcar with halfwidth c (goes to 0&nbsp;for&nbsp;z_in&nbsp;&#60;&nbsp;2c). <BR>
-                   3 = ramped boxcar. Has value 1&nbsp;for&nbsp;z_in &#60;&nbsp;c and then 
-                   reduces linearly to&nbsp;0&nbsp;at&nbsp;z_in&nbsp;=&nbsp;2c.  </TD></TR>
+<TBODY valign=top>
+<TR><TD>select_localization</TD>
+    <TD>integer</TD>
+    <TD>Selects the localization function.
+        <UL style="list-style: none;">
+        <LI>1 = Gaspari-Cohn 5th order polynomial with halfwidth c.</LI>
+        <LI>2 = Boxcar with halfwidth c (goes to 0 for z_in &#60; 2c).</LI>
+        <LI>3 = Ramped Boxcar. Has value 1 for z_in &#60; c and then 
+                    reduces linearly to 0 at z_in = 2c.  </LI>
+        </UL>
+    </TD>
+</TR>
 </TABLE>
 
 </div>
@@ -87,7 +98,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -104,19 +115,13 @@ location_mod
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
-<TABLE>
+<TABLE summary='modules used'>
 <TR><TD><em class=call>use cov_factor_mod, only : </em></TD>
     <TD><A HREF="#comp_cov_factor">comp_cov_factor</A> </TD></TR>
 </TABLE>
-
-<P>
-Optional namelist interface
-<A HREF="#Namelist"> <em class=code>&amp;cov_cutoff_nml</em> </A>
-may be read from file <em class=file>input.nml</em>.
-</P>
 
 <P>
    A note about documentation style. 
@@ -131,14 +136,14 @@ may be read from file <em class=file>input.nml</em>.
 <div class=routine>
 <em class=call> var = comp_cov_factor(z_in, c
      <em class=optionalcode>[,&nbsp;obs_loc]
-     [,&nbsp;obs_kind] [,&nbsp;target_loc] [,&nbsp;target_kind] 
+     [,&nbsp;obs_type] [,&nbsp;target_loc] [,&nbsp;target_kind] 
      [,&nbsp;localization_override]</em>) </em>
 <pre>
 real(r8)                                  :: <em class=code>comp_cov_factor</em>
 real(r8), intent(in)                      :: <em class=code>z_in</em>
 real(r8), intent(in)                      :: <em class=code>c</em>
 type(location_type), optional, intent(in) :: <em class=optionalcode>obs_loc</em>
-integer, optional, intent(in)             :: <em class=optionalcode>obs_kind</em>
+integer, optional, intent(in)             :: <em class=optionalcode>obs_type</em>
 type(location_type), optional, intent(in) :: <em class=optionalcode>target_loc</em>
 integer, optional, intent(in)             :: <em class=optionalcode>target_kind</em>
 integer, optional, intent(in)             :: <em class=optionalcode>localization_override</em>
@@ -153,13 +158,13 @@ Returns a weighting factor for observation and a target variable (state or
 observation) separated by distance z_in and with a half-width distance, c.
 Three options are provided and controlled by a namelist parameter. The
 optional argument localization_override controls the type of localization
-function if present. The optional arguments obs_loc, obs_kind and
+function if present. The optional arguments obs_loc, obs_type and
 target_loc, target_kind are not used in the default code. They are made
 available for users who may want to design more sophisticated localization
 functions.
 </P>
 
-<TABLE width=100% border=0 summary="" cellpadding=3>
+<TABLE width=100% border=0 summary="function arguments" cellpadding=3>
 <TR><TD valign=top><em class=code>var</em></TD>
     <TD>Weighting factor.</TD></TR>
 <TR><TD valign=top><em class=code>z_in</em></TD>
@@ -169,13 +174,13 @@ functions.
         half-width of functions used here.</TD></TR>
 <TR><TD valign=top><em class=optionalcode>obs_loc</em></TD>
     <TD>Location of the observation.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>obs_kind</em></TD>
-    <TD>Observation kind.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>obs_type</em></TD>
+    <TD>Observation specific type.</TD></TR>
 <TR><TD valign=top><em class=optionalcode>target_loc</em></TD>
     <TD>Location of target.</TD></TR>
 <TR><TD valign=top><em class=optionalcode>target_kind</em></TD>
-    <TD>Kind of target.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>localization_override&nbsp;&nbsp;</em></TD>
+    <TD>Generic kind of target.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>localization_override</em></TD>
     <TD>Controls localization type if present. Same values as for 
          namelist control.</TD></TR>
 </TABLE>
@@ -188,9 +193,9 @@ functions.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
-<TABLE border=0 >
+<TABLE border=0 summary="files used">
 <TR><TH>filename</TH>
     <TH>purpose</TH></TR>
 <TR><TD>input.nml</TD>
@@ -202,7 +207,7 @@ functions.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ol>
 <li>Gaspari and Cohn, 1999, QJRMS, <b>125</b>, 723-757.  (eqn. 4.10)</li>
@@ -213,10 +218,10 @@ functions.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100% summary="errors">
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>comp_cov_factor</TD>
@@ -236,7 +241,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time
@@ -247,7 +252,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -258,7 +263,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>
@@ -274,7 +279,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+<TR><TD valign=top>Change history:</TD><TD> try "svn log" or "svn diff"</TD></TR>
 </TABLE>
 
 <!--==================================================================-->

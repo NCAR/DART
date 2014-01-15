@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>DART PROGRAM obs_seq_coverage</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -171,200 +171,241 @@ The <a href="#Usage">USAGE</a> section has more on the actual use of
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that filenames that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration (i.e. what follows) has a different syntax, naturally.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / obs_seq_coverage_nml / </em>
-      obs_sequence_name, obs_sequence_list, obs_of_interest, 
-      textfile_out, netcdf_out, calendar, first_analysis, last_analysis,
-      forecast_length_days, forecast_length_seconds, verification_interval_seconds, 
-      temporal_coverage_percent, lonlim1, lonlim2, latlim1, latlim2,
-      verbose
+&amp;obs_seq_coverage_nml
+   obs_sequence_list = 'obs_coverage_list.txt',
+   obs_sequence_name = '',
+   obs_of_interest   = '',
+   textfile_out      = 'obsdef_mask.txt',
+   netcdf_out        = 'obsdef_mask.nc',
+   calendar          = 'Gregorian',
+   first_analysis    =  2003, 1, 1, 0, 0, 0,
+   last_analysis     =  2003, 1, 2, 0, 0, 0,
+   forecast_length_days          = 1,
+   forecast_length_seconds       = 0,
+   verification_interval_seconds = 21600,
+   temporal_coverage_percent     = 100.0,
+   lonlim1    =  missing_r8,
+   lonlim2    =  missing_r8,
+   latlim1    =  missing_r8,
+   latlim2    =  missing_r8,
+   verbose    = .false.,
+   debug      = .false.,
+   /
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>This namelist is read in a file called <em class=file>input.nml</em>. <br />
-   The date-time integer arrays in this namelist have the form
-   (YYYY,&nbsp;MO,&nbsp;DA,&nbsp;HR,&nbsp;MIN,&nbsp;SEC). <br />
-   The allowable ranges for the region boundaries are: latitude [-90.,90],
-   longitude [0.,Inf.]
-<br />
-<br />
-   You can specify <strong>either</strong>
-   <em class=option>obs_sequence_name</em>
-   <strong>or</strong>
-   <em class=option>obs_sequence_list</em> -- not both.
-   One of them has to be an empty string ... i.e. <em class=option>''</em>.
+<P>Note that 'missing_r8' is not a valid number.
+To use the defaults delete these lines from the namelist,
+or set them to 0.0, 360.0 and -90.0, 90.0.
+</P><P>
+The date-time integer arrays in this namelist have the form
+(YYYY,&nbsp;MM,&nbsp;DD,&nbsp;HR,&nbsp;MIN,&nbsp;SEC).
+</P><P>
+The allowable ranges for the region boundaries are: latitude [-90.,90],
+longitude [0.,Inf.]
+</P> <P>
+You can specify <strong>either</strong> <em class=option>obs_sequence_name</em>
+<strong>or</strong> <em class=option>obs_sequence_list</em> -- not both.
+One of them has to be an empty string ... i.e. <em class=option>''</em>.
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TR><!--contents--><TD valign=top>   obs_sequence_name </TD>
-    <!--  type  --><TD valign=top>   character(len=129)         </TD>
-    <!--descript--><TD>Name of the observation sequence file(s). <br />
-            This may be a relative or absolute filename. If the filename
-            contains a '/', the filename is considered to be comprised of
-            everything to the right, and a directory structure to the left.
-            The directory structure is then queried to see if it can be
-            incremented to handle a sequence of observation files.
-            The default behavior of <em class=program>obs_seq_coverage</em>
-            is to look for additional files to include until the files
-            are exhausted or an <em class=file>obs_seq.final</em> file
-            is found that contains observations beyond the timeframe of
-            interest.<br />e.g. 'obsdir_001/obs_seq.final' will cause
-            <em class=program>obs_seq_coverage</em> to look for
-            'obsdir_002/obs_seq.final', and so on.<br />
-            If this is set, <em class=option>obs_sequence_list</em> must be set to ''.
-            <br />
-            Default '' - an empty string.</TD></TR> 
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top>   obs_sequence_list </TD>
-    <!--  type  --><TD valign=top>   character(len=129)         </TD>
-    <!--descript--><TD>Name of an ascii text file which contains a list
-            of one or more observation sequence files, one per line.
-            If this is specified, <em class=option>obs_sequence_name</em> must be set to ''.
-            Can be created by any method, including sending the output
-            of the 'ls' command to a file, a text editor, or another program.
-            <br />
-            Default 'obs_coverage_list.txt'</TD></TR>
+<TR><TD> obs_sequence_name </TD>
+    <TD> character(len=129) </TD>
+    <TD>Name of the observation sequence file(s). <br />
+This may be a relative or absolute filename. If the filename contains a '/',
+the filename is considered to be comprised of everything to the right, and a
+directory structure to the left.  The directory structure is then queried to
+see if it can be incremented to handle a sequence of observation files.  The
+default behavior of <em class=program>obs_seq_coverage</em> is to look for
+additional files to include until the files are exhausted or an <em
+class=file>obs_seq.final</em> file is found that contains observations beyond
+the timeframe of interest.<br />e.g. 'obsdir_001/obs_seq.final' will cause
+<em class=program>obs_seq_coverage</em> to look for
+'obsdir_002/obs_seq.final', and so on.<br /> If this is set, <em
+class=option>obs_sequence_list</em> must be set to '&nbsp;'.  
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> obs_of_interest </TD>
-    <!--  type  --><TD valign=top>  character(len=32), dimension(:) </TD>
-    <!--descript--><TD>These are the observation types that will be verified.
-            It is an array of character strings that must match the standard
-            DART observation types. Simply add as many or as few observation 
-            types as you need. Could be 'METAR_U_10_METER_WIND',
-            'METAR_V_10_METER_WIND',..., for example.
-            <br />
-            Default: '' - an empty string</TD></TR>
+<TR><TD> obs_sequence_list </TD>
+    <TD> character(len=129) </TD>
+    <TD>Name of an ascii text file which contains a list
+of one or more observation sequence files, one per line.  If this is
+specified, <em class=option>obs_sequence_name</em> must be set to '&nbsp;'.  
+Can be created by any method, including sending the output of the 'ls'
+command to a file, a text editor, or another program.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> textfile_out </TD>
-    <!--  type  --><TD valign=top> character(len=129) </TD>
-    <!--descript--><TD>The name of the file that will contain the observation
-            definitions of the verfication observations.  Only the metadata 
-            from the observations (location, time, obs_type) are preserved in
-            this file. They are in no particular order.
-            <a href="obs_selection.html">obs_selection</a> will use this file
-            as a 'mask' to extract the real observations from the candidate 
-            observation sequence files. 
-            <br />
-            Default: 'obsdef_mask.txt'</TD></TR>
+<TR><TD> obs_of_interest </TD>
+    <TD> character(len=32), dimension(:) </TD>
+    <TD>These are the observation types that will be verified.
+It is an array of character strings that must match the standard DART
+observation types. Simply add as many or as few observation types as you
+need. Could be 'METAR_U_10_METER_WIND', 'METAR_V_10_METER_WIND',..., for
+example.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> netcdf_out </TD>
-    <!--  type  --><TD valign=top> character(len=129) </TD>
-    <!--descript--><TD>The name of the file that will contain the observation
-            definitions of the unique locations that match <strong>any</strong>
-            of the verification times.
-            This file is used in conjunction with
-            <a href="obs_seq_verify.html">obs_seq_verify</a> to reorder the
-            <em class=file>obs_seq.forecast</em> into a structure that will
-            facilitate calculating the statistics and scores of the forecasts.
-            <br />
-            Default: 'obsdef_mask.nc'</TD></TR>
+<TR><TD> textfile_out </TD>
+    <TD> character(len=129) </TD>
+    <TD>The name of the file that will contain the observation
+definitions of the verfication observations.  Only the metadata from the
+observations (location, time, obs_type) are preserved in this file. They are
+in no particular order.  <a href="obs_selection.html">obs_selection</a> will
+use this file as a 'mask' to extract the real observations from the candidate
+observation sequence files.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> calendar </TD>
-    <!--  type  --><TD valign=top> character(len=129) </TD>
-    <!--descript--><TD>The type of the calendar used to interpret the dates. 
-            <br />
-            Default: 'Gregorian'</TD></TR>
+<TR><TD> netcdf_out </TD>
+    <TD> character(len=129) </TD>
+    <TD>The name of the file that will contain the observation
+definitions of the unique locations that match <strong>any</strong> of the
+verification times.  This file is used in conjunction with 
+<a href="obs_seq_verify.html">obs_seq_verify</a> to reorder the 
+<em class=file>obs_seq.forecast</em> into a structure that will facilitate
+calculating the statistics and scores of the forecasts.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> first_analysis </TD>
-    <!--  type  --><TD valign=top>  integer, dimension(6) </TD>
-    <!--descript--><TD>The start time of the first forecast. Also
-            known as the analysis time of the first forecast.
-            The six integers are: year, month, day, hour, hour, minute,
-            second -- in that order. 
-            <br />
-            Default: 2003, 1, 1, 0, 0, 0</TD></TR>
+<TR><TD> calendar </TD>
+    <TD> character(len=129) </TD>
+    <TD>The type of the calendar used to interpret the dates. 
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> last_analysis  </TD>
-    <!--  type  --><TD valign=top>  integer, dimension(6) </TD>
-    <!--descript--><TD>The start time of the last forecast. 
-            The six integers are: year, month, day, hour, hour, minute,
-            second -- in that order. This needs to be a perfect multiple
-            of the <em class=option>verification_interval_seconds</em> from the start of
-            <em class=option>fist_analysis</em>. 
-            <br />
-            Default: 2003, 1, 2, 0, 0, 0</TD></TR>
+<TR><TD> first_analysis </TD>
+    <TD> integer, dimension(6) </TD>
+    <TD>The start time of the first forecast. Also known as the analysis time
+of the first forecast.  The six integers are: year, month, day, hour, hour,
+minute, second -- in that order.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>forecast_length_days<br />
-                                  forecast_length_seconds</TD>
-    <!--  type  --><TD valign=top> integer </TD>
-    <!--descript--><TD> both values are used to determine the 
-            <strong>total</strong> length of any single forecast.
-            <br />
-            Default: forecast_length_days : 1<br />
-            Default: forecast_length_seconds : 0</TD></TR>
+<TR><TD> last_analysis  </TD>
+    <TD> integer, dimension(6) </TD>
+    <TD>The start time of the last forecast.  The six integers are: year,
+month, day, hour, hour, minute, second -- in that order. This needs to be a
+perfect multiple of the <em class=option>verification_interval_seconds</em>
+from the start of <em class=option>first_analysis</em>.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> verification_interval_seconds </TD>
-    <!--  type  --><TD valign=top> integer </TD>
-    <!--descript--><TD>The number of seconds between each verification.<br />
-            1 h == 3600s<br />
-            2 h == 7120s<br />
-            3 h == 10800s<br />
-            6 h == 21600s<br />
-            Default: 21600</TD></TR>
+<TR><TD> forecast_length_days <br />
+         forecast_length_seconds </TD>
+    <TD> integer </TD>
+    <TD> both values are used to determine the <strong>total</strong> length 
+of any single forecast.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> temporal_coverage_percent </TD>
-    <!--  type  --><TD valign=top>  real </TD>
-    <!--descript--><TD>In the future, it may be possible to specify that
-            you do not need an observation at <strong>every</strong> time.
-            presently, this is <strong>required</strong> to be 100%
-            <br />
-            Default: 100.0</TD></TR>
+<TR><TD> verification_interval_seconds </TD>
+    <TD> integer </TD>
+    <TD>The number of seconds between each verification.
+<UL style="list-style: none;">
+<LI> 1 h == 3600s</LI>
+<LI> 2 h == 7120s</LI>
+<LI> 3 h == 10800s</LI>
+<LI> 6 h == 21600s</LI>
+</UL>
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> lonlim1 </TD>
-    <!--  type  --><TD valign=top> real </TD>
-    <!--descript--><TD>Westernmost longitude of desired region.<br />
-            Default: 0.0</TD></TR>
+<TR><TD> temporal_coverage_percent </TD>
+    <TD> real </TD>
+    <TD>In the future, it may be possible to specify that you do not need an
+observation at <strong>every</strong> time.  Presently, this is 
+<strong>required</strong> to be 100%
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> lonlim2 </TD>
-    <!--  type  --><TD valign=top> real </TD>
-    <!--descript--><TD>Easternmost longitude of desired region.
-            <em class=new>If any of these values is <b>less than</b>
-            the westernmost values, it defines a region that spans the
-            prime meridian. No problem.</em> It is perfectly acceptable
-            to specify lonlim1 = 330 , lonlim2 = 50 to identify a region
-            like "Africa".<br />
-            Default: 360.0</TD></TR>
+<TR><TD> lonlim1 </TD>
+    <TD> real </TD>
+    <TD>Westernmost longitude of desired region.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> latlim1 </TD>
-    <!--  type  --><TD valign=top> real </TD>
-    <!--descript--><TD>Southernmost latitude of desired region.<br />
-            Default: -90.0</TD></TR>
+<TR><TD> lonlim2 </TD>
+    <TD> real </TD>
+    <TD>Easternmost longitude of desired region.  <em class=new>If this
+value is <b>less than</b> the westernmost value, it defines a region
+that spans the prime meridian. </em> It is perfectly acceptable to
+specify lonlim1 = 330 , lonlim2 = 50 to identify a region like "Africa".
+</TD></TR>
 
-<TR><!--contents--><TD valign=top> latlim2 </TD>
-    <!--  type  --><TD valign=top> real </TD>
-    <!--descript--><TD>Northernmost latitude of desired region.<br />
-            Default: 90.0</TD></TR>
+<TR><TD> latlim1 </TD>
+    <TD> real </TD>
+    <TD>Southernmost latitude of desired region.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>   verbose   </TD>
-    <!--  type  --><TD valign=top>   logical   </TD>
-    <!--descript--><TD>Print extra run-time information.<br />
-            Default: .false. </TD></TR> 
+<TR><TD> latlim2 </TD>
+    <TD> real </TD>
+    <TD>Northernmost latitude of desired region.
+</TD></TR>
 
+<TR><TD>   verbose   </TD>
+    <TD>   logical   </TD>
+    <TD>Print extra run-time information.
+</TD></TR> 
+
+<TR><TD>   debug </TD>
+    <TD>   logical   </TD>
+    <TD>Enable debugging messages.  May generate a lot of output.
+</TD></TR> 
+
+
+</TBODY> 
 </TABLE>
-
 </div>
+
+<br />
+<br />
+
+
+<P>For example:
+<pre>
+&amp;obs_seq_coverage_nml
+   obs_sequence_list = 'obs_coverage_list.txt',
+   obs_sequence_name = '',
+   obs_of_interest   = 'METAR_U_10_METER_WIND',
+                       'METAR_V_10_METER_WIND',
+   textfile_out      = 'obsdef_mask.txt',
+   netcdf_out        = 'obsdef_mask.nc',
+   calendar          = 'Gregorian',
+   first_analysis    =  2003, 1, 1, 0, 0, 0,
+   last_analysis     =  2003, 1, 2, 0, 0, 0,
+   forecast_length_days          = 1,
+   forecast_length_seconds       = 0,
+   verification_interval_seconds = 21600,
+   temporal_coverage_percent     = 100.0,
+   lonlim1    =    0.0,
+   lonlim2    =  360.0,
+   latlim1    =  -90.0,
+   latlim2    =   90.0,
+   verbose    = .false.,
+   /
+</pre>
+
 <br />
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 assim_model_mod
@@ -386,7 +427,7 @@ utilities_mod
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL>
    <LI><em class=file>input.nml</em> is used for 
@@ -413,7 +454,7 @@ utilities_mod
 <!--==================================================================-->
 
 <A NAME="Usage"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>USAGE</H2>
 
 <P>
@@ -704,7 +745,7 @@ files into one compact file to use in your ensemble forecast.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li> none - but this seems like a good place to start:
@@ -717,7 +758,7 @@ files into one compact file to use in your ensemble forecast.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -793,7 +834,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 Relax the restriction requiring 100.0% temporal coverage.<br />
@@ -817,7 +858,7 @@ just outside the model domain. I'm working on that ....
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

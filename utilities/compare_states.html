@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>program compare_states</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -39,18 +39,19 @@
 Utility program to compare fields in two NetCDF files and
 print out the min and max values from each file and the
 min and max of the differences between the two fields.
-The fields to be compared can be named directly in the
-namelist, or can be in a separate file.
-The two input filenames are read from the console or
+The default is to compare all numeric variables in the files,
+but specific variables can be specified in the namelist or
+in a separate file.
+The two input NetCDF filenames are read from the console or
 can be echo'd into the standard input of the program.
 </P>
 
 <P>
-Specify the list of field names to compare either in
+If you want to restrict the comparison to only specific
+variables in the files, 
+specify the list of field names to compare either in
 the namelist, or put a list of fields, one per line,
 in a text file and specify the name of the text file.
-There should be an option to compare all data fields
-in the file (this is not implemented yet.)
 Only data arrays can be compared, not character arrays,
 strings, or attribute values.
 </P>
@@ -66,62 +67,88 @@ must be read from file <em class=file>input.nml</em>.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / compare_states_nml / </em> 
-  fieldnames, fieldlist_file, fail_on_missing_field, debug
+&amp;compare_states_nml
+  do_all_numeric_fields = .true.,
+  fieldnames = '', 
+  fieldlist_file = '',
+  fail_on_missing_field = .true.,
+  debug = .false., 
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-The namelist sets the behavior of this tool.
-<br>
-<br>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=10 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>fieldnames</TD>
-    <!--  type  --><TD valign=top>character list</TD>
-    <!--descript--><TD valign=top>One or more names of arrays in the NetCDF files
-                  to be compared.
-                  Default "&nbsp;".</TD></TR>
-<TR><!--contents--><TD valign=top>fieldlist_file</TD>
-    <!--  type  --><TD valign=top>character</TD>
-    <!--descript--><TD valign=top>Name of a text file containing the fieldnames, one
-                  per line.  It is an error to specify both the fieldnames namelist
-                  item and this one.
-                  Default "&nbsp;"</TD></TR>
-<TR><!--contents--><TD valign=top>fail_on_missing_field</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD valign=top>If .true. and any one of the field names is not
-                  found in both files it is a fatal error.  If .false. a message is
-                  printed about the missing field but execution continues.
-                  Default .true.</TD></TR>
-<TR><!--contents--><TD valign=top>debug</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD valign=top>If true print out debugging info.
-                  Default .false.</TD></TR>
+<TBODY valign=top>
+
+<TR><TD>do_all_numeric_fields</TD>
+    <TD>logical</TD>
+    <TD>If .true., all integer, float, and double variables in the
+NetCDF files will have their values compared.  If .false. the list of
+specific variables to be compared must be given either directly in
+the namelist in the <em class=code>fieldnames</em> item, or else the
+field names must be listed in an ASCII file, one name per line, and
+the name of that file is specified in <em class=code>fieldlist_file</em>.
+</TD></TR>
+
+<TR><TD>fieldnames</TD>
+    <TD>character list</TD>
+    <TD>One or more names of arrays in the NetCDF files to be compared.
+Only read if <em class=code>do_all_numeric_fields</em> is .false.
+</TD></TR>
+
+<TR><TD>fieldlist_file</TD>
+    <TD>character</TD>
+    <TD>Name of a text file containing the fieldnames, one per line.  It is an
+error to specify both the fieldnames namelist item and this one.
+Only read if <em class=code>do_all_numeric_fields</em> is .false.
+</TD></TR>
+
+<TR><TD>fail_on_missing_field</TD>
+    <TD>logical</TD>
+    <TD>If .true. and any one of the field names is not found in both files it is
+a fatal error.  If .false. a message is printed about the missing field but
+execution continues.
+</TD></TR>
+
+<TR><TD>debug</TD>
+    <TD>logical</TD>
+    <TD>If true print out debugging info.
+<TD></TR>
+
+</TBODY> 
 </TABLE>
-
 </div>
-<br>
+
+<br />
+<br />
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 types_mod
@@ -134,7 +161,7 @@ parse_args_mod
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL><LI>two NetCDF input files
     <LI>compare_states.nml 
@@ -146,7 +173,7 @@ parse_args_mod
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li> none </li>
@@ -157,7 +184,7 @@ parse_args_mod
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -205,7 +232,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none
@@ -216,7 +243,7 @@ none
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

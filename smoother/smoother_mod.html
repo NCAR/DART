@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>module smoother_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -159,78 +159,91 @@ reply = input('Lag 09.  hit enter to continue ');
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
 Character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / smoother_nml / </em>  
-   num_lags, start_from_restart, output_restart,
-   restart_in_file_name, restart_out_file_name
+&amp;smoother_nml
+   num_lags              = 0,
+   start_from_restart    = .false.,
+   output_restart        = .false.,
+   restart_in_file_name  = 'ics',
+   restart_out_file_name = 'restart'  
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top>num_lags</TD>
-    <!--  type  --><TD valign=top>integer</TD>
-    <!--descript--><TD>Number of smoother lags; &lt; 1 means no smoother. 
-                       Default: 0</TD></TR>
+<TR><TD>num_lags</TD>
+    <TD>integer</TD>
+    <TD>Number of smoother lags; &lt; 1 means no smoother. 
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>start_from_restart</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>True if smoother states are to come from restart file(s). 
-                       False if they are to be spun up from scratch. 
-                       Default: .false.</TD></TR>
+<TR><TD>start_from_restart</TD>
+    <TD>logical</TD>
+    <TD>True if smoother states are to come from restart file(s). 
+False if they are to be spun up from scratch. 
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>output_restart</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>True if restart file(s) are to be written, else false. 
-                       Default:.false.</TD></TR>
+<TR><TD>output_restart</TD>
+    <TD>logical</TD>
+    <TD>True if restart file(s) are to be written, else false. 
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>restart_in_file_name</TD>
-    <!--  type  --><TD valign=top>character(len=129)</TD>
-    <!--descript--><TD>String used to construct the file name from which 
-      to read restart data. 'Lag_NNNNN_' will be prepended to the specified value to 
-      create the actual filename.  If each ensemble is to be read from a separate file, 
-      the .NNNN ensemble number will also be appended.  e.g. specifying 'ics' here
-      results in 'Lag_00001_ics' if all ensemble members are read from a single file, 
-      'Lag_00001_ics.0001', 'Lag_00001_ics.0002', etc for multiples.
-      Default: ics </TD></TR>
+<TR><TD>restart_in_file_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>String used to construct the file name from which to read restart data.
+'Lag_NNNNN_' will be prepended to the specified value to create the actual
+filename.  If each ensemble is to be read from a separate file, the .NNNN
+ensemble number will also be appended.  e.g. specifying 'ics' here results in
+'Lag_00001_ics' if all ensemble members are read from a single file,
+'Lag_00001_ics.0001', 'Lag_00001_ics.0002', etc for multiples.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>restart_out_file_name&nbsp;&nbsp;&nbsp;</TD>
-    <!--  type  --><TD valign=top>character(len=129)</TD>
-    <!--descript--><TD>String used to construct the file name to which
-      to write restart data. 'Lag_NNNNN_' will be prepended to the specified value to 
-      create the actual filename.  If each ensemble is to be written to a separate file, 
-      the .NNNN ensemble number will also be appended.  e.g. specifying 'restart' here
-      results in 'Lag_00001_restart' if all ensemble members are written to a single file, 
-      'Lag_00001_restart.0001', 'Lag_00001_restart.0002', etc for multiples.
-      Default: restart </TD></TR>
+<TR><TD>restart_out_file_name&nbsp;&nbsp;&nbsp;</TD>
+    <TD>character(len=129)</TD>
+    <TD>String used to construct the file name to which to write restart data.
+'Lag_NNNNN_' will be prepended to the specified value to create the actual
+filename.  If each ensemble is to be written to a separate file, the .NNNN
+ensemble number will also be appended.  e.g. specifying 'restart' here
+results in 'Lag_00001_restart' if all ensemble members are written to a
+single file, 'Lag_00001_restart.0001', 'Lag_00001_restart.0002', etc for
+multiples.
+</TD></TR>
 
+
+</TBODY> 
 </TABLE>
-
 </div>
-<br>
+
+<br />
+<br />
 
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -253,7 +266,7 @@ adaptive_inflate_mod
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -270,11 +283,6 @@ adaptive_inflate_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#smoother_ss_diagnostics">smoother_ss_diagnostics</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#smoother_end">smoother_end</A></TD></TR>
 </TABLE>
-
-<P>
-Optional namelist interface <a href="#Namelist"><em class=code>&amp;smoother_nml</em></a>
-may be read from file <em class=file>input.nml</em>.
-</P>
 
 <P>
    A note about documentation style.
@@ -764,7 +772,7 @@ propagate the state to all requested lags.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL><LI>input.nml</LI>
     <LI>smoother initial condition files</LI>
@@ -776,7 +784,7 @@ propagate the state to all requested lags.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <!-- FIXME 
 should put a reference to any of Shree's papers here -->
@@ -789,7 +797,7 @@ should put a reference to any of Shree's papers here -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -812,7 +820,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time
@@ -823,7 +831,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -834,7 +842,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>
