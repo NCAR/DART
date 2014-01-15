@@ -3,8 +3,8 @@
 <HTML>
 <HEAD>
 <TITLE>module mpi_utilities_mod</TITLE>
-<link rel="stylesheet" type="text/css" href="../doc/html/doc.css">
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -82,13 +82,9 @@ error about the mpi module being missing, edit the source code
 in <em class="code">mpi_utilities/mpi_utilities_mod.f90</em>
 and comment out the <em class="code">use mpi</em> line and
 comment in the <em class="code">include 'mpi.h'</em> line.
-</P> <P>
-If you get a compile-time error about the <em class="code">system()</em>
-function being undefined, try running the <em class=file>fixsystem</em>
-shell script in this directory.  It comments out (or back in if you run 
-it a second time) the interface block for the system() call.  As of this
-writing, all compilers except gfortran require the block while
-gfortran fails if the block is defined.  Go figure.  
+The 'use' line must be before the 'contains' line, while
+the 'include' line must be after, so do not move the existing lines.
+Just comment them in or out depending on which one you need to use.
 </P> <P>
 To preserve backwards compatibility this code does not require
 a namelist.  However there is a namelist defined in the source file  
@@ -106,7 +102,8 @@ the defaults are being used or if the namelist is being read in.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
+
 <H2>NAMELIST</H2>
 <P>
 The source code defines a namelist, but for backwards compatibility
@@ -114,37 +111,49 @@ it is not read in unless the source code
 in <em class="code">mpi_utilities/mpi_utilities_mod.f90</em>
 is edited, the module
 global variable <em class="code">use_namelist</em> is changed from 
-.FALSE. to .TRUE., and then all executables must be recompiled.
+.FALSE. to .TRUE., and then all executables are recompiled.
 </P>
-
 <P>
-If the namelist is enabled, then the values in the namelist
-<A HREF="#Namelist"><em class=code>&amp;mpi_utilities_nml</em> </A>
-will be read from file <em class=file>input.nml</em>.
+If enabled, this namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
 
 <div class=namelist>
 <pre>
-<em class=call> namelist /mpi_utilities_nml/ </em>
-       reverse_task_layout, all_tasks_print,    &amp;
-       verbose, async2_verbose, async4_verbose, &amp;
-       shell_name, separate_node_sync,          &amp;
-       create_local_comm 
+&amp;mpi_utilities_nml
+   reverse_task_layout = .false., 
+   all_tasks_print     = .false., 
+   verbose             = .false., 
+   async2_verbose      = .false., 
+   async4_verbose      = .false., 
+   shell_name          = '',
+   separate_node_sync  = .false.,
+   create_local_comm   = .true.,
+   /
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TR><!--contents--><TD valign=top>reverse_task_layout</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>The synchronizing mechanism between the job script
+<TBODY valign=top>
+
+<TR><TD>reverse_task_layout</TD>
+    <TD>logical</TD>
+    <TD>The synchronizing mechanism between the job script
        and the parallel filter in async=4 mode relies on the script and
        task 0 running on the same node (in the same memory space if the
        nodes have multiple processors).  Some MPI implementations (OpenMPI
@@ -152,76 +161,81 @@ will be read from file <em class=file>input.nml</em>.
        task is on the same node as the script.  If the async 4 model advance
        never starts but there are no error messages, try setting this to 
        .TRUE. before running.  See also the 'async4_verbose' flag below.
-                       Default: .FALSE.</TD></TR>
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>all_tasks_print</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>In the parallel filter, informational messages only 
+<TR><TD>all_tasks_print</TD>
+    <TD>logical</TD>
+    <TD>In the parallel filter, informational messages only 
        print from task 0 to avoid N copies of the same messages.  Error
        messages and warnings print no matter which task they occur in.  
        If this variable is set to true, even messages will print 
-       from all tasks.  Default: .FALSE. </TD></TR>
+       from all tasks.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>verbose</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>USE WITH CAUTION!  This flag enables debugging
+<TR><TD>verbose</TD>
+    <TD>logical</TD>
+    <TD>USE WITH CAUTION!  This flag enables debugging
        print messages for every MPI call - sends, receives, barriers - and
        is very, very verbose.  In most cases the size of the output file
        will exceed the filesystem limits or will cause the executable to
        run so slowly that it will not be useful.  However in small
-       testcases this can be useful to trace problems.  Default: .FALSE. </TD></TR>
+       testcases this can be useful to trace problems.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>async2_verbose</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>Print out messages about the handshaking
+<TR><TD>async2_verbose</TD>
+    <TD>logical</TD>
+    <TD>Print out messages about the handshaking
         between filter and the advance model scripts when running 
         in async=2 mode.  Not anywhere as verbose as the flag above;
-        in most cases the output volume is reasonable.  Default: .FALSE. </TD></TR>
+        in most cases the output volume is reasonable.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>async4_verbose</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>Print out messages about the handshaking
+<TR><TD>async4_verbose</TD>
+    <TD>logical</TD>
+    <TD>Print out messages about the handshaking
         between filter and the run script when running 
         in async=4 mode.  Not anywhere as verbose as the flag above;
-        in most cases the output volume is reasonable.  Default: .FALSE. </TD></TR>
+        in most cases the output volume is reasonable.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>shell_name</TD>
-    <!--  type  --><TD valign=top>character(len=129)</TD>
-    <!--descript--><TD>If running on compute nodes which do not have the
+<TR><TD>shell_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>If running on compute nodes which do not have the
         expected default shell for async=2 or async=4 mode, specify the
         full pathname of the shell to execute the script.   Not normally
         needed on most systems we run on. (However, at least one type of Cray
-        system has this need.)  Default: '' </TD></TR>
+        system has this need.)
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>separate_node_sync</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>Not supported yet.  Will use files to handshake between
+<TR><TD>separate_node_sync</TD>
+    <TD>logical</TD>
+    <TD>Not supported yet.  Will use files to handshake between
         the filter executable and the run script in async=4 mode when the
         launch script is not running on any of the same nodes as the filter tasks.
-                       Default: .FALSE.</TD></TR>
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>create_local_comm</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>The DART MPI routines normally create a separate 
+<TR><TD>create_local_comm</TD>
+    <TD>logical</TD>
+    <TD>The DART MPI routines normally create a separate 
         local MPI communicator instead of using MPI_COMM_WORLD.  This
         keeps DART communications separate from any other user code.  
         To use the default world communicator set this to .FALSE. .
         Normal use should leave this true.
-                       Default: .TRUE.</TD></TR>
+</TD></TR>
 
-
+</TBODY> 
 </TABLE>
-
-
 </div>
-<br>
+
+<br />
+<br />
 
 <!--==================================================================-->
 <!--==================================================================-->
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -235,7 +249,7 @@ mpi  (or mpif.h if mpi module not available)
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -1150,7 +1164,7 @@ it returns 0.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL><LI>mpi module or</LI>
     <LI>mpif.h</LI>
@@ -1168,7 +1182,7 @@ support in the MPI library calls.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <UL>
 <LI>MPI: The Complete Reference; Snir, Otto, Huss-Lederman, Walker, Dongarra;
@@ -1182,7 +1196,7 @@ MIT Press, 1996, ISBN 0-262-69184-1 </LI>
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <P>
 If MPI returns an error, the DART error handler is called
@@ -1201,7 +1215,7 @@ entire job does not hang if only one task has an error.
 <!--==================================================================-->
 
 <A NAME="KnownBugs"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>KNOWN BUGS</H2>
 <P>
 none at this time
@@ -1212,7 +1226,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time
@@ -1223,7 +1237,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -1234,7 +1248,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

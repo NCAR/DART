@@ -4,6 +4,7 @@
 <HEAD>
 <TITLE>program prepbufr</TITLE>
 <link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css" />
+<link href="../../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -13,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../../index.html">DART Documentation Main Index</a><br />
@@ -35,9 +36,9 @@
 <H2>Overview</H2>
 
 <P>
-Translating NCEP BUFR files into DART obs_seq.out files (input
+Translating NCEP PREPBUFR files into DART obs_seq.out files (input
 file to filter) is a 2 stage process.  The first stage uses NCEP
-software to translate the BUFR file into an "intermediate" text file.
+software to translate the PREPBUFR file into an intermediate text file.
 This is described in this document.  The second step is to translate
 the intermediate files into obs_seq.out files, which is done by
 create_real_obs, as described in 
@@ -47,7 +48,7 @@ create_real_obs, as described in
 <!--==================================================================-->
 
 <A NAME="Instructions"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>INSTRUCTIONS</H2>
 <P>
 The prep_bufr package is free-standing and has not been completely
@@ -74,14 +75,15 @@ You will probably have to edit this script to set which fortran compiler
 is available on your system.
 </P>
 <P>
-If you have raw unblocked BUFR files you will need to convert them
-to blocked format (what prepbufr expects as input).  You will need
-to uncomment the blk/ublk section in the script and build that
+If you have raw unblocked PREPBUFR files you will need to convert them
+to blocked format (what prepbufr expects as input).  The blk/ublk
+section of the build script compiles the <em class=code>cword.x</em>
 converter program.
 </P>
 <P>
-If you are running on an Intel (little-endian) based machine, uncomment
-the grabbufr section in the script to build that converter program.
+If you are running on an Intel (little-endian) based machine you will
+need the <em class=code>grabbufr</em> byte swapping program that is
+also built by this script.
 </P>
 
 <H4 class=indent1> One-shot execution</H4>
@@ -95,7 +97,7 @@ This involves the following steps:
 <UL>
 <LI>building the executables.
 <LI>running the blocker if needed (generally not if you have
-    downloaded the blocked format BUFR files).
+    downloaded the blocked format PREPBUFR files).
 <LI>running the binary format converter if you are on an Intel
     (little-endian) machine.
 <LI>linking the input file to a fixed input filename
@@ -117,7 +119,7 @@ queue for a long series of conversion runs.
 </P>
 
 
-<H3 class=indent1> Installation of the NCEP BUFR decoding program</H3>
+<H3 class=indent1> Installation of the NCEP PREPBUFR decoding program</H3>
 
 <P>
 This package is currently organized into files under the 
@@ -128,27 +130,27 @@ src           Source code of the NCEP PREPBUFR decoder
 lib           NCEP BUFR library source
 install.sh    A script to install the NCEP PREPBUFR decoder and the NCEP BUFR library.
 exe           Executables of the decoder and converter.
-data          Where the NCEP BUFR files (prepqm****) could be loaded into
+data          Where the NCEP PREPBUFR files (prepqm****) could be loaded into
               from the NCAR Mass Store (the script assumes this is the default location).
 work          Where we run the script to do the decoding.
-convert_bufr  Source code (grabbufr) to convert the binary big-endian BUFR files to 
+convert_bufr  Source code (grabbufr) to convert the binary big-endian PREPBUFR files to 
               little-endian files, and a script to compile the program.
 blk_ublk      Source code (cwordsh) to convert between blocked and unblocked format.
-docs          Some background information about NCEP BUFR observations.
+docs          Some background information about NCEP PREPBUFR observations.
 </PRE>
 
 
 <H4 class=indent1> The decoding program: src/prepbufr.f</H4>
 
 <P>
-The program prepbufr.f is used to decode the NCEP reanalysis BUFR data into
+The program prepbufr.f is used to decode the NCEP reanalysis PREPBUFR data into
 intermediate text files. This program was originally developed by NCEP.
 It has been modified to output surface pressure, dry temperature, specific
 humidity, and wind components (U/V) of conventional radiosonde, aircraft
 reports, and satellite cloud motion derived wind.  There are additional
-observation types on the BUFR files, but using them they would require
+observation types on the PREPBUFR files, but using them they would require
 significant modifications of prepbufr and require detailed knowledge
-of the NCEP BUFR files.  The NCEP quality control indexes for these
+of the NCEP PREPBUFR files.  The NCEP quality control indexes for these
 observations based on NCEP forecasts are also output and used in DART
 observation sequence files.  The NCEP PREPBUFR decoding program is written
 in Fortran 77 and has been successfully compiled on Linux computers using
@@ -171,7 +173,7 @@ To compile the BUFR libraries and the decoding program,
 set the CPLAT variable in the install.sh script to match the compilers
 available on your system. CPLAT = linux is the default.
 Execute the install.sh script to complete the compilations for the main
-decoding program and the NCEP BUFR library.
+decoding program, the NCEP BUFR library, and the conversion utilities.
 </P>
 
 <P>
@@ -181,12 +183,11 @@ the ../exe directory.
 
 <P>
 Platforms tested:
-The code has been tested on NCAR systems: 
 </P>
-<UL><LI> Coral (Aspen Systems Linux cluster), </LI>
-    <LI> Ocotillo.mmm (Linux), </LI>
-    <LI> Tempest (SGI running IRIX), </LI>
-    <LI> Bluesky (IBM Power4 cluster running AIX).</LI>
+<UL><LI> Linux clusters with Intel, PGI, Pathscale, GNU Fortran, </LI>
+    <LI> Mac OS X with Intel, GNU Fortran, </LI>
+    <LI> SGI Altix with Intel </LI>
+    <LI> Cray with Intel, Cray Fortran.</LI>
     </UL>
 
 <H4 class=indent1> The byte-swapping program convert_bufr/grabbufr.f</H4>
@@ -194,17 +195,19 @@ The code has been tested on NCAR systems:
 <P>
 For platforms with little-endian binary file format (e.g. Intel, AMD&#174;,
 and non-MIPS SGI processors) the program grabbufr.f is used to convert the
-big-endian format NCEP BUFR data into little-endian format.  The grabbufr.f
+big-endian format NCEP PREPBUFR data into little-endian format.  The grabbufr.f
 code is written in Fortran 90, and has been compiled can be compiled with
 the pgf90 compiler on a Linux system, with gfortran on an Intel based
-Mac, and the ifort compiler on other Linux machines.  Instructions for
-building it can be found in convert_bufr/README, but basically go to the
+Mac, and the ifort compiler on other Linux machines.  More detailed 
+instructions for 
+building it can be found in convert_bufr/README, but the base install
+script should build this by default.  In case of problems, cd into the
 convert_bufr subdirectory, edit convert_bufr.csh to set your compiler,
 and run it to compile the converter code (grabbufr).
 </P>
 
 <P>
-This program reads the whole BUFR file into memory, and needs to know
+This program reads the whole PREPBUFR file into memory, and needs to know
 the size of the file (in bytes).  Unfortunately, the system call STAT()
 returns this size as one number in an array, and the index into that array
 differs depending on the system and sometimes the word size (32 vs 64)
@@ -228,23 +231,17 @@ either rename the data files to these predetermined filenames, or you can
 use links to temporarily give the files the names needed.
 </P>
 
-<H4 class=indent1> The blocking program blk_ublk/cwordsh</H4>
+<H4 class=indent1> The blocking program blk_ublk/cword.x</H4>
 
 <P>
 The prepbufr.x program expects to read a blocked input file, which
 is generally what is available for download.  However, if you have an
 unblocked file that you need to convert, there is a conversion program.
-Change directories into the blk_ublk subdirectory and edit the cwordsh.make
-file and edit it to match your system.  Execute it and it will build
-a cwordsh.x executable, which can be run with the shell-script wrapper
-program cwordsh.
-</P>
-
-<P>
-The shell scripts in this directory actually create both a .c and .f
-file (which did not exist before), then compile them, then remove them.  If you
-have problems with the compile, comment out the remove at the end of the make
-script so you can see the files it is actually trying to compile.  
+The install.sh script will try to build this by default, but in case of
+problems you can build it separately.
+Change directories into the blk_ublk subdirectory and read the
+README_cwordsh file for more help.  The cwordsh shell-script wrapper
+shows how to run the executable cwordsh.x executable.
 </P>
 
 <P>
@@ -252,80 +249,86 @@ Note that if you can get the blocked file formats to begin with, this
 program is not needed.
 </P>
 
-<H3 class=indent1> Getting the NCEP Reanalysis BUFR format data from NCAR MSS.  </H3>
+<H3 class=indent1> Getting the NCEP Reanalysis PREPBUFR format data from NCAR HPSS.  </H3>
 
 <P>
-The NCEP BUFR files (prepqmYYMMDDHH) can be found within the NCEP reanalysis
-dataset, ds090.0, on NCAR Mass Store System (MSS).
+The NCEP PREPBUFR files (prepqmYYMMDDHH) can be found within the NCEP reanalysis
+dataset, ds090.0, on NCAR Mass Store System (HPSS).
 </P>
 
 <P>
-<!-- kdr; How would I launch another window for the data web site? 
-          How to change bullets to '>' prompts for commands?        -->
 To find the files:
 </P>
 <UL>
-<LI>go to the <A HREF="http://dss.ucar.edu/pub/reanalysis/" target="_blank">
+<LI>go to the <A HREF="http://rda.ucar.edu/datasets/ds090.0/" target="_blank">
     NCAR/NCEP reanalysis archive.</A></LI>
-<LI>Click "Data Archive Summary" </LI>
-<LI>Click "Complete Tar list of Table of Contents of All VSN's" </LI>
-<LI>Look at the years you want and click on the ds090.0 next to the 
-    year mark.</LI>
-<LI>Find the data set you want by searching for prepqmYYMMDDHH, with
-    YY, MM, DD, HH = the year, month, day, and hour you want.</LI>
+<LI>Click on the "Inventories" tab.</LI>
+<LI>Select the year you are interested in.</LI>
+<LI>Search for files with the string "prepqm" in the name.</LI>
+<LI>Depending on the year the format of the filenames change,
+but they should contain the year, usually as 2 digits, the month,
+and then either the start/stop day for weekly files, or the
+letters A and B for semi-monthly files.</LI>
 </UL>
 
 <P>
-The prepqm file will be grouped with others in a weekly (monthly after
-2003) tar file.  Each tar file has a unique file number like "A#####".
-For example, for January of 2003, the 4 MSS TAR files are: A21899, A21900,
-A21901, A21902. Before 2004 these are unblocked files.  The decoding program
-requires blocked version of the files.  The corresponding blocked files
-are A21899.blk, A21900.blk, A21901.blk, and A21902.blk.  These names don't
-appear in the web page, but are found on the mass store.  Each is about
-400 Mb.  After 2003 the files without ".blk" are blocked and can be used.
-They are about 1.7 Gb.  Also, after September, 2003, these files include
+Depending on the year you select, the prepqm files can be weekly,
+monthly, or semi-monthly.  Each tar file has a unique dataset
+number of the form "A#####".
+For example, for January of 2003, the 4 HPSS TAR files are: A21899, A21900,
+A21901, A21902.
+After September 2003, these files include
 AIRCRAFT data (airplane readings taken at cruising elevation) but not
 ACARS data (airplane readings taken during takeoff and landing).  There
 are different datasets which include ACARS data but their use is restricted
-and you must contact the DSS group to get access.
+and you must contact the RDA group to get access.
 </P>
 
 <P>
-Change directories into the prep_bufr/data subdirectory.
-From a machine with access to the MSS use
+If you are running on a machine with direct access to the NCAR HPSS,
+then change directories into the prep_bufr/data subdirectory and run:
+<br /> <br />
+<em class=input>&gt; hsi get /DSS/A#####  rawfile</em><br />
 <br />
-<em class=input>msrcp mss:/DSS/A##### data.tar</em><br />or<br />
-<em class=input>msrcp mss:/DSS/A#####.blk data.tar</em><br />
-where ##### is the data set number, to read the NCEP BUFR data tar files.
-The files which include ACARS data have a read
-password; to specify that to the 'msrcp' command, add the '-rpwd <i>pass</i>' 
-argument (where <i>pass</i> is a 1-8 character password).
-<br /><br />
-You must then run the 'cosconvert' program to convert the file into a
-readable tar file. 
+where ##### is the data set number you want.
 </P>
-<ul>
-<li>On bluefire: /contrib/bin/cosconvert -b data.tar 
-<li>On other platforms, download the appropriate version from: 
-http://www.dss.ucar.edu/libraries/io/cos_blocking/utils/
-</ul>
 <P>
-Then 
-<br /><br />
-<em class=input>tar -xvf data.tar </em>
-<br /><br />
-will yield individual 6-hourly
-NCEP BUFR data files for the observations in the +/- 3-hour time windows
+These files may be readable tar files, or they may require
+running the <em class=file>cosconvert</em> program first.
+See if the <em class=file>tar</em> command can read them:
+<br /> <br />
+<em class=input>&gt; tar -tvf rawfile</em><br />
+<br />
+If you get a good table of contents then simply rename the file
+and untar it:
+<br /> <br />
+<em class=input>&gt; mv rawfile data.tar</em><br />
+<em class=input>&gt; tar -xvf data.tar</em><br />
+<br />
+However, if you get an error from the tar command you
+will need to run the <em class=file>cosconvert</em> program to convert the file into a
+readable tar file.  On the NCAR machine <em class=machine>yellowstone</em>, run:
+<br /> <br />
+<em class=input>&gt; /glade/u/home/rdadata/bin/cosconvert -b rawfile data.tar</em><br />
+<br />
+On other platforms, download the appropriate version from: 
+<a href="http://rda.ucar.edu/libraries/io/cos_blocking/utils/" target="_blank">
+http://rda.ucar.edu/libraries/io/cos_blocking/utils/</a> .
+Build and run the converter and
+then you should have a tar file you can unpack.
+</P>
+<P>
+The output of tar should yield individual 6-hourly
+NCEP PREPBUFR data files for the observations in the +/- 3-hour time windows
 of 00Z,  06Z, 12Z, and 18Z of each day.  Note that DART obs_seq files are
 organized such that a 24 hour file with 4 observation times would contain
 observations from 3:01Z to 3:00Z of the next day, centered on 6Z, 12Z, 18Z
-and "24Z".  In addition, there are some observations at 3:00Z on the BUFR
+and "24Z".  In addition, there are some observations at 3:00Z on the PREPBUFR
 file labelled with 06Z.  Then, in order to make a full day intermediate file
-incorporating all the required obs from the "next" day, you'll need the BUFR
+incorporating all the required obs from the "next" day, you'll need the PREPBUFR
 files through 6Z of the day after the last day of interest.  For example,
 to generate the observation sequence for Jan 1, 2003, the decoded NCEP
-BUFR text files for Jan 1 and 2, 2003 are needed, and hence the BUFR files
+PREPBUFR text files for Jan 1 and 2, 2003 are needed, and hence the PREPBUFR files
 </P>
 <UL> 
 <LI> prepqm03010106 </LI>
@@ -338,22 +341,22 @@ BUFR text files for Jan 1 and 2, 2003 are needed, and hence the BUFR files
 are needed.
 </P>
 
-<H3 class=indent1> Running the NCEP BUFR decoding program</H3>
+<H3 class=indent1> Running the NCEP PREPBUFR decoding program</H3>
 
 <P>
 In prep_bufr/work/prepbufr.csh set the appropriate values of the year,
 month, first day, and last day of the period you desire, and the variable
 "convert" to control conversion from big- to little-endian.  Confirm that
-the raw BUFR files are in ../data, or that prepbufr.csh has been changed
+the raw PREPBUFR files are in ../data, or that prepbufr.csh has been changed
 to find them.  Execute prepbufr.csh in the work directory.  It has code
 for running in the LSF batch environment, but not PBS.
 </P>
 
 <P>
-Currently, this script generates decoded BUFR text data each 24 hours
+Currently, this script generates decoded PREPBUFR text data each 24 hours
 which contains the observations within the time window of -3:01 hours
 to +3:00Z within each six-hour synoptic time.  These daily output text
-files are named as temp_obs.yyyymmdd.  These text BUFR data files can
+files are named as temp_obs.yyyymmdd.  These text PREPBUFR data files can
 then be read by 
 DART/observations/NCEP/ascii_to_obs/work/<A HREF="../create_real_obs.html">create_real_obs </A> 
 to generate the DART daily observation sequence files.
@@ -361,8 +364,8 @@ to generate the DART daily observation sequence files.
 
 <P>
 There is an alternate section in the script which creates a decoded
-BUFR text data file each 6 hours (so they are 1-for-1 with the original
-BUFR files).  Edit the script prepbufr.csh and look for the commented
+PREPBUFR text data file each 6 hours (so they are 1-for-1 with the original
+PREPBUFR files).  Edit the script prepbufr.csh and look for the commented
 out code which outputs 4 individual files per day.  Note that if you
 chose this option, you will have to make corresponding changes in
 the create_obs_seq.csh script in step 2.
@@ -371,7 +374,7 @@ the create_obs_seq.csh script in step 2.
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <P>
 This is a piece of code that is intended to be 'close' to the original,
@@ -385,68 +388,108 @@ This code does not use any DART modules.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / prep_bufr_nml / </em> &amp;
-obs_window, obs_window_cw, otype_use, qctype_use, land_temp_error, 
-land_wind_error, land_moist_error
+&amp;prep_bufr_nml
+   obs_window       = 1.5,
+   obs_window_upa   = 1.5,
+   obs_window_air   = 1.5,
+   obs_window_sfc   = 0.8,
+   obs_window_cw    = 1.5,
+   land_temp_error  = 2.5,
+   land_wind_error  = 3.5,
+   land_moist_error = 0.2,
+   otype_use        = missing,
+   qctype_use       = missing,
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top>obs_window                      </TD>
-    <!--  type  --><TD valign=top>real                            </TD>
-    <!--descript--><TD valign=top>Window of time to include observations 
-                       (hours).  Default is 0.8 hours</TD></TR>
+<TR><TD> obs_window </TD>
+    <TD> real </TD>
+    <TD>Window of time to include observations.  If > 0, overrides all the
+other more specific window sizes.  Set to -1.0 to use different time windows
+for different obs types.  The window is +/- this number of hours, 
+so the total window size is twice this value.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>obs_window_cw                   </TD>
-    <!--  type  --><TD valign=top>real                            </TD>
-    <!--descript--><TD valign=top>Window of time to include cloud wind 
-                       observations (hours).  Default is 1.5 hours.</TD></TR>
+<TR><TD> obs_window_upa </TD>
+    <TD> real </TD>
+    <TD>Window of time to include sonde observations (+/- hours) 
+if obs_window is < 0, otherwise ignored.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>otype_use                       </TD>
-    <!--  type  --><TD valign=top>real                            </TD>
-    <!--descript--><TD valign=top>Report Types to extract from bufr 
-                       file.  Default is none.</TD></TR>
+<TR><TD> obs_window_air </TD>
+    <TD> real </TD>
+    <TD>Window of time to include aircraft observations (+/- hours)
+if obs_window is < 0, otherwise ignored.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>qctype_use                       </TD>
-    <!--  type  --><TD valign=top>integer                          </TD>
-    <!--descript--><TD valign=top>QC types to include from the bufr 
-                       file.  Default is none.</TD></TR>
+<TR><TD> obs_window_sfc </TD>
+    <TD> real </TD>
+    <TD>Window of time to include surface observations (+/- hours)
+if obs_window is < 0, otherwise ignored.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>land_temp_error                  </TD>
-    <!--  type  --><TD valign=top>real                             </TD>
-    <!--descript--><TD valign=top>observation error for land surface 
-                       temperature observations when none is in the 
-                       file.  Default is 2.5 K.</TD></TR>
+<TR><TD> obs_window_cw </TD>
+    <TD> real </TD>
+    <TD>Window of time to include cloud wind observations (+/- hours)
+if obs_window is < 0, otherwise ignored.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>land_wind_error                  </TD>
-    <!--  type  --><TD valign=top>real                             </TD>
-    <!--descript--><TD valign=top>observation error for land surface
-                       wind observations when none is in the file.
-                       Default is 3.5 m/s.</TD></TR>
+<TR><TD> otype_use </TD>
+    <TD> real(300) </TD>
+    <TD>Report Types to extract from bufr file.  If unspecified, all types
+will be converted.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>land_moisture_error              </TD>
-    <!--  type  --><TD valign=top>real                             </TD>
-    <!--descript--><TD valign=top>observation error for land surface
-                       moisture observations when none is in the 
-                       file.  Default is 20%.</TD></TR>
+<TR><TD> qctype_use </TD>
+    <TD> integer(300) </TD>
+    <TD>QC types to include from the bufr file.  If unspecified, all QC
+values will be accepted.
+</TD></TR>
+
+<TR><TD> land_temp_error </TD>
+    <TD> real </TD>
+    <TD>observation error for land surface temperature observations when none 
+is in the input file.
+</TD></TR>
+
+<TR><TD> land_wind_error </TD>
+    <TD> real </TD>
+    <TD>observation error for land surface wind observations when none 
+is in the input file.
+</TD></TR>
+
+<TR><TD> land_moisture_error </TD>
+    <TD> real </TD>
+    <TD>observation error for land surface moisture observations when none 
+is in the input file.
+</TD></TR>
 
 </TABLE>
 
@@ -458,9 +501,9 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
-<UL><LI>input file(s); NCEP BUFR  observation files named using ObsBase 
+<UL><LI>input file(s); NCEP PREPBUFR  observation files named using ObsBase 
         with the  "yymmddhh" date tag on the end.  Input to grabbufr if big- to 
         little-endian is to be done.  Input to prepbufr if not.
     <LI>intermediate (binary) prepqm.little; output from grabbufr, 
@@ -474,19 +517,19 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
-DART/observations/NCEP/prep_bufr/docs/*  (NCEP text files describing the BUFR files)
+DART/observations/NCEP/prep_bufr/docs/*  (NCEP text files describing the PREPBUFR files)
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <P>
-this space intentionally left blank
+Various, see the source code, doc directory, and README files for more help.
 </P>
 
 <H2>KNOWN BUGS</H2>
@@ -499,11 +542,18 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
-Further development to get observations directly from original
-(undecoded) NCEP BUFR files.
+This converter could be combined with the DART library code
+to go directly from PREPBUFR files to DART obs_sequence files.
+</P>
+<P>
+The converter should make an output file with a fully qualified date 
+in the name, so constructing files that start at 21Z and
+continue to 3Z the next day are not as difficult to process.
+There are currently two separate versions of the converter only
+because one deals with the date wrap.  This shouldn't be needed.
 </P>
 
 <!--==================================================================-->
@@ -511,7 +561,7 @@ Further development to get observations directly from original
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>
