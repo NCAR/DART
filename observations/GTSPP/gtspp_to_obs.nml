@@ -1,0 +1,8 @@
+&gtspp_to_obs_nml
+   gtspp_netcdf_file     = '1234567.nc'
+   gtspp_netcdf_filelist = 'gtspp_to_obs_filelist'
+   gtspp_out_file        = 'obs_seq.gtspp'
+   avg_obs_per_file      = 500
+   debug                 = .false.
+/
+
