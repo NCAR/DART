@@ -4,6 +4,7 @@
 <HEAD>
 <TITLE>Dart Filter/Model Parallel Mode Options</TITLE>
 <link rel="stylesheet" type="text/css" href="doc.css">
+<link href="../images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -11,7 +12,7 @@
 <center>
 <A HREF="#Legalese">TERMS OF USE</A>
 <br><br>
-<img src = "Dartboard7.png" alt="snappy DART image">
+<img src = "../images/Dartboard7.png" alt="snappy DART image">
 </center>
 
 <br>
@@ -28,7 +29,7 @@
 <br>
 Simplest case, async=0:
 <br>
-<img src="async0.gif">
+<img src="../images/async0.gif">
 <br>
 This is a single MPI executable, with each call to the
 model being simply a subroutine call from each MPI task.
@@ -42,7 +43,7 @@ model being simply a subroutine call from each MPI task.
 <br>
 Parallel advance, async=2:
 <br>
-<img src="async2a.gif">
+<img src="../images/async2a.gif">
 <br>
 The filter executable is one MPI program, and the model is a 
 single, sequential executable.   Each MPI task uses the
@@ -58,13 +59,13 @@ may be more or less helpful.
 <br>
 Parallel advance, async=2:
 <br>
-<img src="async2_v1.gif">
+<img src="../images/async2_v1.gif">
 <br>
 <br>
 <br>
 Parallel advance, async=2, second version:
 <br>
-<img src="async2_v2.gif">
+<img src="../images/async2_v2.gif">
 <br>
 <br>
 <br>
@@ -72,7 +73,7 @@ Parallel model advance, async=2, showing how data is communicated
 between filter and the model thru intermediate files.  
 IC are 'initial condition' files, UD are 'updated' files.
 <br>
-<img src="async2_wfiles.gif">
+<img src="../images/async2_wfiles.gif">
 <br>
 <br>
 <br>
@@ -80,7 +81,7 @@ IC are 'initial condition' files, UD are 'updated' files.
 <br>
 Parallel model advance, async=4:
 <br>
-<img src="async4.gif">
+<img src="../images/async4.gif">
 <br>
 The filter executable is one MPI program, and the model is also
 an MPI program.  The filter executable communicates with the
@@ -97,7 +98,7 @@ Parallel model advance, async=4, showing how data is communicated
 between filter and the model thru intermediate files.
 IC are 'initial condition' files, UD are 'updated' files.
 <br>
-<img src="async4_wfiles.gif">
+<img src="../images/async4_wfiles.gif">
 <br>
 <br>
 <br>

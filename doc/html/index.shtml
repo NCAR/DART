@@ -5,7 +5,7 @@
       <!-- $Id$ -->
       <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
       <title>Data Assimilation Research Testbed -- DART</title>
-      <link href="dart.ico" rel="shortcut icon" />
+      <link href="../images/dart.ico" rel="shortcut icon" />
       <link href="doc.css"  rel="stylesheet" type="text/css" />
       <style type="text/css">
                 <!--
@@ -32,7 +32,7 @@
    <td valign="middle">
    <h1 align="center">The Data Assimilation Research Testbed -- DART</h1>
 
-   <center><img src="DARTspaghettiSquare.gif" 
+   <center><img src="../images/DARTspaghettiSquare.gif" 
    alt="cool spaghetti plot of North America demonstrating the uncertainty among the
         ensemble members"><br />
    The 500hPa geopotential height from 20 ensemble members of an 80 member experiment
@@ -50,13 +50,13 @@
    <h2>Quick Guide Topics</h2>
    <ul> 
 
-      <li>Here are some 
+      <li>You are looking for some
       <a href="http://en.wikipedia.org/wiki/Data_assimilation">introductory 
       materials</a> on the general concepts of Data Assimilation.</li>
       <!-- should be ensemble_data_assimilation.html eventually with
            local lore, but for now, use wikipedia. -->
 
-      <li>You can <a href="#learn">explore</a> the example models and 
+      <li>You want to <a href="#learn">explore</a> the example models and 
       observations which are included with the DART software distribution.</li>
 
       <li>You have an existing model and/or data observations and would 
@@ -81,21 +81,25 @@
    <p>
    The DART software provides a flexible, extensible framework for conducting
    data assimilation research on a wide variety of models and observations.
-   In order to facilitate the incorporation of new models (which in the 
-   Atmospheric Science community are generally written in F90), the DART 
-   software is written primarily in F90. The noteable exceptions are the
-   shell scripts that control execution and the Matlab&reg; diagnostic scripts.
-   <br /><br />
+   In order to facilitate the incorporation of new models, which in the 
+   Geoscience community are frequently written in Fortran 90, the DART 
+   software is written primarily in Fortran 90. Control scripts are primarily
+   in C Shell, and the distribution includes Matlab&reg; diagnostic scripts.
+   </p>
+   <p>
    The DART system comes with many models -- ranging from 1-dimensional
    Lorenz systems to full global atmospheric and ocean models. 
-   DART also has an extensive tutorial that explains typical DART experiments
+   DART also has extensive tutorial materials that explain typical DART experiments
    and explores many aspects of ensemble data assimilation.
-   The tutorial is an entire directory in the DART software distribution, so
-   it can be browsed (it is a series of .pdf files)   
-   <a href="#download">Download the DART source code</a> and follow the instructions 
-   on <a href="Kodiak_release.html">the web page for the current release</a> for
+   <a href="#download">Download the DART source code</a> and see the
+   <a href="Lanai_release.html">release notes</a> for
    instructions on how to build an executable, run the "workshop" experiments, 
-   and look at the results.
+   and look at the results.  The <em class=file>DART_LAB</em> directory contains
+   presentation slides and interactive MATLAB demonstrations which illustrate
+   and explain the fundamentals of the ensemble data assimilation algorithms.
+   The <em class=file>tutorial</em> directory contains a series of PDF files
+   which go into more mathematical detail on various ensemble data assimilation
+   topics, and specifics on the DART implementation.
    </p>
 
    <a name="requirements"></a>
@@ -143,270 +147,223 @@
    processor. If your model cannot run single-threaded, fear not, DART can do that too.
    </p>
 
-   <h2>DART tested platforms/models/compilers</h2>
-   <p>
-   DART is intended to be highly portable - and has even run successfully on 
-   Windows machines running the cygwin environment. Those instructions are under 
-   development and so are not included in the following table. The most current 
-   version of DART has been tested on the following: 
-   </p>
-   <table border=0 cellpadding=2 width=100%>
-   <tr><th align="left">hardware          </th>
-       <th align="left">O/S               </th>
-       <th align="left">F90 compiler      </th>
-       <th align="left">batch manager/mpi </th>
-       </tr>
+<h2>DART platforms/compilers/batch systems</h2>
+<p>
+We work to keep the DART code highly portable.
+We avoid compiler-specific constructs, 
+require no system-specific functions, 
+and try as much as possible
+to be easy to build on new platforms.
+</p>
+<p>
+DART has been compiled and run on Apple laptops and workstations,
+Linux clusters small and large, SGI Altix systems, IBM Power systems,
+IBM Intel systems, Cray systems.
+</p>
+<p>
+DART has been compiled with compilers from Intel, PGI, Cray, GNU,
+IBM, Pathscale.
+</p>
+<p>
+MPI versions of DART have run under batch systems including
+LSF, PBS, Moab/Torque, and Sun Grid Engine.
+</p>
+<p>
+We have run successfully on a Windows machine under the <code>cygwin</code>
+environment.  If you are interested in this, please 
+<a href="mailto:dart@ucar.edu">contact us</a>.
+</p>
 
-   <tr><td>Intel cluster/SMP/32 bit      </td>
-          <td>Red Hat Enterprise         </td>
-          <td>Intel 9.0 (build 20051201) </td>
-          <td>none                       </td>
-          </tr>
+<!-- this content comes from DART_distributions.html and should
+     be updated there and then just embedded -->
 
-   <tr><td>Intel cluster/SMP/32 bit </td>
-          <td>Red Hat Enterprise    </td>
-          <td>GNU Fortran 95 4.1.0  </td>
-          <td>none                  </td>
-          </tr>
+<!-- Begin DART_distributions.html -->
 
-   <tr><td>Intel Nocona   </td>
-          <td>SUSE        </td>
-          <td>PGI 6.0-8   </td>
-          <td>LSF         </td>
-          </tr>
+<a name="download"></a>
+<a name="distributions" id="distributions"></a>
+<h1>DART code distributions</h1>
+<p>
+The DART code is distributed via a
+Subversion (<b>SVN</b>) repository.  Anonymous access is
+allowed, and the repository code is read-only for everyone
+except the DART development team.  DART is distributed 
+as source code, so you must be prepared to build the parts 
+of the system you need before you can run it.
+</p>
+<p>
+Using subversion makes it easy to update and
+compare your checked-out version of the code 
+with the latest repository version of the code. 
+If you are not familiar with the <em class=code>svn</em> command
+(the client application of subversion),
+you should take a stroll through Tim's
+<a href="http://www.image.ucar.edu/~thoar/svn_primer.html">svn primer</a>.
+Or there are several GUI programs that help you manage, check out,
+and merge subversion distributions.
+If you cannot use <em class=code>svn</em> 
+(e.g. because you are behind a firewall that does not
+permit subversion access), please 
+<a href="mailto:dart@ucar.edu">email the DART team</a>
+and we may be able to send you a tar file as a last resort.
+</p>
+<p>
+The DART development team keeps released versions of the code
+which are stable (don't change) except for bug fixes.  Generally
+we recommend users check out one of these versions.  The DART
+development team makes frequent updates to the trunk version of
+the code as new features are developed.  Those users who want
+to use recently added features are welcome to check out the trunk,
+but they should be prepared to work around possible
+non-backwards compatible changes and more lightly tested code
+than the released versions.
+</p>
+<p>
+DART continues to evolve.  We request that you register using 
+<a href="/DAReS/DART/DART_download">this web page</a>
+and afterwards you will be redirected to instructions on
+how to download a version of the DART code.
+Registration helps us track how many people are using our code,
+and allows us to contact current users in case of bugs or major updates.
+The DART mailing list is a <strong>very low-traffic</strong> list --
+perhaps 4 emails per year -- so PLEASE use a real email address when signing up.
+We solemnly swear to protect your email address like it is our own!
+Even local NCAR users or users who have registered in the past are
+encouraged to reregister when downloading new versions.  Thank you
+for your understanding.
+</p>
+<br />
+<table border="0" cellpadding="2" width="100%">
+<thead align="left" valign="top">
+<tr>
+<th>version</th>
+<!-- this is my attempt to make it so we don't have to put
+nbsp's between the spaces in the dates and keep them from
+wrapping. the other solution makes it really hard to
+read what the dates actually are.  but if this nowrap
+thing plus blanks doesn't work we can go back to putting
+nbsp's between the dates -->
+<th nowrap>date &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</th>
+<th>instructions</th>
+<th>most noteable change(s)</th>
+</tr>
+</thead>
+<tbody align="left" valign="top">
+<tr>
+<!--version--><td><a href="/DAReS/DART/DART_download">lanai</a></td>
+<!--   date--><td>13 Dec 2013</td>
+<!--instruc--><td><a href="Lanai_release.html">[doc]</a></td>
+<!-- change--><td>Support for the CESM climate components under the CESM framework;
+                  the MPAS models, the NOAH land model, the GITM ionosphere model,
+                  the NOGAPS atmosphere model, the NAAPS aerosol model,
+                  and the SQG surface quasi-geostrophic model.
+                  Support for many new chemistry and aerosol observation types,
+                  support for many new observations sources, many new diagnostic
+                  routines, and new utilities.<br />
+            <a href="Lanai_release.html#CurrentUsers">change log</a> </td>
+</tr>
+<tr>
+<!--version--> <td><a href="/DAReS/DART/DART_download">trunk</a></td>
+<!--   date--> <td>today</td>
+<!--instruc--> <td>included in distrib.</td>
+<!-- change--> <td>varies, use <em>svn log --revision ####:HEAD</em> to see log
+                   messages about changes since revision ####.</td>
+</tr>
+<tr>
+<!--version--><td><a href="/DAReS/DART/DART_download">kodiak</a></td>
+<!--   date--><td>30 Jun 2011</td>
+<!--instruc--><td><a href="history/Kodiak_release.html">[doc]</a></td>
+<!-- change--><td>Damped Inflation, Sampling Error Correction, Boxcar
+            Kernel Filter option, support for new models, new observation types, new
+            diagnostics, new utilities.<br />
+            <a href="history/Kodiak_release.html#CurrentUsers">change log</a> </td>
+</tr>
+<tr>
+<!--version--> <td>jamaica</td>
+<!--   date--> <td>12 Apr 2007</td>
+<!--instruc--> <td><a href="history/Jamaica_release.html">[doc]</a></td>
+<!-- change--> <td>vertical localization, extensive testing of MPI implementation,
+                   full documentation for new algorithms, new tutorial sections<br />
+                   <a href="history/Jamaica_diffs_from_I.html">change log</a> </td>
+</tr>
+<tr>
+<!--version--> <td>pre_j</td>
+<!--   date--> <td>02 Oct 2006</td>
+<!--instruc--> <td><a href="history/pre_j_release.html">[doc]</a></td>
+<!-- change--> <td>contains an updated scalable filter algorithm<br /></td>
+</tr>
+<tr>
+<!--version--> <td>post_iceland</td>
+<!--   date--> <td>20 Jun 2006</td>
+<!--instruc--> <td><a href="history/Post_Iceland_release.html">[doc]</a></td>
+<!-- change--> <td>observation-space adaptive inflation, bug fixes,<br />
+                   obs_sequence_tool support ...<br />
+                   <a href="history/PostI_diffs_from_I.html">change log</a></td>
+</tr>
+<tr>
+<!--version--> <td>iceland</td>
+<!--   date--> <td>23 Nov 2005</td>
+<!--instruc--> <td><a href="history/Iceland_release.html">[doc]</a></td>
+<!-- change--> <td>huge expansion of real observation capability<br />
+                   better namelist processing, PBL_1d available.<br />
+                   <a href="history/I_diffs_from_workshop.html">change log</a></td>
+</tr>
+<tr>
+<!--"/pub/DART/DART_pre_iceland.tar.gz"-->
+<!--version--> <td>pre_iceland</td>
+<!--   date--> <td>20 Oct 2005</td>
+<!--instruc--> <td>for developers only</td>
+<!-- change--> <td>huge expansion of real observation capability</td>
+</tr>
+<tr>
+<!--"/pub/DART/DART_workshop_2005.tar.gz"-->
+<!--version--> <td>DA workshop 2005</td>
+<!--   date--> <td>13 Jun 2005</td>
+<!--instruc--> <td>docs included in distrib.</td>
+<!-- change--> <td>tutorial directory in distribution, observation preprocessing</td>
+</tr>
+<tr>
+<!--"/pub/DART/DART_hawaii.tar.gz"-->
+<!--version--> <td>hawaii</td>
+<!--   date--> <td>28 Feb 2005</td>
+<!--instruc--> <td><a href="history/hawaii_release.html">[doc]</a></td>
+<!-- change--> <td>new filtering algorithms</td>
+</tr>
+<tr>
+<!--"/pub/DART/DART_pre_hawaii.tar.gz"-->
+<!--version--> <td>pre-hawaii</td>
+<!--   date--> <td>20 Dec 2004</td>
+<!--instruc--> <td><a href="history/pre_hawaii_release.html">[doc]</a></td>
+<!-- change--> <td>new filtering algorithms</td>
+</tr>
+<tr>
+<!--"/pub/DART/DART_guam.tar.gz">-->
+<!--version--> <td>guam</td>
+<!--   date--> <td>12 Aug 2004</td>
+<!--instruc--> <td><a href="history/Guam_release.html">[doc]</a></td>
+<!-- change--> <td>new observation modules, removing autopromotion</td>
+</tr>
+<tr>
+<!--"/pub/DART/DART_fiji_02.tar.gz"-->
+<!--version--> <td>fiji</td>
+<!--   date--> <td>29 Apr 2004</td>
+<!--instruc--> <td><a href="history/Fiji_release.html">[doc]</a></td>
+<!-- change--> <td>enhanced portability, CAM, WRF</td>
+</tr>
+<tr>
+<!--"/pub/DART/DART_ASP_Summer2003_1.tar.gz"-->
+</tr>
+<tr>
+<!--version--> <td>easter</td>
+<!--   date--> <td>8 March 2004</td>
+<!--instruc--> <td><a href="history/ASP_DART_exercise.html">[doc]</a></td>
+<!-- change--> <td>initial release</td>
+</tr>
+</tbody>
+</table>
+<br />
+<br />
 
-   <tr><td>Intel Nocona         </td>
-          <td>SUSE              </td>
-          <td>Intel 9.1 (EM64T) </td>
-          <td>LSF               </td>
-          </tr>
-
-   <tr><td>Intel iMac         </td>
-          <td>Mac OS X 10.4.6 </td>
-          <td>gfortran 4.2.0  </td>
-          <td>Open-MPI        </td>
-          </tr>
-
-   <tr><td>IBM Power 5+  </td>
-          <td>AIX 5.3    </td>
-          <td>XLF 12.1.0 </td>
-	  <td>LSF        </td>
-          </tr>
-
-   <tr><td>Intel            </td>
-          <td>Fedora Core 4 </td>
-          <td>Intel 9.0     </td>
-	  <td>none          </td>
-          </tr>
-
-   <tr><td>Macbook Pro (Intel)       </td>
-          <td>Mac OS X 10.6.8        </td>
-          <td>Intel F90 11.1         </td>
-	  <td>OpenMPI                </td>
-          </tr>
-
-   <tr><td>Macbook Pro (Intel)       </td>
-          <td>Mac OS X 10.6.8        </td>
-          <td>gfortran 4.5.2         </td>
-	  <td>OpenMPI                </td>
-          </tr>
-
-   <tr><td>PowerBook G4 (PowerPC)    </td>
-          <td>Mac OS X 10.4.8        </td>
-          <td>Absoft Pro Fortran 9.0 </td>
-	  <td>none                   </td>
-          </tr>
-
-   <tr><td>PowerBook G4 (PowerPC)    </td>
-          <td>Mac OS X 10.3.9        </td>
-          <td>Absoft Pro Fortran 9.0 </td>
-	  <td>Lam                    </td>
-          </tr>
-
-   <tr><td>PowerBook G4 (PowerPC) </td>
-          <td>Mac OS X 10.3.9     </td>
-          <td>gfortran 4.2.0      </td>
-	  <td>Lam                 </td>
-	  </tr>
-
-   <tr><td>Intel cluster (Xeon) </td>
-          <td>Fedora Core 2     </td>
-          <td>PGI 6.0-5         </td>
-          <td>PBS               </td>
-	  </tr>
-
-   <tr><td>Intel cluster (Xeon) </td>
-          <td>Fedora Core 2     </td>
-          <td>PGI 5.2-4         </td>
-          <td>PBS               </td>
-	  </tr>
-
-   <tr><td>Intel cluster (Xeon) </td>
-          <td>Fedora Core 2     </td>
-          <td>Lahey 6.20c       </td>
-          <td>PBS               </td>
-	  </tr>
-
-   <tr><td>IBM cluster (of opterons) </td>
-          <td>SUSE Enterprise 8      </td>
-          <td>Pathscale 2.4          </td>
-          <td>LSF                    </td>
-	  </tr>
-
-   <tr><td>IBM cluster (of opterons) </td>
-          <td>Suse Enterprise 8      </td>
-          <td>Intel 9.1 (EM64T)      </td>
-          <td>LSF                    </td>
-	  </tr>
-
-   <tr><td>IBM cluster (of opterons) </td>
-          <td>Suse Enterprise 8      </td>
-          <td>PGI 6.2                </td>
-          <td>LSF                    </td>
-	  </tr>
-
-   <tr><td>SGI Altix            </td>
-          <td>SUSE Linux ES 9.3 </td>
-          <td>Intel 9.1         </td>
-          <td>PBS               </td>
-	  </tr>
-
-   <tr><td>SGI MIPS          </td>
-          <td>IRIX 6.5       </td>
-          <td>MIPSpro 7.4.3m </td>
-          <td>NQS            </td>
-	  </tr>
-
-   <tr><td>Linux cluster     </td>
-          <td>Intel          </td>
-          <td>Intel 11.1     </td>
-          <td>PBS            </td>
-	  </tr>
-   </table>
-
-      <a name="download"></a>
-      <h1>DART code distributions</h1>
-      <p>
-      DART is distributed through an anonymous-access readonly 
-      Subversion (<b>SVN</b>) repository.  This makes updates and 
-      comparisons between your sandbox and the latest, greatest version of the 
-      code trivially easy. The same cannot be said for a TAR file.
-      If you are not familiar with SVN (the client application of subversion),
-      you should take a stroll through my 
-      <a href="http://www.image.ucar.edu/~thoar/svn_primer.html">svn primer</a>.
-      If you cannot use svn (e.g. are firewalled out), please let me (Tim) know and 
-      I'll send you a tarfile as a last resort. 
-      See the <a href="#contact">contact info</a> section for email addresses.
-      <br />
-      <br />
-      Since the DART software is still an area of active research, there are
-      multiple distributions, with more on the way. We'd like to be able to contact
-      people to inform them of any bugs or updates. (This includes local users, BTW!)
-      As you can see by the timetable of distributions, you could expect to get 
-      about 2 more emails per year, so PLEASE use a real email address when signing up.
-      I solemnly swear to protect your email address like it is my own!
-      <br />
-      <br />
-      <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">download instructions for the latest release.</a>
-      <br />
-      <br />
-      <table border=0 cellpadding=2 width=100%>
-      <thead align="left" valign="top">
-      <tr><th width="15%">version</th>
-          <th width="15%">date</th>
-          <th width="15%">instructions</th>
-          <th>most noteable change(s)</th>
-      </tr>
-      </thead>
-
-      <tbody align="left" valign="top">
-      <tr><!--version--><td><a href="http://www.image.ucar.edu/DAReS/DART/DART_download">kodiak</a></td>
-          <!--   date--><td>30&nbsp;Jun&nbsp;2011</td>
-          <!--instruc--><td><a href="Kodiak_release.html">[doc]</a></td>
-	  <!-- change--><td>Damped Inflation, Sampling Error Correction, Boxcar 
-           Kernel Filter option, support for new models, new observation types, new
-           diagnostics, new utilities.  See documentation for more details.
-                            </td></tr>
-
-      <tr><!--version--><td><a href="http://www.image.ucar.edu/DAReS/DART/DART_download">trunk</a></td>
-          <!--   date--><td>today</td>
-          <!--instruc--><td>included in distrib.</td>
-	  <!-- change--><td>varies
-                            </td></tr>
-
-      <tr><!--version--><td>jamaica</td>
-          <!--   date--><td>12&nbsp;Apr&nbsp;2007</td>
-          <!--instruc--><td><a href="Jamaica_release.html">[doc]</a></td>
-	  <!-- change--><td>vertical localization, extensive testing of MPI implementation,
-	                    full documentation for new algorithms, new tutorial sections<br />
-                            <a href="Jamaica_diffs_from_I.html">change log</a>
-                            </td></tr>
-
-      <tr><!--version--><td>pre_j</td>
-          <!--   date--><td>02&nbsp;Oct&nbsp;2006</td>
-          <!--instruc--><td><a href="pre_j_release.html">[doc]</a></td>
-	  <!-- change--><td>contains an updated scalable filter algorithm<br />
-                            </td></tr>
-
-      <tr><!--version--><td>post_iceland</td>
-          <!--   date--><td>20&nbsp;Jun&nbsp;2006</td>
-          <!--instruc--><td><a href="Post_Iceland_release.html">[doc]</a></td>
-          <!-- change--><td>observation-space adaptive inflation, bug fixes,<br />
-                            merge_obs_sequence support ...<br />
-                            <a href="PostI_diffs_from_I.html">change log</a></td></tr>
-
-      <tr><!--version--><td>iceland</td>
-          <!--   date--><td>23&nbsp;Nov&nbsp;2005</td>
-          <!--instruc--><td><a href="Iceland_release.html">[doc]</a></td>
-          <!-- change--><td>huge expansion of real observation capability<br />
-                            better namelist processing, PBL_1d available.<br />
-                            <a href="I_diffs_from_workshop.html">change log</a></td></tr>
-
-      <tr><!--"/pub/DART/DART_pre_iceland.tar.gz"-->
-          <!--version--><td>pre_iceland</td>
-          <!--   date--><td>20&nbsp;Oct&nbsp;2005</td>
-          <!--instruc--><td>for developers only</td>
-          <!-- change--><td>huge expansion of real observation capability</td></tr>
-
-      <tr><!--"/pub/DART/DART_workshop_2005.tar.gz"-->
-          <!--version--><td>DA workshop 2005</td>
-          <!--   date--><td>13&nbsp;June&nbsp;2005</td>
-          <!--instruc  ><td><a href="hawaii_release.html">[doc]</a></TD-->
-          <!--instruc--><td>docs included in distrib.</td>
-          <!-- change--><td>tutorial directory in distribution, observation preprocessing</td></tr>
-
-      <tr><!--"/pub/DART/DART_hawaii.tar.gz"-->
-          <!--version--><td>hawaii</td>
-          <!--   date--><td>28&nbsp;Feb&nbsp;2005</td>
-          <!--instruc--><td><a href="hawaii_release.html">[doc]</a></td>
-          <!-- change--><td>new filtering algorithms</td></tr>
-
-      <tr><!--"/pub/DART/DART_pre_hawaii.tar.gz"-->
-          <!--version--><td>pre-hawaii</td>
-          <!--   date--><td>20&nbsp;Dec&nbsp;2004</td>
-          <!--instruc--><td><a href="pre_hawaii_release.html">[doc]</a></td>
-          <!-- change--><td>new filtering algorithms</td></tr>
-
-      <tr><!--"/pub/DART/DART_guam.tar.gz">-->
-          <!--version--><td>guam</td>
-          <!--   date--><td>12&nbsp;Aug&nbsp;2004</td>
-          <!--instruc--><td><a href="Guam_release.html">[doc]</a></td>
-          <!-- change--><td>new observation modules, removing autopromotion</td></tr>
-
-      <tr><!--"/pub/DART/DART_fiji_02.tar.gz"-->
-          <!--version--><td>fiji</td>
-          <!--   date--><td>29&nbsp;Apr&nbsp;2004</td>
-          <!--instruc--><td><a href="Fiji_release.html">[doc]</a></td>
-          <!-- change--><td>enhanced portability, CAM, WRF</td></tr>
-
-      <tr><!--"/pub/DART/DART_ASP_Summer2003_1.tar.gz"-->
-          <!--version--><td>easter</td>
-          <!--   date--><td>8&nbsp;March&nbsp;2004</td>
-          <!--instruc--><td><a href="ASP_DART_exercise.html">[doc]</a></td>
-          <!-- change--><td>initial release</td></tr>
-      </tbody>
-      </table>
-      <br />
+<!-- End DART_distributions.html -->
 
 
       <a name="teach"></a>
@@ -416,43 +373,21 @@
       models with several different levels of complexity, and data to be assimilated.
       It has been used in several multi-day workshops and can be used as the basis 
       to teach a section on Data Assimilation. <!--add refs to people doing this already-->
-      Download the DART software distribution and look in the <code>tutorial</code>
-      subdirectory for the pdf and framemaker source for each of the 22 tutorial sections.
+      Download the DART software distribution and look in the <code>DART_LAB</code> subdirectory
+      for pdf and powerpoint presentations, and MATLAB GUI point-and-click examples and
+      hands-on demonstrations.  Also look in the
+      <code>tutorial</code> subdirectory for pdf files for each of the 22 tutorial sections.
       <br />
       <br />
-      <strong>Browsing the tutorial directory in the distribution is worth
-      the effort. Taking the tutorial is FAR better!</strong>
+      <strong>Browsing the DART_LAB and tutorial directories in the distribution is worth
+      the effort. Doing the tutorials is even better!</strong>
       </p>
 
-      <h2>Presentations about DART:</h2>
+      <h2>Presentations about DART</h2>
       <p>
-      The FULL list of presentations (as well as some of the 
+      The full list of presentations (as well as some of the 
       presentations themselves) and publications is available on our
-      <a href="http://www.image.ucar.edu/DAReS/Publications">Publications</a> page. A short list of
-      presentations, posters, and seminars is offered below:
-      </p>
-      <ul> 
-      <li>The Data Assimilation Research Testbed: Powerful Adpative Fast 
-          Assimilation for Geophysical Applications, 
-          <a href="jla_arg_seminar.pdf">[presentation&nbsp;.pdf]</a> March 2007</li>
-    
-      <li>Assimilation of GPS radio occultation refractivity with WRF using a
-      non-local observation operator. 
-         <a href="/pub/DART/2007_IUGG_hui.pdf">[poster&nbsp;.pdf]</a> Jul 2007</li>
-
-      <li>Data Assimilation for CAM - Research &amp; Development.
-         <a href="/pub/DART/2007_CCSM_jla.pdf">[poster&nbsp;.pdf]</a> Jun 2007</li>
-
-      <li>Parallel Implementation of Ensemble Filter Algorithms for Data Assimilation.
-         <a href="/pub/DART/2007_LCI_nsc.pdf">[poster&nbsp;.pdf]</a> May 2007</li>
-
-      <li>Adaptive Spatially-varying Variance Inflation in an Ensemble Filter.
-         <a href="/pub/DART/2007_AGU_kdr.pdf">[poster&nbsp;.pdf]</a> May 2007</li>
- 
-      <li><a href="tut1.pdf">A tutorial on ensemble filtering, Jan. 2004</a></li>
-      <li><a href="caos_dec_2003.pdf">Talk for CAOS Workshop, Dec. 2003</a></li>
-      <li><a href="agu_2003.pdf">Overview of Filter DA, AGU, Dec. 2003</a></li>
-      </ul>
+      <a href="http://www.image.ucar.edu/DAReS/Publications">Publications</a> page.
 
       <a name="related"></a>
       <h2>Related Links</h2>
@@ -468,31 +403,31 @@
       <a name="contact"></a>
       <h2>DART Contact list</h2>
       <p>
-      We're a very small group, so the contact list is pretty short.
+      We're a small group, so the contact list is pretty short.
       Our central email contact is <a href="mailto:dart@ucar.edu">dart@ucar.edu</a>.
       Or if you want to contact us individually, here is our information:
       </p>
       <table width="95%"  border="0" align="center" cellpadding="0" cellspacing="0">
-      <tr><th align="left">general</th>
-          <th align="left">general/diagnostics</th>
-          <th align="left">platforms/mpi</th>
+      <tr><th align="left">lead scientist and manager</th>
+          <th align="left">general / diagnostics</th>
+          <th align="left">general / platforms / mpi</th>
+          <th align="left">large processor count systems</th>
           <th align="left">CAM</th>
           <th align="left">WRF</th>
-          <th align="left">GPS Radio Occultation</th>
       </tr>
       <tr><td>Jeff Anderson</td>
           <td>Tim Hoar</td>
           <td>Nancy Collins</td>
+          <td>Helen Kershaw</td>
           <td>Kevin Raeder</td>
           <td>Glen Romine</td>
-          <td>Hui Liu</td>
       </tr>
-      <tr><td>jla&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
-          <td>thoar&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
-          <td>nancy&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
-          <td>raeder&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
-          <td>romine&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
-          <td>hliu&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu</td>
+      <tr><td>jla&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
+          <td>thoar&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
+          <td>nancy&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
+          <td>hkershaw&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
+          <td>raeder&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
+          <td>romine&nbsp;@&nbsp;ucar&nbsp;.&nbsp;edu&nbsp;</td>
       </tr>
       </table>
 
