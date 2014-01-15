@@ -50,7 +50,7 @@ x.varname  = varname;
 
 %% define and get the basic coordinate variables
 
-variables = {'levgrnd', 'area', 'lon', 'lat', 'landfrac'};
+variables = {'area', 'lon', 'lat', 'landfrac'};
 
 for ivar = 1:length(variables)
    if (~nc_isvar(fname,variables{ivar}))

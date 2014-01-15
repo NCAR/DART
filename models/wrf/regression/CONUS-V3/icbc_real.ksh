@@ -338,8 +338,7 @@ cat > input.nml.tmp << EOF
    bin_width                  =     0, 0, 0, 6, 0, 0 ,
    time_to_skip               =     0, 0, 0, 0, 0, 0 ,
    max_num_bins               = 1000,
-   rat_cri                    = 5000.0,
-   input_qc_threshold         = 4.0,
+   trusted_obs                = 'null',
    Nregions                   = 1,
    lonlim1                    =  235.0,
    lonlim2                    =  295.0,
@@ -347,6 +346,9 @@ cat > input.nml.tmp << EOF
    latlim2                    =   55.0,
    reg_names                  = 'North America',
    print_mismatched_locs      = .false.,
+   create_rank_histogram      = .true.,
+   outliers_in_histogram      = .true.,
+   use_zero_error_obs         = .false.,
    verbose                    = .false.  /
 
  &restart_file_utility_nml

@@ -5,6 +5,7 @@
 <HEAD>
 <TITLE>program noah_to_dart</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -12,7 +13,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P><a href="../../index.html">DART Documentation Main Index</a><br />
@@ -79,29 +80,36 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
 </P>
 <div class=namelist>
 <pre>
-<em class=call>namelist / noah_to_dart_nml / </em> noah_to_dart_output_file
+&amp;noah_to_dart_nml
+   noah_to_dart_output_file = 'dart_ics',
+   /
 
-<em class=call>namelist / model_nml / </em> noah_netcdf_filename, noah_state_variables
+&amp;model_nml
+     noah_netcdf_filename         = 'restart.nc',
+     noah_state_variables         = 'SOIL_T',   'KIND_SOIL_TEMPERATURE',
+                                    'SOIL_M',   'KIND_SOIL_MOISTURE',
+                                    'SOIL_W',   'KIND_SOIL_LIQUID_WATER',
+                                    'SKINTEMP', 'KIND_SKIN_TEMPERATURE',
+                                    'SNODEP',   'KIND_SNOW_THICKNESS',
+                                    'WEASD',    'KIND_SNOW_WATER',
+                                    'CANWAT',   'KIND_CANOPY_WATER',
+                                    'QFX',      'KIND_LATENT_HEAT_FLUX',
+  /
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
-<P>
-<em class=code>noah_to_dart_nml</em> and <em class=code>model_nml</em>
-are always read from a file called <em class=file>input.nml</em>.
-</P>
+<div>
 
-<TABLE border=0 cellpadding=3 width=100%>
+<TABLE border=0 cellpadding=3 width=100% summary='noah_to_dart namelist description'>
 <TR><TH align=left>Contents    </TH>
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
 
-<TR><!--contents--><TD valign=top>noah_to_dart_output_file&nbsp;&nbsp;&nbsp;</TD>
-    <!--  type  --><TD valign=top>character(len=128)&nbsp;&nbsp;&nbsp;</TD>
+<TR><!--contents--><TD valign=top>noah_to_dart_output_file   </TD>
+    <!--  type  --><TD valign=top>character(len=128)   </TD>
     <!--descript--><TD>The name of the DART file containing the model state
                        derived from the NOAH restart file.
-                       <em class=units>[default:&nbsp;'dart_ics']</em></TD></TR>
+                       <em class=units>[default: 'dart_ics']</em></TD></TR>
 </TABLE>
 
 </div>
@@ -114,25 +122,25 @@ The full description of the <em class=code>model_nml</em> namelist is documented
 in the <a href="model_mod.html#Namelist">noah model_mod</a>, but the most important
 variables for <em class=program>noah_to_dart</em> are repeated here.
 </P>
-<TABLE border=0 cellpadding=3 width=100%>
+<TABLE border=0 cellpadding=3 width=100% summary='partial model_nml namelist description'>
 <TR><TH align=left>Contents    </TH>
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
 
-<TR><!--contents--><TD valign=top>noah_netcdf_filename&nbsp;&nbsp;&nbsp;</TD>
-    <!--  type  --><TD valign=top>character(len=128)&nbsp;&nbsp;&nbsp;</TD>
+<TR><!--contents--><TD valign=top>noah_netcdf_filename   </TD>
+    <!--  type  --><TD valign=top>character(len=128)   </TD>
     <!--descript--><TD>The name of the NOAH RESTART file to use to
                        create the DART state vector. For convenience, the 
                        <em class=program>advance_model.csh</em> script usually
                        links the most recent restart file to a static name.
-                       <em class=units>[default:&nbsp;'restart.nc']</em></TD></TR>
+                       <em class=units>[default: 'restart.nc']</em></TD></TR>
 
-<TR><!--contents--><TD valign=top>noah_state_variables&nbsp;&nbsp;&nbsp;</TD>
+<TR><!--contents--><TD valign=top>noah_state_variables   </TD>
     <!--  type  --><TD valign=top>character(len=32)::<br />
-                              dimension(2,40)&nbsp;&nbsp;&nbsp;</TD>
+                              dimension(2,40)   </TD>
     <!--descript--><TD>The list of variable names in the NOAH restart file to use to
                        create the DART state vector and their corresponding DART kind.
-                       <em class=units>[default:&nbsp;<em>see&nbsp;example&nbsp;below</em>]</em>
+                       <em class=units>[default: see example below]</em>
                        </TD></TR>
 </TABLE>
 
@@ -160,7 +168,6 @@ variables for <em class=program>noah_to_dart</em> are repeated here.
 </pre>
 
 </div>
-<P></P>
 
 <!--==================================================================-->
 
@@ -178,7 +185,6 @@ time_manager_mod
 types_mod
 utilities_mod
 </PRE>
-<P></P>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -209,8 +215,6 @@ utilities_mod
 can be found at <a href="http://www.ral.ucar.edu/research/land/technology/lsm.php">
 http://www.ral.ucar.edu/research/land/technology/lsm.php</a>
 </ul>
-<P>
-</P>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
@@ -260,7 +264,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+<TR><TD valign=top>Change history: </TD><TD> try "svn log" or "svn diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->

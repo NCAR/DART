@@ -1,0 +1,1379 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+          "http://www.w3.org/TR/html4/loose.dtd">
+<HTML>
+<HEAD>
+<TITLE>module model_mod (CLM)</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE model_mod (CLM)</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+This is the DART interface to the Community Land Model (CLM).
+It is run as part of the 
+<a href="http://www.cesm.ucar.edu/models/cesm1.1/">Community Earth System Model (CESM)</a>
+framework.  It is <strong>strongly</strong> 
+recommended that you become familiar with running a multi-instance experiment in CESM
+<strong>before</strong> you try to run DART/CLM. 
+The DART/CLM facility uses language and concepts that should be familiar to CESM users.
+The DART/CLM capability is entirely dependent on the multi-instance capability 
+of CESM, first supported in its entirety in CESM1.1.1. Consequently, this version 
+or newer is required to run CLM/DART. The 
+<a href="http://www.cesm.ucar.edu/models/cesm1.1/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf">
+CLM User's Guide</a> is an excellent reference for CLM. 
+<br />
+<br />
+DART uses the multi-instance capability of CESM, which means that DART is not 
+responsible for advancing the model. This GREATLY simplifies the traditional DART 
+workflow, but it means 
+<em>CESM has to stop and write out a restart file every time an assimilation is required</em>. 
+The multi-instance capability is very new to CESM and we are in close collaboration with
+the CESM developers to make using DART with CESM as easy as possible. While we strive to
+keep DART requirements out of the model code, there are a few SourceMods needed to run
+DART from within CESM. The SourceMods are available at
+<a href="http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_1_1.tar">
+http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_1_1.tar</a> and should be 
+unpacked into your HOME directory. They will create a <em class=file>~/cesm_1_1_1</em> 
+directory with the appropriate SourceMods structure. The ensuing scripts require these
+SourceMods and expect them to be in your HOME directory.
+<br />
+<br />
+Our notes on how to set up, configure, build, and run CESM for an assimilation experiment
+evolved into scripts. These scripts are not intended to be a 'black box'; you will have to 
+read and understand them and modify them to your own purpose. They are heavily commented --
+in keeping with their origins as a set of notes. If you would like to offer suggestions on
+how to improve those notes - please send them to dart@ucar.edu - we'd love to hear them.
+</P>
+<TABLE border=0 cellpadding=5 width=100% summary='script description'>
+<THEAD align=left>
+<TR><TH> Script </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+<TBODY valign=top>
+
+<TR><TD><a href="shell_scripts/CESM1_1_1_pmo_setup">CESM1_1_1_pmo_setup</a></TD>
+    <TD>runs a single instance of CLM to harvest synthetic observations for an OSSE or
+        "perfect model" experiment. It requires a single CLM state from a previous
+        experiment and uses a specified DATM stream for forcing. This parallels an
+        assimilation experiment in that in the multi-instance setting each CLM instance
+        may use (should use?) a unique DATM forcing. This script has almost nothing to
+        do with DART. There is one (trivial) section that records some configuration 
+        information in the DART setup script, but that's about it. This script should
+        initially be run without DART to ensure a working CESM environment.
+    </TD>
+</TR>
+
+<TR><TD><a href="shell_scripts/CESM1_1_1_hybrid_initial">CESM1_1_1_hybrid_initial</a></TD>
+    <TD>runs a multi-instance CLM experiment and can be used to perform a free run or
+        'open loop' experiment. By default, each CLM instance uses a unique DATM forcing.
+        This script also has almost nothing to do with DART. There is one (trivial) 
+        section that records some configuration information in the DART setup script, 
+        but that's about it. This script should initially be run without DART to ensure 
+       a working CESM.
+    </TD>
+</TR>
+
+<TR><TD><a href="shell_scripts/CESM_DART_config">CESM_DART_config</a></TD>
+    <TD>augments a CESM case with the bits and pieces required to run DART.
+        When either <em class=program>CESM1_1_1_pmo_setup</em> or 
+        <em class=program>CESM1_1_1_hybrid_initial</em> gets executed, 
+        <em class=program>CESM_DART_config</em> gets copied to the CESM "caseroot" 
+        directory. It is designed such that you can execute it at any time during a CESM
+        experiment.  When you do execute it, it will build the DART executables and copy
+        them into the CESM "bld" directory, stage the run-time configurable 
+        <em class=file>input.nml</em> in the "caseroot" directory, etc. and also 
+        <em>modifies</em> the CESM <em class=program>case.run</em> script to call the 
+        DART scripts for assimilation or to harvest synthetic observations.
+    </TD>
+</TR>
+</TABLE>
+
+<P>In addition to the script above, there are a couple scripts that will either
+perform an assimilation (<a href="shell_scripts/assimilate.csh">assimilate.csh</a>) 
+or harvest observations for a perfect model experiment 
+(<a href="shell_scripts/perfect_model.csh">perfect_model.csh</a>). These scripts
+are designed to work on several compute platforms although they require configuration,
+mainly to indicate the location of the DART observation sequence files on your system.
+</P>
+
+<H2>Pertinent details of the CLM gridcell.</H2>
+
+<TABLE border=0 cellpadding=5 width=100% summary='CLM gridcell'>
+<TBODY valign=top>
+
+<TR><TD>
+<a href="http://www.cesm.ucar.edu/models/clm/surface.heterogeneity.html"><img src="../../doc/images/clm_landcover.jpg" alt="CLM gridcell breakdown" height=250 /></a>
+</TD>
+    <TD>"The land surface is represented by 5 primary sub-grid land cover types 
+     (landunits: glacier, lake, wetland, urban, vegetated) in each grid cell. 
+     The vegetated portion of a grid cell is further divided into patches of 
+     plant functional types, each with its own leaf and stem area index and 
+     canopy height. Each subgrid land cover type and PFT patch is a separate 
+     column for energy and water calculations." -- CLM documentation.
+    <br />
+    <br />
+    The only location information available is at the gridcell level. All
+    landunits, columns, and PFTs in that gridcell have the same location. 
+    This has ramifications for the forward observation operators. If the 
+    observation metadata has information about land use/land cover, it can
+    be used to select only those patches that are appropriate. Otherwise,
+    an area-weighted average of ALL patches in the gridcell is used to 
+    calculate the observation value for that location.
+    </TD>
+</TR>
+</TABLE>
+
+<H2>A word about forward observation operators.</H2>
+<P> "Simple" observations like snowcover fraction come directly from the DART 
+    state. It is possible to configure the CLM history files to contain the CLM 
+    estimates of some quantities (mostly flux tower observations e.g, 
+    net ecosystem production, sensible heat 
+    flux, latent heat flux) that are very complicated combinations of 
+    portions of the CLM state. The forward observation operators for these
+    flux tower observations read these quantities from the CLM
+    <em class=file>.h1.</em> history file. The smaller the CLM gridcell,
+    the more likely it seems that these values will agree with point observations.
+    <br />
+    <br />
+    The prior and posterior values for these will naturally be 
+    identical as the history file is unchanged by the assimilation.
+    Configuring the CLM user_nl_clm files to output the desired quantities
+    must be done at the first execution of CLM. As soon as CONTINUE_RUN=TRUE,
+    the namelist values for history file generation are ignored. Because the
+    history file creation is very flexible, some additional information must
+    be passed to DART to construct the filename of the 
+    <em class=file>.h1.</em> history file needed for any particular time.
+</P>
+
+
+<!--===================== DESCRIPTION OF A NAMELIST =====================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+These namelists are read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;model_nml 
+  clm_restart_filename         = 'clm_restart.nc',
+  clm_history_filename         = 'clm_history.nc',
+  output_state_vector          = .false.,
+  assimilation_period_days     = 2,
+  assimilation_period_seconds  = 0,
+  model_perturbation_amplitude = 0.2,
+  calendar                     = 'Gregorian',
+  debug                        = 0
+  clm_state_variables          = 'frac_sno',    'KIND_SNOWCOVER_FRAC',
+                                 'H2OSNO',      'KIND_SNOW_WATER',
+                                 'H2OSOI_LIQ',  'KIND_SOIL_MOISTURE',
+                                 'H2OSOI_ICE',  'KIND_ICE',
+                                 'T_SOISNO',    'KIND_SOIL_TEMPERATURE',
+                                 'cpool',       'KIND_CARBON',
+                                 'frootc',      'KIND_ROOT_CARBON',
+                                 'leafc',       'KIND_LEAF_CARBON',
+                                 'leafn',       'KIND_LEAF_NITROGEN',
+   /
+</pre>
+</div>
+<div>
+<TABLE border=0 cellpadding=3 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+<TBODY valign=top>
+
+<TR><TD>clm_restart_filename</TD>
+    <TD>character(len=256)</TD>
+    <TD>this is the filename of the CLM restart file. The DART scripts resolve 
+        linking the specific CLM restart file to this generic name. This file
+        provides the elements used to make up the DART state vector.  The variables
+        are in their original landunit, column, and PFT-based representations.</TD>
+</TR>
+
+<TR><TD>clm_history_filename</TD>
+    <TD>character(len=256)</TD>
+    <TD>this is the filename of the CLM <em class=file>.h0.</em> history file.
+        The DART scripts resolve linking the specific CLM history file to this 
+        generic name. Some of the metadata needed for the DART/CLM interfaces
+        is contained only in this history file, so it is needed for all DART
+        routines.</TD>
+</TR>
+
+<TR><TD>output_state_vector</TD>
+    <TD>logical</TD>
+    <TD>If .true. write state vector as a 1D array to the DART diagnostic
+        output files.  If .false. break state vector up into variables 
+        before writing to the output files.</TD>
+</TR>
+
+<TR><TD>assimilation_period_days, <br />
+        assimilation_period_seconds</TD>
+    <TD>integer</TD>
+    <TD>Combined, these specify the width of the assimilation window.
+        The current model time is used as the center time of the 
+        assimilation window. All observations in the assimilation window
+        are assimilated. BEWARE: if you put observations that occur before
+        the beginning of the assimilation_period, DART will error out because
+        it cannot move the model 'back in time' to process these observations.</TD>
+</TR>
+
+<TR><TD>model_perturbation_amplitude</TD>
+    <TD>integer</TD>
+    <TD>Required by the DART interfaces, but not used by CLM.</TD>
+</TR>
+
+<TR><TD>calendar</TD>
+    <TD>character(len=32)</TD>
+    <TD>string specifying the calendar to use with DART. The CLM dates will
+        be interpreted with this same calendar. For assimilations with real
+        observations, this should be 'Gregorian'.</TD>
+</TR>
+
+<TR><TD>debug</TD>
+    <TD>integer</TD>
+    <TD>Set to 0 (zero) for minimal output. Successively higher values
+       generate successively more output. Not all values are important, 
+       however. It seems I've only used values [3,6,7,8]. Go figure.</TD>
+</TR>
+
+<TR><TD>clm_state_variables</TD>
+    <TD>character(:,2)</TD>
+    <TD>Pairs of strings that identify the CLM variables and their DART
+        kind. Only CLM variable names in the CLM restart file are valid.
+        The DART kind must be one found in the 
+        <em class=file>DART/obs_kind/obs_kind_mod.f90</em>
+        AFTER it gets built by <em class=program>preprocess</em>. Most of
+        the land observation kinds are specified by 
+        <em class=file>DART/obs_def/obs_def_tower_mod.f90</em>, so it should
+        be specified in the preprocess_nml:input_files variable.
+        </TD>
+</TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<div class=namelist>
+<pre>
+&amp;obs_def_tower_nml
+   casename    = '../clm_dart',
+   hist_nhtfrq = -24,
+   debug       = .false.
+   /
+</pre>
+</div>
+<div>
+<TABLE border=0 cellpadding=3 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+<TBODY valign=top>
+
+<TR><TD>casename</TD>
+    <TD>character(len=256)</TD>
+    <TD>this is the name of the CESM case. It is used by the forward observation
+        operators to help construct the filename of the CLM <em class=file>.h1.</em>
+        history files for the flux tower observations.
+        When the <em class=file>input.nml</em> gets staged in the CASEROOT directory 
+        by <em class=program>CESM_DART_config</em>,
+        the appropriate value should automatically be inserted.
+        </TD>
+</TR>
+
+<TR><TD>hist_nhtfrq</TD>
+    <TD>integer</TD>
+    <TD>this is the same value as in the CLM documentation. A negative value
+        indicates the number of hours contained in the <em class=file>.h1.</em> file.
+        This value is needed to constuct the right  <em class=file>.h1.</em> filename.
+        When the <em class=file>input.nml</em> gets staged in the CASEROOT directory 
+        by <em class=program>CESM_DART_config</em>, the appropriate value should 
+        automatically be inserted. Due to the large number of ways of specifying 
+        the CLM history file information, the correct value here is very dependent 
+        on how the case was configured. You would be wise to check it.
+        </TD>
+</TR>
+
+<TR><TD>debug</TD>
+    <TD>logical</TD>
+    <TD>Set to .false. for minimal output.</TD>
+</TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<P></P>
+
+<!--==================================================================-->
+
+<A NAME="OtherModulesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED (directly)</H2>
+<PRE>
+types_mod
+time_manager_mod
+threed_sphere/location_mod
+utilities_mod
+obs_kind_mod
+obs_def_tower_mod
+random_seq_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC INTERFACES - Required</H2>
+
+<TABLE summary="list of all required public interfaces">
+<TR><TD><em class=call>use model_mod, only : </em></TD>
+                   <TD><A HREF="#get_model_size">get_model_size</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_state_meta_data">get_state_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#model_interpolate">model_interpolate</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time_step">get_model_time_step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#static_init_model">static_init_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#end_model">end_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_time">init_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_conditions">init_conditions</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_state">pert_model_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
+</TABLE>
+
+<P>
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
+   <em class=optionalcode>[like this]</em>.
+</P>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_model_size"></A>
+<br />
+<div class=routine>
+<em class=call>model_size = get_model_size( )</em>
+<pre>
+integer :: <em class=code>get_model_size</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the length of the model state vector.
+</P>
+
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+
+<TR><TD><em class=code>model_size</em></TD>
+    <TD>The length of the model state vector.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="adv_1step"></A>
+<br />
+<div class=routine>
+<em class=call>call adv_1step(x, time)</em>
+<pre>
+real(r8), dimension(:), intent(inout) :: <em class=code>x</em>
+type(time_type),        intent(in)    :: <em class=code>time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Advances the model for a single time step.
+The time associated with the initial model state is also input
+although it is not used for the computation.
+</P>
+
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+
+<TR><TD><em class=code>x</em></TD>
+    <TD>State vector of length model_size.</TD></TR>
+
+<TR><TD><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Specifies time of the initial model state.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_state_meta_data"></A>
+<br />
+<div class=routine>
+<em class=call>call get_state_meta_data (index_in, location, 
+                          <em class=optionalcode>[,&nbsp;var_type]</em> )</em>
+<pre>
+integer,             intent(in)  :: <em class=code>index_in</em>
+type(location_type), intent(out) :: <em class=code>location</em>
+integer, optional,   intent(out) :: <em class=optionalcode> var_type </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns metadata about a given element, indexed by index_in, in the model 
+state vector. The location defines where the state variable is located.
+</P>
+
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+
+<TR><TD><em class=code>index_in&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Index of state vector element about which information is requested.</TD></TR>
+
+<TR><TD><em class=code>location</em></TD>
+    <TD>The location of state variable element.</TD></TR>
+
+<TR><TD><em class=optionalcode>var_type</em></TD>
+    <TD>Returns the type (always 1) of the indexed state 
+        variable as an optional argument.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="model_interpolate"></A>
+<br />
+<div class=routine>
+<em class=call>call model_interpolate(x, location, itype, obs_val, istatus)</em>
+<pre>
+real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
+type(location_type),    intent(in)  :: <em class=code>location</em>
+integer,                intent(in)  :: <em class=code>itype</em>
+real(r8),               intent(out) :: <em class=code>obs_val</em>
+integer,                intent(out) :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given model state, returns the value interpolated to a given location.
+</P>
+
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+
+<TR><TD><em class=code>x</em></TD>
+    <TD>A model state vector.</TD></TR>
+
+<TR><TD><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Location to which to interpolate.</TD></TR>
+
+<TR><TD><em class=code>itype</em></TD>
+    <TD> Not used.</TD></TR>
+
+<TR><TD><em class=code>obs_val</em></TD>
+    <TD> The interpolated value from the model.</TD></TR>
+
+<TR><TD><em class=code>istatus</em></TD>
+    <TD>Quality control information, always returned 0.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_model_time_step"></A>
+<br />
+<div class=routine>
+<em class=call>var = get_model_time_step()</em>
+<pre>
+type(time_type) :: <em class=code>get_model_time_step</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the time step (forecast length) of the model;
+</P>
+
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+
+<TR><TD><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Smallest time step of model.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="static_init_model"></A>
+<br />
+<div class=routine>
+<em class=call>call static_init_model()</em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Used for runtime initialization of model; 
+reads namelist, initializes model parameters, etc.
+This is the first call made to the model by any 
+DART-compliant assimilation routine.
+</P>
+
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="end_model"></A>
+<br />
+<div class=routine>
+<em class=call>call end_model()</em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+A stub.
+</P>
+
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_time"></A>
+<br />
+<div class=routine>
+<em class=call>call init_time(time)</em>
+<pre>
+type(time_type), intent(out) :: <em class=code>time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the time at which the model will start 
+if no input initial conditions are 
+to be used. This is used to spin-up the model from rest.
+</P>
+
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+
+<TR><TD><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Initial model time.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_conditions"></A>
+<br />
+<div class=routine>
+<em class=call>call init_conditions(x)</em>
+<pre>
+real(r8), dimension(:), intent(out) :: <em class=code>x</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns default initial conditions for the model; 
+generally used for spinning up initial model states.
+</P>
+
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+
+<TR><TD><em class=code>x&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Initial conditions for state vector.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="nc_write_model_atts"></A>
+<br />
+<div class=routine>
+<em class=call>ierr = nc_write_model_atts(ncFileID)</em>
+<pre>
+integer             :: <em class=code>nc_write_model_atts</em>
+integer, intent(in) :: <em class=code>ncFileID</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Function to write model specific attributes to a netCDF file. At present, DART 
+is using the NetCDF format to output diagnostic information. This is not a 
+requirement, and models could choose to provide output in other formats. 
+This function writes the metadata associated with the model to a NetCDF 
+file opened to a file identified by ncFileID.  
+</P>
+
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+
+<TR><TD><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Integer file descriptor to previously-opened netCDF file.</TD></TR>
+
+<TR><TD><em class=code>ierr</em></TD>
+    <TD>Returns a 0 for successful completion.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="nc_write_model_vars"></A>
+<br />
+<div class=routine>
+<em class=call>ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
+<pre>
+integer                            :: <em class=code>nc_write_model_vars</em>
+integer,                intent(in) :: <em class=code>ncFileID</em>
+real(r8), dimension(:), intent(in) :: <em class=code>statevec</em>
+integer,                intent(in) :: <em class=code>copyindex</em>
+integer,                intent(in) :: <em class=code>timeindex</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Writes a copy of the state variables to a netCDF file. Multiple copies
+of the state for a given time are supported, allowing, for instance,
+a single file to include multiple ensemble estimates of the state.
+</P>
+
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+
+<TR><TD><em class=code>ncFileID</em></TD>
+    <TD>file descriptor to previously-opened netCDF file.</TD></TR>
+
+<TR><TD><em class=code>statevec</em></TD>
+    <TD>A model state vector.</TD></TR>
+
+<TR><TD><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD> Integer index of copy to be written.</TD></TR>
+
+<TR><TD><em class=code>timeindex</em></TD>
+    <TD>The timestep counter for the given state.</TD></TR>
+
+<TR><TD><em class=code>ierr</em></TD>
+    <TD>Returns 0 for normal completion.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="pert_model_state"></A>
+<br />
+<div class=routine>
+<em class=call>call pert_model_state(state, pert_state, interf_provided)</em>
+<pre>
+real(r8), dimension(:), intent(in)  :: <em class=code>state</em>
+real(r8), dimension(:), intent(out) :: <em class=code>pert_state</em>
+logical,                intent(out) :: <em class=code>interf_provided</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given a model state, produces a perturbed model state.
+</P>
+
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+
+<TR><TD><em class=code>state</em></TD>
+    <TD>State vector to be perturbed.</TD></TR>
+
+<TR><TD><em class=code>pert_state</em></TD>
+    <TD>Perturbed state vector: NOT returned.</TD></TR>
+
+<TR><TD><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Returned false; interface is not implemented.</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_maxdist_init"></A>
+<br />
+<div class=routine>
+<em class=call>call get_close_maxdist_init(gc, maxdist)</em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+real(r8),             intent(in)    :: <em class=code>maxdist</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Pass-through to the 3D Sphere locations module. See
+<A HREF="../../location/threed_sphere/location_mod.html#get_close_maxdist_init">
+get_close_maxdist_init()</A> for the documentation of this subroutine.
+</P>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_obs_init"></A>
+<br />
+<div class=routine>
+<em class=call>call get_close_obs_init(gc, num, obs)</em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+integer,              intent(in)    :: <em class=code>num</em>
+type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Pass-through to the 3D Sphere locations module. See
+<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs_init">
+get_close_obs_init()</A> for the documentation of this subroutine.
+</P>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_obs"></A>
+<br />
+<div class=routine>
+<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind,
+  obs, obs_kind, num_close, close_ind
+  <em class=optionalcode>[,&nbsp;dist]</em>) </em>
+<pre>
+type(get_close_type), intent(in)  :: <em class=code>gc</em>
+type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
+integer,              intent(in)  :: <em class=code>base_obs_kind</em>
+type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
+integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
+integer,              intent(out) :: <em class=code>num_close</em>
+integer,              intent(out) :: <em class=code>close_ind(:)</em>
+real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Pass-through to the 3D Sphere locations module. See
+<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs">
+get_close_obs()</A> for the documentation of this subroutine.
+</P>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="ens_mean_for_model"></A>
+<br />
+<div class=routine>
+<em class=call>call ens_mean_for_model(ens_mean)</em>
+<pre>
+real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+A NULL INTERFACE in this model.
+</P>
+
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+
+<TR><TD><em class=code>ens_mean&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>State vector containing the ensemble mean.</TD></TR>
+
+</TABLE>
+
+</div>
+<P></P>
+
+<!--==================================================================-->
+<!-- list of all optional public interfaces                           -->
+<!--==================================================================-->
+
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC INTERFACES - Optional</H2>
+
+<TABLE summary="list of all optional public interfaces">
+<TR><TD><em class=call>use model_mod, only : </em></TD>
+                   <TD><A HREF="#get_gridsize">get_gridsize</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#restart_file_to_sv">restart_file_to_sv</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#sv_to_restart_file">sv_to_restart_file</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_clm_restart_filename">get_clm_restart_filename</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_state_time">get_state_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_grid_vertval">get_grid_vertval</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#compute_gridcell_value">compute_gridcell_value</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#find_gridcell_Npft">find_gridcell_Npft</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#DART_get_var">DART_get_var</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time">get_model_time</A></TD></TR>
+</TABLE>
+
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_gridsize"></A>
+<br />
+<div class=routine>
+<em class=call>call get_gridsize(num_lon, num_lat, num_lev)</em>
+<pre>
+integer, intent(out) :: <em class=code>num_lon, num_lat, num_lev</em>
+</pre>
+</div>
+<div class=indent1>
+<!-- Description -->
+<P>
+Returns the number of longitudes, latitudes, and total number of levels in the CLM state.
+</P>
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+<TR><TD><em class=code>num_lon</em></TD>
+    <TD>The number of longitude grid cells in the CLM state.
+        This comes from the CLM history file.</TD></TR>
+<TR><TD><em class=code>num_lat</em></TD>
+    <TD>The number of latitude grid cells in the CLM state.
+        This comes from the CLM history file.</TD></TR>
+<TR><TD><em class=code>num_lev</em></TD>
+    <TD>The number of levels grid cells in the CLM state.
+        This comes from 'nlevtot' in the CLM restart file.</TD></TR>
+</TABLE>
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="restart_file_to_sv"></A>
+<br />
+<div class=routine>
+<em class=call>call restart_file_to_sv(filename, state_vector, restart_time )</em>
+<pre>
+character(len=*), intent(in)    :: <em class=code>filename</em>
+real(r8),         intent(inout) :: <em class=code>state_vector(:)</em>
+type(time_type),  intent(out)   :: <em class=code>restart_time</em>
+</pre>
+</div>
+<div class=indent1>
+<!-- Description -->
+<P>
+Reads the current time and state variables from a CLM restart
+file and packs them into a DART state vector. This MUST happen
+in the same fashion as the metadata arrays are built. The variables
+specified in the <em class=code>model_nml:clm_state_variables</em>
+are the ones read from the CLM restart file to create the DART state vector.
+</P>
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+<TR><TD><em class=code>filename</em></TD>
+    <TD>The name of the CLM restart file.</TD></TR>
+<TR><TD><em class=code>state_vector</em></TD>
+    <TD>The DART state vector.</TD></TR>
+<TR><TD><em class=code>restart_time</em></TD>
+    <TD>The valid time of the CLM state.</TD></TR>
+</TABLE>
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="sv_to_restart_file"></A>
+<br />
+<div class=routine>
+<em class=call>call sv_to_restart_file(state_vector, filename, dart_time)</em>
+<pre>
+real(r8),         intent(in) :: <em class=code>state_vector(:)</em>
+character(len=*), intent(in) :: <em class=code>filename</em>
+type(time_type),  intent(in) :: <em class=code>dart_time</em>
+</pre>
+</div>
+<div class=indent1>
+<!-- Description -->
+<P>
+This routine updates the CLM restart file with the posterior state from the assimilation.
+Some CLM variables that are useful to include in the DART state (frac_sno, for example)
+are diagnostic quantities and are not used for subsequent model advances. 
+The known diagnostic variables are NOT updated.
+If the values created by the assimilation are outside physical bounds, or if the original
+CLM value was 'missing', the <em class=program>vector_to_prog_var()</em> subroutine
+ensures that the values in the original CLM restart file are <strong>not updated</strong>. 
+</P>
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+<TR><TD><em class=code>state_vector</em></TD>
+    <TD>The DART state vector containing the state modified by the assimilation.</TD></TR>
+<TR><TD><em class=code>filename</em></TD>
+    <TD>The name of the CLM restart file. <strong>The contents of some of the 
+        variables will be overwritten with new values.</strong></TD></TR>
+<TR><TD><em class=code>dart_time</em></TD>
+    <TD>The valid time of the DART state. This has to match the time in the
+        CLM restart file.</TD></TR>
+</TABLE>
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_clm_restart_filename"></A>
+<br />
+<div class=routine>
+<em class=call>call get_clm_restart_filename( filename )</em>
+<pre>
+character(len=*), intent(out) :: <em class=code>filename</em>
+</pre>
+</div>
+<div class=indent1>
+<!-- Description -->
+<P>
+provides access to the name of the CLM restart file to routines outside the
+scope of this module.
+</P>
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+<TR><TD><em class=code>filename</em></TD>
+    <TD>The name of the CLM restart file.</TD></TR>
+</TABLE>
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_state_time"></A>
+<br />
+<div class=routine>
+<em class=call>time = get_state_time(file_handle)</em>
+<pre>
+integer,          intent(in) :: <em class=code>file_handle</em> 
+character(len=*), intent(in) :: <em class=code>file_handle</em> 
+type(time_type)              :: <em class=code>get_state_time</em>
+</pre>
+</div>
+<div class=indent1>
+<!-- Description -->
+<P>
+This routine has two interfaces - one for an integer input, one for a filename.
+They both return the valid time of the model state contained in the file.
+The file referenced is the CLM restart file in netCDF format.
+</P>
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+<TR><TD><em class=code>file_handle</em></TD>
+    <TD>If specified as an integer, it must be the netCDF file identifier from nf90_open().
+        If specified as a filename, the name of the netCDF file.</TD></TR>
+<TR><TD><em class=code>time</em></TD>
+    <TD>A DART time-type that contains the valid time of the model state in the CLM
+        restart file.</TD></TR>
+</TABLE>
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_grid_vertval"></A>
+<br />
+<div class=routine>
+<em class=call>call get_grid_vertval(x, location, varstring, interp_val, istatus)</em>
+<pre>
+real(r8),            intent(in)  :: <em class=code>x(:)</em>
+type(location_type), intent(in)  :: <em class=code>location</em>
+character(len=*),    intent(in)  :: <em class=code>varstring</em>
+real(r8),            intent(out) :: <em class=code>interp_val</em>
+integer,             intent(out) :: <em class=code>istatus</em>
+</pre>
+</div>
+<div class=indent1>
+<!-- Description -->
+<P>
+Calculate the value of quantity at depth. 
+The gridcell value at the levels above and below the depth of interest are calculated
+and then the value for the desired depth is linearly interpolated.
+Each gridcell value is an area-weighted value of an unknown number of
+column- or pft-based quantities. This is one of the workhorse routines for
+<em class=program>model_interpolate()</em>.
+</P>
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+<TR><TD><em class=code>x</em></TD>
+    <TD>The DART state vector.</TD></TR>
+<TR><TD><em class=code>location</em></TD>
+    <TD>The location of the desired quantity.</TD></TR>
+<TR><TD><em class=code>varstring</em></TD>
+    <TD>The CLM variable of interest - this must be part of the DART state.
+        e.g, T_SOISNO, H2OSOI_LIQ, H2OSOI_ICE ...</TD></TR>
+<TR><TD><em class=code>interp_val</em></TD>
+    <TD>The quantity at the location of interest.</TD></TR>
+<TR><TD><em class=code>istatus</em></TD>
+    <TD>error code. 0 (zero) indicates a successful interpolation.</TD></TR>
+</TABLE>
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="compute_gridcell_value"></A>
+<br />
+<div class=routine>
+<em class=call>call compute_gridcell_value(x, location, varstring, interp_val, istatus)</em>
+<pre>
+real(r8),            intent(in)  :: <em class=code>x(:)</em>
+type(location_type), intent(in)  :: <em class=code>location</em>
+character(len=*),    intent(in)  :: <em class=code>varstring</em>
+real(r8),            intent(out) :: <em class=code>interp_val</em>
+integer,             intent(out) :: <em class=code>istatus</em>
+</pre>
+</div>
+<div class=indent1>
+<!-- Description -->
+<P>
+Calculate the value of a CLM variable in the DART state vector given a location.
+Since the CLM location information is only available at the gridcell level,
+all the columns in a gridcell are area-weighted to derive the value for the location.
+This is one of the workhorse routines for
+<em class=program>model_interpolate()</em>, and only select CLM variables are currently
+supported. Only CLM variables that have no vertical levels may use this routine. 
+</P>
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+<TR><TD><em class=code>x</em></TD>
+    <TD>The DART state vector.</TD></TR>
+<TR><TD><em class=code>location</em></TD>
+    <TD>The location of the desired quantity.</TD></TR>
+<TR><TD><em class=code>varstring</em></TD>
+    <TD>The CLM variable of interest - this must be part of the DART state.
+        e.g, frac_sno, leafc, ZWT ...</TD></TR>
+<TR><TD><em class=code>interp_val</em></TD>
+    <TD>The quantity at the location of interest.</TD></TR>
+<TR><TD><em class=code>istatus</em></TD>
+    <TD>error code. 0 (zero) indicates a successful interpolation.</TD></TR>
+</TABLE>
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="find_gridcell_Npft"></A>
+<br />
+<div class=routine>
+<em class=call>call find_gridcell_Npft(varstring)</em>
+<pre>
+character(len=*), intent(in) :: <em class=code>varstring</em>
+</pre>
+</div>
+<div class=indent1>
+<!-- Description -->
+<P>
+This is a utility routine that helps identify how many land units,columns, or PFTs
+are in each gridcell for a particular variable. Helps answer exploratory questions
+about which gridcells are appropriate to test code.  The CLM variable is read from
+the CLM restart file.
+</P>
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+<TR><TD><em class=code>varstring</em></TD>
+    <TD>The CLM variable name of interest.</TD></TR>
+</TABLE>
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="DART_get_var"></A>
+<br />
+<div class=routine>
+<em class=call>call DART_get_var(ncid, varname, datmat)</em>
+<pre>
+integer,                  intent(in)  :: <em class=code>ncid</em>
+character(len=*),         intent(in)  :: <em class=code>varname</em>
+real(r8), dimension(:),   intent(out) :: <em class=code>datmat</em>
+real(r8), dimension(:,:), intent(out) :: <em class=code>datmat</em>
+</pre>
+</div>
+<div class=indent1>
+<!-- Description -->
+<P>
+Reads a 1D or 2D variable of 'any' type from a netCDF file and processes 
+and applies the offset/scale/FillValue attributes correctly.
+</P>
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+<TR><TD><em class=code>ncid</em></TD>
+    <TD>The netCDF file identifier to an open file. 
+        ncid is the output from a nf90_open() call.</TD></TR>
+<TR><TD><em class=code>varname</em></TD>
+    <TD>The name of the netCDF variable of interest.
+        The variables can be integers, floats, or doubles. </TD></TR>
+<TR><TD><em class=code>datmat</em></TD>
+    <TD>The shape of datmat must match the shape of the
+        netCDF variable. Only 1D or 2D variables are currently 
+        supported.</TD></TR>
+</TABLE>
+</div>
+<br />
+
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_model_time"></A>
+<br />
+<div class=routine>
+<em class=call>model_time = get_model_time( )</em>
+<pre>
+integer :: <em class=code>get_model_time</em>
+</pre>
+</div>
+<div class=indent1>
+<!-- Description -->
+<P>
+Returns the valid time of the model state vector.
+</P>
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+<TR><TD><em class=code>model_time</em></TD>
+    <TD>The valid time of the model state vector.</TD></TR>
+</TABLE>
+</div>
+<br />
+
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+
+<TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
+<TBODY valign=top>
+<TR><TH align=left>filename</TH>
+    <TH align=left>purpose</TH></TR>
+<TR><TD>input.nml</TD>
+    <TD>to read the model_mod namelist</TD></TR>
+<TR><TD>clm_restart.nc</TD>
+    <TD>both read and modified by the CLM model_mod</TD></TR>
+<TR><TD>clm_history.nc</TD>
+    <TD>read by the CLM model_mod for metadata purposes.</TD></TR>
+<TR><TD>*.h1.* history files</TD>
+    <TD>may be read by the obs_def_tower_mod for observation operator purposes.</TD></TR>
+<TR><TD>dart_log.out</TD>
+    <TD>the run-time diagnostic output</TD></TR>
+<TR><TD>dart_log.nml</TD>
+    <TD>the record of all the namelists actually USED - 
+        contains the default values</TD></TR>
+</TABLE>
+<P></P>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+
+<P>
+<a href="http://www.cesm.ucar.edu/models/cesm1.1/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf">
+CLM User's Guide</a> is an excellent reference for CLM. 
+</P>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=3 width=100% summary="error situations">
+<TR><TH>Routine</TH>
+    <TH>Message</TH>
+    <TH>Comment</TH></TR>
+<TR><!-- routine --><TD> nc_write_model_atts<br />
+                                    nc_write_model_vars</TD>
+    <!-- message --><TD>Various netCDF-f90 interface error messages</TD>
+    <!-- comment --><TD>From one of the netCDF calls in the named routine</TD>
+</TR>
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TBODY valign=top>
+<TR><TD>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

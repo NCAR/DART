@@ -213,7 +213,7 @@ cat ncommas_in.part1 ncommas_in.part2 >! ncommas_in
 
 ./ncommas_to_dart || exit 1
 
-${MOVE} dart.ud perfect_ics
+${MOVE} dart_ics perfect_ics
 
 #-----------------------------------------------------------------------------
 # Run perfect_model_obs ... harvest the observations to populate obs_seq.out

@@ -4,6 +4,7 @@
 <HEAD>
 <TITLE>program dart_to_wrf/wrf_to_dart</TITLE>
 <link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css" />
+<link href="../../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +15,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../../index.html">DART Documentation Main Index</a><br />
@@ -38,8 +39,8 @@
 <P>
 This document describes both of the two programs that convert WRF netCDF 
 input files into DART format, and vice versa.
-<br />
-<br />
+</P>
+<P>
 For the sake of convenience, we will use <em class=file>wrfinput_d01</em>
 to mean the WRF input file - no matter how many domains are used.
 </P>
@@ -139,31 +140,64 @@ amount of time before the next assimilation cycle.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / dart_to_wrf_nml / </em> &amp;
-    model_advance_file, dart_restart_name, adv_mod_command, &amp;
-    print_data_ranges, debug
-
-<em class=call>namelist / wrf_to_dart_nml / </em> &amp;
-    dart_restart_name, print_data_ranges, debug
-
-<em class=call>namelist / model_nml / </em> 
-
+&amp;dart_to_wrf_nml
+   model_advance_file = .true.,
+   dart_restart_name = 'dart_wrf_vector',
+   adv_mod_command   = './wrf.exe',
+   print_data_ranges = .false.,
+   debug             = .false.,
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+
+<div class=namelist>
+<pre>
+&amp;wrf_to_dart_nml
+    dart_restart_name = "dart_wrf_vector", 
+    print_data_ranges = .false., 
+    debug             = .false.
+/
+</pre>
+</div>
+
+<br />
+
+<div class=namelist>
+<pre>
+&amp;model_nml
+   default_state_variables     = .true.,
+   wrf_state_variables         = 'NULL',
+   wrf_state_bounds            = 'NULL',
+   num_domains                 = 1,
+   output_state_vector         = .false.,
+/
+(partial list)
+</pre>
+</div>
+
+<br />
+<br />
+
 
 <P>Both converters have their own namelist, and additionally
 read the WRF model namelist.  See the description of the model
-namelist in the <a href="../model_mod.html#Namelist">WRF model_mod</a> file.
+namelist in the <a href="../model_mod.html#Namelist">WRF model_mod</a> 
+documentation.
 The <em class=program>dart_to_wrf</em> program uses the namelist
 <em class=file>dart_to_wrf_nml</em>, and
 the <em class=program>wrf_to_dart</em> program uses the namelist
@@ -171,126 +205,129 @@ the <em class=program>wrf_to_dart</em> program uses the namelist
 All namelists are read from a file 
 called <em class=file>input.nml</em>.  
 </P> 
-<P>
-The <em class=file>dart_to_wrf_nml</em> contains:
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>model_advance_file  </TD>
-    <!--  type  --><TD valign=top>logical             </TD>
-    <!--descript--><TD>
-     Set this to the default value of <b>.TRUE.</b> to work with
-     the <em class=program>advance_model.csh</em> script during an
-     assimilation run, where it converts the
-     temporary/intermediary <em class=file>assim_model_state_ic</em> files. 
-     <br />
-     To insert the information from a DART restart/initial conditions 
-     file into <em class=file>wrfinput_d01</em> set this to
-     <b>.FALSE.</b> (i.e. for a free run of WRF).
-     <br />
-     The <em class=program>dart_to_wrf</em> program is able to convert
-     both types of DART restart files: those with two timestamp records 
-     followed by the model state, and those with a single timestamp record 
-     followed by the model state (the type most commonly encountered if the 
-     assimilation is successful). 
-     Default .TRUE. </TD></TR>
-<TR><!--contents--><TD valign=top>dart_restart_name    </TD>
-    <!--  type  --><TD valign=top>character(len=128)   </TD>
-    <!--descript--><TD>
-     Set this to the default value of <b>'dart_wrf_vector'</b> to
-     work with the <em class=program>advance_model.csh</em> script.
-     To read the input information from a DART restart file with
-     a different name, set this to another value, e.g. 'filter_ics'.
-     Remember to change <em class=code>model_advance_file</em> to 
-     <em class=code>.FALSE.</em> if the input file is a DART
-     restart or initial conditions file.
-     Default 'dart_wrf_vector'. </TD></TR>
-<TR><!--contents--><TD valign=top>adv_mod_command      </TD>
-    <!--  type  --><TD valign=top>character(len=128)   </TD>
-    <!--descript--><TD>
-     Set this to the default value of <b>'./wrf.exe'</b> to work
-     with the <em class=program>advance_model.csh</em>  script.
-     This value is ignored if <em class=code>model_advance_file</em>
-     is .FALSE., but if it is .TRUE. then this string along with
-     the necessary time information is written into 
-     a file called 'wrf.info'.
-     Default './wrf.exe'. This value used to be set in the
-     WRF &amp;model_nml namelist, but has moved to here.</TD></TR>
-<TR><!--contents--><TD valign=top>print_data_ranges   </TD>
-    <!--  type  --><TD valign=top>logical             </TD>
-    <!--descript--><TD>
-     The default value of this is <b>.FALSE.</b> to minimize
-     the amount of output printed during the conversion of each
-     ensemble member's data from DART format to WRF.
-     Setting this to <b>.TRUE.</b> will allow you to
-     examine the data min and max of each type of data as it is
-     converted (e.g. U, V, T, Q, etc).  This is useful for
-     diagnosing problems when data values go outside expected ranges.
-     In the <a href="../model_mod.html#Namelist">&amp;model_nml</a> namelist
-     there are options to set data limits during this conversion
-     so if the assimilation has pushed data outside the legal
-     bounds (e.g. 0.0-1.0), the conversion can quit or set out-of-range
-     values to the legal limits.  If this namelist item is true, both
-     the original and new data limits will be printed.
-     Default .FALSE. </TD></TR>
-<TR><!--contents--><TD valign=top>debug               </TD>
-    <!--  type  --><TD valign=top>logical             </TD>
-    <!--descript--><TD>
-     The default value of this is <b>.FALSE.</b>.  This prints
-     verbose output about the sizes of each type of data, the
-     offset into the linearized state vector, the data time information, etc.
-     It is recommended to be used only when diagnosing problems.
-     Default .FALSE. </TD></TR>
-</TABLE>
 
 <P>
 The <em class=file>wrf_to_dart_nml</em> contains:
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>dart_restart_name    </TD>
-    <!--  type  --><TD valign=top>character(len=128)   </TD>
-    <!--descript--><TD>
-     Set this to the default value of <b>'dart_wrf_vector'</b> to
-     work with the <em class=program>advance_model.csh</em> script.
-     To write the input information to a DART restart file with
-     a different name, set this to another value, e.g. 'filter_ics'.
-     Default 'dart_wrf_vector'. </TD></TR>
-<TR><!--contents--><TD valign=top>print_data_ranges   </TD>
-    <!--  type  --><TD valign=top>logical             </TD>
-    <!--descript--><TD>
-     The default value of this is <b>.FALSE.</b> to minimize
-     the amount of output printed during the conversion of each
-     ensemble member's data from WRF to DART format.
-     Setting this to <b>.TRUE.</b> will allow you to
-     examine the data min and max of each type of data as it is
-     converted (e.g. U, V, T, Q, etc).  This is useful for
-     diagnosing problems when data values go outside expected ranges.
-     Default .FALSE. </TD></TR>
-<TR><!--contents--><TD valign=top>debug               </TD>
-    <!--  type  --><TD valign=top>logical             </TD>
-    <!--descript--><TD>
-     The default value of this is <b>.FALSE.</b>.  This prints
-     verbose output about the sizes of each type of data, the
-     offset into the linearized state vector, the data time information, etc.
-     It is recommended to be used only when diagnosing problems.
-     Default .FALSE. </TD></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+    
+<TR><TD> model_advance_file </TD>
+    <TD> logical </TD>
+    <TD> Set this to .true. to work with the <em class=program>advance_model.csh</em> 
+script during an assimilation run, where it converts the temporary/intermediary 
+<em class=file>assim_model_state_ic</em> files.  To insert the information from 
+a DART restart/initial conditions file into <em class=file>wrfinput_d01</em> set 
+this to .false. (i.e. for a free run of WRF).  
+The <em class=program>dart_to_wrf</em> program is able to convert both
+types of DART restart files: those with two timestamp records followed by the
+model state, and those with a single timestamp record followed by the model
+state (the type most commonly encountered if the assimilation is successful).
+</TD></TR>
+
+<TR><TD> dart_restart_name </TD>
+    <TD> character(len=128) </TD>
+    <TD> Set this to the default value of <b>'dart_wrf_vector'</b> to work with
+the <em class=program>advance_model.csh</em> script.  To read the input
+information from a DART restart file with a different name set this to
+another value, e.g. 'filter_ics'.  Remember to change 
+<em class=code>model_advance_file</em> to .false. if the input file is a DART
+restart or initial conditions file.
+</TD></TR>
+
+<TR><TD> adv_mod_command </TD>
+    <TD> character(len=128) </TD>
+    <TD> Set this to <b>'./wrf.exe'</b> to work with the
+<em class=program>advance_model.csh</em>  script.  If 
+<em class=code>model_advance_file</em> is false. this value is ignored. 
+If .true. this string along with the necessary time information is written
+into a file called 'wrf.info'.  This value used to be set in the WRF
+&amp;model_nml namelist, but has moved to here.  </TD></TR>
+
+<TR><TD> print_data_ranges </TD>
+    <TD> logical </TD>
+    <TD> The default value of this is .false. to minimize the amount of
+output printed during the conversion of each ensemble member's data from DART
+format to WRF.  Setting this to .true. will allow you to examine the
+data min and max of each type of data as it is converted (e.g. U, V, T, Q,
+etc).  This is useful for diagnosing problems when data values go outside
+expected ranges.  In the 
+<a href="../model_mod.html#Namelist">&amp;model_nml</a> namelist there are
+options to set data limits during this conversion so if the assimilation has
+pushed data outside the legal bounds (e.g. 0.0-1.0), the conversion can quit
+or set out-of-range values to the legal limits.  If this namelist item is
+true, both the original and new data limits will be printed.
+</TD></TR>
+
+<TR><TD> debug </TD>
+    <TD> logical </TD>
+    <TD> If .true. more information will be printed about the sizes of each 
+type of data, the offset into the linearized state vector, the data time
+information, etc.  It is recommended to be used only when diagnosing problems.
+</TD></TR>
+
+</TBODY> 
 </TABLE>
-
-
 </div>
+
+
+<P>
+The <em class=file>wrf_to_dart_nml</em> contains:
+</P>
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+    
+<TR><TD> dart_restart_name </TD>
+    <TD> character(len=128) </TD>
+    <TD> Set this to <b>'dart_wrf_vector'</b> to work with the 
+<em class=program>advance_model.csh</em> script.  To write the state 
+information to a DART restart file with a different name set this to 
+another value, e.g. 'filter_ics'.
+</TD></TR>
+
+<TR><TD> print_data_ranges </TD>
+    <TD> logical </TD>
+    <TD> Set to .false. to minimize the amount of output printed during
+the conversion of each ensemble member's data from WRF to DART format.
+Setting this to .true. will allow you to examine the data min and max
+of each type of data as it is converted (e.g. U, V, T, Q, etc).  This is
+useful for diagnosing problems when data values go outside expected ranges.
+</TD></TR>
+
+<TR><TD> debug </TD>
+    <TD> logical </TD>
+    <TD>If set to .true. print more output about the sizes of each type of data,
+the offset into the linearized state vector, the data time information, etc.
+It is recommended to be used only when diagnosing problems.
+</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
 <br />
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES DIRECTLY USED</H2>
 <PRE>
 types_mod
@@ -315,7 +352,7 @@ random_nr_mod
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL>
    <LI>input namelist : <em class=file>input.nml</em></LI>
@@ -354,7 +391,7 @@ only used by the program ensemble_init and by the script advance_model.csh.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li> none </li>
@@ -365,7 +402,7 @@ only used by the program ensemble_init and by the script advance_model.csh.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -394,7 +431,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none.
@@ -405,7 +442,7 @@ none.
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

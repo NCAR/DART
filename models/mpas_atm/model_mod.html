@@ -5,14 +5,17 @@
 <HEAD>
 <TITLE>module model_mod (MPAS ATM)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
+<H1>MODULE model_mod (MPAS ATM)</H1>
+
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P><a href="../../index.html">DART Documentation Main Index</a><br />
@@ -32,62 +35,409 @@
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
 
-<H1>MODULE model_mod (MPAS ATM)</H1>
+<H2>Overview</H2>
 
-<P>The <strong>MPAS ATM </strong> interface for 
-   <strong>Data Assimilation Research Testbed (DART)</strong> is under development.
+<P>This document describes the DART interface module for 
+the MPAS-Atmosphere (or briefly, MPAS-ATM) global model, 
+which uses an unstructured Voronoi grid mesh, formally Spherical Centriodal Voronoi 
+Tesselations (SCVTs). This allows for both quasi-uniform discretization of the sphere and 
+local refinement. The MPAS/DART interface was built on the SCVT-dual mesh and does not 
+regrid to regular lat/lon grids. In the C-grid discretization, the normal component of
+velocity on cell edges is prognosed; zonal and meridional wind components are diagnosed
+on the cell centers.  We provide several options to choose from in the assimilation
+of wind observations as shown below.
 </P>
-   <br />
-   <br />
 <P>
-   Since MPAS ATM uses netcdf files for their restart mechanism, 
-   a namelist-controlled set of variables is used to build the DART state vector.
-   Each variable must also correspond to a DART "KIND"; required for the DART
-   interpolate routines. For example:
+The grid terminology used in MPAS is as shown in the figure below:
 </P>
-<pre>&amp;mpas_vars_nml
-   mpas_state_variables = 'uReconstructZonal',      'KIND_U_WIND_COMPONENT',
-                          'uReconstructMeridional', 'KIND_V_WIND_COMPONENT',
-                          'w',                      'KIND_VERTICAL_VELOCITY',
-                          'theta',                  'KIND_POTENTIAL_TEMPERATURE',
-                          'qv',                     'KIND_VAPOR_MIXING_RATIO',
-                          'qc',                     'KIND_CLOUDWATER_MIXING_RATIO',
-                          'qr',                     'KIND_RAINWATER_MIXING_RATIO',
-                          'qi',                     'KIND_ICE_MIXING_RATIO',
-                          'qs',                     'KIND_SNOW_MIXING_RATIO',
-                          'qg',                     'KIND_GRAUPEL_MIXING_RATIO',
-                          'surface_pressure',       'KIND_SURFACE_PRESSURE'
-   /
-</pre>
+<img src="../../doc/images/MPAS_grid_structure.png" alt="MPAS_grid_structure" height=600 />
+<P>
+The wind options during a DART assimilation
+are controlled by combinations of 4 different namelist values.
+The values determine which fields the forward operator uses to compute expected 
+observation values; how the horizontal interpolation is computed in that
+forward operator; and how the assimilation increments
+are applied to update the wind quantities in the state vector.
+Preliminary results based on real data assimilation experiments indicate that 
+performance is better when the zonal and meridional winds are used as
+input to the forward operator that uses Barycentric interpolation, and when the 
+prognostic <i>u</i> wind is updated by the incremental method described in
+the figure below.
+However there remain
+scientific questions about how best to handle the wind fields under different
+situations.  Thus we have kept all implemented options available for use in
+experimental comparisons.  See the figure below for a flow-chart representation
+of how the 4 namelist items interact:
+</P>
+<img src="../../doc/images/MPAS_WindDA_options.png" alt="WindDA_options" height=600 />
+<P>
+Cycling of MPAS/DART is run in a <u>restart</u> mode.
+As for all DART experiments, the overall design for an experiment is this:
+the DART program <em class="program">filter</em> will read the initial
+condition file, the observation sequence file, and the DART namelist
+to decide whether or not to advance the MPAS-ATM model. All of the
+control of the execution of the MPAS model is done by DART directly.
+If the model needs to be advanced, <em class="program">filter</em> makes
+a call to the shell to execute the script
+<em class="program">advance_model.csh</em>,
+which is ENTIRELY responsible
+for getting all the input files, data files, namelists, etc. into
+a temporary directory, running the model, and copying the results
+back to the parent directory (which we call CENTRALDIR).
+The whole process hinges on setting the MPAS-ATM model namelist values
+such that it is doing a restart for every model advance.
+Unlike MPAS-ATM free forecast runs, the forecast step in MPAS/DART requires to 
+set up one more namelist parameter called "config_do_DAcycling = .true." in &amp;restart section 
+of namelist.input to recouple the state vectors (updated by filter) with the mass field for the restart mode.
+For more information, check the <a href="shell_scripts/advance_model.csh">advance_model.csh</a> script. </P>
+<P>
 
-<P>These variables are then adjusted to be consistent with observations and 
-   stuffed back into the same netCDF analysis files.  Since DART is an ensemble 
-   algorithm, there are multiple analysis files for a single analysis time: 
-   one for each ensemble member. Creating the initial ensemble of states is an 
-   area of active research.
-   <br />
-   <br />
-   DART reads grid information from the MPAS ATM 'history' file, I have tried to keep
-   the variable names the same. Internal to the DART code, the following variables exist:
+Since DART is an ensemble algorithm, there are multiple analysis files for a single analysis time: 
+one for each ensemble member. Because MPAS/DART is run in a restart mode, each member should keep its own
+MPAS restart file from the previous cycle (rather than having a single template file in CENTRALDIR).
+Creating the initial ensemble of states is an area of active research.
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;model_nml
+   model_analysis_filename      = 'mpas_init.nc',
+   grid_definition_filename     = 'mpas_init.nc',
+   output_state_vector          = .false.,
+   vert_localization_coord      = 3,
+   assimilation_period_days     = 0,
+   assimilation_period_seconds  = 21600,
+   model_perturbation_amplitude = 0.0001,
+   log_p_vert_interp            = .true.,
+   calendar                     = 'Gregorian',
+   use_u_for_wind               = .false.,
+   use_rbf_option               = 2,
+   update_u_from_reconstruct    = .true.,
+   use_increments_for_u_update  = .true.,
+   highest_obs_pressure_mb      = 100.0,
+   sfc_elev_max_diff            = -1.0,
+   debug                        = 0,
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR><TD>model_analysis_filename</TD>
+    <TD>character(len=256)<br />
+        <em class=units>[default:&nbsp;'mpas_init.nc']</em></TD>
+    <TD>The name of the MPAS analysis file to be read and/or written 
+        by the DART programs for the state data.</TD>
+</TR>
+
+<TR><TD>grid_definition_filename</TD>
+    <TD>character(len=256)<br />
+        <em class=units>[default:&nbsp;'mpas_init.nc']</em></TD>
+    <TD>The name of the MPAS file to be read 
+        by the DART programs for the grid information.  Generally
+        this is the same as the <em class=code>model_analysis_filename</em>.
+        However, the grid information is large and if the grid is static
+        that information could be omitted from the analysis files to
+        save space. A single grid file could be supplied once and
+        not change during the assimilation run. </TD>
+</TR>
+
+<TR><TD>highest_obs_pressure_mb</TD>
+    <TD>real(r8)<br />
+        <em class=units>[default:&nbsp;100.0]</em></TD>
+    <TD>Observations higher than this pressure are ignored. Set to -1.0
+        to ignore this test.  For models with a prescribed top boundary
+        layer, trying to assimilate very high observations results in 
+        problems because the model damps out any changes the assimilation
+        tries to make.  With adaptive algorithms this results in larger
+        and larger coefficients as the assimilation tries to effect state
+        vector change.
+    </TD>
+</TR>
+
+<TR><TD>output_state_vector</TD>
+    <TD>logical <em class=units>[default:&nbsp;.false.]</em></TD>
+    <TD>The switch to determine the form of the state vector in the
+        output netCDF files. If <em class=code>.true.</em> 
+        the state vector will be output exactly as DART uses it;
+        as one long array.  If <em class=code>.false.</em>, 
+        the state vector is parsed into prognostic variables and 
+        output that way -- much easier to use with 'ncview', for
+        example. [Recommended] </TD>
+</TR>
+
+<TR><TD>assimilation_period_days</TD>
+    <TD>integer <em class=units>[default:&nbsp;0]</em></TD>
+    <TD>The number of days to advance the model for each assimilation.
+        Even if the model is being advanced outside of the DART filter
+        program, the assimilation period should be set correctly. 
+        Only observations with a time within +/- 1/2 this window size 
+        will be assimilated.
+    </TD>
+</TR>
+
+<TR><TD>assimilation_period_seconds</TD>
+    <TD>integer <em class=units>[default:&nbsp;21600]</em></TD>
+    <TD>In addition to <em class=code>assimilation_period_days</em>, 
+        the number of seconds to advance the model for each assimilation. </TD>
+</TR>
+
+<TR><TD>vert_localization_coord</TD>
+    <TD>integer <em class=units>[default:&nbsp;3]</em></TD>
+    <TD>Vertical coordinate for vertical localization.</em> 
+       <UL style="list-style: none;">
+          <LI>1 = model level</LI>
+          <LI>2 = pressure (in pascals)</LI>
+          <LI>3 = height (in meters)</LI>
+          <LI>4 = scale height (unitless)</LI>
+       </UL></TD>
+</TR>
+
+<TR><TD>sfc_elev_max_diff</TD>
+    <TD>real(r8)<em class=units>[default:&nbsp;-1.0]</em></TD>
+    <TD>If > 0, the maximum difference, in meters, between an observation marked
+        as a 'surface obs' as the vertical type (with the surface elevation, in
+        meters, as the numerical vertical location), and the surface elevation as
+        defined by the model. Observations further away from the surface than this
+        threshold are rejected and not assimilated. If the value is negative, this
+        test is skipped.  </TD>
+</TR>
+
+<TR><TD>log_p_vert_interp</TD>
+    <TD>logical <em class=units>[default:&nbsp;.true.]</em></TD>
+    <TD>If .true., vertical interpolation is done in log-pressure. Otherwise, linear.</TD>
+</TR>
+
+<TR><TD>use_u_for_wind</TD>
+    <TD>logical <em class=units>[default:&nbsp;.false.]</em></TD>
+    <TD>If .false., zonal and meridional winds at cell centers are used for 
+        the wind observation operator [default]. In that case, triangular meshes are used for the 
+        barycentric (e.g., area-weighted) interpolation. If .true., wind vectors at an arbitrary
+        (e.g., observation) point are reconstructed from the normal component of velocity on cell edges
+        <em class=file>(u)</em> using radial basis functions (RBFs) provided by the MPAS model.</TD>
+</TR>
+
+<TR><TD>use_rbf_option</TD>
+    <TD>integer <em class=units>[default:&nbsp;2]</em></TD>
+    <TD>If <em class=code>use_u_for_wind</em> is .true., this option controls
+        how many points will be used in the RBF interpolation. Options are available as 1, 2, and 3.
+        All the edges available in N (= 1,2, or 3) cells go into the RBF reconstruction. </TD>
+</TR>
+
+<TR><TD>update_u_from_reconstruct</TD>
+    <TD>logical <em class=units>[default:&nbsp;.true.]</em></TD>
+    <TD>When zonal and meridional winds at cell centers are used for 
+        the wind observation operator (<em class=code>use_u_for_wind</em> = .false.), 
+        this option decides if the normal component of velocity on cell edges (which is
+        the only wind prognostic variable in MPAS-ATM) should be updated from the winds at cell centers.
+        If .true., <em class=code>use_increments_for_u_update</em> should be also decided. 
+        If <em class=code>use_u_for_wind</em> = .true. and the normal component of velocity on cell
+        edges is defined as a state vector, this option should be .false. so the edge winds can be
+        directly updated by filter. </TD>
+</TR>
+
+<TR><TD>use_increments_for_u_update</TD>
+    <TD>logical <em class=units>[default:&nbsp;.true.]</em></TD>
+    <TD>Only if <em class=code>update_u_from_reconstruct</em> is .true., this option is
+        used to decide if the edge winds are replaced by averaging from the analysis
+        winds at cell centers (.false.), or just updated by the analysis increments
+        at cell centers (.true.).  If .true., all the wind components (e.g., both at
+        cell centers and edges) are read from prior and used to compute the
+        increments [Recommended].  </TD>
+</TR>
+
+<TR><TD>model_perturbation_amplitude</TD>
+    <TD>real(r8) <em class=units>[default:&nbsp;0.0001]</em></TD>
+    <TD>The amplitude of random noise to add when trying to perturb a single
+        state vector to create an ensemble. Only used when 
+  <em class=file>input.nml</em>::<em class=code>&amp;filter_nml:start_from_restart = .false.</em>
+        <!-- See also <a href="#InitialEnsemble">Generating the initial ensemble</a> 
+             at the start of this document. -->
+        Multiplied by the state vector, it produces standard deviation 
+        of a gaussian distribution with the mean at the value of the state vector element. </TD>
+</TR> 
+
+<TR><TD>calendar</TD>
+    <TD>character(len=32) <br /> 
+        <em class=units>[default:&nbsp;'Gregorian']</em></TD>
+    <TD> Character string specifying the calendar being used by MPAS.</TD>
+</TR>
+
+<TR><TD>debug</TD>
+    <TD>integer <em class=units>[default:&nbsp;0]</em></TD>
+    <TD>The switch to specify the run-time verbosity.
+         <em class=code>0</em> is as quiet as it gets.
+         <em class=code>&gt; 1</em> provides more run-time messages.
+         <em class=code>&gt; 5</em> provides ALL run-time messages.  
+    </TD>
+</TR>
+
+</TBODY>
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<!--==================================================================-->
+
+<A NAME="mpas_vars_nml"></A>
+<P>
+The <em class=code>&amp;mpas_vars_nml</em> namelist contains the list 
+of MPAS variables that make up the DART state vector.
+The order the items are specified controls the order of the data in the
+state vector, so it should not be changed without regenerating all
+DART initial condition or restart files.
+These variables are directly updated by the filter assimilation.
+</P>
+<P>
+Any variables whose values cannot exceed a given
+minimum or maximum can be listed in <em class=code>mpas_state_bounds</em>.
+When the data is written back into the MPAS NetCDF files values
+outside the allowed range will be detected and changed.  
+Data inside the DART state vector and data written to 
+the DART diagnostic files will not go through this test and
+values may exceed the allowed limits.
+Note that changing values at the edges of the distribution
+means it is no longer completely gaussian.  In practice
+this technique has worked effectively, but if the assimilation
+is continually trying to move the values outside the permitted
+range the results may be of poor quality.  Examine the diagnostics for
+these fields carefully when using bounds to restrict their values.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;mpas_vars_nml
+   mpas_state_variables = 'theta',                 'KIND_POTENTIAL_TEMPERATURE',
+                          'uReconstructZonal',     'KIND_U_WIND_COMPONENT',
+                          'uReconstructMeridional','KIND_V_WIND_COMPONENT',
+                          'qv',                    'KIND_VAPOR_MIXING_RATIO',
+                          'qc',                    'KIND_CLOUDWATER_MIXING_RATIO',
+                          'surface_pressure',      'KIND_SURFACE_PRESSURE'
+   mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
+                          'qc','0.0','NULL','CLAMP',
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD>mpas_vars_nml</TD>
+    <TD>character(len=NF90_MAX_NAME)::<br />
+                   dimension(160)
+    <TD>The table that both specifies which MPAS-ATM variables will be
+        placed in the state vector, and also relates those variables 
+        to the corresponding DART kinds.  The first column in each pair must
+        be the exact NetCDF name of a field in the MPAS file.  The second column
+        in each pair must be a KIND known to the DART system.  See 
+        <em class=file>obs_kind/obs_kind_mod.f90</em> for known names.
+        This file is autogenerated when DART builds filter for a particular
+        model, so run <em class=code>quickbuild.csh</em> in the work directory
+        first before examining this file.  Use the generic kind list in 
+        the obs_kind_mod tables, not the specific type list.
+    </TD>
+</TR>
+
+<TR><TD>mpas_state_bounds</TD>
+    <TD>character(len=NF90_MAX_NAME)::<br />
+                   dimension(160)
+    <TD> List only MPAS-ATM variables that must restrict their values to remain
+         between given lower and/or upper bounds.
+         Columns are: NetCDF variable name, min value, max value, and action to take
+         for out-of-range values.  Either min or max can have the string 'NULL' to indicate
+         no limiting will be done.  If the action is 'CLAMP' out of range values will be
+         changed to the corresponding bound and execution continues; 
+         'FAIL' stops the executable if out of range values are detected.</TD>
+</TR>
+
+</TBODY>
+</TABLE>
+</div>
+
+<br />
+<br />
+</TABLE>
+
+<!--==================================================================-->
+<A NAME="Grid information"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Grid information</H2>
+<P>As the forward operators use the unstructured grid meshes in MPAS-ATM, the DART/MPAS interface needs to read static 
+   variables related to the grid structure from the MPAS ATM 'history' file (specified in 
+   <em class=code>model_analysis_filename</em>). 
+   These variables are used to find the closest cell to an observation 
+   point in the cartesian coordinate (to avoid the polar issues). 
 </P>
 
 <table width="100%" cellpadding="3">
-<tr><td valign="top">integer :: nCells        </td><td>the number of Cell Centers</td></tr>
-<tr><td valign="top">integer :: nEdges        </td><td>the number of Cell Edges </td></tr>
-<tr><td valign="top">integer :: nVertices     </td><td>the number of Cell Vertices</td></tr>
-<tr><td valign="top">integer :: nVertLevels   </td><td>the number of vertical level midpoints</td></tr>
-<tr><td valign="top">integer :: nVertLevelsP1 </td><td>the number of vertical level edges</td></tr>
-<tr><td valign="top">integer :: nSoilLevels   </td><td>the number of soil level ?midpoints?</td></tr>
-<tr><td valign="top">real(r8) :: latCell(:)   </td><td>the latitudes  of the Cell Centers (-90,90) </td></tr>
-<tr><td valign="top">real(r8) :: lonCell(:)   </td><td>the longitudes of the Cell Centers [0, 360) </td></tr>
-<tr><td valign="top">real(r8) :: zgrid(:,:)   </td><td>cell center geometric height at cell centers (ncells,nvert) </td></tr>
+<tr><td valign="top">integer :: nCells        </td><td>the number of cell centers</td></tr>
+<tr><td valign="top">integer :: nEdges        </td><td>the number of cell edges </td></tr>
+<tr><td valign="top">integer :: nVertices     </td><td>the number of cell vertices</td></tr>
+<tr><td valign="top">integer :: nVertLevels   </td><td>the number of vertical levels for mass fields</td></tr>
+<tr><td valign="top">integer :: nVertLevelsP1 </td><td>the number of vertical levels for vertical velocity</td></tr>
+<tr><td valign="top">integer :: nSoilLevels   </td><td>the number of soil levels</td></tr>
+<tr><td valign="top">real(r8) :: latCell(:)   </td><td>the latitudes  of the cell centers [-90,90] </td></tr>
+<tr><td valign="top">real(r8) :: lonCell(:)   </td><td>the longitudes of the cell centers [0, 360] </td></tr>
+<tr><td valign="top">real(r8) :: latEdge(:)   </td><td>the latitudes  of the edges [-90,90], if edge winds are used. </td></tr>
+<tr><td valign="top">real(r8) :: lonEdge(:)   </td><td>the longitudes of the edges [0, 360], if edge winds are used. </td></tr>
+<tr><td valign="top">real(r8) :: xVertex(:)   </td><td>The cartesian location in x-axis of the vertex </td></tr>
+<tr><td valign="top">real(r8) :: yVertex(:)   </td><td>The cartesian location in y-axis of the vertex </td></tr>
+<tr><td valign="top">real(r8) :: zVertex(:)   </td><td>The cartesian location in z-axis of the vertex </td></tr>
+<tr><td valign="top">real(r8) :: xEdge(:)   </td><td>The cartesian location in x-axis of the edge, if edge winds are used. </td></tr>
+<tr><td valign="top">real(r8) :: yEdge(:)   </td><td>The cartesian location in y-axis of the edge, if edge winds are used. </td></tr>
+<tr><td valign="top">real(r8) :: zEdge(:)   </td><td>The cartesian location in z-axis of the edge, if edge winds are used. </td></tr>
+<tr><td valign="top">real(r8) :: zgrid(:,:)   </td><td>geometric height at cell centers (nCells, nVertLevelsP1)</td></tr>
 <tr><td valign="top">integer  :: CellsOnVertex(:,:)   </td><td>list of cell centers defining a triangle </td></tr>
+<tr><td valign="top">integer  :: edgesOnCell(:,:)   </td><td>list of edges on each cell </td></tr>
+<tr><td valign="top">integer  :: verticesOnCell(:,:)   </td><td>list of vertices on each cell </td></tr>
+<tr><td valign="top">integer  :: edgeNormalVectors(:,:)   </td><td>unit direction vectors on the edges (only used if <em class=code>use_u_for_wind</em> = .true.)</td></tr>
 </table>
+<br />
 
-   <h2>model_mod variable storage</h2>
+<!--==================================================================-->
+<A NAME="model_mod"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>model_mod variable storage</H2>
 
    <P>
-   <em class=file>input.nml</em><em class=code>&amp;mpas_vars_nml</em> 
+   <em class=file>input.nml</em> :: <em class=code>&amp;mpas_vars_nml</em> 
    defines the list of MPAS variables used to build the DART state vector. 
    Combined with an MPAS analysis file, the information is used to 
    determine the size of the DART state vector and derive the metadata.
@@ -106,17 +456,19 @@ type progvartype
    character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: dimname
    integer, dimension(NF90_MAX_VAR_DIMS) :: dimlens
    integer :: xtype         ! netCDF variable type (NF90_double, etc.) 
-   integer :: numdims       ! number of dims - excluding TIME
+   integer :: numdims       ! number of dimensions - excluding TIME
    integer :: numvertical   ! number of vertical levels in variable
-   integer :: numcells      ! number of horizontal locations (typically cell centers)
-   logical :: ZonHalf       ! vertical coordinate has dimension nVertLevels
-   integer :: varsize       ! prod(dimlens(1:numdims))
+   integer :: numcells      ! number of cell locations (typically cell centers)
+   integer :: numedges      ! number of edge locations (edges for normal velocity)
+   logical :: ZonHalf       ! vertical coordinate for mass fields (nVertLevels)
+   integer :: varsize       ! variable size (dimlens(1:numdims))
    integer :: index1        ! location in dart state vector of first occurrence
    integer :: indexN        ! location in dart state vector of last  occurrence
    integer :: dart_kind
    character(len=paramname_length) :: kind_string
    logical  :: clamping     ! does variable need to be range-restricted before 
-   real(r8) :: range(2)     ! being stuffed back into MPAS analysis file.
+   real(r8) :: range(2)     ! lower and upper bounds for the data range.
+   logical  :: out_of_range_fail  ! is out of range fatal if range-checking?
 end type progvartype
 
 type(progvartype), dimension(max_state_variables) :: progvar
@@ -131,28 +483,36 @@ type(progvartype), dimension(max_state_variables) :: progvar
    x(nVertical,nHorizontal,nVariables). The fastest-varying dimension is vertical,
    then horizontal, then variable ... naturally, the DART state vector is 1D. 
    Each variable is also stored this way in the MPAS analysis file.
+   <br />
    </P>
 
-<div class=indent1>
-   <h2>The DART interface for MPAS (atm)</h2>
-   <P>
-      was compiled with the gfortran 4.2.3 compilers and run on a Mac.
-      <br />
-      <br />
-      The DART components were built with the following <em class=file>mkmf.template</em> settings:
-   </P>
-   <pre>
-      FC = gfortran
-      LD = gfortran
-      NETCDF = /Users/thoar/GNU
-      INCS = -I${NETCDF}/include
-      LIBS = -L${NETCDF}/lib -lnetcdf -lcurl -lhdf5_hl -lhdf5 -lz  -lm
-      FFLAGS = -O0 -fbounds-check -frecord-marker=4 -ffpe-trap=invalid $(INCS)
-      LDFLAGS = $(FFLAGS) $(LIBS)
-   </pre>
-</div> 
+<br />
+<!--==================================================================-->
+<A NAME="Compilation"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Compilation</H2>
 
+<P>
+The DART interface for MPAS-ATM can be compiled with various fortran compilers such as (but not limited to) 
+gfortran, pgf90, and intel. It has been tested on a Mac and NCAR IBM supercomputer (yellowstone).
+</P>
+
+<P>
+NOTE: While MPAS requires the PIO (Parallel IO) and pNetCDF
+(Parallel NetCDF) libraries, DART uses only the plain NetCDF libraries.
+If an altered NetCDF library is required by the parallel versions, there may 
+be incompatibilities between the run-time requirements of DART and MPAS.
+Static linking of one or the other executable, or swapping of modules
+between executions may be necessary.
+</P>
+
+<br />
+
+<!--==================================================================-->
 <a name="conversions"></a>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Conversions</H2>
+
 <div class=indent1>
    <h3>Converting between DART files and MPAS analysis files</h3>
    <P>is relatively straightforward. Given the namelist mechanism for
@@ -170,8 +530,8 @@ type(progvartype), dimension(max_state_variables) :: progvar
    </P>
    <table width="100%" cellpadding="10">
    <tr><td valign="top"><a href="model_to_dart.html">model_to_dart.f90</a></td>
-       <td>converts an MPAS analysis file (nominally named <em class=file>mpas_analysis.nc</em>) into a 
-       DART-compatible file normally called <em class=file>dart.ud</em>&nbsp;.
+       <td>converts an MPAS analysis file (nominally named <em class=file>mpas_init.nc</em>) into a 
+       DART-compatible file normally called <em class=file>dart_ics</em>&nbsp;.
        We usually wind up linking the actual analysis file to a static name that is used by DART.
        </td>
    </tr>
@@ -185,7 +545,7 @@ type(progvartype), dimension(max_state_variables) :: progvar
        <em class=program>dart_to_model</em> updates the MPAS analysis file 
        specified in <em class=file>input.nml</em><em class=code>model_nml:model_analysis_filename</em>.
        If the DART file contains an 'advance_to' time, separate control information is written 
-       to an auxiliary file that is used by the <em class=file>advance_model.csh</em> script.
+       to an auxiliary file (named 'mpas_time') that is used by the <em class=file>advance_model.csh</em> script.
        </td>
    </tr>
    </table>
@@ -209,53 +569,59 @@ Do you think that is enough for the advance_model script? -->
 </div>
 
 <div class="unix">
-<pre>366 mirage2:thoar% ncdump -h mpas_analysis.nc
+<pre>366 mirage2:thoar% ncdump -h mpas_init.nc
 netcdf mpas_analysis {
 dimensions:
         StrLen = 64 ;
         Time = UNLIMITED ; // (1 currently)
-        <em>nCells</em> = 10242 ;                                  <em>available in DART</em>
-        <em>nEdges</em> = 30720 ;                                  <em>available in DART</em>
+        <em class=redtt>nCells</em> = 10242 ;                                  <em class=redtt>available in DART</em>
+        <em class=redtt>nEdges</em> = 30720 ;                                  <em class=redtt>available in DART</em>
         maxEdges = 10 ;
         maxEdges2 = 20 ;
-        <em>nVertices</em> = 20480 ;                               <em>available in DART</em>
+        <em class=redtt>nVertices</em> = 20480 ;                               <em class=redtt>available in DART</em>
         TWO = 2 ;
         THREE = 3 ;
-        <em>vertexDegree</em> = 3 ;                                <em>available in DART</em>
+        vertexDegree = 3 ;
         FIFTEEN = 15 ;
         TWENTYONE = 21 ;
         R3 = 3 ;
-        <em>nVertLevels</em> = 41 ;                                <em>available in DART</em>
-        <em>nVertLevelsP1</em> = 42 ;                              <em>available in DART</em>
+        <em class=redtt>nVertLevels</em> = 41 ;                                <em class=redtt>available in DART</em>
+        <em class=redtt>nVertLevelsP1</em> = 42 ;                              <em class=redtt>available in DART</em>
         nMonths = 12 ;
         nVertLevelsP2 = 43 ;
-        <em>nSoilLevels</em> = 4 ;                                 <em>available in DART</em>
+        <em class=redtt>nSoilLevels</em> = 4 ;                                 <em class=redtt>available in DART</em>
 variables:
-        char <em>xtime(Time, StrLen)</em> ;                        <em>available in DART</em>
-        double <em>latCell(nCells)</em> ;                          <em>available in DART</em>
-        double <em>lonCell(nCells)</em> ;                          <em>available in DART</em>
-        double latEdge(nEdges) ;
-        double lonEdge(nEdges) ;
+        char <em class=redtt>xtime(Time, StrLen)</em> ;                        <em class=redtt>available in DART</em>
+        double <em class=redtt>latCell(nCells)</em> ;                          <em class=redtt>available in DART</em>
+        double <em class=redtt>lonCell(nCells)</em> ;                          <em class=redtt>available in DART</em>
+        double <em class=redtt>latEdge(nEdges)</em> ;                          <em class=redtt>available in DART</em>
+        double <em class=redtt>lonEdge(nEdges)</em> ;                          <em class=redtt>available in DART</em>
         int indexToEdgeID(nEdges) ;
         double latVertex(nVertices) ;
         double lonVertex(nVertices) ;
+	double <em class=redtt>xVertex(nVertices)</em> ;                       <em class=redtt>available in DART</em>
+	double <em class=redtt>yVertex(nVertices)</em> ;                       <em class=redtt>available in DART</em>
+	double <em class=redtt>zVertex(nVertices)</em> ;                       <em class=redtt>available in DART</em>
+	double <em class=redtt>xEdge(nVertices)</em> ;                         <em class=redtt>available in DART</em>
+	double <em class=redtt>yEdge(nVertices)</em> ;                         <em class=redtt>available in DART</em>
+	double <em class=redtt>zEdge(nVertices)</em> ;                         <em class=redtt>available in DART</em>
         int indexToVertexID(nVertices) ;
         int cellsOnEdge(nEdges, TWO) ;
         int nEdgesOnCell(nCells) ;
         int nEdgesOnEdge(nEdges) ;
-        int edgesOnCell(nCells, maxEdges) ;
+        int <em class=redtt>edgesOnCell(nCells, maxEdges)</em> ;               <em class=redtt>available in DART</em>
         int edgesOnEdge(nEdges, maxEdges2) ;
         double weightsOnEdge(nEdges, maxEdges2) ;
         double dvEdge(nEdges) ;
         double dcEdge(nEdges) ;
         double angleEdge(nEdges) ;
-        double edgeNormalVectors(nEdges, R3) ;
+        double <em class=redtt>edgeNormalVectors(nEdges, R3)</em> ;            <em class=redtt>available in DART</em>
         double cellTangentPlane(nEdges, TWO, R3) ;
         int cellsOnCell(nCells, maxEdges) ;
-        int verticesOnCell(nCells, maxEdges) ;
+        int <em class=redtt>verticesOnCell(nCells, maxEdges)</em> ;            <em class=redtt>available in DART</em>
         int verticesOnEdge(nEdges, TWO) ;
         int edgesOnVertex(nVertices, vertexDegree) ;
-        int <em>cellsOnVertex(nVertices, vertexDegree)</em> ;      <em>available in DART</em>
+        int <em class=redtt>cellsOnVertex(nVertices, vertexDegree)</em> ;      <em class=redtt>available in DART</em>
         double kiteAreasOnVertex(nVertices, vertexDegree) ;
         double rainc(Time, nCells) ;
         double cuprec(Time, nCells) ;
@@ -324,181 +690,6 @@ variables:
 </div>
 
 
-<!--==================================================================-->
-<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
-<!--==================================================================-->
-
-<A NAME="Namelist"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-</P>
-<div class=namelist><pre>
-<em class=call>namelist /model_nml/ </em> model_analysis_filename, &amp;
-          assimilation_period_days, assimilation_period_seconds, &amp;
-          model_perturbation_amplitude, output_state_vector, calendar, debug
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>This namelist is read in a file called <em class=file>input.nml</em>.
-   This namelist provides control over the assimilation period for the model.
-   All observations within (+/-) half of the assimilation period are assimilated.
-   The assimilation period is the minimum amount of time the model can be advanced,
-   and checks are performed to ensure that the assimilation window is a multiple of
-   the model dynamical timestep. This also specifies the MPAS analysis file that will
-   be read and/or written by the different program units.
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-
-<TR><!--contents--><TD valign=top>model_analysis_filename</TD>
-    <!--  type  --><TD valign=top>character(len=256)<br />
-                  <em class=units>[default:&nbsp;'mpas_analysis.nc']</em></TD>
-    <!--descript--><TD valign=top>Character string specifying the name of the MPAS analysis 
-                       file to be read and/or written by the different program units.</TD></TR>
-
-<TR><!--contents--><TD valign=top>output_state_vector</TD>
-    <!--  type  --><TD valign=top>logical <em class=units>[default:&nbsp;.true.]</em></TD>
-    <!--descript--><TD valign=top>The switch to determine the form of the state vector in the
-                       output netCDF files. If <em class=code>.true.</em> 
-                       the state vector will be output exactly as DART uses it 
-                       ... one long array.  If <em class=code>.false.</em>, 
-                       the state vector is parsed into prognostic variables and 
-                       output that way -- much easier to use with 'ncview', for
-                       example.</TD></TR>
-
-<TR><!--contents--><TD valign=top>assimilation_period_days</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;1]</em></TD>
-    <!--descript--><TD valign=top>The number of days to advance the model for each assimilation.
-                       </TD></TR>
-
-<TR><!--contents--><TD valign=top>assimilation_period_seconds</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;0]</em></TD>
-    <!--descript--><TD valign=top>In addition to <em class=code>assimilation_period_days</em>, 
-                    the number of seconds to advance the model for each assimilation.
-                       </TD></TR>
-
-<TR><!--contents--><TD valign=top>model_perturbation_amplitude</TD>
-    <!--  type  --><TD valign=top>real(r8) <em class=units>[default:&nbsp;0.2]</em></TD>
-    <!--descript--><TD valign=top> Reserved for future use.
-                  <!-- The amount of noise to add when trying to perturb a single
-                       state vector to create an ensemble. Only used when 
-<em class=file>input.nml</em><em class=code>&amp;filter_nml:start_from_restart = .false.</em>
-                       See also 
-                       <a href="#InitialEnsemble">Generating the initial ensemble</a> 
-                       at the start of this document. units: standard deviation 
-                       of a gaussian distribution with the mean at the value of 
-                       the state vector element. --> </TD></TR> 
-
-<TR><!--contents--><TD valign=top>calendar</TD>
-    <!--  type  --><TD valign=top>character(len=32) <br /> 
-                       <em class=units>[default:&nbsp;'Gregorian']</em></TD>
-    <!--descript--><TD valign=top>
-                       Character string specifying the calendar being used by MPAS.</TD></TR>
-
-<TR><!--contents--><TD valign=top>debug</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;0]</em></TD>
-    <!--descript--><TD valign=top>The switch to specify the run-time verbosity.
-                       <em class=code>0</em> is as quiet as it gets.
-                       <em class=code>&gt; 1</em> provides more run-time messages.
-                       <em class=code>&gt; 5</em> provides ALL run-time messages.
-                       </TD></TR>
-
-</TABLE>
-
-<H3 class=indent1>Example</H3>
-
-<pre>
-&amp;model_nml
-   model_analysis_filename      = 'mpas_restart.nc';
-   assimilation_period_days     = 0,
-   assimilation_period_seconds  = 60,
-   model_perturbation_amplitude = 0.2,
-   output_state_vector          = .true.,
-   calendar                     = 'Gregorian',
-   debug                        = 0
-   /
-</pre>
-
-</div>
-<br />
-
-<!--==================================================================-->
-
-<A NAME="mpas_vars_nml"></A>
-<br />
-<div class=namelist><pre>
-<em class=call>namelist /mpas_vars_nml/</em> mpas_state_variables
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-   This namelist is read from <em class=file>input.nml</em>
-   and contains the list of MPAS variables that make up the DART state vector.
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-
-<TR><!--contents--><TD valign=top>mpas_vars_nml</TD>
-    <!--  type  --><TD valign=top>character(len=NF90_MAX_NAME)::<br />
-                                  dimension(160)
-                 <em class=units>[default:&nbsp; see example]</em></TD>
-    <!--descript--><TD valign=top>The table that relates the GITM variables 
-                   to use to build the DART state vector, and the corresponding 
-                   DART kinds for those variables.</TD></TR>
-</TABLE>
-
-<H3 class=indent1>Example</H3>
-<P>
-The following mpas_vars_nml is just for demonstration purposes.
-You application will likely involve a different DART state vector.
-</P>
-
-<pre>
-&amp;mpas_vars_nml
-   mpas_state_variables = 'theta',                 'KIND_POTENTIAL_TEMPERATURE',
-                          'uReconstructZonal',     'KIND_U_WIND_COMPONENT',
-                          'uReconstructMeridional','KIND_V_WIND_COMPONENT',
-                          'w',                     'KIND_VERTICAL_VELOCITY',
-                          'qv',                    'KIND_VAPOR_MIXING_RATIO',
-                          'qc',                    'KIND_CLOUDWATER_MIXING_RATIO',
-                          'qr',                    'KIND_RAINWATER_MIXING_RATIO',
-                          'qi',                    'KIND_ICE_MIXING_RATIO',
-                          'qs',                    'KIND_SNOW_MIXING_RATIO',
-                          'qg',                    'KIND_GRAUPEL_MIXING_RATIO'
-                          'surface_pressure',      'KIND_SURFACE_PRESSURE'
-   /
-</pre>
-
-   <P>
-   The variables are simply read from the MPAS analysis file and stored in the DART state
-   vector such that all quantities for one variable are stored contiguously. Within each
-   variable; they are stored vertically-contiguous for each horizontal location. From a storage
-   standpoint, this would be equivalent to a Fortran variable dimensioned
-   x(nVertical,nHorizontal,nVariables). The fastest-varying dimension is vertical,
-   then horizontal, then variable ... naturally, the DART state vector is 1D.
-   Each variable is also stored this way in the MPAS analysis file.
-   </P>
-
-</div>
-<br />
-
-<!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
@@ -508,15 +699,15 @@ You application will likely involve a different DART state vector.
 types_mod
 time_manager_mod
 threed_sphere/location_mod
+threed_cartesian/xyz_location_mod
 utilities_mod
 obs_kind_mod
 mpi_utilities_mod
 random_seq_mod
+mpas_atm/get_geometry_mod
+mpas_atm/get_reconstruct_mod
 </PRE>
 
-<H1>Everything below here is complete fiction</H1>
-<H1>Everything below here is complete fiction</H1>
-<H1>Everything below here is complete fiction</H1>
 
 <!--==================================================================-->
 <!-- Note to authors. The first row of the table is different.        -->
@@ -559,17 +750,14 @@ Each module has its own discussion of their routines.
 <h3 class=indent1>Unique Interface Routines</h3>
 <TABLE width=50%>
 <TR><TD><em class=call>use model_mod, only : </em></TD>
-                   <TD><A HREF="#get_gridsize">get_gridsize</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#restart_file_to_sv">restart_file_to_sv</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#sv_to_restart_file">sv_to_restart_file</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_gitm_restart_filename">get_gitm_restart_filename</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_base_time">get_base_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_state_time">get_state_time</A></TD></TR>
-</TABLE>
-
-<TABLE>
-<TR><TD><em class=call>use location_mod, only : </em></TD>
-    <TD><A HREF="../../location/threed_sphere/location_mod.html#get_close_obs">get_close_obs</A></TD></TR>
+                   <TD><A HREF="#get_model_analysis_filename">get_model_analysis_filename</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_grid_definition_filename">get_grid_definition_filename</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#analysis_file_to_statevector">analysis_file_to_statevector</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#statevector_to_analysis_file">statevector_to_analysis_file</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_analysis_time">get_analysis_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#write_model_time">write_model_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_grid_dims">get_grid_dims</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#print_variable_ranges">print_variable_ranges</A></TD></TR>
 </TABLE>
 
 <P>
@@ -628,7 +816,7 @@ type(time_type),        intent(in)    :: <em class=code>time</em>
 
 <P>
 <em class=code>adv_1step</em>
-is not used for the gitm model.
+is not used for the mpas model.
 Advancing the model is done through the <em class=program>advance_model</em> script.
 This is a NULL_INTERFACE, provided only for compatibility with the DART requirements.
 </P>
@@ -738,7 +926,8 @@ location.
 If the interpolation is valid, <em class=code>istatus = 0</em>. 
 In the case where the observation operator is not defined at the given 
 location (e.g. the observation is below the lowest model level, above the top
-level, or 'dry'), interp_val is returned as 0.0 and istatus = 1. 
+level, a type not found in the state vector), interp_val is returned 
+as <em>MISSING_R8</em> and istatus = 1. 
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -757,7 +946,8 @@ level, or 'dry'), interp_val is returned as 0.0 and istatus = 1.
 
 <TR><TD valign=top><em class=code>istatus</em></TD>
     <TD>Integer flag indicating the success of the interpolation.
-       <br />success == 0, failure == anything else</TD></TR>
+       <br />success == 0, failure == any positive values (negative values
+        are reserved for system use)</TD></TR>
 
 </TABLE>
 
@@ -783,18 +973,22 @@ type(time_type) :: <em class=code>get_model_time_step</em>
 returns the forecast length to be used as the "model base time step" in the filter.
 This is the minimum amount of time the model can be advanced by 
 <em class=program>filter</em>.  
-<em class="strong">This is also the assimilation window</em>. 
+This is <em>NOT</em> related to the internal dynamic typestep of the
+model; it must be a multiple of the minimum amount of model time
+in which the model can be started and stopped.
+<em>This is also the assimilation window</em>. 
 All observations within (+/-) one half of the forecast
 length are used for the assimilation.
-In the <em class=program>GITM</em> case, this is set from 
-the namelist values for <em class=file>input.nml</em><em
-class=code>&amp;model_nml:assimilation_period_days, assimilation_period_seconds</em>.
+In the <em class=program>MPAS</em> case, this is set from 
+the namelist values for <em class=file>input.nml</em> :: 
+<em class=code>&amp;model_nml :: assimilation_period_days, assimilation_period_seconds</em>.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
 <TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Smallest time step of model.</TD></TR>
+    <TD>Assimilation window and multiple of some timestep the
+        model can be advanced.</TD></TR>
 
 </TABLE>
 
@@ -821,20 +1015,9 @@ The routine sets module-local private attributes that can then be queried by the
 public interface routines.
 <br />
 <br />
-See the GITM documentation for all namelists in <em class=file>gitm_in</em>&nbsp;.
-Be aware that DART reads the GITM <em class=code>&amp;grid_nml</em> namelist
-to get the filenames for the horizontal and vertical grid information as well
-as the topography information.
-<br />
-<br />
 The namelists (all mandatory) are:<br />
-<em class=file>input.nml</em><em class=code>&amp;model_mod_nml</em>,<br />
-<em class=file>gitm_in</em><em class=code>&amp;time_manager_nml</em>,<br />
-<em class=file>gitm_in</em><em class=code>&amp;io_nml</em>,<br />
-<em class=file>gitm_in</em><em class=code>&amp;init_ts_nml</em>,<br />
-<em class=file>gitm_in</em><em class=code>&amp;restart_nml</em>,<br />
-<em class=file>gitm_in</em><em class=code>&amp;domain_nml</em>, and<br />
-<em class=file>gitm_in</em><em class=code>&amp;grid_nml</em>.
+<em class=file>input.nml</em> :: <em class=code>&amp;model_mod_nml</em>, and<br />
+<em class=file>input.nml</em> :: <em class=code>&amp;mpas_vars_nml</em>.<br />
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -884,11 +1067,10 @@ type(time_type), intent(out) :: <em class=code>time</em>
 <P>
 <em class=code>init_time</em>
 returns the time at which the model will start if no input initial conditions are
-to be used. This is frequently used to spin-up models from rest, but is not
-meaningfully supported for the GITM model.  
+to be used. 
 The only time this routine would get called is if the 
-<em class=file>input.nml</em><em class=code>&amp;perfect_model_obs_nml:start_from_restart</em> is .false., which is
-not supported in the GITM model.
+<em class=file>input.nml</em> :: <em class=code>&amp;perfect_model_obs_nml:start_from_restart</em> 
+is .false., which is not supported in the MPAS model.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -919,7 +1101,7 @@ real(r8), dimension(:), intent(out) :: <em class=code>x</em>
 <P>
 <em class=code>init_conditions</em>
 returns default initial conditions for model; generally used for spinning up
-initial model states. For the GITM model it is just a stub because 
+initial model states. For the MPAS model it is just a stub because 
 the initial state is always provided by the input files.
 </P>
 
@@ -952,15 +1134,14 @@ integer, intent(in) :: <em class=code>ncFileID</em>
 <P>
 <em class=code>nc_write_model_atts</em>
 writes model-specific attributes to an opened netCDF file:
-In the GITM case, this includes information like the 
-coordinate variables (the grid arrays: ULON, ULAT, TLON, TLAT, ZG, ZC, KMT, KMU), 
-information from some of the namelists, and either the 1D state 
-vector or the prognostic variables (SALT,TEMP,UVEL,VVEL,PSURF). 
+In the MPAS case, this includes information like the 
+coordinate variables (the grid arrays: lonCell, latCell, xCell, lonVertex, zgrid, etc.),
+information from some of the namelists, and the variable attributes of either the 1D state 
+vector or the prognostic variables (potential temperature, dry density, vertical velocity, etc.).
 All the required information (except for the netCDF file identifier) 
 is obtained from the scope of the <em class=program>model_mod</em> module.
-Both the <em class=file>input.nml</em> and <em class=file>gitm_in</em> files
-are preserved in the netCDF file as variables <em class=code>inputnml</em> and
-<em class=code>gitm_in</em>, respectively.
+The <em class=file>input.nml</em> 
+is preserved in the netCDF file as variables <em class=code>inputnml</em>.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -1007,9 +1188,8 @@ integer                            :: <em class=code>ierr</em>
 writes a copy of the state variables to a NetCDF file. Multiple copies of the
 state for a given time are supported, allowing, for instance, a single file to
 include multiple ensemble estimates of the state. Whether the state vector is 
-parsed into prognostic variables (SALT, TEMP, UVEL, VVEL, PSURF) or simply written 
-as a 1D array is controlled by 
-<em class=file>input.nml</em><em class=code>&amp;model_mod_nml:output_state_vector</em>.
+parsed into prognostic variables (potential temperature, dry density, vertical velocity, etc.) or simply written as a 1D array is controlled by 
+<em class=file>input.nml</em> <em class=code>&amp;model_mod_nml:output_state_vector</em>.
 If <em class=code>output_state_vector&nbsp;=&nbsp;.true.</em> the state vector is 
 written as a 1D array (the simplest case, but hard to explore with the diagnostics).
 If <em class=code>output_state_vector&nbsp;=&nbsp;.false.</em> the state vector is 
@@ -1053,24 +1233,18 @@ logical,                intent(out) :: <em class=code>interf_provided</em>
 
 <div class=indent1> <!-- Description -->
 <P>
-Given a model state, <em class=code>pert_model_state</em> produces a 
-perturbed model state. This is used to generate ensemble initial conditions 
-perturbed around some control trajectory state when one is preparing to 
-spin-up ensembles.  Since the DART state vector for the GITM model 
-contains both 'wet' and 'dry' cells, it is imperative to provide an 
-interface to perturb <strong>just</strong> the wet cells 
-(<em class=code>interf_provided == .true.</em>).
+Only called when
+<em class=file>input.nml</em> :: <em class=code>&amp;filter_nml:start_from_restart = .false.</em>.
+A single model state is still required, and gaussian noise with the magnitude
+determined by the setting of
+<em class=file>input.nml</em> :: <em class=code>&amp;model_mod_nml:model_perturbation_amplitude</em>.
+is added to each item in the state vector.
+Generally this is not the best way to generate a set of initial conditions,
+but can be useful if very small magnitude noise is added and then the
+model is run freely for an extended period of time (several model weeks)
+to generate realistic features in the model state.
 <br />
 <br />
-The magnitude of the perturbation is wholly determined by 
-<em class=file>input.nml</em><em class=code>&amp;model_mod_nml:model_perturbation_amplitude</em>
-and <strong>utterly, completely fails</strong>.
-<br />
-<br />
-A more robust perturbation mechanism is needed. 
-Until then, avoid using this routine by using your own ensemble of initial conditions. 
-This is determined by setting
-<em class=file>input.nml</em><em class=code>&amp;filter_nml:start_from_restart = .false.</em>
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -1082,9 +1256,9 @@ This is determined by setting
     <TD>The perturbed state vector.</TD></TR>
 
 <TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Because of the 'wet/dry' issue discussed above, this is always 
-        <em class=code>.true.</em>, indicating a model-specific perturbation 
-        is available.</TD></TR>
+    <TD>This is always 
+        <em class=code>.true.</em>, indicating a random perturbation is added to each model state
+ variable independently.</TD></TR>
 
 </TABLE>
 
@@ -1167,7 +1341,9 @@ Given a DART location (referred to as "base") and a set of locations, and a
 definition of 'close' - return a subset of locations that are 'close', as well
 as their distances to the DART location and their indices. This routine intentionally
 masks a routine of the same name in <em class=program>location_mod</em> because we
-want to be able to discriminate against selecting 'dry land' locations.
+need to be able to convert vertical coordinates that are not already
+in the same units as specified by
+<em class=file>input.nml</em>::<em class=code>&amp;model_nml:vert_localization_coord</em>.
 <br />
 <br />
 Given a single location and a list of other locations, returns the indices
@@ -1227,7 +1403,7 @@ real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
 <P>
 <em class=code>ens_mean_for_model</em>
 normally saves a copy of the ensemble mean to module-local storage.
-This is a NULL_INTERFACE for the GITM model. At present there is
+This is a NULL_INTERFACE for the MPAS model. At present there is
 no application which requires module-local storage of the ensemble mean.
 No storage is allocated.
 </P>
@@ -1241,212 +1417,7 @@ No storage is allocated.
 
 </div>
 <br />
-
-<!--====================================================================-->
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H3 class=indent1>Unique Interface Routines</H3>
-<!--====================================================================-->
-
-
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_gridsize"></A>
-<br />
-<div class="routine">
-<em class=call>call get_gridsize( num_x, num_y, num_z )</em>
-<pre>
-integer, intent(out) :: <em class=code>num_x, num_y, num_z</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>get_gridsize</em>
-returns the dimensions of the compute domain.
-The horizontal gridsize is determined from <em class=file>gitm_restart.nc</em>.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>num_x</em></TD>
-    <TD>The number of longitudinal gridpoints.</TD></TR>
-
-<TR><TD valign=top><em class=code>num_y</em></TD>
-    <TD>The number of latitudinal gridpoints.</TD></TR>
-
-<TR><TD valign=top><em class=code>num_z</em></TD>
-    <TD>The number of vertical gridpoints.</TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="restart_file_to_sv"></A>
-<br />
-<div class="routine">
-<em class=call>call restart_file_to_sv(filename, state_vector, model_time)</em>
-<pre>
-character(len=*),       intent(in)    :: <em class=code>filename</em>
-real(r8), dimension(:), intent(inout) :: <em class=code>state_vector</em>
-type(time_type),        intent(out)   :: <em class=code>model_time</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-   <em class=code>restart_file_to_sv</em>
-   Reads a GITM netCDF format restart file and packs the desired variables
-   into a DART state vector.  The desired variables are specified in the
-   <em class=code>gitm_vars_nml</em> namelist.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>filename</em></TD>
-    <TD>The name of the netCDF format GITM restart file.</TD></TR>
-
-<TR><TD valign=top><em class=code>state_vector</em></TD>
-    <TD>the 1D array containing the concatenated GITM variables.
-
-<TR><TD valign=top><em class=code>model_time</em></TD>
-    <TD>the time of the model state. The last time in the netCDF restart file.
-    </TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="sv_to_restart_file"></A>
-<br />
-<div class="routine">
-<em class=call>call sv_to_restart_file(state_vector, filename, statedate)</em>
-<pre>
-real(r8), dimension(:), intent(in) :: <em class=code>state_vector</em>
-character(len=*),       intent(in) :: <em class=code>filename</em>
-type(time_type),        intent(in) :: <em class=code>statedate</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>sv_to_restart_file</em>
-updates the variables in the GITM restart file with values from 
-the DART vector <em class=code>state_vector</em>. The last time in the
-file must match the <em class=code>statedate</em>.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>filename</em></TD>
-    <TD>the netCDF-format GITM restart file to be updated.
-</TD></TR>
-
-<TR><TD valign=top><em class=code>state_vector</em></TD>
-    <TD>the 1D array containing the DART state vector.</TD></TR>
-
-<TR><TD valign=top><em class=code>statedate</em></TD>
-    <TD>the 'valid_time' of the DART state vector.
-    </TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_gitm_restart_filename"></A>
-<br />
-<div class="routine">
-<em class=call>call get_gitm_restart_filename( filename )</em>
-<pre>
-character(len=*), intent(out) :: <em class=code>filename</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>get_gitm_restart_filename</em>
-returns the name of the gitm restart file - the filename itself is in 
-private module storage.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>filename&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>The name of the GITM restart file.</TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_base_time"></A>
-<br />
-<div class="routine">
-<em class=call>time = get_base_time( filehandle )</em>
-<pre>
-integer,          intent(in) :: <em class=code>filehandle</em> -OR-
-character(len=*), intent(in) :: <em class=code>filehandle</em>
-type(time_type),  intent(out) :: <em class=code>time</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>get_base_time</em>
-extracts the start time of the experiment as contained in the netCDF 
-restart file. The file may be specified by either a character string or
-the integer netCDF fid.
-</P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_state_time"></A>
-<br />
-<div class="routine">
-<em class=call>time = get_state_time( filehandle )</em>
-<pre>
-integer,          intent(in) :: <em class=code>filehandle</em> -OR-
-character(len=*), intent(in) :: <em class=code>filehandle</em>
-type(time_type),  intent(out) :: <em class=code>time</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>get_state_time</em>
-extracts the time of the model state as contained in the netCDF 
-restart file. In the case of multiple times in the file, the last time
-is the time returned. The file may be specified by either a character 
-string or the integer netCDF fid.
-</P>
-
-</div>
-<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -1460,11 +1431,11 @@ string or the integer netCDF fid.
 <TR><TH align=left>filename</TH>
     <TH align=left>purpose</TH></TR>
 <TR><TD>input.nml</TD>
-    <TD>to read the model_mod namelist</TD></TR>
-<TR><TD>gitm_vars.nml</TD>
-    <TD>to read the <em class=code>gitm_vars_nml</em> namelist</TD></TR>
-<TR><TD>gitm_restart.nc</TD>
-    <TD>provides grid dimensions, model state, and 'valid_time' of the model state</TD></TR>
+    <TD>to read the namelist - model_mod_nml and mpas_vars_nml</TD></TR>
+<TR><TD>mpas_init.nc</TD>
+    <TD>provides model state, and 'valid_time' of the model state</TD></TR>
+<TR><TD>static.nc</TD>
+    <TD>provides grid dimensions </TD></TR>
 <TR><TD>True_State.nc</TD>
     <TD>the time-history of the "true" model state from an OSSE</TD></TR>
 <TR><TD>Prior_Diag.nc</TD>
@@ -1487,7 +1458,9 @@ string or the integer netCDF fid.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
-<li> none </li>
+<li> The Data Assimilation section in the MPAS documentation
+found at <a href="http://mpas-dev.github.io"> 
+http://mpas-dev.github.io</a></li>
 </ul>
 
 <!--==================================================================-->
@@ -1496,58 +1469,9 @@ string or the integer netCDF fid.
 
 <A NAME="Errors"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
-<H2>ERROR CODES and CONDITIONS</H2>
-<div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-<TR><TH>Routine</TH><TH width="50%">Message</TH><TH>Comment</TH></TR>
-
-<TR><!-- routine --><TD VALIGN=top>restart_file_to_sv</TD>
-    <!-- message --><TD VALIGN=top>cannot open file "xxxx" for reading</TD>
-    <!-- comment --><TD VALIGN=top>The GITM restart file "xxxx" does not exist.</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>restart_file_to_sv</TD>
-    <!-- message --><TD VALIGN=top>'WARNING!!!   year 0 not supported; setting to year 1</TD>
-    <!-- comment --><TD VALIGN=top>year 0 ... is not
-    supported in a Gregorian calendar. Our intent here is to do data assimilation,
-    normally 'real' observations have 'real' dates.</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>sv_to_restart_file</TD>
-    <!-- message --><TD VALIGN=top>current time /= model time. FATAL error.</TD>
-    <!-- comment --><TD VALIGN=top>The DART time does not match the time of the GITM restart file.
-    This message is preceeded by several lines indicating the expected times of both DART and GITM.</TD>
-</TR>
-
-</TABLE>
-</div>
-
 <H2>KNOWN BUGS</H2>
 <P>
 none at this time
-</P>
-
-<!--==================================================================-->
-<!-- Describe Future Plans.                                           -->
-<!--==================================================================-->
-
-<A NAME="FuturePlans"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>FUTURE PLANS</H2>
-<P>
-Provide a better mechanism for generating a set of perturbed initial 
-conditions - <em class=code>pert_model_state()</em> 
-</P>
-
-<!--==================================================================-->
-<!-- PrivateComponents                                                -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>PRIVATE COMPONENTS</H2>
-<P>
-N/A
 </P>
 
 <!--==================================================================-->

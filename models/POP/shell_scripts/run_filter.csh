@@ -250,11 +250,11 @@ endif
 # DART namelist settings appropriate/required:
 # &filter_nml:           restart_in_file_name    = 'filter_ics'
 # &ensemble_manager_nml: single_restart_file_in  = '.false.'
-# &pop_to_dart_nml:      pop_to_dart_output_file = 'dart.ud',
+# &pop_to_dart_nml:      pop_to_dart_output_file = 'dart_ics',
 #
 # &restart_file_tool_nml: <see list that follows>
-#  input_file_name              = "filter_restart",
-#  output_file_name             = "filter_updated_restart",
+#  input_file_name              = "dart_input",
+#  output_file_name             = "dart_output",
 #  ens_size                     = 1,
 #  single_restart_file_in       = .true.,
 #  single_restart_file_out      = .true.,
@@ -293,7 +293,7 @@ cat pop_in.part1 pop_in.part2 >! pop_in
 set member = 1
 while ($member <= $ensemble_size)
 
-   # grap the POP pointer file and dereference it 
+   # grab the POP pointer file and dereference it 
    # Copy the POP restart file ... we will be updating it.
    # then link the POP restart file to the name for 'pop_to_dart'
    ${COPY} ${POPDIR}/rpointer.ocn.$member.restart .
@@ -306,14 +306,14 @@ while ($member <= $ensemble_size)
 
    ./pop_to_dart || exit 1
 
-   ${MOVE} dart.ud filter_restart
+   ${MOVE} dart_ics dart_input
 
    ./restart_file_tool || exit 1
 
    # set the filename expected by DART for the initial conditions 
    set DART_IC_FILE = `printf filter_ics.%04d $member`
  
-   ${MOVE} filter_updated_restart ${DART_IC_FILE}
+   ${MOVE} dart_output ${DART_IC_FILE}
 
    @ member++ 
 end

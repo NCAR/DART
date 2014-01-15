@@ -1,5 +1,5 @@
 &dart_to_naaps_nml
-   dart_to_naaps_input_file = 'dart.ic',
+   dart_to_naaps_input_file = 'dart_restart',
    advance_time_present     = .true.,
    verbose                  = .false.,
    /

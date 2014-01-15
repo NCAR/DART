@@ -5,14 +5,17 @@
 <HEAD>
 <TITLE>module model_mod (NCOMMAS)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
+<H1>MODULE model_mod (NCOMMAS)</H1>
+
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P><a href="../../index.html">DART Documentation Main Index</a><br />
@@ -32,7 +35,7 @@
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
 
-<H1>MODULE model_mod (NCOMMAS)</H1>
+<H2>Overview</H2>
 
 <P><strong>NCOMMAS 7_1</strong> may now be used with the 
    <strong>Data Assimilation Research Testbed (DART)</strong>.
@@ -116,7 +119,7 @@
    <table width="100%" cellpadding="10">
    <tr><td valign="top"><a href="ncommas_to_dart.html">ncommas_to_dart.f90</a></td>
        <td>converts the ncommas restart file <em class=file>ncommas_restart.nc</em> into a 
-       DART-compatible file normally called <em class=file>dart.ud</em>&nbsp;.
+       DART-compatible file normally called <em class=file>dart_ics</em>&nbsp;.
        We usually wind up linking the restart file to a static name that is used by DART.
        </td>
    </tr>
@@ -155,11 +158,12 @@
       from a hindcast experiment.
       <br />
       <br />
-      There is a <em class=program>shell_scripts/MakeInitialEnsemble.csh</em> 
-      script that is intended to demonstrate how to convert a set of ncommas netCDF 
+      There is <strong>not yet</strong> a 
+      <em class=program>shell_scripts/MakeInitialEnsemble.csh</em> 
+      script to demonstrate how to convert a set of ncommas netCDF 
       restart files into a set of DART files that have a consistent timestamp. 
       If you simply convert each ncommas file to a DART file using 
-      <em class=program>dart_to_ncommas</em>, each DART file will have a 'valid&nbsp;time'
+      <em class=program>ncommas_to_dart</em>, each DART file will have a 'valid&nbsp;time'
       that reflects the ncommas time of that state - instead of an ensemble of states
       reflecting one single time. The
       <a href="../../../utilities/restart_file_utility.f90">restart_file_utility</a> 
@@ -168,8 +172,8 @@
    </P>
    <pre>
    &amp;restart_file_tool_nml
-     input_file_name              = "<em class=changed>dart.ics</em>",
-     output_file_name             = "filter_updated_restart",
+     input_file_name              = "dart_input",
+     output_file_name             = "dart_output",
      ens_size                     = 1,
      single_restart_file_in       = .true.,
      single_restart_file_out      = .true.,

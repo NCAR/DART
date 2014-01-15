@@ -54,7 +54,7 @@ character(len=256) :: string1, string2
 !------------------------------------------------------------------
 
 character (len = 129)  :: destroy_file         = 'temp_analysis_file.nc'
-character (len = 129)  :: dart_input_file      = 'dart.ics'
+character (len = 129)  :: dart_input_file      = 'dart_ics'
 character (len = 129)  :: output_file          = 'check_me'
 logical                :: advance_time_present = .FALSE.
 logical                :: verbose              = .FALSE.

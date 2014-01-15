@@ -43,7 +43,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character(len=128) :: naaps_to_dart_output_file = 'dart.ud' 
+character(len=128) :: naaps_to_dart_output_file = 'dart_ics' 
 
 namelist /naaps_to_dart_nml/ naaps_to_dart_output_file 
 

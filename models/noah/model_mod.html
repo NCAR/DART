@@ -5,6 +5,7 @@
 <TITLE>module model_mod (NOAH)</TITLE>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +15,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
@@ -121,8 +122,10 @@
    <a href="http://www.ral.ucar.edu/research/land/technology/lsm.php"
    >the Unified NOAH/LSM website</a> and built - outside the DART framework - 
    to produce a standalone executable.
+</P>
    <br />
    <br />
+<P>
    Trivial modifications to the distributed hrldas makefiles were necessary to compile
    <em class=program>the Noah_hrldas_beta</em> on a case-insensitive filesystem.
    All of the original 14 <em class=file>Makefile</em> files have to be changed:
@@ -135,46 +138,58 @@
 <P>
    i.e. all instances of ".f" must be changed to ".f90". If you do not have
    a case-insensitive filesystem, the original Makefiles will not need these modifications. 
+</P>
    <br />
    <br />
    The DART components were built for debugging with the following settings:
-</P>
    <pre>
    FC = gfortran
    LD = gfortran
    INCS = -I${NETCDF}/include
    LIBS = -L${NETCDF}/lib -lnetcdff -lnetcdf -lcurl -lhdf5_hl -lhdf5 -lz  -lm
    FFLAGS = -g -O0 -ffree-line-length-none -fbounds-check -frecord-marker=4 -ffpe-trap=invalid $(INCS)
-   LDFLAGS = $(FFLAGS) $(LIBS)</pre>
+   LDFLAGS = $(FFLAGS) $(LIBS)
+   </pre>
 
 <a name="NOAHtimes"></a>
 <h3 class=indent1>A word about NOAH times and dates</h3>
    <P>HRLDAS-V3.3 has some unusual conventions as pertains the contents of 'restart' files.
    You should confirm the following to prove it to yourself - <strong>outside</strong> of
    the DART framework. Your actual numbers will change, but the point should be obvious.
+   </P>
    <br />
    <br />
-   (1) Assume there is a NOAH restart file:<pre>
+   <OL>
+   <LI>Assume there is a NOAH restart file:<br />
        <em class=file>RESTART.2009010118_DOMAIN1</em> containing
+       <pre>
        Times = "2009-01-01_18:00:00" ;
        SOIL_M = 0.100843, 0.1324335, 0.1104331, 0.16349 ;
-       QFX = 12.03423 ;</pre>
-
-   (2) Now, run/advance NOAH for a single (1 hour) timestep
-       (i.e. from 18Z to 19Z). The following files are created:<pre>
+       QFX = 12.03423 ;
+       </pre>
+   </LI>
+   <LI> Now, run/advance NOAH for a single (1 hour) timestep
+       (i.e. from 18Z to 19Z). The following files are created:<br />
        <em class=file>2009010118.LDASOUT_DOMAIN1</em> containing
+       <pre>
        Times = "2009-01-01_18:00:00" ;
 <div style="color: blue">       SOIL_M = 0.1007659, 0.132411, 0.1104217, 0.1634897 ;
-       QFX = 14.90484 ;</div>
+       QFX = 14.90484 ;</div></pre>
        <em class=file>RESTART.2009010119_DOMAIN1</em> containing
+       <pre>
        Times = "2009-01-01_19:00:00" ;
 <div style="color: blue">       SOIL_M = 0.1007659, 0.132411, 0.1104217, 0.1634897 ;
-       QFX = 14.90484 ;</div>
+       QFX = 14.90484 ;</div></pre>
        <em class=file>2009010119.LDASOUT_DOMAIN1</em> containing
+       <pre>
        Times = "2009-01-01_19:00:00" ;
        SOIL_M = 0.1006793, 0.1323851, 0.1104083, 0.1634894 ;
-       QFX = 17.13207 ;</pre>
+       QFX = 17.13207 ;
+       </pre>
+    </LI>
+    </OL>
 
+<P>
    The contents of the <em class=file>2009010118.LDASOUT_DOMAIN1</em>
    contain the <strong>same</strong> values as the 
    <em class=file>RESTART.2009010119_DOMAIN1</em>
@@ -182,13 +197,15 @@
    are from different times.</strong> The <em class=code>Times</em> in the
    LDASOUT files are fundamentally "now"casts and reflect the valid
    time of the model state. This is the time that DART requires.
+</P>
    <br />
    <br />
+<P>
    <strong>IMPORTANT:</strong> DART reads and modifies the RESTART files.
    DART internally adjusts the times in the restart files to correspond to
    the time of the companion LDASOUT file. The <em class=code>Times</em> array
    is unchanged. NOTE: The DART/NOAH interface uses the Gregorian calendar.
-   </P>
+</P>
 
 <a name="conversion"></a>
 <h3 class=indent1>Converting between DART files and NOAH restart files</h3>
@@ -328,8 +345,6 @@
    <em class=file>obs_def_mod.f90</em> and
    <em class=file>obs_kind_mod.f90</em> in the standard DART way.
    </P>
-</div>
-
 
 <a name="ExploringOutput"></a>
 <h3 class=indent1>Exploring the Output</h3>
@@ -355,7 +370,6 @@
       and use any of the standard plots. Be aware that the COSMOS site-specific
       metadata will not get conveyed to the netCDF file.
 </P>
-</div>
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
@@ -388,41 +402,41 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
    the NOAH model dynamical timestep.
 </P>
 
+<a name="model_perturbation_amplitude"></a>
 <TABLE border=0 cellpadding=3 width=100%>
 <TR><TH align=left>Contents    </TH>
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
 
 
-<TR><!--contents--><TD valign=top>noah_netcdf_filename&nbsp;&nbsp;&nbsp;</TD>
-    <!--  type  --><TD valign=top>character(len=128)&nbsp;&nbsp;&nbsp;</TD>
+<TR><!--contents--><TD valign=top>noah_netcdf_filename   </TD>
+    <!--  type  --><TD valign=top>character(len=128)   </TD>
     <!--descript--><TD>The name of the NOAH RESTART file to use to
                        create the DART state vector. For convenience, the
                        <em class=program>advance_model.csh</em> script usually
                        links the most recent restart file to a static name.
-                       <em class=units>[default:&nbsp;'restart.nc']</em></TD></TR>
+                       <em class=units>[default: 'restart.nc']</em></TD></TR>
 
 <TR><!--contents--><TD valign=top>assimilation_period_days</TD>
     <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD valign=top>The number of days to advance the model for each assimilation.
-                       <em class=units>[default:&nbsp;1]</em></TD></TR>
+                       <em class=units>[default: 1]</em></TD></TR>
 
 <TR><!--contents--><TD valign=top>assimilation_period_seconds</TD>
     <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD valign=top>In addition to <em class=code>assimilation_period_days</em>,
                        the number of seconds to advance the model for each assimilation.
-                       <em class=units>[default:&nbsp;0]</em></TD></TR>
+                       <em class=units>[default: 0]</em></TD></TR>
 
-<a name="model_perturbation_amplitude"></a>
 <TR><!--contents--><TD valign=top>model_perturbation_amplitude</TD>
     <!--  type  --><TD valign=top>real(r8)</TD>
     <!--descript--><TD valign=top>The amount of noise to add when trying to perturb a 
                        single state vector to create an ensemble. Only used when 
-		       <em class=file>input.nml</em>&nbsp;<em class=code>&amp;filter_nml:start_from_restart = .false.</em>
+		       <em class=file>input.nml</em> <em class=code>&amp;filter_nml:start_from_restart = .false.</em>
                        See also <a href="#InitialEnsemble">Generating the initial ensemble</a>
                        at the start of this document. units: standard deviation
                        of a Gaussian distribution with the mean at the value of
-                       the state vector element. <em class=units>[default:&nbsp;0.2]</em>
+                       the state vector element. <em class=units>[default: 0.2]</em>
 		       </TD></TR>
 
 <TR><!--contents--><TD valign=top>output_state_vector</TD>
@@ -433,7 +447,7 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
                        ... one long array.  If <em class=code>.false.</em>,
                        the state vector is parsed into prognostic variables and
                        output that way -- much easier to use with 'ncview', for
-                       example. <em class=units>[default:&nbsp;.false.]</em>
+                       example. <em class=units>[default: .false.]</em>
                        </TD></TR>
 
 <TR><!--contents--><TD valign=top>debug</TD>
@@ -444,20 +458,22 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
                        <em class=code>&gt; 5</em> provides ALL run-time messages.
                        All values above 0 will also write a netCDF file of the grid
                        information and perform a grid interpolation test.
-                       <em class=units>[default:&nbsp;0]</em></TD></TR>
+                       <em class=units>[default: 0]</em></TD></TR>
 
-<TR><!--contents--><TD valign=top>noah_state_variables&nbsp;&nbsp;&nbsp;</TD>
+<TR><!--contents--><TD valign=top>noah_state_variables   </TD>
     <!--  type  --><TD valign=top>character(len=32)::<br />
-                              dimension(2,40)&nbsp;&nbsp;&nbsp;</TD>
+                              dimension(2,40)   </TD>
     <!--descript--><TD>The list of variable names in the NOAH restart file to use to
                        create the DART state vector and their corresponding DART kind.
-                       <em class=units>[default:&nbsp;<em>see&nbsp;example&nbsp;below</em>]</em>
+                       <em class=units>[default: see example below]</em>
                        </TD></TR>
 
 </TABLE>
+</div>
 
 <H3 class=indent1>Example</H3>
 
+<div>
 <pre>
 &amp;model_nml
    noah_netcdf_file             = 'restart.nc',
@@ -553,74 +569,75 @@ the current KINDs. Support for these KINDs was provided by running
 <TR><!--contents--><TD valign=top>hrldas_constants_file</TD>
     <!--  type  --><TD valign=top>character(len=256)</TD>
     <!--descript--><TD valign=top>The name of the netCDF file containing the grid information.
-                   <em class=units>[default:&nbsp;'wrfinput']</em></TD></TR>
+                   <em class=units>[default: 'wrfinput']</em></TD></TR>
 
 <TR><!--contents--><TD valign=top>indir</TD>
     <!--  type  --><TD valign=top>character(len=256)</TD>
     <!--descript--><TD valign=top>The DART/NOAH environment requires all the input files
                                   to be in the current working directory.
-                   <em class=units>[default:&nbsp;'.']</em></TD></TR>
+                   <em class=units>[default: '.']</em></TD></TR>
 
 <TR><!--contents--><TD valign=top>outdir</TD>
     <!--  type  --><TD valign=top>character(len=256)</TD>
     <!--descript--><TD valign=top>The DART/NOAH environment requires all output files
                                   are in the current working directory.
-                   <em class=units>[default:&nbsp;'.']</em></TD></TR>
+                   <em class=units>[default: '.']</em></TD></TR>
 
 <TR><!--contents--><TD valign=top>restart_filename_requested</TD>
     <!--  type  --><TD valign=top>character(len=256)</TD>
     <!--descript--><TD valign=top>The name of the file containing the grid information.
                                   The default value is implicitly used by the scripting
 				  examples. Change at your own risk.
-                   <em class=units>[default:&nbsp;'restart.nc']</em></TD></TR>
+                   <em class=units>[default: 'restart.nc']</em></TD></TR>
 
 <TR><!--contents--><TD valign=top>khour</TD>
     <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD valign=top>The duration (in hours) of the model integration.
-				  <em class=units>[default:&nbsp;1]</em></TD></TR>
+				  <em class=units>[default: 1]</em></TD></TR>
 
 <TR><!--contents--><TD valign=top>kday</TD>
     <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD valign=top>The duration (in days) of the model integration.
-				  <em class=units>[default:&nbsp;0]</em></TD></TR>
+				  <em class=units>[default: 0]</em></TD></TR>
 
 <TR><!--contents--><TD valign=top>forcing_timestep</TD>
     <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD valign=top>The timestep (in seconds) of the atmospheric forcing.
-				  <em class=units>[default:&nbsp;3600]</em></TD></TR>
+				  <em class=units>[default: 3600]</em></TD></TR>
 
 <TR><!--contents--><TD valign=top>noah_timestep</TD>
     <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD valign=top>The internal (dynamical) timestep (in seconds).
-				  <em class=units>[default:&nbsp;3600]</em></TD></TR>
+				  <em class=units>[default: 3600]</em></TD></TR>
 
 <TR><!--contents--><TD valign=top>output_timestep</TD>
     <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD valign=top>The output interval (in seconds).
-				  <em class=units>[default:&nbsp;3600]</em></TD></TR>
+				  <em class=units>[default: 3600]</em></TD></TR>
 
 <TR><!--contents--><TD valign=top>restart_frequency_hours</TD>
     <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD valign=top>How often the NOAH restart files get written.
-				  <em class=units>[default:&nbsp;1]</em></TD></TR>
+				  <em class=units>[default: 1]</em></TD></TR>
 
 <TR><!--contents--><TD valign=top>split_output_count</TD>
     <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD valign=top>should be 1 or bad things happen.
-				  <em class=units>[default:&nbsp;1]</em></TD></TR>
+				  <em class=units>[default: 1]</em></TD></TR>
 
 <TR><!--contents--><TD valign=top>nsoil</TD>
     <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD valign=top>The number of soil interfaces. As I understand it,
                                   NOAH requires this to be 4.
-				  <em class=units>[default:&nbsp;4]</em></TD></TR>
+				  <em class=units>[default: 4]</em></TD></TR>
 
 
 <TR><!--contents--><TD valign=top>zsoil</TD>
     <!--  type  --><TD valign=top>integer(NSOLDX)</TD>
     <!--descript--><TD valign=top>The depth (in meters) of the soil interfaces.
-				  <em class=units>[default:&nbsp;-0.1, -0.4, -1.0, -2.04]</em></TD></TR>
+				  <em class=units>[default: -0.1, -0.4, -1.0, -2.04]</em></TD></TR>
 </TABLE>
+</div>
 
 <H3 class=indent1>Example</H3>
 <P>Note: the <em class=code>FORCING_FILE_DIRECTORY</em> line is not required by NOAH but
@@ -784,7 +801,7 @@ This is a NULL_INTERFACE, provided only for compatibility with the DART requirem
 <TR><TD valign=top><em class=code>x</em></TD>
     <TD>State vector of length model_size.</TD></TR>
 
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>time   </em></TD>
     <TD>Specifies time of the initial model state.</TD></TR>
 
 </TABLE>
@@ -798,7 +815,7 @@ This is a NULL_INTERFACE, provided only for compatibility with the DART requirem
 <br />
 <div class=routine>
 <em class=call>call get_state_meta_data (index_in, location
-                          <em class=optionalcode>[,&nbsp;var_type]</em> )</em>
+                          <em class=optionalcode>[, var_type]</em> )</em>
 <pre>
 integer,             intent(in)  :: <em class=code>index_in</em>
 type(location_type), intent(out) :: <em class=code>location</em>
@@ -824,7 +841,7 @@ to model_mod if required.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>index_in&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>index_in   </em></TD>
     <TD>Index of state vector element about which information is requested.</TD></TR>
 
 <TR><TD valign=top><em class=code>location</em></TD>
@@ -838,10 +855,10 @@ to model_mod if required.
     <TD>Returns the KIND of the indexed state variable as an optional argument.
         The kind is one of the list of supported observation kinds, found in
         the block of code starting
-        <em class=code>!&nbsp;Integer&nbsp;definitions&nbsp;for&nbsp;DART&nbsp;TYPES</em>
+        <em class=code>! Integer definitions for DART TYPES</em>
         in <em class=file>DART/obs_kind/obs_kind_mod.f90</em>. To clarify between DART
-        'KIND's and 'TYPE's ... a KIND is a more generic reference (i.e.&nbsp;KIND_TEMPERATURE)
-        as opposed to the more specific TYPE (i.e.&nbsp;RADIOSONDE_TEMPERATURE).
+        'KIND's and 'TYPE's ... a KIND is a more generic reference (i.e. KIND_TEMPERATURE)
+        as opposed to the more specific TYPE (i.e. RADIOSONDE_TEMPERATURE).
         </TD></TR>
 
 </TABLE>
@@ -884,7 +901,7 @@ operator <strong>H</strong> to the model state to create an 'expected' observati
 at the desired location. Some observation operators are more complicated and are
 defined in their own modules - 
 <a href="../../obs_def/obs_def_COSMOS_mod.html">obs_def_COSMOS_mod.f90</a>, for example.
-If the interpolation is valid, <em class=code>istatus&nbsp;=&nbsp;0</em>.
+If the interpolation is valid, <em class=code>istatus = 0</em>.
 Negative values are reserved for the system, any positive value indicates an error.
 </P>
 
@@ -893,7 +910,7 @@ Negative values are reserved for the system, any positive value indicates an err
 <TR><TD valign=top><em class=code>x</em></TD>
     <TD>A model state vector.</TD></TR>
 
-<TR><TD valign=top><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>location   </em></TD>
     <TD>Location to which to interpolate.</TD></TR>
 
 <TR><TD valign=top><em class=code>itype</em></TD>
@@ -940,7 +957,7 @@ the namelist values for <em class=file>input.nml</em>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>var   </em></TD>
     <TD>Smallest time step of model.</TD></TR>
 
 </TABLE>
@@ -968,17 +985,17 @@ The routine sets module-local private attributes that can then be queried by the
 public interface routines. In order to initialize the model, DART needs to 
 allocate arrays in proportion to the model size. To calculate the model size,
 DART queries a NOAH restart file for the variables listed in 
-<em class=file>input.nml</em>&nbsp;<em class=code>&amp;model_nml:noah_state_variables</em>. 
+<em class=file>input.nml</em> <em class=code>&amp;model_nml:noah_state_variables</em>. 
 The model time is also computed from information in this file.
 The grid locations, etc. come from a file specified in the 
-<em class=file>namelist.hrldas</em>&nbsp;<em class=code>&amp;NOAHLSM_OFFLINE</em>
+<em class=file>namelist.hrldas</em> <em class=code>&amp;NOAHLSM_OFFLINE</em>
 namelist in the <em class=code>HRLDAS_CONSTANTS_FILE</em> variable.
 <br />
 <br />
 <strong>Important</strong>: this routine requires:
 </P>
-<ol><li><em class=file>input.nml</em>&nbsp;<em class=code>&amp;model_mod_nml</em> (and more),
-    <li><em class=file>namelist.hrldas</em>&nbsp;<em class=code>&amp;NOAHLSM_OFFLINE</em>, 
+<ol><li><em class=file>input.nml</em> <em class=code>&amp;model_mod_nml</em> (and more),
+    <li><em class=file>namelist.hrldas</em> <em class=code>&amp;NOAHLSM_OFFLINE</em>, 
     <li> a NOAH restart file (normally <em class=file>restart.nc</em>),  and
     <li> a HRLDAS_CONSTANTS_FILE (normally <em class=file>wrfinput</em>).
 </ol>
@@ -1040,7 +1057,7 @@ not supported in the NOAH model.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>time   </em></TD>
     <TD>the starting time for the model if no initial conditions are to be supplied.
     This is hardwired to be identical to valid time of the model state in the NOAH
     restart file specified in <em class=code>noah_netcdf_filename</em>.</TD></TR>
@@ -1073,7 +1090,7 @@ the initial state is always provided by the input files.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>x&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>x   </em></TD>
     <TD>Initial conditions for state vector.
     This is hardwired to 0.0</TD></TR>
 
@@ -1114,7 +1131,7 @@ are preserved in the netCDF file as variables <em class=code>inputnml</em> and
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>ncFileID   </em></TD>
     <TD>Integer file descriptor to previously-opened netCDF file.</TD></TR>
 
 <TR><TD valign=top><em class=code>ierr</em></TD>
@@ -1173,7 +1190,7 @@ parsed into prognostic variables before being written.
 <TR><TD valign=top><em class=code>statevec</em></TD>
     <TD>A model state vector.</TD></TR>
 
-<TR><TD valign=top><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>copyindex   </em></TD>
     <TD>Integer index of copy to be written.</TD></TR>
 
 <TR><TD valign=top><em class=code>timeindex</em></TD>
@@ -1232,7 +1249,7 @@ This is done by setting:
 <TR><TD valign=top><em class=code>pert_state</em></TD>
     <TD>The perturbed state vector.</TD></TR>
 
-<TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>interf_provided   </em></TD>
     <TD>Because of the 'wet/dry' issue discussed above, this is always
         <em class=code>.true.</em>, indicating a model-specific perturbation
         is available.</TD></TR>
@@ -1298,8 +1315,8 @@ get_close_obs_init()</A> for the documentation of this subroutine.
 <br />
 <div class=routine>
 <em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &amp;<br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;num_close, close_ind
-  <em class=optionalcode>[,&nbsp;dist]</em>) </em>
+          num_close, close_ind
+  <em class=optionalcode>[, dist]</em>) </em>
 <pre>
 type(get_close_type),              intent(in ) :: <em class=code>gc</em>
 type(location_type),               intent(in ) :: <em class=code>base_obs_loc</em>
@@ -1354,7 +1371,6 @@ No storage is allocated.
 </TABLE>
 
 </div>
-<P></P>
 
 
 <div class="top">[<a href="#">top</a>]</div><hr />
@@ -1392,7 +1408,7 @@ restart file into a DART state vector. The NOAH variables are those specified by
     <em class=file>restart.nc</em> to ease scripting. This is possible
     since each NOAH model advance takes place in a unique directory.</TD></TR>
 
-<TR><TD valign=top><em class=code>state_vector&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>state_vector  </em></TD>
     <TD>The DART state vector from this NOAH state.
         The variable must be allocated before this routine is called.</TD></TR>
 
@@ -1439,7 +1455,8 @@ float SOIL_W(Time, soil_layers_stag, south_north, west_east) ;
          SOIL_W:description = "-" ;
          SOIL_W:units = "-" ;
          SOIL_W:stagger = "Z" ;
-<div style="color: green">         SOIL_W:DART = "variable modified by DART" ;</div></pre>
+<div style="color: green">         SOIL_W:DART = "variable modified by DART" ;</div>
+</pre>
 
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -1453,13 +1470,13 @@ float SOIL_W(Time, soil_layers_stag, south_north, west_east) ;
 <TR><TD valign=top><em class=code>dart_time</em></TD>
     <TD>ensures that the proper NOAH restart file is being updated.</TD></TR>
 
-<TR><TD valign=top><em class=code>skip_variables&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>skip_variables  </em></TD>
     <TD>the list of variables that may be in the DART state vector that SHOULD NOT be
     updated in the NOAH restart file. This list is read from the <em class=file>input.nml</em>
     <em class=code>dart_to_noah_nml</em> namelist.</TD></TR>
 </TABLE>
-
 </div>
+
 <br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
@@ -1485,7 +1502,7 @@ access this information.
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>filename&nbsp;&nbsp;</em></TD>
+<TR><TD valign=top><em class=code>filename  </em></TD>
     <TD>the netCDF-format NOAH restart file.
 </TD></TR>
 
@@ -1562,11 +1579,10 @@ integer :: <em class=code>debug</em>
 <P>
 <em class=program>get_debug_level</em> allows external routines
 access to the variable controlling the level of run-time output
-specified in <em class=file>input.nml</em>&nbsp;<em class=code>model_nml:debug</em>&nbsp;.
+specified in <em class=file>input.nml</em> <em class=code>model_nml:debug</em> .
 </P>
 
 </div>
-<P></P>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -1576,7 +1592,7 @@ specified in <em class=file>input.nml</em>&nbsp;<em class=code>model_nml:debug</
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>INPUT FILES</H2>
 
-<TABLE border=0 width=100%>
+<TABLE border=0 width=100% summary='input files'>
 <TR><TH align=left>filename</TH>
     <TH align=left>purpose</TH></TR>
 <TR><TD>input.nml</TD>
@@ -1591,14 +1607,14 @@ specified in <em class=file>input.nml</em>&nbsp;<em class=code>model_nml:debug</
 
 <H2>OUTPUT FILES</H2>
 
-<TABLE border=0 width=100%>
+<TABLE border=0 width=100% summary='output files'>
 <TR><TD><em class=code>&amp;model_nml:noah_netcdf_filename</em></TD>
     <TD>the updated RESTART file containing the NOAH model state.</TD></TR>
 <TR><TD>True_State.nc</TD>
     <TD>the time-history of the "true" model state from an OSSE</TD></TR>
 <TR><TD>Prior_Diag.nc</TD>
     <TD>the time-history of the model state(s) before assimilation</TD></TR>
-<TR><TD>Posterior_Diag.nc&nbsp;</TD>
+<TR><TD>Posterior_Diag.nc </TD>
     <TD>the time-history of the model state(s) after assimilation</TD></TR>
 <TR><TD>dart_log.out [default name]</TD>
     <TD>the run-time diagnostic output</TD></TR>
@@ -1606,7 +1622,7 @@ specified in <em class=file>input.nml</em>&nbsp;<em class=code>model_nml:debug</
     <TD>the record of all the namelists actually USED -
         contains the default values</TD></TR>
 </TABLE>
-<P></P>
+
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
@@ -1631,7 +1647,7 @@ specified in <em class=file>input.nml</em>&nbsp;<em class=code>model_nml:debug</
 <TR><TH>Routine</TH><TH width="50%">Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>static_init_model</TD>
-    <!-- message --><TD VALIGN=top>Expected&nbsp;##&nbsp;soil&nbsp;layers&nbsp;...</TD>
+    <!-- message --><TD VALIGN=top>Expected ## soil layers ...</TD>
     <!-- comment --><TD VALIGN=top>We read the <em class=code>model_nml</em> namelist for
     the name of the NOAH restart file. NOAH restart files (at present) do not actually
     have the depths of the soil interfaces recorded in them - they come from the
@@ -1726,7 +1742,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+<TR><TD valign=top>Change history: </TD><TD> try "svn log" or "svn diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->

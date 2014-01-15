@@ -3,16 +3,19 @@
 
 <HTML>
 <HEAD>
-<TITLE>module model_mod (MPAS ATM)</TITLE>
+<TITLE>module model_mod (MPAS OCN)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
+<H1>MODULE model_mod (MPAS OCN)</H1>
+
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P><a href="../../index.html">DART Documentation Main Index</a><br />
@@ -32,13 +35,13 @@
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
 
-<H1>MODULE model_mod (MPAS ATM)</H1>
+<H2>Overview</H2>
 
-<P>The <strong>MPAS ATM </strong> interface for 
+<P>The <strong>MPAS OCN </strong> interface for 
    <strong>Data Assimilation Research Testbed (DART)</strong> is under development.
    <br />
    <br />
-   Since MPAS ATM uses netcdf files for their restart mechanism, 
+   Since MPAS OCN uses netcdf files for their restart mechanism, 
    a namelist-controlled set of variables is used to build the DART state vector.
    Each variable must also correspond to a DART "KIND"; required for the DART
    interpolate routines. For example:
@@ -65,7 +68,7 @@
    area of active research.
    <br />
    <br />
-   DART reads grid information from the MPAS ATM 'history' file, I have tried to keep
+   DART reads grid information from the MPAS OCN 'history' file, I have tried to keep
    the variable names the same. Internal to the DART code, the following variables exist:
 </P>
 
@@ -169,7 +172,7 @@ type(progvartype), dimension(max_state_variables) :: progvar
    <table width="100%" cellpadding="10">
    <tr><td valign="top"><a href="model_to_dart.html">model_to_dart.f90</a></td>
        <td>converts an MPAS analysis file (nominally named <em class=file>mpas_analysis.nc</em>) into a 
-       DART-compatible file normally called <em class=file>dart.ud</em>&nbsp;.
+       DART-compatible file normally called <em class=file>dart_ics</em>&nbsp;.
        We usually wind up linking the actual analysis file to a static name that is used by DART.
        </td>
    </tr>

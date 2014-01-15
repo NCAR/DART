@@ -5,6 +5,7 @@
 <HEAD>
 <TITLE>program dart_to_ncommas</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -12,7 +13,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P><a href="../../index.html">DART Documentation Main Index</a><br />
@@ -78,34 +79,51 @@
 <P>
 Since this program is called repeatedly for every ensemble member,
 we have found it convenient to link the DART input file
-to the default input filename (<em class=file>dart.ic</em>). The same
+to the default input filename (<em class=file>dart_restart</em>). The same
 thing goes true for the ncommas output filename <em class=file>ncommas_restart.nc</em>.
 </P>
 
-<!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST ====================-->
-<!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
 Character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / dart_to_ncommas_nml / </em> dart_to_ncommas_input_file, advance_time_present
-
-<em class=call>namelist / model_nml / </em> ncommas_restart_filename, calendar
-
-<em class=call>namelist / ncommas_vars_nml / </em> ncommas_state_variables
+&amp;model_nml
+   ncommas_restart_filename     = 'ncommas_restart.nc';
+   assimilation_period_days     = 1,
+   assimilation_period_seconds  = 0,
+   model_perturbation_amplitude = 0.2,
+   output_state_vector          = .true.,
+   calendar                     = 'Gregorian',
+   debug                        = 0
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+
+<div class=namelist>
+<pre>
+&amp;dart_to_ncommas_nml
+   dart_to_ncommas_input_file = 'dart_restart',
+   advance_time_present   = .false.  
+/
+</pre>
+</div>
+
+<br />
+<br />
 
 <P>
 <em class=code>dart_to_ncommas_nml</em> and <em class=code>model_nml</em>
@@ -114,61 +132,69 @@ The full description of the <em class=code>model_nml</em> namelist is documented
 in the <a href="model_mod.html#Namelist">NCOMMAS model_mod</a>.
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TR><!--contents--><TD valign=top>dart_to_ncommas_input_file&nbsp;&nbsp;&nbsp;</TD>
-    <!--  type  --><TD valign=top>character(len=128)&nbsp;&nbsp;&nbsp;</TD>
-    <!--descript--><TD>The name of the DART file containing the model state
-                       to insert into the ncommas restart file.
-                       <em class=units>[default: 'dart.ic']</em></TD></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top>advance_time_present</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>switch to control the ability to read a DART file
-                       containing TWO timestamps in the file header.
-		       If you are converting a DART initial conditions or
-		       restart file - this should be 
-		       <em class=code>.false.</em> - these files have a 
-		       single timestamp describing the valid time of the 
-		       model state.
-		       <br />
-		       <br />
-		       If <em class=code>.true.</em>, TWO timestamps are 
-		       expected to be the DART file header.  In this case, a 
-		       namelist for ncommas (called <em class=file>ncommas_in.DART</em>)
-		       is created that contains the 
-		       <em class=code>&amp;time_manager_nml</em> settings 
-		       appropriate to advance ncommas to the time 
-		       requested by DART.
-                       <em class=units>[default: .false.]</em></TD></TR>
+<TR><TD> dart_to_ncommas_input_file </TD>
+    <TD> character(len=128) </TD>
+    <TD>The name of the DART file containing the model state
+to insert into the ncommas restart file.
+</TD></TR>
+
+<TR><TD> advance_time_present </TD>
+    <TD> logical </TD>
+    <TD>If you are converting a DART initial conditions or restart file this
+should be <em class=code>.false.</em>; these files have a single timestamp
+describing the valid time of the model state.  If <em class=code>.true.</em>
+TWO timestamps are expected to be the DART file header.  In this case, a
+namelist for ncommas (called <em class=file>ncommas_in.DART</em>) is created
+that contains the <em class=code>&amp;time_manager_nml</em> settings
+appropriate to advance ncommas to the time requested by DART.
+</TD></TR>
+
+</TBODY> 
 </TABLE>
-
 </div>
-<br />
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
 <P>
 <em class=code>ncommas_vars_nml</em> is always read from a file
 called <em class=file>ncommas_vars.nml</em>.
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TR><!--contents--><TD valign=top>ncommas_state_variables&nbsp;&nbsp;&nbsp;</TD>
-    <!--  type  --><TD valign=top>character(len=NF90_MAX_NAME)::<br />
-                              dimension(160)&nbsp;&nbsp;&nbsp;</TD>
-    <!--descript--><TD>The list of variable names in the NCOMMAS restart file to use to
-                       create the DART state vector and their corresponding DART kind.
-                       <em class=units>[default: see example below]</em></TD></TR>
+<TBODY valign=top>
+
+<TR><TD> ncommas_state_variables </TD>
+    <TD> character(len=NF90_MAX_NAME) ::<br />
+         dimension(160)   </TD>
+    <TD>The list of variable names in the NCOMMAS restart file to use to
+create the DART state vector and their corresponding DART kind.
+</TD></TR>
+
+</TBODY> 
 </TABLE>
+</div>
+
+<br />
+
+<div class=namelist>
 <pre>
 &amp;ncommas_vars_nml
    ncommas_state_variables = 'U',   'KIND_U_WIND_COMPONENT',
@@ -186,14 +212,14 @@ called <em class=file>ncommas_vars.nml</em>.
                              'QH',  'KIND_GRAUPEL_MIXING_RATIO'
   /
 </pre>
-
 </div>
+
 <br />
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 assim_model_mod
@@ -213,7 +239,7 @@ utilities_mod
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES Read</H2>
 <UL><LI>DART initial conditions/restart file; e.g. <em class=file>filter_ic</em></LI>
     <LI>DART namelist file; <em class=file>input.nml</em></LI>
@@ -232,7 +258,7 @@ utilities_mod
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <P>
 none
@@ -243,7 +269,7 @@ none
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <P>
 none - all error messages come from modules that have their own documentation.
@@ -259,7 +285,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 None.
@@ -270,7 +296,7 @@ None.
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

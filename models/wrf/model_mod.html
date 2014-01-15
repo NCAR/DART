@@ -4,6 +4,7 @@
 <HEAD>
 <TITLE>module model_mod (wrf)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -13,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
@@ -43,16 +44,53 @@ Send email to
 <a href="mailto:dart@ucar.edu">dart@ucar.edu</a> to get added to the access list.
 </P>
 <P>
-The WRF model_mod reads a <em class=file>wrfinput_d01</em>
-file to get WRF grid and surface elevation information.  The actual state
-data is read from a filter initial condition/restart file (typically
-called 'filter_ics' or 'filter_restart') but the WRF input NetCDF file
-in the current directory must match the configuration used when generating
-the IC files.   See the <a href="WRF_DART_utilities/dart_to_wrf.html">wrf_to_dart</a>
+The WRF model_mod code reads the state data from a filter initial condition/restart
+file, typically called <em class=file>filter_ics</em> or <em class=file>filter_restart</em>.
+It also requires a NetCDF file named <em class=file>wrfinput_d01</em> in the
+current directory (and <em class=file>d02</em>, etc. for multiple domain cases).
+This file must be at the same resolution and have the same surface elevation
+data as the files converted to create the DART initial conditions.  No data
+will be read from this file, but the grid information must match exactly.
+See the <a href="WRF_DART_utilities/dart_to_wrf.html">wrf_to_dart</a>
 documentation for more information on how to generate DART IC/restart files
 given WRF NetCDF files.
 </P>
-<P>The 17 public interfaces
+<P>
+The model interface code supports WRF configurations with multiple domains.  
+Data for all
+domains is read into the DART state vector.  During the computation of the
+forward operators (getting the estimated observation values from each
+ensemble member), the search starts in the domain with the highest number,
+which is generally the finest nest or one of multiple finer nests.
+The search stops as soon as a domain contains the observation location,
+working its way from largest number to smallest number domain, ending
+with domain 1.
+For example, in a 4 domain case the data in the state vector that came 
+from <em class=file>wrfinput_d04</em> is searched first, then
+<em class=file>wrfinput_d03</em>, <em class=file>wrfinput_d02</em>, 
+and finally
+<em class=file>wrfinput_d01</em>.
+The forward operator is computed from the first domain grid that
+contains the lat/lon of the observation.   
+During the assimilation phase, when the state values are adjusted based on 
+the correlations and assimilation increments, all points in all domains 
+that are within the localization radius are adjusted, regardless of domain.
+The impact of an observation on the state depends only on the distance between
+the observation and the state vector point, and the regression coefficient 
+based on the correlation between the distributions of the ensemble of state 
+vector points and the ensemble of observation forward operator values.
+</P>
+<P>
+The fields from WRF that are copied into the DART state vector are
+controlled by namelist.  See below for the documentation on the &amp;model_nml
+entries.  The state vector should include all fields needed to restart
+a WRF run.  There may be additional fields needed depending on the
+microphysics scheme selected.  See the ascii file <em class=file>wrf_state_variables_table</em>
+in the <em class=file>models/wrf</em> directory for a list of
+fields that are often included in the DART state.
+</P>
+<P>
+The 16 public interfaces
 are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
@@ -63,243 +101,318 @@ observational operators.
 <!--==================== DESCRIPTION OF A NAMELIST =====================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-The declarations have a different syntax, naturally.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_nml / </em>                          &amp;
-   default_state_variables, wrf_state_variables, wrf_state_bounds,   &amp;
-   output_state_vector, num_domains, calendar_type,                  &amp;
-   assimilation_period_seconds, allow_obs_below_vol,                 &amp;
-   vert_localization_coord, sfc_elev_max_diff,                       &amp;
-   polar, periodic_x, periodic_y, scm,                               &amp;
-   center_search_half_length, center_spline_grid_scale,              &amp;
-   circulation_pres_level, circulation_radius,                       &amp;
-   adv_mod_command, num_moist_vars, surf_obs, soil_data, h_diab
+&amp;model_nml
+   default_state_variables     = .true.,
+   wrf_state_variables         = 'NULL',
+   wrf_state_bounds            = 'NULL',
+   num_domains                 = 1,
+   output_state_vector         = .false.,
+   calendar_type               = 3,
+   num_moist_vars              = 3,
+   surf_obs                    = .true.,
+   soil_data                   = .true.,
+   h_diab                      = .false.,
+   assimilation_period_seconds = 21600,
+   adv_mod_command             = './wrf.exe',
+   allow_obs_below_vol         = .false.,
+   vert_localization_coord     = 3,
+   center_search_half_length   = 500000.,
+   center_spline_grid_scale    = 10,
+   circulation_pres_level      = 80000.0,
+   circulation_radius          = 108000.0,
+   sfc_elev_max_diff           = -1.0,
+   polar                       = .false.,
+   periodic_x                  = .false.,
+   periodic_y                  = .false.,
+   scm                         = .false.  
+/
+
+# Notes for model_nml:
+# (1) vert_localization_coord must be one of:
+#     1 = model level
+#     2 = pressure
+#     3 = height
+#     4 = scale height
+# (2) see bottom of this file for explanations of polar, periodic_x, 
+#     periodic_y, and scm
+# (3) calendar = 3 is GREGORIAN, which is what WRF uses.
+# (4) if 'default_state_variables' is .true. the model_mod.f90 code will
+#     fill the state variable table with the following wrf vars: 
+#        U, V, W, PH, T, MU
+#     you must set it to false before you change the value 
+#     of 'wrf_state_variables' and have it take effect.
+# (5) the format for 'wrf_state_variables' is an array of 5 strings:
+#     wrf netcdf variable name, dart KIND_xxx string, type string (must be 
+#     unique, will soon be obsolete, we hope), 'UPDATE', and '999' if the 
+#     array is part of all domains.  otherwise, it is a string with the domain
+#     numbers (e.g. '12' for domains 1 and 2, '13' for domains 1 and 3).
+#   example:
+# wrf_state_variables='U','KIND_U_WIND_COMPONENT','TYPE_U','UPDATE','999',
+#                     'V','KIND_V_WIND_COMPONENT','TYPE_V','UPDATE','999',
+#                     'W','KIND_VERTICAL_VELOCITY','TYPE_W','UPDATE','999',
+#                     'T','KIND_POTENTIAL_TEMPERATURE','TYPE_T','UPDATE','999',
+#                     'PH','KIND_GEOPOTENTIAL_HEIGHT','TYPE_GZ','UPDATE','999',
+#                     'MU','KIND_PRESSURE','TYPE_MU','UPDATE','999',
+#                     'QVAPOR','KIND_VAPOR_MIXING_RATIO','TYPE_QV','UPDATE','999',
+#                     'QCLOUD','KIND_CLOUD_LIQUID_WATER','TYPE_QC','UPDATE','999',
+#                     'QRAIN','KIND_RAINWATER_MIXING_RATIO','TYPE_QR','UPDATE','999',
+#                     'U10','KIND_U_WIND_COMPONENT','TYPE_U10','UPDATE','999',
+#                     'V10','KIND_V_WIND_COMPONENT','TYPE_V10','UPDATE','999',
+#                     'T2','KIND_TEMPERATURE','TYPE_T2','UPDATE','999',
+#                     'TH2','KIND_POTENTIAL_TEMPERATURE','TYPE_TH2','UPDATE','999',
+#                     'Q2','KIND_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
+#                     'PSFC','KIND_PRESSURE','TYPE_PS','UPDATE','999',
+# (6) the format for 'wrf_state_bounds' is an array of 4 strings:
+#     wrf netcdf variable name, minimum value, maximum value, and either
+#     FAIL or CLAMP.  FAIL will halt the program if an out of range value
+#     is detected.  CLAMP will set out of range values to the min or max.
+#     The special string 'NULL' will map to plus or minus infinity and will
+#     not change the values.  arrays not listed in this table will not
+#     be changed as they are read or written.
+#
+#
+# polar and periodic_x are used in global wrf.  if polar is true, the 
+# grid interpolation routines will wrap over the north and south poles.  
+# if periodic_x is true, when the east and west edges of the grid are
+# reached the interpolation will wrap.  note this is a separate issue
+# from regional models which cross the GMT line; those grids are marked
+# as having a negative offset and do not need to wrap; this flag controls
+# what happens when the edges of the grid are reached.
+
+# the scm flag is used for the 'single column model' version of WRF.
+# it needs the periodic_x and periodic_y flags set to true, in which
+# case the X and Y directions are periodic; no collapsing of the grid
+# into a single location like the 3d-spherical polar flag implies.
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top>default_state_variables      </TD>
-    <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>If .true., the dart state vector contains
-    the fields U, V, W, PH, T, MU, in that order, and only those.
-    Any values listed in the wrf_state_variables namelist item will
-    be ignored.  Defaults to .true.</TD></TR>
+<TR><TD> default_state_variables </TD>
+    <TD> logical </TD>
+    <TD>If .true., the dart state vector contains the fields U, V, W, PH, T, MU,
+in that order, and only those.  Any values listed in the wrf_state_variables
+namelist item will be ignored.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>wrf_state_variables      </TD>
-    <!--  type  --><TD valign=top>character(:, 5)          </TD>
-    <!--descript--><TD>A 2D array of strings, 5 per wrf array
-    to be added to the dart state vector.  If default_state_variables
-    is .true., this is ignored.  When .false., this list of array
-    names controls which arrays and the order that they are added
-    to the state vector.  The 5 strings are:  
-    <OL> <LI>WRF field name - must match netcdf name exactly</LI>
-         <LI>DART KIND name - must match a valid DART KIND_xxx exactly</LI>
-         <LI>TYPE_NN - will hopefully be obsolete, but for now NN 
-             should match the field name. </LI>
-         <LI>the string UPDATE.  at some future point, non-updatable
-             fields may become part of the state vector. </LI>
-         <LI>A numeric string listing the domain numbers this array
-             is part of.  The specical string 999 means all domains.
-             For example, '12' means domains 1 and 2, '13' means 1 and 3.</LI>
-   </OL>
-    No defaults.  All fields must be listed explicitly.</TD></TR>
+<TR><TD> wrf_state_variables </TD>
+    <TD>character(:, 5) </TD>
+    <TD>A 2D array of strings, 5 per wrf array
+to be added to the dart state vector.  If default_state_variables
+is .true., this is ignored.  When .false., this list of array
+names controls which arrays and the order that they are added
+to the state vector.  The 5 strings are:  
+<OL><LI>WRF field name - must match netcdf name exactly</LI>
+    <LI>DART KIND name - must match a valid DART KIND_xxx exactly</LI>
+    <LI>TYPE_NN - will hopefully be obsolete, but for now NN 
+       should match the field name. </LI>
+    <LI>the string UPDATE.  at some future point, non-updatable
+       fields may become part of the state vector. </LI>
+    <LI>A numeric string listing the domain numbers this array
+       is part of.  The specical string 999 means all domains.
+       For example, '12' means domains 1 and 2, '13' means 1 and 3.</LI>
+</OL>
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>wrf_state_bounds      </TD>
-    <!--  type  --><TD valign=top>character(:, 4)          </TD>
-    <!--descript--><TD>A 2D array of strings, 4 per wrf array.
-    During the copy of data to and from the wrf netcdf file,
-    variables listed here will have minimum and maximum values
-    enforced.  The 4 strings are:  
-    <OL> <LI>WRF field name - must match netcdf name exactly</LI>
-         <LI>Minimum -- specified as a string but must be a numeric value
-             (e.g. '0.1')  Can be 'NULL' to allow any minimum value.</LI>
-         <LI>Maximum -- specified as a string but must be a numeric value
-             (e.g. '0.1')  Can be 'NULL' to allow any maximum value.</LI>
-         <LI>Action -- valid strings are 'CLAMP', 'FAIL'.  'FAIL' means if
-             a value is found outside the range, the code fails with an error.
-             'CLAMP' simply sets the out of range values to the given minimum
-             or maximum without error.</LI>
-   </OL>
-    No defaults.  All fields must be listed explicitly.</TD></TR>
+<TR><TD> wrf_state_bounds </TD>
+    <TD>character(:, 4)          </TD>
+    <TD>A 2D array of strings, 4 per wrf array.  During the copy of data to and
+from the wrf netcdf file, variables listed here will have minimum and maximum
+values enforced.  The 4 strings are:
+<OL><LI>WRF field name - must match netcdf name exactly</LI>
+    <LI>Minimum -- specified as a string but must be a numeric value
+       (e.g. '0.1')  Can be 'NULL' to allow any minimum value.</LI>
+    <LI>Maximum -- specified as a string but must be a numeric value
+       (e.g. '0.1')  Can be 'NULL' to allow any maximum value.</LI>
+    <LI>Action -- valid strings are 'CLAMP', 'FAIL'.  'FAIL' means if
+       a value is found outside the range, the code fails with an error.
+       'CLAMP' simply sets the out of range values to the given minimum
+       or maximum without error.</LI>
+</OL>
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>output_state_vector          </TD>
-    <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>Controls the output to netCDF files. If .true., 
-    output the raw dart state vector. Otherwise, output the prognostic 
-    flavor (gridded data) for easier plotting (recommended).
-    Defaults to false</TD></TR>
+<TR><TD> output_state_vector </TD>
+    <TD> logical </TD>
+    <TD>Controls the output to netCDF files. If .true., output the raw dart state
+vector. If .false., output the prognostic flavor (gridded data) for easier
+plotting (recommended).
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>num_domains                  </TD>
-    <!--  type  --><TD valign=top>integer                      </TD>
-    <!--descript--><TD>Total number of WRF domains, including the
-    nest. Defaults to 1</TD></TR>
+<TR><TD> num_domains </TD>
+    <TD> integer </TD>
+    <TD>Total number of WRF domains, including nested domains.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>calendar_type                </TD>
-    <!--  type  --><TD valign=top>integer                      </TD>
-    <!--descript--><TD>Calendar type. We recommend (GREGORIAN = 3) for
-    WRF, which is the default.</TD></TR>
+<TR><TD> calendar_type </TD>
+    <TD> integer </TD>
+    <TD>Calendar type. Should be 3 (GREGORIAN) for WRF.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>assimilation_period_seconds  </TD>
-    <!--  type  --><TD valign=top>integer                      </TD>
-    <!--descript--><TD>The time (in seconds) between assimilations. 
-                       This is modified if necessary to be an integer 
-		       multiple of the underlying model timestep.
-                       Default is 21600 (6 hours)</TD></TR>
+<TR><TD> assimilation_period_seconds </TD>
+    <TD> integer </TD>
+    <TD>The time (in seconds) between assimilations. 
+This is modified if necessary to be an integer 
+multiple of the underlying model timestep.
+</TD></TR>
     
-<TR><!--contents--><TD valign=top>periodic_x                 </TD>
-    <!--  type  --><TD valign=top>logical                    </TD>
-    <!--descript--><TD>If .true., the grid is periodic in
-    longitude, and points above the last grid cell and points
-    below the first grid cell are wrapped.  Note this is not
-    the same as a grid which crosses the prime meridian.  WRF
-    handles that with an offset in longitude and points beyond
-    the last grid index are outside the domain.  The default
-    is .false.</TD></TR>
+<TR><TD> periodic_x </TD>
+    <TD> logical </TD>
+    <TD>If .true., the grid is periodic in longitude, and points above the last
+grid cell and points below the first grid cell are wrapped.  Note this is not
+the same as a grid which crosses the prime meridian.  WRF handles that with an
+offset in longitude and points beyond the last grid index are outside the domain.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>periodic_y                 </TD>
-    <!--  type  --><TD valign=top>logical                    </TD>
-    <!--descript--><TD>Used for the Single Column Model to make
-    the grid wrap in Y (see scm below).  This is NOT the same as 
-    wrapping in latitude (see polar below).  The default is .false.</TD></TR>
+<TR><TD> periodic_y </TD>
+    <TD> logical </TD>
+    <TD>Used for the Single Column Model to make the grid wrap in Y (see scm
+below).  This is NOT the same as wrapping in latitude (see polar below).
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>polar                      </TD>
-    <!--  type  --><TD valign=top>logical                    </TD>
-    <!--descript--><TD>If .true., points at the poles are 
-    wrapped across the grid. It is not clear this is a good idea
-    since the grid is degnerate here. The default is .false.</TD></TR>
+<TR><TD> polar </TD>
+    <TD> logical </TD>
+<TD>If .true., points at the poles are wrapped across the grid. It is not
+clear this is a good idea since the grid is degnerate here.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>scm                        </TD>
-    <!--  type  --><TD valign=top>logical                    </TD>
-    <!--descript--><TD>If .true., the Single Column Model is
-    assumed.  The grid is a single vertical column, and there
-    are 9 cells arranged in a 3x3 grid.  See the WRF documentation
-    for more information on this configuration.  periodic_x
-    and periodic_y should also be .true. in this case.
-    The default is .false.</TD></TR>
+<TR><TD> scm </TD>
+    <TD> logical </TD>
+    <TD>If .true. the Single Column Model is assumed.  The grid is a single
+vertical column, and there are 9 cells arranged in a 3x3 grid.  See the WRF
+documentation for more information on this configuration.  periodic_x and
+periodic_y should also be .true. in this case.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>sfc_elev_max_diff           </TD>
-    <!--  type  --><TD valign=top>real(r8)                    </TD>
-    <!--descript--><TD>If > 0, the maximum difference, in meters,
-    between an observation marked as a 'surface obs' as the vertical
-    type (with the surface elevation, in meters, as the numerical
-    vertical location), and the surface elevation as defined by the
-    model.  Observations further away from the surface than this
-    threshold are rejected and not assimilated.   If the value is
-    negative, this test is skipped.  The default value is -1.0.
-    The default is .false.</TD></TR>
+<TR><TD> sfc_elev_max_diff </TD>
+    <TD> real(r8) </TD>
+    <TD>If > 0, the maximum difference, in meters, between an observation marked
+as a 'surface obs' as the vertical type (with the surface elevation, in
+meters, as the numerical vertical location), and the surface elevation as
+defined by the model.  Observations further away from the surface than this
+threshold are rejected and not assimilated.   If the value is negative, this
+test is skipped.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>allow_obs_below_vol          </TD>
-    <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>If an observation with a vertical coordinate of
-            pressure or height (e.g. not one marked as a surface observation)
-            is below the lowest 3d sigma level, it is outside the
-            volume and the interpolation routine marks it as invalid.
-            If this is set to .true. and the observation is above the surface
-            elevation but below the lowest volume level, the code will
-            extrapolate downward from data values at levels 1 and 2.  
-	    Defaults to .false.</TD></TR>
+<TR><TD> allow_obs_below_vol </TD>
+    <TD> logical </TD>
+    <TD>If .false. then if an observation with a vertical coordinate 
+of pressure or height (i.e. not a surface observation) is below the lowest 3d
+sigma level, it is outside the field volume and the interpolation routine rejects
+it.  If this is set to .true. and the observation is above the surface
+elevation but below the lowest field volume level, the code will extrapolate
+downward from data values at levels 1 and 2.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>center_search_half_length    </TD>
-    <!--  type  --><TD valign=top>real(r8)                     </TD>
-    <!--descript--><TD>The model_mod now contains two schemes for
-          searching for a vortex center location.  If the old scheme
-          is compiled in, then this and the center_spline_grid_scale
-          namelist items are used. (Search code for 'use_old_vortex'.)
-          Half length (in meters) of a square box for searching 
-          the vortex center.  Default is 500000.0</TD></TR>
+<TR><TD> center_search_half_length </TD>
+    <TD> real(r8) </TD>
+    <TD>The model_mod now contains two schemes for searching for a vortex 
+center location.  If the <strong>old</strong> scheme is compiled in, then this 
+and the center_spline_grid_scale namelist items are used. (Search code for
+'use_old_vortex'.) Half length (in meters) of a square box for searching the
+vortex center.
+</TD></TR>
     
-<TR><!--contents--><TD valign=top>center_spline_grid_scale  </TD>
-    <!--  type  --><TD valign=top>integer                   </TD>
-    <!--descript--><TD>The model_mod now contains two schemes for
-          searching for a vortex center location.  If the old scheme
-          is compiled in, then this and the center_search_half_length
-          namelist items are used.  (Search code for 'use_old_vortex'.)
-          Ratio of refining grid for spline-interpolation in 
-          determining the vortex center.  Default is 10</TD></TR>
+<TR><TD> center_spline_grid_scale </TD>
+    <TD> integer </TD>
+    <TD>The model_mod now contains two schemes for searching for a vortex 
+center location.  If the <strong>old</strong> scheme is compiled in, then this 
+and the center_search_half_length namelist items are used.  (Search code for
+'use_old_vortex'.) Ratio of refining grid for spline-interpolation in
+determining the vortex center.
+</TD></TR>
     
-<TR><!--contents--><TD valign=top>circulation_pres_level  </TD>
-    <!--  type  --><TD valign=top>real(r8)                </TD>
-    <!--descript--><TD>The model_mod now contains two schemes for
-          searching for a vortex center location.  If the new scheme
-          is compiled in, then this and the circulation_radius
-          namelist items are used.   (Search code for 'use_old_vortex'.)
-          Pressure, in pascals, of the level at which the circulation
-          is computed when searching for the vortex center.  
-          Default is 80000.0</TD></TR>
+<TR><TD> circulation_pres_level </TD>
+    <TD> real(r8) </TD>
+    <TD>The model_mod now contains two schemes for searching for a vortex 
+center location.  If the <strong>new</strong> scheme is compiled in, then this 
+and the circulation_radius namelist items are used.   (Search code for
+'use_old_vortex'.) Pressure, in pascals, of the level at which the
+circulation is computed when searching for the vortex center.
+</TD></TR>
     
-<TR><!--contents--><TD valign=top>circulation_radius  </TD>
-    <!--  type  --><TD valign=top>real(r8)                </TD>
-    <!--descript--><TD>The model_mod now contains two schemes for
-          searching for a vortex center location.  If the new scheme
-          is compiled in, then this and the circulation_pres_level
-          namelist items are used.    (Search code for 'use_old_vortex'.)
-          Radius, in meters, of the circle over which the circulation
-          calculation is done when searching for the vortex center.
-          Default is 108000.0</TD></TR>
+<TR><TD> circulation_radius </TD>
+    <TD> real(r8) </TD>
+    <TD>The model_mod now contains two schemes for searching for a vortex 
+center location.  If the <strong>new</strong> scheme is compiled in, then this 
+and the circulation_pres_level namelist items are used.    (Search code for
+'use_old_vortex'.) Radius, in meters, of the circle over which the
+circulation calculation is done when searching for the vortex center.
+</TD></TR>
     
-<TR><!--contents--><TD valign=top>vert_localization_coord  </TD>
-    <!--  type  --><TD valign=top>integer                   </TD>
-    <!--descript--><TD>Vertical coordinate for vertical localization [1...3]
-                       1 = model level,  2 = pressure,  3 = height.  
-                       Default is 3</TD></TR>
+<TR><TD> vert_localization_coord </TD>
+    <TD> integer </TD>
+    <TD>Vertical coordinate for vertical localization.
+       <UL style="list-style: none;"> 
+           <LI>1 = model level</LI>
+           <LI>2 = pressure (in pascals)</LI>
+           <LI>3 = height (in meters)</LI>
+           <LI>4 = scale height (unitless)</LI>
+       </UL>
+</TD></TR>
     
-<TR><!--contents--><TD valign=top>surf_obs                     </TD>
-    <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>DEPRECATED -- has no effect on the code
-    and will be removed soon.</TD></TR>
+<TR><TD> surf_obs </TD>
+    <TD> logical </TD>
+    <TD>DEPRECATED -- has no effect on the code and will be removed.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>soil_data                    </TD>
-    <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>DEPRECATED -- has no effect on the code 
-    and will be removed soon.</TD></TR>
+<TR><TD> soil_data </TD>
+    <TD> logical </TD>
+    <TD>DEPRECATED -- has no effect on the code and will be removed.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>h_diab                     </TD>
-    <!--  type  --><TD valign=top>logical                      </TD>
-    <!--descript--><TD>DEPRECATED -- has no effect on the code 
-    and will be removed soon.</TD></TR>
+<TR><TD> h_diab </TD>
+    <TD> logical </TD>
+    <TD>DEPRECATED -- has no effect on the code and will be removed.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>num_moist_vars               </TD>
-    <!--  type  --><TD valign=top>integer                      </TD>
-    <!--descript--><TD>DEPRECATED -- has no effect on the code 
-    and will be removed soon.</TD></TR>
+<TR><TD> num_moist_vars </TD>
+    <TD> integer </TD>
+    <TD>DEPRECATED -- has no effect on the code and will be removed.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>adv_mod_command              </TD>
-    <!--  type  --><TD valign=top>character(len=32)            </TD>
-    <!--descript--><TD>DEPRECATED -- A variable with the same name
-    has moved to the 
-    <a href=WRF_DART_utilities/dart_to_wrf.html#Namelist>&amp;dart_to_wrf</a>
-    namelist and does the same function from there.  
-    This one has no effect on the code and will be 
-    removed soon. (Old description: For single-threaded, set to 'wrf.exe'. 
-    For MPI, supports nesting, set to something like, for example, 
-    'mpirun -np number-of-prcessors wrf.exe'.)  </TD></TR>
+<TR><TD> adv_mod_command </TD>
+    <TD> character(len=32) </TD>
+    <TD>DEPRECATED -- A variable with the same name has moved to the 
+<a href="WRF_DART_utilities/dart_to_wrf.html#Namelist">&amp;dart_to_wrf</a>
+namelist and does the same function from there.  This one has no effect on
+the code and will be removed soon.  
+</TD></TR>
 
+</TBODY> 
 </TABLE>
-
 </div>
-<br>
+
+<br />
+<br />
 
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -320,7 +433,7 @@ typesizes
 <!--Note to authors. The first row of the table is different.         -->
 <!--==================================================================-->
 
-<HR>
+<hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -356,12 +469,6 @@ the filter can generate an ensemble with uncorrelated random Gaussian noise of
 variables expressed in a wide range of scales. It is thus recommended to
 generate the initial ensemble off-line, perhaps with the tools provided in
 models/wrf/PERTURB/3DVAR-COVAR.
-</P>
-
-<P>
-Optional namelist interface
-<a href="#Namelist"><em class=code>&amp;model_nml</em></a>
-may be read from file <em class=file>input.nml</em>.
 </P>
 
 <P>
@@ -502,11 +609,6 @@ the highest resolution containing the observation.
     <TD>Integer flag indicating the result of the interpolation.</TD></TR>
 
 </TABLE>
-
-<P>
-As of September 9, 2004 the reflectivity observational operator is still not
-available (obs_kind = KIND_REF in obs_kind_mod).
-</P>
 
 </div>
 <br>
@@ -775,9 +877,14 @@ real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
 <!-- Description -->
 
 <P>
-Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed-sphere/location_mod.html#get_close_obs">
-get_close_obs()</A> for the documentation of this subroutine.
+Calls the 3-D sphere locations module to get a list of potentially
+close state vector points, and again for unassimilated observations.
+See <A HREF="../../location/threed-sphere/location_mod.html#get_close_obs">
+get_close_obs()</A> for the documentation of the locations module
+version of this code.  Then,
+if vertical localization is enabled, this code converts all vertical
+locations to the selected vertical type (&amp;model_nml::vert_localization_coord).
+It then computes a real 3D distance and returns it to the calling code.
 </P>
 
 </div>
@@ -829,11 +936,7 @@ type(time_type),          intent(in)    :: <em class=code> time </em>
 
 <P>
 This operation is not defined for the WRF model. 
-This interface is only required if `synchronous' model state advance 
-is supported (the model is called directly as a Fortran90 subroutine 
-from the assimilation programs). This is generally not the preferred 
-method for large models and a stub for this interface is provided for the WRF
-model.
+If called it will throw a fatal error.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -842,11 +945,8 @@ model.
     <TD>State vector of length model_size.</TD></TR>
 
 <TR><TD valign=top><em class=code>time</em></TD>
-    <TD>Gives time of the initial model state. Needed for models that 
-have real time state requirements, for instance the computation of 
-radiational parameters. Note that DART provides a time_manager_mod 
-module that is used to support time computations throughout the
-    facility. </TD></TR>
+    <TD>Gives time of the initial model state.
+    </TD></TR>
 
 </TABLE>
 
@@ -887,10 +987,7 @@ type(time_type),        intent(in)  :: <em class=code> i_time </em>
 <!-- Description -->
 
 <P>
-Returns the time at which the model will start if 
-no input initial conditions are to be used. 
-This is frequently used to spin-up models from rest, 
-but is not meaningfully supported for the WRF model. 
+Not supported for the WRF model.
 </P>
 
 </div>
@@ -911,9 +1008,7 @@ real(r8), dimension(:), intent(out) :: <em class=code> x </em>
 <!-- Description -->
 
 <P>
-Returns default initial conditions for model; generally used for spinning up 
-initial model states. For the WRF model just return 0's since initial 
-state is always to be provided from input files.
+Not supported for the WRF model.  Will throw a fatal error if called.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -931,7 +1026,7 @@ state is always to be provided from input files.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL> <LI>model_nml in input.nml
      <LI>wrfinput_d01, wrfinput_d02, ... (one file for each domain)
@@ -943,7 +1038,7 @@ state is always to be provided from input files.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <a href="http://www.mmm.ucar.edu/wrf/users/docs/user_guide/contents.html">
 http://www.mmm.ucar.edu/wrf/users/docs/user_guide/contents.html</a>
@@ -953,7 +1048,7 @@ http://www.mmm.ucar.edu/wrf/users/docs/user_guide/contents.html</a>
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -1043,7 +1138,7 @@ Only the Lambert projection (MAP_PROJ = 1) is working. Other map projections
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time
@@ -1054,7 +1149,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
@@ -1364,7 +1459,7 @@ Read the wrf model time step from namelist.input for all domains.
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

@@ -4,6 +4,7 @@
 <HEAD>
 <TITLE>Shell Script advance_model.csh</TITLE>
 <link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css">
+<link href="../../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -81,7 +82,7 @@
 </TABLE>
 
 <P>
-This script is invoked <strong>by</strong> <em class=routine>advance_ens.csh</em>
+This script is invoked <strong>by</strong> <em class=program>advance_ens.csh</em>
 </P>
 
 </div>
@@ -112,16 +113,20 @@ a line.
 <TABLE width=100% border=0 summary="" cellpadding=3> 
    <TR><TH valign=top align=left>Program</TH><TH>Purpose</TH></TR>
 
-   <TR><TD valign=top><em class=routine>dart_tf_wrf</em></TD>
-       <TD>Fortran program to convert DART to/from WRF format. It is executed
-       twice, the first time to convert from DART to WRF and the second time to
-       convert from WRF to DART.</TD></TR>
+   <TR><TD valign=top><em class=program>dart_to_wrf</em> and 
+       <em class=program>wrf_to_dart</em></TD>
+       <TD>Fortran programs to convert DART to/from WRF format. 
+       <em class=program>dart_to_wrf</em> converts from DART format
+       to WRF NetCDF files.
+       <em class=program>wrf_to_dart</em> converts from WRF NetCDF
+       files to DART initial condition/restart file format.
+       </TD></TR>
 
-   <TR><TD valign=top><em class=routine>update_wrf_bc</em></TD>
+   <TR><TD valign=top><em class=program>update_wrf_bc</em></TD>
        <TD>Fortran program to update the boundary condition tendencies.
            </TD></TR>
 
-   <TR><TD valign=top><em class=routine>wrf.exe</em></TD>
+   <TR><TD valign=top><em class=program>wrf.exe</em></TD>
        <TD>Fortran program to run the WRF model.
 	   </TD></TR>
 

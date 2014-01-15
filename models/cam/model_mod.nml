@@ -23,5 +23,6 @@
    Time_step_seconds         = 21600,
    Time_step_days            = 0,
    impact_only_same_kind     = ' ',
+   print_details             = .false.
    /
 

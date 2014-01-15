@@ -4,7 +4,7 @@
 <HEAD>
 <TITLE>module model_mod (CAM)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
-<link href="../../doc/html/dart.ico" rel="shortcut icon" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
@@ -25,17 +25,6 @@
 </tr>
 </table>
 
-<!--
-UPDATE COMMENTS
-   Updated to reflect changes in model_mod:
-      addition of get_close_obs pass-through functionality,
-      conversion of obs on all which_verts to pressure (requires pressure profiles),
-      handling of observations on heights 
-      arrangement of subroutines into sections according to functionality
-   Removed description of obsolete routines and added descriptions of new ones.
-   Clarified what are public interfaces versus private subroutines.
--->
-   
 
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#Interface">INTERFACES</A> / 
@@ -53,13 +42,12 @@ UPDATE COMMENTS
 <H2>Overview</H2>
 
 <P>
-DAReS has successfully incorporated CAM -- The Community Atmosphere Model --
-into the DART framework. It is being actively used by graduate students,
+The DART system supports data assimilation into CAM -- The Community Atmosphere Model.
+It is being actively used by graduate students,
 post-graduates, and scientists at universities and research labs. Others are
-only using analyses for their time period and resolution of interest,
+using analyses for their time period and resolution of interest,
 produced here at NCAR using DART-CAM. In addition to the standard DART
-features described elsewhere, current capabilities (Jamaica-release) include
-the abilities to:
+features described elsewhere, current capabilities include the ability to:
 </P>
 
 <UL>
@@ -83,35 +71,30 @@ rather than the model error of the models used at the centers.</LI>
 <P>
 In addition to the standard DART package there is a collection of initial
 condition files at the large file website
-http://www.image.ucar.edu/pub/DART/CAM that are helpful for interfacing CAM
-with DART. More information and instructions for setting up assimilation
-experiments are available in the DART/models/cam/model_mod.html documentation
-and links.
+<a href="http://www.image.ucar.edu/pub/DART/CAM/">
+http://www.image.ucar.edu/pub/DART/CAM/</a>
+that are helpful for interfacing CAM with DART.
 </P>
 
 <P>
 Sample sets of observations, which can be used with DART-CAM assimilations,
-can be found at http://www.image.ucar.edu/pub/DART/Obs_sets/ of which the
-NCEP BUFR observations are the most widely used. More information and
-instructions for setting up assimilation experiments are available in the
-DART/models/cam/model_mod.html documentation and links.
+can be found at 
+<a href="http://www.image.ucar.edu/pub/DART/Obs_sets/">
+http://www.image.ucar.edu/pub/DART/Obs_sets/</a>
+of which the NCEP BUFR observations are the most widely used.
 </P>
 
 <P>
 Experience on a variety of machines has shown that it is a very good idea to
 make sure your run-time environment has the following:
 </P>
-
 <pre>
 limit stacksize unlimited
-
 limit datasize unlimited
 </pre>
-
-
 <P>
 This page contains the documentation for 
-the DART interface module for the separate-executable CAM model,
+the DART interface module for the CAM model,
 using the either the Eulerian and Finite Volume dynamical core,
 soon the HOMME core on the cubed sphere,
 and possibly the Semi-Lagrangian core. 
@@ -120,31 +103,31 @@ through the currently released version(s)
 by specifying the version number in the model_mod namelist.
 This implementation of DART-CAM uses the CAM initial files for 
 transferring the model state to/from the filter/CAM.  
-The intent of this interface design is to facilitate using any CAM
+The DART interface model was designed to facilitate using any CAM
 version with minimal changes to the model_mod code and accompanying scripts.
-Non-state variables, which are updated by the forecasts, are also 
-carried forward by the CAM and CLM initial files.
-For CAM 3.6 and later the ICE restart files also carry along non-state variables.
-<!-- (non-NetCDF before cice4_0_20090603 ~? cam3_6_41.). -->
-We anticipate integrating DART with the full CESM of CAM in the near future.
+</P>
+<P>
+The DART interfaces to CAM and the rest of the CESM components
+have been integrated with the CESM run scripts.  Unlike previous versions
+of DART-CAM, CESM runs using its normal scripts, then stops and calls
+a DART script which runs a single assimilation step, then
+returns to the CESM run script to continue the model advances.
+See the <a href="../models/CESM/model_mod.html">CESM interface
+documentation</a> for more information on running DART with CESM.
 </P>
 
 <P>
-In principle any 
-variable in the initial file can be included in the definition of the
-state vector via model_mod namelist entries.   This may include quantities
-the model considers to be parameters, although ongoing research is
-being conducted into the difficulties and meaning of 
-tuning  model parameters of various kinds by this method.
-The CLM incorporated in the separate-executable CAM is currently (as of 6/2011)
-treated as a parameterization.  That is, none of its variables
-are incorporated into the DART state vector.
-For each distinct set of fields comprizing a state vector, 
-an ensemble of initial files for the program 'filter' must be created.
+The DART state vector should include any variable in the CAM initial
+files which is a fundamental quantity and required to reconstruct any
+other variable that is carried along in the model files.  In practice
+the state vector sometimes contains derived quantities to enable DART
+to compute forward operators (expected observation values) efficiently.
+The derived quantities are often overwritten when the model runs the
+next timestep, so the work DART does to update them is waster work.
 </P>
 
 <P>
-Expected observations on pressure, height or model levels can be requested
+Expected observation values on pressure, height or model levels can be requested
 from model_interpolate.  Surface observations can not yet be interpolated,
 due to the difference between the model surface and the earth's surface
 where the observations are made.  Model_interpolate can be queried for any
@@ -152,14 +135,14 @@ where the observations are made.  Model_interpolate can be queried for any
 CAM) plus pressure on height levels.  The default state vector is PS, T,
 U, V, Q, CLDLIQ, CLDICE.  
 Variables which are not in the initial file 
-<A HREF="./doc/cam_guidelines.html" >can be added </A> , 
+<A HREF="doc/cam_guidelines.html">can be added</A>, 
 but minor modifications to model_mod.f90 (and perhaps CAM) may be necessary.  
 </P>
 
 <P>
 The 16 public interfaces in model_mod
 are standardized for all DART compliant models. These interfaces allow
-DART to advance the model, get the model state and metadata describing 
+DART to get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
 and do spatial interpolation for a variety of variables required by
 observational operators.
@@ -167,44 +150,70 @@ observational operators.
 
 <P>
 Help with several aspects of
-<A HREF="doc/cam_guidelines.html" > setting up assimilation experiments </A> 
+<A HREF="doc/cam_guidelines.html">setting up assimilation experiments</A> 
 using CAM and parallel architecture computers is available:
 </P>
 <UL>
-    <LI> <A HREF="doc/cam_guidelines.html#SETUP"> experiment set-up </A> </LI>
-    <LI> <A HREF="doc/cam_guidelines.html#INITIALFILES">creating initial ensembles </A> </LI>
-    <LI> <A HREF="doc/cam_guidelines.html#CALLINGTREE"> script and executable calling tree </A> </LI>
-    <LI> <A HREF="doc/cam_guidelines.html#OUTPUTDIRECTORY"> output directory structure for use by obs_diag </A> </LI>
-    <LI> <A HREF="doc/cam_guidelines.html#FILECONTENTS"> file contents and purposes </A> </LI>
-    <LI> <A HREF="doc/cam_guidelines.html#HINTS"> helpful hints </A> </LI>
-    <LI> <A HREF="doc/cam_guidelines.html#SPACE"> space requirements of various CAM resolutions </A> </LI>
+    <LI> <A HREF="doc/cam_guidelines.html#SETUP">experiment set-up</A> </LI>
+    <LI> <A HREF="doc/cam_guidelines.html#INITIALFILES">creating initial ensembles</A> </LI>
+    <LI> <A HREF="doc/cam_guidelines.html#CALLINGTREE">script and executable calling tree</A> </LI>
+    <LI> <A HREF="doc/cam_guidelines.html#OUTPUTDIRECTORY">output directory structure for use by obs_diag</A> </LI>
+    <LI> <A HREF="doc/cam_guidelines.html#FILECONTENTS">file contents and purposes</A> </LI>
+    <LI> <A HREF="doc/cam_guidelines.html#HINTS">helpful hints</A> </LI>
+    <LI> <A HREF="doc/cam_guidelines.html#SPACE">space requirements of various CAM resolutions</A> </LI>
 </UL> 
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand 
-'&amp;' and terminating with a slash '/'.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_nml / </em> &amp;
-     output_state_vector,  model_version,  model_config_file,                &amp;  
-       state_num_0d,   state_num_1d,   state_num_2d,   state_num_3d,         &amp;  
-     state_names_0d, state_names_1d, state_names_2d, state_names_3d,         &amp;
-                      which_vert_1d,  which_vert_2d,  which_vert_3d,         &amp;
-     pert_names, pert_sd, pert_base_vals,                                    &amp;
-     highest_obs_pressure_mb, highest_state_pressure_mb ,max_obs_lat_degree, &amp;
-     Time_step_seconds, Time_step_days, impact_only_same_kind, print_details
-    
+&amp;model_nml
+   output_state_vector = .false.,
+   model_version       = '3.0',
+   model_config_file   = 'caminput.nc',
+   cam_phis            = 'cam_phis.nc',
+   state_num_0d        = 0,
+   state_num_1d        = 0,
+   state_num_2d        = 1,
+   state_num_3d        = 4,
+   state_names_0d      = '',
+   state_names_1d      = '',
+   state_names_2d      = 'PS'
+   state_names_3d      = 'T', 'U', 'V', 'Q',
+   which_vert_1d       = -2 ,
+   which_vert_2d       = -1 , 
+   which_vert_3d       = 1  ,
+   pert_names          = '',
+   pert_sd             = -888888.0,
+   pert_base_vals      = -888888.0,
+   highest_obs_pressure_mb   = 150.0,
+   highest_state_pressure_mb = 150.0,
+   max_obs_lat_degree  = 90.0,
+   Time_step_seconds   = 21600,
+   Time_step_days      = 0,
+   impact_only_same_kind = '',
+   print_details       = .false.
+   /
 </pre>
 </div>
 
+<br />
+<br />
+
 <P>
-This namelist is read from a file called <em class=file>input.nml</em>
 The specification of lists of names and numbers for the various dimensions 
 enables the very flexible definition of the state vector.  It can be
 done via the namelist, instead of recompiling DART for each different set.
@@ -232,118 +241,129 @@ The names of the fields to put into the state vector come from the CAM initial
 file field names.
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>output_state_vector  </TD>
-    <!--  type  --><TD valign=top>logical              </TD>
-    <!--descript--><TD>Controls the output to netCDF files. 
-     If .true., output the raw dart state vector. If .false.,
-     output the prognostic flavor (gridded data) for easier 
-     plotting (recommended).  Defaults to .false.</TD></TR>
-<TR><!--contents--><TD valign=top>model_version        </TD>
-    <!--  type  --><TD valign=top>character(len=128)   </TD>
-    <!--descript--><TD>The number of the CAM version being 
-       used, i.e. '3.0.7'.  (no letters allowed, so rename cam3_0_p1)
-                     Default = '3.0' .</TD></TR>
-<TR><!--contents--><TD valign=top>model_config_file    </TD>
-    <!--  type  --><TD valign=top>character(len=128)   </TD>
-    <!--descript--><TD>CAM initial file used to provide 
-       configuration information.  Default 'caminput.nc'.</TD></TR>
-<TR><!--contents--><TD valign=top>state_num_#d, #=0,1,2,3   </TD>
-    <!--  type  --><TD valign=top>integer                   </TD>
-    <!--descript--><TD>Numbers of fields of various dimensions to put 
-                     into the state vector.
-                     Defaults state_num_0d=0, _1d=0, _2d=1, _3d=4 .</TD></TR>
-<TR><!--contents--><TD valign=top>state_names_#d, #=0,1,2,3        </TD>
-    <!--  type  --><TD valign=top>character(len=8), dimension(100)  </TD>
-    <!--descript--><TD>Names of fields of various dimensions to put 
-                      into the state vector.  Defaults
-<PRE>state_names_0d='        ', state_names_1d='        ',
-state_names_2d='PS      '
-state_names_3d='T       ','U       ','V       ','Q       '</PRE>
-     </TD></TR>
-<TR><!--contents--><TD valign=top>which_vert_#d, #=1,2,3           </TD>
-    <!--  type  --><TD valign=top>integer, dimension(100)           </TD>
-    <!--descript--><TD>Vertical location types of fields in 
-                 state_names_#d.  Defaults 
-                       <UL><LI> which_vert_1d = state_num_1d*-2, 
-                           <LI> which_vert_2d = state_num_2d*-1, 
-                           <LI> which_vert_3d = state_num_3d* 1 </UL> </TD></TR>
-<TR><!--contents--><TD valign=top>pert_names                         </TD>
-    <!--  type  --><TD valign=top>character(len=8), dimension(100)    </TD>
-    <!--descript--><TD>List of field(s) whose values need to be changed at or before 
-                       the beginning of an assimilation.  To make filter generate
-                       an ensemble from a single model state by randomly perturbing it,
-                       list the fields to be perturbed here.  To make trans_pv_sv_pert0
-                       reset a single field to a constant value, list that field here.
-                       Trans_pv_sv_pert0 would be run as many times as there are ensemble
-                       members (see pert_base_vals), in order to provide spread to that 
-                       variable. 
-                       Defaults <BR>
-                      <PRE>pert_names='        ' </PRE></TD></TR>
-<TR><!--contents--><TD valign=top>pert_sd                            </TD>
-    <!--  type  --><TD valign=top>real(r8), dimension(100)    </TD>
-    <!--descript--><TD>If positive, it's the standard deviation of the 
-     perturbation for each field in the pert_names list (filter).  
-     If negative, then pert_names can contain only one entry, and that field 
-     will be set to a different constant value for each ensemble member 
-     (trans_pv_sv_pert0).  Those values come from pert_base_vals.
-                       Defaults to a MISSING real value and
-                       unused unless pert_names is set.  </TD></TR>
-<TR><!--contents--><TD valign=top>pert_base_vals              </TD>
-    <!--  type  --><TD valign=top>real(r8), dimension(100)    </TD>
-    <!--descript--><TD>If pert_sd (yes, 'sd') is negative, this is the list of 
-       values to use for each ensemble member when perturbing the single 
-       field named in pert_names.
-       Otherwise, it's the list of values to which the fieldS listed in
-       pert_names will be reset if filter is told to create an ensemble from
-       a single state vector.
-       Defaults to a MISSING real value and unused unless pert_names 
-       is set and pert_base_vals is /= this missing value (-888888.0d0).  </TD></TR>
-<TR><!--contents--><TD valign=top>max_obs_lat_degree             </TD>
-    <!--  type  --><TD valign=top>real(r8)                       </TD>
-    <!--descript--><TD>Observations closer to the poles than this 
-                       latitude will be ignored.
-                       Default 90 degrees </TD></TR>
-<TR><!--contents--><TD valign=top>highest_obs_pressure_mb       </TD>
-    <!--  type  --><TD valign=top>real(r8)                      </TD>
-    <!--descript--><TD>Observations higher than this pressure are ignored.
-                       Default  150.0 hPa (Use 100. for GPS) </TD></TR>
-<TR><!--contents--><TD valign=top>highest_state_pressure_mb     </TD>
-    <!--  type  --><TD valign=top>real(r8)                      </TD>
-    <!--descript--><TD>Influence of all obs on model points higher than 
-                       this is reduced.
-                       Default  150.0 hPa </TD></TR>
-<TR><!--contents--><TD valign=top>Time_step_seconds          </TD>
-    <!--  type  --><TD valign=top>real(r8)                   </TD>
-    <!--descript--><TD>Minimum forecast duration (the part &lt; 1 day)
-                       Default  21600 sec </TD></TR>
-<TR><!--contents--><TD valign=top>Time_step_days             </TD>
-    <!--  type  --><TD valign=top>real(r8)                   </TD>
-    <!--descript--><TD>Minimum forecast duration (the part &gt; 24*3600 sec)
-                       Default  0 days </TD></TR>
-<TR><!--contents--><TD valign=top>impact_only_same_kind             </TD>
-    <!--  type  --><TD valign=top>character(len=32)                 </TD>
-    <!--descript--><TD>Name of one observation kind which can only affect 
-                       state variables of the same kind.
-                       Default ' ' </TD></TR>
-<TR><!--contents--><TD valign=top>print_details                    </TD>
-    <!--  type  --><TD valign=top>logical                          </TD>
-    <!--descript--><TD>If true, print out detailed information about
-                       the sizes, shapes, offsets, etc of items in the
-                       CAM state vector.  If false, just print out the
-                       names of the fields as they are read into the state
-                       vector.
-                       Default .FALSE. </TD></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD> output_state_vector </TD>
+    <TD> logical </TD>
+    <TD>Controls the output to netCDF files. 
+If .true., output the raw dart state vector. If .false., output the
+prognostic flavor (gridded data) for easier plotting (recommended).
+</TD></TR>
+
+<TR><TD> model_version </TD>
+    <TD> character(len=128) </TD>
+    <TD>The number of the CAM version being used, i.e. '3.0.7'.  
+(no letters allowed, so rename cam3_0_p1)
+</TD></TR>
+
+<TR><TD> model_config_file </TD>
+    <TD> character(len=128) </TD>
+    <TD>CAM initial file used to provide configuration information.
+</TD></TR>
+
+<TR><TD>state_num_#d,<br /> #=0,1,2,3   </TD>
+    <TD> integer </TD>
+    <TD>Numbers of fields of various dimensions to put into the state vector.
+</TD></TR>
+
+<TR><TD>state_names_#d,<br /> #=0,1,2,3 </TD>
+    <TD>character(len=8), dimension(100)  </TD>
+    <TD>Names of fields of various dimensions to put into the state vector.  
+</TD></TR>
+
+<TR><TD>which_vert_#d,<br /> #=1,2,3 </TD>
+    <TD>integer, dimension(100)  </TD>
+    <TD>Vertical location types of fields in state_names_#d.
+See the <a href="../../location/sphere_threed/location_mod.html">3D sphere location</a>
+documentation for the mapping of integer values to vertical location types.
+</TD></TR>
+
+<TR><TD> pert_names </TD>
+    <TD>character(len=8), dimension(100)    </TD>
+    <TD>To make filter generate an ensemble from a single model state by
+randomly perturbing it, list the field(s) to be perturbed here.  To make
+trans_pv_sv_pert0 reset a single field to a constant value, list that field
+here.  Trans_pv_sv_pert0 would be run as many times as there are ensemble
+members (see pert_base_vals), in order to provide spread to that variable.
+</TD></TR>
+
+<TR><TD> pert_sd </TD>
+    <TD>real(r8), dimension(100)    </TD>
+    <TD>If positive, it's the standard deviation of the perturbation for each
+field in the pert_names list (filter).  If negative, then pert_names can
+contain only one entry, and that field will be set to a different constant
+value for each ensemble member (trans_pv_sv_pert0).  Those values come from
+pert_base_vals.  Defaults to a MISSING real value and unused unless
+pert_names is set.
+</TD></TR>
+
+<TR><TD> pert_base_vals </TD>
+    <TD>real(r8), dimension(100)    </TD>
+    <TD>If pert_sd is negative, this is the list of values to use for
+each ensemble member when perturbing the single field named in pert_names.
+Otherwise, it's the list of values to which the field(s) listed in pert_names
+will be reset if filter is told to create an ensemble from a single state
+vector.  Defaults to a MISSING real value and unused unless pert_names is set
+and pert_base_vals is /= this missing value (-888888.0d0).
+</TD></TR>
+
+<TR><TD> max_obs_lat_degree </TD>
+    <TD> real(r8) </TD>
+    <TD>Observations closer to the poles than this latitude will be ignored.
+</TD></TR>
+
+<TR><TD> highest_obs_pressure_mb </TD>
+    <TD> real(r8) </TD>
+    <TD>Observations higher than this pressure are ignored.
+</TD></TR>
+
+<TR><TD> highest_state_pressure_mb </TD>
+    <TD> real(r8) </TD>
+    <TD>Influence of all obs on model points higher than this is reduced.
+</TD></TR>
+
+<TR><TD> Time_step_seconds </TD>
+    <TD> real(r8) </TD>
+    <TD>Minimum forecast duration (the part &lt; 1 day)
+</TD></TR>
+
+<TR><TD> Time_step_days </TD>
+    <TD> real(r8) </TD>
+    <TD>Minimum forecast duration (the part &gt; 24*3600 sec)
+</TD></TR>
+
+<TR><TD> impact_only_same_kind </TD>
+    <TD> character(len=32) </TD>
+    <TD>Name of one observation kind which can only affect 
+state variables of the same kind.
+</TD></TR>
+
+<TR><TD> print_details </TD>
+    <TD> logical </TD>
+    <TD>If true, print out detailed information about the sizes, shapes, offsets,
+etc of items in the CAM state vector.  If false, just print out the names of
+the fields as they are read into the state vector.
+</TD></TR>
+
+</TBODY> 
 </TABLE>
-<br>
+</div>
+
+<br />
+<br />
 
 <!--==================================================================-->
 
 <A NAME="OTHERMODULESUSED"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 obs_kind_mod
@@ -361,7 +381,7 @@ mpi_utilities
 <A NAME="PublicEntities"></A>
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <H4>FILTER INTERFACE</H4>
@@ -369,8 +389,7 @@ mpi_utilities
 Here they are listed alphabetically, except for the last 4 interfaces,
 which are only required for low-order models where advancing
 the model can be done by a call to a subroutine. 
-The CAM model only advances by executing the program cam (via script run-pc.csh). 
-Thus the last 4 interfaces only appear as stubs in the CAM module.
+The last 4 interfaces only appear as stubs in the CAM module.
 Following this list they are listed in 
 the order in which they appear in model_mod.f90, which is separated into sections
 corresponding to the main functions of model_mod.f90: static_init_model,
@@ -1035,7 +1054,7 @@ state is always to be provided from input files.
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 
 <P>
@@ -2060,7 +2079,7 @@ utility routines.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL> <LI>model_nml in input.nml
      <LI>cam_phis.nc (CAM surface height file)
@@ -2074,7 +2093,7 @@ utility routines.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <UL> 
 <LI><A HREF="http://www.ccsm.ucar.edu/models/atm-cam/"> CAM homepage </A>
@@ -2086,7 +2105,7 @@ utility routines.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class="errors">
 
@@ -2141,7 +2160,7 @@ utility routines.
 <!--==================================================================-->
 
 <A NAME="KnownBugs"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>KNOWN BUGS</H2>
 <P>
 See description of dealing with highly damped top layers in CAM
@@ -2156,16 +2175,12 @@ GPS observations require that highest_obs_pressure_mb be <= 100 mb (hPa).
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <UL>
 <LI> Implement a strategy for assimilating surface observations. </LI>
-<LI> Accomodate future CAMs which may have non-rectangular grids, e.g. HOMME. </LI>
-<LI> Adapt to the "single executable" mode of CCSM,
-     in which CAM will be run as a subroutine(?). </LI>
-<!-- <LI> Change istat values to mesh with qc values in filter, which will be based
-     on NCEP BUFR values. </LI> ?? -->
-<LI> Incorporate CLM variables into state vector. </LI>
+<LI> Accomodate future CAMs which may have non-rectangular grids, e.g. HOMME. 
+(Development currently underway.) </LI>
 </UL>
 
 <!--==================================================================-->
@@ -2173,7 +2188,7 @@ GPS observations require that highest_obs_pressure_mb be <= 100 mb (hPa).
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

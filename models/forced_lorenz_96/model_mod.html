@@ -4,26 +4,40 @@
 <HEAD>
 <TITLE>module model_mod (forced_lorenz_96)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Interface">INTERFACES</A> /
+<H1>MODULE model_mod (Lorenz_96, forced)</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>MODULE model_mod (Lorenz_96, forced)</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
 
 <P>
-DART interface module for the forced_lorenz-96 model. The 17 public interfaces
+DART interface module for the forced_lorenz-96 model. The 16 public interfaces
 are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
@@ -46,7 +60,7 @@ time tendency of the forcing terms is 0.
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -65,7 +79,7 @@ random_seq_mod
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -87,12 +101,6 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
 </TABLE>
-
-<P>
-Optional namelist interface
-<a href="#Namelist"><em class=code>&amp;model_nml</em></a>
-may be read from file <em class=file>input.nml</em>.
-</P>
 
 <P>
    A note about documentation style.
@@ -617,70 +625,94 @@ A NULL INTERFACE in this model.
 <!--===================== DESCRIPTION OF A NAMELIST =====================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-The declarations have a different syntax, naturally.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_nml / </em> &amp;
-    num_state_vars, forcing, delta_t, &#38;
-    time_step_days, time_step_seconds, &#38;
-    reset_forcing, random_forcing_amplitude
+&amp;model_nml
+   num_state_vars    = 40,
+   forcing           = 8.00,
+   delta_t           = 0.05,
+   time_step_days    = 0,
+   time_step_seconds = 3600,
+   reset_forcing     = .false.,
+   random_forcing_amplitude = 0.10  
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>num_state_vars  </TD>
-    <!--  type  --><TD valign=top>integer         </TD>
-    <!--descript--><TD>Number of variables in model, default is 40. </TD></TR>
-<TR><!--contents--><TD valign=top>forcing         </TD>
-    <!--  type  --><TD valign=top>real(r8)        </TD>
-    <!--descript--><TD>Forcing, F, for model, default 8.0 </TD></TR>
-<TR><!--contents--><TD valign=top>delta_t              </TD>
-    <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>Non-dimensional timestep, default 0.05</TD></TR>
-<TR><!--contents--><TD valign=top>time_step_days       </TD>
-    <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>Base model time step maps to this 
-                       much real time, default 0</TD></TR>
-<TR><!--contents--><TD valign=top>time_step_seconds    </TD>
-    <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>Base model time step maps to this 
-                       much real time, default 3600</TD></TR>
-<TR><!--contents--><TD valign=top>reset_forcing         </TD>
-    <!--  type  --><TD>logical                        </TD>
-    <!--descript--><TD>If true, all forcing values are held 
-            fixed at the value specified for the forcing namelist 
-            parameter, default false</TD></TR>
-<TR><!--contents--><TD valign=top>random_forcing_amplitude  </TD>
-    <!--  type  --><TD>real(r8)                        </TD>
-    <!--descript--><TD>Standard deviation of the gaussian noise 
-            with zero mean that is added to each forcing value's 
-            time step, default 0.0 </TD></TR>
-</TABLE>
+<TBODY valign=top>
 
+<TR><TD> num_state_vars </TD>
+    <TD> integer </TD>
+    <TD>Number of variables in model. 
+</TD></TR>
+
+<TR><TD> forcing </TD>
+    <TD> real(r8) </TD>
+    <TD>Forcing, F, for model.
+</TD></TR>
+
+<TR><TD> delta_t </TD>
+    <TD> real(r8) </TD>
+    <TD>Non-dimensional timestep.
+</TD></TR>
+
+<TR><TD> time_step_days </TD>
+    <TD> real(r8) </TD>
+    <TD>Base model time step maps to this much real time.
+</TD></TR>
+
+<TR><TD> time_step_seconds </TD>
+    <TD> real(r8) </TD>
+    <TD>Base model time step maps to this.
+</TD></TR>
+
+<TR><TD> reset_forcing </TD>
+    <TD> logical </TD>
+    <TD>If true, all forcing values are held fixed at the value specified for the
+forcing namelist.
+</TD></TR>
+
+<TR><TD> random_forcing_amplitude </TD>
+    <TD> real(r8) </TD>
+<TD>Standard deviation of the gaussian noise with zero mean that is added to
+each forcing value's time step.
+</TD></TR>
+
+</TBODY> 
+</TABLE> 
 </div>
-<br>
+
+<br />
+<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 
 <TABLE border=0 >
@@ -704,7 +736,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
 <li> none </li>
@@ -715,7 +747,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -740,7 +772,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time
@@ -751,7 +783,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -762,7 +794,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

@@ -1,25 +1,25 @@
 &perfect_model_obs_nml
-   start_from_restart    = .true.,
-   output_restart        = .true.,
-   async                 = 2,
-   init_time_days        = -1,
-   init_time_seconds     = -1,
-   first_obs_days        = -1,
-   first_obs_seconds     = -1,
-   last_obs_days         = -1,
-   last_obs_seconds      = -1,
-   output_interval       = 1,
-   trace_execution       = .false.,
-   restart_in_file_name  = "perfect_ics",
-   restart_out_file_name = "perfect_restart",
-   obs_seq_in_file_name  = "obs_seq.in",
-   obs_seq_out_file_name = "obs_seq.out",
-   adv_ens_command       = "../shell_scripts/advance_model.csh",
-   output_timestamps     = .false.,
-   trace_execution       = .false.,
+   start_from_restart       = .true.,
+   output_restart           = .true.,
+   async                    = 2,
+   init_time_days           = -1,
+   init_time_seconds        = -1,
+   first_obs_days           = -1,
+   first_obs_seconds        = -1,
+   last_obs_days            = -1,
+   last_obs_seconds         = -1,
+   output_interval          = 1,
+   trace_execution          = .false.,
+   restart_in_file_name     = "perfect_ics",
+   restart_out_file_name    = "perfect_restart",
+   obs_seq_in_file_name     = "obs_seq.in",
+   obs_seq_out_file_name    = "obs_seq.out",
+   adv_ens_command          = "../shell_scripts/advance_model.csh",
+   output_timestamps        = .false.,
+   trace_execution          = .false.,
    output_forward_op_errors = .false.,
-   print_every_nth_obs   = -1,
-   silence               = .false.,
+   print_every_nth_obs      = -1,
+   silence                  = .false.,
    /
 
 
@@ -121,7 +121,8 @@
    output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
      input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
     output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
-   input_files              = '../../../obs_def/obs_def_upper_atm_mod.f90'
+   input_files              = '../../../obs_def/obs_def_upper_atm_mod.f90',
+                              '../../../obs_def/obs_def_reanalysis_bufr_mod.f90'
    /
 
 
@@ -172,6 +173,9 @@
    netCDF_large_file_support  = .true.
    /
 
+# The list of variables to put into the state vector is here:
+# The definitions for the DART kinds are in DART/obs_def/obs_def*f90
+# The order doesn't matter to DART. It may to you.
 
 &model_nml
    gitm_restart_dirname         = 'advance_temp_e1/UA/restartOUT',
@@ -181,65 +185,57 @@
    output_state_vector          = .false.,
    calendar                     = 'Gregorian',
    debug                        = 0,
-   /
-
-# The list of variables to put into the state vector is here:
-# The definitions for the DART kinds are in DART/obs_def/obs_def*f90
-# The order doesn't matter to DART. It may to you.
-
-&gitm_vars_nml
    gitm_state_variables =
-                          'Temperature',            'KIND_TEMPERATURE',
-                          'eTemperature',           'KIND_TEMPERATURE_ELECTRON',
-                          'ITemperature',           'KIND_TEMPERATURE_ION',
-                          'iO_3P_NDensityS',        'KIND_DENSITY_NEUTRAL_O3P',
-                          'iO2_NDensityS',          'KIND_DENSITY_NEUTRAL_O2',
-                          'iN2_NDensityS',          'KIND_DENSITY_NEUTRAL_N2',
-                          'iN_4S_NDensityS',        'KIND_DENSITY_NEUTRAL_N4S',
-                          'iNO_NDensityS',          'KIND_DENSITY_NEUTRAL_NO',
-                          'iN_2D_NDensityS',        'KIND_DENSITY_NEUTRAL_N2D',
-                          'iN_2P_NDensityS',        'KIND_DENSITY_NEUTRAL_N2P',
-                          'iH_NDensityS',           'KIND_DENSITY_NEUTRAL_H',
-                          'iHe_NDensityS',          'KIND_DENSITY_NEUTRAL_HE',
-                          'iCO2_NDensityS',         'KIND_DENSITY_NEUTRAL_CO2',
-                          'iO_1D_NDensityS',        'KIND_DENSITY_NEUTRAL_O1D',
-                          'iO_4SP_IDensityS',       'KIND_DENSITY_ION_O4SP',
-                          'iO2P_IDensityS',         'KIND_DENSITY_ION_O2P',
-                          'iN2P_IDensityS',         'KIND_DENSITY_ION_N2P',
-                          'iNP_IDensityS',          'KIND_DENSITY_ION_NP',
-                          'iNOP_IDensityS',         'KIND_DENSITY_ION_NOP',
-                          'iO_2DP_IDensityS',       'KIND_DENSITY_ION_O2DP',
-                          'iO_2PP_IDensityS',       'KIND_DENSITY_ION_O2PP',
-                          'iHP_IDensityS',          'KIND_DENSITY_ION_HP',
-                          'iHeP_IDensityS',         'KIND_DENSITY_ION_HEP',
-                          'ie_IDensityS',           'KIND_DENSITY_ION_E',
-                          'U_Velocity_component',   'KIND_VELOCITY_U',
-                          'V_Velocity_component',   'KIND_VELOCITY_V',
-                          'W_Velocity_component',   'KIND_VELOCITY_W',
-                          'U_IVelocity_component',  'KIND_VELOCITY_U_ION',
-                          'V_IVelocity_component',  'KIND_VELOCITY_V_ION',
-                          'W_IVelocity_component',  'KIND_VELOCITY_W_ION',
-                          'iO_3P_VerticalVelocity', 'KIND_VELOCITY_VERTICAL_O3P',
-                          'iO2_VerticalVelocity',   'KIND_VELOCITY_VERTICAL_O2',
-                          'iN2_VerticalVelocity',   'KIND_VELOCITY_VERTICAL_N2',
-                          'iN_4S_VerticalVelocity', 'KIND_VELOCITY_VERTICAL_N4S',
-                          'iNO_VerticalVelocity',   'KIND_VELOCITY_VERTICAL_NO',
-                          'f107',                   'KIND_1D_PARAMETER',
-                          'Rho',                    'KIND_DENSITY',
-   /
+                           'Temperature',            'KIND_TEMPERATURE',
+                           'eTemperature',           'KIND_TEMPERATURE_ELECTRON',
+                           'ITemperature',           'KIND_TEMPERATURE_ION',
+                           'iO_3P_NDensityS',        'KIND_DENSITY_NEUTRAL_O3P',
+                           'iO2_NDensityS',          'KIND_DENSITY_NEUTRAL_O2',
+                           'iN2_NDensityS',          'KIND_DENSITY_NEUTRAL_N2',
+                           'iN_4S_NDensityS',        'KIND_DENSITY_NEUTRAL_N4S',
+                           'iNO_NDensityS',          'KIND_DENSITY_NEUTRAL_NO',
+                           'iN_2D_NDensityS',        'KIND_DENSITY_NEUTRAL_N2D',
+                           'iN_2P_NDensityS',        'KIND_DENSITY_NEUTRAL_N2P',
+                           'iH_NDensityS',           'KIND_DENSITY_NEUTRAL_H',
+                           'iHe_NDensityS',          'KIND_DENSITY_NEUTRAL_HE',
+                           'iCO2_NDensityS',         'KIND_DENSITY_NEUTRAL_CO2',
+                           'iO_1D_NDensityS',        'KIND_DENSITY_NEUTRAL_O1D',
+                           'iO_4SP_IDensityS',       'KIND_DENSITY_ION_O4SP',
+                           'iO2P_IDensityS',         'KIND_DENSITY_ION_O2P',
+                           'iN2P_IDensityS',         'KIND_DENSITY_ION_N2P',
+                           'iNP_IDensityS',          'KIND_DENSITY_ION_NP',
+                           'iNOP_IDensityS',         'KIND_DENSITY_ION_NOP',
+                           'iO_2DP_IDensityS',       'KIND_DENSITY_ION_O2DP',
+                           'iO_2PP_IDensityS',       'KIND_DENSITY_ION_O2PP',
+                           'iHP_IDensityS',          'KIND_DENSITY_ION_HP',
+                           'iHeP_IDensityS',         'KIND_DENSITY_ION_HEP',
+                           'ie_IDensityS',           'KIND_DENSITY_ION_E',
+                           'U_Velocity_component',   'KIND_VELOCITY_U',
+                           'V_Velocity_component',   'KIND_VELOCITY_V',
+                           'W_Velocity_component',   'KIND_VELOCITY_W',
+                           'U_IVelocity_component',  'KIND_VELOCITY_U_ION',
+                           'V_IVelocity_component',  'KIND_VELOCITY_V_ION',
+                           'W_IVelocity_component',  'KIND_VELOCITY_W_ION',
+                           'iO_3P_VerticalVelocity', 'KIND_VELOCITY_VERTICAL_O3P',
+                           'iO2_VerticalVelocity',   'KIND_VELOCITY_VERTICAL_O2',
+                           'iN2_VerticalVelocity',   'KIND_VELOCITY_VERTICAL_N2',
+                           'iN_4S_VerticalVelocity', 'KIND_VELOCITY_VERTICAL_N4S',
+                           'iNO_VerticalVelocity',   'KIND_VELOCITY_VERTICAL_NO',
+                           'f107',                   'KIND_1D_PARAMETER',
+                           'Rho',                    'KIND_DENSITY',
+    /
 
 
 &gitm_to_dart_nml
-   gitm_to_dart_output_file = 'temp_ud',
-   gitm_restart_dirname     = 'advance_temp_e1/UA/restartOUT'
+   gitm_to_dart_output_file = 'dart_ics'
    /
 
 
 &dart_to_gitm_nml
-   dart_to_gitm_input_file  = 'temp_ic',
+   dart_to_gitm_input_file  = 'dart_restart',
    advance_time_present     = .true.,
-   gitm_restart_dirname     = 'advance_temp_e1/UA/restartOUT'
    /
+
 
 #press is in PA
 #height is in m (scaling for vertical - how many vertical meters correspond to one horizontal radian)
@@ -275,8 +271,8 @@
 # Gregorian: 12 Z 1 January 2000 <==> DART: 145731 days 43200 seconds
 
 &restart_file_tool_nml
-   input_file_name              = "filter_restart",
-   output_file_name             = "filter_updated_restart",
+   input_file_name              = "dart_input",
+   output_file_name             = "dart_output",
    ens_size                     = 1,
    single_restart_file_in       = .true.,
    single_restart_file_out      = .true.,
@@ -311,6 +307,7 @@
    bin_width        =     0, 0, 0, 0, 1, 0 ,
    time_to_skip     =     0, 0, 0, 0, 0, 0 ,
    max_num_bins     = 10000,
+   trusted_obs      = 'null',
    Nregions   = 1,
    lonlim1    = 0.0,  130.0, 290.0, 290,
    lonlim2    = 360.0, 270.0, 380.0, 380,
@@ -318,7 +315,9 @@
    latlim2    =  90.0,  50.0,  50.0,  50,
    reg_names  = 'Earth', 'Pacific', 'Atlantic', 'North Atlantic',
    print_mismatched_locs = .false.,
-   print_obs_locations   = .false.,
+   create_rank_histogram = .true.,
+   outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
    verbose               = .true.,
    hlevel = 0.0, 100000.0,  200000.0, 300000.0, 400000.0, 500000.0, 600000.0,
    /
@@ -326,18 +325,18 @@
 
 &schedule_nml
    calendar        = 'Gregorian',
-   first_bin_start =  2002, 12, 21,  12,  0, 0 ,
-   first_bin_end   =  2002, 12, 21,  12,  1, 0 ,
-   last_bin_end    =  2002, 12, 21,  12, 59, 0 ,
-   bin_interval_days    = 0,
-   bin_interval_seconds = 60,
+   first_bin_start =  1601, 1, 1, 0, 0, 0,
+   first_bin_end   =  2999, 1, 1, 0, 0, 0,
+   last_bin_end    =  2999, 1, 1, 0, 0, 0,
+   bin_interval_days    = 1000000,
+   bin_interval_seconds = 0,
    max_num_bins         = 1000,
    print_table          = .true.
    /
 
 
 &obs_seq_to_netcdf_nml
-   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_name = 'obs_seq.out'
    obs_sequence_list = '',
    append_to_netcdf  = .false.,
    lonlim1    =    0.0,
@@ -348,8 +347,40 @@
    /
 
 
+&obs_sequence_tool_nml
+   filename_seq         = '',
+   filename_seq_list    = 'obs_file_list.txt',
+   filename_out         = 'obs_seq.in',
+   num_input_files      = 0,
+   first_obs_days       = -1,
+   first_obs_seconds    = -1,
+   last_obs_days        = -1,
+   last_obs_seconds     = -1,
+   obs_types            = '',
+   keep_types           = .true.,
+   min_lat              =  -90.0,
+   max_lat              =   90.0,
+   min_lon              =    0.0,
+   max_lon              =  360.0,
+   print_only           = .false.,
+   gregorian_cal        = .true.,
+   edit_copy_metadata   = .false.,
+   new_copy_metadata    = '',
+   edit_qc_metadata     = .false.,
+   new_qc_metadata      = '',
+   edit_copies          = .false.,
+   new_copy_index       = -1,
+   new_copy_data        = -888888.
+   edit_qcs             = .false.,
+   new_qc_index         = -1,
+   new_qc_data          = 0.
+   synonymous_copy_list = '',
+   synonymous_qc_list   = '',
+   /
+
+
 &model_mod_check_nml
-   input_file           = "dart.ud",
+   input_file           = "dart_ics",
    output_file          = "check_me_out",
    advance_time_present = .FALSE.,
    verbose              = .TRUE.,

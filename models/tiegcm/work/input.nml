@@ -13,7 +13,7 @@
    restart_out_file_name = "perfect_restart",
    obs_seq_in_file_name  = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
-   adv_ens_command       = "./advance_model.csh",
+   adv_ens_command       = "../shell_scripts/advance_model.csh",
    output_timestamps     = .false.,
    trace_execution       = .false.,
    output_forward_op_errors = .false.,
@@ -23,7 +23,7 @@
 
 &filter_nml
    async                    = 2,
-   adv_ens_command          = "./advance_model.csh",
+   adv_ens_command          = "../shell_scripts/advance_model.csh",
    ens_size                 = 4,
    start_from_restart       = .true.,
    output_restart           = .true.,
@@ -42,7 +42,7 @@
    output_interval          = 1,
    num_groups               = 1,
    input_qc_threshold       =  3.0,
-   outlier_threshold        = -1.0,
+   outlier_threshold        =  3.0,
    output_forward_op_errors = .false.,
    output_timestamps        = .false.,
    output_inflation         = .true.,
@@ -186,8 +186,7 @@
    bin_width        =     0, 0, 0, 6, 0, 0 ,
    time_to_skip     =     0, 0, 0, 6, 0, 0 ,
    max_num_bins     = 1000,
-   rat_cri            = 3.0,
-   input_qc_threshold = 3.0,
+   trusted_obs      = 'null',
    Nregions   = 4,
    hlevel = 0, 100000, 200000, 300000, 400000, 500000, 600000, 700000, 800000, 900000, 1000000,
    lonlim1    =   0.0,   0.0,   0.0, 235.0,
@@ -196,6 +195,9 @@
    latlim2    =  80.0, -20.0,  20.0,  55.0,
    reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
    print_mismatched_locs = .false.,
+   create_rank_histogram = .true.,
+   outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
    verbose               = .true.
    /
 

@@ -2,7 +2,7 @@ function [dart pop] = Check_pop_to_dart(popfile,dartfile)
 %% Check_pop_to_dart : check pop_to_dart.f90 ... the conversion of a POP restart to a DART state vector file.
 %
 %  popfile = 'pop.r.nc';
-% dartfile = 'dart.ics';
+% dartfile = 'dart_ics';
 % x        = Check_pop_to_dart(popfile, dartfile);
 %
 %  popfile = '~DART/models/POP/work/cx3.dart.001.pop.r.0002-01-01-00000.nc';

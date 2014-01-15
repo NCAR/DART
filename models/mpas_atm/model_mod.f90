@@ -53,6 +53,7 @@ use    utilities_mod, only : register_module, error_handler,                   &
 use     obs_kind_mod, only : paramname_length,        &
                              get_raw_obs_kind_index,  &
                              get_raw_obs_kind_name,   &
+                             KIND_SURFACE_ELEVATION,  &
                              KIND_SURFACE_PRESSURE,   &
                              KIND_VERTICAL_VELOCITY,  &
                              KIND_POTENTIAL_TEMPERATURE, &
@@ -63,7 +64,9 @@ use     obs_kind_mod, only : paramname_length,        &
                              KIND_PRESSURE,           &
                              KIND_DENSITY,            &
                              KIND_VAPOR_MIXING_RATIO, &
-                             KIND_SPECIFIC_HUMIDITY
+                             KIND_SPECIFIC_HUMIDITY,  &
+                             KIND_GEOPOTENTIAL_HEIGHT, &
+                             KIND_TOTAL_PRECIPITABLE_WATER
 
 use mpi_utilities_mod, only: my_task_id
 
@@ -158,16 +161,17 @@ type(xyz_location_type), allocatable :: cell_locs(:)
 ! variables which are in the module namelist
 integer            :: vert_localization_coord = VERTISHEIGHT
 integer            :: assimilation_period_days = 0
-integer            :: assimilation_period_seconds = 60
+integer            :: assimilation_period_seconds = 21600
 real(r8)           :: model_perturbation_amplitude = 0.0001   ! tiny amounts
 real(r8)           :: highest_obs_pressure_mb   = 100.0_r8    ! do not assimilate obs higher than this level.
+real(r8)           :: sfc_elev_max_diff = -1.0_r8    ! do not assimilate if |model - station| height is larger than this [m].
 logical            :: output_state_vector = .false.  ! output prognostic variables (if .false.)
 logical            :: log_p_vert_interp = .true.     ! if true, interpolate vertical pressure in log space
 integer            :: debug = 0   ! turn up for more and more debug messages
 integer            :: xyzdebug = 0
 character(len=32)  :: calendar = 'Gregorian'
-character(len=256) :: model_analysis_filename = 'mpas_analysis.nc'
-character(len=256) :: grid_definition_filename = 'mpas_analysis.nc'
+character(len=256) :: model_analysis_filename = 'mpas_init.nc'
+character(len=256) :: grid_definition_filename = 'mpas_init.nc'
 
 ! if .false. use U/V reconstructed winds tri interp at centers for wind forward ops
 ! if .true.  use edge normal winds (u) with RBF functs for wind forward ops
@@ -203,7 +207,8 @@ namelist /model_nml/             &
    use_rbf_option,               &
    update_u_from_reconstruct,    &
    use_increments_for_u_update,  &
-   highest_obs_pressure_mb
+   highest_obs_pressure_mb,      &
+   sfc_elev_max_diff
 
 ! DART state vector contents are specified in the input.nml:&mpas_vars_nml namelist.
 integer, parameter :: max_state_variables = 80
@@ -902,10 +907,12 @@ integer,             intent(out) :: istatus
 
 ! local storage
 
+type(location_type)              :: location_tmp
 integer  :: ivar, obs_kind
 integer  :: tvars(3)
+integer  :: cellid
 logical  :: goodkind
-real(r8) :: values(3), lpres
+real(r8) :: values(3), lpres, loc_array(3)
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -936,6 +943,19 @@ if (highest_obs_pressure_mb > 0.0) then
    endif
 endif
 
+! Reject obs if the station height is far way from the model terrain.
+if(vert_is_surface(location).and. sfc_elev_max_diff >= 0) then
+   loc_array = get_location(location)
+   cellid = find_closest_cell_center(loc_array(2), loc_array(1))
+   if (cellid < 1) then
+      if(debug > 0) print *, 'closest cell center for lat/lon: ', loc_array(1:2), cellid
+      goto 100
+   endif
+   if(abs(loc_array(3) - zGridFace(1,cellid)) > sfc_elev_max_diff) then
+      istatus = 12 
+      goto 100
+   endif
+endif
 
 ! see if observation kind is in the state vector.  this sets an
 ! error code and returns without a fatal error if answer is no.
@@ -959,9 +979,17 @@ else
    select case (obs_kind)
       case (KIND_TEMPERATURE)
          goodkind = .true.
+      case (KIND_SURFACE_ELEVATION)
+         goodkind = .true.
+      case (KIND_SURFACE_PRESSURE)
+         goodkind = .true.
       case (KIND_PRESSURE)
          goodkind = .true.
+      case (KIND_GEOPOTENTIAL_HEIGHT)
+         goodkind = .true.
       case (KIND_SPECIFIC_HUMIDITY)
+         goodkind = .true.
+      case (KIND_TOTAL_PRECIPITABLE_WATER) 
          goodkind = .true.
       case (KIND_U_WIND_COMPONENT,KIND_V_WIND_COMPONENT)
          ! if the reconstructed winds at the cell centers aren't there,
@@ -1027,6 +1055,15 @@ else if (obs_kind == KIND_PRESSURE) then
    endif
    istatus = 0
 
+else if (obs_kind == KIND_GEOPOTENTIAL_HEIGHT) then
+   location_tmp = location
+   call vert_convert(x, location_tmp, KIND_GEOPOTENTIAL_HEIGHT, VERTISHEIGHT, istatus)
+   if (istatus /= 0) then
+      interp_val = MISSING_R8
+      goto 100
+   endif
+   interp_val = query_location(location_tmp, 'VLOC')
+
 else if (obs_kind == KIND_SPECIFIC_HUMIDITY) then
    ! compute vapor pressure, then: sh = vp / (1.0 + vp)
    tvars(1) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
@@ -1044,6 +1081,30 @@ else if (obs_kind == KIND_SPECIFIC_HUMIDITY) then
    endif
    if (debug > 4) print *, 'return val is: ', interp_val
 
+else if (obs_kind == KIND_SURFACE_ELEVATION) then
+   loc_array = get_location(location)
+   location_tmp = set_location(loc_array(1),loc_array(2),1.0_r8,VERTISLEVEL)
+   call vert_convert(x, location_tmp, KIND_SURFACE_ELEVATION, VERTISHEIGHT, istatus)
+   if (istatus /= 0) then
+      interp_val = MISSING_R8
+      goto 100
+   endif
+   interp_val = query_location(location_tmp, 'VLOC')
+
+else if (obs_kind == KIND_TOTAL_PRECIPITABLE_WATER) then
+   tvars(1) = ivar
+   call compute_scalar_with_barycentric(x, location, 1, tvars, values, istatus)
+   interp_val = values(1)
+   if (istatus /= 0) goto 100
+
+else if (obs_kind == KIND_SURFACE_PRESSURE) then
+   tvars(1) = ivar
+   loc_array = get_location(location)
+   location_tmp = set_location(loc_array(1),loc_array(2),0.0_r8,VERTISSURFACE)
+   call compute_scalar_with_barycentric(x, location_tmp, 1, tvars, values, istatus)
+   interp_val = values(1)
+   if (istatus /= 0) goto 100
+  
 else
 
    ! direct interpolation, kind is in the state vector
@@ -1982,10 +2043,10 @@ if (.not. horiz_dist_only) then
   else if (base_which /= vert_localization_coord) then
       call vert_convert(ens_mean, base_obs_loc, base_obs_kind, ztypeout, istatus1)
       if(debug > 5) then
-      call write_location(0,base_obs_loc,charstring=string1)
-      call error_handler(E_MSG, 'get_close_obs: base_obs_loc',string1,source, revision, revdate)
-  endif
-endif
+         call write_location(0,base_obs_loc,charstring=string1)
+         call error_handler(E_MSG, 'get_close_obs: base_obs_loc',string1,source, revision, revdate)
+     endif
+   endif
 endif
 
 if (istatus1 == 0) then
@@ -2009,6 +2070,7 @@ if (istatus1 == 0) then
       if (.not. horiz_dist_only) then
           if (local_obs_which /= vert_localization_coord) then
               call vert_convert(ens_mean, local_obs_loc, obs_kind(t_ind), ztypeout, istatus2)
+              obs_loc(t_ind) = local_obs_loc
           else
               istatus2 = 0
           endif

@@ -42,7 +42,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character (len = 128) :: pop_to_dart_output_file  = 'dart.ud'
+character (len = 128) :: pop_to_dart_output_file  = 'dart_ics'
 
 namelist /pop_to_dart_nml/ pop_to_dart_output_file
 

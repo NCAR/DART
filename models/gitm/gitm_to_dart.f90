@@ -7,26 +7,28 @@
 program gitm_to_dart
 
 !----------------------------------------------------------------------
-! purpose: interface between gitm and DART
+! purpose: interface between the GITM model and DART
 !
 ! method: Read gitm "restart" files of model state
 !         Reform fields into a DART state vector (control vector).
 !         Write out state vector in "proprietary" format for DART.
 !         The output is a "DART restart file" format.
-! 
+!
 ! USAGE:  The gitm dirname is read from the gitm_in namelist
 !         <edit gitm_to_dart_output_file in input.nml:gitm_to_dart_nml>
 !         gitm_to_dart
-!
-! author: Tim Hoar 6/24/09
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
+
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read
-use        model_mod, only : get_model_size, restart_file_to_statevector, &
-                             get_gitm_restart_dirname
-use  assim_model_mod, only : awrite_state_restart, open_restart_write, close_restart
+
+use        model_mod, only : static_init_model, get_model_size, &
+                             get_gitm_restart_dirname, restart_file_to_statevector
+
+use  assim_model_mod, only : open_restart_write, awrite_state_restart, close_restart
+
 use time_manager_mod, only : time_type, print_time, print_date
 
 implicit none
@@ -41,50 +43,48 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character(len=128) :: gitm_to_dart_output_file  = 'dart.ud'
-character(len=256) :: gitm_restart_dirname = 'gitm_restartdir'
+character(len=128) :: gitm_to_dart_output_file  = 'dart_ics'
 
-namelist /gitm_to_dart_nml/    &
-     gitm_to_dart_output_file, &
-     gitm_restart_dirname
+namelist /gitm_to_dart_nml/ gitm_to_dart_output_file
 
 !----------------------------------------------------------------------
 ! global storage
 !----------------------------------------------------------------------
 
-logical               :: verbose = .FALSE.
-integer               :: io, iunit, x_size
+integer               :: iunit, io, x_size
 type(time_type)       :: model_time
 real(r8), allocatable :: statevector(:)
+character(len=256)    :: gitm_restart_dirname  = 'none'
 
 !======================================================================
 
-!call initialize_utilities(progname='gitm_to_dart', output_flag=verbose)
 call initialize_utilities(progname='gitm_to_dart')
 
 !----------------------------------------------------------------------
-! Read the namelist to get the output dirname.
+! Read the namelist.
 !----------------------------------------------------------------------
 
 call find_namelist_in_file("input.nml", "gitm_to_dart_nml", iunit)
 read(iunit, nml = gitm_to_dart_nml, iostat = io)
 call check_namelist_read(iunit, io, "gitm_to_dart_nml") ! closes, too.
 
+!----------------------------------------------------------------------
+! Call model_mod:static_init_model() which reads the gitm namelists
+! to set grid sizes, etc.
+!----------------------------------------------------------------------
+
+call static_init_model()
+call get_gitm_restart_dirname(gitm_restart_dirname)
+
 write(*,*)
 write(*,*) 'gitm_to_dart: converting gitm restart files in directory ', &
-           "'"//trim(gitm_restart_dirname)//"'" 
+           "'"//trim(gitm_restart_dirname)//"'"
 write(*,*) ' to DART file ', "'"//trim(gitm_to_dart_output_file)//"'"
-
-!----------------------------------------------------------------------
-! get to work
-!----------------------------------------------------------------------
 
 x_size = get_model_size()
 allocate(statevector(x_size))
 
-call get_gitm_restart_dirname( gitm_restart_dirname )
-
-call restart_file_to_statevector(gitm_restart_dirname, statevector, model_time) 
+call restart_file_to_statevector(gitm_restart_dirname, statevector, model_time)
 
 iunit = open_restart_write(gitm_to_dart_output_file)
 

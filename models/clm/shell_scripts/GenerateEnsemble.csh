@@ -35,7 +35,7 @@ foreach FILE ( filter_restart.* )
 
    sed -e "s/clm_restart.nc/clm_restart_${memid}.nc/" input.nml.org >! input.nml
 
-   ln -sf $FILE dart.ic
+   ln -sf $FILE dart_restart
 
    ./dart_to_clm
 

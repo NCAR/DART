@@ -44,7 +44,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! The namelist variables
 !------------------------------------------------------------------
 
-character (len = 128) :: dart_to_model_input_file = 'dart.ic'
+character (len = 128) :: dart_to_model_input_file = 'dart_restart'
 logical               :: advance_time_present     = .false.
 character(len=256)    :: model_restart_filename   = 'model_restartfile'
 

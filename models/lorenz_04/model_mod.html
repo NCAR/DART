@@ -4,27 +4,42 @@
 <HEAD>
 <TITLE>module model_mod (Lorenz_04)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
+<H1>MODULE model_mod (Lorenz_04)</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <center>
-<A HREF="#Interface">INTERFACES</A> /
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
 </center>
 
-<H1>MODULE model_mod (Lorenz_04)</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
 
 <P>
 DART interface module for the Lorenz-05 models II and III. 
-The 17 public interfaces
+The 16 public interfaces
 are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
@@ -33,7 +48,7 @@ and do spatial interpolation for model state variables.
 
 <P>The reference for these models is Lorenz, E.N., 2005: Designing
 chaotic models. <span style="font-style: italic;">J. Atmos. Sci.</span>,
-<span style="font-weight: bold;">62</span>, 1574-1587.<br>
+<span style="font-weight: bold;">62</span>, 1574-1587.
 </P>
 
 <P>Model II is a single-scale model, similar to Lorenz 96, but with
@@ -46,13 +61,119 @@ separation is achived by a spatial filter and is therefore not perfect
 and thus model II is a deficient form of model III. The basic
 equations are documented in Lorenz (2005) and also in the model_mod.f90
 code. The user is free to choose model II or III with a Namelist
-variable.<br>
+variable.
 </P>
+
+<br />
+<br />
+
+<!--===================== DESCRIPTION OF A NAMELIST =====================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;model_nml
+   model_size        = 960,
+   forcing           = 15.00,
+   delta_t           = 0.001,
+   space_time_scale  = 10.00,
+   coupling          = 3.00,
+   K                 = 32,
+   smooth_steps      = 12,
+   time_step_days    = 0,
+   time_step_seconds = 3600,
+   model_number      = 3  
+/
+</pre>
+</div>
+
+<br />
+
+<div>
+<TABLE border=0 cellpadding=3 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH>Contents    </TH>
+    <TH>Type        </TH>
+    <TH>Description </TH></TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR><TD>model_size         </TD>
+    <TD>integer            </TD>
+    <TD>Number of variables in model
+ </TD></TR>
+
+<TR><TD>forcing            </TD>
+    <TD>real(r8)           </TD>
+    <TD>Forcing, F, for model
+ </TD></TR>
+
+<TR><TD>delta_t            </TD>
+    <TD>real(r8)           </TD>
+    <TD>Non-dimensional timestep
+ </TD></TR>
+
+<TR><TD>space_time_scale   </TD>
+    <TD>real(r8)           </TD>
+    <TD>Determines temporal and spatial relationship between
+        fast and slow variables (model III)
+ </TD></TR>
+
+<TR><TD>coupling           </TD>
+    <TD>real(r8)           </TD>
+    <TD>Linear coupling between fast and slow variables (model III)
+ </TD></TR>
+
+<TR><TD>K                  </TD>
+    <TD>integer            </TD>
+    <TD>Determines the wavenumber of the slow variables 
+        (K=1, smooth_steps=0 reduces model II to Lorenz 96)
+ </TD></TR>
+
+<TR><TD>smooth_steps       </TD>
+    <TD>integer            </TD>
+    <TD>Determines filter length to separate fast and slow scales
+ </TD></TR>
+
+<TR><TD>time_step_days     </TD>
+    <TD>integer            </TD>
+    <TD>Arbitrary real time step days   
+ </TD></TR>
+
+<TR><TD>time_step_seconds  </TD>
+    <TD>integer            </TD>
+    <TD>Arbitrary real time step seconds 
+        (could choose this for proper scaling)
+ </TD></TR>
+
+<TR><TD>model_number       </TD>
+    <TD>integer            </TD>
+    <TD>2 = single-scale, 3 = 2-scale.
+        (This follows the notation in the paper.)
+ </TD></TR>
+
+</TBODY>
+</TABLE>
+</div>
+
+<br />
+<br />
 
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -60,6 +181,9 @@ time_manager_mod
 oned/location_mod
 utilities_mod
 </PRE>
+
+<br />
+<br />
 
 <!--==================================================================-->
 <!-- Declare all public entities ...                                  -->
@@ -70,7 +194,7 @@ utilities_mod
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -109,7 +233,7 @@ may be read from file <em class=file>input.nml</em>.
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_model_size"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>model_size = get_model_size( )</em>
 <pre>
@@ -133,12 +257,12 @@ Settable by namelist, the default is 960.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="adv_1step"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call adv_1step(x, time)</em>
 <pre>
@@ -166,12 +290,12 @@ The time argument is passed in but not used by this model.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_state_meta_data"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call get_state_meta_data (index_in, location, 
                           <em class=optionalcode>[,&nbsp;var_type]</em> )</em>
@@ -209,12 +333,12 @@ In this model there are no types so it always returns 1.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="model_interpolate"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call model_interpolate(x, location, itype, obs_val, istatus)</em>
 <pre>
@@ -257,12 +381,12 @@ to a given location.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_model_time_step"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>var = get_model_time_step()</em>
 <pre>
@@ -286,12 +410,12 @@ The time step defaults to 1 hour but is settable by namelist.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="static_init_model"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call static_init_model()</em>
 </div>
@@ -308,12 +432,12 @@ initializes the locations, generates some initial parameters.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="end_model"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call end_model()</em>
 </div>
@@ -329,12 +453,12 @@ A stub routine in this model.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="init_time"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call init_time(time)</em>
 <pre>
@@ -360,12 +484,12 @@ Sets time to 0 in this model.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="init_conditions"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call init_conditions(x)</em>
 <pre>
@@ -389,12 +513,12 @@ slightly perturbs the first element.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="nc_write_model_atts"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>ierr = nc_write_model_atts(ncFileID)</em>
 <pre>
@@ -425,12 +549,12 @@ file opened to a file identified by ncFileID.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="nc_write_model_vars"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
 <pre>
@@ -471,12 +595,12 @@ a single file to include multiple ensemble estimates of the state.
 </TABLE>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="nc_read_model_vars"></A>
-<br>
+<br />
 <div class="routine">
 <em class="call"> ierr = nc_read_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
 <pre>
@@ -515,12 +639,12 @@ as a stub, but there is so little to it ... TJH&nbsp;05&nbsp;Aug&nbsp;2005.
 </P>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="pert_model_state"></A>
-<br>
+<br />
 <div class="routine">
 <em class="call">call pert_model_state(state, pert_state, interf_provided)</em>
 <pre>
@@ -561,12 +685,12 @@ mechanism, i.e. this routine always returns <em class="code">.false.</em>.
 </P>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_close_maxdist_init"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call get_close_maxdist_init(gc, maxdist)</em>
 <pre>
@@ -585,12 +709,12 @@ get_close_maxdist_init()</A> for the documentation of this subroutine.
 </P>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_close_obs_init"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call get_close_obs_init(gc, num, obs)</em>
 <pre>
@@ -610,12 +734,12 @@ get_close_obs_init()</A> for the documentation of this subroutine.
 </P>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="get_close_obs"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind,
   obs, obs_kind, num_close, close_ind
@@ -642,12 +766,12 @@ get_close_obs()</A> for the documentation of this subroutine.
 </P>
 
 </div>
-<br>
+<br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
 <A NAME="ens_mean_for_model"></A>
-<br>
+<br />
 <div class=routine>
 <em class=call>call ens_mean_for_model(ens_mean)</em>
 <pre>
@@ -670,97 +794,16 @@ A NULL INTERFACE in this model.
 </TABLE>
 
 </div>
-<br>
 
-<!--===================== DESCRIPTION OF A NAMELIST =====================-->
-
-<A NAME="Namelist"></A>
-<HR>
-<H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-The declarations have a different syntax, naturally.
-</P>
-<div class=namelist>
-<pre>
-<em class=call>namelist / model_nml / </em> &amp;
-   model_size, forcing, delta_t, space_time_scale, &amp;
-   coupling, K, smooth_steps,                      &amp;
-   time_step_days, time_step_seconds, model_number
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<tbody>
-<TR><th align="left">Contents    </th>
-    <th align="left">Type        </th>
-    <th align="left">Description </th></TR>
-
-<TR><!--contents--><TD valign="top">model_size         </TD>
-    <!--  type  --><TD valign="top">integer            </TD>
-    <!--descript--><TD>Number of variables in model, default is 960. </TD></TR>
-
-<TR><!--contents--><TD valign="top">forcing            </TD>
-    <!--  type  --><TD valign="top">real(r8)           </TD>
-    <!--descript--><TD>Forcing, F, for model, default 15.0 </TD> </TR>
-
-<TR><!--contents--><TD valign="top">delta_t            </TD>
-    <!--  type  --><TD valign="top">real(r8)           </TD>
-    <!--descript--><TD>Non-dimensional timestep, default 0.001</TD> </TR>
-
-<TR><!--contents--><TD valign="top">space_time_scale   </TD>
-    <!--  type  --><TD valign="top">real(r8)           </TD>
-    <!--descript--><TD>Determines temporal and spatial relationship between
-        fast and slow variables (model III), default 10.0     </TD></TR>
-
-<TR><!--contents--><TD valign="top">coupling           </TD>
-    <!--  type  --><TD valign="top">real(r8)           </TD>
-    <!--descript--><TD>Linear coupling between fast and slow variables 
-        (model III), default 3.0                       </TD></TR>
-
-<TR><!--contents--><TD valign="top">K                  </TD>
-    <!--  type  --><TD valign="top">integer            </TD>
-    <!--descript--><TD>Determines the wavenumber of the slow variables 
-        (K=1, smooth_steps=0 reduces model II to Lorenz 96), default 32</TD></TR>
-
-<TR><!--contents--><TD valign="top">smooth_steps       </TD>
-    <!--  type  --><TD valign="top">integer            </TD>
-    <!--descript--><TD>Determines filter length to separate fast and 
-        slow scales, default 12                        </TD></TR>
-
-<TR><!--contents--><TD valign="top">time_step_days     </TD>
-    <!--  type  --><TD valign="top">integer            </TD>
-    <!--descript--><TD>Arbitrary real time step days, default 0</TD></TR>
-
-<TR><!--contents--><TD valign="top">time_step_seconds  </TD>
-    <!--  type  --><TD valign="top">integer            </TD>
-    <!--descript--><TD>Arbitrary real time step seconds (could choose this
-        for proper scaling), default 3600              </TD></TR>
-
-<TR><!--contents--><TD valign="top">model_number       </TD>
-    <!--  type  --><TD valign="top">integer            </TD>
-    <!--descript--><TD>2 = single-scale, 3 = 2-scale.
-                (This follows the notation in the paper.) default 3</TD></TR>
-
-</tbody>
-</TABLE>
-
-</div>
-<br>
+<br />
+<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 
 <TABLE border=0 >
@@ -779,12 +822,15 @@ This namelist is read in a file called <em class=file>input.nml</em>
         contains the default values</TD></TR>
 </TABLE>
 
+<br />
+<br />
+
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ol>
    <li>Lorenz, E.N., 2005: Designing chaotic models. 
@@ -792,12 +838,15 @@ This namelist is read in a file called <em class=file>input.nml</em>
        <span style="font-weight: bold;">62</span>, 1574-1587.</li>
 </ol>
 
+<br />
+<br />
+
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -817,40 +866,35 @@ This namelist is read in a file called <em class=file>input.nml</em>
 none at this time
 </P>
 
+<br />
+<br />
+
 <!--==================================================================-->
 <!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time
 </P>
 
-<!--==================================================================-->
-<!-- PrivateComponents                                                -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<HR>
-<H2>PRIVATE COMPONENTS</H2>
-<P>
-N/A
-</P>
+<br />
+<br />
 
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>
-DART software - Copyright 2004 - 2013 UCAR.<br>
-This open source software is provided by UCAR, "as is",<br>
-without charge, subject to all terms of use at<br>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
 <a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
 http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 </P>
@@ -860,7 +904,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+<TR><TD valign=top>Change history: </TD><TD> try "svn log" or "svn diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->

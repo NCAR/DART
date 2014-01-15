@@ -1,0 +1,53 @@
+
+# The list of variables to put into the state vector is here:
+# The definitions for the DART kinds are in DART/obs_def/obs_def*f90
+# The order doesn't matter to DART. It may to you.
+
+&model_nml
+   gitm_restart_dirname         = 'advance_temp_e1/UA/restartOUT',
+   assimilation_period_days     = 0,
+   assimilation_period_seconds  = 1800,
+   model_perturbation_amplitude = 0.2,
+   output_state_vector          = .false.,
+   calendar                     = 'Gregorian',
+   debug                        = 0,
+   gitm_state_variables =
+                           'Temperature',            'KIND_TEMPERATURE',
+                           'eTemperature',           'KIND_TEMPERATURE_ELECTRON',
+                           'ITemperature',           'KIND_TEMPERATURE_ION',
+                           'iO_3P_NDensityS',        'KIND_DENSITY_NEUTRAL_O3P',
+                           'iO2_NDensityS',          'KIND_DENSITY_NEUTRAL_O2',
+                           'iN2_NDensityS',          'KIND_DENSITY_NEUTRAL_N2',
+                           'iN_4S_NDensityS',        'KIND_DENSITY_NEUTRAL_N4S',
+                           'iNO_NDensityS',          'KIND_DENSITY_NEUTRAL_NO',
+                           'iN_2D_NDensityS',        'KIND_DENSITY_NEUTRAL_N2D',
+                           'iN_2P_NDensityS',        'KIND_DENSITY_NEUTRAL_N2P',
+                           'iH_NDensityS',           'KIND_DENSITY_NEUTRAL_H',
+                           'iHe_NDensityS',          'KIND_DENSITY_NEUTRAL_HE',
+                           'iCO2_NDensityS',         'KIND_DENSITY_NEUTRAL_CO2',
+                           'iO_1D_NDensityS',        'KIND_DENSITY_NEUTRAL_O1D',
+                           'iO_4SP_IDensityS',       'KIND_DENSITY_ION_O4SP',
+                           'iO2P_IDensityS',         'KIND_DENSITY_ION_O2P',
+                           'iN2P_IDensityS',         'KIND_DENSITY_ION_N2P',
+                           'iNP_IDensityS',          'KIND_DENSITY_ION_NP',
+                           'iNOP_IDensityS',         'KIND_DENSITY_ION_NOP',
+                           'iO_2DP_IDensityS',       'KIND_DENSITY_ION_O2DP',
+                           'iO_2PP_IDensityS',       'KIND_DENSITY_ION_O2PP',
+                           'iHP_IDensityS',          'KIND_DENSITY_ION_HP',
+                           'iHeP_IDensityS',         'KIND_DENSITY_ION_HEP',
+                           'ie_IDensityS',           'KIND_DENSITY_ION_E',
+                           'U_Velocity_component',   'KIND_VELOCITY_U',
+                           'V_Velocity_component',   'KIND_VELOCITY_V',
+                           'W_Velocity_component',   'KIND_VELOCITY_W',
+                           'U_IVelocity_component',  'KIND_VELOCITY_U_ION',
+                           'V_IVelocity_component',  'KIND_VELOCITY_V_ION',
+                           'W_IVelocity_component',  'KIND_VELOCITY_W_ION',
+                           'iO_3P_VerticalVelocity', 'KIND_VELOCITY_VERTICAL_O3P',
+                           'iO2_VerticalVelocity',   'KIND_VELOCITY_VERTICAL_O2',
+                           'iN2_VerticalVelocity',   'KIND_VELOCITY_VERTICAL_N2',
+                           'iN_4S_VerticalVelocity', 'KIND_VELOCITY_VERTICAL_N4S',
+                           'iNO_VerticalVelocity',   'KIND_VELOCITY_VERTICAL_NO',
+                           'f107',                   'KIND_1D_PARAMETER',
+                           'Rho',                    'KIND_DENSITY',
+    /
+

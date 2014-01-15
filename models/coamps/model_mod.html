@@ -4,28 +4,42 @@
 <HEAD>
 <TITLE>module model_mod (COAMPS)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Interface">INTERFACES</A> /
+<H1>MODULE model_mod (COAMPS)</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>MODULE model_mod (COAMPS)</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
 
 <P>
 DART interface module for the 
 Coupled Ocean / Atmosphere Mesoscale Prediction 
-(COAMPS &#174;) model. The 17 public interfaces listed here
+(COAMPS &#174;) model. The 16 public interfaces listed here
 are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
@@ -66,7 +80,7 @@ run-time options."
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -92,7 +106,7 @@ coamps_util_mod
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -120,12 +134,6 @@ The last 4 interfaces are only required for low-order models where
 advancing the model can be done by a call to a subroutine. 
 The COAMPS model only advances by executing the coamps program. 
 Thus the last 4 interfaces only appear as stubs in this module.
-</P>
-
-<P>
-Optional namelist interface
-<a href="#Namelist"><em class=code>&amp;model_nml</em></a>
-may be read from file <em class=file>input.nml</em>.
 </P>
 
 <P>
@@ -678,56 +686,69 @@ state is always to be provided from input files.
 <!--===================== DESCRIPTION OF A NAMELIST =====================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-The declarations have a different syntax, naturally.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_nml / </em> cdtg, x_bound_skip, y_bound_skip, need_mean
+&amp;model_nml
+  cdtg = '2006072500',
+  y_bound_skip = 3,
+  x_bound_skip = 3,
+  need_mean = .false.,
+/
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top>cdtg               </TD>
-    <!--  type  --><TD valign=top>character(len=10)  </TD>
-    <!--descript--><TD>Date/time group.  Defaults to '1999083100'. </TD></TR>
+<TR><TD> cdtg </TD>
+    <TD> character(len=10) </TD>
+    <TD>Date/time group.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>x_bound_skip, y_bound_skip   </TD>
-    <!--  type  --><TD valign=top>integer                      </TD>
-    <!--descript--><TD>Number of x and y boundary points to skip
-                       when perturbing the model state.
-                       Defaults to 3</TD></TR>
+<TR><TD> x_bound_skip, y_bound_skip </TD>
+    <TD> integer </TD>
+    <TD>Number of x and y boundary points to skip when perturbing the model state.
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>need_mean                  </TD>
-    <!--  type  --><TD valign=top>logical                    </TD>
-    <!--descript--><TD>Does the forward operator computation need the
-                       ensemble mean?  Defaults to .false. </TD></TR>
+<TR><TD> need_mean </TD>
+    <TD> logical </TD>
+    <TD>Does the forward operator computation need the ensemble mean?
+</TD></TR>
 
+</TBODY> 
 </TABLE>
-
 </div>
-<br>
+
+<br />
+<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 
 <TABLE border=0 >
@@ -751,7 +772,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <P>
 The COAMPS registration web site is 
@@ -765,7 +786,7 @@ and COAMPS is a registered trademark of the Naval Research Laboratory.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 
 <div class=errors>
@@ -790,7 +811,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time
@@ -801,7 +822,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -812,7 +833,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

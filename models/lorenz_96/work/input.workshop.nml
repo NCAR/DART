@@ -13,7 +13,7 @@
    restart_out_file_name    = "perfect_restart",
    obs_seq_in_file_name     = "obs_seq.in",
    obs_seq_out_file_name    = "obs_seq.out",
-   adv_ens_command          = "./advance_model.csh",
+   adv_ens_command          = "../shell_scripts/advance_model.csh",
    trace_execution          = .false.,
    output_timestamps        = .false.,
    print_every_nth_obs      = -1,
@@ -23,7 +23,7 @@
 
 &filter_nml
    async                    = 0,
-   adv_ens_command          = "./advance_model.csh",
+   adv_ens_command          = "../shell_scripts/advance_model.csh",
    ens_size                 = 20,
    start_from_restart       = .true.,
    output_restart           = .true.,
@@ -43,6 +43,7 @@
    num_groups               = 1,
    input_qc_threshold       =  3.0,
    outlier_threshold        = -1.0,
+   enable_special_outlier_code = .false.,
    output_forward_op_errors = .false.,
    output_inflation         = .true.,
    output_timestamps        = .false.,
@@ -168,9 +169,9 @@
    /
 
 &obs_sequence_tool_nml
-   filename_seq      = 'obs_seq.final',
+   filename_seq      = 'obs1.out', 'obs2.out',
    filename_seq_list = '',
-   filename_out      = 'obs_seq.processed',
+   filename_out      = 'obs_seq.combined',
    first_obs_days    = -1,
    first_obs_seconds = -1,
    last_obs_days     = -1,
@@ -206,14 +207,16 @@
    obs_sequence_name     = 'obs_seq.final',
    bin_width_days        = -1,
    bin_width_seconds     = -1,
-   init_skip_days        = 0,
+   init_skip_days        = 0, 
    init_skip_seconds     = 0,
    Nregions              = 3,
+   trusted_obs           = 'null',
    lonlim1               = 0.00, 0.00, 0.50, -1.0,
    lonlim2               = 1.01, 0.50, 1.01, -1.0,
    reg_names             = 'whole', 'yin', 'yang', 'bogus',
    create_rank_histogram = .true.,
    outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
    verbose               = .false.
    /
 

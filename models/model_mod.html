@@ -4,7 +4,7 @@
 <HEAD>
 <TITLE>module model_mod</TITLE>
 <link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
-<link href="../doc/html/dart.ico" rel="shortcut icon" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -14,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
@@ -72,36 +72,40 @@ in the corresponding <em class=code>path_names_*</em> file at compilation time.
 <!--=====================================================================-->
 
 <A NAME="Namelist"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-The declarations have a different syntax, naturally.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / model_nml /</em>
+&amp;model_nml 
+ /
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
 <P>
 Models are free to include a model namelist which can be read when 
 static_init_model is called. 
 A good example can be found in the lorenz_96 model_mod.f90.
-<br><br>
-This namelist is read in a file called <em class=file>input.nml</em>
 </P>
 
-</div>
-<br>
+<br />
+<br />
 
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -119,7 +123,7 @@ POSSIBLY MANY OTHERS DEPENDING ON MODEL DETAILS
 <!--Note to authors. The first row of the table is different.         -->
 <!--==================================================================-->
 
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -143,9 +147,10 @@ POSSIBLY MANY OTHERS DEPENDING ON MODEL DETAILS
 </TABLE>
 
 <P>
-Optional namelist interface
+A namelist interface
 <a href="#Namelist"><em class=code>&amp;model_nml</em></a>
-may be read from file <em class=file>input.nml</em>.
+may be defined by the module, in which case it will be
+read from file <em class=file>input.nml</em>.
 The details of the namelist are always model-specific 
 (there are no generic namelist values).
 </P>
@@ -940,7 +945,7 @@ See the CAM model_mod for an example of how this routine can be used.
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL>
    <LI>Models are free to read and write files as they see fit.
@@ -951,7 +956,7 @@ See the CAM model_mod for an example of how this routine can be used.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ol>
 <li> none </li>
@@ -962,7 +967,7 @@ See the CAM model_mod for an example of how this routine can be used.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 
 <UL><LI>Models are free to issue calls to the error handler as they see fit. 
@@ -979,7 +984,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 It is likely that a number of additional optional interfaces will be
@@ -996,7 +1001,7 @@ pasting in an interface block.
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -1007,7 +1012,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

@@ -4,28 +4,44 @@
 <HEAD>
 <TITLE>module model_mod (pe2lyr)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Interface">INTERFACES</A> /
+<H1>MODULE model_mod (pe2lyr)</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>MODULE model_mod (pe2lyr)</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
+
+
 
 <P>
 DART standard interfaces for a two-layer isentropic primitive equation model.
 <br><br>
-The 17 public interfaces are standardized for all DART compliant models.
+The 16 public interfaces are standardized for all DART compliant models.
 These interfaces allow DART to advance the model, get the model state and
 metadata describing this state, find state variables that are close to a 
 given location, and do spatial interpolation for model state variables.
@@ -39,7 +55,7 @@ Contact: Jeffrey.S.Whitaker@noaa.gov
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -58,7 +74,7 @@ threed_sphere/location_mod
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -80,12 +96,6 @@ threed_sphere/location_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
 </TABLE>
-
-<P>
-Optional namelist interface
-<a href="#Namelist"><em class=code>&amp;model_nml</em></a>
-may be read from file <em class=file>input.nml</em>.
-</P>
 
 <P>
    A note about documentation style.
@@ -657,38 +667,18 @@ Stub only. Not needed by this model.
 <!--===================== DESCRIPTION OF A NAMELIST =====================-->
 
 <A NAME="Namelist"></A>
-<HR>
-<H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-The declarations have a different syntax, naturally.
-</P>
-<div class=namelist>
-<pre>
-<em class=call>namelist / model_nml / </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
+<div class="top">[<a href="#">top</a>]</div><hr />
 
 <P>
 This model currently has no values settable by namelist.
 </P>
-
-<P>
-The namelist would be read in a file called <em class=file>input.nml</em>
-</P>
-
-</div>
-<br>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL><LI>The model source is in pe2lyr_mod.f90, and the spherical
 harmonic code is in spharmt_mod.f90.   The various resolution settings
@@ -700,7 +690,7 @@ are in resolt31.h, resolt63.h, and resolt127.h.
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <P>
 Zou, X., Barcilon, A., Navon, I.M., Whitaker, J., Cacuci, D.G.. 1993:
@@ -713,7 +703,7 @@ Monthly Weather Review: Vol. 121, No. 10, pp. 2833-2857.
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 
 <P>
@@ -730,7 +720,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time
@@ -741,7 +731,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -752,7 +742,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

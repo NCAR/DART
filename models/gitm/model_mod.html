@@ -5,14 +5,17 @@
 <HEAD>
 <TITLE>module model_mod (GITM)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
+<H1>MODULE model_mod (GITM)</H1>
+
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P><a href="../../index.html">DART Documentation Main Index</a><br />
@@ -32,13 +35,31 @@
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
 
-<H1>MODULE model_mod (GITM)</H1>
+<H2>Overview</H2>
+
+<P> The <a href="http://ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM"
+    >Global Ionosphere Thermosphere Model (GITM)</a> is a 3-dimensional spherical
+    code that models the Earth's thermosphere and ionosphere system using a
+    stretched grid in latitude and altitude.
+</P>
 
 <P>The <strong>GITM </strong> interface for 
-<strong>Data Assimilation Research Testbed (DART)</strong> is under development.
+   <strong>Data Assimilation Research Testbed (DART)</strong> is under development.
+   If you wish to use GITM, you are urged to contact us. The original scripts were
+   configured to run on the University of Michigan machine <strong>NYX</strong> using
+   the Portable Batch System (<strong>PBS</strong>). We have attempted to extend the
+   scripts to work with both PBS and LSF and are only partway through the process
+   at the time of the Lanai release.
+   <br />
+   <br />
+   <strong>DART does not come with the GITM code.</strong> You need to get that on your own.
+   The normal procedure of building GITM creates some resource files that are subsequently
+   needed by DART - just to compile. These include:
+   <ol><li><em class=file>GITM/src/ModSize.f90</em>,
+       <li><em class=file>GITM/src/ModTime.f90</em>, and (for example) 
+       <li><em class=file>GITM/src/ModEarth.f90</em>&nbsp;.
+   </ol>
 </P>
-<br />
-<br />
 <P>
 GITM uses binary files for their restart mechanisms, so no metadata is available
 to confirm the number and order of fields in the file. Care must be used
@@ -47,15 +68,14 @@ DART state vector is consistent with the restart files.
 Each variable must also correspond to a DART "KIND"; required for the DART
 interpolate routines. For example, this is nowhere close to being correct:
 </P>
-   <pre>&amp;gitm_vars_nml
+   <pre>&amp;model_nml
    gitm_state_variables = 'Temperature',      'KIND_TEMPERATURE',
-                          'eTemperature',     'KIND_TEMPERATURE',
-                          'ITemperature',     'KIND_TEMPERATURE',
-                          'NDensityS',        'KIND_DENSITY',
-                          'IDensityS',        'KIND_DENSITY',
-                          'Velocity',         'KIND_VELOCITY',
-                          'IVelocity',        'KIND_VELOCITY',
-                          'VerticalVelocity', 'KIND_VELOCITY',
+                          'eTemperature',     'KIND_TEMPERATURE_ELECTRON',
+                          'ITemperature',     'KIND_TEMPERATURE_ION',
+                          'iO_3P_NDensityS',  'KIND_DENSITY_NEUTRAL_O3P',
+                          'iO2_NDensityS',    'KIND_DENSITY_NEUTRAL_O2',
+                          'iN2_NDensityS',    'KIND_DENSITY_NEUTRAL_N2',
+                               ...                    ...
    /
    </pre>
 <P>These variables are then adjusted to be consistent
@@ -73,7 +93,7 @@ interpolate routines. For example, this is nowhere close to being correct:
    Internal to the DART code, the following variables exist:
 </P>
 
-   <table width="100%" cellpadding="10">
+   <table width="100%" cellpadding="2">
    <tr><td valign="top">real(r8) :: LON(:)</td>
        <td>longitude array [0, 360) </td></tr>
    <tr><td valign="top">real(r8) :: LAT(:)</td>
@@ -127,91 +147,57 @@ interpolate routines. For example, this is nowhere close to being correct:
    <P>
       There are two programs - both require the list of GITM variables to use in
       the DART state vector: the
-       <em class="code">gitm_vars_nml</em> namelist in the 
-       <em class="file">gitm_vars.nml</em> file.
+       <em class="code">model_nml:gitm_state_variables</em> variable in the 
+       <em class="file">input.nml</em> file.
    </P>
    <table width="100%" cellpadding="10">
    <tr><td valign="top"><a href="gitm_to_dart.html">gitm_to_dart.f90</a></td>
-       <td>converts a set of GITM restart files (there is one restart file per block) <em class=file>gitm_restart.nc</em> into a 
-       DART-compatible file normally called <em class=file>dart.ud</em>&nbsp;.
-       We usually wind up linking the restart file to a static name that is used by DART.
+       <td>converts a set of GITM restart files (there is one restart file per block) 
+       <em class=file>bxxxx.rst</em> into a 
+       DART-compatible file normally called <em class=file>dart_ics</em>&nbsp;.
+       We usually wind up linking to this static filename.
        </td>
    </tr>
    <tr><td valign="top"><a href="dart_to_gitm.html">dart_to_gitm.f90</a></td>
-       <td>inserts the DART output into an existing GITM restart netCDF file by
-       overwriting the variables in the GITM restart netCDF file. 
+       <td>inserts the DART output into existing GITM restart files.
        There are two different types of DART output files, so there is a namelist
-       option to specify if the DART file has two time records or just one 
-       (if there are two, the first one is the 'advance_to' time, followed 
-       by the 'valid_time' of the ensuing state).
+       option to specify if the DART file has two time records or just one.
+       If there are two, the first one is the 'advance_to' time, followed 
+       by the 'valid_time' of the ensuing state. If there is just one, it is
+       the 'valid_time' of the ensuing state.
        <em class=program>dart_to_gitm</em> determines the GITM restart file 
        name from the <em class=file>input.nml</em>
-       <em class=code>model_nml:gitm_restart_filename</em>.
+       <em class=code>model_nml:gitm_restart_dirname</em>.
        If the DART file contains an 'advance_to' time, 
-       <em class=program>dart_to_gitm</em> creates a new 
-       <em class=code>&amp;time_manager_nml</em> for GITM in a file called
-       <em class=file>gitm_in.DART</em> which can be used to control the
-       length of the GITM integration.
+       <em class=program>dart_to_gitm</em> creates a 
+       <em class=file>DART_GITM_time_control.txt</em> file which can be used 
+       to control the length of the GITM integration.
        </td>
    </tr>
    </table>
 </div>
 
+<!-- gitm source code in DART/pub as GITM2_29May2013.tar -->
 
-<H1>Everything below here has not been reviewed yet for GITM</H1>
-<H1>Everything below here has not been reviewed yet for GITM</H1>
-<H1>Everything below here has not been reviewed yet for GITM</H1>
-
-
-<a name="InitialEnsemble"></a>
+<a name="simpletest"></a>
 <div class=indent1>
-   <h3>Generating the initial ensemble.</h3>
+   <h3>Simple test.</h3>
    <P>
-      Creating the initial ensemble is an area of active research.
-      The GITM model cannot take one single model state and generate its own 
-      ensemble (typically done with <a href="#pert_model_state">pert_model_state</a>).
-      <br />
-      <br />
-      The ensemble has to come from 'somewhere else'. 
-      At present, it may be sufficient to use a climatological ensemble; e.g., 
-      using the GITM restarts for '1 January 00Z' from 50 consecutive years 
-      from a hindcast experiment.
-      <br />
-      <br />
-      There is a <em class=program>shell_scripts/MakeInitialEnsemble.csh</em> 
-      script that is intended to demonstrate how to convert a set of GITM netCDF 
-      restart files into a set of DART files that have a consistent timestamp. 
-      If you simply convert each GITM file to a DART file using 
-      <em class=program>dart_to_gitm</em>, each DART file will have a 'valid&nbsp;time'
-      that reflects the GITM time of that state - instead of an ensemble of states
-      reflecting one single time. The
-      <a href="../../../utilities/restart_file_utility.f90">restart_file_utility</a> 
-      can be used to overwrite the timestep in the header of each DART initial 
-      conditions file. The namelist for this program must look something like:
+   The simplest way to test the converter is to compile GITM and run a single
+   model state forward using <em class=program>work/clean.sh</em>.
+   To build GITM ... download GITM and unpack the code into
+   <em class=file>DART/models/gitm/GITM2</em> and follow these instructions:
    </P>
-   <pre>
-   &amp;restart_file_tool_nml
-     input_file_name              = "<em class=changed>dart.ics</em>",
-     output_file_name             = "filter_updated_restart",
-     ens_size                     = 1,
-     single_restart_file_in       = .true.,
-     single_restart_file_out      = .true.,
-     write_binary_restart_files   = .true.,
-     overwrite_data_time          = <em class=changed>.true.</em>,
-     new_data_days                = <em class=changed>145731</em>,
-     new_data_secs                = <em class=changed>0</em>,
-     input_is_model_advance_file  = .false.,
-     output_is_model_advance_file = .false.,
-     overwrite_advance_time       = .false.,
-     new_advance_days             = -1,
-     new_advance_secs             = -1,
-     gregorian_cal                = .true.  /</pre>
-   <P>
-      The time of days&nbsp;=&nbsp;<em class=changed>145731</em> 
-      seconds&nbsp;=&nbsp;<em class=changed>0</em> relates to 00Z&nbsp;1&nbsp;Jan&nbsp;2000 in the DART world.
-      <br />
-      <br />
-   </P>
+<div class=unix>
+<pre>
+cd models/gitm/GITM2
+./Config.pl -install -compiler=ifortmpif90 -earth
+make
+cd ../work
+./clean.sh 1 1 0 150.0 170.0 1.0
+</pre>
+</div>
+
 </div>
 
 <!--==================================================================-->
@@ -227,9 +213,57 @@ Consider yourself forewarned that character strings that contain a '/' must be
 enclosed in quotes to prevent them from prematurely terminating the namelist.
 </P>
 <div class=namelist><pre>
-<em class=call>namelist /model_nml/ </em> gitm_restart_filename, &amp;
-          assimilation_period_days, assimilation_period_seconds, &amp;
-          model_perturbation_amplitude, output_state_vector, calendar, debug
+
+# The list of variables to put into the state vector is here:
+# The definitions for the DART kinds are in DART/obs_def/obs_def*f90
+# The order doesn't matter to DART. It may to you.
+
+&amp;model_nml
+   gitm_restart_dirname         = 'advance_temp_e1/UA/restartOUT',
+   assimilation_period_days     = 0,
+   assimilation_period_seconds  = 1800,
+   model_perturbation_amplitude = 0.2,
+   output_state_vector          = .false.,
+   calendar                     = 'Gregorian',
+   debug                        = 0,
+   gitm_state_variables  = 'Temperature',            'KIND_TEMPERATURE',
+                           'eTemperature',           'KIND_TEMPERATURE_ELECTRON',
+                           'ITemperature',           'KIND_TEMPERATURE_ION',
+                           'iO_3P_NDensityS',        'KIND_DENSITY_NEUTRAL_O3P',
+                           'iO2_NDensityS',          'KIND_DENSITY_NEUTRAL_O2',
+                           'iN2_NDensityS',          'KIND_DENSITY_NEUTRAL_N2',
+                           'iN_4S_NDensityS',        'KIND_DENSITY_NEUTRAL_N4S',
+                           'iNO_NDensityS',          'KIND_DENSITY_NEUTRAL_NO',
+                           'iN_2D_NDensityS',        'KIND_DENSITY_NEUTRAL_N2D',
+                           'iN_2P_NDensityS',        'KIND_DENSITY_NEUTRAL_N2P',
+                           'iH_NDensityS',           'KIND_DENSITY_NEUTRAL_H',
+                           'iHe_NDensityS',          'KIND_DENSITY_NEUTRAL_HE',
+                           'iCO2_NDensityS',         'KIND_DENSITY_NEUTRAL_CO2',
+                           'iO_1D_NDensityS',        'KIND_DENSITY_NEUTRAL_O1D',
+                           'iO_4SP_IDensityS',       'KIND_DENSITY_ION_O4SP',
+                           'iO2P_IDensityS',         'KIND_DENSITY_ION_O2P',
+                           'iN2P_IDensityS',         'KIND_DENSITY_ION_N2P',
+                           'iNP_IDensityS',          'KIND_DENSITY_ION_NP',
+                           'iNOP_IDensityS',         'KIND_DENSITY_ION_NOP',
+                           'iO_2DP_IDensityS',       'KIND_DENSITY_ION_O2DP',
+                           'iO_2PP_IDensityS',       'KIND_DENSITY_ION_O2PP',
+                           'iHP_IDensityS',          'KIND_DENSITY_ION_HP',
+                           'iHeP_IDensityS',         'KIND_DENSITY_ION_HEP',
+                           'ie_IDensityS',           'KIND_DENSITY_ION_E',
+                           'U_Velocity_component',   'KIND_VELOCITY_U',
+                           'V_Velocity_component',   'KIND_VELOCITY_V',
+                           'W_Velocity_component',   'KIND_VELOCITY_W',
+                           'U_IVelocity_component',  'KIND_VELOCITY_U_ION',
+                           'V_IVelocity_component',  'KIND_VELOCITY_V_ION',
+                           'W_IVelocity_component',  'KIND_VELOCITY_W_ION',
+                           'iO_3P_VerticalVelocity', 'KIND_VELOCITY_VERTICAL_O3P',
+                           'iO2_VerticalVelocity',   'KIND_VELOCITY_VERTICAL_O2',
+                           'iN2_VerticalVelocity',   'KIND_VELOCITY_VERTICAL_N2',
+                           'iN_4S_VerticalVelocity', 'KIND_VELOCITY_VERTICAL_N4S',
+                           'iNO_VerticalVelocity',   'KIND_VELOCITY_VERTICAL_NO',
+                           'f107',                   'KIND_1D_PARAMETER',
+                           'Rho',                    'KIND_DENSITY',
+    /
 </pre>
 </div>
 
@@ -249,29 +283,25 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
 
-<TR><!--contents--><TD valign=top>output_state_vector</TD>
-    <!--  type  --><TD valign=top>logical <em class=units>[default:&nbsp;.true.]</em></TD>
-    <!--descript--><TD valign=top>The switch to determine the form of the state vector in the
-                       output netCDF files. If <em class=code>.true.</em> 
-                       the state vector will be output exactly as DART uses it 
-                       ... one long array.  If <em class=code>.false.</em>, 
-                       the state vector is parsed into prognostic variables and 
-                       output that way -- much easier to use with 'ncview', for
-                       example.</TD></TR>
+<TR><!--contents--><TD valign=top>gitm_restart_dirname&nbsp;&nbsp;</TD>
+    <!--  type  --><TD valign=top>character(len=256)&nbsp;&nbsp;</TD>
+    <!--descript--><TD>The name of the directory containing the
+                       GITM restart files and runtime control information.
+                       </em></TD></TR>
 
 <TR><!--contents--><TD valign=top>assimilation_period_days</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;1]</em></TD>
+    <!--  type  --><TD valign=top>integer</em></TD>
     <!--descript--><TD valign=top>The number of days to advance the model for each assimilation.
                        </TD></TR>
 
 <TR><!--contents--><TD valign=top>assimilation_period_seconds</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;0]</em></TD>
+    <!--  type  --><TD valign=top>integer</em></TD>
     <!--descript--><TD valign=top>In addition to <em class=code>assimilation_period_days</em>, 
                     the number of seconds to advance the model for each assimilation.
                        </TD></TR>
 
 <TR><!--contents--><TD valign=top>model_perturbation_amplitude</TD>
-    <!--  type  --><TD valign=top>real(r8) <em class=units>[default:&nbsp;0.2]</em></TD>
+    <!--  type  --><TD valign=top>real(r8)</em></TD>
     <!--descript--><TD valign=top> Reserved for future use.
                   <!-- The amount of noise to add when trying to perturb a single
                        state vector to create an ensemble. Only used when 
@@ -282,92 +312,39 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
                        of a gaussian distribution with the mean at the value of 
                        the state vector element. --> </TD></TR> 
 
+<TR><!--contents--><TD valign=top>output_state_vector</TD>
+    <!--  type  --><TD valign=top>logical</em></TD>
+    <!--descript--><TD valign=top>The switch to determine the form of the state vector in the
+                       output netCDF files. If <em class=code>.true.</em> 
+                       the state vector will be output exactly as DART uses it 
+                       ... one long array.  If <em class=code>.false.</em>, 
+                       the state vector is parsed into prognostic variables and 
+                       output that way -- much easier to use with 'ncview', for
+                       example.</TD></TR>
+
 <TR><!--contents--><TD valign=top>calendar</TD>
-    <!--  type  --><TD valign=top>character(len=32) <br /> 
-                       <em class=units>[default:&nbsp;'Gregorian']</em></TD>
+    <!--  type  --><TD valign=top>character(len=32)</TD>
     <!--descript--><TD valign=top>
                        Character string specifying the calendar being used by GITM.</TD></TR>
 
 <TR><!--contents--><TD valign=top>debug</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;0]</em></TD>
-    <!--descript--><TD valign=top>The switch to specify the run-time verbosity.
-                       <em class=code>0</em> is as quiet as it gets.
-                       <em class=code>&gt; 1</em> provides more run-time messages.
+    <!--  type  --><TD valign=top>integer</em></TD>
+    <!--descript--><TD valign=top>The switch to specify the run-time verbosity.<br />
+                       <em class=code>0</em> is as quiet as it gets.<br />
+                       <em class=code>&gt; 1</em> provides more run-time messages.<br />
                        <em class=code>&gt; 5</em> provides ALL run-time messages.
-                       All values above 0 will also write a netCDF file of the grid 
-                       information and perform a grid interpolation test.</TD></TR>
-
-</TABLE>
-
-<H3 class=indent1>Example</H3>
-
-<pre>
-&amp;model_nml
-   gitm_restart_filename     = 'gitm_restart.nc';
-   assimilation_period_days     = 1,
-   assimilation_period_seconds  = 0,
-   model_perturbation_amplitude = 0.2,
-   output_state_vector          = .true.,
-   calendar                     = 'Gregorian',
-   debug                        = 0
-   /
-</pre>
-
-</div>
-<br />
-
-<!--==================================================================-->
-
-<A NAME="gitm_vars_nml"></A>
-<br />
-<div class=namelist><pre>
-<em class=call>namelist /gitm_vars_nml/</em> gitm_state_variables
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-   This namelist is read in a file called <em class=file>gitm_vars.nml</em>
-   and contains the list of GITM variables that make up the DART state vector.
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+                       </TD></TR>
 
 <TR><!--contents--><TD valign=top>gitm_state_variables</TD>
-    <!--  type  --><TD valign=top>character(len=NF90_MAX_NAME)::<br />
-                                  dimension(160)
-                 <em class=units>[default:&nbsp; see example]</em></TD>
+    <!--  type  --><TD valign=top>character(len=NF90_MAX_NAME)::&nbsp;&nbsp;<br />
+                                  dimension(160)</TD>
     <!--descript--><TD valign=top>The table that relates the GITM variables 
                    to use to build the DART state vector, and the corresponding 
                    DART kinds for those variables.</TD></TR>
 </TABLE>
 
-<H3 class=indent1>Example</H3>
-
-<pre>
-&amp;gitm_vars_nml
-   gitm_state_variables = 'U',   'KIND_U_WIND_COMPONENT',
-                             'V',   'KIND_V_WIND_COMPONENT',
-                             'W',   'KIND_VERTICAL_VELOCITY',
-                             'TH',  'KIND_POTENTIAL_TEMPERATURE',
-                             'DBZ', 'KIND_RADAR_REFLECTIVITY',
-                             'WZ',  'KIND_VERTICAL_VORTICITY',
-                             'PI',  'KIND_EXNER_FUNCTION',
-                             'QV',  'KIND_VAPOR_MIXING_RATIO',
-                             'QC',  'KIND_CLOUDWATER_MIXING_RATIO',
-                             'QR',  'KIND_RAINWATER_MIXING_RATIO',
-                             'QI',  'KIND_ICE_MIXING_RATIO',
-                             'QS',  'KIND_SNOW_MIXING_RATIO',
-                             'QH',  'KIND_GRAUPEL_MIXING_RATIO'
-  /
-</pre>
 </div>
-<br />
+<P>&nbsp;</P>
 
 <!--==================================================================-->
 
@@ -376,13 +353,14 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
 <H2>OTHER MODULES USED</H2>
 
 <PRE>
-types_mod
-time_manager_mod
-threed_sphere/location_mod
-utilities_mod
-obs_kind_mod
-mpi_utilities_mod
-random_seq_mod
+<a href="../../common/types_mod.html">types_mod</a>
+<a href="../../time_manager/time_manager_mod.html">time_manager_mod</a>
+<a href="../../location/threed_sphere/location_mod.html">threed_sphere/location_mod</a>
+<a href="../../utilities/utilities_mod.html">utilities_mod</a>
+<a href="../../obs_kind/obs_kind_mod.html">obs_kind_mod</a>
+<a href="../../mpi_utilities/mpi_utilities_mod.html">mpi_utilities_mod</a>
+<a href="../../random_seq/random_seq_mod.html">random_seq_mod</a>
+<a href="dart_gitm_mod.html">dart_gitm_mod</a>
 </PRE>
 
 <!--==================================================================-->
@@ -426,11 +404,9 @@ Each module has its own discussion of their routines.
 <h3 class=indent1>Unique Interface Routines</h3>
 <TABLE width=50%>
 <TR><TD><em class=call>use model_mod, only : </em></TD>
-                   <TD><A HREF="#get_gridsize">get_gridsize</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#restart_file_to_sv">restart_file_to_sv</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#sv_to_restart_file">sv_to_restart_file</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_gitm_restart_filename">get_gitm_restart_filename</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_base_time">get_base_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#restart_file_to_statevector">restart_file_to_statevector</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#statevector_to_restart_file">statevector_to_restart_file</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_gitm_restart_dirname">get_gitm_restart_dirname</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_state_time">get_state_time</A></TD></TR>
 </TABLE>
 
@@ -1153,12 +1129,12 @@ The horizontal gridsize is determined from <em class=file>gitm_restart.nc</em>.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="restart_file_to_sv"></A>
+<A NAME="restart_file_to_statevector"></A>
 <br />
 <div class="routine">
-<em class=call>call restart_file_to_sv(filename, state_vector, model_time)</em>
+<em class=call>call restart_file_to_statevector(dirname, state_vector, model_time)</em>
 <pre>
-character(len=*),       intent(in)    :: <em class=code>filename</em>
+character(len=*),       intent(in)    :: <em class=code>dirname</em>
 real(r8), dimension(:), intent(inout) :: <em class=code>state_vector</em>
 type(time_type),        intent(out)   :: <em class=code>model_time</em>
 </pre>
@@ -1168,22 +1144,24 @@ type(time_type),        intent(out)   :: <em class=code>model_time</em>
 <!-- Description -->
 
 <P>
-   <em class=code>restart_file_to_sv</em>
+   <em class=code>restart_file_to_statevector</em>
    Reads a GITM netCDF format restart file and packs the desired variables
    into a DART state vector.  The desired variables are specified in the
-   <em class=code>gitm_vars_nml</em> namelist.
+   <em class=file>input_nml</em> <em class=code>model_nml</em> namelist.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>filename</em></TD>
-    <TD>The name of the netCDF format GITM restart file.</TD></TR>
+<TR><TD valign=top><em class=code>dirname</em></TD>
+    <TD>The name of the directory containing the GITM restart files.
+        The restart files have names like <em class=file>b0001.rst</em>.
+        There are as many restart files as blocks.</TD></TR>
 
 <TR><TD valign=top><em class=code>state_vector</em></TD>
     <TD>the 1D array containing the concatenated GITM variables.
 
 <TR><TD valign=top><em class=code>model_time</em></TD>
-    <TD>the time of the model state. The last time in the netCDF restart file.
+    <TD>the time of the model state as read from <em class=file>&lt;dirname&gt;/header.rst</em>.
     </TD></TR>
 
 </TABLE>
@@ -1193,13 +1171,13 @@ type(time_type),        intent(out)   :: <em class=code>model_time</em>
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="sv_to_restart_file"></A>
+<A NAME="statevector_to_restart_file"></A>
 <br />
 <div class="routine">
-<em class=call>call sv_to_restart_file(state_vector, filename, statedate)</em>
+<em class=call>call statevector_to_restart_file(state_vector, dirname, statedate)</em>
 <pre>
 real(r8), dimension(:), intent(in) :: <em class=code>state_vector</em>
-character(len=*),       intent(in) :: <em class=code>filename</em>
+character(len=*),       intent(in) :: <em class=code>dirname</em>
 type(time_type),        intent(in) :: <em class=code>statedate</em>
 </pre>
 </div>
@@ -1208,20 +1186,21 @@ type(time_type),        intent(in) :: <em class=code>statedate</em>
 <!-- Description -->
 
 <P>
-<em class=code>sv_to_restart_file</em>
-updates the variables in the GITM restart file with values from 
-the DART vector <em class=code>state_vector</em>. The last time in the
-file must match the <em class=code>statedate</em>.
+<em class=code>statevector_to_restart_file</em>
+updates the variables in the GITM restart files with values from 
+the DART vector <em class=code>state_vector</em>. The time in the
+GITM files must match the <em class=code>statedate</em>.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>filename</em></TD>
-    <TD>the netCDF-format GITM restart file to be updated.
-</TD></TR>
-
 <TR><TD valign=top><em class=code>state_vector</em></TD>
     <TD>the 1D array containing the DART state vector.</TD></TR>
+
+<TR><TD valign=top><em class=code>dirname</em></TD>
+    <TD>The name of the directory containing the GITM restart files.
+        The restart files have names like <em class=file>b0001.rst</em>.
+        There are as many restart files as blocks.</TD></TR>
 
 <TR><TD valign=top><em class=code>statedate</em></TD>
     <TD>the 'valid_time' of the DART state vector.
@@ -1234,12 +1213,12 @@ file must match the <em class=code>statedate</em>.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="get_gitm_restart_filename"></A>
+<A NAME="get_gitm_restart_dirname"></A>
 <br />
 <div class="routine">
-<em class=call>call get_gitm_restart_filename( filename )</em>
+<em class=call>call get_gitm_restart_dirname( dirname )</em>
 <pre>
-character(len=*), intent(out) :: <em class=code>filename</em>
+character(len=*), intent(out) :: <em class=code>dirname</em>
 </pre>
 </div>
 
@@ -1247,43 +1226,18 @@ character(len=*), intent(out) :: <em class=code>filename</em>
 <!-- Description -->
 
 <P>
-<em class=code>get_gitm_restart_filename</em>
-returns the name of the gitm restart file - the filename itself is in 
-private module storage.
+<em class=code>get_gitm_restart_dirname</em>
+returns the name of the directory containing the GITM restart files.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
 <TR><TD valign=top><em class=code>filename&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>The name of the GITM restart file.</TD></TR>
+    <TD>The name of the GITM restart directory as specified by the 
+    <em class=file>input.nml</em><em class=code>:model_nml:gitm_restart_dirname</em>
+    varible.</TD></TR>
 
 </TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_base_time"></A>
-<br />
-<div class="routine">
-<em class=call>time = get_base_time( filehandle )</em>
-<pre>
-integer,          intent(in) :: <em class=code>filehandle</em> -OR-
-character(len=*), intent(in) :: <em class=code>filehandle</em>
-type(time_type),  intent(out) :: <em class=code>time</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>get_base_time</em>
-extracts the start time of the experiment as contained in the netCDF 
-restart file. The file may be specified by either a character string or
-the integer netCDF fid.
-</P>
 
 </div>
 <br />
@@ -1293,10 +1247,9 @@ the integer netCDF fid.
 <A NAME="get_state_time"></A>
 <br />
 <div class="routine">
-<em class=call>time = get_state_time( filehandle )</em>
+<em class=call>time = get_state_time( dirname )</em>
 <pre>
-integer,          intent(in) :: <em class=code>filehandle</em> -OR-
-character(len=*), intent(in) :: <em class=code>filehandle</em>
+character(len=*), intent(in)  :: <em class=code>dirname</em>
 type(time_type),  intent(out) :: <em class=code>time</em>
 </pre>
 </div>
@@ -1306,10 +1259,8 @@ type(time_type),  intent(out) :: <em class=code>time</em>
 
 <P>
 <em class=code>get_state_time</em>
-extracts the time of the model state as contained in the netCDF 
-restart file. In the case of multiple times in the file, the last time
-is the time returned. The file may be specified by either a character 
-string or the integer netCDF fid.
+extracts the time of the model state as contained in the 
+<em class=file>&lt;gitm_restart_dirname&gt;/header.rst</em> file. 
 </P>
 
 </div>
@@ -1328,10 +1279,10 @@ string or the integer netCDF fid.
     <TH align=left>purpose</TH></TR>
 <TR><TD>input.nml</TD>
     <TD>to read the model_mod namelist</TD></TR>
-<TR><TD>gitm_vars.nml</TD>
-    <TD>to read the <em class=code>gitm_vars_nml</em> namelist</TD></TR>
-<TR><TD>gitm_restart.nc</TD>
+<TR><TD>Several GITM source modules: ModConstants, ModSizeGitm, ModEarth ...</TD>
     <TD>provides grid dimensions, model state, and 'valid_time' of the model state</TD></TR>
+<TR><TD>header.rst, bNNNN.rst</TD>
+    <TD>provides the 'valid_time' of the model state and the model state, respectively</TD></TR>
 <TR><TD>True_State.nc</TD>
     <TD>the time-history of the "true" model state from an OSSE</TD></TR>
 <TR><TD>Prior_Diag.nc</TD>
@@ -1354,7 +1305,9 @@ string or the integer netCDF fid.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
-<li> none </li>
+<li>The official <em class=program>GITM</em> site is:
+can be found at <a href="http://ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM"
+                               >ccmc.gsfc.nasa.gov/models/modelinfo.php?model=GITM</a>
 </ul>
 
 <!--==================================================================-->
@@ -1368,19 +1321,19 @@ string or the integer netCDF fid.
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
 <TR><TH>Routine</TH><TH width="50%">Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>restart_file_to_sv</TD>
+<TR><!-- routine --><TD VALIGN=top>restart_file_to_statevector</TD>
     <!-- message --><TD VALIGN=top>cannot open file "xxxx" for reading</TD>
     <!-- comment --><TD VALIGN=top>The GITM restart file "xxxx" does not exist.</TD>
 </TR>
 
-<TR><!-- routine --><TD VALIGN=top>restart_file_to_sv</TD>
+<TR><!-- routine --><TD VALIGN=top>restart_file_to_statevector</TD>
     <!-- message --><TD VALIGN=top>'WARNING!!!   year 0 not supported; setting to year 1</TD>
     <!-- comment --><TD VALIGN=top>year 0 ... is not
     supported in a Gregorian calendar. Our intent here is to do data assimilation,
     normally 'real' observations have 'real' dates.</TD>
 </TR>
 
-<TR><!-- routine --><TD VALIGN=top>sv_to_restart_file</TD>
+<TR><!-- routine --><TD VALIGN=top>statevector_to_restart_file</TD>
     <!-- message --><TD VALIGN=top>current time /= model time. FATAL error.</TD>
     <!-- comment --><TD VALIGN=top>The DART time does not match the time of the GITM restart file.
     This message is preceeded by several lines indicating the expected times of both DART and GITM.</TD>
@@ -1391,7 +1344,8 @@ string or the integer netCDF fid.
 
 <H2>KNOWN BUGS</H2>
 <P>
-none at this time
+The scripts to advance the model and run an experiment are in a state of flux
+in response to changing hardware.
 </P>
 
 <!--==================================================================-->

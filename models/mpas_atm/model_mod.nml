@@ -1,30 +1,34 @@
-# The assimilation period information here is pure fiction.
-# As is the model_perturbation_amplitude.
-
 &model_nml
-   model_analysis_filename      = 'mpas_analysis.nc'
-   output_state_vector          = .true., 
+   model_analysis_filename      = 'mpas_init.nc',
+   grid_definition_filename     = 'mpas_init.nc',
+   output_state_vector          = .false.,
+   vert_localization_coord      = 3,
    assimilation_period_days     = 0,
-   assimilation_period_seconds  = 60,
-   model_perturbation_amplitude = 0.2,
+   assimilation_period_seconds  = 21600,
+   model_perturbation_amplitude = 0.0001,
+   log_p_vert_interp            = .true.,
    calendar                     = 'Gregorian',
-   debug                        = 0 
-   /
+   use_u_for_wind               = .false.,
+   use_rbf_option               = 2,
+   update_u_from_reconstruct    = .true.,
+   use_increments_for_u_update  = .true.,
+   highest_obs_pressure_mb      = 100.0,
+   sfc_elev_max_diff            = -1.0,
+   debug                        = 0,
+/
 
-# The following mpas_vars_nml is just for demonstration purposes.
-# You application will likely involve a different DART state vector.
+# The following mpas_vars_nml is an example of how to specify
+# what fields are in the DART state vector.
+# Your application may require more, fewer, or different fields.
 
 &mpas_vars_nml
    mpas_state_variables = 'theta',                 'KIND_POTENTIAL_TEMPERATURE',
                           'uReconstructZonal',     'KIND_U_WIND_COMPONENT',
                           'uReconstructMeridional','KIND_V_WIND_COMPONENT',
-                          'w',                     'KIND_VERTICAL_VELOCITY',
                           'qv',                    'KIND_VAPOR_MIXING_RATIO',
                           'qc',                    'KIND_CLOUDWATER_MIXING_RATIO',
-                          'qr',                    'KIND_RAINWATER_MIXING_RATIO',
-                          'qi',                    'KIND_ICE_MIXING_RATIO',
-                          'qs',                    'KIND_SNOW_MIXING_RATIO',
-                          'qg',                    'KIND_GRAUPEL_MIXING_RATIO'
-                          'surface_pressure',      'KIND_SURFACE_PRESSURE'
-   /
+                          'surface_pressure',      'KIND_SURFACE_PRESSURE',
+   mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
+                          'qc','0.0','NULL','CLAMP',
+/
 

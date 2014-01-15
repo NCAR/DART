@@ -2328,7 +2328,7 @@ end subroutine compute_gridcell_value
 
 subroutine get_grid_vertval(x, location, varstring, interp_val, istatus)
 !
-! Calculate the expected vertical value fort the gridcell.
+! Calculate the expected vertical value for the gridcell.
 ! Each gridcell value is an area-weighted value of an unknown number of
 ! column-based quantities.
 

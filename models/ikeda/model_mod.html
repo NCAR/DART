@@ -4,26 +4,40 @@
 <HEAD>
 <TITLE>module model_mod (Ikeda)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Interface">INTERFACES</A> /
+<H1>MODULE model_mod (Ikeda)</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>MODULE model_mod (Ikeda)</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
 
 <P>
-DART interface module for the Ikeda model. The 17 public interfaces
+DART interface module for the Ikeda model. The 16 public interfaces
 are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
@@ -51,10 +65,89 @@ system stems from nonlinear optics (Ikeda 1979, Optics Communications).
 Interface written by <strong>Greg Lawson, CalTech</strong>. Thanks Greg!
 </P>
 
+<!--===================== DESCRIPTION OF A NAMELIST =====================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;model_nml
+   a  = 0.40,
+   b  = 6.00,
+   mu = 0.83,
+   time_step_days      = 0,
+   time_step_seconds   = 3600,
+   output_state_vector = .true.  
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD> a </TD>
+    <TD> real(r8) </TD>
+    <TD>Model parameter.
+</TD></TR>
+
+<TR><TD> b </TD>
+    <TD> real(r8) </TD>
+    <TD>Model parameter.
+</TD></TR>
+
+<TR><TD> mu </TD>
+    <TD> real(r8) </TD>
+    <TD>Model parameter.
+</TD></TR>
+
+<TR><TD> time_step_days </TD>
+    <TD> integer </TD>
+    <TD>Model advance time in days.
+</TD></TR>
+
+<TR><TD> time_step_seconds </TD>
+    <TD> integer </TD>
+    <TD>Model advance time in seconds.
+</TD></TR>
+
+<TR><TD> output_state_vector </TD>
+    <TD> logical </TD>
+    <TD>If true, output the state vector data to the diagnostic files
+as a single 1D array.  If false, break up output data into logical
+model variables.
+</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -72,7 +165,7 @@ utilities_mod
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -94,12 +187,6 @@ utilities_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
 </TABLE>
-
-<P>
-Optional namelist interface
-<a href="#Namelist"><em class=code>&amp;model_nml</em></a>
-may be read from file <em class=file>input.nml</em>.
-</P>
 
 <P>
    A note about documentation style.
@@ -610,62 +697,12 @@ A NULL INTERFACE in this model.
 </div>
 <br>
 
-<!--===================== DESCRIPTION OF A NAMELIST =====================-->
-
-<A NAME="Namelist"></A>
-<HR>
-<H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-The declarations have a different syntax, naturally.
-</P>
-<div class=namelist>
-<pre>
-<em class=call>namelist / model_nml / </em> &amp;
-    a, b, mu, time_step_days, time_step_seconds, output_state_vector
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-<TR><!--contents--><TD valign=top>a           </TD>
-    <!--  type  --><TD valign=top>real(r8)    </TD>
-    <!--descript--><TD>Default is 0.40_r8.    </TD></TR>
-<TR><!--contents--><TD valign=top>b           </TD>
-    <!--  type  --><TD valign=top>real(r8)    </TD>
-    <!--descript--><TD>Default is 6.00_r8.    </TD></TR>
-<TR><!--contents--><TD valign=top>mu          </TD>
-    <!--  type  --><TD valign=top>real(r8)    </TD>
-    <!--descript--><TD>Default is 0.83_r8.    </TD></TR>
-<TR><!--contents--><TD valign=top>time_step_days  </TD>
-    <!--  type  --><TD valign=top>integer         </TD>
-    <!--descript--><TD>Default is 0               </TD></TR>
-<TR><!--contents--><TD valign=top>time_step_seconds </TD>
-    <!--  type  --><TD valign=top>integer           </TD>
-    <!--descript--><TD>Default is 3600 (1 hour)     </TD></TR>
-<TR><!--contents--><TD valign=top>output_state_vector  </TD>
-    <!--  type  --><TD>logical                         </TD>
-    <!--descript--><TD>Default is .true.               </TD></TR>
-</TABLE>
-
-</div>
-<br>
-
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 
 <TABLE border=0 >
@@ -683,23 +720,25 @@ This namelist is read in a file called <em class=file>input.nml</em>
     <TD>the record of all the namelists actually USED - 
         contains the default values</TD></TR>
 </TABLE>
+   
+<br />
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 
-Ikeda 1979, Optics Communications
+<P> Ikeda 1979, Optics Communications </P>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -724,7 +763,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time
@@ -735,7 +774,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -746,7 +785,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

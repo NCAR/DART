@@ -7,30 +7,32 @@
 program dart_to_gitm
 
 !----------------------------------------------------------------------
-! purpose: interface between DART and the gitm model
+! purpose: interface between DART and the GITM model
 !
 ! method: Read DART state vector and overwrite values in a gitm restart file.
 !         If the DART state vector has an 'advance_to_time' present, a
-!         file called gitm_in.DART is created with a time_manager_nml namelist 
-!         appropriate to advance gitm to the requested time.
+!         file called DART_GITM_time_control.txt is created with
+!         information appropriate to advance gitm to the requested time.
 !
-!         The dart_to_gitm_nml namelist setting for advance_time_present 
+!         The dart_to_gitm_nml namelist setting for advance_time_present
 !         determines whether or not the input file has an 'advance_to_time'.
 !         Typically, only temporary files like 'assim_model_state_ic' have
 !         an 'advance_to_time'.
-!
-! author: Tim Hoar 25 Jun 09, revised 12 July 2010
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
+
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              logfileunit, open_file, close_file
+
+use        model_mod, only : static_init_model, get_model_size, &
+                             get_gitm_restart_dirname, statevector_to_restart_file
+
 use  assim_model_mod, only : open_restart_read, aread_state_restart, close_restart
+
 use time_manager_mod, only : time_type, print_time, print_date, operator(-), &
                              get_time, get_date
-use        model_mod, only : static_init_model, statevector_to_restart_file, &
-                             get_model_size, get_base_time, get_gitm_restart_dirname
 
 implicit none
 
@@ -40,28 +42,36 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-!------------------------------------------------------------------
-! The namelist variables
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+! namelist parameters with default values.
+!-----------------------------------------------------------------------
 
-character (len = 128) :: dart_to_gitm_input_file = 'dart.ic'
+character (len = 128) :: dart_to_gitm_input_file = 'dart_restart'
 logical               :: advance_time_present    = .false.
-character(len=256)    :: gitm_restart_dirname    = 'gitm_restartdir'
 
 namelist /dart_to_gitm_nml/ dart_to_gitm_input_file, &
-                            advance_time_present,    &
-                            gitm_restart_dirname
+                            advance_time_present
 
 !----------------------------------------------------------------------
+! global storage
+!----------------------------------------------------------------------
 
-integer               :: iunit, io, x_size, diff1, diff2
-type(time_type)       :: model_time, adv_to_time, base_time
+integer               :: iunit, io, x_size
+type(time_type)       :: model_time, adv_to_time
 real(r8), allocatable :: statevector(:)
-logical               :: verbose              = .TRUE.
+character(len=256)    :: gitm_restart_dirname  = 'none'
 
-!----------------------------------------------------------------------
+!======================================================================
 
 call initialize_utilities(progname='dart_to_gitm')
+
+!----------------------------------------------------------------------
+! Read the namelist.
+!----------------------------------------------------------------------
+
+call find_namelist_in_file("input.nml", "dart_to_gitm_nml", iunit)
+read(iunit, nml = dart_to_gitm_nml, iostat = io)
+call check_namelist_read(iunit, io, "dart_to_gitm_nml")
 
 !----------------------------------------------------------------------
 ! Call model_mod:static_init_model() which reads the gitm namelists
@@ -69,19 +79,14 @@ call initialize_utilities(progname='dart_to_gitm')
 !----------------------------------------------------------------------
 
 call static_init_model()
-
-x_size = get_model_size()
-allocate(statevector(x_size))
-
-! Read the namelist to get the input dirname. 
-
-call find_namelist_in_file("input.nml", "dart_to_gitm_nml", iunit)
-read(iunit, nml = dart_to_gitm_nml, iostat = io)
-call check_namelist_read(iunit, io, "dart_to_gitm_nml")
+call get_gitm_restart_dirname(gitm_restart_dirname)
 
 write(*,*)
 write(*,*) 'dart_to_gitm: converting DART file ', "'"//trim(dart_to_gitm_input_file)//"'"
-write(*,*) 'to gitm restart files in directory ', "'"//trim(gitm_restart_dirname)//"'" 
+write(*,*) 'to gitm restart files in directory ', "'"//trim(gitm_restart_dirname)//"'"
+
+x_size = get_model_size()
+allocate(statevector(x_size))
 
 !----------------------------------------------------------------------
 ! Reads the valid time, the state, and the target time.
@@ -96,14 +101,12 @@ else
 endif
 call close_restart(iunit)
 
-print *, 'read state vector'
 !----------------------------------------------------------------------
 ! update the current gitm state vector
 ! Convey the amount of time to integrate the model ...
 ! time_manager_nml: stop_option, stop_count increments
 !----------------------------------------------------------------------
 
-print *, 'calling sv to restart file'
 call statevector_to_restart_file(statevector, gitm_restart_dirname, model_time)
 
 if ( advance_time_present ) then
@@ -162,7 +165,7 @@ write(iunit,*)
 ! the end time comes first.
 
 call get_date(adv_to_time,iyear,imonth,iday,ihour,imin,isec)
-write(iunit,'(''#TIMEEND'')') 
+write(iunit,'(''#TIMEEND'')')
 write(iunit,'(i4.4,10x,''year''  )')iyear
 write(iunit,'(i2.2,12x,''month'' )')imonth
 write(iunit,'(i2.2,12x,''day''   )')iday
@@ -172,7 +175,7 @@ write(iunit,'(i2.2,12x,''second'')')isec
 write(iunit,*)
 
 call get_date(model_time,iyear,imonth,iday,ihour,imin,isec)
-write(iunit,'(''#TIMESTART'')') 
+write(iunit,'(''#TIMESTART'')')
 write(iunit,'(i4.4,10x,''year''  )')iyear
 write(iunit,'(i2.2,12x,''month'' )')imonth
 write(iunit,'(i2.2,12x,''day''   )')iday

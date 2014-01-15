@@ -16,7 +16,7 @@ set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
 # The FORCE options are not optional.
 # The VERBOSE options are useful for debugging though
-# some systems don't like the -v option to any of the following 
+# some systems don't like the -v option to any of the following
 switch ("`hostname`")
    case be*:
       # NCAR "bluefire"
@@ -26,7 +26,6 @@ switch ("`hostname`")
       set REMOVE = '/usr/local/bin/rm -fr'
 
       set BASEOBSDIR = /glade/proj3/image/Observations/ACARS
-      set    DARTDIR = ${HOME}/svn/DART/trunk
       set  LAUNCHCMD = mpirun.lsf
    breaksw
 
@@ -37,8 +36,10 @@ switch ("`hostname`")
       set   LINK = 'ln -fvs'
       set REMOVE = 'rm -fr'
 
+      # BASEOBSDIR needs the whole path name except for the date directory and file name.
+      # You can set this to point to directories of synthetic observations, too.
+      # set BASEOBSDIR = /glade/p/image/Observations/Synthetic/UVT_ne30_12H
       set BASEOBSDIR = /glade/p/image/Observations/ACARS
-      set    DARTDIR = ${HOME}/svn/DART/trunk
       set  LAUNCHCMD = mpirun.lsf
    breaksw
 
@@ -50,7 +51,6 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /scratch/scratchdirs/nscollin/ACARS
-      set    DARTDIR = ${HOME}/trunk
       set  LAUNCHCMD = "aprun -n $NTASKS"
    breaksw
 endsw
@@ -97,6 +97,7 @@ cd $temp_dir
 # Get observation sequence file ... or die right away.
 # The observation file names have a time that matches the stopping time of CAM.
 #-----------------------------------------------------------------------------
+# Make sure the file name structure matches the obs you will be using.
 
 set YYYYMM   = `printf %04d%02d ${ATM_YEAR} ${ATM_MONTH}`
 set OBSFNAME = `printf obs_seq%04d%02d%02d%02d ${ATM_YEAR} ${ATM_MONTH} ${ATM_DAY} ${ATM_HOUR}`
@@ -130,7 +131,8 @@ echo "`date` -- END COPY BLOCK"
 # Block 2: Stage the files needed for SAMPLING ERROR CORRECTION
 #
 # The sampling error correction is a lookup table.
-# The tables are stored in the DART distribution.
+# The tables were originally in the DART distribution, but should
+# have been staged to $CASEROOT at setup time.
 # Each ensemble size has its own (static) file.
 # It is only needed if
 # input.nml:&assim_tools_nml:sampling_error_correction = .true.,
@@ -142,7 +144,7 @@ set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
 set SECSTRING = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
 
 if ( $SECSTRING == true ) then
-   set SAMP_ERR_FILE = ${DARTDIR}/system_simulation/final_full_precomputed_tables/final_full.${ensemble_size}
+   set SAMP_ERR_FILE = ${CASEROOT}/final_full.${ensemble_size}
    if (  -e   ${SAMP_ERR_FILE} ) then
       ${COPY} ${SAMP_ERR_FILE} .
    else
@@ -173,24 +175,28 @@ endif
 # files to be as listed above. When being archived, the filenames get a
 # unique extension (describing the assimilation time) appended to them.
 #
-# The inflation file is essentially a duplicate of the DART model state ...  
-# For the purpose of this script, they are the output of a previous assimilation, 
+# The inflation file is essentially a duplicate of the DART model state ...
+# For the purpose of this script, they are the output of a previous assimilation,
 # so they should be named something like prior_inflate_restart.YYYY-MM-DD-SSSSS
 #
 # NOTICE: inf_initial_from_restart and inf_sd_initial_from_restart are somewhat
 # problematic. During the bulk of an experiment, these should be FALSE, since
 # we want to read existing inflation files. However, the first assimilation
 # might need these to be TRUE and then subsequently be set to FALSE.
-# There are two ways to handle this.
-# 1) Create the initial files offline with values of unity by using  
-#    'fill_inflation_restart' and stage them with the appropriate names
-#    in the RUNDIR.
-# 2) create a cookie file called RUNDIR/make_cam_inflation_cookie
+# There are two ways to handle this:
+#
+# 1) Create the initial files offline (perhaps with 'fill_inflation_restart')
+#    and stage them with the appropriate names in the RUNDIR.
+#    You must manually remove the cam_inflation_cookie file
+#    from the RUNDIR in this case.
+#    - OR -
+# 2) create a cookie file called RUNDIR/cam_inflation_cookie
 #    The existence of this file will cause this script to set the
 #    namelist appropriately. This script will 'eat' the cookie file
 #    to prevent this from happening for subsequent executions. If the
 #    inflation file does not exist for them, and it needs to, this script
-#    should die.
+#    should die. The CESM_DART_config script automatically creates a cookie
+#    file to support this option.
 #
 # The strategy is to use the LATEST inflation file from the CESM 'rundir'.
 # After an assimilation, the new inflation values/files will be moved to
@@ -237,14 +243,14 @@ if ( $PRIOR_INF > 0 ) then
       # we are not using an existing inflation file.
       echo "inf_flavor(1) = $PRIOR_INF, using namelist values."
 
-   else if ( -e ../make_cam_inflation_cookie ) then
+   else if ( -e ../cam_inflation_cookie ) then
       # We want to use an existing inflation file, but this is
       # the first assimilation so there is no existing inflation
-      # file. This is the signal we need to to coerce the namelist 
+      # file. This is the signal we need to to coerce the namelist
       # to have different values for this execution ONLY.
       # Since the local namelist comes from CASEROOT each time, we're golden.
 
-      set PRIOR_TF = FALSE    
+      set PRIOR_TF = FALSE
 
 ex input.nml <<ex_end
 g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
@@ -252,7 +258,7 @@ g;inf_sd_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
 wq
 ex_end
 
-   else 
+   else
       # Look for the output from the previous assimilation
       (ls -rt1 ../cam_${PRIOR_INF_OFNAME}.* | tail -n 1 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
@@ -280,14 +286,14 @@ if ( $POSTE_INF > 0 ) then
       # we are not using an existing inflation file.
       echo "inf_flavor(2) = $POSTE_INF, using namelist values."
 
-   else if ( -e ../make_cam_inflation_cookie ) then
+   else if ( -e ../cam_inflation_cookie ) then
       # We want to use an existing inflation file, but this is
       # the first assimilation so there is no existing inflation
-      # file. This is the signal we need to to coerce the namelist 
+      # file. This is the signal we need to to coerce the namelist
       # to have different values for this execution ONLY.
       # Since the local namelist comes from CASEROOT each time, we're golden.
 
-      set POSTE_TF = FALSE    
+      set POSTE_TF = FALSE
 
 ex input.nml <<ex_end
 g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
@@ -315,15 +321,15 @@ else
 endif
 
 # Eat the cookie regardless
-${REMOVE} ../make_cam_inflation_cookie
+${REMOVE} ../cam_inflation_cookie
 
 #=========================================================================
-# Block 4: Convert N CAM restart files to DART initial condition files.
+# Block 4: Convert N CAM initial files to DART initial condition files.
 # cam_to_dart is serial code, we can do all of these at the same time
 # as long as we can have unique namelists for each of them.
 #
 # At the end of the block, we have DART initial condition files  filter_ics.[1-N]
-# that came from pointer files ../rpointer.atm.[1-N].restart
+# that came from pointer files ../rpointer.atm_[1-N]
 #
 # REQUIRED DART namelist settings:
 # &filter_nml:           restart_in_file_name    = 'filter_ics'
@@ -332,6 +338,20 @@ ${REMOVE} ../make_cam_inflation_cookie
 # &cam_to_dart_nml:      cam_to_dart_output_file = 'dart_ics',
 # &dart_to_cam_nml:      dart_to_cam_input_file  = 'dart_restart',
 #                        advance_time_present    = .false.
+#
+# KDR; NOTE; when starting an OSSE by perturbing a single file, use
+# &filter_nml
+#   start_from_restart        = .false.,
+#   output_restart            = .true.,
+#   restart_in_file_name      = "filter_ics.0001",
+#   restart_out_file_name     = "filter_restart", 
+# &ensemble_manager_nml
+#   single_restart_file_in    = .true.,
+#   single_restart_file_out   = .false.,
+# &model_nml
+#   pert_names          = 'T'
+#   pert_sd             = 1.0e-11,
+#   pert_base_vals      = -888888.0d0,
 #=========================================================================
 
 echo "`date` -- BEGIN CAM-TO-DART"
@@ -342,15 +362,15 @@ while ( ${member} <= ${ensemble_size} )
    # Each member will do its job in its own directory.
    # That way, we can do N of them simultaneously -
 
-   # Turns out the .h0. files are timestamped with the START of the
-   # run, which is *not* ATM_DATE_EXT ...  I just link to a whatever
-   # is convenient (since the info is static).
-
    set MYTEMPDIR = member_${member}
    mkdir -p $MYTEMPDIR
    cd $MYTEMPDIR
 
+   # Turns out the .h0. files are timestamped with the START of the
+   # run, which is *not* ATM_DATE_EXT ...  I just link to a whatever
+   # is convenient (since the info is static).
    # make sure there are no old output logs hanging around
+
    $REMOVE output.${member}.cam_to_dart
 
    set ATM_INITIAL_FILENAME = `printf ../../${MYCASE}.cam_%04d.i.${ATM_DATE_EXT}.nc ${member}`
@@ -358,8 +378,8 @@ while ( ${member} <= ${ensemble_size} )
    set     DART_IC_FILENAME = `printf filter_ics.%04d     ${member}`
    set    DART_RESTART_FILE = `printf filter_restart.%04d ${member}`
 
-   sed -e "s/dart_ics/..\/${DART_IC_FILENAME}/" \
-       -e "s/dart_restart/..\/${DART_RESTART_FILE}/" < ../input.nml >! input.nml
+   sed -e "s#dart_ics#../${DART_IC_FILENAME}#" \
+       -e "s#dart_restart#../${DART_RESTART_FILE}#" < ../input.nml >! input.nml
 
    ${LINK} $ATM_INITIAL_FILENAME caminput.nc
    ${LINK} $ATM_HISTORY_FILENAME cam_phis.nc
@@ -388,19 +408,18 @@ echo "`date` -- END CAM-TO-DART for all ${ensemble_size} members."
 # Will result in a set of files : 'filter_restart.xxxx'
 #
 # DART namelist settings required:
-# &filter_nml:           async                  = 0,
-# &filter_nml:           adv_ens_command        = "./no_model_advance.csh",
-# &filter_nml:           restart_in_file_name   = 'filter_ics'
-# &filter_nml:           restart_out_file_name  = 'filter_restart'
-# &filter_nml:           obs_sequence_in_name   = 'obs_seq.out'
-# &filter_nml:           obs_sequence_out_name  = 'obs_seq.final'
-# &filter_nml:           init_time_days         = -1,
-# &filter_nml:           init_time_seconds      = -1,
-# &filter_nml:           first_obs_days         = -1,
-# &filter_nml:           first_obs_seconds      = -1,
-# &filter_nml:           last_obs_days          = -1,
-# &filter_nml:           last_obs_seconds       = -1,
-# &ensemble_manager_nml: single_restart_file_in = .false.
+# &filter_nml:           restart_in_file_name    = 'filter_ics'
+# &filter_nml:           restart_out_file_name   = 'filter_restart'
+# &filter_nml:           obs_sequence_in_name    = 'obs_seq.out'
+# &filter_nml:           obs_sequence_out_name   = 'obs_seq.final'
+# &filter_nml:           init_time_days          = -1,
+# &filter_nml:           init_time_seconds       = -1,
+# &filter_nml:           first_obs_days          = -1,
+# &filter_nml:           first_obs_seconds       = -1,
+# &filter_nml:           last_obs_days           = -1,
+# &filter_nml:           last_obs_seconds        = -1,
+# &ensemble_manager_nml: single_restart_file_in  = .false.
+# &ensemble_manager_nml: single_restart_file_out = .false.
 #
 #=========================================================================
 
@@ -413,22 +432,9 @@ set ATM_HISTORY_FILENAME = `ls -1t ../${MYCASE}.cam*.h0.* | head -n 1`
 ${LINK} $ATM_INITIAL_FILENAME caminput.nc
 ${LINK} $ATM_HISTORY_FILENAME cam_phis.nc
 
-# On yellowstone, you can explore task layouts with the following:
-if ( $?LSB_PJL_TASK_GEOMETRY ) then
-   setenv ORIGINAL_LAYOUT "${LSB_PJL_TASK_GEOMETRY}"
-
-   # setenv GEOMETRY_32_1NODE \
-   #    "{(0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31)}";
-   # setenv LSB_PJL_TASK_GEOMETRY "${GEOMETRY_32_1NODE}"
-endif
-
 echo "`date` -- BEGIN FILTER"
 ${LAUNCHCMD} ${EXEROOT}/filter || exit -7
 echo "`date` -- END FILTER"
-
-if ( $?LSB_PJL_TASK_GEOMETRY ) then
-   setenv LSB_PJL_TASK_GEOMETRY "${ORIGINAL_LAYOUT}"
-endif
 
 ${MOVE} Prior_Diag.nc      ../cam_Prior_Diag.${ATM_DATE_EXT}.nc
 ${MOVE} Posterior_Diag.nc  ../cam_Posterior_Diag.${ATM_DATE_EXT}.nc
@@ -437,7 +443,7 @@ ${MOVE} dart_log.out       ../cam_dart_log.${ATM_DATE_EXT}.out
 
 # Accomodate any possible inflation files
 # 1) rename file to reflect current date
-# 2) move to CENTRALDIR so the DART INFLATION BLOCK works next time and
+# 2) move to RUNDIR so the DART INFLATION BLOCK works next time and
 #    that they can get archived.
 
 foreach FILE ( ${PRIOR_INF_OFNAME} ${POSTE_INF_OFNAME} ${PRIOR_INF_DIAG} ${POSTE_INF_DIAG} )
@@ -499,45 +505,15 @@ cd ${RUNDIR}
 set member = 1
 while ( ${member} <= ${ensemble_size} )
 
-   set n4 = `printf %04d $member`
+   set inst_string = `printf _%04d $member`
 
-   set LND_RESTART_FILENAME = `printf ${MYCASE}.clm2_%04d.r.${ATM_DATE_EXT}.nc ${member}`
-   set ICE_RESTART_FILENAME = `printf ${MYCASE}.cice_%04d.r.${ATM_DATE_EXT}.nc ${member}`
-   set ATM_INITIAL_FILENAME = `printf ${MYCASE}.cam_%04d.i.${ATM_DATE_EXT}.nc  ${member}`
+   set ATM_INITIAL_FILENAME = ${MYCASE}.cam${inst_string}.i.${ATM_DATE_EXT}.nc
 
-   ${LINK} ${LND_RESTART_FILENAME} clm_restart_${n4}.nc || exit -9
-   ${LINK} ${ICE_RESTART_FILENAME} ice_restart_${n4}.nc || exit -9
-   ${LINK} ${ATM_INITIAL_FILENAME} cam_initial_${n4}.nc || exit -9
+   ${LINK} ${ATM_INITIAL_FILENAME} cam_initial${inst_string}.nc || exit -9
 
    @ member++
 
 end
-
-#-------------------------------------------------------------------------
-# We have to communicate the current model time to the env_run.xml script
-# CAM is running in a 'perpetual startup' mode, so it constantly needs new
-# start time information. The other models are running 'restart', so they
-# keep track of it internally.
-#-------------------------------------------------------------------------
-
-cd ${CASEROOT}
-
-set YYYYMMDD = `printf %04d-%02d-%02d ${ATM_YEAR} ${ATM_MONTH} ${ATM_DAY}`
-set    SSSSS = `printf %05d ${ATM_SECONDS}`
-
-./xmlchange RUN_STARTDATE=${YYYYMMDD}
-./xmlchange START_TOD=${SSSSS}
-
-#-------------------------------------------------------------------------
-# we (DART) do not need these files, and CESM does not need them either
-# to continue a run.  if we remove them here they do not get moved to
-# the short-term archiver.
-#-------------------------------------------------------------------------
-
-${REMOVE} ${RUNDIR}/*.rs.*
-${REMOVE} ${RUNDIR}/*.rh0.*
-${REMOVE} ${RUNDIR}/*.rs1.*
-${REMOVE} ${RUNDIR}/PET*ESMF_LogFile
 
 #-------------------------------------------------------------------------
 # Cleanup

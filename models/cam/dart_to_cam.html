@@ -4,6 +4,7 @@
 <HEAD>
 <TITLE>program dart_to_cam</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -13,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
@@ -85,60 +86,68 @@ or relinked as necessary.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
 Character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration is:
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / dart_to_cam_nml / </em> 
-   dart_to_cam_input_file, dart_to_cam_output_file, &amp;
-   advance_time_present
+&amp;dart_to_cam_nml
+   dart_to_cam_input_file  = 'dart_ics',
+   dart_to_cam_output_file = 'caminput.nc',
+   advance_time_present    = .true.,
+   /
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
+<br />
+<br />
 
-<P>
-This namelist is always read from a file called <em class=file>input.nml</em>.
-</P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
 
-<TR><!--contents--><TD valign=top>dart_to_cam_input_file</TD>
-    <!--  type  --><TD valign=top>character(len=128)</TD>
-    <!--descript--><TD>The name of the DART restart file containing the CAM state. 
-                       <em class=units>[default: 'dart_ics']</em></TD></TR>
+<TBODY valign=top>
 
-<TR><!--contents--><TD valign=top>dart_to_cam_output_file</TD>
-    <!--  type  --><TD valign=top>character(len=128)</TD>
-    <!--descript--><TD>The name of the CAM restart netcdf file.
-                       <em class=units>[default: 'caminput.nc']</em></TD></TR>
+<TR><TD>dart_to_cam_input_file</TD>
+    <TD>character(len=128)</TD>
+    <TD>The name of the DART restart file containing the CAM state. 
+</TD></TR>
 
-<TR><!--contents--><TD valign=top>advance_time_present</TD>
-    <!--  type  --><TD valign=top>logical</TD>
-    <!--descript--><TD>Set to .false. for DART initial condition
-                       and restart files.  Use the default setting for the files
-                       written by filter during a model advance.
-                       <em class=units>[default: .true.]</em></TD></TR>
+<TR><TD>dart_to_cam_output_file</TD>
+    <TD>character(len=128)</TD>
+    <TD>The name of the CAM restart netcdf file.
+</TD></TR>
 
+<TR><TD>advance_time_present</TD>
+    <TD>logical</TD>
+    <TD>Set to .false. for DART initial condition and restart files.  Use the
+.true. setting for the files written by filter during a model advance.
+</TD></TR>
+
+</TBODY> 
 </TABLE>
-
 </div>
+
+<br />
 <br />
 
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 assim_model_mod.f90
@@ -158,7 +167,7 @@ utilities_mod.f90
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES Read</H2>
 <UL>
     <LI>DART namelist file; <em class=file>input.nml</em></LI>
@@ -177,7 +186,7 @@ utilities_mod.f90
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <P>
 none
@@ -188,14 +197,14 @@ none
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <P>
 none - all error messages come from modules that have their own documentation.
 </P>
 
 <A NAME="Bugs"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>KNOWN BUGS</H2>
 <P>
 none
@@ -206,7 +215,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 None.
@@ -217,7 +226,7 @@ None.
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

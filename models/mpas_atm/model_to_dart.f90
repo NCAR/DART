@@ -43,7 +43,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character(len=128) :: model_to_dart_output_file  = 'dart.ud'
+character(len=128) :: model_to_dart_output_file  = 'dart_ics'
 logical            :: print_data_ranges          = .true.
 
 namelist /model_to_dart_nml/    &

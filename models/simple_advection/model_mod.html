@@ -4,32 +4,47 @@
 <HEAD>
 <TITLE>module model_mod (simple_advection)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css">
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<center>
-<A HREF="#Interface">INTERFACES</A> /
+<H1>MODULE model_mod (simple_advection)</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
 <A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
-</center>
 
-<H1>MODULE model_mod (simple_advection)</H1>
-<!-- version tag follows, do not edit --><P>$Id$</P>
+<H2>Overview</H2>
+
+
 
 <P>
-DART interface module for the simple advection model. The 17 public interfaces
+DART interface module for the simple advection model. The 16 public interfaces
 are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
 and do spatial interpolation for model state variables.
-</P>
-<P>
+</P> <P>
 This model is on a periodic one-dimensional domain. A wind field is 
 modeled using Burger's Equation with an upstream semi-lagrangian 
 differencing. This diffusive numerical scheme is stable and forcing
@@ -44,7 +59,7 @@ parameter lagrangian_for_wind to .false. The Eulerian differencing is
 both numerically unstable and subject to shock formation. However, it
 can sometimes be made stable in assimilation mode (see recent work by
 Majda and collaborators). 
-
+</P> <P>
 The model state includes a single passive tracer that is advected by
 the wind field using semi-lagrangian upstream differencing. The state
 also includes a tracer source value at each gridpoint. At each time
@@ -52,7 +67,7 @@ step, the source is added into the concentration at each gridpoint.
 There is also a constant global destruction of tracer that is controlled
 by the namelist parameter destruction_rate. The appropriate percentage
 of tracer is destroyed at each gridpoint at each timestep. 
-
+</P> <P>
 The model also includes an associated model for the tracer source rate.
 At each gridpoint, there is a value of the time mean source rate and
 a value of the phase offset for a diurnal component of the source rate.
@@ -70,10 +85,139 @@ amplitude of the diurnal cycle of the tracer source.
 
 </P>
 
+<!--===================== DESCRIPTION OF A NAMELIST =====================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;model_nml
+   num_grid_points        = 10,
+   grid_spacing_meters    = 100000.0,
+   time_step_days         = 0,
+   time_step_seconds      = 3600,  
+   mean_wind              = 20.0, 
+   wind_random_amp        = 0.00027778,
+   wind_damping_rate      = 0.0000027878, 
+   lagrangian_for_wind    = .true., 
+   destruction_rate       = 0.000055556,
+   source_random_amp_frac = 0.00001,
+   source_damping_rate    = 0.0000027878,
+   source_diurnal_rel_amp = 0.05,
+   source_phase_noise     = 0.0,
+   output_state_vector  = .false.
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD> num_grid_points </TD>
+    <TD> integer </TD>
+    <TD>Number of grid points in model.
+State vector size is 5 times this number.
+</TD></TR>
+
+<TR><TD> grid_spacing_meters </TD>
+    <TD> integer </TD>
+    <TD>Grid spacing in meters. 
+</TD></TR>
+
+<TR><TD> time_step_days </TD>
+    <TD> real(r8) </TD>
+    <TD>Number of days for dimensional timestep, mapped to delta_t.
+</TD></TR>
+
+<TR><TD> time_step_seconds </TD>
+    <TD> real(r8) </TD>
+    <TD>Number of seconds for dimensional timestep, mapped to delta_t.
+</TD></TR>
+
+<TR><TD> mean_wind </TD>
+    <TD> real(r8) </TD>
+    <TD>Base wind velocity (expected value over time) in meters/second.
+</TD></TR>
+
+<TR><TD> wind_random_amp </TD>
+    <TD> real(r8) </TD>
+    <TD>Random walk amplitude for wind in meters/second<sup>2</sup>.
+</TD></TR>
+
+<TR><TD> wind_damping_rate </TD>
+    <TD> real(r8) </TD>
+    <TD>Rate of damping towards mean wind value in fraction/second.
+</TD></TR>
+
+<TR><TD> lagrangian_for_wind </TD>
+    <TD> logical </TD>
+    <TD>Can use Lagrangian (stable) or Eulerian (unstable) scheme for wind.
+</TD></TR>
+
+<TR><TD> destruction_rate </TD>
+    <TD> real(r8) </TD>
+    <TD>Tracer destruction rate in fraction/second.
+</TD></TR>
+
+<TR><TD> source_random_amp_frac </TD>
+    <TD> real(r8) </TD>
+    <TD>Random walk amplitude for source as a
+fraction of mean source (per second)<sup>2</sup>.
+</TD></TR>
+
+<TR><TD> source_damping_rate </TD>
+    <TD> real(r8) </TD>
+    <TD>Damping towards mean source rate in fraction/second.
+</TD></TR>
+
+<TR><TD> source_diurnal_rel_amp </TD>
+    <TD> real(r8) </TD>
+    <TD>Relative amplitude of diurnal cycle of source (dimensionless). 
+</TD></TR>
+
+<TR><TD> source_phase_noise </TD>
+    <TD> real(r8) </TD>
+    <TD>Amplitude of gaussian noise to be added to source phase offset (per second).
+</TD></TR>
+
+<TR><TD> output_state_vector </TD>
+    <TD> logical </TD>
+    <TD>Controls the output to netCDF files. If .true., output the 
+raw dart state vector. If .false. output the prognostic version 
+(gridded data) for easier plotting (recommended). 
+</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
 <!--==================================================================-->
 
 <A NAME="OtherModulesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
 types_mod
@@ -93,7 +237,7 @@ random_seq_mod
 <!--==================================================================-->
 
 <A NAME="Interface"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <TABLE>
@@ -115,12 +259,6 @@ random_seq_mod
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
 </TABLE>
-
-<P>
-Optional namelist interface
-<a href="#Namelist"><em class=code>&amp;model_nml</em></a>
-may be read from file <em class=file>input.nml</em>.
-</P>
 
 <P>
    A note about documentation style.
@@ -660,137 +798,12 @@ A NULL INTERFACE in this model.
 </div>
 <br>
 
-<!--===================== DESCRIPTION OF A NAMELIST =====================-->
-
-<A NAME="Namelist"></A>
-<HR>
-<H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-The declarations have a different syntax, naturally.
-</P>
-<div class=namelist>
-<pre>
-<em class=call>namelist / model_nml / </em> &amp;
-     num_grid_points, grid_spacing_meters, time_step_days, time_step_seconds, &amp;
-     mean_wind, wind_random_amp, wind_damping_rate, lagrangian_for_wind, &amp;
-     destruction_rate, source_random_amp_frac, source_damping_rate, &amp;
-     source_diurnal_rel_amp, source_phase_noise, output_state_vector
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-This namelist is read in a file called <em class=file>input.nml</em>
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-
-<TR><!--contents--><TD valign=top>num_grid_points </TD>
-    <!--  type  --><TD valign=top>integer         </TD>
-    <!--descript--><TD>Number of grid points in model, default is 10. 
-                       State vector size is 5 times this number.
-                   </TD></TR>
-
-<TR><!--contents--><TD valign=top>grid_spacing_meters </TD>
-    <!--  type  --><TD valign=top>integer             </TD>
-    <!--descript--><TD>Grid spacing in meters. 
-                       Default 100,000 (100 Km)
-                    </TD></TR>
-
-<TR><!--contents--><TD valign=top>time_step_days       </TD>
-    <!--  type  --><TD valign=top>real(r8)             </TD>
-    <!--descript--><TD>Number of days for dimensional timestep,
-                       mapped to delta_t. Default 0
-                    </TD></TR>
-
-<TR><!--contents--><TD valign=top>time_step_seconds    </TD>
-    <!--  type  --><TD valign=top>real(r8)             </TD>
-    <!--descript--><TD>Number of seconds for dimensional timestep,
-                       mapped to delta_t. Default 3600
-                    </TD></TR>
-
-<TR><!--contents--><TD valign=top>mean_wind            </TD>
-    <!--  type  --><TD valign=top>real(r8)             </TD>
-    <!--descript--><TD>Base wind velocity (expected value over
-                       time) in meters/second.  Default 20
-                    </TD></TR>
-
-<TR><!--contents--><TD valign=top>wind_random_amp      </TD>
-    <!--  type  --><TD valign=top>real(r8)             </TD>
-    <!--descript--><TD>Random walk amplitude for wind
-                       in meters/second<sup>2</sup>.  Default 1/3600
-                    </TD></TR>
-
-<TR><!--contents--><TD valign=top>wind_damping_rate    </TD>
-    <!--  type  --><TD valign=top>real(r8)             </TD>
-    <!--descript--><TD>Rate of damping towards mean wind value
-                       in fraction/second.  Default 0.01/3600
-                    </TD></TR>
-
-<TR><!--contents--><TD valign=top>lagrangian_for_wind  </TD>
-    <!--  type  --><TD valign=top>logical              </TD>
-    <!--descript--><TD>Can use Lagrangian (stable) or
-                       Eulerian (unstable) scheme for wind.
-                       Default .true. (Lagrangian)
-                    </TD></TR>
-
-<TR><!--contents--><TD valign=top>destruction_rate     </TD>
-    <!--  type  --><TD valign=top>real(r8)             </TD>
-    <!--descript--><TD>Tracer destruction rate in fraction/second.
-                       Default 0.2/3600
-                    </TD></TR>
-
-<TR><!--contents--><TD valign=top>source_random_amp_frac</TD>
-    <!--  type  --><TD valign=top>real(r8)              </TD>
-    <!--descript--><TD>Random walk amplitude for source as a
-                       fraction of mean source (per second)<sup>2</sup>.
-                       Default 0.00001
-                    </TD></TR>
-
-<TR><!--contents--><TD valign=top>source_damping_rate  </TD>
-    <!--  type  --><TD valign=top>real(r8)             </TD>
-    <!--descript--><TD>Damping towards mean source rate
-                       in fraction/second.  Default 0.01/3600
-                    </TD></TR>
-
-<TR><!--contents--><TD valign=top>source_diurnal_rel_amp</TD>
-    <!--  type  --><TD valign=top>real(r8)              </TD>
-    <!--descript--><TD>Relative amplitude of diurnal cycle of
-                       source (dimensionless).  Default 0.5
-                    </TD></TR>
-
-<TR><!--contents--><TD valign=top>source_phase_noise</TD>
-    <!--  type  --><TD valign=top>real(r8)              </TD>
-    <!--descript--><TD>Amplitude of gaussian noise to be added
-                       to source phase offset (per second).
-                       Default 0.0
-                    </TD></TR>
-
-<TR><!--contents--><TD valign=top>output_state_vector  </TD>
-    <!--  type  --><TD valign=top>logical              </TD>
-    <!--descript--><TD>Controls the output to netCDF files. If .true., 
-         output the raw dart state vector. Otherwise, output the 
-         prognostic version (gridded data) for easier plotting (recommended). 
-         Defaults .false. (prognostic format)
-                    </TD></TR>
-
-</TABLE>
-
-</div>
-<br>
-
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL> 
     <LI>model_mod.nml in input.nml
@@ -802,7 +815,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ol>
 <li> none </li>
@@ -813,7 +826,7 @@ This namelist is read in a file called <em class=file>input.nml</em>
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <div class=errors>
 <TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
@@ -838,7 +851,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 none at this time
@@ -849,7 +862,7 @@ none at this time
 <!--==================================================================-->
 
 <A NAME="PrivateComponents"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PRIVATE COMPONENTS</H2>
 <P>
 N/A
@@ -860,7 +873,7 @@ N/A
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<HR>
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

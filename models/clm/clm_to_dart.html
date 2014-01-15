@@ -5,14 +5,17 @@
 <HEAD>
 <TITLE>program clm_to_dart</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
+<H1>PROGRAM <em class=program>clm_to_dart</em></H1>
+
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P><a href="../../index.html">DART Documentation Main Index</a><br />
@@ -31,14 +34,14 @@
 <A HREF="#FuturePlans">PLANS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
 
-<H1>PROGRAM <em class=program>clm_to_dart</em></H1>
+<H2>Overview</H2>
 
 <P>
-   <em class=program>clm_to_dart</em> is the program that harvests some metadata from
+   <em class=program>clm_to_dart</em> is the program that reads metadata from
    a CLM history file (usually linked to <em class=file>clm_history.nc</em>), the model
    state from a CLM restart file (usually linked to <em class=file>clm_restart.nc</em>) 
    and creates a DART output/restart file 
-   (e.g. <em class=file>perfect_ics, filter_ics, ... </em>).
+   (e.g. <em class=file>perfect_ics, filter_ics</em>).
    <br />
    <br />
    The list of variables used to create the DART state vector are specified in
@@ -69,62 +72,100 @@ changed via the namelist.
 <!--==================================================================-->
 
 <A NAME="Namelist"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
 Character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / clm_to_dart_nml / </em> clm_to_dart_output_file
+&amp;clm_to_dart_nml
+   clm_to_dart_output_file      = 'dart_ics',
+   /
+</pre>
+</div>
+<br />
+<div class=namelist>
+<pre>
+&amp;model_nml
+   clm_restart_filename         = 'clm_restart.nc',
+   clm_history_filename         = 'clm_history.nc',
+   calendar                     = 'Gregorian',
+   clm_state_variables          = 'frac_sno',    'KIND_SNOWCOVER_FRAC',
+                                  'SNOWDP',      'KIND_SNOW_THICKNESS',
+                                  'T_SOISNO',    'KIND_SOIL_TEMPERATURE',
+                                  'leafc',       'KIND_LEAF_CARBON'
+   /
 
-<em class=call>namelist / model_nml / </em> clm_history_filename, clm_restart_filename, calendar, clm_state_variables
+(partial list)
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
-<P>
-<em class=code>clm_to_dart_nml</em> and <em class=code>model_nml</em> 
-are always read from a file called <em class=file>input.nml</em>.
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-
-<TR><!--contents--><TD valign=top>clm_to_dart_output_file&nbsp;&nbsp;&nbsp;</TD>
-    <!--  type  --><TD valign=top>character(len=128)&nbsp;&nbsp;&nbsp;</TD>
-    <!--descript--><TD>The name of the DART file containing the model state
-                       derived from the CLM restart file.
-                       <em class=units>[default: 'dart_ics']</em></TD></TR>
-</TABLE>
-
-</div>
+<br />
 <br />
 
-<div class=indent1>
-<!-- Description -->
-<P>
-The full description of the <em class=code>model_nml</em> namelist is documented 
-in the <a href="model_mod.html#Namelist">clm model_mod</a>, but the most important
-variable for <em class=program>clm_to_dart</em> is repeated here. 
-</P>
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
+<P>The clm_to_dart namelist items:</P>
 
-<TR><!--contents--><TD valign=top>clm_state_variables&nbsp;&nbsp;&nbsp;</TD>
-    <!--  type  --><TD valign=top>character(len=NF90_MAX_NAME)::<br />
-                              dimension(160)&nbsp;&nbsp;&nbsp;</TD>
-    <!--descript--><TD>The list of variable names in the CLM restart file to use to
-                       create the DART state vector and their corresponding DART kind.
-                       <em class=units>[default: see example below]</em></TD></TR>
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD> clm_to_dart_output_file </TD>
+    <TD> character(len=128) </TD>
+    <TD>The name of the DART file containing the model state
+derived from the CLM restart file.
+</TD></TR>
+</TBODY> 
 </TABLE>
+</div>
+
+<br />
+<br />
+
+
+<P>The &amp;model_nml namelist here is a subset of the full namelist.
+Only the values used by the converter are listed here.
+The full description of the <em class=code>model_nml</em> namelist is documented 
+in the CLM <a href="model_mod.html#Namelist">model_mod</a> documentation, but the 
+most important variable for <em class=program>clm_to_dart</em> is repeated here. 
+</P>
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD valign=top> clm_state_variables </TD>
+    <TD valign=top> character(len=NF90_MAX_NAME) ::<br />
+                    dimension(160) </TD>
+    <TD>The list of variable names in the CLM restart file to use to
+create the DART state vector and their corresponding DART kind.
+</TD></TR>
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<P>For example:</P>
 <pre>
 &amp;clm_vars_nml
    clm_state_variables = 'frac_sno',   'KIND_SNOWCOVER_FRAC',
@@ -137,13 +178,10 @@ variable for <em class=program>clm_to_dart</em> is repeated here.
   /
 </pre>
 
-</div>
-<br />
-
 <!--==================================================================-->
 
 <A NAME="Modules"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
 <PRE>
 assim_model_mod
@@ -162,7 +200,7 @@ utilities_mod
 <!--==================================================================-->
 
 <A NAME="FilesUsed"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES Read</H2>
 <UL><LI>clm history file; <em class=file>clm_history.nc</em></LI>
     <LI>clm restart file; <em class=file>clm_restart.nc</em></LI>
@@ -178,7 +216,7 @@ utilities_mod
 <!--==================================================================-->
 
 <A NAME="References"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <P>
 none
@@ -189,7 +227,7 @@ none
 <!--==================================================================-->
 
 <A NAME="Errors"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
 <P>
 none - all error messages come from modules that have their own documentation.
@@ -205,7 +243,7 @@ none
 <!--==================================================================-->
 
 <A NAME="FuturePlans"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
 None.
@@ -216,7 +254,7 @@ None.
 <!--==================================================================-->
 
 <A NAME="Legalese"></A>
-<hr />
+<div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
 
 <P>

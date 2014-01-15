@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-../../../mkmf/mkmf -p preprocess -t ../../../mkmf/mkmf.template   \
+../../../mkmf/mkmf -p preprocess -t ../../../mkmf/mkmf.template \
  -a "../../.." path_names_preprocess
 
 exit $status

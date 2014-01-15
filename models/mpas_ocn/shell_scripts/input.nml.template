@@ -11,7 +11,7 @@
    output_interval       = 1,
    restart_in_file_name  = "perfect_ics",
    restart_out_file_name = "perfect_restart",
-   obs_seq_in_file_name  = "obs_seq.1800obs",
+   obs_seq_in_file_name  = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.out",
    adv_ens_command       = "./advance_model.csh",
    output_timestamps     = .false.,
@@ -46,7 +46,7 @@
    output_forward_op_errors = .false.,
    output_timestamps        = .false.,
    output_inflation         = .true.,
-   trace_execution          = .false.,
+   trace_execution          = .true.,
    silence                  = .false.,
 
    inf_flavor                  = 0,                       0,
@@ -63,6 +63,9 @@
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
    inf_sd_lower_bound          = 0.6,                     0.0
+   /
+
+&mpi_utilities_nml
    /
 
 &smoother_nml
@@ -82,7 +85,7 @@
 &assim_tools_nml
    filter_kind                     = 1,
    cutoff                          = 1000000.0,
-   sort_obs_inc                    = .true.,
+   sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
@@ -93,15 +96,18 @@
 
 &location_nml
    horiz_dist_only             = .true.,
-   vert_normalization_pressure = 100000000.0,
-   vert_normalization_height   = 80000.0,
-   vert_normalization_level    = 100.0,
-   approximate_distance        = .false.,
+   vert_normalization_pressure = 100000.0,
+   vert_normalization_height   = 10000.0,
+   vert_normalization_level    = 20.0,
+   approximate_distance        = .true.,
    nlon                        = 71,
    nlat                        = 36,
    output_box_info             = .false.,
    print_box_level             = 0,
-  /
+   /
+
+&xyz_location_nml
+   /
 
 &cov_cutoff_nml
    select_localization = 1
@@ -118,8 +124,59 @@
    write_binary_obs_sequence = .false.
    /
 
+# options for assimilate and evaluate include:
+# (first column is the obs, second is what needs to be in the state vector
+# to compute it.)
+# ARGO_U_CURRENT_COMPONENT,      KIND_U_CURRENT_COMPONENT
+# ARGO_V_CURRENT_COMPONENT,      KIND_V_CURRENT_COMPONENT
+# ARGO_SALINITY,                 KIND_SALINITY
+# ARGO_TEMPERATURE,              KIND_TEMPERATURE
+# ADCP_U_CURRENT_COMPONENT,      KIND_U_CURRENT_COMPONENT
+# ADCP_V_CURRENT_COMPONENT,      KIND_V_CURRENT_COMPONENT
+# ADCP_SALINITY,                 KIND_SALINITY
+# ADCP_TEMPERATURE,              KIND_TEMPERATURE
+# FLOAT_SALINITY,                KIND_SALINITY
+# FLOAT_TEMPERATURE,             KIND_TEMPERATURE
+# DRIFTER_U_CURRENT_COMPONENT,   KIND_U_CURRENT_COMPONENT
+# DRIFTER_V_CURRENT_COMPONENT,   KIND_V_CURRENT_COMPONENT
+# DRIFTER_SALINITY,              KIND_SALINITY
+# DRIFTER_TEMPERATURE,           KIND_TEMPERATURE
+# GLIDER_U_CURRENT_COMPONENT,    KIND_U_CURRENT_COMPONENT
+# GLIDER_V_CURRENT_COMPONENT,    KIND_V_CURRENT_COMPONENT
+# GLIDER_SALINITY,               KIND_SALINITY
+# GLIDER_TEMPERATURE,            KIND_TEMPERATURE
+# MOORING_U_CURRENT_COMPONENT,   KIND_U_CURRENT_COMPONENT
+# MOORING_V_CURRENT_COMPONENT,   KIND_V_CURRENT_COMPONENT
+# MOORING_SALINITY,              KIND_SALINITY
+# MOORING_TEMPERATURE,           KIND_TEMPERATURE
+# MOORING_PRESSURE,              KIND_PRESSURE
+# BOTTLE_SALINITY,               KIND_SALINITY
+# BOTTLE_TEMPERATURE,            KIND_TEMPERATURE
+# CTD_SALINITY,                  KIND_SALINITY
+# CTD_TEMPERATURE,               KIND_TEMPERATURE
+# TCTD_SALINITY,                 KIND_SALINITY
+# TCTD_TEMPERATURE,              KIND_TEMPERATURE
+# STD_SALINITY,                  KIND_SALINITY
+# STD_TEMPERATURE,               KIND_TEMPERATURE
+# XCTD_SALINITY,                 KIND_SALINITY
+# XCTD_TEMPERATURE,              KIND_TEMPERATURE
+# MBT_SALINITY,                  KIND_SALINITY
+# MBT_TEMPERATURE,               KIND_TEMPERATURE
+# XBT_SALINITY,                  KIND_SALINITY
+# XBT_TEMPERATURE,               KIND_TEMPERATURE
+# DBT_SALINITY,                  KIND_SALINITY
+# DBT_TEMPERATURE,               KIND_TEMPERATURE
+# APB_SALINITY,                  KIND_SALINITY
+# APB_TEMPERATURE,               KIND_TEMPERATURE
+# DOPPLER_U_CURRENT_COMPONENT,   KIND_U_CURRENT_COMPONENT
+# DOPPLER_V_CURRENT_COMPONENT,   KIND_V_CURRENT_COMPONENT
+# DOPPLER_W_CURRENT_COMPONENT,   KIND_W_CURRENT_COMPONENT
+# SATELLITE_MICROWAVE_SST,       KIND_TEMPERATURE
+# SATELLITE_INFRARED_SST,        KIND_TEMPERATURE
+
 &obs_kind_nml
-   assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE'
+   assimilate_these_obs_types = 'null',
+   evaluate_these_obs_types = 'ARGO_TEMPERATURE'
    /
 
 &assim_model_nml
@@ -128,38 +185,46 @@
    /
 
 &model_nml
-   model_analysis_filename      = '../data/mpas_analysis.nc',
-   grid_definition_filename     = '../data/mpas_analysis.nc',
+   model_analysis_filename      = '../data/mpas_ocean_in.nc'
+   grid_definition_filename     = '../data/mpas_ocean_in.nc'
    assimilation_period_days     = 0,
    assimilation_period_seconds  = 3600,
    output_state_vector          = .true., 
    model_perturbation_amplitude = 0.0001,
    calendar                     = 'Gregorian',
-   debug = 1
+   use_u_for_wind               = .false.,
+   use_rbf_option               = 2,
+   update_u_from_reconstruct    = .false.,
+   use_increments_for_u_update  = .false.,
+   xyzdebug                     = 0,
+   debug                        = 2
    /
 
+# NOTE: h(nVertLevels,nCells,Time) is layer thickness, not SSH
+#  we don't have a kind defined for thickness yet.
+#  examples of other kinds which could be in state vector.
+#  the temperature should really be potential temp, but the
+#  conversion routines (at the end of the model_mod.f90 file)
+#  are commented out here because they're for the atmosphere not ocean.
+#  we need to add a case for temp vs potential temp, and conversion code.
+#                    'tracer1',      'KIND_TRACER_CONCENTRATION' 
+#                          'u',      'KIND_EDGE_NORMAL_SPEED',
+#                'temperature',      'KIND_POTENTIAL_TEMPERATURE',
+
 &mpas_vars_nml
-   mpas_state_variables = 
-                          'theta',                 'KIND_POTENTIAL_TEMPERATURE',
-                          'uReconstructZonal',     'KIND_U_WIND_COMPONENT',
-                          'uReconstructMeridional','KIND_V_WIND_COMPONENT',
-                          'surface_pressure',      'KIND_SURFACE_PRESSURE'
-                          'w',                     'KIND_VERTICAL_VELOCITY',
-                          'rho',                   'KIND_DENSITY',
-                          'qv',                    'KIND_VAPOR_MIXING_RATIO',
-                          'qc',                    'KIND_CLOUDWATER_MIXING_RATIO',
-                          'qr',                    'KIND_RAINWATER_MIXING_RATIO',
-                          'qi',                    'KIND_ICE_MIXING_RATIO',
-                          'qs',                    'KIND_SNOW_MIXING_RATIO',
-                          'qg',                    'KIND_GRAUPEL_MIXING_RATIO'
+   mpas_state_variables = 'temperature',            'KIND_TEMPERATURE',
+                          'salinity',               'KIND_SALINITY',
+                          'rho',                    'KIND_DENSITY',
+                          'uReconstructMeridional', 'KIND_U_CURRENT_COMPONENT',
+                          'uReconstructZonal',      'KIND_V_CURRENT_COMPONENT',
   /
 
 &model_to_dart_nml
-   model_to_dart_output_file  = 'dart.ud',
+   model_to_dart_output_file  = 'dart_ics',
   /
 
 &dart_to_model_nml
-   dart_to_model_input_file = 'dart.ic',
+   dart_to_model_input_file = 'dart_restart',
    advance_time_present     = .true.,
   / 
 
@@ -176,7 +241,7 @@
    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90', 
    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90', 
   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90', 
-               input_files = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90'
+               input_files = '../../../obs_def/obs_def_ocean_mod.f90'
    /
 
 &obs_sequence_tool_nml
@@ -238,41 +303,51 @@
    /
 
 &obs_diag_nml
-   obs_sequence_name  = 'obs_seq.final',
-   iskip_days         = 0,
-   obs_select         = 1,
-   rat_cri            = 4.0,
-   input_qc_threshold = 3.0,
-   bin_width_seconds = 0,
-   lonlim1   = 0.0, 0.0, 0.5, -1.0,
-   lonlim2   = 1.0, 0.5, 1.5, -1.0,
-   reg_names = 'whole', 'yin', 'yang', 'bogus',
-   verbose   = .false.
+   obs_sequence_name = '',
+   obs_sequence_list = 'file_list.txt',
+   first_bin_center =  2007,  1,  1, 6, 0, 0 ,
+   last_bin_center  =  2007,  2,  1, 0, 0, 0 ,
+   bin_separation   =     0, 0, 0, 6, 0, 0 ,
+   bin_width        =     0, 0, 0, 6, 0, 0 ,
+   time_to_skip     =     0, 0, 0, 0, 0, 0 ,
+   max_num_bins     = 1000,
+   trusted_obs      = 'null',
+   Nregions   = 3,
+   lonlim1    = 285.0,  20.0, 120.0,
+   lonlim2    =  20.0, 120.0, 270.0,
+   latlim1    = -90.0, -90.0, -90.0,
+   latlim2    =  90.0,  25.0,  90.0,
+   reg_names  = 'Atlantic', 'Indian', 'Pacific',
+   create_rank_histogram = .true.,
+   outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
+   verbose               = .true.
+
    /
 
 
 # possible vertical coordinate systems are:
 # VERTISUNDEF VERTISSURFACE VERTISLEVEL VERTISPRESSURE VERTISHEIGHT VERTISSCALEHEIGHT
-   kind_of_interest = 'KIND_SURFACE_PRESSURE',
-   kind_of_interest = 'KIND_POTENTIAL_TEMPERATURE',
-   kind_of_interest = 'KIND_U_WIND_COMPONENT',
-   kind_of_interest = 'KIND_V_WIND_COMPONENT',
+   kind_of_interest = 'KIND_TEMPERATURE',
+   kind_of_interest = 'KIND_SALINITY',
+   kind_of_interest = 'KIND_U_CURRENT',
+   kind_of_interest = 'KIND_V_CURRENT',
    kind_of_interest = 'KIND_DENSITY',
-   kind_of_interest = 'KIND_VAPOR_MIXING_RATIO',
 
 &model_mod_check_nml
-   dart_input_file      = 'dart.ics',
-   output_file          = 'check_me',
-   advance_time_present = .FALSE.,
-   verbose              = .TRUE.,
-   test1thru            = 10,
-   x_ind            = 300 ,
-   loc_of_interest  = 240.0, 0.0, 10000.0,
-   kind_of_interest = 'KIND_SURFACE_PRESSURE',
-   interp_test_lonrange =   0.0, 359.0,
-   interp_test_latrange = -89.0,  89.0,
-   interp_test_dlon     = 1.0,
-   interp_test_dlat     = 1.0,
-   interp_test_level      = 10000.0,
-   interp_test_levelcoord = 'VERTISHEIGHT'
+   dart_input_file      = 'dart.second',
+   output_file           = 'check_me',
+   advance_time_present  = .FALSE.,
+   verbose               = .FALSE.,
+   test1thru             = 10,
+   x_ind                = 300 ,
+   loc_of_interest       = 240.0, 0.0, 10000.0,
+   kind_of_interest       = 'KIND_TEMPERATURE',
+   interp_test_lonrange  = 0.0, 359.0,
+   interp_test_dlon      = 1.0,
+   interp_test_latrange  = -89.0, 89.0,
+   interp_test_dlat      = 1.0,
+   interp_test_vertrange = 100.0,  300.0,
+   interp_test_dvert     = 200.0,
+   interp_test_vertcoord = 'VERTISHEIGHT'
    /

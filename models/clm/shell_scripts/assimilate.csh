@@ -16,7 +16,7 @@ set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
 # The FORCE options are not optional.
 # The VERBOSE options are useful for debugging though
-# some systems don't like the -v option to any of the following 
+# some systems don't like the -v option to any of the following
 switch ("`hostname`")
    case be*:
       # NCAR "bluefire"
@@ -26,7 +26,6 @@ switch ("`hostname`")
       set REMOVE = '/usr/local/bin/rm -fr'
 
       set BASEOBSDIR = /glade/proj3/image/Observations/FluxTower
-      set    DARTDIR = ${HOME}/svn/DART/trunk
       set  LAUNCHCMD = mpirun.lsf
    breaksw
 
@@ -38,7 +37,6 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /glade/p/image/Observations/land
-      set    DARTDIR = ${HOME}/svn/DART/trunk
       set  LAUNCHCMD = mpirun.lsf
    breaksw
 
@@ -50,7 +48,6 @@ switch ("`hostname`")
       set REMOVE = '/bin/rm -fr'
 
       set BASEOBSDIR = ${WORK}/DART/observations/snow/work/obs_seqs
-      set    DARTDIR = ${WORK}/DART
       set  LAUNCHCMD = mpirun.lsf
    breaksw
 
@@ -62,7 +59,6 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /your/observation/directory/here
-      set    DARTDIR = ${HOME}/trunk
       set  LAUNCHCMD = "mpiexec -n $NTASKS"
    breaksw
 
@@ -74,7 +70,6 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /scratch/scratchdirs/nscollin/ACARS
-      set    DARTDIR = ${HOME}/trunk
       set  LAUNCHCMD = "aprun -n $NTASKS"
    breaksw
 endsw
@@ -89,9 +84,7 @@ set ensemble_size = ${NINST_LND}
 #-------------------------------------------------------------------------
 
 set FILE = `head -n 1 rpointer.lnd_0001`
-set FILE = $FILE:t
 set FILE = $FILE:r
-set MYCASE = `echo $FILE | sed -e "s#\..*##"`
 set LND_DATE_EXT = `echo $FILE:e`
 set LND_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
 set LND_YEAR     = `echo $LND_DATE[1] | bc`
@@ -120,15 +113,25 @@ cd $temp_dir
 #-----------------------------------------------------------------------------
 # Get observation sequence file ... or die right away.
 # The observation file names have a time that matches the stopping time of CLM.
+#
+# The CLM observations are stowed in two sets of directories.
+# If you are stopping every 24 hours or more, the obs are in directories like YYYYMM.
+# In all other situations the observations come from directories like YYYYMM_6H.
+# The only ugly part here is if the first advance and subsequent advances are
+# not the same length. The observations _may_ come from different directories.
+#
 # The contents of the file must match the history file contents if one is using 
 # the obs_def_tower_mod or could be the 'traditional' +/- 12Z ... or both.
 # Since the history file contains the previous days' history ... so must the obs file.
 #-----------------------------------------------------------------------------
 
-set YYYYMMDD = `printf %04d%02d%02d ${LND_YEAR} ${LND_MONTH} ${LND_DAY}`
-set YYYYMM   = `printf %04d%02d     ${LND_YEAR} ${LND_MONTH}`
-set OBSFNAME = obs_seq.${LND_DATE_EXT}
-set OBS_FILE = ${BASEOBSDIR}/${YYYYMM}/${OBSFNAME}
+if ($STOP_N >= 24) then
+   set OBSDIR = `printf %04d%02d    ${LND_YEAR} ${LND_MONTH}`
+else
+   set OBSDIR = `printf %04d%02d_6H ${LND_YEAR} ${LND_MONTH}`
+endif
+
+set OBS_FILE = ${BASEOBSDIR}/${OBSDIR}/obs_seq.${LND_DATE_EXT}
 
 if (  -e   ${OBS_FILE} ) then
    ${LINK} ${OBS_FILE} obs_seq.out
@@ -158,7 +161,8 @@ echo "`date` -- END COPY BLOCK"
 # Block 2: Stage the files needed for SAMPLING ERROR CORRECTION
 #
 # The sampling error correction is a lookup table.
-# The tables are stored in the DART distribution.
+# The tables were originally in the DART distribution, but should
+# have been staged to $CASEROOT at setup time.
 # Each ensemble size has its own (static) file.
 # It is only needed if
 # input.nml:&assim_tools_nml:sampling_error_correction = .true.,
@@ -170,7 +174,7 @@ set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
 set SECSTRING = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
 
 if ( $SECSTRING == true ) then
-   set SAMP_ERR_FILE = ${DARTDIR}/system_simulation/final_full_precomputed_tables/final_full.${ensemble_size}
+   set SAMP_ERR_FILE = ${CASEROOT}/final_full.${ensemble_size}
    if (  -e   ${SAMP_ERR_FILE} ) then
       ${COPY} ${SAMP_ERR_FILE} .
    else
@@ -305,7 +309,7 @@ endif
 # as long as we can have unique namelists for each of them.
 #
 # At the end of the block, we have DART initial condition files  filter_ics.[1-N]
-# that came from pointer files ../rpointer.lnd_[1-N].restart
+# that came from pointer files ../rpointer.lnd_[1-N]
 #
 # REQUIRED DART namelist settings:
 # &filter_nml:           restart_in_file_name    = 'filter_ics'
@@ -331,16 +335,16 @@ while ( ${member} <= ${ensemble_size} )
    # make sure there are no old output logs hanging around
    $REMOVE output.${member}.clm_to_dart
 
-   set LND_RESTART_FILENAME = `printf ../../${MYCASE}.clm2_%04d.r.${LND_DATE_EXT}.nc  ${member}`
-   set LND_HISTORY_FILENAME = `printf ../../${MYCASE}.clm2_%04d.h0.${LND_DATE_EXT}.nc ${member}`
+   set LND_RESTART_FILENAME = `printf ${CASE}.clm2_%04d.r.${LND_DATE_EXT}.nc  ${member}`
+   set LND_HISTORY_FILENAME = `printf ${CASE}.clm2_%04d.h0.${LND_DATE_EXT}.nc ${member}`
    set     DART_IC_FILENAME = `printf filter_ics.%04d     ${member}`
    set    DART_RESTART_FILE = `printf filter_restart.%04d ${member}`
 
-   sed -e "s/dart_ics/..\/${DART_IC_FILENAME}/" \
-       -e "s/dart_restart/..\/${DART_RESTART_FILE}/" < ../input.nml >! input.nml
+   sed -e "s#dart_ics#../${DART_IC_FILENAME}#" \
+       -e "s#dart_restart#../${DART_RESTART_FILE}#" < ../input.nml >! input.nml
 
-   ${LINK} $LND_RESTART_FILENAME clm_restart.nc
-   ${LINK} $LND_HISTORY_FILENAME clm_history.nc
+   ${LINK} ../../$LND_RESTART_FILENAME clm_restart.nc
+   ${LINK} ../../$LND_HISTORY_FILENAME clm_history.nc
 
    # patch the CLM restart files to ensure they have the proper
    # _FillValue and missing_value attributes.
@@ -397,11 +401,11 @@ echo "`date` -- END CLM-TO-DART for all ${ensemble_size} members."
 
 # clm always needs a clm_restart.nc, clm_history.nc for geometry information, etc.
 
-set LND_RESTART_FILENAME = ../${MYCASE}.clm2_0001.r.${LND_DATE_EXT}.nc
-set LND_HISTORY_FILENAME = ../${MYCASE}.clm2_0001.h0.${LND_DATE_EXT}.nc
+set LND_RESTART_FILENAME = ${CASE}.clm2_0001.r.${LND_DATE_EXT}.nc
+set LND_HISTORY_FILENAME = ${CASE}.clm2_0001.h0.${LND_DATE_EXT}.nc
 
-${LINK} $LND_RESTART_FILENAME clm_restart.nc
-${LINK} $LND_HISTORY_FILENAME clm_history.nc
+${LINK} ../$LND_RESTART_FILENAME clm_restart.nc
+${LINK} ../$LND_HISTORY_FILENAME clm_history.nc
 
 # On yellowstone, you can explore task layouts with the following:
 if ( $?LSB_PJL_TASK_GEOMETRY ) then
@@ -475,10 +479,6 @@ echo "`date` -- END DART-TO-CLM for all ${ensemble_size} members."
 #-------------------------------------------------------------------------
 # Cleanup
 #-------------------------------------------------------------------------
-
-# ${REMOVE} ../$CASE.*.rh0.* 
-# ${REMOVE} ../$CASE.*.rs1.* 
-# ${REMOVE} ../PET*.ESMF_LogFile 
 
 echo "`date` -- END CLM_ASSIMILATE"
 
