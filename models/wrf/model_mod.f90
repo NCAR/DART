@@ -7641,11 +7641,11 @@ end function compute_geometric_height
 !-------------------------------------------------------------------------
 subroutine get_state(x, ill, win, state_ens_handle, ens_size)
 
-integer, intent(in)              :: ill
+integer, intent(in)              :: ill !> index into state vector
 integer, intent(in)              :: ens_size
 type(ensemble_type), intent(in)  :: state_ens_handle
-real(r8), intent(out)             :: x(ens_size)
-integer, intent(in)              :: win
+real(r8), intent(out)             :: x(ens_size) !> all copies of the state element you want
+integer, intent(in)              :: win !> mpi window
 
 integer                          :: owner_of_state
 integer                          :: element_index
@@ -7696,6 +7696,8 @@ call obs_kind_in_state_vector(in_state, wrf_type, obs_kind, id)
 
 if ( in_state ) then
 
+   ! An observation could be on different levels for each ensemble member. 
+   ! But, you don't want to do ens_size*communication, so just do it for the levels you need.
    UNIQUEK_LOOP: do uk = 1, size(uniquek)
 
    ! Check to make sure retrieved integer gridpoints are in valid range
