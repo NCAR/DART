@@ -2,18 +2,19 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <HTML>
 <HEAD>
-<TITLE>program pop_to_dart</TITLE>
+<TITLE>program dart_to_CESM</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<H1>PROGRAM <em class=program>pop_to_dart</em></H1>
+<H1>PROGRAM <em class=program>CESM_to_dart</em></H1>
 
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
@@ -35,37 +36,23 @@
 <H2>Overview</H2>
 
 <P>
-   <em class=program>pop_to_dart</em> is the program that reads a POP
-   restart file (usually <em class=file>pop.r.nc</em>) and creates
-   a DART output/restart file 
-   (e.g. <em class=file>perfect_ics, filter_ics, ... </em>).
-   <br />
-   <br />
-   The following variables are extracted from the POP netCDF restart 
-   files and are conveyed to DART:
-   <em class=code>SALT_CUR</em>,
-   <em class=code>TEMP_CUR</em>,
-   <em class=code>UVEL_CUR</em>,
-   <em class=code>VVEL_CUR</em>, and
-   <em class=code>PSURF_CUR</em>.
-   <br />
-   <br />
-   Conditions required for successful execution of <em class=program>pop_to_dart</em>:
+<em class=program>xxx_to_dart</em> are a set of programs that 
+convert from the
+native file(s) a model writes after an advance to a
+DART state vector format (a 1D fortran array) file.
+See the documentation
+for each of the individual model pages for more information
+on the details of each converter:
 </P>
-
 <UL>
-   <LI>a valid <em class=file>input.nml</em> namelist file for DART</LI>
-   <LI>a valid <em class=file>pop_in</em> namelist file for POP</LI>
-   <LI>the POP geometry files mentioned in the <em class=file>pop_in</em> namelist file</LI>
-   <LI>a POP restart file (<em class=file>pop.r.nc</em>).</LI>
+<LI> <a href="../cam/cam_to_dart.html">cam_to_dart</a></LI>
+<LI> <a href="../POP/pop_to_dart.html">pop_to_dart</a></LI>
+<LI> <a href="../clm/clm_to_dart.html">clm_to_dart</a></LI>
 </UL>
 
 <P>
-Since this program is called repeatedly for every ensemble member,
-we have found it convenient to link the POP restart files
-to the default input filename (<em class=file>pop.r.nc</em>).
-The default DART output filename is <em class=file>dart.ud</em> -
-this may be moved or linked as necessary.
+Since this program is invoked from a unique directory for every ensemble member,
+we have found it convenient to link to default filenames, e.g. (<em class=file>dart_ics</em>). 
 </P>
 
 <!--==================================================================-->
@@ -75,39 +62,38 @@ this may be moved or linked as necessary.
 <A NAME="Namelist"></A>
 <hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
 Character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-The namelist declaration is:
+enclosed in quotes to prevent them from
+prematurely terminating the namelist.
 </P>
+
 <div class=namelist>
 <pre>
-<em class=call>namelist / pop_to_dart_nml / </em> pop_to_dart_output_file
+
+&amp;cam_to_dart_nml
+   cam_to_dart_input_file  = 'caminput.nc',
+   cam_to_dart_output_file = 'dart_ics', 
+   /
+
+&amp;pop_to_dart_nml
+   pop_to_dart_output_file = 'dart_ics'  
+   /
+
+&amp;clm_to_dart_nml
+   clm_to_dart_output_file = 'dart_ics',
+   /
+
 </pre>
 </div>
 
-<div class=indent1>
-<!-- Description -->
-
-<P>
-This namelist is always read from a file called <em class=file>input.nml</em>.
+<P> See each of the model html pages for details on the
+namelist defaults and values.
 </P>
 
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-
-<TR><!--contents--><TD valign=top>pop_to_dart_output_file&nbsp;&nbsp;&nbsp;</TD>
-    <!--  type  --><TD valign=top>character(len=128)&nbsp;&nbsp;&nbsp;</TD>
-    <!--descript--><TD>The name of the DART file containing the model state
-                       derived from the POP restart file.
-                       <em class=units>[default: 'dart.ud']</em></TD></TR>
-
-</TABLE>
-
-</div>
 <br />
 
 <!--==================================================================-->
@@ -115,19 +101,14 @@ This namelist is always read from a file called <em class=file>input.nml</em>.
 <A NAME="Modules"></A>
 <hr />
 <H2>MODULES USED</H2>
-<PRE>
-assim_model_mod
-dart_pop_mod
-location_mod
-model_mod
-null_mpi_utilities_mod
-obs_kind_mod
-random_nr_mod
-random_seq_mod
-time_manager_mod
-types_mod
-utilities_mod
-</PRE>
+<P>Depends on the component; see the individual module pages
+for each of the converters:
+</P>
+<UL>
+<LI><a href="../cam/cam_to_dart.html">cam_to_dart</a></LI>
+<LI><a href="../POP/pop_to_dart.html">pop_to_dart</a></LI>
+<LI><a href="../clm/clm_to_dart.html">clm_to_dart</a></LI>
+</UL>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -136,15 +117,17 @@ utilities_mod
 <A NAME="FilesUsed"></A>
 <hr />
 <H2>FILES Read</H2>
-<UL><LI>POP restart file; <em class=file>pop.r.nc</em></LI>
-    <LI>POP namelist file; <em class=file>pop_in</em></LI>
-    <LI>POP geometry files specified in <em class=file>pop_in</em></LI>
+<UL><LI>model restart file</LI>
+    <LI>model namelist file</LI>
     <LI>DART namelist file; <em class=file>input.nml</em></LI>
+    <LI>any model geometry files needed</LI>
+    <LI>possibly model restart file (to get grid values)</LI>
 </UL>
 
 <H2>FILES Written</H2>
 <UL><LI>DART initial conditions/restart file; e.g. <em class=file>filter_ic</em></LI>
 </UL>
+
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
@@ -153,9 +136,16 @@ utilities_mod
 <A NAME="References"></A>
 <hr />
 <H2>REFERENCES</H2>
-<P>
-none
-</P>
+<ul>
+<li>Anderson,&nbsp;J.,&nbsp;T.&nbsp;Hoar,&nbsp;K.&nbsp;Raeder,
+    H.&nbsp;Liu,&nbsp;N.&nbsp;Collins,&nbsp;R.&nbsp;Torn,
+    and&nbsp;A.&nbsp;Arellano,&nbsp;2009:<br />
+    The Data Assimilation Research Testbed: A Community Facility. 
+    <span style="font-style: italic;">Bull. Amer. Meteor. Soc.</span>,
+    <span style="font-weight: bold;">90</span>, 1283-1296.<br />
+    <a href="http://ams.allenpress.com/perlserv/?doi=10.1175%2F2009BAMS2618.1&amp;request=get-abstract">DOI: 10.1175/2009BAMS2618.1</a></li>
+</ul>
+<br />
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->

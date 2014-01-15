@@ -4,6 +4,7 @@
 <HEAD>
 <TITLE>program dart_to_CESM</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
@@ -13,7 +14,7 @@
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
@@ -36,7 +37,7 @@
 
 <P>
 <em class=program>dart_to_xxx</em> are a set of programs that 
-convert from DART state vector format (a 1D fortran array) to the
+convert from DART state vector format (a 1D fortran array) file to the
 native file(s) a model needs to advance.  See the documentation
 for each of the individual model pages for more information
 on the details of each converter:
@@ -48,10 +49,8 @@ on the details of each converter:
 </UL>
 
 <P>
-Since this program is called repeatedly for every ensemble member,
-we have found it convenient to link the DART input file
-to the default input filename, e.g. (<em class=file>dart.ic</em>). 
-The same thing is true for the model output filenames.
+Since this program is invoked from a unique directory for every ensemble member,
+we have found it convenient to link to default filenames, e.g. (<em class=file>dart_restart</em>). 
 </P>
 
 <!--==================================================================-->
@@ -72,14 +71,15 @@ prematurely terminating the namelist.
 
 <div class=namelist>
 <pre>
+
 &amp;dart_to_cam_nml
-   dart_to_cam_input_file  = 'dart_ics',
+   dart_to_cam_input_file  = 'dart_restart',
    dart_to_cam_output_file = 'caminput.nc',
-   advance_time_present    = .true.,
+   advance_time_present    = .false.,
    /
 
 &amp;dart_to_pop_nml
-   dart_to_pop_input_file = 'dart.ic',
+   dart_to_pop_input_file = 'dart_restart',
    advance_time_present   = .false.  
    /
 
@@ -87,10 +87,11 @@ prematurely terminating the namelist.
    dart_to_clm_output_file = 'dart_restart',
    advance_time_present    = .false.,
    /
+
 </pre>
 </div>
 
-<P> See each of the model html pages for details on the
+<P> See each of the converter html pages for details on the
 namelist defaults and values.
 </P>
 
@@ -101,19 +102,14 @@ namelist defaults and values.
 <A NAME="Modules"></A>
 <hr />
 <H2>MODULES USED</H2>
-<PRE>
-assim_model_mod
-dart_pop_mod
-location_mod
-model_mod
-null_mpi_utilities_mod
-obs_kind_mod
-random_nr_mod
-random_seq_mod
-time_manager_mod
-types_mod
-utilities_mod
-</PRE>
+<P>Depends on the component; see the individual module pages
+for each of the converters:
+</P>
+<UL>
+<LI><a href="../cam/dart_to_cam.html">dart_to_cam</a></LI>
+<LI><a href="../POP/dart_to_pop.html">dart_to_pop</a></LI>
+<LI><a href="../clm/dart_to_clm.html">dart_to_clm</a></LI>
+</UL>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -122,7 +118,7 @@ utilities_mod
 <A NAME="FilesUsed"></A>
 <hr />
 <H2>FILES Read</H2>
-<UL><LI>DART initial conditions/restart file; e.g. <em class=file>filter_ic</em></LI>
+<UL><LI>DART initial conditions/restart file; e.g. <em class=file>filter_restart</em></LI>
     <LI>DART namelist file; <em class=file>input.nml</em></LI>
     <LI>model namelist file</LI>
     <LI>any model geometry files needed</LI>

@@ -9,15 +9,16 @@
 # This block is an attempt to localize all the machine-specific
 # changes to this script such that the same script can be used
 # on multiple platforms. This will help us maintain the script.
+# Search below for TIMECHECK to see what times this script will
+# assimilate.
 
 echo "`date` -- BEGIN CLM_ASSIMILATE"
-echo "this version assimilates only when hour is 0Z"
 
 set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
 # The FORCE options are not optional.
 # The VERBOSE options are useful for debugging though
-# some systems don't like the -v option to any of the following 
+# some systems don't like the -v option to any of the following
 switch ("`hostname`")
    case be*:
       # NCAR "bluefire"
@@ -65,7 +66,6 @@ set ensemble_size = ${NINST_LND}
 set FILE = `head -n 1 rpointer.lnd_0001`
 set FILE = $FILE:t
 set FILE = $FILE:r
-set MYCASE = `echo $FILE | sed -e "s#\..*##"`
 set LND_DATE_EXT = `echo $FILE:e`
 set LND_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
 set LND_YEAR     = `echo $LND_DATE[1] | bc`
@@ -82,21 +82,21 @@ echo "valid time of model is $LND_YEAR $LND_MONTH $LND_DAY $LND_HOUR (hours)"
 # If not, return before assimilating.
 #-------------------------------------------------------------------------
 
-if ( $LND_HOUR != 0  &&  $LND_HOUR != 6  &&  $LND_HOUR != 12  &&  $LND_HOUR != 18) then
+## TIMECHECK:
+if ( $LND_HOUR == 0 || $LND_HOUR == 6 || $LND_HOUR == 12 || $LND_HOUR == 18 ) then
+   echo "Hour is $LND_HOUR so we are assimilating the land"
+else
    echo "Hour is not 0,6,12 or 18Z so we are skipping the land assimilation"
    echo "`date` -- END CLM_ASSIMILATE"
    exit 0
-else
-   echo "Hour is $LND_HOUR so we are assimilating the land"
 endif
 
-# if you want to only assimilate at 0Z each day, substitute the
-# following two lines for the longer test above.  we have flux tower
-# observations which need to be assimilated every 6 hours; if you
-# aren't going to assimilate them and are only assimilating some obs type
-# that is only available once a day, you can change to this test instead.
-#if ( $LND_HOUR != 0 ) then
-#   echo "Hour is not 0Z so we are skipping the land assimilation"
+# we have flux tower observations which can be assimilated every 6 hours,
+# but if you want to only assimilate at 0Z each day, change the LND_HOUR
+# check to this one:
+#    if ( $LND_HOUR == 0 ) then
+# and the message in the else clause to this:
+#       echo "Hour is not 0Z so we are skipping the land assimilation"
 
 #-------------------------------------------------------------------------
 # Create temporary working directory for the assimilation and go there
@@ -115,15 +115,25 @@ cd $temp_dir
 #-----------------------------------------------------------------------------
 # Get observation sequence file ... or die right away.
 # The observation file names have a time that matches the stopping time of CLM.
+#
+# The CLM observations are stowed in two sets of directories.
+# If you are stopping every 24 hours or more, the obs are in directories like YYYYMM.
+# In all other situations the observations come from directories like YYYYMM_6H.
+# The only ugly part here is if the first advance and subsequent advances are
+# not the same length. The observations _may_ come from different directories.
+#
 # The contents of the file must match the history file contents if one is using 
 # the obs_def_tower_mod or could be the 'traditional' +/- 12Z ... or both.
 # Since the history file contains the previous days' history ... so must the obs file.
 #-----------------------------------------------------------------------------
 
-set YYYYMMDD = `printf %04d%02d%02d ${LND_YEAR} ${LND_MONTH} ${LND_DAY}`
-set YYYYMM   = `printf %04d%02d     ${LND_YEAR} ${LND_MONTH}`
-set OBSFNAME = obs_seq.${LND_DATE_EXT}
-set OBS_FILE = ${BASEOBSDIR}/${YYYYMM}/${OBSFNAME}
+if ($STOP_N >= 24) then
+   set OBSDIR = `printf %04d%02d    ${LND_YEAR} ${LND_MONTH}`
+else
+   set OBSDIR = `printf %04d%02d_6H ${LND_YEAR} ${LND_MONTH}`
+endif
+
+set OBS_FILE = ${BASEOBSDIR}/${OBSDIR}/obs_seq.${LND_DATE_EXT}
 
 if (  -e   ${OBS_FILE} ) then
    ${LINK} ${OBS_FILE} obs_seq.out
@@ -301,7 +311,7 @@ endif
 # as long as we can have unique namelists for each of them.
 #
 # At the end of the block, we have DART initial condition files  filter_ics.[1-N]
-# that came from pointer files ../rpointer.lnd_[1-N].restart
+# that came from pointer files ../rpointer.lnd_[1-N]
 #
 # REQUIRED DART namelist settings:
 # &filter_nml:           restart_in_file_name    = 'filter_ics'
@@ -327,16 +337,16 @@ while ( ${member} <= ${ensemble_size} )
    # make sure there are no old output logs hanging around
    $REMOVE output.${member}.clm_to_dart
 
-   set LND_RESTART_FILENAME = `printf ../../${MYCASE}.clm2_%04d.r.${LND_DATE_EXT}.nc  ${member}`
-   set LND_HISTORY_FILENAME = `printf ../../${MYCASE}.clm2_%04d.h0.${LND_DATE_EXT}.nc ${member}`
+   set LND_RESTART_FILENAME = `printf ${CASE}.clm2_%04d.r.${LND_DATE_EXT}.nc  ${member}`
+   set LND_HISTORY_FILENAME = `printf ${CASE}.clm2_%04d.h0.${LND_DATE_EXT}.nc ${member}`
    set     DART_IC_FILENAME = `printf filter_ics.%04d     ${member}`
    set    DART_RESTART_FILE = `printf filter_restart.%04d ${member}`
 
-   sed -e "s/dart_ics/..\/${DART_IC_FILENAME}/" \
-       -e "s/dart_restart/..\/${DART_RESTART_FILE}/" < ../input.nml >! input.nml
+   sed -e "s#dart_ics#../${DART_IC_FILENAME}#" \
+       -e "s#dart_restart#../${DART_RESTART_FILE}#" < ../input.nml >! input.nml
 
-   ${LINK} $LND_RESTART_FILENAME clm_restart.nc
-   ${LINK} $LND_HISTORY_FILENAME clm_history.nc
+   ${LINK} ../../$LND_RESTART_FILENAME clm_restart.nc
+   ${LINK} ../../$LND_HISTORY_FILENAME clm_history.nc
 
    # patch the CLM restart files to ensure they have the proper
    # _FillValue and missing_value attributes.
@@ -393,11 +403,11 @@ echo "`date` -- END CLM-TO-DART for all ${ensemble_size} members."
 
 # clm always needs a clm_restart.nc, clm_history.nc for geometry information, etc.
 
-set LND_RESTART_FILENAME = ../${MYCASE}.clm2_0001.r.${LND_DATE_EXT}.nc
-set LND_HISTORY_FILENAME = ../${MYCASE}.clm2_0001.h0.${LND_DATE_EXT}.nc
+set LND_RESTART_FILENAME = ${CASE}.clm2_0001.r.${LND_DATE_EXT}.nc
+set LND_HISTORY_FILENAME = ${CASE}.clm2_0001.h0.${LND_DATE_EXT}.nc
 
-${LINK} $LND_RESTART_FILENAME clm_restart.nc
-${LINK} $LND_HISTORY_FILENAME clm_history.nc
+${LINK} ../$LND_RESTART_FILENAME clm_restart.nc
+${LINK} ../$LND_HISTORY_FILENAME clm_history.nc
 
 # On yellowstone, you can explore task layouts with the following:
 if ( $?LSB_PJL_TASK_GEOMETRY ) then
@@ -471,10 +481,6 @@ echo "`date` -- END DART-TO-CLM for all ${ensemble_size} members."
 #-------------------------------------------------------------------------
 # Cleanup
 #-------------------------------------------------------------------------
-
-# ${REMOVE} ../$CASE.*.rh0.* 
-# ${REMOVE} ../$CASE.*.rs1.* 
-# ${REMOVE} ../PET*.ESMF_LogFile 
 
 echo "`date` -- END CLM_ASSIMILATE"
 

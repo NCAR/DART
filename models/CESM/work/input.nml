@@ -14,7 +14,7 @@
    restart_out_file_name = "perfect_restart",
    obs_seq_in_file_name  = "obs_seq.in",
    obs_seq_out_file_name = "obs_seq.perfect",
-   adv_ens_command       = "./advance_model.csh"
+   adv_ens_command       = "no_advance_script"
    output_timestamps     = .false.,
    trace_execution       = .false.,
    output_forward_op_errors = .false.,
@@ -24,7 +24,7 @@
 
 &filter_nml
    async                    = 4,
-   adv_ens_command          = "./no_advance_possible.csh",
+   adv_ens_command          = "no_advance_script",
    ens_size                 =  23,
    start_from_restart       = .true.,
    output_restart           = .true.,
@@ -321,8 +321,7 @@
    bin_width        =     0, 0, 1, 0, 0, 0 ,
    time_to_skip     =     0, 0, 0, 0, 0, 0 ,
    max_num_bins     = 1000,
-   rat_cri            = 3.0,
-   input_qc_threshold = 1,
+   trusted_obs      = 'null',
    Nregions   = 4,
    lonlim1    = 30.0,  130.0, 290.0, 290,
    lonlim2    = 130.0, 270.0, 380.0, 380,
@@ -330,6 +329,9 @@
    latlim2    =  20.0,  50.0,  50.0,  50,
    reg_names  = 'Indian Ocean', 'Pacific', 'Atlantic', 'North Atlantic',
    print_mismatched_locs = .false.,
+   create_rank_histogram = .true.,
+   outliers_in_histogram = .true.,
+   use_zero_error_obs    = .false.,
    verbose               = .true.,
    hlevel =  10.0,  20.0,   30.0,   40.0,  100.0,  
             200.0, 500.0, 1000.0, 2000.0, 

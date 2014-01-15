@@ -9,15 +9,16 @@
 # This block is an attempt to localize all the machine-specific
 # changes to this script such that the same script can be used
 # on multiple platforms. This will help us maintain the script.
+# Search below for TIMECHECK to see what times this script will
+# assimilate.
 
 echo "`date` -- BEGIN POP_ASSIMILATE"
-echo "this version assimilates only when hour is 0Z"
 
 set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
 # The FORCE options are not optional.
 # The VERBOSE options are useful for debugging though
-# some systems don't like the -v option to any of the following 
+# some systems don't like the -v option to any of the following
 switch ("`hostname`")
    case be*:
       # NCAR "bluefire"
@@ -65,7 +66,6 @@ set ensemble_size = ${NINST_OCN}
 set FILE = `head -n 1 rpointer.ocn_0001.restart`
 set FILE = $FILE:t
 set FILE = $FILE:r
-set MYCASE = `echo $FILE | sed -e "s#\..*##"`
 set OCN_DATE_EXT = `echo $FILE:e`
 set OCN_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
 set OCN_YEAR     = `echo $OCN_DATE[1] | bc`
@@ -84,8 +84,15 @@ echo "valid time of model is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_HOUR (hours)"
 # restart configuration for pop (data_assim or rest).
 #-------------------------------------------------------------------------
 
+## TIMECHECK:
 ${REMOVE} ${CASEROOT}/user_nl_pop2_*back
-if ( $OCN_HOUR != 0 ) then
+if ( $OCN_HOUR == 0 ) then
+   echo "Hour is $OCN_HOUR so we are assimilating the ocean"
+   foreach nml ( ${CASEROOT}/user_nl_pop2_* )
+      ${MOVE} $nml ${nml}.back
+      sed -e "s/'rest'/'data_assim'/" ${nml}.back >! $nml
+   end
+else
    echo "Hour is not 0Z so we are skipping the ocean assimilation"
    foreach nml ( ${CASEROOT}/user_nl_pop2_* )
       ${MOVE} $nml ${nml}.back
@@ -93,12 +100,6 @@ if ( $OCN_HOUR != 0 ) then
    end
    echo "`date` -- END POP_ASSIMILATE"
    exit 0
-else
-   echo "Hour is $OCN_HOUR so we are assimilating the ocean"
-   foreach nml ( ${CASEROOT}/user_nl_pop2_* )
-      ${MOVE} $nml ${nml}.back
-      sed -e "s/'rest'/'data_assim'/" ${nml}.back >! $nml
-   end
 endif
 
 #-------------------------------------------------------------------------
@@ -197,14 +198,24 @@ endif
 # files to be as listed above. When being archived, the filenames get a
 # unique extension (describing the assimilation time) appended to them.
 #
-# The inflation file is essentially a duplicate of the model state ...
-# it is slaved to a specific geometry. The initial files are created
-# offline with values of unity. For the purpose of this script, they are
-# thought to be the output of a previous assimilation, so they should be
-# named something like prior_inflate_restart.YYYY-MM-DD-SSSSS
+# The inflation file is essentially a duplicate of the DART model state ...
+# For the purpose of this script, they are the output of a previous assimilation,
+# so they should be named something like prior_inflate_restart.YYYY-MM-DD-SSSSS
 #
-# The first inflation file can be created with 'fill_inflation_restart'
-# which can be built in the usual DART manner.
+# NOTICE: inf_initial_from_restart and inf_sd_initial_from_restart are somewhat
+# problematic. During the bulk of an experiment, these should be FALSE, since
+# we want to read existing inflation files. However, the first assimilation
+# might need these to be TRUE and then subsequently be set to FALSE.
+# There are two ways to handle this.
+# 1) Create the initial files offline with values of unity by using
+#    'fill_inflation_restart' and stage them with the appropriate names
+#    in the RUNDIR.
+# 2) create a cookie file called RUNDIR/pop_inflation_cookie
+#    The existence of this file will cause this script to set the
+#    namelist appropriately. This script will 'eat' the cookie file
+#    to prevent this from happening for subsequent executions. If the
+#    inflation file does not exist for them, and it needs to, this script
+#    should die.
 #
 # The strategy is to use the LATEST inflation file from the CESM 'rundir'.
 # After an assimilation, the new inflation values/files will be moved to
@@ -248,7 +259,24 @@ set  POSTE_INF_DIAG = $MYSTRING[3]
 if ( $PRIOR_INF > 0 ) then
 
    if ($PRIOR_TF == false) then
+      # we are not using an existing inflation file.
       echo "inf_flavor(1) = $PRIOR_INF, using namelist values."
+
+   else if ( -e ../pop_inflation_cookie ) then
+      # We want to use an existing inflation file, but this is
+      # the first assimilation so there is no existing inflation
+      # file. This is the signal we need to to coerce the namelist
+      # to have different values for this execution ONLY.
+      # Since the local namelist comes from CASEROOT each time, we're golden.
+
+      set PRIOR_TF = FALSE
+
+ex input.nml <<ex_end
+g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+g;inf_sd_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+wq
+ex_end
+
    else
       # Look for the output from the previous assimilation
       (ls -rt1 ../pop_${PRIOR_INF_OFNAME}.* | tail -n 1 >! latestfile) > & /dev/null
@@ -274,9 +302,25 @@ endif
 if ( $POSTE_INF > 0 ) then
 
    if ($POSTE_TF == false) then
+      # we are not using an existing inflation file.
       echo "inf_flavor(2) = $POSTE_INF, using namelist values."
-   else
 
+   else if ( -e ../pop_inflation_cookie ) then
+      # We want to use an existing inflation file, but this is
+      # the first assimilation so there is no existing inflation
+      # file. This is the signal we need to to coerce the namelist
+      # to have different values for this execution ONLY.
+      # Since the local namelist comes from CASEROOT each time, we're golden.
+
+      set POSTE_TF = FALSE
+
+ex input.nml <<ex_end
+g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+g;inf_sd_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+wq
+ex_end
+
+   else
       # Look for the output from the previous assimilation
       (ls -rt1 ../pop_${POSTE_INF_OFNAME}.* | tail -n 1 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
@@ -294,6 +338,9 @@ if ( $POSTE_INF > 0 ) then
 else
    echo "Posterior Inflation       not requested for this assimilation."
 endif
+
+# Eat the cookie regardless
+${REMOVE} ../pop_inflation_cookie
 
 #=========================================================================
 # Block 4: Convert N POP restart files to DART initial condition files.
@@ -327,16 +374,16 @@ while ( ${member} <= ${ensemble_size} )
    # make sure there are no old output logs hanging around
    $REMOVE output.${member}.pop_to_dart
 
-   set OCN_RESTART_FILENAME = `printf ../../${MYCASE}.pop_%04d.r.${OCN_DATE_EXT}.nc  ${member}`
-   set     OCN_NML_FILENAME = `printf ../../pop2_in_%04d  ${member}`
+   set OCN_RESTART_FILENAME = `printf ${CASE}.pop_%04d.r.${OCN_DATE_EXT}.nc  ${member}`
+   set     OCN_NML_FILENAME = `printf pop2_in_%04d        ${member}`
    set     DART_IC_FILENAME = `printf filter_ics.%04d     ${member}`
    set    DART_RESTART_FILE = `printf filter_restart.%04d ${member}`
 
-   sed -e "s/dart_ics/..\/${DART_IC_FILENAME}/" \
-       -e "s/dart_restart/..\/${DART_RESTART_FILE}/" < ../input.nml >! input.nml
+   sed -e "s#dart_ics#../${DART_IC_FILENAME}#" \
+       -e "s#dart_restart#../${DART_RESTART_FILE}#" < ../input.nml >! input.nml
 
-   ${LINK} $OCN_RESTART_FILENAME pop.r.nc
-   ${LINK}     $OCN_NML_FILENAME pop_in
+   ${LINK} ../../$OCN_RESTART_FILENAME pop.r.nc
+   ${LINK} ../../$OCN_NML_FILENAME     pop_in
 
    echo "starting pop_to_dart for member ${member} at "`date`
    ${EXEROOT}/pop_to_dart >! output.${member}.pop_to_dart &

@@ -8,7 +8,7 @@
 #
 # Top level script to generate observations and a TRUE state.
 #
-# Unlike the more complex job.csh, this script only processes a single 
+# Unlike the more complex job.csh, this script only processes a single
 # observation file.  Still fairly complex; requires a raft of
 # data files and most of them are in hardcoded locations.
 #
@@ -17,17 +17,17 @@
 # the filesystem performance and data file size.
 #
 # The script moves the necessary files to the current directory - in DART
-# nomenclature, this will be called CENTRALDIR. 
+# nomenclature, this will be called CENTRALDIR.
 # After everything is confirmed to have been assembled, it is possible
-# to edit the data, data.cal, and input.nml files for the specifics of 
+# to edit the data, data.cal, and input.nml files for the specifics of
 # the experiment; as well as allow final configuration of a 'nodelist' file.
 #
-# Once the 'table is set', all that remains is to start/submit the 
-# 'runme_filter' script. That script will spawn 'filter' as a 
-# parallel job on the appropriate nodes; each of these tasks will 
+# Once the 'table is set', all that remains is to start/submit the
+# 'runme_filter' script. That script will spawn 'filter' as a
+# parallel job on the appropriate nodes; each of these tasks will
 # call a separate model_advance.csh when necessary.
 #
-# The central directory is where the scripts reside and where script and 
+# The central directory is where the scripts reside and where script and
 # program I/O are expected to happen.
 #-----------------------------------------------------------------------------
 #
@@ -68,7 +68,7 @@
 #PBS -l nodes=8:ppn=2
 
 #----------------------------------------------------------------------
-# Turns out the scripts are a lot more flexible if you don't rely on 
+# Turns out the scripts are a lot more flexible if you don't rely on
 # the queuing-system-specific variables -- so I am converting them to
 # 'generic' names and using the generics throughout the remainder.
 #----------------------------------------------------------------------
@@ -138,7 +138,7 @@ cd ${TMPDIR}
 set CENTRALDIR = `pwd`
 set myname = $0          # this is the name of this script
 
-# some systems don't like the -v option to any of the following 
+# some systems don't like the -v option to any of the following
 
 set OSTYPE = `uname -s`
 switch ( ${OSTYPE} )
@@ -219,7 +219,7 @@ cat pop_in.part1 pop_in.part2 >! pop_in
 
 ./pop_to_dart || exit 1
 
-${MOVE} dart.ud perfect_ics
+${MOVE} dart_ics perfect_ics
 
 #-----------------------------------------------------------------------------
 # Run perfect_model_obs ... harvest the observations to populate obs_seq.out

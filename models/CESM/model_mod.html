@@ -4,16 +4,17 @@
 <HEAD>
 <TITLE>module model_mod (POP)</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<H1>MODULE model_mod (POP)</H1>
+<H1>MODULE model_mod (CESM)</H1>
 
 <table border=0 summary="" cellpadding=5>
 <tr>
     <td valign=middle>
-    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
     </td>
     <td>
        <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
@@ -35,37 +36,185 @@
 
 <H2>Overview</H2>
 
-<P>The <strong>Parallel Ocean Program (POP)</strong> may now be used with the 
-   <strong>Data Assimilation Research Testbed (DART)</strong>.
-   Both main variants - <a href="http://climate.lanl.gov/Models/POP/">LANL POP</a> and
-   <a href="http://www.cesm.ucar.edu/models/cesm1.0/pop2/">CESM1.0 POP2</a> have been 
-   tested. At present (July 2010), we are assimilating salinity and temperature 
-   observations from the World Ocean Database (2005) with the intention of switching
-   to the World Ocean Database (2009) as needed.
-   <br />
-   <br />
-   The following POP variables are extracted from the POP netCDF restart files and
-   are conveyed to DART:
-   <em class=code>SALT_CUR</em>,
-   <em class=code>TEMP_CUR</em>,
-   <em class=code>UVEL_CUR</em>,
-   <em class=code>VVEL_CUR</em>, and 
-   <em class=code>PSURF_CUR</em>. These variables are then adjusted to be consistent
-   with real observations and stuffed back into the same netCDF restart files.
-   Since DART is an ensemble algorithm, there are multiple restart files for a 
-   single restart time: one for each ensemble member. Creating the initial ensemble
-   of ocean states is an area of active research. At present, it may be sufficient
-   to use a climatological ensemble; e.g., using the restarts for '1 January 00Z' 
-   from 50 consecutive years. Experience has shown that having a paired (unique)
-   atmospheric forcing maintains the ensemble spread better than simply forcing
-   all the ocean ensemble members with one single atmospheric state.
-   <br />
-   <br />
-   DART reads the grid information for POP from the files specified in 
-   POP's <em class=code>&amp;grid_nml</em>.
-   When DART is responsible for starting/stopping POP, the information is 
-   conveyed through POP's <em class=code>&amp;time_manager_nml</em>. 
+<P>
+The current interface to the CESM climate modeling system does assimilation
+into CAM, POP, and CLM separately.  Therefore at this point there is NOT
+a single CESM model_mod that is compiled into a single filter.  However, there 
+exists a beta version of a unified model_mod that redirects forward operator
+calls to the proper component-specific model_mod, and works around the
+conflicts between the naming of the model_mod at the module level.  It would
+require a single state vector to fit into the memory space of one process,
+which means it would be limited in resolution.  cesm_to_dart and dart_to_cesm
+converter prototypes also exist, which pack the data from each model
+end-to-end in the state vector.
 </P>
+
+<P>
+For now, see each of the component specific model_mod documentation for information
+on the namelists and requirements:
+</P>
+<UL>
+<LI><a href="../cam/model_mod.html">CAM</a>
+<LI><a href="../POP/model_mod.html">POP</a>
+<LI><a href="../clm/model_mod.html">CLM</a>
+</UL>
+
+<P>
+There are scripts in the CESM/shell_scripts directory which are intended to
+build the 3 filter programs for each of the components, copy the right files
+into the CESM caseroot directory, build CESM, and stage files to run an experiment.
+</P>
+
+<H2>Quickstart for CESM/DART</H2>
+
+<P>
+If you are going to run CESM/DART on the NCAR "yellowstone" machine,
+here are some canned instructions to get you started:
+</P>
+
+<H3> Get CESM </H3>
+
+<P>
+Check out CESM1.1.1 which is one release back
+from the very most current version (they updated versions
+right before the Breckenridge User's meeting).
+We will soon have a chance to test the code with
+the latest release, but for now we know this setup
+works with 1.1.1.
+</P>
+<P>
+Here's the user's guide for CESM version 1.1.1:<br />
+<a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html">
+<pre>http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html</pre>
+</a>
+</P>
+<P>
+Here's the page that explains how to download the release code:<br />
+<a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x388.html">
+<pre>http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x388.html</pre>
+</a>
+</P>
+<P>
+You will want "cesm1_1_1" as the model version.  You will have 
+to register as a user to check out the source code.  There is a
+default username and password to access the subversion website.
+</P>
+<P>
+This web page shows the names of the 'compsets' which are the
+configurations of the various models:<br />
+<a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/modelnl/compsets.html">
+<pre>http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/modelnl/compsets.html</pre>
+</a>
+</P>
+<P>
+This page has pointers to the recent CESM versions:<br />
+<a href="http://www2.cesm.ucar.edu/models/current">
+<pre>http://www2.cesm.ucar.edu/models/current</pre>
+</a>
+</P>
+<P>
+If you want to try to build CESM separately from DART
+to learn about it, that's fine.  But our scripts will need
+to rebuild it again with the DART configuration so you can
+wait on building it if you want.
+</P>
+
+<H3>Required patches to CESM1.1.1</H3>
+
+<P>
+There are a few CESM files that we still need to modify to make
+things work with DART.  In this dir on yellowstone is a tar file:<br />
+<pre>
+   ~nancy/cesm1_1_1_mods.tar
+</pre>
+Copy that to your home dir and untar it.  Our setup script will look
+for this subdirectory in your home directory and incorporate these 
+patches when it builds CESM.
+</P>
+
+
+<H3>DART</H3>
+
+<P>
+Go to the DART web pages:  <a href="http://www.image.ucar.edu/DARES/">
+http://www.image.ucar.edu/DARES/</a>
+and register as a DART user.  It's important for us to be able
+to show as large a user base as possible and everyone who
+registers helps us out.
+</P>
+<P>
+Check out the "trunk" version.  The following instructions
+assume you've checked it out into a subdirectory "DART".
+</P>
+<P>
+In the DART/mkmf directory copy the 
+<em class=file>mkmf.template.intel.linux</em> to 
+<em class=file>mkmf.template</em> . That should work 
+for yellowstone with the default set of modules that are loaded 
+on that machine.   <strong>**IMPORTANT**</strong> if you
+are ever thinking of running with an active ocean, you must add:<br />
+<pre>
+  -convert big_endian
+</pre>
+to the list of FFLAGS in the mkmf.template file.  POP uses some binary
+restart files that are still in the byte order for bluefire.  If all
+your restart files for CAM, CAM-CHEM, CLM, etc are netcdf files, 
+then you can leave that flag off so yellowstone writes data in 
+the normal little-endian byte order.
+</P>
+<P> 
+If you want to be able to reproduce runs exactly, you need to make
+sure this flag is part of the FFLAGS line:<br />
+<pre>
+  -fp-model precise
+</pre>
+in your mkmf.template file.
+It has a slight performance penalty at runtime, but it ensures
+that floating point operations are executed in the same order
+inside the processor chip and the results should match bit for bit.
+</P>
+<P>
+The DART scripts for CESM are in:<br />
+<pre>
+   DART/models/CESM/shell_scripts
+</pre>
+Look at CESM1_1_1_initial.csh. 
+</P>
+<P>
+There are some things you can customize at the top, including the compset,
+your project number for running, how many ensemble members, etc. make
+any changes you want there.
+</P>
+<P>
+Run the script.  It will build the CAM, POP, and CLM filters first, and then
+build and configure CESM.  When the script is done you should have
+files in several directories:<br />
+<UL>
+<LI>
+The 'cases' dir has the scripts that start and configure runtime vars
+for CESM.  It also has the <em class=file>input.nml</em>s for the various components.
+Typically we set this to /glade/p/work/${USER}/cases
+</LI>
+<LI>
+The actual execution directory is usually<br />
+<pre>/glade/scratch/${USER}/$casename/run</pre>
+and the executable files themselves are<br />
+<pre>/glade/scratch/${USER}/$casename/bld</pre>
+</LI>
+<LI>
+When you've successfully run a model advance, the output files are saved in<br />
+<pre>/glade/scratch/${USER}/archive/$casename</pre>
+with a subdir for each component.  Our output files will be in the
+'dart' subdir, and under that directory will be
+'hist', 'logs', and 'rest'.  You'll find your diag files and
+obs_seq.final files in the 'hist' subdir.
+</LI>
+</UL>
+
+
+<H3>EVERYTHING BELOW HERE PERTAINS ONLY TO POP AND NEEDS UPDATING</H3>
+<H3>EVERYTHING BELOW HERE PERTAINS ONLY TO POP AND NEEDS UPDATING</H3>
+<H3>EVERYTHING BELOW HERE PERTAINS ONLY TO POP AND NEEDS UPDATING</H3>
 
 <div class=indent1>
    <h2><a href="http://www.cesm.ucar.edu/models/cesm1.0/pop2/">CESM1.0 POP2</a></h2>
@@ -193,7 +342,7 @@
    <table width="100%" cellpadding="10">
    <tr><td valign="top"><a href="pop_to_dart.html">pop_to_dart.f90</a></td>
        <td>converts the POP restart file <em class=file>pop.r.nc</em> into a 
-       DART-compatible file normally called <em class=file>dart.ud</em>&nbsp;.
+       DART-compatible file normally called <em class=file>dart_ics</em>&nbsp;.
        There must also be a <em class=file>pop_in</em> namelist for POP
        (since this specifies the names of the grid files). 
        We usually wind up linking the dereferenced
@@ -235,54 +384,7 @@
 <a name="InitialEnsemble"></a>
 <div class=indent1>
    <h3>Generating the initial ensemble.</h3>
-   <P>
-      Creating the initial ensemble of ocean states is an area of active research.
-      The POP model cannot take one single model state and generate its own 
-      ensemble (typically done with <a href="#pert_model_state">pert_model_state</a>).
-      <br />
-      <br />
-      The ensemble has to come from 'somewhere else'. 
-      At present, it may be sufficient to use a climatological ensemble; e.g., 
-      using the POP restarts for '1 January 00Z' from 50 consecutive years 
-      from a hindcast experiment.
-      <br />
-      <br />
-      There is a <em class=program>shell_scripts/MakeInitialEnsemble.csh</em> 
-      script that is intended to demonstrate how to convert a set of POP netCDF 
-      restart files into a set of DART files that have a consistent timestamp. 
-      If you simply convert each POP file to a DART file using 
-      <em class=program>dart_to_pop</em>, each DART file will have a 'valid&nbsp;time'
-      that reflects the POP time of that state - instead of an ensemble of states
-      reflecting one single time. The
-      <a href="../../../utilities/restart_file_utility.f90">restart_file_utility</a> 
-      can be used to overwrite the timestep in the header of each DART initial 
-      conditions file. The namelist for this program must look something like:
-   </P>
-   <pre>
-   &amp;restart_file_tool_nml
-     input_file_name              = "<em class=changed>dart.ics</em>",
-     output_file_name             = "filter_updated_restart",
-     ens_size                     = 1,
-     single_restart_file_in       = .true.,
-     single_restart_file_out      = .true.,
-     write_binary_restart_files   = .true.,
-     overwrite_data_time          = <em class=changed>.true.</em>,
-     new_data_days                = <em class=changed>145731</em>,
-     new_data_secs                = <em class=changed>0</em>,
-     input_is_model_advance_file  = .false.,
-     output_is_model_advance_file = .false.,
-     overwrite_advance_time       = .false.,
-     new_advance_days             = -1,
-     new_advance_secs             = -1,
-     gregorian_cal                = .true.  /</pre>
-   <P>
-      The time of days&nbsp;=&nbsp;<em class=changed>145731</em> 
-      seconds&nbsp;=&nbsp;<em class=changed>0</em> relates to 00Z&nbsp;1&nbsp;Jan&nbsp;2000 in the DART world.
-      <br />
-      <br />
-      BTW - Experience has shown that having a paired (unique) atmospheric forcing 
-      maintains the ensemble spread better than simply forcing all the ocean 
-      ensemble members with one single atmospheric state.
+   <P> Under development ...
    </P>
 </div>
 
@@ -1699,7 +1801,7 @@ http://www.image.ucar.edu/DAReS/DART/DART_download</a>
 <TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
 <TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
 <TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
-<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+<TR><TD valign=top>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
 </TABLE>
 
 <!--==================================================================-->

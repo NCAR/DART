@@ -10,21 +10,16 @@
 # changes to this script such that the same script can be used
 # on multiple platforms. This will help us maintain the script.
 
-# if you are skipping the POP or CLM assimilations you can simply
-# comment out the calls to the xxx_assimilate.csh scripts.  however
-# if you are skipping the CAM assimilation you must replace the
-# call below with a call to ${CASEROOT}/cam_no_assimilate.csh
+echo "`date` -- BEGIN CESM PERFECT MODEL"
 
-echo "`date` -- BEGIN CESM ASSIMILATE"
-
-${CASEROOT}/cam_assimilate.csh
+${CASEROOT}/cam_perfect_model.csh
 if ( $status != 0 ) exit $status
-${CASEROOT}/pop_assimilate.csh
+${CASEROOT}/pop_perfect_model.csh
 if ( $status != 0 ) exit $status
-${CASEROOT}/clm_assimilate.csh
+${CASEROOT}/clm_perfect_model.csh
 if ( $status != 0 ) exit $status
 
-echo "`date` -- END CESM ASSIMILATE"
+echo "`date` -- END CESM PERFECT MODEL"
 
 exit 0
 
