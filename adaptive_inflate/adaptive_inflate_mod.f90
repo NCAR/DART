@@ -51,6 +51,7 @@ type adaptive_inflate_type
    real(r8)              :: inflate, sd, sd_lower_bound, inf_lower_bound, inf_upper_bound
    ! Include a random sequence type in case non-deterministic inflation is used
    type(random_seq_type) :: ran_seq
+   logical               :: allow_missing_in_clm
 end type adaptive_inflate_type
 
 ! Module storage for writing error messages
@@ -68,7 +69,7 @@ contains
 subroutine adaptive_inflate_init(inflate_handle, inf_flavor, mean_from_restart, &
    sd_from_restart, output_restart, deterministic, in_file_name, out_file_name, &
    diag_file_name, inf_initial, sd_initial, inf_lower_bound, inf_upper_bound, &
-   sd_lower_bound, ens_handle, ss_inflate_index, ss_inflate_sd_index, label)
+   sd_lower_bound, ens_handle, ss_inflate_index, ss_inflate_sd_index, missing_ok, label)
 
 ! Initializes an adaptive_inflate_type 
 
@@ -86,6 +87,7 @@ real(r8),                    intent(in)    :: inf_lower_bound, inf_upper_bound
 real(r8),                    intent(in)    :: sd_lower_bound
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
+logical,                     intent(in)    :: missing_ok
 character(len = *),          intent(in)    :: label
 
 character(len = 128) :: det, tadapt, sadapt, akind, rsread, nmread
@@ -148,6 +150,7 @@ inflate_handle%sd                 = sd_initial
 inflate_handle%inf_lower_bound    = inf_lower_bound
 inflate_handle%inf_upper_bound    = inf_upper_bound
 inflate_handle%sd_lower_bound     = sd_lower_bound
+inflate_handle%allow_missing_in_clm = missing_ok
 
 ! Set obs_diag unit to -1 indicating it has not been opened yet
 inflate_handle%obs_diag_unit = -1
@@ -613,6 +616,13 @@ real(r8), optional,          intent(in)    :: var_in
 
 integer  :: i, ens_size
 real(r8) :: rand_sd, var, sd_inflate
+
+! it's possible to have MISSING_R8s in the state
+! vector now.  so we need to be able to avoid changing
+! MISSING_R8 values by inflation here.
+if (inflate_handle%allow_missing_in_clm) then
+   if (any(ens == MISSING_R8)) return
+endif
 
 if(inflate_handle%deterministic) then
    ! Just spread the ensemble out linearly for deterministic

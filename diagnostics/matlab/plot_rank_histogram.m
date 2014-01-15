@@ -95,7 +95,7 @@ if (plotdat.nregions == 1 && (size(plotdat.region_names,2) == 1) )
    plotdat.region_names = deblank(plotdat.region_names');
 end
 
-dimensionality             = nc_attget(fname, nc_global, 'LocationRank');
+dimensionality             = local_nc_attget(fname, nc_global, 'LocationRank');
 plotdat.timeseparation     = nc_attget(fname, nc_global, 'bin_separation');
 plotdat.timewidth          = nc_attget(fname, nc_global, 'bin_width');
 plotdat.biasconv           = nc_attget(fname, nc_global, 'bias_convention');
@@ -258,9 +258,9 @@ for ivar = 1:plotdat.nvars
       % plot by region
 
       if (plotdat.nregions > 1)
-         clf; orient tall
+         clf; orient tall; wysiwyg
       else 
-         clf; orient landscape
+         clf; orient landscape; wysiwyg
       end
 
       for iregion = 1:plotdat.nregions
@@ -319,11 +319,11 @@ function myplot(plotdat)
    axlims = [0 plotdat.Nrhbins+1 0 axlims(4)];
    axis(axlims)
 
-   h = text(plotdat.Nrhbins/2, 0.9*axlims(4),plotdat.myregion);
-   set(h,'FontSize',14,'FontWeight','Bold')
+   h = text(plotdat.Nrhbins/2, 0.9*axlims(4),obsstring);
+   set(h,'FontSize',12,'FontWeight','Bold')
    set(h,'HorizontalAlignment','center')
 
-   xlabel({'Observation Rank (among ensemble members)',obsstring})
+   xlabel('Observation Rank (among ensemble members)')
 
    if ( strcmp(plotdat.outlierstring,  'TRUE'))
       ylabel('count - including outlier observations')
@@ -334,21 +334,22 @@ function myplot(plotdat)
    % more annotation ...
 
    if (plotdat.region == 1)
-      title({plotdat.title, plotdat.timespan}, ...
-         'Interpreter', 'none', 'Fontsize', 12, 'FontWeight', 'bold')
-      BottomAnnotation(plotdat.fname)
+      title({plotdat.title, plotdat.myregion}, ...
+         'Interpreter', 'none', 'Fontsize', 14, 'FontWeight', 'bold')
+      BottomAnnotation(plotdat.timespan, plotdat.fname)
    else
-      title(plotdat.timespan, 'Interpreter', 'none', ...
-         'Fontsize', 12, 'FontWeight', 'bold')
+      title(plotdat.myregion, 'Interpreter', 'none', ...
+         'Fontsize', 14, 'FontWeight', 'bold')
    end
    
  
 
 
-function BottomAnnotation(main)
+function BottomAnnotation(timespan, main)
 % annotates the directory containing the data being plotted
-subplot('position',[0.48 0.01 0.04 0.04])
+subplot('position',[0.10 0.01 0.8 0.04])
 axis off
+
 fullname = which(main);   % Could be in MatlabPath
 if( isempty(fullname) )
    if ( main(1) == '/' )  % must be a absolute pathname
@@ -361,11 +362,17 @@ else
    string1 = sprintf('data file: %s',fullname);
 end
 
-h = text(0.0, 0.0, string1);
+h = text(0.5, 0.67, timespan);
 set(h,'HorizontalAlignment','center', ...
       'VerticalAlignment','middle',...
       'Interpreter','none',...
-      'FontSize',10)
+      'FontSize',8)
+
+h = text(0.5, 0.33, string1);
+set(h,'HorizontalAlignment','center', ...
+      'VerticalAlignment','middle',...
+      'Interpreter','none',...
+      'FontSize',8)
 
 
 
@@ -443,6 +450,7 @@ function value = local_nc_varget(fname,varname)
 if (variable_present)
    ncid  = netcdf.open(fname);
    value = netcdf.getVar(ncid, varid);
+   netcdf.close(ncid)
 else
    value = [];
 end
