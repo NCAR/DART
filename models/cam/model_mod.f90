@@ -278,11 +278,11 @@ private
 ! are additional useful interfaces that utility programs can call.
 public ::                                                            &
    static_init_model, get_model_size, get_model_time_step,           &
-   pert_model_state, get_state_meta_data, model_interpolate,         &
+   pert_model_state, get_state_meta_data_distrib, model_interpolate,         &
    nc_write_model_atts, nc_write_model_vars,                         &
    init_conditions, init_time, adv_1step, end_model,                 &
-   get_close_maxdist_init, get_close_obs_init, get_close_obs,        &
-   ens_mean_for_model, model_interpolate_distrib, get_close_obs_distrib !HK
+   get_close_maxdist_init, get_close_obs_init, get_close_obs_distrib, &
+   ens_mean_for_model, model_interpolate_distrib, convert_base_obs_location !HK
 
 public ::                                                            &
    model_type, prog_var_to_vector, vector_to_prog_var,               &
@@ -2079,8 +2079,9 @@ close(tfile_unit)
 
 end subroutine write_cam_times
 
-
-   subroutine get_state_meta_data(index_in, location, var_kind)
+!> This is just renamed to it with assim_tools_mod because I renamed wrf, get_state_meta_data_distrib
+!> It does not do anything different yet.
+   subroutine get_state_meta_data_distrib(state_ens_handle, win, index_in, location, var_kind)
 !=======================================================================
 ! subroutine get_state_meta_data(index_in, location, var_kind, set_loc)
 !
@@ -2096,6 +2097,8 @@ end subroutine write_cam_times
 ! This is not a function because the more general form of the call has a second 
 ! intent(out) optional argument var_kind.  Maybe a functional form should be added?
 
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: win
 integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_kind 
@@ -2231,7 +2234,7 @@ end do
 if (lon_val == MISSING_r8 .or. lat_val == MISSING_r8 ) then
    write(msgstring, *) 'Field ',cflds(nfld),' has no lon or lat dimension.  ', &
          'What should be specified for it in the call to location?'
-   call error_handler(E_ERR, 'get_state_meta_data', msgstring, source, revision, revdate)
+   call error_handler(E_ERR, 'get_state_meta_data_distrib', msgstring, source, revision, revdate)
 else
    if (lat_val <= -90.0_r8) lat_val = -89.9999999_r8
    if (lat_val >=  90.0_r8) lat_val =  89.9999999_r8
@@ -2249,7 +2252,7 @@ if (present(var_kind)) then
    end if
 end if
 
-end subroutine get_state_meta_data
+end subroutine get_state_meta_data_distrib
 
 
 
@@ -3127,14 +3130,14 @@ integer, allocatable :: track_vstatus(:)
 !    no need to convert to a standard vert coord; no distance calc involved.
 
 
-ens_size = state_ens_handle%num_copies 
+ens_size = state_ens_handle%num_copies -5 ! Now calculating mean copy also
 allocate(val_11(ens_size),val_12(ens_size), val_21(ens_size), val_22(ens_size))
 allocate(a(ens_size, 2))
 allocate(vstatus(ens_size), istatus_distrib(ens_size))
 allocate(track_vstatus(ens_size))
 
 ! Start with no errors in 
-istatus = 0
+istatus(:) = 0
 vstatus(:) = 0
 istatus_distrib(:) = 0
 val_11 = MISSING_R8
@@ -3371,7 +3374,7 @@ do e = 1, ens_size
 enddo
 
 !> @todo Sort out istatus
-istatus = istatus_distrib(1:state_ens_handle%num_copies -6)
+istatus = istatus_distrib
 
 ! Set the element of ps that's tested elsewhere back to MISSING_R8, to signal
 ! other routines to calculate the ps arrays for themselves
@@ -3607,7 +3610,7 @@ integer, allocatable  :: bot_lev(:), top_lev(:)
 integer               :: i, vstatus, num_levs, slon_index
 integer               :: ens_size, e
 
-ens_size = state_ens_handle%num_copies
+ens_size = state_ens_handle%num_copies -5
 num_levs = dim_sizes(find_name('lev     ',dim_names))
 slon_index = find_name('slon    ',dim_names)
 
@@ -3895,7 +3898,7 @@ integer               :: ens_size, e
 
 logical  :: stagr_lon, stagr_lat
 
-ens_size = state_ens_handle%num_copies
+ens_size = state_ens_handle%num_copies -5
 slon_index = find_name('slon    ',dim_names)
 
 allocate(model_h_distrib(ens_size, num_levs))
@@ -4254,142 +4257,6 @@ end subroutine vector_to_prog_var
 
 ! get_close_obs section
 
-   subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                            num_close, close_ind, dist)
-!----------------------------------------------------------------------------
-
-!!!ADD IN SOMETHING TO USE EFFICIENTLY IF IT"S AT SAME LOCATION AS PREVIOUS OB!!!
-! Done in filter (collins 2/?/07)
-
-! get_close_obs will be getting an ob, with its location, and its horizontal distances 
-!    to an array of other locations (and the locations).
-!       These locations were picked out based on the efficient search/box algorithm.
-!    It converts vertical coordinates as needed, 
-!    It tests for being above the highest_obs_pressure_mb threshold, and increases the
-!       vertical distance based on height above highest_.
-!    It calls location_mod/threed_sphere:get_close_obs, 
-!       to which it sends this (converted) array of locations.
-!    It gets back the new total distances and arrays of those locations that are "close"
-!       to the base ob.
-! get_close_obs will use the ensemble average passed through new interface; ens_mean_for_model
-!    Convert the obs and/or state vertical location(s) to a standard (pressure) vertical location
-!    3D model_h would be useful here; calc once and use over and over.
-!       reinstall height/lon slice code for model_heights to facilitate that
-!    3D pressures also useful here; 
-!       reinstall height/lon slice code for plevs_cam to facilitate that
-!    throw away ens_mean after it's been used (or don't worry about it for now).
-! 
-! The kinds are available to do more sophisticated distance computations if needed
-
-implicit none
-
-type(get_close_type), intent(in)  :: gc
-type(location_type),  intent(in)  :: base_obs_loc, obs_loc(:)
-integer,              intent(in)  :: base_obs_kind, obs_kind(:)
-integer,              intent(out) :: num_close, close_ind(:)
-real(r8),             intent(out) :: dist(:)
-
-! remove some (unused) variables?
-integer                :: k, t_ind
-integer                :: base_which, local_base_which, obs_which, local_obs_which
-real(r8), dimension(3) :: base_array, local_base_array, obs_array, local_obs_array
-real(r8)               :: increment, threshold, thresh_wght
-type(location_type)    :: local_base_obs_loc, local_obs_loc
-
-print*, '*** Something is wrong if you see this message, you should not be calling get_close_obs'
-
-
-! If base_obs vert type is not pressure; convert it to pressure
-base_which = nint(query_location(base_obs_loc))
-if (base_which == VERTISPRESSURE) then
-   local_base_obs_loc = base_obs_loc
-   local_base_array   = get_location(base_obs_loc)  ! needed in num_close loop
-   local_base_which   = base_which
-else
-   base_array = get_location(base_obs_loc)
-   call convert_vert(base_array, base_which, local_base_array, local_base_which, base_obs_kind)
-   local_base_obs_loc = set_location(base_array(1), base_array(2), local_base_array(3), &
-                                     local_base_which)
-end if
-
-!! DEBUG: comment this in if you want to bypass the top level damping code below.
-!call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-!                       num_close, close_ind, dist)
-!return
-
-! Get all the potentially close obs but no dist (optional argument dist(:) is not present)
-call loc_get_close_obs(gc, local_base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                       num_close, close_ind)
-
-threshold = highest_state_pressure_mb *100._r8
-if (threshold > 0.0_r8) thresh_wght = 1._r8/(threshold * threshold)
-
-do k = 1, num_close
-
-   t_ind = close_ind(k)
-   obs_array = get_location(obs_loc(t_ind))
-   obs_which = nint(query_location(obs_loc(t_ind)))
-
-   if (obs_which == VERTISPRESSURE ) then
-      ! put the vertical (pressure) of the state/ob in local storage
-      local_obs_array(3) = obs_array(3)
-      local_obs_which    = obs_which
-   else
-      ! Convert vertical coordinate of obs_loc to pressure.
-      ! If horiz_dist_only is true, the vertical location and which vert aren't used by get_dist, 
-      ! but need to be defined for set_loc and are used in the damping section below no matter what.
-      call convert_vert(obs_array, obs_which, local_obs_array, local_obs_which, obs_kind(t_ind))
-
-      ! obs_which = -2 (VERTISUNDEF) mean this ob is vertically close to base_obs, no matter what.
-      if (local_obs_array(3) == MISSING_R8) then
-         local_obs_array(3) = local_base_array(3)
-         local_obs_which = local_base_which
-      end if
-   end if
-
-   local_obs_loc = set_location(obs_array(1), obs_array(2), local_obs_array(3), &
-                                   local_obs_which)
-
-!  nsc fri, 13mar09
-!  allow a namelist specified kind string to restrict the impact of those
-!  obs kinds to only other obs and state vars of the same kind.
-   if ((impact_kind_index >= 0)                .and. &
-       (impact_kind_index == base_obs_kind)    .and. &
-       (impact_kind_index /= obs_kind(t_ind))) then
-      dist(k) = 999999._r8     ! arbitrary very large distance
-   else if (local_base_which == VERTISUNDEF) then
-      ! The last argument, no_vert = .true., makes get_dist calculate horzontal distance only.
-      dist(k) = get_dist(local_base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind),.true.)
-      ! Then no damping can be done since vertical distance is undefined.
-      ! ? Is this routine called *both* to get model points close to a real obs,
-      !   AND ob close to a model point?  I want damping in the latter case,
-      !   even if ob has which_vert = VERTISUNDEF.
-      !   I think that testing on local_base_which will do that.
-   else
-      dist(k) = get_dist(local_base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
-
-      ! Damp the influence of obs (below the namelist variable highest_obs_pressure_mb) 
-      ! on variables above highest_state_pressure_mb.  
-      ! This section could also change the distance based on the KIND_s of the base_obs and obs.
-   
-      ! dist = 0 for some for synthetic obs.
-      ! Additive increase, based on height above threshold, works better than multiplicative
-   
-      ! See model_mod circa 1/1/2007 for other damping algorithms.
-   
-      increment = threshold - local_obs_array(3)
-      ! This if-test handles the case where no damping is performed, i.e. 
-      ! highest_state_pressure_mb = 0 and threshold = 0.
-      if (increment > 0) then
-         dist(k) = dist(k) + increment * increment * thresh_wght
-   ! too sharp      dist(k) = dist(k) + increment / threshold
-      end if
-   endif
-
-end do
-
-end subroutine get_close_obs
-
 !> Distributed version of get_close_obs
 subroutine get_close_obs_distrib(gc, base_obs_loc, base_obs_kind, obs_loc, obs_loc_distrib, &
                         obs_kind, num_close, close_ind, dist, state_ens_handle, win)
@@ -4445,7 +4312,7 @@ if (base_which == VERTISPRESSURE) then
    local_base_which   = base_which
 else
    base_array = get_location(base_obs_loc)
-   call convert_vert(base_array, base_which, local_base_array, local_base_which, base_obs_kind)
+   call convert_vert_distrib(state_ens_handle, win, base_array, base_which, local_base_array, local_base_which, base_obs_kind)
    local_base_obs_loc = set_location(base_array(1), base_array(2), local_base_array(3), &
                                      local_base_which)
 end if
@@ -4550,263 +4417,8 @@ end do
 
 end subroutine get_close_obs_distrib
 
-
-
-!=======================================================================
-   subroutine convert_vert (old_array, old_which, new_array, new_which, dart_kind)
-!=======================================================================
-! subroutine convert_vert(old_loc, new_loc, dart_kind)
-!
-! Uses model information and subroutines to convert the vertical location of an ob 
-! (prior, model state variable, or actual ob) into the standard vertical coordinate (pressure).
-! Called by model_mod:get_close_obs.
-! Kevin Raeder 10/26/2006
-
-integer,                intent(in)    :: dart_kind, old_which
-integer,                intent(out)   :: new_which
-real(r8), dimension(3), intent(in)    :: old_array
-real(r8), dimension(3), intent(inout) :: new_array 
-
-integer   :: i, num_levs, top_lev, bot_lev
-integer   :: lon_which_dimid, lat_which_dimid, lon_index, lat_index
-integer   :: rank_kind, cam_kind, istatus
-real(r8)  :: p_surf,   frac
-logical   :: stagr_lon, stagr_lat
-type(location_type)   :: dum_loc
-
-character(len=8)      :: dim_name
-
-! set good initial values, only differences will be changed.
-stagr_lon = .false.
-stagr_lat = .false.
-
-! these should be set by the code below; it's an error if not.
-lon_which_dimid = MISSING_I
-lat_which_dimid = MISSING_I
-lon_index       = MISSING_I
-lat_index       = MISSING_I
-new_array       = MISSING_R8
-new_which       = MISSING_I
-
-if (old_which == VERTISPRESSURE .or. old_which == VERTISHEIGHT  .or. &
-    old_which == VERTISLEVEL    .or. old_which == VERTISSURFACE .or. &
-    old_which == VERTISUNDEF   ) then
-   !  proceed
-else
-   ! make this a fatal error - there should be no other options for vert.
-   write(msgstring,'(''obs at '',3(F9.5,1x),I2,'' has bad vertical type'')') &
-                   old_array, old_which
-   call error_handler(E_ERR, 'convert_vert', msgstring,source,revision,revdate)
-end if
-
-! Find the nfld of this dart-KIND
-if (dart_kind > 0) then
-   ! non-identity obs
-   cam_kind = dart_to_cam_kinds(dart_kind)
-else if (dart_kind < 0) then
-   ! identity obs; dart_kind = -1*state_vector_index
-   ! Value returned in cam_kind will be the nfld value of this field, not the usual dart_kind.
-   call get_state_meta_data(dart_kind, dum_loc, cam_kind)
-end if
-! Find the index of this kind within its group of same-rank fields
-rank_kind = cam_kind
-
-! Figure out what rank CAM field this corresponds to, 
-! so that vertical coordinate can be determined
-! Also need lon and lat indices to select ps for calc of p_col for vertical conversion.
-! Note that this is an approximation; the CAM lat/lon pair closest to the obs is chosen, 
-! rather than doing an interpolation of the 4 closest lat/lons.
-if (rank_kind <= state_num_0d) then
-   call coord_index('lon     ', old_array(1), lon_index)
-   call coord_index('lat     ', old_array(2), lat_index)
-   ! fix for non-CAM obs 
-   lon_which_dimid = 1
-   lat_which_dimid = 2
-   ! end non-CAM obs
-   go to 10
-else
-   rank_kind = rank_kind - state_num_0d
-end if
-
-if (rank_kind <= state_num_1d) then
-   dim_name = dim_names(s_dimid_1d(rank_kind))
-   if (dim_name .eq.'lon     ' .or. dim_name .eq.'slon    ' ) then   
-! s_dimid_1d holds the single CAM dimension ids of the dimensions of the 1D fields
-      lon_which_dimid = 1                             
-      call coord_index(dim_name, old_array(1), lon_index)
-      lat_index = 1
-   elseif (dim_name .eq.'lat     ' .or. dim_name .eq.'slat    ' ) then
-      lat_which_dimid = 1
-      call coord_index(dim_name, old_array(2), lat_index)
-      lon_index = 1
-
-! This may be premature; we have not converted the 3rd dimension yet!
-! This may be spurious; we may not use lev_which_dimid.
-! Similarly with other ranks
-! Also; coordinate 'lev' is filled with 1000*(A+B), not levels 1,2,...
-
-!   elseif (dim_name .eq.'lev     ' .or. dim_name .eq.'ilev    ' ) then
-!      lev_which_dimid = 1
-!      call coord_index(dim_name, old_array(3), lev_index)
-   end if
-   go to 10
-else
-   rank_kind = rank_kind - state_num_1d
-end if
-   
-if (rank_kind <= state_num_2d) then
-   do i=1,2
-      dim_name = dim_names(s_dimid_2d(i,rank_kind))
-      if (dim_name .eq.'lon     ' .or. dim_name .eq.'slon    ' ) then
-         lon_which_dimid = s_dimid_2d(i,rank_kind)   ! assign the CAM longitude dimension, if present
-         call coord_index(dim_name, old_array(1), lon_index)
-      elseif (dim_name .eq.'lat     ' .or. dim_name .eq.'slat    ' ) then   
-         lat_which_dimid = s_dimid_2d(i,rank_kind)
-         call coord_index(dim_name, old_array(2), lat_index)
-!      elseif (dim_name .eq.'lev     ' .or. dim_name .eq.'ilev    ' ) then
-!         lev_which_dimid = s_dimid_2d(i,rank_kind)
-!         call coord_index(dim_name, old_array(3), lev_index)
-      end if
-   end do
-   go to 10
-else
-   rank_kind = rank_kind - state_num_2d
-end if
-
-if (rank_kind <= state_num_3d) then
-   do i=1,3
-      dim_name = dim_names(s_dimid_3d(i,rank_kind))
-      if (dim_name .eq.'lon     ' .or. dim_name .eq.'slon    ' ) then
-         lon_which_dimid = s_dimid_3d(i,rank_kind)
-         call coord_index(dim_name, old_array(1), lon_index)
-      elseif (dim_name .eq.'lat     ' .or. dim_name .eq.'slat    ' ) then
-         lat_which_dimid = s_dimid_3d(i,rank_kind)
-         call coord_index(dim_name, old_array(2), lat_index)
-!      elseif (dim_name .eq.'lev     ' .or. dim_name .eq.'ilev    ' ) then
-!         lev_which_dimid = s_dimid_3d(i,rank_kind)
-!         call coord_index(dim_name, old_array(3), lev_index)
-      end if
-   end do
-
-   go to 10
-else
-   ! print error; field not found for dart_kind = ...
-end if
-
-10 continue
-
-
-! Doubly staggered not handled correctly here.
-! original; if     (lat_which_dimid == find_name('slat    ', dim_names)) then 
-! These dim_ids are from the CAM initial file.
-! The list of dim_names come from 
-if     (lat_which_dimid == slat%dim_id) then 
-   stagr_lat = .true.
-   p_surf = ps_stagr_lat(lon_index, lat_index)
-elseif (lon_which_dimid == slon%dim_id) then
-   stagr_lon = .true.
-   p_surf = ps_stagr_lon(lon_index, lat_index)
-elseif (lon_which_dimid == MISSING_I .or. lat_which_dimid == MISSING_I) then
-   ! one of these dimensions is missing from this variable
-   p_surf = P0%vals(1)
-   ! Or should this be the average of ps over the undefined dimension?
-   ! Or is this meaningless?
-else
-   p_surf = ps(lon_index, lat_index)
-end if
-
-! Need the vertical pressure structure for this column
-! This routine will be called for :
-!   model grid points (from get_close_obs) (just one column of the state vector is the correct one),
-!   expected obs (4 times from model_interpolate) (the correct column is an interpolation of the 
-!      surrounding 4 columns).  
-
-! Convert vertical coordinate from one of the following to pressure.
-! integer, parameter :: VERTISUNDEF    = -2 ! has no vertical location (undefined)
-! integer, parameter :: VERTISSURFACE  = -1 ! surface value
-! integer, parameter :: VERTISLEVEL    =  1 ! by level
-! integer, parameter :: VERTISPRESSURE =  2 ! by pressure
-! integer, parameter :: VERTISHEIGHT   =  3 ! by height
-
-if (old_which == VERTISUNDEF) then
-   ! Field with no vertical location; get_dist will calculate horiz dist only unless this case
-   ! is handled by the calling routine.
-
-   ! If a parameter/state variable is supposed to be close to everything, 
-   ! then I would need to have the/an other location to set it to,
-   ! Send back new_array empty and test for that in the calling routine, 
-   ! where the other location exists.
-   ! For model variables user specifies which_vert for each state field, 
-   ! so when user specifies undefined, then this should return;
-   new_array(3) = MISSING_R8
-   new_which    = old_which
-elseif (old_which == VERTISSURFACE ) then       
-   ! surface field; change which_vert for the distance calculation
-   new_array(3) =  p_surf
-   new_which    = 2
-elseif (old_which == VERTISLEVEL ) then
-   ! WHAT ABOUT FIELDS THAT MIGHT COME ON ilevS ?   have lev_which_dimid from above;
-   !     test = ilev%dim_id or lev%dim_id
-   ! Next get the values on the levels for this ps
-! unnecessary complication?   num_levs = dim_sizes(find_name('lev     ',dim_names))
-   num_levs = lev%length
-   call plevs_cam (p_surf, num_levs, p_col)
-
-   ! OR do this for all columns in static_init_model_dist, which would make PS (and P) globally 
-   ! available for all regions?
-   new_array(3) = p_col(nint(old_array(3)))
-   new_which    = 2
-elseif (old_which == VERTISHEIGHT) then
-! unnecessary complication?   num_levs = dim_sizes(find_name('lev     ',dim_names))
-   num_levs = lev%length
-   call plevs_cam (p_surf, num_levs, p_col)
-   ! ens_mean is global storage that should have been filled 
-   ! by a call from filter_assim to ens_mean_for_model.
-   call model_heights(ens_mean, p_surf, lon_index, lat_index, num_levs, stagr_lon, stagr_lat,  &
-                      model_h, istatus)
-
-   ! Search down through heights
-   ! This assumes linear relationship of pressure to height over each model layer, 
-   ! when really it's exponential.  How bad is that?
-
-   bot_lev = 2
-   do while (old_array(3) <= model_h(bot_lev) .and. bot_lev <= num_levs)
-      bot_lev = bot_lev + 1
-   end do
-   top_lev = bot_lev - 1
-
-   ! write warning message if not found within model level heights.
-   ! maybe this should return failure somehow?
-   if (top_lev == 1 .and. old_array(3) > model_h(1)) then
-      ! above top of model
-      frac = 1.0_r8
-      write(msgstring, *) 'ob height ',old_array(3),' above CAM levels at ' &
-                          ,old_array(1) ,old_array(2) ,' for ob type',dart_kind
-      call error_handler(E_MSG, 'convert_vert', msgstring,source,revision,revdate)
-   else if (bot_lev <= num_levs) then
-      ! within model levels
-      frac = (old_array(3) - model_h(bot_lev)) / (model_h(top_lev) - model_h(bot_lev))
-   else 
-      ! below bottom of model
-      frac = 0.0_r8
-      write(msgstring, *) 'ob height ',old_array(3),' below CAM levels at ' &
-                          ,old_array(1) ,old_array(2) ,' for ob type',dart_kind
-      call error_handler(E_MSG, 'convert_vert', msgstring,source,revision,revdate)
-   endif
-
-   new_array(3) = (1.0_r8 - frac) * p_col(bot_lev) + frac * p_col(top_lev)
-   new_which    = 2
-
-else
-   write(msgstring, *) 'model which_vert = ',old_which,' not handled in convert_vert '
-   call error_handler(E_ERR, 'convert_vert', msgstring,source,revision,revdate)
-end if
-
-return
-
-end subroutine convert_vert
-
-!> Distributed version of convert vert
+!> Distributed version of convert vert, uses the mean of the ensemebles
+!> to calculate the vertial coordinate of an obs or state element
 !=======================================================================
    subroutine convert_vert_distrib(state_ens_handle, win, old_array, old_which, new_array, new_which, dart_kind)
 !=======================================================================
@@ -4837,7 +4449,7 @@ integer   :: ens_size
 integer   :: slon_index
 real(r8), allocatable  :: all_psurf(:)
 
-ens_size = state_ens_handle%num_copies
+ens_size = state_ens_handle%num_copies -5
 slon_index = find_name('slon    ',dim_names)
 allocate(all_psurf(ens_size))
 
@@ -4871,7 +4483,7 @@ if (dart_kind > 0) then
 else if (dart_kind < 0) then
    ! identity obs; dart_kind = -1*state_vector_index
    ! Value returned in cam_kind will be the nfld value of this field, not the usual dart_kind.
-   call get_state_meta_data(dart_kind, dum_loc, cam_kind)
+   call get_state_meta_data_distrib(state_ens_handle, win, dart_kind, dum_loc, cam_kind)
 end if
 ! Find the index of this kind within its group of same-rank fields
 rank_kind = cam_kind
@@ -4995,7 +4607,7 @@ else
 end if
 
 ! grab the mean
-p_surf = all_psurf(ens_size -5) !> @todo Sort this out
+p_surf = all_psurf(ens_size) !> @todo Sort this out
 
 ! Need the vertical pressure structure for this column
 ! This routine will be called for :
@@ -6610,6 +6222,45 @@ ind = index_from_grid(1, lon_ind, lat_ind, ifld)
 call get_state(get_surface_pressure, ind, win, state_ens_handle, ens_size)
 
 end function get_surface_pressure
+
+!--------------------------------------------------------------------
+!> This returns the vertical coordinate of an observation in the
+!> requested vertical localization coordinate. 
+!> Aim: to have only the process who owns the observation do this calulation, 
+!> rather than all processeses doing the same calculation in get_close_obs_distrib
+subroutine convert_base_obs_location(obs_loc, state_ens_handle, win, vert_coord, istatus)
+
+type(location_type), intent(inout) :: obs_loc
+type(ensemble_type),    intent(in) :: state_ens_handle
+integer,                intent(in) :: win
+real(r8),              intent(out) :: vert_coord
+integer,               intent(out) :: istatus
+
+real(r8), dimension(3) :: base_array
+integer                :: base_obs_kind !> @todo Should check for identity obs
+integer                :: base_which ! vertical coorardiate
+integer                :: istatus_v
+
+base_obs_kind = 1 ! dummy for now, should check for identity obs
+
+base_which = nint(query_location(obs_loc))
+
+!if (base_which /= wrf%dom(1)%localization_coord) then *** WRF specific! ***
+   !call convert_vert_distrib(state_ens_handle, win, obs_loc, base_obs_kind, istatus_v)
+!endif
+if (base_which /= VERTISPRESSURE) then
+   call error_handler(E_ERR, 'convert_base_obs_location ', 'broken here fix this')
+endif
+
+istatus = istatus_v
+
+base_array = get_location(obs_loc)
+vert_coord = base_array(3)
+
+!> @todot set location so you don't redo this calculation in get_close_obs NOPE  they are two different structures
+!obs_loc = set_location(base_array(1), base_array(2), base_array(3), wrf%dom(1)%localization_coord )
+
+end subroutine convert_base_obs_location
 
 
 !#######################################################################
