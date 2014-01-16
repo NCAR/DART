@@ -20,14 +20,14 @@
 
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-!  use obs_def_gps_mod, only : get_expected_gpsro_ref, interactive_gpsro_ref, &
+!  use obs_def_gps_mod, only : get_expected_gpsro_ref_distrib, interactive_gpsro_ref, &
 !                              read_gpsro_ref, write_gpsro_ref
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(GPSRO_REFRACTIVITY)
-!            call get_expected_gpsro_ref(state, location, obs_def%key, obs_val, istatus)
+!            call get_expected_gpsro_ref_distrib(state_ens_handle, win, location, obs_def%key, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 
@@ -63,18 +63,20 @@ use     location_mod, only : location_type, set_location, get_location, &
                              VERTISHEIGHT
 use time_manager_mod, only : time_type, read_time, write_time, &
                              set_time, set_time_missing, interactive_time
-use  assim_model_mod, only : interpolate
+use  assim_model_mod, only : interpolate_distrib
 
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
                              KIND_V_WIND_COMPONENT, KIND_SURFACE_PRESSURE, &
                              KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
                              KIND_PRESSURE, KIND_GPSRO
 
+use data_structure_mod, only : ensemble_type
+
 implicit none
 private
 
 public :: set_gpsro_ref, get_gpsro_ref, write_gpsro_ref, read_gpsro_ref, &
-          get_expected_gpsro_ref, interactive_gpsro_ref
+          get_expected_gpsro_ref_distrib, interactive_gpsro_ref
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -370,10 +372,11 @@ write(*, *)
 
 end subroutine interactive_gpsro_ref
 
- subroutine get_expected_gpsro_ref(state_vector, location, gpskey, ro_ref, istatus)
+!> Distributed version of get_expected_gpsro_ref_distrib
+ subroutine get_expected_gpsro_ref_distrib(state_ens_handle, win, location, gpskey, ro_ref, istatus)
 !------------------------------------------------------------------------------
 !
-! Purpose: Calculate GPS RO local refractivity or non_local (integrated) 
+! Purpose: Calculate GPS RO local refractivity or non_local (integrated)
 !          refractivity (excess phase, Sergey Sokolovskiy et al., 2005)
 !------------------------------------------------------------------------------
 !
@@ -381,46 +384,57 @@ end subroutine interactive_gpsro_ref
 !    state_vector:    DART state vector
 !
 ! output parameters:
-!    ro_ref: modeled local refractivity (N-1)*1.0e6 or non_local 
+!    ro_ref: modeled local refractivity (N-1)*1.0e6 or non_local
 !            refractivity (excess phase, m)
 !            (according to the input data parameter subset)
 !    istatus:  =0 normal; =1 outside of domain.
 !------------------------------------------------------------------------------
-!  Author: Hui Liu 
+!  Author: Hui Liu
 !  Version 1.1: June 15, 2004: Initial version CAM
 !
 !  Version 1.2: July 29, 2005: revised for new obs_def and WRF
 !------------------------------------------------------------------------------
-implicit none
 
-real(r8),            intent(in)  :: state_vector(:)
+!> @todo this is completely broken
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: win !> window for one sided communication
 type(location_type), intent(in)  :: location
 integer,             intent(in)  :: gpskey
-real(r8),            intent(out) :: ro_ref
-integer,             intent(out) :: istatus
+real(r8),            intent(out) :: ro_ref(:)
+integer,             intent(out) :: istatus(:)
 
 ! local variables
 
 real(r8) :: nx, ny, nz       ! unit tangent direction of ray at perigee
 real(r8) :: xo, yo, zo       ! perigee location in Cartesian coordinate
 
-real(r8) :: ref_perigee, ref00, ref1, ref2, dist_to_perigee
-real(r8) :: phase
-real(r8) :: xx, yy, zz, height1, lat1, lon1, delta_phase1, delta_phase2
+real(r8) :: height1, lat1, lon1
 
-integer  :: iter, istatus0
-real(r8) :: lon, lat, height, obsloc(3)
+real(r8), allocatable :: phase(:)
+real(r8), allocatable :: delta_phase1(:), delta_phase2(:)
+real(r8), allocatable :: ref_perigee(:), ref1(:), ref2(:), dist_to_perigee(:)
+real(r8), allocatable :: xx(:), yy(:), zz(:)
+integer               :: iter
+integer,  allocatable :: istatus0(:), track_status(:)
+real(r8), allocatable :: ref00(:)
+real(r8)              :: lon, lat, height, obsloc(3)
+integer               :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
 
+ens_size = state_ens_handle%num_copies -5
+allocate(istatus0(ens_size), track_status(ens_size))
+allocate(ref00(ens_size), ref_perigee(ens_size), ref1(ens_size), ref2(ens_size))
+allocate(xx(ens_size), yy(ens_size), zz(ens_size))
+allocate(delta_phase1(ens_size), delta_phase2(ens_size), phase(ens_size))
+
 if ( .not. vert_is_height(location)) then
    write(string1, *) 'vertical location must be height; gps obs key ', gpskey
-   call error_handler(E_ERR,'get_expected_gpsro_ref', string1, &
+   call error_handler(E_ERR,'get_expected_gpsro_ref_distrib', string1, &
                       source, revision, revdate)
 endif
 
 obsloc   = get_location(location)
-
 
 lon      = obsloc(1)                       ! degree: 0 to 360
 lat      = obsloc(2)                       ! degree: -90 to 90
@@ -428,25 +442,28 @@ height   = obsloc(3)                       ! (m)
 
 ! calculate refractivity at perigee
 
-call ref_local(state_vector, location, height, lat, lon, ref_perigee, istatus0)
+call ref_local_distrib(state_ens_handle, win, location, height, lat, lon, ref_perigee, istatus0)
 ! if istatus > 0, the interpolation failed and we should return failure now.
-if(istatus0 > 0) then
+
+if(all(istatus0 > 0)) then
    istatus = istatus0
    ro_ref = missing_r8
    return
 endif
 
-choose: if(gps_data(gpskey)%gpsro_ref_form == 'GPSREF') then 
-    ! use local refractivity
+track_status = istatus
 
+choose: if(gps_data(gpskey)%gpsro_ref_form == 'GPSREF') then
+    ! use local refractivity
     ro_ref = ref_perigee * 1.0e6      ! in (N-1)*1.0e6, same with obs
 
 else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
 
     ! otherwise, use non_local refractivity(excess phase delay)
+    !> @todo I have broken this.
 
     ! Initialization
-    phase = 0.0_r8  
+    phase = 0.0_r8
     dist_to_perigee =  0.0_r8   ! distance to perigee from a point of the ray
 
     nx = gps_data(gpskey)%ray_direction(1)
@@ -454,13 +471,12 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
     nz = gps_data(gpskey)%ray_direction(3)
 
     ! convert location of the perigee from geodetic to Cartesian coordinate
-
-    call geo2carte (height, lat, lon, xo, yo, zo, gps_data(gpskey)%rfict )
+    call geo2carte(height, lat, lon, xo, yo, zo, gps_data(gpskey)%rfict )
 
     ! currently, use a straight line passing the perigee point as ray model.
     ! later, more sophisticated ray models can be used.
     !
-    ! Start the horizontal integrate of the model refractivity along a 
+    ! Start the horizontal integrate of the model refractivity along a
     ! straight line path in cartesian coordinate
     !
     ! (x-xo)/a = (y-yo)/b = (z-zo)/c,  (a,b,c) is the line direction
@@ -473,55 +489,63 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
 
        iter = iter + 1
        dist_to_perigee = dist_to_perigee + gps_data(gpskey)%step_size
-   
+
        !  integrate to one direction of the ray for one step
+       ! HK These are now different for each ensemble member
        xx = xo + dist_to_perigee * nx
        yy = yo + dist_to_perigee * ny
        zz = zo + dist_to_perigee * nz
-      
-       ! convert the location of the point to geodetic coordinates 
+
+       ! convert the location of the point to geodetic coordinates
        ! height(m), lat, lon(deg)
-   
-       call carte2geo(xx, yy, zz, height1, lat1, lon1, gps_data(gpskey)%rfict )  
-       if (height1 >= gps_data(gpskey)%ray_top) exit
-   
+
+       do e = 1, ens_size
+          !call carte2geo( xx(e), yy(e), zz(e), height1, lat1, lon1, gps_data(gpskey)%rfict )
+          !if (height1(e) >= gps_data(gpskey)%ray_top) exit !HK Is height1 the same for all ensemble members? NO, of course not
+         call error_handler(E_ERR, 'get_expected_gpsro_ref_distrib', 'broken Helen obs_def_mod.f90')
+       enddo
+
        ! get the refractivity at this ray point(ref00)
-       call ref_local(state_vector, location, height1, lat1, lon1, ref00, istatus0)
-       ! when any point of the ray is problematic, return failure
-       if(istatus0 > 0) then
-         istatus = istatus0
-         ro_ref = missing_r8
-         return
-       endif
-   
+       call ref_local_distrib(state_ens_handle, win, location, height1, lat1, lon1, ref00, istatus0)
+       do e = 1, ens_size
+          ! when any point of the ray is problematic, return failure
+          if(istatus0(e) > 0) then
+            istatus(e) = istatus0(e)
+            ro_ref(e) = missing_r8
+          endif
+       enddo
+
+       track_status = istatus
+
        ! get the excess phase due to this ray interval
        delta_phase1 = (ref1 + ref00) * gps_data(gpskey)%step_size * 0.5_r8
-   
+
        ! save the refractivity for integration of next ray interval
        ref1 = ref00
-   
+
        ! integrate to the other direction of the ray
        xx = xo - dist_to_perigee * nx
-       yy = yo - dist_to_perigee * ny 
+       yy = yo - dist_to_perigee * ny
        zz = zo - dist_to_perigee * nz
-      
-       call carte2geo (xx, yy, zz, height1, lat1, lon1, gps_data(gpskey)%rfict )  
-   
+
+       call carte2geo( xx(e), yy(e), zz(e), height1, lat1, lon1, gps_data(gpskey)%rfict )
+
        ! get the refractivity at this ray point(ref00)
-       call ref_local(state_vector, location, height1, lat1, lon1, ref00, istatus0)
+       call ref_local_distrib(state_ens_handle, win, location, height1, lat1, lon1, ref00, istatus0)
        ! when any point of the ray is problematic, return failure
-       if(istatus0 > 0) then
-         istatus = istatus0
-         ro_ref = missing_r8
-         return
-       endif
-   
+       do e = 1, ens_size
+          if(istatus0(e) > 0) then
+            track_status(e) = istatus0(e)
+            ro_ref(e) = missing_r8
+          endif
+       enddo
+
        ! get the excess phase due to this ray interval
        delta_phase2 = (ref2 + ref00) * gps_data(gpskey)%step_size * 0.5_r8
-   
+
        ! save the refractivity for integration of next ray interval
        ref2 = ref00
-   
+
        phase = phase + delta_phase1 + delta_phase2
        ! print*, 'phase= ',  phase, delta_phase1, delta_phase2
 
@@ -535,22 +559,27 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
 
 endif choose
 
-! if the original height was too high, for example.  do not return a
-! negative or 0 excess phase or refractivity.
-if (ro_ref == missing_r8 .or. ro_ref <= 0.0_r8) then
-   istatus = 5
-   ro_ref = missing_r8
-   return
-endif
+istatus = track_status
+
+! Putting missing_r8 back in for failed ensemble members
+do e = 1, ens_size
+   if( istatus(e) /= 0 ) ro_ref(e) = missing_r8
+   ! if the original height was too high, for example.  do not return a
+   ! negative or 0 excess phase or refractivity.
+   if (ro_ref(e) == missing_r8 .or. ro_ref(e) <= 0.0_r8) then
+      istatus(e) = 5
+      ro_ref(e) = missing_r8
+   endif
+enddo
 
 ! ended ok, return local refractivity or non-local excess phase accumulated value
-istatus = 0
+!istatus = 0 !HK This is annoying 
+!> @todo check the istatus return 
 
-end subroutine get_expected_gpsro_ref
+end subroutine get_expected_gpsro_ref_distrib
 
-
-
- subroutine ref_local(state_vector, location, height, lat, lon, ref00, istatus0)
+!> Distributed version 
+subroutine ref_local_distrib(state_ens_handle, win, location, height, lat, lon, ref00, istatus0)
 !------------------------------------------------------------------------------
 !
 ! Calculate local refractivity at any GPS ray point (height, lat, lon)
@@ -562,21 +591,27 @@ end subroutine get_expected_gpsro_ref
 !    ref00: modeled local refractivity at ray point(unit: N-1, ~1.0e-4 to e-6)
 !
 !------------------------------------------------------------------------------
-implicit none
 
-real(r8), intent(in) :: state_vector(:)
-real(r8), intent(in) :: lon, lat, height
-
-real(r8), intent(out) :: ref00
-integer,  intent(out) :: istatus0
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: win !> window for one sided communication
+real(r8),            intent(in)  :: lon, lat, height
+real(r8),            intent(out) :: ref00(:)
+integer,             intent(out) :: istatus0(:)
 
 real(r8), parameter::  rd = 287.05_r8, rv = 461.51_r8, c1 = 77.6d-6 , &
                        c2 = 3.73d-1,  rdorv = rd/rv
-real(r8) :: lon2, t, q, p, tv, ew
-type(location_type) :: location, location2
-integer :: which_vert
+
+integer,  allocatable :: track_status(:)
+integer               :: e, ens_size
+real(r8)              :: lon2
+real(r8), allocatable :: t(:), q(:), p(:), tv(:), ew(:)
+type(location_type)   :: location, location2
+integer               :: which_vert
 
 if ( .not. module_initialized ) call initialize_module
+
+ens_size = state_ens_handle%num_copies -5 ! This could be n
+allocate(t(ens_size), q(ens_size), p(ens_size), tv(ens_size), ew(ens_size), track_status(ens_size))
 
 ! for integration of GPS ray path beyond the wraparound point
 lon2 = lon
@@ -591,12 +626,21 @@ location2 = set_location(lon2, lat, height,  which_vert)
 istatus0 = 3
 ref00 = missing_r8
 
-call interpolate(state_vector, location2,  KIND_TEMPERATURE,       t, istatus0)
-if (istatus0 > 0) return
-call interpolate(state_vector, location2,  KIND_SPECIFIC_HUMIDITY, q, istatus0)
-if (istatus0 > 0) return
-call interpolate(state_vector, location2,  KIND_PRESSURE,          p, istatus0)
-if (istatus0 > 0) return
+call interpolate_distrib(location2,  KIND_TEMPERATURE, istatus0,  t,  state_ens_handle, win)
+if (all(istatus0 > 0)) return
+track_status = istatus0
+
+call interpolate_distrib(location2, KIND_SPECIFIC_HUMIDITY, istatus0, q, state_ens_handle, win)
+if (all(istatus0 > 0)) return
+do e = 1, ens_size
+   if ( istatus0(e) /= 0 ) track_status(e) = istatus0(e)
+enddo
+
+call interpolate_distrib(location2,  KIND_PRESSURE, istatus0, p, state_ens_handle, win)
+if (all(istatus0 > 0)) return
+do e = 1, ens_size
+   if ( istatus0(e) /= 0 ) track_status(e) = istatus0(e)
+enddo
 
 !  required variable units for calculation of GPS refractivity
 !   t :  Kelvin, from top to bottom
@@ -609,10 +653,14 @@ tv    = t * (1.0_r8+(rv/rd - 1.0_r8)*q)         ! virtual temperature
 ew    = q * p/(rdorv + (1.0_r8-rdorv)*q )
 ref00 = c1*p/t + c2*ew/(t**2)              ! (N-1)
 
-! now we have succeeded, set istatus to good
-istatus0 = 0
+istatus0 = track_status
 
-end subroutine ref_local
+! put failed copies back in
+do e = 1, ens_size
+   if( istatus0(e) /= 0 ) ref00(e) = missing_r8
+enddo
+
+end subroutine ref_local_distrib
 
 
  subroutine geo2carte (s1, s2, s3, x1, x2, x3, rfict0) 

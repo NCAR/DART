@@ -2623,10 +2623,8 @@ end subroutine read_obs
 
 !------------------------------------------------------------------------------
 
-subroutine interactive_obs(state_ens_handle, win, num_copies, num_qc, obs, key)
-
-type(ensemble_type), intent(in) :: state_ens_handle
-integer,             intent(in) :: win
+!subroutine interactive_obs(state_ens_handle, win, num_copies, num_qc, obs, key)
+subroutine interactive_obs(num_copies, num_qc, obs, key)
 
 integer,           intent(in) :: num_copies, num_qc, key
 type(obs_type), intent(inout) :: obs
@@ -2635,7 +2633,7 @@ integer :: i
 
 ! Does interactive initialization of an observation type
 
-call interactive_obs_def(state_ens_handle, win, obs%def, key)
+call interactive_obs_def(obs%def, key)
 do i = 1, num_copies
    write(*, *) 'Enter value ', i, 'for this observation'
    read(*, *) obs%values(i)

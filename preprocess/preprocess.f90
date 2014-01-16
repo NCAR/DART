@@ -450,11 +450,11 @@ end do
 write(obs_kind_out_unit, 51) separator_line
 write(obs_kind_out_unit, 51) blank_line
 write(obs_kind_out_unit, 51) '! Integer definitions for DART TYPES'
-write(line, *) 'integer, parameter, public :: &'
+write(line, *) 'integer, parameter, public :: & '
 write(obs_kind_out_unit, 51) trim(adjustl(line))
 do i = 1, num_types_found - 1
    write(obs_kind_out_unit, '(A50,A3,I5,A3)') &
-      trim(type_string(i)), ' = ', i, ', &'
+      trim(type_string(i)), ' = ', i, ', & '
 end do
 write(obs_kind_out_unit, '(A50,A3,I5)') &
    trim(type_string(num_types_found)), ' = ', num_types_found
@@ -491,7 +491,7 @@ end do
 ! Write out the definitions of each entry of obs_type_info
 do i = 1, num_types_found
    write(line, '(A,I5,3A)') 'obs_type_info(', i, ') = obs_type_type(', &
-      trim(type_string(i)), ", &"
+      trim(type_string(i)), ", & "
    write(obs_kind_out_unit, 21) trim(line)
    write(line, *) '   ', "'", trim(type_string(i)), "', ", &
       trim(kind_string(kind_index(i))), ', .false., .false.)'
@@ -687,8 +687,8 @@ ITEMS: do i = 1, 8
      case (get_expected_item)
         11 format(3A)
         write(obs_def_out_unit, 11) '      case(', trim(type_string(j)), ')'
-        write(obs_def_out_unit, 11) '         call interpolate(state, location, ', &
-           trim(kind_string(kind_index(j))), ', obs_val, istatus)'
+        write(obs_def_out_unit, 11) '         call interpolate_distrib(location, ', &
+           trim(kind_string(kind_index(j))), ', istatus, expected_obs, state_ens_handle, win)'
      case (read_item, write_item, interactive_item)
         write(obs_def_out_unit, 11) '   case(', trim(type_string(j)), ')'
         write(obs_def_out_unit, 21) '      continue'

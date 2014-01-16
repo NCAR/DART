@@ -16,7 +16,7 @@
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-!   use obs_def_rel_humidity_mod, only : get_expected_relative_humidity
+!   use obs_def_rel_humidity_mod, only : get_expected_relative_humidity_distrib
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
@@ -24,7 +24,7 @@
 !              AIRCRAFT_RELATIVE_HUMIDITY,   ACARS_RELATIVE_HUMIDITY,     &
 !              MARINE_SFC_RELATIVE_HUMIDITY, LAND_SFC_RELATIVE_HUMIDITY,  &
 !              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY)
-!            call get_expected_relative_humidity(state, location, obs_val, istatus)
+!            call get_expected_relative_humidity_distrib(state_ens_handle, win, location, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -58,13 +58,15 @@ use        types_mod, only : r8, missing_r8, L_over_Rv
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use     location_mod, only : location_type, set_location, get_location, write_location, &
                              read_location, vert_is_pressure
-use  assim_model_mod, only : interpolate
+use  assim_model_mod, only : interpolate_distrib
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_PRESSURE, KIND_VAPOR_MIXING_RATIO
+
+use data_structure_mod, only : ensemble_type
 
 implicit none
 private
 
-public :: get_expected_relative_humidity
+public :: get_expected_relative_humidity_distrib
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -92,36 +94,53 @@ end subroutine initialize_module
 
 !----------------------------------------------------------------------------
 
-subroutine get_expected_relative_humidity(state_vector, location, rh, istatus)
+subroutine get_expected_relative_humidity_distrib(state_ens_handle, win, location, rh, istatus)
 
-real(r8),            intent(in)  :: state_vector(:)
-type(location_type), intent(in)  :: location
-real(r8),            intent(out) :: rh     ! relative humidity (fraction)
-integer,             intent(out) :: istatus
+type(ensemble_type), intent(in)     :: state_ens_handle
+integer,             intent(in)     :: win !> window for one sided communication
+type(location_type), intent(inout)  :: location
+real(r8),            intent(out)    :: rh(:)    ! relative humidity (fraction)
+integer,             intent(out)    :: istatus(:)
 
-real(r8) :: qvap, tmpk, xyz(3), pres, es, qsat
+real(r8), allocatable :: qvap(:), tmpk(:), pres(:), es(:), qsat(:)
+real(r8)              :: xyz(3)
+integer,  allocatable :: track_status(:)
+integer              :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
 
+ens_size = state_ens_handle%num_copies -5
+
+allocate(qvap(ens_size), tmpk(ens_size), pres(ens_size), es(ens_size), qsat(ens_size))
+allocate(track_status(ens_size))
+
 !  interpolate the mixing ratio to the location
-call interpolate(state_vector, location, KIND_VAPOR_MIXING_RATIO, qvap, istatus)
-if (istatus /= 0 .or. qvap < 0.0_r8) then
-   if (istatus == 0) then
-      qvap = epsilon(0.0_r8)
-   else
-      rh = missing_r8
-      if (istatus == 0) istatus = 99
-      return
+call interpolate_distrib(location, KIND_VAPOR_MIXING_RATIO, istatus, qvap, state_ens_handle, win)
+do e = 1, ens_size
+   if (istatus(e) /= 0 .or. qvap(e) < 0.0_r8) then
+      if (istatus(e) == 0) then
+         qvap(e) = epsilon(0.0_r8)
+      else
+         rh(e) = missing_r8
+         if (istatus(e) == 0) istatus(e) = 99 !HK early return?
+      endif
    endif
-endif
+enddo
+
+track_status = istatus
 
 !  interpolate the temperature to the desired location
-call interpolate(state_vector, location, KIND_TEMPERATURE, tmpk, istatus)
-if (istatus /= 0 .or. tmpk <= 0.0_r8) then
-   rh = missing_r8
-   if (istatus == 0) istatus = 99
-   return
-endif
+call interpolate_distrib(location, KIND_TEMPERATURE, istatus, tmpk, state_ens_handle, win)
+do e = 1, ens_size
+   if (istatus(e) /= 0 .or. tmpk(e) <= 0.0_r8) then
+      rh(e) = missing_r8
+      if (istatus(e) == 0) istatus(e) = 99
+   endif
+enddo
+
+do e = 1, ens_size
+   if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+enddo
 
 !  interpolate the pressure, if observation location is not pressure
 if ( vert_is_pressure(location) ) then
@@ -129,44 +148,58 @@ if ( vert_is_pressure(location) ) then
    pres = xyz(3)
 else
    ! pressure comes back in pascals (not hPa or mb)
-   call interpolate(state_vector, location, KIND_PRESSURE, pres, istatus)
-   if (istatus /= 0 .or. pres <= 0.0_r8 .or. pres >= 120000.0_r8)  then
-      rh = missing_r8
-      if (istatus == 0) istatus = 99
-      return
-   endif
+   call interpolate_distrib(location, KIND_PRESSURE, istatus, pres, state_ens_handle, win)
+   do e = 1, ens_size
+      if (istatus(e) /= 0 .or. pres(e) <= 0.0_r8 .or. pres(e) >= 120000.0_r8)  then
+         rh(e) = missing_r8
+         if (istatus(e) == 0) istatus(e) = 99
+      endif
+   enddo
 endif
 
-!  Compute the rh
+do e = 1, ens_size
+   if (istatus(e) /= 0 ) track_status(e) = istatus(e)
+enddo
+
+!  Compute the rh - HK is having missing_r8 going to cause problems
 es   = 611.0_r8 * exp(L_over_Rv * (1.0_r8 / 273.0_r8 - 1.0_r8 / tmpk))
 qsat = 0.622_r8 * es / (pres - es)
 rh   = qvap / qsat
 
-!  Check for unreasonable values and return limits
-if (rh < MIN_VALUE) then
-   if (first_time_warn_low) then
-      write(msgstring, '(A,F12.6)') 'values lower than low limit detected, e.g.', rh
-      call error_handler(E_MSG,'get_expected_relative_humidity', msgstring,      &
-                         text2='all values lower than 1e-9 will be set to 1e-9', &
-                         text3='this message will only print once')
-      first_time_warn_low = .false.
-   endif
-   rh = MIN_VALUE
-endif
+do e = 1, ens_size
 
-if (rh > MAX_VALUE) then
-   if (first_time_warn_high) then
-      write(msgstring, '(A,F12.6)') 'values higher than high limit detected, e.g.', rh
-      call error_handler(E_MSG,'get_expected_relative_humidity', msgstring,      &
-                         text2='all values larger than 1.1 will be set to 1.1', &
-                         text3='this message will only print once')
-      first_time_warn_high = .false.
+   if (track_status(e) == 0 ) then
+      !  Check for unreasonable values and return limits
+      if (rh(e) < MIN_VALUE) then
+         if (first_time_warn_low) then
+            write(msgstring, '(A,F12.6)') 'values lower than low limit detected, e.g.', rh
+            call error_handler(E_MSG,'get_expected_relative_humidity', msgstring,      &
+                               text2='all values lower than 1e-9 will be set to 1e-9', &
+                               text3='this message will only print once')
+            first_time_warn_low = .false.
+         endif
+         rh(e) = MIN_VALUE
+      endif
+
+      if (rh(e) > MAX_VALUE) then
+         if (first_time_warn_high) then
+            write(msgstring, '(A,F12.6)') 'values higher than high limit detected, e.g.', rh
+            call error_handler(E_MSG,'get_expected_relative_humidity', msgstring,      &
+                            text2='all values larger than 1.1 will be set to 1.1', &
+                               text3='this message will only print once')
+            first_time_warn_high = .false.
+         endif
+         rh(e) = MAX_VALUE
+      endif
+   else
+      rh(e) = missing_r8 ! put missing values back in
    endif
-   rh = MAX_VALUE
-endif
+enddo
+
+deallocate(qvap, tmpk, pres, es, qsat)
 
 return
-end subroutine get_expected_relative_humidity
+end subroutine get_expected_relative_humidity_distrib
 
 !----------------------------------------------------------------------------
 

@@ -707,7 +707,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    base_obs_loc%vloc = vert_obs_loc_in_localization_coord
    ! if (my_task_id() == 0 ) print*, 'which vert ', base_obs_loc%which_vert
    !> @todo vertical coordinate of obs
-   base_obs_loc%which_vert = 3 !DANGER HARDCODED 
+   base_obs_loc%which_vert = 2
+   if (i == 1 .and. my_task_id() == 0 ) print*, 'DANGER HARDCODED vertical coordinate in filter_assim'
 
    if (.not. close_obs_caching) then
       !call get_close_obs(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, &
@@ -725,7 +726,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          start = MPI_WTIME()
          call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_loc_distrib, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle, win)
          finish = MPI_WTIME()
-         print*, 'obs get_obs', finish - start, 'rank ', my_task_id()
 
          last_base_obs_loc      = base_obs_loc
          last_num_close_obs     = num_close_obs
@@ -836,7 +836,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                   my_state_loc_distrib, my_state_kind, num_close_states, close_state_ind,&
                   close_state_dist, ens_handle, win)
          finish = MPI_WTIME()
-         print*, 'state get_obs', finish - start, 'rank ', my_task_id()
 
          last_base_states_loc     = base_obs_loc
          last_num_close_states    = num_close_states

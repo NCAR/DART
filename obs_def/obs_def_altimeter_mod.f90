@@ -13,13 +13,13 @@
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-!   use obs_def_altimeter_mod, only : get_expected_altimeter, compute_altimeter
+!   use obs_def_altimeter_mod, only : get_expected_altimeter_distrib, compute_altimeter_distrib
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(RADIOSONDE_SURFACE_ALTIMETER, DROPSONDE_SURFACE_ALTIMETER, MARINE_SFC_ALTIMETER, &
 !              LAND_SFC_ALTIMETER, METAR_ALTIMETER)
-!            call get_expected_altimeter(state, location, obs_val, istatus)
+!            call get_expected_altimeter_distrib(state_ens_handle, win, location, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -43,17 +43,18 @@
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_altimeter_mod
 
-use        types_mod, only : r8, missing_r8, t_kelvin
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
-use     location_mod, only : location_type, set_location, get_location , write_location, &
-                             read_location
-use  assim_model_mod, only : interpolate
-use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_SURFACE_ELEVATION
+use           types_mod, only : r8, missing_r8, t_kelvin
+use       utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
+use        location_mod, only : location_type, set_location, get_location, write_location, &
+                                read_location
+use     assim_model_mod, only : interpolate_distrib
+use        obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_SURFACE_ELEVATION
+use  data_structure_mod, only : ensemble_type
 
 implicit none
 private
 
-public :: get_expected_altimeter, compute_altimeter
+public :: get_expected_altimeter_distrib, compute_altimeter_distrib
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -74,60 +75,83 @@ module_initialized = .true.
 
 end subroutine initialize_module
 
+!----------------------------------------------------------------------
 
-subroutine get_expected_altimeter(state_vector, location, altimeter_setting, istatus)
+subroutine get_expected_altimeter_distrib(state_ens_handle, win, location, altimeter_setting, istatus)
 
-real(r8),            intent(in)  :: state_vector(:)
-type(location_type), intent(in)  :: location
-real(r8),            intent(out) :: altimeter_setting     ! altimeter (hPa)
-integer,             intent(out) :: istatus
+type(ensemble_type), intent(in)     :: state_ens_handle
+integer,             intent(in)     :: win !> window for one sided communication
+type(location_type), intent(inout)  :: location
+real(r8),            intent(out)    :: altimeter_setting(:)     ! altimeter (hPa)
+integer,             intent(out)    :: istatus(:)
 
-real(r8) :: psfc                ! surface pressure value   (Pa)
-real(r8) :: hsfc                ! surface elevation level  (m above SL)
+real(r8), allocatable :: psfc(:)                ! surface pressure value   (Pa)
+real(r8), allocatable :: hsfc(:)                ! surface elevation level  (m above SL)
+integer,  allocatable :: track_status(:)
+integer               :: e, ens_size
+real(r8), allocatable :: altimeter_temp(:)
+
+ens_size = state_ens_handle%num_copies -5 ! mean copy as well
 
 if ( .not. module_initialized ) call initialize_module
 
+allocate(psfc(ens_size), hsfc(ens_size), track_status(ens_size))
+allocate(altimeter_temp(ens_size))
+
 !  interpolate the surface pressure to the desired location
-call interpolate(state_vector, location, KIND_SURFACE_PRESSURE, psfc, istatus)
-if (istatus /= 0) then
-   altimeter_setting = missing_r8
-   return
-endif
+call interpolate_distrib(location, KIND_SURFACE_PRESSURE, istatus, psfc, state_ens_handle, win)
+do e = 1, ens_size
+   if (istatus(e) /= 0) then
+      altimeter_setting(e) = missing_r8
+   endif
+enddo
+track_status = istatus
 
 !  interpolate the surface elevation to the desired location
-call interpolate(state_vector, location, KIND_SURFACE_ELEVATION, hsfc, istatus)
-if (istatus /= 0) then
-   altimeter_setting = missing_r8
-   return
-endif
+call interpolate_distrib(location, KIND_SURFACE_ELEVATION, istatus, hsfc, state_ens_handle, win)
+do e = 1, ens_size
+   if (istatus(e) /= 0) then
+      altimeter_setting(e) = missing_r8
+      track_status(e) = istatus(e)
+   endif
+enddo
 
 !  Compute the altimeter setting given surface pressure and height, altimeter is hPa
-altimeter_setting = compute_altimeter(psfc * 0.01_r8, hsfc)
+altimeter_temp = compute_altimeter_distrib(psfc * 0.01_r8, hsfc, ens_size)
 
-if (altimeter_setting < 880.0_r8 .or. altimeter_setting >= 1100.0_r8) then
-   altimeter_setting = missing_r8
-   if (istatus == 0) istatus = 1
-   return
-endif
+altimeter_setting = altimeter_temp
+
+istatus = track_status
+
+do e = 1, ens_size
+   if (altimeter_setting(e) < 880.0_r8 .or. altimeter_setting(e) >= 1100.0_r8) then
+      altimeter_setting(e) = missing_r8
+      if (istatus(e) == 0) istatus(e) = 1
+   endif
+enddo
+
+deallocate(psfc, hsfc, track_status)
 
 return
-end subroutine get_expected_altimeter
+end subroutine get_expected_altimeter_distrib
 
+!----------------------------------------------------------------------
 
-function compute_altimeter(psfc, hsfc)
+function compute_altimeter_distrib(psfc, hsfc, n)
 
 real(r8), parameter :: k1 = 0.190284_r8
 real(r8), parameter :: k2 = 8.4228807E-5_r8
 
-real(r8), intent(in) :: psfc  !  (hPa)
-real(r8), intent(in) :: hsfc  !  (m above MSL)
+integer,  intent(in) :: n
+real(r8), intent(in) :: psfc(n)  !  (hPa)
+real(r8), intent(in) :: hsfc(n)  !  (m above MSL)
 
-real(r8) :: compute_altimeter !  (hPa)
+real(r8) :: compute_altimeter_distrib(n) !  (hPa)
 
-compute_altimeter = ((psfc - 0.3_r8) ** k1 + k2 * hsfc) ** (1.0_r8 / k1)
+compute_altimeter_distrib = ((psfc - 0.3_r8) ** k1 + k2 * hsfc) ** (1.0_r8 / k1)
 
 return
-end function compute_altimeter
+end function compute_altimeter_distrib
 
 !----------------------------------------------------------------------------
 

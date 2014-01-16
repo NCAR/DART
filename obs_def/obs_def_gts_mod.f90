@@ -41,12 +41,12 @@
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-!   use obs_def_gts_mod, only : get_expected_thickness
+!   use obs_def_gts_mod, only : get_expected_thickness_distrib
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(SATEM_THICKNESS)
-!            call get_expected_thickness(state, location, obs_val, istatus)
+!            call get_expected_thickness_distrib(state_ens_handle, win, location, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -71,13 +71,15 @@ use        types_mod, only : r8, missing_r8, gravity, gas_constant, gas_constant
 use    utilities_mod, only : register_module
 use     location_mod, only : location_type, set_location, get_location , &
                              VERTISSURFACE, VERTISPRESSURE, VERTISHEIGHT
-use  assim_model_mod, only : interpolate
+use  assim_model_mod, only : interpolate_distrib
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE
+
+use data_structure_mod, only : ensemble_type
 
 implicit none
 private
 
-public :: get_expected_thickness
+public :: get_expected_thickness_distrib
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -100,7 +102,7 @@ end subroutine initialize_module
 
 
 
-subroutine get_expected_thickness(state_vector, location, thickness, istatus)
+subroutine get_expected_thickness_distrib(state_ens_handle, win, location, thickness, istatus)
 !-----------------------------------------------------------------------------
 ! inputs:
 !    state_vector:    DART state vector
@@ -113,27 +115,37 @@ subroutine get_expected_thickness(state_vector, location, thickness, istatus)
 !---------------------------------------------
 implicit none
 
-real(r8),            intent(in)  :: state_vector(:)
+type(ensemble_type)              :: state_ens_handle
+integer, intent(in)              :: win !> window for one sided communication
 type(location_type), intent(in)  :: location
-real(r8),            intent(out) :: thickness
-integer,             intent(out) :: istatus
+real(r8),            intent(out) :: thickness(:)
+integer,             intent(out) :: istatus(:)
 
 ! local variables
 
+integer :: k
 integer, parameter :: nlevel = 9, num_press_int = 10
-integer  :: istatus0, istatus2,  k
 real(r8) :: lon, lat, pressure, obsloc(3), obs_level(nlevel), press(num_press_int+1)
 real(r8) :: press_top, press_bot, press_int
+
+integer,  allocatable :: istatus0(:), istatus2(:), track_status(:)
 
 data  obs_level/85000.0, 70000.0, 50000.0, 40000.0, 30000.0, 25000.0, 20000.0, 15000.0, 10000.0/
 
 real(r8), parameter::  rdrv1 = gas_constant_v/gas_constant - 1.0_r8
 
-real(r8) :: lon2, t, q, tv, p
+real(r8) :: lon2, p
 type(location_type) :: location2
 integer :: which_vert
+real(r8), allocatable :: t(:), q(:), tv(:)
+
+integer :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
+
+ens_size = state_ens_handle%num_copies -5
+
+allocate(istatus0(ens_size), istatus2(ens_size), track_status(ens_size))
 
 obsloc   = get_location(location)
 lon      = obsloc(1)                       ! degree: 0 to 360
@@ -143,7 +155,7 @@ pressure = obsloc(3)                       ! (Pa)
 press_bot = -999.9_r8
 press_top = -999.9_r8
 
-! find the bottom and top of the layer - 
+! find the bottom and top of the layer -
 ! The 'bottom' is defined to be the incoming observation value.
 ! The 'top' is the next higher observation level.
 ! If the bottom is the highest observation level;
@@ -155,7 +167,7 @@ if(pressure > obs_level(1) ) then
 endif
 
 do k = 1, nlevel-1
-   if( abs(pressure - obs_level(k)) < 0.01_r8 ) then 
+   if( abs(pressure - obs_level(k)) < 0.01_r8 ) then
       press_bot = obs_level(k)
       press_top = obs_level(k+1)
       exit
@@ -183,14 +195,16 @@ istatus0  = 0
 istatus2  = 0
 thickness = 0.0_r8
 
+track_status = 0
+
 do k=2, num_press_int+1, 2
    p = press(k)
    location2 = set_location(lon2, lat, p,  which_vert)
 
-   call interpolate(state_vector, location2,  KIND_TEMPERATURE,       t, istatus0)
-   call interpolate(state_vector, location2,  KIND_SPECIFIC_HUMIDITY, q, istatus2)
+   call interpolate_distrib(location2,  KIND_TEMPERATURE,       istatus0, t, state_ens_handle, win)
+   call interpolate_distrib(location2,  KIND_SPECIFIC_HUMIDITY, istatus2, q, state_ens_handle, win)
 
-   if(istatus0 > 0 .or. istatus2 > 0  ) then
+   if(all(istatus0 > 0) .or. all(istatus2 > 0)  ) then
       istatus = 1
       thickness = missing_r8
    endif
@@ -201,17 +215,23 @@ do k=2, num_press_int+1, 2
    tv    = t * (1.0_r8 + rdrv1 * q )         ! virtual temperature
    thickness = thickness + gas_constant/gravity * tv * log(press(k-1)/press(k+1))
 
-   ! expected values are around 1 KM; this is a check for
-   ! wildly out of range values.
-   if( abs(thickness) > 10000.0_r8 ) then
-      istatus = 2
-      thickness = missing_r8
-   endif
+   do e = 1, ens_size
+      ! expected values are around 1 KM; this is a check for
+      ! wildly out of range values.
+      if( abs(thickness(e)) > 10000.0_r8 ) then
+         istatus(e) = 2
+         thickness(e) = missing_r8
+      endif
+      if (istatus(e) /= 0) track_status(e) = istatus(e)
+
+   enddo
+
 end do
 
-return
-end subroutine get_expected_thickness
+istatus = track_status
 
+return
+end subroutine get_expected_thickness_distrib
 
 end module obs_def_gts_mod
 ! END DART PREPROCESS MODULE CODE

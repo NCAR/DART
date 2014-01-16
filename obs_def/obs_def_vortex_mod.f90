@@ -12,18 +12,18 @@
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-!   use obs_def_vortex_mod, only : get_expected_vortex_info
+!   use obs_def_vortex_mod, only : get_expected_vortex_info_distrib
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(VORTEX_LAT)
-!            call get_expected_vortex_info(state, location, obs_val, 'lat',istatus)
+!            call get_expected_vortex_info_distrib(state_ens_handle, win, location, expected_obs, 'lat',istatus)
 !         case(VORTEX_LON)
-!            call get_expected_vortex_info(state, location, obs_val, 'lon',istatus)
+!            call get_expected_vortex_info_distrib(state_ens_handle, win, location, expected_obs, 'lon',istatus)
 !         case(VORTEX_PMIN)
-!            call get_expected_vortex_info(state, location, obs_val, 'pmi',istatus)
+!            call get_expected_vortex_info_distrib(state_ens_handle, win, location, expected_obs, 'pmi',istatus)
 !         case(VORTEX_WMAX)
-!            call get_expected_vortex_info(state, location, obs_val, 'wma',istatus)
+!            call get_expected_vortex_info_distrib(state_ens_handle, win, location, expected_obs, 'wma',istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -65,17 +65,19 @@ module obs_def_vortex_mod
 use        types_mod, only : r8, missing_r8, ps0, PI, gravity
 use    utilities_mod, only : register_module, error_handler, E_ERR
 use     location_mod, only : location_type, write_location, read_location
-use  assim_model_mod, only : interpolate
+use  assim_model_mod, only : interpolate_distrib
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                              KIND_TEMPERATURE, KIND_VERTICAL_VELOCITY, &
                              KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY, &
                              KIND_VORTEX_LAT, KIND_VORTEX_LON, KIND_VORTEX_PMIN, &
                              KIND_VORTEX_WMAX
 
+use data_structure_mod, only : ensemble_type
+
 implicit none
 private
 
-public :: get_expected_vortex_info
+public :: get_expected_vortex_info_distrib
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -101,40 +103,44 @@ end subroutine initialize_module
 
 !----------------------------------------------------------------------
 
-subroutine get_expected_vortex_info(state_vector, location, vinfo, whichinfo, istatus)
+subroutine get_expected_vortex_info_distrib(state_ens_handle, win, location, vinfo, whichinfo, istatus)
 
 !
 ! Return vortex info according to whichinfo
 ! whichinfo='lat', vinfo = center lat
 ! whichinfo='lon', vinfo = center lon
 ! whichinfo='pmi', vinfo =  minimum sea level pressure
-! 
+!
 
-real(r8),            intent(in)  :: state_vector(:)
-type(location_type), intent(in)  :: location
-character(len=3),    intent(in)  :: whichinfo
-real(r8),            intent(out) :: vinfo
-integer,             intent(out) :: istatus
+type(ensemble_type), intent(in)     :: state_ens_handle
+integer,             intent(in)     :: win !> window for one sided communication
+type(location_type), intent(inout)  :: location
+character(len=3),    intent(in)     :: whichinfo
+real(r8),            intent(out)    :: vinfo(:)
+integer,             intent(out)    :: istatus(:)
+
+integer :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
 
 if (whichinfo == 'lat') then
-   call interpolate(state_vector, location, KIND_VORTEX_LAT, vinfo, istatus)
+   call interpolate_distrib(location, KIND_VORTEX_LAT, istatus, vinfo, state_ens_handle, win)
 else if (whichinfo == 'lon') then
-   call interpolate(state_vector, location, KIND_VORTEX_LON, vinfo, istatus)
+   call interpolate_distrib(location, KIND_VORTEX_LON, istatus, vinfo, state_ens_handle, win)
 else if (whichinfo == 'pmi') then
-   call interpolate(state_vector, location, KIND_VORTEX_PMIN, vinfo, istatus)
+   call interpolate_distrib(location, KIND_VORTEX_PMIN, istatus, vinfo, state_ens_handle, win)
 else if (whichinfo == 'wma') then
-   call interpolate(state_vector, location, KIND_VORTEX_WMAX, vinfo, istatus)
+   call interpolate_distrib(location, KIND_VORTEX_WMAX, istatus, vinfo, state_ens_handle, win)
 else
 endif
 
-if (istatus /= 0) then
-   vinfo = missing_r8
-   return
-endif
+do e = 1, ens_size
+   if (istatus(e) /= 0) then
+      vinfo(e) = missing_r8
+   endif
+enddo
 
-end subroutine get_expected_vortex_info
+end subroutine get_expected_vortex_info_distrib
 
 end module obs_def_vortex_mod
 ! END DART PREPROCESS MODULE CODE

@@ -25,25 +25,25 @@
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-!   use obs_def_dew_point_mod, only : get_expected_dew_point
+!   use obs_def_dew_point_mod, only : get_expected_dew_point_distrib
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(DEWPOINT)
-!            call get_expected_dew_point(state, location, 1, obs_val, istatus)
+!            call get_expected_dew_point_distrib(state_ens_handle, win, location, 1, expected_obs, istatus)
 !         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT, AIRS_DEWPOINT)
-!            call get_expected_dew_point(state, location, 1, obs_val, istatus)
+!            call get_expected_dew_point_distrib(state_ens_handle, win, location, 1, expected_obs, istatus)
 !         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
-!            call get_expected_dew_point(state, location, 1, obs_val, istatus)
+!            call get_expected_dew_point_distrib(state_ens_handle, win, location, 1, expected_obs, istatus)
 !
 !         case(DEWPOINT_2_METER)
-!            call get_expected_dew_point(state, location, 2, obs_val, istatus)
+!            call get_expected_dew_point_distrib(state_ens_handle, win, location, 2, expected_obs, istatus)
 !         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT)
-!            call get_expected_dew_point(state, location, 2, obs_val, istatus)
+!            call get_expected_dew_point_distrib(state_ens_handle, win, location, 2, expected_obs, istatus)
 !         case(MARINE_SFC_DEWPOINT, LAND_SFC_DEWPOINT)
-!            call get_expected_dew_point(state, location, 2, obs_val, istatus)
+!            call get_expected_dew_point_distrib(state_ens_handle, win, location, 2, expected_obs, istatus)
 !         case(METAR_DEWPOINT_2_METER)
-!            call get_expected_dew_point(state, location, 2, obs_val, istatus)
+!            call get_expected_dew_point_distrib(state_ens_handle, win, location, 2, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -98,13 +98,15 @@ use        types_mod, only : r8, missing_r8, t_kelvin
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
 use     location_mod, only : location_type, set_location, get_location , write_location, &
                              read_location
-use  assim_model_mod, only : interpolate
+use  assim_model_mod, only : interpolate_distrib
 use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_VAPOR_MIXING_RATIO, KIND_PRESSURE
+
+use data_structure_mod, only : ensemble_type
 
 implicit none
 private
 
-public :: get_expected_dew_point
+public :: get_expected_dew_point_distrib
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -127,25 +129,30 @@ end subroutine initialize_module
 
 
 
-subroutine get_expected_dew_point(state_vector, location, key, td, istatus)
+subroutine get_expected_dew_point_distrib(state_ens_handle, win, location, key, td, istatus)
 
-real(r8),            intent(in)  :: state_vector(:)
-type(location_type), intent(in)  :: location
-integer,             intent(in)  :: key
-real(r8),            intent(out) :: td               ! dewpoint (K)
-integer,             intent(out) :: istatus
+type(ensemble_type)                :: state_ens_handle
+integer, intent(in)                :: win !> window for one sided communication
+type(location_type), intent(inout) :: location
+integer,             intent(in)    :: key
+real(r8),            intent(out)   :: td(:)              ! dewpoint (K)
+integer,             intent(out)   :: istatus(:)
 
 integer  :: ipres
-real(r8) :: qv                            ! water vapor mixing ratio (kg/kg)
-real(r8) :: e_mb                          ! water vapor pressure (mb)
-real(r8), PARAMETER :: e_min = 0.001_r8   ! threshold for minimum vapor pressure (mb),
+real(r8), allocatable :: qv(:)            ! water vapor mixing ratio (kg/kg)
+real(r8), allocatable :: e_mb(:)          ! water vapor pressure (mb)
+real(r8),   PARAMETER :: e_min = 0.001_r8 ! threshold for minimum vapor pressure (mb),
                                           !   to avoid problems near zero in Bolton's equation
-real(r8) :: p_Pa                          ! pressure (Pa)
-real(r8) :: p_mb                          ! pressure (mb)
-
+real(r8), allocatable :: p_Pa(:)          ! pressure (Pa)
+real(r8), allocatable :: p_mb(:)          ! pressure (mb)
+integer  :: e, ens_size
+real(r8), allocatable :: track_status(:)
 character(len=129) :: errstring
 
 if ( .not. module_initialized ) call initialize_module
+
+ens_size = state_ens_handle%num_copies -5
+allocate(qv(ens_size), p_Pa(ens_size), p_mb(ens_size), e_mb(ens_size), track_status(ens_size))
 
 if(key == 1) then
    ipres = KIND_PRESSURE
@@ -157,26 +164,36 @@ else
         source, revision, revdate)
 endif
 
-call interpolate(state_vector, location, ipres, p_Pa, istatus)
-if (istatus /= 0) then
-   td = missing_r8
+call interpolate_distrib(location, ipres, istatus, p_Pa, state_ens_handle, win)
+if ( all(istatus /= 0) ) then
+   td(:) = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_VAPOR_MIXING_RATIO, qv, istatus)
-if (istatus /= 0) then
-   td = missing_r8
+
+track_status = istatus
+
+call interpolate_distrib(location, KIND_VAPOR_MIXING_RATIO, istatus, qv, state_ens_handle, win)
+if ( all(istatus /= 0) ) then
+   td(:) = missing_r8
    return
 endif
-if (qv < 0.0_r8 .or. qv >= 1.0_r8) then
-   td = missing_r8
-   if (istatus == 0) istatus = 1
-   return
-endif
+
+do e = 1, ens_size
+   if (qv(e) < 0.0_r8 .or. qv(e) >= 1.0_r8) then
+      if (istatus(e) == 0) istatus(e) = 1
+   endif
+enddo
+do e = 1, ens_size
+   if (istatus(e) /= 0 ) then
+      track_status(e) = istatus(e)
+      td(e) = missing_r8
+   endif
+enddo
 
 !------------------------------------------------------------------------------
 !  Compute water vapor pressure.
 !------------------------------------------------------------------------------
-
+!HK can you get weird problems if some values are missing_r8?
 p_mb = p_Pa * 0.01_r8
 
 e_mb = qv * p_mb / (0.622_r8 + qv)
@@ -188,7 +205,13 @@ e_mb = max(e_mb, e_min)
 
 td = t_kelvin + (243.5_r8 / ((17.67_r8 / log(e_mb/6.112_r8)) - 1.0_r8) )
 
-end subroutine get_expected_dew_point
+do e = 1, ens_size
+  if (track_status(e) /= 0 ) td(e) = missing_r8
+enddo
+
+istatus = track_status
+
+end subroutine get_expected_dew_point_distrib
 
 !----------------------------------------------------------------------------
 
