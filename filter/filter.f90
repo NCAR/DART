@@ -549,8 +549,10 @@ AdvanceTime : do
    ! and obs_values. ens_size is the number of regular ensemble members,
    ! not the number of copies
 
-   !HK Destroy the complete state vector
+   !HK Destroy var complete
+   deallocate(obs_ens_handle%vars)
    deallocate(ens_handle%vars)
+   deallocate(forward_op_ens_handle%vars)
 
    start = MPI_WTIME()
 
@@ -575,7 +577,9 @@ AdvanceTime : do
 !   close(15)
 !
 !   !deallocate(results)
-   allocate(ens_handle%vars(ens_handle%num_vars,   ens_handle%my_num_copies))
+   allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
+   allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+   allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
 
 !   write(task_str, '(i10)') ens_handle%my_pe
 !   file_obscopies = TRIM('copy_complete' // TRIM(ADJUSTL(task_str)))
@@ -1509,11 +1513,11 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
    obs_ens_handle%copies(OBS_ERR_VAR_COPY, j) = obs_err_var
    obs_ens_handle%copies(OBS_VAL_COPY, j) = obs_value(1)
    obs_ens_handle%copies(OBS_KEY_COPY, j) = thiskey(1)
-   !> @todo This should use compute copy_mean_var on obs_ens_handle%copies
-   obs_ens_handle%copies(OBS_MEAN_START, j) = mean_r8(obs_ens_handle%copies(1:ens_handle%num_copies -6,j))
-   obs_ens_handle%copies(OBS_VAR_START, j) = var_r8(obs_ens_handle%copies(1:ens_handle%num_copies -6,j))
 
 end do ALL_OBSERVATIONS
+
+!> @todo - don't you have the mean already?
+call compute_copy_mean_var(obs_ens_handle, 1, obs_ens_handle%num_copies -6, OBS_MEAN_START, OBS_VAR_START)
 
 !do_outlier = (prior_post == PRIOR_DIAG .and. outlier_threshold > 0.0_r8)
 do_outlier = (isprior .and. outlier_threshold > 0.0_r8)
