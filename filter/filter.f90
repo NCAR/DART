@@ -2194,37 +2194,6 @@ end select
 end function failed_outlier
 
 !-------------------------------------------------------------------------
-!> tempory function to find the mean.
-!> mean = missing_r8 if any of the array is missing r8
-function mean_r8(a)
-
-real(r8) :: mean_r8, a(:)
-
-if( any(a == missing_r8) ) then
-   mean_r8 = missing_r8
-else
-   mean_r8 = sum(a)/size(a)  ! This will fail if size(a) = 0
-endif
-
-end function mean_r8
-
-!-------------------------------------------------------------------------
-!> tempory function to find the var.
-!> var = missing_r8 if any of the array is missing r8
-function var_r8(a)
-
-real(r8) :: var_r8, a(:)
-
-if( any(a == missing_r8) ) then
-   var_r8 = missing_r8
-else
-   !var_r8 = (mean_r8(a**2) - mean_r8(a)**2)*size(a)/(size(a) - 1)
-   var_r8 = sum((a - mean_r8(a))**2) /(size(a) - 1)
-endif
-
-end function var_r8
-
-!-------------------------------------------------------------------------
 
 end program filter
 
