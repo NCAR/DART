@@ -31,10 +31,7 @@ use      location_mod, only : location_type, get_location, set_location, &
                               VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, &
                               VERTISSCALEHEIGHT, &
                               get_close_type, get_dist, get_close_maxdist_init, &
-                              get_close_obs_init, loc_get_close_obs => get_close_obs, &
-                              location_type_distrib, get_seq_distrib_vloc, &
-                              get_seq_distrib_lon, get_seq_distrib_lat,    &
-                              set_seq_distrib_vloc !HK
+                              get_close_obs_init, loc_get_close_obs => get_close_obs
 
 use     utilities_mod, only : file_exist, open_file, close_file, &
                               register_module, error_handler, E_ERR, E_WARN, &
@@ -5809,7 +5806,7 @@ end subroutine get_domain_info
 
 !#######################################################################
 !> Distributed version of get_close_obs
-subroutine get_close_obs_distrib(gc, base_obs_loc, base_obs_kind, obs_loc, obs_loc_distrib, &
+subroutine get_close_obs_distrib(gc, base_obs_loc, base_obs_kind, obs_loc, &
                                  obs_kind, num_close, close_ind, dist, state_ens_handle, win)
 
 ! Given a DART ob (referred to as "base") and a set of obs priors or state variables
@@ -5834,7 +5831,6 @@ integer             :: win
 
 type(get_close_type),        intent(in)     :: gc
 type(location_type),         intent(inout)  :: base_obs_loc, obs_loc(:)
-type(location_type_distrib), intent(inout)  :: obs_loc_distrib(:)
 integer,                     intent(in)     :: base_obs_kind, obs_kind(:)
 integer,                     intent(out)    :: num_close, close_ind(:)
 real(r8),                    intent(out)    :: dist(:)
