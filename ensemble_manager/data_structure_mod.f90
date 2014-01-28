@@ -16,12 +16,14 @@ module data_structure_mod
 
 use types_mod,         only : r8
 use time_manager_mod,  only : time_type
-use mpi_utilities_mod, only : task_count
+use mpi_utilities_mod, only : task_count, datasize, my_task_id
+
+use mpi !> @todo this needs to go away
 
 implicit none
 private
 
-public ensemble_type, map_pe_to_task, get_var_owner_index
+public ensemble_type, map_pe_to_task, get_var_owner_index, get_state
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -95,6 +97,39 @@ integer                            :: map_pe_to_task
 map_pe_to_task = ens_handle%pe_to_task_list(p + 1)
 
 end function map_pe_to_task
+
+!-------------------------------------------------------------------------
+
+!> Gets all copies of an element of the state vector from the process who owns it
+!> Assumes ensemble complete
+subroutine get_state(x, ill, win, state_ens_handle, ens_size)
+
+integer, intent(in)              :: ill !> index into state vector
+integer, intent(in)              :: ens_size !> number of copies
+type(ensemble_type), intent(in)  :: state_ens_handle
+real(r8), intent(out)             :: x(ens_size) !> all copies of an element of the state vector
+integer, intent(in)              :: win !> mpi window
+
+integer                          :: owner_of_state !> task who owns the state
+integer                          :: element_index !> local index of element
+integer(KIND=MPI_ADDRESS_KIND)   :: target_disp
+integer                          :: ierr
+
+call get_var_owner_index(ill, owner_of_state, element_index) ! pe
+
+owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
+
+if (my_task_id() == owner_of_state) then
+   x = state_ens_handle%copies(1:ens_size, element_index)
+else
+   target_disp = (element_index - 1) * state_ens_handle%num_copies
+   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
+   call mpi_get(x, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
+
+   call mpi_win_unlock(owner_of_state, win, ierr)
+endif
+
+end subroutine get_state
 
 
 end module data_structure_mod

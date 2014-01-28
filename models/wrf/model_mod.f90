@@ -68,7 +68,8 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               get_raw_obs_kind_name
 
 !HK should model_mod know about the number of copies?
-use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
+use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
+                               get_state
 
 use sort_mod, only : sort
 
@@ -7633,34 +7634,6 @@ function compute_geometric_height(geopot, lat)
    endif
 
 end function compute_geometric_height
-
-!-------------------------------------------------------------------------
-subroutine get_state(x, ill, win, state_ens_handle, ens_size)
-
-integer, intent(in)              :: ill !> index into state vector
-integer, intent(in)              :: ens_size
-type(ensemble_type), intent(in)  :: state_ens_handle
-real(r8), intent(out)             :: x(ens_size) !> all copies of the state element you want
-integer, intent(in)              :: win !> mpi window
-
-integer                          :: owner_of_state
-integer                          :: element_index
-integer(KIND=MPI_ADDRESS_KIND)   :: target_disp
-integer                          :: ierr
-
-call get_var_owner_index(ill, owner_of_state, element_index) ! pe
-owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
-
-if (my_task_id() == owner_of_state) then
-   x = state_ens_handle%copies(1:ens_size, element_index)
-else
-   target_disp = (element_index - 1) * state_ens_handle%num_copies
-   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
-   call mpi_get(x, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
-   call mpi_win_unlock(owner_of_state, win, ierr)
-endif
-
-end subroutine get_state
 
 !--------------------------------------------------------------------------
 !> Perform interpolation across the ensemble

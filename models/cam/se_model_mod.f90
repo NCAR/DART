@@ -334,9 +334,8 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_
 
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
-use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
-
-use mpi !> @todo this needs to go away
+use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
+                               get_state
 
 ! end of use statements
 !=========================================================================================
@@ -7204,38 +7203,6 @@ time = set_time(0, 0)
 
 end subroutine init_time
 
-!-------------------------------------------------------------------------
-
-!> Gets all copies of an element of the state vector from the process who owns it
-!> Assumes ensemble complete
-subroutine get_state(x, ill, win, state_ens_handle, ens_size)
-
-integer, intent(in)              :: ill !> index into state vector
-integer, intent(in)              :: ens_size !> number of copies
-type(ensemble_type), intent(in)  :: state_ens_handle
-real(r8), intent(out)             :: x(ens_size) !> all copies of an element of the state vector
-integer, intent(in)              :: win !> mpi window
-
-integer                          :: owner_of_state !> task who owns the state
-integer                          :: element_index !> local index of element
-integer(KIND=MPI_ADDRESS_KIND)   :: target_disp
-integer                          :: ierr
-
-call get_var_owner_index(ill, owner_of_state, element_index) ! pe
-
-owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
-
-if (my_task_id() == owner_of_state) then
-   x = state_ens_handle%copies(1:ens_size, element_index)
-else
-   target_disp = (element_index - 1) * state_ens_handle%num_copies
-   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
-   call mpi_get(x, ens_size, datasize, owner_of_state, target_disp, ens_size, datasize, win, ierr)
-
-   call mpi_win_unlock(owner_of_state, win, ierr)
-endif
-
-end subroutine get_state
 
 !--------------------------------------------------------------------------
 !> This is supposed to replace set_ps_arrays_distrib
