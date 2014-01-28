@@ -363,7 +363,10 @@ integer(KIND=MPI_ADDRESS_KIND) :: target_disp ! must be mpi_address_kind to avoi
 integer owner_of_state
 integer element_index
 
+integer length_of_expected_obs ! HK should this be passed in?
+
 num_obs = size(keys)
+length_of_expected_obs = state_ens_handle%num_copies - 5
 
 ! NEED to initialize istatus to okay value
 istatus = 0
@@ -391,14 +394,13 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
 
       if (my_task_id() == owner_of_state) then
 
-         expected_obs = state_ens_handle%copies(:, element_index) ! This is longer than expected obs
-
+         expected_obs = state_ens_handle%copies(1:length_of_expected_obs, element_index)
       else
 
          target_disp = ( element_index - 1) * state_ens_handle%num_copies
 
          call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0 , win, ierr)
-         call mpi_get(expected_obs, state_ens_handle%num_copies, datasize, owner_of_state, target_disp, state_ens_handle%num_copies, datasize, win, ierr)
+         call mpi_get(expected_obs, state_ens_handle%num_copies, datasize, owner_of_state, target_disp, length_of_expected_obs, datasize, win, ierr)
          call mpi_win_unlock(owner_of_state, win, ierr)
 
       endif
