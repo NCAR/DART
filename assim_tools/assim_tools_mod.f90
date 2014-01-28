@@ -34,8 +34,7 @@ use       reg_factor_mod, only : comp_reg_factor
 
 use         location_mod, only : location_type, get_close_type, get_close_obs_destroy,    &
                                  operator(==), set_location_missing, write_location,      &
-                                 LocationDims, vert_is_surface, has_vertical_localization, &
-                                 location_type_distrib, copy_location_type !HK
+                                 LocationDims, vert_is_surface, has_vertical_localization
 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,             & 
                                  compute_copy_mean_var, get_var_owner_index,              &
@@ -342,8 +341,6 @@ character(len = 102)  :: base_loc_text   ! longest location formatting possible
 type(location_type)  :: my_obs_loc(obs_ens_handle%my_num_vars)
 type(location_type)  :: base_obs_loc, last_base_obs_loc, last_base_states_loc
 type(location_type)  :: my_state_loc(ens_handle%my_num_vars), dummyloc
-type(location_type_distrib) :: my_state_loc_distrib(ens_handle%my_num_vars)
-type(location_type_distrib) :: my_obs_loc_distrib(obs_ens_handle%my_num_vars)
 type(get_close_type) :: gc_obs, gc_state
 type(obs_type)       :: observation
 type(obs_def_type)   :: obs_def
@@ -479,10 +476,6 @@ end do
 finish = MPI_WTIME()
 print*, 'get state meta data time :', finish - start, 'rank ', my_task_id()
 
-! HK Aim: to reduce the commication by removing the duplicate calls to convert_vert
-! I don't think you need this, because the original location gets overwritten
-call copy_location_type(my_state_loc, my_state_loc_distrib, ens_handle%my_num_vars)
-call copy_location_type(my_obs_loc, my_obs_loc_distrib, obs_ens_handle%my_num_vars)
 
 ! PAR: MIGHT BE BETTER TO HAVE ONE PE DEDICATED TO COMPUTING 
 ! INCREMENTS. OWNING PE WOULD SHIP IT'S PRIOR TO THIS ONE
@@ -724,7 +717,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          num_close_obs_cached = num_close_obs_cached + 1
       else
          start = MPI_WTIME()
-         call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_loc_distrib, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle, win)
+         call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle, win)
          finish = MPI_WTIME()
 
          last_base_obs_loc      = base_obs_loc
@@ -833,7 +826,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       else
          start = MPI_WTIME()
          call get_close_obs_distrib(gc_state, base_obs_loc, base_obs_type, my_state_loc, &
-                  my_state_loc_distrib, my_state_kind, num_close_states, close_state_ind,&
+                  my_state_kind, num_close_states, close_state_ind,&
                   close_state_dist, ens_handle, win)
          finish = MPI_WTIME()
 

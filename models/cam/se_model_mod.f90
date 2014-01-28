@@ -258,9 +258,8 @@ use location_mod,      only : location_type, get_location, set_location, query_l
                               VERTISUNDEF, VERTISSURFACE, VERTISLEVEL,                           &
                               VERTISPRESSURE, VERTISHEIGHT,                                      &
                               get_close_type, get_close_maxdist_init, get_close_obs_init,        &
-                              get_dist,loc_get_close_obs => get_close_obs, location_type_distrib, &
-                              get_seq_distrib_vloc, get_seq_distrib_lon, get_seq_distrib_lat,    &
-                              set_seq_distrib_vloc
+                              get_dist,loc_get_close_obs => get_close_obs
+
 use xyz_location_mod, only : xyz_location_type, xyz_get_close_maxdist_init,    &
                              xyz_get_close_type, xyz_set_location, xyz_get_location, &
                              xyz_get_close_obs_init, xyz_get_close_obs_destroy, &
@@ -5269,8 +5268,8 @@ end subroutine vector_to_prog_var
 
 !#######################################################################
 
-subroutine get_close_obs_distrib(filt_gc, base_obs_loc, base_obs_type, locs, obs_loc_distrib, kinds, &
-                            num_close, close_indices, distances, state_ens_handle, win )
+subroutine get_close_obs_distrib(filt_gc, base_obs_loc, base_obs_type, locs, kinds, &
+                            num_close, close_indices, distances, state_ens_handle, win)
 !----------------------------------------------------------------------------
 !
 ! get_close_obs takes as input an observation location, a DART TYPE (not KIND),
@@ -5303,7 +5302,6 @@ integer             :: win
 type(get_close_type),         intent(in)    :: filt_gc
 type(location_type),          intent(in)    :: base_obs_loc
 type(location_type),          intent(inout) :: locs(:)
-type(location_type_distrib), intent(inout)  :: obs_loc_distrib(:) !> @todo You don't need this, see assim_tools
 integer,                      intent(in)    :: base_obs_type, kinds(:)
 integer,                      intent(out)   :: num_close, close_indices(:)
 real(r8),                     intent(out)   :: distances(:)
@@ -5577,7 +5575,7 @@ if (old_which == VERTISLEVEL ) then
    else
       ! Cubed sphere; more complicated search for indices of this location.
       ! 3Dp Is this coord_ind_cs call necessary?
-      ! The 3D index into the state vector is NOT known.
+      ! The 3D index into the state vector is NOT known. HK - Yes it is.
       ! We have the 3D index into the subset of state vars ON 1 TASK.
       ! That subset has its own indexing, which is what's available here.
       ! The relationship to global indices is stuck back in filter.
