@@ -55,7 +55,7 @@
 &filter_nml
    async                    = 2,
    adv_ens_command          = "../shell_scripts/advance_model.csh",
-   ens_size                 = 20,
+   ens_size                 = 40,
    start_from_restart       = .true.,
    output_restart           = .true.,
    obs_sequence_in_name     = "obs_seq.out",
@@ -68,8 +68,8 @@
    first_obs_seconds        = -1,
    last_obs_days            = -1,
    last_obs_seconds         = -1,
-   num_output_state_members = 20,
-   num_output_obs_members   = 20,
+   num_output_state_members = 40,
+   num_output_obs_members   = 40,
    output_interval          = 1,
    num_groups               = 1,
    input_qc_threshold       =  3.0,
@@ -142,6 +142,7 @@
                                 'SOIL_MOISTURE',
                                 'LAYER_LIQUID_WATER',
                                 'COSMOS_NEUTRON_INTENSITY',
+                                'SNOW_THICKNESS'
    evaluate_these_obs_types   = 'null',
   /
 
@@ -197,23 +198,25 @@
   /
 
 &obs_sequence_tool_nml
-   num_input_files    = 2,
-   filename_seq       = 'obs_seq.one', 'obs_seq.two',
-   filename_out       = 'obs_seq.processed',
-   print_only         =  .false.,
-   first_obs_days     = -1,
-   first_obs_seconds  = -1,
-   last_obs_days      = -1,
-   last_obs_seconds   = -1,
-   min_lat            =  -90.0,
-   max_lat            =   90.0,
-   min_lon            =    0.0,
-   max_lon            =  360.0,
-   gregorian_cal      = .false.
+   filename_seq         = 'obs_seq.out_cosmos','obs_seq.out_weasd_single'
+   filename_out         = 'obs_seq.out_combined',
+   print_only           = .false.,
+   first_obs_days       = -1,
+   first_obs_seconds    = -1,
+   last_obs_days        = -1,
+   last_obs_seconds     = -1,
+   min_lat              =  -90.0,
+   max_lat              =   90.0,
+   min_lon              =    0.0,
+   max_lon              =  360.0,
+   gregorian_cal        = .true.,
+   synonymous_qc_list   = 'COSMOS QC','Quality Control'
+   edit_copy_metadata   = .true.,
+   new_copy_metadata    = 'observation',
   /
 
 &obs_diag_nml
-   obs_sequence_name = '../../shell_scripts/bob/obs_seq.final',
+   obs_sequence_name = 'obs_seq.final',
    obs_sequence_list = '',
    first_bin_center =  2009, 1, 1, 0, 0, 0 ,
    last_bin_center  =  2009, 1, 1,12, 0, 0 ,
