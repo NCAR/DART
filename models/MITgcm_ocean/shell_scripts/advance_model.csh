@@ -96,9 +96,9 @@ set input_file_line = 2
 set output_file_line = 3
 while($state_copy <= $num_states)
    
-   set ensemble_member = `head -$ensemble_member_line ../$control_file | tail -1`
-   set input_file      = `head -$input_file_line      ../$control_file | tail -1`
-   set output_file     = `head -$output_file_line     ../$control_file | tail -1`
+   set ensemble_member = `head -n $ensemble_member_line ../$control_file | tail -n 1`
+   set input_file      = `head -n $input_file_line      ../$control_file | tail -n 1`
+   set output_file     = `head -n $output_file_line     ../$control_file | tail -n 1`
 
    #----------------------------------------------------------------------
    # Block 2: Convert the DART output file to form needed by ocean model
