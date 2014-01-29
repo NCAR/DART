@@ -714,7 +714,7 @@ while ($inst <= $num_instances)
    @ inst ++
 end
 
-./preview_namelists
+./preview_namelists || exit -3
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists

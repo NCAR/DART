@@ -221,7 +221,7 @@ exit 0
 EndOfText
 chmod 0755 refresh_dart_files
 
-./refresh_dart_files
+./refresh_dart_files  || exit -8
 
 # ==============================================================================
 # Ensure the DART namelists are consistent with the ensemble size,
@@ -278,7 +278,7 @@ exit 0
 EndOfText
 chmod 0755 update_dart_namelists
 
-./update_dart_namelists
+./update_dart_namelists || exit -9
 
 #=========================================================================
 # Stage the files needed for SAMPLING ERROR CORRECTION - even if not

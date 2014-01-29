@@ -458,9 +458,9 @@ echo ""
 
 ./xmlchange DATM_MODE=CPLHIST3HrWx
 ./xmlchange DATM_CPLHIST_CASE=$case
-./xmlchange DATM_CPLHIST_YR_ALIGN=$refyear
-./xmlchange DATM_CPLHIST_YR_START=$refyear
-./xmlchange DATM_CPLHIST_YR_END=$refyear
+./xmlchange DATM_CPLHIST_YR_ALIGN=$stream_year_align
+./xmlchange DATM_CPLHIST_YR_START=$stream_year_first
+./xmlchange DATM_CPLHIST_YR_END=$stream_year_last
 
 ./xmlchange CALENDAR=GREGORIAN
 
@@ -675,7 +675,7 @@ end
 #
 # ==============================================================================
 
-./preview_namelists
+./preview_namelists || exit -3
 
 # This gives us a stream txt file for each instance that we can
 # modify for our own purpose.
@@ -710,12 +710,12 @@ foreach FNAME (user*streams*)
 
    if (-e $dartroot/models/clm/shell_scripts/user_$streamname*template) then
 
-      echo "Copying DART template for ${FNAME} and changing instances, refyear"
+      echo "Copying DART template for ${FNAME} and changing instances, runyear"
 
       ${COPY} $dartroot/models/clm/shell_scripts/user_$streamname*template ${FNAME}
 
       sed s/NINST/$instance/g ${FNAME} >! out.$$
-      sed s/REFYEAR/$refyear/g  out.$$ >! ${FNAME}
+      sed s/RUNYEAR/$start_year/g  out.$$ >! ${FNAME}
       \rm -f out.$$
 
    else
@@ -726,7 +726,7 @@ foreach FNAME (user*streams*)
 
 end
 
-./preview_namelists
+./preview_namelists || exit -3
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists

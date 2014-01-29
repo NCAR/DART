@@ -188,7 +188,7 @@ exit 0
 EndOfText
 chmod 0755 refresh_dart_files
 
-./refresh_dart_files
+./refresh_dart_files  || exit -8
 
 # ==============================================================================
 # Ensure the DART namelists are consistent with the ensemble size,
@@ -223,7 +223,7 @@ exit 0
 EndOfText
 chmod 0755 update_dart_namelists
 
-./update_dart_namelists
+./update_dart_namelists || exit -9
 
 #=========================================================================
 # Stage the files needed for SAMPLING ERROR CORRECTION - even if not
@@ -295,7 +295,9 @@ endif
 grep 'SUCCESSFUL TERMINATION' $CplLogFile
 if ( $status == 0 ) then
 
-   ${CASEROOT}/DARTSCRIPTNAME
+#  If you want to use DART, uncomment the line with 'DARTSCRIPTNAME',
+#  otherwise, CESM is running as usual.
+#  ${CASEROOT}/DARTSCRIPTNAME
 
    if ( $status == 0 ) then
       echo "`date` -- DART HAS FINISHED"
