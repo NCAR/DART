@@ -6,6 +6,14 @@
 #
 # DART $Id$
 
+echo "This script is a special case. It creates an initial ensemble of"
+echo "CESM model components from various CESM runs. POP states comes from"
+echo "one experiment, CAM from another, CLM,ROF from a third."
+echo "Unless you are a CESM expert, you should not run this script."
+echo "Look for CESM1_1_1_setup_hybrid instead."
+
+exit
+
 # ---------------------
 # Purpose
 # ---------------------
