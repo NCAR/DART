@@ -88,6 +88,8 @@ logical, save :: module_initialized = .false.
 ! after each N observations are processed, for benchmarking.
 logical :: print_timestamps = .false.
 integer :: print_every_Nth  = 10000
+logical :: debug            = .false.
+
 !-------------------------------------------------
 
 contains
@@ -120,7 +122,7 @@ integer :: hour, imin, sec
 integer :: obs_num, calender_type
 type(time_type) :: current_day, time_obs, prev_time
 
-integer, parameter :: num_fail_kinds = 6
+integer, parameter :: num_fail_kinds = 8
 integer :: iskip(num_fail_kinds)
 integer, parameter :: fail_3Z        = 1
 integer, parameter :: fail_timerange = 2
@@ -128,13 +130,17 @@ integer, parameter :: fail_badloc    = 3
 integer, parameter :: fail_areabox   = 4
 integer, parameter :: fail_badkind   = 5
 integer, parameter :: fail_notwanted = 6
+integer, parameter :: fail_badvert   = 7
+integer, parameter :: fail_moisttype = 8
 character(len=32) :: skip_reasons(num_fail_kinds) = (/ &
                      'time too early (exactly 03Z)    ', &
                      'time outside bin range          ', &
                      'bad observation location        ', &
                      'observation outside lat/lon box ', &
                      'unrecognized observation kind   ', &
-                     'obs type not on select list     ' /)
+                     'obs type not on select list     ', &
+                     'bad vertical coordinate         ', &
+                     'unwanted moisture type          ' /)
 
 
 integer :: obs_unit
@@ -217,12 +223,14 @@ obsloop:  do
 !   (obs at 03Z the next day have a time of 27.)
 !------------------------------------------------------------------------------
    if(time == 3.0_r8) then
+      if (debug) write(*,*) 'invalid time.  hours = ', time
       iskip(fail_3Z) = iskip(fail_3Z) + 1
       cycle obsloop 
    endif 
 
    !  select the obs for the time window
    if(time < bin_beg .or. time > bin_end) then
+      if (debug) write(*,*) 'invalid time.  hours = ', time
       iskip(fail_timerange) = iskip(fail_timerange) + 1
       cycle obsloop
    endif
@@ -230,7 +238,7 @@ obsloop:  do
    ! verify the location is not outside valid limits
    if((lon > 360.0_r8) .or. (lon <   0.0_r8) .or.  &
       (lat >  90.0_r8) .or. (lat < -90.0_r8)) then
-      write(*,*) 'invalid location.  lon,lat = ', lon, lat
+      if (debug) write(*,*) 'invalid location.  lon,lat = ', lon, lat
       iskip(fail_badloc) = iskip(fail_badloc) + 1
       cycle obsloop
    endif
@@ -238,8 +246,9 @@ obsloop:  do
    ! reject observations outside the bounding box
    if(lat < lat1 .or. lat > lat2 .or. & 
      .not. is_longitude_between(lon, lon1, lon2)) then
-     iskip(fail_areabox) = iskip(fail_areabox) + 1
-     cycle obsloop
+      if (debug) write(*,*) 'invalid location.  lon,lat = ', lon, lat
+      iskip(fail_areabox) = iskip(fail_areabox) + 1
+      cycle obsloop
    endif
 
    ! it seems when a machine writes out a number and then reads it back in
@@ -253,10 +262,10 @@ obsloop:  do
    ! still the pole but isn't going to round out of range.
    if      (lat >=  89.9999_r8) then
      lat = lat - 1.0e-12_r8
-     !print *, 'lat adjusted down, now ', lat
+     if (debug) write(*,*) 'lat adjusted down, now ', lat
    else if (lat <= -89.9999_r8) then
      lat = lat + 1.0e-12_r8
-     !print *, 'lat adjusted   up, now ', lat
+     if (debug) write(*,*) 'lat adjusted   up, now ', lat
    endif
 
    obs_prof = rcount/1000000
@@ -346,8 +355,13 @@ obsloop:  do
       ! preprocessing steps (in the prepbufr converter) to remove obs record
       ! types which are not desired.  for now, avoid giving them the wrong type
       ! and quietly loop.
-      !print *, 'unrecognized obs_prof or obstype, skipping', obs_prof, obstype
-      iskip(fail_badkind) = iskip(fail_badkind) + 1
+      if (obs_prof == 5) then
+         if (debug) write(*,*) 'unwanted moisture obs_prof, skipping', obs_prof, obstype, zob2
+         iskip(fail_moisttype) = iskip(fail_moisttype) + 1
+      else
+         if (debug) write(*,*) 'unrecognized obs_prof or obstype, skipping', obs_prof, obstype
+         iskip(fail_badkind) = iskip(fail_badkind) + 1
+      endif
       cycle obsloop 
    endif
 
@@ -386,6 +400,7 @@ obsloop:  do
 
       ! if pass is still true, we want to ignore this obs.
       if(pass) then
+         if (debug) write(*,*) 'obs skipped because not on wanted list.  subset, obs_kind = ', subset, obs_kind_gen
          iskip(fail_notwanted) = iskip(fail_notwanted) + 1
          cycle obsloop 
       endif
@@ -426,7 +441,7 @@ obsloop:  do
      vloc = lev
      ! some obs have elevation of 1e12 - toss those.
      if ( subset == 'SFCSHP' .and. vloc > 4000.0_r8) then
-        iskip = iskip + 1
+        iskip(fail_badvert) = iskip(fail_badvert) + 1
         cycle obsloop
      endif
      which_vert = VERTISSURFACE
