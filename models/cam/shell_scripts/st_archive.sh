@@ -141,7 +141,7 @@ set ${CASE}.cpl.r.*;         latest=`ls -rt $* 2> /dev/null | tail -1`; mv $late
 set ${CASE}.cpl.h* ;                                                                                                  dispose ifiles_n ${sta}/cpl/hist $*
 
 
-# TJH FIXME possible tweaking - remove assimilate_dir/member_* directories? anything else?
+# DART assimilation-related files
 set assimilate_???/*/*dart_log.*;                                                                                     dispose ifiles_n ${sta}/dart/logs $*
 set assimilate_???/*/output.*;                                                                                        dispose ifiles_n ${sta}/dart/logs $*
 set *dart_log.*;                                                                                                      dispose ifiles_n ${sta}/dart/logs $*
