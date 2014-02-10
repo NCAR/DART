@@ -452,6 +452,7 @@ echo ""
 ./xmlchange BRNCH_RETAIN_CASENAME=FALSE
 ./xmlchange GET_REFCASE=FALSE
 ./xmlchange EXEROOT=${exeroot}
+./xmlchange RUNDIR=${rundir}
 
 ./xmlchange SSTICE_DATA_FILENAME=$sst_dataset
 ./xmlchange SSTICE_GRID_FILENAME=$sst_grid

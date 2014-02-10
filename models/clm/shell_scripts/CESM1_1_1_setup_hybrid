@@ -455,6 +455,7 @@ echo ""
 ./xmlchange BRNCH_RETAIN_CASENAME=FALSE
 ./xmlchange GET_REFCASE=FALSE
 ./xmlchange EXEROOT=${exeroot}
+./xmlchange RUNDIR=${rundir}
 
 ./xmlchange DATM_MODE=CPLHIST3HrWx
 ./xmlchange DATM_CPLHIST_CASE=$case
