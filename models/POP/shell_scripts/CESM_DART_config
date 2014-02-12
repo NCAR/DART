@@ -188,7 +188,7 @@ exit 0
 EndOfText
 chmod 0755 refresh_dart_files
 
-./refresh_dart_files
+./refresh_dart_files  || exit -8
 
 # ==============================================================================
 # Ensure the DART namelists are consistent with the ensemble size,
@@ -218,7 +218,7 @@ exit 0
 EndOfText
 chmod 0755 update_dart_namelists
 
-./update_dart_namelists
+./update_dart_namelists || exit -9
 
 #=========================================================================
 # Stage the files needed for SAMPLING ERROR CORRECTION - even if not
@@ -312,7 +312,10 @@ endif
 
 grep 'SUCCESSFUL TERMINATION' $CplLogFile
 if ( $status == 0 ) then
-   ${CASEROOT}/DARTSCRIPTNAME
+
+#  If you want to use DART, uncomment the line with 'DARTSCRIPTNAME',
+#  otherwise, CESM is running as usual.
+#  ${CASEROOT}/DARTSCRIPTNAME
 
    if ( $status == 0 ) then
       echo "`date` -- DART HAS FINISHED"
@@ -339,10 +342,12 @@ endif
 # modify the "here" document to call the logical DART script.
 
 if ( $num_instances == 1 ) then
-   sed -e "s#DARTSCRIPTNAME#perfect_model.csh#" < temp.$$ >! add_to_run.txt
+   set DARTscript = perfect_model.csh
 else
-   sed -e "s#DARTSCRIPTNAME#assimilate.csh#" < temp.$$ >! add_to_run.txt
+   set DARTscript = assimilate.csh
 endif
+
+sed -e "s#DARTSCRIPTNAME#${DARTscript}#" < temp.$$ >! add_to_run.txt
 
 # Now that the "here" document is created,
 # determine WHERE to insert it -- ONLY IF it is not already there.
@@ -383,19 +388,40 @@ chmod 0744 ${CASE}.run
 # What to do next
 # ==============================================================================
 
-echo "Time to check the DART configuration:"
-echo ""
-echo "1) Modify what you need to in the DART namelists. These are "
-echo "   ${CASEROOT}/input.nml"
-echo ""
-echo "2) If you have recompiled any part of the DART system, 'refresh_dart_files'"
-echo "   will copy them into the correct places."
-echo ""
-echo "3) Make sure the observation directory names in assimilate.csh match"
-echo "   those on your system, and submit the CESM job in the normal way."
-echo ""
-echo "4) Inflation files? Observation files for the time of interest?"
-echo ""
+
+cat << EndOfText >! DART_instructions.txt
+
+-------------------------------------------------------------------------
+
+Check the DART configuration:
+
+1) The default behavior is to _not_ invoke DART and simply run CESM.
+   We recommend that you make sure this works before proceeding.
+
+2) When you want to run DART, make sure the ${CASE}.run script
+   references "$DARTscript".
+
+3) Modify what you need to in the DART namelist file, i.e. ${CASEROOT}/input.nml
+
+4) If you have recompiled any part of the DART system, 'refresh_dart_files'
+   will copy them into the correct places.
+
+5) If you stage your own inflation files, make sure you read the INFLATION section
+   in ${CASEROOT}/CESM_DART_config
+
+6) Make sure the observation directory names in $DARTscript match
+   those on your system.
+
+7) Submit the CESM job in the normal way.
+
+8) You can use ${CASEROOT}/stage_cesm_files
+    to stage files to restart a run.
+
+-------------------------------------------------------------------------
+
+EndOfText
+
+cat DART_instructions.txt
 
 exit 0
 
