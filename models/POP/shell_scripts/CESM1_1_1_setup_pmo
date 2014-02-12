@@ -433,12 +433,13 @@ echo ""
 ./xmlchange BRNCH_RETAIN_CASENAME=FALSE
 ./xmlchange GET_REFCASE=FALSE
 ./xmlchange EXEROOT=${exeroot}
+./xmlchange RUNDIR=${rundir}
 
 ./xmlchange DATM_MODE=CPLHIST3HrWx
 ./xmlchange DATM_CPLHIST_CASE=$case
-./xmlchange DATM_CPLHIST_YR_ALIGN=$refyear
-./xmlchange DATM_CPLHIST_YR_START=$refyear
-./xmlchange DATM_CPLHIST_YR_END=$refyear
+./xmlchange DATM_CPLHIST_YR_ALIGN=$stream_year_align
+./xmlchange DATM_CPLHIST_YR_START=$stream_year_first
+./xmlchange DATM_CPLHIST_YR_END=$stream_year_last
 
 # The streams files were generated with a NO_LEAP calendar in mind.
 # We need to test these with a GREGORIAN calendar.
@@ -656,7 +657,7 @@ echo "streams = 'drof.streams.txt.rof.diatren_iaf_rx1" 1 1948 2009"'" >> user_nl
 #
 # ==============================================================================
 
-./preview_namelists
+./preview_namelists || exit -3
 
 # This gives us a stream txt file for each instance that we can
 # modify for our own purpose.
@@ -713,7 +714,7 @@ foreach FNAME (user*streams*)
 
 end
 
-./preview_namelists
+./preview_namelists || exit -3
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists
