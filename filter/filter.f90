@@ -62,6 +62,8 @@ use smoother_mod,         only : smoother_read_restart, advance_smoother,       
                                  init_smoother, do_smoothing, smoother_mean_spread,          &
                                  smoother_assim, filter_state_space_diagnostics,             &
                                  smoother_ss_diagnostics, smoother_end, set_smoother_trace
+use fwd_op_win_mod
+
 use mpi
 
 
@@ -565,16 +567,16 @@ AdvanceTime : do
 
    if (my_task_id() == 0) print*, 'distributed average ', (finish-start)
 
-!  ! HK record results to file
-!   write(task_str, '(i10)') ens_handle%my_pe
-!   file_obscopies = TRIM('obscopies' // TRIM(ADJUSTL(task_str)))
-!   open(15, file=file_obscopies, status ='unknown')
-!
-!   do i = 1, obs_ens_handle%num_copies - 4
-!      write(15, *) obs_ens_handle%copies(i,:)
-!   enddo
-!
-!   close(15)
+  ! HK record results to file
+   write(task_str, '(i10)') ens_handle%my_pe
+   file_obscopies = TRIM('obscopies' // TRIM(ADJUSTL(task_str)))
+   open(15, file=file_obscopies, status ='unknown')
+
+   do i = 1, obs_ens_handle%num_copies - 4
+      write(15, *) obs_ens_handle%copies(i,:)
+   enddo
+
+   close(15)
 !
 !   !deallocate(results)
    allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
@@ -1421,25 +1423,8 @@ call prepare_to_write_to_vars(obs_ens_handle)
 call prepare_to_write_to_vars(forward_op_ens_handle)
 call prepare_to_read_from_vars(ens_handle)
 
-! allocate some RDMA accessible memory
-! using MPI_ALLOC_MEM because the MPI standard allows vendors to require MPI_ALLOC_MEM for remote memory access
-call mpi_type_size(datasize, sizedouble, ierr)
-window_size = ens_handle%num_copies*ens_handle%my_num_vars*sizedouble
-p = malloc(ens_handle%num_copies*ens_handle%my_num_vars)
-call MPI_ALLOC_MEM(window_size, MPI_INFO_NULL, p, ierr)
-
-! create a duplicate copies array for remote memory access
-! Doing this because you cannot use a cray pointer with an allocatable array
-count = 1
-do ii = 1, ens_handle%my_num_vars
-   do jj = 1, ens_handle%num_copies
-      duplicate_copies(count) = ens_handle%copies(jj, ii) ! can't use vector assignment with a cray pointer
-      count = count + 1
-   enddo
-enddo
-
-! expose local memory to RMA operation by other process in a communicator.
-call mpi_win_create(duplicate_copies, window_size, sizedouble, MPI_INFO_NULL, mpi_comm_world, win, ierr)
+! create the mpi window for the distributed state
+call create_state_window(ens_handle)
 
 ! make some room for state vectors
 allocate(expected_obs(ens_handle%num_copies -5)) ! Includes the mean copy
@@ -1476,7 +1461,7 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
    ! temporaries to avoid passing array sections which was slow on PGI compiler
    call get_expected_obs_distrib_state(seq, thiskey, &
      global_ens_index, dummy_time, isprior, &
-     istatus, assimilate_this_ob, evaluate_this_ob, ens_handle, win, expected_obs)
+     istatus, assimilate_this_ob, evaluate_this_ob, ens_handle, expected_obs)
 
    !> @todo Sort out expected obs, should it only be for the actual copies?
     obs_ens_handle%copies(1:ens_handle%num_copies -6, j) = expected_obs(1:ens_handle%num_copies -6)
@@ -1629,8 +1614,8 @@ QC_LOOP: do j = 1, obs_ens_handle%my_num_vars
 
 end do QC_LOOP
 
-call mpi_win_free(win, ierr)
-call MPI_FREE_MEM(duplicate_copies, ierr) ! not p 
+call free_state_window
+
 deallocate(expected_obs)
 deallocate(istatus)
 

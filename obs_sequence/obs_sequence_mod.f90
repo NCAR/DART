@@ -45,6 +45,8 @@ use mpi_utilities_mod, only : task_count, my_task_id
 use ensemble_manager_mod, only: get_var_owner_index, map_pe_to_task, &
                                 ensemble_type
 
+use fwd_op_win_mod
+
 use mpi
 
 implicit none
@@ -335,9 +337,7 @@ end function interactive_obs_sequence
 !> @brief Compute forward operator for set of obs in sequence for distributed state vector. 
 !> @todo does this need to be for a set of obs?
 subroutine get_expected_obs_distrib_state(seq, keys, ens_index, state_time, isprior, &
-   istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, win, expected_obs)
-
-use mpi_utilities_mod, only : datasize ! This is here rather than at the top because the mpi_get calls will most likely get wraped up inside mpi_utilities
+   istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, expected_obs)
 
 type(obs_sequence_type), intent(in)    :: seq
 integer,                 intent(in)    :: keys(:)
@@ -349,7 +349,6 @@ logical,                 intent(out)   :: assimilate_this_ob, evaluate_this_ob
 !HK
 type(ensemble_type),     intent(in)    :: state_ens_handle
 real(r8), dimension(:),  intent(inout) :: expected_obs !> @todo needs to be 2d for a set of obs
-integer, intent(in)                    :: win !< window for mpi remote memory access
 
 integer              :: num_obs, i
 !type(location_type) :: location
@@ -388,22 +387,7 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
          'identity obs is outside of state vector ', &
          source, revision, revdate)
 
-      ! Find which task has the element of state vector
-      call get_var_owner_index(-1*obs_kind_ind, owner_of_state, element_index) ! pe
-      owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
-
-      if (my_task_id() == owner_of_state) then
-
-         expected_obs = state_ens_handle%copies(1:length_of_expected_obs, element_index)
-      else
-
-         target_disp = ( element_index - 1) * state_ens_handle%num_copies
-
-         call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0 , win, ierr)
-         call mpi_get(expected_obs, state_ens_handle%num_copies, datasize, owner_of_state, target_disp, length_of_expected_obs, datasize, win, ierr)
-         call mpi_win_unlock(owner_of_state, win, ierr)
-
-      endif
+      call get_state(expected_obs, -1*obs_kind_ind, state_ens_handle)
 
       ! fixme: we currently have no option to eval only identity obs,
       ! or select to skip their assimilation via namelist.
@@ -416,8 +400,7 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
 
       call get_expected_obs_from_def_distrib_state(keys(i), obs_def, obs_kind_ind, &
          ens_index, state_time, isprior, istatus, &
-         assimilate_this_ob, evaluate_this_ob, expected_obs, state_ens_handle, win)
-
+         assimilate_this_ob, evaluate_this_ob, expected_obs, state_ens_handle)
 
    endif
 end do

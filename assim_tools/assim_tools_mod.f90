@@ -55,7 +55,7 @@ use assim_model_mod,      only : get_state_meta_data_distrib, get_close_maxdist_
                                  get_close_obs_init, get_close_obs_distrib,               &
                                  convert_base_obs_location !HK
 
-use mpi !HK temporary
+use fwd_op_win_mod
 
 implicit none
 private
@@ -375,27 +375,8 @@ call prepare_to_update_copies(obs_ens_handle)
 if (.not. module_initialized) call assim_tools_init()
 
 !HK make window for mpi one-sided communication
-
-! allocate some RDMA accessible memory
-! using MPI_ALLOC_MEM because the MPI standard allows vendors to require MPI_ALLOC_MEM for remote memory access
-call mpi_type_size(datasize, sizedouble, ierr)
-window_size = ens_handle%num_copies*ens_handle%my_num_vars*sizedouble
-p = malloc(ens_handle%num_copies*ens_handle%my_num_vars)
-call MPI_ALLOC_MEM(window_size, MPI_INFO_NULL, p, ierr)
-
-! create a duplicate copies array for remote memory access
-! Doing this because you cannot use a cray pointer with an allocatable array
-count = 1
-do ii = 1, ens_handle%my_num_vars
-   do jj = 1, ens_handle%num_copies
-      duplicate_copies(count) = ens_handle%copies(jj, ii) ! can't use vector assignment with a cray pointer
-      count = count + 1
-   enddo
-enddo
-
-! expose local memory to RMA operation by other process in a communicator.
-call mpi_win_create(duplicate_copies, window_size, sizedouble, MPI_INFO_NULL, mpi_comm_world, win, ierr)
-
+! used for vertical conversion in get_close_obs
+call create_mean_window(ens_handle)
 
 ! filter kinds 1 and 8 return sorted increments, however non-deterministic
 ! inflation can scramble these. the sort is expensive, so help users get better 
@@ -471,7 +452,7 @@ call get_my_vars(ens_handle, my_state_indx)
 ! Get the location and kind of all my state variables
 start = MPI_WTIME()
 do i = 1, ens_handle%my_num_vars
-   call get_state_meta_data_distrib(ens_handle, win, my_state_indx(i), my_state_loc(i), my_state_kind(i))
+   call get_state_meta_data_distrib(ens_handle, my_state_indx(i), my_state_loc(i), my_state_kind(i))
 end do
 finish = MPI_WTIME()
 print*, 'get state meta data time :', finish - start, 'rank ', my_task_id()
@@ -564,7 +545,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    if (base_obs_type > 0) then
       base_obs_kind = get_obs_kind_var_type(base_obs_type)
    else
-      call get_state_meta_data_distrib(ens_handle, win, -1 * base_obs_type, dummyloc, base_obs_kind)  ! identity obs
+      call get_state_meta_data_distrib(ens_handle, -1 * base_obs_type, dummyloc, base_obs_kind)  ! identity obs
    endif
    ! Get the value of the observation
    call get_obs_values(observation, obs, obs_val_index)
@@ -637,7 +618,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          ! Otherwise all processors are trying to convert the location for the same base obs
          ! in get close obs.
          ! Note, no need to do this if the qc is not ok
-         call convert_base_obs_location(base_obs_loc, ens_handle, win, vert_obs_loc_in_localization_coord, int_vert_qc)
+         call convert_base_obs_location(base_obs_loc, ens_handle, vert_obs_loc_in_localization_coord, int_vert_qc)
 
             vert_qc = real(int_vert_qc)
 
@@ -717,7 +698,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          num_close_obs_cached = num_close_obs_cached + 1
       else
          start = MPI_WTIME()
-         call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle, win)
+         call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
          finish = MPI_WTIME()
 
          last_base_obs_loc      = base_obs_loc
@@ -827,7 +808,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          start = MPI_WTIME()
          call get_close_obs_distrib(gc_state, base_obs_loc, base_obs_type, my_state_loc, &
                   my_state_kind, num_close_states, close_state_ind,&
-                  close_state_dist, ens_handle, win)
+                  close_state_dist, ens_handle)
          finish = MPI_WTIME()
 
          last_base_states_loc     = base_obs_loc
@@ -1068,8 +1049,7 @@ if(output_localization_diagnostics .and. my_task_id() == 0) then
 end if
 
 ! get rid of mpi window
-call mpi_win_free(win, ierr)
-call MPI_FREE_MEM(duplicate_copies, ierr) ! not p
+call free_mean_window
 
 end subroutine filter_assim
 

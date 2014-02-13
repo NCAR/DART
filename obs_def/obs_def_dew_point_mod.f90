@@ -30,20 +30,20 @@
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(DEWPOINT)
-!            call get_expected_dew_point_distrib(state_ens_handle, win, location, 1, expected_obs, istatus)
+!            call get_expected_dew_point_distrib(state_ens_handle,  location, 1, expected_obs, istatus)
 !         case(AIREP_DEWPOINT, AMDAR_DEWPOINT, PILOT_DEWPOINT, BOGUS_DEWPOINT, AIRS_DEWPOINT)
-!            call get_expected_dew_point_distrib(state_ens_handle, win, location, 1, expected_obs, istatus)
+!            call get_expected_dew_point_distrib(state_ens_handle,  location, 1, expected_obs, istatus)
 !         case(RADIOSONDE_DEWPOINT, AIRCRAFT_DEWPOINT, ACARS_DEWPOINT, DROPSONDE_DEWPOINT)
-!            call get_expected_dew_point_distrib(state_ens_handle, win, location, 1, expected_obs, istatus)
+!            call get_expected_dew_point_distrib(state_ens_handle,  location, 1, expected_obs, istatus)
 !
 !         case(DEWPOINT_2_METER)
-!            call get_expected_dew_point_distrib(state_ens_handle, win, location, 2, expected_obs, istatus)
+!            call get_expected_dew_point_distrib(state_ens_handle,  location, 2, expected_obs, istatus)
 !         case(BUOY_DEWPOINT, SHIP_DEWPOINT, SYNOP_DEWPOINT)
-!            call get_expected_dew_point_distrib(state_ens_handle, win, location, 2, expected_obs, istatus)
+!            call get_expected_dew_point_distrib(state_ens_handle,  location, 2, expected_obs, istatus)
 !         case(MARINE_SFC_DEWPOINT, LAND_SFC_DEWPOINT)
-!            call get_expected_dew_point_distrib(state_ens_handle, win, location, 2, expected_obs, istatus)
+!            call get_expected_dew_point_distrib(state_ens_handle,  location, 2, expected_obs, istatus)
 !         case(METAR_DEWPOINT_2_METER)
-!            call get_expected_dew_point_distrib(state_ens_handle, win, location, 2, expected_obs, istatus)
+!            call get_expected_dew_point_distrib(state_ens_handle,  location, 2, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -129,10 +129,9 @@ end subroutine initialize_module
 
 
 
-subroutine get_expected_dew_point_distrib(state_ens_handle, win, location, key, td, istatus)
+subroutine get_expected_dew_point_distrib(state_ens_handle,  location, key, td, istatus)
 
 type(ensemble_type)                :: state_ens_handle
-integer, intent(in)                :: win !> window for one sided communication
 type(location_type), intent(inout) :: location
 integer,             intent(in)    :: key
 real(r8),            intent(out)   :: td(:)              ! dewpoint (K)
@@ -164,7 +163,7 @@ else
         source, revision, revdate)
 endif
 
-call interpolate_distrib(location, ipres, istatus, p_Pa, state_ens_handle, win)
+call interpolate_distrib(location, ipres, istatus, p_Pa, state_ens_handle)
 if ( all(istatus /= 0) ) then
    td(:) = missing_r8
    return
@@ -172,7 +171,7 @@ endif
 
 track_status = istatus
 
-call interpolate_distrib(location, KIND_VAPOR_MIXING_RATIO, istatus, qv, state_ens_handle, win)
+call interpolate_distrib(location, KIND_VAPOR_MIXING_RATIO, istatus, qv, state_ens_handle)
 if ( all(istatus /= 0) ) then
    td(:) = missing_r8
    return

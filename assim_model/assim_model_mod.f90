@@ -676,7 +676,7 @@ end do
 end subroutine copy_assim_model
 
 !> Pass through routine to model interpolate
-subroutine interpolate_distrib(location, loctype, istatus, expected_obs, state_ens_handle, win)
+subroutine interpolate_distrib(location, loctype, istatus, expected_obs, state_ens_handle)
 !---------------------------------------------------------------------
 !
 ! Interpolates from the state vector in an assim_model_type to the
@@ -689,18 +689,15 @@ subroutine interpolate_distrib(location, loctype, istatus, expected_obs, state_e
 
 implicit none
 
-type(location_type), intent(inout) :: location
-integer,                intent(in) :: loctype
-integer,               intent(out) :: istatus(:)
-real(r8),              intent(out) :: expected_obs(:)
-integer,               intent(in)  :: win
-
-
-type(ensemble_type) :: state_ens_handle
+type(location_type),   intent(inout) :: location
+integer,               intent(in)    :: loctype
+integer,               intent(out)   :: istatus(:)
+type(ensemble_type),   intent(in)    :: state_ens_handle
+real(r8),              intent(out)   :: expected_obs(:)
 
 istatus = 0
 
-call model_interpolate_distrib(state_ens_handle, win, location, loctype, istatus, expected_obs)
+call model_interpolate_distrib(state_ens_handle, location, loctype, istatus, expected_obs)
 
 end subroutine interpolate_distrib
 

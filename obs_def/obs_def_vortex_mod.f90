@@ -17,13 +17,13 @@
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(VORTEX_LAT)
-!            call get_expected_vortex_info_distrib(state_ens_handle, win, location, expected_obs, 'lat',istatus)
+!            call get_expected_vortex_info_distrib(state_ens_handle, location, expected_obs, 'lat',istatus)
 !         case(VORTEX_LON)
-!            call get_expected_vortex_info_distrib(state_ens_handle, win, location, expected_obs, 'lon',istatus)
+!            call get_expected_vortex_info_distrib(state_ens_handle, location, expected_obs, 'lon',istatus)
 !         case(VORTEX_PMIN)
-!            call get_expected_vortex_info_distrib(state_ens_handle, win, location, expected_obs, 'pmi',istatus)
+!            call get_expected_vortex_info_distrib(state_ens_handle, location, expected_obs, 'pmi',istatus)
 !         case(VORTEX_WMAX)
-!            call get_expected_vortex_info_distrib(state_ens_handle, win, location, expected_obs, 'wma',istatus)
+!            call get_expected_vortex_info_distrib(state_ens_handle, location, expected_obs, 'wma',istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -103,7 +103,7 @@ end subroutine initialize_module
 
 !----------------------------------------------------------------------
 
-subroutine get_expected_vortex_info_distrib(state_ens_handle, win, location, vinfo, whichinfo, istatus)
+subroutine get_expected_vortex_info_distrib(state_ens_handle, location, vinfo, whichinfo, istatus)
 
 !
 ! Return vortex info according to whichinfo
@@ -113,7 +113,6 @@ subroutine get_expected_vortex_info_distrib(state_ens_handle, win, location, vin
 !
 
 type(ensemble_type), intent(in)     :: state_ens_handle
-integer,             intent(in)     :: win !> window for one sided communication
 type(location_type), intent(inout)  :: location
 character(len=3),    intent(in)     :: whichinfo
 real(r8),            intent(out)    :: vinfo(:)
@@ -124,13 +123,13 @@ integer :: e, ens_size
 if ( .not. module_initialized ) call initialize_module
 
 if (whichinfo == 'lat') then
-   call interpolate_distrib(location, KIND_VORTEX_LAT, istatus, vinfo, state_ens_handle, win)
+   call interpolate_distrib(location, KIND_VORTEX_LAT, istatus, vinfo, state_ens_handle)
 else if (whichinfo == 'lon') then
-   call interpolate_distrib(location, KIND_VORTEX_LON, istatus, vinfo, state_ens_handle, win)
+   call interpolate_distrib(location, KIND_VORTEX_LON, istatus, vinfo, state_ens_handle)
 else if (whichinfo == 'pmi') then
-   call interpolate_distrib(location, KIND_VORTEX_PMIN, istatus, vinfo, state_ens_handle, win)
+   call interpolate_distrib(location, KIND_VORTEX_PMIN, istatus, vinfo, state_ens_handle)
 else if (whichinfo == 'wma') then
-   call interpolate_distrib(location, KIND_VORTEX_WMAX, istatus, vinfo, state_ens_handle, win)
+   call interpolate_distrib(location, KIND_VORTEX_WMAX, istatus, vinfo, state_ens_handle)
 else
 endif
 

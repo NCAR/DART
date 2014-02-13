@@ -351,7 +351,7 @@ end subroutine set_obs_def_time
 !----------------------------------------------------------------------------
 
 subroutine get_expected_obs_from_def_distrib_state(key, obs_def, obs_kind_ind, ens_index, &
-   state_time, isprior, istatus, assimilate_this_ob, evaluate_this_ob, expected_obs, state_ens_handle, win)
+   state_time, isprior, istatus, assimilate_this_ob, evaluate_this_ob, expected_obs, state_ens_handle)
 
 ! Compute forward operator for a particular obs_def
 integer,             intent(in)  :: key
@@ -363,7 +363,6 @@ integer,             intent(out) :: istatus(:)
 logical,             intent(out) :: assimilate_this_ob, evaluate_this_ob
 !HK
 real(r8),            intent(out) :: expected_obs(:)
-integer,             intent(in)  :: win !> window for one sided communication
 type(ensemble_type), intent(in)  :: state_ens_handle
 
 

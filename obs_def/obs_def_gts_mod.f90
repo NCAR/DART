@@ -46,7 +46,7 @@
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(SATEM_THICKNESS)
-!            call get_expected_thickness_distrib(state_ens_handle, win, location, expected_obs, istatus)
+!            call get_expected_thickness_distrib(state_ens_handle, location, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -102,7 +102,7 @@ end subroutine initialize_module
 
 
 
-subroutine get_expected_thickness_distrib(state_ens_handle, win, location, thickness, istatus)
+subroutine get_expected_thickness_distrib(state_ens_handle, location, thickness, istatus)
 !-----------------------------------------------------------------------------
 ! inputs:
 !    state_vector:    DART state vector
@@ -116,7 +116,6 @@ subroutine get_expected_thickness_distrib(state_ens_handle, win, location, thick
 implicit none
 
 type(ensemble_type)              :: state_ens_handle
-integer, intent(in)              :: win !> window for one sided communication
 type(location_type), intent(in)  :: location
 real(r8),            intent(out) :: thickness(:)
 integer,             intent(out) :: istatus(:)
@@ -201,8 +200,8 @@ do k=2, num_press_int+1, 2
    p = press(k)
    location2 = set_location(lon2, lat, p,  which_vert)
 
-   call interpolate_distrib(location2,  KIND_TEMPERATURE,       istatus0, t, state_ens_handle, win)
-   call interpolate_distrib(location2,  KIND_SPECIFIC_HUMIDITY, istatus2, q, state_ens_handle, win)
+   call interpolate_distrib(location2,  KIND_TEMPERATURE,       istatus0, t, state_ens_handle)
+   call interpolate_distrib(location2,  KIND_SPECIFIC_HUMIDITY, istatus2, q, state_ens_handle)
 
    if(all(istatus0 > 0) .or. all(istatus2 > 0)  ) then
       istatus = 1

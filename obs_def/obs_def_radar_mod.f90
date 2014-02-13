@@ -49,13 +49,13 @@
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !  case(DOPPLER_RADIAL_VELOCITY)
-!     call get_expected_radial_vel_distrib(state_ens_handle, win, location, obs_def%key, expected_obs, istatus)
+!     call get_expected_radial_vel_distrib(state_ens_handle, location, obs_def%key, expected_obs, istatus)
 !  case(RADAR_REFLECTIVITY)
-!     call get_expected_radar_ref_distrib(state_ens_handle, win, location, expected_obs, istatus)
+!     call get_expected_radar_ref_distrib(state_ens_handle, location, expected_obs, istatus)
 !  case(RADAR_CLEARAIR_REFLECTIVITY)
-!     call get_expected_radar_ref_distrib(state_ens_handle, win, location, expected_obs, istatus)
+!     call get_expected_radar_ref_distrib(state_ens_handle, location, expected_obs, istatus)
 !  case(PRECIPITATION_FALL_SPEED)
-!     call get_expected_fall_velocity_distrib(state_ens_handle, win, location, expected_obs, istatus)
+!     call get_expected_fall_velocity_distrib(state_ens_handle, location, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !-----------------------------------------------------------------------------
 
@@ -823,13 +823,12 @@ end subroutine interactive_nyquist_velocity
 
 !----------------------------------------------------------------------
 
-subroutine get_expected_radial_vel_distrib(state_ens_handle, win, location, velkey, &
+subroutine get_expected_radial_vel_distrib(state_ens_handle, location, velkey, &
                                    radial_vel, istatus)
 
 ! This is the main forward operator routine for radar Doppler velocity.
 
 type(ensemble_type),    intent(in) :: state_ens_handle
-integer,                intent(in) :: win !> window for one sided communication
 type(location_type), intent(inout) :: location
 integer,                intent(in) :: velkey
 real(r8),              intent(out) :: radial_vel(:)
@@ -864,7 +863,7 @@ allocate(u(ens_size), v(ens_size), w(ens_size), qr(ens_size), qg(ens_size), &
 ! Simple error check on key number before accessing the array
 call velkey_out_of_range(velkey)
 
-call interpolate_distrib(location, KIND_U_WIND_COMPONENT, istatus, u, state_ens_handle, win)
+call interpolate_distrib(location, KIND_U_WIND_COMPONENT, istatus, u, state_ens_handle)
    if ( all(istatus /= 0) ) then
       radial_vel(:) = missing_r8
       return
@@ -872,7 +871,7 @@ call interpolate_distrib(location, KIND_U_WIND_COMPONENT, istatus, u, state_ens_
 
 track_status = istatus
 
-call interpolate_distrib(location, KIND_V_WIND_COMPONENT, istatus, v, state_ens_handle, win)
+call interpolate_distrib(location, KIND_V_WIND_COMPONENT, istatus, v, state_ens_handle)
    if ( all(istatus /= 0) ) then
       radial_vel(:) = missing_r8
       return
@@ -882,7 +881,7 @@ call interpolate_distrib(location, KIND_V_WIND_COMPONENT, istatus, v, state_ens_
    enddo
 
 
-call interpolate_distrib(location, KIND_VERTICAL_VELOCITY, istatus, w, state_ens_handle, win)
+call interpolate_distrib(location, KIND_VERTICAL_VELOCITY, istatus, w, state_ens_handle)
    if ( all(istatus /= 0) ) then
       radial_vel(:) = missing_r8
       return
@@ -891,7 +890,7 @@ call interpolate_distrib(location, KIND_VERTICAL_VELOCITY, istatus, w, state_ens
       if (istatus(e) /= 0 ) track_status(e) = istatus(e)
    enddo
 
-call get_expected_fall_velocity_distrib(state_ens_handle, win, location, precip_fall_speed, istatus)
+call get_expected_fall_velocity_distrib(state_ens_handle, location, precip_fall_speed, istatus)
    do e = 1, ens_size
       if (istatus(e) /= 0 ) track_status(e) = istatus(e)
    enddo
@@ -932,7 +931,7 @@ end subroutine get_expected_radial_vel_distrib
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
 
-subroutine get_expected_fall_velocity_distrib(state_ens_handle, win, &
+subroutine get_expected_fall_velocity_distrib(state_ens_handle, &
                 location, precip_fall_speed, istatus)
 
 ! This is the main forward operator routine for the expected
@@ -940,7 +939,6 @@ subroutine get_expected_fall_velocity_distrib(state_ens_handle, win, &
 ! radial velocity.
 
 type(ensemble_type)                :: state_ens_handle
-integer, intent(in)                :: win !> window for one sided communication
 type(location_type), intent(inout) :: location
 real(r8),            intent(out)   :: precip_fall_speed(:)
 integer,             intent(out)   :: istatus(:)
@@ -964,7 +962,7 @@ allocate(track_status(ens_size), qr(ens_size), qg(ens_size), qs(ens_size), &
 istatus(:) = 0
 precip_fall_speed(:) = 0.0_r8
 call interpolate_distrib(location, KIND_POWER_WEIGHTED_FALL_SPEED, istatus, &
-         precip_fall_speed, state_ens_handle, win)
+         precip_fall_speed, state_ens_handle)
 
 ! If able to get value, return here.
 if (all(istatus == 0) ) return
@@ -986,7 +984,7 @@ endif
 
 ! if Kessler or Lin we can compute the fall velocity
 if (microphysics_type == 1 .or. microphysics_type == 2) then
-   call interpolate_distrib(location, KIND_RAINWATER_MIXING_RATIO, istatus, qr, state_ens_handle, win)
+   call interpolate_distrib(location, KIND_RAINWATER_MIXING_RATIO, istatus, qr, state_ens_handle)
    if ( all(istatus /= 0) ) then
       precip_fall_speed = missing_r8
       return
@@ -996,7 +994,7 @@ if (microphysics_type == 1 .or. microphysics_type == 2) then
    enddo
 
    if (microphysics_type == 2) then
-      call interpolate_distrib(location, KIND_GRAUPEL_MIXING_RATIO, istatus, qg, state_ens_handle, win)
+      call interpolate_distrib(location, KIND_GRAUPEL_MIXING_RATIO, istatus, qg, state_ens_handle)
       if ( all(istatus /= 0) ) then
          precip_fall_speed = missing_r8
          return
@@ -1005,7 +1003,7 @@ if (microphysics_type == 1 .or. microphysics_type == 2) then
          if (istatus(e) /= 0 ) track_status(e) = istatus(e)
       enddo
 
-      call interpolate_distrib(location, KIND_SNOW_MIXING_RATIO, istatus, qs, state_ens_handle, win)
+      call interpolate_distrib(location, KIND_SNOW_MIXING_RATIO, istatus, qs, state_ens_handle)
       if ( all(istatus /= 0) ) then
          precip_fall_speed = missing_r8
          return
@@ -1016,7 +1014,7 @@ if (microphysics_type == 1 .or. microphysics_type == 2) then
    endif
 
    ! Done with Lin et al specific calls
-   call interpolate_distrib(location, KIND_DENSITY, istatus, rho, state_ens_handle, win)
+   call interpolate_distrib(location, KIND_DENSITY, istatus, rho, state_ens_handle)
    if ( all(istatus /= 0) ) then
       precip_fall_speed = missing_r8
       return
@@ -1025,7 +1023,7 @@ if (microphysics_type == 1 .or. microphysics_type == 2) then
       if (istatus(e) /= 0 ) track_status(e) = istatus(e)
    enddo
 
-   call interpolate_distrib(location, KIND_TEMPERATURE, istatus, temp, state_ens_handle, win)
+   call interpolate_distrib(location, KIND_TEMPERATURE, istatus, temp, state_ens_handle)
    if ( all(istatus /= 0) ) then
       precip_fall_speed = missing_r8
       return
@@ -1045,7 +1043,7 @@ if (microphysics_type == 1 .or. microphysics_type == 2) then
 
 else if (microphysics_type == 5 .and. allow_dbztowt_conv) then
    ! Provided reflectivity field - will estimate fall velocity using empirical relations
-   call get_expected_radar_ref_distrib(state_ens_handle, win, location, refl, istatus)
+   call get_expected_radar_ref_distrib(state_ens_handle, location, refl, istatus)
    if ( all(istatus /= 0) ) then
       precip_fall_speed = missing_r8
       return
@@ -1053,7 +1051,7 @@ else if (microphysics_type == 5 .and. allow_dbztowt_conv) then
    do e = 1, ens_size
       if (istatus(e) /= 0 ) track_status(e) = istatus(e)
    enddo
-   call interpolate_distrib(location, KIND_DENSITY, istatus, rho, state_ens_handle, win)
+   call interpolate_distrib(location, KIND_DENSITY, istatus, rho, state_ens_handle)
    if ( all(istatus /= 0) ) then
       precip_fall_speed = missing_r8
       return
@@ -1109,11 +1107,10 @@ end subroutine read_radar_ref
 
 !----------------------------------------------------------------------
 
-subroutine get_expected_radar_ref_distrib(state_ens_handle, win, location, ref, istatus)
+subroutine get_expected_radar_ref_distrib(state_ens_handle, location, ref, istatus)
 
 ! The main forward operator routine for radar reflectivity observations.
 
-integer, intent(in)                :: win !> window for one sided communication
 type(ensemble_type)                :: state_ens_handle
 type(location_type), intent(inout) :: location
 real(r8),            intent(out)   :: ref(:)
@@ -1157,7 +1154,7 @@ temp(:) = 0.0_r8
 ! for the simple single-moment microphysics schemes (e.g., Kessler or Lin).
 
 ! Try to draw from state vector first
-call interpolate_distrib(location, KIND_RADAR_REFLECTIVITY, istatus, ref, state_ens_handle, win)
+call interpolate_distrib(location, KIND_RADAR_REFLECTIVITY, istatus, ref, state_ens_handle)
 if ( all(istatus /= 0) ) then !< @todo  How to deal with these istatuses
 
    ! If the user explicitly wanted to interpolate in the field, try to complain
@@ -1178,7 +1175,7 @@ if ( any(istatus /= 0) ) then
    if (microphysics_type == 1 .or. microphysics_type == 2) then
 
       call interpolate_distrib(location, KIND_RAINWATER_MIXING_RATIO, istatus, &
-                       qr, state_ens_handle, win)
+                       qr, state_ens_handle)
       if ( all(istatus /= 0) ) then
          ref = missing_r8
          return
@@ -1190,7 +1187,7 @@ if ( any(istatus /= 0) ) then
       if (microphysics_type == 2) then
          ! Also need some ice vars
          call interpolate_distrib(location, KIND_GRAUPEL_MIXING_RATIO, istatus, &
-                          qg, state_ens_handle, win)
+                          qg, state_ens_handle)
          if ( all(istatus /= 0) ) then
             ref = missing_r8
             return
@@ -1200,7 +1197,7 @@ if ( any(istatus /= 0) ) then
          enddo
 
          call interpolate_distrib(location, KIND_SNOW_MIXING_RATIO, istatus, &
-                          qs, state_ens_handle, win)
+                          qs, state_ens_handle)
          if ( all(istatus /= 0) ) then
             ref = missing_r8
             return
@@ -1210,7 +1207,7 @@ if ( any(istatus /= 0) ) then
          enddo
       endif
 
-      call interpolate_distrib(location, KIND_DENSITY, istatus, rho, state_ens_handle, win)
+      call interpolate_distrib(location, KIND_DENSITY, istatus, rho, state_ens_handle)
          if ( all(istatus /= 0) ) then
             ref = missing_r8
             return
@@ -1219,7 +1216,7 @@ if ( any(istatus /= 0) ) then
             if (istatus(e) /= 0 ) track_status(e) = istatus(e)
          enddo
 
-      call interpolate_distrib(location, KIND_TEMPERATURE, istatus, temp, state_ens_handle, win)
+      call interpolate_distrib(location, KIND_TEMPERATURE, istatus, temp, state_ens_handle)
          if ( all(istatus /= 0) ) then
             ref = missing_r8
             return

@@ -24,7 +24,7 @@
 !              AIRCRAFT_RELATIVE_HUMIDITY,   ACARS_RELATIVE_HUMIDITY,     &
 !              MARINE_SFC_RELATIVE_HUMIDITY, LAND_SFC_RELATIVE_HUMIDITY,  &
 !              METAR_RELATIVE_HUMIDITY_2_METER, AIRS_RELATIVE_HUMIDITY)
-!            call get_expected_relative_humidity_distrib(state_ens_handle, win, location, expected_obs, istatus)
+!            call get_expected_relative_humidity_distrib(state_ens_handle, location, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -94,10 +94,9 @@ end subroutine initialize_module
 
 !----------------------------------------------------------------------------
 
-subroutine get_expected_relative_humidity_distrib(state_ens_handle, win, location, rh, istatus)
+subroutine get_expected_relative_humidity_distrib(state_ens_handle, location, rh, istatus)
 
 type(ensemble_type), intent(in)     :: state_ens_handle
-integer,             intent(in)     :: win !> window for one sided communication
 type(location_type), intent(inout)  :: location
 real(r8),            intent(out)    :: rh(:)    ! relative humidity (fraction)
 integer,             intent(out)    :: istatus(:)
@@ -115,7 +114,7 @@ allocate(qvap(ens_size), tmpk(ens_size), pres(ens_size), es(ens_size), qsat(ens_
 allocate(track_status(ens_size))
 
 !  interpolate the mixing ratio to the location
-call interpolate_distrib(location, KIND_VAPOR_MIXING_RATIO, istatus, qvap, state_ens_handle, win)
+call interpolate_distrib(location, KIND_VAPOR_MIXING_RATIO, istatus, qvap, state_ens_handle)
 do e = 1, ens_size
    if (istatus(e) /= 0 .or. qvap(e) < 0.0_r8) then
       if (istatus(e) == 0) then
@@ -130,7 +129,7 @@ enddo
 track_status = istatus
 
 !  interpolate the temperature to the desired location
-call interpolate_distrib(location, KIND_TEMPERATURE, istatus, tmpk, state_ens_handle, win)
+call interpolate_distrib(location, KIND_TEMPERATURE, istatus, tmpk, state_ens_handle)
 do e = 1, ens_size
    if (istatus(e) /= 0 .or. tmpk(e) <= 0.0_r8) then
       rh(e) = missing_r8
@@ -148,7 +147,7 @@ if ( vert_is_pressure(location) ) then
    pres = xyz(3)
 else
    ! pressure comes back in pascals (not hPa or mb)
-   call interpolate_distrib(location, KIND_PRESSURE, istatus, pres, state_ens_handle, win)
+   call interpolate_distrib(location, KIND_PRESSURE, istatus, pres, state_ens_handle)
    do e = 1, ens_size
       if (istatus(e) /= 0 .or. pres(e) <= 0.0_r8 .or. pres(e) >= 120000.0_r8)  then
          rh(e) = missing_r8

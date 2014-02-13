@@ -27,7 +27,7 @@
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(GPSRO_REFRACTIVITY)
-!            call get_expected_gpsro_ref_distrib(state_ens_handle, win, location, obs_def%key, expected_obs, istatus)
+!            call get_expected_gpsro_ref_distrib(state_ens_handle,  location, obs_def%key, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 
@@ -373,7 +373,7 @@ write(*, *)
 end subroutine interactive_gpsro_ref
 
 !> Distributed version of get_expected_gpsro_ref_distrib
- subroutine get_expected_gpsro_ref_distrib(state_ens_handle, win, location, gpskey, ro_ref, istatus)
+ subroutine get_expected_gpsro_ref_distrib(state_ens_handle,  location, gpskey, ro_ref, istatus)
 !------------------------------------------------------------------------------
 !
 ! Purpose: Calculate GPS RO local refractivity or non_local (integrated)
@@ -397,7 +397,6 @@ end subroutine interactive_gpsro_ref
 
 !> @todo this is completely broken
 type(ensemble_type), intent(in)  :: state_ens_handle
-integer,             intent(in)  :: win !> window for one sided communication
 type(location_type), intent(in)  :: location
 integer,             intent(in)  :: gpskey
 real(r8),            intent(out) :: ro_ref(:)
@@ -442,7 +441,7 @@ height   = obsloc(3)                       ! (m)
 
 ! calculate refractivity at perigee
 
-call ref_local_distrib(state_ens_handle, win, location, height, lat, lon, ref_perigee, istatus0)
+call ref_local_distrib(state_ens_handle,  location, height, lat, lon, ref_perigee, istatus0)
 ! if istatus > 0, the interpolation failed and we should return failure now.
 
 if(all(istatus0 > 0)) then
@@ -506,7 +505,7 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
        enddo
 
        ! get the refractivity at this ray point(ref00)
-       call ref_local_distrib(state_ens_handle, win, location, height1, lat1, lon1, ref00, istatus0)
+       call ref_local_distrib(state_ens_handle,  location, height1, lat1, lon1, ref00, istatus0)
        do e = 1, ens_size
           ! when any point of the ray is problematic, return failure
           if(istatus0(e) > 0) then
@@ -531,7 +530,7 @@ else  ! gps_data(gpskey)%gpsro_ref_form == 'GPSEXC'
        call carte2geo( xx(e), yy(e), zz(e), height1, lat1, lon1, gps_data(gpskey)%rfict )
 
        ! get the refractivity at this ray point(ref00)
-       call ref_local_distrib(state_ens_handle, win, location, height1, lat1, lon1, ref00, istatus0)
+       call ref_local_distrib(state_ens_handle,  location, height1, lat1, lon1, ref00, istatus0)
        ! when any point of the ray is problematic, return failure
        do e = 1, ens_size
           if(istatus0(e) > 0) then
@@ -579,7 +578,7 @@ enddo
 end subroutine get_expected_gpsro_ref_distrib
 
 !> Distributed version 
-subroutine ref_local_distrib(state_ens_handle, win, location, height, lat, lon, ref00, istatus0)
+subroutine ref_local_distrib(state_ens_handle,  location, height, lat, lon, ref00, istatus0)
 !------------------------------------------------------------------------------
 !
 ! Calculate local refractivity at any GPS ray point (height, lat, lon)
@@ -593,7 +592,6 @@ subroutine ref_local_distrib(state_ens_handle, win, location, height, lat, lon, 
 !------------------------------------------------------------------------------
 
 type(ensemble_type), intent(in)  :: state_ens_handle
-integer,             intent(in)  :: win !> window for one sided communication
 real(r8),            intent(in)  :: lon, lat, height
 real(r8),            intent(out) :: ref00(:)
 integer,             intent(out) :: istatus0(:)
@@ -626,17 +624,17 @@ location2 = set_location(lon2, lat, height,  which_vert)
 istatus0 = 3
 ref00 = missing_r8
 
-call interpolate_distrib(location2,  KIND_TEMPERATURE, istatus0,  t,  state_ens_handle, win)
+call interpolate_distrib(location2,  KIND_TEMPERATURE, istatus0,  t,  state_ens_handle)
 if (all(istatus0 > 0)) return
 track_status = istatus0
 
-call interpolate_distrib(location2, KIND_SPECIFIC_HUMIDITY, istatus0, q, state_ens_handle, win)
+call interpolate_distrib(location2, KIND_SPECIFIC_HUMIDITY, istatus0, q, state_ens_handle)
 if (all(istatus0 > 0)) return
 do e = 1, ens_size
    if ( istatus0(e) /= 0 ) track_status(e) = istatus0(e)
 enddo
 
-call interpolate_distrib(location2,  KIND_PRESSURE, istatus0, p, state_ens_handle, win)
+call interpolate_distrib(location2,  KIND_PRESSURE, istatus0, p, state_ens_handle)
 if (all(istatus0 > 0)) return
 do e = 1, ens_size
    if ( istatus0(e) /= 0 ) track_status(e) = istatus0(e)

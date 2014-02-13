@@ -19,7 +19,7 @@
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(RADIOSONDE_SURFACE_ALTIMETER, DROPSONDE_SURFACE_ALTIMETER, MARINE_SFC_ALTIMETER, &
 !              LAND_SFC_ALTIMETER, METAR_ALTIMETER)
-!            call get_expected_altimeter_distrib(state_ens_handle, win, location, expected_obs, istatus)
+!            call get_expected_altimeter_distrib(state_ens_handle, location, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -77,10 +77,9 @@ end subroutine initialize_module
 
 !----------------------------------------------------------------------
 
-subroutine get_expected_altimeter_distrib(state_ens_handle, win, location, altimeter_setting, istatus)
+subroutine get_expected_altimeter_distrib(state_ens_handle, location, altimeter_setting, istatus)
 
 type(ensemble_type), intent(in)     :: state_ens_handle
-integer,             intent(in)     :: win !> window for one sided communication
 type(location_type), intent(inout)  :: location
 real(r8),            intent(out)    :: altimeter_setting(:)     ! altimeter (hPa)
 integer,             intent(out)    :: istatus(:)
@@ -99,7 +98,7 @@ allocate(psfc(ens_size), hsfc(ens_size), track_status(ens_size))
 allocate(altimeter_temp(ens_size))
 
 !  interpolate the surface pressure to the desired location
-call interpolate_distrib(location, KIND_SURFACE_PRESSURE, istatus, psfc, state_ens_handle, win)
+call interpolate_distrib(location, KIND_SURFACE_PRESSURE, istatus, psfc, state_ens_handle)
 do e = 1, ens_size
    if (istatus(e) /= 0) then
       altimeter_setting(e) = missing_r8
@@ -108,7 +107,7 @@ enddo
 track_status = istatus
 
 !  interpolate the surface elevation to the desired location
-call interpolate_distrib(location, KIND_SURFACE_ELEVATION, istatus, hsfc, state_ens_handle, win)
+call interpolate_distrib(location, KIND_SURFACE_ELEVATION, istatus, hsfc, state_ens_handle)
 do e = 1, ens_size
    if (istatus(e) /= 0) then
       altimeter_setting(e) = missing_r8
