@@ -90,7 +90,7 @@ mean_row = state_ens_handle%num_copies -5!> @todo How to do this nicely
 call mpi_type_size(datasize, bytesize, ierr)
 window_size_mean = my_num_vars*bytesize
 b = malloc(my_num_vars)
-call MPI_ALLOC_MEM(window_size_mean, MPI_INFO_NULL, a, ierr)
+call MPI_ALLOC_MEM(window_size_mean, MPI_INFO_NULL, b, ierr)
 
 do ii = 1, my_num_vars
    duplicate_mean(ii) = state_ens_handle%copies(mean_row, ii)
