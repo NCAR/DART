@@ -114,8 +114,8 @@ else
 
    % choose a symbol size based on the number of obs to plot.
 
-   if (length(obsstruct.obs) > 1000) 
-      pstruct.scalearray = scaleme(obsstruct.obs, 36);
+   if (length(obsstruct.obs) < 1000) 
+      pstruct.scalearray = scaleme(obsstruct.obs, 30);
    else
       pstruct.scalearray = 128.0 * ones(size(obsstruct.obs));
    end

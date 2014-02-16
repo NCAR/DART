@@ -67,7 +67,7 @@ for ivar = 1:nvariables
          datamin = min(bob);
          datamax = max(bob);
          fprintf(fid,'%32s has min/max differences of %g %g\n',varname,datamin,datamax);
-         if ((datamin ~= 0.0) && (datamax ~= 0.0))
+         if ((datamin ~= 0.0) || (datamax ~= 0.0))
              fprintf('%32s has min/max differences of %g %g\n',varname,datamin,datamax);
          end
    end
