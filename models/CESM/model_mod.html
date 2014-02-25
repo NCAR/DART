@@ -25,74 +25,117 @@
 </tr>
 </table>
 
-<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Quickstart">QUICKSTART</A> /
+<A HREF="#Namelist">NAMELISTS</A> /
 <A HREF="#Interface">INTERFACES</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
 <A HREF="#FuturePlans">PLANS</A> /
-<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
 
 <H2>Overview</H2>
 
 <P>
-The current interface to the CESM climate modeling system does assimilation
-into CAM, POP, and CLM separately.  Therefore at this point there is NOT
-a single CESM model_mod that is compiled into a single filter.  However, there 
-exists a beta version of a unified model_mod that redirects forward operator
-calls to the proper component-specific model_mod, and works around the
-conflicts between the naming of the model_mod at the module level.  It would
-require a single state vector to fit into the memory space of one process,
-which means it would be limited in resolution.  cesm_to_dart and dart_to_cesm
-converter prototypes also exist, which pack the data from each model
-end-to-end in the state vector.
+The Lanai release of DART works within the CESM framework.  The release
+includes a setup script that will build the required DART executables,
+build the CESM case, and copy the required initial files and
+executables to the correct locations.
+The CESM run script is modified during the build process so it first
+runs CESM, then it runs the DART executable 'filter'.
 </P>
 
 <P>
-For now, see each of the component specific model_mod documentation for information
+The instructions on this page describe how to set up a coupled
+CESM run when you want to assimilate observations into more than
+one active component (e.g. assimilate atmospheric obs into the 
+atmosphere model, ocean obs into the ocean model, and land obs into 
+the land model).  If you are interested in assimilating observations
+into only a single component there are more appropriate setup scripts 
+in each of the model-specific pages that set up a CESM run for that component.
+</P>
+
+<P>
+See these component specific model_mod documentation for information
 on the namelists and requirements:
 </P>
 <UL>
-<LI><a href="../cam/model_mod.html">CAM</a>
-<LI><a href="../POP/model_mod.html">POP</a>
-<LI><a href="../clm/model_mod.html">CLM</a>
+<LI><a href="../cam/model_mod.html">CAM (atmosphere)</a>
+<LI><a href="../POP/model_mod.html">POP (ocean)</a>
+<LI><a href="../clm/model_mod.html">CLM (land)</a>
 </UL>
 
 <P>
-There are scripts in the CESM/shell_scripts directory which are intended to
-build the 3 filter programs for each of the components, copy the right files
-into the CESM caseroot directory, build CESM, and stage files to run an experiment.
+There are scripts in the each of the component shell_scripts directory which will
+build the filter program for that single component, copy the right files
+into the CESM caseroot directory, build CESM, and stage files to run an experiment
+where observations are only assimilated into that component.
 </P>
 
-<H2>Quickstart for CESM/DART</H2>
-
 <P>
-If you are going to run CESM/DART on the NCAR "yellowstone" machine,
-here are some canned instructions to get you started:
+The rest of this page describes setting up a coupled CESM run
+where you are assimilating into multiple active components.
 </P>
 
-<H3> Get CESM </H3>
+<br /><br />
+<P> </P>
+<A NAME="Quickstart"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Quickstart for CESM/DART on the NCAR 'yellowstone' machine</H2>
 
 <P>
-Check out CESM1.1.1 which is one release back
-from the very most current version (they updated versions
-right before the Breckenridge User's meeting).
-We will soon have a chance to test the code with
-the latest release, but for now we know this setup
-works with 1.1.1.
+Both CESM and DART are large, complex software systems with a lot
+of power and capability, but they will require an investment of time and effort 
+in learning how to set them up and run them correctly.  The following
+list includes the tasks that need to be accomplished in order to
+run a CESM Data Assimilation (DA) experiment.
+
+<ul>
+<li><a href="GetCESM">Get CESM</a></li>
+<li><a href="GetPatches">Get required patches to CESM1.1.1</a></li>
+<li><a href="GetDART">Get DART</a></li>
+<li><a href="ICSandObs">Initial conditions and observations</a></li>
+<li><a href="Running">Running</a></li>
+<li><a href="Archiving">Archiving files</a></li>
+<li><a href="ResetCESM">Reset CESM files</a></li>
+<li><a href="UpdateDART">Update DART files</a></li>
+<li><a href="Diagnostics">Diagnostics</a></li>
+</ul>
+
+</P>
+
+<P>
+The following sections have some information that is specific
+to running CESM/DART on the NCAR 'yellowstone' machine.
+If you are running on another platform please contact us
+at <a href="mailto:dart@ucar.edu">dart@ucar.edu</a> for help.  
+The basics of the information below should still apply, but things like where
+the <em class=mono>SourceMods</em> are stored or where to find initial
+condition files will certainly differ.
+</P>
+
+<br /><br />
+<P> </P>
+<A NAME="GetCESM"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3>Get CESM</H3>
+
+<P>
+Check out CESM version 1.1.1 (which we know is not the
+most recent release - but it is the latest version we
+have tested the DART code with).  We are working on 
+validating CESM 1.2 with DART and will update the
+code and documentation when it is ready.
 </P>
 <P>
-Here's the user's guide for CESM version 1.1.1:<br />
+Here's the user's guide for CESM version 1.1.1:<br /><br />
 <a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html">
-<pre>http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html</pre>
-</a>
+http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html </a>
 </P>
 <P>
-Here's the page that explains how to download the release code:<br />
+Here's the page that explains how to download the release code:<br /><br />
 <a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x388.html">
-<pre>http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x388.html</pre>
-</a>
+http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x388.html </a>
 </P>
 <P>
 You will want "cesm1_1_1" as the model version.  You will have 
@@ -101,16 +144,14 @@ default username and password to access the subversion website.
 </P>
 <P>
 This web page shows the names of the 'compsets' which are the
-configurations of the various models:<br />
+configurations of the various models:<br /><br />
 <a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/modelnl/compsets.html">
-<pre>http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/modelnl/compsets.html</pre>
-</a>
+http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/modelnl/compsets.html </a>
 </P>
 <P>
-This page has pointers to the recent CESM versions:<br />
+This page has pointers to the recent CESM versions:<br /><br />
 <a href="http://www2.cesm.ucar.edu/models/current">
-<pre>http://www2.cesm.ucar.edu/models/current</pre>
-</a>
+http://www2.cesm.ucar.edu/models/current </a>
 </P>
 <P>
 If you want to try to build CESM separately from DART
@@ -119,7 +160,8 @@ to rebuild it again with the DART configuration so you can
 wait on building it if you want.
 </P>
 
-<H3>Required patches to CESM1.1.1</H3>
+<A NAME="GetPatches"></A>
+<H3>Get required patches to CESM1.1.1</H3>
 
 <P>
 There are a few CESM files that we still need to modify to make
@@ -131,19 +173,29 @@ Copy that to your home dir and untar it.  Our setup script will look
 for this subdirectory in your home directory and incorporate these 
 patches when it builds CESM.
 </P>
+This file is also on the IMAGe web server, at this address:
+<a href="http://www.image.ucar.edu/pub/DART/CESM">
+http://www.image.ucar.edu/pub/DART/CESM</a>
+</P>
 
 
-<H3>DART</H3>
+<br /><br />
+<P> </P>
+<A NAME="GetDART"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3>Get DART</H3>
 
 <P>
-Go to the DART web pages:  <a href="http://www.image.ucar.edu/DARES/">
-http://www.image.ucar.edu/DARES/</a>
-and register as a DART user.  It's important for us to be able
-to show as large a user base as possible and everyone who
-registers helps us out.
+Go to the DART web pages:  
+<a href="http://www.image.ucar.edu/DAReS">
+http://www.image.ucar.edu/DAReS</a>
+and register as a DART user.  (See the 'Download DART' 
+item under the 'Getting Started' menu.)
+It's important for us to be able to document the size of
+our user base and everyone who registers helps us out.
 </P>
 <P>
-Check out the "trunk" version.  The following instructions
+Check out the "Lanai" release.  The following instructions
 assume you've checked it out into a subdirectory "DART".
 </P>
 <P>
@@ -151,14 +203,15 @@ In the DART/mkmf directory copy the
 <em class=file>mkmf.template.intel.linux</em> to 
 <em class=file>mkmf.template</em> . That should work 
 for yellowstone with the default set of modules that are loaded 
-on that machine.   <strong>**IMPORTANT**</strong> if you
-are ever thinking of running with an active ocean, you must add:<br />
+on that machine.   <strong>**IMPORTANT**</strong> If you
+are running with an active ocean, or you might ever
+sometime in the future run with an active ocean, you must add:<br />
 <pre>
   -convert big_endian
 </pre>
 to the list of FFLAGS in the mkmf.template file.  POP uses some binary
 restart files that are still in the byte order for bluefire.  If all
-your restart files for CAM, CAM-CHEM, CLM, etc are netcdf files, 
+your restart files for CAM, CAM-CHEM, CLM, etc are NetCDF files, 
 then you can leave that flag off so yellowstone writes data in 
 the normal little-endian byte order.
 </P>
@@ -178,1483 +231,336 @@ The DART scripts for CESM are in:<br />
 <pre>
    DART/models/CESM/shell_scripts
 </pre>
-Look at CESM1_1_1_initial.csh. 
+Look at <em class=mono>CESM1_1_1_setup_hybrid.csh</em>. 
 </P>
 <P>
-There are some things you can customize at the top, including the compset,
-your project number for running, how many ensemble members, etc. make
+There are some things you should customize at the top, including the compset,
+your project number for running, how many ensemble members, etc. Make
 any changes you want there.
 </P>
 <P>
-Run the script.  It will build the CAM, POP, and CLM filters first, and then
+Run the script.  It will build the CAM, POP, and CLM filters first (the main
+DART executable is called <em class=mono>filter</em>), and then
 build and configure CESM.  When the script is done you should have
-files in several directories:<br />
+files in several directories. Unless you have changed these values
+in the setup script, the default locations are:<br />
 <UL>
 <LI>
 The 'cases' dir has the scripts that start and configure runtime vars
-for CESM.  It also has the <em class=file>input.nml</em>s for the various components.
-Typically we set this to /glade/p/work/${USER}/cases
+for CESM.  It also has the DART namelist files, <em class=file>input.nml</em>s, 
+for the various components.  Usually we set this to <br />
+<pre>/glade/p/work/${USER}/cases</pre>
 </LI>
 <LI>
-The actual execution directory is usually<br />
+The actual execution directory is usually <br />
 <pre>/glade/scratch/${USER}/$casename/run</pre>
-and the executable files themselves are<br />
+and the executable files themselves are <br />
 <pre>/glade/scratch/${USER}/$casename/bld</pre>
 </LI>
 <LI>
-When you've successfully run a model advance, the output files are saved in<br />
+When you've successfully run a model advance, the output files are saved in <br />
 <pre>/glade/scratch/${USER}/archive/$casename</pre>
-with a subdir for each component.  Our output files will be in the
-'dart' subdir, and under that directory will be
-'hist', 'logs', and 'rest'.  You'll find your diag files and
-obs_seq.final files in the 'hist' subdir.
+with a subdirectory for each component.  Our output files will be in the
+'dart' subdirectory, and under that directory will be
+'hist', 'logs', and 'rest'.  You'll find the DART diagnostic files and
+obs_seq.final files in the 'hist' subdirectory.
 </LI>
 </UL>
 
-
-<H3>EVERYTHING BELOW HERE PERTAINS ONLY TO POP AND NEEDS UPDATING</H3>
-<H3>EVERYTHING BELOW HERE PERTAINS ONLY TO POP AND NEEDS UPDATING</H3>
-<H3>EVERYTHING BELOW HERE PERTAINS ONLY TO POP AND NEEDS UPDATING</H3>
-
-<div class=indent1>
-   <h2><a href="http://www.cesm.ucar.edu/models/cesm1.0/pop2/">CESM1.0 POP2</a></h2>
-   <P>
-      was tested and run in production on NCAR's bluefire computer from IBM.
-      This implementation is a significant departure from the DART 'business as usual' 
-      model in that DART is not responsible for advancing the model - in this case,
-      ALL of CESM! Instead, the CESM Interactive Ensemble facility is used to manage 
-      the ensemble and the Flux Coupler is responsible for stopping POP at the times 
-      required to perform an assimilation. DART simply runs 'end-to-end' at every
-      assimilation time, while CESM runs continuously. This is a complete role-reversal
-      from the normal DART operation but was relatively simple to implement because
-      CESM had infrastructure to exploit. 
-      <br />
-      <br />
-      Several modifications to CESM CASEROOT scripts will be required and will be 
-      documented more later in this document.  The 
-      <em class=file>DART/models/POP/shell_scripts/</em><em class=program>assimilate.csh</em>
-      script is inserted into the CESM run script. The Flux Coupler stops POP every 
-      midnight and all the observations within +/- 12 hours are assimilated.
-      The observation sequence files have been parsed into 'daylong' chunks and
-      have names derived from the date to facilitate manipulation in the UNIX shell.
-      <br />
-      <br />
-      The DART components were built with the following settings:
-   </P>
-   <pre>
-      MPIFC = mpxlf95_r
-      MPILD = mpxlf95_r
-      FC = xlf90_r
-      LD = xlf90_r
-      INCS = -I/usr/local/lib64/r4i4 -I/usr/local/include
-      LIBS = -L/usr/local/lib64/r4i4 -lnetcdf
-      FFLAGS = -qsuffix=f=f90:cpp=F90 -q64 -b64 -qarch=auto -qmaxmem=-1 -O2 $(INCS)
-      LDFLAGS = $(FFLAGS) $(LIBS)
-   </pre>
-</div> 
-
-<div class=indent1>
-   <h2><a href="http://climate.lanl.gov/Models/POP/">LANL POP</a></h2>
-   <P>
-      is invoked the same way as any other high-order model.
-      <b>Important</b>: This interface was tested with the LANL/POP 2_0_1 version 
-      of POP ...  but STILL CANNOT BE USED for assimilation until the POP code is 
-      modified to do a forward euler timestep for an 'assimilation' restart.
-      <br />
-      <br />
-      DART is invoked and POP is started/stopped multiple times.
-      It was checked in the gx3v5 geometry and POP was built in the 'default' 
-      configuration: one which requires no forcing files, no boundary conditions, 
-      etc., so I have no idea what to expect when confronting this with real
-      observations ...
-   </P>
-   <pre>
-      setenv ARCHDIR linux
-      gmake OPTIMIZE=no COUPLED=no
-   </pre>
-   <P>
-      Given the wide range of input files and modes for running POP - 
-      the DART scripts will surely have to be modified to accomodate moving
-      the boundary/forcing files required for different usage patterns.
-      <br />
-      <br />
-      There are several scripts in the <em class=file>DART/models/POP/shell_scripts</em>
-      directory that are employed when using DART to assimilate with a LANL/POP
-      model: <em class=program>advance_model.csh</em>,
-      <em class=program>run_perfect_model_obs.batch</em>, and
-      <em class=program>run_filter.batch</em>&nbsp;. 
-      <br />
-      <br />
-      The DART components compile and run on our Intel-based cluster running SLES10 
-      with the ifort 10.1 20090203 compiler with the following flags 
-      (the value of NETCDF was appropriate for our system):
-   </P>
-   <pre>
-      MPIFC = mpif90
-      MPILD = mpif90
-      FC = ifort
-      LD = ifort
-      INCS = -I$(NETCDF)/include
-      LIBS = -L$(NETCDF)/lib -lnetcdf -lmkl -lmkl_lapack -lguide -lpthread
-      FFLAGS = -O0 -fpe0 -vec-report0 -assume byterecl $(INCS)
-      LDFLAGS = $(FFLAGS) $(LIBS)
-   </pre>
-   <P>
-      Intel-based machines are natively little-endian, so I like to append 
-      a ".le" suffix on all binary files.
-      <br />
-      <br />
-      On our machine, with the openmpi framework, it is necessary to specify 
-      <em class=file>input.nml</em><em class=code>:&amp;mpi_utilities_nml:reverse_task_layout = .true.,</em >
-      to be able to simultaneously run (2) MPI programs on the same set of nodes.
-   </P>
-</div> 
-
-<div class=indent1>
-   <h3>Observations.</h3>
-   <P>
-      The observations come from the 
-      <a href="http://www.nodc.noaa.gov/OC5/WOD05/pr_wod05.html">World Ocean Database 2005</a>
-      and are processed by DART routines in the
-   <a href="../../observations/WOD/WOD.html">DART/observations/WOD</a> directory.  
-   </P>
-</div>
-
-<a name="conversions"></a>
-<div class=indent1>
-   <h3>Converting between DART files and POP restart files.</h3>
-   <P>Only POP netCDF format restart files are supported. Yes, really.
-      It gets better.
-      Since the POP restart files do not have the actual grid information
-      in them, that information must be read from binary files (for the horizontal)
-      and an ascii file (for the vertical). Since I'm always working on both
-      big- and little-endian machines, I have a devil of a time keeping my
-      binary files straight. 
-      All of DART/POP is predicated on using pointer files to contain the 
-      names of the POP restart netCDF files. It turns out to be really
-      useful to dereference the pointer file and link the result to a presumed 
-      name for use by the program unit. Otherwise, we were endlessly mucking about
-      with trying to dynamically change namelists, etc. in our scripts. Ugly.
-      <br />
-      <br />
-      There are two programs and one module:
-   </P>
-   <table width="100%" cellpadding="10">
-   <tr><td valign="top"><a href="pop_to_dart.html">pop_to_dart.f90</a></td>
-       <td>converts the POP restart file <em class=file>pop.r.nc</em> into a 
-       DART-compatible file normally called <em class=file>dart_ics</em>&nbsp;.
-       There must also be a <em class=file>pop_in</em> namelist for POP
-       (since this specifies the names of the grid files). 
-       We usually wind up linking the dereferenced
-       pointer file name to a static name that is used by DART.
-       To that end, <em class=file>rpointer.ocn.restart</em> points to 
-       <em class=file>pop.r.nc</em> for this program.
-       </td>
-   </tr>
-   <tr><td valign="top"><a href="dart_to_pop.html">dart_to_pop.f90</a></td>
-       <td>inserts the DART output into an existing POP restart netCDF file by
-       overwriting the 
-       <em class=code>SALT_CUR</em>,
-       <em class=code>TEMP_CUR</em>,
-       <em class=code>UVEL_CUR</em>,
-       <em class=code>VVEL_CUR</em>, and 
-       <em class=code>PSURF_CUR</em> variables in the POP restart netCDF file.
-       There are two different types of DART output files, so there is a namelist
-       option to specify if the DART file has two time records or just one 
-       (if there are two, the first one is the 'advance_to' time, followed 
-       by the 'valid_time' of the ensuing state). <em class=program>dart_to_pop</em>
-       requires the POP restart file have a name of <em class=file>pop.r.nc</em>,
-       the POP input namelist <em class=file>pop_in</em> must exist, as do the
-       geometry files specified by <em class=file>pop_in</em>.
-       If the DART file contains an 'advance_to' time, 
-       <em class=program>dart_to_pop</em> creates a new 
-       <em class=code>&amp;time_manager_nml</em> for POP in a file called
-       <em class=file>pop_in.DART</em> which can be used to control the
-       length of the POP integration.
-       </td>
-   </tr>
-   <tr><td valign="top"><A href="dart_pop_mod.html">dart_pop_mod.f90</a></td>
-       <td>is the module containing many support routines that are used by
-       both <em class=program>pop_to_dart</em>, <em class=program>dart_to_pop</em>,
-       and the POP&nbsp;<em class=program>model_mod</em>.
-      </td></tr>
-   </table>
-</div>
-
-<a name="InitialEnsemble"></a>
-<div class=indent1>
-   <h3>Generating the initial ensemble.</h3>
-   <P> Under development ...
-   </P>
-</div>
-
-<a name="POP_OSSE"></a>
-<div class=indent1>
-   <h3>Generating a set of observations for a 'perfect model' experiment using the LANL/POP executable and scripts.</h3>
-   <P>
-      A perfectly sensible approach to get to know the system would be to try to 
-   </P>
-   <ol>
-     <li>assimilate data for the first assimilation period and stop. Do not advance
-         the model at all. The filter namelist can control all of this and you do
-         not need to have a working <em class=program>advance_model.csh</em>
-         script, or even a working ocean model (as long as you have input data files).</li>
-     <li>advance the model first and then assimilate data for the first assimilation 
-         period and stop.</li>
-     <li>advance, assimilate and advance again. This tests the whole DART facility.</li>
-   </ol>
-   <P>
-      I always like running something akin to a 'perfect model' experiment to start.
-      Since I have not come up with a good way to perturb a single model state to
-      generate an ensemble, here's the next best thing. The details for running 
-      each program are covered in their own documentation.
-   </P>
-   <ol>
-      <li>Create a set of initial conditions for DART by running one instance of POP 
-         for a very long time and saving restart files 'every so often'.
-         Use one of these as the initial condition
-         for <em class=program>perfect_model_obs</em> and the rest as the
-	 ensemble for the assimilation experiment. Since no one in their right 
-	 mind would use a high-resolution model for a proof-of-concept case
-	 (hint, hint), running a low-resolution model for a 'very long time' should
-	 not be a problem.
-      </li>
-
-      <li>create a TINY (i.e. 1) set of 'perfect' observations in the normal fashion:
-         <a href="../../../obs_sequence/create_obs_sequence.html">create_obs_sequence</a>
-         and then 
-         <a href="../../../obs_sequence/create_fixed_network_seq.html">create_fixed_network_seq</a>
-         to create an empty observation sequence file 
-         (usually called <em class=file>obs_seq.in</em>).
-	 The programs will prompt you for all the information they require.
-	 Read their documentation if necessary.
-	 </li>
-
-      <li>break the <em class=file>pop_in</em> namelist that comes with POP into
-          two pieces - one called <em class=file>pop_in.part1</em>, 
-	  that contains the <em class=code>&amp;time_manager_nml</em> and 
-	  put the rest in <em class=file>pop_in.part2</em>. The 
-	  <em class=code>&amp;time_manager_nml</em> will be repeatedly updated
-	  as the POP model is repeatedly called by 
-	  <em class=program>advance_model.csh</em>.
-      </li>
-
-      <li>modify <em class=file>POP/work/input.nml</em> as needed.
-      </li>
-
-      <li>modify 
-         <em class=file>DART/models/POP/shell_scripts</em><em class=program>run_perfect_model_obs.batch</em> 
-         to reflect the location of your DART directory, the POP directory, 
-	 and which POPFILE to use as the initial condition.
-      </li>
-
-      <li>Run the experiment and populate the observation sequence file by
-          executing/submitting the script 
-	  <em class=file>DART/models/POP/shell_scripts/</em><em class=program>run_perfect_model_obs.batch</em>.
-	  The script may require some modification, but not much. 
-	  Please let me know if I can improve the readability or comments. 
-	  <em class=program>run_perfect_model_obs.batch</em> runs 
-	  <a href="../../perfect_model_obs/perfect_model_obs.html">perfect_model_obs</a>
-      </li>
-
-      <li><em class=program>run_filter.batch</em> runs 
-          <a href="../../filter/filter.html">filter</a> in a similar fashion.
-	  I have not finished the documentation for this yet.
-      </li>
-   </ol>
-</div>
-
-
-<a name="ExploringOutput"></a>
-<div class=indent1>
-   <h3>Exploring the Output.</h3>
-   <P>
-      Is pretty much like any other model. The netCDF files have the model 
-      prognostic variables before and after the assimilation. 
-      There are Matlab&#174; scripts for perusing the netCDF files in the 
-      <em class=file>DART/matlab</em> directory. 
-      There are Matlab&#174; scripts for exploring the performance of the 
-      assimilation in observation-space (after running 
-      <a href="../../diagnostics/threed_sphere/obs_diag.html">obs_diag</a> 
-      to explore the <em class=file>obs_seq.final</em> file) - use the 
-      scripts starting with 'plot_', i.e. 
-      <em class=file>DART/diagnostics/matlab/plot_*.m</em>.
-      As always, there are some model-specific item you should know about in 
-      <em class=file>DART/models/POP/matlab</em>, and 
-      <em class=file>DART/models/POP/shell_scripts</em>.
-      <br />
-      <br />
-      It is also worthwhile to convert your obs_seq.final file to a netCDF format
-      obs_sequence file with <a href="../../obs_sequence/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
+<P>
+The CESM/DART system uses the CESM multi-instance capability to run
+multiple copies of components concurrently. The coupler
+routes data between the corresponding instances of each component.
+Each component can have N instances or 1 instance which is shared
+amongst all the multi-instances of other components.
+DART expects the CESM naming convension of adding instance numbers
+of the form <em class=mono>_NNNN</em> following the component name, 
+e.g. <em class=mono>my_case.cam_0001.r.2009-01-01-21600.nc</em>
+is the first instance in a multi-instance case.  For components 
+without multiple instances the names follow the usual naming
+conventions, e.g. <em class=mono>my_case.cam.r.2009-01-01-21600.nc</em>.
 </P>
-</div>
+
+<br /><br />
+<P> </P>
+<A NAME="ICSandObs"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3>Initial Conditions and Observations</H3>
+<H4>ICs</H4>
+<P>
+DART requires an <em class=file>ensemble</em> of initial conditions.
+This is the same as <em class=file>multiple instances</em> in CESM terminology.
+If you have a multiple-instance run available to you for initial condition
+files, great.  If you do not, one suggested option is to make N copies of a single
+initial condition file, each with the same data but with a different
+filename that includes the instance number. 
+(See the paragraph immediately above discussing filename conventions.) 
+When you run CESM for the first step it will be advancing N identical
+copies of the model.  However, when you run DART with the following
+changes to the <em class=file>input.nml</em> namelist, each instance
+will be perturbed differently and as the system runs these differences
+will evolve into distinct instances that will remain different.
+</P>
+<P>
+Changes to the DART <em class=mono>input.nml</em> file to perturb
+identical initial conditions:
+<pre>
+&amp;filter_nml :: start_from_restart = .false.,
+&amp;filter_nml :: restart_in_file_name = "filter_ics.0001",
+&amp;ensemble_manager_nml :: single_restart_file_in = .true.,
+</pre>
+and if they aren't already set like this,
+<pre>
+&amp;filter_nml :: inf_initial_from_restart    = .false.,    .false.,
+&amp;filter_nml :: inf_sd_initial_from_restart = .false.,    .false.,
+</pre>
+</P>
+<P>
+After the first single job step, set the values back to the
+original settings:
+<pre>
+&amp;filter_nml :: start_from_restart = .true.,
+&amp;filter_nml :: restart_in_file_name = "filter_ics",
+&amp;ensemble_manager_nml :: single_restart_file_in = .false.,
+</pre>
+and if you are using prior inflation,
+<pre>
+&amp;filter_nml :: inf_initial_from_restart    = .true.,    .false.,
+&amp;filter_nml :: inf_sd_initial_from_restart = .true.,    .false.,
+</pre>
+</P>
+
+<H4>Observations</H4>
+<P>
+One of the variables in the setup script specifies where the observation
+sequence files for the assimilation will be found.  Because DART is
+running for only a single assimilation period at a time, the input
+<em class=file>obs_seq</em> files for DART need to contain observations 
+that are exactly within the assimilation window.  For CAM, we usually run 
+it in 6 hour
+advances, so the observation sequence files have to contain only 6 hours
+of observations.  POP is often run for a day at a time between assimilations,
+so the POP observation files need to contain data for a full day.  CLM has
+been run both in 6 hour assimilations and daily assimilations.  In any case,
+the time period of the observations in each input file must match the
+length of time the model runs between assimilations.
+</P>
+<P>
+The DART group has a collection of NCEP atmospheric obs, WOD (World Ocean
+Database) ocean obs, and some Land obs already converted and either on
+Glade disk on Yellowstone or archived on the HPSS.  
+<a href="mailto:dart@ucar.edu">Contact the DART group</a> 
+if you are interested in what observations are already available.
+</P>
+
+<br /><br />
+<P> </P>
+<A NAME="Running"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3>Running</H3>
+<P> 
+The setup script adds a call to the DART <em class=file>filter</em>
+program inside the CESM run script, but initially it is <strong>commented out</strong>
+(on purpose).  The intent is that you run the CESM case first, without
+DART, to ensure that the model is working correctly, has the right files,
+good namelist settings, etc.  Then once you are sure CESM is working ok
+without DART, edit the <em class=mono>case.run</em> script.  Look for
+the string "DART" and inspect the following script section.  You should
+see a call to either the <em class=file>assimilate.csh</em> script or
+<em class=file>perfect_model_obs.csh</em> script, but it will be
+commented out with a leading <em class=mono> # (hash) </em> character.
+Remove the # and now you can either run the job again and start
+assimilating from the second job step, or you can reset the model
+to the initial time before you rerun.
+(See <a href="#ResetCESM">Resetting CESM files</a>
+below for an easy script to do this.)
+</P>
+<P> 
+The DART run script will convert the CESM NetCDF files into the
+DART input format, run the assimilation program, and then convert
+the updated values back and overwrite the CESM files. If some error
+happens (out of disk space, bad node on the supercomputer, etc)
+during the execution of DART, you should use the script described in
+<a href="#ResetCESM">Resetting CESM files</a>.  This will
+reset the model data back to the start time for this job step
+and then you can rerun the run script.
+</P>
+
+<br /><br />
+<P> </P>
+<A NAME="Archiving"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3>Archiving Files</H3>
+
+<P>
+When you've successfully run a model advance, the output files are saved in <br />
+<pre>/glade/scratch/${USER}/archive/$casename</pre>
+with a subdirectory for each component.  The DART output files will be in the
+'dart' subdirectory, and under that directory will be
+'hist', 'logs', and 'rest'.  You'll find the DART diagnostic files and
+obs_seq.final files in the 'hist' subdirectory.
+</P>
+
+<br /><br />
+<P> </P>
+<A NAME="ResetCESM"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3>Resetting CESM files</H3>
+
+<P>
+The DART setup script creates several utility scripts which
+are customized for the particular case and location of
+files.  They are put into the <em class=mono>caseroot</em> directory.  
+One important script is called <em class=file>stage_cesm_files</em>.
+</P>
+<P>
+Running the <em class=mono>stage_cesm_files</em> script
+will restore the contents of the <em class=mono>run</em> directory
+to a previous step.  If a job dies or an error occurs,
+this makes it easier to restart from some previous time.
+</P>
+<P>
+To restart the experiment from the first job step, cd into
+the <em class=mono>case</em> directory. If it is not
+already false, run:
+<pre>./xmlchange CONTINUE_RUN false</pre>
+and then run:
+<pre>./stage_cesm_files</pre>
+
+The script will remove the current contents of the 
+<em class=mono>run</em> directory and restage the files for the 
+initial timestep.
+</P>
+<P>
+To restart the experiment from a later job step, cd into
+the <em class=mono>case</em> directory. If it is not
+already true, run:
+<pre>./xmlchange CONTINUE_RUN true</pre>
+Then edit the <em class=mono>stage_cesm_files</em> script and
+change the <em class=mono>restart_time</em> to be the day and
+time that you want to begin running from.  e.g. if
+you want to restart at 0Z on Jan 2nd, 2001, you would set:
+<pre>set restart_time = 2001-01-02-00000</pre>
+Then run:
+<pre>./stage_cesm_files</pre>
+
+The script will remove the current contents of the 
+<em class=mono>run</em> directory and restage the files for the 
+specified time.
+</P>
+
+<P>
+The script requires that the restart files are still
+on disk, either in the <em class=mono>run</em> directory or in
+the <em class=mono>archive</em> directory.  If the long term
+archiver has moved the files onto tape and deleted
+them from disk, they will have to be restored before
+running this script.
+</P>
+
+<br /><br />
+<P> </P>
+<A NAME="ResetDART"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3>Updating DART files</H3>
+
+<P>
+If you make any changes to the DART code and need to recompile
+the executables, use the standard DART <em class=file>quickbuild.csh</em>
+scripts in the <em class=mono>work</em> directories.  
+Once the executables are compiled, use the
+<em class=file>refresh_dart_files</em> script in the <em class=mono>caseroot</em> directory
+to copy them to the correct location for this case.
+</P>
+
+<br /><br />
+<P> </P>
+<A NAME="Diagnostics"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3>Diagnostics</H3>
+
+<P>
+The DART release comes with a collection of Matlab&#174; scripts
+for doing diagnostics both on the output observation sequence
+file (usually named <em class=file>obs_seq.final</em>) and
+also on the state space values (usually found in
+<em class=file>Prior_Diag.nc</em> and
+<em class=file>Posterior_Diag.nc</em>).  See the
+<em class=file>Diagnostics</em> menu item
+on the <a href="http://image.ucar.edu/DAReS">DART web pages</a>.
+</P>
+
+<br /><br />
+<A NAME="Misc"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H3>Miscellaneous and Futures</H3>
+
+<P>
+The current interface to the CESM climate modeling system does assimilation
+into CAM, POP, and CLM separately.  Therefore at this point there is NOT
+a single CESM model_mod that is compiled into a single filter.  However, there 
+exists a beta version of a unified model_mod that redirects forward operator
+calls to the proper component-specific model_mod, and works around the
+conflicts between the naming of the model_mod at the module level.  It would
+require a single state vector to fit into the memory space of one process,
+which means it would be limited in resolution.  cesm_to_dart and dart_to_cesm
+converter prototypes also exist, which pack the data from each model
+end-to-end in the state vector.
+</P>
+
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
 <!--==================================================================-->
 
+<br /><br />
+<P> </P>
 <A NAME="Namelist"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
-<P>We adhere to the F90 standard of starting a namelist with an ampersand
-'&amp;' and terminating with a slash '/' for all our namelist input.
-Consider yourself forewarned that character strings that contain a '/' must be
-enclosed in quotes to prevent them from prematurely terminating the namelist.
-</P>
-<div class=namelist><pre>
-<em class=call>namelist /model_nml/ </em> output_state_vector, &amp;
-          assimilation_period_days, assimilation_period_seconds, &amp;
-          model_perturbation_amplitude, debug
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>This namelist is read in a file called <em class=file>input.nml</em>.
-   This namelist provides control over the assimilation period for the model.
-   All observations within (+/-) half of the assimilation period are assimilated.
-   The assimilation period is the minimum amount of time the model can be advanced,
-   and checks are performed to ensure that the assimilation window is a multiple of
-   the ocean model dynamical timestep.
-</P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-
-
-<TR><!--contents--><TD valign=top>output_state_vector</TD>
-    <!--  type  --><TD valign=top>logical <em class=units>[default:&nbsp;.true.]</em></TD>
-    <!--descript--><TD valign=top>The switch to determine the form of the state vector in the
-                       output netCDF files. If <em class=code>.true.</em> 
-                       the state vector will be output exactly as DART uses it 
-                       ... one long array.  If <em class=code>.false.</em>, 
-                       the state vector is parsed into prognostic variables and 
-                       output that way -- much easier to use with 'ncview', for
-                       example.</TD></TR>
-
-<TR><!--contents--><TD valign=top>assimilation_period_days</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;1]</em></TD>
-    <!--descript--><TD valign=top>The number of days to advance the model for each assimilation.
-                       </TD></TR>
-
-<TR><!--contents--><TD valign=top>assimilation_period_seconds</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;0]</em></TD>
-    <!--descript--><TD valign=top>In addition to <em class=code>assimilation_period_days</em>, 
-                    the number of seconds to advance the model for each assimilation.
-                       </TD></TR>
-
-<TR><!--contents--><TD valign=top>model_perturbation_amplitude</TD>
-    <!--  type  --><TD valign=top>real(r8) <em class=units>[default:&nbsp;0.2]</em></TD>
-    <!--descript--><TD valign=top> Reserved for future use.
-                  <!-- The amount of noise to add when trying to perturb a single
-                       state vector to create an ensemble. Only used when 
-<em class=file>input.nml</em><em class=code>&amp;filter_nml:start_from_restart = .false.</em>
-                       See also 
-                       <a href="#InitialEnsemble">Generating the initial ensemble</a> 
-                       at the start of this document. units: standard deviation 
-                       of a gaussian distribution with the mean at the value of 
-                       the state vector element. --> </TD></TR> 
-
-<TR><!--contents--><TD valign=top>debug</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;0]</em></TD>
-    <!--descript--><TD valign=top>The switch to specify the run-time verbosity.
-                       <em class=code>0</em> is as quiet as it gets.
-                       <em class=code>&gt; 1</em> provides more run-time messages.
-                       <em class=code>&gt; 5</em> provides ALL run-time messages.
-                       All values above 0 will also write a netCDF file of the grid 
-                       information and perform a grid interpolation test.</TD></TR>
-
-</TABLE>
-
-<H3 class=indent1>Example</H3>
-
-<pre>
-&amp;model_nml
-   assimilation_period_days     = 1, 
-   assimilation_period_seconds  = 0, 
-   model_perturbation_amplitude = 0.2, 
-   output_state_vector          = .false.,
-   debug                        = 0   /
-</pre>
-
-</div>
-<br />
-
-<!--==================================================================-->
-
-<A NAME="time_manager_nml"></A>
-<br />
-<div class=namelist><pre>
-<em class=call>namelist /time_manager_nml/ </em> runid, stop_option, stop_count, &amp;
-       time_mix_opt, fit_freq, time_mix_freq, dt_option, dt_count, impcor, laccel, &amp;
-       accel_file, dtuxcel, allow_leapyear, date_separator, &amp;
-       iyear0, imonth0, iday0, ihour0, iminute0, isecond0
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
 <P>
-   This namelist is read in a file called <em class=file>pop_in</em>&nbsp;.
-   This namelist is the same one that is used by the ocean model and is used 
-   to control the integration length of POP. It is unimportant for the CESM/POP 
-   experiments but is critically important for the LANL/POP experiments.
-   The values are explained in full in the POP documentation. The DART code
-   reads the namelist and simply overwrites several values with the new time
-   integration information. All the other values are unchanged. 
-   <br />
-   <br />
-   <em class=program>dart_to_pop</em> writes out a new 
-   <em class=code>&amp;time_manager_nml</em> in <em class=file>pop_in.DART</em>
-   if the DART state being converted has the 'advance_to_time' record in it.
-   This is the case during the middle of a DART experiment, but is not 
-   typically encountered if one is working with DART 'initial conditions' 
-   or 'restart' files. The <em class=file>pop_in.DART</em> must be concatenated
-   with the other namelists needed by POP into a file called 
-   <em class=file>pop_in</em>&nbsp;. We have chosen to store the other 
-   namelists (which contain static information) in a file called 
-   <em class=file>pop_in.part2</em>. Initially, the 
-   <em class=code>time_manager_nml</em> is stored in a companion file called 
-   <em class=file>pop_in.part1</em> and the two files are concatenated into
-   the expected <em class=file>pop_in</em> - then, during the course of an
-   assimilation experiment, DART keeps writing out a new 
-   <em class=code>time_manager_nml</em> with new integration information - 
-   which gets appended with the static information in 
-   <em class=file>pop_in.part2</em>&nbsp;
-   <br />
-   <br />
-   If you are running the support programs in a standalone fashion 
-   (as you might if you are converting restart files into an intial ensemble),
-   the 'valid time' of the model state comes from the restart file 
-   -&nbsp;NOT&nbsp;- the namelist. You can always patch the times in the 
-   headers with <em class=program>restart_file_utility</em>.
-   <br />
-   <br />
-   Only the namelist variables of interest to DART are discussed. All
-   other namelist variables are ignored by DART - but mean something to POP.
+DART namelists are read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from
+prematurely terminating the namelist.
 </P>
-
-<TABLE border=0 cellpadding=3 width=100%>
-<TR><TH align=left>Contents    </TH>
-    <TH align=left>Type        </TH>
-    <TH align=left>Description </TH></TR>
-
-<TR><!--contents--><TD valign=top>stop_option</TD>
-    <!--  type  --><TD valign=top>character <em class=units>[default:&nbsp;'nday']</em></TD>
-    <!--descript--><TD valign=top>The units for <em class=code>stop_count</em>.</TD></TR>
-
-<TR><!--contents--><TD valign=top>stop_count</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;1]</em></TD>
-    <!--descript--><TD valign=top>The duration of the model integration. The units 
-                                  come from <em class=code>stop_option</em>.</TD></TR>
-</TABLE>
-
-<H3 class=indent1>Example</H3>
-
-<pre>
-&amp;time_manager_nml
-  runid          = 'gx3v5'
-  stop_option    = <em class=input>'nday'</em>
-  stop_count     = <em class=input>1</em>
-  time_mix_opt   = 'avgfit'
-  fit_freq       = 1
-  time_mix_freq  = 17
-  dt_option      = 'auto_dt'
-  dt_count       = 1
-  impcor         = .true.
-  laccel         = .false.
-  accel_file     = 'unknown_accel_file'
-  dtuxcel        = 1.0
-  allow_leapyear = .true.
-  iyear0         = 2000
-  imonth0        = 1
-  iday0          = 1
-  ihour0         = 0
-  iminute0       = 0
-  isecond0       = 0
-  date_separator = '-'
-   /
-</pre>
-</div>
-<br />
+<P>
+Because each CESM component is assimilated separately, see the
+specific component documentation for namelist details:
+</P>
+<UL>
+<LI><a href="../cam/model_mod.html#Namelist">CAM namelist (atmosphere)</a>
+<LI><a href="../POP/model_mod.html#Namelist">POP namelist (ocean)</a>
+<LI><a href="../clm/model_mod.html#Namelist">CLM namelist (land)</a>
+</UL>
 
 <!--==================================================================-->
 
-<A NAME="OtherModulesUsed"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>OTHER MODULES USED</H2>
-
-<PRE>
-types_mod
-time_manager_mod
-threed_sphere/location_mod
-utilities_mod
-obs_kind_mod
-mpi_utilities_mod
-random_seq_mod
-dart_pop_mod
-</PRE>
-
-<!--==================================================================-->
-<!-- Note to authors. The first row of the table is different.        -->
-<!--==================================================================-->
-<!-- Declare all public entities ...                                  -->
-<!-- duplicate public routines template as many times as necessary    -->
-<!-- make sure you replace all yyyroutine?? strings                   -->
-<!--==================================================================-->
-
+<br /> <br />
+<P> </P>
 <A NAME="Interface"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>PUBLIC INTERFACES</H2>
 
 <P>
-Only a select number of interfaces used are discussed here.
-Each module has its own discussion of their routines. 
+Because each CESM component is assimilated separately, see the
+specific component documentation for interface details:
 </P>
+<UL>
+<LI><a href="../cam/model_mod.html#Interface">CAM Interfaces (atmosphere)</a>
+<LI><a href="../POP/model_mod.html#Interface">POP Interfaces (ocean)</a>
+<LI><a href="../clm/model_mod.html#Interface">CLM Interfaces (land)</a>
+</UL>
 
-<h3 class=indent1>Required Interface Routines</h3>
-<TABLE width=50%>
-<TR><TD><em class=call>use model_mod,&nbsp;only&nbsp;:</em></TD>
-                   <TD><A HREF="#get_model_size">get_model_size</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_state_meta_data">get_state_meta_data</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#model_interpolate">model_interpolate</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time_step">get_model_time_step</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#static_init_model">static_init_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#end_model">end_model</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#init_time">init_time</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#init_conditions">init_conditions</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_state">pert_model_state</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
-</TABLE>
-
-<h3 class=indent1>Unique Interface Routines</h3>
-<TABLE width=50%>
-<TR><TD><em class=call>use model_mod, only : </em></TD>
-                   <TD><A HREF="#get_gridsize">get_gridsize</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#restart_file_to_sv">restart_file_to_sv</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#sv_to_restart_file">sv_to_restart_file</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#get_pop_restart_filename">get_pop_restart_filename</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#test_interpolation">test_interpolation</A></TD></TR>
-</TABLE>
-
-<P>
-Ocean model namelist interfaces <em class=code>&amp;PARM03</em>,
-<em class=code>&amp;PARM04</em>, and 
-<em class=code>&amp;PARM04</em> are read from 
-file <em class=file>data</em>.
-Ocean model namelist interface <em class=code>&amp;CAL_NML</em>,
-is read from file <em class=file>data.cal</em>.
-</P>
-
-<TABLE>
-<TR><TD><em class=call>use location_mod, only : </em></TD>
-    <TD><A HREF="../../location/threed_sphere/location_mod.html#get_close_obs">get_close_obs</A></TD></TR>
-</TABLE>
-
-<P>The presence of 'dry' gridpoints causes a little extra work for the
-   <em class=program>get_close_obs()</em> routine. The routine normally
-   comes from the <em class=program>location_mod</em> which has no notion
-   of wet/dry grid cell attributes. As such, the POP 
-   <em class=program>model_mod</em> will be augmenting the work done by
-   <em class=program>location_mod/get_close_obs()</em>&nbsp;.
-   <br />
-   <br />
-   Fundamentally, the <em class=program>location_mod</em> calculates and returns 
-   all the 'close' observations.  DART is designed such that the routine that 
-   uses the list of close observations is in <em class=file>model_mod.f90</em>. 
-   Consequently, the POP <em class=program>model_mod</em> can take that 
-   information and adjust as necessary. This creates some logistical issues 
-   in that the POP model_mod needs to intercept all calls to 
-   <em class=program>location_mod:get_close_obs()</em> - which can be achieved 
-   with the following syntax:
-</P>
-<pre>
-   use location_mod, only : loc_get_close_obs =&gt; get_close_obs
-</pre>
-
-<P>
-   A note about documentation style.
-   Optional arguments are enclosed in brackets
-   <em class=optionalcode>[like this]</em>.
-</P>
-
-<!--==================================================================-->
-<H3 class=indent1>Required Interface Routines</H3>
-<!--==================================================================-->
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_model_size"></A>
-<br />
-<div class=routine>
-<em class=call>model_size = get_model_size( )</em>
-<pre>
-integer :: <em class=code>get_model_size</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Returns the length of the model state vector.
-Required.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>model_size</em></TD>
-    <TD>The length of the model state vector.</TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="adv_1step"></A>
-<br />
-<div class=routine>
-<em class=call>call adv_1step(x, time)</em>
-<pre>
-real(r8), dimension(:), intent(inout) :: <em class=code>x</em>
-type(time_type),        intent(in)    :: <em class=code>time</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>adv_1step</em>
-is not used for the POP model.
-Advancing the model is done through the <em class=program>advance_model</em> script.
-This is a NULL_INTERFACE, provided only for compatibility with the DART requirements.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>State vector of length model_size.</TD></TR>
-
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Specifies time of the initial model state.</TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_state_meta_data"></A>
-<br />
-<div class=routine>
-<em class=call>call get_state_meta_data (index_in, location, 
-                          <em class=optionalcode>[,&nbsp;var_type]</em> )</em>
-<pre>
-integer,             intent(in)  :: <em class=code>index_in</em>
-type(location_type), intent(out) :: <em class=code>location</em>
-integer, optional,   intent(out) :: <em class=optionalcode> var_type </em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>get_state_meta_data</em>
-returns metadata about a given element of the DART representation of the 
-model state vector. Since the DART model state vector is a 1D array and the
-native model grid is multidimensional, <em class=code>get_state_meta_data</em>  
-returns information about the native model state vector representation. Things
-like the <em class=code>location</em>, or the type of the variable 
-(for instance: salinity, temperature, u current component, ...). 
-The integer values used to indicate different variable types in 
-<em class=code>var_type</em> are themselves defined as public interfaces 
-to model_mod if required.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>index_in&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Index of state vector element about which information is requested.</TD></TR>
-
-<TR><TD valign=top><em class=code>location</em></TD>
-    <TD>Returns the 3D location of the indexed state variable.
-        The <em class=code>location_ type</em> comes from
-        <em class=file>DART/location/threed_sphere/location_mod.f90</em>.
-        Note that the lat/lon are specified in degrees by the user but are converted
-        to radians internally.</TD></TR>
-
-<TR><TD valign=top><em class=optionalcode>var_type</em></TD>
-    <TD>Returns the type of the indexed state variable as an optional argument.
-        The type is one of the list of supported observation types, found in
-        the block of code starting 
-        <em class=code>!&nbsp;Integer&nbsp;definitions&nbsp;for&nbsp;DART&nbsp;TYPES</em>
-        in <em class=file>DART/obs_kind/obs_kind_mod.f90</em> 
-        </TD></TR>
-
-</TABLE>
-
-<P>
-The list of supported variables in <em class=file>DART/obs_kind/obs_kind_mod.f90</em>
-is created by <em class=program>preprocess</em> using the entries in 
-<em class=file>input.nml</em>[<em class=code>&amp;preprocess_nml, &amp;obs_kind_nml</em>], 
-<em class=file>DEFAULT_obs_kin_mod.F90</em> and
-<em class=file>obs_def_ocean_mod.f90</em>.
-</P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="model_interpolate"></A>
-<br />
-<div class=routine>
-<em class=call>call model_interpolate(x, location, itype, obs_val, istatus)</em>
-<pre>
-real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
-type(location_type),    intent(in)  :: <em class=code>location</em>
-integer,                intent(in)  :: <em class=code>itype</em>
-real(r8),               intent(out) :: <em class=code>obs_val</em>
-integer,                intent(out) :: <em class=code>istatus</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given a model state, <em class=code>model_interpolate</em> returns the value of 
-the desired observation type (which could be a state variable) that would be 
-observed at the desired location. The interpolation method is either
-completely specified by the model, or uses some standard 2D or 3D scalar
-interpolation routines.
-Put another way, <em class=code>model_interpolate</em> will apply the forward
-operator <strong>H</strong> to the model state to create an observation at the desired 
-location.
-<br />
-<br />
-If the interpolation is valid, <em class=code>istatus = 0</em>. 
-In the case where the observation operator is not defined at the given 
-location (e.g. the observation is below the lowest model level, above the top
-level, or 'dry'), interp_val is returned as 0.0 and istatus = 1. 
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>x</em></TD>
-    <TD>A model state vector.</TD></TR>
-
-<TR><TD valign=top><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Location to which to interpolate.</TD></TR>
-
-<TR><TD valign=top><em class=code>itype</em></TD>
-    <TD>Integer indexing which type of observation is desired.</TD></TR>
-
-<TR><TD valign=top><em class=code>obs_val</em></TD>
-    <TD> The interpolated value from the model.</TD></TR>
-
-<TR><TD valign=top><em class=code>istatus</em></TD>
-    <TD>Integer flag indicating the success of the interpolation.
-       <br />success == 0, failure == anything else</TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_model_time_step"></A>
-<br />
-<div class=routine>
-<em class=call>var = get_model_time_step()</em>
-<pre>
-type(time_type) :: <em class=code>get_model_time_step</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>get_model_time_step</em>
-returns the forecast length to be used as the "model base time step" in the filter.
-This is the minimum amount of time the model can be advanced by 
-<em class=program>filter</em>.  
-<em class="strong">This is also the assimilation window</em>. 
-All observations within (+/-) one half of the forecast
-length are used for the assimilation.
-In the <em class=program>POP</em> case, this is set from 
-the namelist values for <em class=file>input.nml</em><em
-class=code>&amp;model_nml:assimilation_period_days, assimilation_period_seconds</em>.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Smallest time step of model.</TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="static_init_model"></A>
-<br />
-<div class=routine>
-<em class=call>call static_init_model()</em>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>static_init_model</em>
-is called for runtime initialization of the model. 
-The namelists are read to determine runtime configuration of the model, 
-the grid coordinates, etc. There are no input arguments and no return values. 
-The routine sets module-local private attributes that can then be queried by the
-public interface routines.
-<br />
-<br />
-See the POP documentation for all namelists in <em class=file>pop_in</em>&nbsp;.
-Be aware that DART reads the POP <em class=code>&amp;grid_nml</em> namelist
-to get the filenames for the horizontal and vertical grid information as well
-as the topography information.
-<br />
-<br />
-The namelists (all mandatory) are:<br />
-<em class=file>input.nml</em><em class=code>&amp;model_mod_nml</em>,<br />
-<em class=file>pop_in</em><em class=code>&amp;time_manager_nml</em>,<br />
-<em class=file>pop_in</em><em class=code>&amp;io_nml</em>,<br />
-<em class=file>pop_in</em><em class=code>&amp;init_ts_nml</em>,<br />
-<em class=file>pop_in</em><em class=code>&amp;restart_nml</em>,<br />
-<em class=file>pop_in</em><em class=code>&amp;domain_nml</em>, and<br />
-<em class=file>pop_in</em><em class=code>&amp;grid_nml</em>.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="end_model"></A>
-<br />
-<div class=routine>
-<em class=call>call end_model()</em>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>end_model</em>
-is used to clean up storage for the model, etc. 
-when the model is no longer needed. There are no arguments and no return values.
-The grid variables are deallocated.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="init_time"></A>
-<br />
-<div class=routine>
-<em class=call>call init_time(time)</em>
-<pre>
-type(time_type), intent(out) :: <em class=code>time</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>init_time</em>
-returns the time at which the model will start if no input initial conditions are
-to be used. This is frequently used to spin-up models from rest, but is not
-meaningfully supported for the POP model.  
-The only time this routine would get called is if the 
-<em class=file>input.nml</em><em class=code>&amp;perfect_model_obs_nml:start_from_restart</em> is .false., which is
-not supported in the POP model.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>the starting time for the model if no initial conditions are to be supplied.
-    This is hardwired to 0.0</TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="init_conditions"></A>
-<br />
-<div class=routine>
-<em class=call>call init_conditions(x)</em>
-<pre>
-real(r8), dimension(:), intent(out) :: <em class=code>x</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>init_conditions</em>
-returns default initial conditions for model; generally used for spinning up
-initial model states. For the POP model it is just a stub because 
-the initial state is always provided by the input files.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>x&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Initial conditions for state vector.
-    This is hardwired to 0.0</TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="nc_write_model_atts"></A>
-<br />
-<div class=routine>
-<em class=call>ierr = nc_write_model_atts(ncFileID)</em>
-<pre>
-integer             :: <em class=code>nc_write_model_atts</em>
-integer, intent(in) :: <em class=code>ncFileID</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>nc_write_model_atts</em>
-writes model-specific attributes to an opened netCDF file:
-In the POP case, this includes information like the 
-coordinate variables (the grid arrays: ULON, ULAT, TLON, TLAT, ZG, ZC, KMT, KMU), 
-information from some of the namelists, and either the 1D state 
-vector or the prognostic variables (SALT,TEMP,UVEL,VVEL,PSURF). 
-All the required information (except for the netCDF file identifier) 
-is obtained from the scope of the <em class=program>model_mod</em> module.
-Both the <em class=file>input.nml</em> and <em class=file>pop_in</em> files
-are preserved in the netCDF file as variables <em class=code>inputnml</em> and
-<em class=code>pop_in</em>, respectively.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Integer file descriptor to previously-opened netCDF file.</TD></TR>
-
-<TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returns a 0 for successful completion.</TD></TR>
-
-</TABLE>
-
-<P>
-<em class=code>nc_write_model_atts</em>
-is responsible for the model-specific attributes in the following DART-output netCDF files:
-<em class=file>True_State.nc</em>, 
-<em class=file>Prior_Diag.nc</em>, and 
-<em class=file>Posterior_Diag.nc</em>.
-</P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="nc_write_model_vars"></A>
-<br />
-<div class=routine>
-<em class=call>ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
-<pre>
-integer,                intent(in) :: <em class=code>ncFileID</em>
-real(r8), dimension(:), intent(in) :: <em class=code>statevec</em>
-integer,                intent(in) :: <em class=code>copyindex</em>
-integer,                intent(in) :: <em class=code>timeindex</em>
-integer                            :: <em class=code>ierr</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>nc_write_model_vars</em>
-writes a copy of the state variables to a NetCDF file. Multiple copies of the
-state for a given time are supported, allowing, for instance, a single file to
-include multiple ensemble estimates of the state. Whether the state vector is 
-parsed into prognostic variables (SALT, TEMP, UVEL, VVEL, PSURF) or simply written 
-as a 1D array is controlled by 
-<em class=file>input.nml</em><em class=code>&amp;model_mod_nml:output_state_vector</em>.
-If <em class=code>output_state_vector&nbsp;=&nbsp;.true.</em> the state vector is 
-written as a 1D array (the simplest case, but hard to explore with the diagnostics).
-If <em class=code>output_state_vector&nbsp;=&nbsp;.false.</em> the state vector is 
-parsed into prognostic variables before being written.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>ncFileID</em></TD>
-    <TD>file descriptor to previously-opened netCDF file.</TD></TR>
-
-<TR><TD valign=top><em class=code>statevec</em></TD>
-    <TD>A model state vector.</TD></TR>
-
-<TR><TD valign=top><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Integer index of copy to be written.</TD></TR>
-
-<TR><TD valign=top><em class=code>timeindex</em></TD>
-    <TD>The timestep counter for the given state.</TD></TR>
-
-<TR><TD valign=top><em class=code>ierr</em></TD>
-    <TD>Returns 0 for normal completion.</TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="pert_model_state"></A>
-<br />
-<div class=routine>
-<em class=call>call pert_model_state(state, pert_state, interf_provided)</em>
-<pre>
-real(r8), dimension(:), intent(in)  :: <em class=code>state</em>
-real(r8), dimension(:), intent(out) :: <em class=code>pert_state</em>
-logical,                intent(out) :: <em class=code>interf_provided</em>
-</pre>
-</div>
-
-<div class=indent1> <!-- Description -->
-<P>
-Given a model state, <em class=code>pert_model_state</em> produces a 
-perturbed model state. This is used to generate ensemble initial conditions 
-perturbed around some control trajectory state when one is preparing to 
-spin-up ensembles.  Since the DART state vector for the POP model 
-contains both 'wet' and 'dry' cells, it is imperative to provide an 
-interface to perturb <strong>just</strong> the wet cells 
-(<em class=code>interf_provided == .true.</em>).
-<br />
-<br />
-The magnitude of the perturbation is wholly determined by 
-<em class=file>input.nml</em><em class=code>&amp;model_mod_nml:model_perturbation_amplitude</em>
-and <strong>utterly, completely fails</strong>.
-<br />
-<br />
-A more robust perturbation mechanism is needed. 
-Until then, avoid using this routine by using your own ensemble of initial conditions. 
-This is determined by setting
-<em class=file>input.nml</em><em class=code>&amp;filter_nml:start_from_restart = .false.</em>
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>state</em></TD>
-    <TD>State vector to be perturbed.</TD></TR>
-
-<TR><TD valign=top><em class=code>pert_state</em></TD>
-    <TD>The perturbed state vector.</TD></TR>
-
-<TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>Because of the 'wet/dry' issue discussed above, this is always 
-        <em class=code>.true.</em>, indicating a model-specific perturbation 
-        is available.</TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_close_maxdist_init"></A>
-<br />
-<div class=routine>
-<em class=call>call get_close_maxdist_init(gc, maxdist)</em>
-<pre>
-type(get_close_type), intent(inout) :: <em class=code>gc</em>
-real(r8),             intent(in)    :: <em class=code>maxdist</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed_sphere/location_mod.html#get_close_maxdist_init">get_close_maxdist_init()</A> for the documentation of this subroutine.
-</P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_close_obs_init"></A>
-<br />
-<div class=routine>
-<em class=call>call get_close_obs_init(gc, num, obs)</em>
-<pre>
-type(get_close_type), intent(inout) :: <em class=code>gc</em>
-integer,              intent(in)    :: <em class=code>num</em>
-type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Pass-through to the 3-D sphere locations module. See
-<A HREF="../../location/threed_sphere/location_mod.html#get_close_obs_init">
-get_close_obs_init()</A> for the documentation of this subroutine.
-</P>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_close_obs"></A>
-<br />
-<div class=routine>
-<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &amp;<br />
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;num_close, close_ind
-  <em class=optionalcode>[,&nbsp;dist]</em>) </em>
-<pre>
-type(get_close_type),              intent(in ) :: <em class=code>gc</em>
-type(location_type),               intent(in ) :: <em class=code>base_obs_loc</em>
-integer,                           intent(in ) :: <em class=code>base_obs_kind</em>
-type(location_type), dimension(:), intent(in ) :: <em class=code>obs</em>
-integer,             dimension(:), intent(in ) :: <em class=code>obs_kind</em>
-integer,                           intent(out) :: <em class=code>num_close</em>
-integer,             dimension(:), intent(out) :: <em class=code>close_ind</em>
-real(r8), optional,  dimension(:), intent(out) :: <em class=optionalcode>dist</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-Given a DART location (referred to as "base") and a set of locations, and a
-definition of 'close' - return a subset of locations that are 'close', as well
-as their distances to the DART location and their indices. This routine intentionally
-masks a routine of the same name in <em class=program>location_mod</em> because we
-want to be able to discriminate against selecting 'dry land' locations.
-<br />
-<br />
-Given a single location and a list of other locations, returns the indices
-of all the locations close to the single one along with the number of
-these and the distances for the close ones.  The list of locations
-passed in via the <em class=code>obs</em> argument must be identical to
-the list of <em class=code>obs</em> passed into the most recent call
-to <em class=code>get_close_obs_init()</em>.  If the list of locations
-of interest changes, <em class=code>get_close_obs_destroy()</em> must
-be called and then the two initialization routines must be called
-before using <em class=code>get_close_obs()</em> again.
-<br />
-<br />
-For vertical distance computations, the general philosophy is to convert all
-vertical coordinates to a common coordinate. This coordinate type is defined
-in the namelist with the variable "vert_localization_coord".
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-<TR><TD valign=top><em class=code>gc</em></TD>
-    <TD>Structure to allow efficient identification of
-        locations 'close' to a given location.</TD></TR>
-<TR><TD valign=top><em class=code>base_obs_loc</em></TD>
-    <TD>Single given location.</TD></TR>
-<TR><TD valign=top><em class=code>base_obs_kind</em></TD>
-    <TD>Kind of the single location.</TD></TR>
-<TR><TD valign=top><em class=code>obs</em></TD>
-    <TD>List of candidate locations.</TD></TR>
-<TR><TD valign=top><em class=code>obs_kind</em></TD>
-    <TD>Kind associated with candidate locations.</TD></TR>
-<TR><TD valign=top><em class=code>num_close</em></TD>
-    <TD>Number of locations close to the given location.</TD></TR>
-<TR><TD valign=top><em class=code>close_ind</em></TD>
-    <TD>Indices of those locations that are close.</TD></TR>
-<TR><TD valign=top><em class=optionalcode>dist</em></TD>
-    <TD>Distance between given location and the
-        close ones identified in close_ind.</TD></TR>
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="ens_mean_for_model"></A>
-<br />
-<div class="routine">
-<em class=call>call ens_mean_for_model(ens_mean)</em>
-<pre>
-real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>ens_mean_for_model</em>
-normally saves a copy of the ensemble mean to module-local storage.
-This is a NULL_INTERFACE for the POP model. At present there is
-no application which requires module-local storage of the ensemble mean.
-No storage is allocated.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>ens_mean</em></TD>
-    <TD>State vector containing the ensemble mean.</TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-
-
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H3 class=indent1>Unique Interface Routines</H3>
-
-
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_gridsize"></A>
-<br />
-<div class="routine">
-<em class=call>call get_gridsize( num_x, num_y, num_z )</em>
-<pre>
-integer, intent(out) :: <em class=code>num_x, num_y, num_z</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>get_gridsize</em>
-returns the dimensions of the compute domain.
-The horizontal gridsize is determined from <em class=file>pop.r.nc</em>.
-The values of the horizontal grid cells is determined from the binary file
-specified in the
-<em class=file>pop_in</em><em class=routine>&amp;grid_nml:horiz_grid_file</em> setting.
-<em class=file>pop_in</em><em class=routine>&amp;grid_nml:vert_grid_file</em> specifies
-the name of the ASCII file containing the number and values of the vertical levels.
-The actual values (not just the size) is needed by <em class=routine>get_state_meta_data()</em>.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>num_x</em></TD>
-    <TD>The number of longitudinal gridpoints.</TD></TR>
-
-<TR><TD valign=top><em class=code>num_y</em></TD>
-    <TD>The number of latitudinal gridpoints.</TD></TR>
-
-<TR><TD valign=top><em class=code>num_z</em></TD>
-    <TD>The number of vertical gridpoints.</TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="restart_file_to_sv"></A>
-<br />
-<div class="routine">
-<em class=call>call restart_file_to_sv(filename, state_vector, model_time)</em>
-<pre>
-character(len=*),       intent(in)    :: <em class=code>filename</em>
-real(r8), dimension(:), intent(inout) :: <em class=code>state_vector</em>
-type(time_type),        intent(out)   :: <em class=code>model_time</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-   <em class=code>restart_file_to_sv</em>
-   Reads <em class=code>SALT_CUR</em>, <em class=code>TEMP_CUR</em>,
-         <em class=code>UVEL_CUR</em>, <em class=code>VVEL_CUR</em>, and 
-         <em class=code>PSURF_CUR</em> from a POP netCDF format restart 
-   file and packs them into a DART state vector. The DART vector is simply 
-   a 1D vector that includes all the 'dry' cells as well as the 'wet' ones.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>filename</em></TD>
-    <TD>The name of the netCDF format POP restart file.</TD></TR>
-
-<TR><TD valign=top><em class=code>state_vector</em></TD>
-    <TD>The 1D array to be used by DART.</TD></TR>
-
-<TR><TD valign=top><em class=code>model_time</em></TD>
-    <TD>the 1D array containing the concatenated SALT,TEMP,UVEL,VVEL,PSURF variables.
-    To save storage, it is possible to modify the definition of <em class=code>r8</em>
-    in <em class=file>DART/common/types_mod.f90</em> to be the same as that
-    of <em class=code>r4</em>.
-    </TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="sv_to_restart_file"></A>
-<br />
-<div class="routine">
-<em class=call>call sv_to_restart_file(state_vector, filename, statedate)</em>
-<pre>
-real(r8), dimension(:), intent(in) :: <em class=code>state_vector</em>
-character(len=*),       intent(in) :: <em class=code>filename</em>
-type(time_type),        intent(in) :: <em class=code>statedate</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>sv_to_restart_file</em>
-updates the SALT_CUR, TEMP_CUR, UVEL_CUR, VVEL_CUR, and PSURF_CUR variables
-in the POP netCDF-format restart file with values from 
-the DART vector <em class=code>state_vector</em>. The time in the
-file must match the <em class=code>statedate</em>.
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>state_vector</em></TD>
-    <TD>the 1D array containing the DART state vector.</TD></TR>
-
-<TR><TD valign=top><em class=code>filename</em></TD>
-    <TD>the netCDF-format POP restart file to be updated.
-</TD></TR>
-
-<TR><TD valign=top><em class=code>statedate</em></TD>
-    <TD>the 'valid_time' of the DART state vector.
-    </TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="get_pop_restart_filename"></A>
-<br />
-<div class="routine">
-<em class=call>call get_pop_restart_filename( filename )</em>
-<pre>
-character(len=*), intent(out) :: <em class=code>filename</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>get_pop_restart_filename</em>
-is actually a 'pass-through' to a routine of the same name in 
-<em class=file>dart_pop_mod.f90</em>, since the filename is in
-module storage in <em class=program>dart_pop_mod</em>.
-
-</P>
-
-<TABLE width=100% border=0 summary="" cellpadding=3>
-
-<TR><TD valign=top><em class=code>filename&nbsp;&nbsp;&nbsp;</em></TD>
-    <TD>The name of the POP restart file. Hardcoded to <em class=file>pop.r.nc</em>&nbsp;.
-    This simplifies the scripting portions - dereference the pointer files, make a link
-    to <em class=file>pop.r.nc</em> and you're done.
-    </TD></TR>
-
-</TABLE>
-
-</div>
-<br />
-
-<!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="test_interpolation"></A>
-<br />
-<div class="routine">
-<em class=call>call test_interpolation( test_casenum )</em>
-<pre>
-integer, intent(in) :: <em class=code>test_casenum</em>
-</pre>
-</div>
-
-<div class=indent1>
-<!-- Description -->
-
-<P>
-<em class=code>test_interpolation</em>
-is a rigorous test of the interpolation routine and relies completely
-on data files that are not normally distributed with DART. This routine
-is only used by <em class=file>test_dipole_interp.f90</em> and is not 
-normally part of the user-callable routines.
-</P>
-
-</div>
-<br />
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
 <!--==================================================================-->
 
+<br /> <br />
+<P> </P>
 <A NAME="FilesUsed"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
@@ -1663,26 +569,7 @@ normally part of the user-callable routines.
 <TR><TH align=left>filename</TH>
     <TH align=left>purpose</TH></TR>
 <TR><TD>input.nml</TD>
-    <TD>to read the model_mod namelist</TD></TR>
-<TR><TD>pop_in</TD>
-    <TD>to read the model_mod namelist</TD></TR>
-<TR><TD>pop.r.nc</TD>
-    <TD>provides grid dimensions and 'valid_time' of the model state</TD></TR>
-<TR><TD><em class=code>&amp;grid_nml</em> "horiz_grid_file"</TD>
-    <TD>contains the values of the horizontal grid</TD></TR>
-<TR><TD><em class=code>&amp;grid_nml</em> "vert_grid_file"</TD>
-    <TD>contains the number and values of the vertical levels</TD></TR>
-<TR><TD>True_State.nc</TD>
-    <TD>the time-history of the "true" model state from an OSSE</TD></TR>
-<TR><TD>Prior_Diag.nc</TD>
-    <TD>the time-history of the model state before assimilation</TD></TR>
-<TR><TD>Posterior_Diag.nc&nbsp;</TD>
-    <TD>the time-history of the model state after assimilation</TD></TR>
-<TR><TD>dart_log.out [default name]</TD>
-    <TD>the run-time diagnostic output</TD></TR>
-<TR><TD>dart_log.nml [default name]</TD>
-    <TD>the record of all the namelists actually USED - 
-        contains the default values</TD></TR>
+    <TD>to read the model_mod namelists</TD></TR>
 </TABLE>
 <br />
 
@@ -1690,62 +577,47 @@ normally part of the user-callable routines.
 <!-- Cite references, if need be.                                     -->
 <!--==================================================================-->
 
+<br /> <br />
+<P> </P>
 <A NAME="References"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
-<li> none </li>
+<li><a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html">
+http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html </a></li>
+<li><a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x388.html">
+http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x388.html </a></li>
+<li><a href="http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/modelnl/compsets.html">
+http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/modelnl/compsets.html </a></li>
+<li><a href="http://www2.cesm.ucar.edu/models/current">
+http://www2.cesm.ucar.edu/models/current </a></li>
+<li>The <a href="http://image.ucar.edu/DAReS">DART Project Web Pages</a></li>
+<li>Anderson, J., T. Hoar, K. Raeder, H. Liu,
+N. Collins, R. Torn, and  A. Arellano, 2009:
+The Data Assimilation Research Testbed: A Community Facility.
+<span style="font-style: italic;">Bull. Amer. Meteor. Soc.</span>,
+<span style="font-weight: bold;">90</span>, 1283-1296.
+<a href="http://dx.doi.org/10.1175/2009BAMS2618.1"
+target="_blank" >
+doi: 10.1175/2009BAMS2618.1</a></li>
 </ul>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
 <!--==================================================================-->
 
+<br /> <br />
+<P> </P>
 <A NAME="Errors"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-<TR><TH>Routine</TH><TH width="50%">Message</TH><TH>Comment</TH></TR>
 
-<TR><!-- routine --><TD VALIGN=top>update_reg_list</TD>
-    <!-- message --><TD VALIGN=top>max_reg_list_num&nbsp;(##)&nbsp;is&nbsp;too&nbsp;small&nbsp;...&nbsp;increase
-values.</TD>
-    <!-- comment --><TD VALIGN=top>The max_reg_list_num controls the size of temporary 
-    storage used for initializing the regular grid. Four arrays of size 
-    num_reg_x*num_reg_y*max_reg_list_num are needed. The initialization
-    fails and returns an error if max_reg_list_num is too small. A value of
-    30 is sufficient for the x3 POP grid with 180 regular lon and lat boxes 
-    and a value of 80 is sufficient for for the x1 grid. Look at the output
-    from <em class=program>init_dipole_interp()</em> for values for new grids.</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>restart_file_to_sv</TD>
-    <!-- message --><TD VALIGN=top>cannot open file "xxxx" for reading</TD>
-    <!-- comment --><TD VALIGN=top>The POP restart file "xxxx" does not exist.</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>restart_file_to_sv</TD>
-    <!-- message --><TD VALIGN=top>'WARNING!!!   year 0 not supported; setting to year 1</TD>
-    <!-- comment --><TD VALIGN=top>Some POP restart files have year 0 ... which is not
-    supported in a Gregorian calendar. Our intent here is to do data assimilation,
-    normally 'real' observations have 'real' dates.</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>sv_to_restart_file</TD>
-    <!-- message --><TD VALIGN=top>current time /= model time. FATAL error.</TD>
-    <!-- comment --><TD VALIGN=top>The DART time does not match the time of the POP restart file.
-    This message is preceeded by several lines indicating the expected times of both DART and POP.</TD>
-</TR>
-
-<TR><!-- routine --><TD VALIGN=top>test_interpolation</TD>
-    <!-- message --><TD VALIGN=top>mismatch nx,nx_temp ##,## or ny,ny_temp ##,##</TD>
-    <!-- comment --><TD VALIGN=top>The file sizes do not match the expected sizes for the
-    interpolation test case being performed.</TD>
-</TR>
-
-</TABLE>
-</div>
+<P>
+DART output goes into a file named <em class=file>dart_log.out</em>.
+The DART logs are preserved by the short term archiver and should
+be found either in the run directory, in an <em class=mono>assimilate</em>
+subdirectory, or in the short term archiver directory, under DART/logs.
+</P>
 
 <H2>KNOWN BUGS</H2>
 <P>
@@ -1756,34 +628,27 @@ none at this time
 <!-- Describe Future Plans.                                           -->
 <!--==================================================================-->
 
+<br /> <br />
+<P> </P>
 <A NAME="FuturePlans"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
-<em class=file>dart_pop_mod</em>:<em class=code>set_model_time_step()</em> 
-must ensure the forecast length is a multiple of the ocean model 
-dynamical timestep declared by ????
-<br />
-<br />
-Provide a better mechanism for generating a set of perturbed initial 
-conditions - <em class=code>pert_model_state()</em> 
-</P>
-
-<!--==================================================================-->
-<!-- PrivateComponents                                                -->
-<!--==================================================================-->
-
-<A NAME="PrivateComponents"></A>
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H2>PRIVATE COMPONENTS</H2>
-<P>
-N/A
+Software development is ongoing that will allow observations to be
+assimilated into all CESM components at once, so low atmosphere
+observations can impact state values in both the ocean and land;
+surface ocean observations can impact the atmosphere.
+There are technical obstacles which are being removed to simply
+having this running; once it runs there will undoubtably be
+scientific questions that will have to be examined and answered.
 </P>
 
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->
 <!--==================================================================-->
 
+<br /> <br />
+<P> </P>
 <A NAME="Legalese"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>Terms of Use</H2>
