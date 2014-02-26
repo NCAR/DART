@@ -1,11 +1,13 @@
-function [y] = donorm(x, mu, sigma)
-%  computes a gaussian (normal) probabilty distribution function
+function [y] = norm_pdf(x, mu, sigma)
+%  computes a gaussian (normal) PDF
 %  for the points of X with a given mean (mu) and standard deviation (sigma)
 % 
 % normal plot, y given x:
-%  y = (1 / sigma * sqrt(2*pi)) * e ^^ ((-1/2 * ((x-mu) / sigma)^^2)
+%  y = (1 / (sigma * sqrt(2*pi))) * e ^ ((-1/2 * ((x-mu) / sigma)^2)
 % or
 %  g(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{ -\frac{1}{2}\left(\frac{x-\mu}{\sigma}\right)^2 }. 
+%
+% see: https://en.wikipedia.org/wiki/Probability_density_function
 
 %% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -14,12 +16,12 @@ function [y] = donorm(x, mu, sigma)
 % DART $Id$
 
 
-e = 2.71828182845904523536;
+e = exp(1);
 
 basen = (1.0 / (sigma * sqrt(2*pi)));
-expon = -0.50 .* (((x-mu) / sigma).^2 );
+expon = -0.5 * (((x-mu) / sigma).^2 );
 
-y = basen .* (e .^ expon);
+y = basen * (e .^ expon);
 
 end
 
