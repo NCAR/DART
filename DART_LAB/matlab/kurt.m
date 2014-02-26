@@ -10,23 +10,17 @@ function k = kurt(vals)
 %
 % DART $Id$
 
-% compute mean  - WARNING: this assumes the array is laid out
-% so the number of items is the second dimension, e.g. [1, 4]
-
-nvals = size(vals, 2);
-m = sum(vals) / nvals;
-
-% compute s2 and s4 
-del = vals - m;
-s2 = sum(del .* del);                % element-by-element *
-s4 = sum(del .* del .* del .* del);  % ditto
+% count of items; array of diffs from mean
+nvals = numel(vals);
+del = vals - mean(vals);
     
-% compute m2 and m4 
-m2 = s2 / nvals;
-m4 = s4 / nvals;
+% compute the square and 4th power of the diffs from mean
+m2 = mean(del .^ 2);
+m4 = mean(del .^ 4);
 
-% finally, the kurtosis value.  this is the version of kurtosis
-% that does NOT subtract 3.0 from the result.
-k = (m4 ./ (m2 .* m2));
+% compute the kurtosis value.  this is the version 
+% of the kurtosis formula that is not nonbiased and
+% does not subtract 3.0 from the result.
+k = (m4 ./ (m2 .^ 2));
 
 end 
