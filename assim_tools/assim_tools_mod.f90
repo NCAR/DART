@@ -685,9 +685,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    if (i == 1 .and. my_task_id() == 0 ) print*, 'DANGER HARDCODED vertical coordinate in filter_assim'
 
    if (.not. close_obs_caching) then
-      !call get_close_obs(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, &
-         !num_close_obs, close_obs_ind, close_obs_dist)
-      print*, '*********** WATCH OUT no close buffering ***********'
+      call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle, win)
 
    else
  
@@ -697,9 +695,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          close_obs_dist(:) = last_close_obs_dist(:)
          num_close_obs_cached = num_close_obs_cached + 1
       else
-         start = MPI_WTIME()
          call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
-         finish = MPI_WTIME()
 
          last_base_obs_loc      = base_obs_loc
          last_num_close_obs     = num_close_obs
