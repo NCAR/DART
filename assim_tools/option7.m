@@ -6,6 +6,8 @@
 % http://www.image.ucar.edu/DAReS/DART/DART_download
 %
 % DART $Id$
+%
+% the matlab statistics toolbox is required to run this script.
 
 % Begin by generating a sample draw from a gaussian
 close all; clear;
