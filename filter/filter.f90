@@ -1376,8 +1376,6 @@ subroutine get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_
    obs_val_index, input_qc_index, &
    OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_VAR_START, isprior)
 
-use mpi_utilities_mod, only : datasize
-
 type(ensemble_type),     intent(in)    :: ens_handle
 type(ensemble_type),     intent(inout) :: obs_ens_handle, forward_op_ens_handle 
 type(obs_sequence_type), intent(in)    :: seq
@@ -1393,13 +1391,6 @@ integer              :: j, k, my_num_copies, global_ens_index, thiskey(1)
 logical              :: evaluate_this_ob, assimilate_this_ob
 type(obs_def_type)   :: obs_def
 integer, allocatable :: istatus(:)
-
-! HK Remote memory access
-integer :: ierr, sizedouble, count, win, ii, jj
-integer(KIND=MPI_ADDRESS_KIND) :: window_size ! These must be mpi_address_kind to avoid a segmentation fault on some systems
-integer status(MPI_STATUS_SIZE)
-real(r8) duplicate_copies(*)
-pointer (p, duplicate_copies)
 
 real(r8), allocatable                   :: expected_obs(:) !Also regular obs now?
 integer global_obs_num

@@ -55,6 +55,8 @@ use assim_model_mod,      only : get_state_meta_data_distrib, get_close_maxdist_
                                  get_close_obs_init, get_close_obs_distrib,               &
                                  convert_base_obs_location !HK
 
+use location_mod,         only : get_location, set_location !HK for bitwise WRF
+
 use fwd_op_win_mod
 
 implicit none
@@ -290,8 +292,6 @@ subroutine filter_assim(ens_handle, obs_ens_handle, obs_seq, keys,           &
    OBS_PRIOR_MEAN_START, OBS_PRIOR_MEAN_END, OBS_PRIOR_VAR_START,            &
    OBS_PRIOR_VAR_END, inflate_only)
 
-use mpi_utilities_mod, only : datasize
-
 type(ensemble_type),         intent(inout) :: ens_handle, obs_ens_handle
 type(obs_sequence_type),     intent(in)    :: obs_seq
 integer,                     intent(in)    :: keys(:)
@@ -366,6 +366,9 @@ real(r8) :: vert_qc
 
 !HK timing
 double precision start, finish
+
+!HK bitwise for WRF
+real(r8) :: xyz_loc(3)
 
 ! we are going to read/write the copies array
 call prepare_to_update_copies(ens_handle)
@@ -457,6 +460,7 @@ end do
 finish = MPI_WTIME()
 print*, 'get state meta data time :', finish - start, 'rank ', my_task_id()
 
+!call test_get_state_meta_data(my_state_loc, ens_handle%my_num_vars)
 
 ! PAR: MIGHT BE BETTER TO HAVE ONE PE DEDICATED TO COMPUTING 
 ! INCREMENTS. OWNING PE WOULD SHIP IT'S PRIOR TO THIS ONE
@@ -549,6 +553,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    endif
    ! Get the value of the observation
    call get_obs_values(observation, obs, obs_val_index)
+   !print*, 'start base_obs_loc', base_obs_loc, 'rank ', my_task_id()
 
    ! Find out who has this observation and where it is
    call get_var_owner_index(i, owner, owners_index)
@@ -677,15 +682,24 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! HK set converted location of observation
    ! The owner of the observation has done the conversion to the localization coordinate, so 
    ! every task does not have to do the same calculation ( and communication )
-
+   !> @todo This is very messy.
    base_obs_loc%vloc = vert_obs_loc_in_localization_coord
-   ! if (my_task_id() == 0 ) print*, 'which vert ', base_obs_loc%which_vert
    !> @todo vertical coordinate of obs
-   base_obs_loc%which_vert = 2
+   base_obs_loc%which_vert = 3
+
+   !--------------------------------------------------------
+   !> @todo have to set location so you are bitwise with Lanai for WRF. There is a bitwise creep with get and set location
+   if(ens_handle%my_pe /= owner) then
+      xyz_loc = get_location(base_obs_loc)
+      base_obs_loc = set_location(xyz_loc(1),xyz_loc(2),base_obs_loc%vloc,base_obs_loc%which_vert)
+      !print*, 'base_obs_loc after set', base_obs_loc, 'rank ', my_task_id()
+   endif
+   !--------------------------------------------------------
+
    if (i == 1 .and. my_task_id() == 0 ) print*, 'DANGER HARDCODED vertical coordinate in filter_assim'
 
    if (.not. close_obs_caching) then
-      call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle, win)
+      call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
 
    else
  
@@ -705,6 +719,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
    endif
 
+   !print*, 'base_obs _oc', base_obs_loc, 'rank ', my_task_id()
+   !call test_close_obs_dist(close_obs_dist, num_close_obs)
+    !print*, 'num close ', num_close_obs
 
    ! set the cutoff default, keep a copy of the original value, and avoid
    ! looking up the cutoff in a list if the incoming obs is an identity ob
@@ -815,6 +832,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
    endif
 
+   !print*, 'num close state', num_close_states
+   !call test_close_obs_dist(close_state_dist, num_close_states)
+   !call test_state_copies(ens_handle, 'beforeupdates')
 
    ! Loop through to update each of my state variables that is potentially close
    STATE_UPDATE: do j = 1, num_close_states
@@ -1038,6 +1058,8 @@ if (close_obs_caching .and. .true.) then
       endif
    endif
 endif
+
+!call test_state_copies(ens_handle, 'end')
 
 !GSR close the localization diagnostics file
 if(output_localization_diagnostics .and. my_task_id() == 0) then
@@ -2673,6 +2695,83 @@ end subroutine get_my_obs_loc
 
 !--------------------------------------------------------------------
 
+
+!===========================================================
+! TEST FUNCTIONS BELOW THIS POINT
+!-----------------------------------------------------------
+!> test get_state_meta_data
+!> Write out the resutls of get_state_meta_data for each task
+!> They should be the same as the Trunk version
+subroutine test_get_state_meta_data(locations, num_vars)
+
+type(location_type), intent(in) :: locations(:)
+integer,             intent(in) :: num_vars
+
+character*20  :: task_str !> string to hold the task number
+character*129 :: file_meta !> output file name
+integer :: i
+
+write(task_str, '(i10)') my_task_id()
+file_meta = TRIM('test_get_state_meta_data' // TRIM(ADJUSTL(task_str)))
+
+open(15, file=file_meta, status = 'unknown')
+
+do i = 1, num_vars
+   write(15,*) locations(i)
+enddo
+
+close(15)
+
+
+end subroutine test_get_state_meta_data
+
+!--------------------------------------------------------
+!> dump out the copies array for the state ens handle
+subroutine test_state_copies(state_ens_handle, information)
+
+type(ensemble_type), intent(in) :: state_ens_handle
+character(len=*),        intent(in) :: information
+
+character*20  :: task_str !> string to hold the task number
+character*129 :: file_copies !> output file name
+integer :: i
+
+write(task_str, '(i10)') state_ens_handle%my_pe
+file_copies = TRIM('statecopies'  // TRIM(ADJUSTL(information)) // '.' // TRIM(ADJUSTL(task_str)))
+open(15, file=file_copies, status ='unknown')
+
+do i = 1, state_ens_handle%num_copies 
+   write(15, *) state_ens_handle%copies(i,:)
+enddo
+
+close(15)
+
+end subroutine test_state_copies
+
+!--------------------------------------------------------
+!> dump out the distances calculated in get_close_obs_distrib
+subroutine test_close_obs_dist(distances, num_close)
+
+real(r8), intent(in) :: distances(:) !> array of distances calculated in get_close
+integer,  intent(in) :: num_close !> number of close obs
+
+character*20  :: task_str !> string to hold the task number
+character*129 :: file_dist !> output file name
+integer :: i
+
+write(task_str, '(i10)') my_task_id()
+file_dist = TRIM('distances'   // TRIM(ADJUSTL(task_str)))
+open(15, file=file_dist, status ='unknown')
+
+write(15, *) num_close
+
+do i = 1, num_close
+   write(15, *) distances(i)
+enddo
+
+close(15)
+
+end subroutine test_close_obs_dist
 !========================================================================
 ! end module assim_tools_mod
 !========================================================================
