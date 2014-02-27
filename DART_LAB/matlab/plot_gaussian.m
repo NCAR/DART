@@ -15,7 +15,7 @@ x_range = x_max - x_min;
 num_points = 1001;
 interval = x_range / num_points;
 x = x_min:interval:x_max;
-y = weight * normpdf(x, mean, sd);
+y = weight * norm_pdf(x, mean, sd);
 
 plot_handle = plot(x, y);
 
