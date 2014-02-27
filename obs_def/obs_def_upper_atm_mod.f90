@@ -224,8 +224,8 @@ LEVELS: do iAlt=1, size(ALT)+1
    endif
 
    ! At each altitude interpolate the 2D IDensityS_ie to the lon-lat where data 
-   ! point is located after this loop we will get a column centered at data 
-   ! point's lon-lat and at all model altitudes
+   ! point is located. After this loop we will have a column centered at the data 
+   ! point's lon-lat and at all model altitudes.
    probe = set_location(loc_vals(1), loc_vals(2), real(iAlt, r8), VERTISLEVEL) !probe is where we have data 
    call interpolate(state_vector, probe, KIND_DENSITY_ION_E, IDensityS_ie(iAlt), istatus) 
    if (istatus /= 0) exit LEVELS
