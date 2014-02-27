@@ -158,12 +158,12 @@ handles.kurtosis = kurt(handles.ens);
 handles.r4 = subplot(4, 2, 7);
 ylabel('Frequency');
 xlabel('Rank');
-title 'Prior Rank Histogram'
+title 'Prior Rank Histogram';
 
 handles.r5 = subplot(4, 2, 8);
 ylabel('Frequency');
 xlabel('Rank');
-title 'Posterior Rank Histogram'
+title 'Posterior Rank Histogram';
 
 % Update handles structure
 guidata(hObject, handles);
@@ -448,14 +448,14 @@ subplot(handles.r4);
 bar(handles.prior_rank(1:ens_size + 1));
 ylabel('Frequency');
 xlabel('Rank');
-title 'Prior Rank Histogram'
+title 'Prior Rank Histogram';
 axis tight;
 
 subplot(handles.r5);
 bar(handles.posterior_rank(1:ens_size + 1));
 ylabel('Frequency');
 xlabel('Rank');
-title 'Posterior Rank Histogram'
+title 'Posterior Rank Histogram';
 axis tight;
 
 % Update handles structure
@@ -811,7 +811,7 @@ else
 
    ylabel('Frequency');
    xlabel('Rank');
-   title 'Posterior Rank Histogram'
+   title 'Posterior Rank Histogram';
    axis tight;
 
    % Update the permanent storage of the rank values
