@@ -25,4 +25,8 @@ y = basen * (e .^ expon);
 
 end
 
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$
  

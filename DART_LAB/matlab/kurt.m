@@ -24,3 +24,8 @@ m4 = mean(del .^ 4);
 k = (m4 ./ (m2 .^ 2));
 
 end 
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$
