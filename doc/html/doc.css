@@ -212,6 +212,11 @@ em.file{
     font-style:normal;
     font-family:"Lucida Console",monospace;}
 
+em.mono{
+    color:black; 
+    font-style:normal;
+    font-family:"Lucida Console",monospace;}
+
 em.nav{
     font-family:sans-serif;
     color:white;}
