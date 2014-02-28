@@ -369,6 +369,7 @@ double precision start, finish
 
 !HK bitwise for WRF
 real(r8) :: xyz_loc(3)
+type(location_type) :: temp_loc
 
 ! we are going to read/write the copies array
 call prepare_to_update_copies(ens_handle)
@@ -685,19 +686,29 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !> @todo This is very messy.
    base_obs_loc%vloc = vert_obs_loc_in_localization_coord
    !> @todo vertical coordinate of obs
-   base_obs_loc%which_vert = 3
+   base_obs_loc%which_vert = 2
 
    !--------------------------------------------------------
    !> @todo have to set location so you are bitwise with Lanai for WRF. There is a bitwise creep with get and set location
-   if(ens_handle%my_pe /= owner) then
+   ! I beleive this is messing up CAM_SE because you get a different % saved for close_obs_caching
+   !  The base_obs_loc are different for cam if you do this set.
+
+   !if(ens_handle%my_pe /= owner) then
       !print*, 'base_obs_loc before set', base_obs_loc, 'rank ', my_task_id()
-      xyz_loc = get_location(base_obs_loc)
-      base_obs_loc = set_location(xyz_loc(1),xyz_loc(2),base_obs_loc%vloc,base_obs_loc%which_vert)
+      !temp_loc = base_obs_loc
+      !xyz_loc = get_location(base_obs_loc)
+      !base_obs_loc = set_location(xyz_loc(1),xyz_loc(2),base_obs_loc%vloc,base_obs_loc%which_vert)
+      !if (base_obs_loc == temp_loc) then
+      !   else
+      !      print*, 'not equal', i,  base_obs_loc%lon, temp_loc%lon,  xyz_loc, base_obs_loc%lon - temp_loc%lon, epsilon(base_obs_loc%lon)
+      !   endif
       !print*, 'base_obs_loc after set', base_obs_loc, 'rank ', my_task_id()
-   endif
+   !endif
+
    !--------------------------------------------------------
 
    if (i == 1 .and. my_task_id() == 0 ) print*, 'DANGER HARDCODED vertical coordinate in filter_assim'
+   !close_obs_caching = .false.
 
    if (.not. close_obs_caching) then
       call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
@@ -720,8 +731,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
    endif
 
-   !print*, 'base_obs _oc', base_obs_loc, 'rank ', my_task_id()
-   !call test_close_obs_dist(close_obs_dist, num_close_obs)
+    !print*, 'base_obs _oc', base_obs_loc, 'rank ', my_task_id()
+    !call test_close_obs_dist(close_obs_dist, num_close_obs, i)
     !print*, 'num close ', num_close_obs
 
    ! set the cutoff default, keep a copy of the original value, and avoid
@@ -833,7 +844,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    endif
 
    !print*, 'num close state', num_close_states
-   !call test_close_obs_dist(close_state_dist, num_close_states)
+   !call test_close_obs_dist(close_state_dist, num_close_states, i)
    !call test_state_copies(ens_handle, 'beforeupdates')
 
    ! Loop through to update each of my state variables that is potentially close
@@ -2756,17 +2767,20 @@ end subroutine test_state_copies
 
 !--------------------------------------------------------
 !> dump out the distances calculated in get_close_obs_distrib
-subroutine test_close_obs_dist(distances, num_close)
+subroutine test_close_obs_dist(distances, num_close, ob)
 
 real(r8), intent(in) :: distances(:) !> array of distances calculated in get_close
 integer,  intent(in) :: num_close !> number of close obs
+integer,  intent(in) :: ob
 
 character*20  :: task_str !> string to hold the task number
+character*20  :: ob_str !> string to hold ob number
 character*129 :: file_dist !> output file name
 integer :: i
 
 write(task_str, '(i10)') my_task_id()
-file_dist = TRIM('distances'   // TRIM(ADJUSTL(task_str)))
+write(ob_str, '(i20)') ob
+file_dist = TRIM('distances'   // TRIM(ADJUSTL(task_str)) // '.' // TRIM(ADJUSTL(ob_str)))
 open(15, file=file_dist, status ='unknown')
 
 write(15, *) num_close

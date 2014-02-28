@@ -249,7 +249,7 @@ use utilities_mod,     only : open_file, close_file, find_namelist_in_file, chec
                               register_module, error_handler, file_exist, E_ERR, E_WARN, E_MSG,  &
                               logfileunit, nmlfileunit, do_output, nc_check, get_unit, do_nml_file, &
                               do_nml_term
-use mpi_utilities_mod, only : my_task_id, task_count, datasize
+use mpi_utilities_mod, only : my_task_id, task_count
 
 !-------------------------------------------------------------------------
 use location_mod,      only : location_type, get_location, set_location, query_location,         &
@@ -334,8 +334,9 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_
 
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
-use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
-                               get_state
+use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
+
+use fwd_op_win_mod, only : get_state
 
 ! end of use statements
 !=========================================================================================
@@ -361,6 +362,10 @@ public ::                                                            &
    init_model_instance, end_model_instance, write_cam_init,          &
    write_cam_times
 
+
+interface get_surface_pressure
+   module procedure get_surface_pressure_state, get_surface_pressure_mean
+end interface
 
 !-----------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
@@ -3141,7 +3146,7 @@ end subroutine write_cam_times
 
 !> This is just renamed to it with assim_tools_mod because I renamed wrf, get_state_meta_data_distrib
 !> It does not do anything different yet.
-   subroutine get_state_meta_data_distrib(state_ens_handle, win, index_in, location, var_kind)
+   subroutine get_state_meta_data_distrib(state_ens_handle, index_in, location, var_kind)
 !=======================================================================
 ! subroutine get_state_meta_data(index_in, location, var_kind, set_loc)
 !
@@ -3158,7 +3163,6 @@ end subroutine write_cam_times
 ! intent(out) optional argument var_kind.  Maybe a functional form should be added?
 
 type(ensemble_type), intent(in)  :: state_ens_handle
-integer,             intent(in)  :: win
 integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_kind
@@ -3906,7 +3910,7 @@ end function nc_write_model_vars
 ! model_interpolate section
 
 !> Distributed version of model_interpolate
-subroutine model_interpolate_distrib(state_ens_handle, win, location, obs_kind, istatus, interp_val)
+subroutine model_interpolate_distrib(state_ens_handle, location, obs_kind, istatus, interp_val)
 !=======================================================================
 ! CS; this subroutine is now a short routine that calls
 !     either a rectangular grid version (the old model_interpolate for eul/FV)
@@ -3914,22 +3918,21 @@ subroutine model_interpolate_distrib(state_ens_handle, win, location, obs_kind, 
 ! C2D: This does get KINDs from filter, not specific obs TYPEs.
 
 type(ensemble_type), intent(in) :: state_ens_handle
-integer,             intent(in) :: win !> window for one sided communication
 type(location_type), intent(in) :: location
 integer,             intent(in) :: obs_kind
 integer,            intent(out) :: istatus(:)
 real(r8),           intent(out) :: interp_val(:)
 
 if (l_rectang) then
-   call interp_lonlat_distrib(state_ens_handle, win, location, obs_kind, interp_val, istatus)
+   call interp_lonlat_distrib(state_ens_handle, location, obs_kind, interp_val, istatus)
 else
-   call interp_cubed_sphere_distrib(state_ens_handle, win, location, obs_kind, interp_val, istatus)
+   call interp_cubed_sphere_distrib(state_ens_handle, location, obs_kind, interp_val, istatus)
 end if
 
 end subroutine model_interpolate_distrib
 
 
-   subroutine interp_cubed_sphere_distrib(state_ens_handle, win, obs_loc, obs_kind, interp_val, istatus)
+   subroutine interp_cubed_sphere_distrib(state_ens_handle, obs_loc, obs_kind, interp_val, istatus)
 !=======================================================================
 !  subroutine interp_cubed_sphere(st_vec, obs_loc, obs_kind, interp_val, istatus)
 !
@@ -3937,7 +3940,6 @@ end subroutine model_interpolate_distrib
 ! and interpolate the values of obs_kind from the cell's corners to that location.
 
 type(ensemble_type), intent(in) :: state_ens_handle
-integer,             intent(in) :: win !> window for one sided communication
 type(location_type), intent(in) :: obs_loc
 integer,             intent(in) :: obs_kind
 integer,            intent(out) :: istatus(:)
@@ -4077,20 +4079,20 @@ else if (vert_is_level(obs_loc)) then
 else if (vert_is_pressure(obs_loc)) then
    ! which_vert is pressure for this obs
 
-   call get_val_pressure_distrib(vals(:, 1), state_ens_handle, win, quad_corners(1), 1, lon_lat_lev(3), obs_kind, vstatus)
+   call get_val_pressure_distrib(vals(:, 1), state_ens_handle, quad_corners(1), 1, lon_lat_lev(3), obs_kind, vstatus)
    track_vstatus = vstatus
 
-   call get_val_pressure_distrib(vals(:, 2), state_ens_handle, win, quad_corners(2), 1, lon_lat_lev(3), obs_kind, vstatus)
+   call get_val_pressure_distrib(vals(:, 2), state_ens_handle, quad_corners(2), 1, lon_lat_lev(3), obs_kind, vstatus)
    do e = 1, ens_size
       if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
    enddo
 
-   call get_val_pressure_distrib(vals(:, 3), state_ens_handle, win, quad_corners(3), 1, lon_lat_lev(3), obs_kind, vstatus)
+   call get_val_pressure_distrib(vals(:, 3), state_ens_handle, quad_corners(3), 1, lon_lat_lev(3), obs_kind, vstatus)
    do e = 1, ens_size
       if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
    enddo
 
-   call get_val_pressure_distrib(vals(:, 4), state_ens_handle, win, quad_corners(4), 1, lon_lat_lev(3), obs_kind, vstatus)
+   call get_val_pressure_distrib(vals(:, 4), state_ens_handle, quad_corners(4), 1, lon_lat_lev(3), obs_kind, vstatus)
    do e = 1, ens_size
       if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
    enddo
@@ -4099,20 +4101,20 @@ else if (vert_is_pressure(obs_loc)) then
 else if (vert_is_height(obs_loc)) then
    ! which_vert is height for this obs
    ! HK I don't understand why you are passing lon_lat_lev(3) if you are passing obs_loc
-   call get_val_height_distrib(vals(:, 1), state_ens_handle, win, quad_corners(1), 1, lon_lat_lev(3), obs_loc, obs_kind, vstatus)
+   call get_val_height_distrib(vals(:, 1), state_ens_handle, quad_corners(1), 1, lon_lat_lev(3), obs_loc, obs_kind, vstatus)
    track_vstatus = vstatus
 
-   call get_val_height_distrib(vals(:, 2), state_ens_handle, win, quad_corners(2), 1, lon_lat_lev(3), obs_loc, obs_kind, vstatus)
+   call get_val_height_distrib(vals(:, 2), state_ens_handle, quad_corners(2), 1, lon_lat_lev(3), obs_loc, obs_kind, vstatus)
    do e = 1, ens_size
       if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
    enddo
 
-   call get_val_height_distrib(vals(:, 3), state_ens_handle, win, quad_corners(3), 1, lon_lat_lev(3), obs_loc, obs_kind, vstatus)
+   call get_val_height_distrib(vals(:, 3), state_ens_handle, quad_corners(3), 1, lon_lat_lev(3), obs_loc, obs_kind, vstatus)
    do e = 1, ens_size
       if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
    enddo
 
-   call get_val_height_distrib(vals(:, 4), state_ens_handle, win, quad_corners(4), 1, lon_lat_lev(3), obs_loc, obs_kind, vstatus)
+   call get_val_height_distrib(vals(:, 4), state_ens_handle, quad_corners(4), 1, lon_lat_lev(3), obs_loc, obs_kind, vstatus)
    do e = 1, ens_size
       if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
    enddo
@@ -4124,10 +4126,10 @@ else if (vert_is_surface(obs_loc)) then
    ! ignored.
    ! HK get_val_distrib only fails if the index is out of the grid, that is why there is only one return code
    ! not ens_size of them.
-   call get_val_distrib(vals(:, 1), state_ens_handle, ens_size, win, quad_corners(1), 1, 1, obs_kind, vstatus(1))
-   if (vstatus(1) /= 1) call get_val_distrib(vals(:, 2), state_ens_handle, ens_size, win, quad_corners(2), 1, 1, obs_kind, vstatus(1))
-   if (vstatus(1) /= 1) call get_val_distrib(vals(:, 3), state_ens_handle, ens_size, win, quad_corners(3), 1, 1, obs_kind, vstatus(1))
-   if (vstatus(1) /= 1) call get_val_distrib(vals(:, 4), state_ens_handle, ens_size, win, quad_corners(4), 1, 1, obs_kind, vstatus(1))
+   call get_val_distrib(vals(:, 1), state_ens_handle, ens_size, quad_corners(1), 1, 1, obs_kind, vstatus(1))
+   if (vstatus(1) /= 1) call get_val_distrib(vals(:, 2), state_ens_handle, ens_size, quad_corners(2), 1, 1, obs_kind, vstatus(1))
+   if (vstatus(1) /= 1) call get_val_distrib(vals(:, 3), state_ens_handle, ens_size, quad_corners(3), 1, 1, obs_kind, vstatus(1))
+   if (vstatus(1) /= 1) call get_val_distrib(vals(:, 4), state_ens_handle, ens_size, quad_corners(4), 1, 1, obs_kind, vstatus(1))
    vstatus = track_vstatus(1)
 
 ! Need option for vert_is_undefined
@@ -4327,14 +4329,13 @@ return
 end subroutine unit_square_location
 
 
-   subroutine interp_lonlat_distrib(state_ens_handle, win, location, obs_kind, interp_val, istatus)
+   subroutine interp_lonlat_distrib(state_ens_handle, location, obs_kind, interp_val, istatus)
 !=======================================================================
 !
 ! Find the 4 corners of the lon-lat grid cell that encloses an ob at 'location'
 ! and interpolate the values of obs_kind to that location.
 
 type(ensemble_type), intent(in) :: state_ens_handle
-integer,             intent(in) :: win !> window for one sided communication
 type(location_type), intent(in) :: location
 integer,             intent(in) :: obs_kind
 integer,            intent(out) :: istatus(:)
@@ -4541,20 +4542,20 @@ else if (vert_is_level(location)) then
 else if (vert_is_pressure(location)) then
    ! which_vert is pressure for this obs
    pressure = lon_lat_lev(3)
-   call get_val_pressure_distrib(val_11, state_ens_handle, win, lon_ind_below, lat_ind_below, pressure, obs_kind,vstatus)
+   call get_val_pressure_distrib(val_11, state_ens_handle, lon_ind_below, lat_ind_below, pressure, obs_kind,vstatus)
    track_vstatus = vstatus
 
-   call get_val_pressure_distrib(val_12, state_ens_handle, win, lon_ind_below, lat_ind_above, pressure, obs_kind,vstatus)
+   call get_val_pressure_distrib(val_12, state_ens_handle, lon_ind_below, lat_ind_above, pressure, obs_kind,vstatus)
    do e = 1, ens_size
       if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
    enddo
 
-   call get_val_pressure_distrib(val_21, state_ens_handle, win, lon_ind_above, lat_ind_below, pressure, obs_kind,vstatus)
+   call get_val_pressure_distrib(val_21, state_ens_handle, lon_ind_above, lat_ind_below, pressure, obs_kind,vstatus)
    do e = 1, ens_size
       if (vstatus(e) /= 0 ) track_vstatus(e) = vstatus(e)
    enddo
 
-   call get_val_pressure_distrib(val_22, state_ens_handle, win, lon_ind_above, lat_ind_above, pressure, obs_kind,vstatus)
+   call get_val_pressure_distrib(val_22, state_ens_handle, lon_ind_above, lat_ind_above, pressure, obs_kind,vstatus)
    do e = 1, ens_size
       if (vstatus(e) /= 0 ) track_vstatus(e) = vstatus(e)
    enddo
@@ -4694,7 +4695,7 @@ end subroutine get_val_level
 
 
 !> Distributed version of get_val_pressure
-subroutine get_val_pressure_distrib(val, state_ens_handle, win, lon_index, lat_index, pressure, obs_kind, istatus)
+subroutine get_val_pressure_distrib(val, state_ens_handle, lon_index, lat_index, pressure, obs_kind, istatus)
 !=======================================================================
 !
 ! Gets the vertically interpolated value on pressure for variable obs_kind
@@ -4705,7 +4706,6 @@ subroutine get_val_pressure_distrib(val, state_ens_handle, win, lon_index, lat_i
 
 real(r8),            intent(out) :: val(:)
 type(ensemble_type), intent(in)  :: state_ens_handle
-integer,             intent(in)  :: win !> mpi one-sided communication window
 real(r8),            intent(in)  :: pressure
 integer,             intent(in)  :: lon_index, lat_index, obs_kind
 integer,             intent(out) :: istatus(:)
@@ -4738,7 +4738,7 @@ vstatus = 0
 ! ? Implement 3Dp here?  or should/can it not use the ens mean PS field?
 fld_index   = find_name('PS      ',cflds)
 i = index_from_grid(1,lon_index,lat_index,  fld_index)
-call get_state(ps_local(:, 1), i, win, state_ens_handle, ens_size)
+call get_state(ps_local(:, 1), i, state_ens_handle)
 
 
 if (obs_kind == KIND_U_WIND_COMPONENT .and. find_name('US      ', cflds) /= 0) then
@@ -4750,7 +4750,7 @@ if (obs_kind == KIND_U_WIND_COMPONENT .and. find_name('US      ', cflds) /= 0) t
    !p_surf = ps_stagr_lat(lon_index, lat_index)
 
    i = index_from_grid(1,lon_index,lat_index+1,fld_index)
-   call get_state(ps_local(:, 2), i, win, state_ens_handle, ens_size)
+   call get_state(ps_local(:, 2), i, state_ens_handle)
    p_surf      = (ps_local(:, 1) + ps_local(2, :))* 0.5_r8
 
 else if (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS      ', cflds) /= 0) then
@@ -4761,7 +4761,7 @@ else if (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS      ', cflds) /=
    else
       i = index_from_grid(1,lon_index+1,lat_index ,fld_index)
    end if
-   call get_state(ps_local(:, 2), i, win, state_ens_handle, ens_size)
+   call get_state(ps_local(:, 2), i, state_ens_handle)
    p_surf      = (ps_local(:, 1) + ps_local(2, :))* 0.5_r8
 else
    ! A-grid ps can be retrieved from state vector, which was used to define ps on entry to
@@ -4838,8 +4838,8 @@ else
   ! need to grab values for each bot_val
   do e = 1, ens_size ! HK you only need to do this for distinct bot_vals
      if(istatus(e) == 0  .or. istatus(e) == 2) then
-        call get_val_distrib(bot_val, state_ens_handle, ens_size, win, lon_index, lat_index, bot_lev(e), obs_kind, vstatus)
-        if (vstatus == 0) call get_val_distrib(top_val, state_ens_handle, ens_size, win, lon_index, lat_index, top_lev(e), obs_kind, vstatus)
+        call get_val_distrib(bot_val, state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, vstatus)
+        if (vstatus == 0) call get_val_distrib(top_val, state_ens_handle, ens_size, lon_index, lat_index, top_lev(e), obs_kind, vstatus)
         if (vstatus == 0) then
             val(e) = (1.0_r8 - frac(e)) * bot_val(e) + frac(e) * top_val(e)
         else
@@ -4862,7 +4862,7 @@ end subroutine get_val_pressure_distrib
 
 
 !> Distributed version of get height
-subroutine get_val_height_distrib(val, state_ens_handle, win, lon_index, lat_index, height, location, obs_kind, istatus)
+subroutine get_val_height_distrib(val, state_ens_handle, lon_index, lat_index, height, location, obs_kind, istatus)
 !=======================================================================
 !
 ! Gets the vertically interpolated value on height for variable obs_kind
@@ -4877,7 +4877,6 @@ subroutine get_val_height_distrib(val, state_ens_handle, win, lon_index, lat_ind
 
 real(r8),            intent(out) :: val(:)
 type(ensemble_type), intent(in)  :: state_ens_handle
-integer,             intent(in)  :: win
 real(r8),            intent(in)  :: height !HK Just one height?
 integer,             intent(in)  :: lon_index, lat_index, obs_kind
 type(location_type), intent(in)  :: location
@@ -4920,13 +4919,13 @@ print*, '**** HEIGHT HEIGHT HIEGHT ****'
 ! See get_val_press for more documentation.
 fld_index   = find_name('PS      ',cflds)
 ind         = index_from_grid(1,lon_index,lat_index,  fld_index)
-call get_state(ps_local(:, 1), i, win, state_ens_handle, ens_size)
+call get_state(ps_local(:, 1), i, state_ens_handle)
 
 if     (obs_kind == KIND_U_WIND_COMPONENT .and. find_name('US      ', cflds) /= 0) then
    !p_surf = ps_stagr_lat(lon_index, lat_index)
    stagr_lat = .true.
    ind         = index_from_grid(1,lon_index,lat_index+1,fld_index)
-   call get_state(ps_local(:, 2), i, win, state_ens_handle, ens_size)
+   call get_state(ps_local(:, 2), i, state_ens_handle)
    p_surf      = (ps_local(:, 1) + ps_local(:, 2))* 0.5_r8
 else if (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS      ', cflds) /= 0) then
    !p_surf = ps_stagr_lon(lon_index, lat_index)
@@ -4936,7 +4935,7 @@ else if (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS      ', cflds) /=
    else
       ind       = index_from_grid(1,lon_index+1,lat_index ,fld_index)
    end if
-   call get_state(ps_local(:, 2), i, win, state_ens_handle, ens_size)
+   call get_state(ps_local(:, 2), i, state_ens_handle)
    p_surf      = (ps_local(:, 1) + ps_local(:, 2))* 0.5_r8
 else
    p_surf = ps_local(:, 1)
@@ -4948,7 +4947,7 @@ end if
 ! We want to use the new vec for each new ob on height because the state was updated 
 ! for all previous obs, and we want to use the most up to date state to get the best location.
 
-call model_heights_distrib(state_ens_handle, win, ens_size, p_surf, num_levs, location, model_h_distrib, vstatus)
+call model_heights_distrib(state_ens_handle, ens_size, p_surf, num_levs, location, model_h_distrib, vstatus)
 
 !HK I don't think the above vstatus is used.
 
@@ -5022,8 +5021,8 @@ else
    do e = 1, ens_size
       if(istatus(e) == 0  .or. istatus(e) == 2) then
 
-         call get_val_distrib(bot_val, state_ens_handle, ens_size, win, lon_index, lat_index, bot_lev(e), obs_kind, vstatus(1))
-         if (vstatus(1) == 0) call get_val_distrib(bot_val, state_ens_handle, ens_size, win, lon_index, lat_index, bot_lev(e), obs_kind, vstatus(1))
+         call get_val_distrib(bot_val, state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, vstatus(1))
+         if (vstatus(1) == 0) call get_val_distrib(bot_val, state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, vstatus(1))
          if (vstatus(1) == 0) then
             val(e) = (1.0_r8 - frac(e)) * bot_val(e) + frac(e) * top_val(e)
          else
@@ -5076,12 +5075,11 @@ return
 end subroutine get_val
 
 !=======================================================================
-subroutine get_val_distrib(val, state_ens_handle, ens_size, win, lon_index, lat_index, level, obs_kind, istatus)
+subroutine get_val_distrib(val, state_ens_handle, ens_size, lon_index, lat_index, level, obs_kind, istatus)
 
 integer,             intent(in)  :: ens_size !> how may pieces of state to grab
 real(r8),            intent(out) :: val(ens_size)
 type(ensemble_type), intent(in)  :: state_ens_handle
-integer,             intent(in)  :: win !> window for mpi one-sided communication
 integer,             intent(in)  :: lon_index, lat_index, level, obs_kind
 integer,             intent(out) :: istatus
 
@@ -5103,7 +5101,7 @@ end if
 
 indx = index_from_grid(level, lon_index, lat_index, field_type)
 !val = x(indx)
-call get_state(val, indx, win, state_ens_handle, ens_size)
+call get_state(val, indx, state_ens_handle)
 
 return
 
@@ -5268,7 +5266,7 @@ end subroutine vector_to_prog_var
 !#######################################################################
 
 subroutine get_close_obs_distrib(filt_gc, base_obs_loc, base_obs_type, locs, kinds, &
-                            num_close, close_indices, distances, state_ens_handle, win)
+                            num_close, close_indices, distances, state_ens_handle)
 !----------------------------------------------------------------------------
 !
 ! get_close_obs takes as input an observation location, a DART TYPE (not KIND),
@@ -5296,7 +5294,6 @@ subroutine get_close_obs_distrib(filt_gc, base_obs_loc, base_obs_type, locs, kin
 !    throw away ens_mean after it's been used (or don't worry about it for now).
 
 type(ensemble_type) :: state_ens_handle
-integer             :: win
 
 type(get_close_type),         intent(in)    :: filt_gc
 type(location_type),          intent(in)    :: base_obs_loc
@@ -5325,7 +5322,7 @@ if (base_which == VERTISPRESSURE) then
       local_base_which   = base_which
    else if (vert_coord == 'log_invP') then
       ! change so that ln pressure is the vertical coordinate:
-      call convert_vert_distrib(state_ens_handle, win, base_array, base_which, local_base_array, local_base_which, base_obs_loc, base_obs_kind)
+      call convert_vert_distrib(state_ens_handle, base_array, base_which, local_base_array, local_base_which, base_obs_loc, base_obs_kind)
       local_base_obs_loc = set_location(base_array(1), base_array(2), local_base_array(3), &
                                         local_base_which)
    end if
@@ -5339,7 +5336,7 @@ else
    !so any errors introduced by this approx will be continuous and random,
    !introducing no bias.
 
-   call convert_vert_distrib(state_ens_handle, win, base_array, base_which, local_base_array, local_base_which, base_obs_loc, base_obs_kind)
+   call convert_vert_distrib(state_ens_handle, base_array, base_which, local_base_array, local_base_which, base_obs_loc, base_obs_kind)
    ! CS; Set arguments must be in degrees.
    local_base_obs_loc = set_location(base_array(1), base_array(2), local_base_array(3), &
                                      local_base_which)
@@ -5379,7 +5376,7 @@ do k = 1, num_close
          local_obs_which    = obs_which
       else if (vert_coord == 'log_invP') then
 
-         call convert_vert_distrib(state_ens_handle, win, obs_array, obs_which, local_obs_array, local_obs_which,  locs(t_ind), kinds(t_ind))
+         call convert_vert_distrib(state_ens_handle, obs_array, obs_which, local_obs_array, local_obs_which,  locs(t_ind), kinds(t_ind))
 
          ! save the converted location back into the original list.
          ! huge improvement in speed since we only do the vertical convert
@@ -5394,7 +5391,7 @@ do k = 1, num_close
       ! but need to be defined for set_loc and are used in the damping section below no matter what.
       ! CS 2nd line of args added for coord_ind_cs.
       ! D2C changed order of args for easier reading.
-      call convert_vert_distrib(state_ens_handle, win, obs_array, obs_which, local_obs_array, local_obs_which, &
+      call convert_vert_distrib(state_ens_handle, obs_array, obs_which, local_obs_array, local_obs_which, &
                         locs(t_ind), kinds(t_ind))
 
       ! save the converted location back into the original list.
@@ -5462,7 +5459,7 @@ end subroutine get_close_obs_distrib
 
 
 !=======================================================================
-   subroutine convert_vert_distrib(state_ens_handle, win, old_array, old_which, new_array, new_which, old_loc, old_kind)
+   subroutine convert_vert_distrib(state_ens_handle, old_array, old_which, new_array, new_which, old_loc, old_kind)
 !=======================================================================
 !
 ! Uses model information and subroutines to convert the vertical location of an ob
@@ -5480,7 +5477,6 @@ end subroutine get_close_obs_distrib
 ! and do horizontal distance if they are different, 3D distance if they are the same.
 
 type(ensemble_type),    intent(in)    :: state_ens_handle
-integer,                intent(in)    :: win !> mpi one-sided communication window
 real(r8), dimension(3), intent(in)    :: old_array
 integer,                intent(in)    :: old_which
 real(r8), dimension(3), intent(inout) :: new_array
@@ -5493,17 +5489,9 @@ integer,                intent(in)    :: old_kind
 integer   :: num_levs, top_lev, bot_lev
 integer   :: quad_corners(4), closest
 integer   :: lon_ind, lat_ind, kind_indx
-real(r8)  :: p_surf, frac, l, m
+real(r8)  :: p_surf, frac, l, m, p_surf_corner(4)
 
 character(len=8) :: cam_varname
-
-!HK 
-integer   :: ens_size
-real(r8), allocatable  :: all_psurf(:)
-integer,  allocatable  :: istatus(:)
-
-ens_size = state_ens_handle%num_copies -5
-allocate(all_psurf(ens_size), istatus(ens_size)) !> @todo You only need the mean size
 
 ! this code does not alter the lat/lon, only the vertical.
 ! but still return a full location for subsequent use.
@@ -5547,9 +5535,8 @@ if (old_which == VERTISLEVEL ) then
          call coord_index('lon     ', old_array(1), lon_ind)
          call coord_index('slat    ', old_array(2), lat_ind)
          !p_surf = ps_stagr_lat(lon_index, lat_index)
-         all_psurf = 0.5*(get_surface_pressure(win,state_ens_handle,ens_size, lon_ind, lat_ind) + &
-                     get_surface_pressure(win,state_ens_handle,ens_size, lon_ind, lat_ind +1) )
-         p_surf = all_psurf(ens_size) !> @todo Sort this out
+         p_surf = 0.5*(get_surface_pressure(state_ens_handle, lon_ind, lat_ind) + &
+                     get_surface_pressure(state_ens_handle, lon_ind, lat_ind +1) )
          ! WHAT ABOUT FIELDS THAT MIGHT COME ON ilevS ?   have lev_which_dimid from above;
          !     test = ilev%dim_id or lev%dim_id
          ! Next get the values on the levels for this ps
@@ -5560,7 +5547,7 @@ if (old_which == VERTISLEVEL ) then
          call coord_index('lat     ', old_array(2), lat_ind)
          print*, 'can this work 1'
          p_surf = ps_stagr_lon(lon_ind,lat_ind)
-         call plevs_cam (p_surf, num_levs, p_col)
+         call plevs_cam(p_surf, num_levs, p_col)
       else
          call coord_index('lon     ', old_array(1), lon_ind)
          call coord_index('lat     ', old_array(2), lat_ind)
@@ -5585,27 +5572,44 @@ if (old_which == VERTISLEVEL ) then
 ! obs_which not needed?
 !                         .true., old_which)
       !p_surf = ps(closest,1)
-      all_psurf = get_surface_pressure(win, state_ens_handle, ens_size, closest, 1)
-      p_surf = all_psurf(ens_size)
+      p_surf = get_surface_pressure(state_ens_handle, closest, 1)
       !HK p_col(1:num_levs) = p(1:num_levs,closest,1) !> @todo Is this a 3D pressure array?
       call plevs_cam(p_surf, num_levs, p_col)
    end if
 else
+   !> @todo What is this code doing? Can you do this without calling interp?
    ! Find ps at the ob point.  Need to interpolate.
    if (l_rectang) then
-      ! Only interested in P (columns), so don't need to worry about staggered grids here.
-      call interp_lonlat_distrib(state_ens_handle, win, old_loc, KIND_SURFACE_PRESSURE, all_psurf, istatus)
-      p_surf = all_psurf(ens_size) !> @todo Sort this out only need the mean
+       call error_handler(E_ERR, 'not done for l_rectang', 'yet. Why do you need to call interploate?')
+   !   ! Only interested in P (columns), so don't need to worry about staggered grids here.
+   !   call interp_lonlat_distrib(state_ens_handle, old_loc, KIND_SURFACE_PRESSURE, all_psurf, istatus)
+   !   p_surf = all_psurf(ens_size) !> @todo Sort this out only need the mean
    else
-      call interp_cubed_sphere_distrib(state_ens_handle, win, old_loc, KIND_SURFACE_PRESSURE, all_psurf, istatus)
-      p_surf = all_psurf(ens_size) !> @todo Sort this out only need the mean
+      !call interp_cubed_sphere_distrib(state_ens_handle, old_loc, KIND_SURFACE_PRESSURE, all_psurf, istatus)
+      !p_surf = all_psurf(ens_size) !> @todo Sort this out only need the mean
+
+      !HK idea: get the psurf at each of the indices and interpolate?
+      ! Stolen from the interpolate part of model_interpolate
+      call coord_ind_cs(old_loc, old_kind, cs_locs, cs_kinds, quad_corners, l, m, closest, .false.)
+      p_surf_corner(1) = get_surface_pressure(state_ens_handle, quad_corners(1), 1)
+      p_surf_corner(2) = get_surface_pressure(state_ens_handle, quad_corners(2), 1)
+      p_surf_corner(3) = get_surface_pressure(state_ens_handle, quad_corners(3), 1)
+      p_surf_corner(4) = get_surface_pressure(state_ens_handle, quad_corners(4), 1)
+      p_surf  = p_surf_corner(2) *        l *       m  &
+              + p_surf_corner(1) * (1._r8-l)*       m  &
+              + p_surf_corner(4) * (1._r8-l)*(1._r8-m) &
+              + p_surf_corner(3) *        l *(1._r8-m)
+
    end if
    ! 4 means that ob is beyond lat_max from namelist, so go ahead, ignoring it.
    ! HK convert_vert uses the mean only - this is messy
-   if (istatus(ens_size) /= 0 .and. istatus(ens_size) /= 4) then
-      write(string1,'(A,I8)') 'inter_X failed for KIND_SURFACE_PRESSURE.  istatus = ',istatus
-      call error_handler(E_ERR, 'convert_vert', string1,source,revision,revdate)
-   end if
+   !> @todo No status to check now, what should you do?
+   !if (istatus(ens_size) /= 0 .and. istatus(ens_size) /= 4) then
+   !   write(string1,'(A,I8)') 'inter_X failed for KIND_SURFACE_PRESSURE.  istatus = ',istatus
+   !   call error_handler(E_ERR, 'convert_vert', string1,source,revision,revdate)
+   !end if
+
+
 end if
 
 ! Need the vertical pressure structure for this column
@@ -6612,7 +6616,7 @@ return
 end subroutine plevs_cam_distrib
 
 !===============================================================================
-   subroutine model_heights_distrib(state_ens_handle, win, ens_size, p_surf, num_levs, base_obs_loc, model_h_distrib, istatus)
+   subroutine model_heights_distrib(state_ens_handle, ens_size, p_surf, num_levs, base_obs_loc, model_h_distrib, istatus)
 
 !===============================================================================
 ! This routine calculates geometrical height (m) at mid-layers of the CAM model
@@ -6632,7 +6636,6 @@ end subroutine plevs_cam_distrib
 
 ! type(model_type), intent(in) :: Var
 type(ensemble_type), intent(in) :: state_ens_handle
-integer,             intent(in) :: win
 integer,             intent(in) :: ens_size
 real(r8),            intent(in) :: p_surf(ens_size)
 integer,             intent(in) :: num_levs
@@ -6701,12 +6704,12 @@ end do
 if (l_rectang) then
    ! ens_mean can be passed when interpolating phis because KIND_SURFACE_ELEVATION
    ! is handled by explicit references to phis, not ens_mean.
-   call interp_lonlat_distrib(state_ens_handle, win,  base_obs_loc, KIND_SURFACE_ELEVATION, phi_surf, vstatus)
+   call interp_lonlat_distrib(state_ens_handle, base_obs_loc, KIND_SURFACE_ELEVATION, phi_surf, vstatus)
 !  call interp_lonlat(ens_mean, base_obs_loc, KIND_SURFACE_ELEVATION, phi_surf, vstatus)
    track_vstatus = vstatus
 
    do k = 1, num_levs
-      call interp_lonlat_distrib(state_ens_handle, win,      base_obs_loc, KIND_TEMPERATURE,       t(:, k), vstatus)
+      call interp_lonlat_distrib(state_ens_handle, base_obs_loc, KIND_TEMPERATURE,       t(:, k), vstatus)
 !     call interp_lonlat(ens_mean, base_obs_loc, KIND_TEMPERATURE,       t(k), vstatus)
       do e = 1, ens_size
          if (vstatus(e) > 0) then
@@ -6714,7 +6717,7 @@ if (l_rectang) then
          endif
       enddo
 
-      call interp_lonlat_distrib(state_ens_handle, win,      base_obs_loc, KIND_SPECIFIC_HUMIDITY, q(:, k), vstatus)
+      call interp_lonlat_distrib(state_ens_handle, base_obs_loc, KIND_SPECIFIC_HUMIDITY, q(:, k), vstatus)
 !     call interp_lonlat(ens_mean, base_obs_loc, KIND_SPECIFIC_HUMIDITY, q(k), vstatus)
       do e = 1, ens_size
          if (vstatus(e) > 0) then
@@ -6724,19 +6727,19 @@ if (l_rectang) then
       tv(:, k) = t(:, k)*(1.0_r8 + rr_factor*q(:, k))
    end do
 else
-   call interp_cubed_sphere_distrib(state_ens_handle, win,      base_obs_loc, KIND_SURFACE_ELEVATION, phi_surf, vstatus)
+   call interp_cubed_sphere_distrib(state_ens_handle, base_obs_loc, KIND_SURFACE_ELEVATION, phi_surf, vstatus)
 !  call interp_cubed_sphere(ens_mean, base_obs_loc, KIND_SURFACE_ELEVATION, phi_surf, vstatus)
       track_vstatus = vstatus
    ! ? Use vstatus to tell interp_cubed_sphere to use the same location as last call?
    do k = 1, num_levs
-      call interp_cubed_sphere_distrib(state_ens_handle, win,      base_obs_loc, KIND_TEMPERATURE,       t(:, k), vstatus)
+      call interp_cubed_sphere_distrib(state_ens_handle, base_obs_loc, KIND_TEMPERATURE,       t(:, k), vstatus)
 !     call interp_cubed_sphere(ens_mean, base_obs_loc, KIND_TEMPERATURE,       t(k), vstatus)
       do e = 1, ens_size
          if (vstatus(e) > 0) then
             track_vstatus(e) = k
          endif
       enddo
-      call interp_cubed_sphere_distrib(state_ens_handle, win,      base_obs_loc, KIND_SPECIFIC_HUMIDITY, q(:, k), vstatus)
+      call interp_cubed_sphere_distrib(state_ens_handle, base_obs_loc, KIND_SPECIFIC_HUMIDITY, q(:, k), vstatus)
 !     call interp_cubed_sphere(ens_mean, base_obs_loc, KIND_SPECIFIC_HUMIDITY, q(k), vstatus)
       do e = 1, ens_size
          if (vstatus(e) > 0) then
@@ -7206,15 +7209,14 @@ end subroutine init_time
 
 !--------------------------------------------------------------------------
 !> This is supposed to replace set_ps_arrays_distrib
-function get_surface_pressure(win, state_ens_handle, ens_size, lon_ind, lat_ind)
+function get_surface_pressure_state(state_ens_handle, ens_size, lon_ind, lat_ind)
 
 integer,             intent(in)  :: ens_size
-integer,             intent(in)  :: win
 type(ensemble_type), intent(in)  :: state_ens_handle
 integer,             intent(in)  :: lon_ind
 integer,             intent(in)  :: lat_ind
 
-real(r8) :: get_surface_pressure(ens_size)
+real(r8) :: get_surface_pressure_state(ens_size)
 integer  :: ifld !> pressure field index
 integer  :: ind !> index into state vector
 
@@ -7224,20 +7226,42 @@ ifld = find_name('PS      ',cflds)
 ind = index_from_grid(1, lon_ind, lat_ind, ifld)
 
 ! get correct piece of state
-call get_state(get_surface_pressure, ind, win, state_ens_handle, ens_size)
+call get_state(get_surface_pressure_state, ind, state_ens_handle)
 
-end function get_surface_pressure
+end function get_surface_pressure_state
+
+!-------------------------------------------------------------------------
+!> Non-array version of get_surface_pressure
+function get_surface_pressure_mean(state_ens_handle, lon_ind, lat_ind)
+
+type(ensemble_type), intent(in) :: state_ens_handle
+integer,             intent(in) :: lon_ind
+integer,             intent(in) :: lat_ind
+
+real(r8) :: get_surface_pressure_mean
+integer  :: ifld !> pressure field index
+integer  :: ind !> index into state vector
+
+ifld = find_name('PS      ',cflds)
+
+! find index into state
+ind = index_from_grid(1, lon_ind, lat_ind, ifld)
+
+! get correct piece of state
+call get_state(get_surface_pressure_mean, ind, state_ens_handle)
+
+end function get_surface_pressure_mean
+
 
 !--------------------------------------------------------------------
 !> This returns the vertical coordinate of an observation in the
 !> requested vertical localization coordinate. 
 !> Aim: to have only the process who owns the observation do this calulation, 
 !> rather than all processeses doing the same calculation in get_close_obs_distrib
-subroutine convert_base_obs_location(obs_loc, state_ens_handle, win, vert_coord, istatus)
+subroutine convert_base_obs_location(obs_loc, state_ens_handle, vert_coord, istatus)
 
 type(location_type), intent(inout) :: obs_loc
 type(ensemble_type),    intent(in) :: state_ens_handle
-integer,                intent(in) :: win
 real(r8),              intent(out) :: vert_coord
 integer,               intent(out) :: istatus
 
@@ -7251,7 +7275,7 @@ base_obs_kind = 1 ! dummy for now, should check for identity obs
 base_which = nint(query_location(obs_loc))
 
 !if (base_which /= wrf%dom(1)%localization_coord) then *** WRF specific! ***
-   !call convert_vert_distrib(state_ens_handle, win, obs_loc, base_obs_kind, istatus_v)
+   !call convert_vert_distrib(state_ens_handle, obs_loc, base_obs_kind, istatus_v)
 !endif
 if (base_which /= VERTISPRESSURE) then
    call error_handler(E_ERR, 'convert_base_obs_location ', 'broken here fix this')
