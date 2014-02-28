@@ -649,12 +649,16 @@ AdvanceTime : do
    deallocate(ens_handle%vars)
    deallocate(forward_op_ens_handle%vars)
 
+   !call test_state_copies(ens_handle, 'before_filter_assim')
+
    call filter_assim(ens_handle, obs_ens_handle, seq, keys, &
       ens_size, num_groups, obs_val_index, prior_inflate, &
       ENS_MEAN_COPY, ENS_SD_COPY, &
       PRIOR_INF_COPY, PRIOR_INF_SD_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
       OBS_MEAN_START, OBS_MEAN_END, OBS_VAR_START, &
       OBS_VAR_END, inflate_only = .false.)
+
+   !call test_state_copies(ens_handle, 'after_filter_assim')
 
    allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
    allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))

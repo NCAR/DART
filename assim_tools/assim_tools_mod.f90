@@ -633,11 +633,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! What gets broadcast depends on what kind of inflation is being done
       if(local_varying_ss_inflate) then
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, orig_obs_prior_mean, &
-            orig_obs_prior_var, net_a, scalar1=obs_qc)
+            orig_obs_prior_var, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord, scalar3=vert_qc)
 
       else if(local_single_ss_inflate .or. local_obs_inflate) then
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, &
-           scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc)
+           scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, scalar4=vert_obs_loc_in_localization_coord, scalar5=vert_qc)
       else
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord, scalar3=vert_qc)
       endif
@@ -649,10 +649,10 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Also get qc and inflation information if needed
       if(local_varying_ss_inflate) then
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, orig_obs_prior_mean, &
-            orig_obs_prior_var, net_a, scalar1=obs_qc)
+            orig_obs_prior_var, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord, scalar3=vert_qc)
       else if(local_single_ss_inflate .or. local_obs_inflate) then
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, &
-            scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc)
+            scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, scalar4=vert_obs_loc_in_localization_coord, scalar5=vert_qc)
       else
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord, scalar3=vert_qc)
       endif
@@ -690,6 +690,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !--------------------------------------------------------
    !> @todo have to set location so you are bitwise with Lanai for WRF. There is a bitwise creep with get and set location
    if(ens_handle%my_pe /= owner) then
+      !print*, 'base_obs_loc before set', base_obs_loc, 'rank ', my_task_id()
       xyz_loc = get_location(base_obs_loc)
       base_obs_loc = set_location(xyz_loc(1),xyz_loc(2),base_obs_loc%vloc,base_obs_loc%which_vert)
       !print*, 'base_obs_loc after set', base_obs_loc, 'rank ', my_task_id()
@@ -968,6 +969,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
 
    end do STATE_UPDATE
+
+   !call test_state_copies(ens_handle, 'after_state_updates')
+
    !------------------------------------------------------
 
    ! Now everybody updates their obs priors (only ones after this one)
@@ -1016,6 +1020,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          endif
       endif
    end do OBS_UPDATE
+
+   !call test_state_copies(ens_handle, 'after_obs_updates')
+
 end do SEQUENTIAL_OBS
 
 ! Every pe needs to get the current my_inflate and my_inflate_sd back
