@@ -62,7 +62,7 @@ use fwd_op_win_mod
 implicit none
 private
 
-public :: filter_assim, set_assim_tools_trace, get_missing_ok_status
+public :: filter_assim, set_assim_tools_trace, get_missing_ok_status, test_state_copies
 
 ! Indicates if module initialization subroutine has been called yet
 logical :: module_initialized = .false.
@@ -808,9 +808,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Find state variables on my process that are close to observation being assimilated
    if (.not. close_obs_caching) then
 
-       !call get_close_obs(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
-         !num_close_states, close_state_ind, close_state_dist)
-         print*, ' ***** WARNING ****  no close buffering '
+       call get_close_obs_distrib(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
+         num_close_states, close_state_ind, close_state_dist, ens_handle)
    else
       if (base_obs_loc == last_base_states_loc) then
          num_close_states    = last_num_close_states
@@ -2737,7 +2736,7 @@ character*129 :: file_copies !> output file name
 integer :: i
 
 write(task_str, '(i10)') state_ens_handle%my_pe
-file_copies = TRIM('statecopies'  // TRIM(ADJUSTL(information)) // '.' // TRIM(ADJUSTL(task_str)))
+file_copies = TRIM('statecopies_'  // TRIM(ADJUSTL(information)) // '.' // TRIM(ADJUSTL(task_str)))
 open(15, file=file_copies, status ='unknown')
 
 do i = 1, state_ens_handle%num_copies 

@@ -37,7 +37,8 @@ use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, 
 use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
                                  netcdf_file_type, init_diag_output, finalize_diag_output,   & 
                                  aoutput_diagnostics, ens_mean_for_model, end_assim_model
-use assim_tools_mod,      only : filter_assim, set_assim_tools_trace, get_missing_ok_status
+use assim_tools_mod,      only : filter_assim, set_assim_tools_trace, get_missing_ok_status, &
+                                 test_state_copies
 use obs_model_mod,        only : move_ahead, advance_state, set_obs_model_trace
 use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,                &
                                  ensemble_type, get_copy, get_my_num_copies, put_copy,       &
@@ -530,6 +531,8 @@ AdvanceTime : do
 
    if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
       call trace_message('Before prior inflation damping and prep')
+      call test_state_copies(ens_handle, 'before_prior_inflation')
+
       if (inf_damping(1) /= 1.0_r8) then
          call prepare_to_update_copies(ens_handle)
          ens_handle%copies(PRIOR_INF_COPY, :) = 1.0_r8 + &
@@ -537,6 +540,8 @@ AdvanceTime : do
       endif
 
       call filter_ensemble_inflate(ens_handle, PRIOR_INF_COPY, prior_inflate, ENS_MEAN_COPY)
+
+      call test_state_copies(ens_handle, 'after_prior_inflation')
 
       ! Recompute the the mean and spread as required for diagnostics
       call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -566,32 +571,11 @@ AdvanceTime : do
    finish = MPI_WTIME()
 
    if (my_task_id() == 0) print*, 'distributed average ', (finish-start)
+   call test_obs_copies(obs_ens_handle, 'prior')
 
-  ! HK record results to file
-   write(task_str, '(i10)') ens_handle%my_pe
-   file_obscopies = TRIM('obscopies' // TRIM(ADJUSTL(task_str)))
-   open(15, file=file_obscopies, status ='unknown')
-
-   do i = 1, obs_ens_handle%num_copies - 4
-      write(15, *) obs_ens_handle%copies(i,:)
-   enddo
-
-   close(15)
-!
-!   !deallocate(results)
    allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
    allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
    allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
-
-!   write(task_str, '(i10)') ens_handle%my_pe
-!   file_obscopies = TRIM('copy_complete' // TRIM(ADJUSTL(task_str)))
-!   open(15, file=file_obscopies, status ='unknown')
-
-!   do i = 1, ens_handle%num_copies
-!      write(15, *) ens_handle%copies(i,:)
-!   enddo
-!
-!   close(15)
 
 !   goto 10011 !HK bail out after forward operators
 
@@ -704,14 +688,19 @@ AdvanceTime : do
 !-------- Test of posterior inflate ----------------
 
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
+
       call trace_message('Before posterior inflation damping and prep')
+      call test_state_copies(ens_handle, 'before_test_of_inflation')
+
       if (inf_damping(2) /= 1.0_r8) then
          call prepare_to_update_copies(ens_handle)
          ens_handle%copies(POST_INF_COPY, :) = 1.0_r8 + &
             inf_damping(2) * (ens_handle%copies(POST_INF_COPY, :) - 1.0_r8) 
       endif
 
-      call filter_ensemble_inflate(ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY) 
+    call filter_ensemble_inflate(ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY)
+
+    call test_state_copies(ens_handle, 'after_test_of_inflation')
 
       ! Recompute the mean or the mean and spread as required for diagnostics
       call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -733,6 +722,8 @@ AdvanceTime : do
      seq, keys, obs_val_index, input_qc_index, &
      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
      OBS_MEAN_START, OBS_VAR_START, isprior=.false.)
+
+   call test_obs_copies(obs_ens_handle, 'post')
 
    call timestamp_message('After  computing posterior observation values')
    call     trace_message('After  computing posterior observation values')
@@ -2169,8 +2160,32 @@ end select
 
 end function failed_outlier
 
-!-------------------------------------------------------------------------
+!==================================================================
+! TEST FUNCTIONS BELOW THIS POINT
+!------------------------------------------------------------------
+!> dump out obs_copies to file
+subroutine test_obs_copies(obs_ens_handle, information)
 
+type(ensemble_type), intent(in) :: obs_ens_handle
+character(len=*),    intent(in) :: information
+
+character*20  :: task_str !> string to hold the task number
+character*129 :: file_obscopies !> output file name
+integer :: i
+
+write(task_str, '(i10)') obs_ens_handle%my_pe
+file_obscopies = TRIM('obscopies_' // TRIM(ADJUSTL(information)) // TRIM(ADJUSTL(task_str)))
+open(15, file=file_obscopies, status ='unknown')
+
+do i = 1, obs_ens_handle%num_copies - 4
+   write(15, *) obs_ens_handle%copies(i,:)
+enddo
+
+close(15)
+
+end subroutine test_obs_copies
+
+!-------------------------------------------------------------------
 end program filter
 
 ! <next few lines under version control, do not edit>
