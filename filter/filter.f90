@@ -531,7 +531,7 @@ AdvanceTime : do
 
    if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
       call trace_message('Before prior inflation damping and prep')
-      call test_state_copies(ens_handle, 'before_prior_inflation')
+      !call test_state_copies(ens_handle, 'before_prior_inflation')
 
       if (inf_damping(1) /= 1.0_r8) then
          call prepare_to_update_copies(ens_handle)
@@ -541,7 +541,7 @@ AdvanceTime : do
 
       call filter_ensemble_inflate(ens_handle, PRIOR_INF_COPY, prior_inflate, ENS_MEAN_COPY)
 
-      call test_state_copies(ens_handle, 'after_prior_inflation')
+      !call test_state_copies(ens_handle, 'after_prior_inflation')
 
       ! Recompute the the mean and spread as required for diagnostics
       call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -571,7 +571,7 @@ AdvanceTime : do
    finish = MPI_WTIME()
 
    if (my_task_id() == 0) print*, 'distributed average ', (finish-start)
-   call test_obs_copies(obs_ens_handle, 'prior')
+   !call test_obs_copies(obs_ens_handle, 'prior')
 
    allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
    allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
@@ -694,7 +694,7 @@ AdvanceTime : do
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
 
       call trace_message('Before posterior inflation damping and prep')
-      call test_state_copies(ens_handle, 'before_test_of_inflation')
+      !call test_state_copies(ens_handle, 'before_test_of_inflation')
 
       if (inf_damping(2) /= 1.0_r8) then
          call prepare_to_update_copies(ens_handle)
@@ -704,7 +704,7 @@ AdvanceTime : do
 
     call filter_ensemble_inflate(ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY)
 
-    call test_state_copies(ens_handle, 'after_test_of_inflation')
+    !call test_state_copies(ens_handle, 'after_test_of_inflation')
 
       ! Recompute the mean or the mean and spread as required for diagnostics
       call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -727,7 +727,7 @@ AdvanceTime : do
      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
      OBS_MEAN_START, OBS_VAR_START, isprior=.false.)
 
-   call test_obs_copies(obs_ens_handle, 'post')
+   !call test_obs_copies(obs_ens_handle, 'post')
 
    call timestamp_message('After  computing posterior observation values')
    call     trace_message('After  computing posterior observation values')
