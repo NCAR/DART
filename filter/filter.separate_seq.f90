@@ -218,7 +218,6 @@ character*20 task_str, file_obscopies, file_results
 
 !HK debug
 logical :: write_flag
-logical :: skipit = .true.
 
 call filter_initialize_modules_used()
 
@@ -363,20 +362,12 @@ call     trace_message('Before initializing output files')
 call timestamp_message('Before initializing output files')
 
 ! Initialize the output sequences and state files and set their meta data
-if(my_task_id() == 0) then
-   call filter_generate_copy_meta_data(seq, prior_inflate, &
-      PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
-      output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
-      prior_obs_spread_index, posterior_obs_spread_index)
-   if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation)
-else
-   output_state_mean_index = 0
-   output_state_spread_index = 0
-   prior_obs_mean_index = 0
-   posterior_obs_mean_index = 0
-   prior_obs_spread_index = 0 
-   posterior_obs_spread_index = 0
-endif
+! HK every one needs to have this now.
+call filter_generate_copy_meta_data(seq, prior_inflate, &
+   PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
+   output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
+   prior_obs_spread_index, posterior_obs_spread_index)
+if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation)
 
 call timestamp_message('After  initializing output files')
 call     trace_message('After  initializing output files')
@@ -519,7 +510,7 @@ AdvanceTime : do
    call init_ensemble_manager(forward_op_ens_handle, ens_size, num_obs_in_set, 1)
 
    ! Allocate storage for the keys for this number of observations
-   allocate(keys(num_obs_in_set))
+   allocate(keys(num_obs_in_set)) !> @todo only needs to be my_vars long in the distributed version
 
    ! Get all the keys associated with this set of observations
    ! Is there a way to distribute this?
@@ -534,7 +525,7 @@ AdvanceTime : do
 
    if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
       call trace_message('Before prior inflation damping and prep')
-      !call test_state_copies(ens_handle, 'before_prior_inflation')
+      call test_state_copies(ens_handle, 'before_prior_inflation')
 
       if (inf_damping(1) /= 1.0_r8) then
          call prepare_to_update_copies(ens_handle)
@@ -574,7 +565,7 @@ AdvanceTime : do
    finish = MPI_WTIME()
 
    if (my_task_id() == 0) print*, 'distributed average ', (finish-start)
-   !call test_obs_copies(obs_ens_handle, 'prior')
+   call test_obs_copies(obs_ens_handle, 'prior')
 
    allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
    allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
@@ -623,17 +614,15 @@ AdvanceTime : do
 
    call trace_message('Before observation space diagnostics')
 
-! The skipit is an optional arguement to skip the first part of obs_space_diagnostics
-! I can't skip the second part of obs_space_diagnostics because this is where the mean obs
-! copy ( + others ) is moved to task 0 so task 0 can update seq. 
-! There is a transpose (all_copies_to_all_vars(obs_ens_handle)) in obs_space_diagnostics
+
+   ! Everyone is updating their local seq. Not sure if this is wise.
    !Do prior observation space diagnostics and associated quality control
    call obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, &
       seq, keys, PRIOR_DIAG, num_output_obs_members, in_obs_copy+1, &
       obs_val_index, OBS_KEY_COPY, &                                 ! new
       prior_obs_mean_index, prior_obs_spread_index, num_obs_in_set, &
       OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
-      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, skipit)
+      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
    call trace_message('After  observation space diagnostics')
 !*********************
 
@@ -662,11 +651,6 @@ AdvanceTime : do
       OBS_VAR_END, inflate_only = .false.)
 
    !call test_state_copies(ens_handle, 'after_filter_assim')
-
-   allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
-   allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
-   allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
-
 
    call timestamp_message('After  observation assimilation')
    call     trace_message('After  observation assimilation')
@@ -697,7 +681,7 @@ AdvanceTime : do
    if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
 
       call trace_message('Before posterior inflation damping and prep')
-      !call test_state_copies(ens_handle, 'before_test_of_inflation')
+      call test_state_copies(ens_handle, 'before_test_of_inflation')
 
       if (inf_damping(2) /= 1.0_r8) then
          call prepare_to_update_copies(ens_handle)
@@ -707,7 +691,7 @@ AdvanceTime : do
 
     call filter_ensemble_inflate(ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY)
 
-    !call test_state_copies(ens_handle, 'after_test_of_inflation')
+    call test_state_copies(ens_handle, 'after_test_of_inflation')
 
       ! Recompute the mean or the mean and spread as required for diagnostics
       call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -730,7 +714,7 @@ AdvanceTime : do
      OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
      OBS_MEAN_START, OBS_VAR_START, isprior=.false.)
 
-   !call test_obs_copies(obs_ens_handle, 'post')
+   call test_obs_copies(obs_ens_handle, 'post')
 
    call timestamp_message('After  computing posterior observation values')
    call     trace_message('After  computing posterior observation values')
@@ -740,6 +724,11 @@ AdvanceTime : do
       call smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
       call trace_message('After  computing smoother means/spread')
    endif
+
+   allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
+   allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+   allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
+
 
 !***********************
 !! Diagnostic files.
@@ -775,7 +764,7 @@ AdvanceTime : do
       obs_val_index, OBS_KEY_COPY, &                             ! new
       posterior_obs_mean_index, posterior_obs_spread_index, num_obs_in_set, &
       OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
-      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, skipit)
+      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
 
 !***********************
 
@@ -900,7 +889,10 @@ call finalize_mpi_utilities(async=async)
 end subroutine filter_main
 
 !-----------------------------------------------------------
-
+!> Every task now calls this, instead of just task 0. What problems does this 
+!> cause?
+!>
+!> @todo Find out any probles caused by all tasks calling this routine.
 subroutine filter_generate_copy_meta_data(seq, prior_inflate, PriorStateUnit, &
    PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
    output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
@@ -1611,13 +1603,19 @@ deallocate(istatus)
 end subroutine get_obs_ens_distrib_state
 
 !-------------------------------------------------------------------------
-
+!> Observation space diagnostics for prior and posterior
+!>
+!> Can optionally write out which forward operators failed and why. This is now 
+!> done by each task, rather than sending the forward operator copy to task 0.
+!> 
+!> For the distributed version, should each task deal with a local seq that only 
+!> has my_num_vars?
 subroutine obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, &
    seq, keys, prior_post, num_output_members, members_index, &
    obs_val_index, OBS_KEY_COPY, &
    ens_mean_index, ens_spread_index, num_obs_in_set, &
    OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, OBS_VAL_COPY, &
-   OBS_ERR_VAR_COPY, DART_qc_index, skip)
+   OBS_ERR_VAR_COPY, DART_qc_index)
 
 ! Do prior observation space diagnostics on the set of obs corresponding to keys
 
@@ -1633,268 +1631,99 @@ type(obs_sequence_type), intent(inout) :: seq
 integer,                 intent(in)    :: OBS_MEAN_START, OBS_VAR_START
 integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, DART_qc_index
-logical,  optional, intent(in) :: skip
 
 integer               :: j, k, ens_offset, forward_min, forward_max
 integer               :: forward_unit, ivalue
 real(r8)              :: error, diff_sd, ratio
-real(r8), allocatable :: obs_temp(:), forward_temp(:)
 real(r8)              :: obs_prior_mean, obs_prior_var, obs_val, obs_err_var
 real(r8)              :: rvalue(1)
 logical               :: do_outlier, good_forward_op, failed
 
-if (present(skip)) then
-   if (skip) goto 102 ! skip the first part of obs_diag
-   ! HK Currently ignoring the outputting the forward operator
-endif
+! HK individual forward operator file for each task
+character*20 :: task_str
+character*129 :: forward_op_file
+
 ! Assume that mean and spread have been computed if needed???
 ! Assume that things are copy complete???
 
-! Getting the copies requires communication, so need to only do it
-! once per copy. This puts the observation loop on the inside
-! which may itself be expensive. Check out cost later.
-
 !PAR: REMEMBER THAT SOME THINGS NEED NOT BE DONE IF QC IS BAD ALREADY!!!
+! HK What thing
 
 ! Compute the ensemble total mean and sd if required for output
 ! Also compute the mean and spread if qc and outlier_threshold check requested
 do_outlier = (prior_post == PRIOR_DIAG .and. outlier_threshold > 0.0_r8)
 
 ! Do verbose forward operator output if requested
+! What to do in the distributed case?
+! - Each process is going to write their own forward operators to a file.
+! I am assuming that the forward operators are not routinely outputed.
 if(output_forward_op_errors) then
+   print*, '***** need to test output_forward_op_errors ******'
    ! Need to open a file for prior and posterior output
-   if(my_task_id() == 0) then
-      if(prior_post == PRIOR_DIAG) then
-         forward_unit = open_file('prior_forward_op_errors', 'formatted', 'append')
-      else
-         forward_unit = open_file('post_forward_op_errors', 'formatted', 'append')
-      endif
+   write(task_str, '(i10)') my_task_id()
+   if(prior_post == PRIOR_DIAG) then
+      forward_op_file = TRIM('prior_forward_op_errors' // ADJUSTL(task_str))
+   else
+      forward_op_file = TRIM('post_forward_op_errors' // ADJUSTL(task_str))
    endif
- 
-   allocate(forward_temp(num_obs_in_set))
 
-! This is two loops: around ens_size and around observations
-! If task 0 has an ensemble copy, everyone else has to wait for zero to finish for all_vars_to_all_copies
-! If task zero does not have a copy, all_vars_to_all_copies is still a synchonization point because task zero
-! has to recieve some variables from the tasks with copies.
-! Q. What if task zero (or multiple writers ) did not take part the all_vars all all_copies?
+   forward_unit = open_file(forward_op_file, 'formatted', 'append')
 
-   do k = 1, ens_size
-      ! Get this copy to PE 0
-      call get_copy(map_task_to_pe(forward_op_ens_handle, 0), forward_op_ens_handle, k, forward_temp)
-
-      ! Loop through each observation in set for this copy
-      ! Forward temp is a real representing an integer; values /= 0 get written out
-      if(my_task_id() == 0) then
-         do j = 1, num_obs_in_set
-            if(nint(forward_temp(j)) /= 0) write(forward_unit, *) keys(j), k, nint(forward_temp(j))
-         end do
+  ! Loop through each observation owned by this task
+   ! Forward temp is a real representing an integer; values /= 0 get written out
+   ! HK are you only writting out failed forward operators?
+   !> @todo keys needs to be a local array, not ensemble size.
+   do j = 1, forward_op_ens_handle%my_num_vars
+      if(any(forward_op_ens_handle%copies(:,j) /= 0)) then
+         write(forward_unit, *) keys(forward_op_ens_handle%my_vars(j)), forward_op_ens_handle%copies(1:ens_size, j)
       endif
    end do
 
-   deallocate(forward_temp)
+   call close_file(forward_unit)
 
-   ! PE 0 does the output for each copy in turn
-   if(my_task_id() == 0) then
-      call close_file(forward_unit)
-   endif
 endif
-
-!PAR DO THESE ALWAYS NEED TO BE DONE? SEE REVERSE ONES AT END, TOO
-! SYNC: This is a synchronization problem.  It would be better to have task 0 to not have any
-! copys/vars and do the writing independent of computation ( if there are lots of tasks)
-
-call all_vars_to_all_copies(obs_ens_handle)
-call all_vars_to_all_copies(forward_op_ens_handle)
-
-! Compute mean and spread
-call compute_copy_mean_var(obs_ens_handle, &
-      1, ens_size, OBS_MEAN_START, OBS_VAR_START)
-
-call prepare_to_read_from_copies(forward_op_ens_handle)
-call prepare_to_update_copies(obs_ens_handle)
-
-! At this point can compute outlier test and consolidate forward operator qc
-do j = 1, obs_ens_handle%my_num_vars
-   good_forward_op = .false.
-
-   ! find the min and max istatus values across all ensemble members.  these are
-   ! either set by dart code, or returned by the model-specific model_interpolate() 
-   ! routine, or by forward operator code in obs_def_xxx_mod files.
-   forward_max = nint(maxval(forward_op_ens_handle%copies(1:ens_size, j)))
-   forward_min = nint(minval(forward_op_ens_handle%copies(1:ens_size, j)))
-   !print*, 'reg forward max min ', forward_max, forward_min
-   ! Now do a case statement to figure out what the qc result should be
-   ! For prior, have to test for a bunch of stuff
-   ! FIXME: note that this case statement doesn't cover every possibility;
-   ! if there's an error in the code and a minus value gets into the forward
-   ! operator istatus without being caught, it will fail all cases below.
-   ! add another line for 'internal inconsistency' to be safe.
-   if(prior_post == PRIOR_DIAG) then
-      if(forward_min == -99) then              ! Failed prior qc in get_obs_ens
-         obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 6
-      else if(forward_min == -2) then          ! Observation not used via namelist
-         obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 5
-      else if(forward_max > 0) then            ! At least one forward operator failed
-         obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 4
-      else if(forward_min == -1) then          ! Observation to be evaluated only
-         obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 1
-         good_forward_op = .true.
-      else if(forward_min == 0) then           ! All clear, assimilate this ob
-         obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 0
-         good_forward_op = .true.
-      ! FIXME: proposed enhancement - catchall for cases that we have not caught
-      !else   ! 'should not happen'
-      !   obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 9  ! inconsistent istatus codes
-      endif
-        
-      ! PAR: THIS SHOULD BE IN QC MODULE 
-      ! Check on the outlier threshold quality control: move to QC module?
-      ! bug fix: this was using the incoming qc threshold before.
-      ! it should only be doing the outlier test on dart qc values of 0 or 1.
-      ! if there is already a different qc code set, leave it alone.
-      ! only if it is still successful (assim or eval, 0 or 1), then check
-      ! for failing outlier test.
-      !print*, 'old do_outlier ', do_outlier
-      if(do_outlier .and. (obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) < 2)) then
-         obs_prior_mean = obs_ens_handle%copies(OBS_MEAN_START, j)
-         obs_prior_var = obs_ens_handle%copies(OBS_VAR_START, j)
-         obs_val = obs_ens_handle%copies(OBS_VAL_COPY, j)
-         obs_err_var = obs_ens_handle%copies(OBS_ERR_VAR_COPY, j)
-         error = obs_prior_mean - obs_val
-         diff_sd = sqrt(obs_prior_var + obs_err_var)
-         if (diff_sd /= 0.0_r8) then
-            ratio = abs(error / diff_sd)
-         else
-            ratio = 0.0_r8
-         endif
-
-         ! if special handling requested, pass in the outlier ratio for this obs,
-         ! the default outlier threshold value, and enough info to extract the specific 
-         ! obs type for this obs.
-         ! the function should return .true. if this is an outlier, .false. if it is ok.
-         if (enable_special_outlier_code) then
-            failed = failed_outlier(ratio, outlier_threshold, obs_ens_handle, &
-                                    OBS_KEY_COPY, j, seq)
-         else 
-            failed = (ratio > outlier_threshold)
-         endif
-
-         if (failed) then
-            !print*, 'FAILED REG'
-            obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 7
-         endif
-      endif
-
-   else
-      ! For failed posterior, only update qc if prior successful
-      if(forward_max > 0) then
-         ! Both the following 2 tests and assignments were on single executable lines,
-         ! but one compiler (gfortran) was confused by this, so they were put in
-         ! if/endif blocks.
-         if(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) == 0) then 
-            obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 2
-         endif
-         if(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) == 1) then 
-            obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 3
-         endif
-      endif
-      ! and for consistency, go through all the same tests as the prior, but
-      ! only use the results to set the good/bad forward op flag.
-      if ((forward_min == -99) .or. &       ! Failed prior qc in get_obs_ens
-          (forward_min == -2)  .or. &       ! Observation not used via namelist
-          (forward_max > 0)) then           ! At least one forward operator failed
-            continue; 
-      else if(forward_min == -1) then       ! Observation to be evaluated only
-         good_forward_op = .true.
-      else if(forward_min == 0) then        ! All clear, assimilate this ob
-         good_forward_op = .true.
-      endif
-   endif
-
-   ! for either prior or posterior, if the forward operator failed,
-   ! reset the mean/var to missing_r8, regardless of the DART QC status
-   ! HK does this fail if you have groups?
-   if (.not. good_forward_op) then
-      obs_ens_handle%copies(OBS_MEAN_START, j) = missing_r8
-      obs_ens_handle%copies(OBS_VAR_START,  j) = missing_r8
-   endif
-
-enddo
 
 ! PAR: NEED TO BE ABLE TO OUTPUT DETAILS OF FAILED FORWARD OBSEVATION OPERATORS
 ! OR FAILED OUTLIER, ETC. NEEDS TO BE DONE BY PE 0 ONLY. PUT IT HERE FOR FIRST
 ! BUT IN QC MOD FOR THE SECOND???  
+! HK what does the comment above mean?
 
-102 continue
-
-! Make var complete for get_copy() calls below.
-call all_copies_to_all_vars(obs_ens_handle)
-
-! allocate temp space for sending data
-allocate(obs_temp(num_obs_in_set))
-
-! Update the ensemble mean
+! Update the ensemble mean in the sequence.
+!> @todo need sequence on task 0 to cope with distributed version.
 ! Get this copy to process 0
-call get_copy(map_task_to_pe(obs_ens_handle, 0), obs_ens_handle, OBS_MEAN_START, obs_temp) 
-! Only pe 0 gets to write the sequence
-if(my_task_id() == 0) then
-     ! Loop through the observations for this time
-     do j = 1, obs_ens_handle%num_vars
-      rvalue(1) = obs_temp(j)
-      call replace_obs_values(seq, keys(j), rvalue, ens_mean_index)
-     end do
-  endif
+! HK why doesn't everyone update their local copy of seq?
 
-! Update the ensemble spread
-! Get this copy to process 0
-call get_copy(map_task_to_pe(obs_ens_handle, 0), obs_ens_handle, OBS_VAR_START, obs_temp)
-! Only pe 0 gets to write the sequence
-if(my_task_id() == 0) then
-   ! Loop through the observations for this time
-   do j = 1, obs_ens_handle%num_vars
-      ! update the spread in each obs
-      if (obs_temp(j) /= missing_r8) then
-         rvalue(1) = sqrt(obs_temp(j))
-      else
-         rvalue(1) = obs_temp(j)
-      endif
-      call replace_obs_values(seq, keys(j), rvalue, ens_spread_index)
-   end do
-endif
+! Loop through the observations for this time
+!> @todo should seq just be local?
+do j = 1, obs_ens_handle%my_num_vars
+   ! ensemble mean
+   rvalue(1) = obs_ens_handle%copies(OBS_MEAN_START, j) ! How does this work for groups?
+   call replace_obs_values(seq, keys(obs_ens_handle%my_vars(j)), rvalue, ens_mean_index)
+   ! ensemble spread
+   if (obs_ens_handle%copies(OBS_VAR_START, j) /= missing_r8) then
+      rvalue(1) = sqrt(obs_ens_handle%copies(OBS_VAR_START, j))
+   else
+      rvalue(1) = obs_ens_handle%copies(OBS_VAR_START, j)
+   endif
+   call replace_obs_values(seq, keys(obs_ens_handle%my_vars(j)), rvalue, ens_spread_index)
+   ! Update the qc global value
+   rvalue(1) = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j)
+   call replace_qc(seq, keys(obs_ens_handle%my_vars(j)), rvalue, DART_qc_index)
+end do
 
-! May be possible to only do this after the posterior call...
+! May be possible to only do this after the posterior call... !HK What does this mean?
 ! Update any requested ensemble members
 ens_offset = members_index + 4
 ! Update all of these ensembles that are required to sequence file
 do k = 1, num_output_members
-   ! Get this copy on pe 0
-   call get_copy(map_task_to_pe(obs_ens_handle, 0), obs_ens_handle, k, obs_temp)
-   ! Only task 0 gets to write the sequence
-   if(my_task_id() == 0) then
-      ! Loop through the observations for this time
-      do j = 1, obs_ens_handle%num_vars
-         ! update the obs values 
-         rvalue(1) = obs_temp(j)
-         ivalue = ens_offset + 2 * (k - 1)
-         call replace_obs_values(seq, keys(j), rvalue, ivalue)
-      end do
-   endif
-end do
-
-! Update the qc global value
-call get_copy(map_task_to_pe(obs_ens_handle, 0), obs_ens_handle, OBS_GLOBAL_QC_COPY, obs_temp)
-! Only task 0 gets to write the observations for this time
-if(my_task_id() == 0) then
    ! Loop through the observations for this time
-   do j = 1, obs_ens_handle%num_vars
-      rvalue(1) = obs_temp(j)
-      call replace_qc(seq, keys(j), rvalue, DART_qc_index)
+   do j = 1, obs_ens_handle%my_num_vars
+      ! update the obs values
+      rvalue(1) = obs_ens_handle%copies(k,  j)
+      ivalue = ens_offset + 2 * (k - 1)
+      call replace_obs_values(seq, keys(obs_ens_handle%my_vars(j)), rvalue, ivalue)
    end do
-endif
-
-! clean up.
-deallocate(obs_temp)
+end do
 
 end subroutine obs_space_diagnostics
 

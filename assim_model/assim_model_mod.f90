@@ -4,10 +4,9 @@
 !
 ! $Id$
 
+!> This module is used to wrap around the basic portions of existing dynamical models to
+!> add capabilities needed by the standard assimilation methods.
 module assim_model_mod
-
-! This module is used to wrap around the basic portions of existing dynamical models to
-! add capabilities needed by the standard assimilation methods.
 
 use    types_mod, only : r8, digits12
 use location_mod, only : location_type, read_location, &
