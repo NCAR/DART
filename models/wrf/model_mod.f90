@@ -168,6 +168,10 @@ interface model_rho_t_distrib
    module procedure model_rho_t_distrib_fwd, model_rho_t_distrib_mean
 end interface
 
+interface get_model_height_profile_distrib
+   module procedure get_model_height_profile_distrib_fwd, get_model_height_profile_distrib_mean
+end interface
+
 ! HK ? interp_4pressure interface needed?
 
 !-----------------------------------------------------------------------
@@ -2406,7 +2410,6 @@ select case (ztypein)
 ! ---------------------------------------------------- ---
 case (VERTISLEVEL)
 
-print*, 'vert is level'
    ! convert into:
    select case (ztypeout)
 
@@ -2415,7 +2418,29 @@ print*, 'vert is level'
    ! outgoing vertical coordinate should be 'pressure' in Pa
    ! -------------------------------------------------------
    case (VERTISPRESSURE)
-      print*, '**** WARNING 1 ****'
+
+      ! get neighboring mass level indices & compute weights to zin
+      call toGrid(zin,k,dz,dzm)
+
+      ! Check that integer height index is in valid range.  if not, bail to end
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_t)) goto 100
+
+      ! compute pressure at all neighboring mass points and interpolate
+      presa = model_pressure_t_distrib(ll(1), ll(2), k  ,id, state_ens_handle)
+      presb = model_pressure_t_distrib(ll(1), ll(2), k+1,id, state_ens_handle)
+      pres1 = dzm*presa + dz*presb
+      presa = model_pressure_t_distrib(lr(1), lr(2), k  ,id, state_ens_handle)
+      presb = model_pressure_t_distrib(lr(1), lr(2), k+1,id, state_ens_handle)
+      pres2 = dzm*presa + dz*presb
+      presa = model_pressure_t_distrib(ul(1), ul(2), k  ,id, state_ens_handle)
+      presb = model_pressure_t_distrib(ul(1), ul(2), k+1,id, state_ens_handle)
+      pres3 = dzm*presa + dz*presb
+      presa = model_pressure_t_distrib(ur(1), ur(2), k  ,id, state_ens_handle)
+      presb = model_pressure_t_distrib(ur(1), ur(2), k+1,id, state_ens_handle)
+      pres4 = dzm*presa + dz*presb
+      zout = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+
+
    ! -------------------------------------------------------
    ! incoming vertical coordinate is 'model level number'
    ! outgoing vertical coordinate should be 'height' in meters
@@ -2424,9 +2449,6 @@ print*, 'vert is level'
 
       ! get neighboring mass level indices & compute weights to zin
       ! need to add half a grid to get to staggered vertical coordinate
-
-      !HK I don't think k needs to be ensemble size. There is one k output from to_grid
-
       call toGrid(zin+0.5_r8,k,dz,dzm)
       !print*, 'k', k, 'zin ', zin
 
@@ -2459,7 +2481,36 @@ print*, 'vert is level'
    ! outgoing vertical coordinate should be 'scale height' 
    ! -------------------------------------------------------
    case (VERTISSCALEHEIGHT)
-       print*, '**** WARNING 2 ****'
+
+      ! get neighboring mass level indices & compute weights to zin
+      call toGrid(zin,k,dz,dzm)
+
+      ! Check that integer height index is in valid range.  if not, bail to end
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_t)) goto 100
+
+      ! pressure at height
+      presa = model_pressure_t_distrib(ll(1), ll(2), k  ,id,state_ens_handle)
+      presb = model_pressure_t_distrib(ll(1), ll(2), k+1,id,state_ens_handle)
+      pres1 = dzm*presa + dz*presb
+      presa = model_pressure_t_distrib(lr(1), lr(2), k  ,id,state_ens_handle)
+      presb = model_pressure_t_distrib(lr(1), lr(2), k+1,id,state_ens_handle)
+      pres2 = dzm*presa + dz*presb
+      presa = model_pressure_t_distrib(ul(1), ul(2), k  ,id,state_ens_handle)
+      presb = model_pressure_t_distrib(ul(1), ul(2), k+1,id,state_ens_handle)
+      pres3 = dzm*presa + dz*presb
+      presa = model_pressure_t_distrib(ur(1), ur(2), k  ,id,state_ens_handle)
+      presb = model_pressure_t_distrib(ur(1), ur(2), k+1,id,state_ens_handle)
+      pres4 = dzm*presa + dz*presb
+      zout = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+
+      ! surface pressure
+      pres1 = model_pressure_s_distrib(ll(1), ll(2), id, state_ens_handle)
+      pres2 = model_pressure_s_distrib(lr(1), lr(2), id, state_ens_handle)
+      pres3 = model_pressure_s_distrib(ul(1), ul(2), id, state_ens_handle) 
+      pres4 = model_pressure_s_distrib(ur(1), ur(2), id, state_ens_handle)
+      zout = -log(zout / (dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )))
+
+
    ! -------------------------------------------------------
    ! incoming vertical coordinate is 'model level number'
    ! outgoing vertical coordinate is unrecognized
@@ -2510,7 +2561,6 @@ case (VERTISPRESSURE)
    ! outgoing vertical coordinate should be 'model level'
    ! -------------------------------------------------------
    case (VERTISLEVEL)
-      print*, '**** WARNING 3 ****'
       ! pres_to_zk() above converted pressure into a real number
       ! of vertical model levels, including the fraction.
       zout = zk
@@ -2526,8 +2576,6 @@ case (VERTISPRESSURE)
       call toGrid(zk+0.5, k, dz, dzm)
 
       ! Check that integer height index is in valid range.  if not, bail to end
-      !HK need to deal with k being an ensemble
-      !if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_gz)) goto 100
       if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_gz)) goto 100
 
       ! HK should check whether this is state or not. If it is state, there is no need to 
@@ -2557,7 +2605,17 @@ case (VERTISPRESSURE)
    ! outgoing vertical coordinate should be 'scale height' 
    ! -------------------------------------------------------
    case (VERTISSCALEHEIGHT)
-       print*, '****** WARNING 4 ******'
+      call toGrid(zk,k,dz,dzm)
+
+      ! Check that integer height index is in valid range.  if not, bail to end
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_t)) goto 100
+
+      ! compute surface pressure at all neighboring mass points and interpolate
+      pres1 = model_pressure_s_distrib(ll(1), ll(2), id, state_ens_handle)
+      pres2 = model_pressure_s_distrib(lr(1), lr(2), id, state_ens_handle)
+      pres3 = model_pressure_s_distrib(ul(1), ul(2), id, state_ens_handle)
+      pres4 = model_pressure_s_distrib(ur(1), ur(2), id, state_ens_handle)
+      zout = -log(zin / (dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )))
 
    ! -------------------------------------------------------
    ! incoming vertical coordinate is 'pressure'
@@ -2577,13 +2635,189 @@ case (VERTISPRESSURE)
 ! incoming vertical coordinate is 'height' in meters
 ! -------------------------------------------------------
 case (VERTISHEIGHT)
-   print*, '***** WARNING 5 *****'
+
+   ! If obs is by height: get corresponding mass level zk,
+   ! then get neighboring mass level indices and compute weights
+
+   ! get model height profile and
+   ! get height vertical co-ordinate in model level number 
+   allocate(v_h(0:wrf%dom(id)%bt))
+   call get_model_height_profile_distrib(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,id,v_h, state_ens_handle)
+   call height_to_zk(zin, v_h, wrf%dom(id)%bt,zk,lev0)
+   deallocate(v_h)
+
+   ! convert into:
+   select case (ztypeout)
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'height' in meters
+   ! outgoing vertical coordinate should be 'model level'
+   ! -------------------------------------------------------
+   case (VERTISLEVEL)
+      ! height_to_zk() above converted pressure into a real number
+      ! of vertical model levels, including the fraction.
+      zout = zk
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'height' in meters
+   ! outgoing vertical coordinate should be 'pressure' in Pa
+   ! -------------------------------------------------------
+   case (VERTISPRESSURE)
+      call toGrid(zk,k,dz,dzm)
+
+      ! Check that integer height index is in valid range.  if not, bail to end
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_t)) goto 100
+
+      ! compute pressure at all neighboring mass points and interpolate
+      presa = model_pressure_t_distrib(ll(1), ll(2), k  ,id,state_ens_handle)
+      presb = model_pressure_t_distrib(ll(1), ll(2), k+1,id,state_ens_handle)
+      pres1 = dzm*presa + dz*presb
+      presa = model_pressure_t_distrib(lr(1), lr(2), k  ,id,state_ens_handle)
+      presb = model_pressure_t_distrib(lr(1), lr(2), k+1,id,state_ens_handle)
+      pres2 = dzm*presa + dz*presb
+      presa = model_pressure_t_distrib(ul(1), ul(2), k  ,id,state_ens_handle)
+      presb = model_pressure_t_distrib(ul(1), ul(2), k+1,id,state_ens_handle)
+      pres3 = dzm*presa + dz*presb
+      presa = model_pressure_t_distrib(ur(1), ur(2), k  ,id,state_ens_handle)
+      presb = model_pressure_t_distrib(ur(1), ur(2), k+1,id,state_ens_handle)
+      pres4 = dzm*presa + dz*presb
+      zout = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'height' in meters
+   ! outgoing vertical coordinate should be 'scale height'
+   ! -------------------------------------------------------
+   case (VERTISSCALEHEIGHT)
+      call toGrid(zk,k,dz,dzm)
+
+      ! Check that integer height index is in valid range.  if not, bail to end
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_t)) goto 100
+
+      ! pressure at height
+      presa = model_pressure_t_distrib(ll(1), ll(2), k  ,id,state_ens_handle)
+      presb = model_pressure_t_distrib(ll(1), ll(2), k+1,id,state_ens_handle)
+      pres1 = dzm*presa + dz*presb
+      presa = model_pressure_t_distrib(lr(1), lr(2), k  ,id,state_ens_handle)
+      presb = model_pressure_t_distrib(lr(1), lr(2), k+1,id,state_ens_handle)
+      pres2 = dzm*presa + dz*presb
+      presa = model_pressure_t_distrib(ul(1), ul(2), k  ,id,state_ens_handle)
+      presb = model_pressure_t_distrib(ul(1), ul(2), k+1,id,state_ens_handle)
+      pres3 = dzm*presa + dz*presb
+      presa = model_pressure_t_distrib(ur(1), ur(2), k  ,id,state_ens_handle)
+      presb = model_pressure_t_distrib(ur(1), ur(2), k+1,id,state_ens_handle)
+      pres4 = dzm*presa + dz*presb
+      zout = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+ 
+      ! surface pressure
+      pres1 = model_pressure_s_distrib(ll(1), ll(2), id, state_ens_handle)
+      pres2 = model_pressure_s_distrib(lr(1), lr(2), id, state_ens_handle)
+      pres3 = model_pressure_s_distrib(ul(1), ul(2), id, state_ens_handle) 
+      pres4 = model_pressure_s_distrib(ur(1), ur(2), id, state_ens_handle)
+      zout = -log(zout / (dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )))
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'height' in meters
+   ! outgoing vertical coordinate is unrecognized
+   ! -------------------------------------------------------
+   case default 
+      write(errstring,*) 'Requested vertical coordinate not recognized: ', ztypeout
+      call error_handler(E_ERR,'vert_convert', errstring, &
+                         source, revision, revdate,  &
+                         text2='Incoming vertical coordinate was height.')
+
+
+   end select   ! incoming vert was height
+
 
 ! -------------------------------------------------------
 ! incoming vertical coordinate is 'scale height' 
 ! -------------------------------------------------------
 case (VERTISSCALEHEIGHT)
-   print*, '***** WARNING 6 *****'
+
+   ! If obs is by scale height: compute the surface pressure, 
+   ! get corresponding mass level zk, then get neighboring mass 
+   ! level indices and compute weights
+
+   pres1 = model_pressure_s_distrib(ll(1), ll(2), id,state_ens_handle) 
+   pres2 = model_pressure_s_distrib(lr(1), lr(2), id,state_ens_handle)
+   pres3 = model_pressure_s_distrib(ul(1), ul(2), id,state_ens_handle) 
+   pres4 = model_pressure_s_distrib(ur(1), ur(2), id,state_ens_handle) 
+   psurf = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
+
+   ! get model pressure profile and
+   ! get pressure vertical co-ordinate in model level number
+   allocate(v_p(0:wrf%dom(id)%bt))
+   call get_model_pressure_profile_distrib(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,id,v_p, state_ens_handle)
+   call pres_to_zk(exp(-zin)*psurf, v_p, wrf%dom(id)%bt,zk,lev0)
+   deallocate(v_p)
+
+   ! if you cannot get a model level out of the pressure profile, bail to end
+   if (zk == missing_r8) goto 100
+
+   ! convert into:
+   select case (ztypeout)
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'scale height'
+   ! outgoing vertical coordinate should be 'model level'
+   ! -------------------------------------------------------
+   case (VERTISLEVEL)
+      ! pres_to_zk() above converted scale height/pressure into 
+      ! a real number of vertical model levels, including the fraction.
+      zout = zk
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'scale height'
+   ! outgoing vertical coordinate should be 'height' in meters
+   ! -------------------------------------------------------
+   case (VERTISHEIGHT)
+      ! adding 0.5 to get to the staggered vertical grid
+      ! because height is on staggered vertical grid
+      call toGrid(zk+0.5,k,dz,dzm)
+
+      ! Check that integer height index is in valid range.  if not, bail to end
+      if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_gz)) goto 100
+
+      ! compute height at all neighboring mass points and interpolate
+      hgta = model_height_w_distrib(ll(1), ll(2), k  ,id,state_ens_handle)
+      hgtb = model_height_w_distrib(ll(1), ll(2), k+1,id,state_ens_handle)
+      hgt1 = dzm*hgta + dz*hgtb
+      hgta = model_height_w_distrib(lr(1), lr(2), k  ,id,state_ens_handle)
+      hgtb = model_height_w_distrib(lr(1), lr(2), k+1,id,state_ens_handle)
+      hgt2 = dzm*hgta + dz*hgtb
+      hgta = model_height_w_distrib(ul(1), ul(2), k  ,id,state_ens_handle)
+      hgtb = model_height_w_distrib(ul(1), ul(2), k+1,id,state_ens_handle)
+      hgt3 = dzm*hgta + dz*hgtb
+      hgta = model_height_w_distrib(ur(1), ur(2), k  ,id,state_ens_handle)
+      hgtb = model_height_w_distrib(ur(1), ur(2), k+1,id,state_ens_handle)
+      hgt4 = dzm*hgta + dz*hgtb
+      zout = dym*( dxm*hgt1 + dx*hgt2 ) + dy*( dxm*hgt3 + dx*hgt4 )
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'scale height'
+   ! outgoing vertical coordinate should be 'pressure' in Pa
+   ! -------------------------------------------------------
+   case (VERTISPRESSURE)
+      zout = exp(-zin)*psurf
+
+
+   ! -------------------------------------------------------
+   ! incoming vertical coordinate is 'scale height'
+   ! outgoing vertical coordinate is unrecognized
+   ! -------------------------------------------------------
+   case default 
+      write(errstring,*) 'Requested vertical coordinate not recognized: ', ztypeout
+      call error_handler(E_ERR,'vert_convert', errstring, &
+                         source, revision, revdate,  &
+                         text2='Incoming vertical coordinate was scale height.')
+
+
+   end select   ! incoming vert was scale height
 
 ! -------------------------------------------------------
 ! incoming vertical coordinate is 'surface' (assumes zin is height in meters)
@@ -5002,7 +5236,7 @@ end function model_rho_t_distrib_mean
 
 !#######################################################
 
-subroutine get_model_height_profile_distrib(i,j,dx,dy,dxm,dym,n,id,v_h, state_ens_handle, ens_size)
+subroutine get_model_height_profile_distrib_fwd(i,j,dx,dy,dxm,dym,n,id,v_h, state_ens_handle, ens_size)
 
 ! Calculate the model height profile on half (mass) levels,
 ! horizontally interpolated at the observation location.
@@ -5093,7 +5327,98 @@ else
 
 endif
 
-end subroutine get_model_height_profile_distrib
+end subroutine get_model_height_profile_distrib_fwd
+
+!#######################################################
+
+subroutine get_model_height_profile_distrib_mean(i,j,dx,dy,dxm,dym,n,id,v_h, state_ens_handle)
+
+! Calculate the model height profile on half (mass) levels,
+! horizontally interpolated at the observation location.
+! This routine used to compute geopotential heights; it now
+! computes geometric heights.
+
+integer,  intent(in)  :: i,j,n,id
+real(r8), intent(in)  :: dx,dy,dxm,dym
+real(r8), intent(out) :: v_h(0:n)
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer e !> for ensemble loop
+
+real(r8)  :: fll(n+1), geop, lat
+integer   :: ill,iul,ilr,iur,k, rc
+integer, dimension(2) :: ll, lr, ul, ur
+logical   :: debug = .false.
+real(r8)  :: x_ill, x_ilr, x_iul, x_iur
+
+
+if (wrf%dom(id)%type_gz < 0) then
+  call error_handler(E_ERR, 'get_model_height_profile:', &
+      'PH must be in state vector to compute height profile', &
+       source, revision, revdate)
+endif
+
+if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_gz ) .and. &
+     boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_gz ) ) then
+
+   call getCorners(i, j, id, wrf%dom(id)%type_gz, ll, ul, lr, ur, rc )
+   if ( rc .ne. 0 ) &
+        print*, 'model_mod.f90 :: get_model_height_profile :: getCorners rc = ', rc
+
+   do k = 1, wrf%dom(id)%var_size(3,wrf%dom(id)%type_gz)
+
+      ill = new_dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_gz, id)
+      iul = new_dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_gz, id)
+      ilr = new_dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_gz, id)
+      iur = new_dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_gz, id)
+
+      call get_state(x_ill, ill, state_ens_handle)
+      call get_state(x_ilr, ilr, state_ens_handle)
+      call get_state(x_iul, iul, state_ens_handle)
+      call get_state(x_iur, iur, state_ens_handle)
+
+      geop = ( dym*( dxm*( wrf%dom(id)%phb(ll(1),ll(2),k) + x_ill ) + &
+                      dx*( wrf%dom(id)%phb(lr(1),lr(2),k) + x_ilr ) ) + &
+                dy*( dxm*( wrf%dom(id)%phb(ul(1),ul(2),k) + x_iul ) + &
+                      dx*( wrf%dom(id)%phb(ur(1),ur(2),k) + x_iur ) ) )/gravity
+
+      lat = ( wrf%dom(id)%latitude(ll(1),ll(2)) + &
+              wrf%dom(id)%latitude(lr(1),lr(2)) + &
+              wrf%dom(id)%latitude(ul(1),ul(2)) + &
+              wrf%dom(id)%latitude(ur(1),ur(2)) ) / 4.0_r8
+
+      fll(k) = compute_geometric_height(geop, lat)
+
+   end do
+
+   do k=1,n
+      v_h(k) = 0.5_r8*(fll(k) + fll(k+1) )
+   end do
+
+   v_h(0) = dym*( dxm*wrf%dom(id)%hgt(ll(1), ll(2)) + &
+                   dx*wrf%dom(id)%hgt(lr(1), lr(2)) ) + &
+             dy*( dxm*wrf%dom(id)%hgt(ul(1), ul(2)) + &
+                   dx*wrf%dom(id)%hgt(ur(1), ur(2)) )
+
+   if (debug) &
+        print*, 'model_mod.f90 :: get_model_height_profile :: n, v_h() ', n, v_h(1:n)
+
+   if (debug) &
+        print*, 'model_mod.f90 :: get_model_height_profile :: v_h(0) ', v_h(0)
+ 
+! If the boundsCheck functions return an unsatisfactory integer index, then set
+!   fld as missing data
+else
+
+   print*,'Not able the get height_profile'
+   print*,i,j,dx,dy,dxm,dym,n,id,wrf%dom(id)%var_size(1,wrf%dom(id)%type_gz), &
+        wrf%dom(id)%var_size(2,wrf%dom(id)%type_gz)
+
+   v_h(:) =  missing_r8
+
+endif
+
+end subroutine get_model_height_profile_distrib_mean
+
 
 !#######################################################
 
@@ -8136,9 +8461,9 @@ base_obs_kind = 1 ! dummy for now, should check for identity obs
 
 !base_which = nint(query_location(observation))
 
-!if (base_which /= wrf%dom(1)%localization_coord) then
+if (base_which /= wrf%dom(1)%localization_coord) then
    call vert_convert_distrib(state_ens_handle, obs_loc, base_obs_kind, istatus_v)
-!endif
+endif
 
 istatus = istatus_v
 
