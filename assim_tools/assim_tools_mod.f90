@@ -620,13 +620,15 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             end do
          endif SINGLE_SS_INFLATE
 
+         !***** REMOVED THIS SECTION FOR NOW *******
          !HK convert the location in to the coordinate that is used for localization
          ! Otherwise all processors are trying to convert the location for the same base obs
          ! in get close obs.
          ! Note, no need to do this if the qc is not ok
-         call convert_base_obs_location(base_obs_loc, ens_handle, vert_obs_loc_in_localization_coord, int_vert_qc)
+         !call convert_base_obs_location(base_obs_loc, ens_handle, vert_obs_loc_in_localization_coord, int_vert_qc)
 
-            vert_qc = real(int_vert_qc)
+            !vert_qc = real(int_vert_qc)
+         !******************************************
 
       endif IF_QC_IS_OKAY
 
@@ -634,13 +636,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! What gets broadcast depends on what kind of inflation is being done
       if(local_varying_ss_inflate) then
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, orig_obs_prior_mean, &
-            orig_obs_prior_var, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord, scalar3=vert_qc)
+            orig_obs_prior_var, net_a, scalar1=obs_qc)
 
       else if(local_single_ss_inflate .or. local_obs_inflate) then
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, &
-           scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, scalar4=vert_obs_loc_in_localization_coord, scalar5=vert_qc)
+           scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc)
       else
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord, scalar3=vert_qc)
+         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc)
       endif
 
    ! Next block is done by processes that do NOT own this observation
@@ -650,19 +652,18 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Also get qc and inflation information if needed
       if(local_varying_ss_inflate) then
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, orig_obs_prior_mean, &
-            orig_obs_prior_var, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord, scalar3=vert_qc)
+            orig_obs_prior_var, net_a, scalar1=obs_qc)
       else if(local_single_ss_inflate .or. local_obs_inflate) then
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, &
-            scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, scalar4=vert_obs_loc_in_localization_coord, scalar5=vert_qc)
+            scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc)
       else
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord, scalar3=vert_qc)
+         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc)
       endif
    endif
    !-----------------------------------------------------------------------
 
    ! Everybody is doing this section, cycle if qc is bad
    if(nint(obs_qc) /= 0) cycle SEQUENTIAL_OBS
-   if(nint(vert_qc) /= 0) cycle SEQUENTIAL_OBS !HK Is this ok to skip this whole section?
 
    ! Can compute prior mean and variance of obs for each group just once here
    do group = 1, num_groups
@@ -680,35 +681,20 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! state space (even though the state space increments will be computed and
    ! applied first).
 
+   ! ***** REMOVED THIS SECTION FOR NOW ******
    ! HK set converted location of observation
    ! The owner of the observation has done the conversion to the localization coordinate, so 
    ! every task does not have to do the same calculation ( and communication )
-   !> @todo This is very messy.
-   base_obs_loc%vloc = vert_obs_loc_in_localization_coord
-   !> @todo vertical coordinate of obs
-   base_obs_loc%which_vert = 2
+   !> @todo This is very messy. 
 
    !--------------------------------------------------------
-   !> @todo have to set location so you are bitwise with Lanai for WRF. There is a bitwise creep with get and set location
+   !> @todo have to set location so you are bitwise with Lanai for WRF. There is a bitwise creep with get and set location.
    ! I beleive this is messing up CAM_SE because you get a different % saved for close_obs_caching
    !  The base_obs_loc are different for cam if you do this set.
-
-   !if(ens_handle%my_pe /= owner) then
-      !print*, 'base_obs_loc before set', base_obs_loc, 'rank ', my_task_id()
-      !temp_loc = base_obs_loc
-      !xyz_loc = get_location(base_obs_loc)
-      !base_obs_loc = set_location(xyz_loc(1),xyz_loc(2),base_obs_loc%vloc,base_obs_loc%which_vert)
-      !if (base_obs_loc == temp_loc) then
-      !   else
-      !      print*, 'not equal', i,  base_obs_loc%lon, temp_loc%lon,  xyz_loc, base_obs_loc%lon - temp_loc%lon, epsilon(base_obs_loc%lon)
-      !   endif
-      !print*, 'base_obs_loc after set', base_obs_loc, 'rank ', my_task_id()
-   !endif
-
    !--------------------------------------------------------
 
-   if (i == 1 .and. my_task_id() == 0 ) print*, 'DANGER HARDCODED vertical coordinate in filter_assim'
-   !close_obs_caching = .false.
+   !******************************************
+
 
    if (.not. close_obs_caching) then
       call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
