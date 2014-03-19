@@ -107,6 +107,12 @@ namelist /assim_model_nml/ write_binary_restart_files, &
                            netCDF_large_file_support
 !-------------------------------------------------------------
 
+! Interfaces for reading and writing restarts. Binary complete state vectors
+! and parallel reads of netcdf restarts
+interface aread_state_restart
+   module procedure aread_state_restart_complete, aread_state_restart_parallel
+end interface
+
 contains
 
 !======================================================================
@@ -851,7 +857,7 @@ end subroutine read_state_restart
 
 
 
-subroutine aread_state_restart(model_time, model_state, funit, target_time)
+subroutine aread_state_restart_complete(model_time, model_state, funit, target_time)
 !----------------------------------------------------------------------
 !
 ! Read a restart file given a unit number (see write_state_restart)
@@ -914,8 +920,76 @@ if ( ios /= 0 ) then
    call error_handler(E_ERR,'aread_state_restart',msgstring,source,revision,revdate)
 endif
 
-end subroutine aread_state_restart
+end subroutine aread_state_restart_complete
 
+!----------------------------------------------------------------------
+!> reads a netcdf restart file in parallel. No complete state.
+subroutine aread_state_restart_parallel(restart_file, stateId, timeId, nblocks, model_time, model_state, funit, target_time)
+
+use pnetcdf
+use mpi
+use mpi_utilities_mod,     only : task_count, my_task_id, datasize ! here so you don't have to compile the whole module with mpi
+use time_manager_mod, only : set_time
+use pnetcdf_utilities_mod, only : pnet_check
+
+implicit none
+
+character*100,   intent(in)             :: restart_file
+integer,         intent(in)             :: nblocks !> number of blocks - my_num_vars
+type(time_type), intent(out)            :: model_time
+real(r8),        intent(out)            :: model_state(:) !> now distributed
+integer,         intent(in)             :: funit !> pnetcdf file identifier
+type(time_type), optional, intent(out) :: target_time
+
+character(len = 16) :: open_format
+integer :: ios, int1, int2
+
+! Parallel netcdf variables
+integer(KIND=MPI_OFFSET_KIND) :: start(1) !> state is one dimensional
+integer(KIND=MPI_OFFSET_KIND) :: count(1)
+integer(KIND=MPI_OFFSET_KIND) :: stride(1)
+integer                       :: stateId !> Id of state variable
+integer                       :: timeId !> Id of time variable
+integer                       :: ret !> return code
+integer                       :: time(2) !> for reading from netcdf file
+
+if ( .not. module_initialized ) call static_init_assim_model()
+
+ios = 0
+
+!! Figure out whether the file is opened FORMATTED or UNFORMATTED
+!inquire(funit, FORM=open_format) !HK the file is open already? Yes
+
+start(1) = my_task_id() + 1
+count(1) = nblocks
+stride(1) = task_count()
+
+! Strided read of the state the values from the netCDF variable
+
+!> @todo probably going to have to wrap this in the model because of the precision
+if ( sizeof(model_state(1)) < 8 ) then ! trying to catch single precision
+
+   ret = nfmpi_get_vars_real_all(funit, stateId, start, count, stride, model_state)
+   call pnet_check(ret, 'aread_state_restart', 'reading state')
+
+else ! double precision
+
+   !ret = nfmpi_get_vars_double_all(funit, stateId, start, count, stride, model_state)
+   !call pnet_check(ret, 'aread_state_restart', 'reading state')
+
+endif
+
+start(1) = 1
+count(1) = 2
+stride(1) = 1
+
+! Read time from the netCDF variable
+ret = nfmpi_get_vars_int_all(funit, timeId, start, count, stride, time) !> @todo does this need to be a collective call?
+call pnet_check(ret, 'aread_state_restart', 'reading time')
+model_time = set_time(time(1), time(2)) ! seconds, days
+
+end subroutine aread_state_restart_parallel
+!----------------------------------------------------------------------
 
 
 function open_restart_write(file_name, override_write_format)

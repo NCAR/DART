@@ -149,7 +149,7 @@ real(r8)             :: inf_lower_bound(2)        = 1.0_r8
 real(r8)             :: inf_upper_bound(2)        = 1000000.0_r8
 real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
 logical              :: output_inflation          = .true.
-
+logical              :: complete_state            = .false. ! This is really clunky, duplicate in ensemble manager
 
 namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,    &
    start_from_restart, output_restart, obs_sequence_in_name, obs_sequence_out_name, &
@@ -163,7 +163,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
    inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, output_inflation,          &
-   silence
+   silence, complete_state
 
 
 !----------------------------------------------------------------
@@ -203,10 +203,7 @@ integer                 :: mean_owner, mean_owners_index
 integer :: owner, owners_index
 
 !HK 
-doubleprecision start, finish
-
-! For now, have model_size real storage for the ensemble mean, don't really want this
-! in the long run
+doubleprecision start, finish ! for timing with MPI_WTIME
 
 logical                 :: ds, all_gone, allow_missing
 
@@ -220,7 +217,7 @@ character*20 task_str, file_obscopies, file_results
 logical :: write_flag
 logical :: skipit = .true.
 
-call filter_initialize_modules_used()
+call filter_initialize_modules_used() ! static_init_model called in here
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "filter_nml", iunit)
@@ -528,7 +525,7 @@ AdvanceTime : do
    call trace_message('After  setup for next group of observations')
 
    ! Compute mean and spread for inflation and state diagnostics
-   call all_vars_to_all_copies(ens_handle)
+   if (complete_state) call all_vars_to_all_copies(ens_handle)
 
    call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
@@ -560,9 +557,11 @@ AdvanceTime : do
    ! not the number of copies
 
    !HK Destroy var complete
-   deallocate(obs_ens_handle%vars)
-   deallocate(ens_handle%vars)
-   deallocate(forward_op_ens_handle%vars)
+   if (complete_state) then
+      deallocate(obs_ens_handle%vars)
+      deallocate(ens_handle%vars)
+      deallocate(forward_op_ens_handle%vars)
+   endif
 
    start = MPI_WTIME()
 
@@ -576,6 +575,8 @@ AdvanceTime : do
    if (my_task_id() == 0) print*, 'distributed average ', (finish-start)
    !call test_obs_copies(obs_ens_handle, 'prior')
 
+
+   ! For diagnostics - still need to be var complete
    allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
    allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
    allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
@@ -585,6 +586,7 @@ AdvanceTime : do
    ! While we're here, make sure the timestamp on the actual ensemble copy
    ! for the mean has the current time.  If the user requests it be written
    ! out, it needs a valid timestamp.
+   print*, '************ MEAN TIME *****************'
    call get_copy_owner_index(ENS_MEAN_COPY, mean_owner, mean_owners_index)
    if(ens_handle%my_pe == mean_owner) then
       ! Make sure the timestamp for the mean is the current time.
@@ -663,11 +665,6 @@ AdvanceTime : do
 
    !call test_state_copies(ens_handle, 'after_filter_assim')
 
-   allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
-   allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
-   allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
-
-
    call timestamp_message('After  observation assimilation')
    call     trace_message('After  observation assimilation')
 
@@ -740,6 +737,12 @@ AdvanceTime : do
       call smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
       call trace_message('After  computing smoother means/spread')
    endif
+
+   ! For diagnostics
+   allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
+   allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+   allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
+
 
 !***********************
 !! Diagnostic files.

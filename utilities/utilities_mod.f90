@@ -166,7 +166,8 @@ public :: file_exist, get_unit, open_file, close_file, timestamp,           &
           find_namelist_in_file, check_namelist_read, do_nml_term,          &
           set_tasknum, set_output, do_output, set_nml_output, do_nml_file,  &
           E_DBG, E_MSG, E_WARN, E_ERR, DEBUG, MESSAGE, WARNING, FATAL,      &
-          is_longitude_between, get_next_filename, ascii_file_format
+          is_longitude_between, get_next_filename, ascii_file_format,       &
+          error_mesg
 
 ! this routine is either in the null_mpi_utilities_mod.f90, or in
 ! the mpi_utilities_mod.f90 file, but it is not a module subroutine.
