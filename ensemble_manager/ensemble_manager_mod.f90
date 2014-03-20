@@ -292,8 +292,6 @@ integer(KIND=MPI_OFFSET_KIND) :: state_length, time_length
 
 if (no_complete_state) then
 
-print*, 'size of time ', size(ens_handle%time)
-
    ! Loop to read in all ensemble members
    PNETCDF_RESTARTS: do i = start_copy, end_copy
       ! Get global index for my ith ensemble
@@ -449,6 +447,10 @@ end subroutine read_ensemble_restart
 subroutine write_ensemble_restart(ens_handle, file_name, start_copy, end_copy, &
    force_single_file)
 
+use pnetcdf_utilities_mod, only : pnet_check
+use mpi
+use pnetcdf
+
 type(ensemble_type),  intent(inout) :: ens_handle
 character(len = *),   intent(in)    :: file_name
 integer,              intent(in)    :: start_copy, end_copy
@@ -459,9 +461,69 @@ real(r8), allocatable               :: ens(:)
 type(time_type)                     :: ens_time
 integer                             :: iunit, i, global_index
 integer                             :: owner, owners_index
-character(len = LEN(file_name) + 5) :: this_file_name
+character(len = LEN(file_name) + 10) :: this_file_name
 character(len = 4)                  :: extension
 logical                             :: single_file_forced
+
+! pnetcdf variables
+integer                       :: ret !> return code for pnetcdf calls
+integer                       :: ncfile !> ncfile
+integer                       :: stateId !> Id for state_vector
+integer                       :: timeId !> Id for time
+integer                       :: stateDimId !> Id of the dimension of state
+integer                       :: timeDimId !> Id of the dimension of time
+integer                       :: stateDim(1) !> Array needed to hold state dimension
+integer                       :: timeDim(1) !> Array needed to hold state dimension
+integer                       :: num_dims
+integer(KIND=MPI_OFFSET_KIND) :: time_length
+integer(KIND=MPI_OFFSET_KIND) :: state_length
+integer(KIND=MPI_OFFSET_KIND) :: num_blocks
+
+num_dims = 1 ! state and time are 1 dimensional
+time_length = 2
+state_length = ens_handle%num_vars ! Whole state
+num_blocks = ens_handle%my_num_vars ! Just me
+
+if (no_complete_state) then
+
+   PNETCDF_RESTARTS: do i = start_copy, end_copy
+      write(extension, '(i4.4)') i
+      this_file_name = trim(file_name) // '.' // extension // '.nc'
+
+      ! create netcdf file
+      ret = nfmpi_create(mpi_comm_world, this_file_name, NF_CLOBBER, mpi_info_null, ncfile)
+      call pnet_check(ret, 'write_ensemble_restart', 'cannot create netcdf file')
+
+      ! load up state and time in netcdf metadata
+      ! Define the dimensions
+      ret = nfmpi_def_dim(ncfile, 'time', time_length, timeDimId) !time
+      call pnet_check(ret, 'write_ensemble_restart', 'defining time dim')
+
+      ret = nfmpi_def_dim(ncfile, 'state', state_length, stateDimId) !state
+      call pnet_check(ret, 'write_ensemble_restart', 'defining state dim')
+
+      ! The dimids array is used to pass the IDs of the dimensions of the variables
+      stateDim = (/stateDimId/)
+      timeDim = (/timeDimId/)
+
+      ! Define the variables
+      ret = nfmpi_def_var(ncfile, "state_vector", NF_FLOAT, num_dims, stateDim, stateId) ! state
+      call pnet_check(ret, 'write_ensemble_restart', 'defining state var')
+
+      ret = nfmpi_def_var(ncfile, "time", NF_INT, num_dims, timeDim, timeId) ! time
+      call pnet_check(ret, 'write_ensemble_restart', 'defining time var')
+
+      ret = nfmpi_enddef(ncfile) ! metadata IO occurs in this
+      call pnet_check(ret, 'write_ensemble_restart', 'metadata IO')
+
+      call awrite_state_restart(timeId, stateId, num_blocks, ens_handle%time(i), ens_handle%copies(i, :), ncfile)
+
+      ret = nfmpi_close(ncfile)
+      call pnet_check(ret, 'write_ensemble_restart', 'closing file')
+
+   end do PNETCDF_RESTARTS
+
+else
 
 if (present(force_single_file) ) then
    single_file_forced = force_single_file
@@ -469,66 +531,68 @@ else
    single_file_forced = .FALSE.
 endif
 
-! Error checking
-if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'write_ensemble_restart', &
-        'last access not var-complete', source, revision, revdate)
-endif
+   ! Error checking
+   if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
+      call error_handler(E_ERR, 'write_ensemble_restart', &
+           'last access not var-complete', source, revision, revdate)
+   endif
 
-! For single file, need to send restarts to pe0 and it writes them out.
-!-------------- Block for single_restart file -------------
-! Need to force single restart file for inflation files
-if(single_restart_file_out .or. single_file_forced) then
+   ! For single file, need to send restarts to pe0 and it writes them out.
+   !-------------- Block for single_restart file -------------
+   ! Need to force single restart file for inflation files
+   if(single_restart_file_out .or. single_file_forced) then
 
-   ! Single restart file is written only by task 0
-   if(my_task_id() == 0) then
+      ! Single restart file is written only by task 0
+      if(my_task_id() == 0) then
 
-     iunit = open_restart_write(file_name)
+        iunit = open_restart_write(file_name)
 
-      ! Loop to write each ensemble member
-      allocate(ens(ens_handle%num_vars))   ! used to be on stack.
-      do i = start_copy, end_copy
-         ! Figure out where this ensemble member is being stored
-         call get_copy_owner_index(i, owner, owners_index)
-         ! If it's on task 0, just write it
-         if(map_pe_to_task(ens_handle, owner) == 0) then
-            call awrite_state_restart(ens_handle%time(owners_index), &
-               ens_handle%vars(:, owners_index), iunit)
-         else
-            ! Get the ensemble from the owner and write it out
-            ! This communication assumes index numbers are monotonically increasing
-            ! and that communications is blocking so that there are not multiple 
-            ! outstanding messages from the same processors (also see send_to below).
-            call receive_from(map_pe_to_task(ens_handle, owner), ens, ens_time)
-            call awrite_state_restart(ens_time, ens, iunit)
-         endif
-      end do
-      deallocate(ens)
-      call close_restart(iunit)
-   else ! I must send my copies to task 0 for writing to file
+         ! Loop to write each ensemble member
+         allocate(ens(ens_handle%num_vars))   ! used to be on stack.
+         do i = start_copy, end_copy
+            ! Figure out where this ensemble member is being stored
+            call get_copy_owner_index(i, owner, owners_index)
+            ! If it's on task 0, just write it
+            if(map_pe_to_task(ens_handle, owner) == 0) then
+               call awrite_state_restart(ens_handle%time(owners_index), &
+                  ens_handle%vars(:, owners_index), iunit)
+            else
+               ! Get the ensemble from the owner and write it out
+               ! This communication assumes index numbers are monotonically increasing
+               ! and that communications is blocking so that there are not multiple
+               ! outstanding messages from the same processors (also see send_to below).
+               call receive_from(map_pe_to_task(ens_handle, owner), ens, ens_time)
+               call awrite_state_restart(ens_time, ens, iunit)
+            endif
+         end do
+         deallocate(ens)
+         call close_restart(iunit)
+      else ! I must send my copies to task 0 for writing to file
+         do i = 1, ens_handle%my_num_copies
+            ! Figure out which global index this is
+            global_index = ens_handle%my_copies(i)
+            ! Ship this ensemble off to the master
+            if(global_index >= start_copy .and. global_index <= end_copy) &
+               call send_to(0, ens_handle%vars(:, i), ens_handle%time(i))
+         end do
+      endif
+
+   else
+   !-------------- Block for multiple restart files -------------
+      ! Everyone can just write their own files
       do i = 1, ens_handle%my_num_copies
          ! Figure out which global index this is
          global_index = ens_handle%my_copies(i)
-         ! Ship this ensemble off to the master
-         if(global_index >= start_copy .and. global_index <= end_copy) &
-            call send_to(0, ens_handle%vars(:, i), ens_handle%time(i))
+         if(global_index >= start_copy .and. global_index <= end_copy) then
+            write(extension, '(i4.4)') ens_handle%my_copies(i)
+            this_file_name = trim(file_name) // '.' // extension
+            iunit = open_restart_write(this_file_name)
+            call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
+            call close_restart(iunit)
+         endif
       end do
    endif
 
-else
-!-------------- Block for multiple restart files -------------
-   ! Everyone can just write their own files
-   do i = 1, ens_handle%my_num_copies
-      ! Figure out which global index this is
-      global_index = ens_handle%my_copies(i)
-      if(global_index >= start_copy .and. global_index <= end_copy) then
-         write(extension, '(i4.4)') ens_handle%my_copies(i)
-         this_file_name = trim(file_name) // '.' // extension
-         iunit = open_restart_write(this_file_name)
-         call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
-         call close_restart(iunit)
-      endif
-   end do
 endif
 
 end subroutine write_ensemble_restart
