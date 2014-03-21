@@ -287,8 +287,8 @@
    gregorian_cal     = .true.,
    first_obs_days    = DART1D,
    first_obs_seconds = DART1S,
-   last_obs_days     = DART2D,
-   last_obs_seconds  = DART2S,
+   last_obs_days     = DARTND,
+   last_obs_seconds  = DARTNS,
    edit_qc_metadata  = .true.,
    new_qc_metadata   = 'Original QC',
 /
