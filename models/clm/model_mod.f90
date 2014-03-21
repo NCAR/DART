@@ -3633,11 +3633,12 @@ character(len=*), intent(in) :: varstring    ! T_SOISNO, H2OSOI_LIQ
 
 ! Local storage
 
-integer                       :: ivar, indexi, i, j
-integer, dimension(nlon,nlat) :: countmat
+integer :: ivar, indexi, i, j
+integer, allocatable, dimension(:,:) :: countmat
 
 if ( .not. module_initialized ) call static_init_model
 
+allocate(countmat(nlon,nlat))
 countmat = 0
 
 VARTYPES : do ivar = 1,nfields
@@ -3666,6 +3667,8 @@ do i = 1,nlon
 
 enddo
 enddo
+
+deallocate(countmat)
 
 end subroutine find_gridcell_Npft
 
