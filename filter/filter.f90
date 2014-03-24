@@ -360,19 +360,35 @@ call     trace_message('Before initializing output files')
 call timestamp_message('Before initializing output files')
 
 ! Initialize the output sequences and state files and set their meta data
-if(my_task_id() == 0) then
-   call filter_generate_copy_meta_data(seq, prior_inflate, &
-      PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
-      output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
-      prior_obs_spread_index, posterior_obs_spread_index)
-   if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation)
+! HK this is where a parallel write of diagnostics differs from the traditional way 
+! of having task 0 write all the diagnostics.
+
+if (complete_state) then
+
+   if(my_task_id() == 0) then
+      call filter_generate_copy_meta_data(seq, prior_inflate, &
+         PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
+         output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
+         prior_obs_spread_index, posterior_obs_spread_index)
+      if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation)
+   else
+      output_state_mean_index = 0
+      output_state_spread_index = 0
+      prior_obs_mean_index = 0
+      posterior_obs_mean_index = 0
+      prior_obs_spread_index = 0
+      posterior_obs_spread_index = 0
+   endif
 else
-   output_state_mean_index = 0
-   output_state_spread_index = 0
-   prior_obs_mean_index = 0
-   posterior_obs_mean_index = 0
-   prior_obs_spread_index = 0 
-   posterior_obs_spread_index = 0
+
+   ! everyone needs to generate copy meta data
+   call filter_generate_copy_meta_data(seq, prior_inflate, &
+         PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
+         output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
+         prior_obs_spread_index, posterior_obs_spread_index)
+
+   if(ds) call error_handler(E_ERR, 'filter', 'smoother broken by Helen')
+
 endif
 
 call timestamp_message('After  initializing output files')
@@ -600,28 +616,39 @@ AdvanceTime : do
 
 !!*********************
 ! Diagnostic files.
-!
-!   call all_copies_to_all_vars(ens_handle)
-!
-!   ! allocate space so task 0 can receive the ensemble members
-!   if (my_task_id() == 0) then
-!      allocate(temp_ens(ens_handle%num_vars))
-!   else
-!      allocate(temp_ens(1)) ! I think only task 0 needs space to store a copy
-!   endif
-!
-!   if ((output_interval > 0) .and. &
-!       (time_step_number / output_interval * output_interval == time_step_number)) then
-!      call trace_message('Before prior state space diagnostics')
-!      call timestamp_message('Before prior state space diagnostics')
-!      call filter_state_space_diagnostics(curr_ens_time, PriorStateUnit, ens_handle, &
-!         model_size, num_output_state_members, &
-!         output_state_mean_index, output_state_spread_index, &
-!         output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
-!         prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
-!      call timestamp_message('After  prior state space diagnostics')
-!      call trace_message('After  prior state space diagnostics')
-!   endif
+
+   call trace_message('Before prior state space diagnostics')
+   call timestamp_message('Before prior state space diagnostics')
+
+   if (complete_state) then
+
+      call all_copies_to_all_vars(ens_handle)
+
+      ! allocate space so task 0 can receive the ensemble members
+      if (my_task_id() == 0) then
+         allocate(temp_ens(ens_handle%num_vars))
+      else
+        allocate(temp_ens(1)) ! I think only task 0 needs space to store a copy
+      endif
+
+      if ((output_interval > 0) .and. &
+          (time_step_number / output_interval * output_interval == time_step_number)) then
+
+         call filter_state_space_diagnostics(curr_ens_time, PriorStateUnit, ens_handle, &
+              model_size, num_output_state_members, &
+              output_state_mean_index, output_state_spread_index, &
+              output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
+              prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
+      endif
+
+   else ! parallel write of diagnostics
+
+      call filter_state_space_diagnostics(ens_handle, ENS_MEAN_COPY, PRIOR_INF_SD_COPY, 'Prior_Diag.nc')
+
+   endif
+
+   call timestamp_message('After  prior state space diagnostics')
+   call trace_message('After  prior state space diagnostics')
 
    call trace_message('Before observation space diagnostics')
 
@@ -746,28 +773,41 @@ AdvanceTime : do
 
 !***********************
 !! Diagnostic files.
-!
-!   call all_copies_to_all_vars(ens_handle)
-!
-!   ! Do posterior state space diagnostic output as required
-!   if ((output_interval > 0) .and. &
-!       (time_step_number / output_interval * output_interval == time_step_number)) then
-!      call trace_message('Before posterior state space diagnostics')
-!      call timestamp_message('Before posterior state space diagnostics')
-!      call filter_state_space_diagnostics(curr_ens_time, PosteriorStateUnit, ens_handle, &
-!         model_size, num_output_state_members, output_state_mean_index, &
-!         output_state_spread_index, &
-!         output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
-!         post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
-!      ! Cyclic storage for lags with most recent pointed to by smoother_head
-!      ! ens_mean is passed to avoid extra temp storage in diagnostics
-!
-!      call smoother_ss_diagnostics(model_size, num_output_state_members, &
-!         output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
-!         POST_INF_COPY, POST_INF_SD_COPY)
-!      call timestamp_message('After  posterior state space diagnostics')
-!      call trace_message('After  posterior state space diagnostics')
-!   endif
+
+   call trace_message('Before posterior state space diagnostics')
+   call timestamp_message('Before posterior state space diagnostics')
+
+   if (complete_state) then
+
+      call all_copies_to_all_vars(ens_handle)
+
+      ! Do posterior state space diagnostic output as required
+      if ((output_interval > 0) .and. &
+          (time_step_number / output_interval * output_interval == time_step_number)) then
+         call filter_state_space_diagnostics(curr_ens_time, PosteriorStateUnit, ens_handle, &
+            model_size, num_output_state_members, output_state_mean_index, &
+            output_state_spread_index, &
+            output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
+            post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
+         ! Cyclic storage for lags with most recent pointed to by smoother_head
+         ! ens_mean is passed to avoid extra temp storage in diagnostics
+
+         call smoother_ss_diagnostics(model_size, num_output_state_members, &
+            output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
+            POST_INF_COPY, POST_INF_SD_COPY)
+      endif
+
+   else ! parallel write of diagnostics
+
+      ! This is two many copies.  You could change the order of the copies to have the 
+      ! mean in the middle of the prior and posterior stuff
+      call filter_state_space_diagnostics(ens_handle, ENS_MEAN_COPY, POST_INF_SD_COPY, 'Posterior_Diag.nc')
+
+   endif
+
+   call timestamp_message('After  posterior state space diagnostics')
+   call trace_message('After  posterior state space diagnostics')
+
 
    call trace_message('Before posterior obs space diagnostics')
 
@@ -927,7 +967,7 @@ character(len=metadatalength) :: prior_meta_data, posterior_meta_data
 ! Posterior file contains the posterior inflation mean and spread only
 character(len=metadatalength) :: state_meta(num_output_state_members + 4)
 integer :: i, ensemble_offset, num_state_copies, num_obs_copies
-
+integer :: ierr ! init_diag return code
 
 ! Section for state variables + other generated data stored with them.
 
@@ -964,13 +1004,32 @@ if(output_inflation) then
    state_meta(num_state_copies)   = 'inflation sd'
 endif
 
+if(complete_state) then ! only task 0 is in this subroutine
 
-! Set up diagnostic output for model state, if output is desired
-PriorStateUnit     = init_diag_output('Prior_Diag', &
+   ! Set up diagnostic output for model state, if output is desired
+   PriorStateUnit     = init_diag_output('Prior_Diag', &
                         'prior ensemble state', num_state_copies, state_meta)
-PosteriorStateUnit = init_diag_output('Posterior_Diag', &
+   PosteriorStateUnit = init_diag_output('Posterior_Diag', &
                         'posterior ensemble state', num_state_copies, state_meta)
 
+else
+
+   ! Have task 0 set up diagnostic output for model state, if output is desired
+   ! I am not using a collective call here, just getting task 0 to set up the files
+   ! Can we not dump the static data into the diagnostic files. This would save some time.
+   ! - nc_write_model_atts.
+   if (my_task_id() == 0) then
+      PriorStateUnit     = init_diag_output('Prior_Diag', &
+                           'prior ensemble state', num_state_copies, state_meta)
+      PosteriorStateUnit = init_diag_output('Posterior_Diag', &
+                           'posterior ensemble state', num_state_copies, state_meta)
+
+      ierr = finalize_diag_output(PriorStateUnit) ! no error checking?
+      ierr = finalize_diag_output(PosteriorStateUnit)
+
+   endif
+
+endif
 
 ! Set the metadata for the observations.
 
