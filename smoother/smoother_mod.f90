@@ -548,7 +548,9 @@ end subroutine filter_state_space_diagnostics_complete
 !> Use pnetcdf to write out the copies array from each processor to a [vars x copies]
 !> diagnostic file.
 !> It is easy to create a netcdf variable that is bigger than the allowable size of 2GB
-!> so, you need to split up the state array into variables less than 2GB
+!> so, you need to split up the state array into variables less than 2GB. No this is not true,
+!> the last variable can be huge.  You do need to switch on large file support if you are 
+!> creating the file with netcdf.
 subroutine filter_state_space_diagnostics_parallel(state_ens_handle, start_copy, end_copy, diag_filename)
 
 use pnetcdf_utilities_mod, only : pnet_check

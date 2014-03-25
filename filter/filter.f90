@@ -572,7 +572,7 @@ AdvanceTime : do
    ! and obs_values. ens_size is the number of regular ensemble members,
    ! not the number of copies
 
-   !HK Destroy var complete
+   !HK Destroy var complete so there are no cheats.
    if (complete_state) then
       deallocate(obs_ens_handle%vars)
       deallocate(ens_handle%vars)
@@ -592,17 +592,18 @@ AdvanceTime : do
    !call test_obs_copies(obs_ens_handle, 'prior')
 
 
-   ! For diagnostics - still need to be var complete
-   allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
-   allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
-   allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
+   if (complete_state) then ! For diagnostics need to be var complete
+      allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
+      allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+      allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
+   endif
 
 !   goto 10011 !HK bail out after forward operators
 
    ! While we're here, make sure the timestamp on the actual ensemble copy
    ! for the mean has the current time.  If the user requests it be written
    ! out, it needs a valid timestamp.
-   print*, '************ MEAN TIME *****************'
+   if (my_task_id() == 0 ) print*, '************ MEAN TIME *****************'
    call get_copy_owner_index(ENS_MEAN_COPY, mean_owner, mean_owners_index)
    if(ens_handle%my_pe == mean_owner) then
       ! Make sure the timestamp for the mean is the current time.
@@ -652,11 +653,15 @@ AdvanceTime : do
 
    call trace_message('Before observation space diagnostics')
 
-! The skipit is an optional arguement to skip the first part of obs_space_diagnostics
-! I can't skip the second part of obs_space_diagnostics because this is where the mean obs
-! copy ( + others ) is moved to task 0 so task 0 can update seq. 
-! There is a transpose (all_copies_to_all_vars(obs_ens_handle)) in obs_space_diagnostics
-   !Do prior observation space diagnostics and associated quality control
+   if (.not. complete_state) then ! task 0 still updating the sequence.
+      allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
+   endif
+
+   ! The skipit is an optional arguement to skip the first part of obs_space_diagnostics
+   ! I can't skip the second part of obs_space_diagnostics because this is where the mean obs
+   ! copy ( + others ) is moved to task 0 so task 0 can update seq.
+   ! There is a transpose (all_copies_to_all_vars(obs_ens_handle)) in obs_space_diagnostics
+   ! Do prior observation space diagnostics and associated quality control
    call obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, &
       seq, keys, PRIOR_DIAG, num_output_obs_members, in_obs_copy+1, &
       obs_val_index, OBS_KEY_COPY, &                                 ! new
@@ -664,6 +669,11 @@ AdvanceTime : do
       OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
       OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, skipit)
    call trace_message('After  observation space diagnostics')
+
+   if (.not. complete_state) then ! task 0 still updating the sequence.
+      deallocate(obs_ens_handle%vars)
+   endif
+
 !*********************
 
    ! FIXME:  i believe both copies and vars are equal at the end
@@ -676,10 +686,11 @@ AdvanceTime : do
    call     trace_message('Before observation assimilation')
    call timestamp_message('Before observation assimilation')
 
-   !HK destroy var complete - just to make sure there are no cheats
-   deallocate(obs_ens_handle%vars)
-   deallocate(ens_handle%vars)
-   deallocate(forward_op_ens_handle%vars)
+   if (complete_state) then ! destroy var complete - just to make sure there are no cheats
+      deallocate(obs_ens_handle%vars)
+      deallocate(ens_handle%vars)
+      deallocate(forward_op_ens_handle%vars)
+   endif
 
    !call test_state_copies(ens_handle, 'before_filter_assim')
 
@@ -766,10 +777,11 @@ AdvanceTime : do
    endif
 
    ! For diagnostics
-   allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
-   allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
-   allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
-
+   if (complete_state) then
+      allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
+      allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+      allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
+   endif
 
 !***********************
 !! Diagnostic files.
@@ -811,14 +823,22 @@ AdvanceTime : do
 
    call trace_message('Before posterior obs space diagnostics')
 
-     ! Do posterior observation space diagnostics
-     ! There is a transpose (all_copies_to_all_vars(obs_ens_handle)) in obs_space_diagnostics
+   if (.not. complete_state) then ! task 0 still updating the sequence.
+      allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
+   endif
+
+   ! Do posterior observation space diagnostics
+   ! There is a transpose (all_copies_to_all_vars(obs_ens_handle)) in obs_space_diagnostics
    call obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size, &
       seq, keys, POSTERIOR_DIAG, num_output_obs_members, in_obs_copy+2, &
       obs_val_index, OBS_KEY_COPY, &                             ! new
       posterior_obs_mean_index, posterior_obs_spread_index, num_obs_in_set, &
       OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
       OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, skipit)
+
+   if (.not. complete_state) then ! task 0 still updating the sequence.
+      deallocate(obs_ens_handle%vars)
+   endif
 
 !***********************
 
@@ -870,7 +890,7 @@ end do AdvanceTime
 
 10011 continue
 
-call all_copies_to_all_vars(ens_handle) ! HK needed to write restarts I think this can go outside AdvanceTime do.
+if (complete_state) call all_copies_to_all_vars(ens_handle) ! to write restarts
 
 call trace_message('End of main filter assimilation loop, starting cleanup', 'filter:', -1)
 
@@ -1893,7 +1913,7 @@ enddo
 ! Make var complete for get_copy() calls below.
 call all_copies_to_all_vars(obs_ens_handle)
 
-! allocate temp space for sending data
+! allocate temp space for sending data - surely only task 0 needs to allocate this?
 allocate(obs_temp(num_obs_in_set))
 
 ! Update the ensemble mean
