@@ -86,9 +86,9 @@ type(obs_type)          :: obs1, obsN
 type(obs_def_type)      :: obs_def
 type(location_type)     :: obs_loc
 
-character(len = 129) :: obs_seq_in_file_name
-character(len = 129), allocatable, dimension(:) :: obs_seq_filenames
-character(len = stringlength), dimension(MaxTrusted) :: trusted_list = 'null'
+character(len=256) :: obs_seq_in_file_name
+character(len=256), allocatable, dimension(:) :: obs_seq_filenames
+character(len=stringlength), dimension(MaxTrusted) :: trusted_list = 'null'
 
 ! Storage with fixed size for observation space diagnostics
 real(r8), dimension(1) :: prior_mean, posterior_mean, prior_spread, posterior_spread
@@ -121,7 +121,7 @@ integer :: ens_size, rank_histogram_bin
 type(random_seq_type) :: ran_seq
 real(r8) :: obs_error_variance
 
-character(len=129) :: obs_seq_read_format
+character(len=stringlength) :: obs_seq_read_format
 logical :: pre_I_format
 
 integer,  dimension(2) :: key_bounds
@@ -171,8 +171,8 @@ integer :: numqcvals
 ! Namelist with (some scalar) default values
 !-----------------------------------------------------------------------
 
-character(len = 129) :: obs_sequence_name = 'obs_seq.final'
-character(len = 129) :: obs_sequence_list = ''
+character(len=256) :: obs_sequence_name = 'obs_seq.final'
+character(len=256) :: obs_sequence_list = ''
 integer, dimension(6) :: first_bin_center = (/ 2003, 1, 1, 0, 0, 0 /)
 integer, dimension(6) :: last_bin_center  = (/ 2003, 1, 2, 0, 0, 0 /)
 integer, dimension(6) :: bin_separation   = (/    0, 0, 0, 6, 0, 0 /)
@@ -190,10 +190,10 @@ real(r8), dimension(MaxLevels+1) :: mlevel_edges = MISSING_R8 ! model levels (no
 integer :: Nregions = 0
 real(r8), dimension(MaxRegions) :: lonlim1= MISSING_R8, lonlim2= MISSING_R8
 real(r8), dimension(MaxRegions) :: latlim1= MISSING_R8, latlim2= MISSING_R8
-character(len = stringlength), dimension(MaxRegions) :: reg_names = 'null'
+character(len=stringlength), dimension(MaxRegions) :: reg_names = 'null'
 type(location_type), dimension(MaxRegions) :: min_loc, max_loc
 
-character(len = stringlength), dimension(MaxTrusted) :: trusted_obs = 'null'
+character(len=stringlength), dimension(MaxTrusted) :: trusted_obs = 'null'
 
 real(r8):: rat_cri               = 5000.0_r8 ! QC ratio
 real(r8):: input_qc_threshold    = 3.0_r8    ! maximum NCEP QC factor
@@ -219,7 +219,7 @@ namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list,                 &
 !-----------------------------------------------------------------------
 
 integer, parameter :: Ncopies = 22
-character(len = stringlength), dimension(Ncopies) :: copy_names =                &
+character(len=stringlength), dimension(Ncopies) :: copy_names =                &
    (/ 'Nposs      ', 'Nused      ', 'NbigQC     ', 'NbadIZ     ', 'NbadUV     ', &
       'NbadLV     ', 'rmse       ', 'bias       ', 'spread     ', 'totalspread', &
       'NbadDARTQC ', 'observation', 'ens_mean   ',                               &
@@ -298,7 +298,7 @@ integer,  allocatable, dimension(:) :: ob_defining_vert ! obs index defining ver
 
 ! List of observations types augmented with 'WIND' types if need be.
 ! Replace calls to 'get_obs_kind_name' ---> index into 'obs_type_strings'
-character(len = stringlength), pointer, dimension(:) :: obs_type_strings
+character(len=stringlength), pointer, dimension(:) :: obs_type_strings
 
 ! These pairs of variables are used when we diagnose which observations
 ! are far from the background.
@@ -315,8 +315,8 @@ type(time_type) :: seqT1, seqTN        ! first,last time in entire observation s
 type(time_type) :: AllseqT1, AllseqTN  ! first,last time in ALL observation sequences
 type(time_type) :: obs_time, skip_time
 
-character(len = 256) :: ncName, string1, string2, string3
-character(len = stringlength) :: obsname
+character(len=512) :: string1, string2, string3
+character(len=stringlength) :: obsname, ncName
 
 integer  :: Nidentity  = 0   ! identity observations
 
@@ -1846,7 +1846,7 @@ Subroutine CountTrustedObsTypes()
 
 integer :: i
 logical :: matched
-character(len = stringlength) :: possible_obs_type
+character(len=stringlength) :: possible_obs_type
 
 ! Loop over all user input candidates for 'trusted' observations.
 ! Check each candidate against list of known observation names.
@@ -1935,7 +1935,7 @@ Subroutine  SetScaleFactors()
 ! the scale_factor should be defined to reflect the type, which are not
 ! guaranteed to be numbered sequentially ... vortices 81, for example
 
-character(len = stringlength) :: obs_string
+character(len=stringlength) :: obs_string
 integer :: ivar
 
 scale_factor = 1.0_r8
@@ -3490,7 +3490,7 @@ end Subroutine Normalize3Dvars
 
 
 Subroutine WriteNetCDF(fname)
-character(len=129), intent(in) :: fname
+character(len=*), intent(in) :: fname
 
 integer :: ncid, i, indx1, nobs, typesdimlen
 integer ::  RegionDimID,  RegionVarID

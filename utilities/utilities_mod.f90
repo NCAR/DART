@@ -186,7 +186,7 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-character(len = 169) :: msgstring
+character(len=512) :: msgstring
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -195,8 +195,8 @@ character(len = 169) :: msgstring
 integer            :: TERMLEVEL      = E_ERR   
 
 ! default log and namelist output filenames
-character(len=129) :: logfilename    = 'dart_log.out'
-character(len=129) :: nmlfilename    = 'dart_log.nml'
+character(len=256) :: logfilename    = 'dart_log.out'
+character(len=256) :: nmlfilename    = 'dart_log.nml'
 
 ! output each module subversion details
 logical            :: module_details = .true.  
@@ -222,8 +222,8 @@ contains
    ! integer :: logfileunit -- public module variable
    integer :: iunit, io
 
-   character(len=129) :: lname
-   character(len=169) :: string1,string2,string3
+   character(len=256) :: lname
+   character(len=512) :: string1,string2,string3
 
       if ( module_initialized ) then ! nothing to do
 
@@ -411,6 +411,9 @@ contains
    end subroutine initialize_utilities
 
 
+!#######################################################################
+
+
    subroutine finalize_utilities(progname)
    character(len=*), intent(in), optional :: progname
    ! integer :: logfileunit -- private module variable
@@ -450,6 +453,7 @@ contains
 
 !#######################################################################
 
+
    subroutine register_module(src, rev, rdate)
    character(len=*), intent(in) :: src, rev, rdate
 
@@ -476,7 +480,9 @@ contains
 
    end subroutine register_module
 
+
 !#######################################################################
+
 
    subroutine timestamp(string1,string2,string3,pos)
 
@@ -505,7 +511,9 @@ contains
 
    end subroutine timestamp
 
+
 !#######################################################################
+
 
    function file_exist (file_name)
 
@@ -521,7 +529,9 @@ contains
 
    end function file_exist
 
+
 !#######################################################################
+
 
    function get_unit () result (iunit)
 
@@ -546,7 +556,9 @@ contains
 
    end function get_unit
 
+
 !#######################################################################
+
 
    subroutine dump_unit_attributes(iunit) 
 !--------------------------------------------------------------------------------
@@ -558,7 +570,9 @@ contains
       integer, intent(in) :: iunit
 
       logical :: exists, connected, named_file
-      character(len=129) :: file_name, srname, str1
+      character(len=256) :: file_name
+      character(len=512) :: str1
+      character(len=32)  :: srname
       character(len=32)  :: ynu     ! YES, NO, UNDEFINED ... among others
       integer :: ios, reclen, nextrecnum
 
@@ -675,7 +689,9 @@ contains
 
    end subroutine dump_unit_attributes
 
+
 !#######################################################################
+
 
    subroutine error_mesg (routine, message, level)
 
@@ -711,7 +727,9 @@ contains
 
    end subroutine error_mesg
 
+
 !#######################################################################
+
 
   subroutine error_handler(level, routine, text, src, rev, rdate, aut, text2, text3 )
 !----------------------------------------------------------------------
@@ -721,10 +739,10 @@ contains
 implicit none
 
 integer, intent(in) :: level
-character(len = *), intent(in) :: routine, text
-character(len = *), intent(in), optional :: src, rev, rdate, aut, text2, text3
+character(len=*), intent(in) :: routine, text
+character(len=*), intent(in), optional :: src, rev, rdate, aut, text2, text3
 
-character(len = 8) :: taskstr
+character(len=8) :: taskstr
 
 if ( .not. module_initialized ) call initialize_utilities
 
@@ -877,7 +895,9 @@ if( level >= TERMLEVEL ) call exit_all( 99 )
 
 end subroutine error_handler
 
+
 !#######################################################################
+
 
    function open_file (fname, form, action) result (iunit)
 
@@ -985,33 +1005,35 @@ end subroutine error_handler
 
    end function open_file
 
+
 !#######################################################################
+
 
    subroutine print_version_number (iunit, routine, version)
 
 ! *** prints routine name and version number to a log file ***
 !
 !    in:  iunit    = unit number to direct output
-!         routine = routine name (character, max len = 20)
-!         version = version name or number (character, max len = 8)
+!         routine = routine name (character, max len=20)
+!         version = version name or number (character, max len=8)
 
    integer,          intent(in) :: iunit
    character(len=*), intent(in) :: routine, version
 
    integer           :: n
-   character(len=20) :: name
+   character(len=20) :: myname
    character(len=8)  :: vers
 
    if ( .not. module_initialized ) call initialize_utilities
    if ( .not. do_output_flag) return
 
-     n = min(len(routine),20); name = adjustl(routine(1:n))
-     n = min(len(version), 8); vers = adjustl(version(1:n))
+     n = min(len(routine),20); myname = adjustl(routine(1:n))
+     n = min(len(version), 8); vers   = adjustl(version(1:n))
 
      if (iunit > 0) then
-         write (iunit,10) name, vers
+         write (iunit,10) myname, vers
      else
-         write (*,10) name, vers
+         write (*,10) myname, vers
      endif
 
   10 format (/,60('-'),  &
@@ -1023,7 +1045,9 @@ end subroutine error_handler
 
    end subroutine print_version_number
 
+
 !#######################################################################
+
 
    subroutine write_time (unit, label, string1, string2, string3, tz, brief)
 
@@ -1105,7 +1129,9 @@ end subroutine error_handler
 
    end subroutine write_time
 
+
 !#######################################################################
+
 
    subroutine set_output (doflag)
 
@@ -1128,6 +1154,7 @@ end subroutine error_handler
 
 !#######################################################################
 
+
    function do_output ()
 
 ! *** return whether output should be written from this task ***
@@ -1141,7 +1168,9 @@ end subroutine error_handler
 
    end function do_output
 
+
 !#######################################################################
+
 
    subroutine set_nml_output (nmlstring)
 
@@ -1186,6 +1215,7 @@ end subroutine error_handler
 
 !#######################################################################
 
+
    function do_nml_file ()
 
 ! *** return whether nml should be written to nml file
@@ -1203,7 +1233,9 @@ end subroutine error_handler
 
    end function do_nml_file
 
+
 !#######################################################################
+
 
    function do_nml_term ()
 
@@ -1221,6 +1253,7 @@ end subroutine error_handler
    endif
 
    end function do_nml_term
+
 
 !#######################################################################
 
@@ -1269,8 +1302,8 @@ if (open) close(iunit)
 
 end subroutine close_file
 
-!#######################################################################
 
+!#######################################################################
 
 
 subroutine find_namelist_in_file(namelist_file_name, nml_name, iunit, &
@@ -1284,14 +1317,14 @@ subroutine find_namelist_in_file(namelist_file_name, nml_name, iunit, &
 ! returns true. Otherwise, error message and terminates
 !
 
-character(len = *), intent(in) :: namelist_file_name
-character(len = *), intent(in) :: nml_name
+character(len=*), intent(in) :: namelist_file_name
+character(len=*), intent(in) :: nml_name
 integer, intent(out)           :: iunit
 logical, intent(in), optional :: write_to_logfile_in
 
-character(len = 169) :: nml_string, test_string, string1
-integer              :: io
-logical              :: write_to_logfile
+character(len=256) :: nml_string, test_string, string1
+integer            :: io
+logical            :: write_to_logfile
 
 
 ! Decide if there is a logfile or not
@@ -1365,7 +1398,6 @@ end subroutine find_namelist_in_file
 !#######################################################################
 
 
-
 subroutine check_namelist_read(iunit, iostat_in, nml_name, &
    write_to_logfile_in)
 !-----------------------------------------------------------------------
@@ -1375,10 +1407,10 @@ subroutine check_namelist_read(iunit, iostat_in, nml_name, &
 !
 
 integer,            intent(in) :: iunit, iostat_in
-character(len = *), intent(in) :: nml_name
+character(len=*), intent(in) :: nml_name
 logical, intent(in), optional :: write_to_logfile_in
 
-character(len=159) :: nml_string
+character(len=256) :: nml_string
 integer            :: io
 logical            :: write_to_logfile
 
@@ -1438,14 +1470,16 @@ endif
 
 end subroutine check_namelist_read
 
+
 !#######################################################################
+
 
    subroutine nc_check(istatus, subr_name, context)
       integer, intent (in)                   :: istatus
       character(len=*), intent(in)           :: subr_name
       character(len=*), intent(in), optional :: context
   
-      character(len=129) :: error_msg
+      character(len=512) :: error_msg
   
       ! if no error, nothing to do here.  we are done.
       if( istatus == nf90_noerr) return
@@ -1470,6 +1504,7 @@ end subroutine check_namelist_read
 
 !#######################################################################
 
+
 subroutine to_upper( string )
 ! Converts 'string' to uppercase
 character(len=*), intent(INOUT) :: string
@@ -1486,7 +1521,9 @@ enddo
 
 end subroutine to_upper
 
+
 !#######################################################################
+
 
 subroutine find_textfile_dims( fname, nlines, linelen )
 ! Determines the number of lines and maximum line length
@@ -1498,7 +1535,7 @@ integer, optional, intent(OUT) :: linelen
 integer :: i, maxlen, mylen, ios, funit
 
 character(len=1024) :: oneline
-character(len=129)  :: error_msg
+character(len=512)  :: error_msg
 
 ! if there is no file, return -1 for both counts
 if (.not. file_exist(fname)) then
@@ -1535,7 +1572,9 @@ if (present(linelen)) linelen = maxlen
 
 end subroutine find_textfile_dims
 
+
 !#######################################################################
+
 
 subroutine file_to_text( fname, textblock )
 !
@@ -1588,7 +1627,9 @@ call close_file(funit)
 
 end subroutine file_to_text
 
+
 !#######################################################################
+
 
 function get_next_filename( listname, index )
 
@@ -1597,7 +1638,7 @@ function get_next_filename( listname, index )
 !
 character(len=*),  intent(in) :: listname
 integer,           intent(in) :: index
-character(len=128)            :: get_next_filename
+character(len=256)            :: get_next_filename
 
 integer :: i, ios, funit
 
@@ -1621,7 +1662,7 @@ enddo PARSELOOP
 ! check for length problems
 if (len_trim(string) > len(get_next_filename)) then
    call error_handler(E_ERR, 'get_next_filename', &
-                      'maximum filename length of 128 exceeded', &
+                      'maximum filename length of 256 exceeded', &
                       source, revision, revdate)   
 endif
 
@@ -1630,7 +1671,9 @@ call close_file(funit)
 
 end function get_next_filename
 
+
 !#######################################################################
+
 
 function is_longitude_between (lon, minlon, maxlon, doradians, newlon)
 
@@ -1711,6 +1754,7 @@ end function is_longitude_between
 
 !#######################################################################
 
+
 function next_file(fname,ifile)
 !----------------------------------------------------------------------
 ! The file name can take one of three forms:
@@ -1734,8 +1778,8 @@ character(len=len(fname)) :: dir_name
 
 integer,            SAVE :: filenum = 0
 integer,            SAVE :: dir_prec = 0
-character(len=129), SAVE :: dir_base
-character(len=129), SAVE :: filename
+character(len=256), SAVE :: dir_base
+character(len=256), SAVE :: filename
 character(len=129), SAVE :: dir_ext
 
 integer :: slashindex, splitindex, i, strlen, ios
@@ -1834,6 +1878,7 @@ endif
 
 end function next_file
 
+
 !#######################################################################
 
 
@@ -1845,7 +1890,7 @@ function ascii_file_format(fform)
 character(len=*), intent(in), optional :: fform
 logical                                :: ascii_file_format
 
-character(len=129) :: lj_fform ! Left Justified version of optional argument 
+character(len=len(fform)) :: lj_fform ! Left Justified version of optional argument 
 
 ! Returns .true. for formatted/ascii file, .false. is unformatted/binary
 ! Defaults (if fform not specified) to formatted/ascii.
