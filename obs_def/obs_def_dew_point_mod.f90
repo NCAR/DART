@@ -132,7 +132,7 @@ end subroutine initialize_module
 subroutine get_expected_dew_point_distrib(state_ens_handle,  location, key, td, istatus)
 
 type(ensemble_type)                :: state_ens_handle
-type(location_type), intent(inout) :: location
+type(location_type), intent(in)    :: location
 integer,             intent(in)    :: key
 real(r8),            intent(out)   :: td(:)              ! dewpoint (K)
 integer,             intent(out)   :: istatus(:)

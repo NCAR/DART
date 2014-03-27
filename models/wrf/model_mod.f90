@@ -972,7 +972,7 @@ subroutine model_interpolate_distrib(state_ens_handle, location, obs_kind, istat
 ! Helen Kershaw - Aim: to not require the whole state vector
 
 ! arguments
-type(location_type), intent(inout) :: location !> observation location, store mean level
+type(location_type),    intent(in) :: location 
 integer,                intent(in) :: obs_kind
 integer,               intent(out) :: istatus(:)
 !HK
@@ -1222,12 +1222,6 @@ else
          endif
 
       enddo
-
-      !HK store level so you don't have to repeat the get_model_pressure_profile_distib call in 
-      ! vert_convert
-      !> @todo Nice idea, but location here is not related to the location in filter_assim.
-      location = set_location(xyz_loc(1),xyz_loc(2),zloc(ens_size),VERTISLEVEL)
-
 
    elseif(vert_is_height(location)) then
 
@@ -6392,9 +6386,9 @@ base_which = nint(query_location(base_obs_loc))
 
 if (.not. horiz_dist_only) then
    if (base_which /= wrf%dom(1)%localization_coord) then
-      print*, 'base_which ', base_which, 'loc coord ', wrf%dom(1)%localization_coord
+      !print*, 'base_which ', base_which, 'loc coord ', wrf%dom(1)%localization_coord
       call vert_convert_distrib(state_ens_handle, base_obs_loc, base_obs_kind, istatus1)
-      call error_handler(E_ERR, 'you should not call this ', 'get_close_obs_distrib')
+      !call error_handler(E_ERR, 'you should not call this ', 'get_close_obs_distrib')
    elseif (base_array(3) == missing_r8) then
       istatus1 = 1
    endif

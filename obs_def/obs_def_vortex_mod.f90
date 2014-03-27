@@ -113,7 +113,7 @@ subroutine get_expected_vortex_info_distrib(state_ens_handle, location, vinfo, w
 !
 
 type(ensemble_type), intent(in)     :: state_ens_handle
-type(location_type), intent(inout)  :: location
+type(location_type), intent(in)     :: location
 character(len=3),    intent(in)     :: whichinfo
 real(r8),            intent(out)    :: vinfo(:)
 integer,             intent(out)    :: istatus(:)

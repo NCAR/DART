@@ -829,7 +829,7 @@ subroutine get_expected_radial_vel_distrib(state_ens_handle, location, velkey, &
 ! This is the main forward operator routine for radar Doppler velocity.
 
 type(ensemble_type),    intent(in) :: state_ens_handle
-type(location_type), intent(inout) :: location
+type(location_type),    intent(in) :: location
 integer,                intent(in) :: velkey
 real(r8),              intent(out) :: radial_vel(:)
 integer,               intent(out) :: istatus(:)
@@ -939,7 +939,7 @@ subroutine get_expected_fall_velocity_distrib(state_ens_handle, &
 ! radial velocity.
 
 type(ensemble_type)                :: state_ens_handle
-type(location_type), intent(inout) :: location
+type(location_type),    intent(in) :: location
 real(r8),            intent(out)   :: precip_fall_speed(:)
 integer,             intent(out)   :: istatus(:)
 
@@ -1112,7 +1112,7 @@ subroutine get_expected_radar_ref_distrib(state_ens_handle, location, ref, istat
 ! The main forward operator routine for radar reflectivity observations.
 
 type(ensemble_type)                :: state_ens_handle
-type(location_type), intent(inout) :: location
+type(location_type), intent(in)    :: location
 real(r8),            intent(out)   :: ref(:)
 integer,             intent(out)   :: istatus(:)
 

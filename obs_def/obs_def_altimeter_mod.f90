@@ -80,7 +80,7 @@ end subroutine initialize_module
 subroutine get_expected_altimeter_distrib(state_ens_handle, location, altimeter_setting, istatus)
 
 type(ensemble_type), intent(in)     :: state_ens_handle
-type(location_type), intent(inout)  :: location
+type(location_type), intent(in)     :: location
 real(r8),            intent(out)    :: altimeter_setting(:)     ! altimeter (hPa)
 integer,             intent(out)    :: istatus(:)
 

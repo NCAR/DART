@@ -698,7 +698,7 @@ subroutine interpolate_distrib(location, loctype, istatus, expected_obs, state_e
 
 implicit none
 
-type(location_type),   intent(inout) :: location
+type(location_type),   intent(in)    :: location
 integer,               intent(in)    :: loctype
 integer,               intent(out)   :: istatus(:)
 type(ensemble_type),   intent(in)    :: state_ens_handle
