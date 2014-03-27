@@ -572,6 +572,11 @@ integer(KIND=MPI_OFFSET_KIND) :: num_copies, num_vars, my_num_vars
 integer                       :: copies_dim, vars_dim
 integer(KIND=MPI_OFFSET_KIND) :: start(2), count(2), stride(2) ! for state copies
 
+! timing variables
+double precision :: start_at_time
+
+start_at_time = MPI_WTIME()
+
 ! open diagnostic file
 ret = nfmpi_open(mpi_comm_world, diag_filename, NF_WRITE, mpi_info_null, ncfile)
 call pnet_check(ret, 'filter_state_space_diagnostics_parallel', 'opening file')
@@ -611,6 +616,8 @@ call pnet_check(ret, 'filter_state_space_diagnostics_parallel', 'writing copies'
 ! close netcdf file
 ret = nfmpi_close(ncfile)
 call pnet_check(ret, 'filter_state_space_diagnostics_parallel', 'closing file')
+
+if (my_task_id() == 0) print*, 'diagnostic time :', MPI_WTIME() - start_at_time
 
 end subroutine filter_state_space_diagnostics_parallel
 

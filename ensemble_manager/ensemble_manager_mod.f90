@@ -290,10 +290,16 @@ integer(KIND=MPI_OFFSET_KIND) :: count(1)
 integer(KIND=MPI_OFFSET_KIND) :: stride(1)
 integer(KIND=MPI_OFFSET_KIND) :: state_length, time_length
 
+! timing variables
+double precision :: time_at_start
+
 if (no_complete_state) then
+
+   time_at_start = MPI_WTIME()
 
    ! Loop to read in all ensemble members
    PNETCDF_RESTARTS: do i = start_copy, end_copy
+
       ! Get global index for my ith ensemble
       write(extension, '(i4.4)') i
       this_file_name = trim(file_name) // '.' // extension // '.nc'
@@ -336,9 +342,9 @@ if (no_complete_state) then
       ret = nfmpi_close(ncfile)
       call pnet_check(ret, 'read_ensemble_restart', 'close restart file')
 
-      print*, 'read copy ', i
-
    end do PNETCDF_RESTARTS
+
+   if (my_task_id() == 0) print*, 'Read time : ', MPI_WTIME() - time_at_start, 'average :', (MPI_WTIME() - time_at_start) / (end_copy - start_copy + 1)
 
 else 
 
@@ -479,12 +485,17 @@ integer(KIND=MPI_OFFSET_KIND) :: time_length
 integer(KIND=MPI_OFFSET_KIND) :: state_length
 integer(KIND=MPI_OFFSET_KIND) :: num_blocks
 
+! timing variables
+double precision :: start_at_time
+
 num_dims = 1 ! state and time are 1 dimensional
 time_length = 2
 state_length = ens_handle%num_vars ! Whole state
 num_blocks = ens_handle%my_num_vars ! Just me
 
 if (no_complete_state) then
+
+   start_at_time = MPI_WTIME()
 
    PNETCDF_RESTARTS: do i = start_copy, end_copy
       write(extension, '(i4.4)') i
@@ -522,6 +533,8 @@ if (no_complete_state) then
       call pnet_check(ret, 'write_ensemble_restart', 'closing file')
 
    end do PNETCDF_RESTARTS
+
+   if (my_task_id() == 0) print*, 'write time: ', MPI_WTIME() - start_at_time, 'average :', (MPI_WTIME() - start_at_time) / (end_copy - start_copy + 1)
 
 else
 
