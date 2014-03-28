@@ -454,6 +454,7 @@ subroutine write_ensemble_restart(ens_handle, file_name, start_copy, end_copy, &
    force_single_file)
 
 use pnetcdf_utilities_mod, only : pnet_check
+use mpi_utilities_mod,     only : datasize
 use mpi
 use pnetcdf
 
@@ -518,8 +519,17 @@ if (no_complete_state) then
       timeDim = (/timeDimId/)
 
       ! Define the variables
-      ret = nfmpi_def_var(ncfile, "state_vector", NF_FLOAT, num_dims, stateDim, stateId) ! state
-      call pnet_check(ret, 'write_ensemble_restart', 'defining state var')
+      if (datasize == MPI_REAL4) then ! single precision state
+
+         ret = nfmpi_def_var(ncfile, "state_vector", NF_FLOAT, num_dims, stateDim, stateId) ! state
+         call pnet_check(ret, 'write_ensemble_restart', 'defining state var')
+
+      else ! double precision
+
+         ret = nfmpi_def_var(ncfile, "state_vector", NF_DOUBLE, num_dims, stateDim, stateId) ! state
+         call pnet_check(ret, 'write_ensemble_restart', 'defining state var')
+
+      endif
 
       ret = nfmpi_def_var(ncfile, "time", NF_INT, num_dims, timeDim, timeId) ! time
       call pnet_check(ret, 'write_ensemble_restart', 'defining time var')
@@ -527,7 +537,7 @@ if (no_complete_state) then
       ret = nfmpi_enddef(ncfile) ! metadata IO occurs in this
       call pnet_check(ret, 'write_ensemble_restart', 'metadata IO')
 
-      call awrite_state_restart(timeId, stateId, num_blocks, ens_handle%time(i), ens_handle%copies(i, :), ncfile)
+      call awrite_state_restart(timeId, stateId, num_blocks, ens_handle%time(i), ens_handle%copies(i, :), state_length,ncfile)
 
       ret = nfmpi_close(ncfile)
       call pnet_check(ret, 'write_ensemble_restart', 'closing file')

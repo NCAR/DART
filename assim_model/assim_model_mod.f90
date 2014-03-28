@@ -836,7 +836,7 @@ endif
 end subroutine awrite_state_restart_complete
 
 !----------------------------------------------------------------------
-subroutine awrite_state_restart_parallel(timeId, stateId, nblocks, model_time, model_state, funit, target_time)
+subroutine awrite_state_restart_parallel(timeId, stateId, nblocks, model_time, model_state, state_length, funit, target_time)
 !----------------------------------------------------------------------
 !
 !HK what does this comment mean?
@@ -844,16 +844,18 @@ subroutine awrite_state_restart_parallel(timeId, stateId, nblocks, model_time, m
 ! opened to the restart file. (Need to reconsider what is passed to 
 ! identify file or if file can even be opened within this routine).
 
-use mpi_utilities_mod,     only : task_count, my_task_id
+use mpi_utilities_mod,     only : task_count, my_task_id, datasize
 use pnetcdf_utilities_mod, only :pnet_check
 use mpi
 use pnetcdf
 
 integer,                        intent(in) :: stateId !> Id for state_vector
 integer,                        intent(in) :: timeId !> Id for time
-integer(KIND=MPI_OFFSET_KIND),  intent(in) :: nblocks !> my num vars
+integer(KIND=MPI_OFFSET_KIND),  intent(in) :: nblocks !> num vars
 type(time_type),                intent(in) :: model_time
 real(r8),                    intent(inout) :: model_state(:) !> see inout in ensemble manager call
+!integer,                        intent(in) :: state_length
+integer(KIND=MPI_OFFSET_KIND),  intent(in) :: state_length !> num vars
 integer,                        intent(in) :: funit !> restart file
 type(time_type), optional,      intent(in) :: target_time
 
@@ -882,8 +884,17 @@ start(1) = my_task_id() + 1
 count(1) = nblocks ! my_num_vars
 stride(1) = task_count()
 
-ret = nfmpi_put_vars_real_all(funit, stateId, start, count, stride, model_state)
-call pnet_check(ret, 'awrite_state_restart', 'writing state')
+if ( datasize == MPI_REAL4 ) then ! trying to catch single precision
+
+   ret = nfmpi_put_vars_all(funit, stateId, start, count, stride, model_state, nblocks, MPI_REAL4)
+   call pnet_check(ret, 'awrite_state_restart', 'writing state')
+
+else ! double precision
+
+   ret = nfmpi_put_vars_all(funit, stateId, start, count, stride, model_state, nblocks, MPI_REAL8)
+   call pnet_check(ret, 'awrite_state_restart', 'writing state')
+
+endif
 
 ! time - does this need to be a collective call? Are the times ever different
 start(1) = 1
@@ -999,12 +1010,12 @@ use pnetcdf_utilities_mod, only : pnet_check
 
 implicit none
 
-character*100,   intent(in)             :: restart_file
-integer,         intent(in)             :: nblocks !> number of blocks - my_num_vars
-type(time_type), intent(out)            :: model_time
-real(r8),        intent(out)            :: model_state(:) !> now distributed
-integer,         intent(in)             :: funit !> pnetcdf file identifier
-type(time_type), optional, intent(out) :: target_time
+character*100,   intent(in)               :: restart_file
+integer,         intent(in)               :: nblocks !> number of blocks - my_num_vars
+type(time_type), intent(out)              :: model_time
+real(r8),        intent(out)              :: model_state(:) !> now distributed
+integer,         intent(in)               :: funit !> pnetcdf file identifier
+type(time_type), optional, intent(out)    :: target_time
 
 character(len = 16) :: open_format
 integer :: ios, int1, int2
@@ -1013,6 +1024,7 @@ integer :: ios, int1, int2
 integer(KIND=MPI_OFFSET_KIND) :: start(1) !> state is one dimensional
 integer(KIND=MPI_OFFSET_KIND) :: count(1)
 integer(KIND=MPI_OFFSET_KIND) :: stride(1)
+integer(KIND=MPI_OFFSET_KIND) :: bufcount !> my num vars
 integer                       :: stateId !> Id of state variable
 integer                       :: timeId !> Id of time variable
 integer                       :: ret !> return code
@@ -1028,19 +1040,19 @@ ios = 0
 start(1) = my_task_id() + 1
 count(1) = nblocks
 stride(1) = task_count()
+bufcount = nblocks
 
 ! Strided read of the state the values from the netCDF variable
 
-!> @todo probably going to have to wrap this in the model because of the precision
-if ( sizeof(model_state(1)) < 8 ) then ! trying to catch single precision
+if ( datasize == MPI_REAL4 ) then ! trying to catch single precision
 
-   ret = nfmpi_get_vars_real_all(funit, stateId, start, count, stride, model_state)
+   ret = nfmpi_get_vars_all(funit, stateId, start, count, stride, model_state, bufcount, MPI_REAL4)
    call pnet_check(ret, 'aread_state_restart', 'reading state')
 
 else ! double precision
 
-   !ret = nfmpi_get_vars_double_all(funit, stateId, start, count, stride, model_state)
-   !call pnet_check(ret, 'aread_state_restart', 'reading state')
+   ret = nfmpi_get_vars_all(funit, stateId, start, count, stride, model_state, bufcount, MPI_REAL8)
+   call pnet_check(ret, 'aread_state_restart', 'reading state')
 
 endif
 
