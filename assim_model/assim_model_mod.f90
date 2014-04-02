@@ -110,11 +110,11 @@ namelist /assim_model_nml/ write_binary_restart_files, &
 ! Interfaces for reading and writing restarts. Binary complete state vectors
 ! and parallel reads of netcdf restarts
 interface aread_state_restart
-   module procedure aread_state_restart_complete, aread_state_restart_parallel
+   module procedure aread_state_restart_complete, aread_state_restart_parallel, aread_state_restart_giant
 end interface
 
 interface awrite_state_restart
-   module procedure awrite_state_restart_complete, awrite_state_restart_parallel
+   module procedure awrite_state_restart_complete, awrite_state_restart_parallel, awrite_state_restart_giant
 end interface
 
 contains
@@ -908,6 +908,82 @@ call pnet_check(ret, 'awrite_state_restart', 'writing time')
 
 end subroutine awrite_state_restart_parallel
 
+!----------------------------------------------------------------------
+!> for giant restart file
+subroutine awrite_state_restart_giant(timeId, stateId, nblocksVars, nblocksCopies, model_time, model_state, funit, target_time)
+!----------------------------------------------------------------------
+!
+!HK what does this comment mean?
+! Write a restart file given a model extended state and a unit number 
+! opened to the restart file. (Need to reconsider what is passed to 
+! identify file or if file can even be opened within this routine).
+
+use mpi_utilities_mod,     only : task_count, my_task_id, datasize
+use pnetcdf_utilities_mod, only :pnet_check
+use mpi
+use pnetcdf
+
+integer,                        intent(in) :: stateId !> Id for state_vector
+integer,                        intent(in) :: timeId !> Id for time
+integer(KIND=MPI_OFFSET_KIND),  intent(in) :: nblocksVars, nblocksCopies !> num vars
+type(time_type),                intent(in) :: model_time
+real(r8),                    intent(inout) :: model_state(:, :) !> see inout in ensemble manager call
+integer,                        intent(in) :: funit !> restart file
+type(time_type), optional,      intent(in) :: target_time
+
+integer :: i, io, rc
+character(len = 16) :: open_format
+character(len=128) :: filename
+logical :: is_named
+
+integer :: time(2), seconds, days
+
+! pnetcdf variables
+integer                       :: ret !> return code for pnetcdf calls
+integer(KIND=MPI_OFFSET_KIND) :: start(1) ! state and time are one dimensional
+integer(KIND=MPI_OFFSET_KIND) :: count(1)
+integer(KIND=MPI_OFFSET_KIND) :: stride(1)
+integer(KIND=MPI_OFFSET_KIND) :: state_start(2) ! state and time are one dimensional
+integer(KIND=MPI_OFFSET_KIND) :: state_count(2)
+integer(KIND=MPI_OFFSET_KIND) :: state_stride(2)
+
+if ( .not. module_initialized ) call static_init_assim_model()
+
+! time - does this need to be a collective call? Are the times ever different
+start(1) = 1
+count(1) = 2
+stride(1) = 1
+
+call get_time(model_time, seconds, days)
+time = (/seconds, days/)
+ret = nfmpi_put_vars_int_all(funit, timeId, start, count, stride, time)
+call pnet_check(ret, 'awrite_state_restart', 'writing time')
+
+
+! Write the state vector
+
+! state
+state_start = (/ 1, my_task_id() + 1 /)
+state_count = (/ nblocksCopies, nblocksVars /) ! my_num_vars
+state_stride = (/ 1, task_count() /)
+
+!state_start = (/ my_task_id() + 1, 1 /)
+!state_count = (/ nblocksVars,  nblocksCopies  /)
+!state_stride = (/ task_count(), 1 /)
+
+if ( datasize == MPI_REAL4 ) then ! trying to catch single precision
+
+   ret = nfmpi_put_vars_all(funit, stateId, state_start, state_count, state_stride, model_state, nblocksCopies*nblocksVars, MPI_REAL4)
+   call pnet_check(ret, 'awrite_state_restart', 'writing state')
+
+else ! double precision
+
+   ret = nfmpi_put_vars_all(funit, stateId, state_start, state_count, state_stride, model_state, nblocksCopies*nblocksVars, MPI_REAL8)
+   call pnet_check(ret, 'awrite_state_restart', 'writing state')
+
+endif
+
+end subroutine awrite_state_restart_giant
 
 subroutine read_state_restart(assim_model, funit, target_time)
 !----------------------------------------------------------------------
@@ -1000,7 +1076,7 @@ end subroutine aread_state_restart_complete
 
 !----------------------------------------------------------------------
 !> reads a netcdf restart file in parallel. No complete state.
-subroutine aread_state_restart_parallel(restart_file, stateId, timeId, nblocks, model_time, model_state, funit, target_time)
+subroutine aread_state_restart_parallel(stateId, timeId, nblocks, model_time, model_state, funit, target_time)
 
 use pnetcdf
 use mpi
@@ -1010,7 +1086,6 @@ use pnetcdf_utilities_mod, only : pnet_check
 
 implicit none
 
-character*100,   intent(in)               :: restart_file
 integer,         intent(in)               :: nblocks !> number of blocks - my_num_vars
 type(time_type), intent(out)              :: model_time
 real(r8),        intent(out)              :: model_state(:) !> now distributed
@@ -1066,6 +1141,79 @@ call pnet_check(ret, 'aread_state_restart', 'reading time')
 model_time = set_time(time(1), time(2)) ! seconds, days
 
 end subroutine aread_state_restart_parallel
+
+!----------------------------------------------------------------------
+!> giant restart files
+subroutine aread_state_restart_giant(state_length, stateId, timeId, nblocksVars, nblocksCopies, model_time, model_state, funit, target_time)
+
+use mpi_utilities_mod,     only : task_count, my_task_id, datasize
+use pnetcdf_utilities_mod, only : pnet_check
+use time_manager_mod, only : set_time
+
+use mpi
+use pnetcdf
+
+integer(KIND=MPI_OFFSET_KIND),  intent(in) :: state_length !> just to make the overloading work?
+integer,                        intent(in) :: stateId !> Id for state_vector
+integer,                        intent(in) :: timeId !> Id for time
+integer(KIND=MPI_OFFSET_KIND),  intent(in) :: nblocksVars, nblocksCopies !> num vars
+type(time_type),             intent(inout) :: model_time
+real(r8),                    intent(inout) :: model_state(:, :) !> see inout in ensemble manager call
+integer,                        intent(in) :: funit !> restart file
+type(time_type), optional,      intent(in) :: target_time
+
+integer :: time(2), seconds, days
+
+! pnetcdf variables
+integer                       :: ret !> return code for pnetcdf calls
+integer(KIND=MPI_OFFSET_KIND) :: start(1) ! state and time are one dimensional
+integer(KIND=MPI_OFFSET_KIND) :: count(1)
+integer(KIND=MPI_OFFSET_KIND) :: stride(1)
+integer(KIND=MPI_OFFSET_KIND) :: state_start(2) ! state and time are one dimensional
+integer(KIND=MPI_OFFSET_KIND) :: state_count(2)
+integer(KIND=MPI_OFFSET_KIND) :: state_stride(2)
+integer :: time_length
+
+time_length = 2
+
+if ( .not. module_initialized ) call static_init_assim_model()
+
+! read the state vector
+
+state_start = (/ 1, my_task_id() + 1 /)
+state_count = (/ nblocksCopies, nblocksVars /)
+state_stride = (/ 1, task_count() /)
+
+!state_start = (/ my_task_id() + 1, 1 /)
+!state_count = (/ nblocksVars,  nblocksCopies  /)
+!state_stride = (/ task_count(), 1 /)
+
+
+if ( datasize == MPI_REAL4 ) then ! single precision
+
+   ret = nfmpi_get_vars_all(funit, stateId, state_start, state_count, state_stride, model_state, nblocksCopies*nblocksVars, MPI_REAL4)
+   call pnet_check(ret, 'aread_state_restart', 'reading state')
+
+else ! double precision
+
+   ret = nfmpi_get_vars_all(funit, stateId, state_start, state_count, state_stride, model_state, nblocksCopies*nblocksVars, MPI_REAL8)
+   call pnet_check(ret, 'aread_state_restart', 'reading state')
+
+endif
+
+! time - does this need to be a collective call? Are the times ever different
+start(1) = 1
+count(1) = 2
+stride(1) = 1
+
+call get_time(model_time, seconds, days)
+time = (/seconds, days/)
+ret = nfmpi_get_vars_int_all(funit, timeId, start, count, stride, time)
+call pnet_check(ret, 'aread_state_restart', 'reading time')
+model_time = set_time(time(1), time(2)) ! seconds, days
+
+
+end subroutine aread_state_restart_giant
 !----------------------------------------------------------------------
 
 
