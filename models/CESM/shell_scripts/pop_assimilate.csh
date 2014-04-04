@@ -37,6 +37,8 @@ switch ("`hostname`")
       set   COPY = 'cp -fv --preserve=timestamps'
       set   LINK = 'ln -fvs'
       set REMOVE = 'rm -fr'
+      set TASKS_PER_NODE = `echo $LSB_SUB_RES_REQ | sed -ne '/ptile/s#.*\[ptile=\([0-9][0-9]*\)]#\1#p'`
+      setenv MP_DEBUG_NOTIMEOUT yes
 
       set BASEOBSDIR = /glade/p/image/Observations/WOD09
       set  LAUNCHCMD = mpirun.lsf
@@ -64,7 +66,6 @@ set ensemble_size = ${NINST_OCN}
 #-------------------------------------------------------------------------
 
 set FILE = `head -n 1 rpointer.ocn_0001.restart`
-set FILE = $FILE:t
 set FILE = $FILE:r
 set OCN_DATE_EXT = `echo $FILE:e`
 set OCN_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
@@ -74,8 +75,8 @@ set OCN_DAY      = `echo $OCN_DATE[3] | bc`
 set OCN_SECONDS  = `echo $OCN_DATE[4] | bc`
 set OCN_HOUR     = `echo $OCN_DATE[4] / 3600 | bc`
 
-echo "valid time of model is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_SECONDS (seconds)"
-echo "valid time of model is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_HOUR (hours)"
+echo "valid time of ocean is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_SECONDS (seconds)"
+echo "valid time of ocean is $OCN_YEAR $OCN_MONTH $OCN_DAY $OCN_HOUR (hours)"
 
 #-------------------------------------------------------------------------
 # Determine if current time is 0Z - if so, assimilate.
@@ -150,6 +151,19 @@ endif
 
 echo "`date` -- END COPY BLOCK"
 
+# If possible, use the round-robin approach to deal out the tasks.
+# Since the ensemble manager is not used by pop_to_dart or dart_to_pop,
+# it is OK to set it here and have it used by all routines.
+
+if ($?TASKS_PER_NODE) then
+   if ($#TASKS_PER_NODE > 0) then
+      ${COPY} input.nml input.nml.$$
+      sed -e "s#layout.*#layout = 2#" \
+          -e "s#tasks_per_node.*#tasks_per_node = $TASKS_PER_NODE#" input.nml.$$ >! input.nml
+      ${REMOVE} input.nml.$$
+   endif
+endif
+
 #=========================================================================
 # Block 2: Stage the files needed for SAMPLING ERROR CORRECTION
 #
@@ -203,19 +217,23 @@ endif
 # so they should be named something like prior_inflate_restart.YYYY-MM-DD-SSSSS
 #
 # NOTICE: inf_initial_from_restart and inf_sd_initial_from_restart are somewhat
-# problematic. During the bulk of an experiment, these should be FALSE, since
+# problematic. During the bulk of an experiment, these should be TRUE, since
 # we want to read existing inflation files. However, the first assimilation
-# might need these to be TRUE and then subsequently be set to FALSE.
-# There are two ways to handle this.
-# 1) Create the initial files offline with values of unity by using
-#    'fill_inflation_restart' and stage them with the appropriate names
-#    in the RUNDIR.
+# might need these to be FALSE and then subsequently be set to TRUE.
+# There are two ways to handle this:
+#
+# 1) Create the initial files offline (perhaps with 'fill_inflation_restart')
+#    and stage them with the appropriate names in the RUNDIR.
+#    You must manually remove the pop_inflation_cookie file
+#    from the RUNDIR in this case.
+#    - OR -
 # 2) create a cookie file called RUNDIR/pop_inflation_cookie
 #    The existence of this file will cause this script to set the
 #    namelist appropriately. This script will 'eat' the cookie file
 #    to prevent this from happening for subsequent executions. If the
 #    inflation file does not exist for them, and it needs to, this script
-#    should die.
+#    should die. The CESM_DART_config script automatically creates a cookie
+#    file to support this option.
 #
 # The strategy is to use the LATEST inflation file from the CESM 'rundir'.
 # After an assimilation, the new inflation values/files will be moved to
@@ -409,19 +427,20 @@ echo "`date` -- END POP-TO-DART for all ${ensemble_size} members."
 # Will result in a set of files : 'filter_restart.xxxx'
 #
 # DART namelist settings required:
-# &filter_nml:           async                  = 0,
-# &filter_nml:           adv_ens_command        = "./no_model_advance.csh",
-# &filter_nml:           restart_in_file_name   = 'filter_ics'
-# &filter_nml:           restart_out_file_name  = 'filter_restart'
-# &filter_nml:           obs_sequence_in_name   = 'obs_seq.out'
-# &filter_nml:           obs_sequence_out_name  = 'obs_seq.final'
-# &filter_nml:           init_time_days         = -1,
-# &filter_nml:           init_time_seconds      = -1,
-# &filter_nml:           first_obs_days         = -1,
-# &filter_nml:           first_obs_seconds      = -1,
-# &filter_nml:           last_obs_days          = -1,
-# &filter_nml:           last_obs_seconds       = -1,
-# &ensemble_manager_nml: single_restart_file_in = .false.
+# &filter_nml:           async                   = 0,
+# &filter_nml:           adv_ens_command         = "no_CESM_advance_script",
+# &filter_nml:           restart_in_file_name    = 'filter_ics'
+# &filter_nml:           restart_out_file_name   = 'filter_restart'
+# &filter_nml:           obs_sequence_in_name    = 'obs_seq.out'
+# &filter_nml:           obs_sequence_out_name   = 'obs_seq.final'
+# &filter_nml:           init_time_days          = -1,
+# &filter_nml:           init_time_seconds       = -1,
+# &filter_nml:           first_obs_days          = -1,
+# &filter_nml:           first_obs_seconds       = -1,
+# &filter_nml:           last_obs_days           = -1,
+# &filter_nml:           last_obs_seconds        = -1,
+# &ensemble_manager_nml: single_restart_file_in  = .false.
+# &ensemble_manager_nml: single_restart_file_out = .false.
 #
 #=========================================================================
 
@@ -457,7 +476,7 @@ ${MOVE} dart_log.out       ../pop_dart_log.${OCN_DATE_EXT}.out
 
 # Accomodate any possible inflation files
 # 1) rename file to reflect current date
-# 2) move to CENTRALDIR so the DART INFLATION BLOCK works next time and
+# 2) move to RUNDIR so the DART INFLATION BLOCK works next time and
 #    that they can get archived.
 
 foreach FILE ( ${PRIOR_INF_OFNAME} ${POSTE_INF_OFNAME} ${PRIOR_INF_DIAG} ${POSTE_INF_DIAG} )

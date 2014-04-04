@@ -35,10 +35,10 @@ switch ("`hostname`")
       set   COPY = 'cp -fv --preserve=timestamps'
       set   LINK = 'ln -fvs'
       set REMOVE = 'rm -fr'
+      set TASKS_PER_NODE = `echo $LSB_SUB_RES_REQ | sed -ne '/ptile/s#.*\[ptile=\([0-9][0-9]*\)]#\1#p'`
+      setenv MP_DEBUG_NOTIMEOUT yes
 
       # BASEOBSDIR needs the whole path name except for the date directory and file name.
-      # You can set this to point to directories of synthetic observations, too.
-      # set BASEOBSDIR = /glade/p/image/Observations/Synthetic/UVT_ne30_12H
       set BASEOBSDIR = /glade/p/image/Observations/ACARS
       set  LAUNCHCMD = mpirun.lsf
    breaksw
@@ -65,9 +65,7 @@ set ensemble_size = ${NINST_ATM}
 #-------------------------------------------------------------------------
 
 set FILE = `head -n 1 rpointer.atm_0001`
-set FILE = $FILE:t
 set FILE = $FILE:r
-set MYCASE = `echo $FILE | sed -e "s#\..*##"`
 set ATM_DATE_EXT = `echo $FILE:e`
 set ATM_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
 set ATM_YEAR     = `echo $ATM_DATE[1] | bc`
@@ -127,6 +125,19 @@ endif
 
 echo "`date` -- END COPY BLOCK"
 
+# If possible, use the round-robin approach to deal out the tasks.
+# Since the ensemble manager is not used by cam_to_dart or dart_to_cam,
+# it is OK to set it here and have it used by all routines.
+
+if ($?TASKS_PER_NODE) then
+   if ($#TASKS_PER_NODE > 0) then
+      ${COPY} input.nml input.nml.$$
+      sed -e "s#layout.*#layout = 2#" \
+          -e "s#tasks_per_node.*#tasks_per_node = $TASKS_PER_NODE#" input.nml.$$ >! input.nml
+      ${REMOVE} input.nml.$$
+   endif
+endif
+
 #=========================================================================
 # Block 2: Stage the files needed for SAMPLING ERROR CORRECTION
 #
@@ -180,9 +191,9 @@ endif
 # so they should be named something like prior_inflate_restart.YYYY-MM-DD-SSSSS
 #
 # NOTICE: inf_initial_from_restart and inf_sd_initial_from_restart are somewhat
-# problematic. During the bulk of an experiment, these should be FALSE, since
+# problematic. During the bulk of an experiment, these should be TRUE, since
 # we want to read existing inflation files. However, the first assimilation
-# might need these to be TRUE and then subsequently be set to FALSE.
+# might need these to be FALSE and then subsequently be set to TRUE.
 # There are two ways to handle this:
 #
 # 1) Create the initial files offline (perhaps with 'fill_inflation_restart')
@@ -366,23 +377,19 @@ while ( ${member} <= ${ensemble_size} )
    mkdir -p $MYTEMPDIR
    cd $MYTEMPDIR
 
-   # Turns out the .h0. files are timestamped with the START of the
-   # run, which is *not* ATM_DATE_EXT ...  I just link to a whatever
-   # is convenient (since the info is static).
    # make sure there are no old output logs hanging around
-
    $REMOVE output.${member}.cam_to_dart
 
-   set ATM_INITIAL_FILENAME = `printf ../../${MYCASE}.cam_%04d.i.${ATM_DATE_EXT}.nc ${member}`
-   set ATM_HISTORY_FILENAME = `ls -1t ../../${MYCASE}.cam*.h0.* | head -n 1`
+   set ATM_INITIAL_FILENAME = `printf ${CASE}.cam_%04d.i.${ATM_DATE_EXT}.nc  ${member}`
+   set ATM_HISTORY_FILENAME = `printf ${CASE}.cam_%04d.h0.${ATM_DATE_EXT}.nc ${member}`
    set     DART_IC_FILENAME = `printf filter_ics.%04d     ${member}`
    set    DART_RESTART_FILE = `printf filter_restart.%04d ${member}`
 
    sed -e "s#dart_ics#../${DART_IC_FILENAME}#" \
        -e "s#dart_restart#../${DART_RESTART_FILE}#" < ../input.nml >! input.nml
 
-   ${LINK} $ATM_INITIAL_FILENAME caminput.nc
-   ${LINK} $ATM_HISTORY_FILENAME cam_phis.nc
+   ${LINK} ../../$ATM_INITIAL_FILENAME caminput.nc
+   ${LINK} ../../$ATM_HISTORY_FILENAME cam_phis.nc
 
    echo "starting cam_to_dart for member ${member} at "`date`
    ${EXEROOT}/cam_to_dart >! output.${member}.cam_to_dart &
@@ -408,6 +415,8 @@ echo "`date` -- END CAM-TO-DART for all ${ensemble_size} members."
 # Will result in a set of files : 'filter_restart.xxxx'
 #
 # DART namelist settings required:
+# &filter_nml:           async                   = 0,
+# &filter_nml:           adv_ens_command         = "no_advance_script",
 # &filter_nml:           restart_in_file_name    = 'filter_ics'
 # &filter_nml:           restart_out_file_name   = 'filter_restart'
 # &filter_nml:           obs_sequence_in_name    = 'obs_seq.out'
@@ -426,11 +435,11 @@ echo "`date` -- END CAM-TO-DART for all ${ensemble_size} members."
 # CAM:static_init_model() always needs a caminput.nc and a cam_phis.nc
 # for geometry information, etc.
 
-set ATM_INITIAL_FILENAME = ../${MYCASE}.cam_0001.i.${ATM_DATE_EXT}.nc
-set ATM_HISTORY_FILENAME = `ls -1t ../${MYCASE}.cam*.h0.* | head -n 1`
+set ATM_INITIAL_FILENAME = ${CASE}.cam_0001.i.${ATM_DATE_EXT}.nc
+set ATM_HISTORY_FILENAME = ${CASE}.cam_0001.h0.${ATM_DATE_EXT}.nc
 
-${LINK} $ATM_INITIAL_FILENAME caminput.nc
-${LINK} $ATM_HISTORY_FILENAME cam_phis.nc
+${LINK} ../$ATM_INITIAL_FILENAME caminput.nc
+${LINK} ../$ATM_HISTORY_FILENAME cam_phis.nc
 
 echo "`date` -- BEGIN FILTER"
 ${LAUNCHCMD} ${EXEROOT}/filter || exit -7
@@ -507,7 +516,7 @@ while ( ${member} <= ${ensemble_size} )
 
    set inst_string = `printf _%04d $member`
 
-   set ATM_INITIAL_FILENAME = ${MYCASE}.cam${inst_string}.i.${ATM_DATE_EXT}.nc
+   set ATM_INITIAL_FILENAME = ${CASE}.cam${inst_string}.i.${ATM_DATE_EXT}.nc
 
    ${LINK} ${ATM_INITIAL_FILENAME} cam_initial${inst_string}.nc || exit -9
 
