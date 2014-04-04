@@ -149,7 +149,7 @@ real(r8)             :: inf_lower_bound(2)        = 1.0_r8
 real(r8)             :: inf_upper_bound(2)        = 1000000.0_r8
 real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
 logical              :: output_inflation          = .true.
-logical              :: complete_state            = .false. ! This is really clunky, duplicate in ensemble manager
+logical              :: complete_state            = .false. ! This is really clunky, duplicate in ensemble manager. You have to set no_complete_state = .true. to match complete_state = .false.
 
 namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,    &
    start_from_restart, output_restart, obs_sequence_in_name, obs_sequence_out_name, &
@@ -174,6 +174,21 @@ call filter_main()
 !----------------------------------------------------------------
 
 contains 
+
+!> complete_state =.true. - will use the complete state for IO (restart and diagnostics)
+!> the algorithm is distributed with one execption:
+!> task 0 still writes the obs_sequence file, so there is a transpose (copies to vars) and 
+!> sending the obs_ens_handle%vars to task 0. Keys is also size obs%vars.
+!> Binary restarts, regular netcdf diagnostic files
+!> 
+!> if you set complete_state = .false. then you either read in ens_size restart files (netcdf)
+!> or one giant.nc restart file containing all the ensemble members. Also dumps out the diagnostic
+!> files as a complete state vector - do you want to output this as a column or a row?
+!> The giant restart files are annoying.  I think reading them with a transpose 
+!> (see ensemble manager) is slow, but making them already transposed is really slow.
+!>
+!> Note that you need to match the complete_state option in filter.nml with the
+!> no_complete_state_option in ensemble_manager.nml. This is really clunky.
 
 subroutine filter_main()
 

@@ -854,7 +854,6 @@ integer,                        intent(in) :: timeId !> Id for time
 integer(KIND=MPI_OFFSET_KIND),  intent(in) :: nblocks !> num vars
 type(time_type),                intent(in) :: model_time
 real(r8),                    intent(inout) :: model_state(:) !> see inout in ensemble manager call
-!integer,                        intent(in) :: state_length
 integer(KIND=MPI_OFFSET_KIND),  intent(in) :: state_length !> num vars
 integer,                        intent(in) :: funit !> restart file
 type(time_type), optional,      intent(in) :: target_time
@@ -910,7 +909,7 @@ end subroutine awrite_state_restart_parallel
 
 !----------------------------------------------------------------------
 !> for giant restart file
-subroutine awrite_state_restart_giant(timeId, stateId, nblocksVars, nblocksCopies, model_time, model_state, funit, target_time)
+subroutine awrite_state_restart_giant(timeId, stateId, nblocksVars, nblocksCopies, model_time, model_state, transpose, funit, target_time)
 !----------------------------------------------------------------------
 !
 !HK what does this comment mean?
@@ -926,8 +925,9 @@ use pnetcdf
 integer,                        intent(in) :: stateId !> Id for state_vector
 integer,                        intent(in) :: timeId !> Id for time
 integer(KIND=MPI_OFFSET_KIND),  intent(in) :: nblocksVars, nblocksCopies !> num vars
-type(time_type),                intent(in) :: model_time
+type(time_type),                intent(in) :: model_time !> one time?
 real(r8),                    intent(inout) :: model_state(:, :) !> see inout in ensemble manager call
+logical,                        intent(in) :: transpose !> pnetcdf stride and count depends on (copies, vars), (vars, copies)
 integer,                        intent(in) :: funit !> restart file
 type(time_type), optional,      intent(in) :: target_time
 
@@ -961,15 +961,21 @@ call pnet_check(ret, 'awrite_state_restart', 'writing time')
 
 
 ! Write the state vector
+! the transpose depends on whether your giant restart file is (copies, vars) or (vars, copies)
 
-! state
-state_start = (/ 1, my_task_id() + 1 /)
-state_count = (/ nblocksCopies, nblocksVars /) ! my_num_vars
-state_stride = (/ 1, task_count() /)
+if (transpose) then
 
-!state_start = (/ my_task_id() + 1, 1 /)
-!state_count = (/ nblocksVars,  nblocksCopies  /)
-!state_stride = (/ task_count(), 1 /)
+   state_start = (/ my_task_id() + 1, 1 /)
+   state_count = (/ nblocksVars,  nblocksCopies  /)
+   state_stride = (/ task_count(), 1 /)
+
+else
+
+   state_start = (/ 1, my_task_id() + 1 /)
+   state_count = (/ nblocksCopies, nblocksVars /) ! my_num_vars
+   state_stride = (/ 1, task_count() /)
+
+endif
 
 if ( datasize == MPI_REAL4 ) then ! trying to catch single precision
 
@@ -1144,7 +1150,7 @@ end subroutine aread_state_restart_parallel
 
 !----------------------------------------------------------------------
 !> giant restart files
-subroutine aread_state_restart_giant(state_length, stateId, timeId, nblocksVars, nblocksCopies, model_time, model_state, funit, target_time)
+subroutine aread_state_restart_giant(state_length, stateId, timeId, nblocksVars, nblocksCopies, model_time, model_state, transpose, funit, target_time)
 
 use mpi_utilities_mod,     only : task_count, my_task_id, datasize
 use pnetcdf_utilities_mod, only : pnet_check
@@ -1157,8 +1163,9 @@ integer(KIND=MPI_OFFSET_KIND),  intent(in) :: state_length !> just to make the o
 integer,                        intent(in) :: stateId !> Id for state_vector
 integer,                        intent(in) :: timeId !> Id for time
 integer(KIND=MPI_OFFSET_KIND),  intent(in) :: nblocksVars, nblocksCopies !> num vars
-type(time_type),             intent(inout) :: model_time
+type(time_type),             intent(inout) :: model_time(:)
 real(r8),                    intent(inout) :: model_state(:, :) !> see inout in ensemble manager call
+logical,                        intent(in) :: transpose
 integer,                        intent(in) :: funit !> restart file
 type(time_type), optional,      intent(in) :: target_time
 
@@ -1179,15 +1186,21 @@ time_length = 2
 if ( .not. module_initialized ) call static_init_assim_model()
 
 ! read the state vector
+! the transpose depends on whether your giant restart file is (copies, vars) or (vars, copies)
 
-state_start = (/ 1, my_task_id() + 1 /)
-state_count = (/ nblocksCopies, nblocksVars /)
-state_stride = (/ 1, task_count() /)
+if (transpose) then
 
-!state_start = (/ my_task_id() + 1, 1 /)
-!state_count = (/ nblocksVars,  nblocksCopies  /)
-!state_stride = (/ task_count(), 1 /)
+   state_start = (/ my_task_id() + 1, 1 /)
+   state_count = (/ nblocksVars,  nblocksCopies  /)
+   state_stride = (/ task_count(), 1 /)
 
+else
+
+   state_start = (/ 1, my_task_id() + 1 /)
+   state_count = (/ nblocksCopies, nblocksVars /)
+   state_stride = (/ 1, task_count() /)
+
+endif
 
 if ( datasize == MPI_REAL4 ) then ! single precision
 
@@ -1206,12 +1219,9 @@ start(1) = 1
 count(1) = 2
 stride(1) = 1
 
-call get_time(model_time, seconds, days)
-time = (/seconds, days/)
 ret = nfmpi_get_vars_int_all(funit, timeId, start, count, stride, time)
 call pnet_check(ret, 'aread_state_restart', 'reading time')
-model_time = set_time(time(1), time(2)) ! seconds, days
-
+model_time(1:nblocksCopies) = set_time(time(1), time(2)) ! seconds, days - one time?
 
 end subroutine aread_state_restart_giant
 !----------------------------------------------------------------------

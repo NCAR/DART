@@ -125,6 +125,7 @@ logical  :: debug = .false.
 logical  :: no_complete_state = .false.
 
 logical  :: giant_restart = .false.
+logical  :: transpose_giant = .false.
 
 
 namelist / ensemble_manager_nml / single_restart_file_in,  &
@@ -133,7 +134,8 @@ namelist / ensemble_manager_nml / single_restart_file_in,  &
                                   communication_configuration, &
                                   layout, tasks_per_node,  &
                                   debug, flag_unneeded_transposes, &
-                                  no_complete_state, giant_restart
+                                  no_complete_state, giant_restart, &
+                                  transpose_giant
                                   
 !-----------------------------------------------------------------
 
@@ -332,9 +334,12 @@ if (no_complete_state) then
       ret = nfmpi_inq_dimlen(ncfile, copiesDimId, num_copies)
       call pnet_check(ret, 'read_ensemble_restart', 'get num_copies')
 
-   ! read transposed state
-   !allocate(model_state(num_blocks, num_copies))
+    if (giant_restart) then
 
+      ! need to read transposed state
+      allocate(model_state(num_blocks, num_copies))
+
+    endif
 
       ! get id for time_dim - the length of the time (should be 2)
       ret = nfmpi_inq_dimid(ncfile, 'time', timeDimId)
@@ -349,17 +354,26 @@ if (no_complete_state) then
       call pnet_check(ret, 'read_ensemble_restart', 'cannot get time id')
 
       if (my_task_id() == 0) print*, 'copies vars', num_copies, num_blocks
-      call aread_state_restart(state_length, stateId, timeId, num_blocks, num_copies, ens_handle%time(1), ens_handle%copies(1:num_copies,:), ncfile)
 
-      !call aread_state_restart(state_length, stateId, timeId, num_blocks, num_copies, ens_handle%time(1), model_state, ncfile)
+      if (transpose_giant) then
 
-     !ens_handle%copies(1:num_copies,:) = transpose(model_state)
+         call aread_state_restart(state_length, stateId, timeId, num_blocks, num_copies, ens_handle%time, model_state, transpose_giant, ncfile)
+
+         ens_handle%copies(1:num_copies,:) = transpose(model_state)
+
+         deallocate(model_state)
+
+      else
+
+         call aread_state_restart(state_length, stateId, timeId, num_blocks, num_copies, ens_handle%time, ens_handle%copies(1:num_copies,:),transpose_giant, ncfile)
+      endif
 
       ret = nfmpi_close(ncfile)
       call pnet_check(ret, 'read_ensemble_restart', 'closing file')
 
-      if (my_task_id() == 0) print*, 'giant read time ', MPI_WTIME() - time_at_start, 'copies = ', end_copy - start_copy + 1
+      if(present(init_time)) ens_handle%time(1:num_copies) = init_time
 
+      if (my_task_id() == 0) print*, 'giant read time ', MPI_WTIME() - time_at_start, 'copies = ', end_copy - start_copy + 1
    else
 
       ! Loop to read in all ensemble members
@@ -413,7 +427,7 @@ if (no_complete_state) then
 
    endif
 
-else 
+else ! use binary restart files
 
    ! Does not make sense to have start_from_restart and single_restart_file_in BOTH false
    if(.not. start_from_restart .and. .not. single_restart_file_in) then
@@ -591,8 +605,11 @@ if (no_complete_state) then
       call pnet_check(ret, 'write_ensemble_restart', 'defining state dim')
 
       ! The dimids array is used to pass the IDs of the dimensions of the variables
-      !varsCopiesDim = (/varsDimId, copiesDimId/)
-      varsCopiesDim = (/copiesDimId, varsDimId/) !- these are backwards?
+      if ( transpose_giant) then
+         varsCopiesDim = (/varsDimId, copiesDimId/)
+      else
+         varsCopiesDim = (/copiesDimId, varsDimId/) !- these are backwards?
+      endif
       timeDim = (/timeDimId/)
 
       ! Define the variables - state needs to go last so it can be unlimited size
@@ -616,13 +633,20 @@ if (no_complete_state) then
       ret = nfmpi_enddef(ncfile) ! metadata IO occurs in this
       call pnet_check(ret, 'write_ensemble_restart', 'metadata IO')
 
-      call awrite_state_restart(timeId, stateId, num_blocks, num_copies, ens_handle%time(1), ens_handle%copies(1:num_copies,:), ncfile)
+      if (transpose_giant) then
 
-   !allocate(model_state(num_blocks, num_copies))
+         allocate(model_state(num_blocks, num_copies))
+         model_state = transpose(ens_handle%copies(1:num_copies,:))
 
-   !call awrite_state_restart(timeId, stateId, num_blocks, num_copies, ens_handle%time(1), model_state, ncfile)
+         call awrite_state_restart(timeId, stateId, num_blocks, num_copies, ens_handle%time(1), model_state, transpose_giant, ncfile)
 
-    !ens_handle%copies(1:num_copies,:) = transpose(model_state)
+         deallocate(model_state)
+
+      else
+
+         call awrite_state_restart(timeId, stateId, num_blocks, num_copies, ens_handle%time(1), ens_handle%copies(1:num_copies,:), transpose_giant, ncfile)
+
+      endif
 
       ret = nfmpi_close(ncfile)
       call pnet_check(ret, 'write_ensemble_restart', 'closing file')
@@ -651,7 +675,12 @@ if (no_complete_state) then
          stateDim = (/stateDimId/)
          timeDim = (/timeDimId/)
 
-         ! Define the variables
+         ! Define the variables - state needs to go last because it is huge
+
+         num_dims = 1
+         ret = nfmpi_def_var(ncfile, "time", NF_INT, num_dims, timeDim, timeId) ! time
+         call pnet_check(ret, 'write_ensemble_restart', 'defining time var')
+
          if (datasize == MPI_REAL4) then ! single precision state
 
             ret = nfmpi_def_var(ncfile, "state_vector", NF_FLOAT, num_dims, stateDim, stateId) ! state
@@ -663,10 +692,6 @@ if (no_complete_state) then
             call pnet_check(ret, 'write_ensemble_restart', 'defining state var')
 
          endif
-
-         num_dims = 1
-         ret = nfmpi_def_var(ncfile, "time", NF_INT, num_dims, timeDim, timeId) ! time
-         call pnet_check(ret, 'write_ensemble_restart', 'defining time var')
 
          ret = nfmpi_enddef(ncfile) ! metadata IO occurs in this
          call pnet_check(ret, 'write_ensemble_restart', 'metadata IO')
@@ -691,10 +716,10 @@ else
 endif
 
    ! Error checking
-   if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-      call error_handler(E_ERR, 'write_ensemble_restart', &
-           'last access not var-complete', source, revision, revdate)
-   endif
+   !if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
+   !   call error_handler(E_ERR, 'write_ensemble_restart', &
+   !        'last access not var-complete', source, revision, revdate)
+   !endif
 
    ! For single file, need to send restarts to pe0 and it writes them out.
    !-------------- Block for single_restart file -------------
@@ -1843,10 +1868,10 @@ integer :: num_copies, i
 ! Should check to make sure that start, end, mean and sd are all legal copies
 
 ! Error checking
-if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
-   call error_handler(E_ERR, 'compute_copy_mean_sd', &
-        'last access not copy-complete', source, revision, revdate)
-endif
+!if (ens_handle%valid /= VALID_COPIES .and. ens_handle%valid /= VALID_BOTH) then
+!   call error_handler(E_ERR, 'compute_copy_mean_sd', &
+!        'last access not copy-complete', source, revision, revdate)
+!endif
 
 num_copies = end_copy - start_copy + 1
 
