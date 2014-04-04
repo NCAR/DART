@@ -88,9 +88,11 @@
   /
 
 &ensemble_manager_nml
-   single_restart_file_in  = .false.,
-   single_restart_file_out = .false.,
+   single_restart_file_in  = .false.
+   single_restart_file_out = .false.
    perturbation_amplitude  = 0.2
+   layout                  = 1
+   tasks_per_node          = 1
   /
 
 &cov_cutoff_nml
@@ -179,7 +181,6 @@
   /
 
 &mpi_utilities_nml
-   reverse_task_layout = .false.,
    /
 
 # Gregorian: 12 Z 1 January 1996 <==> DART: 144270 days 43200 seconds

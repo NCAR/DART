@@ -59,11 +59,11 @@
    inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
    inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
    inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.6,                     0.6,
+   inf_damping                 = 0.9,                     0.9,
    inf_lower_bound             = 1.0,                     1.0,
-   inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_upper_bound             = 1000.0,               1000.0,
+   inf_sd_lower_bound          = 0.6,                     0.6
    /
 
 
@@ -85,16 +85,18 @@
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
-   output_localization_diagnostics = .true.,
+   output_localization_diagnostics = .false.,
    localization_diagnostics_file   = 'localization_diagnostics',
    print_every_nth_obs             = 0
    /
 
 
 &ensemble_manager_nml
-   single_restart_file_in  = .false.,
-   single_restart_file_out = .false.,
+   single_restart_file_in  = .false.
+   single_restart_file_out = .false.
    perturbation_amplitude  = 0.2
+   layout                  = 1
+   tasks_per_node          = 1
    /
 
 
@@ -236,7 +238,6 @@
 
 
 &mpi_utilities_nml
-   reverse_task_layout = .true.,
    /
 
 
