@@ -87,6 +87,7 @@ mean_row = state_ens_handle%num_copies -5!> @todo How to do this nicely
 
 ! allocate some RDMA accessible memory
 ! using MPI_ALLOC_MEM because the MPI standard allows vendors to require MPI_ALLOC_MEM for remote memory access
+! Have a look at MPI-3, I think this removes cray pointers.
 call mpi_type_size(datasize, bytesize, ierr)
 window_size_mean = my_num_vars*bytesize
 b = malloc(my_num_vars)
