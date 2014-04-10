@@ -194,12 +194,24 @@ logical :: periodic_y = .false.    ! used for single column model, wrap in y
 !JPH -- single column model flag 
 logical :: scm        = .false.    ! using the single column model
 
+! obsolete items; ignored by this code. 
+! non-backwards-compatible change. should be removed, 
+! but see note below about namelist.
+integer :: num_moist_vars
+logical :: surf_obs, soil_data, h_diab
+
+! adv_mod_command moved to dart_to_wrf namelist; ignored here.
+character(len = 72) :: adv_mod_command = ''
+
 ! num_moist_vars, surf_obs, soil_data, h_diab, and adv_mod_command
-! were removed from the namelist after being deprecated for a long time.
-namelist /model_nml/ output_state_vector, num_domains, calendar_type, &
+! are IGNORED no matter what their settings in the namelist are.
+! they are obsolete, but removing them here will cause a fatal error
+! until users remove them from their input.nml files as well.
+namelist /model_nml/ output_state_vector, num_moist_vars, &
+                     num_domains, calendar_type, surf_obs, soil_data, h_diab, &
                      default_state_variables, wrf_state_variables, &
                      wrf_state_bounds, sfc_elev_max_diff, &
-                     assimilation_period_seconds, &
+                     adv_mod_command, assimilation_period_seconds, &
                      allow_obs_below_vol, vert_localization_coord, &
                      center_search_half_length, center_spline_grid_scale, &
                      circulation_pres_level, circulation_radius, polar, &
@@ -338,6 +350,14 @@ call check_namelist_read(iunit, io, "model_nml")
 ! Record the namelist values used for the run ...
 if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
+
+! Temporary warning until this namelist item is removed.
+if (adv_mod_command /= '') then
+   msgstring2 = "Set the model advance command in the &dart_to_wrf_nml namelist"
+   call error_handler(E_MSG, 'static_init_model:', &
+         "WARNING: adv_mod_command ignored in &model_mod namelist", &
+          text2=msgstring2)
+endif
 
 allocate(wrf%dom(num_domains))
 
@@ -6552,9 +6572,9 @@ end subroutine ens_mean_for_model
 
 subroutine get_domain_info(obslon,obslat,id,iloc,jloc,domain_id_start)
 
-real(r8), intent(in)  :: obslon, obslat
-integer, intent(out)  :: id
-real(r8), intent(out) :: iloc, jloc
+real(r8), intent(in)           :: obslon, obslat
+integer,  intent(out)          :: id
+real(r8), intent(out)          :: iloc, jloc
 integer,  intent(in), optional :: domain_id_start
 
 logical               :: dom_found
