@@ -149,7 +149,7 @@ real(r8)             :: inf_lower_bound(2)        = 1.0_r8
 real(r8)             :: inf_upper_bound(2)        = 1000000.0_r8
 real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
 logical              :: output_inflation          = .true.
-logical              :: complete_state            = .false. ! This is really clunky, duplicate in ensemble manager. You have to set no_complete_state = .true. to match complete_state = .false.
+logical              :: complete_state            = .true. ! This is really clunky, duplicate in ensemble manager. You have to set no_complete_state = .true. to match complete_state = .false.
 
 namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,    &
    start_from_restart, output_restart, obs_sequence_in_name, obs_sequence_out_name, &
