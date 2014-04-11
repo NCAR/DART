@@ -4866,10 +4866,18 @@ do i = 2, nbounds
       if (pressure(i) == pressure(i-1)) then
          fract = 0.0_r8
       else if (log_p_vert_interp) then
-         fract = exp((log(p) - log(pressure(i-1))) / &
-                    (log(pressure(i)) - log(pressure(i-1))))
+         fract = (log(p) - log(pressure(i-1))) / &
+                 (log(pressure(i)) - log(pressure(i-1)))
       else
          fract = (p - pressure(i-1)) / (pressure(i) - pressure(i-1))
+      endif
+      ! shouldn't happen but with roundoff i suppose could be one
+      ! least-significant-bit out of range. so don't print unless some
+      ! level of debugging is enabled.
+      if ((fract < 0.0_r8 .or. fract > 1.0_r8) .and. debug > 0) then
+         print '(A,3F26.18,2I4,F22.18)', &
+          "find_pressure_bounds: bad fract!  p_in, pr(i-1), pr(i), lower, upper, fract = ", &
+           p, pressure(i-1), pressure(i), lower, upper, fract
       endif
 
       if ((debug > 9) .and. do_output()) print '(A,3F26.18,2I4,F22.18)', &
