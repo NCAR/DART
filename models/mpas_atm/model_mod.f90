@@ -4866,8 +4866,8 @@ do i = 2, nbounds
       if (pressure(i) == pressure(i-1)) then
          fract = 0.0_r8
       else if (log_p_vert_interp) then
-         fract = exp((log(p) - log(pressure(i-1))) / &
-                    (log(pressure(i)) - log(pressure(i-1))))
+         fract = (log(p) - log(pressure(i-1))) / &
+                 (log(pressure(i)) - log(pressure(i-1)))
       else
          fract = (p - pressure(i-1)) / (pressure(i) - pressure(i-1))
       endif
