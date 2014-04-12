@@ -40,7 +40,7 @@
 # lines into the ${case}.run script after it makes a backup copy.
 #
 # This script relies heavily on the information in:
-# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide/book1.html
+# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/book1.html
 #
 # ---------------------
 # How to use this script.
@@ -83,7 +83,7 @@
 # settings, it is safest to delete everything and start the run from scratch.
 # For the brave, read
 #
-# http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x1142.html
+# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/x1080.html
 #
 # and you may be able to salvage something with
 # ./cesm_setup -clean
@@ -420,7 +420,7 @@ echo ""
 ./xmlchange ROOTPE_ROF=0
 ./xmlchange ROOTPE_WAV=0
 
-# http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/c1158.html#run_start_stop
+# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/c1096.html#run_start_stop
 # "A hybrid run indicates that CESM is initialized more like a startup, but uses
 # initialization datasets from a previous case. This is somewhat analogous to a
 # branch run with relaxed restart constraints. A hybrid run allows users to bring
@@ -841,7 +841,7 @@ if ( \$CONTINUE_RUN == TRUE ) then
    if (  \$DOUT_S   == TRUE ) then
 
       # The restarts should be in the short term archive directory.  See
-      # www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x1631.html#running_ccsm_restart_back
+      # www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/x1565.html#running_ccsm_restarts
       # for more help and information.
 
       if ( ! -d \$DOUT_S_ROOT/rest/\${restart_time} ) then
