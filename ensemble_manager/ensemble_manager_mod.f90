@@ -53,7 +53,7 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
           prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
           prepare_to_update_copies,   print_ens_handle,                                 &
-          map_task_to_pe,             map_pe_to_task                                   
+          map_task_to_pe,             map_pe_to_task, allow_complete_state
 
 !type ensemble_type
 !   !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
@@ -334,13 +334,6 @@ if (no_complete_state) then
       ret = nfmpi_inq_dimlen(ncfile, copiesDimId, num_copies)
       call pnet_check(ret, 'read_ensemble_restart', 'get num_copies')
 
-    if (giant_restart) then
-
-      ! need to read transposed state
-      allocate(model_state(num_blocks, num_copies))
-
-    endif
-
       ! get id for time_dim - the length of the time (should be 2)
       ret = nfmpi_inq_dimid(ncfile, 'time', timeDimId)
       call pnet_check(ret, 'read_ensemble_restart', 'cannot get time dim')
@@ -353,9 +346,10 @@ if (no_complete_state) then
       ret = nfmpi_inq_varid(ncfile, 'time', timeId)
       call pnet_check(ret, 'read_ensemble_restart', 'cannot get time id')
 
-      if (my_task_id() == 0) print*, 'copies vars', num_copies, num_blocks
-
       if (transpose_giant) then
+
+         ! need to read transposed state
+         allocate(model_state(num_blocks, num_copies))
 
          call aread_state_restart(state_length, stateId, timeId, num_blocks, num_copies, ens_handle%time, model_state, transpose_giant, ncfile)
 
@@ -2170,11 +2164,9 @@ ens_handle%pe_to_task_list = ens_handle%task_to_pe_list
 end subroutine simple_layout
 
 !------------------------------------------------------------------------------
-
+!> sorts an array and returns the sorted array, and the index of the original
+!> array
 subroutine sort_task_list(x, idx, n)
-
-! sorts an array and returns the sorted array, and the index of the original
-! array
 
 integer, intent(in)    :: n 
 integer, intent(inout) :: x(n)   ! array to be sorted
@@ -2207,10 +2199,8 @@ end subroutine sort_task_list
 !end function map_pe_to_task
 
 !--------------------------------------------------------------------------------
-
+!> ! Return my_pe corresponding to the physical task
 function map_task_to_pe(ens_handle, t)
-
-! Return my_pe corresponding to the physical task
 
 type(ensemble_type), intent(in) :: ens_handle
 integer,             intent(in) :: t
@@ -2219,6 +2209,20 @@ integer                         :: map_task_to_pe
 map_task_to_pe = ens_handle%task_to_pe_list(t + 1)
 
 end function map_task_to_pe
+
+!--------------------------------------------------------------------------------
+!> Allows filter to query the ensemble manager namelist option no_complete_state
+!> no_complete_state = .true. means that the restart files will be read/written
+!>   in parallel by all tasks.
+!> no_complete_state = .false. means that the restart files will be read in var complete
+!>    by the first ens_size processors then transposed to all_copies.
+function allow_complete_state()
+logical allow_complete_state
+
+if ( .not. module_initialized ) call error_handler(E_ERR, 'allow_complete_state', 'do not call this before initializing ensemble manager')
+allow_complete_state = .not. no_complete_state
+
+end function
 
 !---------------------------------------------------------------------------------
 

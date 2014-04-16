@@ -53,7 +53,7 @@ use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,   
                                  prepare_to_read_from_vars, prepare_to_write_to_vars, prepare_to_read_from_copies,    &
                                  prepare_to_write_to_copies, get_ensemble_time, set_ensemble_time,    &
                                  map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
-                                 get_my_num_vars 
+                                 get_my_num_vars, allow_complete_state
 use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
                                  do_obs_inflate, adaptive_inflate_type,                      &
@@ -149,7 +149,6 @@ real(r8)             :: inf_lower_bound(2)        = 1.0_r8
 real(r8)             :: inf_upper_bound(2)        = 1000000.0_r8
 real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
 logical              :: output_inflation          = .true.
-logical              :: complete_state            = .true. ! This is really clunky, duplicate in ensemble manager. You have to set no_complete_state = .true. to match complete_state = .false.
 
 namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,    &
    start_from_restart, output_restart, obs_sequence_in_name, obs_sequence_out_name, &
@@ -163,7 +162,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
    inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, output_inflation,          &
-   silence, complete_state
+   silence
 
 
 !----------------------------------------------------------------
@@ -175,20 +174,20 @@ call filter_main()
 
 contains 
 
-!> complete_state =.true. - will use the complete state for IO (restart and diagnostics)
+!> allow_complete_state() queries the ensemble manager namelist value for
+!> no_complete_state.
+!> allow_complete_state =.false. - will use the complete state for IO (restart and diagnostics)
 !> the algorithm is distributed with one execption:
 !> task 0 still writes the obs_sequence file, so there is a transpose (copies to vars) and 
 !> sending the obs_ens_handle%vars to task 0. Keys is also size obs%vars.
 !> Binary restarts, regular netcdf diagnostic files
 !> 
-!> if you set complete_state = .false. then you either read in ens_size restart files (netcdf)
+!> allow_complete_state = .true. then you either read in ens_size restart files (netcdf)
 !> or one giant.nc restart file containing all the ensemble members. Also dumps out the diagnostic
 !> files as a complete state vector - do you want to output this as a column or a row?
 !> The giant restart files are annoying.  I think reading them with a transpose 
 !> (see ensemble manager) is slow, but making them already transposed is really slow.
 !>
-!> Note that you need to match the complete_state option in filter.nml with the
-!> no_complete_state_option in ensemble_manager.nml. This is really clunky.
 
 subroutine filter_main()
 
@@ -378,7 +377,7 @@ call timestamp_message('Before initializing output files')
 ! HK this is where a parallel write of diagnostics differs from the traditional way 
 ! of having task 0 write all the diagnostics.
 
-if (complete_state) then
+if (allow_complete_state()) then
 
    if(my_task_id() == 0) then
       call filter_generate_copy_meta_data(seq, prior_inflate, &
@@ -556,7 +555,7 @@ AdvanceTime : do
    call trace_message('After  setup for next group of observations')
 
    ! Compute mean and spread for inflation and state diagnostics
-   if (complete_state) call all_vars_to_all_copies(ens_handle)
+   if (allow_complete_state()) call all_vars_to_all_copies(ens_handle)
 
    call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
@@ -588,7 +587,7 @@ AdvanceTime : do
    ! not the number of copies
 
    !HK Destroy var complete so there are no cheats.
-   if (complete_state) then
+   if (allow_complete_state()) then
       deallocate(obs_ens_handle%vars)
       deallocate(ens_handle%vars)
       deallocate(forward_op_ens_handle%vars)
@@ -607,7 +606,7 @@ AdvanceTime : do
    !call test_obs_copies(obs_ens_handle, 'prior')
 
 
-   if (complete_state) then ! For diagnostics need to be var complete
+   if (allow_complete_state()) then ! For diagnostics need to be var complete
       allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
       allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
       allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
@@ -636,7 +635,7 @@ AdvanceTime : do
    call trace_message('Before prior state space diagnostics')
    call timestamp_message('Before prior state space diagnostics')
 
-   if (complete_state) then
+   if (allow_complete_state()) then
 
       call all_copies_to_all_vars(ens_handle)
 
@@ -668,7 +667,7 @@ AdvanceTime : do
 
    call trace_message('Before observation space diagnostics')
 
-   if (.not. complete_state) then ! task 0 still updating the sequence.
+   if (.not. allow_complete_state()) then ! task 0 still updating the sequence.
       allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
    endif
 
@@ -685,7 +684,7 @@ AdvanceTime : do
       OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, skipit)
    call trace_message('After  observation space diagnostics')
 
-   if (.not. complete_state) then ! task 0 still updating the sequence.
+   if (.not. allow_complete_state()) then ! task 0 still updating the sequence.
       deallocate(obs_ens_handle%vars)
    endif
 
@@ -701,7 +700,7 @@ AdvanceTime : do
    call     trace_message('Before observation assimilation')
    call timestamp_message('Before observation assimilation')
 
-   if (complete_state) then ! destroy var complete - just to make sure there are no cheats
+   if (allow_complete_state()) then ! destroy var complete - just to make sure there are no cheats
       deallocate(obs_ens_handle%vars)
       deallocate(ens_handle%vars)
       deallocate(forward_op_ens_handle%vars)
@@ -792,7 +791,7 @@ AdvanceTime : do
    endif
 
    ! For diagnostics
-   if (complete_state) then
+   if (allow_complete_state()) then
       allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
       allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
       allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
@@ -804,7 +803,7 @@ AdvanceTime : do
    call trace_message('Before posterior state space diagnostics')
    call timestamp_message('Before posterior state space diagnostics')
 
-   if (complete_state) then
+   if (allow_complete_state()) then
 
       call all_copies_to_all_vars(ens_handle)
 
@@ -838,7 +837,7 @@ AdvanceTime : do
 
    call trace_message('Before posterior obs space diagnostics')
 
-   if (.not. complete_state) then ! task 0 still updating the sequence.
+   if (.not. allow_complete_state()) then ! task 0 still updating the sequence.
       allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
    endif
 
@@ -851,7 +850,7 @@ AdvanceTime : do
       OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
       OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, skipit)
 
-   if (.not. complete_state) then ! task 0 still updating the sequence.
+   if (.not. allow_complete_state()) then ! task 0 still updating the sequence.
       deallocate(obs_ens_handle%vars)
    endif
 
@@ -905,7 +904,7 @@ end do AdvanceTime
 
 10011 continue
 
-if (complete_state) call all_copies_to_all_vars(ens_handle) ! to write restarts
+if (allow_complete_state()) call all_copies_to_all_vars(ens_handle) ! to write restarts
 
 call trace_message('End of main filter assimilation loop, starting cleanup', 'filter:', -1)
 
@@ -1039,7 +1038,7 @@ if(output_inflation) then
    state_meta(num_state_copies)   = 'inflation sd'
 endif
 
-if(complete_state) then ! only task 0 is in this subroutine
+if(allow_complete_state()) then ! only task 0 is in this subroutine
 
    ! Set up diagnostic output for model state, if output is desired
    PriorStateUnit     = init_diag_output('Prior_Diag', &
