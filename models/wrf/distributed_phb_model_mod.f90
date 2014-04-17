@@ -304,7 +304,7 @@ TYPE wrf_static_data_for_dart
    real(r8), dimension(:,:),   pointer :: mub, hgt
    real(r8), dimension(:,:),   pointer :: latitude, latitude_u, latitude_v
    real(r8), dimension(:,:),   pointer :: longitude, longitude_u, longitude_v
-   real(r8), dimension(:,:,:), pointer :: phb ! leave in for compilation
+   !real(r8), dimension(:,:,:), pointer :: phb ! leave in for compilation
 
    ! NEWVAR:  Currently you have to add a new type here if you want to use
    ! NEWVAR:  a WRF variable which is not one of these types.  This will go
@@ -3540,23 +3540,25 @@ do id=1,num_domains
 !            PHB:FieldType = 104 ;
 !            PHB:MemoryOrder = "XYZ" ;
 !            PHB:stagger = "Z" ;
-             coordinate_char = "XLONG_d0"//idom//" XLAT_d0"//idom
-   call nc_check(nf90_def_var(ncFileID, name="PHB_d0"//idom, xtype=nf90_real, &
-        dimids= (/ weDimID(id), snDimID(id), btStagDimID(id) /), varid=phbVarId(id)), &
-        'nc_write_model_atts','def_var PHB_d0'//idom)
-   call nc_check(nf90_put_att(ncFileID, phbVarId(id), "long_name", &
-                 "base-state geopotential"), &
-                 'nc_write_model_atts','put_att PHB_d0'//idom//' long_name')
-   call nc_check(nf90_put_att(ncFileID, phbVarId(id), "description", &
-                 "base-state geopotential"), &
-                 'nc_write_model_atts','put_att PHB_d0'//idom//' description')
-   call nc_check(nf90_put_att(ncFileID, phbVarId(id), "units", "m2/s2"), &
-                 'nc_write_model_atts','put_att PHB_d0'//idom//' units')
-   call nc_check(nf90_put_att(ncFileID, phbVarId(id), "coordinates", &
-                 trim(coordinate_char)), &
-                 'nc_write_model_atts','put_att PHB_d0'//idom//' coordinates')
-   call nc_check(nf90_put_att(ncFileID, phbVarId(id), "units_long_name", "m{2} s{-2}"), &
-                 'nc_write_model_atts','put_att PHB_d0'//idom//' units_long_name')
+! *** phb not complete on any processor
+   !          coordinate_char = "XLONG_d0"//idom//" XLAT_d0"//idom
+   !call nc_check(nf90_def_var(ncFileID, name="PHB_d0"//idom, xtype=nf90_real, &
+   !     dimids= (/ weDimID(id), snDimID(id), btStagDimID(id) /), varid=phbVarId(id)), &
+   !     'nc_write_model_atts','def_var PHB_d0'//idom)
+   !call nc_check(nf90_put_att(ncFileID, phbVarId(id), "long_name", &
+   !              "base-state geopotential"), &
+   !              'nc_write_model_atts','put_att PHB_d0'//idom//' long_name')
+   !call nc_check(nf90_put_att(ncFileID, phbVarId(id), "description", &
+   !              "base-state geopotential"), &
+   !              'nc_write_model_atts','put_att PHB_d0'//idom//' description')
+   !call nc_check(nf90_put_att(ncFileID, phbVarId(id), "units", "m2/s2"), &
+   !              'nc_write_model_atts','put_att PHB_d0'//idom//' units')
+   !call nc_check(nf90_put_att(ncFileID, phbVarId(id), "coordinates", &
+   !              trim(coordinate_char)), &
+   !              'nc_write_model_atts','put_att PHB_d0'//idom//' coordinates')
+   !call nc_check(nf90_put_att(ncFileID, phbVarId(id), "units_long_name", "m{2} s{-2}"), &
+   !              'nc_write_model_atts','put_att PHB_d0'//idom//' units_long_name')
+! ***
 
              coordinate_char = "XLONG_d0"//idom//" XLAT_d0"//idom
    call nc_check(nf90_def_var(ncFileID, name="HGT_d0"//idom, xtype=nf90_real, &
@@ -3938,10 +3940,13 @@ do id=1,num_domains
 !             'nc_write_model_atts','put_var mapfac_u')
 !   call nc_check(nf90_put_var(ncFileID,  MapFacVVarID(id), wrf%dom(id)%mapfac_v), &
 !             'nc_write_model_atts','put_var mapfac_v')
-   call nc_check(nf90_put_var(ncFileID,      phbVarID(id), wrf%dom(id)%phb), &
-              'nc_write_model_atts','put_var phb')
-   call nc_check(nf90_put_var(ncFileID,      hgtVarID(id), wrf%dom(id)%hgt), &
-              'nc_write_model_atts','put_var hgt')
+
+! *** phb no longer on one processor
+!   call nc_check(nf90_put_var(ncFileID,      phbVarID(id), wrf%dom(id)%phb), &
+!              'nc_write_model_atts','put_var phb')
+!   call nc_check(nf90_put_var(ncFileID,      hgtVarID(id), wrf%dom(id)%hgt), &
+!              'nc_write_model_atts','put_var hgt')
+! *** phb no longer on one processor
 
 enddo
 
@@ -5180,8 +5185,8 @@ call get_state(x_imu, imu, state_ens_handle)
 call get_state(x_iph, iph, state_ens_handle)
 call get_state(x_iphp1, iphp1, state_ens_handle)
 
-ph_e = ( (x_iphp1 + wrf%dom(id)%phb(i,j,k+1)) &
-       - (x_iph   + wrf%dom(id)%phb(i,j,k  )) ) / wrf%dom(id)%dnw(k)
+ph_e = ( (x_iphp1 + phb(id,i,j,k+1)) &
+       - (x_iph   + phb(id,i,j,k  )) ) / wrf%dom(id)%dnw(k)
 
 ! now calculate rho = - mu / dphi/deta
 
@@ -5223,8 +5228,8 @@ call get_state(x_imu, imu, state_ens_handle)
 call get_state(x_iph, iph, state_ens_handle)
 call get_state(x_iphp1, iphp1, state_ens_handle)
 
-ph_e = ( (x_iphp1 + wrf%dom(id)%phb(i,j,k+1)) &
-       - (x_iph   + wrf%dom(id)%phb(i,j,k  )) ) / wrf%dom(id)%dnw(k)
+ph_e = ( (x_iphp1 + phb(id,i,j,k+1)) &
+       - (x_iph   + phb(id,i,j,k  )) ) / wrf%dom(id)%dnw(k)
 
 ! now calculate rho = - mu / dphi/deta
 
@@ -5282,10 +5287,10 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_gz
       call get_state(x_iul, iul, state_ens_handle)
       call get_state(x_iur, iur, state_ens_handle)
 
-      geop(:) = ( dym*( dxm*( wrf%dom(id)%phb(ll(1),ll(2),k) + x_ill ) + &
-                      dx*( wrf%dom(id)%phb(lr(1),lr(2),k) + x_ilr ) ) + &
-                dy*( dxm*( wrf%dom(id)%phb(ul(1),ul(2),k) + x_iul ) + &
-                      dx*( wrf%dom(id)%phb(ur(1),ur(2),k) + x_iur ) ) )/gravity
+      geop(:) = ( dym*( dxm*( phb(id,ll(1),ll(2),k) + x_ill ) + &
+                      dx*( phb(id,lr(1),lr(2),k) + x_ilr ) ) + &
+                dy*( dxm*( phb(id,ul(1),ul(2),k) + x_iul ) + &
+                      dx*( phb(id,ur(1),ur(2),k) + x_iur ) ) )/gravity
 
       lat(:) = ( wrf%dom(id)%latitude(ll(1),ll(2)) + &
               wrf%dom(id)%latitude(lr(1),lr(2)) + &
@@ -5374,10 +5379,10 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_gz
       call get_state(x_iul, iul, state_ens_handle)
       call get_state(x_iur, iur, state_ens_handle)
 
-      geop = ( dym*( dxm*( wrf%dom(id)%phb(ll(1),ll(2),k) + x_ill ) + &
-                      dx*( wrf%dom(id)%phb(lr(1),lr(2),k) + x_ilr ) ) + &
-                dy*( dxm*( wrf%dom(id)%phb(ul(1),ul(2),k) + x_iul ) + &
-                      dx*( wrf%dom(id)%phb(ur(1),ur(2),k) + x_iur ) ) )/gravity
+      geop = ( dym*( dxm*( phb(id,ll(1),ll(2),k) + x_ill ) + &
+                      dx*( phb(id,lr(1),lr(2),k) + x_ilr ) ) + &
+                dy*( dxm*( phb(id,ul(1),ul(2),k) + x_iul ) + &
+                      dx*( phb(id,ur(1),ur(2),k) + x_iur ) ) )/gravity
 
       lat = ( wrf%dom(id)%latitude(ll(1),ll(2)) + &
               wrf%dom(id)%latitude(lr(1),lr(2)) + &
@@ -5805,7 +5810,7 @@ i1 = new_dart_ind(i,j,k,wrf%dom(id)%type_gz, id)
 
 call get_state(x_i1, i1, state_ens_handle)
 
-geop = (wrf%dom(id)%phb(i,j,k) + x_i1)/gravity
+geop = (phb(id,i,j,k) + x_i1)/gravity
 model_height_w_distrib = compute_geometric_height(geop, wrf%dom(id)%latitude(i, j))
 
 end function model_height_w_distrib
@@ -7265,21 +7270,21 @@ integer               :: var_id
 
 ! get 3D base state geopotential
 
-   allocate(wrf%dom(id)%phb(1:wrf%dom(id)%we,1:wrf%dom(id)%sn,1:wrf%dom(id)%bts))
-   call nc_check( nf90_inq_varid(ncid, "PHB", var_id), &
-                     'read_wrf_static_data','inq_varid PHB')
-   call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%phb), &
-                     'read_wrf_static_data','get_var PHB')
-   if(debug) then
-      write(*,*) ' corners of phb '
-      write(*,*) wrf%dom(id)%phb(1,1,1),wrf%dom(id)%phb(wrf%dom(id)%we,1,1),  &
-           wrf%dom(id)%phb(1,wrf%dom(id)%sn,1),wrf%dom(id)%phb(wrf%dom(id)%we, &
-           wrf%dom(id)%sn,1)
-      write(*,*) wrf%dom(id)%phb(1,1,wrf%dom(id)%bts), &
-           wrf%dom(id)%phb(wrf%dom(id)%we,1,wrf%dom(id)%bts),  &
-           wrf%dom(id)%phb(1,wrf%dom(id)%sn,wrf%dom(id)%bts), &
-           wrf%dom(id)%phb(wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bts)
-   endif
+   !allocate(wrf%dom(id)%phb(1:wrf%dom(id)%we,1:wrf%dom(id)%sn,1:wrf%dom(id)%bts))
+   !call nc_check( nf90_inq_varid(ncid, "PHB", var_id), &
+   !                  'read_wrf_static_data','inq_varid PHB')
+   !call nc_check( nf90_get_var(ncid, var_id, wrf%dom(id)%phb), &
+   !                  'read_wrf_static_data','get_var PHB')
+   !if(debug) then
+   !   write(*,*) ' corners of phb '
+   !   write(*,*) wrf%dom(id)%phb(1,1,1),wrf%dom(id)%phb(wrf%dom(id)%we,1,1),  &
+   !        wrf%dom(id)%phb(1,wrf%dom(id)%sn,1),wrf%dom(id)%phb(wrf%dom(id)%we, &
+   !        wrf%dom(id)%sn,1)
+   !   write(*,*) wrf%dom(id)%phb(1,1,wrf%dom(id)%bts), &
+   !        wrf%dom(id)%phb(wrf%dom(id)%we,1,wrf%dom(id)%bts),  &
+   !        wrf%dom(id)%phb(1,wrf%dom(id)%sn,wrf%dom(id)%bts), &
+   !        wrf%dom(id)%phb(wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bts)
+   !endif
 
 phb_filename = 'wrfinput_d01' !> @todo filenames
 call create_groups ! each group reads in the grid info in parallel
