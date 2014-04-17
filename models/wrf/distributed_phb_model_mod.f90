@@ -4103,9 +4103,10 @@ call error_handler(E_ERR,'adv_1step', &
 end subroutine adv_1step
 
 !**********************************************
-
+!> close the phb window
 subroutine end_model()
-! nothing to do, which is fine.
+
+call free_window
 
 end subroutine end_model
 
