@@ -636,7 +636,7 @@ endif
 ret = nfmpi_close(ncfile)
 call pnet_check(ret, 'filter_state_space_diagnostics_parallel', 'closing file')
 
-if (my_task_id() == 0) print*, 'diagnostic time :', MPI_WTIME() - start_at_time
+if (my_task_id() == 0) print*, 'parallel diagnostic time :', MPI_WTIME() - start_at_time
 
 end subroutine filter_state_space_diagnostics_parallel
 
@@ -645,12 +645,19 @@ end subroutine filter_state_space_diagnostics_parallel
 subroutine smoother_ss_diagnostics(model_size, num_output_state_members, output_inflation, &
    temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY)
 
+use mpi
+
 integer,         intent(in)  :: model_size, num_output_state_members
 logical,         intent(in)  :: output_inflation
 real(r8),        intent(out) :: temp_ens(model_size)
 integer,         intent(in)  :: ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY
 
 integer :: smoother_index, i
+
+! timing variables
+double precision :: start_at_time
+
+start_at_time = MPI_WTIME()
 
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
@@ -670,6 +677,7 @@ do i = 1, num_current_lags
       ENS_MEAN_COPY, ENS_SD_COPY, lag_inflate, POST_INF_COPY, POST_INF_SD_COPY)
 end do
 
+if (my_task_id() == 0) print*, 'serial diagnostic time :', MPI_WTIME() - start_at_time
 
 end subroutine smoother_ss_diagnostics
 

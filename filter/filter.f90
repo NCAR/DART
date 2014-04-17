@@ -123,6 +123,7 @@ logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
 logical  :: silence                  = .false.
+logical  :: parallel_state_diag      = .true. ! default to write diagnostics in parallel
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
                         obs_sequence_out_name = "obs_seq.final",  &
@@ -162,7 +163,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
    inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, output_inflation,          &
-   silence
+   silence, parallel_state_diag
 
 
 !----------------------------------------------------------------
@@ -635,7 +636,11 @@ AdvanceTime : do
    call trace_message('Before prior state space diagnostics')
    call timestamp_message('Before prior state space diagnostics')
 
-   if (allow_complete_state()) then
+   if (parallel_state_diag) then ! parallel write of diagnostics
+
+     call filter_state_space_diagnostics(ens_handle, ENS_MEAN_COPY, PRIOR_INF_SD_COPY, 'Prior_Diag.nc')
+
+   else ! send each copy to task 0
 
       call all_copies_to_all_vars(ens_handle)
 
@@ -656,9 +661,7 @@ AdvanceTime : do
               prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
       endif
 
-   else ! parallel write of diagnostics
-
-      call filter_state_space_diagnostics(ens_handle, ENS_MEAN_COPY, PRIOR_INF_SD_COPY, 'Prior_Diag.nc')
+      deallocate(temp_ens)
 
    endif
 
@@ -803,13 +806,27 @@ AdvanceTime : do
    call trace_message('Before posterior state space diagnostics')
    call timestamp_message('Before posterior state space diagnostics')
 
-   if (allow_complete_state()) then
+   if (parallel_state_diag) then ! parallel write of diagnostics
 
-      call all_copies_to_all_vars(ens_handle)
+      ! This is two many copies.  You could change the order of the copies to have the 
+      ! mean in the middle of the prior and posterior stuff
+      call filter_state_space_diagnostics(ens_handle, ENS_MEAN_COPY, POST_INF_SD_COPY, 'Posterior_Diag.nc')
+
+   else ! send each copy to task 0
 
       ! Do posterior state space diagnostic output as required
       if ((output_interval > 0) .and. &
           (time_step_number / output_interval * output_interval == time_step_number)) then
+
+         call all_copies_to_all_vars(ens_handle)
+
+         ! allocate space so task 0 can receive the ensemble members
+         if (my_task_id() == 0) then
+            allocate(temp_ens(ens_handle%num_vars))
+         else
+            allocate(temp_ens(1)) ! I think only task 0 needs space to store a copy
+         endif
+
          call filter_state_space_diagnostics(curr_ens_time, PosteriorStateUnit, ens_handle, &
             model_size, num_output_state_members, output_state_mean_index, &
             output_state_spread_index, &
@@ -822,12 +839,6 @@ AdvanceTime : do
             output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
             POST_INF_COPY, POST_INF_SD_COPY)
       endif
-
-   else ! parallel write of diagnostics
-
-      ! This is two many copies.  You could change the order of the copies to have the 
-      ! mean in the middle of the prior and posterior stuff
-      call filter_state_space_diagnostics(ens_handle, ENS_MEAN_COPY, POST_INF_SD_COPY, 'Posterior_Diag.nc')
 
    endif
 
