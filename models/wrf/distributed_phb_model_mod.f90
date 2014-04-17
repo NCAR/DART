@@ -72,7 +72,11 @@ use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_inde
 
 use sort_mod, only : sort
 
-use fwd_op_win_mod
+use fwd_op_win_mod ! for state windows: forward operator and height calculation
+
+use distrib_phb_mod ! distributed phb array
+
+
 
 ! FIXME:
 ! the kinds KIND_CLOUD_LIQUID_WATER should be KIND_CLOUDWATER_MIXING_RATIO, 
@@ -300,7 +304,7 @@ TYPE wrf_static_data_for_dart
    real(r8), dimension(:,:),   pointer :: mub, hgt
    real(r8), dimension(:,:),   pointer :: latitude, latitude_u, latitude_v
    real(r8), dimension(:,:),   pointer :: longitude, longitude_u, longitude_v
-   real(r8), dimension(:,:,:), pointer :: phb
+   real(r8), dimension(:,:,:), pointer :: phb ! leave in for compilation
 
    ! NEWVAR:  Currently you have to add a new type here if you want to use
    ! NEWVAR:  a WRF variable which is not one of these types.  This will go
@@ -5443,7 +5447,7 @@ if( (var_type == wrf%dom(id)%type_w) .or. (var_type == wrf%dom(id)%type_gz) ) th
    i1 = new_dart_ind(i,j,k,wrf%dom(id)%type_gz, id)
    call get_state(x_i1, i1, state_ens_handle)
 
-   geop = (wrf%dom(id)%phb(i,j,k)+x_i1)/gravity
+   geop = (phb(id, i,j,k)+x_i1)/gravity
    model_height_distrib = compute_geometric_height(geop, wrf%dom(id)%latitude(i, j))
 
 ! If U-grid, then height is defined between U points, both in horizontal 
@@ -5467,10 +5471,10 @@ elseif( var_type == wrf%dom(id)%type_u ) then
          call get_state(x_i4, i4, state_ens_handle)
 
 
-         geop = ( (wrf%dom(id)%phb(i-1,j,k  ) + x_i1) &
-                 +(wrf%dom(id)%phb(i-1,j,k+1) + x_i2) &
-                 +(wrf%dom(id)%phb(1  ,j,k  ) + x_i3) &
-                 +(wrf%dom(id)%phb(1  ,j,k+1) + x_i4) )/(4.0_r8*gravity)
+         geop = ( (phb(id,i-1,j,k  ) + x_i1) &
+                 +(phb(id,i-1,j,k+1) + x_i2) &
+                 +(phb(id,1  ,j,k  ) + x_i3) &
+                 +(phb(id,1  ,j,k+1) + x_i4) )/(4.0_r8*gravity)
          
          lat = ( wrf%dom(id)%latitude(i-1,j)  &
                 +wrf%dom(id)%latitude(i-1,j)  &
@@ -5491,10 +5495,10 @@ elseif( var_type == wrf%dom(id)%type_u ) then
          call get_state(x_i4, i2 -1, state_ens_handle)
 
 
-         geop = ( 3.0_r8*(wrf%dom(id)%phb(i-1,j,k  )+x_i1) &
-                 +3.0_r8*(wrf%dom(id)%phb(i-1,j,k+1)+x_i2) &
-                        -(wrf%dom(id)%phb(i-2,j,k  )+x_i3) &
-                        -(wrf%dom(id)%phb(i-2,j,k+1)+x_i4) )/(4.0_r8*gravity)
+         geop = ( 3.0_r8*(phb(id,i-1,j,k  )+x_i1) &
+                 +3.0_r8*(phb(id,i-1,j,k+1)+x_i2) &
+                        -(phb(id,i-2,j,k  )+x_i3) &
+                        -(phb(id,i-2,j,k+1)+x_i4) )/(4.0_r8*gravity)
 
          lat = ( 3.0_r8*wrf%dom(id)%latitude(i-1,j)  &
                 +3.0_r8*wrf%dom(id)%latitude(i-1,j)  &
@@ -5522,10 +5526,10 @@ elseif( var_type == wrf%dom(id)%type_u ) then
          call get_state(x_i3, i3, state_ens_handle)
          call get_state(x_i4, i4, state_ens_handle)
 
-         geop = ( (wrf%dom(id)%phb(i  ,j,k  ) + x_i1) &
-                 +(wrf%dom(id)%phb(i  ,j,k+1) + x_i2) &
-                 +(wrf%dom(id)%phb(off,j,k  ) + x_i3) &
-                 +(wrf%dom(id)%phb(off,j,k+1) + x_i4) )/(4.0_r8*gravity)
+         geop = ( (phb(id,i  ,j,k  ) + x_i1) &
+                 +(phb(id,i  ,j,k+1) + x_i2) &
+                 +(phb(id,off,j,k  ) + x_i3) &
+                 +(phb(id,off,j,k+1) + x_i4) )/(4.0_r8*gravity)
          
          lat = ( wrf%dom(id)%latitude(i  ,j)  &
                 +wrf%dom(id)%latitude(i  ,j)  &
@@ -5546,10 +5550,10 @@ elseif( var_type == wrf%dom(id)%type_u ) then
          call get_state(x_i4, i2 +1, state_ens_handle)
 
 
-         geop = ( 3.0_r8*(wrf%dom(id)%phb(i  ,j,k  )+x_i1)   &
-                 +3.0_r8*(wrf%dom(id)%phb(i  ,j,k+1)+x_i2)   &
-                        -(wrf%dom(id)%phb(i+1,j,k  )+x_i3) &
-                        -(wrf%dom(id)%phb(i+1,j,k+1)+x_i4) )/(4.0_r8*gravity)
+         geop = ( 3.0_r8*(phb(id,i  ,j,k  )+x_i1)   &
+                 +3.0_r8*(phb(id,i  ,j,k+1)+x_i2)   &
+                        -(phb(id,i+1,j,k  )+x_i3) &
+                        -(phb(id,i+1,j,k+1)+x_i4) )/(4.0_r8*gravity)
 
          lat = ( 3.0_r8*wrf%dom(id)%latitude(i  ,j)  &
                 +3.0_r8*wrf%dom(id)%latitude(i  ,j)  &
@@ -5571,10 +5575,10 @@ elseif( var_type == wrf%dom(id)%type_u ) then
       call get_state(x_i4, i2 -1, state_ens_handle)
 
 
-      geop = ( (wrf%dom(id)%phb(i  ,j,k  )+x_i1)   &
-              +(wrf%dom(id)%phb(i  ,j,k+1)+x_i2)   &
-              +(wrf%dom(id)%phb(i-1,j,k  )+x_i3) &
-              +(wrf%dom(id)%phb(i-1,j,k+1)+x_i4) )/(4.0_r8*gravity)
+      geop = ( (phb(id,i  ,j,k  )+x_i1)   &
+              +(phb(id,i  ,j,k+1)+x_i2)   &
+              +(phb(id,i-1,j,k  )+x_i3) &
+              +(phb(id,i-1,j,k+1)+x_i4) )/(4.0_r8*gravity)
 
       lat = (  wrf%dom(id)%latitude(i  ,j)  &
               +wrf%dom(id)%latitude(i  ,j)  &
@@ -5608,10 +5612,10 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          call get_state(x_i3, i3, state_ens_handle)
          call get_state(x_i4, i4, state_ens_handle)
 
-         geop = ( (wrf%dom(id)%phb(off,j-1,k  )+x_i1) &
-                 +(wrf%dom(id)%phb(off,j-1,k+1)+x_i2) &
-                 +(wrf%dom(id)%phb(i  ,j-1,k  )+x_i3) &
-                 +(wrf%dom(id)%phb(i  ,j-1,k+1)+x_i4) )/(4.0_r8*gravity)
+         geop = ( (phb(id,off,j-1,k  )+x_i1) &
+                 +(phb(id,off,j-1,k+1)+x_i2) &
+                 +(phb(id,i  ,j-1,k  )+x_i3) &
+                 +(phb(id,i  ,j-1,k+1)+x_i4) )/(4.0_r8*gravity)
          
          lat = ( wrf%dom(id)%latitude(off,j-1)  &
                 +wrf%dom(id)%latitude(off,j-1)  &
@@ -5633,10 +5637,10 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          call get_state(x_i3, i3, state_ens_handle)
          call get_state(x_i4, i4, state_ens_handle)
 
-         geop = ( 3.0_r8*(wrf%dom(id)%phb(i,j-1,k  )+x_i1) &
-                 +3.0_r8*(wrf%dom(id)%phb(i,j-1,k+1)+x_i2) &
-                        -(wrf%dom(id)%phb(i,j-2,k  )+x_i3) &
-                        -(wrf%dom(id)%phb(i,j-2,k+1)+x_i4) )/(4.0_r8*gravity)
+         geop = ( 3.0_r8*(phb(id,i,j-1,k  )+x_i1) &
+                 +3.0_r8*(phb(id,i,j-1,k+1)+x_i2) &
+                        -(phb(id,i,j-2,k  )+x_i3) &
+                        -(phb(id,i,j-2,k+1)+x_i4) )/(4.0_r8*gravity)
 
          lat = ( 3.0_r8*wrf%dom(id)%latitude(i,j-1)  &
                 +3.0_r8*wrf%dom(id)%latitude(i,j-1)  &
@@ -5666,10 +5670,10 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          call get_state(x_i3, i3, state_ens_handle)
          call get_state(x_i4, i4, state_ens_handle)
 
-         geop = ( (wrf%dom(id)%phb(off,j,k  )+x_i1) &
-                 +(wrf%dom(id)%phb(off,j,k+1)+x_i2) &
-                 +(wrf%dom(id)%phb(i  ,j,k  )+x_i3) &
-                 +(wrf%dom(id)%phb(i  ,j,k+1)+x_i4) )/(4.0_r8*gravity)
+         geop = ( (phb(id,off,j,k  )+x_i1) &
+                 +(phb(id,off,j,k+1)+x_i2) &
+                 +(phb(id,i  ,j,k  )+x_i3) &
+                 +(phb(id,i  ,j,k+1)+x_i4) )/(4.0_r8*gravity)
          
          lat = ( wrf%dom(id)%latitude(off,j)  &
                 +wrf%dom(id)%latitude(off,j)  &
@@ -5691,10 +5695,10 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          call get_state(x_i3, i3, state_ens_handle)
          call get_state(x_i4, i4, state_ens_handle)
 
-         geop = ( 3.0_r8*(wrf%dom(id)%phb(i,j  ,k  )+x_i1) &
-                 +3.0_r8*(wrf%dom(id)%phb(i,j  ,k+1)+x_i2) &
-                        -(wrf%dom(id)%phb(i,j+1,k  )+x_i3) &
-                        -(wrf%dom(id)%phb(i,j+1,k+1)+x_i4) )/(4.0_r8*gravity)
+         geop = ( 3.0_r8*(phb(id,i,j  ,k  )+x_i1) &
+                 +3.0_r8*(phb(id,i,j  ,k+1)+x_i2) &
+                        -(phb(id,i,j+1,k  )+x_i3) &
+                        -(phb(id,i,j+1,k+1)+x_i4) )/(4.0_r8*gravity)
 
          lat = ( 3.0_r8*wrf%dom(id)%latitude(i,j  )  &
                 +3.0_r8*wrf%dom(id)%latitude(i,j  )  &
@@ -5717,10 +5721,10 @@ elseif( var_type == wrf%dom(id)%type_v ) then
       call get_state(x_i3, i3, state_ens_handle)
       call get_state(x_i4, i4, state_ens_handle)
 
-      geop = ( (wrf%dom(id)%phb(i,j  ,k  )+x_i1) &
-              +(wrf%dom(id)%phb(i,j  ,k+1)+x_i2) &
-              +(wrf%dom(id)%phb(i,j-1,k  )+x_i3) &
-              +(wrf%dom(id)%phb(i,j-1,k+1)+x_i4) )/(4.0_r8*gravity)
+      geop = ( (phb(id,i,j  ,k  )+x_i1) &
+              +(phb(id,i,j  ,k+1)+x_i2) &
+              +(phb(id,i,j-1,k  )+x_i3) &
+              +(phb(id,i,j-1,k+1)+x_i4) )/(4.0_r8*gravity)
 
       lat = ( wrf%dom(id)%latitude(i,j  )  &
              +wrf%dom(id)%latitude(i,j  )  &
@@ -5762,8 +5766,8 @@ else
    call get_state(x_i1, i1, state_ens_handle)
    call get_state(x_i2, i2, state_ens_handle)
 
-   geop = ( (wrf%dom(id)%phb(i,j,k  )+x_i1) &
-           +(wrf%dom(id)%phb(i,j,k+1)+x_i2) )/(2.0_r8*gravity)
+   geop = ( (phb(id,i,j,k  )+x_i1) &
+           +(phb(id, i,j,k+1)+x_i2) )/(2.0_r8*gravity)
 
    lat = wrf%dom(id)%latitude(i,j)
 
@@ -7276,6 +7280,11 @@ integer               :: var_id
            wrf%dom(id)%phb(1,wrf%dom(id)%sn,wrf%dom(id)%bts), &
            wrf%dom(id)%phb(wrf%dom(id)%we,wrf%dom(id)%sn,wrf%dom(id)%bts)
    endif
+
+phb_filename = 'wrfinput_d01' !> @todo filenames
+call create_groups ! each group reads in the grid info in parallel
+call read_phb ! read in the grid info
+call create_window ! phb
 
 end subroutine read_wrf_static_data
 
