@@ -169,9 +169,12 @@ write(errstring,*)'seconds, days are ',seconds, days_in,' cannot be negative'
 if(seconds < 0 .or. days_in < 0) &
    call error_handler(E_ERR,'set_time',errstring,source,revision,revdate)
 
-! Make sure seconds greater than a day are fixed up
+! Make sure seconds greater than a day are fixed up.
+! Extra parens to force the divide before the multiply are REQUIRED 
+! on some compilers to prevent them from combining constants first 
+! which makes the expression always return 0.
 
-set_time%seconds = seconds - seconds / (60*60*24) * (60*60*24)
+set_time%seconds = seconds - (seconds / (60*60*24)) * (60*60*24)
 
 ! Check for overflow on days before doing operation
 
