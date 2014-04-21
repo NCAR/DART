@@ -9,7 +9,7 @@ program test_reseed
 use        types_mod, only : r8, digits12
 use    utilities_mod, only : register_module, error_handler, E_ERR, &
                              initialize_utilities, finalize_utilities, &
-                             logfileunit, nmlfileunit,  &
+                             logfileunit, nmlfileunit, E_MSG, &
                              find_namelist_in_file, check_namelist_read, &
                              open_file, close_file, do_nml_file, do_nml_term
 use time_manager_mod, only : time_type, operator(+), set_time, get_time, &
@@ -252,7 +252,8 @@ subroutine test3
 
 real(r8), allocatable :: history(:)
 real(r8) :: next_val
-integer :: i, j, k, nextseed, seedhist(:)
+integer :: i, j, k, nextseed
+integer, allocatable :: seedhist(:)
 type(time_type) :: t, base_time, state_time, delta_time, delta_time2
 type(random_seq_type) :: seq1
 
