@@ -1,0 +1,94 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>DART and MODIS</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>DART observations and MODIS products.</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#Plans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<P>There are many MODIS products, in many formats. This document will list all of the data products and formats that have DART programs to convert them to observation sequence files.
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<HR />
+<H2>PROGRAMS</H2>
+
+<table border=0 summary="" cellpadding=5>
+<tr><td valign=top><a href="MOD15A2_to_obs.html">MOD15A2_to_obs</a></td>
+    <td valign=top>Converts <a href="http://daac.ornl.gov/MODIS/modis.shtml">MODIS Land Product Subsets</a>
+        Leaf Area Index (<strong>LAI</strong>) and Fraction of Photosynthetically Active
+        Radiation (<strong>FPAR</strong>) 8 day composite 
+        <a href="https://lpdaac.usgs.gov/products/modis_products_table/mod15a2">[MOD15A2]</a>
+     </td>
+</tr>
+</table>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="Plans"></A>
+<HR />
+<H2>PLANS</H2>
+<ol>
+<li>Support MOD15A2 'Global Tool' records.</li>
+<li>The work that remains is to get the IGBP landcover code for the site and
+incorporate that into the observation metadata. I <em>almost</em> have
+everything I need. Once that happens, the forward observation operator
+can be made to be much more accurate by only using model landunits
+that have the right landcover class.</li>
+<li>Support more products. Put in a request to help me prioritize.</li>
+</ol>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar     </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

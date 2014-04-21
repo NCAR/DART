@@ -1,0 +1,511 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program MOD15A2_to_obs</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>MOD15A2_to_obs</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#DataSources">DATA SOURCES</A> /
+<A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#Decisions">DECISIONS</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H1>Overview</H1>
+
+<H4> MODIS Land Product Subsets (Collection 5)
+to DART Observation Sequence Converter</H4>
+
+<P>This routine is designed to convert the
+<a href="http://daac.ornl.gov/MODIS/modis.shtml">MODIS Land Product Subsets</a> data
+of Leaf Area Index (<strong>LAI</strong>) and Fraction of Photosynthetically Active
+Radiation (<strong>FPAR</strong>) 8 day composite [MOD15A2] to a DART observation
+sequence file.
+According to the <a href="https://lpdaac.usgs.gov/sites/default/files/public/modis/docs/MODIS-LAI-FPAR-User-Guide.pdf">MODIS LAI/FPAR Product User's Guide</a>:</P>
+<blockquote>Leaf area index (LAI; dimensionless) is defined as the one-sided green leaf 
+area per unit ground area in broadleaf canopies and as one-half the total needle 
+surface area per unit ground area in coniferous canopies.
+<br />
+<br />
+Fraction of Photosynthetically Active Radiation absorbed by vegetation 
+(FPAR; dimensionless) is defined as the fraction of incident photosynthetically 
+active radiation (400-700 nm) absorbed by the green elements of a vegetation canopy.
+</blockquote>
+<P>Specifically, the composites are comma-separated-values (.csv format) ASCII files
+where each line is a record. The input <em class=file>.csv</em> files are directly 
+from the Oak Ridge National Laboratory <a href="http://daac.ornl.gov">DAAC</a>.
+There are two streams to download the data formats we support,
+they differ only in the very first line of the file. One of the formats has a header
+record, the other does not. Other than that, the file formats are identical. The format
+with the header record is fully described in
+<a href="http://daac.ornl.gov/MODIS/Data_File_Description_fixed_sites.html">
+http://daac.ornl.gov/MODIS/Data_File_Description_fixed_sites.html</a>.
+Please remember to cite the data in your publications, 
+<a href="https://lpdaac.usgs.gov/about/citing_lp_daac_and_data">specific instructions from LP DAAC are available here.</a> This is an example:
+</P>
+<blockquote>Data Citation:
+Oak Ridge National Laboratory Distributed Active Archive Center (ORNL DAAC). 2012. MODIS subsetted land products, Collection 5. Available on-line [http://daac.ornl.gov/MODIS/modis.html] from ORNL DAAC, Oak Ridge, Tennessee, U.S.A. Accessed <em>Month dd, yyyy</em>.</blockquote>
+<P>
+For more information on <em>downloading</em> the data, see
+<a href="#DataSources">DATA SOURCES</a> below.
+The <a href="http://daac.ornl.gov/MODIS/modis.shtml">MODIS Land Product Subsets</a>
+page indicates that the Collection 5 MODIS Subsets are available three ways:
+</P>
+<ol>
+   <li><a href="http://daac.ornl.gov/cgi-bin/MODIS/GR_col5_1/mod_viz.html"
+      >Field Site and Flux tower</a>.
+      Since the files are preprocessed, the download is immediate.
+      The current state of the converter supports this format.
+   </li>
+   <li><a href="http://daac.ornl.gov/cgi-bin/MODIS/GLBVIZ_1_Glb/modis_subset_order_global_col5.pl">Global Tool</a>. 
+       This requires exact knowledge of the location(s) of interest.
+       Because some processing to fulfill the request is needed, a job is scheduled
+       on the DAAC server and an email notification is sent with instuctions on 
+       how to retrieve the file(s) of interest. The converter <strong>does not</strong> 
+       currently support this format, but will soon. Worst case scenario is that you make 
+       your own header file and add your 'site' to the metadata file described below.</li>
+   <li><a href="http://daac.ornl.gov/MODIS/MODIS-menu/modis_webservice.html"
+      >Web Service</a>. I have not used the Web Service.</li>
+</ol>
+
+<P>
+The DART workflow is usually:
+</P>
+<ol>
+<li>download the MOD15A2 data for the sites and years in question
+    (<a href="#DataSources">see DATA SOURCES below</a>)</li>
+<li>build the DART executables with support for <em class=mono>MODIS_LEAF_AREA_INDEX</em>
+    and <em class=mono>MODIS_FPAR</em> observations.
+    This is done by running <em class=program>preprocess</em> with
+    <em class=file>obs_def_tower_mod.f90</em> in the list of 
+    <em class=code>input_files</em> for <em class=code>preprocess_nml</em> and 
+    then building <em class=program>MOD15A2_to_obs</em> in the usual DART way.</li>
+<li>provide basic information via the 
+    <em class=file>input.nml</em>:<em class=code>MOD15A2_to_obs_nml</em> 
+    namelist</li>
+<li>convert each MODIS data file individually using 
+    <em class=program>MOD15A2_to_obs</em></li>
+<li>combine all output files for the region and timeframe of interest into one file
+    using <a href="../../obs_sequence/obs_sequence_tool.html ">obs_sequence_tool</a></li>
+</ol>
+
+<P>
+For some models (CLM, for example), it is required to reorganize the observation sequence
+files into a series of files that contains ONLY the observations for each assimilation.
+This can be achieved with the <a href="makedaily.sh">makedaily.sh</a> script.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<HR>
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;MOD15A2_to_obs_nml
+   text_input_file = 'MOD15A2.fn_usbouldr.txt',
+   metadata_file   = 'MOD15A2_site_metadata.txt',
+   obs_out_file    = 'obs_seq.out',
+   maxgoodqc       = 10,
+   verbose         = .false.
+   /
+</pre>
+</div>
+
+<div>
+
+<TABLE border=0 cellspacing=10 width=100% summary='MOD15A2_to_obs namelist description'>
+<THEAD align=left>
+<TR><TH>Contents    </TH>
+    <TH>Type        </TH>
+    <TH>Description </TH></TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR><!--contents--><TD> text_input_file  </TD>
+    <!--  type  --><TD> character(len=256) </TD>
+    <!--descript--><TD>Name of the MODIS file of comma-separated values.
+            This may be a relative or absolute filename. </TD></TR>
+
+<TR><!--contents--><TD> metadata_file  </TD>
+    <!--  type  --><TD> character(len=256) </TD>
+    <!--descript--><TD>Name of the file that contains the location information for the 
+            specific sites. This may be a relative or absolute filename. If this file 
+            does not exist, it is <strong>presumed</strong> that the location information 
+            is part of the 'site' column. If this is not true, the program will fail.
+            For more information see the section 
+            <a href="#FormatSpecification">Presumed Format</a> </TD></TR>
+
+<TR><!--contents--><TD> obs_out_file  </TD>
+    <!--  type  --><TD> character(len=128) </TD>
+    <!--descript--><TD>Name of the output observation sequence file.</TD></TR>
+
+<TR><!--contents--><TD> maxgoodqc  </TD>
+    <!--  type  --><TD> real       </TD>
+    <!--descript--><TD>maximum value of any observation quality control flag to
+            pass through to the output observation sequence. Keep in mind that
+            <em class=program>filter</em> has the ability to discriminate on the
+            value, so there is really little to be gained by rejecting them
+            during the conversion. The QC value is passed through in its native value, i.e. it
+            is not converted to play nicely with observations that have values 0,1,2,3,4,5 etc.</TD></TR>
+
+<TR><!--contents--><TD> verbose   </TD>
+    <!--  type  --><TD> logical   </TD>
+    <!--descript--><TD>Print extra information during the <em class=program>MOD15A2_to_obs</em>
+            execution.</TD></TR>
+
+</TBODY>
+</TABLE>
+
+</div>
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<HR />
+<H2>DATA SOURCES</H2>
+
+<h3>Field Site and Flux tower</H3>
+<P>
+The download site for the 'Field Site and Flux tower' data is<br />
+<a href="http://daac.ornl.gov/cgi-bin/MODIS/GR_col5_1/mod_viz.html"
+        >http://daac.ornl.gov/cgi-bin/MODIS/GR_col5_1/mod_viz.html</a>.
+Since the files are preprocessed, the download is immediate.
+This method results in files <strong>with</strong> the header record, 
+and requires a small amount of additional work:
+</P>
+<ul><li>Download the metadata file containing the locations for the Field Sites <a href=
+      "ftp://daac.ornl.gov/data/modis_ascii_subsets/5_MODIS_SUBSETS_C5_&_FLUXNET.csv"
+      >ftp://daac.ornl.gov/data/modis_ascii_subsets/5_MODIS_SUBSETS_C5_&amp;_FLUXNET.csv</a>
+    </li>
+    <li>I usually convert this to UNIX format with the UNIX utility 
+    <em class=program>dos2unix</em> and rename it to 
+    <em class=file>MOD15A2_site_metadata.txt</em>
+    </li>
+</ul>
+
+<P>The data files have names like <em class=file>MOD15A2.fn_uswiirpi.txt</em> or 
+<em class=file>MOD15A2.fn_dehambur.txt</em>&nbsp; and have very long lines.
+The first line (i.e. record) of the file is a comma-separated list explaining the 
+file format for all the remaining lines/records.
+<br />
+<br />
+These files contain records with 49 pixel values where each pixel represents the values for a 1km by 1km voxel. The center pixel is the only value converted to a DART observation value. 
+</P>
+<div class=unix>
+<pre>
+MODIS_LAI % <em class=input>head -1 MOD15A2.fn_dehambur.txt</em>
+HDFname,Product,Date,Site,ProcessDate,Band,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49
+</pre>
+</div>
+<P>The format of the <em class=mono>Site</em> in these files is the predominant 
+difference between the files from the download methods.
+The <em class=mono>Site</em> fields in these files have specified site names 
+that must have a case-sensitive match to a site in the metadata file specified by 
+<em class=file>input.nml</em>:<em class=code>metadata_file</em>&nbsp;.
+</P>
+
+<h3>Global Tool</H3>
+<P>
+<strong>This format is not supported yet.</strong><br />
+The download site for the 'Global Tool' data is <br /><a href=
+"http://daac.ornl.gov/cgi-bin/MODIS/GLBVIZ_1_Glb/modis_subset_order_global_col5.pl">
+ http://daac.ornl.gov/cgi-bin/MODIS/GLBVIZ_1_Glb/modis_subset_order_global_col5.pl</a>.
+Because some processing to fulfill the request is needed, a job is scheduled
+on the DAAC server and an email notification is sent with instuctions on 
+how to retrieve the file(s) of interest.
+<strong>This method requires exact knowledge of the location(s) of interest.</strong>
+<em class=program>MOD15A2_to_obs</em> presumes prior knowledge of the file format
+and that the latitude and longitude are coded in the site name (which is the default 
+behavior). <strong>Do not change the format of the file.</strong> Please follow the
+download instructions below - <strong>exactly.</strong> These instructions were 
+accurate as of 11 April 2014.  
+</P>
+
+<ol><li>go to the DAAC <a href="http://daac.ornl.gov/cgi-bin/MODIS/GLBVIZ_1_Glb/modis_subset_order_global_col5.pl">download site for MODIS global data</a>.</li>
+    <li>Select either
+       <ol><li>"Country" (it helps to FIRST clear out the values from the "lat/lon" boxes)</li>
+           <li> or a specific latitude and longitude. Be precise. This will specify the center pixel location.</li>
+       </ol></li>
+     <li>click "Continue"</li>
+     <li>Select the "[MOD15A2]&nbsp;Leaf&nbsp;Area&nbsp;Index&nbsp;(LAI)&nbsp;and&nbsp;Fraction&nbsp;of&nbsp;Photsyntetically&nbsp;Active&nbsp;Radiation&nbsp;(FPAR)&nbsp;8&nbsp;Day&nbsp;Composite" from the pull-down menu.</li>
+     <li><strong>Important:</strong> Specify 3 <strong>and only 3</strong> 
+         kilometers to encompass the center location. This results in the 
+         7&nbsp;km&nbsp;by&nbsp;7&nbsp;km resolution required by 
+         <em class=program>MOD15A2_to_obs</em>.
+     <li>click "Continue"</li>
+     <li>select the Starting Date and Ending Date from the list. You can convert the entire dataset into one long DART observation sequence file and then subset it later if need be.</li>
+     <li><strong>Important:</strong> Make sure you check the button 
+     "Generate&nbsp;GeoTIFF&nbsp;and&nbsp;Reproject&nbsp;to&nbsp;Geographic&nbsp;Lat/long"
+</li>
+     <li>Supply your REAL email address</li>
+     <li>click "Continue"</li>
+     <li>Review the confirmation page. Make sure the requested resolution and area 
+         is correct. You should see something like 
+         "The&nbsp;Requested&nbsp;Data&nbsp;Area&nbsp;is&nbsp;Approximately&nbsp;7&nbsp;Kilometers&nbsp;Wide&nbsp;and&nbsp;7&nbsp;Kilometers&nbsp;High"</li>
+     <li>click "Continue"</li>
+     <li>At some point later (perhaps even days), you will get an email with the subject "ORNL&nbsp;DAAC&nbsp;MODIS&nbsp;MOD15A2&nbsp;order", follow the instructions to complete the download.</li>
+</ol>
+
+<P>
+The resulting ASCII files will have the same format as described below. 
+The 'site name' column for these files is of the form:
+<em class=mono>Lat47.61666667Lon12.58333333Samp7Line7</em>
+which provides the location information otherwise provided by the <em class=file>MOD15A2_site_metadata.txt</em> file for the predefined sites.
+</P>
+
+<h3>Web Service</H3>
+<P>I have not used the 
+<a href="http://daac.ornl.gov/MODIS/MODIS-menu/modis_webservice.html">Web Service</a>.
+</P>
+
+<!--==================================================================-->
+<A NAME="FormatSpecification"></A>
+<HR />
+<H2>Format</H2>
+<P>The data product "Leaf Area Index - Fraction of Photosynthetically Active Radiation 8-Day L4 Global 1km" 
+(<strong>MOD15A2</strong>) is described in <a href="https://lpdaac.usgs.gov/products/modis_products_table/mod15a2">
+https://lpdaac.usgs.gov/products/modis_products_table/mod15a2</a>
+(<strong>expand the 'Layers' tab</strong>). The units and the QC values are described there. What I have not
+been able to determine is how to interpret the 'Date' ... if it is 2000049 ... It is day 49 of year 2000.
+Is that the start of the 8 day composite, the middle, the end? If you know the answer, please let me know.
+<br />
+<br />
+Taken (almost) directly from <a href="http://daac.ornl.gov/MODIS/Data_File_Description_fixed_sites.html">
+http://daac.ornl.gov/MODIS/Data_File_Description_fixed_sites.html</a> and modified only slightly with examples
+more appropriate for the LAI/FPAR product.
+<br />
+The MODIS MOD15A2 products in question are ASCII files of comma-separated values.
+If the file contains a header record/line, all columns are interpreted based on this header column. 
+If the file does not contain a header, the following format is REQUIRED.
+</P>
+
+<ul>
+<li>ASCII values are comma delimited</li>
+<li>Row 1 is the header row (which may not exist for products generated by the Global Tool)</li>
+<li>Data values start in row 2 if the header row is present.</li>
+<li>Rows of QC data are interleaved with measurement data as indicated in Column 6.</li>
+<li>Note that values may contain embedded periods, dashes, and underscores (&quot;.,-, _&quot;).</li>
+</ul>
+<table BORDER CELLSPACING="1" CELLPADDING="7" WIDTH="839" summary="http://daac.ornl.gov/MODIS/Data_File_Description_fixed_sites.html">
+<tr>
+ <td WIDTH=" 9%" VALIGN="TOP"    BGCOLOR="#E0E0D1" ALIGN="CENTER"><b>Column Number</b></td>
+ <td WIDTH="25%" VALIGN="MIDDLE" BGCOLOR="#E0E0D1" ALIGN="CENTER"><b>Column Description</b></td>
+ <td WIDTH="57%" VALIGN="MIDDLE" BGCOLOR="#E0E0D1" ALIGN="CENTER"><b>Example Values</b></td>
+</tr>
+<tr>
+ <td WIDTH=" 9%" VALIGN="TOP" BGCOLOR="#EEFOFO">1</td>
+ <td WIDTH="25%" VALIGN="TOP" BGCOLOR="#EEFOFO">Unique row identifier</td>
+ <td WIDTH="57%" VALIGN="TOP" BGCOLOR="#EEFOFO">MOD15A2.A2000049.fn_ruyakuts.005.2006268205917.Fpar_1km<br />
+                                                MOD15A2.A2000049.fn_ruyakuts.005.2006268205917.Lai_1km</td>
+</tr>
+<tr>
+ <td WIDTH=" 9%" VALIGN="TOP" BGCOLOR="#EEFOFO">2</td>
+ <td WIDTH="25%" VALIGN="TOP" BGCOLOR="#EEFOFO">MODIS Land Product Code</td>
+ <td WIDTH="57%" VALIGN="TOP" BGCOLOR="#EEFOFO">MOD15A2</td>
+</tr>
+<tr>
+ <td WIDTH=" 9%" VALIGN="TOP" BGCOLOR="#EEFOFO">3</td>
+ <td WIDTH="25%" VALIGN="TOP" BGCOLOR="#EEFOFO">MODIS Acquisition Date<br />A(YYYYDDD)</td>
+ <td WIDTH="57%" VALIGN="TOP" BGCOLOR="#EEFOFO">A2000049 ( ?this is an 8 day average)<br />
+                                                What does 49 indicate? start? middle? end?</td>
+</tr>
+<tr>
+ <td WIDTH=" 9%" VALIGN="TOP" BGCOLOR="#EEFOFO">4</td>
+ <td WIDTH="25%" VALIGN="TOP" BGCOLOR="#EEFOFO">SiteID<br />
+                 Each site is assigned a unique ID. <a target="_blank" 
+                 href="ftp://daac.ornl.gov/data/modis_ascii_subsets/MODIS_Subset_Sites_Information_Collection5.csv"
+                 >Click Here</a> to get Site name information from SiteID</td>
+ <td WIDTH="57%" VALIGN="TOP" BGCOLOR="#EEFOFO">fn_ustnwalk, <br />Lat47.61666667Lon12.58333333Samp7Line7</td>
+</tr>
+<tr>
+ <td WIDTH=" 9%" VALIGN="TOP" BGCOLOR="#EEFOFO">5</td>
+ <td WIDTH="25%" VALIGN="TOP" BGCOLOR="#EEFOFO">MODIS Processing Date (YYYYDDDHHMMSS)</td>
+ <td WIDTH="57%" VALIGN="TOP" BGCOLOR="#EEFOFO">2006269073558</td>
+</tr>
+<tr>
+ <td WIDTH=" 9%" VALIGN="TOP" BGCOLOR="#EEFOFO">6</td>
+ <td WIDTH="25%" VALIGN="TOP" BGCOLOR="#EEFOFO">Product Scientific Data Set (Band): 
+                 Indicates type of values to follow. Specific values vary by Product.
+                 Data quality information are interleaved.</td>
+ <td WIDTH="57%" VALIGN="TOP" BGCOLOR="#EEFOFO">MOD15A2: FparExtra_QC, FparLai_QC, 
+                 FparStdDev_1km, Fpar_1km, LaiStdDev_1km, Lai_1km </td>
+</tr>
+<tr>
+ <td WIDTH=" 9%" VALIGN="TOP" BGCOLOR="#EEFOFO">7 to N</td>
+ <td WIDTH="25%" VALIGN="TOP" BGCOLOR="#EEFOFO">Data values of type as specified. 
+                 Number of data columns as given in Column 4.
+                 Definition of QC component values vary by Scientific Data Set.</td>
+ <td WIDTH="57%" VALIGN="TOP" BGCOLOR="#EEFOFO">QC: 00100001,01100001,01100001, ...<br />
+                 Measurement: 2,2,1,1,1,1,1,0,0,0,1,1,0,0, to N</td>
+</tr>
+</table>
+
+
+<P>
+QC flags are binary-coded ascii strings e.g., 10011101
+bits 5,6,7 (the last three) are decoded as follows:
+</P>
+<ul>
+<li>000 ... Main(RT) method used, best result possible (no saturation)</li>
+<li>001 ... Main(RT) method used with saturation, Good, very usable</li>
+<li>010 ... Main(RT) method failed due to bad geometry, empirical algorithm used</li>
+<li>011 ... Main(RT) method failed due to other problems</li>
+<li>100 ... pixel not produced at all</li>
+</ul>
+<P>Consequently, the last three digits are used by DART's data processing logic.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<HR />
+<H2>PROGRAMS</H2>
+<P>
+The <em class=file>MOD15A2_to_obs.f90</em> file is the source
+for the main converter program.
+Look at the source code where it reads the example data file.  You will
+almost certainly need to change the "read" statement to match your data
+format.  The example code reads each text line into a character buffer
+and then reads from that buffer to parse up the data items.
+<br />
+<br />
+FIXME Explain the 10% for the obs error for FPAR and question the LAIStddev ...
+</P>
+
+<P>
+To compile and test,
+go into the work subdirectory and run the <em class=file>quickbuild.csh</em>
+script to build the converter and a couple of general purpose utilities.
+<em class=file>advance_time</em> helps with calendar and time computations,
+and the
+<em class=file>obs_sequence_tool</em> manipulates DART observation files
+once they have been created.
+</P>
+<P>
+To change the observation types, look in the
+<em class=file>DART/obs_def</em> directory.  If you can
+find an obs_def_XXX_mod.f90 file with an appropriate set
+of observation types, change the 'use' lines in the converter
+source to include those types.  Then add that filename in the
+<em class=file>input.nml</em> namelist file
+to the &amp;preprocess_nml namelist, the 'input_files' variable.
+Multiple files can be listed.  Then run quickbuild.csh again.
+It remakes the table of supported observation types before
+trying to recompile the source code.
+</P>
+<P>
+An example script for converting batches of files is
+in the <em class=file>shell_scripts</em> directory. A tiny example
+data file is in the <em class=file>data</em> directory.
+These are <em>NOT</em> intended to be turnkey scripts; they will
+certainly need to be customized for your use.  There are comments
+at the top of the script saying what options they include, and
+should be commented enough to indicate where changes will be
+likely to need to be made.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Decisions"></A>
+<HR />
+<H2>DECISIONS YOU MIGHT NEED TO MAKE</H2>
+
+<P>
+See the general discussion in the
+<a href="../observations.html#Decisions">observations introduction</a>
+page about what options are available for the things you need to
+specify.  These include setting a time, specifying an expected error,
+setting a location, and an observation type.
+</P>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<HR />
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<HR />
+<H2>FUTURE PLANS</H2>
+
+<ol><li>Support for the data records without the header, as created by
+the Global Tool.</li>
+<li>The work that remains is to get the IGBP landcover code for the site and
+incorporate that into the observation metadata. I <em>almost</em> have
+everything I need. Once that happens, the forward observation operator
+can be made to be much more accurate by only using model landunits
+that have the right landcover class.</li>
+</ol>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar     </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

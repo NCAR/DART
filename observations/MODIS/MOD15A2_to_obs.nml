@@ -1,0 +1,7 @@
+&MOD15A2_to_obs_nml
+   text_input_file = 'MOD15A2.fn_usbouldr.txt',
+   metadata_file   = 'MOD15A2_site_metadata.txt',
+   maxgoodqc       = 10,
+   verbose         = .false.
+   /
+
