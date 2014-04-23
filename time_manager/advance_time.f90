@@ -36,9 +36,9 @@ program advance_time
 !
 
 use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
-                             increment_time, decrement_time, set_time, get_time, &
+                             increment_time, decrement_time, get_time, &
                              set_date, get_date, julian_day
-use    utilities_mod, only : initialize_utilities, error_handler, E_ERR, E_MSG
+use    utilities_mod, only : initialize_utilities
 use   parse_args_mod, only : get_args_from_string
 
 implicit none

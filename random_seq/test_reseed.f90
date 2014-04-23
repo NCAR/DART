@@ -6,15 +6,13 @@
 
 program test_reseed
 
-use        types_mod, only : r8, digits12
-use    utilities_mod, only : register_module, error_handler, E_ERR, &
+use        types_mod, only : r8
+use    utilities_mod, only : register_module, error_handler, E_MSG, &
                              initialize_utilities, finalize_utilities, &
-                             logfileunit, nmlfileunit, E_MSG, &
                              find_namelist_in_file, check_namelist_read, &
-                             open_file, close_file, do_nml_file, do_nml_term
-use time_manager_mod, only : time_type, operator(+), set_time, get_time, &
-                             set_calendar_type, print_time, print_date,  &
-                             generate_seed
+                             nmlfileunit, do_nml_file, do_nml_term
+use time_manager_mod, only : time_type, operator(+), set_time, generate_seed, &
+                             set_calendar_type, print_time, print_date
 use   random_seq_mod, only : random_seq_type, init_random_seq, &
                              random_uniform, random_gaussian
 
@@ -254,7 +252,7 @@ real(r8), allocatable :: history(:)
 real(r8) :: next_val
 integer :: i, j, k, nextseed
 integer, allocatable :: seedhist(:)
-type(time_type) :: t, base_time, state_time, delta_time, delta_time2
+type(time_type) :: base_time, state_time, delta_time, delta_time2
 type(random_seq_type) :: seq1
 
 

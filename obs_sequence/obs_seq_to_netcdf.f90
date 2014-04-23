@@ -12,31 +12,29 @@ program obs_seq_to_netcdf
 ! All 'possible' obs_kinds are treated separately.
 !-----------------------------------------------------------------------
 
-use        types_mod, only : r4, r8, digits12, MISSING_R8, MISSING_R4
+use        types_mod, only : r8, digits12, MISSING_R8
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
                              get_obs_from_key, get_obs_def, get_copy_meta_data, &
-                             get_obs_time_range, get_time_range_keys, get_num_obs, &
-                             get_next_obs, get_num_times, get_obs_values, init_obs, &
-                             assignment(=), get_num_copies, static_init_obs_sequence, &
+                             get_obs_time_range, get_time_range_keys, &
+                             get_obs_values, init_obs, assignment(=), static_init_obs_sequence, &
                              get_qc, destroy_obs_sequence, read_obs_seq_header, & 
-                             get_last_obs, destroy_obs, get_num_qc, get_qc_meta_data
+                             get_last_obs, destroy_obs, get_qc_meta_data
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                             get_obs_def_location,  get_obs_kind, get_obs_name
-use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_var_type, get_obs_kind_name
-use     location_mod, only : location_type, get_location, set_location_missing, &
-                             write_location, operator(/=), operator(==), &
+                             get_obs_def_location,  get_obs_kind
+use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name
+use     location_mod, only : location_type, write_location, operator(/=), operator(==), &
                              set_location, is_location_in_region, query_location, &
                              nc_write_location_atts, nc_get_location_varids, &
                              nc_write_location
-use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
-                             set_calendar_type, get_calendar_string, print_date, &
+use time_manager_mod, only : time_type, get_time, print_time, &
+                             get_calendar_string, print_date, &
                              operator(*), operator(+), operator(-), &
                              operator(>), operator(<), operator(/), &
                              operator(/=), operator(<=)
 use     schedule_mod, only : schedule_type, set_regular_schedule, get_schedule_length, &
                              get_time_from_schedule
-use    utilities_mod, only : open_file, close_file, register_module, &
-                             file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
+use    utilities_mod, only : register_module, &
+                             file_exist, error_handler, E_ERR, E_MSG, &
                              initialize_utilities, finalize_utilities, nmlfileunit, &
                              find_namelist_in_file, check_namelist_read, nc_check, &
                              next_file, get_next_filename, find_textfile_dims, &

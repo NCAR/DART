@@ -23,8 +23,8 @@ use        types_mod, only : r4, r8, digits12, MISSING_R8, MISSING_R4, MISSING_I
                              metadatalength
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
                              get_obs_from_key, get_obs_def, get_copy_meta_data, &
-                             get_obs_time_range, get_time_range_keys, get_num_obs, &
-                             get_next_obs, get_num_times, get_obs_values, init_obs, &
+                             get_obs_time_range, get_time_range_keys, &
+                             get_obs_values, init_obs, &
                              assignment(=), get_num_copies, static_init_obs_sequence, &
                              get_qc, destroy_obs_sequence, read_obs_seq_header, &
                              get_last_obs, destroy_obs, get_num_qc, get_qc_meta_data
@@ -51,8 +51,7 @@ use    utilities_mod, only : open_file, close_file, register_module, &
                              initialize_utilities, logfileunit, nmlfileunit,   &
                              find_namelist_in_file, check_namelist_read,       &
                              nc_check, do_nml_file, do_nml_term, finalize_utilities, &
-                             next_file, get_next_filename, find_textfile_dims, &
-                             file_to_text
+                             next_file, get_next_filename
 use         sort_mod, only : sort
 use   random_seq_mod, only : random_seq_type, init_random_seq, several_random_gaussians
 
@@ -3392,7 +3391,7 @@ do i=0,MaxSigmaBins
       write(nsigmaUnit,'(''(prior) innovations in stdev bin '',i3,'' = '',i10)')i+1,nsigma(i)
    endif
 enddo
-close(nsigmaUnit)
+call close_file(nsigmaUnit)
 
 end Subroutine Normalize4Dvars
 

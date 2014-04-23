@@ -6,10 +6,9 @@
 
 program create_obs_sequence
 
-use    utilities_mod, only : register_module, open_file, close_file, &
-                             initialize_utilities, finalize_utilities, &
+use    utilities_mod, only : register_module, initialize_utilities, finalize_utilities, &
                              error_handler, E_MSG
-use obs_sequence_mod, only : obs_sequence_type, interactive_obs, write_obs_seq, &
+use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                              interactive_obs_sequence, static_init_obs_sequence
 use  assim_model_mod, only : static_init_assim_model
 

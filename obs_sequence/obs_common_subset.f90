@@ -42,16 +42,15 @@ program obs_common_subset
 ! files from experiment 2, up to N experiments.
 
 
-use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
+use        types_mod, only : r8, metadatalength
 use    utilities_mod, only : register_module, initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &
                              do_nml_file, do_nml_term, get_next_filename,      &
                              finalize_utilities, logfileunit
-use     location_mod, only : location_type, get_location, write_location,      &
-                             operator(/=)
+use     location_mod, only : location_type, operator(/=)
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind,     &
-                             get_obs_def_location, read_obs_def
+                             get_obs_def_location
 use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name
 use time_manager_mod, only : time_type, print_date, print_time, set_time,      &
                              set_calendar_type, get_calendar_type,             &
@@ -90,7 +89,7 @@ logical                 :: is_this_last(maxseq)
 logical                 :: wanted
 integer                 :: size_seq_in(maxseq), num_copies_in(maxseq), num_qc_in(maxseq)
 integer                 :: size_seq_out, num_inserted, iunit, io, i, j, k
-integer                 :: max_num_obs(maxseq), file_id, atonce, nsets, other, offset
+integer                 :: max_num_obs(maxseq), file_id, atonce, nsets, offset
 integer                 :: num_rejected_badqc, num_rejected_diffqc, num_rejected_other
 integer                 :: num_mismatch_loc, num_mismatch_time, num_mismatch_type
 character(len = 129)    :: read_format
@@ -584,7 +583,7 @@ type(obs_sequence_type), intent(in) :: seq(:)
 character(len=*),        intent(in) :: fnames(:)
 
 integer :: num_copies1, num_copiesN, num_qc1, num_qcN
-integer :: i, j, k
+integer :: i, j
 character(len=metadatalength) :: str1, strN
 
 num_copies1 = get_num_copies(seq(1))

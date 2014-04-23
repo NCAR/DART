@@ -10,25 +10,22 @@ program filter
 use types_mod,            only : r8, missing_r8, metadatalength
 use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                  &
                                  get_obs_from_key, set_copy_meta_data, get_copy_meta_data,   &
-                                 get_obs_def, get_time_range_keys, set_obs_values, set_obs,  &
-                                 write_obs_seq, get_num_obs, get_obs_values, init_obs,       &
-                                 assignment(=), get_num_copies, get_qc, get_num_qc, set_qc,  &
+                                 get_obs_def, get_time_range_keys, write_obs_seq,            &
+                                 get_obs_values, init_obs, set_qc_meta_data, get_expected_obs,&
+                                 assignment(=), get_num_copies, get_qc, get_num_qc,          &
                                  static_init_obs_sequence, destroy_obs, read_obs_seq_header, &
-                                 set_qc_meta_data, get_expected_obs, get_first_obs,          &
-                                 get_obs_time_range, delete_obs_from_seq, delete_seq_head,   &
-                                 delete_seq_tail, replace_obs_values, replace_qc,            &
-                                 destroy_obs_sequence, get_qc_meta_data, add_qc
-use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                                 get_obs_kind
+                                 delete_seq_head, delete_seq_tail, replace_obs_values, add_qc,&
+                                 destroy_obs_sequence, get_qc_meta_data, replace_qc
+use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                  operator(-), print_time
 use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
-                                 initialize_utilities, logfileunit, nmlfileunit, timestamp,  &
+                                 logfileunit, nmlfileunit, timestamp,                        &
                                  do_output, find_namelist_in_file, check_namelist_read,      &
                                  open_file, close_file, do_nml_file, do_nml_term
 use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
                                  netcdf_file_type, init_diag_output, finalize_diag_output,   & 
-                                 aoutput_diagnostics, ens_mean_for_model, end_assim_model
+                                 ens_mean_for_model, end_assim_model
 use assim_tools_mod,      only : filter_assim, set_assim_tools_trace, get_missing_ok_status
 use obs_model_mod,        only : move_ahead, advance_state, set_obs_model_trace
 use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,                &
@@ -36,10 +33,10 @@ use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,   
                                  all_vars_to_all_copies, all_copies_to_all_vars,             &
                                  read_ensemble_restart, write_ensemble_restart,              &
                                  compute_copy_mean, compute_copy_mean_sd,                    &
-                                 compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
+                                 compute_copy_mean_var, get_copy_owner_index,                &
                                  get_ensemble_time, set_ensemble_time, broadcast_copy,       &
-                                 prepare_to_read_from_vars, prepare_to_write_to_vars, prepare_to_read_from_copies,    &
-                                 prepare_to_write_to_copies, get_ensemble_time, set_ensemble_time,    &
+                                 prepare_to_read_from_vars, prepare_to_write_to_vars,        &
+                                 prepare_to_read_from_copies, get_ensemble_time, set_ensemble_time,&
                                  map_task_to_pe,  map_pe_to_task, prepare_to_update_copies
 use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &

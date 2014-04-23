@@ -24,7 +24,7 @@ use obs_sequence_mod, only : obs_sequence_type, obs_type, write_obs_seq, &
                              init_obs, assignment(=), get_obs_def, &
                              init_obs_sequence, static_init_obs_sequence, &
                              read_obs_seq_header, read_obs_seq, get_num_obs, &
-                             get_first_obs, get_last_obs, get_next_obs, &
+                             get_first_obs, get_next_obs, &
                              insert_obs_in_seq, get_num_copies, get_num_qc, &
                              get_copy_meta_data, get_qc_meta_data, &
                              set_copy_meta_data, set_qc_meta_data, &

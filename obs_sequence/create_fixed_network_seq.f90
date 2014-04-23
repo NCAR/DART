@@ -6,11 +6,10 @@
 
 program create_fixed_network_seq
 
-use        types_mod, only : r8
-use    utilities_mod, only : register_module, open_file, close_file, &
+use    utilities_mod, only : register_module, &
                              initialize_utilities, finalize_utilities, &
                              error_handler, E_MSG
-use      obs_def_mod, only : obs_def_type, get_obs_def_time, set_obs_def_time
+use      obs_def_mod, only : obs_def_type, set_obs_def_time
 use obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                              get_num_obs, init_obs_sequence, get_first_obs, &
                              write_obs_seq, set_copy_meta_data, get_obs_def, &
