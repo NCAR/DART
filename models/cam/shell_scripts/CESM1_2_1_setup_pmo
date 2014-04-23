@@ -43,7 +43,7 @@
 # lines into the ${case}.run script after it makes a backup copy.
 #
 # This script relies heavily on the information in:
-# http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html
+# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/book1.html
 #
 # ---------------------
 # How to use this script.
@@ -86,7 +86,7 @@
 # settings, it is safest to delete everything and start the run from scratch.
 # For the brave, read
 #
-# http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x1142.html
+# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/x1080.html
 #
 # and you may be able to salvage something with
 # ./cesm_setup -clean
@@ -111,11 +111,12 @@
 #   0.9x1.25_0.9x1.25 (f09_f09).  This is roughly a 1 deg grid for atm/lnd,
 #   gx1v6 mask. Normally used for CAM with prescribed lnd, ocn and ice.
 # ==============================================================================
+# AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV (F_AMIP_CAM5) (FAMIPC5)
 
-setenv case                 cam_pmo_1_1_1
+setenv case                 cam_pmo_1_2_1
 setenv compset              F_AMIP_CAM5
 setenv resolution           f09_f09
-setenv cesmtag              cesm1_1_1
+setenv cesmtag              cesm1_2_1
 
 # ==============================================================================
 # machines and directories:
@@ -123,7 +124,7 @@ setenv cesmtag              cesm1_1_1
 # mach            Computer name
 # cesmdata        Location of some supporting CESM data files.
 # cesmroot        Location of the CESM code base.  This version of the script
-#                 only supports version cesm1_1_1.
+#                 only supports version cesm1_2_1.
 # caseroot        Will create the CESM case directory here, where the CESM+DART
 #                 configuration files will be stored.  This should probably not
 #                 be in scratch (on yellowstone, your 'work' partition is suggested).
@@ -394,6 +395,7 @@ end
    @ cpl_tasks = $ptile
    @ glc_tasks = $ptile
    @ rof_tasks = $ptile
+   @ wav_tasks = $ptile
 
 # echo "task partitioning ... perhaps ... atm // ocn // lnd+ice+glc+rof"
 # presently, all components run 'serially' - one after another.
@@ -405,6 +407,7 @@ echo "OCN gets $ocn_tasks"
 echo "CPL gets $cpl_tasks"
 echo "GLC gets $glc_tasks"
 echo "ROF gets $rof_tasks"
+echo "WAV gets $wav_tasks"
 echo ""
 
 ./xmlchange NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks,NINST_ATM=1
@@ -414,6 +417,7 @@ echo ""
 ./xmlchange NTHRDS_CPL=$nthreads,NTASKS_CPL=$cpl_tasks
 ./xmlchange NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=1
 ./xmlchange NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=1
+./xmlchange NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks,NINST_WAV=1
 ./xmlchange ROOTPE_ATM=0
 ./xmlchange ROOTPE_LND=0
 ./xmlchange ROOTPE_ICE=0
@@ -421,8 +425,9 @@ echo ""
 ./xmlchange ROOTPE_CPL=0
 ./xmlchange ROOTPE_GLC=0
 ./xmlchange ROOTPE_ROF=0
+./xmlchange ROOTPE_WAV=0
 
-# http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/c1158.html#run_start_stop
+# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/c1096.html#run_start_stop
 # "A hybrid run indicates that CESM is initialized more like a startup, but uses
 # initialization datasets from a previous case. This is somewhat analogous to a
 # branch run with relaxed restart constraints. A hybrid run allows users to bring
@@ -475,7 +480,7 @@ endif
 
 # The river transport model ON is useful only when using an active ocean or
 # land surface diagnostics. Setting ROF_GRID, RTM_MODE to 'null' turns off the RTM.
-# If you turn it ON, you will have to stage initial files etc.
+# If you turn it ON, you have more work to do ...
 
 ./xmlchange ROF_GRID='null'
 ./xmlchange RTM_MODE='NULL'
@@ -509,6 +514,95 @@ endif
 
 ./xmlchange DEBUG=FALSE
 ./xmlchange INFO_DBUG=0
+
+# ==============================================================================
+# Update source files.
+#    Ideally, using DART would not require any modifications to the model source.
+#    Until then, this script accesses sourcemods from a hardwired location.
+#    If you have additional sourcemods, they will need to be merged into any DART
+#    mods and put in the SourceMods subdirectory found in the 'caseroot' directory.
+# ==============================================================================
+
+if (    -d     ~/${cesmtag}/SourceMods ) then
+
+   # Copy all of the 'generic' SourceMods
+
+   ${COPY} -r  ~/${cesmtag}/SourceMods/* ${caseroot}/SourceMods/
+
+   # Each CLM version has some SourceMods. Link to the right version.
+   # must parse from a variable of the form:
+   # CLM_CONFIG_OPTS: -phys clm4_0 -bgc cn
+   # FIXME ... if bgc off ... can I still copy in CNBalanceCheckMod.F90
+
+   set clm_opts = `echo $CLM_CONFIG_OPTS | sed -e "s/-//"`
+
+   @ iarg = 1
+   while ($iarg <= $#clm_opts)
+
+      @ iargp1 = $iarg + 1
+      set option = $clm_opts[$iarg]
+      set  value = $clm_opts[$iargp1]
+
+      switch ( ${option} )
+         case "phys":
+            if ( -e    SourceMods/src.clm/src/${value} ) then
+               cd      SourceMods/src.clm
+               ${LINK} src/${value}/*/*F90 .
+               cd      ../..
+            else
+               echo "No SourceMods for CLM <${value}>."
+               echo "Got the version from CLM_CONFIG_OPTS ...  <${CLM_CONFIG_OPTS}>"
+            endif
+         breaksw
+      #  case "bgc":  FIXME ... any special action needed here?
+      #  breaksw
+
+         default:
+         breaksw
+      endsw
+
+      @ iarg = $iarg + 2
+   end
+
+   # Each CAM dynamical core has its own SourceMods
+
+   if ( -e    SourceMods/src.cam/src/dynamics/${CAM_DYCORE}/*F90 ) then
+      cd      SourceMods/src.cam
+      ${LINK} src/dynamics/${CAM_DYCORE}/*F90 .
+      cd      ../..
+   else
+      echo "No SourceMods for CAM dycore <${CAM_DYCORE}>."
+   endif
+
+else
+   echo "ERROR - No SourceMods for this case."
+   echo "ERROR - No SourceMods for this case."
+   echo "DART requires modifications to several src files."
+   echo "These files can be downloaded from:"
+   echo "http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_2_1_23Apr2014.tar"
+   echo "untar these into your HOME directory - they will create a"
+   echo "~/cesm_1_2_1  directory with the appropriate SourceMods structure."
+   exit -4
+endif
+
+# The CESM multi-instance capability is relatively new and still has a few
+# implementation bugs. These are known problems and will be fixed soon.
+# this should be removed when the files are fixed:
+
+echo "REPLACING BROKEN CESM FILES HERE - SHOULD BE REMOVED WHEN FIXED"
+echo caseroot is ${caseroot}
+if ( -d ~/${cesmtag} ) then
+
+   # preserve the original version of the files
+   if ( ! -e  ${caseroot}/Buildconf/rtm.buildnml.csh.original ) then
+      ${COPY} ${caseroot}/Buildconf/rtm.buildnml.csh \
+              ${caseroot}/Buildconf/rtm.buildnml.csh.original
+   endif
+
+   # patch/replace the broken files (first used by cesm_setup)
+   ${COPY} ~/${cesmtag}/rtm.buildnml.csh  ${caseroot}/Buildconf/.
+
+endif
 
 # ==============================================================================
 # Set up the case.
@@ -561,58 +655,13 @@ endsw
 ./CESM_DART_config || exit -3
 
 # ==============================================================================
-# Update source files.
-#    Ideally, using DART would not require any modifications to the model source.
-#    Until then, this script accesses sourcemods from a hardwired location.
-#    If you have additional sourcemods, they will need to be merged into any DART
-#    mods and put in the SourceMods subdirectory found in the 'caseroot' directory.
-# ==============================================================================
-
-if (    -d     ~/${cesmtag}/SourceMods ) then
-   ${COPY} -r  ~/${cesmtag}/SourceMods/* ${caseroot}/SourceMods/
-else
-   echo "ERROR - No SourceMods for this case."
-   echo "ERROR - No SourceMods for this case."
-   echo "DART requires modifications to several src files."
-   echo "These files can be downloaded from:"
-   echo "http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_1_1_23Apr2014.tar"
-   echo "untar these into your HOME directory - they will create a"
-   echo "~/cesm_1_1_1  directory with the appropriate SourceMods structure."
-   exit -4
-endif
-
-# The CESM multi-instance capability is relatively new and still has a few
-# implementation bugs. These are known problems and will be fixed soon.
-# this should be removed when the files are fixed:
-
-echo "REPLACING BROKEN CESM FILES HERE - SHOULD BE REMOVED WHEN FIXED"
-echo caseroot is ${caseroot}
-if ( -d ~/${cesmtag} ) then
-
-   # preserve the original version of the files
-   if ( ! -e  ${caseroot}/Buildconf/clm.buildnml.csh.original ) then
-      ${COPY} ${caseroot}/Buildconf/clm.buildnml.csh \
-              ${caseroot}/Buildconf/clm.buildnml.csh.original
-   endif
-   if ( ! -e  ${caseroot}/preview_namelists.original ) then
-      ${COPY} ${caseroot}/preview_namelists \
-              ${caseroot}/preview_namelists.original
-   endif
-
-   # patch/replace the broken files
-   ${COPY} ~/${cesmtag}/clm.buildnml.csh  ${caseroot}/Buildconf/.
-   ${COPY} ~/${cesmtag}/preview_namelists ${caseroot}/.
-
-endif
-
-# ==============================================================================
 # Modify namelist templates for each instance.
 #
 # In a hybrid run with CONTINUE_RUN = FALSE (i.e. just starting up):
 #
 # CAM has been forced to read initial files - specified by namelist var:ncdata
 # CICE reads from namelist variable 'ice_ic'
-# CLM builds its own 'finidat' value from the REFCASE variables but in CESM1_1_1
+# CLM builds its own 'finidat' value from the REFCASE variables but in CESM1_2_1
 #     it does not use the instance string. There is a patch for clm.buildnml.csh
 #
 # When CONTINUE_RUN = TRUE, CICE and CLM read from pointer files.
@@ -694,7 +743,7 @@ while ($inst <= 1)
    #
    # TJH ... should make monthly average file or something ...
    # 1.3 MB is 100x bigger than CAM history file. See page 65 of
-   # http://www.cesm.ucar.edu/models/cesm1.1/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf
+   # http://www.cesm.ucar.edu/models/cesm1.2/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf
    #
    # Making a (compact) .h0. file is a good idea, since the clm restart files
    # do not have all the metadata required to reconstruct a gridded field.
@@ -781,7 +830,7 @@ if ( \${CONTINUE_RUN} == TRUE ) then
    if (  \${DOUT_S} == TRUE ) then
 
       # The restarts should be in the short term archive directory.  See
-      # www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x1631.html#running_ccsm_restart_back
+      # www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/x1565.html#running_ccsm_restarts
       # for more help and information.
 
       set RESTARTDIR = \${DOUT_S_ROOT}/rest/\${restart_time}

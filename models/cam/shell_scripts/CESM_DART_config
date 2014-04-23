@@ -284,7 +284,7 @@ endif
 # it is useful to specify an initial file of inflation values for the first
 # assimilation step. However, I can think of no general way to do this. The
 # utility that creates the initial inflation values (fill_inflation_restart)
-# needs the model size from model_mod. To get that, CAM needs a 'cam_phis.nc'
+# needs the model size from model_mod. To get that, CAM needs a 'caminput.nc'
 # file which we generally don't have at this stage of the game (it exists after
 # a model advance). So ... until I think of something better ... I am making a
 # cookie file that indicates this is the very first assimilation. If this
@@ -319,7 +319,7 @@ if ($CplLogFile == "") then
    echo 'ERROR: DART will not be attempted.'
    setenv LSB_PJL_TASK_GEOMETRY "{(0)}"
    setenv EXITCODE -1
-   mpirun.lsf ${CASEROOT}/shell_exit.sh
+   ${MPI_RUN_COMMAND} ${CASEROOT}/shell_exit.sh
    exit -1
 endif
 
@@ -339,7 +339,7 @@ if ( $status == 0 ) then
       echo "`date` -- DART ERROR - ABANDON HOPE"
       setenv LSB_PJL_TASK_GEOMETRY "{(0)}"
       setenv EXITCODE -3
-      mpirun.lsf ${CASEROOT}/shell_exit.sh
+      ${MPI_RUN_COMMAND} ${CASEROOT}/shell_exit.sh
       exit -3
    endif
 else
@@ -347,7 +347,7 @@ else
    echo 'ERROR: DART will not be attempted.'
    setenv LSB_PJL_TASK_GEOMETRY "{(0)}"
    setenv EXITCODE -2
-   mpirun.lsf ${CASEROOT}/shell_exit.sh
+   ${MPI_RUN_COMMAND} ${CASEROOT}/shell_exit.sh
    exit -2
 endif
 
