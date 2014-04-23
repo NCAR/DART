@@ -846,9 +846,6 @@ if (do_out) then
    call error_handler(E_MSG, 'static_init_model', string1)
 end if
 
-! Make local space to hold the means
-allocate(ens_mean(model_size))
-
 ! Allocate space for longitude and latitude global arrays
 ! and Allocate space for hybrid vertical coord coef arrays
 ! height; phis
@@ -3376,12 +3373,7 @@ end subroutine get_state_meta_data_distrib
 
 real(r8), intent(in) :: filter_ens_mean(:)
 
-ens_mean = filter_ens_mean
-
-! Fill ps, ps_stagr_lxx if not filled yet.
-! WATCH OUT that it's not still filled with something other than ens_mean
-call set_ps_arrays(ens_mean)
-
+call error_handler(E_ERR, 'ens_mean_for_model', 'not allowed in distributed version')
 
 end subroutine ens_mean_for_model
 
@@ -7182,9 +7174,6 @@ end subroutine adv_1step
 !
 ! At some point, this stub should coordinate with atmosphere_end but
 ! that requires an instance variable.
-
-! release the local copy of the ensemble means.
-deallocate(ens_mean)
 
 ! Deallocate other variables?
 
