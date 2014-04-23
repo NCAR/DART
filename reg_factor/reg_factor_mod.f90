@@ -8,10 +8,10 @@ module reg_factor_mod
 
 use     types_mod, only : r8
 use utilities_mod, only : get_unit, open_file, register_module, error_handler, &
-                          E_ERR, E_MSG, nmlfileunit, find_namelist_in_file,    &
+                          E_ERR, nmlfileunit, find_namelist_in_file,    &
                           check_namelist_read, do_nml_file, do_nml_term
 
-use time_manager_mod, only : time_type, write_time, get_time
+use time_manager_mod, only : time_type, get_time
 
 implicit none
 private

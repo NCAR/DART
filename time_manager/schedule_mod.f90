@@ -8,16 +8,13 @@ module schedule_mod
 
 use        types_mod, only : missing_i, digits12
 
-use    utilities_mod, only : error_handler, E_DBG, E_MSG, E_WARN, E_ERR, &
+use    utilities_mod, only : error_handler, E_ERR, &
                              register_module, nmlfileunit, do_output,    &
                              check_namelist_read, find_namelist_in_file, &
                              do_nml_file, do_nml_term
 
 use time_manager_mod, only : time_type, set_calendar_type, get_calendar_type, &
-                             set_time, set_date, get_time, get_date,          &
-                             print_time, print_date,                          &
-                             THIRTY_DAY_MONTHS, JULIAN, GREGORIAN,            &
-                             NOLEAP, NO_CALENDAR, GREGORIAN_MARS, SOLAR_MARS, & 
+                             set_time, set_date, get_time, print_time, print_date, &
                              operator(*), operator(+), operator(-),           &
                              operator(>), operator(<), operator(/),           &
                              operator(/=), operator(<=)

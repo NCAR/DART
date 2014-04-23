@@ -6,27 +6,26 @@
 
 module obs_model_mod
 
-use types_mod,            only : r8
 use utilities_mod,        only : register_module, error_handler,     &
                                  E_ERR, E_MSG, E_WARN,               &
-                                 get_unit, file_exist, do_output, set_output
+                                 get_unit, file_exist, set_output
 use assim_model_mod,      only : aget_closest_state_time_to, get_model_time_step, &
                                  open_restart_write, open_restart_read,           &
                                  awrite_state_restart, close_restart, adv_1step,  &
                                  aread_state_restart
-use obs_sequence_mod,     only : obs_sequence_type, obs_type, get_obs_from_key,      &
+use obs_sequence_mod,     only : obs_sequence_type, obs_type,  &
                                  get_obs_def, init_obs, destroy_obs, get_num_copies, &
                                  get_num_qc, get_first_obs, get_next_obs_from_key,   &
                                  get_obs_time_range
 use obs_def_mod,          only : obs_def_type, get_obs_def_time
-use time_manager_mod,     only : time_type, set_time, get_time, print_time,   &
-                                 operator(/=), operator(>), operator(-),      &
+use time_manager_mod,     only : time_type, set_time, get_time,                       &
+                                 operator(/=), operator(>), operator(-),              &
                                  operator(/), operator(+), operator(<), operator(==), &
                                  operator(<=), operator(>=)
-use ensemble_manager_mod, only : get_ensemble_time, ensemble_type, map_task_to_pe, map_pe_to_task, &
+use ensemble_manager_mod, only : get_ensemble_time, ensemble_type, map_task_to_pe, &
                                  prepare_to_update_vars
-use mpi_utilities_mod,    only : my_task_id, task_sync, task_count, block_task, &
-                                 sum_across_tasks, shell_execute, send_to, receive_from, my_task_id
+use mpi_utilities_mod,    only : my_task_id, task_sync, block_task, &
+                                 sum_across_tasks, shell_execute, my_task_id
 
 implicit none
 private

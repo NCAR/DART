@@ -16,24 +16,20 @@ module obs_sequence_mod
 ! copy subroutines. USERS MUST BE VERY CAREFUL TO NOT DO DEFAULT ASSIGNMENT
 ! FOR THESE TYPES THAT HAVE COPY SUBROUTINES.
 
-use        types_mod, only : r8, DEG2RAD, MISSING_R8, metadatalength
-use     location_mod, only : location_type, interactive_location, &
-                             is_location_in_region
+use        types_mod, only : r8, MISSING_R8, metadatalength
+use     location_mod, only : location_type, is_location_in_region
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, copy_obs_def, &
                              interactive_obs_def, get_obs_def_location, &
-                             get_expected_obs_from_def, get_obs_kind, &
-                             get_obs_def_key
+                             get_expected_obs_from_def, get_obs_kind
 use     obs_kind_mod, only : write_obs_kind, read_obs_kind, max_obs_kinds, &
                              get_obs_kind_index
 use time_manager_mod, only : time_type, operator(>), operator(<), &
                              operator(>=), operator(/=), set_time, &
                              operator(-), operator(+), operator(==)
-use    utilities_mod, only : get_unit, close_file,                       &
-                             register_module, error_handler,             &
-                             find_namelist_in_file, check_namelist_read,   &
-                             E_ERR, E_WARN, E_MSG, nmlfileunit, do_output, &
-                             do_nml_file, do_nml_term
+use    utilities_mod, only : get_unit, close_file, register_module, error_handler, &
+                             find_namelist_in_file, check_namelist_read, &
+                             E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term
 
 implicit none
 private
@@ -2062,7 +2058,7 @@ type(obs_sequence_type),   intent(out) :: newseq
 type(time_type), optional, intent(in)  :: time1, time2
 
 integer :: i, num_copies, num_qc, max_num_obs
-integer :: num_obs, num_keys, key_bounds(2)
+integer :: num_keys, key_bounds(2)
 integer, pointer :: keylist(:)
 type(obs_type) :: obs
 type(time_type) :: first_time, last_time
@@ -2071,7 +2067,6 @@ logical :: out_of_range
 ! Get existing header info
 num_copies  = get_num_copies(oldseq)
 num_qc      = get_num_qc(oldseq)
-num_obs     = get_num_obs(oldseq)
 max_num_obs = get_max_num_obs(oldseq)
 
 call init_obs(obs, num_copies, num_qc)

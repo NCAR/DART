@@ -22,10 +22,9 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  write_obs_seq, get_num_obs, init_obs, assignment(=),       &
                                  static_init_obs_sequence, get_num_qc, read_obs_seq_header, &
                                  set_qc_meta_data, get_expected_obs, delete_seq_head,       &
-                                 delete_seq_tail, set_obs_def, destroy_obs, destroy_obs_sequence
+                                 delete_seq_tail, destroy_obs, destroy_obs_sequence
 
-use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance, &
-                                 set_obs_def_error_variance, get_obs_def_time
+use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use    obs_model_mod,     only : move_ahead, advance_state, set_obs_model_trace
 use  assim_model_mod,     only : static_init_assim_model, get_model_size,                    &
                                  aget_initial_condition, netcdf_file_type, init_diag_output, &

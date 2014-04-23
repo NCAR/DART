@@ -14,9 +14,8 @@
 
 module obs_kind_mod
 
-use    utilities_mod, only : register_module, error_handler,  &
-                             E_ERR, E_MSG, E_WARN,               &
-                             logfileunit, find_namelist_in_file, &
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN,  &
+                             logfileunit, find_namelist_in_file,             &
                              check_namelist_read, do_output, ascii_file_format
 
 implicit none

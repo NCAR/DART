@@ -10,18 +10,16 @@ module smoother_mod
 
 use      types_mod,       only : r8, metadatalength
 use  mpi_utilities_mod,   only : my_task_id
-use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,  &
+use  utilities_mod,       only : file_exist, check_namelist_read, do_output,  &
                                  find_namelist_in_file, register_module, error_handler, &
                                  E_ERR, E_MSG, nmlfileunit, logfileunit, timestamp,     &
                                  do_nml_file, do_nml_term
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, read_ensemble_restart, &
                                  write_ensemble_restart, all_vars_to_all_copies,              &
-                                 duplicate_ens, compute_copy_mean, compute_copy_mean_sd,      &
+                                 duplicate_ens, compute_copy_mean_sd,      &
                                  all_copies_to_all_vars, get_copy, map_task_to_pe
 use time_manager_mod,     only : time_type, operator(==), print_time
-use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
-                                 netcdf_file_type, init_diag_output, finalize_diag_output,   &
-                                 aoutput_diagnostics
+use assim_model_mod,      only : netcdf_file_type, init_diag_output, aoutput_diagnostics
 use assim_tools_mod,      only : filter_assim, get_missing_ok_status
 use obs_sequence_mod,     only : obs_sequence_type
 use adaptive_inflate_mod, only : adaptive_inflate_type, adaptive_inflate_init, &
