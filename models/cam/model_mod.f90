@@ -774,9 +774,6 @@ if (ilev%label /= '        ') then
 endif
 allocate (p_col(max_levs), model_h(max_levs))
 
-! Make local space to hold the means
-allocate(ens_mean(model_size))
-
 call read_cam_horiz (ncfileid, phis , topog_lons, topog_lats, 'PHIS    ')
 
 call nc_check(nf90_close(ncfileid), 'static_init_model', 'closing '//trim(cam_phis))
@@ -2262,12 +2259,7 @@ end subroutine get_state_meta_data_distrib
 
 real(r8), intent(in) :: filter_ens_mean(:)
 
-ens_mean = filter_ens_mean
-
-! Fill ps, ps_stagr_lxx if not filled yet.
-! WATCH OUT that it's not still filled with something other than ens_mean
-call set_ps_arrays(ens_mean)
-
+call error_handler(E_ERR, 'ens_mean_for_model', 'not allowed in distributed version')
 
 end subroutine ens_mean_for_model
 
@@ -5580,9 +5572,6 @@ end subroutine adv_1step
 !
 ! At some point, this stub should coordinate with atmosphere_end but
 ! that requires an instance variable.
-
-! release the local copy of the ensemble means.
-deallocate(ens_mean)
 
 ! Deallocate other variables?
 
