@@ -250,7 +250,6 @@ namelist /model_nml/ output_state_vector, num_moist_vars, &
                      circulation_pres_level, circulation_radius, polar, &
                      periodic_x, periodic_y, scm
 
-real(r8), allocatable :: ens_mean(:)
 
 ! if you need to check backwards compatibility, set this to .true.
 ! otherwise, leave it as false to use the more correct geometric height
@@ -718,8 +717,6 @@ WRFDomains : do id=1,num_domains
 enddo WRFDomains 
 
 wrf%model_size = dart_index - 1
-allocate (ens_mean(wrf%model_size))
-  ens_mean = missing_r8 !HK 
 write(errstring,*) ' wrf model size is ',wrf%model_size
 call error_handler(E_MSG, 'static_init_model', errstring)
 
@@ -6253,10 +6250,7 @@ subroutine ens_mean_for_model(filter_ens_mean)
 
 real(r8), intent(in) :: filter_ens_mean(:)
 
-ens_mean = filter_ens_mean
-print*, ' '
-print*, '    ********  The mean does not exist anymore'
-print*, ' '
+call error_handler(E_ERR, 'ens_mean_for_model', 'not allowed in distributed version')
 
 end subroutine ens_mean_for_model
 
