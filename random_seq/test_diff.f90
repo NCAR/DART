@@ -4,14 +4,10 @@
 !
 ! $Id$
 !
-! FIXME:  the origins of this test program are lost to time.
-! i can see that it is trying to verify that the gaussian distribution
-! generator is working as expected, and it's also testing out the
-! computation at various (well, 2) precisions.  but i do not
-! believe that the computed and expected values are being computed
-! right.  the original code was computing the sqrt(distance**2) but
-! these are 1d values, not 2d, so the distance is simply abs(r1-r2)
-! without squares.  
+! do a simple test that the mean distance between sample
+! draws from two gaussian distributions are close to the
+! expected value.  indirect test of the random number generator
+! which is used in the gaussian random numbers.
 
 program test_diff
 
