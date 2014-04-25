@@ -633,10 +633,15 @@ while ($inst <= 1)
    set fname = "user_nl_cam${inst_string}"
    # ===========================================================================
    # ATM Namelist
-   # For a HOP TEST ... empty_htapes = .false.
-   # For a HOP TEST ... use a default fincl1
-   # inithist == 'ENDOFRUN' ensures that CAM writes an initial file every time it stops.
-   # fincl1,nhtfrq,mfilt all control the history file containing a REQUIRED PHIS field.
+   # DART/CAM requires a PHIS field in a history file at the same frequency as
+   # the CAM assimilation. This script sets it to be written to the .h0. every
+   # assimilation time. If you want to write it to a different .h?. file, you MUST
+   # modify the cam_assimilate.csh script in TWO places. You will need to set
+   # 'empty_htapes = .false.' and change 'nhtfrq' and 'mfilt' to get a CAM 
+   # default-looking .h0. file.
+   #
+   # inithist == 'ENDOFRUN' ensures that CAM writes the required initial file 
+   # every time it stops.
 
    echo " inithist      = 'ENDOFRUN'"                     >> ${fname}
    echo " ncdata        = 'cam_initial${inst_string}.nc'" >> ${fname}
