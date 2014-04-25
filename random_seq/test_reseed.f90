@@ -4,6 +4,24 @@
 !
 ! $Id$
 
+! a test of reseeding the random sequence generator, to see
+! if different seeds generate overlapping sequences of values.
+! one use case in the regular dart code is when running
+! perfect_model_obs and generating random draws of gaussian
+! error values.  if the program is restarted each time between
+! separate model advances, if the same seed is used each time
+! then the errors will be the same.  the code now reseeds the
+! random number generator with a value based on the state data
+! timestamp.  this seed seems to generate random values for
+! observation errors which are not repeating.
+!
+! this program was also helpful in finding a bug in the
+! time_manager code with one compiler.  it was generating
+! long repeating sequences of values which lead to the
+! discovery that the seconds were being rounded off to 0
+! when setting a time type and different times would result
+! in the same initial seed.
+
 program test_reseed
 
 use        types_mod, only : r8
