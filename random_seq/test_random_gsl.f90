@@ -6,8 +6,11 @@
 
 program test_random_gsl
 
-use      types_mod, only : r4, r8, digits12
-use  utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+! test the gaussian distribution random number generator routine
+! with different means, standard deviations, and iterations.
+
+use      types_mod, only : r8
+use  utilities_mod, only : register_module, &
                            initialize_utilities, finalize_utilities
 use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
@@ -20,65 +23,57 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 type (random_seq_type) :: r
-integer :: i, n
+integer :: i, j, n
+real(r8) :: r1, sqdist, mean_sqdist
+real(r8) :: mean, sd
 
-double precision :: dpr1, dpdist, dpmean_dist
-real(r8)         :: r8r1, r8dist, r8mean_dist
-real(r4)         :: r4r1, r4dist, r4mean_dist
-real(digits12)   :: d12r1, d12dist, d12mean_dist
+type t_inputs
+ real(r8) :: m
+ real(r8) :: stddev
+ integer  :: nreps
+end type
+
+
+! to add more tests or change the parameters, specify a test count
+! and update the sets of (mean, stddev, repeatcount) here:
+
+integer, parameter :: ntests = 10
+type(t_inputs) :: t(ntests) = (/ &
+    t_inputs(0.0_r8, 1.0_r8,      1000), &
+    t_inputs(0.0_r8, 1.0_r8,   1000000), &
+    t_inputs(0.0_r8, 1.0_r8, 100000000), &
+    t_inputs(1.0_r8, 5.0_r8, 100000000), &
+    t_inputs(1.0_r8, 5.0_r8,     10000), &
+    t_inputs(6.0_r8, 1.0_r8, 100000000), &
+    t_inputs(6.0_r8, 8.0_r8,     10000), &
+    t_inputs(6.0_r8, 8.0_r8,   1000000), &
+    t_inputs(6.0_r8, 8.0_r8, 100000000), &
+    t_inputs(0.0_r8, 8.0_r8, 100000000)  /)
+
 
 call initialize_utilities('test_random')
 call register_module(source,revision,revdate)
 
-write(*, *) 'double precision       is ', kind(dpr1)
-write(*, *) 'digits12 is defined to be ', digits12
-write(*, *) 'r8       is defined to be ', r8
-write(*, *) 'r4       is defined to be ', r4
+do j=1, ntests
 
-n = 10000000
+   call init_random_seq(r, 5)
 
+   mean = t(j)%m
+   sd = t(j)%stddev
+   n = t(j)%nreps
 
-call init_random_seq(r, -5)
-d12mean_dist = 0.0
-do i = 1, n
-   d12r1        = random_gaussian(r, 0.0_r8, 1.0_r8)
-   d12dist      = abs(d12r1)
-   d12mean_dist = d12mean_dist + d12dist
-end do
-write(*, *) 'digits12         sd is ', d12mean_dist / n
+   mean_sqdist = 0.0_r8
 
+   do i = 1, n
+      r1 = random_gaussian(r, mean, sd)
+      sqdist = (mean-r1)**2
+      mean_sqdist = mean_sqdist + sqdist
+   end do
+   write(*, *) 'input mean, sd, n = ', mean, sd, n
+   write(*, *) 'resulting var is ', sqrt(mean_sqdist / n)
+   
+enddo
 
-call init_random_seq(r, -5)
-dpmean_dist = 0.0
-do i = 1, n
-   dpr1        = random_gaussian(r, 0.0_r8, 1.0_r8)
-   dpdist      = dabs(dpr1)
-   dpmean_dist = dpmean_dist + dpdist
-end do
-write(*, *) 'double precision sd is ', dpmean_dist / n
-
-
-call init_random_seq(r, -5)
-r8mean_dist = 0.0_r8
-do i = 1, n
-   r8r1        = random_gaussian(r, 0.0_r8, 1.0_r8)
-   r8dist      = abs(r8r1)
-   r8mean_dist = r8mean_dist + r8dist
-end do
-write(*, *) 'r8               sd is ', r8mean_dist / n
-
-
-call init_random_seq(r, -5)
-r4mean_dist = 0.0_r4
-do i = 1, n
-   r4r1        = random_gaussian(r, 0.0_r8, 1.0_r8)
-   r4dist      = abs(r4r1)
-   r4mean_dist = r4mean_dist + r4dist
-end do
-write(*, *) 'r4               sd is ', r4mean_dist / n
-
-call error_handler(E_MSG, 'test_random_gsl', 'Finished successfully.',&
-                   source,revision,revdate)
 call finalize_utilities()
 
 end program test_random_gsl
