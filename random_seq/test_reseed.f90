@@ -172,8 +172,6 @@ call test3
 ! -----
 
 
-call error_handler(E_MSG, 'test_reseed', 'Finished successfully.',&
-                   source,revision,revdate)
 call finalize_utilities()
 
 contains
