@@ -7,7 +7,7 @@
 program test_gaussian
 
 ! test the gaussian distribution random number generator routine
-! with different means, standard deviations, and iterations.
+! with different means, standard deviations, and iteration counts.
 
 use      types_mod, only : r8
 use  utilities_mod, only : register_module, &
@@ -25,42 +25,58 @@ character(len=128), parameter :: revdate  = "$Date$"
 type (random_seq_type) :: r
 integer :: i, j, n
 real(r8) :: r1, sqdist, mean_sqdist
-real(r8) :: mean, sd
+real(r8) :: mean, sd, var, compvar, compsd, compdiff
+
+character(len=50) :: formf = '(I12,2(F14.6),1(F24.16),2(F12.6))'
 
 type t_inputs
- real(r8) :: m
- real(r8) :: stddev
- integer  :: nreps
+ real(r8) :: t_mean
+ real(r8) :: t_stddev
+ integer  :: t_nreps
 end type
 
 
 ! to add more tests or change the parameters, specify a test count
-! and update the sets of (mean, stddev, repeatcount) here:
+! and update the sets of (mean, stddev, sample size) here:
 
-integer, parameter :: ntests = 10
+integer, parameter :: ntests = 21
 type(t_inputs) :: t(ntests) = (/ &
-    t_inputs(0.0_r8, 1.0_r8,      1000), &
-    t_inputs(0.0_r8, 1.0_r8,   1000000), &
-    t_inputs(0.0_r8, 1.0_r8, 100000000), &
-    t_inputs(1.0_r8, 5.0_r8, 100000000), &
-    t_inputs(1.0_r8, 5.0_r8,     10000), &
-    t_inputs(6.0_r8, 1.0_r8, 100000000), &
-    t_inputs(6.0_r8, 8.0_r8,     10000), &
-    t_inputs(6.0_r8, 8.0_r8,   1000000), &
-    t_inputs(6.0_r8, 8.0_r8, 100000000), &
-    t_inputs(0.0_r8, 8.0_r8, 100000000)  /)
+    t_inputs(  0.0_r8,  1.0_r8,       100), &
+    t_inputs(  0.0_r8,  1.0_r8,     10000), &
+    t_inputs(  0.0_r8,  1.0_r8,   1000000), &
+    t_inputs(  0.0_r8,  1.0_r8, 100000000), &
+    t_inputs(  1.0_r8,  5.0_r8,       100), &
+    t_inputs(  1.0_r8,  5.0_r8,     10000), &
+    t_inputs(  1.0_r8,  5.0_r8,   1000000), &
+    t_inputs(  1.0_r8,  5.0_r8, 100000000), &
+    t_inputs(  6.0_r8,  8.0_r8,   1000000), &
+    t_inputs(-86.0_r8,  8.0_r8,   1000000), &
+    t_inputs(  0.6_r8,  8.0_r8,   1000000), &
+    t_inputs( -6.0_r8,  8.0_r8,   1000000), &
+    t_inputs(956.0_r8,  8.0_r8,   1000000), &
+    t_inputs( 36.0_r8,  8.0_r8,   1000000), &
+    t_inputs(  6.0_r8,  1.0_r8,   1000000), &
+    t_inputs(  6.0_r8, 18.0_r8,   1000000), &
+    t_inputs(  6.0_r8, 99.0_r8,   1000000), &
+    t_inputs(  6.0_r8,  0.1_r8,   1000000), &
+    t_inputs(  6.0_r8,  0.8_r8,   1000000), &
+    t_inputs(  6.0_r8,  0.5_r8,   1000000), &
+    t_inputs(  6.0_r8, 33.5_r8,   1000000)  /)
 
 
 call initialize_utilities('test_random')
 call register_module(source,revision,revdate)
 
+write(*, *) ''
+write(*, *) 'sample size       input mean & std dev        computed std dev       diff       % diff '
+write(*, *) ''
 do j=1, ntests
 
    call init_random_seq(r, 5)
 
-   mean = t(j)%m
-   sd = t(j)%stddev
-   n = t(j)%nreps
+   mean = t(j)%t_mean
+   sd = t(j)%t_stddev
+   n = t(j)%t_nreps
 
    mean_sqdist = 0.0_r8
 
@@ -69,8 +85,11 @@ do j=1, ntests
       sqdist = (mean-r1)**2
       mean_sqdist = mean_sqdist + sqdist
    end do
-   write(*, *) 'input mean, sd, n = ', mean, sd, n
-   write(*, *) 'resulting var is ', sqrt(mean_sqdist / n)
+
+   compvar = mean_sqdist / n
+   compsd = sqrt(compvar)
+   compdiff = compsd - sd
+   write(*, formf) n, mean, sd, compsd, compdiff, abs(compdiff/sd) * 100._r8
    
 enddo
 
