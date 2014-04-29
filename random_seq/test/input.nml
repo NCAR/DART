@@ -27,4 +27,9 @@
 #   start_day = 0
 #   start_sec = 0
 
+&test_corr_nml
+   n_pairs = 100000,
+   desired_correl = 0.72,
+   n_cycles = 100
+   /
 
