@@ -22,30 +22,30 @@ public :: phb ! for the model to see
 ! grid groups global to module
 
 ! grid window
-real(r8), allocatable :: phb_array(:,:,:) !> local phb info
+real(r8), allocatable :: phb_array(:,:,:) !< local phb info
 integer  :: phb_win
 real(r8) :: duplicate_phb(*)
 pointer(aa, duplicate_phb)
 
-integer :: group_size = 4 !> should be namelist option
-integer :: group_all !> mpi_comm_world group
-integer :: subgroup !> subgroup for the grid
+integer :: group_size = 4 !< should be namelist option
+integer :: group_all !< mpi_comm_world group
+integer :: subgroup !< subgroup for the grid
 integer :: mpi_comm_grid
 integer, allocatable :: group_members(:)
-integer :: local_rank !> rank within group
+integer :: local_rank !< rank within group
 
 ! pntecdf variables
-character*50                  :: phb_filename !> netcdf file containing grid info
-integer                       :: ret !> return code for pnetcdf
-integer                       :: ncfile !> ncfile
-integer                       :: varId !> variable Id
-integer(KIND=MPI_OFFSET_KIND) :: we_length, sn_length, bts_length !> lengths of dimensions
+character*50                  :: phb_filename !< netcdf file containing grid info
+integer                       :: ret !< return code for pnetcdf
+integer                       :: ncfile !< ncfile
+integer                       :: varId !< variable Id
+integer(KIND=MPI_OFFSET_KIND) :: we_length, sn_length, bts_length !< lengths of dimensions
 integer(KIND=MPI_OFFSET_KIND) :: start(4)
 integer(KIND=MPI_OFFSET_KIND) :: count(4)
 integer(KIND=MPI_OFFSET_KIND) :: stride(4)
-integer(KIND=MPI_OFFSET_KIND) :: my_num_we !> splitting up by we
+integer(KIND=MPI_OFFSET_KIND) :: my_num_we !< splitting up by we
 
-integer :: we_dimId, sn_dimId, bts_dimId !> dimension ids
+integer :: we_dimId, sn_dimId, bts_dimId !< dimension ids
 
 contains
 
@@ -76,7 +76,7 @@ integer, intent(in)     :: myrank ! why are you passing this in?
 integer, intent(inout)  :: group_size ! need to modify this if your #tasks does not divide by group size
 integer, intent(out)    :: group_members(group_size)
 
-integer bottom, top !> start and end members of the group
+integer bottom, top !< start and end members of the group
 integer i
 
 bottom = (myrank / group_size ) * group_size
@@ -142,7 +142,7 @@ use pnetcdf
 
 integer :: temp
 integer(KIND=MPI_OFFSET_KIND) :: dummy_count
-integer :: my_start !> start for we
+integer :: my_start !< start for we
 
 ret = nfmpi_open(mpi_comm_grid, phb_filename, NF_NOWRITE, mpi_info_null, ncfile)
 call pnet_check(ret, 'read_phb', 'opening file')
@@ -223,12 +223,12 @@ end subroutine free_window
 !> Function to get phb
 function phb(dom, i, j, k)
 
-real(r8) :: phb !> geopotential height
-integer, intent(in) :: i, j, k !> 3D location
-integer, intent(in) :: dom !> domain number
+real(r8) :: phb !< geopotential height
+integer, intent(in) :: i, j, k !< 3D location
+integer, intent(in) :: dom !< domain number
 
-integer                          :: owner !> which task has the part of phb we need
-integer(KIND=MPI_ADDRESS_KIND)   :: target_disp !> displacement
+integer                          :: owner !< which task has the part of phb we need
+integer(KIND=MPI_ADDRESS_KIND)   :: target_disp !< displacement
 integer                          :: ierr
 
 ! caluclate who has the info
@@ -251,11 +251,11 @@ integer,                        intent(in)  :: i
 integer,                        intent(in)  :: j
 integer,                        intent(in)  :: k
 integer,                        intent(out) :: owner
-integer(KIND=MPI_ADDRESS_KIND), intent(out) :: target_disp !> displacement
+integer(KIND=MPI_ADDRESS_KIND), intent(out) :: target_disp !< displacement
 
 integer :: temp
-integer :: local_we !> local index of my slice of we
-integer :: owner_num_we  !> length of we slab on the owner
+integer :: local_we !< local index of my slice of we
+integer :: owner_num_we  !< length of we slab on the owner
 integer :: we
 
 temp = we_length / group_size ! phb is split only in we (west-east)

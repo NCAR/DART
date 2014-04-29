@@ -18,7 +18,8 @@ use types_mod,         only : r8
 use time_manager_mod,  only : time_type
 use mpi_utilities_mod, only : task_count, datasize, my_task_id
 
-use mpi !> @todo this needs to go away
+!> @todo this needs to go away
+use mpi
 
 implicit none
 private

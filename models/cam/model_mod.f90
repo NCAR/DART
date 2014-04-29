@@ -3514,7 +3514,7 @@ end subroutine get_val
 !=======================================================================
 subroutine get_val_distrib(val, state_ens_handle, ens_size, lon_index, lat_index, level, obs_kind, istatus)
 
-integer,             intent(in)  :: ens_size !> how may pieces of state to grab
+integer,             intent(in)  :: ens_size !< how may pieces of state to grab
 real(r8),            intent(out) :: val(ens_size)
 type(ensemble_type), intent(in)  :: state_ens_handle
 integer,             intent(in)  :: lon_index, lat_index, level, obs_kind
@@ -5050,7 +5050,7 @@ end subroutine  model_heights_distrib
 !=====================================================================
 
 real(r8), intent(out) :: prof(num_levs) 
-integer,  intent(out) :: vstatus !> Where is this?
+integer,  intent(out) :: vstatus !< Where is this?
 ! type(model_type), intent(in) :: state
 real(r8), intent(in)  :: vec(:)
 integer,  intent(in)  :: kind_cam, num_levs, lon_index, lat_index
@@ -5603,8 +5603,8 @@ integer,             intent(in)  :: lon_ind
 integer,             intent(in)  :: lat_ind
 
 real(r8) :: get_surface_pressure_state(ens_size) !> @todo this ens_size needs to match
-integer  :: ifld !> pressure field index
-integer  :: ind !> index into state vector
+integer  :: ifld !< pressure field index
+integer  :: ind !< index into state vector
 
 ifld = find_name('PS      ',cflds)
 
@@ -5626,8 +5626,8 @@ integer,             intent(in) :: lon_ind
 integer,             intent(in) :: lat_ind
 
 real(r8) :: get_surface_pressure_mean
-integer  :: ifld !> pressure field index
-integer  :: ind !> index into state vector
+integer  :: ifld !< pressure field index
+integer  :: ind !< index into state vector
 
 ifld = find_name('PS      ',cflds)
 
@@ -5654,7 +5654,7 @@ integer,               intent(out) :: istatus
 
 real(r8), dimension(3) :: base_array
 integer                :: base_obs_kind !> @todo Should check for identity obs
-integer                :: base_which ! vertical coorardiate
+integer                :: base_which !< vertical coorardiate
 integer                :: istatus_v
 
 base_obs_kind = 1 ! dummy for now, should check for identity obs

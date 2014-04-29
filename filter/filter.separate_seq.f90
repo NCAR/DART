@@ -1386,7 +1386,7 @@ real(r8), allocatable                   :: expected_obs(:) !Also regular obs now
 integer global_obs_num
 type(time_type)                         :: dummy_time
 integer :: e
-integer :: forward_min, forward_max !> for global qc
+integer :: forward_min, forward_max !< for global qc
 real(r8)              :: error, diff_sd, ratio
 real(r8)              :: obs_prior_mean, obs_prior_var, obs_val
 logical               :: do_outlier, good_forward_op, failed
@@ -2005,8 +2005,8 @@ subroutine test_obs_copies(obs_ens_handle, information)
 type(ensemble_type), intent(in) :: obs_ens_handle
 character(len=*),    intent(in) :: information
 
-character*20  :: task_str !> string to hold the task number
-character*129 :: file_obscopies !> output file name
+character*20  :: task_str !< string to hold the task number
+character*129 :: file_obscopies !< output file name
 integer :: i
 
 write(task_str, '(i10)') obs_ens_handle%my_pe

@@ -559,19 +559,19 @@ use mpi_utilities_mod,     only : my_task_id, task_count, datasize
 use mpi
 use pnetcdf
 
-type(ensemble_type), intent(inout) :: state_ens_handle !> why does this want to be inout?
-integer,             intent(in)    :: start_copy !> copy to start from. This is going to be annoying for the posterior output.
-integer,             intent(in)    :: end_copy !> copy to output up to
+type(ensemble_type), intent(inout) :: state_ens_handle !< why does this want to be inout?
+integer,             intent(in)    :: start_copy !< copy to start from. This is going to be annoying for the posterior output.
+integer,             intent(in)    :: end_copy !< copy to output up to
 character(len=*),    intent(in)    :: diag_filename
 
 ! pnetcdf variables
-integer                       :: ret !> pnetcdf return code
-integer                       :: ncfile !> pnetcdf file identifier
+integer                       :: ret !< pnetcdf return code
+integer                       :: ncfile !< pnetcdf file identifier
 integer                       :: ndims, dimIds(2), stateId
 integer(KIND=MPI_OFFSET_KIND) :: num_copies, num_vars, my_num_vars
 integer                       :: copies_dim, vars_dim
-integer(KIND=MPI_OFFSET_KIND) :: start(2), count(2), stride(2) ! for state copies
-integer(KIND=MPI_OFFSET_KIND) :: bufcount !> my_num_vars * output num_copies
+integer(KIND=MPI_OFFSET_KIND) :: start(2), count(2), stride(2) !< for state copies
+integer(KIND=MPI_OFFSET_KIND) :: bufcount !< my_num_vars * output num_copies
 ! timing variables
 double precision :: start_at_time
 

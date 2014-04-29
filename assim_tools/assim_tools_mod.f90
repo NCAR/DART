@@ -2710,8 +2710,8 @@ subroutine test_get_state_meta_data(locations, num_vars)
 type(location_type), intent(in) :: locations(:)
 integer,             intent(in) :: num_vars
 
-character*20  :: task_str !> string to hold the task number
-character*129 :: file_meta !> output file name
+character*20  :: task_str !< string to hold the task number
+character*129 :: file_meta !< output file name
 integer :: i
 
 write(task_str, '(i10)') my_task_id()
@@ -2735,8 +2735,8 @@ subroutine test_state_copies(state_ens_handle, information)
 type(ensemble_type), intent(in) :: state_ens_handle
 character(len=*),        intent(in) :: information
 
-character*20  :: task_str !> string to hold the task number
-character*129 :: file_copies !> output file name
+character*20  :: task_str !< string to hold the task number
+character*129 :: file_copies !< output file name
 integer :: i
 
 write(task_str, '(i10)') state_ens_handle%my_pe
@@ -2755,13 +2755,13 @@ end subroutine test_state_copies
 !> dump out the distances calculated in get_close_obs_distrib
 subroutine test_close_obs_dist(distances, num_close, ob)
 
-real(r8), intent(in) :: distances(:) !> array of distances calculated in get_close
-integer,  intent(in) :: num_close !> number of close obs
+real(r8), intent(in) :: distances(:) !< array of distances calculated in get_close
+integer,  intent(in) :: num_close !< number of close obs
 integer,  intent(in) :: ob
 
-character*20  :: task_str !> string to hold the task number
-character*20  :: ob_str !> string to hold ob number
-character*129 :: file_dist !> output file name
+character*20  :: task_str !< string to hold the task number
+character*20  :: ob_str !< string to hold ob number
+character*129 :: file_dist !< output file name
 integer :: i
 
 write(task_str, '(i10)') my_task_id()

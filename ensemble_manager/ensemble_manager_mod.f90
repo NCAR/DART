@@ -283,14 +283,14 @@ type(random_seq_type)               :: random_seq
 integer                             :: my_num_vars
 
 ! Parallel netcdf variables
-integer                       :: ret !> return code for pnetcdf calls
-integer                       :: ncfile !> ncfile
-integer                       :: stateId !> Id for state_vector
-integer                       :: timeId !> Id for time
-integer                       :: stateDimId !> Id of the dimension of state
-integer                       :: timeDimId !> Id of the dimension of time
-integer                       :: varsDimId !> for giant read
-integer                       :: copiesDimId !> for giant read
+integer                       :: ret !< return code for pnetcdf calls
+integer                       :: ncfile !< ncfile
+integer                       :: stateId !< Id for state_vector
+integer                       :: timeId !< Id for time
+integer                       :: stateDimId !< Id of the dimension of state
+integer                       :: timeDimId !< Id of the dimension of time
+integer                       :: varsDimId !< for giant read
+integer                       :: copiesDimId !< for giant read
 integer(KIND=MPI_OFFSET_KIND) :: start(1) ! state is one dimensional
 integer(KIND=MPI_OFFSET_KIND) :: count(1)
 integer(KIND=MPI_OFFSET_KIND) :: stride(1)
@@ -548,17 +548,17 @@ character(len = 4)                  :: extension
 logical                             :: single_file_forced
 
 ! pnetcdf variables
-integer                       :: ret !> return code for pnetcdf calls
-integer                       :: ncfile !> ncfile
-integer                       :: stateId !> Id for state_vector
-integer                       :: timeId !> Id for time
-integer                       :: stateDimId !> Id of the dimension of state
-integer                       :: timeDimId !> Id of the dimension of time
+integer                       :: ret !< return code for pnetcdf calls
+integer                       :: ncfile !< ncfile
+integer                       :: stateId !< Id for state_vector
+integer                       :: timeId !< Id for time
+integer                       :: stateDimId !< Id of the dimension of state
+integer                       :: timeDimId !< Id of the dimension of time
 integer                       :: varsDimId
 integer                       :: copiesDimId
-integer                       :: stateDim(1) !> Array needed to hold state dimension
-integer                       :: timeDim(1) !> Array needed to hold state dimension
-integer                       :: varsCopiesDim(2) !> Array needed to hold state dimension
+integer                       :: stateDim(1) !< Array needed to hold state dimension
+integer                       :: timeDim(1) !< Array needed to hold state dimension
+integer                       :: varsCopiesDim(2) !< Array needed to hold state dimension
 integer                       :: num_dims
 integer(KIND=MPI_OFFSET_KIND) :: time_length
 integer(KIND=MPI_OFFSET_KIND) :: state_length

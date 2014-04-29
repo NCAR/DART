@@ -11,19 +11,19 @@ use mpi
 
 implicit none
 
-integer state_win !> mpi window for the forward operator
-integer mean_win !> mpi window
-integer my_num_vars !> my number of vars
-integer copies_in_window !> number of copies in the window - ens_size
-!> @todo the number of copies in the window is sloppy. You need to make this better.
+integer state_win !< mpi window for the forward operator
+integer mean_win !< mpi window
+integer my_num_vars !< my number of vars
+integer copies_in_window !< number of copies in the window - ens_size
+!< @todo the number of copies in the window is sloppy. You need to make this better.
 integer(KIND=MPI_ADDRESS_KIND) window_size_state
 integer(KIND=MPI_ADDRESS_KIND) window_size_mean
-integer mean_row !> The row in copies that has the mean copy
+integer mean_row !< The row in copies that has the mean copy
 
-real(r8) :: duplicate_state(*)  !> duplicate array for cray pointer fwd
+real(r8) :: duplicate_state(*)  !< duplicate array for cray pointer fwd
 pointer(a, duplicate_state)
 
-real(r8) :: duplicate_mean(*)  !> duplicate array for cray pointer vert convert
+real(r8) :: duplicate_mean(*)  !< duplicate array for cray pointer vert convert
 pointer(b, duplicate_mean)
 
 interface get_state
@@ -38,9 +38,9 @@ contains
 !> I think you have to pass it the state ensemble handle
 subroutine create_state_window(state_ens_handle)
 
-type(ensemble_type) :: state_ens_handle !> state ensemble handle
+type(ensemble_type) :: state_ens_handle !< state ensemble handle
 integer :: ii, jj, count, ierr
-integer :: bytesize !> size in bytes of each element in the window
+integer :: bytesize !< size in bytes of each element in the window
 
 ! find how many variables I have
 my_num_vars = state_ens_handle%my_num_vars

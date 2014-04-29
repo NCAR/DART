@@ -1026,7 +1026,7 @@ real(r8)            :: mod_sfc_elevation
 
 !HK 
 real(r8),  allocatable :: x_ill(:), x_iul(:), x_ilr(:), x_iur(:), ugrid(:), vgrid(:)
-integer                :: e, count, uk !> index varibles for loop
+integer                :: e, count, uk !< index varibles for loop
 integer, allocatable   :: uniquek(:), ksort(:)
 real(r8), allocatable  :: failedcopies(:)
 integer                :: ens_size
@@ -1069,7 +1069,7 @@ id = 1
 ! Initialize stuff
 istatus(:) = 0
 fld(:,:) = missing_r8
-expected_obs(:) = missing_r8  !> array of obs_vals
+expected_obs(:) = missing_r8  !< array of obs_vals
 failedcopies(:) = 1
 
 ! If identity observation (obs_kind < 0), then no need to interpolate
@@ -2278,7 +2278,7 @@ real(r8)            :: dx,dy,dxm,dym, dz, dzm
 integer, dimension(2) :: ll, lr, ul, ur
 
 real(r8), allocatable, dimension(:) :: v_h
-real(r8), allocatable, dimension(:) :: v_p !> only need the mean value
+real(r8), allocatable, dimension(:) :: v_p !< only need the mean value
 
 ! local vars, used in calculating pressure and height
 real(r8)            :: pres1, pres2, pres3, pres4
@@ -4333,7 +4333,7 @@ real(r8), intent(in)  :: dx,dy,dxm,dym
 integer, intent(in)   :: ens_size
 real(r8), intent(out) :: v_p(0:n, ens_size)
 type(ensemble_type), intent(in)  :: state_ens_handle
-integer e !> for ensemble loop
+integer e !< for ensemble loop
 
 integer, dimension(2) :: ll, lr, ul, ur
 integer  :: ill,ilr,iul,iur,k, rc
@@ -4834,8 +4834,8 @@ type(ensemble_type), intent(in)  :: state_ens_handle
 real (kind=r8), PARAMETER    :: rd_over_rv = gas_constant / gas_constant_v
 real (kind=r8), PARAMETER    :: cpovcv = 1.4_r8        ! cp / (cp - gas_constant)
 
-integer  :: iqv !> I think this is i for index
-integer  :: it !> change to array
+integer  :: iqv !< I think this is i for index
+integer  :: it !< change to array
 real(r8) :: qvf1(ens_size),rho(ens_size), x_iqv(ens_size), x_it(ens_size)
 
 model_pressure_t_distrib_fwd = missing_r8
@@ -4882,7 +4882,7 @@ type(ensemble_type), intent(in)  :: state_ens_handle
 real (kind=r8), PARAMETER    :: rd_over_rv = gas_constant / gas_constant_v
 real (kind=r8), PARAMETER    :: cpovcv = 1.4_r8        ! cp / (cp - gas_constant)
 
-integer  :: iqv !> I think this is i for index
+integer  :: iqv !< I think this is i for index
 integer  :: it
 real(r8) :: qvf1, rho, x_iqv, x_it
 
@@ -5249,7 +5249,7 @@ real(r8), intent(in)  :: dx,dy,dxm,dym
 integer,  intent(in)  :: ens_size
 real(r8), intent(out) :: v_h(0:n, ens_size)
 type(ensemble_type), intent(in)  :: state_ens_handle
-integer e !> for ensemble loop
+integer e !< for ensemble loop
 
 real(r8)  :: fll(n+1, ens_size), geop(ens_size), lat(ens_size)
 integer   :: ill,iul,ilr,iur,k, rc
@@ -5343,7 +5343,7 @@ integer,  intent(in)  :: i,j,n,id
 real(r8), intent(in)  :: dx,dy,dxm,dym
 real(r8), intent(out) :: v_h(0:n)
 type(ensemble_type), intent(in)  :: state_ens_handle
-integer e !> for ensemble loop
+integer e !< for ensemble loop
 
 real(r8)  :: fll(n+1), geop, lat
 integer   :: ill,iul,ilr,iur,k, rc
@@ -8271,7 +8271,7 @@ type(ensemble_type), intent(in) :: state_ens_handle
 type(wrf_dom),       intent(in) :: wrf
 integer,             intent(in) :: id
 integer,             intent(in) :: obs_kind
-integer,             intent(in) :: wrf_surf_type !> this has to be passed in is beccause obs_kind does not give a unique wrf_type ( could check obs_kind then if surf var?)
+integer,             intent(in) :: wrf_surf_type !< this has to be passed in is beccause obs_kind does not give a unique wrf_type ( could check obs_kind then if surf var?)
 integer,             intent(in) :: i,j
 real(r8),            intent(in) :: dxm, dx, dy, dym
 real(r8),           intent(out) :: fld(2, ens_size)
@@ -8320,8 +8320,8 @@ end subroutine surface_interp_distrib
 subroutine obs_kind_in_state_vector(in_state_vector, wrf_type, obs_kind, id)
 
 logical, intent(out) :: in_state_vector
-integer, intent(out) :: wrf_type !> WRF
-integer, intent(in)  :: obs_kind !> DART
+integer, intent(out) :: wrf_type !< WRF
+integer, intent(in)  :: obs_kind !< DART
 integer, intent(in)  :: id
 
 
