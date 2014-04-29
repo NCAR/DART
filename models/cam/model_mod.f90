@@ -4,6 +4,15 @@
 !
 ! $Id$
 
+!> @mainpage Remote Memory Access version of DART code.
+!>
+!> Forward operator, vertical conversion
+!>
+!> CAM_FV
+!> \todo
+!> @author dart@ucar.edu
+
+
 module model_mod
 
 !----------------------------------------------------------------------

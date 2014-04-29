@@ -4,6 +4,16 @@
 !
 ! $Id$
 
+!> @mainpage Remote Memory Access version of DART code.
+!>
+!> Forward operator, vertical conversion
+!>
+!> WRF
+!>
+!> For distributed phb array see distributed_phb_model_mod.f90
+!> \todo
+!> @author dart@ucar.edu
+
 module model_mod
 
 ! Assimilation interface for WRF model

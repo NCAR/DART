@@ -4,13 +4,7 @@
 !
 ! $Id$
 
-!> @mainpage Remote Memory Access version of DART code.
-!>
-!> Forward operator, vertical conversion
-!>
-!> CAM_FV, WRF, CAM_SE
-!> @author dart@ucar.edu
-!> \todo
+
 !> \dir filter  Main program contained here
 !> \file filter.f90 Main program
 
