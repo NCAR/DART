@@ -30,6 +30,9 @@ integer :: i, iunit, io
 type (random_seq_type) :: r
 
 real(r8) :: r1, r2, dist2, mean_dist2
+character(len=16) :: wformatI = '(A,I8)'
+character(len=16) :: wformat1 = '(A,1(F25.16))'
+character(len=16) :: wformat2 = '(A,2(F25.16))'
 
 !-----------------------------------------------------------------------------
 ! Namelist with default values
@@ -47,23 +50,25 @@ call find_namelist_in_file("input.nml", "test_diff_nml", iunit)
 read(iunit, nml = test_diff_nml, iostat = io)
 call check_namelist_read(iunit, io, "test_diff_nml")
 
-write(*, *) 'sample size = ', n
-write(*, *) 'mean 1, 2 = ', 0.0, mean
-write(*, *) 'stddev 1, 2  = ', sd1, sd2
-write(*, *) 'predicted distance = ', sqrt(mean**2 + sd1**2 + sd2**2)
+write(*, *) ''
+write(*, wformatI) 'sample size = ', n
+write(*, *) ''
+write(*, wformat2) 'mean, stddev 1 = ', 0.0_r8, sd1
+write(*, wformat2) 'mean, stddev 2 = ', mean, sd2
 write(*, *) ''
 
 
 call init_random_seq(r,iseed)
-mean_dist2 = 0.0d0
+mean_dist2 = 0.0_r8
 do i = 1, n
-   r1 = random_gaussian(r, 0.0d0, sd1)
-   r2 = random_gaussian(r,  mean, sd2)
+   r1 = random_gaussian(r, 0.0_r8, sd1)
+   r2 = random_gaussian(r,  mean,  sd2)
    dist2 = (r1 - r2)**2
    mean_dist2 = mean_dist2 + dist2
 end do
 
-write(*, *) 'sample mean distance = ', sqrt(mean_dist2 / n)
+write(*, wformat1) 'predicted distance   = ', sqrt(mean**2 + sd1**2 + sd2**2)
+write(*, wformat1) 'sample mean distance = ', sqrt(mean_dist2 / n)
 write(*, *) ''
 
 call finalize_utilities()
