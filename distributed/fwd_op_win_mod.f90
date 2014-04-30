@@ -52,7 +52,7 @@ copies_in_window = state_ens_handle%num_copies -5
 ! using MPI_ALLOC_MEM because the MPI standard allows vendors to require MPI_ALLOC_MEM for remote memory access
 call mpi_type_size(datasize, bytesize, ierr)
 window_size_state = my_num_vars*copies_in_window*bytesize
-a = malloc(my_num_vars)
+a = malloc(my_num_vars*copies_in_window)
 call MPI_ALLOC_MEM(window_size_state, MPI_INFO_NULL, a, ierr)
 
 count = 1
