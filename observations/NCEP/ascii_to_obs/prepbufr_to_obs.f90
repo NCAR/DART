@@ -45,7 +45,7 @@ type(obs_sequence_type) :: seq
 character(len=256) :: msgstring1, msgstring2
 character(len=256) :: input_name, output_name
 character(len=8  ) :: obsdate
-integer :: iunit, io, ii, day1, kkk, kbeg, kend, obs_unit
+integer :: iunit, io, ii, day1, kbeg, kend, obs_unit
 integer :: fyear, fmonth, fday, fhour, fmin, fsec
 integer :: hyear, hmonth, hday, hhour, hmin, hsec
 integer :: gdays, gsecs, sdays, edays, dummy
@@ -174,8 +174,6 @@ window_end = window_start + window_width
 window_mid = window_start + window_half
 window_start = window_start + one_sec
 
-!kkk = 0
-
 ! Loop through the time period of interest.
 do while (window_start <= end_time) 
   
@@ -185,12 +183,24 @@ do while (window_start <= end_time)
    call print_date(window_end,   'Window   end time: ')
    call get_time(window_end, dummy, edays)
    
+   ! FIXME: we could let user specify how to name the files
+   ! with a window offset - 0 for start time, 1/2 for mid, 
+   ! whole window width for end time...   because 6H files are
+   ! typically named for the midpoint, but daily for 0Z and
+   ! 3H files for the start time...   standards, so many.
    call print_date(window_mid, 'time for output file: ')
    
    call get_date(window_mid, fyear, fmonth, fday, fhour, fmin, fsec)
    call get_time(window_mid, gsecs, gdays)
-   inc_midnight = (sdays /= edays)
 
+   ! if this window crosses over a day boundary, add 24 to the
+   ! end bin time in the construct_obs_sequence routine.  right now
+   ! the ascii intermediate files only have hours and no dates in them.
+   ! the current converter which creates them adds 24 to hours beyond
+   ! midnight for files which are centered on midnight and include obs
+   ! from 21Z one day to 3Z the next day.
+
+   inc_midnight = (sdays /= edays)
    
    ! construct input and output filenames
    ! FIXME: make this consistent with prepbufr and the non-daily option:
@@ -209,10 +219,8 @@ do while (window_start <= end_time)
    endif
    write(output_name, output_filename_pattern) trim(output_filename_base), fyear, fmonth, fday, fhour
    
-write(*,*) ' input name: '//trim( input_name)
-write(*,*) 'output name: '//trim(output_name)
-
-   !kkk = modulo(kkk, 5) + 1
+   write(*,*) ' input filename: '//trim( input_name)
+   write(*,*) 'output filename: '//trim(output_name)
 
    ! Initialize an obs_sequence 
       
@@ -248,7 +256,11 @@ write(*,*) 'output name: '//trim(output_name)
    open(unit = obs_unit, file = input_name, form='formatted', status='old')
    rewind (obs_unit)
    
-   call construct_obs_sequence(seq, obs_unit, gdays, window_start, window_end, inc_midnight)
+   ! read the next available ascii intermediate file to collect any obs which are
+   ! exactly equal to the ending timestamp.  this works for windows which are an even
+   ! multiple of 6H (the times in the original prepbufr files).
+   call construct_obs_sequence(seq, obs_unit, gdays, window_end, window_end, .false.)
+
    close(obs_unit)
    
    ! output the sequence to a file
@@ -278,6 +290,12 @@ subroutine construct_obs_sequence (seq, iunit, gday, wstart, wend, wrap)
 !------------------------------------------------------------------------------
 !  this function is to convert NCEP decoded BUFR data to DART sequence format
 !
+!  FIXME: the prepbufr converter HAS to start putting a date as well as a time
+!  in the ascii intermediate files, so i can jettison both the wrap and keep3
+!  flags, and so we can have a single converter source (right now there is
+!  prepbufr.f and prepbufr_03Z.f, which differ by about 3 lines.)
+!
+
 type(obs_sequence_type), intent(inout) :: seq
 integer,                 intent(in)    :: iunit
 integer,                 intent(in)    :: gday
@@ -366,24 +384,26 @@ obsloop:  do
    !write(*, 880) obs_err, lon, lat, lev, zob, zob2, rcount, time, &
    !                           obstype, iqc, subset, pc
 
-!   A 'day' is from 03:01Z of one day through 03Z of the next.
-!   skip the observations at exact 03Z of the beginning of the day
-!   (obs at 03Z the next day have a time of 27.)
 !------------------------------------------------------------------------------
+   !   A 'day' is from 03:01Z of one day through 03Z of the next.
+   !   skip the observations at exact 03Z of the beginning of the day
+   !   (obs at 03Z the next day have a time of 27.)
+   ! (this should be deprecated eventually when we start putting dates
+   ! as well as times in the intermediate ascii files.  for now, keep it.)
    if(time == 3.0_r8 .and. daily) then
       if (debug) write(*,*) 'invalid time.  hours = ', time
       iskip(fail_3Z) = iskip(fail_3Z) + 1
       cycle obsloop 
    endif 
 
-   !  select the obs for the time window
+   ! reject obs outside the current time window
    if(time < bin_beg .or. time > bin_end) then
       if (debug) write(*,*) 'invalid time.  hours = ', time
       iskip(fail_timerange) = iskip(fail_timerange) + 1
       cycle obsloop
    endif
 
-   ! verify the location is not outside valid limits
+   ! reject locations outside the valid values (shouldn't happen)
    if((lon > 360.0_r8) .or. (lon <   0.0_r8) .or.  &
       (lat >  90.0_r8) .or. (lat < -90.0_r8)) then
       if (debug) write(*,*) 'invalid location.  lon,lat = ', lon, lat
