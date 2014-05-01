@@ -57,7 +57,7 @@ use assim_model_mod,      only : get_state_meta_data_distrib, get_close_maxdist_
 
 use location_mod,         only : get_location, set_location !HK for bitwise WRF
 
-use fwd_op_win_mod
+use distributed_state_mod
 
 implicit none
 private

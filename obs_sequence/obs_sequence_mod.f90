@@ -45,7 +45,7 @@ use mpi_utilities_mod, only : task_count, my_task_id
 use ensemble_manager_mod, only: get_var_owner_index, map_pe_to_task, &
                                 ensemble_type
 
-use fwd_op_win_mod
+use distributed_state_mod
 
 use mpi
 

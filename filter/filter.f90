@@ -60,7 +60,7 @@ use smoother_mod,         only : smoother_read_restart, advance_smoother,       
                                  init_smoother, do_smoothing, smoother_mean_spread,          &
                                  smoother_assim, filter_state_space_diagnostics,             &
                                  smoother_ss_diagnostics, smoother_end, set_smoother_trace
-use fwd_op_win_mod
+use distributed_state_mod
 
 use mpi
 

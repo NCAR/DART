@@ -82,7 +82,7 @@ use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_inde
 
 use sort_mod, only : sort
 
-use fwd_op_win_mod
+use distributed_state_mod
 
 ! FIXME:
 ! the kinds KIND_CLOUD_LIQUID_WATER should be KIND_CLOUDWATER_MIXING_RATIO, 
