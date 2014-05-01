@@ -1,0 +1,20 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+
+This directory contains two shell scripts.
+
+One converts a test data file which is included with the distribution.
+This one should be run from this directory (ok_meso/shell_scripts)
+
+The other downloads data from the web server and converts it.
+It can be run from any directory and copies the files it needs
+into that location.
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

@@ -1,0 +1,37 @@
+#!/bin/sh
+
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id: mkmf_convert_okmeso 5074 2011-07-15 17:06:58Z thoar $
+
+# test script to run a single pass of the converter.
+# should produce an obs_seq.okmeso output file in the work directory.
+
+echo ''
+echo 'changing into the ../work directory to run the converter'
+echo ''
+
+cd ../work
+ln -sf ../data/geoinfo.csv .
+ln -sf ../data/201305150000.mdf  okmeso_mdf.in
+
+rm -f obs_seq.okmeso
+
+./convert_okmeso
+
+echo created this output file:
+ls -l obs_seq.okmeso
+
+echo ''
+echo 'changing back into the ../shell_scripts directory'
+echo ''
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL: https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/MADIS/work/quickbuild.csh $
+# $Revision: 6256 $
+# $Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $
+

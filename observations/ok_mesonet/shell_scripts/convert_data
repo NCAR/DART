@@ -1,0 +1,57 @@
+#!/bin/sh
+
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id: mkmf_convert_okmeso 5074 2011-07-15 17:06:58Z thoar $
+
+# convert an Oklahoma Mesonet input file into a DART obs_seq file.
+#
+# requires you set the DART_DIR directory in your environment first:
+#  export DART_DIR=xxx    # ksh, bash, etc
+#  setenv DART_DIR  xxx   # csh, tcsh, etc
+# this is the top level directory of where you have the DART distribution
+# located on your machine.
+#
+# also set 'DATE' to the YYYMMMDDHH of the desired observation time
+#
+# this script will copy the required files to the current directory
+# and do the conversion.
+# 
+# see this web page for information about access:
+#  http://www.mesonet.org/index.php/site/about/data_access_and_pricing
+#
+
+DART_DIR=~/subversion/newtrunk
+DATE=20120501
+
+# requires the geo info file for the locations of the stations
+cp -f ${DART_DIR}/observations/ok_mesonet/work/geoinfo.csv .
+cp -f ${DART_DIR}/observations/ok_mesonet/work/input.nml .
+
+# Get the Oklahoma Mesonet observations
+okmeso_path="http://www.mesonet.org/index.php/dataMdfMts/dataController/getFile/${DATE}00/mdf/TEXT/"
+echo getting data from $okmeso_path
+
+# get the file, creates index.html
+wget --timeout 60 -nv -np -nd -r $okmeso_path
+
+# rename and delete the last line at the same time
+rm -f okmeso_mdf.in
+sed '$d' < index.html > okmeso_mdf.in
+
+# run the converter
+${DART_DIR}/observations/ok_mesonet/work/convert_okmeso
+
+# rename the output file to have the date in the name
+mv -f obs_seq.okmeso obs_seq.okmeso.${DATE}
+ls -l obs_seq.okmeso.${DATE}
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL: https://proxy.subversion.ucar.edu/DAReS/DART/trunk/observations/MADIS/work/quickbuild.csh $
+# $Revision: 6256 $
+# $Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $
+
