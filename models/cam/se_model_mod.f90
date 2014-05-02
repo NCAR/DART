@@ -336,7 +336,7 @@ use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
 
-use fwd_op_win_mod, only : get_state
+use distributed_state_mod
 
 ! end of use statements
 !=========================================================================================
