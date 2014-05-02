@@ -59,7 +59,8 @@ use smoother_mod,         only : smoother_read_restart, advance_smoother,       
                                  smoother_gen_copy_meta_data, smoother_write_restart,        &
                                  init_smoother, do_smoothing, smoother_mean_spread,          &
                                  smoother_assim, filter_state_space_diagnostics,             &
-                                 smoother_ss_diagnostics, smoother_end, set_smoother_trace
+                                 smoother_ss_diagnostics, smoother_end, set_smoother_trace,  &
+                                 query_pnetcdf
 use distributed_state_mod
 
 use mpi
@@ -630,6 +631,11 @@ AdvanceTime : do
    call trace_message('Before prior state space diagnostics')
    call timestamp_message('Before prior state space diagnostics')
 
+   if (.not. query_pnetcdf()) then
+      parallel_state_diag = .false. ! can't do parallel write wihout pnetcdf support
+      call error_handler(E_MSG, 'filter', 'not compiled with pnetcdf, switching to serial write of diagnostics')
+   endif
+
    if (parallel_state_diag) then ! parallel write of diagnostics
 
      call filter_state_space_diagnostics(ens_handle, ENS_MEAN_COPY, PRIOR_INF_SD_COPY, 'Prior_Diag.nc')
@@ -799,6 +805,11 @@ AdvanceTime : do
 
    call trace_message('Before posterior state space diagnostics')
    call timestamp_message('Before posterior state space diagnostics')
+
+   if (.not. query_pnetcdf()) then
+      parallel_state_diag = .false.  ! can't do parallel write wihout pnetcdf support
+      call error_handler(E_MSG, 'filter', 'not compiled with pnetcdf, switching to serial write of diagnostics')
+   endif
 
    if (parallel_state_diag) then ! parallel write of diagnostics
 
