@@ -118,7 +118,7 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                              KIND_POWER_WEIGHTED_FALL_SPEED,               &
                              KIND_RADAR_REFLECTIVITY
 
-use data_structure_mod, only : ensemble_type
+use data_structure_mod, only : ensemble_type, copies_in_window
 
 implicit none
 private
@@ -855,7 +855,7 @@ integer,  allocatable :: track_status(:) ! need to track the istatus of the diff
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = state_ens_handle%num_copies -5 !> @todo fix this
+ens_size = copies_in_window(state_ens_handle)
 allocate(track_status(ens_size), u(ens_size), v(ens_size), w(ens_size))
 allocate(u(ens_size), v(ens_size), w(ens_size), qr(ens_size), qg(ens_size), &
    qs(ens_size), rho(ens_size), temp(ens_size), precip_fall_speed(ens_size))
@@ -955,7 +955,7 @@ integer               :: e, ens_size
 
 ! Should we check microphysics_type var or just go ahead and try to get a value?
 
-ens_size = state_ens_handle%num_copies -5
+ens_size = copies_in_window(state_ens_handle)
 allocate(track_status(ens_size), qr(ens_size), qg(ens_size), qs(ens_size), &
    rho(ens_size), temp(ens_size), refl(ens_size))
 
@@ -1137,7 +1137,7 @@ integer, allocatable  :: track_status(:)
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = state_ens_handle%num_copies -5
+ens_size = copies_in_window(state_ens_handle)
 allocate(qr(ens_size), qg(ens_size), qs(ens_size), rho(ens_size), temp(ens_size))
 allocate(track_status(ens_size))
 

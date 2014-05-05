@@ -70,7 +70,7 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
                              KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
                              KIND_PRESSURE, KIND_GPSRO
 
-use data_structure_mod, only : ensemble_type
+use data_structure_mod, only : ensemble_type, copies_in_window
 
 implicit none
 private
@@ -421,7 +421,7 @@ integer               :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = state_ens_handle%num_copies -5
+ens_size = copies_in_window(state_ens_handle)
 allocate(istatus0(ens_size), track_status(ens_size))
 allocate(ref00(ens_size), ref_perigee(ens_size), ref1(ens_size), ref2(ens_size))
 allocate(xx(ens_size), yy(ens_size), zz(ens_size))

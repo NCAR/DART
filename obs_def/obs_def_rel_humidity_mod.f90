@@ -61,7 +61,7 @@ use     location_mod, only : location_type, set_location, get_location, write_lo
 use  assim_model_mod, only : interpolate_distrib
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_PRESSURE, KIND_VAPOR_MIXING_RATIO
 
-use data_structure_mod, only : ensemble_type
+use data_structure_mod, only : ensemble_type, copies_in_window
 
 implicit none
 private
@@ -108,7 +108,7 @@ integer              :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = state_ens_handle%num_copies -5
+ens_size = copies_in_window(state_ens_handle)
 
 allocate(qvap(ens_size), tmpk(ens_size), pres(ens_size), es(ens_size), qsat(ens_size))
 allocate(track_status(ens_size))

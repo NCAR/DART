@@ -72,7 +72,7 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                              KIND_VORTEX_LAT, KIND_VORTEX_LON, KIND_VORTEX_PMIN, &
                              KIND_VORTEX_WMAX
 
-use data_structure_mod, only : ensemble_type
+use data_structure_mod, only : ensemble_type, copies_in_window
 
 implicit none
 private
@@ -121,6 +121,8 @@ integer,             intent(out)    :: istatus(:)
 integer :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
+
+ens_size = copies_in_window(state_ens_handle)
 
 if (whichinfo == 'lat') then
    call interpolate_distrib(location, KIND_VORTEX_LAT, istatus, vinfo, state_ens_handle)

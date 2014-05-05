@@ -74,7 +74,7 @@ use     location_mod, only : location_type, set_location, get_location , &
 use  assim_model_mod, only : interpolate_distrib
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE
 
-use data_structure_mod, only : ensemble_type
+use data_structure_mod, only : ensemble_type, copies_in_window
 
 implicit none
 private
@@ -142,7 +142,7 @@ integer :: e, ens_size
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = state_ens_handle%num_copies -5
+ens_size = copies_in_window(state_ens_handle)
 
 allocate(istatus0(ens_size), istatus2(ens_size), track_status(ens_size))
 
