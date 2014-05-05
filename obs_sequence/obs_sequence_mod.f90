@@ -44,6 +44,7 @@ use    utilities_mod, only : get_unit, close_file,                       &
 use mpi_utilities_mod, only : task_count, my_task_id
 use ensemble_manager_mod, only: get_var_owner_index, map_pe_to_task, &
                                 ensemble_type
+use data_structure_mod, only : copies_in_window
 
 use distributed_state_mod
 
@@ -365,7 +366,7 @@ integer element_index
 integer length_of_expected_obs ! HK should this be passed in?
 
 num_obs = size(keys)
-length_of_expected_obs = state_ens_handle%num_copies - 5
+length_of_expected_obs = copies_in_window(state_ens_handle)
 
 ! NEED to initialize istatus to okay value
 istatus = 0

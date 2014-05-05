@@ -63,6 +63,8 @@ use smoother_mod,         only : smoother_read_restart, advance_smoother,       
                                  query_pnetcdf
 use distributed_state_mod
 
+use data_structure_mod, only : copies_in_window ! should this be through ensemble_manager?
+
 use mpi
 
 
@@ -1515,7 +1517,7 @@ logical               :: do_outlier, good_forward_op, failed
 ! HK: I think it is also assumed that the ensemble members are in the same order in
 ! each of the handles
 
-allocate(istatus(ens_handle%num_copies - 5)) ! mean copy also
+allocate(istatus(copies_in_window(ens_handle))) 
 
 ! Loop through my copies and compute expected value
 my_num_copies = get_my_num_copies(obs_ens_handle)
@@ -1528,7 +1530,7 @@ call prepare_to_read_from_vars(ens_handle)
 call create_state_window(ens_handle)
 
 ! make some room for state vectors
-allocate(expected_obs(ens_handle%num_copies -5)) ! Includes the mean copy
+allocate(expected_obs(copies_in_window(ens_handle)))
 
 ! Loop through all observations in the set
 ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
@@ -1564,14 +1566,13 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
      global_ens_index, dummy_time, isprior, &
      istatus, assimilate_this_ob, evaluate_this_ob, ens_handle, expected_obs)
 
-   !> @todo Sort out expected obs, should it only be for the actual copies?
-    obs_ens_handle%copies(1:ens_handle%num_copies -6, j) = expected_obs(1:ens_handle%num_copies -6)
+    obs_ens_handle%copies(1:copies_in_window(ens_handle), j) = expected_obs
 
    ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
    ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
    ! in the forward operator evaluation field
 
-   do e = 1, ens_handle%num_copies -6 !>@todo this won't always be 6 (groups)
+   do e = 1, copies_in_window(ens_handle) !>@todo this won't always be 6 (groups)
 
       if(istatus(e) == 0) then
          if ((assimilate_this_ob .or. evaluate_this_ob) .and. (expected_obs(e) == missing_r8))  then
@@ -1603,7 +1604,7 @@ ALL_OBSERVATIONS: do j = 1, obs_ens_handle%my_num_vars
 end do ALL_OBSERVATIONS
 
 !> @todo - don't you have the mean already?
-call compute_copy_mean_var(obs_ens_handle, 1, obs_ens_handle%num_copies -6, OBS_MEAN_START, OBS_VAR_START)
+call compute_copy_mean_var(obs_ens_handle, 1, copies_in_window(ens_handle), OBS_MEAN_START, OBS_VAR_START)
 
 !do_outlier = (prior_post == PRIOR_DIAG .and. outlier_threshold > 0.0_r8)
 do_outlier = (isprior .and. outlier_threshold > 0.0_r8)
@@ -1613,8 +1614,8 @@ QC_LOOP: do j = 1, obs_ens_handle%my_num_vars
    good_forward_op = .false.
 
    ! compute outlier test and consolidate forward operator qc
-   forward_max = nint(maxval(forward_op_ens_handle%copies(1:ens_handle%num_copies -6, j)))
-   forward_min = nint(minval(forward_op_ens_handle%copies(1:ens_handle%num_copies -6, j)))
+   forward_max = nint(maxval(forward_op_ens_handle%copies(1:copies_in_window(ens_handle), j)))
+   forward_min = nint(minval(forward_op_ens_handle%copies(1:copies_in_window(ens_handle), j)))
 !--- copied from obs_state_diagnostics ---
    ! Now do a case statement to figure out what the qc result should be
    ! For prior, have to test for a bunch of stuff
