@@ -25,7 +25,7 @@ contains
 !> Assumes ensemble complete
 subroutine get_fwd(x, index, state_ens_handle)
 
-real(r8), intent(out)            :: x(copies_in_window) !> all copies of an element of the state vector
+real(r8), intent(out)            :: x(num_rows) !> all copies of an element of the state vector
 integer, intent(in)              :: index !> index into state vector
 type(ensemble_type), intent(in)  :: state_ens_handle
 
@@ -39,11 +39,11 @@ call get_var_owner_index(index, owner_of_state, element_index) ! pe
 owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
 
 if (my_task_id() == owner_of_state) then
-   x = state_ens_handle%copies(1:copies_in_window, element_index)
+   x = state_ens_handle%copies(1:num_rows, element_index)
 else
-   target_disp = (element_index - 1) * copies_in_window
+   target_disp = (element_index - 1) * num_rows
    call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, state_win, ierr)
-   call mpi_get(x, copies_in_window, datasize, owner_of_state, target_disp, copies_in_window, datasize, state_win, ierr)
+   call mpi_get(x, num_rows, datasize, owner_of_state, target_disp, num_rows, datasize, state_win, ierr)
    call mpi_win_unlock(owner_of_state, state_win, ierr)
 endif
 
@@ -68,7 +68,7 @@ call get_var_owner_index(index, owner_of_state, element_index) ! pe
 owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
 
 if (my_task_id() == owner_of_state) then
-   x = state_ens_handle%copies(mean_row, element_index)
+   x = state_ens_handle%copies(row, element_index)
 else
    target_disp = (element_index - 1)
    call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, mean_win, ierr)

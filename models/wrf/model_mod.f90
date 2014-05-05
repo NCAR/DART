@@ -78,7 +78,8 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               get_raw_obs_kind_name
 
 !HK should model_mod know about the number of copies?
-use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
+use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
+                               copies_in_window
 
 use sort_mod, only : sort
 
@@ -1036,7 +1037,7 @@ integer, allocatable   :: uniquek(:), ksort(:)
 real(r8), allocatable  :: failedcopies(:)
 integer                :: ens_size
 
-ens_size = state_ens_handle%num_copies -5 ! Now calculating mean copy also
+ens_size = copies_in_window(state_ens_handle) ! data_structure_mod
 allocate(x_ill(ens_size), x_iul(ens_size), x_ilr(ens_size), x_iur(ens_size))
 allocate(fld(2,ens_size), a1(ens_size))
 allocate(zloc(ens_size), is_lev0(ens_size))
