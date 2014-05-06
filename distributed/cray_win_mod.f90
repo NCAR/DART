@@ -3,6 +3,8 @@
 !> Not sure whether we should just have one window to avoid multiple synchronizations.
 module window_mod
 
+!> \defgroup window window_mod
+!> @{
 use mpi_utilities_mod,  only : datasize, my_task_id
 use types_mod,          only : r8
 use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
@@ -121,5 +123,5 @@ call MPI_FREE_MEM(duplicate_mean, ierr) ! not a
 end subroutine free_mean_window
 
 !---------------------------------------------------------
-
+!> @}
 end module window_mod

@@ -4,6 +4,8 @@
 !> non-distributed version
 module distributed_state_mod
 
+!> \defgroup distrib_state distributed_state_mod
+!> @{
 use mpi_utilities_mod,  only : datasize, my_task_id
 use types_mod,          only : r8
 use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
@@ -83,6 +85,6 @@ end subroutine get_mean
 ! These are test functions/subroutines to test the behaviour of 
 ! the rest of the module
 
-
+!> @}
 
 end module distributed_state_mod
