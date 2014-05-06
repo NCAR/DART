@@ -176,7 +176,7 @@ public :: file_exist, get_unit, open_file, close_file, timestamp,           &
 ! with this job when you exit.  in the non-mpi case, it just calls exit.
 interface
  subroutine exit_all(exitval)
-  integer :: exitval
+  integer, intent(in) :: exitval
  end subroutine exit_all
 end interface
 
@@ -1369,7 +1369,7 @@ if(file_exist(trim(namelist_file_name))) then
          call to_upper(string1)
 
          if(trim(string1) == trim(test_string)) then
-            rewind(iunit)
+            backspace(iunit)
             return
          endif
 
@@ -1423,7 +1423,7 @@ if(iostat_in == 0) then
    call close_file(iunit)
 else
    ! If it wasn't successful, print the line on which it failed  
-   BACKSPACE iunit
+   backspace(iunit)
    read(iunit, '(A)', iostat = io) nml_string
    ! A failure in this read means that the namelist started but never terminated
    ! Result was falling off the end, so backspace followed by read fails
@@ -1443,15 +1443,6 @@ else
       endif
    else
       ! Didn't fall off end so bad entry in the middle of namelist
-      ! TEMP HELP FOR USERS; remove after next release
-      if (len(nml_name) >= 10) then
-         if ((nml_name(1:10) == 'filter_nml') .and. (index(nml_string,'inf_start_from_restart') > 0)) then
-            write(msgstring, *) 'inf_start_from_restart obsolete'
-            call error_handler(E_MSG, 'filter_nml: ', msgstring)
-            write(msgstring, *) 'use inf_initial_from_restart and inf_sd_initial_from_restart'
-            call error_handler(E_MSG, 'filter_nml: ', msgstring)
-         endif 
-      endif 
       write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(nml_string), ' in namelist ', trim(nml_name)
       if(write_to_logfile) then
          call error_handler(E_ERR, 'check_namelist_read', msgstring, &
@@ -1890,8 +1881,6 @@ function ascii_file_format(fform)
 character(len=*), intent(in), optional :: fform
 logical                                :: ascii_file_format
 
-character(len=len(fform)) :: lj_fform ! Left Justified version of optional argument 
-
 ! Returns .true. for formatted/ascii file, .false. is unformatted/binary
 ! Defaults (if fform not specified) to formatted/ascii.
 
@@ -1903,17 +1892,7 @@ if ( .not. present(fform)) then
    return
 endif
 
-! Check to make sure we don't put 10lbs of stuff in a 5lb bag
-
-if (len(fform) > len(lj_fform)) then
-   write(msgstring,*)'fform is long: increase len of lj_fform to ',&
-                     len(fform),' and recompile.'
-   call error_handler(E_ERR,'ascii_file_format', msgstring, source, revision, revdate)
-endif
-
-lj_fform = adjustl(fform)
-
-SELECT CASE (trim(lj_fform))
+SELECT CASE (fform)
    CASE("unf", "UNF", "unformatted", "UNFORMATTED")
       ascii_file_format = .false.
    CASE DEFAULT
