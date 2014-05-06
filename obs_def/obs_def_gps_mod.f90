@@ -608,7 +608,7 @@ integer               :: which_vert
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = state_ens_handle%num_copies -5 ! This could be n
+ens_size = copies_in_window(state_ens_handle)
 allocate(t(ens_size), q(ens_size), p(ens_size), tv(ens_size), ew(ens_size), track_status(ens_size))
 
 ! for integration of GPS ray path beyond the wraparound point
