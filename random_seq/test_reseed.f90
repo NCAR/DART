@@ -4,17 +4,33 @@
 !
 ! $Id$
 
+! a test of reseeding the random sequence generator, to see
+! if different seeds generate overlapping sequences of values.
+! one use case in the regular dart code is when running
+! perfect_model_obs and generating random draws of gaussian
+! error values.  if the program is restarted each time between
+! separate model advances, if the same seed is used each time
+! then the errors will be the same.  the code now reseeds the
+! random number generator with a value based on the state data
+! timestamp.  this seed seems to generate random values for
+! observation errors which are not repeating.
+!
+! this program was also helpful in finding a bug in the
+! time_manager code with one compiler.  it was generating
+! long repeating sequences of values which lead to the
+! discovery that the seconds were being rounded off to 0
+! when setting a time type and different times would result
+! in the same initial seed.
+
 program test_reseed
 
-use        types_mod, only : r8, digits12
-use    utilities_mod, only : register_module, error_handler, E_ERR, &
+use        types_mod, only : r8
+use    utilities_mod, only : register_module, error_handler, E_MSG, &
                              initialize_utilities, finalize_utilities, &
-                             logfileunit, nmlfileunit,  &
                              find_namelist_in_file, check_namelist_read, &
-                             open_file, close_file, do_nml_file, do_nml_term
-use time_manager_mod, only : time_type, operator(+), set_time, get_time, &
-                             set_calendar_type, print_time, print_date,  &
-                             generate_seed
+                             nmlfileunit, do_nml_file, do_nml_term
+use time_manager_mod, only : time_type, operator(+), set_time, generate_seed, &
+                             set_calendar_type, print_time, print_date
 use   random_seq_mod, only : random_seq_type, init_random_seq, &
                              random_uniform, random_gaussian
 
@@ -156,8 +172,6 @@ call test3
 ! -----
 
 
-call error_handler(E_MSG, 'test_reseed', 'Finished successfully.',&
-                   source,revision,revdate)
 call finalize_utilities()
 
 contains
@@ -252,8 +266,9 @@ subroutine test3
 
 real(r8), allocatable :: history(:)
 real(r8) :: next_val
-integer :: i, j, k, nextseed, seedhist(:)
-type(time_type) :: t, base_time, state_time, delta_time, delta_time2
+integer :: i, j, k, nextseed
+integer, allocatable :: seedhist(:)
+type(time_type) :: base_time, state_time, delta_time, delta_time2
 type(random_seq_type) :: seq1
 
 
