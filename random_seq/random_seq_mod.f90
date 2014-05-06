@@ -41,12 +41,12 @@ integer, parameter :: N = 624   ! period parameters
 integer, parameter :: M = 397
 
 ! hexadecimal constants
-integer(i8), parameter :: UPPER_MASK  = z'80000000'
-integer(i8), parameter :: LOWER_MASK  = z'7FFFFFFF'
-integer(i8), parameter :: FULL32_MASK = z'FFFFFFFF'
-integer(i8), parameter :: magic       = z'9908B0DF'
-integer(i8), parameter :: C1          = z'9D2C5680'
-integer(i8), parameter :: C2          = z'EFC60000'
+integer(i8), parameter :: UPPER_MASK  = z'0000000080000000'
+integer(i8), parameter :: LOWER_MASK  = z'000000007FFFFFFF'
+integer(i8), parameter :: FULL32_MASK = z'00000000FFFFFFFF'
+integer(i8), parameter :: magic       = z'000000009908B0DF'
+integer(i8), parameter :: C1          = z'000000009D2C5680'
+integer(i8), parameter :: C2          = z'00000000EFC60000'
 
 type random_seq_type
    private
@@ -200,7 +200,7 @@ s%mt(0) = iand(int(sd,i8), FULL32_MASK)
 ! for multiplier.
 
 do i=1, N-1
-   s%mt(i) = 1812433253_i8 * ieor(s%mt(i-1), ishft(s%mt(i-1), -30)) + i
+   s%mt(i) = 1812433253_i8 * ieor(s%mt(i-1), ishft(s%mt(i-1), -30_i8)) + i
 
    s%mt(i) = iand(s%mt(i), FULL32_MASK)
 end do
@@ -238,7 +238,7 @@ if (s%mti >= N) then
       else
          m1 = 0_i8
       endif
-      s%mt(kk) = ieor(s%mt(kk + M), ieor(ishft(y,-1), m1))
+      s%mt(kk) = ieor(s%mt(kk + M), ieor(ishft(y,-1_i8), m1))
 
 ! original c code:
 !          unsigned long y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
@@ -253,7 +253,7 @@ if (s%mti >= N) then
       else
          m1 = 0_i8
       endif
-      s%mt(kk) = ieor(s%mt(kk + (M-N)), ieor(ishft(y,-1), m1))
+      s%mt(kk) = ieor(s%mt(kk + (M-N)), ieor(ishft(y,-1_i8), m1))
 
 ! original c code:
 !          unsigned long y = (mt[kk] & UPPER_MASK) | (mt[kk + 1] & LOWER_MASK);
@@ -267,7 +267,7 @@ if (s%mti >= N) then
    else
       m1 = 0_i8
    endif
-   s%mt(N-1) = ieor(s%mt(M-1), ieor(ishft(y,-1), m1))
+   s%mt(N-1) = ieor(s%mt(M-1), ieor(ishft(y,-1_i8), m1))
 
 ! original c code:
 !        unsigned long y = (mt[N - 1] & UPPER_MASK) | (mt[0] & LOWER_MASK);
@@ -280,10 +280,10 @@ endif
 
 k = s%mt(s%mti)
 
-k = ieor(k, ishft(k, -11))
-k = ieor(k, iand(ishft(k, 7),  C1))
-k = ieor(k, iand(ishft(k, 15), C2))
-k = ieor(k, ishft(k, -18))
+k = ieor(k, ishft(k, -11_i8))
+k = ieor(k, iand(ishft(k, 7_i8),  C1))
+k = ieor(k, iand(ishft(k, 15_i8), C2))
+k = ieor(k, ishft(k, -18_i8))
 
 ! original c code:
 !  k ^= (k >> 11);

@@ -3151,7 +3151,7 @@ if ( .not. module_initialized ) call time_manager_init
 
 call get_time(timestamp, seconds, days)
 
-generate_seed = iand((secs_day * days) + seconds, z'FFFFFFFF')
+generate_seed = iand((secs_day * days) + seconds, z'00000000FFFFFFFF')
 
 end function generate_seed
 
