@@ -192,7 +192,7 @@ if (num_tasks_insensitive) then
 endif
 
 ! Make sure that the number of longitudes, nlon, for get_close_obs is odd
-if(nlon / 2 * 2 == nlon) then
+if((nlon / 2) * 2 == nlon) then
    call error_handler(E_ERR, 'initialize_module', 'nlon must be odd', &
       source, revision, revdate)
 endif
