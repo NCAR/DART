@@ -14,10 +14,16 @@
 !> \todo
 !> @author dart@ucar.edu
 
+!> WRF model mod
 module model_mod
 
-! Assimilation interface for WRF model
 
+! Assimilation interface for WRF model
+!> \defgroup wrf model_mod
+!> Model mod
+!> 
+!> Model mod for WRF
+!> @{
 !-----------------------------------------------------------------------
 !
 !     interface for WRF
@@ -125,6 +131,7 @@ public ::  get_model_size,                    &
            get_close_maxdist_init,            &
            get_close_obs_init,                &
            model_interpolate_distrib,         &
+           vert_convert_distrib,              &
            convert_base_obs_location !HK
 
 !  public stubs 
@@ -158,7 +165,8 @@ public ::  get_number_domains,       &
 ! public parameters
 public :: max_state_variables, &
           num_state_table_columns, &
-          num_bounds_table_columns
+          num_bounds_table_columns, &
+          vert_localization_coord !HK need to fix this
 
 ! types
 public :: wrf_dom, wrf_static_data_for_dart
@@ -6392,7 +6400,7 @@ if (.not. horiz_dist_only) then
    if (base_which /= wrf%dom(1)%localization_coord) then
       !print*, 'base_which ', base_which, 'loc coord ', wrf%dom(1)%localization_coord
       call vert_convert_distrib(state_ens_handle, base_obs_loc, base_obs_kind, istatus1)
-      !call error_handler(E_ERR, 'you should not call this ', 'get_close_obs_distrib')
+      call error_handler(E_ERR, 'you should not call this ', 'get_close_obs_distrib')
    elseif (base_array(3) == missing_r8) then
       istatus1 = 1
    endif
@@ -8475,6 +8483,7 @@ end subroutine convert_base_obs_location
 
 end module model_mod
 
+!> @}
 ! <next few lines under version control, do not edit>
 ! $URL$
 ! $Id$

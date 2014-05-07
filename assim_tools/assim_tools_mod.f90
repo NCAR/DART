@@ -57,6 +57,8 @@ use assim_model_mod,      only : get_state_meta_data_distrib, get_close_maxdist_
 
 use location_mod,         only : get_location, set_location !HK for bitwise WRF
 
+use model_mod,            only : vert_convert_distrib, vert_localization_coord ! this will break things
+
 use distributed_state_mod
 
 implicit none
@@ -352,17 +354,9 @@ logical :: local_varying_ss_inflate
 logical :: local_obs_inflate
 logical :: missing_in_state
 
-! HK Remote memory access
-integer :: ierr, sizedouble, count, win, ii, jj
-integer(KIND=MPI_ADDRESS_KIND) :: window_size ! These must be mpi_address_kind to avoid a segmentation fault on some systems
-integer status(MPI_STATUS_SIZE)
-real(r8) duplicate_copies(*)
-pointer (p, duplicate_copies)
-
 ! HK observation location conversion
+logical  :: lanai_bitwise = .false.
 real(r8) :: vert_obs_loc_in_localization_coord
-integer  :: int_vert_qc
-real(r8) :: vert_qc
 
 !HK timing
 double precision start, finish
@@ -370,6 +364,7 @@ double precision start, finish
 !HK bitwise for WRF
 real(r8) :: xyz_loc(3)
 type(location_type) :: temp_loc
+integer :: vstatus !< for vertical conversion status. Can we just smash the dart qc instead?
 
 ! we are going to read/write the copies array
 call prepare_to_update_copies(ens_handle)
@@ -448,6 +443,16 @@ call init_obs(observation, get_num_copies(obs_seq), get_num_qc(obs_seq))
 ! overwrite the vertical location with the required localization vertical coordinate when you 
 ! do the forward operator calculation
 call get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type)
+
+if (.not. lanai_bitwise) then
+   ! convert the verical of all my observations to the localization coordinate
+   ! this may not be bitwise with Lanai because of a different number of set_location calls
+   do i = 1, obs_ens_handle%my_num_vars
+      call vert_convert_distrib(ens_handle, my_obs_loc(i), my_obs_kind(i), vstatus)
+      !> @todo Can I just use the OBS_GLOBAL_QC_COPY? Is it ok to skip the loop?
+      if (vstatus /= 0) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = 4
+   enddo
+endif
 
 ! Get info on my number and indices for state
 my_num_state = get_my_num_vars(ens_handle)
@@ -554,7 +559,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    endif
    ! Get the value of the observation
    call get_obs_values(observation, obs, obs_val_index)
-   !print*, 'start base_obs_loc', base_obs_loc, 'rank ', my_task_id()
 
    ! Find out who has this observation and where it is
    call get_var_owner_index(i, owner, owners_index)
@@ -562,6 +566,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Following block is done only by the owner of this observation
    !-----------------------------------------------------------------------
    if(ens_handle%my_pe == owner) then
+      ! need to convert global to local obs number
+      vert_obs_loc_in_localization_coord = my_obs_loc(owners_index)%vloc
 
       obs_qc = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, owners_index)
       ! Only value of 0 for DART QC field should be assimilated
@@ -636,14 +642,18 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! What gets broadcast depends on what kind of inflation is being done
       if(local_varying_ss_inflate) then
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, orig_obs_prior_mean, &
-            orig_obs_prior_var, net_a, scalar1=obs_qc)
+            orig_obs_prior_var, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord)
 
       else if(local_single_ss_inflate .or. local_obs_inflate) then
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, &
-           scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc)
+           scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, scalar4=vert_obs_loc_in_localization_coord)
       else
-         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc)
+         call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord)
       endif
+
+      ! use converted vertical coordinate from owner
+      base_obs_loc%vloc = my_obs_loc(owners_index)%vloc ! i is the wrong index
+      base_obs_loc%which_vert = vert_localization_coord
 
    ! Next block is done by processes that do NOT own this observation
    !-----------------------------------------------------------------------
@@ -652,13 +662,17 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       ! Also get qc and inflation information if needed
       if(local_varying_ss_inflate) then
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, orig_obs_prior_mean, &
-            orig_obs_prior_var, net_a, scalar1=obs_qc)
+            orig_obs_prior_var, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord)
       else if(local_single_ss_inflate .or. local_obs_inflate) then
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, &
-            scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc)
+            scalar1=my_inflate, scalar2=my_inflate_sd, scalar3=obs_qc, scalar4=vert_obs_loc_in_localization_coord)
       else
-         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc)
+         call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord)
       endif
+
+      ! use converted vertical coordinate from owner
+      base_obs_loc%vloc = vert_obs_loc_in_localization_coord
+      base_obs_loc%which_vert = vert_localization_coord
    endif
    !-----------------------------------------------------------------------
 
