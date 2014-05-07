@@ -4,11 +4,12 @@
 !
 ! $Id$
 
+!>  A variety of operations required by assimilation.
 module assim_tools_mod
 
- 
-! A variety of operations required by assimilation.
-
+!> \defgroup assim_tools assim_tools_mod
+!> 
+!> @{
 use      types_mod,       only : r8, digits12, PI, missing_r8
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,    &
                                  find_namelist_in_file, register_module, error_handler,   &
@@ -57,7 +58,7 @@ use assim_model_mod,      only : get_state_meta_data_distrib, get_close_maxdist_
 
 use location_mod,         only : get_location, set_location !HK for bitwise WRF
 
-use model_mod,            only : vert_convert_distrib, vert_localization_coord ! this will break things
+use model_mod,            only : query_vert_localization_coord, vert_convert_distrib ! this will break things
 
 use distributed_state_mod
 
@@ -653,7 +654,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       ! use converted vertical coordinate from owner
       base_obs_loc%vloc = my_obs_loc(owners_index)%vloc ! i is the wrong index
-      base_obs_loc%which_vert = vert_localization_coord
+      base_obs_loc%which_vert = query_vert_localization_coord()
 
    ! Next block is done by processes that do NOT own this observation
    !-----------------------------------------------------------------------
@@ -672,7 +673,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       ! use converted vertical coordinate from owner
       base_obs_loc%vloc = vert_obs_loc_in_localization_coord
-      base_obs_loc%which_vert = vert_localization_coord
+      base_obs_loc%which_vert = query_vert_localization_coord()
    endif
    !-----------------------------------------------------------------------
 
@@ -2792,6 +2793,9 @@ enddo
 close(15)
 
 end subroutine test_close_obs_dist
+
+!> @}
+
 !========================================================================
 ! end module assim_tools_mod
 !========================================================================

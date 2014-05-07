@@ -11,8 +11,12 @@
 !> WRF
 !>
 !> For distributed phb array see distributed_phb_model_mod.f90
-!> \todo
+!> \todo To do list
 !> @author dart@ucar.edu
+!>
+!> \subpage test
+!> 
+!> \page test
 
 !> WRF model mod
 module model_mod
@@ -132,6 +136,7 @@ public ::  get_model_size,                    &
            get_close_obs_init,                &
            model_interpolate_distrib,         &
            vert_convert_distrib,              &
+           query_vert_localization_coord,     &
            convert_base_obs_location !HK
 
 !  public stubs 
@@ -165,8 +170,7 @@ public ::  get_number_domains,       &
 ! public parameters
 public :: max_state_variables, &
           num_state_table_columns, &
-          num_bounds_table_columns, &
-          vert_localization_coord !HK need to fix this
+          num_bounds_table_columns
 
 ! types
 public :: wrf_dom, wrf_static_data_for_dart
@@ -8445,6 +8449,17 @@ extra = Ni * Nj * (k - 1) + Ni * (j - 1) + i
 new_dart_ind = sum_below + extra 
 
 end function new_dart_ind
+
+!--------------------------------------------------------------------
+!> pass the vertical localization coordinate to assim_tools_mod
+function query_vert_localization_coord()
+
+integer :: query_vert_localization_coord
+
+query_vert_localization_coord = vert_localization_coord
+
+end function query_vert_localization_coord
+
 !--------------------------------------------------------------------
 !> This returns the vertical coordinate of an observation in the
 !> requested vertical localization coordinate. 

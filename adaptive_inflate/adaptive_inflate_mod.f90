@@ -4,9 +4,11 @@
 !
 ! $Id$ 
 
+!> Operations and storage required for various adaptive inflation algorithms
 module adaptive_inflate_mod
 
-! Operations and storage required for various adaptive inflation algorithms
+!> \defgroup adaptive_inflate adaptive_inflate_mod
+!> @{
 
 use types_mod,            only : r8, PI, missing_r8
 use time_manager_mod,     only : time_type, get_time, set_time
@@ -983,6 +985,8 @@ end subroutine solve_quadratic
 !========================================================================
 ! end module adaptive_inflate_mod
 !========================================================================
+
+!> @}
 
 end module adaptive_inflate_mod
 
