@@ -8,7 +8,7 @@ program obs_seq_coverage
 
 !-----------------------------------------------------------------------
 ! This program queries a bunch of obs_seq.xxxx files and tries to
-! figure out 'station coverage' ... what locations are consistently
+! figure out 'voxel coverage' ... what locations are consistently
 ! reported through time. Absolutely a 'reverse-engineering exercise'.
 !
 ! The observation sequence file only contains lat/lon/level/which_vert,
@@ -72,23 +72,22 @@ character(len=128), parameter :: revdate  = "$Date$"
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
 
-! FIXME ... "voxel" is a much better term than "station".
-type station
+type voxel
    integer                  :: obs_type
    type(location_type)      :: location
    type(time_type)          :: first_time
    type(time_type)          :: last_time
    integer                  :: ntimes
    type(time_type), pointer :: times(:)
-end type station
+end type voxel
 
-logical,       allocatable, dimension(:) :: DesiredStations
-type(station), allocatable, dimension(:) :: stations
-integer :: num_stations  ! This is the current number of unique locations
-integer :: max_stations  ! This is the largest possible number of uniq locs
-integer :: station_id    ! the index (into stations) of an existing location
-integer :: timeindex     ! the index (into the time array of a station)
-integer :: num_out_stat  ! total number of desired stations found
+logical,       allocatable, dimension(:) :: Desiredvoxels
+type(voxel), allocatable, dimension(:) :: voxels
+integer :: num_voxels  ! This is the current number of unique locations
+integer :: max_voxels  ! This is the largest possible number of uniq locs
+integer :: voxel_id    ! the index (into voxels) of an existing location
+integer :: timeindex     ! the index (into the time array of a voxel)
+integer :: num_out_stat  ! total number of desired voxels found
 integer :: num_out_total ! total number of desired locations * times found
 
 integer,  parameter :: MAX_OBS_NAMES_IN_NAMELIST = 500  ! lazy, just going big
@@ -291,12 +290,12 @@ endif
 
 last_possible_time = all_verif_times(num_verification_times) + half_stride
 
-! Allocate a hunk of stations. If we fill this up, we will
+! Allocate a hunk of voxels. If we fill this up, we will
 ! have to create temporary storage, copy, deallocate, reallocate  ...
 
-num_stations = 0
-max_stations = 4000
-call initialize_stations(max_stations, stations)
+num_voxels = 0
+max_voxels = 4000
+call initialize_voxels(max_voxels, voxels)
 
 !====================================================================
 !====================================================================
@@ -498,14 +497,14 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
       ! determine if obs is a new location or time at an existing loc
 
-      station_id = find_station_location(flavor, obs_loc) 
+      voxel_id = find_voxel_location(flavor, obs_loc) 
 
-      if ( station_id < 1 ) then
-            station_id = add_new_station(flavor, obs_loc)
+      if ( voxel_id < 1 ) then
+            voxel_id = add_new_voxel(flavor, obs_loc)
       endif
 
-      if ( time_is_wanted( obs_time, station_id, timeindex) ) &
-         call update_time( obs_time, station_id, timeindex)
+      if ( time_is_wanted( obs_time, voxel_id, timeindex) ) &
+         call update_time( obs_time, voxel_id, timeindex)
 
    !--------------------------------------------------------------------
    enddo ObservationLoop
@@ -513,44 +512,44 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
 enddo ObsFileLoop
 
-! Determine which stations match the temporal selection requirements
+! Determine which voxels match the temporal selection requirements
 
-allocate(DesiredStations(num_stations))
-DesiredStations = .FALSE.
+allocate(Desiredvoxels(num_voxels))
+Desiredvoxels = .FALSE.
 num_out_stat = 0
 num_out_total = 0
 
-do i = 1,num_stations
+do i = 1,num_voxels
 
-   stations(i)%ntimes = 0
+   voxels(i)%ntimes = 0
 
    do j = 1,num_verification_times
-      if (stations(i)%times(j) /= no_time) &
-         stations(i)%ntimes = stations(i)%ntimes + 1
+      if (voxels(i)%times(j) /= no_time) &
+         voxels(i)%ntimes = voxels(i)%ntimes + 1
    enddo
 
-   if (stations(i)%ntimes >= nT_minimum) then
-      DesiredStations(i) = .TRUE.
+   if (voxels(i)%ntimes >= nT_minimum) then
+      Desiredvoxels(i) = .TRUE.
       num_out_stat  = num_out_stat + 1
-      num_out_total = num_out_total + stations(i)%ntimes
+      num_out_total = num_out_total + voxels(i)%ntimes
    endif
 
-   if (debug) write(*,*) 'Station ID ',i,' has ',stations(i)%ntimes, ' reports.'
+   if (debug) write(*,*) 'voxel ID ',i,' has ',voxels(i)%ntimes, ' reports.'
 
 enddo
 
-if (verbose) write(*,*)'There were ',num_out_stat,' stations matching the input criterion.'
-if (verbose) write(*,*)'There were ',num_out_total,' stations*times matching the input criterion.'
+if (verbose) write(*,*)'There were ',num_out_stat,' voxels matching the input criterion.'
+if (verbose) write(*,*)'There were ',num_out_total,' voxels*times matching the input criterion.'
 
 ! Output a netCDF file of 'all' observations locations and times.
 ! Used to explore what is available.
 
 ncName = adjustl(netcdf_out)
 ncunit = InitNetCDF(trim(ncName))
-call WriteNetCDF(ncunit, trim(ncName), stations)
+call WriteNetCDF(ncunit, trim(ncName), voxels)
 call CloseNetCDF(ncunit, trim(ncName))
 
-! if no stations are selected, do something.
+! if no voxels are selected, do something.
 
 if (num_out_stat < 1) then
    write(string1,*)'No location had at least ',nT_minimum,' reporting times.'
@@ -568,7 +567,7 @@ call write_obsdefs
 call destroy_obs(obs1)
 call destroy_obs(obs2)
 call destroy_obs_sequence(seq)
-call destroy_stations(stations)
+call destroy_voxels(voxels)
 
 if (allocated(qc_values))             deallocate(qc_values)
 if (allocated(qc_copy_names))         deallocate(qc_copy_names)
@@ -576,7 +575,7 @@ if (allocated(obs_copy_names))        deallocate(obs_copy_names)
 if (allocated(module_obs_copy_names)) deallocate(module_obs_copy_names)
 if (allocated(module_qc_copy_names )) deallocate(module_qc_copy_names )
 if (allocated(obs_seq_filenames))     deallocate(obs_seq_filenames)
-if (allocated(DesiredStations))       deallocate(DesiredStations)
+if (allocated(Desiredvoxels))       deallocate(Desiredvoxels)
 
 call error_handler(E_MSG,'obs_seq_coverage','Finished successfully.',source,revision,revdate)
 call finalize_utilities()
@@ -587,7 +586,7 @@ CONTAINS
 !======================================================================
 
 
-function find_station_location(ObsType, ObsLocation) result(station_id)
+function find_voxel_location(ObsType, ObsLocation) result(voxel_id)
 ! Simply try to find a matching lat/lon for an observation type
 ! The lons/lats get yanked around "a lot" - being converted from ASCII radians
 ! to r8 degrees to r8 radians to r8 degrees and then checked for "equality".
@@ -598,23 +597,23 @@ function find_station_location(ObsType, ObsLocation) result(station_id)
 
 integer,             intent(in) :: ObsType
 type(location_type), intent(in) :: ObsLocation
-integer                         :: station_id
+integer                         :: voxel_id
 
 integer :: i
 real(r8), dimension(3) :: obslocarray, stnlocarray
 real(r8) :: londiff, latdiff, hgtdiff
 
-station_id = 0
+voxel_id = 0
 
-if (num_stations == 0) return
+if (num_voxels == 0) return
 
 obslocarray = get_location(ObsLocation)
 
-FindLoop : do i = 1,num_stations
+FindLoop : do i = 1,num_voxels
 
-   if (ObsType /= stations(i)%obs_type) cycle FindLoop
+   if (ObsType /= voxels(i)%obs_type) cycle FindLoop
 
-   stnlocarray = get_location(stations(i)%location)
+   stnlocarray = get_location(voxels(i)%location)
 
    londiff = abs(obslocarray(1) - stnlocarray(1)) 
    latdiff = abs(obslocarray(2) - stnlocarray(2)) 
@@ -630,130 +629,130 @@ FindLoop : do i = 1,num_stations
    if ( (londiff <= HALF_METER) .and. &
         (latdiff <= HALF_METER) .and. &
         (hgtdiff <  OnePa)    ) then ! within 1 Pa is close enough
-      station_id = i
+      voxel_id = i
       exit FindLoop
    endif
 
 enddo FindLoop
 
-end function find_station_location
+end function find_voxel_location
 
 
 !============================================================================
 
 
-function add_new_station(ObsType, ObsLocation) result(station_id)
+function add_new_voxel(ObsType, ObsLocation) result(voxel_id)
 
-! Ugh ... if a new location is found, add it. If the stationlist does not have
+! Ugh ... if a new location is found, add it. If the voxellist does not have
 ! enough space, must copy the info to a temporary list, deallocate/reallocate
 ! copy the info back, and deallocate the temporary list. Ugh. 
 
 integer,             intent(in) :: ObsType
 type(location_type), intent(in) :: ObsLocation
-integer                         :: station_id
+integer                         :: voxel_id
 
-type(station), allocatable, dimension(:) :: templist
+type(voxel), allocatable, dimension(:) :: templist
 integer :: i
 
-if ( num_stations >= max_stations ) then  ! need to make room
+if ( num_voxels >= max_voxels ) then  ! need to make room
 
-   if (verbose) write(*,*)'Doubling number of possible stations from ', &
-                           & num_stations,' to ',2*max_stations
+   if (verbose) write(*,*)'Doubling number of possible voxels from ', &
+                           & num_voxels,' to ',2*max_voxels
 
    ! Allocate temporary space; Copy. 
    ! Deallocate/nullify existing space.
    ! Double the size of the existing space.
    ! Copy the information back.
    ! Deallocate/nullify the temporary space.
-   ! Actually add the new station information
+   ! Actually add the new voxel information
    
    ! Allocate the temporary space.
    ! We'll worry about the number of time steps later.
-   call initialize_stations(num_stations, templist)
+   call initialize_voxels(num_voxels, templist)
    
    ! Copy the information to the temporary space.
-   DupLoop1 : do i = 1,num_stations
+   DupLoop1 : do i = 1,num_voxels
    
-      templist(i)%obs_type   = stations(i)%obs_type
-      templist(i)%location   = stations(i)%location
-      templist(i)%first_time = stations(i)%first_time
-      templist(i)%last_time  = stations(i)%last_time
-      templist(i)%ntimes     = stations(i)%ntimes
+      templist(i)%obs_type   = voxels(i)%obs_type
+      templist(i)%location   = voxels(i)%location
+      templist(i)%first_time = voxels(i)%first_time
+      templist(i)%last_time  = voxels(i)%last_time
+      templist(i)%ntimes     = voxels(i)%ntimes
    
       ! Make sure the time array is the right size, then copy.
       if (associated(templist(i)%times)) then
          deallocate( templist(i)%times )
          nullify(    templist(i)%times )
       endif
-      allocate( templist(i)%times( size(stations(i)%times) ) )
-      templist(i)%times      = stations(i)%times
+      allocate( templist(i)%times( size(voxels(i)%times) ) )
+      templist(i)%times      = voxels(i)%times
    
    enddo DupLoop1
    
-   ! Deallocate the stations, double the array length,
+   ! Deallocate the voxels, double the array length,
    ! allocate the new space.
-   call destroy_stations(stations)
-   max_stations = 2 * max_stations
-   call initialize_stations(max_stations, stations)
+   call destroy_voxels(voxels)
+   max_voxels = 2 * max_voxels
+   call initialize_voxels(max_voxels, voxels)
    
    ! Copy the information BACK to the new space.
-   DupLoop2 : do i = 1,num_stations
+   DupLoop2 : do i = 1,num_voxels
    
-      stations(i)%obs_type   = templist(i)%obs_type
-      stations(i)%location   = templist(i)%location
-      stations(i)%first_time = templist(i)%first_time
-      stations(i)%last_time  = templist(i)%last_time
-      stations(i)%ntimes     = templist(i)%ntimes
+      voxels(i)%obs_type   = templist(i)%obs_type
+      voxels(i)%location   = templist(i)%location
+      voxels(i)%first_time = templist(i)%first_time
+      voxels(i)%last_time  = templist(i)%last_time
+      voxels(i)%ntimes     = templist(i)%ntimes
    
-      if (associated(stations(i)%times)) then
-         deallocate( stations(i)%times )
-         nullify(    stations(i)%times )
+      if (associated(voxels(i)%times)) then
+         deallocate( voxels(i)%times )
+         nullify(    voxels(i)%times )
       endif
-      allocate( stations(i)%times( size(templist(i)%times) ) )
-      stations(i)%times = templist(i)%times
+      allocate( voxels(i)%times( size(templist(i)%times) ) )
+      voxels(i)%times = templist(i)%times
    
    enddo DupLoop2
    
    ! Remove the temporary space.
-   call destroy_stations(templist)
+   call destroy_voxels(templist)
 
 endif
 
-! Add the new station information.
-! Create station with nominal (mandatory) vertical value. 
+! Add the new voxel information.
+! Create voxel with nominal (mandatory) vertical value. 
 ! The vertically_desired() routine replaces the ob vertical value with
 ! the closest mandatory value, so we're good.
 
-num_stations = num_stations + 1
-station_id   = num_stations
+num_voxels = num_voxels + 1
+voxel_id   = num_voxels
 
-stations(station_id)%obs_type = ObsType
-stations(station_id)%location = ObsLocation
+voxels(voxel_id)%obs_type = ObsType
+voxels(voxel_id)%location = ObsLocation
 
 if (debug) then
    call write_location(0,ObsLocation,'ascii',string1)
-   call write_location(0,stations(station_id)%location,'ascii',string2)
+   call write_location(0,voxels(voxel_id)%location,'ascii',string2)
    write(*,*)
-   write(*,*)'Added station ',station_id,' for type ',ObsType
+   write(*,*)'Added voxel ',voxel_id,' for type ',ObsType
    write(*,*)'observation location', trim(string1)
    write(*,*)'voxel       location', trim(string2)
    write(*,*)
 endif
 
-end function add_new_station
+end function add_new_voxel
 
 
 !============================================================================
 
 
-function time_is_wanted(ObsTime, stationid, timeindex)
+function time_is_wanted(ObsTime, voxelid, timeindex)
 
-! The station has a list of the observation times closest to the
+! The voxel has a list of the observation times closest to the
 ! verification times. Determine if the observation time is closer to
 ! the verification time than what we already have.
 
 type(time_type), intent(in)  :: ObsTime
-integer,         intent(in)  :: stationid
+integer,         intent(in)  :: voxelid
 integer,         intent(out) :: timeindex
 logical                      :: time_is_wanted
 
@@ -774,12 +773,12 @@ TimeLoop : do i = 1,num_verification_times
    if (obdelta >= half_stride) cycle TimeLoop 
 
    ! we must be close now ...
-   stndelta = stations(stationid)%times(i) - all_verif_times(i)
+   stndelta = voxels(voxelid)%times(i) - all_verif_times(i)
 
    ! Check to see if the observation is closer to the verification time
    ! than the one we have.
    if (obdelta < stndelta) then
-      if (debug) call print_time(stations(stationid)%times(i),'replacing ')
+      if (debug) call print_time(voxels(voxelid)%times(i),'replacing ')
       if (debug) call print_time(ObsTime,'with this observation time')
       timeindex      = i
       time_is_wanted = .TRUE.
@@ -794,37 +793,37 @@ end function time_is_wanted
 !============================================================================
 
 
-subroutine update_time(ObsTime, stationid, timeindex)
+subroutine update_time(ObsTime, voxelid, timeindex)
 
-! The station has a list of the observation times closest to the
+! The voxel has a list of the observation times closest to the
 ! verification times. 
-! Add a new time to the station registry.
+! Add a new time to the voxel registry.
 
 type(time_type), intent(in)  :: ObsTime
-integer,         intent(in)  :: stationid
+integer,         intent(in)  :: voxelid
 integer,         intent(in)  :: timeindex
 
 ! Update stuff that seems like a good idea, 
 ! but I don't really know if I'll use it ...
-if ( stations(stationid)%ntimes == 0 ) then
-     stations(stationid)%first_time = ObsTime
-     stations(stationid)%last_time  = ObsTime
+if ( voxels(voxelid)%ntimes == 0 ) then
+     voxels(voxelid)%first_time = ObsTime
+     voxels(voxelid)%last_time  = ObsTime
 endif
 
-if ( stations(stationid)%first_time > ObsTime ) &
-     stations(stationid)%first_time = ObsTime   
-if ( stations(stationid)%last_time  < ObsTime ) &
-     stations(stationid)%last_time  = ObsTime   
+if ( voxels(voxelid)%first_time > ObsTime ) &
+     voxels(voxelid)%first_time = ObsTime   
+if ( voxels(voxelid)%last_time  < ObsTime ) &
+     voxels(voxelid)%last_time  = ObsTime   
 
-if (debug) write(*,*)'Stuffing time into station ',stationid,' at timestep ', timeindex
+if (debug) write(*,*)'Stuffing time into voxel ',voxelid,' at timestep ', timeindex
 
 ! as long as ntimes /= 0 we are OK.
-! When the stations get written to the netCDF file, count the
+! When the voxels get written to the netCDF file, count the
 ! number of non-zero times in the times array for a real count.
-stations(stationid)%ntimes = stations(stationid)%ntimes + 1 
+voxels(voxelid)%ntimes = voxels(voxelid)%ntimes + 1 
 
 ! Stuff the time in the appropriate slot ... finally.
-stations(stationid)%times(timeindex) = ObsTime
+voxels(voxelid)%times(timeindex) = ObsTime
 
 end subroutine update_time
 
@@ -838,7 +837,7 @@ integer                      :: InitNetCDF
 
 integer :: ncid, i, indx1, nlines, linelen
 integer :: LineLenDimID, nlinesDimID, stringDimID
-integer :: TimeDimID, StationsDimID, FcstDimID, VerifyDimID
+integer :: TimeDimID, voxelsDimID, FcstDimID, VerifyDimID
 integer :: VarID, FcstVarID, VerifVarID, ExperimentVarID
 integer :: nlevDimID, plevelVarID
 
@@ -931,19 +930,19 @@ enddo FILEloop
 call nc_check(nf90_set_fill(ncid, NF90_NOFILL, i),  &
             'InitNetCDF', 'set_fill '//trim(fname))
 
-! the number of stations
+! the number of voxels
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-             name='station', len = NF90_UNLIMITED, dimid = StationsDimID), &
-             'InitNetCDF', 'def_dim:station '//trim(fname))
+             name='voxel', len = NF90_UNLIMITED, dimid = voxelsDimID), &
+             'InitNetCDF', 'def_dim:voxel '//trim(fname))
 
-call nc_check(nf90_def_var(ncid=ncid, name='station', xtype=nf90_int, &
-             dimids = (/ StationsDimID /), varid=VarID), &
-             'InitNetCDF', 'station:def_var')
-call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'desired station flag'), &
-             'InitNetCDF', 'station:long_name')
-call nc_check(nf90_put_att(ncid, VarID, 'description', '1 == good station'), &
-             'InitNetCDF', 'station:description')
+call nc_check(nf90_def_var(ncid=ncid, name='voxel', xtype=nf90_int, &
+             dimids = (/ voxelsDimID /), varid=VarID), &
+             'InitNetCDF', 'voxel:def_var')
+call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'desired voxel flag'), &
+             'InitNetCDF', 'voxel:long_name')
+call nc_check(nf90_put_att(ncid, VarID, 'description', '1 == good voxel'), &
+             'InitNetCDF', 'voxel:description')
 
 ! the number of verification times
 
@@ -1051,15 +1050,15 @@ call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'input.nml contents'), &
 ! Define the observation type
 
 call nc_check(nf90_def_var(ncid=ncid, name='obs_type', xtype=nf90_char, &
-          dimids=(/ StringDimID, StationsDimID /), varid=VarID), &
+          dimids=(/ StringDimID, voxelsDimID /), varid=VarID), &
           'InitNetCDF', 'obs_type:def_var')
 call nc_check(nf90_put_att(ncid, VarID, 'long_name', &
-          'observation type string at this station'), &
+          'observation type string at this voxel'), &
           'InitNetCDF', 'obs_type:put_att long_name')
 
 ! let the location module write what it needs to ...
 
-if ( nc_write_location_atts( ncid, fname, StationsDimID ) /= 0 ) then
+if ( nc_write_location_atts( ncid, fname, voxelsDimID ) /= 0 ) then
    write(string1,*)'problem initializing netCDF location attributes'
    call error_handler(E_ERR,'InitNetCDF',string1,source,revision,revdate)
 endif
@@ -1067,19 +1066,19 @@ endif
 ! Define the number of observation times
 
 call nc_check(nf90_def_var(ncid=ncid, name='ntimes', xtype=nf90_int, &
-          dimids=(/ StationsDimID /), varid=VarID), &
+          dimids=(/ voxelsDimID /), varid=VarID), &
           'InitNetCDF', 'ntimes:def_var')
 call nc_check(nf90_put_att(ncid, VarID, 'long_name', &
-          'number of observation times at this station'), &
+          'number of observation times at this voxel'), &
           'InitNetCDF', 'ntimes:put_att long_name')
 
 ! Define the first valid observation time
 
 call nc_check(nf90_def_var(ncid=ncid, name='first_time', xtype=nf90_double, &
-          dimids=(/ StationsDimID /), varid=VarID), &
+          dimids=(/ voxelsDimID /), varid=VarID), &
           'InitNetCDF', 'first_time:def_var')
 call nc_check(nf90_put_att(ncid, VarID, 'long_name', &
-          'first valid observation time at this station'), &
+          'first valid observation time at this voxel'), &
           'InitNetCDF', 'first_time:put_att long_name')
 call nc_check(nf90_put_att(ncid, VarID, 'units',     'days since 1601-1-1'), &
           'InitNetCDF', 'first_time:put_att units')
@@ -1089,10 +1088,10 @@ call nc_check(nf90_put_att(ncid, VarID, 'calendar',  trim(calendar)), &
 ! Define the last valid observation time
 
 call nc_check(nf90_def_var(ncid=ncid, name='last_time', xtype=nf90_double, &
-          dimids=(/ StationsDimID /), varid=VarID), &
+          dimids=(/ voxelsDimID /), varid=VarID), &
           'InitNetCDF', 'last_time:def_var')
 call nc_check(nf90_put_att(ncid, VarID, 'long_name', &
-          'last valid observation time at this station'), &
+          'last valid observation time at this voxel'), &
           'InitNetCDF', 'last_time:put_att long_name')
 call nc_check(nf90_put_att(ncid, VarID, 'units',     'days since 1601-1-1'), &
           'InitNetCDF', 'last_time:put_att units')
@@ -1102,7 +1101,7 @@ call nc_check(nf90_put_att(ncid, VarID, 'calendar',  trim(calendar)), &
 ! Define the observation times
 
 call nc_check(nf90_def_var(ncid=ncid, name='ReportTime', xtype=nf90_double, &
-          dimids=(/ TimeDimID, StationsDimID /), varid=VarID), &
+          dimids=(/ TimeDimID, voxelsDimID /), varid=VarID), &
           'InitNetCDF', 'ReportTime:def_var')
 call nc_check(nf90_put_att(ncid, VarID, 'long_name', 'report time of observation'), &
           'InitNetCDF', 'ReportTime:put_att long_name')
@@ -1211,20 +1210,20 @@ end Function InitNetCDF
 !============================================================================
 
 
-subroutine WriteNetCDF(ncid, fname, stations)
+subroutine WriteNetCDF(ncid, fname, voxels)
 integer,                     intent(in) :: ncid
 character(len=*),            intent(in) :: fname
-type(station), dimension(:), intent(in) :: stations
+type(voxel), dimension(:), intent(in) :: voxels
 
-integer :: DimID, ntimes, stationindex, days, secs, i
+integer :: DimID, ntimes, voxelindex, days, secs, i
 integer, dimension(1) :: istart, icount
 
-integer :: StationVarID, TimeVarID, NTimesVarID, &
+integer :: voxelVarID, TimeVarID, NTimesVarID, &
            T1VarID, TNVarID, ObsTypeVarID, &
            LocationVarID, WhichVertVarID
 
 real(digits12), allocatable, dimension(:) :: mytimes
-integer, dimension(num_stations) :: gooduns    ! Cray compiler likes this better
+integer, dimension(num_voxels) :: gooduns    ! Cray compiler likes this better
 
 character(len=obstypelength) :: string32(1) ! MUST BE A '2D' ARRAY
 
@@ -1232,13 +1231,13 @@ character(len=obstypelength) :: string32(1) ! MUST BE A '2D' ARRAY
 ! Find the current length of the unlimited dimension so we can add correctly.
 !----------------------------------------------------------------------------
 
-call nc_check(nf90_inq_varid(ncid, 'station', varid=StationVarID), &
-                   'WriteNetCDF', 'inq_varid:stationindex '//trim(fname))
+call nc_check(nf90_inq_varid(ncid, 'voxel', varid=voxelVarID), &
+                   'WriteNetCDF', 'inq_varid:voxelindex '//trim(fname))
 
 gooduns = 0
-where(DesiredStations) gooduns = 1
+where(Desiredvoxels) gooduns = 1
 
-call nc_check(nf90_put_var(ncid, StationVarID, gooduns), &
+call nc_check(nf90_put_var(ncid, voxelVarID, gooduns), &
                    'WriteNetCDF', 'put_var:gooduns '//trim(fname))
 
 call nc_check(nf90_inq_varid(ncid, 'ReportTime', varid=TimeVarID), &
@@ -1265,9 +1264,9 @@ call nc_get_location_varids(ncid, fname, LocationVarID, WhichVertVarID)
 
 allocate(mytimes(ntimes))
 
-WriteObs : do stationindex = 1,num_stations
+WriteObs : do voxelindex = 1,num_voxels
 
-   istart(1) = stationindex
+   istart(1) = voxelindex
    icount(1) = 1
 
    ! Must go through Herculean tasks to create 'blank-filled' strings
@@ -1275,26 +1274,26 @@ WriteObs : do stationindex = 1,num_stations
 
    string1     = ' '
    string32(1) = ' '
-   string1 = get_obs_kind_name(stations(stationindex)%obs_type)
+   string1 = get_obs_kind_name(voxels(voxelindex)%obs_type)
    write(string32(1),'(A)') string1(1:obstypelength)
 
    call nc_check(nf90_put_var(ncid, ObsTypeVarId, string32, &
-                start=(/ 1, stationindex /), count=(/ obstypelength, 1 /) ), &
+                start=(/ 1, voxelindex /), count=(/ obstypelength, 1 /) ), &
                 'WriteNetCDF', 'put_var:obs_type_string')
 
-   call get_time(stations(stationindex)%first_time, secs, days)
+   call get_time(voxels(voxelindex)%first_time, secs, days)
    mytimes(1) = days + secs/(60.0_digits12 * 60.0_digits12 * 24.0_digits12)
    call nc_check(nf90_put_var(ncid, T1VarId, (/ mytimes(1) /), &
-                start=(/ stationindex /), count=(/ 1 /) ), &
+                start=(/ voxelindex /), count=(/ 1 /) ), &
                 'WriteNetCDF', 'put_var:first_time')
 
-   call get_time(stations(stationindex)%last_time, secs, days)
+   call get_time(voxels(voxelindex)%last_time, secs, days)
    mytimes(1) = days + secs/(60.0_digits12 * 60.0_digits12 * 24.0_digits12)
    call nc_check(nf90_put_var(ncid, TNVarId, (/ mytimes(1) /), &
-                start=(/ stationindex /), count=(/ 1 /) ), &
+                start=(/ voxelindex /), count=(/ 1 /) ), &
                 'WriteNetCDF', 'put_var:last_time')
 
-   call nc_check(nf90_put_var(ncid, NTimesVarId, (/ stations(stationindex)%ntimes /), &
+   call nc_check(nf90_put_var(ncid, NTimesVarId, (/ voxels(voxelindex)%ntimes /), &
                 start=istart, count=icount), 'WriteNetCDF', 'put_var:ntimes')
 
    !----------------------------------------------------------------------------
@@ -1302,19 +1301,19 @@ WriteObs : do stationindex = 1,num_stations
    !----------------------------------------------------------------------------
    mytimes = 0.0_digits12
    do i = 1,ntimes
-      call get_time(stations(stationindex)%times(i), secs, days)
+      call get_time(voxels(voxelindex)%times(i), secs, days)
       mytimes(i) = days + secs/(60.0_digits12 * 60.0_digits12 * 24.0_digits12)
    enddo
 
    call nc_check(nf90_put_var(ncid, TimeVarId, mytimes, &
-                start=(/ 1, stationindex /), count=(/ ntimes, 1 /) ), &
+                start=(/ 1, voxelindex /), count=(/ ntimes, 1 /) ), &
                 'WriteNetCDF', 'put_var:times')
 
    !----------------------------------------------------------------------------
    ! Using the location_mod:nc_write_location() routine.
    !----------------------------------------------------------------------------
-   call nc_write_location(ncid, LocationVarId, stations(stationindex)%location, &
-             stationindex, WhichVertVarId)
+   call nc_write_location(ncid, LocationVarId, voxels(voxelindex)%location, &
+             voxelindex, WhichVertVarId)
 
 enddo WriteObs
 
@@ -1347,47 +1346,47 @@ end subroutine CloseNetCDF
 !============================================================================
 
 
-subroutine initialize_stations(Nstations, mystations)
-integer,                                  intent(in)  :: Nstations
-type(station), allocatable, dimension(:), intent(out) :: mystations
+subroutine initialize_voxels(Nvoxels, myvoxels)
+integer,                                  intent(in)  :: Nvoxels
+type(voxel), allocatable, dimension(:), intent(out) :: myvoxels
 
 integer :: i
 
-allocate(mystations(Nstations))
+allocate(myvoxels(Nvoxels))
 
-do i = 1,Nstations
-   mystations(i)%obs_type   = 0
-   mystations(i)%location   = set_location_missing()
-   mystations(i)%ntimes     = 0
-   allocate( mystations(i)%times( num_verification_times ) )
-   mystations(i)%first_time = no_time
-   mystations(i)%last_time  = no_time
-   mystations(i)%times      = no_time
+do i = 1,Nvoxels
+   myvoxels(i)%obs_type   = 0
+   myvoxels(i)%location   = set_location_missing()
+   myvoxels(i)%ntimes     = 0
+   allocate( myvoxels(i)%times( num_verification_times ) )
+   myvoxels(i)%first_time = no_time
+   myvoxels(i)%last_time  = no_time
+   myvoxels(i)%times      = no_time
 enddo
 
-end subroutine initialize_stations
+end subroutine initialize_voxels
 
 
 !============================================================================
 
 
-subroutine destroy_stations(mystations)
-type(station), allocatable, dimension(:), intent(inout) :: mystations
+subroutine destroy_voxels(myvoxels)
+type(voxel), allocatable, dimension(:), intent(inout) :: myvoxels
 
 integer :: i,N
 
-N = size(mystations)
+N = size(myvoxels)
 
 do i = 1,N
-   if (associated(mystations(i)%times)) then
-      deallocate( mystations(i)%times )
-      nullify(    mystations(i)%times )
+   if (associated(myvoxels(i)%times)) then
+      deallocate( myvoxels(i)%times )
+      nullify(    myvoxels(i)%times )
    endif
 enddo
 
-if (allocated(mystations)) deallocate(mystations)
+if (allocated(myvoxels)) deallocate(myvoxels)
 
-end subroutine destroy_stations
+end subroutine destroy_voxels
 
 
 !============================================================================
@@ -1398,7 +1397,7 @@ subroutine write_obsdefs
 ! Write out a file containing the observation definitions of the desired 
 ! observations. This file is used to subset the 'big' observation sequence 
 ! files to harvest the observations used to validate the forecast. 
-! Also, print a summary of the stations we found, etc.
+! Also, print a summary of the voxels we found, etc.
 
 integer :: sec1,secN,day1,dayN
 type(obs_def_type) :: obs_def
@@ -1409,8 +1408,8 @@ iunit = get_unit()
 open(iunit,file=trim(textfile_out), form='formatted', &
                 action='write', position='rewind')
 
-! num_out_total is the result of traversing the list of stations and times
-! and finding the intersection with the user input. How many stations
+! num_out_total is the result of traversing the list of voxels and times
+! and finding the intersection with the user input. How many voxels
 ! and times fit the requirements.
 write(iunit,*)'num_definitions ',num_out_total
 
@@ -1433,26 +1432,26 @@ if ( debug ) then
    write(*,*)
 endif
 
-Selections : do i = 1,num_stations
+Selections : do i = 1,num_voxels
 
-   if ( .not. DesiredStations(i) ) cycle Selections
+   if ( .not. Desiredvoxels(i) ) cycle Selections
 
-   call set_obs_def_kind(    obs_def, stations(i)%obs_type)
-   call set_obs_def_location(obs_def, stations(i)%location)
+   call set_obs_def_kind(    obs_def, voxels(i)%obs_type)
+   call set_obs_def_location(obs_def, voxels(i)%location)
 
    TimeLoop : do j = 1,num_verification_times
-      if (stations(i)%times(j) /= no_time) then
-         call set_obs_def_time( obs_def, stations(i)%times(j))
+      if (voxels(i)%times(j) /= no_time) then
+         call set_obs_def_time( obs_def, voxels(i)%times(j))
          call write_obs_def(iunit, obs_def, i, 'formatted')
       endif
    enddo TimeLoop
 
    if (verbose) then
-      call get_time(stations(i)%first_time,sec1,day1)
-      call get_time(stations(i)%last_time, secN,dayN)
-      write(*,'(''station '',i6,'' has '',i3,'' obs between ['',&
+      call get_time(voxels(i)%first_time,sec1,day1)
+      call get_time(voxels(i)%last_time, secN,dayN)
+      write(*,'(''voxel '',i6,'' has '',i3,'' obs between ['',&
                   &i7,1x,i5,'' and '',i7,1x,i5,'']'')') &
-       i,stations(i)%ntimes,day1,sec1,dayN,secN
+       i,voxels(i)%ntimes,day1,sec1,dayN,secN
    endif
 
 enddo Selections
