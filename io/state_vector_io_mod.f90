@@ -4,7 +4,6 @@
 !
 ! $Id$
 
-!> \mainpage State Vector IO (actually just I)
 !> IO for the state vector. \n
 !> Idea is to be generic. \n
 !> Don't want to go to the filesystem twice wrf => wrf_to_dart => dart => dart_to_wrf \n
@@ -25,8 +24,6 @@
 !>* Don't have to use a parallel IO library.
 !>
 !>If limit 1 > state vector size and limit 2 > number of tasks, you have the regular transpose.
-
-!FIXME _mod.f90
 
 module state_vector_io_mod
 
