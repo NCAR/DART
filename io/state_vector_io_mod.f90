@@ -44,7 +44,7 @@ implicit none
 
 private
 
-public :: intialize_arrays_for_read, &
+public :: initialize_arrays_for_read, &
           netcdf_filename, get_state_variable_info, &
           read_transpose, &
           limit_mem, limit_procs, &
@@ -74,13 +74,13 @@ contains
 
 !-------------------------------------------------
 !> Initialize arrays.  Need to know the number of domains
-subroutine intialize_arrays_for_read(n, num_domains)
+subroutine initialize_arrays_for_read(n, num_domains)
 
 integer, intent(in) :: n !< number of state variables
 integer, intent(in) :: num_domains !< number of domains (and therfore netcdf files) to read
 
-if(allocated(variable_ids))   call error_handler(E_ERR, 'intialize_arrays_for_read', 'already called this routine')
-if(allocated(variable_sizes)) call error_handler(E_ERR, 'intialize_arrays_for_read', 'already called this routine')
+if(allocated(variable_ids))   call error_handler(E_ERR, 'initialize_arrays_for_read', 'already called this routine')
+if(allocated(variable_sizes)) call error_handler(E_ERR, 'initialize_arrays_for_read', 'already called this routine')
 
 num_state_variables = n
 
@@ -90,7 +90,7 @@ allocate(dimensions_and_lengths(n, MAXDIMS +1, num_domains))
 
 dimensions_and_lengths = -1  ! initialize to a nonsense value
 
-end subroutine intialize_arrays_for_read
+end subroutine initialize_arrays_for_read
 
 !-------------------------------------------------
 !> Need list of variables in the state
@@ -220,7 +220,7 @@ integer :: send_start, send_end
 integer :: ensemble_member !< the ensmeble_member you are receiving.
 integer :: dummy_loop
 
-ens_size = state_ens_handle%num_copies ! this is not true, this is copies + extras.  
+ens_size = state_ens_handle%num_copies -6 ! don't want the extras
 my_pe = state_ens_handle%my_pe
 
 ! what to do if a variable is larger than the memory limit?
@@ -234,6 +234,8 @@ call get_pe_loops(my_pe, ens_size, group_size, recv_start, recv_end, send_start,
 ! You have already opened this once to read the variable info. Should you just leave it open
 ! on the readers?
 if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader 
+   write(netcdf_filename, '(A, i2.2, A, i1.1)') 'wrfinput_d', domain, '.', my_pe + 1
+   print*, 'netcdf filename ', trim(netcdf_filename), ' pe', my_pe
    ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
    call nc_check(ret, 'read_transpose', 'opening')
 endif

@@ -65,6 +65,11 @@ use distributed_state_mod
 
 use data_structure_mod, only : copies_in_window ! should this be through ensemble_manager?
 
+use state_vector_io_mod,   only : read_transpose, transpose_write, get_state_variable_info,  &
+                                  initialize_arrays_for_read, netcdf_filename, limit_mem, limit_procs
+
+use model_mod,            only : variables_domains, fill_variable_list
+
 use mpi
 
 
@@ -121,6 +126,7 @@ logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
 logical  :: silence                  = .false.
 logical  :: parallel_state_diag      = .true. ! default to write diagnostics in parallel
+logical  :: direct_netcdf_read = .true. ! default to read from netcdf file
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
                         obs_sequence_out_name = "obs_seq.final",  &
@@ -160,7 +166,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
    inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, output_inflation,          &
-   silence, parallel_state_diag
+   silence, parallel_state_diag, direct_netcdf_read
 
 
 !----------------------------------------------------------------
@@ -327,7 +333,13 @@ call timestamp_message('Before reading in ensemble restart files')
 call filter_set_initial_time(time1)
 
 ! Read in restart files and initialize the ensemble storage
-call filter_read_restart(ens_handle, time1, model_size)
+if (direct_netcdf_read) then
+   call filter_read_restart_direct(ens_handle, time1, ens_size, model_size) ! This is annoying
+else
+   call filter_read_restart(ens_handle, time1, model_size)
+endif
+
+call test_state_copies(ens_handle, 'after_read')
 
 ! Read in or initialize smoother restarts as needed
 if(ds) then
@@ -1446,6 +1458,59 @@ if(ens_handle%my_pe == 0) then
 endif
 
 end subroutine filter_read_restart
+
+!------------------------------------------------------------------
+!> Read the restart information directly from the model output
+!> netcdf file
+subroutine filter_read_restart_direct(state_ens_handle, time, ens_size, model_size)
+
+type(ensemble_type), intent(inout) :: state_ens_handle
+type(time_type),     intent(in)    :: time
+integer,             intent(in)    :: ens_size
+integer,             intent(out)   :: model_size
+
+character(len=256), allocatable :: variable_list(:) !< does this need to be module storage
+integer                         :: dart_index !< where to start in state_ens_handle%copies
+integer                         :: num_domains !< number of input files to read
+integer                         :: domain !< loop index
+integer                         :: domain_size !< number of state elements in a domain
+integer                         :: num_variables_in_state
+
+! to start with, assume same variables in each domain - this will not always be the case
+! If they are not in a domain, just set lengths to zero?
+call variables_domains(num_variables_in_state, num_domains)
+allocate(variable_list(num_variables_in_state))
+
+limit_mem = 73774800
+limit_procs = 1024
+
+variable_list = fill_variable_list(num_variables_in_state)
+
+! need to know number of domains
+call initialize_arrays_for_read(num_variables_in_state, num_domains)
+
+model_size = 0
+do domain = 1, num_domains
+   write(netcdf_filename, '(A, i2.2, A)') 'wrfinput_d', domain, '.1' ! Just for wrf right now
+   call get_state_variable_info(num_variables_in_state, variable_list, domain, domain_size)
+   model_size = model_size + domain_size
+enddo
+
+! set up ensemble
+call init_ensemble_manager(state_ens_handle, ens_size + 6, model_size)
+
+! fix time for now
+state_ens_handle%time = time
+
+! read in the data and transpose
+dart_index = 1 ! where to start in state_ens_handle%copies - this is modified by read_transpose
+do domain = 1, num_domains
+   call read_transpose(state_ens_handle, domain, dart_index)
+enddo
+
+! Need Temporary print of initial model time?
+
+end subroutine filter_read_restart_direct
 
 !-------------------------------------------------------------------------
 
