@@ -565,7 +565,9 @@ AdvanceTime : do
    call trace_message('After  setup for next group of observations')
 
    ! Compute mean and spread for inflation and state diagnostics
-   if (allow_complete_state()) call all_vars_to_all_copies(ens_handle)
+   if (.not. direct_netcdf_read) then 
+      if (allow_complete_state()) call all_vars_to_all_copies(ens_handle)
+   endif
 
    call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 

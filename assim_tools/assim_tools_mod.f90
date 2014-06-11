@@ -652,9 +652,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          call broadcast_send(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord)
       endif
 
-      ! use converted vertical coordinate from owner
-      base_obs_loc%vloc = my_obs_loc(owners_index)%vloc ! i is the wrong index
-      base_obs_loc%which_vert = query_vert_localization_coord()
+      if (.not. lanai_bitwise) then 
+         ! use converted vertical coordinate from owner
+         base_obs_loc%vloc = my_obs_loc(owners_index)%vloc ! i is the wrong index
+         base_obs_loc%which_vert = query_vert_localization_coord()
+      endif
 
    ! Next block is done by processes that do NOT own this observation
    !-----------------------------------------------------------------------
@@ -671,9 +673,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          call broadcast_recv(map_pe_to_task(ens_handle, owner), obs_prior, obs_inc, net_a, scalar1=obs_qc, scalar2=vert_obs_loc_in_localization_coord)
       endif
 
-      ! use converted vertical coordinate from owner
-      base_obs_loc%vloc = vert_obs_loc_in_localization_coord
-      base_obs_loc%which_vert = query_vert_localization_coord()
+      if (.not. lanai_bitwise) then
+         ! use converted vertical coordinate from owner
+         base_obs_loc%vloc = vert_obs_loc_in_localization_coord
+         base_obs_loc%which_vert = query_vert_localization_coord()
+      endif
    endif
    !-----------------------------------------------------------------------
 

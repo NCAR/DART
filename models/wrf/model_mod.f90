@@ -137,6 +137,8 @@ public ::  get_model_size,                    &
            model_interpolate_distrib,         &
            vert_convert_distrib,              &
            query_vert_localization_coord,     &
+           variables_domains,                 &
+           fill_variable_list,                &
            convert_base_obs_location !HK
 
 !  public stubs 
@@ -6404,7 +6406,7 @@ if (.not. horiz_dist_only) then
    if (base_which /= wrf%dom(1)%localization_coord) then
       !print*, 'base_which ', base_which, 'loc coord ', wrf%dom(1)%localization_coord
       call vert_convert_distrib(state_ens_handle, base_obs_loc, base_obs_kind, istatus1)
-      call error_handler(E_ERR, 'you should not call this ', 'get_close_obs_distrib')
+      !call error_handler(E_ERR, 'you should not call this ', 'get_close_obs_distrib')
    elseif (base_array(3) == missing_r8) then
       istatus1 = 1
    endif
@@ -8495,6 +8497,30 @@ vert_coord = base_array(3)
 !obs_loc = set_location(base_array(1), base_array(2), base_array(3), wrf%dom(1)%localization_coord )
 
 end subroutine convert_base_obs_location
+
+!--------------------------------------------------------------------
+!> pass number of variables in the state out to filter 
+subroutine variables_domains(num_variables_in_state, num_doms)
+
+integer, intent(out) :: num_variables_in_state
+integer, intent(out) :: num_doms !< number of domains
+
+num_variables_in_state = wrf%dom(1)%number_of_wrf_variables !> @todo massive assumption same variables in each domain
+num_doms = num_domains
+
+end subroutine variables_domains
+
+!--------------------------------------------------------------------
+!> pass variable list to filter
+function fill_variable_list(num_variables_in_state)
+
+integer            :: num_variables_in_state
+character(len=256) :: fill_variable_list(num_variables_in_state)
+
+fill_variable_list = wrf_state_variables(1,1:num_variables_in_state)
+
+end function fill_variable_list
+
 
 end module model_mod
 
