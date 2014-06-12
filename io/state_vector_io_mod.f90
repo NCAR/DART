@@ -234,7 +234,7 @@ call get_pe_loops(my_pe, ens_size, group_size, recv_start, recv_end, send_start,
 ! You have already opened this once to read the variable info. Should you just leave it open
 ! on the readers?
 if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader 
-   write(netcdf_filename, '(A, i2.2, A, i1.1)') 'wrfinput_d', domain, '.', my_pe + 1
+   write(netcdf_filename, '(A, i2.2, A, i1.1)') 'wrfinput_d', domain, '.', my_pe - recv_start + 1
    print*, 'netcdf filename ', trim(netcdf_filename), ' pe', my_pe
    ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
    call nc_check(ret, 'read_transpose', 'opening')
