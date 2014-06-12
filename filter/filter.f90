@@ -339,8 +339,6 @@ else
    call filter_read_restart(ens_handle, time1, model_size)
 endif
 
-call test_state_copies(ens_handle, 'after_read')
-
 ! Read in or initialize smoother restarts as needed
 if(ds) then
    call init_smoother(ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
