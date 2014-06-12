@@ -936,7 +936,9 @@ end do AdvanceTime
 
 10011 continue
 
-if (allow_complete_state()) call all_copies_to_all_vars(ens_handle) ! to write restarts
+if( .not. direct_netcdf_read ) then
+   if (allow_complete_state()) call all_copies_to_all_vars(ens_handle) ! to write restarts
+endif
 
 call trace_message('End of main filter assimilation loop, starting cleanup', 'filter:', -1)
 
@@ -961,11 +963,15 @@ call trace_message('After  writing inflation restart files if required')
 
 ! Output a restart file if requested
 call trace_message('Before writing state restart files if requested')
-if(output_restart) &
-   call write_ensemble_restart(ens_handle, restart_out_file_name, 1, ens_size)
-if(output_restart_mean) &
+if (direct_netcdf_read) then
+   call filter_write_restart_direct(ens_handle)
+else
+   if(output_restart) &
+      call write_ensemble_restart(ens_handle, restart_out_file_name, 1, ens_size)
+   if(output_restart_mean) &
    call write_ensemble_restart(ens_handle, trim(restart_out_file_name)//'.mean', &
                                ENS_MEAN_COPY, ENS_MEAN_COPY, .true.)
+endif
 
 if(ds) call smoother_write_restart(1, ens_size)
 call trace_message('After  writing state restart files if requested')
@@ -1514,6 +1520,27 @@ enddo
 
 end subroutine filter_read_restart_direct
 
+!-------------------------------------------------------------------------
+!> write the restart information directly into the model netcdf file.
+subroutine filter_write_restart_direct(state_ens_handle)
+
+type(ensemble_type), intent(inout) :: state_ens_handle
+
+integer :: dart_index !< where to start in state_ens_handle%copies
+integer :: num_variables_in_state
+integer :: num_domains
+integer :: domain !< loop index
+
+call variables_domains(num_variables_in_state, num_domains)
+
+! transpose and write out the data
+dart_index = 1
+do domain = 1, num_domains
+   call transpose_write(state_ens_handle, domain, dart_index)
+enddo
+
+
+end subroutine filter_write_restart_direct
 !-------------------------------------------------------------------------
 
 subroutine filter_ensemble_inflate(ens_handle, inflate_copy, inflate, ENS_MEAN_COPY)

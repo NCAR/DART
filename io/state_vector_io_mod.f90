@@ -362,7 +362,7 @@ integer              :: num_blocks
 integer              :: ierr !< mpi error (all errors are fatal so I don't bother checking this
 integer              :: collector_type !< mpi derived datatype
 
-ens_size = state_ens_handle%num_copies ! this is not true, this is copies + extras
+ens_size = state_ens_handle%num_copies -6 ! don't want the extras
 my_pe = state_ens_handle%my_pe
 
 start_var = 1 ! collect first variable first
@@ -374,6 +374,8 @@ call get_pe_loops(my_pe, ens_size, group_size, send_start, send_end, recv_start,
 
 ! writers open netcdf output file. This is a copy of the input file
 if (my_pe < ens_size) then
+   write(netcdf_filename_out, '(A, i2.2, A, i1.1, A)') 'wrfinput_d', domain, '.', my_pe - recv_start + 1, '.nc'
+   print*, 'netcdf_filename_out ', netcdf_filename_out
    ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
    call nc_check(ret, 'transpose_write', 'opening')
 endif
