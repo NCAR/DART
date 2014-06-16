@@ -328,7 +328,6 @@ end subroutine read_transpose
 !> limit_procs is used to devide the pes into groups.  Note that the
 !> groups are not created using mpi_group_incl.
 !> 
-!> Start with limited memory only ( use all tasks )
 !> Using the term collectors = first stage of amalgamating 
 subroutine transpose_write(state_ens_handle, domain, dart_index)
 
@@ -351,9 +350,12 @@ integer :: start_rank
 integer :: group_size
 integer :: recv_start, recv_end
 integer :: send_start, send_end
-integer :: copy
+integer :: ensemble_member
 integer :: g !< group loop index
 integer :: num_groups !< number of groups the transpose is split into.  Only relevant if limit_procs < task_count()
+integer :: assembling_ensemble !< which ensemble the collectors are assembling
+integer :: my_group !< which group my_pe is a member of
+integer :: num_in_group !< how many processors are in a group
 
 ! mpi_type variables
 integer, allocatable :: array_of_blocks(:)
@@ -361,6 +363,7 @@ integer, allocatable :: array_of_displacements(:)
 integer              :: num_blocks
 integer              :: ierr !< mpi error (all errors are fatal so I don't bother checking this
 integer              :: collector_type !< mpi derived datatype
+integer status(MPI_STATUS_SIZE)
 
 ens_size = state_ens_handle%num_copies -6 ! don't want the extras
 my_pe = state_ens_handle%my_pe
@@ -374,8 +377,8 @@ call get_pe_loops(my_pe, ens_size, group_size, send_start, send_end, recv_start,
 
 ! writers open netcdf output file. This is a copy of the input file
 if (my_pe < ens_size) then
-   write(netcdf_filename_out, '(A, i2.2, A, i1.1, A)') 'wrfinput_d', domain, '.', my_pe - recv_start + 1, '.nc'
-   print*, 'netcdf_filename_out ', netcdf_filename_out
+   write(netcdf_filename_out, '(A, i2.2, A, i1.1, A)') 'wrfinput_d', domain, '.', my_pe + 1, '.nc'
+   !print*, 'netcdf_filename_out ', trim(netcdf_filename_out)
    ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
    call nc_check(ret, 'transpose_write', 'opening')
 endif
@@ -414,13 +417,17 @@ do while (start_var <= num_state_variables)
 
       else ! send to the collector
 
+         ensemble_member = 1
+
          do recv_pe = recv_start, recv_end ! no if statement because everyone sends
-            copy = recv_pe + 1
+
             if ( recv_pe /= my_pe ) then 
-               call send_to(map_pe_to_task(state_ens_handle, recv_pe), state_ens_handle%copies(copy, starting_point:ending_point))
+               call send_to(map_pe_to_task(state_ens_handle, recv_pe), state_ens_handle%copies(ensemble_member, starting_point:ending_point))
             else ! if sender = receiver just copy
-                  var_block(i:count*task_count():task_count()) = state_ens_handle%copies(copy, starting_point:ending_point)
+                  var_block(i:count*task_count():task_count()) = state_ens_handle%copies(ensemble_member, starting_point:ending_point)
             endif
+
+            ensemble_member = ensemble_member + 1
 
          enddo
 
@@ -442,28 +449,81 @@ do while (start_var <= num_state_variables)
    else ! Need to aggregate onto the writers (ens_size writers) Is there a better way to do this?
 
       if ((my_pe >= recv_start) .and. (my_pe <= recv_end)) then ! I am a collector
-      
-         do g = 2, num_groups
 
-            ! create datatype for the data being sent to the writers - same across the ensemble
-            num_blocks = 2
-            allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
-            array_of_blocks = 1
-            array_of_displacements = 2
+         assembling_ensemble = my_pe - recv_start + 1
+         num_groups = task_count() / limit_procs
+         if (mod(task_count(), limit_procs) /= 0) then ! have to do somthing else
+            num_groups = num_groups + 1
+            if (mod(task_count(), limit_procs) < ens_size) num_groups = num_groups - 1 ! last group is big
+         endif
 
-            call mpi_type_indexed(num_blocks, array_of_blocks, array_of_displacements, mpi_real, collector_type, ierr) ! real*4 real*8
-            call mpi_type_commit(collector_type, ierr)
+         my_group = my_pe / limit_procs + 1
+         if (my_group > num_groups) my_group = num_groups ! last group is big
 
-            ! collectors -> writers loop
-            call mpi_send(var_block, 1, collector_type, recv_pe, mpi_any_tag, mpi_comm_world, ierr)
+         do g = 2, num_groups ! do whole ensemble at once
 
-            deallocate(array_of_blocks, array_of_displacements)
-            call mpi_type_free(collector_type, ierr)
+            ! only group sending and first group need to be involved
+            if ((my_group == g) .or. (my_group == 1)) then
 
-         call write_variables(var_block, start_var, end_var, domain)
-         deallocate(var_block)
+               ! create datatype for the data being sent to the writers - same across the ensemble
+               ! need to find size of group g. Only the last group could be a different size
+               if (g < num_groups) then
+                  num_in_group = limit_procs
+               else
+                  num_in_group = get_group_size(task_count(), ens_size)
+               endif
+
+               num_blocks = (num_vars - (g-1)*limit_procs) / task_count()
+
+               remainder = mod((num_vars - (g-1)*limit_procs), task_count())
+
+               if (remainder > 0 ) num_blocks = num_blocks + 1 ! ragged end
+
+               allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
+
+               array_of_displacements(1) = (g-1)*limit_procs
+               do i = 2, num_blocks
+                  array_of_displacements(i) = array_of_displacements(i-1) + task_count()
+               enddo
+
+               if (remainder == 0) then
+                  array_of_blocks(1:num_blocks) = num_in_group ! this needs to be the number of processors in group g
+               else
+                  array_of_blocks(1:num_blocks - 1) = num_in_group
+                  if ( num_vars - task_count()*(num_blocks-1) < num_in_group) then
+                     array_of_blocks(num_blocks) = num_vars - task_count()*(num_blocks-1)
+                  else
+                     array_of_blocks(num_blocks) = num_in_group
+                  endif
+               endif
+
+               call mpi_type_indexed(num_blocks, array_of_blocks, array_of_displacements, mpi_real8, collector_type, ierr) ! real*4 real*8
+               call mpi_type_commit(collector_type, ierr)
+
+               ! collectors -> writers loop
+               recv_pe = assembling_ensemble - 1
+               sending_pe = recv_pe + (g-1)*limit_procs
+               if (my_pe == recv_pe) then
+                  call mpi_recv(var_block, 1, collector_type, map_pe_to_task(state_ens_handle,sending_pe), 0, mpi_comm_world, status, ierr)
+               elseif (my_pe == sending_pe) then
+                  call mpi_send(var_block, 1, collector_type, map_pe_to_task(state_ens_handle,recv_pe), 0, mpi_comm_world, ierr)
+               endif
+
+               call mpi_type_free(collector_type, ierr)
+               deallocate(array_of_blocks, array_of_displacements)
+
+            endif
+
+            if(my_pe==0) print*, 'completed interation', g-1
 
          enddo
+
+         if (my_pe < ens_size) then ! I am a writer
+            !var_block = MISSING_R8  ! if you want to create a file for bitwise testing
+            call write_variables(var_block, start_var, end_var, domain)
+         endif
+
+         deallocate(var_block) ! all collectors have var_block
 
       endif
 
@@ -479,7 +539,7 @@ if (my_pe < ens_size ) then ! I am a writer
    call nc_check(ret, 'transpose_write', 'closing')
 endif
 
-dart_index= starting_point
+dart_index = starting_point
 
 end subroutine transpose_write
 
