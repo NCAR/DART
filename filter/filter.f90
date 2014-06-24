@@ -1487,7 +1487,12 @@ integer                         :: num_variables_in_state
 call variables_domains(num_variables_in_state, num_domains)
 allocate(variable_list(num_variables_in_state))
 
-limit_mem = 73774800
+!limit_mem = 7377480
+limit_mem = 317731
+!limit_mem = 635462
+!limit_mem = 2088655
+!!limit_mem = 2188655
+!limit_mem = 1088655
 limit_procs = 1024
 
 variable_list = fill_variable_list(num_variables_in_state)
@@ -1497,7 +1502,7 @@ call initialize_arrays_for_read(num_variables_in_state, num_domains)
 
 model_size = 0
 do domain = 1, num_domains
-   write(netcdf_filename, '(A, i2.2, A)') 'wrfinput_d', domain, '.1' ! Just for wrf right now
+   write(netcdf_filename, '(A, i2.2, A)') 'wrfinput_d', domain, '.01' ! Just for wrf right now
    call get_state_variable_info(num_variables_in_state, variable_list, domain, domain_size)
    model_size = model_size + domain_size
 enddo

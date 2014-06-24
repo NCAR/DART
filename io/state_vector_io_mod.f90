@@ -234,8 +234,8 @@ call get_pe_loops(my_pe, ens_size, group_size, recv_start, recv_end, send_start,
 ! You have already opened this once to read the variable info. Should you just leave it open
 ! on the readers?
 if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader 
-   write(netcdf_filename, '(A, i2.2, A, i1.1)') 'wrfinput_d', domain, '.', my_pe - recv_start + 1
-   print*, 'netcdf filename ', trim(netcdf_filename), ' pe', my_pe
+   write(netcdf_filename, '(A, i2.2, A, i2.2)') 'wrfinput_d', domain, '.', my_pe - recv_start + 1
+   !print*, 'netcdf filename ', trim(netcdf_filename), ' pe', my_pe
    ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
    call nc_check(ret, 'read_transpose', 'opening')
 endif
@@ -255,7 +255,7 @@ do dummy_loop = 1, num_state_variables
    endif
 
    start_rank = mod(sum_variables_below(start_var,domain), task_count())
-   if(my_task_id()==0) print*, 'start rank', start_rank, sum_variables_below(start_var,domain)
+   !if(my_task_id()==0) print*, 'start rank', start_rank, sum_variables_below(start_var,domain)
 
    ! loop through and post recieves 
    RECEIVING_PE_LOOP: do recv_pe = recv_start, recv_end
@@ -356,7 +356,8 @@ integer :: num_groups !< number of groups the transpose is split into.  Only rel
 integer :: assembling_ensemble !< which ensemble the collectors are assembling
 integer :: my_group !< which group my_pe is a member of
 integer :: num_in_group !< how many processors are in a group
-
+integer :: dummy_loop
+integer :: a, k, n, owner, y
 ! mpi_type variables
 integer, allocatable :: array_of_blocks(:)
 integer, allocatable :: array_of_displacements(:)
@@ -370,6 +371,7 @@ my_pe = state_ens_handle%my_pe
 
 start_var = 1 ! collect first variable first
 starting_point = dart_index ! position in state_ens_handle%copies
+a = 0 ! start at group 1 element 1
 
 ! post recieves
 ! need to calculate RECEIVING_PE_LOOP start:end, group size, sending_pe start:end for each group.
@@ -377,13 +379,14 @@ call get_pe_loops(my_pe, ens_size, group_size, send_start, send_end, recv_start,
 
 ! writers open netcdf output file. This is a copy of the input file
 if (my_pe < ens_size) then
-   write(netcdf_filename_out, '(A, i2.2, A, i1.1, A)') 'wrfinput_d', domain, '.', my_pe + 1, '.nc'
+   write(netcdf_filename_out, '(A, i2.2, A, i2.2, A)') 'wrfinput_d', domain, '.', my_pe + 1, '.nc'
    !print*, 'netcdf_filename_out ', trim(netcdf_filename_out)
    ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
    call nc_check(ret, 'transpose_write', 'opening')
 endif
 
-do while (start_var <= num_state_variables)
+do dummy_loop = 1, num_state_variables
+   if (start_var > num_state_variables) exit ! instead of using do while loop
 
    ! calculate how many variables will be sent to writer
    end_var = calc_end_var(start_var, domain)
@@ -473,28 +476,98 @@ do while (start_var <= num_state_variables)
                   num_in_group = get_group_size(task_count(), ens_size)
                endif
 
-               num_blocks = (num_vars - (g-1)*limit_procs) / task_count()
+               if (a == 0) then ! group 1, element 1 starts the var_block
 
-               remainder = mod((num_vars - (g-1)*limit_procs), task_count())
+                  num_blocks = (num_vars - (g-1)*limit_procs) / task_count()
 
-               if (remainder > 0 ) num_blocks = num_blocks + 1 ! ragged end
+                  remainder = mod((num_vars - (g-1)*limit_procs), task_count())
 
-               allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
+                  if (remainder > 0 ) num_blocks = num_blocks + 1 ! ragged end
+                  allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
 
-               array_of_displacements(1) = (g-1)*limit_procs
-               do i = 2, num_blocks
-                  array_of_displacements(i) = array_of_displacements(i-1) + task_count()
-               enddo
+                  array_of_displacements(1) = (g-1)*limit_procs
+                  do i = 2, num_blocks
+                     array_of_displacements(i) = array_of_displacements(i-1) + task_count()
+                  enddo
 
-               if (remainder == 0) then
-                  array_of_blocks(1:num_blocks) = num_in_group ! this needs to be the number of processors in group g
-               else
-                  array_of_blocks(1:num_blocks - 1) = num_in_group
-                  if ( num_vars - task_count()*(num_blocks-1) < num_in_group) then
-                     array_of_blocks(num_blocks) = num_vars - task_count()*(num_blocks-1)
+                  if (remainder == 0) then
+                     array_of_blocks(1:num_blocks) = num_in_group ! this needs to be the number of processors in group g
                   else
-                     array_of_blocks(num_blocks) = num_in_group
+                     array_of_blocks(1:num_blocks - 1) = num_in_group
+                     if ( num_vars - task_count()*(num_blocks-1) < num_in_group) then
+                        array_of_blocks(num_blocks) = num_vars - task_count()*(num_blocks-1)
+                     else
+                        array_of_blocks(num_blocks) = num_in_group
+                     endif
                   endif
+
+               else ! have to do something else
+
+                  ! calculate which group element a is in 
+                  owner = a / limit_procs
+                  if ( mod( a, limit_procs) > 0 ) owner = owner + 1
+                  if (owner > num_groups) owner = num_groups
+
+                  ! calulate k:
+                  if ( a/limit_procs >= num_groups) then
+                     k = a - (num_groups-1)*limit_procs
+                  else
+                     k = a - (a/limit_procs)*limit_procs
+                  endif
+
+                  if (k == 0) then
+                     owner = owner + 1
+                     if (owner == num_groups + 1) owner = 1
+                  endif
+
+                  y = get_group_size(owner*limit_procs -1, ens_size) - k
+
+                  ! find number of groups (n) between g and owner
+                  if ( g > owner ) then
+                     n = g - owner - 1
+                  elseif (g < owner) then
+                     n = g + num_groups - owner - 1 ! circular
+                  elseif ( g == owner) then
+                     n = 0
+                  endif
+
+                  !=if (my_pe == 0) print*, 'g = ', g, 'owner =', owner, 'n = ', n, 'k = ', k, 'y =', y
+
+                  ! find number of blocks:
+                  num_blocks = (num_vars - y - n*limit_procs) / task_count()
+                  if (g == owner) num_blocks = num_blocks + 1 ! for y aswell
+
+                  remainder = mod( ( num_vars - y - n*limit_procs), task_count() )
+                  if (remainder > 0 ) num_blocks = num_blocks + 1 ! ragged end
+                  allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
+
+                  if ( g == owner ) then
+                     array_of_displacements(1) = 0 ! zero offset for mpi_type_indexed
+                     array_of_displacements(2) = task_count() - k  ! zero offset?
+                     array_of_blocks(1) = y
+                  else
+                     array_of_displacements(1) = y + n*limit_procs
+                     array_of_displacements(2) = y + n*limit_procs + task_count() 
+                     array_of_blocks(1) = num_in_group
+                  endif
+
+                  if (remainder == 0) then
+                     array_of_blocks(2:num_blocks) = num_in_group ! this needs to be the number of processors in group g
+                  else
+                     array_of_blocks(2:num_blocks - 1) = num_in_group
+                     if ( num_vars - sum(array_of_blocks(1:num_blocks-1)) < num_in_group) then
+                        array_of_blocks(num_blocks) = num_vars - sum(array_of_blocks(1:num_blocks-1))
+                     else
+                        array_of_blocks(num_blocks) = num_in_group
+                     endif
+                  endif
+
+                  do i = 3, num_blocks
+                     array_of_displacements(i) = array_of_displacements(i-1) + task_count()
+                  enddo
+
+                 !if (my_pe == 0) print*, 'dis, blocks', array_of_displacements(1:2), array_of_blocks(1:2)
+
                endif
 
                call mpi_type_indexed(num_blocks, array_of_blocks, array_of_displacements, mpi_real8, collector_type, ierr) ! real*4 real*8
@@ -514,7 +587,7 @@ do while (start_var <= num_state_variables)
 
             endif
 
-            if(my_pe==0) print*, 'completed interation', g-1
+            !if(my_pe==0) print*, 'completed interation', g-1
 
          enddo
 
@@ -530,6 +603,9 @@ do while (start_var <= num_state_variables)
    endif
 
    start_var = end_var + 1
+   ! calculate a:
+   a = mod(num_vars - (task_count() - a), task_count())
+   !if(my_pe == 0) print*, ' next a', mod(num_vars, task_count())
 
 enddo
 
