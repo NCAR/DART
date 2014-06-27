@@ -1487,8 +1487,8 @@ integer                         :: num_variables_in_state
 call variables_domains(num_variables_in_state, num_domains)
 allocate(variable_list(num_variables_in_state))
 
-!limit_mem = 7377480
-limit_mem = 317731
+limit_mem = 7377480
+!limit_mem = 317731
 !limit_mem = 635462
 !limit_mem = 2088655
 !!limit_mem = 2188655

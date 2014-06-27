@@ -116,7 +116,7 @@ variable_sizes(:, domain) = total_size(n, variable_ids(:, domain), domain)
 domain_size = sum(variable_sizes(:, domain))
 if(my_task_id() == 0) then
    do i = 1, n
-      print*, i, 'variable_sizes', variable_sizes(i, domain)
+      print*, i, 'variable_sizes', variable_sizes(i, domain), trim(variable_names(i))
    enddo
 endif
 
@@ -356,8 +356,9 @@ integer :: num_groups !< number of groups the transpose is split into.  Only rel
 integer :: assembling_ensemble !< which ensemble the collectors are assembling
 integer :: my_group !< which group my_pe is a member of
 integer :: num_in_group !< how many processors are in a group
-integer :: dummy_loop
-integer :: a, k, n, owner, y
+integer :: dummy_loop, j
+integer :: a, k, n, owner, y, l, sub_block
+
 ! mpi_type variables
 integer, allocatable :: array_of_blocks(:)
 integer, allocatable :: array_of_displacements(:)
@@ -476,43 +477,41 @@ do dummy_loop = 1, num_state_variables
                   num_in_group = get_group_size(task_count(), ens_size)
                endif
 
-               if (a == 0) then ! group 1, element 1 starts the var_block
+               if (a == 0) then ! group 1, element 1 starts the var_block, g cannot be the owner
 
-                  num_blocks = (num_vars - (g-1)*limit_procs) / task_count()
-
-                  remainder = mod((num_vars - (g-1)*limit_procs), task_count())
-
-                  if (remainder > 0 ) num_blocks = num_blocks + 1 ! ragged end
+                  owner = 1
+                  y = limit_procs
+                  sub_block = num_vars - (g-1)*limit_procs
+                  num_blocks = sub_block / task_count()
+                  remainder = mod(sub_block, task_count())
+                  if (remainder > 0) num_blocks = num_blocks + 1
                   allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
 
                   array_of_displacements(1) = (g-1)*limit_procs
-                  do i = 2, num_blocks
-                     array_of_displacements(i) = array_of_displacements(i-1) + task_count()
-                  enddo
+                  array_of_displacements(2) = array_of_displacements(1) + task_count()
+                  array_of_blocks(1) = num_in_group
 
-                  if (remainder == 0) then
-                     array_of_blocks(1:num_blocks) = num_in_group ! this needs to be the number of processors in group g
+                  if (remainder < num_in_group ) then
+                     array_of_blocks(num_blocks) = sub_block - task_count()*(num_blocks-1)
                   else
-                     array_of_blocks(1:num_blocks - 1) = num_in_group
-                     if ( num_vars - task_count()*(num_blocks-1) < num_in_group) then
-                        array_of_blocks(num_blocks) = num_vars - task_count()*(num_blocks-1)
-                     else
-                        array_of_blocks(num_blocks) = num_in_group
-                     endif
+                     array_of_blocks(num_blocks) = num_in_group
                   endif
 
-               else ! have to do something else
+                else ! have to do something else
 
-                  ! calculate which group element a is in 
-                  owner = a / limit_procs
-                  if ( mod( a, limit_procs) > 0 ) owner = owner + 1
-                  if (owner > num_groups) owner = num_groups
+                  ! calculate which group last element of a is in. a starts at group 1 element 1
+                  do j = 1, num_groups
+                     if ( a <= cumulative_tasks(j, ens_size) ) then
+                        owner = j
+                        exit
+                     endif
+                  enddo
 
                   ! calulate k:
-                  if ( a/limit_procs >= num_groups) then
-                     k = a - (num_groups-1)*limit_procs
+                  if ( owner == 1 ) then
+                     k = a 
                   else
-                     k = a - (a/limit_procs)*limit_procs
+                     k = a - cumulative_tasks(owner -1, ens_size)
                   endif
 
                   if (k == 0) then
@@ -522,58 +521,76 @@ do dummy_loop = 1, num_state_variables
 
                   y = get_group_size(owner*limit_procs -1, ens_size) - k
 
-                  ! find number of groups (n) between g and owner
-                  if ( g > owner ) then
-                     n = g - owner - 1
-                  elseif (g < owner) then
-                     n = g + num_groups - owner - 1 ! circular
-                  elseif ( g == owner) then
-                     n = 0
-                  endif
+                  ! find number of tasks between owner and group 1?
+                  n = cumulative_tasks(num_groups, ens_size) - cumulative_tasks(owner, ens_size)
 
-                  !=if (my_pe == 0) print*, 'g = ', g, 'owner =', owner, 'n = ', n, 'k = ', k, 'y =', y
+                  !if (my_pe == 0) print*, 'g = ', g, 'owner =', owner, 'n = ', n, 'k = ', k, 'y =', y, 'num_blocks', num_blocks, 'num_vars', num_vars
 
                   ! find number of blocks:
-                  num_blocks = (num_vars - y - n*limit_procs) / task_count()
-                  if (g == owner) num_blocks = num_blocks + 1 ! for y aswell
+                  sub_block = num_vars - y - n
+                  num_blocks = sub_block / task_count()
+                  if ( g >= owner ) num_blocks = num_blocks + 1 ! for y and for any blocks in n
 
-                  remainder = mod( ( num_vars - y - n*limit_procs), task_count() )
-                  if (remainder > 0 ) num_blocks = num_blocks + 1 ! ragged end
-                  allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
+                  remainder = mod( sub_block, task_count() )
+
+                  if (remainder >= cumulative_tasks(g, ens_size) ) then
+
+                     num_blocks = num_blocks + 1
+                     allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
+                     array_of_blocks(num_blocks) = num_in_group
+
+                  elseif ( (cumulative_tasks(g-1, ens_size) < remainder) .and. ( remainder < cumulative_tasks(g, ens_size)) ) then
+
+                     num_blocks = num_blocks + 1 ! ragged end
+                     allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
+                     array_of_blocks(num_blocks) = remainder - cumulative_tasks(g-1, ens_size)
+
+                  else
+
+                     allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
+                     array_of_blocks(num_blocks) = num_in_group
+
+                  endif
 
                   if ( g == owner ) then
                      array_of_displacements(1) = 0 ! zero offset for mpi_type_indexed
-                     array_of_displacements(2) = task_count() - k  ! zero offset?
+                     array_of_displacements(2) = task_count() - k  ! zero offset
                      array_of_blocks(1) = y
+                  elseif ( g > owner) then
+                     array_of_displacements(1) = y + cumulative_tasks(g-1, ens_size) - cumulative_tasks(owner, ens_size)
+                     array_of_displacements(2) = array_of_displacements(1) + task_count()
+                     array_of_blocks(1) = num_in_group
                   else
-                     array_of_displacements(1) = y + n*limit_procs
-                     array_of_displacements(2) = y + n*limit_procs + task_count() 
+                     array_of_displacements(1) = y + n + cumulative_tasks(g-1, ens_size) ! y + n + offest from start of group 1
+                     array_of_displacements(2) = array_of_displacements(1) + task_count()
                      array_of_blocks(1) = num_in_group
                   endif
 
-                  if (remainder == 0) then
-                     array_of_blocks(2:num_blocks) = num_in_group ! this needs to be the number of processors in group g
-                  else
-                     array_of_blocks(2:num_blocks - 1) = num_in_group
-                     if ( num_vars - sum(array_of_blocks(1:num_blocks-1)) < num_in_group) then
-                        array_of_blocks(num_blocks) = num_vars - sum(array_of_blocks(1:num_blocks-1))
-                     else
-                        array_of_blocks(num_blocks) = num_in_group
-                     endif
+               endif
+
+               array_of_blocks(2:num_blocks - 1) = num_in_group
+
+               do i = 3, num_blocks
+                  array_of_displacements(i) = array_of_displacements(i-1) + task_count()
+               enddo
+
+               !if (my_pe == 0) print*, 'dis, blocks', array_of_displacements(num_blocks), array_of_blocks(num_blocks), 'y, n, g, owner, a', y, n, g, owner, a, 'num_vars', num_vars
+
+               !if (my_pe == 0) print*, 'dis, blocks', array_of_displacements(num_blocks), array_of_blocks(num_blocks), 'y, g, owner, a', y, g, owner, a, 'num_vars', num_vars
+
+               ! check you are not going over num_vars
+               if(my_pe == 0) then
+                  if( (array_of_displacements(num_blocks) + array_of_blocks(num_blocks))  > num_vars) then
+                     print*, '++++ OVER ++++', num_vars - (array_of_displacements(num_blocks) + array_of_blocks(num_blocks)), 'last block', array_of_blocks(num_blocks), 'last disp', array_of_displacements(num_blocks), 'num_vars', num_vars, 'y', y
+                     print*, 'remainder', remainder, cumulative_tasks(g-1, ens_size), cumulative_tasks(g,ens_size), num_blocks
                   endif
-
-                  do i = 3, num_blocks
-                     array_of_displacements(i) = array_of_displacements(i-1) + task_count()
-                  enddo
-
-                 !if (my_pe == 0) print*, 'dis, blocks', array_of_displacements(1:2), array_of_blocks(1:2)
-
                endif
 
                call mpi_type_indexed(num_blocks, array_of_blocks, array_of_displacements, mpi_real8, collector_type, ierr) ! real*4 real*8
                call mpi_type_commit(collector_type, ierr)
 
-               ! collectors -> writers loop
+               ! collectors -> writers 
+
                recv_pe = assembling_ensemble - 1
                sending_pe = recv_pe + (g-1)*limit_procs
                if (my_pe == recv_pe) then
@@ -605,7 +622,7 @@ do dummy_loop = 1, num_state_variables
    start_var = end_var + 1
    ! calculate a:
    a = mod(num_vars - (task_count() - a), task_count())
-   !if(my_pe == 0) print*, ' next a', mod(num_vars, task_count())
+   !if(my_pe == 0) print*, ' next a', a
 
 enddo
 
@@ -852,6 +869,31 @@ sum_variables_below = sum_variables_below + sum(variable_sizes(1:start_var-1, i)
 
 
 end function sum_variables_below
+
+!------------------------------------------------------
+!> Given a group, finds the total number of tasks from group 1
+!> up to and including that group
+function cumulative_tasks(group, ens_size)
+
+integer, intent(in) :: group
+integer, intent(in) :: ens_size !< for get group size
+integer             :: cumulative_tasks
+
+integer :: i
+
+cumulative_tasks = 0
+
+! what if you give it a group > num_groups? Or a negative group?
+
+do i = 1, group - 1
+   cumulative_tasks = cumulative_tasks + limit_procs
+enddo
+
+! just in case group is the last group
+cumulative_tasks = cumulative_tasks + get_group_size(group*limit_procs -1, ens_size)
+
+end function cumulative_tasks
+
 !-------------------------------------------------------
 !> @}
 end module state_vector_io_mod
