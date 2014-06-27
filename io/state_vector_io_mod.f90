@@ -23,7 +23,15 @@
 !>* Don't have to have the whole state vector.
 !>* Don't have to use a parallel IO library.
 !>
-!>If limit 1 > state vector size and limit 2 > number of tasks, you have the regular transpose.
+!>If limit 1 > state vector size and limit 2 > number of tasks, you have the regular transpose, except you are reading directly from a netcdf file, not a dart state vector
+!> file.
+!>
+!> * Reading with limited processors is easy, because you just have muliple readers
+!> duplicating the read.
+!> * Writing with limitied processors is a bit more involved because it is no longer
+!> simply duplicate work.  Every processor has something it needs to contribute to 
+!> the write. Thus, there is a second stage of data aggregation if limit_procs <
+!> task_count.
 
 module state_vector_io_mod
 
@@ -36,7 +44,8 @@ module state_vector_io_mod
 use types_mod, only : r8, MISSING_R8
 use mpi_utilities_mod, only : task_count, send_to, receive_from, my_task_id, datasize
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task
-use utilities_mod, only : error_handler, E_ERR, nc_check
+use utilities_mod, only : error_handler, E_ERR, nc_check, check_namelist_read, &
+    find_namelist_in_file, nmlfileunit, do_nml_file, do_nml_term
 use netcdf
 use mpi
 
@@ -44,10 +53,10 @@ implicit none
 
 private
 
-public :: initialize_arrays_for_read, &
+public :: state_vector_io_init, &
+          initialize_arrays_for_read, &
           netcdf_filename, get_state_variable_info, &
           read_transpose, &
-          limit_mem, limit_procs, &
           transpose_write, &
           netcdf_filename_out
 
@@ -57,8 +66,6 @@ integer :: ncfile_out !< netcdf output file handle
 character(len=256) :: netcdf_filename !< needs to be different for each task
 character(len=256) :: netcdf_filename_out !< needs to be different for each task
 integer, parameter :: MAXDIMS = NF90_MAX_VAR_DIMS ! FIXME netcdf-max_dims?
-integer :: limit_mem !< This is the number of elements (not bytes) so you don't have times the number by 4 or 8
-integer :: limit_procs
 
 integer,            allocatable :: variable_ids(:, :)
 integer,            allocatable :: variable_sizes(:, :)
@@ -70,7 +77,35 @@ integer,            allocatable :: dimIds(:, :, :) !< dimension ids
 integer,            allocatable :: length(:, :, :) !< dimension length
 character(len=256), allocatable :: dim_names(:, :, :)
 
+! namelist variables with default values
+! Aim: to have the regular transpose as the default
+integer :: limit_mem = 2147483640!< This is the number of elements (not bytes) so you don't have times the number by 4 or 8
+integer :: limit_procs = 100000!< how many processors you want involved in each transpose
+
+namelist /  state_vector_io_nml / limit_mem, limit_procs 
+
 contains
+
+!-------------------------------------------------
+!> Initialize model 
+!> so you can read the namelist
+subroutine state_vector_io_init()
+
+integer :: iunit, io
+
+!call register_module(source, revision, revdate)
+
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "state_vector_io_nml", iunit)
+read(iunit, nml = state_vector_io_nml, iostat = io)
+call check_namelist_read(iunit, io, "state_vector_io_nml")
+
+! Write the namelist values to the log file
+if (do_nml_file()) write(nmlfileunit, nml=state_vector_io_nml)
+if (do_nml_term()) write(     *     , nml=state_vector_io_nml)
+
+
+end subroutine state_vector_io_init
 
 !-------------------------------------------------
 !> Initialize arrays.  Need to know the number of domains

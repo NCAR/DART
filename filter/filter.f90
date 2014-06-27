@@ -66,7 +66,7 @@ use distributed_state_mod
 use data_structure_mod, only : copies_in_window ! should this be through ensemble_manager?
 
 use state_vector_io_mod,   only : read_transpose, transpose_write, get_state_variable_info,  &
-                                  initialize_arrays_for_read, netcdf_filename, limit_mem, limit_procs
+                                  initialize_arrays_for_read, netcdf_filename, state_vector_io_init
 
 use model_mod,            only : variables_domains, fill_variable_list
 
@@ -1160,6 +1160,9 @@ call static_init_obs_sequence()
 call trace_message('Before init_model call')
 call static_init_assim_model()
 call trace_message('After  init_model call')
+call state_vector_io_init()
+call trace_message('After  init_stat_vector_io call')
+
 
 end subroutine filter_initialize_modules_used
 
@@ -1486,14 +1489,6 @@ integer                         :: num_variables_in_state
 ! If they are not in a domain, just set lengths to zero?
 call variables_domains(num_variables_in_state, num_domains)
 allocate(variable_list(num_variables_in_state))
-
-limit_mem = 7377480
-!limit_mem = 317731
-!limit_mem = 635462
-!limit_mem = 2088655
-!!limit_mem = 2188655
-!limit_mem = 1088655
-limit_procs = 1024
 
 variable_list = fill_variable_list(num_variables_in_state)
 
