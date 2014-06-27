@@ -34,7 +34,7 @@ module state_vector_io_mod
 !> @{
 
 use types_mod, only : r8, MISSING_R8
-use mpi_utilities_mod, only : task_count, send_to, receive_from, my_task_id
+use mpi_utilities_mod, only : task_count, send_to, receive_from, my_task_id, datasize
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task
 use utilities_mod, only : error_handler, E_ERR, nc_check
 use netcdf
@@ -586,7 +586,16 @@ do dummy_loop = 1, num_state_variables
                   endif
                endif
 
-               call mpi_type_indexed(num_blocks, array_of_blocks, array_of_displacements, mpi_real8, collector_type, ierr) ! real*4 real*8
+               if ( datasize == mpi_real4 ) then
+
+                  call mpi_type_indexed(num_blocks, array_of_blocks, array_of_displacements, mpi_real4, collector_type, ierr) 
+
+               else ! double precision
+
+                  call mpi_type_indexed(num_blocks, array_of_blocks, array_of_displacements, mpi_real8, collector_type, ierr)
+
+               endif
+
                call mpi_type_commit(collector_type, ierr)
 
                ! collectors -> writers 
