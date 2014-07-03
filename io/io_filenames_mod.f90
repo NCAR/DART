@@ -11,6 +11,7 @@ module io_filenames_mod
 !> Maybe this is a bit lazy, but I just want a way for the 
 !> different modules to set the filenames
 !>
+!> Diagnostic files could have different netcdf variable ids
 !> @{
 
 implicit none
