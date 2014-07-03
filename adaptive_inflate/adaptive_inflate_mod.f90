@@ -18,7 +18,11 @@ use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_s
 use ensemble_manager_mod, only : ensemble_type, read_ensemble_restart, write_ensemble_restart,  &
                                  get_copy_owner_index, prepare_to_write_to_vars,                &
                                  prepare_to_read_from_vars, prepare_to_update_vars, map_pe_to_task
-use mpi_utilities_mod,    only : my_task_id, send_to, receive_from
+use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, datasize
+
+use state_vector_io_mod,  only : turn_read_copy_on, turn_write_copy_on
+
+use mpi
 
 implicit none
 private
@@ -95,6 +99,8 @@ character(len = *),          intent(in)    :: label
 character(len = 128) :: det, tadapt, sadapt, akind, rsread, nmread
 integer  :: restart_unit, io, owner, owners_index
 real(r8) :: minmax_mean(2), minmax_sd(2)
+
+integer  :: ierr !> for mpi_reduce call
 
 ! Record the module version if this is first initialize call
 if(.not. initialized) then
@@ -193,8 +199,13 @@ if(inf_flavor >= 2) then
       ! the .true. below is 'start_from_restart', which tells the read routine to
       ! read in the full number of ensemble members requested (as opposed to reading
       ! in one and perturbing it).
-      call read_ensemble_restart(ens_handle, ss_inflate_index, ss_inflate_sd_index, &
-         .true., in_file_name, force_single_file = .true.)
+
+      call turn_read_copy_on(ss_inflate_index)
+      call turn_read_copy_on(ss_inflate_sd_index)
+
+      !call read_ensemble_restart(ens_handle, ss_inflate_index, ss_inflate_sd_index, &
+      !   .true., in_file_name, force_single_file = .true.)
+
    endif
    ! Now, if one or both values come from the namelist (i.e. is a single static
    ! value), write or overwrite the arrays here.
@@ -204,18 +215,26 @@ if(inf_flavor >= 2) then
       ! inflation and inf sd values and set them only on that task.  this saves us
       ! a transpose.
       if (.not. mean_from_restart) then
-         call get_copy_owner_index(ss_inflate_index, owner, owners_index)
-         if (owner == ens_handle%my_pe) then
-            call prepare_to_write_to_vars(ens_handle)
-            ens_handle%vars(:, owners_index) = inf_initial
-         endif
+
+         !call get_copy_owner_index(ss_inflate_index, owner, owners_index)
+         !if (owner == ens_handle%my_pe) then
+         !   call prepare_to_write_to_vars(ens_handle)
+         !   ens_handle%vars(:, owners_index) = inf_initial
+         !endif
+
+         ens_handle%copies(ss_inflate_index, :) = inf_initial
+
       endif
       if (.not. sd_from_restart) then
-         call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
-         if (owner == ens_handle%my_pe)  then
-            call prepare_to_write_to_vars(ens_handle)
-            ens_handle%vars(:, owners_index) = sd_initial
-         endif
+
+         !call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
+         !if (owner == ens_handle%my_pe)  then
+         !   call prepare_to_write_to_vars(ens_handle)
+         !   ens_handle%vars(:, owners_index) = sd_initial
+         !endif
+
+         ens_handle%copies(ss_inflate_index, :) = inf_initial
+
       endif
    endif
 
@@ -226,17 +245,24 @@ if(inf_flavor >= 2) then
    ! from a file, then it is possible the values vary across the array.  these lines
    ! ensure the entire array contains a single constant value to match what the code uses.
    if(inf_flavor == 3) then
-      call get_copy_owner_index(ss_inflate_index, owner, owners_index)
-      if (owner == ens_handle%my_pe) then
-         call prepare_to_update_vars(ens_handle)
-         ens_handle%vars(:, owners_index) = ens_handle%vars(1, owners_index)
-      endif
-      call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
-      if (owner == ens_handle%my_pe) then
-         call prepare_to_update_vars(ens_handle)
-         ens_handle%vars(:, owners_index) = ens_handle%vars(1, owners_index)
-      endif
+
+      call error_handler(E_ERR, 'not dealing with inflation 3 yet', 'adaptive_inflate_init')
+
+      !call get_copy_owner_index(ss_inflate_index, owner, owners_index)
+      !if (owner == ens_handle%my_pe) then
+      !   call prepare_to_update_vars(ens_handle)
+      !   ens_handle%vars(:, owners_index) = ens_handle%vars(1, owners_index)
+      !endif
+
+      !call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
+      !if (owner == ens_handle%my_pe) then
+      !   call prepare_to_update_vars(ens_handle)
+      !   ens_handle%vars(:, owners_index) = ens_handle%vars(1, owners_index)
+      !endif
+
    endif
+
+   ! HK what do you do with the min max of inflation?
 
    ! this block figures out what the min/max value of the mean/sd is
    ! if we are reading in the values from a restart file.  it is used
@@ -245,49 +271,76 @@ if(inf_flavor >= 2) then
    ! already outside the requested limits. (not sure that's necessary -
    ! depends on when the code that changes the values imposes the limits.)
    if (mean_from_restart) then
-      call get_copy_owner_index(ss_inflate_index, owner, owners_index)
-      ! if inflation array is already on PE0, just figure out the
-      ! largest value in the array and we're done.
-      if (owner == 0) then
-         call prepare_to_read_from_vars(ens_handle)
-         minmax_mean(1) = minval(ens_handle%vars(:, owners_index))
-         minmax_mean(2) = maxval(ens_handle%vars(:, owners_index))
-      else
-         ! someone else has the inf array.  have the owner send the min/max
-         ! values to PE0.  after this point only PE0 has the right value
-         ! in minmax_mean, but it is the only one who is going to print below.
-         if (ens_handle%my_pe == 0) then
-            call receive_from(map_pe_to_task(ens_handle, owner), minmax_mean)
-         else if (ens_handle%my_pe == owner) then
-            call prepare_to_read_from_vars(ens_handle)
-            minmax_mean(1) = minval(ens_handle%vars(:, owners_index))
-            minmax_mean(2) = maxval(ens_handle%vars(:, owners_index))
-            call send_to(map_pe_to_task(ens_handle, 0), minmax_mean)
-         endif
+
+      ! find min sd on processor
+      minmax_mean(1) = minval(ens_handle%copies(ss_inflate_index, :))
+      minmax_mean(2) = maxval(ens_handle%copies(ss_inflate_index, :))
+
+      if (datasize == mpi_real8) then
+         call mpi_reduce(minmax_mean, minmax_mean, 2, mpi_real8, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+      else ! single precision
+         call mpi_reduce(minmax_mean, minmax_mean, 2, mpi_real4, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
       endif
+
+      !call get_copy_owner_index(ss_inflate_index, owner, owners_index)
+      !! if inflation array is already on PE0, just figure out the
+      !! largest value in the array and we're done.
+      !if (owner == 0) then
+      !   call prepare_to_read_from_vars(ens_handle)
+      !   minmax_mean(1) = minval(ens_handle%vars(:, owners_index))
+      !   minmax_mean(2) = maxval(ens_handle%vars(:, owners_index))
+      !else
+      !   ! someone else has the inf array.  have the owner send the min/max
+      !   ! values to PE0.  after this point only PE0 has the right value
+      !   ! in minmax_mean, but it is the only one who is going to print below.
+      !   if (ens_handle%my_pe == 0) then
+      !      call receive_from(map_pe_to_task(ens_handle, owner), minmax_mean)
+      !   else if (ens_handle%my_pe == owner) then
+      !      call prepare_to_read_from_vars(ens_handle)
+      !      minmax_mean(1) = minval(ens_handle%vars(:, owners_index))
+      !      minmax_mean(2) = maxval(ens_handle%vars(:, owners_index))
+      !      call send_to(map_pe_to_task(ens_handle, 0), minmax_mean)
+      !   endif
+      !endif
+
    endif
+
+
    if (sd_from_restart) then
-      call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
-      ! if inflation sd array is already on PE0, just figure out the
-      ! largest value in the array and we're done.
-      if (owner == 0) then
-         call prepare_to_read_from_vars(ens_handle)
-         minmax_sd(1) = minval(ens_handle%vars(:, owners_index))
-         minmax_sd(2) = maxval(ens_handle%vars(:, owners_index))
-      else
-         ! someone else has the sd array.  have the owner send the min/max
-         ! values to PE0.  after this point only PE0 has the right value
-         ! in minmax_sd, but it is the only one who is going to print below.
-         if (ens_handle%my_pe == 0) then
-            call receive_from(map_pe_to_task(ens_handle, owner), minmax_sd)
-         else if (ens_handle%my_pe == owner) then 
-            call prepare_to_read_from_vars(ens_handle)
-            minmax_sd(1) = minval(ens_handle%vars(:, owners_index))
-            minmax_sd(2) = maxval(ens_handle%vars(:, owners_index))
-            call send_to(map_pe_to_task(ens_handle, 0), minmax_sd)
-         endif
+
+      ! find min sd on processor
+      minmax_mean(1) = minval(ens_handle%copies(ss_inflate_sd_index, :))
+      minmax_mean(2) = maxval(ens_handle%copies(ss_inflate_sd_index, :))
+
+      if (datasize == mpi_real8) then
+         call mpi_reduce(minmax_mean, minmax_mean, 2, mpi_real8, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+      else ! single precision
+         call mpi_reduce(minmax_mean, minmax_mean, 2, mpi_real4, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
       endif
-   endif
+
+
+      !call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
+      !! if inflation sd array is already on PE0, just figure out the
+      !! largest value in the array and we're done.
+      !if (owner == 0) then
+      !   call prepare_to_read_from_vars(ens_handle)
+      !   minmax_sd(1) = minval(ens_handle%vars(:, owners_index))
+      !   minmax_sd(2) = maxval(ens_handle%vars(:, owners_index))
+      !else
+      !   ! someone else has the sd array.  have the owner send the min/max
+      !   ! values to PE0.  after this point only PE0 has the right value
+      !   ! in minmax_sd, but it is the only one who is going to print below.
+      !   if (ens_handle%my_pe == 0) then
+      !      call receive_from(map_pe_to_task(ens_handle, owner), minmax_sd)
+      !   else if (ens_handle%my_pe == owner) then
+      !      call prepare_to_read_from_vars(ens_handle)
+      !      minmax_sd(1) = minval(ens_handle%vars(:, owners_index))
+      !      minmax_sd(2) = maxval(ens_handle%vars(:, owners_index))
+      !      call send_to(map_pe_to_task(ens_handle, 0), minmax_sd)
+      !   endif
+      !endif
+      
+  endif
    
 
 !------ Block for obs. space inflation initialization ------
@@ -299,6 +352,9 @@ else if(inf_flavor == 1) then
    ! Only single values for inflation, inflation_sd (not arrays)
    if(mean_from_restart .or. sd_from_restart) then
       ! Open the file
+
+      call error_handler(E_ERR, 'Need to deal with read from file inf_flavor =1', 'adaptive_inflate_init')
+
       restart_unit = open_file(in_file_name, form='formatted', action='read')
       read(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
       if (io /= 0) then
@@ -309,12 +365,15 @@ else if(inf_flavor == 1) then
       endif
       call close_file(restart_unit)
    endif
+
+
    ! If using the namelist values, set (or overwrite) them here.
    if (.not. mean_from_restart) inflate_handle%inflate = inf_initial
    if (.not.   sd_from_restart) inflate_handle%sd      = sd_initial
 
    minmax_mean(:) = inflate_handle%inflate
    minmax_sd(:)   = inflate_handle%sd
+
 endif
 
 ! Write to log file what kind of inflation is being used.
@@ -406,6 +465,8 @@ integer :: restart_unit, io
 if(inflate_handle%output_restart) then
    ! Use the ensemble manager to output restart for state space (flavors 2 or 3)
    if(do_varying_ss_inflate(inflate_handle) .or. do_single_ss_inflate(inflate_handle)) then
+
+      !> @todo I don't think they need to be contiguous any more
       ! Verify that indices are contiguous
       if(ss_inflate_sd_index /= ss_inflate_index + 1) then
          write(msgstring, *) 'ss_inflate_index = ', ss_inflate_index, &
@@ -415,11 +476,17 @@ if(inflate_handle%output_restart) then
       endif
 
       ! Write the inflate and inflate_sd as two copies for a restart
-      call write_ensemble_restart(ens_handle, inflate_handle%out_file_name, &
-         ss_inflate_index, ss_inflate_sd_index, force_single_file = .true.)
+      call turn_write_copy_on(ss_inflate_index)
+      call turn_write_copy_on(ss_inflate_sd_index)
+
+      !call write_ensemble_restart(ens_handle, inflate_handle%out_file_name, &
+      !   ss_inflate_index, ss_inflate_sd_index, force_single_file = .true.)
 
    ! Flavor 1 is observation space, write its restart directly
    else if(do_obs_inflate(inflate_handle)) then
+
+      call error_handler(E_ERR, 'observation space', 'adaptive_inflate_end')
+
       ! Open the restart file
       restart_unit = open_file(inflate_handle%out_file_name, &
                                form = 'formatted', action='write')

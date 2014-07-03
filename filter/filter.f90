@@ -66,7 +66,8 @@ use distributed_state_mod
 use data_structure_mod, only : copies_in_window ! should this be through ensemble_manager?
 
 use state_vector_io_mod,   only : read_transpose, transpose_write, get_state_variable_info,  &
-                                  initialize_arrays_for_read, netcdf_filename, state_vector_io_init
+                                  initialize_arrays_for_read, netcdf_filename, state_vector_io_init, &
+                                  setup_read_write
 
 use model_mod,            only : variables_domains, fill_variable_list
 
@@ -320,6 +321,9 @@ call trace_message('Before setting up space for ensembles')
 ! Allocate model size storage and ens_size storage for metadata for outputting ensembles
 model_size = get_model_size()
 
+! set up ensemble
+call init_ensemble_manager(ens_handle, ens_size + 6, model_size)
+
 call trace_message('After  setting up space for ensembles')
 
 ! Don't currently support number of processes > model_size
@@ -332,26 +336,11 @@ call timestamp_message('Before reading in ensemble restart files')
 ! Set a time type for initial time if namelist inputs are not negative
 call filter_set_initial_time(time1)
 
-! Read in restart files and initialize the ensemble storage
-if (direct_netcdf_read) then
-   call filter_read_restart_direct(ens_handle, time1, ens_size, model_size) ! This is annoying
-else
-   call filter_read_restart(ens_handle, time1, model_size)
-endif
+! HK Moved initializing inflation to before read of restarts so you can read the restarts
+! and inflation files in one step.
 
-! Read in or initialize smoother restarts as needed
-if(ds) then
-   call init_smoother(ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
-   call smoother_read_restart(ens_handle, ens_size, model_size, time1, init_time_days)
-endif
-
-call timestamp_message('After  reading in ensemble restart files')
-call     trace_message('After  reading in ensemble restart files')
-
-! see what our stance is on missing values in the state vector
-allow_missing = get_missing_ok_status()
-
-call trace_message('Before initializing inflation')
+! set up arrays for which copies to read/write
+call setup_read_write(ens_size +6)
 
 ! Initialize the adaptive inflation module
 call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
@@ -377,6 +366,28 @@ if (do_output()) then
 endif
 
 call trace_message('After  initializing inflation')
+
+! Read in restart files and initialize the ensemble storage
+if (direct_netcdf_read) then
+   call filter_read_restart_direct(ens_handle, time1, ens_size) ! This is annoying
+else
+   call filter_read_restart(ens_handle, time1, model_size)
+endif
+
+! Read in or initialize smoother restarts as needed
+if(ds) then
+   call init_smoother(ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
+   call smoother_read_restart(ens_handle, ens_size, model_size, time1, init_time_days)
+endif
+
+call timestamp_message('After  reading in ensemble restart files')
+call     trace_message('After  reading in ensemble restart files')
+
+! see what our stance is on missing values in the state vector
+allow_missing = get_missing_ok_status()
+
+call trace_message('Before initializing inflation')
+
 
 call     trace_message('Before initializing output files')
 call timestamp_message('Before initializing output files')
@@ -652,7 +663,8 @@ AdvanceTime : do
 
    if (parallel_state_diag) then ! parallel write of diagnostics
 
-     call filter_state_space_diagnostics(ens_handle, ENS_MEAN_COPY, PRIOR_INF_SD_COPY, 'Prior_Diag.nc')
+     call error_handler(E_MSG, 'skipping filter_state_space_diagnostics', 'pnetcdf')
+     !call filter_state_space_diagnostics(ens_handle, ENS_MEAN_COPY, PRIOR_INF_SD_COPY, 'Prior_Diag.nc')
 
    else ! send each copy to task 0
 
@@ -829,7 +841,9 @@ AdvanceTime : do
 
       ! This is two many copies.  You could change the order of the copies to have the 
       ! mean in the middle of the prior and posterior stuff
-      call filter_state_space_diagnostics(ens_handle, ENS_MEAN_COPY, POST_INF_SD_COPY, 'Posterior_Diag.nc')
+
+      call error_handler(E_MSG, 'skipping filter_state_space_diagnostics', 'pnetcdf')
+      !call filter_state_space_diagnostics(ens_handle, ENS_MEAN_COPY, POST_INF_SD_COPY, 'Posterior_Diag.nc')
 
    else ! send each copy to task 0
 
@@ -1471,13 +1485,16 @@ end subroutine filter_read_restart
 !------------------------------------------------------------------
 !> Read the restart information directly from the model output
 !> netcdf file
-subroutine filter_read_restart_direct(state_ens_handle, time, ens_size, model_size)
+!> Which routine should find model size?
+!> 
+subroutine filter_read_restart_direct(state_ens_handle, time, ens_size)!, model_size)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
 type(time_type),     intent(in)    :: time
 integer,             intent(in)    :: ens_size
-integer,             intent(out)   :: model_size
+!integer,             intent(out)   :: model_size
 
+integer                         :: model_size
 character(len=256), allocatable :: variable_list(:) !< does this need to be module storage
 integer                         :: dart_index !< where to start in state_ens_handle%copies
 integer                         :: num_domains !< number of input files to read
@@ -1502,8 +1519,6 @@ do domain = 1, num_domains
    model_size = model_size + domain_size
 enddo
 
-! set up ensemble
-call init_ensemble_manager(state_ens_handle, ens_size + 6, model_size)
 
 ! fix time for now
 state_ens_handle%time = time
