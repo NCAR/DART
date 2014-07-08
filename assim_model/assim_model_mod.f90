@@ -31,7 +31,6 @@ use     model_mod, only : get_model_size, static_init_model, get_state_meta_data
                           get_close_obs_distrib, convert_base_obs_location !HK
 
 use data_structure_mod, only : ensemble_type
-use arestart_pnetcdf_mod
 
 implicit none
 private
@@ -107,16 +106,6 @@ logical  :: netCDF_large_file_support  = .false.
 namelist /assim_model_nml/ write_binary_restart_files, &
                            netCDF_large_file_support
 !-------------------------------------------------------------
-
-! Interfaces for reading and writing restarts. Binary complete state vectors
-! and parallel reads of netcdf restarts
-interface aread_state_restart
-   module procedure aread_state_restart_complete, aread_state_restart_parallel, aread_state_restart_giant
-end interface
-
-interface awrite_state_restart
-   module procedure awrite_state_restart_complete, awrite_state_restart_parallel, awrite_state_restart_giant
-end interface
 
 contains
 
@@ -775,7 +764,7 @@ end subroutine write_state_restart
 
 
 
-subroutine awrite_state_restart_complete(model_time, model_state, funit, target_time)
+subroutine awrite_state_restart(model_time, model_state, funit, target_time)
 !----------------------------------------------------------------------
 !
 ! Write a restart file given a model extended state and a unit number 
@@ -834,7 +823,7 @@ if (io /= 0) then
 endif
 
 
-end subroutine awrite_state_restart_complete
+end subroutine awrite_state_restart
 
 
 subroutine read_state_restart(assim_model, funit, target_time)
@@ -861,7 +850,7 @@ end subroutine read_state_restart
 
 
 
-subroutine aread_state_restart_complete(model_time, model_state, funit, target_time)
+subroutine aread_state_restart(model_time, model_state, funit, target_time)
 !----------------------------------------------------------------------
 !
 ! Read a restart file given a unit number (see write_state_restart)
@@ -924,7 +913,7 @@ if ( ios /= 0 ) then
    call error_handler(E_ERR,'aread_state_restart',msgstring,source,revision,revdate)
 endif
 
-end subroutine aread_state_restart_complete
+end subroutine aread_state_restart
 
 !----------------------------------------------------------------------
 

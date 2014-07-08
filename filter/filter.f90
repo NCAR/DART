@@ -59,8 +59,7 @@ use smoother_mod,         only : smoother_read_restart, advance_smoother,       
                                  smoother_gen_copy_meta_data, smoother_write_restart,        &
                                  init_smoother, do_smoothing, smoother_mean_spread,          &
                                  smoother_assim, filter_state_space_diagnostics,             &
-                                 smoother_ss_diagnostics, smoother_end, set_smoother_trace,  &
-                                 query_pnetcdf
+                                 smoother_ss_diagnostics, smoother_end, set_smoother_trace
 use distributed_state_mod
 
 use data_structure_mod, only : copies_in_window ! should this be through ensemble_manager?
@@ -126,7 +125,7 @@ logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
 logical  :: silence                  = .false.
-logical  :: parallel_state_diag      = .true. ! default to write diagnostics in parallel
+logical  :: parallel_state_diag      = .true. ! default to write diagnostics in parallel - SKIPING at the moment.
 logical  :: direct_netcdf_read = .true. ! default to read from netcdf file
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
@@ -181,18 +180,14 @@ contains
 
 !> allow_complete_state() queries the ensemble manager namelist value for
 !> no_complete_state.
-!> allow_complete_state =.false. - will use the complete state for IO (restart and diagnostics)
+!> allow_complete_state =.true - will use the complete state for IO (restart and diagnostics)
 !> the algorithm is distributed with one execption:
 !> task 0 still writes the obs_sequence file, so there is a transpose (copies to vars) and 
 !> sending the obs_ens_handle%vars to task 0. Keys is also size obs%vars.
 !> Binary restarts, regular netcdf diagnostic files
 !> 
-!> allow_complete_state = .true. then you either read in ens_size restart files (netcdf)
-!> or one giant.nc restart file containing all the ensemble members. Also dumps out the diagnostic
-!> files as a complete state vector - do you want to output this as a column or a row?
-!> The giant restart files are annoying.  I think reading them with a transpose 
-!> (see ensemble manager) is slow, but making them already transposed is really slow.
-!>
+!> allow_complete_state = .false. 
+
 
 subroutine filter_main()
 
@@ -656,15 +651,9 @@ AdvanceTime : do
    call trace_message('Before prior state space diagnostics')
    call timestamp_message('Before prior state space diagnostics')
 
-   if (.not. query_pnetcdf()) then
-      parallel_state_diag = .false. ! can't do parallel write wihout pnetcdf support
-      call error_handler(E_MSG, 'filter', 'not compiled with pnetcdf, switching to serial write of diagnostics')
-   endif
-
    if (parallel_state_diag) then ! parallel write of diagnostics
 
-     call error_handler(E_MSG, 'skipping filter_state_space_diagnostics', 'pnetcdf')
-     !call filter_state_space_diagnostics(ens_handle, ENS_MEAN_COPY, PRIOR_INF_SD_COPY, 'Prior_Diag.nc')
+     call error_handler(E_MSG, 'skipping filter_state_space_diagnostics', 'parallel')
 
    else ! send each copy to task 0
 
@@ -832,18 +821,12 @@ AdvanceTime : do
    call trace_message('Before posterior state space diagnostics')
    call timestamp_message('Before posterior state space diagnostics')
 
-   if (.not. query_pnetcdf()) then
-      parallel_state_diag = .false.  ! can't do parallel write wihout pnetcdf support
-      call error_handler(E_MSG, 'filter', 'not compiled with pnetcdf, switching to serial write of diagnostics')
-   endif
-
    if (parallel_state_diag) then ! parallel write of diagnostics
 
       ! This is two many copies.  You could change the order of the copies to have the 
       ! mean in the middle of the prior and posterior stuff
 
-      call error_handler(E_MSG, 'skipping filter_state_space_diagnostics', 'pnetcdf')
-      !call filter_state_space_diagnostics(ens_handle, ENS_MEAN_COPY, POST_INF_SD_COPY, 'Posterior_Diag.nc')
+      call error_handler(E_MSG, 'skipping filter_state_space_diagnostics', 'parallel')
 
    else ! send each copy to task 0
 

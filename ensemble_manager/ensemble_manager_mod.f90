@@ -29,7 +29,6 @@ use mpi_utilities_mod, only : task_count, my_task_id, send_to, receive_from, &
 use sort_mod,          only : index_sort
 
 use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
-use restart_pnetcdf_mod
 
 implicit none
 private
@@ -282,114 +281,99 @@ integer                             :: my_num_vars
 ! timing variables
 double precision :: time_at_start
 
-! overwrite namelist option if code has not been compiled with pnetcdf
-if (query_pnetcdf() .eqv. .false.) then ! no pnetcdf so either print warning or error out?
-   no_complete_state = .false.
-   call error_handler(E_MSG, 'read_ensemble_restart', 'not compiled with pnetcdf, switching to reading binary restarts')
+! Does not make sense to have start_from_restart and single_restart_file_in BOTH false
+if(.not. start_from_restart .and. .not. single_restart_file_in) then
+   write(msgstring, *) 'start_from_restart in filter_nml and single_restart_file_in in &
+        &ensemble_manager_nml cannot both be false'
+   call error_handler(E_ERR,'read_ensemble_restart', msgstring, source, revision, revdate)
 endif
 
-if (no_complete_state) then ! read netcdf restart files in parallel
+! the code reads into the vars array
+ens_handle%valid = VALID_VARS
 
-   call read_ensemble_restart_parallel(ens_handle, file_name, start_copy, end_copy, giant_restart, transpose_giant)
+! Some compilers (absoft, but others also) are particularly unhappy about
+! both checking present(N) _and_ evaluating N inside a single if() test.
+! (It evaluates both at the same time and blows up on the not present value.)
+! The standard says they do not have to evaluate right to left.  Common error
+! for anyone with a C programming background.   So -- set a separate local
+! logical variable which always has a value, whether the arg is present or not.
+if (present(force_single_file)) then
+  single_file_override = force_single_file
+else
+  single_file_override = .false.
+endif
 
-else ! use binary restart files
+!-------- Block for single restart file or single member  being perturbed -----
+if(single_restart_file_in .or. .not. start_from_restart .or. &
+   single_file_override) then
+   ! Single restart file is read only by task 0 and then distributed
+   if(my_task_id() == 0) iunit = open_restart_read(file_name)
+   allocate(ens(ens_handle%num_vars))   ! used to be on stack.
 
-   ! Does not make sense to have start_from_restart and single_restart_file_in BOTH false
-   if(.not. start_from_restart .and. .not. single_restart_file_in) then
-      write(msgstring, *) 'start_from_restart in filter_nml and single_restart_file_in in &
-        &ensemble_manager_nml cannot both be false'
-      call error_handler(E_ERR,'read_ensemble_restart', msgstring, source, revision, revdate)
-   endif
+   ! Loop through the total number of copies
+   do i = start_copy, end_copy
+       ! Only task 0 does reading. Everybody can do their own perturbing
+       if(my_task_id() == 0) then
+       ! Read restarts in sequence; only read once for not start_from_restart
+          if(start_from_restart .or. i == start_copy) &
+               call aread_state_restart(ens_time, ens, iunit)
+         ! Override this time if requested by namelist
+         if(present(init_time)) ens_time = init_time
+      endif
 
-
-   ! the code reads into the vars array
-   ens_handle%valid = VALID_VARS
-
-   ! Some compilers (absoft, but others also) are particularly unhappy about
-   ! both checking present(N) _and_ evaluating N inside a single if() test.
-   ! (It evaluates both at the same time and blows up on the not present value.)
-   ! The standard says they do not have to evaluate right to left.  Common error
-   ! for anyone with a C programming background.   So -- set a separate local
-   ! logical variable which always has a value, whether the arg is present or not.
-   if (present(force_single_file)) then
-     single_file_override = force_single_file
-   else
-     single_file_override = .false.
-   endif
-
-   !-------- Block for single restart file or single member  being perturbed -----
-   if(single_restart_file_in .or. .not. start_from_restart .or. &
-      single_file_override) then
-      ! Single restart file is read only by task 0 and then distributed
-      if(my_task_id() == 0) iunit = open_restart_read(file_name)
-      allocate(ens(ens_handle%num_vars))   ! used to be on stack.
-
-      ! Loop through the total number of copies
-      do i = start_copy, end_copy
-          ! Only task 0 does reading. Everybody can do their own perturbing
-          if(my_task_id() == 0) then
-          ! Read restarts in sequence; only read once for not start_from_restart
-             if(start_from_restart .or. i == start_copy) &
-                  call aread_state_restart(ens_time, ens, iunit)
-            ! Override this time if requested by namelist
-            if(present(init_time)) ens_time = init_time
-         endif
-
-         ! Store this copy in the appropriate place on the appropriate process
-         ! map from my_pe to physical task number all done in send and recieves only
-        call put_copy(map_task_to_pe(ens_handle,0), ens_handle, i, ens, ens_time)
-      end do
+      ! Store this copy in the appropriate place on the appropriate process
+      ! map from my_pe to physical task number all done in send and recieves only
+      call put_copy(map_task_to_pe(ens_handle,0), ens_handle, i, ens, ens_time)
+   end do
    
-      deallocate(ens)
-      ! Task 0 must close the file it's been reading
-      if(my_task_id() == 0) call close_restart(iunit)
+   deallocate(ens)
+   ! Task 0 must close the file it's been reading
+   if(my_task_id() == 0) call close_restart(iunit)
 
-   else
+else
 
-   !----------- Block that follows is for multiple restart files -----------
-      ! Loop to read in all my ensemble members
-      READ_MULTIPLE_RESTARTS: do i = 1, ens_handle%my_num_copies
-         ! Get global index for my ith ensemble
-         global_copy_index = ens_handle%my_copies(i)
-         ! If this global copy is in the range being read in, proceed
-         if(global_copy_index >= start_copy .and. global_copy_index <= end_copy) then
-            ! File name extension is the global index number for the copy
-            write(extension, '(i4.4)') global_copy_index - start_copy + 1
-            this_file_name = trim(file_name) // '.' // extension
-            iunit = open_restart_read(this_file_name)
+!----------- Block that follows is for multiple restart files -----------
+   ! Loop to read in all my ensemble members
+   READ_MULTIPLE_RESTARTS: do i = 1, ens_handle%my_num_copies
+      ! Get global index for my ith ensemble
+      global_copy_index = ens_handle%my_copies(i)
+      ! If this global copy is in the range being read in, proceed
+      if(global_copy_index >= start_copy .and. global_copy_index <= end_copy) then
+         ! File name extension is the global index number for the copy
+         write(extension, '(i4.4)') global_copy_index - start_copy + 1
+         this_file_name = trim(file_name) // '.' // extension
+         iunit = open_restart_read(this_file_name)
 
-            ! Read the file directly into storage
-            call aread_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
-            if(present(init_time)) ens_handle%time(i) = init_time
+         ! Read the file directly into storage
+         call aread_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
+         if(present(init_time)) ens_handle%time(i) = init_time
       
-            ! Close the restart file
-            call close_restart(iunit)
-         endif
-      end do READ_MULTIPLE_RESTARTS
-   endif
+         ! Close the restart file
+         call close_restart(iunit)
+      endif
+   end do READ_MULTIPLE_RESTARTS
+endif
 
-   !------------------- Block that follows perturbs single base restart --------
-   if(.not. start_from_restart) then
-      PERTURB_MY_RESTARTS: do i = 1, ens_handle%my_num_copies
-         global_copy_index = ens_handle%my_copies(i)
-         ! If this is one of the actual ensemble copies, then perturb
-         if(global_copy_index >= start_copy .and. global_copy_index <= end_copy) then
-            ! See if model has an interface to perturb
-            call pert_model_state(ens_handle%vars(:, i), ens_handle%vars(:, i), interf_provided)
-            ! If model does not provide a perturbing interface, do it here
-            if(.not. interf_provided) then
-               ! To reproduce for varying pe count, need  fixed sequence for each copy
-               call init_random_seq(random_seq, global_copy_index)
-               do j = 1, ens_handle%num_vars
-                  if (ens_handle%vars(j,i) /= MISSING_R8) &
-                  ens_handle%vars(j, i) = random_gaussian(random_seq, ens_handle%vars(j, i), &
+!------------------- Block that follows perturbs single base restart --------
+if(.not. start_from_restart) then
+   PERTURB_MY_RESTARTS: do i = 1, ens_handle%my_num_copies
+      global_copy_index = ens_handle%my_copies(i)
+      ! If this is one of the actual ensemble copies, then perturb
+      if(global_copy_index >= start_copy .and. global_copy_index <= end_copy) then
+         ! See if model has an interface to perturb
+         call pert_model_state(ens_handle%vars(:, i), ens_handle%vars(:, i), interf_provided)
+         ! If model does not provide a perturbing interface, do it here
+         if(.not. interf_provided) then
+            ! To reproduce for varying pe count, need  fixed sequence for each copy
+            call init_random_seq(random_seq, global_copy_index)
+            do j = 1, ens_handle%num_vars
+               if (ens_handle%vars(j,i) /= MISSING_R8) &
+               ens_handle%vars(j, i) = random_gaussian(random_seq, ens_handle%vars(j, i), &
                      perturbation_amplitude)
-               end do
-            endif
+            end do
          endif
-      end do PERTURB_MY_RESTARTS
-   endif
-
+      endif
+   end do PERTURB_MY_RESTARTS
 endif
 
 end subroutine read_ensemble_restart
@@ -415,18 +399,6 @@ logical                             :: single_file_forced
 
 ! timing variables
 double precision :: start_at_time
-
-! overwrite namelist option if code has not been compiled with pnetcdf
-if (.not. query_pnetcdf()) then ! no pnetcdf so either print warning or error out?
-   no_complete_state = .false.
-   call error_handler(E_MSG, 'write_ensemble_restart', 'not compiled with pnetcdf, switching to reading binary restarts')
-endif
-
-if (no_complete_state) then
-
-   call write_ensemble_restart_parallel(ens_handle, file_name, start_copy, end_copy, giant_restart, transpose_giant)
-
-else
 
 if (present(force_single_file) ) then
    single_file_forced = force_single_file
@@ -495,8 +467,6 @@ endif
          endif
       end do
    endif
-
-endif
 
 end subroutine write_ensemble_restart
 
@@ -983,10 +953,6 @@ if(num_left_over >= (ens_handle%my_pe + 1)) then
 else
    ens_handle%my_num_vars = num_per_pe_below
 endif
-
-! check whether module was compiled with pnetcdf, if not, you have to use the complete state
-! to read and write
-if(.not. query_pnetcdf()) no_complete_state = .false.
 
 if (no_complete_state) then
 
@@ -1948,9 +1914,6 @@ function allow_complete_state()
 logical allow_complete_state
 
 if ( .not. module_initialized ) call error_handler(E_ERR, 'allow_complete_state', 'do not call this before initializing ensemble manager')
-
-! check whether module was compiled with pnetcdf
-if(.not. query_pnetcdf()) no_complete_state = .false.
 
 allow_complete_state = .not. no_complete_state
 

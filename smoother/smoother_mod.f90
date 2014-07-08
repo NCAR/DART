@@ -26,7 +26,6 @@ use assim_tools_mod,      only : filter_assim, get_missing_ok_status
 use obs_sequence_mod,     only : obs_sequence_type
 use adaptive_inflate_mod, only : adaptive_inflate_type, adaptive_inflate_init, &
                                  do_varying_ss_inflate, do_single_ss_inflate
-use smoother_pnetcdf_mod ! this could be a null module if you don't want to use pnetcdf
 
 implicit none
 private
@@ -35,7 +34,7 @@ public :: smoother_read_restart, advance_smoother,                     &
    smoother_gen_copy_meta_data, smoother_write_restart, init_smoother, &
    do_smoothing, smoother_mean_spread, smoother_assim,                 &
    filter_state_space_diagnostics, smoother_ss_diagnostics,            &
-   smoother_end, set_smoother_trace, query_pnetcdf
+   smoother_end, set_smoother_trace
 
 
 ! version controlled file description for error handling, do not edit
@@ -73,10 +72,6 @@ character(len = 129) :: restart_in_file_name  = 'ics', &
 namelist /smoother_nml/ num_lags, start_from_restart, &
                         output_restart, restart_in_file_name, &
                         restart_out_file_name
-
-interface filter_state_space_diagnostics
-   module procedure filter_state_space_diagnostics_complete, filter_state_space_diagnostics_parallel
-end interface
 
 !-------------------------------------------------------------------------
 contains
@@ -472,7 +467,7 @@ end subroutine smoother_mean_spread
 
 !-----------------------------------------------------------
 
-subroutine filter_state_space_diagnostics_complete(curr_ens_time, out_unit, ens_handle, model_size, &
+subroutine filter_state_space_diagnostics(curr_ens_time, out_unit, ens_handle, model_size, &
             num_output_state_members, output_state_mean_index, output_state_spread_index, &
            output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY)
 
@@ -544,7 +539,7 @@ if (output_inflation) then
 
 endif
 
-end subroutine filter_state_space_diagnostics_complete
+end subroutine filter_state_space_diagnostics
 
 !-----------------------------------------------------------
 
