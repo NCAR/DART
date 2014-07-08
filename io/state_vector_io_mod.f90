@@ -281,12 +281,12 @@ if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
 
    ! inflation restarts
    ! prior
-   if ((my_pe - recv_start + 1) == ens_size -3) write(netcdf_filename, '(A, i2.2)') 'prior_inf_ic_old_d', domain
-   if ((my_pe - recv_start + 1) == ens_size -2) write(netcdf_filename, '(A, i2.2)') 'prior_inf_ic_sd_old_d', domain
+   if ((my_pe - recv_start + 1) == ens_size -3) write(netcdf_filename, '(A)') trim(prior_mean_inf_file)
+   if ((my_pe - recv_start + 1) == ens_size -2) write(netcdf_filename, '(A)') trim(prior_sd_inf_file)
 
    ! posterior - do you read this?
-   if ((my_pe - recv_start + 1) == ens_size -1) write(netcdf_filename, '(A, i2.2)') 'prior_inf_ic_old_d', domain
-   if ((my_pe - recv_start + 1) == ens_size)    write(netcdf_filename, '(A, i2.2)') 'prior_inf_ic_sd_old_d', domain
+   if ((my_pe - recv_start + 1) == ens_size -1) write(netcdf_filename, '(A)') trim(post_mean_inf_file)
+   if ((my_pe - recv_start + 1) == ens_size)    write(netcdf_filename, '(A)') trim(post_sd_inf_file)
 
    !print*, 'netcdf filename ', trim(netcdf_filename), ' pe', my_pe
 
@@ -458,12 +458,12 @@ if (my_pe < ens_size) then
 
    ! inflation restarts
    ! prior
-   if ((my_pe + 1) == ens_size -3) write(netcdf_filename_out, '(A, i2.2, A)') 'prior_inf_ic_new_d', domain, '.nc'
-   if ((my_pe + 1) == ens_size -2) write(netcdf_filename_out, '(A, i2.2, A)') 'prior_inf_ic_sd_new_d', domain, '.nc'
+   if ((my_pe + 1) == ens_size -3) write(netcdf_filename_out, '(A)') trim(prior_mean_inf_file)
+   if ((my_pe + 1) == ens_size -2) write(netcdf_filename_out, '(A)') trim(prior_sd_inf_file)
 
    ! posterior
-   if ((my_pe + 1) == ens_size -1) write(netcdf_filename_out, '(A, i2.2, A)') 'post_inf_ic_new_d', domain, '.nc'
-   if ((my_pe + 1) == ens_size)    write(netcdf_filename_out, '(A, i2.2, A)') 'post_inf_ic_sd_new_d', domain, '.nc'
+   if ((my_pe + 1) == ens_size -1) write(netcdf_filename_out, '(A)') trim(post_mean_inf_file)
+   if ((my_pe + 1) == ens_size)    write(netcdf_filename_out, '(A)') trim(post_sd_inf_file)
 
 
    if ( query_write_copy(my_pe + 1)) then
