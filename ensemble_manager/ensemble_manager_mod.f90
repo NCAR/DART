@@ -124,18 +124,13 @@ logical  :: debug = .false.
 ! To use parallel reads and writes of restart files and diagnostics
 logical  :: no_complete_state = .false.
 
-logical  :: giant_restart = .false.
-logical  :: transpose_giant = .false.
-
-
 namelist / ensemble_manager_nml / single_restart_file_in,  &
                                   single_restart_file_out, &
                                   perturbation_amplitude,  &
                                   communication_configuration, &
                                   layout, tasks_per_node,  &
                                   debug, flag_unneeded_transposes, &
-                                  no_complete_state, giant_restart, &
-                                  transpose_giant
+                                  no_complete_state
                                   
 !-----------------------------------------------------------------
 
