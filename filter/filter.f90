@@ -4,6 +4,7 @@
 !
 ! $Id$
 
+! test commit
 
 !> \dir filter  Main program contained here
 !> \file filter.f90 Main program
