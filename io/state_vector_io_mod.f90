@@ -271,144 +271,141 @@ my_pe = state_ens_handle%my_pe
 
 copies_read = 0
 
-do c = 1, ens_size
+COPIES: do c = 1, ens_size
    if (copies_read >= ens_size) exit
 
-! what to do if a variable is larger than the memory limit?
-start_var = 1 ! read first variable first
-starting_point = dart_index ! position in state_ens_handle%copies
+   ! what to do if a variable is larger than the memory limit?
+   start_var = 1 ! read first variable first
+   starting_point = dart_index ! position in state_ens_handle%copies
 
-! need to calculate RECEIVING_PE_LOOP start:end, group size, sending_pe start:end for each group.
-if ( task_count() >= ens_size ) then
-   my_copy = my_pe
-   call get_pe_loops(my_pe, ens_size, group_size, recv_start, recv_end, send_start, send_end)
-else
-   my_copy = copies_read + my_pe
-   call get_pe_loops(my_pe, task_count(), group_size, recv_start, recv_end, send_start, send_end)
-endif
-
-! open netcdf file 
-! You have already opened this once to read the variable info. Should you just leave it open
-! on the readers?
-if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader 
-   write(netcdf_filename, '(A, i2.2, A, i2.2)') 'wrfinput_d', domain, '.', my_copy - recv_start + 1
-
-   ! inflation restarts
-   ! prior
-   if ((my_copy - recv_start + 1) == ens_size -3) write(netcdf_filename, '(A)') trim(prior_mean_inf_file)
-   if ((my_copy - recv_start + 1) == ens_size -2) write(netcdf_filename, '(A)') trim(prior_sd_inf_file)
-
-   ! posterior - do you read this?
-   if ((my_copy - recv_start + 1) == ens_size -1) write(netcdf_filename, '(A)') trim(post_mean_inf_file)
-   if ((my_copy - recv_start + 1) == ens_size)    write(netcdf_filename, '(A)') trim(post_sd_inf_file)
-
-   !print*, 'netcdf filename ', trim(netcdf_filename), ' pe', my_pe
-   if (query_read_copy(my_copy - recv_start + 1)) then
-      print*, 'netcdf file ', netcdf_filename
-      ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
-      call nc_check(ret, 'read_transpose opening', netcdf_filename)
+   ! need to calculate RECEIVING_PE_LOOP start:end, group size, sending_pe start:end for each group.
+   if ( task_count() >= ens_size ) then
+      my_copy = my_pe
+      call get_pe_loops(my_pe, ens_size, group_size, recv_start, recv_end, send_start, send_end)
+   else
+      my_copy = copies_read + my_pe
+      call get_pe_loops(my_pe, task_count(), group_size, recv_start, recv_end, send_start, send_end)
    endif
 
-endif
+   ! open netcdf file
+   ! You have already opened this once to read the variable info. Should you just leave it open
+   ! on the readers?
+   if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
+      write(netcdf_filename, '(A, i2.2, A, i2.2)') 'wrfinput_d', domain, '.', my_copy - recv_start + 1
 
-! Reading of the state variables is broken up into
-do dummy_loop = 1, num_state_variables
-   if (start_var > num_state_variables) exit ! instead of using do while loop
+      ! inflation restarts
+      ! prior
+      if ((my_copy - recv_start + 1) == ens_size -3) write(netcdf_filename, '(A)') trim(prior_mean_inf_file)
+      if ((my_copy - recv_start + 1) == ens_size -2) write(netcdf_filename, '(A)') trim(prior_sd_inf_file)
 
-   ! calculate how many variables will be read
-   end_var = calc_end_var(start_var, domain)
-   if (my_task_id() == 0) print*, 'start_var, end_var', start_var, end_var
-   block_size = sum(variable_sizes(start_var:end_var, domain))
-
-   if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader 
+      ! posterior - do you read this?
+      if ((my_copy - recv_start + 1) == ens_size -1) write(netcdf_filename, '(A)') trim(post_mean_inf_file)
+      if ((my_copy - recv_start + 1) == ens_size)    write(netcdf_filename, '(A)') trim(post_sd_inf_file)
 
       if (query_read_copy(my_copy - recv_start + 1)) then
-         allocate(var_block(block_size))
-         call read_variables(var_block, start_var, end_var, domain)
+         print*, 'netcdf file ', netcdf_filename
+         ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
+         call nc_check(ret, 'read_transpose opening', netcdf_filename)
       endif
 
    endif
 
-   start_rank = mod(sum_variables_below(start_var,domain), task_count())
-   !if(my_task_id()==0) print*, 'start rank', start_rank, sum_variables_below(start_var,domain)
+   ! Reading of the state variables is broken up into
+   do dummy_loop = 1, num_state_variables
+      if (start_var > num_state_variables) exit ! instead of using do while loop
 
-   ! loop through and post recieves 
-   RECEIVING_PE_LOOP: do recv_pe = recv_start, recv_end
+      ! calculate how many variables will be read
+      end_var = calc_end_var(start_var, domain)
+      if (my_task_id() == 0) print*, 'start_var, end_var', start_var, end_var
+      block_size = sum(variable_sizes(start_var:end_var, domain))
 
-      ! work out count on the receiving pe
-      count = block_size/task_count()
-      remainder = mod(block_size, task_count())
-
-      ! mop up leftovers CHECK THESE.
-      if ( (start_rank <= recv_pe) .and. (recv_pe) < (start_rank + remainder)) count = count + 1
-      if ( recv_pe < (start_rank + remainder - task_count() )) count = count + 1
-      ending_point = starting_point + count -1
-
-      ! work out i for the receiving pe
-      i = find_start_point(recv_pe, start_rank)
-
-      if (my_pe == recv_pe) then ! get ready to recieve from each reader
-
-         ensemble_member = 1 + copies_read
-
-         RECEIVE_FROM_EACH: do sending_pe = send_start, send_end ! how do we know ens_size?
-
-            if (query_read_copy(sending_pe + copies_read - recv_start + 1)) then
-
-               if(sending_pe == recv_pe) then ! just copy
-                  ! The row is no longer sending_pe + 1 because it is not just
-                  ! the first ens_size processors that are sending
-                  state_ens_handle%copies(ensemble_member, starting_point:ending_point ) = &
-                  var_block(i:count*task_count():task_count())
-               else ! post receive
-                  !print*, 'start:end', starting_point, ending_point, 'dom', domain
-                  call receive_from(map_pe_to_task(state_ens_handle, sending_pe), &
-                                    state_ens_handle%copies(ensemble_member, starting_point:ending_point))
-               endif
-
-               ensemble_member = ensemble_member + 1
-
-            endif
-
-         enddo RECEIVE_FROM_EACH
-
-         ! update starting point
-
-         starting_point = starting_point + count
-
-      elseif ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! sending
+      if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
 
          if (query_read_copy(my_copy - recv_start + 1)) then
-            call send_to(map_pe_to_task(state_ens_handle, recv_pe), &
-                        var_block(i:count*task_count():task_count()))
+            allocate(var_block(block_size))
+            call read_variables(var_block, start_var, end_var, domain)
          endif
 
       endif
 
-   enddo RECEIVING_PE_LOOP
+      start_rank = mod(sum_variables_below(start_var,domain), task_count())
 
-   start_var = end_var + 1
+      ! loop through and post recieves
+      RECEIVING_PE_LOOP: do recv_pe = recv_start, recv_end
 
-   if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! reader
-      if (query_read_copy(my_copy - recv_start + 1)) then
-         deallocate(var_block)
+         ! work out count on the receiving pe
+         count = block_size/task_count()
+         remainder = mod(block_size, task_count())
+
+         ! mop up leftovers CHECK THESE.
+         if ( (start_rank <= recv_pe) .and. (recv_pe) < (start_rank + remainder)) count = count + 1
+         if ( recv_pe < (start_rank + remainder - task_count() )) count = count + 1
+         ending_point = starting_point + count -1
+
+         ! work out i for the receiving pe
+         i = find_start_point(recv_pe, start_rank)
+
+         if (my_pe == recv_pe) then ! get ready to recieve from each reader
+
+            ensemble_member = 1 + copies_read
+
+            RECEIVE_FROM_EACH: do sending_pe = send_start, send_end ! how do we know ens_size?
+
+               if (query_read_copy(sending_pe + copies_read - recv_start + 1)) then
+
+                  if(sending_pe == recv_pe) then ! just copy
+                     ! The row is no longer sending_pe + 1 because it is not just
+                     ! the first ens_size processors that are sending
+                     state_ens_handle%copies(ensemble_member, starting_point:ending_point ) = &
+                     var_block(i:count*task_count():task_count())
+                  else ! post receive
+                     call receive_from(map_pe_to_task(state_ens_handle, sending_pe), &
+                                    state_ens_handle%copies(ensemble_member, starting_point:ending_point))
+                  endif
+
+                  ensemble_member = ensemble_member + 1
+
+               endif
+
+            enddo RECEIVE_FROM_EACH
+
+            ! update starting point
+
+            starting_point = starting_point + count
+
+         elseif ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! sending
+
+            if (query_read_copy(my_copy - recv_start + 1)) then
+               call send_to(map_pe_to_task(state_ens_handle, recv_pe), &
+                           var_block(i:count*task_count():task_count()))
+            endif
+
+         endif
+
+      enddo RECEIVING_PE_LOOP
+
+      start_var = end_var + 1
+
+      if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! reader
+         if (query_read_copy(my_copy - recv_start + 1)) then
+            deallocate(var_block)
+         endif
       endif
-   endif
 
-enddo
+   enddo
 
-copies_read = copies_read + task_count()
-if(my_task_id()==0) print*, 'copies_read', copies_read
+   copies_read = copies_read + task_count()
 
-enddo
-
-! close netcdf file
+! close netcdf file 
 if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader 
    if (query_read_copy(my_copy - recv_start + 1)) then
       ret = nf90_close(ncfile)
       call nc_check(ret, 'read_transpose closing', netcdf_filename)
    endif
 endif
+
+
+enddo COPIES
 
 dart_index = starting_point
 
@@ -468,326 +465,315 @@ my_pe = state_ens_handle%my_pe
 
 copies_written = 0
 
-do c = 1, ens_size
+COPIES : do c = 1, ens_size
    if (copies_written >= ens_size) exit
 
-start_var = 1 ! collect first variable first
-starting_point = dart_index ! position in state_ens_handle%copies
-a = 0 ! start at group 1 element 1
+   start_var = 1 ! collect first variable first
+   starting_point = dart_index ! position in state_ens_handle%copies
+   a = 0 ! start at group 1 element 1
 
-
-! need to calculate RECEIVING_PE_LOOP start:end, group size, sending_pe start:end for each group.
-if ( task_count() >= ens_size ) then
-   my_copy = my_pe
-   call get_pe_loops(my_pe, ens_size, group_size, send_start, send_end, recv_start, recv_end) ! think I can just flip send and recv for transpose_write?
-else
-   my_copy = copies_written + my_pe
-   call get_pe_loops(my_pe, task_count(), group_size, send_start, send_end, recv_start, recv_end)
-endif
-
-
-! writers open netcdf output file. This is a copy of the input file
-if (my_pe < ens_size) then
-   write(netcdf_filename_out, '(A, i2.2, A, i2.2, A)') 'wrfinput_d', domain, '.', my_copy + 1, '.nc'
-
-   ! inflation restarts
-   ! prior
-   if ((my_copy + 1) == ens_size -3) write(netcdf_filename_out, '(A)') trim(prior_mean_inf_file)
-   if ((my_copy + 1) == ens_size -2) write(netcdf_filename_out, '(A)') trim(prior_sd_inf_file)
-
-   ! posterior
-   if ((my_copy + 1) == ens_size -1) write(netcdf_filename_out, '(A)') trim(post_mean_inf_file)
-   if ((my_copy + 1) == ens_size)    write(netcdf_filename_out, '(A)') trim(post_sd_inf_file)
-
-
-   if ( query_write_copy(my_copy - recv_start + 1)) then
-      print*, 'netcdf_filename_out ', trim(netcdf_filename_out), my_pe
-      ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
-      call nc_check(ret, 'transpose_write opening', trim(netcdf_filename_out))
+   ! need to calculate RECEIVING_PE_LOOP start:end, group size, sending_pe start:end for each group.
+   if ( task_count() >= ens_size ) then
+      my_copy = my_pe
+      call get_pe_loops(my_pe, ens_size, group_size, send_start, send_end, recv_start, recv_end) ! think I can just flip send and recv for transpose_write?
+   else
+      my_copy = copies_written + my_pe
+      call get_pe_loops(my_pe, task_count(), group_size, send_start, send_end, recv_start, recv_end)
    endif
 
-endif
+   ! writers open netcdf output file. This is a copy of the input file
+   if (my_pe < ens_size) then
+      write(netcdf_filename_out, '(A, i2.2, A, i2.2, A)') 'wrfinput_d', domain, '.', my_copy + 1, '.nc'
 
-do dummy_loop = 1, num_state_variables
-   if (start_var > num_state_variables) exit ! instead of using do while loop
+      ! inflation restarts
+      ! prior
+      if ((my_copy + 1) == ens_size -3) write(netcdf_filename_out, '(A)') trim(prior_mean_inf_file)
+      if ((my_copy + 1) == ens_size -2) write(netcdf_filename_out, '(A)') trim(prior_sd_inf_file)
 
-   ! calculate how many variables will be sent to writer
-   end_var = calc_end_var(start_var, domain)
-   if (my_task_id() == 0) print*, 'start_var, end_var', start_var, end_var
-   num_vars = sum(variable_sizes(start_var:end_var, domain))
+      ! posterior
+      if ((my_copy + 1) == ens_size -1) write(netcdf_filename_out, '(A)') trim(post_mean_inf_file)
+      if ((my_copy + 1) == ens_size)    write(netcdf_filename_out, '(A)') trim(post_sd_inf_file)
 
-   if ((my_pe >= recv_start) .and. (my_pe <= recv_end)) then ! I am a collector
-      if (query_write_copy(my_copy - send_start + 1)) then
-         allocate(var_block(num_vars))
+      if ( query_write_copy(my_copy - recv_start + 1)) then
+         print*, 'netcdf_filename_out ', trim(netcdf_filename_out), my_pe
+         ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
+         call nc_check(ret, 'transpose_write opening', trim(netcdf_filename_out))
       endif
+
    endif
 
-   start_rank =  mod(sum_variables_below(start_var,domain), task_count())
+   do dummy_loop = 1, num_state_variables
+      if (start_var > num_state_variables) exit ! instead of using do while loop
 
-   SENDING_PE_LOOP: do sending_pe = send_start, send_end
-
-      ! work out count on the sending pe
-      count = num_vars/task_count()
-      remainder = mod(num_vars, task_count())
-
-      ! mop up leftovers CHECK THESE.
-      if ( (start_rank <= sending_pe) .and. (sending_pe) < (start_rank + remainder)) count = count + 1
-      if ( sending_pe < (start_rank + remainder - task_count() )) count = count + 1
-      ending_point = starting_point + count -1
-
-      ! work out i for the sending_pe
-      i = find_start_point(sending_pe, start_rank)
-
-      if (my_pe /= sending_pe ) then ! post recieves
-         if ((my_pe >= recv_start) .and. (my_pe <= recv_end)) then ! I am a collector
-            if (query_write_copy(my_copy - send_start + 1)) then
-               call receive_from(map_pe_to_task(state_ens_handle, sending_pe), var_block(i:count*task_count():task_count()))
-            endif
-         endif
-
-      else ! send to the collector
-
-         ensemble_member = 1 + copies_written
-
-         do recv_pe = recv_start, recv_end ! no if statement because everyone sends
-
-            if (query_write_copy(recv_pe + copies_written - send_start + 1)) then
-
-               if ( recv_pe /= my_pe ) then
-                  call send_to(map_pe_to_task(state_ens_handle, recv_pe), state_ens_handle%copies(ensemble_member, starting_point:ending_point))
-               else ! if sender = receiver just copy
-                  var_block(i:count*task_count():task_count()) = state_ens_handle%copies(ensemble_member, starting_point:ending_point)
-               endif
-
-               ensemble_member = ensemble_member + 1
-
-            endif
-
-         enddo
-
-         ! update starting point
-         starting_point = starting_point + count
-
-      endif
-
-   enddo SENDING_PE_LOOP
-
-   if (limit_procs >= task_count()) then ! no need to do second stage
-
-      if (my_pe < ens_size) then ! I am a writer
-         if ( query_write_copy(my_copy + 1)) then
-            !var_block = MISSING_R8  ! if you want to create a file for bitwise testing
-            call write_variables(var_block, start_var, end_var, domain)
-            deallocate(var_block)
-         endif
-      endif
-
-   else ! Need to aggregate onto the writers (ens_size writers) Is there a better way to do this?
-      ! I don't think you enter this if task_count < ens_size because limit_procs = task_count()
+      ! calculate how many variables will be sent to writer
+      end_var = calc_end_var(start_var, domain)
+      if (my_task_id() == 0) print*, 'start_var, end_var', start_var, end_var
+      num_vars = sum(variable_sizes(start_var:end_var, domain))
 
       if ((my_pe >= recv_start) .and. (my_pe <= recv_end)) then ! I am a collector
+         if (query_write_copy(my_copy - send_start + 1)) then
+            allocate(var_block(num_vars))
+         endif
+      endif
 
-         if (query_write_copy(my_pe - send_start + 1)) then
+      start_rank =  mod(sum_variables_below(start_var,domain), task_count())
 
-            assembling_ensemble = my_pe - recv_start + 1
-            num_groups = task_count() / limit_procs
-            if (mod(task_count(), limit_procs) /= 0) then ! have to do somthing else
-               num_groups = num_groups + 1
-               if (mod(task_count(), limit_procs) < ens_size) num_groups = num_groups - 1 ! last group is big
+      SENDING_PE_LOOP: do sending_pe = send_start, send_end
+
+         ! work out count on the sending pe
+         count = num_vars/task_count()
+         remainder = mod(num_vars, task_count())
+
+         ! mop up leftovers CHECK THESE.
+         if ( (start_rank <= sending_pe) .and. (sending_pe) < (start_rank + remainder)) count = count + 1
+         if ( sending_pe < (start_rank + remainder - task_count() )) count = count + 1
+         ending_point = starting_point + count -1
+
+         ! work out i for the sending_pe
+         i = find_start_point(sending_pe, start_rank)
+
+         if (my_pe /= sending_pe ) then ! post recieves
+            if ((my_pe >= recv_start) .and. (my_pe <= recv_end)) then ! I am a collector
+               if (query_write_copy(my_copy - send_start + 1)) then
+                  call receive_from(map_pe_to_task(state_ens_handle, sending_pe), var_block(i:count*task_count():task_count()))
+               endif
             endif
 
-            my_group = my_pe / limit_procs + 1
-            if (my_group > num_groups) my_group = num_groups ! last group is big
+         else ! send to the collector
 
-            do g = 2, num_groups ! do whole ensemble at once
+            ensemble_member = 1 + copies_written
 
-               ! only group sending and first group need to be involved
-               if ((my_group == g) .or. (my_group == 1)) then
+            do recv_pe = recv_start, recv_end ! no if statement because everyone sends
 
-                  ! create datatype for the data being sent to the writers - same across the ensemble
-                  ! need to find size of group g. Only the last group could be a different size
-                  if (g < num_groups) then
-                     num_in_group = limit_procs
-                  else
-                     num_in_group = get_group_size(task_count(), ens_size)
+               if (query_write_copy(recv_pe + copies_written - send_start + 1)) then
+
+                  if ( recv_pe /= my_pe ) then
+                     call send_to(map_pe_to_task(state_ens_handle, recv_pe), state_ens_handle%copies(ensemble_member, starting_point:ending_point))
+                  else ! if sender = receiver just copy
+                     var_block(i:count*task_count():task_count()) = state_ens_handle%copies(ensemble_member, starting_point:ending_point)
                   endif
 
-                  if (a == 0) then ! group 1, element 1 starts the var_block, g cannot be the owner
-
-                     owner = 1
-                     y = limit_procs
-                     sub_block = num_vars - (g-1)*limit_procs
-                     num_blocks = sub_block / task_count()
-                     remainder = mod(sub_block, task_count())
-                     if (remainder > 0) num_blocks = num_blocks + 1
-                     allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
-
-                     array_of_displacements(1) = (g-1)*limit_procs
-                     array_of_displacements(2) = array_of_displacements(1) + task_count()
-                     array_of_blocks(1) = num_in_group
-
-                     if (remainder < num_in_group ) then
-                        array_of_blocks(num_blocks) = sub_block - task_count()*(num_blocks-1)
-                     else
-                        array_of_blocks(num_blocks) = num_in_group
-                     endif
-
-                  else ! have to do something else
-
-                     ! calculate which group last element of a is in. a starts at group 1 element 1
-                     do j = 1, num_groups
-                        if ( a <= cumulative_tasks(j, ens_size) ) then
-                           owner = j
-                           exit
-                        endif
-                     enddo
-
-                     ! calulate k:
-                     if ( owner == 1 ) then
-                        k = a
-                     else
-                        k = a - cumulative_tasks(owner -1, ens_size)
-                     endif
-
-                     if (k == 0) then
-                        owner = owner + 1
-                        if (owner == num_groups + 1) owner = 1
-                     endif
-
-                     y = get_group_size(owner*limit_procs -1, ens_size) - k
-
-                     ! find number of tasks between owner and group 1?
-                     n = cumulative_tasks(num_groups, ens_size) - cumulative_tasks(owner, ens_size)
-
-                     !if (my_pe == 0) print*, 'g = ', g, 'owner =', owner, 'n = ', n, 'k = ', k, 'y =', y, 'num_blocks', num_blocks, 'num_vars', num_vars
-
-                     ! find number of blocks:
-                     sub_block = num_vars - y - n
-                     num_blocks = sub_block / task_count()
-                     if ( g >= owner ) num_blocks = num_blocks + 1 ! for y and for any blocks in n
-
-                     remainder = mod( sub_block, task_count() )
-
-                     if (remainder >= cumulative_tasks(g, ens_size) ) then
-
-                        num_blocks = num_blocks + 1
-                        allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
-                        array_of_blocks(num_blocks) = num_in_group
-
-                     elseif ( (cumulative_tasks(g-1, ens_size) < remainder) .and. ( remainder < cumulative_tasks(g, ens_size)) ) then
-
-                        num_blocks = num_blocks + 1 ! ragged end
-                        allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
-                        array_of_blocks(num_blocks) = remainder - cumulative_tasks(g-1, ens_size)
-
-                     else
-
-                        allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
-                        array_of_blocks(num_blocks) = num_in_group
-
-                     endif
-
-                     if ( g == owner ) then
-                        array_of_displacements(1) = 0 ! zero offset for mpi_type_indexed
-                        array_of_displacements(2) = task_count() - k  ! zero offset
-                        array_of_blocks(1) = y
-                     elseif ( g > owner) then
-                        array_of_displacements(1) = y + cumulative_tasks(g-1, ens_size) - cumulative_tasks(owner, ens_size)
-                        array_of_displacements(2) = array_of_displacements(1) + task_count()
-                        array_of_blocks(1) = num_in_group
-                     else
-                        array_of_displacements(1) = y + n + cumulative_tasks(g-1, ens_size) ! y + n + offest from start of group 1
-                        array_of_displacements(2) = array_of_displacements(1) + task_count()
-                        array_of_blocks(1) = num_in_group
-                     endif
-
-                  endif
-
-                  array_of_blocks(2:num_blocks - 1) = num_in_group
-
-                  do i = 3, num_blocks
-                     array_of_displacements(i) = array_of_displacements(i-1) + task_count()
-                  enddo
-
-                  !if (my_pe == 0) print*, 'dis, blocks', array_of_displacements(num_blocks), array_of_blocks(num_blocks), 'y, n, g, owner, a', y, n, g, owner, a, 'num_vars', num_vars
-
-                  !if (my_pe == 0) print*, 'dis, blocks', array_of_displacements(num_blocks), array_of_blocks(num_blocks), 'y, g, owner, a', y, g, owner, a, 'num_vars', num_vars
-
-                  ! check you are not going over num_vars
-                  if(my_pe == 0) then
-                     if( (array_of_displacements(num_blocks) + array_of_blocks(num_blocks))  > num_vars) then
-                        print*, '++++ OVER ++++', num_vars - (array_of_displacements(num_blocks) + array_of_blocks(num_blocks)), 'last block', array_of_blocks(num_blocks), 'last disp', array_of_displacements(num_blocks), 'num_vars', num_vars, 'y', y
-                        print*, 'remainder', remainder, cumulative_tasks(g-1, ens_size), cumulative_tasks(g,ens_size), num_blocks
-                     endif
-                  endif
-
-                  if ( datasize == mpi_real4 ) then
-
-                     call mpi_type_indexed(num_blocks, array_of_blocks, array_of_displacements, mpi_real4, collector_type, ierr)
-
-                  else ! double precision
-
-                     call mpi_type_indexed(num_blocks, array_of_blocks, array_of_displacements, mpi_real8, collector_type, ierr)
-
-                  endif
-
-                  call mpi_type_commit(collector_type, ierr)
-
-                  ! collectors -> writers
-
-                  recv_pe = assembling_ensemble - 1
-                  sending_pe = recv_pe + (g-1)*limit_procs
-                  if (my_pe == recv_pe) then
-                     call mpi_recv(var_block, 1, collector_type, map_pe_to_task(state_ens_handle,sending_pe), 0, mpi_comm_world, status, ierr)
-                  elseif (my_pe == sending_pe) then
-                     call mpi_send(var_block, 1, collector_type, map_pe_to_task(state_ens_handle,recv_pe), 0, mpi_comm_world, ierr)
-                  endif
-
-                  call mpi_type_free(collector_type, ierr)
-                  deallocate(array_of_blocks, array_of_displacements)
-
-                  !if(my_pe==0) print*, 'completed interation', g-1
+                  ensemble_member = ensemble_member + 1
 
                endif
 
             enddo
 
+            ! update starting point
+            starting_point = starting_point + count
+
          endif
 
+      enddo SENDING_PE_LOOP
+
+      if (limit_procs >= task_count()) then ! no need to do second stage
+
          if (my_pe < ens_size) then ! I am a writer
-            if(query_write_copy(my_copy + 1)) then
+            if ( query_write_copy(my_copy + 1)) then
                !var_block = MISSING_R8  ! if you want to create a file for bitwise testing
                call write_variables(var_block, start_var, end_var, domain)
+               deallocate(var_block)
             endif
          endif
 
-         if(query_write_copy(my_copy - send_start + 1)) then
-            deallocate(var_block) ! all collectors have var_block
+      else ! Need to aggregate onto the writers (ens_size writers) Is there a better way to do this?
+           ! I don't think you enter this if task_count < ens_size because limit_procs = task_count()
+
+         if ((my_pe >= recv_start) .and. (my_pe <= recv_end)) then ! I am a collector
+
+            if (query_write_copy(my_pe - send_start + 1)) then
+
+               assembling_ensemble = my_pe - recv_start + 1
+               num_groups = task_count() / limit_procs
+               if (mod(task_count(), limit_procs) /= 0) then ! have to do somthing else
+                  num_groups = num_groups + 1
+                  if (mod(task_count(), limit_procs) < ens_size) num_groups = num_groups - 1 ! last group is big
+               endif
+
+               my_group = my_pe / limit_procs + 1
+               if (my_group > num_groups) my_group = num_groups ! last group is big
+
+               do g = 2, num_groups ! do whole ensemble at once
+
+                  ! only group sending and first group need to be involved
+                  if ((my_group == g) .or. (my_group == 1)) then
+
+                     ! create datatype for the data being sent to the writers - same across the ensemble
+                     ! need to find size of group g. Only the last group could be a different size
+                     if (g < num_groups) then
+                        num_in_group = limit_procs
+                     else
+                        num_in_group = get_group_size(task_count(), ens_size)
+                     endif
+
+                     if (a == 0) then ! group 1, element 1 starts the var_block, g cannot be the owner
+
+                        owner = 1
+                        y = limit_procs
+                        sub_block = num_vars - (g-1)*limit_procs
+                        num_blocks = sub_block / task_count()
+                        remainder = mod(sub_block, task_count())
+                        if (remainder > 0) num_blocks = num_blocks + 1
+                        allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
+
+                        array_of_displacements(1) = (g-1)*limit_procs
+                        array_of_displacements(2) = array_of_displacements(1) + task_count()
+                        array_of_blocks(1) = num_in_group
+
+                        if (remainder < num_in_group ) then
+                           array_of_blocks(num_blocks) = sub_block - task_count()*(num_blocks-1)
+                        else
+                           array_of_blocks(num_blocks) = num_in_group
+                        endif
+
+                     else ! have to do something else
+
+                        ! calculate which group last element of a is in. a starts at group 1 element 1
+                        do j = 1, num_groups
+                           if ( a <= cumulative_tasks(j, ens_size) ) then
+                              owner = j
+                              exit
+                           endif
+                        enddo
+
+                        ! calulate k:
+                        if ( owner == 1 ) then
+                           k = a
+                        else
+                           k = a - cumulative_tasks(owner -1, ens_size)
+                        endif
+
+                        if (k == 0) then
+                           owner = owner + 1
+                           if (owner == num_groups + 1) owner = 1
+                        endif
+
+                        y = get_group_size(owner*limit_procs -1, ens_size) - k
+
+                        ! find number of tasks between owner and group 1?
+                        n = cumulative_tasks(num_groups, ens_size) - cumulative_tasks(owner, ens_size)
+
+                        !if (my_pe == 0) print*, 'g = ', g, 'owner =', owner, 'n = ', n, 'k = ', k, 'y =', y, 'num_blocks', num_blocks, 'num_vars', num_vars
+
+                        ! find number of blocks:
+                        sub_block = num_vars - y - n
+                        num_blocks = sub_block / task_count()
+                        if ( g >= owner ) num_blocks = num_blocks + 1 ! for y and for any blocks in n
+
+                        remainder = mod( sub_block, task_count() )
+
+                        if (remainder >= cumulative_tasks(g, ens_size) ) then
+
+                           num_blocks = num_blocks + 1
+                           allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
+                           array_of_blocks(num_blocks) = num_in_group
+
+                        elseif ( (cumulative_tasks(g-1, ens_size) < remainder) .and. ( remainder < cumulative_tasks(g, ens_size)) ) then
+
+                           num_blocks = num_blocks + 1 ! ragged end
+                           allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
+                           array_of_blocks(num_blocks) = remainder - cumulative_tasks(g-1, ens_size)
+
+                        else
+
+                           allocate(array_of_blocks(num_blocks), array_of_displacements(num_blocks))
+                           array_of_blocks(num_blocks) = num_in_group
+
+                        endif
+
+                        if ( g == owner ) then
+                           array_of_displacements(1) = 0 ! zero offset for mpi_type_indexed
+                           array_of_displacements(2) = task_count() - k  ! zero offset
+                           array_of_blocks(1) = y
+                        elseif ( g > owner) then
+                           array_of_displacements(1) = y + cumulative_tasks(g-1, ens_size) - cumulative_tasks(owner, ens_size)
+                           array_of_displacements(2) = array_of_displacements(1) + task_count()
+                           array_of_blocks(1) = num_in_group
+                        else
+                           array_of_displacements(1) = y + n + cumulative_tasks(g-1, ens_size) ! y + n + offest from start of group 1
+                           array_of_displacements(2) = array_of_displacements(1) + task_count()
+                           array_of_blocks(1) = num_in_group
+                        endif
+
+                     endif
+
+                     array_of_blocks(2:num_blocks - 1) = num_in_group
+
+                     do i = 3, num_blocks
+                        array_of_displacements(i) = array_of_displacements(i-1) + task_count()
+                     enddo
+   
+                     ! check you are not going over num_vars - you can probably pull this, it was just for debugging.
+                     if(my_pe == 0) then
+                        if( (array_of_displacements(num_blocks) + array_of_blocks(num_blocks))  > num_vars) then
+                           print*, '++++ OVER ++++', num_vars - (array_of_displacements(num_blocks) + array_of_blocks(num_blocks)), 'last block', array_of_blocks(num_blocks), 'last disp', array_of_displacements(num_blocks), 'num_vars', num_vars, 'y', y
+                           print*, 'remainder', remainder, cumulative_tasks(g-1, ens_size), cumulative_tasks(g,ens_size), num_blocks
+                        endif
+                     endif
+
+                     if ( datasize == mpi_real4 ) then
+
+                        call mpi_type_indexed(num_blocks, array_of_blocks, array_of_displacements, mpi_real4, collector_type, ierr)
+
+                     else ! double precision
+
+                        call mpi_type_indexed(num_blocks, array_of_blocks, array_of_displacements, mpi_real8, collector_type, ierr)
+
+                     endif
+
+                     call mpi_type_commit(collector_type, ierr)
+
+                     ! collectors -> writers
+
+                     recv_pe = assembling_ensemble - 1
+                     sending_pe = recv_pe + (g-1)*limit_procs
+                     if (my_pe == recv_pe) then
+                        call mpi_recv(var_block, 1, collector_type, map_pe_to_task(state_ens_handle,sending_pe), 0, mpi_comm_world, status, ierr)
+                     elseif (my_pe == sending_pe) then
+                        call mpi_send(var_block, 1, collector_type, map_pe_to_task(state_ens_handle,recv_pe), 0, mpi_comm_world, ierr)
+                     endif
+
+                     call mpi_type_free(collector_type, ierr)
+                     deallocate(array_of_blocks, array_of_displacements)
+
+                  endif
+
+               enddo
+
+            endif
+
+            if (my_pe < ens_size) then ! I am a writer
+               if(query_write_copy(my_copy + 1)) then
+                  !var_block = MISSING_R8  ! if you want to create a file for bitwise testing
+                  call write_variables(var_block, start_var, end_var, domain)
+               endif
+            endif
+
+            if(query_write_copy(my_copy - send_start + 1)) then
+               deallocate(var_block) ! all collectors have var_block
+            endif
+
          endif
 
       endif
 
+      start_var = end_var + 1
+      ! calculate a:
+      a = mod(num_vars - (task_count() - a), task_count())
 
-   endif
+   enddo
 
-   start_var = end_var + 1
-   ! calculate a:
-   a = mod(num_vars - (task_count() - a), task_count())
-   !if(my_pe == 0) print*, ' next a', a
-
-enddo
-
-copies_written = copies_written + task_count()
-
-enddo
+   copies_written = copies_written + task_count()
 
 ! close netcdf file
-if (my_pe < ens_size ) then ! I am a writer
-   if (query_write_copy(my_pe + 1)) then
+if (my_copy < ens_size ) then ! I am a writer
+   if (query_write_copy(my_copy + 1)) then
       ret = nf90_close(ncfile_out)
       call nc_check(ret, 'transpose_write', 'closing')
    endif
 endif
+
+enddo COPIES
 
 dart_index = starting_point
 
