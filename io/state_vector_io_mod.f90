@@ -68,7 +68,7 @@ integer :: ncfile !< netcdf input file identifier
 integer :: ncfile_out !< netcdf output file handle
 character(len=256) :: netcdf_filename !< needs to be different for each task
 character(len=256) :: netcdf_filename_out !< needs to be different for each task
-integer, parameter :: MAXDIMS = NF90_MAX_VAR_DIMS ! FIXME netcdf-max_dims?
+integer, parameter :: MAXDIMS = NF90_MAX_VAR_DIMS 
 
 integer,            allocatable :: variable_ids(:, :)
 integer,            allocatable :: variable_sizes(:, :)
@@ -86,7 +86,7 @@ logical, allocatable :: read_copies(:), write_copies(:)
 ! namelist variables with default values
 ! Aim: to have the regular transpose as the default
 integer :: limit_mem = 2147483640!< This is the number of elements (not bytes) so you don't have times the number by 4 or 8
-integer :: limit_procs = 100000!< how many processors you want involved in each transpose. This needs to be bigger than ens_size?
+integer :: limit_procs = 100000!< how many processors you want involved in each transpose.
 
 namelist /  state_vector_io_nml / limit_mem, limit_procs 
 
@@ -168,7 +168,7 @@ if ( any(variable_sizes(:, domain)>limit_mem) ) then
 endif
 
 ! close netcdf file
-ret = nf90_close(ncfile) ! FIXME: Use NC ERROR handler
+ret = nf90_close(ncfile)
 call nc_check(ret, 'get_state_variable_info', 'closing')
 
 end subroutine get_state_variable_info
@@ -417,7 +417,9 @@ end subroutine read_transpose
 !> limit_procs is used to devide the pes into groups.  Note that the
 !> groups are not created using mpi_group_incl.
 !> 
-!> Using the term collectors = first stage of amalgamating 
+!> Two stages of collection.
+!> See transpose_write.pdf for explanation of a, k, y.
+!> 
 subroutine transpose_write(state_ens_handle, domain, dart_index)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
@@ -446,7 +448,7 @@ integer :: assembling_ensemble !< which ensemble the collectors are assembling
 integer :: my_group !< which group my_pe is a member of
 integer :: num_in_group !< how many processors are in a group
 integer :: dummy_loop, j
-integer :: a, k, n, owner, y, l, sub_block
+integer :: a, k, n, owner, y, sub_block
 integer :: my_copy !< which copy a pe is reading, starting from 0 to match pe
 integer :: c !< copies_read loop index
 integer :: copies_written
