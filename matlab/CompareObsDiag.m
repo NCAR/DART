@@ -44,8 +44,8 @@ if (exist(file2,'file') ~= 2), error('%s does not exist.',file2); end
 
 f1info     = ncinfo(file1);
 nvariables = length(f1info.Variables);
-ncid1      = netcdf.open(file1,'NC_NOWRITE');
-ncid2      = netcdf.open(file2,'NC_NOWRITE');
+ncid1      = netcdf.open(file1,'NOWRITE');
+ncid2      = netcdf.open(file2,'NOWRITE');
 
 % Loop over all the variables in the first file ... the variables
 % can be in any order in either file. I do not check to see if

@@ -52,7 +52,7 @@ if (exist(file1,'file') ~= 2), error('%s does not exist.',file1); end
 
 f1info     = ncinfo(file1);
 nvariables = length(f1info.Variables);
-ncid1      = netcdf.open(file1,'NC_NOWRITE');
+ncid1      = netcdf.open(file1,'NOWRITE');
 
 for ivar = 1:nvariables
 
@@ -99,8 +99,8 @@ if (length(f1info.Variables) ~= length(f2info.Variables) )
 end
 
 nvariables = length(f1info.Variables);
-ncid1      = netcdf.open(file1,'NC_NOWRITE');
-ncid2      = netcdf.open(file2,'NC_NOWRITE');
+ncid1      = netcdf.open(file1,'NOWRITE');
+ncid2      = netcdf.open(file2,'NOWRITE');
 
 % grab the variable name from one file and 
 % search the second file for matching variable.
