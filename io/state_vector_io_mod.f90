@@ -41,13 +41,25 @@ module state_vector_io_mod
 !> processors using <code> limit_procs </code>
 !> @{
 
-use types_mod, only : r8, MISSING_R8
-use mpi_utilities_mod, only : task_count, send_to, receive_from, my_task_id, datasize
-use ensemble_manager_mod, only : ensemble_type, map_pe_to_task
-use utilities_mod, only : error_handler, E_ERR, nc_check, check_namelist_read, &
-    find_namelist_in_file, nmlfileunit, do_nml_file, do_nml_term
+use types_mod,            only : r8, MISSING_R8
+
+use mpi_utilities_mod,    only : task_count, send_to, receive_from, my_task_id, datasize
+
+use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, single_restart_file_in, &
+                                 single_restart_file_out
+
+use utilities_mod,        only : error_handler, E_ERR, nc_check, check_namelist_read, &
+                                 find_namelist_in_file, nmlfileunit, do_nml_file, do_nml_term
+
+use assim_model_mod,      only : get_model_size, aread_state_restart, awrite_state_restart, &
+                                 open_restart_read, open_restart_write, close_restart
+
+use time_manager_mod,     only : time_type
+
 use netcdf
+
 use mpi
+
 use io_filenames_mod
 
 implicit none
@@ -61,7 +73,8 @@ public :: state_vector_io_init, &
           transpose_write, &
           netcdf_filename_out, &
           setup_read_write, &
-          turn_read_copy_on, turn_write_copy_on
+          turn_read_copy_on, turn_write_copy_on, &
+          get_state_variable_info_lorenz96
 
 integer :: ret !< netcdf return code
 integer :: ncfile !< netcdf input file identifier
@@ -174,6 +187,16 @@ call nc_check(ret, 'get_state_variable_info', 'closing')
 end subroutine get_state_variable_info
 
 !-------------------------------------------------
+!> tempory lorenz_96 variable info
+subroutine get_state_variable_info_lorenz96(n)
+
+integer, intent(in) :: n !< number of state variables
+
+variable_sizes(:,:) = 1
+
+end subroutine get_state_variable_info_lorenz96
+
+!-------------------------------------------------
 !> Get netcdf variable ids
 subroutine get_variable_ids(variable_names, domain, variable_ids)
 
@@ -237,6 +260,8 @@ end function total_size
 !> limit_mem AND the task limit imposed by limit_procs
 !> limit_procs is used to devide the pes into groups.  Note that the
 !> groups are not created using mpi_group_incl.
+!>
+!> Trying to put in single file read for small models.
 subroutine read_transpose(state_ens_handle, domain, dart_index)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
@@ -264,8 +289,14 @@ integer :: my_copy !< which copy a pe is reading, starting from 0 to match pe
 integer :: c !< copies_read loop index
 integer :: copies_read
 
+! single file
+integer :: iunit
+type(time_type) :: ens_time
+
 !ens_size = state_ens_handle%num_copies -6 ! don't want the extras
 ens_size = state_ens_handle%num_copies ! have the extras, incase you need to read inflation restarts
+
+netcdf_filename = 'filter_ics' ! lorenz_96
 
 my_pe = state_ens_handle%my_pe
 
@@ -278,34 +309,52 @@ COPIES: do c = 1, ens_size
    start_var = 1 ! read first variable first
    starting_point = dart_index ! position in state_ens_handle%copies
 
-   ! need to calculate RECEIVING_PE_LOOP start:end, group size, sending_pe start:end for each group.
-   if ( task_count() >= ens_size ) then
-      my_copy = my_pe
-      call get_pe_loops(my_pe, ens_size, group_size, recv_start, recv_end, send_start, send_end)
+   if (single_restart_file_in) then
+      my_copy = c -1 ! pe 0 is going to read everything
+      group_size = task_count() ! should you be able to limit processors? This assumes one big group
+      send_start = 0
+      send_end = 0
+      recv_start = 0
+      recv_end = task_count() -1
    else
-      my_copy = copies_read + my_pe
-      call get_pe_loops(my_pe, task_count(), group_size, recv_start, recv_end, send_start, send_end)
+      ! need to calculate RECEIVING_PE_LOOP start:end, group size, sending_pe start:end for each group.
+      if ( task_count() >= ens_size ) then
+         my_copy = my_pe
+         call get_pe_loops(my_pe, ens_size, group_size, recv_start, recv_end, send_start, send_end)
+      else
+         my_copy = copies_read + my_pe
+         call get_pe_loops(my_pe, task_count(), group_size, recv_start, recv_end, send_start, send_end)
+      endif
    endif
 
-   ! open netcdf file
-   ! You have already opened this once to read the variable info. Should you just leave it open
-   ! on the readers?
-   if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
-      write(netcdf_filename, '(A, i2.2, A, i2.2)') 'wrfinput_d', domain, '.', my_copy - recv_start + 1
+   if (single_restart_file_in) then ! assuming not netdf at the moment
+      if ( c == 1 .and. my_pe == 0) then ! open the file - do you want task or pe?
+         iunit = open_restart_read(netcdf_filename)
+      endif
 
-      ! inflation restarts
-      ! prior
-      if ((my_copy - recv_start + 1) == ens_size -3) write(netcdf_filename, '(A)') trim(prior_mean_inf_file)
-      if ((my_copy - recv_start + 1) == ens_size -2) write(netcdf_filename, '(A)') trim(prior_sd_inf_file)
+   else
 
-      ! posterior - do you read this?
-      if ((my_copy - recv_start + 1) == ens_size -1) write(netcdf_filename, '(A)') trim(post_mean_inf_file)
-      if ((my_copy - recv_start + 1) == ens_size)    write(netcdf_filename, '(A)') trim(post_sd_inf_file)
+      ! open netcdf file
+      ! You have already opened this once to read the variable info. Should you just leave it open
+      ! on the readers?
+      if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
+         write(netcdf_filename, '(A, i2.2, A, i2.2)') 'wrfinput_d', domain, '.', my_copy - recv_start + 1
 
-      if (query_read_copy(my_copy - recv_start + 1)) then
-         print*, 'netcdf file ', netcdf_filename
-         ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
-         call nc_check(ret, 'read_transpose opening', netcdf_filename)
+         ! inflation restarts
+         ! prior
+         if ((my_copy - recv_start + 1) == ens_size -3) write(netcdf_filename, '(A)') trim(prior_mean_inf_file)
+         if ((my_copy - recv_start + 1) == ens_size -2) write(netcdf_filename, '(A)') trim(prior_sd_inf_file)
+
+         ! posterior - do you read this?
+         if ((my_copy - recv_start + 1) == ens_size -1) write(netcdf_filename, '(A)') trim(post_mean_inf_file)
+         if ((my_copy - recv_start + 1) == ens_size)    write(netcdf_filename, '(A)') trim(post_sd_inf_file)
+
+         if (query_read_copy(my_copy - recv_start + 1)) then
+            print*, 'netcdf file ', netcdf_filename
+            ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
+            call nc_check(ret, 'read_transpose opening', netcdf_filename)
+         endif
+
       endif
 
    endif
@@ -320,12 +369,17 @@ COPIES: do c = 1, ens_size
       block_size = sum(variable_sizes(start_var:end_var, domain))
 
       if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
-
          if (query_read_copy(my_copy - recv_start + 1)) then
-            allocate(var_block(block_size))
-            call read_variables(var_block, start_var, end_var, domain)
-         endif
 
+            allocate(var_block(block_size))
+
+            if (single_restart_file_in) then
+               call aread_state_restart(ens_time, var_block, iunit)
+            else
+               call read_variables(var_block, start_var, end_var, domain)
+            endif
+
+         endif
       endif
 
       start_rank = mod(sum_variables_below(start_var,domain), task_count())
@@ -386,26 +440,42 @@ COPIES: do c = 1, ens_size
 
       start_var = end_var + 1
 
-      if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! reader
-         if (query_read_copy(my_copy - recv_start + 1)) then
-            deallocate(var_block)
+      !if (.not. single_restart_file_in) then ! do you want to deallocate and reallocate for single restart file in? Probably not
+         if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! reader
+            if (query_read_copy(my_copy - recv_start + 1)) then
+               deallocate(var_block)
+            endif
          endif
-      endif
+      !endif
 
    enddo
 
-   copies_read = copies_read + task_count()
+   ! keep track of how many copies have been read.
+   if (single_restart_file_in) then
+      copies_read = c
+   else
+      copies_read = copies_read + task_count()
+   endif
 
-! close netcdf file 
-if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader 
-   if (query_read_copy(my_copy - recv_start + 1)) then
-      ret = nf90_close(ncfile)
-      call nc_check(ret, 'read_transpose closing', netcdf_filename)
+   if (.not. single_restart_file_in) then 
+      ! close netcdf file
+      if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
+         if (query_read_copy(my_copy - recv_start + 1)) then
+            ret = nf90_close(ncfile)
+            call nc_check(ret, 'read_transpose closing', netcdf_filename)
+         endif
+      endif
+   endif
+
+enddo COPIES
+
+if (single_restart_file_in) then ! assuming not netdf at the moment
+   if ( my_pe == 0) then ! close the file - do you want task or pe?
+      call close_restart(iunit)
+      !deallocate(var_block)   ! just dellocate after the loop, see line 453
    endif
 endif
 
-
-enddo COPIES
 
 dart_index = starting_point
 
@@ -461,9 +531,16 @@ integer              :: ierr !< mpi error (all errors are fatal so I don't bothe
 integer              :: collector_type !< mpi derived datatype
 integer status(MPI_STATUS_SIZE)
 
+! single file
+integer :: iunit
+type(time_type) :: ens_time
+
 !ens_size = state_ens_handle%num_copies -6 ! don't want the extras
 ens_size = state_ens_handle%num_copies ! have the extras incase you want to read inflation restarts
 my_pe = state_ens_handle%my_pe
+
+netcdf_filename_out = 'filter_restart' ! lorenz_96
+
 
 copies_written = 0
 
@@ -474,32 +551,50 @@ COPIES : do c = 1, ens_size
    starting_point = dart_index ! position in state_ens_handle%copies
    a = 0 ! start at group 1 element 1
 
-   ! need to calculate RECEIVING_PE_LOOP start:end, group size, sending_pe start:end for each group.
-   if ( task_count() >= ens_size ) then
-      my_copy = my_pe
-      call get_pe_loops(my_pe, ens_size, group_size, send_start, send_end, recv_start, recv_end) ! think I can just flip send and recv for transpose_write?
+
+   if (single_restart_file_out) then
+      my_copy = c -1! pe 0 is going to write everything
+      group_size = task_count()
+      recv_start = 0
+      recv_end = 0
+      send_start = 0
+      send_end = task_count() -1
    else
-      my_copy = copies_written + my_pe
-      call get_pe_loops(my_pe, task_count(), group_size, send_start, send_end, recv_start, recv_end)
+      ! need to calculate RECEIVING_PE_LOOP start:end, group size, sending_pe start:end for each group.
+      if ( task_count() >= ens_size ) then
+         my_copy = my_pe
+         call get_pe_loops(my_pe, ens_size, group_size, send_start, send_end, recv_start, recv_end) ! think I can just flip send and recv for transpose_write?
+      else
+         my_copy = copies_written + my_pe
+         call get_pe_loops(my_pe, task_count(), group_size, send_start, send_end, recv_start, recv_end)
+      endif
    endif
 
-   ! writers open netcdf output file. This is a copy of the input file
-   if (my_pe < ens_size) then
-      write(netcdf_filename_out, '(A, i2.2, A, i2.2, A)') 'wrfinput_d', domain, '.', my_copy + 1, '.nc'
+   if (single_restart_file_out) then
+      if ( c == 1 .and. my_pe == 0) then
+         iunit = open_restart_write(netcdf_filename_out)
+      endif
+   else
 
-      ! inflation restarts
-      ! prior
-      if ((my_copy + 1) == ens_size -3) write(netcdf_filename_out, '(A)') trim(prior_mean_inf_file)
-      if ((my_copy + 1) == ens_size -2) write(netcdf_filename_out, '(A)') trim(prior_sd_inf_file)
+      ! writers open netcdf output file. This is a copy of the input file
+      if (my_pe < ens_size) then
+         write(netcdf_filename_out, '(A, i2.2, A, i2.2, A)') 'wrfinput_d', domain, '.', my_copy + 1, '.nc'
 
-      ! posterior
-      if ((my_copy + 1) == ens_size -1) write(netcdf_filename_out, '(A)') trim(post_mean_inf_file)
-      if ((my_copy + 1) == ens_size)    write(netcdf_filename_out, '(A)') trim(post_sd_inf_file)
+         ! inflation restarts
+         ! prior
+         if ((my_copy + 1) == ens_size -3) write(netcdf_filename_out, '(A)') trim(prior_mean_inf_file)
+         if ((my_copy + 1) == ens_size -2) write(netcdf_filename_out, '(A)') trim(prior_sd_inf_file)
 
-      if ( query_write_copy(my_copy - recv_start + 1)) then
-         print*, 'netcdf_filename_out ', trim(netcdf_filename_out), my_pe
-         ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
-         call nc_check(ret, 'transpose_write opening', trim(netcdf_filename_out))
+         ! posterior
+         if ((my_copy + 1) == ens_size -1) write(netcdf_filename_out, '(A)') trim(post_mean_inf_file)
+         if ((my_copy + 1) == ens_size)    write(netcdf_filename_out, '(A)') trim(post_sd_inf_file)
+
+         if ( query_write_copy(my_copy - recv_start + 1)) then
+            print*, 'netcdf_filename_out ', trim(netcdf_filename_out), my_pe
+            ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
+            call nc_check(ret, 'transpose_write opening', trim(netcdf_filename_out))
+         endif
+
       endif
 
    endif
@@ -552,9 +647,10 @@ COPIES : do c = 1, ens_size
                   if ( recv_pe /= my_pe ) then
                      call send_to(map_pe_to_task(state_ens_handle, recv_pe), state_ens_handle%copies(ensemble_member, starting_point:ending_point))
                   else ! if sender = receiver just copy
-                     var_block(i:count*task_count():task_count()) = state_ens_handle%copies(ensemble_member, starting_point:ending_point)
-                  endif
 
+                     var_block(i:count*task_count():task_count()) = state_ens_handle%copies(ensemble_member, starting_point:ending_point)
+
+                  endif
                   ensemble_member = ensemble_member + 1
 
                endif
@@ -570,11 +666,21 @@ COPIES : do c = 1, ens_size
 
       if (limit_procs >= task_count()) then ! no need to do second stage
 
+         ! I think for now, the single file should enter this.
+
          if (my_pe < ens_size) then ! I am a writer
             if ( query_write_copy(my_copy + 1)) then
                !var_block = MISSING_R8  ! if you want to create a file for bitwise testing
-               call write_variables(var_block, start_var, end_var, domain)
-               deallocate(var_block)
+               if (single_restart_file_out) then
+                  if (my_pe == 0) then
+                     ens_time = state_ens_handle%time(c)
+                     call awrite_state_restart(ens_time, var_block, iunit)
+                     deallocate(var_block)
+                  endif
+               else
+                  call write_variables(var_block, start_var, end_var, domain)
+                  deallocate(var_block)
+               endif
             endif
          endif
 
@@ -765,17 +871,31 @@ COPIES : do c = 1, ens_size
 
    enddo
 
-   copies_written = copies_written + task_count()
-
-! close netcdf file
-if (my_copy < ens_size ) then ! I am a writer
-   if (query_write_copy(my_copy + 1)) then
-      ret = nf90_close(ncfile_out)
-      call nc_check(ret, 'transpose_write', 'closing')
+   ! keep track of how many copies have been written
+   if (single_restart_file_out) then
+      copies_written = c
+   else
+      copies_written = copies_written + task_count()
    endif
-endif
+
+   if (.not. single_restart_file_out) then
+      ! close netcdf file
+      if (my_copy < ens_size ) then ! I am a writer
+         if (query_write_copy(my_copy + 1)) then
+            ret = nf90_close(ncfile_out)
+            call nc_check(ret, 'transpose_write', 'closing')
+         endif
+      endif
+   endif
 
 enddo COPIES
+
+if (single_restart_file_out) then
+   if ( my_pe == 0 ) then
+      call close_restart(iunit)
+      !deallocate(var_block)
+   endif
+endif
 
 dart_index = starting_point
 
@@ -1061,7 +1181,7 @@ function query_write_copy(c)
 integer, intent(in) :: c !< copy number
 logical             :: query_write_copy
 
-if ( c > size(read_copies) ) then
+if ( c > size(write_copies) ) then
    query_write_copy = .false.
 else
    query_write_copy = write_copies(c)

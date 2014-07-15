@@ -10,24 +10,29 @@ use        types_mod, only : r8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, set_location, get_location,  &
                              LocationDims, LocationName, LocationLName,  &
-                             get_close_maxdist_init, get_close_obs_init, &
-                             get_close_obs
+                             get_close_maxdist_init, get_close_obs_init
 
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              nmlfileunit, find_namelist_in_file,           &
                              check_namelist_read, nc_check, do_output,     &
                              do_nml_file, do_nml_term
 !HK
-use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
-use mpi
+use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
+                               copies_in_window
+
 use mpi_utilities_mod, only : my_task_id
+
+use distributed_state_mod
+
+use null_vert_convert
+
 
 implicit none
 private
 
 public :: get_model_size, &
           adv_1step, &
-          get_state_meta_data, &
+          get_state_meta_data_distrib, &
           model_interpolate, &
           get_model_time_step, &
           end_model, &
@@ -37,8 +42,11 @@ public :: get_model_size, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           pert_model_state, &
-          get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model, &
-          model_interpolate_distrib ! HK
+          get_close_maxdist_init, get_close_obs_init, get_close_obs_distrib, ens_mean_for_model, &
+          model_interpolate_distrib, &
+          query_vert_localization_coord, &
+          vert_convert_distrib, &
+          variables_domains, fill_variable_list
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -296,7 +304,7 @@ end do
 end subroutine model_interpolate
 
 !> distributed version of model interpolate
-subroutine model_interpolate_distrib(state_ens_handle, win, location, itype, istatus, expected_obs)
+subroutine model_interpolate_distrib(state_ens_handle, location, itype, istatus, expected_obs)
 !------------------------------------------------------------------
 !
 ! Interpolates from state vector x to the location. It's not particularly
@@ -308,16 +316,11 @@ subroutine model_interpolate_distrib(state_ens_handle, win, location, itype, ist
 ! Argument itype is not used here because there is only one type of variable.
 ! Type is needed to allow swap consistency with more complex models.
 
-! Helen Kershaw - Aim: to not require the whole state vector
-
-use mpi_utilities_mod, only : datasize ! This is here rather than at the top because the mpi_get calls will most likely get wraped up inside mpi_utilities
-
 type(location_type),     intent(in) :: location
 integer,                 intent(in) :: itype
-integer,                intent(out) :: istatus
+integer,                intent(out) :: istatus(:)
 !HK
 type(ensemble_type),     intent(in) :: state_ens_handle
-integer, intent(in)                 :: win !< window for mpi remote memory access
 real(r8), intent(out)               :: expected_obs(:)
 
 integer :: lower_index, upper_index, i
@@ -326,13 +329,12 @@ real(r8) :: lctn, lctnfrac
 !HK 
 real(r8), allocatable :: x_lower(:) !< the lower piece of state vector
 real(r8), allocatable :: x_upper(:) !< the upper piece of state vector
-integer                        :: ierr !< mpi error
-integer(KIND=MPI_ADDRESS_KIND) :: target_disp !< must be mpi_address_kind to avoid seg faults on some systems
-integer :: owner_of_state !< which pe has the piece of state vector
-integer :: element_index  !< local element index
 integer :: ii
+integer :: ens_size
 
-allocate(x_lower(state_ens_handle%num_copies), x_upper(state_ens_handle%num_copies))
+ens_size = copies_in_window(state_ens_handle) ! data_structure_mod
+
+allocate(x_lower(ens_size), x_upper(ens_size))
 
 ! All forward operators supported
 istatus = 0
@@ -352,50 +354,21 @@ lctnfrac = lctn - int(lctn)
 ! Need to grab the correct pieces of state vector
 
 ! Lower index
-! Find out which task has the element of the state vector
-call get_var_owner_index(lower_index, owner_of_state, element_index)  ! pe
-owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)     ! task
-
-if (my_task_id() == owner_of_state) then
-
-    x_lower = state_ens_handle%copies(:, element_index)
-
-else
-
-   target_disp = (element_index - 1) * state_ens_handle%num_copies
-
-   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
-   call mpi_get(x_lower, state_ens_handle%num_copies, datasize, owner_of_state, target_disp, state_ens_handle%num_copies, datasize, win, ierr)
-   call mpi_win_unlock(owner_of_state, win, ierr)
-
-endif
+call get_state(x_lower, lower_index, state_ens_handle)
 
 ! Upper index
-call get_var_owner_index(upper_index, owner_of_state, element_index)  ! pe
-owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)     ! task
-
-if (my_task_id() == owner_of_state) then
-
-   x_upper = state_ens_handle%copies(:, element_index)
-
-else
-
-   target_disp = (element_index - 1) * state_ens_handle%num_copies
-
-   call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, win, ierr)
-   call mpi_get(x_upper, state_ens_handle%num_copies, datasize, owner_of_state, target_disp, state_ens_handle%num_copies, datasize, win, ierr)
-   call mpi_win_unlock(owner_of_state, win, ierr)
-
-endif
+call get_state(x_upper, upper_index, state_ens_handle)
 
 ! calculate the obs value
 ! Loop around the ensemble copies
 
-do ii = 1, state_ens_handle%num_copies
+do ii = 1, ens_size ! can you not just do this as matrices?
 
    expected_obs(ii) = (1.0_r8 - lctnfrac) * x_lower(ii) + lctnfrac * x_upper(ii)
 
 enddo
+
+!print*, 'expected obs', expected_obs
 
 deallocate(x_lower, x_upper)
 
@@ -451,7 +424,7 @@ end function get_model_time_step
 
 
 
-subroutine get_state_meta_data(index_in, location, var_type)
+subroutine get_state_meta_data_distrib(state_ens_hande, index_in, location, var_type)
 !------------------------------------------------------------------
 !
 ! Given an integer index into the state vector structure, returns the
@@ -459,15 +432,17 @@ subroutine get_state_meta_data(index_in, location, var_type)
 ! form of the call has a second intent(out) optional argument kind.
 ! Maybe a functional form should be added?
 
-
+type(ensemble_type), intent(in)  :: state_ens_hande !< just so it compiles
 integer,             intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
+!> @todo state_loc is state vector size, do we care?
+
 location = state_loc(index_in)
 if (present(var_type)) var_type = 1    ! default variable type
 
-end subroutine get_state_meta_data
+end subroutine get_state_meta_data_distrib
 
 
 
@@ -539,6 +514,8 @@ character(len=NF90_MAX_NAME) :: str1
 integer             :: i
 type(location_type) :: lctn 
 character(len=128)  :: filename
+
+type(ensemble_type) :: state_ens_handle ! needed for compilation, not used here
 
 ierr = 0                      ! assume normal termination
 
@@ -657,7 +634,7 @@ call nc_check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ), 
 !--------------------------------------------------------------------
 
 do i = 1,model_size
-   call get_state_meta_data(i,lctn)
+   call get_state_meta_data_distrib(state_ens_handle, i,lctn)
    call nc_check(nf90_put_var(ncFileID, LocationVarID, get_location(lctn), (/ i /) ), &
               'nc_write_model_atts', 'check locationVarId, '//trim(filename))
 enddo
@@ -781,6 +758,31 @@ subroutine ens_mean_for_model(ens_mean)
 real(r8), intent(in) :: ens_mean(:)
 
 end subroutine ens_mean_for_model
+
+
+!------------------------------------------------------------------
+!> pass number of variables in the state out to filter 
+subroutine variables_domains(num_variables_in_state, num_doms)
+
+integer, intent(out) :: num_variables_in_state
+integer, intent(out) :: num_doms !< number of domains
+
+num_variables_in_state = model_size 
+num_doms = 1
+
+end subroutine variables_domains
+
+!--------------------------------------------------------------------
+!> pass variable list to filter
+function fill_variable_list(num_variables_in_state)
+
+integer            :: num_variables_in_state
+character(len=256) :: fill_variable_list(num_variables_in_state)
+
+fill_variable_list = 'nothing'
+
+end function fill_variable_list
+
 
 !===================================================================
 ! End of model_mod
