@@ -42,8 +42,8 @@ public :: location_type, get_location, set_location, &
           vert_is_height, vert_is_pressure, vert_is_undef, vert_is_level, &
           vert_is_surface, vert_is_scale_height, has_vertical_localization, &
           VERTISUNDEF, VERTISSURFACE, VERTISLEVEL, VERTISPRESSURE, &
-          VERTISHEIGHT, VERTISSCALEHEIGHT, print_get_close_type, horiz_dist_only
-          
+          VERTISHEIGHT, VERTISSCALEHEIGHT, print_get_close_type, horiz_dist_only, &
+          set_vert, get_vert, set_which_vert
 
 
 ! version controlled file description for error handling, do not edit
@@ -466,6 +466,45 @@ if ( .not. module_initialized ) call initialize_module
 get_location_lat = loc%lat * RAD2DEG      
 
 end function get_location_lat
+
+!----------------------------------------------------------------------------
+!> return the vertical location 
+function get_vert(loc)
+
+type(location_type), intent(in) :: loc
+real(r8) :: get_vert
+
+if ( .not. module_initialized ) call initialize_module
+
+get_vert = loc%vloc
+
+end function get_vert
+
+!----------------------------------------------------------------------------
+!> set the vertical location
+subroutine set_vert(loc, vloc)
+
+type(location_type), intent(inout) :: loc
+real(r8),            intent(in) :: vloc !< vertical location
+
+if ( .not. module_initialized ) call initialize_module
+
+loc%vloc = vloc
+
+end subroutine set_vert
+
+!----------------------------------------------------------------------------
+!> set the which vert
+subroutine set_which_vert(loc, which_vert)
+
+type(location_type), intent(inout) :: loc
+integer,                intent(in) :: which_vert !< vertical coordinate type
+
+if ( .not. module_initialized ) call initialize_module
+
+loc%which_vert = which_vert
+
+end subroutine set_which_vert
 
 !----------------------------------------------------------------------------
 

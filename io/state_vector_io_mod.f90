@@ -64,6 +64,11 @@ use io_filenames_mod
 
 implicit none
 
+interface get_state_variable_info
+   module procedure get_state_variable_info
+   module procedure get_state_variable_info_lorenz96
+end interface
+
 private
 
 public :: state_vector_io_init, &

@@ -53,12 +53,9 @@ use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,         
 use time_manager_mod,     only : time_type, get_time
 
 use assim_model_mod,      only : get_state_meta_data_distrib, get_close_maxdist_init,             &
-                                 get_close_obs_init, get_close_obs_distrib,               &
-                                 convert_base_obs_location !HK
+                                 get_close_obs_init, get_close_obs_distrib
 
-use location_mod,         only : get_location, set_location !HK for bitwise WRF
-
-use model_mod,            only : query_vert_localization_coord, vert_convert_distrib ! this will break things
+use model_mod,            only : query_vert_localization_coord, vert_convert_distrib, get_vert, set_vert, set_which_vert
 
 use distributed_state_mod
 
@@ -568,7 +565,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    !-----------------------------------------------------------------------
    if(ens_handle%my_pe == owner) then
       ! need to convert global to local obs number
-      vert_obs_loc_in_localization_coord = my_obs_loc(owners_index)%vloc
+      vert_obs_loc_in_localization_coord = get_vert(my_obs_loc(owners_index))
 
       obs_qc = obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, owners_index)
       ! Only value of 0 for DART QC field should be assimilated
@@ -627,16 +624,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             end do
          endif SINGLE_SS_INFLATE
 
-         !***** REMOVED THIS SECTION FOR NOW *******
-         !HK convert the location in to the coordinate that is used for localization
-         ! Otherwise all processors are trying to convert the location for the same base obs
-         ! in get close obs.
-         ! Note, no need to do this if the qc is not ok
-         !call convert_base_obs_location(base_obs_loc, ens_handle, vert_obs_loc_in_localization_coord, int_vert_qc)
-
-            !vert_qc = real(int_vert_qc)
-         !******************************************
-
       endif IF_QC_IS_OKAY
 
       !Broadcast the info from this obs to all other processes
@@ -654,8 +641,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       if (.not. lanai_bitwise) then 
          ! use converted vertical coordinate from owner
-         base_obs_loc%vloc = my_obs_loc(owners_index)%vloc ! i is the wrong index
-         base_obs_loc%which_vert = query_vert_localization_coord()
+         call set_vert(base_obs_loc, get_vert(my_obs_loc(owners_index))) 
+         call set_which_vert(base_obs_loc, query_vert_localization_coord())
       endif
 
    ! Next block is done by processes that do NOT own this observation
@@ -675,8 +662,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
       if (.not. lanai_bitwise) then
          ! use converted vertical coordinate from owner
-         base_obs_loc%vloc = vert_obs_loc_in_localization_coord
-         base_obs_loc%which_vert = query_vert_localization_coord()
+         call set_vert(base_obs_loc, vert_obs_loc_in_localization_coord)
+         call set_which_vert(base_obs_loc,query_vert_localization_coord())
+
       endif
    endif
    !-----------------------------------------------------------------------

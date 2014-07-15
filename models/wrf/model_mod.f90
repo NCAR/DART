@@ -51,7 +51,8 @@ use      location_mod, only : location_type, get_location, set_location, &
                               VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, &
                               VERTISSCALEHEIGHT, &
                               get_close_type, get_dist, get_close_maxdist_init, &
-                              get_close_obs_init, loc_get_close_obs => get_close_obs
+                              get_close_obs_init, loc_get_close_obs => get_close_obs, &
+                              get_vert, set_vert, set_which_vert
 
 use     utilities_mod, only : file_exist, open_file, close_file, &
                               register_module, error_handler, E_ERR, E_WARN, &
@@ -139,7 +140,7 @@ public ::  get_model_size,                    &
            query_vert_localization_coord,     &
            variables_domains,                 &
            fill_variable_list,                &
-           convert_base_obs_location !HK
+           get_vert, set_vert, set_which_vert
 
 !  public stubs 
 public ::  adv_1step,       &
@@ -6374,9 +6375,7 @@ subroutine get_close_obs_distrib(gc, base_obs_loc, base_obs_kind, obs_loc, &
 ! filter_assim, but will not propagate backwards to filter.
 
 !HK
-type(ensemble_type) :: state_ens_handle
-integer             :: win
-
+type(ensemble_type),         intent(inout)  :: state_ens_handle
 type(get_close_type),        intent(in)     :: gc
 type(location_type),         intent(inout)  :: base_obs_loc, obs_loc(:)
 integer,                     intent(in)     :: base_obs_kind, obs_kind(:)
@@ -8462,41 +8461,6 @@ query_vert_localization_coord = vert_localization_coord
 
 end function query_vert_localization_coord
 
-!--------------------------------------------------------------------
-!> This returns the vertical coordinate of an observation in the
-!> requested vertical localization coordinate. 
-!> Aim: to have only the process who owns the observation do this calulation, 
-!> rather than all processeses doing the same calculation in get_close_obs_distrib
-!> I don't know whether this is a good idea.
-subroutine convert_base_obs_location(obs_loc, state_ens_handle, vert_coord, istatus)
-
-type(location_type), intent(inout) :: obs_loc
-type(ensemble_type),    intent(in) :: state_ens_handle
-real(r8),              intent(out) :: vert_coord
-integer,               intent(out) :: istatus
-
-real(r8), dimension(3) :: base_array
-integer                :: base_obs_kind !> @todo Should check for identity obs
-integer                :: base_which !< vertical coorardiate
-integer                :: istatus_v
-
-base_obs_kind = 1 ! dummy for now, should check for identity obs
-
-!base_which = nint(query_location(observation))
-
-if (base_which /= wrf%dom(1)%localization_coord) then
-   call vert_convert_distrib(state_ens_handle, obs_loc, base_obs_kind, istatus_v)
-endif
-
-istatus = istatus_v
-
-base_array = get_location(obs_loc)
-vert_coord = base_array(3)
-
-!> @todot set location so you don't redo this calculation in get_close_obs NOPE  they are two different structures
-!obs_loc = set_location(base_array(1), base_array(2), base_array(3), wrf%dom(1)%localization_coord )
-
-end subroutine convert_base_obs_location
 
 !--------------------------------------------------------------------
 !> pass number of variables in the state out to filter 

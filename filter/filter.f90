@@ -46,7 +46,9 @@ use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,   
                                  prepare_to_read_from_vars, prepare_to_write_to_vars, prepare_to_read_from_copies,    &
                                  prepare_to_write_to_copies, get_ensemble_time, set_ensemble_time,    &
                                  map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
-                                 get_my_num_vars, allow_complete_state
+                                 get_my_num_vars, allow_complete_state, &
+                                 single_restart_file_in
+
 use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
                                  do_obs_inflate, adaptive_inflate_type,                      &
@@ -315,7 +317,7 @@ call trace_message('Before setting up space for ensembles')
 ! Allocate model size storage and ens_size storage for metadata for outputting ensembles
 model_size = get_model_size()
 
-! set up ensemble
+! set up ensemble HK WATCH OUT putting this here.
 call init_ensemble_manager(ens_handle, ens_size + 6, model_size)
 
 call trace_message('After  setting up space for ensembles')
@@ -367,6 +369,8 @@ if (direct_netcdf_read) then
 else
    call filter_read_restart(ens_handle, time1, model_size)
 endif
+
+!call test_state_copies(ens_handle, 'after_read')
 
 ! Read in or initialize smoother restarts as needed
 if(ds) then
@@ -1490,15 +1494,18 @@ allocate(variable_list(num_variables_in_state))
 variable_list = fill_variable_list(num_variables_in_state)
 
 ! need to know number of domains
-call initialize_arrays_for_read(num_variables_in_state, num_domains)
+call initialize_arrays_for_read(num_variables_in_state, num_domains) 
 
-model_size = 0
-do domain = 1, num_domains
-   write(netcdf_filename, '(A, i2.2, A)') 'wrfinput_d', domain, '.01' ! Just for wrf right now
-   call get_state_variable_info(num_variables_in_state, variable_list, domain, domain_size)
-   model_size = model_size + domain_size
-enddo
-
+if (single_restart_file_in) then ! is this the correct flag to check?
+   call get_state_variable_info(num_variables_in_state)
+else
+   model_size = 0
+   do domain = 1, num_domains
+      write(netcdf_filename, '(A, i2.2, A)') 'wrfinput_d', domain, '.01' ! Just for wrf right now
+      call get_state_variable_info(num_variables_in_state, variable_list, domain, domain_size)
+      model_size = model_size + domain_size
+   enddo
+endif
 
 ! fix time for now
 state_ens_handle%time = time

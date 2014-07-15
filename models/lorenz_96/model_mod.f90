@@ -46,7 +46,8 @@ public :: get_model_size, &
           model_interpolate_distrib, &
           query_vert_localization_coord, &
           vert_convert_distrib, &
-          variables_domains, fill_variable_list
+          variables_domains, fill_variable_list, &
+          get_vert, set_vert, set_which_vert
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
