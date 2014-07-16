@@ -140,7 +140,9 @@ public ::  get_model_size,                    &
            query_vert_localization_coord,     &
            variables_domains,                 &
            fill_variable_list,                &
-           get_vert, set_vert, set_which_vert
+           get_vert, set_vert, set_which_vert, &
+           info_file_name, read_file_name,  &
+           write_file_name
 
 !  public stubs 
 public ::  adv_1step,       &
@@ -8485,6 +8487,45 @@ fill_variable_list = wrf_state_variables(1,1:num_variables_in_state)
 
 end function fill_variable_list
 
+!--------------------------------------------------------------------
+!> construct info filename for get_state_variable_info
+function info_file_name(domain)
+
+integer, intent(in) :: domain
+character(len=256)  :: info_file_name
+
+write(info_file_name, '(A, i2.2, A)') 'wrfinput_d', domain
+
+
+end function info_file_name
+
+!--------------------------------------------------------------------
+!> construct restart file name for reading
+function read_file_name(restart_file_in_name, domain, copy)
+
+character(len=129), intent(in) :: restart_file_in_name
+integer,            intent(in) :: domain
+integer,            intent(in) :: copy
+character(len=256)             :: read_file_name
+
+write(read_file_name, '(A, i2.2, A, i2.2)') 'wrfinput_d', domain, '.', copy
+
+end function read_file_name
+
+!--------------------------------------------------------------------
+!> construct restart file name for writing
+function write_file_name(restart_out_file_name, domain, copy)
+
+character(len=129), intent(in) :: restart_out_file_name
+integer,            intent(in) :: domain
+integer,            intent(in) :: copy
+character(len=256)             :: write_file_name
+
+write(write_file_name, '(A, i2.2, A, i2.2, A)') 'wrfinput_d', domain, '.', copy, '.nc'
+
+end function write_file_name
+
+!--------------------------------------------------------------------
 
 end module model_mod
 

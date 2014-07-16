@@ -53,6 +53,8 @@ use utilities_mod,        only : error_handler, E_ERR, nc_check, check_namelist_
 
 use assim_model_mod,      only : get_model_size, aread_state_restart, awrite_state_restart, &
                                  open_restart_read, open_restart_write, close_restart
+! should you go through assim_model_mod?
+use model_mod,            only : read_file_name, write_file_name
 
 use time_manager_mod,     only : time_type
 
@@ -78,8 +80,7 @@ public :: state_vector_io_init, &
           transpose_write, &
           netcdf_filename_out, &
           setup_read_write, &
-          turn_read_copy_on, turn_write_copy_on, &
-          get_state_variable_info_lorenz96
+          turn_read_copy_on, turn_write_copy_on
 
 integer :: ret !< netcdf return code
 integer :: ncfile !< netcdf input file identifier
@@ -267,9 +268,10 @@ end function total_size
 !> groups are not created using mpi_group_incl.
 !>
 !> Trying to put in single file read for small models.
-subroutine read_transpose(state_ens_handle, domain, dart_index)
+subroutine read_transpose(state_ens_handle, restart_in_file_name, domain, dart_index)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
+character(len=129),  intent(in)    :: restart_in_file_name
 integer,             intent(in)    :: domain
 integer,             intent(inout) :: dart_index !< This is for mulitple domains
 
@@ -301,7 +303,7 @@ type(time_type) :: ens_time
 !ens_size = state_ens_handle%num_copies -6 ! don't want the extras
 ens_size = state_ens_handle%num_copies ! have the extras, incase you need to read inflation restarts
 
-netcdf_filename = 'filter_ics' ! lorenz_96
+netcdf_filename = restart_in_file_name ! lorenz_96
 
 my_pe = state_ens_handle%my_pe
 
@@ -343,7 +345,7 @@ COPIES: do c = 1, ens_size
       ! You have already opened this once to read the variable info. Should you just leave it open
       ! on the readers?
       if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
-         write(netcdf_filename, '(A, i2.2, A, i2.2)') 'wrfinput_d', domain, '.', my_copy - recv_start + 1
+         netcdf_filename = read_file_name(restart_in_file_name, domain, my_copy - recv_start + 1)
 
          ! inflation restarts
          ! prior
@@ -355,7 +357,6 @@ COPIES: do c = 1, ens_size
          if ((my_copy - recv_start + 1) == ens_size)    write(netcdf_filename, '(A)') trim(post_sd_inf_file)
 
          if (query_read_copy(my_copy - recv_start + 1)) then
-            print*, 'netcdf file ', netcdf_filename
             ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
             call nc_check(ret, 'read_transpose opening', netcdf_filename)
          endif
@@ -495,9 +496,10 @@ end subroutine read_transpose
 !> Two stages of collection.
 !> See transpose_write.pdf for explanation of a, k, y.
 !> 
-subroutine transpose_write(state_ens_handle, domain, dart_index)
+subroutine transpose_write(state_ens_handle, restart_out_file_name, domain, dart_index)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
+character(len=129),  intent(in)    :: restart_out_file_name
 integer,             intent(in)    :: domain
 integer,             intent(inout) :: dart_index
 
@@ -544,8 +546,7 @@ type(time_type) :: ens_time
 ens_size = state_ens_handle%num_copies ! have the extras incase you want to read inflation restarts
 my_pe = state_ens_handle%my_pe
 
-netcdf_filename_out = 'filter_restart' ! lorenz_96
-
+netcdf_filename_out = restart_out_file_name ! lorenz_96
 
 copies_written = 0
 
@@ -583,7 +584,7 @@ COPIES : do c = 1, ens_size
 
       ! writers open netcdf output file. This is a copy of the input file
       if (my_pe < ens_size) then
-         write(netcdf_filename_out, '(A, i2.2, A, i2.2, A)') 'wrfinput_d', domain, '.', my_copy + 1, '.nc'
+         netcdf_filename_out = write_file_name(restart_out_file_name, domain, my_copy + 1)
 
          ! inflation restarts
          ! prior
@@ -595,7 +596,6 @@ COPIES : do c = 1, ens_size
          if ((my_copy + 1) == ens_size)    write(netcdf_filename_out, '(A)') trim(post_sd_inf_file)
 
          if ( query_write_copy(my_copy - recv_start + 1)) then
-            print*, 'netcdf_filename_out ', trim(netcdf_filename_out), my_pe
             ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
             call nc_check(ret, 'transpose_write opening', trim(netcdf_filename_out))
          endif

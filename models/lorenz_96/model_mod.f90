@@ -47,7 +47,9 @@ public :: get_model_size, &
           query_vert_localization_coord, &
           vert_convert_distrib, &
           variables_domains, fill_variable_list, &
-          get_vert, set_vert, set_which_vert
+          get_vert, set_vert, set_which_vert, &
+          info_file_name, read_file_name,  &
+          write_file_name
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -783,6 +785,39 @@ character(len=256) :: fill_variable_list(num_variables_in_state)
 fill_variable_list = 'nothing'
 
 end function fill_variable_list
+
+!--------------------------------------------------------------------
+!> construct info filename for get_state_variable_info
+function info_file_name(domain)
+
+integer, intent(in) :: domain
+character(len=256)  :: info_file_name
+
+
+end function info_file_name
+
+!--------------------------------------------------------------------
+!> construct restart file name for reading
+function read_file_name(restart_file_in_name, domain, copy)
+
+character(len=129), intent(in) :: restart_file_in_name
+integer,            intent(in) :: domain
+integer,            intent(in) :: copy
+character(len=256)             :: read_file_name
+
+end function read_file_name
+
+!--------------------------------------------------------------------
+!> 
+function write_file_name(restart_out_file_name, domain, copy)
+
+character(len=129), intent(in) :: restart_out_file_name
+integer,            intent(in) :: domain
+integer,            intent(in) :: copy
+character(len=256)             :: write_file_name
+
+
+end function write_file_name
 
 
 !===================================================================

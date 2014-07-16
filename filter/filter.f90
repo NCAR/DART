@@ -69,7 +69,7 @@ use state_vector_io_mod,   only : read_transpose, transpose_write, get_state_var
                                   initialize_arrays_for_read, netcdf_filename, state_vector_io_init, &
                                   setup_read_write
 
-use model_mod,            only : variables_domains, fill_variable_list
+use model_mod,            only : variables_domains, fill_variable_list, info_file_name
 
 use mpi
 
@@ -1501,7 +1501,7 @@ if (single_restart_file_in) then ! is this the correct flag to check?
 else
    model_size = 0
    do domain = 1, num_domains
-      write(netcdf_filename, '(A, i2.2, A)') 'wrfinput_d', domain, '.01' ! Just for wrf right now
+      netcdf_filename = info_file_name(domain)
       call get_state_variable_info(num_variables_in_state, variable_list, domain, domain_size)
       model_size = model_size + domain_size
    enddo
@@ -1513,7 +1513,7 @@ state_ens_handle%time = time
 ! read in the data and transpose
 dart_index = 1 ! where to start in state_ens_handle%copies - this is modified by read_transpose
 do domain = 1, num_domains
-   call read_transpose(state_ens_handle, domain, dart_index)
+   call read_transpose(state_ens_handle, restart_in_file_name, domain, dart_index)
 enddo
 
 ! Need Temporary print of initial model time?
@@ -1536,7 +1536,7 @@ call variables_domains(num_variables_in_state, num_domains)
 ! transpose and write out the data
 dart_index = 1
 do domain = 1, num_domains
-   call transpose_write(state_ens_handle, domain, dart_index)
+   call transpose_write(state_ens_handle, restart_out_file_name, domain, dart_index)
 enddo
 
 
