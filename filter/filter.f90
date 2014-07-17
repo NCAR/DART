@@ -67,7 +67,7 @@ use data_structure_mod, only : copies_in_window ! should this be through ensembl
 
 use state_vector_io_mod,   only : read_transpose, transpose_write, get_state_variable_info,  &
                                   initialize_arrays_for_read, netcdf_filename, state_vector_io_init, &
-                                  setup_read_write
+                                  setup_read_write, turn_read_copy_on, turn_write_copy_on, turn_write_copies_off
 
 use model_mod,            only : variables_domains, fill_variable_list, info_file_name
 
@@ -332,23 +332,27 @@ call timestamp_message('Before reading in ensemble restart files')
 ! Set a time type for initial time if namelist inputs are not negative
 call filter_set_initial_time(time1)
 
-! HK Moved initializing inflation to before read of restarts so you can read the restarts
-! and inflation files in one step.
-
 ! set up arrays for which copies to read/write
 call setup_read_write(ens_size +6)
 
+! HK Moved initializing inflation to before read of restarts so you can read the restarts
+! and inflation files in one step.
+
 ! Initialize the adaptive inflation module
-call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
+call adaptive_inflate_init(ens_handle, prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
    inf_sd_initial_from_restart(1), inf_output_restart(1), inf_deterministic(1),       &
    inf_in_file_name(1), inf_out_file_name(1), inf_diag_file_name(1), inf_initial(1),  &
    inf_sd_initial(1), inf_lower_bound(1), inf_upper_bound(1), inf_sd_lower_bound(1),  &
-   ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, allow_missing, 'Prior')
-call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart(2),  &
+   ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, allow_missing, 'Prior',             &
+   direct_netcdf_read)
+
+call adaptive_inflate_init(ens_handle, post_inflate, inf_flavor(2), inf_initial_from_restart(2),  &
    inf_sd_initial_from_restart(2), inf_output_restart(2), inf_deterministic(2),       &
    inf_in_file_name(2), inf_out_file_name(2), inf_diag_file_name(2), inf_initial(2),  &
    inf_sd_initial(2), inf_lower_bound(2), inf_upper_bound(2), inf_sd_lower_bound(2),  &
-   ens_handle, POST_INF_COPY, POST_INF_SD_COPY, allow_missing, 'Posterior')
+   ens_handle, POST_INF_COPY, POST_INF_SD_COPY, allow_missing, 'Posterior',           &
+   direct_netcdf_read)
+
 
 if (do_output()) then
    if (inf_flavor(1) > 0 .and. inf_damping(1) < 1.0_r8) then
@@ -364,11 +368,9 @@ endif
 call trace_message('After  initializing inflation')
 
 ! Read in restart files and initialize the ensemble storage
-if (direct_netcdf_read) then
-   call filter_read_restart_direct(ens_handle, time1, ens_size) ! This is annoying
-else
-   call filter_read_restart(ens_handle, time1, model_size)
-endif
+call turn_read_copy_on(1, ens_size)
+call filter_read_restart_direct(ens_handle, time1, ens_size) ! This is annoying
+call turn_write_copies_off(1, ens_size + 6) 
 
 !call test_state_copies(ens_handle, 'after_read')
 
@@ -953,21 +955,15 @@ call trace_message('After  writing output sequence file')
 
 call trace_message('Before writing inflation restart files if required')
 ! Output the restart for the adaptive inflation parameters
-call adaptive_inflate_end(prior_inflate, ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
-call adaptive_inflate_end(post_inflate, ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
+call adaptive_inflate_end(ens_handle, prior_inflate, ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, direct_netcdf_read)
+call adaptive_inflate_end(ens_handle, post_inflate, ens_handle, POST_INF_COPY, POST_INF_SD_COPY, direct_netcdf_read)
 call trace_message('After  writing inflation restart files if required')
 
 ! Output a restart file if requested
 call trace_message('Before writing state restart files if requested')
-if (direct_netcdf_read) then
-   call filter_write_restart_direct(ens_handle)
-else
-   if(output_restart) &
-      call write_ensemble_restart(ens_handle, restart_out_file_name, 1, ens_size)
-   if(output_restart_mean) &
-   call write_ensemble_restart(ens_handle, trim(restart_out_file_name)//'.mean', &
-                               ENS_MEAN_COPY, ENS_MEAN_COPY, .true.)
-endif
+call turn_write_copies_off(1,ens_size + 6)
+call turn_write_copy_on(1,ens_size)
+call filter_write_restart_direct(ens_handle)
 
 if(ds) call smoother_write_restart(1, ens_size)
 call trace_message('After  writing state restart files if requested')

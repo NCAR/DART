@@ -71,6 +71,17 @@ interface get_state_variable_info
    module procedure get_state_variable_info_lorenz96
 end interface
 
+interface turn_read_copy_on
+   module procedure turn_read_copy_on_single
+   module procedure turn_read_copy_on_range
+end interface
+
+interface turn_write_copy_on
+   module procedure turn_write_copy_on_single
+   module procedure turn_write_copy_on_range
+end interface
+
+
 private
 
 public :: state_vector_io_init, &
@@ -80,7 +91,8 @@ public :: state_vector_io_init, &
           transpose_write, &
           netcdf_filename_out, &
           setup_read_write, &
-          turn_read_copy_on, turn_write_copy_on
+          turn_read_copy_on, turn_write_copy_on, &
+          turn_read_copies_off, turn_write_copies_off
 
 integer :: ret !< netcdf return code
 integer :: ncfile !< netcdf input file identifier
@@ -300,7 +312,6 @@ integer :: copies_read
 integer :: iunit
 type(time_type) :: ens_time
 
-!ens_size = state_ens_handle%num_copies -6 ! don't want the extras
 ens_size = state_ens_handle%num_copies ! have the extras, incase you need to read inflation restarts
 
 netcdf_filename = restart_in_file_name ! lorenz_96
@@ -335,6 +346,7 @@ COPIES: do c = 1, ens_size
    endif
 
    if (single_restart_file_in) then ! assuming not netdf at the moment
+
       if ( c == 1 .and. my_pe == 0) then ! open the file - do you want task or pe?
          iunit = open_restart_read(netcdf_filename)
       endif
@@ -371,7 +383,7 @@ COPIES: do c = 1, ens_size
 
       ! calculate how many variables will be read
       end_var = calc_end_var(start_var, domain)
-      if (my_task_id() == 0) print*, 'start_var, end_var', start_var, end_var
+      if ((my_task_id() == 0) .and. (c == 1)) print*, 'start_var, end_var', start_var, end_var
       block_size = sum(variable_sizes(start_var:end_var, domain))
 
       if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
@@ -542,7 +554,6 @@ integer status(MPI_STATUS_SIZE)
 integer :: iunit
 type(time_type) :: ens_time
 
-!ens_size = state_ens_handle%num_copies -6 ! don't want the extras
 ens_size = state_ens_handle%num_copies ! have the extras incase you want to read inflation restarts
 my_pe = state_ens_handle%my_pe
 
@@ -609,7 +620,7 @@ COPIES : do c = 1, ens_size
 
       ! calculate how many variables will be sent to writer
       end_var = calc_end_var(start_var, domain)
-      if (my_task_id() == 0) print*, 'start_var, end_var', start_var, end_var
+      if ((my_task_id() == 0) .and. (c == 1 )) print*, 'start_var, end_var', start_var, end_var
       num_vars = sum(variable_sizes(start_var:end_var, domain))
 
       if ((my_pe >= recv_start) .and. (my_pe <= recv_end)) then ! I am a collector
@@ -1207,31 +1218,72 @@ if( .not. allocated(write_copies) ) allocate(write_copies(num_copies))
 read_copies(:) = .false.
 write_copies(:) = .false.
 
-!> @todo minus 6
-read_copies(1:num_copies - 6) = .true.
-write_copies(1:num_copies - 6) = .true.
-
 end subroutine setup_read_write
 
 !-------------------------------------------------------
 !> Turn on copies to read
-subroutine turn_read_copy_on(c)
+subroutine turn_read_copy_on_single(c)
 
 integer, intent(in) :: c !> copy to read
 
 read_copies(c) = .true.
 
-end subroutine turn_read_copy_on
+end subroutine turn_read_copy_on_single
 
 !-------------------------------------------------------
 !> Turn on copies to read
-subroutine turn_write_copy_on(c)
+subroutine turn_write_copy_on_single(c)
 
-integer, intent(in) :: c !> copy to read
+integer, intent(in) :: c !> copy to write
 
 write_copies(c) = .true.
 
-end subroutine turn_write_copy_on
+end subroutine turn_write_copy_on_single
+
+!-------------------------------------------------------
+!> Turn on copies to read
+subroutine turn_read_copy_on_range(c1, c2)
+
+integer, intent(in) :: c1 !> start copy to read
+integer, intent(in) :: c2 !> end copy to read
+
+read_copies(c1:c2) = .true.
+
+end subroutine turn_read_copy_on_range
+
+!-------------------------------------------------------
+!> Turn on copies to read
+subroutine turn_write_copy_on_range(c1, c2)
+
+integer, intent(in) :: c1 !> start copy to write
+integer, intent(in) :: c2 !> end copy to write
+
+write_copies(c1:c2) = .true.
+
+end subroutine turn_write_copy_on_range
+
+!-------------------------------------------------------
+!> Turn off copies to read
+subroutine turn_read_copies_off(c1, c2)
+
+integer, intent(in) :: c1 !> start copy to read
+integer, intent(in) :: c2 !> end copy to read
+
+read_copies(c1:c2) = .false.
+
+end subroutine turn_read_copies_off
+
+!-------------------------------------------------------
+!> Turn off copies to write
+subroutine turn_write_copies_off(c1, c2)
+
+integer, intent(in) :: c1 !> start copy to write
+integer, intent(in) :: c2 !> end copy to write
+
+write_copies(c1:c2) = .false.
+
+end subroutine turn_write_copies_off
+
 
 !-------------------------------------------------------
 !> @}

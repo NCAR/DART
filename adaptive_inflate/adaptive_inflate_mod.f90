@@ -20,7 +20,9 @@ use ensemble_manager_mod, only : ensemble_type, read_ensemble_restart, write_ens
                                  prepare_to_read_from_vars, prepare_to_update_vars, map_pe_to_task
 use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, datasize
 
-use state_vector_io_mod,  only : turn_read_copy_on, turn_write_copy_on
+use state_vector_io_mod,  only : turn_read_copy_on, turn_write_copy_on, &
+                                 turn_read_copies_off, turn_write_copies_off, &
+                                 read_transpose, transpose_write
 
 use mpi
 
@@ -72,13 +74,14 @@ contains
 
 !------------------------------------------------------------------
 
-subroutine adaptive_inflate_init(inflate_handle, inf_flavor, mean_from_restart, &
+subroutine adaptive_inflate_init(state_ens_handle, inflate_handle, inf_flavor, mean_from_restart, &
    sd_from_restart, output_restart, deterministic, in_file_name, out_file_name, &
    diag_file_name, inf_initial, sd_initial, inf_lower_bound, inf_upper_bound, &
-   sd_lower_bound, ens_handle, ss_inflate_index, ss_inflate_sd_index, missing_ok, label)
+   sd_lower_bound, ens_handle, ss_inflate_index, ss_inflate_sd_index, missing_ok, label, direct_netcdf_read)
 
 ! Initializes an adaptive_inflate_type 
 
+type(ensemble_type),         intent(inout) :: state_ens_handle
 type(adaptive_inflate_type), intent(inout) :: inflate_handle
 integer,                     intent(in)    :: inf_flavor
 logical,                     intent(in)    :: mean_from_restart
@@ -95,12 +98,18 @@ type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
 logical,                     intent(in)    :: missing_ok
 character(len = *),          intent(in)    :: label
+logical,                     intent(in)    :: direct_netcdf_read
 
 character(len = 128) :: det, tadapt, sadapt, akind, rsread, nmread
 integer  :: restart_unit, io, owner, owners_index
 real(r8) :: minmax_mean(2), minmax_sd(2)
 
 integer  :: ierr !> for mpi_reduce call
+
+integer :: junk_int, domain
+
+junk_int = 1
+domain = 1
 
 ! Record the module version if this is first initialize call
 if(.not. initialized) then
@@ -203,6 +212,12 @@ if(inf_flavor >= 2) then
       call turn_read_copy_on(ss_inflate_index)
       call turn_read_copy_on(ss_inflate_sd_index)
 
+      if (.not. direct_netcdf_read ) then
+         ! turn off restart reads, since they have already be read
+         call turn_read_copies_off(1, state_ens_handle%num_copies -6)
+         call read_transpose(state_ens_handle, in_file_name, domain, junk_int)
+      endif
+
       !call read_ensemble_restart(ens_handle, ss_inflate_index, ss_inflate_sd_index, &
       !   .true., in_file_name, force_single_file = .true.)
 
@@ -233,7 +248,7 @@ if(inf_flavor >= 2) then
          !   ens_handle%vars(:, owners_index) = sd_initial
          !endif
 
-         ens_handle%copies(ss_inflate_index, :) = inf_initial
+         ens_handle%copies(ss_inflate_sd_index, :) = sd_initial
 
       endif
    endif
@@ -453,14 +468,20 @@ end subroutine adaptive_inflate_init
 
 !------------------------------------------------------------------
 
-subroutine adaptive_inflate_end(inflate_handle, ens_handle, ss_inflate_index, &
-   ss_inflate_sd_index)
+subroutine adaptive_inflate_end(state_ens_handle, inflate_handle, ens_handle, ss_inflate_index, &
+   ss_inflate_sd_index, direct_netcdf_read)
 
+type(ensemble_type),         intent(inout) :: state_ens_handle
 type(adaptive_inflate_type), intent(in)    :: inflate_handle
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
+logical,                     intent(in)    :: direct_netcdf_read
 
 integer :: restart_unit, io
+integer :: junk_int, domain
+
+junk_int = 1
+domain = 1
 
 if(inflate_handle%output_restart) then
    ! Use the ensemble manager to output restart for state space (flavors 2 or 3)
@@ -478,6 +499,12 @@ if(inflate_handle%output_restart) then
       ! Write the inflate and inflate_sd as two copies for a restart
       call turn_write_copy_on(ss_inflate_index)
       call turn_write_copy_on(ss_inflate_sd_index)
+
+      if (.not. direct_netcdf_read ) then
+         ! turn off restart reads, since they have already be read
+         call turn_read_copies_off(1, state_ens_handle%num_copies -6)
+         call transpose_write(state_ens_handle, inflate_handle%out_file_name, domain, junk_int)
+      endif
 
       !call write_ensemble_restart(ens_handle, inflate_handle%out_file_name, &
       !   ss_inflate_index, ss_inflate_sd_index, force_single_file = .true.)
