@@ -181,14 +181,10 @@ contains
 
 !> allow_complete_state() queries the ensemble manager namelist value for
 !> no_complete_state.
-!> allow_complete_state =.true - will use the complete state for IO (restart and diagnostics)
-!> the algorithm is distributed with one execption:
+!> the code is distributed except:
 !> task 0 still writes the obs_sequence file, so there is a transpose (copies to vars) and 
 !> sending the obs_ens_handle%vars to task 0. Keys is also size obs%vars.
-!> Binary restarts, regular netcdf diagnostic files
-!> 
-!> allow_complete_state = .false. 
-
+!>
 
 subroutine filter_main()
 
@@ -395,33 +391,14 @@ call timestamp_message('Before initializing output files')
 ! HK this is where a parallel write of diagnostics differs from the traditional way 
 ! of having task 0 write all the diagnostics.
 
-if (allow_complete_state()) then
+! Is there a problem if every task creates the meta data?
+call filter_generate_copy_meta_data(seq, prior_inflate, &
+      PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
+      output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
+      prior_obs_spread_index, posterior_obs_spread_index)
 
-   if(my_task_id() == 0) then
-      call filter_generate_copy_meta_data(seq, prior_inflate, &
-         PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
-         output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
-         prior_obs_spread_index, posterior_obs_spread_index)
-      if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation)
-   else
-      output_state_mean_index = 0
-      output_state_spread_index = 0
-      prior_obs_mean_index = 0
-      posterior_obs_mean_index = 0
-      prior_obs_spread_index = 0
-      posterior_obs_spread_index = 0
-   endif
-else
-
-   ! everyone needs to generate copy meta data
-   call filter_generate_copy_meta_data(seq, prior_inflate, &
-         PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
-         output_state_spread_index, prior_obs_mean_index, posterior_obs_mean_index, &
-         prior_obs_spread_index, posterior_obs_spread_index)
-
-   if(ds) call error_handler(E_ERR, 'filter', 'smoother broken by Helen')
-
-endif
+if(ds) call error_handler(E_ERR, 'filter', 'smoother broken by Helen')
+if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation)
 
 call timestamp_message('After  initializing output files')
 call     trace_message('After  initializing output files')
@@ -573,8 +550,6 @@ AdvanceTime : do
    call trace_message('After  setup for next group of observations')
 
    ! Compute mean and spread for inflation and state diagnostics
-   if ( allow_complete_state() .and. (.not. direct_netcdf_read) ) call all_vars_to_all_copies(ens_handle)
-
    call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
 
    if(do_single_ss_inflate(prior_inflate) .or. do_varying_ss_inflate(prior_inflate)) then
@@ -603,14 +578,6 @@ AdvanceTime : do
    ! Compute the ensemble of prior observations, load up the obs_err_var
    ! and obs_values. ens_size is the number of regular ensemble members,
    ! not the number of copies
-
-   !HK Destroy var complete so there are no cheats.
-   if (allow_complete_state()) then
-      deallocate(obs_ens_handle%vars)
-      deallocate(ens_handle%vars)
-      deallocate(forward_op_ens_handle%vars)
-   endif
-
    start = MPI_WTIME()
 
    call get_obs_ens_distrib_state(ens_handle, obs_ens_handle, forward_op_ens_handle, &
@@ -622,13 +589,6 @@ AdvanceTime : do
 
    if (my_task_id() == 0) print*, 'distributed average ', (finish-start)
    !call test_obs_copies(obs_ens_handle, 'prior')
-
-
-   if (allow_complete_state()) then ! For diagnostics need to be var complete
-      allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
-      allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
-      allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
-   endif
 
 !   goto 10011 !HK bail out after forward operators
 
@@ -658,6 +618,8 @@ AdvanceTime : do
      call error_handler(E_MSG, 'skipping filter_state_space_diagnostics', 'parallel')
 
    else ! send each copy to task 0
+
+     if (.not. allow_complete_state()) call error_handler(E_ERR, 'How do you want to deal with diagnostics if no_complete_state =', '.true.?')
 
       call all_copies_to_all_vars(ens_handle)
 
@@ -719,12 +681,6 @@ AdvanceTime : do
 
    call     trace_message('Before observation assimilation')
    call timestamp_message('Before observation assimilation')
-
-   if (allow_complete_state()) then ! destroy var complete - just to make sure there are no cheats
-      deallocate(obs_ens_handle%vars)
-      deallocate(ens_handle%vars)
-      deallocate(forward_op_ens_handle%vars)
-   endif
 
    !call test_state_copies(ens_handle, 'before_filter_assim')
 
@@ -808,13 +764,6 @@ AdvanceTime : do
       call trace_message('Before computing smoother means/spread')
       call smoother_mean_spread(ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
       call trace_message('After  computing smoother means/spread')
-   endif
-
-   ! For diagnostics
-   if (allow_complete_state()) then
-      allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
-      allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
-      allocate(forward_op_ens_handle%vars(forward_op_ens_handle%num_vars, forward_op_ens_handle%my_num_copies))
    endif
 
 !***********************
@@ -932,10 +881,6 @@ AdvanceTime : do
 end do AdvanceTime
 
 10011 continue
-
-if( .not. direct_netcdf_read ) then
-   if (allow_complete_state()) call all_copies_to_all_vars(ens_handle) ! to write restarts
-endif
 
 call trace_message('End of main filter assimilation loop, starting cleanup', 'filter:', -1)
 
@@ -1068,30 +1013,17 @@ if(output_inflation) then
    state_meta(num_state_copies)   = 'inflation sd'
 endif
 
-if(allow_complete_state()) then ! only task 0 is in this subroutine
-
-   ! Set up diagnostic output for model state, if output is desired
+! Have task 0 set up diagnostic output for model state, if output is desired
+! I am not using a collective call here, just getting task 0 to set up the files
+! - nc_write_model_atts.
+if (my_task_id() == 0) then
    PriorStateUnit     = init_diag_output('Prior_Diag', &
                         'prior ensemble state', num_state_copies, state_meta)
    PosteriorStateUnit = init_diag_output('Posterior_Diag', &
                         'posterior ensemble state', num_state_copies, state_meta)
 
-else
-
-   ! Have task 0 set up diagnostic output for model state, if output is desired
-   ! I am not using a collective call here, just getting task 0 to set up the files
-   ! Can we not dump the static data into the diagnostic files. This would save some time.
-   ! - nc_write_model_atts.
-   if (my_task_id() == 0) then
-      PriorStateUnit     = init_diag_output('Prior_Diag', &
-                           'prior ensemble state', num_state_copies, state_meta)
-      PosteriorStateUnit = init_diag_output('Posterior_Diag', &
-                           'posterior ensemble state', num_state_copies, state_meta)
-
-      ierr = finalize_diag_output(PriorStateUnit) ! no error checking?
-      ierr = finalize_diag_output(PosteriorStateUnit)
-
-   endif
+   ierr = finalize_diag_output(PriorStateUnit) ! no error checking?
+   ierr = finalize_diag_output(PosteriorStateUnit)
 
 endif
 
