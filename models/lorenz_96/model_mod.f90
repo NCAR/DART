@@ -802,7 +802,7 @@ function read_file_name(restart_file_in_name, domain, copy)
 
 character(len=129), intent(in) :: restart_file_in_name
 integer,            intent(in) :: domain
-integer,            intent(in) :: copy
+integer, optional,  intent(in) :: copy
 character(len=256)             :: read_file_name
 
 end function read_file_name
@@ -813,7 +813,7 @@ function write_file_name(restart_out_file_name, domain, copy)
 
 character(len=129), intent(in) :: restart_out_file_name
 integer,            intent(in) :: domain
-integer,            intent(in) :: copy
+integer, optional,  intent(in) :: copy
 character(len=256)             :: write_file_name
 
 

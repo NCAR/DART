@@ -36,8 +36,8 @@ character(len=256) :: restart_stub = 'restart'
 character(len=256) :: prior_diagnostic_file = 'Prior_diag'
 character(len=256) :: post_diagnostic_file = 'Posterior_diag'
 
-character(len=256) :: prior_mean_inf_file = 'prior_inf_ic_old_d'
-character(len=256) :: prior_sd_inf_file   = 'prior_inf_ic_sd_old_d'
+character(len=256) :: prior_mean_inf_file = 'prior_inf_ic_new_d'
+character(len=256) :: prior_sd_inf_file   = 'prior_inf_ic_sd_new_d'
 character(len=256) :: post_mean_inf_file  = 'post_inf_ic_new_d'
 character(len=256) :: post_sd_inf_file    = 'post_inf_ic_sd_new_d'
 

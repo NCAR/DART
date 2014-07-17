@@ -200,6 +200,14 @@ interface get_model_height_profile_distrib
    module procedure get_model_height_profile_distrib_fwd, get_model_height_profile_distrib_mean
 end interface
 
+interface write_file_name
+   module procedure write_file_name_copy, write_file_name_no_copy
+end interface
+
+interface read_file_name
+   module procedure read_file_name_copy, read_file_name_no_copy
+end interface
+
 ! HK ? interp_4pressure interface needed?
 
 !-----------------------------------------------------------------------
@@ -8501,29 +8509,53 @@ end function info_file_name
 
 !--------------------------------------------------------------------
 !> construct restart file name for reading
-function read_file_name(restart_file_in_name, domain, copy)
+function read_file_name_copy(restart_file_in_name, domain, copy)
 
 character(len=129), intent(in) :: restart_file_in_name
 integer,            intent(in) :: domain
 integer,            intent(in) :: copy
-character(len=256)             :: read_file_name
+character(len=256)             :: read_file_name_copy
 
-write(read_file_name, '(A, i2.2, A, i2.2)') 'wrfinput_d', domain, '.', copy
+write(read_file_name_copy, '(A, i2.2, A, i2.2)') 'wrfinput_d', domain, '.', copy
 
-end function read_file_name
+end function read_file_name_copy
+
+!--------------------------------------------------------------------
+!> construct restart file name for reading
+function read_file_name_no_copy(restart_file_in_name, domain)
+
+character(len=129), intent(in) :: restart_file_in_name
+integer,            intent(in) :: domain
+character(len=256)             :: read_file_name_no_copy
+
+write(read_file_name_no_copy, '(A, i2.2)') trim(restart_file_in_name), domain
+
+end function read_file_name_no_copy
 
 !--------------------------------------------------------------------
 !> construct restart file name for writing
-function write_file_name(restart_out_file_name, domain, copy)
+function write_file_name_copy(restart_out_file_name, domain, copy)
 
 character(len=129), intent(in) :: restart_out_file_name
 integer,            intent(in) :: domain
 integer,            intent(in) :: copy
-character(len=256)             :: write_file_name
+character(len=256)             :: write_file_name_copy
 
-write(write_file_name, '(A, i2.2, A, i2.2, A)') 'wrfinput_d', domain, '.', copy, '.nc'
+write(write_file_name_copy, '(A, i2.2, A, i2.2, A)') 'wrfinput_d', domain, '.', copy, '.nc'
 
-end function write_file_name
+end function write_file_name_copy
+
+!--------------------------------------------------------------------
+!> construct restart file name for writing
+function write_file_name_no_copy(restart_out_file_name, domain)
+
+character(len=129), intent(in) :: restart_out_file_name
+integer,            intent(in) :: domain
+character(len=256)             :: write_file_name_no_copy
+
+write(write_file_name_no_copy, '(A, i2.2, A)') trim(restart_out_file_name), domain, '.nc'
+
+end function write_file_name_no_copy
 
 !--------------------------------------------------------------------
 

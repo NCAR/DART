@@ -370,7 +370,6 @@ call trace_message('After  initializing inflation')
 ! Read in restart files and initialize the ensemble storage
 call turn_read_copy_on(1, ens_size)
 call filter_read_restart_direct(ens_handle, time1, ens_size) ! This is annoying
-call turn_write_copies_off(1, ens_size + 6) 
 
 !call test_state_copies(ens_handle, 'after_read')
 
@@ -954,6 +953,8 @@ if(my_task_id() == 0) call write_obs_seq(seq, obs_sequence_out_name)
 call trace_message('After  writing output sequence file')
 
 call trace_message('Before writing inflation restart files if required')
+call turn_write_copies_off(1, ens_size + 6)
+
 ! Output the restart for the adaptive inflation parameters
 call adaptive_inflate_end(ens_handle, prior_inflate, ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, direct_netcdf_read)
 call adaptive_inflate_end(ens_handle, post_inflate, ens_handle, POST_INF_COPY, POST_INF_SD_COPY, direct_netcdf_read)
@@ -961,7 +962,6 @@ call trace_message('After  writing inflation restart files if required')
 
 ! Output a restart file if requested
 call trace_message('Before writing state restart files if requested')
-call turn_write_copies_off(1,ens_size + 6)
 call turn_write_copy_on(1,ens_size)
 call filter_write_restart_direct(ens_handle)
 

@@ -361,12 +361,13 @@ COPIES: do c = 1, ens_size
 
          ! inflation restarts
          ! prior
-         if ((my_copy - recv_start + 1) == ens_size -3) write(netcdf_filename, '(A)') trim(prior_mean_inf_file)
-         if ((my_copy - recv_start + 1) == ens_size -2) write(netcdf_filename, '(A)') trim(prior_sd_inf_file)
+         if ((my_copy - recv_start + 1) == ens_size -3) netcdf_filename = read_file_name(prior_mean_inf_file, domain)
+         if ((my_copy - recv_start + 1) == ens_size -2) netcdf_filename = read_file_name(prior_sd_inf_file, domain)
 
          ! posterior - do you read this?
-         if ((my_copy - recv_start + 1) == ens_size -1) write(netcdf_filename, '(A)') trim(post_mean_inf_file)
-         if ((my_copy - recv_start + 1) == ens_size)    write(netcdf_filename, '(A)') trim(post_sd_inf_file)
+         if ((my_copy - recv_start + 1) == ens_size -1) netcdf_filename = read_file_name(post_mean_inf_file, domain)
+
+         if ((my_copy - recv_start + 1) == ens_size) netcdf_filename = read_file_name( post_sd_inf_file, domain)
 
          if (query_read_copy(my_copy - recv_start + 1)) then
             ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
@@ -599,12 +600,14 @@ COPIES : do c = 1, ens_size
 
          ! inflation restarts
          ! prior
-         if ((my_copy + 1) == ens_size -3) write(netcdf_filename_out, '(A)') trim(prior_mean_inf_file)
-         if ((my_copy + 1) == ens_size -2) write(netcdf_filename_out, '(A)') trim(prior_sd_inf_file)
+         if ((my_copy + 1) == ens_size -3) netcdf_filename_out = write_file_name(prior_mean_inf_file, domain)
+
+
+         if ((my_copy + 1) == ens_size -2) netcdf_filename_out = write_file_name(prior_sd_inf_file, domain)
 
          ! posterior
-         if ((my_copy + 1) == ens_size -1) write(netcdf_filename_out, '(A)') trim(post_mean_inf_file)
-         if ((my_copy + 1) == ens_size)    write(netcdf_filename_out, '(A)') trim(post_sd_inf_file)
+         if ((my_copy + 1) == ens_size -1) netcdf_filename_out = write_file_name(post_mean_inf_file, domain)
+         if ((my_copy + 1) == ens_size) netcdf_filename_out = write_file_name(post_sd_inf_file, domain)
 
          if ( query_write_copy(my_copy - recv_start + 1)) then
             ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)

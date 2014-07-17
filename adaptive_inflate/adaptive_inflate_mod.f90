@@ -501,9 +501,10 @@ if(inflate_handle%output_restart) then
       call turn_write_copy_on(ss_inflate_sd_index)
 
       if (.not. direct_netcdf_read ) then
-         ! turn off restart reads, since they have already be read
-         call turn_read_copies_off(1, state_ens_handle%num_copies -6)
+         ! turn off restart write, since they are
+         call turn_write_copies_off(1, state_ens_handle%num_copies -6)
          call transpose_write(state_ens_handle, inflate_handle%out_file_name, domain, junk_int)
+         call turn_write_copies_off(1, state_ens_handle%num_copies)
       endif
 
       !call write_ensemble_restart(ens_handle, inflate_handle%out_file_name, &
