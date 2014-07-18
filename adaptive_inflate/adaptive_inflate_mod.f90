@@ -291,10 +291,12 @@ if(inf_flavor >= 2) then
       minmax_mean(1) = minval(ens_handle%copies(ss_inflate_index, :))
       minmax_mean(2) = maxval(ens_handle%copies(ss_inflate_index, :))
 
-      if (datasize == mpi_real8) then
-         call mpi_reduce(minmax_mean, minmax_mean, 2, mpi_real8, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
-      else ! single precision
-         call mpi_reduce(minmax_mean, minmax_mean, 2, mpi_real4, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+      if ( .not. direct_netcdf_read ) then 
+         if (datasize == mpi_real8) then
+            call mpi_reduce(minmax_mean, minmax_mean, 2, mpi_real8, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+         else ! single precision
+            call mpi_reduce(minmax_mean, minmax_mean, 2, mpi_real4, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+         endif
       endif
 
       !call get_copy_owner_index(ss_inflate_index, owner, owners_index)
@@ -327,10 +329,12 @@ if(inf_flavor >= 2) then
       minmax_mean(1) = minval(ens_handle%copies(ss_inflate_sd_index, :))
       minmax_mean(2) = maxval(ens_handle%copies(ss_inflate_sd_index, :))
 
-      if (datasize == mpi_real8) then
-         call mpi_reduce(minmax_mean, minmax_mean, 2, mpi_real8, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
-      else ! single precision
-         call mpi_reduce(minmax_mean, minmax_mean, 2, mpi_real4, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+      if ( .not. direct_netcdf_read ) then 
+         if (datasize == mpi_real8) then
+            call mpi_reduce(minmax_mean, minmax_mean, 2, mpi_real8, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+         else ! single precision
+            call mpi_reduce(minmax_mean, minmax_mean, 2, mpi_real4, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+         endif
       endif
 
 

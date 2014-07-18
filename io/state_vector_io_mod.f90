@@ -436,9 +436,9 @@ COPIES: do c = 1, ens_size
                                     state_ens_handle%copies(ensemble_member, starting_point:ending_point))
                   endif
 
-                  ensemble_member = ensemble_member + 1
-
                endif
+
+               ensemble_member = ensemble_member + 1
 
             enddo RECEIVE_FROM_EACH
 
@@ -670,9 +670,10 @@ COPIES : do c = 1, ens_size
                      var_block(i:count*task_count():task_count()) = state_ens_handle%copies(ensemble_member, starting_point:ending_point)
 
                   endif
-                  ensemble_member = ensemble_member + 1
 
                endif
+
+               ensemble_member = ensemble_member + 1
 
             enddo
 
