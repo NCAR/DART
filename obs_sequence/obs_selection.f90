@@ -29,7 +29,9 @@ use    utilities_mod, only : timestamp, register_module, initialize_utilities, &
                              open_file, close_file, finalize_utilities
 use     location_mod, only : location_type, get_location, set_location, &
                              LocationName, read_location, operator(==), &
-                             write_location
+                             write_location, VERTISSURFACE, VERTISHEIGHT, &
+                             VERTISLEVEL, VERTISPRESSURE, VERTISSCALEHEIGHT, &
+                             VERTISUNDEF, query_location
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind, &
                              get_obs_def_location, read_obs_def
 use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name, get_obs_kind_index, &
@@ -97,8 +99,17 @@ character(len = 129) :: filename_out  = 'obs_seq.processed'
 logical              :: process_file(max_num_input_files)
 
 character(len = 129) :: selections_file = 'obsdef_mask.txt'
+logical              :: selections_is_obs_seq = .false.
 
-logical  :: selections_is_obs_seq = .false.
+! max differences allowed when deciding a location is the same
+real(r8) :: latlon_tolerance      = 0.000001 ! horizontal, degrees
+real(r8) :: surface_tolerance     = 0.0001   ! vertical, meters
+real(r8) :: pressure_tolerance    = 0.001    ! vertical, pascals
+real(r8) :: height_tolerance      = 0.0001   ! vertical, meters
+real(r8) :: scaleheight_tolerance = 0.001    ! vertical, pressure ratio
+real(r8) :: level_tolerance       = 0.00001  ! vertical, fractional model levels
+
+logical  :: match_vertical        = .false.
 logical  :: print_only            = .false.
 logical  :: partial_write         = .false.
 logical  :: print_timestamps      = .false.
@@ -108,7 +119,9 @@ character(len=32) :: calendar     = 'Gregorian'
 namelist /obs_selection_nml/ &
          num_input_files, filename_seq, filename_seq_list, filename_out, &
          selections_file, selections_is_obs_seq, print_only, calendar,   &
-         print_timestamps, partial_write
+         print_timestamps, partial_write, latlon_tolerance,              &
+         surface_tolerance, pressure_tolerance, height_tolerance,        &
+         scaleheight_tolerance, level_tolerance, match_vertical
 
 !----------------------------------------------------------------
 ! Start of the program:
@@ -1134,7 +1147,7 @@ function good_selection(obs_in, selection_list, selection_count, startindex)
     if (base_obs_type /= test_obs_type) cycle
 
     test_obs_loc = get_obs_def_location(selection_list(i))
-    if ( .not. horiz_location_equal(base_obs_loc, test_obs_loc)) cycle
+    if ( .not. same_location(base_obs_loc, test_obs_loc, match_vertical)) cycle
 
     ! all match - good return.
     num_good_searched = i - startindex + 1
@@ -1160,26 +1173,72 @@ subroutine destroy_selections(selection_list, selection_count)
 end subroutine destroy_selections
 
 !---------------------------------------------------------------------------
-function horiz_location_equal(loc1,loc2)
+function same_location(loc1,loc2,vert_flag)
 
-! function to compare only the lat & lon and ignore the vert location.
+! compares two locations.
+! the vert_flag specifies whether to consider only the horizontal values
+! of lat/lon, or whether to include the vertical coordinate.
+!
+! if including the vertical, the two coordinate systems must be
+! the same (pressure, height, level, surface, scaleheight, undef).
+! the tolerances for saying the two locations are the same is a namelist
+! item setting.  horizontal values are in degrees.  if that tolerance 
+! is specified as <= 0, allow the lowest bit to differ from roundoff error.
+! if vert_flag is true, vert must also match within tolerance to return same.
+! if vert_flag is false, just use the horizontal.
 
 type(location_type), intent(in) :: loc1, loc2
-logical                         :: horiz_location_equal
+logical, intent(in)             :: vert_flag
+logical                         :: same_location
 
-real(r8) :: l1(3), l2(3)
+real(r8) :: larray1(3), larray2(3)
+integer  :: whichv1, whichv2
 
-l1 = get_location(loc1)
-l2 = get_location(loc2)
+larray1 = get_location(loc1)
+larray2 = get_location(loc2)
 
-horiz_location_equal = .false.
+! strategy is to assume the locations don't match, and when
+! you know this you can immediately return.  if you get all
+! the way to the end of this routine, then they are the same.
 
-if ( abs(l1(1)  - l2(1) ) > epsilon(l1(1) ) ) return
-if ( abs(l1(2)  - l2(2) ) > epsilon(l1(2) ) ) return
+same_location = .false.
 
-horiz_location_equal = .true.
+if (latlon_tolerance <= 0.0_r8) then
+   if ( abs(larray1(1) - larray2(1)) > epsilon(larray1(1)) ) return
+   if ( abs(larray1(2) - larray2(2)) > epsilon(larray1(2)) ) return
+else
+   if ( abs(larray1(1) - larray2(1)) > latlon_tolerance ) return
+   if ( abs(larray1(2) - larray2(2)) > latlon_tolerance ) return
+endif
 
-end function horiz_location_equal
+if (vert_flag) then
+   whichv1 = nint(query_location(loc1))
+   whichv2 = nint(query_location(loc2))
+   if (whichv1 /= whichv2) return
+
+   select case(whichv1) 
+      case (VERTISUNDEF)
+         continue
+      case (VERTISSURFACE)
+         if ( abs(larray1(3) - larray2(3)) > surface_tolerance ) return
+      case (VERTISLEVEL)
+         if ( abs(larray1(3) - larray2(3)) > level_tolerance ) return
+      case (VERTISPRESSURE)
+         if ( abs(larray1(3) - larray2(3)) > pressure_tolerance ) return
+      case (VERTISHEIGHT)
+         if ( abs(larray1(3) - larray2(3)) > height_tolerance ) return
+      case (VERTISSCALEHEIGHT)
+         if ( abs(larray1(3) - larray2(3)) > scaleheight_tolerance ) return
+      case default
+         write(msgstring, *) 'unrecognized key for vertical type: ', whichv1
+         call error_handler(E_ERR, 'same_location', msgstring, source, revision, revdate)
+   end select
+ 
+endif
+
+same_location = .true.
+
+end function same_location
 
 !---------------------------------------------------------------------------
 function get_time_from_obs(this_obs)
