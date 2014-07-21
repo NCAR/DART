@@ -907,11 +907,13 @@ call trace_message('After  writing inflation restart files if required')
 
 ! Output a restart file if requested
 call trace_message('Before writing state restart files if requested')
+call timestamp_message('Before writing state restart files if requested')
 call turn_write_copy_on(1,ens_size)
 call filter_write_restart_direct(ens_handle)
 
 if(ds) call smoother_write_restart(1, ens_size)
 call trace_message('After  writing state restart files if requested')
+call timestamp_message('After  writing state restart files if requested')
 
 ! Give the model_mod code a chance to clean up. 
 call trace_message('Before end_model call')
