@@ -8528,7 +8528,7 @@ character(len=129), intent(in) :: restart_file_in_name
 integer,            intent(in) :: domain
 character(len=256)             :: read_file_name_no_copy
 
-write(read_file_name_no_copy, '(A, i2.2)') trim(restart_file_in_name), domain
+write(read_file_name_no_copy, '(A, A, i2.2, A)') trim(restart_file_in_name), '_old_d', domain, '.nc'
 
 end function read_file_name_no_copy
 
@@ -8553,7 +8553,7 @@ character(len=129), intent(in) :: restart_out_file_name
 integer,            intent(in) :: domain
 character(len=256)             :: write_file_name_no_copy
 
-write(write_file_name_no_copy, '(A, i2.2, A)') trim(restart_out_file_name), domain, '.nc'
+write(write_file_name_no_copy, '(A, A, i2.2, A)') trim(restart_out_file_name), '_new_d', domain, '.nc'
 
 end function write_file_name_no_copy
 
