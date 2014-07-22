@@ -165,7 +165,7 @@ function [x] = weighted_norm_inv(alpha, mean, sd, p)
 np = p / alpha;
 
 % Find spot in standard normal 
-x = norminv(np, 0, 1);
+x = norm_inv(np);
 
 % Add in the mean and normalize by sd
 x = mean + x * sd;
