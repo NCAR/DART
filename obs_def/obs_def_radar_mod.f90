@@ -857,8 +857,8 @@ if ( .not. module_initialized ) call initialize_module
 
 ens_size = copies_in_window(state_ens_handle)
 allocate(track_status(ens_size), u(ens_size), v(ens_size), w(ens_size))
-allocate(u(ens_size), v(ens_size), w(ens_size), qr(ens_size), qg(ens_size), &
-   qs(ens_size), rho(ens_size), temp(ens_size), precip_fall_speed(ens_size))
+allocate(qr(ens_size), qg(ens_size), qs(ens_size), rho(ens_size), &
+   temp(ens_size), precip_fall_speed(ens_size))
 
 ! Simple error check on key number before accessing the array
 call velkey_out_of_range(velkey)
