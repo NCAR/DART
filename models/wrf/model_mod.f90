@@ -1882,7 +1882,7 @@ else
       zloc = zloc + 0.5_r8
       k = max(1,int(zloc)) 
 
-     call simple_interp_distrib(fld, wrf, id, i, j, k, wrf%dom(id)%type_qr, dxm, dx, dy, dym, uniquek, ens_size, state_ens_handle )
+     call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_ens_handle )
 
     !-----------------------------------------------------
    ! 1.f Specific Humidity (SH, SH2)
@@ -8335,9 +8335,9 @@ end subroutine surface_interp_distrib
 
 !--------------------------------------------------------------------------
 !> test if an obs kind is in the state vector and set wrf_type
-subroutine obs_kind_in_state_vector(in_state_vector, wrf_type, obs_kind, id)
+subroutine obs_kind_in_state_vector(part_of_state_vector, wrf_type, obs_kind, id)
 
-logical, intent(out) :: in_state_vector
+logical, intent(out) :: part_of_state_vector
 integer, intent(out) :: wrf_type !< WRF
 integer, intent(in)  :: obs_kind !< DART
 integer, intent(in)  :: id
@@ -8347,72 +8347,73 @@ in_state_vector = .false. ! assume not in state vector
 
 
 if    ( ( obs_kind == KIND_VERTICAL_VELOCITY)             .and. ( wrf%dom(id)%type_w >= 0 ) )  then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_w
 else if( ( obs_kind == KIND_RAINWATER_MIXING_RATIO )      .and. ( wrf%dom(id)%type_qr >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qr
 else if( ( obs_kind == KIND_GRAUPEL_MIXING_RATIO )        .and. ( wrf%dom(id)%type_qg >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qg
 else if( ( obs_kind == KIND_HAIL_MIXING_RATIO )           .and. ( wrf%dom(id)%type_qh >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qh
 else if( ( obs_kind == KIND_SNOW_MIXING_RATIO )           .and. ( wrf%dom(id)%type_qs >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qs
 else if( ( obs_kind == KIND_CLOUD_ICE )                   .and. ( wrf%dom(id)%type_qi >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qi
 else if( ( obs_kind == KIND_CLOUD_LIQUID_WATER )          .and. ( wrf%dom(id)%type_qc >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_qc
 else if( ( obs_kind == KIND_DROPLET_NUMBER_CONCENTR )     .and. ( wrf%dom(id)%type_qndrp >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qndrp
 else if( ( obs_kind == KIND_ICE_NUMBER_CONCENTRATION )    .and. ( wrf%dom(id)%type_qnice >= 0 ) )then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_qnice
 else if( ( obs_kind == KIND_SNOW_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnsnow >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qnsnow
 else if( ( obs_kind == KIND_RAIN_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnrain >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qnrain
 else if( ( obs_kind == KIND_GRAUPEL_NUMBER_CONCENTR )     .and. ( wrf%dom(id)%type_qngraupel >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_qngraupel
 else if( ( obs_kind == KIND_HAIL_NUMBER_CONCENTR )        .and. ( wrf%dom(id)%type_qnhail >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_qnhail
 else if( ( obs_kind == KIND_CONDENSATIONAL_HEATING )      .and. ( wrf%dom(id)%type_hdiab >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_hdiab
 else if( ( obs_kind == KIND_POWER_WEIGHTED_FALL_SPEED )   .and. ( wrf%dom(id)%type_fall_spd >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_fall_spd
 else if( ( obs_kind == KIND_RADAR_REFLECTIVITY )          .and. ( wrf%dom(id)%type_refl >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_refl
 else if( ( obs_kind == KIND_DIFFERENTIAL_REFLECTIVITY )   .and. ( wrf%dom(id)%type_dref >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type =  wrf%dom(id)%type_dref
 else if( ( obs_kind == KIND_SPECIFIC_DIFFERENTIAL_PHASE ) .and. ( wrf%dom(id)%type_spdp >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_spdp
 else if ( ( obs_kind == KIND_VAPOR_MIXING_RATIO )         .and. ( wrf%dom(id)%type_qv >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_qv
 else if ( ( obs_kind == KIND_TEMPERATURE )                  .and. ( wrf%dom(id)%type_t >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_t
 else if ( ( obs_kind == KIND_POTENTIAL_TEMPERATURE )        .and. ( wrf%dom(id)%type_t >= 0 ) ) then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_t
 else if ( ( obs_kind == KIND_SKIN_TEMPERATURE )              .and. ( wrf%dom(id)%type_tsk >= 0 ) )then
-   in_state_vector = .true.
+   part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_tsk
 else
+   print*, 'kind', obs_kind
    call error_handler(E_ERR, 'obs_kind_in_state_vector', 'not in state vector', source, revision, revdate)
 endif
 
