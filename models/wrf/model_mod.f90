@@ -743,6 +743,7 @@ WRFDomains : do id=1,num_domains
    wrf%dom(id)%type_dref   = get_type_ind_from_type_string(id,'DIFF_REFL_10CM')
    wrf%dom(id)%type_spdp   = get_type_ind_from_type_string(id,'SPEC_DIFF_10CM')
    wrf%dom(id)%type_fall_spd = get_type_ind_from_type_string(id,'FALL_SPD_Z_WEIGHTED')
+   !wrf%dom(id)%type_fall_spd = get_type_ind_from_type_string(id,'VT_DBZ_WT')
    wrf%dom(id)%type_hdiab  = get_type_ind_from_type_string(id,'H_DIABATIC')
 
 enddo WRFDomains 
@@ -8343,7 +8344,7 @@ integer, intent(in)  :: obs_kind !< DART
 integer, intent(in)  :: id
 
 
-in_state_vector = .false. ! assume not in state vector
+part_of_state_vector = .false. ! assume not in state vector
 
 
 if    ( ( obs_kind == KIND_VERTICAL_VELOCITY)             .and. ( wrf%dom(id)%type_w >= 0 ) )  then
