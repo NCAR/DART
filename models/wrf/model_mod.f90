@@ -1486,14 +1486,12 @@ else
 
       endif
 
-   endif
-
    !-----------------------------------------------------
    ! 1.a Horizontal Winds (U, V, U10, V10)
 
    ! We need one case structure for both U & V because they comprise a vector which could need
    !   transformation depending on the map projection (hence, the call to gridwind_to_truewind)
-   if( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) then   ! U, V
+   elseif( obs_kind == KIND_U_WIND_COMPONENT .or. obs_kind == KIND_V_WIND_COMPONENT) then   ! U, V
 
      ! This is for 3D wind fields -- surface winds later
       if(.not. surf_var) then
@@ -1887,7 +1885,6 @@ else
 
     !-----------------------------------------------------
    ! 1.f Specific Humidity (SH, SH2)
-   !> @todo Distributed forward operator for specific humidity
    ! Look at me
    ! Convert water vapor mixing ratio to specific humidity:
    else if( obs_kind == KIND_SPECIFIC_HUMIDITY ) then
