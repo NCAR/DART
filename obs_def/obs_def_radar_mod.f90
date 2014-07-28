@@ -897,10 +897,13 @@ call get_expected_fall_velocity_distrib(state_ens_handle, location, precip_fall_
 
 radial_vel = radial_vel_data(velkey)%beam_direction(1) * u +    &
              radial_vel_data(velkey)%beam_direction(2) * v +    &
-             radial_vel_data(velkey)%beam_direction(3) * (w-precip_fall_speed)
+             radial_vel_data(velkey)%beam_direction(3) * (w - precip_fall_speed)
+
+
+istatus = track_status
 
 do e = 1, ens_size
-   if ( track_status (e) /= 0 ) radial_vel = missing_r8
+   if ( istatus(e) /= 0 ) radial_vel(e) = missing_r8
 enddo
 
 ! Good return code.  Reset possible istatus error from trying to compute
@@ -965,7 +968,7 @@ call interpolate_distrib(location, KIND_POWER_WEIGHTED_FALL_SPEED, istatus, &
          precip_fall_speed, state_ens_handle)
 
 ! If able to get value, return here.
-if (all(istatus == 0) ) return
+if (any(istatus == 0) ) return  !> @todo should this be any or all?
 
 ! If the user explicitly wanted to interpolate in the field, try to complain
 ! if it could not.  Note that the interp could fail for other reasons.
@@ -1039,6 +1042,9 @@ if (microphysics_type == 1 .or. microphysics_type == 2) then
          call get_LK_precip_fall_speed(qr(e), qg(e), qs(e), rho(e), temp(e), precip_fall_speed(e))
       endif
    enddo
+
+   istatus = track_status
+
    ! Done with Lin et al or Kessler -
 
 else if (microphysics_type == 5 .and. allow_dbztowt_conv) then
@@ -1064,9 +1070,12 @@ else if (microphysics_type == 5 .and. allow_dbztowt_conv) then
       precip_fall_speed(e) = dbztowt(refl(e), rho(e), missing_r8)
    enddo
 
+   istatus = track_status
+
 else if (microphysics_type < 0) then
    ! User requested setting fall velocity to zero - use with caution
    precip_fall_speed = 0.0_r8
+   istatus(:) = 0
 else
    ! Couldn't manage to compute a fall velocity
    precip_fall_speed = missing_r8
@@ -1237,6 +1246,8 @@ if ( any(istatus /= 0) ) then
          endif
       enddo
 
+      istatus = track_status
+
    else
       ! not in state vector and not Lin et al or Kessler so can't do reflectivity
       ref(:) = missing_r8
@@ -1249,8 +1260,6 @@ do e = 1, ens_size
       ref(e) = lowest_reflectivity_fwd_op
    endif
 enddo
-
-istatus = track_status
 
 ! Do not return a missing data value with a successful return code. HK when does this happen?
 do e = 1, ens_size
