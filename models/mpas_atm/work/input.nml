@@ -130,8 +130,8 @@
   /
 
 &obs_kind_nml
-   assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE'
-                                'RADIOSONDE_U_WIND_COMPONENT'
+   assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
+                                'RADIOSONDE_U_WIND_COMPONENT',
                                 'RADIOSONDE_V_WIND_COMPONENT'
   /
 
@@ -158,35 +158,35 @@
    highest_obs_pressure_mb      = -1.0
   /
 
-!                          'theta',                 'KIND_POTENTIAL_TEMPERATURE'
-!                          'surface_pressure',      'KIND_SURFACE_PRESSURE'
-!                          'uReconstructZonal',     'KIND_U_WIND_COMPONENT'
-!                          'uReconstructMeridional','KIND_V_WIND_COMPONENT'
-!                          'u',                     'KIND_EDGE_NORMAL_SPEED'
-!                          'w',                     'KIND_VERTICAL_VELOCITY'
-!                          'rho',                   'KIND_DENSITY'
-!                          'qv',                    'KIND_VAPOR_MIXING_RATIO'
-!                          'qc',                    'KIND_CLOUDWATER_MIXING_RATIO'
-!                          'qr',                    'KIND_RAINWATER_MIXING_RATIO'
-!                          'qi',                    'KIND_ICE_MIXING_RATIO'
-!                          'qs',                    'KIND_SNOW_MIXING_RATIO'
-!                          'qg',                    'KIND_GRAUPEL_MIXING_RATIO'
-!                          'rho',                   'KIND_DENSITY'
-!                          'salinity',              'KIND_SALINITY'
+!                          'theta',                 'KIND_POTENTIAL_TEMPERATURE',
+!                          'surface_pressure',      'KIND_SURFACE_PRESSURE',
+!                          'uReconstructZonal',     'KIND_U_WIND_COMPONENT',
+!                          'uReconstructMeridional','KIND_V_WIND_COMPONENT',
+!                          'u',                     'KIND_EDGE_NORMAL_SPEED',
+!                          'w',                     'KIND_VERTICAL_VELOCITY',
+!                          'rho',                   'KIND_DENSITY',
+!                          'qv',                    'KIND_VAPOR_MIXING_RATIO',
+!                          'qc',                    'KIND_CLOUDWATER_MIXING_RATIO',
+!                          'qr',                    'KIND_RAINWATER_MIXING_RATIO',
+!                          'qi',                    'KIND_ICE_MIXING_RATIO',
+!                          'qs',                    'KIND_SNOW_MIXING_RATIO',
+!                          'qg',                    'KIND_GRAUPEL_MIXING_RATIO',
+!                          'rho',                   'KIND_DENSITY',
+!                          'salinity',              'KIND_SALINITY',
 !                          'temperature',           'KIND_TEMPERATURE'
 
 &mpas_vars_nml
    mpas_state_variables =
-                          'uReconstructZonal',     'KIND_U_WIND_COMPONENT'
-                          'uReconstructMeridional','KIND_V_WIND_COMPONENT'
-                          'theta',                 'KIND_POTENTIAL_TEMPERATURE'
-                          'surface_pressure',      'KIND_SURFACE_PRESSURE'
-                          'w',                     'KIND_VERTICAL_VELOCITY'
-                          'rho',                   'KIND_DENSITY'
+                          'uReconstructZonal',     'KIND_U_WIND_COMPONENT',
+                          'uReconstructMeridional','KIND_V_WIND_COMPONENT',
+                          'theta',                 'KIND_POTENTIAL_TEMPERATURE',
+                          'surface_pressure',      'KIND_SURFACE_PRESSURE',
+                          'w',                     'KIND_VERTICAL_VELOCITY',
+                          'rho',                   'KIND_DENSITY',
                           'qv',                    'KIND_VAPOR_MIXING_RATIO'
 
-   mpas_state_bounds    = 'qv','0.0','NULL','CLAMP'
-                          'qc','0.0','NULL','CLAMP'
+   mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
+                          'qc','0.0','NULL','CLAMP',
                           'qr','0.0','NULL','CLAMP'
   /
 
@@ -215,11 +215,12 @@
    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90'
    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90'
   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90'
-   input_files             = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90'
-                             '../../../obs_def/obs_def_altimeter_mod.f90'
-                             '../../../obs_def/obs_def_gts_mod.f90'
-                             '../../../obs_def/obs_def_metar_mod.f90'
-                             '../../../obs_def/obs_def_gps_mod.f90'
+   input_files             = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90',
+                             '../../../obs_def/obs_def_altimeter_mod.f90',
+                             '../../../obs_def/obs_def_gts_mod.f90',
+                             '../../../obs_def/obs_def_metar_mod.f90',
+                             '../../../obs_def/obs_def_gps_mod.f90',
+                             '../../../obs_def/obs_def_dew_point_mod.f90'
   /
 
 &obs_sequence_tool_nml
@@ -394,12 +395,12 @@
    textfile_out      = 'obsdef_mask.txt'
    netcdf_out        = 'obsdef_mask.nc'
    calendar          = 'Gregorian'
-   first_analysis    =  2008, 8, 1, 18, 0, 0
-   last_analysis     =  2008, 8, 1, 18, 0, 0
-   forecast_length_days          = 0
-   forecast_length_seconds       = 21600
-   verification_interval_seconds = 21600
-   temporal_coverage_percent     = 50.0
+   first_analysis    =  2008, 6, 1, 00, 0, 0
+   last_analysis     =  2008, 6, 1, 12, 0, 0
+   forecast_length_days          = 3
+   forecast_length_seconds       = 0
+   verification_interval_seconds = 43200
+   temporal_coverage_percent     = 90.0
    lonlim1    =    0.0
    lonlim2    =  360.0
    latlim1    =  -90.0

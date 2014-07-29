@@ -72,20 +72,22 @@ character(len=128), parameter :: revdate  = "$Date$"
 !---------------------------------------------------------------------
 !---------------------------------------------------------------------
 
-type voxel
+type voxel_type
    integer                  :: obs_type
    type(location_type)      :: location
+   integer                  :: levelindx
    type(time_type)          :: first_time
    type(time_type)          :: last_time
    integer                  :: ntimes
    type(time_type), pointer :: times(:)
-end type voxel
+end type voxel_type
 
-logical,       allocatable, dimension(:) :: Desiredvoxels
-type(voxel), allocatable, dimension(:) :: voxels
-integer :: num_voxels  ! This is the current number of unique locations
-integer :: max_voxels  ! This is the largest possible number of uniq locs
-integer :: voxel_id    ! the index (into voxels) of an existing location
+logical,          allocatable, dimension(:) :: Desiredvoxels
+type(voxel_type), allocatable, dimension(:) :: voxels
+
+integer :: num_voxels    ! This is the current number of unique locations
+integer :: max_voxels    ! This is the largest possible number of uniq locs
+integer :: voxel_id      ! the index (into voxels) of an existing location
 integer :: timeindex     ! the index (into the time array of a voxel)
 integer :: num_out_stat  ! total number of desired voxels found
 integer :: num_out_total ! total number of desired locations * times found
@@ -183,6 +185,7 @@ integer :: num_analyses             ! # of fcsts from first_analysis to last_ana
 integer :: num_verify_per_fcst
 integer :: num_verification_times   ! number of verification times - total
 integer :: nT_minimum               ! will settle for this many verif times - total
+integer :: ilev                     ! index of mandatory level
 
 real(r8), dimension(NUM_MANDATORY_LEVELS) :: mandatory_levels = MISSING_R8 ! pressure level (hPa)
 
@@ -261,32 +264,26 @@ if (all(obs_type_inds < 1)) then
                       source, revision, revdate, text2=string2)
 endif
 
-
 ! Set the verification time array (global storage)
 
 call set_required_times(first_analysis, last_analysis, &
           forecast_length_days, forecast_length_seconds, &
           verification_interval_seconds, temporal_coverage_percent)
 
-if (verbose) then
-
-   write(*,*) ! whitespace
-   write(*,*)'The analysis times (the start of the forecasts) are:'
-   do i=1,size(verification_times,1)
-      write(string1,*)'analysis # ',i,' at '
-      call print_date(verification_times(i,1),trim(string1))
-   enddo
-
-   write(*,*) ! whitespace
-   write(*,*)'At least',nT_minimum,' observations times are required during:'
-   do i=1,num_verification_times
-      write(string1,*)'verification # ',i,' at '
-      call print_date(all_verif_times(i),trim(string1))
-   enddo
-
-
-   write(*,*) ! whitespace
-endif
+write(*,*) ! whitespace
+write(*,*)'The analysis times (the start of the forecasts) are:'
+do i=1,size(verification_times,1)
+   write(string1,*)'analysis # ',i,' at '
+   call print_date(verification_times(i,1),trim(string1))
+enddo
+write(*,*) ! whitespace
+write(*,*)'At least',nT_minimum,' observations are required from the following:'
+do i=1,num_verification_times
+   write(string1,*)'verification # ',i,' at '
+   call print_date(all_verif_times(i),trim(string1))
+   call print_time(all_verif_times(i),trim(string1))
+enddo
+write(*,*) ! whitespace
 
 last_possible_time = all_verif_times(num_verification_times) + half_stride
 
@@ -491,7 +488,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
       if ( .not. is_location_in_region(obs_loc,minl,maxl) ) cycle ObservationLoop
 
-      if ( .not. vertically_desired(obs_loc) ) cycle ObservationLoop
+      if ( .not. vertically_desired(obs_loc, ilev) ) cycle ObservationLoop
 
       ngood = ngood + 1
 
@@ -500,7 +497,12 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
       voxel_id = find_voxel_location(flavor, obs_loc) 
 
       if ( voxel_id < 1 ) then
-            voxel_id = add_new_voxel(flavor, obs_loc)
+            voxel_id = add_new_voxel(flavor, obs_loc, ilev)
+      endif
+
+      if (debug) then
+         call write_location(0,obs_loc,'ascii',string1)
+         write(*,*)'observation',iobs,'is voxel',voxel_id,trim(string1)
       endif
 
       if ( time_is_wanted( obs_time, voxel_id, timeindex) ) &
@@ -575,7 +577,7 @@ if (allocated(obs_copy_names))        deallocate(obs_copy_names)
 if (allocated(module_obs_copy_names)) deallocate(module_obs_copy_names)
 if (allocated(module_qc_copy_names )) deallocate(module_qc_copy_names )
 if (allocated(obs_seq_filenames))     deallocate(obs_seq_filenames)
-if (allocated(Desiredvoxels))       deallocate(Desiredvoxels)
+if (allocated(Desiredvoxels))         deallocate(Desiredvoxels)
 
 call error_handler(E_MSG,'obs_seq_coverage','Finished successfully.',source,revision,revdate)
 call finalize_utilities()
@@ -641,7 +643,7 @@ end function find_voxel_location
 !============================================================================
 
 
-function add_new_voxel(ObsType, ObsLocation) result(voxel_id)
+function add_new_voxel(ObsType, ObsLocation, ilevel) result(voxel_id)
 
 ! Ugh ... if a new location is found, add it. If the voxellist does not have
 ! enough space, must copy the info to a temporary list, deallocate/reallocate
@@ -649,9 +651,10 @@ function add_new_voxel(ObsType, ObsLocation) result(voxel_id)
 
 integer,             intent(in) :: ObsType
 type(location_type), intent(in) :: ObsLocation
+integer,             intent(in) :: ilevel
 integer                         :: voxel_id
 
-type(voxel), allocatable, dimension(:) :: templist
+type(voxel_type), allocatable, dimension(:) :: templist
 integer :: i
 
 if ( num_voxels >= max_voxels ) then  ! need to make room
@@ -675,6 +678,7 @@ if ( num_voxels >= max_voxels ) then  ! need to make room
    
       templist(i)%obs_type   = voxels(i)%obs_type
       templist(i)%location   = voxels(i)%location
+      templist(i)%levelindx  = voxels(i)%levelindx
       templist(i)%first_time = voxels(i)%first_time
       templist(i)%last_time  = voxels(i)%last_time
       templist(i)%ntimes     = voxels(i)%ntimes
@@ -700,6 +704,7 @@ if ( num_voxels >= max_voxels ) then  ! need to make room
    
       voxels(i)%obs_type   = templist(i)%obs_type
       voxels(i)%location   = templist(i)%location
+      voxels(i)%levelindx  = templist(i)%levelindx
       voxels(i)%first_time = templist(i)%first_time
       voxels(i)%last_time  = templist(i)%last_time
       voxels(i)%ntimes     = templist(i)%ntimes
@@ -726,8 +731,9 @@ endif
 num_voxels = num_voxels + 1
 voxel_id   = num_voxels
 
-voxels(voxel_id)%obs_type = ObsType
-voxels(voxel_id)%location = ObsLocation
+voxels(voxel_id)%obs_type  = ObsType
+voxels(voxel_id)%location  = ObsLocation
+voxels(voxel_id)%levelindx = ilevel
 
 if (debug) then
    call write_location(0,ObsLocation,'ascii',string1)
@@ -736,6 +742,7 @@ if (debug) then
    write(*,*)'Added voxel ',voxel_id,' for type ',ObsType
    write(*,*)'observation location', trim(string1)
    write(*,*)'voxel       location', trim(string2)
+   write(*,*)'voxel          level', voxels(voxel_id)%levelindx
    write(*,*)
 endif
 
@@ -1009,13 +1016,13 @@ call nc_check(nf90_put_att(ncid, ExperimentVarID, 'cols',  'each verification ti
 call nc_check(nf90_def_dim(ncid=ncid, &
               name='nlevels', len= NUM_MANDATORY_LEVELS, dimid=nlevDimID), &
               'InitNetCDF', 'def_dim:nlevels '//trim(fname))
-call nc_check(nf90_def_var(ncid=ncid, name='plevel', xtype=nf90_real, &
+call nc_check(nf90_def_var(ncid=ncid, name='mandatory_level', xtype=nf90_real, &
               dimids = (/ nlevDimID /), varid=plevelVarID), &
-              'InitNetCDF', 'plevel:def_var')
+              'InitNetCDF', 'mandatory_level:def_var')
 call nc_check(nf90_put_att(ncid, plevelVarID, 'long_name', 'mandatory pressure levels'), &
-              'InitNetCDF', 'plevel:long_name')
+              'InitNetCDF', 'mandatory_level:long_name')
 call nc_check(nf90_put_att(ncid, plevelVarID, 'units', 'Pa'), &
-              'InitNetCDF', 'plevel:units')
+              'InitNetCDF', 'mandatory_level:units')
 
 ! write all namelist quantities
 
@@ -1062,6 +1069,18 @@ if ( nc_write_location_atts( ncid, fname, voxelsDimID ) /= 0 ) then
    write(string1,*)'problem initializing netCDF location attributes'
    call error_handler(E_ERR,'InitNetCDF',string1,source,revision,revdate)
 endif
+
+! Define the mandatory level corresponding to each voxel
+
+call nc_check(nf90_def_var(ncid=ncid, name='voxel_level_index', xtype=nf90_int, &
+          dimids=(/ voxelsDimID /), varid=VarID), &
+          'InitNetCDF', 'voxel_level_index:def_var')
+call nc_check(nf90_put_att(ncid, VarID, 'long_name', &
+          'index of the mandatory level of this voxel'), &
+          'InitNetCDF', 'voxel_level_index:put_att long_name')
+call nc_check(nf90_put_att(ncid, VarID, 'valid_range', &
+          (/ 1, NUM_MANDATORY_LEVELS /) ), &
+          'InitNetCDF', 'voxel_level_index:put_att valid_range')
 
 ! Define the number of observation times
 
@@ -1196,6 +1215,7 @@ call nc_check(nf90_put_var(ncid, ExperimentVarID, experiment_Tr8 ), &
 
 call nc_check(nf90_put_var(ncid, plevelVarID, mandatory_levels ), &
             'InitNetCDF', 'put_var:plevel')
+
 !----------------------------------------------------------------------------
 ! Finish up ...
 !----------------------------------------------------------------------------
@@ -1213,14 +1233,14 @@ end Function InitNetCDF
 subroutine WriteNetCDF(ncid, fname, voxels)
 integer,                     intent(in) :: ncid
 character(len=*),            intent(in) :: fname
-type(voxel), dimension(:), intent(in) :: voxels
+type(voxel_type), dimension(:), intent(in) :: voxels
 
 integer :: DimID, ntimes, voxelindex, days, secs, i
 integer, dimension(1) :: istart, icount
 
 integer :: voxelVarID, TimeVarID, NTimesVarID, &
            T1VarID, TNVarID, ObsTypeVarID, &
-           LocationVarID, WhichVertVarID
+           LocationVarID, WhichVertVarID, IlevVarID
 
 real(digits12), allocatable, dimension(:) :: mytimes
 integer, dimension(num_voxels) :: gooduns    ! Cray compiler likes this better
@@ -1260,6 +1280,9 @@ call nc_check(nf90_inq_varid(ncid, 'first_time', varid=T1VarID), &
 call nc_check(nf90_inq_varid(ncid, 'last_time', varid=TNVarID), &
           'WriteNetCDF', 'inq_varid:last_time '//trim(fname))
 
+call nc_check(nf90_inq_varid(ncid, 'voxel_level_index', varid=IlevVarID), &
+          'WriteNetCDF', 'inq_varid:voxel_level_index '//trim(fname))
+
 call nc_get_location_varids(ncid, fname, LocationVarID, WhichVertVarID)
 
 allocate(mytimes(ntimes))
@@ -1295,6 +1318,9 @@ WriteObs : do voxelindex = 1,num_voxels
 
    call nc_check(nf90_put_var(ncid, NTimesVarId, (/ voxels(voxelindex)%ntimes /), &
                 start=istart, count=icount), 'WriteNetCDF', 'put_var:ntimes')
+
+   call nc_check(nf90_put_var(ncid, IlevVarId, (/ voxels(voxelindex)%levelindx /), &
+                start=istart, count=icount), 'WriteNetCDF', 'put_var:voxel_level_index')
 
    !----------------------------------------------------------------------------
    ! time : fill, write
@@ -1348,7 +1374,7 @@ end subroutine CloseNetCDF
 
 subroutine initialize_voxels(Nvoxels, myvoxels)
 integer,                                  intent(in)  :: Nvoxels
-type(voxel), allocatable, dimension(:), intent(out) :: myvoxels
+type(voxel_type), allocatable, dimension(:), intent(out) :: myvoxels
 
 integer :: i
 
@@ -1371,7 +1397,7 @@ end subroutine initialize_voxels
 
 
 subroutine destroy_voxels(myvoxels)
-type(voxel), allocatable, dimension(:), intent(inout) :: myvoxels
+type(voxel_type), allocatable, dimension(:), intent(inout) :: myvoxels
 
 integer :: i,N
 
@@ -1594,8 +1620,17 @@ if (nexttime /= thistime) then
    call error_handler(E_ERR,'set_required_times',string1,source,revision,revdate)
 endif
 
-num_verification_times = nsteps+1  ! SET GLOBAL VALUE
-if (verbose) write(*,*)'There are ',num_verification_times,' total times we need observations.' 
+num_verification_times = nsteps + 1                                ! SET GLOBAL VALUE
+nT_minimum = nint(num_verification_times * coverage_pcnt/100.0_r8) ! SET GLOBAL VALUE
+
+if (verbose) then
+   write(string1,*)'Need ',num_verification_times, &
+      ' verification times for 100.00% coverage.' 
+   write(string2,'(''at least '',i5,''  verification times for'',&
+      & f7.2,''% coverage.'')') nT_minimum, coverage_pcnt
+
+   call error_handler(E_MSG,'set_required_times',string1,text2=string2)
+endif
 
 allocate(all_verif_times(num_verification_times))
 allocate(verification_times(num_analyses,num_verify_per_fcst))
@@ -1622,17 +1657,6 @@ do i = 1,num_analyses
 enddo
 enddo
 
-nT_minimum = nint(num_verification_times * coverage_pcnt/100.0_r8)   ! SET GLOBAL VALUE
-
-if (debug) then
-   write(*,*) ! whitespace
-   write(*,*)'At least',nT_minimum,' observations times are required at:'
-   do i=1,num_verification_times
-      write(string1,*)'verification # ',i,' at '
-      call print_date(all_verif_times(i),trim(string1))
-   enddo
-   write(*,*) ! whitespace
-endif
 
 end subroutine set_required_times
 
@@ -1704,7 +1728,7 @@ end subroutine setPressureLevels
 !======================================================================
 
 
-function vertically_desired(location)
+function vertically_desired(location,ilevel)
 
 ! For obs on pressure levels ... how close to the mandatory levels is close
 ! enough? A quick examination of 3000+ radiosonde obs revealed that all the 
@@ -1713,16 +1737,20 @@ function vertically_desired(location)
 ! So if the observation is within 1 Pa of a mandatory level, that's good enough.
 
 type(location_type), intent(inout) :: location
+integer,             intent(out)   :: ilevel
 logical                            :: vertically_desired
 
 integer :: iz
 real(r8), dimension(4) :: obslocarray
 real(r8) :: zdist
 
+ilevel = MISSING_I
+
 if (vert_is_undef(  location)  .or. &
     vert_is_surface(location)) then
 
    vertically_desired = .true.
+   ilevel = 1
    
 elseif ( vert_is_pressure(location) ) then
 
@@ -1738,6 +1766,7 @@ elseif ( vert_is_pressure(location) ) then
       obslocarray(3)     = mandatory_levels(iz)
       location           = set_location( obslocarray )
       vertically_desired = .true.
+      ilevel             = iz
 
    else ! not close enough
 
