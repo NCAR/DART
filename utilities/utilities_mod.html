@@ -663,11 +663,11 @@ logical                        :: <em class=code>is_longitude_between</em>
 <A NAME="get_next_filename"></A>
 <br>
 <div class=routine>
-<em class=call> var = get_next_filename( listname, index ) </em>
+<em class=call> var = get_next_filename( listname, lineindex ) </em>
 
 <pre>
 character(len=*),  intent(in) :: <em class=code>listname</em>
-integer,           intent(in) :: <em class=code>index</em>
+integer,           intent(in) :: <em class=code>lineindex</em>
 character(len=128)            :: <em class=code>get_next_filename</em>
 </pre>
 </div>
@@ -691,10 +691,10 @@ value is empty.
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>var </em></TD>
     <TD>An ascii string, up to 128 characters long, containing the
-        contents of line <em class=code>index</em> of the input file.</TD></TR>
+        contents of line <em class=code>lineindex</em> of the input file.</TD></TR>
 <TR><TD valign=top><em class=code>listname </em></TD>
     <TD>The filename to open and read lines from.</TD></TR>
-<TR><TD valign=top><em class=code>index </em></TD>
+<TR><TD valign=top><em class=code>lineindex </em></TD>
     <TD>Integer line number, starting at 1.  If larger than the
         number of lines in the file, the empty string '' will be returned.</TD></TR>
 </TABLE>

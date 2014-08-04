@@ -1623,13 +1623,13 @@ end subroutine file_to_text
 !#######################################################################
 
 
-function get_next_filename( listname, findex )
+function get_next_filename( listname, lineindex )
 
 ! Arguments are the name of a file which contains a list of filenames.
 ! This routine opens the listfile, and returns the index-th one.
 !
 character(len=*),  intent(in) :: listname
-integer,           intent(in) :: findex
+integer,           intent(in) :: lineindex
 character(len=256)            :: get_next_filename
 
 integer :: i, ios, funit
@@ -1638,7 +1638,7 @@ character(len=512)  :: string
 
 funit   = open_file(listname, form="FORMATTED", action="READ")
 
-PARSELOOP : do i=1, findex
+PARSELOOP : do i=1, lineindex
 
    read(funit, '(A)', iostat=ios) string
 
@@ -1682,7 +1682,7 @@ character(len=*), intent(in)    :: listname
 character(len=*), intent(in)    :: caller_name
 integer                         :: set_filename_list
 
-integer :: findex, max_num_input_files
+integer :: fileindex, max_num_input_files
 logical :: from_file
 character(len=32) :: fsource
 
@@ -1717,31 +1717,41 @@ else
    from_file = .false.
 endif
 
-! the max number of names in a namelist file is the size of the array
-! that will be returned.
+! the max number of names allowed in a list file is the 
+! size of the name_array passed in by the user.
 max_num_input_files = size(name_array)
-do findex = 1, max_num_input_files
-   if (from_file) &
-      name_array(findex) = get_next_filename(listname, findex)
 
-   if (name_array(findex) == '') then
-      if (findex == 1) then
+! loop over the inputs.  if the names were already specified in the
+! name_array, just look for the '' to indicate the end of the list.
+! if the names were specified in the listname file, read them in and
+! fill in the name_array and then look for ''.
+do fileindex = 1, max_num_input_files
+   if (from_file) &
+      name_array(fileindex) = get_next_filename(listname, fileindex)
+
+   if (name_array(fileindex) == '') then
+      if (fileindex == 1) then
          call error_handler(E_ERR, caller_name, &
              'found no '//trim(fsource), source,revision,revdate)
       endif
 
-      ! return how many files we found, either in the namelist
-      ! or in the list of files
-      set_filename_list = findex - 1
+      ! at the end of the list. return how many filenames were found, 
+      ! whether the source was the name_array or the listname.
+      set_filename_list = fileindex - 1
       return
    endif
 enddo
 
-! if you're reading from a file, make sure you don't have more
-! names in the file than can fit in the array.
+! if you get here, you read in all max_num_input_files without
+! seeing an empty string.  if the input names were already in the
+! array, you're done - set the count and return.   but if you're
+! reading names from a file it is possible to specify more names
+! than fit in the list.  test for that and give an error if you
+! aren't at the end of the list.
+
 if (from_file) then
    if (get_next_filename(listname, max_num_input_files+1) /= '') then
-      write(msgstring, *) 'cannot specify more than ',max_num_input_files,' files'
+      write(msgstring, *) 'cannot specify more than ',max_num_input_files,' filenames in the list file'
       call error_handler(E_ERR, caller_name, msgstring, source,revision,revdate)
    endif
 endif
