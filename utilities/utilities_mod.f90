@@ -1667,14 +1667,18 @@ end function get_next_filename
 !#######################################################################
 
 
-function set_filename_list(filename_seq, filename_seq_list, caller_name)
+function set_filename_list(name_array, listname, caller_name)
 
-! sort out the input lists, return the number of names found,
-! if a list was given put the list into the array, and return
-! -1 if an error.
+! return the count of names specified by either the name_array()
+! or the inside the listname but not both.  caller_name is used
+! for error messages.  verify that if a listname is used that
+! it does not contain more than the allowed number of input names
+! (specified by the length of the name_array).  the listname,
+! if specified, must be the name of an ascii input file with
+! a list of names, one per line.
 
-character(len=*), intent(inout) :: filename_seq(:)
-character(len=*), intent(in)    :: filename_seq_list
+character(len=*), intent(inout) :: name_array(:)
+character(len=*), intent(in)    :: listname
 character(len=*), intent(in)    :: caller_name
 integer                         :: set_filename_list
 
@@ -1683,29 +1687,29 @@ logical :: from_file
 character(len=32) :: fsource
 
 ! here's the logic:
-! if the user specifies neither filename_seq nor filename_seq_list, error
+! if the user specifies neither name_array nor listname, error
 ! if the user specifies both, error.
 ! if the user gives a filelist, we make sure the length is not more
 !   than maxfiles and read it into the explicit list and continue.
 ! when this routine returns, the function return val is the count
-! and the names are in filename_seq()
+! and the names are in name_array()
 
-if (filename_seq(1) == '' .and. filename_seq_list == '') then
+if (name_array(1) == '' .and. listname == '') then
    call error_handler(E_ERR, caller_name, &
           'must specify either filenames in the namelist, or a filename containing a list of names', &
           source,revision,revdate)
 endif
    
 ! make sure the namelist specifies one or the other but not both
-if (filename_seq(1) /= '' .and. filename_seq_list /= '') then
+if (name_array(1) /= '' .and. listname /= '') then
    call error_handler(E_ERR, caller_name, &
        'cannot specify both filenames in the namelist and a filename containing a list of names', &
        source,revision,revdate)
 endif
 
 ! if they have specified a file which contains a list, read it into
-! the filename_seq array and set the count.
-if (filename_seq_list /= '') then
+! the name_array array and set the count.
+if (listname /= '') then
    fsource = 'filenames contained in a list file'
    from_file = .true.
 else
@@ -1715,12 +1719,12 @@ endif
 
 ! the max number of names in a namelist file is the size of the array
 ! that will be returned.
-max_num_input_files = size(filename_seq)
+max_num_input_files = size(name_array)
 do findex = 1, max_num_input_files
    if (from_file) &
-      filename_seq(findex) = get_next_filename(filename_seq_list, findex)
+      name_array(findex) = get_next_filename(listname, findex)
 
-   if (filename_seq(findex) == '') then
+   if (name_array(findex) == '') then
       if (findex == 1) then
          call error_handler(E_ERR, caller_name, &
              'found no '//trim(fsource), source,revision,revdate)
@@ -1736,7 +1740,7 @@ enddo
 ! if you're reading from a file, make sure you don't have more
 ! names in the file than can fit in the array.
 if (from_file) then
-   if (get_next_filename(filename_seq_list, max_num_input_files+1) /= '') then
+   if (get_next_filename(listname, max_num_input_files+1) /= '') then
       write(msgstring, *) 'cannot specify more than ',max_num_input_files,' files'
       call error_handler(E_ERR, caller_name, msgstring, source,revision,revdate)
    endif
@@ -1830,6 +1834,11 @@ end function is_longitude_between
 
 
 function next_file(fname,ifile)
+
+! FIXME: THIS FUNCTION IS DEPRECATED AND SHOULD BE REMOVED.
+! FIXME: THIS FUNCTION IS DEPRECATED AND SHOULD BE REMOVED.
+! FIXME: THIS FUNCTION IS DEPRECATED AND SHOULD BE REMOVED.
+
 !----------------------------------------------------------------------
 ! The file name can take one of three forms:
 ! /absolute/path/to/nirvana/obs_001/obs_seq.final   (absolute path)
