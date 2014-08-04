@@ -166,7 +166,8 @@ public :: file_exist, get_unit, open_file, close_file, timestamp,           &
           find_namelist_in_file, check_namelist_read, do_nml_term,          &
           set_tasknum, set_output, do_output, set_nml_output, do_nml_file,  &
           E_DBG, E_MSG, E_WARN, E_ERR, DEBUG, MESSAGE, WARNING, FATAL,      &
-          is_longitude_between, get_next_filename, ascii_file_format
+          is_longitude_between, get_next_filename, ascii_file_format,       &
+          set_filename_list
 
 ! this routine is either in the null_mpi_utilities_mod.f90, or in
 ! the mpi_utilities_mod.f90 file, but it is not a module subroutine.
@@ -1622,13 +1623,13 @@ end subroutine file_to_text
 !#######################################################################
 
 
-function get_next_filename( listname, index )
+function get_next_filename( listname, findex )
 
 ! Arguments are the name of a file which contains a list of filenames.
 ! This routine opens the listfile, and returns the index-th one.
 !
 character(len=*),  intent(in) :: listname
-integer,           intent(in) :: index
+integer,           intent(in) :: findex
 character(len=256)            :: get_next_filename
 
 integer :: i, ios, funit
@@ -1637,7 +1638,7 @@ character(len=512)  :: string
 
 funit   = open_file(listname, form="FORMATTED", action="READ")
 
-PARSELOOP : do i=1, index
+PARSELOOP : do i=1, findex
 
    read(funit, '(A)', iostat=ios) string
 
@@ -1662,6 +1663,88 @@ call close_file(funit)
 
 end function get_next_filename
 
+
+!#######################################################################
+
+
+function set_filename_list(filename_seq, filename_seq_list, caller_name)
+
+! sort out the input lists, return the number of names found,
+! if a list was given put the list into the array, and return
+! -1 if an error.
+
+character(len=*), intent(inout) :: filename_seq(:)
+character(len=*), intent(in)    :: filename_seq_list
+character(len=*), intent(in)    :: caller_name
+integer                         :: set_filename_list
+
+integer :: findex, max_num_input_files
+logical :: from_file
+character(len=32) :: fsource
+
+! here's the logic:
+! if the user specifies neither filename_seq nor filename_seq_list, error
+! if the user specifies both, error.
+! if the user gives a filelist, we make sure the length is not more
+!   than maxfiles and read it into the explicit list and continue.
+! when this routine returns, the function return val is the count
+! and the names are in filename_seq()
+
+if (filename_seq(1) == '' .and. filename_seq_list == '') then
+   call error_handler(E_ERR, caller_name, &
+          'must specify either filenames in the namelist, or a filename containing a list of names', &
+          source,revision,revdate)
+endif
+   
+! make sure the namelist specifies one or the other but not both
+if (filename_seq(1) /= '' .and. filename_seq_list /= '') then
+   call error_handler(E_ERR, caller_name, &
+       'cannot specify both filenames in the namelist and a filename containing a list of names', &
+       source,revision,revdate)
+endif
+
+! if they have specified a file which contains a list, read it into
+! the filename_seq array and set the count.
+if (filename_seq_list /= '') then
+   fsource = 'filenames contained in a list file'
+   from_file = .true.
+else
+   fsource = 'filenames in the namelist'
+   from_file = .false.
+endif
+
+! the max number of names in a namelist file is the size of the array
+! that will be returned.
+max_num_input_files = size(filename_seq)
+do findex = 1, max_num_input_files
+   if (from_file) &
+      filename_seq(findex) = get_next_filename(filename_seq_list, findex)
+
+   if (filename_seq(findex) == '') then
+      if (findex == 1) then
+         call error_handler(E_ERR, caller_name, &
+             'found no '//trim(fsource), source,revision,revdate)
+      endif
+
+      ! return how many files we found, either in the namelist
+      ! or in the list of files
+      set_filename_list = findex - 1
+      return
+   endif
+enddo
+
+! if you're reading from a file, make sure you don't have more
+! names in the file than can fit in the array.
+if (from_file) then
+   if (get_next_filename(filename_seq_list, max_num_input_files+1) /= '') then
+      write(msgstring, *) 'cannot specify more than ',max_num_input_files,' files'
+      call error_handler(E_ERR, caller_name, msgstring, source,revision,revdate)
+   endif
+endif
+
+set_filename_list = max_num_input_files
+
+end function set_filename_list
 
 !#######################################################################
 
