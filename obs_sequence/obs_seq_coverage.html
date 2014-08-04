@@ -186,8 +186,8 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;obs_seq_coverage_nml
+   obs_sequences     = ''
    obs_sequence_list = 'obs_coverage_list.txt'
-   obs_sequence_name = ''
    obs_of_interest   = ''
    textfile_out      = 'obsdef_mask.txt'
    netcdf_out        = 'obsdef_mask.nc'
@@ -221,7 +221,7 @@ The date-time integer arrays in this namelist have the form
 The allowable ranges for the region boundaries are: latitude [-90.,90],
 longitude [0.,Inf.]
 </P> <P>
-You can specify <strong>either</strong> <em class=option>obs_sequence_name</em>
+You can specify <strong>either</strong> <em class=option>obs_sequences</em>
 <strong>or</strong> <em class=option>obs_sequence_list</em> -- not both.
 One of them has to be an empty string ... i.e. <em class=option>''</em>.
 </P>
@@ -236,8 +236,8 @@ One of them has to be an empty string ... i.e. <em class=option>''</em>.
 
 <TBODY valign=top>
 
-<TR><TD> obs_sequence_name </TD>
-    <TD> character(len=129) </TD>
+<TR><TD> obs_sequences </TD>
+    <TD> character(len=256) </TD>
     <TD>Name of the observation sequence file(s). <br />
 This may be a relative or absolute filename. If the filename contains a '/',
 the filename is considered to be comprised of everything to the right, and a
@@ -253,10 +253,10 @@ class=option>obs_sequence_list</em> must be set to '&nbsp;'.
 </TD></TR>
 
 <TR><TD> obs_sequence_list </TD>
-    <TD> character(len=129) </TD>
+    <TD> character(len=256) </TD>
     <TD>Name of an ascii text file which contains a list
 of one or more observation sequence files, one per line.  If this is
-specified, <em class=option>obs_sequence_name</em> must be set to '&nbsp;'.  
+specified, <em class=option>obs_sequences</em> must be set to '&nbsp;'.  
 Can be created by any method, including sending the output of the 'ls'
 command to a file, a text editor, or another program.
 </TD></TR>
@@ -271,7 +271,7 @@ example.
 </TD></TR>
 
 <TR><TD> textfile_out </TD>
-    <TD> character(len=129) </TD>
+    <TD> character(len=256) </TD>
     <TD>The name of the file that will contain the observation
 definitions of the verfication observations.  Only the metadata from the
 observations (location, time, obs_type) are preserved in this file. They are
@@ -281,7 +281,7 @@ observation sequence files.
 </TD></TR>
 
 <TR><TD> netcdf_out </TD>
-    <TD> character(len=129) </TD>
+    <TD> character(len=256) </TD>
     <TD>The name of the file that will contain the observation
 definitions of the unique locations that match <strong>any</strong> of the
 verification times.  This file is used in conjunction with 
@@ -382,8 +382,8 @@ specify lonlim1 = 330 , lonlim2 = 50 to identify a region like "Africa".
 <P>For example:
 <pre>
 &amp;obs_seq_coverage_nml
+   obs_sequences     = ''
    obs_sequence_list = 'obs_coverage_list.txt'
-   obs_sequence_name = ''
    obs_of_interest   = 'METAR_U_10_METER_WIND',
                        'METAR_V_10_METER_WIND'
    textfile_out      = 'obsdef_mask.txt'
@@ -500,7 +500,7 @@ entire globe every 6 hours for 2 days starting 18Z 8 Jun 2008:
 <div class=routine>
 <pre>
 &amp;obs_seq_coverage_nml
-   obs_sequence_name  = ''
+   obs_sequences      = ''
    obs_sequence_list  = <em class=input>'obs_file_list.txt'</em>
    obs_of_interest    = <em class=input>'METAR_U_10_METER_WIND'</em>,
                         <em class=input>'METAR_V_10_METER_WIND'</em>
@@ -644,7 +644,7 @@ dimensions:
         analysisT = 1 ;
         forecast_lead = 9 ;
         nlevels = 14 ;
-        linelen = 129 ;
+        linelen = 256 ;
         nlines = 446 ;
         stringlength = 32 ;
         location = 3 ;
@@ -787,7 +787,7 @@ files into one compact file to use in your ensemble forecast.
                                    be present for all forecasts</TD></TR>
 
 <TR><!-- routine --><TD VALIGN=top>obs_seq_coverage</TD>
-    <!-- message --><TD VALIGN=top>'specify "obs_sequence_name" or 
+    <!-- message --><TD VALIGN=top>'specify "obs_sequences" or 
                                             "obs_sequence_list"'</TD>
     <!-- comment --><TD VALIGN=top>one of these namelist variables MUST 
                                    be an empty string</TD></TR>

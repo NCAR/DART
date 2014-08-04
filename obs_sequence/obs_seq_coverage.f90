@@ -55,7 +55,7 @@ use    utilities_mod, only : get_unit, close_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
                              initialize_utilities, nmlfileunit, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, nc_check, &
-                             next_file, get_next_filename, find_textfile_dims, &
+                             next_file, set_filename_list, find_textfile_dims, &
                              file_to_text, do_nml_file, do_nml_term
 
 use typeSizes
@@ -105,9 +105,6 @@ type(obs_type)          :: obs1, obs2
 type(obs_def_type)      :: obs_def
 type(location_type)     :: obs_loc, minl, maxl
 
-character(len = 129) :: obs_seq_in_file_name
-character(len = 129), allocatable, dimension(:) :: obs_seq_filenames
-
 integer :: flavor, flavor_of_interest
 integer :: num_copies, num_qc, num_obs, max_num_obs, obs_seq_file_id
 
@@ -115,16 +112,20 @@ character(len=129) :: obs_seq_read_format
 logical :: pre_I_format
 logical :: last_ob_flag
 
+character(len=256) :: obs_seq_in_file_name
+integer, parameter :: MAX_INPUT_FILES = 500
+integer            :: num_input_files
+
 !-----------------------------------------------------------------------
 ! Namelist with (some scalar) default values
 !-----------------------------------------------------------------------
 
-character(len = 129) :: obs_sequence_list = 'obs_coverage_list.txt'
-character(len = 129) :: obs_sequence_name = ''
-character(len = obstypelength) :: obs_of_interest(MAX_OBS_NAMES_IN_NAMELIST) = ''
-character(len = 129) :: textfile_out      = 'obsdef_mask.txt'
-character(len = 129) :: netcdf_out        = 'obsdef_mask.nc'
-character(len = 129) :: calendar          = 'Gregorian'
+character(len=256) :: obs_sequences(MAX_INPUT_FILES) = ''
+character(len=256) :: obs_sequence_list = ''
+character(len=256) :: textfile_out      = 'obsdef_mask.txt'
+character(len=256) :: netcdf_out        = 'obsdef_mask.nc'
+character(len=129) :: calendar          = 'Gregorian'
+character(len=obstypelength) :: obs_of_interest(MAX_OBS_NAMES_IN_NAMELIST) = ''
 
 integer, dimension(6) :: first_analysis = (/ 2003, 1, 1, 0, 0, 0 /)
 integer, dimension(6) ::  last_analysis = (/ 2003, 1, 2, 0, 0, 0 /)
@@ -139,8 +140,7 @@ real(r8) :: latlim2 = MISSING_R8
 logical  :: verbose = .false.
 logical  :: debug   = .false.   ! undocumented ... on purpose
 
-
-namelist /obs_seq_coverage_nml/ obs_sequence_list, obs_sequence_name, &
+namelist /obs_seq_coverage_nml/ obs_sequences, obs_sequence_list, &
               obs_of_interest, textfile_out, netcdf_out, calendar, &
               first_analysis, last_analysis, forecast_length_days, &
               forecast_length_seconds, verification_interval_seconds, &
@@ -156,7 +156,7 @@ integer  :: i, j, io, ncunit
 
 type(time_type) :: obs_time, no_time, last_possible_time
 
-character(len = 129) :: ncName, string1, string2, string3
+character(len=256) :: ncName, string1, string2, string3
 
 ! ~# of degrees for 1/2 meter at Earth equator 
 ! 360 deg-earth/(40000 km-earth * 1000m-km)
@@ -221,12 +221,7 @@ if (temporal_coverage_percent < 100.0_r8) then
    call error_handler(E_MSG, 'obs_seq_coverage', string1, source, revision, revdate)
 endif
 
-if ((obs_sequence_name /= '') .and. (obs_sequence_list /= '')) then
-   write(string1,*)'specify "obs_sequence_name" or "obs_sequence_list"'
-   write(string2,*)'set other to an empty string ... i.e. ""'
-   call error_handler(E_ERR, 'obs_seq_coverage', string1, source, revision, &
-                     revdate, text2=string2)
-endif
+num_input_files =  set_filename_list(obs_sequences, obs_sequence_list,'obs_seq_coverage')
 
 call set_calendar_type(calendar)
 call get_calendar_string(calendar)
@@ -302,10 +297,7 @@ call initialize_voxels(max_voxels, voxels)
 ! Prepare the variables
 !----------------------------------------------------------------------
 
-allocate(obs_seq_filenames(1000))
-obs_seq_filenames = 'null'
-
-ObsFileLoop : do ifile=1, size(obs_seq_filenames)
+ObsFileLoop : do ifile = 1, num_input_files
 !-----------------------------------------------------------------------
 
   ! Because of the ability to 'cycle' the ObsFileLoop, we need to
@@ -319,14 +311,9 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    if (allocated(qc_copy_names))  deallocate(qc_copy_names)
    if (allocated(obs_copy_names)) deallocate(obs_copy_names)
 
-   ! Determine the next input filename ... 
+   ! Determine the next input filename and check for existence.
 
-   if (obs_sequence_list == '') then
-      obs_seq_in_file_name = next_file(obs_sequence_name,ifile)
-   else
-      obs_seq_in_file_name = get_next_filename(obs_sequence_list,ifile)
-      if (obs_seq_in_file_name == '') exit ObsFileLoop
-   endif
+   obs_seq_in_file_name = obs_sequences(ifile)
 
    if ( file_exist(trim(obs_seq_in_file_name)) ) then
       write(string1,*)'opening ', trim(obs_seq_in_file_name)
@@ -341,9 +328,6 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
    ! Read in information about observation sequence so we can allocate
    ! observations. We need info about how many copies, qc values, etc.
-
-   obs_seq_in_file_name     = trim(obs_seq_in_file_name) ! Lahey requirement
-   obs_seq_filenames(ifile) = trim(obs_seq_in_file_name)
 
    call read_obs_seq_header(obs_seq_in_file_name, &
              num_copies, num_qc, num_obs, max_num_obs, &
@@ -471,7 +455,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          write(*,*) ! whitespace
       endif
 
-      if (obs_time > last_possible_time) exit ObsFileLoop
+      if (obs_time > last_possible_time) exit ObservationLoop
 
       !-----------------------------------------------------------------
       ! * reject if dart_qc exists and QC is undesirable
@@ -576,7 +560,6 @@ if (allocated(qc_copy_names))         deallocate(qc_copy_names)
 if (allocated(obs_copy_names))        deallocate(obs_copy_names)
 if (allocated(module_obs_copy_names)) deallocate(module_obs_copy_names)
 if (allocated(module_qc_copy_names )) deallocate(module_qc_copy_names )
-if (allocated(obs_seq_filenames))     deallocate(obs_seq_filenames)
 if (allocated(Desiredvoxels))         deallocate(Desiredvoxels)
 
 call error_handler(E_MSG,'obs_seq_coverage','Finished successfully.',source,revision,revdate)
@@ -842,7 +825,7 @@ Function InitNetCDF(fname)
 character(len=*), intent(in) :: fname
 integer                      :: InitNetCDF
 
-integer :: ncid, i, indx1, nlines, linelen
+integer :: ncid, i, nlines, linelen
 integer :: LineLenDimID, nlinesDimID, stringDimID
 integer :: TimeDimID, voxelsDimID, FcstDimID, VerifyDimID
 integer :: VarID, FcstVarID, VerifVarID, ExperimentVarID
@@ -853,7 +836,7 @@ character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 
-character(len=129), allocatable, dimension(:) :: textblock
+character(len=256), allocatable, dimension(:) :: textblock
 real(digits12),     allocatable, dimension(:) :: mytimes
 integer,            allocatable, dimension(:) :: forecast_length
 
@@ -916,15 +899,11 @@ TYPELOOP : do i = 1,size(obs_type_inds)
 enddo TYPELOOP
 
 ! write all observation sequence files used
-FILEloop : do i = 1,SIZE(obs_seq_filenames)
-
-  indx1 = index(obs_seq_filenames(i),'null')
-
-  if (indx1 > 0) exit FILEloop
+FILEloop : do i = 1,num_input_files
 
   write(string1,'(''obs_seq_file_'',i3.3)')i
   call nc_check(nf90_put_att(ncid, NF90_GLOBAL, &
-         trim(string1), trim(obs_seq_filenames(i)) ), &
+         trim(string1), trim(obs_sequences(i)) ), &
          'InitNetCDF', 'put_att:filenames')
 
 enddo FILEloop
