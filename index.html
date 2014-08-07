@@ -194,7 +194,20 @@ committed since the original release of the Lanai code:
 </TR>
 -->
 
-<TR><TD> 22 July 2014 </TD>
+<TR><TD> 7 Aug 2014 </TD>
+    <TD> 7112 </TD>
+    <TD> Updates to CLM input namelists. <em class=file>input.nml</em>
+has better defaults for inflation settings - removed an unneeded setting
+for the mpi_utilities namelist and general formatting tidying.
+The <em class=file>input.nml.template</em> was the real problem.
+There were some inconsistencies between the <em class=program>shell_script/makedaily.sh</em>
+script and the template. These have been fixed. <em class=file>input.nml.template</em>
+and <em class=file>input.nml</em> are very nearly identical, save what is needed for
+the <em class=program>makedaily.sh</em> script.
+    </TD>
+</TR>
+
+<TR><TD> 22 Jul 2014 </TD>
     <TD> 7085 </TD>
     <TD> Updates to the MATLAB scripts in the DART_LAB dir.
 They no longer require the MathWorks Statistics Toolbox (an additional
@@ -202,6 +215,7 @@ product) to run.  Also, the Lorenz 96 exercise was fixed so the
 menu button will successfully select different filter types.
     </TD>
 </TR>
+
 <TR><TD> 13 Jun 2014 </TD>
     <TD> 7019 </TD>
     <TD> Documentation-only update to the MPI docs to correct the name of
