@@ -196,14 +196,9 @@ committed since the original release of the Lanai code:
 
 <TR><TD> 7 Aug 2014 </TD>
     <TD> 7112 </TD>
-    <TD> Updates to CLM input namelists. <em class=file>input.nml</em>
-has better defaults for inflation settings - removed an unneeded setting
-for the mpi_utilities namelist and general formatting tidying.
-The <em class=file>input.nml.template</em> was the real problem.
-There were some inconsistencies between the <em class=program>shell_script/makedaily.sh</em>
-script and the template. These have been fixed. <em class=file>input.nml.template</em>
-and <em class=file>input.nml</em> are very nearly identical, save what is needed for
-the <em class=program>makedaily.sh</em> script.
+    <TD> Updates to default CLM input namelists. Set better inflation values in
+the CLM filter namelist, and fix inconsistencies in the template namelist for 
+the <em class=program>shell_script/makedaily.sh</em> observation preprocessing script.
     </TD>
 </TR>
 
