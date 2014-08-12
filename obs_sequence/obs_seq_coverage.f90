@@ -1210,8 +1210,8 @@ end Function InitNetCDF
 
 
 subroutine WriteNetCDF(ncid, fname, voxels)
-integer,                     intent(in) :: ncid
-character(len=*),            intent(in) :: fname
+integer,                        intent(in) :: ncid
+character(len=*),               intent(in) :: fname
 type(voxel_type), dimension(:), intent(in) :: voxels
 
 integer :: DimID, ntimes, voxelindex, days, secs, i
@@ -1352,7 +1352,7 @@ end subroutine CloseNetCDF
 
 
 subroutine initialize_voxels(Nvoxels, myvoxels)
-integer,                                  intent(in)  :: Nvoxels
+integer,                                     intent(in)  :: Nvoxels
 type(voxel_type), allocatable, dimension(:), intent(out) :: myvoxels
 
 integer :: i

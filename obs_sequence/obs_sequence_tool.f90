@@ -53,10 +53,10 @@ integer                 :: size_seq_out, num_copies_out, num_qc_out
 integer                 :: num_inserted, iunit, io, i, j, total_num_inserted
 integer                 :: max_num_obs, file_id, remaining_obs_count
 integer                 :: first_seq
-character(len = metadatalength) :: read_format, meta_data
+character(len=metadatalength) :: read_format, meta_data
 logical                 :: pre_I_format, all_gone
 logical                 :: trim_first, trim_last
-character(len = 255)    :: msgstring
+character(len=255)      :: msgstring
 
 ! could go into namelist if you wanted more control
 integer, parameter      :: print_every = 20000
@@ -70,7 +70,7 @@ integer :: num_input_files = 0
 
 ! lazy, pick a big number
 integer, parameter :: max_obs_input_types = 500
-character(len = obstypelength) :: obs_types(max_obs_input_types) = ''
+character(len=obstypelength) :: obs_types(max_obs_input_types) = ''
 logical :: restrict_by_obs_type
 integer :: num_obs_input_types
 logical :: restrict_by_location
@@ -80,9 +80,9 @@ integer :: matching_copy_limit = 0
 integer :: matching_qc_limit   = 0
 
 
-character(len = 129) :: filename_seq(max_num_input_files) = ''
-character(len = 129) :: filename_seq_list = ''
-character(len = 129) :: filename_out  = 'obs_seq.processed'
+character(len=129) :: filename_seq(max_num_input_files) = ''
+character(len=129) :: filename_seq_list = ''
+character(len=129) :: filename_out  = 'obs_seq.processed'
 logical              :: process_file(max_num_input_files)
 
 ! 256 is an arb max of number of copies for data and qc
@@ -107,7 +107,7 @@ real(r8) :: min_qc = missing_r8
 real(r8) :: max_qc = missing_r8
 real(r8) :: min_copy = missing_r8
 real(r8) :: max_copy = missing_r8
-character(len = obstypelength) :: copy_type = ''
+character(len=obstypelength) :: copy_type = ''
 character(len=metadatalength)  :: copy_metadata = ''
 character(len=metadatalength)  :: qc_metadata = ''
 logical  :: edit_copy_metadata = .false.
@@ -980,11 +980,11 @@ end subroutine compare_metadata
 subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
                     seqfilename, print_msg, remaining_obs_count)
  type(obs_sequence_type), intent(inout) :: seq
- logical, intent(in)                    :: trim_first, trim_last
- type(time_type), intent(in)            :: first_time, last_time
- character(len = *), intent(in)         :: seqfilename
- logical, intent(in)                    :: print_msg
- integer, intent(out)                   :: remaining_obs_count
+ logical,                 intent(in)    :: trim_first, trim_last
+ type(time_type),         intent(in)    :: first_time, last_time
+ character(len=*),        intent(in)    :: seqfilename
+ logical,                 intent(in)    :: print_msg
+ integer,                 intent(out)   :: remaining_obs_count
 
  integer :: i
  logical :: found
@@ -1137,7 +1137,7 @@ subroutine print_obs_seq(seq_in, filename)
 ! stop times, and metadata strings and counts.
 
 type(obs_sequence_type), intent(in) :: seq_in
-character(len=*), intent(in)        :: filename
+character(len=*),        intent(in) :: filename
 
 type(obs_type)          :: obs, next_obs
 type(obs_def_type)      :: this_obs_def

@@ -21,7 +21,7 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
-character(len = 129)    :: file_name
+character(len=129)      :: file_name
 
 ! Record the current time, date, etc. to the logfile
 call initialize_utilities('create_obs_sequence')

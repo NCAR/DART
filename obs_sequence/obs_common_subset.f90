@@ -96,26 +96,26 @@ integer                 :: size_seq_out, num_inserted, iunit, io, i, j, k, nextf
 integer                 :: max_num_obs(maxcomp), file_id, atonce, nsets
 integer                 :: num_rejected_badqc, num_rejected_diffqc, num_rejected_other
 integer                 :: num_mismatch_loc, num_mismatch_time, num_mismatch_type
-character(len = 129)    :: read_format
+character(len=129)      :: read_format
 logical                 :: pre_I_format, cal
-character(len = 512)    :: msgstring, msgstring1, msgstring2, msgstring3
-character(len = 256)    :: filename_in(maxcomp)
-character(len = 384)    :: filename_out(maxcomp)     ! filename_in + . + suffix
+character(len=512)      :: msgstring, msgstring1, msgstring2, msgstring3
+character(len=256)      :: filename_in(maxcomp)
+character(len=384)      :: filename_out(maxcomp)     ! filename_in + . + suffix
 
-character(len = metadatalength), parameter :: dart_qc_meta_data = 'DART quality control'
-character(len = metadatalength) :: meta_data
+character(len=metadatalength), parameter :: dart_qc_meta_data = 'DART quality control'
+character(len=metadatalength) :: meta_data
 
 integer                 :: qc_index
 integer                 :: num_input_sets = 0
 
-character(len = 256) :: temp_filelist(max_num_input_files) = ''
+character(len=256) :: temp_filelist(max_num_input_files) = ''
 
 !----------------------------------------------------------------
 ! Namelist input with default values
 
-character(len = 256) :: filename_seq(max_num_input_files) = ''
-character(len = 256) :: filename_seq_list(maxcomp)  = ''
-character(len = 32)  :: filename_out_suffix = '.common'
+character(len=256) :: filename_seq(max_num_input_files) = ''
+character(len=256) :: filename_seq_list(maxcomp)  = ''
+character(len=32)  :: filename_out_suffix = '.common'
 
 integer :: num_to_compare_at_once = 2
 logical :: print_only = .false.
