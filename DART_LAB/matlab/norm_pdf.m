@@ -1,11 +1,11 @@
 function [y] = norm_pdf(x, mu, sigma)
 %  computes a gaussian (normal) PDF
 %  for the points of X with a given mean (mu) and standard deviation (sigma)
-% 
+%
 % normal plot, y given x:
 %  y = (1 / (sigma * sqrt(2*pi))) * e ^ ((-1/2 * ((x-mu) / sigma)^2)
 % or
-%  g(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{ -\frac{1}{2}\left(\frac{x-\mu}{\sigma}\right)^2 }. 
+%  g(x) = \frac{1}{\sigma\sqrt{2\pi}} e^{ -\frac{1}{2}\left(\frac{x-\mu}{\sigma}\right)^2 }.
 %
 % see: https://en.wikipedia.org/wiki/Probability_density_function
 
@@ -29,4 +29,4 @@ end
 % $URL$
 % $Revision$
 % $Date$
- 
+

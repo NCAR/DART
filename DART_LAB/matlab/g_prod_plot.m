@@ -17,7 +17,7 @@ obs_mean   = 0; obs_err_sd = -1;
 h_prior_mean = get(h.edit1);
 prior_mean = str2double(h_prior_mean.String);
 % The mean must be a number
-if(isnan(prior_mean)) 
+if(isnan(prior_mean))
    error_banner(h, 'Prior Mean must be a number');
    is_err = true;
    return
@@ -33,13 +33,13 @@ if(isnan(prior_sd))
    return
 end
 
-% Prior sd must also be positive 
+% Prior sd must also be positive
 if(prior_sd <= 0)
    error_banner(h, 'Prior SD must be positive')
    is_err = true;
    return
 end
-   
+ 
 hold off
 prior_handle = plot_gaussian(prior_mean, prior_sd, 1);
 set(prior_handle, 'Color', [0 0.73 0], 'LineWidth', 2);
@@ -49,7 +49,7 @@ h_obs_mean = get(h.edit3);
 obs_mean = str2double(h_obs_mean.String);
 
 % Obs value must be a number
-if(isnan(obs_mean)) 
+if(isnan(obs_mean))
    error_banner(h, 'Obs value must be a number');
    is_err = true;
    return
@@ -97,7 +97,7 @@ function error_banner(h, message)
    set(h.text7, 'String', 'Posterior Mean = ');
    set(h.text8, 'String', 'Posterior SD = ');
    set(h.text9, 'String', 'Weight = ');
-   return; 
+   return;
 
 end
 

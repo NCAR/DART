@@ -44,7 +44,7 @@ if (numel(p) == 1)
   q = sqrt(-2.0 * log(p));
   x = (((((c1*q + c2)*q + c3)*q + c4)*q + c5)*q + c6) / ...
        ((((d1*q + d2)*q + d3)*q + d4)*q + 1.0);
- elseif (p >= p_low) & (p <= p_high)
+ elseif (p >= p_low) && (p <= p_high)
   q = p - 0.5;
   r = q*q;
   x = (((((a1*r + a2)*r + a3)*r + a4)*r + a5)*r + a6)*q / ...
