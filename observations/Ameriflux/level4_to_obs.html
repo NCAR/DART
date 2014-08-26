@@ -39,9 +39,9 @@
 <H4>AmeriFlux Level 4 data to DART Observation Sequence Converter</H4>
 
 <P>This routine is designed to convert the flux tower Level 4 data 
-from the <a href="http://public.ornl.gov/ameriflux/">AmeriFlux</a> 
+from the <a href="http://ameriflux.lbl.gov">AmeriFlux</a> 
 network of observations from micrometeorological tower sites. 
-AmeriFlux is part of <a href="http://daac.ornl.gov/FLUXNET/fluxnet.shtml">FLUXNET</a>
+AmeriFlux is part of <a href="http://fluxnet.ornl.gov">FLUXNET</a>
 and the converter is hoped to be a suitable starting point for the conversion
 of observations from FLUXNET. As of May 2012, I have not yet tried to work with
 any other observations from FLUXNET.
@@ -50,8 +50,7 @@ any other observations from FLUXNET.
 The AmeriFlux Level 4 products are recorded using the local time. 
 DART observation sequence files use GMT.  For more information about
 AmeriFlux data products, go to 
-<a href="http://public.ornl.gov/ameriflux/dataproducts.shtml">
-http://public.ornl.gov/ameriflux/dataproducts.shtml</a>.
+<a href="http://ameriflux.lbl.gov">http://ameriflux.lbl.gov</a>.
 </P>
 
 <P>
@@ -184,8 +183,19 @@ prematurely terminating the namelist.
 
 <P>
 The data was acquired from 
-<a href="http://public.ornl.gov/ameriflux/dataproducts.shtm">
-http://public.ornl.gov/ameriflux/dataproducts.shtm</a><br />
+<a href="http://cdiac.ornl.gov/ftp/ameriflux/data/Level4/Sites_ByName">
+http://cdiac.ornl.gov/ftp/ameriflux/data/Level4/Sites_ByName</a><br />
+and have names like 
+<em class=file>
+USBar2004_L4_h.txt, 
+USHa12004_L4_h.txt, 
+USNR12004_L4_h.txt, 
+USSP32004_L4_h.txt, 
+USSRM2004_L4_h.txt, 
+USWCr2004_L4_h.txt, 
+USWrc2004_L4_h.txt, ...
+</em>
+<br />
 <br />
 The Level 4 products in question are ASCII files of comma-separated values taken
 every 30 minutes for an entire year. The first line is a comma-separated list of
@@ -256,30 +266,39 @@ These values are mapped as follows:
 0 = original, 1 = category A (most reliable), 2 = category B (medium), 3 = category C (least reliable). (Refer to Reichstein et al. 2005 Global Change Biology for more information)</blockquote>
 <br />
 <P>
-I am repeating the AmeriFlux <a href="http://public.ornl.gov/ameriflux/data-fair-use.shtml">
+I am repeating the AmeriFlux <a href="http://ameriflux.lbl.gov/Data/Pages/DataUsagePolicy.aspx">
 Data Fair-Use Policy</a> because I believe it is important to be a good scientific citizen:
 </P>
 
-<br />
-
 <blockquote>
-The AmeriFlux data ... are freely available and were furnished by 
-individual AmeriFlux scientists who encourage their use. Please kindly inform in 
-writing (or e-mail) the appropriate AmeriFlux scientist(s) of how you intend to use 
-the data and of any publication plans. It is also important to contact the AmeriFlux 
-investigator to assure you are downloading the latest revision of the data and to 
-prevent potential misuse or misinterpretation of the data. Please acknowledge the 
-data source as a citation or in the acknowledgments if no citation is available. 
-If the AmeriFlux Principal Investigators (PIs) feel that they should be 
-acknowledged or offered participation as authors, they will let you know and we 
-assume that an agreement on such matters will be reached before publishing and/or 
-use of the data for publication. If your work directly competes with the PI's 
-analysis they may ask that they have the opportunity to submit a manuscript before 
-you submit one that uses unpublished data. In addition, when publishing please 
-acknowledge the agency that supported the research. Lastly, we kindly request that 
-those publishing papers using AmeriFlux data provide reprints to the PIs providing 
-the data and to the data archive at the Carbon Dioxide Information Analysis Center 
-(CDIAC).</blockquote>
+"The AmeriFlux data provided on this site are freely available and 
+were furnished by individual AmeriFlux scientists who encourage their use.
+<br />
+<br />
+Please kindly inform in writing (or e-mail) the appropriate AmeriFlux 
+scientist(s) of how you intend to use the data and of any publication plans. 
+It is also important to contact the AmeriFlux investigator to assure you are 
+downloading the latest revision of the data and to prevent potential misuse 
+or misinterpretation of the data.
+<br />
+<br />
+Please acknowledge the data source as a citation or in the acknowledgments 
+if no citation is available. If the AmeriFlux Principal Investigators (PIs) 
+feel that they should be acknowledged or offered participation as authors, 
+they will let you know and we assume that an agreement on such matters 
+will be reached before publishing and/or use of the data for publication.
+<br />
+<br />
+If your work directly competes with the PI's analysis they may ask that they 
+have the opportunity to submit a manuscript before you submit one that uses 
+unpublished data. In addition, when publishing please acknowledge the agency 
+that supported the research.
+<br />
+<br />
+Lastly, we kindly request that those publishing papers using AmeriFlux data 
+provide reprints to the PIs providing the data and to the AmeriFlux archive 
+via ameriflux.lbl.gov."
+</blockquote>
 
 <!--==================================================================-->
 
