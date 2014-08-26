@@ -280,19 +280,24 @@ end function total_size
 !> groups are not created using mpi_group_incl.
 !>
 !> Trying to put in single file read for small models.
-subroutine read_transpose(state_ens_handle, restart_in_file_name, domain, dart_index)
+!>
+!> I am modifying this so multiple domains are read simmultaneously. I think this
+!> should improve the read time. I am making the assumption that different domains are 
+!> in different files. I don't know whether this is always true.
+
+subroutine read_transpose(state_ens_handle, restart_in_file_name, num_domains, dart_index)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
 character(len=129),  intent(in)    :: restart_in_file_name
-integer,             intent(in)    :: domain
-integer,             intent(inout) :: dart_index !< This is for mulitple domains
+integer,             intent(in)    :: num_domains !< number of domains to read
+integer,             intent(inout) :: dart_index !< This is for mulitple domains - I don't think this is needed anymore
 
 integer :: i
 integer :: start_var, end_var !< start/end variables in a read block
 integer :: my_pe !< task or pe?
 integer :: recv_pe, sending_pe
 real(r8), allocatable :: var_block(:) !< for reading in variables
-integer :: block_size !< number of state elements in a block
+integer :: block_size(3) !< number of state elements in a block of variables
 integer :: count !< number of elements to send
 integer :: starting_point!< position in state_ens_handle%copies
 integer :: ending_point
@@ -307,12 +312,23 @@ integer :: dummy_loop
 integer :: my_copy !< which copy a pe is reading, starting from 0 to match pe
 integer :: c !< copies_read loop index
 integer :: copies_read
+integer :: max_num_files_to_read !< domains times ens_size
+integer :: my_domain !< which domain I am reading from
+integer :: dom !< loop variable
+integer :: first_sender
+integer :: last_sender 
 
 ! single file
 integer :: iunit
 type(time_type) :: ens_time
 
+! temporary 
+integer :: ierr
+
+
 ens_size = state_ens_handle%num_copies ! have the extras, incase you need to read inflation restarts
+
+max_num_files_to_read = ens_size*num_domains
 
 netcdf_filename = restart_in_file_name ! lorenz_96
 
@@ -320,12 +336,16 @@ my_pe = state_ens_handle%my_pe
 
 copies_read = 0
 
-COPIES: do c = 1, ens_size
-   if (copies_read >= ens_size) exit
+starting_point = 1  !> @todo what to do with this?
+
+COPIES: do c = 1, max_num_files_to_read
+   if (copies_read >= max_num_files_to_read) exit
 
    ! what to do if a variable is larger than the memory limit?
    start_var = 1 ! read first variable first
-   starting_point = dart_index ! position in state_ens_handle%copies
+
+   ! This is now dependent on which domain the processes is reading.
+   ! The processor is either a domain 1 reader or domain 2 reader (or domain 3).  Is this true? I don't think it is if procs < max_num_files_to_read
 
    if (single_restart_file_in) then
       my_copy = c -1 ! pe 0 is going to read everything
@@ -334,16 +354,24 @@ COPIES: do c = 1, ens_size
       send_end = 0
       recv_start = 0
       recv_end = task_count() -1
+      starting_point = dart_index ! position in state_ens_handle%copies
    else
+
+      call domain_to_work_on(ens_size, num_domains, copies_read, my_pe, my_copy, my_domain)
+
       ! need to calculate RECEIVING_PE_LOOP start:end, group size, sending_pe start:end for each group.
-      if ( task_count() >= ens_size ) then
-         my_copy = my_pe
-         call get_pe_loops(my_pe, ens_size, group_size, recv_start, recv_end, send_start, send_end)
+      if ( task_count() >= max_num_files_to_read ) then
+         !my_copy = my_pe
+         call get_pe_loops(my_pe, max_num_files_to_read, group_size, recv_start, recv_end, send_start, send_end)
+!print*, 'send start:end, recv start:end', send_start, send_end, recv_start, recv_end, 'my_pe', my_pe
+
       else
-         my_copy = copies_read + my_pe
+         !my_copy = copies_read + my_pe
          call get_pe_loops(my_pe, task_count(), group_size, recv_start, recv_end, send_start, send_end)
       endif
    endif
+
+!call mpi_barrier(mpi_comm_world, ierr)
 
    if (single_restart_file_in) then ! assuming not netdf at the moment
 
@@ -357,17 +385,17 @@ COPIES: do c = 1, ens_size
       ! You have already opened this once to read the variable info. Should you just leave it open
       ! on the readers?
       if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
-         netcdf_filename = read_file_name(restart_in_file_name, domain, my_copy - recv_start + 1)
+         netcdf_filename = read_file_name(restart_in_file_name, my_domain, my_copy - recv_start + 1)
 
          ! inflation restarts
          ! prior
-         if ((my_copy - recv_start + 1) == ens_size -3) netcdf_filename = read_file_name(prior_mean_inf_file, domain)
-         if ((my_copy - recv_start + 1) == ens_size -2) netcdf_filename = read_file_name(prior_sd_inf_file, domain)
+         if ((my_copy - recv_start + 1) == ens_size -3) netcdf_filename = read_file_name(prior_mean_inf_file, my_domain)
+         if ((my_copy - recv_start + 1) == ens_size -2) netcdf_filename = read_file_name(prior_sd_inf_file, my_domain)
 
          ! posterior - do you read this?
-         if ((my_copy - recv_start + 1) == ens_size -1) netcdf_filename = read_file_name(post_mean_inf_file, domain)
+         if ((my_copy - recv_start + 1) == ens_size -1) netcdf_filename = read_file_name(post_mean_inf_file, my_domain)
 
-         if ((my_copy - recv_start + 1) == ens_size) netcdf_filename = read_file_name( post_sd_inf_file, domain)
+         if ((my_copy - recv_start + 1) == ens_size) netcdf_filename = read_file_name( post_sd_inf_file, my_domain)
 
          if (query_read_copy(my_copy - recv_start + 1)) then
             ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
@@ -383,79 +411,100 @@ COPIES: do c = 1, ens_size
       if (start_var > num_state_variables) exit ! instead of using do while loop
 
       ! calculate how many variables will be read
-      end_var = calc_end_var(start_var, domain)
+      end_var = calc_end_var(start_var, num_domains)
       if ((my_task_id() == 0) .and. (c == 1)) print*, 'start_var, end_var', start_var, end_var
-      block_size = sum(variable_sizes(start_var:end_var, domain))
+
+      do dom = 1, num_domains
+         block_size(dom) = sum(variable_sizes(start_var:end_var, dom))
+      enddo
 
       if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
-         if (query_read_copy(my_copy - recv_start + 1)) then
+         if (query_read_copy(my_copy - recv_start + 1)) then ! this is wrong for muliple groups I think. Remove  - recv_start?
 
-            allocate(var_block(block_size))
+            allocate(var_block(block_size(my_domain)))
 
             if (single_restart_file_in) then
                call aread_state_restart(ens_time, var_block, iunit)
             else
-               call read_variables(var_block, start_var, end_var, domain)
+               !print*, 'reading variables pe', my_pe, 'my_domain', my_domain
+               call read_variables(var_block, start_var, end_var, my_domain)
             endif
 
          endif
       endif
 
-      start_rank = mod(sum_variables_below(start_var,domain), task_count())
+      DOMAIN_LOOP: do dom = 1, num_domains
 
-      ! loop through and post recieves
-      RECEIVING_PE_LOOP: do recv_pe = recv_start, recv_end
+         ! Am I involved in this domain?
+         first_sender = send_start + (dom-1)*ens_size
+         last_sender = send_start + (dom-1)*ens_size + ens_size -1
+         !print*, 'first_sender, last_sender', first_sender, last_sender
 
-         ! work out count on the receiving pe
-         count = block_size/task_count()
-         remainder = mod(block_size, task_count())
+         ! start rank is different for each domain
+         start_rank = mod(sum_variables_below(start_var,dom), task_count())
 
-         ! mop up leftovers CHECK THESE.
-         if ( (start_rank <= recv_pe) .and. (recv_pe) < (start_rank + remainder)) count = count + 1
-         if ( recv_pe < (start_rank + remainder - task_count() )) count = count + 1
-         ending_point = starting_point + count -1
+         ! loop through and post recieves
+         RECEIVING_PE_LOOP: do recv_pe = recv_start, recv_end
 
-         ! work out i for the receiving pe
-         i = find_start_point(recv_pe, start_rank)
+            ! work out count on the receiving pe
+            count = block_size(dom)/task_count()
+            remainder = mod(block_size(dom), task_count())
 
-         if (my_pe == recv_pe) then ! get ready to recieve from each reader
+            ! mop up leftovers CHECK THESE.
+            if ( (start_rank <= recv_pe) .and. (recv_pe) < (start_rank + remainder)) count = count + 1
+            if ( recv_pe < (start_rank + remainder - task_count() )) count = count + 1
+            ending_point = starting_point + count -1
 
-            ensemble_member = 1 + copies_read
+            ! work out i for the receiving pe
+            i = find_start_point(recv_pe, start_rank)
 
-            RECEIVE_FROM_EACH: do sending_pe = send_start, send_end ! how do we know ens_size?
+            if (my_pe == recv_pe) then ! get ready to recieve from each reader
 
-               if (query_read_copy(sending_pe + copies_read - recv_start + 1)) then
+               ensemble_member = 1 + copies_read
 
-                  if(sending_pe == recv_pe) then ! just copy
-                     ! The row is no longer sending_pe + 1 because it is not just
-                     ! the first ens_size processors that are sending
-                     state_ens_handle%copies(ensemble_member, starting_point:ending_point ) = &
-                     var_block(i:count*task_count():task_count())
-                  else ! post receive
-                     call receive_from(map_pe_to_task(state_ens_handle, sending_pe), &
-                                    state_ens_handle%copies(ensemble_member, starting_point:ending_point))
+               !print*, 'RECEIVE_FROM_EACH ', first_sender, last_sender, 'pe', my_pe
+
+               RECEIVE_FROM_EACH: do sending_pe = first_sender, last_sender
+
+                  ! I think this needs to be copy number not sending pe
+                  if (query_read_copy(sending_pe - first_sender + copies_read - recv_start + 1)) then
+
+                     if(sending_pe == recv_pe) then ! just copy
+                        ! The row is no longer sending_pe + 1 because it is not just
+                        ! the first ens_size processors that are sending
+                        state_ens_handle%copies(ensemble_member, starting_point: ending_point ) = &
+                        var_block(i:count*task_count():task_count())
+                     else ! post receive
+                        !if(dom ==2) print*, 'recieving from', sending_pe, 'my_pe', my_pe
+                        call receive_from(map_pe_to_task(state_ens_handle, sending_pe), &
+                                       state_ens_handle%copies(ensemble_member, starting_point:ending_point))
+                     endif
+
                   endif
 
+                  ensemble_member = ensemble_member + 1
+
+               enddo RECEIVE_FROM_EACH
+
+               ! update starting point
+               starting_point = starting_point + count
+
+            elseif ((my_pe >= first_sender ) .and. (my_pe <= last_sender)) then ! sending
+               if (query_read_copy(my_copy - recv_start + 1)) then
+
+                  !if(dom ==2) print*, 'sending to', recv_pe, 'my_pe', my_pe
+                  call send_to(map_pe_to_task(state_ens_handle, recv_pe), &
+                              var_block(i:count*task_count():task_count()))
                endif
 
-               ensemble_member = ensemble_member + 1
-
-            enddo RECEIVE_FROM_EACH
-
-            ! update starting point
-
-            starting_point = starting_point + count
-
-         elseif ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! sending
-
-            if (query_read_copy(my_copy - recv_start + 1)) then
-               call send_to(map_pe_to_task(state_ens_handle, recv_pe), &
-                           var_block(i:count*task_count():task_count()))
             endif
 
-         endif
+         enddo RECEIVING_PE_LOOP
 
-      enddo RECEIVING_PE_LOOP
+         !call mpi_barrier(mpi_comm_world, ierr) ! to try and separate domain loops for debugging
+         if ( my_pe ==0) print*, 'finished domain ', dom
+
+      enddo DOMAIN_LOOP
 
       start_var = end_var + 1
 
@@ -1228,7 +1277,7 @@ end subroutine setup_read_write
 !> Turn on copies to read
 subroutine turn_read_copy_on_single(c)
 
-integer, intent(in) :: c !> copy to read
+integer, intent(in) :: c !< copy to read
 
 read_copies(c) = .true.
 
@@ -1238,7 +1287,7 @@ end subroutine turn_read_copy_on_single
 !> Turn on copies to read
 subroutine turn_write_copy_on_single(c)
 
-integer, intent(in) :: c !> copy to write
+integer, intent(in) :: c !< copy to write
 
 write_copies(c) = .true.
 
@@ -1248,8 +1297,8 @@ end subroutine turn_write_copy_on_single
 !> Turn on copies to read
 subroutine turn_read_copy_on_range(c1, c2)
 
-integer, intent(in) :: c1 !> start copy to read
-integer, intent(in) :: c2 !> end copy to read
+integer, intent(in) :: c1 !< start copy to read
+integer, intent(in) :: c2 !< end copy to read
 
 read_copies(c1:c2) = .true.
 
@@ -1259,8 +1308,8 @@ end subroutine turn_read_copy_on_range
 !> Turn on copies to read
 subroutine turn_write_copy_on_range(c1, c2)
 
-integer, intent(in) :: c1 !> start copy to write
-integer, intent(in) :: c2 !> end copy to write
+integer, intent(in) :: c1 !< start copy to write
+integer, intent(in) :: c2 !< end copy to write
 
 write_copies(c1:c2) = .true.
 
@@ -1270,8 +1319,8 @@ end subroutine turn_write_copy_on_range
 !> Turn off copies to read
 subroutine turn_read_copies_off(c1, c2)
 
-integer, intent(in) :: c1 !> start copy to read
-integer, intent(in) :: c2 !> end copy to read
+integer, intent(in) :: c1 !< start copy to read
+integer, intent(in) :: c2 !< end copy to read
 
 read_copies(c1:c2) = .false.
 
@@ -1281,13 +1330,42 @@ end subroutine turn_read_copies_off
 !> Turn off copies to write
 subroutine turn_write_copies_off(c1, c2)
 
-integer, intent(in) :: c1 !> start copy to write
-integer, intent(in) :: c2 !> end copy to write
+integer, intent(in) :: c1 !< start copy to write
+integer, intent(in) :: c2 !< end copy to write
 
 write_copies(c1:c2) = .false.
 
 end subroutine turn_write_copies_off
 
+!-------------------------------------------------------
+!> For a given pe, and how many copies have already been read,
+!> which domain should that pe be reading from
+!> and where it starts in state_ens_handle%copies
+subroutine domain_to_work_on(ens_size, num_domains, c, my_pe, my_copy, my_domain)
+
+integer, intent(in)  :: ens_size
+integer, intent(in)  :: num_domains
+integer, intent(in)  :: c !< copies already read
+integer, intent(in)  :: my_pe !< processor
+integer, intent(out)  :: my_copy
+integer, intent(out) :: my_domain !< the domain I am reading
+
+my_copy = c + my_pe
+
+! domain
+if ( my_pe < num_domains*ens_size ) then  !> @todo Wht about multiple groups?
+   !> @todo check this, what if there are more files than tasks
+   my_domain = my_pe / ens_size + 1
+   !print*, 'my_domain', my_domain, 'my_pe', my_pe
+   if (my_pe < ens_size*num_domains) then
+      my_copy = my_copy - (my_domain-1)*ens_size
+      !print*, 'my_copy', my_copy, 'my_pe', my_pe, 'my_domain', my_domain
+   endif
+endif
+
+
+
+end subroutine
 
 !-------------------------------------------------------
 !> @}
