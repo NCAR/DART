@@ -631,7 +631,7 @@ do i = 1, max_obs_specific
    num_kind_evaluate = i
 end do
 
-if (do_output() .and. num_kind_assimilate > 0 .and. num_kind_evaluate > 0) then
+if (do_output() .and. (num_kind_assimilate > 0 .or. num_kind_evaluate > 0)) then
    write(*, *) '------------------------------------------------------'
    write(*, *)
 
