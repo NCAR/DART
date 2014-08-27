@@ -32,7 +32,7 @@
    restart_in_file_name     = "filter_ics",
    restart_out_file_name    = "filter_restart",
    init_time_days           = 0,
-   init_time_seconds        = 3600,
+   init_time_seconds        = 0,
    first_obs_days           = -1,
    first_obs_seconds        = -1,
    last_obs_days            = -1,
@@ -46,8 +46,8 @@
    enable_special_outlier_code = .false.,
    output_forward_op_errors = .false.,
    output_inflation         = .true.,
-   output_timestamps        = .true.,
-   trace_execution          = .true.,
+   output_timestamps        = .false.,
+   trace_execution          = .false.,
    silence                  = .false.,
 
    inf_flavor                  = 2,                       0,
@@ -64,7 +64,6 @@
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
    inf_sd_lower_bound          = 0.6,                     0.0,
-   direct_netcdf_read = .false.
    /
 
 &smoother_nml
@@ -79,7 +78,6 @@
    single_restart_file_in  = .true.,
    single_restart_file_out = .true.,
    perturbation_amplitude  = 0.2,
-   no_complete_state = .true.
    /
 
 &assim_tools_nml
@@ -239,5 +237,3 @@
    verbose    = .true.
    /
 
-&state_vector_io_nml
-   /
