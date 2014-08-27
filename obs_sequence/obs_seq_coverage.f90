@@ -156,7 +156,8 @@ integer  :: i, j, io, ncunit
 
 type(time_type) :: obs_time, no_time, last_possible_time
 
-character(len=256) :: ncName, string1, string2, string3
+character(len=256) :: ncName
+character(len=512) :: string1, string2, string3
 
 ! ~# of degrees for 1/2 meter at Earth equator 
 ! 360 deg-earth/(40000 km-earth * 1000m-km)

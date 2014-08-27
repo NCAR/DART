@@ -162,7 +162,7 @@ empty string ... i.e. <em class=option>'&nbsp;'</em>.
 <TBODY valign=top>
 
 <TR><TD> obs_sequences </TD>
-    <TD> character(len=129), dimension(500) </TD>
+    <TD> character(len=256), dimension(500) </TD>
     <TD>Names of the observation sequence files  - each of which 
 <strong>MUST</strong> have an extension that defines the start of the 
 forecast (the analysis time). The observation sequence filenames must be 
@@ -172,7 +172,7 @@ If <em class=code>obs_sequences</em> is specified,
 </TD></TR>
 
 <TR><TD> obs_sequence_list </TD>
-    <TD> character(len=129) </TD>
+    <TD> character(len=256) </TD>
     <TD>Name of an ascii text file which contains a list of one or more
 observation sequence files, one per line. The observation sequence filenames
 <strong>MUST</strong> have an extension that defines the start of the 
@@ -186,14 +186,14 @@ If <em class=code>obs_sequence_list</em> is specified,
 </TD></TR>
 
 <TR><TD> station_template </TD>
-    <TD> character(len=129) </TD>
+    <TD> character(len=256) </TD>
     <TD>The name of the netCDF file created by 
 <a href="obs_seq_coverage.html">obs_seq_coverage</a> that contains the
 verification network description.
 </TD></TR>
 
 <TR><TD> netcdf_out </TD>
-    <TD> character(len=129) </TD>
+    <TD> character(len=256) </TD>
     <TD>The base portion of the filename of the file that will contain the
 forecast quantities. Since each observation type of interest is processed
 with a separate run of <em class=program>obs_seq_verify</em>, the observation

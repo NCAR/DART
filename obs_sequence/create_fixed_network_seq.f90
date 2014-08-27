@@ -33,7 +33,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 type(obs_sequence_type) :: seq, seq_in
 type(obs_type)          :: obs, next_obs, new_obs
 type(obs_def_type)      :: obs_def
-character(len=129)      :: file_name
+character(len=256)      :: file_name
 logical                 :: is_there_one, is_this_last
 type(time_type)         :: ob_time, init_time, this_time, period
 integer                 :: seconds, days, i, j, network_size, option, num_times, num_copies, num_qc

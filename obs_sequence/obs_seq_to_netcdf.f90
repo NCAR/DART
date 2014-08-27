@@ -609,7 +609,7 @@ character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 
-character(len=129), allocatable, dimension(:) :: textblock
+character(len=256), allocatable, dimension(:) :: textblock
 
 real(digits12)  :: epoch_edges(2)
 integer         :: seconds, days

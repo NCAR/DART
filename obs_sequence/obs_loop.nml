@@ -1,9 +1,8 @@
 
 &obs_loop_nml
-  filename_in         = 'obs_seq.in'
-  filename_out        = 'obs_seq.out' ,
-  print_only          = .false.,
-  calendar            = 'Gregorian',
-  /
-
+   filename_in  = 'obs_seq.in'
+   filename_out = 'obs_seq.out' 
+   print_only   = .false.
+   calendar     = 'Gregorian'
+   /
 

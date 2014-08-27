@@ -1,3 +1,5 @@
+
 &obs_sequence_nml
-   write_binary_obs_sequence = .false.  /
+   write_binary_obs_sequence = .false.
+   /
 
