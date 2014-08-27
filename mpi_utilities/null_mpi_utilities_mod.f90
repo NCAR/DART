@@ -160,16 +160,16 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
- !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
- ! interface block for getting return code back from system() routine
- interface
-  function system(string)    
-   character(len=*) :: string
-   integer :: system         
-  end function system
- end interface
- ! end block                 
- !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
+! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
+! ! interface block for getting return code back from system() routine
+! interface
+!  function system(string)    
+!   character(len=*) :: string
+!   integer :: system         
+!  end function system
+! end interface
+! ! end block                 
+! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
 
 !   ---- private data for mpi_utilities ----
 

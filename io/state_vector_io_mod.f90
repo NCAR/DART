@@ -64,6 +64,8 @@ use mpi
 
 use io_filenames_mod
 
+use sort_mod,             only : index_sort
+
 implicit none
 
 interface get_state_variable_info
@@ -297,7 +299,8 @@ integer :: start_var, end_var !< start/end variables in a read block
 integer :: my_pe !< task or pe?
 integer :: recv_pe, sending_pe
 real(r8), allocatable :: var_block(:) !< for reading in variables
-integer :: block_size(3) !< number of state elements in a block of variables
+integer :: block_size(num_domains) !< number of state elements in a block of variables
+integer :: sorted_block_size(num_domains) !< index of block_size sorted into ascending order
 integer :: count !< number of elements to send
 integer :: starting_point!< position in state_ens_handle%copies
 integer :: ending_point
@@ -309,6 +312,7 @@ integer :: recv_start, recv_end
 integer :: send_start, send_end
 integer :: ensemble_member !< the ensmeble_member you are receiving.
 integer :: dummy_loop
+integer :: dummy
 integer :: my_copy !< which copy a pe is reading, starting from 0 to match pe
 integer :: c !< copies_read loop index
 integer :: copies_read
@@ -411,6 +415,8 @@ COPIES: do c = 1, max_num_files_to_read
       if (start_var > num_state_variables) exit ! instead of using do while loop
 
       ! calculate how many variables will be read
+      !> @todo should this use the largest domain?  I think the way you have it now, 
+      ! each domain has to read the same number of variables at a time.
       end_var = calc_end_var(start_var, num_domains)
       if ((my_task_id() == 0) .and. (c == 1)) print*, 'start_var, end_var', start_var, end_var
 
@@ -433,7 +439,12 @@ COPIES: do c = 1, max_num_files_to_read
          endif
       endif
 
-      DOMAIN_LOOP: do dom = 1, num_domains
+
+      ! try looping the domains from smallest to largest.
+      call index_sort(block_size, sorted_block_size, num_domains)
+
+      DOMAIN_LOOP: do dummy = 1, num_domains
+         dom = sorted_block_size(dummy)
 
          ! Am I involved in this domain?
          first_sender = send_start + (dom-1)*ens_size

@@ -827,6 +827,7 @@ use obs_kind_mod, only : LAND_SFC_ALTIMETER
 use obs_kind_mod, only : METAR_ALTIMETER
 use obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT
 use obs_kind_mod, only : RADIOSONDE_V_WIND_COMPONENT
+use obs_kind_mod, only : RADIOSONDE_GEOPOTENTIAL_HGT
 use obs_kind_mod, only : RADIOSONDE_SURFACE_PRESSURE
 use obs_kind_mod, only : RADIOSONDE_TEMPERATURE
 use obs_kind_mod, only : RADIOSONDE_SPECIFIC_HUMIDITY
@@ -847,10 +848,12 @@ use obs_kind_mod, only : MARINE_SFC_U_WIND_COMPONENT
 use obs_kind_mod, only : MARINE_SFC_V_WIND_COMPONENT
 use obs_kind_mod, only : MARINE_SFC_TEMPERATURE
 use obs_kind_mod, only : MARINE_SFC_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : MARINE_SFC_PRESSURE
 use obs_kind_mod, only : LAND_SFC_U_WIND_COMPONENT
 use obs_kind_mod, only : LAND_SFC_V_WIND_COMPONENT
 use obs_kind_mod, only : LAND_SFC_TEMPERATURE
 use obs_kind_mod, only : LAND_SFC_SPECIFIC_HUMIDITY
+use obs_kind_mod, only : LAND_SFC_PRESSURE
 use obs_kind_mod, only : SAT_U_WIND_COMPONENT
 use obs_kind_mod, only : SAT_V_WIND_COMPONENT
 use obs_kind_mod, only : ATOV_TEMPERATURE
@@ -864,6 +867,7 @@ use obs_kind_mod, only : KIND_GPSRO
 use obs_kind_mod, only : KIND_SURFACE_PRESSURE
 use obs_kind_mod, only : KIND_U_WIND_COMPONENT
 use obs_kind_mod, only : KIND_V_WIND_COMPONENT
+use obs_kind_mod, only : KIND_GEOPOTENTIAL_HEIGHT
                                                                               
 !---------------------------------------------------------------------------  
                                                                               
@@ -1350,6 +1354,8 @@ select case(obs_def%kind)
       continue
    case(RADIOSONDE_V_WIND_COMPONENT)
       continue
+   case(RADIOSONDE_GEOPOTENTIAL_HGT)
+      continue
    case(RADIOSONDE_SURFACE_PRESSURE)
       continue
    case(RADIOSONDE_TEMPERATURE)
@@ -1390,6 +1396,8 @@ select case(obs_def%kind)
       continue
    case(MARINE_SFC_SPECIFIC_HUMIDITY)
       continue
+   case(MARINE_SFC_PRESSURE)
+      continue
    case(LAND_SFC_U_WIND_COMPONENT)
       continue
    case(LAND_SFC_V_WIND_COMPONENT)
@@ -1397,6 +1405,8 @@ select case(obs_def%kind)
    case(LAND_SFC_TEMPERATURE)
       continue
    case(LAND_SFC_SPECIFIC_HUMIDITY)
+      continue
+   case(LAND_SFC_PRESSURE)
       continue
    case(SAT_U_WIND_COMPONENT)
       continue
@@ -1490,6 +1500,8 @@ select case(obs_def%kind)
       continue
    case(RADIOSONDE_V_WIND_COMPONENT)
       continue
+   case(RADIOSONDE_GEOPOTENTIAL_HGT)
+      continue
    case(RADIOSONDE_SURFACE_PRESSURE)
       continue
    case(RADIOSONDE_TEMPERATURE)
@@ -1530,6 +1542,8 @@ select case(obs_def%kind)
       continue
    case(MARINE_SFC_SPECIFIC_HUMIDITY)
       continue
+   case(MARINE_SFC_PRESSURE)
+      continue
    case(LAND_SFC_U_WIND_COMPONENT)
       continue
    case(LAND_SFC_V_WIND_COMPONENT)
@@ -1537,6 +1551,8 @@ select case(obs_def%kind)
    case(LAND_SFC_TEMPERATURE)
       continue
    case(LAND_SFC_SPECIFIC_HUMIDITY)
+      continue
+   case(LAND_SFC_PRESSURE)
       continue
    case(SAT_U_WIND_COMPONENT)
       continue
@@ -1604,6 +1620,8 @@ select case(obs_def%kind)
       continue
    case(RADIOSONDE_V_WIND_COMPONENT)
       continue
+   case(RADIOSONDE_GEOPOTENTIAL_HGT)
+      continue
    case(RADIOSONDE_SURFACE_PRESSURE)
       continue
    case(RADIOSONDE_TEMPERATURE)
@@ -1644,6 +1662,8 @@ select case(obs_def%kind)
       continue
    case(MARINE_SFC_SPECIFIC_HUMIDITY)
       continue
+   case(MARINE_SFC_PRESSURE)
+      continue
    case(LAND_SFC_U_WIND_COMPONENT)
       continue
    case(LAND_SFC_V_WIND_COMPONENT)
@@ -1651,6 +1671,8 @@ select case(obs_def%kind)
    case(LAND_SFC_TEMPERATURE)
       continue
    case(LAND_SFC_SPECIFIC_HUMIDITY)
+      continue
+   case(LAND_SFC_PRESSURE)
       continue
    case(SAT_U_WIND_COMPONENT)
       continue

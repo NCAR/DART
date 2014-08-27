@@ -196,16 +196,16 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
- !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
- ! interface block for getting return code back from system() routine
- interface
-  function system(string)
-   character(len=*) :: string
-   integer :: system
-  end function system
- end interface
- ! end block
- !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
+! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
+! ! interface block for getting return code back from system() routine
+! interface
+!  function system(string)
+!   character(len=*) :: string
+!   integer :: system
+!  end function system
+! end interface
+! ! end block
+! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
 
 
 !   ---- private data for mpi_utilities ----
@@ -220,7 +220,7 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_count, my_task_id, block_task, restart_task,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
-          sum_across_tasks, get_dart_mpi_comm, datasize !HK
+          sum_across_tasks, get_dart_mpi_comm, datasize
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -243,6 +243,16 @@ character(len = 129) :: errstring
 integer, parameter :: PACKLIMIT1 = 8
 integer, parameter :: PACKLIMIT2 = 512
 
+! also for broadcasts, make sure message size is not too large.  if so,
+! split a single request into two or more broadcasts.  i know 2G is really
+! 2 * 1024 * 1024, but err on the conservative side here.
+integer, parameter :: BCAST_MAXSIZE = 2 * 1000 * 1000
+
+! option for simple send/recvs to limit max single message size.
+! split a single request into two or more broadcasts.  i know 2G is really
+! 2 * 1024 * 1024, but err on the conservative side here.
+integer, parameter :: SNDRCV_MAXSIZE = 2 * 1000 * 1000
+
 ! this turns on trace messages for most MPI communications 
 logical :: verbose        = .false.   ! very very very verbose, use with care
 logical :: async2_verbose = .false.   ! messages only for system() in async2
@@ -261,6 +271,10 @@ logical :: create_local_comm    = .true.    ! make a private communicator
 ! from any task will print regardless of this setting.
 logical :: all_tasks_print      = .false.   ! by default only msgs from 0 print
 
+! make local copy for send/recv.  was needed on an old, buggy version
+! of the mpi libs but seems unneeded now. 
+logical :: make_copy_before_sendrecv = .false.   ! should not be needed
+
 ! NAMELIST: change the following from .false. to .true. to enable
 ! the reading of this namelist.  This is the only place you need
 ! to make this change.
@@ -268,7 +282,8 @@ logical :: use_namelist = .false.
 
 namelist /mpi_utilities_nml/ reverse_task_layout, all_tasks_print, &
                              verbose, async2_verbose, async4_verbose, &
-                             shell_name, separate_node_sync, create_local_comm
+                             shell_name, separate_node_sync, create_local_comm, &
+                             make_copy_before_sendrecv
 
 contains
 
@@ -601,7 +616,8 @@ subroutine send_to(dest_id, srcarray, time, label)
 
 integer :: i, tag, errcode
 integer :: itime(2)
-real(r8) :: tmpdata(size(srcarray))
+integer :: itemcount, offset, size_m1
+real(r8), allocatable :: tmpdata(:)
 
 if (verbose) write(*,*) "PE", myrank, ": start of send_to "
 
@@ -617,27 +633,62 @@ if ((dest_id < 0) .or. (dest_id >= total_tasks)) then
    call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
 endif
 
+itemcount = size(srcarray)
+
 if (present(label)) then
-   write(*,*) trim(label)//" PE", myrank, ": send_to itemsize ", size(srcarray), " dest ", dest_id
+   write(*,*) trim(label)//" PE", myrank, ": send_to itemsize ", itemcount, " dest ", dest_id
 else if (verbose) then
-   write(*,*) "PE", myrank, ": send_to itemsize ", size(srcarray), " dest ", dest_id
+   write(*,*) "PE", myrank, ": send_to itemsize ", itemcount, " dest ", dest_id
 endif
 
 ! use my task id as the tag; unused at this point.
 tag = myrank
 
-! this copy should be unneeded, but on the intel fortran 9.0 compiler and mpich
-! on one platform, calling this routine with an array section resulted in some
-! apparently random memory corruption.  making a copy of the data into a local,
-! contiguous buffer before send and receive fixed the corruption.  this should
-! be examined at some later time for any performance impact.
-tmpdata = srcarray
+if (make_copy_before_sendrecv) then
+   allocate(tmpdata(itemcount))
 
-if (verbose) write(*,*) "PE", myrank, ": send_to alloctmp ", size(tmpdata), " dest ", dest_id
+   ! this copy should be unneeded, but on the intel fortran 9.0 compiler and mpich
+   ! on one platform, calling this routine with an array section resulted in some
+   ! apparently random memory corruption.  making a copy of the data into a local,
+   ! contiguous buffer before send and receive fixed the corruption.  this should
+   ! be examined at some later time for any performance impact.
+   tmpdata = srcarray
 
-! call MPI to send the data to the remote task
-call MPI_Ssend(tmpdata, size(tmpdata), datasize, dest_id, tag, &
-              my_local_comm, errcode)
+   if (verbose) write(*,*) "PE", myrank, ": send_to alloctmp ", itemcount, " dest ", dest_id
+   call MPI_Ssend(tmpdata, itemcount, datasize, dest_id, tag, &
+                 my_local_comm, errcode)
+else
+   ! there are a few places in the code where we send/receive a full state vector.
+   ! as these get really large, they may exceed the limits of the MPI library.
+   ! break large messages up into smaller chunks if needed.  
+   if (itemcount > SNDRCV_MAXSIZE) then
+      offset = 1
+      do while (offset <= itemcount)
+         if (itemcount-offset >= SNDRCV_MAXSIZE) then
+            size_m1 = SNDRCV_MAXSIZE - 1
+         else if (itemcount-offset == 0) then
+            size_m1 = 0
+         else
+            size_m1 = itemcount - offset - 1
+         endif
+   
+         if (verbose) write(*,*) 'sending array items ', offset, ' thru ' , offset + size_m1
+   
+         call MPI_Ssend(srcarray(offset:offset+size_m1), size_m1+1, datasize, dest_id, tag, &
+                       my_local_comm, errcode)
+         if (errcode /= MPI_SUCCESS) then
+            write(errstring, '(a,i8)') 'MPI_Ssend returned error code ', errcode
+            call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
+         endif
+         offset = offset + size_m1 + 1
+      end do
+   else
+      if (verbose) write(*,*) "PE", myrank, ": send_to ", itemcount, " dest ", dest_id
+      call MPI_Ssend(srcarray, size(srcarray), datasize, dest_id, tag, &
+                    my_local_comm, errcode)
+   endif
+endif
+
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Ssend returned error code ', errcode
    call error_handler(E_ERR,'send_to', errstring, source, revision, revdate)
@@ -655,8 +706,10 @@ if (present(time)) then
    if (verbose) write(*,*) "PE", myrank, ": sent time to ", dest_id
 endif
 
-if (verbose) write(*,*) "PE", myrank, ": end of send_to "
+if (make_copy_before_sendrecv) deallocate(tmpdata)
 
+
+if (verbose) write(*,*) "PE", myrank, ": end of send_to "
 
 end subroutine send_to
 
@@ -678,7 +731,8 @@ subroutine receive_from(src_id, destarray, time, label)
 integer :: i, tag, errcode
 integer :: itime(2)
 integer :: status(MPI_STATUS_SIZE)
-real(r8) :: tmpdata(size(destarray))
+integer :: itemcount, offset, size_m1
+real(r8), allocatable :: tmpdata(:)
 
 if (verbose) write(*,*) "PE", myrank, ": start of receive_from "
 
@@ -694,21 +748,59 @@ if ((src_id < 0) .or. (src_id >= total_tasks)) then
    call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
 endif
 
+itemcount = size(destarray)
+
 if (present(label)) then
-   write(*,*) trim(label)//" PE", myrank, ": receive_from itemsize ", size(destarray), " src ", src_id
+   write(*,*) trim(label)//" PE", myrank, ": receive_from itemsize ", itemcount, " src ", src_id
 else if (verbose) then
-   write(*,*) "PE", myrank, ": receive_from itemsize ", size(destarray), " src ", src_id
+   write(*,*) "PE", myrank, ": receive_from itemsize ", itemcount, " src ", src_id
 endif
 
 ! send_to uses its own id as the tag.
 tag = src_id
 
 
-if (verbose) write(*,*) "PE", myrank, ": receive_from alloctmp ", size(tmpdata), " src ", src_id
+if (make_copy_before_sendrecv) then
+   allocate(tmpdata(itemcount))
 
-! call MPI to receive the data from the remote task
-call MPI_Recv(tmpdata, size(tmpdata), datasize, src_id, MPI_ANY_TAG, &
-              my_local_comm, status, errcode)
+   if (verbose) write(*,*) "PE", myrank, ": receive_from alloctmp ", itemcount, " src ", src_id
+
+   ! call MPI to receive the data from the remote task
+   call MPI_Recv(tmpdata, itemcount, datasize, src_id, MPI_ANY_TAG, &
+                 my_local_comm, status, errcode)
+else
+   ! there are a few places in the code where we send/receive a full state vector.
+   ! as these get really large, they may exceed the limits of the MPI library.
+   ! break large messages up into smaller chunks if needed.  
+   if (itemcount > SNDRCV_MAXSIZE) then
+      offset = 1
+      do while (offset <= itemcount)
+         if (itemcount-offset >= SNDRCV_MAXSIZE) then
+            size_m1 = SNDRCV_MAXSIZE - 1
+         else if (itemcount-offset == 0) then
+            size_m1 = 0
+         else
+            size_m1 = itemcount - offset - 1
+         endif
+   
+         if (verbose) write(*,*) 'recving array items ', offset, ' thru ' , offset + size_m1
+   
+         call MPI_Recv(destarray(offset:offset+size_m1), size_m1+1, datasize, src_id, MPI_ANY_TAG, &
+                       my_local_comm, status, errcode)
+         if (errcode /= MPI_SUCCESS) then
+            write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
+            call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
+         endif
+         offset = offset + size_m1 + 1
+      end do
+   else
+      if (verbose) write(*,*) "PE", myrank, ": receive_from ", itemcount,  " src ", src_id
+      call MPI_Recv(destarray, itemcount, datasize, src_id, MPI_ANY_TAG, &
+                 my_local_comm, status, errcode)
+   endif
+
+endif
+
 if (errcode /= MPI_SUCCESS) then
    write(errstring, '(a,i8)') 'MPI_Recv returned error code ', errcode
    call error_handler(E_ERR,'receive_from', errstring, source, revision, revdate)
@@ -716,11 +808,12 @@ endif
 
 if (verbose) write(*,*) "PE", myrank, ": received from ", src_id
 
-! see comment in send_to() about why this code receives into a temp array
-! and then does a contents copy into the actual destination.
-destarray = tmpdata
-
-if (verbose) write(*,*) "PE", myrank, ": copied to final dataarray"
+if (make_copy_before_sendrecv) then
+   ! see comment in send_to() about why this code receives into a temp array
+   ! and then does a contents copy into the actual destination.
+   destarray = tmpdata
+   if (verbose) write(*,*) "PE", myrank, ": copied to final dataarray"
+endif
 
 ! if time specified, call MPI again to send the 2 time ints.
 if (present(time)) then
@@ -740,6 +833,8 @@ if (present(time)) then
    endif
    if (verbose) write(*,*) "PE", myrank, ": received time from ", src_id
 endif
+
+if (make_copy_before_sendrecv) deallocate(tmpdata)
 
 if (verbose) write(*,*) "PE", myrank, ": end of receive_from "
 
@@ -781,7 +876,7 @@ subroutine array_broadcast(array, root)
 ! root array in their own arrays.  Thus 'array' is intent(in) on root, and
 ! intent(out) on all other tasks.
 
-integer :: itemcount, errcode
+integer :: itemcount, errcode, offset, size_m1
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -802,10 +897,36 @@ itemcount = size(array)
 !endif
 !if (verbose) write(*,*) "PE", myrank, ": bcast itemsize ", itemcount, " root ", root
 
-call MPI_Bcast(array, itemcount, datasize, root, my_local_comm, errcode)
-if (errcode /= MPI_SUCCESS) then
-   write(errstring, '(a,i8)') 'MPI_Bcast returned error code ', errcode
-   call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+! at least one user has run into a limit in the MPI implementation where you
+! cannot broadcast too large an array.  if the size of this array is too large,
+! broadcast it in chunks until all the data has been processed
+if (itemcount > BCAST_MAXSIZE) then
+   offset = 1
+   do while (offset <= itemcount)
+      if (itemcount-offset >= BCAST_MAXSIZE) then
+         size_m1 = BCAST_MAXSIZE - 1
+      else if (itemcount-offset == 0) then
+         size_m1 = 0
+      else
+         size_m1 = itemcount - offset - 1
+      endif
+
+      if (verbose) write(*,*) 'bcasting array items ', offset, ' thru ' , offset + size_m1 
+
+      ! test this - are array sections going to cause array temps to be created?
+      call MPI_Bcast(array(offset:offset+size_m1), size_m1+1, datasize, root, my_local_comm, errcode)
+      if (errcode /= MPI_SUCCESS) then
+         write(errstring, '(a,i8)') 'MPI_Bcast returned error code ', errcode
+         call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+      endif
+      offset = offset + size_m1 + 1
+   end do
+else
+   call MPI_Bcast(array, itemcount, datasize, root, my_local_comm, errcode)
+   if (errcode /= MPI_SUCCESS) then
+      write(errstring, '(a,i8)') 'MPI_Bcast returned error code ', errcode
+      call error_handler(E_ERR,'array_broadcast', errstring, source, revision, revdate)
+   endif
 endif
 
 end subroutine array_broadcast
