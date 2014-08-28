@@ -400,8 +400,30 @@ EOF
 
 longone case_11 works
 
-echo check output in log file:  test_merge.log
-echo bad tests are marked with \'TESTERROR:\'
+###############################
+rm -f flist
+echo obs_seq.O obs_seq.P obs_seq.Q obs_seq.R | xargs -n 1 echo >> flist
+cat > input.fragment <<EOF
+&obs_sequence_tool_nml
+   filename_seq      = 'obs_seq.O'
+   filename_seq_list = 'flist'
+   filename_out      = 'obs_seq.merged',
+   gregorian_cal     = .false.
+  /
+EOF
+
+longone case_12 fails
+
+###############################
+###############################
+
+n=`fgrep TESTERROR: test_merge.log | wc -l`
+echo found $n bad tests
+if [[ $n -gt 0 ]]; then
+  echo check output in log file:  test_merge.log
+  echo bad tests are marked with \'TESTERROR:\'
+fi
+
 exit 0
 
 # <next few lines under version control, do not edit>
