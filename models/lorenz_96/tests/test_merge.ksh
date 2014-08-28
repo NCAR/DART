@@ -71,7 +71,7 @@ function longone
    ./obs_sequence_tool 2>&1 >> test_merge.log
    if [[ -f obs_seq.merged ]]; then
      if [[ $2 == 'fails' ]]; then
-       echo ERROR: test succeeded when it should have failed >> test_merge.log
+       echo TESTERROR: test succeeded when it should have failed >> test_merge.log
      fi
      #head -30 obs_seq.merged >> test_merge.log
      #echo '-------------------------' >> test_merge.log
@@ -79,7 +79,7 @@ function longone
      #echo '-------------------------' >> test_merge.log
    else
      if [[ $2 == 'works' ]]; then
-       echo ERROR: test failed when it should have worked >> test_merge.log
+       echo TESTERROR: test failed when it should have worked >> test_merge.log
      fi
      #echo obs_seq.merged not found  >> test_merge.log
    fi
@@ -401,6 +401,7 @@ EOF
 longone case_11 works
 
 echo check output in log file:  test_merge.log
+echo bad tests are marked with \'TESTERROR:\'
 exit 0
 
 # <next few lines under version control, do not edit>
