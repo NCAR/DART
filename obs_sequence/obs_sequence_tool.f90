@@ -4,17 +4,20 @@
 !
 ! $Id$
 
-program obs_sequence_tool
+!> Change observation sequence files by adding or removing observations
+!> based on type, location, values, time.  Long list of options based on 
+!> namelist settings.  See the html documention for extensive examples.
 
-! this latest addition has select by list of obs types.
+program obs_sequence_tool
 
 use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
 use    utilities_mod, only : finalize_utilities, register_module, initialize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              error_handler, E_ERR, E_MSG, nmlfileunit,   &
-                             do_nml_file, do_nml_term, get_next_filename
+                             do_nml_file, do_nml_term, set_filename_list
 use     location_mod, only : location_type, get_location, set_location, &
-                             LocationName !! , vert_is_height 
+                             LocationName !%! , vert_is_height 
+                             ! see comment in select_gps_by_height() for explanation of !%!
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind, &
                              get_obs_def_location
 use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name, get_obs_kind_index
@@ -45,31 +48,33 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq_in, seq_out
-type(obs_type)          :: obs_in, next_obs_in
-type(obs_type)          :: obs_out, prev_obs_out
-logical                 :: is_there_one, is_this_last
-integer                 :: size_seq_in, num_copies_in, num_qc_in
-integer                 :: size_seq_out, num_copies_out, num_qc_out
-integer                 :: num_inserted, iunit, io, i, j, total_num_inserted
-integer                 :: max_num_obs, file_id, remaining_obs_count
-integer                 :: first_seq
+type(obs_type) :: obs_in, next_obs_in
+type(obs_type) :: obs_out, prev_obs_out
+logical :: is_there_one, is_this_last
+integer :: size_seq_in, num_copies_in, num_qc_in
+integer :: size_seq_out, num_copies_out, num_qc_out
+integer :: num_inserted, iunit, io, i, j, total_num_inserted
+integer :: max_num_obs, file_id, remaining_obs_count
+integer :: first_seq
 character(len=metadatalength) :: read_format, meta_data
-logical                 :: pre_I_format, all_gone
-logical                 :: trim_first, trim_last
-character(len=512)      :: msgstring1, msgstring2, msgstring3
+logical :: pre_I_format, all_gone
+logical :: trim_first, trim_last
+character(len=512) :: msgstring1, msgstring2, msgstring3
 
-! could go into namelist if you wanted more control
+! could go into namelist if you wanted runtime control
 integer, parameter      :: print_every = 20000
 
-integer, parameter :: long_lists = 256 ! 256 is an arb max of number of copies for data and qc
-integer, parameter :: max_num_input_files = 500
+! specify sizes of allocated arrays; increase and recompile if too small
+integer, parameter :: copy_qc_listlen = 256           ! max number of data or qc copies
+integer, parameter :: max_num_input_files = 1000
 integer, parameter :: max_obs_input_types = 500
-logical            :: process_file(max_num_input_files)
+
+logical :: process_file(max_num_input_files)
 logical :: restrict_by_obs_type
 logical :: restrict_by_location
 logical :: restrict_by_qc
 logical :: restrict_by_copy
-logical :: restrict_by_height
+!%! logical :: restrict_by_height
 integer :: num_obs_input_types
 type(location_type) :: min_loc, max_loc
 logical :: editing_obs, matching_copy_metadata, matching_qc_metadata
@@ -82,7 +87,7 @@ integer :: qc_index_len        = 0
 !----------------------------------------------------------------
 ! Namelist input with default values
 
-integer            :: num_input_files = 0
+integer :: num_input_files = 0    ! DEPRECATED; count set by number of input files specified.
 character(len=256) :: filename_seq(max_num_input_files) = ''
 character(len=256) :: filename_seq_list = ''
 character(len=256) :: filename_out  = 'obs_seq.processed'
@@ -109,23 +114,22 @@ real(r8) :: min_copy = missing_r8
 real(r8) :: max_copy = missing_r8
 character(len=obstypelength)  :: copy_type = ''
 character(len=metadatalength) :: copy_metadata = ''
-character(len=metadatalength) :: new_copy_metadata(long_lists) = ''
-logical  :: edit_copy_metadata         = .false.
-logical  :: edit_copies                = .false.
-integer  :: new_copy_index(long_lists) = -1
-real(r8) :: new_copy_data(long_lists)  = MISSING_R8
+character(len=metadatalength) :: new_copy_metadata(copy_qc_listlen) = ''
+logical  :: edit_copy_metadata = .false.
+logical  :: edit_copies        = .false.
+integer  :: new_copy_index(copy_qc_listlen) = -1
+real(r8) :: new_copy_data(copy_qc_listlen)  = MISSING_R8
+character(len=metadatalength) :: synonymous_copy_list(copy_qc_listlen) = ''
 
 real(r8) :: min_qc   = missing_r8
 real(r8) :: max_qc   = missing_r8
+character(len=metadatalength) :: qc_metadata = ''
+character(len=metadatalength) :: new_qc_metadata(copy_qc_listlen)   = ''
 logical  :: edit_qc_metadata = .false.
-character(len=metadatalength)  :: qc_metadata = ''
-character(len=metadatalength) :: new_qc_metadata(long_lists)   = ''
 logical  :: edit_qcs = .false.
-integer  :: new_qc_index(long_lists) = -1
-real(r8) :: new_qc_data(long_lists) = MISSING_R8
-
-character(len=metadatalength) :: synonymous_copy_list(long_lists) = ''
-character(len=metadatalength) :: synonymous_qc_list(long_lists)   = ''
+integer  :: new_qc_index(copy_qc_listlen) = -1
+real(r8) :: new_qc_data(copy_qc_listlen) = MISSING_R8
+character(len=metadatalength) :: synonymous_qc_list(copy_qc_listlen)   = ''
 
 logical  :: print_only = .false.
 logical  :: gregorian_cal = .true.
@@ -160,28 +164,24 @@ call check_namelist_read(iunit, io, "obs_sequence_tool_nml")
 if (do_nml_file()) write(nmlfileunit, nml=obs_sequence_tool_nml)
 if (do_nml_term()) write(     *     , nml=obs_sequence_tool_nml)
 
-! ok, here's the new logic:
-! if the user specifies neither filename_seq nor filename_seq_list, we
-! default to trying 'obs_seq.out' and num files = 1.
-! if the user specifies both, it's an error.
-! if the user gives a filelist, we make sure the length is not more
-!   than maxfiles and read it into the explicit list and continue.
-! if num_input_files = 0, we count up the non-null items in the list
-!   and set num_input_files to that.
-! if the user specifies num_input_files but it doesn't match the list length,
-!   we give an error (and maybe suggest 0 if they don't want to keep 
-!   updating the num_input_files.)
-
-call handle_filenames(filename_seq, filename_seq_list, num_input_files)
-
-
-! if you are not using a gregorian cal, set this to false in the namelist.
-! if users need it, we could add a calendar type integer to the namelist,
-! if users want to specify a particular calendar which is not gregorian.
-! (earlier versions of this file had the test before the namelist read - duh.)
-if (gregorian_cal) then
-   call set_calendar_type(GREGORIAN)
+! this is a deprecated namelist item.  ignored, and eventually will be removed.
+! check it first before overwriting it in the call to set_filename_list().
+if (num_input_files > 0) then
+   write(msgstring1, *) '"num_input_files" is a DEPRECATED namelist item and is ignored.'
+   write(msgstring2, *) 'the count of input files is set by the number of filenames specified.'
+   call error_handler(E_MSG,'obs_sequence_tool', msgstring1, &
+                      source,revision,revdate, text2=msgstring2)
 endif
+
+! when set_filename_list() returns, filename_seq contains all the filenames
+! whether they were specified directly in the namelist or in a separate file.
+num_input_files = set_filename_list(filename_seq, filename_seq_list, 'obs_sequence_tool')
+
+! this is a logical.  if the calendar is gregorian it prints out times in
+! both (day,second) format and date (year/month/day/hour/minute/second) format.
+! otherwise it just prints (day,second).  if users want other calendar type
+! support this should be renamed to 'calendar_type' and be a character string.
+if (gregorian_cal) call set_calendar_type(GREGORIAN)
 
 ! See if the user is restricting the obs types to be processed, and set up
 ! the values if so.
@@ -295,10 +295,11 @@ else
 endif
   
 !%! ! SPECIAL: cut off all GPS obs below the given height
+!%! ! see comments in select_gps_by_height() for more info.
 !%! if (min_gps_height /= missing_r8) then
 !%!    restrict_by_height = .true.
 !%! else
-   restrict_by_height = .false.
+!%!    restrict_by_height = .false.
 !%! endif
 
 
@@ -659,7 +660,8 @@ do i = 1, num_input_files
          obs_out = obs_in
       endif
 
-!#!      call change_variance(obs_out)
+!#!      ! see comment in subroutine code for an explanation
+!#!      call change_obs(obs_out)
 
       call insert_obs_in_seq(seq_out, obs_out)  ! new_obs linked list info changes
 
@@ -690,7 +692,8 @@ do i = 1, num_input_files
             obs_out = obs_in
          endif
 
-!#!         call change_variance(obs_out)
+!#!         ! see comment in subroutine code for an explanation
+!#!         call change_obs(obs_out)
 
          ! Since the stride through the observation sequence file is always 
          ! guaranteed to be in temporally-ascending order, we can use the
@@ -1113,19 +1116,20 @@ subroutine trim_seq(seq, trim_first, first_time, trim_last, last_time, &
       endif
    endif
 
-   ! SPECIAL: optionally restrict GPS obs to above a height
-   if (restrict_by_height) then
-      call select_gps_by_height(min_gps_height, seq, all_gone)
-      if(all_gone) then
-         if (print_msg) then
-            msgstring1 = 'Skipping: no obs in ' // trim(seqfilename) // &
-                        ' are above the GPS height threshold'
-            call error_handler(E_MSG,'obs_sequence_tool',msgstring1)
-         endif
-         remaining_obs_count = 0
-         return
-      endif
-   endif
+!%!    ! SPECIAL: optionally restrict GPS obs to above a given height
+!%!    ! see comments in select_gps_by_height() for more info.
+!%!    if (restrict_by_height) then
+!%!       call select_gps_by_height(min_gps_height, seq, all_gone)
+!%!       if(all_gone) then
+!%!          if (print_msg) then
+!%!             msgstring1 = 'Skipping: no obs in ' // trim(seqfilename) // &
+!%!                         ' are above the GPS height threshold'
+!%!             call error_handler(E_MSG,'obs_sequence_tool',msgstring1)
+!%!          endif
+!%!          remaining_obs_count = 0
+!%!          return
+!%!       endif
+!%!    endif
 
    remaining_obs_count = get_num_key_range(seq)
 
@@ -1411,27 +1415,30 @@ endif
 
 end subroutine set_new_data
 
-!---------------------------------------------------------------------
-subroutine select_gps_by_height(min_height, seq, all_gone)
-
-! CURRENTLY COMMENTED OUT
-
-! Delete all gps observations in the sequence which are below the given ht.
-! If there are no obs left afterwards return that the sequence is all_gone.
-
-real(r8),                intent(in)    :: min_height
-type(obs_sequence_type), intent(inout) :: seq
-logical,                 intent(out)   :: all_gone
-
-all_gone = .false.
-return
-
-! This block is intentionally never reached.
-! Exists simply to silence compiler warnings. Does nothing. 
-
-if (min_height > 0.0_r8) continue
-write(*,*) get_copy_meta_data(seq, 1) 
-
+!%! !---------------------------------------------------------------------
+!%! subroutine select_gps_by_height(min_height, seq, all_gone)
+!%! 
+!%! ! This code is intentionally commented out.  Enabling this code requires 
+!%! ! you are compiling with the threed_sphere locations module (which is true for
+!%! ! most large models).  To do selections in the vertical for observations
+!%! ! remove all !%! characters here and in the code above.
+!%! 
+!%! ! Adapt the code as needed - select on a different observation type or ignore
+!%! ! the types and process all observations.  Test the type of the vertical
+!%! ! coordinate before using the value; vertical in the threed_sphere module
+!%! ! can be pressure, height, model level, surface, or intentionally undefined.
+!%! ! There is a namelist item 'min_gps_height' which can be repurposed for
+!%! ! setting run-time values and is passed into this routine.
+!%! 
+!%! ! The code below is working code.  It processes only GPS Radio Occultation
+!%! ! observation types.  They are defined with a vertical of 'height' in meters.
+!%! ! The code removes any observations below a given threshold.  If all obs are
+!%! ! removed the logical 'all_gone' is returned true.
+!%! 
+!%! real(r8),                intent(in)    :: min_height
+!%! type(obs_sequence_type), intent(inout) :: seq
+!%! logical,                 intent(out)   :: all_gone
+!%! 
 !%! type(obs_def_type)   :: obs_def
 !%! type(obs_type)       :: obs, prev_obs
 !%! integer              :: i, key, gps_type_index, this_obs_type
@@ -1439,20 +1446,18 @@ write(*,*) get_copy_meta_data(seq, 1)
 !%! logical              :: out_of_range, is_this_last, above, first_obs
 !%! real(r8)             :: ll(3), vloc
 !%! 
-!%! ! figure out what index number is gps
+!%! ! figure out what index number GPS obs are
 !%! gps_type_index = get_obs_kind_index('GPSRO_REFRACTIVITY')
 !%! if (gps_type_index < 0) then
-!%!    write(msgstring1,*) 'obs_type GPSRO not found'
+!%!    write(msgstring1,*) 'obs_type GPSRO_REFRACTIVITY not found'
 !%!    call error_handler(E_ERR,'select_gps_by_height', msgstring1, &
 !%!                       source, revision, revdate)
 !%! endif
-!%! 
 !%! 
 !%! ! Initialize an observation type with appropriate size
 !%! call init_obs(obs, get_num_copies(seq), get_num_qc(seq))
 !%! call init_obs(prev_obs, get_num_copies(seq), get_num_qc(seq))
 !%! 
-!%! ! Iterate entire sequence, deleting obs which are not in the box.
 !%! ! First, make sure there are obs to delete, and initialize first obs.
 !%! if(.not. get_first_obs(seq, obs)) then
 !%!    all_gone = .true.
@@ -1477,13 +1482,12 @@ write(*,*) get_copy_meta_data(seq, 1)
 !%!       above = .true.   
 !%!    else
 !%!    
-!%!       ! must check height.  at this point, all gps obs are be height only. 
+!%!       ! must check height.  at this point, all gps obs are by height only. 
 !%!       location = get_obs_def_location(obs_def)
 !%!    
-!%!       ! this makes the tool sphere_3d dependent.  also assumes height as vert.
-!%!       ! should verify. 
+!%!       ! this makes the tool locations/threed_sphere dependent.
 !%!       if (.not. vert_is_height(location)) then
-!%!          write(msgstring1,*) 'obs_type GPSRO vertical location not height'
+!%!          write(msgstring1,*) 'obs_type GPSRO_REFRACTIVITY vertical location not height'
 !%!          call error_handler(E_ERR,'select_gps_by_height', msgstring1, &
 !%!                             source, revision, revdate)
 !%!       endif
@@ -1500,33 +1504,26 @@ write(*,*) get_copy_meta_data(seq, 1)
 !%!       endif
 !%!    endif 
 !%! 
-!%!    ! same code as delete/keep by obstype; do any code fixes both places
+!%!    ! remove obs if selected for delete, and set the prev_obs to the right value
 !%!    if (.not. above) then
 !%!       if (first_obs) then
 !%!          call delete_obs_from_seq(seq, obs)
 !%!          if(.not. get_first_obs(seq, obs)) exit allobs
 !%!       else
-!%! !print *, 'going to del obs key ', obs%key
-!%! !print *, 'prev key is ', prev_obs%key
 !%!          call delete_obs_from_seq(seq, obs)
 !%!          ! cannot simply use prev_obs; cached copy out of sync with seq one
 !%!          key = get_obs_key(prev_obs)
 !%!          call get_next_obs_from_key(seq, key, obs, is_this_last)
-!%! !print *, 'next obs now is key ', obs%key
 !%!       endif
 !%!    else
-!%! !print *, 'no del, keep this obs key ', obs%key
 !%!       first_obs = .false.
 !%!       prev_obs = obs
-!%! !print *, 'prev obs now is key ', prev_obs%key
-!%! !print *, 'obs was key ', obs%key
 !%!       call get_next_obs(seq, prev_obs, obs, is_this_last)
-!%! !print *, 'obs now is key ', obs%key
 !%!    endif
 !%!    
 !%! end do allobs
 !%! 
-!%! ! Figure out if there are no more obs left in the sequence.
+!%! ! Return indicator of whether all obs were deleted by this routine or not.
 !%! if(.not. get_first_obs(seq, obs)) then
 !%!    all_gone = .true.
 !%! else
@@ -1536,103 +1533,21 @@ write(*,*) get_copy_meta_data(seq, 1)
 !%! ! Done.  delete temp storage and return.
 !%! call destroy_obs(obs)
 !%! call destroy_obs(prev_obs)
+!%! 
+!%! end subroutine select_gps_by_height
+!%! !---------------------------------------------------------------------
 
-end subroutine select_gps_by_height
-
-!---------------------------------------------------------------------
-subroutine handle_filenames(filename_seq, filename_seq_list, num_input_files)
-! sort out the input lists, set the length if not given by user,
-! make sure what's specified is consistent.
-character(len=*), intent(inout) :: filename_seq(:)
-character(len=*), intent(in)    :: filename_seq_list
-integer,          intent(inout) :: num_input_files
-
-integer :: index
-logical :: from_file
-character(len=32) :: fsource
-
-! ok, here's the new logic:
-! if the user specifies neither filename_seq nor filename_seq_list, we
-! default to trying 'obs_seq.out' and num files = 1.
-! if the user specifies both, it's an error.
-! if the user gives a filelist, we make sure the length is not more
-!   than maxfiles and read it into the explicit list and continue.
-! if num_input_files = 0, we count up the non-null items in the list
-!   and set num_input_files to that.
-! if the user specifies num_input_files but it doesn't match the list length,
-!   we give an error (and maybe suggest 0 if they don't want to keep 
-!   updating the num_input_files.)
-
-! default case - input file is 'obs_seq.out' and count is 1.
-if (filename_seq(1) == '' .and. filename_seq_list == '') then
-
-   if (num_input_files /= 0 .and. num_input_files /= 1) then
-      call error_handler(E_ERR,'obs_sequence_tool', &
-          'if no filenames specified, num_input_files must be 0 or 1', &
-          source,revision,revdate)
-   endif
-   
-   num_input_files = 1
-   filename_seq(1) = 'obs_seq.out'
-   return
-endif
-
-! make sure the namelist specifies one or the other but not both
-if (filename_seq(1) /= '' .and. filename_seq_list /= '') then
-   call error_handler(E_ERR,'obs_sequence_tool', &
-       'cannot specify both filename_seq and filename_seq_list', &
-       source,revision,revdate)
-endif
-
-! if they have specified a file which contains a list, read it into
-! the filename_seq array and set the count.
-if (filename_seq_list /= '') then
-   fsource = 'filename_seq_list'
-   from_file = .true.
-else
-   fsource = 'filename_seq'
-   from_file = .false.
-endif
-
-do index = 1, max_num_input_files
-   if (from_file) &
-      filename_seq(index) = get_next_filename(filename_seq_list, index)
-
-   if (filename_seq(index) == '') then
-      if (index == 1) then
-         call error_handler(E_ERR,'obs_sequence_tool', &
-             'namelist item '//trim(fsource)//' contains no filenames', &
-             source,revision,revdate)
-      endif
-      ! leaving num_input_files unspecified (or set to 0) means use
-      ! whatever number of files is in the list.
-      if (num_input_files == 0) then
-         num_input_files = index - 1
-         return
-      else 
-         ! if they do give a count, make it match.
-         if (num_input_files == (index - 1)) return
-
-         write(msgstring1, *) 'if num_input_files is 0, the number of files will be automatically computed'
-         write(msgstring2, *) 'if num_input_files is not 0, it must match the number of filenames specified'
-         write(msgstring3, *) 'num_input_files is ', num_input_files, &
-                     ' but namelist item '//trim(fsource)//' has filecount ', index - 1
-         call error_handler(E_ERR,'obs_sequence_tool', msgstring1, &
-              source,revision,revdate,text2=msgstring2,text3=msgstring3)
-         
-      endif
-   endif
-enddo
-
-write(msgstring1, *) 'cannot specify more than ',max_num_input_files,' files'
-call error_handler(E_ERR,'obs_sequence_tool', msgstring1, &
-     source,revision,revdate)
-
-end subroutine handle_filenames
-
-!---------------------------------------------------------------------
-!#! subroutine change_variance(this_obs)
+!#! !---------------------------------------------------------------------
+!#! subroutine change_obs(this_obs)
 !#! 
+!#! ! This code is intentionally commented out.  It is here as an example
+!#! ! of how to make a systematic change to observations in an obs_seq file.
+!#! ! To use it, remove all instances of !#! in the code, here and above.
+!#! ! Adapt as needed.  Use with care so you don't run it on obs_sequences
+!#! ! you don't want to modify in this way.
+!#! 
+!#! ! The code below is working code.  It changes the variance of the selected
+!#! ! observation types.
 !#! 
 !#! use obs_kind_mod
 !#! use obs_def_mod
@@ -1643,23 +1558,26 @@ end subroutine handle_filenames
 !#! type(obs_type), intent(inout) :: this_obs
 !#! 
 !#! type(obs_def_type) :: this_obs_def
-!#! integer            :: this_obs_kind
+!#! integer            :: this_obs_type
 !#! real(r8)           :: oldvar, newvar
+!#! logical, save      :: first_call = .true.
 !#! 
+!#! 
+!#! if (first_call) then
+!#!    call error_handler(E_MSG, 'obs_sequence_tool', 'special: using the change_obs routine to alter variances')
+!#!    first_call = .false.
+!#! endif
 !#! 
 !#! call get_obs_def(this_obs, this_obs_def)
-!#! this_obs_kind = get_obs_kind(this_obs_def)
+!#! this_obs_type = get_obs_kind(this_obs_def)
 !#! 
-!#! ! ignore identity obs
-!#! if (this_obs_kind < 0) return
+!#! ! do not alter identity obs
+!#! if (this_obs_type < 0) return
 !#! 
 !#! oldvar = get_obs_def_error_variance(this_obs_def)
 !#! 
-!#! !print *, 'kind, var = ', this_obs_kind, oldvar
-!#! ! SOYOUNG: Change the code here for what you want.
-!#! 
 !#! ! Set the new variance here based on the type
-!#! select case (this_obs_kind)
+!#! select case (this_obs_type)
 !#!   case (LAND_SFC_TEMPERATURE)
 !#!      newvar = oldvar * 0.5
 !#!   case (RADIOSONDE_TEMPERATURE)
@@ -1671,13 +1589,15 @@ end subroutine handle_filenames
 !#!      newvar = oldvar
 !#! end select
 !#! 
-!#! !print *, 'newvar = ', newvar
+!#! !print *, 'type, original variance, new variance = ', this_obs_type, oldvar, newvar
+!#!
 !#! if (newvar /= oldvar) then
 !#!    call set_obs_def_error_variance(this_obs_def, newvar)
 !#!    call set_obs_def(this_obs, this_obs_def)
 !#! endif
 !#! 
-!#! end subroutine change_variance
+!#! end subroutine change_obs
+!#! !---------------------------------------------------------------------
 
 !---------------------------------------------------------------------
 end program obs_sequence_tool
