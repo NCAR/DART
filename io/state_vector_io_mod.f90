@@ -321,6 +321,7 @@ integer :: my_domain !< which domain I am reading from
 integer :: dom !< loop variable
 integer :: first_sender
 integer :: last_sender 
+integer :: largest_domain !< index of the largest domain
 
 ! single file
 integer :: iunit
@@ -328,7 +329,6 @@ type(time_type) :: ens_time
 
 ! temporary 
 integer :: ierr
-
 
 ens_size = state_ens_handle%num_copies ! have the extras, incase you need to read inflation restarts
 
@@ -410,14 +410,23 @@ COPIES: do c = 1, max_num_files_to_read
 
    endif
 
+
+  ! try looping the domains from smallest to largest?
+  do dom = 1, num_domains
+      block_size(dom) = sum(variable_sizes(:, dom)) ! get the size of each domain
+  enddo
+
+  call index_sort(block_size, sorted_block_size, num_domains)
+  largest_domain = sorted_block_size(num_domains)  ! find largest domain
+
    ! Reading of the state variables is broken up into
-   do dummy_loop = 1, num_state_variables
+   VARIABLE_LOOP : do dummy_loop = 1, num_state_variables
       if (start_var > num_state_variables) exit ! instead of using do while loop
 
       ! calculate how many variables will be read
       !> @todo should this use the largest domain?  I think the way you have it now, 
       ! each domain has to read the same number of variables at a time.
-      end_var = calc_end_var(start_var, num_domains)
+      end_var = calc_end_var(start_var, largest_domain)
       if ((my_task_id() == 0) .and. (c == 1)) print*, 'start_var, end_var', start_var, end_var
 
       do dom = 1, num_domains
@@ -440,22 +449,23 @@ COPIES: do c = 1, max_num_files_to_read
       endif
 
 
-      ! try looping the domains from smallest to largest.
-      call index_sort(block_size, sorted_block_size, num_domains)
-
       DOMAIN_LOOP: do dummy = 1, num_domains
          dom = sorted_block_size(dummy)
+         !dom = dummy
 
-         ! Am I involved in this domain?
+         ! Am I involved in reading this domain?
          first_sender = send_start + (dom-1)*ens_size
          last_sender = send_start + (dom-1)*ens_size + ens_size -1
          !print*, 'first_sender, last_sender', first_sender, last_sender
 
          ! start rank is different for each domain
-         start_rank = mod(sum_variables_below(start_var,dom), task_count())
+         start_rank = mod(sum_variables_below(start_var, dom), task_count())
 
          ! loop through and post recieves
          RECEIVING_PE_LOOP: do recv_pe = recv_start, recv_end
+
+            ! work out starting point in state_ens_handle%copies on recieving pe
+            starting_point = get_starting_point(dom, start_var, recv_pe) ! for this domain
 
             ! work out count on the receiving pe
             count = block_size(dom)/task_count()
@@ -498,10 +508,11 @@ COPIES: do c = 1, max_num_files_to_read
                enddo RECEIVE_FROM_EACH
 
                ! update starting point
-               starting_point = starting_point + count
+               ! I don't know if you can do this with the domain loop
+               !starting_point = starting_point + count
 
             elseif ((my_pe >= first_sender ) .and. (my_pe <= last_sender)) then ! sending
-               if (query_read_copy(my_copy - recv_start + 1)) then
+               if (query_read_copy(my_copy + 1)) then
 
                   !if(dom ==2) print*, 'sending to', recv_pe, 'my_pe', my_pe
                   call send_to(map_pe_to_task(state_ens_handle, recv_pe), &
@@ -521,13 +532,13 @@ COPIES: do c = 1, max_num_files_to_read
 
       !if (.not. single_restart_file_in) then ! do you want to deallocate and reallocate for single restart file in? Probably not
          if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! reader
-            if (query_read_copy(my_copy - recv_start + 1)) then
+            if (query_read_copy(my_copy + 1)) then
                deallocate(var_block)
             endif
          endif
       !endif
 
-   enddo
+   enddo VARIABLE_LOOP
 
    ! keep track of how many copies have been read.
    if (single_restart_file_in) then
@@ -539,7 +550,7 @@ COPIES: do c = 1, max_num_files_to_read
    if (.not. single_restart_file_in) then 
       ! close netcdf file
       if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
-         if (query_read_copy(my_copy - recv_start + 1)) then
+         if (query_read_copy(my_copy + 1)) then
             ret = nf90_close(ncfile)
             call nc_check(ret, 'read_transpose closing', netcdf_filename)
          endif
@@ -1210,7 +1221,7 @@ do i = 1, domain -1
    sum_variables_below = sum(variable_sizes(:, i)) ! whole domain below
 enddo
 
-sum_variables_below = sum_variables_below + sum(variable_sizes(1:start_var-1, i))
+sum_variables_below = sum_variables_below + sum(variable_sizes(1:start_var-1, domain))
 
 
 end function sum_variables_below
@@ -1374,9 +1385,44 @@ if ( my_pe < num_domains*ens_size ) then  !> @todo Wht about multiple groups?
    endif
 endif
 
-
-
 end subroutine
+
+!-------------------------------------------------------
+!> For a given domain and pe, give the index into state_ens_handle%copies
+!> where the domain starts
+function get_starting_point(domain, start_var, pe)
+
+integer, intent(in) :: domain
+integer, intent(in) :: start_var
+integer, intent(in) :: pe
+integer             :: get_starting_point
+
+integer :: whole_state_below
+integer :: remainder
+integer :: i
+
+! need length of state up to start_var, in that domain
+if ((domain == 1) .and. (start_var == 1)) then
+   get_starting_point = 1
+else
+
+   whole_state_below = 0
+
+   do i = 1, domain - 1
+      whole_state_below = whole_state_below + sum(variable_sizes(:, i))
+   enddo
+
+   whole_state_below = whole_state_below + sum(variable_sizes(1:start_var-1, domain))
+
+   get_starting_point = whole_state_below / task_count() + 1
+
+   remainder = mod(whole_state_below, task_count())
+
+   if (pe + 1 <= remainder) get_starting_point = get_starting_point + 1
+
+endif
+
+end function get_starting_point
 
 !-------------------------------------------------------
 !> @}
