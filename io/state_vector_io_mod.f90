@@ -363,11 +363,14 @@ COPIES: do c = 1, max_num_files_to_read
 
       call domain_to_work_on(ens_size, num_domains, copies_read, my_pe, my_copy, my_domain)
 
+      !print*, 'my_copy', my_copy
+!call mpi_barrier(mpi_comm_world, ierr)
+
       ! need to calculate RECEIVING_PE_LOOP start:end, group size, sending_pe start:end for each group.
       if ( task_count() >= max_num_files_to_read ) then
          !my_copy = my_pe
          call get_pe_loops(my_pe, max_num_files_to_read, group_size, recv_start, recv_end, send_start, send_end)
-!print*, 'send start:end, recv start:end', send_start, send_end, recv_start, recv_end, 'my_pe', my_pe
+!print*, 'send start:end, recv start:end', send_start, send_end, recv_start, recv_end, 'my_pe', my_pe, 'my_copy', my_copy
 
       else
          !my_copy = copies_read + my_pe
@@ -389,19 +392,19 @@ COPIES: do c = 1, max_num_files_to_read
       ! You have already opened this once to read the variable info. Should you just leave it open
       ! on the readers?
       if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
-         netcdf_filename = read_file_name(restart_in_file_name, my_domain, my_copy - recv_start + 1)
+         netcdf_filename = read_file_name(restart_in_file_name, my_domain, my_copy + 1)
 
          ! inflation restarts
          ! prior
-         if ((my_copy - recv_start + 1) == ens_size -3) netcdf_filename = read_file_name(prior_mean_inf_file, my_domain)
-         if ((my_copy - recv_start + 1) == ens_size -2) netcdf_filename = read_file_name(prior_sd_inf_file, my_domain)
+         if ((my_copy + 1) == ens_size -3) netcdf_filename = read_file_name(prior_mean_inf_file, my_domain)
+         if ((my_copy + 1) == ens_size -2) netcdf_filename = read_file_name(prior_sd_inf_file, my_domain)
 
          ! posterior - do you read this?
-         if ((my_copy - recv_start + 1) == ens_size -1) netcdf_filename = read_file_name(post_mean_inf_file, my_domain)
+         if ((my_copy + 1) == ens_size -1) netcdf_filename = read_file_name(post_mean_inf_file, my_domain)
 
-         if ((my_copy - recv_start + 1) == ens_size) netcdf_filename = read_file_name( post_sd_inf_file, my_domain)
+         if ((my_copy + 1) == ens_size) netcdf_filename = read_file_name( post_sd_inf_file, my_domain)
 
-         if (query_read_copy(my_copy - recv_start + 1)) then
+         if (query_read_copy(my_copy + 1)) then
             ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
             call nc_check(ret, 'read_transpose opening', netcdf_filename)
          endif
@@ -424,7 +427,7 @@ COPIES: do c = 1, max_num_files_to_read
       if (start_var > num_state_variables) exit ! instead of using do while loop
 
       ! calculate how many variables will be read
-      !> @todo should this use the largest domain?  I think the way you have it now, 
+      ! The way you have it now,
       ! each domain has to read the same number of variables at a time.
       end_var = calc_end_var(start_var, largest_domain)
       if ((my_task_id() == 0) .and. (c == 1)) print*, 'start_var, end_var', start_var, end_var
@@ -434,20 +437,20 @@ COPIES: do c = 1, max_num_files_to_read
       enddo
 
       if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
-         if (query_read_copy(my_copy - recv_start + 1)) then ! this is wrong for muliple groups I think. Remove  - recv_start?
+         if (query_read_copy(my_copy + 1)) then
 
             allocate(var_block(block_size(my_domain)))
 
             if (single_restart_file_in) then
                call aread_state_restart(ens_time, var_block, iunit)
             else
-               !print*, 'reading variables pe', my_pe, 'my_domain', my_domain
                call read_variables(var_block, start_var, end_var, my_domain)
             endif
 
          endif
       endif
 
+!call mpi_barrier(mpi_comm_world, ierr)
 
       DOMAIN_LOOP: do dummy = 1, num_domains
          dom = sorted_block_size(dummy)
@@ -456,7 +459,7 @@ COPIES: do c = 1, max_num_files_to_read
          ! Am I involved in reading this domain?
          first_sender = send_start + (dom-1)*ens_size
          last_sender = send_start + (dom-1)*ens_size + ens_size -1
-         !print*, 'first_sender, last_sender', first_sender, last_sender
+         !print*, 'first_sender, last_sender', first_sender, last_sender, 'my_pe', my_pe
 
          ! start rank is different for each domain
          start_rank = mod(sum_variables_below(start_var, dom), task_count())
@@ -488,7 +491,8 @@ COPIES: do c = 1, max_num_files_to_read
                RECEIVE_FROM_EACH: do sending_pe = first_sender, last_sender
 
                   ! I think this needs to be copy number not sending pe
-                  if (query_read_copy(sending_pe - first_sender + copies_read - recv_start + 1)) then
+                  !print*, 'sending copy', sending_pe - first_sender + copies_read + 1, 'sending pe', sending_pe
+                  if (query_read_copy(sending_pe - first_sender + copies_read + 1)) then
 
                      if(sending_pe == recv_pe) then ! just copy
                         ! The row is no longer sending_pe + 1 because it is not just
@@ -1372,14 +1376,18 @@ integer, intent(in)  :: my_pe !< processor
 integer, intent(out)  :: my_copy
 integer, intent(out) :: my_domain !< the domain I am reading
 
-my_copy = c + my_pe
+integer :: local_pe_number !< my pe with in the group
+
+local_pe_number = mod(my_pe, limit_procs) ! to deal with mulitple groups (limit_procs < task_count)
+
+my_copy = c + local_pe_number
 
 ! domain
-if ( my_pe < num_domains*ens_size ) then  !> @todo Wht about multiple groups?
+if ( local_pe_number < num_domains*ens_size ) then
    !> @todo check this, what if there are more files than tasks
-   my_domain = my_pe / ens_size + 1
+   my_domain = local_pe_number / ens_size + 1
    !print*, 'my_domain', my_domain, 'my_pe', my_pe
-   if (my_pe < ens_size*num_domains) then
+   if (local_pe_number < ens_size*num_domains) then
       my_copy = my_copy - (my_domain-1)*ens_size
       !print*, 'my_copy', my_copy, 'my_pe', my_pe, 'my_domain', my_domain
    endif
