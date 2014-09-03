@@ -46,7 +46,7 @@ use types_mod,            only : r8, MISSING_R8
 use mpi_utilities_mod,    only : task_count, send_to, receive_from, my_task_id, datasize
 
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, single_restart_file_in, &
-                                 single_restart_file_out
+                                 single_restart_file_out, limit_procs
 
 use utilities_mod,        only : error_handler, E_ERR, nc_check, check_namelist_read, &
                                  find_namelist_in_file, nmlfileunit, do_nml_file, do_nml_term
@@ -119,9 +119,10 @@ logical, allocatable :: read_copies(:), write_copies(:)
 ! namelist variables with default values
 ! Aim: to have the regular transpose as the default
 integer :: limit_mem = 2147483640!< This is the number of elements (not bytes) so you don't have times the number by 4 or 8
-integer :: limit_procs = 100000!< how many processors you want involved in each transpose.
+! now in ensemble_manager_mod
+!integer :: limit_procs = 100000!< how many processors you want involved in each transpose.
 
-namelist /  state_vector_io_nml / limit_mem, limit_procs 
+namelist /  state_vector_io_nml / limit_mem
 
 contains
 
