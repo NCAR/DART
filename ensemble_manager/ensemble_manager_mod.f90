@@ -1740,7 +1740,8 @@ endif
 if (layout_type == 1) then 
    call simple_layout(ens_handle, num_pes)
 else
-   call round_robin_limit_procs(ens_handle)
+   !call round_robin_limit_procs(ens_handle)
+   call round_robin(ens_handle)
 endif
 
 end subroutine assign_tasks_to_pes

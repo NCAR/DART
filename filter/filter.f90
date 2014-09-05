@@ -369,7 +369,7 @@ call filter_read_restart_direct(ens_handle, time1, ens_size) ! This is annoying
 
 !call test_state_copies(ens_handle, 'after_read')
 
-goto 10022
+!goto 10022
 
 ! Read in or initialize smoother restarts as needed
 if(ds) then
