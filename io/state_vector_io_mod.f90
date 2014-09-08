@@ -62,7 +62,7 @@ use netcdf
 
 use mpi
 
-use io_filenames_mod
+use io_filenames_mod,     only : restart_files_in, restart_files_out, extras_in, extras_out, io_filenames_init
 
 use sort_mod,             only : index_sort
 
@@ -144,6 +144,7 @@ call check_namelist_read(iunit, io, "state_vector_io_nml")
 if (do_nml_file()) write(nmlfileunit, nml=state_vector_io_nml)
 if (do_nml_term()) write(     *     , nml=state_vector_io_nml)
 
+call io_filenames_init()
 
 end subroutine state_vector_io_init
 
@@ -393,17 +394,17 @@ COPIES: do c = 1, max_num_files_to_read
       ! You have already opened this once to read the variable info. Should you just leave it open
       ! on the readers?
       if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
-         netcdf_filename = read_file_name(restart_in_file_name, my_domain, my_copy + 1)
+         netcdf_filename = restart_files_in((my_copy +1) + (my_domain -1)*(ens_size -6))
 
          ! inflation restarts
          ! prior
-         if ((my_copy + 1) == ens_size -3) netcdf_filename = read_file_name(prior_mean_inf_file, my_domain)
-         if ((my_copy + 1) == ens_size -2) netcdf_filename = read_file_name(prior_sd_inf_file, my_domain)
+         if ((my_copy + 1) == ens_size -3) netcdf_filename = extras_in(3 + (my_domain-1)*(ens_size -6))
+         if ((my_copy + 1) == ens_size -2) netcdf_filename = extras_in(4 + (my_domain-1)*(ens_size -6))
 
          ! posterior - do you read this?
-         if ((my_copy + 1) == ens_size -1) netcdf_filename = read_file_name(post_mean_inf_file, my_domain)
+         if ((my_copy + 1) == ens_size -1) netcdf_filename = extras_in(5 + (my_domain-1)*(ens_size -6))
 
-         if ((my_copy + 1) == ens_size) netcdf_filename = read_file_name( post_sd_inf_file, my_domain)
+         if ((my_copy + 1) == ens_size) netcdf_filename = extras_in(6 + (my_domain-1)*(ens_size -6))
 
          if (query_read_copy(my_copy + 1)) then
             ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
@@ -618,6 +619,8 @@ integer :: a, k, n, owner, y, sub_block
 integer :: my_copy !< which copy a pe is reading, starting from 0 to match pe
 integer :: c !< copies_read loop index
 integer :: copies_written
+integer :: my_domain !< which domain I am writing
+integer :: dom !< loop variable
 
 ! mpi_type variables
 integer, allocatable :: array_of_blocks(:)
@@ -672,18 +675,18 @@ COPIES : do c = 1, ens_size
 
       ! writers open netcdf output file. This is a copy of the input file
       if (my_pe < ens_size) then
-         netcdf_filename_out = write_file_name(restart_out_file_name, domain, my_copy + 1)
-
+         netcdf_filename_out = restart_files_out((my_copy +1) + (my_domain -1)*(ens_size -6))
          ! inflation restarts
          ! prior
-         if ((my_copy + 1) == ens_size -3) netcdf_filename_out = write_file_name(prior_mean_inf_file, domain)
+         if ((my_copy + 1) == ens_size -3) netcdf_filename_out = extras_out(3 + (my_domain-1)*(ens_size -6))
 
-
-         if ((my_copy + 1) == ens_size -2) netcdf_filename_out = write_file_name(prior_sd_inf_file, domain)
+         if ((my_copy + 1) == ens_size -2) netcdf_filename_out = extras_out(4 + (my_domain-1)*(ens_size -6))
 
          ! posterior
-         if ((my_copy + 1) == ens_size -1) netcdf_filename_out = write_file_name(post_mean_inf_file, domain)
-         if ((my_copy + 1) == ens_size) netcdf_filename_out = write_file_name(post_sd_inf_file, domain)
+         if ((my_copy + 1) == ens_size -1) netcdf_filename_out = extras_out(5 + (my_domain-1)*(ens_size -6))
+
+         if ((my_copy + 1) == ens_size) netcdf_filename_out = extras_out(6 + (my_domain-1)*(ens_size -6))
+
 
          if ( query_write_copy(my_copy - recv_start + 1)) then
             ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)

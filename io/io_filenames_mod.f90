@@ -14,6 +14,9 @@ module io_filenames_mod
 !> Diagnostic files could have different netcdf variable ids
 !> @{
 
+use utilities_mod, only : do_nml_file, nmlfileunit, do_nml_term, check_namelist_read, &
+                          find_namelist_in_file
+
 implicit none
 
 private
@@ -21,28 +24,43 @@ private
 ! These should probably be set and get functions rather than 
 ! direct access
 
-public :: restart_stub, &
-          prior_diagnostic_file, &
-          post_diagnostic_file, &
-          prior_mean_inf_file, &
-          prior_sd_inf_file, &
-          post_mean_inf_file, &
-          post_sd_inf_file
+public :: io_filenames_init, restart_files_in, restart_files_out, extras_in, extras_out
 
 ! How do people name there restart files?
 ! What about domains?
-character(len=256) :: restart_stub = 'restart'
+integer, parameter :: max_num_files = 500
+integer, parameter :: max_num_domains = 5
 
-character(len=256) :: prior_diagnostic_file = 'Prior_diag'
-character(len=256) :: post_diagnostic_file = 'Posterior_diag'
 
-character(len=256) :: prior_mean_inf_file = 'prior_inf_ic_mean'
-character(len=256) :: prior_sd_inf_file   = 'prior_inf_ic_sd'
-character(len=256) :: post_mean_inf_file  = 'post_inf_ic_mean'
-character(len=256) :: post_sd_inf_file    = 'post_inf_ic_sd'
+! Why not have an in and an out list?
+character(len=2048) :: restart_files_in(max_num_files)  = '' ! list of input restart files
+character(len=2048) :: restart_files_out(max_num_files) = '' ! list of output restart files
+
+character(len=2048) :: extras_in(6*max_num_domains) ! list of extras in
+character(len=2048) :: extras_out(6*max_num_domains) ! list of extras out
+
+namelist / io_filenames_nml / restart_files_in, restart_files_out, extras_in, extras_out
 
 contains
 
+!----------------------------------
+subroutine io_filenames_init()
+
+integer :: iunit, io
+
+!call register_module(source, revision, revdate)
+
+! Read the namelist entry
+call find_namelist_in_file("input.nml", "io_filenames_nml", iunit)
+read(iunit, nml = io_filenames_nml, iostat = io)
+call check_namelist_read(iunit, io, "io_filenames_nml")
+
+! Write the namelist values to the log file
+if (do_nml_file()) write(nmlfileunit, nml=io_filenames_nml)
+if (do_nml_term()) write(     *     , nml=io_filenames_nml)
+
+end subroutine io_filenames_init
+!----------------------------------
 
 !> @}
 end module io_filenames_mod
