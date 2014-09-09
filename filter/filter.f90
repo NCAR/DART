@@ -1469,9 +1469,9 @@ call variables_domains(num_variables_in_state, num_domains)
 
 ! transpose and write out the data
 dart_index = 1
-do domain = 1, num_domains
-   call transpose_write(state_ens_handle, restart_out_file_name, domain, dart_index)
-enddo
+!do domain = 1, num_domains
+   call transpose_write(state_ens_handle, restart_out_file_name, num_domains, dart_index)
+!enddo
 
 
 end subroutine filter_write_restart_direct
