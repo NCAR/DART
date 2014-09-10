@@ -24,29 +24,33 @@ private
 ! These should probably be set and get functions rather than 
 ! direct access
 
-public :: io_filenames_init, restart_files_in, restart_files_out, extras_in, extras_out
+public :: io_filenames_init, restart_files_in, restart_files_out
 
 ! How do people name there restart files?
 ! What about domains?
-integer, parameter :: max_num_files = 500
-integer, parameter :: max_num_domains = 5
+integer, parameter :: max_num_files = 5000
 
+! public arrays of filenames. Do we need arrays for restarts AND extras?
+character(len=2048), allocatable :: restart_files_in(:,:), restart_files_out(:,:)
 
-! Why not have an in and an out list?
-character(len=2048) :: restart_files_in(max_num_files)  = '' ! list of input restart files
-character(len=2048) :: restart_files_out(max_num_files) = '' ! list of output restart files
+! Namelist options
+integer :: num_restarts
+integer :: num_domains
 
-character(len=2048) :: extras_in(6*max_num_domains) ! list of extras in
-character(len=2048) :: extras_out(6*max_num_domains) ! list of extras out
+character(len=2048) :: restart_files_in_list(max_num_files)  = '' ! list of input restart files
+character(len=2048) :: restart_files_out_list(max_num_files) = '' ! list of output restart files
 
-namelist / io_filenames_nml / restart_files_in, restart_files_out, extras_in, extras_out
+! Should probably get num_domains, num_restarts from elsewhere. In here for now
+namelist / io_filenames_nml / num_domains, num_restarts, restart_files_in_list, restart_files_out_list
 
 contains
 
 !----------------------------------
+!> read namelist and set up filename arrays
 subroutine io_filenames_init()
 
 integer :: iunit, io
+integer :: dom, num_files
 
 !call register_module(source, revision, revdate)
 
@@ -59,7 +63,26 @@ call check_namelist_read(iunit, io, "io_filenames_nml")
 if (do_nml_file()) write(nmlfileunit, nml=io_filenames_nml)
 if (do_nml_term()) write(     *     , nml=io_filenames_nml)
 
+num_files = num_restarts + 6
+
+allocate(restart_files_in(num_files, num_domains))
+allocate(restart_files_out(num_files, num_domains))
+
+do dom = 1, num_domains
+   restart_files_in(:, dom)  = restart_files_in_list( (dom-1)*num_files +1 : (dom-1)*num_files + num_files)
+   restart_files_out(:, dom) = restart_files_out_list( (dom-1)*num_files +1 : (dom-1)*num_files + num_files)
+enddo
+
 end subroutine io_filenames_init
+!----------------------------------
+
+!----------------------------------
+subroutine end_io_filenames()
+
+deallocate(restart_files_in, restart_files_out)
+
+end subroutine end_io_filenames
+
 !----------------------------------
 
 !> @}

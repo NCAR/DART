@@ -369,8 +369,6 @@ call filter_read_restart_direct(ens_handle, time1, ens_size) ! This is annoying
 
 !call test_state_copies(ens_handle, 'after_read')
 
-!goto 10022
-
 ! Read in or initialize smoother restarts as needed
 if(ds) then
    call init_smoother(ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
@@ -943,8 +941,6 @@ if(my_task_id() == 0) then
    write(logfileunit,*)
 endif
 
-10022 continue
-
 ! YOU CAN NO LONGER WRITE TO THE LOG FILE BELOW THIS!
 ! After the call to finalize below, you cannot write to
 ! any fortran unit number.
@@ -1445,8 +1441,10 @@ endif
 state_ens_handle%time = time
 
 ! read in the data and transpose
-dart_index = 1 ! where to start in state_ens_handle%copies - this is modified by read_transpose - not anymore!
-call read_transpose(state_ens_handle, restart_in_file_name, num_domains, dart_index)
+dart_index = 1 ! where to start in state_ens_handle%copies - this is modified by read_transpose
+do domain = 1, num_domains
+   call read_transpose(state_ens_handle, restart_in_file_name, domain, dart_index)
+enddo
 
 deallocate(variable_list)
 
@@ -1469,9 +1467,9 @@ call variables_domains(num_variables_in_state, num_domains)
 
 ! transpose and write out the data
 dart_index = 1
-!do domain = 1, num_domains
-   call transpose_write(state_ens_handle, restart_out_file_name, num_domains, dart_index)
-!enddo
+do domain = 1, num_domains
+   call transpose_write(state_ens_handle, restart_out_file_name, domain, dart_index)
+enddo
 
 
 end subroutine filter_write_restart_direct

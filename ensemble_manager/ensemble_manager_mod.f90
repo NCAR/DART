@@ -21,8 +21,7 @@ use utilities_mod,     only : register_module, do_nml_file, do_nml_term, &
                               check_namelist_read, timestamp, set_output
 use assim_model_mod,   only : aread_state_restart, awrite_state_restart, &
                               open_restart_read, open_restart_write,     &
-                              close_restart, pert_model_state,           &
-                              get_number_domains
+                              close_restart, pert_model_state
 use time_manager_mod,  only : time_type, set_time
 use random_seq_mod,    only : random_seq_type, init_random_seq, random_gaussian
 use mpi_utilities_mod, only : task_count, my_task_id, send_to, receive_from, &
@@ -54,7 +53,7 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
           prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
           prepare_to_update_copies,   print_ens_handle,                                 &
-          map_task_to_pe,             map_pe_to_task, allow_complete_state, single_restart_file_in, single_restart_file_out, limit_procs
+          map_task_to_pe,             map_pe_to_task, allow_complete_state, single_restart_file_in, single_restart_file_out
 
 !type ensemble_type
 !   !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
@@ -125,17 +124,13 @@ logical  :: debug = .false.
 ! To use parallel reads and writes of restart files and diagnostics
 logical  :: no_complete_state = .false.
 
-! limit_procs - was in state_vector_io_mod, in here for now
-integer :: limit_procs = 100000!< how many processors you want involved in each transpose.
-
 namelist / ensemble_manager_nml / single_restart_file_in,  &
                                   single_restart_file_out, &
                                   perturbation_amplitude,  &
                                   communication_configuration, &
                                   layout, tasks_per_node,  &
                                   debug, flag_unneeded_transposes, &
-                                  no_complete_state, &
-                                  limit_procs
+                                  no_complete_state
                                   
 !-----------------------------------------------------------------
 
@@ -199,14 +194,12 @@ endif
 allocate(ens_handle%task_to_pe_list(num_pes))
 allocate(ens_handle%pe_to_task_list(num_pes))
 
-! Set the global storage bounds for the number of copies and variables
-ens_handle%num_copies = num_copies
-ens_handle%num_vars = num_vars
-
-
 call assign_tasks_to_pes(ens_handle, num_copies, ens_handle%layout_type)
 ens_handle%my_pe = map_task_to_pe(ens_handle, my_task_id())
 
+! Set the global storage bounds for the number of copies and variables
+ens_handle%num_copies = num_copies
+ens_handle%num_vars = num_vars
 
 ! For debugging, error checking
 ens_handle%id_num = global_counter
@@ -1740,7 +1733,6 @@ endif
 if (layout_type == 1) then 
    call simple_layout(ens_handle, num_pes)
 else
-   !call round_robin_limit_procs(ens_handle)
    call round_robin(ens_handle)
 endif
 
@@ -1796,132 +1788,6 @@ call create_pe_to_task_list(ens_handle)
 
 end subroutine round_robin
 
-!-------------------------------------------------------------------------------
-!> Aim: to spread out tasks that are readers when you have multiple groups.
-!> see module state_vector_io_mod variable limit_procs
-!> Need to know: limit_procs and number of domains.
-!>
-!> Problem: ens_handle%copies does not exist yet.
-subroutine round_robin_limit_procs(ens_handle)
-
-type(ensemble_type),   intent(inout) :: ens_handle
-
-integer              :: last_node_task_number, num_nodes
-integer              :: i, j
-integer, allocatable :: count(:)
-integer, allocatable :: readers(:) !< which pes are reading.
-integer              :: group !< loop variable
-integer              :: num_groups, num_readers, remainder, num_domains
-integer              :: dummy
-
-
-! Find number of nodes and find number of tasks on last node
-call calc_tasks_on_each_node(num_nodes, last_node_task_number)
-allocate(count(num_nodes))
-
-! get number of domains
-num_domains = get_number_domains()
-
-! find number of readers
-! This is duplicate of code in state_vector_io_mod.f90
-if (limit_procs >= task_count()) then
-   num_groups = 1
-else
-   num_groups = task_count() / limit_procs
-   remainder = mod(task_count(), limit_procs)
-
-   if(remainder > 0 ) then ! the last group has a different size
-      if(remainder > ens_handle%num_copies*num_domains) then
-         num_groups = num_groups + 1
-      endif
-   endif
-endif
-
-num_readers = num_groups*ens_handle%num_copies*num_domains
-
-allocate(readers(num_readers))
-
-!if(my_task_id()==0) print*, 'num_groups', num_groups, 'ens_handle%num_copies', ens_handle%num_copies, 'num_domains', num_domains
-
-i = 1
-do group = 0, num_groups -1
-   do j = 0, ens_handle%num_copies*num_domains -1
-      readers(i) = group*limit_procs + j
-      i = i + 1
-   enddo
-enddo
-
-!if(my_task_id()==0) print*, 'readers', readers
-
-count(:) = 1  ! keep track of the pes assigned to each node
-i = 1         ! keep track of the # of pes assigned
-
-! load up the nodes with readers
-do dummy = 1, num_readers ! until you run out of readers
-
-   if(i > num_readers) exit
-
-   do j = 1, num_nodes ! loop around the nodes
-
-      if(i > num_readers) exit
-
-      if(j == num_nodes) then  ! special case for the last node - it could have fewer tasks than the other nodes
-         if(count(j) <= last_node_task_number) then
-            ens_handle%task_to_pe_list(tasks_per_node*(j-1) + count(j)) = readers(i)
-            count(j) = count(j) + 1
-            i = i + 1
-         endif
-      else
-         if(count(j) <= tasks_per_node) then
-            ens_handle%task_to_pe_list(tasks_per_node*(j-1) + count(j)) = readers(i)
-            count(j) = count(j) + 1
-            i = i + 1
-         endif
-      endif
-
-   enddo
-enddo
-
-
-i = 0 ! start at 0 again to fill up nodes with the rest of the processors
-do while (i < num_pes)   ! until you run out of processors
-
-   if (any(readers == i)) then ! reader -> already on a node
-      i = i + 1
-      cycle
-   endif
-
-   do j = 1, num_nodes   ! loop around the nodes
-         if(j == num_nodes) then  ! special case for the last node - it could have fewer tasks than the other nodes
-            if (any(readers == i)) then ! reader -> already on a node
-               i = i + 1
-               cycle
-            endif
-            if(count(j) <= last_node_task_number) then
-               ens_handle%task_to_pe_list(tasks_per_node*(j-1) + count(j)) = i
-               count(j) = count(j) + 1
-               i = i + 1
-            endif
-      else
-         if(count(j) <= tasks_per_node) then
-            if (any(readers == i)) then ! reader -> already on a node
-               i = i + 1
-               cycle
-            endif
-            ens_handle%task_to_pe_list(tasks_per_node*(j-1) + count(j)) = i
-            count(j) = count(j) + 1
-            i = i + 1
-         endif
-      endif
-
-   enddo
-enddo
-
-deallocate(count, readers)
-                             
-call create_pe_to_task_list(ens_handle)
-
-end subroutine round_robin_limit_procs
 !-------------------------------------------------------------------------------
 
 subroutine create_pe_to_task_list(ens_handle)
