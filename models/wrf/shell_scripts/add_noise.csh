@@ -129,10 +129,10 @@ EOF
 
      if ($transition_relative_time <= 0) then
        echo "(1) member ${ensemble_member} calling add_pert_where_high_refl"
-       ../add_pert_where_high_refl ../refl_obs_${wrfsecs}_${wrfdays}.txt wrfinput_d01 $lh $lv $u_noise_1 $v_noise_1 $w_noise_1 $t_noise_1 $td_noise_1 $qv_noise_1
+       ../add_pert_where_high_refl ../refl_obs_${wrfsecs}_${wrfdays}.txt wrfinput_d01 $lh $lv $u_noise_1 $v_noise_1 $w_noise_1 $t_noise_1 $td_noise_1 $qv_noise_1 $ensemble_member $wrfdays $wrfsecs
      else
        echo "(2) member ${ensemble_member} calling add_pert_where_high_refl"
-       ../add_pert_where_high_refl ../refl_obs_${wrfsecs}_${wrfdays}.txt wrfinput_d01 $lh $lv $u_noise_2 $v_noise_2 $w_noise_2 $t_noise_2 $td_noise_2 $qv_noise_2
+       ../add_pert_where_high_refl ../refl_obs_${wrfsecs}_${wrfdays}.txt wrfinput_d01 $lh $lv $u_noise_2 $v_noise_2 $w_noise_2 $t_noise_2 $td_noise_2 $qv_noise_2 $ensemble_member $wrfdays $wrfsecs
      endif
 
 
