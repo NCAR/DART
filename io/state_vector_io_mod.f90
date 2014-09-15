@@ -54,7 +54,7 @@ use utilities_mod,        only : error_handler, E_ERR, nc_check, check_namelist_
 use assim_model_mod,      only : get_model_size, aread_state_restart, awrite_state_restart, &
                                  open_restart_read, open_restart_write, close_restart
 ! should you go through assim_model_mod?
-use model_mod,            only : read_file_name, write_file_name
+!use model_mod,            only : read_file_name, write_file_name
 
 use time_manager_mod,     only : time_type
 

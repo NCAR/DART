@@ -4,11 +4,12 @@ assim_tools/assim_tools_mod.f90
 common/types_mod.f90
 cov_cutoff/cov_cutoff_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
+ensemble_manager/data_structure_mod.f90
 filter/filter.f90
 location/threed_sphere/location_mod.f90
 models/POP/dart_pop_mod.f90
 models/POP/model_mod.f90
-mpi_utilities/null_mpi_utilities_mod.f90
+mpi_utilities/mpi_utilities_mod.f90
 obs_def/obs_def_mod.f90
 obs_kind/obs_kind_mod.f90
 obs_model/obs_model_mod.f90
@@ -19,3 +20,8 @@ smoother/smoother_mod.f90
 sort/sort_mod.f90
 time_manager/time_manager_mod.f90
 utilities/utilities_mod.f90
+distributed/distributed_state_mod.f90
+distributed/cray_win_mod.f90
+io/state_vector_io_mod.f90
+io/io_filenames_mod.f90
+models/null_vert_convert2.f90
