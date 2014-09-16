@@ -96,7 +96,7 @@
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !  case(HFRADAR_RADIAL_VELOCITY)
-!     call get_expected_hf_radial_vel(state, location, obs_def%key, obs_val, istatus)
+!     call get_expected_hf_radial_vel(location, obs_def%key, istatus, expected_obs, state_ens_handle)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !-----------------------------------------------------------------------------
 
@@ -132,9 +132,11 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              ascii_file_format
 use     location_mod, only : location_type, write_location, read_location, &
                              interactive_location, get_location
-use  assim_model_mod, only : interpolate
+use  assim_model_mod, only : interpolate_distrib
 use     obs_kind_mod, only : KIND_U_CURRENT_COMPONENT, &
                              KIND_V_CURRENT_COMPONENT
+
+use data_structure_mod, only : ensemble_type, copies_in_window
 
 implicit none
 private
@@ -594,16 +596,16 @@ end subroutine interactive_beam_angle
 !----------------------------------------------------------------------
 
 
-subroutine get_expected_hf_radial_vel(state_vector, location, velkey, &
-                                   radial_vel, istatus)
+subroutine get_expected_hf_radial_vel(location, velkey, &
+                                    istatus, radial_vel, state_ens_handle)
 
 ! This is the main forward operator routine for radar Doppler velocity.
 
-real(r8),            intent(in)  :: state_vector(:)
+type(ensemble_type), intent(in)  :: state_ens_handle
 type(location_type), intent(in)  :: location
 integer,             intent(in)  :: velkey
-real(r8),            intent(out) :: radial_vel
-integer,             intent(out) :: istatus
+real(r8),            intent(out) :: radial_vel(:)
+integer,             intent(out) :: istatus(:)
 
 
 ! Given a location and the state vector from one of the ensemble members, 
@@ -618,21 +620,32 @@ integer,             intent(out) :: istatus
 !  return_value = U*cos(angle) + V*sin(angle)
 
 
-real(r8) :: u, v
-real(r8) :: debug_location(3) 
+real(r8), allocatable :: u(:), v(:)
+integer,  allocatable :: temp_status(:)
+real(r8) :: debug_location(3)
+integer  :: ens_size, e
+
+ens_size = copies_in_window(state_ens_handle)
+
+allocate(u(ens_size), v(ens_size), temp_status(ens_size))
 
 if ( .not. module_initialized ) call initialize_module
 
 ! Simple error check on key number before accessing the array
 call velkey_out_of_range(velkey,'get_expected_hf_radial_vel')
 
-call interpolate(state_vector, location, KIND_U_CURRENT_COMPONENT, u, istatus)
-if (istatus /= 0) then
+call interpolate_distrib(location, KIND_U_CURRENT_COMPONENT, istatus, u, state_ens_handle)
+
+if (all(istatus /= 0)) then
    radial_vel = missing_r8
    return
 endif
-call interpolate(state_vector, location, KIND_V_CURRENT_COMPONENT, v, istatus)
-if (istatus /= 0) then
+
+call interpolate_distrib(location, KIND_V_CURRENT_COMPONENT, temp_status, v, state_ens_handle)
+do e = 1, ens_size
+   if( temp_status(e) /=0 ) istatus(e) = temp_status(e)
+enddo
+if (all(istatus /= 0)) then
    radial_vel = missing_r8
    return
 endif
@@ -659,6 +672,8 @@ if (debug) then
    print *, 'final radial_vel: ', radial_vel
    print *, 'istatus: ', istatus
 endif
+
+deallocate(u, v, temp_status)
 
 end subroutine get_expected_hf_radial_vel
 
