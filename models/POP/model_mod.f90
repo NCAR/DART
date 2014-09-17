@@ -863,7 +863,8 @@ endif
 ! For Sea Surface Height or Pressure don't need the vertical coordinate
 ! SSP needs to be converted to a SSH if height is required.
 if( vert_is_surface(location) ) then
-   call lon_lat_interpolate(state_ens_handle, llon, llat, obs_type, 1, expected_obs, istatus)
+   ! HK CHECK surface observations
+   call lon_lat_interpolate(state_ens_handle, base_offset, llon, llat, obs_type, 1, expected_obs, istatus)
    do e = 1, ens_size
       if (convert_to_ssh .and. (istatus(e) == 0)) then !HK why check istatus?
          expected_obs(e) = expected_obs(e) / 980.6_r8   ! POP uses CGS units
@@ -912,14 +913,15 @@ end subroutine model_interpolate_distrib
 
 !------------------------------------------------------------------
 !> Is height ens_size? Should quad status be ens_size?
-subroutine lon_lat_interpolate(state_ens_handle, lon, lat, var_type, height, expected_obs, istatus)
+subroutine lon_lat_interpolate(state_ens_handle, offset, lon, lat, var_type, height, expected_obs, istatus)
  type(ensemble_type), intent(in) :: state_ens_handle
+ integer,  intent(in) :: offset ! Not sure if this is the best way to do this
  real(r8), intent(in) :: lon, lat
  integer,  intent(in) :: var_type, height
  real(r8), intent(out) :: expected_obs(:)
  integer,  intent(out) :: istatus(:)
 
-! Subroutine to interpolate to a lon lat location given the state vector 
+! Subroutine to interpolate to a lon lat location given the state vector
 ! for that level, x. This works just on one horizontal slice.
 ! NOTE: Using array sections to pass in the x array may be inefficient on some
 ! compiler/platform setups. Might want to pass in the entire array with a base
@@ -936,6 +938,7 @@ real(r8) :: lon_fract, lat_fract
 logical  :: masked
 integer  :: quad_status
 integer  :: ens_size
+integer  :: e
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1042,25 +1045,28 @@ if(lon_top > nx) lon_top = 1
 
 ! Get the values at the four corners of the box or quad
 ! Corners go around counterclockwise from lower left
-p(1, :) = get_val(lon_bot, lat_bot, nx, state_ens_handle, var_type, height, masked)
+p(1, :) = get_val(lon_bot, lat_bot, nx, state_ens_handle, offset, ens_size, var_type, height, masked)
 if(masked) then
    istatus = 3
    return
 endif
 
-p(2, :) = get_val(lon_top, lat_bot, nx, state_ens_handle, var_type, height, masked)
+
+p(2, :) = get_val(lon_top, lat_bot, nx, state_ens_handle, offset, ens_size, var_type, height, masked)
 if(masked) then
    istatus = 3
    return
 endif
 
-p(3, :) = get_val(lon_top, lat_top, nx, state_ens_handle, var_type, height, masked)
+
+
+p(3, :) = get_val(lon_top, lat_top, nx, state_ens_handle, offset, ens_size, var_type, height, masked)
 if(masked) then
    istatus = 3
    return
 endif
 
-p(4, :) = get_val(lon_bot, lat_top, nx, state_ens_handle, var_type, height, masked)
+p(4, :) = get_val(lon_bot, lat_top, nx, state_ens_handle, offset, ens_size, var_type, height, masked)
 if(masked) then
    istatus = 3
    return
@@ -1068,7 +1074,9 @@ endif
 
 ! Full bilinear interpolation for quads
 if(dipole_grid) then
-   call quad_bilinear_interp(lon, lat, x_corners, y_corners, p, ens_size, expected_obs)
+   do e = 1, ens_size
+      call quad_bilinear_interp(lon, lat, x_corners, y_corners, p(:,e), ens_size, expected_obs(e))
+   enddo
 else
    ! Rectangular biliear interpolation
    xbot = p(1, :) + lon_fract * (p(2, :) - p(1, :))
@@ -1083,11 +1091,13 @@ end subroutine lon_lat_interpolate
 
 !------------------------------------------------------------
 
-function get_val(lon_index, lat_index, nlon, state_ens_handle, var_type, height, masked)
+function get_val(lon_index, lat_index, nlon, state_ens_handle, offset, ens_size, var_type, height, masked)
  integer,     intent(in) :: lon_index, lat_index, nlon, var_type, height
  type(ensemble_type), intent(in) :: state_ens_handle
+ integer,             intent(in) :: offset
+ integer,             intent(in) :: ens_size
  logical,    intent(out) :: masked
- real(r8)                :: get_val
+ real(r8)                :: get_val(ens_size)
 
 ! Returns the value from a single level array given the lat and lon indices
 ! 'masked' returns true if this is NOT a valid grid location (e.g. land, or
@@ -1104,7 +1114,8 @@ endif
 
 ! Layout has lons varying most rapidly
 !get_val = x((lat_index - 1) * nlon + lon_index)
-call get_state(get_val, ((lat_index - 1) * nlon + lon_index), state_ens_handle)
+! The x above is only a horizontal slice, not the whole state.   HK WHY -1?
+call get_state(get_val, ((lat_index - 1) * nlon + lon_index)+offset-1, state_ens_handle)
 
 ! this is a valid ocean water cell, not land or below ocean floor
 masked = .false.
@@ -1460,7 +1471,7 @@ subroutine quad_bilinear_interp(lon_in, lat, x_corners_in, y_corners, &
 
  real(r8),  intent(in) :: lon_in, lat, x_corners_in(4), y_corners(4), p(4)
  integer,   intent(in) :: ens_size
- real(r8), intent(out) :: expected_obs(:)
+ real(r8), intent(out) :: expected_obs
 
 ! Given a longitude and latitude (lon_in, lat), the longitude and
 ! latitude of the 4 corners of a quadrilateral and the values at the
@@ -1546,13 +1557,11 @@ expected_obs = a + r(1)*lon + r(2)*lat + r(3)*lon*lat
 ! Avoid exceeding maxima or minima as stopgap for poles problem
 ! When doing bilinear interpolation in quadrangle, can get interpolated
 ! values that are outside the range of the corner values
-do e = 1, ens_size
-   if(expected_obs(e) > maxval(p)) then
-      expected_obs(e) = maxval(p)
-   else if(expected_obs(e) < minval(p)) then
-      expected_obs(e) = minval(p)
-   endif
-enddo
+if(expected_obs > maxval(p)) then
+   expected_obs = maxval(p)
+else if(expected_obs < minval(p)) then
+   expected_obs = minval(p)
+endif
 !********
 
 end subroutine quad_bilinear_interp
@@ -3248,9 +3257,11 @@ if(hstatus /= 0) then
 endif
 
 ! salinity - in msu (kg/kg).  converter will want psu (g/kg).
+! I'm not sure about this start_index stuff.
 call do_interp(state_ens_handle, start_index(S_index), hgt_bot, hgt_top, hgt_fract, llon, llat, &
                KIND_SALINITY, salinity_val, temp_status)
-temp_status = istatus
+ istatus = temp_status
+
 if(all(istatus /= 0)) return
 if (debug > 8) print *, 'salinity: ', salinity_val
 
@@ -3314,7 +3325,7 @@ offset = base_offset + (hgt_bot - 1) * nx * ny
 if (debug > 6) &
    print *, 'bot, field, abs offset: ', hgt_bot, base_offset, offset
 
-call lon_lat_interpolate(state_ens_handle, llon, llat, obs_type, hgt_bot, bot_val, temp_status)
+call lon_lat_interpolate(state_ens_handle, offset, llon, llat, obs_type, hgt_bot, bot_val, temp_status)
 ! Failed istatus from interpolate means give up
 istatus = temp_status
 if(all(istatus /= 0)) return
@@ -3327,7 +3338,7 @@ offset = base_offset + (hgt_top - 1) * nx * ny
 if (debug > 6) &
    print *, 'top, field, abs offset: ', hgt_top, base_offset, offset
 
-call lon_lat_interpolate(state_ens_handle, llon, llat, obs_type, hgt_top, top_val, temp_status)
+call lon_lat_interpolate(state_ens_handle, offset, llon, llat, obs_type, hgt_top, top_val, temp_status)
 do e = 1, ens_size
    if(temp_status(e) /= 0) istatus(e) = temp_status(e)
 enddo
@@ -3547,7 +3558,7 @@ function info_file_name(domain)
 integer, intent(in) :: domain
 character(len=256)  :: info_file_name
 
-write(info_file_name, '(A, i2.2, A)') 'wrfinput_d', domain
+write(info_file_name, '(A)') 'pop.r.nc'
 
 
 end function info_file_name
