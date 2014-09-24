@@ -142,8 +142,6 @@ call check_namelist_read(iunit, io, "state_vector_io_nml")
 if (do_nml_file()) write(nmlfileunit, nml=state_vector_io_nml)
 if (do_nml_term()) write(     *     , nml=state_vector_io_nml)
 
-call io_filenames_init()
-
 end subroutine state_vector_io_init
 
 !-------------------------------------------------

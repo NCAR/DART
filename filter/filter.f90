@@ -71,6 +71,8 @@ use state_vector_io_mod,   only : read_transpose, transpose_write, get_state_var
 
 use model_mod,            only : variables_domains, fill_variable_list, info_file_name
 
+use io_filenames_mod,         only : io_filenames_init
+
 use mpi
 
 
@@ -1419,6 +1421,8 @@ integer                         :: num_variables_in_state
 ! to start with, assume same variables in each domain - this will not always be the case
 ! If they are not in a domain, just set lengths to zero?
 call variables_domains(num_variables_in_state, num_domains)
+call io_filenames_init(ens_size, num_domains)
+
 allocate(variable_list(num_variables_in_state))
 
 variable_list = fill_variable_list(num_variables_in_state)
