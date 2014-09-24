@@ -141,8 +141,7 @@ public ::  get_model_size,                    &
            variables_domains,                 &
            fill_variable_list,                &
            get_vert, set_vert, set_which_vert, &
-           info_file_name, read_file_name,  &
-           write_file_name
+           info_file_name, construct_file_name
 
 !  public stubs 
 public ::  adv_1step,       &
@@ -198,14 +197,6 @@ end interface
 
 interface get_model_height_profile_distrib
    module procedure get_model_height_profile_distrib_fwd, get_model_height_profile_distrib_mean
-end interface
-
-interface write_file_name
-   module procedure write_file_name_copy, write_file_name_no_copy
-end interface
-
-interface read_file_name
-   module procedure read_file_name_copy, read_file_name_no_copy
 end interface
 
 ! HK ? interp_4pressure interface needed?
@@ -8503,58 +8494,20 @@ character(len=256)  :: info_file_name
 
 write(info_file_name, '(A, i2.2, A)') 'wrfinput_d', domain
 
-
 end function info_file_name
 
 !--------------------------------------------------------------------
 !> construct restart file name for reading
-function read_file_name_copy(restart_file_in_name, domain, copy)
+function construct_file_name(stub, domain, copy)
 
-character(len=129), intent(in) :: restart_file_in_name
+character(len=512), intent(in) :: stub
 integer,            intent(in) :: domain
 integer,            intent(in) :: copy
-character(len=256)             :: read_file_name_copy
+character(len=1024)            :: construct_file_name
 
-write(read_file_name_copy, '(A, i2.2, A, i2.2)') 'wrfinput_d', domain, '.', copy
+write(construct_file_name, '(A, i2.2, A, i2.2, A)') TRIM(stub), domain, '.', copy, '.nc'
 
-end function read_file_name_copy
-
-!--------------------------------------------------------------------
-!> construct restart file name for reading
-function read_file_name_no_copy(restart_file_in_name, domain)
-
-character(len=129), intent(in) :: restart_file_in_name
-integer,            intent(in) :: domain
-character(len=256)             :: read_file_name_no_copy
-
-write(read_file_name_no_copy, '(A, A, i2.2, A)') trim(restart_file_in_name), '_old_d', domain, '.nc'
-
-end function read_file_name_no_copy
-
-!--------------------------------------------------------------------
-!> construct restart file name for writing
-function write_file_name_copy(restart_out_file_name, domain, copy)
-
-character(len=129), intent(in) :: restart_out_file_name
-integer,            intent(in) :: domain
-integer,            intent(in) :: copy
-character(len=256)             :: write_file_name_copy
-
-write(write_file_name_copy, '(A, i2.2, A, i2.2, A)') 'wrfinput_d', domain, '.', copy, '.nc'
-
-end function write_file_name_copy
-
-!--------------------------------------------------------------------
-!> construct restart file name for writing
-function write_file_name_no_copy(restart_out_file_name, domain)
-
-character(len=129), intent(in) :: restart_out_file_name
-integer,            intent(in) :: domain
-character(len=256)             :: write_file_name_no_copy
-
-write(write_file_name_no_copy, '(A, A, i2.2, A)') trim(restart_out_file_name), '_new_d', domain, '.nc'
-
-end function write_file_name_no_copy
+end function construct_file_name
 
 !--------------------------------------------------------------------
 

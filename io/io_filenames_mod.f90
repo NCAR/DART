@@ -16,6 +16,7 @@ module io_filenames_mod
 
 use utilities_mod, only : do_nml_file, nmlfileunit, do_nml_term, check_namelist_read, &
                           find_namelist_in_file
+use model_mod,     only : construct_file_name
 
 implicit none
 
@@ -34,11 +35,11 @@ integer, parameter :: max_num_files = 5000
 character(len=2048), allocatable :: restart_files_in(:,:), restart_files_out(:,:)
 
 ! Namelist options
-character(len=2048) :: restart_files_in_list(max_num_files)  = '' ! list of input restart files
-character(len=2048) :: restart_files_out_list(max_num_files) = '' ! list of output restart files
+character(len=512) :: restart_in_stub  = 'wrfinput.nc'
+character(len=512) :: restart_out_stub = '/Output/wrfinput.nc'
 
 ! Should probably get num_domains, num_restarts from elsewhere. In here for now
-namelist / io_filenames_nml / restart_files_in_list, restart_files_out_list
+namelist / io_filenames_nml / restart_in_stub, restart_out_stub
 
 contains
 
@@ -49,7 +50,7 @@ subroutine io_filenames_init(ens_size, num_domains)
 integer, intent(in) :: ens_size
 integer, intent(in) :: num_domains
 integer :: iunit, io
-integer :: dom, num_files
+integer :: dom, num_files, i
 
 !call register_module(source, revision, revdate)
 
@@ -68,8 +69,10 @@ allocate(restart_files_in(num_files, num_domains))
 allocate(restart_files_out(num_files, num_domains))
 
 do dom = 1, num_domains
-   restart_files_in(:, dom)  = restart_files_in_list( (dom-1)*num_files +1 : (dom-1)*num_files + num_files)
-   restart_files_out(:, dom) = restart_files_out_list( (dom-1)*num_files +1 : (dom-1)*num_files + num_files)
+   do i = 1, num_files  ! restarts
+      restart_files_in(i, dom)  = construct_file_name(restart_in_stub, dom, i)
+      restart_files_out(i, dom) = construct_file_name(restart_out_stub, dom, i)
+   enddo
 enddo
 
 end subroutine io_filenames_init
