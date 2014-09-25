@@ -337,6 +337,7 @@ call setup_read_write(ens_size +6)
 ! and inflation files in one step.
 
 ! Initialize the adaptive inflation module
+! This activates turn_read_copy_on
 call adaptive_inflate_init(ens_handle, prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
    inf_sd_initial_from_restart(1), inf_output_restart(1), inf_deterministic(1),       &
    inf_in_file_name(1), inf_out_file_name(1), inf_diag_file_name(1), inf_initial(1),  &
@@ -366,8 +367,9 @@ endif
 call trace_message('After  initializing inflation')
 
 ! Read in restart files and initialize the ensemble storage
-call turn_read_copy_on(1, ens_size)
-call filter_read_restart_direct(ens_handle, time1, ens_size) ! This is annoying
+call turn_read_copy_on(1, ens_size) ! need to read all restart copies
+
+call filter_read_restart_direct(ens_handle, time1, ens_size) 
 
 !call test_state_copies(ens_handle, 'after_read')
 
@@ -780,6 +782,7 @@ AdvanceTime : do
       ! mean in the middle of the prior and posterior stuff
 
       call error_handler(E_MSG, 'skipping filter_state_space_diagnostics', 'parallel')
+      ! Aim: to write the mean and inflation copies as regular restarts at the end
 
    else ! send each copy to task 0
 

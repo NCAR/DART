@@ -214,6 +214,7 @@ if(inf_flavor >= 2) then
 
       if (.not. direct_netcdf_read ) then
          ! turn off restart reads, since they have already be read
+         !HK does this even work?
          call turn_read_copies_off(1, state_ens_handle%num_copies -6)
          call read_transpose(state_ens_handle, in_file_name, domain, junk_int)
       endif

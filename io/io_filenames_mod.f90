@@ -83,13 +83,13 @@ do dom = 1, num_domains
    ! sd
    write(restart_files_in(ens_size + 2, dom), '(A, i2.2, A)') 'sd_copy_d',   dom, '.nc'
    ! prior inf copy
-   write(restart_files_in(ens_size + 3, dom), '(A, i2.2, A)') trim(inflation_in(1)), dom, '.nc'
+   write(restart_files_in(ens_size + 3, dom), '(A, i2.2, A)') trim(inflation_in(1)), dom, '_mean.nc'
    ! prior inf sd copy
-   write(restart_files_in(ens_size + 4, dom), '(A, i2.2, A)') trim(inflation_in(1)), dom, '.nc'
+   write(restart_files_in(ens_size + 4, dom), '(A, i2.2, A)') trim(inflation_in(1)), dom, '_sd.nc'
    ! post inf copy
-   write(restart_files_in(ens_size + 5, dom), '(A, i2.2, A)') trim(inflation_in(2)), dom, '.nc'
+   write(restart_files_in(ens_size + 5, dom), '(A, i2.2, A)') trim(inflation_in(2)), dom, '_mean.nc'
    ! post inf sd copy
-   write(restart_files_in(ens_size + 6, dom), '(A, i2.2, A)') trim(inflation_in(2)), dom, '.nc'
+   write(restart_files_in(ens_size + 6, dom), '(A, i2.2, A)') trim(inflation_in(2)), dom, '_sd.nc'
 enddo
 
 ! output extras
@@ -99,13 +99,16 @@ do dom = 1, num_domains
    ! sd
    write(restart_files_out(ens_size + 2, dom), '(A, i2.2, A)') 'sd_copy_d',   dom, '.nc'
    ! prior inf copy
-   write(restart_files_out(ens_size + 3, dom), '(A, i2.2, A)') trim(inflation_out(1)), dom, '.nc'
+   write(restart_files_out(ens_size + 3, dom), '(A, i2.2, A)') trim(inflation_out(1)), dom, '_mean.nc'
    ! prior inf sd copy
-   write(restart_files_out(ens_size + 4, dom), '(A, i2.2, A)') trim(inflation_out(1)), dom, '.nc'
+   write(restart_files_out(ens_size + 4, dom), '(A, i2.2, A)') trim(inflation_out(1)), dom, '_sd.nc'
    ! post inf copy
-   write(restart_files_out(ens_size + 5, dom), '(A, i2.2, A)') trim(inflation_out(2)), dom, '.nc'
+   write(restart_files_out(ens_size + 5, dom), '(A, i2.2, A)') trim(inflation_out(2)), dom, '_mean.nc'
    ! post inf sd copy
-   write(restart_files_out(ens_size + 6, dom), '(A, i2.2, A)') trim(inflation_out(2)), dom, '.nc'
+   write(restart_files_out(ens_size + 6, dom), '(A, i2.2, A)') trim(inflation_out(2)), dom, '_sd.nc'
+   ! hanging around inflation mean after damping
+   !write(restart_files_out(ens_size + 7, dom), '(A, i2.2, A)') trim(inflation_out(2)), dom, '.nc'
+
 enddo
 
 end subroutine io_filenames_init
