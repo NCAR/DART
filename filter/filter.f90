@@ -69,9 +69,9 @@ use state_vector_io_mod,   only : read_transpose, transpose_write, get_state_var
                                   initialize_arrays_for_read, netcdf_filename, state_vector_io_init, &
                                   setup_read_write, turn_read_copy_on, turn_write_copy_on, turn_write_copies_off
 
-use model_mod,            only : variables_domains, fill_variable_list, info_file_name
+use model_mod,            only : variables_domains, fill_variable_list, info_file_name, get_model_time
 
-use io_filenames_mod,         only : io_filenames_init
+use io_filenames_mod,         only : io_filenames_init, restart_files_in
 
 use mpi
 
@@ -1406,7 +1406,7 @@ end subroutine filter_read_restart
 subroutine filter_read_restart_direct(state_ens_handle, time, ens_size)!, model_size)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
-type(time_type),     intent(in)    :: time
+type(time_type),     intent(inout) :: time
 integer,             intent(in)    :: ens_size
 !integer,             intent(out)   :: model_size
 
@@ -1421,7 +1421,7 @@ integer                         :: num_variables_in_state
 ! to start with, assume same variables in each domain - this will not always be the case
 ! If they are not in a domain, just set lengths to zero?
 call variables_domains(num_variables_in_state, num_domains)
-call io_filenames_init(ens_size, num_domains)
+call io_filenames_init(ens_size, num_domains, inf_in_file_name, inf_out_file_name)
 
 allocate(variable_list(num_variables_in_state))
 
@@ -1441,7 +1441,11 @@ else
    enddo
 endif
 
-! fix time for now
+! read time from input file if time not set in namelist
+if(init_time_days < 0) then
+   time = get_model_time(restart_files_in(1,1)) ! Any of the restarts?
+endif
+
 state_ens_handle%time = time
 
 ! read in the data and transpose

@@ -462,7 +462,7 @@ do i = 1, ens_handle%my_num_vars
    call get_state_meta_data_distrib(ens_handle, my_state_indx(i), my_state_loc(i), my_state_kind(i))
 end do
 finish = MPI_WTIME()
-print*, 'get state meta data time :', finish - start, 'rank ', my_task_id()
+!print*, 'get state meta data time :', finish - start, 'rank ', my_task_id()
 
 !call test_get_state_meta_data(my_state_loc, ens_handle%my_num_vars)
 

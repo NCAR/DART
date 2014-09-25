@@ -40,7 +40,8 @@ use         types_mod, only : r8, deg2rad, missing_r8, ps0, earth_radius, &
                               gas_constant, gas_constant_v, gravity, pi,  &
                               digits12
 
-use  time_manager_mod, only : time_type, set_time, set_calendar_type, GREGORIAN
+use  time_manager_mod, only : time_type, set_time, set_calendar_type, GREGORIAN,&
+                              set_date
 
 use      location_mod, only : location_type, get_location, set_location, &
                               horiz_dist_only, &
@@ -141,7 +142,8 @@ public ::  get_model_size,                    &
            variables_domains,                 &
            fill_variable_list,                &
            get_vert, set_vert, set_which_vert, &
-           info_file_name, construct_file_name
+           info_file_name, construct_file_name, &
+           get_model_time
 
 !  public stubs 
 public ::  adv_1step,       &
@@ -8509,6 +8511,46 @@ write(construct_file_name, '(A, i2.2, A, i2.2, A)') TRIM(stub), domain, '.', cop
 
 end function construct_file_name
 
+!--------------------------------------------------------------------
+!> read the time from the input file
+!> stolen from wrf_to_dart.f90
+function get_model_time(filename)
+
+character(len=1024) :: filename
+integer             :: year, month, day, hour, minute, second
+integer             :: ret !< netcdf return code
+integer             :: ndims, dimids(2), ivtype, ncid, var_id
+character(len=80)   :: varname
+character(len=19)   :: timestring
+integer             :: i,  idims(2)
+
+type(time_type) :: get_model_time
+
+
+call nc_check( nf90_open(filename, NF90_NOWRITE, ncid), &
+                  'opening', filename )
+
+call nc_check( nf90_inq_varid(ncid, "Times", var_id), 'wrf_to_dart', &
+               'inq_varid Times' )
+call nc_check( nf90_inquire_variable(ncid, var_id, varname, xtype=ivtype, &
+               ndims=ndims, dimids=dimids), 'wrf_to_dart', &
+               'inquire_variable Times' )
+
+do i=1,ndims ! isnt this just 1?
+   call nc_check( nf90_inquire_dimension(ncid, dimids(i), &
+                   len=idims(i)),'wrf_to_dart','inquire_dimensions Times' )
+enddo
+
+call nc_check( nf90_get_var(ncid, var_id, timestring, &
+               start = (/ 1, idims(2) /)), 'wrf_to_dart','get_var Times' )
+
+call get_wrf_date(timestring, year, month, day, hour, minute, second)
+get_model_time = set_date(year, month, day, hour, minute, second)
+
+
+call nc_check( nf90_close(ncid) , 'closing', filename)
+
+end function get_model_time
 !--------------------------------------------------------------------
 
 end module model_mod

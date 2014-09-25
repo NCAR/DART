@@ -45,12 +45,13 @@ contains
 
 !----------------------------------
 !> read namelist and set up filename arrays
-subroutine io_filenames_init(ens_size, num_domains)
+subroutine io_filenames_init(ens_size, num_domains, inflation_in, inflation_out)
 
 integer, intent(in) :: ens_size
 integer, intent(in) :: num_domains
 integer :: iunit, io
 integer :: dom, num_files, i
+character(len = 129) :: inflation_in(2), inflation_out(2)
 
 !call register_module(source, revision, revdate)
 
@@ -73,6 +74,38 @@ do dom = 1, num_domains
       restart_files_in(i, dom)  = construct_file_name(restart_in_stub, dom, i)
       restart_files_out(i, dom) = construct_file_name(restart_out_stub, dom, i)
    enddo
+enddo
+
+! input extras
+do dom = 1, num_domains
+   ! mean
+   write(restart_files_in(ens_size + 1, dom), '(A, i2.2, A)') 'mean_copy_d', dom, '.nc'
+   ! sd
+   write(restart_files_in(ens_size + 2, dom), '(A, i2.2, A)') 'sd_copy_d',   dom, '.nc'
+   ! prior inf copy
+   write(restart_files_in(ens_size + 3, dom), '(A, i2.2, A)') trim(inflation_in(1)), dom, '.nc'
+   ! prior inf sd copy
+   write(restart_files_in(ens_size + 4, dom), '(A, i2.2, A)') trim(inflation_in(1)), dom, '.nc'
+   ! post inf copy
+   write(restart_files_in(ens_size + 5, dom), '(A, i2.2, A)') trim(inflation_in(2)), dom, '.nc'
+   ! post inf sd copy
+   write(restart_files_in(ens_size + 6, dom), '(A, i2.2, A)') trim(inflation_in(2)), dom, '.nc'
+enddo
+
+! output extras
+do dom = 1, num_domains
+   ! mean
+   write(restart_files_out(ens_size + 1, dom), '(A, i2.2, A)') 'mean_copy_d', dom, '.nc'
+   ! sd
+   write(restart_files_out(ens_size + 2, dom), '(A, i2.2, A)') 'sd_copy_d',   dom, '.nc'
+   ! prior inf copy
+   write(restart_files_out(ens_size + 3, dom), '(A, i2.2, A)') trim(inflation_out(1)), dom, '.nc'
+   ! prior inf sd copy
+   write(restart_files_out(ens_size + 4, dom), '(A, i2.2, A)') trim(inflation_out(1)), dom, '.nc'
+   ! post inf copy
+   write(restart_files_out(ens_size + 5, dom), '(A, i2.2, A)') trim(inflation_out(2)), dom, '.nc'
+   ! post inf sd copy
+   write(restart_files_out(ens_size + 6, dom), '(A, i2.2, A)') trim(inflation_out(2)), dom, '.nc'
 enddo
 
 end subroutine io_filenames_init
