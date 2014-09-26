@@ -71,7 +71,8 @@ use state_vector_io_mod,   only : read_transpose, transpose_write, get_state_var
 
 use model_mod,            only : variables_domains, fill_variable_list, info_file_name, get_model_time
 
-use io_filenames_mod,         only : io_filenames_init, restart_files_in
+use io_filenames_mod,         only : io_filenames_init, restart_files_in, &
+                                     query_diag_mean, query_diag_spread, query_diag_inf_mean, query_diag_inf_spread
 
 use mpi
 
@@ -204,9 +205,12 @@ integer                 :: in_obs_copy, obs_val_index
 integer                 :: output_state_mean_index, output_state_spread_index
 integer                 :: prior_obs_mean_index, posterior_obs_mean_index
 integer                 :: prior_obs_spread_index, posterior_obs_spread_index
-! Global indices into ensemble storage
+! Global indices into ensemble storage - why are these in filter?
 integer                 :: ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, PRIOR_INF_SD_COPY
 integer                 :: POST_INF_COPY, POST_INF_SD_COPY
+! to avoid writing the prior diag
+integer                 :: SPARE_COPY_MEAN, SPARE_COPY_SPREAD
+integer                 :: SPARE_COPY_INF_MEAN, SPARE_COPY_INF_SPREAD
 integer                 :: OBS_VAL_COPY, OBS_ERR_VAR_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
 integer                 :: OBS_MEAN_START, OBS_MEAN_END
 integer                 :: OBS_VAR_START, OBS_VAR_END, TOTAL_OBS_COPIES
@@ -214,6 +218,7 @@ integer                 :: input_qc_index, DART_qc_index
 integer                 :: mean_owner, mean_owners_index
 !HK
 integer :: owner, owners_index
+integer :: num_extras ! the extra ensemble copies
 
 !HK 
 doubleprecision start, finish ! for timing with MPI_WTIME
@@ -282,12 +287,22 @@ if(inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
    'Posterior observation space inflation (type 1) not supported', source, revision, revdate)
 
 ! Setup the indices into the ensemble storage
+num_extras = 10  ! six plus spare copies
+
+! state
 ENS_MEAN_COPY        = ens_size + 1
 ENS_SD_COPY          = ens_size + 2
 PRIOR_INF_COPY       = ens_size + 3
 PRIOR_INF_SD_COPY    = ens_size + 4
 POST_INF_COPY        = ens_size + 5
 POST_INF_SD_COPY     = ens_size + 6
+ ! Aim: to hang on to the prior_inf_copy which would have been written to the Prior_Diag.nc - and others if we need them
+SPARE_COPY_MEAN       = ens_size + 7
+SPARE_COPY_SPREAD     = ens_size + 8
+SPARE_COPY_INF_MEAN   = ens_size + 9
+SPARE_COPY_INF_SPREAD = ens_size + 10
+
+! observation
 OBS_ERR_VAR_COPY     = ens_size + 1
 OBS_VAL_COPY         = ens_size + 2
 OBS_KEY_COPY         = ens_size + 3
@@ -316,7 +331,7 @@ call trace_message('Before setting up space for ensembles')
 model_size = get_model_size()
 
 ! set up ensemble HK WATCH OUT putting this here.
-call init_ensemble_manager(ens_handle, ens_size + 6, model_size)
+call init_ensemble_manager(ens_handle, ens_size + num_extras, model_size)
 
 call trace_message('After  setting up space for ensembles')
 
@@ -331,7 +346,7 @@ call timestamp_message('Before reading in ensemble restart files')
 call filter_set_initial_time(time1)
 
 ! set up arrays for which copies to read/write
-call setup_read_write(ens_size +6)
+call setup_read_write(ens_size + num_extras)
 
 ! HK Moved initializing inflation to before read of restarts so you can read the restarts
 ! and inflation files in one step.
@@ -617,6 +632,15 @@ AdvanceTime : do
    call trace_message('Before prior state space diagnostics')
    call timestamp_message('Before prior state space diagnostics')
 
+   ! Store inflation mean copy in the spare copy. 
+   ! The spare copy is left alone until the end
+   ! shoving in four spare copies for now
+   ens_handle%copies(SPARE_COPY_MEAN, :)       = ens_handle%copies(ENS_MEAN_COPY, :)
+   ens_handle%copies(SPARE_COPY_SPREAD, :)     = ens_handle%copies(ENS_SD_COPY, :)
+   ens_handle%copies(SPARE_COPY_INF_MEAN, :)   = ens_handle%copies(PRIOR_INF_COPY, :)
+   ens_handle%copies(SPARE_COPY_INF_SPREAD, :) = ens_handle%copies(PRIOR_INF_SD_COPY, :)
+
+!==== I think I am going to junk all this =======
    if (parallel_state_diag) then ! parallel write of diagnostics
 
      call error_handler(E_MSG, 'skipping filter_state_space_diagnostics', 'parallel')
@@ -647,6 +671,7 @@ AdvanceTime : do
       deallocate(temp_ens)
 
    endif
+!=================================================
 
    call timestamp_message('After  prior state space diagnostics')
    call trace_message('After  prior state space diagnostics')
@@ -903,7 +928,7 @@ if(my_task_id() == 0) call write_obs_seq(seq, obs_sequence_out_name)
 call trace_message('After  writing output sequence file')
 
 call trace_message('Before writing inflation restart files if required')
-call turn_write_copies_off(1, ens_size + 6)
+call turn_write_copies_off(1, ens_size + num_extras) ! clean slate
 
 ! Output the restart for the adaptive inflation parameters
 call adaptive_inflate_end(ens_handle, prior_inflate, ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, direct_netcdf_read)
@@ -913,7 +938,13 @@ call trace_message('After  writing inflation restart files if required')
 ! Output a restart file if requested
 call trace_message('Before writing state restart files if requested')
 call timestamp_message('Before writing state restart files if requested')
-call turn_write_copy_on(1,ens_size)
+
+call turn_write_copy_on(1,ens_size) ! restarts
+if (query_diag_mean()) call turn_write_copy_on(SPARE_COPY_MEAN)
+if (query_diag_spread()) call turn_write_copy_on(SPARE_COPY_SPREAD)
+if (query_diag_inf_mean()) call turn_write_copy_on(SPARE_COPY_INF_MEAN)
+if (query_diag_inf_spread()) call turn_write_copy_on(SPARE_COPY_INF_SPREAD)
+
 call filter_write_restart_direct(ens_handle)
 
 if(ds) call smoother_write_restart(1, ens_size)
@@ -1343,63 +1374,6 @@ else
 endif
 
 end subroutine filter_set_window_time
-
-!-------------------------------------------------------------------------
-
-subroutine filter_read_restart(ens_handle, time, model_size)
-
-type(ensemble_type), intent(inout) :: ens_handle
-type(time_type),     intent(inout) :: time
-integer,             intent(in)    :: model_size
-
-integer :: days, secs
-
-! First initialize the ensemble manager storage
-! Need enough copies for ensemble plus mean, spread, and any inflates
-! Copies are ensemble, ensemble mean, variance inflation and inflation s.d.
-! AVOID COPIES FOR INFLATION IF STATE SPACE IS NOT IN USE; NEEDS WORK
-!!!if(prior_inflate%flavor >= 2) then
-   call init_ensemble_manager(ens_handle, ens_size + 6, model_size, 1)
-!!!else
-!!!   call init_ensemble_manager(ens_handle, ens_size + 2, model_size, 1)
-!!!endif
-
-if (do_output()) then
-   if (start_from_restart) then
-      call error_handler(E_MSG,'filter_read_restart:', &
-         'Reading in initial condition/restart data for all ensemble members from file(s)')
-   else
-      call error_handler(E_MSG,'filter_read_restart:', &
-         'Reading in a single ensemble and perturbing data for the other ensemble members')
-   endif
-endif
-
-! Only read in initial conditions for actual ensemble members
-if(init_time_days >= 0) then
-   call read_ensemble_restart(ens_handle, 1, ens_size, &
-      start_from_restart, restart_in_file_name, time)
-   if (do_output()) then
-      call get_time(time, secs, days)
-      write(msgstring, '(A)') 'By namelist control, ignoring time found in restart file.'
-      call error_handler(E_MSG,'filter_read_restart:',msgstring,source,revision,revdate)
-      write(msgstring, '(A,I6,1X,I5)') 'Setting initial days, seconds to ',days,secs
-      call error_handler(E_MSG,'filter_read_restart:',msgstring,source,revision,revdate)
-   endif
-else
-   call read_ensemble_restart(ens_handle, 1, ens_size, &
-      start_from_restart, restart_in_file_name)
-   if (ens_handle%my_num_copies > 0) time = ens_handle%time(1)
-endif
-
-! Temporary print of initial model time
-if(ens_handle%my_pe == 0) then
-   ! FIXME for the future: if pe 0 is not task 0, pe 0 can not print debug messages
-   call get_time(time, secs, days)
-   write(msgstring, *) 'initial model time of 1st ensemble member (days,seconds) ',days,secs
-   call error_handler(E_DBG,'filter_read_restart',msgstring,source,revision,revdate)
-endif
-
-end subroutine filter_read_restart
 
 !------------------------------------------------------------------
 !> Read the restart information directly from the model output

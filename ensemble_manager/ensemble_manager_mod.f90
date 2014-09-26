@@ -1720,11 +1720,6 @@ integer,             intent(inout)    :: layout_type
 if (layout_type /= 1 .and. layout_type /=2) call error_handler(E_ERR,'assign_tasks_to_pes', &
     'not a valid layout_type, must be 1 (standard) or 2 (round-robin)',source,revision,revdate)
 
-if (nEns_members >= num_pes) then   ! if nEns_members >= task_count() then don't try to spread them out
-   call simple_layout(ens_handle, num_pes)
-   return
-endif
-
 if (tasks_per_node >= num_pes) then ! all tasks are on one node, don't try to spread them out
    call simple_layout(ens_handle, num_pes)
    return

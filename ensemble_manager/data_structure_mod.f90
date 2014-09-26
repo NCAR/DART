@@ -101,7 +101,8 @@ function copies_in_window(state_ens_handle)
 type(ensemble_type), intent(in) :: state_ens_handle
 integer                         :: copies_in_window
 
-copies_in_window = state_ens_handle%num_copies -6
+!> @todo These are annoying -7, -6 or -10, -9
+copies_in_window = state_ens_handle%num_copies -10
 
 end function copies_in_window
 
@@ -114,7 +115,7 @@ function mean_row(state_ens_handle)
 type(ensemble_type), intent(in) :: state_ens_handle
 integer                         :: mean_row
 
-mean_row = state_ens_handle%num_copies -5
+mean_row = state_ens_handle%num_copies -9
 
 end function mean_row
 
