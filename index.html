@@ -194,6 +194,16 @@ committed since the original release of the Lanai code:
 </TR>
 -->
 
+<TR><TD> 26 Sep 2014 </TD>
+    <TD> 7184  </TD>
+    <TD> Bug fix for the ensemble_manager layout routines. If you had the round
+robin layout on and picked a number of tasks between ens_size + 4 and ens_size + 6
+the state copies and the corresponding observation copies ended up on different tasks. Fixed
+by removing the bail out early test condition nEns_members >= num_pes.
+    </TD>
+</TR>
+
+
 <TR><TD> 29 Aug 2014 </TD>
     <TD> 7161 </TD>
     <TD> Documentation update only.  Fixed two places in the obs_sequence_tool
