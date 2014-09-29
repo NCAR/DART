@@ -8507,7 +8507,9 @@ integer,            intent(in) :: domain
 integer,            intent(in) :: copy
 character(len=1024)            :: construct_file_name
 
-write(construct_file_name, '(A, i2.2, A, i2.2, A)') TRIM(stub), domain, '.', copy, '.nc'
+!write(construct_file_name, '(A, i2.2, A, i2.2, A)') TRIM(stub), domain, '.', copy, '.nc'
+write(construct_file_name, '(A, i2.2, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
+if (my_task_id()==0) print*, trim(construct_file_name)
 
 end function construct_file_name
 
