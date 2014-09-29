@@ -122,7 +122,7 @@
                              'QGRAUP','0.0','NULL','CLAMP',
                              'QNICE','0.0','NULL','CLAMP',
                              'QNRAIN','0.0','NULL','CLAMP',
-   num_domains = 1,
+   num_domains = 2,
    calendar_type = 3,
    assimilation_period_seconds = 21600,
    vert_localization_coord = 3,
