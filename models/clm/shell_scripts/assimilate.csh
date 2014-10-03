@@ -384,6 +384,10 @@ ${REMOVE} ../clm_inflation_cookie
 # &clm_to_dart_nml:      clm_to_dart_output_file = 'dart_ics',
 # &dart_to_clm_nml:      dart_to_clm_input_file  = 'dart_restart',
 #                        advance_time_present    = .false.
+# &model_nml:            clm_restart_filename        = 'clm_restart.nc'
+# &model_nml:            clm_history_filename        = 'clm_history.nc'
+# &model_nml:            clm_vector_history_filename = 'clm_vector_history.nc'
+#
 #=========================================================================
 
 echo "`date` -- BEGIN CLM-TO-DART"
@@ -401,16 +405,21 @@ while ( ${member} <= ${ensemble_size} )
    # make sure there are no old output logs hanging around
    $REMOVE output.${member}.clm_to_dart
 
-   set LND_RESTART_FILENAME = `printf ${CASE}.clm2_%04d.r.${LND_DATE_EXT}.nc  ${member}`
-   set LND_HISTORY_FILENAME = `printf ${CASE}.clm2_%04d.h0.${LND_DATE_EXT}.nc ${member}`
-   set     DART_IC_FILENAME = `printf filter_ics.%04d     ${member}`
-   set    DART_RESTART_FILE = `printf filter_restart.%04d ${member}`
+   set     LND_RESTART_FILENAME = `printf ${CASE}.clm2_%04d.r.${LND_DATE_EXT}.nc  ${member}`
+   set     LND_HISTORY_FILENAME = `printf ${CASE}.clm2_%04d.h0.${LND_DATE_EXT}.nc ${member}`
+   set LND_VEC_HISTORY_FILENAME = `printf ${CASE}.clm2_%04d.h2.${LND_DATE_EXT}.nc ${member}`
+   set         DART_IC_FILENAME = `printf filter_ics.%04d     ${member}`
+   set        DART_RESTART_FILE = `printf filter_restart.%04d ${member}`
 
    sed -e "s#dart_ics#../${DART_IC_FILENAME}#" \
        -e "s#dart_restart#../${DART_RESTART_FILE}#" < ../input.nml >! input.nml
 
    ${LINK} ../../$LND_RESTART_FILENAME clm_restart.nc
    ${LINK} ../../$LND_HISTORY_FILENAME clm_history.nc
+
+   if (  -e   ../../$LND_VEC_HISTORY_FILENAME ) then
+      ${LINK} ../../$LND_VEC_HISTORY_FILENAME clm_vector_history.nc
+   endif
 
    echo "starting clm_to_dart for member ${member} at "`date`
    ${EXEROOT}/clm_to_dart >! output.${member}.clm_to_dart &
@@ -450,16 +459,23 @@ echo "`date` -- END CLM-TO-DART for all ${ensemble_size} members."
 # &filter_nml:           last_obs_seconds        = -1,
 # &ensemble_manager_nml: single_restart_file_in  = .false.
 # &ensemble_manager_nml: single_restart_file_out = .false.
-#
+# &model_nml:            clm_restart_filename        = 'clm_restart.nc'
+# &model_nml:            clm_history_filename        = 'clm_history.nc'
+# &model_nml:            clm_vector_history_filename = 'clm_vector_history.nc'
 #=========================================================================
 
 # clm always needs a clm_restart.nc, clm_history.nc for geometry information, etc.
+# it may or may not need a vector-format history file - depends on user input
 
-set LND_RESTART_FILENAME = ${CASE}.clm2_0001.r.${LND_DATE_EXT}.nc
-set LND_HISTORY_FILENAME = ${CASE}.clm2_0001.h0.${LND_DATE_EXT}.nc
+set     LND_RESTART_FILENAME = ${CASE}.clm2_0001.r.${LND_DATE_EXT}.nc
+set     LND_HISTORY_FILENAME = ${CASE}.clm2_0001.h0.${LND_DATE_EXT}.nc
+set LND_VEC_HISTORY_FILENAME = ${CASE}.clm2_0001.h2.${LND_DATE_EXT}.nc
 
 ${LINK} ../$LND_RESTART_FILENAME clm_restart.nc
 ${LINK} ../$LND_HISTORY_FILENAME clm_history.nc
+if (  -e   ../$LND_VEC_HISTORY_FILENAME ) then
+   ${LINK} ../$LND_VEC_HISTORY_FILENAME clm_vector_history.nc
+endif
 
 # On yellowstone, you can explore task layouts with the following:
 if ( $?LSB_PJL_TASK_GEOMETRY ) then

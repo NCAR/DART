@@ -183,10 +183,10 @@ else
    exit -99
 fi
 
-${COPY} ${DARTROOT}/models/clm/work/clm_to_dart       ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/clm/work/dart_to_clm       ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/clm/work/filter            ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/clm/work/perfect_model_obs ${EXEROOT}/.
+${COPY} ${DARTROOT}/models/clm/work/clm_to_dart       ${EXEROOT}
+${COPY} ${DARTROOT}/models/clm/work/dart_to_clm       ${EXEROOT}
+${COPY} ${DARTROOT}/models/clm/work/filter            ${EXEROOT}
+${COPY} ${DARTROOT}/models/clm/work/perfect_model_obs ${EXEROOT}
 
 exit 0
 

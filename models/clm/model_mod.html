@@ -49,6 +49,7 @@ of CESM, first supported in its entirety in CESM1.1.1. Consequently, this versio
 or newer is required to run CLM/DART. The 
 <a href="http://www.cesm.ucar.edu/models/cesm1.1/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf">
 CLM User's Guide</a> is an excellent reference for CLM. 
+<em class=new>As of (V7195) 3 October 2014, CESM1.2.1 is also supported.</em>
 <br />
 <br />
 DART uses the multi-instance capability of CESM, which means that DART is not 
@@ -58,10 +59,10 @@ workflow, but it means
 The multi-instance capability is very new to CESM and we are in close collaboration with
 the CESM developers to make using DART with CESM as easy as possible. While we strive to
 keep DART requirements out of the model code, there are a few SourceMods needed to run
-DART from within CESM. The SourceMods are available at
-<a href="http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_1_1.tar">
-http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_1_1.tar</a> and should be 
-unpacked into your HOME directory. They will create a <em class=file>~/cesm_1_1_1</em> 
+DART from within CESM. Appropriate SourceMods for each CESM version are available at
+<a href="http://www.image.ucar.edu/pub/DART/CESM">
+http://www.image.ucar.edu/pub/DART/CESM</a> and should be 
+unpacked into your HOME directory. They will create a <em class=file>~/cesm_?_?_?</em> 
 directory with the appropriate SourceMods structure. The ensuing scripts require these
 SourceMods and expect them to be in your HOME directory.
 <br />
@@ -79,7 +80,7 @@ how to improve those notes - please send them to dart@ucar.edu - we'd love to he
 </THEAD>
 <TBODY valign=top>
 
-<TR><TD><a href="shell_scripts/CESM1_1_1_pmo_setup">CESM1_1_1_pmo_setup</a></TD>
+<TR><TD><a href="shell_scripts/CESM1_1_1_setup_pmo">CESM1_1_1_setup_pmo</a></TD>
     <TD>runs a single instance of CLM to harvest synthetic observations for an OSSE or
         "perfect model" experiment. It requires a single CLM state from a previous
         experiment and uses a specified DATM stream for forcing. This parallels an
@@ -88,23 +89,50 @@ how to improve those notes - please send them to dart@ucar.edu - we'd love to he
         do with DART. There is one (trivial) section that records some configuration 
         information in the DART setup script, but that's about it. This script should
         initially be run without DART to ensure a working CESM environment.
+        <br />
+        <br />
+        As of (V7195) 3 October 2014, this script demonstrates how to create 'vector'-based
+        CLM history files (which requires a bugfix) and has an option to use a bugfixed snow grain-size code. <br />
+        <a href='http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730'>http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730</a><br />
+        <a href='http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934'>http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934</a>
     </TD>
 </TR>
 
-<TR><TD><a href="shell_scripts/CESM1_1_1_hybrid_initial">CESM1_1_1_hybrid_initial</a></TD>
+<TR><TD><a href="shell_scripts/CESM1_2_1_setup_pmo">CESM1_2_1_setup_pmo</a></TD>
+    <TD>Is functionally identical to <em class=program>CESM1_1_1_setup_pmo</em>
+        but is appropriate for the the CESM 1_2_1 release, which supports both 
+        CLM 4 and CLM 4.5.
+    </TD>
+</TR>
+
+
+<TR><TD><a href="shell_scripts/CESM1_1_1_setup_hybrid">CESM1_1_1_setup_hybrid</a></TD>
     <TD>runs a multi-instance CLM experiment and can be used to perform a free run or
         'open loop' experiment. By default, each CLM instance uses a unique DATM forcing.
         This script also has almost nothing to do with DART. There is one (trivial) 
         section that records some configuration information in the DART setup script, 
         but that's about it. This script should initially be run without DART to ensure 
-       a working CESM.
+        a working CESM.
+        <br />
+        <br />
+        As of (V7195) 3 October 2014, this script demonstrates how to create 'vector'-based
+        CLM history files (which requires a bugfix) and has an option to use a bugfixed snow grain-size code. <br />
+        <a href='http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730'>http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730</a><br />
+        <a href='http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934'>http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934</a>
+    </TD>
+</TR>
+
+<TR><TD><a href="shell_scripts/CESM1_2_1_setup_hybrid">CESM1_2_1_setup_hybrid</a></TD>
+    <TD>Is functionally identical to <em class=program>CESM1_1_1_setup_hybrid</em>
+        but is appropriate for the the CESM 1_2_1 release, which supports both 
+        CLM 4 and CLM 4.5.
     </TD>
 </TR>
 
 <TR><TD><a href="shell_scripts/CESM_DART_config">CESM_DART_config</a></TD>
     <TD>augments a CESM case with the bits and pieces required to run DART.
-        When either <em class=program>CESM1_1_1_pmo_setup</em> or 
-        <em class=program>CESM1_1_1_hybrid_initial</em> gets executed, 
+        When either <em class=program>CESM1_?_1_setup_pmo</em> or 
+        <em class=program>CESM1_?_1_setup_hybrid</em> gets executed, 
         <em class=program>CESM_DART_config</em> gets copied to the CESM "caseroot" 
         directory. It is designed such that you can execute it at any time during a CESM
         experiment.  When you do execute it, it will build the DART executables and copy
@@ -114,6 +142,7 @@ how to improve those notes - please send them to dart@ucar.edu - we'd love to he
         DART scripts for assimilation or to harvest synthetic observations.
     </TD>
 </TR>
+
 </TABLE>
 
 <P>In addition to the script above, there are a couple scripts that will either
@@ -173,6 +202,89 @@ mainly to indicate the location of the DART observation sequence files on your s
     <em class=file>.h1.</em> history file needed for any particular time.
 </P>
 
+<H2>Major changes as of (V7195) 3 October 2014</H2>
+<P> The DART state vector may be constructed in a much more flexible way.
+    Variables from two different CLM history files may also be incorporated directly
+    into the DART state - which should GREATLY speed up the forward observation
+    operators - and allow the observation operators to be constructed in a more
+    flexible manner so that they can be used by any model capable of providing
+    required inputs. It is now possible to read some variables from the restart 
+    file, some variables from a traditional history file, and some from a 
+    'vector-based' history file that has the same structure (gridcell/landunit/column/pft)
+    as the restart file. This should allow more accurate forward observation operators
+    since the quantities are not gridcell-averaged a priori.
+    <br />
+    <br />
+    Another namelist item has been added <em class=code>clm_vector_history_filename</em>
+    to support the concept that two history files can be supported. My intent
+    was to have the original history file (required for grid metadata) and another for support
+    of vector-based quantities in support of forward observation operators.
+    Upon reflection, I'm not sure I need two different history files - BUT - I'm sure
+    there will be a situation where it comes in handy. 
+    <br />
+    <br />
+    The new namelist specification of what goes into the DART state vector includes
+    the ability to specify if the quantity should have a lower bound, upper bound, 
+    or both, what file the variable should be read from, and if the variable should be 
+    modified by the assimilation or not. <strong>Only variables in the CLM restart file will 
+    be candidates for updating.</strong> No CLM history files are modified. <strong>It is important
+    to know that the variables in the DART diagnostic files <em class=file>Prior_Diag.nc</em>
+    and <em class=file>Posterior_Diag.nc</em> will contain the unbounded versions of ALL the
+    variables specied in <em class=code>clm_variables</em>.</strong>
+    <br />
+    <br />
+    The example <em class=file>input.nml</em> <em class=code>model_nml</em> demonstrates
+    how to construct the DART state vector. The following table explains in detail each
+    entry for <em class=code>clm_variables</em>:
+</P>
+
+
+<div>
+<TABLE border=0 cellpadding=4 width=100% summary='clm_variables description'>
+<THEAD align=left>
+<TR><TH>Column 1</TH>
+    <TH>Column 2</TH>
+    <TH>Column 3</TH>
+    <TH>Column 4</TH>
+    <TH>Column 5</TH>
+    <TH>Column 6</TH> </TR>
+</THEAD>
+<TBODY valign=top>
+<TR><TD>Variable name</TD>
+    <TD>DART KIND</TD>
+    <TD>minimum</TD>
+    <TD>maximum</TD>
+    <TD>filename</TD>
+    <TD>update</TD>
+</TR>
+</TABLE>
+<br />
+<br />
+<TABLE border=0 cellpadding=4 width=100% summary='clm_variables description'>
+<TBODY valign=top>
+<TR><TD><strong>Column&nbsp;1</strong></TD><TD>Variable&nbsp;name&nbsp;&nbsp;</TD>
+                     <TD>This is the CLM variable name as it appears in the CLM netCDF file.</TD></TR>
+<TR><TD><strong>Column&nbsp;2</strong></TD><TD>DART&nbsp;KIND</TD>
+                     <TD> This is the character string of the corresponding DART KIND.</TD></TR>
+<TR><TD><strong>Column&nbsp;3</strong></TD><TD>minimum</TD>
+                     <TD>If the variable is to be updated in the CLM restart file, this specifies the
+                         minimum value. If set to 'NA', there is no minimum value.</TD></TR>
+<TR><TD><strong>Column&nbsp;4</strong></TD>
+                     <TD>maximum</TD><TD>If the variable is to be updated in the CLM restart file, this specifies the
+                         maximum value. If set to 'NA', there is no maximum value.</TD></TR>
+<TR><TD><strong>Column&nbsp;5</strong></TD>
+                     <TD>filename</TD><TD>This specifies which file should be used to obtain the variable. <br />
+                     <em class=code>'restart'</em>&nbsp;=&gt;&nbsp;clm_restart_filename</em> <br />
+                     <em class=code>'history'</em>&nbsp;=&gt;&nbsp;clm_history_filename</em> <br />
+                     <em class=code>'vector'&nbsp;</em>&nbsp;=&gt;&nbsp;clm_vector_history_filename</em></TD></TR>
+<TR><TD><strong>Column&nbsp;6</strong></TD>
+                     <TD>update</TD><TD>If the variable comes from the restart file, it may be updated after the assimilation.<br />
+                     <em class=code>'UPDATE'&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</em>&nbsp;=&gt; the variable in the restart file is updated.<br />
+                     <em class=code>'NO_COPY_BACK'</em>&nbsp;=&gt; the variable in the restart file remains unchanged.<br /></TD></TR>
+</TABLE>
+</div>
+
+<P></P>
 
 <!--===================== DESCRIPTION OF A NAMELIST =====================-->
 
@@ -193,21 +305,29 @@ prematurely terminating the namelist.
 &amp;model_nml 
   clm_restart_filename         = 'clm_restart.nc',
   clm_history_filename         = 'clm_history.nc',
+  clm_vector_history_filename  = 'clm_vector_history.nc',
   output_state_vector          = .false.,
   assimilation_period_days     = 2,
   assimilation_period_seconds  = 0,
   model_perturbation_amplitude = 0.2,
   calendar                     = 'Gregorian',
   debug                        = 0
-  clm_state_variables          = 'frac_sno',    'KIND_SNOWCOVER_FRAC',
-                                 'H2OSNO',      'KIND_SNOW_WATER',
-                                 'H2OSOI_LIQ',  'KIND_SOIL_MOISTURE',
-                                 'H2OSOI_ICE',  'KIND_ICE',
-                                 'T_SOISNO',    'KIND_SOIL_TEMPERATURE',
-                                 'cpool',       'KIND_CARBON',
-                                 'frootc',      'KIND_ROOT_CARBON',
-                                 'leafc',       'KIND_LEAF_CARBON',
-                                 'leafn',       'KIND_LEAF_NITROGEN',
+  clm_variables  = 'frac_sno',    'KIND_SNOWCOVER_FRAC',         'NA',  'NA', 'restart' , 'NO_COPY_BACK',
+                   'H2OSNO',      'KIND_SNOW_WATER',             '0.0', 'NA', 'restart' , 'UPDATE',
+                   'H2OSOI_LIQ',  'KIND_SOIL_MOISTURE',          '0.0', 'NA', 'restart' , 'UPDATE',
+                   'H2OSOI_ICE',  'KIND_ICE',                    '0.0', 'NA', 'restart' , 'UPDATE',
+                   'T_SOISNO',    'KIND_SOIL_TEMPERATURE',       'NA' , 'NA', 'restart' , 'UPDATE',
+                   'cpool',       'KIND_CARBON',                 '0.0', 'NA', 'restart' , 'UPDATE',
+                   'frootc',      'KIND_ROOT_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
+                   'leafc',       'KIND_LEAF_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
+                   'leafn',       'KIND_LEAF_NITROGEN',          '0.0', 'NA', 'restart' , 'UPDATE',
+                   'NEP',         'KIND_NET_CARBON_PRODUCTION',  'NA', 'NA', 'history'  , 'NO_COPY_BACK',
+                   'SNOWDP',      'KIND_SNOW_THICKNESS',         'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
+                   'TV',          'KIND_VEGETATION_TEMPERATURE', 'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
+                   'TLAI',        'KIND_LEAF_AREA_INDEX',        'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
+                   'RH2M_R',      'KIND_SPECIFIC_HUMIDITY',      'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
+                   'PBOT',        'KIND_SURFACE_PRESSURE',       'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
+                   'TBOT',        'KIND_TEMPERATURE',            'NA', 'NA', 'vector'   , 'NO_COPY_BACK'
    /
 </pre>
 </div>
@@ -235,6 +355,19 @@ prematurely terminating the namelist.
         generic name. Some of the metadata needed for the DART/CLM interfaces
         is contained only in this history file, so it is needed for all DART
         routines.</TD>
+</TR>
+
+<TR><TD>clm_vector_history_filename</TD>
+    <TD>character(len=256)</TD>
+    <TD>this is the filename of a second CLM history file.
+        The DART scripts resolve linking the specific CLM history file to this 
+        generic name. 
+        The default setup scripts actually create 3 separate CLM history files,
+        the <em class=file>.h2.</em> ones are linked to this filename.
+        It is possible to create this history file at the same resolution as
+        the restart file, which should make for better forward operators.
+        It is only needed if some of the variables specified in 
+        <em class=code>clm_variables</em> come from this file.</TD>
 </TR>
 
 <TR><TD>output_state_vector</TD>
@@ -274,10 +407,12 @@ prematurely terminating the namelist.
        however. It seems I've only used values [3,6,7,8]. Go figure.</TD>
 </TR>
 
-<TR><TD>clm_state_variables</TD>
-    <TD>character(:,2)</TD>
-    <TD>Pairs of strings that identify the CLM variables and their DART
-        kind. Only CLM variable names in the CLM restart file are valid.
+<TR><TD><em class=removed>clm_state_variables</em><br />clm_variables</TD>
+    <TD>character(:,6)</TD>
+    <TD>Strings that identify the CLM variables, their DART
+        kind, the min &amp; max values, what file to read from, and whether 
+        or not the file should be updated after the assimilation.
+        <em class=removed> Only CLM variable names in the CLM restart file are valid.</em>
         The DART kind must be one found in the 
         <em class=file>DART/obs_kind/obs_kind_mod.f90</em>
         AFTER it gets built by <em class=program>preprocess</em>. Most of
@@ -925,13 +1060,13 @@ A NULL INTERFACE in this model.
 <TABLE summary="list of all optional public interfaces">
 <TR><TD><em class=call>use model_mod, only : </em></TD>
                    <TD><A HREF="#get_gridsize">get_gridsize</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#restart_file_to_sv">restart_file_to_sv</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#clm_to_dart_state_vector">clm_to_dart_state_vector</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#sv_to_restart_file">sv_to_restart_file</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_clm_restart_filename">get_clm_restart_filename</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_state_time">get_state_time</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_grid_vertval">get_grid_vertval</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#compute_gridcell_value">compute_gridcell_value</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#find_gridcell_Npft">find_gridcell_Npft</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#gridcell_components">gridcell_components</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#DART_get_var">DART_get_var</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time">get_model_time</A></TD></TR>
 </TABLE>
@@ -969,12 +1104,11 @@ Returns the number of longitudes, latitudes, and total number of levels in the C
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="restart_file_to_sv"></A>
+<A NAME="clm_to_dart_state_vector"></A>
 <br />
 <div class=routine>
-<em class=call>call restart_file_to_sv(filename, state_vector, restart_time )</em>
+<em class=call>call clm_to_dart_state_vector(state_vector, restart_time)</em>
 <pre>
-character(len=*), intent(in)    :: <em class=code>filename</em>
 real(r8),         intent(inout) :: <em class=code>state_vector(:)</em>
 type(time_type),  intent(out)   :: <em class=code>restart_time</em>
 </pre>
@@ -982,16 +1116,18 @@ type(time_type),  intent(out)   :: <em class=code>restart_time</em>
 <div class=indent1>
 <!-- Description -->
 <P>
-Reads the current time and state variables from a CLM restart
-file and packs them into a DART state vector. This MUST happen
+Reads the current time and state variables from CLM netCDF
+file(s) and packs them into a DART state vector. This MUST happen
 in the same fashion as the metadata arrays are built. The variables
-specified in the <em class=code>model_nml:clm_state_variables</em>
-are the ones read from the CLM restart file to create the DART state vector.
+are specified by <em class=code>model_nml:clm_variables</em>.
+Each variable specifies its own file of origin.
+If there are multiple times in the file of origin, only the time that
+matches the restart file are used.
+<br />
+<br />
 </P>
 <TABLE width=100% border=0 cellspacing=10 cellpadding=3 summary="">
 <TBODY valign=top>
-<TR><TD><em class=code>filename</em></TD>
-    <TD>The name of the CLM restart file.</TD></TR>
 <TR><TD><em class=code>state_vector</em></TD>
     <TD>The DART state vector.</TD></TR>
 <TR><TD><em class=code>restart_time</em></TD>
@@ -1176,10 +1312,10 @@ supported. Only CLM variables that have no vertical levels may use this routine.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="find_gridcell_Npft"></A>
+<A NAME="gridcell_components"></A>
 <br />
 <div class=routine>
-<em class=call>call find_gridcell_Npft(varstring)</em>
+<em class=call>call gridcell_components(varstring)</em>
 <pre>
 character(len=*), intent(in) :: <em class=code>varstring</em>
 </pre>

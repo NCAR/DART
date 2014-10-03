@@ -148,6 +148,9 @@ endif
 # &perfect_model_obs_nml:  last_obs_days           = -1,
 # &perfect_model_obs_nml:  last_obs_seconds        = -1,
 # &clm_to_dart_nml:        clm_to_dart_output_file = 'dart_ics'
+# &model_nml:              clm_restart_filename        = 'clm_restart.nc'
+# &model_nml:              clm_history_filename        = 'clm_history.nc'
+# &model_nml:              clm_vector_history_filename = 'clm_vector_history.nc'
 #=========================================================================
 
 if ( ! -e ${CASEROOT}/input.nml ) then
@@ -162,16 +165,20 @@ sed -e "s#dart_ics#perfect_ics#" < ${CASEROOT}/input.nml >! input.nml
 # The flux tower forward operator looks for a CLM history file with
 # an instance number in the filename.
 
-set  LND_RESTART_FILENAME = ${CASE}.clm2.r.${LND_DATE_EXT}.nc
-set  LND_HISTORY_FILENAME = ${CASE}.clm2.h0.${LND_DATE_EXT}.nc
-set OBS1_HISTORY_FILENAME = ${CASE}.clm2.h1.${LND_DATE_EXT}.nc
-set OBS2_HISTORY_FILENAME = ${CASE}.clm2_0001.h1.${LND_DATE_EXT}.nc
+set      LND_RESTART_FILENAME = ${CASE}.clm2.r.${LND_DATE_EXT}.nc
+set      LND_HISTORY_FILENAME = ${CASE}.clm2.h0.${LND_DATE_EXT}.nc
+set  LND_VEC_HISTORY_FILENAME = ${CASE}.clm2.h2.${LND_DATE_EXT}.nc
+set     OBS1_HISTORY_FILENAME = ${CASE}.clm2.h1.${LND_DATE_EXT}.nc
+set     OBS2_HISTORY_FILENAME = ${CASE}.clm2_0001.h1.${LND_DATE_EXT}.nc
 
 ${LINK} ../$LND_RESTART_FILENAME clm_restart.nc
 ${LINK} ../$LND_HISTORY_FILENAME clm_history.nc
 
 if (  -e   ../$OBS1_HISTORY_FILENAME) then
    ${LINK} ../$OBS1_HISTORY_FILENAME $OBS2_HISTORY_FILENAME
+endif
+if (  -e   ../$LND_VEC_HISTORY_FILENAME) then
+   ${LINK} ../$LND_VEC_HISTORY_FILENAME clm_vector_history.nc
 endif
 
 #=========================================================================
@@ -181,19 +188,6 @@ endif
 #=========================================================================
 
 echo "`date` -- BEGIN CLM-TO-DART"
-
-# patch the CLM restart files to ensure they have the proper
-# _FillValue and missing_value attributes.
-#  ncatted -O -a    _FillValue,frac_sno,o,d,1.0e+36   clm_restart.nc
-#  ncatted -O -a missing_value,frac_sno,o,d,1.0e+36   clm_restart.nc
-#  ncatted -O -a    _FillValue,DZSNO,o,d,1.0e+36      clm_restart.nc
-#  ncatted -O -a missing_value,DZSNO,o,d,1.0e+36      clm_restart.nc
-#  ncatted -O -a    _FillValue,H2OSOI_LIQ,o,d,1.0e+36 clm_restart.nc
-#  ncatted -O -a missing_value,H2OSOI_LIQ,o,d,1.0e+36 clm_restart.nc
-#  ncatted -O -a    _FillValue,H2OSOI_ICE,o,d,1.0e+36 clm_restart.nc
-#  ncatted -O -a missing_value,H2OSOI_ICE,o,d,1.0e+36 clm_restart.nc
-#  ncatted -O -a    _FillValue,T_SOISNO,o,d,1.0e+36   clm_restart.nc
-#  ncatted -O -a missing_value,T_SOISNO,o,d,1.0e+36   clm_restart.nc
 
 ${EXEROOT}/clm_to_dart
 
