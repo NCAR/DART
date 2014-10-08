@@ -9,10 +9,10 @@ The PBL_1D directory has been deprecated in favor of using the WRF/DART model
 interface.  There is now support for WRF single column mode built into the
 standard model_mod in that directory.
 
-There is a page on the DART-Dev (DART Developers) Wiki that describes how to
-alter both WRF and DART to work in single-column mode.   If you don't already
-have access to this Wiki, email dart at ucar dot edu and ask for access.  If
-you have access already, the Wiki page is here:
+If you are interested in more information on this configuration, email us
+at dart at ucar dot edu.
+
+If you already have access to the DART Developers Wiki, look here:
 
 https://wiki.ucar.edu/display/DARTdev/WRF+Single+Column+Model
 
