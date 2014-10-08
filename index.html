@@ -194,12 +194,19 @@ committed since the original release of the Lanai code:
 </TR>
 -->
 
+<TR><TD> 8 Oct 2014 </TD>
+    <TD> 7203 </TD>
+    <TD> Documentation update only.  Changed the WRF model_mod.html file
+to point users to the public web pages instead of requiring them to
+register for access to the DART Wiki.
+    </TD>
+</TR>
+
 <TR><TD> 26 Sep 2014 </TD>
     <TD> 7184  </TD>
-    <TD> Bug fix for the ensemble_manager layout routines. If you had the round
-robin layout on and picked a number of tasks between ens_size + 4 and ens_size + 6
-the state copies and the corresponding observation copies ended up on different tasks. Fixed
-by removing the bail out early test condition nEns_members >= num_pes.
+    <TD> Bug fix for the ensemble manager layout=2 (round-robin) option.  
+If the number of tasks was between the ensemble size plus 4 and ensemble
+size plus 6 (inclusive), the filter run would fail.
     </TD>
 </TR>
 
