@@ -92,9 +92,9 @@ enddo
 ! input extras
 do dom = 1, num_domains
    ! mean
-   write(restart_files_in(ens_size + 1, dom), '(A, i2.2, A)') 'mean_copy_d', dom, '.nc'
+   write(restart_files_in(ens_size + 1, dom), '(A, i2.2, A)') 'Output/mean_copy_d', dom, '.nc'
    ! sd
-   write(restart_files_in(ens_size + 2, dom), '(A, i2.2, A)') 'sd_copy_d',   dom, '.nc'
+   write(restart_files_in(ens_size + 2, dom), '(A, i2.2, A)') 'Output/sd_copy_d',   dom, '.nc'
    ! prior inf copy
    write(restart_files_in(ens_size + 3, dom), '(A, i2.2, A)') trim(inflation_in(1)), dom, '_mean.nc'
    ! prior inf sd copy

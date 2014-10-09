@@ -8508,7 +8508,11 @@ integer,            intent(in) :: copy
 character(len=1024)            :: construct_file_name
 
 !write(construct_file_name, '(A, i2.2, A, i2.2, A)') TRIM(stub), domain, '.', copy, '.nc'
-write(construct_file_name, '(A, i2.2, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
+if (copy < 10) then
+   write(construct_file_name, '(A, i1.1, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
+else
+   write(construct_file_name, '(A, i2.2, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
+endif
 
 end function construct_file_name
 
