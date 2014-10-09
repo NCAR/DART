@@ -1147,8 +1147,8 @@ endif
 
 ! model_mod:nc_write_model_vars knows nothing about assim_model_types,
 ! so we must pass the components.
-
-i = nc_write_model_vars(ncFileID%ncid, model_state, copyindex, timeindex) 
+! No need to do this anymore
+!i = nc_write_model_vars(ncFileID%ncid, model_state, copyindex, timeindex)
 
 end subroutine aoutput_diagnostics
 

@@ -640,38 +640,17 @@ AdvanceTime : do
    ens_handle%copies(SPARE_COPY_INF_MEAN, :)   = ens_handle%copies(PRIOR_INF_COPY, :)
    ens_handle%copies(SPARE_COPY_INF_SPREAD, :) = ens_handle%copies(PRIOR_INF_SD_COPY, :)
 
-!==== I think I am going to junk all this =======
-   if (parallel_state_diag) then ! parallel write of diagnostics
+   if ((output_interval > 0) .and. &
+       (time_step_number / output_interval * output_interval == time_step_number)) then
 
-     call error_handler(E_MSG, 'skipping filter_state_space_diagnostics', 'parallel')
-
-   else ! send each copy to task 0
-
-     if (.not. allow_complete_state()) call error_handler(E_ERR, 'How do you want to deal with diagnostics if no_complete_state =', '.true.?')
-
-      call all_copies_to_all_vars(ens_handle)
-
-      ! allocate space so task 0 can receive the ensemble members
-      if (my_task_id() == 0) then
-         allocate(temp_ens(ens_handle%num_vars))
-      else
-        allocate(temp_ens(1)) ! I think only task 0 needs space to store a copy
-      endif
-
-      if ((output_interval > 0) .and. &
-          (time_step_number / output_interval * output_interval == time_step_number)) then
-
-         call filter_state_space_diagnostics(curr_ens_time, PriorStateUnit, ens_handle, &
-              model_size, num_output_state_members, &
-              output_state_mean_index, output_state_spread_index, &
-              output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
-              prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
-      endif
-
-      deallocate(temp_ens)
+       ! skeleton just to write the time to diagnostic files.
+       call filter_state_space_diagnostics(curr_ens_time, PriorStateUnit, ens_handle, &
+           model_size, num_output_state_members, &
+           output_state_mean_index, output_state_spread_index, &
+           output_inflation, ENS_MEAN_COPY, ENS_SD_COPY, &
+           prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
 
    endif
-!=================================================
 
    call timestamp_message('After  prior state space diagnostics')
    call trace_message('After  prior state space diagnostics')
@@ -801,42 +780,23 @@ AdvanceTime : do
    call trace_message('Before posterior state space diagnostics')
    call timestamp_message('Before posterior state space diagnostics')
 
-   if (parallel_state_diag) then ! parallel write of diagnostics
+   ! Do posterior state space diagnostic output as required
+   if ((output_interval > 0) .and. &
+         (time_step_number / output_interval * output_interval == time_step_number)) then
 
-      ! This is two many copies.  You could change the order of the copies to have the 
-      ! mean in the middle of the prior and posterior stuff
+      ! skeleton just to put time in the diagnostic file
+      call filter_state_space_diagnostics(curr_ens_time, PosteriorStateUnit, ens_handle, &
+         model_size, num_output_state_members, output_state_mean_index, &
+         output_state_spread_index, &
+         output_inflation, ENS_MEAN_COPY, ENS_SD_COPY, &
+         post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
+      ! Cyclic storage for lags with most recent pointed to by smoother_head
+      ! ens_mean is passed to avoid extra temp storage in diagnostics
 
-      call error_handler(E_MSG, 'skipping filter_state_space_diagnostics', 'parallel')
-      ! Aim: to write the mean and inflation copies as regular restarts at the end
-
-   else ! send each copy to task 0
-
-      ! Do posterior state space diagnostic output as required
-      if ((output_interval > 0) .and. &
-          (time_step_number / output_interval * output_interval == time_step_number)) then
-
-         call all_copies_to_all_vars(ens_handle)
-
-         ! allocate space so task 0 can receive the ensemble members
-         if (my_task_id() == 0) then
-            allocate(temp_ens(ens_handle%num_vars))
-         else
-            allocate(temp_ens(1)) ! I think only task 0 needs space to store a copy
-         endif
-
-         call filter_state_space_diagnostics(curr_ens_time, PosteriorStateUnit, ens_handle, &
-            model_size, num_output_state_members, output_state_mean_index, &
-            output_state_spread_index, &
-            output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
-            post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
-         ! Cyclic storage for lags with most recent pointed to by smoother_head
-         ! ens_mean is passed to avoid extra temp storage in diagnostics
-
-         call smoother_ss_diagnostics(model_size, num_output_state_members, &
-            output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
-            POST_INF_COPY, POST_INF_SD_COPY)
-      endif
-
+      !> @todo What to do here?
+      !call smoother_ss_diagnostics(model_size, num_output_state_members, &
+       !  output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
+        ! POST_INF_COPY, POST_INF_SD_COPY)
    endif
 
    call timestamp_message('After  posterior state space diagnostics')
@@ -910,6 +870,8 @@ AdvanceTime : do
    call trace_message('Bottom of main advance time loop')
 end do AdvanceTime
 
+!call test_state_copies(ens_handle, 'last')
+
 10011 continue
 
 call trace_message('End of main filter assimilation loop, starting cleanup', 'filter:', -1)
@@ -940,10 +902,17 @@ call trace_message('Before writing state restart files if requested')
 call timestamp_message('Before writing state restart files if requested')
 
 call turn_write_copy_on(1,ens_size) ! restarts
+! Prior_Diag copies - write spare copies
 if (query_diag_mean()) call turn_write_copy_on(SPARE_COPY_MEAN)
 if (query_diag_spread()) call turn_write_copy_on(SPARE_COPY_SPREAD)
 if (query_diag_inf_mean()) call turn_write_copy_on(SPARE_COPY_INF_MEAN)
 if (query_diag_inf_spread()) call turn_write_copy_on(SPARE_COPY_INF_SPREAD)
+
+! Posterior Diag 
+call turn_write_copy_on(ENS_MEAN_COPY) ! mean
+call turn_write_copy_on(ENS_SD_COPY) ! sd
+call turn_write_copy_on(POST_INF_COPY) ! posterior inf mean
+call turn_write_copy_on(POST_INF_SD_COPY) ! posterior inf sd
 
 call filter_write_restart_direct(ens_handle)
 
@@ -1059,10 +1028,6 @@ if (my_task_id() == 0) then
                         'prior ensemble state', num_state_copies, state_meta)
    PosteriorStateUnit = init_diag_output('Posterior_Diag', &
                         'posterior ensemble state', num_state_copies, state_meta)
-
-   ierr = finalize_diag_output(PriorStateUnit) ! no error checking?
-   ierr = finalize_diag_output(PosteriorStateUnit)
-
 endif
 
 ! Set the metadata for the observations.
