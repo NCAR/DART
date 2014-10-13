@@ -4407,13 +4407,13 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t 
 
          else
 
-            ! HK I think this is a bug, you are just  going to grab the first copy 
+            ! HK I think this is a bug, you are just  going to grab the first copy - is this fixed?
             ! in each iteration of the loop
-            call error_handler(E_ERR, 'bug in get_model_pressure_profile_distrib', 'bug')
-            pres1(e:e) = model_pressure_t_distrib(ll(1), ll(2), 2,id,state_ens_handle, 1)
-            pres2(e:e) = model_pressure_t_distrib(lr(1), lr(2), 2,id,state_ens_handle, 1)
-            pres3(e:e) = model_pressure_t_distrib(ul(1), ul(2), 2,id,state_ens_handle, 1)
-            pres4(e:e) = model_pressure_t_distrib(ur(1), ur(2), 2,id,state_ens_handle, 1)
+            call error_handler(E_WARN, 'model_mod.f90 check for correctness', 'Helen')
+            pres1 = model_pressure_t_distrib(ll(1), ll(2), 2,id,state_ens_handle, ens_size)
+            pres2 = model_pressure_t_distrib(lr(1), lr(2), 2,id,state_ens_handle, ens_size)
+            pres3 = model_pressure_t_distrib(ul(1), ul(2), 2,id,state_ens_handle, ens_size)
+            pres4 = model_pressure_t_distrib(ur(1), ur(2), 2,id,state_ens_handle, ens_size)
 
             v_p(0,e:e) = interp_4pressure_distrib(pres1(e:e), pres2(e:e), pres3(e:e), pres4(e:e), dx, dxm, dy, dym, 1, &
                   extrapolate=.true., edgep=v_p(1,e))

@@ -115,6 +115,9 @@ character(len=256), allocatable :: dim_names(:, :, :)
 ! Stores which copies to read and write
 logical, allocatable :: read_copies(:), write_copies(:)
 
+! list of variables names in the state
+character(len=256), allocatable :: global_variable_names(:)
+
 ! namelist variables with default values
 ! Aim: to have the regular transpose as the default
 integer :: limit_mem = 2147483640!< This is the number of elements (not bytes) so you don't have times the number by 4 or 8
@@ -159,6 +162,7 @@ num_state_variables = n
 allocate(variable_ids(n, num_domains), variable_sizes(n, num_domains))
 allocate(dimIds(n, MAXDIMS, num_domains), length(n, MAXDIMS, num_domains), dim_names(n, MAXDIMS, num_domains))
 allocate(dimensions_and_lengths(n, MAXDIMS +1, num_domains))
+allocate(global_variable_names(n))
 
 dimensions_and_lengths = -1  ! initialize to a nonsense value
 
@@ -175,6 +179,9 @@ integer,            intent(in)  :: domain !< which domain info you are grabbing
 integer,            intent(out) :: domain_size
 
 integer :: i
+
+! load up module storage with variable names
+global_variable_names = variable_names
 
 ! open netcdf file - all restart files have the same info?
 ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
@@ -219,7 +226,7 @@ end subroutine get_state_variable_info_lorenz96
 subroutine get_variable_ids(variable_names, domain, variable_ids)
 
 character(len=*), intent(in)    :: variable_names(:) !< netcdf variable names
-integer,          intent(in)    :: domain
+integer,          intent(in)    :: domain ! where is this used.
 integer,          intent(inout) :: variable_ids(:) !< netcdf variable ids
 
 integer :: n !< number of variables in the state
@@ -964,6 +971,7 @@ integer :: i
 integer :: start_in_var_block
 integer :: var_size
 integer, allocatable :: dims(:)
+integer :: var_id
 
 start_in_var_block = 1
 
@@ -975,8 +983,10 @@ do i = start_var, end_var
    allocate(dims(dimensions_and_lengths(i,1, domain)))
 
    dims = dimensions_and_lengths(i, 2:dimensions_and_lengths(i,1, domain) + 1, domain)
+   ret = nf90_inq_varid(ncfile, global_variable_names(i), var_id)
+   call nc_check(ret, 'read_variables','inquire variable id')
 
-   ret = nf90_get_var(ncfile, variable_ids(i, domain), var_block(start_in_var_block:start_in_var_block+var_size-1), count=dims)
+   ret = nf90_get_var(ncfile, var_id, var_block(start_in_var_block:start_in_var_block+var_size-1), count=dims)
    call nc_check(ret, 'read_variables','reading')
 
    start_in_var_block = start_in_var_block + var_size
@@ -1001,6 +1011,7 @@ integer :: count_displacement
 integer :: start_in_var_block
 integer :: var_size
 integer, allocatable :: dims(:)
+integer :: var_id 
 
 start_in_var_block = 1
 do i = start_var, end_var
@@ -1011,7 +1022,10 @@ do i = start_var, end_var
    allocate(dims(dimensions_and_lengths(i, 1, domain)))
    dims = dimensions_and_lengths(i, 2:dimensions_and_lengths(i,1, domain) + 1, domain)
 
-   ret = nf90_put_var(ncfile_out, variable_ids(i, domain), var_block(start_in_var_block:start_in_var_block+var_size-1), count=dims)
+   ret = nf90_inq_varid(ncfile_out, global_variable_names(i), var_id)
+   call nc_check(ret, 'write_variables', 'getting variable id')
+
+   ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:start_in_var_block+var_size-1), count=dims)
    call nc_check(ret, 'write_variables', 'writing')
    start_in_var_block = start_in_var_block + var_size
 
