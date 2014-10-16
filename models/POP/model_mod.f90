@@ -72,7 +72,9 @@ public :: get_model_size,         &
           get_vert, set_vert, set_which_vert, &
           variables_domains, &
           fill_variable_list, &
-          info_file_name
+          info_file_name, &
+          construct_file_name, &
+          get_model_time
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
@@ -3560,8 +3562,69 @@ character(len=256)  :: info_file_name
 
 write(info_file_name, '(A)') 'pop.r.nc'
 
-
 end function info_file_name
+
+!--------------------------------------------------------------------
+!> construct restart file name for reading
+function construct_file_name(stub, domain, copy)
+
+character(len=512), intent(in) :: stub
+integer,            intent(in) :: domain
+integer,            intent(in) :: copy
+character(len=1024)            :: construct_file_name
+
+write(construct_file_name, '(A, i4.4)') TRIM(stub), copy
+
+
+end function construct_file_name
+
+!--------------------------------------------------------------------
+!> read the time from the input file
+!> Stolen from pop model_mod.f90 restart_to_sv
+function get_model_time(filename)
+
+character(len=1024) :: filename
+type(time_type) :: get_model_time
+
+
+integer :: ret !< netcdf return code
+integer :: ncid !< netcdf file id
+integer :: iyear, imonth, iday, ihour, iminute, isecond
+
+if ( .not. module_initialized ) call static_init_model
+
+if ( .not. file_exist(filename) ) then
+   write(msgstring,*) 'cannot open file ', trim(filename),' for reading.'
+   call error_handler(E_ERR,'get_model_time',msgstring,source,revision,revdate)
+endif
+
+call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
+                  'get_model_time', 'open '//trim(filename))
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iyear'  , iyear), &
+                  'get_model_time', 'get_att iyear')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'imonth' , imonth), &
+                  'get_model_time', 'get_att imonth')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iday'   , iday), &
+                  'get_model_time', 'get_att iday')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ihour'  , ihour), &
+                  'get_model_time', 'get_att ihour')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iminute', iminute), &
+                  'get_model_time', 'get_att iminute')
+call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'isecond', isecond), &
+                  'get_model_time', 'get_att isecond')
+
+! FIXME: we don't allow a real year of 0 - add one for now, but
+! THIS MUST BE FIXED IN ANOTHER WAY!
+if (iyear == 0) then
+  call error_handler(E_MSG, 'get_model_time', &
+                     'WARNING!!!   year 0 not supported; setting to year 1')
+  iyear = 1
+endif
+
+get_model_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
+
+
+end function get_model_time
 
 !--------------------------------------------------------------------
 !--------------------------------------------------------------------
