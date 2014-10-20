@@ -1872,7 +1872,7 @@ else
 
       ! Adjust zloc for staggered ZNW grid (or W-grid, as compared to ZNU or M-grid)
       zloc = zloc + 0.5_r8
-      k = max(1,int(zloc)) 
+      k = max(1,int(zloc))  !> @todo what should you do with this?
 
      call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_ens_handle )
 
@@ -2089,7 +2089,7 @@ else
        if( my_task_id() == 0 ) print*, 'no distributed version of vortex'
 
 !*****************************************************************************
-! END OF VERBATIM BIT
+! END OF VERBATIM BIT - what does this mean?
 !*****************************************************************************
 
 
@@ -2102,7 +2102,60 @@ else
    !   of either of these variables, then one can simply operate on the full 3D field 
    !   (toGrid below should return dz ~ 0 and dzm ~ 1) 
    else if( obs_kind == KIND_GEOPOTENTIAL_HEIGHT ) then
-      if( my_task_id() == 0 ) print*, 'no distributed version of geopotential height'
+      if( my_task_id() == 0 ) print*, '*** geopotential height forward operator not tested'
+
+      ! make sure vector includes the needed field
+      if ( wrf%dom(id)%type_gz >= 0 ) then
+
+         ! Adjust zloc for staggered ZNW grid (or W-grid, as compared to ZNU or M-grid)
+         zloc = zloc + 0.5_r8
+         k = max(1,int(zloc))  ! Only 1 value of k across the ensemble?
+
+         ! Check to make sure retrieved integer gridpoints are in valid range
+         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_gz ) .and. &
+              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_gz ) .and. &
+              boundsCheck( k(1), .false.,                id, dim=3, type=wrf%dom(id)%type_gz ) ) then
+            
+            call getCorners(i, j, id, wrf%dom(id)%type_gz, ll, ul, lr, ur, rc )
+            if ( rc .ne. 0 ) &
+                 print*, 'model_mod.f90 :: model_interpolate :: getCorners GZ rc = ', rc
+            
+            ! Interpolation for GZ field at level k
+            ill = new_dart_ind(ll(1), ll(2), k(1), wrf%dom(id)%type_gz, id)
+            iul = new_dart_ind(ul(1), ul(2), k(1), wrf%dom(id)%type_gz, id)
+            ilr = new_dart_ind(lr(1), lr(2), k(1), wrf%dom(id)%type_gz, id)
+            iur = new_dart_ind(ur(1), ur(2), k(1), wrf%dom(id)%type_gz, id)
+
+            call get_state(x_ill, ill, state_ens_handle)
+            call get_state(x_iul, iul, state_ens_handle)
+            call get_state(x_iur, iur, state_ens_handle)
+            call get_state(x_ilr, ilr, state_ens_handle)
+
+            fld(1,:) = ( dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur ) + &
+                       dym*( dxm*wrf%dom(id)%phb(ll(1), ll(2), k)   + &
+                             dx *wrf%dom(id)%phb(lr(1), lr(2), k) ) + &
+                       dy *( dxm*wrf%dom(id)%phb(ul(1), ul(2), k)   + &
+                             dx *wrf%dom(id)%phb(ur(1), ur(2), k) ) )  / gravity
+            
+            ! Interpolation for GZ field at level k+1
+            ill = new_dart_ind(ll(1), ll(2), k(1)+1, wrf%dom(id)%type_gz, id)
+            iul = new_dart_ind(ul(1), ul(2), k(1)+1, wrf%dom(id)%type_gz, id)
+            ilr = new_dart_ind(lr(1), lr(2), k(1)+1, wrf%dom(id)%type_gz, id)
+            iur = new_dart_ind(ur(1), ur(2), k(1)+1, wrf%dom(id)%type_gz, id)
+
+            call get_state(x_ill, ill, state_ens_handle)
+            call get_state(x_iul, iul, state_ens_handle)
+            call get_state(x_iur, iur, state_ens_handle)
+            call get_state(x_ilr, ilr, state_ens_handle)
+
+            fld(2, :) = ( dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur ) + &
+                       dym*( dxm*wrf%dom(id)%phb(ll(1), ll(2), k(1)+1)   + &
+                             dx *wrf%dom(id)%phb(lr(1), lr(2), k(1)+1) ) + &
+                       dy *( dxm*wrf%dom(id)%phb(ul(1), ul(2), k(1)+1)   + &
+                             dx *wrf%dom(id)%phb(ur(1), ur(2), k(1)+1) ) )  / gravity
+   
+         endif
+      endif
 
      !-----------------------------------------------------
    ! 1.x Surface Elevation (HGT)
@@ -8500,6 +8553,7 @@ end function info_file_name
 
 !--------------------------------------------------------------------
 !> construct restart file name for reading
+!> model time for CESM format?
 function construct_file_name(stub, domain, copy)
 
 character(len=512), intent(in) :: stub
