@@ -2199,7 +2199,26 @@ else
    ! Land Mask has been added to accommodate satellite observations.
    !   XLAND is not in the dart_ind vector, so get it from wrf%dom(id)%land
    else if( obs_kind == KIND_LANDMASK ) then
-      if( my_task_id() == 0 ) print*, 'no distributed version of land mask'
+      if( my_task_id() == 0 ) print*, '*** Land mask forward operator not tested'
+
+      if ( debug ) print*,'Getting land mask'
+
+      ! Check to make sure retrieved integer gridpoints are in valid range
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) then
+      
+         call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+         if ( rc .ne. 0 ) &
+              print*, 'model_mod.f90 :: model_interpolate :: getCorners XLAND rc = ', rc
+         
+         ! Interpolation for the XLAND field -- XLAND is NOT part of state vector x, but rather
+         !   in the associated domain meta data
+         fld(1, :) = dym*( dxm*real(wrf%dom(id)%land(ll(1), ll(2))) + &
+                         dx*real(wrf%dom(id)%land(lr(1), lr(2))) ) + &
+                   dy*( dxm*real(wrf%dom(id)%land(ul(1), ul(2))) + &
+                         dx*real(wrf%dom(id)%land(ur(1), ur(2))) )
+
+      endif
 
    !-----------------------------------------------------
    ! If obs_kind is not negative (for identity obs), or if it is not one of the above 15
