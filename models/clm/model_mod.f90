@@ -3698,12 +3698,12 @@ MyLoop : do i = 1, nrows
    call to_upper(origin_file)
    call to_upper(state_or_aux)
 
-   table(i,1) = trim(varname)
-   table(i,2) = trim(dartstr)
-   table(i,3) = trim(minvalstring)
-   table(i,4) = trim(maxvalstring)
-   table(i,5) = trim(origin_file)
-   table(i,6) = trim(state_or_aux)
+   table(i,VT_VARNAMEINDX) = trim(varname)
+   table(i,VT_KINDINDX)    = trim(dartstr)
+   table(i,VT_MINVALINDX)  = trim(minvalstring)
+   table(i,VT_MAXVALINDX)  = trim(maxvalstring)
+   table(i,VT_ORIGININDX)  = trim(origin_file)
+   table(i,VT_STATEINDX)   = trim(state_or_aux)
 
    ! If the first element is empty, we have found the end of the list.
    if ( table(i,1) == ' ' ) exit MyLoop
