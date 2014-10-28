@@ -635,12 +635,56 @@ open( topo_unit, file=trim(topography_file), form='unformatted', &
 read( topo_unit, rec=1) KMT
 close(topo_unit)
 
-KMU(1, 1) = 0
-do j=2,ny
-do i=2,nx
-   KMU(i,j) = min(KMT(i, j), KMT(i-1, j), KMT(i, j-1), KMT(i-1, j-1))
+! the equation numbered 3.2 on page 15 of this document:
+!  http://www.cesm.ucar.edu/models/cesm1.0/pop2/doc/sci/POPRefManual.pdf
+! is WRONG.  (WRONG == inconsistent with the current POP source code.)
+!
+! for any U(i,j), the T(i,j) point with the same index values is located
+! south and west. so the T points which surround any U(i,j) point are
+! in fact at indices i,i+1, and j,j+1 .
+!
+!  NO: KMU(i,j) = min(KMT(i, j), KMT(i-1, j), KMT(i, j-1), KMT(i-1, j-1)) 
+! YES: KMU(i,j) = min(KMT(i, j), KMT(i+1, j), KMT(i, j+1), KMT(i+1, j+1))
+!
+! the latter matches the POP source code, on yellowstone, lines 908 and 909 in:
+!  /glade/p/cesm/releases/cesm1_2_2/models/ocn/pop2/source/grid.F90
+!
+! wrap around longitude boundary at i == nx.  set the topmost (last) latitude
+! U row to the same value in all cases. in the shifted pole grid currently in 
+! use all these points are on land and so are 0.  in the original unshifted
+! lat/lon grid these last row U points are above the final T row and are believed
+! to be unused.  for completeness we set all values in the last U row to the 
+! minimum of the all T row values immediately below it, for all longitudes.
+
+do j=1,ny-1
+   do i=1,nx-1
+      KMU(i,j) = min(KMT(i, j), KMT(i+1, j), KMT(i, j+1), KMT(i+1, j+1))
+   enddo
+   KMU(nx,j) = min(KMT(nx, j), KMT(1, j), KMT(nx, j+1), KMT(1, j+1))
 enddo
-enddo
+KMU(:,ny) = minval(KMT(:,ny))
+
+! IF YOU KNOW WHAT YOU ARE DOING YOU CAN COMMENT THIS TEST AND ERROR
+! CODE OUT, but keep reading to be sure:
+! the dart interface code can handle interpolation in any supported
+! POP grid, including a standard latitude/longitude grid.  but it is
+! not clear that the POP model code can compute values correctly if
+! the top row of the grid is in fact a singular point at the north pole.
+! a shifted grid puts this row over land where singularities can be ignored.
+! if you are sure your version of POP can compute the top grid row values
+! correctly, comment out the code between START HERE and END HERE and
+! recompile.  otherwise, use a shifted-pole grid. 
+
+! START HERE
+if (any(KMT(:,ny) /= 0)) then
+   msgstring = 'north boundary of grid does not appear to be over land'
+   call error_handler(E_ERR,'read_topography', &
+          msgstring, source, revision, revdate, &
+          text2='to continue, comment out this error call in the source code', &
+          text3='at end of read_topography() in models/POP/dart_pop_mod.f90')
+   
+endif
+! END HERE
 
 end subroutine read_topography
 
