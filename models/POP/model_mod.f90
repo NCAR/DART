@@ -73,7 +73,7 @@ public :: get_model_size,         &
           variables_domains, &
           fill_variable_list, &
           info_file_name, &
-          construct_file_name, &
+          construct_file_name_in, &
           get_model_time
 
 ! generally useful routines for various support purposes.
@@ -3566,17 +3566,17 @@ end function info_file_name
 
 !--------------------------------------------------------------------
 !> construct restart file name for reading
-function construct_file_name(stub, domain, copy)
+function construct_file_name_in(stub, domain, copy)
 
 character(len=512), intent(in) :: stub
 integer,            intent(in) :: domain
 integer,            intent(in) :: copy
-character(len=1024)            :: construct_file_name
+character(len=1024)            :: construct_file_name_in
 
-write(construct_file_name, '(A, i4.4)') TRIM(stub), copy
+write(construct_file_name_in, '(A, i4.4)') TRIM(stub), copy
 
 
-end function construct_file_name
+end function construct_file_name_in
 
 !--------------------------------------------------------------------
 !> read the time from the input file
