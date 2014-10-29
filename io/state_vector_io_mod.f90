@@ -125,8 +125,9 @@ character(len=256), allocatable :: global_variable_names(:)
 integer :: limit_mem = 2147483640!< This is the number of elements (not bytes) so you don't have times the number by 4 or 8
 integer :: limit_procs = 100000!< how many processors you want involved in each transpose.
 logical :: create_restarts = .true. ! what if the restart files exist?
+logical :: time_unlimited = .true. ! You need to keep track of the time.
 
-namelist /  state_vector_io_nml / limit_mem, limit_procs 
+namelist /  state_vector_io_nml / limit_mem, limit_procs, create_restarts, time_unlimited
 
 contains
 
@@ -1037,7 +1038,11 @@ copy_dimIds = dimIds
 do i = 1, num_state_variables ! loop around state variables
    ! check if their dimensions exist
    do j = 1, dimensions_and_lengths(i, 1, dom) ! ndims
-      ret = nf90_def_dim(ncfile_out, dim_names(i, j, dom), dimensions_and_lengths(i, j+1, dom), new_dimid) ! does this do nothing if the dimension already exists?
+      if (time_unlimited .and. (dim_names(i, j, dom) == 'Time')) then ! case sensitive
+         ret = nf90_def_dim(ncfile_out, dim_names(i, j, dom), NF90_UNLIMITED, new_dimid) ! does this do nothing if the dimension already exists?
+      else
+         ret = nf90_def_dim(ncfile_out, dim_names(i, j, dom), dimensions_and_lengths(i, j+1, dom), new_dimid) ! does this do nothing if the dimension already exists?
+      endif
       if(ret == NF90_NOERR) then ! successfully created, store this dimenion id
          where (dimIds == dimIds(i, j, dom))
             copy_dimIds = new_dimid
