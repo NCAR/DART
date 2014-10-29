@@ -472,7 +472,8 @@ endif
 end subroutine adaptive_inflate_init
 
 !------------------------------------------------------------------
-
+!> should you be turning on copies here?
+!> They are redone in filter anyway.
 subroutine adaptive_inflate_end(state_ens_handle, inflate_handle, ens_handle, ss_inflate_index, &
    ss_inflate_sd_index, direct_netcdf_read)
 

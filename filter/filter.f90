@@ -129,7 +129,7 @@ logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
 logical  :: silence                  = .false.
-logical  :: parallel_state_diag      = .true. ! default to write diagnostics in parallel - SKIPING at the moment.
+logical  :: parallel_state_diag      = .true. ! default to write diagnostics in parallel - SKIPING at the moment, now stitching output together post processing
 logical  :: direct_netcdf_read = .true. ! default to read from netcdf file
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &

@@ -142,7 +142,7 @@ public ::  get_model_size,                    &
            variables_domains,                 &
            fill_variable_list,                &
            get_vert, set_vert, set_which_vert, &
-           info_file_name, construct_file_name, &
+           info_file_name, construct_file_name_in, &
            get_model_time
 
 !  public stubs 
@@ -8573,21 +8573,21 @@ end function info_file_name
 !--------------------------------------------------------------------
 !> construct restart file name for reading
 !> model time for CESM format?
-function construct_file_name(stub, domain, copy)
+function construct_file_name_in(stub, domain, copy)
 
 character(len=512), intent(in) :: stub
 integer,            intent(in) :: domain
 integer,            intent(in) :: copy
-character(len=1024)            :: construct_file_name
+character(len=1024)            :: construct_file_name_in
 
 !write(construct_file_name, '(A, i2.2, A, i2.2, A)') TRIM(stub), domain, '.', copy, '.nc'
 if (copy < 10) then
-   write(construct_file_name, '(A, i1.1, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
+   write(construct_file_name_in, '(A, i1.1, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
 else
-   write(construct_file_name, '(A, i2.2, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
+   write(construct_file_name_in, '(A, i2.2, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
 endif
 
-end function construct_file_name
+end function construct_file_name_in
 
 !--------------------------------------------------------------------
 !> read the time from the input file

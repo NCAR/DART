@@ -42,17 +42,11 @@ logical :: diag_mean = .false.
 logical :: diag_spread = .false.
 logical :: diag_inf_mean = .false.
 logical :: diag_inf_spread = .false.
-character(len=512) :: stub_diag_mean  = 'prior_diag_mean'
-character(len=512) :: stub_diag_sd  = 'prior_diag_sd'
-character(len=512) :: stub_diag_inf_mean  = 'prior_diag_inf_mean'
-character(len=512) :: stub_diag_inf_sd  = 'prior_diag_inf_sd'
-
 
 
 ! Should probably get num_domains, num_restarts from elsewhere. In here for now
 namelist / io_filenames_nml / restart_in_stub, restart_out_stub, &
-   diag_mean, diag_spread, diag_inf_mean, diag_inf_spread, &
-   stub_diag_mean, stub_diag_sd, stub_diag_inf_mean, stub_diag_inf_sd
+   diag_mean, diag_spread, diag_inf_mean, diag_inf_spread
 
 contains
 
@@ -91,40 +85,40 @@ enddo
 
 ! input extras
 do dom = 1, num_domains
-   ! mean
+   ! mean -never used
    write(restart_files_in(ens_size + 1, dom), '(A, i2.2, A)') 'mean_copy_d', dom, '.nc'
-   ! sd
+   ! sd -never used
    write(restart_files_in(ens_size + 2, dom), '(A, i2.2, A)') 'sd_copy_d',   dom, '.nc'
    ! prior inf copy
-   write(restart_files_in(ens_size + 3, dom), '(A, i2.2, A)') trim(inflation_in(1)), dom, '_mean.nc'
+   write(restart_files_in(ens_size + 3, dom), '(A, A, i2.2, A)') trim(inflation_in(1)), '_mean_d', dom, '.nc'
    ! prior inf sd copy
-   write(restart_files_in(ens_size + 4, dom), '(A, i2.2, A)') trim(inflation_in(1)), dom, '_sd.nc'
+   write(restart_files_in(ens_size + 4, dom), '(A, A, i2.2, A)') trim(inflation_in(1)), '_sd_d', dom, '.nc'
    ! post inf copy
-   write(restart_files_in(ens_size + 5, dom), '(A, i2.2, A)') trim(inflation_in(2)), dom, '_mean.nc'
+   write(restart_files_in(ens_size + 5, dom), '(A, A, i2.2, A)') trim(inflation_in(2)), '_mean_d', dom, '.nc'
    ! post inf sd copy
-   write(restart_files_in(ens_size + 6, dom), '(A, i2.2, A)') trim(inflation_in(2)), dom, '_sd.nc'
+   write(restart_files_in(ens_size + 6, dom), '(A, A, i2.2, A)') trim(inflation_in(2)), '_sd_d', dom, '.nc'
 enddo
 
 ! output extras
 do dom = 1, num_domains
    ! mean
-   write(restart_files_out(ens_size + 1, dom), '(A, i2.2, A)') 'Output/mean_copy_d', dom, '.nc'
+   write(restart_files_out(ens_size + 1, dom), '(A, i2.2, A)') 'Output/posterior_mean_copy_d', dom, '.nc'
    ! sd
-   write(restart_files_out(ens_size + 2, dom), '(A, i2.2, A)') 'Output/sd_copy_d',   dom, '.nc'
+   write(restart_files_out(ens_size + 2, dom), '(A, i2.2, A)') 'Output/posterior_sd_copy_d',   dom, '.nc'
    ! prior inf copy
-   write(restart_files_out(ens_size + 3, dom), '(A, i2.2, A)') trim(inflation_out(1)), dom, '_mean.nc'
+   write(restart_files_out(ens_size + 3, dom), '(A, A, i2.2, A)') trim(inflation_out(1)), '_mean_d', dom, '.nc'
    ! prior inf sd copy
-   write(restart_files_out(ens_size + 4, dom), '(A, i2.2, A)') trim(inflation_out(1)), dom, '_sd.nc'
+   write(restart_files_out(ens_size + 4, dom), '(A, A, i2.2, A)') trim(inflation_out(1)), '_sd_d', dom, '.nc'
    ! post inf copy
-   write(restart_files_out(ens_size + 5, dom), '(A, i2.2, A)') trim(inflation_out(2)), dom, '_mean.nc'
+   write(restart_files_out(ens_size + 5, dom), '(A, A, i2.2, A)') trim(inflation_out(2)), '_mean_d', dom, '.nc'
    ! post inf sd copy
-   write(restart_files_out(ens_size + 6, dom), '(A, i2.2, A)') trim(inflation_out(2)), dom, '_sd.nc'
+   write(restart_files_out(ens_size + 6, dom), '(A, A, i2.2, A)') trim(inflation_out(2)), '_sd_d', dom, '.nc'
 
    ! Storage for copies that would have gone in the Prior_diag.nc if we were to write it
-   write(restart_files_out(ens_size + 7, dom), '(A, i2.2, A)') 'Output/prior_diag_mean', dom, '.nc'
-   write(restart_files_out(ens_size + 8, dom), '(A, i2.2, A)') 'Output/prior_diag_sd', dom, '.nc'
-   write(restart_files_out(ens_size + 9, dom), '(A, i2.2, A)') 'Output/prior_diag_inf_mean', dom, '.nc'
-   write(restart_files_out(ens_size + 10, dom), '(A, i2.2, A)') 'Output/prior_diag_inf_sd', dom, '.nc'
+   write(restart_files_out(ens_size + 7, dom), '(A, i2.2, A)') 'Output/prior_mean_d', dom, '.nc'
+   write(restart_files_out(ens_size + 8, dom), '(A, i2.2, A)') 'Output/prior_sd_d', dom, '.nc'
+   write(restart_files_out(ens_size + 9, dom), '(A, i2.2, A)') 'Output/prior_inf_mean_d', dom, '.nc'
+   write(restart_files_out(ens_size + 10, dom), '(A, i2.2, A)') 'Output/prior_inf_sd_d', dom, '.nc'
 
 
 enddo
