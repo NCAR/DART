@@ -1023,6 +1023,7 @@ integer :: i, j ! loop variables
 integer :: new_dimid
 integer :: new_varid
 integer :: ndims
+integer :: xtype ! precision for netcdf file
 
 ! What file options do you want
 create_mode = NF90_CLOBBER
@@ -1053,7 +1054,14 @@ dimIds = copy_dimIds
 do i = 1, num_state_variables ! loop around state variables
    ! double or single precision?
    ndims = dimensions_and_lengths(i, 1, dom)
-   ret = nf90_def_var(ncfile_out, trim(global_variable_names(i)), xtype=nf90_real, dimids=dimIds(i, 1:ndims, dom), varid=new_varid)
+
+   if (datasize == mpi_real4) then
+      xtype = nf90_real
+   else
+      xtype = nf90_double
+   endif
+
+   ret = nf90_def_var(ncfile_out, trim(global_variable_names(i)), xtype=xtype, dimids=dimIds(i, 1:ndims, dom), varid=new_varid)
    call nc_check(ret, 'create_state_output', 'defining variable')
       variable_ids(i, dom) = new_varid
 
