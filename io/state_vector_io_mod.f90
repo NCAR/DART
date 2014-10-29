@@ -104,11 +104,13 @@ integer, parameter :: MAXDIMS = NF90_MAX_VAR_DIMS
 
 integer,            allocatable :: variable_ids(:, :)
 integer,            allocatable :: variable_sizes(:, :)
-integer,   allocatable :: dimensions_and_lengths(:,:, :) !< number of dimensions and length of each dimension
+integer,   allocatable :: dimensions_and_lengths(:, :, :) !< number of dimensions and length of each dimension
 integer :: num_state_variables
 
-! record dimensions for output netcdf file
+! record dimensions for output netcdf file,
+! (state_variable, dimension, domain)
 integer,            allocatable :: dimIds(:, :, :) !< dimension ids
+integer,            allocatable :: copy_dimIds(:, :, :) !< dimension ids copy
 integer,            allocatable :: length(:, :, :) !< dimension length
 character(len=256), allocatable :: dim_names(:, :, :)
 
@@ -122,6 +124,7 @@ character(len=256), allocatable :: global_variable_names(:)
 ! Aim: to have the regular transpose as the default
 integer :: limit_mem = 2147483640!< This is the number of elements (not bytes) so you don't have times the number by 4 or 8
 integer :: limit_procs = 100000!< how many processors you want involved in each transpose.
+logical :: create_restarts = .true. ! what if the restart files exist?
 
 namelist /  state_vector_io_nml / limit_mem, limit_procs 
 
@@ -161,10 +164,12 @@ num_state_variables = n
 
 allocate(variable_ids(n, num_domains), variable_sizes(n, num_domains))
 allocate(dimIds(n, MAXDIMS, num_domains), length(n, MAXDIMS, num_domains), dim_names(n, MAXDIMS, num_domains))
+allocate(copy_dimIds(n, MAXDIMS, num_domains))
 allocate(dimensions_and_lengths(n, MAXDIMS +1, num_domains))
 allocate(global_variable_names(n))
 
 dimensions_and_lengths = -1  ! initialize to a nonsense value
+dimIds = -1
 
 end subroutine initialize_arrays_for_read
 
@@ -596,8 +601,12 @@ COPIES : do c = 1, ens_size
       if (my_pe < ens_size) then
          if ( query_write_copy(my_copy - recv_start + 1)) then
             netcdf_filename_out = restart_files_out((my_copy - recv_start +1), domain)
-            ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
-            call nc_check(ret, 'transpose_write opening', trim(netcdf_filename_out))
+            if (create_restarts) then ! How do you want to do create restarts
+               call create_state_output(netcdf_filename_out, domain)
+            else
+               ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
+               call nc_check(ret, 'transpose_write opening', trim(netcdf_filename_out))
+            endif
          endif
 
       endif
@@ -996,6 +1005,64 @@ do i = start_var, end_var
 enddo
 
 end subroutine read_variables
+
+
+!-------------------------------------------------
+!> Create the output files
+!> Assume same variables in each domain
+!> Overwriting reading arrays with writing info.  Is this what you want to do?
+!> ncfile_out is global - is this ok?
+subroutine create_state_output(filename, dom)
+
+character(len=256), intent(in) :: filename
+integer,            intent(in) :: dom !< domain, not sure whether you need this?
+
+integer :: ret !> netcdf return code
+integer :: create_mode
+integer :: i, j ! loop variables
+integer :: new_dimid
+integer :: new_varid
+integer :: ndims
+
+! What file options do you want
+create_mode = NF90_CLOBBER
+ret = nf90_create(filename, create_mode, ncfile_out)
+call nc_check(ret, 'create_state_output', 'creating')
+
+! make a copy of the dimIds array
+copy_dimIds = dimIds
+
+! define dimensions
+do i = 1, num_state_variables ! loop around state variables
+   ! check if their dimensions exist
+   do j = 1, dimensions_and_lengths(i, 1, dom) ! ndims
+      ret = nf90_def_dim(ncfile_out, dim_names(i, j, dom), dimensions_and_lengths(i, j+1, dom), new_dimid) ! does this do nothing if the dimension already exists?
+      if(ret == NF90_NOERR) then ! successfully created, store this dimenion id
+         where (dimIds == dimIds(i, j, dom))
+            copy_dimIds = new_dimid
+         end where
+      endif
+
+   enddo
+enddo
+
+! overwrite dimIds
+dimIds = copy_dimIds
+
+! define variables
+do i = 1, num_state_variables ! loop around state variables
+   ! double or single precision?
+   ndims = dimensions_and_lengths(i, 1, dom)
+   ret = nf90_def_var(ncfile_out, trim(global_variable_names(i)), xtype=nf90_real, dimids=dimIds(i, 1:ndims, dom), varid=new_varid)
+   call nc_check(ret, 'create_state_output', 'defining variable')
+      variable_ids(i, dom) = new_varid
+
+enddo
+
+ret = nf90_enddef(ncfile_out)
+call nc_check(ret, 'create_state_output', 'end define mode')
+
+end subroutine create_state_output
 
 !-------------------------------------------------
 !> Write variables from start_var to end_var

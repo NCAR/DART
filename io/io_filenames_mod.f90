@@ -16,7 +16,7 @@ module io_filenames_mod
 
 use utilities_mod, only : do_nml_file, nmlfileunit, do_nml_term, check_namelist_read, &
                           find_namelist_in_file
-use model_mod,     only : construct_file_name
+use model_mod,     only : construct_file_name_in
 
 implicit none
 
@@ -84,8 +84,8 @@ allocate(restart_files_out(num_files, num_domains))
 
 do dom = 1, num_domains
    do i = 1, ens_size  ! restarts
-      restart_files_in(i, dom)  = construct_file_name(restart_in_stub, dom, i)
-      restart_files_out(i, dom) = construct_file_name(restart_out_stub, dom, i)
+      restart_files_in(i, dom)  = construct_file_name_in(restart_in_stub, dom, i)
+      restart_files_out(i, dom) = construct_file_name_out(restart_out_stub, dom, i)
    enddo
 enddo
 
@@ -178,7 +178,20 @@ deallocate(restart_files_in, restart_files_out)
 
 end subroutine end_io_filenames
 
-!----------------------------------
 
+!--------------------------------------------------------------------
+!> construct restart file name for writing
+function construct_file_name_out(stub, domain, copy)
+
+character(len=512), intent(in) :: stub
+integer,            intent(in) :: domain
+integer,            intent(in) :: copy
+character(len=1024)            :: construct_file_name_out
+
+write(construct_file_name_out, '(A,  A, i2.2, A, i2.2)') TRIM(stub), '_d', domain, '.', copy
+
+end function construct_file_name_out
+
+!----------------------------------
 !> @}
 end module io_filenames_mod
