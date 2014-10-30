@@ -69,12 +69,13 @@ C     +            'VADWND', 'SATEMP', 'ADPSFC', 'SFCSHP', 'SFCBOG',
 C     +            'SPSSMI', 'SYNDAT', 'ERS1DA', 'GOESND', 'QKSWND'/
 
       dimension tdata(8), udata(8), vdata(8), qdata(8), pdata(8)
-      integer :: wtype, ptype, qtype, ttype
+      dimension zdata(8)
+      integer :: wtype, ptype, qtype, ttype, ztype
 c    The pc values are the 'program codes' that tell you what processing
 c    was done on this observation.  As of now, these are unused, but could
 c    be used for selection or diagnosis.
-      integer :: pc_t, pc_q, pc_u, pc_v, pc_p 
-      integer :: tqm, pqm, qqm, uqm, vqm
+      integer :: pc_t, pc_q, pc_u, pc_v, pc_p, pc_z
+      integer :: tqm, pqm, qqm, uqm, vqm, zqm
       logical :: found, uotype, uqcflag, use_this_data_real, 
      +           use_this_data_int, processed
       logical :: debug = .false.
@@ -287,6 +288,13 @@ c----------------------------------------------------------------------
       qdata(8) = hour01
          qtype = hdr(6)
 
+      zdata(2) = hdr(2)
+      zdata(3) = hdr(3)
+      zdata(6) = 0
+      zdata(7) = iprof + 7000000
+      zdata(8) = hour01
+         ztype = hdr(6)
+
       udata(2) = hdr(2)
       udata(3) = hdr(3)
       udata(7) = iprof + 2000000
@@ -430,7 +438,19 @@ c----------------------------------------------------------------------
         if(pqm .eq. 0) poe = poe*0.9
         if(pqm .eq. 3) poe = poe*1.2
         ppb = evns(1, lv, 1, 1)            ! mb
+        !zob = evns(1, lv, 1, 4)            ! m
+
+c    set up the height observation data, units are m
+c----------------------------------------------------------------------
+
+        zoe  = evns(7, lv, 1, 4)     
         zob = evns(1, lv, 1, 4)            ! m
+        zqm  = evns(2, lv, 1, 4) 
+        pc_z = evns(3, lv, 1, 4)
+
+        if (pc_z < 0 .or. pc_z > 99) pc_z = 99
+        if(zqm .eq. 0) zoe = zoe*0.9
+        if(zqm .eq. 3) zoe = zoe*1.2
 
 c    set up the wind observation data, units are m/s
 c----------------------------------------------------------------------
@@ -715,6 +735,32 @@ c----------------------------------------------------------------------
           else
              if ( debug ) print *, 'skip wind, uob,uqm,pqm = ',
      &          uob, uqm, pqm
+          endif   ! if use_this_data
+
+        endif
+
+c    write out geopotential height observation of ADPUPA
+c----------------------------------------------------------------------
+
+        if (subset(1:6).eq.'ADPUPA') then
+ 
+          if (use_this_data_int(zqm,qctype_use,inum_qctype) .and.
+     &        use_this_data_int(pqm,qctype_use,inum_qctype) .and. 
+     &        zoe. lt. 1.e9 .and. zob .lt. 1.e9            ) then
+
+            zdata(1) = zoe
+            zdata(4) = ppb
+            zdata(5) = zob
+
+            if (pc_z < 0 .or. pc_z > 99) pc_z = 99
+            write(lunobs, 800) zdata, ztype, zqm, subset(1:6), pc_z
+            processed = .true.
+    
+
+          else
+             if ( debug ) print *, 
+     &           'skip geopotential height, zoe,zob,zqm,pqm = ',
+     &            zoe, zob, zqm, pqm
           endif   ! if use_this_data
 
         endif
