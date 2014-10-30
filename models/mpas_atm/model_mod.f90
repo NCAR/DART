@@ -120,7 +120,8 @@ public :: get_model_analysis_filename,  &
           get_analysis_time,            &
           write_model_time,             &
           get_grid_dims,                &
-          print_variable_ranges
+          print_variable_ranges,        &
+          find_closest_cell_center
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &

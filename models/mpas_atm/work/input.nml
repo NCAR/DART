@@ -220,6 +220,8 @@
                              '../../../obs_def/obs_def_gts_mod.f90',
                              '../../../obs_def/obs_def_metar_mod.f90',
                              '../../../obs_def/obs_def_gps_mod.f90',
+                             '../../../obs_def/obs_def_vortex_mod.f90', 
+                             '../../../obs_def/obs_def_rel_humidity_mod.f90', 
                              '../../../obs_def/obs_def_dew_point_mod.f90'
   /
 
@@ -434,4 +436,33 @@
    verbose           = .true.
    debug             = .false.
   /
+
+&mpas_obs_preproc_nml
+   static_mpas_filename     = 'mpas_init.nc'
+   file_name_input          = 'obs_seq.old'
+   file_name_output         = 'obs_seq.new'
+   include_sig_data         = .true.
+   superob_aircraft         = .false.
+   superob_sat_winds        = .false.
+   sfc_elevation_check      = .false.
+   overwrite_ncep_sfc_qc    = .false.
+   overwrite_ncep_satwnd_qc = .false.
+   aircraft_pres_int        = 2500.0
+   sat_wind_pres_int        = 2500.0
+   sfc_elevation_tol        = 300.0
+   obs_pressure_top         = 0.0
+   obs_height_top           = 2.0e10
+   max_num_obs              = 1000000
+   sonde_extra              = 'obs_seq.rawin'
+   metar_extra              = 'obs_seq.metar'
+   acars_extra              = 'obs_seq.acars'
+   land_sfc_extra           = 'obs_seq.land_sfc'
+   marine_sfc_extra         = 'obs_seq.marine'
+   sat_wind_extra           = 'obs_seq.satwnd'
+   profiler_extra           = 'obs_seq.profiler'
+   trop_cyclone_extra       = 'obs_seq.tc'
+   gpsro_extra              = 'obs_seq.gpsro'
+   tc_sonde_radii           = -1.0
+   overwrite_obs_time       = .false.
+/
 
