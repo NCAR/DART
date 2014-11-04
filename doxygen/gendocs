@@ -2,6 +2,9 @@
 
 # generate a family of directories for each of the executables
 # in this directory (created by scanning the path_names_* files)
+#
+# before calling, copy this file to a model's work directory, along 
+# with one of the doxygen configuration template files listed below.
 
 # pick one: the second tries to create diagrams showing the calling
 # and called relationship between subroutines, but the number and size
