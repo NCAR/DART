@@ -49,7 +49,8 @@ use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, single_restart_f
                                  single_restart_file_out
 
 use utilities_mod,        only : error_handler, E_ERR, nc_check, check_namelist_read, &
-                                 find_namelist_in_file, nmlfileunit, do_nml_file, do_nml_term
+                                 find_namelist_in_file, nmlfileunit, do_nml_file, do_nml_term, file_exist, &
+                                 E_MSG
 
 use assim_model_mod,      only : get_model_size, aread_state_restart, awrite_state_restart, &
                                  open_restart_read, open_restart_write, close_restart
@@ -555,6 +556,8 @@ integer              :: ierr !< mpi error (all errors are fatal so I don't bothe
 integer              :: collector_type !< mpi derived datatype
 integer status(MPI_STATUS_SIZE)
 
+character(len=256)      :: msgstring
+
 ! single file
 integer :: iunit
 type(time_type) :: ens_time
@@ -605,8 +608,14 @@ COPIES : do c = 1, ens_size
             if (create_restarts) then ! How do you want to do create restarts
                call create_state_output(netcdf_filename_out, domain)
             else
-               ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
-               call nc_check(ret, 'transpose_write opening', trim(netcdf_filename_out))
+               if(file_exist(netcdf_filename_out)) then
+                  ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
+                    call nc_check(ret, 'transpose_write opening', trim(netcdf_filename_out))
+               else ! create output file if it does not exist
+                  write(msgstring, *) 'Creating output file ', trim(netcdf_filename_out)
+                  call error_handler(E_MSG,'state_vector_io_mod:', msgstring)
+                  call create_state_output(netcdf_filename_out, domain)
+               endif
             endif
          endif
 
