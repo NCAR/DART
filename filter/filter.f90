@@ -1590,6 +1590,9 @@ QC_LOOP: do j = 1, obs_ens_handle%my_num_vars
    good_forward_op = .false.
 
    ! compute outlier test and consolidate forward operator qc
+   ! find the min and max istatus values across all ensemble members.  these are
+   ! either set by dart code, or returned by the model-specific model_interpolate() 
+   ! routine, or by forward operator code in obs_def_xxx_mod files.
    forward_max = nint(maxval(forward_op_ens_handle%copies(1:copies_in_window(ens_handle), j)))
    forward_min = nint(minval(forward_op_ens_handle%copies(1:copies_in_window(ens_handle), j)))
 !--- copied from obs_state_diagnostics ---
@@ -1687,8 +1690,11 @@ QC_LOOP: do j = 1, obs_ens_handle%my_num_vars
       obs_ens_handle%copies(OBS_VAR_START,  j) = missing_r8
    endif
 
-!--- end copied from obs_state_diagnostics ---
+! PAR: NEED TO BE ABLE TO OUTPUT DETAILS OF FAILED FORWARD OBSEVATION OPERATORS
+! OR FAILED OUTLIER, ETC. NEEDS TO BE DONE BY PE 0 ONLY. PUT IT HERE FOR FIRST
+! BUT IN QC MOD FOR THE SECOND???  
 
+!--- end copied from obs_state_diagnostics ---
 
 end do QC_LOOP
 
@@ -1732,190 +1738,8 @@ real(r8)              :: obs_prior_mean, obs_prior_var, obs_val, obs_err_var
 real(r8)              :: rvalue(1)
 logical               :: do_outlier, good_forward_op, failed
 
-if (present(skip)) then
-   if (skip) goto 102 ! skip the first part of obs_diag
-   ! HK Currently ignoring the outputting the forward operator
-endif
-! Assume that mean and spread have been computed if needed???
-! Assume that things are copy complete???
-
-! Getting the copies requires communication, so need to only do it
-! once per copy. This puts the observation loop on the inside
-! which may itself be expensive. Check out cost later.
-
-!PAR: REMEMBER THAT SOME THINGS NEED NOT BE DONE IF QC IS BAD ALREADY!!!
-
-! Compute the ensemble total mean and sd if required for output
-! Also compute the mean and spread if qc and outlier_threshold check requested
-do_outlier = (prior_post == PRIOR_DIAG .and. outlier_threshold > 0.0_r8)
-
 ! Do verbose forward operator output if requested
-if(output_forward_op_errors) then
-   ! Need to open a file for prior and posterior output
-   if(my_task_id() == 0) then
-      if(prior_post == PRIOR_DIAG) then
-         forward_unit = open_file('prior_forward_op_errors', 'formatted', 'append')
-      else
-         forward_unit = open_file('post_forward_op_errors', 'formatted', 'append')
-      endif
-   endif
- 
-   allocate(forward_temp(num_obs_in_set))
-
-! This is two loops: around ens_size and around observations
-! If task 0 has an ensemble copy, everyone else has to wait for zero to finish for all_vars_to_all_copies
-! If task zero does not have a copy, all_vars_to_all_copies is still a synchonization point because task zero
-! has to recieve some variables from the tasks with copies.
-! Q. What if task zero (or multiple writers ) did not take part the all_vars all all_copies?
-
-   do k = 1, ens_size
-      ! Get this copy to PE 0
-      call get_copy(map_task_to_pe(forward_op_ens_handle, 0), forward_op_ens_handle, k, forward_temp)
-
-      ! Loop through each observation in set for this copy
-      ! Forward temp is a real representing an integer; values /= 0 get written out
-      if(my_task_id() == 0) then
-         do j = 1, num_obs_in_set
-            if(nint(forward_temp(j)) /= 0) write(forward_unit, *) keys(j), k, nint(forward_temp(j))
-         end do
-      endif
-   end do
-
-   deallocate(forward_temp)
-
-   ! PE 0 does the output for each copy in turn
-   if(my_task_id() == 0) then
-      call close_file(forward_unit)
-   endif
-endif
-
-!PAR DO THESE ALWAYS NEED TO BE DONE? SEE REVERSE ONES AT END, TOO
-! SYNC: This is a synchronization problem.  It would be better to have task 0 to not have any
-! copys/vars and do the writing independent of computation ( if there are lots of tasks)
-
-call all_vars_to_all_copies(obs_ens_handle)
-call all_vars_to_all_copies(forward_op_ens_handle)
-
-! Compute mean and spread
-call compute_copy_mean_var(obs_ens_handle, &
-      1, ens_size, OBS_MEAN_START, OBS_VAR_START)
-
-call prepare_to_read_from_copies(forward_op_ens_handle)
-call prepare_to_update_copies(obs_ens_handle)
-
-! At this point can compute outlier test and consolidate forward operator qc
-do j = 1, obs_ens_handle%my_num_vars
-   good_forward_op = .false.
-
-   ! find the min and max istatus values across all ensemble members.  these are
-   ! either set by dart code, or returned by the model-specific model_interpolate() 
-   ! routine, or by forward operator code in obs_def_xxx_mod files.
-   forward_max = nint(maxval(forward_op_ens_handle%copies(1:ens_size, j)))
-   forward_min = nint(minval(forward_op_ens_handle%copies(1:ens_size, j)))
-   !print*, 'reg forward max min ', forward_max, forward_min
-   ! Now do a case statement to figure out what the qc result should be
-   ! For prior, have to test for a bunch of stuff
-   ! FIXME: note that this case statement doesn't cover every possibility;
-   ! if there's an error in the code and a minus value gets into the forward
-   ! operator istatus without being caught, it will fail all cases below.
-   ! add another line for 'internal inconsistency' to be safe.
-   if(prior_post == PRIOR_DIAG) then
-      if(forward_min == -99) then              ! Failed prior qc in get_obs_ens
-         obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 6
-      else if(forward_min == -2) then          ! Observation not used via namelist
-         obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 5
-      else if(forward_max > 0) then            ! At least one forward operator failed
-         obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 4
-      else if(forward_min == -1) then          ! Observation to be evaluated only
-         obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 1
-         good_forward_op = .true.
-      else if(forward_min == 0) then           ! All clear, assimilate this ob
-         obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 0
-         good_forward_op = .true.
-      ! FIXME: proposed enhancement - catchall for cases that we have not caught
-      !else   ! 'should not happen'
-      !   obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 9  ! inconsistent istatus codes
-      endif
-        
-      ! PAR: THIS SHOULD BE IN QC MODULE 
-      ! Check on the outlier threshold quality control: move to QC module?
-      ! bug fix: this was using the incoming qc threshold before.
-      ! it should only be doing the outlier test on dart qc values of 0 or 1.
-      ! if there is already a different qc code set, leave it alone.
-      ! only if it is still successful (assim or eval, 0 or 1), then check
-      ! for failing outlier test.
-      !print*, 'old do_outlier ', do_outlier
-      if(do_outlier .and. (obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) < 2)) then
-         obs_prior_mean = obs_ens_handle%copies(OBS_MEAN_START, j)
-         obs_prior_var = obs_ens_handle%copies(OBS_VAR_START, j)
-         obs_val = obs_ens_handle%copies(OBS_VAL_COPY, j)
-         obs_err_var = obs_ens_handle%copies(OBS_ERR_VAR_COPY, j)
-         error = obs_prior_mean - obs_val
-         diff_sd = sqrt(obs_prior_var + obs_err_var)
-         if (diff_sd /= 0.0_r8) then
-            ratio = abs(error / diff_sd)
-         else
-            ratio = 0.0_r8
-         endif
-
-         ! if special handling requested, pass in the outlier ratio for this obs,
-         ! the default outlier threshold value, and enough info to extract the specific 
-         ! obs type for this obs.
-         ! the function should return .true. if this is an outlier, .false. if it is ok.
-         if (enable_special_outlier_code) then
-            failed = failed_outlier(ratio, outlier_threshold, obs_ens_handle, &
-                                    OBS_KEY_COPY, j, seq)
-         else 
-            failed = (ratio > outlier_threshold)
-         endif
-
-         if (failed) then
-            !print*, 'FAILED REG'
-            obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 7
-         endif
-      endif
-
-   else
-      ! For failed posterior, only update qc if prior successful
-      if(forward_max > 0) then
-         ! Both the following 2 tests and assignments were on single executable lines,
-         ! but one compiler (gfortran) was confused by this, so they were put in
-         ! if/endif blocks.
-         if(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) == 0) then 
-            obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 2
-         endif
-         if(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) == 1) then 
-            obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 3
-         endif
-      endif
-      ! and for consistency, go through all the same tests as the prior, but
-      ! only use the results to set the good/bad forward op flag.
-      if ((forward_min == -99) .or. &       ! Failed prior qc in get_obs_ens
-          (forward_min == -2)  .or. &       ! Observation not used via namelist
-          (forward_max > 0)) then           ! At least one forward operator failed
-            continue; 
-      else if(forward_min == -1) then       ! Observation to be evaluated only
-         good_forward_op = .true.
-      else if(forward_min == 0) then        ! All clear, assimilate this ob
-         good_forward_op = .true.
-      endif
-   endif
-
-   ! for either prior or posterior, if the forward operator failed,
-   ! reset the mean/var to missing_r8, regardless of the DART QC status
-   ! HK does this fail if you have groups?
-   if (.not. good_forward_op) then
-      obs_ens_handle%copies(OBS_MEAN_START, j) = missing_r8
-      obs_ens_handle%copies(OBS_VAR_START,  j) = missing_r8
-   endif
-
-enddo
-
-! PAR: NEED TO BE ABLE TO OUTPUT DETAILS OF FAILED FORWARD OBSEVATION OPERATORS
-! OR FAILED OUTLIER, ETC. NEEDS TO BE DONE BY PE 0 ONLY. PUT IT HERE FOR FIRST
-! BUT IN QC MOD FOR THE SECOND???  
-
-102 continue
+if(output_forward_op_errors) call verbose_forward_op_output(forward_op_ens_handle, prior_post, ens_size, keys)
 
 ! Make var complete for get_copy() calls below.
 call all_copies_to_all_vars(obs_ens_handle)
@@ -2255,6 +2079,40 @@ select case (this_obs_type)
 end select
 
 end function failed_outlier
+
+!-------------------------------------------------------------------------
+!> write out failed forward operators
+!> This was part of obs_space_diagnostics
+subroutine verbose_forward_op_output(forward_op_ens_handle, prior_post, ens_size, keys)
+
+type(ensemble_type), intent(inout) :: forward_op_ens_handle
+integer,             intent(in)    :: prior_post
+integer,             intent(in)    :: ens_size
+integer,             intent(in)    :: keys(:) ! I think this is still var size
+
+character*12 :: task
+integer :: j, i
+integer :: forward_unit
+
+write(task, '(i6.6)') my_task_id()
+
+! all tasks open file?
+if(prior_post == PRIOR_DIAG) then
+   forward_unit = open_file('prior_forward_ope_errors' // task, 'formatted', 'append')
+else
+   forward_unit = open_file('post_forward_ope_errors' // task, 'formatted', 'append')
+endif
+
+! Forward_op_ens_handle is a real representing an integer; values /= 0 get written out
+do i = 1, ens_size
+   do j = 1, forward_op_ens_handle%my_num_vars
+      if(nint(forward_op_ens_handle%copies(i, j)) /= 0) write(forward_unit, *) keys(j), nint(forward_op_ens_handle%copies(i, j))
+   end do
+end do
+
+call close_file(forward_unit)
+
+end subroutine verbose_forward_op_output
 
 !==================================================================
 ! TEST FUNCTIONS BELOW THIS POINT
