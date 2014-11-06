@@ -233,7 +233,6 @@ character*20 task_str, file_obscopies, file_results
 
 !HK debug
 logical :: write_flag
-logical :: skipit = .true.
 
 call filter_initialize_modules_used() ! static_init_model called in here
 
@@ -661,8 +660,7 @@ AdvanceTime : do
       allocate(obs_ens_handle%vars(obs_ens_handle%num_vars, obs_ens_handle%my_num_copies))
    endif
 
-   ! The skipit is an optional arguement to skip the first part of obs_space_diagnostics
-   ! I can't skip the second part of obs_space_diagnostics because this is where the mean obs
+   ! This is where the mean obs
    ! copy ( + others ) is moved to task 0 so task 0 can update seq.
    ! There is a transpose (all_copies_to_all_vars(obs_ens_handle)) in obs_space_diagnostics
    ! Do prior observation space diagnostics and associated quality control
@@ -671,7 +669,7 @@ AdvanceTime : do
       obs_val_index, OBS_KEY_COPY, &                                 ! new
       prior_obs_mean_index, prior_obs_spread_index, num_obs_in_set, &
       OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
-      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, skipit)
+      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
    call trace_message('After  observation space diagnostics')
 
    if (.not. allow_complete_state()) then ! task 0 still updating the sequence.
@@ -816,7 +814,7 @@ AdvanceTime : do
       obs_val_index, OBS_KEY_COPY, &                             ! new
       posterior_obs_mean_index, posterior_obs_spread_index, num_obs_in_set, &
       OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
-      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index, skipit)
+      OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
 
    if (.not. allow_complete_state()) then ! task 0 still updating the sequence.
       deallocate(obs_ens_handle%vars)
@@ -1712,7 +1710,7 @@ subroutine obs_space_diagnostics(obs_ens_handle, forward_op_ens_handle, ens_size
    obs_val_index, OBS_KEY_COPY, &
    ens_mean_index, ens_spread_index, num_obs_in_set, &
    OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, OBS_VAL_COPY, &
-   OBS_ERR_VAR_COPY, DART_qc_index, skip)
+   OBS_ERR_VAR_COPY, DART_qc_index)
 
 ! Do prior observation space diagnostics on the set of obs corresponding to keys
 
@@ -1728,15 +1726,13 @@ type(obs_sequence_type), intent(inout) :: seq
 integer,                 intent(in)    :: OBS_MEAN_START, OBS_VAR_START
 integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, DART_qc_index
-logical,  optional, intent(in) :: skip
 
 integer               :: j, k, ens_offset, forward_min, forward_max
 integer               :: forward_unit, ivalue
 real(r8)              :: error, diff_sd, ratio
-real(r8), allocatable :: obs_temp(:), forward_temp(:)
+real(r8), allocatable :: obs_temp(:)
 real(r8)              :: obs_prior_mean, obs_prior_var, obs_val, obs_err_var
 real(r8)              :: rvalue(1)
-logical               :: do_outlier, good_forward_op, failed
 
 ! Do verbose forward operator output if requested
 if(output_forward_op_errors) call verbose_forward_op_output(forward_op_ens_handle, prior_post, ens_size, keys)
