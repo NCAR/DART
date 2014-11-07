@@ -107,6 +107,7 @@ integer,            allocatable :: variable_ids(:, :)
 integer,            allocatable :: variable_sizes(:, :)
 integer,   allocatable :: dimensions_and_lengths(:, :, :) !< number of dimensions and length of each dimension
 integer :: num_state_variables
+integer :: num_domains
 
 ! record dimensions for output netcdf file,
 ! (state_variable, dimension, domain)
@@ -154,15 +155,16 @@ end subroutine state_vector_io_init
 
 !-------------------------------------------------
 !> Initialize arrays.  Need to know the number of domains
-subroutine initialize_arrays_for_read(n, num_domains)
+subroutine initialize_arrays_for_read(n, n_domains)
 
 integer, intent(in) :: n !< number of state variables
-integer, intent(in) :: num_domains !< number of domains (and therfore netcdf files) to read
+integer, intent(in) :: n_domains !< number of domains (and therfore netcdf files) to read
 
 if(allocated(variable_ids))   call error_handler(E_ERR, 'initialize_arrays_for_read', 'already called this routine')
 if(allocated(variable_sizes)) call error_handler(E_ERR, 'initialize_arrays_for_read', 'already called this routine')
 
 num_state_variables = n
+num_domains = n_domains
 
 allocate(variable_ids(n, num_domains), variable_sizes(n, num_domains))
 allocate(dimIds(n, MAXDIMS, num_domains), length(n, MAXDIMS, num_domains), dim_names(n, MAXDIMS, num_domains))
@@ -1034,6 +1036,9 @@ integer :: new_dimid
 integer :: new_varid
 integer :: ndims
 integer :: xtype ! precision for netcdf file
+logical :: time_dimension_exists
+
+time_dimension_exists = .false.
 
 ! What file options do you want
 create_mode = NF90_CLOBBER
@@ -1049,6 +1054,7 @@ do i = 1, num_state_variables ! loop around state variables
    do j = 1, dimensions_and_lengths(i, 1, dom) ! ndims
       if (time_unlimited .and. (dim_names(i, j, dom) == 'Time')) then ! case sensitive
          ret = nf90_def_dim(ncfile_out, dim_names(i, j, dom), NF90_UNLIMITED, new_dimid) ! does this do nothing if the dimension already exists?
+         time_dimension_exists = .true.
       else
          ret = nf90_def_dim(ncfile_out, dim_names(i, j, dom), dimensions_and_lengths(i, j+1, dom), new_dimid) ! does this do nothing if the dimension already exists?
       endif
@@ -1060,6 +1066,14 @@ do i = 1, num_state_variables ! loop around state variables
 
    enddo
 enddo
+
+if ((.not. time_dimension_exists) .and. (time_unlimited)) then ! create unlimlited dimension time
+   ret = nf90_def_dim(ncfile_out, 'Time', NF90_UNLIMITED, new_dimid)
+   call nc_check(ret, 'create_state_output', 'creating time as the unlimited dimension')
+
+   call shift_dimension_arrays(new_dimid)
+
+endif
 
 ! overwrite dimIds
 dimIds = copy_dimIds
@@ -1370,6 +1384,43 @@ write_copies(c1:c2) = .false.
 
 end subroutine turn_write_copies_off
 
+
+!-------------------------------------------------------
+!> Adding space for an unlimited dimension in the dimesion arrays
+subroutine shift_dimension_arrays(unlimited_dimId)
+
+integer, intent(in)  :: unlimited_dimId
+
+integer, allocatable :: local_copy_dimIds(:, :, :)
+integer, allocatable :: local_dimensions_and_lengths(:, :, :)
+
+! make space for the copies
+allocate(local_dimensions_and_lengths(num_state_variables, MAXDIMS + 1, num_domains))
+allocate(local_copy_dimIds(num_state_variables, MAXDIMS, num_domains))
+
+! copy the arrays
+local_dimensions_and_lengths = dimensions_and_lengths
+local_copy_dimIds = copy_dimIds
+
+! deallocate, and reallocate
+deallocate(dimensions_and_lengths, copy_dimIds, dimIds)
+
+allocate(dimensions_and_lengths(num_state_variables, MAXDIMS + 2, num_domains))
+allocate(dimIds(num_state_variables, MAXDIMS + 1, num_domains))
+allocate(copy_dimIds(num_state_variables, MAXDIMS + 1, num_domains))
+
+! fill the arrays back up
+dimensions_and_lengths(:, 3:, :) = local_dimensions_and_lengths(:, 2:, :)
+dimIds(:, 2:, :) = local_copy_dimIds(:, :, :)
+
+! add a dimension
+dimensions_and_lengths(:, 1, :) = local_dimensions_and_lengths(:, 1, :) + 1
+dimensions_and_lengths(:, 2, :) = 1  ! unlimited dimension is length 1?
+copy_dimIds(:, 1, :) = unlimited_dimId
+
+deallocate(local_dimensions_and_lengths, local_copy_dimIds)
+
+end subroutine shift_dimension_arrays
 
 !-------------------------------------------------------
 !> @}
