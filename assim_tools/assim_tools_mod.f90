@@ -2750,7 +2750,7 @@ write(task_str, '(i10)') state_ens_handle%my_pe
 file_copies = TRIM('statecopies_'  // TRIM(ADJUSTL(information)) // '.' // TRIM(ADJUSTL(task_str)))
 open(15, file=file_copies, status ='unknown')
 
-do i = 1, state_ens_handle%num_copies -4
+do i = 1, state_ens_handle%num_copies -10
    write(15, *) state_ens_handle%copies(i,:)
 enddo
 

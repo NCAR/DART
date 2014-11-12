@@ -383,9 +383,13 @@ call trace_message('After  initializing inflation')
 ! Read in restart files and initialize the ensemble storage
 call turn_read_copy_on(1, ens_size) ! need to read all restart copies
 
-call filter_read_restart_direct(ens_handle, time1, ens_size) 
+if (direct_netcdf_read) then
+   call filter_read_restart_direct(ens_handle, time1, ens_size) 
+else ! expecting DART restart files
+   call filter_read_restart(ens_handle, time1, model_size)
+endif
 
-!call test_state_copies(ens_handle, 'after_read')
+call test_state_copies(ens_handle, 'after_read')
 
 ! Read in or initialize smoother restarts as needed
 if(ds) then
@@ -912,7 +916,11 @@ call turn_write_copy_on(ENS_SD_COPY) ! sd
 call turn_write_copy_on(POST_INF_COPY) ! posterior inf mean
 call turn_write_copy_on(POST_INF_SD_COPY) ! posterior inf sd
 
-call filter_write_restart_direct(ens_handle)
+if(direct_netcdf_read) then
+   call filter_write_restart_direct(ens_handle)
+else ! write
+   call filter_write_restart(ens_handle)
+endif
 
 if(ds) call smoother_write_restart(1, ens_size)
 call trace_message('After  writing state restart files if requested')
@@ -1401,6 +1409,84 @@ deallocate(variable_list)
 end subroutine filter_read_restart_direct
 
 !-------------------------------------------------------------------------
+
+subroutine filter_read_restart(state_ens_handle, time, model_size)
+
+type(ensemble_type), intent(inout) :: state_ens_handle
+type(time_type),     intent(inout) :: time
+integer,             intent(in)    :: model_size
+
+integer :: days, secs
+
+! need to allocate ensemble storage
+
+if(my_task_id()==0) print*, 'regular dart restart files'
+
+if (do_output()) then
+   if (start_from_restart) then
+      call error_handler(E_MSG,'filter_read_restart:', &
+         'Reading in initial condition/restart data for all ensemble members from file(s)')
+   else
+      call error_handler(E_MSG,'filter_read_restart:', &
+         'Reading in a single ensemble and perturbing data for the other ensemble members')
+   endif
+endif
+
+! allocating storage space in ensemble manager
+allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
+
+! Only read in initial conditions for actual ensemble members
+if(init_time_days >= 0) then
+   print*, 'reading ensemble restart task', my_task_id()
+   call read_ensemble_restart(state_ens_handle, 1, ens_size, &
+      start_from_restart, restart_in_file_name, time)
+   if (do_output()) then
+      call get_time(time, secs, days)
+      write(msgstring, '(A)') 'By namelist control, ignoring time found in restart file.'
+      call error_handler(E_MSG,'filter_read_restart:',msgstring,source,revision,revdate)
+      write(msgstring, '(A,I6,1X,I5)') 'Setting initial days, seconds to ',days,secs
+      call error_handler(E_MSG,'filter_read_restart:',msgstring,source,revision,revdate)
+   endif
+else
+   call read_ensemble_restart(state_ens_handle, 1, ens_size, &
+      start_from_restart, restart_in_file_name)
+   if (state_ens_handle%my_num_copies > 0) time = state_ens_handle%time(1)
+endif
+
+! Temporary print of initial model time
+if(state_ens_handle%my_pe == 0) then
+   ! FIXME for the future: if pe 0 is not task 0, pe 0 can not print debug messages
+   call get_time(time, secs, days)
+   write(msgstring, *) 'initial model time of 1st ensemble member (days,seconds) ',days,secs
+   call error_handler(E_DBG,'filter_read_restart',msgstring,source,revision,revdate)
+endif
+
+call all_vars_to_all_copies(state_ens_handle)
+
+! deallocate whole state storage
+deallocate(state_ens_handle%vars)
+
+end subroutine filter_read_restart
+
+!-------------------------------------------------------------------------
+!> write the restart information into a DART restart file.
+subroutine filter_write_restart(state_ens_handle)
+
+type(ensemble_type) :: state_ens_handle
+
+! allocating storage space in ensemble manager
+allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
+
+call all_copies_to_all_vars(state_ens_handle)
+
+call write_ensemble_restart(state_ens_handle, restart_out_file_name, 1, ens_size)
+
+! deallocate whole state storage
+deallocate(state_ens_handle%vars)
+
+end subroutine filter_write_restart
+
+!-------------------------------------------------------------------------
 !> write the restart information directly into the model netcdf file.
 subroutine filter_write_restart_direct(state_ens_handle)
 
@@ -1419,8 +1505,8 @@ do domain = 1, num_domains
    call transpose_write(state_ens_handle, restart_out_file_name, domain, dart_index)
 enddo
 
-
 end subroutine filter_write_restart_direct
+
 !-------------------------------------------------------------------------
 
 subroutine filter_ensemble_inflate(ens_handle, inflate_copy, inflate, ENS_MEAN_COPY)
