@@ -2,7 +2,7 @@
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: ensemble_manager_mod.f90 6323 2013-07-26 19:32:37Z hkershaw $
+! $Id: data_structure_mod.f90 6323 2013-07-26 19:32:37Z hkershaw $
 
 !> @brief Aim: to abstract the data structure from the ensemeble manager.
 !>

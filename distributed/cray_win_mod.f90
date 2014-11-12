@@ -1,3 +1,9 @@
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
+
 !> Contains the window information for the state.  Two windows:
 !> One for all copies, one for the mean.
 !> Not sure whether we should just have one window to avoid multiple synchronizations.
