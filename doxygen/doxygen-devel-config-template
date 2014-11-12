@@ -12,6 +12,8 @@
 # For lists, items can also be appended using:
 # TAG += value [value, ...]
 # Values that contain spaces should be placed between quotes (\" \").
+#
+# DART $Id$
 
 #---------------------------------------------------------------------------
 # Project related configuration options
