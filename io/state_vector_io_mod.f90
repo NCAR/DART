@@ -64,6 +64,8 @@ use mpi
 
 use io_filenames_mod,     only : restart_files_in, restart_files_out, io_filenames_init
 
+use copies_on_off_mod
+
 
 implicit none
 
@@ -114,9 +116,6 @@ integer,            allocatable :: dimIds(:, :, :) !< dimension ids
 integer,            allocatable :: copy_dimIds(:, :, :) !< dimension ids copy
 integer,            allocatable :: length(:, :, :) !< dimension length
 character(len=256), allocatable :: dim_names(:, :, :)
-
-! Stores which copies to read and write
-logical, allocatable :: read_copies(:), write_copies(:)
 
 ! list of variables names in the state
 character(len=256), allocatable :: global_variable_names(:)
@@ -1192,116 +1191,6 @@ enddo
 cumulative_tasks = cumulative_tasks + get_group_size(group*limit_procs -1, ens_size)
 
 end function cumulative_tasks
-
-!-------------------------------------------------------
-!> returns true/false depending on whether you should read this copy
-function query_read_copy(c)
-
-integer, intent(in) :: c !< copy number
-logical             :: query_read_copy
-
-if (c > size(read_copies) ) then
-   query_read_copy = .false.
-else
-   query_read_copy = read_copies(c)
-endif
-
-end function query_read_copy
-
-!-------------------------------------------------------
-!> returns true/false depending on whether you should read this copy
-function query_write_copy(c)
-
-integer, intent(in) :: c !< copy number
-logical             :: query_write_copy
-
-if ( c > size(write_copies) ) then
-   query_write_copy = .false.
-else
-   query_write_copy = write_copies(c)
-endif
-
-end function query_write_copy
-
-!-------------------------------------------------------
-!> Make the arrays for which copies to read and write
-!> Default to just the actual copies, no extras
-subroutine setup_read_write(num_copies)
-
-integer, intent(in) :: num_copies
-
-if( .not. allocated(read_copies) ) allocate(read_copies(num_copies))
-if( .not. allocated(write_copies) ) allocate(write_copies(num_copies))
-
-read_copies(:) = .false.
-write_copies(:) = .false.
-
-end subroutine setup_read_write
-
-!-------------------------------------------------------
-!> Turn on copies to read
-subroutine turn_read_copy_on_single(c)
-
-integer, intent(in) :: c !< copy to read
-
-read_copies(c) = .true.
-
-end subroutine turn_read_copy_on_single
-
-!-------------------------------------------------------
-!> Turn on copies to read
-subroutine turn_write_copy_on_single(c)
-
-integer, intent(in) :: c !< copy to write
-
-write_copies(c) = .true.
-
-end subroutine turn_write_copy_on_single
-
-!-------------------------------------------------------
-!> Turn on copies to read
-subroutine turn_read_copy_on_range(c1, c2)
-
-integer, intent(in) :: c1 !< start copy to read
-integer, intent(in) :: c2 !< end copy to read
-
-read_copies(c1:c2) = .true.
-
-end subroutine turn_read_copy_on_range
-
-!-------------------------------------------------------
-!> Turn on copies to read
-subroutine turn_write_copy_on_range(c1, c2)
-
-integer, intent(in) :: c1 !< start copy to write
-integer, intent(in) :: c2 !< end copy to write
-
-write_copies(c1:c2) = .true.
-
-end subroutine turn_write_copy_on_range
-
-!-------------------------------------------------------
-!> Turn off copies to read
-subroutine turn_read_copies_off(c1, c2)
-
-integer, intent(in) :: c1 !< start copy to read
-integer, intent(in) :: c2 !< end copy to read
-
-read_copies(c1:c2) = .false.
-
-end subroutine turn_read_copies_off
-
-!-------------------------------------------------------
-!> Turn off copies to write
-subroutine turn_write_copies_off(c1, c2)
-
-integer, intent(in) :: c1 !< start copy to write
-integer, intent(in) :: c2 !< end copy to write
-
-write_copies(c1:c2) = .false.
-
-end subroutine turn_write_copies_off
-
 
 !-------------------------------------------------------
 !> Adding space for an unlimited dimension in the dimesion arrays

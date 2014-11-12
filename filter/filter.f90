@@ -389,7 +389,7 @@ else ! expecting DART restart files
    call filter_read_restart(ens_handle, time1, model_size)
 endif
 
-call test_state_copies(ens_handle, 'after_read')
+!call test_state_copies(ens_handle, 'after_read')
 
 ! Read in or initialize smoother restarts as needed
 if(ds) then
@@ -1418,9 +1418,12 @@ integer,             intent(in)    :: model_size
 
 integer :: days, secs
 
-! need to allocate ensemble storage
+!> @todo Do you need to think about domains?
+integer :: num_domains
 
-if(my_task_id()==0) print*, 'regular dart restart files'
+num_domains = 1
+
+call io_filenames_init(ens_size, num_domains, inf_in_file_name, inf_out_file_name)
 
 if (do_output()) then
    if (start_from_restart) then

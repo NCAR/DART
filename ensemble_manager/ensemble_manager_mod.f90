@@ -30,6 +30,10 @@ use sort_mod,          only : index_sort
 
 use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
 
+use copies_on_off_mod,  only : query_read_copy, query_write_copy
+
+use io_filenames_mod,   only : restart_files_out
+
 implicit none
 private
 
@@ -332,8 +336,10 @@ else
    READ_MULTIPLE_RESTARTS: do i = 1, ens_handle%my_num_copies
       ! Get global index for my ith ensemble
       global_copy_index = ens_handle%my_copies(i)
-      ! If this global copy is in the range being read in, proceed
-      if(global_copy_index >= start_copy .and. global_copy_index <= end_copy) then
+
+      if (query_read_copy(global_copy_index)) then
+
+         ! If this global copy is in the range being read in, proceed
          ! File name extension is the global index number for the copy
          write(extension, '(i4.4)') global_copy_index - start_copy + 1
          this_file_name = trim(file_name) // '.' // extension
@@ -345,7 +351,10 @@ else
       
          ! Close the restart file
          call close_restart(iunit)
+
       endif
+
+
    end do READ_MULTIPLE_RESTARTS
 endif
 
@@ -453,12 +462,27 @@ endif
       do i = 1, ens_handle%my_num_copies
          ! Figure out which global index this is
          global_index = ens_handle%my_copies(i)
-         if(global_index >= start_copy .and. global_index <= end_copy) then
-            write(extension, '(i4.4)') ens_handle%my_copies(i)
-            this_file_name = trim(file_name) // '.' // extension
-            iunit = open_restart_write(this_file_name)
+
+         if (query_write_copy(global_index)) then
+
+            !> @todo Need to know number of extras
+            if ( global_index <= ens_handle%num_copies -10) then
+               print*, 'writing ', trim(restart_files_out(global_index, 1))
+               write(extension, '(i4.4)') ens_handle%my_copies(i)
+               this_file_name = trim(file_name) // '.' // extension
+               iunit = open_restart_write(this_file_name)
+            else
+               !> @todo what to do at the domain number?
+               print*, 'writing ', trim(restart_files_out(global_index, 1)) 
+               iunit = open_restart_write(restart_files_out(global_index, 1))
+               call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
+               call close_restart(iunit)
+
+            endif
+
             call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
             call close_restart(iunit)
+
          endif
       end do
    endif
