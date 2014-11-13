@@ -410,82 +410,79 @@ else
    single_file_forced = .FALSE.
 endif
 
-   ! Error checking
-   !if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-   !   call error_handler(E_ERR, 'write_ensemble_restart', &
-   !        'last access not var-complete', source, revision, revdate)
-   !endif
+! Error checking
+!if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
+!   call error_handler(E_ERR, 'write_ensemble_restart', &
+!        'last access not var-complete', source, revision, revdate)
+!endif
 
-   ! For single file, need to send restarts to pe0 and it writes them out.
-   !-------------- Block for single_restart file -------------
-   ! Need to force single restart file for inflation files
-   if(single_restart_file_out .or. single_file_forced) then
+! For single file, need to send restarts to pe0 and it writes them out.
+!-------------- Block for single_restart file -------------
+! Need to force single restart file for inflation files
+if(single_restart_file_out .or. single_file_forced) then
 
-      ! Single restart file is written only by task 0
-      if(my_task_id() == 0) then
+   ! Single restart file is written only by task 0
+   if(my_task_id() == 0) then
 
-        iunit = open_restart_write(file_name)
+      iunit = open_restart_write(file_name)
 
-         ! Loop to write each ensemble member
-         allocate(ens(ens_handle%num_vars))   ! used to be on stack.
-         do i = start_copy, end_copy
-            ! Figure out where this ensemble member is being stored
-            call get_copy_owner_index(i, owner, owners_index)
-            ! If it's on task 0, just write it
-            if(map_pe_to_task(ens_handle, owner) == 0) then
-               call awrite_state_restart(ens_handle%time(owners_index), &
-                  ens_handle%vars(:, owners_index), iunit)
-            else
-               ! Get the ensemble from the owner and write it out
-               ! This communication assumes index numbers are monotonically increasing
-               ! and that communications is blocking so that there are not multiple
-               ! outstanding messages from the same processors (also see send_to below).
-               call receive_from(map_pe_to_task(ens_handle, owner), ens, ens_time)
-               call awrite_state_restart(ens_time, ens, iunit)
-            endif
-         end do
-         deallocate(ens)
-         call close_restart(iunit)
-      else ! I must send my copies to task 0 for writing to file
-         do i = 1, ens_handle%my_num_copies
-            ! Figure out which global index this is
-            global_index = ens_handle%my_copies(i)
-            ! Ship this ensemble off to the master
-            if(global_index >= start_copy .and. global_index <= end_copy) &
-               call send_to(0, ens_handle%vars(:, i), ens_handle%time(i))
-         end do
-      endif
-
-   else
-   !-------------- Block for multiple restart files -------------
-      ! Everyone can just write their own files
+      ! Loop to write each ensemble member
+      allocate(ens(ens_handle%num_vars))   ! used to be on stack.
+      do i = start_copy, end_copy
+         ! Figure out where this ensemble member is being stored
+         call get_copy_owner_index(i, owner, owners_index)
+         ! If it's on task 0, just write it
+         if(map_pe_to_task(ens_handle, owner) == 0) then
+            call awrite_state_restart(ens_handle%time(owners_index), &
+               ens_handle%vars(:, owners_index), iunit)
+         else
+            ! Get the ensemble from the owner and write it out
+            ! This communication assumes index numbers are monotonically increasing
+            ! and that communications is blocking so that there are not multiple
+            ! outstanding messages from the same processors (also see send_to below).
+            call receive_from(map_pe_to_task(ens_handle, owner), ens, ens_time)
+            call awrite_state_restart(ens_time, ens, iunit)
+         endif
+      end do
+      deallocate(ens)
+      call close_restart(iunit)
+   else ! I must send my copies to task 0 for writing to file
       do i = 1, ens_handle%my_num_copies
          ! Figure out which global index this is
          global_index = ens_handle%my_copies(i)
-
-         if (query_write_copy(global_index)) then
-
-            !> @todo Need to know number of extras
-            if ( global_index <= ens_handle%num_copies -10) then
-               print*, 'writing ', trim(restart_files_out(global_index, 1))
-               write(extension, '(i4.4)') ens_handle%my_copies(i)
-               this_file_name = trim(file_name) // '.' // extension
-               iunit = open_restart_write(this_file_name)
-            else
-               !> @todo what to do at the domain number?
-               print*, 'writing ', trim(restart_files_out(global_index, 1)) 
-               iunit = open_restart_write(restart_files_out(global_index, 1))
-               call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
-               call close_restart(iunit)
-
-            endif
-
-            call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
-            call close_restart(iunit)
-
-         endif
+         ! Ship this ensemble off to the master
+         if(global_index >= start_copy .and. global_index <= end_copy) &
+            call send_to(0, ens_handle%vars(:, i), ens_handle%time(i))
       end do
    endif
+
+else
+!-------------- Block for multiple restart files -------------
+   ! Everyone can just write their own files
+
+   do i = 1, ens_handle%my_num_copies
+      ! Figure out which global index this is
+      global_index = ens_handle%my_copies(i)
+
+      if (query_write_copy(global_index)) then
+
+         !> @todo Need to know number of extras
+         if ( global_index <= ens_handle%num_copies -10) then
+            write(extension, '(i4.4)') ens_handle%my_copies(i)
+            this_file_name = trim(file_name) // '.' // extension
+            iunit = open_restart_write(this_file_name)
+         else
+            !> @todo what to do at the domain number?
+            iunit = open_restart_write(trim(restart_files_out(global_index, 1)))
+         endif
+
+         call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
+         call close_restart(iunit)
+
+
+      endif
+   end do
+endif
 
 end subroutine write_ensemble_restart
 
