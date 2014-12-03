@@ -471,7 +471,7 @@ end subroutine smoother_mean_spread
 !> using aoutput_diagnostics -> nc_get_tindex
 subroutine filter_state_space_diagnostics(curr_ens_time, out_unit, ens_handle, model_size, &
             num_output_state_members, output_state_mean_index, output_state_spread_index, &
-           output_inflation, ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY)
+            ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY)
 
 type(time_type),             intent(in)    :: curr_ens_time
 type(netcdf_file_type),      intent(inout) :: out_unit
@@ -482,7 +482,6 @@ integer,                     intent(in)    :: output_state_mean_index, output_st
 !real(r8),                    intent(out)   :: temp_ens(:)
 type(adaptive_inflate_type), intent(in)    :: inflate
 integer,                     intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, INF_COPY, INF_SD_COPY
-logical,                     intent(in)    :: output_inflation
 
 type(time_type) :: temp_time
 integer         :: ens_offset, j
@@ -503,13 +502,12 @@ end subroutine filter_state_space_diagnostics
 
 !-----------------------------------------------------------
 
-subroutine smoother_ss_diagnostics(model_size, num_output_state_members, output_inflation, &
+subroutine smoother_ss_diagnostics(model_size, num_output_state_members, &
    temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY)
 
 use mpi
 
 integer,         intent(in)  :: model_size, num_output_state_members
-logical,         intent(in)  :: output_inflation
 real(r8),        intent(out) :: temp_ens(model_size)
 integer,         intent(in)  :: ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY
 

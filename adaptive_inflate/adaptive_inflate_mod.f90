@@ -17,7 +17,7 @@ use utilities_mod,        only : register_module, open_file, close_file, &
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq
 use ensemble_manager_mod, only : ensemble_type, read_ensemble_restart, write_ensemble_restart,  &
                                  get_copy_owner_index, prepare_to_write_to_vars,                &
-                                 prepare_to_read_from_vars, prepare_to_update_vars, map_pe_to_task
+                                 prepare_to_read_from_vars, prepare_to_update_vars, map_pe_to_task, all_vars_to_all_copies, all_copies_to_all_vars
 use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, datasize
 
 use state_vector_io_mod,  only : turn_read_copy_on, turn_write_copy_on, &
@@ -212,15 +212,22 @@ if(inf_flavor >= 2) then
       call turn_read_copy_on(ss_inflate_index)
       call turn_read_copy_on(ss_inflate_sd_index)
 
-      if (.not. direct_netcdf_read ) then
-         ! turn off restart reads, since they have already be read
-         !HK does this even work?
-         call turn_read_copies_off(1, state_ens_handle%num_copies -6)
-         call read_transpose(state_ens_handle, in_file_name, domain, junk_int)
+      if (.not. direct_netcdf_read ) then ! read inflation as normal
+
+         ! allocating storage space in ensemble manager
+         !  - should this be in ensemble_manager
+         allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+
+         call read_ensemble_restart(ens_handle, ss_inflate_index, ss_inflate_sd_index, &
+            .true., in_file_name, force_single_file = .true.)
+
+         call all_vars_to_all_copies(ens_handle)
+
+         ! deallocate whole state storage - should this be in ensemble_manager 
+         deallocate(ens_handle%vars)
+
       endif
 
-      !call read_ensemble_restart(ens_handle, ss_inflate_index, ss_inflate_sd_index, &
-      !   .true., in_file_name, force_single_file = .true.)
 
    endif
    ! Now, if one or both values come from the namelist (i.e. is a single static
@@ -507,14 +514,20 @@ if(inflate_handle%output_restart) then
       call turn_write_copy_on(ss_inflate_sd_index)
 
       if (.not. direct_netcdf_read ) then
-         ! turn off restart write, since they are
-         call turn_write_copies_off(1, state_ens_handle%num_copies -6)
-         call transpose_write(state_ens_handle, inflate_handle%out_file_name, domain, junk_int)
-         call turn_write_copies_off(1, state_ens_handle%num_copies)
-      endif
 
-      !call write_ensemble_restart(ens_handle, inflate_handle%out_file_name, &
-      !   ss_inflate_index, ss_inflate_sd_index, force_single_file = .true.)
+         ! allocating storage space in ensemble manager
+         !  - should this be in ensemble_manager
+         allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+
+         call all_copies_to_all_vars(ens_handle)
+
+         call write_ensemble_restart(ens_handle, inflate_handle%out_file_name, &
+            ss_inflate_index, ss_inflate_sd_index, force_single_file = .true.)
+
+         ! deallocate whole state storage - should this be in ensemble_manager 
+         deallocate(ens_handle%vars)
+
+      endif
 
    ! Flavor 1 is observation space, write its restart directly
    else if(do_obs_inflate(inflate_handle)) then

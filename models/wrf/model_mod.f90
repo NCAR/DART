@@ -8594,13 +8594,13 @@ end function construct_file_name_in
 !> stolen from wrf_to_dart.f90
 function get_model_time(filename)
 
-character(len=1024) :: filename
-integer             :: year, month, day, hour, minute, second
-integer             :: ret !< netcdf return code
-integer             :: ndims, dimids(2), ivtype, ncid, var_id
-character(len=80)   :: varname
-character(len=19)   :: timestring
-integer             :: i,  idims(2)
+character(len=1024), intent(in) :: filename
+integer                         :: year, month, day, hour, minute, second
+integer                         :: ret !< netcdf return code
+integer                         :: ndims, dimids(2), ivtype, ncid, var_id
+character(len=80)               :: varname
+character(len=19)               :: timestring
+integer                         :: i,  idims(2)
 
 type(time_type) :: get_model_time
 

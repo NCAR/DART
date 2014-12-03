@@ -33,7 +33,6 @@ private
 public :: get_model_size, &
           adv_1step, &
           get_state_meta_data_distrib, &
-          model_interpolate, &
           get_model_time_step, &
           end_model, &
           static_init_model, &
@@ -48,8 +47,8 @@ public :: get_model_size, &
           vert_convert_distrib, &
           variables_domains, fill_variable_list, &
           get_vert, set_vert, set_which_vert, &
-          info_file_name, read_file_name,  &
-          write_file_name
+          info_file_name, construct_file_name_in, &
+          get_model_time
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -788,6 +787,7 @@ end function fill_variable_list
 
 !--------------------------------------------------------------------
 !> construct info filename for get_state_variable_info
+!> @todo this does nothing
 function info_file_name(domain)
 
 integer, intent(in) :: domain
@@ -798,27 +798,27 @@ end function info_file_name
 
 !--------------------------------------------------------------------
 !> construct restart file name for reading
-function read_file_name(restart_file_in_name, domain, copy)
+!> model time for CESM format?
+function construct_file_name_in(stub, domain, copy)
 
-character(len=129), intent(in) :: restart_file_in_name
+character(len=512), intent(in) :: stub
 integer,            intent(in) :: domain
-integer, optional,  intent(in) :: copy
-character(len=256)             :: read_file_name
+integer,            intent(in) :: copy
+character(len=1024)            :: construct_file_name_in
 
-end function read_file_name
+write(construct_file_name_in, '(A, i4.4)') TRIM(stub), copy
+
+end function construct_file_name_in
 
 !--------------------------------------------------------------------
-!> 
-function write_file_name(restart_out_file_name, domain, copy)
+!> read time from input netcdf file
+function get_model_time(filename)
 
-character(len=129), intent(in) :: restart_out_file_name
-integer,            intent(in) :: domain
-integer, optional,  intent(in) :: copy
-character(len=256)             :: write_file_name
+character(len=1024), intent(in) :: filename
+type(time_type) :: get_model_time
 
 
-end function write_file_name
-
+end function get_model_time
 
 !===================================================================
 ! End of model_mod

@@ -145,7 +145,13 @@ character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
 integer              :: inf_flavor(2)             = 0
 logical              :: inf_initial_from_restart(2)    = .false.
 logical              :: inf_sd_initial_from_restart(2) = .false.
+
+! old way
 logical              :: inf_output_restart(2)     = .false.
+! new way
+!logical              :: inf_output_prior(2) = .false. ! mean sd
+!logical              :: inf_output_post(2)  = .false. ! mean sd
+
 logical              :: inf_deterministic(2)      = .true.
 character(len = 129) :: inf_in_file_name(2)       = 'not_initialized',    &
                         inf_out_file_name(2)      = 'not_initialized',    &
@@ -156,7 +162,7 @@ real(r8)             :: inf_damping(2)            = 1.0_r8
 real(r8)             :: inf_lower_bound(2)        = 1.0_r8
 real(r8)             :: inf_upper_bound(2)        = 1000000.0_r8
 real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
-logical              :: output_inflation          = .true.
+!logical              :: output_inflation          = .true. ! This was for the diagnostic files, no separate option for prior and posterior
 
 namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,    &
    start_from_restart, output_restart, obs_sequence_in_name, obs_sequence_out_name, &
@@ -169,7 +175,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_flavor, inf_initial_from_restart, inf_sd_initial_from_restart,               &
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
-   inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, output_inflation,          &
+   inf_lower_bound, inf_upper_bound, inf_sd_lower_bound,           &
    silence, parallel_state_diag, direct_netcdf_read
 
 
@@ -347,8 +353,13 @@ call filter_set_initial_time(time1)
 ! set up arrays for which copies to read/write
 call setup_read_write(ens_size + num_extras)
 
-! HK Moved initializing inflation to before read of restarts so you can read the restarts
+! HK Moved initializing inflation to before read of netcdf restarts so you can read the restarts
 ! and inflation files in one step.
+! Read of regular filter restarts, is done before adaptive inflate because there is a transpose in adaptive_
+! inflate_init if you read regular inflation file
+if (.not. direct_netcdf_read ) then ! expecting DART restart files
+   call filter_read_restart(ens_handle, time1, model_size)
+endif
 
 ! Initialize the adaptive inflation module
 ! This activates turn_read_copy_on
@@ -385,8 +396,6 @@ call turn_read_copy_on(1, ens_size) ! need to read all restart copies
 
 if (direct_netcdf_read) then
    call filter_read_restart_direct(ens_handle, time1, ens_size) 
-else ! expecting DART restart files
-   call filter_read_restart(ens_handle, time1, model_size)
 endif
 
 !call test_state_copies(ens_handle, 'after_read')
@@ -420,7 +429,7 @@ call filter_generate_copy_meta_data(seq, prior_inflate, &
       prior_obs_spread_index, posterior_obs_spread_index)
 
 if(ds) call error_handler(E_ERR, 'filter', 'smoother broken by Helen')
-if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation)
+if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflation=.true.) !> @todo fudge
 
 call timestamp_message('After  initializing output files')
 call     trace_message('After  initializing output files')
@@ -531,10 +540,18 @@ AdvanceTime : do
       call print_ens_time(ens_handle, 'Ensemble data time before advance')
       call     trace_message('Before running model')
       call timestamp_message('Before running model', sync=.true.)
-   
+
+      ! allocating storage space in ensemble manager
+      allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+      call all_copies_to_all_vars(ens_handle)
+
       call advance_state(ens_handle, ens_size, next_ens_time, async, &
                          adv_ens_command, tasks_per_model_advance)
-   
+
+      call all_vars_to_all_copies(ens_handle)
+      ! deallocate whole state storage
+      deallocate(ens_handle%vars)
+
       ! update so curr time is accurate.
       curr_ens_time = next_ens_time
 
@@ -650,7 +667,7 @@ AdvanceTime : do
        call filter_state_space_diagnostics(curr_ens_time, PriorStateUnit, ens_handle, &
            model_size, num_output_state_members, &
            output_state_mean_index, output_state_spread_index, &
-           output_inflation, ENS_MEAN_COPY, ENS_SD_COPY, &
+           ENS_MEAN_COPY, ENS_SD_COPY, &
            prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
 
    endif
@@ -790,7 +807,7 @@ AdvanceTime : do
       call filter_state_space_diagnostics(curr_ens_time, PosteriorStateUnit, ens_handle, &
          model_size, num_output_state_members, output_state_mean_index, &
          output_state_spread_index, &
-         output_inflation, ENS_MEAN_COPY, ENS_SD_COPY, &
+         ENS_MEAN_COPY, ENS_SD_COPY, &
          post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
       ! Cyclic storage for lags with most recent pointed to by smoother_head
       ! ens_mean is passed to avoid extra temp storage in diagnostics
@@ -1020,11 +1037,12 @@ end do
 ! Next two slots are for inflation mean and sd metadata
 ! To avoid writing out inflation values to the Prior and Posterior netcdf files,
 ! set output_inflation to false in the filter section of input.nml 
-if(output_inflation) then
+!> @todo fudge
+!f(output_inflation) then
    num_state_copies = num_state_copies + 2
    state_meta(num_state_copies-1) = 'inflation mean'
    state_meta(num_state_copies)   = 'inflation sd'
-endif
+!endif
 
 ! Have task 0 set up diagnostic output for model state, if output is desired
 ! I am not using a collective call here, just getting task 0 to set up the files
@@ -1440,7 +1458,6 @@ allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_nu
 
 ! Only read in initial conditions for actual ensemble members
 if(init_time_days >= 0) then
-   print*, 'reading ensemble restart task', my_task_id()
    call read_ensemble_restart(state_ens_handle, 1, ens_size, &
       start_from_restart, restart_in_file_name, time)
    if (do_output()) then
@@ -1453,6 +1470,7 @@ if(init_time_days >= 0) then
 else
    call read_ensemble_restart(state_ens_handle, 1, ens_size, &
       start_from_restart, restart_in_file_name)
+      !> @todo time
    if (state_ens_handle%my_num_copies > 0) time = state_ens_handle%time(1)
 endif
 

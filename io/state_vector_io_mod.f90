@@ -985,7 +985,7 @@ do i = 1, num_state_variables ! loop around state variables
 enddo
 
 if ((.not. time_dimension_exists) .and. (time_unlimited)) then ! create unlimlited dimension time
-   ret = nf90_def_dim(ncfile_out, 'Time', NF90_UNLIMITED, new_dimid)
+   ret = nf90_def_dim(ncfile_out, 'Time', NF90_UNLIMITED, new_dimid) !> @todo Case sensitive?
    call nc_check(ret, 'create_state_output', 'creating time as the unlimited dimension')
 
    call shift_dimension_arrays(new_dimid)

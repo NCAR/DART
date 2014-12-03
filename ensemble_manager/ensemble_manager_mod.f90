@@ -125,8 +125,8 @@ integer  :: layout = 1 ! default to my_pe = my_task_id(). Layout2 assumes that t
 integer  :: tasks_per_node = 1 ! default to 1 if the user does not specify a number of tasks per node.
 logical  :: debug = .false.
 
-! To use parallel reads and writes of restart files and diagnostics
-logical  :: no_complete_state = .false.
+! Is this necessary any more?
+logical  :: no_complete_state = .true.
 
 namelist / ensemble_manager_nml / single_restart_file_in,  &
                                   single_restart_file_out, &
@@ -1917,10 +1917,7 @@ end function map_task_to_pe
 
 !--------------------------------------------------------------------------------
 !> Allows filter to query the ensemble manager namelist option no_complete_state
-!> no_complete_state = .true. means that the restart files will be read/written
-!>   in parallel by all tasks.
-!> no_complete_state = .false. means that the restart files will be read in var complete
-!>    by the first ens_size processors then transposed to all_copies.
+!> Is this necessary any more? 
 function allow_complete_state()
 logical allow_complete_state
 
