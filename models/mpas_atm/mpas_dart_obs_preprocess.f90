@@ -8,33 +8,71 @@ program mpas_dart_obs_preprocess
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   mpas_dart_obs_preprocess - MPAS-DART utility program that adds 
-!                              observations from supplimental obs sequences.  
-!                              The program assumes all data is from one 
-!                              obsevation time. In addition, this program allows 
-!                              the user to do the following functions:
+!   mpas_dart_obs_preprocess 
+! 
+!   MPAS-DART utility program that adds observations from supplimental obs sequences.  
+!   An actual observation time for each obs can be overwritten as the analysis time,
+!   and/or the observations beyond the specified time window can be removed.
+!   In addition, this program allows users to do the following functions:
 !
 !     - remove observations above certain pressure/height levels
-!     - remove observations where the model and obs topography are large
+!     - remove observations where the model and obs topography are large.
 !     - remove significant level rawinsonde data
 !     - remove rawinsonde observations near TC core
 !     - superob aircraft and satellite wind data
+!       - average over observations within each voxel (in 3D).
+!       - voxels are defined by mpas grid cells (read from grid_definition_filename 
+!         in &model_nml) and the vertical ranges specified in the namelist.
+!       - bad observations with qc higher than superob_qc_threshold is not used.
+!       - the highest qc and obs error available in each voxel are assigned to
+!         the superobed observation.
+!       - merge acars and aircraft observations into acars.
 !
-!     created based on wrf_dart_obs_preprocess by Soyoung Ha, NCAR/MMM (Oct. 2014)
+!     created based on wrf_dart_obs_preprocess by Soyoung Ha, NCAR/MMM (Dec. 2014)
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use        types_mod, only : r8
-use obs_sequence_mod, only : obs_sequence_type, static_init_obs_sequence, &
-                             read_obs_seq_header, destroy_obs_sequence, &
-                             get_num_obs, write_obs_seq 
-use    utilities_mod, only : find_namelist_in_file, check_namelist_read, nc_check
-use     obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, ACARS_U_WIND_COMPONENT, &
-                             MARINE_SFC_U_WIND_COMPONENT, LAND_SFC_U_WIND_COMPONENT, &
-                             METAR_U_10_METER_WIND, GPSRO_REFRACTIVITY, &
-                             SAT_U_WIND_COMPONENT, PROFILER_U_WIND_COMPONENT, VORTEX_LAT
-use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time
-use        model_mod, only : static_init_model
+use        types_mod, only : r8, missing_r8, earth_radius, RAD2DEG, DEG2RAD
+use    utilities_mod, only : error_handler, E_MSG, find_namelist_in_file, &
+                             check_namelist_read, nc_check
+use time_manager_mod, only : time_type, operator(>=), operator(<), operator(>), operator(<=), &
+                             increment_time, decrement_time, operator(-), operator(+), &
+                             set_calendar_type, GREGORIAN, set_time, get_time
+use     location_mod, only : location_type, get_location, set_location, get_dist, &
+                             VERTISUNDEF, VERTISSURFACE, VERTISPRESSURE, &
+                             vert_is_pressure, vert_is_height, operator(==)
+use obs_sequence_mod, only : append_obs_to_seq, copy_obs, delete_obs_from_seq, &
+                             destroy_obs_sequence, get_first_obs, get_last_obs, &
+                             get_next_obs, get_next_obs_from_key, get_num_copies, &
+                             get_num_obs, get_num_qc, get_obs_def, get_obs_key, &
+                             get_obs_values, get_qc, get_qc_meta_data, init_obs, &
+                             insert_obs_in_seq, obs_sequence_type, obs_type, &
+                             read_obs_seq, read_obs_seq_header, set_copy_meta_data, &
+                             set_obs_def, set_obs_values, set_qc, set_qc_meta_data, &
+                             static_init_obs_sequence, write_obs_seq, init_obs_sequence
+use      obs_def_mod, only : get_obs_def_error_variance, get_obs_def_location, &
+                             get_obs_def_time, get_obs_kind, obs_def_type, &
+                             set_obs_def_error_variance, set_obs_def_kind, &
+                             set_obs_def_location, set_obs_def_time
+use     obs_kind_mod, only : ACARS_DEWPOINT, ACARS_RELATIVE_HUMIDITY, ACARS_SPECIFIC_HUMIDITY, &
+                             ACARS_TEMPERATURE, ACARS_U_WIND_COMPONENT, ACARS_V_WIND_COMPONENT, &
+                             AIRCRAFT_SPECIFIC_HUMIDITY, AIRCRAFT_TEMPERATURE, AIRCRAFT_U_WIND_COMPONENT, &
+                             AIRCRAFT_V_WIND_COMPONENT, GPS_PRECIPITABLE_WATER, GPSRO_REFRACTIVITY, &
+                             KIND_SURFACE_ELEVATION, LAND_SFC_ALTIMETER, LAND_SFC_DEWPOINT, &
+                             LAND_SFC_RELATIVE_HUMIDITY, LAND_SFC_SPECIFIC_HUMIDITY, LAND_SFC_TEMPERATURE, &
+                             LAND_SFC_U_WIND_COMPONENT, LAND_SFC_V_WIND_COMPONENT, MARINE_SFC_ALTIMETER, &
+                             MARINE_SFC_DEWPOINT, MARINE_SFC_RELATIVE_HUMIDITY, MARINE_SFC_SPECIFIC_HUMIDITY, &
+                             MARINE_SFC_TEMPERATURE, MARINE_SFC_U_WIND_COMPONENT, MARINE_SFC_V_WIND_COMPONENT, &
+                             METAR_ALTIMETER, METAR_DEWPOINT_2_METER, METAR_RELATIVE_HUMIDITY_2_METER, &
+                             METAR_SPECIFIC_HUMIDITY_2_METER, METAR_TEMPERATURE_2_METER, METAR_U_10_METER_WIND, &
+                             METAR_V_10_METER_WIND, PROFILER_U_WIND_COMPONENT, PROFILER_V_WIND_COMPONENT, &
+                             RADIOSONDE_DEWPOINT, RADIOSONDE_RELATIVE_HUMIDITY, RADIOSONDE_SPECIFIC_HUMIDITY, &
+                             RADIOSONDE_SURFACE_ALTIMETER, RADIOSONDE_TEMPERATURE, RADIOSONDE_U_WIND_COMPONENT, &
+                             RADIOSONDE_V_WIND_COMPONENT, SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT, &
+                             VORTEX_LAT, VORTEX_LON, VORTEX_PMIN, VORTEX_WMAX
+use        model_mod, only : static_init_model, get_grid_dims, get_xland, &
+                             model_interpolate, find_closest_cell_center
+
 use           netcdf
 
 implicit none
@@ -44,7 +82,6 @@ implicit none
 ! ----------------------------------------------------------------------
 
 !  Generic parameters
-character(len=256) :: static_mpas_filename = 'mpas_init.nc'
 character(len=129) :: file_name_input    = 'obs_seq.old',        &
                       file_name_output   = 'obs_seq.new',        &
                       sonde_extra        = 'obs_seq.rawin',      &
@@ -55,9 +92,9 @@ character(len=129) :: file_name_input    = 'obs_seq.old',        &
                       sat_wind_extra     = 'obs_seq.satwnd',     &
                       profiler_extra     = 'obs_seq.profiler',   &
                       gpsro_extra        = 'obs_seq.gpsro',      &
+                      gpspw_extra        = 'obs_seq.gpspw',      &
                       trop_cyclone_extra = 'obs_seq.tc'
 integer            :: max_num_obs              = 1000000  ! Largest number of obs in one sequence
-logical            :: overwrite_obs_time       = .false.  ! true to overwrite all observation times
 
 !  parameters used to reduce observations
 logical            :: sfc_elevation_check      = .false.  ! remove obs where model-obs topography is large
@@ -72,6 +109,7 @@ real(r8)           :: tc_sonde_radii           = -1.0_r8  ! remove sonde obs clo
 !  aircraft-specific parameters
 logical            :: superob_aircraft         = .false.  ! super-ob aircraft data
 real(r8)           :: aircraft_pres_int        = 2500.0_r8  ! pressure interval for super-ob
+integer            :: superob_qc_threshold     = 4          ! reject obs with qc > 4 (applied for both aircraft and satwnd)
 
 !  sat wind specific parameters
 logical            :: superob_sat_winds        = .false.    ! super-ob sat wind data
@@ -81,14 +119,19 @@ logical            :: overwrite_ncep_satwnd_qc = .false.    ! true to overwrite 
 !  surface obs. specific parameters
 logical            :: overwrite_ncep_sfc_qc    = .false.  ! true to overwrite NCEP QC (see instructions)
 
-namelist /mpas_obs_preproc_nml/ static_mpas_filename, &
-         file_name_input, file_name_output, max_num_obs,     &
-         include_sig_data, superob_aircraft, superob_sat_winds,     &
+!  overwrite or windowing obs time
+logical            :: overwrite_obs_time       = .false.  ! true to overwrite all observation times
+logical            :: windowing_obs_time       = .false.  ! true to remove obs beyond the time window
+real(r8)           :: windowing_int_hour       = 1.5_r8   ! time window [hr] centered on the analysis time
+
+namelist /mpas_obs_preproc_nml/ file_name_input, file_name_output, max_num_obs,     &
+         include_sig_data, superob_aircraft, superob_sat_winds, superob_qc_threshold,   &
          sfc_elevation_check, overwrite_ncep_sfc_qc, overwrite_ncep_satwnd_qc, &
          aircraft_pres_int, sat_wind_pres_int, sfc_elevation_tol,   & 
          obs_pressure_top, obs_height_top, sonde_extra, metar_extra,   &
          acars_extra, land_sfc_extra, marine_sfc_extra, sat_wind_extra, profiler_extra, &
-         trop_cyclone_extra, gpsro_extra, tc_sonde_radii, overwrite_obs_time
+         trop_cyclone_extra, gpsro_extra, gpspw_extra, tc_sonde_radii, overwrite_obs_time, &
+         windowing_obs_time, windowing_int_hour
 
 !----------------------------------------------------------------------
 ! Declare other variables
@@ -103,55 +146,52 @@ integer                 :: io, iunit, fid, var_id, obs_seq_file_id, num_copies, 
 logical                 :: file_exist, pre_I_format
 
 type(obs_sequence_type) :: seq_all, seq_rawin, seq_sfc, seq_acars, seq_satwnd, &
-                           seq_prof, seq_tc, seq_gpsro, seq_other
+                           seq_prof, seq_tc, seq_gpsro, seq_other, seq_gpspw
 
 type(time_type)         :: anal_time
 
-integer  :: nCells        = -1      ! Total number of cells making up the grid
-integer  :: nTimes        = -1      ! Total number of times
-integer  :: dimid, ncid, VarID
-real(r8), allocatable :: xland(:,:)   ! indicator for land (1.0_r8) or ocean (> 1.0_r8)
+integer :: nCells        = -1  ! Total number of cells making up the grid
+integer :: nVertices     = -1  ! Unique points in grid that are corners of cells
+integer :: nEdges        = -1  ! Straight lines between vertices making up cells
+integer :: nVertLevels   = -1  ! Vertical levels; count of vert cell centers
+integer :: vertexDegree  = -1  ! Max number of cells/edges that touch any vertex
+integer :: nSoilLevels   = -1  ! Number of soil layers
+
+integer :: dimid, ncid, VarID
+real(r8), allocatable :: xland(:)   ! indicator for land (1.0_r8) or ocean (> 1.0_r8)
 
 print*,'Enter target assimilation time (gregorian day, second): '
-read*,gday,gsec
+read*, gday,gsec
 call set_calendar_type(GREGORIAN)
 anal_time = set_time(gsec, gday)
-
-call static_init_obs_sequence()
-
-call static_init_model()
-call nc_check(nf90_open(trim(static_mpas_filename), NF90_NOWRITE, ncid), &
-             'mpas_dart_obs_preprocess','open '//trim(static_mpas_filename))
-call nc_check(nf90_inq_dimid(ncid, 'Time', dimid), &
-             'mpas_dart_obs_preprocess','inq_dimid Time '//trim(static_mpas_filename))
-call nc_check(nf90_inquire_dimension(ncid, dimid, len=nTimes), &
-             'mpas_dart_obs_preprocess','inquire_dimension nCells '//trim(static_mpas_filename))
-call nc_check(nf90_inq_dimid(ncid, 'nCells', dimid), &
-             'mpas_dart_obs_preprocess','inq_dimid nCells '//trim(static_mpas_filename))
-call nc_check(nf90_inquire_dimension(ncid, dimid, len=nCells), &
-             'mpas_dart_obs_preprocess','inquire_dimension nCells '//trim(static_mpas_filename))
-
-! FIXME: how can I count or remove time dimension in [Time|1] x [nCell]?
-allocate(xland(nTimes,nCells))
-call nc_check(nf90_inq_varid(ncid, 'xland', VarID), &
-      'mpas_dart_obs_preprocess', 'inq_varid xland '//trim(static_mpas_filename))
-call nc_check(nf90_get_var( ncid, VarID, xland), &
-      'mpas_dart_obs_preprocess', 'get_var xland '//trim(static_mpas_filename))
 
 call find_namelist_in_file("input.nml", "mpas_obs_preproc_nml", iunit)
 read(iunit, nml = mpas_obs_preproc_nml, iostat = io)
 call check_namelist_read(iunit, io, "mpas_obs_preproc_nml")
 
+call static_init_obs_sequence()
+call static_init_model()
+
+call get_grid_dims(nCells, nVertices, nEdges, nVertLevels, vertexDegree, nSoilLevels)
+
+allocate(xland(nCells))
+call get_xland(nCells,xland)
+!print*,'xland: ',minval(xland),maxval(xland)
+
 !  if obs_seq file exists, read in the data, otherwise, create a blank one.
 inquire(file = trim(adjustl(file_name_input)), exist = file_exist)
+
 if ( file_exist ) then
 
+  print*,'file_name_input: ',trim(file_name_input)
   call read_obs_seq_header(file_name_input, num_copies, num_qc, num_obs, max_obs_seq, &
         obs_seq_file_id, obs_seq_read_format, pre_I_format, close_the_file = .true.)
+ 
+  if( max_obs_seq < max_num_obs ) max_obs_seq = max_num_obs
 
 else
 
-  num_copies = 1  ;  num_qc = 1  ;  max_obs_seq = max_num_obs * 3
+  num_copies = 1  ;  num_qc = 1  ;  max_obs_seq = max_num_obs
   call create_new_obs_seq(num_copies, num_qc, max_obs_seq, seq_all)
 
 end if
@@ -165,67 +205,75 @@ call create_new_obs_seq(num_copies, num_qc, max_obs_seq, seq_prof)
 call create_new_obs_seq(num_copies, num_qc, max_obs_seq, seq_gpsro)
 call create_new_obs_seq(num_copies, num_qc, 100,         seq_tc)
 call create_new_obs_seq(num_copies, num_qc, max_obs_seq, seq_other)
+call create_new_obs_seq(num_copies, num_qc, max_obs_seq, seq_gpspw)
 
 !  read input obs_seq file, divide into platforms
-call read_and_parse_input_seq(file_name_input, nCells, xland(1,:), &
+call read_and_parse_input_seq(file_name_input, xland,                    &
 include_sig_data, obs_pressure_top, obs_height_top, sfc_elevation_check, &
-sfc_elevation_tol, overwrite_ncep_sfc_qc, overwrite_ncep_satwnd_qc, &
-overwrite_obs_time, anal_time, seq_rawin, seq_sfc, seq_acars, seq_satwnd, & 
-seq_tc, seq_gpsro, seq_other)
+sfc_elevation_tol, overwrite_ncep_sfc_qc, overwrite_ncep_satwnd_qc,      &
+overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour,   &
+seq_rawin, seq_sfc, seq_acars, seq_satwnd, seq_tc, seq_gpsro,            &
+seq_gpspw, seq_other)
 
 !  add supplimental rawinsonde observations from file
 call add_supplimental_obs(sonde_extra, seq_rawin, max_obs_seq, &
 RADIOSONDE_U_WIND_COMPONENT, include_sig_data, &
 obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
-overwrite_obs_time, anal_time)
+overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental ACARS observations from file
 call add_supplimental_obs(acars_extra, seq_acars, max_obs_seq, &
 ACARS_U_WIND_COMPONENT, include_sig_data, &
 obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
-overwrite_obs_time, anal_time)
+overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental marine observations from file
 call add_supplimental_obs(marine_sfc_extra, seq_sfc, max_obs_seq, &
 MARINE_SFC_U_WIND_COMPONENT, include_sig_data, &
 obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
-overwrite_obs_time, anal_time)
+overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental land surface observations from file
 call add_supplimental_obs(land_sfc_extra, seq_sfc, max_obs_seq, &
 LAND_SFC_U_WIND_COMPONENT, include_sig_data, &
 obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
-overwrite_obs_time, anal_time)
+overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental metar observations from file
 call add_supplimental_obs(metar_extra, seq_sfc, max_obs_seq, &
 METAR_U_10_METER_WIND, include_sig_data, &
 obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
-overwrite_obs_time, anal_time)
+overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental satellite wind observations from file
 call add_supplimental_obs(sat_wind_extra, seq_satwnd, max_obs_seq, &
 SAT_U_WIND_COMPONENT, include_sig_data, &
 obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
-overwrite_obs_time, anal_time)
+overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental profiler observations from file
 call add_supplimental_obs(profiler_extra, seq_prof, max_obs_seq, &
 PROFILER_U_WIND_COMPONENT, include_sig_data, &
 obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
-overwrite_obs_time, anal_time)
+overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental GPSRO observations from file
 call add_supplimental_obs(gpsro_extra, seq_gpsro, max_obs_seq, &
 GPSRO_REFRACTIVITY, include_sig_data, &
 obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
-overwrite_obs_time, anal_time)
+overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
+
+!  add supplimental GPSPW observations from file
+call add_supplimental_obs(gpspw_extra, seq_gpspw, max_obs_seq, &
+GPS_PRECIPITABLE_WATER, include_sig_data, &
+obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
+overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental tropical cyclone vortex observations from file
 call add_supplimental_obs(trop_cyclone_extra, seq_tc, max_obs_seq, &
 VORTEX_LAT, include_sig_data, &
 obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
-overwrite_obs_time, anal_time)
+overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  remove all sonde observations within radius of TC if desired
 if ( tc_sonde_radii > 0.0_r8 ) call remove_sondes_near_tc(seq_tc, & 
@@ -233,16 +281,29 @@ if ( tc_sonde_radii > 0.0_r8 ) call remove_sondes_near_tc(seq_tc, &
 
 !  super-ob ACARS data
 if ( superob_aircraft ) call superob_aircraft_data(seq_acars, nCells, anal_time, &
-                             aircraft_pres_int, obs_pressure_top)
+                             aircraft_pres_int, superob_qc_threshold, obs_pressure_top)
 
 !  super-ob satellite wind data
 if ( superob_sat_winds ) call superob_sat_wind_data(seq_satwnd, nCells, anal_time, &
-                              sat_wind_pres_int, obs_pressure_top)
+                              sat_wind_pres_int, superob_qc_threshold, obs_pressure_top)
+
+print*, 'Number of obs read:'
+print*, 'num_rawin:  ', get_num_obs(seq_rawin)
+print*, 'num_sfc:    ', get_num_obs(seq_sfc)
+print*, 'num_acars:  ', get_num_obs(seq_acars)
+print*, 'num_satwnd: ', get_num_obs(seq_satwnd)
+print*, 'num_prof:   ', get_num_obs(seq_prof)
+print*, 'num_gpsro:  ', get_num_obs(seq_gpsro)
+print*, 'num_gpspw:  ', get_num_obs(seq_gpspw)
+print*, 'num_tc:     ', get_num_obs(seq_tc)
+print*, 'num_other:  ', get_num_obs(seq_other)
 
 max_obs_seq = get_num_obs(seq_tc)     + get_num_obs(seq_rawin) + &
               get_num_obs(seq_sfc)    + get_num_obs(seq_acars) + &
               get_num_obs(seq_satwnd) + get_num_obs(seq_prof)  + &
-              get_num_obs(seq_gpsro)  +  get_num_obs(seq_other)
+              get_num_obs(seq_gpsro)  + get_num_obs(seq_gpspw) + &
+              get_num_obs(seq_other)
+print*, 'num_total:  ', max_obs_seq
 
 call create_new_obs_seq(num_copies, num_qc, max_obs_seq, seq_all)
 
@@ -261,6 +322,9 @@ call destroy_obs_sequence(seq_acars)
 call build_master_sequence(seq_gpsro, seq_all)
 call destroy_obs_sequence(seq_gpsro)
 
+call build_master_sequence(seq_gpspw, seq_all)
+call destroy_obs_sequence(seq_gpspw)
+
 call build_master_sequence(seq_satwnd, seq_all)
 call destroy_obs_sequence(seq_satwnd)
 
@@ -270,14 +334,14 @@ call destroy_obs_sequence(seq_prof)
 call build_master_sequence(seq_other, seq_all)
 call destroy_obs_sequence(seq_other)
 
-write(6,*) 'Total number of observations:', get_num_obs(seq_all)
+write(6,*) 'Total number of observations after superobing:', get_num_obs(seq_all)
+write(6,*) ''
 
 !  write the observation sequence to file
 call write_obs_seq(seq_all, file_name_output)
 call destroy_obs_sequence(seq_all)
 
-stop
-end
+contains
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
@@ -288,15 +352,10 @@ end
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function aircraft_obs_check()
 
-use     types_mod, only : r8
-
-implicit none
-
 logical  :: aircraft_obs_check
 
 aircraft_obs_check = .true.
 
-return
 end function aircraft_obs_check
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -315,52 +374,41 @@ end function aircraft_obs_check
 !    htop        - highest height level to include in sequence
 !    sfcelev     - true to perform surface obs. elevation check
 !    elev_max    - maximum difference between model and obs. height
+!    overwrite_time - if true, replace actual observation time with atime
+!    atime       - analysis time, for windowing and overwriting obs times
+!    obs_window  - if true, exclude obs earlier or later than window interval
+!    window_hours - hours for time window, obs more than +/- away discarded
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine add_supplimental_obs(filename, obs_seq, max_obs_seq, plat_kind, &
-                                 siglevel, ptop, htop, &
-                                 sfcelev, elev_max, overwrite_time, atime)
+                                 siglevel, ptop, htop, sfcelev, elev_max,  &
+                                 overwrite_time, atime, obs_window, window_hours)
 
-use         types_mod, only : r8
-use  time_manager_mod, only : time_type, operator(>=)
-use     location_mod, only  : location_type, get_location,         &
-                              vert_is_pressure, vert_is_height
-use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, set_obs_def, &
-                              get_num_copies, get_num_qc, read_obs_seq, copy_obs, &
-                              get_first_obs, get_obs_def, get_next_obs, &
-                              get_last_obs, insert_obs_in_seq, destroy_obs_sequence
-use       obs_def_mod, only : obs_def_type, get_obs_kind, set_obs_def_time, &
-                              get_obs_def_location, get_obs_def_time
-use      obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, ACARS_U_WIND_COMPONENT, &
-                              LAND_SFC_U_WIND_COMPONENT, MARINE_SFC_U_WIND_COMPONENT, &
-                              METAR_U_10_METER_WIND, GPSRO_REFRACTIVITY, &
-                              SAT_U_WIND_COMPONENT, VORTEX_LAT
-
-implicit none
-
-character(len=129), intent(in)         :: filename
-type(time_type),         intent(in)    :: atime
+character(len=129),      intent(in)    :: filename
 type(obs_sequence_type), intent(inout) :: obs_seq
-integer, intent(in)                    :: max_obs_seq, plat_kind
-logical, intent(in)                    :: siglevel, sfcelev, overwrite_time
-real(r8), intent(in)                   :: ptop, htop, elev_max
+integer,                 intent(in)    :: max_obs_seq, plat_kind
+logical,                 intent(in)    :: siglevel, sfcelev, overwrite_time
+real(r8),                intent(in)    :: ptop, htop, elev_max
+type(time_type),         intent(in)    :: atime
+logical,                 intent(in)    :: obs_window
+real(r8),                intent(in)    :: window_hours
 
 integer  :: nloc, okind, dom_id
-logical  :: file_exist, last_obs, pass_checks, original_observation, &
-            rawinsonde_obs_check, aircraft_obs_check, surface_obs_check, &
-            sat_wind_obs_check, first_obs
+integer  :: gsec, gday, dsec, bday, bsec, eday, esec, num_excluded_bytime
+logical  :: file_exist, last_obs, pass_checks, first_obs
 real(r8) :: llv_loc(3)
-
 
 type(location_type)     :: obs_loc_list(max_obs_seq), obs_loc
 type(obs_def_type)      :: obs_def
 type(obs_sequence_type) :: supp_obs_seq
 type(obs_type)          :: obs_in, prev_obsi, prev_obso, obs
 type(time_type)         :: obs_time, prev_time
+type(time_type)         :: window_min, window_max
 
 inquire(file = trim(adjustl(filename)), exist = file_exist)
 if ( .not. file_exist )  return
 
+write(6,*) ''
 select case (plat_kind)
 
   case (RADIOSONDE_U_WIND_COMPONENT)
@@ -379,6 +427,8 @@ select case (plat_kind)
     write(6,*) 'Adding Supplimental Tropical Cyclone Data'
   case (GPSRO_REFRACTIVITY)
     write(6,*) 'Adding Supplimental GPS RO Data'
+  case (GPS_PRECIPITABLE_WATER)
+    write(6,*) 'Adding Supplimental GPS PW Data'
 
 end select
 
@@ -407,6 +457,14 @@ last_obs = .false.
 call read_obs_seq(trim(adjustl(filename)), 0, 0, 0, supp_obs_seq)
 if ( .not. get_first_obs(supp_obs_seq, obs_in) ) last_obs = .true.
 
+! windowing obs - don't compute these things if not going to use them
+if ( obs_window ) then
+  dsec = nint(window_hours * 3600.)
+  window_min = decrement_time(atime, dsec)
+  window_max = increment_time(atime, dsec)
+  num_excluded_bytime    = 0   ! total number of obs beyond the time window
+end if
+
 ObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
 
   !  read data from observation
@@ -414,10 +472,7 @@ ObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
   okind   = get_obs_kind(obs_def)
   obs_loc = get_obs_def_location(obs_def)
   llv_loc = get_location(obs_loc)
-
-  prev_obsi = obs_in
-  call get_next_obs(supp_obs_seq, prev_obsi, obs_in, last_obs)
-  cycle ObsLoop
+  obs_time = get_obs_def_time(obs_def)
 
   !  check if the observation is within vertical bounds of domain
   if ( (vert_is_pressure(obs_loc) .and. llv_loc(3) < ptop) .or. &
@@ -438,12 +493,15 @@ ObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
 
   end if
 
-  !  overwrite the observation time with the analysis time if desired
-  if ( overwrite_time ) then
+  if ( obs_window ) then
+    if ( obs_time <= window_min .or. obs_time > window_max ) then
 
-    call set_obs_def_time(obs_def, atime)
-    call set_obs_def(obs_in, obs_def)
+      prev_obsi = obs_in
+      call get_next_obs(supp_obs_seq, prev_obsi, obs_in, last_obs)
+      num_excluded_bytime = num_excluded_bytime + 1
+      cycle ObsLoop
 
+    end if
   end if
 
   ! perform platform-specific checks
@@ -473,6 +531,12 @@ ObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
     call get_obs_def(obs, obs_def)
     obs_time = get_obs_def_time(obs_def)
 
+    !  overwrite the observation time with the analysis time if desired
+    if ( overwrite_time ) then
+         call set_obs_def_time(obs_def, atime)
+         call set_obs_def(obs, obs_def)
+    end if
+
     if (obs_time >= prev_time .and. (.not. first_obs)) then  ! same time or later than previous obs
       call insert_obs_in_seq(obs_seq, obs, prev_obso)
     else                                                     ! earlier, search from start of seq
@@ -492,7 +556,9 @@ end do ObsLoop
 
 call destroy_obs_sequence(supp_obs_seq)
 
-return
+if ( obs_window ) &
+print*, 'Number of obs outside the time window in this supplimental_obs:',num_excluded_bytime
+
 end subroutine add_supplimental_obs
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -507,11 +573,6 @@ end subroutine add_supplimental_obs
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine create_new_obs_seq(num_copies, num_qc, max_num, seq)
-
-use obs_sequence_mod, only : obs_sequence_type, init_obs_sequence, &
-                             set_copy_meta_data, set_qc_meta_data
-
-implicit none
 
 integer, intent(in) :: num_copies, num_qc, max_num
 type(obs_sequence_type), intent(out) :: seq
@@ -529,7 +590,6 @@ do i = 1, num_qc
    call set_qc_meta_data(seq, i, qc_meta_data)
 end do
 
-return
 end subroutine create_new_obs_seq
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -545,15 +605,6 @@ end subroutine create_new_obs_seq
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine build_master_sequence(seq_type, seq_all)
-
-use time_manager_mod, only : time_type, operator(>=)
-use obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs, & 
-                             get_first_obs, copy_obs, insert_obs_in_seq, & 
-                             get_next_obs, get_obs_def, get_num_copies, &
-                             get_num_qc, get_obs_def
-use      obs_def_mod, only : obs_def_type, get_obs_def_time
-
-implicit none
 
 type(obs_sequence_type), intent(in)    :: seq_type
 type(obs_sequence_type), intent(inout) :: seq_all
@@ -592,7 +643,6 @@ do while ( .not. last_obs )
 
 end do
 
-return
 end subroutine build_master_sequence
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -608,20 +658,12 @@ end subroutine build_master_sequence
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine build_obs_loc_list(seq, maxobs, nloc, obs_loc_list)
 
-use       location_mod, only : location_type
-use   obs_sequence_mod, only : obs_sequence_type, get_num_copies, &
-                               get_num_qc, init_obs, get_first_obs, &
-                               get_obs_def, get_next_obs, obs_type
-use        obs_def_mod, only : obs_def_type, get_obs_def_location
-
-implicit none
-
 integer, intent(in)                 :: maxobs
 type(obs_sequence_type), intent(in) :: seq
 integer, intent(out)                :: nloc 
 type(location_type), intent(out)    :: obs_loc_list(maxobs)
 
-logical             :: last_obs, original_observation
+logical             :: last_obs
 type(obs_type)      :: obs, prev_obs
 type(obs_def_type)  :: obs_def
 type(location_type) :: obs_loc
@@ -649,7 +691,6 @@ do while ( .not. last_obs ) ! loop over all observations in a sequence
 
 end do
 
-return
 end subroutine build_obs_loc_list
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -672,15 +713,6 @@ end subroutine build_obs_loc_list
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine create_obs_type(lat, lon, vloc, vcord, obsv, okind, oerr, qc, otime, obs)
 
-use types_mod,        only : r8
-use obs_sequence_mod, only : obs_type, set_obs_values, set_qc, set_obs_def
-use obs_def_mod,      only : obs_def_type, set_obs_def_time, set_obs_def_kind, &
-                             set_obs_def_error_variance, set_obs_def_location
-use     location_mod, only : location_type, set_location
-use time_manager_mod, only : time_type
-
-implicit none
-
 integer, intent(in)           :: okind, vcord
 real(r8), intent(in)          :: lat, lon, vloc, obsv, oerr, qc
 type(time_type), intent(in)   :: otime
@@ -700,7 +732,6 @@ call set_obs_values(obs, obs_val)
 qc_val(1)  = qc
 call set_qc(obs, qc_val)
 
-return
 end subroutine create_obs_type
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -712,11 +743,6 @@ end subroutine create_obs_type
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function isManLevel(plevel)
-
-use types_mod,        only : r8
-
-implicit none
-
 real(r8), intent(in) :: plevel
 
 integer, parameter :: nman = 16
@@ -735,7 +761,6 @@ do kk = 1, nman
   end if
 end do
 
-return
 end function isManLevel
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -750,16 +775,12 @@ end function isManLevel
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function original_observation(obsloc, obsloc_list, nloc)
 
-use     types_mod, only : r8
-use  location_mod, only : location_type, get_dist
-
-real(r8), parameter :: dist_epsilon = 0.00001_r8
-
 integer, intent(in)             :: nloc
 type(location_type), intent(in) :: obsloc, obsloc_list(nloc)
-
-integer :: n
 logical :: original_observation
+
+real(r8), parameter :: dist_epsilon = 0.00001_r8
+integer :: n
 
 original_observation = .true.
 
@@ -772,7 +793,6 @@ do n = 1, nloc
 
 end do
 
-return
 end function original_observation
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -790,21 +810,13 @@ end function original_observation
 function rawinsonde_obs_check(obs_loc, obs_kind, siglevel, &
                                 elev_check, elev_max)
 
-use     types_mod, only : r8
-use  obs_kind_mod, only : RADIOSONDE_SURFACE_ALTIMETER, KIND_SURFACE_ELEVATION
-use     model_mod, only : model_interpolate
-use  location_mod, only : location_type, set_location, get_location, &
-                          vert_is_pressure
-
-implicit none
-
 type(location_type), intent(in) :: obs_loc
 integer, intent(in)             :: obs_kind
 logical, intent(in)             :: siglevel, elev_check
 real(r8), intent(in)            :: elev_max
+logical  :: rawinsonde_obs_check
 
 integer  :: istatus
-logical  :: rawinsonde_obs_check, isManLevel
 real(r8) :: llv_loc(3), xmod(1), hsfc
 
 rawinsonde_obs_check = .true.
@@ -830,7 +842,6 @@ else
 
 end if
 
-return
 end function rawinsonde_obs_check
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -840,6 +851,7 @@ end function rawinsonde_obs_check
 !                              obs into sequences for each platform.
 !
 !    filename      - name of input obs sequence
+!    landmask      - land/ocean mask, dimensioned (nCells), 1=land,2=water
 !    siglevel      - true to include sonde significant level data
 !    ptop          - lowest pressure to include in sequence
 !    htop          - highest height level to include in sequence
@@ -847,77 +859,46 @@ end function rawinsonde_obs_check
 !    elev_max      - maximum difference between model and obs. height
 !    new_sfc_qc    - true to replace NCEP surface QC
 !    new_satwnd_qc - true to replace NCEP sat wind QC over ocean
+!    overwrite_time - if true, replace actual observation time with atime
+!    atime       - analysis time, for windowing and overwriting obs times
+!    obs_window  - if true, exclude obs earlier or later than window interval
+!    window_hours - hours for time window, obs more than +/- away discarded
 !    rawin_seq     - rawinsonde sequence
 !    sfc_seq       - surface sequence
 !    acars_seq     - aircraft sequence
 !    satwnd_seq    - satellite wind sequence
 !    tc_seq        - TC data sequence
+!    gpspw_seq     - total precipitable water from GPS observations
 !    other_seq     - remaining observation sequence
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine read_and_parse_input_seq(filename, nCell, xland, siglevel, ptop, &
-                                    htop, sfcelev, elev_max, new_sfc_qc, &
-                                    new_satwnd_qc, overwrite_time, atime, &
+subroutine read_and_parse_input_seq(filename, landmask, siglevel, ptop,        &
+                                    htop, sfcelev, elev_max, new_sfc_qc,       &
+                                    new_satwnd_qc, overwrite_time, atime,      &
+                                    obs_window, window_hours,                  &
                                     rawin_seq, sfc_seq, acars_seq, satwnd_seq, &
-                                    tc_seq, gpsro_seq, other_seq)
-
-use         types_mod, only : r8
-use     utilities_mod, only : nc_check
-use  time_manager_mod, only : time_type 
-use      location_mod, only : location_type, get_location, vert_is_pressure, &
-                              vert_is_height
-use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, &
-                              get_num_copies, get_num_qc, get_qc_meta_data, &
-                              get_first_obs, get_obs_def, copy_obs, get_num_qc, &
-                              append_obs_to_seq, get_next_obs, get_qc, set_qc, &
-                              destroy_obs_sequence, read_obs_seq, set_obs_def
-use       obs_def_mod, only : obs_def_type, get_obs_kind, get_obs_def_location, &
-                              set_obs_def_time
-use      obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT, RADIOSONDE_V_WIND_COMPONENT, &
-                              RADIOSONDE_SURFACE_ALTIMETER, RADIOSONDE_TEMPERATURE, &
-                              RADIOSONDE_SPECIFIC_HUMIDITY, RADIOSONDE_DEWPOINT, &
-                              RADIOSONDE_RELATIVE_HUMIDITY, GPSRO_REFRACTIVITY, &
-                              AIRCRAFT_U_WIND_COMPONENT, AIRCRAFT_V_WIND_COMPONENT, &
-                              AIRCRAFT_TEMPERATURE, AIRCRAFT_SPECIFIC_HUMIDITY, &
-                              ACARS_DEWPOINT, ACARS_RELATIVE_HUMIDITY, &
-                              ACARS_U_WIND_COMPONENT, ACARS_V_WIND_COMPONENT, &
-                              ACARS_TEMPERATURE, ACARS_SPECIFIC_HUMIDITY, &
-                              MARINE_SFC_U_WIND_COMPONENT, MARINE_SFC_V_WIND_COMPONENT, &
-                              MARINE_SFC_TEMPERATURE, MARINE_SFC_SPECIFIC_HUMIDITY, &
-                              MARINE_SFC_RELATIVE_HUMIDITY, MARINE_SFC_DEWPOINT, &
-                              LAND_SFC_U_WIND_COMPONENT, LAND_SFC_V_WIND_COMPONENT, &
-                              LAND_SFC_TEMPERATURE, LAND_SFC_SPECIFIC_HUMIDITY, &
-                              LAND_SFC_RELATIVE_HUMIDITY, LAND_SFC_DEWPOINT, &
-                              METAR_U_10_METER_WIND, METAR_V_10_METER_WIND, &
-                              METAR_TEMPERATURE_2_METER, METAR_SPECIFIC_HUMIDITY_2_METER, &
-                              METAR_DEWPOINT_2_METER, METAR_RELATIVE_HUMIDITY_2_METER, &
-                              METAR_ALTIMETER, MARINE_SFC_ALTIMETER, LAND_SFC_ALTIMETER, &
-                              SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT, &
-                              VORTEX_LAT, VORTEX_LON, VORTEX_PMIN, VORTEX_WMAX
-use         model_mod, only : find_closest_cell_center
-use            netcdf
-
-implicit none
-
-real(r8), parameter                    :: satwnd_qc_ok = 15.0_r8
-real(r8), parameter                    :: sfc_qc_ok1   =  9.0_r8
-real(r8), parameter                    :: sfc_qc_ok2   = 15.0_r8
-real(r8), parameter                    :: new_qc_value =  2.0_r8
+                                    tc_seq, gpsro_seq, gpspw_seq, other_seq)
 
 character(len=129),      intent(in)    :: filename
-integer,                 intent(in)    :: nCell
-real(r8),                intent(in)    :: xland(nCell)
+real(r8),                intent(in)    :: landmask(:)
 real(r8),                intent(in)    :: ptop, htop, elev_max
 logical,                 intent(in)    :: siglevel, sfcelev, new_sfc_qc, &
                                           new_satwnd_qc, overwrite_time
+logical,                 intent(in)    :: obs_window
+real(r8),                intent(in)    :: window_hours
 type(time_type),         intent(in)    :: atime
-type(obs_sequence_type), intent(inout) :: rawin_seq, sfc_seq, acars_seq, &
+type(obs_sequence_type), intent(inout) :: rawin_seq, sfc_seq, acars_seq, gpspw_seq, &
                                           satwnd_seq, tc_seq, gpsro_seq, other_seq
 
+real(r8), parameter :: satwnd_qc_ok = 15.0_r8
+real(r8), parameter :: sfc_qc_ok1   =  9.0_r8
+real(r8), parameter :: sfc_qc_ok2   = 15.0_r8
+real(r8), parameter :: new_qc_value =  2.0_r8
+
 character(len=129)    :: qcmeta
-integer               :: fid, var_id, okind, dom_id, cellid
-logical               :: file_exist, last_obs, input_ncep_qc, rawinsonde_obs_check, &
-                         surface_obs_check, aircraft_obs_check, sat_wind_obs_check
+integer               :: fid, var_id, okind, dom_id, cellid, dsec
+integer               :: bsec, bday, esec, eday, num_excluded_bytime
+logical               :: file_exist, last_obs, input_ncep_qc
 real(r8), allocatable :: qc(:)
 real(r8)              :: llv_loc(3)
 
@@ -925,11 +906,14 @@ type(location_type)     :: obs_loc
 type(obs_def_type)      :: obs_def
 type(obs_sequence_type) :: seq
 type(obs_type)          :: obs, obs_in, prev_obs
+type(time_type)         :: window_min, window_max, obs_time
 
 inquire(file = trim(adjustl(filename)), exist = file_exist)
 if ( .not. file_exist )  return
 
 call read_obs_seq(filename, 0, 0, 0, seq)
+write(6,*) ''
+write(6,*) 'Total of ',get_num_obs(seq),' observations in ',trim(filename)
 
 call init_obs(obs,      get_num_copies(seq), get_num_qc(seq))
 call init_obs(obs_in,   get_num_copies(seq), get_num_qc(seq))
@@ -943,6 +927,19 @@ if ( trim(adjustl(qcmeta)) == 'NCEP QC index' )  input_ncep_qc = .true.
 last_obs = .false.
 if ( .not. get_first_obs(seq, obs_in) ) last_obs = .true.
 
+
+if ( obs_window ) then
+     write(6,*) 'Time windowing obs within +- ',window_hours,' hours.'
+     dsec = nint(window_hours * 3600.)
+     window_min = decrement_time(atime, dsec)
+     window_max = increment_time(atime, dsec)
+     call get_time(window_min,bsec,bday)
+     call get_time(window_max,esec,eday)
+     print*, 'including obs after ',bday,bsec,' up to and including',eday,esec
+     num_excluded_bytime = 0   ! total number of obs beyond the time window
+end if
+
+
 InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
 
   !  Get the observation information, check if it is in the domain
@@ -951,10 +948,7 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
   obs_loc = get_obs_def_location(obs_def)
   llv_loc = get_location(obs_loc)
   cellid  = find_closest_cell_center(llv_loc(2), llv_loc(1))
-
-  prev_obs = obs_in
-  call get_next_obs(seq, prev_obs, obs_in, last_obs)
-  cycle InputObsLoop
+  obs_time = get_obs_def_time(obs_def)
 
   !  check vertical location
   if ( (vert_is_pressure(obs_loc) .and. llv_loc(3) < ptop) .or. &
@@ -964,6 +958,19 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
     call get_next_obs(seq, prev_obs, obs_in, last_obs)
     cycle InputObsLoop
 
+  end if
+
+  ! to prevent obs from being included in more than a single assimilation window
+  ! discard obs that are on the earliest boundary but keep obs that are on the
+  ! latest boundary.  this matches what dart does with assimilation windows; they
+  ! run from start+1 second to end.
+  if ( obs_window ) then
+    if (obs_time <= window_min .or. obs_time > window_max ) then
+         prev_obs = obs_in
+         call get_next_obs(seq, prev_obs, obs_in, last_obs)
+         num_excluded_bytime = num_excluded_bytime + 1
+         cycle InputObsLoop
+     end if
   end if
 
   !  overwrite the observation time with the analysis time if desired
@@ -1039,7 +1046,7 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
 
           call get_qc(obs, qc)
           if ( qc(1) == satwnd_qc_ok .and. input_ncep_qc .and. &
-                                         xland(cellid) > 1.0_r8 ) then	! not land :SYHA
+               landmask(cellid) > 1.0_r8 ) then    ! LAND MASK (1 FOR LAND, 2 FOR WATER) - not over land
             qc(1) = new_qc_value
             call set_qc(obs, qc)
           end if
@@ -1059,6 +1066,11 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
       call copy_obs(obs, obs_in)
       call append_obs_to_seq(gpsro_seq, obs)
 
+    case ( GPS_PRECIPITABLE_WATER )
+
+      call copy_obs(obs, obs_in)
+      call append_obs_to_seq(gpspw_seq, obs)
+
     case default
 
       call copy_obs(obs, obs_in)
@@ -1071,8 +1083,9 @@ InputObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a seq
 
 end do InputObsLoop
 call destroy_obs_sequence(seq)
+if ( obs_window ) &
+print*, 'Number of obs outside the time window in the input file:',num_excluded_bytime
 
-return
 end subroutine read_and_parse_input_seq
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1087,16 +1100,6 @@ end subroutine read_and_parse_input_seq
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine remove_sondes_near_tc(seq_tc, seq_rawin, sonde_radii)
-
-use         types_mod, only : r8, earth_radius
-use  obs_sequence_mod, only : obs_sequence_type, init_obs, get_num_copies, &
-                              get_num_qc, get_first_obs, get_obs_def, &
-                              get_next_obs, delete_obs_from_seq, obs_type, &
-                              get_next_obs_from_key, get_obs_key
-use       obs_def_mod, only : obs_def_type, get_obs_def_location
-use      location_mod, only : location_type, operator(==), get_dist
-
-implicit none
 
 type(obs_sequence_type), intent(in)    :: seq_tc
 type(obs_sequence_type), intent(inout) :: seq_rawin
@@ -1169,7 +1172,6 @@ do while ( .not. last_obs )  !  loop over all rawinsonde obs, remove too close t
 
 end do
 
-return
 end subroutine remove_sondes_near_tc
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1181,16 +1183,10 @@ end subroutine remove_sondes_near_tc
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function sat_wind_obs_check()
-
-use     types_mod, only : r8
-
-implicit none
-
 logical  :: sat_wind_obs_check
 
 sat_wind_obs_check = .true.
 
-return
 end function sat_wind_obs_check
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1204,39 +1200,19 @@ end function sat_wind_obs_check
 !    ptop  - lowest pressure to include in sequence
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine superob_aircraft_data(seq, ncell, atime, vdist, ptop)
-
-use         types_mod, only : r8, missing_r8, earth_radius
-use  time_manager_mod, only : time_type
-use      location_mod, only : location_type, get_dist, operator(==), &
-                              get_location, VERTISPRESSURE
-use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, &
-                              get_num_copies, get_num_qc, get_first_obs, &
-                              get_next_obs, destroy_obs_sequence, get_qc, &
-                              get_num_obs, get_obs_values, get_obs_def, &
-                              append_obs_to_seq
-use       obs_def_mod, only : obs_def_type, get_obs_def_location, &
-                              get_obs_kind, get_obs_def_error_variance, &
-                              get_obs_def_time
-use      obs_kind_mod, only : AIRCRAFT_U_WIND_COMPONENT, ACARS_U_WIND_COMPONENT, &
-                              AIRCRAFT_V_WIND_COMPONENT, ACARS_V_WIND_COMPONENT, &
-                              AIRCRAFT_TEMPERATURE, ACARS_TEMPERATURE, &
-                              AIRCRAFT_SPECIFIC_HUMIDITY, ACARS_SPECIFIC_HUMIDITY, &
-                              ACARS_DEWPOINT, ACARS_RELATIVE_HUMIDITY
-use     utilities_mod, only : error_handler, E_MSG
-use         model_mod, only : find_closest_cell_center
-implicit none
+subroutine superob_aircraft_data(seq, ncell, atime, vdist, iqc_thres, ptop)
 
 type(obs_sequence_type), intent(inout) :: seq
 type(time_type),         intent(in)    :: atime
 integer,  intent(in)                   :: ncell
+integer,  intent(in)                   :: iqc_thres   ! Superob obs w/ qc < iqc_thres only.
 real(r8), intent(in)                   :: vdist, ptop
 
 character(len=256)  :: string
 integer             :: icell
 integer             :: num_copies, num_qc, nloc, k, locdex, obs_kind, n, &
                        num_obs, poleward_obs
-logical             :: last_obs, pole_check
+logical             :: last_obs
 real(r8)            :: llv_loc(3), obs_val(1), qc_val(1)
 real(r8),allocatable:: nuwnd(:,:),latu(:,:),lonu(:,:),preu(:,:),uwnd(:,:),erru(:,:),qcu(:,:),&
                        nvwnd(:,:),latv(:,:),lonv(:,:),prev(:,:),vwnd(:,:),errv(:,:),qcv(:,:),& 
@@ -1271,6 +1247,7 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 !-----------------------------------------------------------------------
 
+write(6,*)
 write(6,*) 'Super-Obing Aircraft Data over ',ncell,' cells.'
 
 ! Vertical layers for superobing up to obs_pressure_top.
@@ -1286,10 +1263,14 @@ allocate(plevs(nlev))
 do k = 1, nlev
    plevs(k) = ps - dp * ( k - 1 )
 enddo
+write(6,*) 'Super-Obing to',nlev, ' pressure levels (Pa) vertically.'
+write(6,'(5f10.1)') plevs(1:nlev-1)
 
 num_copies = get_num_copies(seq)
 num_qc     = get_num_qc(seq)
 num_obs    = get_num_obs(seq)
+
+write(6,*) 'Super-Obing',num_obs,' Aircraft Data'
 
 allocate(airobs(num_obs))
 call init_obs(obs,      num_copies, num_qc)
@@ -1349,40 +1330,51 @@ do while ( .not. last_obs )
   !  add observation data to type
   if      ( obs_kind == AIRCRAFT_U_WIND_COMPONENT  .or. obs_kind == ACARS_U_WIND_COMPONENT  ) then
 
+   if(qc_val(1).lt.iqc_thres) then
     airobs(locdex)%uwnd     = obs_val(1)
     airobs(locdex)%uwnd_qc  = qc_val(1)
     airobs(locdex)%uwnd_err = get_obs_def_error_variance(obs_def) 
+   endif
 
   else if ( obs_kind == AIRCRAFT_V_WIND_COMPONENT  .or. obs_kind == ACARS_V_WIND_COMPONENT  ) then
 
+   if(qc_val(1).lt.iqc_thres) then
     airobs(locdex)%vwnd     = obs_val(1)
     airobs(locdex)%vwnd_qc  = qc_val(1)
     airobs(locdex)%vwnd_err = get_obs_def_error_variance(obs_def)
+   endif
 
   else if ( obs_kind == AIRCRAFT_TEMPERATURE       .or. obs_kind == ACARS_TEMPERATURE       ) then
 
+   if(qc_val(1).lt.iqc_thres) then
     airobs(locdex)%tmpk     = obs_val(1)
     airobs(locdex)%tmpk_qc  = qc_val(1)
     airobs(locdex)%tmpk_err = get_obs_def_error_variance(obs_def)
+   endif
 
   else if ( obs_kind == AIRCRAFT_SPECIFIC_HUMIDITY .or. obs_kind == ACARS_SPECIFIC_HUMIDITY )  then
 
+   if(qc_val(1).lt.iqc_thres) then
     airobs(locdex)%qvap     = obs_val(1)
     airobs(locdex)%qvap_qc  = qc_val(1)
     airobs(locdex)%qvap_err = get_obs_def_error_variance(obs_def)
+   endif
 
   else if ( obs_kind == ACARS_DEWPOINT )  then
 
+   if(qc_val(1).lt.iqc_thres) then
     airobs(locdex)%dwpt     = obs_val(1)
     airobs(locdex)%dwpt_qc  = qc_val(1)
     airobs(locdex)%dwpt_err = get_obs_def_error_variance(obs_def)
+   endif
 
   else if ( obs_kind == ACARS_RELATIVE_HUMIDITY )  then
   
+   if(qc_val(1).lt.iqc_thres) then
     airobs(locdex)%relh     = obs_val(1)
     airobs(locdex)%relh_qc  = qc_val(1)
     airobs(locdex)%relh_err = get_obs_def_error_variance(obs_def)
-
+   endif
 
   end if
 
@@ -1430,6 +1422,7 @@ nrelh=0.0_r8; latr=0.0_r8; lonr=0.0_r8; prer=0.0_r8; relh=0.0_r8; errr=0.0_r8; q
 ! Assign obs into each bin [ncell, nlev] for superobing
 do k = 1, nloc  !  loop over all observation locations
 
+   icell=0;    ik=0
    icell = find_closest_cell_center(airobs(k)%lat, airobs(k)%lon)
    if(icell < 1) then
       write(string,*) 'Cannot find any cell for this obs at ', airobs(k)%lat, airobs(k)%lon
@@ -1447,7 +1440,8 @@ do k = 1, nloc  !  loop over all observation locations
        lonu(icell,ik) = lonu(icell,ik)  + airobs(k)%lon
        preu(icell,ik) = preu(icell,ik)  + airobs(k)%pressure
        uwnd(icell,ik) = uwnd(icell,ik)  + airobs(k)%uwnd
-       erru(icell,ik) = erru(icell,ik)  + airobs(k)%uwnd_err
+       erru(icell,ik) = max(erru(icell,ik),airobs(k)%uwnd_err)
+      !erru(icell,ik) = erru(icell,ik)  + airobs(k)%uwnd_err
         qcu(icell,ik) = max(qcu(icell,ik),airobs(k)%uwnd_qc)
    end if
 
@@ -1457,7 +1451,8 @@ do k = 1, nloc  !  loop over all observation locations
        lonv(icell,ik) = lonv(icell,ik)  + airobs(k)%lon
        prev(icell,ik) = prev(icell,ik)  + airobs(k)%pressure
        vwnd(icell,ik) = vwnd(icell,ik)  + airobs(k)%vwnd
-       errv(icell,ik) = errv(icell,ik)  + airobs(k)%vwnd_err
+       errv(icell,ik) = max(errv(icell,ik),airobs(k)%vwnd_err)
+      !errv(icell,ik) = errv(icell,ik)  + airobs(k)%vwnd_err
         qcv(icell,ik) = max(qcv(icell,ik),airobs(k)%vwnd_qc)
    end if
 
@@ -1467,7 +1462,8 @@ do k = 1, nloc  !  loop over all observation locations
        lont(icell,ik) = lont(icell,ik)  + airobs(k)%lon
        pret(icell,ik) = pret(icell,ik)  + airobs(k)%pressure
        tmpk(icell,ik) = tmpk(icell,ik)  + airobs(k)%tmpk
-       errt(icell,ik) = errt(icell,ik)  + airobs(k)%tmpk_err
+       errt(icell,ik) = max(errt(icell,ik),airobs(k)%tmpk_err)
+      !errt(icell,ik) = errt(icell,ik)  + airobs(k)%tmpk_err
         qct(icell,ik) = max(qct(icell,ik),airobs(k)%tmpk_qc)
    end if
 
@@ -1477,7 +1473,8 @@ do k = 1, nloc  !  loop over all observation locations
        lonq(icell,ik) = lonq(icell,ik)  + airobs(k)%lon
        preq(icell,ik) = preq(icell,ik)  + airobs(k)%pressure
        qvap(icell,ik) = qvap(icell,ik)  + airobs(k)%qvap
-       errq(icell,ik) = errq(icell,ik)  + airobs(k)%qvap_err
+       errq(icell,ik) = max(errq(icell,ik),airobs(k)%qvap_err)
+      !errq(icell,ik) = errq(icell,ik)  + airobs(k)%qvap_err
        qcq(icell,ik)  = max(qcq(icell,ik),airobs(k)%qvap_qc)
    end if
 
@@ -1487,7 +1484,8 @@ do k = 1, nloc  !  loop over all observation locations
        lond(icell,ik) = lond(icell,ik)  + airobs(k)%lon
        pred(icell,ik) = pred(icell,ik)  + airobs(k)%pressure
        dwpt(icell,ik) = dwpt(icell,ik)  + airobs(k)%dwpt
-       errd(icell,ik) = errd(icell,ik)  + airobs(k)%dwpt_err
+       errd(icell,ik) = max(errd(icell,ik),airobs(k)%dwpt_err)
+      !errd(icell,ik) = errd(icell,ik)  + airobs(k)%dwpt_err
         qcd(icell,ik) = max(qcd(icell,ik),airobs(k)%dwpt_qc)
    end if
 
@@ -1497,12 +1495,13 @@ do k = 1, nloc  !  loop over all observation locations
        lonr(icell,ik) = lonr(icell,ik)  + airobs(k)%lon
        prer(icell,ik) = prer(icell,ik)  + airobs(k)%pressure
        relh(icell,ik) = relh(icell,ik)  + airobs(k)%relh
-       errr(icell,ik) = errr(icell,ik)  + airobs(k)%relh_err
+       errr(icell,ik) = max(errr(icell,ik),airobs(k)%relh_err)
+      !errr(icell,ik) = errr(icell,ik)  + airobs(k)%relh_err
         qcr(icell,ik) = max(qcr(icell,ik),airobs(k)%relh_qc)
    end if
 
 enddo !k = 1, nloc  !  loop over all observation locations
-
+deallocate(airobs)
 
 do k = 1, nlev   ! loop over all vertical levels
 
@@ -1515,7 +1514,7 @@ do n = 1, ncell  ! loop over all grid cells
         if ( lonu(n,k) >= 360.0_r8 )  lonu(n,k) = lonu(n,k) - 360.0_r8
         preu(n,k) = preu(n,k) / nuwnd(n,k)
         uwnd(n,k) = uwnd(n,k) / nuwnd(n,k)
-        erru(n,k) = erru(n,k) / nuwnd(n,k)
+       !erru(n,k) = erru(n,k) / nuwnd(n,k)
 
         call create_obs_type(latu(n,k), lonu(n,k), preu(n,k), VERTISPRESSURE, uwnd(n,k), &
                              ACARS_U_WIND_COMPONENT, erru(n,k), qcu(n,k), atime, obs)
@@ -1530,7 +1529,7 @@ do n = 1, ncell  ! loop over all grid cells
       if ( lonv(n,k) >= 360.0_r8 )  lonv(n,k) = lonv(n,k) - 360.0_r8
       prev(n,k) = prev(n,k) / nvwnd(n,k)
       vwnd(n,k) = vwnd(n,k) / nvwnd(n,k)
-      errv(n,k) = errv(n,k) / nvwnd(n,k)
+     !errv(n,k) = errv(n,k) / nvwnd(n,k)
 
       call create_obs_type(latv(n,k), lonv(n,k), prev(n,k), VERTISPRESSURE, vwnd(n,k), &
                            ACARS_V_WIND_COMPONENT, errv(n,k), qcv(n,k), atime, obs)
@@ -1545,7 +1544,7 @@ do n = 1, ncell  ! loop over all grid cells
       if ( lont(n,k) >= 360.0_r8 )  lont(n,k) = lont(n,k) - 360.0_r8
       pret(n,k) = pret(n,k) / ntmpk(n,k)
       tmpk(n,k) = tmpk(n,k) / ntmpk(n,k)
-      errt(n,k) = errt(n,k) / ntmpk(n,k)
+     !errt(n,k) = errt(n,k) / ntmpk(n,k)
 
       call create_obs_type(latt(n,k), lont(n,k), pret(n,k), VERTISPRESSURE, tmpk(n,k), & 
                            ACARS_TEMPERATURE, errt(n,k), qct(n,k), atime, obs)
@@ -1560,7 +1559,7 @@ do n = 1, ncell  ! loop over all grid cells
       if ( lonq(n,k) >= 360.0_r8 )  lonq(n,k) = lonq(n,k) - 360.0_r8
       preq(n,k) = preq(n,k) / nqvap(n,k)
       qvap(n,k) = qvap(n,k) / nqvap(n,k)
-      errq(n,k) = errq(n,k) / nqvap(n,k)
+     !errq(n,k) = errq(n,k) / nqvap(n,k)
 
       call create_obs_type(latq(n,k), lonq(n,k), preq(n,k), VERTISPRESSURE, qvap(n,k), & 
                            ACARS_SPECIFIC_HUMIDITY, errq(n,k), qcq(n,k), atime, obs)
@@ -1575,7 +1574,7 @@ do n = 1, ncell  ! loop over all grid cells
       if ( lond(n,k) >= 360.0_r8 )  lond(n,k) = lond(n,k) - 360.0_r8
       pred(n,k) = pred(n,k) / ndwpt(n,k)
       dwpt(n,k) = dwpt(n,k) / ndwpt(n,k)
-      errd(n,k) = errd(n,k) / ndwpt(n,k)
+     !errd(n,k) = errd(n,k) / ndwpt(n,k)
 
       call create_obs_type(latd(n,k), lond(n,k), pred(n,k), VERTISPRESSURE, dwpt(n,k), &
                            ACARS_DEWPOINT, errd(n,k), qcd(n,k), atime, obs)
@@ -1590,7 +1589,7 @@ do n = 1, ncell  ! loop over all grid cells
       if ( lonr(n,k) >= 360.0_r8 )  lonr(n,k) = lonr(n,k) - 360.0_r8
       prer(n,k) = prer(n,k) / nrelh(n,k)
       relh(n,k) = relh(n,k) / nrelh(n,k)
-      errr(n,k) = errr(n,k) / nrelh(n,k)
+     !errr(n,k) = errr(n,k) / nrelh(n,k)
 
       call create_obs_type(latr(n,k), lonr(n,k), prer(n,k), VERTISPRESSURE, relh(n,k), &
                            ACARS_RELATIVE_HUMIDITY, errr(n,k), qcr(n,k), atime, obs)
@@ -1618,7 +1617,6 @@ deallocate(errq);  deallocate(errd);  deallocate(errr);
 deallocate( qcu);  deallocate( qcv);  deallocate( qct);
 deallocate( qcq);  deallocate( qcd);  deallocate( qcr);
 
-return
 end subroutine superob_aircraft_data
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1632,36 +1630,19 @@ end subroutine superob_aircraft_data
 !    ptop  - lowest pressure to include in sequence
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-subroutine superob_sat_wind_data(seq, ncell, atime, vdist, ptop)
+subroutine superob_sat_wind_data(seq, ncell, atime, vdist, iqc_thres, ptop)
 
-use         types_mod, only : r8, missing_r8, earth_radius
-use  time_manager_mod, only : time_type
-use      location_mod, only : location_type, get_dist, operator(==), &
-                              get_location, VERTISPRESSURE
-use  obs_sequence_mod, only : obs_sequence_type, obs_type, init_obs, &
-                              get_num_copies, get_num_qc, get_first_obs, &
-                              get_next_obs, destroy_obs_sequence, get_qc, &
-                              get_num_obs, get_obs_values, get_obs_def, &
-                              append_obs_to_seq
-use       obs_def_mod, only : obs_def_type, get_obs_def_location, &
-                              get_obs_kind, get_obs_def_error_variance, &
-                              get_obs_def_time
-use      obs_kind_mod, only : SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT
-use     utilities_mod, only : error_handler, E_MSG
-use         model_mod, only : find_closest_cell_center
-
-implicit none
 
 type(obs_sequence_type), intent(inout) :: seq
 type(time_type),         intent(in)    :: atime
-integer,  intent(in)                   :: ncell
+integer,  intent(in)                   :: ncell, iqc_thres
 real(r8), intent(in)                   :: vdist, ptop
 
 character(len=256)  :: string
 integer             :: icell
 integer             :: num_copies, num_qc, nloc, k, locdex, obs_kind, n, &
                        num_obs, poleward_obs
-logical             :: last_obs, pole_check
+logical             :: last_obs
 real(r8)            :: llv_loc(3), obs_val(1), qc_val(1)
 
 real(r8),allocatable :: nwnd(:,:), lat(:,:), lon(:,:), pres(:,:), &
@@ -1692,6 +1673,7 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 !-----------------------------------------------------------------------
 
+write(6,*)
 write(6,*) 'Super-Obing Satellite Wind Data over ',ncell,' cells.'
 
 ! Vertical layers for superobing up to obs_pressure_top.
@@ -1711,6 +1693,9 @@ enddo
 num_copies = get_num_copies(seq)
 num_qc     = get_num_qc(seq)
 num_obs    = get_num_obs(seq)
+
+write(6,*) 'Super-Obing',num_obs,' Satellite Wind Data'
+write(6,*)
 
 allocate(satobs(num_obs/2))
 call init_obs(obs,      num_copies, num_qc)
@@ -1768,15 +1753,19 @@ do while ( .not. last_obs )
   !  add observation information
   if ( obs_kind == SAT_U_WIND_COMPONENT ) then
 
+   if(qc_val(1).lt.iqc_thres) then
     satobs(locdex)%uwnd     = obs_val(1)
     satobs(locdex)%uwnd_qc  = qc_val(1)
     satobs(locdex)%uwnd_err = get_obs_def_error_variance(obs_def) 
+   endif
 
   else if ( obs_kind == SAT_V_WIND_COMPONENT ) then
 
+   if(qc_val(1).lt.iqc_thres) then
     satobs(locdex)%vwnd     = obs_val(1)
     satobs(locdex)%vwnd_qc  = qc_val(1)
     satobs(locdex)%vwnd_err = get_obs_def_error_variance(obs_def)
+   endif
 
   end if
 
@@ -1786,6 +1775,7 @@ do while ( .not. last_obs )
   call get_next_obs(seq, prev_obs, obs, last_obs)
 
 end do
+
 
 if (poleward_obs > 0) then
    write(6, *) 'WARNING: skipped ', poleward_obs, ' of ', poleward_obs+nloc, ' satwind obs because'
@@ -1809,6 +1799,7 @@ nwnd=0.0_r8; pres=0.0_r8;  lat=0.0_r8;  lon=0.0_r8
 uwnd=0.0_r8; vwnd=0.0_r8; erru=0.0_r8; errv=0.0_r8
  qcu=0.0_r8;  qcv=0.0_r8
 
+icell=0;    ik=0
 
 ! Assign obs into each bin [ncell, nlev] for superobing
 do k = 1, nloc  ! loop over all locations
@@ -1842,9 +1833,8 @@ do k = 1, nloc  ! loop over all locations
 
 end do    !  do k = 1, nloc  ! loop over all locations
 
-
 ! Superob in each bin [ncell, nlev]
-do k = 1, nloc  ! loop over all locations
+do k = 1, nlev  ! loop over all locations
 
 do n = 1, ncell ! loop over all grid cells
 
@@ -1881,7 +1871,7 @@ do n = 1, ncell ! loop over all grid cells
 
 end do       ! do n = 1, ncell
 
-end do       ! do k = 1, nloc
+end do       ! do k = 1, nlev
 
 deallocate(plevs)
 deallocate(nwnd); deallocate(pres) 
@@ -1890,7 +1880,6 @@ deallocate(erru); deallocate(errv)
 deallocate(lat); deallocate(lon)
 deallocate(qcu); deallocate(qcv)
 
-return
 end subroutine superob_sat_wind_data
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1905,12 +1894,6 @@ end subroutine superob_sat_wind_data
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function surface_obs_check(elev_check, elev_max, llv_loc)
 
-use     types_mod, only : r8
-use  obs_kind_mod, only : KIND_SURFACE_ELEVATION
-use     model_mod, only : model_interpolate
-use  location_mod, only : set_location, VERTISSURFACE
-
-implicit none
 
 logical, intent(in)  :: elev_check
 real(r8), intent(in) :: llv_loc(3), elev_max
@@ -1929,7 +1912,6 @@ if ( elev_check ) then
 
 end if
 
-return
 end function surface_obs_check
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1942,11 +1924,6 @@ end function surface_obs_check
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function pole_check(lon, lat)
-
-use     types_mod, only : r8
-use     model_mod, only : find_closest_cell_center
-
-implicit none
 
 real(r8), intent(in) :: lon, lat
 logical              :: pole_check
@@ -1974,7 +1951,6 @@ else
    pole_check = .false.
 endif
 
-return
 end function pole_check
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -1992,11 +1968,6 @@ end function pole_check
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine superob_location_check(lon, lat, km_dist, near_greenwich, lon_degree_limit)
-
-use     types_mod, only : r8, PI, earth_radius, RAD2DEG, DEG2RAD
-use  location_mod, only : location_type, get_dist, set_location, VERTISUNDEF
-
-implicit none
 
 real(r8), intent(in)  :: lon, lat, km_dist
 logical,  intent(out) :: near_greenwich
@@ -2017,7 +1988,6 @@ else
    near_greenwich = .false.
 endif
 
-return
 end subroutine superob_location_check
 
 
@@ -2034,8 +2004,6 @@ end subroutine superob_location_check
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine wrap_lon(lon, westlon, eastlon)
-
-use     types_mod, only : r8
 
 !  uniform way to treat longitude ranges, in degrees, on a globe.
 !  adds 360 to the incoming lon if region crosses longitude 0 and
@@ -2066,9 +2034,9 @@ if (westl == eastl) return
 
 if (westl > eastl .and. lon <= eastl) lon = lon + circumf
 
-return
 end subroutine wrap_lon
 
+end program
 
 
 ! <next few lines under version control, do not edit>

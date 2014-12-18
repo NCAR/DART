@@ -47,7 +47,7 @@ type in each grid cell.  The averaging grid can be different than
 the grid used for the assimilation run.
 </P>
 <P>
-This program can read up to 9 additional obs_seq files and merge
+This program can read up to 10 additional obs_seq files and merge
 their data in with the basic obs_sequence file which is the main input.
 </P>
 <P>
@@ -56,6 +56,10 @@ in the observation is too different from the mpas surface elevation.
 </P>
 <P>
 This program can exclude observations above a specified height or pressure.
+</P>
+<P>
+This program can exclude observations outside a given time window
+defined by the specified analysis time and a window width in hours.
 </P>
 <P>
 This program can overwrite the incoming Data QC value with another.
@@ -92,9 +96,12 @@ prematurely terminating the namelist.
   profiler_extra           = 'obs_seq.profiler'
   gpsro_extra              = 'obs_seq.gpsro'
   acars_extra              = 'obs_seq.acars'
+  gpspw_extra              = 'obs_seq.gpspw'
   trop_cyclone_extra       = 'obs_seq.tc'
   
   overwrite_obs_time       = .false.  
+  windowing_obs_time       = .false. 
+  windowing_int_hour       = 1.5
   
   obs_boundary             = 0.0
   increase_bdy_error       = .false.  
@@ -108,6 +115,7 @@ prematurely terminating the namelist.
   
   include_sig_data         = .true.   
   tc_sonde_radii           = -1.0  
+  superob_qc_threshold     = 4         
   
   superob_aircraft         = .false.  
   aircraft_horiz_int       = 36.0  
@@ -119,6 +127,8 @@ prematurely terminating the namelist.
   
   overwrite_ncep_satwnd_qc = .false.    
   overwrite_ncep_sfc_qc    = .false.  
+
+  max_num_obs              = 1000000 
 /
 </pre>
 </div>
@@ -151,55 +161,26 @@ prematurely terminating the namelist.
 
 <TR><TD> sonde_extra, land_sfc_extra, metar_extra, marine_sfc_extra,
  marine_sfc_extra, sat_wind_extra, profiler_extra, gpsro_extra, acars_extra,
- trop_cyclone_extra </TD>
+ gpspw_extra, trop_cyclone_extra </TD>
     <TD> character(len=129) </TD>
     <TD>The names of additional input obs_seq files, which if they exist, will be
 merged in with the obs from the <em class=file>file_name_input</em> obs_seq file.
 If the files do not exist, they are silently ignored without error.
 </TD></TR>
 
-<TR><TD> overwrite_obs_time </TD>
-    <TD> logical </TD>
-    <TD>If true, replace the incoming observation time with the analysis time.
-Not recommended.
+<TR><TD> max_num_obs </TD>
+    <TD> integer </TD>
+    <TD>Must be larger than the total number of observations to be processed.
 </TD></TR>
 
-<TR><TD colspan="3"> <strong> Boundary-specific parameters: </strong> </TD>
-</TD></TR>
-
-<TR><TD> obs_boundary </TD>
-    <TD> real(r8) </TD>
-    <TD>Number of grid points around domain boundary which will be considered the
-new extent of the domain.  Observations outside this smaller area will be excluded.
-</TD></TR>
-
-<TR><TD> increase_bdy_error </TD>
-    <TD> logical </TD>
-    <TD>If true, observations near the domain boundary will have their
-observation error increased by <em class=code>maxobsfac</em>.
-</TD></TR>
-
-<TR><TD> maxobsfac </TD>
-    <TD> real(r8) </TD>
-    <TD>If <em class=code>increase_bdy_error</em> is true, multiply the error
-by a ramped factor.  This item sets the maximum error.
-</TD></TR>
-
-<TR><TD> obsdistbdy </TD>
-    <TD> real(r8) </TD>
-    <TD>If <em class=code>increase_bdy_error</em> is true, this defines the region
-around the boundary (in number of grid points) where the observation error values
-will be altered.  This is ramped, so when you reach the innermost points the
-change in observation error is 0.0.
-</TD></TR>
-
-<TR><TD colspan="3"> <strong> Parameters to reduce observation count :</strong> </TD>
+<TR><TD colspan="3"> <strong> Parameters to reduce observation count:</strong> </TD>
 </TD></TR>
 
 <TR><TD> sfc_elevation_check </TD>
     <TD> logical </TD>
     <TD>If true, check the height of surface observations against the surface
-height in the model. 
+height in the model. Observations further away than the specified tolerance
+will be excluded.
 </TD></TR>
 
 <TR><TD> sfc_elevation_tol </TD>
@@ -223,7 +204,7 @@ above this height value (i.e. the obs vertical value is larger than the given
 height) will be excluded.
 </TD></TR>
 
-<TR><TD colspan="3"> <strong> Radio/Rawinsonde-specific parameters :</strong> </TD>
+<TR><TD colspan="3"> <strong> Radio/Rawinsonde-specific parameters:</strong> </TD>
 </TD></TR>
 
 <TR><TD> include_sig_data </TD>
@@ -237,58 +218,44 @@ height) will be excluded.
 this distance in Kilometers to the center of a Tropical Cyclone.
 </TD></TR>
 
-<TR><TD colspan="3"> <strong> Aircraft-specific parameters :</strong> </TD>
+<TR><TD colspan="3"> <strong> Aircraft-specific parameters:</strong> </TD>
 </TD></TR>
 
 <TR><TD> superob_aircraft </TD>
     <TD> logical </TD>
-    <TD>If true, average all aircraft observations within the given
-radius and output only a single observation.  Any observation that is
-used in computing a superob observation
-is removed from the list and is not used
-in any other superob computation.
+    <TD>If true, average all aircraft observations within the same
+MPAS grid cell, at the given vertical levels. The output obs will be
+only a single observation per cell, per vertical level.  
 </TD></TR>
 
-<TR><TD> aircraft_horiz_int </TD>
-    <TD> real(r8) </TD>
-    <TD>If <em class=code>superob_aircraft</em> is true,  the horizontal
-distance in Kilometers which defines the superob area.  All other unused
-aircraft observations within this radius will be averaged with the current
-observation.
-</TD></TR>
-
-<TR><TD> aircraft_vert_int </TD>
+<TR><TD> aircraft_pres_int </TD>
     <TD> real(r8) </TD>
     <TD>If <em class=code>superob_aircraft</em> is true, the vertical
-distance in Pascals which defines the maximum separation for including
-an observation in the superob computation.
+distance in pressure which defines a series of superob vertical bins. 
 </TD></TR>
 
-<TR><TD colspan="3"> <strong> Satellite Wind-specific parameters :</strong> </TD>
+<TR><TD> superob_qc_threshold </TD>
+    <TD> integer </TD>
+    <TD>If <em class=code>superob_aircraft</em> is true, the Quality
+Control threshold at which observations are ignored when doing superob averaging.
+The value specified here is the largest acceptable QC; values equal to
+or lower are kept, and values larger than this are rejected.
+</TD></TR>
+
+<TR><TD colspan="3"> <strong> Satellite Wind-specific parameters:</strong> </TD>
 </TD></TR>
 
 <TR><TD> superob_sat_winds </TD>
     <TD> logical </TD>
-    <TD>If true, average all sat_wind observations within the given
-radius and output only a single observation.  Any observation that is
-used in computing a superob observation
-is removed from the list and is not used
-in any other superob computation.
+    <TD>If true, average all satellite wind observations within the same
+MPAS grid cell, at the given vertical levels. The output obs will be
+only a single observation per cell, per vertical level.  
 </TD></TR>
 
-<TR><TD> sat_wind_horiz_int </TD>
-    <TD> real(r8) </TD>
-    <TD>If <em class=code>superob_sat_winds</em> is true,  the horizontal
-distance in Kilometers which defines the superob area.  All other unused
-sat_wind observations within this radius will be averaged with the current
-observation.
-</TD></TR>
-
-<TR><TD> sat_wind_vert_int </TD>
+<TR><TD> sat_wind_pres_int </TD>
     <TD> real(r8) </TD>
     <TD>If <em class=code>superob_sat_winds</em> is true, the vertical
-distance in Pascals which defines the maximum separation for including
-an observation in the superob computation.
+distance in pressure which defines a series of superob vertical bins. 
 </TD></TR>
 
 <TR><TD> overwrite_ncep_satwnd_qc </TD>
@@ -297,13 +264,38 @@ an observation in the superob computation.
 observations with 2.0.
 </TD></TR>
 
-<TR><TD colspan="3"> <strong> Surface Observation-specific parameters :</strong> </TD>
+<TR><TD colspan="3"> <strong> Surface Observation-specific parameters:</strong> </TD>
 </TD></TR>
 
 <TR><TD> overwrite_ncep_sfc_qc </TD>
     <TD> logical </TD>
     <TD>If true, replace the incoming Data QC value in surface
 observations with 2.0.
+</TD></TR>
+
+<TR><TD colspan="3"> <strong> Parameters to select by time or alter observation time:</strong> </TD>
+</TD></TR>
+
+<TR><TD> windowing_obs_time </TD>
+    <TD> logical </TD>
+    <TD>If true, exclude observations with a time outside the given window.  The window
+is specified as a number of hours before and after the current analysis time.
+</TD></TR>
+
+<TR><TD> windowing_int_hour </TD>
+    <TD> real(r8) </TD>
+    <TD>The window half-width, in hours.  If 'windowing_obs_time' is .false. this
+value is ignored.  If 'windowing_obs_time' is true, observations with a time
+further than this number of hours away from the analysis time will be excluded.
+To ensure disjoint subsets from a continueous sequence of observations,
+time values equal to the earliest time boundaries are discarded while
+time values equal to the latest time boundary are retained.
+</TD></TR>
+
+<TR><TD> overwrite_obs_time </TD>
+    <TD> logical </TD>
+    <TD>If true, replace the incoming observation time with the analysis time.
+Not recommended.
 </TD></TR>
 
 </TBODY> 
@@ -338,8 +330,7 @@ netcdf
 <H2>FILES</H2>
 <UL>
    <LI>Input namelist ; <em class=file>input.nml</em></LI>
-   <LI>Input MPAS state netCDF files; <em class=file>mpasinput_d01,
-   mpasinput_d02, ...</em></LI>
+   <LI>Input MPAS state netCDF file: <em class=file>mpas_init.nc</em></LI>
    <LI>Input obs_seq files (as specified in namelist)</LI>
    <LI>Output obs_seq file (as specified in namelist)</LI>
 </UL>
@@ -348,7 +339,9 @@ netcdf
 
 <P>This utility can read one or more obs_seq files and combine them
 while doing the rest of the processing.  It uses the standard DART
-observation sequence file format.
+observation sequence file format. It uses the grid information from
+an MPAS file to define the bins for combining nearby aircraft and
+satellite wind observations.
 </P>
 
 <!--==================================================================-->
@@ -359,7 +352,8 @@ observation sequence file format.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>REFERENCES</H2>
 <ul>
-<li> Generously contributed by Ryan Torn. </li>
+<li> Developed by Soyoung Ha, based on the WRF observation preprocessor
+contributed by Ryan Torn. </li>
 </ul>
 
 <!--==================================================================-->
