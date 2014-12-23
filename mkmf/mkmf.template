@@ -106,7 +106,7 @@ LD = gfortran
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS  = -O2 -ffree-line-length-none $(INCS)
+FFLAGS  = -O2 -fcray-pointer -ffree-line-length-none $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 #FFLAGS = -O0 -fbounds-check -frecord-marker=4 -ffpe-trap=invalid -ffree-line-length-none $(INCS)
