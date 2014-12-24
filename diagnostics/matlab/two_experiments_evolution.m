@@ -47,7 +47,7 @@ end
 %% set up all the stuff that is common.
 
 commondata = check_compatibility(files, varnames, qtty);
-figuredata = setfigure(commondata);
+figuredata = setfigure(NumExp);
 
 %%--------------------------------------------------------------------
 % Set some static data
@@ -62,10 +62,10 @@ for ivar = 1:nvars
    % Plot each region in a separate figure window.
    %------------------------------------------------------------------------
 
-   for ireg = 1:commondata.nregions
+   for iregion = 1:commondata.nregions
 
-      figure(ireg);
-      clf(ireg);
+      figure(iregion);
+      clf(iregion);
       orient(figuredata.orientation);
       wysiwyg;
 
@@ -77,7 +77,7 @@ for ivar = 1:nvars
 
       for iexp = 1:NumExp
 
-         plotobj{iexp} = getvals(files{iexp}, varnames{ivar}, qtty, prpo, ireg, levelind);
+         plotobj{iexp} = getvals(files{iexp}, varnames{ivar}, qtty, prpo, iregion, levelind);
          plotobj{iexp}.title        = titles{iexp};
          plotobj{iexp}.nregions     = commondata.nregions;
          plotobj{iexp}.region_names = commondata.region_names;
@@ -87,6 +87,10 @@ for ivar = 1:nvars
       myplot(plotobj, figuredata);
 
       BottomAnnotation(files)
+
+      psfname = sprintf('%s_%s_region%d_ilev%d_evolution_%dexp', ...
+                varnames{ivar}, plotobj{1}.copystring, iregion, levelind, NumExp);
+      print(iregion,'-dpdf',psfname)
 
    end % of loop around regions
 
@@ -312,6 +316,7 @@ switch copystring
 end
 
 %% Get the number of observations possible and the number used.
+%  N_DARTqc_5 is the number ignored because of namelist control.
 %  N_DARTqc_6 is the number ignored because of incoming QC values.
 %  It doesn't matter which prior/poste variable you get this information
 %  from - they are both the same.
@@ -319,17 +324,18 @@ end
 myinfo.diagn_file = fname;
 myinfo.copyindex  = plotdat.Npossindex;
 myinfo.levelindex = plotdat.levelindex;
-
 [start, count]    = GetNCindices(myinfo,'diagn',plotdat.priorvar);
 plotdat.nposs     = nc_varget(fname, plotdat.priorvar, start, count);
 
-if ( plotdat.NQC6index >= 0)
-   % some older-style netCDF files do not have the separate QC values
-   myinfo.copyindex  = plotdat.NQC6index;
-   [start, count]    = GetNCindices(myinfo,'diagn',plotdat.priorvar);
-   plotdat.Nqc6      = nc_varget(fname, plotdat.priorvar, start, count);
-   plotdat.nposs     = plotdat.nposs - plotdat.Nqc6;
-end
+myinfo.copyindex  = plotdat.NQC5index;
+[start, count]    = GetNCindices(myinfo,'diagn',plotdat.priorvar);
+plotdat.Nqc5      = nc_varget(fname, plotdat.priorvar, start, count);
+plotdat.nposs     = plotdat.nposs - plotdat.Nqc5;
+
+myinfo.copyindex  = plotdat.NQC6index;
+[start, count]    = GetNCindices(myinfo,'diagn',plotdat.priorvar);
+plotdat.Nqc6      = nc_varget(fname, plotdat.priorvar, start, count);
+plotdat.nposs     = plotdat.nposs - plotdat.Nqc6;
 
 if ( plotdat.useprior )
    myinfo.copyindex = plotdat.Nusedindex;
@@ -353,11 +359,10 @@ function myplot(plotobj, figdata)
 %% myplot Creates a graphic for one region
 
 Nexp    = length(plotobj);
-iregion = plotobj{1}.region;
 
 %% Create the background
 
-ax1   = subplot('position',figdata.plotlims(iregion,:));
+ax1   = subplot('position',figdata.position);
 set(ax1,'YAxisLocation','left','FontSize',figdata.fontsize)
 
 %% draw the results of the experiments, priors and posteriors
@@ -374,8 +379,8 @@ for i = 1:Nexp
          'Color',    figdata.expcolors{i}, ...
          'Marker',   figdata.expsymbols{i}, ...
          'LineStyle',figdata.prpolines{1}, ...
-         'LineWidth', 2.0,'Parent',ax1);
-      legstr{iexp} = plotobj{i}.title;
+         'LineWidth', figdata.linewidth,'Parent',ax1);
+      legstr{iexp} = sprintf('%s Prior',plotobj{i}.title);
    end
 
    if ( plotobj{i}.useposterior )
@@ -384,17 +389,17 @@ for i = 1:Nexp
          'Color',    figdata.expcolors{i}, ...
          'Marker',   figdata.expsymbols{i}, ...
          'LineStyle',figdata.prpolines{2}, ...
-         'LineWidth', 2.0,'Parent',ax1);
-      legstr{iexp} = plotobj{i}.title;
+         'LineWidth',figdata.linewidth,'Parent',ax1);
+      legstr{iexp} = sprintf('%s Posterior',plotobj{i}.title);
    end
 end
 
 %% Plot a bias line.
+
 switch plotobj{1}.copystring
    case {'bias'}
-      axlims = axis;
-      biasline = line(axlims(1:2),[0 0],'Color','k','Parent',ax1);
-      set(biasline,'LineWidth',1.0,'LineStyle','-')
+      zeroline = line(get(ax1,'XLim'),[0 0],'Color',[0 100 0]/255,'Parent',ax1);
+      set(zeroline,'LineWidth',2.5,'LineStyle','-')
    otherwise
 end
 
@@ -417,11 +422,13 @@ end
 
 ax2 = axes('position',get(ax1,'Position'), ...
    'XAxisLocation','top', ...
-   'YAxisLocation','right',...
-   'Color','none',...
-   'XColor','b','YColor','b',...
+   'YAxisLocation','right', ...
+   'Color','none', ...
+   'XColor',get(ax1,'XColor'), ...
+   'YColor','b', ...
    'XLim',get(ax1,'XLim'), ...
-   'YDir',get(ax1,'YDir'));
+   'YDir',get(ax1,'YDir'), ...
+   'FontSize',get(ax1,'FontSize'));
 
 % Plot the data, which sets the range of the axis
 for i = 1:Nexp
@@ -429,30 +436,26 @@ for i = 1:Nexp
       'Color',figdata.expcolors{i},'Parent',ax2);
    h3 = line(plotobj{i}.bincenters, plotobj{i}.nused, ...
       'Color',figdata.expcolors{i},'Parent',ax2);
-   set(h2,'LineStyle','none','Marker',figdata.expsymbols{i});
-   set(h3,'LineStyle','none','Marker','+');
+   set(h2,'LineStyle','none','Marker','o','MarkerSize',10);
+   set(h3,'LineStyle','none','Marker','*','MarkerSize',10);
 end
 
 % use same X ticks
-set(ax2,'XTick',     get(ax1,'XTick'), ...
-   'XTicklabel',get(ax1,'XTicklabel'));
-
 % use the same Y ticks, but find the right label values
+set(ax2,'XTick', get(ax1,'XTick'), 'XTicklabel', []);
 matchingYticks(ax1,ax2);
 
-% Annotate - gets pretty complicated for multiple
-% regions on one page. Trying to maximize content, minimize clutter.
-
+% Annotate. Trying to maximize content, minimize clutter.
 annotate( ax1, ax2, plotobj{1}, figdata)
 
 lh = legend(hd,legstr);
-legend(lh,'boxoff','Interpreter','none');
+set(lh,'Interpreter','none','Box','off');
 
 % The legend linesizes should match - 2 is hardwired - suprises me.
 
 set(lh,'FontSize',figdata.fontsize);
 kids = get(lh,'Children');
-set(kids,'LineWidth',2.0);
+set(kids,'LineWidth',figdata.linewidth);
 
 
 %=====================================================================
@@ -463,7 +466,6 @@ function annotate(ax1, ax2, plotobj, figdata)
 
 set(get(ax1,'Xlabel'),'String',plotobj.timespan, ...
    'Interpreter','none','FontSize',figdata.fontsize)
-set(get(ax2,'Ylabel'),'String','# of obs (o=poss, +=used)')
 
 if ( plotobj.useprior )
    ylabel = sprintf('forecast %s',plotobj.ylabel);
@@ -471,17 +473,20 @@ else
    ylabel = sprintf('analysis %s',plotobj.ylabel);
 end
 
-set(get(ax1,'Ylabel'),'String',ylabel,'Interpreter','none','FontSize',figdata.fontsize)
+set(get(ax1,'Ylabel'),'String',ylabel, ...
+    'Interpreter','none','FontSize',figdata.fontsize)
+set(get(ax2,'Ylabel'),'String','# of obs (o=poss, \ast=used)', ...
+   'FontSize',figdata.fontsize)
 
 if ( isempty(plotobj.level_units) )
-   th = title(plotobj.varname);
+   th = title({deblank(plotobj.region_names(plotobj.region,:)), ...
+               sprintf('%s @ %d', plotobj.varname, plotobj.level(plotobj.levelindex))});
 else
    th = title({deblank(plotobj.region_names(plotobj.region,:)), ...
-      sprintf('%s @ %d %s', plotobj.varname, ...
-      plotobj.level(plotobj.levelindex), ...
-      plotobj.level_units)});
+               sprintf('%s @ %d %s', plotobj.varname, plotobj.level(plotobj.levelindex), ...
+               plotobj.level_units)});
 end
-set(th,'Interpreter','none','FontSize',figdata.fontsize);
+set(th,'Interpreter','none','FontSize',figdata.fontsize,'FontWeight','bold');
 
 
 %=====================================================================
@@ -489,10 +494,12 @@ set(th,'Interpreter','none','FontSize',figdata.fontsize);
 
 function BottomAnnotation(filenames)
 %% annotates the filename containing the data being plotted
-nfiles = length(filenames);
-dy     = 1.0/(nfiles+1);   % vertical spacing for text
 
-subplot('position',[0.10 0.01 0.8 0.05])
+nfiles  = length(filenames);
+dy      = 1.0/(nfiles+2);
+yheight = 0.0225*(nfiles+1);
+
+subplot('position',[0.10 0.01 0.8 yheight])
 axis off
 
 for ifile = 1:nfiles
@@ -510,7 +517,7 @@ for ifile = 1:nfiles
       string1 = sprintf('data file: %s',fullname);
    end
 
-   ty = 1.0 - (ifile-1)*dy;
+   ty = 1.0 - (ifile+1)*dy;
    h = text(0.5, ty, string1);
    set(h, 'Interpreter', 'none', 'FontSize', 8);
    set(h, 'HorizontalAlignment','center');
@@ -542,51 +549,25 @@ end
 %=====================================================================
 
 
-function figdata = setfigure(commondata)
+function figdata = setfigure(nexp)
 %% try to set the axes into nicer-looking sizes with room for annotation.
-%  the hardest part is figuring out the gaps, etc.
-%  gapwidth = (1 - (nregions*axiswidth + 0.14))/(nregions - 1)
-%  0.14 is actually left margin + right margin ... 0.07 + 0.07
+%  figure out a page layout
+%  extra space at the bottom for the date/file annotation
+%  extra space at the top because the titles have multiple lines
 
-plotlims = zeros(commondata.nregions,4);
-
-if (commondata.nregions > 4)
-   error('Cannot handle %d regions - 4 is the max.',commondata.nregions)
-
-elseif (commondata.nregions == 999)
-   orientation   = 'tall';
-   fontsize      = 10;
-   plotlims(1,:) = [0.100 0.560 0.375 0.355];
-   plotlims(2,:) = [0.525 0.560 0.375 0.355];
-   plotlims(3,:) = [0.100 0.125 0.375 0.355];
-   plotlims(4,:) = [0.525 0.125 0.375 0.355];
-
-elseif (commondata.nregions == 998)
-   orientation   = 'landscape';
-   fontsize      = 12;
-   plotlims(1,:) = [0.0700 0.14 0.265 0.725];
-   plotlims(2,:) = [0.3675 0.14 0.265 0.725];
-   plotlims(3,:) = [0.6650 0.14 0.265 0.725];
-
-elseif (commondata.nregions == 997)
-   orientation   = 'landscape';
-   fontsize      = 12;
-   plotlims(1,:) = [0.10 0.62 0.725 0.375];
-   plotlims(2,:) = [0.10 0.14 0.725 0.375];
-
-else
-   orientation   = 'landscape';
-   fontsize      = 16;
-   plotlims(1,:) = [0.10 0.15 0.8 0.75];
-   plotlims(2,:) = [0.10 0.15 0.8 0.75];
-   plotlims(3,:) = [0.10 0.15 0.8 0.75];
-   plotlims(4,:) = [0.10 0.15 0.8 0.75];
-end
+ybot = 0.06 + nexp*0.035;  % room for dates/files
+ytop = 0.125;              % room for title (always 2 lines)
+dy   = 1.0 - ytop - ybot;
+orientation   = 'landscape';
+fontsize      = 16;
+position      = [0.10 ybot 0.8 dy];
+linewidth     = 2.0;
 
 figdata = struct('expcolors',  {{'k','r','g','m','b','c','y'}}, ...
    'expsymbols', {{'o','s','d','p','h','s','*'}}, ...
-   'prpolines',  {{'-',':'}}, 'plotlims', plotlims, ...
-   'fontsize',fontsize, 'orientation',orientation);
+   'prpolines',  {{'-','--'}}, 'position', position, ...
+   'fontsize',fontsize, 'orientation',orientation, ...
+   'linewidth',linewidth);
 
 
 %=====================================================================

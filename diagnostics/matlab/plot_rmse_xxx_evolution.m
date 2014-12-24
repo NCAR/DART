@@ -61,7 +61,9 @@ if (exist(fname,'file') ~= 2)
    error('file/fname <%s> does not exist',fname)
 end
 
+%%--------------------------------------------------------------------
 % Harvest plotting info/metadata from netcdf file.
+%---------------------------------------------------------------------
 
 plotdat.fname         = fname;
 plotdat.copystring    = copystring;
@@ -107,14 +109,12 @@ else
    error('time_to_skip variable has unusual length. Should be either 0 or 6.')
 end
 
+% set up a structure with all static plotting components
+
 plotdat.bincenters = plotdat.bincenters + timeorigin;
 plotdat.binedges   = plotdat.binedges   + timeorigin;
 plotdat.Nbins      = length(plotdat.bincenters);
 plotdat.toff       = plotdat.bincenters(1) + iskip;
-
-% set up a structure with all static plotting components
-
-plotdat.linewidth = 2.0;
 
 if (nvars == 0)
    [plotdat.allvarnames, plotdat.allvardims] = get_varsNdims(fname);
@@ -134,7 +134,9 @@ plotdat.NQC5index   = get_copy_index(fname,'N_DARTqc_5');
 plotdat.NQC6index   = get_copy_index(fname,'N_DARTqc_6');
 plotdat.NQC7index   = get_copy_index(fname,'N_DARTqc_7');
 
-%----------------------------------------------------------------------
+figuredata = setfigure();
+
+%%---------------------------------------------------------------------
 % Loop around (time-copy-level-region) observation types
 %----------------------------------------------------------------------
 
@@ -149,9 +151,12 @@ for ivar = 1:plotdat.nvars
    % remove any existing postscript file - will simply append each
    % level as another 'page' in the .ps file.
 
-   psfname = sprintf('%s_rmse_%s_evolution.ps',plotdat.varnames{ivar},plotdat.copystring);
-   fprintf('Removing %s from the current directory.\n',psfname)
-   system(sprintf('rm %s',psfname));
+   for iregion = 1:plotdat.nregions
+      psfname{iregion} = sprintf('%s_rmse_%s_evolution_region%d.ps', ...
+                         plotdat.varnames{ivar}, plotdat.copystring, iregion);
+      fprintf('Removing %s from the current directory.\n',psfname{iregion})
+      system(sprintf('rm %s',psfname{iregion}));
+   end
 
    % remove any existing log file -
 
@@ -193,8 +198,20 @@ for ivar = 1:plotdat.nvars
       plotdat.nlevels, plotdat.nregions);
 
    % check to see if there is anything to plot
-   
-   nposs = sum(guess(:,plotdat.Npossindex,:,:));
+   % The number possible is decreased by the number of observations
+   % rejected by namelist control.
+
+   nqc5 = guess(:,plotdat.NQC5index,:,:);
+   nqc6 = guess(:,plotdat.NQC6index,:,:);
+
+   fprintf('%d %s observations had DART QC of 5 (all levels, all regions).\n', ...
+           sum(nqc5(:)),plotdat.myvarname)
+   fprintf('%d %s observations had DART QC of 6 (all levels, all regions).\n', ...
+           sum(nqc6(:)),plotdat.myvarname)
+
+   nposs = sum(guess(:,plotdat.Npossindex,:,:)) - ...
+           sum(guess(:,plotdat.NQC5index ,:,:)) - ...
+           sum(guess(:,plotdat.NQC6index ,:,:));
 
    if ( sum(nposs(:)) < 1 )
       fprintf('%s no obs for %s...  skipping\n', plotdat.varnames{ivar})
@@ -224,8 +241,10 @@ for ivar = 1:plotdat.nvars
       fprintf(logfid,'DART QC == 7, prior/post %d %d\n',sum(plotdat.ges_Nqc7(:)), ...
          sum(plotdat.anl_Nqc7(:)));
 
-      plotdat.ges_Nposs = guess(:,plotdat.Npossindex, ilevel,:);
-      plotdat.anl_Nposs = analy(:,plotdat.Npossindex, ilevel,:);
+      plotdat.ges_Nposs = guess(:,plotdat.Npossindex, ilevel,:) - ...
+                          plotdat.ges_Nqc5 - plotdat.ges_Nqc6;
+      plotdat.anl_Nposs = analy(:,plotdat.Npossindex, ilevel,:) - ...
+                          plotdat.anl_Nqc5 - plotdat.anl_Nqc6;
       fprintf(logfid,'# obs poss,   prior/post %d %d\n',sum(plotdat.ges_Nposs(:)), ...
          sum(plotdat.anl_Nposs(:)));
 
@@ -241,15 +260,10 @@ for ivar = 1:plotdat.nvars
 
       plotdat.Yrange    = FindRange(plotdat);
 
-      % plot by region
-
-      if (plotdat.nregions > 2)
-         clf; orient tall; wysiwyg
-      else
-         clf; orient landscape; wysiwyg
-      end
+      % plot each region, each level to a separate figure
 
       for iregion = 1:plotdat.nregions
+         figure(iregion); clf; orient(figuredata.orientation); wysiwyg
 
          plotdat.region   = iregion;
          plotdat.myregion = deblank(plotdat.region_names(iregion,:));
@@ -262,16 +276,16 @@ for ivar = 1:plotdat.nvars
                plotdat.level_units);
          end
 
-         myplot(plotdat);
+         myplot(plotdat,figuredata);
+
+         % create/append to the postscript file
+         print(gcf,'-dpsc','-append',psfname{iregion});
+
+         % block to go slow and look at each one ...
+         % disp('Pausing, hit any key to continue ...')
+         % pause
+
       end
-
-      % create a postscript file
-      print(gcf,'-dpsc','-append',psfname);
-
-      % block to go slow and look at each one ...
-      % disp('Pausing, hit any key to continue ...')
-      % pause
-
    end
 end
 
@@ -280,7 +294,7 @@ end
 %=====================================================================
 
 
-function myplot(plotdat)
+function myplot(plotdat,figdata)
 
 % Interlace the [ges,anl] to make a sawtooth plot.
 % By this point, the middle two dimensions are singletons.
@@ -321,7 +335,7 @@ end
 string_rmse  = sprintf('%s pr=%.5g, po=%.5g','rmse', mean_pr_rmse, mean_po_rmse);
 string_other = sprintf('%s pr=%.5g, po=%.5g', plotdat.copystring, ...
    mean_pr_other, mean_po_other);
-plotdat.subtitle = sprintf('%s     %s     %s',plotdat.myregion,string_rmse, string_other);
+plotdat.subtitle = sprintf('%s     %s',string_rmse, string_other);
 
 % Plot the rmse and 'xxx' on the same (left) axis.
 % The observation count will use the axis on the right.
@@ -329,11 +343,12 @@ plotdat.subtitle = sprintf('%s     %s     %s',plotdat.myregion,string_rmse, stri
 % so we manually set some values that normally
 % don't need to be set.
 
-ax1 = subplot(plotdat.nregions,1,plotdat.region);
+ax1 = subplot('position',figdata.position);
+set(ax1,'YAxisLocation','left','FontSize',figdata.fontsize)
 
-h1 = plot(t,rmse,'k+-',t,other,'ro-','LineWidth',plotdat.linewidth);
+h1 = plot(t,rmse,'k+-',t,other,'ro-','LineWidth',figdata.linewidth);
 h  = legend(h1,'rmse', plotdat.copystring);
-legend(h,'boxoff','Interpreter','none')
+set(h,'Interpreter','none','Box','off')
 
 % get the range of the existing axis and replace with
 % replace y axis values
@@ -343,15 +358,14 @@ axlims = axis;
 axlims = [axlims(1:2) plotdat.Yrange];
 axis(axlims)
 
-plotdat.ylabel{1} = plotdat.myregion;
 switch lower(plotdat.copystring)
    case 'bias'
       % plot a zero-bias line
-      zeroline = line(axlims(1:2),[0 0], 'Color','r','Parent',ax1);
-      set(zeroline,'LineWidth',1.0,'LineSTyle','-.')
-      plotdat.ylabel{2} = sprintf('rmse and %s (%s)',plotdat.copystring,plotdat.biasconv);
+      zeroline = line(axlims(1:2),[0 0], 'Color',[0 100 0]/255,'Parent',ax1);
+      set(zeroline,'LineWidth',2.5,'LineStyle','-')
+      plotdat.ylabel = sprintf('rmse and %s (%s)',plotdat.copystring,plotdat.biasconv);
    otherwise
-      plotdat.ylabel{2} = sprintf('rmse and %s',plotdat.copystring);
+      plotdat.ylabel = sprintf('rmse and %s',plotdat.copystring);
 end
 
 % hokey effort to decide to plot months/days vs. daynum vs.
@@ -368,43 +382,36 @@ elseif (plotdat.bincenters(1) > 1000)
 else
    xlabelstring = 'days';
 end
+set(get(ax1,'Xlabel'),'String',xlabelstring, ...
+   'Interpreter','none','FontSize',figdata.fontsize)
 
-% only put x axis on last/bottom plot
-if (plotdat.region == plotdat.nregions)
-   xlabel(xlabelstring)
-end
-
-% more annotation ...
-if (plotdat.region == 1)
-   title({plotdat.title, plotdat.subtitle}, ...
-      'Interpreter', 'none', 'Fontsize', 12, 'FontWeight', 'bold')
-   BottomAnnotation(plotdat.fname)
-else
-   title(plotdat.subtitle, ...
-      'Interpreter', 'none', 'Fontsize', 12, 'FontWeight', 'bold')
-end
+title({plotdat.myregion, plotdat.title, plotdat.subtitle}, ...
+      'Interpreter', 'none', 'Fontsize', figdata.fontsize, 'FontWeight', 'bold')
+BottomAnnotation(plotdat.fname)
 
 % create a separate scale for the number of observations
 ax2 = axes('position',get(ax1,'Position'), ...
    'XAxisLocation','top', ...
-   'YAxisLocation','right',...
-   'Color','none',...
-   'XColor','b','YColor','b');
+   'YAxisLocation','right', ...
+   'Color','none', ...
+   'XColor',get(ax1,'Xcolor'), ...
+   'YColor','b', ...
+   'FontSize',get(ax1,'FontSize'));
+
 h2 = line(t,nobs_poss,'Color','b','Parent',ax2);
 h3 = line(t,nobs_used,'Color','b','Parent',ax2);
 set(h2,'LineStyle','none','Marker','o');
-set(h3,'LineStyle','none','Marker','+');
+set(h3,'LineStyle','none','Marker','*');
 
-% use same X ticks - with no labels
-set(ax2,'XTick',get(ax1,'XTick'),'XTickLabel',[])
-
+% use same X ticks
 % use the same Y ticks, but find the right label values
-% Make sure that values at ticks are whole numbers.
+set(ax2,'XTick', get(ax1,'XTick'), 'XTicklabel', []);
 matchingYticks(ax1,ax2);
 
-set(get(ax2,'Ylabel'),'String','# of obs : o=poss, +=used')
-set(get(ax1,'Ylabel'),'String',plotdat.ylabel,'Interpreter','none')
-
+set(get(ax1,'Ylabel'), 'String', plotdat.ylabel, ...
+    'Interpreter','none','FontSize',figdata.fontsize)
+set(get(ax2,'Ylabel'),'String','# of obs : o=poss, \ast=used', ...
+    'FontSize',figdata.fontsize)
 
 %=====================================================================
 
@@ -523,6 +530,27 @@ else
 
    x = [min([Yrange(1) 0.0]) Yrange(2)];
 end
+
+
+%=====================================================================
+
+
+function figdata = setfigure()
+%%
+%  figure out a page layout
+%  extra space at the bottom for the date/file annotation
+%  extra space at the top because the titles have multiple lines
+
+orientation = 'landscape';
+fontsize    = 16;
+position    = [0.10 0.15 0.8 0.7];
+linewidth   = 2.0;
+
+figdata = struct('expcolors',  {{'k','r','g','m','b','c','y'}}, ...
+   'expsymbols', {{'o','s','d','p','h','s','*'}}, ...
+   'prpolines',  {{'-','--'}}, 'position', position, ...
+   'fontsize',fontsize, 'orientation',orientation, ...
+   'linewidth',linewidth);
 
 
 %=====================================================================
