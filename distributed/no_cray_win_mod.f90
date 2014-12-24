@@ -20,7 +20,6 @@ implicit none
 
 integer state_win !< mpi window for the forward operator
 integer mean_win !< mpi window
-integer my_num_vars !< my number of vars
 integer :: num_rows !> number of copies in the window
 integer :: row !> mean row index
 integer(KIND=MPI_ADDRESS_KIND) window_size_state
@@ -37,7 +36,7 @@ type(ensemble_type), intent(in) :: state_ens_handle !< state ensemble handle
 
 integer :: ii, jj, count, ierr
 integer :: bytesize !< size in bytes of each element in the window
-integer :: num_rows !> number of copies in the window
+integer :: my_num_vars !< my number of vars
 
 ! find how many variables I have
 my_num_vars = state_ens_handle%my_num_vars
@@ -60,7 +59,7 @@ subroutine create_mean_window(state_ens_handle)
 type(ensemble_type), intent(in) :: state_ens_handle
 integer :: ii, ierr
 integer :: bytesize
-integer :: row !> mean row index
+integer :: my_num_vars !< my number of vars
 
 ! find out how many variables I have
 my_num_vars = state_ens_handle%my_num_vars
