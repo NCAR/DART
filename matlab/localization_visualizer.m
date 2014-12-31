@@ -70,12 +70,12 @@ init_data = data;
 % Initial values for cutoff contour (in radians)
 minCutOff_rad = 0.005;
 maxCutOff_rad = 0.7;
-cutOff_rad    = maxCutOff_rad/2.0;
+   cutOff_rad = maxCutOff_rad/2.0;
 
 % kilometers
 minCutOff_km = rad2km(minCutOff_rad);
 maxCutOff_km = rad2km(maxCutOff_rad);
-cutOff_km    = mean([maxCutOff_km minCutOff_km]);
+   cutOff_km = rad2km(   cutOff_rad);
 
 % Resolution of contour plot
 % TJH should same value be used for both lon and lat
@@ -477,8 +477,8 @@ set(f,'Visible','on');
         set(hpopup, 'Value', 1);
 
         % cutoff
-        cutOff_rad = mean([maxCutOff_rad minCutOff_rad]);
-        cutOff_km  = mean([maxCutOff_km  minCutOff_km]);
+        cutOff_rad = maxCutOff_rad/2.0;
+        cutOff_km  = rad2km(cutOff_rad);
         set(hcutOffRad,  'String', num2str(cutOff_rad));
         set(hcutOffKm,   'String', num2str(cutOff_km));
         set(hCutOffType, 'Value', 1);
