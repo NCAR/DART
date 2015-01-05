@@ -195,6 +195,14 @@ committed since the original release of the Lanai code:
 -->
 
 <TR><TD> 5 Jan 2015 </TD>
+    <TD> 7338 </TD>
+    <TD> Bug fix for the 3D sphere location module for NAG compiler only.
+It was doing a numerical computation in an unexpected (but legal) order.
+Resulted in not correctly testing for an error condition.
+    </TD>
+</TR>
+
+<TR><TD> 5 Jan 2015 </TD>
     <TD> 7337 </TD>
     <TD> Bug fix for the POP ocean model interface code. Fixes computation of
 the ocean bottom for U/V current observations, and U/V increments located
