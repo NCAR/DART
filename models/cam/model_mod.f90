@@ -213,7 +213,8 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_
                              KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
                              KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, KIND_CLOUD_FRACTION,    &
                              KIND_GRAV_WAVE_DRAG_EFFIC, KIND_GRAV_WAVE_STRESS_FRACTION,       &
-                             KIND_SURFACE_ELEVATION, get_raw_obs_kind_index
+                             KIND_SURFACE_ELEVATION, get_raw_obs_kind_index,                  &
+                             get_obs_kind_var_type
 
 ! END DART PREPROCESS USED KINDS
 
@@ -2015,7 +2016,7 @@ end subroutine write_cam_init
 
 type(time_type), intent(in) :: model_time, adv_time
 
-integer :: tfile_unit, cal_type, cam_date, cam_tod, nhtfrq
+integer :: tfile_unit, cam_date, cam_tod, nhtfrq
 integer :: year, month, day, hour, minute, second
 type(time_type) :: forecast_length
 
@@ -3591,12 +3592,9 @@ end subroutine vector_to_prog_var
 
 ! get_close_obs section
 
-   subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                            num_close, close_ind, dist)
+   subroutine get_close_obs(gc, base_obs_loc, base_obs_type, obs_loc, obs_kind, &
+                            num_close, close_indices, distances)
 !----------------------------------------------------------------------------
-
-!!!ADD IN SOMETHING TO USE EFFICIENTLY IF IT"S AT SAME LOCATION AS PREVIOUS OB!!!
-! Done in filter (collins 2/?/07)
 
 ! get_close_obs will be getting an ob, with its location, and its horizontal distances 
 !    to an array of other locations (and the locations).
@@ -3621,47 +3619,53 @@ end subroutine vector_to_prog_var
 implicit none
 
 
-type(get_close_type), intent(in)  :: gc
-type(location_type),  intent(in)  :: base_obs_loc, obs_loc(:)
-integer,              intent(in)  :: base_obs_kind, obs_kind(:)
-integer,              intent(out) :: num_close, close_ind(:)
-real(r8),             intent(out) :: dist(:)
+type(get_close_type), intent(in)    :: gc
+type(location_type),  intent(in)    :: base_obs_loc
+integer,              intent(in)    :: base_obs_type
+type(location_type),  intent(inout) :: obs_loc(:)
+integer,              intent(in)    :: obs_kind(:)
+integer,              intent(out)   :: num_close
+integer,              intent(out)   :: close_indices(:)
+real(r8),             intent(out)   :: distances(:)
 
 ! remove some (unused) variables?
-integer                :: k, t_ind
+integer                :: k, t_ind, base_obs_kind
 integer                :: base_which, local_base_which, obs_which, local_obs_which
 real(r8), dimension(3) :: base_array, local_base_array, obs_array, local_obs_array
 real(r8)               :: increment, threshold, thresh_wght
 type(location_type)    :: local_base_obs_loc, local_obs_loc
 
+! get the generic kind associated with the observation's specific type
+base_obs_kind = get_obs_kind_var_type(base_obs_type)
+base_which    = nint(query_location(base_obs_loc))
+base_array    = get_location(base_obs_loc)
+
 ! If base_obs vert type is not pressure; convert it to pressure
-base_which = nint(query_location(base_obs_loc))
 if (base_which == VERTISPRESSURE) then
    local_base_obs_loc = base_obs_loc
    local_base_array   = get_location(base_obs_loc)  ! needed in num_close loop
    local_base_which   = base_which
 else
-   base_array = get_location(base_obs_loc)
    call convert_vert(base_array, base_which, local_base_array, local_base_which, base_obs_kind)
    local_base_obs_loc = set_location(base_array(1), base_array(2), local_base_array(3), &
                                      local_base_which)
 end if
 
 !! DEBUG: comment this in if you want to bypass the top level damping code below.
-!call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-!                       num_close, close_ind, dist)
+!call loc_get_close_obs(gc, base_obs_loc, base_obs_type, obs_loc, obs_kind, &
+!                       num_close, close_indices, distances)
 !return
 
-! Get all the potentially close obs but no dist (optional argument dist(:) is not present)
-call loc_get_close_obs(gc, local_base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
-                       num_close, close_ind)
+! Get all the potentially close obs but no distances (optional argument distances(:) is not present)
+call loc_get_close_obs(gc, local_base_obs_loc, base_obs_type, obs_loc, obs_kind, &
+                       num_close, close_indices)
 
 threshold = highest_state_pressure_mb *100._r8
 if (threshold > 0.0_r8) thresh_wght = 1._r8/(threshold * threshold)
 
 do k = 1, num_close
 
-   t_ind = close_ind(k)
+   t_ind = close_indices(k)
    obs_array = get_location(obs_loc(t_ind))
    obs_which = nint(query_location(obs_loc(t_ind)))
 
@@ -3674,6 +3678,12 @@ do k = 1, num_close
       ! If horiz_dist_only is true, the vertical location and which vert aren't used by get_dist, 
       ! but need to be defined for set_loc and are used in the damping section below no matter what.
       call convert_vert(obs_array, obs_which, local_obs_array, local_obs_which, obs_kind(t_ind))
+
+      ! save the resulting vertically converted obs back in the incoming array so that
+      ! next time this location is used we won't have to convert it again.  should be
+      ! a savings in execution time. 
+      obs_loc(t_ind) = set_location(obs_array(1), obs_array(2), local_obs_array(3), &
+                                   local_obs_which)
 
       ! obs_which = -2 (VERTISUNDEF) mean this ob is vertically close to base_obs, no matter what.
       if (local_obs_array(3) == MISSING_R8) then
@@ -3691,23 +3701,23 @@ do k = 1, num_close
    if ((impact_kind_index >= 0)                .and. &
        (impact_kind_index == base_obs_kind)    .and. &
        (impact_kind_index /= obs_kind(t_ind))) then
-      dist(k) = 999999._r8     ! arbitrary very large distance
+      distances(k) = 999999._r8     ! arbitrary very large distance
    else if (local_base_which == VERTISUNDEF) then
       ! The last argument, no_vert = .true., makes get_dist calculate horzontal distance only.
-      dist(k) = get_dist(local_base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind),.true.)
+      distances(k) = get_dist(local_base_obs_loc, local_obs_loc, base_obs_type, obs_kind(t_ind),.true.)
       ! Then no damping can be done since vertical distance is undefined.
       ! ? Is this routine called *both* to get model points close to a real obs,
       !   AND ob close to a model point?  I want damping in the latter case,
       !   even if ob has which_vert = VERTISUNDEF.
       !   I think that testing on local_base_which will do that.
    else
-      dist(k) = get_dist(local_base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
+      distances(k) = get_dist(local_base_obs_loc, local_obs_loc, base_obs_type, obs_kind(t_ind))
 
       ! Damp the influence of obs (below the namelist variable highest_obs_pressure_mb) 
       ! on variables above highest_state_pressure_mb.  
       ! This section could also change the distance based on the KIND_s of the base_obs and obs.
    
-      ! dist = 0 for some for synthetic obs.
+      ! distances = 0 for some for synthetic obs.
       ! Additive increase, based on height above threshold, works better than multiplicative
    
       ! See model_mod circa 1/1/2007 for other damping algorithms.
@@ -3716,8 +3726,8 @@ do k = 1, num_close
       ! This if-test handles the case where no damping is performed, i.e. 
       ! highest_state_pressure_mb = 0 and threshold = 0.
       if (increment > 0) then
-         dist(k) = dist(k) + increment * increment * thresh_wght
-   ! too sharp      dist(k) = dist(k) + increment / threshold
+         distances(k) = distances(k) + increment * increment * thresh_wght
+   ! too sharp      distances(k) = distances(k) + increment / threshold
       end if
    endif
 
@@ -4007,10 +4017,9 @@ real(r8), intent(in)    :: state(:)
 real(r8), intent(out)   :: pert_state(:)
 logical,  intent(out)   :: interf_provided
 
-type(random_seq_type)   :: random_seq
 type(model_type)        :: var_temp
 integer                 :: i, j, k, m, pert_fld, mode, field_num
-integer                 :: dim1, dim2, dim3, member
+integer                 :: dim1, dim2, dim3
 real(r8)                :: pert_val
 integer, save           :: seed
 
