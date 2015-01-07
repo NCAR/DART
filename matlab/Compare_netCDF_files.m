@@ -1,13 +1,17 @@
 function Compare_netCDF_files(file1,file2)
-%% Compare_netCDF_files checks to see if two netcdf files are identical. An output text
-% file of the summary of the min/max differences for each variable is produced.
+%% Compare_netCDF_files checks to see if two netcdf files are identical.
+% An output text file of the summary of the min/max (differences) for each
+% variable is produced.
 %
-% If called with a single argument, Compare_netCDF_files will print a summary of the min
-% and max of every numeric variable in the file. If the file was the result
-% of an 'ncdiff', for example, these should all be zero.
+% If called with a single argument, Compare_netCDF_files will print a
+% summary of the min and max of every numeric variable in the file.
+% If the file was the result of an 'ncdiff', for example, these should
+% all be zero.
 %
-% If called with two arguments, Compare_netCDF_files will subtract each numeric variable
-% and print a summary of the min/max differences for each variable.
+% If called with two arguments, Compare_netCDF_files will subtract each numeric
+% variable and print a summary of the min/max differences for each variable to
+% a text file. Only those variables with non-zero differences are output to 
+% the command window.
 %
 % Example:
 %
@@ -48,7 +52,7 @@ if (exist(file1,'file') ~= 2), error('%s does not exist.',file1); end
 
 f1info     = ncinfo(file1);
 nvariables = length(f1info.Variables);
-ncid1      = netcdf.open(file1,'NC_NOWRITE');
+ncid1      = netcdf.open(file1,'NOWRITE');
 
 for ivar = 1:nvariables
 
@@ -59,24 +63,24 @@ for ivar = 1:nvariables
 
    switch (f1info.Variables(ivar).Datatype)
       case {'char','character'}
-         fprintf(fid,'%32s is a %s variable.\n',varname,f1info.Variables(ivar).Datatype);
-         fprintf(    '%32s is a %s variable.\n',varname,f1info.Variables(ivar).Datatype);
+         fprintf(fid,'%32s is a %s variable.\n', varname, ...
+                            f1info.Variables(ivar).Datatype);
+         fprintf(    '%32s is a %s variable.\n', varname, ...
+                            f1info.Variables(ivar).Datatype);
       otherwise
          data    = my_getVar(ncid1, varid, FillValue);
          bob     = data(:);
          datamin = min(bob);
          datamax = max(bob);
-         fprintf(fid,'%32s has min/max differences of %g %g\n',varname,datamin,datamax);
-         if ((datamin ~= 0.0) && (datamax ~= 0.0))
-             fprintf('%32s has min/max differences of %g %g\n',varname,datamin,datamax);
-         end
-   end
+         fprintf(fid,'%32s has min/max of %g %g\n', varname, datamin, datamax);
+         fprintf(    '%32s has min/max of %g %g\n', varname, datamin, datamax);
+   end % switch
 end
 
 netcdf.close(ncid1)
 
 %%---------------------------------------------------------------------
-%  Display min and max of the difference of two numeric variables 
+%  Display min and max of the difference of two numeric variables
 %  from two separate files.
 %----------------------------------------------------------------------
 
@@ -86,13 +90,20 @@ if (exist(file1,'file') ~= 2), error('%s does not exist.',file1); end
 if (exist(file2,'file') ~= 2), error('%s does not exist.',file2); end
 
 f1info     = ncinfo(file1);
-nvariables = length(f1info.Variables);
-ncid1      = netcdf.open(file1,'NC_NOWRITE');
-ncid2      = netcdf.open(file2,'NC_NOWRITE');
+f2info     = ncinfo(file2);
 
-% logic not great ... could grab the variable name from one file
-% search the second file for that variable name. Right now the variables
-% must be in the same order in both files ...
+if (length(f1info.Variables) ~= length(f2info.Variables) )
+   fprintf('WARNING : the files have different numbers of variables.\n')
+   fprintf('WARNING : only comparing the variables that exist in\n')
+   fprintf('%s\n',file1)
+end
+
+nvariables = length(f1info.Variables);
+ncid1      = netcdf.open(file1,'NOWRITE');
+ncid2      = netcdf.open(file2,'NOWRITE');
+
+% grab the variable name from one file and 
+% search the second file for matching variable.
 
 for ivar = 1:nvariables
 
@@ -100,14 +111,17 @@ for ivar = 1:nvariables
 
    [varname1, ~, ~, numatts1] = netcdf.inqVar(ncid1,varid1);
    varid2                     = netcdf.inqVarID(ncid2,varname1);
-   [varname2, ~, ~, numatts2] = netcdf.inqVar(ncid2,varid2);
+   [       ~, ~, ~, numatts2] = netcdf.inqVar(ncid2,varid2);
+   
    FillValue1 = has_att(ncid1, varid1, numatts1, '_FillValue');
    FillValue2 = has_att(ncid2, varid2, numatts2, '_FillValue');
 
    switch (f1info.Variables(ivar).Datatype)
       case {'char','character'}
-         fprintf(fid,'%32s is a %s variable.\n',varname1,f1info.Variables(ivar).Datatype);
-         fprintf(    '%32s is a %s variable.\n',varname1,f1info.Variables(ivar).Datatype);
+         fprintf(fid,'%32s is a %s variable.\n', varname1, ...
+                            f1info.Variables(ivar).Datatype);
+         fprintf(    '%32s is a %s variable.\n', varname1, ...
+                            f1info.Variables(ivar).Datatype);
       otherwise
          bob     = my_getVar(ncid1, varid1, FillValue1);
          data1   = bob(:);
@@ -123,12 +137,13 @@ for ivar = 1:nvariables
          datamin = min(bob);
          datamax = max(bob);
 
-         fprintf(fid,'%32s has min/max differences of %g %g\n',varname1,datamin,datamax);
-         if ((datamin ~= 0.0) && (datamax ~= 0.0))
-             fprintf('%32s has min/max differences of %g %g\n',varname1,datamin,datamax);
+         fprintf(fid,'%32s has min/max differences of %g %g\n', ...
+                     varname1,datamin,datamax);
+         if ((datamin ~= 0.0) || (datamax ~= 0.0))
+             fprintf('%32s has min/max differences of %g %g\n', ...
+                     varname1,datamin,datamax);
          end
-   end
-
+   end % switch
 end
 
 netcdf.close(ncid1)
