@@ -148,15 +148,20 @@ prematurely terminating the namelist.
 <TR><TD>filename_seq</TD>
     <TD>character(len=256), dimension(1000)</TD>
     <TD>The array of names of the observation sequence files to process.
-With the F90 namelist mechanism it is only necessary to specify the names
-you are going to use, not all.
+(With the F90 namelist mechanism it is only necessary to specify as many
+names as you have input files; unspecified list values are cleanly ignored.)
 </TD></TR>
 
 <TR><TD>filename_seq_list</TD>
     <TD>character(len=256)</TD>
     <TD>The name of a text file which contains, one per line,
-the names of the observation sequence files to process.  You can only specify
-one of filename_seq OR filename_seq_list, not both.
+the names of the observation sequence files to process.  
+The names on each line in the file should not have 
+any delimiters, e.g. no single or double quotes at the start 
+or end of the filename.  This file can be made with a text editor
+or with the output of the 'ls' command, e.g. <em class=code>ls obs_seq.* > flist</em>.
+You can only specify one of <em class=code>filename_seq</em> OR 
+<em class=code>filename_seq_list</em>, not both.
 </TD></TR>
 
 <TR><TD>filename_out</TD>
@@ -455,7 +460,7 @@ Or from the command line create a file containing one filename per line,
 either with 'ls':
 </P>
 <pre>
-&gt; ls obs_seq_in* &gt; tlist
+ls obs_seq_in* &gt; tlist
 </pre>
 <P>
 or with a text editor, or any other tool of your choice.  Then, 
@@ -470,6 +475,8 @@ or with a text editor, or any other tool of your choice.  Then,
 <P>
 will open 'tlist' and read the filenames, one per line, and merge them
 together.  The output file will be named 'obs_seq20071101.all'.
+Note that the filenames inside the list file should not have
+delimiters (e.g. single or double quotes) around the filenames.
 </P>
 
 <A NAME="timeclamp"></A>
@@ -861,6 +868,9 @@ file will be very wrong.</b>
 The tool offers an additional option for specifying
 a list of input files.  The user creates an ASCII file by any desired
 method (e.g. ls > file, editor), with one filename per line.  
+The names on each line in the file should not have 
+any delimiters, e.g. no single or double quotes at the start 
+or end of the filename.
 They specify this file with the
 <em class=code>filename_seq_list</em> namelist item, and the tool opens
 the list file and processes each input file in turn.
