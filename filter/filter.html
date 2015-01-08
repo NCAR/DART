@@ -481,18 +481,20 @@ to 0.6 for large geophysical models.
 <em>&amp;filter_nml :: inf_damping</em><br />
 valid values: 0.0 to 1.0
 <dd>
-Applies if inflation is time-evolving.
+Applies to all state-space inflation types, but most frequently
+used with time-adaptive inflation variants.
 The difference between the current inflation value and 1.0 
 is multiplied by this factor before the next assimilation cycle. 
 0.0 turns all inflation off by clamping the inflation value to 1.0.
 1.0 turns damping off by leaving the original inflation value unchanged.
-We have had good results in large geophysical models setting
-this to a value of 0.9, which damps slowly.  Damping appears to
+We have had good results in large geophysical models using 
+time- and space-adaptive state-space inflation and setting the
+damping to a value of 0.9, which damps slowly.  Damping appears to
 particularly help in cases where there are dense clusters of observations
 at irregular times.  Areas that are heavily observed evolve
-large inflation values to prevent the ensemble members from becoming
-too close to one another.  However once the area is unobserved 
-there was no mechanism to cause the inflation values to drop 
+large inflation values to prevent the ensemble members from losing
+too much spread. However if then the area is unobserved for some
+period of time there was no mechanism to force the inflation values to drop 
 back down to smaller levels.  The damping factor accomplishes this.
 <br /> <br />
 <dt>
