@@ -1030,15 +1030,20 @@ real(r8), allocatable  :: fld(:,:)
 real(r8), allocatable, dimension(:,:) :: v_h, v_p
 
 ! local vars, used in finding sea-level pressure and vortex center
-real(r8), allocatable, dimension(:)   :: t1d, p1d, qv1d, z1d
-real(r8), allocatable, dimension(:,:) :: vfld, pp, pd, uwnd, vwnd, vort
-real(r8), allocatable, dimension(:)   :: x1d, y1d, xx1d, yy1d
+real(r8), allocatable, dimension(:, :)    :: t1d, p1d, qv1d, z1d
+real(r8), allocatable, dimension(:, :)    :: z1d_1, z1d_2
+real(r8), allocatable, dimension(:,:)  :: pp, pd
+real(r8), allocatable, dimension(:,:,:)  :: vfld
+real(r8), allocatable, dimension(:,:,:)  :: uwnd, vwnd, vort
+real(r8), allocatable, dimension(:)    :: x1d, y1d, xx1d, yy1d
 integer  :: center_search_half_size, center_track_xmin, center_track_ymin, &
             center_track_xmax, center_track_ymax, circ_half_size, &
             circ_xmin, circ_xmax, circ_ymin, circ_ymax, xlen, ylen, &
             xxlen, yylen, ii1, ii2, cxlen, cylen, imax, jmax
-real(r8) :: clat, clon, cxloc, cyloc, vcrit, magwnd, maxwspd, circ, &
+real(r8) :: clat, clon, cxloc, cyloc, vcrit, &
             circ_half_length, asum, distgrid, dgi1, dgi2
+
+real(r8), allocatable :: magwnd(:), maxwspd(:), circ(:)
 
 ! local vars, used in calculating density, pressure, height
 real(r8), allocatable :: rho1(:) , rho2(:) , rho3(:), rho4(:)
@@ -1051,13 +1056,21 @@ real(r8)            :: mod_sfc_elevation
 
 !HK 
 real(r8),  allocatable :: x_ill(:), x_iul(:), x_ilr(:), x_iur(:), ugrid(:), vgrid(:)
+real(r8),  allocatable :: x_ugrid_1(:), x_ugrid_2(:), x_ugrid_3(:), x_ugrid_4(:)
+real(r8),  allocatable :: x_vgrid_1(:), x_vgrid_2(:), x_vgrid_3(:), x_vgrid_4(:)
 integer                :: e, count, uk !< index varibles for loop
 integer, allocatable   :: uniquek(:), ksort(:)
 real(r8), allocatable  :: failedcopies(:)
 integer                :: ens_size
 
+integer :: ugrid_1, ugrid_2, ugrid_3, ugrid_4, vgrid_1, vgrid_2, vgrid_3, vgrid_4
+integer :: z1d_ind1, z1d_ind2, t1d_ind, qv1d_ind
+
 ens_size = copies_in_window(state_ens_handle) ! data_structure_mod
 allocate(x_ill(ens_size), x_iul(ens_size), x_ilr(ens_size), x_iur(ens_size))
+allocate(x_ugrid_1(ens_size), x_ugrid_2(ens_size), x_ugrid_3(ens_size), x_ugrid_4(ens_size))
+allocate(x_vgrid_1(ens_size), x_vgrid_2(ens_size), x_vgrid_3(ens_size), x_vgrid_4(ens_size))
+allocate(magwnd(ens_size), maxwspd(ens_size))
 allocate(fld(2,ens_size), a1(ens_size))
 allocate(zloc(ens_size), is_lev0(ens_size))
 allocate(k(ens_size), dz(ens_size), dzm(ens_size))
@@ -2086,7 +2099,549 @@ else
    ! 1.u Vortex Center Stuff from Yongsheng
    else if ( obs_kind == KIND_VORTEX_LAT  .or. obs_kind == KIND_VORTEX_LON .or. &
              obs_kind == KIND_VORTEX_PMIN .or. obs_kind == KIND_VORTEX_WMAX ) then
-       if( my_task_id() == 0 ) print*, 'no distributed version of vortex'
+
+      do uk = 1, count ! for the different ks
+
+      ! Check to make sure retrieved integer gridpoints are in valid range
+      if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
+           boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) .and. &
+           boundsCheck( uniquek(uk), .false.,                id, dim=3, type=wrf%dom(id)%type_t ) ) then
+
+         !!   define a search box bounded by center_track_***
+         center_search_half_size = nint(center_search_half_length/wrf%dom(id)%dx)
+         if ( wrf%dom(id)%periodic_x ) then
+            center_track_xmin       = i-center_search_half_size
+            center_track_xmax       = i+center_search_half_size
+         else
+            center_track_xmin = max(1,i-center_search_half_size)
+            center_track_xmax = min(wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu),i+center_search_half_size)
+         endif
+         if ( wrf%dom(id)%periodic_y ) then
+            center_track_ymin       = j-center_search_half_size
+            center_track_ymax       = j+center_search_half_size
+         else
+            center_track_ymin = max(1,j-center_search_half_size)
+            center_track_ymax = min(wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu),j+center_search_half_size)
+         endif
+         if ( center_track_xmin<1 .or. center_track_xmax>wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu) .or. &
+              center_track_ymin<1 .or. center_track_ymax>wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu) .or. &
+              center_track_xmin >= center_track_xmax .or. center_track_ymin >= center_track_ymax) then
+
+            print*,'i,j,center_search_half_length,center_track_xmin(max),center_track_ymin(max)'
+            print*,i,j,center_search_half_length,center_track_xmin,center_track_xmax,center_track_ymin,center_track_ymax
+            write(errstring,*)'Wrong setup in center_track_nml'
+            call error_handler(E_ERR,'model_interpolate', errstring, source, revision, revdate)
+
+         endif 
+
+         if ( obs_kind == KIND_VORTEX_LAT .or. obs_kind == KIND_VORTEX_LON .or. &
+              obs_kind == KIND_VORTEX_PMIN ) then
+
+            !!   define spline interpolation box dimensions
+            xlen = center_track_xmax - center_track_xmin + 1
+            ylen = center_track_ymax - center_track_ymin + 1
+            xxlen = (center_track_xmax - center_track_xmin)*center_spline_grid_scale + 1
+            yylen = (center_track_ymax - center_track_ymin)*center_spline_grid_scale + 1
+
+            allocate(x1d(xlen), y1d(ylen))  ;  allocate(xx1d(xxlen), yy1d(yylen))
+            allocate(pd(xlen,ylen))         ;  allocate(pp(xxlen,yylen))
+            allocate(vfld(xlen,ylen, ens_size))
+
+            do i1 = 1,xlen
+               x1d(i1) = (i1-1)+center_track_xmin
+            enddo
+            do i2 = 1,ylen
+               y1d(i2) = (i2-1)+center_track_ymin
+            enddo
+            do ii1 = 1,xxlen
+               xx1d(ii1) = center_track_xmin+real(ii1-1,r8)*1.0_r8/real(center_spline_grid_scale,r8)
+            enddo
+            do ii2 = 1,yylen
+               yy1d(ii2) = center_track_ymin+real(ii2-1,r8)*1.0_r8/real(center_spline_grid_scale,r8)
+            enddo
+
+         endif
+
+         if ( (obs_kind == KIND_VORTEX_LAT .or. obs_kind == KIND_VORTEX_LON) .and. (.not. use_old_vortex) ) then
+
+            !  determine window that one would need wind components, thus circulation
+            circ_half_size   = nint(circulation_radius/wrf%dom(id)%dx)
+            circ_half_length = circulation_radius / wrf%dom(id)%dx
+
+            if ( wrf%dom(id)%periodic_x ) then
+               circ_xmin = i-center_search_half_size-circ_half_size
+               circ_xmax = i+center_search_half_size+circ_half_size
+            else
+               circ_xmin = max(1,i-center_search_half_size-circ_half_size)
+               circ_xmax = min(wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu),i+center_search_half_size+circ_half_size)
+            endif
+
+            if ( wrf%dom(id)%periodic_y ) then
+               circ_ymin = j-center_search_half_size-circ_half_size
+               circ_ymax = j+center_search_half_size+circ_half_size
+            else
+               circ_ymin = max(1,j-center_search_half_size-circ_half_size)
+               circ_ymax = min(wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu),j+center_search_half_size+circ_half_size)
+            endif
+
+            cxlen = circ_xmax-circ_xmin+1
+            cylen = circ_ymax-circ_ymin+1
+            allocate(uwnd(cxlen+2,cylen+2, ens_size))
+            allocate(vwnd(cxlen+2,cylen+2, ens_size))
+            allocate(z1d(0:wrf%dom(id)%bt, ens_size))
+
+            do i1 = circ_xmin-1, circ_xmax+1
+
+               ii1 = i1
+               if ( wrf%dom(id)%periodic_x ) then
+                  if ( i1 > wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu) ) then
+                     ii1 = i1 - wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu)
+                  elseif ( i1 < 1 ) then
+                     ii1 = i1 + wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu)
+                  endif
+               else
+                  if ( i1 > wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu) ) then
+                     ii1 = wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu)
+                  elseif ( i1 < 1 ) then
+                     ii1 = 1
+                  endif
+               endif
+
+               do i2 = circ_ymin-1, circ_ymax+1
+
+                  ii2 = i2
+                  if ( wrf%dom(id)%periodic_y ) then
+                     if ( i2 > wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu) ) then
+                        ii2 = i2 - wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu)
+                     elseif ( i2 < 1 ) then
+                        ii2 = i2 + wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu)
+                     endif
+                  else
+                     if ( i2 > wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu) ) then
+                        ii2 = i2
+                     elseif ( i2 < 1 ) then
+                        ii2 = 1
+                     endif
+                  endif
+
+                  !  calculate the wind components at the desired pressure level
+                  do k2 = 1, wrf%dom(id)%var_size(3,wrf%dom(id)%type_t)
+                     !z1d(k2) = model_pressure_t(i1,i2,k2,id,x)
+                     z1d(k2, :) = model_pressure_t_distrib(i1,i2,k2,id, state_ens_handle, ens_size)
+                  enddo
+                  z1d(0, :) = z1d(1, :)
+                  !call pres_to_zk(circulation_pres_level, z1d, wrf%dom(id)%bt, zloc, is_lev0)
+                  call pres_to_zk_distrib(circulation_pres_level, z1d, wrf%dom(id)%bt, ens_size, zloc, is_lev0)
+
+                  do e = 1, ens_size
+
+                     k2 = floor(zloc(e))  ;  dxm = mod(zloc(e),1.0_r8)  ;  dx = 1.0_r8 - dxm
+
+                     if ( zloc(e) >= 1.0_r8 ) then  !  vertically interpolate
+
+!                     ugrid = (dx  * (x(wrf%dom(id)%dart_ind(ii1,  ii2,  k2,  wrf%dom(id)%type_u))  + &
+!                                     x(wrf%dom(id)%dart_ind(ii1+1,ii2,  k2,  wrf%dom(id)%type_u))) + &
+!                              dxm * (x(wrf%dom(id)%dart_ind(ii1,  ii2,  k2+1,wrf%dom(id)%type_u))  + &
+!                                     x(wrf%dom(id)%dart_ind(ii1+1,ii2,  k2+1,wrf%dom(id)%type_u)))) * 0.5_r8
+
+                        ugrid_1 = new_dart_ind(ii1,  ii2,  k2,  wrf%dom(id)%type_u, id)
+                        ugrid_2 = new_dart_ind(ii1+1,ii2,  k2,  wrf%dom(id)%type_u, id)
+                        ugrid_3 = new_dart_ind(ii1,  ii2,  k2,  wrf%dom(id)%type_u, id)
+                        ugrid_4 = new_dart_ind(ii1,  ii2,  k2+1,wrf%dom(id)%type_u, id)
+
+                        call get_state(x_ugrid_1, ugrid_1, state_ens_handle)
+                        call get_state(x_ugrid_2, ugrid_2, state_ens_handle)
+                        call get_state(x_ugrid_3, ugrid_3, state_ens_handle)
+                        call get_state(x_ugrid_4, ugrid_4, state_ens_handle)
+
+                        ugrid = (dx  * (x_ugrid_1  + x_ugrid_2) + dxm * (x_ugrid_3 + x_ugrid_4)) * 0.5_r8
+
+                        vgrid_1 = new_dart_ind(ii1,  ii2,  k2,  wrf%dom(id)%type_v, id)
+                        vgrid_2 = new_dart_ind(ii1,  ii2+1,k2,  wrf%dom(id)%type_v, id)
+                        vgrid_3 = new_dart_ind(ii1,  ii2,  k2+1,wrf%dom(id)%type_v, id)
+                        vgrid_4 = new_dart_ind(ii1,  ii2+1,k2+1,wrf%dom(id)%type_v, id)
+
+                        call get_state(x_vgrid_1, vgrid_1, state_ens_handle)
+                        call get_state(x_vgrid_2, vgrid_2, state_ens_handle)
+                        call get_state(x_vgrid_3, vgrid_3, state_ens_handle)
+                        call get_state(x_vgrid_4, vgrid_4, state_ens_handle)
+
+!                     vgrid = (dx  * (x(wrf%dom(id)%dart_ind(ii1,  ii2,  k2,  wrf%dom(id)%type_v))  + &
+!                                     x(wrf%dom(id)%dart_ind(ii1,  ii2+1,k2,  wrf%dom(id)%type_v))) + &
+!                              dxm * (x(wrf%dom(id)%dart_ind(ii1,  ii2,  k2+1,wrf%dom(id)%type_v))  + &
+!                                     x(wrf%dom(id)%dart_ind(ii1,  ii2+1,k2+1,wrf%dom(id)%type_v)))) * 0.5_r8
+
+                        vgrid = (dx  * (vgrid_1 + vgrid_2) + dxm * (vgrid_3 + vgrid_4)) * 0.5_r8
+
+                     else  !  pressure level below ground.  Take model level 1 winds
+
+!                     ugrid = (x(wrf%dom(id)%dart_ind(ii1,  ii2,  1,wrf%dom(id)%type_u)) + &
+!                              x(wrf%dom(id)%dart_ind(ii1+1,ii2,  1,wrf%dom(id)%type_u))) * 0.5_r8
+
+                        ugrid_1 = new_dart_ind(ii1,  ii2,  1,wrf%dom(id)%type_u, id)
+                        ugrid_2 = new_dart_ind(ii1+1,ii2,  1,wrf%dom(id)%type_u, id)
+
+                        call get_state(x_ugrid_1, ugrid_1, state_ens_handle)
+                        call get_state(x_ugrid_2, ugrid_2, state_ens_handle)
+ 
+                        ugrid = (x_ugrid_1 + x_ugrid_2) * 0.5_r8
+
+!                     vgrid = (x(wrf%dom(id)%dart_ind(ii1,  ii2,  1,wrf%dom(id)%type_v)) + &
+!                              x(wrf%dom(id)%dart_ind(ii1,  ii2+1,1,wrf%dom(id)%type_v))) * 0.5_r8
+
+                        vgrid_1 = new_dart_ind(ii1,  ii2,  1,wrf%dom(id)%type_v, id)
+                        vgrid_2 = new_dart_ind(ii1,  ii2+1,1,wrf%dom(id)%type_v, id)
+
+                        call get_state(x_vgrid_1, vgrid_1, state_ens_handle)
+                        call get_state(x_vgrid_2, vgrid_2, state_ens_handle)
+
+                        vgrid = (x_vgrid_1 + x_vgrid_2) * 0.5_r8
+
+                     endif
+                     uwnd(i1-circ_xmin+2,i2-circ_ymin+2, :) = ugrid
+                     vwnd(i1-circ_xmin+2,i2-circ_ymin+2, :) = vgrid
+
+                  enddo
+
+               enddo
+            enddo
+
+            allocate(vort(cxlen,cylen, ens_size), circ(ens_size))
+            do i1 = circ_xmin, circ_xmax
+
+               dgi1 = 2.0_r8
+               if ( .not. wrf%dom(id)%periodic_x ) then
+                  if     ( i1 == 1 ) then
+                    dgi1 = 1.0_r8
+                  elseif ( i1 == wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu) ) then
+                    dgi1 = 1.0_r8
+                  endif
+               endif
+
+               do i2 = circ_ymin, circ_ymax
+
+                  dgi2 = 2.0_r8
+                  if ( .not. wrf%dom(id)%periodic_x ) then
+                     if     ( i2 == 1 ) then
+                       dgi2 = 1.0_r8
+                     elseif ( i2 == wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu) ) then
+                       dgi2 = 1.0_r8
+                     endif
+                  endif
+
+                  ii1  = i1-circ_xmin+1
+                  ii2  = i2-circ_ymin+1
+
+                  !  compute the vorticity for each point needed to compute circulation
+                  vort(ii1,ii2, :) = (vwnd(ii1+2,ii2+1, :) - vwnd(ii1+1,ii2+1, :)) / (wrf%dom(id)%dx * dgi2) + &
+                                  (vwnd(ii1+1,ii2+1, :) - vwnd(ii1  ,ii2+1, :)) / (wrf%dom(id)%dx * dgi2) - &
+                                  (uwnd(ii1+1,ii2+2, :) - uwnd(ii1+1,ii2+1, :)) / (wrf%dom(id)%dx * dgi1) - &
+                                  (uwnd(ii1+1,ii2+1, :) - uwnd(ii1+1,ii2, :  )) / (wrf%dom(id)%dx * dgi1)
+
+               enddo
+            enddo
+
+            !  loop over all grid points in search area, compute average vorticity
+            !  (circulation) within a certain distance of that grid point
+            do i1 = center_track_xmin, center_track_xmax
+            do i2 = center_track_ymin, center_track_ymax
+
+               asum = 0.0_r8  ;  circ = 0.0_r8
+               do ii1 = max(circ_xmin,i1-circ_half_size), min(circ_xmax,i1+circ_half_size)
+               do ii2 = max(circ_ymin,i2-circ_half_size), min(circ_ymax,i2+circ_half_size)
+
+                  distgrid = sqrt(real(ii1-i1,r8) ** 2 + real(ii2-i2,r8) ** 2) * wrf%dom(id)%dx
+                  if ( distgrid <= circulation_radius ) then
+
+                     asum = asum + 1.0_r8
+                     circ = circ + vort(ii1-circ_xmin+1,ii2-circ_ymin+1, :)
+
+                  endif
+
+               enddo
+               enddo
+
+               vfld(i1-center_track_xmin+1,i2-center_track_ymin+1, :) = circ / asum
+
+            enddo
+            enddo
+
+            !  find maximum in circulation through spline interpolation
+            do e = 1, ens_size
+               call splie2(x1d,y1d,vfld(:,:,e),xlen,ylen,pd)
+            enddo
+
+            vcrit = -1.0e20_r8
+            cxloc = -1
+            cyloc = -1
+            do ii1 = 1, xxlen
+            do ii2 = 1, yylen
+               do e = 1, ens_size
+                  call splin2(x1d,y1d,vfld(:,:,e),pd,xlen,ylen,xx1d(ii1),yy1d(ii2),pp(ii1,ii2))
+               enddo
+               if (vcrit < pp(ii1,ii2)) then
+                  vcrit = pp(ii1,ii2)
+                  cxloc = xx1d(ii1)
+                  cyloc = yy1d(ii2)
+               endif
+            enddo
+            enddo
+
+            !  forward operator fails if maximum is at edge of search area
+            if ( cxloc-xx1d(1) < 1.0_r8 .or. xx1d(xxlen)-cxloc < 1.0_r8 .or. &
+                 cyloc-yy1d(1) < 1.0_r8 .or. yy1d(yylen)-cyloc < 1.0_r8 ) then
+
+               do e = 1, ens_size
+                  if ( k(e) == uniquek(uk) ) then ! interpolate only if is the correct k
+                     fld(:, e) = missing_r8
+                  endif
+               enddo
+
+            else
+
+            call ij_to_latlon(wrf%dom(id)%proj, cxloc, cyloc, clat, clon)
+
+            if ( obs_kind == KIND_VORTEX_LAT ) then
+               do e = 1, ens_size
+                  if ( k(e) == uniquek(uk) ) then ! interpolate only if is the correct k
+                     fld(1, e) = clat
+                  endif
+               enddo
+
+            else
+               do e = 1, ens_size
+                  if ( k(e) == uniquek(uk) ) then ! interpolate only if is the correct k
+                     fld(1, e) = clon
+                  endif
+               enddo
+
+            endif
+
+            endif
+
+            deallocate(uwnd, vwnd, vort, z1d)
+            deallocate(vfld, pd, pp, x1d, y1d, xx1d, yy1d)
+
+         else if ( obs_kind == KIND_VORTEX_PMIN .or. (use_old_vortex .and. & 
+                  (obs_kind == KIND_VORTEX_LAT .or. obs_kind == KIND_VORTEX_LON)) ) then
+
+            allocate(p1d(wrf%dom(id)%bt, ens_size),  t1d(wrf%dom(id)%bt, ens_size))
+            allocate(qv1d(wrf%dom(id)%bt, ens_size), z1d(wrf%dom(id)%bt, ens_size))
+            allocate(z1d_1(wrf%dom(id)%bt, ens_size), z1d_2(wrf%dom(id)%bt, ens_size))
+
+            !  compute SLP for each grid point within the search area
+            print*, center_track_xmin, center_track_xmax
+            print*, center_track_ymin, center_track_ymax
+            do i1 = center_track_xmin, center_track_xmax
+
+               ii1 = i1
+               if ( wrf%dom(id)%periodic_x ) then
+                  if ( i1 > wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu) ) then
+                     ii1 = i1 - wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu)
+                  elseif ( i1 < 1 ) then
+                     ii1 = i1 + wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu)
+                  endif
+               endif
+
+               do i2 = center_track_ymin, center_track_ymax
+
+                  ii2 = i2
+                  if ( wrf%dom(id)%periodic_y ) then
+                     if ( i2 > wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu) ) then
+                        ii2 = i2 - wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu)
+                     elseif ( i2 < 1 ) then
+                        ii2 = i2 + wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu)
+                     endif
+                  endif
+
+                  do k2 = 1,wrf%dom(id)%var_size(3,wrf%dom(id)%type_t)
+
+!                     p1d(k2) = model_pressure_t(ii1,ii2,k2,id,x)
+                      p1d(k2, :) = model_pressure_t_distrib(ii1,ii2,k2, id, state_ens_handle, ens_size)
+                      !print*, 'p1d(k2, 1)', p1d(k2, 1)
+
+!                     t1d(k2) = x(wrf%dom(id)%dart_ind(ii1,ii2,k2,wrf%dom(id)%type_t)) + ts0
+                     t1d_ind = new_dart_ind(ii1,ii2,k2,wrf%dom(id)%type_t, id)
+                     call get_state(t1d(k2, :), t1d_ind, state_ens_handle)
+                     t1d(k2, :) = t1d(k2, :) + ts0
+                     !print*, 't1d(k2, 1)', t1d(k2, 1)
+
+!                     qv1d(k2)= x(wrf%dom(id)%dart_ind(ii1,ii2,k2,wrf%dom(id)%type_qv))
+                     qv1d_ind = new_dart_ind(ii1,ii2,k2,wrf%dom(id)%type_qv, id)
+                     call get_state(qv1d(k2, :), qv1d_ind, state_ens_handle)
+                     !print*, 'qv1d(k2, 1)', qv1d(k2, 1)
+
+!                     z1d(k2) = (x(wrf%dom(id)%dart_ind(ii1,ii2,k2,  wrf%dom(id)%type_gz))+ &
+!                                x(wrf%dom(id)%dart_ind(ii1,ii2,k2+1,wrf%dom(id)%type_gz))+ &
+!                                wrf%dom(id)%phb(ii1,ii2,k2)+wrf%dom(id)%phb(ii1,ii2,k2+1))*0.5_r8/gravity
+                     z1d_ind1 = new_dart_ind(ii1,ii2,k2,  wrf%dom(id)%type_gz, id)
+                     z1d_ind2 = new_dart_ind(ii1,ii2,k2+1,wrf%dom(id)%type_gz, id)
+
+                     call get_state(z1d_1(k2, :), z1d_ind1, state_ens_handle)
+                     call get_state(z1d_2(k2, :), z1d_ind2, state_ens_handle)
+
+                     z1d(k2, :) = ( z1d_1(k2, :)+ z1d_2(k2, :) + &
+                                    wrf%dom(id)%phb(ii1,ii2,k2)+wrf%dom(id)%phb(ii1,ii2,k2+1))*0.5_r8/gravity
+
+                     !print*, 'z1d(k2, 1)', z1d(k2, 1)
+
+
+                  enddo
+                  do e = 1, ens_size
+                     call compute_seaprs(wrf%dom(id)%bt, z1d(:,e), t1d(:,e), p1d(:,e), qv1d(:,e), &
+                                      vfld(i1-center_track_xmin+1,i2-center_track_ymin+1, e), debug)
+                  enddo
+               enddo
+
+            enddo
+
+            !print*, 'vfld(1, 1)', vfld(1, 1, 1)
+            do e = 1, ens_size
+
+               if ( k(e) == uniquek(uk) ) then
+
+                  !  find minimum in MSLP through spline interpolation
+                  call splie2(x1d,y1d,vfld(:,:,e),xlen,ylen,pd)
+
+                     vcrit = 1.0e20_r8
+                     do ii1=1,xxlen
+                     do ii2=1,yylen
+                        call splin2(x1d,y1d,vfld(:,:,e),pd,xlen,ylen,xx1d(ii1),yy1d(ii2),pp(ii1,ii2))
+                        if ( vcrit > pp(ii1,ii2)) then
+                           vcrit = pp(ii1,ii2)
+                           cxloc = xx1d(ii1)
+                           cyloc = yy1d(ii2)
+                        endif
+                     enddo
+                     enddo
+
+                     !  forward operator fails if maximum is at edge of search area
+                     if ( cxloc-xx1d(1) < 1.0_r8 .or. xx1d(xxlen)-cxloc < 1.0_r8 .or. &
+                        cyloc-yy1d(1) < 1.0_r8 .or. yy1d(yylen)-cyloc < 1.0_r8 ) then
+
+                        fld(:, e) = missing_r8
+
+                     else
+
+                        call ij_to_latlon(wrf%dom(id)%proj, cxloc, cyloc, clat, clon)
+
+                        if ( obs_kind == KIND_VORTEX_PMIN ) then
+                           fld(1, e) = vcrit
+                        else if ( obs_kind == KIND_VORTEX_LAT ) then
+                           fld(1, e) = clat
+                        else
+                           fld(1, e) = clon
+                        endif
+
+                     endif
+
+               endif
+
+            enddo
+
+
+            print*, 'fld', fld
+            deallocate(p1d, t1d, qv1d, z1d)
+            deallocate(vfld, pd, pp, x1d, y1d, xx1d, yy1d)
+
+         else if ( obs_kind == KIND_VORTEX_WMAX ) then   !  Maximum wind speed
+
+            maxwspd = 0.0_r8
+            do i1 = center_track_xmin, center_track_xmax
+
+               ii1 = i1
+               if ( wrf%dom(id)%periodic_x ) then
+                  if ( i1 > wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu) ) then
+                     ii1 = i1 - wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu)
+                  elseif ( i1 < 1 ) then
+                     ii1 = i1 + wrf%dom(id)%var_size(1,wrf%dom(id)%type_mu)
+                  endif
+               endif
+
+               do i2 = center_track_ymin, center_track_ymax
+
+                  ii2 = i2
+                  if ( wrf%dom(id)%periodic_y ) then
+                     if ( i2 > wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu) ) then
+                        ii2 = i2 - wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu)
+                     elseif ( i2 < 1 ) then
+                        ii2 = i2 + wrf%dom(id)%var_size(2,wrf%dom(id)%type_mu)
+                     endif
+                  endif
+
+                  if ( ( wrf%dom(id)%type_u10 >= 0 ) .and. ( wrf%dom(id)%type_v10 >= 0 ) ) then
+                     !ugrid = x(wrf%dom(id)%dart_ind(ii1,ii2,1,wrf%dom(id)%type_u10))
+                     !vgrid = x(wrf%dom(id)%dart_ind(ii1,ii2,1,wrf%dom(id)%type_v10))
+
+                     ugrid_1 = new_dart_ind(ii1,ii2,1,wrf%dom(id)%type_u10, id)
+                     call get_state(x_ugrid_2, ugrid_2, state_ens_handle)
+ 
+                     vgrid_2 = new_dart_ind(ii1,ii2,1,wrf%dom(id)%type_v10, id)
+                     call get_state(x_vgrid_2, vgrid_2, state_ens_handle)
+
+                  else
+
+! Same code as above
+!                     ugrid = 0.5_r8*(x(wrf%dom(id)%dart_ind(ii1,  ii2,1,wrf%dom(id)%type_u)) + &
+!                                     x(wrf%dom(id)%dart_ind(ii1+1,ii2,1,wrf%dom(id)%type_u)))
+!                     vgrid = 0.5_r8*(x(wrf%dom(id)%dart_ind(ii1,ii2,  1,wrf%dom(id)%type_v)) + &
+!                                     x(wrf%dom(id)%dart_ind(ii1,ii2+1,1,wrf%dom(id)%type_v)))
+                     ugrid_1 = new_dart_ind(ii1,  ii2,  1,wrf%dom(id)%type_u, id)
+                     ugrid_2 = new_dart_ind(ii1+1,ii2,  1,wrf%dom(id)%type_u, id)
+
+                     call get_state(x_ugrid_1, ugrid_1, state_ens_handle)
+                     call get_state(x_ugrid_2, ugrid_2, state_ens_handle)
+ 
+                     ugrid = (x_ugrid_1 + x_ugrid_2) * 0.5_r8
+
+                     vgrid_1 = new_dart_ind(ii1,  ii2,  1,wrf%dom(id)%type_v, id)
+                     vgrid_2 = new_dart_ind(ii1,  ii2+1,1,wrf%dom(id)%type_v, id)
+
+                     call get_state(x_vgrid_1, vgrid_1, state_ens_handle)
+                     call get_state(x_vgrid_2, vgrid_2, state_ens_handle)
+
+                     vgrid = (x_vgrid_1 + x_vgrid_2) * 0.5_r8
+
+                  endif
+
+                  magwnd  = sqrt(ugrid * ugrid + vgrid * vgrid)
+
+                  do e = 1, ens_size
+                     if ( k(e) == uniquek(uk) ) then ! interpolate only if is the correct k
+                        if ( magwnd(e) > maxwspd(e) ) then
+                           imax    = i1
+                           jmax    = i2
+                           maxwspd(e) = magwnd(e)
+                        endif
+                     endif
+                  enddo
+
+
+
+               enddo
+            enddo
+
+            !  forward operator fails if maximum is at edge of search area
+            if ( imax == center_track_xmin .or. jmax == center_track_ymin .or. &
+                 imax == center_track_xmax .or. jmax == center_track_ymax ) then
+               do e = 1, ens_size
+                  if ( k(e) == uniquek(uk) ) then ! interpolate only if is the correct k
+                     fld(:, e) = missing_r8
+                  endif
+               enddo
+            else
+               do e = 1, ens_size
+                  if ( k(e) == uniquek(uk) ) then ! interpolate only if is the correct k
+                     fld(1, e) = maxwspd(e)
+                  endif
+               enddo
+            endif
+
+         endif  !  if test on obs_kind
+
+      endif   ! bounds check failed.
+
+      enddo 
 
 !*****************************************************************************
 ! END OF VERBATIM BIT - what does this mean?
@@ -4913,11 +5468,10 @@ function model_pressure_t_distrib_fwd(i,j,k,id,state_ens_handle, ens_size)
 
 ! Calculate total pressure on mass point (half (mass) levels, T-point).
 
-integer, intent(in) :: ens_size
-integer,  intent(in)  :: i,j,k,id
+integer,             intent(in) :: ens_size
+integer,             intent(in) :: i,j,k,id
+type(ensemble_type), intent(in) :: state_ens_handle
 real(r8) :: model_pressure_t_distrib_fwd(ens_size)
-!HK
-type(ensemble_type), intent(in)  :: state_ens_handle
 
 real (kind=r8), PARAMETER    :: rd_over_rv = gas_constant / gas_constant_v
 real (kind=r8), PARAMETER    :: cpovcv = 1.4_r8        ! cp / (cp - gas_constant)
@@ -8581,10 +9135,17 @@ integer,            intent(in) :: copy
 character(len=1024)            :: construct_file_name_in
 
 !write(construct_file_name, '(A, i2.2, A, i2.2, A)') TRIM(stub), domain, '.', copy, '.nc'
+
+!if (copy < 10) then
+!   write(construct_file_name_in, '(A, i1.1, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
+!else
+!   write(construct_file_name_in, '(A, i2.2, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
+!endif
+
 if (copy < 10) then
-   write(construct_file_name_in, '(A, i1.1, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
+   write(construct_file_name_in, '(A, A, i1.1, A)') TRIM(stub), '_', copy, '.nc'
 else
-   write(construct_file_name_in, '(A, i2.2, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
+   write(construct_file_name_in, '(A, A, i2.2, A)') TRIM(stub), '_', copy, '.nc'
 endif
 
 end function construct_file_name_in
