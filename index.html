@@ -194,18 +194,29 @@ committed since the original release of the Lanai code:
 </TR>
 -->
 
+<TR><TD> 13 Jan 2015 </TD>
+    <TD> 7368 </TD>
+    <TD> Bug fix for assimilating synthetic (OSSE) radar observations.  
+These obs are intentionally created without a Nyquist velocity to avoid 
+doing Doppler unfolding. The existing code failed when reading a missing 
+Nyquist velocity; the fix disables this inconsistent error check.
+    </TD>
+</TR>
+
 <TR><TD> 7 Jan 2015 </TD>
     <TD> 7345 </TD>
-    <TD> Bug fix for the Compare_netCDF_files.m Matlab script.  Now always prints out
-the data min/max for single files, and fixes a case where it might not have
-printed out differences when they existed in the two-file comparison case.
+    <TD> Bug fix for the Compare_netCDF_files.m Matlab script.  Now always 
+prints out the data min/max for single files, and fixes a case where it might 
+not have printed out differences when they existed in the two-file 
+comparison case.
     </TD>
 </TR>
 
 <TR><TD> 5 Jan 2015 </TD>
     <TD> 7339 </TD>
     <TD> Bug fix if using different localization distances by specific types 
-in the CAM model_mod.  Also a performance improvement if using vertical localization.
+in the CAM model_mod.  Also a performance improvement if using vertical 
+localization.
     </TD>
 </TR>
 
