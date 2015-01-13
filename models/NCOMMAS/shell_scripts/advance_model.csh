@@ -9,9 +9,9 @@
 # This script has 4 logical 'blocks':
 # 1) creates a clean, temporary directory in which to run a model instance 
 #    and copies the necessary files into the temporary directory
-# 2) converts the DART output to input expected by the ocean model
-# 3) runs the ocean model
-# 4) converts the ocean model output to input expected by DART
+# 2) converts the DART output to input expected by NCOMMAS
+# 3) runs NCOMMAS
+# 4) converts NCOMMAS output to input expected by DART
 #
 # The error code from the script reflects which block it failed.
 #
@@ -87,7 +87,7 @@ while($state_copy <= $num_states)
    set output_file     = `head -$output_file_line     ../$control_file | tail -1`
 
    #----------------------------------------------------------------------
-   # Block 2: Convert the DART output file to form needed by ocean model.
+   # Block 2: Convert the DART output file to form needed by NCOMMAS.
    # We are going to take a NCOMMAS netCDF restart file and simply overwrite the
    # appropriate variables. The DART output file also has the 'advance_to'
    # time - which must be communicated to the model ...
