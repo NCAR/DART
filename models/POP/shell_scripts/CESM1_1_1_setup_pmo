@@ -97,7 +97,7 @@
 # cesmtag       The version of the CESM source code to use when building the code.
 # ==============================================================================
 
-setenv case                 pop_1_1_1_pmo
+setenv case                 pop1_1_1_pmo
 setenv compset              GIAF
 setenv resolution           T62_gx1v6
 setenv cesmtag              cesm1_1_1
@@ -356,6 +356,16 @@ cd ${caseroot}
 
 source ./Tools/ccsm_getenv || exit -2
 
+# Make sure the land and atmosphere are 'data' components.
+
+if ( (${COMP_ATM} != datm) || (${COMP_LND} != slnd) ) then
+   echo " "
+   echo "ERROR: This setup script is not appropriate for active land or atmosphere compsets."
+   echo "ERROR: Please use the models/CESM/shell_scripts examples for these cases."
+   echo " "
+   exit -3
+endif
+
 # MAX_TASKS_PER_NODE comes from $case/Tools/mkbatch.$machine
 @ ptile = $MAX_TASKS_PER_NODE / 2
 @ nthreads = 1
@@ -552,7 +562,7 @@ else
    echo "Download the appropriate files for CESM 1_1_1 from:"
    echo "http://www.image.ucar.edu/pub/DART/CESM"
    echo "untar these into your HOME directory - they will create a"
-   echo "~/cesm_1_1_1  directory with the appropriate SourceMods structure."
+   echo "~/cesm1_1_1  directory with the appropriate SourceMods structure."
    exit -4
 endif
 

@@ -206,23 +206,23 @@ for MODEL in cam clm pop ; do
 
 done
 
-${COPY} ${DARTROOT}/models/cam/work/cam_to_dart        ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/cam/work/dart_to_cam        ${EXEROOT}/.
+${COPY} ${DARTROOT}/models/cam/work/cam_to_dart        ${EXEROOT}
+${COPY} ${DARTROOT}/models/cam/work/dart_to_cam        ${EXEROOT}
 ${COPY} ${DARTROOT}/models/cam/work/filter             ${EXEROOT}/filter_cam
 ${COPY} ${DARTROOT}/models/cam/work/perfect_model_obs  ${EXEROOT}/perfect_model_obs_cam
 
-${COPY} ${DARTROOT}/models/clm/work/clm_to_dart        ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/clm/work/dart_to_clm        ${EXEROOT}/.
+${COPY} ${DARTROOT}/models/clm/work/clm_to_dart        ${EXEROOT}
+${COPY} ${DARTROOT}/models/clm/work/dart_to_clm        ${EXEROOT}
 ${COPY} ${DARTROOT}/models/clm/work/filter             ${EXEROOT}/filter_clm
 ${COPY} ${DARTROOT}/models/clm/work/perfect_model_obs  ${EXEROOT}/perfect_model_obs_clm
 
-${COPY} ${DARTROOT}/models/POP/work/pop_to_dart        ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/POP/work/dart_to_pop        ${EXEROOT}/.
+${COPY} ${DARTROOT}/models/POP/work/pop_to_dart        ${EXEROOT}
+${COPY} ${DARTROOT}/models/POP/work/dart_to_pop        ${EXEROOT}
 ${COPY} ${DARTROOT}/models/POP/work/filter             ${EXEROOT}/filter_pop
 ${COPY} ${DARTROOT}/models/POP/work/perfect_model_obs  ${EXEROOT}/perfect_model_obs_pop
 
-${COPY} ${DARTROOT}/models/CESM/work/cesm_to_dart      ${EXEROOT}/.
-${COPY} ${DARTROOT}/models/CESM/work/dart_to_cesm      ${EXEROOT}/.
+${COPY} ${DARTROOT}/models/CESM/work/cesm_to_dart      ${EXEROOT}
+${COPY} ${DARTROOT}/models/CESM/work/dart_to_cesm      ${EXEROOT}
 ${COPY} ${DARTROOT}/models/CESM/work/filter            ${EXEROOT}/filter_cesm
 ${COPY} ${DARTROOT}/models/CESM/work/perfect_model_obs ${EXEROOT}/perfect_model_obs_cesm
 
@@ -297,7 +297,7 @@ chmod 0755 update_dart_namelists
 #
 # The sampling error correction is a lookup table.  Each ensemble size
 # has its own (static) file.  It is only needed if any
-# &assim_tools_nml:sampling_error_correction = .true.,
+# input.nml:&assim_tools_nml:sampling_error_correction = .true.,
 #
 # If any of the SECs in any namelist are true, force the final_full.nn
 # file to exist and be copied.  If they are all false, still try to copy
@@ -352,6 +352,7 @@ if ( $num_instances > 1 ) then
       endif
    endif
 else
+   # sampling error correction not used for perfect_model_obs
 endif
 
 # ==============================================================================
@@ -400,7 +401,7 @@ if ($CplLogFile == "") then
    echo 'ERROR: DART will not be attempted.'
    setenv LSB_PJL_TASK_GEOMETRY "{(0)}"
    setenv EXITCODE -1
-   mpirun.lsf ${CASEROOT}/shell_exit.sh
+   ${MPI_RUN_COMMAND} ${CASEROOT}/shell_exit.sh
    exit -1
 endif
 
@@ -420,7 +421,7 @@ if ( $status == 0 ) then
       echo "`date` -- DART ERROR - ABANDON HOPE"
       setenv LSB_PJL_TASK_GEOMETRY "{(0)}"
       setenv EXITCODE -3
-      mpirun.lsf ${CASEROOT}/shell_exit.sh
+      ${MPI_RUN_COMMAND} ${CASEROOT}/shell_exit.sh
       exit -3
    endif
 else
@@ -428,7 +429,7 @@ else
    echo 'ERROR: DART will not be attempted.'
    setenv LSB_PJL_TASK_GEOMETRY "{(0)}"
    setenv EXITCODE -2
-   mpirun.lsf ${CASEROOT}/shell_exit.sh
+   ${MPI_RUN_COMMAND} ${CASEROOT}/shell_exit.sh
    exit -2
 endif
 

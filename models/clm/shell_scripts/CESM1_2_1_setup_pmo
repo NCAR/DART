@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-# ==============================================================================
+#*******************************************************************************
 #
 # ---------------------
 # Purpose
@@ -92,9 +92,7 @@
 # ./${case}.clean_build
 # ./${case}.build
 #
-# ==============================================================================
-
-
+#*******************************************************************************
 
 # ==============================================================================
 # case options:
@@ -117,7 +115,7 @@
 # 2000_DATM%QIA_CLM40%CN_SICE_SOCN_RTM_SGLC_SWAV (I_2000_CN)       (ICN)
 # 2000_DATM%QIA_CLM45%CN_SICE_SOCN_RTM_SGLC_SWAV (I_2000_CLM45_CN) (ICLM45CN)
 
-setenv case                 clm4_1_2_1_pmo
+setenv case                 clm1_2_1_pmo
 setenv compset              I_2000_CN
 setenv resolution           f09_f09
 setenv cesmtag              cesm1_2_1
@@ -393,6 +391,16 @@ cd ${caseroot}
 
 source ./Tools/ccsm_getenv || exit -2
 
+# Make sure the case is configured with a data ocean and a data atmosphere.
+
+if ( (${COMP_OCN} != docn) || (${COMP_ATM} != datm) ) then
+   echo " "
+   echo "ERROR: This setup script is not appropriate for active ocean or atmospheric compsets."
+   echo "ERROR: Please use the models/CESM/shell_scripts examples for that case."
+   echo " "
+   exit -3
+endif
+
 # MAX_TASKS_PER_NODE comes from $case/Tools/mkbatch.$machine
 @ ptile = $MAX_TASKS_PER_NODE / 2
 @ nthreads = 1
@@ -603,7 +611,7 @@ else
    echo "Download the appropriate files for CESM 1_2_1 from:"
    echo "http://www.image.ucar.edu/pub/DART/CESM"
    echo "untar these into your HOME directory - they will create a"
-   echo "~/cesm_1_2_1  directory with the appropriate SourceMods structure."
+   echo "~/cesm1_2_1  directory with the appropriate SourceMods structure."
    exit -4
 endif
 
@@ -674,7 +682,6 @@ switch ( $BATCH )
    breaksw
 
    default:
-
    breaksw
 endsw
 
@@ -717,7 +724,7 @@ while ($inst <= 1)
    # ===========================================================================
    set fname = "user_nl_clm${inst_string}"
    # ===========================================================================
-   # LAND namelist
+   # LAND Namelist
    # With a RUN_TYPE=hybrid the finidat is automatically specified
    # using the REFCASE/REFDATE/REFTOD information. i.e.
    # finidat = ${stagedir}/${refcase}.clm2${inst_string}.r.${reftimestamp}.nc
@@ -783,10 +790,10 @@ while ($inst <= 1)
    # For a HOP TEST ... hist_empty_htapes = .false.
    # For a HOP TEST ... use a default hist_fincl1
 
-   echo "dtime             = $clm_dtime,"             >> ${fname}
-   echo "hist_empty_htapes = .false.,"                >> ${fname}
-   echo "hist_fincl1 = 'NEP',"                        >> ${fname}
-   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R',"  >> ${fname}
+   echo "dtime             = $clm_dtime"              >> ${fname}
+   echo "hist_empty_htapes = .false."                 >> ${fname}
+   echo "hist_fincl1 = 'NEP'"                         >> ${fname}
+   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R'"   >> ${fname}
    echo "hist_fincl3 = 'TV','TLAI','PBOT','TBOT','TSA','RH2M_R','SNOWDP'" >> ${fname}
    echo "hist_nhtfrq = -$stop_n,1,-$stop_n"           >> ${fname}
    echo "hist_mfilt  = 1,$h1nsteps,1"                 >> ${fname}
@@ -889,7 +896,6 @@ cat << EndOfText >! stage_cesm_files
 
 set restart_time = $init_time
 
-
 # get the settings for this case from the CESM environment
 cd ${caseroot}
 source ./Tools/ccsm_getenv || exit -2
@@ -905,7 +911,6 @@ else
   echo "Date to reset files to is: ${init_time}"
 endif
 echo ''
-
 
 if ( \${CONTINUE_RUN} == TRUE ) then
 

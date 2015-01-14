@@ -98,7 +98,7 @@
 # num_instances The number of ensemble members.
 # ==============================================================================
 
-setenv case                 pop_1_2_1_hybrid
+setenv case                 pop1_2_1_hybrid
 setenv compset              GIAF
 setenv resolution           T62_gx1v6
 setenv cesmtag              cesm1_2_1
@@ -341,11 +341,11 @@ cd ${caseroot}
 
 source ./Tools/ccsm_getenv || exit -2
 
-# Check to make sure the land and atmosphere are 'data' components.
+# Make sure the land and atmosphere are 'data' components.
 
-if ( $?CLM_CONFIG_OPTS || $?CAM_DYCORE ) then
+if ( (${COMP_ATM} != datm) || (${COMP_LND} != slnd) ) then
    echo " "
-   echo "ERROR: This setup script is not appropriate for active land or atmosphere models."
+   echo "ERROR: This setup script is not appropriate for active land or atmosphere compsets."
    echo "ERROR: Please use the models/CESM/shell_scripts examples for these cases."
    echo " "
    exit -3
@@ -526,7 +526,7 @@ else
    echo "Download the appropriate files for CESM 1_2_1 from:"
    echo "http://www.image.ucar.edu/pub/DART/CESM"
    echo "untar these into your HOME directory - they will create a"
-   echo "~/cesm_1_2_1  directory with the appropriate SourceMods structure."
+   echo "~/cesm1_2_1  directory with the appropriate SourceMods structure."
    exit -4
 endif
 
@@ -607,6 +607,7 @@ while ($inst <= $num_instances)
    set fname = "user_nl_datm${inst_string}"
    # ===========================================================================
    # DATM Namelist
+
    echo "dtlimit  = 1.5, 1.5"               >> ${fname}
    echo "fillalgo = 'nn', 'nn'"             >> ${fname}
    echo "fillmask = 'nomask','nomask'"      >> ${fname}
