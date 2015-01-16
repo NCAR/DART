@@ -139,6 +139,12 @@ integer, parameter, public :: &
 integer, parameter, public :: &
     KIND_ALTIMETER_TENDENCY          = 48
 
+! kind for precip water; contrast with
+! total precip water (also in this file), 
+! which is the total column integrated value. 
+integer, parameter, public :: &
+    KIND_PRECIPITABLE_WATER          = 49
+
 ! kinds for the MITgcm, POP ocean model
 integer, parameter, public :: &
     KIND_SALINITY                    = 50, &
@@ -502,7 +508,7 @@ obs_kind_names(45) = obs_kind_type(KIND_3D_PARAMETER, 'KIND_3D_PARAMETER')
 obs_kind_names(46) = obs_kind_type(KIND_ATOMIC_OXYGEN_MIXING_RATIO, 'KIND_ATOMIC_OXYGEN_MIXING_RATIO')
 obs_kind_names(47) = obs_kind_type(KIND_MOLEC_OXYGEN_MIXING_RATIO, 'KIND_MOLEC_OXYGEN_MIXING_RATIO')
 obs_kind_names(48) = obs_kind_type(KIND_ALTIMETER_TENDENCY, 'KIND_ALTIMETER_TENDENCY')
-
+obs_kind_names(49) = obs_kind_type(KIND_PRECIPITABLE_WATER, 'KIND_PRECIPITABLE_WATER')
 obs_kind_names(50) = obs_kind_type(KIND_SALINITY, 'KIND_SALINITY')
 obs_kind_names(51) = obs_kind_type(KIND_U_CURRENT_COMPONENT, 'KIND_U_CURRENT_COMPONENT')
 obs_kind_names(52) = obs_kind_type(KIND_V_CURRENT_COMPONENT, 'KIND_V_CURRENT_COMPONENT')

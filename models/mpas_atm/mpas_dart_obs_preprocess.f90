@@ -119,6 +119,9 @@ logical            :: overwrite_ncep_satwnd_qc = .false.    ! true to overwrite 
 !  surface obs. specific parameters
 logical            :: overwrite_ncep_sfc_qc    = .false.  ! true to overwrite NCEP QC (see instructions)
 
+! lowest height for GPS REFRACTIVITY (SYHA)
+real(r8)           :: gpsro_lowest_meter        = 3000.0      ! remove all obs at lower height
+
 !  overwrite or windowing obs time
 logical            :: overwrite_obs_time       = .false.  ! true to overwrite all observation times
 logical            :: windowing_obs_time       = .false.  ! true to remove obs beyond the time window
@@ -128,7 +131,7 @@ namelist /mpas_obs_preproc_nml/ file_name_input, file_name_output, max_num_obs, 
          include_sig_data, superob_aircraft, superob_sat_winds, superob_qc_threshold,   &
          sfc_elevation_check, overwrite_ncep_sfc_qc, overwrite_ncep_satwnd_qc, &
          aircraft_pres_int, sat_wind_pres_int, sfc_elevation_tol,   & 
-         obs_pressure_top, obs_height_top, sonde_extra, metar_extra,   &
+         obs_pressure_top, obs_height_top, gpsro_lowest_meter, sonde_extra, metar_extra, &
          acars_extra, land_sfc_extra, marine_sfc_extra, sat_wind_extra, profiler_extra, &
          trop_cyclone_extra, gpsro_extra, gpspw_extra, tc_sonde_radii, overwrite_obs_time, &
          windowing_obs_time, windowing_int_hour
@@ -218,61 +221,61 @@ seq_gpspw, seq_other)
 !  add supplimental rawinsonde observations from file
 call add_supplimental_obs(sonde_extra, seq_rawin, max_obs_seq, &
 RADIOSONDE_U_WIND_COMPONENT, include_sig_data, &
-obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
+obs_pressure_top, obs_height_top, gpsro_lowest_meter, sfc_elevation_check, sfc_elevation_tol, &
 overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental ACARS observations from file
 call add_supplimental_obs(acars_extra, seq_acars, max_obs_seq, &
 ACARS_U_WIND_COMPONENT, include_sig_data, &
-obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
+obs_pressure_top, obs_height_top, gpsro_lowest_meter, sfc_elevation_check, sfc_elevation_tol, &
 overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental marine observations from file
 call add_supplimental_obs(marine_sfc_extra, seq_sfc, max_obs_seq, &
 MARINE_SFC_U_WIND_COMPONENT, include_sig_data, &
-obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
+obs_pressure_top, obs_height_top, gpsro_lowest_meter, sfc_elevation_check, sfc_elevation_tol, &
 overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental land surface observations from file
 call add_supplimental_obs(land_sfc_extra, seq_sfc, max_obs_seq, &
 LAND_SFC_U_WIND_COMPONENT, include_sig_data, &
-obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
+obs_pressure_top, obs_height_top, gpsro_lowest_meter, sfc_elevation_check, sfc_elevation_tol, &
 overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental metar observations from file
 call add_supplimental_obs(metar_extra, seq_sfc, max_obs_seq, &
 METAR_U_10_METER_WIND, include_sig_data, &
-obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
+obs_pressure_top, obs_height_top, gpsro_lowest_meter, sfc_elevation_check, sfc_elevation_tol, &
 overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental satellite wind observations from file
 call add_supplimental_obs(sat_wind_extra, seq_satwnd, max_obs_seq, &
 SAT_U_WIND_COMPONENT, include_sig_data, &
-obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
+obs_pressure_top, obs_height_top, gpsro_lowest_meter, sfc_elevation_check, sfc_elevation_tol, &
 overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental profiler observations from file
 call add_supplimental_obs(profiler_extra, seq_prof, max_obs_seq, &
 PROFILER_U_WIND_COMPONENT, include_sig_data, &
-obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
+obs_pressure_top, obs_height_top, gpsro_lowest_meter, sfc_elevation_check, sfc_elevation_tol, &
 overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental GPSRO observations from file
 call add_supplimental_obs(gpsro_extra, seq_gpsro, max_obs_seq, &
 GPSRO_REFRACTIVITY, include_sig_data, &
-obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
+obs_pressure_top, obs_height_top, gpsro_lowest_meter, sfc_elevation_check, sfc_elevation_tol, &
 overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental GPSPW observations from file
 call add_supplimental_obs(gpspw_extra, seq_gpspw, max_obs_seq, &
 GPS_PRECIPITABLE_WATER, include_sig_data, &
-obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
+obs_pressure_top, obs_height_top, gpsro_lowest_meter, sfc_elevation_check, sfc_elevation_tol, &
 overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  add supplimental tropical cyclone vortex observations from file
 call add_supplimental_obs(trop_cyclone_extra, seq_tc, max_obs_seq, &
 VORTEX_LAT, include_sig_data, &
-obs_pressure_top, obs_height_top, sfc_elevation_check, sfc_elevation_tol, &
+obs_pressure_top, obs_height_top, gpsro_lowest_meter, sfc_elevation_check, sfc_elevation_tol, &
 overwrite_obs_time, anal_time, windowing_obs_time, windowing_int_hour)
 
 !  remove all sonde observations within radius of TC if desired
@@ -381,14 +384,14 @@ end function aircraft_obs_check
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 subroutine add_supplimental_obs(filename, obs_seq, max_obs_seq, plat_kind, &
-                                 siglevel, ptop, htop, sfcelev, elev_max,  &
+                                 siglevel, ptop, htop, hbot, sfcelev, elev_max,  &
                                  overwrite_time, atime, obs_window, window_hours)
 
 character(len=129),      intent(in)    :: filename
 type(obs_sequence_type), intent(inout) :: obs_seq
 integer,                 intent(in)    :: max_obs_seq, plat_kind
 logical,                 intent(in)    :: siglevel, sfcelev, overwrite_time
-real(r8),                intent(in)    :: ptop, htop, elev_max
+real(r8),                intent(in)    :: ptop, htop, hbot, elev_max
 type(time_type),         intent(in)    :: atime
 logical,                 intent(in)    :: obs_window
 real(r8),                intent(in)    :: window_hours
@@ -520,6 +523,9 @@ ObsLoop:  do while ( .not. last_obs ) ! loop over all observations in a sequence
       pass_checks = surface_obs_check(sfcelev, elev_max, llv_loc)
     case (SAT_U_WIND_COMPONENT)
       pass_checks = sat_wind_obs_check()
+    case (GPSRO_REFRACTIVITY)
+      pass_checks = minimum_height_check(hbot, llv_loc)
+
     case default
       pass_checks = .true.
 
@@ -1884,6 +1890,31 @@ end subroutine superob_sat_wind_data
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
+!   minimum_height_check - function that determines whether to include an
+!                          observation based on whether the height is
+!                          above the given minimum
+!
+!    min_height - lowest accepted height (in meters)
+!    llv_loc    - longitude, latitude and elevation array
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+function minimum_height_check(min_height, llv_loc)
+
+real(r8), intent(in) :: llv_loc(3), min_height
+logical              :: minimum_height_check
+
+minimum_height_check = .true.
+
+if (llv_loc(3) < min_height) then
+
+   minimum_height_check = .false.
+
+endif
+
+end function minimum_height_check
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
 !   surface_obs_check - function that determines whether to include an
 !                       surface observation in the sequence.
 !
@@ -1893,7 +1924,6 @@ end subroutine superob_sat_wind_data
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 function surface_obs_check(elev_check, elev_max, llv_loc)
-
 
 logical, intent(in)  :: elev_check
 real(r8), intent(in) :: llv_loc(3), elev_max
