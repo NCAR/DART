@@ -27,7 +27,7 @@
    ens_size                 = 20,
    start_from_restart       = .true.,
    output_restart           = .true.,
-   obs_sequence_in_name     = "obs_seq.out",
+   obs_sequence_in_name     = "obs_seq.out.40",
    obs_sequence_out_name    = "obs_seq.final",
    restart_in_file_name     = "filter_ics",
    restart_out_file_name    = "filter_restart",
@@ -45,10 +45,10 @@
    outlier_threshold        = -1.0,
    enable_special_outlier_code = .false.,
    output_forward_op_errors = .false.,
-   output_inflation         = .true.,
-   output_timestamps        = .false.,
-   trace_execution          = .false.,
+   output_timestamps        = .true.,
+   trace_execution          = .true.,
    silence                  = .false.,
+   direct_netcdf_read       = .false.,
 
    inf_flavor                  = 2,                       0,
    inf_initial_from_restart    = .false.,                 .false.,
@@ -236,4 +236,13 @@
    lonlim2    =    1.0,
    verbose    = .true.
    /
+
+&state_vector_io_nml
+   create_restarts = .true.
+   /   
+
+&io_filenames_nml
+   restart_in_stub = 'advance_temp'
+   restart_out_stub = 'advance_temp'
+/
 

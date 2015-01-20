@@ -120,6 +120,10 @@ character(len=256), allocatable :: dim_names(:, :, :)
 ! list of variables names in the state
 character(len=256), allocatable :: global_variable_names(:)
 
+! keep track of whether the initial conditions were netcdf files
+logical :: netcdf_input = .false.
+logical :: arrays_initialized = .false.
+
 ! namelist variables with default values
 ! Aim: to have the regular transpose as the default
 integer :: limit_mem = 2147483640!< This is the number of elements (not bytes) so you don't have times the number by 4 or 8
@@ -160,6 +164,8 @@ integer, intent(in) :: n_domains !< number of domains (and therfore netcdf files
 
 if(allocated(variable_ids))   call error_handler(E_ERR, 'initialize_arrays_for_read', 'already called this routine')
 if(allocated(variable_sizes)) call error_handler(E_ERR, 'initialize_arrays_for_read', 'already called this routine')
+
+print*, '------------------------------ Hello arrays for read'
 
 num_state_variables = n
 num_domains = n_domains
@@ -911,6 +917,8 @@ integer :: var_size
 integer, allocatable :: dims(:)
 integer :: var_id
 
+netcdf_input = .true.
+
 start_in_var_block = 1
 
 do i = start_var, end_var
@@ -955,65 +963,71 @@ integer :: ndims
 integer :: xtype ! precision for netcdf file
 logical :: time_dimension_exists
 
-time_dimension_exists = .false.
+if (.not. netcdf_input) then ! dart restart files read in, no existing netcdf variables
+   call fresh_netcdf_file(filename, dom)
+else
 
-! What file options do you want
-create_mode = NF90_CLOBBER
-ret = nf90_create(filename, create_mode, ncfile_out)
-call nc_check(ret, 'create_state_output', 'creating')
+   time_dimension_exists = .false.
 
-! make a copy of the dimIds array
-copy_dimIds = dimIds
+   ! What file options do you want
+   create_mode = NF90_CLOBBER
+   ret = nf90_create(filename, create_mode, ncfile_out)
+   call nc_check(ret, 'create_state_output', 'creating')
 
-! define dimensions
-do i = 1, num_state_variables ! loop around state variables
-   ! check if their dimensions exist
-   do j = 1, dimensions_and_lengths(i, 1, dom) ! ndims
-      if (time_unlimited .and. (dim_names(i, j, dom) == 'Time')) then ! case sensitive
-         ret = nf90_def_dim(ncfile_out, dim_names(i, j, dom), NF90_UNLIMITED, new_dimid) ! does this do nothing if the dimension already exists?
-         time_dimension_exists = .true.
-      else
-         ret = nf90_def_dim(ncfile_out, dim_names(i, j, dom), dimensions_and_lengths(i, j+1, dom), new_dimid) ! does this do nothing if the dimension already exists?
-      endif
-      if(ret == NF90_NOERR) then ! successfully created, store this dimenion id
-         where (dimIds == dimIds(i, j, dom))
-            copy_dimIds = new_dimid
-         end where
-      endif
+   ! make a copy of the dimIds array
+   copy_dimIds = dimIds
 
+   ! define dimensions
+   do i = 1, num_state_variables ! loop around state variables
+      ! check if their dimensions exist
+      do j = 1, dimensions_and_lengths(i, 1, dom) ! ndims
+         if (time_unlimited .and. (dim_names(i, j, dom) == 'Time')) then ! case sensitive
+            ret = nf90_def_dim(ncfile_out, dim_names(i, j, dom), NF90_UNLIMITED, new_dimid) ! does this do nothing if the dimension already exists?
+            time_dimension_exists = .true.
+         else
+            ret = nf90_def_dim(ncfile_out, dim_names(i, j, dom), dimensions_and_lengths(i, j+1, dom), new_dimid) ! does this do nothing if the dimension already exists?
+         endif
+         if(ret == NF90_NOERR) then ! successfully created, store this dimenion id
+            where (dimIds == dimIds(i, j, dom))
+               copy_dimIds = new_dimid
+            end where
+         endif
+
+      enddo
    enddo
-enddo
 
-if ((.not. time_dimension_exists) .and. (time_unlimited)) then ! create unlimlited dimension time
-   ret = nf90_def_dim(ncfile_out, 'Time', NF90_UNLIMITED, new_dimid) !> @todo Case sensitive?
-   call nc_check(ret, 'create_state_output', 'creating time as the unlimited dimension')
+   if ((.not. time_dimension_exists) .and. (time_unlimited)) then ! create unlimlited dimension time
+      ret = nf90_def_dim(ncfile_out, 'Time', NF90_UNLIMITED, new_dimid) !> @todo Case sensitive?
+      call nc_check(ret, 'create_state_output', 'creating time as the unlimited dimension')
 
-   call shift_dimension_arrays(new_dimid)
+      call shift_dimension_arrays(new_dimid)
 
-endif
-
-! overwrite dimIds
-dimIds = copy_dimIds
-
-! define variables
-do i = 1, num_state_variables ! loop around state variables
-   ! double or single precision?
-   ndims = dimensions_and_lengths(i, 1, dom)
-
-   if (datasize == mpi_real4) then
-      xtype = nf90_real
-   else
-      xtype = nf90_double
    endif
 
-   ret = nf90_def_var(ncfile_out, trim(global_variable_names(i)), xtype=xtype, dimids=dimIds(i, 1:ndims, dom), varid=new_varid)
-   call nc_check(ret, 'create_state_output', 'defining variable')
+   ! overwrite dimIds
+   dimIds = copy_dimIds
+
+   ! define variables
+   do i = 1, num_state_variables ! loop around state variables
+      ! double or single precision?
+      ndims = dimensions_and_lengths(i, 1, dom)
+
+      if (datasize == mpi_real4) then
+         xtype = nf90_real
+      else
+         xtype = nf90_double
+      endif
+
+      ret = nf90_def_var(ncfile_out, trim(global_variable_names(i)), xtype=xtype, dimids=dimIds(i, 1:ndims, dom), varid=new_varid)
+      call nc_check(ret, 'create_state_output', 'defining variable')
       variable_ids(i, dom) = new_varid
 
-enddo
+   enddo
 
-ret = nf90_enddef(ncfile_out)
-call nc_check(ret, 'create_state_output', 'end define mode')
+   ret = nf90_enddef(ncfile_out)
+   call nc_check(ret, 'create_state_output', 'end define mode')
+
+endif
 
 end subroutine create_state_output
 
@@ -1070,7 +1084,7 @@ integer, intent(out) :: send_end !< for RECEIVE_FROM_EACH_LOOP
 group_size = get_group_size(pe, ens_size)
 
 if ( limit_procs > task_count() ) limit_procs = task_count()
-if (my_task_id() == 0) print*, 'limit_procs', limit_procs, 'limit_mem', limit_mem
+!if (my_task_id() == 0) print*, 'limit_procs', limit_procs, 'limit_mem', limit_mem
 
 ! limit_procs needs to be greater than ens_size
 
@@ -1228,6 +1242,80 @@ copy_dimIds(:, 1, :) = unlimited_dimId
 deallocate(local_dimensions_and_lengths, local_copy_dimIds)
 
 end subroutine shift_dimension_arrays
+
+!-------------------------------------------------------
+!> create netcdf restart files without info from existing 
+!> input netcdf files. 
+!> e.g. the input was dart filter restart files
+subroutine fresh_netcdf_file(filename, dom)
+
+character(len=256), intent(in) :: filename
+integer,            intent(in) :: dom !< domain, not sure whether you need this?
+
+integer :: ret !> netcdf return code
+integer :: create_mode
+integer :: i, j ! loop variables
+integer :: time_dimid, state_dimid
+integer :: time_varid, state_varid
+integer :: ndims
+integer :: xtype ! precision for netcdf file
+logical :: time_dimension_exists
+integer :: new_varid
+
+! load up global info about variables
+num_state_variables = 1
+num_domains = 1
+
+create_mode = NF90_CLOBBER
+ret = nf90_create(filename, create_mode, ncfile_out)
+call nc_check(ret, 'fresh_netcdf_file', 'creating')
+
+ret = nf90_def_dim(ncfile_out, 'Time', NF90_UNLIMITED, time_dimid) !> @todo Case sensitive?
+call nc_check(ret, 'fresh_netcdf_file', 'creating time as the unlimited dimension')
+ret = nf90_def_dim(ncfile_out, 'state', get_model_size(), state_dimid)
+call nc_check(ret, 'fresh_netcdf_file', 'creating state dimension')
+
+! construct what would have been created during initialize_arrays_for_read
+call initialize_arrays_for_write
+
+global_variable_names(1) = 'state'
+dimensions_and_lengths(1, 1, 1) = 1 ! number of dimensions
+dimensions_and_lengths(1, 2, 1) = get_model_size() ! length of dimension is model size
+dimIds(1, 1, 1) = state_dimid
+
+if (datasize == mpi_real4) then
+   xtype = nf90_real
+else
+   xtype = nf90_double
+endif
+
+ret = nf90_def_var(ncfile_out, trim(global_variable_names(1)), xtype=xtype, dimids=dimIds(1, 1, 1), varid=new_varid)
+call nc_check(ret, 'fresh_netcdf_file', 'defining variable')
+
+variable_ids(1, 1) = new_varid
+
+ret = nf90_enddef(ncfile_out)
+call nc_check(ret, 'fresh_netcdf_file', 'end define mode')
+
+end subroutine fresh_netcdf_file
+
+!-------------------------------------------------------
+!> for use with fresh_netcdf_file
+subroutine initialize_arrays_for_write
+
+if(.not. arrays_initialized) then
+
+   allocate(variable_ids(num_state_variables, num_domains), variable_sizes(num_state_variables, num_domains))
+   allocate(dimIds(num_state_variables, 1, num_domains), length(num_state_variables, 1, num_domains), dim_names(num_state_variables, 1, num_domains))
+   !allocate(copy_dimIds(n, MAXDIMS, num_domains)) ! I don't think you need this
+   allocate(dimensions_and_lengths(num_state_variables, 2, num_domains))
+   allocate(global_variable_names(num_state_variables))
+
+   arrays_initialized = .true.
+
+endif
+
+end subroutine initialize_arrays_for_write
 
 !-------------------------------------------------------
 !> @}

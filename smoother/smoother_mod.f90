@@ -468,6 +468,7 @@ end subroutine smoother_mean_spread
 
 !-----------------------------------------------------------
 !> Skeleton version just to write the time to the diagnostic file
+!> This needs to add to the netcdf file (restarts) for multi-step assimilation
 !> using aoutput_diagnostics -> nc_get_tindex
 subroutine filter_state_space_diagnostics(curr_ens_time, out_unit, ens_handle, model_size, &
             num_output_state_members, output_state_mean_index, output_state_spread_index, &

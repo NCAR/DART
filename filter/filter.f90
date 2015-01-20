@@ -131,6 +131,7 @@ logical  :: trace_execution          = .false.
 logical  :: silence                  = .false.
 logical  :: parallel_state_diag      = .true. ! default to write diagnostics in parallel - SKIPING at the moment, now stitching output together post processing
 logical  :: direct_netcdf_read = .true. ! default to read from netcdf file
+logical  :: direct_netcdf_write = .true. ! default to write to netcdf file
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
                         obs_sequence_out_name = "obs_seq.final",  &
@@ -176,7 +177,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
    inf_lower_bound, inf_upper_bound, inf_sd_lower_bound,           &
-   silence, parallel_state_diag, direct_netcdf_read
+   silence, parallel_state_diag, direct_netcdf_read, direct_netcdf_write
 
 
 !----------------------------------------------------------------
@@ -912,8 +913,8 @@ call trace_message('Before writing inflation restart files if required')
 call turn_write_copies_off(1, ens_size + num_extras) ! clean slate
 
 ! Output the restart for the adaptive inflation parameters
-call adaptive_inflate_end(ens_handle, prior_inflate, ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, direct_netcdf_read)
-call adaptive_inflate_end(ens_handle, post_inflate, ens_handle, POST_INF_COPY, POST_INF_SD_COPY, direct_netcdf_read)
+call adaptive_inflate_end(ens_handle, prior_inflate, ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, direct_netcdf_write)
+call adaptive_inflate_end(ens_handle, post_inflate, ens_handle, POST_INF_COPY, POST_INF_SD_COPY, direct_netcdf_write)
 call trace_message('After  writing inflation restart files if required')
 
 ! Output a restart file if requested
@@ -933,7 +934,7 @@ call turn_write_copy_on(ENS_SD_COPY) ! sd
 call turn_write_copy_on(POST_INF_COPY) ! posterior inf mean
 call turn_write_copy_on(POST_INF_SD_COPY) ! posterior inf sd
 
-if(direct_netcdf_read) then
+if(direct_netcdf_write) then
    call filter_write_restart_direct(ens_handle)
 else ! write
    call filter_write_restart(ens_handle)
