@@ -1282,6 +1282,7 @@ global_variable_names(1) = 'state'
 dimensions_and_lengths(1, 1, 1) = 1 ! number of dimensions
 dimensions_and_lengths(1, 2, 1) = get_model_size() ! length of dimension is model size
 dimIds(1, 1, 1) = state_dimid
+variable_sizes(1, 1) = get_model_size() 
 
 if (datasize == mpi_real4) then
    xtype = nf90_real
