@@ -330,6 +330,8 @@ integer :: copies_read
 integer :: iunit
 type(time_type) :: ens_time
 
+netcdf_input = .true.
+
 ens_size = state_ens_handle%num_copies ! have the extras, incase you need to read inflation restarts
 
 my_pe = state_ens_handle%my_pe
@@ -915,8 +917,6 @@ integer :: var_size
 integer, allocatable :: dims(:)
 integer :: var_id
 
-netcdf_input = .true.
-
 start_in_var_block = 1
 
 do i = start_var, end_var
@@ -961,6 +961,7 @@ integer :: ndims
 integer :: xtype ! precision for netcdf file
 logical :: time_dimension_exists
 
+print*, 'netcdf input ', netcdf_input
 if (.not. netcdf_input) then ! dart restart files read in, no existing netcdf variables
    call fresh_netcdf_file(filename, dom)
 else
@@ -999,7 +1000,6 @@ else
       call nc_check(ret, 'create_state_output', 'creating time as the unlimited dimension')
 
       call shift_dimension_arrays(new_dimid)
-
    endif
 
    ! overwrite dimIds
@@ -1228,9 +1228,12 @@ allocate(dimensions_and_lengths(num_state_variables, MAXDIMS + 2, num_domains))
 allocate(dimIds(num_state_variables, MAXDIMS + 1, num_domains))
 allocate(copy_dimIds(num_state_variables, MAXDIMS + 1, num_domains))
 
+dimensions_and_lengths = -1 
+dimIds = -1
+
 ! fill the arrays back up
 dimensions_and_lengths(:, 3:, :) = local_dimensions_and_lengths(:, 2:, :)
-dimIds(:, 2:, :) = local_copy_dimIds(:, :, :)
+copy_dimIds(:, 2:, :) = local_copy_dimIds(:, :, :)
 
 ! add a dimension
 dimensions_and_lengths(:, 1, :) = local_dimensions_and_lengths(:, 1, :) + 1
