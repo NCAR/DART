@@ -71,8 +71,7 @@ use state_vector_io_mod,   only : read_transpose, transpose_write, get_state_var
 
 use model_mod,            only : variables_domains, fill_variable_list, info_file_name, get_model_time
 
-use io_filenames_mod,         only : io_filenames_init, restart_files_in, &
-                                     query_diag_mean, query_diag_spread, query_diag_inf_mean, query_diag_inf_spread
+use io_filenames_mod,         only : io_filenames_init, restart_files_in
 
 use mpi
 
@@ -923,10 +922,10 @@ call timestamp_message('Before writing state restart files if requested')
 
 call turn_write_copy_on(1,ens_size) ! restarts
 ! Prior_Diag copies - write spare copies
-if (query_diag_mean()) call turn_write_copy_on(SPARE_COPY_MEAN)
-if (query_diag_spread()) call turn_write_copy_on(SPARE_COPY_SPREAD)
-if (query_diag_inf_mean()) call turn_write_copy_on(SPARE_COPY_INF_MEAN)
-if (query_diag_inf_spread()) call turn_write_copy_on(SPARE_COPY_INF_SPREAD)
+call turn_write_copy_on(SPARE_COPY_MEAN)
+call turn_write_copy_on(SPARE_COPY_SPREAD)
+call turn_write_copy_on(SPARE_COPY_INF_MEAN)
+call turn_write_copy_on(SPARE_COPY_INF_SPREAD)
 
 ! Posterior Diag 
 call turn_write_copy_on(ENS_MEAN_COPY) ! mean

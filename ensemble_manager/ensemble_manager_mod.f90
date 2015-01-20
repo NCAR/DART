@@ -473,7 +473,7 @@ else
             iunit = open_restart_write(this_file_name)
          else
             !> @todo what to do at the domain number?
-            iunit = open_restart_write(trim(restart_files_out(global_index, 1)))
+            iunit = open_restart_write(trim(restart_files_out(global_index, 1, 1)))
          endif
 
          call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)

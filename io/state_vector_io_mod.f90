@@ -552,7 +552,7 @@ COPIES : do c = 1, ens_size
    ! writers open netcdf output file. This is a copy of the input file
    if (my_pe < ens_size) then
       if ( query_write_copy(my_copy - recv_start + 1)) then
-            netcdf_filename_out = restart_files_out((my_copy - recv_start +1), domain)
+            netcdf_filename_out = restart_files_out((my_copy - recv_start +1), domain, 2) !> @todo prior post
          if (create_restarts) then ! How do you want to do create restarts
             call create_state_output(netcdf_filename_out, domain)
          else

@@ -31,28 +31,22 @@ private
 ! These should probably be set and get functions rather than 
 ! direct access
 
-public :: io_filenames_init, restart_files_in, restart_files_out, &
-   query_diag_mean, query_diag_spread, query_diag_inf_mean, query_diag_inf_spread
+public :: io_filenames_init, restart_files_in, restart_files_out
 
 ! How do people name there restart files?
 ! What about domains?
 integer, parameter :: max_num_files = 5000
 
 ! public arrays of filenames. Do we need arrays for restarts AND extras?
-character(len=2048), allocatable :: restart_files_in(:,:), restart_files_out(:,:)
+character(len=2048), allocatable :: restart_files_in(:,:), restart_files_out(:,:,:)
 
 ! Namelist options
-character(len=512) :: restart_in_stub  = 'wrfinput.nc'
-character(len=512) :: restart_out_stub = '/Output/wrfinput.nc'
-logical :: diag_mean = .false.
-logical :: diag_spread = .false.
-logical :: diag_inf_mean = .false.
-logical :: diag_inf_spread = .false.
+character(len=512) :: restart_in_stub  = 'input'
+character(len=512) :: restart_out_stub = 'output'
 
 
 ! Should probably get num_domains, num_restarts from elsewhere. In here for now
-namelist / io_filenames_nml / restart_in_stub, restart_out_stub, &
-   diag_mean, diag_spread, diag_inf_mean, diag_inf_spread
+namelist / io_filenames_nml / restart_in_stub, restart_out_stub
 
 contains
 
@@ -60,11 +54,12 @@ contains
 !> read namelist and set up filename arrays
 subroutine io_filenames_init(ens_size, num_domains, inflation_in, inflation_out)
 
-integer, intent(in) :: ens_size
+integer, intent(in) :: ens_size 
 integer, intent(in) :: num_domains
 integer :: iunit, io
 integer :: dom, num_files, i
 character(len = 129) :: inflation_in(2), inflation_out(2)
+character(len = 4)   :: extension
 
 !call register_module(source, revision, revdate)
 
@@ -80,95 +75,73 @@ if (do_nml_term()) write(     *     , nml=io_filenames_nml)
 num_files = ens_size + 10 !> @toto
 
 allocate(restart_files_in(num_files, num_domains))
-allocate(restart_files_out(num_files, num_domains))
+allocate(restart_files_out(num_files, num_domains, 2)) ! for prior and posterior filenames
 
 do dom = 1, num_domains
    do i = 1, ens_size  ! restarts
       restart_files_in(i, dom)  = construct_file_name_in(restart_in_stub, dom, i)
-      restart_files_out(i, dom) = construct_file_name_out(restart_out_stub, dom, i)
+      write(extension, '(i4.4)') i
+      restart_files_out(i, dom, 1) = 'prior_member.' // extension
+      restart_files_out(i, dom, 2) = construct_file_name_out(restart_out_stub, dom, i)
    enddo
 enddo
 
 ! input extras
 do dom = 1, num_domains
    ! mean -never used
-   write(restart_files_in(ens_size + 1, dom), '(A, i2.2, A)') 'mean_copy_d', dom, '.nc'
+   write(restart_files_in(ens_size + 1, dom), '(A, i2.2, A)') 'mean_d', dom
    ! sd -never used
-   write(restart_files_in(ens_size + 2, dom), '(A, i2.2, A)') 'sd_copy_d',   dom, '.nc'
+   write(restart_files_in(ens_size + 2, dom), '(A, i2.2, A)') 'sd_d',   dom
    ! prior inf copy
-   write(restart_files_in(ens_size + 3, dom), '(A, A, i2.2, A)') trim(inflation_in(1)), '_mean_d', dom, '.nc'
+   write(restart_files_in(ens_size + 3, dom), '(A, A, i2.2, A)') trim(inflation_in(1)), '_mean_d', dom
    ! prior inf sd copy
-   write(restart_files_in(ens_size + 4, dom), '(A, A, i2.2, A)') trim(inflation_in(1)), '_sd_d', dom, '.nc'
+   write(restart_files_in(ens_size + 4, dom), '(A, A, i2.2, A)') trim(inflation_in(1)), '_sd_d', dom
    ! post inf copy
-   write(restart_files_in(ens_size + 5, dom), '(A, A, i2.2, A)') trim(inflation_in(2)), '_mean_d', dom, '.nc'
+   write(restart_files_in(ens_size + 5, dom), '(A, A, i2.2, A)') trim(inflation_in(2)), '_mean_d', dom
    ! post inf sd copy
-   write(restart_files_in(ens_size + 6, dom), '(A, A, i2.2, A)') trim(inflation_in(2)), '_sd_d', dom, '.nc'
+   write(restart_files_in(ens_size + 6, dom), '(A, A, i2.2, A)') trim(inflation_in(2)), '_sd_d', dom
 enddo
 
 ! output extras
 do dom = 1, num_domains
+   ! Prior
    ! mean
-   write(restart_files_out(ens_size + 1, dom), '(A, i2.2, A)') 'Output/posterior_mean_copy_d', dom, '.nc'
+   write(restart_files_out(ens_size + 1, dom, 1), '(A, i2.2, A)') 'PriorDiag_mean_d', dom, '.nc'
    ! sd
-   write(restart_files_out(ens_size + 2, dom), '(A, i2.2, A)') 'Output/posterior_sd_copy_d',   dom, '.nc'
+   write(restart_files_out(ens_size + 2, dom, 1), '(A, i2.2, A)') 'PriorDiag_sd_d', dom, '.nc'
    ! prior inf copy
-   write(restart_files_out(ens_size + 3, dom), '(A, A, i2.2, A)') trim(inflation_out(1)), '_mean_d', dom, '.nc'
+   write(restart_files_out(ens_size + 3, dom, 1), '(A, i2.2, A)') 'PriorDiag_inf_mean_d', dom, '.nc'
    ! prior inf sd copy
-   write(restart_files_out(ens_size + 4, dom), '(A, A, i2.2, A)') trim(inflation_out(1)), '_sd_d', dom, '.nc'
+   write(restart_files_out(ens_size + 4, dom, 1), '(A, i2.2, A)') 'PriorDiag_inf_sd_d', dom, '.nc'
+   ! post inf copy - not used
+   write(restart_files_out(ens_size + 5, dom, 1), '(A, A, i2.2, A)') trim(inflation_out(2)), '_mean_d', dom, '.nc'
+   ! post inf sd copy - not used
+   write(restart_files_out(ens_size + 6, dom, 1), '(A, A, i2.2, A)') trim(inflation_out(2)), '_sd_d', dom, '.nc'
+
+   ! Posterior
+   ! mean
+   write(restart_files_out(ens_size + 1, dom, 2), '(A, i2.2, A)') 'mean_d', dom, '.nc'
+   ! sd
+   write(restart_files_out(ens_size + 2, dom, 2), '(A, i2.2, A)') 'sd_d', dom, '.nc'
+   ! prior inf copy
+   write(restart_files_out(ens_size + 3, dom, 2), '(A, A, i2.2, A)') trim(inflation_out(1)), '_mean_d', dom
+   ! prior inf sd copy
+   write(restart_files_out(ens_size + 4, dom, 2), '(A, A, i2.2, A)') trim(inflation_out(1)), '_sd_d', dom
    ! post inf copy
-   write(restart_files_out(ens_size + 5, dom), '(A, A, i2.2, A)') trim(inflation_out(2)), '_mean_d', dom, '.nc'
+   write(restart_files_out(ens_size + 5, dom, 2), '(A, A, i2.2, A)') trim(inflation_out(2)), '_mean_d', dom
    ! post inf sd copy
-   write(restart_files_out(ens_size + 6, dom), '(A, A, i2.2, A)') trim(inflation_out(2)), '_sd_d', dom, '.nc'
+   write(restart_files_out(ens_size + 6, dom, 2), '(A, A, i2.2, A)') trim(inflation_out(2)), '_sd_d', dom
 
    ! Storage for copies that would have gone in the Prior_diag.nc if we were to write it
-   write(restart_files_out(ens_size + 7, dom), '(A, i2.2, A)') 'Output/prior_mean_d', dom, '.nc'
-   write(restart_files_out(ens_size + 8, dom), '(A, i2.2, A)') 'Output/prior_sd_d', dom, '.nc'
-   write(restart_files_out(ens_size + 9, dom), '(A, i2.2, A)') 'Output/prior_inf_mean_d', dom, '.nc'
-   write(restart_files_out(ens_size + 10, dom), '(A, i2.2, A)') 'Output/prior_inf_sd_d', dom, '.nc'
+   write(restart_files_out(ens_size + 7, dom, 2), '(A, i2.2, A)') restart_files_out(ens_size + 1, dom, 1)
+   write(restart_files_out(ens_size + 8, dom, 2), '(A, i2.2, A)') restart_files_out(ens_size + 2, dom, 1)
+   write(restart_files_out(ens_size + 9, dom, 2), '(A, i2.2, A)') restart_files_out(ens_size + 3, dom, 1)
+   write(restart_files_out(ens_size + 10, dom, 2), '(A, i2.2, A)') restart_files_out(ens_size + 4, dom, 1)
 
 
 enddo
 
 end subroutine io_filenames_init
-
-!----------------------------------
-!> accessor functions for diag output
-function query_diag_mean()
-
-logical :: query_diag_mean
-
-query_diag_mean = diag_mean
-
-end function 
-
-!----------------------------------
-!> accessor functions for diag output
-function query_diag_spread()
-
-logical :: query_diag_spread
-
-query_diag_spread = diag_spread
-
-end function 
-!----------------------------------
-!> accessor functions for diag output
-function query_diag_inf_mean()
-
-logical :: query_diag_inf_mean
-
-query_diag_inf_mean = diag_inf_mean
-
-end function 
-!----------------------------------
-!> accessor functions for diag output
-function query_diag_inf_spread()
-
-logical :: query_diag_inf_spread
-
-query_diag_inf_spread = diag_inf_spread
-
-end function 
-
 
 !----------------------------------
 !> Destroy module storage

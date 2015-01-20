@@ -9136,17 +9136,17 @@ character(len=1024)            :: construct_file_name_in
 
 !write(construct_file_name, '(A, i2.2, A, i2.2, A)') TRIM(stub), domain, '.', copy, '.nc'
 
-!if (copy < 10) then
-!   write(construct_file_name_in, '(A, i1.1, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
-!else
-!   write(construct_file_name_in, '(A, i2.2, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
-!endif
-
 if (copy < 10) then
-   write(construct_file_name_in, '(A, A, i1.1, A)') TRIM(stub), '_', copy, '.nc'
+   write(construct_file_name_in, '(A, i1.1, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
 else
-   write(construct_file_name_in, '(A, A, i2.2, A)') TRIM(stub), '_', copy, '.nc'
+   write(construct_file_name_in, '(A, i2.2, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
 endif
+
+!if (copy < 10) then
+!   write(construct_file_name_in, '(A, A, i1.1, A)') TRIM(stub), '_', copy, '.nc'
+!else
+!   write(construct_file_name_in, '(A, A, i2.2, A)') TRIM(stub), '_', copy, '.nc'
+!endif
 
 end function construct_file_name_in
 
