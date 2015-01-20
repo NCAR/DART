@@ -165,8 +165,6 @@ integer, intent(in) :: n_domains !< number of domains (and therfore netcdf files
 if(allocated(variable_ids))   call error_handler(E_ERR, 'initialize_arrays_for_read', 'already called this routine')
 if(allocated(variable_sizes)) call error_handler(E_ERR, 'initialize_arrays_for_read', 'already called this routine')
 
-print*, '------------------------------ Hello arrays for read'
-
 num_state_variables = n
 num_domains = n_domains
 
