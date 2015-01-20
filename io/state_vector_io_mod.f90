@@ -961,7 +961,6 @@ integer :: ndims
 integer :: xtype ! precision for netcdf file
 logical :: time_dimension_exists
 
-print*, 'netcdf input ', netcdf_input
 if (.not. netcdf_input) then ! dart restart files read in, no existing netcdf variables
    call fresh_netcdf_file(filename, dom)
 else
@@ -999,7 +998,7 @@ else
       ret = nf90_def_dim(ncfile_out, 'Time', NF90_UNLIMITED, new_dimid) !> @todo Case sensitive?
       call nc_check(ret, 'create_state_output', 'creating time as the unlimited dimension')
 
-      call shift_dimension_arrays(new_dimid)
+      call add_time_unlimited(new_dimid)
    endif
 
    ! overwrite dimIds
@@ -1206,43 +1205,22 @@ end function cumulative_tasks
 
 !-------------------------------------------------------
 !> Adding space for an unlimited dimension in the dimesion arrays
-subroutine shift_dimension_arrays(unlimited_dimId)
+!> The unlimited dimension needs to be last in the list for def_var
+subroutine add_time_unlimited(unlimited_dimId)
 
 integer, intent(in)  :: unlimited_dimId
 
-integer, allocatable :: local_copy_dimIds(:, :, :)
-integer, allocatable :: local_dimensions_and_lengths(:, :, :)
-
-! make space for the copies
-allocate(local_dimensions_and_lengths(num_state_variables, MAXDIMS + 1, num_domains))
-allocate(local_copy_dimIds(num_state_variables, MAXDIMS, num_domains))
-
-! copy the arrays
-local_dimensions_and_lengths = dimensions_and_lengths
-local_copy_dimIds = copy_dimIds
-
-! deallocate, and reallocate
-deallocate(dimensions_and_lengths, copy_dimIds, dimIds)
-
-allocate(dimensions_and_lengths(num_state_variables, MAXDIMS + 2, num_domains))
-allocate(dimIds(num_state_variables, MAXDIMS + 1, num_domains))
-allocate(copy_dimIds(num_state_variables, MAXDIMS + 1, num_domains))
-
-dimensions_and_lengths = -1 
-dimIds = -1
-
-! fill the arrays back up
-dimensions_and_lengths(:, 3:, :) = local_dimensions_and_lengths(:, 2:, :)
-copy_dimIds(:, 2:, :) = local_copy_dimIds(:, :, :)
+integer :: i !> loop variable
 
 ! add a dimension
-dimensions_and_lengths(:, 1, :) = local_dimensions_and_lengths(:, 1, :) + 1
-dimensions_and_lengths(:, 2, :) = 1  ! unlimited dimension is length 1?
-copy_dimIds(:, 1, :) = unlimited_dimId
+dimensions_and_lengths(:, 1, :) = dimensions_and_lengths(:, 1, :) + 1
 
-deallocate(local_dimensions_and_lengths, local_copy_dimIds)
+do i = 1, num_state_variables
+   dimensions_and_lengths(i, dimensions_and_lengths(i, 1, 1) +1, :) = 1  ! unlimited dimension is length 1?
+   copy_dimIds(i, dimensions_and_lengths(i, 1, 1), :) = unlimited_dimId
+enddo
 
-end subroutine shift_dimension_arrays
+end subroutine add_time_unlimited
 
 !-------------------------------------------------------
 !> create netcdf restart files without info from existing 
