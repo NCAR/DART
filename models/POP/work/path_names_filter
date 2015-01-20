@@ -24,4 +24,5 @@ distributed/distributed_state_mod.f90
 distributed/cray_win_mod.f90
 io/state_vector_io_mod.f90
 io/io_filenames_mod.f90
+io/copies_on_off_mod.f90
 models/null_vert_convert2.f90
