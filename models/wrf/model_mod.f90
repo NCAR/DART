@@ -1004,7 +1004,6 @@ integer,               intent(out) :: istatus(:)
 !HK
 type(ensemble_type),    intent(in) :: state_ens_handle
 real(r8), intent(out)              :: expected_obs(:)
-real(r8), allocatable              :: v
 
 ! local
 logical, parameter  :: debug = .false.
