@@ -580,7 +580,7 @@ AdvanceTime : do
    call init_ensemble_manager(qc_ens_handle, ens_size, num_obs_in_set, 1)
 
    ! Allocate storage for the keys for this number of observations
-   allocate(keys(num_obs_in_set))
+   allocate(keys(num_obs_in_set)) ! This is still var size for writing out the observation sequence
 
    ! Get all the keys associated with this set of observations
    ! Is there a way to distribute this?
