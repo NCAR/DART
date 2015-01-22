@@ -481,12 +481,11 @@ end subroutine adaptive_inflate_init
 !------------------------------------------------------------------
 !> should you be turning on copies here?
 !> They are redone in filter anyway.
-subroutine adaptive_inflate_end(state_ens_handle, inflate_handle, ens_handle, ss_inflate_index, &
+subroutine adaptive_inflate_end(inflate_handle, state_ens_handle, ss_inflate_index, &
    ss_inflate_sd_index, direct_netcdf_read)
 
-type(ensemble_type),         intent(inout) :: state_ens_handle
 type(adaptive_inflate_type), intent(in)    :: inflate_handle
-type(ensemble_type),         intent(inout) :: ens_handle
+type(ensemble_type),         intent(inout) :: state_ens_handle
 integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
 logical,                     intent(in)    :: direct_netcdf_read
 
@@ -517,15 +516,15 @@ if(inflate_handle%output_restart) then
 
          ! allocating storage space in ensemble manager
          !  - should this be in ensemble_manager
-         allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+         allocate(state_ens_handle%vars(state_ens_handle%num_vars, ens_handle%my_num_copies))
 
-         call all_copies_to_all_vars(ens_handle)
+         call all_copies_to_all_vars(state_ens_handle)
 
-         call write_ensemble_restart(ens_handle, inflate_handle%out_file_name, &
+         call write_ensemble_restart(state_ens_handle, inflate_handle%out_file_name, &
             ss_inflate_index, ss_inflate_sd_index, force_single_file = .true.)
 
          ! deallocate whole state storage - should this be in ensemble_manager 
-         deallocate(ens_handle%vars)
+         deallocate(state_ens_handle%vars)
 
       endif
 
