@@ -131,6 +131,8 @@ logical  :: trace_execution          = .false.
 logical  :: silence                  = .false.
 logical  :: direct_netcdf_read = .true. ! default to read from netcdf file
 logical  :: direct_netcdf_write = .true. ! default to write to netcdf file
+logical  :: diagnostic_files = .false. ! what should be the default
+logical  :: skeleton_diagnostic_files = .true. ! If you do write diagnostic files, make them skeletons - this is what is happening at the moment, no whole diagnostic files are written.
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
                         obs_sequence_out_name = "obs_seq.final",  &
@@ -669,13 +671,15 @@ AdvanceTime : do
    if ((output_interval > 0) .and. &
        (time_step_number / output_interval * output_interval == time_step_number)) then
 
-       ! skeleton just to write the time to diagnostic files.
-       call filter_state_space_diagnostics(curr_ens_time, PriorStateUnit, state_ens_handle, &
-           model_size, num_output_state_members, &
-           output_state_mean_index, output_state_spread_index, &
-           ENS_MEAN_COPY, ENS_SD_COPY, &
-           prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
+      if(diagnostic_files) then
+         ! skeleton just to write the time to diagnostic files.
+         call filter_state_space_diagnostics(curr_ens_time, PriorStateUnit, state_ens_handle, &
+            model_size, num_output_state_members, &
+            output_state_mean_index, output_state_spread_index, &
+            ENS_MEAN_COPY, ENS_SD_COPY, &
+            prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
 
+      endif
    endif
 
    call timestamp_message('After  prior state space diagnostics')
@@ -809,19 +813,21 @@ AdvanceTime : do
    if ((output_interval > 0) .and. &
          (time_step_number / output_interval * output_interval == time_step_number)) then
 
-      ! skeleton just to put time in the diagnostic file
-      call filter_state_space_diagnostics(curr_ens_time, PosteriorStateUnit, state_ens_handle, &
-         model_size, num_output_state_members, output_state_mean_index, &
-         output_state_spread_index, &
-         ENS_MEAN_COPY, ENS_SD_COPY, &
-         post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
-      ! Cyclic storage for lags with most recent pointed to by smoother_head
-      ! ens_mean is passed to avoid extra temp storage in diagnostics
+      if (diagnostic_files) then
+         ! skeleton just to put time in the diagnostic file
+         call filter_state_space_diagnostics(curr_ens_time, PosteriorStateUnit, state_ens_handle, &
+            model_size, num_output_state_members, output_state_mean_index, &
+            output_state_spread_index, &
+            ENS_MEAN_COPY, ENS_SD_COPY, &
+            post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
+         ! Cyclic storage for lags with most recent pointed to by smoother_head
+         ! ens_mean is passed to avoid extra temp storage in diagnostics
 
-      !> @todo What to do here?
-      !call smoother_ss_diagnostics(model_size, num_output_state_members, &
-       !  output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
-        ! POST_INF_COPY, POST_INF_SD_COPY)
+         !> @todo What to do here?
+         !call smoother_ss_diagnostics(model_size, num_output_state_members, &
+         !  output_inflation, temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, &
+         ! POST_INF_COPY, POST_INF_SD_COPY)
+      endif
    endif
 
    call timestamp_message('After  posterior state space diagnostics')
@@ -903,7 +909,7 @@ call trace_message('End of main filter assimilation loop, starting cleanup', 'fi
 
 call trace_message('Before finalizing diagnostics files')
 ! properly dispose of the diagnostics files
-if(my_task_id() == 0) then
+if(my_task_id() == 0 .and. diagnostic_files) then
    ierr = finalize_diag_output(PriorStateUnit)
    ierr = finalize_diag_output(PosteriorStateUnit)
 endif
@@ -1053,7 +1059,7 @@ end do
 ! Have task 0 set up diagnostic output for model state, if output is desired
 ! I am not using a collective call here, just getting task 0 to set up the files
 ! - nc_write_model_atts.
-if (my_task_id() == 0) then
+if (my_task_id() == 0 .and. diagnostic_files) then
    PriorStateUnit     = init_diag_output('Prior_Diag', &
                         'prior ensemble state', num_state_copies, state_meta)
    PosteriorStateUnit = init_diag_output('Posterior_Diag', &
