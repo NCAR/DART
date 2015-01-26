@@ -24,8 +24,6 @@ use state_vector_io_mod,  only : turn_read_copy_on, turn_write_copy_on, &
                                  turn_read_copies_off, turn_write_copies_off, &
                                  read_transpose, transpose_write
 
-use mpi
-
 implicit none
 private
 
@@ -34,7 +32,7 @@ public :: update_inflation,           adaptive_inflate_end,          do_obs_infl
           adaptive_inflate_init,      adaptive_inflate_type,         get_inflate,        &
           get_sd,                     set_inflate,                   set_sd,             &
           output_inflate_diagnostics, deterministic_inflate,         solve_quadratic,    &
-          log_inflation_info,         get_minmax_task_zero
+          log_inflation_info,         get_minmax_task_zero_distrib
 
 
 ! version controlled file description for error handling, do not edit
@@ -931,8 +929,6 @@ character(len = *),          intent(in)    :: label
 
 character(len = 128) :: det, tadapt, sadapt, akind, rsread, nmread
 
-print*, '********************************'
-
 if(inflation_handle%deterministic) then
   det = 'deterministic,'
 else
@@ -1018,6 +1014,7 @@ integer,                     intent(in)    :: ss_inflate_sd_index
 
 integer :: owner, owners_index
 
+if (inflation_handle%inflation_flavor >= 2) then
 if (inflation_handle%mean_from_restart) then
 
    call get_copy_owner_index(ss_inflate_index, owner, owners_index)
@@ -1068,6 +1065,7 @@ if (inflation_handle%sd_from_restart) then
    endif
 
 endif
+endif
 
 end subroutine get_minmax_task_zero
 
@@ -1075,22 +1073,66 @@ end subroutine get_minmax_task_zero
 !-----------------------------------------------------------------------
 !> Collect onto task 0 the min and max of inflation from the tasks who
 !> owns the inflation copies 
-!> Assumes var complete (reading from dart restart file not directly from model netcdf files)
+!> Assumes comy complete (reading directly from model netcdf files, not
+!> from dart restart file)
 subroutine get_minmax_task_zero_distrib(inflation_handle, ens_handle, ss_inflate_index, ss_inflate_sd_index)
+
+use mpi
 
 type(adaptive_inflate_type), intent(inout) :: inflation_handle
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: ss_inflate_index
 integer,                     intent(in)    :: ss_inflate_sd_index
 
-integer :: owner, owners_index
+real(r8) :: minmax_mean(2), minmax_sd(2), global_val(2)
+integer  :: ierr
 
+if (inflation_handle%inflation_flavor >= 0) then
 if (inflation_handle%mean_from_restart) then
+
+   ! find min and max on each processor
+   minmax_mean(1) = minval(ens_handle%copies(ss_inflate_index, :))
+   minmax_mean(2) = maxval(ens_handle%copies(ss_inflate_index, :))
+
+   ! collect on task 0
+   if (datasize == mpi_real8) then
+
+      call mpi_reduce(minmax_mean(1), global_val(1), 1, mpi_real8, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+      call mpi_reduce(minmax_mean(2), global_val(2), 1, mpi_real8, MPI_MAX, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+
+   else ! single precision
+   
+      call mpi_reduce(minmax_mean(1), global_val(1), 1, mpi_real4, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+      call mpi_reduce(minmax_mean(2), global_val(2), 1, mpi_real4, MPI_MAX, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+
+   endif
+
+   if (ens_handle%my_pe == 0) inflation_handle%minmax_mean = global_val
 
 endif
 
 if (inflation_handle%sd_from_restart) then
 
+   ! find min and max on each processor
+   minmax_sd(1) = minval(ens_handle%copies(ss_inflate_sd_index, :))
+   minmax_sd(2) = maxval(ens_handle%copies(ss_inflate_sd_index, :))
+
+   ! collect on task 0
+   if (datasize == mpi_real8) then
+
+      call mpi_reduce(minmax_sd(1), global_val(1), 1, mpi_real8, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+      call mpi_reduce(minmax_sd(2), global_val(2), 1, mpi_real8, MPI_MAX, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+
+   else ! single precision
+   
+      call mpi_reduce(minmax_sd(1), global_val(1), 1, mpi_real4, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+      call mpi_reduce(minmax_sd(2), global_val(2), 1, mpi_real4, MPI_MAX, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
+
+   endif
+
+   if (ens_handle%my_pe == 0) inflation_handle%minmax_sd = minmax_sd
+
+endif
 endif
 
 end subroutine get_minmax_task_zero_distrib

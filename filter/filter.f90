@@ -53,7 +53,7 @@ use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,   
                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
                                  do_obs_inflate, adaptive_inflate_type,                      &
                                  output_inflate_diagnostics, log_inflation_info, &
-                                 get_minmax_task_zero
+                                 get_minmax_task_zero_distrib
 use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilities,           &
                                  my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                  task_count
@@ -404,9 +404,9 @@ call trace_message('After  initializing inflation')
 
 if (direct_netcdf_read) then
    call filter_read_restart_direct(state_ens_handle, time1, ens_size)
-   call get_minmax_task_zero(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
+   call get_minmax_task_zero_distrib(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
    call log_inflation_info(prior_inflate, 'Prior')
-   call get_minmax_task_zero(post_inflate, state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
+   call get_minmax_task_zero_distrib(post_inflate, state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
    call log_inflation_info(post_inflate, 'Posterior')
 endif
 
