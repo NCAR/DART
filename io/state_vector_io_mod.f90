@@ -51,8 +51,7 @@ use utilities_mod,        only : error_handler, E_ERR, nc_check, check_namelist_
                                  find_namelist_in_file, nmlfileunit, do_nml_file, do_nml_term, file_exist, &
                                  E_MSG
 
-use assim_model_mod,      only : get_model_size, aread_state_restart, awrite_state_restart, &
-                                 open_restart_read, open_restart_write, close_restart
+use assim_model_mod,      only : get_model_size
 ! should you go through assim_model_mod?
 !use model_mod,            only : read_file_name, write_file_name
 

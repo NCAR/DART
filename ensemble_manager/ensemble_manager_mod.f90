@@ -336,10 +336,8 @@ else
    READ_MULTIPLE_RESTARTS: do i = 1, ens_handle%my_num_copies
       ! Get global index for my ith ensemble
       global_copy_index = ens_handle%my_copies(i)
-
-      if (query_read_copy(global_copy_index)) then
-
-         ! If this global copy is in the range being read in, proceed
+      ! If this global copy is in the range being read in, proceed
+      if(global_copy_index >= start_copy .and. global_copy_index <= end_copy) then
          ! File name extension is the global index number for the copy
          write(extension, '(i4.4)') global_copy_index - start_copy + 1
          this_file_name = trim(file_name) // '.' // extension
@@ -348,7 +346,6 @@ else
          ! Read the file directly into storage
          call aread_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
          if(present(init_time)) ens_handle%time(i) = init_time
-      
          ! Close the restart file
          call close_restart(iunit)
 
@@ -459,27 +456,15 @@ if(single_restart_file_out .or. single_file_forced) then
 else
 !-------------- Block for multiple restart files -------------
    ! Everyone can just write their own files
-
    do i = 1, ens_handle%my_num_copies
       ! Figure out which global index this is
       global_index = ens_handle%my_copies(i)
-
-      if (query_write_copy(global_index)) then
-
-         !> @todo Need to know number of extras
-         if ( global_index <= ens_handle%num_copies -10) then
-            write(extension, '(i4.4)') ens_handle%my_copies(i)
-            this_file_name = trim(file_name) // '.' // extension
-            iunit = open_restart_write(this_file_name)
-         else
-            !> @todo what to do at the domain number?
-            iunit = open_restart_write(trim(restart_files_out(global_index, 1, 1)))
-         endif
-
+      if(global_index >= start_copy .and. global_index <= end_copy) then
+         write(extension, '(i4.4)') ens_handle%my_copies(i)
+         this_file_name = trim(file_name) // '.' // extension
+         iunit = open_restart_write(this_file_name)
          call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
          call close_restart(iunit)
-
-
       endif
    end do
 endif

@@ -121,7 +121,7 @@ allow_missing = get_missing_ok_status()
 
 ! Initialize a null adaptive_inflate type since inflation is not done at lags
 ! NOTE: Using ens_handle here (not lag_handle) so it doesn't die for 0 lag choice
-if(num_lags > 0) call adaptive_inflate_init(ens_handle, lag_inflate, 0, .false., .false., .false., &
+if(num_lags > 0) call adaptive_inflate_init(lag_inflate, 0, .false., .false., .false., &
    .true., 'no_lag_inflate', 'no_lag_inflate', 'no_lag_inflate', 1.0_r8, 0.0_r8,       &
    1.0_r8, 1.0_r8, 0.0_r8, ens_handle, POST_INF_COPY, POST_INF_SD_COPY, allow_missing, "Lag", direct_netcd_read)
 
