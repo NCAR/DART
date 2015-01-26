@@ -516,7 +516,7 @@ if(inflate_handle%output_restart) then
 
          ! allocating storage space in ensemble manager
          !  - should this be in ensemble_manager
-         allocate(state_ens_handle%vars(state_ens_handle%num_vars, ens_handle%my_num_copies))
+         allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
 
          call all_copies_to_all_vars(state_ens_handle)
 

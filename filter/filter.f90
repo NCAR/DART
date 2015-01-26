@@ -128,7 +128,6 @@ logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
 logical  :: silence                  = .false.
-logical  :: parallel_state_diag      = .true. ! default to write diagnostics in parallel - SKIPING at the moment, now stitching output together post processing
 logical  :: direct_netcdf_read = .true. ! default to read from netcdf file
 logical  :: direct_netcdf_write = .true. ! default to write to netcdf file
 
@@ -176,7 +175,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
    inf_lower_bound, inf_upper_bound, inf_sd_lower_bound,           &
-   silence, parallel_state_diag, direct_netcdf_read, direct_netcdf_write
+   silence, direct_netcdf_read, direct_netcdf_write
 
 
 !----------------------------------------------------------------
@@ -361,6 +360,13 @@ if (.not. direct_netcdf_read ) then ! expecting DART restart files
    call filter_read_restart(state_ens_handle, time1, model_size)
 endif
 
+! Moved this. Not doing anything with it, but when we do it should be before the read
+! Read in or initialize smoother restarts as needed
+if(ds) then
+   call init_smoother(state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
+   call smoother_read_restart(state_ens_handle, ens_size, model_size, time1, init_time_days)
+endif
+
 ! Initialize the adaptive inflation module
 ! This activates turn_read_copy_on
 call adaptive_inflate_init(state_ens_handle, prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
@@ -399,12 +405,6 @@ if (direct_netcdf_read) then
 endif
 
 !call test_state_copies(state_ens_handle, 'after_read')
-
-! Read in or initialize smoother restarts as needed
-if(ds) then
-   call init_smoother(state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
-   call smoother_read_restart(state_ens_handle, ens_size, model_size, time1, init_time_days)
-endif
 
 call timestamp_message('After  reading in ensemble restart files')
 call     trace_message('After  reading in ensemble restart files')
