@@ -4,10 +4,7 @@
 !
 ! $Id$
 
-!> \dir filter  Main program contained here
-!> \file filter.f90 Main program
-
-program filter
+module filter_mod
 
 !------------------------------------------------------------------------------
 use types_mod,            only : r8, missing_r8, metadatalength
@@ -183,13 +180,9 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
 
 !----------------------------------------------------------------
 
-! Doing this allows independent scoping for subroutines in main program file
-call filter_main()
+contains
 
 !----------------------------------------------------------------
-
-contains 
-
 !> allow_complete_state() queries the ensemble manager namelist value for
 !> no_complete_state.
 !> the code is distributed except:
@@ -2276,7 +2269,7 @@ close(15)
 end subroutine test_obs_copies
 
 !-------------------------------------------------------------------
-end program filter
+end module filter_mod
 
 ! <next few lines under version control, do not edit>
 ! $URL$
