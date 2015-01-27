@@ -73,16 +73,6 @@ interface get_state_variable_info
    module procedure get_state_variable_info_lorenz96
 end interface
 
-interface turn_read_copy_on
-   module procedure turn_read_copy_on_single
-   module procedure turn_read_copy_on_range
-end interface
-
-interface turn_write_copy_on
-   module procedure turn_write_copy_on_single
-   module procedure turn_write_copy_on_range
-end interface
-
 
 private
 
@@ -94,7 +84,7 @@ public :: state_vector_io_init, &
           netcdf_filename_out, &
           setup_read_write, &
           turn_read_copy_on, turn_write_copy_on, &
-          turn_read_copies_off, turn_write_copies_off
+          turn_read_copies_off, turn_write_copy_off
 
 integer :: ret !< netcdf return code
 integer :: ncfile !< netcdf input file identifier
@@ -477,12 +467,14 @@ end subroutine read_transpose
 !> Two stages of collection.
 !> See transpose_write.pdf for explanation of a, k, y.
 !> 
-subroutine transpose_write(state_ens_handle, restart_out_file_name, domain, dart_index)
+subroutine transpose_write(state_ens_handle, restart_out_file_name, domain, dart_index, isprior)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
 character(len=129),  intent(in)    :: restart_out_file_name
 integer,             intent(in)    :: domain
 integer,             intent(inout) :: dart_index
+logical,             intent(in)    :: isprior
+
 
 integer :: i
 integer :: start_var, end_var !< start/end variables in a read block
@@ -551,7 +543,12 @@ COPIES : do c = 1, ens_size
    ! writers open netcdf output file. This is a copy of the input file
    if (my_pe < ens_size) then
       if ( query_write_copy(my_copy - recv_start + 1)) then
-            netcdf_filename_out = restart_files_out((my_copy - recv_start +1), domain, 2) !> @todo prior post
+            if (isprior) then
+               netcdf_filename_out = restart_files_out((my_copy - recv_start +1), domain, 1)
+            else
+               netcdf_filename_out = restart_files_out((my_copy - recv_start +1), domain, 2)
+            endif
+
          if (create_restarts) then ! How do you want to do create restarts
             call create_state_output(netcdf_filename_out, domain)
          else

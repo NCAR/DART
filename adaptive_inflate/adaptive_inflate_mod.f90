@@ -21,7 +21,7 @@ use ensemble_manager_mod, only : ensemble_type, read_ensemble_restart, write_ens
 use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, datasize
 
 use state_vector_io_mod,  only : turn_read_copy_on, turn_write_copy_on, &
-                                 turn_read_copies_off, turn_write_copies_off, &
+                                 turn_read_copies_off, &
                                  read_transpose, transpose_write
 
 implicit none

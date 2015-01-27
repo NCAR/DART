@@ -24,7 +24,7 @@ use mpi_utilities_mod, only : task_count, datasize, my_task_id
 implicit none
 private
 
-public ensemble_type, map_pe_to_task, get_var_owner_index, copies_in_window, mean_row
+public ensemble_type, map_pe_to_task, get_var_owner_index, copies_in_window, mean_row, set_num_extra_copies
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -56,6 +56,7 @@ end type ensemble_type
 !! Module storage for pe information for this process avoids recomputation
 ! Would need to have an initialize module call to assign this
 !integer              :: num_pes
+integer               :: num_extras
 
 contains
 
@@ -102,7 +103,7 @@ type(ensemble_type), intent(in) :: state_ens_handle
 integer                         :: copies_in_window
 
 !> @todo These are annoying -7, -6 or -10, -9
-copies_in_window = state_ens_handle%num_copies -10
+copies_in_window = state_ens_handle%num_copies - num_extras
 
 end function copies_in_window
 
@@ -115,9 +116,21 @@ function mean_row(state_ens_handle)
 type(ensemble_type), intent(in) :: state_ens_handle
 integer                         :: mean_row
 
-mean_row = state_ens_handle%num_copies -9
+mean_row = state_ens_handle%num_copies - num_extras +1
 
 end function mean_row
 
+!--------------------------------------------------------------------------------
+!> Aim: allow filter to set the number of extra copies in this module
+!> This is necessary for copies_in_window, mean_row
+!> This is really ugly.
+subroutine set_num_extra_copies(state_ens_handle, n)
+
+type(ensemble_type), intent(inout) :: state_ens_handle
+integer,             intent(in)    :: n
+
+num_extras = n
+
+end subroutine set_num_extra_copies
 
 end module data_structure_mod

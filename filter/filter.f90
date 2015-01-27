@@ -64,11 +64,11 @@ use smoother_mod,         only : smoother_read_restart, advance_smoother,       
                                  smoother_ss_diagnostics, smoother_end, set_smoother_trace
 use distributed_state_mod
 
-use data_structure_mod, only : copies_in_window ! should this be through ensemble_manager?
+use data_structure_mod, only : copies_in_window, set_num_extra_copies ! should this be through ensemble_manager?
 
 use state_vector_io_mod,   only : read_transpose, transpose_write, get_state_variable_info,  &
                                   initialize_arrays_for_read, netcdf_filename, state_vector_io_init, &
-                                  setup_read_write, turn_read_copy_on, turn_write_copy_on, turn_write_copies_off
+                                  setup_read_write, turn_read_copy_on, turn_write_copy_on, turn_write_copy_off
 
 use model_mod,            only : variables_domains, fill_variable_list, info_file_name, get_model_time
 
@@ -227,6 +227,7 @@ integer                 :: mean_owner, mean_owners_index
 !HK
 integer :: owner, owners_index
 integer :: num_extras ! the extra ensemble copies
+logical :: spare_copies ! if you are keeping around prior copies to write at the end
 
 !HK 
 doubleprecision start, finish ! for timing with MPI_WTIME
@@ -294,7 +295,12 @@ if(inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
    'Posterior observation space inflation (type 1) not supported', source, revision, revdate)
 
 ! Setup the indices into the ensemble storage
-num_extras = 10  ! six plus spare copies
+if (num_output_state_members > 0) spare_copies = .false.
+if (spare_copies) then
+   num_extras = 10  ! six plus spare copies
+else
+   num_extras = 6
+endif
 
 ! state
 ENS_MEAN_COPY        = ens_size + 1
@@ -339,6 +345,7 @@ model_size = get_model_size()
 
 ! set up ensemble HK WATCH OUT putting this here.
 call init_ensemble_manager(state_ens_handle, ens_size + num_extras, model_size)
+call set_num_extra_copies(state_ens_handle, num_extras)
 
 call trace_message('After  setting up space for ensembles')
 
@@ -427,9 +434,6 @@ call     trace_message('Before initializing output files')
 call timestamp_message('Before initializing output files')
 
 ! Initialize the output sequences and state files and set their meta data
-! HK this is where a parallel write of diagnostics differs from the traditional way 
-! of having task 0 write all the diagnostics.
-
 ! Is there a problem if every task creates the meta data?
 call filter_generate_copy_meta_data(seq, prior_inflate, &
       PriorStateUnit, PosteriorStateUnit, in_obs_copy, output_state_mean_index, &
@@ -663,10 +667,12 @@ AdvanceTime : do
    ! Store inflation mean copy in the spare copy. 
    ! The spare copy is left alone until the end
    ! shoving in four spare copies for now
-   state_ens_handle%copies(SPARE_COPY_MEAN, :)       = state_ens_handle%copies(ENS_MEAN_COPY, :)
-   state_ens_handle%copies(SPARE_COPY_SPREAD, :)     = state_ens_handle%copies(ENS_SD_COPY, :)
-   state_ens_handle%copies(SPARE_COPY_INF_MEAN, :)   = state_ens_handle%copies(PRIOR_INF_COPY, :)
-   state_ens_handle%copies(SPARE_COPY_INF_SPREAD, :) = state_ens_handle%copies(PRIOR_INF_SD_COPY, :)
+   if (spare_copies) then
+      state_ens_handle%copies(SPARE_COPY_MEAN, :)       = state_ens_handle%copies(ENS_MEAN_COPY, :)
+      state_ens_handle%copies(SPARE_COPY_SPREAD, :)     = state_ens_handle%copies(ENS_SD_COPY, :)
+      state_ens_handle%copies(SPARE_COPY_INF_MEAN, :)   = state_ens_handle%copies(PRIOR_INF_COPY, :)
+      state_ens_handle%copies(SPARE_COPY_INF_SPREAD, :) = state_ens_handle%copies(PRIOR_INF_SD_COPY, :)
+   endif
 
    if ((output_interval > 0) .and. &
        (time_step_number / output_interval * output_interval == time_step_number)) then
@@ -680,6 +686,20 @@ AdvanceTime : do
             prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
 
       endif
+
+      ! write prior files if you have ensemble members to output
+      if (.not. spare_copies) then
+         call turn_write_copy_off(1, ens_size + num_extras) ! clean slate
+         call turn_write_copy_on(1, num_output_state_members)
+         ! need to ouput the diagnostic info in restart files
+            call turn_write_copy_on(ENS_MEAN_COPY)
+            call turn_write_copy_on(ENS_SD_COPY)
+               ! Output inflation sucks
+               call turn_write_copy_on(PRIOR_INF_COPY)
+               call turn_write_copy_on(PRIOR_INF_SD_COPY)
+         call filter_write_restart_direct(state_ens_handle, isprior = .true.)
+      endif
+
    endif
 
    call timestamp_message('After  prior state space diagnostics')
@@ -921,7 +941,7 @@ if(my_task_id() == 0) call write_obs_seq(seq, obs_sequence_out_name)
 call trace_message('After  writing output sequence file')
 
 call trace_message('Before writing inflation restart files if required')
-call turn_write_copies_off(1, ens_size + num_extras) ! clean slate
+call turn_write_copy_off(1, ens_size + num_extras) ! clean slate
 
 ! Output the restart for the adaptive inflation parameters
 call adaptive_inflate_end(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, direct_netcdf_write)
@@ -946,7 +966,7 @@ call turn_write_copy_on(POST_INF_COPY) ! posterior inf mean
 call turn_write_copy_on(POST_INF_SD_COPY) ! posterior inf sd
 
 if(direct_netcdf_write) then
-   call filter_write_restart_direct(state_ens_handle)
+   call filter_write_restart_direct(state_ens_handle, isprior=.false.)
 else ! write
    call filter_write_restart(state_ens_handle)
 endif
@@ -1521,9 +1541,10 @@ end subroutine filter_write_restart
 
 !-------------------------------------------------------------------------
 !> write the restart information directly into the model netcdf file.
-subroutine filter_write_restart_direct(state_ens_handle)
+subroutine filter_write_restart_direct(state_ens_handle, isprior)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
+logical,             intent(in)    :: isprior
 
 integer :: dart_index !< where to start in state_ens_handle%copies
 integer :: num_variables_in_state
@@ -1535,7 +1556,7 @@ call variables_domains(num_variables_in_state, num_domains)
 ! transpose and write out the data
 dart_index = 1
 do domain = 1, num_domains
-   call transpose_write(state_ens_handle, restart_out_file_name, domain, dart_index)
+   call transpose_write(state_ens_handle, restart_out_file_name, domain, dart_index, isprior)
 enddo
 
 end subroutine filter_write_restart_direct
@@ -1665,7 +1686,7 @@ ALL_OBSERVATIONS: do j = 1, obs_fwd_op_ens_handle%my_num_vars
    ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
    ! in the forward operator evaluation field
 
-   do e = 1, copies_in_window(ens_handle) !>@todo this won't always be 6 (groups)
+   do e = 1, copies_in_window(ens_handle) !>@todo this won't always be 6 (groups) What are you talking about?
 
       if(istatus(e) == 0) then
          if ((assimilate_this_ob .or. evaluate_this_ob) .and. (expected_obs(e) == missing_r8))  then

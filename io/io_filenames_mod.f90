@@ -35,7 +35,6 @@ public :: io_filenames_init, restart_files_in, restart_files_out
 
 ! How do people name there restart files?
 ! What about domains?
-integer, parameter :: max_num_files = 5000
 
 ! public arrays of filenames. Do we need arrays for restarts AND extras?
 character(len=2048), allocatable :: restart_files_in(:,:), restart_files_out(:,:,:)
@@ -72,7 +71,7 @@ call check_namelist_read(iunit, io, "io_filenames_nml")
 if (do_nml_file()) write(nmlfileunit, nml=io_filenames_nml)
 if (do_nml_term()) write(     *     , nml=io_filenames_nml)
 
-num_files = ens_size + 10 !> @toto
+num_files = ens_size + 10 !> @toto do you worry about spare copies?
 
 allocate(restart_files_in(num_files, num_domains))
 allocate(restart_files_out(num_files, num_domains, 2)) ! for prior and posterior filenames
