@@ -5,6 +5,7 @@ common/types_mod.f90
 cov_cutoff/cov_cutoff_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
 filter/filter.f90
+filter/filter_mod.f90
 location/threed_sphere/location_mod.f90
 models/wrf/model_mod.f90
 models/wrf/module_map_utils.f90
