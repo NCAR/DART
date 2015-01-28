@@ -57,28 +57,7 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
           prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
           prepare_to_update_copies,   print_ens_handle,                                 &
-          map_task_to_pe,             map_pe_to_task, allow_complete_state, single_restart_file_in, single_restart_file_out
-
-!type ensemble_type
-!   !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
-!   !!!private
-!   integer                  :: num_copies, num_vars, my_num_copies, my_num_vars
-!   integer,         pointer :: my_copies(:), my_vars(:)
-!   ! Storage in next line is to be used when each pe has all copies of subset of vars
-!   real(r8),        pointer :: copies(:, :)         ! Dimensioned (num_copies, my_num_vars)
-!   ! Storage on next line is used when each pe has subset of copies of all vars
-!   real(r8),        pointer :: vars(:, :)           ! Dimensioned (num_vars, my_num_copies)
-!   ! Time is only related to var complete
-!   type(time_type), pointer :: time(:)
-!   integer                  :: distribution_type
-!   integer                  :: valid     ! copies modified last, vars modified last, both same
-!   integer                  :: id_num
-!   integer, allocatable     :: task_to_pe_list(:), pe_to_task_list(:) ! List of tasks
-!   ! Flexible my_pe, layout_type which allows different task layouts for different ensemble handles
-!   integer                  :: my_pe
-!   integer                  :: layout_type
-!
-!end type ensemble_type
+          map_task_to_pe,             map_pe_to_task, single_restart_file_in, single_restart_file_out
 
 ! track if copies modified last, vars modified last, both are in sync
 ! (and therefore both valid to be used r/o), or unknown.
@@ -125,16 +104,12 @@ integer  :: layout = 1 ! default to my_pe = my_task_id(). Layout2 assumes that t
 integer  :: tasks_per_node = 1 ! default to 1 if the user does not specify a number of tasks per node.
 logical  :: debug = .false.
 
-! Is this necessary any more?
-logical  :: no_complete_state = .true.
-
 namelist / ensemble_manager_nml / single_restart_file_in,  &
                                   single_restart_file_out, &
                                   perturbation_amplitude,  &
                                   communication_configuration, &
                                   layout, tasks_per_node,  &
-                                  debug, flag_unneeded_transposes, &
-                                  no_complete_state
+                                  debug, flag_unneeded_transposes
                                   
 !-----------------------------------------------------------------
 
@@ -795,13 +770,8 @@ subroutine end_ensemble_manager(ens_handle)
 type(ensemble_type), intent(inout) :: ens_handle
 
 ! Free up the allocated storage
-if (no_complete_state) then
-   deallocate(ens_handle%my_copies, ens_handle%time, ens_handle%my_vars, &
-            ens_handle%copies, ens_handle%task_to_pe_list, ens_handle%pe_to_task_list)
-else
-   deallocate(ens_handle%my_copies, ens_handle%time, ens_handle%my_vars, &
-            ens_handle%vars,    ens_handle%copies, ens_handle%task_to_pe_list, ens_handle%pe_to_task_list)
-endif
+deallocate(ens_handle%my_copies, ens_handle%time, ens_handle%my_vars, &
+           ens_handle%copies, ens_handle%task_to_pe_list, ens_handle%pe_to_task_list)
 
 end subroutine end_ensemble_manager
 
@@ -955,46 +925,20 @@ else
    ens_handle%my_num_vars = num_per_pe_below
 endif
 
-if (no_complete_state) then
+!Allocate the storage for copies and vars all at once
+allocate(ens_handle%my_copies(ens_handle%my_num_copies),              &
+         ens_handle%time     (ens_handle%num_copies),                 &
+         ens_handle%my_vars  (ens_handle%my_num_vars),                &
+         ens_handle%copies   (ens_handle%num_copies, ens_handle%my_num_vars))
 
-   !Allocate the storage for copies and vars all at once
-   allocate(ens_handle%my_copies(ens_handle%my_num_copies),              &
-            ens_handle%time     (ens_handle%num_copies),                 &
-            ens_handle%my_vars  (ens_handle%my_num_vars),                &
-            ens_handle%copies   (ens_handle%num_copies, ens_handle%my_num_vars))
+! Set everything to missing value
+ens_handle%copies = MISSING_R8
 
-   ! Set everything to missing value
-   ens_handle%copies = MISSING_R8
+! Fill out the number of my members
+call get_copy_list(ens_handle%num_copies, ens_handle%my_pe, ens_handle%my_copies, i)
 
-   ! Fill out the number of my members
-   call get_copy_list(ens_handle%num_copies, ens_handle%my_pe, ens_handle%my_copies, i)
-
-   ! Initialize times to missing
-   ens_handle%time(:) = set_time(0, 0) ! every task has the time for every copy
-
-else
-
-   !Allocate the storage for copies and vars all at once
-   allocate(ens_handle%my_copies(ens_handle%my_num_copies),              &
-            ens_handle%time     (ens_handle%my_num_copies),              &
-            ens_handle%my_vars  (ens_handle%my_num_vars),                &
-            ens_handle%vars     (ens_handle%num_vars,   ens_handle%my_num_copies),  &
-            ens_handle%copies   (ens_handle%num_copies, ens_handle%my_num_vars))
-
-   ! Set everything to missing value
-   ens_handle%vars = MISSING_R8
-   ens_handle%copies = MISSING_R8
-
-   ! Fill out the number of my members
-   call get_copy_list(ens_handle%num_copies, ens_handle%my_pe, ens_handle%my_copies, i)
-
-   ! Initialize times to missing
-   ! This is only initializing times for pes that have ensemble copies
-   do i = 1, ens_handle%my_num_copies
-      ens_handle%time(i) = set_time(0, 0)
-   end do
-
-endif
+! Initialize times to missing
+ens_handle%time(:) = set_time(0, 0) ! every task has the time for every copy
 
 ! Fill out the number of my vars
 call get_var_list(ens_handle%num_vars, ens_handle%my_pe, ens_handle%my_vars, i)
@@ -1899,18 +1843,6 @@ integer                         :: map_task_to_pe
 map_task_to_pe = ens_handle%task_to_pe_list(t + 1)
 
 end function map_task_to_pe
-
-!--------------------------------------------------------------------------------
-!> Allows filter to query the ensemble manager namelist option no_complete_state
-!> Is this necessary any more? 
-function allow_complete_state()
-logical allow_complete_state
-
-if ( .not. module_initialized ) call error_handler(E_ERR, 'allow_complete_state', 'do not call this before initializing ensemble manager')
-
-allow_complete_state = .not. no_complete_state
-
-end function
 
 !---------------------------------------------------------------------------------
 

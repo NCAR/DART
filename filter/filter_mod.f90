@@ -43,8 +43,7 @@ use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,   
                                  prepare_to_read_from_vars, prepare_to_write_to_vars, prepare_to_read_from_copies,    &
                                  prepare_to_write_to_copies, get_ensemble_time, set_ensemble_time,    &
                                  map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
-                                 get_my_num_vars, allow_complete_state, &
-                                 single_restart_file_in
+                                 get_my_num_vars, single_restart_file_in
 
 use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
@@ -128,8 +127,10 @@ logical  :: trace_execution          = .false.
 logical  :: silence                  = .false.
 logical  :: direct_netcdf_read = .true. ! default to read from netcdf file
 logical  :: direct_netcdf_write = .true. ! default to write to netcdf file
+! what should you do about diagnostic files.
+
 logical  :: diagnostic_files = .false. ! what should be the default
-logical  :: skeleton_diagnostic_files = .true. ! If you do write diagnostic files, make them skeletons - this is what is happening at the moment, no whole diagnostic files are written.
+!logical  :: skeleton_diagnostic_files = .true. ! If you do write diagnostic files, make them skeletons - this is what is happening at the moment, no whole diagnostic files are written.
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
                         obs_sequence_out_name = "obs_seq.final",  &
@@ -183,12 +184,10 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
 contains
 
 !----------------------------------------------------------------
-!> allow_complete_state() queries the ensemble manager namelist value for
-!> no_complete_state.
-!> the code is distributed except:
-!> task 0 still writes the obs_sequence file, so there is a transpose (copies to vars) and 
+!> The code is distributed except:
+!> * Task 0 still writes the obs_sequence file, so there is a transpose (copies to vars) and 
 !> sending the obs_fwd_op_ens_handle%vars to task 0. Keys is also size obs%vars.
-!>
+!> * You have to have state_ens_handle%vars to read dart restarts and write dart diagnostics
 
 subroutine filter_main()
 
@@ -700,9 +699,7 @@ AdvanceTime : do
 
    call trace_message('Before observation space diagnostics')
 
-   if (.not. allow_complete_state()) then ! task 0 still updating the sequence.
-      allocate(obs_fwd_op_ens_handle%vars(obs_fwd_op_ens_handle%num_vars, obs_fwd_op_ens_handle%my_num_copies))
-   endif
+   allocate(obs_fwd_op_ens_handle%vars(obs_fwd_op_ens_handle%num_vars, obs_fwd_op_ens_handle%my_num_copies))
 
    ! This is where the mean obs
    ! copy ( + others ) is moved to task 0 so task 0 can update seq.
@@ -716,9 +713,7 @@ AdvanceTime : do
       OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
    call trace_message('After  observation space diagnostics')
 
-   if (.not. allow_complete_state()) then ! task 0 still updating the sequence.
-      deallocate(obs_fwd_op_ens_handle%vars)
-   endif
+   deallocate(obs_fwd_op_ens_handle%vars)
 
 !*********************
 
@@ -849,9 +844,7 @@ AdvanceTime : do
 
    call trace_message('Before posterior obs space diagnostics')
 
-   if (.not. allow_complete_state()) then ! task 0 still updating the sequence.
-      allocate(obs_fwd_op_ens_handle%vars(obs_fwd_op_ens_handle%num_vars, obs_fwd_op_ens_handle%my_num_copies))
-   endif
+   allocate(obs_fwd_op_ens_handle%vars(obs_fwd_op_ens_handle%num_vars, obs_fwd_op_ens_handle%my_num_copies))
 
    ! Do posterior observation space diagnostics
    ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
@@ -862,9 +855,7 @@ AdvanceTime : do
       OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
       OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
 
-   if (.not. allow_complete_state()) then ! task 0 still updating the sequence.
-      deallocate(obs_fwd_op_ens_handle%vars)
-   endif
+   deallocate(obs_fwd_op_ens_handle%vars)
 
 !***********************
 
@@ -1871,6 +1862,7 @@ real(r8)              :: rvalue(1)
 if(output_forward_op_errors) call verbose_forward_op_output(qc_ens_handle, prior_post, ens_size, keys)
 
 ! Make var complete for get_copy() calls below.
+! Can you use a gather instead of a transpose and get copy?
 call all_copies_to_all_vars(obs_fwd_op_ens_handle)
 
 ! allocate temp space for sending data - surely only task 0 needs to allocate this?
