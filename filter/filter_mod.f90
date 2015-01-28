@@ -699,8 +699,6 @@ AdvanceTime : do
 
    call trace_message('Before observation space diagnostics')
 
-   allocate(obs_fwd_op_ens_handle%vars(obs_fwd_op_ens_handle%num_vars, obs_fwd_op_ens_handle%my_num_copies))
-
    ! This is where the mean obs
    ! copy ( + others ) is moved to task 0 so task 0 can update seq.
    ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
@@ -713,7 +711,6 @@ AdvanceTime : do
       OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
    call trace_message('After  observation space diagnostics')
 
-   deallocate(obs_fwd_op_ens_handle%vars)
 
 !*********************
 
@@ -841,10 +838,7 @@ AdvanceTime : do
    call timestamp_message('After  posterior state space diagnostics')
    call trace_message('After  posterior state space diagnostics')
 
-
    call trace_message('Before posterior obs space diagnostics')
-
-   allocate(obs_fwd_op_ens_handle%vars(obs_fwd_op_ens_handle%num_vars, obs_fwd_op_ens_handle%my_num_copies))
 
    ! Do posterior observation space diagnostics
    ! There is a transpose (all_copies_to_all_vars(obs_fwd_op_ens_handle)) in obs_space_diagnostics
@@ -854,8 +848,6 @@ AdvanceTime : do
       posterior_obs_mean_index, posterior_obs_spread_index, num_obs_in_set, &
       OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, &
       OBS_VAL_COPY, OBS_ERR_VAR_COPY, DART_qc_index)
-
-   deallocate(obs_fwd_op_ens_handle%vars)
 
 !***********************
 
@@ -1861,6 +1853,8 @@ real(r8)              :: rvalue(1)
 ! Do verbose forward operator output if requested
 if(output_forward_op_errors) call verbose_forward_op_output(qc_ens_handle, prior_post, ens_size, keys)
 
+allocate(obs_fwd_op_ens_handle%vars(obs_fwd_op_ens_handle%num_vars, obs_fwd_op_ens_handle%my_num_copies))
+
 ! Make var complete for get_copy() calls below.
 ! Can you use a gather instead of a transpose and get copy?
 call all_copies_to_all_vars(obs_fwd_op_ens_handle)
@@ -1929,6 +1923,7 @@ endif
 
 ! clean up.
 deallocate(obs_temp)
+deallocate(obs_fwd_op_ens_handle%vars)
 
 end subroutine obs_space_diagnostics
 
