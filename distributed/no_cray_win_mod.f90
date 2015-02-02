@@ -18,12 +18,20 @@ use mpi
 
 implicit none
 
+!private
+!public :: create_mean_window, create_state_window, free_mean_window, free_state_window, mean_win, state_win, row, num_rows
+
 integer state_win !< mpi window for the forward operator
 integer mean_win !< mpi window
 integer :: num_rows !> number of copies in the window
 integer :: row !> mean row index
 integer(KIND=MPI_ADDRESS_KIND) window_size_state
 integer(KIND=MPI_ADDRESS_KIND) window_size_mean
+
+! Global memory to stick the mpi window to.
+! Need a simply contiguous piece of memory to pass to mpi_win_create
+real(r8), allocatable :: contiguous_mean(:)
+real(r8), allocatable :: contiguous_fwd(:, :)
 
 contains
 
@@ -46,8 +54,11 @@ num_rows = copies_in_window(state_ens_handle)
 call mpi_type_size(datasize, bytesize, ierr)
 window_size_state = my_num_vars*num_rows*bytesize
 
+allocate(contiguous_fwd(num_rows, my_num_vars))
+contiguous_fwd = state_ens_handle%copies(1:num_rows, :)
+
 ! Expose local memory to RMA operation by other processes in a communicator.
-call mpi_win_create(state_ens_handle%copies(1:num_rows, :), window_size_state, bytesize, MPI_INFO_NULL, mpi_comm_world, state_win, ierr)
+call mpi_win_create(contiguous_fwd, window_size_state, bytesize, MPI_INFO_NULL, mpi_comm_world, state_win, ierr)
 
 end subroutine create_state_window
 
@@ -57,9 +68,9 @@ end subroutine create_state_window
 subroutine create_mean_window(state_ens_handle)
 
 type(ensemble_type), intent(in) :: state_ens_handle
-integer :: ii, ierr
-integer :: bytesize
-integer :: my_num_vars !< my number of vars
+integer               :: ii, ierr
+integer               :: bytesize
+integer               :: my_num_vars !< my number of vars
 
 ! find out how many variables I have
 my_num_vars = state_ens_handle%my_num_vars
@@ -68,8 +79,12 @@ row = mean_row(state_ens_handle)
 call mpi_type_size(datasize, bytesize, ierr)
 window_size_mean = my_num_vars*bytesize
 
+! Need a simply contiguous piece of memory to pass to mpi_win_create
+allocate(contiguous_mean(my_num_vars))
+contiguous_mean = state_ens_handle%copies(row, :)
+
 ! Expose local memory to RMA operation by other processes in a communicator.
-call mpi_win_create(state_ens_handle%copies(row, :), window_size_mean, bytesize, MPI_INFO_NULL, mpi_comm_world, mean_win, ierr)
+call mpi_win_create(contiguous_mean, window_size_mean, bytesize, MPI_INFO_NULL, mpi_comm_world, mean_win, ierr)
 
 end subroutine create_mean_window
 
@@ -79,6 +94,7 @@ subroutine free_state_window
 integer :: ierr
 
 call mpi_win_free(state_win, ierr)
+deallocate(contiguous_fwd)
 
 end subroutine free_state_window
 
@@ -88,6 +104,7 @@ subroutine free_mean_window
 integer :: ierr
 
 call mpi_win_free(mean_win, ierr)
+deallocate(contiguous_mean)
 
 end subroutine free_mean_window
 
