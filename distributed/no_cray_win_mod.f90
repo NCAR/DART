@@ -18,8 +18,8 @@ use mpi
 
 implicit none
 
-!private
-!public :: create_mean_window, create_state_window, free_mean_window, free_state_window, mean_win, state_win, row, num_rows
+private
+public :: create_mean_window, create_state_window, free_mean_window, free_state_window, mean_win, state_win, row, num_rows
 
 integer state_win !< mpi window for the forward operator
 integer mean_win !< mpi window

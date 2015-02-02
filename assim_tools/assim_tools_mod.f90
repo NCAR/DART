@@ -57,7 +57,9 @@ use assim_model_mod,      only : get_state_meta_data_distrib, get_close_maxdist_
 
 use model_mod,            only : query_vert_localization_coord, vert_convert_distrib, get_vert, set_vert, set_which_vert
 
-use distributed_state_mod
+use distributed_state_mod, only : create_mean_window, free_mean_window
+
+use mpi
 
 implicit none
 private
@@ -353,7 +355,7 @@ logical :: local_obs_inflate
 logical :: missing_in_state
 
 ! HK observation location conversion
-logical  :: lanai_bitwise = .false.
+logical  :: lanai_bitwise
 real(r8) :: vert_obs_loc_in_localization_coord
 
 !HK timing
@@ -363,6 +365,9 @@ double precision start, finish
 real(r8) :: xyz_loc(3)
 type(location_type) :: temp_loc
 integer :: vstatus !< for vertical conversion status. Can we just smash the dart qc instead?
+
+!HK debug
+lanai_bitwise = .true.
 
 ! we are going to read/write the copies array
 call prepare_to_update_copies(ens_handle)
@@ -457,11 +462,11 @@ my_num_state = get_my_num_vars(ens_handle)
 call get_my_vars(ens_handle, my_state_indx)
 
 ! Get the location and kind of all my state variables
-start = MPI_WTIME()
+!start = MPI_WTIME()
 do i = 1, ens_handle%my_num_vars
    call get_state_meta_data_distrib(ens_handle, my_state_indx(i), my_state_loc(i), my_state_kind(i))
 end do
-finish = MPI_WTIME()
+!finish = MPI_WTIME()
 !print*, 'get state meta data time :', finish - start, 'rank ', my_task_id()
 
 !call test_get_state_meta_data(my_state_loc, ens_handle%my_num_vars)

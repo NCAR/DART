@@ -58,7 +58,8 @@ use smoother_mod,         only : smoother_read_restart, advance_smoother,       
                                  init_smoother, do_smoothing, smoother_mean_spread,          &
                                  smoother_assim, filter_state_space_diagnostics,             &
                                  smoother_ss_diagnostics, smoother_end, set_smoother_trace
-use distributed_state_mod
+
+use distributed_state_mod, only : create_state_window, free_state_window
 
 use data_structure_mod, only : copies_in_window, set_num_extra_copies ! should this be through ensemble_manager?
 

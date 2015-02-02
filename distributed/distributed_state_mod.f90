@@ -21,6 +21,9 @@ use mpi
 
 implicit none
 
+private
+public get_state, create_state_window, free_state_window, create_mean_window, free_mean_window
+
 interface get_state
    module procedure get_fwd
    module procedure get_mean
