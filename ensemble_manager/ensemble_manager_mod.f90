@@ -57,7 +57,8 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
           prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
           prepare_to_update_copies,   print_ens_handle,                                 &
-          map_task_to_pe,             map_pe_to_task, single_restart_file_in, single_restart_file_out
+          map_task_to_pe,             map_pe_to_task, single_restart_file_in, single_restart_file_out, &
+          fill_var_counts
 
 ! track if copies modified last, vars modified last, both are in sync
 ! (and therefore both valid to be used r/o), or unknown.
@@ -1843,6 +1844,36 @@ integer                         :: map_task_to_pe
 map_task_to_pe = ens_handle%task_to_pe_list(t + 1)
 
 end function map_task_to_pe
+
+!--------------------------------------------------------------------------------
+!> Fill up an array containing the number of variables each processor has
+!> The array length is task_count() 
+subroutine fill_var_counts(ens_handle, var_counts, disps)
+
+type(ensemble_type), intent(in)  :: ens_handle
+integer,             intent(out) :: var_counts(:)
+integer,             intent(out) :: disps(:)
+
+integer :: num_per_pe_below, num_left_over, i
+
+do i = 1, size(var_counts)
+
+   num_per_pe_below = ens_handle%num_vars / num_pes
+   num_left_over = ens_handle%num_vars - num_per_pe_below * num_pes
+   if(num_left_over >= (i)) then
+      var_counts(i) = num_per_pe_below + 1
+   else
+      var_counts(i) = num_per_pe_below
+   endif
+
+enddo
+
+disps(1) = 0 ! mpi displacements
+do i = 2, size(var_counts)
+   disps(i) = disps(i-1) + var_counts(i-1)
+enddo
+
+end subroutine fill_var_counts
 
 !---------------------------------------------------------------------------------
 

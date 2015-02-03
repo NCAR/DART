@@ -43,7 +43,7 @@ use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,   
                                  prepare_to_read_from_vars, prepare_to_write_to_vars, prepare_to_read_from_copies,    &
                                  prepare_to_write_to_copies, get_ensemble_time, set_ensemble_time,    &
                                  map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
-                                 get_my_num_vars, single_restart_file_in
+                                 get_my_num_vars, single_restart_file_in, fill_var_counts
 
 use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
@@ -1927,6 +1927,130 @@ deallocate(obs_temp)
 deallocate(obs_fwd_op_ens_handle%vars)
 
 end subroutine obs_space_diagnostics
+
+!-------------------------------------------------------------------------
+! This uses mpi_gathervs rather than a transpose and get_copys.
+! Not sure whether this is better or worse.
+subroutine gather_obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
+   seq, keys, prior_post, num_output_members, members_index, &
+   obs_val_index, OBS_KEY_COPY, &
+   ens_mean_index, ens_spread_index, num_obs_in_set, &
+   OBS_MEAN_START, OBS_VAR_START, OBS_GLOBAL_QC_COPY, OBS_VAL_COPY, &
+   OBS_ERR_VAR_COPY, DART_qc_index)
+
+use mpi
+
+! Do prior observation space diagnostics on the set of obs corresponding to keys
+
+type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle, qc_ens_handle
+integer,                 intent(in)    :: ens_size
+integer,                 intent(in)    :: num_obs_in_set
+integer,                 intent(in)    :: keys(num_obs_in_set), prior_post
+integer,                 intent(in)    :: num_output_members, members_index
+integer,                 intent(in)    :: obs_val_index
+integer,                 intent(in)    :: OBS_KEY_COPY
+integer,                 intent(in)    :: ens_mean_index, ens_spread_index
+type(obs_sequence_type), intent(inout) :: seq
+integer,                 intent(in)    :: OBS_MEAN_START, OBS_VAR_START
+integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_VAL_COPY
+integer,                 intent(in)    :: OBS_ERR_VAR_COPY, DART_qc_index
+
+integer               :: j, k, ens_offset, forward_min, forward_max
+integer               :: forward_unit, ivalue
+real(r8)              :: error, diff_sd, ratio
+real(r8), allocatable :: obs_temp(:)
+real(r8)              :: obs_prior_mean, obs_prior_var, obs_val, obs_err_var
+real(r8)              :: rvalue(1)
+integer, allocatable  :: recvcounts(:) ! integer array (of length group size) containing the number of elements that are received from each process (significant only at root)
+integer, allocatable  :: displs(:) ! integer array (of length group size). Entry i specifies the displacement relative to recvbuf at which to place the incoming data from process i (significant only at root)
+integer               :: ierr ! mpi error
+
+! Do verbose forward operator output if requested
+if(output_forward_op_errors) call verbose_forward_op_output(qc_ens_handle, prior_post, ens_size, keys)
+
+! Can you use a gather instead of a transpose and get copy? I think so. Is is worth it? I don't know
+
+! allocate temp space for sending data - surely only task 0 needs to allocate this?
+if (my_task_id()==0) then
+   allocate(obs_temp(num_obs_in_set))
+   allocate(recvcounts(task_count()), displs(task_count())) ! Is this a silly thing to do?
+   call fill_var_counts(obs_fwd_op_ens_handle, recvcounts, displs)
+else
+   allocate(recvcounts(1), displs(1)) ! Is this a silly thing to do?
+endif
+
+
+! Update the ensemble mean
+! Get this copy to process 0
+call mpi_gatherv(obs_fwd_op_ens_handle%copies(OBS_MEAN_START, :), obs_fwd_op_ens_handle%my_num_vars, mpi_real4, obs_temp, recvcounts, displs, mpi_real4, 0, mpi_comm_world, ierr)
+
+! Only pe 0 gets to write the sequence
+if(my_task_id() == 0) then
+     ! Loop through the observations for this time
+     do j = 1, obs_fwd_op_ens_handle%num_vars
+      rvalue(1) = obs_temp(j)
+      call replace_obs_values(seq, keys(j), rvalue, ens_mean_index)
+     end do
+endif
+
+
+! Update the ensemble spread
+! Get this copy to process 0
+call mpi_gatherv(obs_fwd_op_ens_handle%copies(OBS_VAR_START, :), obs_fwd_op_ens_handle%my_num_vars, mpi_real4, obs_temp, recvcounts, displs, mpi_real4, 0, mpi_comm_world, ierr)
+
+! Only pe 0 gets to write the sequence
+if(my_task_id() == 0) then
+   ! Loop through the observations for this time
+   do j = 1, obs_fwd_op_ens_handle%num_vars
+      ! update the spread in each obs
+      if (obs_temp(j) /= missing_r8) then
+         rvalue(1) = sqrt(obs_temp(j))
+      else
+         rvalue(1) = obs_temp(j)
+      endif
+      call replace_obs_values(seq, keys(j), rvalue, ens_spread_index)
+   end do
+endif
+
+! May be possible to only do this after the posterior call... What does this mean?
+
+! Update any requested ensemble members
+ens_offset = members_index + 4
+! Update all of these ensembles that are required to sequence file
+do k = 1, num_output_members
+   ! Get this copy on pe 0
+   call mpi_gatherv(obs_fwd_op_ens_handle%copies(k, :), obs_fwd_op_ens_handle%my_num_vars, mpi_real4, obs_temp, recvcounts, displs, mpi_real4, 0, mpi_comm_world, ierr)
+
+   ! Only task 0 gets to write the sequence
+   if(my_task_id() == 0) then
+      ! Loop through the observations for this time
+      do j = 1, obs_fwd_op_ens_handle%num_vars
+         ! update the obs values 
+         rvalue(1) = obs_temp(j)
+         ivalue = ens_offset + 2 * (k - 1)
+         call replace_obs_values(seq, keys(j), rvalue, ivalue)
+      end do
+   endif
+end do
+
+! Update the qc global value
+call mpi_gatherv(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, :), obs_fwd_op_ens_handle%my_num_vars, mpi_real4, obs_temp, recvcounts, displs, mpi_real4, 0, mpi_comm_world, ierr)
+
+! Only task 0 gets to write the observations for this time
+if(my_task_id() == 0) then
+   ! Loop through the observations for this time
+   do j = 1, obs_fwd_op_ens_handle%num_vars
+      rvalue(1) = obs_temp(j)
+      call replace_qc(seq, keys(j), rvalue, DART_qc_index)
+   end do
+endif
+
+! clean up.
+if(my_task_id()==0) deallocate(obs_temp)
+deallocate(recvcounts, displs)
+
+end subroutine gather_obs_space_diagnostics
+
 
 !-------------------------------------------------------------------------
 
