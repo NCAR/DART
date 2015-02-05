@@ -163,6 +163,7 @@ type(random_seq_type) :: random_seq
 ! needed for the get_close code.
 type(xyz_get_close_type)             :: cc_gc
 type(xyz_location_type), allocatable :: cell_locs(:)
+logical :: search_initialized = .false.
 
 
 ! compile-time control over whether grid information is written to the
@@ -3172,6 +3173,8 @@ call nc_check(nf90_get_var( ncid, VarID, xland), &
 
 latCell = latCell * rad2deg
 lonCell = lonCell * rad2deg
+where (latCell >  90.0_r8) latCell = 90.0_r8
+where (latCell < -90.0_r8) latCell = -90.0_r8
 
 ! Read the variables
 
@@ -5648,7 +5651,6 @@ integer               :: find_closest_cell_center
 
 type(xyz_location_type) :: pointloc
 integer :: closest_cell, rc
-logical, save :: search_initialized = .false.
 
 ! do this exactly once.
 if (.not. search_initialized) then
@@ -5677,9 +5679,10 @@ end function find_closest_cell_center
 
 subroutine finalize_closest_center()
 
-! get rid of storage associated with GC for cell centers.
+! get rid of storage associated with GC for cell centers if
+! they were used.
 
-call xyz_get_close_obs_destroy(cc_gc)
+if (search_initialized) call xyz_get_close_obs_destroy(cc_gc)
 
 end subroutine finalize_closest_center
 
