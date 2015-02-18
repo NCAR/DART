@@ -288,6 +288,7 @@ if(inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
    'Posterior observation space inflation (type 1) not supported', source, revision, revdate)
 
 ! Setup the indices into the ensemble storage
+spare_copies = .true.
 if (num_output_state_members > 0) spare_copies = .false.
 if (spare_copies) then
    num_extras = 10  ! six plus spare copies
