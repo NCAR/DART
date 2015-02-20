@@ -815,9 +815,11 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
             write(string1,*)'WARNING pathological case for obs index ',obsindex
             string2 = 'obs failed outlier threshhold AND posterior operator failed.'
             string3 = 'Counting as a Prior QC == 7, Posterior QC == 4.'
-            string3 = 'WARNING changing DART QC from 7 to 4'
-! COMMENT   call error_handler(E_MSG,'obs_diag',string1,text2=string2,text3=string3)
-! COMMENT   qc_integer = 4
+            if (trusted) then
+! COMMENT      string3 = 'WARNING changing DART QC from 7 to 4'
+! COMMENT      qc_integer = 4
+            endif
+            call error_handler(E_MSG,'obs_diag',string1,text2=string2,text3=string3)
             num_pathological = num_pathological + 1
          endif
 
