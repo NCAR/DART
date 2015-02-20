@@ -1,13 +1,51 @@
-function two_experiments_profile(files, titles, varnames, qtty, prpo, varargin)
+function two_experiments_profile(files, titles, obsnames, copy, prpo, varargin)
+% Plot two or more experiments on the same axis.
+% Part of the observation-space diagnostics routines.
 %
-% Each variable gets its own figure.
-% Each region gets its own axis.
+% 'obs_diag' produces a netcdf file containing the diagnostics.
+% obs_diag condenses the obs_seq.final information into summaries for a few specified
+% regions - on a level-by-level basis.
 %
-% I'm having some problems preserving the ticks on the left,
-% so I used a transparent object. Because of THAT - OpenGL is the
-% default rendered, which is normally a pretty low resolution.
-% For good reproducibility, manually specify the 'painters' option when
-% printing.
+% The number of observations possible reflects only those observations
+% that have incoming QC values of interest. Any observation with a DART
+% QC of 5 or 6 is not considered 'possible' for the purpose of this graphic.
+%
+% NOTE: if the observation was designated as a TRUSTED observation in the
+%       obs_diag program, the observations that were rejected by the outlier
+%       threshhold STILL PARTICIPATE in the calculation of the rmse, spread, etc.
+%       The _values_ plotted by plot_profile reflect that. The number of observations
+%       "used" becomes unclear. The number of observations used (designated by the
+%       asterisk) is ALWAYS the number of observations successfully assimilated.
+%       For TRUSTED observations, this is different than the number used to calculate
+%       bias, rmse, spread, etc.
+%
+% USAGE: two_experiments_profile(files, titles, obsnames, copy, prpo, 'level', 1)
+%
+% files    : Cell array containing the locations of the obs_diag_output.nc 
+%            files to compare. Each file is presumed to be the results from
+%            a single experiment.
+%
+% titles   : Cell array containing the titles used to annotate each of the experiments. 
+%
+% obsnames : Cell array containing the strings of each observation type to plot.
+%            Each observation type will be plotted in a separate graphic.
+%
+% copy     : string defining the metric of interest. 'rmse', 'spread', etc.
+%            Possible values are available in the netcdf 'CopyMetaData' variable.
+%            (ncdump -v CopyMetaData obs_diag_output.nc)
+%
+% prpo     : string defining whether to plot the prior or posterior metrics.
+%            Due to the amount of information already plotted, we made a
+%            conscious decision not to support plotting both prior and posterior
+%            on the same plot.
+%
+% level    : The index of the level to plot. Defaults to level 1.
+%
+% 
+% OUTPUT: A .pdf of each graphic is created. Each .pdf has a name that 
+%         reflects the variable, quantity, and region being plotted.
+%
+% EXAMPLE
 %
 % files = {'/ptmp/nancy/CSL/Base5/032-061s0_def_reg/obs_diag_output.nc',
 %          '/ptmp/thoar/GPS+AIRS/Sep_032-061/obs_diag_output.nc'};
@@ -15,14 +53,14 @@ function two_experiments_profile(files, titles, varnames, qtty, prpo, varargin)
 % files = {'/glade/scratch/nancy/fvdiags/obs_diag_2005_08.nc', ...
 %  '/glade/scratch/raeder/SE_NCEP_assim1/Diag_hemi_poles_2005.8.1-30/obs_diag_output.nc'};
 % titles   = {'FV', 'SE'};
-% varnames = {'RADIOSONDE_TEMPERATURE', ...
+% obsnames = {'RADIOSONDE_TEMPERATURE', ...
 %             'RADIOSONDE_U_WIND_COMPONENT', 'RADIOSONDE_V_WIND_COMPONENT'};
-% qtty     = 'rmse';     % rmse, spread, totalspread, bias, etc.
+% copy     = 'rmse';     % rmse, spread, totalspread, bias, etc.
 % prpo     = 'analysis'; % [analy, analysis, posterior ] == posterior
 % prpo     = 'forecast'; % [guess, forecast, prior     ] == prior
 % prpo     = 'both';
 %
-% two_experiments_profile(files, titles, varnames, qtty, prpo)
+% two_experiments_profile(files, titles, obsnames, copy, prpo)
 %
 % Example 2: restrict the data limits to the data in a certain vertical area. 
 %            In this case, the observations using a pressure vertical coordinate
@@ -31,9 +69,9 @@ function two_experiments_profile(files, titles, varnames, qtty, prpo, varargin)
 %            clipped. The optional argument pairs at the end consist of a string
 %            and a length 2 array specifying the [bottom top] levels to consider.
 %
-% two_experiments_profile(files, titles, varnames, qtty, prpo,'plevel',[Inf 100])
+% two_experiments_profile(files, titles, obsnames, copy, prpo,'plevel',[Inf 100])
 %
-% two_experiments_profile(files, titles, varnames, qtty, prpo, ...
+% two_experiments_profile(files, titles, obsnames, copy, prpo, ...
 %            'plevel',[Inf 100],'mlevel',[1 10],'hlevel',[0 20000])
 
 %% DART software - Copyright 2004 - 2013 UCAR. This open source software is
@@ -43,7 +81,7 @@ function two_experiments_profile(files, titles, varnames, qtty, prpo, varargin)
 % DART $Id$
 
 %%--------------------------------------------------------------------
-% Decode,Parse,Check the input  (Matlab has tools for this)
+% Decode,Parse,Check the input
 %---------------------------------------------------------------------
 defaultPlevels = [ Inf  0 ];
 defaultHlevels = [-Inf Inf];
@@ -51,19 +89,19 @@ defaultMlevels = [  1  Inf];
 p = inputParser;
 addRequired(p,'files',@iscell);
 addRequired(p,'titles',@iscell);
-addRequired(p,'varnames',@iscell);
-addRequired(p,'qtty',@ischar);
+addRequired(p,'obsnames',@iscell);
+addRequired(p,'copy',@ischar);
 addRequired(p,'prpo',@ischar);
 addParamValue(p,'plevel',defaultPlevels,@isnumeric);
 addParamValue(p,'hlevel',defaultHlevels,@isnumeric);
 addParamValue(p,'mlevel',defaultMlevels,@isnumeric);
-parse(p, files, titles, varnames, qtty, prpo, varargin{:});
+parse(p, files, titles, obsnames, copy, prpo, varargin{:});
 
 % if you want to echo the input
-% disp(['Files   : ', p.Results.files])
-% disp(['Titles  : ', p.Results.titles])
-% disp(['varnames: ', p.Results.varnames])
-% disp(['qtty    : ', p.Results.qtty])
+% disp(['files   : ', p.Results.files])
+% disp(['titles  : ', p.Results.titles])
+% disp(['obsnames: ', p.Results.obsnames])
+% disp(['copy    : ', p.Results.copy])
 % disp(['prpo    : ', p.Results.prpo])
 % fprintf( 'plevel : %f %f \n', p.Results.plevel)
 % fprintf( 'hlevel : %f %f \n', p.Results.hlevel)
@@ -107,17 +145,17 @@ end
 
 % set up all the stuff that is common.
 
-commondata = check_compatibility(files, varnames, qtty);
+commondata = check_compatibility(files, obsnames, copy);
 figuredata = setfigure(NumExp);
 
 %%--------------------------------------------------------------------
 % Set some static data
 %---------------------------------------------------------------------
 
-nvars = length(varnames);
+nvars = length(obsnames);
 
 for ivar = 1:nvars
-   fprintf('Working on %s ...\n',varnames{ivar})
+   fprintf('Working on %s ...\n',obsnames{ivar})
 
    for iregion = 1:commondata.nregions
 
@@ -132,7 +170,7 @@ for ivar = 1:nvars
 
       for iexp = 1:NumExp
 
-         plotobj{iexp} = getvals(files{iexp}, varnames{ivar}, qtty, prpo, iregion, p);
+         plotobj{iexp} = getvals(files{iexp}, obsnames{ivar}, copy, prpo, iregion, p);
          plotobj{iexp}.title  = titles{iexp};
 
          Nlimits(iexp,:) = plotobj{iexp}.Nrange;
@@ -162,7 +200,7 @@ for ivar = 1:nvars
       BottomAnnotation(files)
 
       psfname = sprintf('%s_%s_region%d_profile_%dexp', ...
-                varnames{ivar}, plotobj{1}.copystring, iregion, NumExp);
+                obsnames{ivar}, plotobj{1}.copystring, iregion, NumExp);
       print(iregion,'-dpdf',psfname)
 
    end % of loop around regions
@@ -359,6 +397,8 @@ myinfo.regionindex    = plotdat.region;
 plotdat.prior         = nc_varget(fname, plotdat.priorvar, start, count);
 [start, count]        = GetNCindices(myinfo,'diagn',plotdat.postevar);
 plotdat.poste         = nc_varget(fname, plotdat.postevar, start, count);
+plotdat.trusted       = nc_read_att(fname, plotdat.priorvar, 'TRUSTED');
+if (isempty(plotdat.trusted)), plotdat.trusted = 'NO'; end
 
 % Now that we know the variable ... get the appropriate vertical information
 
@@ -468,7 +508,7 @@ Nexp    = length(plotdat);
 iregion = plotdat{1}.region;
 
 figure(iregion);
-clf; orient(figdata.orientation); wysiwyg
+clf(iregion); orient(figdata.orientation); wysiwyg
 ax1 = subplot('position',figdata.position);
 
 Stripes(Drange, plotdat{1}.level_edges, plotdat{1}.level_units, Nexp);
@@ -487,16 +527,18 @@ for i = 1:Nexp
    if ( plotdat{i}.useprior )
       iexp         = iexp + 1;
       lty          = sprintf('%s%s%s',figdata.expcolors{i},figdata.prpolines{1}, ...
-         figdata.expsymbols{i});
-      hd(iexp)     = plot(plotdat{i}.prior, plotdat{i}.levels, lty,'LineWidth', figdata.linewidth);
+                             figdata.expsymbols{i});
+      hd(iexp)     = plot(plotdat{i}.prior, plotdat{i}.levels, lty,'LineWidth', ...
+                          figdata.linewidth);
       legstr{iexp} = sprintf('%s Prior',plotdat{i}.title);
    end
 
    if ( plotdat{i}.useposterior )
       iexp         = iexp + 1;
       lty          = sprintf('%s%s%s',figdata.expcolors{i},figdata.prpolines{2}, ...
-         figdata.expsymbols{i});
-      hd(iexp)     = plot(plotdat{i}.poste, plotdat{i}.levels, lty,'LineWidth', figdata.linewidth);
+                             figdata.expsymbols{i});
+      hd(iexp)     = plot(plotdat{i}.poste, plotdat{i}.levels, lty,'LineWidth', ...
+                          figdata.linewidth);
       legstr{iexp} = sprintf('%s Posterior',plotdat{i}.title);
    end
 end
@@ -510,6 +552,26 @@ switch plotdat{1}.copystring
 end
 
 set(ax1,'XLim',Drange)
+
+axlims = axis;
+dx = (axlims(2) - axlims(1))/20;
+if strcmpi('normal',get(ax1,'YDir'))
+   ty = axlims(3);
+else
+   ty = axlims(4);
+end
+
+for i = 1:Nexp
+   % If the observation is trusted, reference that somehow
+   switch lower(plotdat{i}.trusted)
+      case 'true'
+         tx = axlims(2) + (i*dx);
+         h = text(tx,ty,sprintf('TRUSTED OBSERVATION in %s',plotdat{i}.title));
+         set(h, 'FontSize', 20, 'Rotation', 90, ...
+            'VerticalAlignment', 'middle', 'Interpreter', 'none')
+      otherwise
+   end
+end
 
 % Create another axes to use for plotting the observation counts
 
@@ -610,7 +672,7 @@ set(get(ax1,'Ylabel'),'String',plotobj.level_units, ...
 set(get(ax1,'Xlabel'),'String',{plotobj.xlabel,plotobj.timespan}, ...
                       'Interpreter','none','FontSize',figdata.fontsize)
 set(get(ax2,'Xlabel'),'String', ...
-   ['# of obs (o=poss, \ast=used) x' int2str(uint32(xscale))],'FontSize',figdata.fontsize)
+   ['# of obs (o=possible, \ast=assimilated) x' int2str(uint32(xscale))],'FontSize',figdata.fontsize)
 
 th = title({deblank(plotobj.region_names(plotobj.region,:)), plotobj.varname});
 set(th,'Interpreter','none','FontSize',figdata.fontsize,'FontWeight','bold');
@@ -692,11 +754,12 @@ fontsize    = 16;
 position    = [0.15 ybot 0.7 dy];
 linewidth   = 2.0;
 
-figdata = struct('expcolors',  {{'k','r','g','m','b','c','y'}}, ...
+figdata = struct('expcolors',  {{'k','r','b','m','g','c','y'}}, ...
    'expsymbols', {{'o','s','d','p','h','s','*'}}, ...
    'prpolines',  {{'-','--'}}, 'position', position, ...
    'fontsize',fontsize, 'orientation',orientation, ...
    'linewidth',linewidth);
+
 
 % <next few lines under version control, do not edit>
 % $URL$

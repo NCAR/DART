@@ -1,22 +1,52 @@
-function plotdat = plot_bias_xxx_profile(fname,copystring)
+function plotdat = plot_bias_xxx_profile(fname, copy, varargin)
 %% plot_bias_xxx_profile plots the vertical profile of the observation-space quantities for all possible levels, all possible variables.
 % Part of the observation-space diagnostics routines.
 %
 % 'obs_diag' produces a netcdf file containing the diagnostics.
+% obs_diag condenses the obs_seq.final information into summaries for a few specified
+% regions - on a level-by-level basis.
 %
-% USAGE: plotdat = plot_bias_xxx_profile(fname,copystring);
+% The number of observations possible reflects only those observations
+% that have incoming QC values of interest. Any observation with a DART
+% QC of 5 or 6 is not considered 'possible' for the purpose of this graphic.
 %
-% fname  :  netcdf file produced by 'obs_diag'
-% copystring :  'copy' string == quantity of interest. These
-%            can be any of the ones available in the netcdf
-%            file 'CopyMetaData' variable.
+% NOTE: if the observation was designated as a TRUSTED observation in the
+%       obs_diag program, the observations that were rejected by the outlier
+%       threshhold STILL PARTICIPATE in the calculation of the rmse, spread, etc.
+%       The _values_ plotted by plot_profile reflect that. The number of observations
+%       "used" becomes unclear. The number of observations used (designated by the
+%       asterisk) is ALWAYS the number of observations successfully assimilated.
+%       For TRUSTED observations, this is different than the number used to calculate
+%       bias, rmse, spread, etc.
+%
+% USAGE: plotdat = plot_bias_xxx_profile(fname, copy);
+%
+% fname    :  netcdf file produced by 'obs_diag'
+%
+% copy     : string defining the metric of interest. 'rmse', 'spread', etc.
+%            Possible values are available in the netcdf 'CopyMetaData' variable.
 %            (ncdump -v CopyMetaData obs_diag_output.nc)
 %
-% EXAMPLE:
+% obsname  : Optional. If present, The strings of each observation type to plot.
+%            Each observation type will be plotted in a separate graphic.
+%            Default is to plot all available observation types.
 %
-% fname = 'obs_diag_output.nc';   % netcdf file produced by 'obs_diag'
-% copystring = 'totalspread';   % 'copy' string == quantity of interest
-% plotdat = plot_bias_xxx_profile(fname,copystring);
+% OUTPUT: 'plotdat' is a structure containing what was plotted.
+%         A .pdf of each graphic is created. Each .pdf has a name that 
+%         reflects the variable, quantity, and region being plotted.
+%
+% EXAMPLE 1: All the observation types possible are plotted in separate figures.
+%
+% fname   = 'obs_diag_output.nc';
+% copy    = 'totalspread';
+% plotdat = plot_bias_xxx_profile(fname, copy);
+%
+% EXAMPLE 2: Just a single observation type.
+%
+% fname   = 'obs_diag_output.nc';
+% copy    = 'totalspread';
+% obsname = 'RADIOSONDE_U_WIND_COMPONENT';
+% plotdat = plot_bias_xxx_profile(fname, copy, 'obsname', obsname);
 
 %% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -28,6 +58,24 @@ function plotdat = plot_bias_xxx_profile(fname,copystring)
 % Decode,Parse,Check the input
 %---------------------------------------------------------------------
 
+default_obsname = 'none';
+p = inputParser;
+
+addRequired(p,'fname',@ischar);
+addRequired(p,'copy',@ischar);
+addParamValue(p,'obsname',default_obsname,@ischar);
+parse(p, fname, copy, varargin{:});
+
+% if you want to echo the input
+% disp(['fname   : ', p.Results.fname])
+% disp(['copy    : ', p.Results.copy])
+% disp(['obsname : ', p.Results.obsname])
+
+if ~isempty(fieldnames(p.Unmatched))
+   disp('Extra inputs:')
+   disp(p.Unmatched)
+end
+
 if (exist(fname,'file') ~= 2)
    error('file/fname <%s> does not exist',fname)
 end
@@ -37,7 +85,7 @@ end
 %---------------------------------------------------------------------
 
 plotdat.fname         = fname;
-plotdat.copystring    = copystring;
+plotdat.copystring    = copy;
 
 plotdat.binseparation = nc_attget(fname, nc_global, 'bin_separation');
 plotdat.binwidth      = nc_attget(fname, nc_global, 'bin_width');
@@ -85,13 +133,13 @@ plotdat.Nbins         = length(plotdat.bincenters);
 plotdat.toff          = plotdat.binedges(1) + iskip;
 plotdat.timespan      = sprintf('%s through %s', datestr(plotdat.toff), ...
                         datestr(max(plotdat.binedges(:))));
-plotdat.xlabel        = sprintf('bias (%s) and %s',plotdat.biasconv,copystring);
+plotdat.xlabel        = sprintf('bias (%s) and %s',plotdat.biasconv,copy);
 
 [plotdat.allvarnames, plotdat.allvardims] = get_varsNdims(fname);
 [plotdat.varnames,    plotdat.vardims]    = FindVerticalVars(plotdat);
 
 plotdat.nvars         = length(plotdat.varnames);
-plotdat.copyindex     = get_copy_index(fname,copystring);
+plotdat.copyindex     = get_copy_index(fname,copy);
 plotdat.biasindex     = get_copy_index(fname,'bias');
 plotdat.Npossindex    = get_copy_index(fname,'Nposs');
 plotdat.Nusedindex    = get_copy_index(fname,'Nused');
@@ -104,13 +152,27 @@ figuredata = setfigure();
 % Loop around (copy-level-region) observation types
 %----------------------------------------------------------------------
 
-for ivar = 1:plotdat.nvars
+% Either use all the variables or just the one optionally specified.
+
+if strcmp(p.Results.obsname,'none')
+   varlist = 1:plotdat.nvars;
+else
+   varlist = find (strcmpi(p.Results.obsname,plotdat.varnames));
+   if isempty(varlist)
+      error('%s is not in the list of observations',p.Results.obsname)
+   end
+end
+
+for ivar = varlist
 
    % create the variable names of interest.
 
    plotdat.myvarname = plotdat.varnames{ivar};
    plotdat.guessvar  = sprintf('%s_VPguess',plotdat.varnames{ivar});
    plotdat.analyvar  = sprintf('%s_VPanaly',plotdat.varnames{ivar});
+
+   plotdat.trusted   = nc_read_att(fname, plotdat.guessvar, 'TRUSTED');
+   if (isempty(plotdat.trusted)), plotdat.trusted = 'NO'; end
 
    % get appropriate vertical coordinate variable
 
@@ -132,7 +194,7 @@ for ivar = 1:plotdat.nvars
       continue
    end
 
-   [level_org level_units nlevels level_edges Yrange] = FindVerticalInfo(fname, plotdat.guessvar);
+   [level_org, level_units, nlevels, level_edges, Yrange] = FindVerticalInfo(fname, plotdat.guessvar);
    plotdat.level_org   = level_org;
    plotdat.level_units = level_units;
    plotdat.nlevels     = nlevels;
@@ -225,7 +287,7 @@ for ivar = 1:plotdat.nvars
    % plot by region - each in its own figure.
 
    for iregion = 1:plotdat.nregions
-      figure(iregion); clf; orient(figuredata.orientation); wysiwyg
+      figure(iregion); clf(iregion); orient(figuredata.orientation); wysiwyg
       plotdat.region   = iregion;
       plotdat.myregion = deblank(plotdat.region_names(iregion,:));
       myplot(plotdat, figuredata);
@@ -313,6 +375,21 @@ set(zeroline,'LineWidth',2.5,'LineStyle','-')
 h = legend(h1, str_bias_pr, str_bias_po, str_other_pr, str_other_po, 'Location', 'NorthWest');
 set(h,'Interpreter','none','Box','off')
 
+% If the observation is trusted, reference that somehow
+switch lower(plotdat.trusted)
+   case 'true'
+      axlims = axis;
+      tx = axlims(2) + (axlims(2) - axlims(1))/20;
+      if  strcmpi('normal',plotdat.YDir)
+         ty = plotdat.Yrange(1);
+      else 
+         ty = plotdat.Yrange(2);
+      end
+      h = text(tx,ty,'TRUSTED. Values include outlying observations.');
+      set(h,'FontSize',20,'Rotation',90,'VerticalAlignment','middle')
+   otherwise
+end
+
 % Create another axes to use for plotting the observation counts
 
 ax2 = axes('position',get(ax1,'Position'), ...
@@ -341,7 +418,7 @@ set(get(ax1,'Ylabel'),'String',plotdat.level_units, ...
 set(get(ax1,'Xlabel'),'String',{plotdat.xlabel, plotdat.timespan}, ...
                       'Interpreter','none','FontSize',figdata.fontsize)
 set(get(ax2,'Xlabel'),'String', ...
-    ['# of obs (o=poss, \ast=used) x' int2str(uint32(xscale))],'FontSize',figdata.fontsize)
+    ['# of obs (o=possible, \ast=assimilated) x' int2str(uint32(xscale))],'FontSize',figdata.fontsize)
 
 title({plotdat.myregion, plotdat.myvarname},  ...
       'Interpreter', 'none', 'FontSize', figdata.fontsize, 'FontWeight', 'bold')
@@ -409,7 +486,7 @@ end
 %=====================================================================
 
 
-function [level_org level_units nlevels level_edges Yrange] = FindVerticalInfo(fname,varname)
+function [level_org, level_units, nlevels, level_edges, Yrange] = FindVerticalInfo(fname,varname)
 %% Find the vertical dimension and harvest some info
 
 varinfo  = nc_getvarinfo(fname,varname);
@@ -577,7 +654,7 @@ fontsize    = 16;
 position    = [0.15 0.12 0.7 0.75];
 linewidth   = 2.0;
 
-figdata = struct('expcolors',  {{'k','r','g','m','b','c','y'}}, ...
+figdata = struct('expcolors',  {{'k','r','b','m','g','c','y'}}, ...
    'expsymbols', {{'o','s','d','p','h','s','*'}}, ...
    'prpolines',  {{'-','--'}}, 'position', position, ...
    'fontsize',fontsize, 'orientation',orientation, ...

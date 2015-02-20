@@ -804,16 +804,20 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          ! the posterior mean,spread are set to MISSING. 
          !
          ! If it is your intent to compare identical prior and posterior TRUSTED
-         ! observations, then you should enable the following block of code.
+         ! observations, then you should enable the following few lines of code.
          ! and realize that the number of observations rejected because of the
          ! outlier threshold will be wrong. 
+         !
+         ! This is the only block of code you should need to change.
          !--------------------------------------------------------------
 
          if ((qc_integer == 7) .and. (abs(posterior_mean(1) - MISSING_R8) < 1.0_r8)) then
             write(string1,*)'WARNING pathological case for obs index ',obsindex
-            string2 = 'WARNING changing DART QC from 7 to 4'
-! TJH       call error_handler(E_MSG,'obs_diag',string1,text2=string2)
-! TJH       qc_integer = 4
+            string2 = 'obs failed outlier threshhold AND posterior operator failed.'
+            string3 = 'Counting as a Prior QC == 7, Posterior QC == 4.'
+            string3 = 'WARNING changing DART QC from 7 to 4'
+! COMMENT   call error_handler(E_MSG,'obs_diag',string1,text2=string2,text3=string3)
+! COMMENT   qc_integer = 4
             num_pathological = num_pathological + 1
          endif
 
@@ -1172,7 +1176,7 @@ write(*,*) '# bad Level          : ',sum(prior%NbadLV(:,1,:,:))
 write(*,*) '# big (original) QC  : ',sum(prior%NbigQC)
 write(*,*) '# bad DART QC prior  : ',sum(prior%NbadDartQC)
 write(*,*) '# bad DART QC post   : ',sum(poste%NbadDartQC)
-! TJH write(*,*) '# priorQC 7 postQC 4 : ',num_pathological
+write(*,*) '# priorQC 7 postQC 4 : ',num_pathological
 write(*,*)
 write(*,*) '# prior DART QC 0 : ',sum(prior%NDartQC_0)
 write(*,*) '# prior DART QC 1 : ',sum(prior%NDartQC_1)
@@ -1205,7 +1209,7 @@ write(logfileunit,*) '# bad Level          : ',sum(prior%NbadLV(:,1,:,:))
 write(logfileunit,*) '# big (original) QC  : ',sum(prior%NbigQC)
 write(logfileunit,*) '# bad DART QC prior  : ',sum(prior%NbadDartQC)
 write(logfileunit,*) '# bad DART QC post   : ',sum(poste%NbadDartQC)
-! TJH write(logfileunit,*) '# priorQC 7 postQC 4 : ',num_pathological
+write(logfileunit,*) '# priorQC 7 postQC 4 : ',num_pathological
 write(logfileunit,*)
 write(logfileunit,*) '# prior DART QC 0 : ',sum(prior%NDartQC_0)
 write(logfileunit,*) '# prior DART QC 1 : ',sum(prior%NDartQC_1)
@@ -2914,12 +2918,12 @@ elseif (    myqc == 6 ) then
 elseif (    myqc == 7 ) then
    call IPE(prior%NDartQC_7(iepoch,ilevel,iregion,itype), 1)
 
-! TJH   if ( abs(posterior_mean - MISSING_R8) < 1.0_r8 ) then
-! TJH      ! ACTUALLY A FAILED FORWARD OPERATOR - pathological case
-! TJH      call IPE(poste%NDartQC_4(iepoch,ilevel,iregion,itype), 1)
-! TJH   else
+   if ( abs(posterior_mean - MISSING_R8) < 1.0_r8 ) then
+      ! ACTUALLY A FAILED FORWARD OPERATOR - pathological case
+      call IPE(poste%NDartQC_4(iepoch,ilevel,iregion,itype), 1)
+   else
       call IPE(poste%NDartQC_7(iepoch,ilevel,iregion,itype), 1)
-! TJH   endif
+   endif
 
 endif
 
@@ -2970,12 +2974,12 @@ elseif (    myqc == 6 ) then
 elseif (    myqc == 7 ) then
    call IPE(prior%NDartQC_7(ilevel,iregion,itype), 1)
 
-! TJH   if ( abs(posterior_mean - MISSING_R8) < 1.0_r8 ) then
-! TJH      ! ACTUALLY A FAILED FORWARD OPERATOR - pathological case
-! TJH      call IPE(poste%NDartQC_4(ilevel,iregion,itype), 1)
-! TJH   else
+   if ( abs(posterior_mean - MISSING_R8) < 1.0_r8 ) then
+      ! ACTUALLY A FAILED FORWARD OPERATOR - pathological case
+      call IPE(poste%NDartQC_4(ilevel,iregion,itype), 1)
+   else
       call IPE(poste%NDartQC_7(ilevel,iregion,itype), 1)
-! TJH   endif
+   endif
 
 endif
 
@@ -3028,29 +3032,34 @@ integer  :: myrank, prior_qc, posterior_qc
 
 logical, dimension(7) :: optionals
 
+prior_qc     = iqc
+posterior_qc = iqc
+
 ! There is a pathological case wherein the prior is rejected (DART QC ==7)
 ! and the posterior forward operator fails (DART QC ==4). In this case, 
 ! the DART_QC reflects the fact the prior was rejected - HOWEVER - 
 ! the posterior mean,spread are set to MISSING. 
 
-prior_qc     = iqc
-posterior_qc = iqc
+if ((prior_qc == 7) .and. (abs(pomean - MISSING_R8) > 1.0_r8)) posterior_qc = 4
 
-! could be a pathological case
-! TJH FIXME DEBUG if ((prior_qc == 7) .and. (abs(pomean - MISSING_R8) > 1.0_r8)) posterior_qc = 4
+! Check to see if we are creating wind speeds from U,V components
 
 optionals = (/ present(uobs), present(uobserrvar), present(uprmean), &
                present(uprsprd), present(upomean), present(uposprd), present(uqc) /)
 
 if ( all(optionals) ) then
 
-   ! to replicate behavior of old code that used to have iqc = maxval( )
-
+   ! the wind QC is only as good as the worst of the U,V QCs
    prior_qc     = maxval( (/ iqc, uqc /) )
-   posterior_qc = maxval( (/ iqc, uqc /) )
 
-   ! could be that the U wind component is pathological
-! TJH   if ((uqc == 7) .and. (abs(upomean - MISSING_R8) > 1.0_r8)) posterior_qc = 4
+   ! If either the U or V is pathological, the wind is pathological
+   if     ((uqc == 7) .and. (abs(upomean - MISSING_R8) > 1.0_r8)) then
+      posterior_qc = 4
+   elseif ((iqc == 7) .and. (abs( pomean - MISSING_R8) > 1.0_r8)) then
+      posterior_qc = 4
+   else
+      posterior_qc = maxval( (/ iqc, uqc /) )
+   endif
 
    priorsqerr     = (prmean - obsval)**2 + (uprmean - uobs)**2
    postsqerr      = (pomean - obsval)**2 + (upomean - uobs)**2
@@ -3186,29 +3195,32 @@ logical, dimension(7) :: optionals
 real(r8) :: priormean, postmean, obsmean
 integer  :: prior_qc, posterior_qc
 
+prior_qc     = iqc
+posterior_qc = iqc
+
 ! There is a pathological case wherein the prior is rejected (DART QC ==7)
 ! and the posterior forward operator fails (DART QC ==4). In this case, 
 ! the DART_QC reflects the fact the prior was rejected - HOWEVER - 
 ! the posterior mean,spread are set to MISSING. 
 
-prior_qc     = iqc
-posterior_qc = iqc
-
-! could be a pathological case
-! TJH if ((prior_qc == 7) .and. (abs(pomean - MISSING_R8) > 1.0_r8)) posterior_qc = 4
+if ((prior_qc == 7) .and. (abs(pomean - MISSING_R8) > 1.0_r8)) posterior_qc = 4
 
 optionals = (/ present(uobs), present(uobserrvar), present(uprmean), &
                present(uprsprd), present(upomean), present(uposprd), present(uqc) /)
 
 if ( all(optionals) ) then
 
-   ! to replicate behavior of old code that used to have iqc = maxval( )
-
+   ! the wind QC is only as good as the worst of the U,V QCs
    prior_qc     = maxval( (/ iqc, uqc /) )
-   posterior_qc = maxval( (/ iqc, uqc /) )
 
-   ! could be that the U wind component is pathological
-! TJH   if ((uqc == 7) .and. (abs(upomean - MISSING_R8) > 1.0_r8)) posterior_qc = 4
+   ! If either the U or V is pathological, the wind is pathological
+   if     ((uqc == 7) .and. (abs(upomean - MISSING_R8) > 1.0_r8)) then
+      posterior_qc = 4
+   elseif ((iqc == 7) .and. (abs( pomean - MISSING_R8) > 1.0_r8)) then
+      posterior_qc = 4
+   else
+      posterior_qc = maxval( (/ iqc, uqc /) )
+   endif
 
    priorsqerr     = (prmean - obsval)**2 + (uprmean - uobs)**2
    postsqerr      = (pomean - obsval)**2 + (upomean - uobs)**2

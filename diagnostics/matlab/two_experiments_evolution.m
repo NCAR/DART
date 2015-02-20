@@ -1,26 +1,60 @@
-function two_experiments_evolution(files, titles, varnames, qtty, prpo, levelind)
+function two_experiments_evolution(files, titles, obsnames, copy, prpo, varargin)
 %% two_experiments_evolution  compares multiple netcdf files created by obs_diag.
 %
-% Each region/level gets its own figure.
-% The variables are 'looped' over - they reuse the same set of figures.
+% 'obs_diag' produces a netcdf file containing the diagnostics.
+% obs_diag condenses the obs_seq.final information into summaries for a few specified
+% regions - on a level-by-level basis.
 %
 % The number of observations possible reflects only those observations
 % that have incoming QC values of interest. Any observation with a DART
-% QC of 6 (rejected because of namelist control) is not considered
-% 'possible' for the purpose of this graphic.
+% QC of 5 or 6 is not considered 'possible' for the purpose of this graphic.
+%
+% NOTE: if the observation was designated as a TRUSTED observation in the
+%       obs_diag program, the observations that were rejected by the outlier
+%       threshhold STILL PARTICIPATE in the calculation of the rmse, spread, etc.
+%       The _values_ plotted by plot_profile reflect that. The number of observations
+%       "used" becomes unclear. The number of observations used (designated by the
+%       asterisk) is ALWAYS the number of observations successfully assimilated.
+%       For TRUSTED observations, this is different than the number used to calculate
+%       bias, rmse, spread, etc.
+%
+% USAGE: two_experiments_evolution(files, titles, obsnames, copy, prpo, 'level', 1)
+%
+% files    : Cell array containing the locations of the obs_diag_output.nc 
+%            files to compare. Each file is presumed to be the results from
+%            a single experiment.
+%
+% titles   : Cell array containing the titles used to annotate each of the experiments. 
+%
+% obsnames : Cell array containing the strings of each observation type to plot.
+%            Each observation type will be plotted in a separate graphic.
+%
+% copy     : string defining the metric of interest. 'rmse', 'spread', etc.
+%            Possible values are available in the netcdf 'CopyMetaData' variable.
+%            (ncdump -v CopyMetaData obs_diag_output.nc)
+%
+% prpo     : string defining whether to plot the prior or posterior metrics.
+%            Due to the amount of information already plotted, we made a
+%            conscious decision not to support plotting both prior and posterior
+%            on the same plot.
+%
+% level    : The index of the level to plot. Defaults to level 1.
+%
+% OUTPUT: A .pdf of each graphic is created. Each .pdf has a name that 
+%         reflects the variable, quantity, and region being plotted.
+%
+% EXAMPLE
 %
 % files = {'/ptmp/nancy/CSL/Base5/032-061s0_def_reg/obs_diag_output.nc',
 %          '/ptmp/thoar/GPS+AIRS/Sep_032-061/obs_diag_output.nc'};
 % titles = {'Base5', 'GPS+AIRS'};
-% varnames = {'RADIOSONDE_U_WIND_COMPONENT', 'RADIOSONDE_TEMPERATURE'};
+% obsnames = {'RADIOSONDE_U_WIND_COMPONENT', 'RADIOSONDE_TEMPERATURE'};
 %
-% qtty     = 'spread';   % rmse, spread, totalspread, bias, etc.
-% prpo     = 'analysis'; % [analy, analysis, posterior ] == posterior
-% prpo     = 'forecast'; % [guess, forecast, prior     ] == prior
-% levelind = 1;
+% copy  = 'spread';   % rmse, spread, totalspread, bias, etc.
+% prpo  = 'analysis'; % [analy, analysis, posterior ] == posterior
+% prpo  = 'forecast'; % [guess, forecast, prior     ] == prior
 %
-% two_experiments_evolution(files, titles, varnames, qtty, prpo, levelind)
-% print -dpdf myplot.pdf
+% two_experiments_evolution(files, titles, obsnames, copy, prpo, 'level', 1)
 
 %% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -32,8 +66,26 @@ function two_experiments_evolution(files, titles, varnames, qtty, prpo, levelind
 % Decode,Parse,Check the input
 %---------------------------------------------------------------------
 
-if (length(files) ~= length(titles))
-   error('each file must have a title')
+default_level = 1;
+p = inputParser;
+
+addRequired(p,'files',@iscell);
+addRequired(p,'titles',@iscell);
+addRequired(p,'obsnames',@iscell);
+addRequired(p,'copy',@ischar);
+addRequired(p,'prpo',@ischar);
+addParamValue(p,'level',default_level,@isnumeric);
+parse(p, files, titles, obsnames, copy, prpo, varargin{:});
+
+% if you want to echo the input
+% disp(['files   : ', p.Results.files])
+% disp(['titles  : ', p.Results.titles])
+% disp(['obsnames: ', p.Results.obsnames])
+% fprintf('level : %d \n', p.Results.level)
+
+if ~isempty(fieldnames(p.Unmatched))
+   disp('Extra inputs:')
+   disp(p.Unmatched)
 end
 
 NumExp = length(files);
@@ -44,19 +96,23 @@ for i = 1:NumExp
    end
 end
 
+if (NumExp ~= length(titles))
+   error('each file must have an experiment title')
+end
+
 %% set up all the stuff that is common.
 
-commondata = check_compatibility(files, varnames, qtty);
+commondata = check_compatibility(files, obsnames, copy);
 figuredata = setfigure(NumExp);
 
 %%--------------------------------------------------------------------
 % Set some static data
 %---------------------------------------------------------------------
 
-nvars = length(varnames);
+nvars = length(obsnames);
 
 for ivar = 1:nvars
-   fprintf('Working on %s ...\n',varnames{ivar})
+   fprintf('Working on %s ...\n',obsnames{ivar})
 
    %------------------------------------------------------------------------
    % Plot each region in a separate figure window.
@@ -77,7 +133,7 @@ for ivar = 1:nvars
 
       for iexp = 1:NumExp
 
-         plotobj{iexp} = getvals(files{iexp}, varnames{ivar}, qtty, prpo, iregion, levelind);
+         plotobj{iexp} = getvals(files{iexp}, obsnames{ivar}, copy, prpo, iregion, p.Results.level);
          plotobj{iexp}.title        = titles{iexp};
          plotobj{iexp}.nregions     = commondata.nregions;
          plotobj{iexp}.region_names = commondata.region_names;
@@ -86,10 +142,10 @@ for ivar = 1:nvars
 
       myplot(plotobj, figuredata);
 
-      BottomAnnotation(files)
+      BottomAnnotation(plotobj)
 
       psfname = sprintf('%s_%s_region%d_ilev%d_evolution_%dexp', ...
-                varnames{ivar}, plotobj{1}.copystring, iregion, levelind, NumExp);
+                obsnames{ivar}, plotobj{1}.copystring, iregion, p.Results.level, NumExp);
       print(iregion,'-dpdf',psfname)
 
    end % of loop around regions
@@ -144,8 +200,8 @@ for i = 1:nexp
    commondata{i}.copyindex = get_copy_index(filenames{i},copystring);
    commondata{i}.lonlim1   = nc_attget(filenames{i},nc_global,'lonlim1');
    commondata{i}.lonlim2   = nc_attget(filenames{i},nc_global,'lonlim2');
-   commondata{i}.latlim1   = local_nc_attget(filenames{i},nc_global,'latlim1');
-   commondata{i}.latlim2   = local_nc_attget(filenames{i},nc_global,'latlim2');
+   commondata{i}.latlim1   = nc_read_att(filenames{i}, nc_global,'latlim1');
+   commondata{i}.latlim2   = nc_read_att(filenames{i}, nc_global,'latlim2');
 
    commondata{i}.region_names = nc_varget(filenames{i},'region_names');
 
@@ -215,14 +271,14 @@ plotdat.hlevel        = local_nc_varget(fname,'hlevel');
 plotdat.hlevel_edges  = local_nc_varget(fname,'hlevel_edges');
 plotdat.ncopies       = length(nc_varget(fname,'copy'));
 
-dimensionality        = local_nc_attget(fname, nc_global, 'LocationRank');
+dimensionality        = nc_read_att(fname, nc_global, 'LocationRank');
 plotdat.biasconv      = nc_attget(fname, nc_global, 'bias_convention');
 plotdat.binseparation = nc_attget(fname, nc_global, 'bin_separation');
 plotdat.binwidth      = nc_attget(fname, nc_global, 'bin_width');
 plotdat.lonlim1       = nc_attget(fname, nc_global, 'lonlim1');
 plotdat.lonlim2       = nc_attget(fname, nc_global, 'lonlim2');
-plotdat.latlim1       = local_nc_attget(fname, nc_global, 'latlim1');
-plotdat.latlim2       = local_nc_attget(fname, nc_global, 'latlim2');
+plotdat.latlim1       = nc_read_att(fname, nc_global, 'latlim1');
+plotdat.latlim2       = nc_read_att(fname, nc_global, 'latlim2');
 
 % Coordinate between time types and dates
 
@@ -252,6 +308,9 @@ plotdat.NQC7index     = get_copy_index(fname, 'N_DARTqc_7');
 
 plotdat.priorvar      = sprintf('%s_guess',plotdat.varname);
 plotdat.postevar      = sprintf('%s_analy',plotdat.varname);
+
+plotdat.trusted       = nc_read_att(fname, plotdat.priorvar, 'TRUSTED');
+if (isempty(plotdat.trusted)), plotdat.trusted = 'NO'; end
 
 myinfo.diagn_file     = fname;
 myinfo.copyindex      = plotdat.copyindex;
@@ -372,7 +431,6 @@ hd     = [];   % handle to an unknown number of data lines
 legstr = {[]}; % strings for the legend
 
 for i = 1:Nexp
-
    if ( plotobj{i}.useprior )
       iexp         = iexp + 1;
       hd(iexp)     = line(plotobj{i}.bincenters, plotobj{i}.prior, ...
@@ -394,7 +452,7 @@ for i = 1:Nexp
    end
 end
 
-%% Plot a bias line.
+% Plot a bias line.
 
 switch plotobj{1}.copystring
    case {'bias'}
@@ -475,7 +533,7 @@ end
 
 set(get(ax1,'Ylabel'),'String',ylabel, ...
     'Interpreter','none','FontSize',figdata.fontsize)
-set(get(ax2,'Ylabel'),'String','# of obs (o=poss, \ast=used)', ...
+set(get(ax2,'Ylabel'),'String','# of obs (o=possible, \ast=assimilated)', ...
    'FontSize',figdata.fontsize)
 
 if ( isempty(plotobj.level_units) )
@@ -492,18 +550,18 @@ set(th,'Interpreter','none','FontSize',figdata.fontsize,'FontWeight','bold');
 %=====================================================================
 
 
-function BottomAnnotation(filenames)
+function BottomAnnotation(plotstruct)
 %% annotates the filename containing the data being plotted
 
-nfiles  = length(filenames);
-dy      = 1.0/(nfiles+2);
-yheight = 0.0225*(nfiles+1);
+Nexp    = length(plotstruct);
+dy      = 1.0/(Nexp+2);
+yheight = 0.0225*(Nexp+1);
 
 subplot('position',[0.10 0.01 0.8 yheight])
 axis off
 
-for ifile = 1:nfiles
-   main = filenames{ifile};
+for ifile = 1:Nexp
+   main = plotstruct{ifile}.fname;
 
    fullname = which(main);   % Could be in MatlabPath
    if( isempty(fullname) )
@@ -518,9 +576,20 @@ for ifile = 1:nfiles
    end
 
    ty = 1.0 - (ifile+1)*dy;
-   h = text(0.5, ty, string1);
-   set(h, 'Interpreter', 'none', 'FontSize', 8);
-   set(h, 'HorizontalAlignment','center');
+   h = text(0.0, ty, string1);
+   set(h, 'Interpreter', 'none', ...
+          'HorizontalAlignment','left', ...
+          'FontSize', 8);
+      
+   % If the observation is trusted for this experiment, annotate as such.
+
+   switch lower(plotstruct{ifile}.trusted)
+      case 'true'
+         ty = 1.0 - Nexp*dy + ifile*dy*2;
+         h = text(0.0,ty,sprintf('TRUSTED OBSERVATION in %s',plotstruct{ifile}.title));
+         set(h,'FontSize',20,'Interpreter','none','HorizontalAlignment','left')
+      otherwise
+   end
 end
 
 
@@ -555,7 +624,7 @@ function figdata = setfigure(nexp)
 %  extra space at the bottom for the date/file annotation
 %  extra space at the top because the titles have multiple lines
 
-ybot = 0.06 + nexp*0.035;  % room for dates/files
+ybot = 0.06 + nexp*0.075;  % room for dates/files
 ytop = 0.125;              % room for title (always 2 lines)
 dy   = 1.0 - ytop - ybot;
 orientation   = 'landscape';
@@ -563,7 +632,7 @@ fontsize      = 16;
 position      = [0.10 ybot 0.8 dy];
 linewidth     = 2.0;
 
-figdata = struct('expcolors',  {{'k','r','g','m','b','c','y'}}, ...
+figdata = struct('expcolors',  {{'k','r','b','m','g','c','y'}}, ...
    'expsymbols', {{'o','s','d','p','h','s','*'}}, ...
    'prpolines',  {{'-','--'}}, 'position', position, ...
    'fontsize',fontsize, 'orientation',orientation, ...
@@ -585,27 +654,6 @@ if (variable_present)
    netcdf.close(ncid)
 else
    value = [];
-end
-
-
-%=====================================================================
-
-
-function value = local_nc_attget(fname,varid,varname)
-%% If the (global) attribute exists, return the value.
-% If it does not, do not throw a hissy-fit.
-
-value = [];
-if (varid == nc_global)
-   finfo = ncinfo(fname);
-   for iatt = 1:length(finfo.Attributes)
-      if (strcmp(finfo.Attributes(iatt).Name, deblank(varname)))
-         value = finfo.Attributes(iatt).Value;
-         return
-      end
-   end
-else
-   fprintf('function not supported for local variables, only global atts.\n')
 end
 
 

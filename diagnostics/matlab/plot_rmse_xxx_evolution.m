@@ -1,4 +1,4 @@
-function plotdat = plot_rmse_xxx_evolution(fname, copystring, varargin)
+function plotdat = plot_rmse_xxx_evolution(fname, copy, varargin)
 %% plot_rmse_xxx_evolution plots the temporal evolution of the observation-space quantity RMSE and any other for all possible levels, all possible variables.
 % Part of the observation-space diagnostics routines.
 %
@@ -6,41 +6,64 @@ function plotdat = plot_rmse_xxx_evolution(fname, copystring, varargin)
 % obs_diag condenses the obs_seq.final information into summaries for a few specified
 % regions - on a level-by-level basis.
 %
-% USAGE: plotdat = plot_rmse_xxx_evolution(fname, copystring [,varargin]);
+% The number of observations possible reflects only those observations
+% that have incoming QC values of interest. Any observation with a DART
+% QC of 5 or 6 is not considered 'possible' for the purpose of this graphic.
 %
-% fname         : netcdf file produced by 'obs_diag'
-% copystring    : 'copy' string == quantity of interest. These
-%                 can be any of the ones available in the netcdf
-%                 file 'CopyMetaData' variable.
-%                 (ncdump -v CopyMetaData obs_diag_output.nc)
-% obstypestring : 'observation type' string. Optional.
-%                 Must match something in the netcdf
-%                 file 'ObservationTypes' variable.
-%                 (ncdump -v ObservationTypes obs_diag_output.nc)
-%                 If specified, only this observation type will be plotted.
-%                 If not specified, all observation types incluced in the netCDF file
-%                 will be plotted.
+% NOTE: if the observation was designated as a TRUSTED observation in the
+%       obs_diag program, the observations that were rejected by the outlier
+%       threshhold STILL PARTICIPATE in the calculation of the rmse, spread, etc.
+%       The _values_ plotted by plot_profile reflect that. The number of observations
+%       "used" becomes unclear. The number of observations used (designated by the
+%       asterisk) is ALWAYS the number of observations successfully assimilated.
+%       For TRUSTED observations, this is different than the number used to calculate
+%       bias, rmse, spread, etc.
 %
-% OUTPUT: two files will result for each observation type plotted. One is a
-%         postscript file containing a page for each level - all regions.
+% USAGE: plotdat = plot_evolution(fname, copy);
+%
+% fname    :  netcdf file produced by 'obs_diag'
+%
+% copy     : string defining the metric of interest. 'rmse', 'spread', etc.
+%            Possible values are available in the netcdf 'CopyMetaData' variable.
+%            (ncdump -v CopyMetaData obs_diag_output.nc)%
+%
+% obsname  : Optional. If present, The strings of each observation type to plot.
+%            Each observation type will be plotted in a separate graphic.
+%            Default is to plot all available observation types.
+%
+% level        : Optional. 'level' index. Default is to plot all levels.
+%
+% range        : Optional. 'range' of the value being plotted. Default is to
+%                automatically determine range based on the data values.
+%
+% OUTPUT: 'plotdat' is a structure containing what was last plotted.
+%         A postscript file containing a page for each level - each region.
 %         The other file is a simple text file containing summary information
 %         about how many observations were assimilated, how many were available, etc.
-%         Both of these filenames contain the observation type as part of the name.
-%
+%         Both of these filenames contain the observation type, 
+%         copy and region as part of the name.
 %
 % EXAMPLE 1 - plot the RMSE and totalspread on the same axis.
 %
-% fname      = 'obs_diag_output.nc';   % netcdf file produced by 'obs_diag'
-% copystring = 'totalspread';          % 'copy' string == quantity of interest
-% plotdat    = plot_rmse_xxx_evolution(fname,copystring);
+% fname   = 'obs_diag_output.nc';
+% copy    = 'totalspread';
+% plotdat = plot_rmse_xxx_evolution(fname, copy);
 %
 %
 % EXAMPLE 2 - plot the RMSE and spread on the same axis - for just one observation type.
 %
-% fname      = 'obs_diag_output.nc';
-% copystring = 'totalspread';
-% obstype    = 'RADIOSONDE_TEMPERATURE';
-% plotdat    = plot_rmse_xxx_evolution(fname, copystring, obstype);
+% fname   = 'obs_diag_output.nc';
+% copy    = 'totalspread';
+% obsname = 'RADIOSONDE_TEMPERATURE';
+% plotdat = plot_rmse_xxx_evolution(fname, copy, 'obsname', obsname);
+%
+%
+% EXAMPLE 3 - plot the RMSE and spread on the same axis - for just one observation type, 1 level.
+%
+% fname   = 'obs_diag_output.nc';
+% copy    = 'totalspread';
+% bob     = 'RADIOSONDE_TEMPERATURE';
+% plotdat = plot_rmse_xxx_evolution(fname,copy,'obsname',bob,'level',3,'range',[-1 5]);
 
 %% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -48,13 +71,39 @@ function plotdat = plot_rmse_xxx_evolution(fname, copystring, varargin)
 %
 % DART $Id$
 
-if nargin == 2
+default_level = -1;
+default_obsname = 'none';
+default_range = [NaN NaN];
+p = inputParser;
+
+addRequired(p,'fname',@ischar);
+addRequired(p,'copy',@ischar);
+addParamValue(p,'obsname',default_obsname,@ischar);
+addParamValue(p,'range',default_range,@isnumeric);
+addParamValue(p,'level',default_level,@isnumeric);
+parse(p, fname, copy, varargin{:});
+
+% if you want to echo the input
+% fprintf('fname   : %s\n',     p.Results.fname)
+% fprintf('copy    : %s\n',     p.Results.copy)
+% fprintf('obsname : %s\n',     p.Results.obsname)
+% fprintf('level   : %d\n',     p.Results.level)
+% fprintf('range   : %f %f \n', p.Results.range)
+
+if ~isempty(fieldnames(p.Unmatched))
+   disp('Extra inputs:')
+   disp(p.Unmatched)
+end
+
+if (numel(p.Results.range) ~= 2)
+   error('range must be an array of length two ... [bottom top]')
+end
+
+if strcmp(p.Results.obsname,'none')
    nvars = 0;
-elseif nargin == 3
-   varname = varargin{1};
-   nvars = 1;
 else
-   error('wrong number of arguments ... ')
+   obsname = p.Results.obsname;
+   nvars = 1;
 end
 
 if (exist(fname,'file') ~= 2)
@@ -66,7 +115,7 @@ end
 %---------------------------------------------------------------------
 
 plotdat.fname         = fname;
-plotdat.copystring    = copystring;
+plotdat.copystring    = copy;
 plotdat.bincenters    = nc_varget(fname,'time');
 plotdat.binedges      = nc_varget(fname,'time_bounds');
 plotdat.mlevel        = local_nc_varget(fname,'mlevel');
@@ -84,15 +133,15 @@ if (plotdat.nregions == 1 && (size(plotdat.region_names,2) == 1) )
    plotdat.region_names = deblank(plotdat.region_names');
 end
 
-dimensionality        = local_nc_attget(fname, nc_global, 'LocationRank');
-plotdat.binseparation = local_nc_attget(fname, nc_global, 'bin_separation');
-plotdat.binwidth      = local_nc_attget(fname, nc_global, 'bin_width');
-time_to_skip          = local_nc_attget(fname, nc_global, 'time_to_skip');
-plotdat.lonlim1       = local_nc_attget(fname, nc_global, 'lonlim1');
-plotdat.lonlim2       = local_nc_attget(fname, nc_global, 'lonlim2');
-plotdat.latlim1       = local_nc_attget(fname, nc_global, 'latlim1');
-plotdat.latlim2       = local_nc_attget(fname, nc_global, 'latlim2');
-plotdat.biasconv      = local_nc_attget(fname, nc_global, 'bias_convention');
+dimensionality        = nc_read_att(fname, nc_global, 'LocationRank');
+plotdat.binseparation = nc_read_att(fname, nc_global, 'bin_separation');
+plotdat.binwidth      = nc_read_att(fname, nc_global, 'bin_width');
+time_to_skip          = nc_read_att(fname, nc_global, 'time_to_skip');
+plotdat.lonlim1       = nc_read_att(fname, nc_global, 'lonlim1');
+plotdat.lonlim2       = nc_read_att(fname, nc_global, 'lonlim2');
+plotdat.latlim1       = nc_read_att(fname, nc_global, 'latlim1');
+plotdat.latlim2       = nc_read_att(fname, nc_global, 'latlim2');
+plotdat.biasconv      = nc_read_att(fname, nc_global, 'bias_convention');
 
 % Coordinate between time types and dates
 
@@ -121,11 +170,11 @@ if (nvars == 0)
    [plotdat.varnames,    plotdat.vardims]    = FindTemporalVars(plotdat);
    plotdat.nvars       = length(plotdat.varnames);
 else
-   plotdat.varnames{1} = varname;
+   plotdat.varnames{1} = obsname;
    plotdat.nvars       = nvars;
 end
 
-plotdat.copyindex   = get_copy_index(fname,copystring);
+plotdat.copyindex   = get_copy_index(fname,copy);
 plotdat.rmseindex   = get_copy_index(fname,'rmse');
 plotdat.Npossindex  = get_copy_index(fname,'Nposs');
 plotdat.Nusedindex  = get_copy_index(fname,'Nused');
@@ -147,6 +196,9 @@ for ivar = 1:plotdat.nvars
    plotdat.myvarname = plotdat.varnames{ivar};
    plotdat.guessvar  = sprintf('%s_guess',plotdat.varnames{ivar});
    plotdat.analyvar  = sprintf('%s_analy',plotdat.varnames{ivar});
+
+   plotdat.trusted   = nc_read_att(fname, plotdat.guessvar, 'TRUSTED');
+   if (isempty(plotdat.trusted)), plotdat.trusted = 'NO'; end
 
    % remove any existing postscript file - will simply append each
    % level as another 'page' in the .ps file.
@@ -218,7 +270,13 @@ for ivar = 1:plotdat.nvars
       continue
    end
 
-   for ilevel = 1:plotdat.nlevels
+   if (p.Results.level < 0)
+      wantedlevels = [1:plotdat.nlevels];
+   else
+      wantedlevels = p.Results.level;
+   end
+
+   for ilevel = wantedlevels
 
       fprintf(logfid,'\nlevel %d %f %s\n',ilevel,plotdat.level(ilevel),plotdat.level_units);
       plotdat.ges_Nqc4  = guess(:,plotdat.NQC4index  ,ilevel,:);
@@ -258,12 +316,16 @@ for ivar = 1:plotdat.nvars
       plotdat.ges_rmse  = guess(:,plotdat.rmseindex,  ilevel,:);
       plotdat.anl_rmse  = analy(:,plotdat.rmseindex,  ilevel,:);
 
-      plotdat.Yrange    = FindRange(plotdat);
+      if isnan(p.Results.range(1))
+         plotdat.Yrange = FindRange(plotdat);
+      else
+         plotdat.Yrange = p.Results.range;
+      end
 
       % plot each region, each level to a separate figure
 
       for iregion = 1:plotdat.nregions
-         figure(iregion); clf; orient(figuredata.orientation); wysiwyg
+         figure(iregion); clf(iregion); orient(figuredata.orientation); wysiwyg
 
          plotdat.region   = iregion;
          plotdat.myregion = deblank(plotdat.region_names(iregion,:));
@@ -358,6 +420,7 @@ axlims = axis;
 axlims = [axlims(1:2) plotdat.Yrange];
 axis(axlims)
 
+
 switch lower(plotdat.copystring)
    case 'bias'
       % plot a zero-bias line
@@ -387,7 +450,7 @@ set(get(ax1,'Xlabel'),'String',xlabelstring, ...
 
 title({plotdat.myregion, plotdat.title, plotdat.subtitle}, ...
       'Interpreter', 'none', 'Fontsize', figdata.fontsize, 'FontWeight', 'bold')
-BottomAnnotation(plotdat.fname)
+BottomAnnotation(plotdat)
 
 % create a separate scale for the number of observations
 ax2 = axes('position',get(ax1,'Position'), ...
@@ -410,7 +473,7 @@ matchingYticks(ax1,ax2);
 
 set(get(ax1,'Ylabel'), 'String', plotdat.ylabel, ...
     'Interpreter','none','FontSize',figdata.fontsize)
-set(get(ax2,'Ylabel'),'String','# of obs : o=poss, \ast=used', ...
+set(get(ax2,'Ylabel'),'String','# of obs : o=possible, \ast=assimilated', ...
     'FontSize',figdata.fontsize)
 
 %=====================================================================
@@ -420,13 +483,13 @@ function BottomAnnotation(main)
 %% annotates the full path of the file being plotted
 subplot('position',[0.48 0.01 0.04 0.04])
 axis off
-fullname = which(main);   % Could be in MatlabPath
+fullname = which(main.fname);   % Could be in MatlabPath
 if( isempty(fullname) )
-   if ( main(1) == '/' )  % must be a absolute pathname
-      string1 = sprintf('data file: %s',main);
+   if ( main.fname(1) == '/' )  % must be a absolute pathname
+      string1 = sprintf('data file: %s',main.fname);
    else                   % must be a relative pathname
       mydir = pwd;
-      string1 = sprintf('data file: %s/%s',mydir,main);
+      string1 = sprintf('data file: %s/%s',mydir,main.fname);
    end
 else
    string1 = sprintf('data file: %s',fullname);
@@ -438,6 +501,15 @@ set(h,'HorizontalAlignment','center', ...
    'Interpreter','none',...
    'FontSize',8)
 
+switch lower(main.trusted)
+   case 'true'
+      h = text(0.0, 1.0,'TRUSTED OBSERVATION. Values include outlying obs. ');
+      set(h,'HorizontalAlignment','center', ...
+         'VerticalAlignment','middle',...
+         'Interpreter','none',...
+         'FontSize',20)
+   otherwise
+end
 
 %=====================================================================
 
@@ -546,7 +618,7 @@ fontsize    = 16;
 position    = [0.10 0.15 0.8 0.7];
 linewidth   = 2.0;
 
-figdata = struct('expcolors',  {{'k','r','g','m','b','c','y'}}, ...
+figdata = struct('expcolors',  {{'k','r','b','m','g','c','y'}}, ...
    'expsymbols', {{'o','s','d','p','h','s','*'}}, ...
    'prpolines',  {{'-','--'}}, 'position', position, ...
    'fontsize',fontsize, 'orientation',orientation, ...
@@ -569,28 +641,6 @@ if (variable_present)
 else
    value = [];
 end
-
-
-%=====================================================================
-
-
-function value = local_nc_attget(fname,varid,varname)
-%% If the (global) attribute exists, return the value.
-% If it does not, do not throw a hissy-fit.
-
-value = [];
-if (varid == nc_global)
-   finfo = ncinfo(fname);
-   for iatt = 1:length(finfo.Attributes)
-      if (strcmp(finfo.Attributes(iatt).Name, deblank(varname)))
-         value = finfo.Attributes(iatt).Value;
-         return
-      end
-   end
-else
-   fprintf('function not supported for local variables, only global atts.\n')
-end
-
 
 
 % <next few lines under version control, do not edit>
