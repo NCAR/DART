@@ -156,7 +156,7 @@ logical :: out_of_range, keeper
 ! Anything with a DART QC == 5 has MISSING values for all DART copies
 ! Anything with a DART QC == 6 has MISSING values for all DART copies
 ! Anything with a DART QC == 7 has 'good' values for all DART copies, EXCEPT
-! pathological case:
+! ambiguous case:
 ! prior rejected (7) ... posterior fails (should be 7 & 4)
 !
 ! FIXME can there be a case where the prior is evaluated and the posterior QC is wrong
@@ -333,7 +333,7 @@ character(len=512) :: string1, string2, string3
 character(len=stringlength) :: obsname, ncName
 
 integer  :: Nidentity  = 0   ! identity observations
-integer  :: num_pathological  = 0   ! prior QC 7, posterior mean MISSING_R8
+integer  :: num_ambiguous  = 0   ! prior QC 7, posterior mean MISSING_R8
 
 !=======================================================================
 ! Get the party started
@@ -798,7 +798,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          endif
 
          !--------------------------------------------------------------
-         ! There is a pathological case wherein the prior is rejected (DART QC ==7) 
+         ! There is a ambiguous case wherein the prior is rejected (DART QC ==7) 
          ! and the posterior forward operator fails (DART QC ==4). In this case, 
          ! the DART_QC only reflects the fact the prior was rejected - HOWEVER - 
          ! the posterior mean,spread are set to MISSING. 
@@ -812,7 +812,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          !--------------------------------------------------------------
 
          if ((qc_integer == 7) .and. (abs(posterior_mean(1) - MISSING_R8) < 1.0_r8)) then
-            write(string1,*)'WARNING pathological case for obs index ',obsindex
+            write(string1,*)'WARNING ambiguous case for obs index ',obsindex
             string2 = 'obs failed outlier threshhold AND posterior operator failed.'
             string3 = 'Counting as a Prior QC == 7, Posterior QC == 4.'
             if (trusted) then
@@ -820,7 +820,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 ! COMMENT      qc_integer = 4
             endif
             call error_handler(E_MSG,'obs_diag',string1,text2=string2,text3=string3)
-            num_pathological = num_pathological + 1
+            num_ambiguous = num_ambiguous + 1
          endif
 
          !--------------------------------------------------------------
@@ -1178,7 +1178,7 @@ write(*,*) '# bad Level          : ',sum(prior%NbadLV(:,1,:,:))
 write(*,*) '# big (original) QC  : ',sum(prior%NbigQC)
 write(*,*) '# bad DART QC prior  : ',sum(prior%NbadDartQC)
 write(*,*) '# bad DART QC post   : ',sum(poste%NbadDartQC)
-write(*,*) '# priorQC 7 postQC 4 : ',num_pathological
+write(*,*) '# priorQC 7 postQC 4 : ',num_ambiguous
 write(*,*)
 write(*,*) '# prior DART QC 0 : ',sum(prior%NDartQC_0)
 write(*,*) '# prior DART QC 1 : ',sum(prior%NDartQC_1)
@@ -1211,7 +1211,7 @@ write(logfileunit,*) '# bad Level          : ',sum(prior%NbadLV(:,1,:,:))
 write(logfileunit,*) '# big (original) QC  : ',sum(prior%NbigQC)
 write(logfileunit,*) '# bad DART QC prior  : ',sum(prior%NbadDartQC)
 write(logfileunit,*) '# bad DART QC post   : ',sum(poste%NbadDartQC)
-write(logfileunit,*) '# priorQC 7 postQC 4 : ',num_pathological
+write(logfileunit,*) '# priorQC 7 postQC 4 : ',num_ambiguous
 write(logfileunit,*)
 write(logfileunit,*) '# prior DART QC 0 : ',sum(prior%NDartQC_0)
 write(logfileunit,*) '# prior DART QC 1 : ',sum(prior%NDartQC_1)
@@ -2921,7 +2921,7 @@ elseif (    myqc == 7 ) then
    call IPE(prior%NDartQC_7(iepoch,ilevel,iregion,itype), 1)
 
    if ( abs(posterior_mean - MISSING_R8) < 1.0_r8 ) then
-      ! ACTUALLY A FAILED FORWARD OPERATOR - pathological case
+      ! ACTUALLY A FAILED FORWARD OPERATOR - ambiguous case
       call IPE(poste%NDartQC_4(iepoch,ilevel,iregion,itype), 1)
    else
       call IPE(poste%NDartQC_7(iepoch,ilevel,iregion,itype), 1)
@@ -2977,7 +2977,7 @@ elseif (    myqc == 7 ) then
    call IPE(prior%NDartQC_7(ilevel,iregion,itype), 1)
 
    if ( abs(posterior_mean - MISSING_R8) < 1.0_r8 ) then
-      ! ACTUALLY A FAILED FORWARD OPERATOR - pathological case
+      ! ACTUALLY A FAILED FORWARD OPERATOR - ambiguous case
       call IPE(poste%NDartQC_4(ilevel,iregion,itype), 1)
    else
       call IPE(poste%NDartQC_7(ilevel,iregion,itype), 1)
@@ -3037,7 +3037,7 @@ logical, dimension(7) :: optionals
 prior_qc     = iqc
 posterior_qc = iqc
 
-! There is a pathological case wherein the prior is rejected (DART QC ==7)
+! There is a ambiguous case wherein the prior is rejected (DART QC ==7)
 ! and the posterior forward operator fails (DART QC ==4). In this case, 
 ! the DART_QC reflects the fact the prior was rejected - HOWEVER - 
 ! the posterior mean,spread are set to MISSING. 
@@ -3054,7 +3054,7 @@ if ( all(optionals) ) then
    ! the wind QC is only as good as the worst of the U,V QCs
    prior_qc     = maxval( (/ iqc, uqc /) )
 
-   ! If either the U or V is pathological, the wind is pathological
+   ! If either the U or V is ambiguous, the wind is ambiguous
    if     ((uqc == 7) .and. (abs(upomean - MISSING_R8) > 1.0_r8)) then
       posterior_qc = 4
    elseif ((iqc == 7) .and. (abs( pomean - MISSING_R8) > 1.0_r8)) then
@@ -3200,7 +3200,7 @@ integer  :: prior_qc, posterior_qc
 prior_qc     = iqc
 posterior_qc = iqc
 
-! There is a pathological case wherein the prior is rejected (DART QC ==7)
+! There is a ambiguous case wherein the prior is rejected (DART QC ==7)
 ! and the posterior forward operator fails (DART QC ==4). In this case, 
 ! the DART_QC reflects the fact the prior was rejected - HOWEVER - 
 ! the posterior mean,spread are set to MISSING. 
@@ -3215,7 +3215,7 @@ if ( all(optionals) ) then
    ! the wind QC is only as good as the worst of the U,V QCs
    prior_qc     = maxval( (/ iqc, uqc /) )
 
-   ! If either the U or V is pathological, the wind is pathological
+   ! If either the U or V is ambiguous, the wind is ambiguous
    if     ((uqc == 7) .and. (abs(upomean - MISSING_R8) > 1.0_r8)) then
       posterior_qc = 4
    elseif ((iqc == 7) .and. (abs( pomean - MISSING_R8) > 1.0_r8)) then
@@ -3673,7 +3673,7 @@ do ivar = 1,max_obs_kinds
       typesdimlen = typesdimlen + 1
 
       if ( is_observation_trusted(obs_type_strings(ivar)) ) then
-         string1 = trim(obs_type_strings(ivar))//'(TRUSTED)'
+         string1 = trim(obs_type_strings(ivar))//'--TRUSTED'
       else
          string1 = obs_type_strings(ivar)
       endif
