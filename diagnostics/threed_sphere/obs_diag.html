@@ -99,10 +99,11 @@
    division was made if the model has a threed_sphere or a oned 
    <em class=file>location_mod.f90</em>. It did not make sense to ask the 
    <em class=program>lorenz_96</em> model what part of North America you'd like
-   to investigate. <em class=removed>The low-order models output simple text files instead of
-   netCDF files - the intent is to move these toward netCDF files in the near
-   future.</em> <em class=changed>The low-order models now also write out similar 
-   netCDF files and the Matlab scripts have been updated accordingly.</em>
+   to investigate. The low-order models write out similar 
+   netCDF files and the Matlab scripts have been updated accordingly.
+   <em class=changed>The oned observations have locations conceptualized as being on
+   a unit sphere, so only the namelist input variables pertaining to longitude are
+   used.</em>
 </P>
 <P>
    Identity observations (only possible from "perfect model experiments") 
@@ -244,7 +245,7 @@
    <tr><td>0</td><td>observation assimilated</td></tr>
    <tr><td>1</td><td>observation evaluated only (because of namelist settings)</td></tr>
 
-   <tr><th align="left" colspan=2>DART QC values higher than this means the prior is OK, but ...</th></tr>
+   <tr><th align="left" colspan=2>DART QC values lower than this mean the prior and posteriors are OK</th></tr>
 
    <tr><td>2</td><td>assimilated, but the posterior forward operator failed</td></tr>
    <tr><td>3</td><td>evaluated only, but the posterior forward operator failed</td></tr>
@@ -280,6 +281,7 @@
         be counted in the statistics despite the DART QC code (as long as the
         forward observation operator succeeds).
         See namelist variable <em class=code>trusted_obs</em>.
+        For more details, see the section on <A href="#Trusted">Trusted observations</A>.
         </li><br />
     <li>Support for 'true' observations (i.e. from an OSSE). If the
         'truth' copy of an observation is desired for comparison (instead of
@@ -383,17 +385,17 @@ prematurely terminating the namelist.
 <TBODY valign=top>
 <TR><TD> obs_sequence_name </TD>
     <TD> character </TD>
-    <TD>Name of the observation sequence file(s). <br /> 
-This may be a relative or absolute filename. If the filename contains a '/'
+    <TD>Name of the observation sequence file<em class=changed>(s)</em>. <br /> 
+This may be a relative or absolute filename. <em class=changed>Deprecated. If the filename contains a '/'
 the filename is considered to be comprised of everything to the right, and a
 directory structure to the left.  The directory structure is then queried to
-see if it can be incremented to handle a sequence of observation files.  The
+see if it can be incremented to handle a sequence of observation files. The
 default behavior of <em class="program">obs_diag</em> is to look for
 additional files to include until the files are exhausted or an 
 <em class=file>obs_seq.final</em> file is found that contains observations beyond
 the timeframe of interest.<br />
 e.g. 'obsdir_001/obs_seq.final' will cause <em class="program">obs_diag</em> to 
-look for 'obsdir_002/obs_seq.final', and so on.<br /> 
+look for 'obsdir_002/obs_seq.final', and so on.<br /> </em>
 If this is set, <em class=code>obs_sequence_list</em> must be set to '&nbsp;'
 (empty string).
 </TD></TR>
@@ -557,6 +559,7 @@ If you'd like to change that see the routine <em class="routine">Rmidpoints2edge
          participate in the calculation of the statistics, regardless
          of the DART QC (provided that the forward observation operator
          can still be applied without failure). e.g. 'RADIOSONDE_TEMPERATURE', ...
+         For more details, see the section on <A href="#Trusted">Trusted observations</A>.
 </TD></TR>
 
 <TR><TD> use_zero_error_obs </TD>
@@ -678,6 +681,8 @@ an 'analysis/posterior' value - which shed some insight into the
 innovations.
 </P>
 
+<P></P><hr width=40% align=left>
+
 <H4 class=indent1>temporal evolution</H4>
 
 <P>
@@ -730,6 +735,8 @@ coordinate called 'surface' as opposed to 'plevel' for the others in
 this example).</li>
 </ol>
 
+<P></P><hr width=40% align=left>
+
 <H4 class=indent1>vertical profiles</H4>
 <P>
 Believe it or not, there are another set of netCDF variables specifically 
@@ -755,6 +762,8 @@ profiles (Because surface variables cannot exist on any other level,
 there's not much to plot!). Observations on the lowest level DO 
 participate. There's a difference!
 </P>
+
+<P></P><hr width=40% align=left>
 
 <H4 class=indent1>rank histograms</H4>
 <P>
@@ -801,6 +810,124 @@ Please note:
 </tr>
 </table>
 
+<P></P><hr width=40% align=left>
+
+<A NAME="Trusted"></A>
+<H4 class=indent1>"Trusted" observation types</H4>
+<P>
+This needs to be stated up front: <em class=program>obs_diag</em> is a post-processor; 
+it cannot influence the assimilation. One interpretation of a TRUSTED observation is that
+the assimilation should <strong>always</strong> use the observation, even if it is far from 
+the ensemble.  At present (23 Feb 2015), the filter in DART does not forcibly assimilate 
+any one observation and selectively assimilate the others. 
+Still, it is useful to explore the results using a set of 'trusted type' observations,
+whether they were assimilated, evaluated, or rejected by the outlier threshhold.
+This is the important distinction.
+The diagnostics can be calculated differently for each <em>observation type</em>. 
+</P><P>
+The normal diagnostics calculate the metrics 
+(rmse, bias, etc.) only for the 'good' observations - those that were assimilated or evaluated.
+The <em class=code>outlier_threshold</em> essentially defines what observations are 
+considered too far from the ensemble <strong>prior</strong> to be useful. These 
+observations get a DART QC of 7 and are not assimilated. The observations with a 
+DART QC of 7 do not contribute the the metrics being calculated. Similarly, if the 
+forward observation operator fails, these observations cannot contribute. When the 
+operator fails, the 'expected' observation value is 'MISSING', and there is no 
+ensemble mean or spread.
+</P><P>
+'Trusted type' observation metrics are calculated using all the observations that 
+were assimilated or evaluated <strong>AND</strong> the observations that were rejected 
+by the outlier threshhold.  <em class=program>obs_diag</em> can post-process
+the DART QC and calculate the metrics appropriately for <strong>observation types</strong>
+listed in the <em class=code>trusted_obs</em> namelist variable. If there are trusted 
+observation types specified for <em class=program>obs_diag</em>, the 
+<em class=file>obs_diag_output.nc</em> has
+global metadata to indicate that a different set of criteria were used to calculate 
+the metrics. The individual variables also have an extra attribute. 
+In the following output, <em class=file>input.nml:obs_diag_nml:trusted_obs</em> 
+was set: 
+<em class=mono>trusted_obs&nbsp;=&nbsp;'RADIOSONDE_TEMPERATURE',&nbsp;'RADIOSONDE_U_WIND_COMPONENT'</em>
+</P>
+<pre>
+  ...
+        float RADIOSONDE_U_WIND_COMPONENT_guess(time, copy, plevel, region) ;
+                RADIOSONDE_U_WIND_COMPONENT_guess:_FillValue = -888888.f ;
+                RADIOSONDE_U_WIND_COMPONENT_guess:missing_value = -888888.f ;
+                RADIOSONDE_U_WIND_COMPONENT_guess:<em>TRUSTED = "TRUE" ;</em>
+        float RADIOSONDE_V_WIND_COMPONENT_guess(time, copy, plevel, region) ;
+                RADIOSONDE_V_WIND_COMPONENT_guess:_FillValue = -888888.f ;
+                RADIOSONDE_V_WIND_COMPONENT_guess:missing_value = -888888.f ;
+  ...
+// global attributes:
+  ...
+                :<em>trusted_obs_01 = "RADIOSONDE_TEMPERATURE" ;</em>
+                :<em>trusted_obs_02 = "RADIOSONDE_U_WIND_COMPONENT" ;</em>
+                :obs_seq_file_001 = "cam_obs_seq.1978-01-01-00000.final" ;
+                :obs_seq_file_002 = "cam_obs_seq.1978-01-02-00000.final" ;
+                :obs_seq_file_003 = "cam_obs_seq.1978-01-03-00000.final" ;
+  ...
+                :MARINE_SFC_ALTIMETER = 7 ;
+                :LAND_SFC_ALTIMETER = 8 ;
+                :RADIOSONDE_U_WIND_COMPONENT<em>--TRUSTED</em> = 10 ;
+                :RADIOSONDE_V_WIND_COMPONENT = 11 ;
+                :RADIOSONDE_TEMPERATURE<em>--TRUSTED</em> = 14 ;
+                :RADIOSONDE_SPECIFIC_HUMIDITY = 15 ;
+                :AIRCRAFT_U_WIND_COMPONENT = 21 ;
+  ...
+</pre>
+<table width=100%>
+<tr>
+<td width=45%>The Matlab scripts try to ensure that the trusted observation 
+        graphics clarify that the metrics plotted are somehow 'different' than 
+        the normal processing stream. Some text is added to indicate that the values 
+        include the outlying observations. <strong>IMPORTANT:</strong> The interpretation
+        of the number of observations 'possible' and 'used' still reflects what was 
+        used <strong>in the assimilation!</strong> The number of observations rejected
+        by the outlier threshhold is not explicilty plotted. To reinforce this, the
+        text for the observation axis on all graphics has been changed to 
+        <em class=mono>"o=possible,&nbsp;*=assimilated"</em>. In short, the distance 
+        between the number of observations possible and the number assimilated still
+        reflects the number of observations rejected by the outlier threshhold and the
+        number of failed forward observation operators.
+</td>
+<td>&nbsp;&nbsp;<a href="../../doc/images/RAD_T_trusted_bias_evolution.png"><img src="../../doc/images/RAD_T_trusted_bias_evolution.png" width=600></a>
+</td>
+</tr>
+</table>
+
+<P>There is ONE ambiguous case for trusted observations. There may be instances in 
+which the observation fails the outlier threshhold test (which is based on the prior) 
+and the posterior forward operator fails. 
+DART does not have a QC that explicilty covers this case. The current logic in 
+<em class=program>obs_diag</em> correctly handles these cases <strong>except</strong> 
+when trying to use 'trusted' observations. There is a section of code in 
+<em class=program>obs_diag</em> that may be enabled if you are encountering this 
+ambiguous case. As <em class=program>obs_diag</em> runs, a warning message is 
+issued and a summary count is printed if the ambiguous case is encountered.
+What normally happens is that if that specific observation type is trusted, 
+the posterior values include a MISSING value in the calculation which makes 
+them inaccurate. If the block of code is enabled, the DART QC is recast as the 
+PRIOR forward observation operator fails. This is technically incorrect, but for 
+the case of trusted observations, it results in only calculating statistics for 
+trusted observations that have a useful prior and posterior. <strong>This should 
+not be used unless you are willing to intentionally disregard 'trusted' observations 
+that were rejected by the outlier threshhold.</strong> Since the whole point of a trusted observation is to <em>include</em> observations potentially rejected by the outlier threshhold, you see the problem. Some people like to compare the posteriors. <em>THAT</em> can be the problem.
+</P>
+<pre>         if ((qc_integer == 7) .and. (abs(posterior_mean(1) - MISSING_R8) &lt; 1.0_r8)) then
+            write(string1,*)'WARNING ambiguous case for obs index ',obsindex
+            string2 = 'obs failed outlier threshhold AND posterior operator failed.'
+            string3 = 'Counting as a Prior QC == 7, Posterior QC == 4.'
+            if (trusted) then
+! COMMENT      string3 = 'WARNING changing DART QC from 7 to 4'
+! COMMENT      qc_integer = 4
+            endif
+            call error_handler(E_MSG,'obs_diag',string1,text2=string2,text3=string3)
+            num_ambiguous = num_ambiguous + 1
+         endif</pre>
+
+<P>
+</P>
+
 <!--==================================================================-->
 <!-- Discuss  typical usage of obs_diag.                              -->
 <!--==================================================================-->
@@ -819,8 +946,8 @@ in the same way as the other DART components.
 <P>
 There are two ways to specify input files for <em class=program>obs_diag</em>.
 You can either specify the name of a file containing a list of files (in
-<em class=code>obs_sequence_list</em>), or you may specify 
-<em class=code>obs_sequence_name</em>, which is descibed by the following illustration&nbsp;...
+<em class=code>obs_sequence_list</em>), or you may specify <em class=new>a single file via</em>
+<em class=code>obs_sequence_name</em>. <em class=changed>Deprecated ... which is descibed by the following illustration&nbsp;...</em>
 </P>
 <table width="100%">
 <TR><TH width=50% align=left>value</TH><TH>effect</TH></TR>
@@ -838,7 +965,7 @@ You can either specify the name of a file containing a list of files (in
         Relative pathnames work just fine.</TD></TR>
 
 <TR><TD valign="top">"/path_to/nirvana_001/obs_seq.final"</TD>
-    <TD>A single file is processed, and more are expected.
+    <TD><em class=changed>Deprecated. A single file is processed, and more are expected.
         Because the directory name contains an underscore ("_") and the 
         portion of the directory to the right of the (rightmost) 
         underscore can be incremented, <em class="program">obs_diag</em> 
@@ -850,7 +977,7 @@ You can either specify the name of a file containing a list of files (in
 	   so they alphabetically and numerically 'list' identically.
 	   <em class="program">obs_diag</em> will stop when it runs out
 	   of files to ingest, or if it encounters an observation sequence
-	   file whose first time is beyond the timeframe of interest.</TD></TR>
+	   file whose first time is beyond the timeframe of interest.</em></TD></TR>
 </table>
 
 
