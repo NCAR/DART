@@ -88,14 +88,15 @@ real(r8), allocatable :: psfc(:)                ! surface pressure value   (Pa)
 real(r8), allocatable :: hsfc(:)                ! surface elevation level  (m above SL)
 integer,  allocatable :: track_status(:)
 integer               :: e, ens_size
-real(r8), allocatable :: altimeter_temp(:)
 
 ens_size = copies_in_window(state_ens_handle)
 
 if ( .not. module_initialized ) call initialize_module
 
 allocate(psfc(ens_size), hsfc(ens_size), track_status(ens_size))
-allocate(altimeter_temp(ens_size))
+
+track_status = 0
+altimeter_setting = missing_r8
 
 !  interpolate the surface pressure to the desired location
 call interpolate_distrib(location, KIND_SURFACE_PRESSURE, istatus, psfc, state_ens_handle)
@@ -116,9 +117,9 @@ do e = 1, ens_size
 enddo
 
 !  Compute the altimeter setting given surface pressure and height, altimeter is hPa
-altimeter_temp = compute_altimeter_distrib(psfc * 0.01_r8, hsfc, ens_size)
-
-altimeter_setting = altimeter_temp
+do e = 1, ens_size ! looping to avoid FPE with missing_r8
+   if(track_status(e) == 0) altimeter_setting(e:e) = compute_altimeter_distrib(psfc(e:e) * 0.01_r8, hsfc(e:e), 1)
+enddo
 
 istatus = track_status
 
