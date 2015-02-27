@@ -140,21 +140,25 @@ prematurely terminating the namelist.
     <TD>integer</TD>
     <TD>The number of observation sequence files to process.
 Maximum of 500.  If 0 the length is set by the number of input files
-given.  If non-zero must match the given input file list length.
+given.  If non-zero the value must match the actual number of input files.
 </TD></TR>
 
 <TR><TD>filename_seq</TD>
     <TD>character(len=129), dimension(500)</TD>
     <TD>The array of names of the observation sequence files to process.
-With the F90 namelist mechanism it is only necessary to specify the names
-you are going to use, not all.
+With the F90 namelist mechanism it is only necessary to specify as many
+names as you have input files; the rest of the list defaults correctly.
 </TD></TR>
 
 <TR><TD>filename_seq_list</TD>
     <TD>character(len=129)</TD>
     <TD>The name of a text file which contains, one per line,
-the names of the observation sequence files to process.  You can only specify
-one of filename_seq OR filename_seq_list, not both.
+the names of the observation sequence files to process.  
+The names on each line in the file should not have 
+any delimiters, e.g. no single or double quotes at the start 
+or end of the filename.  This file can be made with a text editor
+or with the output of the 'ls' command, e.g. <em class=code>ls obs_seq.* > flist</em>.
+You can only specify one of filename_seq OR filename_seq_list, not both.
 </TD></TR>
 
 <TR><TD>filename_out</TD>
@@ -768,7 +772,7 @@ different types have different units and valid ranges.  For example:
 </P>
 <pre>
 # keep only observations with a DART QC of 0:
-   qc_metadata        = 'Dart quality control',
+   qc_metadata        = 'DART quality control',
    min_qc             = 0,
    max_qc             = 0,
 
