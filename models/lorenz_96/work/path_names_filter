@@ -5,6 +5,7 @@ common/types_mod.f90
 cov_cutoff/cov_cutoff_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
 filter/filter.f90
+filter/filter_mod.f90
 location/oned/location_mod.f90
 models/lorenz_96/model_mod.f90
 mpi_utilities/mpi_utilities_mod.f90
@@ -25,3 +26,4 @@ io/state_vector_io_mod.f90
 io/io_filenames_mod.f90
 io/copies_on_off_mod.f90
 models/null_vert_convert.f90
+models/null_clamp.f90

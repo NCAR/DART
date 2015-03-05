@@ -25,6 +25,7 @@ use mpi_utilities_mod, only : my_task_id
 use distributed_state_mod
 
 use null_vert_convert
+use null_clamp
 
 
 implicit none
@@ -48,7 +49,7 @@ public :: get_model_size, &
           variables_domains, fill_variable_list, &
           get_vert, set_vert, set_which_vert, &
           info_file_name, construct_file_name_in, &
-          get_model_time
+          get_model_time, clamp_or_fail_it, do_clamp_or_fail
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
