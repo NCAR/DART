@@ -6,7 +6,7 @@
 #
 # DART $Id$
 #
-# Script to manage the compilation of all components for this model;
+# Script to manage the compilation of all components for this model.
 
 #----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
