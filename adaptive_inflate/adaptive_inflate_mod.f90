@@ -211,11 +211,7 @@ if(inf_flavor >= 2) then
       call turn_read_copy_on(ss_inflate_index)
       call turn_read_copy_on(ss_inflate_sd_index)
 
-      if (.not. direct_netcdf_read ) then ! read inflation as normal
-
-         ! allocating storage space in ensemble manager
-         !  - should this be in ensemble_manager
-         allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+      if (.not. direct_netcdf_read ) then ! read inflation as normal - asssumes you have allocated space
 
          call read_ensemble_restart(ens_handle, ss_inflate_index, ss_inflate_sd_index, &
             .true., in_file_name, force_single_file = .true.)
@@ -229,10 +225,6 @@ if(inf_flavor >= 2) then
          ! depends on when the code that changes the values imposes the limits.)
          call get_minmax_task_zero(inflate_handle, ens_handle, ss_inflate_index, ss_inflate_sd_index)
 
-         call all_vars_to_all_copies(ens_handle)
-
-         ! deallocate whole state storage - should this be in ensemble_manager 
-         deallocate(ens_handle%vars)
 
       endif
 
@@ -246,10 +238,28 @@ if(inf_flavor >= 2) then
       ! inflation and inf sd values and set them only on that task.  this saves us
       ! a transpose.
       if (.not. mean_from_restart) then
-         ens_handle%copies(ss_inflate_index, :) = inf_initial
+         if (direct_netcdf_read) then !copies
+            ens_handle%copies(ss_inflate_index, :) = inf_initial
+         else
+            call get_copy_owner_index(ss_inflate_index, owner, owners_index)
+            if (owner == ens_handle%my_pe) then !vars
+               call prepare_to_write_to_vars(ens_handle)
+               ens_handle%vars(:, owners_index) = inf_initial
+            endif
+         endif
+
       endif
       if (.not. sd_from_restart) then
-         ens_handle%copies(ss_inflate_sd_index, :) = sd_initial
+         if (direct_netcdf_read) then !copies
+            ens_handle%copies(ss_inflate_sd_index, :) = sd_initial
+         else
+            call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
+            if (owner == ens_handle%my_pe)  then !vars
+               call prepare_to_write_to_vars(ens_handle)
+               ens_handle%vars(:, owners_index) = sd_initial
+            endif
+         endif
+
       endif
    endif
 
@@ -308,12 +318,12 @@ end subroutine adaptive_inflate_init
 !> should you be turning on copies here?
 !> They are redone in filter anyway.
 subroutine adaptive_inflate_end(inflate_handle, state_ens_handle, ss_inflate_index, &
-   ss_inflate_sd_index, direct_netcdf_read)
+   ss_inflate_sd_index, direct_netcdf_write)
 
 type(adaptive_inflate_type), intent(in)    :: inflate_handle
 type(ensemble_type),         intent(inout) :: state_ens_handle
 integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
-logical,                     intent(in)    :: direct_netcdf_read
+logical,                     intent(in)    :: direct_netcdf_write
 
 integer :: restart_unit, io
 
@@ -334,20 +344,10 @@ if(inflate_handle%output_restart) then
       call turn_write_copy_on(ss_inflate_index)
       call turn_write_copy_on(ss_inflate_sd_index)
 
-      if (.not. direct_netcdf_read ) then
-
-         ! allocating storage space in ensemble manager
-         !  - should this be in ensemble_manager
-         allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
-
-         call all_copies_to_all_vars(state_ens_handle)
+      if (.not. direct_netcdf_write ) then
 
          call write_ensemble_restart(state_ens_handle, inflate_handle%out_file_name, &
             ss_inflate_index, ss_inflate_sd_index, force_single_file = .true.)
-
-         ! deallocate whole state storage - should this be in ensemble_manager 
-         deallocate(state_ens_handle%vars)
-
       endif
 
    ! Flavor 1 is observation space, write its restart directly

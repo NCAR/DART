@@ -67,7 +67,7 @@ use state_vector_io_mod,   only : read_transpose, transpose_write, get_state_var
                                   initialize_arrays_for_read, netcdf_filename, state_vector_io_init, &
                                   setup_read_write, turn_read_copy_on, turn_write_copy_on, turn_write_copy_off
 
-use model_mod,            only : variables_domains, fill_variable_list, info_file_name, get_model_time
+use model_mod,            only : variables_domains, fill_variable_list, get_model_time
 
 use io_filenames_mod,         only : io_filenames_init, restart_files_in
 
@@ -359,14 +359,9 @@ call setup_read_write(ens_size + num_extras)
 ! Read in restart files and initialize the ensemble storage
 call turn_read_copy_on(1, ens_size) ! need to read all restart copies
 
-! HK Moved initializing inflation to before read of netcdf restarts so you can read the restarts
-! and inflation files in one step.
-! Read of regular filter restarts, is done before adaptive inflate because there is a transpose in adaptive_
-! inflate_init if you read regular inflation file
-if (.not. direct_netcdf_read ) then ! expecting DART restart files
-   call filter_read_restart(state_ens_handle, time1, model_size)
-endif
-
+! allocating storage space in ensemble manager
+!  - should this be in ensemble_manager
+if(.not. direct_netcdf_read) allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
 
 ! Moved this. Not doing anything with it, but when we do it should be before the read
 ! Read in or initialize smoother restarts as needed
@@ -376,7 +371,7 @@ if(ds) then
 endif
 
 ! Initialize the adaptive inflation module
-! This activates turn_read_copy_on
+! This activates turn_read_copy_on or reads inflation for regular dart restarts
 call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
    inf_sd_initial_from_restart(1), inf_output_restart(1), inf_deterministic(1),       &
    inf_in_file_name(1), inf_out_file_name(1), inf_diag_file_name(1), inf_initial(1),  &
@@ -404,6 +399,17 @@ if (do_output()) then
 endif
 
 call trace_message('After  initializing inflation')
+
+
+! HK Moved initializing inflation to before read of netcdf restarts so you can read the restarts
+! and inflation files in one step.
+if (.not. direct_netcdf_read ) then ! expecting DART restart files
+   call filter_read_restart(state_ens_handle, time1, model_size)
+   call all_vars_to_all_copies(state_ens_handle)
+   ! deallocate whole state storage - should this be in ensemble_manager?
+   deallocate(state_ens_handle%vars)
+endif
+
 
 if (direct_netcdf_read) then
    call filter_read_restart_direct(state_ens_handle, time1, ens_size)
@@ -922,6 +928,13 @@ call trace_message('Before writing inflation restart files if required')
 call turn_write_copy_off(1, ens_size + num_extras) ! clean slate
 
 ! Output the restart for the adaptive inflation parameters
+if (.not. direct_netcdf_read ) then
+   ! allocating storage space in ensemble manager
+   !  - should this be in ensemble_manager?
+   allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
+   call all_copies_to_all_vars(state_ens_handle)
+endif
+
 call adaptive_inflate_end(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, direct_netcdf_write)
 call adaptive_inflate_end(post_inflate, state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY, direct_netcdf_write)
 call trace_message('After  writing inflation restart files if required')
@@ -948,6 +961,9 @@ if(direct_netcdf_write) then
 else ! write
    call filter_write_restart(state_ens_handle)
 endif
+
+! deallocate whole state storage - should this be in ensemble_manager
+if (.not. direct_netcdf_read ) deallocate(state_ens_handle%vars)
 
 if(ds) call smoother_write_restart(1, ens_size)
 call trace_message('After  writing state restart files if requested')
@@ -1411,7 +1427,7 @@ if (single_restart_file_in) then ! is this the correct flag to check?
 else
    model_size = 0
    do domain = 1, num_domains
-      netcdf_filename = info_file_name(domain)
+      netcdf_filename = restart_files_in(1,domain) !info_file_name(domain)
       call get_state_variable_info(num_variables_in_state, variable_list, domain, domain_size)
       model_size = model_size + domain_size
    enddo
@@ -1463,9 +1479,6 @@ if (do_output()) then
    endif
 endif
 
-! allocating storage space in ensemble manager
-allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
-
 ! Only read in initial conditions for actual ensemble members
 if(init_time_days >= 0) then
    call read_ensemble_restart(state_ens_handle, 1, ens_size, &
@@ -1492,11 +1505,6 @@ if(state_ens_handle%my_pe == 0) then
    call error_handler(E_DBG,'filter_read_restart',msgstring,source,revision,revdate)
 endif
 
-call all_vars_to_all_copies(state_ens_handle)
-
-! deallocate whole state storage
-deallocate(state_ens_handle%vars)
-
 end subroutine filter_read_restart
 
 !-------------------------------------------------------------------------
@@ -1505,15 +1513,8 @@ subroutine filter_write_restart(state_ens_handle)
 
 type(ensemble_type) :: state_ens_handle
 
-! allocating storage space in ensemble manager
-allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
-
-call all_copies_to_all_vars(state_ens_handle)
-
+! assumes you have %vars
 call write_ensemble_restart(state_ens_handle, restart_out_file_name, 1, ens_size)
-
-! deallocate whole state storage
-deallocate(state_ens_handle%vars)
 
 end subroutine filter_write_restart
 
