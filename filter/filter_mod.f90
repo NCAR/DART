@@ -177,7 +177,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
    inf_lower_bound, inf_upper_bound, inf_sd_lower_bound,           &
-   silence, direct_netcdf_read, direct_netcdf_write
+   silence, direct_netcdf_read, direct_netcdf_write, diagnostic_files
 
 
 !----------------------------------------------------------------
@@ -697,6 +697,7 @@ AdvanceTime : do
                ! Output inflation sucks
                call turn_write_copy_on(PRIOR_INF_COPY)
                call turn_write_copy_on(PRIOR_INF_SD_COPY)
+         ! FIXME - what to do with lorenz_96 (or similar) here?
          call filter_write_restart_direct(state_ens_handle, isprior = .true.)
       endif
 
@@ -928,7 +929,7 @@ call trace_message('Before writing inflation restart files if required')
 call turn_write_copy_off(1, ens_size + num_extras) ! clean slate
 
 ! Output the restart for the adaptive inflation parameters
-if (.not. direct_netcdf_read ) then
+if (.not. direct_netcdf_write ) then
    ! allocating storage space in ensemble manager
    !  - should this be in ensemble_manager?
    allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
@@ -963,7 +964,7 @@ else ! write
 endif
 
 ! deallocate whole state storage - should this be in ensemble_manager
-if (.not. direct_netcdf_read ) deallocate(state_ens_handle%vars)
+if (.not. direct_netcdf_write) deallocate(state_ens_handle%vars)
 
 if(ds) call smoother_write_restart(1, ens_size)
 call trace_message('After  writing state restart files if requested')
