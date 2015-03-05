@@ -143,7 +143,10 @@ public ::  get_model_size,                    &
            fill_variable_list,                &
            get_vert, set_vert, set_which_vert, &
            info_file_name, construct_file_name_in, &
-           get_model_time
+           get_model_time,                    &
+           do_clamp_or_fail,                  &
+           clamp_or_fail_it
+
 
 !  public stubs 
 public ::  adv_1step,       &
@@ -9189,6 +9192,76 @@ get_model_time = set_date(year, month, day, hour, minute, second)
 call nc_check( nf90_close(ncid) , 'closing', filename)
 
 end function get_model_time
+
+!-------------------------------------------------------
+!> Check whether you need to error out, clamp, or
+!> do nothing depending on the variable bounds
+function do_clamp_or_fail(var, dom)
+
+integer, intent(in) :: var ! variable index
+integer, intent(in) :: dom ! domain index
+logical             :: do_clamp_or_fail
+
+do_clamp_or_fail = .false.
+if (wrf%dom(dom)%clamp_or_fail(var) == 'FAIL') do_clamp_or_fail = .true.
+if (wrf%dom(dom)%clamp_or_fail(var) == 'CLAMP') do_clamp_or_fail = .true.
+
+end function do_clamp_or_fail
+
+!-------------------------------------------------------
+!> Check a variable for out of bounds and clamp or fail if
+!> needed
+subroutine clamp_or_fail_it(var_index, dom, variable)
+
+integer,     intent(in) :: var_index ! variable index
+integer,     intent(in) :: dom ! domain index
+real(r8), intent(inout) :: variable(:) ! variable
+
+if (wrf%dom(dom)%clamp_or_fail(var_index) == 'FAIL') then
+
+   if (minval(variable) < wrf%dom(dom)%lower_bound(var_index) ) then
+      call error_handler(E_ERR,'dart_to_wrf', &
+      'Variable '//trim(wrf_state_variables(1, var_index))// &
+      ' failed lower bounds check.', source,revision,revdate)
+   endif
+
+   if (maxval(variable) > wrf%dom(dom)%upper_bound(var_index) ) then
+      call error_handler(E_ERR,'dart_to_wrf', &
+      'Variable '//trim(wrf_state_variables(1, var_index))// &
+      ' failed upper bounds check.', source,revision,revdate)
+   endif
+
+
+elseif (wrf%dom(dom)%clamp_or_fail(var_index) == 'CLAMP') then
+
+   !  apply lower bound test
+   if ( wrf%dom(dom)%lower_bound(var_index) /= missing_r8 ) then
+
+      !if ( debug ) then
+      !   print*, 'Setting lower bound ',wrf%lower_bound(var_index),' on ', &
+      !                 trim(wrf_state_variables(1, var_index))
+      !endif
+
+      variable = max(wrf%dom(dom)%lower_bound(var_index),variable)
+
+   endif
+
+   !  apply upper bound test
+   if ( wrf%dom(dom)%upper_bound(var_index) /= missing_r8 ) then
+
+      !if ( debug ) then
+      !   print*, 'Setting upper bound ',wrf%upper_bound(var_index),' on ', &
+      !            trim(wrf_state_variables(1, var_index))
+      !endif
+
+      variable = min(wrf%dom(dom)%upper_bound(var_index),variable)
+
+   endif
+
+endif
+
+end subroutine clamp_or_fail_it
+
 !--------------------------------------------------------------------
 
 end module model_mod
