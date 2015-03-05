@@ -17,32 +17,33 @@
 #
 #=============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system
-# LSF is used on the IBM   Linux cluster 'lightning'
-# LSF is used on the IMAGe Linux cluster 'coral'
-# LSF is used on the IBM   'bluevista'
-# The queues on lightning and bluevista are supposed to be similar.
 #
 # the normal way to submit to the queue is:    bsub < run_filter.csh
 #
 # an explanation of the most common directives follows:
-# -J Job name (master script job.csh presumes filter_server.xxxx.log)
+# -J Job name
 # -o STDOUT filename
 # -e STDERR filename
 # -P      account
-# -q queue    cheapest == [standby, economy, (regular,debug), premium] == $$$$
+# -q queue    cheapest == [economy, regular, premium] == $$$$
 # -n number of processors  (really)
 # -W hh:mm  max execution time (required on some platforms)
+#
+# The bgrid_solo default ensemble size is 20. This script is just an example
+# to show how to use 20 processors - but only 10 processors per node. this
+# example consequently uses two nodes (so you get charged for all 32 processors)
 ##=============================================================================
 #BSUB -J filter
 #BSUB -o filter.%J.log
-#BSUB -q economy
-#BSUB -n 6
+#BSUB -N -u ${USER}@ucar.edu
+#BSUB -q premium
 #BSUB -W 0:30
+#BSUB -P NIMG0002
+#BSUB -n 16
+#BSUB -R "span[ptile=16]"
 #
 #=============================================================================
 # This block of directives constitutes the preamble for the PBS queuing system
-# PBS is used on the CGD   Linux cluster 'bangkok'
-# PBS is used on the CGD   Linux cluster 'calgary'
 # 
 # the normal way to submit to the queue is:    qsub run_filter.csh
 # 
@@ -52,10 +53,7 @@
 # -e <arg>  filename for standard error
 # -o <arg>  filename for standard out 
 # -q <arg>   Queue name (small, medium, long, verylong)
-# -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok 
-#                     and calgary, there is no way to 'share' the processors
-#                     on the node with another job, so you might as well use
-#                     them both.  (ppn == Processors Per Node)
+# -l nodes=xx:ppn=2   requests TWO processors on the node.
 ##=============================================================================
 #PBS -N filter
 #PBS -r n

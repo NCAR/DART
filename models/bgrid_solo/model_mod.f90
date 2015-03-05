@@ -69,7 +69,7 @@ use             types_mod, only: r8, pi, MISSING_R8
 use        utilities_mod, only : open_file, error_handler, E_ERR, E_MSG, &
                                  nmlfileunit, register_module, &
                                  find_namelist_in_file, check_namelist_read, &
-                                 do_nml_file, do_nml_term
+                                 do_nml_file, do_nml_term, do_output
 
 use          obs_kind_mod, only: KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                                  KIND_SURFACE_PRESSURE, KIND_TEMPERATURE
@@ -534,8 +534,8 @@ call check_namelist_read(iunit, io, "atmosphere_nml")
 !----- write version and namelist to log file -----
 
    call write_version_number ( version, tag )
-   write (stdlog(),    nml=atmosphere_nml)
-   write (nmlfileunit, nml=atmosphere_nml)
+   if (do_nml_file()) write (stdlog(),    nml=atmosphere_nml)
+   if (do_nml_term()) write (nmlfileunit, nml=atmosphere_nml)
 
 !---- compute physics/atmos time step in seconds ----
 
@@ -578,7 +578,7 @@ model_size = 2 * num_levels * v_horiz_size
 model_size = model_size + (1 + num_levels) * t_horiz_size
 ! Tracers for size
 model_size = model_size + global_Var%ntrace * num_levels * t_horiz_size
-write(*, *) 'model_size ', model_size
+if (do_output()) write(*, *) 'model_size ', model_size
 
 ! Also static store the number of levels, ntracers, and prognostic tracers
 ntracers = global_Var%ntrace
