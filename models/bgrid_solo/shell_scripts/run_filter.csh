@@ -29,16 +29,15 @@
 # -n number of processors  (really)
 # -W hh:mm  max execution time (required on some platforms)
 #
-# The bgrid_solo default ensemble size is 20. This script is just an example
-# to show how to use 20 processors - but only 10 processors per node. this
-# example consequently uses two nodes (so you get charged for all 32 processors)
+# This script is an example to show how to all 16 processors 
+# (currently the number of processors one node).
 ##=============================================================================
 #BSUB -J filter
 #BSUB -o filter.%J.log
 #BSUB -N -u ${USER}@ucar.edu
-#BSUB -q premium
+#BSUB -q regular
 #BSUB -W 0:30
-#BSUB -P NIMG0002
+#BSUB -P NIMGxxxx
 #BSUB -n 16
 #BSUB -R "span[ptile=16]"
 #
