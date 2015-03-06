@@ -664,28 +664,6 @@ do j=1,ny-1
 enddo
 KMU(:,ny) = minval(KMT(:,ny))
 
-! IF YOU KNOW WHAT YOU ARE DOING YOU CAN COMMENT THIS TEST AND ERROR
-! CODE OUT, but keep reading to be sure:
-! the dart interface code can handle interpolation in any supported
-! POP grid, including a standard latitude/longitude grid.  but it is
-! not clear that the POP model code can compute values correctly if
-! the top row of the grid is in fact a singular point at the north pole.
-! a shifted grid puts this row over land where singularities can be ignored.
-! if you are sure your version of POP can compute the top grid row values
-! correctly, comment out the code between START HERE and END HERE and
-! recompile.  otherwise, use a shifted-pole grid. 
-
-! START HERE
-if (any(KMT(:,ny) /= 0)) then
-   msgstring = 'north boundary of grid does not appear to be over land'
-   call error_handler(E_ERR,'read_topography', &
-          msgstring, source, revision, revdate, &
-          text2='to continue, comment out this error call in the source code', &
-          text3='at end of read_topography() in models/POP/dart_pop_mod.f90')
-   
-endif
-! END HERE
-
 end subroutine read_topography
 
 
@@ -696,14 +674,23 @@ end subroutine read_topography
 !
 ! Open and read the ASCII vertical grid information
 !
-! The vert grid file is ascii, with 3 columns/line:
+! The vert grid file is in ascii, with either 3 columns/line
 !    cell thickness(in cm)   cell center(in m)   cell bottom(in m)
+! or it can contain 2 columns/line
+!    cell thickness(in cm)   1.0
+! in which case we compute the cell center (ZC) and cell bottom (ZG)
+! and ignore the second column.
 
 integer,  intent(in)  :: nz
 real(r8), intent(out) :: ZC(nz), ZG(nz)
 
 integer  :: iunit, i, ios
 real(r8) :: depth
+
+logical :: three_columns
+character(len=256)  :: line
+
+real(r8), parameter :: centemeters_to_meters = 0.01_r8
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -719,9 +706,33 @@ endif
 
 iunit = open_file(trim(vert_grid_file), action = 'read')
 
-do i=1, nz
+! determine the number of columns
+read(iunit,'(A)') line
 
-   read(iunit,*,iostat=ios) depth, ZC(i), ZG(i)
+read(line,*,iostat=ios) depth, ZC(1), ZG(1)
+
+if(ios == 0) then
+   three_columns = .true.
+else
+   three_columns = .false.
+   
+   ! read depth and calculate center and bottom of cells
+   read(line,*,iostat=ios) depth 
+
+   ZC(1) = depth*centemeters_to_meters*0.5 
+   ZG(1) = depth*centemeters_to_meters
+endif
+
+do i=2, nz
+   
+   if(three_columns) then
+      read(iunit,*,iostat=ios) depth, ZC(i), ZG(i)
+   else
+      read(iunit,*,iostat=ios) depth
+
+      ZC(i) = ZG(i-1) + depth*centemeters_to_meters*0.5
+      ZG(i) = ZG(i-1) + depth*centemeters_to_meters
+   endif
 
    if ( ios /= 0 ) then ! error
       write(msgstring,*)'error reading depths, line ',i
