@@ -48,8 +48,6 @@ use data_structure_mod, only : copies_in_window
 
 use distributed_state_mod
 
-use mpi
-
 implicit none
 private
 
@@ -356,12 +354,6 @@ integer              :: num_obs, i
 type(obs_type)       :: obs
 type(obs_def_type)   :: obs_def
 integer              :: obs_kind_ind
-
-! HK
-integer                        :: ierr
-integer(KIND=MPI_ADDRESS_KIND) :: target_disp ! must be mpi_address_kind to avoid seg faults on some systems
-integer owner_of_state
-integer element_index
 
 integer length_of_expected_obs ! HK should this be passed in?
 

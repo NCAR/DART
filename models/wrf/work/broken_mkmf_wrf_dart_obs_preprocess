@@ -7,7 +7,7 @@
 # DART $Id$
 
 ../../../mkmf/mkmf -p wrf_dart_obs_preprocess -t ../../../mkmf/mkmf.template   \
- -a "../../.." path_names_wrf_dart_obs_preprocess
+ -a "../../.." -w path_names_wrf_dart_obs_preprocess
 
 exit $status
 

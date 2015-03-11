@@ -107,7 +107,7 @@ integer, private :: days_per_month(12) = (/31,28,31,30,31,30,31,31,30,31,30,31/)
 
 ! time_type is implemented as seconds and days to allow for larger intervals
 type time_type
-   !private
+   private
    integer:: seconds
    integer:: days
 end type time_type

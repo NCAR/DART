@@ -19,7 +19,7 @@ module data_structure_mod
 
 use types_mod,         only : r8
 use time_manager_mod,  only : time_type
-use mpi_utilities_mod, only : task_count, datasize, my_task_id
+use mpi_utilities_mod, only : task_count, my_task_id
 
 implicit none
 private

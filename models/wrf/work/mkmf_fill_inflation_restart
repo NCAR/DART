@@ -7,7 +7,7 @@
 # DART $Id$
 
 ../../../mkmf/mkmf -p fill_inflation_restart -t ../../../mkmf/mkmf.template   \
- -a "../../.." path_names_fill_inflation_restart
+ -a "../../.." -w path_names_fill_inflation_restart
 
 exit $status
 
