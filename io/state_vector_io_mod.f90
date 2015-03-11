@@ -363,7 +363,7 @@ COPIES: do c = 1, ens_size
 
       ! calculate how many variables will be read
       end_var = calc_end_var(start_var, domain)
-      if ((my_task_id() == 0) .and. (c == 1)) print*, 'start_var, end_var', start_var, end_var
+      !if ((my_task_id() == 0) .and. (c == 1)) print*, 'start_var, end_var', start_var, end_var
       block_size = sum(variable_sizes(start_var:end_var, domain))
 
       if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
@@ -570,7 +570,7 @@ COPIES : do c = 1, ens_size
 
       ! calculate how many variables will be sent to writer
       end_var = calc_end_var(start_var, domain)
-      if ((my_task_id() == 0) .and. (c == 1 )) print*, 'start_var, end_var', start_var, end_var
+      !if ((my_task_id() == 0) .and. (c == 1 )) print*, 'start_var, end_var', start_var, end_var
       num_vars = sum(variable_sizes(start_var:end_var, domain))
 
       if ((my_pe >= recv_start) .and. (my_pe <= recv_end)) then ! I am a collector
