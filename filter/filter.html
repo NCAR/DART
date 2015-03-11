@@ -84,7 +84,32 @@
 <P>
 The time of the observations in the input observation sequence file
 controls the length of execution of filter.
-</P> <P>
+</P> 
+<P>
+For large, parallel models, the execution loop is usually
+wrapped in an external script which does these additional steps:
+</P>
+<UL><LI>Link to an observation sequence file which contains only observation times
+        within the next assimilation window </LI>
+    <LI>Convert the latest model output files to DART format</LI>
+    <LI>Link any output inflation files from the previous step to be
+        the input files for this step</LI>
+    <LI>Run filter, which will exit after doing the assimilation without trying
+        to advance the model</LI>
+    <LI>Convert the filter output to be model input</LI>
+    <LI>Save the output diagnostic files for later</LI>
+    <LI>Advance the N copies of the model using the model scripts or whatever
+        method is appropriate</LI>
+    <LI>Repeat until all data is assimilated</LI>
+</UL>
+<P>
+For large models filter is almost always compiled to be a parallel MPI
+program, and most large models are themselves a parallel program using
+OpenMP, MPI, or both.  MPI programs usually cannot start other MPI programs,
+so the external script submits both the filter job and the N model advances
+to a batch system so all run as independent parallel jobs.
+</P>
+<P>
    The same source code is used for all applications of filter.
    The code specific to the types of observations and the interface code
    for the computational model is configured at compile time.
@@ -307,7 +332,7 @@ See Anderson (2011).
 </P>
 
 <TABLE border=0 cellpadding=3 width=100% summary='dart quality control flags'>
-   <TR><TD>0:</TD><TD> Observation is okay </TD></TR>
+   <TR><TD>0:</TD><TD> Observation was assimilated successfully </TD></TR>
    <TR><TD>1:</TD><TD> Observation was evaluated only but not
       used in the assimilation </TD></TR>
    <TR><TD>2:</TD><TD> The observation was used but one or more of
@@ -544,8 +569,53 @@ the inflation fields can be plotted (we often use
 Expected inflation values are generally in the 1 to 10 range; 
 if values grow much larger than this it usually indicates
 a problem with the assimilation.
-
 </P> 
+
+
+<A NAME="WhereToModify"></A>
+<H4>Directories expected to be Modified</H4>
+<P>
+DART is distributed as a toolkit/library/facility that can be
+used as-is with the existing models and observations, but is also
+designed so that users can add new models, new observation types
+and forward operators, and new assimilation algorithms.  
+</P>
+<P>
+The locations in the DART code tree which are intended to be
+modified by users are:
+</P>
+<DL>
+<DT>New Models</DT><DD>Add a new directory in the <em class=file>models</em> subdirectory.  
+Copy (recursively, e.g. <em class=code>cp -r</em>) the contents of the
+<em class=file>template</em> directory and modify from there.  Note that the 
+<em class=file>model_mod.f90</em>
+file in the template dir is appropriate for small models; for large geophysical
+models see the <em class=file>full_model_mod.f90</em> file 
+and also examine other model directories for ideas.
+See additional documentation in the <a href="../models/model_mod.html">model_mod</a>
+documentation, and the 
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#adding_a_model">
+DART web pages</a> on adding new models.
+</DD>
+<DT>New Observation Types</DT><DD>Define a new type via a file in the 
+<em class=file>obs_def</em> subdirectory.  To convert observations from other
+formats to DART format, add a new directory in the <em class=file>observations</em> subdirectory.
+See additional documentation in the <a href="../obs_def/obs_def_mod.html">obs_def_mod</a>
+documentation, and the 
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_Observations.php#adding_types">
+DART web pages</a> on adding new models.
+</DD>
+<DT>New Observation Forward Operators</DT><DD>If the forward operator is more
+complicated than directly interpolating a field in the model state, a new module can be
+added in the <em class=file>obs_def</em> subdirectory. See the same
+documentation for adding new observations types above.
+<DT>New Assimilation Algorithms</DT><DD>If you want to try
+out a different filter type modify the filter code in the
+<em class=file>assim_tools/assim_tools_mod.f90</em> file.
+See the <a href="../assim_tools/assim_tools_mod.html">assim_tools_mod</a> documentation.
+</DD>
+</DL>
+
 
 <A NAME="DetailedProgramFlow"></A>
 <H4>Detailed Program Execution Flow</H4>
