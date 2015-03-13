@@ -1836,7 +1836,6 @@ if (associated(gc%obs_box)) then
    if (howmuch > 1) then
       ! DEBUG
       write(errstring,"(A,I8,A,36(I8,1X))") ' obs_box(',i,') =', gc%obs_box(1:min(i,36))  ! (nobs)
-      !write(errstring,*) ' obs_box(',i,') =', gc%obs_box    ! (nobs)
       call error_handler(E_MSG, 'locations_mod', errstring)
    else if(howmuch > 0) then
       write(errstring,*) ' obs_box(',i,') =', gc%obs_box(1:min(i,sample+1))

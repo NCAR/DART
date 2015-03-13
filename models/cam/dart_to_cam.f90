@@ -25,7 +25,7 @@ use   utilities_mod, only : open_file, close_file, &
                             check_namelist_read, find_namelist_in_file
 use       model_mod, only : model_type, init_model_instance, write_cam_init, &
                             vector_to_prog_var, static_init_model, get_model_size, &
-                            write_cam_times
+                            write_cam_times, end_model_instance
 use assim_model_mod, only : aread_state_restart, open_restart_read, close_restart
 use time_manager_mod, only : time_type, print_time, print_date
 
@@ -96,7 +96,8 @@ call vector_to_prog_var (statevector, var)
 deallocate (statevector)
 
 ! write fields to the netCDF initial file.
-call write_cam_init(dart_to_cam_output_file, var, model_time)
+call write_cam_init(dart_to_cam_output_file, model_time, var)
+call end_model_instance(var)
 
 ! write cam times to a separate 'times' support file.  used to
 ! update cam namelist start/stop times.

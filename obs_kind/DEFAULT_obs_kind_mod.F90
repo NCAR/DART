@@ -172,7 +172,7 @@ integer, parameter, public :: &
     KIND_INFRARED_BRIGHT_TEMP        = 61, &
     KIND_LANDMASK                    = 62
 
-! kind for unstructured grids 
+! kind for unstructured grids
 integer, parameter, public :: &
     KIND_EDGE_NORMAL_SPEED           = 63
 
@@ -292,6 +292,19 @@ integer, parameter, public :: &
 !! for chemistry types, specifically for WRF-Chem/DART, but
 !! possibly of interest to other models with Chemistry species.
 !! DO NOT USE numbers between 151-250 without talking to me, please?  (nancy)
+
+! these chemistry kinds match the numbers Arthur Mizzi is using
+integer, parameter, public :: &
+    KIND_O3                          = 151, &
+    KIND_CO                          = 153, &
+    KIND_NO                          = 155, &
+    KIND_NO2                         = 156
+
+! more chemistry kinds (Jerome Barre)  (last three slots)
+integer, parameter, public :: &
+    KIND_CO2                         = 247, &
+    KIND_NH3                         = 248, &
+    KIND_CH4                         = 249
 
 ! kinds for GITM (Alexey Morozov)
 integer, parameter, public :: &
@@ -596,6 +609,15 @@ obs_kind_names(140) = obs_kind_type(KIND_NEUTRON_INTENSITY     ,'KIND_NEUTRON_IN
 obs_kind_names(141) = obs_kind_type(KIND_CANOPY_WATER          ,'KIND_CANOPY_WATER')
 obs_kind_names(142) = obs_kind_type(KIND_GROUND_HEAT_FLUX      ,'KIND_GROUND_HEAT_FLUX')
 obs_kind_names(143) = obs_kind_type(KIND_VERTICAL_TEC          ,'KIND_VERTICAL_TEC')
+
+obs_kind_names(151) = obs_kind_type(KIND_O3,              'KIND_O3')
+obs_kind_names(153) = obs_kind_type(KIND_CO,              'KIND_CO')
+obs_kind_names(155) = obs_kind_type(KIND_NO,              'KIND_NO')
+obs_kind_names(156) = obs_kind_type(KIND_NO2,             'KIND_NO2')
+
+obs_kind_names(247) = obs_kind_type(KIND_CO2,             'KIND_CO2')
+obs_kind_names(248) = obs_kind_type(KIND_NH3,             'KIND_NH3')
+obs_kind_names(249) = obs_kind_type(KIND_CH4,             'KIND_CH4')
 
 obs_kind_names(251) = obs_kind_type(KIND_TEMPERATURE_ELECTRON  ,'KIND_TEMPERATURE_ELECTRON')
 obs_kind_names(252) = obs_kind_type(KIND_TEMPERATURE_ION       ,'KIND_TEMPERATURE_ION')

@@ -360,28 +360,45 @@ write(msgstring, '(4A)') &
    trim(det), trim(tadapt), trim(sadapt), trim(akind)
 call error_handler(E_MSG, trim(label) // ' inflation:', msgstring, source, revision, revdate)
 
-! if inflation was set from a namelist, that message has already been
-! printed (further up in this routine).  for values set from a restart
-! file, if the inflation flavor is 2, the values printed are the min and
-! max from the entire array.  for flavors 1 and 3 there is only a single
-! value to print out.
+! if inflation was set from a namelist a message with the values has been
+! printed (further up in this routine).  for values set from a restart file
+! we now know the min/max values, so print them out here. 
+! if the inflation flavor is 2 there are 2 values: the min and max from the 
+! state-vector-sized array.  for flavors 1 and 3 there is only a single value.
+! also check for bad values (missing_r8s should not be found in the inflation files).
 if (inf_flavor > 0) then
-   if (mean_from_restart) then
+   ! if my task owns the mean/sd, test for any missing_r8 and error out if found
+   call get_copy_owner_index(ss_inflate_index, owner, owners_index)
+   if (owner == ens_handle%my_pe) then
+      if (any(ens_handle%vars(:, owners_index) == MISSING_R8)) then
+         call error_handler(E_ERR, 'adaptive_inflate_init', 'illegal missing values found in inflation mean file', &
+            source, revision, revdate)
+      endif
+   endif
+   call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
+   if (owner == ens_handle%my_pe)  then
+      if (any(ens_handle%vars(:, owners_index) == MISSING_R8)) then
+         call error_handler(E_ERR, 'adaptive_inflate_init', 'illegal missing values found in inflation sd file', &
+            source, revision, revdate)
+      endif
+   endif
+   ! task 0 knows the min and maxes and needs to print them for the log
+   if (my_task_id() == 0 .and. mean_from_restart) then
       if (inf_flavor == 2) then
-         write(msgstring, '(A, F8.3, A, F8.3)') &
+         write(msgstring, '(A, F12.3, A, F12.3)') &
             'inf mean   from restart file: min value: ', minmax_mean(1), ' max value: ', minmax_mean(2)
       else
-         write(msgstring, '(A, F8.3, A, F8.3)') &
+         write(msgstring, '(A, F12.3, A, F12.3)') &
             'inf mean   from restart file: value: ', minmax_mean(1)
       endif
       call error_handler(E_MSG, trim(label) // ' inflation:', msgstring, source, revision, revdate)
    endif
-   if (sd_from_restart) then
+   if (my_task_id() == 0 .and. sd_from_restart) then
       if (inf_flavor == 2) then
-         write(msgstring, '(A, F8.3, A, F8.3)') &
+         write(msgstring, '(A, F12.3, A, F12.3)') &
             'inf stddev from restart file: min value: ', minmax_sd(1), ' max value: ', minmax_sd(2)
       else
-         write(msgstring, '(A, F8.3, A, F8.3)') &
+         write(msgstring, '(A, F12.3, A, F12.3)') &
             'inf stddev from restart file: value: ', minmax_sd(1)
       endif
       call error_handler(E_MSG, trim(label) // ' inflation:', msgstring, source, revision, revdate)

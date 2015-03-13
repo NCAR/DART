@@ -202,7 +202,7 @@ if (.not. allkinds) then
 
    j = 0
    do i=1, model_size
-      call get_state_meta_data(-1 * i, loc, stype)
+      call get_state_meta_data(i, loc, stype)
       if (stype < 1 .or. stype > num_kinds) then
          write(msgstring, *) 'bad KIND from get_state_meta_data, ', stype, ' for index ', i 
          write(msgstring1, *) 'must be between 1 and ', num_kinds

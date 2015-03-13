@@ -147,7 +147,8 @@ logical :: out_of_range, keeper
 ! 3     Evaluated only, but the posterior forward operator failed
 !   --- everything above this means only the prior is OK
 ! 4     prior forward operator failed
-! 5     was not included to be assimilated or evaluated in the namelist
+! 5     not assimilated or evaluated because of namelist specification of
+!         input.nml:obs_kind_nml:[assimilate,evaluate]_these_obs_types
 ! 6     prior QC rejected
 ! 7     outlier rejected
 ! 8+    reserved for future use
@@ -880,7 +881,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          obs_used_in_epoch(iepoch) = obs_used_in_epoch(iepoch) + 1
 
          !--------------------------------------------------------------
-         ! If it is a U wind component, all we need to do is save it.
+         ! If it is a U wind component, we need to save it.
          ! It will be matched up with the subsequent V component.
          ! At some point we have to remove the dependency that the
          ! U component MUST preceed the V component.
@@ -2654,6 +2655,14 @@ Function InnovZscore(obsval, prmean, prspred, errvar, qcval, qcmaxval)
 ! If the prior mean cannot be calculated (i.e. is missing) we put it in the
 ! last 'bin' of the crude histogram. This is pretty much a 'z' score in the
 ! statistical sense.
+!
+! In Jan of 2014 I ran into a special case. We are performing a perfect model
+! experiment - perturbing a single state and then assimilating. We wanted
+! to compare against the true observation value (errvar = 0.0) and for the 
+! first time step, there is no ensemble spread either. In this case the denom
+! was really zero and the calculation blew up. Since we only use this to track
+! how far apart these things are, we can restrict the distance to the worst-case
+! scenario ... the last bin. 
 
 real(r8)             :: InnovZscore
 real(r8), intent(in) :: obsval, prmean, prspred, errvar
@@ -2661,12 +2670,22 @@ integer,  intent(in) :: qcval, qcmaxval
 
 real(r8) :: numer, denom
 
+InnovZscore = real(MaxSigmaBins,r8) ! worst-case ... really far apart
+
 if ( qcval <= qcmaxval ) then ! QC indicates a valid obs
    numer = abs(prmean - obsval)
    denom = sqrt( prspred**2 + errvar )
-   InnovZscore = numer / denom
-else
-   InnovZscore = real(MaxSigmaBins,r8)
+
+   ! TJH FIXME ... test this before putting on the trunk!!!!
+   ! At worst, the InnovZscore can be 'MaxSigmaBins' i.e. 100
+   ! protect against dividing by a really small number
+   ! if numer/denom < 100 then go ahead and calculate
+   ! if numer < 100 * denom ...
+
+   if ( numer < InnovZscore*denom ) then
+      InnovZscore = numer / denom
+   endif
+
 endif
 
 end Function InnovZscore
