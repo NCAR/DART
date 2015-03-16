@@ -151,9 +151,31 @@ set *dart_log.*;                                                                
 set *True_State.*.nc;                                                                                                 dispose ifiles_n ${sta}/dart/hist $*
 set *Prior_Diag.*.nc;                                                                                                 dispose ifiles_n ${sta}/dart/hist $*
 set *Posterior_Diag.*.nc;                                                                                             dispose ifiles_n ${sta}/dart/hist $*
-set *obs_seq.*.out;                                                                                                   dispose ifiles_n ${sta}/dart/hist $*
-set *obs_seq.*.final;                                                                                                 dispose ifiles_n ${sta}/dart/hist $*
-set *obs_seq.*.perfect;                                                                                               dispose ifiles_n ${sta}/dart/hist $*
+
+# Save a copy of DART selected obs_sequence files (output from perfect_model_obs,
+# input to filter, and output from filter) to a place that won't be wiped out by lt_archive
+DOUT_ROOT=`dirname $RUNDIR`
+ls cam_obs_seq.*.perfect                         2> /dev/null
+if [ $? -eq 0 ]; then
+   mkdir -p $DOUT_ROOT/Obs_seq_perfect           2> /dev/null
+   cp *obs_seq.*.out $DOUT_ROOT/Obs_seq_perfect
+fi
+
+ls cam_obs_seq.*.out                             2> /dev/null
+if [ $? -eq 0 ]; then
+   mkdir -p $DOUT_ROOT/Obs_seq_out               2> /dev/null
+   cp *obs_seq.*.out $DOUT_ROOT/Obs_seq_out
+fi
+
+ls cam_obs_seq.*.final                           2> /dev/null
+if [ $? -eq 0 ]; then
+   mkdir -p $DOUT_ROOT/Obs_seq_final             2> /dev/null
+   cp *obs_seq.*.final $DOUT_ROOT/Obs_seq_final
+fi
+
+set *obs_seq.*.out;                                                                                                       dispose ifiles_n ${sta}/dart/hist $*
+set *obs_seq.*.final;                                                                                                     dispose ifiles_n ${sta}/dart/hist $*
+set *obs_seq.*.perfect;                                                                                                   dispose ifiles_n ${sta}/dart/hist $*
 set cam_*pr*inflate_restart*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null;   dispose ifiles_n ${sta}/dart/rest $*
 set cam_*po*inflate_restart*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null;   dispose ifiles_n ${sta}/dart/rest $*
 set clm_*pr*inflate_restart*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null;   dispose ifiles_n ${sta}/dart/rest $*
@@ -183,7 +205,8 @@ do
     set ${CASE}.cam*${inst_suffix}.h4.*;  latest=`ls -rt $* 2> /dev/null | tail -1`; cp $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_n ${sta}/atm/hist $*
     set ${CASE}.cam*${inst_suffix}.h5.*;  latest=`ls -rt $* 2> /dev/null | tail -1`; cp $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_n ${sta}/atm/hist $*
     set ${CASE}.cam*${inst_suffix}.hs.*;  latest=`ls -rt $* 2> /dev/null | tail -1`; cp $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_n ${sta}/atm/hist $*
-    set ${CASE}.cam*${inst_suffix}.i.*;   latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/atm/init $*
+    # Save initial files for later evaluation/assimilation
+    set ${CASE}.cam*${inst_suffix}.i.*;   latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_n ${sta}/atm/init $*
     set ${CASE}.datm${inst_suffix}.r.* ;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/atm/rest $*
     set ${CASE}.datm${inst_suffix}.rs* ;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/atm/rest $*
     set ${CASE}.datm${inst_suffix}.h.* ;                                                                                           dispose ifiles_n ${sta}/atm/hist $*
@@ -350,7 +373,7 @@ echo "st_archive.sh: copied last successful step into ${sta2}/${dname} for safek
 # copy back the required files for next restart
 cp ${sta}/rest/${dname}/* .
 
-# now possibly delete the current contents of the restart dir so
+# now selectively delete the current contents of the restart dir so
 # it won't be picked up by the long term archiver.  the diagnostic
 # files are saved for all times, but these are the restart files
 # needed to start a new model advance. if you try to save every
@@ -369,18 +392,26 @@ month=`echo $dname | cut -b6-7`
 # using the time variables from immediately above.
 
 # approximately the last day of each month: all months except feb have 30 days,
-# and all febs have a 28th.  save the 10th, 20th, and "last" day of each month.
+# and all febs have a 28th. 
 if [[ $month == 02 ]]; then lastday=28; else lastday=30; fi
 
-if [[ $secs == 00000 && ($day == 10 || $day == 20 || $day == $lastday) ]]; then
+# example options for how frequently to save a full restart set:
+#
+# 1. Save the 10th, 20th, and "last" day of each month.
+# if [[ $secs == 00000 && ($day == 10 || $day == 20 || $day == $lastday) ]]; then
+#
+# 2. Save every Nth day by setting the frequency in the lines below.
+# Nth=1 
+# if [[ $secs == 00000 && (`expr $day % $Nth` == 0 || $day == $lastday) ]]; then
+
+Nth=1
+if [[ $secs == 00000 && (`expr $day % $Nth` == 0 || $day == $lastday) ]]; then
   echo "st_archive: PRESERVING contents of restart ${dname}"
 else
   echo "st_archive: DELETING contents of restart ${dname}"
   rm -rf ${sta}/rest/${dname}
   touch ${sta}/rest/${dname}_removed
 fi
-
-# end of DART changes
 
 
 # make files visible again in the archive directory so they
@@ -394,7 +425,7 @@ else
     exit 1
 fi
 
-echo "st_archive.sh: short-term archiving completed successfully"
+echo "`date`: st_archive.sh: short-term archiving completed successfully"
 
 exit 0
 

@@ -18,17 +18,6 @@ set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 # The VERBOSE options are useful for debugging though
 # some systems don't like the -v option to any of the following
 switch ("`hostname`")
-   case be*:
-      # NCAR "bluefire"
-      set   MOVE = '/usr/local/bin/mv -fv'
-      set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
-      set   LINK = '/usr/local/bin/ln -fvs'
-      set REMOVE = '/usr/local/bin/rm -fr'
-
-      set BASEOBSDIR = /glade/proj3/image/Observations/ACARS
-      set  LAUNCHCMD = mpirun.lsf
-   breaksw
-
    case ys*:
       # NCAR "yellowstone"
       set   MOVE = 'mv -fv'
@@ -38,9 +27,20 @@ switch ("`hostname`")
       set TASKS_PER_NODE = `echo $LSB_SUB_RES_REQ | sed -ne '/ptile/s#.*\[ptile=\([0-9][0-9]*\)]#\1#p'`
       setenv MP_DEBUG_NOTIMEOUT yes
 
-      # BASEOBSDIR needs the whole path name except for the date directory and file name.
+      # BASEOBSDIR has the month/year and specific date appended (see usage below).
       set BASEOBSDIR = /glade/p/image/Observations/ACARS
       set  LAUNCHCMD = mpirun.lsf
+   breaksw
+
+   case linux_system_with_utils_in_other_dirs*:
+      # example of pointing this script at a different set of basic commands
+      set   MOVE = '/usr/local/bin/mv -fv'
+      set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
+      set   LINK = '/usr/local/bin/ln -fvs'
+      set REMOVE = '/usr/local/bin/rm -fr'
+
+      set BASEOBSDIR = /glade/proj3/image/Observations/ACARS
+      set LAUNCHCMD  = mpirun.lsf
    breaksw
 
    default:
@@ -51,7 +51,8 @@ switch ("`hostname`")
       set REMOVE = 'rm -fr'
 
       set BASEOBSDIR = /scratch/scratchdirs/nscollin/ACARS
-      set  LAUNCHCMD = "aprun -n $NTASKS"
+      set LAUNCHCMD  = "aprun -n $NTASKS"
+
    breaksw
 endsw
 
@@ -96,9 +97,17 @@ cd $temp_dir
 # The observation file names have a time that matches the stopping time of CAM.
 #-----------------------------------------------------------------------------
 # Make sure the file name structure matches the obs you will be using.
+# PERFECT model obs output appends .perfect to the filenames
 
-set YYYYMM   = `printf %04d%02d ${ATM_YEAR} ${ATM_MONTH}`
-set OBSFNAME = `printf obs_seq%04d%02d%02d%02d ${ATM_YEAR} ${ATM_MONTH} ${ATM_DAY} ${ATM_HOUR}`
+set YYYYMM   = `printf %04d%02d                ${ATM_YEAR} ${ATM_MONTH}`
+if (! -d ${BASEOBSDIR}/${YYYYMM}_6H) then
+   echo "CESM+DART requires 6 hourly obs_seq files in directories of the form YYYYMM_6H"
+   echo "The directory ${BASEOBSDIR}/${YYYYMM}_6H is not found.  Exiting"
+   exit -10
+endif
+
+set OBSFNAME = `printf obs_seq.%04d-%02d-%02d-%05d ${ATM_YEAR} ${ATM_MONTH} ${ATM_DAY} ${ATM_SECONDS}`
+
 set OBS_FILE = ${BASEOBSDIR}/${YYYYMM}_6H/${OBSFNAME}
 
 if (  -e   ${OBS_FILE} ) then
@@ -350,7 +359,7 @@ ${REMOVE} ../cam_inflation_cookie
 # &dart_to_cam_nml:      dart_to_cam_input_file  = 'dart_restart',
 #                        advance_time_present    = .false.
 #
-# KDR; NOTE; when starting an OSSE by perturbing a single file, use
+# NOTE: when starting an OSSE by perturbing a single file, use
 # &filter_nml
 #   start_from_restart        = .false.,
 #   output_restart            = .true.,
@@ -366,6 +375,32 @@ ${REMOVE} ../cam_inflation_cookie
 #=========================================================================
 
 echo "`date` -- BEGIN CAM-TO-DART"
+
+# CAM-SE: DART needs a SEMapping_cs_grid.nc file for cubed-sphere grid mapping.
+# Use an existing file (given in the namelist), or DART will create one the
+# first time it runs.  To create one it needs an existing SEMapping.nc file,
+# which should be output from CAM-SE every forecast.
+
+if ( $CAM_DYCORE == 'se') then
+   # set the default filenames, and then check the input namelist to
+   # see if the user has specified a different cs grid filename.
+   set CS_GRID_FILENAME = 'SEMapping_cs_grid.nc'
+   set MAPPING_FILENAME = 'SEMapping.nc'
+
+   set MYSTRING = `grep cs_grid_file input.nml`
+   if ($#MYSTRING == 3) then
+      set MYSTRING = `echo $MYSTRING | sed -e "s#'# #g"`
+      set CS_GRID_FILENAME = $MYSTRING[3]
+   endif
+
+   # Grid file needs to be in run directory, or cam_to_dart will create one
+   # based on information from the MAPPING file (which was created by CAM).
+   if ( -f ../$CS_GRID_FILENAME) then
+      ${LINK} ../$CS_GRID_FILENAME .
+   else
+      ${LINK} ../$MAPPING_FILENAME .
+   endif
+endif
 
 set member = 1
 while ( ${member} <= ${ensemble_size} )
@@ -391,6 +426,16 @@ while ( ${member} <= ${ensemble_size} )
    ${LINK} ../../$ATM_INITIAL_FILENAME caminput.nc
    ${LINK} ../../$ATM_HISTORY_FILENAME cam_phis.nc
 
+   if ( $CAM_DYCORE == 'se') then
+      # Grid file needs to be in current directory, or cam_to_dart will create one
+      # based on information from the MAPPING file (which was created by CAM).
+      if ( -f ../../$CS_GRID_FILENAME) then
+         ${LINK} ../../$CS_GRID_FILENAME .
+      else
+         ${LINK} ../../$MAPPING_FILENAME .
+      endif
+   endif
+
    echo "starting cam_to_dart for member ${member} at "`date`
    ${EXEROOT}/cam_to_dart >! output.${member}.cam_to_dart &
 
@@ -406,6 +451,14 @@ if (${nsuccess} != ${ensemble_size}) then
    echo "ERROR ... DART died in 'cam_to_dart' ... ERROR"
    echo "ERROR ... DART died in 'cam_to_dart' ... ERROR"
    exit -6
+endif
+
+if ( $CAM_DYCORE == 'se') then
+   # CAM-SE: if a new grid file was created, copy it to both the run dir and
+   # the case dir for future use.
+   if (! -f ../$CS_GRID_FILENAME)         ${COPY} member_1/$CS_GRID_FILENAME   ..
+   if (! -f $CS_GRID_FILENAME)            ${LINK} ../$CS_GRID_FILENAME         .
+   if (! -f $CASEROOT/$CS_GRID_FILENAME)  ${COPY} ../$CS_GRID_FILENAME         $CASEROOT
 endif
 
 echo "`date` -- END CAM-TO-DART for all ${ensemble_size} members."
@@ -450,7 +503,7 @@ ${MOVE} Posterior_Diag.nc  ../cam_Posterior_Diag.${ATM_DATE_EXT}.nc
 ${MOVE} obs_seq.final      ../cam_obs_seq.${ATM_DATE_EXT}.final
 ${MOVE} dart_log.out       ../cam_dart_log.${ATM_DATE_EXT}.out
 
-# Accomodate any possible inflation files
+# Accommodate any possible inflation files
 # 1) rename file to reflect current date
 # 2) move to RUNDIR so the DART INFLATION BLOCK works next time and
 #    that they can get archived.
@@ -463,6 +516,25 @@ foreach FILE ( ${PRIOR_INF_OFNAME} ${POSTE_INF_OFNAME} ${PRIOR_INF_DIAG} ${POSTE
    endif
 end
 
+# Handle localization_diagnostics_files
+set MYSTRING = `grep localization_diagnostics_file input.nml`
+set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
+set MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
+set loc_diag = $MYSTRING[2]
+if (-f $loc_diag) then
+   $MOVE $loc_diag ../cam_${loc_diag}.${ATM_DATE_EXT}
+endif
+
+# Handle regression diagnostics
+set MYSTRING = `grep reg_diagnostics_file input.nml`
+set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
+set MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
+set reg_diag = $MYSTRING[2]
+if (-f $reg_diag) then
+   $MOVE $reg_diag ../cam_${reg_diag}.${ATM_DATE_EXT}
+endif
+
+# 
 #=========================================================================
 # Block 6: Update the cam restart files ... simultaneously ...
 #
