@@ -6,6 +6,14 @@
 ! > Setting up a CAM-SE assimilation
 ! > Setting up a WACCM assimilation
 ! > Setting up for perfect_model_obs
+!
+! PLEASE READ
+!
+! https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/cam/model_mod.html
+!
+! for recommendations on namlist settings for CAM. It has examples on configurations
+! for taking a single state and creating an ensemble, differences between using
+! the FV core or SE core ... variable resolution grids, etc.
 
 ! ens_size, num_output_*  will be (re)set by the setup script
 
@@ -61,7 +69,6 @@
    inf_sd_initial              = 0.6,                     0.6,
    inf_sd_lower_bound          = 0.6,                     0.6
    /
-! ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
 
 &perfect_model_obs_nml
   start_from_restart       = .true.
@@ -148,6 +155,15 @@
   advance_time_present    = .false.,
    /
 
+#========================================================================
+# Start of CAM-SE, CAM-FV dependencies and general discussion.
+#========================================================================
+!
+! You MUST configure this file to support EITHER the CAM-SE -OR- CAM-FV cores.
+! There are simply too many changes to support both at the same time.
+! Enable or Disable the appropriate blocks by commenting out or 
+! removing the comment character from the block of interest.
+!
 ! highest_state_pressure_Pa 
 !     The default values given are the minimums recommended, given the choices
 !     of several other CESM and DART parameters.
@@ -160,62 +176,49 @@
 !     vert_normalization_{pressure,scale_height}
 !     CAM's model top 
 !     number of model top levels with extra diffusion 
-
-! CAM-FV
-!   >  model top 220 Pa
-!   >  number of model top levels with extra diffusion, controlled by div24del2:
-!         2 = div2    -> 2 levels
-!         4,24 = del2 -> 3 levels -> highest_state_pressure_Pa = 10500.
-
-! CAM-SE 
-!   >  note U and V, not US and VS
-!   >  model top 220 Pa
-!   >  number of model top levels with extra diffusion (3 only)
-!   vert_normalization_pressure = 20,000.
-!   vert_coord          = 'pressure'
-!   state_num_1d        = 1,
-!   state_num_2d        = 6,
-!   state_num_3d        = 0,
-!   state_names_1d      = 'PS'
-!   state_names_2d      = 'T','U','V','Q','CLDLIQ','CLDICE'
-!   state_names_3d      = ''
-!   highest_obs_pressure_Pa   = 1000.,
-!   highest_state_pressure_Pa = 10500.,
-
-# WACCM (can, in principle, be FV (US,VS) or SE (U,V).  FV is assumed)
-!   >  model top 4.5e-4 Pa 
-!   >  number of model top levels with extra diffusion, controlled by div24del2:
+!
+! WACCM can be used with either FV or SE
+!     vert_normalization_scale_height does not have extensive exploration available.
+!     Pedatella settled on 2.5.
+!     The model top for WACCM is (naturally) much higher: 4.5e-4 Pa 
+!     This has ramifications for the diffusion near the model top so 
+!     changes to the highest_*_pressure_Pa are appropriate.
+!     number of model top levels with extra diffusion, controlled by CAM's div24del2:
 !         2 = div2    -> 3 levels
 !         4,24 = del2 -> 4 levels
-!   vert_normalization_scale_height = 2.5 
-!   vert_coord          = 'log_invP'
-!   highest_obs_pressure_Pa   = .0001,
-!   highest_state_pressure_Pa = .01,
-
+!
+! WACCM settings that must be changed no matter what core is being used.
+!     vert_normalization_scale_height = 2.5 
+!     vert_coord                      = 'log_invP'
+!     highest_obs_pressure_Pa         = .0001,
+!     highest_state_pressure_Pa       = .01,
+!
 ! Creation of initial ensemble from a single state.
 ! pert_sd > 0 allows each point of the pert_names fields of each ens member 
 !   to be randomly perturbed with a standard deviation of pert_sd.  
 !   Used by filter's call to pert_model_state.
-! pert_sd < 0. signals pert_base_vals to be used as the values 
-!   for each ensemble member (for 1 field), instead of the value for each field.
-!   DART special value -888888.0d0 can be used for that.
-! pert_base_vals /= -888888.0d0 means that the values of the fields in pert_names
-!   will be reset to the values in pert_base_vals.  
-
+!
+#========================================================================
+# CAM-FV Section
+# model top 220 Pa
+# number of model top levels with extra diffusion, controlled by div24del2:
+#         2 = div2    -> 2 levels
+#         4,24 = del2 -> 3 levels -> highest_state_pressure_Pa = 10500.
+# vert_normalization_pressure = 20000. is a better choice than
+#         100000. for allowing upper levels to be pulled towards the obs.
+#========================================================================
 
 &model_nml
    output_state_vector = .false.,
    model_version       = '5.1.1',
    model_config_file   = 'caminput.nc' 
    cam_phis            = 'cam_phis.nc'
-   cs_grid_file        = 'SEMapping_cs_grid.nc'
-   homme_map_file      = '../SEMapping.nc'
    state_num_0d        = 0,
    state_num_1d        = 0,
    state_num_2d        = 1,
    state_num_3d        = 6,
    state_names_2d      = 'PS'
-   state_names_3d      = 'T', 'US', 'VS', 'Q', 'CLDLIQ', 'CLDICE'
+   state_names_3d      = 'T','US','VS','Q','CLDLIQ','CLDICE'
    which_vert_1d       = 0,
    which_vert_2d       = -1,
    which_vert_3d       = 6*1,
@@ -226,16 +229,10 @@
    highest_obs_pressure_Pa   = 1000.0,
    highest_state_pressure_Pa = 9400.0,
    max_obs_lat_degree        = 90.0,
-   Time_step_seconds   = 21600,
-   Time_step_days      = 0,
-   print_details       = .false.,
+   Time_step_seconds         = 21600,
+   Time_step_days            = 0,
+   print_details             = .false.,
    /
-
-! CAM-SE; approximate_distance MUST BE FALSE
-! CAM-FV; vert_normalization_pressure = 20000. is a better choice than
-!         the default 100000 for allowing upper levels to be pulled towards the obs.
-! WACCM;  vert_normalization_scale_height does not have extensive exploration available.
-!         This is the value Pedatella settled on.
 
 &location_nml
    horiz_dist_only             = .false.,
@@ -250,8 +247,63 @@
    print_box_level             = 0,
    /
 
+#========================================================================
+# CAM-SE Section
+# model top 220 Pa
+# number of model top levels with extra diffusion (3 only)
+#========================================================================
+
+!CAM-SE &model_nml
+!CAM-SE    output_state_vector = .false.,
+!CAM-SE    model_version       = '5.1.1',
+!CAM-SE    model_config_file   = 'caminput.nc' 
+!CAM-SE    cs_grid_file        = 'SEMapping_cs_grid.nc'
+!CAM-SE    homme_map_file      = '../SEMapping.nc'
+!CAM-SE    state_num_0d        = 0,
+!CAM-SE    state_num_1d        = 1,
+!CAM-SE    state_num_2d        = 6,
+!CAM-SE    state_num_3d        = 0,
+!CAM-SE    state_names_1d      = 'PS'
+!CAM-SE    state_names_2d      = 'T','U','V','Q','CLDLIQ','CLDICE'
+!CAM-SE    state_names_3d      = ''
+!CAM-SE    which_vert_1d       = -1,
+!CAM-SE    which_vert_2d       = 6*1,
+!CAM-SE    vert_coord          = 'pressure'
+!CAM-SE    pert_names          = 'T'
+!CAM-SE    pert_sd             = 0.1,
+!CAM-SE    pert_base_vals      = -888888.0d0,
+!CAM-SE    highest_obs_pressure_Pa   = 1000.0,
+!CAM-SE    highest_state_pressure_Pa = 9400.0,
+!CAM-SE    max_obs_lat_degree        = 90.0,
+!CAM-SE    Time_step_seconds         = 21600,
+!CAM-SE    Time_step_days            = 0,
+!CAM-SE    print_details             = .false.,
+!CAM-SE    /
+!CAM-SE 
+!CAM-SE &location_nml
+!CAM-SE    horiz_dist_only             = .false.,
+!CAM-SE    vert_normalization_pressure = 20000.0, 
+!CAM-SE    vert_normalization_height   = 10000.0,
+!CAM-SE    vert_normalization_level    = 20.0,
+!CAM-SE    vert_normalization_scale_height    = 2.5,
+!CAM-SE    approximate_distance        = .FALSE.,
+!CAM-SE    nlon                        = 141, 
+!CAM-SE    nlat                        = 72,
+!CAM-SE    output_box_info             = .false.,
+!CAM-SE    print_box_level             = 0,
+!CAM-SE    /
+
+#========================================================================
+# End of CAM-SE, CAM-FV dependencies.
+#========================================================================
+
 &xyz_location_nml
    /
+
+! to use chemistry or saber temperatures, include the following.
+!                             '../../../obs_def/obs_def_CO_Nadir_mod.f90',
+!                             '../../../obs_def/obs_def_SABER_mod.f90'
+!                             '../../../obs_def/obs_def_MOPITT_CO_mod.f90',
 
 &preprocess_nml
    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
@@ -262,10 +314,14 @@
                              '../../../obs_def/obs_def_reanalysis_bufr_mod.f90',
                              '../../../obs_def/obs_def_altimeter_mod.f90',
    /
-! to use chemistry or saber temperatures, include the following.
-!                             '../../../obs_def/obs_def_CO_Nadir_mod.f90',
-!                             '../../../obs_def/obs_def_SABER_mod.f90'
-!                             '../../../obs_def/obs_def_MOPITT_CO_mod.f90',
+
+! Not usually assimilated.  No fundamental reason not to. 
+!                               'RADIOSONDE_SPECIFIC_HUMIDITY',
+! Available from mid-2006 onward.  Build filter with obs_def_gps_mod.f90
+!                               'GPSRO_REFRACTIVITY', 
+! WACCM can use higher observations than CAM.  
+! An example can be included via obs_def_SABER_mod.f90.
+!                               'SABER_TEMPERATURE', 
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
@@ -281,19 +337,6 @@
                                 'SAT_V_WIND_COMPONENT',
    evaluate_these_obs_types = ''
    /
-
-! The default TYPEs are available if filter is built with 
-! obs_def_{reanalysis_bufr,altimeter}_mod.f90
-
-! Not usually assimilated.  No fundamental reason not to. 
-                                'RADIOSONDE_SPECIFIC_HUMIDITY',
-! Available from mid-2006 onward.  Build filter with obs_def_gps_mod.f90
-                                'GPSRO_REFRACTIVITY', 
-! WACCM can use higher observations than CAM.  
-! An example can be included via obs_def_SABER_mod.f90.
-                                'SABER_TEMPERATURE', 
-
-
 
 
 &utilities_nml

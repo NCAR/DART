@@ -447,6 +447,7 @@ integer :: nflds         ! # fields to read
 ! X_dimid_#d first dimension is 1 larger than # spatial dimensions to accomodate time dimension
 ! on caminit.nc files.
 ! These are filled in trans_coord
+
 integer              :: coord_order
 integer, allocatable :: s_dim_3d(:,:), s_dim_2d(:,:), s_dim_1d(  :),  &
                         f_dim_3d(:,:), f_dim_2d(:,:), f_dim_1d(:,:),  &
@@ -1084,8 +1085,8 @@ do i = 1,state_num_3d
    call nc_check(nf90_inquire_variable(ncfileid, varid, dimids=f_dimid_3d(1:4,i)), &
                  'trans_coord', 'inquire_variable'//trim(state_names_3d(i)))
 
-   Alldim3: do j = 1,4                          ! time and 3 space
-      k = f_dimid_3d(j,i)                       ! shorthand; the dimid of this fields current dim
+   Alldim3: do j = 1,4          ! time and 3 space
+      k = f_dimid_3d(j,i)       ! shorthand; the dimid of this fields current dim
       f_dim_3d(j,i) = dim_sizes(k)
       ! Put the dimensions we want in the state field positions we want.
       if (dim_names(k) == 'lev' .or. dim_names(k) == 'ilev') then
@@ -1103,9 +1104,13 @@ do i = 1,state_num_3d
 !         end if
 !      end do
    end do Alldim3
+
    if (   s_dim_3d(1,i) == 0 .or.  s_dim_3d(2,i) == 0 .or.  s_dim_3d(3,i) == 0 ) then
-      call error_handler(E_ERR, 'trans_coord', &
-          'num_[lons,lats,levs] was not assigned and = 0' , source, revision, revdate)
+      string1 = 'num_[lons,lats,levs] were not assigned and = 0'
+      string2 = 'This may mean your input.nml model_nml is configured for FV'
+      string3 = 'but the input files are SE.'
+      call error_handler(E_ERR, 'trans_coord', string1, &
+                 source, revision, revdate, text2=string2, text3=string3)
    end if
 end do
 

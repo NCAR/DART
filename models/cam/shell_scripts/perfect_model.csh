@@ -164,13 +164,20 @@ ${LINK} $ATM_HISTORY_FILENAME cam_phis.nc
 # CAM-SE: DART needs a SEMapping_cs_grid.nc file for cubed-sphere grid mapping.
 # Use an existing file (given in the namelist), or DART will create one the
 # first time it runs.  To create one it needs an existing SEMapping.nc file,
-# which should be output from CAM-SE every forecast.
+# which should be output from CAM-SE every forecast. CESM 1_1_1 called this
+# HommeMapping.nc but we require that the DART namelist use 'SEMapping.nc'
+# so we can rename it here.
 
-if ( $CAM_DYCORE == 'se') then
+if ( $CAM_DYCORE == 'se' || $CAM_DYCORE == 'homme') then
    # set the default filenames, and then check the input namelist to
    # see if the user has specified a different cs grid filename.
    set CS_GRID_FILENAME = 'SEMapping_cs_grid.nc'
-   set MAPPING_FILENAME = 'SEMapping.nc'
+
+   if ( $CAM_DYCORE == 'homme') then
+      set MAPPING_FILENAME = 'HommeMapping.nc'
+   else
+      set MAPPING_FILENAME = 'SEMapping.nc'
+   endif
 
    set MYSTRING = `grep cs_grid_file input.nml`
    if ($#MYSTRING == 3) then
@@ -183,7 +190,7 @@ if ( $CAM_DYCORE == 'se') then
    if ( -f ../$CS_GRID_FILENAME ) then
       ${LINK} ../$CS_GRID_FILENAME .
    else
-      ${LINK} ../$MAPPING_FILENAME .
+      ${LINK} ../$MAPPING_FILENAME SEMapping.nc
    endif
 endif
 

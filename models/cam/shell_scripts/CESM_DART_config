@@ -222,6 +222,20 @@ g;num_output_obs_members ;s;= .*;= ${NINST_ATM};
 wq
 ex_end
 
+# If we are using WACCM (i.e. WCCM or WACCM) we have preferred values
+echo "${CCSM_COMPSET}" | grep CCM
+if [[ \$? == 0 ]]; then 
+   sed -e "/ vert_normalization_scale_height /c\ vert_normalization_scale_height = 2.5" \
+       -e "/ highest_obs_pressure_Pa /c\ highest_obs_pressure_Pa = 0.0001" \
+       -e "/ highest_state_pressure_Pa /c\ highest_state_pressure_Pa = 0.01" \
+       -e "/ vert_coord /c\ vert_coord = 'log_invP'" \
+       input.nml > input.nml.waccm || exit 1
+   mv input.nml.waccm input.nml || exit 1
+else
+   echo "Apparently not configured for WACCM"
+   echo "CCSM_COMPSET is $CCSM_COMPSET"
+fi
+
 exit 0
 
 EndOfText
