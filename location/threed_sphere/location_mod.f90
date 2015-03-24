@@ -93,7 +93,7 @@ character(len = 129), parameter :: LocationName = "loc3Dsphere"
 character(len = 129), parameter :: LocationLName = &
                                    "threed sphere locations: lon, lat, vertical"
 
-character(len = 512) :: errstring
+character(len = 512) :: msgstring
 
 ! Global storage for vertical distance normalization factors
 real(r8)              :: vert_normalization(4)
@@ -331,9 +331,9 @@ if(loc1%which_vert == VERTISSURFACE .and. loc2%which_vert == VERTISSURFACE) comp
 if(.not. comp_h_only) then
    ! Vert distance can only be done for like vertical locations types
    if(loc1%which_vert /= loc2%which_vert) then
-      write(errstring,*)'loc1%which_vert (',loc1%which_vert, &
+      write(msgstring,*)'loc1%which_vert (',loc1%which_vert, &
                    ') /= loc2%which_vert (',loc2%which_vert,')'
-      call error_handler(E_MSG, 'get_dist', errstring, source, revision, revdate)
+      call error_handler(E_MSG, 'get_dist', msgstring, source, revision, revdate)
       call write_location(logfileunit,loc1)
       call write_location(logfileunit,loc2)
       call write_location(0,loc1)
@@ -478,21 +478,21 @@ type (location_type) :: set_location_single
 if ( .not. module_initialized ) call initialize_module
 
 if(lon < 0.0_r8 .or. lon > 360.0_r8) then
-   write(errstring,*)'longitude (',lon,') is not within range [0,360]'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   write(msgstring,*)'longitude (',lon,') is not within range [0,360]'
+   call error_handler(E_ERR, 'set_location', msgstring, source, revision, revdate)
 endif
 
 if(lat < -90.0_r8 .or. lat > 90.0_r8) then
-   write(errstring,*)'latitude (',lat,') is not within range [-90,90]'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   write(msgstring,*)'latitude (',lat,') is not within range [-90,90]'
+   call error_handler(E_ERR, 'set_location', msgstring, source, revision, revdate)
 endif
 
 set_location_single%lon = lon * DEG2RAD
 set_location_single%lat = lat * DEG2RAD
 
 if(which_vert < VERTISUNDEF .or. which_vert == 0 .or. which_vert > VERTISSCALEHEIGHT) then
-   write(errstring,*)'which_vert (',which_vert,') must be one of -2, -1, 1, 2, 3, or 4'
-   call error_handler(E_ERR,'set_location', errstring, source, revision, revdate)
+   write(msgstring,*)'which_vert (',which_vert,') must be one of -2, -1, 1, 2, 3, or 4'
+   call error_handler(E_ERR,'set_location', msgstring, source, revision, revdate)
 endif
 
 set_location_single%vloc = vert_loc
@@ -513,8 +513,8 @@ type (location_type) :: set_location_array
 if ( .not. module_initialized ) call initialize_module
 
 if (size(list) < 4) then
-   write(errstring,*)'requires 4 input values'
-   call error_handler(E_ERR, 'set_location', errstring, source, revision, revdate)
+   write(msgstring,*)'requires 4 input values'
+   call error_handler(E_ERR, 'set_location', msgstring, source, revision, revdate)
 endif
 
 set_location_array = set_location_single(list(1), list(2), list(3), nint(list(4)))
@@ -642,8 +642,8 @@ endif
 charlength = 72
 
 if (len(charstring) < charlength) then
-   write(errstring, *) 'charstring buffer must be at least ', charlength, ' chars long'
-   call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
+   write(msgstring, *) 'charstring buffer must be at least ', charlength, ' chars long'
+   call error_handler(E_ERR, 'write_location', msgstring, source, revision, revdate)
 endif
 
 ! format the horizontal into a temp string
@@ -668,8 +668,8 @@ select case  (loc%which_vert)
    case (VERTISSCALEHEIGHT)
       write(charstring, '(A,1X,F12.7,A)') trim(string1), loc%vloc, '  scale ht'
    case default
-      write(errstring, *) 'unrecognized key for vertical type: ', loc%which_vert
-      call error_handler(E_ERR, 'write_location', errstring, source, revision, revdate)
+      write(msgstring, *) 'unrecognized key for vertical type: ', loc%which_vert
+      call error_handler(E_ERR, 'write_location', msgstring, source, revision, revdate)
 end select
 
 
@@ -693,8 +693,8 @@ if ( .not. module_initialized ) call initialize_module
 if (ascii_file_format(fform)) then
    read(locfile, '(a5)' ) header
    if(header /= 'loc3d') then
-         write(errstring,*)'Expected location header "loc3d" in input file, got ', header
-      call error_handler(E_ERR, 'read_location', errstring, source, revision, revdate)
+         write(msgstring,*)'Expected location header "loc3d" in input file, got ', header
+      call error_handler(E_ERR, 'read_location', msgstring, source, revision, revdate)
    endif
    ! Now read the location data value
    read(locfile, *)read_location%lon, read_location%lat, &
@@ -1057,10 +1057,10 @@ gc%count = 0
 do i = 1, num
    lon_box(i) = get_lon_box(gc, obs(i)%lon)
    if(lon_box(i) < 0 .or. lon_box(i) > nlon) then
-      write(errstring, *) 'Contact Dart Developers: this error should not happen'
-      call error_handler(E_MSG, 'get_close_obs_init', errstring, source, revision, revdate)
-      write(errstring, *) 'obs outside grid boxes, index value:',  lon_box(i)
-      call error_handler(E_ERR, 'get_close_obs_init', errstring, source, revision, revdate)
+      write(msgstring, *) 'Contact Dart Developers: this error should not happen'
+      call error_handler(E_MSG, 'get_close_obs_init', msgstring, source, revision, revdate)
+      write(msgstring, *) 'obs outside grid boxes, index value:',  lon_box(i)
+      call error_handler(E_ERR, 'get_close_obs_init', msgstring, source, revision, revdate)
    endif
 
    lat_box(i) = floor((obs(i)%lat - gc%bot_lat) / gc%lat_width) + 1
@@ -1152,9 +1152,9 @@ gc%num_types = 0
 if (present(maxdist_list)) then
    gc%num_types = get_num_obs_kinds()
    if (size(maxdist_list) .ne. gc%num_types) then
-      write(errstring,'(A,I8,A,I8)')'maxdist_list len must equal number of kinds, ', &
+      write(msgstring,'(A,I8,A,I8)')'maxdist_list len must equal number of kinds, ', &
                                     size(maxdist_list), ' /= ', gc%num_types
-      call error_handler(E_ERR, 'get_close_maxdist_init', errstring, source, revision, revdate)
+      call error_handler(E_ERR, 'get_close_maxdist_init', msgstring, source, revision, revdate)
    endif
    allocate(gc%special_maxdist(gc%num_types))
    if (.not.allocated(special_vert_norm)) &
@@ -1239,8 +1239,8 @@ this_dist = 999999.0_r8   ! something big.
 ! gc%num and size(obs) better be the same.   if the list changes,
 ! you have to destroy the old gc and init a new one.
 if (size(obs) /= gc%num) then
-   write(errstring,*)'obs() array must match one passed to get_close_obs_init()'
-   call error_handler(E_ERR, 'get_close_obs', errstring, source, revision, revdate)
+   write(msgstring,*)'obs() array must match one passed to get_close_obs_init()'
+   call error_handler(E_ERR, 'get_close_obs', msgstring, source, revision, revdate)
 endif
 
 ! If num == 0, no point in going any further. 
@@ -1335,13 +1335,13 @@ end do
 if(COMPARE_TO_CORRECT) then
    ! Do comparisons against full search
    if((num_close /= cnum_close) .and. present(dist)) then
-      write(errstring, *) 'get_close (', num_close, ') should equal exhaustive search (', cnum_close, ')'
-      call error_handler(E_ERR, 'get_close_obs', errstring, source, revision, revdate, &
+      write(msgstring, *) 'get_close (', num_close, ') should equal exhaustive search (', cnum_close, ')'
+      call error_handler(E_ERR, 'get_close_obs', msgstring, source, revision, revdate, &
                          text2='optional arg "dist" is present; we are computing exact distances', &
                          text3='the exhaustive search should find an identical number of locations')
    else if (num_close < cnum_close) then
-      write(errstring, *) 'get_close (', num_close, ') should not be smaller than exhaustive search (', cnum_close, ')'
-      call error_handler(E_ERR, 'get_close_obs', errstring, source, revision, revdate, &
+      write(msgstring, *) 'get_close (', num_close, ') should not be smaller than exhaustive search (', cnum_close, ')'
+      call error_handler(E_ERR, 'get_close_obs', msgstring, source, revision, revdate, &
                          text2='optional arg "dist" not present; we are returning a superset of close locations', &
                          text3='the exhaustive search should find an equal or lesser number of locations')
    endif
@@ -1477,10 +1477,10 @@ gc%lon_width = longitude_range / nlon
 if(COMPARE_TO_CORRECT) then
    old_out = do_output()
    call set_output(.true.)
-   write(errstring, *) 'lat bot, top, width ', gc%bot_lat, gc%top_lat, gc%lat_width
-   call error_handler(E_MSG, 'find_box_ranges', errstring)
-   write(errstring, *) 'lon bot, top, width ', gc%bot_lon, gc%top_lon, gc%lon_width
-   call error_handler(E_MSG, 'find_box_ranges', errstring)
+   write(msgstring, *) 'lat bot, top, width ', gc%bot_lat, gc%top_lat, gc%lat_width
+   call error_handler(E_MSG, 'find_box_ranges', msgstring)
+   write(msgstring, *) 'lon bot, top, width ', gc%bot_lon, gc%top_lon, gc%lon_width
+   call error_handler(E_MSG, 'find_box_ranges', msgstring)
    call set_output(old_out)
 endif
 
@@ -1797,31 +1797,31 @@ endif
 ! print the get_close_type derived type values
 
 if (howmuch /= 0 .and. iam0) then
-   write(errstring,*) 'get_close_type values:'
-   call error_handler(E_MSG, 'loc', errstring)
+   write(msgstring,*) 'get_close_type values:'
+   call error_handler(E_MSG, 'loc', msgstring)
 
-   write(errstring,*) ' num = ', gc%num
-   call error_handler(E_MSG, 'loc', errstring)
+   write(msgstring,*) ' num = ', gc%num
+   call error_handler(E_MSG, 'loc', msgstring)
 
-   write(errstring,*) ' nlon, nlat = ', nlon, nlat
-   call error_handler(E_MSG, 'loc', errstring)
+   write(msgstring,*) ' nlon, nlat = ', nlon, nlat
+   call error_handler(E_MSG, 'loc', msgstring)
 
-   write(errstring,"(A,F12.6)") ' maxdist = ', gc%maxdist
-   call error_handler(E_MSG, 'loc', errstring)
-   write(errstring, "(A,3(F12.6))") ' latbox: bot, top, width = ', gc%bot_lat, gc%top_lat, gc%lat_width
-   call error_handler(E_MSG, 'loc', errstring)
-   write(errstring, "(A,3(F12.6))") ' lonbox: bot, top, width = ', gc%bot_lon, gc%top_lon, gc%lon_width
-   call error_handler(E_MSG, 'loc', errstring)
+   write(msgstring,"(A,F12.6)") ' maxdist = ', gc%maxdist
+   call error_handler(E_MSG, 'loc', msgstring)
+   write(msgstring, "(A,3(F12.6))") ' latbox: bot, top, width = ', gc%bot_lat, gc%top_lat, gc%lat_width
+   call error_handler(E_MSG, 'loc', msgstring)
+   write(msgstring, "(A,3(F12.6))") ' lonbox: bot, top, width = ', gc%bot_lon, gc%top_lon, gc%lon_width
+   call error_handler(E_MSG, 'loc', msgstring)
 
-   write(errstring,"(A,F12.6)") ' maxdist = ', RAD2DEG*gc%maxdist
-   call error_handler(E_MSG, 'loc', errstring)
-   write(errstring, "(A,3(F12.6))") ' latbox: bot, top, width = ', RAD2DEG*gc%bot_lat, RAD2DEG*gc%top_lat, RAD2DEG*gc%lat_width
-   call error_handler(E_MSG, 'loc', errstring)
-   write(errstring, "(A,3(F12.6))") ' lonbox: bot, top, width = ', RAD2DEG*gc%bot_lon, RAD2DEG*gc%top_lon, RAD2DEG*gc%lon_width
-   call error_handler(E_MSG, 'loc', errstring)
+   write(msgstring,"(A,F12.6)") ' maxdist = ', RAD2DEG*gc%maxdist
+   call error_handler(E_MSG, 'loc', msgstring)
+   write(msgstring, "(A,3(F12.6))") ' latbox: bot, top, width = ', RAD2DEG*gc%bot_lat, RAD2DEG*gc%top_lat, RAD2DEG*gc%lat_width
+   call error_handler(E_MSG, 'loc', msgstring)
+   write(msgstring, "(A,3(F12.6))") ' lonbox: bot, top, width = ', RAD2DEG*gc%bot_lon, RAD2DEG*gc%top_lon, RAD2DEG*gc%lon_width
+   call error_handler(E_MSG, 'loc', msgstring)
 
-   write(errstring,*) ' lon_cyclic = ', gc%lon_cyclic
-   call error_handler(E_MSG, 'loc', errstring)
+   write(msgstring,*) ' lon_cyclic = ', gc%lon_cyclic
+   call error_handler(E_MSG, 'loc', msgstring)
 endif
 
 ! this one can be very large.   print only the first nth unless
@@ -1830,23 +1830,23 @@ endif
 if (associated(gc%obs_box)) then
    i = size(gc%obs_box,1)
    if (i/= gc%num) then
-      write(errstring,*) ' warning: size of obs_box incorrect, nobs, i =', gc%num, i
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,*) ' warning: size of obs_box incorrect, nobs, i =', gc%num, i
+      call error_handler(E_MSG, 'locations_mod', msgstring)
    endif
    if (howmuch > 1) then
       ! DEBUG
-      write(errstring,"(A,I8,A,36(I8,1X))") ' obs_box(',i,') =', gc%obs_box(1:min(i,36))  ! (nobs)
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,"(A,I8,A,36(I8,1X))") ' obs_box(',i,') =', gc%obs_box(1:min(i,36))  ! (nobs)
+      call error_handler(E_MSG, 'locations_mod', msgstring)
    else if(howmuch > 0) then
-      write(errstring,*) ' obs_box(',i,') =', gc%obs_box(1:min(i,sample+1))
-      call error_handler(E_MSG, 'locations_mod', errstring)
-      write(errstring,*) '  <rest of obs_box omitted>'
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,*) ' obs_box(',i,') =', gc%obs_box(1:min(i,sample+1))
+      call error_handler(E_MSG, 'locations_mod', msgstring)
+      write(msgstring,*) '  <rest of obs_box omitted>'
+      call error_handler(E_MSG, 'locations_mod', msgstring)
    endif
 else
    if (howmuch > 0) then
-      write(errstring,*) ' obs_box unallocated'
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,*) ' obs_box unallocated'
+      call error_handler(E_MSG, 'locations_mod', msgstring)
    endif
 endif
 
@@ -1856,26 +1856,26 @@ if (associated(gc%start)) then
    i = size(gc%start,1)
    j = size(gc%start,2)
    if ((i /= nlon) .or. (j /= nlat)) then
-      write(errstring,*) ' warning: size of start incorrect, nlon, nlat, i, j =', nlon, nlat, i, j
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,*) ' warning: size of start incorrect, nlon, nlat, i, j =', nlon, nlat, i, j
+      call error_handler(E_MSG, 'locations_mod', msgstring)
    endif
    if (howmuch > 1) then
-      write(errstring,*) ' start(',i,j,') ='              ! (nlon, nlat)
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,*) ' start(',i,j,') ='              ! (nlon, nlat)
+      call error_handler(E_MSG, 'locations_mod', msgstring)
       do k=1, j
-         write(errstring,"(36(I8,1X))") gc%start(1:min(i,36), k)
-         call error_handler(E_MSG, 'locations_mod', errstring)
+         write(msgstring,"(36(I8,1X))") gc%start(1:min(i,36), k)
+         call error_handler(E_MSG, 'locations_mod', msgstring)
       enddo
    else if (howmuch > 0) then
-      write(errstring,*) ' start(',i,j,') =', gc%start(1:min(i,sample), 1)
-      call error_handler(E_MSG, 'locations_mod', errstring)
-      write(errstring,*) '  <rest of start omitted>'
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,*) ' start(',i,j,') =', gc%start(1:min(i,sample), 1)
+      call error_handler(E_MSG, 'locations_mod', msgstring)
+      write(msgstring,*) '  <rest of start omitted>'
+      call error_handler(E_MSG, 'locations_mod', msgstring)
    endif
 else
    if (howmuch > 0) then
-      write(errstring,*) ' start unallocated'
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,*) ' start unallocated'
+      call error_handler(E_MSG, 'locations_mod', msgstring)
    endif
 endif
 
@@ -1884,26 +1884,26 @@ if (associated(gc%lon_offset)) then
    i = size(gc%lon_offset,1)
    j = size(gc%lon_offset,2)
    if ((i /= nlat) .or. (j /= nlat)) then
-      write(errstring,*) ' warning: size of lon_offset incorrect, nlat, i, j =', nlat, i, j
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,*) ' warning: size of lon_offset incorrect, nlat, i, j =', nlat, i, j
+      call error_handler(E_MSG, 'locations_mod', msgstring)
    endif
    if (howmuch > 1) then
-      write(errstring,*) ' lon_offset(',i,j,') ='                   ! (nlat, nlat)
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,*) ' lon_offset(',i,j,') ='                   ! (nlat, nlat)
+      call error_handler(E_MSG, 'locations_mod', msgstring)
       do k=1, j
-         write(errstring,"(36(I8,1X))") gc%lon_offset(1:min(i,36), k) 
-         call error_handler(E_MSG, 'locations_mod', errstring)
+         write(msgstring,"(36(I8,1X))") gc%lon_offset(1:min(i,36), k) 
+         call error_handler(E_MSG, 'locations_mod', msgstring)
       enddo
    else if (howmuch > 0) then
-      write(errstring,*) ' lon_offset(',i,j,') =', gc%lon_offset(1:min(i,sample), 1)
-      call error_handler(E_MSG, 'locations_mod', errstring)
-      write(errstring,*) '  <rest of lon_offset omitted>'
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,*) ' lon_offset(',i,j,') =', gc%lon_offset(1:min(i,sample), 1)
+      call error_handler(E_MSG, 'locations_mod', msgstring)
+      write(msgstring,*) '  <rest of lon_offset omitted>'
+      call error_handler(E_MSG, 'locations_mod', msgstring)
    endif
 else
    if (howmuch > 0) then
-      write(errstring,*) ' lon_offset unallocated'
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,*) ' lon_offset unallocated'
+      call error_handler(E_MSG, 'locations_mod', msgstring)
    endif
 endif
 
@@ -1912,27 +1912,27 @@ if (associated(gc%count)) then
    i = size(gc%count,1)
    j = size(gc%count,2)
    if ((i /= nlon) .or. (j /= nlat)) then
-      write(errstring,*) ' warning: size of count incorrect, nlon, nlat, i, j =', &
+      write(msgstring,*) ' warning: size of count incorrect, nlon, nlat, i, j =', &
                       nlon, nlat, i, j
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      call error_handler(E_MSG, 'locations_mod', msgstring)
    endif
    if (howmuch > 1) then
-      write(errstring,*) ' count(',i,j,') ='              ! (nlon, nlat)
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,*) ' count(',i,j,') ='              ! (nlon, nlat)
+      call error_handler(E_MSG, 'locations_mod', msgstring)
       do k=1, j
-         write(errstring,"(36(I8,1X))") gc%count(1:min(i,36), k) 
-         call error_handler(E_MSG, 'locations_mod', errstring)
+         write(msgstring,"(36(I8,1X))") gc%count(1:min(i,36), k) 
+         call error_handler(E_MSG, 'locations_mod', msgstring)
       enddo
    else if (howmuch > 0) then
-      write(errstring,*) ' count(',i,j,') =', gc%count(1:min(i,sample), 1)
-      call error_handler(E_MSG, 'locations_mod', errstring)
-      write(errstring,*) '  <rest of count omitted>'
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,*) ' count(',i,j,') =', gc%count(1:min(i,sample), 1)
+      call error_handler(E_MSG, 'locations_mod', msgstring)
+      write(msgstring,*) '  <rest of count omitted>'
+      call error_handler(E_MSG, 'locations_mod', msgstring)
    endif
 else
    if (howmuch > 0) then
-      write(errstring,*) ' count unallocated'
-      call error_handler(E_MSG, 'locations_mod', errstring)
+      write(msgstring,*) ' count unallocated'
+      call error_handler(E_MSG, 'locations_mod', msgstring)
    endif
 endif
 
@@ -1951,17 +1951,17 @@ do i=1, nlon
       do k=1, gc%count(i, j)
          index = first + k - 1
          if ((index < 1) .or. (index > gc%num)) then
-            write(errstring, *) 'exiting at first bad value; could be more'
-            call error_handler(E_MSG, 'locations_mod', errstring)
-            write(errstring, *) 'bad obs list index, in box: ', index, i, j
-            call error_handler(E_ERR, 'locations_mod', errstring)
+            write(msgstring, *) 'exiting at first bad value; could be more'
+            call error_handler(E_MSG, 'locations_mod', msgstring)
+            write(msgstring, *) 'bad obs list index, in box: ', index, i, j
+            call error_handler(E_ERR, 'locations_mod', msgstring)
          endif
          if (tickmark(index)) then
-            write(errstring, *) 'exiting at first bad value; could be more'
-            call error_handler(E_MSG, 'locations_mod', errstring)
-            write(errstring, *) 'error: obs found in more than one box list.  index, box: ', &
+            write(msgstring, *) 'exiting at first bad value; could be more'
+            call error_handler(E_MSG, 'locations_mod', msgstring)
+            write(msgstring, *) 'error: obs found in more than one box list.  index, box: ', &
                          index, i, j
-            call error_handler(E_ERR, 'locations_mod', errstring)
+            call error_handler(E_ERR, 'locations_mod', msgstring)
          endif
          tickmark(index) = .TRUE.
       enddo
@@ -1970,10 +1970,10 @@ enddo
 
 do i=1, gc%num
   if (.not. tickmark(i)) then
-     write(errstring, *) 'exiting at first bad value; could be more'
-     call error_handler(E_MSG, 'locations_mod', errstring)
-     write(errstring,*) 'obs not found in any box list: ', i
-     call error_handler(E_ERR, 'locations_mod', errstring)
+     write(msgstring, *) 'exiting at first bad value; could be more'
+     call error_handler(E_MSG, 'locations_mod', msgstring)
+     write(msgstring,*) 'obs not found in any box list: ', i
+     call error_handler(E_ERR, 'locations_mod', msgstring)
   endif
 enddo
 
@@ -2033,33 +2033,33 @@ if (howmuch == -8) then
 endif
 
 ! these print out always - make sure they are useful to end users.
-write(errstring, '(a)') "Location module statistics:"
-call error_handler(E_MSG, 'locations_mod', errstring)
-write(errstring, '(a,i9)') " Total boxes (nlon * nlat): ", nfull + nempty
-call error_handler(E_MSG, 'locations_mod', errstring)
-write(errstring, '(a,i9)') " Total items to put in boxes: ", gc%num
-call error_handler(E_MSG, 'locations_mod', errstring)
+write(msgstring, '(a)') "Location module statistics:"
+call error_handler(E_MSG, 'locations_mod', msgstring)
+write(msgstring, '(a,i9)') " Total boxes (nlon * nlat): ", nfull + nempty
+call error_handler(E_MSG, 'locations_mod', msgstring)
+write(msgstring, '(a,i9)') " Total items to put in boxes: ", gc%num
+call error_handler(E_MSG, 'locations_mod', msgstring)
 if (howmuch > 0) then
-   write(errstring, '(a,i9)') " Total boxes with 1+ items: ", nfull
-   call error_handler(E_MSG, 'locations_mod', errstring)
-   write(errstring, '(a,i9)') " Total boxes empty: ", nempty
-   call error_handler(E_MSG, 'locations_mod', errstring)
+   write(msgstring, '(a,i9)') " Total boxes with 1+ items: ", nfull
+   call error_handler(E_MSG, 'locations_mod', msgstring)
+   write(msgstring, '(a,i9)') " Total boxes empty: ", nempty
+   call error_handler(E_MSG, 'locations_mod', msgstring)
 endif
 if (nfull > 0) then
-   write(errstring, '(a,f7.2)') " Percent boxes with 1+ items: ", nfull / real(nfull + nempty, r8) * 100.
-   call error_handler(E_MSG, 'locations_mod', errstring)
-   write(errstring, '(a,f12.2)') " Average #items per non-empty box: ", real(total, r8) / nfull
-   call error_handler(E_MSG, 'locations_mod', errstring)
+   write(msgstring, '(a,f7.2)') " Percent boxes with 1+ items: ", nfull / real(nfull + nempty, r8) * 100.
+   call error_handler(E_MSG, 'locations_mod', msgstring)
+   write(msgstring, '(a,f12.2)') " Average #items per non-empty box: ", real(total, r8) / nfull
+   call error_handler(E_MSG, 'locations_mod', msgstring)
 endif
 if (maxcount > 0) then
-   write(errstring, '(a,i9)') " Largest #items in one box: ", maxcount
-   call error_handler(E_MSG, 'locations_mod', errstring)
+   write(msgstring, '(a,i9)') " Largest #items in one box: ", maxcount
+   call error_handler(E_MSG, 'locations_mod', msgstring)
 ! leave this out for now.  one, if there are multiple boxes with
 ! the same maxcount this is just the last one found.  two, the
 ! index numbers do not seem very helpful.
 !   if (howmuch > 0) then
-!      write(errstring, '(a,i9,i9)') " That box index: ", maxi, maxj
-!      call error_handler(E_MSG, 'locations_mod', errstring)
+!      write(msgstring, '(a,i9,i9)') " That box index: ", maxi, maxj
+!      call error_handler(E_MSG, 'locations_mod', msgstring)
 !   endif
 endif
 
@@ -2084,8 +2084,8 @@ if ( .not. module_initialized ) call initialize_module
 ! we want to test only in horizontal?  and if not, vtypes must match?
 !if ( (minl%which_vert /= maxl%which_vert) .or. &
 ! ((minl%which_vert /= loc%which_vert).and.(minl%which_vert /= VERTISUNDEF))) then
-!   write(errstring,*)'which_vert (',loc%which_vert,') must be same in all args'
-!   call error_handler(E_ERR, 'is_location_in_region', errstring, source, revision, revdate)
+!   write(msgstring,*)'which_vert (',loc%which_vert,') must be same in all args'
+!   call error_handler(E_ERR, 'is_location_in_region', msgstring, source, revision, revdate)
 !endif
 
 ! assume failure and return as soon as we are confirmed right.
