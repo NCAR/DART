@@ -147,6 +147,17 @@ real(r8) :: my_sin(-SINCOS_LIMIT:SINCOS_LIMIT)
 real(r8) :: my_cos(-SINCOS_LIMIT:SINCOS_LIMIT)
 real(r8) :: my_acos(-ACOS_LIMIT:ACOS_LIMIT)
 
+! Tolerance for the top latitude boundary test.  All locations which
+! are located on a box boundary are added to the bin on the larger
+! side of the boundary (e.g. for north-south latitudes, it rounds
+! towards the north).  But when a value falls exactly on the edge
+! of the last box, technically it is inside the region but would be
+! rounded up and outside the region unless handled specially.
+! this tolerance below is used to determine if a value is within
+! the range of the last box boundary and if so, the location is
+! included in the last box.  In particular, for global grids this
+! preserves locations which are at exactly 90.0 degrees latitude.
+real(r8), parameter :: EDGE_TOLERANCE = 100.0_r8 * epsilon(0.0_r8)
 
 ! Option for verification using exhaustive search
 logical :: COMPARE_TO_CORRECT = .false.    ! normally false
@@ -924,7 +935,6 @@ if(lon < 0.0_r8) then
    maxlon = maxlon * DEG2RAD
 
    ! Longitude is random from minlon to maxlon
-!   location%lon = random_uniform(ran_seq) * 2.0_r8 * PI
    location%lon = random_uniform(ran_seq) * (maxlon-minlon) + minlon
 
    write(*, *) 'Input minimum latitude (-90.0 to 90.0)'
@@ -936,7 +946,6 @@ if(lon < 0.0_r8) then
    maxlat = sin(maxlat * DEG2RAD)
 
    ! Latitude must be area weighted
-!   location%lat = asin(random_uniform(ran_seq) * 2.0_r8 - 1.0_r8)
    location%lat = asin(random_uniform(ran_seq) * (maxlat-minlat) + minlat)
 
    write(*, *) 'random location is ', location%lon / DEG2RAD, &
@@ -1091,10 +1100,237 @@ call nc_check(nf90_put_var(ncFileID, WhichVertVarID, intval, &
 end subroutine nc_write_location
 
 !----------------------------------------------------------------------------
+
+function is_location_in_region(loc, minl, maxl)
+ 
+! Returns true if the given location is inside the rectangular
+! region defined by minl as the lower left, maxl the upper right.
+! test is inclusive; values on the edges are considered inside.
+! Periodic in longitude (box can cross the 2PI -> 0 line)
+
+logical                          :: is_location_in_region
+type(location_type), intent(in)  :: loc, minl, maxl
+
+if ( .not. module_initialized ) call initialize_module()
+
+! maybe could use VERTISUNDEF in the minl and maxl args to indicate
+! we want to test only in horizontal?  and if not, vtypes must match?
+!if ( (minl%which_vert /= maxl%which_vert) .or. &
+! ((minl%which_vert /= loc%which_vert).and.(minl%which_vert /= VERTISUNDEF))) then
+!   write(msgstring,*)'which_vert (',loc%which_vert,') must be same in all args'
+!   call error_handler(E_ERR, 'is_location_in_region', msgstring, source, revision, revdate)
+!endif
+
+! assume failure and return as soon as we are confirmed right.
+! set to success only at the bottom after all tests have passed.
+is_location_in_region = .false.
+
+! latitude: we do not allow wrap of rectangular regions over the poles.
+if ((loc%lat < minl%lat) .or. (loc%lat > maxl%lat)) return
+
+! use common routine in utilities module to do all the wrapping
+if (.not. is_longitude_between(loc%lon, minl%lon, maxl%lon, doradians=.TRUE.)) return
+
+! once we decide what to do about diff vert units, this is the test.
+!if ((minl%which_vert .ne. VERTISUNDEF) .and. 
+!    (loc%vloc < minl%vloc) .or. (loc%vloc > maxl%vloc)) return
+ 
+is_location_in_region = .true.
+
+end function is_location_in_region
+
+!---------------------------------------------------------------------------
+
+function vert_is_undef(loc)
+ 
+! Given a location, return true if vertical coordinate is undefined, else false
+
+logical                          :: vert_is_undef
+type(location_type), intent(in)  :: loc
+
+if ( .not. module_initialized ) call initialize_module()
+
+if(loc%which_vert == VERTISUNDEF) then
+   vert_is_undef = .true.
+else
+   vert_is_undef = .false.
+endif
+
+end function vert_is_undef
+
+!---------------------------------------------------------------------------
+
+function vert_is_surface(loc)
+ 
+! Given a location, return true if vertical coordinate is surface, else false
+
+logical                          :: vert_is_surface
+type(location_type), intent(in)  :: loc
+
+if ( .not. module_initialized ) call initialize_module()
+
+if(loc%which_vert == VERTISSURFACE) then
+   vert_is_surface = .true.
+else
+   vert_is_surface = .false.
+endif
+
+end function vert_is_surface
+
+!---------------------------------------------------------------------------
+
+function vert_is_pressure(loc)
+ 
+! Given a location, return true if vertical coordinate is pressure, else false
+
+logical                          :: vert_is_pressure
+type(location_type), intent(in)  :: loc
+
+if ( .not. module_initialized ) call initialize_module()
+
+if(loc%which_vert == VERTISPRESSURE) then
+   vert_is_pressure = .true.
+else
+   vert_is_pressure = .false.
+endif
+
+end function vert_is_pressure
+
+!---------------------------------------------------------------------------
+
+function vert_is_height(loc)
+ 
+! Given a location, return true if vertical coordinate is height, else false
+
+logical                          :: vert_is_height
+type(location_type), intent(in)  :: loc
+
+if ( .not. module_initialized ) call initialize_module()
+
+if(loc%which_vert == VERTISHEIGHT ) then
+   vert_is_height = .true.
+else
+   vert_is_height = .false.
+endif
+
+end function vert_is_height
+
+!---------------------------------------------------------------------------
+
+function vert_is_level(loc)
+ 
+! Given a location, return true if vertical coordinate is level, else false
+
+logical                          :: vert_is_level
+type(location_type), intent(in)  :: loc
+
+if ( .not. module_initialized ) call initialize_module()
+
+if(loc%which_vert == VERTISLEVEL) then
+   vert_is_level = .true.
+else
+   vert_is_level = .false.
+endif
+
+end function vert_is_level
+
+!---------------------------------------------------------------------------
+
+function vert_is_scale_height(loc)
+
+! Given a location, return true if vertical coordinate is scale height, else false
+
+logical                          :: vert_is_scale_height
+type(location_type), intent(in)  :: loc
+
+if ( .not. module_initialized ) call initialize_module()
+
+if(loc%which_vert == VERTISSCALEHEIGHT ) then
+   vert_is_scale_height = .true.
+else
+   vert_is_scale_height = .false.
+endif
+
+end function vert_is_scale_height
+
+!---------------------------------------------------------------------------
+
+function has_vertical_localization()
+ 
+! Return the (opposite) namelist setting for horiz_dist_only.
+
+logical :: has_vertical_localization
+
+if ( .not. module_initialized ) call initialize_module()
+
+has_vertical_localization = .not. horiz_dist_only
+
+end function has_vertical_localization
+
+
+!----------------------------------------------------------------------------
 !----------------------------------------------------------------------------
 ! get close routines
 !----------------------------------------------------------------------------
 !----------------------------------------------------------------------------
+
+subroutine get_close_maxdist_init(gc, maxdist, maxdist_list)
+
+type(get_close_type), intent(inout) :: gc
+real(r8),             intent(in)    :: maxdist
+real(r8), intent(in), optional      :: maxdist_list(:)
+
+integer :: i, typecount, distcount, mapnum
+real(r8), allocatable :: distlist(:)
+
+! Support per-loc-type localization more efficiently.
+typecount = get_num_obs_kinds()  ! ignore function name, this is specific type count
+allocate(gc%type_to_cutoff_map(typecount))
+
+if (present(maxdist_list)) then
+   if (size(maxdist_list) .ne. typecount) then
+      write(msgstring,'(A,I8,A,I8)')'maxdist_list len must equal number of specific types, ', &
+                                    size(maxdist_list), ' /= ', typecount
+      call error_handler(E_ERR, 'get_close_maxdist_init', msgstring, source, revision, revdate)
+   endif
+ 
+   allocate(distlist(typecount))
+   call distinct_values(maxdist_list, distcount, distlist, gc%type_to_cutoff_map)
+   gc%nt = distcount
+   if (gc%nt <= 0) then
+      write(msgstring,'(A)')'error getting count of distinct cutoff dists; should not happen'
+      call error_handler(E_ERR, 'get_close_maxdist_init', msgstring, source, revision, revdate)
+   endif
+else
+   gc%nt = 1
+   gc%type_to_cutoff_map(:) = 1
+endif
+
+! make a gtt type array for each different cutoff distance
+! (just 1 type is the most common case.)
+allocate(gc%gtt(gc%nt))
+
+if (present(maxdist_list)) then
+   do i=1, gc%nt
+      gc%gtt(i)%maxdist = distlist(i)
+   enddo
+else
+   ! no per-type settings, everyone uses same distance
+   gc%gtt(1)%maxdist = maxdist
+endif
+
+if (present(maxdist_list)) deallocate(distlist)   ! temp storage
+
+! Allocate the storage for the grid dependent boxes
+do i=1, gc%nt
+   allocate(gc%gtt(i)%count(nlon, nlat), gc%gtt(i)%start(nlon, nlat))
+   allocate(gc%gtt(i)%lon_offset(nlat, nlat))
+   gc%gtt(i)%lon_offset = -1
+   gc%gtt(i)%count      = -1
+   gc%gtt(i)%start      = -1
+enddo
+
+end subroutine get_close_maxdist_init
 
 !----------------------------------------------------------------------------
 
@@ -1266,66 +1502,6 @@ deallocate(gc%type_to_cutoff_map)
 deallocate(gc%gtt)
 
 end subroutine get_close_obs_destroy
-
-!----------------------------------------------------------------------------
-
-subroutine get_close_maxdist_init(gc, maxdist, maxdist_list)
-
-type(get_close_type), intent(inout) :: gc
-real(r8),             intent(in)    :: maxdist
-real(r8), intent(in), optional      :: maxdist_list(:)
-
-integer :: i, typecount, distcount, mapnum
-real(r8), allocatable :: distlist(:)
-
-! Support per-loc-type localization more efficiently.
-typecount = get_num_obs_kinds()  ! ignore function name, this is specific type count
-allocate(gc%type_to_cutoff_map(typecount))
-
-if (present(maxdist_list)) then
-   if (size(maxdist_list) .ne. typecount) then
-      write(msgstring,'(A,I8,A,I8)')'maxdist_list len must equal number of specific types, ', &
-                                    size(maxdist_list), ' /= ', typecount
-      call error_handler(E_ERR, 'get_close_maxdist_init', msgstring, source, revision, revdate)
-   endif
- 
-   allocate(distlist(typecount))
-   call distinct_values(maxdist_list, distcount, distlist, gc%type_to_cutoff_map)
-   gc%nt = distcount
-   if (gc%nt <= 0) then
-      write(msgstring,'(A)')'error getting count of distinct cutoff dists; should not happen'
-      call error_handler(E_ERR, 'get_close_maxdist_init', msgstring, source, revision, revdate)
-   endif
-else
-   gc%nt = 1
-   gc%type_to_cutoff_map(:) = 1
-endif
-
-! make a gtt type array for each different cutoff distance
-! (just 1 type is the most common case.)
-allocate(gc%gtt(gc%nt))
-
-if (present(maxdist_list)) then
-   do i=1, gc%nt
-      gc%gtt(i)%maxdist = distlist(i)
-   enddo
-else
-   ! no per-type settings, everyone uses same distance
-   gc%gtt(1)%maxdist = maxdist
-endif
-
-if (present(maxdist_list)) deallocate(distlist)   ! temp storage
-
-! Allocate the storage for the grid dependent boxes
-do i=1, gc%nt
-   allocate(gc%gtt(i)%count(nlon, nlat), gc%gtt(i)%start(nlon, nlat))
-   allocate(gc%gtt(i)%lon_offset(nlat, nlat))
-   gc%gtt(i)%lon_offset = -1
-   gc%gtt(i)%count      = -1
-   gc%gtt(i)%start      = -1
-enddo
-
-end subroutine get_close_maxdist_init
 
 !----------------------------------------------------------------------------
 
@@ -2290,175 +2466,6 @@ endif
 
 
 end subroutine print_get_close_type
-
-!----------------------------------------------------------------------------
-
-function is_location_in_region(loc, minl, maxl)
- 
-! Returns true if the given location is inside the rectangular
-! region defined by minl as the lower left, maxl the upper right.
-! test is inclusive; values on the edges are considered inside.
-! Periodic in longitude (box can cross the 2PI -> 0 line)
-
-logical                          :: is_location_in_region
-type(location_type), intent(in)  :: loc, minl, maxl
-
-if ( .not. module_initialized ) call initialize_module()
-
-! maybe could use VERTISUNDEF in the minl and maxl args to indicate
-! we want to test only in horizontal?  and if not, vtypes must match?
-!if ( (minl%which_vert /= maxl%which_vert) .or. &
-! ((minl%which_vert /= loc%which_vert).and.(minl%which_vert /= VERTISUNDEF))) then
-!   write(msgstring,*)'which_vert (',loc%which_vert,') must be same in all args'
-!   call error_handler(E_ERR, 'is_location_in_region', msgstring, source, revision, revdate)
-!endif
-
-! assume failure and return as soon as we are confirmed right.
-! set to success only at the bottom after all tests have passed.
-is_location_in_region = .false.
-
-! latitude: we do not allow wrap of rectangular regions over the poles.
-if ((loc%lat < minl%lat) .or. (loc%lat > maxl%lat)) return
-
-! use common routine in utilities module to do all the wrapping
-if (.not. is_longitude_between(loc%lon, minl%lon, maxl%lon, doradians=.TRUE.)) return
-
-! once we decide what to do about diff vert units, this is the test.
-!if ((minl%which_vert .ne. VERTISUNDEF) .and. 
-!    (loc%vloc < minl%vloc) .or. (loc%vloc > maxl%vloc)) return
- 
-is_location_in_region = .true.
-
-end function is_location_in_region
-
-!---------------------------------------------------------------------------
-
-function vert_is_undef(loc)
- 
-! Given a location, return true if vertical coordinate is undefined, else false
-
-logical                          :: vert_is_undef
-type(location_type), intent(in)  :: loc
-
-if ( .not. module_initialized ) call initialize_module()
-
-if(loc%which_vert == VERTISUNDEF) then
-   vert_is_undef = .true.
-else
-   vert_is_undef = .false.
-endif
-
-end function vert_is_undef
-
-!---------------------------------------------------------------------------
-
-function vert_is_surface(loc)
- 
-! Given a location, return true if vertical coordinate is surface, else false
-
-logical                          :: vert_is_surface
-type(location_type), intent(in)  :: loc
-
-if ( .not. module_initialized ) call initialize_module()
-
-if(loc%which_vert == VERTISSURFACE) then
-   vert_is_surface = .true.
-else
-   vert_is_surface = .false.
-endif
-
-end function vert_is_surface
-
-!---------------------------------------------------------------------------
-
-function vert_is_pressure(loc)
- 
-! Given a location, return true if vertical coordinate is pressure, else false
-
-logical                          :: vert_is_pressure
-type(location_type), intent(in)  :: loc
-
-if ( .not. module_initialized ) call initialize_module()
-
-if(loc%which_vert == VERTISPRESSURE) then
-   vert_is_pressure = .true.
-else
-   vert_is_pressure = .false.
-endif
-
-end function vert_is_pressure
-
-!---------------------------------------------------------------------------
-
-function vert_is_height(loc)
- 
-! Given a location, return true if vertical coordinate is height, else false
-
-logical                          :: vert_is_height
-type(location_type), intent(in)  :: loc
-
-if ( .not. module_initialized ) call initialize_module()
-
-if(loc%which_vert == VERTISHEIGHT ) then
-   vert_is_height = .true.
-else
-   vert_is_height = .false.
-endif
-
-end function vert_is_height
-
-!---------------------------------------------------------------------------
-
-function vert_is_level(loc)
- 
-! Given a location, return true if vertical coordinate is level, else false
-
-logical                          :: vert_is_level
-type(location_type), intent(in)  :: loc
-
-if ( .not. module_initialized ) call initialize_module()
-
-if(loc%which_vert == VERTISLEVEL) then
-   vert_is_level = .true.
-else
-   vert_is_level = .false.
-endif
-
-end function vert_is_level
-
-!---------------------------------------------------------------------------
-
-function vert_is_scale_height(loc)
-
-! Given a location, return true if vertical coordinate is scale height, else false
-
-logical                          :: vert_is_scale_height
-type(location_type), intent(in)  :: loc
-
-if ( .not. module_initialized ) call initialize_module()
-
-if(loc%which_vert == VERTISSCALEHEIGHT ) then
-   vert_is_scale_height = .true.
-else
-   vert_is_scale_height = .false.
-endif
-
-end function vert_is_scale_height
-
-!---------------------------------------------------------------------------
-
-function has_vertical_localization()
- 
-! Return the (opposite) namelist setting for horiz_dist_only.
-
-logical :: has_vertical_localization
-
-if ( .not. module_initialized ) call initialize_module()
-
-has_vertical_localization = .not. horiz_dist_only
-
-end function has_vertical_localization
-
 
 !----------------------------------------------------------------------------
 ! end of location/threed_sphere/location_mod.f90
