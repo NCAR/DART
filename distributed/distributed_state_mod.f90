@@ -52,7 +52,8 @@ owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
 if (my_task_id() == owner_of_state) then
    x = state_ens_handle%copies(1:num_rows, element_index)
 else
-   target_disp = (element_index - 1) * num_rows
+   ! Note all of copies array is in the window, not just the real ensemble members
+   target_disp = (element_index - 1) * state_ens_handle%num_copies
    call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, state_win, ierr)
    call mpi_get(x, num_rows, datasize, owner_of_state, target_disp, num_rows, datasize, state_win, ierr)
    call mpi_win_unlock(owner_of_state, state_win, ierr)

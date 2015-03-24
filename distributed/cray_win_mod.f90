@@ -59,8 +59,8 @@ num_rows = copies_in_window(state_ens_handle)
 ! allocate some RDMA accessible memory
 ! using MPI_ALLOC_MEM because the MPI standard allows vendors to require MPI_ALLOC_MEM for remote memory access
 call mpi_type_size(datasize, bytesize, ierr)
-window_size_state = my_num_vars*num_rows*bytesize
-a = malloc(my_num_vars*num_rows)
+window_size_state = my_num_vars*state_ens_handle%num_copies*bytesize
+a = malloc(my_num_vars*state_ens_handle%num_copies)
 call MPI_ALLOC_MEM(window_size_state, MPI_INFO_NULL, a, ierr)
 
 count = 1
@@ -69,7 +69,7 @@ count = 1
 ! Can't do array assignment with a cray pointer, so you need to loop
 !> @todo should you only fill the window with actual ensemble members?
 do ii = 1, my_num_vars
-   do jj = 1, num_rows
+   do jj = 1, state_ens_handle%num_copies
       duplicate_state(count) = state_ens_handle%copies(jj,ii)
       count = count + 1
    enddo

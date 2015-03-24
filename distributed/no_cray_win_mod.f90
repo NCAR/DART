@@ -30,8 +30,10 @@ integer(KIND=MPI_ADDRESS_KIND) window_size_mean
 
 ! Global memory to stick the mpi window to.
 ! Need a simply contiguous piece of memory to pass to mpi_win_create
+! For the forward operator copies, putting the whole of %copies array in
+! the window. This is to avoid making a dupilcate of 
+! state_ens_handle%copies(1:ens_size)
 real(r8), allocatable :: contiguous_mean(:)
-real(r8), allocatable :: contiguous_fwd(:, :)
 
 contains
 
@@ -48,17 +50,17 @@ integer :: my_num_vars !< my number of vars
 
 ! find how many variables I have
 my_num_vars = state_ens_handle%my_num_vars
-! find out how many rows to put in the window
+! The number of rows in the window is now state_ens_handle%num_copies.
+! The number of rows that a call to get_state will grab is still num_rows(ens_size)
+! FIXME For now, I am keeping the name copies_in_window().  This should be
+! changed to a more sensible name
 num_rows = copies_in_window(state_ens_handle)
 
 call mpi_type_size(datasize, bytesize, ierr)
-window_size_state = my_num_vars*num_rows*bytesize
-
-allocate(contiguous_fwd(num_rows, my_num_vars))
-contiguous_fwd = state_ens_handle%copies(1:num_rows, :)
+window_size_state = my_num_vars*state_ens_handle%num_copies*bytesize
 
 ! Expose local memory to RMA operation by other processes in a communicator.
-call mpi_win_create(contiguous_fwd, window_size_state, bytesize, MPI_INFO_NULL, mpi_comm_world, state_win, ierr)
+call mpi_win_create(state_ens_handle%copies, window_size_state, bytesize, MPI_INFO_NULL, mpi_comm_world, state_win, ierr)
 
 end subroutine create_state_window
 
@@ -94,7 +96,6 @@ subroutine free_state_window
 integer :: ierr
 
 call mpi_win_free(state_win, ierr)
-deallocate(contiguous_fwd)
 
 end subroutine free_state_window
 
