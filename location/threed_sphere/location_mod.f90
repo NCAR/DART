@@ -4,20 +4,23 @@
 !
 ! $Id$
 
+!> Implements location interfaces for a three dimensional spherical shell 
+!> with a choice of vertical coordinates.
+!> Horizontal coordinates are always latitude and longitude.
+!> Vertical coordinate choices include pressure, height, model level,
+!> scale height, surface, and non-specific (column-integrated values, or 
+!> with no logically defined vertical location, e.g. hurricane vortex center)
+!> The internal representation of the location is stored as
+!> radians from 0 to 2 PI for longitude and -PI/2 to PI/2 for latitude to
+!> minimize computational cost for distances. However, the external 
+!> representation is longitude in degrees from 0 to 360 and latitude 
+!> from -90 to 90 for consistency with most applications in the field.
+!>
+!> This version supports multiple cutoff distances in an efficient manner.
+!> Smaller cutoff values will do less searching than larger ones.  (This was
+!> not true in earlier implementations of this code.)
+!>
 module location_mod
-
-! Implements location interfaces for a three dimensional spherical shell 
-! with a pressure vertical coordinate plus
-! a vertical coordinate based on the models native set of
-! discrete levels. In the long run, it would be nice to separate the 
-! location detail for the vertical and horizontal when possible.
-! The internal representation of the location is currently implemented
-! as radians from 0 to 2 PI for longitude and -PI/2 to PI/2 for latitude to
-! minimize computational cost for distances. However, the external 
-! representation is longitude in degrees from 0 to 360 and latitude 
-! from -90 to 90 for consistency with most applications in the field.
-! Note that for now, lev = -1 represents a surface quantity independent
-! of vertical discretization as required for Bgrid surface pressure.
 
 use      types_mod, only : r8, MISSING_R8, MISSING_I, PI, RAD2DEG, DEG2RAD, OBSTYPELENGTH
 use  utilities_mod, only : register_module, error_handler, E_ERR, ascii_file_format, &
@@ -50,20 +53,21 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-! The possible values for the location_type%which_vert component.
-! These are intended to be PRIVATE to this module. Do not make public.
+! The possible numeric values for the location_type%which_vert component.
+! The numeric values are PRIVATE to this module. The parameter names are PUBLIC.
 
-integer, parameter :: VERTISUNDEF       = -2 ! has no vertical location (undefined)
-integer, parameter :: VERTISSURFACE     = -1 ! surface value
-integer, parameter :: VERTISLEVEL       =  1 ! by level
-integer, parameter :: VERTISPRESSURE    =  2 ! by pressure
-integer, parameter :: VERTISHEIGHT      =  3 ! by height
-integer, parameter :: VERTISSCALEHEIGHT =  4 ! by scale height
+integer, parameter :: VERTISUNDEF       = -2  ! has no specific vertical location (undefined)
+integer, parameter :: VERTISSURFACE     = -1  ! surface value (value is surface elevation in m)
+integer, parameter :: VERTISLEVEL       =  1  ! by level
+integer, parameter :: VERTISPRESSURE    =  2  ! by pressure (in pascals)
+integer, parameter :: VERTISHEIGHT      =  3  ! by height (in meters)
+integer, parameter :: VERTISSCALEHEIGHT =  4  ! by scale height (unitless)
 
 type location_type
    private
-   real(r8) :: lon, lat, vloc ! lon, lat stored in radians
-   integer  :: which_vert     ! determines if by level, height, pressure, ...
+   real(r8) :: lon, lat        ! lon, lat are stored in radians
+   real(r8) :: vloc            ! units vary based on value of which_vert
+   integer  :: which_vert      ! determines if vert is level, height, pressure, ...
 end type location_type
 
 ! Derived type to facilitate efficient computation of locations close to a given observation.
@@ -211,10 +215,14 @@ end interface set_location
 contains
 
 !----------------------------------------------------------------------------
+!----------------------------------------------------------------------------
+! basic location routines
+!----------------------------------------------------------------------------
+!----------------------------------------------------------------------------
 
-subroutine initialize_module
- 
 ! things which need doing exactly once.
+
+subroutine initialize_module()
 
 integer :: iunit, io, i, v, k, typecount, type_index
 
@@ -337,7 +345,7 @@ endif
 ! distances in the horizontal, log that in the dart log file.
 if (horiz_dist_only) then
    call error_handler(E_MSG,'location_mod:', &
-      'Ignoring vertical when computing distances; horizontal only', &
+      'Ignoring vertical separation when computing distances; horizontal distances only', &
       source,revision,revdate)
 else
    call error_handler(E_MSG,'location_mod:', &
@@ -408,8 +416,8 @@ function get_dist(loc1, loc2, type1, kind2, no_vert)
 ! However, this behavior can be over-ridden by the no_vert optional argument.
 ! If set to false, this will always do full 3d distance if possible. If set to
 ! true it will never do the full 3d distance. At present asking to do a vertical
-! distance computation for incompatible vertical location types results 
-! in a fatal error unless one of the vertical types is UNDEFINED.
+! distance computation for incompatible vertical location units results 
+! in a fatal error unless one of the vertical units is UNDEFINED.
 
 ! CHANGE from previous versions:  the 3rd argument is now a specific type
 ! (e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_SPECIFIC_HUMIDITY) associated
@@ -418,10 +426,7 @@ function get_dist(loc1, loc2, type1, kind2, no_vert)
 ! The type and kind are part of the interface in case user-code wants to do 
 ! a more sophisticated distance calculation based on the base type or target
 ! kind. In the usual case this code still doesn't use the kind/type, but 
-! there is a feature that allows you to maintain the original vertical 
-! normalization even when changing the cutoff distance in the horizontal.
-! For that to work we do need to know the type, and we use the type of loc1 
-! to control it.
+! it does require at least type1 if using per-type vertical normalization.
 
 type(location_type), intent(in) :: loc1, loc2
 integer, optional,   intent(in) :: type1, kind2
@@ -433,7 +438,7 @@ integer  :: lat1_ind, lat2_ind, lon_ind, temp  ! indexes into lookup tables
 logical  :: comp_h_only
 
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 ! Begin with the horizontal distance
 ! Compute great circle path shortest route between two points
@@ -457,7 +462,7 @@ else
       ! This test is for apparent roundoff error which may be a result of
       ! running r8 == r4. 
       rtemp = sin(loc2%lat) * sin(loc1%lat) + &
-         cos(loc2%lat) * cos(loc1%lat) * cos(lon_dif)
+              cos(loc2%lat) * cos(loc1%lat) * cos(lon_dif)
       if (rtemp < -1.0_r8) then
          get_dist = PI
       else if (rtemp > 1.0_r8) then
@@ -484,7 +489,7 @@ if(loc1%which_vert == VERTISSURFACE .and. loc2%which_vert == VERTISSURFACE) comp
 
 ! Add in vertical component if required
 if(.not. comp_h_only) then
-   ! Vert distance can only be done for like vertical locations types
+   ! Vert distance can only be done for like vertical locations units
    if(loc1%which_vert /= loc2%which_vert) then
       write(msgstring,*)'loc1%which_vert (',loc1%which_vert, &
                    ') /= loc2%which_vert (',loc2%which_vert,')'
@@ -500,7 +505,7 @@ if(.not. comp_h_only) then
 
    ! Compute the difference and divide by the appropriate normalization factor
    ! Normalization factor computes relative distance in vertical compared to one radian
-   ! This is new - if per-type localization distances given, use the kind of loc1
+   ! This is new - if per-type localization distances given, use the specific type of loc1
    ! to determine the vertical mapping distance.  it defaults to the 4 standard ones,
    ! but can be specified separately if desired.
 
@@ -535,13 +540,13 @@ function loc_eq(loc1,loc2)
 type(location_type), intent(in) :: loc1, loc2
 logical                         :: loc_eq
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 loc_eq = .false.
 
 ! if ( loc1%which_vert /= loc2%which_vert ) return
-if ( abs(loc1%lon  - loc2%lon ) > epsilon(loc1%lon ) ) return
-if ( abs(loc1%lat  - loc2%lat ) > epsilon(loc1%lat ) ) return
+if ( abs(loc1%lon  - loc2%lon) > epsilon(loc1%lon) ) return
+if ( abs(loc1%lat  - loc2%lat) > epsilon(loc1%lat) ) return
 
 !if ( loc1%which_vert /= VERTISUNDEF ) then
    if ( abs(loc1%vloc - loc2%vloc) > epsilon(loc1%vloc) ) return
@@ -561,7 +566,7 @@ function loc_ne(loc1,loc2)
 type(location_type), intent(in) :: loc1, loc2
 logical                         :: loc_ne
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 loc_ne = (.not. loc_eq(loc1,loc2))
 
@@ -572,12 +577,12 @@ end function loc_ne
 function get_location(loc)
  
 ! Given a location type (in radians), 
-! return the longitude, latitude (in degrees) and level 
+! return the longitude, latitude (in degrees) and vertical value
 
 type(location_type), intent(in) :: loc
 real(r8), dimension(3) :: get_location
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 get_location(1) = loc%lon * RAD2DEG                 
 get_location(2) = loc%lat * RAD2DEG                 
@@ -598,7 +603,7 @@ real(r8), intent(in) :: vert_loc
 integer,  intent(in) :: which_vert
 type (location_type) :: set_location_single
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 if(lon < 0.0_r8 .or. lon > 360.0_r8) then
    write(msgstring,*)'longitude (',lon,') is not within range [0,360]'
@@ -633,7 +638,7 @@ function set_location_array(list)
 real(r8), intent(in) :: list(:)
 type (location_type) :: set_location_array
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 if (size(list) < 4) then
    write(msgstring,*)'requires 4 input values'
@@ -652,7 +657,7 @@ function set_location_missing()
 
 type (location_type) :: set_location_missing
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 set_location_missing%lon        = MISSING_R8
 set_location_missing%lat        = MISSING_R8
@@ -671,7 +676,7 @@ type(location_type),        intent(in) :: loc
 character(len=*), optional, intent(in) :: attr
 real(r8)                               :: query_location
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 ! Workaround for apparent bug in mac osx intel 10.x fortran compiler.
 ! Previous code had a 16 byte local character variable which was
@@ -733,7 +738,7 @@ character(len=129)  :: string1
 ! 10 format(1x,3(f22.14,1x),i4)  ! old
 10 format(1X,3(G25.16,1X),I2)
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 ! writing to a file (normal use) or to a character buffer?
 writebuf = present(charstring)
@@ -774,9 +779,9 @@ write(string1, '(A,F12.8,1X,F12.8,1X,A)') 'Lon/Lat(deg): ',  loc%lon*RAD2DEG, &
    loc%lat*RAD2DEG, ' Vert:'
 
 ! then pretty up the vertical choices, trying to get them to line up in
-! case the caller is listing out locations with different vert types.
+! case the caller is listing out locations with different vert units.
 ! concatinate the vertical on the end of the horizontal and put it all
-! into the return string.
+! into the return string. 
 select case  (loc%which_vert)
    case (VERTISUNDEF)
       write(charstring, '(A,1X,A)')       trim(string1), '              Undefined'
@@ -811,7 +816,7 @@ type(location_type)                      :: read_location
 
 character(len=5) :: header
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 if (ascii_file_format(fform)) then
    read(locfile, '(a5)' ) header
@@ -841,7 +846,7 @@ logical, intent(in), optional    :: set_to_default
 
 real(r8) :: lon, lat, minlon, maxlon, minlat, maxlat
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 ! If set_to_default is true, then just zero out and return
 if(present(set_to_default)) then
@@ -971,7 +976,7 @@ integer                      :: ierr
 integer :: LocDimID
 integer :: VarID
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 ierr = -1 ! assume things will fail ...
 
@@ -979,7 +984,7 @@ ierr = -1 ! assume things will fail ...
 call nc_check(nf90_def_dim(ncid=ncFileID, name='location', len=LocationDims, &
        dimid = LocDimID), 'nc_write_location_atts', 'def_dim:location '//trim(fname))
 
-! Define the observation location variable and attributes
+! Define the location variable and attributes
 
 call nc_check(nf90_def_var(ncid=ncFileID, name='location', xtype=nf90_double, &
           dimids=(/ LocDimID, ObsNumDimID /), varid=VarID), &
@@ -1041,7 +1046,7 @@ integer,          intent(in)  :: ncFileID   ! handle to the netcdf file
 character(len=*), intent(in)  :: fname      ! file name (for printing purposes)
 integer,          intent(out) :: LocationVarID, WhichVertVarID
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 call nc_check(nf90_inq_varid(ncFileID, 'location', varid=LocationVarID), &
           'nc_get_location_varids', 'inq_varid:location '//trim(fname))
@@ -1053,7 +1058,7 @@ end subroutine nc_get_location_varids
 
 !----------------------------------------------------------------------------
 
-subroutine nc_write_location(ncFileID, LocationVarID, loc, obsindex, WhichVertVarID)
+subroutine nc_write_location(ncFileID, LocationVarID, loc, locindex, WhichVertVarID)
  
 ! Writes a SINGLE location to the specified netCDF variable and file.
 ! The LocationVarID and WhichVertVarID must be the values returned from
@@ -1064,27 +1069,31 @@ use netcdf
 
 integer,             intent(in) :: ncFileID, LocationVarID
 type(location_type), intent(in) :: loc
-integer,             intent(in) :: obsindex
+integer,             intent(in) :: locindex
 integer,             intent(in) :: WhichVertVarID
 
 real(r8), dimension(LocationDims) :: locations
 integer,  dimension(1) :: intval
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 locations = get_location( loc ) ! converts from radians to degrees, btw
 
 call nc_check(nf90_put_var(ncFileID, LocationVarId, locations, &
-          start=(/ 1, obsindex /), count=(/ LocationDims, 1 /) ), &
+          start=(/ 1, locindex /), count=(/ LocationDims, 1 /) ), &
             'nc_write_location', 'put_var:location')
 
 intval = loc%which_vert
 call nc_check(nf90_put_var(ncFileID, WhichVertVarID, intval, &
-          start=(/ obsindex /), count=(/ 1 /) ), &
+          start=(/ locindex /), count=(/ 1 /) ), &
             'nc_write_location','put_var:vert' )
 
 end subroutine nc_write_location
 
+!----------------------------------------------------------------------------
+!----------------------------------------------------------------------------
+! get close routines
+!----------------------------------------------------------------------------
 !----------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------
@@ -1581,8 +1590,8 @@ if (.not. gtt%lon_cyclic) then
       ! There is a gap; figure out locs that are closest to ends of non-gap
       beg_box_lon = (gap_end / 180.0_r8) * PI
       end_box_lon = ((gap_start -1) / 180.0_r8) * PI
-      first_loc_lon = find_closest_to_start(beg_box_lon, locs, num)
-      last_loc_lon  = find_closest_to_end  (end_box_lon, locs, num)
+      first_loc_lon = find_closest_to_start(beg_box_lon, num, locs)
+      last_loc_lon  = find_closest_to_end  (end_box_lon, num, locs)
       ! Determine the final longitude range
       longitude_range = last_loc_lon - first_loc_lon
       if(longitude_range <= 0.0_r8) longitude_range = longitude_range + 2.0_r8 * PI
@@ -1693,11 +1702,11 @@ integer :: next_full
 
 ! Finds the next gap of empty boxes in the cyclic set
 ! First, find the next full box from the start
-next_full = next_full_box(start_box, lon_box_full, num_boxes)
+next_full = next_full_box(start_box, num_boxes, lon_box_full)
 ! Find the next empty after that, make it the start of the gap
-gap_start = next_empty_box(next_full, lon_box_full, num_boxes)
+gap_start = next_empty_box(next_full, num_boxes, lon_box_full)
 ! Find the next full, box before that is the end of the gap
-gap_end = next_full_box(gap_start, lon_box_full, num_boxes) - 1
+gap_end = next_full_box(gap_start, num_boxes, lon_box_full) - 1
 if(gap_end < 1) gap_end = gap_end + num_boxes
 ! Carefully compute gap length
 if(gap_end >= gap_start) then
@@ -1711,11 +1720,12 @@ end subroutine find_next_gap
 
 !----------------------------------------------------------------------------
 
-function next_full_box(start_box, lon_box_full, num_boxes)
+function next_full_box(start_box, num_boxes, lon_box_full)
  
-integer             :: next_full_box
-integer, intent(in) :: start_box, num_boxes
+integer, intent(in) :: start_box
+integer, intent(in) :: num_boxes
 logical, intent(in) :: lon_box_full(num_boxes)
+integer             :: next_full_box
 
 integer :: i, indx
 
@@ -1730,18 +1740,19 @@ end do
 
 ! Should never fall off the end since all boxes should not be empty
 ! Fatal error if this happens
-call error_handler(E_ERR, 'next_full_box', 'All boxes empty:should not happen', &
+call error_handler(E_ERR, 'next_full_box', 'All boxes empty: should not happen', &
    source, revision, revdate)
 
 end function next_full_box
 
 !----------------------------------------------------------------------------
 
-function next_empty_box(start_box, lon_box_full, num_boxes)
+function next_empty_box(start_box, num_boxes, lon_box_full)
  
-integer             :: next_empty_box
-integer, intent(in) :: start_box, num_boxes
+integer, intent(in) :: start_box
+integer, intent(in) :: num_boxes
 logical, intent(in) :: lon_box_full(num_boxes)
+integer             :: next_empty_box
 
 integer :: i, indx
 
@@ -1756,19 +1767,19 @@ end do
 
 ! Should never fall off the end since all boxes should not be full
 ! Fatal error if this happens
-call error_handler(E_ERR, 'next_empty_box', 'All boxes full:should not happen', &
+call error_handler(E_ERR, 'next_empty_box', 'All boxes full: should not happen', &
    source, revision, revdate)
 
 end function next_empty_box
 
 !----------------------------------------------------------------------------
 
-function find_closest_to_start(beg_box_lon, obs, num)
+function find_closest_to_start(beg_box_lon, num, locs)
  
-real(r8)                        :: find_closest_to_start
 real(r8),            intent(in) :: beg_box_lon
 integer,             intent(in) :: num
-type(location_type), intent(in) :: obs(num)
+type(location_type), intent(in) :: locs(num)
+real(r8)                        :: find_closest_to_start
 
 real(r8) :: least_dist, dist
 integer  :: i
@@ -1777,11 +1788,11 @@ integer  :: i
 least_dist = 2.0_r8 * PI
 
 do i = 1, num
-   dist = obs(i)%lon - beg_box_lon
+   dist = locs(i)%lon - beg_box_lon
    if(dist < 0.0_r8) dist = dist + 2.0_r8 * PI
    if(dist < least_dist) then
       least_dist = dist
-      find_closest_to_start = obs(i)%lon
+      find_closest_to_start = locs(i)%lon
    endif 
 end do
 
@@ -1789,12 +1800,12 @@ end function find_closest_to_start
 
 !----------------------------------------------------------------------------
 
-function find_closest_to_end(end_box_lon, obs, num)
+function find_closest_to_end(end_box_lon, num, locs)
  
-real(r8)                        :: find_closest_to_end
 real(r8),            intent(in) :: end_box_lon
 integer,             intent(in) :: num
-type(location_type), intent(in) :: obs(num)
+type(location_type), intent(in) :: locs(num)
+real(r8)                        :: find_closest_to_end
 
 real(r8) :: least_dist, dist
 integer  :: i
@@ -1803,11 +1814,11 @@ integer  :: i
 least_dist = 2.0_r8 * PI
 
 do i = 1, num
-   dist = end_box_lon - obs(i)%lon
+   dist = end_box_lon - locs(i)%lon
    if(dist < 0.0_r8) dist = dist + 2.0_r8 * PI
    if(dist < least_dist) then
       least_dist = dist
-      find_closest_to_end = obs(i)%lon
+      find_closest_to_end = locs(i)%lon
    endif 
 end do
 
@@ -1833,6 +1844,13 @@ if(get_lon_box > nlon) then
    if(gtt%lon_cyclic) then
       get_lon_box = 1
    else
+      ! technically this should have a tolerance and only
+      ! bin items which are on the boundary of boxes nlon and
+      ! nlon+1.  this bins points which won't be close enough.
+      ! FIXME: evaluate which is cheaper; 1) binning and computing
+      ! distances on points later which can be excluded now, or
+      ! 2) computing now whether the points are on the boundary
+      ! and only keeping those ones.
       if(get_lon_box == nlon+1) then
          get_lon_box = nlon
       else
@@ -1942,6 +1960,11 @@ end subroutine distinct_values
 
 subroutine print_get_close_type(gc, tt, amount)
  
+! FIXME:  this is very useful for debugging but the current state
+! of this code is ATROCIOUS!!  fix it.   possibly take the val=8
+! details out into a separate subroutine so the simple case isn't so
+! hard to follow.
+!
 ! print out debugging statistics, or optionally print out a full
 ! dump from all mpi tasks in a format that can be plotted with matlab.
 
@@ -1968,7 +1991,7 @@ been_called = been_called + 1
 ! 2 = all parts of all arrays.
 ! -8 = special for grid-decomposition debugging
 
-! by default do not print all the obs_box or start contents (it can
+! by default do not print all the loc_box or start contents (it can
 ! be very long).  but give the option to print more info or even an
 ! entire contents dump.  'sample' is the number to print for the
 ! short version.  (this value prints about 5-6 lines of data.)
@@ -1991,7 +2014,7 @@ endif
 ! if you enable debugging, maybe you want to turn it off for really
 ! large counts?  often it's easy to construct a case that has a lot of
 ! locations from the state vector in one set of boxes, but just a few
-! locations from the observations in another.  this lets you turn off
+! locations from the locations in another.  this lets you turn off
 ! the debugging level for the large set and leave it on for the small.
 !if (gc%gtt(tt)%num > 100) howmuch = 0
 
@@ -2052,7 +2075,7 @@ else
    endif
 endif
 
-! like obs_box, this one can be very large.   print only the first nth unless
+! like loc_box, this one can be very large.   print only the first nth unless
 ! instructed otherwise
 if (allocated(gc%gtt(tt)%start)) then
    i = size(gc%gtt(tt)%start,1)
@@ -2144,7 +2167,7 @@ endif
 
 
 ! initialize all ticks to false.  turn them true as they are found
-! in the obs_box list, and complain about duplicates or misses.
+! in the loc_box list, and complain about duplicates or misses.
 tickmark = .FALSE.
 
 do i=1, nlon
@@ -2280,7 +2303,7 @@ function is_location_in_region(loc, minl, maxl)
 logical                          :: is_location_in_region
 type(location_type), intent(in)  :: loc, minl, maxl
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 ! maybe could use VERTISUNDEF in the minl and maxl args to indicate
 ! we want to test only in horizontal?  and if not, vtypes must match?
@@ -2317,7 +2340,7 @@ function vert_is_undef(loc)
 logical                          :: vert_is_undef
 type(location_type), intent(in)  :: loc
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 if(loc%which_vert == VERTISUNDEF) then
    vert_is_undef = .true.
@@ -2336,7 +2359,7 @@ function vert_is_surface(loc)
 logical                          :: vert_is_surface
 type(location_type), intent(in)  :: loc
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 if(loc%which_vert == VERTISSURFACE) then
    vert_is_surface = .true.
@@ -2355,7 +2378,7 @@ function vert_is_pressure(loc)
 logical                          :: vert_is_pressure
 type(location_type), intent(in)  :: loc
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 if(loc%which_vert == VERTISPRESSURE) then
    vert_is_pressure = .true.
@@ -2374,7 +2397,7 @@ function vert_is_height(loc)
 logical                          :: vert_is_height
 type(location_type), intent(in)  :: loc
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 if(loc%which_vert == VERTISHEIGHT ) then
    vert_is_height = .true.
@@ -2393,7 +2416,7 @@ function vert_is_level(loc)
 logical                          :: vert_is_level
 type(location_type), intent(in)  :: loc
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 if(loc%which_vert == VERTISLEVEL) then
    vert_is_level = .true.
@@ -2412,7 +2435,7 @@ function vert_is_scale_height(loc)
 logical                          :: vert_is_scale_height
 type(location_type), intent(in)  :: loc
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 if(loc%which_vert == VERTISSCALEHEIGHT ) then
    vert_is_scale_height = .true.
@@ -2430,7 +2453,7 @@ function has_vertical_localization()
 
 logical :: has_vertical_localization
 
-if ( .not. module_initialized ) call initialize_module
+if ( .not. module_initialized ) call initialize_module()
 
 has_vertical_localization = .not. horiz_dist_only
 
