@@ -803,7 +803,7 @@ select case  (loc%which_vert)
    case (VERTISPRESSURE)
       write(charstring, '(A,1X,F12.7,A)') trim(string1), loc%vloc / 100.0_r8, '  hPa'
    case (VERTISHEIGHT)
-      write(charstring, '(A,1X,F20.7,A)') trim(string1), loc%vloc / 1000.0_r8, '  km'
+      write(charstring, '(A,1X,F12.7,A)') trim(string1), loc%vloc / 1000.0_r8, '  km'
    case (VERTISSCALEHEIGHT)
       write(charstring, '(A,1X,F12.7,A)') trim(string1), loc%vloc, '  scale ht'
    case default

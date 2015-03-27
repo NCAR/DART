@@ -286,7 +286,8 @@ integer, parameter, public :: &
 
 ! more kinds for TIEGCM Alex Chartier 
 integer, parameter, public :: &
-    KIND_VERTICAL_TEC                = 143  ! total electron content
+    KIND_VERTICAL_TEC                = 143, &
+    KIND_O_N2_COLUMN_DENSITY_RATIO   = 144
 
 !! For now we have agreed to reserve kind numbers 151 to 250
 !! for chemistry types, specifically for WRF-Chem/DART, but
@@ -609,6 +610,7 @@ obs_kind_names(140) = obs_kind_type(KIND_NEUTRON_INTENSITY     ,'KIND_NEUTRON_IN
 obs_kind_names(141) = obs_kind_type(KIND_CANOPY_WATER          ,'KIND_CANOPY_WATER')
 obs_kind_names(142) = obs_kind_type(KIND_GROUND_HEAT_FLUX      ,'KIND_GROUND_HEAT_FLUX')
 obs_kind_names(143) = obs_kind_type(KIND_VERTICAL_TEC          ,'KIND_VERTICAL_TEC')
+obs_kind_names(144) = obs_kind_type(KIND_O_N2_COLUMN_DENSITY_RATIO, 'KIND_O_N2_COLUMN_DENSITY_RATIO')
 
 obs_kind_names(151) = obs_kind_type(KIND_O3,              'KIND_O3')
 obs_kind_names(153) = obs_kind_type(KIND_CO,              'KIND_CO')

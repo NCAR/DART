@@ -31,7 +31,8 @@ program convert_f16_edr_dsk
 use         types_mod, only : r8, MISSING_R8, digits12
 
 use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities, &
-                              find_namelist_in_file, check_namelist_read, do_output
+                              find_namelist_in_file, check_namelist_read, do_output, &
+                              error_handler, E_ERR, E_MSG
 
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, GREGORIAN, &
                               get_time, set_time, print_time, print_date
@@ -51,6 +52,13 @@ use obs_utilities_mod, only : getdimlen, getvar_real, getvar_real_2d, &
 use netcdf
 
 implicit none
+
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   '$URL$'
+character(len=32 ), parameter :: revision = '$Revision$'
+character(len=128), parameter :: revdate  = '$Date$'
+
 
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
@@ -82,6 +90,8 @@ integer,        allocatable :: ON2_quality(:,:)
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
 type(time_type)         :: comp_day0, time_obs, prev_time
+
+character(len=512) :: string1, string2
 
 !-------------------------------------------------------------------------------
 ! namelist with default values
@@ -129,13 +139,18 @@ call getvar_real_2d(ncid, 'ON2'                      , ON2 )
 call getvar_real_2d(ncid, 'ON2_UNCERTAINTY'          , ON2_uncertainty, org_missing)
 call getvar_int_2d(ncid, 'DATA_QUALITY_DISK'        , ON2_quality )
 
-write(string1,*,iostat=io)count(ON2_uncertainty < 0.0)
+! This test does not prevent the NaN failure unfortunately.
+write(string1,*,iostat=io)'count of missing ON2_uncertainty values',count(ON2_uncertainty < 0.0_r8)
 if (io /= 0) then
-  write(*,*)'REMOVE THE NANFs from the file using shell_scripts/bob'
+   write(string1,*)'['//trim(input_netcdf_file)//'] appears to have NaN values.'
+   write(string2,*)'Remove them with shell_scripts/netcdf_manip.csh and retry.'
+   call error_handler(E_ERR, 'convert_f16_edr_dsk', string1, &
+              source, revision, revdate, text2=string2)
+else
+   call error_handler(E_MSG, 'convert_f16_edr_dsk:', string1)
 endif
 
 where (ON2_uncertainty == org_missing) ON2_uncertainty = MISSING_R8
-if (do_output()) write(*,*)'count of missing ON2_uncertainty values',count(ON2_uncertainty < 0.0)
 
 call nc_check(nf90_close(ncid) , &
         'convert_f16_edr_dsk', 'closing file '//trim(input_netcdf_file))

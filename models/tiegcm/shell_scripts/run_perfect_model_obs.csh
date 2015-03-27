@@ -8,33 +8,16 @@
 #
 # Top level script to generate observations and a TRUE state.
 #
-# Unlike the more complex job.csh, this script only processes a single 
-# observation file.  Still fairly complex; requires a raft of
-# data files and most of them are in hardcoded locations.
+# This script is designed to be submitted as a batch job but may be run from 
+# the command line (as a single thread) to check for file motion, etc.
+# If running interactively, please comment out the part that actually runs filter.
 #
-# This script is designed to be run from the command line (as a single thread)
-# and should only take a few seconds to a minute to complete, depending on
-# the filesystem performance and data file size.
-#
-# The script moves the necessary files to the current directory - in DART
-# nomenclature, this will be called CENTRALDIR. 
-# After everything is confirmed to have been assembled, it is possible
-# to edit the data, data.cal, and input.nml files for the specifics of 
-# the experiment; as well as allow final configuration of a 'nodelist' file.
-#
-# Once the 'table is set', all that remains is to start/submit the 
-# 'runme_filter' script. That script will spawn 'filter' as a 
-# parallel job on the appropriate nodes; each of these tasks will 
-# call a separate advance_model.csh when necessary.
-#
-# The central directory is where the scripts reside and where script and 
-# program I/O are expected to happen.
 #-----------------------------------------------------------------------------
 #
 #BSUB -J tiegcm_perfect
 #BSUB -o tiegcm_perfect.%J.log
 #BSUB -P P3507xxxx
-#BSUB -q economy
+#BSUB -q premium
 #BSUB -n 1
 #BSUB -W 1:00
 #BSUB -N -u ${USER}@ucar.edu
@@ -125,8 +108,8 @@ echo "${JOBNAME} ($JOBID) CENTRALDIR == $CENTRALDIR"
 #-----------------------------------------------------------------------------
 
 set     DARTDIR = /glade/u/home/${USER}/DART/tiegcm/models/tiegcm
-set   TIEGCMDIR = /glade/u/home/${USER}/tiegcm/src
-set ENSEMBLEDIR = /glade/p/work/alexc/startup_files/initial
+set   TIEGCMDIR = /glade/p/image/RDA_strawman/TIEGCM_files
+set ENSEMBLEDIR = /glade/p/image/RDA_strawman/TIEGCM_files/ensembles
 set  EXPERIMENT = /glade/p/work/${USER}/${JOBNAME}
 
 #-----------------------------------------------------------------------------
@@ -142,7 +125,7 @@ ${COPY} ${DARTDIR}/work/input.nml   input.nml.original || exit 1
 ${COPY} ${DARTDIR}/shell_scripts/advance_model.csh   . || exit 1
 ${COPY} ${DARTDIR}/work/obs_seq.in                   . || exit 1
 
-${COPY} ${TIEGCMDIR}/tiegcm-nompi             tiegcm || exit 1
+${COPY} ${TIEGCMDIR}/tiegcm-nompi               tiegcm || exit 1
 
 ${COPY} ${ENSEMBLEDIR}/tiegcm_restart_p.nc           . || exit 1
 ${COPY} ${ENSEMBLEDIR}/tiegcm_s.nc                   . || exit 1

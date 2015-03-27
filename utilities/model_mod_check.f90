@@ -236,7 +236,7 @@ endif
 
 write(*,*)
 write(*,'(''Checking for the indices into the state vector that are at'')')
-write(*,'(''lon/lat/lev'',3(1x,f10.5))')loc_of_interest(1:LocationDims)
+write(*,'(''lon/lat/lev'',2(1x,f10.5),1x,f17.7)')loc_of_interest(1:LocationDims)
 
 allocate( thisdist(get_model_size()) )
 thisdist  = 9999999999.9_r8         ! really far away 
