@@ -108,9 +108,9 @@ is as follows:
 <em class=code>
 call get_close_maxdist_init()  ! is called before get_close_obs_init()
 call get_close_obs_init()
-
+...
 call get_close_obs()           ! called many, many times
-
+...
 call get_close_obs_destroy()
 </em>
 </pre>
@@ -189,7 +189,7 @@ vertical unit should be done.
 </P>
 <H4>Horizontal Distance Only</H4>
 <P>
-If <em>horiz_distance_only</em> is .true. in the namelist, then the
+If <em>horiz_distance_only</em> is .true. in the namelist then the
 vertical coordinate is ignored and only the great-circle distance
 between the two locations is computed, as if they were both on the
 surface of the sphere. 
@@ -349,8 +349,13 @@ prematurely terminating the namelist.
    approximate_distance            = .false.,
    nlon                            = 71,
    nlat                            = 36,
-   output_box_info     = .false.,
-   maintain_original_vert          = .false.,
+   output_box_info                 = .false.,
+   special_vert_normalization_obs_types     = ''
+   special_vert_normalization_pressures     = 100000.0
+   special_vert_normalization_heights       = 10000.0
+   special_vert_normalization_levels        = 20.0
+   special_vert_normalization_scale_heights = 5.0
+   <em class=removed>maintain_original_vert = .false.</em>
 /
 </pre>
 </div>
@@ -374,55 +379,65 @@ are computed and/or influence the code performance.
 <TBODY valign=top>
 
 <TR><TD>horiz_dist_only</TD>
-<TD>logical</TD>
-<TD>Only compute horizontal distance component?
+    <TD>logical</TD>
+    <TD>If .TRUE. compute great-circle distance using the horizontal distance component only.
+If .FALSE. compute distances by including the vertical and horizontal separation.
+All distances are computed in radians; the corresponding vertical normalization
+factors are used to compute the vertical distance.<br>
+The vertical coordinate system must be the same for both locations in order
+to compute a distance.  However, if either location is VERTISUNDEF, or both are
+VERTISSURFACE, only a horizontal distance is computed.  For any other combination
+of vertical coordinate systems this routine will fail because it cannot convert
+between vertical coordinate systems without model-specific information.
+The model_mod interface code may supply a get_close_obs() routine to intercept 
+and convert the vertical coordinates before calling this get_close_obs() routine.
 </TD></TR>
 
 <TR><TD>vert_normalization_pressure</TD>
     <TD>real(r8)</TD>
-    <TD>How many pascals should be equivalent distance to one radian? 
+    <TD>The number of pascals equivalent to a horizontal
+distance of one radian.
 </TD></TR>
 
 <TR><TD>vert_normalization_height</TD>
     <TD>real(r8)</TD>
-    <TD>How many geopotential meters should be equal to one radian?
+    <TD>The number of meters equivalent to a horizontal
+distance of one radian.
 </TD></TR>
 
 <TR><TD>vert_normalization_scale_height</TD>
     <TD>real(r8)</TD>
-    <TD>How many scale heights should be equal to one radian? 
+    <TD>The number of scale heights equivalent to a horizontal
+distance of one radian.
 </TD></TR>
 
 <TR><TD>vert_normalization_level</TD>
     <TD>real(r8)</TD>
-    <TD>How many model levels should be equal to one radian? 
-</TD></TR>
-
-<TR><TD>maintain_original_vert</TD>
-    <TD>logical</TD>
-    <TD>If using per-type specialized localization distances
-(see <a href="../../assim_tools/assim_tools_mod.html#Namelist">assim_tools_mod</a>)
-by default the vertical distances are altered also.  To maintain
-the original vertical scaling while changing the horizontal, set this to true.
+    <TD>The number of model levels equivalent to a horizontal
+distance of one radian.
 </TD></TR>
 
 <TR><TD>approximate_distance</TD>
     <TD>logical</TD>
     <TD> If true, uses a table lookup for fast approximate
 computation of distances on sphere. Distance computation can be
-a first order cost for some spherical problems, so this can increase
-speed significantly at a loss of some precision.
+a first order cost for some spherical problems so this can increase
+speed significantly at a loss of some precision. WARNING: This should
+be set to .FALSE. if you need to compute small distances accurately
+or you have a regional model.
 </TD></TR>
 
 <TR><TD>nlon</TD>
     <TD>integer</TD>
-    <TD> Number of boxes (bins) created in the longitude direction.  Must be 
-an odd number.   (See discussion above for more information about this item.)
+    <TD> Used internally by the search code to speed the search for
+nearby locations.  Number of boxes (bins) created in the longitude direction.  
+Must be an odd number.   (See discussion above for more information about this item.)
 </TD></TR>
 
 <TR><TD>nlat</TD>
     <TD>integer</TD>
-    <TD> Number of boxes (bins) created in the latitude direction.  (See
+    <TD> Used internally by the search code to speed the search for
+nearby locations. Number of boxes (bins) created in the latitude direction.  (See
 discussion above for more information about this item.)
 </TD></TR>
 
@@ -432,9 +447,74 @@ discussion above for more information about this item.)
 the array of boxes.
 </TD></TR>
 
+<TR><TD>special_vert_normalization_obs_types</TD>
+    <TD>character(len=32), dimension(500)</TD>
+    <TD>If specified, must be a string array of observation specific types
+(e.g. RADIOSONDE_TEMPERATURE, AIRCRAFT_TEMPERATURE, etc).  For each type
+listed here a vertical normalization value must be given which overrides
+the default vertical normalization values.  Even if only one is going to
+be used, all 4 normalization values must be specified for each special type. 
+</TD></TR>
+
+<TR><TD>special_vert_normalization_pressure</TD>
+    <TD>real(r8), dimension(500)</TD>
+    <TD>The number of pascals equivalent to a horizontal
+distance of one radian, one value for each special observation type
+listed in the 'special_vert_normalization_obs_types' list. 
+</TD></TR>
+
+<TR><TD>special_vert_normalization_height</TD>
+    <TD>real(r8), dimension(500)</TD>
+    <TD>The number of geopotential meters equivalent to a horizontal
+distance of one radian, one value for each special observation type
+listed in the 'special_vert_normalization_obs_types' list. 
+</TD></TR>
+
+<TR><TD>special_vert_normalization_scale_height</TD>
+    <TD>real(r8), dimension(500)</TD>
+    <TD>The number of scale heights equivalent to a horizontal
+distance of one radian, one value for each special observation type
+listed in the 'special_vert_normalization_obs_types' list. 
+</TD></TR>
+
+<TR><TD>special_vert_normalization_level</TD>
+    <TD>real(r8), dimension(500)</TD>
+    <TD>The number of model levels equivalent to a horizontal
+distance of one radian, one value for each special observation type
+listed in the 'special_vert_normalization_obs_types' list. 
+</TD></TR>
 </TBODY> 
 </TABLE>
 </div>
+
+<P> The following item used to be in the namelist
+but has been removed since the functionality has
+been superseded by the special vertical normalizations.
+Remove it from your namelist to avoid errors.
+</P>
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Deprecated Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD>maintain_original_vert</TD>
+    <TD>logical</TD>
+    <TD>If using per-type specialized localization distances
+(see <a href="../../assim_tools/assim_tools_mod.html#Namelist">assim_tools_mod</a>)
+by default the vertical distances are altered also.  To maintain
+the original vertical scaling while changing the horizontal, set this to true.
+</TD></TR>
+
+</TBODY>
+</TABLE>
+</div>
+
 
 <br />
 <br />
