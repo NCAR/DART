@@ -296,7 +296,7 @@ if(single_restart_file_in .or. .not. start_from_restart .or. &
       endif
 
       ! Store this copy in the appropriate place on the appropriate process
-      ! map from my_pe to physical task number all done in send and recieves only
+      ! map from my_pe to physical task number all done in send and receives only
       call put_copy(map_task_to_pe(ens_handle,0), ens_handle, i, ens, ens_time)
    end do
    
@@ -1331,7 +1331,7 @@ allocate(var_list(max_num_vars), transfer_temp(max_num_vars), &
 
 if (use_copy2var_send_loop .eqv. .true. ) then
 ! Switched loop index from receiving_pe to sending_pe
-! Aim: to make the commication scale better on Yellowstone, as num_pes >> ens_size
+! Aim: to make the communication scale better on Yellowstone, as num_pes >> ens_size
 ! For small numbers of tasks (32 or less) the receiving_pe loop may be faster.
 ! Namelist option use_copy2var_send_loop can be used to select which
 ! communication pattern to use
