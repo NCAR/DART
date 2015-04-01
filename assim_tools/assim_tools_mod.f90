@@ -1529,7 +1529,7 @@ real(r8), intent(out)           :: obs_inc(ens_size)
 
 real(r8) :: obs_var_inv
 real(r8) :: prior_mean, prior_cov_inv, new_cov, prior_cov
-real(r8) :: sx, s_x2
+real(r8) :: sx
 real(r8) :: weight(ens_size), new_mean(ens_size)
 real(r8) :: cum_weight, total_weight, cum_frac(ens_size)
 real(r8) :: unif, norm, new_member(ens_size)
@@ -1541,7 +1541,6 @@ obs_var_inv = 1.0_r8 / obs_var
 
 ! Compute prior mean and covariance
 sx         = sum(ens)
-s_x2       = sum(ens * ens)
 prior_mean = sx / ens_size
 prior_cov  = sum((ens - prior_mean)**2) / (ens_size - 1)
 
@@ -1876,7 +1875,6 @@ real(r8), intent(out) :: obs_inc(ens_size)
 real(r8), intent(out) :: rel_weight(ens_size)
 
 integer  :: i, e_ind(ens_size), lowest_box, j
-real(r8) :: a
 real(r8) :: sx, prior_mean, prior_var, prior_var_d2
 real(r8) :: var_ratio, new_var, new_sd, umass, left_weight, right_weight
 real(r8) :: mass(2*ens_size), weight(ens_size), cumul_mass(0:2*ens_size)
@@ -1885,7 +1883,6 @@ real(r8) :: new_ens(ens_size), mass_sum, const_term
 real(r8) :: x(1:2*ens_size - 1), sort_inc(ens_size)
 
 ! The factor a is not defined for this filter for now (could it be???)
-a = -1.0_r8
 
 ! The relative weights could be used for a multi-dimensional particle-type
 ! update using update_ens_from_weights. There are algorithmic challenges

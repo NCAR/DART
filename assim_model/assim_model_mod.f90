@@ -9,18 +9,17 @@
 module assim_model_mod
 
 use    types_mod, only : r8, digits12
-use location_mod, only : location_type, read_location, &
-                         LocationDims, LocationName, LocationLName
-use time_manager_mod, only : time_type, get_time, read_time, write_time,                &
-                             THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP, NO_CALENDAR, &
-                             operator(<), operator(>), operator(+), operator(-),        &
-                             operator(/), operator(*), operator(==), operator(/=),      &
-                             get_calendar_type, print_time
+use location_mod, only : location_type, read_location, LocationDims
+use time_manager_mod, only : time_type, get_time, read_time, write_time,           &
+                             THIRTY_DAY_MONTHS, JULIAN, GREGORIAN, NOLEAP,         &
+                             operator(<), operator(>), operator(+), operator(-),   &
+                             operator(/), operator(*), operator(==), operator(/=), &
+                             get_calendar_type
 use utilities_mod, only : get_unit, close_file, register_module, error_handler,    &
-                          E_ERR, E_WARN, E_MSG, E_DBG, logfileunit, nmlfileunit,   &
-                          do_output, dump_unit_attributes, find_namelist_in_file,  &
+                          E_ERR, E_WARN, E_MSG, E_DBG, nmlfileunit,                &
+                          dump_unit_attributes, find_namelist_in_file,             &
                           check_namelist_read, nc_check, do_nml_file, do_nml_term, &
-                          find_textfile_dims, file_to_text, timestamp, set_output, &
+                          find_textfile_dims, file_to_text, set_output,            &
                           ascii_file_format, set_output
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data_distrib,  &
                           get_model_time_step, init_conditions, &
@@ -399,10 +398,6 @@ endif
 
 call nc_check(nf90_sync(ncFileID%ncid), 'init_diag_output', 'sync '//trim(ncFileID%fname))               
 !-------------------------------------------------------------------------------
-
-!write(logfileunit,*)trim(ncFileID%fname), ' is ncid ',ncFileID%ncid
-!write(logfileunit,*)'ncFileID%NtimesMAX is ',ncFileID%NtimesMAX
-!write(logfileunit,*)'ncFileID%Ntimes    is ',ncFileID%Ntimes
 
 end function init_diag_output
 
