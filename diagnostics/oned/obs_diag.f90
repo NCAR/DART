@@ -17,31 +17,30 @@ program obs_diag
 ! 'priorspred' should really be 'priorvar' since you have to accumulate variances
 ! the math is correct as it is, but the variable names don't make it easy ...
 
-use        types_mod, only : r4, r8, digits12, MISSING_R8, MISSING_R4, metadatalength
+use        types_mod, only : r4, r8, digits12, MISSING_R4, metadatalength
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
                              get_obs_from_key, get_obs_def, get_copy_meta_data, &
-                             get_obs_time_range, get_time_range_keys, get_num_obs, &
-                             get_next_obs, get_num_times, get_obs_values, init_obs, &
+                             get_obs_time_range, get_time_range_keys, &
+                             get_num_times, get_obs_values, init_obs, &
                              assignment(=), get_num_copies, static_init_obs_sequence, &
                              get_qc, destroy_obs_sequence, get_last_obs, get_num_qc, &
                              read_obs_seq_header, destroy_obs, get_qc_meta_data
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                             get_obs_def_location, get_obs_kind, get_obs_name
+                             get_obs_def_location, get_obs_kind
 use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name
-use     location_mod, only : location_type, get_location, set_location_missing, &
-                             write_location, operator(/=), LocationDims
-use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
+use     location_mod, only : location_type, get_location, operator(/=), LocationDims
+use time_manager_mod, only : time_type, set_time, get_time, print_time, &
                              print_date, set_calendar_type, get_date, &
                              operator(*), operator(+), operator(-), &
                              operator(>), operator(<), operator(/), &
                              operator(/=), operator(<=), operator(>=)
-use    utilities_mod, only : get_unit, open_file, close_file, register_module, &
+use    utilities_mod, only : open_file, register_module, &
                              file_exist, error_handler, E_ERR, E_WARN, E_MSG,  &
                              initialize_utilities, logfileunit, nmlfileunit,   &
                              find_namelist_in_file, check_namelist_read,       &
                              nc_check, do_nml_file, do_nml_term, finalize_utilities, &
-                             next_file, get_next_filename, find_textfile_dims, &
-                             file_to_text
+                             next_file, get_next_filename
+                             
 use         sort_mod, only : sort
 use   random_seq_mod, only : random_seq_type, init_random_seq, several_random_gaussians
 
