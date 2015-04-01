@@ -193,10 +193,6 @@ em.input{
     font-family:"Lucida Console", monospace;
     font-weight:bold;}
 
-em.option{
-    color:blue; 
-    font-family:oblique;}
-
 em.optionalcode{
     color:red; 
     font-style:oblique;
@@ -211,6 +207,16 @@ em.file{
     color:green; 
     font-style:normal;
     font-family:"Lucida Console",monospace;}
+
+em.mono{
+    color:black; 
+    font-style:normal;
+    font-family:"Lucida Console",monospace;}
+
+em.option{
+    color:blue; 
+    font-size: 1.2em;
+    font-family:oblique;}
 
 em.nav{
     font-family:sans-serif;

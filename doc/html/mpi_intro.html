@@ -70,7 +70,7 @@ of the 'filter' program, the 'mkmf_filter'
 command needs to be called with the '-mpi' option to generate a Makefile
 which compiles with the MPI scripts instead of the Fortran compiler.
 <br><br>
-See the 'workshop_setup.csh' scripts (which might be renamed 'build.csh'?) 
+See the <em class=file>quickbuild.csh</em> script 
 in each $DART/models/*/work directory for the commands
 that need to be edited to enable the MPI utilities.  You will also need
 to edit the $DART/mkmf/mkmf.template file to call the proper version of
@@ -145,6 +145,15 @@ Choices include:
    one, with the model using all the processors to run in parallel.
    See a <a href="filter_async_modes.html#async4">diagram</a> which illustrates this option.
 </li>
+<li><a name="async5"></a>
+   async ignored (sometimes referred to as 'async 5', but not a setting in the namelist)<br>
+   This is the way most large models run now.  There is a separate
+   script, outside of filter, which runs the N copies of the model
+   to do the advance.  Then filter is run, as an MPI program, and it
+   only assimilates for a single time and then exits.  The external
+   script manages the file motion between steps, and calls both the
+   models and filter in turn.
+</li>
 </ul>
 
 <P>
@@ -162,7 +171,8 @@ the model having to know about MPI or parallelism.
 Compiling and running an MPI application can be substantially
 more complicated than running a single executable.  There are a suite
 of small test programs to help diagnose any problems encountered in 
-trying to run the new version of DART.   Look in $DART/doc/mpi for
+trying to run the new version of DART.   Look in 
+<em class=file>$DART/mpi_utilities/tests</em> for
 the README and a set of tests to narrow down any difficulties.
 </P>
 
