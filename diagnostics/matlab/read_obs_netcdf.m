@@ -29,6 +29,20 @@ function obsstruct = read_obs_netcdf(fname, ObsTypeString, region, CopyString, .
 %            keys: [2343x1 int32]
 %            time: [2343x1 double]
 %              qc: [2343x1 int32]
+%
+%--------------------------------------------------
+% EXAMPLE 1: plotting the locations without regard to observation value.
+%--------------------------------------------------
+% fname         = 'obs_epoch_001.nc';
+% ObsTypeString = 'ALL';
+% region        = [0 360 -90 90 -Inf Inf];
+% CopyString    = 'observation';
+% QCString      = 'DART quality control ';
+% verbose       = 1;   % anything > 0 == 'true'
+%
+% bob = read_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, verbose);
+% plot(bob.lons,bob.lats,'*')
+% continents('light');
 
 %% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at

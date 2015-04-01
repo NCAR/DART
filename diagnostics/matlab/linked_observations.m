@@ -81,6 +81,7 @@ linkdata on
 figure2 = figure(2); clf(figure2); orient tall; wysiwyg
 
 %% Create axes for time VS. QC
+% FIXME ... choose a format for datetick based on the timespan
 axes4 = axes('Parent',figure2,'OuterPosition',[0 0.80 1 0.175],'FontSize',14);
 set(axes4,'XAxisLocation','top')
 box(axes4,'on');
@@ -96,6 +97,7 @@ datetick(axes4,'x',6);
 ylabel(obs.colnames{obs.qcindex});
 
 %% Create axes for observation index VS. time 
+% FIXME ... choose a format for datetick based on the timespan
 %axes3 = axes('Parent',figure2,'OuterPosition',[0 0.575 1 0.175]);
 axes3 = axes('Parent',figure2,'OuterPosition',[0 0.600 1 0.2],'FontSize',14);
 box(axes3,'on');

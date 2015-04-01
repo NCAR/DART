@@ -3,7 +3,7 @@ function plotdat = plot_rank_histogram(fname, timeindex, varargin)
 % Part of the observation-space diagnostics routines.
 %
 % 'obs_diag' produces a netcdf file containing the diagnostics.
-% 'obs_diag' condenses the 'obs_seq.final' information into summaries 
+% 'obs_diag' condenses the 'obs_seq.final' information into summaries
 %            for a few specified regions - on a level-by-level basis.
 %
 % USAGE: plotdat = plot_rank_histogram(fname, timeindex, [,obstypestring]);
@@ -14,10 +14,10 @@ function plotdat = plot_rank_histogram(fname, timeindex, varargin)
 %                 Must match something in the 'ObservationTypes' variable.
 %                 (ncdump -v ObservationTypes obs_diag_output.nc)
 %                 If specified, only this observation type will be plotted.
-%                 If not specified, ALL observation types incluced in the 
+%                 If not specified, ALL observation types incluced in the
 %                 netCDF file will be plotted.
 %
-% OUTPUT: two files will result for each observation type plotted. One is a 
+% OUTPUT: two files will result for each observation type plotted. One is a
 %         postscript file containing a page for each level - all regions.
 %         The other file is a simple text file containing summary information
 %         about how many obs were assimilated, how many were available, etc.
@@ -26,7 +26,7 @@ function plotdat = plot_rank_histogram(fname, timeindex, varargin)
 % EXAMPLE 1 - plot the rank histogram for ALL observation types, ALL levels
 %
 % fname     = 'obs_diag_output.nc'; % netcdf file produced by 'obs_diag'
-% timeindex = 1;                    % plot the histogram for the first timestep 
+% timeindex = 1;                    % plot the histogram for the first timestep
 % plotdat   = plot_rank_histogram(fname, timeindex);
 %
 %
@@ -35,7 +35,7 @@ function plotdat = plot_rank_histogram(fname, timeindex, varargin)
 %             observation type in the netCDF file.
 %
 % fname     = 'obs_diag_output.nc'; % netcdf file produced by 'obs_diag'
-% timeindex = 3;                    % plot the histogram for the third timestep 
+% timeindex = 3;                    % plot the histogram for the third timestep
 % plotdat   = plot_rank_histogram(fname, timeindex, 'RADIOSONDE_TEMPERATURE');
 %
 %
@@ -123,6 +123,8 @@ timeorigin   = datenum(timebase(1),timebase(2),timebase(3));
 skip_seconds = time_to_skip(4)*3600 + time_to_skip(5)*60 + time_to_skip(6);
 iskip        = time_to_skip(3) + skip_seconds/86400;
 
+% set up a structure with all static plotting components
+
 plotdat.timecenters = plotdat.timecenters + timeorigin;
 plotdat.timeedges   = plotdat.timeedges   + timeorigin;
 plotdat.Ntimes      = length(plotdat.timecenters);
@@ -137,10 +139,6 @@ else
    plotdat.timespan = sprintf('%s -- %s', datestr(plotdat.timeedges(timeindex,1),21), ...
                                           datestr(plotdat.timeedges(timeindex,2),21));
 end
-
-% set up a structure with all static plotting components
-
-plotdat.linewidth = 2.0;
 
 if (nvars == 0)
    [plotdat.allvarnames, plotdat.allvardims] = get_varsNdims(fname);
@@ -158,29 +156,39 @@ plotdat.NQC5index   = get_copy_index(fname,'N_DARTqc_5');
 plotdat.NQC6index   = get_copy_index(fname,'N_DARTqc_6');
 plotdat.NQC7index   = get_copy_index(fname,'N_DARTqc_7');
 
+figuredata = setfigure();
+
 %----------------------------------------------------------------------
 % Loop around (time-copy-level-region) observation types
 %----------------------------------------------------------------------
 
 for ivar = 1:plotdat.nvars
-    
+
    % create the variable names of interest.
    % netCDF can only support variable names less than 41 chars.
-    
-   plotdat.myvarname = plotdat.varnames{ivar};  
+
+   plotdat.myvarname = plotdat.varnames{ivar};
    plotdat.guessvar  = sprintf('%s_guess',plotdat.varnames{ivar});
 
    plotdat.rhistvar = BuildFullVarname(plotdat.varnames{ivar});
 
+   [present, ~] = nc_var_exists(fname, plotdat.rhistvar);
+   if ( ~ present )
+      fprintf('Could not find %s in %s ... skipping\n',plotdat.rhistvar, fname)
+      continue
+   end
+
    % remove any existing postscript file - will simply append each
    % level as another 'page' in the .ps file.
-   
-   psfname = sprintf('%s_rank_hist.ps',plotdat.varnames{ivar});
-   fprintf('Removing %s from the current directory.\n',psfname)
-   system(sprintf('rm %s',psfname));
 
-   % remove any existing log file - 
-   
+   for iregion = 1:plotdat.nregions
+      psfname{iregion} = sprintf('%s_rank_hist_region%d.ps',plotdat.varnames{ivar},iregion);
+      fprintf('Removing %s from the current directory.\n',psfname{iregion})
+      system(sprintf('rm %s',psfname{iregion}));
+   end
+
+   % remove any existing log file -
+
    lgfname = sprintf('%s_rank_hist_obscount.txt',plotdat.varnames{ivar});
    fprintf('Removing %s from the current directory.\n',lgfname)
    system(sprintf('rm %s',lgfname));
@@ -207,36 +215,38 @@ for ivar = 1:plotdat.nvars
    end
    plotdat.nlevels = length(plotdat.level);
 
-   % Here is the tricky part. Singleton dimensions are auto-squeezed ... 
+   % Here is the tricky part. Singleton dimensions are auto-squeezed ...
    % single levels, single regions ...
 
-   guess_raw = nc_varget(fname, plotdat.guessvar);  
+   guess_raw = nc_varget(fname, plotdat.guessvar);
    guess = reshape(guess_raw, plotdat.Ntimes,  plotdat.ncopies, ...
                               plotdat.nlevels, plotdat.nregions);
 
-   rhist_raw = nc_varget(fname, plotdat.rhistvar); 
+   rhist_raw = nc_varget(fname, plotdat.rhistvar);
    rhist = reshape(rhist_raw, plotdat.Ntimes,  plotdat.Nrhbins, ...
                               plotdat.nlevels, plotdat.nregions);
-                          
-   % Collapse the time dimension if need be. 
-   if ( timeindex < 0 )  
-      guess             = sum(guess,1); 
-      rhist             = sum(rhist,1); 
+
+   % Collapse the time dimension if need be.
+   if ( timeindex < 0 )
+      guess             = sum(guess,1);
+      rhist             = sum(rhist,1);
       plotdat.timeindex = 1;
    end
 
    % check to see if there is anything to plot
-   nposs = sum(guess(plotdat.timeindex,plotdat.Npossindex,:,:));
+   nposs = sum(guess(plotdat.timeindex,plotdat.Npossindex,:,:)) - ...
+           sum(guess(plotdat.timeindex,plotdat.NQC5index ,:,:)) - ...
+           sum(guess(plotdat.timeindex,plotdat.NQC6index ,:,:));
 
    if ( sum(nposs(:)) < 1 )
       fprintf('%s no obs for %s...  skipping\n', plotdat.varnames{ivar})
       continue
    end
-   
+
    for ilevel = 1:plotdat.nlevels
 
       fprintf(logfid,'\nlevel %d %f %s\n',ilevel,plotdat.level(ilevel),plotdat.level_units);
-      
+
       plotdat.ges_Nqc4  = squeeze(guess(plotdat.timeindex,plotdat.NQC4index  ,ilevel,:));
       fprintf(logfid,'DART QC == 4, prior %d\n',sum(plotdat.ges_Nqc4(:)));
 
@@ -249,7 +259,8 @@ for ivar = 1:plotdat.nvars
       plotdat.ges_Nqc7  = squeeze(guess(plotdat.timeindex,plotdat.NQC7index  ,ilevel,:));
       fprintf(logfid,'DART QC == 7, prior %d\n',sum(plotdat.ges_Nqc7(:)));
 
-      plotdat.ges_Nposs = squeeze(guess(plotdat.timeindex,plotdat.Npossindex, ilevel,:));
+      plotdat.ges_Nposs = squeeze(guess(plotdat.timeindex,plotdat.Npossindex, ilevel,:)) ...
+                          - plotdat.ges_Nqc5 - plotdat.ges_Nqc6;
       fprintf(logfid,'# obs poss,   prior %d\n',sum(plotdat.ges_Nposs(:)));
 
       plotdat.ges_Nused = squeeze(guess(plotdat.timeindex,plotdat.Nusedindex, ilevel,:));
@@ -257,15 +268,10 @@ for ivar = 1:plotdat.nvars
 
       % plot by region
 
-      if (plotdat.nregions > 1)
-         clf; orient tall; wysiwyg
-      else 
-         clf; orient landscape; wysiwyg
-      end
-
       for iregion = 1:plotdat.nregions
+         figure(iregion); clf; orient(figuredata.orientation); wysiwyg
 
-         plotdat.region   = iregion;  
+         plotdat.region   = iregion;
          plotdat.myregion = deblank(plotdat.region_names(iregion,:));
          if ( isempty(plotdat.level_units) )
             plotdat.title    = plotdat.myvarname;
@@ -275,19 +281,18 @@ for ivar = 1:plotdat.nvars
                plotdat.level(ilevel), ...
                plotdat.level_units);
          end
-                          
+
          plotdat.rank_hist = squeeze(rhist(plotdat.timeindex, :, ilevel,iregion));
-         
-         myplot(plotdat);
+
+         myplot(plotdat,figuredata);
+
+         % create a postscript file
+         print(gcf,'-dpsc','-append',psfname{iregion});
+
+         % block to go slow and look at each one ...
+         % disp('Pausing, hit any key to continue ...')
+         % pause
       end
-
-      % create a postscript file
-      print(gcf,'-dpsc','-append',psfname);
-
-      % block to go slow and look at each one ...
-        disp('Pausing, hit any key to continue ...')
-        pause
-
    end
 end
 
@@ -295,57 +300,50 @@ end
 % 'Helper' functions
 %----------------------------------------------------------------------
 
-function myplot(plotdat)
+function myplot(plotdat,figdata)
 
-   % 6	 Rejected because of incoming data qc.
-   % 5	 Not used because of namelist control.
-
-   nobs_poss = plotdat.ges_Nposs(plotdat.region) - ...
-               plotdat.ges_Nqc5( plotdat.region) - ...
-               plotdat.ges_Nqc6( plotdat.region);
+   nobs_poss = plotdat.ges_Nposs(plotdat.region);
 
    % nobs_used = plotdat.ges_Nused(plotdat.region);
    nobs_used = sum(plotdat.rank_hist(:));
    obsstring = sprintf('%d obs possible, %d obs binned',nobs_poss, nobs_used);
 
    % Determine some quantities for the legend
-   % Plot 
-   
-   subplot(plotdat.nregions,1,plotdat.region);
+   % Plot
+
+   ax1 = subplot('position',figdata.position);
    bar(plotdat.rank_hist, 1.0);
-   set(gca,'TickDir','out')
+   set(ax1,'TickDir','out','FontSize',figdata.fontsize,'YGrid','on')
 
    axlims = axis;
    axlims = [0 plotdat.Nrhbins+1 0 axlims(4)];
    axis(axlims)
 
    h = text(plotdat.Nrhbins/2, 0.9*axlims(4),obsstring);
-   set(h,'FontSize',12,'FontWeight','Bold')
+   set(h,'FontSize',figdata.fontsize,'FontWeight','Bold')
    set(h,'HorizontalAlignment','center')
 
-   xlabel('Observation Rank (among ensemble members)')
-
    if ( strcmp(plotdat.outlierstring,  'TRUE'))
-      ylabel('count - including outlier observations')
+      ylabelstring = 'count - including outlier observations';
    else
-      ylabel('count')
+      ylabelstring = 'count';
    end
 
-   % more annotation ...
+   set(get(gca,'Ylabel'),'String', ylabelstring, ...
+      'Interpreter','none','FontSize',figdata.fontsize)
+   set(get(gca,'Xlabel'),'String', {'Observation Rank (among ensemble members)', plotdat.timespan}, ...
+      'Interpreter','none','FontSize',figdata.fontsize)
 
-   if (plotdat.region == 1)
-      title({plotdat.title, plotdat.myregion}, ...
-         'Interpreter', 'none', 'Fontsize', 14, 'FontWeight', 'bold')
-      BottomAnnotation(plotdat.timespan, plotdat.fname)
-   else
-      title(plotdat.myregion, 'Interpreter', 'none', ...
-         'Fontsize', 14, 'FontWeight', 'bold')
-   end
-   
- 
+   title({plotdat.myregion, plotdat.title}, ...
+         'Interpreter', 'none', 'Fontsize', figdata.fontsize, 'FontWeight', 'bold')
+
+   BottomAnnotation(plotdat.fname)
 
 
-function BottomAnnotation(timespan, main)
+%=====================================================================
+
+
+function BottomAnnotation(main)
 % annotates the directory containing the data being plotted
 subplot('position',[0.10 0.01 0.8 0.04])
 axis off
@@ -362,18 +360,14 @@ else
    string1 = sprintf('data file: %s',fullname);
 end
 
-h = text(0.5, 0.67, timespan);
+h = text(0.5, 0.5, string1);
 set(h,'HorizontalAlignment','center', ...
       'VerticalAlignment','middle',...
       'Interpreter','none',...
       'FontSize',8)
 
-h = text(0.5, 0.33, string1);
-set(h,'HorizontalAlignment','center', ...
-      'VerticalAlignment','middle',...
-      'Interpreter','none',...
-      'FontSize',8)
 
+%=====================================================================
 
 
 function [y,ydims] = FindTemporalVars(x)
@@ -386,7 +380,7 @@ j = 0;
 
 for i = 1:length(x.allvarnames)
    indx = strfind(x.allvardims{i},'time');
-   if (indx > 0) 
+   if (indx > 0)
       j = j + 1;
 
       basenames{j} = ReturnBase(x.allvarnames{i});
@@ -403,6 +397,8 @@ for k = 1:length(i)
 ydims{k} = basedims{i(k)};
 end
 
+
+%=====================================================================
 
 
 function s = ReturnBase(string1)
@@ -427,18 +423,43 @@ if (inds > 0 )
 end
 
 
+%=====================================================================
+
 
 function s = BuildFullVarname(varname)
 % netCDF restricts the length of a variable name to
-% be 40 characters. 
+% be 40 characters.
 
 rankvar = sprintf('%s_guess_RankHist',varname);
-if (length(rankvar) > 40 ) 
+if (length(rankvar) > 40 )
    s = rankvar(1:40);
 else
    s = rankvar;
 end
 
+
+%=====================================================================
+
+
+function figdata = setfigure()
+%%
+%  figure out a page layout
+%  extra space at the bottom for the date/file annotation
+%  extra space at the top because the titles have multiple lines
+
+orientation = 'portrait';
+fontsize    = 16;
+position    = [0.15 0.25 0.7 0.6];
+linewidth   = 2.0;
+
+figdata = struct('expcolors',  {{'k','r','g','m','b','c','y'}}, ...
+   'expsymbols', {{'o','s','d','p','h','s','*'}}, ...
+   'prpolines',  {{'-',':'}}, 'position', position, ...
+   'fontsize',fontsize, 'orientation',orientation, ...
+   'linewidth',linewidth);
+
+
+%=====================================================================
 
 
 function value = local_nc_varget(fname,varname)
@@ -448,13 +469,15 @@ function value = local_nc_varget(fname,varname)
 
 [variable_present, varid] = nc_var_exists(fname,varname);
 if (variable_present)
-   ncid  = netcdf.open(fname);
+   ncid  = netcdf.open(fname,'NOWRITE');
    value = netcdf.getVar(ncid, varid);
    netcdf.close(ncid)
 else
    value = [];
 end
 
+
+%=====================================================================
 
 
 function value = local_nc_attget(fname,varid,varname)

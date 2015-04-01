@@ -5,6 +5,9 @@ function obsstruct = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, .
 %     plotted on a separate figure ... color-coded to its QC value, not the
 %     observation value.
 %
+%     If you only want to plot the locations, it is easiest to simply use
+%     read_obs_netcdf (not plot_obs_netcdf)
+%
 %--------------------------------------------------
 % EXAMPLE 1: plotting just one type of observation
 %--------------------------------------------------
@@ -20,7 +23,7 @@ function obsstruct = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, .
 % bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxgoodQC, verbose, twoup);
 %
 %--------------------------------------------------
-% EXAMPLE 2: plotting all the observation types 
+% EXAMPLE 2: plotting all the observation types
 %--------------------------------------------------
 % fname         = 'obs_epoch_001.nc';
 % ObsTypeString = 'ALL';
@@ -32,6 +35,21 @@ function obsstruct = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, .
 % twoup         = 1;   % anything > 0 == 'true'
 %
 % bob = plot_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, maxgoodQC, verbose, twoup);
+%
+%--------------------------------------------------
+% EXAMPLE 3: just plotting the locations without regard to value.
+% NOTE: this uses READ_obs_netcdf
+%--------------------------------------------------
+% fname         = 'obs_epoch_001.nc';
+% ObsTypeString = 'ALL';
+% region        = [0 360 -90 90 -Inf Inf];
+% CopyString    = 'observation';
+% QCString      = 'DART quality control ';
+% verbose       = 1;   % anything > 0 == 'true'
+%
+% bob = read_obs_netcdf(fname, ObsTypeString, region, CopyString, QCString, verbose);
+% plot(bob.lons,bob.lats,'*')
+% continents('light');
 
 %% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -43,7 +61,7 @@ if (exist(fname,'file') ~= 2)
    error('%s does not exist.',fname)
 end
 
-if ( twoup > 0 ) 
+if ( twoup > 0 )
    clf; orient tall
    positions = [0.1, 0.55, 0.8, 0.35 ; ...
                 0.1, 0.10, 0.8, 0.35 ; ...
@@ -77,10 +95,54 @@ if ( (~ isempty(obsstruct.qc)) && (~ isempty(maxQC)) )
        flaggedobs.qc   = obsstruct.qc(  inds);
    end
 
-   fprintf('Removing %d obs with a %s value greater than %f\n', ...
+   fprintf('%d obs have a %s value greater than %f\n', ...
                 length(inds), QCString, maxQC)
 
    inds = find(obsstruct.qc <= maxQC);
+
+   bob = obsstruct.lons(inds); obsstruct.lons = bob;
+   bob = obsstruct.lats(inds); obsstruct.lats = bob;
+   bob = obsstruct.Ztyp(inds); obsstruct.Ztyp = bob;
+   bob = obsstruct.z(   inds); obsstruct.z    = bob;
+   bob = obsstruct.obs( inds); obsstruct.obs  = bob;
+   bob = obsstruct.qc(  inds); obsstruct.qc   = bob;
+
+end
+
+%% Separate out all the NaN values
+%  If there are NaN's that make it through to the plotting phase,
+%  the entire plot gets wiped out when the continents get plotted.
+%  The locations with NaN values will be plotted with separate symbols.
+
+ntotal = length(obsstruct.obs);
+ngood  = sum(isfinite(obsstruct.obs));
+
+if ntotal == ngood
+
+   nanobs.numflagged = 0;
+
+else
+
+   % Creating a structure with the unplottable values.
+
+   inds = find(isfinite(obsstruct.obs) == 0);
+
+   nanobs.numflagged = length(inds);
+   nanobs.string = sprintf('%d obs have unplottable values.\n', nanobs.numflagged);
+
+   if (~isempty(inds))
+       nanobs.lons = obsstruct.lons(inds);
+       nanobs.lats = obsstruct.lats(inds);
+       nanobs.Ztyp = obsstruct.Ztyp(inds);
+       nanobs.z    = obsstruct.z(   inds);
+       nanobs.obs  = 1;
+       nanobs.qc   = obsstruct.qc(  inds);
+   end
+
+   % Removing the unplottable values from the plottable ones.
+   fprintf('%d obs have unplottable values.\n', nanobs.numflagged)
+
+   inds = isfinite(obsstruct.obs);
 
    bob = obsstruct.lons(inds); obsstruct.lons = bob;
    bob = obsstruct.lats(inds); obsstruct.lats = bob;
@@ -103,42 +165,55 @@ zmax = max(obsstruct.z);
 
 pstruct.colorbarstring = obsstruct.ObsTypeString;
 pstruct.region = region;
+pstruct.str1   = sprintf('%s',obsstruct.ObsTypeString);
 pstruct.str3   = sprintf('%s - %s',obsstruct.timestring(1,:),obsstruct.timestring(2,:));
 
-if ( length(obsstruct.obs) < 1 ) 
-   fprintf('There are no ''good'' observations to plot\n')
-   return
-else
+subplot('position',positions(1,:))
 
-   subplot('position',positions(1,:))
+if ( length(obsstruct.obs) < 1 )
+   fprintf('There are no ''good'' observations to plot\n')
+   % may still want to plot the obs with bad qc values.
+   str1 = sprintf('There are no ''good'' observations to plot\n');
+   text(0.5,0.67,str1,'HorizontalAlignment','center')
+   text(0.5,0.33,nanobs.string,'HorizontalAlignment','center')
+   title( {pstruct.str1, obsstruct.CopyString, pstruct.str3}, 'Interpreter','none','FontSize',14);
+else
 
    % choose a symbol size based on the number of obs to plot.
 
-   if (length(obsstruct.obs) > 1000) 
-      pstruct.scalearray = scaleme(obsstruct.obs, 36);
+   if (length(obsstruct.obs) < 1000)
+      pstruct.scalearray = scaleme(obsstruct.obs, 30);
    else
-      pstruct.scalearray = 128.0 * ones(size(obsstruct.obs));
+      pstruct.scalearray = 30.0 * ones(size(obsstruct.obs));
    end
    pstruct.clim   = [min(obsstruct.obs) max(obsstruct.obs)];
    pstruct.str2   = sprintf('%s (%d locations)',obsstruct.CopyString,length(obsstruct.obs));
 
    % If all the observations live on the same level ... make a 2D plot.
 
-   if ( zmin ~= zmax )
+   if ( zmin == zmax )
+
+      pstruct.axis = [xmin xmax ymin ymax];
+
+      plot_2D(obsstruct, pstruct);
+
+   else
 
       pstruct.axis = [xmin xmax ymin ymax zmin zmax];
       pstruct.str1 = sprintf('%s level (%.2f - %.2f)',obsstruct.ObsTypeString,zmin,zmax);
 
       plot_3D(obsstruct, pstruct);
 
-   else
-
-      pstruct.axis = [xmin xmax ymin ymax ];
-      pstruct.str1 = sprintf('%s',obsstruct.ObsTypeString);
-
-      plot_2D(obsstruct, pstruct);
-
    end
+
+   % If there are unplottable values ... report that.
+
+   if nanobs.numflagged > 0
+      subplot('position',positions(3,:))
+      axis off
+      text(0.5,0.5,nanobs.string,'HorizontalAlignment','center')
+   end
+
 end
 
 %% Create graphic of spatial distribution of 'flagged' observations & their QC value.
@@ -169,21 +244,21 @@ if (obsstruct.numflagged > 0 ) % if there are flagged observation to plot ... ca
    if (twoup <= 0)
       figure(gcf+1); clf
    end
-   
+
    subplot('position',positions(2,:))
-   
+
    zmin = min(flaggedobs.z);
    zmax = max(flaggedobs.z);
 
    prej = 100.0 * length(flaggedobs.obs) / ...
          (length(flaggedobs.obs) + length(obsstruct.obs));
-   pstruct.scalearray = 128 * ones(size(flaggedobs.obs));
+   pstruct.scalearray = 30 * ones(size(flaggedobs.obs));
    pstruct.colorbarstring = QCString;
    pstruct.clim = [min(flaggedobs.qc) max(flaggedobs.qc)];
    pstruct.str1 = sprintf('%s level (%.2f - %.2f)',obsstruct.ObsTypeString,zmin,zmax);
    pstruct.str2 = sprintf('%s (%d ''good'', %d ''flagged'' -- %.2f %%)', obsstruct.CopyString, ...
                       length(obsstruct.obs), length(flaggedobs.obs), prej);
- 
+
    flaggedobs.obs = flaggedobs.qc;  % plot QC values, not obs values
    if ( zmin ~= zmax )
 
@@ -198,7 +273,7 @@ if (obsstruct.numflagged > 0 ) % if there are flagged observation to plot ... ca
       plot_2D(flaggedobs, pstruct);
 
    end
-   
+
    subplot('position',positions(3,:))
    axis off
 
@@ -207,7 +282,7 @@ if (obsstruct.numflagged > 0 ) % if there are flagged observation to plot ... ca
    switch lower(strtrim(QCString))
       case 'dart quality control',
 
-         qcvals  = unique(flaggedobs.qc); 
+         qcvals  = unique(flaggedobs.qc);
          qccount = zeros(size(qcvals));
          s = cell(length(qcvals));
          for i = 1:length(qcvals)
@@ -215,7 +290,7 @@ if (obsstruct.numflagged > 0 ) % if there are flagged observation to plot ... ca
             s{i} = sprintf('%d obs with qc == %d %s',qccount(i),qcvals(i), ...
                    dartqc_strings{qcvals(i)});
          end
-   
+
          dy =  0.8*1.0/length(s);
          for i = 1:length(s)
             text(0.0, (i-1)*dy ,s{i})
@@ -280,7 +355,7 @@ y    = lats(lat_ind1:lat_ind2);
 orgholdstate = ishold;
 hold on;
 
-if ( length(ax) > 4) 
+if ( length(ax) > 4)
    switch  get(gca,'ZDir')
       case 'reverse'
          zlevel = max(ax(5:6));
@@ -292,7 +367,7 @@ end
 fcolor = [0.7 0.7 0.7];    % light grey
 
 myclim = get(gca,'CLim');
-[c,h] = contourf(x,y,elev,[0.0 0.0],'k-');
+[~,h] = contourf(x,y,elev,[0.0 0.0],'k-');
 set(gca,'CLim',myclim)
 
 h_patch   = get(h, 'Children');
@@ -315,7 +390,7 @@ if (orgholdstate == 0), hold off; end;
 
 function s = scaleme(x,minsize)
 % scaleme returns a uniformly scaled array the same size as the input
-% array where the maximum is 10 times the minimum 
+% array where the maximum is 10 times the minimum
 maxsize = 10*minsize;
 minx    = min(x);
 maxx    = max(x);
@@ -330,7 +405,7 @@ function h1 = plot_3D(obsstruct, pstruct)
 
 if (pstruct.clim(1) == pstruct.clim(2))
    % If all the observations have the same value, setting the
-   % colorbar limits is a real pain. Fundamentally, I am 
+   % colorbar limits is a real pain. Fundamentally, I am
    % forcing the plot symbols to be the lowest color of the
    % colormap and setting the colorbar to have some more
    % colors 'on top' - that are never used.
@@ -378,7 +453,7 @@ function h1 = plot_2D(obsstruct, pstruct)
 
 if (pstruct.clim(1) == pstruct.clim(2))
    % If all the observations have the same value, setting the
-   % colorbar limits is a real pain. Fundamentally, I am 
+   % colorbar limits is a real pain. Fundamentally, I am
    % forcing the plot symbols to be the lowest color of the
    % colormap and setting the colorbar to have some more
    % colors 'on top' - that are never used.
@@ -389,11 +464,9 @@ if (pstruct.clim(1) == pstruct.clim(2))
    set(gca,'XGrid','on','YGrid','on')
 
 else
-
-   scatter3(obsstruct.lons, obsstruct.lats, zeros(size(obsstruct.obs)), ...
+   scatter3(obsstruct.lons, obsstruct.lats, 0.0, ...
          pstruct.scalearray, obsstruct.obs, 'd', 'filled');
 end
-
 h1   = gca;
 clim = get(h1,'CLim');
 
