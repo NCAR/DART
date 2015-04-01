@@ -30,7 +30,7 @@ elseif(obs_error_var == 0)
    post_mean = observation;
    post_var = 0;
 else
-% Use product of gaussians 
+% Use product of gaussians
    % Compute the posterior variance
    post_var = 1 / (1 / prior_var + 1 / obs_error_var);
 
@@ -38,7 +38,7 @@ else
    post_mean = post_var * (prior_mean / prior_var + observation / obs_error_var);
 end
 
-% Generate the perturbed observations by adding 
+% Generate the perturbed observations by adding
 % draw from Normal(0, obs_error_sd)
 temp_obs = observation + sqrt(obs_error_var) * randn(size(ensemble));
 

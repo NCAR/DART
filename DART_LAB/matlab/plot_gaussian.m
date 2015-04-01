@@ -1,4 +1,4 @@
-function[plot_handle] = plot_gaussian(mean, sd, weight)
+function[plot_handle] = plot_gaussian(mymean, sd, weight)
 %% plot_gaussian Plot gaussian over 5 standard deviations
 
 %% DART software - Copyright 2004 - 2013 UCAR. This open source software is
@@ -7,15 +7,15 @@ function[plot_handle] = plot_gaussian(mean, sd, weight)
 %
 % DART $Id$
 
-x_min = mean - 5*sd;
-x_max = mean + 5*sd;
+x_min = mymean - 5*sd;
+x_max = mymean + 5*sd;
 x_range = x_max - x_min;
 
 % Number of points is 1001
 num_points = 1001;
 interval = x_range / num_points;
 x = x_min:interval:x_max;
-y = weight * normpdf(x, mean, sd);
+y = weight * norm_pdf(x, mymean, sd);
 
 plot_handle = plot(x, y);
 

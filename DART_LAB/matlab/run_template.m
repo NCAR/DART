@@ -48,13 +48,17 @@ end
 % End initialization code - DO NOT EDIT
 
 
-% --- Executes just before run_template is made visible.
-function run_template_OpeningFcn(hObject, eventdata, handles, varargin)
+
+%% --- Executes just before run_template is made visible.
+function run_template_OpeningFcn(hObject, ~, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 % varargin   command line arguments to run_template (see VARARGIN)
+
+% set random number seed to same value to generate known sequences
+rng('default')
 
 % Choose default command line output for run_template
 handles.output = hObject;
@@ -69,8 +73,9 @@ guidata(hObject, handles);
 % uiwait(handles.figure1);
 
 
-% --- Outputs from this function are returned to the command line.
-function varargout = run_template_OutputFcn(hObject, eventdata, handles) 
+
+%% --- Outputs from this function are returned to the command line.
+function varargout = run_template_OutputFcn(~, ~, handles)
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -78,8 +83,6 @@ function varargout = run_template_OutputFcn(hObject, eventdata, handles)
 
 % Get default command line output from handles structure
 varargout{1} = handles.output;
-
-
 
 %%% SETTINGS REQUIRED FOR PUSHBUTTONS IN USE WITH THIS SCRIPT
 % The single_step pushbutton requires:
@@ -95,8 +98,9 @@ varargout{1} = handles.output;
 % Units:         normalized  (required for resizing)
 
 
-% --- Executes on button press in pushbutton_single_step.
-function pushbutton_single_step_Callback(hObject, eventdata, handles)
+
+%% --- Executes on button press in pushbutton_single_step.
+function pushbutton_single_step_Callback(hObject, ~, handles)
 % hObject    handle to pushbutton_single_step (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -106,8 +110,8 @@ step_ahead(hObject, handles);
 
 
 
-% --- Executes on button press in pushbutton_free_run.
-function pushbutton_free_run_Callback(hObject, eventdata, handles)
+%% --- Executes on button press in pushbutton_free_run.
+function pushbutton_free_run_Callback(hObject, ~, handles)
 % hObject    handle to pushbutton_free_run (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -125,7 +129,7 @@ if(strcmp(get(hObject, 'String'), 'Stop Free Run'))
 
    % Being told to stop; switch to not running status
    set(hObject, 'String', 'Start Free Run');
- 
+
    % Update the handles global structure
    guidata(hObject, handles);
 
@@ -149,8 +153,8 @@ else
          set(handles.pushbutton_single_step, 'Enable', 'On');
 
          % Very last, turn on the start free run button
-         set(hObject, 'Enable', 'On'); 
- 
+         set(hObject, 'Enable', 'On');
+
          return
       end
       % Do the next advance or assimilation step
@@ -164,7 +168,7 @@ end
 
 
 
-%----------- Moves the model ahead or assimilates next observations ------
+%%----------- Moves the model ahead or assimilates next observations ------
 function step_ahead(hObject, handles)
 
 % Test on semaphore, either advance or assimilate
@@ -193,7 +197,7 @@ else
 end
 
 % If using multiple windows might need to reset focus to the gui window here
-[gcbo_h, gcbo_fig] = gcbo;
+[~, gcbo_fig] = gcbo;
 figure(gcbo_fig);
 
 % Update the global storage and return
