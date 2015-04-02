@@ -154,7 +154,7 @@ end type radial_vel_type
 integer :: velkeycount = 0 
 
 ! For error message content
-character(len=129) :: msgstring
+character(len=256) :: msgstring
 
 ! Values which are initialized at run time so some can be changed by
 ! namelist.  After initialization, treated as parameters (values not changed).
@@ -623,6 +623,8 @@ integer, intent(in) :: ifile
 logical, intent(in) :: is_asciiformat
 real(r8)            :: read_nyquist_velocity
 
+logical, save :: first_time = .true.
+
 if ( .not. module_initialized ) call initialize_module
 
 if (is_asciiformat) then
@@ -631,12 +633,27 @@ else
    read(ifile)    read_nyquist_velocity
 endif
 
-! Check for illegal values; must be non-negative.
-if (read_nyquist_velocity < 0.0_r8) then
-   write(msgstring,*) "bad value for nyquist velocity: ", read_nyquist_velocity
-   call error_handler(E_ERR, 'read_nyquist_velocity', msgstring, &
-                      source, revision, revdate)
+! idealized obs leave the nyquist velocity as missing_r8.
+! warn the user (once) but allow it.  they will not be unfolded
+! at assimilation time, which is usually the desired behavior
+! for an idealized ob.
+
+if (read_nyquist_velocity == missing_r8 .and. first_time) then
+   write(msgstring, *) "no doppler velocity unfolding can be done on these observations"
+   call error_handler(E_MSG, 'read_nyquist_velocity:', &
+                      "radar observation(s) with missing nyquist velocities encountered on read", &
+                      source, revision, revdate, text2=msgstring)
+ 
+   first_time = .false.
 endif
+
+! Check for illegal values; must be non-negative (missing is ok).
+if (read_nyquist_velocity < 0.0_r8 .and. read_nyquist_velocity /= missing_r8) then
+   write(msgstring,*) "bad value for nyquist velocity: ", read_nyquist_velocity
+   call error_handler(E_ERR, 'read_nyquist_velocity:', msgstring, &
+                      source, revision, revdate, text2="nyquist velocity must be non-negative")
+endif
+
 end function read_nyquist_velocity
 
 !----------------------------------------------------------------------
