@@ -8,17 +8,14 @@ program restart_file_tool
 
 ! Program to overwrite the time on each ensemble in a restart file.
 
-use types_mod,           only : r8
-use time_manager_mod,    only : time_type, operator(<), operator(==),      &
-                                set_time_missing, set_time,                &
-                                operator(/=), print_time, print_date,      &
-                                set_calendar_type, GREGORIAN, NO_CALENDAR, &
-                                get_calendar_type
+use time_manager_mod,    only : time_type, operator(<), operator(==), &
+                                set_time_missing, set_time,           &
+                                operator(/=), print_time, print_date, &
+                                set_calendar_type, GREGORIAN
 
-use utilities_mod,       only : register_module, do_output,                &
-                                error_handler, nmlfileunit, E_MSG, E_ERR,  &
-                                find_namelist_in_file,                     &
-                                check_namelist_read, logfileunit,          &
+use utilities_mod,       only : register_module, error_handler, nmlfileunit, &
+                                E_MSG, E_ERR, find_namelist_in_file,         &
+                                check_namelist_read, logfileunit,            &
                                 do_nml_file, do_nml_term
                                 
 use assim_model_mod,     only : static_init_assim_model, get_model_size,   &
@@ -26,10 +23,10 @@ use assim_model_mod,     only : static_init_assim_model, get_model_size,   &
                                 awrite_state_restart, aread_state_restart, &
                                 close_restart
 
-use ensemble_manager_mod, only : init_ensemble_manager, ensemble_type,     &
-                                 put_copy, prepare_to_write_to_vars, prepare_to_read_from_vars
+use ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, &
+                                 prepare_to_write_to_vars
 
-use mpi_utilities_mod,    only : initialize_mpi_utilities, task_count,     &
+use mpi_utilities_mod,    only : initialize_mpi_utilities, task_count, &
                                  finalize_mpi_utilities
 
 

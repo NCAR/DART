@@ -12,11 +12,10 @@ use types_mod,         only : r8
 use time_manager_mod,  only : time_type, set_time_missing,               &
                               operator(/=), print_time
  
-use utilities_mod,     only : register_module, do_output,                &
-                              error_handler, nmlfileunit, E_MSG, E_ERR,  &
-                              find_namelist_in_file,          &
-                              check_namelist_read, logfileunit,          &
-                              do_nml_file, do_nml_term, open_file, close_file
+use utilities_mod,     only : register_module, find_namelist_in_file,        &
+                              error_handler, nmlfileunit, E_MSG, E_ERR,      &
+                              check_namelist_read, do_nml_file, do_nml_term, &
+                              open_file, close_file
 
 use  location_mod,     only : location_type
 
@@ -26,8 +25,7 @@ use  obs_kind_mod,     only : get_num_raw_obs_kinds, get_raw_obs_kind_index, &
 use  sort_mod,         only : slow_index_sort
 
 use assim_model_mod,   only : static_init_assim_model, get_model_size,   &
-                              open_restart_read, open_restart_write,     &
-                              awrite_state_restart, aread_state_restart, &
+                              open_restart_read, aread_state_restart,    &
                               close_restart, get_state_meta_data
 
 use mpi_utilities_mod, only : initialize_mpi_utilities, task_count,     &
@@ -204,7 +202,7 @@ if (.not. allkinds) then
 
    j = 0
    do i=1, model_size
-      call get_state_meta_data(-1 * i, loc, stype)
+      call get_state_meta_data(i, loc, stype)
       if (stype < 1 .or. stype > num_kinds) then
          write(msgstring, *) 'bad KIND from get_state_meta_data, ', stype, ' for index ', i 
          write(msgstring1, *) 'must be between 1 and ', num_kinds
@@ -344,11 +342,7 @@ function compute_diff(target, candidate, arraysize)
 
  real(r8) :: compute_diff
 
-integer  :: i
-real(r8) :: val, r, diff, biggest, val2
 real(r8), allocatable :: adiff(:)
-integer  :: hist(5)
-character(len=72) :: tbuf
 
 ! new strategy:  compute an array of differences and sum them at the end.
 ! try to use array operations when possible.  useindex() is a logical array
