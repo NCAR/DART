@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-# ==============================================================================
+#*******************************************************************************
 #
 # ---------------------
 # Purpose
@@ -83,9 +83,7 @@
 # ./${case}.clean_build
 # ./${case}.build
 #
-# ==============================================================================
-
-
+#*******************************************************************************
 
 # ==============================================================================
 # case options:
@@ -99,7 +97,7 @@
 # cesmtag       The version of the CESM source code to use when building the code.
 # ==============================================================================
 
-setenv case                 pop_pmo
+setenv case                 pop1_1_1_pmo
 setenv compset              GIAF
 setenv resolution           T62_gx1v6
 setenv cesmtag              cesm1_1_1
@@ -177,7 +175,6 @@ setenv reftimestamp $refyear-$refmon-$refday-$reftod
 
 setenv stagedir /glade/p/image/CESM_initial_ensemble/rest/${reftimestamp}
 
-
 # ==============================================================================
 # runtime settings:
 #
@@ -230,7 +227,7 @@ setenv stop_n              1
 #      a perfect_model_obs step took less than 2 minutes on yellowstone.
 # ==============================================================================
 
-setenv ACCOUNT      P8685xxxx
+setenv ACCOUNT      NIMGxxxx
 setenv queue        economy
 setenv timewall     0:10
 
@@ -359,6 +356,16 @@ cd ${caseroot}
 
 source ./Tools/ccsm_getenv || exit -2
 
+# Make sure the land and atmosphere are 'data' components.
+
+if ( (${COMP_ATM} != datm) || (${COMP_LND} != slnd) ) then
+   echo " "
+   echo "ERROR: This setup script is not appropriate for active land or atmosphere compsets."
+   echo "ERROR: Please use the models/CESM/shell_scripts examples for these cases."
+   echo " "
+   exit -3
+endif
+
 # MAX_TASKS_PER_NODE comes from $case/Tools/mkbatch.$machine
 @ ptile = $MAX_TASKS_PER_NODE / 2
 @ nthreads = 1
@@ -433,12 +440,13 @@ echo ""
 ./xmlchange BRNCH_RETAIN_CASENAME=FALSE
 ./xmlchange GET_REFCASE=FALSE
 ./xmlchange EXEROOT=${exeroot}
+./xmlchange RUNDIR=${rundir}
 
 ./xmlchange DATM_MODE=CPLHIST3HrWx
 ./xmlchange DATM_CPLHIST_CASE=$case
-./xmlchange DATM_CPLHIST_YR_ALIGN=$refyear
-./xmlchange DATM_CPLHIST_YR_START=$refyear
-./xmlchange DATM_CPLHIST_YR_END=$refyear
+./xmlchange DATM_CPLHIST_YR_ALIGN=$stream_year_align
+./xmlchange DATM_CPLHIST_YR_START=$stream_year_first
+./xmlchange DATM_CPLHIST_YR_END=$stream_year_last
 
 # The streams files were generated with a NO_LEAP calendar in mind.
 # We need to test these with a GREGORIAN calendar.
@@ -451,6 +459,11 @@ echo ""
 
 ./xmlchange PIO_TYPENAME=pnetcdf
 
+set TEST_MPI = `./xmlquery -valonly MPI_RUN_COMMAND | sed -e 's/MPI_RUN_COMMAND = //'`
+if (${TEST_MPI} == 'UNSET') then
+   ./xmlchange MPI_RUN_COMMAND=mpirun.lsf
+endif
+
 # COUPLING discussion.
 # http://bugs.cgd.ucar.edu/show_bug.cgi?id=1740
 # "In summary, users should ensure that the following is true,
@@ -459,24 +472,28 @@ echo ""
 # OCN_NCPL defaults to 1 (per day)
 #
 # OCN_NCPL == 4 sets the ocean coupling time to 6 hours.
-# All related CESM namelist settings are based on this value.
 # OCN_NCPL is # coupling intervals per NCPL_BASE_PERIOD (default 'day')
 
 ./xmlchange OCN_NCPL=1
+
+# These are archiving options that may be used.
+# You can turn the short/long term archivers on or off,
+# but these settings should be made in either event.
+
+./xmlchange DOUT_S_ROOT=${archdir}
+./xmlchange DOUT_S_SAVE_INT_REST_FILES=FALSE
+./xmlchange DOUT_L_MSROOT="csm/${case}"
+./xmlchange DOUT_L_HTAR=FALSE
 
 if ($short_term_archiver == 'off') then
    ./xmlchange DOUT_S=FALSE
 else
    ./xmlchange DOUT_S=TRUE
-   ./xmlchange DOUT_S_ROOT=${archdir}
-   ./xmlchange DOUT_S_SAVE_INT_REST_FILES=FALSE
 endif
 if ($long_term_archiver == 'off') then
    ./xmlchange DOUT_L_MS=FALSE
 else
    ./xmlchange DOUT_L_MS=TRUE
-   ./xmlchange DOUT_L_MSROOT="csm/${case}"
-   ./xmlchange DOUT_L_HTAR=FALSE
 endif
 
 # level of debug output, 0=minimum, 1=normal, 2=more, 3=too much, valid values: 0,1,2,3 (integer)
@@ -488,6 +505,8 @@ endif
 # Set up the case.
 # This creates the EXEROOT and RUNDIR directories.
 # ==============================================================================
+
+echo 'Setting up the case ...'
 
 ./cesm_setup
 
@@ -515,15 +534,14 @@ switch ( $BATCH )
       # NCAR "bluefire", "yellowstone"
       set TIMEWALL=`grep BSUB ${case}.run | grep -e '-W' `
       set    QUEUE=`grep BSUB ${case}.run | grep -e '-q' `
-      sed -e "s/$TIMEWALL[3]/$timewall/" \
-          -e "s/ptile=[0-9][0-9]*/ptile=$ptile/" \
-          -e "s/$QUEUE[3]/$queue/" < ${case}.run >! temp.$$
+      sed -e "/BSUB/s#$TIMEWALL[3]#$timewall#" \
+          -e "/BSUB/s#ptile=[0-9][0-9]*#ptile=$ptile#" \
+          -e "/BSUB/s#$QUEUE[3]#$queue#" < ${case}.run >! temp.$$
           ${MOVE} temp.$$ ${case}.run
           chmod 755       ${case}.run
    breaksw
 
    default:
-
    breaksw
 endsw
 
@@ -541,10 +559,10 @@ else
    echo "ERROR - No SourceMods for this case."
    echo "ERROR - No SourceMods for this case."
    echo "DART requires modifications to several src files."
-   echo "These files can be downloaded from:"
-   echo "http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_1_1_24Oct2013.tar"
+   echo "Download the appropriate files for CESM 1_1_1 from:"
+   echo "http://www.image.ucar.edu/pub/DART/CESM"
    echo "untar these into your HOME directory - they will create a"
-   echo "~/cesm_1_1_1  directory with the appropriate SourceMods structure."
+   echo "~/cesm1_1_1  directory with the appropriate SourceMods structure."
    exit -4
 endif
 
@@ -656,7 +674,7 @@ echo "streams = 'drof.streams.txt.rof.diatren_iaf_rx1" 1 1948 2009"'" >> user_nl
 #
 # ==============================================================================
 
-./preview_namelists
+./preview_namelists || exit -3
 
 # This gives us a stream txt file for each instance that we can
 # modify for our own purpose.
@@ -713,7 +731,7 @@ foreach FNAME (user*streams*)
 
 end
 
-./preview_namelists
+./preview_namelists || exit -3
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists
@@ -737,25 +755,23 @@ cat << EndOfText >! stage_cesm_files
 
 set restart_time = $init_time
 
-
 # get the settings for this case from the CESM environment
 cd ${caseroot}
 source ./Tools/ccsm_getenv || exit -2
 cd ${RUNDIR}
 
 echo 'Copying the required CESM files to the run directory to rerun'
-echo 'a previous step.  CONTINUE_RUN from env_run.xml is' \$CONTINUE_RUN
-if ( \$CONTINUE_RUN == TRUE ) then
+echo 'a previous step.  CONTINUE_RUN from env_run.xml is' \${CONTINUE_RUN}
+if ( \${CONTINUE_RUN} == TRUE ) then
   echo 'so files for some later step than the initial one will be restaged.'
-  echo "Date to reset files to is: \$restart_time"
+  echo "Date to reset files to is: \${restart_time}"
 else
   echo 'so files for the initial step of this experiment will be restaged.'
-  echo "Date to reset files to is: $init_time"
+  echo "Date to reset files to is: ${init_time}"
 endif
 echo ''
 
-
-if ( \$CONTINUE_RUN == TRUE ) then
+if ( \${CONTINUE_RUN} == TRUE ) then
 
    #----------------------------------------------------------------------
    # This block copies over a set of restart files from any previous step of
@@ -763,31 +779,34 @@ if ( \$CONTINUE_RUN == TRUE ) then
    # After running this script resubmit the job to rerun.
    #----------------------------------------------------------------------
 
-   echo "Staging restart files for run date/time: " \$restart_time
+   echo "Staging restart files for run date/time: " \${restart_time}
 
    #  The short term archiver is on, so the files we want should be in one
    #  of the short term archive 'rest' restart directories.  This assumes
    #  the long term archiver has NOT copied these files to the HPSS yet.
 
-   if (  \$DOUT_S   == TRUE ) then
+   if (  \${DOUT_S} == TRUE ) then
 
       # The restarts should be in the short term archive directory.  See
       # www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x1631.html#running_ccsm_restart_back
       # for more help and information.
 
-      if ( ! -d \$DOUT_S_ROOT/rest/\${restart_time} ) then
+      set RESTARTDIR = \${DOUT_S_ROOT}/rest/\${restart_time}
+
+      if ( ! -d \${RESTARTDIR} ) then
 
          echo "restart file directory not found: "
-         echo " \$DOUT_S_ROOT/rest/\${restart_time} "
+         echo " \${RESTARTDIR}"
          echo "If the long-term archiver is on, you may have to restore this directory first."
          echo "You can also check for either a .sta or a .sta2 hidden subdirectory in"
-         echo \$DOUT_S_ROOT
-         echo "which may contain the 'rest' directory you need."
+         echo "\${DOUT_S_ROOT}"
+         echo "which may contain the 'rest' directory you need,"
+         echo "and then modify RESTARTDIR in this script."
          exit -1
 
       endif
 
-      ${COPY} \$DOUT_S_ROOT/rest/\${restart_time}/* . || exit -1
+      ${COPY} \${RESTARTDIR}/* . || exit -1
 
    else
 
