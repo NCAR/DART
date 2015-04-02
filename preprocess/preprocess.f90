@@ -18,12 +18,11 @@ program preprocess
 
 ! NEED TO ADD IN ALL THE ERROR STUFF
 
-use     types_mod, only : r8
 use utilities_mod, only : register_module, error_handler, E_ERR, E_MSG,   &
-                          file_exist, open_file, logfileunit, &
-                          initialize_utilities, do_nml_file, do_nml_term, &
-                          find_namelist_in_file, check_namelist_read,     &
-                          finalize_utilities
+                          file_exist, open_file, logfileunit,             &
+                          initialize_utilities, finalize_utilities,       &
+                          find_namelist_in_file, check_namelist_read
+
 
 implicit none
 
