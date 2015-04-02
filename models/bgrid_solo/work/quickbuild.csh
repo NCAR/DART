@@ -6,38 +6,7 @@
 #
 # DART $Id$
 #
-# Script to manage the compilation of all components for this model;
-# executes a known "perfect model" experiment using an existing
-# observation sequence file (obs_seq.in) and initial conditions appropriate 
-# for both 'perfect_model_obs' (perfect_ics) and 'filter' (filter_ics).
-# There are enough initial conditions for 80 ensemble members in filter.
-# Use ens_size = 81 and it WILL bomb. Guaranteed.
-# The 'input.nml' file controls all facets of this execution.
-#
-# 'create_obs_sequence' and 'create_fixed_network_sequence' were used to
-# create the observation sequence file 'obs_seq.in' - this defines 
-# what/where/when we want observations. This script does not run these 
-# programs - intentionally. 
-#
-# 'perfect_model_obs' results in a True_State.nc file that contains 
-# the true state, and obs_seq.out - a file that contains the "observations"
-# that will be assimilated by 'filter'.
-#
-# 'filter' results in three files (at least): Prior_Diag.nc - the state 
-# of all ensemble members prior to the assimilation (i.e. the forecast), 
-# Posterior_Diag.nc - the state of all ensemble members after the 
-# assimilation (i.e. the analysis), and obs_seq.final - the ensemble 
-# members' estimate of what the observations should have been.
-#
-# Once 'perfect_model_obs' has advanced the model and harvested the 
-# observations for the assimilation experiment, 'filter' may be run 
-# over and over by simply changing the namelist parameters in input.nml.
-#
-# The result of each assimilation can be explored in model-space with
-# matlab scripts that directly read the netCDF output, or in observation-space.
-# 'obs_diag' is a program that will create observation-space diagnostics
-# for any result of 'filter' and results in a couple data files that can
-# be explored with yet more matlab scripts.
+# Script to manage the compilation of all components for this model.
 
 #----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
@@ -141,10 +110,10 @@ make || exit $n
 
 echo
 echo 'time to run filter here:'
-echo ' for lsf run "bsub < runme_filter"'
-echo ' for pbs run "qsub runme_filter"'
-echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
-echo ' for mpich run "mpd" once, then "runme_filter"'
+echo ' for lsf run "bsub < ../shell_scripts/run_filter.csh"'
+echo ' for pbs run "qsub   ../shell_scripts/run_filter.csh"'
+echo ' for lam-mpi run "lamboot" once, then "run_filter.csh"'
+echo ' for mpich run "mpd" once, then "run_filter.csh"'
 
 exit 0
 

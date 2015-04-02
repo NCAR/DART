@@ -17,32 +17,32 @@
 #
 #=============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system
-# LSF is used on the IBM   Linux cluster 'lightning'
-# LSF is used on the IMAGe Linux cluster 'coral'
-# LSF is used on the IBM   'bluevista'
-# The queues on lightning and bluevista are supposed to be similar.
 #
 # the normal way to submit to the queue is:    bsub < run_filter.csh
 #
 # an explanation of the most common directives follows:
-# -J Job name (master script job.csh presumes filter_server.xxxx.log)
+# -J Job name
 # -o STDOUT filename
 # -e STDERR filename
 # -P      account
-# -q queue    cheapest == [standby, economy, (regular,debug), premium] == $$$$
+# -q queue    cheapest == [economy, regular, premium] == $$$$
 # -n number of processors  (really)
 # -W hh:mm  max execution time (required on some platforms)
+#
+# This script is an example to show how to all 16 processors 
+# (currently the number of processors one node).
 ##=============================================================================
 #BSUB -J filter
 #BSUB -o filter.%J.log
-#BSUB -q economy
-#BSUB -n 6
+#BSUB -N -u ${USER}@ucar.edu
+#BSUB -q regular
 #BSUB -W 0:30
+#BSUB -P NIMGxxxx
+#BSUB -n 16
+#BSUB -R "span[ptile=16]"
 #
 #=============================================================================
 # This block of directives constitutes the preamble for the PBS queuing system
-# PBS is used on the CGD   Linux cluster 'bangkok'
-# PBS is used on the CGD   Linux cluster 'calgary'
 # 
 # the normal way to submit to the queue is:    qsub run_filter.csh
 # 
@@ -52,10 +52,7 @@
 # -e <arg>  filename for standard error
 # -o <arg>  filename for standard out 
 # -q <arg>   Queue name (small, medium, long, verylong)
-# -l nodes=xx:ppn=2   requests BOTH processors on the node. On both bangkok 
-#                     and calgary, there is no way to 'share' the processors
-#                     on the node with another job, so you might as well use
-#                     them both.  (ppn == Processors Per Node)
+# -l nodes=xx:ppn=2   requests TWO processors on the node.
 ##=============================================================================
 #PBS -N filter
 #PBS -r n
