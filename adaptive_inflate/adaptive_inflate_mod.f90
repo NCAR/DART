@@ -11,7 +11,7 @@ module adaptive_inflate_mod
 !> @{
 
 use types_mod,            only : r8, PI, missing_r8
-use time_manager_mod,     only : time_type, get_time, set_time
+use time_manager_mod,     only : time_type, get_time
 use utilities_mod,        only : register_module, open_file, close_file, &
                                  error_handler, E_ERR, E_MSG
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq

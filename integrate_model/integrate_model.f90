@@ -9,17 +9,16 @@ program integrate_model
 ! Program to integrate assimilation model forward for asynchronous filter
 ! execution.
 
-use types_mod,           only : r8
 use time_manager_mod,    only : time_type, operator(<), print_time
-use utilities_mod,       only : initialize_utilities, register_module,              &
-                                error_handler, E_MSG, E_ERR, timestamp,             &
-                                nmlfileunit, do_output, do_nml_file, do_nml_term,  &
+use utilities_mod,       only : register_module,  &
+                                error_handler, E_MSG, nmlfileunit, &
+                                do_nml_file, do_nml_term,          &
                                 find_namelist_in_file, check_namelist_read
 use assim_model_mod,     only : static_init_assim_model, get_model_size,              &
                                 open_restart_read, open_restart_write, close_restart, &
                                 awrite_state_restart, aread_state_restart
 use obs_model_mod,        only : advance_state
-use ensemble_manager_mod, only : init_ensemble_manager, put_copy, ensemble_type, get_copy, &
+use ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, &
                                  prepare_to_write_to_vars
 use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilities, &
                                  task_count, iam_task0
