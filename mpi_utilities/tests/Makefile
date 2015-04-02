@@ -68,23 +68,23 @@ async4: ftest_stop ftest_go
 
 # simple f90 test program without mpi or netcdf
 ftest_f90: ftest_f90.f90
-	$(FC) $(FFLAGS) ftest_f90.f90 $(LDFLAGS) -o ftest_f90
+	$(FC) ftest_f90.f90 $(LDFLAGS) -o ftest_f90
 
 # f90 test program that calls MPI functions
 ftest_mpi: ftest_mpi.f90
-	$(MPIFC) $(FFLAGS) ftest_mpi.f90 $(LDFLAGS) -o ftest_mpi
+	$(MPIFC) ftest_mpi.f90 $(LDFLAGS) -o ftest_mpi
 
 # f90 test program that calls netCDF functions
 ftest_nc: ftest_nc.f90
-	$(FC) $(FFLAGS) ftest_nc.f90 $(LDFLAGS) -o ftest_nc
+	$(FC) ftest_nc.f90 $(LDFLAGS) -o ftest_nc
 
 
 # test of named pipe (fifo) communication with mpi
 ftest_stop: ftest_stop.f90
-	$(MPIFC) $(FFLAGS) ftest_stop.f90 $(LDFLAGS) -o ftest_stop
+	$(MPIFC) ftest_stop.f90 $(LDFLAGS) -o ftest_stop
 
 ftest_go: ftest_go.f90
-	$(MPIFC) $(FFLAGS) ftest_go.f90 $(LDFLAGS) -o ftest_go
+	$(MPIFC) ftest_go.f90 $(LDFLAGS) -o ftest_go
 
 
 

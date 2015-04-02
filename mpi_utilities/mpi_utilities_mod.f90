@@ -246,12 +246,12 @@ integer, parameter :: PACKLIMIT2 = 512
 ! also for broadcasts, make sure message size is not too large.  if so,
 ! split a single request into two or more broadcasts.  i know 2G is really
 ! 2 * 1024 * 1024, but err on the conservative side here.
-integer, parameter :: BCAST_MAXSIZE = 2 * 1000 * 1000
+integer, parameter :: BCAST_MAXSIZE = 2 * 1000 * 1000 * 1000
 
 ! option for simple send/recvs to limit max single message size.
 ! split a single request into two or more broadcasts.  i know 2G is really
 ! 2 * 1024 * 1024, but err on the conservative side here.
-integer, parameter :: SNDRCV_MAXSIZE = 2 * 1000 * 1000
+integer, parameter :: SNDRCV_MAXSIZE = 2 * 1000 * 1000 * 1000
 
 ! this turns on trace messages for most MPI communications 
 logical :: verbose        = .false.   ! very very very verbose, use with care
