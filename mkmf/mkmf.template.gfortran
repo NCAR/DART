@@ -83,7 +83,7 @@ LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
 FFLAGS  = -O2 -ffree-line-length-none $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
-#FFLAGS = -g -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)
+#FFLAGS = -g -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)
 
 # <next few lines under version control, do not edit>
 # $URL$

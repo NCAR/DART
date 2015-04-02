@@ -17,7 +17,7 @@ function [variable_present, varid] = nc_var_exists(fname,varname)
 %
 % EXAMPLE 3 (also a success):
 % fname = 'obs_diag_output.nc';
-% ncid  = netcdf.open(fname);
+% ncid  = netcdf.open(fname,'NOWRITE');
 % varname = 'time';
 % [variable_present, varid] = nc_var_exists(fname,varname);
 % if (variable_present), mytime = netcdf.getVar(ncid,varid); end
@@ -38,7 +38,7 @@ for ivar = 1:length(finfo.Variables)
    if (strcmp(finfo.Variables(ivar).Name, deblank(varname)))
       % TJH DEBUG  fprintf('Matched Variable "%s" \n', vinfo.Variables(ivar).Name )
       variable_present = 1;
-      ncid  = netcdf.open(fname);
+      ncid  = netcdf.open(fname,'NOWRITE');
       varid = netcdf.inqVarID(ncid,varname);
       netcdf.close(ncid);
       return
