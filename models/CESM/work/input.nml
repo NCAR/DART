@@ -23,7 +23,7 @@
   /
 
 &filter_nml
-   async                    = 4,
+   async                    = 0,
    adv_ens_command          = "no_advance_script",
    ens_size                 =  23,
    start_from_restart       = .true.,
@@ -74,7 +74,8 @@
    restart_out_file_name = 'smoother_restart'
   /
 
-# cutoff of 0.03 (radians) is about 200km
+# cutoff of 0.20 (radians) is about 1275km
+# cutoff * 40000 / (2*pi) == km (on earth)
 &assim_tools_nml
    filter_kind                     = 1,
    cutoff                          = 0.20,
@@ -88,9 +89,11 @@
   /
 
 &ensemble_manager_nml
-   single_restart_file_in  = .false.,
-   single_restart_file_out = .false.,
+   single_restart_file_in  = .false.
+   single_restart_file_out = .false.
    perturbation_amplitude  = 0.2
+   layout                  = 1
+   tasks_per_node          = 1
   /
 
 &cov_cutoff_nml
@@ -227,7 +230,6 @@
   /
 
 &mpi_utilities_nml
-   reverse_task_layout = .false.,
    /
 
 # Gregorian: 12 Z 1 January 1996 <==> DART: 144270 days 43200 seconds
@@ -311,23 +313,28 @@
 #
 # Acceptable latitudes range from  [-90,  90]
 # Acceptable longitudes range from [  0, Inf]
+#
+# This namelist is best modified for each of the model components.
+# The hlevel values for POP are not appropriate for CAM nor CLM, for example.
+# Typically, the region definitions also change. See the individual
+# model component work/input.nml values for traditional values.
 
 &obs_diag_nml
-   obs_sequence_name = 'obs_seq.final',
-   obs_sequence_list = '',
-   first_bin_center =  1998, 1, 3, 0, 0, 0 ,
-   last_bin_center  =  1998, 2, 1, 0, 0, 0 ,
-   bin_separation   =     0, 0, 1, 0, 0, 0 ,
-   bin_width        =     0, 0, 1, 0, 0, 0 ,
-   time_to_skip     =     0, 0, 0, 0, 0, 0 ,
+   obs_sequence_name = '',
+   obs_sequence_list = 'file_list.txt',
+   first_bin_center =  2004, 1, 11, 0, 0, 0 ,
+   last_bin_center  =  2004, 1, 17, 0, 0, 0 ,
+   bin_separation   =     0, 0,  0, 6, 0, 0 ,
+   bin_width        =     0, 0,  0, 6, 0, 0 ,
+   time_to_skip     =     0, 0,  0, 0, 0, 0 ,
    max_num_bins     = 1000,
    trusted_obs      = 'null',
    Nregions   = 4,
-   lonlim1    = 30.0,  130.0, 290.0, 290,
-   lonlim2    = 130.0, 270.0, 380.0, 380,
-   latlim1    = -50.0, -50.0, -50.0,  20,
-   latlim2    =  20.0,  50.0,  50.0,  50,
-   reg_names  = 'Indian Ocean', 'Pacific', 'Atlantic', 'North Atlantic',
+   lonlim1    =   0.0,   0.0,   0.0, 180.0,
+   lonlim2    = 360.0, 360.0, 180.0, 360.0,
+   latlim1    =  00.0, -90.0, -90.0, -90.0,
+   latlim2    =  90.0,   0.0,  90.0,  90.0,
+   reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Eastern Hemisphere', 'Western Heisphere',
    print_mismatched_locs = .false.,
    create_rank_histogram = .true.,
    outliers_in_histogram = .true.,

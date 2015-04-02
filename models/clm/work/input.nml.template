@@ -1,6 +1,6 @@
 &perfect_model_obs_nml
    start_from_restart    = .true.,
-   output_restart        = .true.,
+   output_restart        = .false.,
    async                 = 0,
    init_time_days        = -1,
    init_time_seconds     = -1,
@@ -13,19 +13,18 @@
    restart_in_file_name  = "perfect_ics",
    restart_out_file_name = "perfect_restart",
    obs_seq_in_file_name  = "obs_seq.in",
-   obs_seq_out_file_name = "obs_seq.out",
-   adv_ens_command       = "./ha_ha_ha.csh"
+   obs_seq_out_file_name = "obs_seq.perfect",
+   adv_ens_command       = "no_advance_script"
    output_timestamps     = .false.,
    trace_execution       = .false.,
-   output_forward_op_errors = .true.,
+   output_forward_op_errors = .false.,
    print_every_nth_obs   = -1,
    silence               = .false.,
    /
 
-
 &filter_nml
    async                    = 0,
-   adv_ens_command          = "./no_advance_model.csh",
+   adv_ens_command          = "no_advance_script",
    ens_size                 =  80,
    start_from_restart       = .true.,
    output_restart           = .true.,
@@ -43,8 +42,8 @@
    num_output_obs_members   = 20,
    output_interval          = 1,
    num_groups               = 1,
-   input_qc_threshold       =  1.0,
-   outlier_threshold        =  -1.0,
+   input_qc_threshold       = 1.0,
+   outlier_threshold        = 3.0,
    output_forward_op_errors = .false.,
    output_timestamps        = .false.,
    output_inflation         = .true.,
@@ -60,11 +59,11 @@
    inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
    inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
    inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_damping                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.6,                     0.6,
+   inf_damping                 = 0.9,                     0.9,
    inf_lower_bound             = 1.0,                     1.0,
-   inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_upper_bound             = 1000.0,               1000.0,
+   inf_sd_lower_bound          = 0.6,                     0.6
    /
 
 
@@ -80,22 +79,24 @@
 # cutoff of 0.03 (radians) is about 200km
 &assim_tools_nml
    filter_kind                     = 1,
-   cutoff                          = 1.00,
-   allow_missing_in_state          = .true.,
+   cutoff                          = 0.05,
+   allow_missing_in_clm            = .true.,
    sort_obs_inc                    = .false.,
    spread_restoration              = .false.,
    sampling_error_correction       = .false.,
    adaptive_localization_threshold = -1,
-   output_localization_diagnostics = .true.,
+   output_localization_diagnostics = .false.,
    localization_diagnostics_file   = 'localization_diagnostics',
    print_every_nth_obs             = 0
    /
 
 
 &ensemble_manager_nml
-   single_restart_file_in  = .false.,
-   single_restart_file_out = .false.,
+   single_restart_file_in  = .false.
+   single_restart_file_out = .false.
    perturbation_amplitude  = 0.2
+   layout                  = 1
+   tasks_per_node          = 1
    /
 
 
@@ -122,7 +123,8 @@
    output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
      input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
     output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
-   input_files              = '../../../obs_def/obs_def_tower_mod.f90'
+   input_files              = '../../../obs_def/obs_def_tower_mod.f90',
+                              '../../../obs_def/obs_def_COSMOS_mod.f90'
    /
 
 
@@ -131,8 +133,8 @@
 # the CLM namelist for the .h1. files.
 &obs_def_tower_nml
    casename    = '../clm_dart',
-   debug       = .true.
    hist_nhtfrq = -24,
+   debug       = .false.
    /
 
 
@@ -210,7 +212,7 @@
 
 
 &utilities_nml
-   TERMLEVEL = 1,
+   TERMLEVEL = 2,
    module_details = .false.,
    logfilename = 'dart_log.out',
    nmlfilename = 'dart_log.nml',
@@ -219,7 +221,6 @@
 
 
 &mpi_utilities_nml
-   reverse_task_layout = .true.,
    /
 
 
@@ -287,8 +288,8 @@
    gregorian_cal     = .true.,
    first_obs_days    = DART1D,
    first_obs_seconds = DART1S,
-   last_obs_days     = DART2D,
-   last_obs_seconds  = DART2S,
+   last_obs_days     = DARTND,
+   last_obs_seconds  = DARTNS,
    edit_qc_metadata  = .true.,
    new_qc_metadata   = 'Original QC',
 /

@@ -17,7 +17,7 @@
              /glade/p/image/thoar/CAM_DATM/annual
          </filePath>
          <fileNames>
-             CAM_DATM.cpl_NINST.ha2x1dx6h.REFYEAR.nc
+             CAM_DATM.cpl_NINST.ha2x1dx6h.RUNYEAR.nc
          </fileNames>
       </domainInfo>
       <fieldInfo>
@@ -37,7 +37,7 @@
              /glade/p/image/thoar/CAM_DATM/annual
          </filePath>
          <fileNames>
-            CAM_DATM.cpl_NINST.ha2x1dx6h.REFYEAR.nc
+            CAM_DATM.cpl_NINST.ha2x1dx6h.RUNYEAR.nc
          </fileNames>
          <offset>
             -10800

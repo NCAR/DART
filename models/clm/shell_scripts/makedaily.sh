@@ -6,52 +6,51 @@
 #
 # DART $Id$
 
-# split a yearly file into "daily" files which start at 00:00Z
-# the previous day and end at 23:59Z on the day that matches the
-# day in the filename.
+# THIS VERSION IS USEFUL FOR FLUX OBSERVATIONS FOR CLM.
+# split file(s) into "daily" files which start at 00:00Z
+# the previous day and end the same (previous) day at 23:59Z.
+# The date in the filename is the date/time at which CLM stops.
+# The CLM history file has fluxes for the PREVIOUS 24 hours.
 
+# -----------------------------------------------------------------------------
 # set the first and last days to be split.
-# depending on the window and the input file, 
+# depending on the window and the input file,
 # the data from outside these bounds may be needed.
 
-let start_year=2004
-let start_month=01
-let start_day=01
+start_year=2004
+start_month=01
+start_day=01
 
-let end_year=2004
-let end_month=12
-let end_day=31
+end_year=2004
+end_month=12
+end_day=31
 
 # end of things you should have to set in this script IFF you are
-# content to have 'daily' files with observations +/- 12 hours from
+# content to have 'daily' files with observations 
 # date in the filename.
 
-# ----------------------------------------------------------------------------- 
+# -----------------------------------------------------------------------------
 # convert the start and stop times to gregorian days, so we can compute
 # total number of days including rolling over month and year boundaries.
-# do the end time first so we can use the same values to set the 
+# do the end time first so we can use the same values to set the
 # initial day while we are doing the total day calculation.
 
 # bc strips off any preceeding zeros to prevent interpretation as octal.
 year1=`echo  $start_year  | bc`
 month1=`echo $start_month | bc`
 day1=`echo   $start_day   | bc`
-dart_1=`printf %04d%02d%02d%02d $year1 $month1 $day1 0`
 
-year2=`echo  $end_year  | bc`
-month2=`echo $end_month | bc`
-day2=`echo   $end_day   | bc`
-dart_N=`printf %04d%02d%02d%02d $year2 $month2 $day2 0`
+year2=`echo  $end_year    | bc`
+month2=`echo $end_month   | bc`
+day2=`echo   $end_day     | bc`
 
 # make sure there is an initial input.nml for advance_time
 # input.nml gets overwritten in the subsequent loop.
 cp -f  ../work/input.nml.template input.nml || exit -1
-ln -sf ../work/clm_history.nc             . || exit -2
-ln -sf ../work/clm_restart.nc             . || exit -3
 
 # these outputs from advance time (with the -g flag) are 2 integers:
 # gregorian_day_number seconds
-# since we are concerned with daily files at 00Z, 
+# since we are concerned with daily files at 00Z,
 # we can hardwire hours, minutes, and seconds
 mon2=`printf %02d $month2`
 day2=`printf %02d $day2`
@@ -66,7 +65,7 @@ echo "first day,seconds is day ${start_d[0]} ${start_d[1]}"
 # how many total days are going to be split (for the loop counter)
 let totaldays=${end_d[0]}-${start_d[0]}+1
 
-# ----------------------------------------------------------------------------- 
+# -----------------------------------------------------------------------------
 # form some strings for logging.
 # time_one    .... the first time in the file
 # time_end    .... the last  time in the file
@@ -116,7 +115,7 @@ while (( d <= totaldays)) ; do
 
    g=(`echo ${fyear}${fmonth}${fday}${fhour}   0 -g | ../work/advance_time`)
    dartFd=${g[0]}
-   dartFs=${g[1]}
+   dartFs=`printf %05d ${g[1]}`
 
    echo "first $pyear $pmonth $pday $phour which is dart $dart1d $dart1s"
    echo "last  $nyear $nmonth $nday $nhour which is dart $dartNd $dartNs"
@@ -141,15 +140,15 @@ while (( d <= totaldays)) ; do
         mkdir ${OUTDIR}
    fi
 
-   sed -e "s#OUTDIR#${OUTDIR}#" \
-       -e "s#YYYY#${fyear}#g"   \
-       -e "s#MM#${fmonth}#g"    \
-       -e "s#DD#${fday}#g"      \
-       -e "s#SSSSS#${dartMs}#g" \
-       -e "s#DART1D#${dart1d}#" \
-       -e "s#DART1S#${dart1s}#" \
-       -e "s#DARTND#${dartNd}#" \
-       -e "s#DARTNS#${dartNs}#" < ../work/input.nml.template > input.nml
+   sed -e "s#OUTDIR#${OUTDIR}#g" \
+       -e "s#YYYY#${fyear}#g"    \
+       -e "s#MM#${fmonth}#g"     \
+       -e "s#DD#${fday}#g"       \
+       -e "s#SSSSS#${dartFs}#g"  \
+       -e "s#DART1D#${dart1d}#g" \
+       -e "s#DART1S#${dart1s}#g" \
+       -e "s#DARTND#${dartNd}#g" \
+       -e "s#DARTNS#${dartNs}#g" < ../work/input.nml.template > input.nml
 
    # do the extract here
    ../work/obs_sequence_tool

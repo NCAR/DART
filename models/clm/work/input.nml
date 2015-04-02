@@ -1,100 +1,102 @@
 &perfect_model_obs_nml
-   start_from_restart    = .true.,
-   output_restart        = .false.,
-   async                 = 0,
-   init_time_days        = -1,
-   init_time_seconds     = -1,
-   first_obs_days        = -1,
-   first_obs_seconds     = -1,
-   last_obs_days         = -1,
-   last_obs_seconds      = -1,
-   output_interval       = 1,
-   trace_execution       = .false.,
-   restart_in_file_name  = "perfect_ics",
-   restart_out_file_name = "perfect_restart",
-   obs_seq_in_file_name  = "obs_seq.in",
-   obs_seq_out_file_name = "obs_seq.perfect",
+   start_from_restart    = .true.
+   output_restart        = .false.
+   async                 = 0
+   init_time_days        = -1
+   init_time_seconds     = -1
+   first_obs_days        = -1
+   first_obs_seconds     = -1
+   last_obs_days         = -1
+   last_obs_seconds      = -1
+   output_interval       = 1
+   trace_execution       = .false.
+   restart_in_file_name  = "perfect_ics"
+   restart_out_file_name = "perfect_restart"
+   obs_seq_in_file_name  = "obs_seq.in"
+   obs_seq_out_file_name = "obs_seq.perfect"
    adv_ens_command       = "no_advance_script"
-   output_timestamps     = .false.,
-   trace_execution       = .false.,
-   output_forward_op_errors = .false.,
-   print_every_nth_obs   = -1,
-   silence               = .false.,
+   output_timestamps     = .false.
+   trace_execution       = .false.
+   output_forward_op_errors = .false.
+   print_every_nth_obs   = -1
+   silence               = .false.
    /
 
 &filter_nml
-   async                    = 0,
-   adv_ens_command          = "no_advance_script",
-   ens_size                 =  80,
-   start_from_restart       = .true.,
-   output_restart           = .true.,
-   obs_sequence_in_name     = "obs_seq.out",
-   obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "filter_ics",
-   restart_out_file_name    = "filter_restart",
-   init_time_days           = -1,
-   init_time_seconds        = -1,
-   first_obs_days           = -1,
-   first_obs_seconds        = -1,
-   last_obs_days            = -1,
-   last_obs_seconds         = -1,
-   num_output_state_members = 20,
-   num_output_obs_members   = 20,
-   output_interval          = 1,
-   num_groups               = 1,
-   input_qc_threshold       = 1.0,
-   outlier_threshold        = 3.0,
-   output_forward_op_errors = .false.,
-   output_timestamps        = .false.,
-   output_inflation         = .true.,
-   trace_execution          = .true.,
-   silence                  = .false.,
+   async                    = 0
+   adv_ens_command          = "no_advance_script"
+   ens_size                 =  80
+   start_from_restart       = .true.
+   output_restart           = .true.
+   obs_sequence_in_name     = "obs_seq.out"
+   obs_sequence_out_name    = "obs_seq.final"
+   restart_in_file_name     = "filter_ics"
+   restart_out_file_name    = "filter_restart"
+   init_time_days           = -1
+   init_time_seconds        = -1
+   first_obs_days           = -1
+   first_obs_seconds        = -1
+   last_obs_days            = -1
+   last_obs_seconds         = -1
+   num_output_state_members = 20
+   num_output_obs_members   = 20
+   output_interval          = 1
+   num_groups               = 1
+   input_qc_threshold       = 1.0
+   outlier_threshold        = 3.0
+   output_forward_op_errors = .false.
+   output_timestamps        = .false.
+   output_inflation         = .true.
+   trace_execution          = .true.
+   silence                  = .false.
 
-   inf_flavor                  = 0,                       0,
-   inf_initial_from_restart    = .false.,                 .false.,
-   inf_sd_initial_from_restart = .false.,                 .false.,
-   inf_output_restart          = .true.,                  .true.,
-   inf_deterministic           = .true.,                  .true.,
-   inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics',
-   inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
-   inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
-   inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_damping                 = 1.0,                     1.0,
-   inf_lower_bound             = 1.0,                     1.0,
-   inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_flavor                  = 0,                       0
+   inf_initial_from_restart    = .false.,                 .false.
+   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_output_restart          = .true.,                  .true.
+   inf_deterministic           = .true.,                  .true.
+   inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics'
+   inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart'
+   inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag'
+   inf_initial                 = 1.0,                     1.0
+   inf_sd_initial              = 0.6,                     0.6
+   inf_damping                 = 0.9,                     0.9
+   inf_lower_bound             = 1.0,                     1.0
+   inf_upper_bound             = 1000.0,               1000.0
+   inf_sd_lower_bound          = 0.6,                     0.6
    /
 
 
 &smoother_nml
-   num_lags              = 0,
-   start_from_restart    = .false.,
-   output_restart        = .false.,
-   restart_in_file_name  = 'smoother_ics',
+   num_lags              = 0
+   start_from_restart    = .false.
+   output_restart        = .false.
+   restart_in_file_name  = 'smoother_ics'
    restart_out_file_name = 'smoother_restart'
    /
 
 
 # cutoff of 0.03 (radians) is about 200km
 &assim_tools_nml
-   filter_kind                     = 1,
-   cutoff                          = 0.05,
-   allow_missing_in_clm            = .true.,
-   sort_obs_inc                    = .false.,
-   spread_restoration              = .false.,
-   sampling_error_correction       = .false.,
-   adaptive_localization_threshold = -1,
-   output_localization_diagnostics = .true.,
-   localization_diagnostics_file   = 'localization_diagnostics',
+   filter_kind                     = 1
+   cutoff                          = 0.05
+   allow_missing_in_clm            = .true.
+   sort_obs_inc                    = .false.
+   spread_restoration              = .false.
+   sampling_error_correction       = .false.
+   adaptive_localization_threshold = -1
+   output_localization_diagnostics = .false.
+   localization_diagnostics_file   = 'localization_diagnostics'
    print_every_nth_obs             = 0
    /
 
 
 &ensemble_manager_nml
-   single_restart_file_in  = .false.,
-   single_restart_file_out = .false.,
+   single_restart_file_in  = .false.
+   single_restart_file_out = .false.
    perturbation_amplitude  = 0.2
+   layout                  = 1
+   tasks_per_node          = 1
    /
 
 
@@ -104,9 +106,9 @@
 
 
 &reg_factor_nml
-   select_regression    = 1,
-   input_reg_file       = "time_mean_reg",
-   save_reg_diagnostics = .false.,
+   select_regression    = 1
+   input_reg_file       = "time_mean_reg"
+   save_reg_diagnostics = .false.
    reg_diagnostics_file = "reg_diagnostics"
    /
 
@@ -117,21 +119,20 @@
 
 
 &preprocess_nml
-    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
-   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
-     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
-    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
+    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90'
+   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90'
+     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90'
+    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90'
    input_files              = '../../../obs_def/obs_def_tower_mod.f90',
                               '../../../obs_def/obs_def_COSMOS_mod.f90'
    /
 
 
-# casename will get overwritten in the assimilate.csh script.
 # hist_nhtfrq should be negative (hours) ... same context as in
 # the CLM namelist for the .h1. files.
 &obs_def_tower_nml
-   casename    = '../clm_dart',
-   hist_nhtfrq = -HISTORY_OUTPUT_INTERVAL,
+   casename    = '../clm_dart'
+   hist_nhtfrq = -HISTORY_OUTPUT_INTERVAL
    debug       = .false.
    /
 
@@ -141,13 +142,13 @@
                                 'TOWER_LATENT_HEAT_FLUX',
                                 'TOWER_SENSIBLE_HEAT_FLUX',
                                 'MODIS_SNOWCOVER_FRAC',
-                                'COSMOS_NEUTRON_INTENSITY',
+                                'COSMOS_NEUTRON_INTENSITY'
    evaluate_these_obs_types   = 'null'
    /
 
 
 &assim_model_nml
-   write_binary_restart_files = .true.,
+   write_binary_restart_files = .true.
    netCDF_large_file_support  = .true.
    /
 
@@ -155,52 +156,73 @@
 # nolton:Desktop/CLM/camforcing_daily.clm2.r.2000-12-31-00000.nc
 # nolton:Desktop/CLM/camforcing_daily.clm2.h0.2000-12-31-00000.nc
 # nolton:Desktop/CLM/timing_128inst_1month_avectCopy_speedup_US-Ha1_ICN.clm2.1.r.0001-02-01-00000.nc
-# The definitions for most of the DART kinds are in obs_def_tower_mod.f90
+# The definitions for most of the DART kinds are in obs_def_tower_mod.f90, obs_def_brightnessT_mod.f90
+
+# Each variable must have 6 entries.
+# 1: variable name
+# 2: DART KIND
+# 3: minimum value - as a character string - if none, use 'NA'
+# 4: maximum value - as a character string - if none, use 'NA'
+# 5: what file contains the variable - 'restart', 'history'  file'
+# 6: does the variable get updated in the restart file or not ...
+#    only variables from restart files may be updated.
+#    'UPDATE' =>        update the variable in the restart file
+#    'NO_COPY_BACK' => do not update the variable in the restart file
+#    all these variables will be updated INTERNALLY IN DART
+#    only variables marked '.r', 'UPDATE' will be modified for CLM.
 
 &model_nml
-   clm_restart_filename         = 'clm_restart.nc',
-   clm_history_filename         = 'clm_history.nc',
-   assimilation_period_days     = 2,
-   assimilation_period_seconds  = 3600,
-   model_perturbation_amplitude = 0.2,
-   output_state_vector          = .false.,
-   calendar                     = 'Gregorian',
-   debug                        = 0,
-   clm_state_variables          = 'frac_sno',    'KIND_SNOWCOVER_FRAC',
-                                  'H2OSNO',      'KIND_SNOW_WATER',
-                                  'H2OSOI_LIQ',  'KIND_SOIL_MOISTURE',
-                                  'H2OSOI_ICE',  'KIND_ICE',
-                                  'T_SOISNO',    'KIND_SOIL_TEMPERATURE',
-                                  'cpool',       'KIND_CARBON',
-                                  'frootc',      'KIND_ROOT_CARBON',
-                                  'leafc',       'KIND_LEAF_CARBON',
-                                  'leafn',       'KIND_LEAF_NITROGEN',
+   clm_restart_filename         = 'clm_restart.nc'
+   clm_history_filename         = 'clm_history.nc'
+   clm_vector_history_filename  = 'clm_vector_history.nc'
+   assimilation_period_days     = 2
+   assimilation_period_seconds  = 3600
+   model_perturbation_amplitude = 0.2
+   output_state_vector          = .false.
+   calendar                     = 'Gregorian'
+   debug                        = 2
+   clm_variables  = 'frac_sno',    'KIND_SNOWCOVER_FRAC',         'NA',  'NA', 'restart' , 'NO_COPY_BACK',
+                    'H2OSNO',      'KIND_SNOW_WATER',             '0.0', 'NA', 'restart' , 'UPDATE',
+                    'H2OSOI_LIQ',  'KIND_SOIL_MOISTURE',          '0.0', 'NA', 'restart' , 'UPDATE',
+                    'H2OSOI_ICE',  'KIND_ICE',                    '0.0', 'NA', 'restart' , 'UPDATE',
+                    'T_SOISNO',    'KIND_SOIL_TEMPERATURE',       'NA' , 'NA', 'restart' , 'UPDATE',
+                    'cpool',       'KIND_CARBON',                 '0.0', 'NA', 'restart' , 'UPDATE',
+                    'frootc',      'KIND_ROOT_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
+                    'leafc',       'KIND_LEAF_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
+                    'leafn',       'KIND_LEAF_NITROGEN',          '0.0', 'NA', 'restart' , 'UPDATE',
+                    'NEP',         'KIND_NET_CARBON_PRODUCTION',  'NA', 'NA', 'history'  , 'NO_COPY_BACK',
+                    'SNOWDP',      'KIND_SNOW_THICKNESS',         'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
+                    'TV',          'KIND_VEGETATION_TEMPERATURE', 'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
+                    'TLAI',        'KIND_LEAF_AREA_INDEX',        'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
+                    'RH2M_R',      'KIND_SPECIFIC_HUMIDITY',      'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
+                    'PBOT',        'KIND_SURFACE_PRESSURE',       'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
+                    'TBOT',        'KIND_TEMPERATURE',            'NA', 'NA', 'vector'   , 'NO_COPY_BACK'
    /
 
-                                  'livecrootc',  'KIND_ROOT_CARBON',
-                                  'deadcrootc',  'KIND_ROOT_CARBON',
-                                  'livestemc',   'KIND_STEM_CARBON',
-                                  'deadstemc',   'KIND_STEM_CARBON',
-                                  'frootn',      'KIND_ROOT_NITROGEN',
-                                  'livecrootn',  'KIND_ROOT_NITROGEN',
-                                  'deadcrootn',  'KIND_ROOT_NITROGEN',
-                                  'livestemn',   'KIND_STEM_NITROGEN',
-                                  'deadstemn',   'KIND_STEM_NITROGEN',
-                                  'litr1c',      'KIND_LEAF_CARBON',
-                                  'litr2c',      'KIND_LEAF_CARBON',
-                                  'litr3c',      'KIND_LEAF_CARBON',
-                                  'soil1c',      'KIND_SOIL_CARBON',
-                                  'soil2c',      'KIND_SOIL_CARBON',
-                                  'soil3c',      'KIND_SOIL_CARBON',
-                                  'soil4c',      'KIND_SOIL_CARBON',
+                    'livecrootc',  'KIND_ROOT_CARBON',            'NA', 'NA', 'restart' , 'UPDATE',
+                    'deadcrootc',  'KIND_ROOT_CARBON',            'NA', 'NA', 'restart' , 'UPDATE',
+                    'livestemc',   'KIND_STEM_CARBON',            'NA', 'NA', 'restart' , 'UPDATE',
+                    'deadstemc',   'KIND_STEM_CARBON',            'NA', 'NA', 'restart' , 'UPDATE',
+                    'frootn',      'KIND_ROOT_NITROGEN',          'NA', 'NA', 'restart' , 'UPDATE',
+                    'livecrootn',  'KIND_ROOT_NITROGEN',          'NA', 'NA', 'restart' , 'UPDATE',
+                    'deadcrootn',  'KIND_ROOT_NITROGEN',          'NA', 'NA', 'restart' , 'UPDATE',
+                    'livestemn',   'KIND_STEM_NITROGEN',          'NA', 'NA', 'restart' , 'UPDATE',
+                    'deadstemn',   'KIND_STEM_NITROGEN',          'NA', 'NA', 'restart' , 'UPDATE',
+                    'litr1c',      'KIND_LEAF_CARBON',            'NA', 'NA', 'restart' , 'UPDATE',
+                    'litr2c',      'KIND_LEAF_CARBON',            'NA', 'NA', 'restart' , 'UPDATE',
+                    'litr3c',      'KIND_LEAF_CARBON',            'NA', 'NA', 'restart' , 'UPDATE',
+                    'soil1c',      'KIND_SOIL_CARBON',            'NA', 'NA', 'restart' , 'UPDATE',
+                    'soil2c',      'KIND_SOIL_CARBON',            'NA', 'NA', 'restart' , 'UPDATE',
+                    'soil3c',      'KIND_SOIL_CARBON',            'NA', 'NA', 'restart' , 'UPDATE',
+                    'soil4c',      'KIND_SOIL_CARBON',            'NA', 'NA', 'restart' , 'UPDATE'
 
   frac_sno  is needed for the forward operator
-  H2OSNO is updated by the filter,
+  H2OSNO is updated by the filter
   update_snow() takes H2OSNO* and updates the four following:
-                                  'SNOWDP',      'KIND_SNOW_THICKNESS',
-                                  'H2OSOI_LIQ',  'KIND_LIQUID_WATER',
-                                  'H2OSOI_ICE',  'KIND_ICE',
-                                  'T_SOISNO',    'KIND_SOIL_TEMPERATURE',
+                    'SNOWDP',      'KIND_SNOW_THICKNESS',         'NA', 'NA', 'restart', 'UPDATE',
+                    'H2OSOI_LIQ',  'KIND_LIQUID_WATER',           'NA', 'NA', 'restart', 'UPDATE',
+                    'H2OSOI_ICE',  'KIND_ICE',                    'NA', 'NA', 'restart', 'UPDATE',
+                    'T_SOISNO',    'KIND_SOIL_TEMPERATURE',       'NA', 'NA', 'restart', 'UPDATE'
 
 
 &clm_to_dart_nml
@@ -209,34 +231,33 @@
 
 
 &dart_to_clm_nml
-   dart_to_clm_input_file   = 'dart_restart',
+   dart_to_clm_input_file   = 'dart_restart'
    advance_time_present     = .false.
    /
 
 
 &location_nml
-   horiz_dist_only             = .true.,
-   vert_normalization_pressure = 100000.0,
-   vert_normalization_height   = 10000.0,
-   vert_normalization_level    = 20.0,
-   approximate_distance        = .false.,
-   nlon                        = 71,
-   nlat                        = 36,
+   horiz_dist_only             = .true.
+   vert_normalization_pressure = 100000.0
+   vert_normalization_height   = 10000.0
+   vert_normalization_level    = 20.0
+   approximate_distance        = .false.
+   nlon                        = 71
+   nlat                        = 36
    output_box_info             = .true.
    /
 
 
 &utilities_nml
-   TERMLEVEL = 2,
-   module_details = .false.,
-   logfilename = 'dart_log.out',
-   nmlfilename = 'dart_log.nml',
+   TERMLEVEL = 2
+   module_details = .false.
+   logfilename = 'dart_log.out'
+   nmlfilename = 'dart_log.nml'
    write_nml   = 'file'
    /
 
 
 &mpi_utilities_nml
-   reverse_task_layout = .true.,
    /
 
 
@@ -244,20 +265,20 @@
 # Gregorian: 12 Z 1 January 2000 <==> DART: 145731 days 43200 seconds
 
 &restart_file_tool_nml
-   input_file_name              = "filter_restart",
-   output_file_name             = "filter_updated_restart",
-   ens_size                     = 1,
-   single_restart_file_in       = .true.,
-   single_restart_file_out      = .true.,
-   write_binary_restart_files   = .true.,
-   overwrite_data_time          = .false.,
-   new_data_days                = -1,
-   new_data_secs                = -1,
-   input_is_model_advance_file  = .false.,
-   output_is_model_advance_file = .false.,
-   overwrite_advance_time       = .false.,
-   new_advance_days             = -1,
-   new_advance_secs             = -1,
+   input_file_name              = "filter_restart"
+   output_file_name             = "filter_updated_restart"
+   ens_size                     = 1
+   single_restart_file_in       = .true.
+   single_restart_file_out      = .true.
+   write_binary_restart_files   = .true.
+   overwrite_data_time          = .false.
+   new_data_days                = -1
+   new_data_secs                = -1
+   input_is_model_advance_file  = .false.
+   output_is_model_advance_file = .false.
+   overwrite_advance_time       = .false.
+   new_advance_days             = -1
+   new_advance_secs             = -1
    gregorian_cal                = .true.
    /
 
@@ -265,88 +286,85 @@
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
 # year   month   day   hour   minute   second
-# max_num_bins can be used to specify a fixed number of bins,
+# max_num_bins can be used to specify a fixed number of bins
 # in which case last_bin_center should be safely in the future.
 #
 # Acceptable latitudes range from  [-90,  90]
 # Acceptable longitudes range from [  0, Inf]
 
 &obs_diag_nml
-   obs_sequence_name = '',
-   obs_sequence_list = 'obs_seq_files.txt',
-   first_bin_center =  2004, 1,  1, 0, 0, 0 ,
-   last_bin_center  =  2004, 1,  8, 0, 0, 0 ,
-   bin_separation   =     0, 0,  1, 0, 0, 0 ,
-   bin_width        =     0, 0,  1, 0, 0, 0 ,
-   time_to_skip     =     0, 0,  0, 0, 0, 0 ,
-   max_num_bins     = 1000,
-   trusted_obs      = 'null',
-   Nregions   = 4,
-   lonlim1    =     0.0,     0.0,    0.0,  180.0,
-   lonlim2    =   360.0,   360.0,  180.0,  360.0,
-   latlim1    =   -90.0,     0.0,  -90.0,  -90.0,
-   latlim2    =     0.0,    90.0,   90.0,   90.0,
-   reg_names  = 'South', 'North', 'East', 'West',
-   hlevel_edges =  0.0, 1.0, 2.0, 5.0, 10.0, 40.0,
-   print_mismatched_locs = .false.,
-   create_rank_histogram = .true.,
-   outliers_in_histogram = .true.,
-   use_zero_error_obs    = .false.,
-   verbose               = .true.,
+   obs_sequence_name = ''
+   obs_sequence_list = 'obs_seq_files.txt'
+   first_bin_center =  2004, 1,  1, 0, 0, 0 
+   last_bin_center  =  2004, 1,  8, 0, 0, 0 
+   bin_separation   =     0, 0,  1, 0, 0, 0 
+   bin_width        =     0, 0,  1, 0, 0, 0 
+   time_to_skip     =     0, 0,  0, 0, 0, 0 
+   max_num_bins     = 1000
+   trusted_obs      = 'null'
+   Nregions   = 4
+   lonlim1    =     0.0,     0.0,    0.0,  180.0
+   lonlim2    =   360.0,   360.0,  180.0,  360.0
+   latlim1    =   -90.0,     0.0,  -90.0,  -90.0
+   latlim2    =     0.0,    90.0,   90.0,   90.0
+   reg_names  = 'South', 'North', 'East', 'West'
+   hlevel_edges =  0.0, 1.0, 2.0, 5.0, 10.0, 40.0
+   print_mismatched_locs = .false.
+   create_rank_histogram = .true.
+   outliers_in_histogram = .true.
+   use_zero_error_obs    = .false.
+   verbose               = .true.
    /
 
 
 &obs_sequence_tool_nml
-   filename_seq      = '../work/obs_seq.in',
-   filename_seq_list = '',
-   filename_out      = '../YYYYMM/obs_seq.daily.YYYYMMDD',
-   print_only        = .false.,
-   gregorian_cal     = .true.,
-   first_obs_days    = GREG1,
-   first_obs_seconds = 0,
-   last_obs_days     = GREG1,
-   last_obs_seconds  = 86399,
+   filename_seq      = ''
+   filename_seq_list = 'pieces.txt'
+   filename_out      = 'obs_seq.combined'
+   print_only        = .false.
+   gregorian_cal     = .true.
+   synonymous_qc_list = 'COSMOS QC','Ameriflux QC'
    /
 
 
 &schedule_nml
-   calendar        = 'Gregorian',
-   first_bin_start =  1601,  1,  1,  0,  0,  0,
-   first_bin_end   =  2999,  1,  1,  0,  0,  0,
-   last_bin_end    =  2999,  1,  1,  0,  0,  0,
-   bin_interval_days    = 1000000,
-   bin_interval_seconds = 0,
-   max_num_bins         = 1000,
+   calendar        = 'Gregorian'
+   first_bin_start =  1601,  1,  1,  0,  0,  0
+   first_bin_end   =  2999,  1,  1,  0,  0,  0
+   last_bin_end    =  2999,  1,  1,  0,  0,  0
+   bin_interval_days    = 1000000
+   bin_interval_seconds = 0
+   max_num_bins         = 1000
    print_table          = .true.
    /
 
 
 &obs_seq_to_netcdf_nml
    obs_sequence_name = 'obs_seq.final'
-   obs_sequence_list = '',
-   append_to_netcdf  = .false.,
-   lonlim1    =    0.0,
-   lonlim2    =  360.0,
-   latlim1    =  -90.0,
-   latlim2    =   90.0,
+   obs_sequence_list = ''
+   append_to_netcdf  = .false.
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
    verbose    = .false.
    /
 
 ! useful input for model_mod_check_nml ...
 
    x_inds    of interest   720, 7000
-   loc_of_interest      = 287.5,  82.48, 0.35,
-   loc_of_interest      = 287.5, -40.70, 0.35,
-   loc_of_interest      =  90.0,  41.00, 0.35,
+   loc_of_interest      = 287.5,  82.48, 0.35
+   loc_of_interest      = 287.5, -40.70, 0.35
+   loc_of_interest      =  90.0,  41.00, 0.35
 
 &model_mod_check_nml
-   input_file           = "dart_ics",
-   output_file          = "check_me_out",
-   advance_time_present = .FALSE.,
-   verbose              = .TRUE.,
-   test1thru            = 16,
-   x_ind                = 720,
-   kind_of_interest     = 'T_SOISNO',
-   loc_of_interest      = 287.5, 82.48, 0.35,
+   input_file           = "dart_ics"
+   output_file          = "check_me_out"
+   advance_time_present = .FALSE.
+   verbose              = .TRUE.
+   test1thru            = 16
+   x_ind                = 720
+   kind_of_interest     = 'T_SOISNO'
+   loc_of_interest      = 287.5, 82.48, 0.35
    /
 

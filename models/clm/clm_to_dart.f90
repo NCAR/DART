@@ -24,8 +24,7 @@ program clm_to_dart
 use        types_mod, only : r8
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read
-use        model_mod, only : get_model_size, restart_file_to_sv, &
-                             get_clm_restart_filename
+use        model_mod, only : get_model_size, clm_to_dart_state_vector
 use  assim_model_mod, only : awrite_state_restart, open_restart_write, close_restart
 use time_manager_mod, only : time_type, print_time, print_date
 
@@ -41,7 +40,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! namelist parameters with default values.
 !-----------------------------------------------------------------------
 
-character(len=128) :: clm_to_dart_output_file  = 'dart_ics'
+character(len=512) :: clm_to_dart_output_file  = 'dart_ics'
 
 namelist /clm_to_dart_nml/ clm_to_dart_output_file
 
@@ -52,7 +51,6 @@ namelist /clm_to_dart_nml/ clm_to_dart_output_file
 integer               :: io, iunit, x_size
 type(time_type)       :: model_time
 real(r8), allocatable :: statevector(:)
-character(len=256)    :: clm_restart_filename
 
 !======================================================================
 
@@ -66,13 +64,6 @@ call find_namelist_in_file("input.nml", "clm_to_dart_nml", iunit)
 read(iunit, nml = clm_to_dart_nml, iostat = io)
 call check_namelist_read(iunit, io, "clm_to_dart_nml") ! closes, too.
 
-call get_clm_restart_filename( clm_restart_filename )
-
-write(*,*)
-write(*,'(''clm_to_dart:converting clm restart file '',A, &
-      &'' to DART file '',A)') &
-       trim(clm_restart_filename), trim(clm_to_dart_output_file)
-
 !----------------------------------------------------------------------
 ! get to work
 !----------------------------------------------------------------------
@@ -80,7 +71,8 @@ write(*,'(''clm_to_dart:converting clm restart file '',A, &
 x_size = get_model_size()
 allocate(statevector(x_size))
 
-call restart_file_to_sv(clm_restart_filename, statevector, model_time) 
+! Each variable specifies its own file of origin.
+call clm_to_dart_state_vector(statevector, model_time) 
 
 iunit = open_restart_write(clm_to_dart_output_file)
 

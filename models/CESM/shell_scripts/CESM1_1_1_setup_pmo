@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-# ==============================================================================
+#*******************************************************************************
 #
 # ---------------------
 # Purpose
@@ -102,9 +102,7 @@
 # ./${case}.clean_build
 # ./${case}.build
 #
-# ==============================================================================
-
-
+#*******************************************************************************
 
 # ==============================================================================
 # case options:
@@ -118,7 +116,7 @@
 # cesmtag       The version of the CESM source code to use when building the code.
 # ==============================================================================
 
-setenv case                 cesm_6h_pmo
+setenv case                 cesm1_1_1_pmo
 setenv compset              B_2000_CAM5
 setenv resolution           0.9x1.25_gx1v6
 setenv cesmtag              cesm1_1_1
@@ -196,7 +194,6 @@ setenv reftimestamp $refyear-$refmon-$refday-$reftod
 
 setenv stagedir /glade/p/image/CESM_initial_ensemble/rest/${reftimestamp}
 
-
 # ==============================================================================
 # runtime settings:
 #
@@ -245,11 +242,11 @@ setenv stop_n              6
 # queue      can be changed during a series by changing the ${case}.run
 # timewall   can be changed during a series by changing the ${case}.run
 #
-# TJH: Advancing 1 instance for 6 hours with 60 pes
-#      took less than 10 minutes on yellowstone.
+# TJH: Advancing 1 instance for 6 hours and creating synthetic obs took
+#      less than 10 minutes with 60 pes (4 nodes) on yellowstone.
 # ==============================================================================
 
-setenv ACCOUNT      P8685xxxx
+setenv ACCOUNT      NIMGxxxx
 setenv queue        economy
 setenv timewall     0:30
 
@@ -460,6 +457,7 @@ echo ""
 ./xmlchange BRNCH_RETAIN_CASENAME=FALSE
 ./xmlchange GET_REFCASE=FALSE
 ./xmlchange EXEROOT=${exeroot}
+./xmlchange RUNDIR=${rundir}
 
 ./xmlchange CALENDAR=GREGORIAN
 
@@ -469,6 +467,11 @@ echo ""
 ./xmlchange RESUBMIT=$resubmit
 
 ./xmlchange PIO_TYPENAME=pnetcdf
+
+set TEST_MPI = `./xmlquery -valonly MPI_RUN_COMMAND | sed -e 's/MPI_RUN_COMMAND = //'`
+if (${TEST_MPI} == 'UNSET') then
+   ./xmlchange MPI_RUN_COMMAND=mpirun.lsf
+endif
 
 # COUPLING discussion.
 # http://bugs.cgd.ucar.edu/show_bug.cgi?id=1740
@@ -486,19 +489,24 @@ echo ""
 # so we are also turning on the CLM biogeochemistry.
 ./xmlchange CLM_CONFIG_OPTS='-bgc cn'
 
+# These are archiving options that may be used.
+# You can turn the short/long term archivers on or off,
+# but these settings should be made in either event.
+
+./xmlchange DOUT_S_ROOT=${archdir}
+./xmlchange DOUT_S_SAVE_INT_REST_FILES=FALSE
+./xmlchange DOUT_L_MSROOT="csm/${case}"
+./xmlchange DOUT_L_HTAR=FALSE
+
 if ($short_term_archiver == 'off') then
    ./xmlchange DOUT_S=FALSE
 else
    ./xmlchange DOUT_S=TRUE
-   ./xmlchange DOUT_S_ROOT=${archdir}
-   ./xmlchange DOUT_S_SAVE_INT_REST_FILES=FALSE
 endif
 if ($long_term_archiver == 'off') then
    ./xmlchange DOUT_L_MS=FALSE
 else
    ./xmlchange DOUT_L_MS=TRUE
-   ./xmlchange DOUT_L_MSROOT="csm/${case}"
-   ./xmlchange DOUT_L_HTAR=FALSE
 endif
 
 # level of debug output, 0=minimum, 1=normal, 2=more, 3=too much, valid values: 0,1,2,3 (integer)
@@ -510,6 +518,8 @@ endif
 # Set up the case.
 # This creates the EXEROOT and RUNDIR directories.
 # ==============================================================================
+
+echo 'Setting up the case ...'
 
 ./cesm_setup
 
@@ -537,15 +547,14 @@ switch ( $BATCH )
       # NCAR "bluefire", "yellowstone"
       set TIMEWALL=`grep BSUB ${case}.run | grep -e '-W' `
       set    QUEUE=`grep BSUB ${case}.run | grep -e '-q' `
-      sed -e "s/$TIMEWALL[3]/$timewall/" \
-          -e "s/ptile=[0-9][0-9]*/ptile=$ptile/" \
-          -e "s/$QUEUE[3]/$queue/" < ${case}.run >! temp.$$
+      sed -e "/BSUB/s#$TIMEWALL[3]#$timewall#" \
+          -e "/BSUB/s#ptile=[0-9][0-9]*#ptile=$ptile#" \
+          -e "/BSUB/s#$QUEUE[3]#$queue#" < ${case}.run >! temp.$$
           ${MOVE} temp.$$ ${case}.run
           chmod 755       ${case}.run
    breaksw
 
    default:
-
    breaksw
 endsw
 
@@ -569,10 +578,10 @@ else
    echo "ERROR - No SourceMods for this case."
    echo "ERROR - No SourceMods for this case."
    echo "DART requires modifications to several src files."
-   echo "These files can be downloaded from:"
-   echo "http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_1_1_24Oct2013.tar"
+   echo "Download the appropriate files for CESM 1_1_1 from:"
+   echo "http://www.image.ucar.edu/pub/DART/CESM"
    echo "untar these into your HOME directory - they will create a"
-   echo "~/cesm_1_1_1  directory with the appropriate SourceMods structure."
+   echo "~/cesm1_1_1  directory with the appropriate SourceMods structure."
    exit -4
 endif
 
@@ -632,10 +641,15 @@ while ($inst <= 1)
    set fname = "user_nl_cam${inst_string}"
    # ===========================================================================
    # ATM Namelist
-   # For a HOP TEST ... empty_htapes = .false.
-   # For a HOP TEST ... use a default fincl1
-   # inithist == 'ENDOFRUN' ensures that CAM writes an initial file every time it stops.
-   # fincl1,nhtfrq,mfilt all control the history file containing a REQUIRED PHIS field.
+   # DART/CAM requires a PHIS field in a history file at the same frequency as
+   # the CAM assimilation. This script sets it to be written to the .h0. every
+   # assimilation time. If you want to write it to a different .h?. file, you MUST
+   # modify the cam_assimilate.csh script in TWO places. You will need to set
+   # 'empty_htapes = .false.' and change 'nhtfrq' and 'mfilt' to get a CAM 
+   # default-looking .h0. file.
+   #
+   # inithist == 'ENDOFRUN' ensures that CAM writes the required initial file 
+   # every time it stops.
 
    echo " inithist      = 'ENDOFRUN'"                     >> ${fname}
    echo " ncdata        = 'cam_initial${inst_string}.nc'" >> ${fname}
@@ -676,13 +690,13 @@ while ($inst <= 1)
    # echo "hist_mfilt  = 1"              >> ${fname}
    # echo "hist_nhtfrq = 0"              >> ${fname}
 
-   echo "dtime             = $clm_dtime,"            >> ${fname}
-   echo "hist_empty_htapes = .true."   >> ${fname}
-   echo "hist_fincl1 = 'NEP'"                        >> ${fname}
-   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R'"  >> ${fname}
-   echo "hist_nhtfrq = -$stop_n,1,"                  >> ${fname}
-   echo "hist_mfilt  = 1,$h1nsteps"                  >> ${fname}
-   echo "hist_avgflag_pertape = 'A','A'"             >> ${fname}
+   echo "dtime             = $clm_dtime"              >> ${fname}
+   echo "hist_empty_htapes = .true."                  >> ${fname}
+   echo "hist_fincl1 = 'NEP'"                         >> ${fname}
+   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R'"   >> ${fname}
+   echo "hist_nhtfrq = -$stop_n,1"                    >> ${fname}
+   echo "hist_mfilt  = 1,$h1nsteps"                   >> ${fname}
+   echo "hist_avgflag_pertape = 'A','A'"              >> ${fname}
 
    # ===========================================================================
    set fname = "user_nl_pop2${inst_string}"
@@ -735,7 +749,7 @@ while ($inst <= 1)
    @ inst ++
 end
 
-./preview_namelists
+./preview_namelists || exit -3
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists
@@ -759,25 +773,23 @@ cat << EndOfText >! stage_cesm_files
 
 set restart_time = $init_time
 
-
 # get the settings for this case from the CESM environment
 cd ${caseroot}
 source ./Tools/ccsm_getenv || exit -2
 cd ${RUNDIR}
 
 echo 'Copying the required CESM files to the run directory to rerun'
-echo 'a previous step.  CONTINUE_RUN from env_run.xml is' \$CONTINUE_RUN
-if ( \$CONTINUE_RUN == TRUE ) then
+echo 'a previous step.  CONTINUE_RUN from env_run.xml is' \${CONTINUE_RUN}
+if ( \${CONTINUE_RUN} == TRUE ) then
   echo 'so files for some later step than the initial one will be restaged.'
-  echo "Date to reset files to is: \$restart_time"
+  echo "Date to reset files to is: \${restart_time}"
 else
   echo 'so files for the initial step of this experiment will be restaged.'
-  echo "Date to reset files to is: $init_time"
+  echo "Date to reset files to is: ${init_time}"
 endif
 echo ''
 
-
-if ( \$CONTINUE_RUN == TRUE ) then
+if ( \${CONTINUE_RUN} == TRUE ) then
 
    #----------------------------------------------------------------------
    # This block copies over a set of restart files from any previous step of
@@ -785,31 +797,34 @@ if ( \$CONTINUE_RUN == TRUE ) then
    # After running this script resubmit the job to rerun.
    #----------------------------------------------------------------------
 
-   echo "Staging restart files for run date/time: " \$restart_time
+   echo "Staging restart files for run date/time: " \${restart_time}
 
    #  The short term archiver is on, so the files we want should be in one
    #  of the short term archive 'rest' restart directories.  This assumes
    #  the long term archiver has NOT copied these files to the HPSS yet.
 
-   if (  \$DOUT_S   == TRUE ) then
+   if (  \${DOUT_S} == TRUE ) then
 
       # The restarts should be in the short term archive directory.  See
       # www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x1631.html#running_ccsm_restart_back
       # for more help and information.
 
-      if ( ! -d \$DOUT_S_ROOT/rest/\${restart_time} ) then
+      set RESTARTDIR = \${DOUT_S_ROOT}/rest/\${restart_time}
+
+      if ( ! -d \${RESTARTDIR} ) then
 
          echo "restart file directory not found: "
-         echo " \$DOUT_S_ROOT/rest/\${restart_time} "
+         echo " \${RESTARTDIR}"
          echo "If the long-term archiver is on, you may have to restore this directory first."
          echo "You can also check for either a .sta or a .sta2 hidden subdirectory in"
-         echo \$DOUT_S_ROOT
-         echo "which may contain the 'rest' directory you need."
+         echo "\${DOUT_S_ROOT}"
+         echo "which may contain the 'rest' directory you need,"
+         echo "and then modify RESTARTDIR in this script."
          exit -1
 
       endif
 
-      ${COPY} \$DOUT_S_ROOT/rest/\${restart_time}/* . || exit -1
+      ${COPY} \${RESTARTDIR}/* . || exit -1
 
    else
 
@@ -842,7 +857,7 @@ if ( \$CONTINUE_RUN == TRUE ) then
       end
 
       # There are no instance numbers in these filenames.
-      echo "${case}.cpl.r.\${restart_time}.nc"     >! rpointer.drv
+      echo "${case}.cpl.r.\${restart_time}.nc" >! rpointer.drv
 
    endif
 

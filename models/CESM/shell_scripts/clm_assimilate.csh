@@ -37,9 +37,34 @@ switch ("`hostname`")
       set   COPY = 'cp -fv --preserve=timestamps'
       set   LINK = 'ln -fvs'
       set REMOVE = 'rm -fr'
+      set TASKS_PER_NODE = `echo $LSB_SUB_RES_REQ | sed -ne '/ptile/s#.*\[ptile=\([0-9][0-9]*\)]#\1#p'`
+      setenv MP_DEBUG_NOTIMEOUT yes
 
       set BASEOBSDIR = /glade/p/image/Observations/land
       set  LAUNCHCMD = mpirun.lsf
+   breaksw
+
+   case lone*:
+      # UT lonestar
+      set   MOVE = '/bin/mv -fv'
+      set   COPY = '/bin/cp -fv --preserve=timestamps'
+      set   LINK = '/bin/ln -fvs'
+      set REMOVE = '/bin/rm -fr'
+
+      set BASEOBSDIR = ${WORK}/DART/observations/snow/work/obs_seqs
+      set  LAUNCHCMD = mpirun.lsf
+   breaksw
+
+   case la*:
+      # LBNL "lawrencium"
+      set   MOVE = 'mv -fv'
+      set   COPY = 'cp -fv --preserve=timestamps'
+      set   LINK = 'ln -fvs'
+      set REMOVE = 'rm -fr'
+      set TASKS_PER_NODE = $MAX_TASKS_PER_NODE
+
+      set BASEOBSDIR = /your/observation/directory/here
+      set  LAUNCHCMD = "mpiexec -n $NTASKS"
    breaksw
 
    default:
@@ -64,7 +89,6 @@ set ensemble_size = ${NINST_LND}
 #-------------------------------------------------------------------------
 
 set FILE = `head -n 1 rpointer.lnd_0001`
-set FILE = $FILE:t
 set FILE = $FILE:r
 set LND_DATE_EXT = `echo $FILE:e`
 set LND_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
@@ -159,6 +183,19 @@ endif
 
 echo "`date` -- END COPY BLOCK"
 
+# If possible, use the round-robin approach to deal out the tasks.
+# Since the ensemble manager is not used by clm_to_dart or dart_to_clm,
+# it is OK to set it here and have it used by all routines.
+
+if ($?TASKS_PER_NODE) then
+   if ($#TASKS_PER_NODE > 0) then
+      ${COPY} input.nml input.nml.$$
+      sed -e "s#layout.*#layout = 2#" \
+          -e "s#tasks_per_node.*#tasks_per_node = $TASKS_PER_NODE#" input.nml.$$ >! input.nml
+      ${REMOVE} input.nml.$$
+   endif
+endif
+
 #=========================================================================
 # Block 2: Stage the files needed for SAMPLING ERROR CORRECTION
 #
@@ -207,14 +244,28 @@ endif
 # files to be as listed above. When being archived, the filenames get a
 # unique extension (describing the assimilation time) appended to them.
 #
-# The inflation file is essentially a duplicate of the model state ...
-# it is slaved to a specific geometry. The initial files are created
-# offline with values of unity. For the purpose of this script, they are
-# thought to be the output of a previous assimilation, so they should be
-# named something like prior_inflate_restart.YYYY-MM-DD-SSSSS
+# The inflation file is essentially a duplicate of the DART model state ...
+# For the purpose of this script, they are the output of a previous assimilation,
+# so they should be named something like prior_inflate_restart.YYYY-MM-DD-SSSSS
 #
-# The first inflation file can be created with 'fill_inflation_restart'
-# which can be built in the usual DART manner.
+# NOTICE: inf_initial_from_restart and inf_sd_initial_from_restart are somewhat
+# problematic. During the bulk of an experiment, these should be TRUE, since
+# we want to read existing inflation files. However, the first assimilation
+# might need these to be FALSE and then subsequently be set to TRUE.
+# There are two ways to handle this:
+#
+# 1) Create the initial files offline (perhaps with 'fill_inflation_restart')
+#    and stage them with the appropriate names in the RUNDIR.
+#    You must manually remove the clm_inflation_cookie file
+#    from the RUNDIR in this case.
+#    - OR -
+# 2) create a cookie file called RUNDIR/clm_inflation_cookie
+#    The existence of this file will cause this script to set the
+#    namelist appropriately. This script will 'eat' the cookie file
+#    to prevent this from happening for subsequent executions. If the
+#    inflation file does not exist for them, and it needs to, this script
+#    should die. The CESM_DART_config script automatically creates a cookie
+#    file to support this option.
 #
 # The strategy is to use the LATEST inflation file from the CESM 'rundir'.
 # After an assimilation, the new inflation values/files will be moved to
@@ -258,7 +309,24 @@ set  POSTE_INF_DIAG = $MYSTRING[3]
 if ( $PRIOR_INF > 0 ) then
 
    if ($PRIOR_TF == false) then
+      # we are not using an existing inflation file.
       echo "inf_flavor(1) = $PRIOR_INF, using namelist values."
+
+   else if ( -e ../clm_inflation_cookie ) then
+      # We want to use an existing inflation file, but this is
+      # the first assimilation so there is no existing inflation
+      # file. This is the signal we need to to coerce the namelist
+      # to have different values for this execution ONLY.
+      # Since the local namelist comes from CASEROOT each time, we're golden.
+
+      set PRIOR_TF = FALSE
+
+ex input.nml <<ex_end
+g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+g;inf_sd_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+wq
+ex_end
+
    else
       # Look for the output from the previous assimilation
       (ls -rt1 ../clm_${PRIOR_INF_OFNAME}.* | tail -n 1 >! latestfile) > & /dev/null
@@ -284,9 +352,25 @@ endif
 if ( $POSTE_INF > 0 ) then
 
    if ($POSTE_TF == false) then
+      # we are not using an existing inflation file.
       echo "inf_flavor(2) = $POSTE_INF, using namelist values."
-   else
 
+   else if ( -e ../clm_inflation_cookie ) then
+      # We want to use an existing inflation file, but this is
+      # the first assimilation so there is no existing inflation
+      # file. This is the signal we need to to coerce the namelist
+      # to have different values for this execution ONLY.
+      # Since the local namelist comes from CASEROOT each time, we're golden.
+
+      set POSTE_TF = FALSE
+
+ex input.nml <<ex_end
+g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+g;inf_sd_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+wq
+ex_end
+
+   else
       # Look for the output from the previous assimilation
       (ls -rt1 ../clm_${POSTE_INF_OFNAME}.* | tail -n 1 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
@@ -304,6 +388,9 @@ if ( $POSTE_INF > 0 ) then
 else
    echo "Posterior Inflation       not requested for this assimilation."
 endif
+
+# Eat the cookie regardless
+${REMOVE} ../clm_inflation_cookie
 
 #=========================================================================
 # Block 4: Convert N CLM restart files to DART initial condition files.
@@ -348,19 +435,6 @@ while ( ${member} <= ${ensemble_size} )
    ${LINK} ../../$LND_RESTART_FILENAME clm_restart.nc
    ${LINK} ../../$LND_HISTORY_FILENAME clm_history.nc
 
-   # patch the CLM restart files to ensure they have the proper
-   # _FillValue and missing_value attributes.
-#  ncatted -O -a    _FillValue,frac_sno,o,d,1.0e+36   clm_restart.nc
-#  ncatted -O -a missing_value,frac_sno,o,d,1.0e+36   clm_restart.nc
-#  ncatted -O -a    _FillValue,DZSNO,o,d,1.0e+36      clm_restart.nc
-#  ncatted -O -a missing_value,DZSNO,o,d,1.0e+36      clm_restart.nc
-#  ncatted -O -a    _FillValue,H2OSOI_LIQ,o,d,1.0e+36 clm_restart.nc
-#  ncatted -O -a missing_value,H2OSOI_LIQ,o,d,1.0e+36 clm_restart.nc
-#  ncatted -O -a    _FillValue,H2OSOI_ICE,o,d,1.0e+36 clm_restart.nc
-#  ncatted -O -a missing_value,H2OSOI_ICE,o,d,1.0e+36 clm_restart.nc
-#  ncatted -O -a    _FillValue,T_SOISNO,o,d,1.0e+36   clm_restart.nc
-#  ncatted -O -a missing_value,T_SOISNO,o,d,1.0e+36   clm_restart.nc
-
    echo "starting clm_to_dart for member ${member} at "`date`
    ${EXEROOT}/clm_to_dart >! output.${member}.clm_to_dart &
 
@@ -385,19 +459,20 @@ echo "`date` -- END CLM-TO-DART for all ${ensemble_size} members."
 # Will result in a set of files : 'filter_restart.xxxx'
 #
 # DART namelist settings required:
-# &filter_nml:           async                  = 0,
-# &filter_nml:           adv_ens_command        = "./no_model_advance.csh",
-# &filter_nml:           restart_in_file_name   = 'filter_ics'
-# &filter_nml:           restart_out_file_name  = 'filter_restart'
-# &filter_nml:           obs_sequence_in_name   = 'obs_seq.out'
-# &filter_nml:           obs_sequence_out_name  = 'obs_seq.final'
-# &filter_nml:           init_time_days         = -1,
-# &filter_nml:           init_time_seconds      = -1,
-# &filter_nml:           first_obs_days         = -1,
-# &filter_nml:           first_obs_seconds      = -1,
-# &filter_nml:           last_obs_days          = -1,
-# &filter_nml:           last_obs_seconds       = -1,
-# &ensemble_manager_nml: single_restart_file_in = .false.
+# &filter_nml:           async                   = 0,
+# &filter_nml:           adv_ens_command         = "no_advance_script",
+# &filter_nml:           restart_in_file_name    = 'filter_ics'
+# &filter_nml:           restart_out_file_name   = 'filter_restart'
+# &filter_nml:           obs_sequence_in_name    = 'obs_seq.out'
+# &filter_nml:           obs_sequence_out_name   = 'obs_seq.final'
+# &filter_nml:           init_time_days          = -1,
+# &filter_nml:           init_time_seconds       = -1,
+# &filter_nml:           first_obs_days          = -1,
+# &filter_nml:           first_obs_seconds       = -1,
+# &filter_nml:           last_obs_days           = -1,
+# &filter_nml:           last_obs_seconds        = -1,
+# &ensemble_manager_nml: single_restart_file_in  = .false.
+# &ensemble_manager_nml: single_restart_file_out = .false.
 #
 #=========================================================================
 
@@ -433,7 +508,7 @@ ${MOVE} dart_log.out       ../clm_dart_log.${LND_DATE_EXT}.out
 
 # Accomodate any possible inflation files
 # 1) rename file to reflect current date
-# 2) move to CENTRALDIR so the DART INFLATION BLOCK works next time and
+# 2) move to RUNDIR so the DART INFLATION BLOCK works next time and
 #    that they can get archived.
 
 foreach FILE ( ${PRIOR_INF_OFNAME} ${POSTE_INF_OFNAME} ${PRIOR_INF_DIAG} ${POSTE_INF_DIAG} )
@@ -445,7 +520,7 @@ foreach FILE ( ${PRIOR_INF_OFNAME} ${POSTE_INF_OFNAME} ${PRIOR_INF_DIAG} ${POSTE
 end
 
 #=========================================================================
-# Block 6: Update the clm restart files.
+# Block 6: Update the clm restart files ... simultaneously ...
 #
 # Each member will do its job in its own directory, which already exists
 # and has the required input files remaining from 'Block 4'

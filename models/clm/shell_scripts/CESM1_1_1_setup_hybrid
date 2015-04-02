@@ -6,7 +6,7 @@
 #
 # DART $Id$
 
-# ==============================================================================
+#*******************************************************************************
 #
 # ---------------------
 # Purpose
@@ -98,9 +98,7 @@
 # ./${case}.clean_build
 # ./${case}.build
 #
-# ==============================================================================
-
-
+#*******************************************************************************
 
 # ==============================================================================
 # case options:
@@ -115,7 +113,7 @@
 # num_instances The number of ensemble members.
 # ==============================================================================
 
-setenv case                 clm_hybrid
+setenv case                 clm1_1_1_hybrid
 setenv compset              I_2000_CN
 setenv resolution           f09_f09
 setenv cesmtag              cesm1_1_1
@@ -163,6 +161,13 @@ setenv dartroot     /glade/u/home/${USER}/svn/DART/trunk
 # reftod
 #
 # stagedir   The directory location of the reference case files.
+#
+# bug1730_workaround   If ANY history file will be created in the 'vector' format,
+#                      this should be set to 'on'.
+#                      http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730
+# bug1934_workaround   If snow grain radius is important to you, this should be 'on'.
+#                      The answers will change from the baseline case.
+#                      http://bugs.cgd.ucar.edu/show_bug.cgi?id=1934
 # ==============================================================================
 
 setenv refcase     80_member_freerun_one_degree
@@ -176,6 +181,9 @@ setenv refdate      $refyear-$refmon-$refday
 setenv reftimestamp $refyear-$refmon-$refday-$reftod
 
 setenv stagedir /glade/scratch/afox/archive/$refcase/rest/${reftimestamp}
+
+setenv bug1730_workaround  on
+setenv bug1934_workaround  on
 
 # ==============================================================================
 # runtime settings:
@@ -235,7 +243,7 @@ setenv stop_n              24
 #      an assimilation step took about 10 minutes on yellowstone.
 # ==============================================================================
 
-setenv ACCOUNT      P8685xxxx
+setenv ACCOUNT      NIMGxxxx
 setenv queue        economy
 setenv timewall     0:30
 
@@ -365,6 +373,16 @@ cd ${caseroot}
 
 source ./Tools/ccsm_getenv || exit -2
 
+# Make sure the case is configured with a data ocean and a data atmosphere.
+
+if ( (${COMP_OCN} != docn) || (${COMP_ATM} != datm) ) then
+   echo " "
+   echo "ERROR: This setup script is not appropriate for active ocean or atmospheric compsets."
+   echo "ERROR: Please use the models/CESM/shell_scripts examples for that case."
+   echo " "
+   exit -3
+endif
+
 # MAX_TASKS_PER_NODE comes from $case/Tools/mkbatch.$machine
 @ ptile = $MAX_TASKS_PER_NODE / 2
 @ nthreads = 1
@@ -455,12 +473,13 @@ echo ""
 ./xmlchange BRNCH_RETAIN_CASENAME=FALSE
 ./xmlchange GET_REFCASE=FALSE
 ./xmlchange EXEROOT=${exeroot}
+./xmlchange RUNDIR=${rundir}
 
 ./xmlchange DATM_MODE=CPLHIST3HrWx
 ./xmlchange DATM_CPLHIST_CASE=$case
-./xmlchange DATM_CPLHIST_YR_ALIGN=$refyear
-./xmlchange DATM_CPLHIST_YR_START=$refyear
-./xmlchange DATM_CPLHIST_YR_END=$refyear
+./xmlchange DATM_CPLHIST_YR_ALIGN=$stream_year_align
+./xmlchange DATM_CPLHIST_YR_START=$stream_year_first
+./xmlchange DATM_CPLHIST_YR_END=$stream_year_last
 
 ./xmlchange CALENDAR=GREGORIAN
 
@@ -469,28 +488,42 @@ echo ""
 ./xmlchange CONTINUE_RUN=FALSE
 ./xmlchange RESUBMIT=$resubmit
 
-./xmlchange PIO_TYPENAME=pnetcdf
+if ($bug1730_workaround == 'on') then
+   ./xmlchange PIO_TYPENAME=netcdf
+else
+   ./xmlchange PIO_TYPENAME=pnetcdf
+endif
+
+set TEST_MPI = `./xmlquery -valonly MPI_RUN_COMMAND | sed -e 's/MPI_RUN_COMMAND = //'`
+if (${TEST_MPI} == 'UNSET') then
+   ./xmlchange MPI_RUN_COMMAND=mpirun.lsf
+endif
 
 # The river transport model ON is useful only when using an active ocean or
 # land surface diagnostics. Setting ROF_GRID to 'null' turns off the RTM.
-# so we are also turning on the CLM biogeochemistry.
+# We are also turning on the CLM biogeochemistry.
 
 ./xmlchange ROF_GRID='null'
 ./xmlchange CLM_CONFIG_OPTS='-bgc cn'
+
+# These are archiving options that may be used.
+# You can turn the short/long term archivers on or off,
+# but these settings should be made in either event.
+
+./xmlchange DOUT_S_ROOT=${archdir}
+./xmlchange DOUT_S_SAVE_INT_REST_FILES=FALSE
+./xmlchange DOUT_L_MSROOT="csm/${case}"
+./xmlchange DOUT_L_HTAR=FALSE
 
 if ($short_term_archiver == 'off') then
    ./xmlchange DOUT_S=FALSE
 else
    ./xmlchange DOUT_S=TRUE
-   ./xmlchange DOUT_S_ROOT=${archdir}
-   ./xmlchange DOUT_S_SAVE_INT_REST_FILES=FALSE
 endif
 if ($long_term_archiver == 'off') then
    ./xmlchange DOUT_L_MS=FALSE
 else
    ./xmlchange DOUT_L_MS=TRUE
-   ./xmlchange DOUT_L_MSROOT="csm/${case}"
-   ./xmlchange DOUT_L_HTAR=FALSE
 endif
 
 # level of debug output, 0=minimum, 1=normal, 2=more, 3=too much, valid values: 0,1,2,3 (integer)
@@ -502,6 +535,8 @@ endif
 # Set up the case.
 # This creates the EXEROOT and RUNDIR directories.
 # ==============================================================================
+
+echo 'Setting up the case ...'
 
 ./cesm_setup
 
@@ -529,15 +564,14 @@ switch ( $BATCH )
       # NCAR "bluefire", "yellowstone"
       set TIMEWALL=`grep BSUB ${case}.run | grep -e '-W' `
       set    QUEUE=`grep BSUB ${case}.run | grep -e '-q' `
-      sed -e "s/$TIMEWALL[3]/$timewall/" \
-          -e "s/ptile=[0-9][0-9]*/ptile=$ptile/" \
-          -e "s/$QUEUE[3]/$queue/" < ${case}.run >! temp.$$
+      sed -e "/BSUB/s#$TIMEWALL[3]#$timewall#" \
+          -e "/BSUB/s#ptile=[0-9][0-9]*#ptile=$ptile#" \
+          -e "/BSUB/s#$QUEUE[3]#$queue#" < ${case}.run >! temp.$$
           ${MOVE} temp.$$ ${case}.run
           chmod 755       ${case}.run
    breaksw
 
    default:
-
    breaksw
 endsw
 
@@ -551,14 +585,18 @@ endsw
 
 if (    -d     ~/${cesmtag}/SourceMods ) then
    ${COPY} -r  ~/${cesmtag}/SourceMods/* ${caseroot}/SourceMods/
+   if ( $bug1934_workaround != 'on' ) then
+      # if we do not want the bugfix, we do not want the bugfixed code.
+      ${REMOVE} ${caseroot}/SourceMods/src.clm/SnowHydrologyMod.F90
+   endif
 else
    echo "ERROR - No SourceMods for this case."
    echo "ERROR - No SourceMods for this case."
    echo "DART requires modifications to several src files."
-   echo "These files can be downloaded from:"
-   echo "http://www.image.ucar.edu/pub/DART/CESM/DART_SourceMods_cesm1_1_1_24Oct2013.tar"
+   echo "Download the appropriate files for CESM 1_1_1 from:"
+   echo "http://www.image.ucar.edu/pub/DART/CESM"
    echo "untar these into your HOME directory - they will create a"
-   echo "~/cesm_1_1_1  directory with the appropriate SourceMods structure."
+   echo "~/cesm1_1_1  directory with the appropriate SourceMods structure."
    exit -4
 endif
 
@@ -626,7 +664,7 @@ while ($inst <= $num_instances)
    # ===========================================================================
    set fname = "user_nl_clm${inst_string}"
    # ===========================================================================
-   # LAND namelist
+   # LAND Namelist
    # With a RUN_TYPE=hybrid the finidat is automatically specified
    # using the REFCASE/REFDATE/REFTOD information. i.e.
    # finidat = ${stagedir}/${refcase}.clm2${inst_string}.r.${reftimestamp}.nc
@@ -648,16 +686,60 @@ while ($inst <= $num_instances)
    # since it is in a namelist - it can change during the course of a run - BUT
    # as discussed above, only the first settings are important. Tricky.
    #
+   # See page 68 of the clm_ug.pdf:
+   # "Sometimes it's important to understand how different land-units or vegetation
+   #  types are acting within a grid-cell. The way to do this is to output history
+   #  files as a 1D-vector of all land-units and vegetation types. In order to display
+   #  this, you'll need to do extensive post-processing to make sense of the output.
+   #  Often you may only be interested in a few points, so once you figure out the 1D
+   #  indices for the grid-cells of interest, you can easily view that data. 1D vector
+   #  output can also be useful for single point datasets, since it's then obvious that
+   #  all data is for the same grid cell.  To do this you use hist_dov2xy which is an
+   #  array of rank six for each history stream. Set it to .false. if you want one of
+   #  the history streams to be a 1D vector. You can also use hist_type1d_pertape if
+   #  you want to average over all the: Plant-Function-Types, columns, land-units, or
+   #  grid-cells. A sample user namelist user_nl_clm leaving the primary monthly files
+   #  as 2D, and then doing grid-cell (GRID), column (COLS), and no averaging over
+   #  auxiliary tapes output daily for a single field (ground temperature) is:
+   #  Example 1-7. Example user_nl_clm namelist outputting some files in 1D Vector format
+   #     hist_fincl2 = 'TG'
+   #     hist_fincl3 = 'TG'
+   #     hist_fincl4 = 'TG'
+   #     hist_fincl5 = 'TG'
+   #     hist_fincl6 = 'TG'
+   #     hist_dov2xy = .true., .false., .false., .false.
+   #     hist_type1d_pertape = ' ', 'GRID', 'COLS', ' '
+   #     hist_nhtfrq = 0, -24, -24, -24
+   # "
+   #
+   # NOTE for the BRIGHTNESS TEMPERATURE PEOPLE:
+   # The input for the radiative transfer models may need to come from a CLM
+   # history file. It is possible to specify that this information should come at
+   # the same resolution (vector format) as the restart file - instead of automatically
+   # getting aggregated to a gridcell-based quantities. This may result in more
+   # accurate forward operators. It is up to you to determine this. If you do choose
+   # to write out vector-based history files, please read about CLM bug 1730 at
+   # http://bugs.cgd.ucar.edu/show_bug.cgi?id=1730 and make sure bug1730_workaround
+   # is set appropriately in this script.
+   #
+   # The following example creates three history files.
+   # .h0. contains NEP, as well as all the 'standard' output every $stop_n hours.
+   # .h1. contains NEP, sensible heat (FSH) and latent heat (EFLX_LH_TOT_R) for every timestep.
+   # .h2. contains instantaneous vector-based quantities every $stop_n hours.
+   #
    # For a HOP TEST ... hist_empty_htapes = .false.
    # For a HOP TEST ... use a default hist_fincl1
 
-   echo "dtime             = $clm_dtime,"             >> ${fname}
-   echo "hist_empty_htapes = .false.,"                >> ${fname}
-   echo "hist_fincl1 = 'NEP',"                        >> ${fname}
-   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R',"  >> ${fname}
-   echo "hist_nhtfrq = -$stop_n,1,"                   >> ${fname}
-   echo "hist_mfilt  = 1,$h1nsteps,"                  >> ${fname}
-   echo "hist_avgflag_pertape = 'A','A'"              >> ${fname}
+   echo "dtime             = $clm_dtime"              >> ${fname}
+   echo "hist_empty_htapes = .false."                 >> ${fname}
+   echo "hist_fincl1 = 'NEP'"                         >> ${fname}
+   echo "hist_fincl2 = 'NEP','FSH','EFLX_LH_TOT_R'"   >> ${fname}
+   echo "hist_fincl3 = 'TV','TLAI','PBOT','TBOT','TSA','RH2M_R','SNOWDP'" >> ${fname}
+   echo "hist_nhtfrq = -$stop_n,1,-$stop_n"           >> ${fname}
+   echo "hist_mfilt  = 1,$h1nsteps,1"                 >> ${fname}
+   echo "hist_avgflag_pertape = 'A','A','I'"          >> ${fname}
+   echo "hist_dov2xy = .true., .true., .false."       >> ${fname}
+   echo "hist_type1d_pertape = ' ', ' ', ' '"         >> ${fname}
 
    @ inst ++
 end
@@ -675,7 +757,7 @@ end
 #
 # ==============================================================================
 
-./preview_namelists
+./preview_namelists || exit -3
 
 # This gives us a stream txt file for each instance that we can
 # modify for our own purpose.
@@ -710,12 +792,12 @@ foreach FNAME (user*streams*)
 
    if (-e $dartroot/models/clm/shell_scripts/user_$streamname*template) then
 
-      echo "Copying DART template for ${FNAME} and changing instances, refyear"
+      echo "Copying DART template for ${FNAME} and changing instances, runyear"
 
       ${COPY} $dartroot/models/clm/shell_scripts/user_$streamname*template ${FNAME}
 
       sed s/NINST/$instance/g ${FNAME} >! out.$$
-      sed s/REFYEAR/$refyear/g  out.$$ >! ${FNAME}
+      sed s/RUNYEAR/$start_year/g  out.$$ >! ${FNAME}
       \rm -f out.$$
 
    else
@@ -726,7 +808,7 @@ foreach FNAME (user*streams*)
 
 end
 
-./preview_namelists
+./preview_namelists || exit -3
 
 # ==============================================================================
 # Stage the restarts now that the run directory exists
@@ -750,25 +832,23 @@ cat << EndOfText >! stage_cesm_files
 
 set restart_time = $init_time
 
-
 # get the settings for this case from the CESM environment
 cd ${caseroot}
 source ./Tools/ccsm_getenv || exit -2
 cd ${RUNDIR}
 
 echo 'Copying the required CESM files to the run directory to rerun'
-echo 'a previous step.  CONTINUE_RUN from env_run.xml is' \$CONTINUE_RUN
-if ( \$CONTINUE_RUN == TRUE ) then
+echo 'a previous step.  CONTINUE_RUN from env_run.xml is' \${CONTINUE_RUN}
+if ( \${CONTINUE_RUN} == TRUE ) then
   echo 'so files for some later step than the initial one will be restaged.'
-  echo "Date to reset files to is: \$restart_time"
+  echo "Date to reset files to is: \${restart_time}"
 else
   echo 'so files for the initial step of this experiment will be restaged.'
-  echo "Date to reset files to is: $init_time"
+  echo "Date to reset files to is: ${init_time}"
 endif
 echo ''
 
-
-if ( \$CONTINUE_RUN == TRUE ) then
+if ( \${CONTINUE_RUN} == TRUE ) then
 
    #----------------------------------------------------------------------
    # This block copies over a set of restart files from any previous step of
@@ -776,31 +856,34 @@ if ( \$CONTINUE_RUN == TRUE ) then
    # After running this script resubmit the job to rerun.
    #----------------------------------------------------------------------
 
-   echo "Staging restart files for run date/time: " \$restart_time
+   echo "Staging restart files for run date/time: " \${restart_time}
 
    #  The short term archiver is on, so the files we want should be in one
    #  of the short term archive 'rest' restart directories.  This assumes
    #  the long term archiver has NOT copied these files to the HPSS yet.
 
-   if (  \$DOUT_S   == TRUE ) then
+   if (  \${DOUT_S} == TRUE ) then
 
       # The restarts should be in the short term archive directory.  See
       # www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x1631.html#running_ccsm_restart_back
       # for more help and information.
 
-      if ( ! -d \$DOUT_S_ROOT/rest/\${restart_time} ) then
+      set RESTARTDIR = \${DOUT_S_ROOT}/rest/\${restart_time}
+
+      if ( ! -d \${RESTARTDIR} ) then
 
          echo "restart file directory not found: "
-         echo " \$DOUT_S_ROOT/rest/\${restart_time} "
+         echo " \${RESTARTDIR}"
          echo "If the long-term archiver is on, you may have to restore this directory first."
          echo "You can also check for either a .sta or a .sta2 hidden subdirectory in"
-         echo \$DOUT_S_ROOT
-         echo "which may contain the 'rest' directory you need."
+         echo "\${DOUT_S_ROOT}"
+         echo "which may contain the 'rest' directory you need,"
+         echo "and then modify RESTARTDIR in this script."
          exit -1
 
       endif
 
-      ${COPY} \$DOUT_S_ROOT/rest/\${restart_time}/* . || exit -1
+      ${COPY} \${RESTARTDIR}/* . || exit -1
 
    else
 
