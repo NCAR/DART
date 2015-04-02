@@ -8,6 +8,10 @@
    nlon                            = 71,
    nlat                            = 36,
    output_box_info                 = .false.,
-   maintain_original_vert          = .false.,
+   special_vert_normalization_obs_types     = ''
+   special_vert_normalization_pressures     = 100000.0
+   special_vert_normalization_heights       = 10000.0
+   special_vert_normalization_levels        = 20.0
+   special_vert_normalization_scale_heights = 5.0
 /
 
