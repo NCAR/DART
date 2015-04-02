@@ -42,13 +42,11 @@ dispose() {
 #
 #result is returned in $inst_suffix
 get_inst_suffix() {
-#   echo "get_inst_suffixa $1 $2 ${inst_suffix}"
     if [ $2 -eq 1 ]; then   # only one instance of this component
 	inst_suffix=""
     else                    # multiple instances of this component
         inst_suffix=`printf _%04d $1`
     fi
-#   echo "get_inst_suffixb $1 $2 ${inst_suffix}"
 }
 
 echo ""
@@ -66,7 +64,7 @@ sta=${DOUT_S_ROOT}/.sta-$$-`date +%Y%m%d%H%M%S%N`
 mkdir -p ${sta} 2> /dev/null
 
 if [ $? -ne 0 ]; then
-    echo "st_archive.sh: error, unable to create short-term archive directory"
+    echo "st_archive.sh: error, unable to create short-term archive directory ${sta}"
     echo "st_archive.sh: exiting"
     exit 1
 fi
@@ -110,6 +108,11 @@ if [ -z "$NINST_GLC" ]; then
     export NINST_GLC=1
 fi
 
+if [ -z "$NINST_WAV" ]; then
+    echo "st_archive.sh: warning, NINST_WAV not set -- using 1 instance"
+    export NINST_WAV=1
+fi
+
 #create directory for restart files
 set ${CASE}.cpl.r.*
 cplfile=`ls -rt $* 2> /dev/null | tail -1`
@@ -136,23 +139,49 @@ fi
 mv $* ${sta}/rest/${dname}
 
 set cpl.log.*;                                                                                                        dispose ifiles_n ${sta}/cpl/logs $*
-set ccsm*.log.*;                                                                                                      dispose ifiles_n ${sta}/cpl/logs $*
+set cesm*.log.*;                                                                                                      dispose ifiles_n ${sta}/cpl/logs $*
 set ${CASE}.cpl.r.*;         latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/cpl/rest $*
 set ${CASE}.cpl.h* ;                                                                                                  dispose ifiles_n ${sta}/cpl/hist $*
 
 
-# TJH FIXME possible tweaking - remove assimilate_dir/member_* directories? anything else?
+# DART assimilation-related files
 set assimilate_???/*/*dart_log.*;                                                                                     dispose ifiles_n ${sta}/dart/logs $*
 set assimilate_???/*/output.*;                                                                                        dispose ifiles_n ${sta}/dart/logs $*
 set *dart_log.*;                                                                                                      dispose ifiles_n ${sta}/dart/logs $*
 set *True_State.*.nc;                                                                                                 dispose ifiles_n ${sta}/dart/hist $*
 set *Prior_Diag.*.nc;                                                                                                 dispose ifiles_n ${sta}/dart/hist $*
 set *Posterior_Diag.*.nc;                                                                                             dispose ifiles_n ${sta}/dart/hist $*
-set *obs_seq.*.out;                                                                                                   dispose ifiles_n ${sta}/dart/hist $*
-set *obs_seq.*.final;                                                                                                 dispose ifiles_n ${sta}/dart/hist $*
-set *obs_seq.*.perfect;                                                                                               dispose ifiles_n ${sta}/dart/hist $*
-set *pr*inflate_restart*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null;   dispose ifiles_n ${sta}/dart/rest $*
-set *po*inflate_restart*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null;   dispose ifiles_n ${sta}/dart/rest $*
+
+# Save a copy of DART selected obs_sequence files (output from perfect_model_obs,
+# input to filter, and output from filter) to a place that won't be wiped out by lt_archive
+DOUT_ROOT=`dirname $RUNDIR`
+ls cam_obs_seq.*.perfect                         2> /dev/null
+if [ $? -eq 0 ]; then
+   mkdir -p $DOUT_ROOT/Obs_seq_perfect           2> /dev/null
+   cp *obs_seq.*.out $DOUT_ROOT/Obs_seq_perfect
+fi
+
+ls cam_obs_seq.*.out                             2> /dev/null
+if [ $? -eq 0 ]; then
+   mkdir -p $DOUT_ROOT/Obs_seq_out               2> /dev/null
+   cp *obs_seq.*.out $DOUT_ROOT/Obs_seq_out
+fi
+
+ls cam_obs_seq.*.final                           2> /dev/null
+if [ $? -eq 0 ]; then
+   mkdir -p $DOUT_ROOT/Obs_seq_final             2> /dev/null
+   cp *obs_seq.*.final $DOUT_ROOT/Obs_seq_final
+fi
+
+set *obs_seq.*.out;                                                                                                       dispose ifiles_n ${sta}/dart/hist $*
+set *obs_seq.*.final;                                                                                                     dispose ifiles_n ${sta}/dart/hist $*
+set *obs_seq.*.perfect;                                                                                                   dispose ifiles_n ${sta}/dart/hist $*
+set cam_*pr*inflate_restart*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null;   dispose ifiles_n ${sta}/dart/rest $*
+set cam_*po*inflate_restart*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null;   dispose ifiles_n ${sta}/dart/rest $*
+set clm_*pr*inflate_restart*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null;   dispose ifiles_n ${sta}/dart/rest $*
+set clm_*po*inflate_restart*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null;   dispose ifiles_n ${sta}/dart/rest $*
+set pop_*pr*inflate_restart*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null;   dispose ifiles_n ${sta}/dart/rest $*
+set pop_*po*inflate_restart*;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null;   dispose ifiles_n ${sta}/dart/rest $*
 
 
 IDX=1
@@ -176,7 +205,8 @@ do
     set ${CASE}.cam*${inst_suffix}.h4.*;  latest=`ls -rt $* 2> /dev/null | tail -1`; cp $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_n ${sta}/atm/hist $*
     set ${CASE}.cam*${inst_suffix}.h5.*;  latest=`ls -rt $* 2> /dev/null | tail -1`; cp $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_n ${sta}/atm/hist $*
     set ${CASE}.cam*${inst_suffix}.hs.*;  latest=`ls -rt $* 2> /dev/null | tail -1`; cp $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_n ${sta}/atm/hist $*
-    set ${CASE}.cam*${inst_suffix}.i.*;   latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/atm/init $*
+    # Save initial files for later evaluation/assimilation
+    set ${CASE}.cam*${inst_suffix}.i.*;   latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_n ${sta}/atm/init $*
     set ${CASE}.datm${inst_suffix}.r.* ;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/atm/rest $*
     set ${CASE}.datm${inst_suffix}.rs* ;  latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/atm/rest $*
     set ${CASE}.datm${inst_suffix}.h.* ;                                                                                           dispose ifiles_n ${sta}/atm/hist $*
@@ -270,17 +300,19 @@ do
     get_inst_suffix $IDX $NINST_OCN
     set ocn${inst_suffix}.log.*;                                                                                                               dispose ifiles_n ${sta}/ocn/logs $*
     set ${CASE}.pop${inst_suffix}.r.*.hdr;            latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
-    set ${CASE}.pop${inst_suffix}.r.*0000;            latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
-    set ${CASE}.pop${inst_suffix}.r.*0000.nc;         latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
+    set ${CASE}.pop${inst_suffix}.r.*[0-9];           latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
+    set ${CASE}.pop${inst_suffix}.r.*.nc;             latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
     set ${CASE}.pop${inst_suffix}.rh.ecosys.*.hdr;    latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
-    set ${CASE}.pop${inst_suffix}.rh.ecosys.*0000;    latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
-    set ${CASE}.pop${inst_suffix}.rh.ecosys.*0000.nc; latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
+    set ${CASE}.pop${inst_suffix}.rh.ecosys.*[0-9];   latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
+    set ${CASE}.pop${inst_suffix}.rh.ecosys.*.nc;     latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
     set ${CASE}.pop${inst_suffix}.rh.*.hdr;           latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
-    set ${CASE}.pop${inst_suffix}.rh.*0000;           latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
-    set ${CASE}.pop${inst_suffix}.rh.*0000.nc;        latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
+    set ${CASE}.pop${inst_suffix}.rh.*[0-9];          latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
+    set ${CASE}.pop${inst_suffix}.rh.[0-9]*.nc;       latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
+    set ${CASE}.pop${inst_suffix}.rh.*.nc;            latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
     set ${CASE}.pop${inst_suffix}.ro.*;               latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
     set ${CASE}.pop${inst_suffix}.d?*;                                                                                                         dispose ifiles_n ${sta}/ocn/hist $*
     set ${CASE}.pop${inst_suffix}.h*;                                                                                                          dispose ifiles_n ${sta}/ocn/hist $*
+
     set ${CASE}.docn${inst_suffix}.r.* ;              latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
     set ${CASE}.docn${inst_suffix}.rs* ;              latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/ocn/rest $*
     set ${CASE}.docn${inst_suffix}.h.* ;                                                                                                       dispose ifiles_n ${sta}/ocn/hist $*
@@ -303,12 +335,102 @@ do
     IDX=`expr $IDX + 1`
 done
 
-#copy back the required files for next restart
+
+IDX=1
+while [ $IDX -le $NINST_WAV ]
+do
+    get_inst_suffix $IDX $NINST_WAV
+    set wav${inst_suffix}.log.*;                                                                                                     dispose ifiles_n ${sta}/wav/logs $*
+    set ${CASE}.ww3${inst_suffix}.r.[0-9]*; latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/wav/rest $*
+    set ${CASE}.ww3${inst_suffix}.h*;                                                                                                dispose ifiles_n ${sta}/wav/hist $*
+    set ${CASE}.ww3${inst_suffix}.i.*;                                                                                               dispose ifiles_y ${sta}/wav/init $*
+    set ${CASE}.dwav${inst_suffix}.r.* ;    latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/wav/rest $*
+    set ${CASE}.dwav${inst_suffix}.rs* ;    latest=`ls -rt $* 2> /dev/null | tail -1`; mv $latest ${sta}/rest/${dname} 2> /dev/null; dispose ifiles_y ${sta}/wav/rest $*
+    set ${CASE}.dwav${inst_suffix}.h.* ;                                                                                             dispose ifiles_n ${sta}/wav/hist $*
+    IDX=`expr $IDX + 1`
+done
+
+# changes for DART assimilation runs.  stopping the model every day
+# (or every 6 hours) results in too much output to be archived.
+# keep every Nth restart, as well as the previous restart until
+# we know the next step has completed successfully.
+
+sta2=${DOUT_S_ROOT}/.sta2
+mkdir -p ${sta2} 2> /dev/null
+
+if [ $? -ne 0 ]; then
+    echo "st_archive.sh: error, unable to create short-term archive directory .sta2"
+    echo "st_archive.sh: exiting"
+    exit 1
+fi
+
+# delete previous contents, save last successful step for possible restart
+rm -fr ${sta2}/*
+mkdir -p ${sta2}/${dname} 2> /dev/null
+cp ${sta}/rest/${dname}/* ${sta2}/${dname}
+echo "st_archive.sh: copied last successful step into ${sta2}/${dname} for safekeeping"
+
+# copy back the required files for next restart
 cp ${sta}/rest/${dname}/* .
 
-mv ${sta}/* ${DOUT_S_ROOT}
-rm -fr ${sta}
+# now selectively delete the current contents of the restart dir so
+# it won't be picked up by the long term archiver.  the diagnostic
+# files are saved for all times, but these are the restart files
+# needed to start a new model advance. if you try to save every
+# set of restart files you will be archiving a very very very
+# large amount of data.
 
-echo "st_archive.sh: short-term archiving completed successfully"
+# dname: YYYY-MM-DD-SSSSS
+#   col: 1234567890123456
+
+ year=`echo $dname | cut -b1-4`
+month=`echo $dname | cut -b6-7`
+  day=`echo $dname | cut -b9-10`
+ secs=`echo $dname | cut -b12-16`
+
+# if you want to save more often (or less) alter the test here
+# using the time variables from immediately above.
+
+# approximately the last day of each month: all months except feb have 30 days,
+# and all febs have a 28th. 
+if [[ $month == 02 ]]; then lastday=28; else lastday=30; fi
+
+# example options for how frequently to save a full restart set:
+#
+# 1. Save the 10th, 20th, and "last" day of each month.
+# if [[ $secs == 00000 && ($day == 10 || $day == 20 || $day == $lastday) ]]; then
+#
+# 2. Save every Nth day by setting the frequency in the lines below.
+# Nth=1 
+# if [[ $secs == 00000 && (`expr $day % $Nth` == 0 || $day == $lastday) ]]; then
+
+Nth=1
+if [[ $secs == 00000 && (`expr $day % $Nth` == 0 || $day == $lastday) ]]; then
+  echo "st_archive: PRESERVING contents of restart ${dname}"
+else
+  echo "st_archive: DELETING contents of restart ${dname}"
+  rm -rf ${sta}/rest/${dname}
+  touch ${sta}/rest/${dname}_removed
+fi
+
+
+# make files visible again in the archive directory so they
+# are eligible again for the long term archiver to save.
+if mv ${sta}/* ${DOUT_S_ROOT}; then
+    rm -fr ${sta}
+else
+    echo "st_archive.sh: error, final move command unsuccessful"
+    echo "               some short-term archive data may be in ${sta}"
+    echo "st_archive.sh: exiting"
+    exit 1
+fi
+
+echo "`date`: st_archive.sh: short-term archiving completed successfully"
 
 exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+
