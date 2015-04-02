@@ -184,6 +184,7 @@ netCDF
 <TR><TD>&nbsp;</TD><TD><A HREF="#file_to_text">file_to_text</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#is_longitude_between">is_longitude_between</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_next_filename">get_next_filename</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_filename_list">set_filename_list</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_tasknum">set_tasknum</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_output">set_output</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#do_output">do_output</A></TD></TR>
@@ -662,11 +663,11 @@ logical                        :: <em class=code>is_longitude_between</em>
 <A NAME="get_next_filename"></A>
 <br>
 <div class=routine>
-<em class=call> var = get_next_filename( listname, index ) </em>
+<em class=call> var = get_next_filename( listname, lineindex ) </em>
 
 <pre>
 character(len=*),  intent(in) :: <em class=code>listname</em>
-integer,           intent(in) :: <em class=code>index</em>
+integer,           intent(in) :: <em class=code>lineindex</em>
 character(len=128)            :: <em class=code>get_next_filename</em>
 </pre>
 </div>
@@ -690,12 +691,55 @@ value is empty.
 <TABLE width=100% border=0 summary="" cellpadding=3>
 <TR><TD valign=top><em class=code>var </em></TD>
     <TD>An ascii string, up to 128 characters long, containing the
-        contents of line <em class=code>index</em> of the input file.</TD></TR>
+        contents of line <em class=code>lineindex</em> of the input file.</TD></TR>
 <TR><TD valign=top><em class=code>listname </em></TD>
     <TD>The filename to open and read lines from.</TD></TR>
-<TR><TD valign=top><em class=code>index </em></TD>
+<TR><TD valign=top><em class=code>lineindex </em></TD>
     <TD>Integer line number, starting at 1.  If larger than the
         number of lines in the file, the empty string '' will be returned.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="set_filename_list"></A>
+<br>
+<div class=routine>
+<em class=call> var = set_filename_list( name_array, listname, caller_name ) </em>
+
+<pre>
+character(len=*),  intent(inout) :: <em class=code>name_array</em>
+character(len=*),  intent(in)    :: <em class=code>listname</em>
+character(len=*),  intent(in)    :: <em class=code>caller_name</em>
+integer                          :: <em class=code>var</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the count of filenames specified.  
+Verifies that one of either the name_array or the listname was specified but
+not both.  If the input was a listname copy the names into the name_array
+so when this routine returns all the filenames are in name_array().
+Verifies that no more than the allowed number of names was specified if
+the input was a listname file.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var </em></TD>
+    <TD>The count of input files specified.</TD></TR>
+<TR><TD valign=top><em class=code>name_array </em></TD>
+    <TD>Array of input filename strings. Either this item or the listname
+        must be specified, but not both.</TD></TR>
+<TR><TD valign=top><em class=code>listname </em></TD>
+    <TD>The filename to open and read filenames from, one per line. 
+        Either this item or the name_array must be specified but not both.</TD></TR>
+<TR><TD valign=top><em class=code>caller_name</em></TD>
+    <TD>Calling subroutine name, used for error messages.</TD></TR>
 </TABLE>
 
 </div>
