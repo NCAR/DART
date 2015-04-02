@@ -4,51 +4,52 @@
 !
 ! $Id$
 
-! This module supports the observation types from the AIRS instruments.
-! http://winds.jpl.nasa.gov/missions/quikscat/index.cfm
-
+! Fortran has a limit of 32 characters for variable names. Hence,
+! each column can be at most 32 characters wide.
+! xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 ! BEGIN DART PREPROCESS KIND LIST
-! SAT_TEMPERATURE,           KIND_TEMPERATURE,           COMMON_CODE
-! SAT_TEMPERATURE_ELECTRON,  KIND_TEMPERATURE_ELECTRON,  COMMON_CODE
-! SAT_TEMPERATURE_ION,       KIND_TEMPERATURE_ION,       COMMON_CODE
-! SAT_DENSITY_NEUTRAL_O3P,   KIND_DENSITY_NEUTRAL_O3P,   COMMON_CODE
-! SAT_DENSITY_NEUTRAL_O2,    KIND_DENSITY_NEUTRAL_O2,    COMMON_CODE
-! SAT_DENSITY_NEUTRAL_N2,    KIND_DENSITY_NEUTRAL_N2,    COMMON_CODE
-! SAT_DENSITY_NEUTRAL_N4S,   KIND_DENSITY_NEUTRAL_N4S,   COMMON_CODE
-! SAT_DENSITY_NEUTRAL_NO,    KIND_DENSITY_NEUTRAL_NO,    COMMON_CODE
-! SAT_DENSITY_NEUTRAL_N2D,   KIND_DENSITY_NEUTRAL_N2D,   COMMON_CODE
-! SAT_DENSITY_NEUTRAL_N2P,   KIND_DENSITY_NEUTRAL_N2P,   COMMON_CODE
-! SAT_DENSITY_NEUTRAL_H,     KIND_DENSITY_NEUTRAL_H,     COMMON_CODE
-! SAT_DENSITY_NEUTRAL_HE,    KIND_DENSITY_NEUTRAL_HE,    COMMON_CODE
-! SAT_DENSITY_NEUTRAL_CO2,   KIND_DENSITY_NEUTRAL_CO2,   COMMON_CODE
-! SAT_DENSITY_NEUTRAL_O1D,   KIND_DENSITY_NEUTRAL_O1D,   COMMON_CODE
-! SAT_DENSITY_ION_O4SP,      KIND_DENSITY_ION_O4SP,      COMMON_CODE
-! SAT_DENSITY_ION_O2P,       KIND_DENSITY_ION_O2P,       COMMON_CODE
-! SAT_DENSITY_ION_N2P,       KIND_DENSITY_ION_N2P,       COMMON_CODE
-! SAT_DENSITY_ION_NP,        KIND_DENSITY_ION_NP,        COMMON_CODE
-! SAT_DENSITY_ION_NOP,       KIND_DENSITY_ION_NOP,       COMMON_CODE
-! SAT_DENSITY_ION_O2DP,      KIND_DENSITY_ION_O2DP,      COMMON_CODE
-! SAT_DENSITY_ION_O2PP,      KIND_DENSITY_ION_O2PP,      COMMON_CODE
-! SAT_DENSITY_ION_HP,        KIND_DENSITY_ION_HP,        COMMON_CODE
-! SAT_DENSITY_ION_HEP,       KIND_DENSITY_ION_HEP,       COMMON_CODE
-! SAT_DENSITY_ION_E,         KIND_DENSITY_ION_E,         COMMON_CODE
-! SAT_VELOCITY_U,            KIND_VELOCITY_U,            COMMON_CODE
-! SAT_VELOCITY_V,            KIND_VELOCITY_V,            COMMON_CODE
-! SAT_VELOCITY_W,            KIND_VELOCITY_W,            COMMON_CODE
-! SAT_VELOCITY_U_ION,        KIND_VELOCITY_U_ION,        COMMON_CODE
-! SAT_VELOCITY_V_ION,        KIND_VELOCITY_V_ION,        COMMON_CODE
-! SAT_VELOCITY_W_ION,        KIND_VELOCITY_W_ION,        COMMON_CODE
-! SAT_VELOCITY_VERTICAL_O3P, KIND_VELOCITY_VERTICAL_O3P, COMMON_CODE
-! SAT_VELOCITY_VERTICAL_O2,  KIND_VELOCITY_VERTICAL_O2,  COMMON_CODE
-! SAT_VELOCITY_VERTICAL_N2,  KIND_VELOCITY_VERTICAL_N2,  COMMON_CODE
-! SAT_VELOCITY_VERTICAL_N4S, KIND_VELOCITY_VERTICAL_N4S, COMMON_CODE
-! SAT_VELOCITY_VERTICAL_NO,  KIND_VELOCITY_VERTICAL_NO,  COMMON_CODE
-! SAT_F107,                  KIND_1D_PARAMETER,          COMMON_CODE
-! SAT_RHO,                   KIND_DENSITY,               COMMON_CODE
-! GPS_PROFILE,               KIND_ELECTRON_DENSITY,      COMMON_CODE
-! GND_GPS_VTEC,		     KIND_GND_GPS_VTEC
-! CHAMP_DENSITY,             KIND_DENSITY
-! MIDAS_TEC,                 KIND_VERTICAL_TEC
+! SAT_TEMPERATURE,                 KIND_TEMPERATURE,                COMMON_CODE
+! SAT_TEMPERATURE_ELECTRON,        KIND_TEMPERATURE_ELECTRON,       COMMON_CODE
+! SAT_TEMPERATURE_ION,             KIND_TEMPERATURE_ION,            COMMON_CODE
+! SAT_DENSITY_NEUTRAL_O3P,         KIND_DENSITY_NEUTRAL_O3P,        COMMON_CODE
+! SAT_DENSITY_NEUTRAL_O2,          KIND_DENSITY_NEUTRAL_O2,         COMMON_CODE
+! SAT_DENSITY_NEUTRAL_N2,          KIND_DENSITY_NEUTRAL_N2,         COMMON_CODE
+! SAT_DENSITY_NEUTRAL_N4S,         KIND_DENSITY_NEUTRAL_N4S,        COMMON_CODE
+! SAT_DENSITY_NEUTRAL_NO,          KIND_DENSITY_NEUTRAL_NO,         COMMON_CODE
+! SAT_DENSITY_NEUTRAL_N2D,         KIND_DENSITY_NEUTRAL_N2D,        COMMON_CODE
+! SAT_DENSITY_NEUTRAL_N2P,         KIND_DENSITY_NEUTRAL_N2P,        COMMON_CODE
+! SAT_DENSITY_NEUTRAL_H,           KIND_DENSITY_NEUTRAL_H,          COMMON_CODE
+! SAT_DENSITY_NEUTRAL_HE,          KIND_DENSITY_NEUTRAL_HE,         COMMON_CODE
+! SAT_DENSITY_NEUTRAL_CO2,         KIND_DENSITY_NEUTRAL_CO2,        COMMON_CODE
+! SAT_DENSITY_NEUTRAL_O1D,         KIND_DENSITY_NEUTRAL_O1D,        COMMON_CODE
+! SAT_DENSITY_ION_O4SP,            KIND_DENSITY_ION_O4SP,           COMMON_CODE
+! SAT_DENSITY_ION_O2P,             KIND_DENSITY_ION_O2P,            COMMON_CODE
+! SAT_DENSITY_ION_N2P,             KIND_DENSITY_ION_N2P,            COMMON_CODE
+! SAT_DENSITY_ION_NP,              KIND_DENSITY_ION_NP,             COMMON_CODE
+! SAT_DENSITY_ION_NOP,             KIND_DENSITY_ION_NOP,            COMMON_CODE
+! SAT_DENSITY_ION_O2DP,            KIND_DENSITY_ION_O2DP,           COMMON_CODE
+! SAT_DENSITY_ION_O2PP,            KIND_DENSITY_ION_O2PP,           COMMON_CODE
+! SAT_DENSITY_ION_HP,              KIND_DENSITY_ION_HP,             COMMON_CODE
+! SAT_DENSITY_ION_HEP,             KIND_DENSITY_ION_HEP,            COMMON_CODE
+! SAT_DENSITY_ION_E,               KIND_DENSITY_ION_E,              COMMON_CODE
+! SAT_VELOCITY_U,                  KIND_VELOCITY_U,                 COMMON_CODE
+! SAT_VELOCITY_V,                  KIND_VELOCITY_V,                 COMMON_CODE
+! SAT_VELOCITY_W,                  KIND_VELOCITY_W,                 COMMON_CODE
+! SAT_VELOCITY_U_ION,              KIND_VELOCITY_U_ION,             COMMON_CODE
+! SAT_VELOCITY_V_ION,              KIND_VELOCITY_V_ION,             COMMON_CODE
+! SAT_VELOCITY_W_ION,              KIND_VELOCITY_W_ION,             COMMON_CODE
+! SAT_VELOCITY_VERTICAL_O3P,       KIND_VELOCITY_VERTICAL_O3P,      COMMON_CODE
+! SAT_VELOCITY_VERTICAL_O2,        KIND_VELOCITY_VERTICAL_O2,       COMMON_CODE
+! SAT_VELOCITY_VERTICAL_N2,        KIND_VELOCITY_VERTICAL_N2,       COMMON_CODE
+! SAT_VELOCITY_VERTICAL_N4S,       KIND_VELOCITY_VERTICAL_N4S,      COMMON_CODE
+! SAT_VELOCITY_VERTICAL_NO,        KIND_VELOCITY_VERTICAL_NO,       COMMON_CODE
+! SAT_F107,                        KIND_1D_PARAMETER,               COMMON_CODE
+! SAT_RHO,                         KIND_DENSITY
+! GPS_PROFILE,                     KIND_ELECTRON_DENSITY,           COMMON_CODE
+! GND_GPS_VTEC,		           KIND_GND_GPS_VTEC
+! CHAMP_DENSITY,                   KIND_DENSITY
+! MIDAS_TEC,                       KIND_VERTICAL_TEC
+! GPS_VTEC_EXTRAP,                 KIND_VERTICAL_TEC,               COMMON_CODE
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
@@ -58,6 +59,8 @@
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
+! case(SAT_RHO) 
+!      call get_expected_upper_atm_density(state, location, obs_val, istatus)
 ! case(CHAMP_DENSITY) 
 !      call get_expected_upper_atm_density(state, location, obs_val, istatus)
 ! case(MIDAS_TEC) 
@@ -67,28 +70,34 @@
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
+! case(SAT_RHO) 
+!      continue
 ! case(CHAMP_DENSITY) 
 !      continue
 ! case(MIDAS_TEC) 
-!        continue
+!      continue
 ! case(GND_GPS_VTEC)
 !      continue
 ! END DART PREPROCESS READ_OBS_DEF
 
 ! BEGIN DART PREPROCESS WRITE_OBS_DEF
+! case(SAT_RHO) 
+!      continue
 ! case(CHAMP_DENSITY) 
 !      continue
 ! case(MIDAS_TEC) 
-!        continue
+!      continue
 ! case(GND_GPS_VTEC)
 !      continue
 ! END DART PREPROCESS WRITE_OBS_DEF
 
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
+! case(SAT_RHO) 
+!      continue
 ! case(CHAMP_DENSITY) 
 !      continue
 ! case(MIDAS_TEC) 
-!        continue
+!      continue
 ! case(GND_GPS_VTEC)
 !      continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
@@ -105,7 +114,9 @@ use     obs_kind_mod, only : KIND_ATOMIC_OXYGEN_MIXING_RATIO, &
                              KIND_MOLEC_OXYGEN_MIXING_RATIO, &
                              KIND_TEMPERATURE, &
                              KIND_PRESSURE, &
-                             KIND_DENSITY_ION_E, KIND_GND_GPS_VTEC, &
+                             KIND_DENSITY, &
+                             KIND_DENSITY_ION_E, &
+                             KIND_GND_GPS_VTEC, &
                              KIND_GEOPOTENTIAL_HEIGHT
 
 implicit none
@@ -120,11 +131,18 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
+logical, save :: module_initialized = .false.
 
-real(r8), PARAMETER       :: universal_gas_constant = 8314.0_r8 ! [J/K/kmol]
-logical, save             :: module_initialized = .false.
+real(r8), PARAMETER :: N2_molar_mass = 28.0_r8
+real(r8), PARAMETER :: O_molar_mass  = 16.0_r8
+real(r8), PARAMETER :: O2_molar_mass = 32.0_r8
+real(r8), PARAMETER :: universal_gas_constant = 8314.0_r8 ! [J/K/kmol]
+integer,  PARAMETER :: MAXLEVELS = 100 ! more than max levels expected in the model 
+
+character(len=512) :: string1, string2, string3
 
 contains
+
 
 subroutine initialize_module
 !-----------------------------------------------------------------------------
@@ -145,9 +163,19 @@ type(location_type), intent(in) :: location
 real(r8),           intent(out) :: obs_val
 integer,            intent(out) :: istatus
 real(r8)                        :: mmro1, mmro2 ! mass mixing ratio 
-real(r8)                        :: pressure, temperature 
+real(r8)                        :: mass_reciprocal, pressure, temperature 
 
 if ( .not. module_initialized ) call initialize_module
+
+! Some models (i.e. GITM) have density as part of the state.
+! If it is available, just return it. If density is not state,
+! then we need to create it from its constituents.
+
+call interpolate(x, location, KIND_DENSITY, obs_val, istatus)
+if (istatus == 0) return
+
+! This part was implemented for TIEGCM. Check the units for use with
+! other models.
 
 call interpolate(x, location, KIND_ATOMIC_OXYGEN_MIXING_RATIO, mmro1, istatus)
 if (istatus /= 0) then
@@ -170,10 +198,14 @@ if (istatus /= 0) then
    return
 endif
 
-!density [Kg/m3] =  pressure [N/m2] * M [g/mol] / temperature [K] / R [N*m/K/kmol] 
-obs_val          =  pressure &
-                 /(mmro1/16.0_r8+mmro2/32.0_r8+(1-mmro1-mmro2)/28.0_r8) &
-                 /temperature/universal_gas_constant 
+! density [Kg/m3] =  pressure [N/m2] * M [g/mol] / temperature [K] / R [N*m/K/kmol] 
+! where M is the mean molar mass 
+! 1/M = sum(wi/Mi) where wi are mass mixing fractions and Mi are individual molar masses
+
+mass_reciprocal = mmro1/O_molar_mass + mmro2/O2_molar_mass + &
+                  (1.0_r8-mmro1-mmro2)/N2_molar_mass
+
+obs_val = pressure / mass_reciprocal / temperature / universal_gas_constant 
 
 end subroutine get_expected_upper_atm_density
 
@@ -183,7 +215,7 @@ subroutine get_expected_gnd_gps_vtec(state_vector, location, obs_val, istatus)
 !Given DART state vector and a location, 
 !it computes ground GPS vertical total electron content
 !The istatus variable should be returned as 0 unless there is a problem
-!
+
 real(r8),            intent(in) :: state_vector(:)
 type(location_type), intent(in) :: location
 real(r8),           intent(out) :: obs_val
@@ -196,8 +228,8 @@ integer,            intent(out) :: istatus
 ! error (different values can be used to indicate different error types).
 ! Negative istatus values are reserved for internal use only by DART.
 
-integer  :: nLons, nLats, nAlts, iAlt
-real(r8), allocatable :: LON(:), LAT(:), ALT(:), IDensityS_ie(:) 
+integer  :: nAlts, iAlt
+real(r8), allocatable :: ALT(:), IDensityS_ie(:) 
 real(r8) :: loc_vals(3)
 real(r8) :: tec
 type(location_type) :: probe
@@ -208,7 +240,7 @@ istatus = 36 !initially bad return code
 obs_val = MISSING_R8
 
 ! something larger than the expected number of vert levels in the model
-allocate(ALT(500), IDensityS_ie(500))
+allocate(ALT(MAXLEVELS), IDensityS_ie(MAXLEVELS))
 
 loc_vals = get_location(location)
 
@@ -218,14 +250,16 @@ LEVELS: do iAlt=1, size(ALT)+1
    ! this model must have more levels than we expected.  increase array sizes,
    ! recompile, and try again.
    if (iAlt > size(ALT)) then
-      call error_handler(E_ERR, 'get_expected_gnd_gps_vtec', 'more than 500 levels in model', &
-           source, revision, revdate, &
-           text2='increase ALT, IDensityS_ie array sizes in code and recompile')
+      write(string1,'(''more than '',i4,'' levels in the model.'')') MAXLEVELS
+      string2='increase MAXLEVELS in obs_def_upper_atm_mod.f90, rerun preprocess and recompile.'
+      string3='increase ALT, IDensityS_ie array sizes in code and recompile'
+      call error_handler(E_ERR, 'get_expected_gnd_gps_vtec', string1, &
+           source, revision, revdate, text2=string2, text3=string3)
    endif
 
    ! At each altitude interpolate the 2D IDensityS_ie to the lon-lat where data 
-   ! point is located after this loop we will get a column centered at data 
-   ! point's lon-lat and at all model altitudes
+   ! point is located. After this loop we will have a column centered at the data 
+   ! point's lon-lat and at all model altitudes.
    probe = set_location(loc_vals(1), loc_vals(2), real(iAlt, r8), VERTISLEVEL) !probe is where we have data 
    call interpolate(state_vector, probe, KIND_DENSITY_ION_E, IDensityS_ie(iAlt), istatus) 
    if (istatus /= 0) exit LEVELS
