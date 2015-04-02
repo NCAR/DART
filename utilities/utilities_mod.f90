@@ -167,7 +167,7 @@ public :: file_exist, get_unit, open_file, close_file, timestamp,           &
           set_tasknum, set_output, do_output, set_nml_output, do_nml_file,  &
           E_DBG, E_MSG, E_WARN, E_ERR, DEBUG, MESSAGE, WARNING, FATAL,      &
           is_longitude_between, get_next_filename, ascii_file_format,       &
-          error_mesg
+          set_filename_list
 
 ! this routine is either in the null_mpi_utilities_mod.f90, or in
 ! the mpi_utilities_mod.f90 file, but it is not a module subroutine.
@@ -177,7 +177,7 @@ public :: file_exist, get_unit, open_file, close_file, timestamp,           &
 ! with this job when you exit.  in the non-mpi case, it just calls exit.
 interface
  subroutine exit_all(exitval)
-  integer :: exitval
+  integer, intent(in) :: exitval
  end subroutine exit_all
 end interface
 
@@ -187,7 +187,7 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-character(len = 169) :: msgstring
+character(len=512) :: msgstring
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -196,8 +196,8 @@ character(len = 169) :: msgstring
 integer            :: TERMLEVEL      = E_ERR   
 
 ! default log and namelist output filenames
-character(len=129) :: logfilename    = 'dart_log.out'
-character(len=129) :: nmlfilename    = 'dart_log.nml'
+character(len=256) :: logfilename    = 'dart_log.out'
+character(len=256) :: nmlfilename    = 'dart_log.nml'
 
 ! output each module subversion details
 logical            :: module_details = .true.  
@@ -223,8 +223,8 @@ contains
    ! integer :: logfileunit -- public module variable
    integer :: iunit, io
 
-   character(len=129) :: lname
-   character(len=169) :: string1,string2,string3
+   character(len=256) :: lname
+   character(len=512) :: string1,string2,string3
 
       if ( module_initialized ) then ! nothing to do
 
@@ -412,6 +412,9 @@ contains
    end subroutine initialize_utilities
 
 
+!#######################################################################
+
+
    subroutine finalize_utilities(progname)
    character(len=*), intent(in), optional :: progname
    ! integer :: logfileunit -- private module variable
@@ -439,9 +442,9 @@ contains
          endif 
       endif
 
-      close(logfileunit)
+      call close_file(logfileunit)
       if ((nmlfileunit /= logfileunit) .and. (nmlfileunit /= -1)) then
-         close(nmlfileunit)
+         call close_file(nmlfileunit)
       endif
 
       module_initialized = .false.
@@ -450,6 +453,7 @@ contains
 
 
 !#######################################################################
+
 
    subroutine register_module(src, rev, rdate)
    character(len=*), intent(in) :: src, rev, rdate
@@ -477,7 +481,9 @@ contains
 
    end subroutine register_module
 
+
 !#######################################################################
+
 
    subroutine timestamp(string1,string2,string3,pos)
 
@@ -506,7 +512,9 @@ contains
 
    end subroutine timestamp
 
+
 !#######################################################################
+
 
    function file_exist (file_name)
 
@@ -522,7 +530,9 @@ contains
 
    end function file_exist
 
+
 !#######################################################################
+
 
    function get_unit () result (iunit)
 
@@ -547,7 +557,9 @@ contains
 
    end function get_unit
 
+
 !#######################################################################
+
 
    subroutine dump_unit_attributes(iunit) 
 !--------------------------------------------------------------------------------
@@ -559,7 +571,9 @@ contains
       integer, intent(in) :: iunit
 
       logical :: exists, connected, named_file
-      character(len=129) :: file_name, srname, str1
+      character(len=256) :: file_name
+      character(len=512) :: str1
+      character(len=32)  :: srname
       character(len=32)  :: ynu     ! YES, NO, UNDEFINED ... among others
       integer :: ios, reclen, nextrecnum
 
@@ -676,7 +690,9 @@ contains
 
    end subroutine dump_unit_attributes
 
+
 !#######################################################################
+
 
    subroutine error_mesg (routine, message, level)
 
@@ -712,7 +728,9 @@ contains
 
    end subroutine error_mesg
 
+
 !#######################################################################
+
 
   subroutine error_handler(level, routine, text, src, rev, rdate, aut, text2, text3 )
 !----------------------------------------------------------------------
@@ -722,10 +740,10 @@ contains
 implicit none
 
 integer, intent(in) :: level
-character(len = *), intent(in) :: routine, text
-character(len = *), intent(in), optional :: src, rev, rdate, aut, text2, text3
+character(len=*), intent(in) :: routine, text
+character(len=*), intent(in), optional :: src, rev, rdate, aut, text2, text3
 
-character(len = 8) :: taskstr
+character(len=8) :: taskstr
 
 if ( .not. module_initialized ) call initialize_utilities
 
@@ -878,7 +896,9 @@ if( level >= TERMLEVEL ) call exit_all( 99 )
 
 end subroutine error_handler
 
+
 !#######################################################################
+
 
    function open_file (fname, form, action) result (iunit)
 
@@ -980,39 +1000,41 @@ end subroutine error_handler
 
       if (rc /= 0) then
          write(msgstring,*)'Cannot open file "'//trim(fname)//'" for '//trim(act)
-         call error_handler(E_ERR, msgstring, source, revision, revdate)
+         call error_handler(E_ERR, 'open_file: ', msgstring, source, revision, revdate)
       endif
    endif
 
    end function open_file
 
+
 !#######################################################################
+
 
    subroutine print_version_number (iunit, routine, version)
 
 ! *** prints routine name and version number to a log file ***
 !
 !    in:  iunit    = unit number to direct output
-!         routine = routine name (character, max len = 20)
-!         version = version name or number (character, max len = 8)
+!         routine = routine name (character, max len=20)
+!         version = version name or number (character, max len=8)
 
    integer,          intent(in) :: iunit
    character(len=*), intent(in) :: routine, version
 
    integer           :: n
-   character(len=20) :: name
+   character(len=20) :: myname
    character(len=8)  :: vers
 
    if ( .not. module_initialized ) call initialize_utilities
    if ( .not. do_output_flag) return
 
-     n = min(len(routine),20); name = adjustl(routine(1:n))
-     n = min(len(version), 8); vers = adjustl(version(1:n))
+     n = min(len(routine),20); myname = adjustl(routine(1:n))
+     n = min(len(version), 8); vers   = adjustl(version(1:n))
 
      if (iunit > 0) then
-         write (iunit,10) name, vers
+         write (iunit,10) myname, vers
      else
-         write (*,10) name, vers
+         write (*,10) myname, vers
      endif
 
   10 format (/,60('-'),  &
@@ -1024,7 +1046,9 @@ end subroutine error_handler
 
    end subroutine print_version_number
 
+
 !#######################################################################
+
 
    subroutine write_time (unit, label, string1, string2, string3, tz, brief)
 
@@ -1106,7 +1130,9 @@ end subroutine error_handler
 
    end subroutine write_time
 
+
 !#######################################################################
+
 
    subroutine set_output (doflag)
 
@@ -1129,6 +1155,7 @@ end subroutine error_handler
 
 !#######################################################################
 
+
    function do_output ()
 
 ! *** return whether output should be written from this task ***
@@ -1142,7 +1169,9 @@ end subroutine error_handler
 
    end function do_output
 
+
 !#######################################################################
+
 
    subroutine set_nml_output (nmlstring)
 
@@ -1187,6 +1216,7 @@ end subroutine error_handler
 
 !#######################################################################
 
+
    function do_nml_file ()
 
 ! *** return whether nml should be written to nml file
@@ -1204,7 +1234,9 @@ end subroutine error_handler
 
    end function do_nml_file
 
+
 !#######################################################################
+
 
    function do_nml_term ()
 
@@ -1222,6 +1254,7 @@ end subroutine error_handler
    endif
 
    end function do_nml_term
+
 
 !#######################################################################
 
@@ -1248,8 +1281,9 @@ end subroutine error_handler
 subroutine close_file(iunit)
 !-----------------------------------------------------------------------
 !
-! Closes the given unit_number. If the file is already closed, 
-! nothing happens. Pretty dramatic, eh?
+! Closes the given unit_number if that unit is open.
+! Not an error to call on an already closed unit.
+! Will print a message if the status of the unit cannot be determined.
 !
 
 integer, intent(in) :: iunit
@@ -1261,17 +1295,16 @@ if ( .not. module_initialized ) call initialize_utilities
 
 inquire (unit=iunit, opened=open, iostat=ios)
 if ( ios /= 0 ) then
-   print *,'Dagnabbit. Cannot inquire about unit # ',iunit
-   print *,'Error status was ',ios
-   print *,'Hoping for the best and continuing.'
+   write(msgstring,*)'Unable to determine status of file unit ', iunit
+   call error_handler(E_MSG, 'close_file: ', msgstring, source, revision, revdate)
 endif
 
 if (open) close(iunit)
 
 end subroutine close_file
 
-!#######################################################################
 
+!#######################################################################
 
 
 subroutine find_namelist_in_file(namelist_file_name, nml_name, iunit, &
@@ -1281,18 +1314,18 @@ subroutine find_namelist_in_file(namelist_file_name, nml_name, iunit, &
 ! Opens namelist_file_name if it exists on unit iunit, error if it
 ! doesn't exist.
 ! Searches file for a line containing ONLY the string
-! &nml_name, for instance &filter_nml. If found, rewinds the file and
+! &nml_name, for instance &filter_nml. If found, backs up one record and
 ! returns true. Otherwise, error message and terminates
 !
 
-character(len = *), intent(in) :: namelist_file_name
-character(len = *), intent(in) :: nml_name
-integer, intent(out)           :: iunit
-logical, intent(in), optional :: write_to_logfile_in
+character(len=*),  intent(in)  :: namelist_file_name
+character(len=*),  intent(in)  :: nml_name
+integer,           intent(out) :: iunit
+logical, optional, intent(in)  :: write_to_logfile_in
 
-character(len = 169) :: nml_string, test_string, string1
-integer              :: io
-logical              :: write_to_logfile
+character(len=256) :: nml_string, test_string, string1
+integer            :: io
+logical            :: write_to_logfile
 
 
 ! Decide if there is a logfile or not
@@ -1337,7 +1370,7 @@ if(file_exist(trim(namelist_file_name))) then
          call to_upper(string1)
 
          if(trim(string1) == trim(test_string)) then
-            rewind(iunit)
+            backspace(iunit)
             return
          endif
 
@@ -1366,7 +1399,6 @@ end subroutine find_namelist_in_file
 !#######################################################################
 
 
-
 subroutine check_namelist_read(iunit, iostat_in, nml_name, &
    write_to_logfile_in)
 !-----------------------------------------------------------------------
@@ -1376,10 +1408,10 @@ subroutine check_namelist_read(iunit, iostat_in, nml_name, &
 !
 
 integer,            intent(in) :: iunit, iostat_in
-character(len = *), intent(in) :: nml_name
+character(len=*), intent(in) :: nml_name
 logical, intent(in), optional :: write_to_logfile_in
 
-character(len=159) :: nml_string
+character(len=256) :: nml_string
 integer            :: io
 logical            :: write_to_logfile
 
@@ -1392,7 +1424,7 @@ if(iostat_in == 0) then
    call close_file(iunit)
 else
    ! If it wasn't successful, print the line on which it failed  
-   BACKSPACE iunit
+   backspace(iunit)
    read(iunit, '(A)', iostat = io) nml_string
    ! A failure in this read means that the namelist started but never terminated
    ! Result was falling off the end, so backspace followed by read fails
@@ -1412,15 +1444,6 @@ else
       endif
    else
       ! Didn't fall off end so bad entry in the middle of namelist
-      ! TEMP HELP FOR USERS; remove after next release
-      if (len(nml_name) >= 10) then
-         if ((nml_name(1:10) == 'filter_nml') .and. (index(nml_string,'inf_start_from_restart') > 0)) then
-            write(msgstring, *) 'inf_start_from_restart obsolete'
-            call error_handler(E_MSG, 'filter_nml: ', msgstring)
-            write(msgstring, *) 'use inf_initial_from_restart and inf_sd_initial_from_restart'
-            call error_handler(E_MSG, 'filter_nml: ', msgstring)
-         endif 
-      endif 
       write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(nml_string), ' in namelist ', trim(nml_name)
       if(write_to_logfile) then
          call error_handler(E_ERR, 'check_namelist_read', msgstring, &
@@ -1439,14 +1462,16 @@ endif
 
 end subroutine check_namelist_read
 
+
 !#######################################################################
+
 
    subroutine nc_check(istatus, subr_name, context)
       integer, intent (in)                   :: istatus
       character(len=*), intent(in)           :: subr_name
       character(len=*), intent(in), optional :: context
   
-      character(len=129) :: error_msg
+      character(len=512) :: error_msg
   
       ! if no error, nothing to do here.  we are done.
       if( istatus == nf90_noerr) return
@@ -1471,6 +1496,7 @@ end subroutine check_namelist_read
 
 !#######################################################################
 
+
 subroutine to_upper( string )
 ! Converts 'string' to uppercase
 character(len=*), intent(INOUT) :: string
@@ -1487,7 +1513,9 @@ enddo
 
 end subroutine to_upper
 
+
 !#######################################################################
+
 
 subroutine find_textfile_dims( fname, nlines, linelen )
 ! Determines the number of lines and maximum line length
@@ -1499,7 +1527,7 @@ integer, optional, intent(OUT) :: linelen
 integer :: i, maxlen, mylen, ios, funit
 
 character(len=1024) :: oneline
-character(len=129)  :: error_msg
+character(len=512)  :: error_msg
 
 ! if there is no file, return -1 for both counts
 if (.not. file_exist(fname)) then
@@ -1536,7 +1564,9 @@ if (present(linelen)) linelen = maxlen
 
 end subroutine find_textfile_dims
 
+
 !#######################################################################
+
 
 subroutine file_to_text( fname, textblock )
 !
@@ -1589,16 +1619,18 @@ call close_file(funit)
 
 end subroutine file_to_text
 
+
 !#######################################################################
 
-function get_next_filename( listname, index )
+
+function get_next_filename( listname, lineindex )
 
 ! Arguments are the name of a file which contains a list of filenames.
 ! This routine opens the listfile, and returns the index-th one.
 !
 character(len=*),  intent(in) :: listname
-integer,           intent(in) :: index
-character(len=128)            :: get_next_filename
+integer,           intent(in) :: lineindex
+character(len=256)            :: get_next_filename
 
 integer :: i, ios, funit
 
@@ -1606,7 +1638,7 @@ character(len=512)  :: string
 
 funit   = open_file(listname, form="FORMATTED", action="READ")
 
-PARSELOOP : do i=1, index
+PARSELOOP : do i=1, lineindex
 
    read(funit, '(A)', iostat=ios) string
 
@@ -1622,7 +1654,7 @@ enddo PARSELOOP
 ! check for length problems
 if (len_trim(string) > len(get_next_filename)) then
    call error_handler(E_ERR, 'get_next_filename', &
-                      'maximum filename length of 128 exceeded', &
+                      'maximum filename length of 256 exceeded', &
                       source, revision, revdate)   
 endif
 
@@ -1631,7 +1663,105 @@ call close_file(funit)
 
 end function get_next_filename
 
+
 !#######################################################################
+
+
+function set_filename_list(name_array, listname, caller_name)
+
+! return the count of names specified by either the name_array()
+! or the inside the listname but not both.  caller_name is used
+! for error messages.  verify that if a listname is used that
+! it does not contain more than the allowed number of input names
+! (specified by the length of the name_array).  the listname,
+! if specified, must be the name of an ascii input file with
+! a list of names, one per line.
+
+character(len=*), intent(inout) :: name_array(:)
+character(len=*), intent(in)    :: listname
+character(len=*), intent(in)    :: caller_name
+integer                         :: set_filename_list
+
+integer :: fileindex, max_num_input_files
+logical :: from_file
+character(len=32) :: fsource
+
+! here's the logic:
+! if the user specifies neither name_array nor listname, error
+! if the user specifies both, error.
+! if the user gives a filelist, we make sure the length is not more
+!   than maxfiles and read it into the explicit list and continue.
+! when this routine returns, the function return val is the count
+! and the names are in name_array()
+
+if (name_array(1) == '' .and. listname == '') then
+   call error_handler(E_ERR, caller_name, &
+          'must specify either filenames in the namelist, or a filename containing a list of names', &
+          source,revision,revdate)
+endif
+   
+! make sure the namelist specifies one or the other but not both
+if (name_array(1) /= '' .and. listname /= '') then
+   call error_handler(E_ERR, caller_name, &
+       'cannot specify both filenames in the namelist and a filename containing a list of names', &
+       source,revision,revdate)
+endif
+
+! if they have specified a file which contains a list, read it into
+! the name_array array and set the count.
+if (listname /= '') then
+   fsource = 'filenames contained in a list file'
+   from_file = .true.
+else
+   fsource = 'filenames in the namelist'
+   from_file = .false.
+endif
+
+! the max number of names allowed in a list file is the 
+! size of the name_array passed in by the user.
+max_num_input_files = size(name_array)
+
+! loop over the inputs.  if the names were already specified in the
+! name_array, just look for the '' to indicate the end of the list.
+! if the names were specified in the listname file, read them in and
+! fill in the name_array and then look for ''.
+do fileindex = 1, max_num_input_files
+   if (from_file) &
+      name_array(fileindex) = get_next_filename(listname, fileindex)
+
+   if (name_array(fileindex) == '') then
+      if (fileindex == 1) then
+         call error_handler(E_ERR, caller_name, &
+             'found no '//trim(fsource), source,revision,revdate)
+      endif
+
+      ! at the end of the list. return how many filenames were found, 
+      ! whether the source was the name_array or the listname.
+      set_filename_list = fileindex - 1
+      return
+   endif
+enddo
+
+! if you get here, you read in all max_num_input_files without
+! seeing an empty string.  if the input names were already in the
+! array, you're done - set the count and return.   but if you're
+! reading names from a file it is possible to specify more names
+! than fit in the list.  test for that and give an error if you
+! aren't at the end of the list.
+
+if (from_file) then
+   if (get_next_filename(listname, max_num_input_files+1) /= '') then
+      write(msgstring, *) 'cannot specify more than ',max_num_input_files,' filenames in the list file'
+      call error_handler(E_ERR, caller_name, msgstring, source,revision,revdate)
+   endif
+endif
+
+set_filename_list = max_num_input_files
+
+end function set_filename_list
+
+!#######################################################################
+
 
 function is_longitude_between (lon, minlon, maxlon, doradians, newlon)
 
@@ -1712,7 +1842,13 @@ end function is_longitude_between
 
 !#######################################################################
 
+
 function next_file(fname,ifile)
+
+! FIXME: THIS FUNCTION IS DEPRECATED AND SHOULD BE REMOVED.
+! FIXME: THIS FUNCTION IS DEPRECATED AND SHOULD BE REMOVED.
+! FIXME: THIS FUNCTION IS DEPRECATED AND SHOULD BE REMOVED.
+
 !----------------------------------------------------------------------
 ! The file name can take one of three forms:
 ! /absolute/path/to/nirvana/obs_001/obs_seq.final   (absolute path)
@@ -1735,8 +1871,8 @@ character(len=len(fname)) :: dir_name
 
 integer,            SAVE :: filenum = 0
 integer,            SAVE :: dir_prec = 0
-character(len=129), SAVE :: dir_base
-character(len=129), SAVE :: filename
+character(len=256), SAVE :: dir_base
+character(len=256), SAVE :: filename
 character(len=129), SAVE :: dir_ext
 
 integer :: slashindex, splitindex, i, strlen, ios
@@ -1835,6 +1971,7 @@ endif
 
 end function next_file
 
+
 !#######################################################################
 
 
@@ -1845,8 +1982,6 @@ function ascii_file_format(fform)
 
 character(len=*), intent(in), optional :: fform
 logical                                :: ascii_file_format
-
-character(len=129) :: lj_fform ! Left Justified version of optional argument 
 
 ! Returns .true. for formatted/ascii file, .false. is unformatted/binary
 ! Defaults (if fform not specified) to formatted/ascii.
@@ -1859,17 +1994,7 @@ if ( .not. present(fform)) then
    return
 endif
 
-! Check to make sure we don't put 10lbs of stuff in a 5lb bag
-
-if (len(fform) > len(lj_fform)) then
-   write(msgstring,*)'fform is long: increase len of lj_fform to ',&
-                     len(fform),' and recompile.'
-   call error_handler(E_ERR,'ascii_file_format', msgstring, source, revision, revdate)
-endif
-
-lj_fform = adjustl(fform)
-
-SELECT CASE (trim(lj_fform))
+SELECT CASE (fform)
    CASE("unf", "UNF", "unformatted", "UNFORMATTED")
       ascii_file_format = .false.
    CASE DEFAULT
