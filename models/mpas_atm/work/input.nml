@@ -1,25 +1,20 @@
 &perfect_model_obs_nml
-   start_from_restart    = .true.
-   output_restart        = .true.
-   async                 = 0
-   init_time_days        = -1
-   init_time_seconds     = -1
-   first_obs_days        = -1
-   first_obs_seconds     = -1
-   last_obs_days         = -1
-   last_obs_seconds      = -1
-   output_interval       = 1
-   restart_in_file_name  = "perfect_ics"
-   restart_out_file_name = "perfect_restart"
-   obs_seq_in_file_name  = "obs_seq.in"
-   obs_seq_out_file_name = "obs_seq.perfect"
-   adv_ens_command       = "../shell_scripts/advance_model.csh"
-   output_timestamps     = .false.
-   trace_execution       = .true.
-   output_forward_op_errors = .false.
-   print_every_nth_obs   = 100
-   silence               = .false.
-  /
+   async                  = 2,
+   adv_ens_command        = "./advance_model.csh",
+   obs_seq_in_file_name   = "obs_seq.in",
+   obs_seq_out_file_name  = "obs_seq.out",
+   start_from_restart       = .true.,
+   output_restart         = .true.,
+   restart_in_file_name   = "perfect_ic_old",
+   restart_out_file_name  = "perfect_ic_new",
+   init_time_days           = -1,
+   init_time_seconds        = -1,
+   first_obs_days           = -1,
+   first_obs_seconds        = -1,
+   last_obs_days            = -1,
+   last_obs_seconds         = -1,
+   output_interval        = 1
+/
 
 &filter_nml
    async                    = 2
@@ -49,20 +44,22 @@
    trace_execution          = .false.
    silence                  = .false.
 
-   inf_flavor                  = 0,                       0
-   inf_initial_from_restart    = .false.,                 .false.
-   inf_sd_initial_from_restart = .false.,                 .false.
-   inf_output_restart          = .true.,                  .true.
-   inf_deterministic           = .true.,                  .true.
-   inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics'
-   inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart'
-   inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag'
-   inf_initial                 = 1.0,                     1.0
-   inf_sd_initial              = 0.0,                     0.0
-   inf_damping                 = 1.0,                     1.0
-   inf_lower_bound             = 1.0,                     1.0
-   inf_upper_bound             = 1000000.0,               1000000.0
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_flavor                  = 2,                       0,
+   inf_initial_from_restart    = .false.,                .false.,
+   inf_sd_initial_from_restart = .false.,                .false.,
+   inf_output_restart          = .true.,                  .true.,
+   inf_deterministic           = .true.,                  .true.,
+   inf_in_file_name            = 'prior_inflate_ics',    'prior_inflate_ics',
+   inf_out_file_name           = 'prior_inflate_restart','prior_inflate_restart',
+   inf_diag_file_name          = 'prior_inf_diag',       'post_inf_diag',
+   inf_initial                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.6,                     0.6,
+   inf_damping                 = 0.9,                     0.9,
+   inf_lower_bound             = 1.0,                     1.0,
+   inf_upper_bound             = 1000.0,                  1000.0,
+   inf_sd_lower_bound          = 0.6,                      0.6
+   direct_netcdf_read = .true.
+   direct_netcdf_write = .true.
   /
 
 &mpi_utilities_nml
@@ -70,16 +67,16 @@
 
 &smoother_nml
    num_lags              = 0
-   start_from_restart    = .false.
+   start_from_restart    = .true.,
    output_restart        = .false.
    restart_in_file_name  = 'smoother_ics'
    restart_out_file_name = 'smoother_restart'
   /
 
 &ensemble_manager_nml
-   single_restart_file_in  = .true.
-   single_restart_file_out = .true.
-   perturbation_amplitude  = 0.2
+   single_restart_file_in  = .false.,
+   single_restart_file_out = .false.,
+   perturbation_amplitude  = 0.2  /
   /
 
 &obs_def_gps_nml
@@ -129,33 +126,77 @@
    write_binary_obs_sequence = .false.
   /
 
+&obs_sequence_tool_nml
+   filename_seq         = 'obs_seq.final',
+   filename_out         = 'obs_seq.final.raobT.ascii',
+   num_input_files      = 1,
+   first_obs_days           = -1,
+   first_obs_seconds        = -1,
+   last_obs_days            = -1,
+   last_obs_seconds         = -1,
+   obs_types            = 'RADIOSONDE_TEMPERATURE',
+   keep_types           = .true.,
+   print_only           = .false.,
+   gregorian_cal        = .true., /
+
+&obs_def_gps_nml
+   max_gpsro_obs = 1000000  /
+
 &obs_kind_nml
-   assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
+   assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE'
+                                'RADIOSONDE_DEWPOINT',
                                 'RADIOSONDE_U_WIND_COMPONENT',
                                 'RADIOSONDE_V_WIND_COMPONENT'
+                                'RADIOSONDE_SURFACE_ALTIMETER' ,
+                                'ACARS_TEMPERATURE',
+                                'ACARS_U_WIND_COMPONENT',
+                                'ACARS_V_WIND_COMPONENT',
+                                'SAT_U_WIND_COMPONENT',
+                                'SAT_V_WIND_COMPONENT' ,
+                                'GPSRO_REFRACTIVITY' ,
+                                'LAND_SFC_ALTIMETER' ,
+                                'METAR_TEMPERATURE_2_METER' ,
+                                'METAR_U_10_METER_WIND' ,
+                                'METAR_V_10_METER_WIND' ,
+                                'METAR_DEWPOINT_2_METER',
+                                'METAR_ALTIMETER' ,
+                                'MARINE_SFC_TEMPERATURE' ,
+                                'MARINE_SFC_U_WIND_COMPONENT' ,
+                                'MARINE_SFC_V_WIND_COMPONENT' ,
+                                'MARINE_SFC_DEWPOINT',
+                                'MARINE_SFC_ALTIMETER' ,
+                                'PROFILER_U_WIND_COMPONENT' ,
+                                'PROFILER_V_WIND_COMPONENT' ,
   /
+!   evaluate_these_obs_types = 'RADIOSONDE_SPECIFIC_HUMIDITY',
+!                              'RADIOSONDE_RELATIVE_HUMIDITY',
+!                              'MARINE_SFC_SPECIFIC_HUMIDITY' ,
+!                              'MARINE_SFC_RELATIVE_HUMIDITY' ,
+!                              'METAR_SPECIFIC_HUMIDITY_2_METER',
+!                              'LAND_SFC_DEWPOINT',
+!                              'GPS_PRECIPITABLE_WATER' /
 
 &assim_model_nml
    write_binary_restart_files = .true.
-   netCDF_large_file_support  = .false.
-  /
-
-  ! model_analysis_filename      = '../data/mpas_output.2010-10-23_03:00:00.nc'
+   netCDF_large_file_support  = .true.,
+/
 
 &model_nml
-   model_analysis_filename      = 'mpas_init.nc'
-   grid_definition_filename     = 'mpas_init.nc'
-   assimilation_period_days     = 0
-   assimilation_period_seconds  = 43200
-   model_perturbation_amplitude = 0.0001
-   output_state_vector          = .false.
-   vert_localization_coord      = 3
-   calendar                     = 'Gregorian'
-   debug                        = 0
-   use_u_for_wind               = .false.
-   use_rbf_option               = 2
-   update_u_from_reconstruct    = .true.
-   highest_obs_pressure_mb      = -1.0
+   grid_definition_filename     = 'x1.40962.mesh.nc',
+   model_analysis_filename      = 'x1.40962.restart.nc',
+   highest_obs_pressure_mb      = 100.0,
+   vert_localization_coord      = 3,
+   log_p_vert_interp            = .false.,
+   sfc_elev_max_diff            = 100.,
+   assimilation_period_days     = 0,
+   assimilation_period_seconds  = 21600,
+   model_perturbation_amplitude = 0.0001,
+   calendar                     = 'Gregorian',
+   debug                        = 0,
+   use_u_for_wind               = .false.,
+   use_rbf_option               = 2,
+   update_u_from_reconstruct    = .true.,
+   use_increments_for_u_update  = .true.,
   /
 
 !                          'theta',                 'KIND_POTENTIAL_TEMPERATURE',
@@ -179,15 +220,28 @@
    mpas_state_variables =
                           'uReconstructZonal',     'KIND_U_WIND_COMPONENT',
                           'uReconstructMeridional','KIND_V_WIND_COMPONENT',
-                          'theta',                 'KIND_POTENTIAL_TEMPERATURE',
-                          'surface_pressure',      'KIND_SURFACE_PRESSURE',
-                          'w',                     'KIND_VERTICAL_VELOCITY',
                           'rho',                   'KIND_DENSITY',
+                          'w',                     'KIND_VERTICAL_VELOCITY',
+                          'surface_pressure',      'KIND_SURFACE_PRESSURE',
                           'qv',                    'KIND_VAPOR_MIXING_RATIO'
-
+                          'qc',                    'KIND_CLOUDWATER_MIXING_RATIO',
+                          'qr',                    'KIND_RAINWATER_MIXING_RATIO',
+                          'qi',                    'KIND_ICE_MIXING_RATIO',
+                          'qs',                    'KIND_SNOW_MIXING_RATIO',
+                          'qg',                    'KIND_GRAUPEL_MIXING_RATIO'
+                          'u10',                   'KIND_U_WIND_COMPONENT'
+                          'v10',                   'KIND_V_WIND_COMPONENT'
+                          't2m',                   'KIND_TEMPERATURE'
+                          'th2m',                  'KIND_POTENTIAL_TEMPERATURE'
+                          'q2',                    'KIND_SPECIFIC_HUMIDITY'
+                          'precipw',               'KIND_PRECIPITABLE_WATER'
    mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
                           'qc','0.0','NULL','CLAMP',
                           'qr','0.0','NULL','CLAMP'
+                          'qi','0.0','NULL','CLAMP',
+                          'qs','0.0','NULL','CLAMP',
+                          'qg','0.0','NULL','CLAMP',
+                          'precipw','0.0','NULL','CLAMP',
   /
 
 &model_to_dart_nml
@@ -244,7 +298,11 @@
    obs_types = 'RADIOSONDE_TEMPERATURE'
   /
 
-# other possible obs tool namelist items:
+# The times in the namelist for the obs_diag program are vectors
+# that follow the following sequence:
+# year   month   day   hour   minute   second
+# max_num_bins can be used to specify a fixed number of bins,
+# in which case last_bin_center should be safely in the future.
 #
 # keep only the U and V radiosonde winds:
 #   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT'
@@ -269,33 +327,31 @@
 #
 
 &restart_file_tool_nml
-   input_file_name              = "filter_restart"
-   output_file_name             = "filter_updated_restart"
-   ens_size                     = 1
-   single_restart_file_in       = .true.
-   single_restart_file_out      = .true.
-   write_binary_restart_files   = .true.
-   overwrite_data_time          = .false.
-   new_data_days                = -1
-   new_data_secs                = -1
-   input_is_model_advance_file  = .false.
-   output_is_model_advance_file = .false.
-   overwrite_advance_time       = .false.
-   new_advance_days             = -1
-   new_advance_secs             = -1
-   gregorian_cal                = .true.
-  /
-
+   input_file_name              = "filter_restart",
+   output_file_name             = "assim_model_state_ic",
+   ens_size                    = 96,
+   single_restart_file_in  = .false.,
+   single_restart_file_out = .false.,
+   write_binary_restart_files   = .true.,
+   overwrite_data_time          = .false.,
+   new_data_days                = -1,
+   new_data_secs                = -1,
+   input_is_model_advance_file  = .false.,
+   output_is_model_advance_file = .true.,
+   overwrite_advance_time       = .true.,
+   new_advance_days             = 148896,
+   new_advance_secs             = 64800,
+   /
 
 &schedule_nml
-   calendar             = 'Gregorian'
-   first_bin_start      =  1601,  1,  1,  0,  0,  0
-   first_bin_end        =  2999,  1,  1,  0,  0,  0
-   last_bin_end         =  2999,  1,  1,  0,  0,  0
-   bin_interval_days    = 1000000
-   bin_interval_seconds = 0
-   max_num_bins         = 1000
-   print_table          = .true.
+   calendar        = 'Gregorian',
+   first_bin_start =  2008, 1,17, 0, 0, 0 ,
+   first_bin_end   =  2008, 1,18, 0, 0, 0 ,
+   last_bin_end    =  2008, 1,18, 0, 0, 0 ,
+   bin_interval_days    = 0,   
+   bin_interval_seconds = 86400,   
+   max_num_bins         = 1000,
+   print_table          = .true.,
   /
 
 
@@ -330,6 +386,12 @@
    verbose               = .true.
   /
 
+
+&io_filenames_nml
+ restart_in_stub = 'mpas_model', 
+ restart_out_stub = 'filter_restart'
+/
+
 &obs_common_subset_nml
    num_to_compare_at_once = 2
    filename_seq           = ''
@@ -339,6 +401,9 @@
    print_every            = 1000
    dart_qc_threshold      = 3
    print_only             = .false.
+  /
+
+&state_vector_io_nml
   /
 
 # possible vertical coordinate systems are:
