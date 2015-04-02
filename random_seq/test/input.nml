@@ -5,16 +5,31 @@
    /
 
 &test_diff_nml
-   mean  = 0.0d0,
-   sd1   = 1.0d0,
-   sd2   = 1.0d0,
-   iseed =   123   
+   mean  = 5.0,
+   sd1   = 1.0,
+   sd2   = 2.0,
+   iseed =  123   
    /
 
 &test_reseed_nml
    nsamples = 1000
-   calendar_name = 'NO_CALENDAR'
-   start_day = 0
-   start_sec = 0
+   calendar_name = 'GREGORIAN'
+   start_day = 146770
+   start_sec = 10
+   /
+
+# possible reseed tests:
+#   calendar_name = 'GREGORIAN'
+#   start_day = 146770
+#   start_sec = 10
+# or
+#   calendar_name = 'NO_CALENDAR'
+#   start_day = 0
+#   start_sec = 0
+
+&test_corr_nml
+   n_pairs = 100000,
+   desired_correl = 0.72,
+   n_cycles = 100
    /
 
