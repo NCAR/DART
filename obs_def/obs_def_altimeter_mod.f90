@@ -43,10 +43,9 @@
 ! BEGIN DART PREPROCESS MODULE CODE
 module obs_def_altimeter_mod
 
-use           types_mod, only : r8, missing_r8, t_kelvin
-use       utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
-use        location_mod, only : location_type, set_location, get_location, write_location, &
-                                read_location
+use           types_mod, only : r8, missing_r8
+use       utilities_mod, only : register_module
+use        location_mod, only : location_type
 use     assim_model_mod, only : interpolate_distrib
 use        obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_SURFACE_ELEVATION
 use  data_structure_mod, only : ensemble_type, copies_in_window
