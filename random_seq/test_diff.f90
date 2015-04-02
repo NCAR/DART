@@ -3,6 +3,11 @@
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
 ! $Id$
+!
+! do a simple test that the mean distance between sample
+! draws from two gaussian distributions are close to the
+! expected value.  indirect test of the random number generator
+! which is used in the gaussian random numbers.
 
 program test_diff
 
@@ -24,23 +29,18 @@ integer, parameter :: n = 1000000
 integer :: i, iunit, io
 type (random_seq_type) :: r
 
-double precision ::  dpr1,  dpr2,  dpdist,  dpmean_dist
-real(digits12)   :: d12r1, d12r2, d12dist, d12mean_dist
-real(r8)         ::  r8r1,  r8r2,  r8dist,  r8mean_dist
-real(r4)         ::  r4r1,  r4r2,  r4dist,  r4mean_dist
+real(r8) :: r1, r2, dist2, mean_dist2
+character(len=16) :: wformatI = '(A,I8)'
+character(len=16) :: wformat1 = '(A,1(F25.16))'
+character(len=16) :: wformat2 = '(A,2(F25.16))'
 
 !-----------------------------------------------------------------------------
 ! Namelist with default values
 
-double precision :: mean = 0.0d0, sd1 = 1.0d0, sd2 = 2.0d0
+real(r8) :: mean = 0.0, sd1 = 1.0, sd2 = 2.0, predicted
 integer :: iseed = 123
 
 namelist /test_diff_nml/ mean, sd1, sd2, iseed
-
-write(*, *) 'double precision       is ', kind(dpr1)
-write(*, *) 'digits12 is defined to be ', digits12
-write(*, *) 'r8       is defined to be ', r8
-write(*, *) 'r4       is defined to be ', r4
 
 call initialize_utilities('test_diff')
 call register_module(source,revision,revdate)
@@ -50,78 +50,27 @@ call find_namelist_in_file("input.nml", "test_diff_nml", iunit)
 read(iunit, nml = test_diff_nml, iostat = io)
 call check_namelist_read(iunit, io, "test_diff_nml")
 
-
-call init_random_seq(r,iseed)
-!-----------------------------------------------------------------------------
-write(*, *) 'double precision test:'
-!-----------------------------------------------------------------------------
-
-dpmean_dist = 0.0d0
-do i = 1, n
-   dpr1        = random_gaussian(r, 0.0d0, sd1)
-   dpr2        = random_gaussian(r,  mean, sd2)
-   dpdist      = dabs(dpr1 - dpr2)**2
-   dpmean_dist = dpmean_dist + dpdist
-end do
-
-write(*, *) 'sample mean distance  ', dpmean_dist / n
-write(*, *) 'predicted distance    ', sqrt(mean**2 + sd1**2 + sd2**2)
+write(*, *) ''
+write(*, wformatI) 'sample size = ', n
+write(*, *) ''
+write(*, wformat2) 'mean, stddev 1 = ', 0.0_r8, sd1
+write(*, wformat2) 'mean, stddev 2 = ', mean, sd2
 write(*, *) ''
 
 
-!-----------------------------------------------------------------------------
-write(*, *) 'digits12 test:'
-!-----------------------------------------------------------------------------
-
 call init_random_seq(r,iseed)
-d12mean_dist = 0.0_digits12
+mean_dist2 = 0.0_r8
 do i = 1, n
-   d12r1        = random_gaussian(r, 0.0d0, sd1)
-   d12r2        = random_gaussian(r,  mean, sd2)
-   d12dist      = abs(d12r1 - d12r2)**2
-   d12mean_dist = d12mean_dist + d12dist
+   r1 = random_gaussian(r, 0.0_r8, sd1)
+   r2 = random_gaussian(r,  mean,  sd2)
+   dist2 = (r1 - r2)**2
+   mean_dist2 = mean_dist2 + dist2
 end do
 
-write(*, *) 'sample mean distance  ', d12mean_dist / n
-write(*, *) 'predicted distance    ', sqrt(mean**2 + sd1**2 + sd2**2)
+write(*, wformat1) 'predicted distance   = ', sqrt(mean**2 + sd1**2 + sd2**2)
+write(*, wformat1) 'sample mean distance = ', sqrt(mean_dist2 / n)
 write(*, *) ''
 
-!-----------------------------------------------------------------------------
-write(*, *) 'r8 test:'
-!-----------------------------------------------------------------------------
-
-call init_random_seq(r,iseed)
-r8mean_dist = 0.0_r8
-do i = 1, n
-   r8r1        = random_gaussian(r, 0.0d0, sd1)
-   r8r2        = random_gaussian(r,  mean, sd2)
-   r8dist      = abs(r8r1 - r8r2)**2
-   r8mean_dist = r8mean_dist + r8dist
-end do
-
-write(*, *) 'sample mean distance  ', r8mean_dist / n
-write(*, *) 'predicted distance    ', sqrt(mean**2 + sd1**2 + sd2**2)
-write(*, *) ''
-
-!-----------------------------------------------------------------------------
-write(*, *) 'r4 test:'
-!-----------------------------------------------------------------------------
-
-call init_random_seq(r,iseed)
-r4mean_dist = 0.0_r4
-do i = 1, n
-   r4r1        = random_gaussian(r, 0.0d0, sd1)
-   r4r2        = random_gaussian(r,  mean, sd2)
-   r4dist      = abs(r4r1 - r4r2)**2
-   r4mean_dist = r4mean_dist + r4dist
-end do
-
-write(*, *) 'sample mean distance  ', r4mean_dist / n
-write(*, *) 'predicted distance    ', sqrt(mean**2 + sd1**2 + sd2**2)
-write(*, *) ''
-
-call error_handler(E_MSG, 'test_diff', 'Finished successfully.',&
-                   source,revision,revdate)
 call finalize_utilities()
 
 
