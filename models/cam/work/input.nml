@@ -1,12 +1,40 @@
+! This namelist is set up for a single, CAM-FV, assimilation cycle 
+! using the default values as found in model_mod.f90 and CESM1_2_1_setup_{hybrid,advanced}
+! starting from a single model state, which must be perturbed into an ensemble.
+! Comments below give suggestions for setting it up for other assimilations:
+! > continuing an assimilation (no perturbations) and/or starting from an ensemble.
+! > Setting up a CAM-SE assimilation
+! > Setting up a WACCM assimilation
+! > Setting up for perfect_model_obs
+!
+! PLEASE READ
+!
+! https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/cam/model_mod.html
+!
+! for recommendations on namlist settings for CAM. It has examples on configurations
+! for taking a single state and creating an ensemble, differences between using
+! the FV core or SE core ... variable resolution grids, etc.
+
+! ens_size, num_output_*  will be (re)set by the setup script
+
+! To use a pre-existing ensemble make the changes below:
+! (this includes the second step after starting from a single
+! ensemble member.)
+!    start_from_restart          = .true.,
+!    restart_in_file_name        = "filter_ics",
+!    inf_initial_from_restart    = .true.,                 .false.,
+!    inf_sd_initial_from_restart = .true.,                 .false.,
+!    single_restart_file_in      = .false.,
+
 &filter_nml
    async                    = 0,
    adv_ens_command          = "no_advance_script",
-   ens_size                 = 20, 
-   start_from_restart       = .true.,
+   ens_size                 = 80
+   start_from_restart       = .false.,
    output_restart           = .true.,
    obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "filter_ics",
+   restart_in_file_name     = "filter_ics.0001",
    restart_out_file_name    = "filter_restart", 
    init_time_days           = -1,
    init_time_seconds        = -1,
@@ -14,8 +42,8 @@
    first_obs_seconds        = -1,
    last_obs_days            = -1,
    last_obs_seconds         = -1,
-   num_output_state_members = 0,
-   num_output_obs_members   = 0,
+   num_output_state_members = 80
+   num_output_obs_members   = 80
    output_interval          = 1,
    num_groups               = 1,
    input_qc_threshold       = 3.0,
@@ -27,44 +55,42 @@
    silence                  = .false.,
 
    inf_flavor                  = 2,                       0,
-   inf_initial_from_restart    = .true.,                 .false.,
-   inf_sd_initial_from_restart = .true.,                 .false.,
+   inf_initial_from_restart    = .false.,                 .false.,
+   inf_sd_initial_from_restart = .false.,                 .false.,
    inf_output_restart          = .true.,                  .true.,
    inf_deterministic           = .true.,                  .true.,
    inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics',
    inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
    inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
    inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.6,                     0.6,
-   inf_damping                 = 0.9,                     0.9,
    inf_lower_bound             = 1.0,                     1.0,
-   inf_upper_bound             = 1000.0,               1000.0,
+   inf_upper_bound             = 100.0,                 100.0,
+   inf_damping                 = 0.9,                     0.9,
+   inf_sd_initial              = 0.6,                     0.6,
    inf_sd_lower_bound          = 0.6,                     0.6
    /
-! ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
 
 &perfect_model_obs_nml
-   start_from_restart    = .true.,
-   output_restart        = .false.,
-   async                 = 0,
-   init_time_days        = -1,
-   init_time_seconds     = -1,
-   first_obs_days        = -1,
-   first_obs_seconds     = -1,
-   last_obs_days         = -1,
-   last_obs_seconds      = -1,
-   output_interval       = 1,
-   trace_execution       = .false.,
-   restart_in_file_name  = "perfect_ics",
-   restart_out_file_name = "perfect_restart",
-   obs_seq_in_file_name  = "obs_seq.in",
-   obs_seq_out_file_name = "obs_seq.perfect",
-   adv_ens_command       = "no_advance_script"
-   output_timestamps     = .false.,
-   trace_execution       = .false.,
-   output_forward_op_errors = .false.,
-   print_every_nth_obs   = -1,
-   silence               = .false.,
+  start_from_restart       = .true.
+  output_restart           = .true.
+  async                    = 0
+  init_time_days           = -1
+  init_time_seconds        = -1
+  first_obs_days           = -1
+  first_obs_seconds        = -1
+  last_obs_days            = -1
+  last_obs_seconds         = -1
+  output_timestamps        = .true.
+  trace_execution          = .true.
+  output_forward_op_errors = .false.
+  print_every_nth_obs      = 100
+  silence                  = .false.
+  output_interval          = 1
+  restart_in_file_name     = "perfect_ics"
+  restart_out_file_name    = "perfect_restart"
+  obs_seq_in_file_name     = "obs_seq.in"
+  obs_seq_out_file_name    = "obs_seq.perfect"
+  adv_ens_command          = "no_model_advance"
    /
 
 &smoother_nml
@@ -75,10 +101,15 @@
    restart_out_file_name = 'smoother_restart'
    /
 
+! 'layout' and 'tasks_per_node' will be reset by the assimilate.csh script
+! to match the number ('ptile' for LSF) used when laying out the job.
+
 &ensemble_manager_nml
-   single_restart_file_in  = .false.,
-   single_restart_file_out = .false.,
+   single_restart_file_in  = .true.
+   single_restart_file_out = .false.
    perturbation_amplitude  = 0.2
+   layout                  = 2
+   tasks_per_node          = 15
    /
 
 &assim_tools_nml
@@ -124,53 +155,91 @@
   advance_time_present    = .false.,
    /
 
-# common setups:
-#   model_version       = '3.1',
-#   state_names_3d      = 'T','U','V','Q','CLDLIQ','CLDICE'
-# or:
-#   model_version       = '3.5.06',
-# or:
-#   model_version       = '4.0.1',
-#   state_names_3d      = 'T','US','VS','Q','CLDLIQ','CLDICE'
+#========================================================================
+# Start of CAM-SE, CAM-FV dependencies and general discussion.
+#========================================================================
+!
+! You MUST configure this file to support EITHER the CAM-SE -OR- CAM-FV cores.
+! There are simply too many changes to support both at the same time.
+! Enable or Disable the appropriate blocks by commenting out or 
+! removing the comment character from the block of interest.
+!
+! highest_state_pressure_Pa 
+!     The default values given are the minimums recommended, given the choices
+!     of several other CESM and DART parameters.
+!     You calculate your own as illustrated in models/cam/doc/highest_state_p_Pa.pptx. 
+!     Or you can start with the minimum and increase it if there seems to be excessive
+!     noise in the upper layers.
+! The parameters on which the minimum highest_state_pressure_Pa depends are:
+!     cutoff (0.2 assumed)
+!     vert_coord
+!     vert_normalization_{pressure,scale_height}
+!     CAM's model top 
+!     number of model top levels with extra diffusion 
+!
+! WACCM can be used with either FV or SE
+!     vert_normalization_scale_height does not have extensive exploration available.
+!     Pedatella settled on 2.5.
+!     The model top for WACCM is (naturally) much higher: 4.5e-4 Pa 
+!     This has ramifications for the diffusion near the model top so 
+!     changes to the highest_*_pressure_Pa are appropriate.
+!     number of model top levels with extra diffusion, controlled by CAM's div24del2:
+!         2 = div2    -> 3 levels
+!         4,24 = del2 -> 4 levels
+!
+! WACCM settings that must be changed no matter what core is being used.
+!     vert_normalization_scale_height = 2.5 
+!     vert_coord                      = 'log_invP'
+!     highest_obs_pressure_Pa         = .0001,
+!     highest_state_pressure_Pa       = .01,
+!
+! Creation of initial ensemble from a single state.
+! pert_sd > 0 allows each point of the pert_names fields of each ens member 
+!   to be randomly perturbed with a standard deviation of pert_sd.  
+!   Used by filter's call to pert_model_state.
+!
+#========================================================================
+# CAM-FV Section
+# model top 220 Pa
+# number of model top levels with extra diffusion, controlled by div24del2:
+#         2 = div2    -> 2 levels
+#         4,24 = del2 -> 3 levels -> highest_state_pressure_Pa = 10500.
+# vert_normalization_pressure = 20000. is a better choice than
+#         100000. for allowing upper levels to be pulled towards the obs.
+#========================================================================
 
 &model_nml
    output_state_vector = .false.,
-   model_version       = '4.0.1',
-   model_config_file   = 'caminput.nc',
+   model_version       = '5.1.1',
+   model_config_file   = 'caminput.nc' 
+   cam_phis            = 'cam_phis.nc'
    state_num_0d        = 0,
    state_num_1d        = 0,
    state_num_2d        = 1,
    state_num_3d        = 6,
    state_names_2d      = 'PS'
-   state_names_3d      = 'T', 'US', 'VS', 'Q', 'CLDLIQ', 'CLDICE'
+   state_names_3d      = 'T','US','VS','Q','CLDLIQ','CLDICE'
    which_vert_1d       = 0,
    which_vert_2d       = -1,
    which_vert_3d       = 6*1,
-   pert_names          = 'T', 'US', 'VS',
-   pert_sd             = 0.20,
+   vert_coord          = 'pressure'
+   pert_names          = 'T'
+   pert_sd             = 0.1,
    pert_base_vals      = -888888.0d0,
-   highest_obs_pressure_mb   = 100.0,
-   highest_state_pressure_mb = 150.0,
-   max_obs_lat_degree        = 89.0,
-   Time_step_seconds   = 21600,
-   Time_step_days      = 0,
-   print_details       = .false.,
+   highest_obs_pressure_Pa   = 1000.0,
+   highest_state_pressure_Pa = 9400.0,
+   max_obs_lat_degree        = 90.0,
+   Time_step_seconds         = 21600,
+   Time_step_days            = 0,
+   print_details             = .false.,
    /
-
-! pert_sd < 0. signals pert_base_vals to be used as the values 
-!   for each ensemble member (for 1 field), instead of the value for each field.
-!   DART special value -888888.0d0 can be used for that.
-! pert_sd > 0 allows each point of the pert_names fields of each ens member 
-!   to be randomly perturbed with a standard deviation of pert_sd.  
-!   Used by filter's call to pert_model_state.
-! pert_base_vals /= -888888.0d0 means that the values of the fields in pert_names
-!   will be reset to the values in pert_base_vals.  
 
 &location_nml
    horiz_dist_only             = .false.,
-   vert_normalization_pressure = 100000.0, 
+   vert_normalization_pressure = 20000.0, 
    vert_normalization_height   = 10000.0,
    vert_normalization_level    = 20.0,
+   vert_normalization_scale_height    = 2.5,
    approximate_distance        = .true.,
    nlon                        = 71, 
    nlat                        = 36,
@@ -178,6 +247,63 @@
    print_box_level             = 0,
    /
 
+#========================================================================
+# CAM-SE Section
+# model top 220 Pa
+# number of model top levels with extra diffusion (3 only)
+#========================================================================
+
+!CAM-SE &model_nml
+!CAM-SE    output_state_vector = .false.,
+!CAM-SE    model_version       = '5.1.1',
+!CAM-SE    model_config_file   = 'caminput.nc' 
+!CAM-SE    cs_grid_file        = 'SEMapping_cs_grid.nc'
+!CAM-SE    homme_map_file      = '../SEMapping.nc'
+!CAM-SE    state_num_0d        = 0,
+!CAM-SE    state_num_1d        = 1,
+!CAM-SE    state_num_2d        = 6,
+!CAM-SE    state_num_3d        = 0,
+!CAM-SE    state_names_1d      = 'PS'
+!CAM-SE    state_names_2d      = 'T','U','V','Q','CLDLIQ','CLDICE'
+!CAM-SE    state_names_3d      = ''
+!CAM-SE    which_vert_1d       = -1,
+!CAM-SE    which_vert_2d       = 6*1,
+!CAM-SE    vert_coord          = 'pressure'
+!CAM-SE    pert_names          = 'T'
+!CAM-SE    pert_sd             = 0.1,
+!CAM-SE    pert_base_vals      = -888888.0d0,
+!CAM-SE    highest_obs_pressure_Pa   = 1000.0,
+!CAM-SE    highest_state_pressure_Pa = 9400.0,
+!CAM-SE    max_obs_lat_degree        = 90.0,
+!CAM-SE    Time_step_seconds         = 21600,
+!CAM-SE    Time_step_days            = 0,
+!CAM-SE    print_details             = .false.,
+!CAM-SE    /
+!CAM-SE 
+!CAM-SE &location_nml
+!CAM-SE    horiz_dist_only             = .false.,
+!CAM-SE    vert_normalization_pressure = 20000.0, 
+!CAM-SE    vert_normalization_height   = 10000.0,
+!CAM-SE    vert_normalization_level    = 20.0,
+!CAM-SE    vert_normalization_scale_height    = 2.5,
+!CAM-SE    approximate_distance        = .FALSE.,
+!CAM-SE    nlon                        = 141, 
+!CAM-SE    nlat                        = 72,
+!CAM-SE    output_box_info             = .false.,
+!CAM-SE    print_box_level             = 0,
+!CAM-SE    /
+
+#========================================================================
+# End of CAM-SE, CAM-FV dependencies.
+#========================================================================
+
+&xyz_location_nml
+   /
+
+! to use chemistry or saber temperatures, include the following.
+!                             '../../../obs_def/obs_def_CO_Nadir_mod.f90',
+!                             '../../../obs_def/obs_def_SABER_mod.f90'
+!                             '../../../obs_def/obs_def_MOPITT_CO_mod.f90',
 
 &preprocess_nml
    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
@@ -185,14 +311,22 @@
     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
   input_files              = '../../../obs_def/obs_def_gps_mod.f90',
+                             '../../../obs_def/obs_def_reanalysis_bufr_mod.f90',
                              '../../../obs_def/obs_def_altimeter_mod.f90',
-                             '../../../obs_def/obs_def_reanalysis_bufr_mod.f90'
    /
+
+! Not usually assimilated.  No fundamental reason not to. 
+!                               'RADIOSONDE_SPECIFIC_HUMIDITY',
+! Available from mid-2006 onward.  Build filter with obs_def_gps_mod.f90
+!                               'GPSRO_REFRACTIVITY', 
+! WACCM can use higher observations than CAM.  
+! An example can be included via obs_def_SABER_mod.f90.
+!                               'SABER_TEMPERATURE', 
 
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
-                                'ACARS_TEMPERATURE',
                                 'AIRCRAFT_TEMPERATURE',
+                                'ACARS_TEMPERATURE',
                                 'RADIOSONDE_U_WIND_COMPONENT',
                                 'RADIOSONDE_V_WIND_COMPONENT',
                                 'AIRCRAFT_U_WIND_COMPONENT',
@@ -201,10 +335,8 @@
                                 'ACARS_V_WIND_COMPONENT',
                                 'SAT_U_WIND_COMPONENT',
                                 'SAT_V_WIND_COMPONENT',
-                                'GPSRO_REFRACTIVITY', 
+   evaluate_these_obs_types = ''
    /
-
-!   evaluate_these_obs_types = 'RADIOSONDE_SURFACE_PRESSURE'
 
 
 &utilities_nml
@@ -225,7 +357,7 @@
 &restart_file_tool_nml
    input_file_name              = "filter_restart",
    output_file_name             = "filter_updated_restart",
-   ens_size                     =  1,
+   ens_size                     = 80
    single_restart_file_in       = .true.,
    single_restart_file_out      = .true.,
    write_binary_restart_files   = .true.,
@@ -289,16 +421,31 @@
 # Acceptable latitudes range from  [-90,  90]
 # Acceptable longitudes range from [  0, 360]
 
+# Other available namelist variables, not in the default obs_diag.nml:
+#  hlevel
+#  mlevel
+#  print_obs_locations
+#  outliers_in_histogram
+#  plevel_edges
+#  hlevel_edges
+#  mlevel_edges
+
+# for WACCM you will want to change the plevel to match
+# the higher vertical range of the model.
+#   plevel = 1000.,850.,700.,500.,400.,300.,200.,150.,100.
+# these are specified in hectopascals (hPa)
+
 &obs_diag_nml
    obs_sequence_name = 'obs_seq.final',
    obs_sequence_list = '',
-   first_bin_center =  2003, 1, 1, 6, 0, 0 ,
-   last_bin_center  =  2003, 1, 2, 0, 0, 0 ,
+   first_bin_center =  2008, 8, 1, 6, 0, 0 ,
+   last_bin_center  =  2008, 8, 2, 0, 0, 0 ,
    bin_separation   =     0, 0, 0, 6, 0, 0 ,
    bin_width        =     0, 0, 0, 6, 0, 0 ,
    time_to_skip     =     0, 0, 1, 0, 0, 0 ,
    max_num_bins     = 1000,
    trusted_obs      = 'null',
+   plevel = 1000.,850.,700.,500.,400.,300.,200.,150.,100.
    Nregions   = 4,
    lonlim1    =   0.0,   0.0,   0.0, 235.0,
    lonlim2    = 360.0, 360.0, 360.0, 295.0,
@@ -354,7 +501,7 @@
 &closest_member_tool_nml  
    input_file_name        = 'filter_restart',
    output_file_name       = 'closest_restart',
-   ens_size               = 20,
+   ens_size               = 80
    single_restart_file_in = .true.,
    difference_method      = 4,
    /

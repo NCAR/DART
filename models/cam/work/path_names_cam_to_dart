@@ -1,6 +1,7 @@
 assim_model/assim_model_mod.f90
 common/types_mod.f90
 location/threed_sphere/location_mod.f90
+location/threed_cartesian/xyz_location_mod.f90
 models/cam/cam_to_dart.f90
 models/cam/model_mod.f90
 mpi_utilities/null_mpi_utilities_mod.f90
