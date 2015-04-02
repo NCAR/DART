@@ -29,6 +29,7 @@
 <A HREF="#Namelist">NAMELIST</A> / 
 <A HREF="#Interface">INTERFACES</A> / 
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Discussion">Discussion</A> /
 <A HREF="#FilesUsed">FILES</A> /
 <A HREF="#References">REFERENCES</A> /
 <A HREF="#Errors">ERRORS</A> /
@@ -42,38 +43,58 @@
 <H2>Overview</H2>
 
 <P>
-The DART system supports data assimilation into CAM -- The Community Atmosphere Model.
-It is being actively used by graduate students,
-post-graduates, and scientists at universities and research labs. Others are
-using analyses for their time period and resolution of interest,
-produced here at NCAR using DART-CAM. In addition to the standard DART
-features described elsewhere, current capabilities include the ability to:
+The DART system supports data assimilation into the Community Atmosphere Model, CAM,
+which is the atmospheric component of the Community Earth System Model 
+(<a href="http://www2.cesm.ucar.edu/models">CESM</a>) .
+The Whole Atmosphere Community Climate Model, WACCM, is a variant of CAM 
+with a higher model top and more complete handling of chemistry. 
+WACCM can also be used in DART using this model_mod.
+It is being used by graduate students,
+post-graduates, and scientists at universities and research labs. 
+Others are using atmospheric analyses for their time period and resolution of interest,
+which were produced here at NCAR using CESM+DART. 
+The variety of research can be sampled on the DART 
+<a href:"http://www.image.ucar.edu/DAReS/Publications/index.php">Publications</a> page.
+In addition to the standard DART features described elsewhere, 
+current capabilities include the ability to:
 </P>
 
 <UL>
-<LI>Use either the Eulerian or finite-volume core.</LI>
-<LI>Use any resolution of CAM without recompiling DART. The standard resolutions of 
-T21, T42, T85, FV 2x2.5 and 4x5 have been tested.</LI>
+<LI>Assimilate within the CESM software framework by using the multi-instance
+capability of CESM1.1.1 (and later).  
+This enables assimilation of suitable observations into multiple CESM components.
+The ability to assimilate in the previous mode, where DART called 'stand-alone' CAMs
+when needed, is not being actively supported for these CESM versions.
+<LI>Use either the eulerian, finite-volume (FV), or spectral-element (SE) dynamical core.</LI>
+<LI>Use any resolution of CAM, including refined mesh grids in CAM-SE.
+As of April, 2014 this is limited by ability of the memory of a node of your hardware to contain 
+the state vector of a single ensemble member.  Work is under way to relax this restriction.
+</LI>
 <LI>Assimilate a variety of observations; to date the observations 
-successfully assimilated include the NCEP reanalysis BUFR obs (T,U,V), 
+successfully assimilated include the NCEP reanalysis BUFR obs (T,U,V,Q), 
 Global Positioning System radio occultation obs, and MOPITT carbon monoxide 
-(when a chemistry model is incorporated into FV CAM). Research is under way to 
-assimilate surface observations, specific humidity, cloud liquid water, and aerosols.</LI>
+(when a chemistry model is incorporated into CAM-FV). 
+Research has also explored assimilating surface observations, 
+cloud liquid water, and aerosols.
+SABER and AURA observations have been assimilated into WACCM.</LI>
 <LI>Specify, via namelist entries, the CAM (initial file) variables which will be 
-directly affected by the observations. This allows users to change the model state 
-without recompiling.</LI>
-<LI>Generate analyses on the CAM grid which are of comparable quality to those 
-produced by operational centers, but which have only CAM model error in them, 
-rather than the model error of the models used at the centers.</LI>
+directly affected by the observations, that is, the state vector. 
+This allows users to change the model state without recompiling
+(but other restrictions remain).</LI>
+<LI>Generate analyses on the CAM grid which have only CAM model error in them, 
+rather than a combination of another model's error and observation error.</LI>
 <LI>Generate such analyses with as few as 20 ensemble members.</LI>
 </UL>
 
 <P>
-In addition to the standard DART package there is a collection of initial
+In addition to the standard DART package there are ensembles of initial
 condition files at the large file website
 <a href="http://www.image.ucar.edu/pub/DART/CAM/">
 http://www.image.ucar.edu/pub/DART/CAM/</a>
 that are helpful for interfacing CAM with DART.
+In the current (2014) mode, CESM+DART can easily be started from a single
+model state, which is perturbed to create an ensemble of the desired size.
+A spin-up period is then required to allow the ensemble members to diverge.
 </P>
 
 <P>
@@ -94,49 +115,65 @@ limit datasize unlimited
 </pre>
 <P>
 This page contains the documentation for 
-the DART interface module for the CAM model,
-using the either the Eulerian and Finite Volume dynamical core,
-soon the HOMME core on the cubed sphere,
-and possibly the Semi-Lagrangian core. 
-It is designed to work for versions of CAM from 2.0.1 
-through the currently released version(s)
-by specifying the version number in the model_mod namelist.
-This implementation of DART-CAM uses the CAM initial files for 
-transferring the model state to/from the filter/CAM.  
-The DART interface model was designed to facilitate using any CAM
-version with minimal changes to the model_mod code and accompanying scripts.
+the DART interface module for the CAM and WACCM models,
+using the dynamical cores listed above.
+This implementation uses the CAM initial files (not restarts) for 
+transferring the model state to/from the filter.  
+This may change in future versions, but probably only for CAM-SE.
+The reasons for this include:
+<OL>
+<LI> The contents of the restart files vary depending on both the model release version
+and the physics packages selected.
+<LI> There is no metadata describing the variables in the restart files.
+Some information can be tracked down in the atm.log file, but not all of it.
+<LI> The restart files (for non-chemistry model versions) are much larger than the
+initial files (and we need to deal with an ensemble of them).
+<LI> The temperature on the restart files is virtual equivalent potential temperature (?),
+which requires (at least) surface pressure, specific humidity, and sensible temperature
+to calculate.
+<LI> CAM does not call the initialization routines when restart files are used,
+so fields which are not modified by DART may be inconsistent with fields which are.
+<LI> If DART modifies the contents of the .r. restart file, it might also need to 
+modify the contents of the .rs. restart file, which has similar characteristics 
+(1-3 above) to the .r. file.
+</OL>
 </P>
 <P>
-The DART interfaces to CAM and the rest of the CESM components
-have been integrated with the CESM run scripts.  Unlike previous versions
-of DART-CAM, CESM runs using its normal scripts, then stops and calls
-a DART script which runs a single assimilation step, then
-returns to the CESM run script to continue the model advances.
-See the <a href="../models/CESM/model_mod.html">CESM interface
+The DART interfaces to CAM and many of the other CESM components
+have been integrated with the CESM set-up and run scripts.  
+Unlike previous versions of DART-CAM, CESM runs using its normal scripts, 
+then stops and calls a DART script which runs a single assimilation step, 
+then returns to the CESM run script to continue the model advances.
+See the <a href="../CESM/model_mod.html">CESM interface
 documentation</a> for more information on running DART with CESM.
+Due to the complexity of the CESM software environment, the versions of CESM 
+which can be used for assimilation are more restricted than previously.  
+Each supported CESM version has similar, but unique,
+sets of set-up scripts and CESM SourceMods.
+Those generally do not affect the cam/model_mod.f90 interface.
 </P>
 
 <P>
-The DART state vector should include any variable in the CAM initial
-files which is a fundamental quantity and required to reconstruct any
-other variable that is carried along in the model files.  In practice
-the state vector sometimes contains derived quantities to enable DART
+The DART state vector should include all prognostic variables in the CAM initial
+files which cannot be calculated directly from other prognostic variables.
+In practice the state vector sometimes contains derived quantities to enable DART
 to compute forward operators (expected observation values) efficiently.
 The derived quantities are often overwritten when the model runs the
-next timestep, so the work DART does to update them is waster work.
+next timestep, so the work DART does to update them is wasted work.
 </P>
 
 <P>
-Expected observation values on pressure, height or model levels can be requested
-from model_interpolate.  Surface observations can not yet be interpolated,
-due to the difference between the model surface and the earth's surface
-where the observations are made.  Model_interpolate can be queried for any
-(non-surface) variable in the state vector (which are variables native to
-CAM) plus pressure on height levels.  The default state vector is PS, T,
-U, V, Q, CLDLIQ, CLDICE.  
+Expected observation values on pressure, scale height, height or model levels 
+can be requested from model_interpolate.  
+Surface observations can not yet be interpolated, due to the difference between 
+the model surface and the earth's surface where the observations are made.  
+Model_interpolate can be queried for any (non-surface) variable in the state vector 
+(which are variables native to CAM) plus pressure on height levels.  
+The default state vector is PS, T, U, V, Q, CLDLIQ, CLDICE and any tracers or
+chemicals needed for a given study.  
 Variables which are not in the initial file 
 <A HREF="doc/cam_guidelines.html">can be added</A>, 
-but minor modifications to model_mod.f90 (and perhaps CAM) may be necessary.  
+but minor modifications to model_mod.f90 and CAM may be necessary.  
 </P>
 
 <P>
@@ -148,6 +185,7 @@ and do spatial interpolation for a variety of variables required by
 observational operators.
 </P>
 
+<!--
 <P>
 Help with several aspects of
 <A HREF="doc/cam_guidelines.html">setting up assimilation experiments</A> 
@@ -162,6 +200,7 @@ using CAM and parallel architecture computers is available:
     <LI> <A HREF="doc/cam_guidelines.html#HINTS">helpful hints</A> </LI>
     <LI> <A HREF="doc/cam_guidelines.html#SPACE">space requirements of various CAM resolutions</A> </LI>
 </UL> 
+-->
 
 <!--==================================================================-->
 <!--=================== DESCRIPTION OF A NAMELIST  ===================-->
@@ -182,25 +221,28 @@ prematurely terminating the namelist.
 <pre>
 &amp;model_nml
    output_state_vector = .false.,
-   model_version       = '3.0',
+   model_version       = '4.0',
    model_config_file   = 'caminput.nc',
    cam_phis            = 'cam_phis.nc',
+   cs_grid_file        = 'SEMapping_cs_grid.nc'
+   homme_map_file      = 'SEMapping.nc'
    state_num_0d        = 0,
    state_num_1d        = 0,
    state_num_2d        = 1,
-   state_num_3d        = 4,
+   state_num_3d        = 6,
    state_names_0d      = '',
    state_names_1d      = '',
    state_names_2d      = 'PS'
-   state_names_3d      = 'T', 'U', 'V', 'Q',
+   state_names_3d      = 'T', 'US', 'VS', 'Q', 'CLDLIQ','CLDICE',
    which_vert_1d       = -2 ,
    which_vert_2d       = -1 , 
-   which_vert_3d       = 1  ,
+   which_vert_3d       = 6*1 ,
    pert_names          = '',
    pert_sd             = -888888.0,
    pert_base_vals      = -888888.0,
-   highest_obs_pressure_mb   = 150.0,
-   highest_state_pressure_mb = 150.0,
+   vert_coord          = 'pressure'
+   highest_obs_pressure_Pa   = 1000.0,
+   highest_state_pressure_Pa = 9400.0,
    max_obs_lat_degree  = 90.0,
    Time_step_seconds   = 21600,
    Time_step_days      = 0,
@@ -266,12 +308,36 @@ prognostic flavor (gridded data) for easier plotting (recommended).
 
 <TR><TD> model_config_file </TD>
     <TD> character(len=128) </TD>
-    <TD>CAM initial file used to provide configuration information.
+    <TD>CAM initial file used to provide configuration information, like
+the resolution of the grid, number of vertical levels, whether fields 
+are staggered or not, etc.
+</TD></TR>
+
+<TR><TD> cam_phis </TD>
+    <TD> character(len=128) </TD>
+    <TD>CAM topography file for the Eularian and Finite Volume versions.
+Not used in the Spectral Element version.
+</TD></TR>
+
+<TR><TD> cs_grid_file </TD>
+    <TD> character(len=128) </TD>
+    <TD>CAM Spectral Element grid file.  Not used in the Eularian or
+Finite Volume versions.
+</TD></TR>
+
+<TR><TD> homme_map_file </TD>
+    <TD> character(len=128) </TD>
+    <TD>CAM Spectral Element mapping file.  Not used in the Eularian or
+Finite Volume versions.
 </TD></TR>
 
 <TR><TD>state_num_#d,<br /> #=0,1,2,3   </TD>
     <TD> integer </TD>
     <TD>Numbers of fields of various dimensions to put into the state vector.
+Note that CAM-SE fields have only 1 horizontal dimension on the initial files, 
+due to the cubed-sphere grid being not logically rectangular.
+"Dimensions" in cam/model_mod.f90 generally refers to dimensions on the initial file, 
+not spatial dimensions of the fields.
 </TD></TR>
 
 <TR><TD>state_names_#d,<br /> #=0,1,2,3 </TD>
@@ -320,14 +386,26 @@ and pert_base_vals is /= this missing value (-888888.0d0).
     <TD>Observations closer to the poles than this latitude will be ignored.
 </TD></TR>
 
-<TR><TD> highest_obs_pressure_mb </TD>
-    <TD> real(r8) </TD>
-    <TD>Observations higher than this pressure are ignored.
+<TR><TD> vert_coord </TD>
+    <TD> character(len=8) </TD>
+    <TD>The vertical coordinate to which all vertical locations are converted
+in model_mod.  "log_invP" ("scale height" for WACCM) or "pressure" (default).
 </TD></TR>
 
-<TR><TD> highest_state_pressure_mb </TD>
+<TR><TD> highest_obs_pressure_Pa </TD>
+    <TD> real(r8) </TD>
+    <TD>Observations higher than this pressure are ignored.  
+NOTE that this
+has a non-backwards incompatible change from previous versions.  It is now
+specified in Pascals, not millibars. Divide by 100 to convert the units.
+</TD></TR>
+
+<TR><TD> highest_state_pressure_Pa </TD>
     <TD> real(r8) </TD>
     <TD>Influence of all obs on model points higher than this is reduced.
+NOTE that this
+has a non-backwards incompatible change from previous versions.  It is now
+specified in Pascals, not millibars. Divide by 100 to convert the units.
 </TD></TR>
 
 <TR><TD> Time_step_seconds </TD>
@@ -366,14 +444,16 @@ the fields as they are read into the state vector.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>OTHER MODULES USED</H2>
 <PRE>
+mpi_utilities_mod
+netcdf
 obs_kind_mod
-random_nr_mod
 random_seq_mod
+threed_cartesian/xyz_location_mod
 threed_sphere/location_mod
 time_manager_mod
 types_mod
+typeSizes
 utilities_mod
-mpi_utilities
 </PRE>
 
 <!--==================================================================-->
@@ -434,8 +514,13 @@ dart_to_cam, cam_to_dart, etc.
 </P>
 
 <TABLE>
+<!-- 
+? ADD <TR><TD>&nbsp;</TD><TD><A HREF="#read_cam_init_size">read_cam_init</A></TD></TR>
+  only used in model_mod.
+-->
 <TR><TD><em class=call>use model_mod, only : </em></TD>
-                   <TD><A HREF="#prog_var_to_vector">prog_var_to_vector</A></TD></TR>
+                   <TD><A HREF="#model_type">model_type</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#prog_var_to_vector">prog_var_to_vector</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#read_cam_init">read_cam_init</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#vector_to_prog_var">vector_to_prog_var</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#write_cam_init">write_cam_init</A></TD></TR>
@@ -453,6 +538,22 @@ is read from file <em class=file>input.nml</em>.
 <!-- duplicate public routines template as many times as necessary    -->
 <!--==================================================================-->
 
+
+<!--================================================================-->
+<!--=================== DESCRIPTION OF TYPE ====================-->
+
+<A NAME="model_type"></A>
+<div class=type>
+<em class=call>model_type</em>
+</div>
+
+<div class=indent1>
+<P>
+A type for the CAM model.  It consists of pointers to model variables having
+ranks (non-time dimensions) of 0...3.  
+Note that CAM-SE fields have rank = spatial_dims - 1.
+</P>
+</div>
 
 <!--================================================================-->
 <!--=================== DESCRIPTION OF SUBROUTINE ====================-->
@@ -475,7 +576,6 @@ including the vertical hybrid coordinate coefficients, time step, and
 Gaussian weights, etc).  
 </P>
 </div>
-
 
 <!--================================================================-->
 <!--=================== DESCRIPTION OF SUBROUTINE ====================-->
@@ -560,7 +660,7 @@ nested domains.
 
 <A NAME="get_model_time_step"></A>
 <div class=routine>
-<em class=call> var = get_model_time_step( )</em>
+<em class=call> ts = get_model_time_step( )</em>
 <pre>
 type(time_type)                       :: <em class=code> get_model_time_step </em>
 </pre></div>
@@ -569,9 +669,10 @@ type(time_type)                       :: <em class=code> get_model_time_step </e
 <P>
 Returns the forecast length to be used as the "model base time step" in the filter. 
 The choice of initial files instead of restart files restricts the 
-assimilation from using "time steps" which are too small.  This is because
-CAM uses a leapfrog time scheme, but the initial files store only a 
-single timestep.  The initial forecast step is a simple forward step, so if 
+assimilation from using "time steps" which are too small.  
+This is because the spectral dynamical core of CAM uses a leapfrog time scheme, 
+but the initial files store only a single timestep.  
+The initial forecast step is a simple forward step, so if 
 repeated short forecasts (&lt; ~9 model time steps) are made, the model 
 becomes unstable.
 In the long run, a more general extended interface may be required that specifies 
@@ -680,10 +781,11 @@ Reads state vector fields from a CAM initial file.  Fields are specified in mode
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="write_cam_init"></A>
  <div class=routine>
- <em class=call> call write_cam_init(file_name,var) </em>
+ <em class=call> call write_cam_init(file_name,model_time,var) </em>
  <pre>
- character, intent(in)                     :: <em class=code>file_name</em>
- type(model_type), allocatable, intent(in) :: <em class=code>var</em>
+ character,        intent(in)    :: <em class=code>file_name</em>
+ type(time_type),  intent(in)    :: <em class=code>model_time</em>
+ type(model_type), intent(inout) :: <em class=code>var</em>
  </pre></div>
 
  <div class=indent1>
@@ -691,10 +793,14 @@ Reads state vector fields from a CAM initial file.  Fields are specified in mode
  Write fields that have been updated by assimilation to the CAM 'initial' file.
  </P>
  <TABLE width=100% border=0 summary="" cellpadding=3>
- <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>file_name&nbsp;&nbsp; </em></TD>
      <TD>Name of CAM initial file to which var will be written.</TD></TR>
+ <TR><TD valign=top><em class=code>model_time&nbsp;&nbsp; </em></TD>
+     <TD>Sanity check that the time of the data being written matches the timestamp
+         in the file being written to.</TD></TR>
  <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>Structure containing all the fields of the state vector.</TD></TR>
+     <TD>Structure containing all the fields of the state vector.
+         Out-of-range state vector values may be updated by this routine.</TD></TR>
  </TABLE>
 <br>
 </div>
@@ -704,11 +810,11 @@ Reads state vector fields from a CAM initial file.  Fields are specified in mode
 
 <A NAME="model_interpolate"></A>
 <div class=routine>
-<em class=call> call model_interpolate(x, location, obs_type, interp_val, istatus)</em>
+<em class=call> call model_interpolate(st_vec, location, obs_kind, interp_val, istatus)</em>
 <pre>
-real(r8), dimension(:),   intent(in)  :: <em class=code> x </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code> st_vec </em>
 type(location_type),      intent(in)  :: <em class=code> location </em>
-integer,                  intent(in)  :: <em class=code> obs_type </em>
+integer,                  intent(in)  :: <em class=code> obs_kind </em>
 real(r8),                 intent(out) :: <em class=code> interp_val </em>
 integer,                  intent(out) :: <em class=code> istatus </em>
 </pre></div>
@@ -729,16 +835,20 @@ case where the observational operator is not defined at the given location
 level), interp_val is returned as 0.0 and istatus = 1.  CAM is highly
 damped in the upper levels of the model, which has required the exclusion
 of otherwise valid observations above a certain level, which can be
-specified in the model_mod namelist variable highest_obs_pressure_mb.  Such
+specified in the model_mod namelist variable highest_obs_pressure_Pa.  Such
 cases return istatus = 2, and also do the interpolation and return the
 value, which is NOT used by filter.  Eventually such quality control may be
 moved to another module, but for now is performed in subroutine
 get_val_pressure.  
+CAM-SE requires a completely different interpolation algorithm from 
+the logically rectangular grids of the eulerian and FV dy-cores.
+So model_interpolate is now a simple splitter subroutine,
+calling either interp_lonlat or interp_cubed_sphere.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>x &nbsp; &nbsp; </em></TD>
+<TR><TD valign=top><em class=code>st_vec &nbsp; &nbsp; </em></TD>
     <TD>Model state vector. </TD></TR>
 
 <TR><TD valign=top><em class=code>location</em></TD>
@@ -754,6 +864,133 @@ get_val_pressure.
     <TD>Integer flag indicating the success of the interpolation.</TD></TR>
 
 </TABLE>
+<br>
+</div>
+
+<!--================================================================-->
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<A NAME="interp_cubed_sphere"></A>
+<div class=routine>
+<em class=call> call interp_cubed_sphere(st_vec, obs_loc, obs_kind, interp_val, istatus)</em>
+<pre>
+real(r8), dimension(:),   intent(in)  :: <em class=code> st_vec </em>
+type(location_type),      intent(in)  :: <em class=code> obs_loc </em>
+integer,                  intent(in)  :: <em class=code> obs_kind </em>
+real(r8),                 intent(out) :: <em class=code> interp_val </em>
+integer,                  intent(out) :: <em class=code> istatus </em>
+</pre></div>
+
+<div class=indent1>
+<P>
+Find the cubed-sphere grid cell which encloses an observation at 'obs_loc'.
+Interpolate the values of field 'obs_kind', from the cell's 4 corners 
+on the bounding vertical levels, to that location.
+</P>
+<br>
+</div>
+
+<!--================================================================-->
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<A NAME="unit_square_location"></A>
+<div class=routine>
+<em class=call> call unit_square_location(cell, closest, location, lon_o,lat_o, found_cell, origin, l,m)</em>
+<pre>
+integer,             intent(in)    :: <em class=code>cell</em>
+integer,             intent(in)    :: <em class=code>closest</em>
+type(location_type), intent(in)    :: <em class=code>location</em>
+real(r8),            intent(in)    :: <em class=code>lon_o, lat_o</em>
+integer,             intent(inout) :: <em class=code>found_cell</em>
+integer,             intent(out)   :: <em class=code>origin</em>
+real(r8),            intent(out)   :: <em class=code>l</em>
+real(r8),            intent(out)   :: <em class=code>m</em>
+</pre></div>
+
+<div class=indent1>
+<P>
+Uses a pre-derived mapping, from the cubed-sphere cell "closest" to an observation
+onto the unit square (l,m), to map the "location" onto that square.
+This is a bilinear interpolation,
+<pre>
+  x = a0 + a1*l*m + a2*m + a3*l
+  y = b0 + b1*l*m + b2*m + b3*l
+</pre>
+so does not take into account the curvature of the quadrilateral.
+That has been handled by the intermediate mapping from (lon,lat) to (x,y).
+If the ob is in the cell, the routine passes back the interpolation weights (l,m).
+Otherwise, it signals the calling routine to send it another candidate cell.
+Based on http://www.particleincell.com/2012/quad-interpolation/.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>cell&nbsp; &nbsp; </em></TD>
+    <TD>Candidate cubed sphere cell, which may contain <em class=code>location</em>. </TD></TR>
+
+<TR><TD valign=top><em class=code>closest &nbsp; &nbsp; </em></TD>
+    <TD>The node (cell corner) closest to the observation. </TD></TR>
+
+<TR><TD valign=top><em class=code>location &nbsp; &nbsp; </em></TD>
+    <TD>The location of the observation, used in <em class=sub>get_dist</em>. </TD></TR>
+
+<TR><TD valign=top><em class=code>lon_o,lat_o &nbsp; &nbsp; </em></TD>
+    <TD>Longitude and latitude of the observation. </TD></TR>
+
+<TR><TD valign=top><em class=code>l,m &nbsp; &nbsp; </em></TD>
+    <TD>Location of the observation in the unit square space of this cell.  
+        Used to determine whether the cell contains the observation and,
+        if so, as interpolation weights. </TD></TR>
+
+<TR><TD valign=top><em class=code>found_cell &nbsp; &nbsp; </em></TD>
+    <TD>Flag to tell calling routine that the observation is in this cell. </TD></TR>
+
+<TR><TD valign=top><em class=code>origin &nbsp; &nbsp; </em></TD>
+    <TD>The node number of the cell corner which is used as the origin
+        in the mapping from (x,y) to (l,m) coordinates. </TD></TR>
+
+</TABLE>
+<br>
+</div>
+
+<!--================================================================-->
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<A NAME="solve_quadratic"></A>
+<div class=routine>
+<em class=call> call solve_quadratic(a, b, c, r1, r2)</em>
+<pre>
+real(r8), intent(in)  :: <em class=code>a, b, c</em>
+real(r8), intent(out) :: <em class=code>r1, r2</em>
+</pre></div>
+
+<div class=indent1>
+<P>
+Calculate the roots (r1, r2) of the quadratic equation defined by coefficients a, b, and c.
+</P>
+<br>
+</div>
+
+<!--================================================================-->
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<A NAME="interp_lonlat"></A>
+<div class=routine>
+<em class=call> call interp_lonlat(st_vec, location, obs_kind, interp_val, istatus)</em>
+<pre>
+real(r8),            intent(in) :: <em class=code>st_vec(:)</em>
+type(location_type), intent(in) :: <em class=code>location</em>
+integer,             intent(in) :: <em class=code>obs_kind</em>
+real(r8),           intent(out) :: <em class=code>interp_val</em>
+integer,            intent(out) :: <em class=code>istatus</em>
+</pre></div>
+
+<div class=indent1>
+<P>
+Find the 8 corners of the lon-lat-lev grid cell, which encloses an observation at 'location',
+and interpolate the values of variable 'obs_kind' to that location.
+Variables defined as in 
+<a href="#model_interpolate">model_interpolate</a>.
+</P>
 <br>
 </div>
 
@@ -840,11 +1077,11 @@ these calculations.
 Due to the damping at high levels (see <a href="#model_interpolate">model_interpolate</a>)
 there is also code 
 which reduces the influence of observations on model points above some altitude.
-Currently namelist variables <em class="code">highest_obs_pressure_mb</em> and
-<em class="code">highest_state_pressure_mb</em> control this.
+Currently namelist variables <em class="code">highest_obs_pressure_Pa</em> and
+<em class="code">highest_state_pressure_Pa</em> control this.
 All observations on height and level are handled automatically, using the 
 ensemble mean for calculations. For CAM with 26 vertical levels, the influence declines 
-to 0 above model level 6 for <em class="code">highest_obs_pressure_mb = 150</em>
+to 0 above model level 6 for <em class="code">highest_obs_pressure_Pa = 15000</em>
 ( ~&nbsp;model level 12).
 </P>
 </div>
@@ -866,6 +1103,17 @@ Pass-through to the 3-D sphere locations module routine of the same name. See
 location_mod:get_close_maxdist_init()</A> for the documentation of this subroutine.
 </P>
 </div>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>gc &nbsp; &nbsp; </em></TD>
+    <TD>A <em class=code>get_close</em> type whose <em class=code>maxdist</em>
+        will be defined here. </TD></TR>
+
+<TR><TD valign=top><em class=code>maxdist &nbsp; &nbsp; </em></TD>
+    <TD>The maximum distance around a location at which a lon-lat grid box 
+        can be considered close to a location. </TD></TR>
+
+</TABLE>
 
 <!--=================================================================-->
 <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
@@ -1044,6 +1292,7 @@ state is always to be provided from input files.
 <br>
 </div>
 
+<P></P>
 
 <!--==================================================================-->
 <!-- End of PUBLIC entities.                                    -->
@@ -1066,13 +1315,16 @@ utility routines.
 </P>
 
 <TABLE>
-<TR><TD><em class=call>use model_mod, only : </em></TD>
-                   <TD><A HREF="#convert_vert">convert_vert</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#bearing">bearing</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#convert_vert">convert_vert</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#coord_val">coord_val</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#coord_ind_cs">coord_ind_cs</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#coord_index">coord_index</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#create_cs_grid_arrays">create_cs_grid_arrays </A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#dcz2">dcz2</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#end_grid_1d_instance">end_grid_1d_instance</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#end_model_instance">end_model_instance</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#fill_gc">fill_gc</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#find_name">find_name</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_interp_prof">get_interp_prof</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_val">get_val</A></TD></TR>
@@ -1082,18 +1334,24 @@ utility routines.
 <TR><TD>&nbsp;</TD><TD><A HREF="#gph2gmh">gph2gmh</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#gravity">gravity</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#index_from_grid">index_from_grid</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#init_grid_1d_instance">init_grid_1d_instance</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#create_grid_1d_instance">create_grid_1d_instance</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#init_model_instance">init_model_instance</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#interp_cubed_sphere">interp_cubed_sphere</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#interp_lonlat">interp_lonlat</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#map_kinds">map_kinds</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#model_heights">model_heights</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_read_cs_grid_file">nc_read_cs_grid_file</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_cs_grid_file">nc_write_cs_grid_file</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_read_global_att">nc_read_global_att</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#read_cam_coord">read_cam_coord</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#read_cam_horiz">read_cam_horiz</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#read_cam_init_size">read_cam_init_size</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#read_topog_size">read_topog_size</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_cam_2Dint">read_cam_2Dint  </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_cam_2Dreal">read_cam_2Dreal</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#order_state_fields">order_state_fields</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#plevs_cam">plevs_cam </A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#set_ps_arrays">set_ps_arrays</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#trans_coord">trans_coord</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#unit_square_location">unit_square_location</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#write_cam_coord_def">write_cam_coord</A></TD></TR>
 
 </TABLE>
@@ -1104,27 +1362,19 @@ utility routines.
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="read_cam_init_size"></A>
  <div class=routine>
- <em class=call> call read_cam_init_size(file_name, num_lons, num_lats, num_levs) </em>
+ <em class=call> call read_cam_init_size(ncfileid) </em>
  <pre>
- character(len, intent(in) :: <em class=code>file_name</em>
- integer, intent(out)      :: <em class=code>num_lons</em>
- integer, intent(out)      :: <em class=code>num_lats</em>
- integer, intent(out)      :: <em class=code>num_levs</em>
+ integer, intent(out)      :: <em class=code>ncfileid</em>
  </pre></div>
 
  <div class=indent1>
  <P>
  Gets the number of lons, lats and levels from a netcdf CAM initial file
+ and stores in global storage.
  </P>
  <TABLE width=100% border=0 summary="" cellpadding=3>
- <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
-     <TD>CAM initial file.</TD></TR>
- <TR><TD valign=top><em class=code>num_lons&nbsp; &nbsp; </em></TD>
-     <TD>Number of longitudes in this CAM resolution.</TD></TR>
- <TR><TD valign=top><em class=code>num_lats&nbsp; &nbsp; </em></TD>
-     <TD>Number of latitudes.</TD></TR>
- <TR><TD valign=top><em class=code>num_levs&nbsp; &nbsp; </em></TD>
-     <TD>Number of data levels.</TD></TR>
+ <TR><TD valign=top><em class=code>ncfileid&nbsp; &nbsp; </em></TD>
+     <TD>NetCDF file ID for CAM the initial file.</TD></TR>
  </TABLE>
 <br>
 </div>
@@ -1162,41 +1412,11 @@ utility routines.
 
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="read_topog_size"></A>
+ <A NAME="read_cam_2Dreal"></A>
  <div class=routine>
- <em class=call> call read_topog_size(ncfileid, num_lons, num_lats) </em>
+ <em class=call> call read_cam_2Dreal(file_name, cfield) </em>
  <pre>
- integer, intent(in)   :: <em class=code>ncfileid</em>
- integer, intent(out)  :: <em class=code>num_nlons</em>
- integer, intent(out)  :: <em class=code>num_nlats</em>
- </pre></div>
-
- <div class=indent1>
- <P>
- Reads the grid size from the cam_phis.nc file, which contains the surface
- elevation data.
- </P>
- <TABLE width=100% border=0 summary="" cellpadding=3>
- <TR><TD valign=top><em class=code>ncfileid&nbsp; &nbsp; </em></TD>
-     <TD>The file ID number of the cam_phis.nc file.</TD></TR>
- <TR><TD valign=top><em class=code>num_nlons&nbsp; &nbsp; </em></TD>
-     <TD>Number of model longitudes.</TD></TR>
- <TR><TD valign=top><em class=code>num_nlats&nbsp; &nbsp; </em></TD>
-     <TD>Number of model latitudes</TD></TR>
- </TABLE>
-<br>
-</div>
-
- <!--================================================================-->
- <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="read_cam_horiz"></A>
- <div class=routine>
- <em class=call> call read_cam_horiz(ncfileid, var, dim1, dim2, cfield) </em>
- <pre>
- integer, intent(in)                          :: <em class=code>ncfileid</em>
- real(r8), dimension(dim1, dim2), intent(out) :: <em class=code>var</em>
- integer, intent(in)                          :: <em class=code>dim1</em>
- integer, intent(in)                          :: <em class=code>dim2</em>
+ character, len=*,  intent(in)                :: <em class=code>file_name</em>
  character, len=8,  intent(in)                :: <em class=code>cfield</em>
  </pre></div>
 
@@ -1206,18 +1426,131 @@ utility routines.
  from cam_phis.nc.
  </P>
  <TABLE width=100% border=0 summary="" cellpadding=3>
- <TR><TD valign=top><em class=code>ncfileid&nbsp; &nbsp; </em></TD>
-     <TD>The file ID number of the caminput.nc file.</TD></TR>
- <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
-     <TD>The surface height values returned to the calling routine.</TD></TR>
- <TR><TD valign=top><em class=code>dim1&nbsp; &nbsp; </em></TD>
-     <TD>The size of the first dimension of var.</TD></TR>
- <TR><TD valign=top><em class=code>dim2&nbsp; &nbsp; </em></TD>
-     <TD>Similarly for 2nd dimension.</TD></TR>
+ <TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
+     <TD>The name of the file file containing field "cfield".</TD></TR>
  <TR><TD valign=top><em class=code>cfield&nbsp; &nbsp; </em></TD>
      <TD> Name of the field (on the file) to be read.</TD></TR>
  </TABLE>
 <br>
+</div>
+
+<!--================================================================-->
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<A NAME="read_cam_2Dint"></A>
+<div class=routine>
+<em class=call> call read_cam_2Dint(file_name, cfield, field, num_dim1, num_dim2)</em>
+<pre>
+character (len=*),    intent(in)  :: <em class=code>file_name</em>
+character (len=*),    intent(in)  :: <em class=code>cfield</em>
+integer, allocatable, intent(out) :: <em class=code>field(:,:)</em>
+integer               intent(out) :: <em class=code>num_dim1</em>
+integer               intent(out) :: <em class=code>num_dim2</em>
+</pre></div>
+
+<div class=indent1>
+<P>
+Read 2D integer field from, e.g., HommeMapping.nc.
+Called by create_cs_grid_arrays (from static_init_model).
+</P>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>file_name&nbsp; &nbsp; </em></TD>
+     <TD>The name of the file file containing field named in cfield.</TD></TR>
+<TR><TD valign=top><em class=code>cfield&nbsp; &nbsp; </em></TD>
+     <TD>The name of the field to be read.</TD></TR>
+<TR><TD valign=top><em class=code>field&nbsp; &nbsp; </em></TD>
+     <TD>The local variable containing cfield.</TD></TR>
+<TR><TD valign=top><em class=code>num_dim1&nbsp; &nbsp; </em></TD>
+     <TD>The size of the first spatial dimension.</TD></TR>
+<TR><TD valign=top><em class=code>num_dim2&nbsp; &nbsp; </em></TD>
+     <TD>The size of the second spatial dimension.</TD></TR>
+ </TABLE>
+<br>
+</div>
+
+<!--================================================================-->
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<A NAME="create_cs_grid_arrays"></A>
+<div class=routine>
+<em class=call> call create_cs_grid_arrays</em>
+</div>
+<div class=indent1>
+<P>
+Create arrays of relationships between cubed sphere nodes (corners)
+and cell centers, including bearings between nodes.
+The relationships read from HommeMapping.nc will be augmented.
+All will be stored in global storage, and written to a new file for
+subsequent use.
+These will be used to identify the cell containing an observation.
+</P>
+<br>
+</div>
+
+<!--================================================================-->
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<A NAME="nc_write_cs_grid_file"></A>
+<div class=routine>
+<em class=call> ierr = nc_write_cs_grid_file(cs_grid_file, homme_map_file)</em>
+</div>
+<div class=indent1>
+<pre>
+character(len=*), intent(in) :: <em class=code>cs_grid_file, homme_map_file</em>
+</pre></div>
+
+<div class=indent1>
+<P>
+Write to cs_grid_file the number of neighbor nodes, and the corners, centers, 
+unit square mapping coefficients, and bearings
+for each node of the cubed sphere grid.
+Called by static_init_model.
+</P>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
+ <TR><TD valign=top><em class=code>cs_grid_file&nbsp; &nbsp; </em></TD>
+     <TD>The destination file for the cubed sphere grid point relationships needed by DART.</TD></TR>
+ <TR><TD valign=top><em class=code>homme_map_file&nbsp; &nbsp; </em></TD>
+     <TD>The file written by CAM which has the basic grid point relationships.</TD></TR>
+ </TABLE>
+</div>
+
+<!--================================================================-->
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<A NAME="nc_read_cs_grid_file"></A>
+<div class=routine>
+<em class=call> ierr = nc_read_cs_grid_file()</em>
+</div>
+
+<div class=indent1>
+<P>
+Read from cs_grid_file the number of neighbor nodes, and the corners, centers, 
+unit square mapping coefficients, and bearings
+for each node of the cubed sphere grid.
+Called by static_init_model.
+</P>
+</div>
+
+<!--================================================================-->
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<A NAME="bearing"></A>
+<div class=routine>
+<em class=call> bearing = bearing(lon1,lat1,lon2,lat2)</em>
+<pre>
+real(r8), intent(in)    :: <em class=code>lon1,lat1, lon2,lat2</em>
+</pre></div>
+
+<div class=indent1>
+<P>
+Calculate the bearing (heading) from one location on a sphere to another relative to North.
+</P>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
+ <TR><TD valign=top><em class=code>lon1,lat1 &nbsp; &nbsp; </em></TD>
+     <TD>The longitude and latitude (radians) of the origin point of the bearing.</TD></TR>
+ <TR><TD valign=top><em class=code>lon2,lat2 &nbsp; &nbsp; </em></TD>
+     <TD>The longitude and latitude (radians) of the destination point of the bearing.</TD></TR>
+ </TABLE>
 </div>
 
  <!--================================================================-->
@@ -1247,15 +1580,42 @@ utility routines.
 <br>
 </div>
 
+<!--================================================================-->
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<A NAME="nc_read_global_att"></A>
+<div class=routine>
+<em class=call> call nc_read_global_att(ncFileID, att, att_val)</em>
+<pre>
+integer,           intent(in)  :: <em class=code>ncFileID</em>
+character (len=*), intent(in)  :: <em class=code>att</em>
+integer,           intent(out) :: <em class=code>att_val</em>
+</pre></div>
+
+<div class=indent1>
+<P>
+Reads the value of a global attribute.
+Needed to get grid information from CAM-SE (cubed sphere) initial files.
+</P>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
+ <TR><TD valign=top><em class=code>ncFileID&nbsp; &nbsp; </em></TD>
+     <TD>The NetCDF identifier of the file on which to find the attribute.</TD></TR>
+ <TR><TD valign=top><em class=code>att&nbsp; &nbsp; </em></TD>
+     <TD>The name of the global attribute.</TD></TR>
+ <TR><TD valign=top><em class=code>att_val&nbsp; &nbsp; </em></TD>
+     <TD>The value of the attribute.</TD></TR>
+ </TABLE>
+</div>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="read_cam_coord"></A>
  <div class=routine>
- <em class=call> call read_cam_coord(var,idim,cfield) </em>
+ <em class=call> call read_cam_coord(ncfileid,cfield,var) </em>
  <pre>
+ integer, intent(in)             :: <em class=code>ncfileid</em>
+ character(len=8), intent(in)    :: <em class=code>cfield</em>
  type(grid_1d_type), intent(out) :: <em class=code>var</em>
- integer, intent(in)             :: <em class=code>idim</em>
- character, intent(in)           :: <em class=code>cfield</em>
  </pre></div>
 
  <div class=indent1>
@@ -1265,7 +1625,7 @@ utility routines.
  <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>var&nbsp; &nbsp; </em></TD>
      <TD>A coordinate array from a CAM initial file.</TD></TR>
- <TR><TD valign=top><em class=code>idim&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>ncfileid&nbsp; &nbsp; </em></TD>
      <TD>Length of var.</TD></TR>
  <TR><TD valign=top><em class=code>cfield&nbsp; &nbsp; </em></TD>
      <TD>Name of var, as found on the CAM initial file.</TD></TR>
@@ -1275,13 +1635,13 @@ utility routines.
   
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
- <A NAME="init_grid_1D_instance"></A>
+ <A NAME="create_grid_1d_instance"></A>
  <div class=routine>
- <em class=call> call init_grid_1d_instance(var, length, num_atts) </em>
+ <em class=call> call create_grid_1d_instance(length, num_atts, var) </em>
  <pre>
- type(grid_1d_type), intent(out) :: <em class=code>var</em>
  integer,            intent(in ) :: <em class=code>length</em>
  integer,            intent(in ) :: <em class=code>num_atts</em>
+ type(grid_1d_type), intent(out) :: <em class=code>var</em>
  </pre></div>
 
  <div class=indent1>
@@ -1341,11 +1701,8 @@ utility routines.
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="order_state_fields"></A>
  <div class=routine>
- <em class=call> call order_state_fields(cflds,nflds) </em>
- <pre>
- character, dimension(:), intent(out) :: <em class=code>cflds</em>
- integer, intent(in)                  :: <em class=code>nflds</em>
- </pre></div>
+ <em class=call> call order_state_fields() </em>
+ </div>
 
  <div class=indent1>
  <P>
@@ -1353,12 +1710,6 @@ utility routines.
  Also assigns field TYPE_ variables for use by get_state_meta_data,
  and other routines.
  </P>
- <TABLE width=100% border=0 summary="" cellpadding=3>
- <TR><TD valign=top><em class=code>cflds&nbsp; &nbsp; </em></TD>
-     <TD>Master list of CAM fields to be incorporated in the DART state vector.</TD></TR>
- <TR><TD valign=top><em class=code>nflds&nbsp; &nbsp; </em></TD>
-     <TD>Number of CAM fields in the state vector.</TD></TR>
- </TABLE>
 <br>
  </div>
 
@@ -1367,12 +1718,11 @@ utility routines.
  <A NAME="map_kinds"></A>
  <div class=routine>
  <em class=call> call map_kinds() </em>
- <pre>
- </pre></div>
+ </div>
 
  <div class=indent1>
  <P>
- Makes an array (dart_to_cam_kinds) of 'locations within the state vector'
+ Makes an array (dart_to_cam_types) of 'locations within the state vector'
  of all the available obs kinds that come from obs_kind_mod.
  Also maps the local model_mod TYPE_s onto the DART KIND_s by the same mechanism.
  </P>
@@ -1382,9 +1732,24 @@ utility routines.
   the corresponding value will be the position of that field (not individual variable)
   within the state vector according to state_name_Xd.
   This subroutine is called from static_init_model, 
-  and arrays dart_to_cam_kinds and cam_to_dart_kinds are global,
+  and arrays dart_to_cam_types and cam_to_dart_kinds are global,
   so they will not have to be recomputed for every obs.
  </P>
+</div>
+
+<!--================================================================-->
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<A NAME="fill_gc"></A>
+<div class=routine>
+<em class=call> call fill_gc()</em>
+</div>
+
+<div class=indent1>
+<P>
+Generate location_types of the cubed sphere grid
+and put them into get_close_type cs_gc, with other derived components.
+</P>
 </div>
 
  <!--================================================================-->
@@ -1393,10 +1758,10 @@ utility routines.
  <div class=routine>
  <em class=call> call write_cam_coord_def(ncFileID, c_name, coord, dim_id, c_id) </em>
  <pre>
-  character (len=8),  intent(in)  :: <em class=code>c_name</em>
   integer,            intent(in)  :: <em class=code>ncFileID</em>
-  integer,            intent(in)  :: <em class=code>dim_id</em>
+  character (len=8),  intent(in)  :: <em class=code>c_name</em>
   type(grid_1d_type), intent(in)  :: <em class=code>coord</em>
+  integer,            intent(in)  :: <em class=code>dim_id</em>
   integer,            intent(out) :: <em class=code>c_id</em>
  </pre></div>
 
@@ -1406,14 +1771,14 @@ utility routines.
   and write some of it's attributes there.
  </P>
  <TABLE width=100% border=0 summary="" cellpadding=3>
- <TR><TD valign=top><em class=code>c_name&nbsp; &nbsp; </em></TD>
-     <TD> Coordinate name.</TD></TR>
  <TR><TD valign=top><em class=code>ncFileID&nbsp; &nbsp; </em></TD>
      <TD> Integer ID number of the NetCDF file.</TD></TR>
- <TR><TD valign=top><em class=code>dim_id&nbsp; &nbsp; </em></TD>
-     <TD> The dimension ID of the coordinate on the NetCDF file.</TD></TR>
+ <TR><TD valign=top><em class=code>c_name&nbsp; &nbsp; </em></TD>
+     <TD> Coordinate name.</TD></TR>
  <TR><TD valign=top><em class=code>coord&nbsp; &nbsp; </em></TD>
      <TD> Coordinate values and metadata.</TD></TR>
+ <TR><TD valign=top><em class=code>dim_id&nbsp; &nbsp; </em></TD>
+     <TD> The dimension ID of the coordinate on the NetCDF file.</TD></TR>
  <TR><TD valign=top><em class=code>c_id&nbsp; &nbsp; </em></TD>
      <TD> Coordinate variable ID number on the NetCDF file.</TD></TR>
  </TABLE>
@@ -1424,15 +1789,15 @@ utility routines.
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="get_val_level"></A>
  <div class=routine>
- <em class=call> call get_val_level(val,x,lon_index,lat_index,level,
-                 obs_kind,istatus) </em>
+ <em class=call> call get_val_level(st_vec,lon_index,lat_index,level,
+                 obs_kind,val,istatus) </em>
  <pre>
- real(r8), intent(out)                           :: <em class=code>val</em>
- real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
+ real(r8), allocatable, dimension(:), intent(in) :: <em class=code>st_vec</em>
  integer, intent(in)                             :: <em class=code>lon_index</em>
  integer, intent(in)                             :: <em class=code>lat_index</em>
  integer, intent(in)                             :: <em class=code>level</em>
  integer, intent(in)                             :: <em class=code>obs_kind</em>
+ real(r8), intent(out)                           :: <em class=code>val</em>
  integer, intent(out)                            :: <em class=code>istatus</em>
  </pre></div>
 
@@ -1445,9 +1810,7 @@ utility routines.
  and below the lowest model level are excluded.  So are PS and Q observations.
  </P>
  <TABLE width=100% border=0 summary="" cellpadding=3>
- <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
-     <TD>The value of the obs_kind variable interpolated from state vector x.</TD></TR>
- <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>st_vec&nbsp; &nbsp; </em></TD>
      <TD>DART state vector.</TD></TR>
  <TR><TD valign=top><em class=code>lon_index&nbsp; &nbsp; </em></TD>
      <TD>Index of longitude of this val.</TD></TR>
@@ -1457,6 +1820,8 @@ utility routines.
      <TD>The level for which this obs_kind must be retrieved.</TD></TR>
  <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
      <TD>The kind of variable being interpolated, i.e. T.</TD></TR>
+ <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
+     <TD>The value of the obs_kind variable interpolated from state vector x.</TD></TR>
  <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
      <TD>Flag containing the status of the interpolation. 0=all good, 1=can't 
  interpolate, 2=can interpolate but don't use the value.</TD></TR>
@@ -1468,16 +1833,16 @@ utility routines.
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="get_val_pressure"></A>
  <div class=routine>
- <em class=call> call get_val_pressure(val,x,lon_index,lat_index,pressure,
-                 obs_kind,istatus) </em>
+ <em class=call> call get_val_pressure(st_vec,lon_index,lat_index,pressure,
+                 obs_kind,val,istatus) </em>
  <pre>
- real(r8), intent(out)                           :: <em class=code>val</em>
- real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
+ real(r8), allocatable, dimension(:), intent(in) :: <em class=code>st_vec</em>
  integer, intent(in)                             :: <em class=code>lon_index</em>
  integer, intent(in)                             :: <em class=code>lat_index</em>
  real(r8), intent(in)                            :: <em class=code>pressure</em>
  integer, intent(in)                             :: <em class=code>obs_kind</em>
- integer0, intent(out)                           :: <em class=code>istatus</em>
+ real(r8), intent(out)                           :: <em class=code>val</em>
+ integer, intent(out)                           :: <em class=code>istatus</em>
  </pre></div>
 
  <div class=indent1>
@@ -1485,7 +1850,7 @@ utility routines.
  Gets the vertically interpolated value on pressure for variable obs_kind
  at the lon_index, lat_index horizontal grid point.  Some quality control of
  observations is done here, but may be moved later.  For now, observations
- above the lower of highest_obs_pressure_mb and the model's highest level,
+ above the lower of highest_obs_pressure_Pa and the model's highest level,
  and below the lowest model level are excluded.  
  </P>
  <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -1512,15 +1877,15 @@ utility routines.
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="get_val_height"></A>
  <div class=routine>
- <em class=call> call get_val_height(val,x,lon_index,lat_index,height,
-                 obs_kind,istatus) </em>
+ <em class=call> call get_val_height(st_vec,lon_index,lat_index,height,
+                 obs_kind,val,istatus) </em>
  <pre>
- real(r8), intent(out)                           :: <em class=code>val</em>
- real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
+ real(r8), allocatable, dimension(:), intent(in) :: <em class=code>st_vec</em>
  integer, intent(in)                             :: <em class=code>lon_index</em>
  integer, intent(in)                             :: <em class=code>lat_index</em>
  real(r8), intent(in)                            :: <em class=code>height</em>
  integer, intent(in)                             :: <em class=code>obs_kind</em>
+ real(r8), intent(out)                           :: <em class=code>val</em>
  integer, intent(out)                            :: <em class=code>istatus</em>
  </pre></div>
 
@@ -1556,14 +1921,14 @@ utility routines.
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="get_val"></A>
  <div class=routine>
- <em class=call> call get_val(val,x,lon_index,lat_index,level,obs_kind,istatus) </em>
+ <em class=call> call get_val(st_vec,lon_index,lat_index,level,obs_kind,val,istatus) </em>
  <pre>
- real(r8), intent(out)                           :: <em class=code>val</em>
- real(r8), allocatable, dimension(:), intent(in) :: <em class=code>x</em>
+ real(r8), allocatable, dimension(:), intent(in) :: <em class=code>st_vec</em>
  integer, intent(in)                             :: <em class=code>lon_index</em>
  integer, intent(in)                             :: <em class=code>lat_index</em>
  integer, intent(in)                             :: <em class=code>level</em>
  integer, intent(in)                             :: <em class=code>obs_kind</em>
+ real(r8), intent(out)                           :: <em class=code>val</em>
  integer, intent(out)                            :: <em class=code>istatus</em>
  </pre></div>
 
@@ -1572,9 +1937,7 @@ utility routines.
  Extracts the value of a field at a specified location from the DART state vector.
  </P>
  <TABLE width=100% border=0 summary="" cellpadding=3>
- <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
-     <TD>The value of the obs_kind variable at a grid point, from state vector x.</TD></TR>
- <TR><TD valign=top><em class=code>x&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>st_vec&nbsp; &nbsp; </em></TD>
      <TD>DART state vector.</TD></TR>
  <TR><TD valign=top><em class=code>lon_index&nbsp; &nbsp; </em></TD>
      <TD>Index of longitude of this val.</TD></TR>
@@ -1584,6 +1947,8 @@ utility routines.
      <TD>The level of the obs_kind variable desired.</TD></TR>
  <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
      <TD>The kind of variable being interpolated, i.e. T.</TD></TR>
+ <TR><TD valign=top><em class=code>val&nbsp; &nbsp; </em></TD>
+     <TD>The value of the obs_kind variable at a grid point, from state vector x.</TD></TR>
  <TR><TD valign=top><em class=code>istatus&nbsp; &nbsp; </em></TD>
      <TD>Flag containing the status of the interpolation. 0=all good, 1=can't in
  terpolate, 2=can interpo but don't use the value.</TD></TR>
@@ -1599,9 +1964,10 @@ utility routines.
  <pre>
   real(r8), dimension(3), intent(in)    :: old_array
   integer,                intent(in)    :: old_which
+  type(location_type),    intent(in)    :: old_loc
+  integer,                intent(in)    :: old_kind
   real(r8), dimension(3), intent(inout) :: new_array
   integer,                intent(out)   :: new_which
-  integer,                intent(in)    :: dart_kind
  </pre></div>
 
  <div class=indent1>
@@ -1628,6 +1994,44 @@ utility routines.
  </P>
 </div>
 
+<!--================================================================-->
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<A NAME="init_closest_center"></A>
+<div class=routine>
+<em class=call> call init_closest_node()</em>
+</div>
+
+<div class=indent1>
+<P>
+Initialize the "get_close" structure for the cubed sphere grid.
+The structure is used to find a small set of candidate "close"
+nodes to a location.
+</P>
+</div>
+
+<!--================================================================-->
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<A NAME="find_closest_node"></A>
+<div class=routine>
+<em class=call> closest = find_closest_node(lat, lon)</em>
+<pre>
+real(r8), intent(in)  :: <em class=code>lat, lon</em>
+</pre></div>
+
+<div class=indent1>
+<P>
+Determine the index or name of the closest node (corner) to the given point.
+</P>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
+ <TR><TD valign=top><em class=code>closest&nbsp; &nbsp; </em></TD>
+     <TD>The name of the cubed sphere node (cell corner) closest to (lon,lat).</TD></TR>
+ <TR><TD valign=top><em class=code>lat, lon&nbsp; &nbsp; </em></TD>
+     <TD>The latitude and longitude (degrees) of the point of interest.</TD></TR>
+ </TABLE>
+</div>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="index_from_grid"></A>
@@ -1638,6 +2042,7 @@ utility routines.
   integer, intent(in) :: <em class=code>lon_ind</em>
   integer, intent(in) :: <em class=code>lat_ind</em>
   integer, intent(in) :: <em class=code>ifld</em>
+  integer             :: <em class=code>index_from_grid</em>
  </pre></div>
 
  <div class=indent1>
@@ -1724,6 +2129,51 @@ utility routines.
  </P>
  </div>
 
+<!--================================================================-->
+<!--=================== DESCRIPTION OF SUBROUTINE ====================-->
+
+<A NAME="coord_ind_cs"></A>
+<div class=routine>
+<em class=call> call coord_ind_cs(obs_loc, obs_kind, closest_only, &
+                                  closest, cell_corners, l, m)</em>
+<pre>
+type(location_type),  intent(in)  :: <em class=code>obs_loc</em>
+integer,              intent(in)  :: <em class=code>obs_kind</em>
+logical,              intent(in)  :: <em class=code>closest_only</em>
+integer,              intent(out) :: <em class=code>closest</em>
+integer,              intent(out) :: <em class=code>cell_corners(4)</em>
+real(r8),             intent(out) :: <em class=code>l</em>
+real(r8),             intent(out) :: <em class=code>m</em>
+</pre></div>
+
+<div class=indent1>
+<P>
+Determine the cubed sphere cell which encloses (horizontally) an observation location.
+Return the node (corner) name which is closest to the ob, 
+which is used as the origin of the mapping for that cell, 
+and the 3 nodes which complete the cell.
+Also return the interpolation weights (l,m) to be used in the interpolation
+from the corners to the ob location.
+</P>
+ <TABLE width=100% border=0 summary="" cellpadding=3>
+ <TR><TD valign=top><em class=code>obs_loc&nbsp; &nbsp; </em></TD>
+     <TD>The location of the observation (or model point).</TD></TR>
+ <TR><TD valign=top><em class=code>loc_list&nbsp; &nbsp; </em></TD>
+     <TD>The list of locations of candidate nodes.</TD></TR>
+ <TR><TD valign=top><em class=code>obs_kind&nbsp; &nbsp; </em></TD>
+     <TD>The observation kind the observation/model point.</TD></TR>
+ <TR><TD valign=top><em class=code>cell_corners&nbsp; &nbsp; </em></TD>
+     <TD>The list of node numbers of the 4 corners of the containing cell.</TD></TR>
+ <TR><TD valign=top><em class=code>l, m&nbsp; &nbsp; </em></TD>
+     <TD>The coordinates of the observation/model point in the unit square space.</TD></TR>
+ <TR><TD valign=top><em class=code>closest&nbsp; &nbsp; </em></TD>
+     <TD>The node which is closest to the observation/model point".</TD></TR>
+ <TR><TD valign=top><em class=code>closest_only&nbsp; &nbsp; </em></TD>
+     <TD>Flat to signal the routine that it only needs to look for the node closest 
+         to the observation/model point, not the closest 2 nodes.</TD></TR>
+ </TABLE>
+</div>
+
  <!--================================================================-->
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="coord_index"></A>
@@ -1786,11 +2236,10 @@ utility routines.
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="plevs_cam"></A>
  <div class=routine>
- <em class=call> call plevs_cam(ncol,ncold,ps,pmid) </em>
+ <em class=call> call plevs_cam(p_surf,num_levs,pmid) </em>
  <pre>
- integer, intent(in)                 :: <em class=code>ncol</em>
- integer, intent(in)                 :: <em class=code>ncold</em>
- real(r8), dimension(:), intent(in)  :: <em class=code>ps</em>
+ real(r8), dimension(:), intent(in)  :: <em class=code>p_surf</em>
+ integer, intent(in)                 :: <em class=code>num_levs</em>
  real(r8), dimension(:), intent(out) :: <em class=code>pmid</em>
  </pre></div>
 
@@ -1800,12 +2249,10 @@ utility routines.
  coordinate definitions and the surface pressure.
  </P>
  <TABLE width=100% border=0 summary="" cellpadding=3>
- <TR><TD valign=top><em class=code>ncol&nbsp; &nbsp; </em></TD>
-     <TD>Number of columns of pressures to calculate (DART-CAM uses 1)</TD></TR>
- <TR><TD valign=top><em class=code>ncold&nbsp; &nbsp; </em></TD>
-     <TD>Dimension of ps.</TD></TR>
- <TR><TD valign=top><em class=code>ps&nbsp; &nbsp; </em></TD>
+ <TR><TD valign=top><em class=code>p_surf&nbsp; &nbsp; </em></TD>
      <TD>Surface pressure at this latitude and longitude (Pa).</TD></TR>
+ <TR><TD valign=top><em class=code>num_levs&nbsp; &nbsp; </em></TD>
+     <TD>Number of columns of pressures to calculate (DART-CAM uses 1)</TD></TR>
  <TR><TD valign=top><em class=code>pmid&nbsp; &nbsp; </em></TD>
      <TD>Pressures at the CAM "midpoint" levels.</TD></TR>
  </TABLE>
@@ -1816,11 +2263,12 @@ utility routines.
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="model_heights"></A>
  <div class=routine>
-    <em class=call> call model_heights( x,lon_index,lat_index,model_h,istatus) </em>
+    <em class=call> call model_heights(num_levs,vec,p_surf,base_obs_loc,model_h,istatus) </em>
  <pre>
- real(r8), dimension(:), intent(in)              :: <em class=code>x</em>
- integer, intent(in)                             :: <em class=code>lon_index</em>
- integer, intent(in)                             :: <em class=code>lat_index</em>
+ integer, intent(in)                             :: <em class=code>num_levs</em>
+ real(r8), dimension(:), intent(in)              :: <em class=code>vec</em>
+ real(r8), intent(in)                            :: <em class=code>p_surf</em>
+ integer, intent(in)                             :: <em class=code>base_obs_loc</em>
  real(r8), intent(out)                           :: <em class=code>model_h</em>
  integer, intent(out)                            :: <em class=code>istatus</em>
  </pre></div>
@@ -1865,6 +2313,7 @@ utility routines.
  <div class=indent1>
  <P>
   Interpolate the (4) nearest profiles to the needed location for the desired variable.
+  Deprecated as of April, 2014.
  </P>
  <TABLE width=100% border=0 summary="" cellpadding=3>
  <TR><TD valign=top><em class=code>prof&nbsp; &nbsp; </em></TD>
@@ -1902,20 +2351,16 @@ utility routines.
     <em class=call> call dcz2(ps,phis0,tv,hprb,hyba,hybb,kmax,idim,imax,pmln, &amp;
                             hypdln,hyalph,pterm,z2) </em>
  <pre>
- real(r8), dimension(idim), intent(in)           :: <em class=code>ps</em>
- real(r8), dimension(idim), intent(in)           :: <em class=code>phis0</em>
- real(r8), dimension(idim,kmax), intent(in)      :: <em class=code>tv</em>
- real(r8), intent(in)                            :: <em class=code>hprb</em>
- real(r8), dimension(2,kmax+1), intent(in)       :: <em class=code>hyba</em>
- real(r8), dimension(2,kmax+1), intent(in)       :: <em class=code>hybb</em>
- integer, intent(in)                             :: <em class=code>kmax</em>
- integer, intent(in)                             :: <em class=code>idim</em>
- integer, intent(in)                             :: <em class=code>imax</em>
- real(r8), dimension(idim,kmax+1), intent(in)    :: <em class=code>pmln</em>
- real(r8), dimension(idim,kmax), intent(in)      :: <em class=code>hypdln</em>
- real(r8), dimension(idim,kmax), intent(in)      :: <em class=code>hyalph</em>
- real(r8), dimension(idim,kmax), intent(in)      :: <em class=code>pterm</em>
- real(r8), dimension(idim,kmax), intent(out)     :: <em class=code>z2</em>
+ integer,                       intent(in)  :: <em class=code>kmax</em>
+ real(r8),                      intent(in)  :: <em class=code>p_surf</em>
+ real(r8),                      intent(in)  :: <em class=code>phis0</em>
+ real(r8), dimension(kmax),     intent(in)  :: <em class=code>tv</em>
+ real(r8),                      intent(in)  :: <em class=code>hprb</em>
+ real(r8), dimension(2,kmax+1), intent(in)  :: <em class=code>hybrid_As</em>
+ real(r8), dimension(2,kmax+1), intent(in)  :: <em class=code>hybrid_Bs</em>
+ real(r8), dimension(kmax+1),   intent(out) :: <em class=code>pmln</em>
+ real(r8), dimension(kmax),     intent(out) :: <em class=code>pterm</em>
+ real(r8), dimension(kmax),     intent(out) :: <em class=code>z2</em>
  </pre></div>
 
  <div class=indent1>
@@ -1967,7 +2412,7 @@ utility routines.
  <!--============= DESCRIPTION OF A SUBROUTINE =======================-->
  <A NAME="gph2gmh"></A>
  <div class=routine>
- <em class=call> gph2gmh = gph2gmh(h, lat) </em>
+ <em class=call> mean_sea_level_alt = gph2gmh(h, lat) </em>
  <pre>
  real(r8), intent(out)                           :: <em class=code>gph2gmh</em>
  real(r8), intent(in)                            :: <em class=code>h</em>
@@ -2073,6 +2518,52 @@ utility routines.
 </div>
 
 
+<A NAME="Discussion"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>DISCUSSION</H2>
+<P>
+Many CAM initial file variables are already handled in the model_mod.
+Here is a list of others, which may be used in the future.
+Each would need to have a DART KIND associated with it in model_mod.
+</P>
+<pre>
+  Atmos
+     CLOUD:       "Cloud fraction" ;
+     QCWAT:       "q associated with cloud water" ;
+     TCWAT:       "T associated with cloud water" ;
+     CWAT:        "Total Grid box averaged Condensate Amount (liquid + ice)" ;
+    also? LCWAT
+
+  pbl
+     PBLH:        "PBL height" ;
+     QPERT:       "Perturbation specific humidity (eddies in PBL)" ;
+     TPERT:       "Perturbation temperature (eddies in PBL)" ;
+
+  Surface
+     LANDFRAC:    "Fraction of sfc area covered by land" ;
+     LANDM:       "Land ocean transition mask: ocean (0), continent (1), transition (0-1)" ;
+       also LANDM_COSLAT
+     ICEFRAC:     "Fraction of sfc area covered by sea-ice" ;
+     SGH:         "Standard deviation of orography" ;
+     Z0FAC:       "factor relating z0 to sdv of orography" ;
+     TS:          "Surface temperature (radiative)" ;
+     TSOCN:       "Ocean tempertare" ;
+     TSICE:       "Ice temperature" ;
+     TSICERAD:    "Radiatively equivalent ice temperature" ;
+
+  Land/under surface
+     SICTHK:      "Sea ice thickness" ;
+     SNOWHICE:    "Water equivalent snow depth" ;
+     TS1:         "subsoil temperature" ;
+     TS2:         "subsoil temperature" ;
+     TS3:         "subsoil temperature" ;
+     TS4:         "subsoil temperature" ;
+
+  Other fields are not included because they look more CLM oriented.
+
+  Other fields which users may add to the CAM initial files are not listed here.
+  
+</pre>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -2082,9 +2573,13 @@ utility routines.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 <UL> <LI>model_nml in input.nml
-     <LI>cam_phis.nc (CAM surface height file)
+     <LI>cam_phis.nc (CAM surface height file, often CAM's .h0. file in the CESM run environment)
      <LI>caminput.nc (CAM initial file)
-     <LI>clminput.nc (CLM initial file)
+     <LI>clminput.nc (CLM restart file)
+     <LI>iceinput.nc (CICE restart file)
+     <LI>HommeMapping.nc (cubed sphere grid metadata file written by CAM-SE at the end of the forecast)
+     <LI>HommeMapping_cs_grid.nc (cubed sphere grid metadata file read (or written) 
+         by model_mod at the start of each assimilation)
      <LI>netCDF output state diagnostics files
 </UL>
 
@@ -2167,7 +2662,7 @@ See description of dealing with highly damped top layers in CAM
 in model_interpolate and model_get_close_states.
 </P>
 <P>
-GPS observations require that highest_obs_pressure_mb be <= 100 mb (hPa).
+GPS observations require that highest_obs_pressure_Pa be <= 10000 Pa (100 mb).
 </P>
 
 <!--==================================================================-->
@@ -2179,8 +2674,110 @@ GPS observations require that highest_obs_pressure_mb be <= 100 mb (hPa).
 <H2>FUTURE PLANS</H2>
 <UL>
 <LI> Implement a strategy for assimilating surface observations. </LI>
-<LI> Accomodate future CAMs which may have non-rectangular grids, e.g. HOMME. 
-(Development currently underway.) </LI>
+<LI> Remove the code which handles very old CAM initial file dimension order (lon,lev,lat). </LI>
+<LI> Rewrite DART (and maybe model_mod) to never need to have the whole
+     state vector on one process.  For better scaling on > 10^4 processors.</LI>
+<LI> Possibly divide cam/model_mod into specialized versions: cam-fv, cam-se, waccm, stand-alone,... </LI>
+</UL>
+
+<H3>Nitty gritty</H3>
+<UL>
+
+<H3>Efficiency possibilities </H3>
+<LI> Use the xyz_location mod which can return the (ordered) N closest grid
+        points to an ob.   Useful in interp_cubed_sphere.</LI>
+<LI> index_from_grid (and others?) could be more efficient by calculating and
+        globally storing the beginning index of each cfld and/or the size of each cfld.
+        Get_state_meta_data too.  See clm/model_mod.f90.</LI>
+<LI> Global storage of height fields?  but need them on staggered grids (only sometimes)
+        Probably not; machines going to smaller memory and more recalculation.</LI>
+<LI> ! Some compilers can't handle passing a section of an array to a subroutine/function;
+        I do this in nc_write_model_vars(?) and/or write_cam_init(?); replace with an
+        exactly sized array?</LI>
+<LI> Is the testing of resolution in read_cam_coord overkill in the line
+        that checks the size of (resol_n - resol_1)*resol ?</LI>
+<LI> Replace some do loops with forall (constructs)</LI>
+<LI> Subroutine write_cam_times(model_time, adv_time)
+     Not needed in CESM+DART framework?   Keep anyway?</LI>
+<LI> Remove the code that accomodates old CAM coordinate order (lon,lev,lat).</LI>
+
+<LI> Cubed phere: Convert lon,lat refs into dim1,dim2 in more subroutines.
+     get_val_heights is called with (column_ind,1) by CAM-SE code, and (lon_ind, lat_ind) otherwise).</LI>
+<LI> cam_to_dart_kinds and dart_to_cam_types are dimensioned 300,
+     regardless of the number of fields in the state vector and/or KINDS.</LI>
+<LI> ? Define another bearings array, sort_bearings, to allow determination
+        of which cell around the closest node contains the ob.</LI>
+<LI> coord_ind_cs needs to dimension local variables, but current size is
+        (much) larger than necessary:</LI>
+     <pre>
+           integer  :: close_ind(ncol)
+           real(r8) :: dist(ncol)
+     </pre>
+
+<LI>Describe:
+   <pre>
+   - The coordinate orders and translations; CAM initial file, model_mod, and DART _Diag.nc.
+     Motivations
+   - There need to be 2 sets of arrays for dimensions and dimids;
+       one describing the caminput file (f_...)
+       and one for the state (s_...) (storage in this module).
+            Call them f_dim_Nd , f_dimid_Nd
+                      s_dim_Nd , s_dimid_Nd
+   </pre></LI>
+
+<LI> Change (private only) subroutine argument lists; structures first, regardless of in/out
+     then output, and input variables.</LI>
+<LI> Change declarations to have dummy argument integers used as dimensions first</LI>
+<LI> Implement a grid_2d_type?  Convert phis to a grid_2d_type?
+     ps, and staggered ps fields could also be this type.</LI>
+<LI> Deallocate grid_1d_arrays using end_1d_grid_instance in end_model.
+     end_model is called by subroutines pert_model_state, nc_write_model_vars; 
+     any problem?.</LI>
+
+
+ISSUE; In P[oste]rior_Diag.nc ensemble members are written out *between* the field mean/spread
+       pair and the inflation mean/sd pair.  Would it make more sense to put members after
+       both pairs?  Easy to do?
+
+ISSUE?; model_interpolate assumes that obs with a vertical location have 2 horizontal locations
+        too.  The state vector may have fields for which this isn't true, but no obs we've seen
+        so far violate this assumption.  It would have to be a synthetic/perfect_model obs,
+        like some sort of average or parameter value.
+
+ISSUE; In convert_vert, if a 2D field has dimensions (lev, lat) then how is p_surf defined?
+       Code would be needed to set the missing dimension to 1, or make
+       different calls to coord_ind, etc.
+
+ISSUE; The KIND_ list from obs_def_mod must be updated when new fields are added to state vector.
+       This could be done by the preprocessor when it inserts the code bits corresponding to the
+       lists of observation types, but it currently (10/06) does not.  Document accordingly.
+
+ISSUE: The CCM code (and Hui's packaging) for geopotentials and heights  use different
+       values of the physical constants than DART's.  In one case Shea changed g from
+       9.81 to 9.80616, to get agreement with CCM(?...), so it may be important.
+       Also, matching with Hui's tests may require using his values;  change to DART
+       after verifying?
+
+ISSUE: It's possible to figure out the model_version from the NetCDF file
+       itself, rather than have that be user-provided (sometimes incorrect and hard
+       to debug) meta-data.  model_version is also misnamed; it's really the
+       caminput.nc model version.  The actual model might be a different version(?)
+       The problem with removing it from the namelist is that the scripts need it
+       too, so some rewriting there would be needed.
+
+"CS" marks changes to accommodate Spectral Element CAM's cubed sphere grid;
+     See model_mod.f90s from 2014/1-3.
+ISSUE: max_neighbors is set to 6, but could be set to 4 for non-refined grids.
+       Is there a good mechanism for this?  Is it worth the file space savings?
+ISSUE: x_planar and y_planar could be reduced in rank, if no longer needed for
+       testing and debugging.
+
+"Pobs" marks changes for providing expected obs of P
+       break from past philosophy; P is not a native CAM variable (but is already calced here)
+
+NOVERT marks modifications for fields with no vertical location,
+i.e. GWD parameters.
+
 </UL>
 
 <!--==================================================================-->
