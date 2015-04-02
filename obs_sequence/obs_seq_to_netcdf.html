@@ -156,7 +156,7 @@ You can only specify <strong>either</strong> <em class="code">obs_sequence_name<
 <TBODY valign=top>
 
 <TR><TD> obs_sequence_name  </TD>
-    <TD> character(len=129) </TD>
+    <TD> character(len=256) </TD>
     <TD>Name of an observation sequence file(s).  This may be a relative or
 absolute filename. If the filename contains a '/', the filename is considered
 to be comprised of everything to the right, and a directory structure to the
@@ -173,7 +173,7 @@ If this is specified, 'obs_sequence_list' must be set to '&nbsp;'.
 </TD></TR>
 
 <TR><TD> obs_sequence_list  </TD>
-    <TD> character(len=129) </TD>
+    <TD> character(len=256) </TD>
 <TD>Name of an ascii text file which contains a list of one or more
 observation sequence files, one per line.  If this is specified,
 'obs_sequence_name' must be set to '&nbsp;'.  Can be created by any method,

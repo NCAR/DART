@@ -41,7 +41,7 @@
 sequence files to determine which observation locations report 
 frequently enough to be useful for a verification study. The big picture
 is to be able to pare down a large set of observations into a compact
-observation sequence file to run through <em class=program>filter</em>
+observation sequence file to run through <a href="../filter/filter.html">filter</a>
 with all of the intended observation types flagged as 
 <em class=option>evaluate_only</em>. DART's forward operators then
 get applied and all the forecasts are preserved in a 
@@ -89,6 +89,7 @@ The entire discussion about finding locations that are repeatedly observed
 through time boils down to the simple statement that if the observation is within
 about 500cm of a previous observation, they are treated as co-located observations.
 For some very high resolution applications, this may be insufficient, but there it is.
+For observations at pressure levels, see the <a href="#Usage">Word about vertical levels</a>.
 <br />
 <br />
 The only complicated part of determining the verification network is the
@@ -185,24 +186,24 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;obs_seq_coverage_nml
-   obs_sequence_list = 'obs_coverage_list.txt',
-   obs_sequence_name = '',
-   obs_of_interest   = '',
-   textfile_out      = 'obsdef_mask.txt',
-   netcdf_out        = 'obsdef_mask.nc',
-   calendar          = 'Gregorian',
-   first_analysis    =  2003, 1, 1, 0, 0, 0,
-   last_analysis     =  2003, 1, 2, 0, 0, 0,
-   forecast_length_days          = 1,
-   forecast_length_seconds       = 0,
-   verification_interval_seconds = 21600,
-   temporal_coverage_percent     = 100.0,
-   lonlim1    =  missing_r8,
-   lonlim2    =  missing_r8,
-   latlim1    =  missing_r8,
-   latlim2    =  missing_r8,
-   verbose    = .false.,
-   debug      = .false.,
+   obs_sequences     = ''
+   obs_sequence_list = 'obs_coverage_list.txt'
+   obs_of_interest   = ''
+   textfile_out      = 'obsdef_mask.txt'
+   netcdf_out        = 'obsdef_mask.nc'
+   calendar          = 'Gregorian'
+   first_analysis    =  2003, 1, 1, 0, 0, 0
+   last_analysis     =  2003, 1, 2, 0, 0, 0
+   forecast_length_days          = 1
+   forecast_length_seconds       = 0
+   verification_interval_seconds = 21600
+   temporal_coverage_percent     = 100.0
+   lonlim1    =  -888888.0
+   lonlim2    =  -888888.0
+   latlim1    =  -888888.0
+   latlim2    =  -888888.0
+   verbose    = .false.
+   debug      = .false.
    /
 </pre>
 </div>
@@ -210,7 +211,7 @@ prematurely terminating the namelist.
 <br />
 <br />
 
-<P>Note that 'missing_r8' is not a valid number.
+<P>Note that -888888.0 is not a useful number.
 To use the defaults delete these lines from the namelist,
 or set them to 0.0, 360.0 and -90.0, 90.0.
 </P><P>
@@ -220,7 +221,7 @@ The date-time integer arrays in this namelist have the form
 The allowable ranges for the region boundaries are: latitude [-90.,90],
 longitude [0.,Inf.]
 </P> <P>
-You can specify <strong>either</strong> <em class=option>obs_sequence_name</em>
+You can specify <strong>either</strong> <em class=option>obs_sequences</em>
 <strong>or</strong> <em class=option>obs_sequence_list</em> -- not both.
 One of them has to be an empty string ... i.e. <em class=option>''</em>.
 </P>
@@ -235,8 +236,8 @@ One of them has to be an empty string ... i.e. <em class=option>''</em>.
 
 <TBODY valign=top>
 
-<TR><TD> obs_sequence_name </TD>
-    <TD> character(len=129) </TD>
+<TR><TD> obs_sequences </TD>
+    <TD> character(len=256) </TD>
     <TD>Name of the observation sequence file(s). <br />
 This may be a relative or absolute filename. If the filename contains a '/',
 the filename is considered to be comprised of everything to the right, and a
@@ -252,10 +253,10 @@ class=option>obs_sequence_list</em> must be set to '&nbsp;'.
 </TD></TR>
 
 <TR><TD> obs_sequence_list </TD>
-    <TD> character(len=129) </TD>
+    <TD> character(len=256) </TD>
     <TD>Name of an ascii text file which contains a list
 of one or more observation sequence files, one per line.  If this is
-specified, <em class=option>obs_sequence_name</em> must be set to '&nbsp;'.  
+specified, <em class=option>obs_sequences</em> must be set to '&nbsp;'.  
 Can be created by any method, including sending the output of the 'ls'
 command to a file, a text editor, or another program.
 </TD></TR>
@@ -270,7 +271,7 @@ example.
 </TD></TR>
 
 <TR><TD> textfile_out </TD>
-    <TD> character(len=129) </TD>
+    <TD> character(len=256) </TD>
     <TD>The name of the file that will contain the observation
 definitions of the verfication observations.  Only the metadata from the
 observations (location, time, obs_type) are preserved in this file. They are
@@ -280,7 +281,7 @@ observation sequence files.
 </TD></TR>
 
 <TR><TD> netcdf_out </TD>
-    <TD> character(len=129) </TD>
+    <TD> character(len=256) </TD>
     <TD>The name of the file that will contain the observation
 definitions of the unique locations that match <strong>any</strong> of the
 verification times.  This file is used in conjunction with 
@@ -320,18 +321,20 @@ of any single forecast.
     <TD> integer </TD>
     <TD>The number of seconds between each verification.
 <UL style="list-style: none;">
-<LI> 1 h == 3600s</LI>
-<LI> 2 h == 7120s</LI>
-<LI> 3 h == 10800s</LI>
-<LI> 6 h == 21600s</LI>
+<LI> &nbsp;1 h == 3600s</LI>
+<LI> &nbsp;2 h == 7120s</LI>
+<LI> &nbsp;3 h == 10800s</LI>
+<LI> &nbsp;6 h == 21600s</LI>
+<LI> 12 h == 43200s</LI>
 </UL>
 </TD></TR>
 
 <TR><TD> temporal_coverage_percent </TD>
     <TD> real </TD>
-    <TD>In the future, it may be possible to specify that you do not need an
-observation at <strong>every</strong> time.  Presently, this is 
-<strong>required</strong> to be 100%
+    <TD> While it is possible to specify that you do not need an
+observation at <strong>every</strong> time, it makes the most sense.
+This is not actually <strong>required</strong> to be 100% but 100%
+results in the most robust comparison.
 </TD></TR>
 
 <TR><TD> lonlim1 </TD>
@@ -379,24 +382,24 @@ specify lonlim1 = 330 , lonlim2 = 50 to identify a region like "Africa".
 <P>For example:
 <pre>
 &amp;obs_seq_coverage_nml
-   obs_sequence_list = 'obs_coverage_list.txt',
-   obs_sequence_name = '',
+   obs_sequences     = ''
+   obs_sequence_list = 'obs_coverage_list.txt'
    obs_of_interest   = 'METAR_U_10_METER_WIND',
-                       'METAR_V_10_METER_WIND',
-   textfile_out      = 'obsdef_mask.txt',
-   netcdf_out        = 'obsdef_mask.nc',
-   calendar          = 'Gregorian',
-   first_analysis    =  2003, 1, 1, 0, 0, 0,
-   last_analysis     =  2003, 1, 2, 0, 0, 0,
-   forecast_length_days          = 1,
-   forecast_length_seconds       = 0,
-   verification_interval_seconds = 21600,
-   temporal_coverage_percent     = 100.0,
-   lonlim1    =    0.0,
-   lonlim2    =  360.0,
-   latlim1    =  -90.0,
-   latlim2    =   90.0,
-   verbose    = .false.,
+                       'METAR_V_10_METER_WIND'
+   textfile_out      = 'obsdef_mask.txt'
+   netcdf_out        = 'obsdef_mask.nc'
+   calendar          = 'Gregorian'
+   first_analysis    =  2003, 1, 1, 0, 0, 0
+   last_analysis     =  2003, 1, 2, 0, 0, 0
+   forecast_length_days          = 1
+   forecast_length_seconds       = 0
+   verification_interval_seconds = 21600
+   temporal_coverage_percent     = 100.0
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
+   verbose    = .false.
    /
 </pre>
 
@@ -464,9 +467,18 @@ as the other DART components.
 <br />
 <br />
 There is no requirement on the reporting time/frequence of the 
-candidate stations.  Once the verification times have been defined, 
+candidate voxels.  Once the verification times have been defined, 
 the observation <strong>closest in time</strong> to the verification 
-time is selected, the others are ignored.
+time is selected, the others are ignored. Only observations within half
+the verification interval are eligible to be considered "close".
+<br />
+<br />
+<strong>A word about vertical levels.</strong>
+If the desired observation type has UNDEFINED or SURFACE for the vertical coordinate system,
+there is no concern about trying to match the vertical. If the desired observation types use
+PRESSURE; the following 14 levels are used as the standard levels:  1000, 925, 850, 700, 500, 
+400, 300, 250, 200, 150, 100, 70, 50, 10 (all hPa). <strong>No other vertical coordinate system
+is supported.</strong>
 </P>
 
 <a NAME="example48x6"></a>
@@ -479,7 +491,7 @@ In this example, we are generating an <em class=file>obsdef_mask.txt</em>
 file for a single forecast. All the required input observation sequence 
 filenames will be contained in a file referenced by the 
 <em class=option>obs_sequence_list</em> variable. We'll also restrict 
-the observations to a specific rectangular (in Lat/Lon) region.
+the observations to a specific rectangular (in Lat/Lon) region at a particular level.
 It is convenient to turn on the verbose option the first time
 to get a feel for the logic. Here are the namelist settings if you want to
 verify the METAR_U_10_METER_WIND and METAR_V_10_METER_WIND observations over the
@@ -488,24 +500,24 @@ entire globe every 6 hours for 2 days starting 18Z 8 Jun 2008:
 <div class=routine>
 <pre>
 &amp;obs_seq_coverage_nml
-   obs_sequence_name  = '',
-   obs_sequence_list  = <em class=input>'obs_file_list.txt'</em>,
+   obs_sequences      = ''
+   obs_sequence_list  = <em class=input>'obs_file_list.txt'</em>
    obs_of_interest    = <em class=input>'METAR_U_10_METER_WIND'</em>,
-                        <em class=input>'METAR_V_10_METER_WIND'</em>,
-   textfile_out       = 'obsdef_mask.txt',
-   netcdf_out         = 'obsdef_mask.nc',
-   calendar           = 'Gregorian',
-   first_analysis     = <em class=input> 2008, 6, 8, 18, 0, 0 </em>,
-   last_analysis      = <em class=input> 2008, 6, 8, 18, 0, 0 </em>,
-   forecast_length_days          = <em class=input>2</em>,
-   forecast_length_seconds       = <em class=input>0</em>,
-   verification_interval_seconds = <em class=input>21600</em>,
-   temporal_coverage_percent     = 100.0,
-   lonlim1            = <em class=input>   0.0</em>,
-   lonlim2            = <em class=input> 360.0</em>,
-   latlim1            = <em class=input> -90.0</em>,
-   latlim2            = <em class=input>  90.0</em>,
-   verbose            = <em class=input>.true.</em>,
+                        <em class=input>'METAR_V_10_METER_WIND'</em>
+   textfile_out       = 'obsdef_mask.txt'
+   netcdf_out         = 'obsdef_mask.nc'
+   calendar           = 'Gregorian'
+   first_analysis     = <em class=input> 2008, 6, 8, 18, 0, 0 </em>
+   last_analysis      = <em class=input> 2008, 6, 8, 18, 0, 0 </em>
+   forecast_length_days          = <em class=input>2</em>
+   forecast_length_seconds       = <em class=input>0</em>
+   verification_interval_seconds = <em class=input>21600</em>
+   temporal_coverage_percent     = 100.0
+   lonlim1            = <em class=input>   0.0</em>
+   lonlim2            = <em class=input> 360.0</em>
+   latlim1            = <em class=input> -90.0</em>
+   latlim2            = <em class=input>  90.0</em>
+   verbose            = <em class=input>.true.</em>
    /
 </pre>
 </div>
@@ -600,7 +612,7 @@ First observation date 2008 Jun 08 17:53:00
  Processing obs        80000  of        84691
  obs_seq_coverage  doneDONEdoneDONE does not exist. Finishing up.
  
- There were          442  stations matching the input criterion.
+ There were          442  voxels matching the input criterion.
 ...
 </pre>
 </div>
@@ -615,7 +627,7 @@ for just the matching observations while <em class=file>obsdef_mask.nc</em>
 contains the metadata for all candidate locations as well as a lot of
 information about the desired verification times. It is possible to explore
 <em class=file>obsdef_mask.nc</em> to review the selection criteria to
-include observations/"stations" that do not perfectly match the original selection
+include observations/"voxels" that do not perfectly match the original selection
 criteria.
 <br />
 <br />
@@ -627,18 +639,19 @@ Now that you have the <em class=file>obsdef_mask.nc</em>, you can explore it wit
 <pre>
 netcdf obsdef_mask {
 dimensions:
-        stations = UNLIMITED ; // (512 currently)
+        voxel = UNLIMITED ; // (512 currently)
         time = 9 ;
         analysisT = 1 ;
         forecast_lead = 9 ;
-        linelen = 129 ;
+        nlevels = 14 ;
+        linelen = 256 ;
         nlines = 446 ;
         stringlength = 32 ;
         location = 3 ;
 variables:
-        int stations(stations) ;
-                stations:long_name = "desired station flag" ;
-                stations:description = "1 == good station" ;
+        int voxel(voxel) ;
+                voxel:long_name = "desired voxel flag" ;
+                voxel:description = "1 == good voxel" ;
         double time(time) ;
                 time:long_name = "verification time" ;
                 time:units = "days since 1601-1-1" ;
@@ -656,17 +669,20 @@ variables:
                 verification_times:calendar = "GREGORIAN" ;
                 verification_times:rows = "each forecast" ;
                 verification_times:cols = "each verification time" ;
+        float mandatory_level(nlevels) ;
+                mandatory_level:long_name = "mandatory pressure levels" ;
+                mandatory_level:units = "Pa" ;
         char namelist(nlines, linelen) ;
                 namelist:long_name = "input.nml contents" ;
-        char obs_type(stations, stringlength) ;
-                obs_type:long_name = "observation type string at this station" ;
-        double location(stations, location) ;
+        char obs_type(voxel, stringlength) ;
+                obs_type:long_name = "observation type string at this voxel" ;
+        double location(voxel, location) ;
                 location:description = "location coordinates" ;
                 location:location_type = "loc3Dsphere" ;
                 location:long_name = "threed sphere locations: lon, lat, vertical" ;
                 location:storage_order = "Lon Lat Vertical" ;
                 location:units = "degrees degrees which_vert" ;
-        int which_vert(stations) ;
+        int which_vert(voxel) ;
                 which_vert:long_name = "vertical coordinate system code" ;
                 which_vert:VERTISUNDEF = -2 ;
                 which_vert:VERTISSURFACE = -1 ;
@@ -674,17 +690,17 @@ variables:
                 which_vert:VERTISPRESSURE = 2 ;
                 which_vert:VERTISHEIGHT = 3 ;
                 which_vert:VERTISSCALEHEIGHT = 4 ;
-        int ntimes(stations) ;
-                ntimes:long_name = "number of observation times at this station" ;
-        double first_time(stations) ;
-                first_time:long_name = "first valid observation time at this station" ;
+        int ntimes(voxel) ;
+                ntimes:long_name = "number of observation times at this voxel" ;
+        double first_time(voxel) ;
+                first_time:long_name = "first valid observation time at this voxel" ;
                 first_time:units = "days since 1601-1-1" ;
                 first_time:calendar = "GREGORIAN" ;
-        double last_time(stations) ;
-                last_time:long_name = "last valid observation time at this station" ;
+        double last_time(voxel) ;
+                last_time:long_name = "last valid observation time at this voxel" ;
                 last_time:units = "days since 1601-1-1" ;
                 last_time:calendar = "GREGORIAN" ;
-        double ReportTime(stations, time) ;
+        double ReportTime(voxel, time) ;
                 ReportTime:long_name = "time of observation" ;
                 ReportTime:units = "days since 1601-1-1" ;
                 ReportTime:calendar = "GREGORIAN" ;
@@ -713,22 +729,22 @@ data:
 </pre>
 </div>
 <P>
-The first thing to note is that there are more stations (512) than reported 
-during the run-time output (442). Typically, there will be many more stations
+The first thing to note is that there are more voxels (512) than reported 
+during the run-time output (442). Typically, there will be many more voxels
 in the netCDF file than will meet the selection criteria - but this is just
-an example. Some of the stations in the netCDF file do not meet the selection
+an example. Some of the voxels in the netCDF file do not meet the selection
 criteria - meaning they do not have observations at all 9 required times.
 Furthermore, there are 512 locations for ALL of the desired observation types.
 In keeping with the DART philosophy of scalar observations, each observation 
-type gets a separate station. There are <strong>not</strong> 512 
+type gets a separate voxel. There are <strong>not</strong> 512 
 METAR_U_10_METER_WIND observations and 512 METAR_V_10_METER_WIND observations.
 There are N METAR_U_10_METER_WIND observations and M METAR_V_10_METER_WIND
 observations where N+M = 512.  And only 442 of them have observations at all the
 times required for the verification. Dump the <em class=option>obs_type</em> variable
-to see what station has what observation type.
+to see what voxel has what observation type.
 <br />
 <br />
-The <em class=option>stations</em> variable is fundamentally a flag that
+The <em class=option>voxel</em> variable is fundamentally a flag that
 indicates if the station has all of the desired verification times. Combine
 that information with the <em class=option>obs_type</em> and 
 <em class=option>location</em> to determine where your verifications of
@@ -771,7 +787,7 @@ files into one compact file to use in your ensemble forecast.
                                    be present for all forecasts</TD></TR>
 
 <TR><!-- routine --><TD VALIGN=top>obs_seq_coverage</TD>
-    <!-- message --><TD VALIGN=top>'specify "obs_sequence_name" or 
+    <!-- message --><TD VALIGN=top>'specify "obs_sequences" or 
                                             "obs_sequence_list"'</TD>
     <!-- comment --><TD VALIGN=top>one of these namelist variables MUST 
                                    be an empty string</TD></TR>
@@ -837,7 +853,7 @@ none
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
-Relax the restriction requiring 100.0% temporal coverage.<br />
+<em class=removed>Relax the restriction requiring 100.0% temporal coverage.</em><br />
 Sensibly require that we only require against observations that DART can compute.
 i.e. the prior forward operator must complete successfully - almost all cases
 of the operator failing are extrapolation issues; the observation is outside

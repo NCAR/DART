@@ -44,7 +44,8 @@
 forecast run of DART into a structure that is amenable for the evaluation
 of the forecast. The big picture is that the verification locations and times
 identified in the <em class=file>obsdef_mask.nc</em> and the observations
-from the forecast run (usually called <em class=file>obs_seq.forecast.YYYYMMDDHH</em>)
+from the forecast run (whose files <strong>must</strong> have an extension 
+as in the following: <em class=file>obs_seq.forecast.YYYYMMDDHH</em>)
 are put into a netCDF variable that looks like this:
 <br />
 <br />
@@ -55,11 +56,11 @@ are put into a netCDF variable that looks like this:
 <em class=program>obs_seq_verify</em> can read in a series of
 observation sequence files - each of the files <strong>must</strong> contain
 the <strong>entire forecast from a single analysis time</strong>.
-The name of each file is required to reflect the analysis time.
+The extension of each filename is <strong>required</strong> to reflect the analysis time.
 Use <a href="obs_sequence_tool.html">obs_sequence_tool</a> to
 concatenate multiple files into a single observation sequence file if necessary.
-<em class=removed>Only the individual ensemble members forecast values are used - the ensemble
-mean and spread (as individual copies) are completely ignored.</em>
+<em class=removed>Only the individual ensemble members <em>forecast</em> values 
+are used - the ensemble mean and spread (as individual copies) are completely ignored.</em>
 
 The individual "<em class=units>prior&nbsp;ensemble&nbsp;member&nbsp;NNNN</em>"
 copies are used.  As a special case, the
@@ -82,7 +83,12 @@ there are no individual ensemble members present (i.e. <em class=file>input.nml<
     <td valign=top>The unique horizontal locations in the verification network.</td>
 </tr>
 <tr><td valign=top>levels</td>
-    <td valign=top>The vertical level at each location.</td>
+    <td valign=top>The vertical level at each location. Observations with a 
+        pressure vertical coordinate are selected based on their proximity to 
+        the mandatory levels as defined in 
+        <a href="obs_seq_coverage.html">obs_seq_coverage</a>. Surface observations 
+        or observations with undefined vertical coordinates are simply 
+        put into level 1.</td>
 </tr>
 <tr><td valign=top>copy</td>
     <td valign=top>This dimension designates the quantity of interest; the observation,
@@ -122,12 +128,14 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;obs_seq_verify_nml
-   obs_sequence_list = '',
-   obs_sequence_name = 'obs_seq.forecast.YYYYMMDDHH',
-   station_template  = 'obsdef_mask.nc',
-   netcdf_out        = 'forecast.nc',
-   obtype_string     = 'METAR_U_10_METER_WIND',
-   verbose           = .true.,
+   obs_sequences     = ''
+   obs_sequence_list = ''
+   station_template  = 'obsdef_mask.nc'
+   netcdf_out        = 'forecast.nc'
+   obtype_string     = 'RADIOSONDE_TEMPERATURE'
+   print_every       = 10000
+   verbose           = .true.
+   debug             = .false.
    /
 </pre>
 </div>
@@ -136,8 +144,8 @@ prematurely terminating the namelist.
 <br />
 
 <P> You can specify <strong>either</strong> 
-<em class=option>obs_sequence_name</em> <strong>or</strong> 
-<em class=option>obs_sequence_list</em> -- not both.  One of them has to be an
+<em class=code>obs_sequences</em> <strong>or</strong> 
+<em class=code>obs_sequence_list</em> -- not both.  One of them has to be an
 empty string ... i.e. <em class=option>'&nbsp;'</em>.  
 <!-- i put the space between the single quotes because otherwise it looks
      like one double quote.  nsc  -->
@@ -153,40 +161,39 @@ empty string ... i.e. <em class=option>'&nbsp;'</em>.
 
 <TBODY valign=top>
 
-<TR><TD>   obs_sequence_name </TD>
-    <TD>   character(len=129)         </TD>
-    <TD>Name of the observation sequence file(s). <br /> 
-This may be a relative or absolute filename. If the filename contains a '/'
-the filename is considered to be comprised of everything to the right, and a
-directory structure to the left.  The directory structure is then queried to
-see if it can be incremented to handle a sequence of observation files.  The
-default behavior of <em class=program>obs_seq_verify</em> is to look for
-additional files to include until the files are exhausted or a file is found
-that contains observations beyond the timeframe of interest.<br />
-e.g.  'obsdir_001/obs_seq.forecast' will cause <em class=program>obs_seq_verify</em> 
-to look for 'obsdir_002/obs_seq.forecast', and so on.<br /> 
-If this is set, <em class=option>obs_sequence_list</em> must be set to '&nbsp;'.
-
+<TR><TD> obs_sequences </TD>
+    <TD> character(len=256), dimension(500) </TD>
+    <TD>Names of the observation sequence files  - each of which 
+<strong>MUST</strong> have an extension that defines the start of the 
+forecast (the analysis time). The observation sequence filenames must be 
+something like <em class=file>obs_seq.forecast.YYYYMMDDHH</em>&nbsp;.
+If <em class=code>obs_sequences</em> is specified, 
+   <em class=code>obs_sequence_list</em> must be empty. 
 </TD></TR>
 
-<TR><TD>   obs_sequence_list </TD>
-    <TD>   character(len=129)         </TD>
+<TR><TD> obs_sequence_list </TD>
+    <TD> character(len=256) </TD>
     <TD>Name of an ascii text file which contains a list of one or more
-observation sequence files, one per line.  If this is specified, <em
-class=option>obs_sequence_name</em> must be set to '&nbsp;'.  Can be created by any
-method, including sending the output of the 'ls' command to a file, a text
-editor, or another program.
+observation sequence files, one per line. The observation sequence filenames
+<strong>MUST</strong> have an extension that defines the start of the 
+forecast (the analysis time). The observation sequence filenames must be 
+something like <em class=file>obs_seq.forecast.YYYYMMDDHH</em>.
+<em class=code>obs_sequence_list</em> can be created by any method, including 
+sending the output of the 'ls' command to a file, a text editor, or 
+another program. 
+If <em class=code>obs_sequence_list</em> is specified, 
+   <em class=code>obs_sequences</em> must be empty. 
 </TD></TR>
 
 <TR><TD> station_template </TD>
-    <TD> character(len=129) </TD>
+    <TD> character(len=256) </TD>
     <TD>The name of the netCDF file created by 
 <a href="obs_seq_coverage.html">obs_seq_coverage</a> that contains the
 verification network description.
 </TD></TR>
 
 <TR><TD> netcdf_out </TD>
-    <TD> character(len=129) </TD>
+    <TD> character(len=256) </TD>
     <TD>The base portion of the filename of the file that will contain the
 forecast quantities. Since each observation type of interest is processed
 with a separate run of <em class=program>obs_seq_verify</em>, the observation
@@ -206,9 +213,19 @@ of the variable in the netCDF file, and will also be used to make a unique
 netCDF file name.
 </TD></TR>
 
-<TR><TD>   verbose   </TD>
-    <TD>   logical   </TD>
+<TR><TD> print_every </TD>
+    <TD> integer </TD>
+    <TD>Print run-time information for every <em class=code>"print_every"</em> <i>n</i>-th observation.
+</TD></TR>
+
+<TR><TD> verbose </TD>
+    <TD> logical </TD>
     <TD>Print extra run-time information.
+</TD></TR>
+
+<TR><TD> debug </TD>
+    <TD> logical </TD>
+    <TD>Print a frightening amount of run-time information.
 </TD></TR>
 
 </TBODY> 
@@ -227,15 +244,12 @@ netCDF file name.
 assim_model/assim_model_mod
 common/types_mod
 location/threed_sphere/location_mod
-models/wrf/model_mod
-models/wrf/module_map_utils
+models/<em>any</em>model_mod
 mpi_utilities/null_mpi_utilities_mod
 obs_def/obs_def_mod
 obs_kind/obs_kind_mod
 obs_sequence/obs_sequence_mod
-random_nr/random_nr_mod
 random_seq/random_seq_mod
-sort/sort_mod
 time_manager/time_manager_mod
 utilities/utilities_mod
 </PRE>
@@ -308,7 +322,8 @@ In this example, the <em class=file>obsdef_mask.nc</em> file was created by runn
 input observation sequence files by <a href="obs_selection.html">obs_selection</a> and
 the result was run through <a href="../filter/filter.html">filter</a> with the
 observations marked as <em class=option>evaluate_only</em> - resulting in a file
-called <em class=file>obs_seq.forecast.2008060818</em>.
+called <em class=file>obs_seq.forecast.2008060818</em>. This filename could also
+be put in a file called <em class=file>verify_list.txt</em>.
 <br />
 <br />
 Just to reiterate the example, both namelists for <em class=program>obs_seq_coverage</em>
@@ -317,33 +332,35 @@ and <em class=program>obs_seq_verify</em> are provided below.
 <div class=routine>
 <pre>
 &amp;obs_seq_coverage_nml
-   obs_sequence_name  = '',
-   obs_sequence_list  = <em class=input>'obs_file_list.txt'</em>,
-   obs_of_interest    = <em class=input>'METAR_U_10_METER_WIND'</em>,
-                        <em class=input>'METAR_V_10_METER_WIND'</em>,
-   textfile_out       = 'obsdef_mask.txt',
-   netcdf_out         = 'obsdef_mask.nc',
-   calendar           = 'Gregorian',
-   first_analysis     = <em class=input> 2008, 6, 8, 18, 0, 0 </em>,
-   last_analysis      = <em class=input> 2008, 6, 8, 18, 0, 0 </em>,
-   forecast_length_days          = <em class=input>2</em>,
-   forecast_length_seconds       = <em class=input>0</em>,
-   verification_interval_seconds = <em class=input>21600</em>,
-   temporal_coverage_percent     = 100.0,
-   lonlim1            = <em class=input>   0.0</em>,
-   lonlim2            = <em class=input> 360.0</em>,
-   latlim1            = <em class=input> -90.0</em>,
-   latlim2            = <em class=input>  90.0</em>,
+   obs_sequences      = <em class=input>''</em>
+   obs_sequence_list  = <em class=input>'coverage_list.txt'</em>
+   obs_of_interest    = <em class=input>'METAR_U_10_METER_WIND'</em>
+                        <em class=input>'METAR_V_10_METER_WIND'</em>
+   textfile_out       = 'obsdef_mask.txt'
+   netcdf_out         = 'obsdef_mask.nc'
+   calendar           = 'Gregorian'
+   first_analysis     = <em class=input> 2008, 6, 8, 18, 0, 0 </em>
+   last_analysis      = <em class=input> 2008, 6, 8, 18, 0, 0 </em>
+   forecast_length_days          = <em class=input>2</em>
+   forecast_length_seconds       = <em class=input>0</em>
+   verification_interval_seconds = <em class=input>21600</em>
+   temporal_coverage_percent     = 100.0
+   lonlim1            = <em class=input>   0.0</em>
+   lonlim2            = <em class=input> 360.0</em>
+   latlim1            = <em class=input> -90.0</em>
+   latlim2            = <em class=input>  90.0</em>
    verbose            = <em class=input>.true.</em>
    /
 
 &amp;obs_seq_verify_nml
-   obs_sequence_name = <em class=input>'obs_seq.forecast.2008060818'</em>,
-   obs_sequence_list = '',
-   station_template  = 'obsdef_mask.nc',
-   netcdf_out        = 'forecast.nc',
-   obtype_string     = <em class=input>'METAR_U_10_METER_WIND'</em>,
+   obs_sequences      = <em class=input>'obs_seq.forecast.2008060818'</em>
+   obs_sequence_list  = <em class=input>''</em>
+   station_template  = 'obsdef_mask.nc'
+   netcdf_out        = 'forecast.nc'
+   obtype_string     = <em class=input>'METAR_U_10_METER_WIND'</em>
+   print_every       = 10000
    verbose           = .true.
+   debug             = .false.
    /
 </pre>
 </div>
@@ -431,8 +448,7 @@ of the resulting netCDF file follows:
  METAR_U_10_METER_WIND dimlen            4  is            1
  METAR_U_10_METER_WIND dimlen            5  is          221
  METAR_U_10_METER_WIND dimlen            6  is            1
-
- obs_seq_verify:  doneDONEdoneDONE does not exist. Finishing up.
+ obs_seq_verify:  Finished successfully.
 
  --------------------------------------
  Finished ... at YYYY MM DD HH MM SS =
@@ -444,15 +460,19 @@ netcdf METAR_U_10_METER_WIND_forecast {
 dimensions:
         analysisT = UNLIMITED ; // (1 currently)
         copy = 3 ;
-        stations = 221 ;
-        levels = 1 ;
-        nmembers = 50 ;
+        station = 221 ;
+        level = 14 ;
+        ensemble = 50 ;
         forecast_lead = 9 ;
         linelen = 129 ;
         nlines = 446 ;
         stringlength = 64 ;
         location = 3 ;
 variables:
+        char namelist(nlines, linelen) ;
+                namelist:long_name = "input.nml contents" ;
+        char CopyMetaData(copy, stringlength) ;
+                CopyMetaData:long_name = "copy quantity names" ;
         double analysisT(analysisT) ;
                 analysisT:long_name = "time of analysis" ;
                 analysisT:units = "days since 1601-1-1" ;
@@ -465,32 +485,22 @@ variables:
                 copy:note2 = "2 == prior" ;
                 copy:note3 = "3 == observation error variance" ;
                 copy:explanation = "see CopyMetaData variable" ;
-        int stations(stations) ;
-                stations:long_name = "station index" ;
-        int original_qc(analysisT, stations, forecast_lead) ;
-                original_qc:long_name = "original QC value" ;
-                original_qc:missing_value = -888888 ;
-                original_qc:_FillValue = -888888 ;
-        int dart_qc(analysisT, stations, forecast_lead) ;
-                dart_qc:long_name = "DART QC value" ;
-                dart_qc:explanation1 = "1 == prior evaluated only" ;
-                dart_qc:explanation2 = "4 == forward operator failed" ;
-                dart_qc:missing_value = -888888 ;
-                dart_qc:_FillValue = -888888 ;
-        double levels(levels) ;
-                levels:long_name = "vertical level of observation" ;
-        int nmembers(nmembers) ;
-                nmembers:long_name = "ensemble member" ;
+        int station(station) ;
+                station:long_name = "station index" ;
+        double level(level) ;
+                level:long_name = "vertical level of observation" ;
+        int ensemble(ensemble) ;
+                ensemble:long_name = "ensemble member" ;
         int forecast_lead(forecast_lead) ;
                 forecast_lead:long_name = "forecast lead time" ;
                 forecast_lead:units = "seconds" ;
-        double location(stations, location) ;
+        double location(station, location) ;
                 location:description = "location coordinates" ;
                 location:location_type = "loc3Dsphere" ;
                 location:long_name = "threed sphere locations: lon, lat, vertical" ;
                 location:storage_order = "Lon Lat Vertical" ;
                 location:units = "degrees degrees which_vert" ;
-        int which_vert(stations) ;
+        int which_vert(station) ;
                 which_vert:long_name = "vertical coordinate system code" ;
                 which_vert:VERTISUNDEF = -2 ;
                 which_vert:VERTISSURFACE = -1 ;
@@ -498,15 +508,20 @@ variables:
                 which_vert:VERTISPRESSURE = 2 ;
                 which_vert:VERTISHEIGHT = 3 ;
                 which_vert:VERTISSCALEHEIGHT = 4 ;
-        char namelist(nlines, linelen) ;
-                namelist:long_name = "input.nml contents" ;
-        char CopyMetaData(copy, stringlength) ;
-                CopyMetaData:long_name = "copy quantity names" ;
-        double METAR_U_10_METER_WIND(analysisT, stations, levels, copy, nmembers, forecast_lead) ;
+        double METAR_U_10_METER_WIND(analysisT, station, level, copy, ensemble, forecast_lead) ;
                 METAR_U_10_METER_WIND:long_name = "forecast variable quantities" ;
                 METAR_U_10_METER_WIND:missing_value = -888888. ;
                 METAR_U_10_METER_WIND:_FillValue = -888888. ;
-
+        int original_qc(analysisT, station, forecast_lead) ;
+                original_qc:long_name = "original QC value" ;
+                original_qc:missing_value = -888888 ;
+                original_qc:_FillValue = -888888 ;
+        int dart_qc(analysisT, station, forecast_lead) ;
+                dart_qc:long_name = "DART QC value" ;
+                dart_qc:explanation1 = "1 == prior evaluated only" ;
+                dart_qc:explanation2 = "4 == forward operator failed" ;
+                dart_qc:missing_value = -888888 ;
+                dart_qc:_FillValue = -888888 ;
 // global attributes:
                 :creation_date = "YYYY MM DD HH MM SS = 2011 03 01 10 03 00" ;
                 :source = "$URL$" ;
@@ -580,7 +595,7 @@ variables:
                                    <em class=file>obs_kind_mod.mod</em>.</TD></TR>
 
 <TR><!-- routine --><TD VALIGN=top>obs_seq_verify</TD>
-    <!-- message --><TD VALIGN=top>'specify "obs_sequence_name" or
+    <!-- message --><TD VALIGN=top>'specify "obs_sequences" or
                                             "obs_sequence_list"'</TD>
     <!-- comment --><TD VALIGN=top>one of these namelist variables MUST
                                    be an empty string</TD></TR>
@@ -646,20 +661,7 @@ none
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
-Relax the restriction requiring 100.0% temporal coverage.<br />
-Sensibly require that we only require against observations that DART can compute.
-i.e. the prior forward operator must complete successfully - almost all cases
-of the operator failing are extrapolation issues; the observation is outside
-the domain.
-<br />
-<br />
-Note that no attempt is made at checking the QC value of the candidate
-observations. One of the common problems is that the region definition
-does not mesh particularly well with the model domain and the DART
-forward operator fails because it would have to extrapolate (which is not allowed).
-Without checking the QC value, this can mean there are a lot of 'false positives';
-observations that seemingly could be used to validate, but are actually
-just outside the model domain. I'm working on that ....
+none
 </P>
 
 <!--==================================================================-->

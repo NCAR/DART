@@ -1,13 +1,33 @@
 
-# selections_file is a list of obs_defs output
-# from the obs_seq_coverage utility.
+# selections_file is a list of obs_defs output from the obs_seq_coverage 
+# utility.  (optionally can be a full obs_seq file.)
+#
+# tolerances in the horizontal are in degrees, and apply separately
+# to longitude and latitude.  tolerances in the vertical are in:
+#   surface: meters
+#   pressure: pascals
+#   height: meters
+#   scaleheight: pressure ratio
+#   levels: fractional model levels
+#
 
 &obs_selection_nml
-   filename_seq          = 'obs_seq.out', 
-   filename_seq_list     = '', 
-   filename_out          = 'obs_seq.processed', 
-   selections_file       = 'obsdef_mask.txt', 
-   selections_is_obs_seq = .false.,
-   print_only            = .false., 
-   calendar              = "Gregorian",
-/
+   filename_seq          = 'obs_seq.out'
+   filename_seq_list     = ''
+   filename_out          = 'obs_seq.processed'
+   num_input_files       = 0
+   selections_file       = 'obsdef_mask.txt'
+   selections_is_obs_seq = .false.
+   latlon_tolerance      = 0.000001
+   match_vertical        = .false.
+   surface_tolerance     = 0.0001
+   pressure_tolerance    = 0.001
+   height_tolerance      = 0.0001
+   scaleheight_tolerance = 0.001
+   level_tolerance       = 0.00001
+   print_only            = .false.
+   partial_write         = .false.
+   print_timestamps      = .false.
+   calendar              = 'Gregorian'
+   /
+

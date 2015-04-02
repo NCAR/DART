@@ -36,39 +36,94 @@
 <H2>Overview</H2>
 
 <P>
-This specialized tool allow you to select sets of observations
-from two or more input observation sequence files
-where the obs were successfully assimilated in all files.
-It creates a new set of observation sequence files containing only that
-subset of the original observations.
+This specialized tool allows you to select subsets of observations
+from two or more observation sequence files output from <em class=file>filter</em>.
+It creates a new set of output observation sequence files containing only
+the observations which were successfully assimilated in all experiments.
 </P>
 <P>
-The intended use of this tool is as part of the process of comparing the results
-from a group of related experiments in which the same observation sequence file
-is used as input for all runs.  The tool cannot process observation sequence
-files which differ in anything other than whether an observation was successfully
-assimilated/evaluated or not.
-</P>
-<P>
-Experiments with different configurations can assimilate different
-numbers of the available observations.  In that case there will be differences
-in the diagnostic plots
+Experiments using the same input observation sequence file but
+with different configurations (e.g. different inflation values,
+different localization radii, etc) can assimilate different
+numbers of the available observations.  
+In that case there will be differences in the diagnostic plots
 which are not directly relatable to the differences in the quality
-of the assimilation.  If this tool is run on the obs_seq.final files from 
-all the experiments and then the diagnostics are generated,
+of the assimilation.  If this tool is run on the <em class=file>obs_seq.final</em> 
+files from all the experiments and then the diagnostics are generated,
 only the observations which were assimilated in all experiments will
 contribute to the summary statistics.  A more direct comparison can be
-made and improvements attributed to the differences in the experimental 
-parameters.
-</P><P>
+made and improvements can be correctly attributed to the differences 
+in the experimental parameters.
+</P>
+<P>
+This tool is intended to be used when comparing the results
+from a group of related experiments in 
+which <strong>the exact same input observation sequence file</strong>
+is used for all runs.  The tool cannot process observation sequence
+files which differ in anything other than whether an observation was successfully
+assimilated/evaluated or not.  Note that it is fine to add or remove observation
+types from the <em class=code>assimilate_these_obs_types</em> or 
+<em class=code>evaluate_these_obs_types</em> namelist items for different
+experiments.  The output observation
+sequence files will still contain an identical list of observations, with some
+marked with a DART QC indicating 'not assimilated because of namelist control'.
+</P>
+<P>
 See the <a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#obs_diagnostics">
 two experiment diagnostic plot</a> documentation for Matlab scripts
 supplied with DART to directly compare the observation diagnostic output
-from multiple experiments (more than two, the script has a poor name).
+from multiple experiments (it does more than two, the script has a poor name).
 </P><P>
 This is one of a set of tools which operate on observation sequence files.
-For a more general purpose tool, see the 
-<a href="obs_sequence_tool.hmtl">obs_sequence_tool</a>.
+For a more general purpose tool see the 
+<a href="obs_sequence_tool.html">obs_sequence_tool</a>, 
+and for a more flexible selection tool see the
+<a href="obs_selection_tool.html">obs_selection_tool</a>.
+</P>
+<H4>Creating an Input Filelist</H4>
+<P>
+One of the inputs to this tool is a list of filenames to compare.
+The filenames can be directly in the namelist file, or they can
+be in a set of separate text files.  The latter may be easier when there
+are more than just a few files to compare.
+</P>
+<P>
+For experiments where there are multiple job steps, and so multiple
+output observation sequence files per experiment, the input to this
+tool would then be a list of lists of filenames.
+Each set of names must be put into a text file with
+each filename on a separate line.
+</P><P>
+If each experiment was run in a different set of directories,
+and if a list of observation sequence filenames was made 
+with the <em class=file>ls</em> command:
+</P>
+<pre>
+&gt; ls exp1/*/obs_seq.final &gt; exp1list
+&gt; cat exp1list
+exp1/step1/obs_seq.final
+exp1/step2/obs_seq.final
+exp1/step3/obs_seq.final
+exp1/step4/obs_seq.final
+&gt; ls exp2/*/obs_seq.final &gt; exp2list
+&gt; cat exp2list
+exp2/step1/obs_seq.final
+exp2/step2/obs_seq.final
+exp2/step3/obs_seq.final
+exp2/step4/obs_seq.final
+&gt; ls exp3/*/obs_seq.final &gt; exp3list
+&gt; cat exp2list
+exp3/step1/obs_seq.final
+exp3/step2/obs_seq.final
+exp3/step3/obs_seq.final
+exp3/step4/obs_seq.final
+</pre>
+<P>Then the namelist entries would be:
+<pre>
+ filename_seq = ''
+ filename_seq_list = 'exp1list', 'exp2list', exp3list'
+ num_to_compare_at_once = 3
+</pre>
 </P>
 
 <!--==================================================================-->
@@ -94,10 +149,11 @@ prematurely terminating the namelist.
  filename_seq           = '',
  filename_seq_list      = '',
  filename_out_suffix    = '.common' ,
- print_every            = 1000,
+ print_every            = 10000,
  dart_qc_threshold      = 3,
  calendar               = 'Gregorian',
  print_only             = .false.,
+ eval_and_assim_can_match = .false.,
 /
 </pre>
 </div>
@@ -115,7 +171,7 @@ prematurely terminating the namelist.
 
 <TBODY valign=top>
 
-<TR><TD>num_to_process_at_once</TD>
+<TR><TD>num_to_compare_at_once</TD>
     <TD>integer</TD>
     <TD>Number of observation sequence files to compare together at a 
 time.  Most commonly the value is 2, but can be any number.
@@ -127,20 +183,20 @@ will loop over the list N files at a time.
     <TD>character(len=256), dimension(5000)</TD>
     <TD>The array of names of the observation sequence files to process.  
 If more than N files (where N is num_to_compare_at_once) are listed,
-they should be ordered so all files from the first experiment are together,
-followed by all files from the second experiment, up to N experiments.
+they should be ordered so the first N files are compared together,
+followed by the next set of N files, etc.
+You can only specify one of filename_seq OR filename_seq_list, not both.  
 </TD></TR>
 
 <TR><TD>filename_seq_list</TD>
-    <TD>character(len=256)</TD>
+    <TD>character(len=256), dimension(100)</TD>
     <TD>An alternative way to specify the list of input
-observation sequence files.  Give the name of a text file which contains, one per
-line, the names of the observation sequence files to process.  You can only
-specify one of filename_seq OR filename_seq_list, not both.  As with the
-<em class=code>filename_seq</em> item,
-if more than N files (where N is num_to_compare_at_once) are listed,
-they should be ordered so all files from the first experiment are together,
-followed by all files from the second experiment, up to N experiments.
+observation sequence files.  Give a list of N filenames which contain, 
+one per line, the names of the observation sequence files to process.
+There should be N files specified (where N is num_to_compare_at_once), and
+the first observation sequence filename listed in each file will be compared
+together, then the second, until the lists are exhausted.
+You can only specify one of filename_seq OR filename_seq_list, not both.  
 </TD></TR>
 
 <TR><TD>filename_out_suffix</TD>
@@ -158,15 +214,17 @@ larger number.  To disable this output completely set this to -1.
 
 <TR><TD>dart_qc_threshold</TD>
     <TD>integer</TD>
-    <TD>The limit for the DART QC value.  For an observation which was
+    <TD>Observations with a DART QC value larger than this threshold
+will be discarded.  
+Note that this is the QC value set by <em class=file>filter</em>
+to indicate the outcome of trying to assimilate an observation.  
+This is not related to the incoming data QC.
+For an observation which was
 successfully assimilated or evaluated in both the Prior and Posterior 
 this should be set to 1.  To also include observations which were successfully
-processed in the Prior but not the Posterior, set to 3.  It is not 
-recommended to set it to a higher value than 3.
-Note that this is the QC value set by <em class=file>filter</em>
-to indicate the outcome of
-trying to assimilate an observation.  
-This is not related to the incoming data QC.
+processed in the Prior but not the Posterior, set to 3.  To ignore
+the magnitude of the DART QC values and keep observations only if
+the DART QCs match, set this to any value higher than 7.
 </TD></TR>
 
 <TR><TD>calendar</TD>
@@ -182,6 +240,12 @@ using any calendar.
     <TD>If .TRUE. do not create the output files, but print 
 a summary of the number and types of each observation in each of
 the input and output files.
+</TD></TR>
+
+<TR><TD>eval_and_assim_can_match</TD>
+    <TD>logical</TD>
+    <TD>Normally .FALSE. . If .TRUE. then observations which were
+either successfully evaluated OR assimilated will match and are kept.
 </TD></TR>
 
 </TBODY> 

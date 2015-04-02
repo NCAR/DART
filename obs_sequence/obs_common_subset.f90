@@ -4,54 +4,56 @@
 !
 ! $Id$
 
+
+!>  This program takes as input one or more sets of N obs_seq filenames. 
+!>  N is usually 2, but can be any number of files to compare together.
+!>  It opens the obs_seq files N at a time and does an obs-by-obs comparison.  
+!>  It is intended to pull out a common subset of obs which were successfully
+!>  assimilated in all experiments so the subsequent diagnostics can give
+!>  an apples-to-apples comparison of the relative error or fit to obs
+!>  between different experiments.
+!> 
+!>  This tool does not search in the input obs_seq files to try to match obs
+!>  in different orders or to skip over obs present in only one input file,
+!>  so all experiments should be done with identical input obs_seq files.
+!>  The obs to be assimilated or evaluated can be selected by namelist
+!>  at run time if they are different, and different experiment settings
+!>  can be selected by other namelist values.
+!> 
+!>  If the next input obs don't match exactly (identical types, times, locations,
+!>  and DART QC) they are discarded.  If they match, and if the DART QC indicates 
+!>  they have been successfully assimilated in all experiments, then each of the 
+!>  N input obs are copied through to the N output obs_seq files.  At the end of 
+!>  running this tool it creates sets of N output obs_seq files which contain a 
+!>  consistent set of assimilated obs across the set.
+!> 
+!>  The outputs are suitable for input to the obs_diag or obs_seq_to_netcdf tools
+!>  and there are matlab scripts for comparing the results of N experiments.
+!>  Differences in the output diagnostics will now be because of the experiment 
+!>  differences, not differences in the number of obs assimilated.
+!> 
+!>  Running this program creates sets of N new output files corresponding to each
+!>  of N input files.  The output names are the input filenames with a suffix appended.  
+!>  It can take a list of obs_seq files, either given directly in the namelist or
+!>  a list of N filenames where each file contains one input filename per line.  
+!>  If the lists contain more than 1 filename, this program will loop over each
+!>  set of filenames in the lists until the end of the file.If more than N files
+!> 
+!>  There is an option to allow observations which have been either successfully 
+!>  assimilated or evaluated to match each other.  The default requires them to
+!>  have been treated identically in all experiments.
+
 program obs_common_subset
 
-! This program takes as input one or more sets of N obs_seq filenames. 
-! N is usually 2, but can be any number of files to compare together.
-! It opens the obs_seq files N at a time and does an obs-by-obs comparison.  
-! It is intended to pull out a common subset of obs which were successfully
-! assimilated in all experiments so the subsequent diagnostics can give
-! an apples-to-apples comparison of the relative error or fit to obs
-! between different experiments.
-!
-! This tool does not search in the input obs_seq files to try to match obs
-! in different orders or to skip over obs present in only one input file,
-! so all experiments should be done with identical input obs_seq files.
-! The obs to be assimilated or evaluated can be selected by namelist
-! at run time if they are different, and different experiment settings
-! can be selected by other namelist values.
-!
-! If the next input obs don't match exactly (identical types, times, locations,
-! and DART QC) they are discarded.  If they match, and if the DART QC indicates 
-! they have been successfully assimilated in all experiments, then each of the 
-! N input obs are copied through to the N output obs_seq files.  At the end of 
-! running this tool it creates N output obs_seq files which contain a consistent 
-! set of assimilated obs across the set.
-
-! The outputs are suitable for input to the obs_diag or obs_seq_to_netcdf tools
-! and there are matlab scripts for comparing the results of N experiments.
-! Differences in the output diagnostics will now be because of the experiment 
-! differences, not differences in the number of obs assimilated.
-
-! Running this program creates sets of N new output files corresponding to each
-! of N input files.  The output names are the input filenames with a suffix appended.  
-! It can take a list of obs_seq files, either given directly in the namelist or
-! from a separate ascii file with one input filename per line.  If more than N files
-! are specified it will process them N at a time and loop until the end of the list.
-! The filenames should be listed so all files from experiment 1 are first, then all
-! files from experiment 2, up to N experiments.
-
-
-use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
+use        types_mod, only : r8, metadatalength
 use    utilities_mod, only : register_module, initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &
                              do_nml_file, do_nml_term, get_next_filename,      &
                              finalize_utilities, logfileunit
-use     location_mod, only : location_type, get_location, write_location,      &
-                             operator(/=)
+use     location_mod, only : location_type, operator(/=)
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, get_obs_kind,     &
-                             get_obs_def_location, read_obs_def
+                             get_obs_def_location
 use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name
 use time_manager_mod, only : time_type, print_date, print_time, set_time,      &
                              set_calendar_type, get_calendar_type,             &
@@ -74,60 +76,54 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-! max number of files to compare against each other.  this program will loop
-! over sets of files for as long as there are input files in the list.  if you
-! need to compare more than 50 files together, let us know what you are doing
-! because i'd be very interested to hear.  but you can make the maxseq larger
-! in that case.
+! max_num_input_files : maximum total number of input sequence files to be processed.
+integer, parameter   :: max_num_input_files = 5000
 
-integer, parameter      :: maxseq = 50   ! max number of files compared at once
+! max number of files to compare against each other.  if you need to compare 
+! more than 50 files together, let us know what you are doing because i'd be 
+! very interested to hear.  but you can make the maxcomp larger in that case.
 
-type(obs_sequence_type) :: seq_in(maxseq)
-type(obs_sequence_type) :: seq_out(maxseq)
-type(obs_type)          :: obs_in(maxseq), next_obs_in(maxseq)
-type(obs_type)          :: obs_out(maxseq), prev_obs_out(maxseq)
-logical                 :: is_this_last(maxseq)
+integer, parameter      :: maxcomp = 50  ! max number of files compared at once
+
+type(obs_sequence_type) :: seq_in(maxcomp)
+type(obs_sequence_type) :: seq_out(maxcomp)
+type(obs_type)          :: obs_in(maxcomp), next_obs_in(maxcomp)
+type(obs_type)          :: obs_out(maxcomp), prev_obs_out(maxcomp)
+logical                 :: is_this_last(maxcomp)
 logical                 :: wanted
-integer                 :: size_seq_in(maxseq), num_copies_in(maxseq), num_qc_in(maxseq)
-integer                 :: size_seq_out, num_inserted, iunit, io, i, j, k
-integer                 :: max_num_obs(maxseq), file_id, atonce, nsets, other, offset
+integer                 :: size_seq_in(maxcomp), num_copies_in(maxcomp), num_qc_in(maxcomp)
+integer                 :: size_seq_out, num_inserted, iunit, io, i, j, k, nextfile
+integer                 :: max_num_obs(maxcomp), file_id, atonce, nsets
 integer                 :: num_rejected_badqc, num_rejected_diffqc, num_rejected_other
 integer                 :: num_mismatch_loc, num_mismatch_time, num_mismatch_type
-character(len = 129)    :: read_format
+character(len=129)      :: read_format
 logical                 :: pre_I_format, cal
-character(len = 256)    :: msgstring, msgstring1, msgstring2, msgstring3
-character(len = 256)    :: filename_in(maxseq)
-character(len = 300)    :: filename_out(maxseq)     ! filename_in + . + suffix
+character(len=512)      :: msgstring, msgstring1, msgstring2, msgstring3
+character(len=256)      :: filename_in(maxcomp)
+character(len=384)      :: filename_out(maxcomp)     ! filename_in + . + suffix
 
-character(len = metadatalength), parameter :: dart_qc_meta_data = 'DART quality control'
-character(len = metadatalength) :: meta_data
+character(len=metadatalength), parameter :: dart_qc_meta_data = 'DART quality control'
+character(len=metadatalength) :: meta_data
 
 integer                 :: qc_index
 integer                 :: num_input_sets = 0
 
+character(len=256) :: temp_filelist(max_num_input_files) = ''
+
 !----------------------------------------------------------------
 ! Namelist input with default values
 
-! max_num_input_files : maximum number of input sequence files to be processed
-! if filenames are specified in the namelist.  if filenames are specified in a
-! separate ascii input file, the list length can be infinite.  for names in the
-! namelist, the len must be > num_to_compare_at_once * number of sets of files 
-! to do.  e.g. if you are comparing 3 files at a time, and want to compare a 
-! series of 100 sets of 3 files, that would be 300 filenames.  make these
-! numbers bigger if these values are too small, and recompile.
-
-integer, parameter   :: max_num_input_files = 5000
-
-character(len = 256) :: filename_seq(max_num_input_files) = ''
-character(len = 256) :: filename_seq_list  = ''
-character(len = 32)  :: filename_out_suffix = '.common'
+character(len=256) :: filename_seq(max_num_input_files) = ''
+character(len=256) :: filename_seq_list(maxcomp)  = ''
+character(len=32)  :: filename_out_suffix = '.common'
 
 integer :: num_to_compare_at_once = 2
 logical :: print_only = .false.
 
 ! not expected to be changed often, but its here if needed.
-integer :: print_every = 1000
+integer :: print_every = 10000
 integer :: dart_qc_threshold = 3     ! ok if DART QC <= this
+logical :: eval_and_assim_can_match = .false. 
 
 character(len=32) :: calendar = 'Gregorian'
 
@@ -135,7 +131,8 @@ namelist /obs_common_subset_nml/ &
          num_to_compare_at_once,          &
          filename_seq, filename_seq_list, &
          filename_out_suffix, print_only, &
-         print_every, dart_qc_threshold, calendar
+         print_every, dart_qc_threshold,  &
+         calendar, eval_and_assim_can_match
 
 !----------------------------------------------------------------
 ! Start of the program:
@@ -162,19 +159,19 @@ if (do_nml_term()) write(     *     , nml=obs_common_subset_nml)
 ! as in the other tools, it is an error to specify both an explicit
 ! list and the name of file for input.
 
-write(msgstring, '(A,I3,A)') "Comparing ", num_to_compare_at_once, " obs_seq files at a time"
+write(msgstring, '(A,I3,A)') "Asking to compare ", num_to_compare_at_once, " obs_seq files at a time"
 call error_handler(E_MSG, "obs_common_subset", msgstring, source,revision,revdate)
 
-if ((num_to_compare_at_once < 2) .or. (num_to_compare_at_once > maxseq)) then
-   write(msgstring, *) "num_to_compare_at_once must be >= 2 and <= ", maxseq
+if ((num_to_compare_at_once < 2) .or. (num_to_compare_at_once > maxcomp)) then
+   write(msgstring, *) "num_to_compare_at_once must be >= 2 and <= ", maxcomp
    call error_handler(E_ERR, "obs_common_subset", msgstring, source,revision,revdate)
 endif
 
 ! if there is only a single file from each experiment to compare, the order
-! is obvious.  if each experiment has a list of input obs_seq.final files from
-! a multi-step assimilation, list all the files from experiment 1, then all
-! files from experiment 2, etc.
-call handle_filenames(num_to_compare_at_once, filename_seq, filename_seq_list, &
+! doesn't matter.  if each experiment has a list of input obs_seq.final files from
+! a multi-step assimilation, list all the files from experiment 1 in list-file 1,
+! all files from experiment 2 in list-file 2, etc.
+call handle_filenames(num_to_compare_at_once, maxcomp, filename_seq, filename_seq_list, &
                       num_input_sets)
 
 if (num_input_sets > 1) then
@@ -203,42 +200,33 @@ cal = (get_calendar_type() /= NO_CALENDAR)
 ! if they aren't present.
 
 ! count of input sets was set in the handle_filenames() routine above.
+nextfile = 1
 NUMSETS: do j = 1, nsets
 
    ! if num_to_compare_at_once = 3 and num_input_sets = 100, then this
    ! assumes the input file list is organized in this order:
-   !       a1,b1,c1,  a2,b2,c2, ... a100,b100,c100
+   !       a1,b1,c1, a2,b2,c2, ..., a100,b100,c100
    ! where a, b, c are the 3 separate experiments to compare, 
    ! and 1, 2, ... 100 are the obs_seq.final output files from 100 steps 
-   ! of a multi-step assimilation.
+   ! of a multi-step assimilation.  handle_filenames() arranges this
+   ! order if list files were used.
 
+   ! fill in the names of the current set of obs_seq files
    do i = 1, atonce
-  
-      offset = (i-1)*num_input_sets + j
-
-      ! fill in the names of the current set of obs_seq files
-      filename_in(i) = filename_seq(offset)
-
+      filename_in(i) = filename_seq(nextfile)
+      nextfile = nextfile + 1
    enddo
 
-   ! now filename_in(:) has all the names for this set
+   ! now filename_in(:) has all the names for this set.  read the headers in.
    do i = 1, atonce
   
-      if  ((len(filename_in(i)) == 0) .or. (filename_in(i) == "")) then
-         write(msgstring, *) 'sequence name ', i, ' in set ', j, ' is empty or null'
-         call error_handler(E_ERR,'obs_common_subset', msgstring, &
-            source,revision,revdate)  ! shouldn't happen because already tested for this
-      endif
-
-      ! read in the next set of files.
-
       call read_obs_seq_header(filename_in(i), num_copies_in(i), num_qc_in(i), &
          size_seq_in(i), max_num_obs(i), file_id, read_format, pre_I_format, &
          close_the_file = .true.)
 
       if (size_seq_in(i) == 0) then
          write(msgstring1, *) 'This tool cannot process empty obs_seq files'
-         write(msgstring,*) 'Obs in input sequence file ', trim(filename_in(i))
+         write(msgstring,*) 'No obs found in input sequence file ', trim(filename_in(i))
          call error_handler(E_ERR,'obs_common_subset',msgstring, &
             source,revision,revdate, text2=msgstring1)
       endif
@@ -480,20 +468,22 @@ end subroutine shutdown
 
 !---------------------------------------------------------------------
 
-subroutine handle_filenames(setsize, filename_seq, filename_seq_list, &
+subroutine handle_filenames(setsize, maxsets, filename_seq, filename_seq_list, &
                             num_input_sets)
 
 ! sort out the input lists, set the length as a return in num_input_sets,
 ! fill in filename_seq if list was given, and make sure what's specified is consistent.
 
 integer,            intent(in)    :: setsize
+integer,            intent(in)    :: maxsets
 character(len=*),   intent(inout) :: filename_seq(:)
-character(len=*),   intent(in)    :: filename_seq_list
+character(len=*),   intent(in)    :: filename_seq_list(:)
 integer,            intent(out)   :: num_input_sets
 
-integer :: indx, num_input_files
+integer :: indx, num_input_files, i, ifiles, fcount, this_set_filecount
+integer :: files_per_set, nlists, iset, src, dst
 logical :: from_file
-character(len=32) :: source
+character(len=32) :: nname
 
 ! if the user specifies neither filename_seq nor filename_seq_list, error
 ! if the user specifies both, error.
@@ -502,7 +492,7 @@ character(len=32) :: source
 ! maxfiles and read it into the explicit list and continue.
 ! set num_input_sets to the count of sets in the list
 
-if (filename_seq(1) == '' .and. filename_seq_list == '') then
+if (filename_seq(1) == '' .and. filename_seq_list(1) == '') then
    msgstring2='One of filename_seq or filename_seq_list must be specified in namelist'
    call error_handler(E_ERR,'handle_filenames',            &
                       'no filenames specified as input',  &
@@ -510,63 +500,142 @@ if (filename_seq(1) == '' .and. filename_seq_list == '') then
 endif
 
 ! make sure the namelist specifies one or the other but not both
-if (filename_seq(1) /= '' .and. filename_seq_list /= '') then
+if (filename_seq(1) /= '' .and. filename_seq_list(1) /= '') then
    call error_handler(E_ERR,'handle_filenames', &
        'cannot specify both filename_seq and filename_seq_list in namelist', &
        source,revision,revdate)
 endif
 
-! if they have specified a file which contains a list, read it into
-! the filename_seq array and set the count.
-if (filename_seq_list /= '') then
-   source = 'filename_seq_list'
-   from_file = .true.
-else
-   source = 'filename_seq'
+! count of all filenames, either explicitly in the namelist
+! or specified by a list of files which contain lists of names.
+num_input_files = -1
+nlists = -1
+
+if (filename_seq(1) /= '') then
+
+   ! if the files are given in the namelist, just need to make sure
+   ! there are at least N given (where N == num_to_compare_at_once).
+
+   nname = 'filename_seq'
    from_file = .false.
-endif
 
-
-! debug?
-if (.false.) write(*,*)'filename_seq(1) ',trim(filename_seq(1)),' ', trim(source), ' ',from_file
-
-! count of filenames in list
-num_input_files = 0
-
-! the point of this loop is to count up how many sets of input seq files we have,
-! and to fill in the filename_seq(:) array if a list file was given.
-FILELOOP: do indx = 1, max_num_input_files
-   if (from_file) &
-      filename_seq(indx) = get_next_filename(filename_seq_list, indx)
-
-   ! an empty name ends the list
-   if (filename_seq(indx) == '') then
-      if (indx == 1) then
-         call error_handler(E_ERR,'handle_filenames', &
-             trim(source)//' contains no input obs_seq filenames', &
-             source,revision,revdate)
+   FILELOOP: do indx = 1, max_num_input_files
+      ! an empty name ends the list
+      if (filename_seq(indx) == '') then
+         if (indx < num_to_compare_at_once) then
+            write(msgstring, '(A,I5,A)') trim(nname)//' must contain at least ', &
+                num_to_compare_at_once, ' obs_seq filenames'
+            call error_handler(E_ERR,'handle_filenames', msgstring, &
+                source,revision,revdate)
+         endif
+         num_input_files = indx - 1 
+         exit FILELOOP
       endif
+   enddo FILELOOP
 
-      exit FILELOOP
-
+   ! make sure the list is an even multiple of setsize
+   if (modulo(num_input_files, setsize) /= 0) then
+      write(msgstring, *) 'number of input files must be an even multiple of ', setsize
+      write(msgstring1, *) 'found ', num_input_files, ' input files'
+      call error_handler(E_ERR,'handle_filenames', msgstring, source,revision,revdate, &
+                         text2=msgstring1)
    endif
 
-   num_input_files = indx
+   num_input_sets = num_input_files / setsize
+else
 
-enddo FILELOOP
+   ! if they have specified a file which contains a list, read it into
+   ! a temp array, set the counts, and do some initial error checks.
 
-if (num_input_files == max_num_input_files) then
-   write(msgstring, *) 'cannot specify more than ',max_num_input_files,' files'
-   call error_handler(E_ERR,'handle_filenames', msgstring, source,revision,revdate)
+   nname = 'filename_seq_list'
+   from_file = .true.
+
+   ! this is the total running count of files across all lists
+   fcount = 1   
+
+   EXPLOOP: do iset = 1, maxsets
+      
+      ! an empty name ends the list of lists
+      if (filename_seq_list(iset) == '') then
+         num_input_files = fcount - 1 
+         nlists = iset - 1
+         if (nlists /= setsize) then
+            write(msgstring1, '(A)') 'number of input file lists in "'//trim(nname)// &
+                                     '" must equal "num_to_compare_at_once"'
+            write(msgstring2, '(2(A,I5))') trim(nname)//' has ', nlists, &
+                  ' items while num_to_compare_at_once is ', setsize
+         
+            call error_handler(E_ERR,'handle_filenames', msgstring1, &
+                               source,revision,revdate, text2=msgstring2)
+         endif
+         exit EXPLOOP
+      endif
+   
+      LISTLOOP: do ifiles=1, max_num_input_files
+         if (fcount >= max_num_input_files) then
+            write(msgstring, *)  'cannot specify more than ',max_num_input_files,' total files'
+            write(msgstring1, *) 'for more, change "max_num_input_files" in the source and recompile'
+            call error_handler(E_ERR,'handle_filenames', msgstring, source,revision,revdate, &
+                               text2=msgstring1)
+         endif
+
+         temp_filelist(fcount) = get_next_filename(filename_seq_list(iset), ifiles)
+     
+         ! an empty name ends the list
+         if (temp_filelist(fcount) == '') then
+            if (ifiles == 1) then
+               call error_handler(E_ERR,'handle_filenames', &
+                   trim(filename_seq_list(iset))//' contains no input obs_seq filenames', &
+                   source,revision,revdate)
+            endif
+            this_set_filecount = ifiles-1
+            exit LISTLOOP
+         endif
+         fcount = fcount + 1
+      enddo LISTLOOP
+
+      ! make sure each file in the list contains the same number
+      ! of filenames to be compared.  set the target the first time
+      ! through and then compare subsequent counts to be sure they match.
+      if (iset == 1) then
+         files_per_set = this_set_filecount
+      else
+         if (files_per_set /= this_set_filecount) then
+            write(msgstring1, '(A)') trim(filename_seq_list(iset))//' does not contain ' // &
+               'the same number of obs_seq filenames as previous lists'
+            write(msgstring2, '(3(A,I5),A)') 'list 1 contains ', files_per_set, ' filenames while list ', iset, &
+               ' contains ', this_set_filecount, ' filenames'
+            call error_handler(E_ERR,'handle_filenames', msgstring1, &
+               source,revision,revdate, text2=msgstring2)
+         endif
+      endif
+   
+   enddo EXPLOOP
+   
+   num_input_sets = files_per_set
 endif
 
-! make sure the list is an even multiple of setsize
-if (modulo(num_input_files, setsize) /= 0) then
-   write(msgstring, *) 'number of input files must be an even multiple of ', setsize
-   call error_handler(E_ERR,'handle_filenames', msgstring, source,revision,revdate)
+if (num_input_files >= max_num_input_files) then
+   write(msgstring, *)  'cannot specify more than ',max_num_input_files,' files'
+   write(msgstring1, *) 'for more, change "max_num_input_files" in the source and recompile'
+   call error_handler(E_ERR,'handle_filenames', msgstring, source,revision,revdate, &
+                      text2=msgstring1)
 endif
 
-num_input_sets = num_input_files / setsize
+if (from_file) then
+   ! now that we know we have the right number of filenames, copy them
+   ! from the temp list into filename_seq in the right order for processing:  
+   ! first all file 1s from each experiment, then file 2s, etc.
+   ! the temp list is all files from exp1, all files from exp2, etc
+   dst = 0
+   do i=1, num_input_sets
+      do j=1, setsize
+         src = (j-1)*num_input_sets + i
+         dst = dst + 1
+         filename_seq(dst) = temp_filelist(src)
+      enddo
+   enddo
+endif
 
 end subroutine handle_filenames
 
@@ -584,7 +653,7 @@ type(obs_sequence_type), intent(in) :: seq(:)
 character(len=*),        intent(in) :: fnames(:)
 
 integer :: num_copies1, num_copiesN, num_qc1, num_qcN
-integer :: i, j, k
+integer :: i, j
 character(len=metadatalength) :: str1, strN
 
 num_copies1 = get_num_copies(seq(1))
@@ -733,8 +802,6 @@ ObsLoop : do while ( .not. is_this_last)
    else
       type_count(this_obs_kind) = type_count(this_obs_kind) + 1
    endif
-!   print *, 'obs kind index = ', this_obs_kind
-!   if(this_obs_kind > 0)print *, 'obs name = ', get_obs_kind_name(this_obs_kind)
 
    call get_next_obs(seq_in, obs, next_obs, is_this_last)
    if (.not. is_this_last) then
@@ -989,17 +1056,19 @@ do i = 2, count
       return
    endif
    
-   ! here is the first test we expect to be the reason most obs fail:
-   ! if they've been assimilated in one experiment but not another.
-   if (test1_qc /= testN_qc) then
-      num_rejected_diffqc = num_rejected_diffqc + 1
+   ! check first to see if either of the DART QCs indicate
+   ! that this obs was rejected for some reason.  this code
+   ! is testing the first QC multiple times if N > 2 but
+   ! it makes the logic simpler so just repeat the test.
+   if (test1_qc > threshold .or. testN_qc > threshold) then
+      num_rejected_badqc = num_rejected_badqc + 1
       return
    endif
 
-   ! and here is the second:
-   ! if they were not assimilated in any experiment.
-   if (test1_qc > threshold) then
-      num_rejected_badqc = num_rejected_badqc + 1
+   ! this is the test we expect to be the reason most obs fail:
+   ! if they've been assimilated in one experiment but not another.
+   if (.not. match_qc(test1_qc, testN_qc)) then
+      num_rejected_diffqc = num_rejected_diffqc + 1
       return
    endif
 
@@ -1012,6 +1081,39 @@ end function all_good
 
 !---------------------------------------------------------------------
 
+function match_qc(qc1, qc2)
+
+! normal behavior is to return true if the values are equal,
+! and false if not.  but if the "it's ok for evaluated and
+! assimilated obs to match", then allow DART QC value 0 to 
+! match 1, and 2 to match 3, but no other combinations are valid.
+
+integer, intent(in) :: qc1
+integer, intent(in) :: qc2
+logical             :: match_qc
+
+! if the combination of values is ok, return early
+match_qc = .true.
+
+if (qc1 == qc2) return
+
+if (eval_and_assim_can_match) then
+   if (qc1 == 0 .and. qc2 == 1) return
+   if (qc1 == 1 .and. qc2 == 0) return
+
+   if (qc1 == 2 .and. qc2 == 3) return
+   if (qc1 == 3 .and. qc2 == 2) return
+endif
+
+! not one of the allowed matches.  these qcs really
+! are not compatible and the match failed.
+
+match_qc = .false.
+
+end function match_qc
+
+
+!---------------------------------------------------------------------
 end program obs_common_subset
 
 ! <next few lines under version control, do not edit>

@@ -6,10 +6,9 @@
 
 program create_obs_sequence
 
-use    utilities_mod, only : register_module, open_file, close_file, &
-                             initialize_utilities, finalize_utilities, &
+use    utilities_mod, only : register_module, initialize_utilities, finalize_utilities, &
                              error_handler, E_MSG
-use obs_sequence_mod, only : obs_sequence_type, interactive_obs, write_obs_seq, &
+use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                              interactive_obs_sequence, static_init_obs_sequence
 use  assim_model_mod, only : static_init_assim_model
 
@@ -22,7 +21,7 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 type(obs_sequence_type) :: seq
-character(len = 129)    :: file_name
+character(len=256)      :: file_name
 
 ! Record the current time, date, etc. to the logfile
 call initialize_utilities('create_obs_sequence')

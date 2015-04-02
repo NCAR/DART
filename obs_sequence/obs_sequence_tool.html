@@ -90,35 +90,44 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;obs_sequence_tool_nml
-   filename_seq         = '',
-   filename_seq_list    = '',
-   filename_out         = 'obs_seq.processed',
-   num_input_files      = 0,
-   first_obs_days       = -1,
-   first_obs_seconds    = -1,
-   last_obs_days        = -1,
-   last_obs_seconds     = -1,
-   obs_types            = '',
-   keep_types           = .true.,
-   min_lat              =  -90.0,
-   max_lat              =   90.0,
-   min_lon              =    0.0,
-   max_lon              =  360.0,
-   print_only           = .false.,
-   gregorian_cal        = .true.,
-   edit_copy_metadata   = .false.,
-   new_copy_metadata    = '',
-   edit_qc_metadata     = .false.,
-   new_qc_metadata      = '',
-   edit_copies          = .false.,
-   new_copy_index       = -1,
-   new_copy_data        = -888888.
-   edit_qc              = .false.,
-   new_qc_index         = -1,
-   new_qc_data          = 0.
-   synonymous_copy_list = '',
-   synonymous_qc_list   = '', 
-/
+   filename_seq         = ''
+   filename_seq_list    = ''
+   filename_out         = 'obs_seq.processed'
+   first_obs_days       = -1
+   first_obs_seconds    = -1
+   last_obs_days        = -1
+   last_obs_seconds     = -1
+   obs_types            = ''
+   keep_types           = .true.
+   min_box              = -888888.0
+   max_box              = -888888.0
+   min_lat              =  -90.0
+   max_lat              =   90.0
+   min_lon              =    0.0
+   max_lon              =  360.0
+   copy_metadata        = ''
+   min_copy             = -888888.0
+   max_copy             = -888888.0
+   copy_type            = ''
+   edit_copy_metadata   = .false.
+   new_copy_metadata    = ''
+   edit_copies          = .false.
+   new_copy_index       = -1
+   new_copy_data        = -888888.0
+   qc_metadata          = ''
+   min_qc               = -888888.0
+   max_qc               = -888888.0
+   edit_qc_metadata     = .false.
+   new_qc_metadata      = ''
+   edit_qcs             = .false.
+   new_qc_index         = -1
+   new_qc_data          = -888888.0
+   synonymous_copy_list = ''
+   synonymous_qc_list   = ''
+   print_only           = .false.
+   gregorian_cal        = .true.
+   min_gps_height       = -888888.0
+   /
 </pre>
 </div>
 
@@ -136,47 +145,35 @@ prematurely terminating the namelist.
 
 <TBODY valign=top>
 
-<TR><TD>num_input_files</TD>
-    <TD>integer</TD>
-    <TD>The number of observation sequence files to process.
-Maximum of 500.  If 0 the length is set by the number of input files
-given.  If non-zero must match the given input file list length.
-</TD></TR>
-
 <TR><TD>filename_seq</TD>
-    <TD>character(len=129), dimension(500)</TD>
+    <TD>character(len=256), dimension(1000)</TD>
     <TD>The array of names of the observation sequence files to process.
-With the F90 namelist mechanism it is only necessary to specify the names
-you are going to use, not all.
+(With the F90 namelist mechanism it is only necessary to specify as many
+names as you have input files; unspecified list values are cleanly ignored.)
 </TD></TR>
 
 <TR><TD>filename_seq_list</TD>
-    <TD>character(len=129)</TD>
+    <TD>character(len=256)</TD>
     <TD>The name of a text file which contains, one per line,
-the names of the observation sequence files to process.  You can only specify
-one of filename_seq OR filename_seq_list, not both.
+the names of the observation sequence files to process.  
+The names on each line in the file should not have 
+any delimiters, e.g. no single or double quotes at the start 
+or end of the filename.  This file can be made with a text editor
+or with the output of the 'ls' command, e.g. <em class=code>ls obs_seq.* > flist</em>.
+You can only specify one of <em class=code>filename_seq</em> OR 
+<em class=code>filename_seq_list</em>, not both.
 </TD></TR>
 
 <TR><TD>filename_out</TD>
-    <TD>character(len=129)</TD>
+    <TD>character(len=256)</TD>
     <TD>The name of the resulting output observation sequence file.
-</TD></TR>
-
-<TR><TD>print_only</TD>
-    <TD>logical</TD>
-    <TD>If .TRUE., do not create an output file, but print a summary of the
-number and types of each observation in each input file, and then the number
-of observations and types which would have been created in an output file.
-If other namelist selections are specified (e.g. start and end times, select
-by observation type, qc value, etc) the summary message will include the
-results of that processing.
 </TD></TR>
 
 <TR><TD>first_obs_days</TD>
     <TD>integer</TD>
     <TD>If non-negative, restrict the timestamps of the observations
 copied to the output file to be equal to or after this day number (specified
-in the Gregorian calendar; day number since 1600).
+in the Gregorian calendar; day number since 1601).
 </TD></TR>
 
 <TR><TD>first_obs_seconds</TD>
@@ -189,7 +186,7 @@ copied to the output file to be equal to or after this time.
     <TD>integer</TD>
     <TD>If non-negative, restrict the timestamps of the observations
 copied to the output file to be equal to or before this date
-(specified in the Gregorian calendar; day number since 1600).
+(specified in the Gregorian calendar; day number since 1601).
 </TD></TR>
 
 <TR><TD>last_obs_seconds</TD>
@@ -213,6 +210,18 @@ to the output file.
 <em class=code>obs_types</em> namelist.  If .TRUE., only the specified
 observation types will be copied to the output file; if .FALSE., all
 types except the listed ones will be copied to the output file.
+</TD></TR>
+
+<TR><TD>min_box</TD>
+    <TD>real(r8)(:)</TD>
+    <TD>If the locations are 1D, set a min value here instead of using
+the lat/lon box values.
+</TD></TR>
+
+<TR><TD>max_box</TD>
+    <TD>real(r8)(:)</TD>
+    <TD>If the locations are 1D, set a max value here instead of using
+the lat/lon box values.
 </TD></TR>
 
 <TR><TD>min_lat</TD>
@@ -244,43 +253,6 @@ copied to the output file.  This assumes compiling with the 3d-sphere locations
 module.  If min_lon is larger than max_lon, wrap across 360 to 0 is assumed.
 </TD></TR>
 
-<TR><TD>min_box</TD>
-    <TD>real(r8)(:)</TD>
-    <TD>If the locations are 1D, set a min value here instead of using
-the lat/lon box values.
-</TD></TR>
-
-<TR><TD>max_box</TD>
-    <TD>real(r8)(:)</TD>
-    <TD>If the locations are 1D, set a max value here instead of using
-the lat/lon box values.
-</TD></TR>
-
-<TR><TD>qc_metadata</TD>
-    <TD>character</TD>
-    <TD>If specified, the metadata string describing one of the quality
-control (QC) fields in the input observation sequence files.
-</TD></TR>
-
-<TR><TD>min_qc</TD>
-    <TD>real</TD>
-    <TD>If specified, the minimum qc value in the QC field matching the
-qc_metadata name that will be copied to the output file. 
-</TD></TR>
-
-<TR><TD>max_qc</TD>
-    <TD>real</TD>
-    <TD>If specified, the maximum qc value in the QC field matching the
-qc_metadata name that will be copied to the output file. 
-</TD></TR>
-
-<TR><TD>copy_type</TD>
-    <TD>character(len=32)</TD>
-    <TD>If specified, the string name of an observation type to be copied
-to the output file only if the min and max values specified are in range.
-All other observation types are discarded if this option is specified.
-</TD></TR>
-
 <TR><TD>copy_metadata</TD>
     <TD>character</TD>
     <TD>If specified, the metadata string describing one of the data
@@ -299,12 +271,11 @@ copy_metadata name that will be copied to the output file.
 copy_metadata name that will be copied to the output file. 
 </TD></TR>
 
-<TR><TD>gregorian_cal</TD>
-    <TD>logical</TD>
-    <TD>If .true. the dates of the first and last observations in each file
-will be printed in both (day/seconds) format and in gregorian calendar
-year/month/day hour:min:sec format.  Set this to .false. if the observations
-were not created with gregorian calendar times.
+<TR><TD>copy_type</TD>
+    <TD>character(len=32)</TD>
+    <TD>If specified, the string name of an observation type to be copied
+to the output file only if the min and max values specified are in range.
+All other observation types are discarded if this option is specified.
 </TD></TR>
 
 <TR><TD>edit_copy_metadata</TD>
@@ -340,6 +311,24 @@ specified as the first value all copies will be deleted.
     <TD>An array of reals. The length should correspond to the number of 0s
 in the new_copy_index list, and will be the data value for the new copies.
 This value will be constant for all observations.
+</TD></TR>
+
+<TR><TD>qc_metadata</TD>
+    <TD>character</TD>
+    <TD>If specified, the metadata string describing one of the quality
+control (QC) fields in the input observation sequence files.
+</TD></TR>
+
+<TR><TD>min_qc</TD>
+    <TD>real</TD>
+    <TD>If specified, the minimum qc value in the QC field matching the
+qc_metadata name that will be copied to the output file. 
+</TD></TR>
+
+<TR><TD>max_qc</TD>
+    <TD>real</TD>
+    <TD>If specified, the maximum qc value in the QC field matching the
+qc_metadata name that will be copied to the output file. 
 </TD></TR>
 
 <TR><TD>edit_qc_metadata</TD>
@@ -397,6 +386,31 @@ explicitly overridden by edit_qc_metadata.
 </TD></TR>
 
 
+<TR><TD>print_only</TD>
+    <TD>logical</TD>
+    <TD>If .TRUE., do not create an output file, but print a summary of the
+number and types of each observation in each input file, and then the number
+of observations and types which would have been created in an output file.
+If other namelist selections are specified (e.g. start and end times, select
+by observation type, qc value, etc) the summary message will include the
+results of that processing.
+</TD></TR>
+
+<TR><TD>gregorian_cal</TD>
+    <TD>logical</TD>
+    <TD>If .true. the dates of the first and last observations in each file
+will be printed in both (day/seconds) format and in gregorian calendar
+year/month/day hour:min:sec format.  Set this to .false. if the observations
+were not created with gregorian calendar times.
+</TD></TR>
+
+<TR><TD>num_input_files</TD>
+    <TD>integer</TD>
+    <TD>DEPRECATED.  The number of observation sequence files to process
+is now set by counting up the number of input filenames specified.  This
+namelist item is ignored and will be removed in future versions of the code.
+</TD></TR>
+
 </TBODY> 
 </TABLE>
 </div>
@@ -442,11 +456,11 @@ Either specify a list of input files for <em class=code>filename_seq</em>, like:
 <P>
 and all observations in each of the three input files will be merged
 in time order and output in a single observation sequence file.
-Or, at the command line, create a file containing one filename per line,
+Or from the command line create a file containing one filename per line,
 either with 'ls':
 </P>
 <pre>
-&gt; ls obs_seq_in* &gt; tlist
+ls obs_seq_in* &gt; tlist
 </pre>
 <P>
 or with a text editor, or any other tool of your choice.  Then, 
@@ -461,6 +475,8 @@ or with a text editor, or any other tool of your choice.  Then,
 <P>
 will open 'tlist' and read the filenames, one per line, and merge them
 together.  The output file will be named 'obs_seq20071101.all'.
+Note that the filenames inside the list file should not have
+delimiters (e.g. single or double quotes) around the filenames.
 </P>
 
 <A NAME="timeclamp"></A>
@@ -849,17 +865,19 @@ file will be very wrong.</b>
 </P>
 
 <P>
-The latest version of the tool offers an additional option for specifying
-a list of input files.  The user creates an ASCII file by any appropriate
-method, with one filename per line.  They specify this file with the
+The tool offers an additional option for specifying
+a list of input files.  The user creates an ASCII file by any desired
+method (e.g. ls > file, editor), with one filename per line.  
+The names on each line in the file should not have 
+any delimiters, e.g. no single or double quotes at the start 
+or end of the filename.
+They specify this file with the
 <em class=code>filename_seq_list</em> namelist item, and the tool opens
-each input file in turn and processes the list.  In previous versions of
-the tool the user had to specify a count of the number of input files.
-In the current version, if the number of input files,
-<em class=code>num_input_files</em>, is unspecified or specified as 0,
-the number will be computed automatically.  If a count is specified,
-it must match either the explicit list in <em class=code>filename_seq</em>,
-or the file count from the contents of <em class=code>filename_seq_list</em>.
+the list file and processes each input file in turn.
+The namelist item <em class=code>num_input_files</em> is now
+DEPRECATED and is ignored.  The number of input files is computed
+from either the explicit list in <em class=code>filename_seq</em>,
+or the contents of the <em class=code>filename_seq_list</em> file.
 </P>
 
 <P>
@@ -979,7 +997,8 @@ obs_sequence_mod
 <H2>FILES</H2>
 <UL><LI><em class="file">input.nml</em></LI>
     <LI>The input files specified in the <em class="code">filename_seq</em>
-        namelist variable.</LI>
+        namelist variable, or inside the file named in 
+        <em class="code">filename_seq_list</em>.</LI>
     <LI>The output file specified in the <em class="code">filename_out</em>
         namelist variable.</LI>
 </UL>
@@ -1007,15 +1026,10 @@ obs_sequence_mod
 <TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
 
 <TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
-    <!-- message --><TD VALIGN=top>num_input_files &gt; max_num_input_files. 
-		    change max_num_input_files in source file</TD>
-    <!-- comment --><TD VALIGN=top>The default is 500 files.</TD>
+    <!-- message --><TD VALIGN=top>num_input_files &gt; max_num_input_files. </TD>
+    <!-- comment --><TD VALIGN=top>The limit is currently 1000 files.
+		    Change 'max_num_input_files' in the source file and recompile.</TD>
 </TR>
-
-<TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
-    <!-- message --><TD VALIGN=top>num_input_files and filename_seq mismatch</TD>
-    <!-- comment --><TD VALIGN=top>The number of filenames does not match
-                        the filename count.</TD>
 
 <TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
     <!-- message --><TD VALIGN=top>use either lat/lon box or min/max box but not both
@@ -1045,7 +1059,7 @@ obs_sequence_mod
                                    max_lon cannot be greater than 360.0 degrees<br>
                     </TD>
     <!-- comment --><TD VALIGN=top>fix latitude limits to be within -90 to 90, 
-                     longitude limits to be 0 to 360.  if longitude is negative,
+                     longitude limits to be 0 to 360.  If longitude is negative,
                      360 will be added so values of -180 to 180 are ok.
                     </TD>
 
@@ -1117,10 +1131,10 @@ obs_sequence_mod
 <TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
     <!-- message --><TD VALIGN=top>cannot specify both filename_seq and filename_seq_list
                     </TD>
-    <!-- comment --><TD VALIGN=top> in the input namelist, you can either give a file
+    <!-- comment --><TD VALIGN=top> In the input namelist you can either give a file
                      or a list of files for the 'filename_seq' item, or you can give
-                     the name of a file that contains the names in 'filename_seq_list',
-                     but you cannot specify both.  set one of these to ''.
+                     the name of a file that contains the names in 'filename_seq_list'.
+                     You cannot specify both.  Set one of these to '&nbsp;'.
                     </TD>
 
 <TR><!-- routine --><TD VALIGN=top>obs_sequence_tool</TD>
@@ -1153,7 +1167,10 @@ Long laundry list of things this tool could do, including:
 <LI>Combine copies or qc fields from multiple files into a single 
     observation</LI>
 <LI>Select based on vertical location value.  (Complicated by the
-    options of specifying vertical in meters, pressure, or model levels.)</LI>
+    options of specifying vertical in meters, pressure, or model levels.)
+    The source code already contains a commented-out subroutine that can
+    select in the vertical.  It can be uncommented and used if needed.
+    </LI>
 <LI>Sort obs with identical timestamps by a specified type list, so
     one kind of ob gets assimilated before another.</LI>
 <LI>Sort obs with idential timestamps so any at the same location 

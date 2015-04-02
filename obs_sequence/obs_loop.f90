@@ -60,12 +60,12 @@ integer                 :: num_inserted, iunit, io, i, j
 integer                 :: max_num_obs, file_id
 integer                 :: num_rejected_badqc, num_rejected_diffqc
 integer                 :: num_rejected_other
-character(len = 129)    :: read_format
+character(len=129)      :: read_format
 logical                 :: pre_I_format, cal
-character(len = 256)    :: msgstring, msgstring1, msgstring2
+character(len=512)      :: msgstring, msgstring1, msgstring2, msgstring3
 type(obs_def_type)      :: this_obs_def
 
-character(len = metadatalength) :: meta_data
+character(len=metadatalength) :: meta_data
 
 ! could go into namelist if you wanted more control
 integer, parameter      :: print_every = 5000
@@ -77,8 +77,8 @@ integer, parameter :: max_obs_input_types = 500
 ! Namelist input with default values
 
 
-character(len = 160) :: filename_in = ''
-character(len = 160) :: filename_out = ''
+character(len=256)   :: filename_in = ''
+character(len=256)   :: filename_out = ''
 
 logical              :: print_only    = .false.
 character(len=32)    :: calendar      = 'Gregorian'
@@ -304,7 +304,7 @@ subroutine print_obs_seq(seq_in, filename)
 ! stop times, and metadata strings and counts.
 
 type(obs_sequence_type), intent(in) :: seq_in
-character(len=*), intent(in)        :: filename
+character(len=*),        intent(in) :: filename
 
 type(obs_type)          :: obs, next_obs
 type(obs_def_type)      :: this_obs_def
@@ -534,12 +534,11 @@ subroutine print_metadata(seq, fname)
 ! print out the metadata strings, trimmed
 !
 
-type(obs_sequence_type), intent(in) :: seq
-character(len=*), optional :: fname
+type(obs_sequence_type),    intent(in) :: seq
+character(len=*), optional, intent(in) :: fname
 
 integer :: num_copies , num_qc, i
 character(len=metadatalength) :: str
-character(len=255) :: msgstring3
 
 num_copies = get_num_copies(seq)
 num_qc     = get_num_qc(    seq)

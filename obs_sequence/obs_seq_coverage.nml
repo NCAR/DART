@@ -11,23 +11,23 @@
 # 21600 secs == 6 hours
 
 &obs_seq_coverage_nml
-   obs_sequence_list = 'obs_coverage_list.txt',
-   obs_sequence_name = '',
-   obs_of_interest   = '',
-   textfile_out      = 'obsdef_mask.txt',
-   netcdf_out        = 'obsdef_mask.nc',
-   calendar          = 'Gregorian',
-   first_analysis    =  2003, 1, 1, 0, 0, 0,
-   last_analysis     =  2003, 1, 2, 0, 0, 0,
-   forecast_length_days          = 1,
-   forecast_length_seconds       = 0,
-   verification_interval_seconds = 21600,
-   temporal_coverage_percent     = 100.0,
-   lonlim1    =  missing_r8,
-   lonlim2    =  missing_r8,
-   latlim1    =  missing_r8,
-   latlim2    =  missing_r8,
-   verbose    = .false.,
-   debug      = .false.,
+   obs_sequences     = ''
+   obs_sequence_list = 'obs_coverage_list.txt'
+   obs_of_interest   = ''
+   textfile_out      = 'obsdef_mask.txt'
+   netcdf_out        = 'obsdef_mask.nc'
+   calendar          = 'Gregorian'
+   first_analysis    =  2003, 1, 1, 0, 0, 0
+   last_analysis     =  2003, 1, 2, 0, 0, 0
+   forecast_length_days          = 1
+   forecast_length_seconds       = 0
+   verification_interval_seconds = 21600
+   temporal_coverage_percent     = 100.0
+   lonlim1    =  -888888.0
+   lonlim2    =  -888888.0
+   latlim1    =  -888888.0
+   latlim2    =  -888888.0
+   verbose    = .false.
+   debug      = .false.
    /
 

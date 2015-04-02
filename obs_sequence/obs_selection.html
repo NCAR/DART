@@ -36,14 +36,26 @@
 <H2>Overview</H2>
 
 <P>
-This specialized tool selects out a subset of the input observations.
-For a more general purpose tool, see the
+This specialized tool selects a subset of input observations
+from an observation sequence file.
+For a more general purpose observation sequence file tool, see the
 <a href="obs_sequence_tool.html">obs_sequence_tool</a>.
-The tool which creates the input selection file is
-<a href="obs_seq_coverage.html">obs_seq_coverage</a>.
 This tool takes a selected list of observation
 types, times, and locations, and extracts only the matching
-observations out of a longer set of obs_sequence files.
+observations out of one or more obs_sequence files.
+The tool which creates the input selection file is usually
+<a href="obs_seq_coverage.html">obs_seq_coverage</a>.
+Alternatively, the selection file can be a full observation
+sequence file, in which case the types, times, and locations
+of those observations are used as the selection criteria.
+</P>
+<P>
+This tool processes each observation sequence file listed
+in the input namelist <em class=code>filename_seq</em> or 
+<em class=code>filename_seq_list</em>.  If the observation 
+type, time and location matches an entry in the selection
+file, it is copied through to the output.
+Otherwise it is ignored.
 </P>
 <P>
 The actions of the <em class=code>obs_selection</em> program
@@ -76,9 +88,19 @@ prematurely terminating the namelist.
    filename_seq          = 'obs_seq.out', 
    filename_seq_list     = '', 
    filename_out          = 'obs_seq.processed', 
+   num_input_files       = 0,
    selections_file       = 'obsdef_mask.txt', 
    selections_is_obs_seq = .false.,
+   match_vertical        = .false.,
+   latlon_tolerance      = 0.000001,
+   surface_tolerance     = 0.0001,
+   pressure_tolerance    = 0.001,
+   height_tolerance      = 0.0001,
+   scaleheight_tolerance = 0.001,
+   level_tolerance       = 0.00001,
    print_only            = .false., 
+   partial_write         = .false.,
+   print_timestamps      = .false.,
    calendar              = "Gregorian",
 /
 </pre>
@@ -98,14 +120,14 @@ prematurely terminating the namelist.
 <TBODY valign=top>
 
 <TR><TD>filename_seq</TD>
-    <TD>character(len=129), dimension(500)</TD>
+    <TD>character(len=256), dimension(500)</TD>
     <TD>The array of names of the observation sequence files to process,
 up to a max count of 500 files. (Specify only the actual number of input
 files.  It is not necessary to specify 500 entries.)
 </TD></TR>
 
 <TR><TD>filename_seq_list</TD>
-    <TD>character(len=129)</TD>
+    <TD>character(len=256)</TD>
     <TD>An alternative way to specify the list of input files.
 The name of a text file which contains, one per line, the names of the
 observation sequence files to process.  You can only specify one of
@@ -117,17 +139,89 @@ filename_seq OR filename_seq_list, not both.
     <TD>Optional.  The number of observation sequence files to process.
 Maximum of 500.  If 0, the length is set by the number of input files
 given.  If non-zero, must match the given input file list length.
+(Can be used to verify the right number of input files were processed.)
 </TD></TR>
 
 <TR><TD>filename_out</TD>
-    <TD>character(len=129)</TD>
+    <TD>character(len=256)</TD>
     <TD>The name of the resulting output observation sequence file.
+There is only a single output file from this tool.
+If the input specifies multiple obs_seq input files, the results are concatinated 
+into a single output file.
 </TD></TR>
 
 <TR><TD>selections_file</TD>
-    <TD>character(len=129)</TD>
+    <TD>character(len=256)</TD>
     <TD>The name of the input file containing the mask of observation
 definitions (the textfile output of <a href="obs_seq_coverage.html">obs_seq_coverage</a>).
+Alternatively, this can be the name of a full observation sequence file.
+In this case, the types, times, and locations are extracted from this
+file and then used in the same manner as a mask file from the coverage tool.
+</TD></TR>
+
+<TR><TD>selections_is_obs_seq</TD>
+    <TD>logical</TD>
+    <TD>If .TRUE. the filename given for the "selections_file" is a full
+obs_sequence file and not a text file from the coverage tool.
+</TD></TR>
+
+<TR><TD>latlon_tolerance</TD>
+    <TD>real(r8)</TD>
+    <TD>Specified in degrees. 
+For observations to match in the
+horizontal the difference in degrees for each of latitude and longitude
+must be less than this threshold. If less than or equal to 0, the
+values must match exactly.
+</TD></TR>
+
+<TR><TD>match_vertical</TD>
+    <TD>logical</TD>
+    <TD>If .TRUE. the locations of the observations in the input files have 
+to match the selection list not only the horizontal but also in the vertical.
+</TD></TR>
+
+<TR><TD>surface_tolerance</TD>
+    <TD>real(r8)</TD>
+    <TD>Specified in meters. If "match_vertical" is .FALSE. this value is
+ignored.  If "match_vertical" is .TRUE., this applies to observations with 
+a vertical type of VERTISSURFACE.  For observations which match in the
+horizontal, the vertical surface elevation difference must be less than 
+this to be considered the same.
+</TD></TR>
+
+<TR><TD>pressure_tolerance</TD>
+    <TD>real(r8)</TD>
+    <TD>Specified in pascals. If "match_vertical" is .FALSE. this value is
+ignored.  If "match_vertical" is .TRUE., this applies to observations with 
+a vertical type of VERTISPRESSURE.  For observations which match in the
+horizontal, the vertical difference must be less than this to be considered the same.
+</TD></TR>
+
+<TR><TD>height_tolerance</TD>
+    <TD>real(r8)</TD>
+    <TD>Specified in meters. If "match_vertical" is .FALSE. this value is
+ignored.  If "match_vertical" is .TRUE., this applies to observations with 
+a vertical type of VERTISHEIGHT.  For observations which match in the
+horizontal, the vertical difference must be less than this to be considered the same.
+</TD></TR>
+
+<TR><TD>scaleheight_tolerance</TD>
+    <TD>real(r8)</TD>
+    <TD>Specified in unitless values. If "match_vertical" is .FALSE. this value is
+ignored.  If "match_vertical" is .TRUE., this applies to observations with 
+a vertical type of VERTISSCALEHEIGHT.  For observations which match in the
+horizontal, the vertical difference must be less than this to be considered the same.
+</TD></TR>
+
+<TR><TD>level_tolerance</TD>
+    <TD>real(r8)</TD>
+    <TD>Specified in fractional model levels. If "match_vertical" is .FALSE. this value is
+ignored.  If "match_vertical" is .TRUE., this applies to observations with 
+a vertical type of VERTISLEVEL.  For observations which match in the
+horizontal, the vertical difference must be less than this to be considered the same.
+Note that some models only support integer level values, but others support
+fractional levels.  The vertical value in an observation is a floating point/real
+value, so fractional levels are possible to specify for an observation.
 </TD></TR>
 
 <TR><TD>print_only</TD>
@@ -135,6 +229,25 @@ definitions (the textfile output of <a href="obs_seq_coverage.html">obs_seq_cove
     <TD>If .TRUE. do not create an output file, but print a summary of the
 number and types of each observation in each input file, and then the number
 of observations and types which would have been created in an output file.
+</TD></TR>
+
+<TR><TD>partial_write</TD>
+    <TD>logical</TD>
+    <TD>Generally only used for debugging problems.  After each input obs_seq
+file is processed, this flag, if .TRUE., causes the code to write out the 
+partial results to the output file.  The default is to process all input
+files (if more than a single file is specified) and write the output file
+only at the end of the processing.
+</TD></TR>
+
+<TR><TD>print_timestamps</TD>
+    <TD>logical</TD>
+    <TD>Generally only used for debugging very slow execution runs.
+This flag, if .TRUE., causes the code to output timestamps (wall clock
+time) at various locations during the processing phases.  It may help
+isolate where particularly slow execution times are occurring.
+For very large input files, or long lists of input files, it can also
+help to estimate what the eventual run time of the job will be.
 </TD></TR>
 
 <TR><TD>calendar</TD>
@@ -174,8 +287,12 @@ the <tt>threed_sphere</tt> module should be used.
 </P>
 <P>Generally the directories where executables are built will include
 a "quickbuild.csh" script which will build and run preprocess and then
-build the rest of the executables.  The "input.nml" namelists will need
-to be edited to include all the required observation types first.
+build the rest of the executables.  The "input.nml" namelist file may 
+need to be edited to include all the required observation types first.
+If this tool is not built, you must add a "path_names_obs_selection"
+and "mkmf_obs_selection" file in the current directory.  One can be
+copied from another model and edited to be consistent with the model
+you are building.
 </P>
 
 
@@ -258,9 +375,12 @@ none
 Long laundry list of things this tool could do, including:
 </P>
 <UL>
-<LI>Remove duplicates (difficult to accurately compare floating
-    point values, but identical obs should be possible to recognize,
-    or some epsilon could be specified.)</LI>
+<LI>Remove duplicates. Lots of clever bookkeeping will be
+needed to make sure this doesn't run excruciatingly slow.</LI>
+<LI>General superob functions could be added - all observations
+within a given tolerance could be combined.  Hard questions are
+how to specify the error of the combined observation, and how 
+to combine obs near or over the poles.</LI>
 </UL>
 
 <!--==================================================================-->

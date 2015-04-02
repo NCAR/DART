@@ -156,8 +156,8 @@ obs_kind_mod
    integer                       :: num_qc
    integer                       :: num_obs
    integer                       :: max_num_obs
-   character(len = 129), pointer :: copy_meta_data(:)
-   character(len = 129), pointer :: qc_meta_data(:)
+   character(len=64), pointer    :: copy_meta_data(:)
+   character(len=64), pointer    :: qc_meta_data(:)
    integer                       :: first_time
    integer                       :: last_time
    type(obs_type), pointer       :: obs(:)
@@ -485,7 +485,7 @@ Returns maximum number of observations an observation sequence can hold.
 <div class=routine>
 <em class=call> var = get_copy_meta_data(seq, copy_num) </em>
 <pre>
-character(len=129)                  :: <em class=code>get_copy_meta_data</em>
+character(len=64)                   :: <em class=code>get_copy_meta_data</em>
 type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
 integer,                 intent(in) :: <em class=code>copy_num</em>
 </pre>
@@ -518,7 +518,7 @@ Returns metadata associated with a given copy of data in an observation sequence
 <div class=routine>
 <em class=call> var = get_qc_meta_data(seq,qc_num) </em>
 <pre>
-character(len=129)                  :: <em class=code>get_qc_meta_data</em>
+character(len=64)                   :: <em class=code>get_qc_meta_data</em>
 type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
 integer,                 intent(in) :: <em class=code>qc_num</em>
 </pre>
@@ -803,7 +803,7 @@ the same key from the observation sequence.
 <pre>
 type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
 integer,                 intent(in)    :: <em class=code>copy_num</em>
-character(len=129),      intent(in)    :: <em class=code>meta_data</em>
+character(len=64),       intent(in)    :: <em class=code>meta_data</em>
 </pre>
 </div>
 
@@ -836,7 +836,7 @@ observation sequence.
 <pre>
 type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
 integer,                 intent(in)    :: <em class=code>qc_num</em>
-character(len=129),      intent(in)    :: <em class=code>meta_data</em>
+character(len=64),       intent(in)    :: <em class=code>meta_data</em>
 </pre>
 </div>
 
@@ -1000,7 +1000,7 @@ with a larger size.
 <em class=call> call read_obs_seq(file_name, add_copies, add_qc, 
                 add_obs, seq) </em>
 <pre>
-character(len=129),      intent(in)  :: <em class=code>file_name</em>
+character(len=*),        intent(in)  :: <em class=code>file_name</em>
 integer,                 intent(in)  :: <em class=code>add_copies</em>
 integer,                 intent(in)  :: <em class=code>add_qc</em>
 integer,                 intent(in)  :: <em class=code>add_obs</em>
@@ -1055,7 +1055,7 @@ releases are assumed when an old format sequence file is detected.
 <em class=call> call write_obs_seq(seq, file_name) </em>
 <pre>
 type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
-character(len=129),      intent(in) :: <em class=code>file_name</em>
+character(len=*),        intent(in) :: <em class=code>file_name</em>
 </pre>
 </div>
 
@@ -1082,8 +1082,7 @@ controlled by the namelist parameter write_binary_obs_sequence.
 <A NAME="set_obs"></A>
 <br>
 <div class=routine>
-<em class=call> call set_obs(seq,obs
-   <em class=optionalcode>[,&nbsp;key_in]</em>) </em>
+<em class=call> call set_obs(seq,obs <em class=optionalcode>[,&nbsp;key_in]</em>) </em>
 <pre>
 type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
 type(obs_type),          intent(in)    :: <em class=code>obs</em>
@@ -1372,13 +1371,13 @@ sequence.
         num_obs, max_num_obs, file_id, read_format, pre_I_format
         <em class=optionalcode>[,&nbsp;close_the_file]</em>) </em>
 <pre>
-character(len=129), intent(in)  :: <em class=code>file_name</em>
+character(len=*),   intent(in)  :: <em class=code>file_name</em>
 integer,            intent(out) :: <em class=code>num_copies</em>
 integer,            intent(out) :: <em class=code>num_qc</em>
 integer,            intent(out) :: <em class=code>num_obs</em>
 integer,            intent(out) :: <em class=code>max_num_obs</em>
 integer,            intent(out) :: <em class=code>file_id</em>
-character(len=129), intent(out) :: <em class=code>read_format</em>
+character(len=*),   intent(out) :: <em class=code>read_format</em>
 logical,            intent(out) :: <em class=code>pre_I_format</em>
 logical, optional,  intent(in)  :: <em class=optionalcode>close_the_file</em>
 </pre>
@@ -1872,7 +1871,7 @@ integer,            intent(in)    :: <em class=code>num_qc</em>
 integer,            intent(in)    :: <em class=code>add_qc</em>
 integer,            intent(in)    :: <em class=code>key</em>
 type(obs_type),     intent(inout) :: <em class=code>obs</em>
-character(len=129), intent(in)    :: <em class=code>read_format</em>
+character(len=*),   intent(in)    :: <em class=code>read_format</em>
 integer, optional,  intent(in)    :: <em class=optionalcode>max_obs</em>
 </pre>
 </div>

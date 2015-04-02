@@ -12,31 +12,29 @@ program obs_seq_to_netcdf
 ! All 'possible' obs_kinds are treated separately.
 !-----------------------------------------------------------------------
 
-use        types_mod, only : r4, r8, digits12, MISSING_R8, MISSING_R4
+use        types_mod, only : r8, digits12, MISSING_R8
 use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_first_obs, &
                              get_obs_from_key, get_obs_def, get_copy_meta_data, &
-                             get_obs_time_range, get_time_range_keys, get_num_obs, &
-                             get_next_obs, get_num_times, get_obs_values, init_obs, &
-                             assignment(=), get_num_copies, static_init_obs_sequence, &
+                             get_obs_time_range, get_time_range_keys, &
+                             get_obs_values, init_obs, assignment(=), static_init_obs_sequence, &
                              get_qc, destroy_obs_sequence, read_obs_seq_header, & 
-                             get_last_obs, destroy_obs, get_num_qc, get_qc_meta_data
+                             get_last_obs, destroy_obs, get_qc_meta_data
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                             get_obs_def_location,  get_obs_kind, get_obs_name
-use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_var_type, get_obs_kind_name
-use     location_mod, only : location_type, get_location, set_location_missing, &
-                             write_location, operator(/=), operator(==), &
+                             get_obs_def_location,  get_obs_kind
+use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_name
+use     location_mod, only : location_type, write_location, operator(/=), operator(==), &
                              set_location, is_location_in_region, query_location, &
                              nc_write_location_atts, nc_get_location_varids, &
                              nc_write_location
-use time_manager_mod, only : time_type, set_date, set_time, get_time, print_time, &
-                             set_calendar_type, get_calendar_string, print_date, &
+use time_manager_mod, only : time_type, get_time, print_time, &
+                             get_calendar_string, print_date, &
                              operator(*), operator(+), operator(-), &
                              operator(>), operator(<), operator(/), &
                              operator(/=), operator(<=)
 use     schedule_mod, only : schedule_type, set_regular_schedule, get_schedule_length, &
                              get_time_from_schedule
-use    utilities_mod, only : open_file, close_file, register_module, &
-                             file_exist, error_handler, E_ERR, E_WARN, E_MSG, &
+use    utilities_mod, only : register_module, &
+                             file_exist, error_handler, E_ERR, E_MSG, &
                              initialize_utilities, finalize_utilities, nmlfileunit, &
                              find_namelist_in_file, check_namelist_read, nc_check, &
                              next_file, get_next_filename, find_textfile_dims, &
@@ -68,8 +66,8 @@ type(obs_type)          :: obs1, obsN
 type(obs_def_type)      :: obs_def
 type(location_type)     :: obs_loc, minl, maxl
 
-character(len = 129) :: obs_seq_in_file_name
-character(len = 129), allocatable, dimension(:) :: obs_seq_filenames
+character(len=256) :: obs_seq_in_file_name
+character(len=256), allocatable, dimension(:) :: obs_seq_filenames
 
 real(r8)            :: obs_err_var
 
@@ -78,7 +76,7 @@ integer :: num_copies, num_qc, num_obs, max_num_obs, obs_seq_file_id
 
 integer :: num_obs_kinds
 
-character(len=129) :: obs_seq_read_format
+character(len=stringlength) :: obs_seq_read_format
 logical :: pre_I_format
 
 logical :: out_of_range, is_there_one, keeper
@@ -87,8 +85,8 @@ logical :: out_of_range, is_there_one, keeper
 ! Namelist with (some scalar) default values
 !-----------------------------------------------------------------------
 
-character(len = 129) :: obs_sequence_name = 'obs_seq.final'
-character(len = 129) :: obs_sequence_list = ''
+character(len=256) :: obs_sequence_name = 'obs_seq.final'
+character(len=256) :: obs_sequence_list = ''
 
 real(r8) :: lonlim1= MISSING_R8, lonlim2= MISSING_R8
 real(r8) :: latlim1= MISSING_R8, latlim2= MISSING_R8 
@@ -146,8 +144,8 @@ type(time_type) :: obs_time
 real(digits12)  :: mytime
 integer         :: seconds, days
 
-character(len = 129) :: ncName, calendarstring
-character(len = 129) :: string1, string2, string3
+character(len=stringlength) :: ncName, calendarstring
+character(len=512) :: string1, string2, string3
 
 !=======================================================================
 ! Get the party started
@@ -597,7 +595,7 @@ CONTAINS
 Function InitNetCDF(fname, ibin)
 character(len=*), intent(in) :: fname
 integer,          intent(in) :: ibin
-integer :: InitNetCDF
+integer                      :: InitNetCDF
 
 integer :: ncid, i, indx1, nlines, linelen
 integer :: LineLenDimID, nlinesDimID, stringDimID
@@ -611,7 +609,7 @@ character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 
-character(len=129), allocatable, dimension(:) :: textblock
+character(len=256), allocatable, dimension(:) :: textblock
 
 real(digits12)  :: epoch_edges(2)
 integer         :: seconds, days
@@ -915,16 +913,15 @@ end Function InitNetCDF
 Subroutine WriteNetCDF(ncid, fname, ngood, obs_copies, qc_copies, &
                        locations, obs_times, obs_types, obs_keys ) 
 !============================================================================
-integer,                      intent(in) :: ncid
-character(len=*),             intent(in) :: fname
-integer,                      intent(in) :: ngood
-
-real(r8),     dimension(:,:), intent(in) :: obs_copies
-integer,      dimension(:,:), intent(in) :: qc_copies
-type(location_type), dimension(:), intent(in) :: locations
-real(digits12), dimension(:), intent(in) :: obs_times
-integer,        dimension(:), intent(in) :: obs_types
-integer,        dimension(:), intent(in) :: obs_keys
+integer,                             intent(in) :: ncid
+character(len=*),                    intent(in) :: fname
+integer,                             intent(in) :: ngood
+real(r8),            dimension(:,:), intent(in) :: obs_copies
+integer,             dimension(:,:), intent(in) :: qc_copies
+type(location_type), dimension(:),   intent(in) :: locations
+real(digits12),      dimension(:),   intent(in) :: obs_times
+integer,             dimension(:),   intent(in) :: obs_types
+integer,             dimension(:),   intent(in) :: obs_keys
 
 integer :: DimID, dimlen, obsindex, iobs
 integer, dimension(1) :: istart, icount, intval
