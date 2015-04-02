@@ -285,7 +285,7 @@ aw=aw/60; %convert aw to minutes
 
 
 %load PRIOR
-ncid  = netcdf.open('Prior_Diag.nc','NC_NOWRITE');
+ncid  = netcdf.open('Prior_Diag.nc','NOWRITE');
 LonD   = double(netcdf.getVar(ncid, netcdf.inqVarID(ncid, 'LON') ) );
 LatD   = double(netcdf.getVar(ncid, netcdf.inqVarID(ncid, 'LAT') ) );
 AltD   = double(netcdf.getVar(ncid, netcdf.inqVarID(ncid, 'ALT') ) );
@@ -297,7 +297,7 @@ RhoDr = netcdf.getVar(ncid, netcdf.inqVarID(ncid, 'Rho') );
 netcdf.close(ncid)
 
 %load POSTERIOR
-ncid  = netcdf.open('Posterior_Diag.nc','NC_NOWRITE');
+ncid  = netcdf.open('Posterior_Diag.nc','NOWRITE');
 td =  netcdf.getVar(ncid, netcdf.inqVarID(ncid,'time'))... %td=Time DART (number of minutes since beginning of 12/01/2002)
     + datenum([1601 01 01 00 00 00]) ... %DART starts its timekeeping from 01/01/1601
     - datenum([2002 12 01 00 00 00]);    %This file counts time       from 12/01/2002
