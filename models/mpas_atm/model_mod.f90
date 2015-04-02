@@ -168,7 +168,10 @@ real(r8), parameter :: rcv = rgas/(cp-rgas)
 ! instead of 1229.   ??
 real(r8), parameter :: radius = 6371229.0 ! meters
 
-! roundoff error
+! roundoff error for single precision
+!real(r8), parameter :: roundoff = 1.0e-5_r8
+
+! r8 r4
 real(r8), parameter :: roundoff = 1.0e-12_r8
 
 ! Storage for a random sequence for perturbing a single initial state
