@@ -635,12 +635,34 @@ open( topo_unit, file=trim(topography_file), form='unformatted', &
 read( topo_unit, rec=1) KMT
 close(topo_unit)
 
-KMU(1, 1) = 0
-do j=2,ny
-do i=2,nx
-   KMU(i,j) = min(KMT(i, j), KMT(i-1, j), KMT(i, j-1), KMT(i-1, j-1))
+! the equation numbered 3.2 on page 15 of this document:
+!  http://www.cesm.ucar.edu/models/cesm1.0/pop2/doc/sci/POPRefManual.pdf
+! is WRONG.  (WRONG == inconsistent with the current POP source code.)
+!
+! for any U(i,j), the T(i,j) point with the same index values is located
+! south and west. so the T points which surround any U(i,j) point are
+! in fact at indices i,i+1, and j,j+1 .
+!
+!  NO: KMU(i,j) = min(KMT(i, j), KMT(i-1, j), KMT(i, j-1), KMT(i-1, j-1)) 
+! YES: KMU(i,j) = min(KMT(i, j), KMT(i+1, j), KMT(i, j+1), KMT(i+1, j+1))
+!
+! the latter matches the POP source code, on yellowstone, lines 908 and 909 in:
+!  /glade/p/cesm/releases/cesm1_2_2/models/ocn/pop2/source/grid.F90
+!
+! wrap around longitude boundary at i == nx.  set the topmost (last) latitude
+! U row to the same value in all cases. in the shifted pole grid currently in 
+! use all these points are on land and so are 0.  in the original unshifted
+! lat/lon grid these last row U points are above the final T row and are believed
+! to be unused.  for completeness we set all values in the last U row to the 
+! minimum of the all T row values immediately below it, for all longitudes.
+
+do j=1,ny-1
+   do i=1,nx-1
+      KMU(i,j) = min(KMT(i, j), KMT(i+1, j), KMT(i, j+1), KMT(i+1, j+1))
+   enddo
+   KMU(nx,j) = min(KMT(nx, j), KMT(1, j), KMT(nx, j+1), KMT(1, j+1))
 enddo
-enddo
+KMU(:,ny) = minval(KMT(:,ny))
 
 end subroutine read_topography
 
@@ -652,14 +674,23 @@ end subroutine read_topography
 !
 ! Open and read the ASCII vertical grid information
 !
-! The vert grid file is ascii, with 3 columns/line:
+! The vert grid file is in ascii, with either 3 columns/line
 !    cell thickness(in cm)   cell center(in m)   cell bottom(in m)
+! or it can contain 2 columns/line
+!    cell thickness(in cm)   1.0
+! in which case we compute the cell center (ZC) and cell bottom (ZG)
+! and ignore the second column.
 
 integer,  intent(in)  :: nz
 real(r8), intent(out) :: ZC(nz), ZG(nz)
 
 integer  :: iunit, i, ios
 real(r8) :: depth
+
+logical :: three_columns
+character(len=256)  :: line
+
+real(r8), parameter :: centemeters_to_meters = 0.01_r8
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -675,9 +706,33 @@ endif
 
 iunit = open_file(trim(vert_grid_file), action = 'read')
 
-do i=1, nz
+! determine the number of columns
+read(iunit,'(A)') line
 
-   read(iunit,*,iostat=ios) depth, ZC(i), ZG(i)
+read(line,*,iostat=ios) depth, ZC(1), ZG(1)
+
+if(ios == 0) then
+   three_columns = .true.
+else
+   three_columns = .false.
+   
+   ! read depth and calculate center and bottom of cells
+   read(line,*,iostat=ios) depth 
+
+   ZC(1) = depth*centemeters_to_meters*0.5 
+   ZG(1) = depth*centemeters_to_meters
+endif
+
+do i=2, nz
+   
+   if(three_columns) then
+      read(iunit,*,iostat=ios) depth, ZC(i), ZG(i)
+   else
+      read(iunit,*,iostat=ios) depth
+
+      ZC(i) = ZG(i-1) + depth*centemeters_to_meters*0.5
+      ZG(i) = ZG(i-1) + depth*centemeters_to_meters
+   endif
 
    if ( ios /= 0 ) then ! error
       write(msgstring,*)'error reading depths, line ',i

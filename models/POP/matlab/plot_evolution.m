@@ -529,7 +529,7 @@ function value = local_nc_varget(fname,varname)
 
 [variable_present, varid] = nc_var_exists(fname,varname);
 if (variable_present)
-   ncid  = netcdf.open(fname);
+   ncid  = netcdf.open(fname,'NOWRITE');
    value = netcdf.getVar(ncid, varid);
    netcdf.close(ncid)
 else
