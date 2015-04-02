@@ -5,7 +5,7 @@
 # $Id$
 
 The test_merge.ksh script is a self-contained script
-that constructs input.nml files and runs merge_obs_seq.
+that constructs input.nml files and runs obs_sequence_tool.
 
 It prints out the test number and output from the run
 into a log file, and if the output sequence file is short,
@@ -21,3 +21,11 @@ there's just no specific test for it yet).
 
 nancy
 12.feb.2008
+
+
+the 'merge_obs_seq' tool is long gone, but these are
+still useful tests for the more capable 'obs_sequence_tool'.
+update the namelist names and executable names in the script.
+
+nancy
+28.aug.2014

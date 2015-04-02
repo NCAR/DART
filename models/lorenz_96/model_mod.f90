@@ -12,10 +12,9 @@ use     location_mod, only : location_type, set_location, get_location,  &
                              LocationDims, LocationName, LocationLName,  &
                              get_close_maxdist_init, get_close_obs_init
 
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+use    utilities_mod, only : register_module, do_nml_file, do_nml_term,    &
                              nmlfileunit, find_namelist_in_file,           &
-                             check_namelist_read, nc_check, do_output,     &
-                             do_nml_file, do_nml_term
+                             check_namelist_read, nc_check
 !HK
 use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
                                copies_in_window
