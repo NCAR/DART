@@ -788,10 +788,10 @@ if ( .not. get_first_obs(seq, obs) ) last_obs = .true.
 
 do while ( .not. last_obs )
 
-  !  get location information
+  !  get location information relative to domain 1 (skip nests)
   call get_obs_def(obs, obs_def)
   xyz_loc = get_location(get_obs_def_location(obs_def))
-  call get_domain_info(xyz_loc(1),xyz_loc(2),dom_id,xloc,yloc)
+  call get_domain_info(xyz_loc(1),xyz_loc(2),dom_id,xloc,yloc,1)
 
   !  compute distance to boundary, increase based on this distance
   bdydist = min(xloc-1.0_r8, yloc-1.0_r8, nx-xloc, ny-yloc)

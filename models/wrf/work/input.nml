@@ -260,6 +260,25 @@
 &obs_def_gps_nml
 /
 
+&obs_seq_coverage_nml
+   obs_sequences     = ''
+   obs_sequence_list = 'obs_coverage_list.txt'
+   obs_of_interest   = 'METAR_U_10_METER_WIND'
+   textfile_out      = 'METAR_U_10_METER_WIND_obsdef_mask.txt'
+   netcdf_out        = 'METAR_U_10_METER_WIND_obsdef_mask.nc'
+   first_analysis    =  2003, 1, 1, 0, 0, 0
+   last_analysis     =  2003, 1, 2, 0, 0, 0
+   forecast_length_days          = 1
+   forecast_length_seconds       = 0
+   verification_interval_seconds = 21600
+   temporal_coverage_percent     = 100.0
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
+   verbose    = .true.
+   /
+
 &convert_cosmic_gps_nml
    gpsro_netcdf_file     = '',
    gpsro_netcdf_filelist = 'flist',
@@ -300,6 +319,17 @@
    gregorian_cal        = .true.,
    print_only           = .true.,
 /
+
+&obs_seq_verify_nml
+   obs_sequences     = ''
+   obs_sequence_list = 'obs_verify_list.txt'
+   input_template    = 'obsdef_mask.nc'
+   netcdf_out        = 'forecast.nc'
+   obtype_string     = 'METAR_U_10_METER_WIND'
+   print_every       = 10000
+   verbose           = .true.
+   debug             = .false.
+   /
 
 &restart_file_tool_nml
    input_file_name              = "restart_file_input",

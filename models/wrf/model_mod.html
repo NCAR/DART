@@ -37,11 +37,14 @@
 <H2>Overview</H2>
 
 <P>
-DART interface module for the WRF model.   There is extensive documentation
-for running a WRF/DART assimilation on the 
-<a href="https://wiki.ucar.edu/display/DARTusers/DART+Users+Home+Page">DART Wiki</a>.  
-Send email to
-<a href="mailto:dart@ucar.edu">dart@ucar.edu</a> to get added to the access list.
+DART interface module for the WRF model.  This page documents the details of
+the module compiled into DART that interfaces with the WRF data in
+the state vector. There is additional overview and tutorial documentation
+for running a WRF/DART assimilation on this web page:
+</P>
+<P>
+<a href="http://www.image.ucar.edu/wrfdart/tutorial">
+http://www.image.ucar.edu/wrfdart/tutorial</a>
 </P>
 <P>
 The WRF model_mod code reads the state data from a filter initial condition/restart
@@ -121,12 +124,7 @@ prematurely terminating the namelist.
    num_domains                 = 1,
    output_state_vector         = .false.,
    calendar_type               = 3,
-   num_moist_vars              = 3,
-   surf_obs                    = .true.,
-   soil_data                   = .true.,
-   h_diab                      = .false.,
    assimilation_period_seconds = 21600,
-   adv_mod_command             = './wrf.exe',
    allow_obs_below_vol         = .false.,
    vert_localization_coord     = 3,
    center_search_half_length   = 500000.,
@@ -374,32 +372,56 @@ circulation calculation is done when searching for the vortex center.
        </UL>
 </TD></TR>
     
+</TBODY> 
+</TABLE>
+</div>
+
+<P> The following items used to be in the WRF namelist
+but have been removed.  The first 4 are no longer needed,
+and the last one was moved to
+<a href="WRF_DART_utilities/dart_to_wrf.html#Namelist">&amp;dart_to_wrf_nml</a>
+in 2010.
+In the Lanai release having these values in the namelist
+does not cause a fatal error, but more recent versions of
+the code will fail if any of these values are specified.
+Remove them from your namelist to avoid errors.
+</P>
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
 <TR><TD> surf_obs </TD>
     <TD> logical </TD>
-    <TD>DEPRECATED -- has no effect on the code and will be removed.
+    <TD>OBSOLETE -- now an error to specify this.
 </TD></TR>
 
 <TR><TD> soil_data </TD>
     <TD> logical </TD>
-    <TD>DEPRECATED -- has no effect on the code and will be removed.
+    <TD>OBSOLETE -- now an error to specify this.
 </TD></TR>
 
 <TR><TD> h_diab </TD>
     <TD> logical </TD>
-    <TD>DEPRECATED -- has no effect on the code and will be removed.
+    <TD>OBSOLETE -- now an error to specify this.
 </TD></TR>
 
 <TR><TD> num_moist_vars </TD>
     <TD> integer </TD>
-    <TD>DEPRECATED -- has no effect on the code and will be removed.
+    <TD>OBSOLETE -- now an error to specify this.
 </TD></TR>
 
 <TR><TD> adv_mod_command </TD>
     <TD> character(len=32) </TD>
-    <TD>DEPRECATED -- A variable with the same name has moved to the 
-<a href="WRF_DART_utilities/dart_to_wrf.html#Namelist">&amp;dart_to_wrf</a>
-namelist and does the same function from there.  This one has no effect on
-the code and will be removed soon.  
+    <TD>OBSOLETE -- This variable was moved to the 
+<a href="WRF_DART_utilities/dart_to_wrf.html#Namelist">&amp;dart_to_wrf_nml</a>
+namelist. Now an error to specify this here.
 </TD></TR>
 
 </TBODY> 

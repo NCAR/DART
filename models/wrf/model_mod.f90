@@ -6901,11 +6901,12 @@ end subroutine ens_mean_for_model
 
 !#######################################################################
 
-subroutine get_domain_info(obslon,obslat,id,iloc,jloc)
+subroutine get_domain_info(obslon,obslat,id,iloc,jloc,domain_id_start)
 
-real(r8), intent(in)  :: obslon, obslat
-integer, intent(out)  :: id
-real(r8), intent(out) :: iloc, jloc
+real(r8), intent(in)           :: obslon, obslat
+integer,  intent(out)          :: id
+real(r8), intent(out)          :: iloc, jloc
+integer,  intent(in), optional :: domain_id_start
 
 logical               :: dom_found
 
@@ -6914,7 +6915,20 @@ logical               :: dom_found
 
 dom_found = .false.
 
+! the default is to start at the innermost domain and stop when
+! the location is found.  however if you want to start at a particular
+! domain id number, pass it in as the last optional arg.
 id = num_domains
+if (present(domain_id_start)) then
+   if (domain_id_start < 1 .or. domain_id_start > num_domains) then
+      write(errstring,  '(A,I1)') 'bad domain_id_start: ', domain_id_start
+      write(msgstring2, '(A,I1)') 'must be between 1 and ', num_domains
+      call error_handler(E_ERR, 'model_mod', errstring, &
+                         source, revision, revdate, text2=msgstring2)
+   endif
+   id = domain_id_start
+endif
+
 do while (.not. dom_found)
 
    ! Checking for exact equality on real variable types is generally a bad idea.

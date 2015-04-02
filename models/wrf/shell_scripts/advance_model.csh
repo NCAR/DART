@@ -267,7 +267,7 @@ while($state_copy <= $num_states)
          set keylist = ( $keylist $key )
       end
 
-      set keys = `echo $keylist | sort`
+      set keys = `echo $keylist | fmt -1 | sort -n`
 
    else  #  idealized WRF with non-specified BCs
 
