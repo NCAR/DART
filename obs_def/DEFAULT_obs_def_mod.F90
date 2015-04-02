@@ -45,16 +45,16 @@ module obs_def_mod
 ! program is used to add in extra observation kinds at the indicated spots in
 ! the code.
 
-use        types_mod, only : r8, missing_i, missing_r8, RAD2DEG
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
+use        types_mod, only : r8, missing_i, missing_r8
+use    utilities_mod, only : register_module, error_handler, E_ERR, &
                              ascii_file_format
 use     location_mod, only : location_type, read_location, write_location, &
                              interactive_location, set_location_missing
-use time_manager_mod, only : time_type, read_time, write_time, set_time, &
+use time_manager_mod, only : time_type, read_time, write_time, &
                              set_time_missing, interactive_time
 use  assim_model_mod, only : get_state_meta_data_distrib, interpolate_distrib
 use     obs_kind_mod, only : assimilate_this_obs_kind, evaluate_this_obs_kind, &
-                             max_obs_kinds, get_obs_kind_name, map_def_index, &
+                             get_obs_kind_name, map_def_index, &
                              get_kind_from_menu
 
 use data_structure_mod, only : ensemble_type
