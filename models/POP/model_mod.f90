@@ -22,10 +22,9 @@ use     location_mod, only : location_type, get_dist, get_close_maxdist_init,  &
                              loc_get_close_obs => get_close_obs, get_close_type
 use    utilities_mod, only : register_module, error_handler,                   &
                              E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
-                             nc_check, do_output, to_upper,                    &
+                             nc_check, do_output,                              &
                              find_namelist_in_file, check_namelist_read,       &
-                             open_file, file_exist, find_textfile_dims,        &
-                             file_to_text, do_output
+                             file_exist, find_textfile_dims, file_to_text
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_DRY_LAND,   &
                              KIND_U_CURRENT_COMPONENT,                         &
                              KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT, &
@@ -186,21 +185,36 @@ END INTERFACE
 
 !------------------------------------------------
 
+! NOTE (dipole/tripole grids): since both of the dipole and tripole
+! grids are logically rectangular we can use the same interpolation
+! scheme originally implemented for the dipole grid. Here we can 
+! interchange dipole and tripole when reading the code.
+
 ! The regular grid used for dipole interpolation divides the sphere into
 ! a set of regularly spaced lon-lat boxes. The number of boxes in
 ! longitude and latitude are set by num_reg_x and num_reg_y. Making the
 ! number of regular boxes smaller decreases the computation required for
 ! doing each interpolation but increases the static storage requirements
 ! and the initialization computation (which seems to be pretty small).
-integer, parameter :: num_reg_x = 90, num_reg_y = 90
+! FIX ME: to account for various grid sizes we should dynamically 
+! allocate these numbers.  To keep max_reg_list_num < 100 we can use:
+!    tx0.1v2 num_reg_x = num_reg_y = 900
+!    tx0.5v1 num_reg_x = num_reg_y = 180
+!    gx1v6   num_reg_x = num_reg_y = 90
+! Larger num_reg_(x,y) values require more temporary storage in 
+! ureg_list_lon, ureg_list_lat, treg_list_lon, treg_list_lat. For now
+! we can use num_reg_(x,y) = 180 and max_reg_list_num = 800 to account
+! for all of the currently implemented grid types.
+integer, parameter :: num_reg_x = 180, num_reg_y = 180
 
 ! The max_reg_list_num controls the size of temporary storage used for
 ! initializing the regular grid. Four arrays
 ! of size num_reg_x*num_reg_y*max_reg_list_num are needed. The initialization
-! fails and returns an error if max_reg_list_num is too small. A value of
-! 30 is sufficient for the x3 POP grid with 180 regular lon and lat boxes 
-! and a value of 80 is sufficient for for the x1 grid.
-integer, parameter :: max_reg_list_num = 80
+! fails and returns an error if max_reg_list_num is too small. With 180 regular
+! lat lon boxes a value of 30 is sufficient for the gx3 POP grid, 80 for the 
+! gx1 grid, 180 for the tx0.5 grid and 800 for the tx0.1 grid.
+! FIX ME: we should declare this at runtime depending on the grid size.
+integer, parameter :: max_reg_list_num = 800
 
 ! The dipole interpolation keeps a list of how many and which dipole quads
 ! overlap each regular lon-lat box. The number for the u and t grids are 
@@ -220,8 +234,6 @@ integer, allocatable :: u_dipole_lat_list(:), t_dipole_lat_list(:)
 
 ! Need to check for pole quads: for now we are not interpolating in them
 integer :: pole_x, t_pole_y, u_pole_y
-
-
 
 ! Have a global variable saying whether this is dipole or regular lon-lat grid
 ! This should be initialized static_init_model. Code to do this is below.
@@ -297,7 +309,6 @@ allocate( KMT(Nx,Ny),  KMU(Nx,Ny))
 allocate(  HT(Nx,Ny),   HU(Nx,Ny))
 allocate(     ZC(Nz),      ZG(Nz))
 
-
 ! Fill them in.
 ! horiz grid initializes ULAT/LON, TLAT/LON as well.
 ! kmt initializes HT/HU if present in input file.
@@ -307,7 +318,6 @@ call read_vert_grid( Nz, ZC, ZG)
 
 if (debug > 2) call write_grid_netcdf() ! DEBUG only
 if (debug > 2) call write_grid_interptest() ! DEBUG only
-
 
 ! compute the offsets into the state vector for the start of each
 ! different variable type.
@@ -379,16 +389,20 @@ subroutine init_dipole_interp()
 ! These arrays keep a list of the x and y indices of dipole quads 
 ! that potentially overlap the regular boxes. Need one for the u 
 ! and one for the t grid.
-integer :: ureg_list_lon(num_reg_x, num_reg_y, max_reg_list_num)
-integer :: ureg_list_lat(num_reg_x, num_reg_y, max_reg_list_num)
-integer :: treg_list_lon(num_reg_x, num_reg_y, max_reg_list_num)
-integer :: treg_list_lat(num_reg_x, num_reg_y, max_reg_list_num)
-
+integer, allocatable :: ureg_list_lon(:,:,:)
+integer, allocatable :: ureg_list_lat(:,:,:)
+integer, allocatable :: treg_list_lon(:,:,:)
+integer, allocatable :: treg_list_lat(:,:,:)
 
 real(r8) :: u_c_lons(4), u_c_lats(4), t_c_lons(4), t_c_lats(4), pole_row_lon
 integer  :: i, j, k, pindex
 integer  :: reg_lon_ind(2), reg_lat_ind(2), u_total, t_total, u_index, t_index
 logical  :: is_pole
+
+allocate(ureg_list_lon(num_reg_x, num_reg_y, max_reg_list_num))
+allocate(ureg_list_lat(num_reg_x, num_reg_y, max_reg_list_num))
+allocate(treg_list_lon(num_reg_x, num_reg_y, max_reg_list_num))
+allocate(treg_list_lat(num_reg_x, num_reg_y, max_reg_list_num))
 
 ! Begin by finding the quad that contains the pole for the dipole t_grid. 
 ! To do this locate the u quad with the pole on its right boundary. This is on
@@ -419,27 +433,35 @@ endif
 do i = 1, nx
    ! There's no wraparound in y, one box less than grid boundaries
    do j = 1, ny - 1
-      ! Is this the pole quad for the T grid?
-      is_pole = (i == pole_x .and. j == t_pole_y)
       
-      ! Set up array of lons and lats for the corners of these u and t quads
-      call get_quad_corners(ulon, i, j, u_c_lons)
-      call get_quad_corners(ulat, i, j, u_c_lats)
-      call get_quad_corners(tlon, i, j, t_c_lons)
-      call get_quad_corners(tlat, i, j, t_c_lats)
+      ! Only update regular boxes that contain all wet corners (kmu>0)
+      if(kmu(i,j)>0 .and. kmu(i,j+1)>0 .and. kmu(i+1,j+1)>0 .and. kmu(i+1,j)>0) then
+         ! Set up array of lons and lats for the corners of these u quads
+         call get_quad_corners(ulon, i, j, u_c_lons)
+         call get_quad_corners(ulat, i, j, u_c_lats)
 
-      ! Get list of regular boxes that cover this u dipole quad
-      ! false indicates that for the u grid there's nothing special about pole
-      call reg_box_overlap(u_c_lons, u_c_lats, .false., reg_lon_ind, reg_lat_ind)         
+         ! Get list of regular boxes that cover this u dipole quad
+         ! false indicates that for the u grid there's nothing special about pole
+         call reg_box_overlap(u_c_lons, u_c_lats, .false., reg_lon_ind, reg_lat_ind)         
+         ! Update the temporary data structures for the u quad 
+         call update_reg_list(u_dipole_num, ureg_list_lon, &
+            ureg_list_lat, reg_lon_ind, reg_lat_ind, i, j)
+      endif 
 
-      ! Update the temporary data structures for the u quad 
-      call update_reg_list(u_dipole_num, ureg_list_lon, &
-         ureg_list_lat, reg_lon_ind, reg_lat_ind, i, j)
+      ! Repeat for t dipole quads.
+      ! Only update regular boxes that contain all wet corners (kmt>0)
+      if(kmt(i,j)>0 .and. kmt(i,j+1)>0 .and. kmt(i+1,j+1)>0 .and. kmt(i+1,j)>0) then
+         ! Set up array of lons and lats for the corners of these t quads
+         call get_quad_corners(tlon, i, j, t_c_lons)
+         call get_quad_corners(tlat, i, j, t_c_lats)
 
-      ! Repeat for t dipole quads
-      call reg_box_overlap(t_c_lons, t_c_lats, is_pole, reg_lon_ind, reg_lat_ind)         
-      call update_reg_list(t_dipole_num, treg_list_lon, &
-         treg_list_lat, reg_lon_ind, reg_lat_ind, i, j)
+         ! Is this the pole quad for the T grid?
+         is_pole = (i == pole_x .and. j == t_pole_y)
+         
+         call reg_box_overlap(t_c_lons, t_c_lats, is_pole, reg_lon_ind, reg_lat_ind)         
+         call update_reg_list(t_dipole_num, treg_list_lon, &
+            treg_list_lat, reg_lon_ind, reg_lat_ind, i, j)
+      endif
    enddo
 enddo
 
@@ -993,8 +1015,16 @@ if(dipole_grid) then
       ! On T grid
       num_inds =  t_dipole_num  (x_ind, y_ind)
       start_ind = t_dipole_start(x_ind, y_ind)
+
+      ! If there are no quads overlapping, can't do interpolation
+      if(num_inds == 0) then
+         istatus = 1
+         return
+      endif
+
       call get_dipole_quad(lon, lat, tlon, tlat, num_inds, start_ind, &
          t_dipole_lon_list, t_dipole_lat_list, lon_bot, lat_bot, quad_status)
+
       ! Fail on bad istatus return
       if(quad_status /= 0) then
          istatus = quad_status
@@ -1010,6 +1040,7 @@ if(dipole_grid) then
       ! Getting corners for accurate interpolation
       call get_quad_corners(tlon, lon_bot, lat_bot, x_corners)
       call get_quad_corners(tlat, lon_bot, lat_bot, y_corners)
+
    endif
 
 else
