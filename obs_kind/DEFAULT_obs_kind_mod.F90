@@ -14,9 +14,8 @@
 
 module obs_kind_mod
 
-use    utilities_mod, only : register_module, error_handler,  &
-                             E_ERR, E_MSG, E_WARN,               &
-                             logfileunit, find_namelist_in_file, &
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN,  &
+                             logfileunit, find_namelist_in_file,             &
                              check_namelist_read, do_output, ascii_file_format
 
 implicit none
@@ -139,6 +138,12 @@ integer, parameter, public :: &
 ! kinds for tendencies
 integer, parameter, public :: &
     KIND_ALTIMETER_TENDENCY          = 48
+
+! kind for precip water; contrast with
+! total precip water (also in this file), 
+! which is the total column integrated value. 
+integer, parameter, public :: &
+    KIND_PRECIPITABLE_WATER          = 49
 
 ! kinds for the MITgcm, POP ocean model
 integer, parameter, public :: &
@@ -263,92 +268,44 @@ integer, parameter, public :: &
     KIND_ROOT_NITROGEN               = 125, &
     KIND_STEM_NITROGEN               = 126, &
     KIND_LEAF_NITROGEN               = 127, &
-    KIND_WATER_TABLE_DEPTH           = 128
+    KIND_WATER_TABLE_DEPTH           = 128, &
+    KIND_FPAR                        = 129, &
+    KIND_TOTAL_WATER_STORAGE         = 130
+
+! more kinds for land snow cover (Ally Toure)
+integer, parameter, public :: &
+    KIND_BRIGHTNESS_TEMPERATURE      = 131, &
+    KIND_VEGETATION_TEMPERATURE      = 132, &
+    KIND_CANOPY_HEIGHT               = 133
 
 ! kinds for NOAH  (Tim Hoar)
 integer, parameter, public :: &
-    KIND_NEUTRON_INTENSITY           = 129, &
-    KIND_CANOPY_WATER                = 130, &
-    KIND_GROUND_HEAT_FLUX            = 131
+    KIND_NEUTRON_INTENSITY           = 140, &
+    KIND_CANOPY_WATER                = 141, &
+    KIND_GROUND_HEAT_FLUX            = 142
 
 ! more kinds for TIEGCM Alex Chartier 
 integer, parameter, public :: &
-    KIND_VERTICAL_TEC                = 143  ! total electron content
-
-! Ground-based GPS Precipitable water from SuomiNet sites (Soyoung Ha)
-! Precipitable water in the whole vertical column, but unlike KIND_TOTAL_PRECIPITABLE_WATER,
-! No vertical integration of qv is done in the forward operator.
-! Instead, a 2-D diagnostic variable named "precipw" in the MPAS-ATM model
-! is directly used in the forward operator for this obs kind.
-integer, parameter, public :: &
-    KIND_PRECIPITABLE_WATER          = 144
+    KIND_VERTICAL_TEC                = 143, &
+    KIND_O_N2_COLUMN_DENSITY_RATIO   = 144
 
 !! For now we have agreed to reserve kind numbers 151 to 250
 !! for chemistry types, specifically for WRF-Chem/DART, but
 !! possibly of interest to other models with Chemistry species.
 !! DO NOT USE numbers between 151-250 without talking to me, please?  (nancy)
 
-! AFAJ ++
-! Kinds for IASI chemistry
-! kdr; 'missing' (for Barre) CO2, NH3, CH4
+! these chemistry kinds match the numbers Arthur Mizzi is using
 integer, parameter, public :: &
     KIND_O3                          = 151, &
-    KIND_O3_COLUMN                   = 152, &
     KIND_CO                          = 153, &
-    KIND_NO                          = 154, &
-    KIND_NO2                         = 155, &
-    KIND_HNO3                        = 156, &
-    KIND_HNO4                        = 157, &
-    KIND_N2O5                        = 158, &
-    KIND_PAN                         = 159, &
-    KIND_MEK                         = 160, &
-    KIND_ALD                         = 161, &
-    KIND_CH3O2                       = 162, &
-    KIND_C3H8                        = 163, &
-    KIND_C2H6                        = 164, &
-    KIND_ACET                        = 165, &
-    KIND_HCHO                        = 166, &
-    KIND_C2H4                        = 167, &
-    KIND_C3H6                        = 168, &
-    KIND_TOL                         = 169, &
-    KIND_MVK                         = 170, &
-    KIND_BIGALK                      = 171, &
-    KIND_ISOPR                       = 172, &
-    KIND_MACR                        = 173, &
-    KIND_GLYALD                      = 174, &
-    KIND_C10H16                      = 175, &
-!
-    KIND_CO_MIXING_RATIO             = 176, &
-    KIND_MOPITT_CO                   = 177, &
-    KIND_AOD                         = 178, &
-    KIND_CB1                         = 179, &
-    KIND_CB2                         = 180, &
-    KIND_OC1                         = 181, &
-    KIND_OC2                         = 182, &
-    KIND_DMS                         = 183, &
-    KIND_DST01                       = 184, &
-    KIND_DST02                       = 185, &
-    KIND_DST03                       = 186, &
-    KIND_DST04                       = 187, &
-    KIND_DST05                       = 188, &
-    KIND_SO4                         = 189, &
-    KIND_SSLT01                      = 190, &
-    KIND_SSLT02                      = 191, &
-    KIND_SSLT03                      = 192, &
-    KIND_SSLT04                      = 193, &
-    KIND_TAUAER1                     = 194, &
-    KIND_TAUAER2                     = 195, &
-    KIND_TAUAER3                     = 196, &
-    KIND_TAUAER4                     = 197, &
-    KIND_PM10                        = 198, &
-    KIND_PM25                        = 199
-! AFAJ --
+    KIND_NO                          = 155, &
+    KIND_NO2                         = 156
 
+! more chemistry kinds (Jerome Barre)  (last three slots)
 integer, parameter, public :: &
-    KIND_CO2                         = 200, &
-    KIND_NH3                         = 201, &
-    KIND_CH4                         = 202
-
+    KIND_CO2                         = 247, &
+    KIND_NH3                         = 248, &
+    KIND_CH4                         = 249
 
 ! kinds for GITM (Alexey Morozov)
 integer, parameter, public :: &
@@ -565,7 +522,7 @@ obs_kind_names(45) = obs_kind_type(KIND_3D_PARAMETER, 'KIND_3D_PARAMETER')
 obs_kind_names(46) = obs_kind_type(KIND_ATOMIC_OXYGEN_MIXING_RATIO, 'KIND_ATOMIC_OXYGEN_MIXING_RATIO')
 obs_kind_names(47) = obs_kind_type(KIND_MOLEC_OXYGEN_MIXING_RATIO, 'KIND_MOLEC_OXYGEN_MIXING_RATIO')
 obs_kind_names(48) = obs_kind_type(KIND_ALTIMETER_TENDENCY, 'KIND_ALTIMETER_TENDENCY')
-
+obs_kind_names(49) = obs_kind_type(KIND_PRECIPITABLE_WATER, 'KIND_PRECIPITABLE_WATER')
 obs_kind_names(50) = obs_kind_type(KIND_SALINITY, 'KIND_SALINITY')
 obs_kind_names(51) = obs_kind_type(KIND_U_CURRENT_COMPONENT, 'KIND_U_CURRENT_COMPONENT')
 obs_kind_names(52) = obs_kind_type(KIND_V_CURRENT_COMPONENT, 'KIND_V_CURRENT_COMPONENT')
@@ -643,70 +600,26 @@ obs_kind_names(125) = obs_kind_type(KIND_ROOT_NITROGEN         ,'KIND_ROOT_NITRO
 obs_kind_names(126) = obs_kind_type(KIND_STEM_NITROGEN         ,'KIND_STEM_NITROGEN')
 obs_kind_names(127) = obs_kind_type(KIND_LEAF_NITROGEN         ,'KIND_LEAF_NITROGEN')
 obs_kind_names(128) = obs_kind_type(KIND_WATER_TABLE_DEPTH     ,'KIND_WATER_TABLE_DEPTH')
-obs_kind_names(129) = obs_kind_type(KIND_NEUTRON_INTENSITY     ,'KIND_NEUTRON_INTENSITY')
-obs_kind_names(130) = obs_kind_type(KIND_CANOPY_WATER          ,'KIND_CANOPY_WATER')
-obs_kind_names(131) = obs_kind_type(KIND_GROUND_HEAT_FLUX      ,'KIND_GROUND_HEAT_FLUX')
-obs_kind_names(132) = obs_kind_type(KIND_VERTICAL_TEC          ,'KIND_VERTICAL_TEC')
-obs_kind_names(144) = obs_kind_type(KIND_PRECIPITABLE_WATER    ,'KIND_PRECIPITABLE_WATER ')
+obs_kind_names(129) = obs_kind_type(KIND_FPAR                  ,'KIND_FPAR')
+obs_kind_names(130) = obs_kind_type(KIND_TOTAL_WATER_STORAGE   ,'KIND_TOTAL_WATER_STORAGE')
+obs_kind_names(131) = obs_kind_type(KIND_BRIGHTNESS_TEMPERATURE,'KIND_BRIGHTNESS_TEMPERATURE')
+obs_kind_names(132) = obs_kind_type(KIND_VEGETATION_TEMPERATURE,'KIND_VEGETATION_TEMPERATURE')
+obs_kind_names(133) = obs_kind_type(KIND_CANOPY_HEIGHT,        'KIND_CANOPY_HEIGHT')
 
-! AFAJ ++
-! Kinds for IASI chemistry
-! kdr; 'missing' (for Barre) CO2, NH3, CH4
+obs_kind_names(140) = obs_kind_type(KIND_NEUTRON_INTENSITY     ,'KIND_NEUTRON_INTENSITY')
+obs_kind_names(141) = obs_kind_type(KIND_CANOPY_WATER          ,'KIND_CANOPY_WATER')
+obs_kind_names(142) = obs_kind_type(KIND_GROUND_HEAT_FLUX      ,'KIND_GROUND_HEAT_FLUX')
+obs_kind_names(143) = obs_kind_type(KIND_VERTICAL_TEC          ,'KIND_VERTICAL_TEC')
+obs_kind_names(144) = obs_kind_type(KIND_O_N2_COLUMN_DENSITY_RATIO, 'KIND_O_N2_COLUMN_DENSITY_RATIO')
+
 obs_kind_names(151) = obs_kind_type(KIND_O3,              'KIND_O3')
-obs_kind_names(152) = obs_kind_type(KIND_O3_COLUMN,       'KIND_O3_COLUMN')
 obs_kind_names(153) = obs_kind_type(KIND_CO,              'KIND_CO')
-obs_kind_names(154) = obs_kind_type(KIND_NO,              'KIND_NO')
-obs_kind_names(155) = obs_kind_type(KIND_NO2,             'KIND_NO2')
-obs_kind_names(156) = obs_kind_type(KIND_HNO3,            'KIND_HNO3')
-obs_kind_names(157) = obs_kind_type(KIND_HNO4,            'KIND_HNO4')
-obs_kind_names(158) = obs_kind_type(KIND_N2O5,            'KIND_N2O5')
-obs_kind_names(159) = obs_kind_type(KIND_PAN,             'KIND_PAN')
-obs_kind_names(160) = obs_kind_type(KIND_MEK,             'KIND_MEK')
-obs_kind_names(161) = obs_kind_type(KIND_ALD,             'KIND_ALD')
-obs_kind_names(162) = obs_kind_type(KIND_CH3O2,           'KIND_CH3O2')
-obs_kind_names(163) = obs_kind_type(KIND_C3H8,            'KIND_C3H8')
-obs_kind_names(164) = obs_kind_type(KIND_C2H6,            'KIND_C2H6')
-obs_kind_names(165) = obs_kind_type(KIND_ACET,            'KIND_ACET')
-obs_kind_names(166) = obs_kind_type(KIND_HCHO,            'KIND_HCHO')
-obs_kind_names(167) = obs_kind_type(KIND_C2H4,            'KIND_C2H4')
-obs_kind_names(168) = obs_kind_type(KIND_C3H6,            'KIND_C3H6')
-obs_kind_names(169) = obs_kind_type(KIND_TOL,             'KIND_TOL')
-obs_kind_names(170) = obs_kind_type(KIND_MVK,             'KIND_MVK')
-obs_kind_names(171) = obs_kind_type(KIND_BIGALK,          'KIND_BIGALK')
-obs_kind_names(172) = obs_kind_type(KIND_ISOPR,           'KIND_ISOPR')
-obs_kind_names(173) = obs_kind_type(KIND_MACR,            'KIND_MACR')
-obs_kind_names(174) = obs_kind_type(KIND_GLYALD,          'KIND_GLYALD')
-obs_kind_names(175) = obs_kind_type(KIND_C10H16,          'KIND_C10H16')
-!
-obs_kind_names(176) = obs_kind_type(KIND_CO_MIXING_RATIO, 'KIND_CO_MIXING_RATIO')
-obs_kind_names(177) = obs_kind_type(KIND_MOPITT_CO,       'KIND_MOPITT_CO')
-obs_kind_names(178) = obs_kind_type(KIND_AOD,             'KIND_AOD')
-obs_kind_names(179) = obs_kind_type(KIND_CB1,             'KIND_CB1')
-obs_kind_names(180) = obs_kind_type(KIND_CB2,             'KIND_CB2')
-obs_kind_names(181) = obs_kind_type(KIND_OC1,             'KIND_OC1')
-obs_kind_names(182) = obs_kind_type(KIND_OC2,             'KIND_OC2')
-obs_kind_names(183) = obs_kind_type(KIND_DMS,             'KIND_DMS')
-obs_kind_names(184) = obs_kind_type(KIND_DST01,           'KIND_DST01')
-obs_kind_names(185) = obs_kind_type(KIND_DST02,           'KIND_DST02')
-obs_kind_names(186) = obs_kind_type(KIND_DST03,           'KIND_DST03')
-obs_kind_names(187) = obs_kind_type(KIND_DST04,           'KIND_DST04')
-obs_kind_names(188) = obs_kind_type(KIND_DST05,           'KIND_DST05')
-obs_kind_names(189) = obs_kind_type(KIND_SO4,             'KIND_SO4')
-obs_kind_names(190) = obs_kind_type(KIND_SSLT01,          'KIND_SSLT01')
-obs_kind_names(191) = obs_kind_type(KIND_SSLT02,          'KIND_SSLT02')
-obs_kind_names(192) = obs_kind_type(KIND_SSLT03,          'KIND_SSLT03')
-obs_kind_names(193) = obs_kind_type(KIND_SSLT04,          'KIND_SSLT04')
-obs_kind_names(194) = obs_kind_type(KIND_TAUAER1,         'KIND_TAUAER1')
-obs_kind_names(195) = obs_kind_type(KIND_TAUAER2,         'KIND_TAUAER2')
-obs_kind_names(196) = obs_kind_type(KIND_TAUAER3,         'KIND_TAUAER3')
-obs_kind_names(197) = obs_kind_type(KIND_TAUAER4,         'KIND_TAUAER4')
-obs_kind_names(198) = obs_kind_type(KIND_PM10,            'KIND_PM10')
-obs_kind_names(199) = obs_kind_type(KIND_PM25,            'KIND_PM25')
-! AFAJ --
-obs_kind_names(200) = obs_kind_type(KIND_CO2,             'KIND_CO2')
-obs_kind_names(201) = obs_kind_type(KIND_NH3,             'KIND_NH3')
-obs_kind_names(202) = obs_kind_type(KIND_CH4,             'KIND_CH4')
+obs_kind_names(155) = obs_kind_type(KIND_NO,              'KIND_NO')
+obs_kind_names(156) = obs_kind_type(KIND_NO2,             'KIND_NO2')
 
+obs_kind_names(247) = obs_kind_type(KIND_CO2,             'KIND_CO2')
+obs_kind_names(248) = obs_kind_type(KIND_NH3,             'KIND_NH3')
+obs_kind_names(249) = obs_kind_type(KIND_CH4,             'KIND_CH4')
 
 obs_kind_names(251) = obs_kind_type(KIND_TEMPERATURE_ELECTRON  ,'KIND_TEMPERATURE_ELECTRON')
 obs_kind_names(252) = obs_kind_type(KIND_TEMPERATURE_ION       ,'KIND_TEMPERATURE_ION')
@@ -759,7 +672,7 @@ do i = 1, max_obs_specific
    num_kind_evaluate = i
 end do
 
-if (do_output()) then
+if (do_output() .and. (num_kind_assimilate > 0 .or. num_kind_evaluate > 0)) then
    write(*, *) '------------------------------------------------------'
    write(*, *)
 
