@@ -131,6 +131,8 @@ prematurely terminating the namelist.
    use_increments_for_u_update  = .true.,
    highest_obs_pressure_mb      = 100.0,
    sfc_elev_max_diff            = -1.0,
+   outside_grid_level_tolerance = -1.0,
+   extrapolate                  = .false.,
    debug                        = 0,
 /
 </pre>
@@ -245,8 +247,10 @@ prematurely terminating the namelist.
 <TR><TD>use_rbf_option</TD>
     <TD>integer <em class=units>[default:&nbsp;2]</em></TD>
     <TD>If <em class=code>use_u_for_wind</em> is .true., this option controls
-        how many points will be used in the RBF interpolation. Options are available as 1, 2, and 3.
-        All the edges available in N (= 1,2, or 3) cells go into the RBF reconstruction. </TD>
+        how many points will be used in the RBF interpolation. 
+        Options are available as 0, 1, 2, and 3.
+        All the edges available in N (= 0,1,2, or 3) neighboring cells 
+        go into the RBF reconstruction. </TD>
 </TR>
 
 <TR><TD>update_u_from_reconstruct</TD>
@@ -287,6 +291,36 @@ prematurely terminating the namelist.
         <em class=units>[default:&nbsp;'Gregorian']</em></TD>
     <TD> Character string specifying the calendar being used by MPAS.</TD>
 </TR>
+
+<TR><TD>outside_grid_level_tolerance</TD>
+    <TD>real(r8) <em class=units>[default:&nbsp;-1.0]</em></TD>
+    <TD>If greater than 0.0, amount of distance in fractional model levels 
+        that a vertical location can be above or below the top or bottom of the 
+        grid and still be evaluated without error.  
+        Since <em class=code>extrapolate</em> is not implemented yet,
+        the value of <em class=code>.false.</em> will be assumed.
+        In this case, vertical locations equivalent to level 1
+        or level N will be used.  Eventually, if
+        <em class=code>extrapolate</em> is <em class=code>.true.</em>, 
+        extrapolate from the first or last model level.  
+        If <em class=code>extrapolate</em> is <em class=code>.false.</em>, 
+        simply use the value at level 1 for low vertical locations, 
+        or at level N for high vertical locations. </TD>
+</TR> 
+
+<TR><TD>extrapolate</TD>
+    <TD>logical <em class=units>[default:&nbsp;.false.]</em></TD>
+    <TD><em>NOT IMPLEMENTED YET</em>.  Vertical locations equivalant to level 1
+        or level N will be used.  When this is implemented, it will do: <br />
+        If <em class=code>outside_grid_level_tolerance</em> is greater than 0.0,
+        then control how values are assigned to locations where the vertical is
+        exterior to the grid.  If this is <em class=code>.true.</em>, then
+        extrapolate low locations from levels 1 and 2, and high locations from
+        levels N-1 and N.  If this is <em class=code>.false.</em>, then simply 
+        use the corresponding values at level 1 or N.  This item is ignored if 
+        <em class=code>outside_grid_level_tolerance</em> is less than or
+        equal to 0.0. </TD>
+</TR> 
 
 <TR><TD>debug</TD>
     <TD>integer <em class=units>[default:&nbsp;0]</em></TD>

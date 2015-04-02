@@ -1,67 +1,67 @@
 &perfect_model_obs_nml
-   start_from_restart    = .true.,
-   output_restart        = .true.,
-   async                 = 0,
-   init_time_days        = -1,
-   init_time_seconds     = -1,
-   first_obs_days        = -1,
-   first_obs_seconds     = -1,
-   last_obs_days         = -1,
-   last_obs_seconds      = -1,
-   output_interval       = 1,
-   restart_in_file_name  = "perfect_ics",
-   restart_out_file_name = "perfect_restart",
-   obs_seq_in_file_name  = "set_def.out",
-   obs_seq_out_file_name = "obs_seq.out",
-   adv_ens_command       = "../shell_scripts/advance_model.csh",
-   output_timestamps     = .false.,
-   trace_execution       = .true.,
-   output_forward_op_errors = .false.,
-   print_every_nth_obs   = 100,
-   silence               = .false.,
+   start_from_restart    = .true.
+   output_restart        = .true.
+   async                 = 0
+   init_time_days        = -1
+   init_time_seconds     = -1
+   first_obs_days        = -1
+   first_obs_seconds     = -1
+   last_obs_days         = -1
+   last_obs_seconds      = -1
+   output_interval       = 1
+   restart_in_file_name  = "perfect_ics"
+   restart_out_file_name = "perfect_restart"
+   obs_seq_in_file_name  = "obs_seq.in"
+   obs_seq_out_file_name = "obs_seq.perfect"
+   adv_ens_command       = "../shell_scripts/advance_model.csh"
+   output_timestamps     = .false.
+   trace_execution       = .true.
+   output_forward_op_errors = .false.
+   print_every_nth_obs   = 100
+   silence               = .false.
   /
 
 &filter_nml
-   async                    = 2,
-   adv_ens_command          = "../shell_scripts/advance_model.csh",
-   ens_size                 = 3,
-   start_from_restart       = .false.,
-   output_restart           = .true.,
-   obs_sequence_in_name     = "obs_seq.1800obs",
-   obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "filter_ics",
-   restart_out_file_name    = "filter_restart",
-   init_time_days           = -1,
-   init_time_seconds        = -1,
-   first_obs_days           = -1,
-   first_obs_seconds        = -1,
-   last_obs_days            = -1,
-   last_obs_seconds         = -1,
-   num_output_state_members = 0,
-   num_output_obs_members   = 96,
-   output_interval          = 1,
-   num_groups               = 1,
-   input_qc_threshold       =  3.0,
-   outlier_threshold        =  3.0,
-   output_forward_op_errors = .true.,
-   output_timestamps        = .false.,
-   output_inflation         = .true.,
-   trace_execution          = .false.,
-   silence                  = .false.,
+   async                    = 2
+   adv_ens_command          = "../shell_scripts/advance_model.csh"
+   ens_size                 = 3
+   start_from_restart       = .false.
+   output_restart           = .true.
+   obs_sequence_in_name     = "obs_seq.1800obs"
+   obs_sequence_out_name    = "obs_seq.final"
+   restart_in_file_name     = "filter_ics"
+   restart_out_file_name    = "filter_restart"
+   init_time_days           = -1
+   init_time_seconds        = -1
+   first_obs_days           = -1
+   first_obs_seconds        = -1
+   last_obs_days            = -1
+   last_obs_seconds         = -1
+   num_output_state_members = 0
+   num_output_obs_members   = 96
+   output_interval          = 1
+   num_groups               = 1
+   input_qc_threshold       =  3.0
+   outlier_threshold        =  3.0
+   output_forward_op_errors = .true.
+   output_timestamps        = .false.
+   output_inflation         = .true.
+   trace_execution          = .false.
+   silence                  = .false.
 
-   inf_flavor                  = 0,                       0,
-   inf_initial_from_restart    = .false.,                 .false.,
-   inf_sd_initial_from_restart = .false.,                 .false.,
-   inf_output_restart          = .true.,                  .true.,
-   inf_deterministic           = .true.,                  .true.,
-   inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics',
-   inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
-   inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
-   inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_damping                 = 1.0,                     1.0,
-   inf_lower_bound             = 1.0,                     1.0,
-   inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_flavor                  = 0,                       0
+   inf_initial_from_restart    = .false.,                 .false.
+   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_output_restart          = .true.,                  .true.
+   inf_deterministic           = .true.,                  .true.
+   inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics'
+   inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart'
+   inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag'
+   inf_initial                 = 1.0,                     1.0
+   inf_sd_initial              = 0.0,                     0.0
+   inf_damping                 = 1.0,                     1.0
+   inf_lower_bound             = 1.0,                     1.0
+   inf_upper_bound             = 1000000.0,               1000000.0
    inf_sd_lower_bound          = 0.0,                     0.0
   /
 
@@ -69,42 +69,46 @@
   /
 
 &smoother_nml
-   num_lags              = 0,
-   start_from_restart    = .false.,
-   output_restart        = .false.,
-   restart_in_file_name  = 'smoother_ics',
+   num_lags              = 0
+   start_from_restart    = .false.
+   output_restart        = .false.
+   restart_in_file_name  = 'smoother_ics'
    restart_out_file_name = 'smoother_restart'
   /
 
 &ensemble_manager_nml
-   single_restart_file_in  = .true.,
-   single_restart_file_out = .true.,
+   single_restart_file_in  = .true.
+   single_restart_file_out = .true.
    perturbation_amplitude  = 0.2
   /
 
+&obs_def_gps_nml
+   max_gpsro_obs = 100000
+  /
+
 &assim_tools_nml
-   filter_kind                     = 1,
-   cutoff                          = 0.10,
-   sort_obs_inc                    = .false.,
-   spread_restoration              = .false.,
-   sampling_error_correction       = .false.,
-   adaptive_localization_threshold = -1,
-   output_localization_diagnostics = .false.,
-   localization_diagnostics_file   = 'localization_diagnostics',
+   filter_kind                     = 1
+   cutoff                          = 0.10
+   sort_obs_inc                    = .false.
+   spread_restoration              = .false.
+   sampling_error_correction       = .false.
+   adaptive_localization_threshold = -1
+   output_localization_diagnostics = .false.
+   localization_diagnostics_file   = 'localization_diagnostics'
    print_every_nth_obs             = 0
   /
 
 &location_nml
-   horiz_dist_only             = .true.,
-   vert_normalization_pressure = 100000.0,
-   vert_normalization_height   = 10000.0,
-   vert_normalization_level    = 20.0,
-   vert_normalization_scale_height = 2.0,
-   approximate_distance        = .false.,
-   nlon                        = 141,
-   nlat                        = 72,
-   output_box_info             = .false.,
-   print_box_level             = 0,
+   horiz_dist_only             = .true.
+   vert_normalization_pressure = 100000.0
+   vert_normalization_height   = 10000.0
+   vert_normalization_level    = 20.0
+   vert_normalization_scale_height = 2.0
+   approximate_distance        = .false.
+   nlon                        = 141
+   nlat                        = 72
+   output_box_info             = .false.
+   print_box_level             = 0
   /
 
 &xyz_location_nml
@@ -115,9 +119,9 @@
   /
 
 &reg_factor_nml
-   select_regression    = 1,
-   input_reg_file       = "time_mean_reg",
-   save_reg_diagnostics = .false.,
+   select_regression    = 1
+   input_reg_file       = "time_mean_reg"
+   save_reg_diagnostics = .false.
    reg_diagnostics_file = "reg_diagnostics"
   /
 
@@ -128,26 +132,26 @@
 &obs_kind_nml
    assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE',
                                 'RADIOSONDE_U_WIND_COMPONENT',
-                                'RADIOSONDE_V_WIND_COMPONENT',
+                                'RADIOSONDE_V_WIND_COMPONENT'
   /
 
 &assim_model_nml
-   write_binary_restart_files = .true.,
+   write_binary_restart_files = .true.
    netCDF_large_file_support  = .false.
   /
 
   ! model_analysis_filename      = '../data/mpas_output.2010-10-23_03:00:00.nc'
 
 &model_nml
-   model_analysis_filename      = 'mpas_init.nc',
-   grid_definition_filename     = 'mpas_init.nc',
-   assimilation_period_days     = 0,
-   assimilation_period_seconds  = 43200,
-   model_perturbation_amplitude = 0.0001,
-   output_state_vector          = .false., 
-   vert_localization_coord      = 3,
-   calendar                     = 'Gregorian',
-   debug                        = 0,
+   model_analysis_filename      = 'mpas_init.nc'
+   grid_definition_filename     = 'mpas_init.nc'
+   assimilation_period_days     = 0
+   assimilation_period_seconds  = 43200
+   model_perturbation_amplitude = 0.0001
+   output_state_vector          = .false.
+   vert_localization_coord      = 3
+   calendar                     = 'Gregorian'
+   debug                        = 0
    use_u_for_wind               = .false.
    use_rbf_option               = 2
    update_u_from_reconstruct    = .true.
@@ -155,7 +159,7 @@
   /
 
 !                          'theta',                 'KIND_POTENTIAL_TEMPERATURE',
-!                          'surface_pressure',      'KIND_SURFACE_PRESSURE'
+!                          'surface_pressure',      'KIND_SURFACE_PRESSURE',
 !                          'uReconstructZonal',     'KIND_U_WIND_COMPONENT',
 !                          'uReconstructMeridional','KIND_V_WIND_COMPONENT',
 !                          'u',                     'KIND_EDGE_NORMAL_SPEED',
@@ -166,208 +170,299 @@
 !                          'qr',                    'KIND_RAINWATER_MIXING_RATIO',
 !                          'qi',                    'KIND_ICE_MIXING_RATIO',
 !                          'qs',                    'KIND_SNOW_MIXING_RATIO',
-!                          'qg',                    'KIND_GRAUPEL_MIXING_RATIO'
+!                          'qg',                    'KIND_GRAUPEL_MIXING_RATIO',
 !                          'rho',                   'KIND_DENSITY',
-!                          'salinity',              'KIND_SALINITY'
+!                          'salinity',              'KIND_SALINITY',
 !                          'temperature',           'KIND_TEMPERATURE'
 
 &mpas_vars_nml
-   mpas_state_variables = 
+   mpas_state_variables =
                           'uReconstructZonal',     'KIND_U_WIND_COMPONENT',
                           'uReconstructMeridional','KIND_V_WIND_COMPONENT',
                           'theta',                 'KIND_POTENTIAL_TEMPERATURE',
-                          'surface_pressure',      'KIND_SURFACE_PRESSURE'
+                          'surface_pressure',      'KIND_SURFACE_PRESSURE',
                           'w',                     'KIND_VERTICAL_VELOCITY',
                           'rho',                   'KIND_DENSITY',
-                          'qv',                    'KIND_VAPOR_MIXING_RATIO',
+                          'qv',                    'KIND_VAPOR_MIXING_RATIO'
 
    mpas_state_bounds    = 'qv','0.0','NULL','CLAMP',
                           'qc','0.0','NULL','CLAMP',
-                          'qr','0.0','NULL','CLAMP',
+                          'qr','0.0','NULL','CLAMP'
   /
 
 &model_to_dart_nml
-   model_to_dart_output_file  = 'dart_ics',
+   model_to_dart_output_file  = 'dart_ics'
    print_data_ranges          = .true.
   /
 
 &dart_to_model_nml
-   dart_to_model_input_file = 'dart_restart',
-   advance_time_present     = .false.,
+   dart_to_model_input_file = 'dart_restart'
+   advance_time_present     = .false.
    print_data_ranges        = .true.
-  / 
+  /
 
 &utilities_nml
-   TERMLEVEL = 1,
-   module_details = .false.,
-   logfilename = 'dart_log.out',
-   nmlfilename = 'dart_log.nml',
+   TERMLEVEL = 1
+   module_details = .false.
+   logfilename = 'dart_log.out'
+   nmlfilename = 'dart_log.nml'
    write_nml   = 'file'
   /
 
 &preprocess_nml
-          overwrite_output = .true.,
-    input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90', 
-   output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90', 
-   input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90', 
-  output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90', 
+          overwrite_output = .true.
+    input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90'
+   input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90'
+  output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90'
    input_files             = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90',
                              '../../../obs_def/obs_def_altimeter_mod.f90',
                              '../../../obs_def/obs_def_gts_mod.f90',
                              '../../../obs_def/obs_def_metar_mod.f90',
                              '../../../obs_def/obs_def_gps_mod.f90',
+                             '../../../obs_def/obs_def_vortex_mod.f90', 
+                             '../../../obs_def/obs_def_rel_humidity_mod.f90', 
+                             '../../../obs_def/obs_def_dew_point_mod.f90'
   /
 
 &obs_sequence_tool_nml
-   num_input_files   = 1,
-   filename_seq      = 'obs_seq.20080801_10.out',
-   filename_seq_list = '',
-   filename_out      = 'obs_seq.2008081212.out',
-   first_obs_days    = -1,
-   first_obs_seconds = -1,
-   last_obs_days     = -1,
-   last_obs_seconds  = -1,
-   print_only        = .false.,
-   min_lat           = -90.0,
-   max_lat           =  90.0,
-   min_lon           =   0.0,
-   max_lon           = 360.0,
+   num_input_files   = 1
+   filename_seq      = 'obs_seq.final'
+   filename_seq_list = ''
+   filename_out      = 'obs_seq.subset'
+   first_obs_days    = -1
+   first_obs_seconds = -1
+   last_obs_days     = -1
+   last_obs_seconds  = -1
+   print_only        = .false.
+   min_lat           = -90.0
+   max_lat           =  90.0
+   min_lon           =   0.0
+   max_lon           = 360.0
    gregorian_cal     = .true.
+   keep_types        = .true.
+   obs_types = 'RADIOSONDE_TEMPERATURE'
   /
 
 # other possible obs tool namelist items:
 #
 # keep only the U and V radiosonde winds:
-#   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
-#                        'RADIOSONDE_V_WIND_COMPONENT',
-#   keep_types         = .true.,
+#   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT'
+#                        'RADIOSONDE_V_WIND_COMPONENT'
+#   keep_types         = .true.
 #
 # remove the U and V radiosonde winds:
-#   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
-#                        'RADIOSONDE_V_WIND_COMPONENT',
-#   keep_types         = .false.,
+#   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT'
+#                        'RADIOSONDE_V_WIND_COMPONENT'
+#   keep_types         = .false.
 #
 # keep only observations with a DART QC of 0:
-#   qc_metadata        = 'Dart quality control',
-#   min_qc             = 0,
-#   max_qc             = 0,
+#   qc_metadata        = 'Dart quality control'
+#   min_qc             = 0
+#   max_qc             = 0
 #
 # keep only radiosonde temp obs between 250 and 300 K:
-#   copy_metadata      = 'NCEP BUFR observation',
-#   copy_type          = 'RADIOSONDE_TEMPERATURE',
-#   min_copy           = 250.0,
-#   max_copy           = 300.0,
+#   copy_metadata      = 'NCEP BUFR observation'
+#   copy_type          = 'RADIOSONDE_TEMPERATURE'
+#   min_copy           = 250.0
+#   max_copy           = 300.0
 #
 
 &restart_file_tool_nml
-   input_file_name              = "filter_restart",
-   output_file_name             = "filter_updated_restart",
-   ens_size                     = 1,
-   single_restart_file_in       = .true.,
-   single_restart_file_out      = .true.,
-   write_binary_restart_files   = .true.,
-   overwrite_data_time          = .false.,
-   new_data_days                = -1,
-   new_data_secs                = -1,
-   input_is_model_advance_file  = .false.,
-   output_is_model_advance_file = .false.,
-   overwrite_advance_time       = .false.,
-   new_advance_days             = -1,
-   new_advance_secs             = -1,
+   input_file_name              = "filter_restart"
+   output_file_name             = "filter_updated_restart"
+   ens_size                     = 1
+   single_restart_file_in       = .true.
+   single_restart_file_out      = .true.
+   write_binary_restart_files   = .true.
+   overwrite_data_time          = .false.
+   new_data_days                = -1
+   new_data_secs                = -1
+   input_is_model_advance_file  = .false.
+   output_is_model_advance_file = .false.
+   overwrite_advance_time       = .false.
+   new_advance_days             = -1
+   new_advance_secs             = -1
    gregorian_cal                = .true.
   /
 
 
 &schedule_nml
-   calendar             = 'Gregorian',
-   first_bin_start      =  1601,  1,  1,  0,  0,  0,
-   first_bin_end        =  2999,  1,  1,  0,  0,  0,
-   last_bin_end         =  2999,  1,  1,  0,  0,  0,
-   bin_interval_days    = 1000000,
-   bin_interval_seconds = 0,
-   max_num_bins         = 1000,
+   calendar             = 'Gregorian'
+   first_bin_start      =  1601,  1,  1,  0,  0,  0
+   first_bin_end        =  2999,  1,  1,  0,  0,  0
+   last_bin_end         =  2999,  1,  1,  0,  0,  0
+   bin_interval_days    = 1000000
+   bin_interval_seconds = 0
+   max_num_bins         = 1000
    print_table          = .true.
   /
 
 
 &obs_seq_to_netcdf_nml
-   obs_sequence_name = 'obs_seq.raobT1.final',
-   obs_sequence_list = '',
-   append_to_netcdf  = .false.,
-   lonlim1           =    0.0,
-   lonlim2           =  360.0,
-   latlim1           =  -90.0,
-   latlim2           =   90.0,
+   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_list = ''
+   append_to_netcdf  = .false.
+   lonlim1           =    0.0
+   lonlim2           =  360.0
+   latlim1           =  -90.0
+   latlim2           =   90.0
    verbose           = .true.
   /
 
 
 &obs_diag_nml
-   obs_sequence_name  = 'obs_seq.final',
+   obs_sequence_name  = 'obs_seq.final'
    first_bin_center = 2010,10,23,12,00,00
    last_bin_center  = 2010,10,23,12,00,00
    bin_width        =    0, 0, 1,00,00,00
    time_to_skip     =    0, 0, 0,00,00,00
-   trusted_obs      = 'null',
+   trusted_obs      = 'null'
    nregions  = 1
-   lonlim1   =   0.0,
-   lonlim2   = 360.0,
+   lonlim1   =   0.0
+   lonlim2   = 360.0
    latlim1   = -90.0
    latlim2   =  90.0
-   reg_names = 'global',
-   create_rank_histogram = .true.,
-   outliers_in_histogram = .true.,
-   use_zero_error_obs    = .false.,
+   reg_names = 'global'
+   create_rank_histogram = .true.
+   outliers_in_histogram = .true.
+   use_zero_error_obs    = .false.
    verbose               = .true.
   /
 
+&obs_common_subset_nml
+   num_to_compare_at_once = 2
+   filename_seq           = ''
+   filename_seq_list      = ''
+   filename_out_suffix    = '.common'
+   calendar               = 'Gregorian'
+   print_every            = 1000
+   dart_qc_threshold      = 3
+   print_only             = .false.
+  /
 
 # possible vertical coordinate systems are:
 # VERTISUNDEF VERTISSURFACE VERTISLEVEL VERTISPRESSURE VERTISHEIGHT VERTISSCALEHEIGHT
-   kind_of_interest = 'KIND_SURFACE_PRESSURE',
-   kind_of_interest = 'KIND_POTENTIAL_TEMPERATURE',
-   kind_of_interest = 'KIND_TEMPERATURE',
-   kind_of_interest = 'KIND_U_WIND_COMPONENT',
-   kind_of_interest = 'KIND_V_WIND_COMPONENT',
-   kind_of_interest = 'KIND_DENSITY',
-   kind_of_interest = 'KIND_VAPOR_MIXING_RATIO',
+   kind_of_interest = 'KIND_SURFACE_PRESSURE'
+   kind_of_interest = 'KIND_POTENTIAL_TEMPERATURE'
+   kind_of_interest = 'KIND_TEMPERATURE'
+   kind_of_interest = 'KIND_U_WIND_COMPONENT'
+   kind_of_interest = 'KIND_V_WIND_COMPONENT'
+   kind_of_interest = 'KIND_DENSITY'
+   kind_of_interest = 'KIND_VAPOR_MIXING_RATIO'
 
 &model_mod_check_nml
-   dart_input_file       = 'dart_ics',
-   output_file           = 'check_me',
-   destroy_file          = 'replaceable.nc',
-   advance_time_present  = .FALSE.,
-   verbose               = .FALSE.,
-   test1thru             = 11,
-   x_ind                 = 300,
-   loc_of_interest       = 240.0, 0.0, 10000.0,
-   kind_of_interest      = 'KIND_U_WIND_COMPONENT',
-   interp_test_lonrange  = 0.0, 359.0,
-   interp_test_dlon      = 1.0,
-   interp_test_latrange  = -89.0, 89.0,
-   interp_test_dlat      = 1.0,
-   interp_test_vertrange = 100.0,  20100.0,
-   interp_test_dvert     = 2000.0,
+   dart_input_file       = 'dart_ics'
+   output_file           = 'check_me'
+   destroy_file          = 'replaceable.nc'
+   advance_time_present  = .FALSE.
+   verbose               = .FALSE.
+   test1thru             = 11
+   x_ind                 = 300
+   loc_of_interest       = 240.0, 0.0, 10000.0
+   kind_of_interest      = 'KIND_U_WIND_COMPONENT'
+   interp_test_lonrange  = 0.0, 359.0
+   interp_test_dlon      = 1.0
+   interp_test_latrange  = -89.0, 89.0
+   interp_test_dlat      = 1.0
+   interp_test_vertrange = 100.0,  20100.0
+   interp_test_dvert     = 2000.0
    interp_test_vertcoord = 'VERTISHEIGHT'
   /
 
 &exhaustion_nml
-   dart_input_file       = 'dart_ics',
-   output_file           = 'exhaust',
-   advance_time_present  = .FALSE.,
-   verbose               = .FALSE.,
-   matlab_out            = .FALSE.,
-   netcdf_out            = .TRUE.,
-   kind_of_interest      = 'KIND_U_WIND_COMPONENT',
-   interp_test_lonrange  = 0.0, 360.0,
-   interp_test_dlon      = 1.0,
-   interp_test_latrange  = -89.0, 89.0,
-   interp_test_dlat      = 1.0,
-   interp_test_vertrange = 7000.0, 7000.0,
-   interp_test_dvert     = 1000.0,
-   interp_test_vertcoord = 'VERTISHEIGHT',
-   hscale                = 100.0,
-   diff_threshold        = 2.0,
+   dart_input_file       = 'dart_ics'
+   output_file           = 'exhaust'
+   advance_time_present  = .FALSE.
+   verbose               = .FALSE.
+   matlab_out            = .FALSE.
+   netcdf_out            = .TRUE.
+   kind_of_interest      = 'KIND_U_WIND_COMPONENT'
+   interp_test_lonrange  = 0.0, 360.0
+   interp_test_dlon      = 1.0
+   interp_test_latrange  = -89.0, 89.0
+   interp_test_dlat      = 1.0
+   interp_test_vertrange = 7000.0, 7000.0
+   interp_test_dvert     = 1000.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   hscale                = 100.0
+   diff_threshold        = 2.0
    pointcount            = 100000
   /
+
+&obs_seq_coverage_nml
+   obs_sequences     = ''
+   obs_sequence_list = 'obs_coverage_list.txt'
+   obs_of_interest   = 'RADIOSONDE_TEMPERATURE', 'RADIOSONDE_U_WIND_COMPONENT', 'RADIOSONDE_V_WIND_COMPONENT'
+   textfile_out      = 'obsdef_mask.txt'
+   netcdf_out        = 'obsdef_mask.nc'
+   calendar          = 'Gregorian'
+   first_analysis    =  2008, 8, 1, 18, 0, 0
+   last_analysis     =  2008, 8, 1, 18, 0, 0
+   forecast_length_days          = 0
+   forecast_length_seconds       = 21600
+   verification_interval_seconds = 21600
+   temporal_coverage_percent     = 50.0
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
+   verbose    = .true.
+   debug      = .false.
+  /
+
+# selections_file is a list of obs_defs output
+# from the obs_seq_coverage utility.
+&obs_selection_nml
+   filename_seq          = 'obs_seq.out'
+   filename_seq_list     = ''
+   filename_out          = 'obs_seq.processed'
+   selections_file       = 'obsdef_mask.txt'
+   selections_is_obs_seq = .false.
+   print_only            = .false.
+   calendar              = "Gregorian"
+  /
+
+# one of the other, but not both
+   obs_sequences = 'obs_seq.final.2008060100', 'obs_seq.final.2008060112'
+   obs_sequence_list = 'obs_forecast_list.txt'
+&obs_seq_verify_nml
+   obs_sequences     = ''
+   obs_sequence_list = 'obs_forecast_list.txt'
+   input_template    = 'obsdef_mask.nc'
+   netcdf_out        = 'forecast.nc'
+   obtype_string     = 'RADIOSONDE_TEMPERATURE'
+   print_every       = 20000
+   verbose           = .true.
+   debug             = .false.
+  /
+
+&mpas_obs_preproc_nml
+   static_mpas_filename     = 'mpas_init.nc'
+   file_name_input          = 'obs_seq.old'
+   file_name_output         = 'obs_seq.new'
+   include_sig_data         = .true.
+   superob_aircraft         = .false.
+   superob_sat_winds        = .false.
+   sfc_elevation_check      = .false.
+   overwrite_ncep_sfc_qc    = .false.
+   overwrite_ncep_satwnd_qc = .false.
+   aircraft_pres_int        = 2500.0
+   sat_wind_pres_int        = 2500.0
+   sfc_elevation_tol        = 300.0
+   obs_pressure_top         = 0.0
+   obs_height_top           = 2.0e10
+   max_num_obs              = 1000000
+   sonde_extra              = 'obs_seq.rawin'
+   metar_extra              = 'obs_seq.metar'
+   acars_extra              = 'obs_seq.acars'
+   land_sfc_extra           = 'obs_seq.land_sfc'
+   marine_sfc_extra         = 'obs_seq.marine'
+   sat_wind_extra           = 'obs_seq.satwnd'
+   profiler_extra           = 'obs_seq.profiler'
+   trop_cyclone_extra       = 'obs_seq.tc'
+   gpsro_extra              = 'obs_seq.gpsro'
+   tc_sonde_radii           = -1.0
+   overwrite_obs_time       = .false.
+/
 
