@@ -15,6 +15,9 @@ http://www.ecmwf.int/research/ifsdocs/CY25r1/Observations/Observations-03-3.html
 NCEP errors: 
 a 2005 version of the GFS observation error tables.
 
+(Note that the return values from these modules should be 
+the ERROR STANDARD DEVIATION.  In the obs_seq files, the
+value stored with each observation will be the variance.)
 
 Each center uses different errors, and these separate files
 make it easy to collect these values in one place, and switch

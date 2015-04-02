@@ -6,7 +6,7 @@ mpi_utilities/null_mpi_utilities_mod.f90
 obs_def/obs_def_mod.f90
 obs_kind/obs_kind_mod.f90
 obs_sequence/obs_sequence_mod.f90
-observations/Ameriflux/level4_to_obs.f90
+obs_sequence/obs_seq_verify.f90
 random_seq/random_seq_mod.f90
 time_manager/time_manager_mod.f90
 utilities/utilities_mod.f90

@@ -22,7 +22,7 @@ use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               register_module, error_handler, E_MSG, E_ERR, &
                               open_file, close_file, do_nml_file, do_nml_term, &
                               check_namelist_read, find_namelist_in_file, &
-                              nmlfileunit
+                              nmlfileunit, logfileunit
 
 use  time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
                               set_date, set_time, get_time, print_time, &
@@ -52,8 +52,8 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! Namelist with default values
 !-----------------------------------------------------------------------
 
-character(len=128) :: text_input_file = 'textdata.input'
-character(len=128) :: obs_out_file    = 'obs_seq.out'
+character(len=256) :: text_input_file = 'textdata.input'
+character(len=256) :: obs_out_file    = 'obs_seq.out'
 integer            :: year            = -1
 real(r8)           :: timezoneoffset  = -1.0_r8
 real(r8)           :: latitude        = -1.0_r8
@@ -72,8 +72,8 @@ namelist /level4_to_obs_nml/ text_input_file, obs_out_file, year, &
 !-----------------------------------------------------------------------
 
 character(len=300)      :: input_line, bigline
-character(len=256)      :: string1, string2, string3
-integer                 :: iline, nlines
+character(len=512)      :: string1, string2, string3
+integer                 :: iline, nlines, nwords
 logical                 :: first_obs
 integer                 :: oday, osec, rcio, iunit
 integer                 :: num_copies, num_qc, max_obs
@@ -85,16 +85,16 @@ real(r8), parameter     :: umol_to_gC = (1.0_r8/1000000.0_r8) * 12.0_r8
 
 type towerdata
   type(time_type)   :: time_obs
-  character(len=20) :: monthstring = 'month'
-  character(len=20) :: daystring   = 'day'
-  character(len=20) :: hourstring  = 'hour'
-  character(len=20) :: doystring   = 'doy'
-  character(len=20) :: neestring   = 'nee_or_fmds'
-  character(len=20) :: neeQCstring = 'nee_or_fmdsqc'
-  character(len=20) :: lestring    = 'le_f'
-  character(len=20) :: leQCstring  = 'le_fqc'
-  character(len=20) :: hstring     = 'h_f'
-  character(len=20) :: hQCstring   = 'h_fqc'
+  character(len=20) :: monthstring = 'Month'
+  character(len=20) :: daystring   = 'Day'
+  character(len=20) :: hourstring  = 'Hour'
+  character(len=20) :: doystring   = 'DoY'
+  character(len=20) :: neestring   = 'NEE_or_fMDS'
+  character(len=20) :: neeQCstring = 'NEE_or_fMDSqc'
+  character(len=20) :: lestring    = 'LE_f'
+  character(len=20) :: leQCstring  = 'LE_fqc'
+  character(len=20) :: hstring     = 'H_f'
+  character(len=20) :: hQCstring   = 'H_fqc'
   integer  :: monthindex
   integer  :: dayindex
   integer  :: hourindex
@@ -142,8 +142,10 @@ call set_calendar_type(GREGORIAN)
 offset    = set_time(nint(abs(timezoneoffset)*3600.0_r8),0)
 prev_time = set_time(0, 0)
 
-if (verbose) print *, 'tower located at lat, lon, elev  =', latitude, longitude, elevation
-if (verbose) print *, 'flux observations taken at       =', flux_height,'m'
+write(string1, *) 'tower located at lat, lon, elev  =', latitude, longitude, elevation
+write(string2, *) 'flux observations taken at       =', flux_height,'m'
+
+if (verbose) call error_handler(E_MSG,'level4_to_obs',string1,text2=string2)
 
 ! check the lat/lon values to see if they are ok
 if (longitude < 0.0_r8) longitude = longitude + 360.0_r8
@@ -170,7 +172,7 @@ endif
 ! in observation sequence - the other is for the new observation.
 
 iunit = open_file(text_input_file, 'formatted', 'read')
-if (verbose) print *, 'opened input file ' // trim(text_input_file)
+if (verbose) call error_handler(E_MSG,'level4_to_obs','opened input file '//trim(text_input_file))
 
 nlines     = count_file_lines(iunit)
 max_obs    = 3*nlines
@@ -191,7 +193,7 @@ call set_qc_meta_data(  obs_seq, 1, 'Ameriflux QC')
 ! The first line describes all the fields ... column headers, if you will
 
 rewind(iunit)
-call decode_header(iunit)
+call decode_header(iunit, nwords)
 
 obsloop: do iline = 2,nlines
 
@@ -207,11 +209,13 @@ obsloop: do iline = 2,nlines
    input_line = adjustl(bigline)
 
    ! parse the line into the tower structure (including the observation time)
-   call stringparse(input_line, iline)
+   call stringparse(input_line, nwords, iline)
 
    if (iline <= 2) then
       write(*,*)''
-      write(*,*)'Check of the first observation: (column,string,value)'
+      call print_date(tower%time_obs, ' first observation date (local time) is')
+      call print_time(tower%time_obs, ' first observation time (local time) is')
+      write(*,*)'first observation raw values: (column,string,value) timezone not applied'
       write(*,*)tower%monthindex, tower%monthstring , tower%month
       write(*,*)tower%dayindex  , tower%daystring   , tower%day
       write(*,*)tower%hourindex , tower%hourstring  , tower%hour
@@ -222,13 +226,32 @@ obsloop: do iline = 2,nlines
       write(*,*)tower%leQCindex , tower%leQCstring  , tower%leQC
       write(*,*)tower%neeindex  , tower%neestring   , tower%nee
       write(*,*)tower%neeQCindex, tower%neeQCstring , tower%neeQC
-      call print_date(tower%time_obs, 'observation date is')
-      call print_time(tower%time_obs, 'observation time is')
+      write(*,*)''
+
+      write(logfileunit,*)''
+      call print_date(tower%time_obs, ' first observation date (local time) is',logfileunit)
+      call print_time(tower%time_obs, ' first observation time (local time) is',logfileunit)
+      write(logfileunit,*)'first observation raw values: (column,string,value) timezone not applied'
+      write(logfileunit,*)tower%monthindex, tower%monthstring , tower%month
+      write(logfileunit,*)tower%dayindex  , tower%daystring   , tower%day
+      write(logfileunit,*)tower%hourindex , tower%hourstring  , tower%hour
+      write(logfileunit,*)tower%doyindex  , tower%doystring   , tower%doy
+      write(logfileunit,*)tower%hindex    , tower%hstring     , tower%h
+      write(logfileunit,*)tower%hQCindex  , tower%hQCstring   , tower%hQC
+      write(logfileunit,*)tower%leindex   , tower%lestring    , tower%le
+      write(logfileunit,*)tower%leQCindex , tower%leQCstring  , tower%leQC
+      write(logfileunit,*)tower%neeindex  , tower%neestring   , tower%nee
+      write(logfileunit,*)tower%neeQCindex, tower%neeQCstring , tower%neeQC
+      write(logfileunit,*)''
    end if
 
-   if (verbose) call print_date(tower%time_obs, 'obs time is')
-
    call get_time(tower%time_obs, osec, oday)
+
+   if (verbose) then
+      write(string1,*)'obs time is (seconds,days) ',osec, oday,' obs date is '
+      call print_date(tower%time_obs, trim(string1))
+      call print_date(tower%time_obs, trim(string1),logfileunit)
+   endif
 
    ! make an obs derived type, and then add it to the sequence
    ! If the QC value is good, use the observation.
@@ -269,7 +292,8 @@ end do obsloop
 
 ! if we added any obs to the sequence, write it out to a file now.
 if ( get_num_obs(obs_seq) > 0 ) then
-   if (verbose) print *, 'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
+   write(string1,*)'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
+   if (verbose) call error_handler(E_MSG,'level4_to_obs',string1)
    call write_obs_seq(obs_seq, obs_out_file)
 endif
 
@@ -435,15 +459,16 @@ end function count_file_lines
 
 
 
-subroutine decode_header(iunit)
+subroutine decode_header(iunit,ncolumns)
 ! Reads the first line of the header and parses the information.
 ! And by parse, I mean determine which columns are the columns
 ! of interest.
 
 integer, intent(in) :: iunit
+integer, intent(out) :: ncolumns
 
 integer, parameter :: maxwordlength = 30
-integer :: i,charcount,columncount,wordlength,maxlength
+integer :: i,charcount,columncount,wordlength
 character(len=maxwordlength), dimension(:), allocatable :: columns
 integer, dimension(10) :: qc = 0
 
@@ -460,8 +485,8 @@ input_line = adjustl(bigline)
 ! Count how many commas are in the line - use this to determine how many columns
 
 charcount = CountChar(input_line,',')
-columncount = charcount + 1
-allocate(columns(columncount))
+ncolumns  = charcount + 1
+allocate(columns(ncolumns))
 
 columncount  = 0  ! track the number of columns
 wordlength   = 0  ! number of characters in the column descriptor
@@ -475,7 +500,8 @@ do i = 1,len_trim(input_line)
          call error_handler(E_ERR,'decode_header',string1, source, revision, revdate)
       endif
       columns(columncount) = input_line((i-wordlength):(i-1)) 
-      if (verbose) write(*,*)'word(',columncount,') is ',columns(columncount)
+      write(string1,*) 'word(',columncount,') is ',columns(columncount)
+      if (verbose) call error_handler(E_MSG,'decode_header',string1)
       wordlength = 0
       charcount = i
    else
@@ -485,33 +511,45 @@ enddo
 
 ! There is one more column after the last comma
 
-columns(columncount+1) = input_line((charcount+1):len_trim(input_line))
+if ((columncount+1) /= ncolumns) then
+    write(string1,*)'parsed wrong number of words ...'
+    write(string2,*)'expected ',ncolumns,' got ',columncount+1
+    call error_handler(E_ERR,'decode_header',string1,source,revision,revdate, &
+                       text2=trim(string2), text3=trim(input_line))
+endif
+
+columns(ncolumns) = input_line((charcount+1):len_trim(input_line))
+
+write(string1,*)'word(',ncolumns,') is ',columns(ncolumns)
+if (verbose) call error_handler(E_MSG,'decode_header',string1)
 
 ! Finally get to the task at hand
 
-tower%monthindex = Match(columns,'Month')         ! used to be  1
-tower%dayindex   = Match(columns,'Day')           ! used to be  2
-tower%hourindex  = Match(columns,'Hour')          ! used to be  3
-tower%doyindex   = Match(columns,'DoY')           ! used to be  4
-tower%hindex     = Match(columns,'H_f')           ! used to be 15
-tower%hQCindex   = Match(columns,'H_fqc')         ! used to be 16
-tower%leindex    = Match(columns,'LE_f')          ! used to be 17
-tower%leQCindex  = Match(columns,'LE_fqc')        ! used to be 18
-tower%neeindex   = Match(columns,'NEE_or_fMDS')   ! used to be 26
-tower%neeQCindex = Match(columns,'NEE_or_fMDSqc') ! used to be 27
+tower%monthindex = Match(columns, tower%monthstring)
+tower%dayindex   = Match(columns, tower%daystring)
+tower%hourindex  = Match(columns, tower%hourstring)
+tower%doyindex   = Match(columns, tower%doystring)
+tower%hindex     = Match(columns, tower%hstring)
+tower%hQCindex   = Match(columns, tower%hQCstring)
+tower%leindex    = Match(columns, tower%lestring)
+tower%leQCindex  = Match(columns, tower%leQCstring)
+tower%neeindex   = Match(columns, tower%neestring)
+tower%neeQCindex = Match(columns, tower%neeQCstring)
+
+! FIXME ... find a column marked 'year' or 'error_var' and use if possible.
 
 ! Check to make sure we got all the indices we need
 
-qc( 1) = CheckIndex( tower%monthindex , 'Month' )
-qc( 2) = CheckIndex( tower%dayindex   , 'Day' )
-qc( 3) = CheckIndex( tower%hourindex  , 'Hour' )
-qc( 4) = CheckIndex( tower%doyindex   , 'DoY' )
-qc( 5) = CheckIndex( tower%hindex     , 'H_f' )
-qc( 6) = CheckIndex( tower%hQCindex   , 'H_fqc' )
-qc( 7) = CheckIndex( tower%leindex    , 'LE_f' )
-qc( 8) = CheckIndex( tower%leQCindex  , 'LE_fqc' )
-qc( 9) = CheckIndex( tower%neeindex   , 'NEE_or_fMDS' )
-qc(10) = CheckIndex( tower%neeQCindex , 'NEE_or_fMDSqc' )
+qc( 1) = CheckIndex( tower%monthindex, tower%monthstring)
+qc( 2) = CheckIndex( tower%dayindex  , tower%daystring)
+qc( 3) = CheckIndex( tower%hourindex , tower%hourstring)
+qc( 4) = CheckIndex( tower%doyindex  , tower%doystring)
+qc( 5) = CheckIndex( tower%hindex    , tower%hstring)
+qc( 6) = CheckIndex( tower%hQCindex  , tower%hQCstring)
+qc( 7) = CheckIndex( tower%leindex   , tower%lestring)
+qc( 8) = CheckIndex( tower%leQCindex , tower%leQCstring)
+qc( 9) = CheckIndex( tower%neeindex  , tower%neestring)
+qc(10) = CheckIndex( tower%neeQCindex, tower%neeQCstring)
 
 if (any(qc /= 0) ) then
   write(string1,*)'Did not find all the required column indices.'
@@ -521,16 +559,17 @@ endif
 ! Summarize if desired
 
 if (verbose) then
-   write(*,*)'index is ', tower%monthindex ,' at one point it was  1'
-   write(*,*)'index is ', tower%dayindex   ,' at one point it was  2'
-   write(*,*)'index is ', tower%hourindex  ,' at one point it was  3'
-   write(*,*)'index is ', tower%doyindex   ,' at one point it was  4'
-   write(*,*)'index is ', tower%hindex     ,' at one point it was 15'
-   write(*,*)'index is ', tower%hQCindex   ,' at one point it was 16'
-   write(*,*)'index is ', tower%leindex    ,' at one point it was 17'
-   write(*,*)'index is ', tower%leQCindex  ,' at one point it was 18'
-   write(*,*)'index is ', tower%neeindex   ,' at one point it was 26'
-   write(*,*)'index is ', tower%neeQCindex ,' at one point it was 27'
+110 format('index for ',A20,' is ',i3)
+   write(*,110)tower%monthstring, tower%monthindex
+   write(*,110)tower%daystring  , tower%dayindex
+   write(*,110)tower%hourstring , tower%hourindex
+   write(*,110)tower%doystring  , tower%doyindex
+   write(*,110)tower%hstring    , tower%hindex
+   write(*,110)tower%hQCstring  , tower%hQCindex
+   write(*,110)tower%lestring   , tower%leindex
+   write(*,110)tower%leQCstring , tower%leQCindex
+   write(*,110)tower%neestring  , tower%neeindex
+   write(*,110)tower%neeQCstring, tower%neeQCindex
 endif
 
 deallocate(columns)
@@ -572,7 +611,7 @@ character(len=*),               intent(in) :: word
 integer :: i
 
 Match = 0
-WordLoop : do i = 1,len(sentence)
+WordLoop : do i = 1,size(sentence)
    if (trim(sentence(i)) == trim(word)) then
       Match = i
       return
@@ -605,15 +644,18 @@ end function CheckIndex
 
 
 
-subroutine stringparse(str1,linenum)
+subroutine stringparse(str1, nwords, linenum)
 ! just declare everything as reals and chunk it
 
 character(len=*), intent(in) :: str1
+integer         , intent(in) :: nwords
 integer         , intent(in) :: linenum
 
-real(r8), dimension(34) :: values
+real(r8), allocatable, dimension(:) :: values
 integer :: iday, ihour, imin, isec, seconds
 type(time_type) :: time0, time1, time2
+
+allocate(values(nwords))
 
 values = MISSING_R8
 
@@ -645,6 +687,8 @@ tower%leQC  = nint(values(tower%leQCindex ))
 tower%h     =      values(tower%hindex    )
 tower%hQC   = nint(values(tower%hQCindex  ))
 
+deallocate(values)
+
 ! decode the time pieces ... two times ...
 ! The LAST line of these files is knackered ... and we have to check that
 ! if the doy is greater than the ymd ...
@@ -665,7 +709,8 @@ time2   = time0 - time1
 call get_time(time2, isec, iday)
 
 if ( iday > 0 ) then
-   ! we need to change the day ...
+   ! FIXME we need to change the day ...
+   ! This blows up if you try to use a non-leap year with leapyear ...
 
    tower%time_obs = time1
 
@@ -680,6 +725,12 @@ if ( iday > 0 ) then
       call print_time(time0, 'stringparse: using ymd time is')
       call print_time(time1, 'stringparse: using doy time is')
       call print_time(time2, 'stringparse: difference     is')
+
+      call print_date(time0, 'stringparse: using ymd date is',logfileunit)
+      call print_date(time1, 'stringparse: using doy date is',logfileunit)
+      call print_time(time0, 'stringparse: using ymd time is',logfileunit)
+      call print_time(time1, 'stringparse: using doy time is',logfileunit)
+      call print_time(time2, 'stringparse: difference     is',logfileunit)
    endif
 else
 
@@ -730,7 +781,7 @@ end program level4_to_obs
 ! - Rg_fqc         : global radiation quality flags:
 !                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
 !                    (Refer to Reichstein et al. 2005 Global Change Biology )
-! - Ta_f           : air temperature filled [°C]
+! - Ta_f           : air temperature filled [C]
 ! - Ta_fqc         : air temperature quality flags:
 !                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
 !                    (Refer to Reichstein et al. 2005 Global Change Biology )
@@ -738,7 +789,7 @@ end program level4_to_obs
 ! - VPD_fqc        : vapour pressure deficit quality flags:
 !                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
 !                    (Refer to Reichstein et al. 2005 Global Change Biology )
-! - Ts_f           : soil temperature filled [°C]
+! - Ts_f           : soil temperature filled [C]
 ! - Ts_fqc         : soil temperature quality flags:
 !                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
 !                    (Refer to Reichstein et al. 2005 Global Change Biology )

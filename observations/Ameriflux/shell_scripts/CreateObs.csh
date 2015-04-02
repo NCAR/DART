@@ -70,7 +70,7 @@ end
 
 
 #===========================================================================
-# Barrow Arctic Science Sonsortium [Alaska]
+# Barrow Arctic Science Consortium [Alaska]
 # lon/lat = -156.62588,71.322525
 # station height = 1 m
 # instrument height =  1.9 m

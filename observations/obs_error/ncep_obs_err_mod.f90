@@ -37,6 +37,11 @@ public :: land_pres_error,              &
           land_temp_error,              &
           land_wind_error
 
+public :: metar_pres_error,              &
+          metar_rel_hum_error,           &
+          metar_temp_error,              &
+          metar_wind_error
+
 public :: acars_rel_hum_error,          &
           acars_temp_error,             &
           acars_wind_error
@@ -77,6 +82,7 @@ real(r8), intent(in) :: pres  !  (mb)
 
 integer  :: k0
 real(r8) :: obs_err(nobs_level), wght, acars_temp_error
+! this array is ordered from top of atm down to surface
 
 data obs_err/1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, &
              1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, &
@@ -84,6 +90,13 @@ data obs_err/1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, &
              1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, 1.0_r8, &
              1.0_r8, 1.0_r8, 1.0_r8, 1.11_r8, 1.24_r8, 1.35_r8, &
              1.47_r8, 1.47_r8, 1.47_r8/
+!data obs_prs/   0.0_r8,    1.0_r8,    2.0_r8,   3.0_r8,    4.0_r8,   5.0_r8,
+!               10.0_r8,   20.0_r8,   30.0_r8,  40.0_r8,   50.0_r8,  75.0_r8,
+!              100.0_r8,  150.0_r8,  200.0_r8, 250.0_r8,  300.0_r8, 350.0_r8, 
+!              400.0_r8,  450.0_r8,  500.0_r8, 550.0_r8,  600.0_r8, 650.0_r8,  
+!              700.0_r8,  750.0_r8,  800.0_r8, 850.0_r8,  900.0_r8, 950.0_r8, &
+!             1000.0_r8, 1050.0_r8, 1100.0_r8/
+
 
 call find_pressure_level_weight(pres, k0, wght)
 acars_temp_error = wght * obs_err(k0) + (1.0_r8 - wght) * obs_err(k0+1)
@@ -121,6 +134,22 @@ return
 end function land_pres_error
 
 
+function metar_pres_error(pres)
+
+real(r8), intent(in) :: pres  !  (mb)
+
+real(r8) :: metar_pres_error
+
+if ( pres >= 600.0_r8 ) then
+  metar_pres_error = 1.0_r8
+else
+  metar_pres_error = missing_r8
+end if
+
+return
+end function metar_pres_error
+
+
 function land_rel_hum_error(pres, tmpk, rh)
 
 real(r8), intent(in) :: pres, tmpk, rh
@@ -131,6 +160,18 @@ land_rel_hum_error = 0.2_r8
 
 return
 end function land_rel_hum_error
+
+
+function metar_rel_hum_error(pres, tmpk, rh)
+
+real(r8), intent(in) :: pres, tmpk, rh
+
+real(r8) :: metar_rel_hum_error
+
+metar_rel_hum_error = 0.2_r8
+
+return
+end function metar_rel_hum_error
 
 
 function land_temp_error(pres)
@@ -145,6 +186,18 @@ return
 end function land_temp_error
 
 
+function metar_temp_error(pres)
+
+real(r8), intent(in) :: pres  !  (mb)
+
+real(r8) :: metar_temp_error
+
+metar_temp_error = 2.5_r8
+
+return
+end function metar_temp_error
+
+
 function land_wind_error(pres)
 
 real(r8), intent(in) :: pres  !  (mb)
@@ -155,6 +208,18 @@ land_wind_error = 3.5_r8
 
 return
 end function land_wind_error
+
+
+function metar_wind_error(pres)
+
+real(r8), intent(in) :: pres  !  (mb)
+
+real(r8) :: metar_wind_error
+
+metar_wind_error = 3.5_r8
+
+return
+end function metar_wind_error
 
 
 function fixed_marine_pres_error(pres)
@@ -360,6 +425,12 @@ data obs_err/2.1_r8, 2.1_r8, 2.1_r8, 2.1_r8, 2.1_r8, 2.1_r8, &
              2.6_r8, 2.3_r8, 2.1_r8, 2.0_r8, 1.9_r8, 1.8_r8, &
              1.6_r8, 1.6_r8, 1.6_r8, 1.5_r8, 1.5_r8, 1.5_r8, &
              1.4_r8, 1.4_r8, 1.4_r8/
+!data obs_prs/   0.0_r8,    1.0_r8,    2.0_r8,   3.0_r8,    4.0_r8,   5.0_r8,
+!               10.0_r8,   20.0_r8,   30.0_r8,  40.0_r8,   50.0_r8,  75.0_r8,
+!              100.0_r8,  150.0_r8,  200.0_r8, 250.0_r8,  300.0_r8, 350.0_r8, 
+!              400.0_r8,  450.0_r8,  500.0_r8, 550.0_r8,  600.0_r8, 650.0_r8,  
+!              700.0_r8,  750.0_r8,  800.0_r8, 850.0_r8,  900.0_r8, 950.0_r8, &
+!             1000.0_r8, 1050.0_r8, 1100.0_r8/
 
 call find_pressure_level_weight(pres, k0, wght)
 rawin_wind_error = wght * obs_err(k0) + (1.0_r8 - wght) * obs_err(k0+1)

@@ -75,7 +75,7 @@ contains
 !    vkind - kind of vertical coordinate (pressure, level, etc)
 !    obsv  - observation value
 !    okind - observation kind
-!    oerr  - observation error
+!    oerr  - standard deviation of observation error
 !    day   - gregorian day
 !    sec   - gregorian second
 !    qc    - quality control value

@@ -9,7 +9,7 @@
 <BODY>
 <A NAME="TOP"></A>
 
-<H1>Observations</H1>
+<H1>DART Observations</H1>
 
 <table border=0 summary="" cellpadding=5>
 <tr>
@@ -123,6 +123,43 @@ amongst others.
 See the <a href="#Programs">Programs</a> section below for a list of
 the current converter programs.
 </P>
+<P>
+If you have looked and none of the existing converters are right
+for your data, here are some suggestions for where to start creating
+a new converter.  Create a new subdirectory in the <em class=file>observations</em>
+directory.  Copy with the recursive option (<em class=code>cp -r</em>) one of
+the existing converters and adapt to your needs.  Our suggestions for which
+converter to start from depends on the format of your input observations
+to be converted.  If your input data format is:
+<DL>
+<DT>netCDF</DT><DD>Start with the <em class=file>MADIS</em> converters,
+and in particular try the <em class=file>convert_madis_profiler.f90</em>
+file because it is the most straightforward.
+</DD>
+<DT>Comma separated text</DT><DD>Start with the <em class=file>Ameriflux</em> converter.
+</DD>
+<DT>Generic text</DT><DD>Start with the <em class=file>text</em> converter.
+</DD>
+<DT>HDF-EOS</DT><DD>Start with the <em class=file>AIRS</em> converter.
+</DD>
+<DT>BUFR or prepBUFR</DT><DD>Start with the <em class=file>NCEP</em> converter.
+</DD>
+<DT>Dense data, like Satellite swaths</DT><DD>Start with the <em class=file>tpw</em> converter,
+which includes code that averages the raw data in space and time.
+</DD>
+<DT>Ray-path integrated data</DT><DD>Start with the <em class=file>GPS</em> converter,
+which includes code that traces a path and integrates values along the ray.
+</DD>
+<DT>World Ocean Database packed ASCII</DT><DD>Start with the <em class=file>WOD</em> converter.
+<DD>
+
+</DL>
+</P>
+
+
+
+<!-- FIXME: add suggested starting locations for different file
+ formats here.   -->
 
 <!--==================================================================-->
 
@@ -303,6 +340,7 @@ format required by DART.</P>
 <LI><a href="quikscat/QuikSCAT.html">QuikSCAT</a></LI>
 <LI><a href="radar/radar.html">Radar</a></LI>
 <LI><a href="text/text_to_obs.html">Text</a></LI>
+<LI><a href="tropical_cyclone/tc_to_obs.html">Tropical Cyclones</a></LI>
 <LI><a href="var/littler_tf_dart.html">Var (little-r)</a></LI>
 <LI><a href="var/rad_3dvar_to_dart.html">Var (radar)</a></LI>
 </UL>

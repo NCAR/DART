@@ -90,16 +90,23 @@
    /
 
 &obs_seq_coverage_nml
-   obs_sequence_list = 'obs_coverage_list.txt',
-   obs_sequence_name = '',        
-   obs_of_interest = 'METAR_U_10_METER_WIND',
-   lonlim1    =    0.0,
-   lonlim2    =  360.0,
-   latlim1    =  -90.0,
-   latlim2    =   90.0,
-   nTmin      =      8,
-   nTmax      =      8,
-   verbose    = .false.,
+   obs_sequences     = ''
+   obs_sequence_list = 'obs_coverage_list.txt'
+   obs_of_interest   = 'METAR_U_10_METER_WIND'
+   textfile_out      = 'obsdef_mask.txt'
+   netcdf_out        = 'obsdef_mask.nc'
+   calendar          = 'Gregorian'
+   first_analysis    =  2003, 1, 1, 0, 0, 0
+   last_analysis     =  2003, 1, 1, 6, 0, 0
+   forecast_length_days          = 1
+   forecast_length_seconds       = 0
+   verification_interval_seconds = 21600
+   temporal_coverage_percent     = 100.0
+   lonlim1 =    0.0
+   lonlim2 =  360.0
+   latlim1 =  -90.0
+   latlim2 =   90.0
+   verbose = .false.
    /
 
 # selections_file is a list of obs_defs output
@@ -113,6 +120,19 @@
    print_only          = .false., 
    calendar            = 'gregorian',
    /
+
+
+&obs_seq_verify_nml
+   obs_sequences     = ''
+   obs_sequence_list = 'obs_forecast_list.txt'
+   input_template    = 'obsdef_mask.nc'
+   netcdf_out        = 'forecast.nc'
+   obtype_string     = 'RADIOSONDE_TEMPERATURE'
+   print_every       = 20000
+   verbose           = .true.
+   debug             = .false.
+  /
+
 
 &restart_file_tool_nml
    input_file_name              = "filter_restart",        

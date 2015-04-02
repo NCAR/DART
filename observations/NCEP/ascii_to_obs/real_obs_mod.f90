@@ -26,7 +26,7 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_
                              KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_RELATIVE_HUMIDITY, &
                              KIND_DEWPOINT, KIND_PRESSURE, KIND_VERTICAL_VELOCITY, &
                              KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY, KIND_VELOCITY, &
-                             KIND_1D_INTEGRAL, KIND_RADAR_REFLECTIVITY 
+                             KIND_1D_INTEGRAL, KIND_RADAR_REFLECTIVITY, KIND_GEOPOTENTIAL_HEIGHT
 
 use  obs_utilities_mod, only : add_obs_to_seq, create_3d_obs
 
@@ -34,6 +34,7 @@ use  obs_def_altimeter_mod, only: compute_altimeter
 
 use obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT
 use obs_kind_mod, only : RADIOSONDE_V_WIND_COMPONENT
+use obs_kind_mod, only : RADIOSONDE_GEOPOTENTIAL_HGT
 use obs_kind_mod, only : RADIOSONDE_SURFACE_PRESSURE
 use obs_kind_mod, only : RADIOSONDE_TEMPERATURE
 use obs_kind_mod, only : RADIOSONDE_SPECIFIC_HUMIDITY
@@ -58,6 +59,7 @@ use obs_kind_mod, only : MARINE_SFC_SPECIFIC_HUMIDITY
 use obs_kind_mod, only : MARINE_SFC_RELATIVE_HUMIDITY
 use obs_kind_mod, only : MARINE_SFC_DEWPOINT
 use obs_kind_mod, only : MARINE_SFC_ALTIMETER
+use obs_kind_mod, only : MARINE_SFC_PRESSURE 
 use obs_kind_mod, only : LAND_SFC_U_WIND_COMPONENT
 use obs_kind_mod, only : LAND_SFC_V_WIND_COMPONENT
 use obs_kind_mod, only : LAND_SFC_TEMPERATURE
@@ -65,6 +67,7 @@ use obs_kind_mod, only : LAND_SFC_SPECIFIC_HUMIDITY
 use obs_kind_mod, only : LAND_SFC_RELATIVE_HUMIDITY
 use obs_kind_mod, only : LAND_SFC_DEWPOINT
 use obs_kind_mod, only : LAND_SFC_ALTIMETER
+use obs_kind_mod, only : LAND_SFC_PRESSURE 
 use obs_kind_mod, only : RADIOSONDE_SURFACE_ALTIMETER
 use obs_kind_mod, only : SAT_U_WIND_COMPONENT
 use obs_kind_mod, only : SAT_V_WIND_COMPONENT
@@ -88,6 +91,8 @@ logical, save :: module_initialized = .false.
 ! after each N observations are processed, for benchmarking.
 logical :: print_timestamps = .false.
 integer :: print_every_Nth  = 10000
+logical :: debug            = .false.
+
 !-------------------------------------------------
 
 contains
@@ -95,18 +100,18 @@ contains
 
 function real_obs_sequence (year, month, day, hourt, max_num, select_obs, &
           ObsBase, ADDUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &
-          obs_U, obs_V, obs_T, obs_PS, obs_QV, inc_specific_humidity,      &
-          inc_relative_humidity, inc_dewpoint, bin_beg, bin_end,           &
-          lon1, lon2, lat1, lat2, obs_time)
+          obs_U, obs_V, obs_T, obs_PS, obs_QV, obs_Z, inc_specific_humidity,&
+          inc_relative_humidity, inc_dewpoint, inc_surface_pressure, &
+          bin_beg, bin_end, lon1, lon2, lat1, lat2, obs_time)
 !------------------------------------------------------------------------------
 !  this function is to prepare NCEP decoded BUFR data to DART sequence format
 !
 integer,            intent(in) :: year, month, day, max_num, select_obs
 character(len = *), intent(in) :: ObsBase, hourt
 logical,            intent(in) :: ADDUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND
-logical,            intent(in) :: obs_U, obs_V, obs_T, obs_PS, obs_QV, obs_time
+logical,            intent(in) :: obs_U, obs_V, obs_T, obs_PS, obs_QV, obs_Z, obs_time
 logical,            intent(in) :: inc_specific_humidity, inc_relative_humidity, &
-                                  inc_dewpoint
+                                  inc_dewpoint, inc_surface_pressure
 real(r8),           intent(in) :: lon1, lon2, lat1, lat2
 
 type(obs_sequence_type) :: real_obs_sequence
@@ -120,7 +125,7 @@ integer :: hour, imin, sec
 integer :: obs_num, calender_type
 type(time_type) :: current_day, time_obs, prev_time
 
-integer, parameter :: num_fail_kinds = 6
+integer, parameter :: num_fail_kinds = 8
 integer :: iskip(num_fail_kinds)
 integer, parameter :: fail_3Z        = 1
 integer, parameter :: fail_timerange = 2
@@ -128,13 +133,17 @@ integer, parameter :: fail_badloc    = 3
 integer, parameter :: fail_areabox   = 4
 integer, parameter :: fail_badkind   = 5
 integer, parameter :: fail_notwanted = 6
+integer, parameter :: fail_badvert   = 7
+integer, parameter :: fail_moisttype = 8
 character(len=32) :: skip_reasons(num_fail_kinds) = (/ &
                      'time too early (exactly 03Z)    ', &
                      'time outside bin range          ', &
                      'bad observation location        ', &
                      'observation outside lat/lon box ', &
                      'unrecognized observation kind   ', &
-                     'obs type not on select list     ' /)
+                     'obs type not on select list     ', &
+                     'bad vertical coordinate         ', &
+                     'unwanted moisture type          ' /)
 
 
 integer :: obs_unit
@@ -217,12 +226,14 @@ obsloop:  do
 !   (obs at 03Z the next day have a time of 27.)
 !------------------------------------------------------------------------------
    if(time == 3.0_r8) then
+      if (debug) write(*,*) 'invalid time.  hours = ', time
       iskip(fail_3Z) = iskip(fail_3Z) + 1
       cycle obsloop 
    endif 
 
    !  select the obs for the time window
    if(time < bin_beg .or. time > bin_end) then
+      if (debug) write(*,*) 'invalid time.  hours = ', time
       iskip(fail_timerange) = iskip(fail_timerange) + 1
       cycle obsloop
    endif
@@ -230,7 +241,7 @@ obsloop:  do
    ! verify the location is not outside valid limits
    if((lon > 360.0_r8) .or. (lon <   0.0_r8) .or.  &
       (lat >  90.0_r8) .or. (lat < -90.0_r8)) then
-      write(*,*) 'invalid location.  lon,lat = ', lon, lat
+      if (debug) write(*,*) 'invalid location.  lon,lat = ', lon, lat
       iskip(fail_badloc) = iskip(fail_badloc) + 1
       cycle obsloop
    endif
@@ -238,8 +249,9 @@ obsloop:  do
    ! reject observations outside the bounding box
    if(lat < lat1 .or. lat > lat2 .or. & 
      .not. is_longitude_between(lon, lon1, lon2)) then
-     iskip(fail_areabox) = iskip(fail_areabox) + 1
-     cycle obsloop
+      if (debug) write(*,*) 'invalid location.  lon,lat = ', lon, lat
+      iskip(fail_areabox) = iskip(fail_areabox) + 1
+      cycle obsloop
    endif
 
    ! it seems when a machine writes out a number and then reads it back in
@@ -253,10 +265,10 @@ obsloop:  do
    ! still the pole but isn't going to round out of range.
    if      (lat >=  89.9999_r8) then
      lat = lat - 1.0e-12_r8
-     !print *, 'lat adjusted down, now ', lat
+     if (debug) write(*,*) 'lat adjusted down, now ', lat
    else if (lat <= -89.9999_r8) then
      lat = lat + 1.0e-12_r8
-     !print *, 'lat adjusted   up, now ', lat
+     if (debug) write(*,*) 'lat adjusted   up, now ', lat
    endif
 
    obs_prof = rcount/1000000
@@ -307,9 +319,15 @@ obsloop:  do
 
    if(obs_prof == 3) then
      obs_kind_gen = KIND_SURFACE_PRESSURE
+     if ( zob2 == 0.0_r8 .and. inc_surface_pressure ) then
+       if(obstype == 120                    ) obs_kind = RADIOSONDE_SURFACE_PRESSURE 
+       if(obstype == 180 .or. obstype == 182) obs_kind = MARINE_SFC_PRESSURE 
+       if(obstype == 181                    ) obs_kind = LAND_SFC_PRESSURE 
+     else
      if(obstype == 120                    ) obs_kind = RADIOSONDE_SURFACE_ALTIMETER
      if(obstype == 180 .or. obstype == 182) obs_kind = MARINE_SFC_ALTIMETER
      if(obstype == 181                    ) obs_kind = LAND_SFC_ALTIMETER
+   endif
    endif
 
    if(obs_prof == 2) then
@@ -340,14 +358,24 @@ obsloop:  do
      if(obstype == 281 .or. obstype == 284) obs_kind = LAND_SFC_V_WIND_COMPONENT
    endif
 
+   if(obs_prof == 7) then
+     obs_kind_gen = KIND_GEOPOTENTIAL_HEIGHT
+     if(obstype == 120 .or. obstype == 220) obs_kind = RADIOSONDE_GEOPOTENTIAL_HGT
+   endif
+
    if (obs_kind < 0) then
       ! the "real" fix if the record type is not found might actually be to
       ! accept all record types within valid ranges, and depend on the first
       ! preprocessing steps (in the prepbufr converter) to remove obs record
       ! types which are not desired.  for now, avoid giving them the wrong type
       ! and quietly loop.
-      !print *, 'unrecognized obs_prof or obstype, skipping', obs_prof, obstype
-      iskip(fail_badkind) = iskip(fail_badkind) + 1
+      if (obs_prof == 5) then
+         if (debug) write(*,*) 'unwanted moisture obs_prof, skipping', obs_prof, obstype, zob2
+         iskip(fail_moisttype) = iskip(fail_moisttype) + 1
+      else
+         if (debug) write(*,*) 'unrecognized obs_prof or obstype, skipping', obs_prof, obstype
+         iskip(fail_badkind) = iskip(fail_badkind) + 1
+      endif
       cycle obsloop 
    endif
 
@@ -377,6 +405,7 @@ obsloop:  do
              (obs_V                 .and. (obs_kind_gen == KIND_V_WIND_COMPONENT )) .or. &
              (obs_PS                .and. (obs_kind_gen == KIND_SURFACE_PRESSURE))  .or. &
              (obs_QV                .and. (obs_kind_gen == KIND_SPECIFIC_HUMIDITY)) .or. &
+             (obs_Z                 .and. (obs_kind_gen == KIND_GEOPOTENTIAL_HEIGHT)) .or. &
              (inc_relative_humidity .and. (obs_kind_gen == KIND_RELATIVE_HUMIDITY)) .or. &
              (inc_dewpoint          .and. (obs_kind_gen == KIND_DEWPOINT)) ) then
              pass = .false.
@@ -386,6 +415,7 @@ obsloop:  do
 
       ! if pass is still true, we want to ignore this obs.
       if(pass) then
+         if (debug) write(*,*) 'obs skipped because not on wanted list.  subset, obs_kind = ', subset, obs_kind_gen
          iskip(fail_notwanted) = iskip(fail_notwanted) + 1
          cycle obsloop 
       endif
@@ -426,7 +456,7 @@ obsloop:  do
      vloc = lev
      ! some obs have elevation of 1e12 - toss those.
      if ( subset == 'SFCSHP' .and. vloc > 4000.0_r8) then
-        iskip = iskip + 1
+        iskip(fail_badvert) = iskip(fail_badvert) + 1
         cycle obsloop
      endif
      which_vert = VERTISSURFACE
