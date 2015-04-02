@@ -140,7 +140,7 @@ integer :: nz               = 10
 
 namelist /location_nml/ &
    filled, nboxes, maxdepth, use_octree, &
-   compare_to_correct, output_box_info, print_box_level,
+   compare_to_correct, output_box_info, print_box_level, &
    nx, ny, nz
 
 !-----------------------------------------------------------------
