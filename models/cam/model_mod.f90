@@ -130,7 +130,7 @@ use mpi_utilities_mod, only : my_task_id, task_count
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 use location_mod,      only : location_type, get_location, set_location, query_location,         &
-                              Location_dim_s, LocationName, LocationLName, horiz_dist_only,      &
+                              LocationName, LocationLName, horiz_dist_only,      &
                               vert_is_level, vert_is_pressure, vert_is_height, vert_is_surface,  &
                               vert_is_undef, vert_is_scale_height,                               &
                               VERTISUNDEF, VERTISSURFACE, VERTISLEVEL,                           &
@@ -207,6 +207,10 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_
 
 use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
+use data_structure_mod, only : ensemble_type
+
+use distributed_state_mod
+
 ! end of use statements
 != = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
 
@@ -219,10 +223,10 @@ private
 ! are additional useful interfaces that utility programs can call.
 public ::                                                            &
    static_init_model, get_model_size, get_model_time_step,           &
-   pert_model_state, get_state_meta_data, model_interpolate,         &
+   pert_model_state, get_state_meta_data, model_interpolate_distrib,         &
    nc_write_model_atts, nc_write_model_vars,                         &
    init_conditions, init_time, adv_1step, end_model,                 &
-   get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model
+   get_close_maxdist_init, get_close_obs_init, get_close_obs_distrib!, convert_base_obs_location
 
 ! Why were these in public?   get_close_maxdist_init, get_close_obs_init, &
 ! Because assim_model needs them to be there.
@@ -232,6 +236,10 @@ public ::                                                   &
    read_cam_init,                                           &
    init_model_instance, end_model_instance, write_cam_init, &
    write_cam_times
+
+interface get_surface_pressure
+   module procedure get_surface_pressure_state, get_surface_pressure_mean
+end interface
 
 !-----------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
@@ -245,7 +253,8 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! Ensemble mean is used so that the same "state" will be used for the height calculations
 ! on all processors, for all ensemble members.
 ! This is allocated in static_init_model().
-real(r8), allocatable :: ens_mean(:)
+! Distrbuted version does not need the mean.
+!real(r8), allocatable :: ens_mean(:)
 
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! Global storage for describing cam model class
@@ -518,6 +527,7 @@ real(r8), allocatable :: phis_stagr_lat(:, :) ! surface geopotential staggered a
 ! real(r8), allocatable :: model_h(:, :, :) ! cartesian heights of model levels
 
 ! Columns of pressure and model level heights for use in convert_vert
+! HK why are these global?
 real(r8), allocatable :: p_col(:), model_h(:)
 
 ! - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -707,7 +717,8 @@ if (output_task0) then
    call error_handler(E_MSG, 'static_init_model', string1)
 endif
 
-allocate(ens_mean(model_size))
+!HK not in the RMA branch
+!allocate(ens_mean(model_size))
 
 ! Allocate space for global coordinate arrays and read them in.
 ! There's a query of caminput.nc within read_cam_coord for the existence of the field.
@@ -1450,7 +1461,7 @@ allocate(field(num_dim1,num_dim2))
 
 if (field_dim_IDs(2) /= MISSING_I)  then
    call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, field, start=(/ 1, 1 /), &
-                 count=( /num_dim1, num_dim2 /)), 'read_cam_2Dint', trim(cfield))
+        count=(/num_dim1, num_dim2 /)), 'read_cam_2Dint', trim(cfield))
 else
    call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, field),  &
                   'read_cam_2Dint', trim(cfield))
@@ -3282,6 +3293,7 @@ end subroutine get_state_meta_data
 !> @param[in] filter_ens_mean
 !> The ensemble mean state vector from filter.
 
+!HK not called by the distributed version
 subroutine ens_mean_for_model(filter_ens_mean)
 
 real(r8), intent(in) :: filter_ens_mean(:)
@@ -3300,6 +3312,8 @@ ens_mean = filter_ens_mean
 !           and tell the user that ens_mean_for_model must be called before
 !           the subroutine (or module entry point) which triggers the message.
 
+!HK Not calling set ps_arrays, waste of communication and memory. This subroutine
+! is not called in the distrbuted version of filter.
 call set_ps_arrays(ens_mean)
 
 end subroutine ens_mean_for_model
@@ -3844,7 +3858,7 @@ end function nc_write_model_vars
 !> @param[out] :: istatus
 !> A flag to signal the success of the interpolation.
 
-subroutine model_interpolate(st_vec, location, obs_kind, interp_val, istatus)
+subroutine model_interpolate_distrib(state_ens_handle, location, obs_kind, istatus, interp_val)
 
 ! This subroutine is now a short routine that calls
 ! either a rectangular grid version for eul/FV
@@ -3854,11 +3868,11 @@ subroutine model_interpolate(st_vec, location, obs_kind, interp_val, istatus)
 ! Model_interpolate must return a positive value for istatus for a failure.
 ! 0 means success, negative values are reserved for DART internal use.
 
-real(r8),            intent(in) :: st_vec(:)
+real(r8),            intent(in) :: state_ens_handle
 type(location_type), intent(in) :: location
 integer,             intent(in) :: obs_kind
-real(r8),           intent(out) :: interp_val
-integer,            intent(out) :: istatus
+real(r8),           intent(out) :: interp_val(:)
+integer,            intent(out) :: istatus(:)
 
 ! Local variables for CAM-SE
 ! cell_corners(1) = MISSING_I tells interp_cubed_sphere to find the corners of the cell,
@@ -3889,15 +3903,16 @@ if (.not. module_initialized) call static_init_model()
 ! is out of bounds, but still calculatable.
 
 if (l_rectang) then
-   call interp_lonlat      (st_vec, location, obs_kind, interp_val, istatus)
+   call interp_lonlat_distrib(state_ens_handle, location, obs_kind, istatus, interp_val)
 else
-   call interp_cubed_sphere(st_vec, location, obs_kind, interp_val, istatus, cell_corners, l, m)
+   call error_handler(E_ERR, 'no cubed sphere version of RMA')
+   !call interp_cubed_sphere(st_vec, location, obs_kind, interp_val, istatus, cell_corners, l, m)
 endif
 
-end subroutine model_interpolate
+end subroutine model_interpolate_distrib
 
 !-----------------------------------------------------------------------
-
+! HK why is this recursive?  Poor abstraction?
 recursive subroutine interp_cubed_sphere(st_vec, obs_loc, obs_kind, interp_val, istatus, cell_corners, l, m)
 
 ! Find the cell that encloses an ob at 'obs_loc'
@@ -4055,6 +4070,10 @@ elseif (vert_is_pressure(obs_loc)) then
       call get_val_pressure(st_vec,cell_corners(4),1,lon_lat_lev(3),obs_kind,vals(4),vstatus)
 
 elseif (vert_is_height(obs_loc)) then
+
+   !HK model_heights is called 4 times on the obs_loc here. Also why call the interpolation
+   ! routine over and over again?
+
    ! which_vert is height for this obs
       call get_val_height(st_vec, cell_corners(1),1, lon_lat_lev(3), obs_loc, obs_kind, vals(1), vstatus)
    if (vstatus /= 1) &
@@ -4453,8 +4472,8 @@ endif
 end subroutine solve_quadratic
 
 !-----------------------------------------------------------------------
-
-recursive subroutine interp_lonlat(st_vec, obs_loc, obs_kind, interp_val, istatus)
+! HK why is this recursive (it is model_heights that calls this)?
+recursive subroutine interp_lonlat_distrib(state_ens_handle, obs_loc, obs_kind, istatus, interp_val)
 
 ! Find the 4 corners of the lon-lat grid cell that encloses an ob at 'obs_loc'
 ! and interpolate the values of obs_kind to that location.
@@ -4474,26 +4493,30 @@ recursive subroutine interp_lonlat(st_vec, obs_loc, obs_kind, interp_val, istatu
 ! istatus ---> QC = 4.
 
 
-real(r8),            intent(in) :: st_vec(:)
+type(ensemble_type), intent(in) :: state_ens_handle
 type(location_type), intent(in) :: obs_loc
 integer,             intent(in) :: obs_kind
-real(r8),           intent(out) :: interp_val
-integer,            intent(out) :: istatus
+integer,            intent(out) :: istatus(:)
+real(r8),           intent(out) :: interp_val(:)
 
 ! FIXME; In future DARTs it may be useful to return the DART KIND too.
 !        also convert to a field name (DART subroutine (get_raw_...?)).
 
-integer  :: i, vstatus
+integer  :: i
 real(r8) :: bot_lon, top_lon, delta_lon,                                &
             lon_below, lat_below, lat_above, lev_below,                 &
-            lon_fract, lat_fract, vals(2, 2), temp_lon, a(2),           &
+            lon_fract, lat_fract, temp_lon,           &
             lon_lat_lev(3)
+
+real(r8), allocatable :: val_11(:), val_12(:), val_21(:), val_22(:), a(:, :)
+integer,  allocatable :: vstatus(:), track_vstatus(:)
 
 ! FIXME: Positions within the rank 2 and 3 fields.   I don't remember the issue...
 integer  :: s_type, s_type_01d,s_type_2d,s_type_3d,   &
             lon_ind_below, lon_ind_above, lat_ind_below, lat_ind_above, &
             num_lons
 character(len=8)   :: lon_name, lat_name, lev_name
+integer   :: ens_size
 
 ! FIXME; idea of right number of dimensions for each field...
 ! These are observations and will have 2d or 3d locations, but the
@@ -4503,11 +4526,20 @@ character(len=8)   :: lon_name, lat_name, lev_name
 ! Such artificial fields would not have observations associated with them.
 ! So assume that observed fields are not missing any dimensions.
 
+ens_size = copies_in_window(state_ens_handle)
+allocate(val_11(ens_size),val_12(ens_size), val_21(ens_size), val_22(ens_size))
+allocate(a(ens_size, 2))
+allocate(vstatus(ens_size))
+allocate(track_vstatus(ens_size))
+
+
 ! Start with failure, then change as warranted.
-istatus    = 1
-vstatus    = MISSING_I
-vals       = MISSING_R8
-interp_val = MISSING_R8
+istatus(:) = 1
+vstatus(:) = MISSING_I
+val_11 = MISSING_R8
+val_12 = MISSING_R8
+val_21 = MISSING_R8
+val_22 = MISSING_R8
 
 ! Get the observation (horizontal) position, in degrees
 lon_lat_lev = get_location(obs_loc)
@@ -4521,6 +4553,7 @@ s_type = dart_to_cam_types(obs_kind)
 
 if (s_type == MISSING_I .and. &
    (obs_kind /= KIND_PRESSURE) .and.  (obs_kind /= KIND_SURFACE_ELEVATION)) then
+   ! HK these are not set because they are set at the beginning?
 !   istatus = 1
 !   interp_val = MISSING_R8
    write(string1,*) 'Wrong type of obs = ', obs_kind
@@ -4652,10 +4685,11 @@ endif
 if (obs_kind == KIND_SURFACE_ELEVATION) then
    ! Acceptable field that's not in the state vector
    ! convert from geopotential height to real height in meters
-   vals(1,1) = phis(lon_ind_below, lat_ind_below) / gravity_const
-   vals(1,2) = phis(lon_ind_below, lat_ind_above) / gravity_const
-   vals(2,1) = phis(lon_ind_above, lat_ind_below) / gravity_const
-   vals(2,2) = phis(lon_ind_above, lat_ind_above) / gravity_const
+
+   val_11 = phis(lon_ind_below, lat_ind_below) / gravity_const
+   val_12 = phis(lon_ind_below, lat_ind_above) / gravity_const
+   val_21 = phis(lon_ind_above, lat_ind_below) / gravity_const
+   val_22 = phis(lon_ind_above, lat_ind_above) / gravity_const
 
 elseif (vert_is_level(obs_loc)) then
    ! Pobs
@@ -4664,42 +4698,94 @@ elseif (vert_is_level(obs_loc)) then
    !        But it would be inconsistent with lon_ and lat_ indices,
    !           and I'd have to create an integer level anyway.
    !        May also want to handle staggered vertical grid (ilev).
-      call get_val_level(st_vec, lon_ind_below, lat_ind_below, nint(lon_lat_lev(3)), obs_kind, vals(1,1), vstatus)
+   call get_val_level_distrib(state_ens_handle, lon_ind_below, lat_ind_below, nint(lon_lat_lev(3)), obs_kind, val_11, vstatus)
+         track_vstatus = vstatus
    if (vstatus /= 1) &
-      call get_val_level(st_vec, lon_ind_below, lat_ind_above, nint(lon_lat_lev(3)), obs_kind, vals(1,2), vstatus)
+      call get_val_level_distrib(state_ens_handle, lon_ind_below, lat_ind_above, nint(lon_lat_lev(3)), obs_kind, val_12, vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
+   enddo
+
    if (vstatus /= 1) &
-      call get_val_level(st_vec, lon_ind_above, lat_ind_below, nint(lon_lat_lev(3)), obs_kind, vals(2,1), vstatus)
+      call get_val_level_distrib(state_ens_handle, lon_ind_above, lat_ind_below, nint(lon_lat_lev(3)), obs_kind, val_21, vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
+   enddo
+
    if (vstatus /= 1) &
-      call get_val_level(st_vec, lon_ind_above, lat_ind_above, nint(lon_lat_lev(3)), obs_kind, vals(2,2), vstatus)
+      call get_val_level_distrib(state_ens_handle, lon_ind_above, lat_ind_above, nint(lon_lat_lev(3)), obs_kind, val_22, vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
+   enddo
+   vstatus = track_vstatus
    ! Pobs end
 
 elseif (vert_is_pressure(obs_loc)) then
-      call get_val_pressure(st_vec,lon_ind_below,lat_ind_below,lon_lat_lev(3),obs_kind,vals(1,1),vstatus)
-   if (vstatus /= 1) &
-      call get_val_pressure(st_vec,lon_ind_below,lat_ind_above,lon_lat_lev(3),obs_kind,vals(1,2),vstatus)
-   if (vstatus /= 1) &
-      call get_val_pressure(st_vec,lon_ind_above,lat_ind_below,lon_lat_lev(3),obs_kind,vals(2,1),vstatus)
-   if (vstatus /= 1) &
-      call get_val_pressure(st_vec,lon_ind_above,lat_ind_above,lon_lat_lev(3),obs_kind,vals(2,2),vstatus)
+
+   call get_val_pressure_distrib(val_11, state_ens_handle, lon_ind_below, lat_ind_below, lon_lat_lev(3), obs_type,vstatus)
+   track_vstatus = vstatus
+
+   call get_val_pressure_distrib(val_12, state_ens_handle, lon_ind_below, lat_ind_above, lon_lat_lev(3), obs_type,vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
+   enddo
+
+   call get_val_pressure_distrib(val_21, state_ens_handle, lon_ind_above, lat_ind_below, lon_lat_lev(3), obs_type,vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 ) track_vstatus(e) = vstatus(e)
+   enddo
+
+   call get_val_pressure_distrib(val_22, state_ens_handle, lon_ind_above, lat_ind_above, lon_lat_lev(3), obs_type,vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 ) track_vstatus(e) = vstatus(e)
+   enddo
+   vstatus = track_vstatus
 
 elseif (vert_is_height(obs_loc)) then
-      call get_val_height(st_vec, lon_ind_below, lat_ind_below, lon_lat_lev(3), obs_loc, obs_kind, vals(1,1), vstatus)
-   if (vstatus /= 1) &
-      call get_val_height(st_vec, lon_ind_below, lat_ind_above, lon_lat_lev(3), obs_loc, obs_kind, vals(1,2), vstatus)
-   if (vstatus /= 1) &
-      call get_val_height(st_vec, lon_ind_above, lat_ind_below, lon_lat_lev(3), obs_loc, obs_kind, vals(2,1), vstatus)
-   if (vstatus /= 1) &
-      call get_val_height(st_vec, lon_ind_above, lat_ind_above, lon_lat_lev(3), obs_loc, obs_kind, vals(2,2), vstatus)
 
+   !HK model_heights is called 4 times on the obs_loc here. Also why call the interpolation
+   ! routine over and over again?
+
+   call get_val_height_distrib(val_11, state_ens_handle, lon_ind_below, lat_ind_below, lon_lat_lev(3), obs_type, vstatus)
+   track_vstatus = vstatus
+
+   call get_val_height_distrib(val_12, state_ens_handle, lon_ind_below, lat_ind_above, lon_lat_lev(3), obs_type, vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
+   enddo
+
+   call get_val_height_distrib(val_21, state_ens_handle, lon_ind_above, lat_ind_below, lon_lat_lev(3), obs_type, vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
+   enddo
+
+   call get_val_height_distrib(val_22, state_ens_handle, lon_ind_above, lat_ind_above, lon_lat_lev(3), obs_type, vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
+   enddo
+   vstatus = track_vstatus
 
 elseif (vert_is_surface(obs_loc)) then
    ! The 'lev' argument is set to 1 because there is no level for these types, and 'lev' will be
    ! ignored.
-                     call get_val(st_vec, lon_ind_below, lat_ind_below, 1, obs_kind, vals(1,1), vstatus)
-   if (vstatus /= 1) call get_val(st_vec, lon_ind_below, lat_ind_above, 1, obs_kind, vals(1,2), vstatus)
-   if (vstatus /= 1) call get_val(st_vec, lon_ind_above, lat_ind_below, 1, obs_kind, vals(2,1), vstatus)
-   if (vstatus /= 1) call get_val(st_vec, lon_ind_above, lat_ind_above, 1, obs_kind, vals(2,2), vstatus)
+   call get_val_distrib(state_ens_handle, ens_size, lon_ind_below, lat_ind_below, 1, obs_kind, val_11, vstatus)
+   track_vstatus = vstatus
 
+   call get_val_distrib(state_ens_handle, ens_size, lon_ind_below, lat_ind_above, 1, obs_kind, val_12, vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
+   enddo
+
+   call get_val_distrib(state_ens_handle, ens_size, lon_ind_above, lat_ind_below, 1, obs_kind, val_21, vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
+   enddo
+
+   call get_val_distrib(state_ens_handle, ens_size, lon_ind_above, lat_ind_above, 1, obs_kind, val_22, vstatus)
+   do e = 1, ens_size
+      if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
+   enddo
+   vstatus = track_vstatus
 
 ! This needs to be at the end of the block.  Otherwise, it short circuits GPS
 ! which asks for pressures on heights.
@@ -4726,31 +4812,36 @@ endif
 ! Conundrum (but unimportant for now): an ob could be excluded for > 1 reason.
 ! E.g. it's too far north and it's above the highest_obs_pressure_Pa.
 ! What istatus to return? a 2 (or more) digit number?  Like vstatus*10 + 4?
-if (vstatus == 1) then
-   return     ! Failed to get value for interpolation; return istatus = 1
-              ! Error will be handled by calling routines?
-else
-   if (abs(lon_lat_lev(2)) > max_obs_lat_degree) then
+! HK loop around ensembles
+do e = 1, ens_size
+   ! lat is already converted to degrees by get_location
+   if (abs(lon_lat_lev(2)) > max_obs_lat_degree .and. vstatus(e) /= 1) then
       ! Define istatus to be a combination of vstatus (= 0 or 2 (for higher than highest_obs...))
       ! and whether the ob is poleward of the limits set in the namelist (+ 4).
-      istatus = 10*vstatus + 4
+      istatus(e) = 10*vstatus + 4
    else
-      istatus = vstatus
-   endif
-endif
+      istatus(e) = vstatus(e)
+   end if
 
-! indices of vals are (longitude, latitude)
-do i = 1, 2
-   a(i) = lon_fract * vals(2, i) + (1.0_r8 - lon_fract) * vals(1, i)
+   ! indices of vals are (longitude, latitude)
+   if (istatus(e) /= 1) then
+      a(e, 1) = lon_fract * val_21(e) + (1.0_r8 - lon_fract) * val_11(e)
+      a(e, 2) = lon_fract * val_22(e) + (1.0_r8 - lon_fract) * val_12(e)
+
+      interp_val(e) = lat_fract * a(e, 2) + (1.0_r8 - lat_fract) * a(e, 1)
+
+   else
+      interp_val(e) = MISSING_R8
+   end if
+
 enddo
-interp_val = lat_fract * a(2) + (1.0_r8 - lat_fract) * a(1)
 
-end subroutine interp_lonlat
+end subroutine interp_lonlat_distrib
 
 !-----------------------------------------------------------------------
 
 ! Pobs
-subroutine get_val_level(st_vec, lon_index, lat_index, level, obs_kind, val, istatus)
+subroutine get_val_level_distrib(state_ens_handle, lon_index, lat_index, level, obs_kind, val, istatus)
 
 ! Gets the value on level for variable obs_kind
 ! at lon_index, lat_index horizontal grid point
@@ -4769,13 +4860,13 @@ subroutine get_val_level(st_vec, lon_index, lat_index, level, obs_kind, val, ist
 ! altered to find the value at the level below and above, and interpolate in
 ! the vertical.
 
-real(r8), intent(in)  :: st_vec(:)
+type(ensemble_type), intent(in) :: state_ens_handle
 integer,  intent(in)  :: lon_index
 integer,  intent(in)  :: lat_index
 integer,  intent(in)  :: level
 integer,  intent(in)  :: obs_kind
-real(r8), intent(out) :: val
-integer,  intent(out) :: istatus
+real(r8), intent(out) :: val(:)
+integer,  intent(out) :: istatus(:)
 
 integer               :: vstatus, num_levs, i, lowest_ok
 real(r8)              :: p_surf, threshold
@@ -4784,6 +4875,8 @@ real(r8)              :: p_surf, threshold
 istatus = 1
 vstatus = 1
 val = MISSING_R8
+
+ens_size = copies_in_window(state_ens_handle)
 
 ! This assumes that all variables are defined on model levels, not on interface levels.
 num_levs = dim_sizes(find_name('lev',dim_names))
@@ -4797,16 +4890,16 @@ if (level > num_levs .or. level < 1) return
 if (obs_kind == KIND_PRESSURE) then
 
    ! p_surf is returned in pascals, which is the right units for plevs_cam() below.
-   call get_val(st_vec, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, p_surf, vstatus)
-   if (vstatus /= 0) return
+   call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, p_surf, vstatus)
 
-   ! Next, get the values on the levels for this PS.
-   call plevs_cam (p_surf, num_levs, p_col)
-
-   val = p_col(level)
+   do e = 1, ens_size
+      if (vstatus == 0) return
+         ! Next, get the values on the levels for this PS.
+         call plevs_cam(p_surf(e), num_levs, p_col)
+         val = p_col(level)
+   enddo
 else
-   call get_val(st_vec, lon_index, lat_index, level, obs_kind, val, vstatus)
-
+   call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, level, obs_kind, val, vstatus)
 endif
 
 ! if this routine is called with a location that has a vertical level above
@@ -4820,12 +4913,12 @@ else
    istatus = vstatus
 endif
 
-end subroutine get_val_level
+end subroutine get_val_level_distrib
 ! Pobs end
 
 !-----------------------------------------------------------------------
 
-subroutine get_val_pressure(st_vec, lon_index, lat_index, pressure, obs_kind, val, istatus)
+subroutine get_val_pressure_distrib(state_ens_handle, lon_index, lat_index, pressure, obs_kind, val, istatus)
 
 ! Gets the vertically interpolated value on pressure for variable obs_kind
 ! at lon_index, lat_index horizontal grid point
@@ -4838,22 +4931,32 @@ subroutine get_val_pressure(st_vec, lon_index, lat_index, pressure, obs_kind, va
 !
 ! Excludes observations below lowest level pressure and above highest level pressure.
 
-real(r8), intent(in)  :: st_vec(:)
+type(ensemble_type), intent(in) :: state_ens_handle
 real(r8), intent(in)  :: pressure
 integer,  intent(in)  :: lon_index
 integer,  intent(in)  :: lat_index
 integer,  intent(in)  :: obs_kind
-real(r8), intent(out) :: val
-integer,  intent(out) :: istatus
+real(r8), intent(out) :: val(:)
+integer,  intent(out) :: istatus(:)
 
-real(r8)              :: bot_val, top_val, p_surf, frac, ps_local(2)
-integer               :: top_lev, bot_lev, i, vstatus, num_levs
+real(r8), allocatable :: bot_val(:), top_val(:), p_surf(:), frac(:)
+integer,  allocatable :: bot_lev(:), top_lev(:)
+real(r8), allocatable :: ps_local(:, :)
+real(r8), allocatable :: p_col_distrib(:, :)
+integer               :: i, vstatus, num_levs ! HK vstaus?
 integer               :: fld_index
+integer               :: ens_size, e
 
 ! No errors to start with
 istatus = 1
 vstatus = 1
 val     = MISSING_R8
+
+ens_size = copies_in_window(state_ens_handle)
+allocate(bot_val(ens_size), top_val(ens_size), p_surf(ens_size), frac(ens_size))
+allocate(ps_local(2, ens_size))
+allocate(p_col_distrib(ens_size, num_levs))
+allocate(bot_lev(ens_size), top_lev(ens_size)) !> @todo HK I don't know why you need two values, one is just + 1 to the other
 
 ! Need to get the surface pressure at this point.
 ! Find out whether the observed field is a staggered field in CAM.
@@ -4862,15 +4965,18 @@ val     = MISSING_R8
 
 fld_index   = find_name('PS',cflds)
 i = index_from_grid(1,lon_index,lat_index,  fld_index)
-ps_local(1) = st_vec(i)
+!ps_local(1, :) = st_vec(i)
+call get_state(ps_local(1, :), i, state_ens_handle)
 
 if (obs_kind == KIND_U_WIND_COMPONENT .and. find_name('US', cflds) /= 0) then
    ! ps defined on lat grid (-90...90, nlat = nslat + 1),
    !    need it on staggered lat grid, which starts half a grid spacing north.
 
    i = index_from_grid(1,lon_index,lat_index+1,fld_index)
-   ps_local(2) = st_vec(i)
-   p_surf      = (ps_local(1) + ps_local(2))* 0.5_r8
+   !ps_local(2) = st_vec(i)
+   call get_state(ps_local(2, :), i, state_ens_handle)
+   p_surf(:) = (ps_local(1, :) + ps_local(2, :))* 0.5_r8
+
 elseif (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS', cflds) /= 0) then
    ! lon =     0...     255 (for 5 degree grid)
    !slon = -2.5 ... 252.5
@@ -4879,12 +4985,13 @@ elseif (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS', cflds) /= 0) the
    else
       i = index_from_grid(1,lon_index+1,lat_index ,fld_index)
    endif
-   ps_local(2) = st_vec(i)
-   p_surf      = (ps_local(1) + ps_local(2))* 0.5_r8
+   !ps_local(2) = st_vec(i)
+   call get_state(ps_local(2, :), i, state_ens_handle)
+   p_surf      = (ps_local(1, :) + ps_local(2, :))* 0.5_r8
 else
    ! A-grid ps can be retrieved from state vector, which was used to define ps on entry to
    ! model_interpolate.
-   p_surf     = ps_local(1)
+   p_surf     = ps_local(1, :)
 endif
 
 ! Next, get the pressures on the levels for this ps
@@ -4892,23 +4999,27 @@ endif
 ! This pressure column will be for the correct grid for obs_kind, since p_surf was taken
 !     from the grid-correct ps[_stagr] grid
 num_levs = dim_sizes(find_name('lev',dim_names))
-call plevs_cam(p_surf, num_levs, p_col)
+call plevs_cam_distrib(p_surf, num_levs, p_col_distrib, ens_size)
 
-if (pressure <= p_col(1) .or. pressure >= p_col(num_levs)) then
-   ! Exclude obs below the model's lowest level and above the highest level
-   ! We *could* possibly use ps and p(num_levs) to interpolate for points below the lowest level.
-   return
-endif
+! Exclude obs below the model's lowest level and above the highest level
+! We *could* possibly use ps and p(num_levs) to interpolate for points below the lowest level.
+do e = 1, ens_size
+   if (pressure <= p_col_distrib(1,e) .or. pressure >= p_col_distrib(num_levs,e)) then
+      istatus(e) = 1
+      val(e) = MISSING_R8
+      !return
+   endif
+enddo
 
 ! Interpolate in vertical to get two bounding levels
 
 ! Search down through pressures
 levloop: do i = 2, num_levs
-   if (pressure < p_col(i)) then
+   if (pressure < p_col(i, e)) then
       top_lev = i -1
       bot_lev = i
-      frac = (p_col(i) - pressure) / &
-             (p_col(i) - p_col(i - 1))
+      frac = (p_col_distrib(i, e) - pressure) / &
+             (p_col_distrib(i, e) - p_col_distirb(i - 1, e))
       exit levloop
    endif
 enddo levloop
@@ -4916,15 +5027,19 @@ enddo levloop
 ! Pobs
 if (obs_kind == KIND_PRESSURE) then
    ! can't get pressure on levels from state vector; get it from p_col instead
-   bot_val = p_col(bot_lev)
-   top_val = p_col(top_lev)
+   bot_val = p_col_distrib(bot_lev, :)
+   top_val = p_col_distrib(top_lev, :)
 else
-      call get_val(st_vec, lon_index, lat_index, bot_lev, obs_kind, bot_val, vstatus)
-   if (vstatus /= 1) &
-      call get_val(st_vec, lon_index, lat_index, top_lev, obs_kind, top_val, vstatus)
-   ! Failed to get value for interpolation; return istatus = 1
-   if (vstatus == 1) return
-end if
+
+   ! need to grab values for each bot_val
+   do e = 1, ens_size ! HK you only need to do this for distinct bot_vals
+      call get_val_distirb(state_ens_handle, lon_index, lat_index, bot_lev(e), obs_kind, bot_val, vstatus)
+      if (vstatus /= 1) call get_val_distrib(state_ens_handle, lon_index, lat_index, top_lev(e), obs_kind, top_val, vstatus)
+      ! Failed to get value for interpolation; return istatus = 1
+      !if (vstatus == 1)
+      istatus(e) = vstatus
+   enddo
+endif
 ! Pobs
 
 ! if this routine is called with a location that has a vertical pressure above
@@ -4932,18 +5047,24 @@ end if
 ! (unless some other error occurs later in this routine).
 
 if (pressure < highest_obs_pressure_Pa) then
-   istatus = 2
-else
-   istatus = 0
+   istatus(:) = 2
+!else
+   ! HK can't do this with an ensemble
+!   istatus = 0
 endif
 
-val = (1.0_r8 - frac) * bot_val + frac * top_val
+do e = 1, ens_size
+   if(istatus(e) == 0 .or. istatus(e) == 2) val = (1.0_r8 - frac) * bot_val + frac * top_val
+enddo
 
-end subroutine get_val_pressure
+deallocate(bot_val, top_val, p_surf, frac, p_col_distrib)
+deallocate(bot_lev, top_lev)
+
+end subroutine get_val_pressure_distrib
 
 !-----------------------------------------------------------------------
 
-subroutine get_val_height(st_vec, lon_index, lat_index, height, location, obs_kind, val, istatus)
+subroutine get_val_height_distrib(st_vec, lon_index, lat_index, height, location, obs_kind, val, istatus)
 
 ! Gets the vertically interpolated value on height for variable obs_kind
 ! at lon_index, lat_index horizontal grid point
@@ -5011,6 +5132,7 @@ endif
 
 ! We want to use the new vec for each new ob on height because the state was updated
 ! for all previous obs, and we want to use the most up to date state to get the best location.
+! HK ******** THE STATE IS NOT UPDATED YOU ARE USING THE MEAN COPY from before assimilation. *******
 call model_heights(num_levs, st_vec, p_surf, location, model_h, vstatus)
 if (vstatus == 1) return    ! Failed to get model heights; return istatus = 1
 
@@ -5081,18 +5203,19 @@ endif
 
 val = (1.0_r8 - frac) * bot_val + frac * top_val
 
-end subroutine get_val_height
+end subroutine get_val_height_distrib
 
 !-----------------------------------------------------------------------
 
-subroutine get_val(st_vec, lon_index, lat_index, level, obs_kind, val, istatus)
+subroutine get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, level, obs_kind, val, istatus)
 
-real(r8), intent(in)  :: st_vec(:)
+integer,             intent(in)  :: ens_size !< how may pieces of state to grab
+real(r8),            intent(out) :: val(ens_size)
+type(ensemble_type), intent(in)  :: state_ens_handle
 integer, intent(in)   :: lon_index
 integer, intent(in)   :: lat_index
 integer, intent(in)   :: level
 integer, intent(in)   :: obs_kind
-real(r8), intent(out) :: val
 integer, intent(out)  :: istatus
 
 integer :: indx, field_type
@@ -5107,10 +5230,11 @@ if (field_type <= 0 .or. field_type > nflds) return
 indx = index_from_grid(level, lon_index, lat_index, field_type)
 if (indx > 0 .and. indx <= model_size) then
    istatus = 0
-   val = st_vec(indx)
+   !val = st_vec(indx)
+   call get_state(val, indx, state_ens_handle)
 endif
 
-end subroutine get_val
+end subroutine get_val_distrib
 
 !-----------------------------------------------------------------------
 
@@ -5360,7 +5484,7 @@ end subroutine vector_to_prog_var
 !> The distances of the close state variables from the observation.
 
 
-subroutine get_close_obs(filt_gc, base_obs_loc, base_obs_type, locs, kinds, &
+subroutine get_close_obs_distrib(filt_gc, base_obs_loc, base_obs_type, locs, kinds, &
                             num_close, close_indices, distances)
 
 ! get_close_obs takes as input an "observation" location, a DART TYPE (not KIND),
@@ -5520,11 +5644,11 @@ do k = 1, num_close
 
 enddo
 
-end subroutine get_close_obs
+end subroutine get_close_obs_distrib
 
 !-----------------------------------------------------------------------
 
-subroutine convert_vert(old_array, old_which, old_loc, old_kind, new_array, new_which)
+subroutine convert_vert_distrib(state_ens_handle, old_array, old_which, old_loc, old_kind, new_array, new_which)
 
 ! Uses model information and subroutines to convert the vertical location of an ob
 ! (prior, model state variable, or actual ob) into the standard vertical coordinate
@@ -5532,6 +5656,7 @@ subroutine convert_vert(old_array, old_which, old_loc, old_kind, new_array, new_
 ! Kevin Raeder 10/26/2006
 ! updated 2014 for WACCM use; log_invP vertical coordinate.
 
+type(ensemble_type),    intent(in)    :: state_ens_handle
 real(r8), intent(in)    :: old_array(3)
 integer,  intent(in)    :: old_which
 type(location_type),    intent(in)    :: old_loc
@@ -5546,16 +5671,14 @@ integer  :: lon_ind, lat_ind, cam_type
 real(r8) :: p_surf, frac, l, m, lon_lat_vert(3)
 type(location_type)   :: temp_loc
 
+
 character(len=8) :: cam_varname
 
 ! Don't initialize these in the declaration statements, or they'll get the save attribute
 ! and won't be initialized each time this routine is entered.
 cell_corners = MISSING_I    ! corners of the cell which contains the ob
 
-if (allocate_ps) then
-   write(string1,*) 'Cannot proceed because ps arrays have not been allocated and filled'
-   call error_handler(E_ERR, 'convert_vert', string1,source,revision,revdate)
-endif
+!HK not building ps arrays.
 
 ! this code does not alter the lat/lon, only the vertical.
 ! but still return a full location for subsequent use.
@@ -5605,20 +5728,30 @@ if (old_which == VERTISLEVEL ) then
       if (cam_varname == 'US') then
          call coord_index('lon', old_array(1), lon_ind)
          call coord_index('slat', old_array(2), lat_ind)
-         p_surf = ps_stagr_lat(lon_ind,lat_ind)
+         !p_surf = ps_stagr_lat(lon_ind,lat_ind)
+         p_surf = 0.5*(get_surface_pressure(state_ens_handle, lon_index, lat_index) + &
+                       get_surface_pressure(state_ens_handle, lon_index, lat_index +1) )
          ! WHAT ABOUT FIELDS THAT MIGHT COME ON ilevS ?   have lev_which_dimid from above;
          !     test = ilev%dim_id or lev%dim_id
          call plevs_cam(p_surf, num_levs, p_col)
       elseif (cam_varname == 'VS') then
          call coord_index('slon', old_array(1), lon_ind)
          call coord_index('lat', old_array(2), lat_ind)
-         p_surf = ps_stagr_lon(lon_ind,lat_ind)
+         !p_surf = ps_stagr_lon(lon_ind,lat_ind)
+         if ( lon_index == 1 ) then
+            p_surf = 0.5*(get_surface_pressure(state_ens_handle, lon_index, lat_index) + &
+                  get_surface_pressure(state_ens_handle, dim_sizes(slon_index), lat_index) )
+         else
+            p_surf = 0.5*(get_surface_pressure(state_ens_handle, lon_index -1, lat_index) + &
+                  get_surface_pressure(state_ens_handle, lon_index, lat_index) )
+         endif
          call plevs_cam(p_surf, num_levs, p_col)
       else
-         ! Already have the column of 3D pressure.
+         ! Already have the column of 3D pressure. HK - not anymore.
          call coord_index('lon', old_array(1), lon_ind)
          call coord_index('lat', old_array(2), lat_ind)
-         p_surf = ps(lon_ind,lat_ind)
+         !p_surf = ps(lon_ind,lat_ind)
+         p_surf = get_surface_pressure(state_ens_handle, lon_index, lat_index)
          p_col(1:num_levs) = p(1:num_levs,lon_ind,lat_ind)
       endif
    else
@@ -5636,16 +5769,22 @@ if (old_which == VERTISLEVEL ) then
       p_surf = ps(closest,1)
       p_col(1:num_levs) = p(1:num_levs,closest,1)
    endif
-else
+else !HK so if oldwhich==VERTISLEVEL, it is surface?
+
    ! Make a vertical that has a vert type of surface.
    lon_lat_vert = get_location(old_loc)
    temp_loc = set_location(lon_lat_vert(1), lon_lat_vert(2), 0.0_r8, VERTISSURFACE)
    ! Find ps at the ob point.  Need to interpolate.
+   ! HK don't want to call the interpolation routine.
    if (l_rectang) then
       ! Only interested in P (columns), so don't need to worry about staggered grids here.
-      call interp_lonlat(ens_mean, temp_loc, KIND_SURFACE_PRESSURE, p_surf, istatus)
+      !call interp_lonlat(ens_mean, temp_loc, KIND_SURFACE_PRESSURE, p_surf, istatus)
+       call interp_lonlat_distrib(state_ens_handle, location, obs_kind, istatus, interp_val)
+
+
    else
-      call interp_cubed_sphere(ens_mean, temp_loc, KIND_SURFACE_PRESSURE, p_surf, istatus, cell_corners, l, m)
+      call error_handler(E_ERR, 'no rma cubed sphere')
+      !call interp_cubed_sphere(ens_mean, temp_loc, KIND_SURFACE_PRESSURE, p_surf, istatus, cell_corners, l, m)
    endif
 
    if (istatus == 1) then
@@ -5713,7 +5852,8 @@ elseif (old_which == VERTISHEIGHT) then
 
    ! Ens_mean is global storage that should have been filled
    ! by a call from filter_assim to ens_mean_for_model.
-   call model_heights(num_levs, ens_mean, p_surf, old_loc,  model_h, istatus)
+   ! HK model_h is a global. Why are you passing it in?
+   call model_heights_distrib(num_levs, state_ens_handle, p_surf, old_loc,  model_h, istatus)
    if (istatus == 1) then
       write(string1, *) 'model_heights failed'
       call error_handler(E_ERR, 'convert_vert', string1)
@@ -5767,7 +5907,7 @@ endif
 
 return
 
-end subroutine convert_vert
+end subroutine convert_vert_distrib
 
 !------------------------------------------------------------
 ! Subroutines from mpas_atm/model_mod.f90, for using cartesian coordinates to
@@ -6777,6 +6917,209 @@ end subroutine plevs_cam
 
 !-----------------------------------------------------------------------
 
+subroutine plevs_cam_distrib(p_surf, num_levs, pmid, ens_size)
+
+! Define the pressures of the layer midpoints from the
+! coordinate definitions and the surface pressure.
+
+integer,  intent(in)  :: ens_size
+real(r8), intent(in)  :: p_surf(ens_size)    ! Surface pressure (pascals)
+integer,  intent(in)  :: num_levs
+real(r8), intent(out) :: pmid(ens_size, num_levs)   ! Pressure at model levels
+
+integer :: k
+
+! Set midpoint pressures and layer thicknesses
+
+do k=1,num_levs
+   pmid(:, k) = hyam%vals(k)*P0%vals(1) + hybm%vals(k)*p_surf
+enddo
+
+end subroutine plevs_cam_distrib
+
+!-----------------------------------------------------------------------
+!HK do you need a forward and a mean version of this?
+! I think you need both.
+subroutine model_heights_distrib_fwd(num_levs, state_ens_handle, p_surf, base_obs_loc, model_h, istatus)
+
+! This routine calculates geometrical height (m) at mid-layers of the CAM model
+!
+! was Hui's dcz2ccm1
+!    has globally defined inputs:
+!          hyam(num_levs),hybm(num_levs),hyai(num_levs),hybi(num_levs) =
+!          hybrid vertical coefficients, top to bottom.
+!          (P = P0*hyam + ps*hybm)
+!          P0 - Hybrid base pressure (pascals)
+!
+! Kevin Raeder converted to single column version 4/28/2006
+!              removed longitude dimension entirely and extra arrays 10/2006
+!   5/31/2013; Rewritten to adapt to convert_vert handling obs TYPEs,
+!              not obs KINDS, and to handle lonlat and cubed sphere
+!              grids/interpolations.
+
+integer,             intent(in) :: num_levs
+type(ensemble_type), intent(in) :: state_ens_handle
+real(r8),            intent(in) :: p_surf(:) ! ens_size
+type(location_type), intent(in) :: base_obs_loc
+
+real(r8), intent(out) :: model_h(:, :) ! HK This is a global, why are you passing it?
+integer,  intent(out) :: istatus
+
+! local variables; pterm must be dimensioned as an array because dcz2 has it that way
+real(r8), dimension(num_levs) :: phi, tv, q, t, pterm
+real(r8) :: pmln(num_levs+1), hybrid_As(num_levs+1,2), hybrid_Bs(num_levs+1,2)
+real(r8) :: phi_surf, ht_tmp
+real(r8) :: l               ! location of ob in unit square space.
+real(r8) :: m               ! location of ob in unit square space.
+integer  :: cell_corners(4) ! corners of the cell which contains the ob
+
+! CS Should these come from common_mod?
+! That might be inconsistent with how levels, etc were defined in CAM originally.
+! DART's values are 287.0_r8 and 461.6_r8.
+real(r8), parameter :: rd = 287.05_r8
+real(r8), parameter :: rv = 461.51_r8
+real(r8), parameter :: rr_factor = (rv/rd) - 1.0_r8
+
+real(r8) :: lon_lat_lev(3)
+type(location_type) :: temp_obs_loc
+
+integer :: k, i, e
+integer, allocatable :: track_status(:), vstatus(:)
+
+ens_size = copies_in_window(state_ens_handle)
+allocate(track_status(ens_size, vstate(ens_size)))
+
+istatus = 1
+vstatus = 1
+
+! Don't initialize these in the declaration statements, or they'll get the save attribute
+! and won't be initialized each time this routine is entered.
+l = MISSING_R8              ! location of ob in unit square space.
+m = MISSING_R8              ! location of ob in unit square space.
+cell_corners = MISSING_I    ! corners of the cell which contains the ob
+
+model_h(:) = MISSING_R8
+phi(:)     = MISSING_R8
+pterm(:)   = MISSING_R8
+
+! lat, lon and vertical in height
+lon_lat_lev = get_location(base_obs_loc)
+
+! copy to temporary arrays
+
+! All arrays except hybrid_As, hybrid_Bs are oriented top to bottom.
+
+! The 'interface' levels have an 'extra' level at model bottom, compared to the midpoint levels.
+! Initialize this extra level, before filling the rest in a loop.
+k = num_levs +1
+hybrid_As(1,1) = hyai%vals(k)
+hybrid_Bs(1,1) = hybi%vals(k)
+
+!   hyam(num_levs) = 0 -> hybrid_As(2,2) = 0, so it
+!   would be safe to set  hybrid_As(1,2) = 0.
+!   It's safe because this element is used to set pmln in dcz2, but that element of pmln is never used.
+hybrid_As(1,2) = 0.0_r8
+
+! hyb[im]  have non-0 values at the bottom, 0s at the top;
+!      hyb[im] coeffs multiply sigma in the calculation of pressure on levels,
+!      and CAM's vertical coord is pure sigma at the bottom, so hybrid_Bs = 1.0 there.
+hybrid_Bs(1,2) = 1.0_r8
+
+! mid-points: 2nd dimension of hybrid_[AB]s = 2
+! note that hyXm(num_levs + 1) is not defined (= MISSING_R8)
+do k = 2,num_levs +1
+   i = num_levs +2 - k
+   hybrid_As(k,1) = hyai%vals(i)
+   hybrid_Bs(k,1) = hybi%vals(i)
+   hybrid_As(k,2) = hyam%vals(i)
+   hybrid_Bs(k,2) = hybm%vals(i)
+enddo
+
+! Calculate phi_surf and tv for this column, for use by dcz2.
+! HK This seems like way too much work. Same horizonal location for each level.
+! HK What happened to get_interp_prof?
+if (l_rectang) then
+
+   call interp_lonlat(state_ens_handle, base_obs_loc, KIND_SURFACE_ELEVATION, vstatus,phi_surf)
+   ! newFIXME; put Fail message other places like this   ! Failure; istatus = 1
+   if (vstatus == 1) then
+      write(string1,'(A,1p3F12.6)') 'surface elevation could not be interpolated in interp_lonlat at ', &
+                           lon_lat_lev
+      call error_handler(E_WARN, 'model_heights', string1)
+      return
+   endif
+
+   ! loop through all levels to get the temperature and moisture.
+   ! the interp routine will return a vstatus of 2 when the level is
+   ! above the 'highest obs' threshold but we don't care about that here.
+   ! error out for other return code values, but continue if vstatus is
+   ! either 0 (all ok) or 2 (too high)
+   do k = 1, num_levs
+      ! construct a location with the same lat/lon but cycle though the model levels
+      ! HK if they are on levels why not just get the columns and use the horizontal 
+      ! interpolation?
+      temp_obs_loc = set_location(lon_lat_lev(1), lon_lat_lev(2), real(k,r8), VERTISLEVEL)
+
+      call interp_lonlat(state_ens_handle, temp_obs_loc, KIND_TEMPERATURE, vstatus, t(k))
+      track_status = vstatus
+
+      do e = 1, ens_size
+         if (vstatus(e) == 1) then
+            write(string1,'(A,I2,A)') 'Temperature level ',k, &
+               ' could not be interpolated in interp_lonlat'
+            call error_handler(E_WARN, 'model_heights', string1)
+            !return
+         endif
+      enddo
+
+      call interp_lonlat(state_ens_handle, temp_obs_loc, KIND_SPECIFIC_HUMIDITY, vstatus, q(k))
+
+      do e = 1, ens_size
+         if (vstatus(e) == 1 ) then
+            write(string1,'(A,I2,A)') 'specific humidity level ',k, &
+               ' could not be interpolated in interp_lonlat'
+            call error_handler(E_WARN, 'model_heights', string1)
+            !return
+         endif
+         if (vstatus(e) /= 0) track_status(e) = vstatus(e)
+      enddo
+
+      do e = 1, ens_size
+         if (track_status(e) ==0) tv(k) = t(k)*(1.0_r8 + rr_factor*q(k))
+      enddo
+   enddo
+
+else ! for cubed sphere:
+
+   ! FIXME; It would be nice if the unit square locations (= weighting functions)
+   !        found in this call could be used in the loop over levels, below.
+   !        It can now, but addition of "cell_corners, l, m" to call needs to be tested.
+   call error_handler(E_ERR, 'no RMA cubed sphere')
+
+endif
+
+do e = 1, ens_size
+   call dcz2(num_levs, p_surf, phi_surf, tv, P0%vals(1) ,hybrid_As, hybrid_Bs, pmln, pterm, phi)
+
+   ! used; hybrid_Bs, hybrid_As, hprb
+   ! output from dcz2;  pmln, pterm , phi
+
+   ! Conversion from geopotential height to geometric height depends on latitude
+   ! Convert to kilometers for gph2gmh call, then back to meters for return value.
+   do k = 1,num_levs
+      ht_tmp = phi(k) * 0.001_r8        ! convert to km for following call only
+      model_h(k, e) = gph2gmh(ht_tmp, lon_lat_lev(2)) * 1000.0_r8
+   enddo
+enddo
+
+! model_heights returns only istatus 0 or 1
+!istatus = 0 !HK This is annoying.
+istatus = track_status
+
+allocate(track_status, vstate)
+
+end subroutine  model_heights_fwd
+
 subroutine model_heights(num_levs, vec, p_surf, base_obs_loc, model_h, istatus)
 
 ! This routine calculates geometrical height (m) at mid-layers of the CAM model
@@ -6960,6 +7303,7 @@ enddo
 istatus = 0
 
 end subroutine  model_heights
+
 
 !-----------------------------------------------------------------------
 
@@ -7199,7 +7543,8 @@ end subroutine adv_1step
 
 subroutine end_model()
 
-deallocate(ens_mean, dim_names, dim_sizes, phis)
+! HK no ens_mean in distributed
+deallocate(dim_names, dim_sizes, phis)
 deallocate(TYPE_1D,TYPE_2D,TYPE_3D)
 deallocate(state_long_names, state_units)
 deallocate(cflds)
