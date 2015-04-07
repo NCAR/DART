@@ -4766,9 +4766,11 @@ integer               :: ens_size, e
 
 
 ens_size = copies_in_window(state_ens_handle)
+num_levs = dim_sizes(find_name('lev',dim_names))
+
 allocate(bot_val(ens_size), top_val(ens_size), p_surf(ens_size), frac(ens_size))
 allocate(ps_local(2, ens_size))
-allocate(p_col_distrib(ens_size, num_levs))
+allocate(p_col_distrib(num_levs, ens_size))
 allocate(bot_lev(ens_size), top_lev(ens_size)) !> @todo HK I don't know why you need two values, one is just + 1 to the other
 allocate(track_status(ens_size), vstatus(ens_size))
 
@@ -4834,16 +4836,17 @@ enddo
 ! Interpolate in vertical to get two bounding levels
 
 ! Search down through pressures
-levloop: do i = 2, num_levs
-   if (pressure < p_col_distrib(i, e)) then
-      top_lev = i -1
-      bot_lev = i
-      frac = (p_col_distrib(i, e) - pressure) / &
-             (p_col_distrib(i, e) - p_col_distrib(i - 1, e))
-      exit levloop
-   endif
-enddo levloop
-
+do e = 1, ens_size
+   levloop: do i = 2, num_levs
+      if (pressure < p_col_distrib(i, e)) then
+         top_lev = i -1
+         bot_lev = i
+         frac = (p_col_distrib(i, e) - pressure) / &
+               (p_col_distrib(i, e) - p_col_distrib(i - 1, e))
+         exit levloop
+      endif
+   enddo levloop
+enddo
 ! Pobs
 if (obs_kind == KIND_PRESSURE) then
    ! can't get pressure on levels from state vector; get it from p_col instead
@@ -7444,7 +7447,7 @@ endif
 if (allocated(phis_stagr_lon)) deallocate(phis_stagr_lon)
 if (allocated(phis_stagr_lat)) deallocate(phis_stagr_lat)
 
-deallocate (ps, p, p_col, model_h)
+!deallocate (ps, p, p_col, model_h)
 if (allocated(ps_stagr_lon)) deallocate(ps_stagr_lon)
 if (allocated(ps_stagr_lat)) deallocate(ps_stagr_lat)
 
@@ -7471,8 +7474,8 @@ call end_grid_1d_instance(ilev)
 call end_grid_1d_instance(P0)
 
 ! Deallocate _gc variables; cs_gc_xyz and cs_gc
-call finalize_closest_node()
-call get_close_obs_destroy(cs_gc)
+!call finalize_closest_node()
+!call get_close_obs_destroy(cs_gc)
 
 end subroutine end_model
 
