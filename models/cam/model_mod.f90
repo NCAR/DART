@@ -223,10 +223,13 @@ private
 ! are additional useful interfaces that utility programs can call.
 public ::                                                            &
    static_init_model, get_model_size, get_model_time_step,           &
-   pert_model_state, get_state_meta_data, model_interpolate_distrib,         &
+   pert_model_state, get_state_meta_data_distrib, ens_mean_for_model,&
+   model_interpolate_distrib,         &
    nc_write_model_atts, nc_write_model_vars,                         &
    init_conditions, init_time, adv_1step, end_model,                 &
-   get_close_maxdist_init, get_close_obs_init, get_close_obs_distrib!, convert_base_obs_location
+   get_close_maxdist_init, get_close_obs_init, get_close_obs_distrib, &
+   clamp_or_fail_it, do_clamp_or_fail
+   !, convert_base_obs_location
 
 ! Why were these in public?   get_close_maxdist_init, get_close_obs_init, &
 ! Because assim_model needs them to be there.
@@ -3066,7 +3069,7 @@ end subroutine write_cam_times
 !> The optional argument which can return the DART KIND of the variable.
 
 
-subroutine get_state_meta_data(index_in, location, var_kind)
+subroutine get_state_meta_data_distrib(index_in, location, var_kind)
 
 ! Given an integer index into the state vector structure, returns the
 ! associated location.
@@ -3290,7 +3293,7 @@ if (present(var_kind)) then
    var_kind = cam_to_dart_kinds(nfld)
 endif
 
-end subroutine get_state_meta_data
+end subroutine get_state_meta_data_distrib
 
 !-----------------------------------------------------------------------
 !>
@@ -3307,6 +3310,8 @@ subroutine ens_mean_for_model(filter_ens_mean)
 real(r8), intent(in) :: filter_ens_mean(:)
 
 if (.not. module_initialized) call static_init_model()
+
+call error_handler(E_ERR, 'ens_mean_for_model', 'not allowed in distributed version')
 
 !HK Not calling set ps_arrays, waste of communication and memory. This subroutine
 ! is not called in the distrbuted version of filter.
@@ -7507,6 +7512,33 @@ call get_state(get_surface_pressure_mean, ind, state_ens_handle)
 
 end function get_surface_pressure_mean
 
+
+!-------------------------------------------------------
+!> Check whether you need to error out, clamp, or
+!> do nothing depending on the variable bounds
+function do_clamp_or_fail(var, dom)
+
+integer, intent(in) :: var ! variable index
+integer, intent(in) :: dom ! domain index
+logical             :: do_clamp_or_fail
+
+do_clamp_or_fail = .false.
+!if (var == 'FAIL') do_clamp_or_fail = .true.
+!if (var == 'CLAMP') do_clamp_or_fail = .true.
+
+end function do_clamp_or_fail
+
+!-------------------------------------------------------
+!> Check a variable for out of bounds and clamp or fail if
+!> needed
+subroutine clamp_or_fail_it(var_index, dom, variable)
+
+integer,     intent(in) :: var_index ! variable index
+integer,     intent(in) :: dom ! domain index
+real(r8), intent(inout) :: variable(:) ! variable
+
+
+end subroutine clamp_or_fail_it
 
 !-----------------------------------------------------------------------
 
