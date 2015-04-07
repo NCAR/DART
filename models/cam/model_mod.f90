@@ -136,7 +136,7 @@ use location_mod,      only : location_type, get_location, set_location, query_l
                               VERTISUNDEF, VERTISSURFACE, VERTISLEVEL,                           &
                               VERTISPRESSURE, VERTISHEIGHT, VERTISSCALEHEIGHT, write_location,   &
                               get_close_type, get_close_maxdist_init, get_close_obs_init,        &
-                              get_close_obs_destroy,get_dist,loc_get_close_obs => get_close_obs
+                              get_close_obs_destroy,get_dist,loc_get_close_obs => get_close_obs, get_vert, set_vert, set_which_vert
 
 use xyz_location_mod, only : xyz_location_type, xyz_get_close_maxdist_init,          &
                              xyz_get_close_type, xyz_set_location, xyz_get_location, &
@@ -228,7 +228,10 @@ public ::                                                            &
    nc_write_model_atts, nc_write_model_vars,                         &
    init_conditions, init_time, adv_1step, end_model,                 &
    get_close_maxdist_init, get_close_obs_init, get_close_obs_distrib, &
-   clamp_or_fail_it, do_clamp_or_fail, construct_file_name_in
+   clamp_or_fail_it, do_clamp_or_fail, construct_file_name_in, &
+   query_vert_localization_coord, vert_convert_distrib, &
+   get_vert, set_vert, set_which_vert, &
+   variables_domains, fill_variable_list, get_model_time
    !, convert_base_obs_location
 
 ! Why were these in public?   get_close_maxdist_init, get_close_obs_init, &
@@ -242,10 +245,6 @@ public ::                                                   &
 
 interface get_surface_pressure
    module procedure get_surface_pressure_fwd, get_surface_pressure_mean
-end interface
-
-interface model_heights
-   module procedure model_heights_distrib_fwd, model_heights_distrib_mean
 end interface
 
 interface interp_lonlat_distrib
@@ -3069,7 +3068,7 @@ end subroutine write_cam_times
 !> The optional argument which can return the DART KIND of the variable.
 
 
-subroutine get_state_meta_data_distrib(index_in, location, var_kind)
+subroutine get_state_meta_data_distrib(state_ens_handle, index_in, location, var_kind)
 
 ! Given an integer index into the state vector structure, returns the
 ! associated location.
@@ -3080,6 +3079,7 @@ subroutine get_state_meta_data_distrib(index_in, location, var_kind)
 ! coordinate (it will be ignored), but the others will require more interesting  fixes.
 ! See order_state_fields for the KIND_s (and corresponding model_mod TYPE_s).
 
+type(ensemble_type), intent(in)    :: state_ens_handle
 integer,             intent(in)    :: index_in
 type(location_type), intent(inout) :: location
 integer, optional,   intent(out)   :: var_kind
@@ -4854,7 +4854,7 @@ else
 
    ! need to grab values for each bot_val
    do e = 1, ens_size ! HK you only need to do this for distinct bot_vals
-      call get_val_distirb(state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, bot_val, vstatus)
+      call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, bot_val, vstatus)
       if (vstatus(e) /= 1) call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, top_lev(e), obs_kind, top_val, vstatus)
       ! Failed to get value for interpolation; return istatus = 1
       !if (vstatus == 1)
@@ -4972,7 +4972,7 @@ endif
 ! for all previous obs, and we want to use the most up to date state to get the best location.
 ! HK ******** THE STATE IS NOT UPDATED YOU ARE USING THE MEAN COPY from before assimilation. *******
 ! Hello global model_h again
-call model_heights_distrib(num_levs, state_ens_handle, p_surf, location, model_h_distrib, vstatus)
+call model_heights_distrib_fwd(num_levs, state_ens_handle, p_surf, location, model_h_distrib, vstatus)
 !if (vstatus == 1) return    ! Failed to get model heights; return istatus = 1
 track_status = vstatus
 
@@ -5349,7 +5349,7 @@ end subroutine vector_to_prog_var
 
 
 subroutine get_close_obs_distrib(filt_gc, base_obs_loc, base_obs_type, locs, kinds, &
-                            num_close, close_indices, distances)
+                            num_close, close_indices, distances, state_ens_handle)
 
 ! get_close_obs takes as input an "observation" location, a DART TYPE (not KIND),
 ! and a list of all potentially close locations and KINDS on this task.
@@ -5374,6 +5374,7 @@ integer,              intent(in)    :: kinds(:)
 integer,              intent(out)   :: num_close
 integer,              intent(out)   :: close_indices(:)
 real(r8),             intent(out)   :: distances(:)
+type(ensemble_type),  intent(in)    :: state_ens_handle
 
 ! FIXME remove some (unused) variables?
 integer  :: k, t_ind
@@ -5402,7 +5403,7 @@ if (base_which == VERTISPRESSURE .and. vert_coord == 'pressure') then
    local_base_array   = get_location(base_obs_loc)  ! needed in num_close loop
    local_base_which   = base_which
 else
-   call convert_vert(base_array, base_which, base_obs_loc, base_obs_kind, &
+   call convert_vert_distrib(state_ens_handle, base_array, base_which, base_obs_loc, base_obs_kind, &
                      local_base_array, local_base_which)
    local_base_obs_loc = set_location(base_array(1), base_array(2), local_base_array(3), &
                                      local_base_which)
@@ -5442,7 +5443,7 @@ do k = 1, num_close
       local_obs_which    = local_base_which
 
    else
-      call convert_vert(obs_array, obs_which, locs(t_ind), kinds(t_ind), &
+      call convert_vert_distrib(state_ens_handle, obs_array, obs_which, locs(t_ind), kinds(t_ind), &
                         local_obs_array, local_obs_which)
 
       ! save the converted location back into the original list.
@@ -5511,7 +5512,38 @@ enddo
 end subroutine get_close_obs_distrib
 
 !-----------------------------------------------------------------------
+!> wrapper for convert_vert_distrib so it can be called from assim_tools
+subroutine vert_convert_distrib(state_ens_handle, obs_loc, obs_kind, vstatus)
 
+type(ensemble_type),    intent(in)    :: state_ens_handle
+type(location_type),    intent(inout) :: obs_loc
+integer,                intent(in)    :: obs_kind
+integer,                intent(out)   :: vstatus
+
+real(r8) :: old_array(3)
+integer  :: old_which
+type(location_type) :: old_loc
+
+real(r8) :: new_array(3)
+integer  :: new_which
+
+
+vstatus = 0 ! I don't think can has a return status for vertical conversion
+
+old_loc = obs_loc
+old_array = get_location(obs_loc)
+
+
+call convert_vert_distrib(state_ens_handle, old_array, old_which, old_loc, obs_kind, new_array, new_which)
+
+if (vert_coord == 'pressure') obs_loc = set_location(new_array(1), new_array(2), new_array(3), VERTISPRESSURE)
+if (vert_coord == 'log_invP') obs_loc = set_location(new_array(1), new_array(2), new_array(3), VERTISSCALEHEIGHT)
+
+
+end subroutine vert_convert_distrib
+
+!-----------------------------------------------------------------------
+! HK why do you have old_array, old_which and old_loc?
 subroutine convert_vert_distrib(state_ens_handle, old_array, old_which, old_loc, old_kind, new_array, new_which)
 
 ! Uses model information and subroutines to convert the vertical location of an ob
@@ -5717,7 +5749,7 @@ elseif (old_which == VERTISHEIGHT) then
    ! Ens_mean is global storage that should have been filled
    ! by a call from filter_assim to ens_mean_for_model.
    ! HK model_h is a global. Why are you passing it in?
-   call model_heights_distrib(num_levs, state_ens_handle, p_surf, old_loc,  model_h, istatus)
+   call model_heights_distrib_mean(num_levs, state_ens_handle, p_surf, old_loc,  model_h, istatus)
    if (istatus == 1) then
       write(string1, *) 'model_heights failed'
       call error_handler(E_ERR, 'convert_vert', string1)
@@ -6830,9 +6862,11 @@ real(r8), intent(out) :: model_h(:, :) ! HK This is a global, why are you passin
 integer,  intent(out) :: istatus(:)
 
 ! local variables; pterm must be dimensioned as an array because dcz2 has it that way
-real(r8), dimension(num_levs) :: phi, tv, q, t, pterm
+real(r8), dimension(num_levs) :: pterm
+real(r8), allocatable :: phi(:, :), tv(:, :), q(:, :), t(:, :)
 real(r8) :: pmln(num_levs+1), hybrid_As(num_levs+1,2), hybrid_Bs(num_levs+1,2)
-real(r8) :: phi_surf, ht_tmp
+real(r8) :: ht_tmp
+real(r8), allocatable :: phi_surf(:)
 real(r8) :: l               ! location of ob in unit square space.
 real(r8) :: m               ! location of ob in unit square space.
 integer  :: cell_corners(4) ! corners of the cell which contains the ob
@@ -6852,6 +6886,8 @@ integer, allocatable :: track_status(:), vstatus(:)
 
 ens_size = copies_in_window(state_ens_handle)
 allocate(track_status(ens_size), vstatus(ens_size))
+allocate(phi_surf(ens_size))
+allocate(phi(num_levs, ens_size), tv(num_levs, ens_size), q(num_levs, ens_size), t(num_levs, ens_size))
 
 istatus = 1
 vstatus = 1
@@ -6863,7 +6899,7 @@ m = MISSING_R8              ! location of ob in unit square space.
 cell_corners = MISSING_I    ! corners of the cell which contains the ob
 
 model_h(:, :) = MISSING_R8
-phi(:)     = MISSING_R8
+phi(:, :)     = MISSING_R8
 pterm(:)   = MISSING_R8
 
 ! lat, lon and vertical in height
@@ -6904,7 +6940,7 @@ enddo
 ! HK What happened to get_interp_prof?
 if (l_rectang) then
 
-   call interp_lonlat(state_ens_handle, base_obs_loc, KIND_SURFACE_ELEVATION, vstatus,phi_surf)
+   call interp_lonlat_distrib(state_ens_handle, base_obs_loc, KIND_SURFACE_ELEVATION, vstatus,phi_surf)
    track_status = vstatus
    ! newFIXME; put Fail message other places like this   ! Failure; istatus = 1
    do e = 1, ens_size
@@ -6928,7 +6964,7 @@ if (l_rectang) then
       ! interpolation?
       temp_obs_loc = set_location(lon_lat_lev(1), lon_lat_lev(2), real(k,r8), VERTISLEVEL)
 
-      call interp_lonlat(state_ens_handle, temp_obs_loc, KIND_TEMPERATURE, vstatus, t(k))
+      call interp_lonlat_distrib(state_ens_handle, temp_obs_loc, KIND_TEMPERATURE, vstatus, t(k, :))
       track_status = vstatus
 
       do e = 1, ens_size
@@ -6940,7 +6976,7 @@ if (l_rectang) then
          endif
       enddo
 
-      call interp_lonlat(state_ens_handle, temp_obs_loc, KIND_SPECIFIC_HUMIDITY, vstatus, q(k))
+      call interp_lonlat_distrib(state_ens_handle, temp_obs_loc, KIND_SPECIFIC_HUMIDITY, vstatus, q(k, :))
 
       do e = 1, ens_size
          if (vstatus(e) == 1 ) then
@@ -6953,7 +6989,7 @@ if (l_rectang) then
       enddo
 
       do e = 1, ens_size
-         if (track_status(e) ==0) tv(k) = t(k)*(1.0_r8 + rr_factor*q(k))
+         if (track_status(e) ==0) tv(k, e) = t(k, e)*(1.0_r8 + rr_factor*q(k, e))
       enddo
    enddo
 
@@ -6967,7 +7003,7 @@ else ! for cubed sphere:
 endif
 
 do e = 1, ens_size
-   call dcz2(num_levs, p_surf(e), phi_surf, tv, P0%vals(1) ,hybrid_As, hybrid_Bs, pmln, pterm, phi)
+   call dcz2(num_levs, p_surf(e), phi_surf(e), tv, P0%vals(1) ,hybrid_As, hybrid_Bs, pmln, pterm, phi(:, e))
 
    ! used; hybrid_Bs, hybrid_As, hprb
    ! output from dcz2;  pmln, pterm , phi
@@ -6975,7 +7011,7 @@ do e = 1, ens_size
    ! Conversion from geopotential height to geometric height depends on latitude
    ! Convert to kilometers for gph2gmh call, then back to meters for return value.
    do k = 1,num_levs
-      ht_tmp = phi(k) * 0.001_r8        ! convert to km for following call only
+      ht_tmp = phi(k, e) * 0.001_r8        ! convert to km for following call only
       model_h(k, e) = gph2gmh(ht_tmp, lon_lat_lev(2)) * 1000.0_r8
    enddo
 enddo
@@ -7553,6 +7589,53 @@ character(len=1024)            :: construct_file_name_in
 write(construct_file_name_in, '(A, i4.4)') TRIM(stub), copy
 
 end function construct_file_name_in
+
+!--------------------------------------------------------------------
+!> pass the vertical localization coordinate to assim_tools_mod
+function query_vert_localization_coord()
+
+integer :: query_vert_localization_coord
+
+query_vert_localization_coord = VERTISUNDEF
+
+if (vert_coord == 'pressue') query_vert_localization_coord = VERTISPRESSURE
+if (vert_coord == 'log_invP') query_vert_localization_coord = VERTISSCALEHEIGHT
+
+end function query_vert_localization_coord
+
+!--------------------------------------------------------------------
+!> pass number of variables in the state out to filter 
+subroutine variables_domains(num_variables_in_state, num_doms)
+
+integer, intent(out) :: num_variables_in_state
+integer, intent(out) :: num_doms !< number of domains
+
+num_variables_in_state = state_num_0d + state_num_1d + state_num_2d + state_num_3d
+num_doms = 1
+
+end subroutine variables_domains
+
+!--------------------------------------------------------------------
+!> pass variable list to filter
+function fill_variable_list(num_variables_in_state)
+
+integer            :: num_variables_in_state
+character(len=256) :: fill_variable_list(num_variables_in_state)
+
+fill_variable_list = ''
+
+end function fill_variable_list
+
+!--------------------------------------------------------------------
+!> read the time from the input file
+!> stolen from wrf_to_dart.f90
+function get_model_time(filename)
+
+character(len=1024), intent(in) :: filename
+
+type(time_type) :: get_model_time
+
+end function get_model_time
 
 !-----------------------------------------------------------------------
 
