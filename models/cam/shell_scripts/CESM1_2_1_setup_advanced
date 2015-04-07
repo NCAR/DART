@@ -18,7 +18,7 @@
 # is used. Instructions on what to change to use the SE core or WACCM are
 # outlined in the models/cam/model_mod.html documentation.
 #
-# This script differs from the "simple" CESM1_2_1_setup_pmo in several ways.
+# This script differs from the "simple" CESM1_2_1_setup_hybrid in several ways.
 # Multiple cycles may be completed in a single job, a series of
 # dependent jobs may be queued more-or-less automatically, and the archiving
 # is explicitly performed by a separate single-threaded job. This is a substantially
