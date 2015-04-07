@@ -4841,8 +4841,10 @@ enddo levloop
 ! Pobs
 if (obs_kind == KIND_PRESSURE) then
    ! can't get pressure on levels from state vector; get it from p_col instead
-   bot_val = p_col_distrib(:, bot_lev)
-   top_val = p_col_distrib(:, top_lev)
+   do e = 1, ens_size
+      bot_val(e) = p_col_distrib(e, bot_lev(e))
+      top_val(e) = p_col_distrib(e, top_lev(e))
+   enddo
 else
 
    ! need to grab values for each bot_val
@@ -5032,8 +5034,8 @@ enddo lev2loop
 
 if (obs_kind == KIND_PRESSURE) then
    do e = 1, ens_size
-      bot_val(e) = p_col_distrib(:, bot_lev(e))
-      top_val(e) = p_col_distrib(:, top_lev(e))
+      bot_val(e) = p_col_distrib(e, bot_lev(e))
+      top_val(e) = p_col_distrib(e, top_lev(e))
    enddo
 else
    ! need to grab values for each bot_val
