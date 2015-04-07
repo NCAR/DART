@@ -228,7 +228,7 @@ public ::                                                            &
    nc_write_model_atts, nc_write_model_vars,                         &
    init_conditions, init_time, adv_1step, end_model,                 &
    get_close_maxdist_init, get_close_obs_init, get_close_obs_distrib, &
-   clamp_or_fail_it, do_clamp_or_fail
+   clamp_or_fail_it, do_clamp_or_fail, construct_file_name_in
    !, convert_base_obs_location
 
 ! Why were these in public?   get_close_maxdist_init, get_close_obs_init, &
@@ -7539,6 +7539,20 @@ real(r8), intent(inout) :: variable(:) ! variable
 
 
 end subroutine clamp_or_fail_it
+
+!--------------------------------------------------------------------
+!> construct restart file name for reading
+!> model time for CESM format?
+function construct_file_name_in(stub, domain, copy)
+
+character(len=512), intent(in) :: stub
+integer,            intent(in) :: domain
+integer,            intent(in) :: copy
+character(len=1024)            :: construct_file_name_in
+
+write(construct_file_name_in, '(A, i4.4)') TRIM(stub), copy
+
+end function construct_file_name_in
 
 !-----------------------------------------------------------------------
 
