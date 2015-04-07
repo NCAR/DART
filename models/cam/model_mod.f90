@@ -2066,21 +2066,20 @@ endif
 
 end subroutine nc_read_global_int_att
 
-!-----------------------------------------------------------------------
-
-subroutine read_cam_coord(nc_file_ID, cfield, var)
+!=======================================================================
+subroutine read_cam_coord(ncfileid, cfield, var)
 
 ! read CAM 'initial' file coordinate, i.e. 'lat', 'lon', 'gw', 'hyai',...
 
-integer,            intent(in)    :: nc_file_ID
+integer,            intent(in)  :: ncfileid
 character(len=*),   intent(in)    :: cfield
-type(grid_1d_type), intent(inout) :: var
+type(grid_1d_type), intent(out) :: var
 
 integer :: i, coord_size   ! grid/array indices
-integer :: nc_var_ID         ! file and field IDs
+integer :: ncvarid         ! file and field IDs
 integer :: fld_exist       ! grid field may not exist CAM initial file (e.g. slat)
 integer :: ncerr           ! other nc errors; don't abort
-integer :: coord_dimid(1)  ! Coordinates can have only 1 dimension,
+integer, dimension(1) :: coord_dimid = MISSING_I      ! Coordinates can have only 1 dimension,
                            ! but this must be a vector.
 
 ! Some attributes are _Fillvalue (real) which I'll ignore for now.
@@ -2092,15 +2091,13 @@ character(len=nf90_max_name), allocatable  :: att_names(:)
 character(len=nf90_max_name), allocatable  :: att_vals(:)
 real(r8)                                   :: resol, resol_1, resol_n
 
-coord_dimid = MISSING_I      
-
-fld_exist = nf90_inq_varid(nc_file_ID, cfield, nc_var_ID)
+fld_exist = nf90_inq_varid(ncfileid, cfield, ncvarid)
 if (fld_exist /= nf90_noerr ) then
    var%label = ' '
    return
 endif
 
-ncerr = nf90_inquire_variable(nc_file_ID, nc_var_ID, dimids=coord_dimid, nAtts=num_atts)
+ncerr = nf90_inquire_variable(ncfileid, ncvarid, dimids=coord_dimid, nAtts=num_atts)
 if (ncerr /= nf90_noerr ) then
    write(string1,*) 'Variable ',cfield,' dimids = ',coord_dimid(1)
    write(string2,*) 'NetCDF error code = ',nf90_strerror(ncerr)
@@ -2120,7 +2117,7 @@ allocate(att_names(num_atts), att_vals(num_atts))
 
 keep_atts = 0
 do i=1,num_atts
-   call nc_check(nf90_inq_attname(nc_file_ID, nc_var_ID, i, att_name), &
+   call nc_check(nf90_inq_attname(ncfileid, ncvarid, i, att_name), &
                  'read_cam_coord', 'inq_attname '//trim(att_name))
 
 ! CAM FV initial files have coordinates with attributes that are numerical, not character
@@ -2130,14 +2127,14 @@ do i=1,num_atts
 ! Otherwise I need a var%atts_type and separate var%atts_vals_YYY for each NetCDF
 ! external type (6 of them) I might run into.
 
-   call nc_check(nf90_inquire_attribute(nc_file_ID, nc_var_ID, att_name, xtype=att_type), &
+   call nc_check(nf90_inquire_attribute(ncfileid, ncvarid, att_name, xtype=att_type), &
                  'read_cam_coord', 'inquire_attribute '//trim(att_name))
 
    if (att_type == nf90_char) then
       keep_atts = keep_atts + 1
       att_vals(keep_atts) = ' '
       att_names(keep_atts) = att_name
-      call nc_check(nf90_get_att(nc_file_ID, nc_var_ID, att_name, att_vals(keep_atts)), &
+      call nc_check(nf90_get_att(ncfileid, ncvarid, att_name, att_vals(keep_atts)), &
                     'read_cam_coord', 'get_att '//trim(att_name) )
 
    else
@@ -2145,13 +2142,13 @@ do i=1,num_atts
          write(string1,*) '                ignoring attribute ',trim(att_name),    &
                     ' because it is not a character type'
          call error_handler(E_MSG, 'read_cam_coord', string1,source,revision,revdate)
-      endif
-   endif
-enddo
+      end if
+   end if
+end do
 
 call create_grid_1d_instance(coord_size, keep_atts, var)
 
-! The rest of this routine populates 'var' with values.
+! The rest of this routine populates var with values.
 
 var%label = cfield
 var%dim_id = coord_dimid(1)
@@ -2159,9 +2156,9 @@ var%dim_id = coord_dimid(1)
 do i = 1,keep_atts
    var%atts_names(i) = att_names(i)
    var%atts_vals(i)  = att_vals(i)
-enddo
+end do
 
-call nc_check(nf90_get_var(nc_file_ID, nc_var_ID, var%vals, start=(/ 1 /), count=(/ coord_size /)), &
+call nc_check(nf90_get_var(ncfileid, ncvarid, var%vals, start=(/1/), count=(/coord_size/)), &
               'read_cam_coord', 'get_var '//cfield)
 
 ! Determine whether coordinate is regularly spaced,
@@ -2182,19 +2179,19 @@ else
          if (((resol_n - resol_1) *resol) > epsilon(resol_n)) then
             var%resolution = MISSING_R8
             exit Res
-         endif
-      enddo Res
+         end if
+      end do Res
    else
       var%resolution = MISSING_R8
-   endif
-endif
+   end if
+end if
 
 if (print_details .and. output_task0) then
-   write(string1,'(3A,I6,A,I8,A,1pE12.4)')  'reading ',cfield,' using id ',nc_var_ID,  &
+   write(string1,'(3A,I6,A,I8,A,1pE12.4)')  'reading ',cfield,' using id ',ncvarid,  &
           ' size ',coord_size,' resolution ', var%resolution
    write(string2,*) 'first, last val: ', var%vals(1),var%vals(coord_size)
    call error_handler(E_MSG, 'read_cam_init', string1,source,revision,revdate, text2=string2)
-endif
+end if
 
 deallocate(att_names, att_vals)
 
