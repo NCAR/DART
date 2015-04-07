@@ -4,7 +4,7 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: CESM1_2_1_setup_pmo 7649 2015-03-04 23:54:38Z raeder $
+# DART $Id$
 
 #*******************************************************************************
 #
@@ -1218,7 +1218,7 @@ cat ${caseroot}/DART_instructions.txt
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: https://subversion.ucar.edu/DAReS/DART/branches/cam/models/cam/shell_scripts/CESM1_2_1_setup_pmo $
-# $Revision: 7649 $
-# $Date: 2015-03-04 16:54:38 -0700 (Wed, 04 Mar 2015) $
+# $URL$
+# $Revision$
+# $Date$
 
