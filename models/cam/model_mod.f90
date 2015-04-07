@@ -4684,13 +4684,15 @@ real(r8)              :: threshold
 integer :: ens_size, e
 
 
+
+ens_size = copies_in_window(state_ens_handle)
+allocate(p_surf(ens_size), vstatus(ens_size))
+
 ! Start with failure condition
 istatus = 1
 vstatus = 1
 val = MISSING_R8
 
-ens_size = copies_in_window(state_ens_handle)
-allocate(p_surf(ens_size), vstatus(ens_size))
 
 ! This assumes that all variables are defined on model levels, not on interface levels.
 num_levs = dim_sizes(find_name('lev',dim_names))
@@ -4762,10 +4764,6 @@ integer               :: i, num_levs ! HK vstaus?
 integer               :: fld_index
 integer               :: ens_size, e
 
-! Start with failure condition
-istatus(:) = 1
-vstatus(:) = 1
-val     = MISSING_R8
 
 ens_size = copies_in_window(state_ens_handle)
 allocate(bot_val(ens_size), top_val(ens_size), p_surf(ens_size), frac(ens_size))
@@ -4773,6 +4771,12 @@ allocate(ps_local(2, ens_size))
 allocate(p_col_distrib(ens_size, num_levs))
 allocate(bot_lev(ens_size), top_lev(ens_size)) !> @todo HK I don't know why you need two values, one is just + 1 to the other
 allocate(track_status(ens_size), vstatus(ens_size))
+
+! Start with failure condition
+istatus(:) = 1
+vstatus(:) = 1
+val     = MISSING_R8
+
 
 ! Need to get the surface pressure at this point.
 ! Find out whether the observed field is a staggered field in CAM.
