@@ -4488,10 +4488,10 @@ DEFINE : do ivar = 1,num_obs_types
          call nc_check(nf90_def_var(ncid, name=string2, xtype=nf90_int, &
              dimids=(/ RegionDimID, LevelDimID, RankDimID, TimeDimID /), &
              varid=VarID), 'WriteTLRV', 'rank_hist:def_var '//trim(string2))
-      else
-         write(logfileunit,*)string2//' has ',ndata,'"rank"able observations.'
-         write(     *     ,*)string2//' has ',ndata,'"rank"able observations.'
       endif
+
+      write(string3,*)ndata,' observations '//trim(string2)
+      call error_handler(E_MSG,'Rank Histogram',string3)
 
    endif
 
