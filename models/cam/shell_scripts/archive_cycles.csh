@@ -22,7 +22,7 @@
 # Load environment variables from CESM 
 # ==============================================================================
 
-cd BOGUS_CASE
+cd BOGUS_CASE_DIRECTORY
 
 source ./Tools/ccsm_getenv || exit -1
 

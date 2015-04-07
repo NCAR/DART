@@ -101,15 +101,18 @@
 # case          The value of "case" will be used many ways; directory and file
 #               names both locally and on HPSS, and script names; so consider
 #               its length and information content.
-# compset       Must be one of the CESM standard names, see the CESM documentation
-#               for supported strings.
-# resolution    Sets the model grid resolution, see the CESM documentation.
+# compset       Defines the vertical resolution and physics packages to be used.
+#               Must be a standard CESM compset; see the CESM documentation.
+# resolution    Defines the horizontal resolution and dynamics; see CESM docs.
 #               f09_f09  ... FV core at ~ 1 degree
 #               BUG 1384 applies here, so ocean and atm/land must be at same resolution.
 # cesmtag       The version of the CESM source code to use when building the code.
+#               A directory with this name must exist in your home directory,
+#               and have SourceMods in it. See the SourceMods section.
+#               http://www.image.ucar.edu/pub/DART/CESM/README
 # num_instances The number of ensemble members.
 #
-# Guidelines on what to change for an SE or WACCM run are described in the 
+# Guidelines on what to change for an SE or WACCM run are described in the
 # models/cam/model_mod.html documentation.
 # ==============================================================================
 # AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV (F_AMIP_CAM5) (FAMIPC5)
@@ -163,14 +166,10 @@ setenv dartroot     /glade/u/home/${USER}/svn/DART
 # refday     start_year, start_mon, start_day and start_tod.)
 # reftod
 # NOTE:      all the ref* variables must be treated like strings and have
-#            the appropriate number of preceeding zeros 
+#            the appropriate number of preceeding zeros
 #
 # stagedir   The directory location of the reference case files.
 # ==============================================================================
-# alternative reference case for different times may be available here:
-# or on the HPSS:
-# /CCSM/dart/FV0.9x1.25x30_cesm1_1_1/{Mon}1         for 1-degree FV ensembles
-# setenv stagedir /glade/scratch/${USER}/archive/${refcase}/rest/${reftimestamp}
 
 setenv refcase     cesm_hybrid
 setenv refyear     2004
@@ -183,12 +182,18 @@ setenv refdate      $refyear-$refmon-$refday
 setenv reftimestamp $refyear-$refmon-$refday-$reftod
 
 setenv stagedir /glade/p/image/CESM_initial_ensemble/rest/${reftimestamp}
+# alternative reference case for different times may be available here:
+# setenv stagedir /glade/scratch/${USER}/${refcase}/archive/rest/${reftimestamp}
+# or on the HPSS:
+# /CCSM/dart/FV0.9x1.25x30_cesm1_1_1/{Mon}1         for 1-degree FV ensembles
 
 # ==============================================================================
-# runtime settings:
+# runtime settings: This script will find usable files for years 19mumble-2010.
+#    Years after that (or before) may require searching $cesmdata for more 
+#    up-to-date files and adding them to the user_nl_cam_#### in the code below.
 #
-# start_year     generally this is the same as the reference case date, but it can
-# start_month    be different if you want to start this run as if it was a different time.
+# start_year    generally this is the same as the reference case date, but it can
+# start_month   be different if you want to start this run as if it was a different time.
 # start_day
 # start_tod
 #
@@ -384,11 +389,11 @@ end
 #  Alternatively, you can set cpl_tasks = same_number in both experiments
 
 # Task layout:
-# Set the nodes_per_instance below to match your case.  If you get 'out of memory' 
+# Set the nodes_per_instance below to match your case.  If you get 'out of memory'
 # errors OR failures without any messages, try increasing the nodes_per_instance.
 # CAM-FV 1 degree can run on 2 nodes/instance on yellowstone.
 # CAM-SE ne30 (~ 1 degree) needed 5 nodes/instance.
-# By computing task counts like we do below, we guarantee each instance uses 
+# By computing task counts like we do below, we guarantee each instance uses
 # a whole number of nodes which is the recommended configuration.
 
 # Yellowstone: no large memory nodes, and 15 tasks/node is recommended.
@@ -531,7 +536,7 @@ endif
 
 # DEBUG = TRUE implies turning on run and compile time debugging.
 # INFO_DBUG level of debug output, 0=minimum, 1=normal, 2=more, 3=too much.
-# WARNING: CAM-SE fails if DEBUG=TRUE 
+# WARNING: CAM-SE fails if DEBUG=TRUE
 ./xmlchange DEBUG=FALSE
 ./xmlchange INFO_DBUG=0
 
@@ -599,7 +604,7 @@ if ($status == 0) then
 else
    set waccm = false
    # WACCM benefits from a modified cd_core.F90, but none of the
-   # other configurations do. 
+   # other configurations do.
    echo "Using the default cd_core.F90"
    ${REMOVE} -v SourceMods/src.cam/src/dynamics/${CAM_DYCORE}/cd_core.F90
 endif
@@ -713,10 +718,10 @@ while ($inst <= $num_instances)
    # the CAM assimilation. This script sets it to be written to the .h0. every
    # assimilation time. If you want to write it to a different .h?. file, you MUST
    # modify the assimilate.csh script in TWO places. You will need to set
-   # 'empty_htapes = .false.' and change 'nhtfrq' and 'mfilt' to get a CAM 
+   # 'empty_htapes = .false.' and change 'nhtfrq' and 'mfilt' to get a CAM
    # default-looking .h0. file.
    #
-   # inithist == 'ENDOFRUN' ensures that CAM writes the required initial file 
+   # inithist == 'ENDOFRUN' ensures that CAM writes the required initial file
    # every time it stops.
 
    echo " inithist      = 'ENDOFRUN'"                     >> ${fname}
@@ -755,7 +760,7 @@ while ($inst <= $num_instances)
     echo " 'pom_a1 -> ${chem_datapath}/emis/ar5_mam3_oc_elev_1850-2010_c20100902_v12.nc',"       >> ${fname}
     echo " 'so4_a1 -> ${chem_datapath}/emis/ar5_mam3_so4_a1_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
     echo " 'so4_a2 -> ${chem_datapath}/emis/ar5_mam3_so4_a2_elev_1850-2010_c20100902_v12.nc'"    >> ${fname}
- 
+
     echo " srf_emis_specifier    = "                                                             >> ${fname}
     echo " 'DMS    -> ${chem_datapath}/emis/aerocom_mam3_dms_surf_1849-2010_c20100902.nc',"      >> ${fname}
     echo " 'SO2    -> ${chem_datapath}/emis/ar5_mam3_so2_surf_1850-2010_c20100902_v12.nc',"      >> ${fname}

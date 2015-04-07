@@ -4,7 +4,7 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
+# DART $Id: CESM1_2_1_setup_pmo 7649 2015-03-04 23:54:38Z raeder $
 
 #*******************************************************************************
 #
@@ -18,6 +18,31 @@
 # is used. Instructions on what to change to use the SE core or WACCM are
 # outlined in the models/cam/model_mod.html documentation.
 #
+# This script differs from the "simple" CESM1_2_1_setup_pmo in several ways.
+# Multiple cycles may be completed in a single job, a series of
+# dependent jobs may be queued more-or-less automatically, and the archiving
+# is explicitly performed by a separate single-threaded job. This is a substantially
+# more efficient use of resources than having a large-CPU job perform an inherently
+# single-threaded task. This requires a large run directory and knowledge of how
+# many cycles may be completed before the archiving must happen.
+# This script also has examples of how to specify alternate support filles that
+# cover more recent dates than the current defaults.  For more detail, consult
+# the models/cam/shell_scripts/README_advanced and the models/cam/model_mod.html.
+#
+# 'Cycles' marks changes to set up scripts which can run multiple forecast+assim cycles
+# in one job, and use a much more efficient, offline, short term archiver.
+# Run the first cycle in the usual way, since it needs to be CONTINUE_RUN = FALSE.
+# Then switch to the cycles scripts in $CASEROOT:
+# -> ${case}.submit_cycles          (edit this to determine number of cycles/job, etc.)
+#    -> submits $case.run_cycles
+#       -> calls the next $case.run_cycles, NOT as a separate job.
+#    -> archive_cycles.csh          (runs when the right number of *jobs* have finished)
+#       archives the desired restart files
+#       archives the history files
+#       -> lt_archive.sh -m copy_dirs_hsi
+#
+# Variable resolution in CAM-SE is not yet available in the public releases of CESM.
+#
 # DOCN: We are using a single data ocean.
 #
 # This script has a counterpart that is a multi-instance setup for either a
@@ -25,6 +50,9 @@
 # hopefully understand), the two scripts are intended to parallel each other.
 # That means this script performs a lot of manipulation of the 'instance'
 # portion of the filenames, which seems unnecessary initially.
+# Because the atmosphere assimilations typically occur every 6 hours,
+# the methodology here reflects that. All of CESM stops every 6 hours
+# so that a CAM output file would be available for assimilation.
 #
 # CESM/DART requires some modifications to the CESM source code EVEN IF YOU
 # ARE NOT USING DART. The modifications for CAM require a change to the CESM
@@ -106,8 +134,10 @@
 # compset       Defines the vertical resolution and physics packages to be used.
 #               Must be a standard CESM compset; see the CESM documentation.
 # resolution    Defines the horizontal resolution and dynamics; see CESM docs.
-#               f09_f09  ... FV core at ~ 1 degree
-#               BUG 1384 applies here, so ocean and atm/land must be at same resolution.
+#                  T85           ... eulerian at ~ 1 degree
+#                  ne30np4_gx1v6 ... SE core at ~ 1 degree
+#                  f09_f09       ... FV core at ~ 1 degree
+#               BUG 1384 may apply, check if ocean and atm/land must be at same resolution.
 # cesmtag       The version of the CESM source code to use when building the code.
 #               A directory with this name must exist in your home directory,
 #               and have SourceMods in it. See the SourceMods section.
@@ -214,6 +244,16 @@ setenv stagedir /glade/p/image/CESM_initial_ensemble/rest/${reftimestamp}
 # start_day
 # start_tod
 #
+# sst_use_defaults Controls what data ocean files are used.
+#                  'true' makes CESM use default files,
+#                  'false' requires you to supply a set of files
+# sst_dataset     Data ocean file
+# sst_grid        Supporting (consistent) grid file
+# sst_year_start  Years included in the sst files.
+# sst_year_end
+#                 The default SST (as of 2015-3) goes through 2012.
+#                 Don't use the last few months, since they are incomplete.
+#
 # short_term_archiver  Copies the files from each job step to a 'rest' directory.
 # long_term_archiver   Puts the files from all completed steps on tape storage.
 #
@@ -226,14 +266,26 @@ setenv stagedir /glade/p/image/CESM_initial_ensemble/rest/${reftimestamp}
 # whenever you want to free up space in the short-term archive directory.
 # ==============================================================================
 
-setenv start_year    2004
+setenv start_year    2010
 setenv start_month   01
 setenv start_day     10
 setenv start_tod     00000
 
+setenv sst_use_defaults 'true'
+
+if ($sst_use_defaults == 'false') then
+   setenv sst_dataset ${cesmdata}/atm/cam/sst/sst_HadOIBl_bc_0.9x1.25_1850_2013_c140701.nc
+   setenv sst_grid ${cesmdata}/share/domains/domain.ocn.fv0.9x1.25_gx1v6.130409.nc
+   setenv sst_year_start 1850
+   setenv sst_year_end   2011
+endif
+
+# Cycles; all archiving is handled outside of CESM.
+#        Both variables should be 'off'.
 setenv short_term_archiver off
 setenv long_term_archiver  off
 
+# Cycles; reset RESUBMIT in ${case}.submit_cycles, not here, resubmit = 0.
 setenv resubmit            0
 setenv stop_option         nhours
 setenv stop_n              6
@@ -250,7 +302,7 @@ setenv stop_n              6
 
 setenv ACCOUNT      NIMGxxxx
 setenv queue        economy
-setenv timewall     0:10
+setenv timewall     0:20
 
 # ==============================================================================
 # standard commands:
@@ -366,6 +418,18 @@ else
    echo "       CESM_DART_config MUST be present locally or in"
    echo "       ${dartroot}/models/cam/shell_scripts/"
    exit -2
+endif
+
+# Cycles; set up scripts for cycles archiving.
+if (-e archive_cycles.csh) then
+   set ACCNT = `grep BSUB archive_cycles.csh | grep -e '-P' `
+   sed -e "s#BOGUS_CASE_DIRECTORY#$caseroot#" \
+       -e "/-P/s#$ACCNT[3]#$ACCOUNT#" \
+       < archive_cycles.csh >! $caseroot/archive_cycles.csh
+else
+   echo "WARNING: No archive_cycles.csh available. "
+   echo "WARNING: This means YOU are responsible for archiving."
+   echo "         Your run directory will fill up fast. Pay Attention!"
 endif
 
 # ==============================================================================
@@ -488,6 +552,14 @@ echo ""
 ./xmlchange EXEROOT=${exeroot}
 ./xmlchange RUNDIR=${rundir}
 
+if ($sst_use_defaults == 'false') then
+   ./xmlchange SSTICE_DATA_FILENAME=$sst_dataset
+   ./xmlchange SSTICE_GRID_FILENAME=$sst_grid
+   ./xmlchange SSTICE_YEAR_ALIGN=$sst_year_start
+   ./xmlchange SSTICE_YEAR_START=$sst_year_start
+   ./xmlchange SSTICE_YEAR_END=$sst_year_end
+endif
+
 # Do not change the CALENDAR or the value of CONTINUE_RUN in this script.
 
 ./xmlchange CALENDAR=GREGORIAN
@@ -557,7 +629,7 @@ if ( ! -d ~/${cesmtag}/SourceMods ) then
    echo "ERROR - No SourceMods for this case."
    echo "ERROR - No SourceMods for this case."
    echo "DART requires modifications to several src files."
-   echo "Download the appropriate files for CESM 1_2_1 from:"
+   echo "Download the appropriate files for "$cesmtag" from:"
    echo "http://www.image.ucar.edu/pub/DART/CESM"
    echo "untar these into your HOME directory - they will create a"
    echo "~/cesm1_2_1  directory with the appropriate SourceMods structure."
@@ -692,6 +764,80 @@ endsw
 
 ./CESM_DART_config || exit -3
 
+
+# ==============================================================================
+# Cycles;
+# Make a cycles version of the .run script, AFTER all changes to $case.run have been made.
+# ==============================================================================
+cat >! temp.run_cycles << EndWarn
+   HEY!  This is a script intended only for advanced users
+   on NCAR\'s yellowstone computer.
+   Please consult us before using it, since it does not have the level of
+   error checking and commenting which other DART scripts have.
+EndWarn
+
+# We're in $caseroot
+# Replace the command to submit the next job to the queue
+# with a command to run the next forecast+assimilation in the current job.
+# The '|| exit 33' makes the whole recursive cascade return an error flag to the LSF job.
+# Some other mechanism might work.
+# Single quotes prevent expansion of BATCHSUBMIT and CASE.
+sed -e 's#$BATCHSUBMIT ./$CASE.run#./$CASE.run_cycles || exit 33#'  \
+    < $case.run >> temp.run_cycles
+
+# Insert section of script to query RESUBMIT from env_run.xml and,
+# if it = -1, set it to the value from ${case}.submit_cycles
+set file_len = `wc -l temp.run_cycles`
+set insert_line = `grep -n 'cd $CASE' temp.run_cycles | head -n 1 | sed -e "s#:# #" `
+@ insert1 = $insert_line[1]
+head -n $insert1 temp.run_cycles >! ${case}.run_cycles
+
+cat >> ${case}.run_cycles <<EndSect1
+
+   # Conditionally change RESUBMIT back to the starting value
+   # when a new cycles job is starting.
+   # This is done for the first cycles job by $case.submit_cycles.
+   echo "RESUBMIT = \$RESUBMIT"
+   if (\$RESUBMIT == -1) then
+      set line = \`grep 'set RESUBMIT' ${caseroot}/${case}.submit_cycles\`
+      echo "Resetting RESUBMIT to \$line[4]"
+      ./xmlchange RESUBMIT=\$line[4]
+   endif
+
+   # Change CONTINUE_RUN from its startup value.
+   ./xmlchange CONTINUE_RUN=TRUE
+
+EndSect1
+
+
+# Insert code which handles the RESUBMIT = 0 case,
+# when we want to stop this job and signal the next that it needs to reset RESUBMIT.
+
+set insert_line = `grep -n 'problem sourcing tempres' temp.run_cycles | sed -e "s#:# #" `
+@ insert2 = $insert_line[1]
+@ next_exist_section = $insert2 - $insert1
+head -n $insert2 temp.run_cycles | tail -n $next_exist_section >> ${case}.run_cycles
+
+cat >> ${case}.run_cycles <<EndSect2
+        exit 111
+     else
+        rm tempres
+     endif
+   endif
+else
+   # Don't run another $case.run_cycles, and signal next job that RESUBMIT needs to be reset.
+   @ RESUBMIT = \$RESUBMIT - 1
+   echo "Signal next job to start with new RESUBMIT.  RESUBMIT is now \$RESUBMIT".
+   ./xmlchange RESUBMIT=\$RESUBMIT
+EndSect2
+
+# The rest of the run_cycles file
+# 3 is for the 'rm temp_res' and 2 'endif' lines which were there, and are being replaced.
+@ rest_of_file =  $file_len[1] - ($insert2 + 3)
+tail -n $rest_of_file temp.run_cycles >> ${case}.run_cycles
+chmod 755 ${case}.run_cycles
+$REMOVE temp.run_cycles
+
 # ==============================================================================
 # Modify namelist templates for each instance.
 #
@@ -747,36 +893,64 @@ while ($inst <= 1)
 
    if ($waccm == false ) then
 
-    set chem_datapath = "${cesmdata}/atm/cam/chem/trop_mozart_aero"
+      set chem_datapath = "${cesmdata}/atm/cam/chem/trop_mozart_aero"
 
-    echo " prescribed_ozone_file = 'ozone_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"               >> ${fname}
-    echo " tracer_cnst_file      =  'oxid_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"               >> ${fname}
+      echo "prescribed_ozone_file = 'ozone_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"                   >> ${fname}
+      echo "tracer_cnst_file      =  'oxid_1.9x2.5_L26_1850-2015_rcp45_c101108.nc'"                   >> ${fname}
 
-    echo "aerodep_flx_datapath   = '${chem_datapath}/aero'"                                      >> ${fname}
-    echo "aerodep_flx_file       = 'aerosoldep_rcp4.5_monthly_1849-2104_0.9x1.25_c100407.nc'"    >> ${fname}
-    echo "aerodep_flx_type       = 'CYCLICAL'"                                                   >> ${fname}
-    echo "aerodep_flx_cycle_yr   = 2000"                                                         >> ${fname}
+      echo "aerodep_flx_datapath   = '${chem_datapath}/aero'"                                         >> ${fname}
+      echo "aerodep_flx_file       = 'aerosoldep_rcp4.5_monthly_1849-2104_0.9x1.25_c100407.nc'"       >> ${fname}
+      echo "aerodep_flx_type       = 'CYCLICAL'"                                                      >> ${fname}
+      echo "aerodep_flx_cycle_yr   = 2000"                                                            >> ${fname}
 
-    echo " ext_frc_specifier     = "                                                             >> ${fname}
-    echo " 'SO2    -> ${chem_datapath}/emis/ar5_mam3_so2_elev_1850-2010_c20100902_v12.nc',"      >> ${fname}
-    echo " 'bc_a1  -> ${chem_datapath}/emis/ar5_mam3_bc_elev_1850-2010_c20100902_v12.nc',"       >> ${fname}
-    echo " 'num_a1 -> ${chem_datapath}/emis/ar5_mam3_num_a1_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
-    echo " 'num_a2 -> ${chem_datapath}/emis/ar5_mam3_num_a2_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
-    echo " 'pom_a1 -> ${chem_datapath}/emis/ar5_mam3_oc_elev_1850-2010_c20100902_v12.nc',"       >> ${fname}
-    echo " 'so4_a1 -> ${chem_datapath}/emis/ar5_mam3_so4_a1_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
-    echo " 'so4_a2 -> ${chem_datapath}/emis/ar5_mam3_so4_a2_elev_1850-2010_c20100902_v12.nc'"    >> ${fname}
+      if ($start_year > 2005 && $start_year <= 2010) then
+         # As of April 2015, the default files only run through 2005.
+         # Specifying non-default files for assimilation for years 2006-2010.
+         # Update as needed and newer files become available.
 
-    echo " srf_emis_specifier    = "                                                             >> ${fname}
-    echo " 'DMS    -> ${chem_datapath}/emis/aerocom_mam3_dms_surf_1849-2010_c20100902.nc',"      >> ${fname}
-    echo " 'SO2    -> ${chem_datapath}/emis/ar5_mam3_so2_surf_1850-2010_c20100902_v12.nc',"      >> ${fname}
-    echo " 'SOAG   -> ${chem_datapath}/emis/ar5_mam3_soag_1.5_surf_1850-2010_c20100902_v12.nc'," >> ${fname}
-    echo " 'bc_a1  -> ${chem_datapath}/emis/ar5_mam3_bc_surf_1850-2010_c20100902_v12.nc',"       >> ${fname}
-    echo " 'num_a1 -> ${chem_datapath}/emis/ar5_mam3_num_a1_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
-    echo " 'num_a2 -> ${chem_datapath}/emis/ar5_mam3_num_a2_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
-    echo " 'pom_a1 -> ${chem_datapath}/emis/ar5_mam3_oc_surf_1850-2010_c20100902_v12.nc',"       >> ${fname}
-    echo " 'so4_a1 -> ${chem_datapath}/emis/ar5_mam3_so4_a1_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
-    echo " 'so4_a2 -> ${chem_datapath}/emis/ar5_mam3_so4_a2_surf_1850-2010_c20100902_v12.nc'"    >> ${fname}
+         echo " ext_frc_specifier     = "                                                             >> ${fname}
+         echo " 'SO2    -> ${chem_datapath}/emis/ar5_mam3_so2_elev_1850-2010_c20100902_v12.nc',"      >> ${fname}
+         echo " 'bc_a1  -> ${chem_datapath}/emis/ar5_mam3_bc_elev_1850-2010_c20100902_v12.nc',"       >> ${fname}
+         echo " 'num_a1 -> ${chem_datapath}/emis/ar5_mam3_num_a1_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
+         echo " 'num_a2 -> ${chem_datapath}/emis/ar5_mam3_num_a2_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
+         echo " 'pom_a1 -> ${chem_datapath}/emis/ar5_mam3_oc_elev_1850-2010_c20100902_v12.nc',"       >> ${fname}
+         echo " 'so4_a1 -> ${chem_datapath}/emis/ar5_mam3_so4_a1_elev_1850-2010_c20100902_v12.nc',"   >> ${fname}
+         echo " 'so4_a2 -> ${chem_datapath}/emis/ar5_mam3_so4_a2_elev_1850-2010_c20100902_v12.nc'"    >> ${fname}
 
+         echo " srf_emis_specifier    = "                                                             >> ${fname}
+         echo " 'DMS    -> ${chem_datapath}/emis/aerocom_mam3_dms_surf_1849-2010_c20100902.nc',"      >> ${fname}
+         echo " 'SO2    -> ${chem_datapath}/emis/ar5_mam3_so2_surf_1850-2010_c20100902_v12.nc',"      >> ${fname}
+         echo " 'SOAG   -> ${chem_datapath}/emis/ar5_mam3_soag_1.5_surf_1850-2010_c20100902_v12.nc'," >> ${fname}
+         echo " 'bc_a1  -> ${chem_datapath}/emis/ar5_mam3_bc_surf_1850-2010_c20100902_v12.nc',"       >> ${fname}
+         echo " 'num_a1 -> ${chem_datapath}/emis/ar5_mam3_num_a1_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
+         echo " 'num_a2 -> ${chem_datapath}/emis/ar5_mam3_num_a2_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
+         echo " 'pom_a1 -> ${chem_datapath}/emis/ar5_mam3_oc_surf_1850-2010_c20100902_v12.nc',"       >> ${fname}
+         echo " 'so4_a1 -> ${chem_datapath}/emis/ar5_mam3_so4_a1_surf_1850-2010_c20100902_v12.nc',"   >> ${fname}
+         echo " 'so4_a2 -> ${chem_datapath}/emis/ar5_mam3_so4_a2_surf_1850-2010_c20100902_v12.nc'"    >> ${fname}
+      endif
+
+      if ($start_year > 2005 && $start_year <= 2012) then
+         # WACCM loads a file given by namelist(?) variable flbc_file,
+         # which means that bndtvghg should not be specified.
+         echo " bndtvghg        = '${cesmdata}/atm/cam/ggas/ghg_hist_1765-2012_c130501.nc'"           >> ${fname}
+      endif
+
+      if ($start_year > 2008 && $start_year <= 2013) then
+         echo " prescribed_volcaero_file      = 'CCSM4_volcanic_1850-2013_prototype1_c130430.nc'"     >> ${fname}
+      endif
+   # End of 'not waccm' test
+   endif
+
+   if ($start_year > 2008) then
+      # The default as of April 2015 is
+      # /glade/p/cesmdata/cseg/inputdata/atm/cam/solar/SOLAR_SPECTRAL_Lean_1610-2008_annual_c090324.nc
+      # For later dates there are files which repeat the solar cycles from 1960-2008
+      # in order to create a time series out to 2140:
+      # .../spectral_irradiance_Lean_1610-2140_ann_c100408.nc
+      # This does not look like an exact extension of the default,
+      # but does look like the previous default.  So try it.
+
+      echo " solar_data_file = '${cesmdata}/atm/cam/solar/spectral_irradiance_Lean_1610-2140_ann_c100408.nc'" >> ${fname}
    endif
 
    # ===========================================================================
@@ -798,11 +972,11 @@ while ($inst <= 1)
    # which prevents the hybrid-mode model from restarting.
    #
    # Every stop_n hours
-   # echo "hist_mfilt  = 1"              >> ${fname}
-   # echo "hist_nhtfrq = -$stop_n"       >> ${fname}
+   #   echo "hist_mfilt  = 1"              >> ${fname}
+   #   echo "hist_nhtfrq = -$stop_n"       >> ${fname}
    # Every month
-   # echo "hist_mfilt  = 1"              >> ${fname}
-   # echo "hist_nhtfrq = 0"              >> ${fname}
+   #   echo "hist_mfilt  = 1"              >> ${fname}
+   #   echo "hist_nhtfrq = 0"              >> ${fname}
 
    echo "hist_empty_htapes = .true."   >> ${fname}
    echo "hist_fincl1 = 'TSA'"          >> ${fname}
@@ -1022,20 +1196,29 @@ echo ""
 echo "5) After the job has run, check to make sure it worked."
 echo ""
 echo "6) To extend the run in $stop_n '"$stop_option"' steps,"
-echo "   change the env_run.xml variables:"
+echo "   change the env_run.xml variable:"
 echo ""
 echo "   ./xmlchange CONTINUE_RUN=TRUE"
-echo "   ./xmlchange RESUBMIT=<number_of_cycles_to_run>"
 echo ""
+echo "7) Then either continue in 'single-cycle' mode, where each cycle waits in the queue"
+echo "      ./xmlchange RESUBMIT=<number_of_cycles_to_run>"
 echo "   and"
-echo "   ./${case}.submit"
+echo "      ./${case}.submit"
+echo "   OR"
+echo "   Continue in cycles mode, where multiple cycles are done in a job with less frequent"
+echo "   entry into the queue:"
+echo "       a) edit '${CASE}.run_cycles' to make sure that it requests enough wall clock time,"
+echo "       b) edit '${CASE}.submit_cycles' to set up the partitioning of cycles into jobs"
+echo "          and of jobs into archiving spans."
+echo "       c) run './${CASE}.submit_cycles' to launch the series of dependent jobs"
+echo ""
 
 cat ${caseroot}/DART_instructions.txt
 
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+# $URL: https://subversion.ucar.edu/DAReS/DART/branches/cam/models/cam/shell_scripts/CESM1_2_1_setup_pmo $
+# $Revision: 7649 $
+# $Date: 2015-03-04 16:54:38 -0700 (Wed, 04 Mar 2015) $
 
