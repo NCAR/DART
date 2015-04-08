@@ -3901,7 +3901,6 @@ if (.not. module_initialized) call static_init_model()
 
 if (l_rectang) then
    call interp_lonlat_distrib(state_ens_handle, location, obs_kind, istatus, interp_val)
-   print*, 'interp_val after', interp_val, istatus
 
 else
    call error_handler(E_ERR, 'no cubed sphere','version of RMA')
@@ -4513,13 +4512,7 @@ elseif (vert_is_pressure(obs_loc)) then
       if (vstatus(e) /= 0 ) track_vstatus(e) = vstatus(e)
    enddo
 
-   print*, val_11
-   print*, val_12
-   print*, val_21
-   print*, val_22
-
    vstatus = track_vstatus
-   print*, 'vstatus', vstatus
 
 elseif (vert_is_height(obs_loc)) then
 
@@ -4603,7 +4596,6 @@ do e = 1, ens_size
       istatus(e) = vstatus(e)
    end if
 
-   print*, 'istatus(e)', istatus(e)
    ! indices of vals are (longitude, latitude)
    if (istatus(e) == 0) then
       a(e, 1) = lon_fract * val_21(e) + (1.0_r8 - lon_fract) * val_11(e)
@@ -4616,8 +4608,6 @@ do e = 1, ens_size
    end if
 
 enddo
-
-print*, 'interp_val', interp_val
 
 end subroutine interp_lonlat_distrib_fwd
 
@@ -4835,9 +4825,6 @@ endif
 num_levs = dim_sizes(find_name('lev',dim_names))
 call plevs_cam_distrib(p_surf, num_levs, p_col_distrib, ens_size)
 
-!print*, 'p_col_disrtib(1, :)'
-!print*, p_col_distrib(1, :)
-
 ! Exclude obs below the model's lowest level and above the highest level
 ! We *could* possibly use ps and p(num_levs) to interpolate for points below the lowest level.
 do e = 1, ens_size
@@ -4862,8 +4849,6 @@ do e = 1, ens_size
       endif
    enddo levloop
 enddo
-
-print*, 'frac', frac
 
 ! Pobs
 if (obs_kind == KIND_PRESSURE) then
