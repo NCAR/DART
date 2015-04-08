@@ -5741,6 +5741,7 @@ do k = 1, num_close
       call convert_vert_distrib(state_ens_handle, obs_array, obs_which, locs(t_ind), kinds(t_ind), &
                         local_obs_array, local_obs_which)
 
+      !> @todo HK better to convert state location upfront.
       ! save the converted location back into the original list.
       ! huge improvement in speed since we only do the vertical convert
       ! once per location, instead of num_close * nobs times.
@@ -5828,17 +5829,25 @@ vstatus = 0 ! I don't think can has a return status for vertical conversion
 old_loc = obs_loc
 old_array = get_location(obs_loc)
 old_which = query_location(obs_loc, 'which_vert')
+   !print*, 'old_array', old_array
+
+if (old_which == query_vert_localization_coord() ) then
+   return
+endif
 
 call convert_vert_distrib(state_ens_handle, old_array, old_which, old_loc, obs_kind, new_array, new_which)
 
-if (vert_coord == 'pressure') obs_loc = set_location(new_array(1), new_array(2), new_array(3), VERTISPRESSURE)
-if (vert_coord == 'log_invP') obs_loc = set_location(new_array(1), new_array(2), new_array(3), VERTISSCALEHEIGHT)
-
+if(new_which == MISSING_I) then
+   vstatus = 1
+else
+   obs_loc = set_location(new_array(1), new_array(2), new_array(3), new_which)
+endif
 
 end subroutine vert_convert_distrib
 
 !-----------------------------------------------------------------------
 ! HK why do you have old_array, old_which and old_loc?
+! HK This seems like a mess.
 subroutine convert_vert_distrib(state_ens_handle, old_array, old_which, old_loc, old_kind, new_array, new_which)
 
 ! Uses model information and subroutines to convert the vertical location of an ob
@@ -6018,6 +6027,8 @@ elseif (old_which == VERTISPRESSURE) then
       new_array(3) = scale_height(p_surface=p_surf, p_above=old_array(3))
       new_which = VERTISSCALEHEIGHT
    endif
+   !> @todo is this a bug or a feature?
+   !HK what happens if old_which is pressure and vert_coord is pressure?
 
 elseif (old_which == VERTISSCALEHEIGHT) then
    if (vert_coord == 'pressure') then
@@ -7893,7 +7904,7 @@ integer :: query_vert_localization_coord
 
 query_vert_localization_coord = VERTISUNDEF
 
-if (vert_coord == 'pressue') query_vert_localization_coord = VERTISPRESSURE
+if (vert_coord == 'pressure') query_vert_localization_coord = VERTISPRESSURE
 if (vert_coord == 'log_invP') query_vert_localization_coord = VERTISSCALEHEIGHT
 
 end function query_vert_localization_coord
