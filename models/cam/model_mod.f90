@@ -4310,7 +4310,7 @@ allocate(track_vstatus(ens_size))
 
 ! Start with failure, then change as warranted.
 istatus(:) = 1
-vstatus(:) = MISSING_I
+vstatus(:) = 1
 val_11 = MISSING_R8
 val_12 = MISSING_R8
 val_21 = MISSING_R8
@@ -4597,7 +4597,7 @@ do e = 1, ens_size
    end if
 
    ! indices of vals are (longitude, latitude)
-   if (istatus(e) == 0) then
+   if (istatus(e) == 0 .or. istatus(e) == 2) then ! 2 is higher than heighest pressure
       a(e, 1) = lon_fract * val_21(e) + (1.0_r8 - lon_fract) * val_11(e)
       a(e, 2) = lon_fract * val_22(e) + (1.0_r8 - lon_fract) * val_12(e)
 
@@ -4779,6 +4779,7 @@ allocate(track_status(ens_size), vstatus(ens_size))
 ! Start with failure condition
 istatus(:) = 1
 vstatus(:) = 1
+track_status(:) = 0 ! HK I think this needs to be zero so you can check for earlier failures
 val     = MISSING_R8
 
 
@@ -4829,9 +4830,10 @@ call plevs_cam_distrib(p_surf, num_levs, p_col_distrib, ens_size)
 ! We *could* possibly use ps and p(num_levs) to interpolate for points below the lowest level.
 do e = 1, ens_size
    if (pressure <= p_col_distrib(e, 1) .or. pressure >= p_col_distrib(e, num_levs)) then
-      istatus(e) = 1
+      !istatus(e) = 1
+      track_status(e) = 1
       val(e) = MISSING_R8
-      !return
+      !return !HK can't return with an ensemble
    endif
 enddo
 
@@ -4839,33 +4841,39 @@ enddo
 
 ! Search down through pressures
 do e = 1, ens_size
-   levloop: do i = 2, num_levs
-      if (pressure < p_col_distrib(e, i)) then
-         top_lev(e) = i -1
-         bot_lev(e) = i
-         frac(e) = (p_col_distrib(e, i) - pressure) / &
-               (p_col_distrib(e, i) - p_col_distrib(e, i - 1))
-         exit levloop
-      endif
-   enddo levloop
+   if (track_status(e) == 0) then
+      levloop: do i = 2, num_levs
+         if (pressure < p_col_distrib(e, i)) then
+            top_lev(e) = i -1
+            bot_lev(e) = i
+            frac(e) = (p_col_distrib(e, i) - pressure) / &
+                  (p_col_distrib(e, i) - p_col_distrib(e, i - 1))
+            exit levloop
+         endif
+      enddo levloop
+   endif
 enddo
 
 ! Pobs
 if (obs_kind == KIND_PRESSURE) then
    ! can't get pressure on levels from state vector; get it from p_col instead
    do e = 1, ens_size
-      bot_val(e) = p_col_distrib(e, bot_lev(e))
-      top_val(e) = p_col_distrib(e, top_lev(e))
+      if (track_status(e) == 0) then
+         bot_val(e) = p_col_distrib(e, bot_lev(e))
+         top_val(e) = p_col_distrib(e, top_lev(e))
+      endif
    enddo
 else
 
    ! need to grab values for each bot_val
    do e = 1, ens_size ! HK you only need to do this for distinct bot_vals
-      call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, bot_val, vstatus)
-      if (vstatus(e) /= 1) call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, top_lev(e), obs_kind, top_val, vstatus)
-      ! Failed to get value for interpolation; return istatus = 1
-      !if (vstatus == 1)
-      istatus(e) = vstatus(e)
+      if (track_status(e) == 0) then
+         call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, bot_val, vstatus)
+         if (vstatus(e) /= 1) call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, top_lev(e), obs_kind, top_val, vstatus)
+         ! Failed to get value for interpolation; return istatus = 1
+         !if (vstatus == 1)
+         track_status(e) = vstatus(e)
+      endif
    enddo
 endif
 ! Pobs
@@ -4876,13 +4884,15 @@ endif
 
 if (pressure < highest_obs_pressure_Pa) then
    istatus(:) = 2
-!else
+else
    ! HK can't do this with an ensemble
 !   istatus = 0
+   istatus = track_status
 endif
 
+
 do e = 1, ens_size
-   if(istatus(e) == 0 .or. istatus(e) == 2) val = (1.0_r8 - frac) * bot_val + frac * top_val
+   if(istatus(e) == 0 .or. istatus(e) == 2) val(e) = (1.0_r8 - frac(e)) * bot_val(e) + frac(e) * top_val(e)
 enddo
 
 deallocate(bot_val, top_val, p_surf, frac, p_col_distrib)
