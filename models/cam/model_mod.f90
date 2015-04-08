@@ -3901,6 +3901,8 @@ if (.not. module_initialized) call static_init_model()
 
 if (l_rectang) then
    call interp_lonlat_distrib(state_ens_handle, location, obs_kind, istatus, interp_val)
+   print*, 'interp_val after', interp_val, istatus
+
 else
    call error_handler(E_ERR, 'no cubed sphere','version of RMA')
    !call interp_cubed_sphere(st_vec, location, obs_kind, interp_val, istatus, cell_corners, l, m)
@@ -4493,7 +4495,7 @@ elseif (vert_is_level(obs_loc)) then
 
 elseif (vert_is_pressure(obs_loc)) then
 
-   call get_val_pressure_distrib(val_11, state_ens_handle, lon_ind_below, lat_ind_below, lon_lat_lev(3), obs_kind, vstatus)
+    call get_val_pressure_distrib(val_11, state_ens_handle, lon_ind_below, lat_ind_below, lon_lat_lev(3), obs_kind, vstatus)
    track_vstatus = vstatus
 
    call get_val_pressure_distrib(val_12, state_ens_handle, lon_ind_below, lat_ind_above, lon_lat_lev(3), obs_kind, vstatus)
@@ -4510,7 +4512,14 @@ elseif (vert_is_pressure(obs_loc)) then
    do e = 1, ens_size
       if (vstatus(e) /= 0 ) track_vstatus(e) = vstatus(e)
    enddo
+
+   print*, val_11
+   print*, val_12
+   print*, val_21
+   print*, val_22
+
    vstatus = track_vstatus
+   print*, 'vstatus', vstatus
 
 elseif (vert_is_height(obs_loc)) then
 
@@ -4594,8 +4603,9 @@ do e = 1, ens_size
       istatus(e) = vstatus(e)
    end if
 
+   print*, 'istatus(e)', istatus(e)
    ! indices of vals are (longitude, latitude)
-   if (istatus(e) /= 1) then
+   if (istatus(e) == 0) then
       a(e, 1) = lon_fract * val_21(e) + (1.0_r8 - lon_fract) * val_11(e)
       a(e, 2) = lon_fract * val_22(e) + (1.0_r8 - lon_fract) * val_12(e)
 
@@ -4606,6 +4616,8 @@ do e = 1, ens_size
    end if
 
 enddo
+
+print*, 'interp_val', interp_val
 
 end subroutine interp_lonlat_distrib_fwd
 
@@ -4770,7 +4782,7 @@ num_levs = dim_sizes(find_name('lev',dim_names))
 
 allocate(bot_val(ens_size), top_val(ens_size), p_surf(ens_size), frac(ens_size))
 allocate(ps_local(2, ens_size))
-allocate(p_col_distrib(num_levs, ens_size))
+allocate(p_col_distrib(ens_size, num_levs))
 allocate(bot_lev(ens_size), top_lev(ens_size)) !> @todo HK I don't know why you need two values, one is just + 1 to the other
 allocate(track_status(ens_size), vstatus(ens_size))
 
@@ -4823,10 +4835,13 @@ endif
 num_levs = dim_sizes(find_name('lev',dim_names))
 call plevs_cam_distrib(p_surf, num_levs, p_col_distrib, ens_size)
 
+!print*, 'p_col_disrtib(1, :)'
+!print*, p_col_distrib(1, :)
+
 ! Exclude obs below the model's lowest level and above the highest level
 ! We *could* possibly use ps and p(num_levs) to interpolate for points below the lowest level.
 do e = 1, ens_size
-   if (pressure <= p_col_distrib(1,e) .or. pressure >= p_col_distrib(num_levs,e)) then
+   if (pressure <= p_col_distrib(e, 1) .or. pressure >= p_col_distrib(e, num_levs)) then
       istatus(e) = 1
       val(e) = MISSING_R8
       !return
@@ -4838,15 +4853,18 @@ enddo
 ! Search down through pressures
 do e = 1, ens_size
    levloop: do i = 2, num_levs
-      if (pressure < p_col_distrib(i, e)) then
-         top_lev = i -1
-         bot_lev = i
-         frac = (p_col_distrib(i, e) - pressure) / &
-               (p_col_distrib(i, e) - p_col_distrib(i - 1, e))
+      if (pressure < p_col_distrib(e, i)) then
+         top_lev(e) = i -1
+         bot_lev(e) = i
+         frac(e) = (p_col_distrib(e, i) - pressure) / &
+               (p_col_distrib(e, i) - p_col_distrib(e, i - 1))
          exit levloop
       endif
    enddo levloop
 enddo
+
+print*, 'frac', frac
+
 ! Pobs
 if (obs_kind == KIND_PRESSURE) then
    ! can't get pressure on levels from state vector; get it from p_col instead
