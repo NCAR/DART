@@ -5943,7 +5943,7 @@ if (old_which == VERTISLEVEL ) then
          call coord_index('lat', old_array(2), lat_ind)
          !p_surf = ps(lon_ind,lat_ind)
          p_surf = get_surface_pressure(state_ens_handle, lon_ind, lat_ind)
-         p_col(1:num_levs) = p(1:num_levs,lon_ind,lat_ind)
+         call plevs_cam(p_surf, num_levs, p_col)
       endif
    else
       ! Cubed sphere; more complicated search for indices of this location.
