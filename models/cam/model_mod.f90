@@ -4494,7 +4494,7 @@ elseif (vert_is_level(obs_loc)) then
 
 elseif (vert_is_pressure(obs_loc)) then
 
-    call get_val_pressure_distrib(val_11, state_ens_handle, lon_ind_below, lat_ind_below, lon_lat_lev(3), obs_kind, vstatus)
+   call get_val_pressure_distrib(val_11, state_ens_handle, lon_ind_below, lat_ind_below, lon_lat_lev(3), obs_kind, vstatus)
    track_vstatus = vstatus
 
    call get_val_pressure_distrib(val_12, state_ens_handle, lon_ind_below, lat_ind_above, lon_lat_lev(3), obs_kind, vstatus)
@@ -4758,6 +4758,7 @@ real(r8), intent(out) :: val(:)
 integer,  intent(out) :: istatus(:)
 
 real(r8), allocatable :: bot_val(:), top_val(:), p_surf(:), frac(:)
+real(r8), allocatable :: single_bot_val(:), single_top_val(:)
 integer,  allocatable :: bot_lev(:), top_lev(:)
 real(r8), allocatable :: ps_local(:, :)
 real(r8), allocatable :: p_col_distrib(:, :)
@@ -4774,6 +4775,7 @@ allocate(bot_val(ens_size), top_val(ens_size), p_surf(ens_size), frac(ens_size))
 allocate(ps_local(2, ens_size))
 allocate(p_col_distrib(ens_size, num_levs))
 allocate(bot_lev(ens_size), top_lev(ens_size)) !> @todo HK I don't know why you need two values, one is just + 1 to the other
+allocate(single_bot_val(ens_size), single_top_val(ens_size))
 allocate(track_status(ens_size), vstatus(ens_size))
 
 ! Start with failure condition
@@ -4868,10 +4870,12 @@ else
    ! need to grab values for each bot_val
    do e = 1, ens_size ! HK you only need to do this for distinct bot_vals
       if (track_status(e) == 0) then
-         call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, bot_val, vstatus)
-         if (vstatus(e) /= 1) call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, top_lev(e), obs_kind, top_val, vstatus)
+         call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, single_bot_val, vstatus)
+         if (vstatus(e) /= 1) call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, top_lev(e), obs_kind, single_top_val, vstatus)
          ! Failed to get value for interpolation; return istatus = 1
          !if (vstatus == 1)
+         bot_val(e) = single_bot_val(e)
+         top_val(e) = single_top_val(e)
          track_status(e) = vstatus(e)
       endif
    enddo
@@ -4882,14 +4886,15 @@ endif
 ! the pressure cutoff, go ahead and compute the value but return an istatus=2
 ! (unless some other error occurs later in this routine).
 
-if (pressure < highest_obs_pressure_Pa) then
-   istatus(:) = 2
-else
-   ! HK can't do this with an ensemble
-!   istatus = 0
-   istatus = track_status
-endif
-
+do e = 1, ens_size
+   if (pressure < highest_obs_pressure_Pa) then
+      if(track_status(e) == 0) istatus(:) = 2
+   else
+      ! HK can't do this with an ensemble
+   !   istatus = 0
+      istatus(e) = track_status(e)
+   endif
+enddo
 
 do e = 1, ens_size
    if(istatus(e) == 0 .or. istatus(e) == 2) val(e) = (1.0_r8 - frac(e)) * bot_val(e) + frac(e) * top_val(e)
