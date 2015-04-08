@@ -5827,7 +5827,7 @@ vstatus = 0 ! I don't think can has a return status for vertical conversion
 
 old_loc = obs_loc
 old_array = get_location(obs_loc)
-
+old_which = query_location(obs_loc, 'which_vert')
 
 call convert_vert_distrib(state_ens_handle, old_array, old_which, old_loc, obs_kind, new_array, new_which)
 
