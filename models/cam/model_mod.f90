@@ -251,6 +251,9 @@ interface interp_lonlat_distrib
    module procedure interp_lonlat_distrib_fwd, interp_lonlat_distrib_mean
 end interface
 
+interface get_val_distrib
+   module procedure get_val_distrib_fwd, get_val_distrib_mean
+end interface
 !-----------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -4615,6 +4618,7 @@ end subroutine interp_lonlat_distrib_fwd
 ! HK single value (mean) version of model interpolate. Don't really want to do this.
 ! This is for model_heights called from convert_vert
 ! Now need mean versions of every call in this subroutine.
+! HK I think this is only used in convert_vert with KIND_SURFACE_PRESSURE
 recursive subroutine interp_lonlat_distrib_mean(state_ens_handle, obs_loc, obs_kind, istatus, interp_val)
 
 ! Find the 4 corners of the lon-lat grid cell that encloses an ob at 'obs_loc'
@@ -4644,7 +4648,246 @@ integer,            intent(out) :: istatus
 ! FIXME; In future DARTs it may be useful to return the DART KIND too.
 !        also convert to a field name (DART subroutine (get_raw_...?)).
 
-call error_handler(E_ERR, 'RMA verical', 'conversion needs to be done')
+integer  :: i, vstatus
+real(r8) :: bot_lon, top_lon, delta_lon,                                &
+            lon_below, lat_below, lat_above, lev_below,                 &
+            lon_fract, lat_fract, vals(2, 2), temp_lon, a(2),           &
+            lon_lat_lev(3)
+
+! FIXME: Positions within the rank 2 and 3 fields.   I don't remember the issue...
+integer  :: s_type, s_type_01d,s_type_2d,s_type_3d,   &
+            lon_ind_below, lon_ind_above, lat_ind_below, lat_ind_above, &
+            num_lons
+character(len=8)   :: lon_name, lat_name, lev_name
+
+! FIXME; idea of right number of dimensions for each field...
+! These are observations and will have 2d or 3d locations, but the
+! corresponding state-vector component could be missing one of the dimensions.
+! Surface pressure is the obvious example, but parameterization tuning might
+! introduce others.
+! Such artificial fields would not have observations associated with them.
+! So assume that observed fields are not missing any dimensions.
+
+! Start with failure, then change as warranted.
+istatus    = 1
+vstatus    = MISSING_I
+vals       = MISSING_R8
+interp_val = MISSING_R8
+
+! Get the observation (horizontal) position, in degrees
+lon_lat_lev = get_location(obs_loc)
+
+! Check whether model_mod can interpolate the requested variable.
+! Pressure (3d) can't be specified as a state vector field (so s_type will = MISSING_I),
+! but can be calculated for CAM, so obs_kind = KIND_PRESSURE is acceptable.
+! obs_kind truly is a DART KIND variable, generally passed from
+! obs_def/obs_def_XXX.f90: call interpolate.
+s_type = dart_to_cam_types(obs_kind)
+
+if (s_type == MISSING_I .and. &
+   (obs_kind /= KIND_PRESSURE) .and.  (obs_kind /= KIND_SURFACE_ELEVATION)) then
+!   istatus = 1
+!   interp_val = MISSING_R8
+   write(string1,*) 'Wrong type of obs = ', obs_kind
+   call error_handler(E_WARN, 'interp_lonlat', string1,source,revision,revdate)
+   return
+end if
+
+! Get lon and lat dimension names.
+
+! Set [lon,lat,lev] names to a default, which will be overwritten for variables
+! in the state vector, but not for other acceptable variables (3D pressure, surface
+! elevation, ...?)
+lon_name = 'lon'
+lat_name = 'lat'
+if (obs_kind == KIND_SURFACE_ELEVATION) then
+   lev_name = 'none'
+else if (obs_kind == KIND_PRESSURE) then
+   lev_name = 'lev'
+end if
+
+! DART can't handle any 0d or 1d ob fields, so lump them together for elimination in this search.
+s_type_01d = state_num_0d + state_num_1d
+s_type_2d = s_type - s_type_01d
+s_type_3d = s_type_2d - state_num_2d
+
+if (s_type == MISSING_I .and. &
+   (obs_kind == KIND_PRESSURE) .or.  (obs_kind == KIND_SURFACE_ELEVATION)) then
+   ! use defaults lon_name and lat_name set above
+else if (s_type <= state_num_0d + state_num_1d) then
+   ! error; can't deal with observed variables that are 0 or 1D in model_mod.
+!   istatus = 1
+!   interp_val = MISSING_R8
+   write(string1,*) 'DART cannot handle 0d or 1d observations of ', cflds(s_type), &
+        ' because DART requires a (lon,lat) location for each observation '
+   write(string2,*) 'Skipping this observation'
+   call error_handler(E_WARN, 'interp_lonlat', string1,source,revision,revdate, text2=string2)
+   return
+else if (s_type_2d > 0 .and. s_type_2d <= state_num_2d) then
+   lon_name = dim_names(s_dimid_2d(1,s_type_2d))
+   lat_name = dim_names(s_dimid_2d(2,s_type_2d))
+   lev_name = 'none'
+else if (s_type_3d > 0 .and. s_type_3d <= state_num_3d) then
+   lon_name = dim_names(s_dimid_3d(2,s_type_3d))
+   lat_name = dim_names(s_dimid_3d(3,s_type_3d))
+   lev_name = dim_names(s_dimid_3d(1,s_type_3d))
+else
+!   istatus = 1
+!   interp_val = MISSING_R8
+   write(string1,*) 'Unexpected state type value, s_type = ', s_type
+   call error_handler(E_WARN, 'interp_lonlat', string1,source,revision,revdate)
+   return
+end if
+
+!------------------------------------------------------------------------------
+! staggered longitudes; slon (4x5 fv grid) = [-2.5, 2.5,...,352.5]  !
+!                        lon ( "         ) = [    0.,  5.,...,  355.]
+! This is a complication for lon = 359, for example.  It's not in the range of slon.
+!    coord_index handles it.
+!------------------------------------------------------------------------------
+
+! Compute bracketing lon indices
+! Define a local longitude to deal with CAM-FV's staggered, longitude grid.
+temp_lon = lon_lat_lev(1)
+
+if (lon_name == 'lon') then
+   num_lons  = lon%length
+   bot_lon   = lon%vals(1)
+   top_lon   = lon%vals(num_lons)
+   delta_lon = lon%vals(2) - lon%vals(1)
+else if (lon_name == 'slon') then
+   num_lons  = slon%length
+   bot_lon   = slon%vals(1)
+   top_lon   = slon%vals(num_lons)
+   delta_lon = slon%vals(2) - slon%vals(1)
+   ! Make certain longitudes conform to the CAM staggered grid.
+   if ((lon_lat_lev(1) - top_lon) >= delta_lon) temp_lon = lon_lat_lev(1) - 360.0_r8
+end if
+
+if (temp_lon >= bot_lon .and. temp_lon   <  top_lon) then
+   ! adding the 1 makes up for subtracting the bot_lon.
+   lon_ind_below = int((temp_lon - bot_lon) / delta_lon) + 1
+   lon_ind_above = lon_ind_below + 1
+   lon_fract = (temp_lon - ((lon_ind_below - 1) * delta_lon + bot_lon)) / delta_lon
+else
+   ! At wraparound point
+   lon_ind_above = 1
+   lon_ind_below = num_lons
+   lon_fract = (temp_lon - top_lon) / delta_lon
+end if
+
+
+! Next, compute neighboring lat rows
+! NEED TO BE VERY CAREFUL ABOUT POLES; WHAT'S BEING DONE MAY BE WRONG
+! Inefficient search used for latitudes in Gaussian grid. Might want to speed up.
+! CAM-FV; lat = -90., ...   ,90.
+!        slat =   -88.,...,88.
+
+call coord_index(lat_name, lon_lat_lev(2), lat_ind_above, lat_ind_below)
+
+! FIXME; maybe move this into coord_index
+!        Probably not; coord_index sometimes returns the single closest index,
+!                      which will always be the first index returned.
+!                      I suppose there could be a flag argument telling coord_index
+!                      whether to return 1 or a pair, with the 2nd index always > first
+!                      (or vice versa).
+!        calculate and return fraction too?
+if (lat_ind_above == lat_ind_below) then
+   if (lat_ind_above == 1) then
+      lat_fract = 0.0_r8
+   else                     !both must be equal to the max (s)lat index
+      lat_fract = 1.0_r8
+   end if
+else
+   if (lat_ind_above < lat_ind_below) then
+      ! switch order
+      i = lat_ind_above
+      lat_ind_above = lat_ind_below
+      lat_ind_below = i
+   end if
+   ! only lat_xxx is changed by these calls
+   call coord_val(lat_name, lat_ind_below, lon_below, lat_below, lev_below)
+   call coord_val(lat_name, lat_ind_above, lon_below, lat_above, lev_below)
+   lat_fract = (lon_lat_lev(2) - lat_below) / (lat_above - lat_below)
+end if
+
+! Find the values for the four corners
+
+! Determine the vertical coordinate: model level, pressure, or height
+if (obs_kind == KIND_SURFACE_ELEVATION) then
+   ! Acceptable field that's not in the state vector
+   ! convert from geopotential height to real height in meters
+   vals(1,1) = phis(lon_ind_below, lat_ind_below) / gravity_const
+   vals(1,2) = phis(lon_ind_below, lat_ind_above) / gravity_const
+   vals(2,1) = phis(lon_ind_above, lat_ind_below) / gravity_const
+   vals(2,2) = phis(lon_ind_above, lat_ind_above) / gravity_const
+   vstatus = 0
+
+else if (vert_is_level(obs_loc)) then
+   ! Pobs
+   ! FIXME; I may want to change get_val_level to accept REAL level, not INT.
+   !        What's the benefit?
+   !        But it would be inconsistent with lon_ and lat_ indices,
+   !           and I'd have to create an integer level anyway.
+   !        May also want to handle staggered vertical grid (ilev).
+
+else if (vert_is_pressure(obs_loc)) then
+
+else if (vert_is_height(obs_loc)) then
+
+else if (vert_is_surface(obs_loc)) then
+   ! The 'lev' argument is set to 1 because there is no level for these types, and 'lev' will be
+   ! ignored.
+                     call get_val_distrib(state_ens_handle, lon_ind_below, lat_ind_below, 1, obs_kind, vals(1,1), vstatus)
+   if (vstatus /= 1) call get_val_distrib(state_ens_handle, lon_ind_below, lat_ind_above, 1, obs_kind, vals(1,2), vstatus)
+   if (vstatus /= 1) call get_val_distrib(state_ens_handle, lon_ind_above, lat_ind_below, 1, obs_kind, vals(2,1), vstatus)
+   if (vstatus /= 1) call get_val_distrib(state_ens_handle, lon_ind_above, lat_ind_above, 1, obs_kind, vals(2,2), vstatus)
+
+
+! This needs to be at the end of the block.  Otherwise, it short circuits GPS
+! which asks for pressures on heights.
+! else if (obs_kind == KIND_PRESSURE) then
+!    ! Calculate pressures from surface pressures and A and B coeffs.
+!    ! Pobs
+!     write(string1,'(A)') 'No code available yet for obs_kind = KIND_PRESSURE '
+!     call error_handler(E_ERR, 'interp_lon_lat', string1)
+!
+else if (vert_is_scale_height(obs_loc)) then
+   ! Need option for vert_is_scale_height
+   write(string1,*)'Scale height is not an acceptable vert coord yet.  Skipping observation'
+   call error_handler(E_WARN, 'interp_lonlat', string1,source,revision,revdate)
+   return
+
+! Need option for vert_is_undefined
+else
+   write(string1,*) '   No vert option chosen!'
+   call error_handler(E_WARN, 'interp_lonlat', string1,source,revision,revdate)
+   return
+
+end if
+
+! Conundrum (but unimportant for now): an ob could be excluded for > 1 reason.
+! E.g. it's too far north and it's above the highest_obs_pressure_Pa.
+! What istatus to return? a 2 (or more) digit number?  Like vstatus*10 + 4?
+if (vstatus == 1) then
+   return     ! Failed to get value for interpolation; return istatus = 1
+              ! Error will be handled by calling routines?
+else
+   if (abs(lon_lat_lev(2)) > max_obs_lat_degree) then
+      ! Define istatus to be a combination of vstatus (= 0 or 2 (for higher than highest_obs...))
+      ! and whether the ob is poleward of the limits set in the namelist (+ 4).
+      istatus = 10*vstatus + 4
+   else
+      istatus = vstatus
+   end if
+end if
+
+! indices of vals are (longitude, latitude)
+do i = 1, 2
+   a(i) = lon_fract * vals(2, i) + (1.0_r8 - lon_fract) * vals(1, i)
+end do
+interp_val = lat_fract * a(2) + (1.0_r8 - lat_fract) * a(1)
+
 
 end subroutine interp_lonlat_distrib_mean
 
@@ -5093,7 +5336,7 @@ end subroutine get_val_height_distrib
 
 !-----------------------------------------------------------------------
 
-subroutine get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, level, obs_kind, val, istatus)
+subroutine get_val_distrib_fwd(state_ens_handle, ens_size, lon_index, lat_index, level, obs_kind, val, istatus)
 
 integer,             intent(in)  :: ens_size !< how may pieces of state to grab
 real(r8),            intent(out) :: val(ens_size)
@@ -5120,7 +5363,37 @@ if (indx > 0 .and. indx <= model_size) then
    call get_state(val, indx, state_ens_handle)
 endif
 
-end subroutine get_val_distrib
+end subroutine get_val_distrib_fwd
+
+!-----------------------------------------------------------------------
+
+subroutine get_val_distrib_mean(state_ens_handle, lon_index, lat_index, level, obs_kind, val, istatus)
+
+real(r8),            intent(out) :: val
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer, intent(in)   :: lon_index
+integer, intent(in)   :: lat_index
+integer, intent(in)   :: level
+integer, intent(in)   :: obs_kind
+integer, intent(out)  :: istatus
+
+integer :: indx, field_type
+
+! Start with error condition.
+istatus = 1
+val = MISSING_R8
+
+field_type = dart_to_cam_types(obs_kind)
+if (field_type <= 0 .or. field_type > nflds) return
+
+indx = index_from_grid(level, lon_index, lat_index, field_type)
+if (indx > 0 .and. indx <= model_size) then
+   istatus = 0
+   !val = st_vec(indx)
+   call get_state(val, indx, state_ens_handle)
+endif
+
+end subroutine get_val_distrib_mean
 
 !-----------------------------------------------------------------------
 
