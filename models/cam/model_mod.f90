@@ -4304,6 +4304,10 @@ integer   :: ens_size, e
 ! Such artificial fields would not have observations associated with them.
 ! So assume that observed fields are not missing any dimensions.
 
+!integer, save :: count = 1
+!print*, 'called fwd op, count', count, my_task_id() !735 times for 1 gps ob
+!count = count + 1
+
 ens_size = copies_in_window(state_ens_handle)
 allocate(val_11(ens_size),val_12(ens_size), val_21(ens_size), val_22(ens_size))
 allocate(a(ens_size, 2))
@@ -4468,6 +4472,7 @@ if (obs_kind == KIND_SURFACE_ELEVATION) then
    val_12 = phis(lon_ind_below, lat_ind_above) / gravity_const
    val_21 = phis(lon_ind_above, lat_ind_below) / gravity_const
    val_22 = phis(lon_ind_above, lat_ind_above) / gravity_const
+   vstatus(:) = 0
 
 elseif (vert_is_level(obs_loc)) then
    ! Pobs
@@ -4521,9 +4526,10 @@ elseif (vert_is_height(obs_loc)) then
 
    !HK model_heights is called 4 times on the obs_loc here. Also why call the interpolation
    ! routine over and over again?
-
    call get_val_height_distrib(val_11, state_ens_handle, lon_ind_below, lat_ind_below, lon_lat_lev(3), obs_loc, obs_kind, vstatus)
    track_vstatus = vstatus
+   !print*, 'vstatus', vstatus
+   print*, 'val_11', val_11
 
    call get_val_height_distrib(val_12, state_ens_handle, lon_ind_below, lat_ind_above, lon_lat_lev(3), obs_loc, obs_kind, vstatus)
    do e = 1, ens_size
@@ -4957,7 +4963,7 @@ if (obs_kind == KIND_PRESSURE) then
       !if (vstatus(e) /= 0) return
          ! Next, get the values on the levels for this PS.
          call plevs_cam(p_surf(e), num_levs, p_col)
-         val = p_col(level)
+         val(e) = p_col(level)
    enddo
 else
    call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, level, obs_kind, val, vstatus)
@@ -4967,7 +4973,6 @@ endif
 ! the pressure cutoff, go ahead and compute the value but return an istatus=2
 ! (unless some other error occurs later in this routine).  note that smaller
 ! level numbers are higher up in the atmosphere; level 1 is at the top.
-
 if (level < highest_obs_level) then
    istatus = 2
 else
@@ -5182,14 +5187,9 @@ real(r8), allocatable :: model_h_distrib(:, :)
 logical  :: stagr_lon, stagr_lat
 integer  :: ens_size, e
 
-! No errors to start with
-istatus   = 1
-vstatus   = 1
-val       = MISSING_R8
-stagr_lon = .false.
-stagr_lat = .false.
-
 ens_size = copies_in_window(state_ens_handle)
+! Assuming we'll only need pressures on model mid-point levels, not interface levels.
+num_levs = dim_sizes(find_name('lev',dim_names))
 allocate(bot_val(ens_size), top_val(ens_size), p_surf(ens_size), frac(ens_size))
 allocate(ps_local(2, ens_size))
 allocate(p_col_distrib(ens_size, num_levs))
@@ -5197,9 +5197,13 @@ allocate(model_h_distrib(ens_size, num_levs))
 allocate(bot_lev(ens_size), top_lev(ens_size)) !> @todo HK I don't know why you need two values, one is just + 1 to the other
 allocate(track_status(ens_size), vstatus(ens_size))
 
+! No errors to start with
+istatus   = 1
+vstatus   = 1
+val       = MISSING_R8
+stagr_lon = .false.
+stagr_lat = .false.
 
-! Assuming we'll only need pressures on model mid-point levels, not interface levels.
-num_levs = dim_sizes(find_name('lev',dim_names))
 
 !> @todo this should be a subroutine
 ! Need to get the surface pressure at this point.
@@ -5208,14 +5212,14 @@ num_levs = dim_sizes(find_name('lev',dim_names))
 fld_index   = find_name('PS',cflds)
 ind         = index_from_grid(1,lon_index,lat_index,  fld_index)
 !ps_local(1) = st_vec(ind)
-call get_state(ps_local(1, :), i, state_ens_handle)
+call get_state(ps_local(1, :), ind, state_ens_handle)
 
 ! find_name returns 0 if the field name is not found in the cflds list.
 if (obs_kind == KIND_U_WIND_COMPONENT .and. find_name('US', cflds) /= 0) then
    stagr_lat = .true.
    ind = index_from_grid(1,lon_index,lat_index+1,fld_index)
    !ps_local(2) = st_vec(ind)
-   call get_state(ps_local(2, :), i, state_ens_handle)
+   call get_state(ps_local(2, :), ind, state_ens_handle)
    p_surf = (ps_local(1, :) + ps_local(2, :))* 0.5_r8
 elseif (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS', cflds) /= 0) then
    stagr_lon = .true.
@@ -5225,7 +5229,7 @@ elseif (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS', cflds) /= 0) the
       ind = index_from_grid(1,lon_index+1,lat_index ,fld_index)
    endif
    !ps_local(2) = st_vec(ind)
-   call get_state(ps_local(2, :), i, state_ens_handle)
+   call get_state(ps_local(2, :), ind, state_ens_handle)
    p_surf = (ps_local(1, :) + ps_local(2, :))* 0.5_r8
 else
    p_surf = ps_local(1, :)
@@ -5240,17 +5244,20 @@ endif
 call model_heights_distrib_fwd(num_levs, state_ens_handle, p_surf, location, model_h_distrib, vstatus)
 !if (vstatus == 1) return    ! Failed to get model heights; return istatus = 1
 track_status = vstatus
+print*, 'track_status', track_status, model_h_distrib(1, :)
+!print*, 'model_h(1,:)', model_h_distrib(1,:)
 
 ! Exclude obs below the model's lowest level and above the highest level
 do e = 1, ens_size
-   if (height >= model_h_distrib(1, e) .or. height <= model_h_distrib(num_levs, e)) then
-      ! HK what status should this be?
+   if (height >= model_h_distrib(e, 1) .or. height <= model_h_distrib(e, num_levs)) then
+      ! HK what status should this be? 
+      track_status(e) = 1
       val(e) = MISSING_R8
    endif
 enddo
 
 ! ? Implement 3Dp here?  or should/can it not use the ens mean PS field?
-call plevs_cam_distrib(p_surf, num_levs, p_col, ens_size)
+call plevs_cam_distrib(p_surf, num_levs, p_col_distrib, ens_size)
 
 ! The highest_obs_pressure_Pa has already been checked to ensure it's a valid value.
 ! So this loop will always set the highest_obs_height_m before exiting.
@@ -5265,20 +5272,17 @@ call plevs_cam_distrib(p_surf, num_levs, p_col, ens_size)
 ! HK highest_obs_height is ensemble size for the forward operator?
 !> @todo It is unclear whether highest_obs_height_m is per ensemble member.
 if (highest_obs_height_m == MISSING_R8) then
-   call error_handler(E_ERR, 'need to ', 'code this')
-
-   !levloop: do i=2,num_levs
-   !   do e = 1, ens_size
-   !   if (p_col(i, e) > highest_obs_pressure_Pa) then
-   !      ! highest_obs_height_m = model_h(i)
-   !      highest_obs_height_m(e) = model_h(i, e) + (model_h(i, e)-model_h(i-1, e))*  &
-   !                                          ((p_col(i, e)-highest_obs_pressure_Pa) / &
-   !                                          (p_col(i, e)-p_col(i-1, e)))
-   !      exit levloop
-   !   endif
-   !   enddo
-   !enddo levloop
-
+   do e = 1, ens_size
+      levloop: do i = 2, num_levs
+      if (p_col_distrib(e, i) > highest_obs_pressure_Pa) then
+         ! highest_obs_height_m = model_h(i)
+         highest_obs_height_m = model_h_distrib(e, i) + (model_h_distrib(e, i)-model_h_distrib(e, i-1))* &
+             ((p_col_distrib(e, i)-highest_obs_pressure_Pa) / &
+              (p_col_distrib(e, i)-p_col_distrib(e, i-1)))
+         exit levloop
+      endif
+      enddo levloop
+   enddo
 endif
 
 
@@ -5288,50 +5292,63 @@ endif
 ! and the fraction between them.  There has already been a test to
 ! ensure the height is between the levels (and has discarded values
 ! exactly equal to the limits), so this will always succeed.
-lev2loop: do i = 2, num_levs
 do e = 1, ens_size
-   call error_handler(E_ERR, 'need to ', 'code this')
-   !if (height > model_h(i)) then
-   !   top_lev = i -1
-   !   bot_lev = i
-   !   frac = (model_h(i) - height      ) / &
-   !          (model_h(i) - model_h(i-1))
-   !   exit lev2loop
-   !endif
+   if (track_status(e) == 0 ) then
+      lev2loop: do i = 2, num_levs
+         if (height > model_h_distrib(e, i)) then
+            top_lev(e) = i -1
+            bot_lev(e) = i
+            frac(e) = (model_h_distrib(e, i) - height      ) / &
+                  (model_h_distrib(e, i) - model_h_distrib(e, i-1))
+            exit lev2loop
+         endif
+      enddo lev2loop
+   endif
 enddo
-enddo lev2loop
+print*, 'bot_lev', bot_lev
 
+istatus = track_status
 
 if (obs_kind == KIND_PRESSURE) then
    do e = 1, ens_size
-      bot_val(e) = p_col_distrib(e, bot_lev(e))
-      top_val(e) = p_col_distrib(e, top_lev(e))
+      if(track_status(e) == 0) then
+         bot_val(e) = p_col_distrib(e, bot_lev(e))
+         top_val(e) = p_col_distrib(e, top_lev(e))
+      endif
    enddo
 else
    ! need to grab values for each bot_val
    do e = 1, ens_size ! HK you only need to do this for distinct bot_vals
-      call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, bot_val, vstatus)
-      call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, top_lev(e), obs_kind, top_val, vstatus)
-      istatus(e) = vstatus(e)
+      if(istatus(e) == 0) then
+         call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, bot_val, vstatus)
+         istatus(e) = vstatus(e)
+         call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, top_lev(e),  obs_kind, top_val, vstatus)
+         istatus(e) = vstatus(e)
+      endif
       ! Failed to get a value to use in interpolation
       !if (vstatus == 1) return ! HK can't do this with an ensemble
    enddo
 end if
 
-if (height > highest_obs_height_m ) then ! HK is this per ensemble?
-   ! if this routine is called with a location that has a vertical height above
-   ! the pressure cutoff, go ahead and compute the value but return an istatus=2
-   ! (unless some other error occurs later in this routine).
-   istatus = 2
-else
-   ! HK can't do this with an ensemble
-   !istatus = 0
-endif
-
 do e = 1, ens_size
-   if(istatus(e) == 0 .or. istatus(e) == 2) val = (1.0_r8 - frac) * bot_val + frac * top_val
+   if (height > highest_obs_height_m ) then ! HK is this per ensemble?
+      ! if this routine is called with a location that has a vertical height above
+      ! the pressure cutoff, go ahead and compute the value but return an istatus=2
+      ! (unless some other error occurs later in this routine).
+      istatus(e) = 2
+   else
+      ! HK can't do this with an ensemble
+      !istatus = 0
+   endif
 enddo
 
+do e = 1, ens_size
+   if(istatus(e) == 0 .or. istatus(e) == 2) then
+      val(e) = (1.0_r8 - frac(e)) * bot_val(e) + frac(e) * top_val(e)
+   endif
+enddo
+
+!print*, 'bot_val', bot_val, 'bot_lev', bot_lev
 end subroutine get_val_height_distrib
 
 !-----------------------------------------------------------------------
@@ -7164,6 +7181,7 @@ type(ensemble_type), intent(in) :: state_ens_handle
 real(r8),            intent(in) :: p_surf(:) ! ens_size
 type(location_type), intent(in) :: base_obs_loc
 
+! model_h_distrib(ens_size, num_levs)
 real(r8), intent(out) :: model_h(:, :) ! HK This is a global, why are you passing it?
 integer,  intent(out) :: istatus(:)
 
@@ -7195,8 +7213,9 @@ allocate(track_status(ens_size), vstatus(ens_size))
 allocate(phi_surf(ens_size))
 allocate(phi(num_levs, ens_size), tv(num_levs, ens_size), q(num_levs, ens_size), t(num_levs, ens_size))
 
-istatus = 1
-vstatus = 1
+istatus(:) = 1
+vstatus(:) = 1
+track_status(:) = 1
 
 ! Don't initialize these in the declaration statements, or they'll get the save attribute
 ! and won't be initialized each time this routine is entered.
@@ -7247,7 +7266,8 @@ enddo
 if (l_rectang) then
 
    call interp_lonlat_distrib(state_ens_handle, base_obs_loc, KIND_SURFACE_ELEVATION, vstatus,phi_surf)
-   track_status = vstatus
+
+     track_status = vstatus
    ! newFIXME; put Fail message other places like this   ! Failure; istatus = 1
    do e = 1, ens_size
       if (vstatus(e) /= 0) track_status(e) = vstatus(e)
@@ -7271,7 +7291,7 @@ if (l_rectang) then
       temp_obs_loc = set_location(lon_lat_lev(1), lon_lat_lev(2), real(k,r8), VERTISLEVEL)
 
       call interp_lonlat_distrib(state_ens_handle, temp_obs_loc, KIND_TEMPERATURE, vstatus, t(k, :))
-      track_status = vstatus
+    print*, 'vstatus', vstatus
 
       do e = 1, ens_size
          if (vstatus(e) == 1) then
@@ -7280,9 +7300,13 @@ if (l_rectang) then
             call error_handler(E_WARN, 'model_heights', string1)
             !return
          endif
+         if (vstatus(e) /= 0) track_status(e) = vstatus(e)
       enddo
+         !print*, 'track_status', track_status
+
 
       call interp_lonlat_distrib(state_ens_handle, temp_obs_loc, KIND_SPECIFIC_HUMIDITY, vstatus, q(k, :))
+      !print*, 'q(k, :)', q(k, :), 'vstatus', vstatus
 
       do e = 1, ens_size
          if (vstatus(e) == 1 ) then
@@ -7294,9 +7318,9 @@ if (l_rectang) then
          if (vstatus(e) /= 0) track_status(e) = vstatus(e)
       enddo
 
-      do e = 1, ens_size
-         if (track_status(e) ==0) tv(k, e) = t(k, e)*(1.0_r8 + rr_factor*q(k, e))
-      enddo
+      !print*, 'track_status', track_status
+       tv(k, :) = t(k, :)*(1.0_r8 + rr_factor*q(k, :))
+       !print*, 'tv(k, :)', tv(k, :)
    enddo
 
 else ! for cubed sphere:
@@ -7309,7 +7333,8 @@ else ! for cubed sphere:
 endif
 
 do e = 1, ens_size
-   call dcz2(num_levs, p_surf(e), phi_surf(e), tv, P0%vals(1) ,hybrid_As, hybrid_Bs, pmln, pterm, phi(:, e))
+   !print*, 'tv', tv(:, e)
+   call dcz2(num_levs, p_surf(e), phi_surf(e), tv(:, e), P0%vals(1) ,hybrid_As, hybrid_Bs, pmln, pterm, phi(:, e))
 
    ! used; hybrid_Bs, hybrid_As, hprb
    ! output from dcz2;  pmln, pterm , phi
@@ -7318,13 +7343,14 @@ do e = 1, ens_size
    ! Convert to kilometers for gph2gmh call, then back to meters for return value.
    do k = 1,num_levs
       ht_tmp = phi(k, e) * 0.001_r8        ! convert to km for following call only
-      model_h(k, e) = gph2gmh(ht_tmp, lon_lat_lev(2)) * 1000.0_r8
+      model_h(e, k) = gph2gmh(ht_tmp, lon_lat_lev(2)) * 1000.0_r8
    enddo
 enddo
 
 ! model_heights returns only istatus 0 or 1
 !istatus = 0 !HK This is annoying.
 istatus = track_status
+print*, 'istatus', istatus
 
 deallocate(track_status, vstatus)
 
