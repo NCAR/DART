@@ -3904,7 +3904,7 @@ if (.not. module_initialized) call static_init_model()
 
 if (l_rectang) then
    call interp_lonlat_distrib(state_ens_handle, location, obs_kind, istatus, interp_val)
-
+   print*, 'interp_val', interp_val, istatus
 else
    call error_handler(E_ERR, 'no cubed sphere','version of RMA')
    !call interp_cubed_sphere(st_vec, location, obs_kind, interp_val, istatus, cell_corners, l, m)
@@ -4529,7 +4529,7 @@ elseif (vert_is_height(obs_loc)) then
    call get_val_height_distrib(val_11, state_ens_handle, lon_ind_below, lat_ind_below, lon_lat_lev(3), obs_loc, obs_kind, vstatus)
    track_vstatus = vstatus
    !print*, 'vstatus', vstatus
-   print*, 'val_11', val_11
+   !print*, 'val_11', val_11
 
    call get_val_height_distrib(val_12, state_ens_handle, lon_ind_below, lat_ind_above, lon_lat_lev(3), obs_loc, obs_kind, vstatus)
    do e = 1, ens_size
@@ -4546,6 +4546,7 @@ elseif (vert_is_height(obs_loc)) then
       if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
    enddo
    vstatus = track_vstatus
+  print*, 'vstatus', vstatus
 
 elseif (vert_is_surface(obs_loc)) then
    ! The 'lev' argument is set to 1 because there is no level for these types, and 'lev' will be
@@ -5244,7 +5245,7 @@ endif
 call model_heights_distrib_fwd(num_levs, state_ens_handle, p_surf, location, model_h_distrib, vstatus)
 !if (vstatus == 1) return    ! Failed to get model heights; return istatus = 1
 track_status = vstatus
-print*, 'track_status', track_status, model_h_distrib(1, :)
+print*, 'after model_heights track_status', track_status
 !print*, 'model_h(1,:)', model_h_distrib(1,:)
 
 ! Exclude obs below the model's lowest level and above the highest level
@@ -5285,6 +5286,7 @@ if (highest_obs_height_m == MISSING_R8) then
    enddo
 endif
 
+print*, 'highest_obs_height_m', highest_obs_height_m
 
 
 ! Interpolate in vertical to get two bounding levels.
@@ -5293,7 +5295,7 @@ endif
 ! ensure the height is between the levels (and has discarded values
 ! exactly equal to the limits), so this will always succeed.
 do e = 1, ens_size
-   if (track_status(e) == 0 ) then
+   if (track_status(e) == 0 .or. track_status(e) == 2) then
       lev2loop: do i = 2, num_levs
          if (height > model_h_distrib(e, i)) then
             top_lev(e) = i -1
@@ -5305,13 +5307,13 @@ do e = 1, ens_size
       enddo lev2loop
    endif
 enddo
-print*, 'bot_lev', bot_lev
+!print*, 'top_lev', top_lev
 
 istatus = track_status
 
 if (obs_kind == KIND_PRESSURE) then
    do e = 1, ens_size
-      if(track_status(e) == 0) then
+      if(istatus(e) == 0 .or. istatus(e) == 2) then
          bot_val(e) = p_col_distrib(e, bot_lev(e))
          top_val(e) = p_col_distrib(e, top_lev(e))
       endif
@@ -5319,7 +5321,7 @@ if (obs_kind == KIND_PRESSURE) then
 else
    ! need to grab values for each bot_val
    do e = 1, ens_size ! HK you only need to do this for distinct bot_vals
-      if(istatus(e) == 0) then
+      if(istatus(e) == 0 .or. istatus(e) == 2) then
          call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, bot_val, vstatus)
          istatus(e) = vstatus(e)
          call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, top_lev(e),  obs_kind, top_val, vstatus)
@@ -5335,6 +5337,7 @@ do e = 1, ens_size
       ! if this routine is called with a location that has a vertical height above
       ! the pressure cutoff, go ahead and compute the value but return an istatus=2
       ! (unless some other error occurs later in this routine).
+      print*, 'e, height', e, height, highest_obs_height_m
       istatus(e) = 2
    else
       ! HK can't do this with an ensemble
@@ -6891,6 +6894,7 @@ integer           :: coord_len, i
 nullify(coord)
 val_local = val
 
+! HK why not just pass in the grid_1d_type?
 if (dim_name == 'lon') then
    coord     => lon%vals
    coord_len =  lon%length
@@ -7291,7 +7295,6 @@ if (l_rectang) then
       temp_obs_loc = set_location(lon_lat_lev(1), lon_lat_lev(2), real(k,r8), VERTISLEVEL)
 
       call interp_lonlat_distrib(state_ens_handle, temp_obs_loc, KIND_TEMPERATURE, vstatus, t(k, :))
-    print*, 'vstatus', vstatus
 
       do e = 1, ens_size
          if (vstatus(e) == 1) then
@@ -7349,8 +7352,9 @@ enddo
 
 ! model_heights returns only istatus 0 or 1
 !istatus = 0 !HK This is annoying.
-istatus = track_status
-print*, 'istatus', istatus
+do e = 1, ens_size
+   if (track_status(e) == 0 .or. track_status(e) == 2) istatus(e) = 0
+enddo
 
 deallocate(track_status, vstatus)
 
