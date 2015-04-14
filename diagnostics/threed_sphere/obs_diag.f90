@@ -2672,7 +2672,6 @@ if ( qcval <= qcmaxval ) then ! QC indicates a valid obs
    numer = abs(prmean - obsval)
    denom = sqrt( prspred**2 + errvar )
 
-   ! TJH FIXME ... test this before putting on the trunk!!!!
    ! At worst, the InnovZscore can be 'MaxSigmaBins' i.e. 100
    ! protect against dividing by a really small number
    ! if numer/denom < 100 then go ahead and calculate
