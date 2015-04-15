@@ -251,9 +251,6 @@ interface interp_lonlat_distrib
    module procedure interp_lonlat_distrib_fwd, interp_lonlat_distrib_mean
 end interface
 
-interface get_val_distrib
-   module procedure get_val_distrib_fwd, get_val_distrib_mean
-end interface
 !-----------------------------------------------------------------------
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -3904,7 +3901,6 @@ if (.not. module_initialized) call static_init_model()
 
 if (l_rectang) then
    call interp_lonlat_distrib(state_ens_handle, location, obs_kind, istatus, interp_val)
-   print*, 'interp_val', interp_val, istatus
 else
    call error_handler(E_ERR, 'no cubed sphere','version of RMA')
    !call interp_cubed_sphere(st_vec, location, obs_kind, interp_val, istatus, cell_corners, l, m)
@@ -4523,13 +4519,10 @@ elseif (vert_is_pressure(obs_loc)) then
    vstatus = track_vstatus
 
 elseif (vert_is_height(obs_loc)) then
-
    !HK model_heights is called 4 times on the obs_loc here. Also why call the interpolation
    ! routine over and over again?
    call get_val_height_distrib(val_11, state_ens_handle, lon_ind_below, lat_ind_below, lon_lat_lev(3), obs_loc, obs_kind, vstatus)
    track_vstatus = vstatus
-   !print*, 'vstatus', vstatus
-   !print*, 'val_11', val_11
 
    call get_val_height_distrib(val_12, state_ens_handle, lon_ind_below, lat_ind_above, lon_lat_lev(3), obs_loc, obs_kind, vstatus)
    do e = 1, ens_size
@@ -4546,25 +4539,24 @@ elseif (vert_is_height(obs_loc)) then
       if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
    enddo
    vstatus = track_vstatus
-  print*, 'vstatus', vstatus
 
 elseif (vert_is_surface(obs_loc)) then
    ! The 'lev' argument is set to 1 because there is no level for these types, and 'lev' will be
    ! ignored.
-   call get_val_distrib(state_ens_handle, ens_size, lon_ind_below, lat_ind_below, 1, obs_kind, val_11, vstatus)
+   call get_val_distrib_fwd(state_ens_handle, ens_size, lon_ind_below, lat_ind_below, 1, obs_kind, val_11, vstatus)
    track_vstatus = vstatus
 
-   call get_val_distrib(state_ens_handle, ens_size, lon_ind_below, lat_ind_above, 1, obs_kind, val_12, vstatus)
+   call get_val_distrib_fwd(state_ens_handle, ens_size, lon_ind_below, lat_ind_above, 1, obs_kind, val_12, vstatus)
    do e = 1, ens_size
       if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
    enddo
 
-   call get_val_distrib(state_ens_handle, ens_size, lon_ind_above, lat_ind_below, 1, obs_kind, val_21, vstatus)
+   call get_val_distrib_fwd(state_ens_handle, ens_size, lon_ind_above, lat_ind_below, 1, obs_kind, val_21, vstatus)
    do e = 1, ens_size
       if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
    enddo
 
-   call get_val_distrib(state_ens_handle, ens_size, lon_ind_above, lat_ind_above, 1, obs_kind, val_22, vstatus)
+   call get_val_distrib_fwd(state_ens_handle, ens_size, lon_ind_above, lat_ind_above, 1, obs_kind, val_22, vstatus)
    do e = 1, ens_size
       if (vstatus(e) /= 0 )  track_vstatus(e) = vstatus(e)
    enddo
@@ -4837,18 +4829,31 @@ else if (vert_is_level(obs_loc)) then
    !        But it would be inconsistent with lon_ and lat_ indices,
    !           and I'd have to create an integer level anyway.
    !        May also want to handle staggered vertical grid (ilev).
+   call get_val_level_mean(state_ens_handle, lon_ind_below, lat_ind_below, nint(lon_lat_lev(3)), obs_kind, vals(1,1), vstatus)
+   if (vstatus /= 1) call get_val_level_mean(state_ens_handle, lon_ind_below, lat_ind_above, nint(lon_lat_lev(3)), obs_kind, vals(1,2), vstatus)
+   if (vstatus /= 1) call get_val_level_mean(state_ens_handle, lon_ind_above, lat_ind_below, nint(lon_lat_lev(3)), obs_kind, vals(2,1), vstatus)
+   if (vstatus /= 1) call get_val_level_mean(state_ens_handle, lon_ind_above, lat_ind_above, nint(lon_lat_lev(3)), obs_kind, vals(2,2), vstatus)
+   ! Pobs end
 
 else if (vert_is_pressure(obs_loc)) then
+   call get_val_pressure_mean(state_ens_handle,lon_ind_below,lat_ind_below,lon_lat_lev(3),obs_kind,vals(1,1),vstatus)
+   if (vstatus /= 1) call get_val_pressure_mean(state_ens_handle,lon_ind_below,lat_ind_above,lon_lat_lev(3),obs_kind,vals(1,2),vstatus)
+   if (vstatus /= 1) call get_val_pressure_mean(state_ens_handle,lon_ind_above,lat_ind_below,lon_lat_lev(3),obs_kind,vals(2,1),vstatus)
+   if (vstatus /= 1) call get_val_pressure_mean(state_ens_handle,lon_ind_above,lat_ind_above,lon_lat_lev(3),obs_kind,vals(2,2),vstatus)
 
 else if (vert_is_height(obs_loc)) then
+   call get_val_height_mean(state_ens_handle, lon_ind_below, lat_ind_below, lon_lat_lev(3), obs_loc, obs_kind, vals(1,1), vstatus)
+   if (vstatus /= 1) call get_val_height_mean(state_ens_handle, lon_ind_below, lat_ind_above, lon_lat_lev(3), obs_loc, obs_kind, vals(1,2), vstatus)
+   if (vstatus /= 1) call get_val_height_mean(state_ens_handle, lon_ind_above, lat_ind_below, lon_lat_lev(3), obs_loc, obs_kind, vals(2,1), vstatus)
+   if (vstatus /= 1) call get_val_height_mean(state_ens_handle, lon_ind_above, lat_ind_above, lon_lat_lev(3), obs_loc, obs_kind, vals(2,2), vstatus)
 
 else if (vert_is_surface(obs_loc)) then
    ! The 'lev' argument is set to 1 because there is no level for these types, and 'lev' will be
    ! ignored.
-                     call get_val_distrib(state_ens_handle, lon_ind_below, lat_ind_below, 1, obs_kind, vals(1,1), vstatus)
-   if (vstatus /= 1) call get_val_distrib(state_ens_handle, lon_ind_below, lat_ind_above, 1, obs_kind, vals(1,2), vstatus)
-   if (vstatus /= 1) call get_val_distrib(state_ens_handle, lon_ind_above, lat_ind_below, 1, obs_kind, vals(2,1), vstatus)
-   if (vstatus /= 1) call get_val_distrib(state_ens_handle, lon_ind_above, lat_ind_above, 1, obs_kind, vals(2,2), vstatus)
+   call get_val_distrib_mean(state_ens_handle, lon_ind_below, lat_ind_below, 1, obs_kind, vals(1,1), vstatus)
+   if (vstatus /= 1) call get_val_distrib_mean(state_ens_handle, lon_ind_below, lat_ind_above, 1, obs_kind, vals(1,2), vstatus)
+   if (vstatus /= 1) call get_val_distrib_mean(state_ens_handle, lon_ind_above, lat_ind_below, 1, obs_kind, vals(2,1), vstatus)
+   if (vstatus /= 1) call get_val_distrib_mean(state_ens_handle, lon_ind_above, lat_ind_above, 1, obs_kind, vals(2,2), vstatus)
 
 
 ! This needs to be at the end of the block.  Otherwise, it short circuits GPS
@@ -4958,7 +4963,7 @@ if (level > num_levs .or. level < 1) return
 if (obs_kind == KIND_PRESSURE) then
 
    ! p_surf is returned in pascals, which is the right units for plevs_cam() below.
-   call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, p_surf, vstatus)
+   call get_val_distrib_fwd(state_ens_handle, ens_size, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, p_surf, vstatus)
 
    do e = 1, ens_size
       !if (vstatus(e) /= 0) return
@@ -4967,7 +4972,7 @@ if (obs_kind == KIND_PRESSURE) then
          val(e) = p_col(level)
    enddo
 else
-   call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, level, obs_kind, val, vstatus)
+   call get_val_distrib_fwd(state_ens_handle, ens_size, lon_index, lat_index, level, obs_kind, val, vstatus)
 endif
 
 ! if this routine is called with a location that has a vertical level above
@@ -4981,6 +4986,81 @@ else
 endif
 
 end subroutine get_val_level_distrib
+! Pobs end
+
+!-----------------------------------------------------------------------
+
+! Pobs
+subroutine get_val_level_mean(state_ens_handle, lon_index, lat_index, level, obs_kind, val, istatus)
+
+! Gets the value on level for variable obs_kind
+! at lon_index, lat_index horizontal grid point
+!
+! written by Kevin Raeder, based on code from Hui Liu 4/28/2006 and get_val_pressure
+!         from Jeff Anderson
+!
+! This routine indicates things with the return code:
+!   istatus 0 - success
+!   istatus 1 - failure (e.g. above or below highest/lowest level, or can't
+!                          interpolate the value)
+!   istatus 2 - val is set successfully, but level is above highest_obs_level
+!
+! This routine assumes level is an integer value.  To make it work for
+! fractional levels (some models do support this) the code would have to be
+! altered to find the value at the level below and above, and interpolate in
+! the vertical.
+
+type(ensemble_type), intent(in) :: state_ens_handle
+integer,  intent(in)  :: lon_index
+integer,  intent(in)  :: lat_index
+integer,  intent(in)  :: level
+integer,  intent(in)  :: obs_kind
+real(r8), intent(out) :: val
+integer,  intent(out) :: istatus
+
+integer  :: num_levs, i, lowest_ok
+integer  :: vstatus
+real(r8) :: p_surf
+real(r8) :: threshold
+
+! Start with failure condition
+istatus = 1
+vstatus = 1
+val = MISSING_R8
+
+
+! This assumes that all variables are defined on model levels, not on interface levels.
+num_levs = dim_sizes(find_name('lev',dim_names))
+
+! Exclude obs below the model's lowest level and above the highest level
+if (level > num_levs .or. level < 1) return
+
+! Interpolate in vertical to get two bounding levels, but treat pressure
+! specially since it has to be computed from PS instead of interpolated.
+
+if (obs_kind == KIND_PRESSURE) then
+
+   ! p_surf is returned in pascals, which is the right units for plevs_cam() below.
+   call get_val_distrib_mean(state_ens_handle, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE, p_surf, vstatus)
+
+   if (vstatus /= 0) return
+   ! Next, get the values on the levels for this PS.
+   call plevs_cam(p_surf, num_levs, p_col)
+else
+   call get_val_distrib_mean(state_ens_handle, lon_index, lat_index, level, obs_kind, val, vstatus)
+endif
+
+! if this routine is called with a location that has a vertical level above
+! the pressure cutoff, go ahead and compute the value but return an istatus=2
+! (unless some other error occurs later in this routine).  note that smaller
+! level numbers are higher up in the atmosphere; level 1 is at the top.
+if (level < highest_obs_level) then
+   istatus = 2
+else
+   istatus = vstatus
+endif
+
+end subroutine get_val_level_mean
 ! Pobs end
 
 !-----------------------------------------------------------------------
@@ -5119,8 +5199,8 @@ else
    ! need to grab values for each bot_val
    do e = 1, ens_size ! HK you only need to do this for distinct bot_vals
       if (track_status(e) == 0) then
-         call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, single_bot_val, vstatus)
-         if (vstatus(e) /= 1) call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, top_lev(e), obs_kind, single_top_val, vstatus)
+         call get_val_distrib_fwd(state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, single_bot_val, vstatus)
+         if (vstatus(e) /= 1) call get_val_distrib_fwd(state_ens_handle, ens_size, lon_index, lat_index, top_lev(e), obs_kind, single_top_val, vstatus)
          ! Failed to get value for interpolation; return istatus = 1
          !if (vstatus == 1)
          bot_val(e) = single_bot_val(e)
@@ -5155,6 +5235,128 @@ deallocate(bot_lev, top_lev)
 end subroutine get_val_pressure_distrib
 
 !-----------------------------------------------------------------------
+
+subroutine get_val_pressure_mean(state_ens_handle, lon_index, lat_index, pressure, obs_kind,  val, istatus)
+
+! Gets the vertically interpolated value on pressure for variable obs_kind
+! at lon_index, lat_index horizontal grid point
+!
+! This routine indicates things with the return code:
+!   istatus 0 - success
+!   istatus 1 - failure (e.g. above or below highest/lowest level, or can't
+!                          interpolate the value)
+!   istatus 2 - val is set successfully, but vert is above highest_obs_pressure
+!
+! Excludes observations below lowest level pressure and above highest level pressure.
+
+type(ensemble_type), intent(in) :: state_ens_handle
+real(r8), intent(in)  :: pressure
+integer,  intent(in)  :: lon_index
+integer,  intent(in)  :: lat_index
+integer,  intent(in)  :: obs_kind
+real(r8), intent(out) :: val
+integer,  intent(out) :: istatus
+
+real(r8)              :: bot_val, top_val, p_surf, frac, ps_local(2)
+integer               :: top_lev, bot_lev, i, vstatus, num_levs
+integer               :: fld_index
+
+! No errors to start with
+istatus = 1
+vstatus = 1
+val     = MISSING_R8
+
+! Need to get the surface pressure at this point.
+! Find out whether the observed field is a staggered field in CAM.
+! Check whether the state vector has wind components on staggered grids, i.e. whether CAM is FV.
+! find_name returns 0 if the field name is not found in the cflds list.
+
+fld_index   = find_name('PS',cflds)
+i = index_from_grid(1,lon_index,lat_index,  fld_index)
+!ps_local(1) = st_vec(i)
+call get_state(ps_local(1), i, state_ens_handle)
+
+if (obs_kind == KIND_U_WIND_COMPONENT .and. find_name('US', cflds) /= 0) then
+   ! ps defined on lat grid (-90...90, nlat = nslat + 1),
+   !    need it on staggered lat grid, which starts half a grid spacing north.
+
+   i = index_from_grid(1,lon_index,lat_index+1,fld_index)
+   !ps_local(2) = st_vec(i)
+   call get_state(ps_local(2), i, state_ens_handle)
+   p_surf      = (ps_local(1) + ps_local(2))* 0.5_r8
+else if (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS', cflds) /= 0) then
+   ! lon =     0...     255 (for 5 degree grid)
+   !slon = -2.5 ... 252.5
+   if (lon_index == slon%length) then
+      i = index_from_grid(1,1,          lat_index ,fld_index)
+   else
+      i = index_from_grid(1,lon_index+1,lat_index ,fld_index)
+   end if
+   !ps_local(2) = st_vec(i)
+   call get_state(ps_local(2), i, state_ens_handle)
+   p_surf      = (ps_local(1) + ps_local(2))* 0.5_r8
+else
+   ! A-grid ps can be retrieved from state vector, which was used to define ps on entry to
+   ! model_interpolate.
+   p_surf     = ps_local(1)
+end if
+
+! Next, get the pressures on the levels for this ps
+! Assuming we'll only need pressures on model mid-point levels, not interface levels.
+! This pressure column will be for the correct grid for obs_kind, since p_surf was taken
+!     from the grid-correct ps[_stagr] grid
+num_levs = dim_sizes(find_name('lev',dim_names))
+call plevs_cam(p_surf, num_levs, p_col)
+
+
+if (pressure <= p_col(1) .or. pressure >= p_col(num_levs)) then
+   ! Exclude obs below the model's lowest level and above the highest level
+   ! We *could* possibly use ps and p(num_levs) to interpolate for points below the lowest level.
+   return
+end if
+
+! Interpolate in vertical to get two bounding levels
+
+! Search down through pressures
+levloop: do i = 2, num_levs
+   if (pressure < p_col(i)) then
+      top_lev = i -1
+      bot_lev = i
+      frac = (p_col(i) - pressure) / &
+             (p_col(i) - p_col(i - 1))
+      exit levloop
+   end if
+end do levloop
+
+! Pobs
+if (obs_kind == KIND_PRESSURE) then
+   ! can't get pressure on levels from state vector; get it from p_col instead
+   bot_val = p_col(bot_lev)
+   top_val = p_col(top_lev)
+else
+      call get_val_distrib_mean(state_ens_handle, lon_index, lat_index, bot_lev, obs_kind, bot_val, vstatus)
+   if (vstatus /= 1) &
+      call get_val_distrib_mean(state_ens_handle, lon_index, lat_index, top_lev, obs_kind, top_val, vstatus)
+   ! Failed to get value for interpolation; return istatus = 1
+   if (vstatus == 1) return
+end if
+! Pobs
+
+! if this routine is called with a location that has a vertical pressure above
+! the pressure cutoff, go ahead and compute the value but return an istatus=2
+! (unless some other error occurs later in this routine).
+
+if (pressure < highest_obs_pressure_Pa) then
+   istatus = 2
+else
+   istatus = 0
+end if
+
+val = (1.0_r8 - frac) * bot_val + frac * top_val
+
+end subroutine get_val_pressure_mean
+
+!-----------------------------------------------------------------------
 ! HK seem to get surface pressure a lot.
 subroutine get_val_height_distrib(val, state_ens_handle, lon_index, lat_index, height, location, obs_kind, istatus)
 
@@ -5181,6 +5383,7 @@ integer,             intent(out) :: istatus(:)
 
 integer  :: i, num_levs, fld_index, ind
 real(r8), allocatable :: bot_val(:), top_val(:), p_surf(:), frac(:)
+real(r8), allocatable :: single_bot_val(:), single_top_val(:)
 integer,  allocatable :: bot_lev(:), top_lev(:)
 real(r8), allocatable :: ps_local(:, :), p_col_distrib(:, :)
 integer,  allocatable :: vstatus(:), track_status(:)
@@ -5196,6 +5399,7 @@ allocate(ps_local(2, ens_size))
 allocate(p_col_distrib(ens_size, num_levs))
 allocate(model_h_distrib(ens_size, num_levs))
 allocate(bot_lev(ens_size), top_lev(ens_size)) !> @todo HK I don't know why you need two values, one is just + 1 to the other
+allocate(single_bot_val(ens_size), single_top_val(ens_size))
 allocate(track_status(ens_size), vstatus(ens_size))
 
 ! No errors to start with
@@ -5244,9 +5448,8 @@ endif
 ! Hello global model_h again
 call model_heights_distrib_fwd(num_levs, state_ens_handle, p_surf, location, model_h_distrib, vstatus)
 !if (vstatus == 1) return    ! Failed to get model heights; return istatus = 1
+! model_heights_distrib_fwd is where a vstatus of 2 disapears. Only 0 or 1 returned
 track_status = vstatus
-print*, 'after model_heights track_status', track_status
-!print*, 'model_h(1,:)', model_h_distrib(1,:)
 
 ! Exclude obs below the model's lowest level and above the highest level
 do e = 1, ens_size
@@ -5286,8 +5489,6 @@ if (highest_obs_height_m == MISSING_R8) then
    enddo
 endif
 
-print*, 'highest_obs_height_m', highest_obs_height_m
-
 
 ! Interpolate in vertical to get two bounding levels.
 ! Search down through heights and set the enclosing level numbers
@@ -5322,9 +5523,11 @@ else
    ! need to grab values for each bot_val
    do e = 1, ens_size ! HK you only need to do this for distinct bot_vals
       if(istatus(e) == 0 .or. istatus(e) == 2) then
-         call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, bot_val, vstatus)
+         call get_val_distrib_fwd(state_ens_handle, ens_size, lon_index, lat_index, bot_lev(e), obs_kind, single_bot_val, vstatus)
          istatus(e) = vstatus(e)
-         call get_val_distrib(state_ens_handle, ens_size, lon_index, lat_index, top_lev(e),  obs_kind, top_val, vstatus)
+         call get_val_distrib_fwd(state_ens_handle, ens_size, lon_index, lat_index, top_lev(e),  obs_kind, single_top_val, vstatus)
+         bot_val(e) = single_bot_val(e)
+         top_val(e) = single_top_val(e)
          istatus(e) = vstatus(e)
       endif
       ! Failed to get a value to use in interpolation
@@ -5351,8 +5554,153 @@ do e = 1, ens_size
    endif
 enddo
 
-!print*, 'bot_val', bot_val, 'bot_lev', bot_lev
 end subroutine get_val_height_distrib
+
+!-----------------------------------------------------------------------
+! HK seem to get surface pressure a lot.
+subroutine get_val_height_mean(state_ens_handle, lon_index, lat_index, height, location, obs_kind, val, istatus)
+
+! Gets the vertically interpolated value on height for variable obs_kind
+! at lon_index, lat_index horizontal grid point
+!
+! written by Kevin Raeder, based on code from Hui Liu 4/28/2006 and get_val_pressure
+!         from Jeff Anderson
+!
+! This routine indicates things with the return code:
+!   istatus 0 - success
+!   istatus 1 - failure (e.g. above or below highest/lowest level, or can't
+!                          interpolate the value)
+!   istatus other - val is set successfully, but obs is excluded according to namelist restrictions.
+
+type(ensemble_type), intent(in)  :: state_ens_handle
+integer,             intent(in)  :: lon_index
+integer,             intent(in)  :: lat_index
+real(r8),            intent(in)  :: height
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: obs_kind
+real(r8),            intent(out) :: val
+integer,             intent(out) :: istatus
+
+integer  :: top_lev, bot_lev, i, vstatus, num_levs, fld_index, ind
+real(r8) :: bot_val, top_val, frac
+real(r8) :: p_surf, ps_local(2)
+logical  :: stagr_lon, stagr_lat
+
+! No errors to start with
+istatus   = 1
+vstatus   = 1
+val       = MISSING_R8
+stagr_lon = .false.
+stagr_lat = .false.
+
+
+!> @todo this should be a subroutine
+! Need to get the surface pressure at this point.
+! Check whether the state vector has wind components on staggered grids, i.e. whether CAM is FV.
+! See get_val_pressure for more documentation.
+fld_index   = find_name('PS',cflds)
+ind         = index_from_grid(1,lon_index,lat_index,  fld_index)
+!ps_local(1) = st_vec(ind)
+call get_state(ps_local(1), ind, state_ens_handle)
+
+! find_name returns 0 if the field name is not found in the cflds list.
+if (obs_kind == KIND_U_WIND_COMPONENT .and. find_name('US', cflds) /= 0) then
+   stagr_lat = .true.
+   ind = index_from_grid(1,lon_index,lat_index+1,fld_index)
+   !ps_local(2) = st_vec(ind)
+   call get_state(ps_local(2), ind, state_ens_handle)
+   p_surf = (ps_local(1) + ps_local(2))* 0.5_r8
+elseif (obs_kind == KIND_V_WIND_COMPONENT .and. find_name('VS', cflds) /= 0) then
+   stagr_lon = .true.
+   if (lon_index == slon%length) then
+      ind = index_from_grid(1,1,          lat_index ,fld_index)
+   else
+      ind = index_from_grid(1,lon_index+1,lat_index ,fld_index)
+   endif
+   !ps_local(2) = st_vec(ind)
+   call get_state(ps_local(2), ind, state_ens_handle)
+   p_surf = (ps_local(1) + ps_local(2))* 0.5_r8
+else
+   p_surf = ps_local(1)
+endif
+
+! Next, get the heights on the levels for this ps
+
+! We want to use the new vec for each new ob on height because the state was updated
+! for all previous obs, and we want to use the most up to date state to get the best location.
+! HK ******** THE STATE IS NOT UPDATED YOU ARE USING THE MEAN COPY from before assimilation. *******
+! Hello global model_h again
+call model_heights_distrib_mean(num_levs, state_ens_handle, p_surf, location, model_h, vstatus)
+if (vstatus == 1) return    ! Failed to get model heights; return istatus = 1
+! model_heights_distrib_fwd is where a vstatus of 2 disapears. Only 0 or 1 returned
+
+! Exclude obs below the model's lowest level and above the highest level
+if (height >= model_h(1) .or. height <= model_h(num_levs)) return
+
+! ? Implement 3Dp here?  or should/can it not use the ens mean PS field?
+call plevs_cam(p_surf, num_levs, p_col)
+
+! The highest_obs_pressure_Pa has already been checked to ensure it's a valid value.
+! So this loop will always set the highest_obs_height_m before exiting.
+! This could be refined to interpolate between the p_col to highest_obs_pressure_Pa.
+! Also, if using the nearest lower model level is good enough, then it might be good
+! enough to only calculate highest_obs_height_m once; put if (highest_obs_height_m == MISSING_R8)
+! around the loop.
+! Actually, I see in gph2gmh that the heights in model_h are relative to mean sea level,
+! so they will be independent from the surface height and vertical coordinate system.
+! They will vary slightly with surface pressure.
+! So I think that highest_obs_height_m could be calculated once
+! HK highest_obs_height is ensemble size for the forward operator?
+!> @todo It is unclear whether highest_obs_height_m is per ensemble member.
+if (highest_obs_height_m == MISSING_R8) then
+levloop: do i=2,num_levs
+   if (p_col(i) > highest_obs_pressure_Pa) then
+      ! highest_obs_height_m = model_h(i)
+      highest_obs_height_m = model_h(i) + (model_h(i)-model_h(i-1))*  &
+                                          ((p_col(i)-highest_obs_pressure_Pa) / &
+                                           (p_col(i)-p_col(i-1)))
+      exit levloop
+   end if
+end do levloop
+end if
+
+! Interpolate in vertical to get two bounding levels.
+! Search down through heights and set the enclosing level numbers
+! and the fraction between them.  There has already been a test to
+! ensure the height is between the levels (and has discarded values
+! exactly equal to the limits), so this will always succeed.
+lev2loop: do i = 2, num_levs
+   if (height > model_h(i)) then
+      top_lev = i -1
+      bot_lev = i
+      frac = (model_h(i) - height      ) / &
+             (model_h(i) - model_h(i-1))
+      exit lev2loop
+   end if
+end do lev2loop
+
+if (obs_kind == KIND_PRESSURE) then
+   bot_val = p_col(bot_lev)
+   top_val = p_col(top_lev)
+else
+   call get_val_distrib_mean(state_ens_handle, lon_index, lat_index, bot_lev, obs_kind, bot_val, vstatus)
+   if (vstatus == 0) call get_val_distrib_mean(state_ens_handle, lon_index, lat_index, top_lev, obs_kind, top_val, vstatus)
+   ! Failed to get a value to use in interpolation
+   if (vstatus == 1) return   
+end if
+
+if (height > highest_obs_height_m ) then
+   ! if this routine is called with a location that has a vertical height above
+   ! the pressure cutoff, go ahead and compute the value but return an istatus=2
+   ! (unless some other error occurs later in this routine).
+   istatus = 2
+else
+   istatus = 0
+end if
+
+val = (1.0_r8 - frac) * bot_val + frac * top_val
+
+end subroutine get_val_height_mean
 
 !-----------------------------------------------------------------------
 
@@ -7270,7 +7618,6 @@ enddo
 if (l_rectang) then
 
    call interp_lonlat_distrib(state_ens_handle, base_obs_loc, KIND_SURFACE_ELEVATION, vstatus,phi_surf)
-
      track_status = vstatus
    ! newFIXME; put Fail message other places like this   ! Failure; istatus = 1
    do e = 1, ens_size
@@ -7305,11 +7652,9 @@ if (l_rectang) then
          endif
          if (vstatus(e) /= 0) track_status(e) = vstatus(e)
       enddo
-         !print*, 'track_status', track_status
 
 
       call interp_lonlat_distrib(state_ens_handle, temp_obs_loc, KIND_SPECIFIC_HUMIDITY, vstatus, q(k, :))
-      !print*, 'q(k, :)', q(k, :), 'vstatus', vstatus
 
       do e = 1, ens_size
          if (vstatus(e) == 1 ) then
@@ -7321,9 +7666,7 @@ if (l_rectang) then
          if (vstatus(e) /= 0) track_status(e) = vstatus(e)
       enddo
 
-      !print*, 'track_status', track_status
        tv(k, :) = t(k, :)*(1.0_r8 + rr_factor*q(k, :))
-       !print*, 'tv(k, :)', tv(k, :)
    enddo
 
 else ! for cubed sphere:
@@ -7336,7 +7679,6 @@ else ! for cubed sphere:
 endif
 
 do e = 1, ens_size
-   !print*, 'tv', tv(:, e)
    call dcz2(num_levs, p_surf(e), phi_surf(e), tv(:, e), P0%vals(1) ,hybrid_As, hybrid_Bs, pmln, pterm, phi(:, e))
 
    ! used; hybrid_Bs, hybrid_As, hprb
@@ -7350,7 +7692,7 @@ do e = 1, ens_size
    enddo
 enddo
 
-! model_heights returns only istatus 0 or 1
+! model_heights returns only istatus 0 or 1 !HK why does it not return 2? Isn't 2 a fail?
 !istatus = 0 !HK This is annoying.
 do e = 1, ens_size
    if (track_status(e) == 0 .or. track_status(e) == 2) istatus(e) = 0
