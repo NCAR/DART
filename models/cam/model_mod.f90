@@ -6192,7 +6192,7 @@ real(r8) :: new_array(3)
 integer  :: new_which
 
 
-vstatus = 0 ! I don't think can has a return status for vertical conversion
+vstatus = 0 ! I don't think cam has a return status for vertical conversion
 
 old_loc = obs_loc
 old_array = get_location(obs_loc)
@@ -6238,6 +6238,7 @@ integer  :: cell_corners(4)
 integer  :: lon_ind, lat_ind, cam_type
 real(r8) :: p_surf, frac, l, m, lon_lat_vert(3)
 type(location_type)   :: temp_loc
+integer :: slon_index 
 
 
 character(len=8) :: cam_varname
@@ -6247,6 +6248,7 @@ character(len=8) :: cam_varname
 cell_corners = MISSING_I    ! corners of the cell which contains the ob
 
 !HK not building ps arrays.
+slon_index = find_name('slon',dim_names)
 
 ! this code does not alter the lat/lon, only the vertical.
 ! but still return a full location for subsequent use.
@@ -6308,7 +6310,7 @@ if (old_which == VERTISLEVEL ) then
          !p_surf = ps_stagr_lon(lon_ind,lat_ind)
          if ( lon_ind == 1 ) then
             p_surf = 0.5*(get_surface_pressure(state_ens_handle, lon_ind, lat_ind) + &
-                  get_surface_pressure(state_ens_handle, lon_ind, lat_ind) )
+                  get_surface_pressure(state_ens_handle, dim_sizes(slon_index), lat_ind) )
          else
             p_surf = 0.5*(get_surface_pressure(state_ens_handle, lon_ind -1, lat_ind) + &
                   get_surface_pressure(state_ens_handle, lon_ind, lat_ind) )
