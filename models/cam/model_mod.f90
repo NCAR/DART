@@ -8228,6 +8228,18 @@ call get_state(get_surface_pressure_mean, ind, state_ens_handle)
 
 end function get_surface_pressure_mean
 
+!--------------------------------------------------------------------
+!> pass the vertical localization coordinate to assim_tools_mod
+function query_vert_localization_coord()
+
+integer :: query_vert_localization_coord
+
+query_vert_localization_coord = VERTISUNDEF
+
+if (vert_coord == 'pressure') query_vert_localization_coord = VERTISPRESSURE
+if (vert_coord == 'log_invP') query_vert_localization_coord = VERTISSCALEHEIGHT
+
+end function query_vert_localization_coord
 
 !-------------------------------------------------------
 !> Check whether you need to error out, clamp, or
@@ -8269,19 +8281,6 @@ character(len=1024)            :: construct_file_name_in
 write(construct_file_name_in, '(A, i4.4)') TRIM(stub), copy
 
 end function construct_file_name_in
-
-!--------------------------------------------------------------------
-!> pass the vertical localization coordinate to assim_tools_mod
-function query_vert_localization_coord()
-
-integer :: query_vert_localization_coord
-
-query_vert_localization_coord = VERTISUNDEF
-
-if (vert_coord == 'pressure') query_vert_localization_coord = VERTISPRESSURE
-if (vert_coord == 'log_invP') query_vert_localization_coord = VERTISSCALEHEIGHT
-
-end function query_vert_localization_coord
 
 !--------------------------------------------------------------------
 !> pass number of variables in the state out to filter 
