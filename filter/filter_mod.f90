@@ -163,7 +163,7 @@ real(r8)             :: inf_damping(2)            = 1.0_r8
 real(r8)             :: inf_lower_bound(2)        = 1.0_r8
 real(r8)             :: inf_upper_bound(2)        = 1000000.0_r8
 real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
-!logical              :: output_inflation          = .true. ! This was for the diagnostic files, no separate option for prior and posterior
+logical              :: output_inflation          = .true. ! This is for the diagnostic files, no separate option for prior and posterior
 
 namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,    &
    start_from_restart, output_restart, obs_sequence_in_name, obs_sequence_out_name, &
@@ -177,7 +177,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
    inf_lower_bound, inf_upper_bound, inf_sd_lower_bound,           &
-   silence, direct_netcdf_read, direct_netcdf_write, diagnostic_files
+   silence, direct_netcdf_read, direct_netcdf_write, diagnostic_files, output_inflation
 
 
 !----------------------------------------------------------------
@@ -420,6 +420,7 @@ if (direct_netcdf_read) then
 endif
 
 !call test_state_copies(state_ens_handle, 'after_read')
+!goto 10011
 
 call timestamp_message('After  reading in ensemble restart files')
 call     trace_message('After  reading in ensemble restart files')
@@ -641,7 +642,7 @@ AdvanceTime : do
    if (my_task_id() == 0) print*, 'distributed average ', (finish-start)
    !call test_obs_copies(obs_fwd_op_ens_handle, 'prior')
 
-!   goto 10011 !HK bail out after forward operators
+   !goto 10011 !HK bail out after forward operators
 
    ! While we're here, make sure the timestamp on the actual ensemble copy
    ! for the mean has the current time.  If the user requests it be written
@@ -694,9 +695,10 @@ AdvanceTime : do
          ! need to ouput the diagnostic info in restart files
             call turn_write_copy_on(ENS_MEAN_COPY)
             call turn_write_copy_on(ENS_SD_COPY)
-               ! Output inflation sucks
+            if (output_inflation) then
                call turn_write_copy_on(PRIOR_INF_COPY)
                call turn_write_copy_on(PRIOR_INF_SD_COPY)
+            endif
          ! FIXME - what to do with lorenz_96 (or similar) here?
          call filter_write_restart_direct(state_ens_handle, isprior = .true.)
       endif
@@ -944,23 +946,33 @@ call trace_message('After  writing inflation restart files if required')
 call trace_message('Before writing state restart files if requested')
 call timestamp_message('Before writing state restart files if requested')
 
-call turn_write_copy_on(1,ens_size) ! restarts
+if (output_restart)      call turn_write_copy_on(1,ens_size) ! restarts
+if (output_restart_mean) call turn_write_copy_on(ENS_MEAN_COPY)
+
 ! Prior_Diag copies - write spare copies
-call turn_write_copy_on(SPARE_COPY_MEAN)
-call turn_write_copy_on(SPARE_COPY_SPREAD)
-call turn_write_copy_on(SPARE_COPY_INF_MEAN)
-call turn_write_copy_on(SPARE_COPY_INF_SPREAD)
+if (spare_copies) then
+   call turn_write_copy_on(SPARE_COPY_MEAN)
+   call turn_write_copy_on(SPARE_COPY_SPREAD)
+   if (output_inflation) then
+      call turn_write_copy_on(SPARE_COPY_INF_MEAN)
+      call turn_write_copy_on(SPARE_COPY_INF_SPREAD)
+   endif
+endif
 
 ! Posterior Diag 
 call turn_write_copy_on(ENS_MEAN_COPY) ! mean
 call turn_write_copy_on(ENS_SD_COPY) ! sd
-call turn_write_copy_on(POST_INF_COPY) ! posterior inf mean
-call turn_write_copy_on(POST_INF_SD_COPY) ! posterior inf sd
+if (output_inflation) then
+   call turn_write_copy_on(POST_INF_COPY)
+   call turn_write_copy_on(POST_INF_SD_COPY)
+endif
 
 if(direct_netcdf_write) then
    call filter_write_restart_direct(state_ens_handle, isprior=.false.)
-else ! write
-   call filter_write_restart(state_ens_handle)
+else ! write binary files
+   if(output_restart) call write_ensemble_restart(state_ens_handle, restart_out_file_name, 1, ens_size)
+   if(output_restart_mean) call write_ensemble_restart(state_ens_handle, trim(restart_out_file_name)//'.mean', &
+                                  ENS_MEAN_COPY, ENS_MEAN_COPY, .true.)
 endif
 
 ! deallocate whole state storage - should this be in ensemble_manager
@@ -1507,17 +1519,6 @@ if(state_ens_handle%my_pe == 0) then
 endif
 
 end subroutine filter_read_restart
-
-!-------------------------------------------------------------------------
-!> write the restart information into a DART restart file.
-subroutine filter_write_restart(state_ens_handle)
-
-type(ensemble_type) :: state_ens_handle
-
-! assumes you have %vars
-call write_ensemble_restart(state_ens_handle, restart_out_file_name, 1, ens_size)
-
-end subroutine filter_write_restart
 
 !-------------------------------------------------------------------------
 !> write the restart information directly into the model netcdf file.
