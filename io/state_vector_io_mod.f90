@@ -117,7 +117,7 @@ logical :: arrays_initialized = .false.
 ! Aim: to have the regular transpose as the default
 integer :: limit_mem = 2147483640!< This is the number of elements (not bytes) so you don't have times the number by 4 or 8
 integer :: limit_procs = 100000!< how many processors you want involved in each transpose.
-logical :: create_restarts = .true. ! what if the restart files exist?
+logical :: create_restarts = .false. ! what if the restart files exist?
 logical :: time_unlimited = .true. ! You need to keep track of the time.
 
 namelist /  state_vector_io_nml / limit_mem, limit_procs, create_restarts, time_unlimited
@@ -975,7 +975,7 @@ else
    do i = 1, num_state_variables ! loop around state variables
       ! check if their dimensions exist
       do j = 1, dimensions_and_lengths(i, 1, dom) ! ndims
-         if (time_unlimited .and. (dim_names(i, j, dom) == 'Time')) then ! case sensitive
+         if (time_unlimited .and. (dim_names(i, j, dom) == 'time')) then ! case sensitive
             ret = nf90_def_dim(ncfile_out, dim_names(i, j, dom), NF90_UNLIMITED, new_dimid) ! does this do nothing if the dimension already exists?
             time_dimension_exists = .true.
          else
@@ -1038,7 +1038,7 @@ integer :: count_displacement
 integer :: start_in_var_block
 integer :: var_size
 integer, allocatable :: dims(:)
-integer :: var_id 
+integer :: var_id
 
 start_in_var_block = 1
 do i = start_var, end_var

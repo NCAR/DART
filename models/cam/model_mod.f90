@@ -8278,7 +8278,8 @@ integer,            intent(in) :: domain
 integer,            intent(in) :: copy
 character(len=1024)            :: construct_file_name_in
 
-write(construct_file_name_in, '(A, i4.4)') TRIM(stub), copy
+! fv_testcase.cam_0003.i.2004-01-15-00000.nc
+write(construct_file_name_in, '(A, i4.4, A)') TRIM(stub), copy, '.i.2004-01-15-00000.nc'
 
 end function construct_file_name_in
 
@@ -8301,18 +8302,94 @@ function fill_variable_list(num_variables_in_state)
 integer            :: num_variables_in_state
 character(len=256) :: fill_variable_list(num_variables_in_state)
 
-fill_variable_list = ''
+integer :: i
+
+if(state_num_0d > 0) fill_variable_list(1:state_num_0d) = state_names_0d(1:state_num_0d)
+
+if(state_num_1d > 0) fill_variable_list(state_num_0d+1:state_num_0d + state_num_1d) = state_names_1d(1:state_num_1d)
+
+if(state_num_2d > 0) fill_variable_list(state_num_0d+state_num_1d+1:state_num_0d+state_num_1d + state_num_2d) = state_names_2d(1:state_num_2d)
+
+if(state_num_3d > 0) fill_variable_list(state_num_0d+state_num_1d+state_num_2d+1:state_num_0d+state_num_1d+state_num_2d + state_num_3d) = state_names_3d(1:state_num_3d)
 
 end function fill_variable_list
 
 !--------------------------------------------------------------------
 !> read the time from the input file
-!> stolen from wrf_to_dart.f90
-function get_model_time(filename)
+function get_model_time(file_name)
 
-character(len=1024), intent(in) :: filename
+character(len=1024), intent(in) :: file_name
 
 type(time_type) :: get_model_time
+
+integer :: i, k, n, m, ifld  
+integer :: nc_file_ID, nc_var_ID, dimid, varid, dimlen
+integer :: iyear, imonth, iday, ihour, imin, isec, rem
+integer :: timestep
+integer,  allocatable :: datetmp(:), datesec(:)
+
+! read CAM 'initial' file domain info
+call nc_check(nf90_open(path=file_name, mode=nf90_nowrite, ncid=nc_file_ID), &
+      'read_cam_init', 'opening '//trim(file_name))
+
+! Read the time of the current state.
+! CAM initial files have two variables of length 'time' (the unlimited dimension): date, datesec
+! The rest of the routine presumes there is but one time in the file -
+
+call nc_check(nf90_inq_dimid(nc_file_ID, 'time', dimid), &
+        'read_cam_init', 'inq_dimid time '//trim(file_name))
+call nc_check(nf90_inquire_dimension(nc_file_ID, dimid, len=dimlen), &
+        'read_cam_init', 'inquire_dimension time '//trim(file_name))
+
+if (dimlen /= 1) then
+   write(string1,*)trim(file_name),' has',dimlen,'times. Require exactly 1.'
+   call error_handler(E_ERR, 'read_cam_init', string1, source, revision, revdate)
+endif
+
+allocate(datetmp(dimlen), datesec(dimlen))
+
+call nc_check(nf90_inq_varid(nc_file_ID, 'date', varid), &
+       'read_cam_init', 'inq_varid date '//trim(file_name))
+call nc_check(nf90_get_var(nc_file_ID, varid, values=datetmp), &
+       'read_cam_init', 'get_var date '//trim(file_name))
+
+call nc_check(nf90_inq_varid(nc_file_ID, 'datesec', varid), &
+       'read_cam_init', 'inq_varid datesec '//trim(file_name))
+call nc_check(nf90_get_var(nc_file_ID, varid, values=datesec), &
+       'read_cam_init', 'get_var datesec '//trim(file_name))
+
+! for future extensibility, presume we find a 'timeindex' that we want.
+! Since we only support 1 timestep in the file, this is easy.
+
+timestep = 1
+
+! The 'date' is YYYYMMDD ... datesec is 'current seconds of current day'
+iyear  = datetmp(timestep) / 10000
+rem    = datetmp(timestep) - iyear*10000
+imonth = rem / 100
+iday   = rem - imonth*100
+
+ihour  = datesec(timestep) / 3600
+rem    = datesec(timestep) - ihour*3600
+imin   = rem / 60
+isec   = rem - imin*60
+
+deallocate(datetmp, datesec)
+
+! some cam files are from before the start of the gregorian calendar.
+! since these are 'arbitrary' years, just change the offset.
+
+if (iyear < 1601) then
+   write(string1,*)' '
+   write(string2,*)'WARNING - ',trim(file_name),' changing year from ',iyear,'to',iyear+1601
+   call error_handler(E_MSG, 'read_cam_init', string1, source, revision, &
+                revdate, text2=string2,text3='to make it a valid Gregorian date.')
+   write(string1,*)' '
+   call error_handler(E_MSG, 'read_cam_init', string1, source, revision)
+   iyear = iyear + 1601
+endif
+
+get_model_time = set_date(iyear,imonth,iday,ihour,imin,isec)
 
 end function get_model_time
 
