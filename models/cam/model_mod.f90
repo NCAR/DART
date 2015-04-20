@@ -5123,6 +5123,7 @@ fld_index   = find_name('PS',cflds)
 i = index_from_grid(1,lon_index,lat_index,  fld_index)
 !ps_local(1, :) = st_vec(i)
 call get_state(ps_local(1, :), i, state_ens_handle)
+print*, 'ps_local', ps_local(1,:)
 
 if (obs_kind == KIND_U_WIND_COMPONENT .and. find_name('US', cflds) /= 0) then
    ! ps defined on lat grid (-90...90, nlat = nslat + 1),
@@ -6898,87 +6899,86 @@ integer, intent(in) :: lat_ind
 integer, intent(in) :: ifld
 integer             :: index_from_grid
 
-integer :: i, j, fld_ind(2), done
-
-index_from_grid = 0
-done = 0
-
-! Cycle through 0d state variables
-do i=1,state_num_0d
-   index_from_grid = index_from_grid + 1
-   if (ifld == i) return
-enddo
-done = done + state_num_0d
-
-! Cycle through 1d state variables
-! Note that indices of fields can have varying dimensions.
-! FIXME; replace multiple ifs with a case structure.  Or will this be replaced?
-do i=1,state_num_1d
-   if (ifld - done == i) then
-         ! FIXME: use select cases here, and add a failure case
-      if (dim_names(s_dimid_1d(i)) == 'lon' .or. &
-          dim_names(s_dimid_1d(i)) == 'slon') index_from_grid = index_from_grid + lon_ind
-      if (dim_names(s_dimid_1d(i)) == 'lat' .or. &
-          dim_names(s_dimid_1d(i)) == 'slat') index_from_grid = index_from_grid + lat_ind
-      if (dim_names(s_dimid_1d(i)) == 'lev' .or. &
-          dim_names(s_dimid_1d(i)) == 'ilev') index_from_grid = index_from_grid + lev_ind
-      ! CS lon_ind has been pirated by ncol.
-      ! FIXME; replace xxx_ind with non-specific names; ind1...
-      !        Trace the xxx_ind names back through calls (get_val_...).
-      !        Or will this be replaced by separate lonlat and cubed-sphere versions?
-      if (dim_names(s_dimid_1d(i)) == 'ncol') index_from_grid = index_from_grid + lon_ind
-      return
-   else
-      index_from_grid = index_from_grid + s_dim_1d(i)
-   endif
-enddo
-done = done + state_num_1d
-
-! Cycle through 2d state variables.
-! Note that indices of fields can have varying dimensions.
-do i=1,state_num_2d
-   if (ifld - done == i) then
-      ! We've found the desired field; now find index of lev and/or lon and/or lat
-      do j=1,2
-         ! FIXME: use select cases here, and add a failure case
-         if (dim_names(s_dimid_2d(j,i)) == 'lon' .or. &
-             dim_names(s_dimid_2d(j,i)) == 'slon'     ) fld_ind(j) = lon_ind
-         if (dim_names(s_dimid_2d(j,i)) == 'lat' .or. &
-             dim_names(s_dimid_2d(j,i)) == 'slat'     ) fld_ind(j) = lat_ind
-         if (dim_names(s_dimid_2d(j,i)) == 'lev' .or. &
-             dim_names(s_dimid_2d(j,i)) == 'ilev'     ) fld_ind(j) = lev_ind
-         ! CS lon_ind has been pirated by ncol.
-         if (dim_names(s_dimid_2d(j,i)) == 'ncol')     fld_ind(j) = lon_ind
-      enddo
-
-      index_from_grid = index_from_grid + (fld_ind(2)-1) * s_dim_2d(1,i) + fld_ind(1)
-      return
-   else
-      index_from_grid = index_from_grid +  s_dim_2d(2,i) * s_dim_2d(1,i)
-   endif
-enddo
-done = done + state_num_2d
-
-
-! Cycle through 3d state variables
-! Note that indices of fields can have varying dimensions.
-! CS There won't be any 3d fields for the cubed sphere.
-do i=1,state_num_3d
-   if (ifld - done == i) then
-      ! We've found the desired field; now find index of lat, lon, lev
-      index_from_grid = index_from_grid  &
-                      + (lat_ind-1) * s_dim_3d(2,i) * s_dim_3d(1,i) &
-                      + (lon_ind-1) * s_dim_3d(1,i)                 &
-                      + lev_ind
-      return
-   else
-      index_from_grid = index_from_grid + s_dim_3d(3,i) * s_dim_3d(2,i) * s_dim_3d(1,i)
-   endif
-enddo
+index_from_grid = sum_variables_below(ifld) + local_index(lon_ind, lat_ind, lev_ind, ifld)
 
 end function index_from_grid
 
 !-----------------------------------------------------------------------
+!> sum the number of state elements below a given field
+!> I can use s_dim here because the order of dimensions does not matter
+function sum_variables_below(ifld)
+
+integer, intent(in) :: ifld ! field index
+integer :: sum_variables_below ! number of state elements below this field
+
+integer :: i
+
+sum_variables_below = 0
+
+if(ifld <= state_num_0d) then ! 0D variable
+   sum_variables_below = ifld -1
+   return
+elseif (ifld <= state_num_1d) then ! 1D variable
+   call error_handler(E_ERR, 'sum variables', 'this is wrong')
+   !if (ifld>0) sum_variables_below = sum(s_dim_1d(1:ifld-1)) + state_num_0d
+   !return
+elseif ( ifld <= state_num_2d) then ! 2D variable
+   sum_variables_below = 0 ! HK Hack job
+   do i = 1, state_num_2d
+      if (i+state_num_1d+state_num_0d == ifld) return
+      sum_variables_below = sum_variables_below + s_dim_2d(1, i)*s_dim_2d(2,i)
+   enddo
+elseif ( ifld <= state_num_3d) then ! 3D variable
+   sum_variables_below = 0 ! HK Hack job
+   do i = 1, state_num_2d
+      sum_variables_below = sum_variables_below + s_dim_2d(1, i)*s_dim_2d(2,i)
+   enddo
+   do i = 1, state_num_3d
+      if (i+state_num_0d+state_num_1d+state_num_2d == ifld) return
+      sum_variables_below = sum_variables_below + s_dim_3d(1,i) * s_dim_3d(2,i) * s_dim_3d(3,i)
+   enddo
+endif
+
+end function sum_variables_below
+
+!-----------------------------------------------------------------------
+!> Go from lon, lat, lev to index in variable
+function local_index(lon, lat, lev, ifld)
+
+integer, intent(in) :: lon, lat, lev, ifld
+integer :: local_index, local_fld
+
+local_index = 1
+
+if(ifld <= state_num_0d) then ! 0D variable
+
+   local_index = 1
+   return
+
+elseif (ifld <= state_num_1d) then ! 1D variable
+
+   local_index = lon
+   call error_handler(E_ERR, 'local index', 'this is wrong')
+   return
+
+elseif ( ifld <= state_num_2d) then ! 2D variable
+
+   local_fld = ifld - state_num_1d - state_num_0d
+   local_index = (lat-1)*s_dim_2d(1,local_fld) + lon
+   return
+
+elseif ( ifld <= state_num_3d) then ! 3D variable
+
+   local_fld = ifld - state_num_2d - state_num_1d - state_num_0d
+   local_index = (lev-1)*s_dim_3d(2,local_fld)*s_dim_3d(3,local_fld) + (lat-1)*s_dim_3d(2,local_fld) + lon
+   return
+
+endif
+
+end function local_index
+
+!-----------------------------------------------------------------------
+
 
 function find_name(nam, list)
 
