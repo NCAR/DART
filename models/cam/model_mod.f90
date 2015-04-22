@@ -3082,213 +3082,86 @@ type(location_type), intent(inout) :: location
 integer, optional,   intent(out)   :: var_kind
 
 integer  :: which_vert
-integer  :: i, indx, index_1, index_2, index_3, nfld
+integer  :: i, ifld, local_fld, local_index
 integer  :: box, slice
 logical  :: lfound
 
 real(r8) :: lon_val, lat_val, lev_val
+integer  :: x,y,z
+integer  :: nx, ny, nz
+integer  :: dummy
 
 character(len=8)   :: dim_name
 
 if (.not. module_initialized) call static_init_model()
 
-lfound    = .false.
-
-! In order to find what variable this is, and its location, I must subtract the individual
-! components of the state vector, since they may have varying sizes.
-! Save the original index.
-! index_in will be < 0 if it's an identity obs (called from convert_vert)
-
-indx = abs(index_in)
-which_vert = MISSING_I
-index_1 = 0
-index_2 = 0
-index_3 = 0
-nfld = 0
 lon_val = MISSING_R8
 lat_val = MISSING_R8
 lev_val = MISSING_R8
 
-! Cycle through 0d state variables
-State_0D: do i=1,state_num_0d
-   nfld = nfld + 1
-   if (indx == i ) then
-      which_vert = VERTISUNDEF
+lfound = .false.
+
+! find field index
+! HK Hack job
+local_fld = 1
+do i = 1, state_num_2d
+      if (sum_variables_below(i) < index_in  .and. index_in <= sum_variables_below(i+1)) then
       lfound = .true.
-      exit State_0d
-   else
-      indx = indx - 1
+       ifld = i
+      exit
    endif
-enddo State_0D
+   local_fld = local_fld + 1
+enddo
 
-! Cycle through 1d state variables
-! Note that indices of fields can have varying dimensions.
-! WARNING: For the FV, if there's a 1D state variable, then 2 of
-!          the _vals will end up being MISSING_R8 at the set_location below.
-!          The user needs to figure out what the 'missing' location values
-!          should be.
-if (.not.lfound) then
-State_1D: do i=1,state_num_1d
-   nfld = nfld + 1
-   if (indx > s_dim_1d(i) ) then
-      indx = indx - s_dim_1d(i)
-   else
-      ! We've found the desired field; now find lat, lon or lev of indx
-      dim_name = dim_names(s_dimid_1d(i))
-      which_vert = which_vert_1d(i)
+if (lfound) then
 
-      if (dim_name == 'lev') then
-         ! FIXME; I think I figured out the get_state_meta_data question about lev_val = real(indx).
+   local_index = index_in - sum_variables_below(ifld)
+   which_vert = which_vert_2d(local_fld)
+   nx = s_dim_2d(1, local_fld)! size of x dimension
+   y = (local_index -1)/nx +1
+   x = local_index - (y-1)*nx
+   !print*, trim(dim_names(s_dimid_2d(1,ifld))),trim(dim_names(s_dimid_2d(2,ifld)))
+   call coord_val(dim_names(s_dimid_2d(1,local_fld)), x, lon_val, lat_val, lev_val)
+   call coord_val(dim_names(s_dimid_2d(2,local_fld)), y, lon_val, lat_val, lev_val)
 
-         ! This (unlikely) option of a state variable with only a vertical coordinate
-         ! cannot be handled by location_mod (yet).  It would require a new which_vert option
-         ! which has no horizontal location and/or changes to handle no horizontal location.
-         write(string1,*) 'a state variable with only a vertical coordinate cannot be handled ', &
-                          'by location_mod (yet).  Guilty field is ',cflds(nfld)
-         call error_handler(E_ERR, 'get_state_meta_data', string1, source, revision, revdate);
+else ! 3D variable
 
-         ! And what about ilev?
-      endif
+   ifld = i
 
-      if (which_vert == VERTISSURFACE .or. &
-          which_vert == VERTISUNDEF) then
-         call coord_val(dim_name, indx, lon_val, lat_val, lev_val)
+   do dummy = 1, state_num_3d
+
+      if (sum_variables_below(ifld) < index_in  .and. index_in <= sum_variables_below(ifld+1)) then
+
+         local_index = index_in - sum_variables_below(ifld)
+         which_vert = which_vert_3d(dummy)
+         nx = s_dim_3d(2, dummy)! size of x dimension
+         ny = s_dim_3d(3, dummy)! size of y dimension
+         z = (local_index -1) / (nx*ny) + 1
+         y = (local_index - 1 - (z-1)*nx*ny) / nx  + 1
+         x = local_index - (z-1)*nx*ny - (y-1)*nx
+
+         call coord_val(dim_names(s_dimid_3d(2,dummy)), x, lon_val, lat_val, lev_val)
+         call coord_val(dim_names(s_dimid_3d(3,dummy)), y, lon_val, lat_val, lev_val)
+         call coord_val(dim_names(s_dimid_3d(1,dummy)), z, lon_val, lat_val, lev_val)
 
       else
-         ! ? Should this be able to return a vertical location for VERTIS{LEVEL,PRESSURE,HEIGHT,VERTISSCALEHEIGHT}?
-         !   That is, should users be able to define a CAM(5 and earlier) state variable with those which_verts?
-         !   NO
-         write(string1,*) 'a 1-D state variable with only a vertical coordinate cannot be handled ', &
-                          'by location_mod (yet).  Fix the which_vert_1d of ',cflds(nfld)
-         call error_handler(E_ERR, 'get_state_meta_data', string1, source, revision, revdate);
+
+         ifld = ifld + 1
 
       endif
 
-      lfound = .true.
-      exit State_1D
-   endif
-enddo State_1D
+   enddo
+
 endif
 
-! Cycle through 2d state variables.
-! Note that indices of fields can have varying dimensions.
-if (.not.lfound) then
-State_2D: do i=1,state_num_2d
-   nfld = nfld + 1
-   slice = s_dim_2d(1,i) * s_dim_2d(2,i)
-   if (indx > slice ) then
-      indx = indx - slice
-   else
-      ! We've found the desired field.
-      ! Now find lat and/or lon and/or lev of indx if called by assim_tools_mod:filter_assim
-
-         ! FIXME;  Put in a check about whether namelist input (which_vert_Nd) is compatible
-      which_vert = which_vert_2d(i)
-
-      ! # second dimension rows to subtract off; temporary value for index_2
-      index_2 = (indx -1) / s_dim_2d(1,i)
-      index_1 = indx - (index_2 * s_dim_2d(1,i))
-      dim_name = dim_names(s_dimid_2d(1,i))
-      ! FIXME;  Put in a check about whether namelist input (which_vert_Nd) is compatible with dim_name.
-      ! If any dimension is level, it will be the first one.
-      if ((dim_name == 'lev' .or. dim_name == 'ilev')  .and. which_vert /= VERTISLEVEL) then
-         write(string1,*) 'dim_name is ',dim_name,' but which_vert is not VERTISLEVEL'
-         call error_handler(E_ERR, 'get_state_meta_data', string1,source,revision,revdate)
-      endif
-
-      if (print_details .and. indx == 1) then
-         write(string1,'(A,3I7,A)') 'index_in, index_1, index_2, dim_name', &
-                                     index_in, index_1, index_2, dim_name
-         write(string2,'(A,I7,A,2I7)') '   s_dim_2d(1:2,',i,') = ',s_dim_2d(1,i), s_dim_2d(2,i)
-         call error_handler(E_MSG, 'get_state_meta_data', string1,source,revision,revdate, text2=string2)
-      endif
-
-      ! Find the coordinate value (i.e. 270.5) of the first dimension index (i.e. 54)
-      if (which_vert == VERTISLEVEL   .or. &
-          which_vert == VERTISSURFACE .or. &
-          which_vert == VERTISUNDEF) then
-         call coord_val(dim_name, index_1, lon_val, lat_val, lev_val)
-
-      else
-         ! This section is redundant now that verify_namelist checks for unacceptable values.
-         write(string1, *) 'which_vert_2d = ',which_vert_2d(i),', for ',cflds(nfld),  &
-              ', cannot be handled in get_state_meta_data->coord_val.'
-         call error_handler(E_ERR, 'get_state_meta_data', string1, source, revision, revdate)
-
-      endif
-
-      ! index_2 of the variable in question is 1 more than the # subtracted off to get index_1
-      index_2 = index_2 + 1
-      dim_name = dim_names(s_dimid_2d(2,i))
-      call coord_val(dim_name, index_2, lon_val, lat_val, lev_val)
-
-      lfound = .true.
-      exit State_2D
-   endif
-enddo State_2D
-endif
-
-! Cycle through 3d state variables
-! Note that indices of fields can have varying dimensions.
-if (.not.lfound) then
-State_3D: do i=1,state_num_3d
-   nfld = nfld + 1
-   box = s_dim_3d(1,i) * s_dim_3d(2,i) * s_dim_3d(3,i)
-   if (indx > box ) then
-      indx = indx - box
-   else
-      ! We've found the desired field.
-      ! Now find lat and/or lon and/or lev of indx if called by assim_tools_mod:filter_assim
-
-      which_vert = which_vert_3d(i)
-
-      ! # of (first x second dimension) slices to subtract off in order to find the current slice
-      slice = s_dim_3d(1,i) * s_dim_3d(2,i)
-      index_3 = (indx -1) / slice         ! temporary value used to find index_2 and index_1
-      index_2 = (indx -1 - (index_3 * slice)) / s_dim_3d(1,i)    ! same for index_2 to find index_1
-      index_1 = (indx - (index_3 * slice) - (index_2 * s_dim_3d(1,i)))
-
-      ! Should return dim_name = 'lev' and lev_val = REAL(index_1)
-      dim_name = dim_names(s_dimid_3d(1,i))
-
-      ! If any dimension is level, it will be the first one.
-      if ((dim_name == 'lev' .or. dim_name == 'ilev')  .and. which_vert /= VERTISLEVEL) then
-         write(string1,*) 'dim_name is ',dim_name,' but which_vert is not VERTISLEVEL' 
-         call error_handler(E_ERR, 'get_state_meta_data', string1,source,revision,revdate, text2=string2)
-      endif
-
-      call coord_val(dim_name, index_1, lon_val, lat_val, lev_val)
-
-      ! index_2 of the variable in question is one more than the number subtracted off to get index_1
-      index_2 = index_2 + 1
-      dim_name = dim_names(s_dimid_3d(2,i))
-      call coord_val(dim_name, index_2, lon_val, lat_val, lev_val)
-
-      ! index_3 of the variable in question is one more than the number subtracted off to get index_1
-      index_3 = index_3 + 1
-      dim_name = dim_names(s_dimid_3d(3,i))
-      call coord_val(dim_name, index_3, lon_val, lat_val, lev_val)
-
-      lfound = .true.
-      exit State_3D
-   endif
-enddo State_3D
-endif
-
-! This will malfunction for fields that are filled with MISSING_R8 for lat_val or lon_val.
-if (lon_val == MISSING_R8 .or. lat_val == MISSING_R8 ) then
-   write(string1, *) 'Field ',cflds(nfld),' has no lon or lat dimension.  ', &
-         'What should be specified for it in the call to location?'
-   call error_handler(E_ERR, 'get_state_meta_data', string1, source, revision, revdate)
-else
-   location = set_location(lon_val, lat_val, lev_val, which_vert)
-endif
+location = set_location(lon_val, lat_val, lev_val, which_vert)
 
 ! If the type is wanted, return it
 if (present(var_kind)) then
    ! used by call from assim_tools_mod:filter_assim, which wants the DART KIND_
-   var_kind = cam_to_dart_kinds(nfld)
+   var_kind = cam_to_dart_kinds(ifld)
 endif
+
 
 end subroutine get_state_meta_data_distrib
 
@@ -5123,7 +4996,6 @@ fld_index   = find_name('PS',cflds)
 i = index_from_grid(1,lon_index,lat_index,  fld_index)
 !ps_local(1, :) = st_vec(i)
 call get_state(ps_local(1, :), i, state_ens_handle)
-print*, 'ps_local', ps_local(1,:)
 
 if (obs_kind == KIND_U_WIND_COMPONENT .and. find_name('US', cflds) /= 0) then
    ! ps defined on lat grid (-90...90, nlat = nslat + 1),
@@ -6911,9 +6783,15 @@ function sum_variables_below(ifld)
 integer, intent(in) :: ifld ! field index
 integer :: sum_variables_below ! number of state elements below this field
 
-integer :: i
+integer :: i, j
 
 sum_variables_below = 0
+
+if (ifld > state_num_0d + state_num_1d + state_num_2d + state_num_3d) then
+   sum_variables_below = model_size
+   return
+endif
+
 
 if(ifld <= state_num_0d) then ! 0D variable
    sum_variables_below = ifld -1
@@ -6928,13 +6806,13 @@ elseif ( ifld <= state_num_2d) then ! 2D variable
       if (i+state_num_1d+state_num_0d == ifld) return
       sum_variables_below = sum_variables_below + s_dim_2d(1, i)*s_dim_2d(2,i)
    enddo
-elseif ( ifld <= state_num_3d) then ! 3D variable
+elseif ( ifld - state_num_2d <= state_num_3d) then ! 3D variable
    sum_variables_below = 0 ! HK Hack job
    do i = 1, state_num_2d
       sum_variables_below = sum_variables_below + s_dim_2d(1, i)*s_dim_2d(2,i)
    enddo
    do i = 1, state_num_3d
-      if (i+state_num_0d+state_num_1d+state_num_2d == ifld) return
+      if (ifld - state_num_2d <= i) return
       sum_variables_below = sum_variables_below + s_dim_3d(1,i) * s_dim_3d(2,i) * s_dim_3d(3,i)
    enddo
 endif
@@ -6999,7 +6877,7 @@ enddo
 end function find_name
 
 !-----------------------------------------------------------------------
-
+! HK I don't understand why you have 3 arguments for the value
 subroutine coord_val(dim_name, indx, lon_val, lat_val, lev_val)
 
 ! Given the name of the coordinate to be searched and the index into that array,
