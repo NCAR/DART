@@ -3143,6 +3143,7 @@ else ! 3D variable
          call coord_val(dim_names(s_dimid_3d(2,dummy)), x, lon_val, lat_val, lev_val)
          call coord_val(dim_names(s_dimid_3d(3,dummy)), y, lon_val, lat_val, lev_val)
          call coord_val(dim_names(s_dimid_3d(1,dummy)), z, lon_val, lat_val, lev_val)
+         exit
 
       else
 
