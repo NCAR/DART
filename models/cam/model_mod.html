@@ -435,7 +435,7 @@ NOTE that this has a non-backwards incompatible change from previous versions.
 It is now specified in Pascals, not millibars. Divide by 100 to convert the units to mb.
 Details of calculating the minimum value recommended for a given vertical grid
 and set of DART namelist variables can be found in 
-<A HREF="./doc/highest_state_p_Pa.pdf">highest_state_p_Pa.pdf</A>, 
+<A HREF="./doc/model_top_issues.pdf">model_top_issues.pdf</A>, 
 </TD></TR>
 
 <TR><TD> Time_step_seconds </TD>
@@ -1358,7 +1358,7 @@ which reduces the influence of all observations on model points above some altit
 Currently namelist variable 
 <em class="code">highest_state_pressure_Pa</em> controls this.
 The default value in model_mod (for CAM), and the values for WACCM given in 
-<A HREF="./doc/highest_state_p_Pa.pdf">highest_state_p_Pa.pdf</A>, 
+<A HREF="./doc/model_top_issues.pdf">model_top_issues.pdf</A>, 
 gradually reduce the influence of observations from full strength at 
 <em class="code">highest_state_pressure_Pa</em>
 to 0 at the model levels where extra diffusion is applied (2 or 3 for CAM,
