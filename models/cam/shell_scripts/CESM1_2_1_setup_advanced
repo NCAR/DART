@@ -875,16 +875,24 @@ while ($inst <= $num_instances)
    echo " nhtfrq        = -$stop_n "                      >> ${fname}
    echo " mfilt         = 1 "                             >> ${fname}
 
-   # CAM forcing files.
-   # Some of the files specified here are because the default files only
-   # contain data through 2005 and we are interested in timeframes after that.
 
-   # CAM5 does prognostic aerosols by default (which is expensive).
-   # Specifying the following causes CAM to use prescribed aerosols, which is cheaper.
-   # Prescribed aerosols on the timescales of interest to assimilation are acceptable.
-   # WACCM5 should not have these set.
+   # Settings that differ between regular CAM and the WACCM version:
 
-   if ($waccm == false ) then
+   if ($waccm == true ) then
+
+    # WACCM requires a reduced time step for stability.
+    echo "dtime = 900"                                    >> ${fname}
+
+   else
+
+      # CAM forcing files.
+      # Some of the files specified here are because the default files only
+      # contain data through 2005 and we are interested in timeframes after that.
+
+      # CAM5 does prognostic aerosols by default (which is expensive).
+      # Specifying the following causes CAM to use prescribed aerosols, which is cheaper.
+      # Prescribed aerosols on the timescales of interest to assimilation are acceptable.
+      # WACCM5 should not have these set.
 
       set chem_datapath = "${cesmdata}/atm/cam/chem/trop_mozart_aero"
 
@@ -897,6 +905,7 @@ while ($inst <= $num_instances)
       echo "aerodep_flx_cycle_yr   = 2000"                                                            >> ${fname}
 
       if ($start_year > 2005 && $start_year <= 2010) then
+
          # As of April 2015, the default files only run through 2005.
          # Specifying non-default files for assimilation for years 2006-2010.
          # Update as needed and newer files become available.

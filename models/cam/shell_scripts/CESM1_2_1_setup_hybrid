@@ -231,7 +231,7 @@ setenv stop_n              6
 #      less than 10 minutes on yellowstone using 1800 pes (120 nodes)
 # ==============================================================================
 
-setenv ACCOUNT      ZZZZZZZZ
+setenv ACCOUNT      NIMGxxxx
 setenv queue        economy
 setenv timewall     0:20
 
@@ -552,7 +552,7 @@ if ( ! -d ~/${cesmtag}/SourceMods ) then
    echo "ERROR - No SourceMods for this case."
    echo "ERROR - No SourceMods for this case."
    echo "DART requires modifications to several src files."
-   echo "Download the appropriate files for CESM 1_2_1 from:"
+   echo "Download the appropriate files for "$cesmtag" from:"
    echo "http://www.image.ucar.edu/pub/DART/CESM"
    echo "untar these into your HOME directory - they will create a"
    echo "~/cesm1_2_1  directory with the appropriate SourceMods structure."
@@ -598,7 +598,7 @@ end
 
 # Need to know if we are using WACCM (aka WCCM) for several reasons.
 # Mostly file managment issues.
-set waccm = `echo $CCSM_COMPSET | grep WCCM`
+set waccm = `echo $CCSM_COMPSET | grep CCM`
 if ($status == 0) then
    set waccm = true
 else
@@ -731,16 +731,24 @@ while ($inst <= $num_instances)
    echo " nhtfrq        = -$stop_n "                      >> ${fname}
    echo " mfilt         = 1 "                             >> ${fname}
 
-   # CAM forcing files.
-   # Some of the files specified here are because the default files only
-   # contain data through 2005 and we are interested in timeframes after that.
 
-   # CAM5 does prognostic aerosols by default (which is expensive).
-   # Specifying the following causes CAM to use prescribed aerosols, which is cheaper.
-   # Prescribed aerosols on the timescales of interest to assimilation are acceptable.
-   # WACCM5 should not have these set.
+   # Settings that differ between regular CAM and the WACCM version:
 
-   if ($waccm == false ) then
+   if ($waccm == true ) then
+
+    # WACCM requires a reduced time step for stability.
+    echo "dtime = 900"                                    >> ${fname}
+
+   else
+
+    # CAM forcing files.
+    # Some of the files specified here are because the default files only
+    # contain data through 2005 and we are interested in timeframes after that.
+
+    # CAM5 does prognostic aerosols by default (which is expensive).
+    # Specifying the following causes CAM to use prescribed aerosols, which is cheaper.
+    # Prescribed aerosols on the timescales of interest to assimilation are acceptable.
+    # WACCM5 should not have these set.
 
     set chem_datapath = "${cesmdata}/atm/cam/chem/trop_mozart_aero"
 
@@ -751,6 +759,10 @@ while ($inst <= $num_instances)
     echo "aerodep_flx_file       = 'aerosoldep_rcp4.5_monthly_1849-2104_0.9x1.25_c100407.nc'"    >> ${fname}
     echo "aerodep_flx_type       = 'CYCLICAL'"                                                   >> ${fname}
     echo "aerodep_flx_cycle_yr   = 2000"                                                         >> ${fname}
+
+    # As of April 2015, the default files only run through 2005.
+    # Specifying non-default files for assimilation for years 2006-2010.
+    # Update as needed and newer files become available.
 
     echo " ext_frc_specifier     = "                                                             >> ${fname}
     echo " 'SO2    -> ${chem_datapath}/emis/ar5_mam3_so2_elev_1850-2010_c20100902_v12.nc',"      >> ${fname}
