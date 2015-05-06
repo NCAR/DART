@@ -46,13 +46,17 @@ function[dt] = comp_dt(x)
 global FORCING
 global MODEL_SIZE
 
+dt = zeros(1,MODEL_SIZE);
+
 for j = 1:MODEL_SIZE
    jp1 = j + 1;
-   if(jp1 > MODEL_SIZE) jp1 = 1; end
+   if(jp1 > MODEL_SIZE), jp1 = 1; end
+
    jm2 = j - 2;
-   if(jm2 < 1) jm2 = MODEL_SIZE + jm2; end
+   if(jm2 < 1), jm2 = MODEL_SIZE + jm2; end
+
    jm1 = j - 1;
-   if(jm1 < 1) jm1 = MODEL_SIZE; end
+   if(jm1 < 1), jm1 = MODEL_SIZE; end
 
    dt(j) = (x(jp1) - x(jm2)) * x(jm1) - x(j) + FORCING;
 end

@@ -1,17 +1,17 @@
 function varargout = gaussian_product(varargin)
 %% GAUSSIAN_PRODUCT demonstrates the product of two gaussian distributions.
 %
-%      This is fundamental to Kalman filters and to
-%      ensemble data assimilation. Change the
-%      parameters of the gaussian for the Prior (green) and the Observation
-%      (red) and click on 'Plot Posterior'. 
+%    This is fundamental to Kalman filters and to ensemble
+%    data assimilation. Change the parameters of the
+%    gaussian for the Prior (green) and the Observation (red)
+%    and click on 'Plot Posterior'.
 %
-%      The product of the two gaussians is a gaussian - in this case, 
-%      the 'Posterior'. If the parameters of the two gaussians are known, 
-%      the parameters of the resulting gaussian can be calculated.
+%    The product (in this case, the 'Posterior') of two gaussians is a gaussian.
+%    If the parameters of the two gaussians are known, the parameters of the 
+%    resulting gaussian can be calculated.
 %
-% See also: oned_model, oned_ensemble, twod_ensemble, run_lorenz_63, 
-%           run_lorenz_96
+% See also: oned_model, oned_ensemble, twod_ensemble,
+%           run_lorenz_63, run_lorenz_96
 
 %% DART software - Copyright 2004 - 2013 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -40,7 +40,7 @@ end
 
 
 % --- Executes just before gaussian_product is made visible.
-function gaussian_product_OpeningFcn(hObject, eventdata, handles, varargin)
+function gaussian_product_OpeningFcn(hObject, ~, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -48,6 +48,9 @@ function gaussian_product_OpeningFcn(hObject, eventdata, handles, varargin)
 % varargin   command line arguments to gaussian_product (see VARARGIN)
 
 help gaussian_product
+
+% set random number seed to same value to generate known sequences
+rng('default')
 
 % Choose default command line output for gaussian_product
 handles.output = hObject;
@@ -64,7 +67,7 @@ g_prod_plot(h);
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = gaussian_product_OutputFcn(hObject, eventdata, handles) 
+function varargout = gaussian_product_OutputFcn(~, ~, handles)
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -75,7 +78,7 @@ varargout{1} = handles.output;
 
 
 
-function edit1_Callback(hObject, eventdata, handles)
+function edit1_Callback(~, ~, handles)
 % hObject    handle to edit1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -87,7 +90,7 @@ g_prod_plot(handles);
 
 
 % --- Executes during object creation, after setting all properties.
-function edit1_CreateFcn(hObject, eventdata, handles)
+function edit1_CreateFcn(hObject, ~, ~)
 % hObject    handle to edit1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -98,7 +101,7 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-function edit2_Callback(hObject, eventdata, handles)
+function edit2_Callback(~, ~, handles)
 % hObject    handle to edit2 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -110,7 +113,7 @@ g_prod_plot(handles);
 
 
 % --- Executes during object creation, after setting all properties.
-function edit2_CreateFcn(hObject, eventdata, handles)
+function edit2_CreateFcn(hObject, ~, ~)
 % hObject    handle to edit2 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -123,7 +126,7 @@ end
 
 
 
-function edit3_Callback(hObject, eventdata, handles)
+function edit3_Callback(~, ~, handles)
 % hObject    handle to edit3 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -135,7 +138,7 @@ g_prod_plot(handles);
 
 
 % --- Executes during object creation, after setting all properties.
-function edit3_CreateFcn(hObject, eventdata, handles)
+function edit3_CreateFcn(hObject, ~, ~)
 % hObject    handle to edit3 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -148,7 +151,7 @@ end
 
 
 
-function edit4_Callback(hObject, eventdata, handles)
+function edit4_Callback(~, ~, handles)
 % hObject    handle to edit4 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -160,7 +163,7 @@ g_prod_plot(handles);
 
 
 % --- Executes during object creation, after setting all properties.
-function edit4_CreateFcn(hObject, eventdata, handles)
+function edit4_CreateFcn(hObject, ~, ~)
 % hObject    handle to edit4 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -172,7 +175,7 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 % --- Executes on button press in pushbutton1.
-function pushbutton1_Callback(hObject, eventdata, handles)
+function pushbutton1_Callback(~, ~, handles)
 % hObject    handle to pushbutton1 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -180,12 +183,13 @@ function pushbutton1_Callback(hObject, eventdata, handles)
 % Need to replot prior and obs, then compute posterior and plot
 [prior_mean, prior_sd, obs_mean, obs_err_sd, is_err] = g_prod_plot(handles);
 
-% If there is an error, don't try to do posterior computation
-% But do zero out the posterior text values
-if(is_err) return; 
-   set(handles.text7, 'String', strcat('Posterior Mean = '));
-   set(handles.text8, 'String', strcat('Posterior SD = '));
-   set(handles.text9, 'String', strcat('Weight = '));
+% If there is an error, zero out the posterior text values
+% don't try to do posterior computation
+if(is_err)
+    set(handles.text7, 'String', strcat('Posterior Mean = '));
+    set(handles.text8, 'String', strcat('Posterior SD = '));
+    set(handles.text9, 'String', strcat('Weight = '));
+    return;
 end
 
 % Compute the posterior mean, sd and weight

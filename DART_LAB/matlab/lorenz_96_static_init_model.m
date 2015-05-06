@@ -17,7 +17,7 @@ global TIME_STEP_SECONDS
 FORCING = 8;
 DELTA_T = 0.05;
 TIME_STEP_DAYS = 0;
-TIMES_STEP_SECONDS = 0;
+TIME_STEP_SECONDS = 0;
 
 
 % Lorenz-96 fixed model parameters
