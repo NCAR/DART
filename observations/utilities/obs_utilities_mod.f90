@@ -30,6 +30,7 @@ public :: create_3d_obs,    &
           query_3d_obs,     &
           add_obs_to_seq,   &
           getdimlen,        &
+          getvarshape,      &
           getvar_real,      &
           getvar_int,       &
           get_or_fill_real, &
@@ -247,6 +248,49 @@ call nc_check( nf90_inquire_dimension(ncid, dimid, len=dout), &
                'getdimlen', 'inquire dimension '//trim(dimname))
 
 end subroutine getdimlen
+
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!
+! getvarshape - subroutine that returns an array of the size of the variable
+!
+!    ncid ....... open netcdf file handle
+!    varname .... string name of netcdf variable
+!    numdims .... the rank of the variable (untested on scalars)
+!    dimlengths . an array specifying the length of each dimension
+!
+! created 4 Mar 2015,  tim hoar,  ncar/image
+!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+subroutine getvarshape(ncid, varname, numdims, dimlengths)
+integer,          intent(in)   :: ncid
+character(len=*), intent(in)   :: varname
+integer,          intent(out)  :: numdims
+integer,          intent(out)  :: dimlengths(NF90_MAX_VAR_DIMS)
+
+integer :: varid, dimid
+integer :: dimIDs(NF90_MAX_VAR_DIMS)
+
+character(len=512) :: string1
+
+call nc_check(nf90_inq_varid(ncid, varname, varid), &
+              'getvarshape', 'inq_varid ['//trim(varname)//']')
+
+call nc_check(nf90_inquire_variable(ncid,varid,dimids=dimIDs,ndims=numdims), &
+            'getvarshape', 'inquire_variable '//trim(varname))
+
+do dimid = 1,numdims
+
+   write(string1,'(''inquire_dimension'',i2,1x,A)') dimid,trim(varname)
+
+   call nc_check(nf90_inquire_dimension(ncid, dimIDs(dimid), len=dimlengths(dimid)), &
+            'getvarshape', string1)
+
+enddo
+
+end subroutine getvarshape
+
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !

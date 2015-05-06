@@ -150,11 +150,11 @@ switch lower(deblank(routine))
       % If there is only one copy, the string needs to be transposed.
       metadata   = nc_varget(fname,'CopyMetaData');
       [N,M]      = size(metadata);
-      if (M == 1)
-          metadata = metadata';
-          [N,M]    = size(metadata);
+      if  M == 1 
+         cell_array{1} = metadata';
+      else
+         cell_array = mat2cell(metadata, ones(1,N), M);
       end
-      cell_array = mat2cell(metadata, ones(1,N), M);
       ens_mem    = strtrim(cell_array{1});
       str1 = sprintf('Input ensemble member metadata STRING. <cr> for ''%s''   ',ens_mem);
       s1   = input(str1,'s');
