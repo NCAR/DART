@@ -199,7 +199,11 @@ switch lower(deblank(routine))
       % query for ensemble member string
       metadata   = nc_varget(fname,'CopyMetaData');
       [N,M]      = size(metadata);
-      cell_array = mat2cell(metadata, ones(1,N), M);
+      if M == 1
+         cell_array{1} = metadata';
+      else
+         cell_array = mat2cell(metadata, ones(1,N), M);
+      end
       ens_mem    = strtrim(cell_array{1});
       str1 = sprintf('Input ensemble member metadata STRING. <cr> for ''%s''   ',ens_mem);
       s1   = input(str1,'s');

@@ -21,7 +21,7 @@ R = 28;
 B = 8/3;
 DELTAT = 0.01;
 TIME_STEP_DAYS = 0;
-TIMES_STEP_SECONDS = 0;
+TIME_STEP_SECONDS = 0;
 
 
 % Lorenz-63 fixed model parameters

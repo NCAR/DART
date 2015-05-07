@@ -13,9 +13,14 @@ function [obs_increments, err] =  obs_increment_rhf(ensemble, observation, obs_e
 err = 0;
 
 % Get the ensemble size
-ens_size = size(ensemble, 2);
-prior_sd = std(ensemble);
+ens_size  = size(ensemble, 2);
+prior_sd  = std(ensemble);
 prior_var = prior_sd^2;
+
+% allocate space for some of the density calculation bits
+like_dense = zeros(1,ens_size); % likelihood density
+mass       = zeros(1,ens_size);
+height     = zeros(1,ens_size);
 
 % Sort the ensemble members and keep the indices
 [x, e_ind] = sort(ensemble);
@@ -34,15 +39,15 @@ dist_for_unit_sd =  -1 * weighted_norm_inv(1, 0, 1, 1/(ens_size + 1));
 % Variance of tails is just sample prior variance
 % Mean is adjusted so that 1/(ens_size + 1) is outside
 left_mean = x(1) + dist_for_unit_sd * prior_sd;
-left_var = prior_var;
-left_sd = prior_sd;
+left_var  = prior_var;
+left_sd   = prior_sd;
 
 % Same for the right tail
 right_mean = x(ens_size) - dist_for_unit_sd * prior_sd;
-right_var = prior_var;
-right_sd = prior_sd;
+right_var  = prior_var;
+right_sd   = prior_sd;
 
-% Eventually want to support options, for now 
+% Eventually want to support options, for now
 gaussian_likelihood_tails = false;
 
 if(gaussian_likelihood_tails)
@@ -50,33 +55,34 @@ if(gaussian_likelihood_tails)
 else
    % Block to do flat tails for likelihood follows
    % This removes assumptions about likelihood and cuts cost
-   new_var_left = left_var;
-   new_sd_left = left_sd;
-   new_mean_left = left_mean;
+%   new_var_left = left_var;
+   new_sd_left      = left_sd;
+   new_mean_left    = left_mean;
    prod_weight_left = like(1);
-   mass(1) = like(1) / (ens_size + 1);
+   mass(1)          = like(1) / (ens_size + 1);
 
    % Same for right tail
-   new_var_right = right_var;
-   new_sd_right = right_sd;
-   new_mean_right = right_mean;
-   prod_weight_right = like(ens_size);
+%   new_var_right = right_var;
+   new_sd_right       = right_sd;
+   new_mean_right     = right_mean;
+   prod_weight_right  = like(ens_size);
    mass(ens_size + 1) = like(ens_size) / (ens_size + 1);
    % End block for flat tail likelihood
 end
 
 % The mass in each interior box is the height times the width
 % The height of the likelihood is like_dense
-% For the prior, mass is 1 / ((n+1) width), and mass = height x widt so
+% For the prior, mass is 1 / ((n+1) width), and mass = height x width so
 % The height of the prior is 1 / ((n+1) width); Multiplying by width leaves 1/(n+1)
 
 % In prior, have 1/(n+1) mass in each bin, multiply by mean likelihood
 % density to get approximate mass in updated bin
+
 for i = 2:ens_size
    mass(i) = like_dense(i) / (ens_size + 1);
    % Height of prior in this bin is mass/width; Only needed for trapezoidal
    % If two ensemble members are the same, set height to -1 as flag
-   if(x(i) == x(i-1)) 
+   if(x(i) == x(i-1))
       height(i) = -1;
    else
       height(i) = 1 / ((ens_size + 1) * (x(i) - x(i-1)));
@@ -94,7 +100,7 @@ left_amp = prod_weight_left / mass_sum;
 right_amp = prod_weight_right / mass_sum;
 
 % Find cumulative mass at each box boundary and middle boundary
-cumul_mass(1) = 0;
+cumul_mass = zeros(1,ens_size+1);
 for i = 1:ens_size + 1
    cumul_mass(i+1) = cumul_mass(i) + nmass(i);
 end
@@ -102,6 +108,8 @@ end
 % Begin internal box search at bottom of lowest box
 lowest_box = 1;
 
+new_ens        = zeros(1,ens_size);
+obs_increments = zeros(1,ens_size);
 % Find each new ensemble member's location
 for i = 1:ens_size
    % Each update ensemble member has 1/(n+1) mass before it
@@ -164,7 +172,7 @@ function [x] = weighted_norm_inv(alpha, mean, sd, p)
 % Divide p by alpha to get the right place for weighted normal
 np = p / alpha;
 
-% Find spot in standard normal 
+% Find spot in standard normal
 x = norm_inv(np);
 
 % Add in the mean and normalize by sd

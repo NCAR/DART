@@ -30,7 +30,7 @@ elseif(obs_error_var == 0)
    post_mean = observation;
    post_var = 0;
 else
-% Use product of gaussians 
+% Use product of gaussians
    % Compute the posterior variance
    post_var = 1 / (1 / prior_var + 1 / obs_error_var);
 

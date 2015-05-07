@@ -40,8 +40,7 @@ div.routine {
     background-color: rgb(240,240,240);
     padding: 1.0em;
     border: solid;
-    border-width: thin;
-    width: 100%;}
+    border-width: thin}
 
 div.routineIndent1 {
     background-color: rgb(240,240,240);
@@ -87,8 +86,13 @@ div.unix {
     font-family: monospace;
     padding: 1.0em;
     border: none;
-    margin-left: 4%;
-    width: 96%;}
+    margin-left: 4%;}
+
+div.unixnoindent {
+    background-color: rgb(204,204,204);
+    font-family: monospace;
+    padding: 1.0em;
+    border: none;}
 
 div.disclaimer {
     background-color: rgb(240,240,240);
