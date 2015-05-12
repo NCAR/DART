@@ -599,7 +599,7 @@ subroutine compare_metadata(seq1, seq2, fname1, fname2)
 ! applied.  before they were completely symmetric.
 
 type(obs_sequence_type),    intent(in) :: seq1, seq2
-character(len=*), OPTIONAL, intent(in) :: fname1, fname2
+character(len=*), optional, intent(in) :: fname1, fname2
 
 integer :: num_copies1, num_qc1
 integer :: num_copies2, num_qc2
@@ -882,7 +882,7 @@ subroutine print_metadata(seq1, fname1)
 !
 
 type(obs_sequence_type),    intent(in) :: seq1
-character(len=*), OPTIONAL, intent(in) :: fname1
+character(len=*), optional, intent(in) :: fname1
 
 integer :: num_copies , num_qc, i
 character(len=metadatalength) :: str1
@@ -1046,7 +1046,7 @@ function set_base(obs_time, selection_list, selection_count, startindex)
  type(time_type),    intent(in) :: obs_time
  type(obs_def_type), intent(in) :: selection_list(:)
  integer,            intent(in) :: selection_count
- integer, OPTIONAL,  intent(in) :: startindex
+ integer, optional,  intent(in) :: startindex
  integer :: set_base
 
  integer :: i, s
