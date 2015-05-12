@@ -384,11 +384,20 @@ real(r8) :: u_c_lons(4), u_c_lats(4), t_c_lons(4), t_c_lats(4), pole_row_lon
 integer  :: i, j, k, pindex
 integer  :: reg_lon_ind(2), reg_lat_ind(2), u_total, t_total, u_index, t_index
 logical  :: is_pole
+integer  :: surf_index
 
 allocate(ureg_list_lon(num_reg_x, num_reg_y, max_reg_list_num))
 allocate(ureg_list_lat(num_reg_x, num_reg_y, max_reg_list_num))
 allocate(treg_list_lon(num_reg_x, num_reg_y, max_reg_list_num))
 allocate(treg_list_lat(num_reg_x, num_reg_y, max_reg_list_num))
+
+! this is the level threshold for deciding whether we are over land
+! or water.  to be valid all 4 corners of the quad must have a level
+! number greater than this index.  (so 0 excludes all land points.)
+! if you wanted to assimilate only in regions where the water depth is
+! deeper than some threshold, set this index to N and only quads where
+! all the level numbers are N+1 or deeper will be used.
+surf_index = 0
 
 ! Begin by finding the quad that contains the pole for the dipole t_grid. 
 ! To do this locate the u quad with the pole on its right boundary. This is on
@@ -420,8 +429,8 @@ do i = 1, nx
    ! There's no wraparound in y, one box less than grid boundaries
    do j = 1, ny - 1
       
-      ! Only update regular boxes that contain all wet corners (kmu>0)
-      if(kmu(i,j)>0 .and. kmu(i,j+1)>0 .and. kmu(i+1,j+1)>0 .and. kmu(i+1,j)>0) then
+      ! Only update regular boxes that contain all wet corners
+      if( all_corners_wet(KIND_U_CURRENT_COMPONENT,i,j,surf_index) == .true. ) then
          ! Set up array of lons and lats for the corners of these u quads
          call get_quad_corners(ulon, i, j, u_c_lons)
          call get_quad_corners(ulat, i, j, u_c_lats)
@@ -435,8 +444,8 @@ do i = 1, nx
       endif 
 
       ! Repeat for t dipole quads.
-      ! Only update regular boxes that contain all wet corners (kmt>0)
-      if(kmt(i,j)>0 .and. kmt(i,j+1)>0 .and. kmt(i+1,j+1)>0 .and. kmt(i+1,j)>0) then
+      ! Only update regular boxes that contain all wet corners
+      if( all_corners_wet(KIND_TEMPERATURE,i,j,surf_index) == .true. ) then
          ! Set up array of lons and lats for the corners of these t quads
          call get_quad_corners(tlon, i, j, t_c_lons)
          call get_quad_corners(tlat, i, j, t_c_lats)
@@ -915,10 +924,10 @@ end subroutine model_interpolate
 
 !------------------------------------------------------------------
 
-subroutine lon_lat_interpolate(x, lon, lat, var_type, height, interp_val, istatus)
+subroutine lon_lat_interpolate(x, lon, lat, var_type, height_ind, interp_val, istatus)
  real(r8), intent(in) :: x(:)
  real(r8), intent(in) :: lon, lat
- integer,  intent(in) :: var_type, height
+ integer,  intent(in) :: var_type, height_ind
  real(r8), intent(out) :: interp_val
  integer,  intent(out) :: istatus
 
@@ -1038,25 +1047,25 @@ if(lon_top > nx) lon_top = 1
 
 ! Get the values at the four corners of the box or quad
 ! Corners go around counterclockwise from lower left
-p(1) = get_val(lon_bot, lat_bot, nx, x, var_type, height, masked)
+p(1) = get_val(lon_bot, lat_bot, nx, x, var_type, height_ind, masked)
 if(masked) then
    istatus = 3
    return
 endif
 
-p(2) = get_val(lon_top, lat_bot, nx, x, var_type, height, masked)
+p(2) = get_val(lon_top, lat_bot, nx, x, var_type, height_ind, masked)
 if(masked) then
    istatus = 3
    return
 endif
 
-p(3) = get_val(lon_top, lat_top, nx, x, var_type, height, masked)
+p(3) = get_val(lon_top, lat_top, nx, x, var_type, height_ind, masked)
 if(masked) then
    istatus = 3
    return
 endif
 
-p(4) = get_val(lon_bot, lat_top, nx, x, var_type, height, masked)
+p(4) = get_val(lon_bot, lat_top, nx, x, var_type, height_ind, masked)
 if(masked) then
    istatus = 3
    return
@@ -1077,8 +1086,8 @@ end subroutine lon_lat_interpolate
 
 !------------------------------------------------------------
 
-function get_val(lon_index, lat_index, nlon, x, var_type, height, masked)
- integer,     intent(in) :: lon_index, lat_index, nlon, var_type, height
+function get_val(lon_index, lat_index, nlon, x, var_type, height_ind, masked)
+ integer,     intent(in) :: lon_index, lat_index, nlon, var_type, height_ind
  real(r8),    intent(in) :: x(:)
  logical,    intent(out) :: masked
  real(r8)                :: get_val
@@ -1090,7 +1099,7 @@ function get_val(lon_index, lat_index, nlon, x, var_type, height, masked)
 if ( .not. module_initialized ) call static_init_model
 
 ! check the land/ocean bottom map and return if not valid water cell.
-if(is_dry_land(var_type, lon_index, lat_index, height)) then
+if(is_dry_land(var_type, lon_index, lat_index, height_ind)) then
    masked = .true.
    get_val = MISSING_R8
    return
@@ -2977,6 +2986,33 @@ end function is_on_ugrid
 
 !------------------------------------------------------------------
 
+function all_corners_wet(obs_kind, lon_ind, lat_ind, hgt_ind)
+
+ integer, intent(in)  :: obs_kind, lon_ind, lat_ind, hgt_ind
+ logical :: all_corners_wet
+
+ integer :: lon_ind_p1
+
+! returns true only if all of the corners are above land
+ 
+! set to fail so we can return early.
+all_corners_wet = .false. 
+
+! Have to worry about wrapping in longitude but not in latitude
+lon_ind_p1 = lon_ind + 1
+if(lon_ind_p1 > nx) lon_ind_p1 = 1
+
+if (.not. is_dry_land(obs_kind, lon_ind,    lat_ind,   hgt_ind)) return
+if (.not. is_dry_land(obs_kind, lon_ind_p1, lat_ind,   hgt_ind)) return
+if (.not. is_dry_land(obs_kind, lon_ind_p1, lat_ind+1, hgt_ind)) return
+if (.not. is_dry_land(obs_kind, lon_ind,    lat_ind+1, hgt_ind)) return 
+
+all_corners_wet = .true.
+
+end function all_corners_wet
+
+!------------------------------------------------------------------
+
 subroutine write_grid_netcdf()
 
 ! Write the grid to a netcdf file for checking.
@@ -3199,7 +3235,7 @@ subroutine test_interpolation(test_casenum)
 
 ! This is storage just used for temporary test driver
 integer :: imain, jmain, index, istatus, nx_temp, ny_temp
-integer :: dnx_temp, dny_temp, height
+integer :: dnx_temp, dny_temp, height_ind
 real(r8) :: ti, tj
 
 ! Storage for testing interpolation to a different grid
@@ -3281,11 +3317,11 @@ do jmain = 1, ny
    enddo
 enddo
 
-! dummy out vertical; let height always = 1 and allow
+! dummy out vertical; let height_ind always = 1 and allow
 ! all grid points to be processed.
 kmt = 2
 kmu = 2
-height = 1
+height_ind = 1
 
 ! Initialize the interpolation data structure for this grid.
 call init_interp()
@@ -3344,7 +3380,7 @@ do imain = 1, dnx
       ! Interpolate U from the first grid to the second grid
 
       call lon_lat_interpolate(reg_u_x, dulon(imain, jmain), dulat(imain, jmain), &
-         KIND_U_CURRENT_COMPONENT, height, dipole_u(imain, jmain), istatus)
+         KIND_U_CURRENT_COMPONENT, height_ind, dipole_u(imain, jmain), istatus)
 
       if ( istatus /= 0 ) then
          write(msgstring,'(''cell'',i4,i4,1x,f12.8,1x,f12.8,'' U interp failed - code '',i4)') &
@@ -3357,7 +3393,7 @@ do imain = 1, dnx
       ! Interpolate U from the first grid to the second grid
 
       call lon_lat_interpolate(reg_t_x, dtlon(imain, jmain), dtlat(imain, jmain), &
-         KIND_POTENTIAL_TEMPERATURE, height, dipole_t(imain, jmain), istatus)
+         KIND_POTENTIAL_TEMPERATURE, height_ind, dipole_t(imain, jmain), istatus)
 
       if ( istatus /= 0 ) then
          write(msgstring,'(''cell'',i4,i4,1x,f12.8,1x,f12.8,'' T interp failed - code '',i4)') &
