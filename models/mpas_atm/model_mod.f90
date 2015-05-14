@@ -103,30 +103,33 @@ private
 
 ! these routines must be public and you cannot change
 ! the arguments - they will be called *from* the DART code.
-public :: get_model_size,         &
-          adv_1step,              &
+public :: get_model_size,                 &
+          adv_1step,                      &
           get_state_meta_data_distrib,    &
           model_interpolate_distrib,      &
-          get_model_time_step,    &
-          static_init_model,      &
-          end_model,              &
-          init_time,              &
-          init_conditions,        &
-          nc_write_model_atts,    &
-          nc_write_model_vars,    &
-          pert_model_state,       &
-          get_close_maxdist_init, &
-          get_close_obs_init,     &
+          get_model_time_step,            &
+          static_init_model,              &
+          end_model,                      &
+          init_time,                      &
+          init_conditions,                &
+          nc_write_model_atts,            &
+          nc_write_model_vars,            &
+          pert_model_state,               &
+          pert_model_copies,              &
+          get_close_maxdist_init,         &
+          get_close_obs_init,             &
           get_close_obs_distrib,          &
-          ens_mean_for_model, &
-          set_which_vert, get_vert, set_vert, &
-          query_vert_localization_coord, &
-          vert_convert_distrib, &
-          variables_domains, &
-          fill_variable_list, &
-          construct_file_name_in, &
-          get_model_time,  &
-          clamp_or_fail_it, &
+          ens_mean_for_model,             &
+          set_which_vert,                 &
+          get_vert,                       &
+          set_vert,                       &
+          query_vert_localization_coord,  &
+          vert_convert_distrib,           &
+          variables_domains,              &
+          fill_variable_list,             &
+          construct_file_name_in,         &
+          get_model_time,                 &
+          clamp_or_fail_it,               &
           do_clamp_or_fail
 
 ! generally useful routines for various support purposes.
@@ -2104,6 +2107,27 @@ enddo
 
 end subroutine pert_model_state
 
+!------------------------------------------------------------------
+
+subroutine pert_model_copies(state_ens_handle, pert_amp, interf_provided)
+
+ type(ensemble_type), intent(inout) :: state_ens_handle
+ real(r8),  intent(in) :: pert_amp
+ logical,  intent(out) :: interf_provided
+
+! Perturbs a model state copies for generating initial ensembles.
+! The perturbed state is returned in pert_state.
+! A model may choose to provide a NULL INTERFACE by returning
+! .false. for the interf_provided argument. This indicates to
+! the filter that if it needs to generate perturbed states, it
+! may do so by adding a perturbation to each model state 
+! variable independently. The interf_provided argument
+! should be returned as .true. if the model wants to do its own
+! perturbing of states.
+
+interf_provided = .false.
+
+end subroutine pert_model_copies
 
 !------------------------------------------------------------------
 

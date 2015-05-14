@@ -130,6 +130,7 @@ public ::  get_model_size,                    &
            get_model_time_step,               &
            static_init_model,                 &
            pert_model_state,                  &
+           pert_model_copies,                  &
            nc_write_model_atts,               &
            nc_write_model_vars,               &
            get_close_obs_distrib,             &
@@ -6553,6 +6554,28 @@ enddo
 
 
 end subroutine pert_model_state
+
+!#######################################################
+
+subroutine pert_model_copies(state_ens_handle, pert_amp, interf_provided)
+
+ type(ensemble_type), intent(inout) :: state_ens_handle
+ real(r8),  intent(in) :: pert_amp
+ logical,  intent(out) :: interf_provided
+
+! Perturbs a model state copies for generating initial ensembles.
+! The perturbed state is returned in pert_state.
+! A model may choose to provide a NULL INTERFACE by returning
+! .false. for the interf_provided argument. This indicates to
+! the filter that if it needs to generate perturbed states, it
+! may do so by adding a perturbation to each model state 
+! variable independently. The interf_provided argument
+! should be returned as .true. if the model wants to do its own
+! perturbing of states.
+
+interf_provided = .false.
+
+end subroutine pert_model_copies
 
 !#######################################################
 ! !WARNING:: at the moment, this code is *not* called

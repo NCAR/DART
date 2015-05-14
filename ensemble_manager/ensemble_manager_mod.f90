@@ -47,17 +47,18 @@ character(len=128), parameter :: revdate  = "$Date$"
 !PAR some way, either allocating or multiple addressing, to use same chunk of storage
 !PAR for both copy and var complete representations.
 
-public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_time,      &
-          ensemble_type,              duplicate_ens,            get_var_owner_index,    &
-          get_my_num_copies,          get_my_copies,            get_my_num_vars,        &
-          get_my_vars,                compute_copy_mean,        compute_copy_mean_sd,   &
-          get_copy,                   put_copy,                 all_vars_to_all_copies, &
-          all_copies_to_all_vars,     read_ensemble_restart,    write_ensemble_restart, &
-          compute_copy_mean_var,      get_copy_owner_index,     set_ensemble_time,      &
+public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_time,          &
+          ensemble_type,              duplicate_ens,            get_var_owner_index,        &
+          get_my_num_copies,          get_my_copies,            get_my_num_vars,            &
+          get_my_vars,                compute_copy_mean,        compute_copy_mean_sd,       &
+          get_copy,                   put_copy,                 all_vars_to_all_copies,     &
+          all_copies_to_all_vars,     read_ensemble_restart,    write_ensemble_restart,     &
+          compute_copy_mean_var,      get_copy_owner_index,     set_ensemble_time,          &
           broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
           prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
-          prepare_to_update_copies,   print_ens_handle,                                 &
-          map_task_to_pe,             map_pe_to_task, single_restart_file_in, single_restart_file_out
+          prepare_to_update_copies,   print_ens_handle,         perturbation_amplitude,     &
+          map_task_to_pe,             map_pe_to_task,           single_restart_file_in,     &
+          single_restart_file_out
 
 ! track if copies modified last, vars modified last, both are in sync
 ! (and therefore both valid to be used r/o), or unknown.

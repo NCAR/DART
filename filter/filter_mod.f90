@@ -29,7 +29,8 @@ use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, 
                                  open_file, close_file, do_nml_file, do_nml_term
 use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
                                  netcdf_file_type, init_diag_output, finalize_diag_output,   & 
-                                 aoutput_diagnostics, ens_mean_for_model, end_assim_model
+                                 aoutput_diagnostics, ens_mean_for_model, end_assim_model,   &
+                                 pert_model_copies
 use assim_tools_mod,      only : filter_assim, set_assim_tools_trace, get_missing_ok_status, &
                                  test_state_copies
 use obs_model_mod,        only : move_ahead, advance_state, set_obs_model_trace
@@ -40,10 +41,12 @@ use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,   
                                  compute_copy_mean, compute_copy_mean_sd,                    &
                                  compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
                                  get_ensemble_time, set_ensemble_time, broadcast_copy,       &
-                                 prepare_to_read_from_vars, prepare_to_write_to_vars, prepare_to_read_from_copies,    &
-                                 prepare_to_write_to_copies, get_ensemble_time, set_ensemble_time,    &
+                                 prepare_to_read_from_vars, prepare_to_write_to_vars,        &
+                                 prepare_to_read_from_copies,                                &
+                                 prepare_to_write_to_copies, get_ensemble_time,              &
                                  map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
-                                 get_my_num_vars, single_restart_file_in
+                                 get_my_num_vars, single_restart_file_in, set_ensemble_time 
+                                 
 
 use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
@@ -58,6 +61,8 @@ use smoother_mod,         only : smoother_read_restart, advance_smoother,       
                                  init_smoother, do_smoothing, smoother_mean_spread,          &
                                  smoother_assim, filter_state_space_diagnostics,             &
                                  smoother_ss_diagnostics, smoother_end, set_smoother_trace
+
+use random_seq_mod,    only : random_seq_type, init_random_seq, random_gaussian
 
 use distributed_state_mod, only : create_state_window, free_state_window
 
@@ -126,8 +131,13 @@ logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
 logical  :: silence                  = .false.
-logical  :: direct_netcdf_read = .true. ! default to read from netcdf file
+logical  :: direct_netcdf_read = .true.  ! default to read from netcdf file
 logical  :: direct_netcdf_write = .true. ! default to write to netcdf file
+
+! perturbation namelist parameters for.  For now these are in filter
+logical  :: perturb_restarts = .false.
+real(r8) :: perturbation_amplitude = 0.2_r8
+
 ! what should you do about diagnostic files.
 
 logical  :: diagnostic_files = .false. ! what should be the default
@@ -176,7 +186,7 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_flavor, inf_initial_from_restart, inf_sd_initial_from_restart,               &
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
-   inf_lower_bound, inf_upper_bound, inf_sd_lower_bound,           &
+   inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, perturb_restarts,          &
    silence, direct_netcdf_read, direct_netcdf_write, diagnostic_files, output_inflation
 
 
@@ -1459,6 +1469,10 @@ do domain = 1, num_domains
    call read_transpose(state_ens_handle, restart_in_file_name, domain, dart_index)
 enddo
 
+if (perturb_restarts) then
+   call perturb_copies(state_ens_handle, perturbation_amplitude)
+endif
+
 deallocate(variable_list)
 
 ! Need Temporary print of initial model time?
@@ -2234,6 +2248,37 @@ end do
 call close_file(forward_unit)
 
 end subroutine verbose_forward_op_output
+
+!------------------------------------------------------------------
+
+subroutine perturb_copies(state_ens_handle, pert_amp)
+
+type(ensemble_type), intent(inout) :: state_ens_handle
+real(r8),            intent(in)    :: pert_amp
+
+type(random_seq_type) :: random_seq
+
+logical, save :: random_seq_init = .false.
+logical :: interf_provided = .false.
+
+integer :: i, j
+
+call pert_model_copies(state_ens_handle, pert_amp, interf_provided)
+if(.not. interf_provided) then
+   call init_random_seq(random_seq, my_task_id())
+   do i=1,state_ens_handle%my_num_vars
+      do j=1,state_ens_handle%num_copies
+         if (state_ens_handle%copies(j,i) /= MISSING_R8) then
+            state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
+               state_ens_handle%copies(j,i), &
+               pert_amp)
+   
+         endif
+      enddo
+   enddo
+endif
+
+end subroutine perturb_copies
 
 !==================================================================
 ! TEST FUNCTIONS BELOW THIS POINT
