@@ -402,11 +402,20 @@ real(r8) :: u_c_lons(4), u_c_lats(4), t_c_lons(4), t_c_lats(4), pole_row_lon
 integer  :: i, j, k, pindex
 integer  :: reg_lon_ind(2), reg_lat_ind(2), u_total, t_total, u_index, t_index
 logical  :: is_pole
+integer  :: surf_index
 
 allocate(ureg_list_lon(num_reg_x, num_reg_y, max_reg_list_num))
 allocate(ureg_list_lat(num_reg_x, num_reg_y, max_reg_list_num))
 allocate(treg_list_lon(num_reg_x, num_reg_y, max_reg_list_num))
 allocate(treg_list_lat(num_reg_x, num_reg_y, max_reg_list_num))
+
+! this is the level threshold for deciding whether we are over land
+! or water.  to be valid all 4 corners of the quad must have a level
+! number greater than this index.  (so 0 excludes all land points.)
+! if you wanted to assimilate only in regions where the water depth is
+! deeper than some threshold, set this index to N and only quads where
+! all the level numbers are N+1 or deeper will be used.
+surf_index = 0
 
 ! Begin by finding the quad that contains the pole for the dipole t_grid. 
 ! To do this locate the u quad with the pole on its right boundary. This is on
@@ -438,8 +447,8 @@ do i = 1, nx
    ! There's no wraparound in y, one box less than grid boundaries
    do j = 1, ny - 1
       
-      ! Only update regular boxes that contain all wet corners (kmu>0)
-      if(kmu(i,j)>0 .and. kmu(i,j+1)>0 .and. kmu(i+1,j+1)>0 .and. kmu(i+1,j)>0) then
+      ! Only update regular boxes that contain all wet corners
+      if( all_corners_wet(KIND_U_CURRENT_COMPONENT,i,j,surf_index) == .true. ) then
          ! Set up array of lons and lats for the corners of these u quads
          call get_quad_corners(ulon, i, j, u_c_lons)
          call get_quad_corners(ulat, i, j, u_c_lats)
@@ -453,8 +462,8 @@ do i = 1, nx
       endif 
 
       ! Repeat for t dipole quads.
-      ! Only update regular boxes that contain all wet corners (kmt>0)
-      if(kmt(i,j)>0 .and. kmt(i,j+1)>0 .and. kmt(i+1,j+1)>0 .and. kmt(i+1,j)>0) then
+      ! Only update regular boxes that contain all wet corners
+      if( all_corners_wet(KIND_TEMPERATURE,i,j,surf_index) == .true. ) then
          ! Set up array of lons and lats for the corners of these t quads
          call get_quad_corners(tlon, i, j, t_c_lons)
          call get_quad_corners(tlat, i, j, t_c_lats)
@@ -3032,6 +3041,33 @@ if ((obs_type == KIND_U_CURRENT_COMPONENT)  .or.  &
     (obs_type == KIND_V_CURRENT_COMPONENT)) is_on_ugrid = .TRUE.
 
 end function is_on_ugrid
+
+!------------------------------------------------------------------
+
+function all_corners_wet(obs_kind, lon_ind, lat_ind, hgt_ind)
+
+ integer, intent(in)  :: obs_kind, lon_ind, lat_ind, hgt_ind
+ logical :: all_corners_wet
+
+ integer :: lon_ind_p1
+
+! returns true only if all of the corners are above land
+ 
+! set to fail so we can return early.
+all_corners_wet = .false. 
+
+! Have to worry about wrapping in longitude but not in latitude
+lon_ind_p1 = lon_ind + 1
+if(lon_ind_p1 > nx) lon_ind_p1 = 1
+
+if (.not. is_dry_land(obs_kind, lon_ind,    lat_ind,   hgt_ind)) return
+if (.not. is_dry_land(obs_kind, lon_ind_p1, lat_ind,   hgt_ind)) return
+if (.not. is_dry_land(obs_kind, lon_ind_p1, lat_ind+1, hgt_ind)) return
+if (.not. is_dry_land(obs_kind, lon_ind,    lat_ind+1, hgt_ind)) return 
+
+all_corners_wet = .true.
+
+end function all_corners_wet
 
 !------------------------------------------------------------------
 
