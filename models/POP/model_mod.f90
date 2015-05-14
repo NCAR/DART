@@ -449,7 +449,7 @@ do i = 1, nx
    do j = 1, ny - 1
       
       ! Only update regular boxes that contain all wet corners
-      if( all_corners_wet(KIND_U_CURRENT_COMPONENT,i,j,surf_index) == .true. ) then
+      if( all_corners_wet(KIND_U_CURRENT_COMPONENT,i,j,surf_index) ) then
          ! Set up array of lons and lats for the corners of these u quads
          call get_quad_corners(ulon, i, j, u_c_lons)
          call get_quad_corners(ulat, i, j, u_c_lats)
@@ -464,7 +464,7 @@ do i = 1, nx
 
       ! Repeat for t dipole quads.
       ! Only update regular boxes that contain all wet corners
-      if( all_corners_wet(KIND_TEMPERATURE,i,j,surf_index) == .true. ) then
+      if( all_corners_wet(KIND_TEMPERATURE,i,j,surf_index) ) then
          ! Set up array of lons and lats for the corners of these t quads
          call get_quad_corners(tlon, i, j, t_c_lons)
          call get_quad_corners(tlat, i, j, t_c_lats)
