@@ -25,6 +25,12 @@ end interface
 
 private
 
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
+
 public :: setup_read_write
 public :: query_read_copy, query_write_copy
 public :: turn_read_copy_on, turn_read_copies_off

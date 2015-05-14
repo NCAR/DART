@@ -33,6 +33,12 @@ private
 
 public :: io_filenames_init, restart_files_in, restart_files_out
 
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
+
 ! How do people name there restart files?
 ! What about domains?
 

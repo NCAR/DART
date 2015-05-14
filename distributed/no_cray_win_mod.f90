@@ -21,6 +21,12 @@ implicit none
 private
 public :: create_mean_window, create_state_window, free_mean_window, free_state_window, mean_win, state_win, row, num_rows
 
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
+
 integer state_win !< mpi window for the forward operator
 integer mean_win !< mpi window
 integer :: num_rows !> number of copies in the window

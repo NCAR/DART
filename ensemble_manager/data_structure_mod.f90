@@ -2,7 +2,7 @@
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: data_structure_mod.f90 6323 2013-07-26 19:32:37Z hkershaw $
+! $Id$
 
 !> @brief Aim: to abstract the data structure from the ensemeble manager.
 !>
@@ -28,9 +28,9 @@ public ensemble_type, map_pe_to_task, get_var_owner_index, copies_in_window, mea
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma/ensemble_manager/ensemble_manager_mod.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 6323 $"
-character(len=128), parameter :: revdate  = "$Date: 2013-07-26 13:32:37 -0600 (Fri, 26 Jul 2013) $"
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 type ensemble_type
    !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
