@@ -36,7 +36,7 @@ use      dart_pop_mod, only: set_model_time_step,                              &
                              read_horiz_grid, read_topography, read_vert_grid, &
                              get_pop_restart_filename
 
-use data_structure_mod, only : ensemble_type
+use data_structure_mod, only : ensemble_type, copies_in_window 
 
 use distributed_state_mod
 
@@ -50,30 +50,34 @@ private
 
 ! these routines must be public and you cannot change
 ! the arguments - they will be called *from* the DART code.
-public :: get_model_size,         &
-          adv_1step,              &
-          get_state_meta_data_distrib,    &
-          model_interpolate_distrib,      &
-          get_model_time_step,    &
-          static_init_model,      &
-          end_model,              &
-          init_time,              &
-          init_conditions,        &
-          nc_write_model_atts,    &
-          nc_write_model_vars,    &
-          pert_model_state,       &
-          get_close_maxdist_init, &
-          get_close_obs_init,     &
-          get_close_obs_distrib,          &
-          ens_mean_for_model,     &
+public :: get_model_size,                &
+          adv_1step,                     &
+          get_state_meta_data_distrib,   &
+          model_interpolate_distrib,     &
+          get_model_time_step,           &
+          static_init_model,             &
+          end_model,                     &
+          init_time,                     &
+          init_conditions,               &
+          nc_write_model_atts,           &
+          nc_write_model_vars,           &
+          pert_model_state,              &
+          get_close_maxdist_init,        &
+          get_close_obs_init,            &
+          get_close_obs_distrib,         &
+          ens_mean_for_model,            &
           query_vert_localization_coord, &
-          vert_convert_distrib, &
-          get_vert, set_vert, set_which_vert, &
-          variables_domains, &
-          fill_variable_list, &
-          info_file_name, &
-          construct_file_name_in, &
-          get_model_time
+          vert_convert_distrib,          &
+          get_vert,                      &
+          set_vert,                      &
+          set_which_vert,                &
+          variables_domains,             &
+          fill_variable_list,            &
+          info_file_name,                &
+          construct_file_name_in,        &
+          get_model_time,                &
+          clamp_or_fail_it,              &
+          do_clamp_or_fail
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
@@ -3657,6 +3661,30 @@ get_model_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
 
 end function get_model_time
 
+!-------------------------------------------------------
+!> Check whether you need to error out, clamp, or
+!> do nothing depending on the variable bounds
+function do_clamp_or_fail(var, dom)
+
+integer, intent(in) :: var ! variable index
+integer, intent(in) :: dom ! domain index
+logical             :: do_clamp_or_fail
+
+do_clamp_or_fail = .false.
+
+end function do_clamp_or_fail
+
+!-------------------------------------------------------
+!> Check a variable for out of bounds and clamp or fail if
+!> needed
+subroutine clamp_or_fail_it(var_index, dom, variable)
+
+integer,     intent(in) :: var_index ! variable index
+integer,     intent(in) :: dom ! domain index
+real(r8), intent(inout) :: variable(:) ! variable
+
+
+end subroutine clamp_or_fail_it
 !--------------------------------------------------------------------
 !--------------------------------------------------------------------
 
