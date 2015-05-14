@@ -173,7 +173,7 @@ part of DART.  For introductory materials, see the links above.
 
 <P>
 Here are the subversion updates which have been
-committed since the original release of the Lanai code:
+committed since the original release of the Lanai code.
 </P>
 
 <div>
@@ -186,7 +186,12 @@ committed since the original release of the Lanai code:
 
 <TBODY valign=top>
 
-<!-- blank template for next update
+<!-- blank template for next update.
+the first line should be short and summarize
+what kind of update this is: bug fix (serious or minor),
+documentation update only, or update.   
+keep the summary short and as general as possible.
+gory details go in other html pages and the svn log.
 <TR><TD>  </TD>
     <TD>  </TD>
     <TD>
@@ -194,40 +199,48 @@ committed since the original release of the Lanai code:
 </TR>
 -->
 
+<!--
+<TR><TD> 15 May 2015  </TD>
+    <TD> xxxx </TD>
+    <TD>Updates to Matlab diagnostics for the Forced Lorenz 96 model, including
+plots xxx
+    </TD>
+</TR>
+-->
+
+<TR><TD> 14 May 2015 </TD>
+    <TD> 7980 </TD>
+    <TD>Serious bug fix for a Matlab script in the DART_LAB tutorial.  Subversion
+revisions between 7961 and 7980 will not run any examples correctly.
+    </TD>
+</TR>
+
 <TR><TD> 7 May 2015 </TD>
     <TD>7961</TD>
-    <TD>Using newer DART_LAB tutorial .pdfs and scripts. The Matlab scripts
-        have been run through the Matlab M-lint editor to enhance portability
-        and replace deprecated functions, etc. All the GUIs now set the random
-        number generator upon invocation to ensure the same sequence of random
-        numbers - desirable when trying to explore impact of changing a setting.
-        The <em class=program>oned_model.m</em> now defines error &amp; spread 
-        to be RMSE and standard deviation, consistent with everything else.
-        The <em class=program>run_lorenz_96.m</em> script now annotates the 
-        spread in addition to the error.  
+    <TD>Updates to the DART_LAB tutorial PDFs and Matlab scripts.
+The PDFs have been updated extensively for clarity and style.
+The workshop exercises now initialize the random number
+generator consistently so sucessive runs compare exactly.
+The <em class=program>oned_model</em> exercise now defines error and spread 
+to be RMSE and standard deviation, consistent with use in the rest of DART.
+The <em class=program>run_lorenz_96</em> exercise plots the spread 
+in addition to the error.  
     </TD>
 </TR>
 
 <TR><TD> 1 May 2015 </TD>
     <TD> 7952 </TD>
-    <TD> Added an index html page for the DART Tutorial.
-         Previously, the only index was a .pdf file.
-         Since some web pages reference the index, it was decided
-         to have an html page to avoid the need of having a
-         browser plugin to support .pdf
+    <TD> Minor documentation update only.  Changed the index page for the 
+DART Tutorial from pdf to html.
     </TD>
 </TR>
 
 <TR><TD> 14 Apr 2015 </TD>
     <TD> 7885 </TD>
-    <TD> Initialized the U observation cached values to something that 
-         will generate a U,V mismatch should the first horizontal wind 
-         component happen to be a V rather than a U. Also cut down on
-         the verbosity of the U,V wind mismatches while still reporting
-         all of them. Changed the format of the observation summary
-         for the rank histogram to report for all the observation types
-         rather than just reporting if there were NO observations for
-         that observation type.
+    <TD> Minor bug fix for the obs_diag program. Avoid an error in the unusual
+case that the first wind observation processed was the V component and not U.
+Made output slightly less verbose.  The observation summary for rank histogram 
+is more complete.
     </TD>
 </TR>
 
@@ -248,13 +261,16 @@ documentation to correct an example.
 
 <TR><TD> 24 Feb 2015 </TD>
     <TD> 7619 </TD>
-    <TD> Improved support for trusted observation types. This implements a
-         workaround for the ambiguous case when the prior is rejected by the
-         outlier threshhold AND the posterior forward operator fails. There
-         is no DART QC value which currently covers this case. The Matlab
-         plotting scripts now clealy indicate that the quantities plotted
-         for trusted observations include the observations rejected by the
-         outlier threshhold. The obs_diag.html has much more on the topic.
+    <TD> Minor bug fix for the obs_diag program, and minor changes to
+some of the Matlab plotting scripts.  Added better support 
+for trusted observation types. Print when an observation
+is rejected for multiple reasons that do not fit cleanly into one DART QC
+value. Add annotation to Matlab plots as a reminder that trusted
+observations do include observations rejected by the
+outlier threshhold. See the observation diagnostics documentation pages
+<a href="diagnostics/oned/obs_diag.html">obs_diag for 1D obs</a> or
+<a href="diagnostics/threed_sphere/obs_diag.html">obs_diag for 3d obs</a> 
+for more information on trusted observations.
     </TD>
 </TR>
 
@@ -410,6 +426,31 @@ Fix confusing comments in a few scripts. Fix default values in some namelists.
 </TABLE>
 <div>
 <br />
+  
+<P>
+To update a checked-out version of DART to the most recent 
+version of this release, cd into the top level directory and run:
+<pre>
+  svn update
+</pre>
+</P><P>
+To see the commit log messages and the filenames of changed
+files from subversion, cd into the top level DART directory and run:
+<pre>
+  svn log -v -r xxxx 
+</pre>
+where <i>xxxx</i> is the revision number.
+</P><P>
+<P>
+To see the code differences in a particular file, cd into
+the directory with the file you want to compare and run:
+<pre>
+ svn diff -r xxxx filename
+</pre>
+where <i>xxxx</i> is the revision number.
+</P>
+
+<P></P>
 
 <!--==================================================================-->
 
