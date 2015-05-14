@@ -4,7 +4,7 @@ assim_tools/assim_tools_mod.f90
 common/types_mod.f90
 cov_cutoff/cov_cutoff_mod.f90
 distributed/distributed_state_mod.f90
-distributed/cray_win_mod.f90
+distributed/no_cray_win_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
 ensemble_manager/data_structure_mod.f90
 filter/filter.f90
