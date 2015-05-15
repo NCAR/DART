@@ -34,17 +34,18 @@
 <A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
 <A HREF="#Legalese">TERMS OF USE</A>
 
-<H2>Overview</H2>
-
 <P>
-DART interface module for the forced_lorenz-96 model. The 16 public interfaces
+DART interface module for the <em class=program>forced_lorenz_96</em> model. The 16 public interfaces
 are standardized for all DART compliant models. These interfaces allow
 DART to advance the model, get the model state and metadata describing 
 this state, find state variables that are close to a given location, 
 and do spatial interpolation for model state variables. 
 </P>
+
+<H2>Overview</H2>
+
 <P>
-The forced_lorenz_96 model implements the standard L96 equations except
+The <em class=program>forced_lorenz_96</em> model implements the standard L96 equations except
 that the forcing term, F, is added to the state vector and is 
 assigned an independent value at each gridpoint. The result is a 
 model that is twice as big as the standard L96 model. The forcing
@@ -56,6 +57,136 @@ tendency computation which can help in assimilation performance.
 If the random noise option is turned off (see namelist) the
 time tendency of the forcing terms is 0.
 </P>
+<center>
+<table width=90% border=0 summary="example of state vector partitioning " cellpadding=8>
+<tr><th colspan = 2>DART state vector composition</th></tr>
+<tr><th width=50% bgcolor=Cyan>state variables<br />indices 1 - 40</th>
+    <th width=50% bgcolor=Gold>forcing terms<br />indices 41 - 80</th></tr>
+<tr><th>traditional Lorenz_96 state</th>
+    <th>"extended" state</th></tr>
+</table>
+</center>
+
+<P>
+The DART tutorial Section 20 <a href="../../tutorial/section_20.pdf">[pdf]</a>
+explores parameter estimation using the <em class=program>forced_lorenz_96</em> model.
+</P>
+
+<H2>Quick Example</H2>
+<P>To become familiar with the model, try this quick experiment.</P>
+<ol>
+   <li>compile everything in the 
+       <em class=file>model/forced_lorenz_96/work</em> directory.<br /><br />
+       <div class=unix>
+       cd models/forced_lorenz_96/work<br />
+       ./quickbuild.csh</div></li>
+<br />
+   <li>make sure the <em class=file>input.nml</em> looks like the following
+       (there is a lot that has been left out for clarity, 
+       these are the settings of interest for this example):<br /><br />
+       <div class=routine>
+<pre>&amp;perfect_model_obs_nml
+   start_from_restart    = .true.,
+   output_restart        = .true.,
+   async                 = 0,
+   restart_in_file_name  = "perfect_ics",
+   obs_seq_in_file_name  = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   ...
+
+&amp;filter_nml
+   async                    = 0,
+   ens_size                 = 80,
+   start_from_restart       = .true.,
+   output_restart           = .true.,
+   obs_sequence_in_name     = "obs_seq.out",
+   obs_sequence_out_name    = "obs_seq.final",
+   restart_in_file_name     = "filter_ics",
+   restart_out_file_name    = "filter_restart",
+   num_output_state_members = 80,
+   num_output_obs_members   = 80,
+   ...
+
+&amp;model_nml
+   num_state_vars    = 40,
+   forcing           = 8.00,
+   delta_t           = 0.05,
+   time_step_days    = 0,
+   time_step_seconds = 3600,
+   reset_forcing     = .false.,
+   random_forcing_amplitude = 0.10
+   /</pre> </div> </li>
+<br />
+<li>Run <em class=program>perfect_model_obs</em> to generate
+    <em class=file>True_State.nc</em> and  
+    <em class=file>obs_seq.out</em>. The default <em class=file>obs_seq.in</em>
+    will cause the model to advance for 1000 time steps.<br /><br />
+    <div class=unix>
+    ./perfect_model_obs
+    </div>
+</li>
+<br />
+<li>If you have <em class=program>ncview</em>, 
+    explore the <em class=file>True_State.nc</em>. Notice that the 
+    State Variable indices from 1-40 are the dynamical part of the 
+    model and 41-80 are the Forcing variables.<br /><br />
+    <div class=unix>
+    ncview True_State.nc
+    </div>
+</li>
+<br />
+<li>Run <em class=program>filter</em> to generate
+    <em class=file>Prior_Diag.nc</em>, 
+    <em class=file>Posterior_Diag.nc</em> and  
+    <em class=file>obs_seq.final</em>.<br /><br />
+    <div class=unix>
+    ./filter
+    </div>
+</li>
+<br />
+<li>Launch Matlab and run <em class=program>plot_ens_time_series</em>.<br /><br />
+    <div class=unix>
+    &gt;&gt; plot_ens_time_series<br />
+    
+    Input name of prior or posterior diagnostics file:<br />
+    <cr> for Prior_Diag.nc<br />
+    <em class=input>Prior_Diag.nc</em><br />
+    <br />
+    OPTIONAL: if you have the true state and want it superimposed, provide<br />
+           : the name of the input file. If not, enter a dummy filename.<br />
+           : Input name of True State file:<br />
+    <cr> for True_State.nc<br />
+    <em class=input>True_State.nc</em><br />
+    <br />
+    Using state state variable IDs 1  13  27<br />
+    If these are OK, <cr>;<br />
+    If not, please enter array of state variable ID's<br />
+    To choose from entire state enter A 25 50 75 (between 1 and 80)<br />
+    To choose traditional model state enter S 1  23 40 (between 1 and 40)<br />
+    To choose forcing estimates enter F 2 12 22 (between 1 and 40)<br />
+    (no intervening syntax required)<br />
+    <em class=input>A&nbsp;20&nbsp;30&nbsp;40&nbsp;60&nbsp;70&nbsp;80</em>
+    </div>
+    <P>
+    Indices 20, 30, and 40 will be from the dynamical part of the 
+    lorenz_96 attractor, indices 60, 70, and 80 will be the 
+    corresponding Forcing values. Here are some images for just indices 20
+    and 60. Click on each image for a high-res version.
+    </P>
+</li>
+<br />
+<center>
+<a  href="../../doc/images/forced_lorenz_96_evolution_state.png">
+<img src="../../doc/images/forced_lorenz_96_evolution_state_small.png" alt="forced_lorenz_96evolution" /></a>
+<a  href="../../doc/images/forced_lorenz_96_evolution_forcing.png">
+<img src="../../doc/images/forced_lorenz_96_evolution_forcing_small.png" alt="forced_lorenz_96evolution" /></a>
+</center>
+</ol>
+
+<P>Repeat the experiment with <em class=code>reset_forcing&nbsp;=&nbsp;.true.</em> when creating the
+true state and <em class=code>reset_forcing&nbsp;=&nbsp;.false.</em> when assimilating. What happens?</P>
+
+<P><!-- make sure the 'top' is aligned correctly --></P>
 
 <!--==================================================================-->
 
@@ -620,7 +751,8 @@ A NULL INTERFACE in this model.
 </TABLE>
 
 </div>
-<br>
+
+<P><!-- make sure the 'top' is aligned correctly --></P>
 
 <!--===================== DESCRIPTION OF A NAMELIST =====================-->
 
@@ -634,6 +766,7 @@ Namelists start with an ampersand
 Character strings that contain a '/' must be
 enclosed in quotes to prevent them from 
 prematurely terminating the namelist.
+The values shown here are the default values.
 </P>
 
 <div class=namelist>
@@ -704,8 +837,7 @@ each forcing value's time step.
 </TABLE> 
 </div>
 
-<br />
-<br />
+<P><!-- make sure the 'top' is aligned correctly --></P>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -715,21 +847,35 @@ each forcing value's time step.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
 
-<TABLE border=0 >
+<TABLE border=0 width=100% summary="list of files used" cellspacing=1 cellpadding=2 width=100%>
 <TR><TH align=left>filename</TH>
     <TH align=left>purpose</TH></TR>
-<TR><TD>input.nml</TD>
+
+<TR><TD><em class=file>input.nml</em></TD>
     <TD>to read the model_mod namelist</TD></TR>
-<TR><TD>Prior_Diag.nc</TD>
+
+<TR><TD><em class=file>True_State.nc</em></TD>
+    <TD>the time-history of the single model state used to generate the synthetic observations</TD></TR>
+
+<TR><TD><em class=file>Prior_Diag.nc</em></TD>
     <TD>the time-history of the model state before assimilation</TD></TR>
-<TR><TD>Posterior_Diag.nc&nbsp;</TD>
+
+<TR><TD><em class=file>Posterior_Diag.nc&nbsp;&nbsp;</em></TD>
     <TD>the time-history of the model state after assimilation</TD></TR>
-<TR><TD>dart_log.out [default name]</TD>
+
+<TR><TD><em class=file>advance_model.csh</em></TD>
+    <TD>shell script to advance the model as a standalone executable.
+        Each advance will then read the model's namelist.</TD></TR>
+
+<TR><TD><em class=file>dart_log.out</em></TD>
     <TD>the run-time diagnostic output</TD></TR>
-<TR><TD>dart_log.nml [default name]</TD>
+
+<TR><TD><em class=file>dart_log.nml</em></TD>
     <TD>the record of all the namelists actually USED - 
         contains the default values</TD></TR>
 </TABLE>
+
+<P><!-- make sure the 'top' is aligned correctly --></P>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
@@ -741,6 +887,8 @@ each forcing value's time step.
 <ul>
 <li> none </li>
 </ul>
+
+<P><!-- make sure the 'top' is aligned correctly --></P>
 
 <!--==================================================================-->
 <!-- Describe all the error conditions and codes.                     -->
