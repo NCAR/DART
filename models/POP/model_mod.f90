@@ -3111,10 +3111,10 @@ all_corners_wet = .false.
 lon_ind_p1 = lon_ind + 1
 if(lon_ind_p1 > nx) lon_ind_p1 = 1
 
-if (.not. is_dry_land(obs_kind, lon_ind,    lat_ind,   hgt_ind)) return
-if (.not. is_dry_land(obs_kind, lon_ind_p1, lat_ind,   hgt_ind)) return
-if (.not. is_dry_land(obs_kind, lon_ind_p1, lat_ind+1, hgt_ind)) return
-if (.not. is_dry_land(obs_kind, lon_ind,    lat_ind+1, hgt_ind)) return 
+if (is_dry_land(obs_kind, lon_ind,    lat_ind,   hgt_ind)) return
+if (is_dry_land(obs_kind, lon_ind_p1, lat_ind,   hgt_ind)) return
+if (is_dry_land(obs_kind, lon_ind_p1, lat_ind+1, hgt_ind)) return
+if (is_dry_land(obs_kind, lon_ind,    lat_ind+1, hgt_ind)) return 
 
 all_corners_wet = .true.
 
