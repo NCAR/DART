@@ -34,7 +34,7 @@ program convert_madis_mesonet
 use         types_mod, only : r8, missing_r8
 use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, &
-                                  increment_time, get_time, operator(-), GREGORIAN
+                              increment_time, get_time, operator(-), GREGORIAN
 use      location_mod, only : VERTISSURFACE
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                               static_init_obs_sequence, init_obs, write_obs_seq, & 
@@ -51,8 +51,9 @@ use      obs_kind_mod, only : LAND_SFC_U_WIND_COMPONENT, LAND_SFC_V_WIND_COMPONE
                               LAND_SFC_TEMPERATURE, LAND_SFC_SPECIFIC_HUMIDITY, & 
                               LAND_SFC_DEWPOINT, LAND_SFC_RELATIVE_HUMIDITY, &
                               LAND_SFC_ALTIMETER                
-use  obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
-                               create_3d_obs, getvar_int, getdimlen, set_missing_name
+use          sort_mod, only : index_sort
+use obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
+                              create_3d_obs, getvar_int, getdimlen, set_missing_name
 
 use           netcdf
 
@@ -73,22 +74,25 @@ logical, parameter :: use_input_qc              = .true.
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
 
-integer :: ncid, nobs, nvars, n, i, oday, osec, nused
+integer  :: ncid, nobs, nvars, n, i, oday, osec, nused
 logical  :: file_exist, first_obs
 real(r8) :: alti_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
             vwnd, palt, qobs, qsat, rh, oerr, pres, qerr, qc
 
-integer,  allocatable :: tobs(:), tobu(:)
+integer,  allocatable :: tobs(:), tobu(:), indu(:), sorted_indu(:)
 real(r8), allocatable :: lat(:), lon(:), elev(:), alti(:), tair(:), & 
                          tdew(:), wdir(:), wspd(:), latu(:), lonu(:)
 integer,  allocatable :: qc_alti(:), qc_tair(:), qc_tdew(:), qc_wdir(:), qc_wspd(:)
-
+  
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
 type(time_type)         :: comp_day0, time_obs, prev_time
 
 
+!----------------------------------------------------------------
+
 call initialize_utilities('convert_madis_mesonet')
+
 
 ! put the reference date into DART format
 call set_calendar_type(GREGORIAN)
@@ -109,6 +113,7 @@ allocate(elev(nobs))  ;  allocate(alti(nobs))
 allocate(tair(nobs))  ;  allocate(tdew(nobs))
 allocate(wdir(nobs))  ;  allocate(wspd(nobs))
 allocate(tobs(nobs))  ;  allocate(tobu(nobs))
+allocate(indu(nobs))  ;  allocate(sorted_indu(nobs))
 
 nvars = 4
 if (include_specific_humidity) nvars = nvars + 1
@@ -178,24 +183,40 @@ endif
 qc = 1.0_r8
 
 nused = 0
-obsloop: do n = 1, nobs
-
-  ! compute time of observation
-  time_obs = increment_time(comp_day0, tobs(n))
+obsloop1: do n = 1, nobs
 
   ! check the lat/lon values to see if they are ok
-  if ( lat(n) >  90.0_r8 .or. lat(n) <  -90.0_r8 ) cycle obsloop
-  if ( lon(n) > 180.0_r8 .or. lon(n) < -180.0_r8 ) cycle obsloop
+  if ( lat(n) >  90.0_r8 .or. lat(n) <  -90.0_r8 ) cycle obsloop1
+  if ( lon(n) > 180.0_r8 .or. lon(n) < -180.0_r8 ) cycle obsloop1
 
   ! change lon from -180 to 180 into 0-360
   if ( lon(n) < 0.0_r8 )  lon(n) = lon(n) + 360.0_r8
 
-  ! Check for duplicate observations
-  do i = 1, nused
+  ! check for duplicate observations
+  do i=1, nused
     if ( lon(n) == lonu(i) .and. &
          lat(n) == latu(i) .and. &
-        tobs(n) == tobu(i) ) cycle obsloop
-  end do
+        tobs(n) == tobu(i) ) cycle obsloop1
+  enddo
+
+  nused = nused + 1
+  indu(nused) =  n
+  latu(nused) =  lat(n)
+  lonu(nused) =  lon(n)
+  tobu(nused) = tobs(n)
+
+enddo obsloop1
+
+! sort into time order
+call index_sort(tobu, sorted_indu, nused)
+
+
+obsloop2: do i = 1, nused
+
+  n = indu(sorted_indu(i))
+
+  ! compute time of observation
+  time_obs = increment_time(comp_day0, tobs(n))
 
   palt = pres_alt_to_pres(elev(n)) * 0.01_r8
 
@@ -334,18 +355,14 @@ obsloop: do n = 1, nobs
 
 100 continue
 
-  nused = nused + 1
-  latu(nused) =  lat(n)
-  lonu(nused) =  lon(n)
-  tobu(nused) = tobs(n)
-
-end do obsloop
+end do obsloop2
 
 ! if we added any obs to the sequence, write it now.
 if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, surface_out_file)
 
 ! end of main program
 call finalize_utilities()
+
 
 end program convert_madis_mesonet
 

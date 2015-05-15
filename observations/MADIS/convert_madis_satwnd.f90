@@ -45,6 +45,7 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
 use        meteor_mod, only : wind_dirspd_to_uv
 use       obs_err_mod, only : sat_wind_error, sat_wv_wind_error
 use      obs_kind_mod, only : SAT_U_WIND_COMPONENT, SAT_V_WIND_COMPONENT
+use          sort_mod, only : index_sort
 use obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
                               create_3d_obs, getvar_int, getdimlen
 
@@ -77,10 +78,11 @@ real(r8) :: uwnd, vwnd, oerr, qc
 
 
 real(r8), allocatable :: lat(:), lon(:), latu(:), lonu(:), &
-                          pres(:), prsu(:), tobs(:), tobu(:), &
+                          pres(:), prsu(:), tobs(:), &
                           wdir(:), wspd(:)
 integer,  allocatable :: band(:), bndu(:)
 integer,  allocatable :: qc_wdir(:), qc_wspd(:)
+integer,  allocatable :: indu(:), sorted_indu(:), tobu(:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
@@ -122,6 +124,7 @@ allocate(pres(nobs))  ;  allocate(prsu(nobs))
 allocate(tobs(nobs))  ;  allocate(tobu(nobs))
 allocate(band(nobs))  ;  allocate(bndu(nobs))
 allocate(wdir(nobs))  ;  allocate(wspd(nobs))
+allocate(indu(nobs))  ;  allocate(sorted_indu(nobs))
 allocate(qc_wdir(nobs)) ;  allocate(qc_wspd(nobs))
 
 ! read in the data arrays
@@ -171,33 +174,51 @@ endif
 qc = 1.0_r8
 
 nused = 0
-obsloop: do n = 1, nobs
-
-  ! compute time of observation
-  time_obs = increment_time(comp_day0, nint(tobs(n)))
+obsloop1: do n = 1, nobs
 
   ! check the lat/lon values to see if they are ok
-  if ( lat(n) >  90.0_r8 .or. lat(n) <  -90.0_r8 ) cycle obsloop
-  if ( lon(n) > 180.0_r8 .or. lon(n) < -180.0_r8 ) cycle obsloop
+  if ( lat(n) >  90.0_r8 .or. lat(n) <  -90.0_r8 ) cycle obsloop1
+  if ( lon(n) > 180.0_r8 .or. lon(n) < -180.0_r8 ) cycle obsloop1
 
+  ! change lon from -180 to 180 into 0-360
   if ( lon(n) < 0.0_r8 )  lon(n) = lon(n) + 360.0_r8
 
   ! Check for duplicate observations
   do i = 1, nused
     if ( lon(n) == lonu(i) .and. &
          lat(n) == latu(i) .and. &
-        prsu(n) == pres(i) .and. &
+        pres(n) == prsu(i) .and. &
         band(n) == bndu(i) .and. &
-        tobs(n) == tobu(i) ) cycle obsloop
+        nint(tobs(n)) == tobu(i) ) cycle obsloop1
   end do
 
   ! if selecting only certain bands, cycle if not wanted
   if (.not. allbands) then
-     if (.not. iruse  .and. band(n) == 1) cycle obsloop
-     if (.not. visuse .and. band(n) == 2) cycle obsloop
+     if (.not. iruse  .and. band(n) == 1) cycle obsloop1
+     if (.not. visuse .and. band(n) == 2) cycle obsloop1
      if (.not. wvuse  .and. &
-         (band(n) == 3  .or.  band(n) == 5  .or. band(n) == 7)) cycle obsloop
+         (band(n) == 3  .or.  band(n) == 5  .or. band(n) == 7)) cycle obsloop1
   endif
+
+  nused = nused + 1
+  indu(nused) = n
+  latu(nused) =  lat(n)
+  lonu(nused) =  lon(n)
+  prsu(nused) = pres(n)
+  bndu(nused) = band(n)
+  tobu(nused) = nint(tobs(n))
+
+end do obsloop1
+
+call index_sort(tobu, sorted_indu, nused)
+
+obsloop2: do i = 1, nused
+
+  ! get the next unique observation in sorted time order
+  n = indu(sorted_indu(i))
+
+  ! compute time of observation
+  time_obs = increment_time(comp_day0, nint(tobs(n)))
 
   ! extract actual time of observation in file into oday, osec.
   call get_time(time_obs, osec, oday)
@@ -211,7 +232,7 @@ obsloop: do n = 1, nobs
 
    !  perform sanity checks on observation errors and values
    if ( oerr == missing_r8 .or. wdir(n) < 0.0_r8 .or. wdir(n) > 360.0_r8 .or. &
-      wspd(n) < 0.0_r8 .or. wspd(n) > 120.0_r8 )  cycle obsloop
+      wspd(n) < 0.0_r8 .or. wspd(n) > 120.0_r8 )  cycle obsloop2
 
       call create_3d_obs(lat(n), lon(n), pres(n), VERTISPRESSURE, uwnd, &
                          SAT_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
@@ -223,14 +244,7 @@ obsloop: do n = 1, nobs
 
   endif
 
-  nused = nused + 1
-  latu(nused) =  lat(n)
-  lonu(nused) =  lon(n)
-  prsu(nused) = pres(n)
-  band(nused) = bndu(n)
-  tobu(nused) = tobs(n)
-
-end do obsloop
+end do obsloop2
 
 ! need to wait to close file because in the loop it queries the
 ! report types.
