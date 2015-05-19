@@ -397,7 +397,7 @@ allocate(treg_list_lat(num_reg_x, num_reg_y, max_reg_list_num))
 ! if you wanted to assimilate only in regions where the water depth is
 ! deeper than some threshold, set this index to N and only quads where
 ! all the level numbers are N+1 or deeper will be used.
-surf_index = 0
+surf_index = 1
 
 ! Begin by finding the quad that contains the pole for the dipole t_grid. 
 ! To do this locate the u quad with the pole on its right boundary. This is on
