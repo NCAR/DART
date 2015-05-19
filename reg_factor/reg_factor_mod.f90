@@ -6,7 +6,7 @@
 
 module reg_factor_mod
 
-use     types_mod, only : r8
+use     types_mod, only : r8, i8
 use utilities_mod, only : get_unit, open_file, register_module, error_handler, &
                           E_ERR, nmlfileunit, find_namelist_in_file,    &
                           check_namelist_read, do_nml_file, do_nml_term
@@ -70,10 +70,13 @@ function comp_reg_factor(num_groups, regress, obs_time, &
 ! methodology (for instance time mean from previous runs). Could
 ! also implement the standard distance dependence method, too.
 
-integer, intent(in) :: num_groups, obs_index, state_index
+integer,         intent(in) :: num_groups
+real(r8),        intent(in) :: regress(num_groups)
 type(time_type), intent(in) :: obs_time
-integer, intent(in), optional :: obs_state_ind, obs_state_max
-real(r8), intent(in) :: regress(num_groups)
+integer,         intent(in) :: obs_index
+integer(i8),     intent(in) :: state_index
+integer,         intent(in), optional :: obs_state_ind, obs_state_max
+
 real(r8) :: comp_reg_factor
 
 real(r8) :: sum_reg2, sum_reg_reg

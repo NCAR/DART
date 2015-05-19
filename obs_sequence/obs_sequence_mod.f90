@@ -21,7 +21,7 @@ module obs_sequence_mod
 ! copy subroutines. USERS MUST BE VERY CAREFUL TO NOT DO DEFAULT ASSIGNMENT
 ! FOR THESE TYPES THAT HAVE COPY SUBROUTINES.
 
-use        types_mod, only : r8, MISSING_R8, metadatalength
+use        types_mod, only : r8, i8, MISSING_R8, metadatalength
 use     location_mod, only : location_type, is_location_in_region
 use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, copy_obs_def, &
@@ -376,7 +376,7 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
          'identity obs is outside of state vector ', &
          source, revision, revdate)
 
-      call get_state(expected_obs, -1*obs_kind_ind, state_ens_handle)
+      call get_state(expected_obs, -1*int(obs_kind_ind,i8), state_ens_handle)
 
       ! fixme: we currently have no option to eval only identity obs,
       ! or select to skip their assimilation via namelist.

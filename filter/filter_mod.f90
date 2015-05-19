@@ -7,7 +7,7 @@
 module filter_mod
 
 !------------------------------------------------------------------------------
-use types_mod,            only : r8, missing_r8, metadatalength
+use types_mod,            only : r8, i8, missing_r8, metadatalength
 use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                  &
                                  get_obs_from_key, set_copy_meta_data, get_copy_meta_data,   &
                                  get_obs_def, get_time_range_keys, set_obs_values, set_obs,  &
@@ -210,8 +210,9 @@ type(time_type)             :: curr_ens_time, next_ens_time, window_time
 type(adaptive_inflate_type) :: prior_inflate, post_inflate
 
 integer,    allocatable :: keys(:)
+integer(i8)             :: model_size
 integer                 :: i, iunit, io, time_step_number, num_obs_in_set
-integer                 :: ierr, last_key_used, model_size, key_bounds(2)
+integer                 :: ierr, last_key_used, key_bounds(2)
 integer                 :: in_obs_copy, obs_val_index
 integer                 :: output_state_mean_index, output_state_spread_index
 integer                 :: prior_obs_mean_index, posterior_obs_mean_index
@@ -414,7 +415,7 @@ call trace_message('After  initializing inflation')
 ! HK Moved initializing inflation to before read of netcdf restarts so you can read the restarts
 ! and inflation files in one step.
 if (.not. direct_netcdf_read ) then ! expecting DART restart files
-   call filter_read_restart(state_ens_handle, time1, model_size)
+   call filter_read_restart(state_ens_handle, time1)
    call all_vars_to_all_copies(state_ens_handle)
    ! deallocate whole state storage - should this be in ensemble_manager?
    deallocate(state_ens_handle%vars)
@@ -598,9 +599,9 @@ AdvanceTime : do
    ! obs_error_variance, observed value, key from sequence, global qc, 
    ! then mean for each group, then variance for each group
    TOTAL_OBS_COPIES = ens_size + 4 + 2*num_groups
-   call init_ensemble_manager(obs_fwd_op_ens_handle, TOTAL_OBS_COPIES, num_obs_in_set, 1)
+   call init_ensemble_manager(obs_fwd_op_ens_handle, TOTAL_OBS_COPIES, int(num_obs_in_set,i8), 1)
    ! Also need a qc field for copy of each observation
-   call init_ensemble_manager(qc_ens_handle, ens_size, num_obs_in_set, 1)
+   call init_ensemble_manager(qc_ens_handle, ens_size, int(num_obs_in_set,i8), 1)
 
    ! Allocate storage for the keys for this number of observations
    allocate(keys(num_obs_in_set)) ! This is still var size for writing out the observation sequence
@@ -1481,11 +1482,10 @@ end subroutine filter_read_restart_direct
 
 !-------------------------------------------------------------------------
 
-subroutine filter_read_restart(state_ens_handle, time, model_size)
+subroutine filter_read_restart(state_ens_handle, time)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
 type(time_type),     intent(inout) :: time
-integer,             intent(in)    :: model_size
 
 integer :: days, secs
 

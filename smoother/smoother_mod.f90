@@ -8,7 +8,7 @@ module smoother_mod
 
 ! Tools for turning the filter into a fixed lag smoother for the full state vector.
 
-use      types_mod,       only : r8, metadatalength
+use      types_mod,       only : r8, i8, metadatalength
 use  mpi_utilities_mod,   only : my_task_id
 use  utilities_mod,       only : file_exist, check_namelist_read, do_output,  &
                                  find_namelist_in_file, register_module, error_handler, &
@@ -130,7 +130,8 @@ end subroutine init_smoother
 subroutine smoother_read_restart(ens_handle, ens_size, model_size, time1, init_time_days)
 
 type(ensemble_type), intent(inout) :: ens_handle
-integer,             intent(in)    :: model_size, ens_size
+integer(i8),         intent(in)    :: model_size
+integer,             intent(in)    :: ens_size
 type(time_type),     intent(inout) :: time1
 integer,             intent(in)    :: init_time_days
 
@@ -475,7 +476,8 @@ subroutine filter_state_space_diagnostics(curr_ens_time, out_unit, ens_handle, m
 type(time_type),             intent(in)    :: curr_ens_time
 type(netcdf_file_type),      intent(inout) :: out_unit
 type(ensemble_type),         intent(inout) :: ens_handle
-integer,                     intent(in)    :: model_size, num_output_state_members
+integer(i8),                 intent(in)    :: model_size
+integer,                     intent(in)    :: num_output_state_members
 integer,                     intent(in)    :: output_state_mean_index, output_state_spread_index
 ! temp_ens is passed from above to avoid extra storage
 !real(r8),                    intent(out)   :: temp_ens(:)
@@ -507,6 +509,7 @@ subroutine smoother_ss_diagnostics(model_size, num_output_state_members, &
 use mpi
 
 integer,         intent(in)  :: model_size, num_output_state_members
+! JH Note temp_ens not being used in this routine
 real(r8),        intent(out) :: temp_ens(model_size)
 integer,         intent(in)  :: ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY
 

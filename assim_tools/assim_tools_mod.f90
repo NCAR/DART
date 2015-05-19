@@ -10,7 +10,7 @@ module assim_tools_mod
 !> \defgroup assim_tools assim_tools_mod
 !> 
 !> @{
-use      types_mod,       only : r8, digits12, PI, missing_r8
+use      types_mod,       only : r8, i8, digits12, PI, missing_r8
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,    &
                                  find_namelist_in_file, register_module, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
@@ -321,15 +321,18 @@ real(r8) :: close_state_dist(ens_handle%my_num_vars)
 real(r8) :: last_close_obs_dist(obs_ens_handle%my_num_vars)
 real(r8) :: last_close_state_dist(ens_handle%my_num_vars)
 
+integer(i8) :: state_index
+integer(i8) :: my_state_indx(ens_handle%my_num_vars)
+integer(i8) :: my_obs_indx(obs_ens_handle%my_num_vars)
+
 integer  :: my_num_obs, i, j, owner, owners_index, my_num_state
-integer  :: my_obs_indx(obs_ens_handle%my_num_vars), my_state_indx(ens_handle%my_num_vars)
 integer  :: this_obs_key, obs_mean_index, obs_var_index
 integer  :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
 integer  :: close_obs_ind(obs_ens_handle%my_num_vars)
 integer  :: close_state_ind(ens_handle%my_num_vars)
 integer  :: last_close_obs_ind(obs_ens_handle%my_num_vars)
 integer  :: last_close_state_ind(ens_handle%my_num_vars)
-integer  :: num_close_obs, obs_index, num_close_states, state_index
+integer  :: num_close_obs, obs_index, num_close_states
 integer  :: total_num_close_obs, last_num_close_obs, last_num_close_states
 integer  :: base_obs_kind, base_obs_type, my_obs_kind(obs_ens_handle%my_num_vars)
 integer  :: my_obs_type(obs_ens_handle%my_num_vars)
@@ -558,13 +561,13 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    if (base_obs_type > 0) then
       base_obs_kind = get_obs_kind_var_type(base_obs_type)
    else
-      call get_state_meta_data_distrib(ens_handle, -1 * base_obs_type, dummyloc, base_obs_kind)  ! identity obs
+      call get_state_meta_data_distrib(ens_handle, -1 * int(base_obs_type,i8), dummyloc, base_obs_kind)  ! identity obs
    endif
    ! Get the value of the observation
    call get_obs_values(observation, obs, obs_val_index)
 
    ! Find out who has this observation and where it is
-   call get_var_owner_index(i, owner, owners_index)
+   call get_var_owner_index(int(i,i8), owner, owners_index)
 
    ! Following block is done only by the owner of this observation
    !-----------------------------------------------------------------------

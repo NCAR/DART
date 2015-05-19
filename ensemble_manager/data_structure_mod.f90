@@ -17,7 +17,7 @@
 !> e.g. ENS_MEAN_COPY etc. 
 module data_structure_mod
 
-use types_mod,         only : r8
+use types_mod,         only : r8, i8
 use time_manager_mod,  only : time_type
 use mpi_utilities_mod, only : task_count, my_task_id
 
@@ -35,8 +35,10 @@ character(len=128), parameter :: revdate  = "$Date$"
 type ensemble_type
    !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
    !!!private
-   integer                      :: num_copies, num_vars, my_num_copies, my_num_vars
-   integer,        allocatable  :: my_copies(:), my_vars(:)
+   integer(i8)                  :: num_vars
+   integer                      :: num_copies, my_num_copies, my_num_vars
+   integer,        allocatable  :: my_copies(:)
+   integer(i8),    allocatable  :: my_vars(:)
    ! Storage in next line is to be used when each pe has all copies of subset of vars
    real(r8),       allocatable  :: copies(:, :)         ! Dimensioned (num_copies, my_num_vars)
    ! Storage on next line is used when each pe has subset of copies of all vars
@@ -67,9 +69,9 @@ contains
 !> Assumes that all tasks are used in the ensemble
 subroutine get_var_owner_index(var_number, owner, owners_index)
 
-integer, intent(in)  :: var_number !> index into state vector
-integer, intent(out) :: owner !> pe who owns the state element
-integer, intent(out) :: owners_index !> local index on the owner
+integer(i8), intent(in)  :: var_number !> index into state vector
+integer,     intent(out) :: owner !> pe who owns the state element
+integer,     intent(out) :: owners_index !> local index on the owner
 
 integer :: div
 integer :: num_pes

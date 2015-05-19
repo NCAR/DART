@@ -14,7 +14,7 @@ module ensemble_manager_mod
 ! have been placed here for efficiency even though they might be more 
 ! appropriately abstracted at a higher level of code.
 
-use types_mod,         only : r8, MISSING_R8
+use types_mod,         only : r8, i8,  MISSING_R8
 use utilities_mod,     only : register_module, do_nml_file, do_nml_term, &
                               error_handler, E_ERR, E_MSG, do_output, &
                               nmlfileunit, find_namelist_in_file,        &
@@ -122,7 +122,8 @@ subroutine init_ensemble_manager(ens_handle, num_copies, &
    num_vars, distribution_type_in, layout_type)
 
 type(ensemble_type), intent(out)            :: ens_handle
-integer,             intent(in)             :: num_copies, num_vars
+integer,             intent(in)             :: num_copies
+integer(i8),         intent(in)             :: num_vars
 integer,             intent(in), optional   :: distribution_type_in
 integer,             intent(in), optional   :: layout_type
 
@@ -881,7 +882,7 @@ subroutine get_my_vars(ens_handle, vars)
 ! Returns 1...num_vars for single process.
 
 type (ensemble_type), intent(in)  :: ens_handle
-integer,              intent(out) :: vars(:)
+integer(i8),          intent(out) :: vars(:)
 
 if(size(vars) < ens_handle%my_num_vars) then
    write(msgstring, *) 'Array vars only has size ', size(vars), &
@@ -998,8 +999,8 @@ function get_max_num_vars(num_vars)
 ! Depends on distribution_type with only option 1 currently implemented.
 ! Used to get size for creating storage to receive a list of the vars on a pe.
 
-integer             :: get_max_num_vars
-integer, intent(in) :: num_vars
+integer                 :: get_max_num_vars
+integer(i8), intent(in) :: num_vars
 !!!integer, intent(in) :: distribution_type
 
 get_max_num_vars = num_vars / num_pes + 1
@@ -1033,8 +1034,10 @@ subroutine get_var_list(num_vars, pe, var_list, pes_num_vars)
 ! var_list must be dimensioned large enough to hold all vars.
 ! Depends on distribution_type with only option 1 currently implemented.
 
-integer,   intent(in)     :: num_vars, pe
-integer,   intent(out)    :: var_list(:), pes_num_vars
+integer(i8),   intent(in)  :: num_vars
+integer,       intent(in)  :: pe
+integer(i8),   intent(out) :: var_list(:)
+integer,       intent(out) :: pes_num_vars
 !!!integer, intent(in) :: distribution_type
 
 integer :: num_per_pe_below, num_left_over, i
@@ -1103,12 +1106,15 @@ subroutine all_vars_to_all_copies(ens_handle, label)
 type (ensemble_type), intent(inout)        :: ens_handle
 character (len=*),    intent(in), optional :: label
 
-integer,  allocatable :: var_list(:), copy_list(:)
-real(r8), allocatable :: transfer_temp(:)
-integer               :: num_copies, num_vars, my_num_vars, my_num_copies, my_pe
-integer               :: max_num_vars, max_num_copies, num_copies_to_receive
-integer               :: sending_pe, recv_pe, k, sv, num_vars_to_send, copy
-integer               :: global_ens_index
+integer(i8), allocatable :: var_list(:)
+integer,     allocatable :: copy_list(:)
+real(r8),    allocatable :: transfer_temp(:)
+
+integer(i8) :: num_vars
+integer     :: num_copies, my_num_vars, my_num_copies, my_pe
+integer     :: max_num_vars, max_num_copies, num_copies_to_receive
+integer     :: sending_pe, recv_pe, k, sv, num_vars_to_send, copy
+integer     :: global_ens_index
 
 ! only output if there is a label
 if (present(label)) then
@@ -1276,12 +1282,15 @@ subroutine all_copies_to_all_vars(ens_handle, label)
 type (ensemble_type), intent(inout) :: ens_handle
 character (len=*),    intent(in), optional :: label
 
-integer,  allocatable :: var_list(:), copy_list(:)
-real(r8), allocatable :: transfer_temp(:)
-integer               :: num_copies, num_vars, my_num_vars, my_num_copies, my_pe
-integer               :: max_num_vars, max_num_copies, num_vars_to_receive
-integer               :: sending_pe, recv_pe, k, sv, copy, num_copies_to_send
-integer               :: global_ens_index
+integer(i8),  allocatable :: var_list(:)
+integer,      allocatable :: copy_list(:)
+real(r8),     allocatable :: transfer_temp(:)
+
+integer(i8) :: num_vars
+integer     :: num_copies, my_num_vars, my_num_copies, my_pe
+integer     :: max_num_vars, max_num_copies, num_vars_to_receive
+integer     :: sending_pe, recv_pe, k, sv, copy, num_copies_to_send
+integer     :: global_ens_index
 
 ! only output if there is a label
 if (present(label)) then

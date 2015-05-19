@@ -13,7 +13,7 @@ module distributed_state_mod
 !> \defgroup distrib_state distributed_state_mod
 !> @{
 use mpi_utilities_mod,  only : datasize, my_task_id
-use types_mod,          only : r8
+use types_mod,          only : r8, i8
 use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
 use window_mod
 
@@ -42,14 +42,14 @@ contains
 !> Assumes ensemble complete
 subroutine get_fwd(x, index, state_ens_handle)
 
-real(r8), intent(out)            :: x(num_rows) !> all copies of an element of the state vector
-integer, intent(in)              :: index !> index into state vector
+real(r8),            intent(out) :: x(num_rows) !> all copies of an element of the state vector
+integer(i8),         intent(in)  :: index !> index into state vector
 type(ensemble_type), intent(in)  :: state_ens_handle
 
-integer                          :: owner_of_state !> task who owns the state
-integer                          :: element_index !> local index of element
-integer(KIND=MPI_ADDRESS_KIND)   :: target_disp
-integer                          :: ierr
+integer                        :: owner_of_state !> task who owns the state
+integer                        :: element_index !> local index of element
+integer(KIND=MPI_ADDRESS_KIND) :: target_disp
+integer                        :: ierr
 
 call get_var_owner_index(index, owner_of_state, element_index) ! pe
 
@@ -72,14 +72,14 @@ end subroutine get_fwd
 !> Assumes ensemble complete
 subroutine get_mean(x, index, state_ens_handle)
 
-real(r8), intent(out)            :: x !> only grabing the mean
-integer, intent(in)              :: index !> index into state vector
+real(r8),            intent(out) :: x !> only grabing the mean
+integer(i8),         intent(in)  :: index !> index into state vector
 type(ensemble_type), intent(in)  :: state_ens_handle
 
-integer                          :: owner_of_state !> task who owns the state
-integer                          :: element_index !> local index of element
-integer(KIND=MPI_ADDRESS_KIND)   :: target_disp
-integer                          :: ierr
+integer                        :: owner_of_state !> task who owns the state
+integer                        :: element_index !> local index of element
+integer(KIND=MPI_ADDRESS_KIND) :: target_disp
+integer                        :: ierr
 
 call get_var_owner_index(index, owner_of_state, element_index) ! pe
 

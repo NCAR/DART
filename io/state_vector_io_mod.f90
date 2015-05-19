@@ -41,7 +41,7 @@ module state_vector_io_mod
 !> processors using <code> limit_procs </code>
 !> @{
 
-use types_mod,            only : r8, MISSING_R8
+use types_mod,            only : r8, i4, i8, MISSING_R8
 
 use mpi_utilities_mod,    only : task_count, send_to, receive_from, my_task_id, datasize
 
@@ -81,15 +81,18 @@ end interface
 
 private
 
-public :: state_vector_io_init, &
+public :: state_vector_io_init,       &
           initialize_arrays_for_read, &
-          netcdf_filename, get_state_variable_info, &
-          read_transpose, &
-          transpose_write, &
-          netcdf_filename_out, &
-          setup_read_write, &
-          turn_read_copy_on, turn_write_copy_on, &
-          turn_read_copies_off, turn_write_copy_off
+          netcdf_filename,            &
+          get_state_variable_info,    &
+          read_transpose,             &
+          transpose_write,            &
+          netcdf_filename_out,        &
+          setup_read_write,           &
+          turn_read_copy_on,          &
+          turn_write_copy_on,         &
+          turn_read_copies_off,       &
+          turn_write_copy_off
 
 integer :: ret !< netcdf return code
 integer :: ncfile !< netcdf input file identifier
@@ -1247,17 +1250,29 @@ integer :: xtype ! precision for netcdf file
 logical :: time_dimension_exists
 integer :: new_varid
 
+integer :: model_size_i4 ! for adding dimension to netcdf file
+
+character(len=256) :: msgstring
+
 ! load up global info about variables
 num_state_variables = 1
 num_domains = 1
 
-create_mode = NF90_CLOBBER
+create_mode = NF90_CLOBBER+NF90_64BIT_OFFSET
 ret = nf90_create(filename, create_mode, ncfile_out)
 call nc_check(ret, 'fresh_netcdf_file', 'creating')
 
 ret = nf90_def_dim(ncfile_out, 'Time', NF90_UNLIMITED, time_dimid) !> @todo Case sensitive?
 call nc_check(ret, 'fresh_netcdf_file', 'creating time as the unlimited dimension')
-ret = nf90_def_dim(ncfile_out, 'state', get_model_size(), state_dimid)
+
+model_size_i4 = int(get_model_size(),i4) 
+if (model_size_i4 /= get_model_size()) then
+   write(msgstring,*)'model_size =  ', get_model_size(), ' is too big to write ', &
+             ' state vector as a netcdf file.'
+   call error_handler(E_MSG,'fresh_netcdf_file', msgstring, source, revision, revdate)
+endif
+
+ret = nf90_def_dim(ncfile_out, 'state', model_size_i4, state_dimid)
 call nc_check(ret, 'fresh_netcdf_file', 'creating state dimension')
 
 ! construct what would have been created during initialize_arrays_for_read

@@ -9,34 +9,34 @@ module model_mod
 ! This is the interface between the POP ocean model and DART.
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r4, r8, SECPERDAY, MISSING_R8, rad2deg, PI
-use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
-                             print_time, print_date,                           &
-                             operator(*),  operator(+), operator(-),           &
-                             operator(>),  operator(<), operator(/),           &
-                             operator(/=), operator(<=)
-use     location_mod, only : location_type, get_dist, get_close_maxdist_init,  &
-                             get_close_obs_init, set_location,                 &
-                             VERTISHEIGHT, get_location, vert_is_height,       &
-                             vert_is_level, vert_is_surface,                   &
-                             loc_get_close_obs => get_close_obs, get_close_type
-use    utilities_mod, only : register_module, error_handler,                   &
-                             E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
-                             nc_check, do_output,                              &
-                             find_namelist_in_file, check_namelist_read,       &
-                             file_exist, find_textfile_dims, file_to_text
-use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_DRY_LAND,   &
-                             KIND_U_CURRENT_COMPONENT,                         &
-                             KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT, &
-                             KIND_SEA_SURFACE_PRESSURE, KIND_POTENTIAL_TEMPERATURE
-use mpi_utilities_mod, only: my_task_id
-use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
-use      dart_pop_mod, only: set_model_time_step,                              &
-                             get_horiz_grid_dims, get_vert_grid_dim,           &
-                             read_horiz_grid, read_topography, read_vert_grid, &
-                             get_pop_restart_filename
+use        types_mod,   only : r4, r8, i4, i8, SECPERDAY, MISSING_R8, rad2deg, PI
+use time_manager_mod,   only : time_type, set_time, set_date, get_date, get_time,&
+                               print_time, print_date,                           &
+                               operator(*),  operator(+), operator(-),           &
+                               operator(>),  operator(<), operator(/),           &
+                               operator(/=), operator(<=)
+use     location_mod,   only : location_type, get_dist, get_close_maxdist_init,  &
+                               get_close_obs_init, set_location,                 &
+                               VERTISHEIGHT, get_location, vert_is_height,       &
+                               vert_is_level, vert_is_surface,                   &
+                               loc_get_close_obs => get_close_obs, get_close_type
+use    utilities_mod,   only : register_module, error_handler,                   &
+                               E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
+                               nc_check, do_output,                              &
+                               find_namelist_in_file, check_namelist_read,       &
+                               file_exist, find_textfile_dims, file_to_text
+use     obs_kind_mod,   only : KIND_TEMPERATURE, KIND_SALINITY, KIND_DRY_LAND,   &
+                               KIND_U_CURRENT_COMPONENT,KIND_V_CURRENT_COMPONENT,&
+                               KIND_SEA_SURFACE_HEIGHT, KIND_SEA_SURFACE_PRESSURE,&
+                               KIND_POTENTIAL_TEMPERATURE
+use mpi_utilities_mod,  only : my_task_id
+use    random_seq_mod,  only : random_seq_type, init_random_seq, random_gaussian
+use      dart_pop_mod,  only : set_model_time_step,                              &
+                               get_horiz_grid_dims, get_vert_grid_dim,           &
+                               read_horiz_grid, read_topography, read_vert_grid, &
+                               get_pop_restart_filename
 
-use data_structure_mod, only : ensemble_type, copies_in_window 
+use data_structure_mod, only : ensemble_type, copies_in_window
 
 use distributed_state_mod
 
@@ -151,7 +151,7 @@ integer, parameter :: U_index     = 3
 integer, parameter :: V_index     = 4
 integer, parameter :: PSURF_index = 5
 
-integer :: start_index(nfields)
+integer(i8) :: start_index(nfields)
 
 ! Grid parameters - the values will be read from a
 ! standard POP namelist and filled in here.
@@ -179,7 +179,7 @@ real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 integer         :: timestepcount = 0
 type(time_type) :: model_time, model_timestep
 
-integer :: model_size    ! the state vector length
+integer(i8) :: model_size    ! the state vector length
 
 
 INTERFACE vector_to_prog_var
@@ -256,6 +256,8 @@ subroutine static_init_model()
 
 integer :: iunit, io
 integer :: ss, dd
+integer(i4) :: model_size_i4
+integer(i8) :: kmu_sum
 
 ! The Plan:
 !
@@ -321,6 +323,8 @@ call read_horiz_grid(Nx, Ny, ULAT, ULON, TLAT, TLON)
 call read_topography(Nx, Ny,  KMT,  KMU)
 call read_vert_grid( Nz, ZC, ZG)
 
+kmu_sum = sum(kmu)
+
 if (debug > 2) call write_grid_netcdf() ! DEBUG only
 if (debug > 2) call write_grid_interptest() ! DEBUG only
 
@@ -345,8 +349,8 @@ if (do_output()) write(logfileunit, *) 'Using grid : Nx, Ny, Nz = ', &
                                                      Nx, Ny, Nz
 if (do_output()) write(     *     , *) 'Using grid : Nx, Ny, Nz = ', &
                                                      Nx, Ny, Nz
-
-model_size = (n3dfields * (Nx * Ny * Nz)) + (n2dfields * (Nx * Ny))
+! must convert model_size to 64 bit integer for large models
+model_size = int(n3dfields * (Nx * Ny * Nz),i8) + int(n2dfields * (Nx * Ny),i8)
 if (do_output()) write(*,*) 'model_size = ', model_size
 
 ! initialize the pressure array - pressure in bars
@@ -416,7 +420,7 @@ allocate(treg_list_lat(num_reg_x, num_reg_y, max_reg_list_num))
 ! if you wanted to assimilate only in regions where the water depth is
 ! deeper than some threshold, set this index to N and only quads where
 ! all the level numbers are N+1 or deeper will be used.
-surf_index = 0
+surf_index = 1
 
 ! Begin by finding the quad that contains the pole for the dipole t_grid. 
 ! To do this locate the u quad with the pole on its right boundary. This is on
@@ -755,7 +759,7 @@ end subroutine adv_1step
 !------------------------------------------------------------------
 
 function get_model_size()
- integer :: get_model_size
+ integer(i8) :: get_model_size
 
 ! Returns the size of the model as an integer. Required for all
 ! applications.
@@ -1139,12 +1143,14 @@ end subroutine lon_lat_interpolate
 !------------------------------------------------------------
 
 function get_val(lon_index, lat_index, nlon, state_ens_handle, offset, ens_size, var_type, height, masked)
- integer,     intent(in) :: lon_index, lat_index, nlon, var_type, height
- type(ensemble_type), intent(in) :: state_ens_handle
- integer,             intent(in) :: offset
- integer,             intent(in) :: ens_size
- logical,    intent(out) :: masked
- real(r8)                :: get_val(ens_size)
+ integer,             intent(in)  :: lon_index, lat_index, nlon, var_type, height
+ type(ensemble_type), intent(in)  :: state_ens_handle
+ integer,             intent(in)  :: offset
+ integer,             intent(in)  :: ens_size
+ logical,             intent(out) :: masked
+
+ real(r8)    :: get_val(ens_size)
+ integer(i8) :: state_index
 
 ! Returns the value from a single level array given the lat and lon indices
 ! 'masked' returns true if this is NOT a valid grid location (e.g. land, or
@@ -1159,10 +1165,13 @@ if(is_dry_land(var_type, lon_index, lat_index, height)) then
    return
 endif
 
+! state index must be 8byte integer
+state_index = int(lat_index - 1,i8)*int(nlon,i8) + int(lon_index,i8) + int(offset-1,i8)
+
 ! Layout has lons varying most rapidly
 !get_val = x((lat_index - 1) * nlon + lon_index)
 ! The x above is only a horizontal slice, not the whole state.   HK WHY -1?
-call get_state(get_val, ((lat_index - 1) * nlon + lon_index)+offset-1, state_ens_handle)
+call get_state(get_val, state_index, state_ens_handle)
 
 ! this is a valid ocean water cell, not land or below ocean floor
 masked = .false.
@@ -1728,7 +1737,7 @@ end function get_model_time_step
 
 subroutine get_state_meta_data_distrib(state_ens_handle, index_in, location, var_type)
  type(ensemble_type), intent(in)  :: state_ens_handle
- integer,             intent(in)  :: index_in
+ integer(i8),         intent(in)  :: index_in
  type(location_type), intent(out) :: location
  integer,             intent(out), optional :: var_type
 
@@ -1774,9 +1783,9 @@ end subroutine get_state_meta_data_distrib
 !------------------------------------------------------------------
 
 subroutine get_state_indices(index_in, lat_index, lon_index, depth_index, var_type)
- integer, intent(in)  :: index_in
- integer, intent(out) :: lat_index, lon_index, depth_index
- integer, intent(out) :: var_type
+ integer(i8), intent(in)  :: index_in
+ integer,     intent(out) :: lat_index, lon_index, depth_index
+ integer,     intent(out) :: var_type
 
 ! Given an integer index into the state vector structure, returns the
 ! associated array indices for lat, lon, and depth, as well as the type.
@@ -1805,8 +1814,8 @@ end subroutine get_state_indices
 !------------------------------------------------------------------
 
 subroutine get_state_kind(index_in, var_type, startind, offset)
- integer, intent(in)  :: index_in
- integer, intent(out) :: var_type, startind, offset
+ integer(i8), intent(in)  :: index_in
+ integer,     intent(out) :: var_type, startind, offset
 
 ! Given an integer index into the state vector structure, returns the kind,
 ! and both the starting offset for this kind, as well as the offset into
@@ -1845,8 +1854,8 @@ end subroutine get_state_kind
 !------------------------------------------------------------------
 
 subroutine get_state_kind_inc_dry(index_in, var_type)
- integer, intent(in)  :: index_in
- integer, intent(out) :: var_type
+ integer(i8), intent(in)  :: index_in
+ integer,     intent(out) :: var_type
 
 ! Given an integer index into the state vector structure, returns the
 ! type, taking into account the ocean bottom and dry land.
@@ -1958,8 +1967,10 @@ character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=NF90_MAX_NAME) :: str1
 
-integer :: i
+integer     :: i
 character(len=128)  :: filename
+
+integer  :: model_size_i4 ! this is for checking model_size
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2005,7 +2016,19 @@ endif
 !-------------------------------------------------------------------------------
 ! Define the model size / state variable dimension / whatever ...
 !-------------------------------------------------------------------------------
-call nc_check(nf90_def_dim(ncid=ncFileID, name='StateVariable', len=model_size, &
+! JH -- nf90_def_dim is expecting a lenght that is i4.  Here we type cast size and
+!    check if the values are the same.  In the case where model_size is larger
+!    than the largest i4 integer we error out.
+!-------------------------------------------------------------------------------
+
+model_size_i4 = int(model_size,i4) 
+if (model_size_i4 /= model_size) then
+   write(msgstring,*)'model_size =  ', model_size, ' is too big to write ', &
+             ' diagnostic files.'
+   call error_handler(E_ERR,'nc_write_model_atts', msgstring, source, revision, revdate)
+endif
+
+call nc_check(nf90_def_dim(ncid=ncFileID, name='StateVariable', len=model_size_i4, &
         dimid = StateVarDimID),'nc_write_model_atts', 'state def_dim '//trim(filename))
 
 !-------------------------------------------------------------------------------
@@ -2077,7 +2100,7 @@ if ( output_state_vector ) then
                  'nc_write_model_atts','statevariable long_name '//trim(filename))
    call nc_check(nf90_put_att(ncFileID, StateVarVarID, 'units','indexical'), &
                  'nc_write_model_atts', 'statevariable units '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID,StateVarVarID,'valid_range',(/ 1,model_size /)),&
+   call nc_check(nf90_put_att(ncFileID,StateVarVarID,'valid_range',(/ 1_i8,model_size /)),&
                  'nc_write_model_atts', 'statevariable valid_range '//trim(filename))
 
    ! Define the actual (3D) state vector, which gets filled as time goes on ... 
@@ -2485,7 +2508,9 @@ subroutine pert_model_state(state, pert_state, interf_provided)
 ! should be returned as .true. if the model wants to do its own
 ! perturbing of states.
 
-integer :: i, var_type
+integer     :: var_type
+integer(i8) :: i 
+
 logical, save :: random_seq_init = .false.
 
 if ( .not. module_initialized ) call static_init_model
@@ -2532,7 +2557,8 @@ subroutine pert_model_copies(state_ens_handle, pert_amp, interf_provided)
 ! perturbing of states.
 
 integer     :: var_type
-integer     :: j,i, dart_index
+integer     :: j,i 
+integer(i8) :: dart_index
 
 logical, save :: random_seq_init = .false.
 
@@ -3424,11 +3450,12 @@ end subroutine compute_temperature
 subroutine do_interp(state_ens_handle, base_offset, hgt_bot, hgt_top, hgt_fract, &
                      llon, llat, obs_type, expected_obs, istatus)
  type(ensemble_type), intent(in) :: state_ens_handle
- integer,   intent(in) :: base_offset, hgt_bot, hgt_top
- real(r8),  intent(in) :: hgt_fract, llon, llat
- integer,   intent(in) :: obs_type
- real(r8), intent(out) :: expected_obs(:)
- integer,  intent(out) :: istatus(:)
+ integer(i8), intent(in) :: base_offset
+ integer,     intent(in) :: hgt_bot, hgt_top
+ real(r8),    intent(in) :: hgt_fract, llon, llat
+ integer,     intent(in) :: obs_type
+ real(r8),   intent(out) :: expected_obs(:)
+ integer,    intent(out) :: istatus(:)
  
 ! do a 2d horizontal interpolation for the value at the bottom level, 
 ! then again for the top level, then do a linear interpolation in the 
@@ -3655,7 +3682,7 @@ subroutine variables_domains(num_variables_in_state, num_doms)
 integer, intent(out) :: num_variables_in_state
 integer, intent(out) :: num_doms !< number of domains
 
-num_variables_in_state = 5 !> @todo always 5 variables, 1 domain?
+num_variables_in_state = nfields
 num_doms = 1
 
 end subroutine variables_domains
@@ -3664,14 +3691,15 @@ end subroutine variables_domains
 !> pass variable list to filter
 function fill_variable_list(num_variables_in_state)
 
-integer            :: num_variables_in_state
-character(len=256) :: fill_variable_list(num_variables_in_state)
+integer, intent(in) :: num_variables_in_state
+character(len=256)  :: fill_variable_list(num_variables_in_state)
 
-fill_variable_list(1) = 'SALT_CUR'
-fill_variable_list(2) = 'TEMP_CUR'
-fill_variable_list(3) = 'UVEL_CUR'
-fill_variable_list(4) = 'VVEL_CUR'
-fill_variable_list(5) = 'PSURF_CUR'
+! index variable
+integer            :: ivar
+
+do ivar=1,nfields
+   fill_variable_list(ivar) =  trim(progvarnames(ivar))//'_CUR'
+enddo
 
 end function fill_variable_list
 
@@ -3682,7 +3710,7 @@ function info_file_name(domain)
 integer, intent(in) :: domain
 character(len=256)  :: info_file_name
 
-write(info_file_name, '(A)') 'pop.r.nc'
+call get_pop_restart_filename(info_file_name)
 
 end function info_file_name
 
@@ -3695,7 +3723,10 @@ integer,            intent(in) :: domain
 integer,            intent(in) :: copy
 character(len=1024)            :: construct_file_name_in
 
-write(construct_file_name_in, '(A, i4.4)') TRIM(stub), copy
+! stub is found in input.nml io_filename_nml
+! restart files typically are of the form
+! pop.r0001.nc
+write(construct_file_name_in, '(A, i4.4, A)') trim(stub), copy, ".nc"
 
 
 end function construct_file_name_in
