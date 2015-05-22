@@ -257,7 +257,6 @@ subroutine static_init_model()
 integer :: iunit, io
 integer :: ss, dd
 integer(i4) :: model_size_i4
-integer(i8) :: kmu_sum
 
 ! The Plan:
 !
@@ -322,8 +321,6 @@ allocate(     ZC(Nz),      ZG(Nz))
 call read_horiz_grid(Nx, Ny, ULAT, ULON, TLAT, TLON)
 call read_topography(Nx, Ny,  KMT,  KMU)
 call read_vert_grid( Nz, ZC, ZG)
-
-kmu_sum = sum(kmu)
 
 if (debug > 2) call write_grid_netcdf() ! DEBUG only
 if (debug > 2) call write_grid_interptest() ! DEBUG only
@@ -814,7 +811,8 @@ subroutine model_interpolate_distrib(state_ens_handle, location, obs_type, istat
 
 ! Local storage
 real(r8)       :: loc_array(3), llon, llat, lheight
-integer        :: base_offset, offset, ind
+integer(i8)    :: base_offset
+integer        :: offset, ind
 integer        :: hgt_bot, hgt_top
 real(r8)       :: hgt_fract
 real(r8)       :: top_val, bot_val
@@ -957,7 +955,7 @@ end subroutine model_interpolate_distrib
 !> Is height ens_size? Should quad status be ens_size?
 subroutine lon_lat_interpolate(state_ens_handle, offset, lon, lat, var_type, height, expected_obs, istatus)
  type(ensemble_type), intent(in) :: state_ens_handle
- integer,  intent(in) :: offset ! Not sure if this is the best way to do this
+ integer(i8),  intent(in) :: offset ! Not sure if this is the best way to do this
  real(r8), intent(in) :: lon, lat
  integer,  intent(in) :: var_type, height
  real(r8), intent(out) :: expected_obs(:)
@@ -1145,7 +1143,7 @@ end subroutine lon_lat_interpolate
 function get_val(lon_index, lat_index, nlon, state_ens_handle, offset, ens_size, var_type, height, masked)
  integer,             intent(in)  :: lon_index, lat_index, nlon, var_type, height
  type(ensemble_type), intent(in)  :: state_ens_handle
- integer,             intent(in)  :: offset
+ integer(i8),         intent(in)  :: offset
  integer,             intent(in)  :: ens_size
  logical,             intent(out) :: masked
 
@@ -3461,7 +3459,7 @@ subroutine do_interp(state_ens_handle, base_offset, hgt_bot, hgt_top, hgt_fract,
 ! then again for the top level, then do a linear interpolation in the 
 ! vertical to get the final value.
 
-integer  :: offset
+integer(i8) :: offset
 real(r8), allocatable :: bot_val(:), top_val(:)
 integer  :: ens_size, e
 integer, allocatable  :: temp_status(:)
