@@ -112,7 +112,7 @@ module model_mod
 use netcdf
 use typeSizes
 
-use types_mod,         only : r8, MISSING_I, MISSING_R8, gravity_const => gravity, &
+use types_mod,         only : r8, i8, MISSING_I, MISSING_R8, gravity_const => gravity, &
                               PI, DEG2RAD, RAD2DEG, obstypelength, earth_radius
 ! FIXME; these constants should be consistent with CESM, not necessarily with DART.
 !          add after verification against Hui's tests;  gas_constant_v,gas_constant,ps0,PI,DEG2RAD
@@ -3077,7 +3077,7 @@ subroutine get_state_meta_data_distrib(state_ens_handle, index_in, location, var
 ! See order_state_fields for the KIND_s (and corresponding model_mod TYPE_s).
 
 type(ensemble_type), intent(in)    :: state_ens_handle
-integer,             intent(in)    :: index_in
+integer(i8),         intent(in)    :: index_in
 type(location_type), intent(inout) :: location
 integer, optional,   intent(out)   :: var_kind
 
@@ -3789,8 +3789,8 @@ recursive subroutine interp_cubed_sphere(st_vec, obs_loc, obs_kind, interp_val, 
 real(r8),            intent(in)    :: st_vec(:)
 type(location_type), intent(in)    :: obs_loc
 integer,             intent(in)    :: obs_kind
-real(r8),            intent(out)   :: interp_val
-integer,             intent(out)   :: istatus
+real(r8),            intent(out)   :: interp_val ! JH Note that istatus is not given a value
+integer,             intent(out)   :: istatus    ! JH Note that istatus is not given a value
 integer,             intent(inout) :: cell_corners(4)   ! node numbers of the corners of the enclosing cell
 real(r8),            intent(inout) :: l
 real(r8),            intent(inout) :: m
@@ -4966,7 +4966,8 @@ integer,  allocatable :: bot_lev(:), top_lev(:)
 real(r8), allocatable :: ps_local(:, :)
 real(r8), allocatable :: p_col_distrib(:, :)
 integer,  allocatable :: vstatus(:), track_status(:)
-integer               :: i, num_levs ! HK vstaus?
+integer               :: num_levs ! HK vstaus?
+integer(i8)           :: i
 integer               :: fld_index
 integer               :: ens_size, e
 
@@ -5132,7 +5133,8 @@ real(r8), intent(out) :: val
 integer,  intent(out) :: istatus
 
 real(r8)              :: bot_val, top_val, p_surf, frac, ps_local(2)
-integer               :: top_lev, bot_lev, i, vstatus, num_levs
+integer               :: top_lev, bot_lev, vstatus, num_levs
+integer(i8)           :: i
 integer               :: fld_index
 
 ! No errors to start with
@@ -5255,7 +5257,8 @@ integer,             intent(in)  :: obs_kind
 real(r8),            intent(out) :: val(:)
 integer,             intent(out) :: istatus(:)
 
-integer  :: i, num_levs, fld_index, ind
+integer     :: i, num_levs, fld_index
+integer(i8) ::  ind
 real(r8), allocatable :: bot_val(:), top_val(:), p_surf(:), frac(:)
 real(r8), allocatable :: single_bot_val(:), single_top_val(:)
 integer,  allocatable :: bot_lev(:), top_lev(:)
@@ -5455,10 +5458,11 @@ integer,             intent(in)  :: obs_kind
 real(r8),            intent(out) :: val
 integer,             intent(out) :: istatus
 
-integer  :: top_lev, bot_lev, i, vstatus, num_levs, fld_index, ind
-real(r8) :: bot_val, top_val, frac
-real(r8) :: p_surf, ps_local(2)
-logical  :: stagr_lon, stagr_lat
+integer     :: top_lev, bot_lev, i, vstatus, num_levs, fld_index
+integer(i8) :: ind
+real(r8)    :: bot_val, top_val, frac
+real(r8)    :: p_surf, ps_local(2)
+logical     :: stagr_lon, stagr_lat
 
 ! No errors to start with
 istatus   = 1
@@ -5589,7 +5593,8 @@ integer, intent(in)   :: level
 integer, intent(in)   :: obs_kind
 integer, intent(out)  :: istatus(:)
 
-integer :: indx, field_type
+integer(i8) :: indx
+integer     :: field_type
 
 ! Start with error condition.
 istatus = 1
@@ -5619,7 +5624,8 @@ integer, intent(in)   :: level
 integer, intent(in)   :: obs_kind
 integer, intent(out)  :: istatus
 
-integer :: indx, field_type
+integer(i8) :: indx
+integer     :: field_type
 
 ! Start with error condition.
 istatus = 1
@@ -8096,9 +8102,9 @@ type(ensemble_type), intent(in)  :: state_ens_handle
 integer,             intent(in)  :: lon_ind
 integer,             intent(in)  :: lat_ind
 
-real(r8) :: get_surface_pressure_fwd(ens_size) !> @todo this ens_size needs to match
-integer  :: ifld !< pressure field index
-integer  :: ind !< index into state vector
+real(r8)    :: get_surface_pressure_fwd(ens_size) !> @todo this ens_size needs to match
+integer     :: ifld !< pressure field index
+integer(i8) :: ind !< index into state vector
 
 ifld = find_name('PS      ',cflds)
 
@@ -8119,9 +8125,9 @@ type(ensemble_type), intent(in) :: state_ens_handle
 integer,             intent(in) :: lon_ind
 integer,             intent(in) :: lat_ind
 
-real(r8) :: get_surface_pressure_mean
-integer  :: ifld !< pressure field index
-integer  :: ind !< index into state vector
+real(r8)    :: get_surface_pressure_mean
+integer     :: ifld !< pressure field index
+integer(i8) :: ind !< index into state vector
 
 ifld = find_name('PS      ',cflds)
 

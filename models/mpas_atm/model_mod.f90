@@ -17,7 +17,7 @@ module model_mod
 
 ! Routines in other modules that are used here.
 
-use        types_mod, only : r4, r8, digits12, SECPERDAY, MISSING_R8,          &
+use        types_mod, only : r4, r8, i8, digits12, SECPERDAY, MISSING_R8,          &
                              rad2deg, deg2rad, PI, MISSING_I
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
                              print_time, print_date, set_calendar_type,        &
@@ -815,7 +815,7 @@ subroutine get_state_meta_data_distrib(state_ens_handle, index_in, location, var
 
 ! passed variables
 type(ensemble_type), intent(in)  :: state_ens_handle
-integer,             intent(in)  :: index_in
+integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type
 
@@ -4358,9 +4358,9 @@ subroutine get_index_range_int(dartkind,index1,indexN)
 ! Determine where a particular DART kind (integer) exists in the
 ! DART state vector.
 
-integer,           intent(in)  :: dartkind
-integer,           intent(out) :: index1
-integer, optional, intent(out) :: indexN
+integer    ,           intent(in)  :: dartkind
+integer(i8),           intent(out) :: index1
+integer(i8), optional, intent(out) :: indexN
 
 integer :: i
 character(len=paramname_length) :: string
@@ -4573,7 +4573,7 @@ weights = 0.0_r8
 ! first off, check if ob is identity ob.  if so get_state_meta_data() will
 ! have returned location information already in the requested vertical type.
 if (obs_kind < 0) then
-   call get_state_meta_data_distrib(state_ens_handle, obs_kind,location(1)) ! will be the same across the ensemble
+   call get_state_meta_data_distrib(state_ens_handle, int(obs_kind,i8),location(1)) ! will be the same across the ensemble
    location(:) = location(1)
    istatus(:) = 0
    return
@@ -4860,7 +4860,7 @@ weights = 0.0_r8
 ! first off, check if ob is identity ob.  if so get_state_meta_data() will
 ! have returned location information already in the requested vertical type.
 if (obs_kind < 0) then
-   call get_state_meta_data_distrib(state_ens_handle, obs_kind,location_single(1)) ! will be the same across the ensemble
+   call get_state_meta_data_distrib(state_ens_handle, int(obs_kind,i8),location_single(1)) ! will be the same across the ensemble
    location = location_single(1)
    ierr = 0
    return
@@ -5219,9 +5219,9 @@ integer,             intent(out) :: ier(:)
 real(r8) :: lat, lon, vert, llv(3)
 real(r8), allocatable :: vert_array(:)
 integer, allocatable  :: track_ier(:)
-integer  :: verttype, i
-integer  :: pt_base_offset, density_base_offset, qv_base_offset
-integer  :: ens_size, e
+integer(i8) :: pt_base_offset, density_base_offset, qv_base_offset
+integer     :: verttype, i
+integer     :: ens_size, e
 
 
 ! the plan is to take in: whether this var is on cell centers or edges,
@@ -5393,13 +5393,13 @@ subroutine find_pressure_bounds(state_ens_handle, p, cellid, nbounds, &
 ! and water vapor grids.
 
 type(ensemble_type), intent(in) :: state_ens_handle
-real(r8),  intent(in)  :: p(:) ! ens_size
-integer,   intent(in)  :: cellid
-integer,   intent(in)  :: nbounds ! number of vertical levels?
-integer,   intent(in)  :: pt_base_offset, density_base_offset, qv_base_offset
-integer,   intent(out) :: lower(:), upper(:) ! ens_size
-real(r8),  intent(out) :: fract(:) ! ens_size
-integer,   intent(out) :: ier(:) ! ens_size
+real(r8),    intent(in)  :: p(:) ! ens_size
+integer,     intent(in)  :: cellid
+integer,     intent(in)  :: nbounds ! number of vertical levels?
+integer(i8), intent(in)  :: pt_base_offset, density_base_offset, qv_base_offset
+integer,     intent(out) :: lower(:), upper(:) ! ens_size
+real(r8),    intent(out) :: fract(:) ! ens_size
+integer,     intent(out) :: ier(:) ! ens_size
 
 integer  :: i, j, ier2
 real(r8) :: pr
@@ -5497,7 +5497,9 @@ do i = 2, nbounds ! You have already done nbounds?
             ! shouldn't happen but with roundoff i suppose could be one
             ! least-significant-bit out of range. so don't print unless some
             ! level of debugging is enabled.
-            if ((fract < 0.0_r8 .or. fract > 1.0_r8) .and. debug > 0) then
+            ! JH : Note fract needs to be a scalar not a vector
+            ! if ((fract < 0.0_r8 .or. fract > 1.0_r8) .and. debug > 0) then
+            if ((fract(e) < 0.0_r8 .or. fract(e) > 1.0_r8) .and. debug > 0) then
                print '(A,3F26.18,2I4,F22.18)', &
                "find_pressure_bounds: bad fract!  p_in, pr(i-1), pr(i), lower, upper, fract = ", &
                p, pressure(i-1, e), pressure(i, e), lower, upper, fract
@@ -5531,12 +5533,12 @@ subroutine get_interp_pressure(state_ens_handle, pt_offset, density_offset, qv_o
 ! Finds the value of pressure at a given point at model level lev
 
 type(ensemble_type), intent(in) :: state_ens_handle
-integer,  intent(in)  :: pt_offset, density_offset, qv_offset
-integer,  intent(in)  :: cellid
-integer,  intent(in)  :: lev, nlevs
-real(r8), intent(out) :: pressure(:)
-integer,  intent(out) :: ier(:)
-logical,  intent(in), optional :: debug
+integer(i8),  intent(in)  :: pt_offset, density_offset, qv_offset
+integer,      intent(in)  :: cellid
+integer,      intent(in)  :: lev, nlevs
+real(r8),     intent(out) :: pressure(:)
+integer,      intent(out) :: ier(:)
+logical,      intent(in), optional :: debug
 
 integer  :: offset
 !real(r8) :: pt, density, qv, tk
@@ -5550,13 +5552,13 @@ allocate(pt(ens_size), density(ens_size), qv(ens_size), tk(ens_size))
 ! Get the values of potential temperature, density, and vapor
 offset = (cellid - 1) * nlevs + lev - 1
 if (ens_size == 1) then
-   call get_state(pt(1), pt_offset + offset, state_ens_handle)!pt = x(pt_offset + offset)
+   call get_state(pt(1),      pt_offset      + offset, state_ens_handle)!pt = x(pt_offset + offset)
    call get_state(density(1), density_offset + offset, state_ens_handle)!density = x(density_offset + offset)
-   call get_state(qv(1), qv_offset + offset, state_ens_handle)!qv = x(qv_offset + offset)
+   call get_state(qv(1),      qv_offset      + offset, state_ens_handle)!qv = x(qv_offset + offset)
 else
-   call get_state(pt, pt_offset + offset, state_ens_handle)!pt = x(pt_offset + offset)
-   call get_state(density, density_offset + offset, state_ens_handle)!density = x(density_offset + offset)
-   call get_state(qv, qv_offset + offset, state_ens_handle)!qv = x(qv_offset + offset)
+   call get_state(pt,         pt_offset      + offset, state_ens_handle)!pt = x(pt_offset + offset)
+   call get_state(density,    density_offset + offset, state_ens_handle)!density = x(density_offset + offset)
+   call get_state(qv,         qv_offset      + offset, state_ens_handle)!qv = x(qv_offset + offset)
 endif
 
       ! Default is no error
@@ -5700,7 +5702,8 @@ integer,             intent(out) :: ier(:)
 !real(r8) :: fract(3), lowval(3), uppval(3), fdata(3), weights(3)
 real(r8), allocatable :: fract(:,:), lowval(:,:), uppval(:,:), fdata(:,:)!, weights(:,:)
 real(r8) :: weights(3) ! ens_size or not?
-integer  :: c(3), nvert, index1, k, i, nc
+integer  :: c(3), nvert, k, i, nc
+integer(i8) :: index1
 integer, allocatable :: lower(:, :), upper(:, :)!, lower(3), upper(3)
 !real(r8), allocatable :: x_1(:)
 integer :: ens_size, e
@@ -5722,7 +5725,7 @@ dval = 0.0_r8
 do k=1, n
    ! get the starting index in the state vector
    index1 = progvar(ival(k))%index1
-   nvert = progvar(ival(k))%numvertical
+   nvert  = progvar(ival(k))%numvertical
 
    ! go around triangle and interpolate in the vertical
    ! t1, t2, t3 are the xyz of the cell centers
@@ -5945,18 +5948,19 @@ integer,             intent(out) :: ier(:) ! ens_size
 ! max edges we currently use is ~50, but overestimate for now
 integer, parameter :: listsize = 200
 logical, parameter :: on_a_sphere = .true.
-integer  :: nedges, edgelist(listsize), i, j, nvert
-real(r8) :: xdata(listsize), ydata(listsize), zdata(listsize)
-real(r8) :: edgenormals(3, listsize)
-real(r8) :: veldata(listsize, ens_size)
-real(r8) :: xreconstruct, yreconstruct, zreconstruct
-real(r8) :: ureconstructx, ureconstructy, ureconstructz
-real(r8) :: ureconstructzonal, ureconstructmeridional
-real(r8) :: datatangentplane(3,2)
-real(r8) :: coeffs_reconstruct(3,listsize)
-integer  :: index1, progindex, cellid, vertexid
-real(r8) :: lat, lon, vert, llv(3), fract(listsize, ens_size), lowval(ens_size), uppval(ens_size)
-integer  :: verttype, lower(listsize, ens_size), upper(listsize, ens_size), ncells, celllist(listsize)
+integer     :: nedges, edgelist(listsize), i, j, nvert
+real(r8)    :: xdata(listsize), ydata(listsize), zdata(listsize)
+real(r8)    :: edgenormals(3, listsize)
+real(r8)    :: veldata(listsize, ens_size)
+real(r8)    :: xreconstruct, yreconstruct, zreconstruct
+real(r8)    :: ureconstructx, ureconstructy, ureconstructz
+real(r8)    :: ureconstructzonal, ureconstructmeridional
+real(r8)    :: datatangentplane(3,2)
+real(r8)    :: coeffs_reconstruct(3,listsize)
+integer(i8) :: upindx, lowindx
+integer     :: index1, progindex, cellid, vertexid
+real(r8)    :: lat, lon, vert, llv(3), fract(listsize, ens_size), lowval(ens_size), uppval(ens_size)
+integer     :: verttype, lower(listsize, ens_size), upper(listsize, ens_size), ncells, celllist(listsize)
 
 integer :: e ! loop index
 ! FIXME: make this cache the last value and if the location is
@@ -6034,12 +6038,14 @@ do i = 1, nedges
       edgenormals(j, i) = edgeNormalVectors(j, edgelist(i))
    enddo
 
-
    !> @todo lower (upper) could be different levels in pressure
    !lowval = x(index1 + (edgelist(i)-1) * nvert + lower(i)-1)
-   call get_state(lowval, index1 + (edgelist(i)-1) * nvert + lower(i, 1)-1, state_ens_handle)
+   lowindx = int(index1,i8) + int((edgelist(i)-1) * nvert,i8) + int(lower(i,1)-1,i8)
+   call get_state(lowval, lowindx, state_ens_handle)
+
    !uppval = x(index1 + (edgelist(i)-1) * nvert + upper(i)-1)
-   call get_state(uppval, index1 + (edgelist(i)-1) * nvert + upper(i, 1)-1, state_ens_handle)
+   upindx = int(index1,i8) + int((edgelist(i)-1) * nvert,i8) + int(upper(i,1)-1,i8)
+   call get_state(uppval, upindx, state_ens_handle)
 
    veldata(i, :) = lowval*(1.0_r8 - fract(i, :)) + uppval*fract(i, :)
 

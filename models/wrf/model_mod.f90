@@ -36,15 +36,15 @@ module model_mod
 !---------------- m o d u l e   i n f o r m a t i o n ------------------
 !-----------------------------------------------------------------------
 
-use         types_mod, only : r8, deg2rad, missing_r8, ps0, earth_radius, &
-                              gas_constant, gas_constant_v, gravity, pi,  &
+use         types_mod, only : r8, i8, deg2rad, missing_r8, ps0, earth_radius, &
+                              gas_constant, gas_constant_v, gravity, pi,      &
                               digits12
 
 use  time_manager_mod, only : time_type, set_time, set_calendar_type, GREGORIAN,&
                               set_date
 
 use      location_mod, only : location_type, get_location, set_location, &
-                              horiz_dist_only, &
+                              horiz_dist_only,                                  &
                               LocationDims, LocationName, LocationLName, &
                               query_location, vert_is_undef, vert_is_surface, &
                               vert_is_level, vert_is_pressure, vert_is_height, &
@@ -125,27 +125,30 @@ private
 !   that the last four are simply "stubs" since WRF currently requires use
 !   of system called shell scripts to advance the model.
 
-public ::  get_model_size,                    &
-           get_state_meta_data_distrib,       &
-           get_model_time_step,               &
-           static_init_model,                 &
-           pert_model_state,                  &
-           pert_model_copies,                  &
-           nc_write_model_atts,               &
-           nc_write_model_vars,               &
-           get_close_obs_distrib,             &
-           ens_mean_for_model,                &
-           get_close_maxdist_init,            &
-           get_close_obs_init,                &
-           model_interpolate_distrib,         &
-           vert_convert_distrib,              &
-           query_vert_localization_coord,     &
-           variables_domains,                 &
-           fill_variable_list,                &
-           get_vert, set_vert, set_which_vert, &
-           info_file_name, construct_file_name_in, &
-           get_model_time,                    &
-           do_clamp_or_fail,                  &
+public ::  get_model_size,                &
+           get_state_meta_data_distrib,   &
+           get_model_time_step,           &
+           static_init_model,             &
+           pert_model_state,              &
+           pert_model_copies,             &
+           nc_write_model_atts,           &
+           nc_write_model_vars,           &
+           get_close_obs_distrib,         &
+           ens_mean_for_model,            &
+           get_close_maxdist_init,        &
+           get_close_obs_init,            &
+           model_interpolate_distrib,     &
+           vert_convert_distrib,          &
+           query_vert_localization_coord, &
+           variables_domains,             &
+           fill_variable_list,            &
+           get_vert,                      &
+           set_vert,                      &
+           set_which_vert,                &
+           info_file_name,                &
+           construct_file_name_in,        &
+           get_model_time,                &
+           do_clamp_or_fail,              &
            clamp_or_fail_it
 
 
@@ -158,27 +161,27 @@ public ::  adv_1step,       &
 !-----
 ! Here is the appropriate place for other users to make additional routines
 !   contained within model_mod available for public use:
-public ::  get_number_domains,       &
-           get_wrf_static_data,      &
-           model_pressure_distrib,   &
-           model_height_distrib,     &
-           pres_to_zk,               &
-           height_to_zk,             &
-           get_domain_info,          &
-           get_wrf_state_variables,  &
-           fill_default_state_table, &
-           read_wrf_dimensions,      &
+public ::  get_number_domains,          &
+           get_wrf_static_data,         &
+           model_pressure_distrib,      &
+           model_height_distrib,        &
+           pres_to_zk,                  &
+           height_to_zk,                &
+           get_domain_info,             &
+           get_wrf_state_variables,     &
+           fill_default_state_table,    &
+           read_wrf_dimensions,         &
            get_number_of_wrf_variables, &
            get_variable_bounds,         &
            set_variable_bound_defaults, &
            get_variable_size_from_file, &
-           trans_3Dto1D, trans_1Dto3D, &
-           trans_2Dto1D, trans_1Dto2D, &
-           get_wrf_date, set_wrf_date, &
+           trans_3Dto1D, trans_1Dto3D,  &
+           trans_2Dto1D, trans_1Dto2D,  &
+           get_wrf_date, set_wrf_date,  &
            height_diff_check
 
 ! public parameters
-public :: max_state_variables, &
+public :: max_state_variables,     &
           num_state_table_columns, &
           num_bounds_table_columns
 
@@ -349,14 +352,14 @@ TYPE wrf_static_data_for_dart
               type_smois, type_2dflash
 
    integer :: number_of_wrf_variables
-   integer, dimension(:,:), pointer :: var_index
-   integer, dimension(:,:), pointer :: var_size
-   integer, dimension(:),   pointer :: var_type
-   integer, dimension(:),   pointer :: var_index_list
-   logical, dimension(:),   pointer :: var_update_list
-   integer, dimension(:),   pointer :: dart_kind
-   integer, dimension(:,:), pointer :: land
-   real(r8), dimension(:), pointer  :: lower_bound,upper_bound
+   integer(i8), dimension(:,:), pointer :: var_index
+   integer,     dimension(:,:), pointer :: var_size
+   integer,     dimension(:),   pointer :: var_type
+   integer,     dimension(:),   pointer :: var_index_list
+   logical,     dimension(:),   pointer :: var_update_list
+   integer,     dimension(:),   pointer :: dart_kind
+   integer,     dimension(:,:), pointer :: land
+   real(r8),    dimension(:),   pointer :: lower_bound,upper_bound
    character(len=10), dimension(:),pointer :: clamp_or_fail
    character(len=129),dimension(:),pointer :: description, units, stagger, coordinates
 
@@ -838,15 +841,16 @@ subroutine get_state_meta_data_distrib(state_ens_handle, index_in, location, var
 ! any of the dart code, which can return the wrf domain number.
 
 type(ensemble_type), intent(in)  :: state_ens_handle
-integer,             intent(in)  :: index_in
+integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type_out, id_out
 
-integer  :: var_type, dart_type
-integer  :: index, ip, jp, kp
-integer  :: nz, ny, nx
-logical  :: var_found
-real(r8) :: lon, lat, lev
+integer     :: var_type, dart_type
+integer(i8) :: index
+integer     :: ip, jp, kp
+integer     :: nz, ny, nx
+logical     :: var_found
+real(r8)    :: lon, lat, lev
 character(len=129) :: string1
 
 integer :: i, id
@@ -916,6 +920,10 @@ nx = wrf%dom(id)%var_size(1,i)
 ny = wrf%dom(id)%var_size(2,i)
 nz = wrf%dom(id)%var_size(3,i)
 
+! JH note the calculations for ip,jp,kp are all done in i8
+! since index is i8.  The value is then truncated to i4 
+! when it is assigned.  This should be OK since ip, jp, and 
+! kp are much smaller than index
 kp = 1 + (index-1)/(nx*ny)
 jp = 1 + (index - (kp-1)*nx*ny - 1)/nx
 ip = index - (kp-1)*nx*ny - (jp-1)*nx
@@ -1027,7 +1035,8 @@ real(r8), allocatable :: utrue(:),vtrue(:) !HK
 
 ! from getCorners
 integer, dimension(2) :: ll, lr, ul, ur, ll_v, lr_v, ul_v, ur_v
-integer            :: rc, ill, ilr, iul, iur, i1, i2
+integer            :: rc, i1, i2
+integer(i8)        :: ill, ilr, iul, iur
 
 real(r8), allocatable  :: fld(:,:)
 real(r8), allocatable, dimension(:,:) :: v_h, v_p
@@ -1066,8 +1075,8 @@ integer, allocatable   :: uniquek(:), ksort(:)
 real(r8), allocatable  :: failedcopies(:)
 integer                :: ens_size
 
-integer :: ugrid_1, ugrid_2, ugrid_3, ugrid_4, vgrid_1, vgrid_2, vgrid_3, vgrid_4
-integer :: z1d_ind1, z1d_ind2, t1d_ind, qv1d_ind
+integer(i8) :: ugrid_1, ugrid_2, ugrid_3, ugrid_4, vgrid_1, vgrid_2, vgrid_3, vgrid_4
+integer(i8) :: z1d_ind1, z1d_ind2, t1d_ind, qv1d_ind
 
 ens_size = copies_in_window(state_ens_handle) ! data_structure_mod
 allocate(x_ill(ens_size), x_iul(ens_size), x_ilr(ens_size), x_iur(ens_size))
@@ -2950,7 +2959,7 @@ istatus = 1
 !> @todo This in not true anymore if you don't convert all the state variables 
 ! to the localization coordinate in get_state_meta_data
 if (obs_kind < 0) then
-   call get_state_meta_data_distrib(state_ens_handle, obs_kind,location)
+   call get_state_meta_data_distrib(state_ens_handle, int(obs_kind,i8),location)
    istatus = 0
    return
 endif
@@ -4982,7 +4991,8 @@ type(ensemble_type), intent(in)  :: state_ens_handle
 integer e !< for ensemble loop
 
 integer, dimension(2) :: ll, lr, ul, ur
-integer  :: ill,ilr,iul,iur,k, rc
+integer(i8)           :: ill, ilr, iul, iur
+integer               :: k, rc
 real(r8), allocatable :: pres1(:), pres2(:), pres3(:), pres4(:)
 logical  :: debug = .false.
 
@@ -5088,7 +5098,8 @@ real(r8), intent(out) :: v_p(0:n)
 type(ensemble_type), intent(in)  :: state_ens_handle
 
 integer, dimension(2) :: ll, lr, ul, ur
-integer               :: ill,ilr,iul,iur,k, rc
+integer(i8)           :: ill, ilr, iul, iur
+integer               :: k, rc
 real(r8)              :: pres1, pres2, pres3, pres4
 logical               :: debug = .false.
 
@@ -5479,8 +5490,8 @@ real(r8) :: model_pressure_t_distrib_fwd(ens_size)
 real (kind=r8), PARAMETER    :: rd_over_rv = gas_constant / gas_constant_v
 real (kind=r8), PARAMETER    :: cpovcv = 1.4_r8        ! cp / (cp - gas_constant)
 
-integer  :: iqv !< I think this is i for index
-integer  :: it !< change to array
+integer(i8) :: iqv !< I think this is i for index
+integer(i8) :: it !< change to array
 real(r8) :: qvf1(ens_size),rho(ens_size), x_iqv(ens_size), x_it(ens_size)
 
 model_pressure_t_distrib_fwd = missing_r8
@@ -5527,8 +5538,8 @@ type(ensemble_type), intent(in)  :: state_ens_handle
 real (kind=r8), PARAMETER    :: rd_over_rv = gas_constant / gas_constant_v
 real (kind=r8), PARAMETER    :: cpovcv = 1.4_r8        ! cp / (cp - gas_constant)
 
-integer  :: iqv !< I think this is i for index
-integer  :: it
+integer(i8)  :: iqv !< I think this is i for index
+integer(i8)  :: it
 real(r8) :: qvf1, rho, x_iqv, x_it
 
 model_pressure_t_distrib_mean = missing_r8
@@ -5571,8 +5582,8 @@ type(ensemble_type), intent(in) :: state_ens_handle
 
 real(r8)              :: model_pressure_s_distrib
 
-integer  :: ips, imu
-real(r8) :: x_imu, x_ips
+integer(i8) :: ips, imu
+real(r8)    :: x_imu, x_ips
 
 
 ! make sure one of these is good.
@@ -5804,8 +5815,8 @@ integer,             intent(in)  :: i,j,k,id
 type(ensemble_type), intent(in)  :: state_ens_handle
 real(r8) :: model_rho_t_distrib_fwd(ens_size)
 
-integer  :: imu,iph,iphp1
-real(r8) :: ph_e(ens_size), x_imu(ens_size), x_iph(ens_size), x_iphp1(ens_size)
+integer(i8) :: imu,iph,iphp1
+real(r8)    :: ph_e(ens_size), x_imu(ens_size), x_iph(ens_size), x_iphp1(ens_size)
 
 model_rho_t_distrib_fwd(:) = missing_r8
 
@@ -5847,7 +5858,7 @@ integer,             intent(in)  :: i,j,k,id
 type(ensemble_type), intent(in)  :: state_ens_handle
 real(r8)                         :: model_rho_t_distrib_mean
 
-integer  :: imu,iph,iphp1
+integer(i8)  :: imu,iph,iphp1
 real(r8) :: ph_e, x_imu, x_iph, x_iphp1
 
 model_rho_t_distrib_mean = missing_r8
@@ -5896,8 +5907,9 @@ real(r8), intent(out) :: v_h(0:n, ens_size)
 type(ensemble_type), intent(in)  :: state_ens_handle
 integer e !< for ensemble loop
 
-real(r8)  :: fll(n+1, ens_size), geop(ens_size), lat(ens_size)
-integer   :: ill,iul,ilr,iur,k, rc
+real(r8)              :: fll(n+1, ens_size), geop(ens_size), lat(ens_size)
+integer(i8)           :: ill, iul, ilr, iur
+integer               :: k, rc
 integer, dimension(2) :: ll, lr, ul, ur
 logical   :: debug = .false.
 
@@ -5990,8 +6002,9 @@ real(r8), intent(out) :: v_h(0:n)
 type(ensemble_type), intent(in)  :: state_ens_handle
 integer e !< for ensemble loop
 
-real(r8)  :: fll(n+1), geop, lat
-integer   :: ill,iul,ilr,iur,k, rc
+real(r8)    :: fll(n+1), geop, lat
+integer(i8) :: ill, iul, ilr, iur
+integer     :: k, rc
 integer, dimension(2) :: ll, lr, ul, ur
 logical   :: debug = .false.
 real(r8)  :: x_ill, x_ilr, x_iul, x_iur
@@ -6077,9 +6090,10 @@ type(ensemble_type), intent(in) :: state_ens_handle
 integer,             intent(in) :: i,j,k,id,var_type
 real(r8)                        :: model_height_distrib
 
-integer  :: i1, i2, i3, i4, off
-real(r8) :: x_i1, x_i2, x_i3, x_i4
-real(r8) :: geop, lat
+integer(i8)  :: i1, i2, i3, i4
+integer      :: off
+real(r8)     :: x_i1, x_i2, x_i3, x_i4
+real(r8)     :: geop, lat
 
 model_height_distrib = missing_r8
 
@@ -6440,8 +6454,8 @@ integer,             intent(in) :: i,j,k,id
 real(r8)                        :: x_i1
 real(r8)                        :: model_height_w_distrib
 
-integer   :: i1
-real(r8)  :: geop
+integer(i8) :: i1
+real(r8)    :: geop
 
 if (wrf%dom(id)%type_gz < 0) then
   call error_handler(E_ERR, 'model_height_w:', &
@@ -8863,7 +8877,8 @@ integer,             intent(in) :: obs_kind
 real(r8),            intent(in) :: dxm, dx, dy, dym
 real(r8),           intent(out) :: fld(2, ens_size)
 
-integer               :: ill, iul, ilr, iur, rc
+integer(i8)           :: ill, iul, ilr, iur
+integer               :: rc
 integer, dimension(2) :: ll, ul, lr, ur
 integer               :: uk, e
 logical               :: in_state
@@ -8950,7 +8965,8 @@ integer,             intent(in) :: i,j
 real(r8),            intent(in) :: dxm, dx, dy, dym
 real(r8),           intent(out) :: fld(2, ens_size)
 
-integer               :: ill, iul, ilr, iur, rc
+integer(i8)           :: ill, iul, ilr, iur
+integer               :: rc
 integer, dimension(2) :: ll, ul, lr, ur
 
 logical               :: in_state
@@ -9080,11 +9096,12 @@ end subroutine obs_kind_in_state_vector
 !> with a function. 
 function new_dart_ind(i, j, k, ind, domain)
 
-integer :: new_dart_ind
-integer :: i, j, k, ind, domain ! info for the state element: x,y,z,type, domain
-integer :: Ni, Nj, Nk, sum_below, extra, types_below
-integer :: id ! domain loop type
-integer :: ivar ! variable loop index
+integer(i8) :: new_dart_ind
+integer     :: i, j, k, ind, domain ! info for the state element: x,y,z,type, domain
+integer     :: Ni, Nj, Nk, extra, types_below 
+integer(i8) :: sum_below
+integer     :: id ! domain loop type
+integer     :: ivar ! variable loop index
 
 ! Find sum of all variable types below this one 
 sum_below = 0
