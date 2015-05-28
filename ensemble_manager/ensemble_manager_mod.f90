@@ -32,7 +32,6 @@ use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_inde
 
 use copies_on_off_mod,  only : query_read_copy, query_write_copy
 
-use io_filenames_mod,   only : restart_files_out
 
 implicit none
 private
@@ -58,7 +57,7 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
           prepare_to_update_copies,   print_ens_handle,         perturbation_amplitude,     &
           map_task_to_pe,             map_pe_to_task,           single_restart_file_in,     &
-          single_restart_file_out
+          single_restart_file_out, is_single_restart_file_in
 
 ! track if copies modified last, vars modified last, both are in sync
 ! (and therefore both valid to be used r/o), or unknown.
@@ -1853,6 +1852,17 @@ integer                         :: map_task_to_pe
 map_task_to_pe = ens_handle%task_to_pe_list(t + 1)
 
 end function map_task_to_pe
+
+!---------------------------------------------------------------------------------
+! HK this is so filter can see if it is a single file in for netcdf read. 
+! I don't think this IO stuff should be in the ensemble manager.
+function is_single_restart_file_in()
+
+logical :: is_single_restart_file_in
+
+is_single_restart_file_in = single_restart_file_in
+
+end function is_single_restart_file_in
 
 !---------------------------------------------------------------------------------
 

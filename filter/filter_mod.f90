@@ -7,74 +7,75 @@
 module filter_mod
 
 !------------------------------------------------------------------------------
-use types_mod,            only : r8, i8, missing_r8, metadatalength
-use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,                  &
-                                 get_obs_from_key, set_copy_meta_data, get_copy_meta_data,   &
-                                 get_obs_def, get_time_range_keys, set_obs_values, set_obs,  &
-                                 write_obs_seq, get_num_obs, get_obs_values, init_obs,       &
-                                 assignment(=), get_num_copies, get_qc, get_num_qc, set_qc,  &
-                                 static_init_obs_sequence, destroy_obs, read_obs_seq_header, &
-                                 set_qc_meta_data, get_first_obs,          &
-                                 get_obs_time_range, delete_obs_from_seq, delete_seq_head,   &
-                                 delete_seq_tail, replace_obs_values, replace_qc,            &
-                                 destroy_obs_sequence, get_qc_meta_data, add_qc,             &
-                                 get_expected_obs_distrib_state !HK
-use obs_def_mod,          only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
-                                 get_obs_kind
-use time_manager_mod,     only : time_type, get_time, set_time, operator(/=), operator(>),   &
-                                 operator(-), print_time
-use utilities_mod,        only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
-                                 initialize_utilities, logfileunit, nmlfileunit, timestamp,  &
-                                 do_output, find_namelist_in_file, check_namelist_read,      &
-                                 open_file, close_file, do_nml_file, do_nml_term
-use assim_model_mod,      only : static_init_assim_model, get_model_size,                    &
-                                 netcdf_file_type, init_diag_output, finalize_diag_output,   & 
-                                 aoutput_diagnostics, ens_mean_for_model, end_assim_model,   &
-                                 pert_model_copies
-use assim_tools_mod,      only : filter_assim, set_assim_tools_trace, get_missing_ok_status, &
-                                 test_state_copies
-use obs_model_mod,        only : move_ahead, advance_state, set_obs_model_trace
-use ensemble_manager_mod, only : init_ensemble_manager, end_ensemble_manager,                &
-                                 ensemble_type, get_copy, get_my_num_copies, put_copy,       &
-                                 all_vars_to_all_copies, all_copies_to_all_vars,             &
-                                 read_ensemble_restart, write_ensemble_restart,              &
-                                 compute_copy_mean, compute_copy_mean_sd,                    &
-                                 compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
-                                 get_ensemble_time, set_ensemble_time, broadcast_copy,       &
-                                 prepare_to_read_from_vars, prepare_to_write_to_vars,        &
-                                 prepare_to_read_from_copies,                                &
-                                 prepare_to_write_to_copies, get_ensemble_time,              &
-                                 map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
-                                 get_my_num_vars, single_restart_file_in, set_ensemble_time 
+use types_mod,             only : r8, i8, missing_r8, metadatalength
+use obs_sequence_mod,      only : read_obs_seq, obs_type, obs_sequence_type,                  &
+                                  get_obs_from_key, set_copy_meta_data, get_copy_meta_data,   &
+                                  get_obs_def, get_time_range_keys, set_obs_values, set_obs,  &
+                                  write_obs_seq, get_num_obs, get_obs_values, init_obs,       &
+                                  assignment(=), get_num_copies, get_qc, get_num_qc, set_qc,  &
+                                  static_init_obs_sequence, destroy_obs, read_obs_seq_header, &
+                                  set_qc_meta_data, get_first_obs,          &
+                                  get_obs_time_range, delete_obs_from_seq, delete_seq_head,   &
+                                  delete_seq_tail, replace_obs_values, replace_qc,            &
+                                  destroy_obs_sequence, get_qc_meta_data, add_qc,             &
+                                  get_expected_obs_distrib_state !HK
+use obs_def_mod,           only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
+                                  get_obs_kind
+use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), operator(>),   &
+                                  operator(-), print_time
+use utilities_mod,         only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
+                                  initialize_utilities, logfileunit, nmlfileunit, timestamp,  &
+                                  do_output, find_namelist_in_file, check_namelist_read,      &
+                                  open_file, close_file, do_nml_file, do_nml_term
+use assim_model_mod,       only : static_init_assim_model, get_model_size,                    &
+                                  netcdf_file_type, init_diag_output, finalize_diag_output,   &
+                                  aoutput_diagnostics, ens_mean_for_model, end_assim_model,   &
+                                  pert_model_copies
+use assim_tools_mod,       only : filter_assim, set_assim_tools_trace, get_missing_ok_status, &
+                                  test_state_copies
+use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace
+use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,                &
+                                  ensemble_type, get_copy, get_my_num_copies, put_copy,       &
+                                  all_vars_to_all_copies, all_copies_to_all_vars,             &
+                                  read_ensemble_restart, write_ensemble_restart,              &
+                                  compute_copy_mean, compute_copy_mean_sd,                    &
+                                  compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
+                                  get_ensemble_time, set_ensemble_time, broadcast_copy,       &
+                                  prepare_to_read_from_vars, prepare_to_write_to_vars,        &
+                                  prepare_to_read_from_copies,                                &
+                                  prepare_to_write_to_copies, get_ensemble_time,              &
+                                  map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
+                                  get_my_num_vars, single_restart_file_in, set_ensemble_time
                                  
 
-use adaptive_inflate_mod, only : adaptive_inflate_end, do_varying_ss_inflate,                &
-                                 do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
-                                 do_obs_inflate, adaptive_inflate_type,                      &
-                                 output_inflate_diagnostics, log_inflation_info, &
-                                 get_minmax_task_zero_distrib
-use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilities,           &
-                                 my_task_id, task_sync, broadcast_send, broadcast_recv,      &
-                                 task_count
-use smoother_mod,         only : smoother_read_restart, advance_smoother,                    &
-                                 smoother_gen_copy_meta_data, smoother_write_restart,        &
-                                 init_smoother, do_smoothing, smoother_mean_spread,          &
-                                 smoother_assim, filter_state_space_diagnostics,             &
-                                 smoother_ss_diagnostics, smoother_end, set_smoother_trace
+use adaptive_inflate_mod,  only : adaptive_inflate_end, do_varying_ss_inflate,                &
+                                  do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
+                                  do_obs_inflate, adaptive_inflate_type,                      &
+                                  output_inflate_diagnostics, log_inflation_info, &
+                                  get_minmax_task_zero_distrib
+use mpi_utilities_mod,     only : initialize_mpi_utilities, finalize_mpi_utilities,           &
+                                  my_task_id, task_sync, broadcast_send, broadcast_recv,      &
+                                  task_count
+use smoother_mod,          only : smoother_read_restart, advance_smoother,                    &
+                                  smoother_gen_copy_meta_data, smoother_write_restart,        &
+                                  init_smoother, do_smoothing, smoother_mean_spread,          &
+                                  smoother_assim, filter_state_space_diagnostics,             &
+                                  smoother_ss_diagnostics, smoother_end, set_smoother_trace
 
-use random_seq_mod,    only : random_seq_type, init_random_seq, random_gaussian
+use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
 
 use distributed_state_mod, only : create_state_window, free_state_window
 
-use data_structure_mod, only : copies_in_window, set_num_extra_copies ! should this be through ensemble_manager?
+use data_structure_mod,    only : copies_in_window, set_num_extra_copies ! should this be through ensemble_manager?
 
-use state_vector_io_mod,   only : read_transpose, transpose_write, get_state_variable_info,  &
-                                  initialize_arrays_for_read, netcdf_filename, state_vector_io_init, &
+use state_vector_io_mod,   only : read_transpose, transpose_write, state_vector_io_init, &
                                   setup_read_write, turn_read_copy_on, turn_write_copy_on, turn_write_copy_off
 
-use model_mod,            only : variables_domains, fill_variable_list, get_model_time
+use model_mod,             only : get_model_time
 
-use io_filenames_mod,         only : io_filenames_init, restart_files_in
+use io_filenames_mod,      only : io_filenames_init, restart_files_in, set_filenames
+
+use state_structure_mod,   only : get_num_domains, static_init_state_type, add_domain
 
 use mpi
 
@@ -423,12 +424,14 @@ endif
 
 
 if (direct_netcdf_read) then
-   call filter_read_restart_direct(state_ens_handle, time1, ens_size)
+   call filter_read_restart_direct(state_ens_handle, time1, num_extras)
    call get_minmax_task_zero_distrib(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
    call log_inflation_info(prior_inflate, 'Prior')
    call get_minmax_task_zero_distrib(post_inflate, state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
    call log_inflation_info(post_inflate, 'Posterior')
 endif
+
+
 
 !call test_state_copies(state_ens_handle, 'after_read')
 !goto 10011
@@ -711,7 +714,7 @@ AdvanceTime : do
                call turn_write_copy_on(PRIOR_INF_SD_COPY)
             endif
          ! FIXME - what to do with lorenz_96 (or similar) here?
-         call filter_write_restart_direct(state_ens_handle, isprior = .true.)
+         call filter_write_restart_direct(state_ens_handle, num_extras, isprior = .true.)
       endif
 
    endif
@@ -921,7 +924,7 @@ end do AdvanceTime
 
 !call test_state_copies(state_ens_handle, 'last')
 
-10011 continue
+!10011 continue
 
 call trace_message('End of main filter assimilation loop, starting cleanup', 'filter:', -1)
 
@@ -979,7 +982,7 @@ if (output_inflation) then
 endif
 
 if(direct_netcdf_write) then
-   call filter_write_restart_direct(state_ens_handle, isprior=.false.)
+   call filter_write_restart_direct(state_ens_handle, num_extras, isprior=.false.)
 else ! write binary files
    if(output_restart) call write_ensemble_restart(state_ens_handle, restart_out_file_name, 1, ens_size)
    if(output_restart_mean) call write_ensemble_restart(state_ens_handle, trim(restart_out_file_name)//'.mean', &
@@ -1019,6 +1022,7 @@ if(my_task_id() == 0) then
    write(logfileunit,*)
 endif
 
+10011 continue
 ! YOU CAN NO LONGER WRITE TO THE LOG FILE BELOW THIS!
 ! After the call to finalize below, you cannot write to
 ! any fortran unit number.
@@ -1163,8 +1167,11 @@ call static_init_obs_sequence()
 call trace_message('Before init_model call')
 call static_init_assim_model()
 call trace_message('After  init_model call')
+call static_init_state_type()
+call trace_message('After  init_state_type call')
+call io_filenames_init()
 call state_vector_io_init()
-call trace_message('After  init_stat_vector_io call')
+call trace_message('After  init_state_vector_io call')
 
 
 end subroutine filter_initialize_modules_used
@@ -1419,43 +1426,22 @@ end subroutine filter_set_window_time
 !> netcdf file
 !> Which routine should find model size?
 !> 
-subroutine filter_read_restart_direct(state_ens_handle, time, ens_size)!, model_size)
+subroutine filter_read_restart_direct(state_ens_handle, time, num_extras)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
 type(time_type),     intent(inout) :: time
-integer,             intent(in)    :: ens_size
-!integer,             intent(out)   :: model_size
+integer,             intent(in)    :: num_extras
 
 integer                         :: model_size
 character(len=256), allocatable :: variable_list(:) !< does this need to be module storage
 integer                         :: dart_index !< where to start in state_ens_handle%copies
-integer                         :: num_domains !< number of input files to read
 integer                         :: domain !< loop index
-integer                         :: domain_size !< number of state elements in a domain
-integer                         :: num_variables_in_state
 
-! to start with, assume same variables in each domain - this will not always be the case
-! If they are not in a domain, just set lengths to zero?
-call variables_domains(num_variables_in_state, num_domains)
-call io_filenames_init(ens_size, num_domains, inf_in_file_name, inf_out_file_name)
-
-allocate(variable_list(num_variables_in_state))
-
-variable_list = fill_variable_list(num_variables_in_state)
-
-! need to know number of domains
-call initialize_arrays_for_read(num_variables_in_state, num_domains) 
-
-if (single_restart_file_in) then ! is this the correct flag to check?
-   call get_state_variable_info(num_variables_in_state)
-else
-   model_size = 0
-   do domain = 1, num_domains
-      netcdf_filename = restart_files_in(1,domain) !info_file_name(domain)
-      call get_state_variable_info(num_variables_in_state, variable_list, domain, domain_size)
-      model_size = model_size + domain_size
-   enddo
+if(get_num_domains()==0) then
+   call error_handler(E_ERR, 'filter_read_restart_direct', 'model needs to call add_domain for direct_netcdf_read = .true.')
 endif
+
+call set_filenames(state_ens_handle%num_copies - num_extras, inf_in_file_name, inf_out_file_name)
 
 ! read time from input file if time not set in namelist
 if(init_time_days < 0) then
@@ -1466,15 +1452,13 @@ state_ens_handle%time = time
 
 ! read in the data and transpose
 dart_index = 1 ! where to start in state_ens_handle%copies - this is modified by read_transpose
-do domain = 1, num_domains
-   call read_transpose(state_ens_handle, restart_in_file_name, domain, dart_index)
+do domain = 1, get_num_domains()
+   call read_transpose(state_ens_handle, domain, dart_index)
 enddo
 
 if (perturb_restarts) then
    call perturb_copies(state_ens_handle, perturbation_amplitude)
 endif
-
-deallocate(variable_list)
 
 ! Need Temporary print of initial model time?
 
@@ -1488,13 +1472,6 @@ type(ensemble_type), intent(inout) :: state_ens_handle
 type(time_type),     intent(inout) :: time
 
 integer :: days, secs
-
-!> @todo Do you need to think about domains?
-integer :: num_domains
-
-num_domains = 1
-
-call io_filenames_init(ens_size, num_domains, inf_in_file_name, inf_out_file_name)
 
 if (do_output()) then
    if (start_from_restart) then
@@ -1536,22 +1513,25 @@ end subroutine filter_read_restart
 
 !-------------------------------------------------------------------------
 !> write the restart information directly into the model netcdf file.
-subroutine filter_write_restart_direct(state_ens_handle, isprior)
+subroutine filter_write_restart_direct(state_ens_handle, num_extras, isprior)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
+integer,             intent(in)    :: num_extras ! non restart copies
 logical,             intent(in)    :: isprior
 
 integer :: dart_index !< where to start in state_ens_handle%copies
-integer :: num_variables_in_state
-integer :: num_domains
 integer :: domain !< loop index
+integer :: component_id
 
-call variables_domains(num_variables_in_state, num_domains)
+if (get_num_domains()==0) then ! the model did not initialize a domain
+   component_id = add_domain(state_ens_handle%num_vars) ! add a 'blank' domain
+   call set_filenames(state_ens_handle%num_copies - num_extras, inf_in_file_name, inf_out_file_name)
+endif
 
 ! transpose and write out the data
 dart_index = 1
-do domain = 1, num_domains
-   call transpose_write(state_ens_handle, restart_out_file_name, domain, dart_index, isprior)
+do domain = 1, get_num_domains()
+   call transpose_write(state_ens_handle, num_extras, domain, dart_index, isprior)
 enddo
 
 end subroutine filter_write_restart_direct

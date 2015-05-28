@@ -41,7 +41,7 @@ module state_vector_io_mod
 !> processors using <code> limit_procs </code>
 !> @{
 
-use types_mod,            only : r8, i4, i8, MISSING_R8
+use types_mod,            only : r8, MISSING_R8, digits12, i4
 
 use mpi_utilities_mod,    only : task_count, send_to, receive_from, my_task_id, datasize
 
@@ -63,6 +63,13 @@ use mpi
 
 use io_filenames_mod,     only : restart_files_in, restart_files_out, io_filenames_init
 
+use state_structure_mod,  only : get_domain_size, get_num_variables, &
+                                 get_variable_size, get_num_dims, get_dim_ids, get_variable_name, &
+                                 get_dim_lengths, &
+                                 get_dim_name, get_dim_length, set_var_id, &
+                                 get_unique_dim_name, get_num_unique_dims, get_unique_dim_length, &
+                                 check_correct_variables, get_sum_variables, get_sum_variables_below
+
 use copies_on_off_mod
 
 implicit none
@@ -73,25 +80,17 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-interface get_state_variable_info
-   module procedure get_state_variable_info
-   module procedure get_state_variable_info_lorenz96
-end interface
-
-
 private
 
-public :: state_vector_io_init,       &
-          initialize_arrays_for_read, &
-          netcdf_filename,            &
-          get_state_variable_info,    &
-          read_transpose,             &
-          transpose_write,            &
-          netcdf_filename_out,        &
-          setup_read_write,           &
-          turn_read_copy_on,          &
-          turn_write_copy_on,         &
-          turn_read_copies_off,       &
+public :: state_vector_io_init, &
+          netcdf_filename,      &
+          read_transpose,       &
+          transpose_write,      &
+          netcdf_filename_out,  &
+          setup_read_write,     &
+          turn_read_copy_on,    &
+          turn_write_copy_on,   &
+          turn_read_copies_off, &
           turn_write_copy_off
 
 integer :: ret !< netcdf return code
@@ -99,34 +98,17 @@ integer :: ncfile !< netcdf input file identifier
 integer :: ncfile_out !< netcdf output file handle
 character(len=256) :: netcdf_filename !< needs to be different for each task
 character(len=256) :: netcdf_filename_out !< needs to be different for each task
-integer, parameter :: MAXDIMS = NF90_MAX_VAR_DIMS 
-
-integer,            allocatable :: variable_ids(:, :)
-integer,            allocatable :: variable_sizes(:, :)
-integer,   allocatable :: dimensions_and_lengths(:, :, :) !< number of dimensions and length of each dimension
-integer :: num_state_variables
-integer :: num_domains
-
-! record dimensions for output netcdf file,
-! (state_variable, dimension, domain)
-integer,            allocatable :: dimIds(:, :, :) !< dimension ids
-integer,            allocatable :: copy_dimIds(:, :, :) !< dimension ids copy
-integer,            allocatable :: length(:, :, :) !< dimension length
-character(len=256), allocatable :: dim_names(:, :, :)
-
-! list of variables names in the state
-character(len=256), allocatable :: global_variable_names(:)
 
 ! keep track of whether the initial conditions were netcdf files
 logical :: netcdf_input = .false.
-logical :: arrays_initialized = .false.
 
 ! namelist variables with default values
 ! Aim: to have the regular transpose as the default
-integer :: limit_mem = 2147483640!< This is the number of elements (not bytes) so you don't have times the number by 4 or 8
-integer :: limit_procs = 100000!< how many processors you want involved in each transpose.
-logical :: create_restarts = .false. ! what if the restart files exist?
+integer :: limit_mem = HUGE(1_i4)!< This is the number of elements (not bytes) so you don't have times the number by 4 or 8
+integer :: limit_procs = 100000!< how many (~maximum) processors you want involved in each transpose.
+logical :: create_restarts = .false. ! what if the restart files exist? - this needs to come out
 logical :: time_unlimited = .true. ! You need to keep track of the time.
+logical :: single_precision_output = .false. ! Allows you to write r4 netcdf files even if filter is double precision
 
 namelist /  state_vector_io_nml / limit_mem, limit_procs, create_restarts, time_unlimited
 
@@ -153,140 +135,6 @@ if (do_nml_term()) write(     *     , nml=state_vector_io_nml)
 end subroutine state_vector_io_init
 
 !-------------------------------------------------
-!> Initialize arrays.  Need to know the number of domains
-subroutine initialize_arrays_for_read(n, n_domains)
-
-integer, intent(in) :: n !< number of state variables
-integer, intent(in) :: n_domains !< number of domains (and therfore netcdf files) to read
-
-if(allocated(variable_ids))   call error_handler(E_ERR, 'initialize_arrays_for_read', 'already called this routine')
-if(allocated(variable_sizes)) call error_handler(E_ERR, 'initialize_arrays_for_read', 'already called this routine')
-
-num_state_variables = n
-num_domains = n_domains
-
-allocate(variable_ids(n, num_domains), variable_sizes(n, num_domains))
-allocate(dimIds(n, MAXDIMS, num_domains), length(n, MAXDIMS, num_domains), dim_names(n, MAXDIMS, num_domains))
-allocate(copy_dimIds(n, MAXDIMS, num_domains))
-allocate(dimensions_and_lengths(n, MAXDIMS +1, num_domains))
-allocate(global_variable_names(n))
-
-dimensions_and_lengths = -1  ! initialize to a nonsense value
-dimIds = -1
-
-end subroutine initialize_arrays_for_read
-
-!-------------------------------------------------
-!> Need list of variables in the state
-!> Each task grabs the variable dimensions from the netcdf file
-subroutine get_state_variable_info(n, variable_names, domain, domain_size)
-
-integer,            intent(in)  :: n !< number of state variables
-character(len=256), intent(in)  :: variable_names(n)
-integer,            intent(in)  :: domain !< which domain info you are grabbing
-integer,            intent(out) :: domain_size
-
-integer :: i
-
-! load up module storage with variable names
-global_variable_names = variable_names
-
-! open netcdf file - all restart files have the same info?
-ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
-call nc_check(ret, 'get_state_variable_info', 'opening')
-
-! get all variable ids
-call get_variable_ids(variable_names, domain, variable_ids(:, domain))
-
-! get all variable sizes, only readers store dimensions?
-variable_sizes(:, domain) = total_size(n, variable_ids(:, domain), domain)
-domain_size = sum(variable_sizes(:, domain))
-if(my_task_id() == 0) then
-   do i = 1, n
-      print*, i, 'variable_sizes', variable_sizes(i, domain), trim(variable_names(i))
-   enddo
-endif
-
-if ( any(variable_sizes(:, domain)>limit_mem) ) then
-   print*, 'memory limit = ', limit_mem
-   print*, variable_sizes
-   call error_handler(E_ERR, 'get_state_variable_info', 'netcdf variables larger than memory limit')
-endif
-
-! close netcdf file
-ret = nf90_close(ncfile)
-call nc_check(ret, 'get_state_variable_info', 'closing')
-
-end subroutine get_state_variable_info
-
-!-------------------------------------------------
-!> tempory lorenz_96 variable info
-subroutine get_state_variable_info_lorenz96(n)
-
-integer, intent(in) :: n !< number of state variables
-
-variable_sizes(:,:) = 1
-
-end subroutine get_state_variable_info_lorenz96
-
-!-------------------------------------------------
-!> Get netcdf variable ids
-subroutine get_variable_ids(variable_names, domain, variable_ids)
-
-character(len=*), intent(in)    :: variable_names(:) !< netcdf variable names
-integer,          intent(in)    :: domain ! where is this used.
-integer,          intent(inout) :: variable_ids(:) !< netcdf variable ids
-
-integer :: n !< number of variables in the state
-integer :: i !< loop variable
-
-n = size(variable_ids)
-
-do i = 1, n
-
-   ret = nf90_inq_varid(ncfile, variable_names(i), variable_ids(i))
-   call nc_check(ret, 'get_variable_ids', 'inq_var_id')
-
-enddo
-
-end subroutine get_variable_ids
-
-!-------------------------------------------------
-!> Get state variable size, i.e. how many elements are in the variable
-!> readers need to store the dimension information
-!> Every task is storing the dimension information at the moment.
-function total_size(n, varId, domain)
-
-integer, intent(in)  :: n !< number of variables in the state vector
-integer, intent(in)  :: varId(n) !< variable ids
-integer, intent(in)  :: domain
-integer              :: total_size(n) ! NOTE RETURN VALUE LAST
-
-integer              :: ndims !< number of dimensions
-integer              :: i, j !< loop variable
-integer              :: xtype !< variable type: NF90_FLOAT, NF90_DOUBLE, etc. I don't think we need to store this
-
-do i = 1, n
-
-   ret = nf90_inquire_variable(ncfile, varId(i), ndims=ndims, dimids=dimIds(i, :, domain), xtype=xtype)
-   call nc_check(ret, 'totalsize', 'inq_var')
-
-   do j = 1, ndims
-      ret = nf90_inquire_dimension(ncfile, dimIds(i, j, domain), name=dim_names(i, j, domain), len=length(i, j, domain))
-      call nc_check(ret, 'totalsize', 'inq_dimlen')
-   enddo
-
-   total_size(i) = product(length(i, 1:ndims, domain))
-
-   dimensions_and_lengths(i, 1, domain) = ndims
-   dimensions_and_lengths(i, 2:ndims+1, domain) = length(i, 1:ndims, domain)
-
-enddo
-
-end function total_size
-
-
-!-------------------------------------------------
 !> Read in variables from model restart file and transpose so that every processor
 !> has all copies of a subset of state variables (fill state_ens_handle%copies)
 !> Read and transpose data according to the memory limit imposed by
@@ -295,10 +143,9 @@ end function total_size
 !> groups are not created using mpi_group_incl.
 !>
 !> Trying to put in single file read for small models.
-subroutine read_transpose(state_ens_handle, restart_in_file_name, domain, dart_index)
+subroutine read_transpose(state_ens_handle, domain, dart_index)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
-character(len=129),  intent(in)    :: restart_in_file_name
 integer,             intent(in)    :: domain
 integer,             intent(inout) :: dart_index !< This is for mulitple domains
 
@@ -322,6 +169,8 @@ integer :: dummy_loop
 integer :: my_copy !< which copy a pe is reading, starting from 0 to match pe
 integer :: c !< copies_read loop index
 integer :: copies_read
+integer :: num_state_variables
+
 
 ! single file
 integer :: iunit
@@ -332,6 +181,7 @@ netcdf_input = .true.
 ens_size = state_ens_handle%num_copies ! have the extras, incase you need to read inflation restarts
 
 my_pe = state_ens_handle%my_pe
+num_state_variables = get_num_variables(domain)
 
 copies_read = 0
 
@@ -372,7 +222,7 @@ COPIES: do c = 1, ens_size
       ! calculate how many variables will be read
       end_var = calc_end_var(start_var, domain)
       if ((my_task_id() == 0) .and. (c == 1)) print*, 'start_var, end_var', start_var, end_var
-      block_size = sum(variable_sizes(start_var:end_var, domain))
+      block_size = get_sum_variables(start_var, end_var, domain)
 
       if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
          if (query_read_copy(my_copy - recv_start + 1)) then
@@ -383,7 +233,7 @@ COPIES: do c = 1, ens_size
          endif
       endif
 
-      start_rank = mod(sum_variables_below(start_var,domain), task_count())
+      start_rank = mod(get_sum_variables_below(start_var,domain), task_count())
 
       ! loop through and post recieves
       RECEIVING_PE_LOOP: do recv_pe = recv_start, recv_end
@@ -475,10 +325,10 @@ end subroutine read_transpose
 !> Two stages of collection.
 !> See transpose_write.pdf for explanation of a, k, y.
 !> 
-subroutine transpose_write(state_ens_handle, restart_out_file_name, domain, dart_index, isprior)
+subroutine transpose_write(state_ens_handle, num_extras, domain, dart_index, isprior)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
-character(len=129),  intent(in)    :: restart_out_file_name
+integer,             intent(in)    :: num_extras ! non restart copies
 integer,             intent(in)    :: domain
 integer,             intent(inout) :: dart_index
 logical,             intent(in)    :: isprior
@@ -521,14 +371,15 @@ integer status(MPI_STATUS_SIZE)
 
 character(len=256)      :: msgstring
 
+integer :: num_state_variables
+
 ! single file
 integer :: iunit
 type(time_type) :: ens_time
 
 ens_size = state_ens_handle%num_copies ! have the extras incase you want to read inflation restarts
 my_pe = state_ens_handle%my_pe
-
-netcdf_filename_out = restart_out_file_name ! lorenz_96
+num_state_variables = get_num_variables(domain)
 
 copies_written = 0
 
@@ -563,6 +414,12 @@ COPIES : do c = 1, ens_size
             if(file_exist(netcdf_filename_out)) then
                ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
                call nc_check(ret, 'transpose_write opening', trim(netcdf_filename_out))
+               ! check variables present and are the correct size
+               if (.not. check_correct_variables(netcdf_filename_out, domain)) then
+                  write(msgstring, *) 'Exsting netcdf file does not match model: Recreating output file ', trim(netcdf_filename_out)
+                  call error_handler(E_MSG,'state_vector_io_mod:', msgstring)
+                  call create_state_output(netcdf_filename_out, domain)
+               endif
             else ! create output file if it does not exist
                write(msgstring, *) 'Creating output file ', trim(netcdf_filename_out)
                call error_handler(E_MSG,'state_vector_io_mod:', msgstring)
@@ -579,7 +436,7 @@ COPIES : do c = 1, ens_size
       ! calculate how many variables will be sent to writer
       end_var = calc_end_var(start_var, domain)
       if ((my_task_id() == 0) .and. (c == 1 )) print*, 'start_var, end_var', start_var, end_var
-      num_vars = sum(variable_sizes(start_var:end_var, domain))
+      num_vars = get_sum_variables(start_var, end_var, domain)
 
       if ((my_pe >= recv_start) .and. (my_pe <= recv_end)) then ! I am a collector
          if (query_write_copy(my_copy - send_start + 1)) then
@@ -587,7 +444,7 @@ COPIES : do c = 1, ens_size
          endif
       endif
 
-      start_rank =  mod(sum_variables_below(start_var,domain), task_count())
+      start_rank =  mod(get_sum_variables_below(start_var,domain), task_count())
 
       SENDING_PE_LOOP: do sending_pe = send_start, send_end
 
@@ -646,7 +503,11 @@ COPIES : do c = 1, ens_size
          if (my_pe < ens_size) then ! I am a writer
             if ( query_write_copy(my_copy + 1)) then
                !var_block = MISSING_R8  ! if you want to create a file for bitwise testing
-               call write_variables(var_block, start_var, end_var, domain)
+               if (my_copy <= state_ens_handle%num_copies - num_extras) then ! actual copy, may need clamping
+                  call write_variables_clamp(var_block, start_var, end_var, domain)
+               else ! extra copy, don't clamp
+                  call write_variables(var_block, start_var, end_var, domain)
+               endif
                deallocate(var_block)
             endif
          endif
@@ -820,7 +681,11 @@ COPIES : do c = 1, ens_size
             if (my_pe < ens_size) then ! I am a writer
                if(query_write_copy(my_copy + 1)) then
                   !var_block = MISSING_R8  ! if you want to create a file for bitwise testing
-                  call write_variables(var_block, start_var, end_var, domain)
+                  if (my_copy <= state_ens_handle%num_copies - num_extras) then ! actual copy, may need clamping
+                     call write_variables_clamp(var_block, start_var, end_var, domain)
+                  else ! extra copy, don't clamp
+                     call write_variables(var_block, start_var, end_var, domain)
+                  endif
                endif
             endif
 
@@ -864,7 +729,10 @@ integer, intent(in)  :: start_var !< start variable index
 integer, intent(in)  :: domain
 
 integer :: i, count
+integer :: num_state_variables
 integer, allocatable :: num_elements(:) !< cummulative size
+
+num_state_variables = get_num_variables(domain)
 
 allocate(num_elements(num_state_variables - start_var + 1))
 
@@ -873,7 +741,7 @@ calc_end_var = num_state_variables ! assume you can fit them all to start with
 count = 0
 
 do i = 1, num_state_variables - start_var + 1
-   num_elements(i) = sum(variable_sizes(start_var:start_var + count, domain))
+   num_elements(i) = get_sum_variables(start_var, start_var + count, domain)
    count = count + 1
 enddo
 
@@ -908,12 +776,15 @@ end function calc_end_var
 
 !-------------------------------------------------
 !> Read in variables from start_var to end_var
+!> FIXME: At the moment, this code is assuming that the variables in the state start
+!> at (1,1,1) and that the whole variable is read. This is not the case for 
+!> Tiegcm and CLM.  
 subroutine read_variables(var_block, start_var, end_var, domain)
 
-real(r8), intent(inout) :: var_block(:)
-integer,  intent(in)    :: start_var
-integer,  intent(in)    :: end_var
-integer,  intent(in)    :: domain
+real(r8),           intent(inout) :: var_block(:)
+integer,            intent(in)    :: start_var
+integer,            intent(in)    :: end_var
+integer,            intent(in)    :: domain
 
 integer :: i
 integer :: start_in_var_block
@@ -925,13 +796,14 @@ start_in_var_block = 1
 
 do i = start_var, end_var
 
-   var_size = variable_sizes(i, domain)
+   var_size = get_variable_size(domain, i)
 
    ! number of dimensions and length of each
-   allocate(dims(dimensions_and_lengths(i,1, domain)))
+   allocate(dims(get_num_dims(domain, i)))
 
-   dims = dimensions_and_lengths(i, 2:dimensions_and_lengths(i,1, domain) + 1, domain)
-   ret = nf90_inq_varid(ncfile, global_variable_names(i), var_id)
+   dims = get_dim_lengths(domain, i)
+
+   ret = nf90_inq_varid(ncfile, get_variable_name(domain, i), var_id)
    call nc_check(ret, 'read_variables','inquire variable id')
 
    ret = nf90_get_var(ncfile, var_id, var_block(start_in_var_block:start_in_var_block+var_size-1), count=dims)
@@ -948,9 +820,13 @@ end subroutine read_variables
 
 !-------------------------------------------------
 !> Create the output files
-!> Assume same variables in each domain
-!> Overwriting reading arrays with writing info.  Is this what you want to do?
 !> ncfile_out is global - is this ok?
+!> I have removed fresh_netcdf_file, since filter_write_restart_direct
+!> can add a blank domain.
+!> A 'blank' domain is one variable called
+!> state, with dimension = model size.
+!> It is used when the model has not suppled any netdcf info but direct_netcdf_write = .true.
+
 subroutine create_state_output(filename, dom)
 
 character(len=256), intent(in) :: filename
@@ -964,76 +840,58 @@ integer :: new_varid
 integer :: ndims
 integer :: xtype ! precision for netcdf file
 logical :: time_dimension_exists
+integer :: dimids(NF90_MAX_VAR_DIMS)
 
-if (.not. netcdf_input) then ! dart restart files read in, no existing netcdf variables
-   call fresh_netcdf_file(filename, dom)
-else
 
-   time_dimension_exists = .false.
+time_dimension_exists = .false.
 
-   ! What file options do you want
-   create_mode = NF90_CLOBBER
-   ret = nf90_create(filename, create_mode, ncfile_out)
-   call nc_check(ret, 'create_state_output', 'creating')
+! What file options do you want
+create_mode = ior(NF90_CLOBBER, NF90_64BIT_OFFSET)
+ret = nf90_create(filename, create_mode, ncfile_out)
+call nc_check(ret, 'create_state_output', 'creating')
 
-   ! make a copy of the dimIds array
-   copy_dimIds = dimIds
+! define dimensions, loop around unique dimensions
+do i = 1, get_num_unique_dims(dom)
+   ret = nf90_def_dim(ncfile_out, get_unique_dim_name(dom, i), get_unique_dim_length(dom, i), new_dimid)
+   call nc_check(ret, 'create_state_output', 'defining dimensions')
+enddo
 
-   ! define dimensions
-   do i = 1, num_state_variables ! loop around state variables
-      ! check if their dimensions exist
-      do j = 1, dimensions_and_lengths(i, 1, dom) ! ndims
-         if (time_unlimited .and. (dim_names(i, j, dom) == 'time')) then ! case sensitive
-            ret = nf90_def_dim(ncfile_out, dim_names(i, j, dom), NF90_UNLIMITED, new_dimid) ! does this do nothing if the dimension already exists?
-            time_dimension_exists = .true.
-         else
-            ret = nf90_def_dim(ncfile_out, dim_names(i, j, dom), dimensions_and_lengths(i, j+1, dom), new_dimid) ! does this do nothing if the dimension already exists?
-         endif
-         if(ret == NF90_NOERR) then ! successfully created, store this dimenion id
-            where (dimIds == dimIds(i, j, dom))
-               copy_dimIds = new_dimid
-            end where
-         endif
+! define variables
+do i = 1, get_num_variables(dom) ! loop around state variables
+   ! double or single precision?
+   ndims = get_num_dims(dom, i)
 
-      enddo
-   enddo
-
-   if ((.not. time_dimension_exists) .and. (time_unlimited)) then ! create unlimlited dimension time
-      ret = nf90_def_dim(ncfile_out, 'Time', NF90_UNLIMITED, new_dimid) !> @todo Case sensitive?
-      call nc_check(ret, 'create_state_output', 'creating time as the unlimited dimension')
-
-      call add_time_unlimited(new_dimid)
+   if (single_precision_output) then
+      xtype = nf90_real
+   else ! write output that is the precision of filter
+      if (r8 == digits12) then ! datasize = MPI_REAL8  ! What should we be writing?
+         xtype = nf90_double
+      else
+         xtype = nf90_real
+      endif
    endif
 
-   ! overwrite dimIds
-   dimIds = copy_dimIds
-
-   ! define variables
-   do i = 1, num_state_variables ! loop around state variables
-      ! double or single precision?
-      ndims = dimensions_and_lengths(i, 1, dom)
-
-      if (datasize == mpi_real4) then
-         xtype = nf90_real
-      else
-         xtype = nf90_double
-      endif
-
-      ret = nf90_def_var(ncfile_out, trim(global_variable_names(i)), xtype=xtype, dimids=dimIds(i, 1:ndims, dom), varid=new_varid)
-      call nc_check(ret, 'create_state_output', 'defining variable')
-      variable_ids(i, dom) = new_varid
-
+   ! query the dimension ids
+   do j = 1, get_num_dims(dom, i)
+      ret = nf90_inq_dimid(ncfile_out, get_dim_name(dom, i, j), dimids(j))
+      call nc_check(ret, 'create_state_output', 'querying dimensions')
    enddo
 
-   ret = nf90_enddef(ncfile_out)
-   call nc_check(ret, 'create_state_output', 'end define mode')
+   ret = nf90_def_var(ncfile_out, trim(get_variable_name(dom, i)), xtype=xtype, dimids=dimids(1:get_num_dims(dom, i)), varid=new_varid)
+   call nc_check(ret, 'create_state_output', 'defining variable')
+      !variable_ids(i, dom) = new_varid
+   call set_var_id(dom, i, new_varid)
+enddo
 
-endif
+ret = nf90_enddef(ncfile_out)
+call nc_check(ret, 'create_state_output', 'end define mode')
+
 
 end subroutine create_state_output
 
 !-------------------------------------------------
 !> Write variables from start_var to end_var
+!> no clamping
 subroutine write_variables(var_block, start_var, end_var, domain)
 
 real(r8), intent(inout) :: var_block(:)
@@ -1046,23 +904,19 @@ integer :: count_displacement
 integer :: start_in_var_block
 integer :: var_size
 integer, allocatable :: dims(:)
-integer :: var_id
+integer :: var_id 
 
 start_in_var_block = 1
 do i = start_var, end_var
 
-   var_size = variable_sizes(i, domain)
-
-   ! check whether you have to do anything to the variable, clamp or fail
-   if (do_clamp_or_fail(i, domain)) then
-      call clamp_or_fail_it(i, domain, var_block(start_in_var_block:start_in_var_block+var_size-1))
-   endif
+   var_size = get_variable_size(domain, i)
 
    ! number of dimensions and length of each
-   allocate(dims(dimensions_and_lengths(i, 1, domain)))
-   dims = dimensions_and_lengths(i, 2:dimensions_and_lengths(i,1, domain) + 1, domain)
+   allocate(dims(get_num_dims(domain, i)))
 
-   ret = nf90_inq_varid(ncfile_out, global_variable_names(i), var_id)
+   dims = get_dim_lengths(domain, i)
+
+   ret = nf90_inq_varid(ncfile_out, get_variable_name(domain, i), var_id)
    call nc_check(ret, 'write_variables', 'getting variable id')
 
    ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:start_in_var_block+var_size-1), count=dims)
@@ -1074,6 +928,51 @@ do i = start_var, end_var
 enddo
 
 end subroutine write_variables
+
+!-------------------------------------------------
+!> Write variables from start_var to end_var
+!> For actual ensemble members
+subroutine write_variables_clamp(var_block, start_var, end_var, domain)
+
+real(r8), intent(inout) :: var_block(:)
+integer,  intent(in) :: start_var
+integer,  intent(in) :: end_var
+integer,  intent(in) :: domain 
+
+integer :: i
+integer :: count_displacement
+integer :: start_in_var_block
+integer :: var_size
+integer, allocatable :: dims(:)
+integer :: var_id 
+
+start_in_var_block = 1
+do i = start_var, end_var
+
+   var_size = get_variable_size(domain, i)
+
+   ! check whether you have to do anything to the variable, clamp or fail
+   if (do_clamp_or_fail(i, domain)) then
+      call clamp_or_fail_it(i, domain, var_block(start_in_var_block:start_in_var_block+var_size-1))
+   endif
+
+   ! number of dimensions and length of each
+   allocate(dims(get_num_dims(domain, i)))
+
+   dims = get_dim_lengths(domain, i)
+
+   ret = nf90_inq_varid(ncfile_out, get_variable_name(domain, i), var_id)
+   call nc_check(ret, 'write_variables_clamp', 'getting variable id')
+
+   ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:start_in_var_block+var_size-1), count=dims)
+   call nc_check(ret, 'write_variables_clamp', 'writing')
+   start_in_var_block = start_in_var_block + var_size
+
+   deallocate(dims)
+
+enddo
+
+end subroutine write_variables_clamp
 
 !-------------------------------------------------
 !> Find pes for loop indices
@@ -1168,27 +1067,6 @@ endif
 end function find_start_point
 
 !------------------------------------------------------
-!> finds number of elements in the state already
-function sum_variables_below(start_var, domain)
-
-integer, intent(in) :: start_var
-integer, intent(in) :: domain
-integer             :: sum_variables_below
-
-integer :: i
-
-sum_variables_below = 0
-
-do i = 1, domain -1
-   sum_variables_below = sum(variable_sizes(:, i)) ! whole domain below
-enddo
-
-sum_variables_below = sum_variables_below + sum(variable_sizes(1:start_var-1, domain))
-
-
-end function sum_variables_below
-
-!------------------------------------------------------
 !> Given a group, finds the total number of tasks from group 1
 !> up to and including that group
 function cumulative_tasks(group, ens_size)
@@ -1211,112 +1089,6 @@ enddo
 cumulative_tasks = cumulative_tasks + get_group_size(group*limit_procs -1, ens_size)
 
 end function cumulative_tasks
-
-!-------------------------------------------------------
-!> Adding space for an unlimited dimension in the dimesion arrays
-!> The unlimited dimension needs to be last in the list for def_var
-subroutine add_time_unlimited(unlimited_dimId)
-
-integer, intent(in)  :: unlimited_dimId
-
-integer :: i !> loop variable
-
-! add a dimension
-dimensions_and_lengths(:, 1, :) = dimensions_and_lengths(:, 1, :) + 1
-
-do i = 1, num_state_variables
-   dimensions_and_lengths(i, dimensions_and_lengths(i, 1, 1) +1, :) = 1  ! unlimited dimension is length 1?
-   copy_dimIds(i, dimensions_and_lengths(i, 1, 1), :) = unlimited_dimId
-enddo
-
-end subroutine add_time_unlimited
-
-!-------------------------------------------------------
-!> create netcdf restart files without info from existing 
-!> input netcdf files. 
-!> e.g. the input was dart filter restart files
-subroutine fresh_netcdf_file(filename, dom)
-
-character(len=256), intent(in) :: filename
-integer,            intent(in) :: dom !< domain, not sure whether you need this?
-
-integer :: ret !> netcdf return code
-integer :: create_mode
-integer :: i, j ! loop variables
-integer :: time_dimid, state_dimid
-integer :: time_varid, state_varid
-integer :: ndims
-integer :: xtype ! precision for netcdf file
-logical :: time_dimension_exists
-integer :: new_varid
-
-integer :: model_size_i4 ! for adding dimension to netcdf file
-
-character(len=256) :: msgstring
-
-! load up global info about variables
-num_state_variables = 1
-num_domains = 1
-
-create_mode = NF90_CLOBBER+NF90_64BIT_OFFSET
-ret = nf90_create(filename, create_mode, ncfile_out)
-call nc_check(ret, 'fresh_netcdf_file', 'creating')
-
-ret = nf90_def_dim(ncfile_out, 'Time', NF90_UNLIMITED, time_dimid) !> @todo Case sensitive?
-call nc_check(ret, 'fresh_netcdf_file', 'creating time as the unlimited dimension')
-
-model_size_i4 = int(get_model_size(),i4) 
-if (model_size_i4 /= get_model_size()) then
-   write(msgstring,*)'model_size =  ', get_model_size(), ' is too big to write ', &
-             ' state vector as a netcdf file.'
-   call error_handler(E_MSG,'fresh_netcdf_file', msgstring, source, revision, revdate)
-endif
-
-ret = nf90_def_dim(ncfile_out, 'state', model_size_i4, state_dimid)
-call nc_check(ret, 'fresh_netcdf_file', 'creating state dimension')
-
-! construct what would have been created during initialize_arrays_for_read
-call initialize_arrays_for_write
-
-global_variable_names(1) = 'state'
-dimensions_and_lengths(1, 1, 1) = 1 ! number of dimensions
-dimensions_and_lengths(1, 2, 1) = get_model_size() ! length of dimension is model size
-dimIds(1, 1, 1) = state_dimid
-variable_sizes(1, 1) = get_model_size() 
-
-if (datasize == mpi_real4) then
-   xtype = nf90_real
-else
-   xtype = nf90_double
-endif
-
-ret = nf90_def_var(ncfile_out, trim(global_variable_names(1)), xtype=xtype, dimids=dimIds(1, 1, 1), varid=new_varid)
-call nc_check(ret, 'fresh_netcdf_file', 'defining variable')
-
-variable_ids(1, 1) = new_varid
-
-ret = nf90_enddef(ncfile_out)
-call nc_check(ret, 'fresh_netcdf_file', 'end define mode')
-
-end subroutine fresh_netcdf_file
-
-!-------------------------------------------------------
-!> for use with fresh_netcdf_file
-subroutine initialize_arrays_for_write
-
-if(.not. arrays_initialized) then
-
-   allocate(variable_ids(num_state_variables, num_domains), variable_sizes(num_state_variables, num_domains))
-   allocate(dimIds(num_state_variables, 1, num_domains), length(num_state_variables, 1, num_domains), dim_names(num_state_variables, 1, num_domains))
-   !allocate(copy_dimIds(n, MAXDIMS, num_domains)) ! I don't think you need this
-   allocate(dimensions_and_lengths(num_state_variables, 2, num_domains))
-   allocate(global_variable_names(num_state_variables))
-
-   arrays_initialized = .true.
-
-endif
-
-end subroutine initialize_arrays_for_write
 
 !-------------------------------------------------------
 !> @}

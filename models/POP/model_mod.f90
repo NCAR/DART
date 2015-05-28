@@ -9,38 +9,40 @@ module model_mod
 ! This is the interface between the POP ocean model and DART.
 
 ! Modules that are absolutely required for use are listed
-use        types_mod,   only : r4, r8, i4, i8, SECPERDAY, MISSING_R8, rad2deg, PI
-use time_manager_mod,   only : time_type, set_time, set_date, get_date, get_time,&
-                               print_time, print_date,                           &
-                               operator(*),  operator(+), operator(-),           &
-                               operator(>),  operator(<), operator(/),           &
-                               operator(/=), operator(<=)
-use     location_mod,   only : location_type, get_dist, get_close_maxdist_init,  &
-                               get_close_obs_init, set_location,                 &
-                               VERTISHEIGHT, get_location, vert_is_height,       &
-                               vert_is_level, vert_is_surface,                   &
-                               loc_get_close_obs => get_close_obs, get_close_type
-use    utilities_mod,   only : register_module, error_handler,                   &
-                               E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
-                               nc_check, do_output,                              &
-                               find_namelist_in_file, check_namelist_read,       &
-                               file_exist, find_textfile_dims, file_to_text
-use     obs_kind_mod,   only : KIND_TEMPERATURE, KIND_SALINITY, KIND_DRY_LAND,   &
-                               KIND_U_CURRENT_COMPONENT,KIND_V_CURRENT_COMPONENT,&
-                               KIND_SEA_SURFACE_HEIGHT, KIND_SEA_SURFACE_PRESSURE,&
-                               KIND_POTENTIAL_TEMPERATURE
-use mpi_utilities_mod,  only : my_task_id
-use    random_seq_mod,  only : random_seq_type, init_random_seq, random_gaussian
-use      dart_pop_mod,  only : set_model_time_step,                              &
-                               get_horiz_grid_dims, get_vert_grid_dim,           &
-                               read_horiz_grid, read_topography, read_vert_grid, &
-                               get_pop_restart_filename
+use        types_mod,    only : r4, r8, i4, i8, SECPERDAY, MISSING_R8, rad2deg, PI
+use time_manager_mod,    only : time_type, set_time, set_date, get_date, get_time,&
+                                print_time, print_date,                           &
+                                operator(*),  operator(+), operator(-),           &
+                                operator(>),  operator(<), operator(/),           &
+                                operator(/=), operator(<=)
+use     location_mod,    only : location_type, get_dist, get_close_maxdist_init,  &
+                                get_close_obs_init, set_location,                 &
+                                VERTISHEIGHT, get_location, vert_is_height,       &
+                                vert_is_level, vert_is_surface,                   &
+                                loc_get_close_obs => get_close_obs, get_close_type
+use    utilities_mod,    only : register_module, error_handler,                   &
+                                E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
+                                nc_check, do_output,                              &
+                                find_namelist_in_file, check_namelist_read,       &
+                                file_exist, find_textfile_dims, file_to_text
+use     obs_kind_mod,    only : KIND_TEMPERATURE, KIND_SALINITY, KIND_DRY_LAND,   &
+                                KIND_U_CURRENT_COMPONENT,KIND_V_CURRENT_COMPONENT,&
+                                KIND_SEA_SURFACE_HEIGHT, KIND_SEA_SURFACE_PRESSURE,&
+                                KIND_POTENTIAL_TEMPERATURE
+use mpi_utilities_mod,   only : my_task_id
+use    random_seq_mod,   only : random_seq_type, init_random_seq, random_gaussian
+use      dart_pop_mod,   only : set_model_time_step,                              &
+                                get_horiz_grid_dims, get_vert_grid_dim,           &
+                                read_horiz_grid, read_topography, read_vert_grid, &
+                                get_pop_restart_filename
 
-use data_structure_mod, only : ensemble_type, copies_in_window
+use data_structure_mod,  only : ensemble_type, copies_in_window
 
 use distributed_state_mod
 
 use null_vert_convert
+
+use state_structure_mod, only : add_domain
 
 use typesizes
 use netcdf 
@@ -72,8 +74,6 @@ public :: get_model_size,                &
           get_vert,                      &
           set_vert,                      &
           set_which_vert,                &
-          variables_domains,             &
-          fill_variable_list,            &
           info_file_name,                &
           construct_file_name_in,        &
           get_model_time,                &
@@ -144,6 +144,7 @@ integer, parameter :: nfields   = n3dfields + n2dfields
 ! (the absoft compiler likes them to all be the same length during declaration)
 ! we trim the blanks off before use anyway, so ...
 character(len=128) :: progvarnames(nfields) = (/'SALT ','TEMP ','UVEL ','VVEL ','PSURF'/)
+character(len=128) :: netcdfvarnames(nfields) = (/'SALT_CUR ','TEMP_CUR ','UVEL_CUR ','VVEL_CUR ','PSURF_CUR'/)
 
 integer, parameter :: S_index     = 1
 integer, parameter :: T_index     = 2
@@ -257,6 +258,7 @@ subroutine static_init_model()
 integer :: iunit, io
 integer :: ss, dd
 integer(i4) :: model_size_i4
+integer :: domain_id
 
 ! The Plan:
 !
@@ -356,6 +358,8 @@ call dpth2pres(Nz, ZC, pressure)
 
 ! Initialize the interpolation routines
 call init_interp()
+!> @todo 'pop.r.nc' is hardcoded in dart_pop_mod.f90
+domain_id = add_domain('pop.r.nc', nfields, netcdfvarnames)
 
 end subroutine static_init_model
 
@@ -3672,34 +3676,6 @@ if (debug > 2 .and. do_output()) then
 endif
 
 end subroutine dpth2pres
-
-!------------------------------------------------------------------
-!> pass the number of variables in the state to filter
-subroutine variables_domains(num_variables_in_state, num_doms)
-
-integer, intent(out) :: num_variables_in_state
-integer, intent(out) :: num_doms !< number of domains
-
-num_variables_in_state = nfields
-num_doms = 1
-
-end subroutine variables_domains
-
-!--------------------------------------------------------------------
-!> pass variable list to filter
-function fill_variable_list(num_variables_in_state)
-
-integer, intent(in) :: num_variables_in_state
-character(len=256)  :: fill_variable_list(num_variables_in_state)
-
-! index variable
-integer            :: ivar
-
-do ivar=1,nfields
-   fill_variable_list(ivar) =  trim(progvarnames(ivar))//'_CUR'
-enddo
-
-end function fill_variable_list
 
 !--------------------------------------------------------------------
 !> construct info filename for get_state_variable_info

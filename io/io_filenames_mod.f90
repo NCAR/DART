@@ -20,9 +20,11 @@ module io_filenames_mod
 !> Diagnostic files could have different netcdf variable ids
 !> @{
 
-use utilities_mod, only : do_nml_file, nmlfileunit, do_nml_term, check_namelist_read, &
-                          find_namelist_in_file
-use model_mod,     only : construct_file_name_in
+use utilities_mod,        only : do_nml_file, nmlfileunit, do_nml_term, check_namelist_read, &
+                                 find_namelist_in_file
+use model_mod,            only : construct_file_name_in
+use state_structure_mod,  only : get_num_domains
+use ensemble_manager_mod, only : is_single_restart_file_in
 
 implicit none
 
@@ -31,7 +33,8 @@ private
 ! These should probably be set and get functions rather than 
 ! direct access
 
-public :: io_filenames_init, restart_files_in, restart_files_out
+public :: io_filenames_init, restart_files_in, restart_files_out, &
+          set_filenames
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -48,24 +51,19 @@ character(len=2048), allocatable :: restart_files_in(:,:), restart_files_out(:,:
 ! Namelist options
 character(len=512) :: restart_in_stub  = 'input'
 character(len=512) :: restart_out_stub = 'output'
+logical            :: overwrite_input = .false.  ! sets the output file = input file
 
 
 ! Should probably get num_domains, num_restarts from elsewhere. In here for now
-namelist / io_filenames_nml / restart_in_stub, restart_out_stub
+namelist / io_filenames_nml / restart_in_stub, restart_out_stub, overwrite_input
 
 contains
 
 !----------------------------------
 !> read namelist and set up filename arrays
-subroutine io_filenames_init(ens_size, num_domains, inflation_in, inflation_out)
+subroutine io_filenames_init()
 
-integer, intent(in) :: ens_size 
-integer, intent(in) :: num_domains
 integer :: iunit, io
-integer :: dom, num_files, i
-character(len = 129) :: inflation_in(2), inflation_out(2)
-character(len = 4)   :: extension
-
 !call register_module(source, revision, revdate)
 
 ! Read the namelist entry
@@ -77,18 +75,60 @@ call check_namelist_read(iunit, io, "io_filenames_nml")
 if (do_nml_file()) write(nmlfileunit, nml=io_filenames_nml)
 if (do_nml_term()) write(     *     , nml=io_filenames_nml)
 
+end subroutine io_filenames_init
+
+!----------------------------------
+
+subroutine set_filenames(ens_size, inflation_in, inflation_out)
+
+integer,              intent(in) :: ens_size
+character(len = 129), intent(in) :: inflation_in(2), inflation_out(2)
+character(len = 4)   :: extension, dom_str
+
+integer :: num_domains
+integer :: dom, i ! loop variables
+integer :: num_files
+
 num_files = ens_size + 10 !> @toto do you worry about spare copies?
+
+num_domains = get_num_domains()
 
 allocate(restart_files_in(num_files, num_domains))
 allocate(restart_files_out(num_files, num_domains, 2)) ! for prior and posterior filenames
 
 do dom = 1, num_domains
-   do i = 1, ens_size  ! restarts
-      restart_files_in(i, dom)  = construct_file_name_in(restart_in_stub, dom, i)
-      write(extension, '(i4.4)') i
-      restart_files_out(i, dom, 1) = 'prior_member.' // extension
-      restart_files_out(i, dom, 2) = construct_file_name_out(restart_out_stub, dom, i)
-   enddo
+
+   if (is_single_restart_file_in()) then ! reading first restart for now
+
+      restart_files_in(:, dom) = construct_file_name_in(restart_in_stub, dom, 1)
+
+      do i = 1, ens_size  ! restarts
+         write(extension, '(i4.4)') i
+         write(dom_str, '(i1.1)') dom
+         restart_files_out(i, dom, 1) = 'prior_member_d0' // trim(dom_str) // '.' // extension
+         if (overwrite_input) then
+            restart_files_out(i, dom, 2) = restart_files_in(i, dom)
+         else
+            restart_files_out(i, dom, 2) = construct_file_name_out(restart_out_stub, dom, i)
+         endif
+      enddo
+
+   else
+
+      do i = 1, ens_size  ! restarts
+         restart_files_in(i, dom)  = construct_file_name_in(restart_in_stub, dom, i)
+         write(extension, '(i4.4)') i
+         write(dom_str, '(i1.1)') dom
+         restart_files_out(i, dom, 1) = 'prior_member_d0' // trim(dom_str) // '.' // extension
+         if (overwrite_input) then
+            restart_files_out(i, dom, 2) = restart_files_in(i, dom)
+         else
+         restart_files_out(i, dom, 2) = construct_file_name_out   (restart_out_stub, dom, i)
+         endif
+      enddo
+
+   endif
+
 enddo
 
 ! input extras
@@ -146,7 +186,7 @@ do dom = 1, num_domains
 
 enddo
 
-end subroutine io_filenames_init
+end subroutine set_filenames
 
 !----------------------------------
 !> Destroy module storage

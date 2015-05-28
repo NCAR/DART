@@ -12,6 +12,7 @@ filter/filter_mod.f90
 io/state_vector_io_mod.f90
 io/io_filenames_mod.f90
 io/copies_on_off_mod.f90
+io/state_structure_mod.f90
 location/threed_sphere/location_mod.f90
 models/POP/dart_pop_mod.f90
 models/POP/model_mod.f90

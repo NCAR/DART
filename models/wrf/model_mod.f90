@@ -36,66 +36,68 @@ module model_mod
 !---------------- m o d u l e   i n f o r m a t i o n ------------------
 !-----------------------------------------------------------------------
 
-use         types_mod, only : r8, i8, deg2rad, missing_r8, ps0, earth_radius, &
-                              gas_constant, gas_constant_v, gravity, pi,      &
-                              digits12
+use         types_mod,   only : r8, i8, deg2rad, missing_r8, ps0, earth_radius, &
+                                gas_constant, gas_constant_v, gravity, pi,      &
+                                digits12
 
-use  time_manager_mod, only : time_type, set_time, set_calendar_type, GREGORIAN,&
-                              set_date
+use  time_manager_mod,   only : time_type, set_time, set_calendar_type, GREGORIAN,&
+                                set_date
 
-use      location_mod, only : location_type, get_location, set_location, &
-                              horiz_dist_only,                                  &
-                              LocationDims, LocationName, LocationLName, &
-                              query_location, vert_is_undef, vert_is_surface, &
-                              vert_is_level, vert_is_pressure, vert_is_height, &
-                              vert_is_scale_height, VERTISUNDEF, VERTISSURFACE, &
-                              VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, &
-                              VERTISSCALEHEIGHT, &
-                              get_close_type, get_dist, get_close_maxdist_init, &
-                              get_close_obs_init, loc_get_close_obs => get_close_obs, &
-                              get_vert, set_vert, set_which_vert
+use      location_mod,   only : location_type, get_location, set_location, &
+                                horiz_dist_only,                                  &
+                                LocationDims, LocationName, LocationLName, &
+                                query_location, vert_is_undef, vert_is_surface, &
+                                vert_is_level, vert_is_pressure, vert_is_height, &
+                                vert_is_scale_height, VERTISUNDEF, VERTISSURFACE, &
+                                VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, &
+                                VERTISSCALEHEIGHT, &
+                                get_close_type, get_dist, get_close_maxdist_init, &
+                                get_close_obs_init, loc_get_close_obs => get_close_obs, &
+                                get_vert, set_vert, set_which_vert
 
-use     utilities_mod, only : file_exist, open_file, close_file, &
-                              register_module, error_handler, E_ERR, E_WARN, &
-                              E_MSG, nmlfileunit, do_output, nc_check, &
-                              find_namelist_in_file, check_namelist_read, &
-                              find_textfile_dims, file_to_text, &
-                              do_nml_file, do_nml_term
+use     utilities_mod,  only  : file_exist, open_file, close_file, &
+                                register_module, error_handler, E_ERR, E_WARN, &
+                                E_MSG, nmlfileunit, do_output, nc_check, &
+                                find_namelist_in_file, check_namelist_read, &
+                                find_textfile_dims, file_to_text, &
+                                do_nml_file, do_nml_term
 
-use  mpi_utilities_mod, only : my_task_id
+use  mpi_utilities_mod,  only : my_task_id
 
-use     random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
+use     random_seq_mod,  only : random_seq_type, init_random_seq, random_gaussian
 
-use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
-                              KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, &
-                              KIND_SPECIFIC_HUMIDITY, KIND_SURFACE_ELEVATION, &
-                              KIND_PRESSURE, KIND_VERTICAL_VELOCITY, &
-                              KIND_DENSITY, KIND_FLASH_RATE_2D, &
-                              KIND_RAINWATER_MIXING_RATIO, KIND_HAIL_MIXING_RATIO, &
-                              KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
-                              KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, &
-                              KIND_CONDENSATIONAL_HEATING, KIND_VAPOR_MIXING_RATIO, &
-                              KIND_ICE_NUMBER_CONCENTRATION, KIND_GEOPOTENTIAL_HEIGHT, &
-                              KIND_POTENTIAL_TEMPERATURE, KIND_SOIL_MOISTURE, &
-                              KIND_DROPLET_NUMBER_CONCENTR, KIND_SNOW_NUMBER_CONCENTR, &
-                              KIND_RAIN_NUMBER_CONCENTR, KIND_GRAUPEL_NUMBER_CONCENTR, &
-                              KIND_HAIL_NUMBER_CONCENTR, KIND_HAIL_VOLUME, &
-                              KIND_GRAUPEL_VOLUME, KIND_DIFFERENTIAL_REFLECTIVITY, &
-                              KIND_RADAR_REFLECTIVITY, KIND_POWER_WEIGHTED_FALL_SPEED, &
-                              KIND_SPECIFIC_DIFFERENTIAL_PHASE, &
-                              KIND_VORTEX_LAT, KIND_VORTEX_LON, &
-                              KIND_VORTEX_PMIN, KIND_VORTEX_WMAX, &
-                              KIND_SKIN_TEMPERATURE, KIND_LANDMASK, &
-                              get_raw_obs_kind_index, get_num_raw_obs_kinds, &
-                              get_raw_obs_kind_name
+use      obs_kind_mod,   only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
+                                KIND_SURFACE_PRESSURE, KIND_TEMPERATURE, &
+                                KIND_SPECIFIC_HUMIDITY, KIND_SURFACE_ELEVATION, &
+                                KIND_PRESSURE, KIND_VERTICAL_VELOCITY, &
+                                KIND_DENSITY, KIND_FLASH_RATE_2D, &
+                                KIND_RAINWATER_MIXING_RATIO, KIND_HAIL_MIXING_RATIO, &
+                                KIND_GRAUPEL_MIXING_RATIO, KIND_SNOW_MIXING_RATIO, &
+                                KIND_CLOUD_LIQUID_WATER, KIND_CLOUD_ICE, &
+                                KIND_CONDENSATIONAL_HEATING, KIND_VAPOR_MIXING_RATIO, &
+                                KIND_ICE_NUMBER_CONCENTRATION, KIND_GEOPOTENTIAL_HEIGHT, &
+                                KIND_POTENTIAL_TEMPERATURE, KIND_SOIL_MOISTURE, &
+                                KIND_DROPLET_NUMBER_CONCENTR, KIND_SNOW_NUMBER_CONCENTR, &
+                                KIND_RAIN_NUMBER_CONCENTR, KIND_GRAUPEL_NUMBER_CONCENTR, &
+                                KIND_HAIL_NUMBER_CONCENTR, KIND_HAIL_VOLUME, &
+                                KIND_GRAUPEL_VOLUME, KIND_DIFFERENTIAL_REFLECTIVITY, &
+                                KIND_RADAR_REFLECTIVITY, KIND_POWER_WEIGHTED_FALL_SPEED, &
+                                KIND_SPECIFIC_DIFFERENTIAL_PHASE, &
+                                KIND_VORTEX_LAT, KIND_VORTEX_LON, &
+                                KIND_VORTEX_PMIN, KIND_VORTEX_WMAX, &
+                                KIND_SKIN_TEMPERATURE, KIND_LANDMASK, &
+                                get_raw_obs_kind_index, get_num_raw_obs_kinds, &
+                                get_raw_obs_kind_name
 
 !HK should model_mod know about the number of copies?
-use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
-                               copies_in_window
+use data_structure_mod,  only : ensemble_type, map_pe_to_task, get_var_owner_index, &
+                                copies_in_window
 
-use sort_mod, only : sort
+use sort_mod,            only : sort
 
 use distributed_state_mod
+
+use state_structure_mod, only : add_domain
 
 ! FIXME:
 ! the kinds KIND_CLOUD_LIQUID_WATER should be KIND_CLOUDWATER_MIXING_RATIO, 
@@ -140,8 +142,6 @@ public ::  get_model_size,                &
            model_interpolate_distrib,     &
            vert_convert_distrib,          &
            query_vert_localization_coord, &
-           variables_domains,             &
-           fill_variable_list,            &
            get_vert,                      &
            set_vert,                      &
            set_which_vert,                &
@@ -398,7 +398,9 @@ integer               :: ind, i, j, k, id, dart_index
 integer               :: my_index
 integer               :: var_element_list(max_state_variables)
 logical               :: var_update_list(max_state_variables)
-
+! not doing anything with this. If we do it should 
+! be an array in module global storage
+integer               :: domain_id
 
 !----------------------------------------------------------------------
 
@@ -745,6 +747,9 @@ WRFDomains : do id=1,num_domains
    wrf%dom(id)%type_fall_spd = get_type_ind_from_type_string(id,'FALL_SPD_Z_WEIGHTED')
    !wrf%dom(id)%type_fall_spd = get_type_ind_from_type_string(id,'VT_DBZ_WT')
    wrf%dom(id)%type_hdiab  = get_type_ind_from_type_string(id,'H_DIABATIC')
+
+   ! add domain - not doing anything with domain_id yet so just overwriting it
+   domain_id = add_domain('wrfinput_d0'//idom, wrf%dom(id)%number_of_wrf_variables, wrf_state_variables(1,1:wrf%dom(id)%number_of_wrf_variables))
 
 enddo WRFDomains 
 
@@ -9144,30 +9149,6 @@ integer :: query_vert_localization_coord
 query_vert_localization_coord = vert_localization_coord
 
 end function query_vert_localization_coord
-
-
-!--------------------------------------------------------------------
-!> pass number of variables in the state out to filter 
-subroutine variables_domains(num_variables_in_state, num_doms)
-
-integer, intent(out) :: num_variables_in_state
-integer, intent(out) :: num_doms !< number of domains
-
-num_variables_in_state = wrf%dom(1)%number_of_wrf_variables !> @todo massive assumption same variables in each domain
-num_doms = num_domains
-
-end subroutine variables_domains
-
-!--------------------------------------------------------------------
-!> pass variable list to filter
-function fill_variable_list(num_variables_in_state)
-
-integer            :: num_variables_in_state
-character(len=256) :: fill_variable_list(num_variables_in_state)
-
-fill_variable_list = wrf_state_variables(1,1:num_variables_in_state)
-
-end function fill_variable_list
 
 !--------------------------------------------------------------------
 !> construct info filename for get_state_variable_info
