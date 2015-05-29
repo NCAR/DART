@@ -29,6 +29,8 @@ use ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, &
 use mpi_utilities_mod,    only : initialize_mpi_utilities, task_count, &
                                  finalize_mpi_utilities
 
+use types_mod,            only : i8
+
 
 implicit none
 
@@ -38,7 +40,8 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-integer                 :: iunit, model_size, io, member
+integer                 :: iunit, io, member
+integer(i8)             :: model_size
 type(ensemble_type)     :: ens_handle
 character(len = 128)    :: ifile, ofile, msgstring
 logical                 :: one_by_one, has_cal
@@ -358,7 +361,7 @@ contains
 subroutine print_info(model_size, has_cal, data_time, is_advance, advance_time)
 ! called when the 'print_only' namelist item is true; print information
 ! about the timestamps in the file and the model size.
- integer, intent(in)                   :: model_size
+ integer(i8), intent(in)               :: model_size
  logical, intent(in)                   :: has_cal
  type(time_type), intent(in)           :: data_time
  logical, intent(in)                   :: is_advance

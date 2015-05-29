@@ -25,3 +25,4 @@ sort/sort_mod.f90
 io/state_vector_io_mod.f90
 io/io_filenames_mod.f90
 io/copies_on_off_mod.f90
+io/state_structure_mod.f90

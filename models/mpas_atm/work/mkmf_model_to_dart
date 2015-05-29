@@ -7,7 +7,7 @@
 # DART $Id$
 
 ../../../mkmf/mkmf -p model_to_dart -t ../../../mkmf/mkmf.template   \
- -a "../../.." path_names_model_to_dart
+ -a "../../.." -w path_names_model_to_dart
 
 exit $status
 

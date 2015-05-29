@@ -10,7 +10,7 @@ program fill_inflation_restart
 ! based on a single inflate and standard deviation value read from the console.
 ! (alternatively we could read them from a namelist, but it seems like overkill.)
 
-use types_mod,            only : r8
+use types_mod,            only : r8, i8
 
 use utilities_mod,        only : error_handler, E_MSG,  &
                                  initialize_utilities, finalize_utilities
@@ -42,10 +42,10 @@ character(len = 32)  :: out_file_name = 'inflate_ics'
 
 type(ensemble_type)  :: ens_handle
 
-real(r8) :: inf_initial, sd_initial
-integer  :: ss_inflate_index    = 1 
-integer  :: ss_inflate_sd_index = 2
-integer  :: model_size
+real(r8)     :: inf_initial, sd_initial
+integer      :: ss_inflate_index    = 1
+integer      :: ss_inflate_sd_index = 2
+integer(i8)  :: model_size
 
 !============================================================================
 

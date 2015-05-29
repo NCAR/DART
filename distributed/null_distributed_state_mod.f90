@@ -12,16 +12,10 @@ module distributed_state_mod
 
 !> \defgroup distrib_state distributed_state_mod
 !> @{
-use types_mod,          only : r8
+use types_mod,          only : r8, i8
 use data_structure_mod, only : ensemble_type
 
 implicit none
-
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
 
 interface get_state
    module procedure get_fwd
@@ -34,8 +28,8 @@ contains
 !> Do nothing
 subroutine get_fwd(x, index, state_ens_handle)
 
-real(r8), intent(out)            :: x(:) !> all copies of an element of the state vector
-integer, intent(in)              :: index !> index into state vector
+real(r8),    intent(out)         :: x(:) !> all copies of an element of the state vector
+integer(i8), intent(in)          :: index !> index into state vector
 type(ensemble_type), intent(in)  :: state_ens_handle
 
 integer                          :: owner_of_state !> task who owns the state
@@ -50,8 +44,8 @@ end subroutine get_fwd
 !> Do nothing
 subroutine get_mean(x, index, state_ens_handle)
 
-real(r8), intent(out)            :: x !> only grabing the mean
-integer, intent(in)              :: index !> index into state vector
+real(r8),    intent(out)         :: x !> only grabing the mean
+integer(i8), intent(in)          :: index !> index into state vector
 type(ensemble_type), intent(in)  :: state_ens_handle
 
 

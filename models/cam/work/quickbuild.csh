@@ -65,7 +65,7 @@ make || exit $n
 ./preprocess || exit 99
 
 #----------------------------------------------------------------------
-# Build all the single-threaded targets
+# Build all the targets
 #----------------------------------------------------------------------
 
 foreach TARGET ( mkmf_* )
@@ -85,64 +85,15 @@ foreach TARGET ( mkmf_* )
       make        || exit $n
       breaksw
    endsw
+
+   rm *.o *.mod
 end
 
 \rm -f *.o *.mod input.nml*_default
 
-if ( $#argv == 1 && "$1" == "-mpi" ) then
-  echo "Success: All single task DART programs compiled."  
-  echo "Script now compiling MPI parallel versions of the DART programs."
-else if ( $#argv == 1 && "$1" == "-nompi" ) then
-  echo "Success: All single task DART programs compiled."  
-  echo "Script is exiting without building the MPI version of the DART programs."
-  exit 0
-else
-  echo ""
-  echo "Success: All single task DART programs compiled."  
-  echo "Script now compiling MPI parallel versions of the DART programs."
-  echo "Run the quickbuild.csh script with a -nompi argument or"
-  echo "edit the quickbuild.csh script and add an exit line"
-  echo "to bypass compiling with MPI to run in parallel on multiple cpus."
-  echo ""
-endif
-
-#----------------------------------------------------------------------
-# to disable an MPI parallel version of filter for this model, 
-# call this script with the -nompi argument, or if you are never going to
-# build with MPI, add an exit before the entire section above.
-#----------------------------------------------------------------------
-
-#----------------------------------------------------------------------
-# Build the MPI-enabled target(s) 
-#----------------------------------------------------------------------
-
-\rm -f filter wakeup_filter
-
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_filter"
-csh   mkmf_filter -mpi
-make
-
-if ($status != 0) then
-   echo
-   echo "If this died in mpi_utilities_mod, see code comment"
-   echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
-   echo
-   exit $n
-endif
-
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_wakeup_filter"
-csh  mkmf_wakeup_filter -mpi
-make || exit $n
-
-\rm -f *.o *.mod input.nml*_default
-
-echo
+echo ""
+echo "Success: All DART programs compiled."
+echo ""
 echo 'time to run filter here:'
 echo ' for lsf run "bsub < runme_filter"'
 echo ' for pbs run "qsub runme_filter"'
