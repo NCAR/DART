@@ -211,6 +211,8 @@ use data_structure_mod, only : ensemble_type, copies_in_window
 
 use distributed_state_mod
 
+use state_structure_mod, only : add_domain
+
 ! end of use statements
 != = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
 
@@ -258,6 +260,8 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 !-----------------------------------------------------------------------
+
+integer :: component_id ! for add_domain.  Not used elsewhere in the module yet
 
 ! DART form of ensemble mean, global storage for use by get_close_obs:convert_vert
 ! Ensemble mean is used so that the same "state" will be used for the height calculations
@@ -796,6 +800,9 @@ endif
 ! Order the state vector parts into cflds.
 allocate(cflds(nflds))
 call order_state_fields()
+
+! Add a component to the state vector
+component_id = add_domain('caminput.nc', nflds, cflds)
 
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ! Get field attributes needed by nc_write_model_atts from caminput.nc.

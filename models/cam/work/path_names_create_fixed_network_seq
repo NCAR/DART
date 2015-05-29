@@ -16,3 +16,4 @@ ensemble_manager/data_structure_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
 sort/sort_mod.f90
 io/copies_on_off_mod.f90
+io/state_structure_mod.f90
