@@ -186,7 +186,7 @@ obsloop: do n = 1, nobs
   do i = 1, nused
     if ( lon(n) == lonu(i) .and. &
          lat(n) == latu(i) .and. &
-        prsu(n) == pres(i) .and. &
+        pres(n) == prsu(i) .and. &
         band(n) == bndu(i) .and. &
         tobs(n) == tobu(i) ) cycle obsloop
   end do
@@ -227,7 +227,7 @@ obsloop: do n = 1, nobs
   latu(nused) =  lat(n)
   lonu(nused) =  lon(n)
   prsu(nused) = pres(n)
-  band(nused) = bndu(n)
+  bndu(nused) = band(n)
   tobu(nused) = tobs(n)
 
 end do obsloop
