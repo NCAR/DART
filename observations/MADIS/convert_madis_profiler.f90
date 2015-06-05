@@ -131,7 +131,7 @@ call    getvar_real(ncid, namelist(index),  tobs           ) ! observation time
 
 call getvar_real_2d(ncid, "levels",      levs           ) ! height above station in meters
 call getvar_real_2d(ncid, "uComponent",  uwnd, uwnd_miss) ! e-w component
-call getvar_real_2d(ncid, "vComponent",  vwnd, uwnd_miss) ! n-s component
+call getvar_real_2d(ncid, "vComponent",  vwnd, vwnd_miss) ! n-s component
 
 ! if user says to use them, read in QCs if present
 if (use_input_qc) then
