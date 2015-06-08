@@ -20,11 +20,15 @@ module io_filenames_mod
 !> Diagnostic files could have different netcdf variable ids
 !> @{
 
-use utilities_mod,        only : do_nml_file, nmlfileunit, do_nml_term, check_namelist_read, &
-                                 find_namelist_in_file
+use utilities_mod,        only : do_nml_file, nmlfileunit, do_nml_term, &
+                                 check_namelist_read, find_namelist_in_file, &
+                                 file_exist, E_ERR, error_handler, nc_check
 use model_mod,            only : construct_file_name_in
-use state_structure_mod,  only : get_num_domains
+use state_structure_mod,  only : get_num_domains, get_dim_length, get_dim_name, &
+                                 get_num_dims, get_num_variables, get_variable_name
 use ensemble_manager_mod, only : is_single_restart_file_in
+use ensemble_manager_mod, only : is_single_restart_file_in
+use netcdf
 
 implicit none
 
@@ -123,7 +127,7 @@ do dom = 1, num_domains
          if (overwrite_input) then
             restart_files_out(i, dom, 2) = restart_files_in(i, dom)
          else
-         restart_files_out(i, dom, 2) = construct_file_name_out   (restart_out_stub, dom, i)
+            restart_files_out(i, dom, 2) = construct_file_name_out(restart_out_stub, dom, i)
          endif
       enddo
 
@@ -186,16 +190,103 @@ do dom = 1, num_domains
 
 enddo
 
+
+! check that the netcdf files match the variables for this domain
+! to prevent overwritting unwanted files.
+do i = 1, ens_size+6
+   do dom = 1, num_domains
+      ! check the prior files
+      if(file_exist(restart_files_out(i,dom,1))) &
+         call check_correct_variables(restart_files_out(i,dom,1),dom)
+
+      ! check the posterior files
+      if(file_exist(restart_files_out(i,dom,2))) &
+         call check_correct_variables(restart_files_out(i,dom,2),dom)
+   enddo
+enddo
+
 end subroutine set_filenames
 
-!----------------------------------
-!> Destroy module storage
-subroutine end_io_filenames()
+!-------------------------------------------------------
+!> Check that the netcdf file matches the variables
+!> for this domain
+!> Do you want to overload this to take a filename or 
+!> netcdf file id?
+!> Do we need an nc_check warning rather than error out?
+!> This checks that an existing output netcdf file contains:
+!>     - each variable (matched by name)
+!>     - correct dimensions for each variable (matched by name and size)
+subroutine check_correct_variables(netcdf_filename, dom)
 
-deallocate(restart_files_in, restart_files_out)
+character(len=*), intent(in) :: netcdf_filename
+integer, intent(in) :: dom
 
-end subroutine end_io_filenames
+integer :: ncfile ! netcdf file id
+integer :: i ! loop index variable
+integer :: j ! loop index dimension
+integer :: ret ! nc_check return value
 
+integer :: var_id ! variable id
+integer :: ndims ! number of dimensions
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimids ! dimension ids for a variable
+character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: name ! dimension names for a variables
+integer, dimension(NF90_MAX_VAR_DIMS) :: length
+integer :: xtype ! do we care about this? Yes.
+character(len=512) :: msgstring ! message handler
+
+ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
+call nc_check(ret, 'check_correct_variables opening ', netcdf_filename)
+
+do i = 1, get_num_variables(dom)
+
+   ! get variable id from necfile
+   ret = nf90_inq_varid(ncfile, get_variable_name(dom,i), var_id)
+   write(msgstring,*) 'no match for variable ',  trim(get_variable_name(dom,i)), &
+                      ' in ', trim(netcdf_filename)
+   call nc_check(ret, 'check_correct_variables', msgstring)
+
+   ! get dimension information from ncfile
+   ret = nf90_inquire_variable(ncfile, var_id, ndims=ndims, dimids=dimids, xtype=xtype)
+   call nc_check(ret, 'check_correct_variables', 'nf90_inquire_variable')
+
+   ! check number of dimensions are the same - should you worry about the unlimited dimension?
+   if (ndims /= get_num_dims(dom,i)) then
+      write(msgstring,*) 'ndims ', get_num_dims(dom,i), ' in state does not', &
+                         ' match ndims ', ndims, ' in ', trim(netcdf_filename)
+      call error_handler(E_ERR, 'check_correct_variables', msgstring)
+   endif
+
+   ! check if the dimensions are what we expect. The dimensions should be same size same order.
+   do j = 1, get_num_dims(dom,i)
+
+      ! get dimension names and lengths from ncfile
+      ret = nf90_inquire_dimension(ncfile, dimids(j), name=name(j), len=length(j))
+      call nc_check(ret, 'check_correct_variables', 'nf90_inquire_dimension')
+
+      ! check that the dimension names are the same
+      if (get_dim_name(dom,i,j) /= name(j)) then
+         write(msgstring,*) 'dim name', trim(get_dim_name(dom,i,j)), ' in state does', &
+                            ' not match dim name', name(j), ' in ', trim(netcdf_filename)
+         call error_handler(E_ERR, 'check_correct_variables', msgstring)
+      endif
+
+      ! check that the dimension lengths are the same
+      if (get_dim_length(dom,i,j) /= length(j)) then
+         write(msgstring,*) 'dimension ', name(j), "'s length ", &
+                            get_dim_length(dom,i,j), ' in state does not match', &
+                            ' dimension length ', length(j), ' in ', trim(netcdf_filename)
+         call error_handler(E_ERR, 'check_correct_variables', msgstring)
+      endif
+
+   enddo
+
+enddo
+
+ret = nf90_close(ncfile)
+call nc_check(ret, 'check_correct_variables closing', netcdf_filename)
+
+
+end subroutine check_correct_variables
 
 !--------------------------------------------------------------------
 !> construct restart file name for writing
@@ -209,6 +300,14 @@ character(len=1024)            :: construct_file_name_out
 write(construct_file_name_out, '(A,  A, i2.2, A, i2.2)') TRIM(stub), '_d', domain, '.', copy
 
 end function construct_file_name_out
+
+!----------------------------------
+!> Destroy module storage
+subroutine end_io_filenames()
+
+deallocate(restart_files_in, restart_files_out)
+
+end subroutine end_io_filenames
 
 !----------------------------------
 !> @}

@@ -30,7 +30,7 @@ public :: get_domain_size, get_num_variables, get_variable_size, get_num_dims, g
           get_variable_name, get_dim_lengths, get_num_domains, &
           get_dim_name, get_dim_length, add_time_unlimited, set_var_id, &
           get_unique_dim_name, get_num_unique_dims, get_unique_dim_length, &
-          check_correct_variables, get_sum_variables, get_sum_variables_below
+          get_sum_variables, get_sum_variables_below
 
 
 integer, parameter :: max_num_domains = 10
@@ -537,85 +537,6 @@ integer :: i !> loop variable
 call error_handler(E_ERR, 'add_time_unlimited', 'does not exist')
 
 end subroutine add_time_unlimited
-
-!-------------------------------------------------------
-!> Check that the netcdf file matches the variables
-!> for this domain
-!> Do you want to overload this to take a filename or 
-!> netcdf file id?
-!> Do we need an nc_check warning rather than error out?
-!> This checks that an existing output netcdf file contains:
-!>     - each variable (matched by name)
-!>     - correct dimensions for each variable (matched by name and size)
-function check_correct_variables(netcdf_filename, dom)
-
-character(len=*) :: netcdf_filename
-integer, intent(in) :: dom
-logical :: check_correct_variables ! if true, file is ok
-
-integer :: ncfile ! netcdf file id
-integer :: i ! loop index variable
-integer :: j ! loop index dimension
-integer :: ret ! nc_check return value
-
-integer :: var_id ! variable id
-integer :: ndims ! number of dimensions
-integer, dimension(NF90_MAX_VAR_DIMS) :: dimids ! dimension ids for a variable
-character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: name ! dimension names for a variables
-integer, dimension(NF90_MAX_VAR_DIMS) :: length
-integer :: xtype ! do we care about this? Yes.
-
-check_correct_variables = .true.
-
-ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
-call nc_check(ret, 'check_correct_variables output', netcdf_filename)
-
-do i = 1, state%domain(dom)%num_variables
-
-   ret = nf90_inq_varid(ncfile, state%domain(dom)%variable(i)%varname, var_id)
-   ! Any kind of error is a fail.
-   if (ret /= NF90_NOERR) then
-      check_correct_variables = .false.
-      return
-   endif
-
-   ret = nf90_inquire_variable(ncfile, var_id, ndims=ndims, dimids=dimids, xtype=xtype)
-   ! Any kind of error is a fail.
-   if (ret /= NF90_NOERR) then
-      check_correct_variables = .false.
-      return
-   endif
-
-   ! check number of dimensions are the same - should you worry about the unlimited dimension?
-   if (ndims /= state%domain(dom)%variable(i)%numdims) then
-      check_correct_variables = .false.
-      return
-   endif
-
-   ! check if the dimensions are what we expect. The dimensions should be same size same order.
-   do j = 1, state%domain(dom)%variable(i)%numdims
-      ret = nf90_inquire_dimension(ncfile, dimids(j), name=name(j), len=length(j))
-      if (ret /= NF90_NOERR) then
-         check_correct_variables = .false.
-         return
-      endif
-
-      if (state%domain(dom)%variable(i)%dimname(j) /= name(j)) then
-         check_correct_variables = .false.
-         return
-      endif
-      if (state%domain(dom)%variable(i)%dimlens(j) /= length(j)) then
-         check_correct_variables = .false.
-         return
-      endif
-   enddo
-
-enddo
-
-ret = nf90_close(ncfile)
-call nc_check(ret, 'check_correct_variables closing', netcdf_filename)
-
-end function check_correct_variables
 
 !------------------------------------
 function get_sum_variables_below(start_var, domain)

@@ -43,34 +43,37 @@ module state_vector_io_mod
 
 use types_mod,            only : r8, MISSING_R8, digits12, i4
 
-use mpi_utilities_mod,    only : task_count, send_to, receive_from, my_task_id, datasize
+use mpi_utilities_mod,    only : task_count, send_to, receive_from, my_task_id,&
+                                 datasize
 
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task
 
-use utilities_mod,        only : error_handler, E_ERR, nc_check, check_namelist_read, &
-                                 find_namelist_in_file, nmlfileunit, do_nml_file, do_nml_term, file_exist, &
-                                 E_MSG
+use utilities_mod,        only : error_handler, nc_check, check_namelist_read, &
+                                 find_namelist_in_file, nmlfileunit,           &
+                                 do_nml_file, do_nml_term, file_exist,         &
+                                 E_MSG, E_ERR
 
-use assim_model_mod,      only : get_model_size, clamp_or_fail_it, do_clamp_or_fail
-! should you go through assim_model_mod?
-!use model_mod,            only : read_file_name, write_file_name
+use assim_model_mod,      only : get_model_size, clamp_or_fail_it,             &
+                                do_clamp_or_fail
 
 use time_manager_mod,     only : time_type
+
+use io_filenames_mod,     only : restart_files_in, restart_files_out, io_filenames_init
+
+use state_structure_mod,  only : get_domain_size, get_num_variables,           &
+                                 get_dim_lengths, get_num_dims, get_dim_ids,   &
+                                 get_variable_name, get_variable_size,         &
+                                 get_dim_name, get_dim_length,                 &
+                                 get_unique_dim_name, get_num_unique_dims,     &
+                                 get_unique_dim_length, get_sum_variables,     &
+                                 get_sum_variables_below, set_var_id
+
+use copies_on_off_mod
 
 use netcdf
 
 use mpi
 
-use io_filenames_mod,     only : restart_files_in, restart_files_out, io_filenames_init
-
-use state_structure_mod,  only : get_domain_size, get_num_variables, &
-                                 get_variable_size, get_num_dims, get_dim_ids, get_variable_name, &
-                                 get_dim_lengths, &
-                                 get_dim_name, get_dim_length, set_var_id, &
-                                 get_unique_dim_name, get_num_unique_dims, get_unique_dim_length, &
-                                 check_correct_variables, get_sum_variables, get_sum_variables_below
-
-use copies_on_off_mod
 
 implicit none
 
@@ -106,11 +109,10 @@ logical :: netcdf_input = .false.
 ! Aim: to have the regular transpose as the default
 integer :: limit_mem = HUGE(1_i4)!< This is the number of elements (not bytes) so you don't have times the number by 4 or 8
 integer :: limit_procs = 100000!< how many (~maximum) processors you want involved in each transpose.
-logical :: create_restarts = .false. ! what if the restart files exist? - this needs to come out
 logical :: time_unlimited = .true. ! You need to keep track of the time.
 logical :: single_precision_output = .false. ! Allows you to write r4 netcdf files even if filter is double precision
 
-namelist /  state_vector_io_nml / limit_mem, limit_procs, create_restarts, time_unlimited
+namelist /  state_vector_io_nml / limit_mem, limit_procs, time_unlimited
 
 contains
 
@@ -208,7 +210,7 @@ COPIES: do c = 1, ens_size
 
       if (query_read_copy(my_copy - recv_start+ 1)) then
          netcdf_filename = restart_files_in((my_copy - recv_start +1), domain)
-         !print*, 'opening netcdf_filename ', trim(netcdf_filename)
+         print*, 'opening netcdf_filename ', trim(netcdf_filename)
          ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
          call nc_check(ret, 'read_transpose opening', netcdf_filename)
       endif
@@ -402,29 +404,19 @@ COPIES : do c = 1, ens_size
    ! writers open netcdf output file. This is a copy of the input file
    if (my_pe < ens_size) then
       if ( query_write_copy(my_copy - recv_start + 1)) then
-            if (isprior) then
-               netcdf_filename_out = restart_files_out((my_copy - recv_start +1), domain, 1)
-            else
-               netcdf_filename_out = restart_files_out((my_copy - recv_start +1), domain, 2)
-            endif
-
-         if (create_restarts) then ! How do you want to do create restarts
-            call create_state_output(netcdf_filename_out, domain)
+         if (isprior) then
+            netcdf_filename_out = restart_files_out((my_copy - recv_start +1), domain, 1)
          else
-            if(file_exist(netcdf_filename_out)) then
-               ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
-               call nc_check(ret, 'transpose_write opening', trim(netcdf_filename_out))
-               ! check variables present and are the correct size
-               if (.not. check_correct_variables(netcdf_filename_out, domain)) then
-                  write(msgstring, *) 'Exsting netcdf file does not match model: Recreating output file ', trim(netcdf_filename_out)
-                  call error_handler(E_MSG,'state_vector_io_mod:', msgstring)
-                  call create_state_output(netcdf_filename_out, domain)
-               endif
-            else ! create output file if it does not exist
-               write(msgstring, *) 'Creating output file ', trim(netcdf_filename_out)
-               call error_handler(E_MSG,'state_vector_io_mod:', msgstring)
-               call create_state_output(netcdf_filename_out, domain)
-            endif
+            netcdf_filename_out = restart_files_out((my_copy - recv_start +1), domain, 2)
+         endif
+
+         if(file_exist(netcdf_filename_out)) then
+            ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
+            call nc_check(ret, 'transpose_write: opening', trim(netcdf_filename_out))
+         else ! create output file if it does not exist
+            write(msgstring, *) 'Creating output file ', trim(netcdf_filename_out)
+            call error_handler(E_MSG,'state_vector_io_mod:', msgstring)
+            call create_state_output(netcdf_filename_out, domain)
          endif
       endif
 
