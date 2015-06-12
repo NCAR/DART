@@ -165,6 +165,7 @@ end
 
 inds = locations_in_region(mylocs,region);
 
+obsstruct.numobs = length(inds);
 obsstruct.lons = mylocs(inds,1);
 obsstruct.lats = mylocs(inds,2);
 obsstruct.z    = mylocs(inds,3);
