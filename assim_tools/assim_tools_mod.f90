@@ -852,32 +852,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
 
-      !! or this, for performance reasons?  it won't warn you if there are missing
-      ! values when you don't expect them, but it also won't do the any() unless
-      ! the namelist says you might expect to see them.
-      !if ( allow_missing_in_clm ) then
-      !   ! Some models can take evasive action if one or more of the ensembles have
-      !   ! a missing value. Generally means 'do nothing' (as opposed to DIE) 
-      !   missing_in_state = any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)
-      !   if ( missing_in_state ) then
-      !      cycle STATE_UPDATE
-      !endif
-
-      ! Some models can take evasive action if one or more of the ensembles have
-      ! a missing value. Generally means 'do nothing' (as opposed to DIE) 
-      missing_in_state = any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)
-      
-      if ( missing_in_state ) then
-         if ( allow_missing_in_clm ) then
-            cycle STATE_UPDATE
-         else
-            ! FIXME ... at some point ... convey which instances are missing
-            write(msgstring,*)'Encountered a MISSING_R8 in DART at state index ',state_index
-            write(msgstring2,*)'namelist value of allow_missing_in_clm (.false.) &
-                            &implies a fatal error.'
-            call error_handler(E_ERR, 'filter_assim', msgstring, &
-               source, revision, revdate, text2=msgstring2)
-         endif
+      if ( allow_missing_in_clm ) then
+         ! Some models can take evasive action if one or more of the ensembles have
+         ! a missing value. Generally means 'do nothing' (as opposed to DIE)
+         missing_in_state = any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)
+         if ( missing_in_state ) cycle STATE_UPDATE
       endif
 
       ! Get the initial values of inflation for this variable if state varying inflation
