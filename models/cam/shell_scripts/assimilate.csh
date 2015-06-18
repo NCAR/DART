@@ -182,7 +182,7 @@ endif
 # The inflation values change through time and should be archived.
 #
 # This file is only relevant if 'inflation' is turned on -
-# i.e. if inf_flavor(1) /= 0 AND inf_initial_from_restart = .TRUE.
+# i.e. if inf_flavor(:) /= 0 AND inf_initial_from_restart = .TRUE.
 #
 # filter_nml
 # inf_flavor                  = 2,                       0,
