@@ -83,9 +83,10 @@ obsstruct = read_obs_netcdf(fname, ObsTypeString, region, ...
 if ( (~ isempty(obsstruct.qc)) && (~ isempty(maxQC)) )
 
    inds = find(obsstruct.qc > maxQC);
-
    obsstruct.numflagged = length(inds);
-
+   fprintf('%d obs have a %s value greater than %f (i.e. "bad")\n', ...
+                obsstruct.numflagged, QCString, maxQC)
+            
    if (~isempty(inds))
        flaggedobs.lons = obsstruct.lons(inds);
        flaggedobs.lats = obsstruct.lats(inds);
@@ -95,10 +96,10 @@ if ( (~ isempty(obsstruct.qc)) && (~ isempty(maxQC)) )
        flaggedobs.qc   = obsstruct.qc(  inds);
    end
 
-   fprintf('%d obs have a %s value greater than %f\n', ...
-                length(inds), QCString, maxQC)
-
    inds = find(obsstruct.qc <= maxQC);
+   obsstruct.numgood = length(inds);
+   fprintf('%d obs have a %s value less than or equal to %f (i.e. "good")\n', ...
+                obsstruct.numgood, QCString, maxQC)
 
    bob = obsstruct.lons(inds); obsstruct.lons = bob;
    bob = obsstruct.lats(inds); obsstruct.lats = bob;
@@ -114,12 +115,13 @@ end
 %  the entire plot gets wiped out when the continents get plotted.
 %  The locations with NaN values will be plotted with separate symbols.
 
-ntotal = length(obsstruct.obs);
+numobs = length(obsstruct.obs);
 ngood  = sum(isfinite(obsstruct.obs));
 
-if ntotal == ngood
+if numobs == ngood
 
    nanobs.numflagged = 0;
+   nanobs.string     = 'No "good" observations with "NaN" values.';
 
 else
 
@@ -171,9 +173,9 @@ pstruct.str3   = sprintf('%s - %s',obsstruct.timestring(1,:),obsstruct.timestrin
 subplot('position',positions(1,:))
 
 if ( length(obsstruct.obs) < 1 )
-   fprintf('There are no ''good'' observations to plot\n')
+   fprintf('There are no ''good'' observations to plot.\n')
    % may still want to plot the obs with bad qc values.
-   str1 = sprintf('There are no ''good'' observations to plot\n');
+   str1 = sprintf('There are no ''good'' observations to plot.\n');
    text(0.5,0.67,str1,'HorizontalAlignment','center')
    text(0.5,0.33,nanobs.string,'HorizontalAlignment','center')
    title( {pstruct.str1, obsstruct.CopyString, pstruct.str3}, 'Interpreter','none','FontSize',14);
@@ -242,7 +244,7 @@ dartqc_strings = { ...
 if (obsstruct.numflagged > 0 ) % if there are flagged observation to plot ... carry on.
 
    if (twoup <= 0)
-      figure(gcf+1); clf
+      figure; clf
    end
 
    subplot('position',positions(2,:))
