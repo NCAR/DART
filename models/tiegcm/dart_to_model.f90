@@ -30,7 +30,7 @@ use    utilities_mod, only : get_unit, initialize_utilities, E_ERR, E_MSG, &
                              find_namelist_in_file, check_namelist_read,   &
                              logfileunit
 use        model_mod, only : get_model_size, static_init_model, get_f107_value, &
-                             get_restart_file_name, update_TIEGCM_restart
+                             dart_vector_to_tiegcm
 use  assim_model_mod, only : aread_state_restart, open_restart_read, close_restart
 use time_manager_mod, only : time_type, get_time, get_date, set_calendar_type, &
                              print_time, print_date, set_date, set_time, &
@@ -60,7 +60,6 @@ namelist /dart_to_model_nml/ file_in, file_namelist_out, advance_time_present
 ! global storage
 !-----------------------------------------------------------------------
 
-character(len=256)     :: file_name
 type(time_type)        :: model_time, adv_to_time, jan1, tbase, target_time
 real(r8), allocatable  :: x_state(:)
 integer                :: iunit, io, file_unit, x_size
@@ -103,8 +102,7 @@ endif
 
 ! write fields to the binary TIEGCM restart file
 
-file_name = get_restart_file_name()
-call update_TIEGCM_restart(x_state, file_name, model_time)
+call dart_vector_to_tiegcm(x_state, model_time)
 
 if ( advance_time_present ) then
    ! update TIEGCM namelist variables used in advance_model.csh
