@@ -1285,8 +1285,12 @@ if ( dimids(1) /= unlimitedDimID ) call error_handler(E_ERR,'nc_append_time', &
 call nc_check(NF90_Inquire_Dimension(ncid, unlimitedDimID, varname, lngth ), &
            'nc_append_time', 'inquire_dimension unlimited')
 
-if (lngth /= ncFileId%Ntimes) call error_handler(E_ERR,'nc_append_time', &
-           'time mirror and netcdf file time dimension out-of-sync',source,revision,revdate)
+if (lngth /= ncFileId%Ntimes) then
+   write(msgstring,*)'netCDF file has length ',lngth,' /= mirror has length of ',ncFileId%Ntimes
+   call error_handler(E_ERR,'nc_append_time', &
+           'time mirror and netcdf file time dimension out-of-sync', &
+           source,revision,revdate,text2=msgstring)
+endif
 
 ! make sure the time mirror can handle another entry.
 if ( lngth == ncFileID%NtimesMAX ) then   
