@@ -1877,16 +1877,15 @@ character(len=129), SAVE :: dir_ext
 
 integer :: slashindex, splitindex, i, strlen, ios
 
+character(len=512) :: string1, string2, string3
+
 if (len(fname) > len(dir_base) ) then
-   write(msgstring,*)'input filename not guaranteed to fit in local variables'
-   call error_handler(E_MSG,'next_file',msgstring, source,revision,revdate)
-
-   write(msgstring,'('' input filename (len='',i3,'') tempvars are (len='',i3,'')'')') &
+   write(string1,*)'input filename not guaranteed to fit in local variables'
+   write(string2,'('' input filename (len='',i3,'') tempvars are (len='',i3,'')'')') &
    len(fname),len(dir_base)
-
-   call error_handler(E_MSG,'next_file',msgstring, source,revision,revdate)
-   write(msgstring,*)'increase len of dir_base, filename, dir_ext and recompile'
-   call error_handler(E_MSG,'next_file',msgstring, source,revision,revdate)
+   write(string3,*)'increase len of dir_base, filename, dir_ext and recompile'
+   call error_handler(E_MSG, 'next_file', string1, source, revision, revdate, &
+              text2=string2, text3=string3)
 endif
 
 if (ifile == 1) then ! First time through ... find things.
@@ -1964,6 +1963,10 @@ else
       else
       write(next_file,'(a,''_'',i5.5,''/'',a)') trim(dir_base),filenum,trim(filename)
       endif
+
+      write(string1,*)'WARNING: This feature is deprecated and will be removed in the next release.'
+      write(string2,*)'to use multiple input files, use the "list" construct.'
+      call error_handler(E_MSG,'next_file',string1,source,revision,revdate,text2=string2)
 
    endif
 
