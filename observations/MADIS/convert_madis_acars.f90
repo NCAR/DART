@@ -41,6 +41,7 @@ use       obs_err_mod, only : acars_wind_error, acars_temp_error, &
                               acars_rel_hum_error
 use dewpoint_obs_err_mod, only : dewpt_error_from_rh_and_temp, &
                                  rh_error_from_dewpt_and_temp
+use          sort_mod, only : index_sort
 use      obs_kind_mod, only : ACARS_U_WIND_COMPONENT, ACARS_V_WIND_COMPONENT, &
                               ACARS_TEMPERATURE, ACARS_SPECIFIC_HUMIDITY, &
                               ACARS_DEWPOINT, ACARS_RELATIVE_HUMIDITY
@@ -77,6 +78,7 @@ integer,  allocatable :: tobs(:), tobu(:)
 real(r8), allocatable :: lat(:), lon(:), palt(:), tair(:), relh(:), tdew(:), &
                          wdir(:), wspd(:), latu(:), lonu(:), palu(:)
 integer,  allocatable :: qc_palt(:), qc_tair(:), qc_relh(:), qc_tdew(:), qc_wdir(:), qc_wspd(:)
+integer,  allocatable :: indu(:), sorted_indu(:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
@@ -105,6 +107,7 @@ allocate(wdir(nobs))  ;  allocate(wspd(nobs))
 allocate(latu(nobs))  ;  allocate(lonu(nobs))
 allocate(palu(nobs))  ;  allocate(tdew(nobs))
 allocate(tobu(nobs))
+allocate(indu(nobs))  ;  allocate(sorted_indu(nobs))
 
 nvars = 3
 if (include_specific_humidity) nvars = nvars + 1
@@ -174,14 +177,11 @@ endif
 qc = 1.0_r8
 
 nused = 0
-obsloop: do n = 1, nobs
-
-  ! compute time of observation
-  time_obs = increment_time(comp_day0, tobs(n))
+obsloop1: do n = 1, nobs
 
   ! check the lat/lon values to see if they are ok
-  if ( lat(n) >  90.0_r8 .or. lat(n) <  -90.0_r8 ) cycle obsloop
-  if ( lon(n) > 180.0_r8 .or. lon(n) < -180.0_r8 ) cycle obsloop
+  if ( lat(n) >  90.0_r8 .or. lat(n) <  -90.0_r8 ) cycle obsloop1
+  if ( lon(n) > 180.0_r8 .or. lon(n) < -180.0_r8 ) cycle obsloop1
 
   ! change lon from -180 to 180 into 0-360
   if ( lon(n) < 0.0_r8 )  lon(n) = lon(n) + 360.0_r8
@@ -191,10 +191,29 @@ obsloop: do n = 1, nobs
     if ( lon(n)  == lonu(i) .and. &
          lat(n)  == latu(i) .and. &
          tobs(n) == tobu(i) .and. & 
-         palt(n) == palu(i) ) cycle obsloop
+         palt(n) == palu(i) ) cycle obsloop1
   end do
 
-  if ( palt(n) == palt_miss .or. qc_palt(n) /= 0 ) cycle obsloop  
+  nused = nused + 1
+  indu(nused) = n
+  latu(nused) =  lat(n)
+  lonu(nused) =  lon(n)
+  palu(nused) = palt(n)
+  tobu(nused) = tobs(n)
+
+end do obsloop1
+
+call index_sort(tobu, sorted_indu, nused)
+
+obsloop2: do i = 1, nused
+
+  ! get the next unique observation in sorted time order
+  n = indu(sorted_indu(i))
+
+  ! compute time of observation
+  time_obs = increment_time(comp_day0, tobs(n))
+
+  if ( palt(n) == palt_miss .or. qc_palt(n) /= 0 ) cycle obsloop2
   pres = pres_alt_to_pres(palt(n))
 
   ! extract actual time of observation in file into oday, osec.
@@ -314,13 +333,7 @@ obsloop: do n = 1, nobs
 
 100 continue
 
-  nused = nused + 1
-  latu(nused) =  lat(n)
-  lonu(nused) =  lon(n)
-  palu(nused) = palt(n)
-  tobu(nused) = tobs(n)
-
-end do obsloop
+end do obsloop2
 
 ! if we added any obs to the sequence, write it now.
 if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, acars_out_file)
