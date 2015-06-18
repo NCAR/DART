@@ -49,6 +49,7 @@
 ! GND_GPS_VTEC,		           KIND_GND_GPS_VTEC
 ! CHAMP_DENSITY,                   KIND_DENSITY
 ! MIDAS_TEC,                       KIND_VERTICAL_TEC
+! SSUSI_O_N2_RATIO,                KIND_O_N2_COLUMN_DENSITY_RATIO
 ! GPS_VTEC_EXTRAP,                 KIND_VERTICAL_TEC,               COMMON_CODE
 ! END DART PREPROCESS KIND LIST
 
@@ -56,6 +57,7 @@
 !  use obs_def_upper_atm_mod, only : get_expected_upper_atm_density
 !  use obs_def_upper_atm_mod, only : get_expected_gnd_gps_vtec
 !  use obs_def_upper_atm_mod, only : get_expected_vtec
+!  use obs_def_upper_atm_mod, only : get_expected_O_N2_ratio
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
@@ -67,6 +69,8 @@
 !      call get_expected_vtec(state, location, obs_val, istatus)
 ! case(GND_GPS_VTEC)
 !      call get_expected_gnd_gps_vtec(state, location, obs_val, istatus)
+! case(SSUSI_O_N2_RATIO)
+!      call get_expected_O_N2_ratio(state, location, obs_val, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -77,6 +81,8 @@
 ! case(MIDAS_TEC) 
 !      continue
 ! case(GND_GPS_VTEC)
+!      continue
+! case(SSUSI_O_N2_RATIO)
 !      continue
 ! END DART PREPROCESS READ_OBS_DEF
 
@@ -89,6 +95,8 @@
 !      continue
 ! case(GND_GPS_VTEC)
 !      continue
+! case(SSUSI_O_N2_RATIO)
+!      continue
 ! END DART PREPROCESS WRITE_OBS_DEF
 
 ! BEGIN DART PREPROCESS INTERACTIVE_OBS_DEF
@@ -99,6 +107,8 @@
 ! case(MIDAS_TEC) 
 !      continue
 ! case(GND_GPS_VTEC)
+!      continue
+! case(SSUSI_O_N2_RATIO)
 !      continue
 ! END DART PREPROCESS INTERACTIVE_OBS_DEF
 
@@ -117,13 +127,16 @@ use     obs_kind_mod, only : KIND_ATOMIC_OXYGEN_MIXING_RATIO, &
                              KIND_DENSITY, &
                              KIND_DENSITY_ION_E, &
                              KIND_GND_GPS_VTEC, &
-                             KIND_GEOPOTENTIAL_HEIGHT
+                             KIND_GEOPOTENTIAL_HEIGHT, &
+                             KIND_GEOMETRIC_HEIGHT, &
+                             KIND_O_N2_COLUMN_DENSITY_RATIO
 
 implicit none
 private
 public :: get_expected_upper_atm_density, &
           get_expected_gnd_gps_vtec, &
-          get_expected_vtec
+          get_expected_vtec, &
+          get_expected_O_N2_ratio
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -305,6 +318,197 @@ call error_handler(E_ERR, 'get_expected_vtec', 'routine needs to be written', &
            source, revision, revdate)
 
 end subroutine get_expected_vtec
+
+!> @todo No distributed version of this
+subroutine get_expected_O_N2_ratio(state_vector, location, obs_val, istatus)
+!-----------------------------------------------------------------------------
+! 
+! First, find the number of levels in the model.
+! Then, loop down through the levels to create a top-down vertical profile.
+!       As we do that, we accumulate the amount of N2 and O, stopping when
+!       the N2 reaches 10^21 M^-2. This will probably mean only using part
+!       of the 'last' layer.
+
+real(r8),            intent(in) :: state_vector(:)
+type(location_type), intent(in) :: location
+real(r8),           intent(out) :: obs_val
+integer,            intent(out) :: istatus
+
+real(r8) :: loc_array(3)
+real(r8) :: loc_lon, loc_lat
+type(location_type) :: loc
+
+real(r8), parameter :: Max_N2_column_density = 1.0E21_r8
+
+real(r8) :: N2_total
+real(r8) :: O_total
+
+real(r8) :: O_mmr(MAXLEVELS)
+real(r8) :: O2_mmr(MAXLEVELS)
+real(r8) :: pressure(MAXLEVELS)
+real(r8) :: temperature(MAXLEVELS)
+real(r8) :: heights(MAXLEVELS)
+real(r8) :: thickness(MAXLEVELS)
+real(r8) :: O_integrated
+real(r8) :: N2_integrated
+
+real(r8), allocatable :: N2_mmr(:)
+real(r8), allocatable :: mbar(:)
+real(r8), allocatable :: N2_number_density(:)
+real(r8), allocatable :: total_number_density(:)
+real(r8), allocatable :: O_number_density(:)
+
+real(r8), PARAMETER :: k_constant = 1.381e-23_r8 ! m^2 * kg / s^2 / K
+integer :: ilayer, nlevels, nilevels
+integer :: vstatus(4)
+real(r8) :: layerfraction
+
+if ( .not. module_initialized ) call initialize_module
+
+istatus = 1
+obs_val = MISSING_R8
+
+call error_handler(E_ERR, 'get_expected_O_N2_ratio', 'routine not tested', &
+           source, revision, revdate, &
+           text2='routine in obs_def/obs_def_upper_atm_mod.f90', &
+           text3='test and inform the DART development team. Thanks -- Tim.')
+
+if ( .not. module_initialized ) call initialize_module
+
+loc_array = get_location(location) ! loc is in DEGREES
+loc_lon   = loc_array(1)
+loc_lat   = loc_array(2)
+
+! some variables are defined on interface layers
+
+nilevels = 0
+heights = 0.0_r8
+
+FILLINTERFACES : do ilayer = 1,MAXLEVELS
+
+   loc = set_location(loc_lon, loc_lat, real(ilayer,r8), VERTISLEVEL)
+
+   call interpolate(state_vector, loc, KIND_GEOMETRIC_HEIGHT, heights(ilayer),istatus)
+   if (istatus /= 0) exit FILLINTERFACES
+
+   nilevels = nilevels + 1
+
+enddo FILLINTERFACES
+
+if (nilevels == 0) return
+
+thickness = 0.0_r8
+thickness(1:nilevels-1) = heights(2:nilevels) - heights(1:nilevels-1)
+
+! Some variables are defined on midpoints of the layers
+
+nlevels = 0
+
+FILLMIDPOINTS : do ilayer = 1,MAXLEVELS
+
+   loc = set_location(loc_lon, loc_lat, real(ilayer,r8), VERTISLEVEL)
+
+   call interpolate(state_vector, loc, KIND_PRESSURE, &
+                    pressure(ilayer), vstatus(1))
+
+   call interpolate(state_vector, loc, KIND_TEMPERATURE, &
+                    temperature(ilayer), vstatus(2))
+
+   call interpolate(state_vector, loc, KIND_ATOMIC_OXYGEN_MIXING_RATIO, &
+                    O_mmr(ilayer), vstatus(3))
+
+   call interpolate(state_vector, loc, KIND_MOLEC_OXYGEN_MIXING_RATIO, &
+                    O2_mmr(ilayer), vstatus(4))
+
+   if (any(vstatus /= 0)) exit FILLMIDPOINTS
+
+   nlevels = nlevels + 1
+
+enddo FILLMIDPOINTS
+
+if (nlevels == 0) return
+
+! Check to make sure we have more interfaces than layers.
+
+if (nilevels /= (nlevels+1)) then
+   write(string1,*)'Require there to be 1 more interfaces than midpoints.'
+   write(string2,*)'Found ',nilevels,' interface layers.'
+   write(string3,*)'Found ',nlevels,' midpoint layers.'
+   call error_handler(E_MSG,'get_expected_O_N2_ratio', string1, &
+              source, revision, revdate, text2=string2,text3=string3)
+   return
+endif
+
+! calculate what we can using array notation
+
+allocate(N2_mmr(nlevels), mbar(nlevels), total_number_density(nlevels), &
+              O_number_density(nlevels),    N2_number_density(nlevels))
+
+N2_mmr = 1.0_r8 - O_mmr(1:nlevels) - O2_mmr(1:nlevels)
+  mbar = 1.0_r8/( O2_mmr(1:nlevels)/O2_molar_mass + &
+                   O_mmr(1:nlevels)/ O_molar_mass + &
+                  N2_mmr(1:nlevels)/N2_molar_mass )
+
+! O_mmr and N2_mmr defined at midpoints, heights defined at interfaces, so the
+! calculated thicknesses apply directly to the O and N2 densities.
+
+total_number_density = pressure(1:nlevels) / (k_constant * temperature(1:nlevels))
+
+ O_number_density =  O_mmr(1:nlevels) * mbar /  O_molar_mass * total_number_density 
+N2_number_density = N2_mmr(1:nlevels) * mbar / N2_molar_mass * total_number_density
+
+if ( 1 == 2 ) then ! DEBUG BLOCK NOT IN USE
+   write(*,*)
+   do ilayer = nlevels,1,-1
+      write(*,*)'DEBUG level, thickness ...',ilayer, thickness(ilayer), &
+            O_number_density(ilayer), N2_number_density(ilayer), &
+                 temperature(ilayer), total_number_density(ilayer), &
+                 O2_mmr(ilayer), O_mmr(ilayer), N2_mmr(ilayer), mbar(ilayer)
+   enddo
+   write(*,*)
+endif
+
+N2_total = 0.0_r8
+ O_total = 0.0_r8
+
+TOPDOWN : do ilayer = nlevels,1,-1
+
+   if (ilayer == 1) then
+      write(string1,*)'Integrated all the way down to the surface.'
+      write(string2,*)'Still do not have ',Max_N2_column_density,' nitrogen molecules per m^2'
+      call error_handler(E_MSG,'get_expected_O_N2_ratio', string1, &
+                 source, revision, revdate, text2=string2)
+      istatus = 2
+      return
+   endif
+
+   ! integrate over layer thickness
+   O_integrated  =  O_number_density(ilayer) * thickness(ilayer)
+   N2_integrated = N2_number_density(ilayer) * thickness(ilayer)
+
+   if ((N2_total+N2_integrated) >= Max_N2_column_density) then
+      ! only store part of the final layer so as not to overshoot 10^21 m^-2
+      ! Let y2 == N2_total, y = Max_N2_column_density, y1 = N2_total + N2_integrated
+      ! the layer fraction is (y - y2)/(y1-y2) 
+      ! (Max_N2_column_density - N2_total)/(N2_total + N2_integrated - N2_total)
+      layerfraction = (Max_N2_column_density - N2_total) / N2_integrated
+      N2_total = N2_total + N2_integrated*layerfraction
+       O_total =  O_total +  O_integrated*layerfraction
+      exit TOPDOWN
+   else
+      N2_total = N2_total + N2_integrated
+       O_total =  O_total +  O_integrated
+   endif
+
+enddo TOPDOWN
+
+obs_val = O_total / N2_total
+istatus = 0
+
+deallocate(N2_mmr, mbar, total_number_density, O_number_density, N2_number_density)
+
+end subroutine get_expected_O_N2_ratio
+
 
 end module obs_def_upper_atm_mod
 ! END DART PREPROCESS MODULE CODE      

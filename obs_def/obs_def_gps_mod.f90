@@ -53,22 +53,17 @@
 module obs_def_gps_mod
 
 use        types_mod, only : r8, missing_r8, RAD2DEG, DEG2RAD, PI
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
-                             file_exist, open_file, close_file, nmlfileunit, &
-                             check_namelist_read, find_namelist_in_file, &
-                             do_output, do_nml_file, do_nml_term, &
+use    utilities_mod, only : register_module, error_handler, E_ERR, &
+                             nmlfileunit, check_namelist_read,      &
+                             find_namelist_in_file, do_nml_file, do_nml_term, &
                              ascii_file_format
 use     location_mod, only : location_type, set_location, get_location, &
-                             write_location, read_location, vert_is_height, &
+                             vert_is_height, &
                              VERTISHEIGHT
-use time_manager_mod, only : time_type, read_time, write_time, &
-                             set_time, set_time_missing, interactive_time
 use  assim_model_mod, only : interpolate_distrib
 
-use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, &
-                             KIND_V_WIND_COMPONENT, KIND_SURFACE_PRESSURE, &
-                             KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
-                             KIND_PRESSURE, KIND_GPSRO
+use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, &
+                             KIND_PRESSURE
 
 use data_structure_mod, only : ensemble_type, copies_in_window
 
