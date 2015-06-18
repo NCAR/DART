@@ -98,16 +98,16 @@ real(r8) :: pr_sprd, po_sprd ! same as above, without useless dimension
 ! observations serially. Consequently, we exploit the fact that
 ! the U observations are _followed_ by the V observations.
 
-real(r8)            :: U_obs         = 0.0_r8
-real(r8)            :: U_obs_err_var = 0.0_r8
+real(r8)            :: U_obs         = MISSING_R8
+real(r8)            :: U_obs_err_var = MISSING_R8
 type(location_type) :: U_obs_loc
-integer             :: U_flavor
-integer             :: U_type        = KIND_V_WIND_COMPONENT ! intentional mismatch
-real(r8)            :: U_pr_mean     = 0.0_r8
-real(r8)            :: U_pr_sprd     = 0.0_r8
-real(r8)            :: U_po_mean     = 0.0_r8
-real(r8)            :: U_po_sprd     = 0.0_r8
-integer             :: U_qc          = 0
+integer             :: U_flavor      = MISSING_I
+integer             :: U_type        = MISSING_I
+real(r8)            :: U_pr_mean     = MISSING_R8
+real(r8)            :: U_pr_sprd     = MISSING_R8
+real(r8)            :: U_po_mean     = MISSING_R8
+real(r8)            :: U_po_sprd     = MISSING_R8
+integer             :: U_qc          = MISSING_I
 
 integer :: obs_index, prior_mean_index, posterior_mean_index
 integer :: prior_spread_index, posterior_spread_index
@@ -994,8 +994,6 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
                ierr = CheckMate(flavor, U_flavor, obs_loc, U_obs_loc, wflavor )
 
                if ( ierr /= 0 ) then
-                  write(string1,*)'time series : V with no U at index ', keys(obsindex)
-                  call error_handler(E_MSG,'obs_diag',string1,source,revision,revdate)
                   call IPE(prior%NbadUV(iepoch, level_index, iregion, flavor), 1)
                   call IPE(poste%NbadUV(iepoch, level_index, iregion, flavor), 1)
                else
@@ -1162,8 +1160,6 @@ enddo ObsFileLoop
 
 call Normalize4Dvars()
 call Normalize3Dvars()
-
-
 
 !-----------------------------------------------------------------------
 ! Print final summary.
@@ -2676,7 +2672,6 @@ if ( qcval <= qcmaxval ) then ! QC indicates a valid obs
    numer = abs(prmean - obsval)
    denom = sqrt( prspred**2 + errvar )
 
-   ! TJH FIXME ... test this before putting on the trunk!!!!
    ! At worst, the InnovZscore can be 'MaxSigmaBins' i.e. 100
    ! protect against dividing by a really small number
    ! if numer/denom < 100 then go ahead and calculate
@@ -2791,8 +2786,10 @@ CheckMate = -1 ! Assume no match ... till proven otherwise
 flavor    = -1 ! bad flavor
 
 if ( (vflavor == MISSING_I) .or. (uflavor == MISSING_I)) then
-   write(string1,*) 'missing U or V without companion - around OBS ', keys(obsindex)
-   call error_handler(E_MSG,'CheckMate',string1,source,revision,revdate)
+   if (verbose) then
+      write(string1,*) 'missing U or V without companion - around OBS ', keys(obsindex)
+      call error_handler(E_MSG,'CheckMate',string1,source,revision,revdate)
+   endif
    return
 endif
 
@@ -3558,11 +3555,6 @@ endif
 call nc_check(nf90_create(path = trim(fname), cmode = nf90_share, &
          ncid = ncid), 'WriteNetCDF', 'create '//trim(fname))
 
-if (verbose) then
-   write(string1,*)trim(ncName), ' is fortran unit ',ncid
-   call error_handler(E_MSG,'WriteNetCDF',string1,source,revision,revdate)
-endif
-
 !----------------------------------------------------------------------------
 ! Write Global Attributes
 !----------------------------------------------------------------------------
@@ -3683,10 +3675,23 @@ call nc_check(nf90_put_att(ncid, NF90_GLOBAL, 'comment', &
         &ObservationTypes variable has all types known.' ), &
         'WriteNetCDF', 'put_att obstypes comment '//trim(fname))
 
+if ( verbose ) then
+   ! print a banner to help identify the columns - the whitespace makes it work.
+   write(string1,*)'                                        # obs      vertical'
+   write(string2,*)'observation type                 possible        system    scaling'
+   call error_handler(E_MSG,'WriteNetCDF',string1,text2=string2)
+endif
+
 typesdimlen = 0
 do ivar = 1,max_obs_kinds
 
    nobs = sum(poste%Nposs(:,:,:,ivar))
+
+   if ( verbose ) then
+      write(string1,'(i4,1x,(a32),1x,i8,1x,'' obs@vert '',i3,f11.3)') ivar, &
+         obs_type_strings(ivar), nobs, which_vert(ivar), scale_factor(ivar)
+      call error_handler(E_MSG,'WriteNetCDF',string1)
+   endif
 
    if (nobs > 0) then
       typesdimlen = typesdimlen + 1
@@ -3700,6 +3705,7 @@ do ivar = 1,max_obs_kinds
       call nc_check(nf90_put_att(ncid, NF90_GLOBAL, string1, ivar), & 
          'WriteNetCDF', 'put_att:obs_type_string '//trim(obs_type_strings(ivar)))
    endif
+   
 enddo
 
 if (typesdimlen < 1) then
@@ -4053,19 +4059,12 @@ call nc_check(nf90_sync( ncid), 'WriteNetCDF', 'sync '//trim(fname))
 ! write the data we took such pains to collate ...
 !----------------------------------------------------------------------------
 
-if (verbose) write(logfileunit,*) ! a little whitespace
-if (verbose) write(logfileunit,*)'summary for Priors of time-level-region vars'
-if (verbose) write(*,*) ! a little whitespace
-if (verbose) write(*,*)'summary for Priors of time-level-region vars'
 if ( create_rank_histogram ) then
    ierr = WriteTLRV(ncid, prior, TimeDimID, CopyDimID, RegionDimID, RankDimID)
 else
    ierr = WriteTLRV(ncid, prior, TimeDimID, CopyDimID, RegionDimID)
 endif
-if (verbose) write(logfileunit,*) ! a little whitespace
-if (verbose) write(logfileunit,*)'summary for Posteriors of time-level-region vars'
-if (verbose) write(*,*) ! a little whitespace
-if (verbose) write(*,*)'summary for Posteriors of time-level-region vars'
+
 ierr = WriteTLRV(ncid, poste,    TimeDimID, CopyDimID, RegionDimID)
 ierr = WriteLRV( ncid, priorAVG,            CopyDimID, RegionDimID)
 ierr = WriteLRV( ncid, posteAVG,            CopyDimID, RegionDimID)
@@ -4449,13 +4448,6 @@ DEFINE : do ivar = 1,num_obs_types
    nobs = sum(vrbl%Nposs(:,:,:,ivar))
    if (nobs < 1) cycle DEFINE
 
-   if (verbose) then
-      write(logfileunit,'(i4,1x,(a32),1x,i8,1x,'' obs@vert '',i3,f11.3)') ivar, &
-       obs_type_strings(ivar), nobs, which_vert(ivar), scale_factor(ivar)
-      write(*,'(i4,1x,(a32),1x,i8,1x,'' obs@vert '',i3,f11.3)') ivar, &
-       obs_type_strings(ivar), nobs, which_vert(ivar), scale_factor(ivar)
-   endif
-
    ! Create netCDF variable name
 
    string2 = obs_type_strings(ivar)
@@ -4495,10 +4487,10 @@ DEFINE : do ivar = 1,num_obs_types
          call nc_check(nf90_def_var(ncid, name=string2, xtype=nf90_int, &
              dimids=(/ RegionDimID, LevelDimID, RankDimID, TimeDimID /), &
              varid=VarID), 'WriteTLRV', 'rank_hist:def_var '//trim(string2))
-      else
-         write(logfileunit,*)string2//' has ',ndata,'"rank"able observations.'
-         write(     *     ,*)string2//' has ',ndata,'"rank"able observations.'
       endif
+
+      write(string3,*)ndata,' observations '//trim(string2)
+      call error_handler(E_MSG,'Rank Histogram',string3)
 
    endif
 

@@ -61,8 +61,15 @@
    automatically set to zero.</em>
 </P>
 <P>
-   Each ensemble member applies a forward operator to the state to compute
-   the "expected" value of an observation. Given multiple estimates of 
+   Each ensemble member applies a forward observation operator to the state to compute
+   the "expected" value of an observation.  <em class=changed>Please note:
+   the forward observation operator is applied <strong>AFTER</strong> any prior inflation
+   has taken place! Similarly, the forward observation operator is applied AFTER any posterior 
+   inflation. This has always been the case.</em> For a detailed 
+   look at the relationship between the observation operators and inflation, please look at the
+   <a href="../../filter/filter.html#DetailedProgramFlow">Detailed&nbsp;Program&nbsp;Execution Flow</a>
+   section of <a href="../../filter/filter.html">filter.html</a>.<br /><br />
+   Given multiple estimates of 
    the observation, several quantities can be calculated. It is possible to
    compute the expected observations from the state vector before 
    assimilating (the "guess", "forecast", or "prior") or after the
