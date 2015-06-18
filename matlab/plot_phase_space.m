@@ -74,11 +74,15 @@ switch lower(pinfo.model)
          % Set a viable default ensemble member string
          metadata = nc_varget(fname,'CopyMetaData');
          [N,M]    = size(metadata);
-         cell_array = mat2cell(metadata, ones(1,N), M);
+         if M == 1
+             cell_array{1} = metadata';
+         else
+             cell_array = mat2cell(metadata, ones(1,N), M);
+         end
          ens_mem = strtrim(cell_array{1});
          disp('It is necessary to pick an ensemble member to plot.')
          disp('Since we pick it based on the metadata string, it could be:')
-         disp('''true_state'', ''ensemble mean'', ''ensemble member10'' ... you get it.')
+         disp('''true state'', ''ensemble mean'', ''ensemble member10'' ... you get it.')
          str1 = sprintf('Input ensemble member metadata STRING. <cr> for ''%s''\n',ens_mem);
          s1 = input(str1,'s');
          if ~ isempty(s1), ens_mem = s1; end
@@ -119,11 +123,15 @@ switch lower(pinfo.model)
          % Set a viable default ensemble member string
          metadata = nc_varget(fname,'CopyMetaData');
          [N,M]    = size(metadata);
-         cell_array = mat2cell(metadata, ones(1,N), M);
+         if M == 1
+             cell_array{1} = metadata';
+         else
+             cell_array = mat2cell(metadata, ones(1,N), M);
+         end
          ens_mem = strtrim(cell_array{1});
          disp('It is necessary to pick an ensemble member to plot.')
          disp('Since we pick it based on the metadata string, it could be:')
-         disp('''true_state'', ''ensemble mean'', ''ensemble member10'' ... you get it.')
+         disp('''true state'', ''ensemble mean'', ''ensemble member10'' ... you get it.')
          str1 = sprintf('Input ensemble member metadata STRING. <cr> for ''%s''\n',ens_mem);
          s1 = input(str1,'s');
          if ~ isempty(s1), ens_mem = s1; end
@@ -186,11 +194,15 @@ switch lower(pinfo.model)
          % Set a viable default ensemble member string
          metadata = nc_varget(fname,'CopyMetaData');
          [N,M]    = size(metadata);
-         cell_array = mat2cell(metadata, ones(1,N), M);
+         if M == 1
+             cell_array{1} = metadata';
+         else
+             cell_array = mat2cell(metadata, ones(1,N), M);
+         end
          ens_mem = strtrim(cell_array{1});
          disp('It is necessary to pick an ensemble member to plot.')
          disp('Since we pick it based on the metadata string, it could be:')
-         disp('''true_state'', ''ensemble mean'', ''ensemble member10'' ... you get it.')
+         disp('''true state'', ''ensemble mean'', ''ensemble member10'' ... you get it.')
          str1 = sprintf('Input ensemble member metadata STRING. <cr> for ''%s''\n',ens_mem);
          s1 = input(str1,'s');
          if ~ isempty(s1), ens_mem = s1; end
@@ -257,11 +269,15 @@ switch lower(pinfo.model)
          % Set a viable default ensemble member string
          metadata = nc_varget(fname,'CopyMetaData');
          [N,M]    = size(metadata);
-         cell_array = mat2cell(metadata, ones(1,N), M);
+         if M == 1
+             cell_array{1} = metadata';
+         else
+             cell_array = mat2cell(metadata, ones(1,N), M);
+         end
          ens_mem = strtrim(cell_array{1});
          disp('It is necessary to pick an ensemble member to plot.')
          disp('Since we pick it based on the metadata string, it could be:')
-         disp('''true_state'', ''ensemble mean'', ''ensemble member10'' ... you get it.')
+         disp('''true state'', ''ensemble mean'', ''ensemble member10'' ... you get it.')
          str1 = sprintf('Input ensemble member metadata STRING. <cr> for ''%s''\n',ens_mem);
          s1 = input(str1,'s');
          if ~ isempty(s1), ens_mem = s1; end
