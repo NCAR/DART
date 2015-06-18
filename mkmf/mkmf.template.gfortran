@@ -9,9 +9,13 @@
 # typical use with mkmf
 # mkmf -t mkmf.template.xxxx ...
 #
+# Suggested (perhaps required) flags:
+# -ffree-line-length-none   handles "long" lines - i.e. longer than 72 chars
 #
 # Suggested debugging flags:
 #  -g                  add debugging information to executable
+#  -Wuninitialized     catch uninitialized variables
+#  -Wunused            issue warning for unused variables - keeps code clean
 #  -fbacktrace         runtime errors try to print out a stack backtrace
 #  -fbounds-check      add runtime-checking for out-of-range array indices
 #  -ffpe-trap=invalid,zero,overflow
@@ -83,7 +87,8 @@ LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
 FFLAGS  = -O2 -ffree-line-length-none $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
-#FFLAGS = -g -Wunused -ffree-line-length-none -fbounds-check -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)
+# FFLAGS = -g -Wuninitialized -Wunused -ffree-line-length-none -fbounds-check \
+#          -fbacktrace -ffpe-trap=invalid,zero,overflow $(INCS)
 
 # <next few lines under version control, do not edit>
 # $URL$
