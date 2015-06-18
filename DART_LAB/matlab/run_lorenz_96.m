@@ -2,8 +2,8 @@ function varargout = run_lorenz_96(varargin)
 %% RUN_LORENZ_96 ensemble data assimilation with a 40-variable implementation
 %      of the Lorenz '96 dynamical model.
 %
-%      To demonstrate the analogue to the atmosphere, the model is a cyclic 
-%      1D domain with equally-spaced nodal points. There are 20 ensemble 
+%      To demonstrate the analogue to the atmosphere, the model is a cyclic
+%      1D domain with equally-spaced nodal points. There are 20 ensemble
 %      members initially in this example.
 %
 %      The model can be single-stepped through model advance and assimilation
@@ -11,17 +11,17 @@ function varargout = run_lorenz_96(varargin)
 %      'Start Free Run' button. A variety of assimilation algorithms can
 %      be selected from the first pulldown. Model error in the assimilating
 %      model (an imperfect model assimilation experiment) can be selected
-%      with the second pulldown. The localization, inflation and ensemble 
-%      size can be changed with the three dialogue boxes. Changing the 
+%      with the second pulldown. The localization, inflation and ensemble
+%      size can be changed with the three dialogue boxes. Changing the
 %      ensemble size resets the diagnostic displays. The figure window
 %      displays time sequences of the prior and posterior error and prior
 %      and posterior (if assimilation is on) rank histograms.
-%      
+%
 %      It takes about twenty timesteps for the intially small ensemble
 %      perturbations to grow large enough to be seen using the default
 %      settings.
-% 
-% See also: gaussian_product, oned_model, oned_ensemble, twod_ensemble, 
+%
+% See also: gaussian_product, oned_model, oned_ensemble, twod_ensemble,
 %           run_lorenz_63
 
 %% DART software - Copyright 2004 - 2013 UCAR. This open source software is
@@ -51,7 +51,7 @@ end
 
 
 % --- Executes just before run_lorenz_96 is made visible.
-function run_lorenz_96_OpeningFcn(hObject, eventdata, handles, varargin)
+function run_lorenz_96_OpeningFcn(hObject, ~, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -59,6 +59,9 @@ function run_lorenz_96_OpeningFcn(hObject, eventdata, handles, varargin)
 % varargin   command line arguments to run_lorenz_96 (see VARARGIN)
 
 help run_lorenz_96
+
+% set random number seed to same value to generate known sequences
+rng('default')
 
 % Choose default command line output for run_lorenz_96
 handles.output = hObject;
@@ -83,6 +86,8 @@ handles.true_state(1, 1) = 1.001 * FORCING;
 handles.time = 1;
 handles.prior_rms(1) = 0;
 handles.posterior_rms(1) = 0;
+handles.prior_spread(1) = 0;
+handles.posterior_spread(1) = 0;
 % Used to normalize the polar plotting
 handles.mean_dist = 35;
 handles.h_ens = 0;
@@ -108,20 +113,25 @@ handles.r1 = 0;
 handles.r2 = 0;
 handles.r3 = 0;
 
-% Set up subdomains in figure window for timeseries and rank historgrams
-figure(1);
+%% Set up subdomains in figure window for timeseries and rank histograms
+figure(1); clf
+
+% The rmse and spread
 handles.r1 = subplot(2, 1, 1);
-% Want the y axis limits to take care of themselves
-set(gca, 'YLimMode', 'Auto');
-
-% Get a legend on here from the beginning
-plot(handles.prior_rms, 'g');
+set(handles.r1, 'YLimMode', 'Auto');
+plot(handles.prior_rms, 'Color',[0.0, 0.73, 0.0],'LineWidth',2.0);
 hold on
-plot(handles.posterior_rms, 'b');
-legend('Prior', 'Posterior', 'Location', 'NorthWest')
-ylabel('RMS Error', 'FontSize', 14);
+plot(handles.posterior_rms, 'b','LineWidth',2.0);
+plot(handles.prior_spread, '-.','Color',[0.0, 0.73, 0.0],'LineWidth',2.0);
+plot(handles.posterior_spread, 'b-.','LineWidth',2.0);
+legend('Prior RMSE', 'Posterior RMSE', 'Prior Spread', 'Posterior Spread', ...
+       'Location', 'NorthWest')
+ylabel('RMSE & Spread', 'FontSize', 14);
 xlabel('Time ', 'FontSize', 14);
-
+set(handles.prior_rms,'Visible','off')
+set(handles.posterior_rms,'Visible','off')
+set(handles.prior_spread,'Visible','off')
+set(handles.posterior_spread,'Visible','off')
 
 handles.r2 = subplot(2, 2, 3);
 ylabel('Frequency');
@@ -130,6 +140,7 @@ title ('Prior Rank Histogram', 'FontSize', 14);
 hold on
 
 handles.r3 = subplot(2, 2, 4);
+set(handles.r3,'YAxisLocation','right')
 ylabel('Frequency');
 xlabel('Rank');
 title ('Posterior Rank Histogram', 'FontSize', 14);
@@ -156,7 +167,7 @@ guidata(hObject, handles);
 
 
 % --- Outputs from this function are returned to the command line.
-function varargout = run_lorenz_96_OutputFcn(hObject, eventdata, handles) 
+function varargout = run_lorenz_96_OutputFcn(~, ~, handles)
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -182,7 +193,7 @@ varargout{1} = handles.output;
 
 
 % --- Executes on button press in pushbutton_single_step.
-function pushbutton_single_step_Callback(hObject, eventdata, handles)
+function pushbutton_single_step_Callback(hObject, ~, handles)
 % hObject    handle to pushbutton_single_step (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -193,7 +204,7 @@ step_ahead(hObject, handles);
 
 
 % --- Executes on button press in pushbutton_free_run.
-function pushbutton_free_run_Callback(hObject, eventdata, handles)
+function pushbutton_free_run_Callback(hObject, ~, handles)
 % hObject    handle to pushbutton_free_run (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -211,7 +222,7 @@ if(strcmp(get(hObject, 'String'), 'Stop Free Run'))
 
    % Being told to stop; switch to not running status
    set(hObject, 'String', 'Start Free Run');
- 
+
    % Update the handles global structure
    guidata(hObject, handles);
 
@@ -234,8 +245,8 @@ else
          turn_on_controls(handles);
 
          % Very last, turn on the start free run button
-         %%%set(hObject, 'Enable', 'On'); 
- 
+         %%%set(hObject, 'Enable', 'On');
+
          return
       end
       % Do the next advance or assimilation step
@@ -251,6 +262,9 @@ end
 
 %----------- Moves the model ahead or assimilates next observations ------
 function step_ahead(hObject, handles)
+
+global MODEL_SIZE
+global FORCING
 
 % Test on semaphore, either advance or assimilate
 if(handles.ready_to_advance)
@@ -270,8 +284,8 @@ if(handles.ready_to_advance)
    h_model_error= get(handles.popupmenu_model_error);
    h_err_index = h_model_error.Value;
 
-   global FORCING
-   if(h_err_index == 2) FORCING = 6; end
+
+   if(h_err_index == 2), FORCING = 6; end
 
    %  Advance the ensemble members; posterior -> new prior
    for n = 1:handles.ens_size
@@ -283,15 +297,11 @@ if(handles.ready_to_advance)
    FORCING = 8;
 
    % Inflate ensemble
-   global MODEL_SIZE;
    for i = 1:MODEL_SIZE
       ens_mean = mean(handles.prior(new_time, i, :));
       handles.prior(new_time, i, :) = ens_mean + ...
-         sqrt(handles.inflation) * (handles.prior(new_time, i, :) - ens_mean); 
+         sqrt(handles.inflation) * (handles.prior(new_time, i, :) - ens_mean);
    end
-
-
-
 
    % Plot the true state and the ensembles on polar plot
    y = (0:MODEL_SIZE) / MODEL_SIZE * 2 * pi;
@@ -313,6 +323,7 @@ if(handles.ready_to_advance)
    for n = 1:handles.ens_size
       handles.h_ens = plot_polar(y, handles.prior(new_time, :, n), ...
          handles.mean_dist, 'g', MODEL_SIZE);
+      set(handles.h_ens,'Color',[0.0, 0.73, 0.0])
       hold on
    end
    handles.h_truth = plot_polar(y, new_truth, handles.mean_dist, 'k', MODEL_SIZE);
@@ -329,8 +340,8 @@ if(handles.ready_to_advance)
    set(handles.text_time, 'String', ['Time = ', num2str(new_time)]);
 
    % Compute the prior RMS error of ensemble mean
-   prior_rms = rms_error(new_truth, handles.prior(new_time, :, :));
-   handles.prior_rms(new_time) = prior_rms;
+   handles.prior_rms(new_time) = rms_error(new_truth, handles.prior(new_time, :, :));
+   handles.prior_spread(new_time) = ens_spread(handles.prior(new_time, :, :));
 
    % Save the information about the histograms from before
    temp_rank(:, 1) = handles.prior_rank(1:handles.ens_size + 1);
@@ -342,12 +353,14 @@ if(handles.ready_to_advance)
       handles.prior_rank(ens_rank) = handles.prior_rank(ens_rank) + 1;
       temp_rank(ens_rank, 2) = temp_rank(ens_rank, 2) + 1;
    end
-   
+
 % Plot the prior_rms error time series
    figure(1);
-   subplot(handles.r1); 
+
+   subplot(handles.r1);
    hold on
-   plot(handles.prior_rms, 'g');
+   plot(handles.prior_rms,         'Color',[0.0, 0.73, 0.0],'LineWidth',2.0);
+   plot(handles.prior_spread, '-.','Color',[0.0, 0.73, 0.0],'LineWidth',2.0);
 
    % Plot the rank histogram for the prior
    subplot(handles.r2);
@@ -385,12 +398,12 @@ else
 
       % Do fully sequential assimilation algorithm
       temp_ens = squeeze(handles.prior(time, :, :));
-   
+
       % Select the first plotting box
       axes(handles.axes1);
 
       % Observe each state variable independently
-      global MODEL_SIZE
+      obs = zeros(1,MODEL_SIZE);
       for i = 1:MODEL_SIZE
          obs_prior = temp_ens(i, :);
          obs(i) = handles.true_state(time, i) + obs_sd * randn;
@@ -398,13 +411,13 @@ else
          % Compute the increments for observed variable
          switch filter_type
             case 'EAKF'
-               [obs_increments, err] = ...
+               [obs_increments, ~] = ...
                   obs_increment_eakf(obs_prior, obs(i), obs_error_var);
             case 'EnKF'
-               [obs_increments, err] = ...
+               [obs_increments, ~] = ...
                   obs_increment_enkf(obs_prior, obs(i), obs_error_var);
             case 'RHF'
-               [obs_increments, err] = ...
+               [obs_increments, ~] = ...
                   obs_increment_rhf(obs_prior, obs(i), obs_error_var);
          end
 
@@ -412,10 +425,10 @@ else
          for j = 1:MODEL_SIZE
             state_incs = get_state_increments(temp_ens(j, :), ...
                obs_prior, obs_increments);
-            
+
             % Compute distance between obs and state for localization
             dist = abs(i - j) / 40;
-            if(dist > 0.5) dist = 1 - dist; end
+            if(dist > 0.5), dist = 1 - dist; end
 
             % Compute the localization factor
             cov_factor = comp_cov_factor(dist, handles.localization);
@@ -426,19 +439,19 @@ else
 
       % Plot the observations
       y = (0:MODEL_SIZE) / MODEL_SIZE * 2 * pi;
-      h_obs = plot_polar(y, obs, handles.mean_dist, 'r*', MODEL_SIZE);
+      plot_polar(y, obs, handles.mean_dist, 'r*', MODEL_SIZE);
 
       % Update the posterior
       handles.post(time, :, :) = temp_ens;
 
-      % Compute the posterior rms
-      posterior_rms = rms_error(handles.true_state(time, :), handles.post(time, :, :));
-      handles.posterior_rms(time) = posterior_rms;
+      % Compute the posterior rms, spread
+      handles.posterior_rms(time) = rms_error(handles.true_state(time, :), handles.post(time, :, :));
+      handles.posterior_spread(time) = ens_spread(handles.post(time, :, :));
 
       % Save the information about the histograms from before
       temp_rank(:, 1) = handles.posterior_rank(1:handles.ens_size + 1);
       temp_rank(:, 2) = 0;
-    
+
       % Compute the posterior rank histograms
       for i = 1:handles.ens_size
          ens_rank = get_ens_rank(squeeze(handles.post(time, i, :)), ...
@@ -446,12 +459,13 @@ else
          handles.posterior_rank(ens_rank) = handles.posterior_rank(ens_rank) + 1;
          temp_rank(ens_rank, 2) = temp_rank(ens_rank, 2) + 1;
       end
-   
+
       % Plot the posterior_rms error time series
       figure(1);
       subplot(handles.r1);
       hold on
-      plot(handles.posterior_rms, 'b');
+      plot(handles.posterior_rms, 'b','LineWidth',2.0);
+      plot(handles.posterior_spread, 'b-.','LineWidth',2.0);
 
       % Plot the rank histogram for the prior
       subplot(handles.r3);
@@ -461,9 +475,7 @@ else
       % Select the first plotting box
       axes(handles.axes1);
 
-      pause(0.2)
-
-      
+      pause(0.1)
 
 %-----------------
    end
@@ -471,7 +483,7 @@ else
 end
 
 % If using multiple windows might need to reset focus to the gui window here
-[gcbo_h, gcbo_fig] = gcbo;
+[~, gcbo_fig] = gcbo;
 figure(gcbo_fig);
 
 % Update the global storage and return
@@ -479,7 +491,7 @@ guidata(hObject, handles);
 
 
 % --- Executes on selection change in popupmenu_assim_type.
-function popupmenu_assim_type_Callback(hObject, eventdata, handles)
+function popupmenu_assim_type_Callback(~, ~, ~)
 % hObject    handle to popupmenu_assim_type (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -489,7 +501,7 @@ function popupmenu_assim_type_Callback(hObject, eventdata, handles)
 
 
 % --- Executes during object creation, after setting all properties.
-function popupmenu_assim_type_CreateFcn(hObject, eventdata, handles)
+function popupmenu_assim_type_CreateFcn(hObject, ~, ~)
 % hObject    handle to popupmenu_assim_type (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -504,7 +516,7 @@ end
 
 
 % --- Executes on selection change in popupmenu_model_error.
-function popupmenu_model_error_Callback(hObject, eventdata, handles)
+function popupmenu_model_error_Callback(~, ~, ~)
 % hObject    handle to popupmenu_model_error (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -514,7 +526,7 @@ function popupmenu_model_error_Callback(hObject, eventdata, handles)
 
 
 % --- Executes during object creation, after setting all properties.
-function popupmenu_model_error_CreateFcn(hObject, eventdata, handles)
+function popupmenu_model_error_CreateFcn(hObject, ~, ~)
 % hObject    handle to popupmenu_model_error (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -526,7 +538,7 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-function edit_ens_size_Callback(hObject, eventdata, handles)
+function edit_ens_size_Callback(hObject, ~, handles)
 % hObject    handle to edit_ens_size (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -536,9 +548,9 @@ function edit_ens_size_Callback(hObject, eventdata, handles)
 
 % Set the ensemble size global value to the update
 handles.ens_size = str2double(get(hObject, 'String'));
-if(not(isfinite(handles.ens_size)) | handles.ens_size < 2) 
+if(not(isfinite(handles.ens_size)) || handles.ens_size < 2)
    set(handles.edit_ens_size, 'String', '???');
-   
+
    % After this, only this edit box will work
    turn_off_controls(handles);
    set(handles.edit_ens_size, 'Enable', 'On');
@@ -556,7 +568,7 @@ handles.true_state(1, 1) = 1.001 * FORCING;
 handles.time = 1;
 
 % Generate set of ensemble perturbations
-handles.post = [0];
+handles.post = 0;
 for n = 1:handles.ens_size
    handles.post(1, 1:handles.model_size, n) = handles.true_state(1, :);
 end
@@ -565,13 +577,13 @@ handles.post(1, 1:handles.model_size, 1:handles.ens_size) = ...
    0.001 * randn(1, handles.model_size, handles.ens_size);
 
 % For convenience make the first prior identical to the first posterior
-handles.prior = [0];
+handles.prior = 0;
 handles.prior(1, 1:handles.model_size, 1:handles.ens_size) = ...
-   handles.post(1, 1:handles.model_size, 1:handles.ens_size);
+ handles.post(1, 1:handles.model_size, 1:handles.ens_size);
 
 % Clear the rms plots
-handles.prior_rms = [0];
-handles.posterior_rms = [0];
+handles.prior_rms = 0;
+handles.posterior_rms = 0;
 
 % Reset the array to keep track of rank histograms
 handles.prior_rank(1 : handles.ens_size + 1) = 0;
@@ -584,9 +596,9 @@ handles.r1 = subplot(2, 1, 1);
 % Clear plot and start over
 hold off
 handles.prior_rms
-plot(handles.prior_rms, 'g');
+plot(handles.prior_rms, 'Color',[0.0, 0.73, 0.0], 'LineWidth',2.0);
 hold on
-plot(handles.posterior_rms, 'b');
+plot(handles.posterior_rms, 'b','LineWidth',2.0);
 ylabel('RMS Error', 'FontSize', 14);
 xlabel('Time ', 'FontSize', 14);
 
@@ -594,8 +606,8 @@ xlabel('Time ', 'FontSize', 14);
 legend('Prior', 'Posterior', 'Location', 'NorthWest')
 
 % Reset the rank histograms to the new size
-handles.prior_rank = [1 : handles.ens_size + 1] * 0;
-handles.posterior_rank = [1 : handles.ens_size + 1] * 0;
+handles.prior_rank = zeros(1,handles.ens_size+1);
+handles.posterior_rank = zeros(1,handles.ens_size+1);
 subplot(handles.r2);
 hold off
 bar(handles.prior_rank);
@@ -626,7 +638,7 @@ guidata(hObject, handles);
 
 
 % --- Executes during object creation, after setting all properties.
-function edit_ens_size_CreateFcn(hObject, eventdata, handles)
+function edit_ens_size_CreateFcn(hObject, ~, ~)
 % hObject    handle to edit_ens_size (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -639,7 +651,7 @@ end
 
 
 % --- Executes when uipanel2 is resized.
-function uipanel2_ResizeFcn(hObject, eventdata, handles)
+function uipanel2_ResizeFcn(~, ~, ~)
 % hObject    handle to uipanel2 (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -672,7 +684,7 @@ set(handles.edit_ens_size,              'Enable', 'On');
 
 
 
-function edit_inflation_Callback(hObject, eventdata, handles)
+function edit_inflation_Callback(hObject, ~, handles)
 % hObject    handle to edit_inflation (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -682,9 +694,9 @@ function edit_inflation_Callback(hObject, eventdata, handles)
 
 % Set the inflation value to the update
 handles.inflation= str2double(get(hObject, 'String'));
-if(not(isfinite(handles.inflation)) | handles.inflation< 0) 
+if(not(isfinite(handles.inflation)) || handles.inflation< 0)
    set(handles.edit_inflation, 'String', '???');
-   
+
    % After this, only this edit box will work
    turn_off_controls(handles);
    set(handles.edit_inflation, 'Enable', 'On');
@@ -703,7 +715,7 @@ guidata(hObject, handles);
 
 
 % --- Executes during object creation, after setting all properties.
-function edit_inflation_CreateFcn(hObject, eventdata, handles)
+function edit_inflation_CreateFcn(hObject, ~, ~)
 % hObject    handle to edit_inflation (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -716,7 +728,7 @@ end
 
 
 
-function edit_localization_Callback(hObject, eventdata, handles)
+function edit_localization_Callback(hObject, ~, handles)
 % hObject    handle to edit_localization (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
@@ -726,9 +738,9 @@ function edit_localization_Callback(hObject, eventdata, handles)
 
 % Set the localization value to the update
 handles.localization= str2double(get(hObject, 'String'));
-if(not(isfinite(handles.localization)) | handles.localization< 0) 
+if(not(isfinite(handles.localization)) || handles.localization< 0)
    set(handles.edit_localization, 'String', '???');
-   
+
    % After this, only this edit box will work
    turn_off_controls(handles);
    set(handles.edit_localization, 'Enable', 'On');
@@ -745,7 +757,7 @@ guidata(hObject, handles);
 
 
 % --- Executes during object creation, after setting all properties.
-function edit_localization_CreateFcn(hObject, eventdata, handles)
+function edit_localization_CreateFcn(hObject, ~, ~)
 % hObject    handle to edit_localization (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    empty - handles not created until after all CreateFcns called
@@ -761,8 +773,18 @@ end
 
 function ens_mean_rms = rms_error(truth, ens)
 
-ens_mean = mean(squeeze(ens)');
+ens_mean = mean(squeeze(ens),2)';
 ens_mean_rms = sqrt(sum((truth - ens_mean).^2) / size(truth, 2));
+
+
+function spread = ens_spread(ens)
+% Remove the mean of each of the 40 model variables (40 locations).
+% resulting matrix is 40x20 ... each row/location is centered (zero mean).
+
+[~, model_size, ens_size] = size(ens);
+datmat = detrend(squeeze(ens)','constant'); % remove the mean of each location.
+denom  = (model_size - 1)*ens_size;
+spread = sqrt(sum(datmat(:).^2) / denom);
 
 % <next few lines under version control, do not edit>
 % $URL$

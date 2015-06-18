@@ -8,7 +8,7 @@ function [rank] = get_ens_rank(ens, x)
 % DART $Id$
 
 s_ens = sort(ens);
-rank = max(find(s_ens < squeeze(x))) + 1;;
+rank = find(s_ens < squeeze(x),1,'last') + 1;
 if(isempty(rank))
    rank = 1;
 end
