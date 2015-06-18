@@ -1193,6 +1193,8 @@ else if (obs_kind == KIND_SURFACE_ELEVATION) then
       endif
    enddo
 
+!> @todo check againt trunk, it does KIND_PRECIPITABLE_WATER and KIND_SURFACE_PRESSURE in the same if
+!> statement
 else if (obs_kind == KIND_PRECIPITABLE_WATER) then
    tvars(1) = ivar
    call compute_scalar_with_barycentric(state_ens_handle, location_array, 1, tvars, values, istatus)
