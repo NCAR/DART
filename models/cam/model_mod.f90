@@ -3807,6 +3807,7 @@ real(r8)              :: lon_lat_lev(3), vals(4)
 
 ! Start with failure, then change to success as warranted.
 istatus = 1
+vstatus = MISSING_I
 interp_val = MISSING_R8
 
 ! Get the observation (horizontal) position, in degrees.
