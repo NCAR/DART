@@ -201,13 +201,26 @@ committed since the original release of the Lanai code.
 </TR>
 -->
 
-<TR><TD> 17 June 2015 </TD>
-    <TD> 8058 </TD>
-    <TD>Performance fix: Reordered the check for missing_r8 in the state
-during filter_assim. Now only checking for missing_r8 if allow_missing_in_clm = .true.
+<TR><TD> 24 June 2015  </TD>
+    <TD> 8130 </TD>
+    <TD>Moving all the DART_LAB/matlab 'helper' functions to be private.
+This makes the functions the user is supposed to use more visible and 
+the directory less daunting.  At the same time, 
+<em class=program>run_lorenz_63</em> and 
+<em class=program>gaussian_product</em> have been fixed to work with 
+Matlab's new graphics paradigms introduced in 2014b.
+Still works with previous versions. 
     </TD>
 </TR>
 
+<TR><TD> 17 June 2015 </TD>
+    <TD> 8058 </TD>
+    <TD>Performance fix: Reordered the check for <em class=code>missing_r8</em>
+in the state during <em class=program>filter_assim</em>. 
+Now only checking for <em class=code>missing_r8</em> if 
+<em class=code>allow_missing_in_clm = .true.</em>
+    </TD>
+</TR>
 
 <TR><TD> 5 June 2015 </TD>
     <TD> 8047 </TD>
@@ -448,33 +461,38 @@ Fix confusing comments in a few scripts. Fix default values in some namelists.
 </TR>
 
 </TABLE>
-<div>
+</div>
 <br />
   
 <P>
 To update a checked-out version of DART to the most recent 
 version of this release, cd into the top level directory and run:
+</P>
 <pre>
   svn update
 </pre>
-</P><P>
+<P>
 To see the commit log messages and the filenames of changed
 files from subversion, cd into the top level DART directory and run:
+</P>
 <pre>
   svn log -v -r xxxx 
 </pre>
-where <i>xxxx</i> is the revision number.
-</P><P>
 <P>
+where <i>xxxx</i> is the revision number.
+<br />
+<br />
 To see the code differences in a particular file, cd into
 the directory with the file you want to compare and run:
+</P>
 <pre>
  svn diff -r xxxx filename
 </pre>
+<P>
 where <i>xxxx</i> is the revision number.
 </P>
 
-<P></P>
+<P><!-- make sure the 'top' is aligned correctly --></P>
 
 <!--==================================================================-->
 
@@ -612,7 +630,6 @@ available, the link is to the .f90 source):
 <UL style="list-style: none;">
 <LI><A HREF="models/model_mod.html">Overview for all models</A></LI>
 <LI><A HREF="models/template/model_mod.f90">template (source)</A></LI>
-<LI></LI>
 <LI><A HREF="models/9var/model_mod.html">9var (html)</A></LI>
 <LI><A HREF="models/am2/model_mod.f90">AM2 (source)</A></LI>
 <LI><A HREF="models/bgrid_solo/model_mod.f90">bgrid_solo (source)</A></LI>
