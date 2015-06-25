@@ -62,9 +62,6 @@ end
 
 inds = find( (lonlogical .* latlogical .* lvllogical) > 0 );
 
-function a = ReadObsSeq(fname)
-
-
 % <next few lines under version control, do not edit>
 % $URL$
 % $Revision$
