@@ -170,7 +170,7 @@
                               '../../../obs_def/obs_def_vortex_mod.f90'  /
 
 &obs_kind_nml
-   assimilate_these_obs_types   = 'RADIOSONDE_U_WIND_COMPONENT'
+   assimilate_these_obs_types   = 'RADIOSONDE_U_WIND_COMPONENT',
 'RADIOSONDE_V_WIND_COMPONENT',
 'RADIOSONDE_TEMPERATURE',       
 'RADIOSONDE_SPECIFIC_HUMIDITY',
