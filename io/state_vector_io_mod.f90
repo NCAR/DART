@@ -58,7 +58,7 @@ use assim_model_mod,      only : get_model_size, clamp_or_fail_it,             &
 
 use time_manager_mod,     only : time_type
 
-use io_filenames_mod,     only : restart_files_in, restart_files_out, io_filenames_init
+use io_filenames_mod,     only : get_input_file, get_output_file, io_filenames_init
 
 use state_structure_mod,  only : get_domain_size, get_num_variables,           &
                                  get_dim_lengths, get_num_dims, get_dim_ids,   &
@@ -209,7 +209,7 @@ COPIES: do c = 1, ens_size
    if ((my_pe >= send_start) .and. (my_pe <= send_end)) then ! I am a reader
 
       if (query_read_copy(my_copy - recv_start+ 1)) then
-         netcdf_filename = restart_files_in((my_copy - recv_start +1), domain)
+         netcdf_filename = get_input_file((my_copy - recv_start +1), domain)
          print*, 'opening netcdf_filename ', trim(netcdf_filename)
          ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
          call nc_check(ret, 'read_transpose opening', netcdf_filename)
@@ -404,11 +404,7 @@ COPIES : do c = 1, ens_size
    ! writers open netcdf output file. This is a copy of the input file
    if (my_pe < ens_size) then
       if ( query_write_copy(my_copy - recv_start + 1)) then
-         if (isprior) then
-            netcdf_filename_out = restart_files_out((my_copy - recv_start +1), domain, 1)
-         else
-            netcdf_filename_out = restart_files_out((my_copy - recv_start +1), domain, 2)
-         endif
+         netcdf_filename_out = get_output_file((my_copy - recv_start +1), domain, isprior)
 
          if(file_exist(netcdf_filename_out)) then
             ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)

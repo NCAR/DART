@@ -22,12 +22,13 @@ module io_filenames_mod
 
 use utilities_mod,        only : do_nml_file, nmlfileunit, do_nml_term, &
                                  check_namelist_read, find_namelist_in_file, &
-                                 file_exist, E_ERR, error_handler, nc_check
+                                 file_exist, E_ERR, E_MSG, error_handler, nc_check, &
+                                 open_file, find_textfile_dims
 use model_mod,            only : construct_file_name_in
 use state_structure_mod,  only : get_num_domains, get_dim_length, get_dim_name, &
                                  get_num_dims, get_num_variables, get_variable_name
 use ensemble_manager_mod, only : is_single_restart_file_in
-use ensemble_manager_mod, only : is_single_restart_file_in
+
 use netcdf
 
 implicit none
@@ -36,9 +37,7 @@ private
 
 ! These should probably be set and get functions rather than 
 ! direct access
-
-public :: io_filenames_init, restart_files_in, restart_files_out, &
-          set_filenames
+public :: io_filenames_init, set_filenames, get_input_file, get_output_file
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -49,21 +48,29 @@ character(len=128), parameter :: revdate  = "$Date$"
 ! How do people name there restart files?
 ! What about domains?
 
-! public arrays of filenames. Do we need arrays for restarts AND extras?
 character(len=2048), allocatable :: restart_files_in(:,:), restart_files_out(:,:,:)
 
+!-------------------------------------------------------------------------------
 ! Namelist options
+!-------------------------------------------------------------------------------
 character(len=512) :: restart_in_stub  = 'input'
 character(len=512) :: restart_out_stub = 'output'
-logical            :: overwrite_input = .false.  ! sets the output file = input file
 
+logical            :: overwrite_input  = .false. ! sets output file = input file
+logical            :: domain_extension = .false. ! add _d0X to filenames
+
+logical            :: rpointer          = .false. ! define a list of restart files
+character(len=512) :: rpointer_file(10) = 'null'  ! list of restarts
+! JH should we enforce the pointer file name?
+!-------------------------------------------------------------------------------
 
 ! Should probably get num_domains, num_restarts from elsewhere. In here for now
-namelist / io_filenames_nml / restart_in_stub, restart_out_stub, overwrite_input
+namelist / io_filenames_nml / restart_in_stub, restart_out_stub, &
+overwrite_input, domain_extension, rpointer, rpointer_file
 
 contains
 
-!----------------------------------
+!-------------------------------------------------------------------------------
 !> read namelist and set up filename arrays
 subroutine io_filenames_init()
 
@@ -81,115 +88,161 @@ if (do_nml_term()) write(     *     , nml=io_filenames_nml)
 
 end subroutine io_filenames_init
 
-!----------------------------------
-
+!-------------------------------------------------------------------------------
 subroutine set_filenames(ens_size, inflation_in, inflation_out)
 
 integer,              intent(in) :: ens_size
 character(len = 129), intent(in) :: inflation_in(2), inflation_out(2)
-character(len = 4)   :: extension, dom_str
+character(len = 32)   :: ext
+character(len = 32)   :: dom_str = ''
 
 integer :: num_domains
-integer :: dom, i ! loop variables
+integer :: dom, i
+integer :: idom, icopy ! loop variables
 integer :: num_files
 
-num_files = ens_size + 10 !> @toto do you worry about spare copies?
+integer :: iunit, ios
+integer :: nlines
+character(len=512) :: fname
+character(len=256) :: msgstring
 
+num_files   = ens_size + 10 !> @toto do you worry about spare copies?
 num_domains = get_num_domains()
 
-allocate(restart_files_in(num_files, num_domains))
+allocate(restart_files_in(num_files , num_domains))
 allocate(restart_files_out(num_files, num_domains, 2)) ! for prior and posterior filenames
 
-do dom = 1, num_domains
+do idom = 1, num_domains
 
-   if (is_single_restart_file_in()) then ! reading first restart for now
-
-      restart_files_in(:, dom) = construct_file_name_in(restart_in_stub, dom, 1)
-
-      do i = 1, ens_size  ! restarts
-         write(extension, '(i4.4)') i
-         write(dom_str, '(i1.1)') dom
-         restart_files_out(i, dom, 1) = 'prior_member_d0' // trim(dom_str) // '.' // extension
-         if (overwrite_input) then
-            restart_files_out(i, dom, 2) = restart_files_in(i, dom)
-         else
-            restart_files_out(i, dom, 2) = construct_file_name_out(restart_out_stub, dom, i)
-         endif
-      enddo
-
+   ! optional domain string
+   if (num_domains > 1 .or. domain_extension) then
+      write(dom_str, '(A, i2.2)') '_d', idom 
    else
-
-      do i = 1, ens_size  ! restarts
-         restart_files_in(i, dom)  = construct_file_name_in(restart_in_stub, dom, i)
-         write(extension, '(i4.4)') i
-         write(dom_str, '(i1.1)') dom
-         restart_files_out(i, dom, 1) = 'prior_member_d0' // trim(dom_str) // '.' // extension
-         if (overwrite_input) then
-            restart_files_out(i, dom, 2) = restart_files_in(i, dom)
-         else
-            restart_files_out(i, dom, 2) = construct_file_name_out(restart_out_stub, dom, i)
-         endif
-      enddo
-
+      write(dom_str, '(A)') ''
    endif
 
-enddo
+   ! Read filenames from rpointer_file
+   if(rpointer) then
+      
+      write(msgstring,*) "reading restarts from ", trim(rpointer_file(idom))
+      call error_handler(E_MSG,'set_filenames', &
+                         msgstring, source, revision, revdate)
 
-! input extras
-do dom = 1, num_domains
+      if ( .not. file_exist(rpointer_file(idom)) ) then
+         msgstring = 'io_filenames_mod:rpointer '//trim(rpointer_file(idom))//&
+                     ' not found'
+         call error_handler(E_ERR,'set_filenames', &
+                msgstring, source, revision, revdate)
+      endif
+      
+      ! Check the dimensions of the pointer file
+      call find_textfile_dims(trim(rpointer_file(idom)), nlines)
+      if( nlines < ens_size) then
+         write(msgstring,*) 'io_filenames_mod: expecting ',ens_size, &
+                            'files in ', trim(rpointer_file(idom)),  &
+                            'and only found ', nlines
+         call error_handler(E_ERR,'set_filenames', &
+                            msgstring, source, revision, revdate)
+      endif 
+
+      ! Read filenames in
+      iunit = open_file(trim(rpointer_file(idom)),action = 'read')
+   
+      do icopy = 1, ens_size
+         read(iunit,*,iostat=ios) restart_files_in(icopy, idom)
+      enddo
+   
+   else ! Construct restarts
+
+      if (is_single_restart_file_in()) then ! reading first restart for now
+         restart_files_in(:, idom) = construct_file_name_in(restart_in_stub, idom,icopy)
+      else
+         do icopy = 1, ens_size  ! restarts
+            restart_files_in(icopy, idom) = construct_file_name_in(restart_in_stub, idom,icopy)
+         enddo
+      endif
+
+   endif ! rpointer
+
+   ! Construct the output files
+   do icopy = 1, ens_size  ! output restarts
+      
+      write(ext, '(2A, i4.4, A)') trim(dom_str), ".", icopy, ".nc"
+      write(restart_files_out(icopy, idom, 1),'(2A)') 'prior_member', ext
+
+      if (overwrite_input) then
+         restart_files_out(icopy, idom, 2) = restart_files_in(icopy, idom)
+      else
+         restart_files_out(icopy, idom, 2) = construct_file_name_out(restart_out_stub, icopy, idom)
+      endif
+   enddo
+
+   ! input extras
    ! mean -never used
-   write(restart_files_in(ens_size + 1, dom), '(A, i2.2, A)') 'mean_d', dom
+   write(restart_files_in(ens_size+1,idom), '(A)') 'xxx_mean' 
    ! sd -never used
-   write(restart_files_in(ens_size + 2, dom), '(A, i2.2, A)') 'sd_d',   dom
+   write(restart_files_in(ens_size+2,idom), '(A)') 'xxx_sd'  
    ! prior inf copy
-   write(restart_files_in(ens_size + 3, dom), '(A, A, i2.2, A)') trim(inflation_in(1)), '_mean_d', dom
+   write(restart_files_in(ens_size+3,idom), '(3A)') trim(inflation_in(1)), '_mean'
    ! prior inf sd copy
-   write(restart_files_in(ens_size + 4, dom), '(A, A, i2.2, A)') trim(inflation_in(1)), '_sd_d', dom
+   write(restart_files_in(ens_size+4,idom), '(3A)') trim(inflation_in(1)), '_sd'  
    ! post inf copy
-   write(restart_files_in(ens_size + 5, dom), '(A, A, i2.2, A)') trim(inflation_in(2)), '_mean_d', dom
+   write(restart_files_in(ens_size+5,idom), '(3A)') trim(inflation_in(2)), '_mean'
    ! post inf sd copy
-   write(restart_files_in(ens_size + 6, dom), '(A, A, i2.2, A)') trim(inflation_in(2)), '_sd_d', dom
-enddo
+   write(restart_files_in(ens_size+6,idom), '(3A)') trim(inflation_in(2)), '_sd'  
 
-! output extras
-do dom = 1, num_domains
+   ! output extras
    ! Prior
    ! mean
-   write(restart_files_out(ens_size + 1, dom, 1), '(A, i2.2, A)') 'PriorDiag_mean_d', dom, '.nc'
+   write(restart_files_out(ens_size+1,idom,1),'(A)') 'PriorDiag_mean'
    ! sd
-   write(restart_files_out(ens_size + 2, dom, 1), '(A, i2.2, A)') 'PriorDiag_sd_d', dom, '.nc'
-   ! prior inf copy
-   write(restart_files_out(ens_size + 3, dom, 1), '(A, i2.2, A)') 'PriorDiag_inf_mean_d', dom, '.nc'
-   ! prior inf sd copy
-   write(restart_files_out(ens_size + 4, dom, 1), '(A, i2.2, A)') 'PriorDiag_inf_sd_d', dom, '.nc'
+   write(restart_files_out(ens_size+2,idom,1),'(A)') 'PriorDiag_sd' 
+   ! prior inf copy (should be the same as trim(inflation_in(1)), '_mean', should we write this out?) 
+   ! JH turn on adaptive inflation and test if files are the same.
+   write(restart_files_out(ens_size+3,idom,1),'(A)') 'PriorDiag_inf_mean'
+   ! prior inf sd copy (should be the same as trim(inflation_in(1)), '_sd', should we write this out?)
+   ! JH turn on adaptive inflation and test if files are the same.
+   write(restart_files_out(ens_size+4,idom,1),'(A)') 'PriorDiag_inf_sd' 
    ! post inf copy - not used
-   write(restart_files_out(ens_size + 5, dom, 1), '(A, A, i2.2, A)') trim(inflation_out(2)), '_mean_d', dom, '.nc'
+   write(restart_files_out(ens_size+5,idom,1),'(2A)') trim(inflation_out(2)), 'xxx_mean'
    ! post inf sd copy - not used
-   write(restart_files_out(ens_size + 6, dom, 1), '(A, A, i2.2, A)') trim(inflation_out(2)), '_sd_d', dom, '.nc'
+   write(restart_files_out(ens_size+6,idom,1),'(2A)') trim(inflation_out(2)), 'xxx_sd_d'
 
    ! Posterior
    ! mean
-   write(restart_files_out(ens_size + 1, dom, 2), '(A, i2.2, A)') 'mean_d', dom, '.nc'
+   write(restart_files_out(ens_size+1,idom,2),'(A)') 'mean'
    ! sd
-   write(restart_files_out(ens_size + 2, dom, 2), '(A, i2.2, A)') 'sd_d', dom, '.nc'
+   write(restart_files_out(ens_size+2,idom,2),'(A)') 'sd' 
    ! prior inf copy
-   write(restart_files_out(ens_size + 3, dom, 2), '(A, A, i2.2, A)') trim(inflation_out(1)), '_mean_d', dom
+   write(restart_files_out(ens_size+3,idom,2),'(2A)') trim(inflation_out(1)), '_mean'
    ! prior inf sd copy
-   write(restart_files_out(ens_size + 4, dom, 2), '(A, A, i2.2, A)') trim(inflation_out(1)), '_sd_d', dom
+   write(restart_files_out(ens_size+4,idom,2),'(2A)') trim(inflation_out(1)), '_sd'
    ! post inf copy
-   write(restart_files_out(ens_size + 5, dom, 2), '(A, A, i2.2, A)') trim(inflation_out(2)), '_mean_d', dom
+   write(restart_files_out(ens_size+5,idom,2),'(2A)') trim(inflation_out(2)), '_mean'
    ! post inf sd copy
-   write(restart_files_out(ens_size + 6, dom, 2), '(A, A, i2.2, A)') trim(inflation_out(2)), '_sd_d', dom
+   write(restart_files_out(ens_size+6,idom,2),'(2A)') trim(inflation_out(2)), '_sd'
+   
+   ! Add extension to extra files
+   write(ext, '(2A)') trim(dom_str), ".nc"
+   do icopy = ens_size + 1, ens_size + 6
+      write(restart_files_in(icopy,idom), '(2A)') &
+            trim(restart_files_in(icopy,idom)), ext
 
-   ! Storage for copies that would have gone in the Prior_diag.nc if we were to write it
-   write(restart_files_out(ens_size + 7, dom, 2), '(A, i2.2, A)') restart_files_out(ens_size + 1, dom, 1)
-   write(restart_files_out(ens_size + 8, dom, 2), '(A, i2.2, A)') restart_files_out(ens_size + 2, dom, 1)
-   write(restart_files_out(ens_size + 9, dom, 2), '(A, i2.2, A)') restart_files_out(ens_size + 3, dom, 1)
-   write(restart_files_out(ens_size + 10, dom, 2), '(A, i2.2, A)') restart_files_out(ens_size + 4, dom, 1)
+      write(restart_files_out(icopy,idom,1), '(2A)') &
+            trim(restart_files_out(icopy,idom,1)), ext
 
+      write(restart_files_out(icopy,idom,2), '(2A)') &
+            trim(restart_files_out(icopy,idom,2)), ext
+   enddo
 
-enddo
+   ! Storage for copies that would have gone in the Prior_diag.nc if we 
+   ! were to write it
+   restart_files_out(ens_size+7 ,idom,2) =  restart_files_out(ens_size+1,idom, 1)
+   restart_files_out(ens_size+8 ,idom,2) =  restart_files_out(ens_size+2,idom, 1)
+   restart_files_out(ens_size+9 ,idom,2) =  restart_files_out(ens_size+3,idom, 1)
+   restart_files_out(ens_size+10,idom,2) =  restart_files_out(ens_size+4,idom, 1)
 
+enddo ! domain loop
 
 ! check that the netcdf files match the variables for this domain
 ! to prevent overwritting unwanted files.
@@ -290,16 +343,53 @@ end subroutine check_correct_variables
 
 !--------------------------------------------------------------------
 !> construct restart file name for writing
-function construct_file_name_out(stub, domain, copy)
+function construct_file_name_out(stub, copy, domain)
 
 character(len=512), intent(in) :: stub
-integer,            intent(in) :: domain
 integer,            intent(in) :: copy
+integer,            intent(in) :: domain
 character(len=1024)            :: construct_file_name_out
 
-write(construct_file_name_out, '(A,  A, i2.2, A, i2.2)') TRIM(stub), '_d', domain, '.', copy
+character(len = 32)   :: ext = ''
+
+if (get_num_domains() > 1 .or. domain_extension)then 
+   write(ext, '(A, i2.2)') '_d', domain
+endif
+
+write(construct_file_name_out, '( 2A,".",i4.4,".nc")') TRIM(stub), trim(ext), copy
 
 end function construct_file_name_out
+
+!----------------------------------
+!> Return the appropriate input file for copy and domain
+function get_input_file(copy, domain)
+
+integer, intent(in) :: copy
+integer, intent(in) :: domain
+
+character(len=2048) :: get_input_file
+
+get_input_file = restart_files_in(copy, domain)
+
+end function get_input_file
+
+!----------------------------------
+!> Return the appropriate output file for copy and domain
+function get_output_file(copy, domain, isprior)
+
+integer, intent(in) :: copy
+integer, intent(in) :: domain
+logical, intent(in) :: isprior
+
+character(len=2048) :: get_output_file
+
+if(isprior) then
+   get_output_file = restart_files_out(copy, domain, 1)
+else
+   get_output_file = restart_files_out(copy, domain, 2)
+endif
+
+end function get_output_file
 
 !----------------------------------
 !> Destroy module storage

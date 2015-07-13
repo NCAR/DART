@@ -73,7 +73,7 @@ use state_vector_io_mod,   only : read_transpose, transpose_write, state_vector_
 
 use model_mod,             only : get_model_time
 
-use io_filenames_mod,      only : io_filenames_init, restart_files_in, set_filenames
+use io_filenames_mod,      only : io_filenames_init, get_input_file, set_filenames
 
 use state_structure_mod,   only : get_num_domains, static_init_state_type, add_domain
 
@@ -1445,7 +1445,7 @@ call set_filenames(state_ens_handle%num_copies - num_extras, inf_in_file_name, i
 
 ! read time from input file if time not set in namelist
 if(init_time_days < 0) then
-   time = get_model_time(restart_files_in(1,1)) ! Any of the restarts?
+   time = get_model_time(get_input_file(1,1)) ! Any of the restarts?
 endif
 
 state_ens_handle%time = time
