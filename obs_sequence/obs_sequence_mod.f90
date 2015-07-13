@@ -64,8 +64,7 @@ public :: obs_sequence_type, init_obs_sequence, interactive_obs_sequence, &
    static_init_obs_sequence, destroy_obs_sequence, read_obs_seq_header, &
    delete_seq_head, delete_seq_tail, &
    get_next_obs_from_key, get_prev_obs_from_key, delete_obs_by_typelist, &
-   select_obs_by_location, delete_obs_by_qc, delete_obs_by_copy,         &
-   get_expected_obs_distrib_state !HK
+   select_obs_by_location, delete_obs_by_qc, delete_obs_by_copy
 
 ! Public interfaces for obs
 public :: obs_type, init_obs, destroy_obs, get_obs_def, set_obs_def, &
@@ -328,77 +327,6 @@ end function interactive_obs_sequence
 
 
 !---------------------------------------------------------
-
-!> @brief Compute forward operator for set of obs in sequence for distributed state vector. 
-!> @todo does this need to be for a set of obs?
-subroutine get_expected_obs_distrib_state(seq, keys, ens_index, state_time, isprior, &
-   istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, expected_obs)
-
-type(obs_sequence_type), intent(in)    :: seq
-integer,                 intent(in)    :: keys(:)
-integer,                 intent(in)    :: ens_index
-type(time_type),         intent(in)    :: state_time
-logical,                 intent(in)    :: isprior
-integer,                 intent(out)   :: istatus(:)
-logical,                 intent(out)   :: assimilate_this_ob, evaluate_this_ob
-!HK
-type(ensemble_type),     intent(in)    :: state_ens_handle
-real(r8), dimension(:),  intent(inout) :: expected_obs !> @todo needs to be 2d for a set of obs
-
-integer              :: num_obs, i
-!type(location_type) :: location
-type(obs_type)       :: obs
-type(obs_def_type)   :: obs_def
-integer              :: obs_kind_ind
-
-integer length_of_expected_obs ! HK should this be passed in?
-
-num_obs = size(keys)
-length_of_expected_obs = copies_in_window(state_ens_handle)
-
-! NEED to initialize istatus to okay value
-istatus = 0
-
-! Initialize the observation type
-!!! Can actually init with the correct size here if wanted
-call init_obs(obs, 0, 0)
-
-do i = 1, num_obs !> @todo do you ever use this with more than one obs?
-   call get_obs_from_key(seq, keys(i), obs)
-   call get_obs_def(obs, obs_def)
-   !location = get_obs_def_location(obs_def)
-   obs_kind_ind = get_obs_kind(obs_def)
-
-   ! Check in kind for negative for identity obs
-   if(obs_kind_ind < 0) then
-      if ( -obs_kind_ind > state_ens_handle%num_vars ) call error_handler(E_ERR, &
-         'get_expected_obs', &
-         'identity obs is outside of state vector ', &
-         source, revision, revdate)
-
-      call get_state(expected_obs, -1*int(obs_kind_ind,i8), state_ens_handle)
-
-      ! fixme: we currently have no option to eval only identity obs,
-      ! or select to skip their assimilation via namelist.
-      assimilate_this_ob = .true.; evaluate_this_ob = .false.
-   
-   else ! do forward operator for this kind
-      !> Q. Do we loop around copies here? This would mean ens_size*times the comumication
-      !> The alternative is to alter the code in model_mod.f90 to work on arrays of ensemble size.
-      !> Currently looping in model_mod.f90 for lorenz_96 
-
-      call get_expected_obs_from_def_distrib_state(keys(i), obs_def, obs_kind_ind, &
-         ens_index, state_time, isprior, istatus, &
-         assimilate_this_ob, evaluate_this_ob, expected_obs, state_ens_handle)
-
-   endif
-end do
-
-! need to free any observation specific storage that
-! might have been allocated.
-call destroy_obs(obs)
-
-end subroutine get_expected_obs_distrib_state
 
 !---------------------------------------------------------
 

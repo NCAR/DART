@@ -14,11 +14,11 @@ use obs_sequence_mod,      only : read_obs_seq, obs_type, obs_sequence_type,    
                                   write_obs_seq, get_num_obs, get_obs_values, init_obs,       &
                                   assignment(=), get_num_copies, get_qc, get_num_qc, set_qc,  &
                                   static_init_obs_sequence, destroy_obs, read_obs_seq_header, &
-                                  set_qc_meta_data, get_first_obs,          &
-                                  get_obs_time_range, delete_obs_from_seq, delete_seq_head,   &
+                                  set_qc_meta_data, get_first_obs, get_obs_time_range,        &
+                                  delete_obs_from_seq, delete_seq_head,                       &
                                   delete_seq_tail, replace_obs_values, replace_qc,            &
-                                  destroy_obs_sequence, get_qc_meta_data, add_qc,             &
-                                  get_expected_obs_distrib_state !HK
+                                  destroy_obs_sequence, get_qc_meta_data, add_qc
+                                  
 use obs_def_mod,           only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                                   get_obs_kind
 use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), operator(>),   &
@@ -79,6 +79,8 @@ use state_structure_mod,   only : get_num_domains, static_init_state_type, add_d
 
 use mpi
 
+use forward_operator_mod,  only : get_obs_ens_distrib_state 
+use quality_control_mod,   only : initialize_qc
 
 !------------------------------------------------------------------------------
 
@@ -125,9 +127,6 @@ integer  :: num_output_state_members = 0
 integer  :: num_output_obs_members   = 0
 integer  :: output_interval     = 1
 integer  :: num_groups          = 1
-real(r8) :: outlier_threshold   = -1.0_r8
-logical  :: enable_special_outlier_code = .false.
-real(r8) :: input_qc_threshold  = 3.0_r8
 logical  :: output_forward_op_errors = .false.
 logical  :: output_timestamps        = .false.
 logical  :: trace_execution          = .false.
@@ -180,10 +179,10 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    start_from_restart, output_restart, obs_sequence_in_name, obs_sequence_out_name, &
    restart_in_file_name, restart_out_file_name, init_time_days, init_time_seconds,  &
    first_obs_days, first_obs_seconds, last_obs_days, last_obs_seconds,              &
-   obs_window_days, obs_window_seconds, enable_special_outlier_code,                &
+   obs_window_days, obs_window_seconds, &
    num_output_state_members, num_output_obs_members, output_restart_mean,           &
-   output_interval, num_groups, outlier_threshold, trace_execution,                 &
-   input_qc_threshold, output_forward_op_errors, output_timestamps,                 &
+   output_interval, num_groups, trace_execution,                 &
+   output_forward_op_errors, output_timestamps,                 &
    inf_flavor, inf_initial_from_restart, inf_sd_initial_from_restart,               &
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
@@ -288,12 +287,6 @@ do i = 1, 2
       call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
    endif
 end do
-
-! if doing something special with outlier threshold, say so
-if (enable_special_outlier_code) then
-   call error_handler(E_MSG,'filter:', 'special outlier threshold handling enabled', &
-      source, revision, revdate)
-endif
 
 ! Observation space inflation for posterior not currently supported
 if(inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
@@ -460,19 +453,6 @@ if(ds) call smoother_gen_copy_meta_data(num_output_state_members, output_inflati
 
 call timestamp_message('After  initializing output files')
 call     trace_message('After  initializing output files')
-
-! Let user know what settings the outlier threshold has, and data qc.
-if (do_output()) then
-   if (outlier_threshold <= 0.0_r8) then
-      write(msgstring, '(A)') 'No observation outlier threshold rejection will be done'
-   else
-      write(msgstring, '(A,F12.6,A)') 'Will reject obs values more than', outlier_threshold, ' sigma from mean'
-   endif
-   call error_handler(E_MSG,'filter:', msgstring)
-
-   write(msgstring, '(A,I4)') 'Will reject obs with Data QC larger than ', nint(input_qc_threshold)
-   call error_handler(E_MSG,'filter:', msgstring)
-endif
 
 call trace_message('Before trimming obs seq if start/stop time specified')
 
@@ -1172,7 +1152,8 @@ call trace_message('After  init_state_type call')
 call io_filenames_init()
 call state_vector_io_init()
 call trace_message('After  init_state_vector_io call')
-
+call initialize_qc()
+call trace_message('After  initialize_qc call')
 
 end subroutine filter_initialize_modules_used
 
@@ -1568,258 +1549,6 @@ end subroutine filter_ensemble_inflate
 
 !-------------------------------------------------------------------------
 
-
-!> Computes forward observation operators and related quality control indicators.
-!> @brief
-!> Helen is working on this to use a distributed forward operator using MPI remote memeory
-!> access
-subroutine get_obs_ens_distrib_state(ens_handle, obs_fwd_op_ens_handle, qc_ens_handle, seq, keys, &
-   obs_val_index, input_qc_index, &
-   OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_VAR_START, isprior)
-
-type(ensemble_type),     intent(in)    :: ens_handle
-type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle, qc_ens_handle 
-type(obs_sequence_type), intent(in)    :: seq
-integer,                 intent(in)    :: keys(:)
-integer,                 intent(in)    :: obs_val_index, input_qc_index
-integer,                 intent(in)    :: OBS_ERR_VAR_COPY, OBS_VAL_COPY
-integer,                 intent(in)    :: OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
-integer,                 intent(in)    :: OBS_MEAN_START, OBS_VAR_START !> @todo groups
-logical,                 intent(in)    :: isprior
-
-real(r8)             :: input_qc(1), obs_value(1), obs_err_var, thisvar(1)
-integer              :: j, k, my_num_copies, global_ens_index, thiskey(1)
-logical              :: evaluate_this_ob, assimilate_this_ob
-type(obs_def_type)   :: obs_def
-integer, allocatable :: istatus(:)
-
-real(r8), allocatable                   :: expected_obs(:) !Also regular obs now?
-integer global_obs_num
-type(time_type)                         :: dummy_time
-integer :: e
-integer :: forward_min, forward_max !< for global qc
-real(r8)              :: error, diff_sd, ratio
-real(r8)              :: obs_prior_mean, obs_prior_var, obs_val
-logical               :: do_outlier, good_forward_op, failed
-
-! IMPORTANT, IT IS ASSUMED THAT ACTUAL ENSEMBLES COME FIRST
-! HK: I think it is also assumed that the ensemble members are in the same order in
-! each of the handles
-
-allocate(istatus(copies_in_window(ens_handle))) 
-
-! Loop through my copies and compute expected value
-my_num_copies = get_my_num_copies(obs_fwd_op_ens_handle)
-
-call prepare_to_write_to_vars(obs_fwd_op_ens_handle)
-call prepare_to_write_to_vars(qc_ens_handle)
-call prepare_to_read_from_vars(ens_handle)
-
-! create the mpi window for the distributed state
-call create_state_window(ens_handle)
-
-! make some room for state vectors
-allocate(expected_obs(copies_in_window(ens_handle)))
-
-! Loop through all observations in the set
-ALL_OBSERVATIONS: do j = 1, obs_fwd_op_ens_handle%my_num_vars
-
-   global_obs_num = obs_fwd_op_ens_handle%my_vars(j) ! convert the local obs number to global obs number
-   thiskey(1) = keys(global_obs_num)
-
-   ! Get the information on this observation by placing it in temporary
-   call get_obs_from_key(seq, keys(global_obs_num), observation)
-   call get_obs_def(observation, obs_def)
-   ! Check to see if this observation fails input qc test
-   call get_qc(observation, input_qc, input_qc_index)
-   ! If it is bad, set forward operator status value to -99 and return missing_r8 for obs_value
-
-   ! PAR THIS SUBROUTINE SHOULD EVENTUALLY GO IN THE QUALITY CONTROL MODULE
-   if(.not. input_qc_ok(input_qc(1), input_qc_threshold)) then
-      ! The forward operator value is set to -99 if prior qc was failed
-      qc_ens_handle%copies(:, j) = -99 
-      obs_fwd_op_ens_handle%copies(OBS_KEY_COPY, j) = thiskey(1)
-
-      ! No need to do anything else for a failed observation
-      cycle ALL_OBSERVATIONS
-   endif
-
-   ! Get the observation value and error variance
-   call get_obs_values(observation, obs_value(1:1), obs_val_index)
-   obs_err_var = get_obs_def_error_variance(obs_def)
-
-   global_ens_index = 1 ! HK where is this used?
-
-   ! temporaries to avoid passing array sections which was slow on PGI compiler
-   call get_expected_obs_distrib_state(seq, thiskey, &
-     global_ens_index, dummy_time, isprior, &
-     istatus, assimilate_this_ob, evaluate_this_ob, ens_handle, expected_obs)
-
-    obs_fwd_op_ens_handle%copies(1:copies_in_window(ens_handle), j) = expected_obs
-
-   ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
-   ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
-   ! in the forward operator evaluation field
-
-   do e = 1, copies_in_window(ens_handle) !>@todo this won't always be 6 (groups) What are you talking about?
-
-      if(istatus(e) == 0) then
-         if ((assimilate_this_ob .or. evaluate_this_ob) .and. (expected_obs(e) == missing_r8))  then
-               print*, ' observation ', global_obs_num
-               write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
-            call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
-         endif
-         if(assimilate_this_ob) then
-            qc_ens_handle%copies(e, j) = 0
-         else if(evaluate_this_ob) then
-            qc_ens_handle%copies(e, j) = -1
-         else
-            qc_ens_handle%copies(e, j) = -2
-         endif
-      else if (istatus(e) < 0) then
-         write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
-         call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
-      else
-         qc_ens_handle%copies(e, j) = istatus(e)
-      endif
-
-   enddo
-
-   ! update copy for error variance and for oberved value
-   obs_fwd_op_ens_handle%copies(OBS_ERR_VAR_COPY, j) = obs_err_var
-   obs_fwd_op_ens_handle%copies(OBS_VAL_COPY, j) = obs_value(1)
-   obs_fwd_op_ens_handle%copies(OBS_KEY_COPY, j) = thiskey(1)
-
-end do ALL_OBSERVATIONS
-
-!> @todo - don't you have the mean already?
-call compute_copy_mean_var(obs_fwd_op_ens_handle, 1, copies_in_window(ens_handle), OBS_MEAN_START, OBS_VAR_START)
-
-!do_outlier = (prior_post == PRIOR_DIAG .and. outlier_threshold > 0.0_r8)
-do_outlier = (isprior .and. outlier_threshold > 0.0_r8)
-
-QC_LOOP: do j = 1, obs_fwd_op_ens_handle%my_num_vars
-
-   good_forward_op = .false.
-
-   ! compute outlier test and consolidate forward operator qc
-   ! find the min and max istatus values across all ensemble members.  these are
-   ! either set by dart code, or returned by the model-specific model_interpolate() 
-   ! routine, or by forward operator code in obs_def_xxx_mod files.
-   forward_max = nint(maxval(qc_ens_handle%copies(1:copies_in_window(ens_handle), j)))
-   forward_min = nint(minval(qc_ens_handle%copies(1:copies_in_window(ens_handle), j)))
-!--- copied from obs_state_diagnostics ---
-   ! Now do a case statement to figure out what the qc result should be
-   ! For prior, have to test for a bunch of stuff
-   ! FIXME: note that this case statement doesn't cover every possibility;
-   ! if there's an error in the code and a minus value gets into the forward
-   ! operator istatus without being caught, it will fail all cases below.
-   ! add another line for 'internal inconsistency' to be safe.
-   if(isprior) then !HK changed from
-      if(forward_min == -99) then              ! Failed prior qc in get_obs_ens
-         obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 6
-      else if(forward_min == -2) then          ! Observation not used via namelist
-         obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 5
-      else if(forward_max > 0) then            ! At least one forward operator failed
-         obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 4
-      else if(forward_min == -1) then          ! Observation to be evaluated only
-         obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 1
-         good_forward_op = .true.
-      else if(forward_min == 0) then           ! All clear, assimilate this ob
-         obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 0
-         good_forward_op = .true.
-      ! FIXME: proposed enhancement - catchall for cases that we have not caught
-      !else   ! 'should not happen'
-      !   obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 9  ! inconsistent istatus codes
-      endif
-        
-      ! PAR: THIS SHOULD BE IN QC MODULE 
-      ! Check on the outlier threshold quality control: move to QC module?
-      ! bug fix: this was using the incoming qc threshold before.
-      ! it should only be doing the outlier test on dart qc values of 0 or 1.
-      ! if there is already a different qc code set, leave it alone.
-      ! only if it is still successful (assim or eval, 0 or 1), then check
-      ! for failing outlier test.
-      if(do_outlier .and. (obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) < 2)) then
-         obs_prior_mean = obs_fwd_op_ens_handle%copies(OBS_MEAN_START, j)
-         obs_prior_var = obs_fwd_op_ens_handle%copies(OBS_VAR_START, j)
-         obs_val = obs_fwd_op_ens_handle%copies(OBS_VAL_COPY, j)
-         obs_err_var = obs_fwd_op_ens_handle%copies(OBS_ERR_VAR_COPY, j)
-         error = obs_prior_mean - obs_val
-         diff_sd = sqrt(obs_prior_var + obs_err_var)
-         if (diff_sd /= 0.0_r8) then
-            ratio = abs(error / diff_sd)
-         else
-            ratio = 0.0_r8
-         endif
-
-         ! if special handling requested, pass in the outlier ratio for this obs,
-         ! the default outlier threshold value, and enough info to extract the specific 
-         ! obs type for this obs.
-         ! the function should return .true. if this is an outlier, .false. if it is ok.
-         if (enable_special_outlier_code) then
-            failed = failed_outlier(ratio, outlier_threshold, obs_fwd_op_ens_handle, &
-                                    OBS_KEY_COPY, j, seq)
-         else 
-            failed = (ratio > outlier_threshold)
-         endif
-
-         if (failed) then
-            obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 7
-         endif
-      endif
-
-   else
-      ! For failed posterior, only update qc if prior successful
-      if(forward_max > 0) then
-         ! Both the following 2 tests and assignments were on single executable lines,
-         ! but one compiler (gfortran) was confused by this, so they were put in
-         ! if/endif blocks.
-         if(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) == 0) then
-            obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 2
-         endif
-         if(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) == 1) then
-            obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = 3
-         endif
-      endif
-      ! and for consistency, go through all the same tests as the prior, but
-      ! only use the results to set the good/bad forward op flag.
-      if ((forward_min == -99) .or. &       ! Failed prior qc in get_obs_ens
-          (forward_min == -2)  .or. &       ! Observation not used via namelist
-          (forward_max > 0)) then           ! At least one forward operator failed
-            continue; 
-      else if(forward_min == -1) then       ! Observation to be evaluated only
-         good_forward_op = .true.
-      else if(forward_min == 0) then        ! All clear, assimilate this ob
-         good_forward_op = .true.
-      endif
-   endif
-
-   ! for either prior or posterior, if the forward operator failed,
-   ! reset the mean/var to missing_r8, regardless of the DART QC status
-   ! HK does this fail if you have groups?
-   if (.not. good_forward_op) then
-      obs_fwd_op_ens_handle%copies(OBS_MEAN_START, j) = missing_r8
-      obs_fwd_op_ens_handle%copies(OBS_VAR_START,  j) = missing_r8
-   endif
-
-! PAR: NEED TO BE ABLE TO OUTPUT DETAILS OF FAILED FORWARD OBSEVATION OPERATORS
-! OR FAILED OUTLIER, ETC. NEEDS TO BE DONE BY PE 0 ONLY. PUT IT HERE FOR FIRST
-! BUT IN QC MOD FOR THE SECOND???  
-
-!--- end copied from obs_state_diagnostics ---
-
-end do QC_LOOP
-
-call free_state_window
-
-deallocate(expected_obs)
-deallocate(istatus)
-
-end subroutine get_obs_ens_distrib_state
-
-!-------------------------------------------------------------------------
-
 subroutine obs_space_diagnostics(obs_fwd_op_ens_handle, qc_ens_handle, ens_size, &
    seq, keys, prior_post, num_output_members, members_index, &
    obs_val_index, OBS_KEY_COPY, &
@@ -1925,30 +1654,6 @@ deallocate(obs_temp)
 deallocate(obs_fwd_op_ens_handle%vars)
 
 end subroutine obs_space_diagnostics
-
-!-------------------------------------------------------------------------
-
-function input_qc_ok(input_qc, threshold)
-
-logical              :: input_qc_ok
-real(r8), intent(in) :: input_qc, threshold
-
-! Do checks on input_qc value with namelist control
-! Should eventually go in qc module
-
-! NOTE: this code has changed since the original version.
-! qc values equal to the threshold are kept now; only qc
-! values LARGER THAN the threshold are rejected.  
-! e.g. to keep only obs with a data qc of 0, set the 
-! threshold to 0.
-
-if(nint(input_qc) <= nint(threshold)) then
-   input_qc_ok = .true.
-else
-   input_qc_ok = .false.
-endif
-
-end function input_qc_ok
 
 !-------------------------------------------------------------------------
 
@@ -2113,87 +1818,6 @@ if (do_output()) then
 endif
 
 end subroutine print_obs_time
-
-!-------------------------------------------------------------------------
-
-function failed_outlier(ratio, outlier_threshold, obs_fwd_op_ens_handle, OBS_KEY_COPY, j, seq)
-
-! return true if the observation value is too far away from the ensemble mean
-! and should be rejected and not assimilated.
-
-use obs_def_mod, only : get_obs_kind
-use obs_kind_mod         ! this allows you to use all the types available
-
-
-real(r8),                intent(in) :: ratio
-real(r8),                intent(in) :: outlier_threshold
-type(ensemble_type),     intent(in) :: obs_fwd_op_ens_handle
-integer,                 intent(in) :: OBS_KEY_COPY
-integer,                 intent(in) :: j
-type(obs_sequence_type), intent(in) :: seq
-logical                             :: failed_outlier
-
-! the default test is:  if (ratio > outlier_threshold) failed_outlier = .true.
-! but you can add code here to do different tests for different observation 
-! types.  this function is only called if this namelist item is set to true:
-!  enable_special_outlier_code = .true.
-! in the &filter_nml namelist.  it is intended to be customized by the user.
-
-integer :: this_obs_key, this_obs_type
-type(obs_def_type) :: obs_def
-type(obs_type) :: observation
-logical :: first_time = .true.
-
-! make sure there's space to hold the observation.   this is a memory
-! leak in that we never release this space, but we only allocate it
-! one time so it doesn't grow.  if you are going to access the values
-! of the observation or the qc values, you must change the 0, 0 below
-! to match what's in your obs_seq file.  the example code below uses
-! only things in the obs_def derived type and so doesn't need space
-! allocated for either copies or qcs.
-if (first_time) then
-   call init_obs(observation, 0, 0)
-   first_time = .false.
-endif
-
-call prepare_to_read_from_copies(obs_fwd_op_ens_handle)
-
-! if you want to do something different based on the observation specific type:
-
-this_obs_key = obs_fwd_op_ens_handle%copies(OBS_KEY_COPY, j)
-call get_obs_from_key(seq, this_obs_key, observation)
-call get_obs_def(observation, obs_def)
-this_obs_type = get_obs_kind(obs_def)
-
-! note that this example uses the specific type (e.g. RADIOSONDE_TEMPERATURE)
-! to make decisions.  you have the observation so any other part (e.g. the
-! time, the value, the error) is available to you as well.
-
-select case (this_obs_type)
-
-! example of specifying a different threshold value for one obs type:
-!   case (RADIOSONDE_TEMPERATURE)
-!      if (ratio > some_other_value) then
-!         failed_outlier = .true.
-!      else
-!         failed_outlier = .false.
-!      endif
-
-! accept all values of this observation type no matter how far
-! from the ensemble mean:
-!   case (AIRCRAFT_U_WIND_COMPONENT, AIRCRAFT_V_WIND_COMPONENT)
-!      failed_outlier = .false.
-
-   case default
-      if (ratio > outlier_threshold) then
-         failed_outlier = .true.
-      else
-         failed_outlier = .false.
-      endif
-
-end select
-
-end function failed_outlier
 
 !-------------------------------------------------------------------------
 !> write out failed forward operators

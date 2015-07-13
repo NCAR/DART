@@ -4,6 +4,7 @@ assim_tools/assim_tools_mod.f90
 common/types_mod.f90
 cov_cutoff/cov_cutoff_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
+forward_operator/forward_operator_mod.f90
 location/threed_sphere/location_mod.f90
 models/POP/dart_pop_mod.f90
 models/POP/model_mod.f90
@@ -13,6 +14,7 @@ obs_kind/obs_kind_mod.f90
 obs_model/obs_model_mod.f90
 obs_sequence/obs_sequence_mod.f90
 perfect_model_obs/perfect_model_obs.f90
+quality_control/qc_mod.f90
 random_seq/random_seq_mod.f90
 reg_factor/reg_factor_mod.f90
 sort/sort_mod.f90

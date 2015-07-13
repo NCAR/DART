@@ -350,13 +350,13 @@ end subroutine set_obs_def_time
 
 !----------------------------------------------------------------------------
 
-subroutine get_expected_obs_from_def_distrib_state(key, obs_def, obs_kind_ind, ens_index, &
+subroutine get_expected_obs_from_def_distrib_state(key, obs_def, obs_kind_ind, &
    state_time, isprior, istatus, assimilate_this_ob, evaluate_this_ob, expected_obs, state_ens_handle)
 
 ! Compute forward operator for a particular obs_def
 integer,             intent(in)  :: key
 type(obs_def_type),  intent(in)  :: obs_def
-integer,             intent(in)  :: obs_kind_ind, ens_index
+integer,             intent(in)  :: obs_kind_ind
 type(time_type),     intent(in)  :: state_time
 logical,             intent(in)  :: isprior
 integer,             intent(out) :: istatus(:)

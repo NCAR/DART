@@ -59,6 +59,8 @@ use model_mod,            only : query_vert_localization_coord, vert_convert_dis
 
 use distributed_state_mod, only : create_mean_window, free_mean_window
 
+use quality_control_mod, only : good_dart_qc, DARTQC_FAILED_VERT_CONVERT
+
 use mpi
 
 implicit none
@@ -454,9 +456,12 @@ if (.not. lanai_bitwise) then
    ! convert the verical of all my observations to the localization coordinate
    ! this may not be bitwise with Lanai because of a different number of set_location calls
    do i = 1, obs_ens_handle%my_num_vars
-      call vert_convert_distrib(ens_handle, my_obs_loc(i), my_obs_kind(i), vstatus)
-      !> @todo Can I just use the OBS_GLOBAL_QC_COPY? Is it ok to skip the loop?
-      if (vstatus /= 0) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = 4
+      
+      if (good_dart_qc(nint(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i)))) then
+         call vert_convert_distrib(ens_handle, my_obs_loc(i), my_obs_kind(i), vstatus)
+         !> @todo Can I just use the OBS_GLOBAL_QC_COPY? Is it ok to skip the loop?
+         if (vstatus /= 0) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = DARTQC_FAILED_VERT_CONVERT
+      endif
    enddo
 endif
 
@@ -830,11 +835,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          close_state_dist(:) = last_close_state_dist(:)
          num_close_states_cached = num_close_states_cached + 1
       else
-         start = MPI_WTIME()
+         !start = MPI_WTIME()
          call get_close_obs_distrib(gc_state, base_obs_loc, base_obs_type, my_state_loc, &
                   my_state_kind, num_close_states, close_state_ind,&
                   close_state_dist, ens_handle)
-         finish = MPI_WTIME()
+         !finish = MPI_WTIME()
 
          last_base_states_loc     = base_obs_loc
          last_num_close_states    = num_close_states
@@ -1013,6 +1018,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    end do OBS_UPDATE
 
    !call test_state_copies(ens_handle, 'after_obs_updates')
+
 
 end do SEQUENTIAL_OBS
 

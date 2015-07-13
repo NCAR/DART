@@ -21,8 +21,9 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
                                  get_time_range_keys, set_obs_values, set_qc, set_obs,      &
                                  write_obs_seq, get_num_obs, init_obs, assignment(=),       &
                                  static_init_obs_sequence, get_num_qc, read_obs_seq_header, &
-                                 set_qc_meta_data, get_expected_obs, delete_seq_head,       &
+                                 set_qc_meta_data, delete_seq_head,       &
                                  delete_seq_tail, destroy_obs, destroy_obs_sequence
+                                 
 
 use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use    obs_model_mod,     only : move_ahead, advance_state, set_obs_model_trace
@@ -30,13 +31,28 @@ use  assim_model_mod,     only : static_init_assim_model, get_model_size,       
                                  aget_initial_condition, netcdf_file_type, init_diag_output, &
                                  aoutput_diagnostics, finalize_diag_output
    
-use mpi_utilities_mod,    only : task_count, task_sync
+use mpi_utilities_mod,    only : task_count, task_sync, initialize_mpi_utilities
 
 use   random_seq_mod,     only : random_seq_type, init_random_seq, random_gaussian
 use ensemble_manager_mod, only : init_ensemble_manager, write_ensemble_restart,              &
                                  end_ensemble_manager, ensemble_type, read_ensemble_restart, &
                                  get_my_num_copies, get_ensemble_time, prepare_to_write_to_vars,      &
                                  prepare_to_read_from_vars
+
+
+use state_vector_io_mod,   only : read_transpose, transpose_write, state_vector_io_init, &
+                                  setup_read_write, turn_read_copy_on, turn_write_copy_on, turn_write_copy_off
+
+use state_structure_mod,   only : get_num_domains, static_init_state_type, add_domain
+use io_filenames_mod,      only : io_filenames_init, get_input_file, set_filenames
+use quality_control_mod,   only : set_input_qc, initialize_qc
+
+use model_mod,             only : get_model_time
+
+use data_structure_mod,    only : copies_in_window, set_num_extra_copies ! should this be through ensemble_manager?
+use distributed_state_mod, only : create_state_window, free_state_window
+
+use forward_operator_mod, only : get_expected_obs_distrib_state
 
 implicit none
 
@@ -118,9 +134,11 @@ integer, allocatable    :: keys(:)
 integer                 :: j, iunit, time_step_number, obs_seq_file_id
 integer                 :: cnum_copies, cnum_qc, cnum_obs, cnum_max
 integer                 :: additional_qc, additional_copies, forward_unit
-integer                 :: ierr, io, istatus, num_obs_in_set, nth_obs
+integer                 :: ierr, io, num_obs_in_set, nth_obs
 integer                 :: model_size, key_bounds(2), num_qc, last_key_used
 integer                 :: seed
+
+integer                 :: istatus(1)
 
 real(r8)                :: true_obs(1), obs_value(1), qc(1)
 
@@ -129,6 +147,10 @@ character(len=metadatalength) :: state_meta(1)
 
 logical                 :: assimilate_this_ob, evaluate_this_ob, pre_I_format
 logical                 :: all_gone
+
+integer                 :: qc_status
+
+type(time_type) :: time1
 
 ! Initialize all modules used that require it
 call perfect_initialize_modules_used()
@@ -148,18 +170,21 @@ call set_trace(trace_execution, output_timestamps, silence)
 call trace_message('Perfect_model start')
 call timestamp_message('Perfect_model start')
 
-! Don't let this run with more than one task; just a waste of resource
-if(task_count() > 1) then
-   write(msgstring, *) 'Only use one mpi process here: ', task_count(), ' were requested'
-   call error_handler(E_ERR, 'perfect_main', msgstring,  &
-      source, revision, revdate)
-endif
+! ! Don't let this run with more than one task; just a waste of resource
+! if(task_count() > 1) then
+!    write(msgstring, *) 'Only use one mpi process here: ', task_count(), ' were requested'
+!    call error_handler(E_ERR, 'perfect_main', msgstring,  &
+!       source, revision, revdate)
+! endif
 
 ! Default to printing nothing
 nth_obs = -1
 
 call trace_message('Before setting up space for observations')
 call timestamp_message('Before setting up space for observations')
+
+! FIX ME JH: copies and qc should be set using the meta data strings not hard
+! coded. 
 
 ! Find out how many data copies are in the obs_sequence 
 call read_obs_seq_header(obs_seq_in_file_name, cnum_copies, cnum_qc, cnum_obs, cnum_max, &
@@ -203,10 +228,21 @@ model_size = get_model_size()
 write(msgstring,*)'Model size = ',model_size
 call error_handler(E_MSG,'perfect_main',msgstring)
 
-! Set up the ensemble storage and read in the restart file
-call trace_message('Before reading in ensemble restart file')
-call perfect_read_restart(ens_handle, model_size)
-call trace_message('After  reading in ensemble restart file')
+!! Set up the ensemble storage and read in the restart file
+!call trace_message('Before reading in ensemble restart file')
+!call perfect_read_restart(ens_handle, model_size)
+!call trace_message('After reading in ensemble restart file')
+
+! call perfect_set_initial_time(time1)
+
+call init_ensemble_manager(ens_handle, 1, model_size, 1)
+call set_num_extra_copies(ens_handle, 0)
+
+call setup_read_write(1)
+call turn_read_copy_on(1)
+call perfect_read_restart_direct(ens_handle, time1)
+
+call create_state_window(ens_handle)
 
 call trace_message('Before initializing output diagnostic file')
 state_meta(1) = 'true state'
@@ -324,7 +360,6 @@ AdvanceTime: do
    write(msgstring, '(A,I8,A)') 'Ready to evaluate up to', size(keys), ' observations'
    call trace_message(msgstring, 'perfect_model_obs:', -1)
 
-
    ! Compute the forward observation operator for each observation in set
    do j = 1, num_obs_in_set
 
@@ -342,31 +377,40 @@ AdvanceTime: do
          ! or if you want timestamps:
          !     call timestamp(msgstring, pos="debug")
       endif
+      
+      call print_time(ens_handle%time(1))
 
       ! Compute the observations from the state
-      call get_expected_obs(seq, keys(j:j), &
-         1, ens_handle%vars(:, 1), ens_handle%time(1), .true., &
-         true_obs(1:1), istatus, assimilate_this_ob, evaluate_this_ob)
+      call get_expected_obs_distrib_state(seq, keys(j:j), &
+         1, ens_handle%time(1), .true., &
+         istatus, assimilate_this_ob, evaluate_this_ob, &
+         ens_handle, true_obs)
 
       ! Get the observational error covariance (diagonal at present)
       ! Generate the synthetic observations by adding in error samples
       call get_obs_from_key(seq, keys(j), obs)
       call get_obs_def(obs, obs_def)
+      
+       
+      qc_status = set_input_qc(istatus(1), assimilate_this_ob, evaluate_this_ob)
 
       ! If observation is not being evaluated or assimilated, skip it
       ! Ends up setting a 1000 qc field so observation is not used again.
-      if(istatus == 0 .and. (assimilate_this_ob .or. evaluate_this_ob)) then
+      if( qc_status == 0 ) then
          obs_value(1) = random_gaussian(random_seq, true_obs(1), &
             sqrt(get_obs_def_error_variance(obs_def)))
 
+         ! FIX ME SPINT: if the foward operater passed can we directly set the 
+         ! qc status?
+
          ! Set qc to 0 if none existed before
          if(cnum_qc == 0) then
-            qc(1) = 0.0_r8
+            qc(1) = qc_status
             call set_qc(obs, qc, 1)
          endif
       else
          obs_value(1) = true_obs(1)
-         qc(1) = 1000.0_r8
+         qc(1) = qc_status
          call set_qc(obs, qc, 1)
 
          ! FIXME: we could set different qc codes, like 1004, 1005, to
@@ -378,7 +422,7 @@ AdvanceTime: do
          ! only writing out obs with real errors and not those that
          ! end up in this code section because their type isn't in the namelist.
          if(output_forward_op_errors) then
-            if ((istatus /= 0) .and. (assimilate_this_ob .or. evaluate_this_ob)) &
+            if ((istatus(1) /= 0) .and. (assimilate_this_ob .or. evaluate_this_ob)) &
                write(forward_unit, *) keys(j), istatus
          endif
       endif
@@ -416,10 +460,13 @@ call trace_message('After  writing output sequence file')
 
 ! Output a restart file if requested
 if(output_restart) then
-   call trace_message('Before writing state restart file')
-   call write_ensemble_restart(ens_handle, restart_out_file_name, 1, 1, &
-      force_single_file = .true.)
-   call trace_message('After  writing state restart file')
+   call turn_write_copy_on(1)
+   call perfect_write_restart_direct(ens_handle)
+   ! call trace_message('Before writing state restart file')
+   ! call write_ensemble_restart(ens_handle, restart_out_file_name, 1, 1, &
+   !    force_single_file = .true.)
+   ! call trace_message('After  writing state restart file')
+
 endif
 
 call trace_message('Before ensemble and obs memory cleanup')
@@ -449,6 +496,7 @@ subroutine perfect_initialize_modules_used()
 ! Standard initialization (mpi not needed to use ensemble manager
 ! since we are enforcing that this run as a single task).
 call initialize_utilities('perfect_model_obs')
+call  initialize_mpi_utilities()
 
 ! Initialize modules used that require it
 call register_module(source,revision,revdate)
@@ -457,6 +505,11 @@ call register_module(source,revision,revdate)
 call static_init_obs_sequence()
 ! Initialize the model class data now that obs_sequence is all set up
 call static_init_assim_model()
+! Initialize the model class data now that obs_sequence is all set up
+call state_vector_io_init()
+call static_init_state_type()
+call io_filenames_init()
+call initialize_qc()
 
 end subroutine perfect_initialize_modules_used
 
@@ -630,6 +683,88 @@ end subroutine print_obs_time
 
 !-------------------------------------------------------------------------
 
+!------------------------------------------------------------------
+!> Read the restart information directly from the model output
+!> netcdf file
+!> Which routine should find model size?
+!> 
+! FIXME : this code is pulled duplicated from filter.  This should
+! be pulled out and put into a separate IO module.
+subroutine perfect_read_restart_direct(state_ens_handle, time)
+
+type(ensemble_type), intent(inout) :: state_ens_handle
+type(time_type),     intent(inout) :: time
+
+integer                         :: model_size
+character(len=256), allocatable :: variable_list(:) !< does this need to be module storage
+integer                         :: dart_index !< where to start in state_ens_handle%copies
+integer                         :: domain !< loop index
+
+character(len=129) :: inf_in_file_name(2)  ! these are not used
+character(len=129) :: inf_out_file_name(2)  ! these are not used
+
+if(get_num_domains()==0) then
+   call error_handler(E_ERR, 'filter_read_restart_direct', 'model needs to call add_domain for direct_netcdf_read = .true.')
+endif
+
+call set_filenames(state_ens_handle%num_copies, inf_in_file_name, inf_out_file_name)
+
+! read time from input file if time not set in namelist
+if(init_time_days < 0) then
+   time = get_model_time(get_input_file(1,1)) ! Any of the restarts?
+endif
+
+state_ens_handle%time = time
+
+! read in the data and transpose
+dart_index = 1 ! where to start in state_ens_handle%copies - this is modified by read_transpose
+do domain = 1, get_num_domains()
+   call read_transpose(state_ens_handle, domain, dart_index)
+enddo
+
+end subroutine perfect_read_restart_direct
+
+!-------------------------------------------------------------------------
+!> write the restart information directly into the model netcdf file.
+subroutine perfect_write_restart_direct(state_ens_handle)
+
+type(ensemble_type), intent(inout) :: state_ens_handle
+
+integer :: dart_index !< where to start in state_ens_handle%copies
+integer :: domain !< loop index
+integer :: component_id
+integer :: num_extras = 0
+
+character(len=129) :: inf_in_file_name(2)  ! these are not used
+character(len=129) :: inf_out_file_name(2)  ! these are not used
+
+if (get_num_domains()==0) then ! the model did not initialize a domain
+   component_id = add_domain(state_ens_handle%num_vars) ! add a 'blank' domain
+   call set_filenames(state_ens_handle%num_copies, inf_in_file_name, inf_out_file_name)
+endif
+
+! transpose and write out the data
+dart_index = 1
+do domain = 1, get_num_domains()
+   call transpose_write(state_ens_handle, num_extras, domain, dart_index, .false.)
+enddo
+
+end subroutine perfect_write_restart_direct
+
+!-------------------------------------------------------------------------
+
+subroutine perfect_set_initial_time(time)
+
+type(time_type), intent(out) :: time
+
+
+if(init_time_days >= 0) then
+   time = set_time(init_time_seconds, init_time_days)
+else
+   time = set_time(0, 0)
+endif
+
+end subroutine perfect_set_initial_time
 
 end program perfect_model_obs
 
@@ -637,4 +772,4 @@ end program perfect_model_obs
 ! $URL$
 ! $Id$
 ! $Revision$
-! $Date$
+! $Date: 2015-04-02 09:14:00 -0600 (Thu, 02 Apr 2015) e

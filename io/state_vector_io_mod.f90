@@ -112,7 +112,7 @@ integer :: limit_procs = 100000!< how many (~maximum) processors you want involv
 logical :: time_unlimited = .true. ! You need to keep track of the time.
 logical :: single_precision_output = .false. ! Allows you to write r4 netcdf files even if filter is double precision
 
-namelist /  state_vector_io_nml / limit_mem, limit_procs, time_unlimited
+namelist /  state_vector_io_nml / limit_mem, limit_procs, time_unlimited, single_precision_output
 
 contains
 
