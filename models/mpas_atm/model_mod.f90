@@ -97,6 +97,7 @@ use netcdf
 use get_geometry_mod
 use get_reconstruct_mod
 
+use state_structure_mod, only :  add_domain
 
 implicit none
 private
@@ -467,6 +468,7 @@ integer :: ss, dd, z1, m1
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeDimID
 integer :: cel1, cel2
 logical :: both
+integer :: domid
 
 if ( module_initialized ) return ! only need to do this once.
 
@@ -590,6 +592,8 @@ call nc_check( nf90_open(trim(model_analysis_filename), NF90_NOWRITE, ncid), &
 
 call verify_state_variables( mpas_state_variables, ncid, model_analysis_filename, &
                              nfields, variable_table )
+
+domid =  add_domain(trim(model_analysis_filename), nfields, variable_table(:,1))
 
 TimeDimID = FindTimeDimension( ncid )
 
