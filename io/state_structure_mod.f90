@@ -42,7 +42,9 @@ public :: static_init_state_type, &
           get_num_unique_dims,    &
           get_unique_dim_length,  &
           get_sum_variables,      &
-          get_sum_variables_below
+          get_sum_variables_below,&
+          get_unlimited_dimid,    &
+          get_state_indices
 
 !-------------------------------------------------------------------------------
 ! global variables
@@ -135,6 +137,9 @@ end type state_type
 !-------------------------------------------------------------------------------
 ! module handle
 type(state_type) :: state
+
+! debug flag for get_state_indices
+logical :: debug = .false.
 
 interface add_domain
    module procedure add_domain_blank
@@ -243,7 +248,7 @@ end function add_domain_blank
 !-------------------------------------------------------------------------------
 subroutine load_state_variable_info(domain)
 
-type(domain_type), intent(in) :: domain
+type(domain_type), intent(inout) :: domain
 
 integer :: ret ! netcdf return value
 character(len=512) :: netcdf_filename
@@ -258,6 +263,10 @@ call load_variable_ids(ncfile, domain)
 
 ! get all variable sizes, only readers store dimensions?
 call load_variable_sizes(ncfile, domain)
+
+! get the dimension id of the unlimited dimension if it exists
+ret = nf90_inquire(ncfile, unlimitedDimId=domain%unlimDimId)
+call nc_check(ret, 'set_unlimited_dim, nf90_inquire')
 
 ! close netcdf file
 ret = nf90_close(ncfile)
@@ -301,7 +310,11 @@ integer :: ivar, jdim !< loop variables
 integer :: var_size, dom_size !< temporary sum variable
 integer :: ret ! netcdf retrun value
 
+integer :: ind1 ! first index of variable
+integer :: indN ! last index of variable
+
 dom_size = 0
+ind1 = state%model_size + 1
 
 do ivar = 1, domain%num_variables
 
@@ -330,11 +343,19 @@ do ivar = 1, domain%num_variables
    enddo
 
    domain%variable(ivar)%var_size = var_size
+
+   ! first and last location of variable in the state index
+   domain%variable(ivar)%index1 = ind1
+   domain%variable(ivar)%indexN = ind1 + var_size - 1
+
+   ! update counters
    dom_size = dom_size + var_size
+   ind1     = domain%variable(ivar)%indexN + 1
 
 enddo
 
 domain%size = dom_size
+state%model_size = state%model_size + dom_size
 
 end subroutine load_variable_sizes
 
@@ -620,6 +641,44 @@ get_unique_dim_length = state%domain(idom)%unique_dim_length(ivar)
 end function get_unique_dim_length
 
 !-------------------------------------------------------------------------------
+!> Starting dart index for variable
+!-------------------------------------------------------------------------------
+function get_ind1(idom,ivar)
+
+integer, intent(in) :: idom
+integer, intent(in) :: ivar
+integer :: get_ind1
+
+get_ind1 = state%domain(idom)%variable(ivar)%index1
+
+end function get_ind1
+
+!-------------------------------------------------------------------------------
+!> Ending dart index for variable
+!-------------------------------------------------------------------------------
+function get_indN(idom,ivar)
+
+integer, intent(in) :: idom
+integer, intent(in) :: ivar
+integer :: get_indN
+
+get_indN = state%domain(idom)%variable(ivar)%indexN
+
+end function get_indN
+
+!-------------------------------------------------------------------------------
+!> Return unlimited dimension id
+!-------------------------------------------------------------------------------
+function get_unlimited_dimid(idom)
+
+integer, intent(in) :: idom
+integer :: get_unlimited_dimid
+
+get_unlimited_dimid = state%domain(idom)%unlimDimId
+
+end function get_unlimited_dimid
+
+!-------------------------------------------------------------------------------
 !> Adding space for an unlimited dimension in the dimesion arrays
 !> The unlimited dimension needs to be last in the list for def_var
 !-------------------------------------------------------------------------------
@@ -676,6 +735,106 @@ do ivar = start_var, end_var
 enddo
 
 end function get_sum_variables
+
+!-------------------------------------------------------------------------------
+! Given a dart state index, return the iloc, jloc, kloc location of the local variable
+!-------------------------------------------------------------------------------
+subroutine get_state_indices(index_in, iloc, jloc, kloc, var_id,  dom_id)
+integer(i8), intent(in)            :: index_in
+integer,     intent(out)           :: iloc
+integer,     intent(out)           :: jloc
+integer,     intent(out)           :: kloc
+integer,     intent(out), optional :: var_id
+integer,     intent(out), optional :: dom_id
+
+integer :: local_ind, ind1, indN
+integer :: index
+integer :: ndims, ndomains
+integer :: idom, ivar
+integer :: domid, varid, unlimid
+integer, allocatable :: dimids(:), dsize(:)
+
+character(len=NF90_MAX_NAME) :: dname
+character(len=NF90_MAX_NAME) :: vname
+
+character(len=512) :: string1
+
+! identity obs come in with a negative value - absolute
+! value into the state vector.
+index = abs(index_in)
+
+varid    = -1
+ndomains = get_num_domains()
+
+! get the local variable indicies
+FindVariable : do idom = 1, ndomains
+   do ivar = 1, state%domain(idom)%num_variables
+
+      ind1 = get_ind1(idom,ivar)
+      indN = get_indN(idom,ivar)
+
+      if ((index .ge. ind1) .and. &
+          (index .le. indN) ) then
+
+         local_ind = index - ind1
+         varid     = ivar
+         domid     = idom
+
+         exit FindVariable
+
+      endif
+   enddo
+enddo FindVariable
+
+if( varid == -1 ) then
+   write(*,*) 'Problem, cannot find base_offset, indix_in is: ', index_in
+   call error_handler(E_ERR, 'get_state_indices',string1)
+endif
+
+ndims = get_num_dims(domid, varid)
+allocate(dimids(ndims), dsize(ndims))
+
+dimids  = get_dim_ids(domid,varid)
+dsize   = get_dim_lengths(domid,varid)
+unlimid = get_unlimited_dimid(domid)
+
+! substract the unlimited (TIME?) dimension if it exists
+if(unlimid /= -1) ndims = ndims - 1
+
+! unfold from variable index
+if (ndims == 1) then
+   kloc = 1
+   jloc = 1
+   iloc =  local_ind + 1
+elseif (ndims == 2) then
+   kloc = 1
+   jloc = local_ind/dsize(1) + 1
+   iloc = local_ind - (jloc-1)*dsize(1) + 1
+elseif (ndims == 3) then
+   kloc =  local_ind / (dsize(1)*dsize(2)) + 1
+   jloc = (local_ind - (kloc-1)*dsize(1)*dsize(2))/dsize(1) + 1
+   iloc =  local_ind - (kloc-1)*dsize(1)*dsize(2) - (jloc-1)*dsize(1) + 1
+else
+   write(string1,*) 'can not calculate indices for variable ', &
+     trim(get_variable_name(domid, varid)), ' ndims = ', ndims
+   call error_handler(E_ERR, 'get_state_indices',string1)
+endif
+
+if (debug) then
+   write(*,*) 'index_in       = ', index_in
+   write(*,*) '[domid, varid] : [', domid, ',', varid,']'
+   write(*,*) '(iloc,jloc,kloc)     : (', iloc,',',jloc,',',kloc,')'
+endif
+
+if (present(var_id)) &
+   var_id = varid
+
+if (present(dom_id)) &
+   dom_id = domid
+
+deallocate(dimids, dsize)
+
+end subroutine get_state_indices
 
 !-------------------------------------------------------------------------------
 

@@ -147,11 +147,10 @@ do idom = 1, num_domains
 
       ! Read filenames in
       iunit = open_file(trim(rpointer_file(idom)),action = 'read')
-   
+        
       do icopy = 1, ens_size
-         read(iunit,*,iostat=ios) restart_files_in(icopy, idom)
+         read(iunit,'(A)',iostat=ios) restart_files_in(icopy, idom)
       enddo
-   
    else ! Construct restarts
 
       if (is_single_restart_file_in()) then ! reading first restart for now
@@ -284,6 +283,7 @@ integer :: ndims ! number of dimensions
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimids ! dimension ids for a variable
 character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: name ! dimension names for a variables
 integer, dimension(NF90_MAX_VAR_DIMS) :: length
+integer, dimension(NF90_MAX_VAR_DIMS) :: unique_dim_length
 integer :: xtype ! do we care about this? Yes.
 character(len=512) :: msgstring ! message handler
 

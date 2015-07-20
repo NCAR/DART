@@ -42,7 +42,7 @@ use distributed_state_mod
 
 use null_vert_convert
 
-use state_structure_mod, only : add_domain
+use state_structure_mod, only : add_domain, get_state_indices
 
 use typesizes
 use netcdf 
@@ -1751,9 +1751,12 @@ subroutine get_state_meta_data_distrib(state_ens_handle, index_in, location, var
 ! the distance between observations and state variables.
 
 real(r8) :: lat, lon, depth
-integer :: lon_index, lat_index, depth_index, local_var
+integer :: lon_index, lat_index, depth_index, local_var, var_id
 
-call get_state_indices(index_in, lat_index, lon_index, depth_index, local_var)
+if ( .not. module_initialized ) call static_init_model
+
+call get_state_indices(index_in, lon_index, lat_index, depth_index, var_id=var_id)
+call get_state_kind(var_id, local_var)
 
 if (is_on_ugrid(local_var)) then
    lon = ULON(lon_index, lat_index)
@@ -1784,40 +1787,9 @@ end subroutine get_state_meta_data_distrib
 
 !------------------------------------------------------------------
 
-subroutine get_state_indices(index_in, lat_index, lon_index, depth_index, var_type)
- integer(i8), intent(in)  :: index_in
- integer,     intent(out) :: lat_index, lon_index, depth_index
- integer,     intent(out) :: var_type
-
-! Given an integer index into the state vector structure, returns the
-! associated array indices for lat, lon, and depth, as well as the type.
-
-integer :: startind, offset
-
-if ( .not. module_initialized ) call static_init_model
-
-if (debug > 5) print *, 'asking for meta data about index ', index_in
-
-call get_state_kind(index_in, var_type, startind, offset)
-
-if (startind == start_index(PSURF_index)) then
-  depth_index = 1
-else
-  depth_index = (offset / (Nx * Ny)) + 1
-endif
-
-lat_index = (offset - ((depth_index-1)*Nx*Ny)) / Nx + 1
-lon_index =  offset - ((depth_index-1)*Nx*Ny) - ((lat_index-1)*Nx) + 1
-
-if (debug > 5) print *, 'lon, lat, depth index = ', lon_index, lat_index, depth_index
-
-end subroutine get_state_indices
-
-!------------------------------------------------------------------
-
-subroutine get_state_kind(index_in, var_type, startind, offset)
- integer(i8), intent(in)  :: index_in
- integer,     intent(out) :: var_type, startind, offset
+subroutine get_state_kind(var_ind, var_type)
+ integer, intent(in)  :: var_ind
+ integer, intent(out) :: var_type
 
 ! Given an integer index into the state vector structure, returns the kind,
 ! and both the starting offset for this kind, as well as the offset into
@@ -1825,31 +1797,17 @@ subroutine get_state_kind(index_in, var_type, startind, offset)
 
 if ( .not. module_initialized ) call static_init_model
 
-if (debug > 5) print *, 'asking for meta data about index ', index_in
-
-if (index_in < start_index(S_index+1)) then
+if (var_ind == S_index) then
    var_type = KIND_SALINITY  
-   startind = start_index(S_index)
-else if (index_in < start_index(T_index+1)) then
+else if (var_ind == T_index) then
    var_type = KIND_POTENTIAL_TEMPERATURE  
-   startind = start_index(T_index)
-else if (index_in < start_index(U_index+1)) then
+else if (var_ind == U_index) then
    var_type = KIND_U_CURRENT_COMPONENT
-   startind = start_index(U_index)
-else if (index_in < start_index(V_index+1)) then
+else if (var_ind == V_index) then
    var_type = KIND_V_CURRENT_COMPONENT
-   startind = start_index(V_index)
 else 
    var_type = KIND_SEA_SURFACE_PRESSURE
-   startind = start_index(PSURF_index)
 endif
-
-! local offset into this var array
-offset = index_in - startind
-
-if (debug > 5) print *, 'var type = ', var_type
-if (debug > 5) print *, 'startind = ', startind
-if (debug > 5) print *, 'offset = ', offset
 
 end subroutine get_state_kind
 
@@ -1862,20 +1820,12 @@ subroutine get_state_kind_inc_dry(index_in, var_type)
 ! Given an integer index into the state vector structure, returns the
 ! type, taking into account the ocean bottom and dry land.
 
-integer :: lon_index, lat_index, depth_index, startind, offset
+integer :: lon_index, lat_index, depth_index, var_id
 
 if ( .not. module_initialized ) call static_init_model
 
-call get_state_kind(index_in, var_type, startind, offset)
-
-if (startind == start_index(PSURF_index)) then
-  depth_index = 1
-else
-  depth_index = (offset / (Nx * Ny)) + 1
-endif
-
-lat_index = (offset - ((depth_index-1)*Nx*Ny)) / Nx + 1
-lon_index =  offset - ((depth_index-1)*Nx*Ny) - ((lat_index-1)*Nx) + 1
+call get_state_indices(index_in, lon_index, lat_index, depth_index, var_id=var_id)
+call get_state_kind(var_id, var_type)
 
 ! if on land or below ocean floor, replace type with dry land.
 if(is_dry_land(var_type, lon_index, lat_index, depth_index)) then

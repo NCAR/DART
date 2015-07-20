@@ -97,7 +97,8 @@ use netcdf
 use get_geometry_mod
 use get_reconstruct_mod
 
-use state_structure_mod, only :  add_domain
+use state_structure_mod, only :  add_domain, get_state_indices
+
 
 implicit none
 private
@@ -825,7 +826,7 @@ integer, optional,   intent(out) :: var_type
 
 ! Local variables
 
-integer  :: nxp, nzp, iloc, vloc, nf, n
+integer  :: nxp, nzp, iloc, vloc, kloc, nf, n
 integer  :: myindx
 integer  :: istatus
 real(r8) :: height
@@ -833,37 +834,10 @@ type(location_type) :: new_location
 
 if ( .not. module_initialized ) call static_init_model
 
-myindx = -1
-nf     = -1
+! get the local indicies and type from dart index. kloc is a dummy variable for this subroutine
+call get_state_indices(index_in, vloc, iloc, kloc, var_id=nf)
 
-! Determine the right variable
-FindIndex : do n = 1,nfields
-    if( (progvar(n)%index1 <= index_in) .and. (index_in <= progvar(n)%indexN) ) THEN
-      nf = n
-      myindx = index_in - progvar(n)%index1 + 1
-      exit FindIndex
-    endif
-enddo FindIndex
-
-if( myindx == -1 ) then
-     write(string1,*) 'Problem, cannot find base_offset, index_in is: ', index_in
-     call error_handler(E_ERR,'get_state_meta_data',string1,source,revision,revdate)
-endif
-
-! Now that we know the variable, find the cell or edge
-
-if (     progvar(nf)%numcells /= MISSING_I) then
-   nxp = progvar(nf)%numcells
-elseif ( progvar(nf)%numedges /= MISSING_I) then
-   nxp = progvar(nf)%numedges
-else
-     write(string1,*) 'ERROR, ',trim(progvar(nf)%varname),' is not defined on edges or cells'
-     call error_handler(E_ERR,'get_state_meta_data',string1,source,revision,revdate)
-endif
-
-nzp  = progvar(nf)%numvertical
-iloc = 1 + (myindx-1) / nzp    ! cell index
-vloc = myindx - (iloc-1)*nzp   ! vertical level index
+nzp = progvar(nf)%numvertical
 
 ! the zGrid array contains the location of the cell top and bottom faces, so it has one
 ! more value than the number of cells in each column.  for locations of cell centers
@@ -880,6 +854,12 @@ if (progvar(nf)%numedges /= MISSING_I) then
       call error_handler(E_ERR, 'get_state_meta_data', 'no support for edges at face heights', &
                          source, revision, revdate)
    endif
+
+   if (nzp <= 1) then
+      location = set_location(lonEdge(iloc),latEdge(iloc), height, VERTISSURFACE)
+   else
+      location = set_location(lonEdge(iloc),latEdge(iloc), height, VERTISHEIGHT)
+   endif
 else
    if ( progvar(nf)%ZonHalf ) then
       height = zGridCenter(vloc,iloc)
@@ -888,20 +868,7 @@ else
    else
       height = zGridFace(vloc,iloc)
    endif
-endif
 
-if (progvar(nf)%numedges /= MISSING_I) then
-   if (.not. data_on_edges) then
-      call error_handler(E_ERR, 'get_state_meta_data', &
-                        'Internal error: numedges present but data_on_edges false', &
-                        source, revision, revdate, text2='variable '//trim(progvar(nf)%varname))
-   endif
-   if (nzp <= 1) then
-      location = set_location(lonEdge(iloc),latEdge(iloc), height, VERTISSURFACE)
-   else
-      location = set_location(lonEdge(iloc),latEdge(iloc), height, VERTISHEIGHT)
-   endif
-else ! must be on cell centers
    if (nzp <= 1) then
       location = set_location(lonCell(iloc),latCell(iloc), height, VERTISSURFACE)
    else
@@ -932,9 +899,9 @@ endif
 
 if (debug > 12) then
 
-    write(*,'("INDEX_IN / myindx / IVAR / NX, NZ: ",2(i10,2x),3(i5,2x))') index_in, myindx, nf, nxp, nzp
-    write(*,'("                       ILOC, KLOC: ",2(i5,2x))') iloc, vloc
-    write(*,'("                      LON/LAT/HGT: ",3(f12.3,2x))') lonCell(iloc), latCell(iloc), height
+    write(*,'("INDEX_IN / IVAR : ",(i10,2x),(i5,2x))') index_in, nf
+    write(*,'("                 ILOC, VLOC: ",2(i5,2x))') iloc, vloc
+    write(*,'("                 LON/LAT/HGT: ",3(f12.3,2x))') lonCell(iloc), latCell(iloc), height
 
 endif
 

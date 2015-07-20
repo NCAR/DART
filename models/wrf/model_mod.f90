@@ -97,7 +97,7 @@ use sort_mod,            only : sort
 
 use distributed_state_mod
 
-use state_structure_mod, only : add_domain
+use state_structure_mod, only : add_domain, get_state_indices
 
 ! FIXME:
 ! the kinds KIND_CLOUD_LIQUID_WATER should be KIND_CLOUDWATER_MIXING_RATIO, 
@@ -858,85 +858,19 @@ logical     :: var_found
 real(r8)    :: lon, lat, lev
 character(len=129) :: string1
 
-integer :: i, id
+integer :: i, id, var_id
 logical, parameter :: debug = .false.
 
-if(debug) then
-   write(errstring,*)' index_in = ',index_in
-   call error_handler(E_MSG,'get_state_meta_data',errstring,' ',' ',' ')
-endif
-
-! identity obs come in with a negative value - absolute
-! index into the state vector.  obs_def_mod code calls this
-! with -1 * identity_index so it's always positive, but the 
-! code here in vert_convert() passes in the raw obs_kind 
-! so it could, indeed, be negative.
-index = abs(index_in)
-
-! dump out a list of all domains and variable types
-if(debug) then
-   do id=1,num_domains
-      do i=1, wrf%dom(id)%number_of_wrf_variables
-         write(errstring,*)' domain, var, var_type(i) = ',id,i,wrf%dom(id)%var_type(i)
-         call error_handler(E_MSG,'get_state_meta_data',errstring)
-      enddo
-   enddo
-endif
-
-! loop through the wrf vars (U, V, PS, etc) in state vector, starting
-! at domain 1.  see if the start/end index range in the 1d state vector
-! includes the requested index.  if you get to the end of the list of vars 
-! and you haven't found it yet, bump up the domain number and start 
-! search over from the start of the wrf var list.
-! if you get to the end of the domains and you haven't found the
-! valid range, the index must be larger than the state vector
-! which is a fatal error.
-
-var_found = .false.
-i = 0
-id = 1
-do while (.not. var_found)
-   i = i + 1
-   if(i .gt. wrf%dom(id)%number_of_wrf_variables) then
-      i = 1
-      if (id < num_domains) then
-         id = id + 1
-      else
-         write(string1,*)' size of state vector = ',wrf%model_size
-         write(errstring,*)' dart_index ',index_in, ' is out of range'
-         call error_handler(E_ERR,'get_state_meta_data', errstring, &
-              source, revision, revdate, text2=string1)
-      endif
-   endif
-   if( (index .ge. wrf%dom(id)%var_index(1,i) ) .and.  &
-       (index .le. wrf%dom(id)%var_index(2,i) )       )  then
-      var_found = .true.
-      var_type  = wrf%dom(id)%var_type(i)
-      dart_type = wrf%dom(id)%dart_kind(i)
-      index = index - wrf%dom(id)%var_index(1,i) + 1
-   endif
-end do
-
-!  now find i,j,k location.
-!  index has been normalized such that it is relative to
-!  array starting at (1,1,1)
-
-nx = wrf%dom(id)%var_size(1,i)
-ny = wrf%dom(id)%var_size(2,i)
-nz = wrf%dom(id)%var_size(3,i)
-
-! JH note the calculations for ip,jp,kp are all done in i8
-! since index is i8.  The value is then truncated to i4 
-! when it is assigned.  This should be OK since ip, jp, and 
-! kp are much smaller than index
-kp = 1 + (index-1)/(nx*ny)
-jp = 1 + (index - (kp-1)*nx*ny - 1)/nx
-ip = index - (kp-1)*nx*ny - (jp-1)*nx
+! from the dart index get the local variables indices
+call get_state_indices(index_in, ip, jp, kp, var_id=var_id, dom_id=id)
 
 ! at this point, (ip,jp,kp) refer to indices in the variable's own grid
 
 if(debug) write(*,*) ' ip, jp, kp for index ',ip,jp,kp,index
 if(debug) write(*,*) ' Var type: ',var_type
+
+var_type  = wrf%dom(id)%var_type(var_id)
+dart_type = wrf%dom(id)%dart_kind(var_id)
 
 ! first obtain lat/lon from (ip,jp)
 call get_wrf_horizontal_location( ip, jp, var_type, id, lon, lat )

@@ -205,17 +205,18 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_
 ! Examples are EFGWORO, FRACLDV from the gravity wave drag parameterization study
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
-use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
+use   random_seq_mod,      only : init_random_seq, random_seq_type, &
+                                  random_gaussian
 
-use data_structure_mod, only : ensemble_type, copies_in_window
+use data_structure_mod,    only : ensemble_type, copies_in_window
 
-use distributed_state_mod
+use distributed_state_mod, only : get_state
 
-use state_structure_mod, only : add_domain
-
+use state_structure_mod,   only : add_domain, get_state_indices, get_dim_name, &
+                                  get_num_dims, get_variable_name, &
+                                  get_unlimited_dimid
 ! end of use statements
 != = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
-
 ! CAM global/module declarations
 
 implicit none
@@ -3089,16 +3090,10 @@ type(location_type), intent(inout) :: location
 integer, optional,   intent(out)   :: var_kind
 
 integer  :: which_vert
-integer  :: i, ifld, local_fld, local_index
-integer  :: box, slice
-logical  :: lfound
 
 real(r8) :: lon_val, lat_val, lev_val
-integer  :: x,y,z
-integer  :: nx, ny, nz
-integer  :: dummy
-
-character(len=8)   :: dim_name
+integer  :: ip, jp, kp, var_id, dom_id
+integer  :: ndims
 
 if (.not. module_initialized) call static_init_model()
 
@@ -3106,60 +3101,25 @@ lon_val = MISSING_R8
 lat_val = MISSING_R8
 lev_val = MISSING_R8
 
-lfound = .false.
+! get the state indices from dart index
+call get_state_indices(index_in, ip ,jp ,kp ,var_id=var_id, dom_id=dom_id)
 
-! find field index
-! HK Hack job
-local_fld = 1
-do i = 1, state_num_2d
-      if (sum_variables_below(i) < index_in  .and. index_in <= sum_variables_below(i+1)) then
-      lfound = .true.
-       ifld = i
-      exit
-   endif
-   local_fld = local_fld + 1
-enddo
+! convert to lat, lon, lev coordinates
+call coord_val(get_dim_name(dom_id,var_id,3), kp, lon_val, lat_val, lev_val)
+call coord_val(get_dim_name(dom_id,var_id,2), jp, lon_val, lat_val, lev_val)
+call coord_val(get_dim_name(dom_id,var_id,1), ip, lon_val, lat_val, lev_val)
 
-if (lfound) then
+ndims = get_num_dims(dom_id, var_id)
 
-   local_index = index_in - sum_variables_below(ifld)
-   which_vert = which_vert_2d(local_fld)
-   nx = s_dim_2d(1, local_fld)! size of x dimension
-   y = (local_index -1)/nx +1
-   x = local_index - (y-1)*nx
-   !print*, trim(dim_names(s_dimid_2d(1,ifld))),trim(dim_names(s_dimid_2d(2,ifld)))
-   call coord_val(dim_names(s_dimid_2d(1,local_fld)), x, lon_val, lat_val, lev_val)
-   call coord_val(dim_names(s_dimid_2d(2,local_fld)), y, lon_val, lat_val, lev_val)
+! substract the unlimited (TIME) dimension if it exists
+if (get_unlimited_dimid(dom_id) /= -1) then
+   ndims = ndims-1
+endif
 
-else ! 3D variable
-
-   ifld = i
-
-   do dummy = 1, state_num_3d
-
-      if (sum_variables_below(ifld) < index_in  .and. index_in <= sum_variables_below(ifld+1)) then
-
-         local_index = index_in - sum_variables_below(ifld)
-         which_vert = which_vert_3d(dummy)
-         nx = s_dim_3d(2, dummy)! size of x dimension
-         ny = s_dim_3d(3, dummy)! size of y dimension
-         z = (local_index -1) / (nx*ny) + 1
-         y = (local_index - 1 - (z-1)*nx*ny) / nx  + 1
-         x = local_index - (z-1)*nx*ny - (y-1)*nx
-
-         call coord_val(dim_names(s_dimid_3d(2,dummy)), x, lon_val, lat_val, lev_val)
-         call coord_val(dim_names(s_dimid_3d(3,dummy)), y, lon_val, lat_val, lev_val)
-         call coord_val(dim_names(s_dimid_3d(1,dummy)), z, lon_val, lat_val, lev_val)
-         exit
-
-      else
-
-         ifld = ifld + 1
-
-      endif
-
-   enddo
-
+if( ndims == 2 ) then
+   which_vert = which_vert_2d(var_id)
+else
+   which_vert = which_vert_3d(var_id-state_num_2d)
 endif
 
 location = set_location(lon_val, lat_val, lev_val, which_vert)
@@ -3167,7 +3127,7 @@ location = set_location(lon_val, lat_val, lev_val, which_vert)
 ! If the type is wanted, return it
 if (present(var_kind)) then
    ! used by call from assim_tools_mod:filter_assim, which wants the DART KIND_
-   var_kind = cam_to_dart_kinds(ifld)
+   var_kind = cam_to_dart_kinds(var_id)
 endif
 
 
