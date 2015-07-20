@@ -450,7 +450,7 @@ call init_obs(observation, get_num_copies(obs_seq), get_num_qc(obs_seq))
 ! HK I would like to move this to before the calculation of the forward operator so you could
 ! overwrite the vertical location with the required localization vertical coordinate when you 
 ! do the forward operator calculation
-call get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type)
+call get_my_obs_loc(ens_handle, obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type)
 
 if (.not. lanai_bitwise) then
    ! convert the verical of all my observations to the localization coordinate
@@ -2663,8 +2663,9 @@ end function count_close
 
 !----------------------------------------------------------------------
 !> gets the location of of all my observations
-subroutine get_my_obs_loc(obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type)
+subroutine get_my_obs_loc(state_ens_handle, obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type)
 
+type(ensemble_type),      intent(in)  :: state_ens_handle
 type(ensemble_type),      intent(in)  :: obs_ens_handle
 type(obs_sequence_type),  intent(in)  :: obs_seq
 integer,                  intent(in)  :: keys(:)
@@ -2675,6 +2676,7 @@ type(obs_type) :: observation
 type(obs_def_type)   :: obs_def
 integer :: this_obs_key
 integer i
+type(location_type) :: dummyloc
 
 Get_Obs_Locations: do i = 1, obs_ens_handle%my_num_vars
 
@@ -2687,7 +2689,11 @@ Get_Obs_Locations: do i = 1, obs_ens_handle%my_num_vars
          my_obs_kind(i) = get_obs_kind_var_type(my_obs_type(i))
    else
       !call get_state_meta_data_distrib(ens_handle, win, -1 * my_obs_type(i), dummyloc, my_obs_kind(i))    ! identity obs
-      call error_handler(E_ERR, 'you need to create the MPI window ', 'before you can do identity obs')
+      ! This is just to get the kind.  WRF needs state_ensemble_handle because it converts the state
+      ! element to the required vertical coordinate.  Should this be allowed anyway?
+      ! With dummy loc you are going to end up converting the vertical twice for identity obs. FIXME use
+      ! actual ob location so you can store the converted vertical?
+      call get_state_meta_data_distrib(state_ens_handle, -1 * int(my_obs_type(i),i8), dummyloc, my_obs_kind(i))
    endif
 end do Get_Obs_Locations
 

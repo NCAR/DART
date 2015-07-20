@@ -6,7 +6,7 @@
 
 module model_mod
 
-use        types_mod, only : r8
+use        types_mod, only : r8, i8
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, set_location, get_location,  &
                              LocationDims, LocationName, LocationLName,  &
@@ -48,7 +48,8 @@ public :: get_model_size, &
           variables_domains, fill_variable_list, &
           get_vert, set_vert, set_which_vert, &
           info_file_name, construct_file_name_in, &
-          get_model_time, clamp_or_fail_it, do_clamp_or_fail
+          get_model_time, clamp_or_fail_it, do_clamp_or_fail, &
+          pert_model_copies
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -325,7 +326,7 @@ integer,                intent(out) :: istatus(:)
 type(ensemble_type),     intent(in) :: state_ens_handle
 real(r8), intent(out)               :: expected_obs(:)
 
-integer :: lower_index, upper_index, i
+integer(i8) :: lower_index, upper_index, i
 real(r8) :: lctn, lctnfrac
 
 !HK 
@@ -435,7 +436,7 @@ subroutine get_state_meta_data_distrib(state_ens_hande, index_in, location, var_
 ! Maybe a functional form should be added?
 
 type(ensemble_type), intent(in)  :: state_ens_hande !< just so it compiles
-integer,             intent(in)  :: index_in
+integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
@@ -636,7 +637,7 @@ call nc_check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ), 
 !--------------------------------------------------------------------
 
 do i = 1,model_size
-   call get_state_meta_data_distrib(state_ens_handle, i,lctn)
+   call get_state_meta_data_distrib(state_ens_handle, int(i, i8),lctn)
    call nc_check(nf90_put_var(ncFileID, LocationVarID, get_location(lctn), (/ i /) ), &
               'nc_write_model_atts', 'check locationVarId, '//trim(filename))
 enddo
@@ -819,6 +820,28 @@ type(time_type) :: get_model_time
 
 
 end function get_model_time
+
+!--------------------------------------------------------------------
+subroutine pert_model_copies(state_ens_handle, pert_amp, interf_provided)
+
+ type(ensemble_type), intent(inout) :: state_ens_handle
+ real(r8),  intent(in) :: pert_amp
+ logical,  intent(out) :: interf_provided
+
+! Perturbs a model state copies for generating initial ensembles.
+! The perturbed state is returned in pert_state.
+! A model may choose to provide a NULL INTERFACE by returning
+! .false. for the interf_provided argument. This indicates to
+! the filter that if it needs to generate perturbed states, it
+! may do so by adding a perturbation to each model state 
+! variable independently. The interf_provided argument
+! should be returned as .true. if the model wants to do its own
+! perturbing of states.
+
+interf_provided = .false.
+
+end subroutine pert_model_copies
+
 
 !===================================================================
 ! End of model_mod

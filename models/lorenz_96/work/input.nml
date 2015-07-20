@@ -1,3 +1,9 @@
+&quality_control_nml
+   input_qc_threshold       =  3.0,
+   outlier_threshold        = -1.0,
+   enable_special_outlier_code = .false.,
+/
+
 &perfect_model_obs_nml
    start_from_restart       = .true.,
    output_restart           = .true.,
@@ -27,7 +33,7 @@
    ens_size                 = 20,
    start_from_restart       = .true.,
    output_restart           = .true.,
-   obs_sequence_in_name     = "obs_seq.out.40",
+   obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
    restart_in_file_name     = "filter_ics",
    restart_out_file_name    = "filter_restart",
@@ -41,14 +47,13 @@
    num_output_obs_members   = 20,
    output_interval          = 1,
    num_groups               = 1,
-   input_qc_threshold       =  3.0,
-   outlier_threshold        = -1.0,
-   enable_special_outlier_code = .false.,
    output_forward_op_errors = .false.,
    output_timestamps        = .true.,
    trace_execution          = .true.,
    silence                  = .false.,
    direct_netcdf_read       = .false.,
+   direct_netcdf_write      = .false.,
+   diagnostic_files = .true.
 
    inf_flavor                  = 2,                       0,
    inf_initial_from_restart    = .false.,                 .false.,
@@ -238,7 +243,6 @@
    /
 
 &state_vector_io_nml
-   create_restarts = .true.
    /   
 
 &io_filenames_nml

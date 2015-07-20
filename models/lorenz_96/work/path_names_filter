@@ -21,9 +21,12 @@ time_manager/time_manager_mod.f90
 utilities/utilities_mod.f90
 ensemble_manager/data_structure_mod.f90
 distributed/distributed_state_mod.f90
-distributed/cray_win_mod.f90
+distributed/no_cray_win_mod.f90
 io/state_vector_io_mod.f90
 io/io_filenames_mod.f90
 io/copies_on_off_mod.f90
+io/state_structure_mod.f90
 models/null_vert_convert.f90
 models/null_clamp.f90
+forward_operator/forward_operator_mod.f90
+quality_control/quality_control_mod.f90
