@@ -59,7 +59,8 @@ use          location_mod, only: location_type, get_location, set_location, &
                                  vert_is_level, query_location, &
                                  LocationDims, LocationName, LocationLName, &
                                  vert_is_pressure, vert_is_surface, &
-                                 get_close_maxdist_init, get_close_obs_init, get_close_obs
+                                 get_close_maxdist_init, get_close_obs_init, get_close_obs, &
+                                 VERTISSURFACE
 
 
 use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
@@ -1353,8 +1354,8 @@ else
    if(ps_lon > 360.00_r8 .and. ps_lon < 360.00001_r8) ps_lon = 360.0_r8
 
    ! The vertical is not important for this interpolation -- still --
-   ! mark it as missing (-1.0) but give it some type information (2==pressure)
-   ps_location = set_location(ps_lon, v_lats(lat_index), -1.0_r8, 2 )
+   ! mark it as missing (-1.0) but give it some type of information
+   ps_location = set_location(ps_lon, v_lats(lat_index), -1.0_r8, VERTISSURFACE )
    call model_interpolate(x, ps_location, KIND_SURFACE_PRESSURE, ps(1,1), istatus)
 
 endif
@@ -2062,7 +2063,7 @@ if ( .not. module_initialized ) call static_init_model
 
 ! option 1: let filter do the perturbs
 ! (comment this out to select other options below)
-interf_provided = .false.
+interf_provided = .true.
 return
  
 ! (debug) option 2: tell filter we are going to perturb, but don't.
