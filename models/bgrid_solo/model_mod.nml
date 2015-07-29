@@ -8,7 +8,7 @@
      hours    = 0, 
      minutes  = 0,
      seconds  = 0,
-     noise_sd = 0.0,
+     noise_sd = -1.0,
      dt_bias  = -1,
      output_state_vector = .false. /
 #

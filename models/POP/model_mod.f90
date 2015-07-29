@@ -42,7 +42,7 @@ use distributed_state_mod
 
 use null_vert_convert
 
-use state_structure_mod, only : add_domain, get_state_indices
+use state_structure_mod, only : add_domain, get_model_variable_indices
 
 use typesizes
 use netcdf 
@@ -76,7 +76,7 @@ public :: get_model_size,                &
           set_which_vert,                &
           info_file_name,                &
           construct_file_name_in,        &
-          get_model_time,                &
+          read_model_time,                &
           clamp_or_fail_it,              &
           do_clamp_or_fail
 
@@ -1755,7 +1755,7 @@ integer :: lon_index, lat_index, depth_index, local_var, var_id
 
 if ( .not. module_initialized ) call static_init_model
 
-call get_state_indices(index_in, lon_index, lat_index, depth_index, var_id=var_id)
+call get_model_variable_indices(index_in, lon_index, lat_index, depth_index, var_id=var_id)
 call get_state_kind(var_id, local_var)
 
 if (is_on_ugrid(local_var)) then
@@ -1824,7 +1824,7 @@ integer :: lon_index, lat_index, depth_index, var_id
 
 if ( .not. module_initialized ) call static_init_model
 
-call get_state_indices(index_in, lon_index, lat_index, depth_index, var_id=var_id)
+call get_model_variable_indices(index_in, lon_index, lat_index, depth_index, var_id=var_id)
 call get_state_kind(var_id, var_type)
 
 ! if on land or below ocean floor, replace type with dry land.
@@ -3658,10 +3658,10 @@ end function construct_file_name_in
 !--------------------------------------------------------------------
 !> read the time from the input file
 !> Stolen from pop model_mod.f90 restart_to_sv
-function get_model_time(filename)
+function read_model_time(filename)
 
 character(len=1024) :: filename
-type(time_type) :: get_model_time
+type(time_type) :: read_model_time
 
 
 integer :: ret !< netcdf return code
@@ -3672,36 +3672,36 @@ if ( .not. module_initialized ) call static_init_model
 
 if ( .not. file_exist(filename) ) then
    write(msgstring,*) 'cannot open file ', trim(filename),' for reading.'
-   call error_handler(E_ERR,'get_model_time',msgstring,source,revision,revdate)
+   call error_handler(E_ERR,'read_model_time',msgstring,source,revision,revdate)
 endif
 
 call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
-                  'get_model_time', 'open '//trim(filename))
+                  'read_model_time', 'open '//trim(filename))
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iyear'  , iyear), &
-                  'get_model_time', 'get_att iyear')
+                  'read_model_time', 'get_att iyear')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'imonth' , imonth), &
-                  'get_model_time', 'get_att imonth')
+                  'read_model_time', 'get_att imonth')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iday'   , iday), &
-                  'get_model_time', 'get_att iday')
+                  'read_model_time', 'get_att iday')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ihour'  , ihour), &
-                  'get_model_time', 'get_att ihour')
+                  'read_model_time', 'get_att ihour')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iminute', iminute), &
-                  'get_model_time', 'get_att iminute')
+                  'read_model_time', 'get_att iminute')
 call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'isecond', isecond), &
-                  'get_model_time', 'get_att isecond')
+                  'read_model_time', 'get_att isecond')
 
 ! FIXME: we don't allow a real year of 0 - add one for now, but
 ! THIS MUST BE FIXED IN ANOTHER WAY!
 if (iyear == 0) then
-  call error_handler(E_MSG, 'get_model_time', &
+  call error_handler(E_MSG, 'read_model_time', &
                      'WARNING!!!   year 0 not supported; setting to year 1')
   iyear = 1
 endif
 
-get_model_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
+read_model_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
 
 
-end function get_model_time
+end function read_model_time
 
 !-------------------------------------------------------
 !> Check whether you need to error out, clamp, or

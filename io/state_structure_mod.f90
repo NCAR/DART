@@ -44,7 +44,10 @@ public :: static_init_state_type, &
           get_sum_variables,      &
           get_sum_variables_below,&
           get_unlimited_dimid,    &
-          get_state_indices
+          get_model_variable_indices,      &
+          get_dart_vector_index,         &
+          add_dimension_to_variable, &
+          finished_adding_domain
 
 !-------------------------------------------------------------------------------
 ! global variables
@@ -67,12 +70,12 @@ type netcdf_var_type
    character(len=NF90_MAX_NAME) :: varname
    character(len=NF90_MAX_NAME) :: long_name
    character(len=NF90_MAX_NAME) :: units
-   integer :: var_size
+   integer :: var_size = 0
    integer :: index1 ! location in dart state vector of first occurrence
    integer :: indexN ! location in dart state vector of last  occurrence
    
    ! dimension information
-   integer :: numdims ! number of dims - excluding TIME?
+   integer :: numdims  = 0! number of dims - excluding TIME?
    character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: dimname
    integer, dimension(NF90_MAX_VAR_DIMS) :: dimIds
    integer, dimension(NF90_MAX_VAR_DIMS) :: dimlens
@@ -109,7 +112,8 @@ type domain_type
    integer :: num_unique_dims
    character(len=NF90_MAX_NAME), allocatable :: unique_dim_names(:)
    integer, allocatable :: unique_dim_length(:)
-   integer :: unlimDimId
+   ! initialize all domains to no unlimited dimension
+   integer :: unlimDimId = -1
 
    ! number of elements in the domain
    integer(i8) :: size
@@ -124,7 +128,7 @@ end type domain_type
 type state_type
    private
    ! domains or separate files
-   integer           :: num_domains
+   integer           :: num_domains = 0
    type(domain_type) :: domain(max_num_domains) ! number of domains
 
    ! size of the state vector
@@ -144,6 +148,7 @@ logical :: debug = .false.
 interface add_domain
    module procedure add_domain_blank
    module procedure add_domain_from_file
+   module procedure add_domain_from_spec
 end interface
 
 contains
@@ -203,6 +208,38 @@ call load_state_variable_info(state%domain(dom_identifier))
 call load_unique_dim_info(dom_identifier)
 
 end function add_domain_from_file
+
+!-------------------------------------------------------------------------------
+!> @todo dart kinds in state structure
+function add_domain_from_spec(num_variables, var_names, dart_kinds) result(dom_identifier)
+
+integer,          intent(in) :: num_variables
+character(len=*), intent(in) :: var_names(num_variables)
+integer,          intent(in) :: dart_kinds(num_variables)
+integer           :: dom_identifier
+
+integer :: ivar
+
+if (.not. state_initialized) call static_init_state_type()
+
+! add to domains
+state%num_domains = state%num_domains + 1
+dom_identifier    = state%num_domains !>@todo this should be a handle.
+
+state%domain(dom_identifier)%info_file = 'NULL' ! no files
+
+! set number of variables in this domain
+state%domain(dom_identifier)%num_variables = num_variables
+
+! load up the variable names
+allocate(state%domain(dom_identifier)%variable(num_variables))
+
+do ivar = 1, num_variables
+   state%domain(dom_identifier)%variable(ivar)%varname = var_names(ivar)
+enddo
+
+
+end function add_domain_from_spec
 
 !-------------------------------------------------------------------------------
 !> Add a blank domain - one variable called state, length = model_size
@@ -739,7 +776,7 @@ end function get_sum_variables
 !-------------------------------------------------------------------------------
 ! Given a dart state index, return the iloc, jloc, kloc location of the local variable
 !-------------------------------------------------------------------------------
-subroutine get_state_indices(index_in, iloc, jloc, kloc, var_id,  dom_id)
+subroutine get_model_variable_indices(index_in, iloc, jloc, kloc, var_id,  dom_id)
 integer(i8), intent(in)            :: index_in
 integer,     intent(out)           :: iloc
 integer,     intent(out)           :: jloc
@@ -779,6 +816,7 @@ FindVariable : do idom = 1, ndomains
          local_ind = index - ind1
          varid     = ivar
          domid     = idom
+         if(debug) print*, 'ind1, indN', ind1, indN 
 
          exit FindVariable
 
@@ -787,8 +825,8 @@ FindVariable : do idom = 1, ndomains
 enddo FindVariable
 
 if( varid == -1 ) then
-   write(*,*) 'Problem, cannot find base_offset, indix_in is: ', index_in
-   call error_handler(E_ERR, 'get_state_indices',string1)
+   write(string1,*) 'Problem, cannot find base_offset, index_in is: ', index_in
+   call error_handler(E_ERR, 'get_model_variable_indices',string1)
 endif
 
 ndims = get_num_dims(domid, varid)
@@ -797,6 +835,8 @@ allocate(dimids(ndims), dsize(ndims))
 dimids  = get_dim_ids(domid,varid)
 dsize   = get_dim_lengths(domid,varid)
 unlimid = get_unlimited_dimid(domid)
+
+if(debug) print*, 'ndims', ndims, 'sizes', dsize(1:ndims)
 
 ! substract the unlimited (TIME?) dimension if it exists
 if(unlimid /= -1) ndims = ndims - 1
@@ -817,13 +857,15 @@ elseif (ndims == 3) then
 else
    write(string1,*) 'can not calculate indices for variable ', &
      trim(get_variable_name(domid, varid)), ' ndims = ', ndims
-   call error_handler(E_ERR, 'get_state_indices',string1)
+   call error_handler(E_ERR, 'get_model_variable_indices',string1)
 endif
 
 if (debug) then
-   write(*,*) 'index_in       = ', index_in
-   write(*,*) '[domid, varid] : [', domid, ',', varid,']'
-   write(*,*) '(iloc,jloc,kloc)     : (', iloc,',',jloc,',',kloc,')'
+   write(*,'(A)')            '---------------------------------------------'
+   write(*,'(A, I10)')       'index_in = ', index_in
+   write(*,'(A, I2, A, I2)') '   domid = ', domid, '   varid = ', varid
+   write(*,'(A, 3I10, A)')   '   (i, j, k) = (', iloc, jloc, kloc, ')'
+   write(*,'(A)')            '---------------------------------------------'
 endif
 
 if (present(var_id)) &
@@ -834,7 +876,113 @@ if (present(dom_id)) &
 
 deallocate(dimids, dsize)
 
-end subroutine get_state_indices
+end subroutine get_model_variable_indices
+
+!-------------------------------------------------------------------------------
+! calculate dart index from local variable indices
+!-------------------------------------------------------------------------------
+function get_dart_vector_index(iloc, jloc, kloc, dom_id, var_id)
+
+integer(i8) :: get_dart_vector_index
+integer, intent(in) :: iloc, jloc, kloc
+integer, intent(in) :: dom_id, var_id
+
+integer :: ndims, offset
+integer :: dsize(NF90_MAX_VAR_DIMS)
+character(len=512) :: string1
+
+ndims = get_num_dims(dom_id, var_id)
+
+dsize(1:ndims) = get_dim_lengths(dom_id,var_id)
+
+offset = get_ind1(dom_id, var_id)
+
+if (ndims == 1) then
+   get_dart_vector_index = offset + iloc - 1
+else if(ndims == 2) then
+   get_dart_vector_index = offset + iloc + (jloc-1)*dsize(1) - 1
+else if(ndims == 3) then
+   get_dart_vector_index = offset + iloc + (jloc-1)*dsize(1) + (kloc-1)*dsize(1)*dsize(2) - 1
+else
+   write(string1,*) 'can not calculate indices for variable ', &
+     trim(get_variable_name(dom_id, var_id)), ' ndims = ', ndims
+   call error_handler(E_ERR, 'get_dart_vector_index',string1)
+endif
+
+end function get_dart_vector_index
+
+!-------------------------------------------------------------------------------
+! Used to add dimenions to a variable.
+! This allows the model to add meta data to state structure so a netcdf restart 
+! can be created which has the T,U,V etc. from a cold start (no existing netcdf
+! info file) e.g. the bgrid model. The number of variables has already been given in add_domain_from_spec.
+!-------------------------------------------------------------------------------
+subroutine add_dimension_to_variable(dom_id, var_id, dim_name, dim_size)
+
+integer,          intent(in) :: dom_id
+integer,          intent(in) :: var_id ! this is the order you gave in add_domain
+character(len=*), intent(in) :: dim_name
+integer,          intent(in) :: dim_size
+
+integer :: d ! dimension you are adding
+
+if (.not. state_initialized) then
+   call error_handler(E_ERR, 'state_structure_mod', 'trying to add a dimension ',&
+          'before initializing calling add_domain')
+endif
+
+state%domain(dom_id)%variable(var_id)%numdims = state%domain(dom_id)%variable(var_id)%numdims + 1
+
+d = state%domain(dom_id)%variable(var_id)%numdims
+
+state%domain(dom_id)%variable(var_id)%dimname(d) = dim_name
+state%domain(dom_id)%variable(var_id)%dimlens(d) = dim_size
+
+end subroutine add_dimension_to_variable
+
+!-------------------------------------------------------------------------------
+subroutine finished_adding_domain(dom_id)
+
+integer, intent(in) :: dom_id ! domain identifier
+
+integer :: i, j
+integer :: count
+integer :: next_start
+state%domain(dom_id)%num_unique_dims = get_domain_num_dims(dom_id)
+
+!> @todo sort by character to get unique dimensions. nancy has written this, just needs testing.
+
+allocate(state%domain(dom_id)%unique_dim_names(get_domain_num_dims(dom_id)))
+allocate(state%domain(dom_id)%unique_dim_length(get_domain_num_dims(dom_id)))
+
+state%domain(dom_id)%size = 0
+count = 1
+
+next_start = 1
+
+do i = 1, get_num_variables(dom_id)
+   state%domain(dom_id)%variable(i)%var_size = 1
+   do j = 1, state%domain(dom_id)%variable(i)%numdims
+
+      ! product of dimensions to get variable sie
+      state%domain(dom_id)%variable(i)%var_size = state%domain(dom_id)%variable(i)%dimlens(j)*state%domain(dom_id)%variable(i)%var_size
+
+      ! unique dimensions - ignoring the fact that they are not unique
+      state%domain(dom_id)%unique_dim_names(count) = state%domain(dom_id)%variable(i)%dimname(j)
+      state%domain(dom_id)%unique_dim_length(count) = state%domain(dom_id)%variable(i)%dimlens(j)
+      count = count + 1
+   enddo
+
+   state%domain(dom_id)%size = state%domain(dom_id)%size + state%domain(dom_id)%variable(i)%var_size
+
+   state%domain(dom_id)%variable(i)%index1 = next_start 
+   state%domain(dom_id)%variable(i)%indexN = next_start + state%domain(dom_id)%variable(i)%var_size -1
+   next_start = next_start + state%domain(dom_id)%variable(i)%var_size 
+enddo
+
+state%model_size = state%model_size + state%domain(dom_id)%size
+
+end subroutine finished_adding_domain
 
 !-------------------------------------------------------------------------------
 

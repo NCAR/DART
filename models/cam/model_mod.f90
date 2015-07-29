@@ -212,7 +212,7 @@ use data_structure_mod,    only : ensemble_type, copies_in_window
 
 use distributed_state_mod, only : get_state
 
-use state_structure_mod,   only : add_domain, get_state_indices, get_dim_name, &
+use state_structure_mod,   only : add_domain, get_model_variable_indices, get_dim_name, &
                                   get_num_dims, get_variable_name, &
                                   get_unlimited_dimid
 ! end of use statements
@@ -234,7 +234,7 @@ public ::                                                             &
    clamp_or_fail_it, do_clamp_or_fail, construct_file_name_in,        &
    query_vert_localization_coord, vert_convert_distrib,               &
    get_vert, set_vert, set_which_vert,                                &
-   variables_domains, fill_variable_list, get_model_time
+   variables_domains, fill_variable_list, read_model_time
    !, convert_base_obs_location
 
 ! Why were these in public?   get_close_maxdist_init, get_close_obs_init, &
@@ -3102,7 +3102,7 @@ lat_val = MISSING_R8
 lev_val = MISSING_R8
 
 ! get the state indices from dart index
-call get_state_indices(index_in, ip ,jp ,kp ,var_id=var_id, dom_id=dom_id)
+call get_model_variable_indices(index_in, ip ,jp ,kp ,var_id=var_id, dom_id=dom_id)
 
 ! convert to lat, lon, lev coordinates
 call coord_val(get_dim_name(dom_id,var_id,3), kp, lon_val, lat_val, lev_val)
@@ -8194,11 +8194,11 @@ end function fill_variable_list
 
 !--------------------------------------------------------------------
 !> read the time from the input file
-function get_model_time(file_name)
+function read_model_time(file_name)
 
 character(len=1024), intent(in) :: file_name
 
-type(time_type) :: get_model_time
+type(time_type) :: read_model_time
 
 integer :: i, k, n, m, ifld  
 integer :: nc_file_ID, nc_var_ID, dimid, varid, dimlen
@@ -8267,9 +8267,9 @@ if (iyear < 1601) then
    iyear = iyear + 1601
 endif
 
-get_model_time = set_date(iyear,imonth,iday,ihour,imin,isec)
+read_model_time = set_date(iyear,imonth,iday,ihour,imin,isec)
 
-end function get_model_time
+end function read_model_time
 
 !-----------------------------------------------------------------------
 

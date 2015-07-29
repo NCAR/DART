@@ -41,7 +41,7 @@ use         types_mod,   only : r8, i8, deg2rad, missing_r8, ps0, earth_radius, 
                                 digits12
 
 use  time_manager_mod,   only : time_type, set_time, set_calendar_type, GREGORIAN,&
-                                set_date
+                                set_date, get_date
 
 use      location_mod,   only : location_type, get_location, set_location, &
                                 horiz_dist_only,                                  &
@@ -97,7 +97,7 @@ use sort_mod,            only : sort
 
 use distributed_state_mod
 
-use state_structure_mod, only : add_domain, get_state_indices
+use state_structure_mod, only : add_domain, get_model_variable_indices
 
 ! FIXME:
 ! the kinds KIND_CLOUD_LIQUID_WATER should be KIND_CLOUDWATER_MIXING_RATIO, 
@@ -145,9 +145,9 @@ public ::  get_model_size,                &
            get_vert,                      &
            set_vert,                      &
            set_which_vert,                &
-           info_file_name,                &
            construct_file_name_in,        &
-           get_model_time,                &
+           read_model_time,               &
+           write_model_time,              &
            do_clamp_or_fail,              &
            clamp_or_fail_it
 
@@ -862,7 +862,7 @@ integer :: i, id, var_id
 logical, parameter :: debug = .false.
 
 ! from the dart index get the local variables indices
-call get_state_indices(index_in, ip, jp, kp, var_id=var_id, dom_id=id)
+call get_model_variable_indices(index_in, ip, jp, kp, var_id=var_id, dom_id=id)
 
 ! at this point, (ip,jp,kp) refer to indices in the variable's own grid
 
@@ -9085,17 +9085,6 @@ query_vert_localization_coord = vert_localization_coord
 end function query_vert_localization_coord
 
 !--------------------------------------------------------------------
-!> construct info filename for get_state_variable_info
-function info_file_name(domain)
-
-integer, intent(in) :: domain
-character(len=256)  :: info_file_name
-
-write(info_file_name, '(A, i2.2, A)') 'wrfinput_d', domain
-
-end function info_file_name
-
-!--------------------------------------------------------------------
 !> construct restart file name for reading
 !> model time for CESM format?
 function construct_file_name_in(stub, domain, copy)
@@ -9123,8 +9112,7 @@ end function construct_file_name_in
 
 !--------------------------------------------------------------------
 !> read the time from the input file
-!> stolen from wrf_to_dart.f90
-function get_model_time(filename)
+function read_model_time(filename)
 
 character(len=1024), intent(in) :: filename
 integer                         :: year, month, day, hour, minute, second
@@ -9134,33 +9122,83 @@ character(len=80)               :: varname
 character(len=19)               :: timestring
 integer                         :: i,  idims(2)
 
-type(time_type) :: get_model_time
+type(time_type) :: read_model_time
 
 
 call nc_check( nf90_open(filename, NF90_NOWRITE, ncid), &
                   'opening', filename )
 
-call nc_check( nf90_inq_varid(ncid, "Times", var_id), 'wrf_to_dart', &
+call nc_check( nf90_inq_varid(ncid, "Times", var_id), 'read_model_time', &
                'inq_varid Times' )
 call nc_check( nf90_inquire_variable(ncid, var_id, varname, xtype=ivtype, &
-               ndims=ndims, dimids=dimids), 'wrf_to_dart', &
+               ndims=ndims, dimids=dimids), 'read_model_time', &
                'inquire_variable Times' )
 
 do i=1,ndims ! isnt this just 1?
    call nc_check( nf90_inquire_dimension(ncid, dimids(i), &
-                   len=idims(i)),'wrf_to_dart','inquire_dimensions Times' )
+                   len=idims(i)),'read_model_time','inquire_dimensions Times' )
 enddo
 
 call nc_check( nf90_get_var(ncid, var_id, timestring, &
-               start = (/ 1, idims(2) /)), 'wrf_to_dart','get_var Times' )
+               start = (/ 1, idims(2) /)), 'read_model_time','get_var Times' )
 
 call get_wrf_date(timestring, year, month, day, hour, minute, second)
-get_model_time = set_date(year, month, day, hour, minute, second)
+read_model_time = set_date(year, month, day, hour, minute, second)
 
 
 call nc_check( nf90_close(ncid) , 'closing', filename)
 
-end function get_model_time
+end function read_model_time
+
+!--------------------------------------------------------------------
+!> write the time from the input file
+subroutine write_model_time(ncid, dart_time)
+
+use typeSizes
+use netcdf
+
+integer,         intent(in) :: ncid
+type(time_type), intent(in) :: dart_time
+
+integer :: dim_ids(2), var_id, ret
+integer :: year, month, day, hour, minute, second
+character(len=19) :: timestring
+
+call get_date(dart_time, year, month, day, hour, minute, second)
+call set_wrf_date(timestring, year, month, day, hour, minute, second)
+
+call nc_check(nf90_Redef(ncid),"redef")
+
+! Define Times variable if it does not exist
+ret = nf90_inq_varid(ncid, "Times", var_id)
+if (ret /= NF90_NOERR) then
+
+   ! check to see if there is a time and date_str_length
+   ret = nf90_inq_dimid(ncid, "Time", dim_ids(2))
+   ! if Time dimension does not exist create it
+   if (ret /= NF90_NOERR) then
+      call nc_check(nf90_def_dim(ncid, "Time", nf90_unlimited, dim_ids(2)), &
+        "write_model_time def_var dimension Time")
+   endif
+
+   ret = nf90_inq_dimid(ncid, "DateStrLen", dim_ids(1))
+   if (ret /= NF90_NOERR) then
+      ! if DateStrLen dimension does not exist create it.
+      call nc_check(nf90_def_dim(ncid, "DateStrLen", len(timestring), dim_ids(1)), &
+        "write_model_time def_var dimension dateStrLength")
+   endif
+
+   ! use id's to set Times(Time, DateStrLen)
+   call nc_check(nf90_def_var(ncid, name="Times", xtype=nf90_char, &
+      dimids=dim_ids, varid=var_id), "write_model_time def_var Times")
+endif
+
+call nc_check(nf90_Enddef(ncid),"Enddef")
+
+call nc_check( nf90_put_var(ncid, var_id, timestring), &
+               'write_model_time', 'put_var Times' )
+
+end subroutine write_model_time
 
 !-------------------------------------------------------
 !> Check whether you need to error out, clamp, or

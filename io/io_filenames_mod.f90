@@ -92,7 +92,8 @@ end subroutine io_filenames_init
 subroutine set_filenames(ens_size, inflation_in, inflation_out)
 
 integer,              intent(in) :: ens_size
-character(len = 129), intent(in) :: inflation_in(2), inflation_out(2)
+character(len = *),   intent(in) :: inflation_in(2), inflation_out(2)
+
 character(len = 32)   :: ext
 character(len = 32)   :: dom_str = ''
 
@@ -154,7 +155,8 @@ do idom = 1, num_domains
    else ! Construct restarts
 
       if (is_single_restart_file_in()) then ! reading first restart for now
-         restart_files_in(:, idom) = construct_file_name_in(restart_in_stub, idom,icopy)
+         !> @todo should we not append a copy number to single file?
+         restart_files_in(:, idom) = construct_file_name_in(restart_in_stub, idom, 1)
       else
          do icopy = 1, ens_size  ! restarts
             restart_files_in(icopy, idom) = construct_file_name_in(restart_in_stub, idom,icopy)

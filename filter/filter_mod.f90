@@ -24,13 +24,13 @@ use obs_def_mod,           only : obs_def_type, get_obs_def_error_variance, get_
 use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                   operator(-), print_time
 use utilities_mod,         only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
-                                  initialize_utilities, logfileunit, nmlfileunit, timestamp,  &
+                                  logfileunit, nmlfileunit, timestamp,  &
                                   do_output, find_namelist_in_file, check_namelist_read,      &
                                   open_file, close_file, do_nml_file, do_nml_term
 use assim_model_mod,       only : static_init_assim_model, get_model_size,                    &
                                   netcdf_file_type, init_diag_output, finalize_diag_output,   &
                                   aoutput_diagnostics, ens_mean_for_model, end_assim_model,   &
-                                  pert_model_copies
+                                  pert_model_copies, pert_model_state
 use assim_tools_mod,       only : filter_assim, set_assim_tools_trace, get_missing_ok_status, &
                                   test_state_copies
 use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace
@@ -71,7 +71,7 @@ use data_structure_mod,    only : copies_in_window, set_num_extra_copies ! shoul
 use state_vector_io_mod,   only : read_transpose, transpose_write, state_vector_io_init, &
                                   setup_read_write, turn_read_copy_on, turn_write_copy_on, turn_write_copy_off
 
-use model_mod,             only : get_model_time
+use model_mod,             only : read_model_time
 
 use io_filenames_mod,      only : io_filenames_init, get_input_file, set_filenames
 
@@ -85,6 +85,13 @@ use quality_control_mod,   only : initialize_qc
 !------------------------------------------------------------------------------
 
 implicit none
+private
+
+public :: filter_sync_keys_time, &
+          filter_read_restart_direct, &
+          filter_write_restart_direct, &
+          filter_set_initial_time, &
+          filter_main
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -228,6 +235,7 @@ integer                 :: OBS_MEAN_START, OBS_MEAN_END
 integer                 :: OBS_VAR_START, OBS_VAR_END, TOTAL_OBS_COPIES
 integer                 :: input_qc_index, DART_qc_index
 integer                 :: mean_owner, mean_owners_index
+logical                 :: read_time_from_file, interf_provided
 !HK
 integer :: owner, owners_index
 integer :: num_extras ! the extra ensemble copies
@@ -246,6 +254,8 @@ character*20 task_str, file_obscopies, file_results
 
 !HK debug
 logical :: write_flag
+! This is for perturbing state when var complete for bitwise checks with the trunk
+logical :: perturb_bitwise = .false.
 
 call filter_initialize_modules_used() ! static_init_model called in here
 
@@ -356,7 +366,7 @@ call     trace_message('Before reading in ensemble restart files')
 call timestamp_message('Before reading in ensemble restart files')
 
 ! Set a time type for initial time if namelist inputs are not negative
-call filter_set_initial_time(time1)
+call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time_from_file)
 
 ! set up arrays for which copies to read/write
 call setup_read_write(ens_size + num_extras)
@@ -415,15 +425,37 @@ if (.not. direct_netcdf_read ) then ! expecting DART restart files
    deallocate(state_ens_handle%vars)
 endif
 
+call set_filenames(state_ens_handle%num_copies - num_extras, inf_in_file_name, inf_out_file_name)
 
 if (direct_netcdf_read) then
-   call filter_read_restart_direct(state_ens_handle, time1, num_extras)
+   call filter_read_restart_direct(state_ens_handle, time1, num_extras, read_time_from_file )
    call get_minmax_task_zero_distrib(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
    call log_inflation_info(prior_inflate, 'Prior')
    call get_minmax_task_zero_distrib(post_inflate, state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
    call log_inflation_info(post_inflate, 'Posterior')
 endif
+         
+if (perturb_restarts) then
+! perturb the state if requested. This assumes that all of the ensemble members exist.
+   if (perturb_bitwise) then
+      allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
+      call all_copies_to_all_vars(state_ens_handle)
+      do i = 1, state_ens_handle%my_num_copies 
+         !>@todo if interface is not provided then you have to loop over
+         !> the copies and perturb yourself
+         call pert_model_state(state_ens_handle%vars(:, i), &
+                               state_ens_handle%vars(:, i), interf_provided)
+         if (.not. interf_provided ) then
+            call error_handler(E_ERR, 'filter', 'must have a pert_model_state routine for bitwise perturb test')
 
+         endif
+      enddo
+      call all_vars_to_all_copies(state_ens_handle)
+      deallocate(state_ens_handle%vars)
+   else
+      call perturb_copies(state_ens_handle, perturbation_amplitude)
+   endif
+endif
 
 
 !call test_state_copies(state_ens_handle, 'after_read')
@@ -1374,15 +1406,18 @@ end function get_blank_qc_index
 
 !-------------------------------------------------------------------------
 
-subroutine filter_set_initial_time(time)
+subroutine filter_set_initial_time(days, seconds, time, read_time_from_file)
 
+integer,         intent(in)  :: days, seconds
 type(time_type), intent(out) :: time
+logical,         intent(out) :: read_time_from_file
 
-
-if(init_time_days >= 0) then
-   time = set_time(init_time_seconds, init_time_days)
+if(days >= 0) then
+   time = set_time(seconds, days)
+   read_time_from_file = .false.
 else
    time = set_time(0, 0)
+   read_time_from_file = .true.
 endif
 
 end subroutine filter_set_initial_time
@@ -1407,11 +1442,12 @@ end subroutine filter_set_window_time
 !> netcdf file
 !> Which routine should find model size?
 !> 
-subroutine filter_read_restart_direct(state_ens_handle, time, num_extras)
+subroutine filter_read_restart_direct(state_ens_handle, time, num_extras, use_time_from_file)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
 type(time_type),     intent(inout) :: time
 integer,             intent(in)    :: num_extras
+logical,             intent(in)    :: use_time_from_file
 
 integer                         :: model_size
 character(len=256), allocatable :: variable_list(:) !< does this need to be module storage
@@ -1422,11 +1458,11 @@ if(get_num_domains()==0) then
    call error_handler(E_ERR, 'filter_read_restart_direct', 'model needs to call add_domain for direct_netcdf_read = .true.')
 endif
 
-call set_filenames(state_ens_handle%num_copies - num_extras, inf_in_file_name, inf_out_file_name)
-
 ! read time from input file if time not set in namelist
-if(init_time_days < 0) then
-   time = get_model_time(get_input_file(1,1)) ! Any of the restarts?
+!> @todo get_model_time should be read_model_time, and should be a namelist to set the filename
+!> also need a write_model_time for creating netcdf files
+if(use_time_from_file) then
+   time = read_model_time(get_input_file(1,1)) ! Any of the restarts?
 endif
 
 state_ens_handle%time = time
@@ -1436,10 +1472,6 @@ dart_index = 1 ! where to start in state_ens_handle%copies - this is modified by
 do domain = 1, get_num_domains()
    call read_transpose(state_ens_handle, domain, dart_index)
 enddo
-
-if (perturb_restarts) then
-   call perturb_copies(state_ens_handle, perturbation_amplitude)
-endif
 
 ! Need Temporary print of initial model time?
 
@@ -1504,10 +1536,7 @@ integer :: dart_index !< where to start in state_ens_handle%copies
 integer :: domain !< loop index
 integer :: component_id
 
-if (get_num_domains()==0) then ! the model did not initialize a domain
-   component_id = add_domain(state_ens_handle%num_vars) ! add a 'blank' domain
-   call set_filenames(state_ens_handle%num_copies - num_extras, inf_in_file_name, inf_out_file_name)
-endif
+!> @todo should we add a blank domain if there is not domains?
 
 ! transpose and write out the data
 dart_index = 1

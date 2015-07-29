@@ -15,14 +15,16 @@ module distributed_state_mod
 use mpi_utilities_mod,  only : datasize, my_task_id
 use types_mod,          only : r8, i8
 use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
-use window_mod
+use window_mod,         only : create_mean_window, create_state_window, free_mean_window, &
+                               free_state_window, mean_win, state_win, row, num_rows
+
 
 use mpi
 
 implicit none
 
 private
-public get_state, create_state_window, free_state_window, create_mean_window, free_mean_window
+public get_state_array, get_state, create_state_window, free_state_window, create_mean_window, free_mean_window
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -36,6 +38,37 @@ interface get_state
 end interface
 
 contains
+
+!---------------------------------------------------------
+!> Gets all copies of an element of the state vector from the process who owns it
+!> Assumes ensemble complete. This differes from get_fwd as it now works on an
+!> array of state indices rather than a single index.
+subroutine get_state_array(x, index, state_ens_handle)
+
+real(r8),            intent(out) :: x(num_rows) !> all copies of an element of the state vector
+integer(i8),         intent(in)  :: index(num_rows) !> index into state vector
+type(ensemble_type), intent(in)  :: state_ens_handle
+
+real(r8) :: x_tmp(num_rows) !> all copies of an element of the state vector
+logical  :: not_done(num_rows)
+integer  :: i, e
+
+not_done = .true.
+
+! only grab state once unique state indices
+do e = 1, num_rows
+   if (not_done(e)) then
+      call get_state(x_tmp, index(e), state_ens_handle)
+      do i = e, num_rows
+         if(index(i) == index(e)) then
+            x(i) = x_tmp(i)
+            not_done(i) = .false. 
+         endif
+     enddo
+   endif
+enddo
+
+end subroutine get_state_array
 
 !---------------------------------------------------------
 !> Gets all copies of an element of the state vector from the process who owns it

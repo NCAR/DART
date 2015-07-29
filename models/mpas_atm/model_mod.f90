@@ -97,7 +97,7 @@ use netcdf
 use get_geometry_mod
 use get_reconstruct_mod
 
-use state_structure_mod, only :  add_domain, get_state_indices
+use state_structure_mod, only :  add_domain, get_model_variable_indices
 
 
 implicit none
@@ -130,7 +130,7 @@ public :: get_model_size,                 &
           variables_domains,              &
           fill_variable_list,             &
           construct_file_name_in,         &
-          get_model_time,                 &
+          read_model_time,                 &
           clamp_or_fail_it,               &
           do_clamp_or_fail
 
@@ -835,7 +835,7 @@ type(location_type) :: new_location
 if ( .not. module_initialized ) call static_init_model
 
 ! get the local indicies and type from dart index. kloc is a dummy variable for this subroutine
-call get_state_indices(index_in, vloc, iloc, kloc, var_id=nf)
+call get_model_variable_indices(index_in, vloc, iloc, kloc, var_id=nf)
 
 nzp = progvar(nf)%numvertical
 
@@ -7271,24 +7271,24 @@ end function construct_file_name_in
 !--------------------------------------------------------------------
 !> read the time from the input file
 !> stolen get_analysis_time_fname
-function get_model_time(filename)
+function read_model_time(filename)
 
 character(len=1024), intent(in) :: filename
 
-type(time_type) :: get_model_time
+type(time_type) :: read_model_time
 integer         :: ncid  ! netcdf file id
 integer         :: ret ! return code for netcdf
 
 ret = nf90_open(filename, NF90_NOWRITE, ncid)
 call nc_check(ret, 'opening', filename)
 
-get_model_time = get_analysis_time_ncid(ncid, filename)
+read_model_time = get_analysis_time_ncid(ncid, filename)
 
 ret = nf90_close(ncid)
 call nc_check(ret, 'closing', filename)
 
 
-end function get_model_time
+end function read_model_time
 
 !-------------------------------------------------------
 !> Check whether you need to error out, clamp, or

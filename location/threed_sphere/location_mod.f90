@@ -1588,21 +1588,26 @@ close_ind = -99
 if(present(dist)) dist = -99.0_r8
 this_dist = 999999.0_r8   ! something big.
 
-! map from type index to gtt index
-if (base_obs_type < 1 .or. base_obs_type > size(gc%type_to_cutoff_map)) then
-   write(msgstring,'(A,I8)')'base_obs_type out of range, is ', base_obs_type
-   write(msgstring1,'(A,2I8)')'must be between ', 1, size(gc%type_to_cutoff_map)
-   call write_location (0, base_obs_loc, charstring=msgstring2)
-   call error_handler(E_ERR, 'get_close_obs', msgstring, source, revision, revdate, &
-                      text2=msgstring1, text3=msgstring2)
-endif
-bt = gc%type_to_cutoff_map(base_obs_type)
-if (bt < 1 .or. bt > gc%nt) then
-   write(msgstring,'(A,I8)')'mapped type index out of range, is ', bt
-   write(msgstring1,'(A,2I8)')'must be between ', 1, gc%nt
-   write(msgstring2, '(A)')'internal error, should not happen.  Contact DART Support'
-   call error_handler(E_ERR, 'get_close_obs', msgstring, source, revision, revdate, &
-                      text2=msgstring1, text3=msgstring2)
+! handle identity obs correctly
+if (base_obs_type < 0) then
+   bt = gc%type_to_cutoff_map(1)
+else
+   ! map from type index to gtt index
+   if (base_obs_type < 1 .or. base_obs_type > size(gc%type_to_cutoff_map)) then
+      write(msgstring,'(A,I8)')'base_obs_type out of range, is ', base_obs_type
+      write(msgstring1,'(A,2I8)')'must be between ', 1, size(gc%type_to_cutoff_map)
+      call write_location (0, base_obs_loc, charstring=msgstring2)
+      call error_handler(E_ERR, 'get_close_obs', msgstring, source, revision, revdate, &
+                         text2=msgstring1, text3=msgstring2)
+   endif
+   bt = gc%type_to_cutoff_map(base_obs_type)
+   if (bt < 1 .or. bt > gc%nt) then
+      write(msgstring,'(A,I8)')'mapped type index out of range, is ', bt
+      write(msgstring1,'(A,2I8)')'must be between ', 1, gc%nt
+      write(msgstring2, '(A)')'internal error, should not happen.  Contact DART Support'
+      call error_handler(E_ERR, 'get_close_obs', msgstring, source, revision, revdate, &
+                         text2=msgstring1, text3=msgstring2)
+   endif
 endif
 
 ! the list of locations in the locs() argument must be the same
@@ -2529,7 +2534,6 @@ endif
 end subroutine print_get_close_type
 
 !----------------------------------------------------------------------------
-
 ! end of location/threed_sphere/location_mod.f90
 !----------------------------------------------------------------------------
 

@@ -68,6 +68,9 @@ use state_structure_mod,  only : get_domain_size, get_num_variables,           &
                                  get_unique_dim_length, get_sum_variables,     &
                                  get_sum_variables_below, set_var_id
 
+!> @todo  This should go through assim_model_mod
+use model_mod, only : write_model_time
+
 use copies_on_off_mod
 
 use netcdf
@@ -377,7 +380,8 @@ integer :: num_state_variables
 
 ! single file
 integer :: iunit
-type(time_type) :: ens_time
+type(time_type) :: dart_time
+
 
 ens_size = state_ens_handle%num_copies ! have the extras incase you want to read inflation restarts
 my_pe = state_ens_handle%my_pe
@@ -412,7 +416,8 @@ COPIES : do c = 1, ens_size
          else ! create output file if it does not exist
             write(msgstring, *) 'Creating output file ', trim(netcdf_filename_out)
             call error_handler(E_MSG,'state_vector_io_mod:', msgstring)
-            call create_state_output(netcdf_filename_out, domain)
+            dart_time = state_ens_handle%time(my_copy - recv_start + 1)
+            call create_state_output(netcdf_filename_out, domain, dart_time)
          endif
       endif
 
@@ -815,10 +820,11 @@ end subroutine read_variables
 !> state, with dimension = model size.
 !> It is used when the model has not suppled any netdcf info but direct_netcdf_write = .true.
 
-subroutine create_state_output(filename, dom)
+subroutine create_state_output(filename, dom, dart_time)
 
 character(len=256), intent(in) :: filename
 integer,            intent(in) :: dom !< domain, not sure whether you need this?
+type(time_type),    intent(in) :: dart_time
 
 integer :: ret !> netcdf return code
 integer :: create_mode
@@ -830,7 +836,6 @@ integer :: xtype ! precision for netcdf file
 logical :: time_dimension_exists
 integer :: dimids(NF90_MAX_VAR_DIMS)
 
-
 time_dimension_exists = .false.
 
 ! What file options do you want
@@ -841,7 +846,10 @@ call nc_check(ret, 'create_state_output', 'creating')
 ! define dimensions, loop around unique dimensions
 do i = 1, get_num_unique_dims(dom)
    ret = nf90_def_dim(ncfile_out, get_unique_dim_name(dom, i), get_unique_dim_length(dom, i), new_dimid)
-   call nc_check(ret, 'create_state_output', 'defining dimensions')
+   !> @todo if we already have a unique names we can take this test out
+   if(ret /= NF90_NOERR .and. ret /= NF90_ENAMEINUSE) then
+      call nc_check(ret, 'create_state_output', 'defining dimensions')
+   endif
 enddo
 
 ! define variables
@@ -874,6 +882,7 @@ enddo
 ret = nf90_enddef(ncfile_out)
 call nc_check(ret, 'create_state_output', 'end define mode')
 
+call write_model_time(ncfile_out, dart_time)
 
 end subroutine create_state_output
 
