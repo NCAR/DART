@@ -258,6 +258,7 @@ logical :: periodic_x = .false.    ! wrap in longitude or x
 logical :: periodic_y = .false.    ! used for single column model, wrap in y
 !JPH -- single column model flag 
 logical :: scm        = .false.    ! using the single column model
+logical :: allow_perturbed_ics = .false.  ! should spin the model up for a while after
 
 ! obsolete items; ignored by this code. 
 ! non-backwards-compatible change. should be removed, 
@@ -280,7 +281,7 @@ namelist /model_nml/ output_state_vector, num_moist_vars, &
                      allow_obs_below_vol, vert_localization_coord, &
                      center_search_half_length, center_spline_grid_scale, &
                      circulation_pres_level, circulation_radius, polar, &
-                     periodic_x, periodic_y, scm
+                     periodic_x, periodic_y, scm, allow_perturbed_ics
 
 ! if you need to check backwards compatibility, set this to .true.
 ! otherwise, leave it as false to use the more correct geometric height
@@ -6417,11 +6418,16 @@ end function model_height_w_distrib
 subroutine pert_model_state(state, pert_state, interf_provided)
 
 ! Perturbs a single model state for generating initial ensembles.
-! WARNING - this routine is not a substitute for a good set
-! of real initial condition files.  Intended as a last resort,
-! this routine should be used to start a long free-run model 
-! advance to spin-up a set of internally consistent states with 
-! their own structure before assimilating a set of obserations.
+! Because this requires some care when using - see the comments in the
+! code below - you must set a namelist variable to enable this functionality.
+
+! Using this routine is not a substitute for a good set of real initial 
+! condition files.  Intended as a last resort, this routine should be used 
+! to start a period of free-running to allow the model to spin-up a set of 
+! internally consistent states with their own structure before assimilating 
+! a set of observations.  A good ensemble of boundary conditions is important
+! to evolve the ensemble members differently, which is the goal.
+!
 
 real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
@@ -6435,23 +6441,39 @@ type(random_seq_type) :: random_seq
 integer               :: id, i, j, s, e
 integer, save         :: counter = 0
 
-! generally you do not want to perturb a single state
-! to begin an experiment - unless you make minor perturbations
-! and then run the model free for long enough that differences
-! develop which contain actual structure. if you comment
-! out the next 4 lines, the subsequent code is a pert routine which 
-! can be used to add minor perturbations which can be spun up.
-! note that as written, if all values in a field are identical
-! (i.e. 0.0) this routine will not change those values, since
-! it won't make a new value outside the original min/max of that
-! variable in the state vector.
+! generally you do not want to just perturb a single state to begin an 
+! experiment, especially for a regional weather model, because the 
+! resulting fields will have spread but they won't have organized features.
+! we have had good luck with some global atmosphere models where there is
+! a lot of model divergence; after a few days of running they evolve into
+! plausible conditions that allow assimilation of real obs.
+!
+! if you really need to start with a single state and proceed, the suggestion
+! is to start with small magnitude perturbations and then get a good ensemble
+! of boundary conditions and run the model for a while (many days) to let it
+! evolve into plausible weather patterns.  then start assimilating real obs.
+!
+! using this routine requires you to set the new namelist item 
+! 'allow_perturbed_ics' to true so you have to read the warnings here or
+! in the html docs.
+!
+! this code will add random noise field by field (T, U, V, etc), and new values
+! will not exceed the original max or min values for each field.  this means
+! it will not generate illegal values (e.g. negatives for percentages or
+! number concentrations) but it also means that if all values in a field are
+! identical (e.g. all 0.0) this routine will not change those values.  the code
+! can easily be modified to set allowed min and max values here instead of
+! using the incoming field min and max values; but you will have to modify
+! the code below to enable that functionality.
 
+if (.not. allow_perturbed_ics) then
 call error_handler(E_ERR,'pert_model_state', &
-                  'WRF model cannot be started from a single vector', &
+                     'starting WRF model from a single vector requires additional steps', &
                   source, revision, revdate, &
                   text2='see comments in wrf/model_mod.f90::pert_model_state()')
+endif
 
-! NOT REACHED unless preceeding 4 lines commented out
+! NOT REACHED unless allow_perturbed_ics is true in the namelist
 
 ! start of pert code
 interf_provided = .true.
