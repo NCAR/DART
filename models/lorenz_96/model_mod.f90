@@ -6,7 +6,7 @@
 
 module model_mod
 
-use        types_mod, only : r8, i8
+use        types_mod, only : r8, i8, i4
 use time_manager_mod, only : time_type, set_time
 use     location_mod, only : location_type, set_location, get_location,  &
                              LocationDims, LocationName, LocationLName,  &
@@ -21,11 +21,16 @@ use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_inde
 
 use mpi_utilities_mod, only : my_task_id
 
-use distributed_state_mod
+use distributed_state_mod, only : get_state
+use state_structure_mod,   only : add_domain
 
-use null_vert_convert
-use null_clamp
+use dart_time_io_mod,  only : read_model_time, write_model_time
 
+use null_vert_convert, only : query_vert_localization_coord, &
+                              vert_convert_distrib, get_close_obs_distrib, &
+                              get_vert, set_vert, set_which_vert
+                              
+use null_clamp,        only : do_clamp_or_fail, clamp_or_fail_it
 
 implicit none
 private
@@ -41,7 +46,7 @@ public :: get_model_size, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           pert_model_state, &
-          get_close_maxdist_init, get_close_obs_init, get_close_obs_distrib, ens_mean_for_model, &
+          get_close_maxdist_init, get_close_obs_init,get_close_obs_distrib, ens_mean_for_model, &
           model_interpolate_distrib, &
           query_vert_localization_coord, &
           vert_convert_distrib, &
@@ -49,7 +54,9 @@ public :: get_model_size, &
           get_vert, set_vert, set_which_vert, &
           info_file_name, construct_file_name_in, &
           get_model_time, clamp_or_fail_it, do_clamp_or_fail, &
-          pert_model_copies
+          pert_model_copies, &
+          read_model_time, &
+          write_model_time
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -62,14 +69,17 @@ character(len=128), parameter :: revdate  = "$Date$"
 !---------------------------------------------------------------
 ! Namelist with default values
 !
-integer  :: model_size = 40
-real(r8) :: forcing    = 8.00_r8
-real(r8) :: delta_t    = 0.05_r8
-integer  :: time_step_days = 0
-integer  :: time_step_seconds = 3600
+integer(i8) :: model_size = 40
+real(r8)    :: forcing    = 8.00_r8
+real(r8)    :: delta_t    = 0.05_r8
+integer     :: time_step_days = 0
+integer     :: time_step_seconds = 3600
 
 namelist /model_nml/ model_size, forcing, delta_t, time_step_days, time_step_seconds
 !----------------------------------------------------------------
+
+! domain id - for state_structure
+integer :: dom_id
 
 ! Define the location of the state variables in module storage
 type(location_type), allocatable :: state_loc(:)
@@ -116,6 +126,9 @@ end do
 ! to determine appropriate non-dimensionalization conversion for L96 from
 ! Shree Khare.
 time_step = set_time(time_step_seconds, time_step_days)
+
+! add domain - not doing anything with dom_id
+dom_id = add_domain(model_size)
 
 end subroutine static_init_model
 
@@ -460,6 +473,10 @@ end subroutine end_model
 
 
 function nc_write_model_atts( ncFileID ) result (ierr)
+! Can't write netcdf i8 - do we just have 
+! a 32 bit version of the netcdf library?
+! Bgrid errors out if we have an model size greater than largest i4
+
 !------------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
 ! TJH Jan 24 2003
@@ -514,13 +531,14 @@ character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
 integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=NF90_MAX_NAME) :: str1
 
-integer             :: i
+integer(i8)         :: i
 type(location_type) :: lctn 
 character(len=128)  :: filename
 
 type(ensemble_type) :: state_ens_handle ! needed for compilation, not used here
 
 ierr = 0                      ! assume normal termination
+
 
 !--------------------------------------------------------------------
 ! we only have a netcdf handle here so we do not know the filename
@@ -580,7 +598,7 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_delta_t", delta_t ), &
 !--------------------------------------------------------------------
 
 call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable", &
-                           len=model_size, dimid = StateVarDimID), &
+                           len=int(model_size, i4), dimid = StateVarDimID), &
                           'nc_write_model_atts', 'def_dim StateVariable, '//trim(filename))
 
 !--------------------------------------------------------------------
@@ -614,7 +632,7 @@ call nc_check(nf90_put_att(ncFileID, StateVarVarID, "long_name", "State Variable
               'nc_write_model_atts', 'put_att long_name, '//trim(filename))
 call nc_check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical"), &
               'nc_write_model_atts', 'put_att units, '//trim(filename))
-call nc_check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)), &
+call nc_check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, int(model_size, i4) /)), &
               'nc_write_model_atts', 'put_att valid_range, '//trim(filename)) 
 
 ! Define the actual state vector
@@ -629,7 +647,7 @@ call nc_check(nf90_enddef(ncfileID), &
               'nc_write_model_atts', 'enddef, '//trim(filename))
 
 ! Fill the state variable coordinate variable
-call nc_check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ), &
+call nc_check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,int(model_size, i4)) /) ), &
               'nc_write_model_atts', 'put_var state variable coordinate, '//trim(filename))
 
 !--------------------------------------------------------------------
@@ -637,8 +655,8 @@ call nc_check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /) ), 
 !--------------------------------------------------------------------
 
 do i = 1,model_size
-   call get_state_meta_data_distrib(state_ens_handle, int(i, i8),lctn)
-   call nc_check(nf90_put_var(ncFileID, LocationVarID, get_location(lctn), (/ i /) ), &
+   call get_state_meta_data_distrib(state_ens_handle, i,lctn)
+   call nc_check(nf90_put_var(ncFileID, LocationVarID, get_location(lctn), (/ int(i, i4) /) ), &
               'nc_write_model_atts', 'check locationVarId, '//trim(filename))
 enddo
 

@@ -4,6 +4,7 @@
 !
 ! $Id$
 
+! HK This is just turning in to filter.
 program perfect_model_obs
 
 ! Program to build an obs_sequence file from simulated observations.
@@ -56,6 +57,8 @@ use data_structure_mod,    only : copies_in_window, set_num_extra_copies ! shoul
 use distributed_state_mod, only : create_state_window, free_state_window
 
 use forward_operator_mod, only : get_expected_obs_distrib_state
+
+use mpi_utilities_mod,    only : my_task_id
 
 implicit none
 
@@ -131,13 +134,13 @@ type(obs_sequence_type) :: seq
 type(obs_type)          :: obs
 type(obs_def_type)      :: obs_def
 type(random_seq_type)   :: random_seq
-type(ensemble_type)     :: ens_handle
+type(ensemble_type)     :: ens_handle, fwd_op_ens_handle, qc_ens_handle
 type(netcdf_file_type)  :: StateUnit
 type(time_type)         :: first_obs_time, last_obs_time
 type(time_type)         :: window_time, curr_ens_time, next_ens_time
 
 integer, allocatable    :: keys(:)
-integer                 :: j, iunit, time_step_number, obs_seq_file_id
+integer                 :: i, j, iunit, time_step_number, obs_seq_file_id
 integer                 :: cnum_copies, cnum_qc, cnum_obs, cnum_max
 integer                 :: additional_qc, additional_copies, forward_unit
 integer                 :: ierr, io, num_obs_in_set, nth_obs
@@ -156,6 +159,7 @@ logical                 :: assimilate_this_ob, evaluate_this_ob, pre_I_format
 logical                 :: all_gone, read_time_from_file
 
 integer                 :: qc_status
+integer                 :: global_obs_num
 
 type(time_type) :: time1
 integer         :: secs, days
@@ -179,15 +183,6 @@ call set_trace(trace_execution, output_timestamps, silence)
 
 call trace_message('Perfect_model start')
 call timestamp_message('Perfect_model start')
-
-! Don't let this run with more than one task; 
-! Need to an a forward operator handle and transpose so we can collect all the info 
-! onto task zero for the obs_sequence.
-if(task_count() > 1) then
-    write(msgstring, *) 'Only use one mpi process here: ', task_count(), ' were requested'
-    call error_handler(E_ERR, 'perfect_main', msgstring,  &
-       source, revision, revdate)
-endif
 
 ! Default to printing nothing
 nth_obs = -1
@@ -403,6 +398,11 @@ AdvanceTime: do
    call print_obs_time(seq, key_bounds(1), 'Time of first observation in window')
    call print_obs_time(seq, key_bounds(2), 'Time of last  observation in window')
 
+   ! for multi-core runs, each core needs to store the forward operator and the qc value
+   call init_ensemble_manager(fwd_op_ens_handle, 1, int(num_obs_in_set,i8), 1)
+   call init_ensemble_manager(qc_ens_handle, 1, int(num_obs_in_set,i8), 1)
+
+
    ! Allocate storage for observation keys for this part of sequence
    allocate(keys(num_obs_in_set))
 
@@ -432,9 +432,8 @@ AdvanceTime: do
    call trace_message(msgstring, 'perfect_model_obs:', -1)
 
    ! Compute the forward observation operator for each observation in set
-   do j = 1, num_obs_in_set
+   do j = 1, fwd_op_ens_handle%my_num_vars
 
-      
       ! Some compilers do not like mod by 0, so test first.
       if (print_every_nth_obs > 0) nth_obs = mod(j, print_every_nth_obs)
 
@@ -450,59 +449,86 @@ AdvanceTime: do
       endif
       
       ! Compute the observations from the state
-      call get_expected_obs_distrib_state(seq, keys(j:j), &
+      global_obs_num = fwd_op_ens_handle%my_vars(j)
+      call get_expected_obs_distrib_state(seq, keys(global_obs_num:global_obs_num), &
          ens_handle%time(1), .true., &
          istatus, assimilate_this_ob, evaluate_this_ob, &
          ens_handle, true_obs)
 
-      ! Get the observational error covariance (diagonal at present)
-      ! Generate the synthetic observations by adding in error samples
-      call get_obs_from_key(seq, keys(j), obs)
-      call get_obs_def(obs, obs_def)
-      
-       
-      qc_status = set_input_qc(istatus(1), assimilate_this_ob, evaluate_this_ob)
+      fwd_op_ens_handle%copies(1, j) = true_obs(1)
 
-      ! If observation is not being evaluated or assimilated, skip it
-      ! Ends up setting a 1000 qc field so observation is not used again.
-      if( qc_status == 0 ) then
-         obs_value(1) = random_gaussian(random_seq, true_obs(1), &
-            sqrt(get_obs_def_error_variance(obs_def)))
+      qc_ens_handle%copies(1, j) = set_input_qc(istatus(1), assimilate_this_ob, evaluate_this_ob)
 
-         ! FIX ME SPINT: if the foward operater passed can we directly set the 
-         ! qc status?
+      ! FIXME: we could set different qc codes, like 1004, 1005, to
+      ! indicate why this obs isn't being processed - separate failed
+      ! forward operators from those types not on the assim or eval lists.
+      ! the values 4, 5, etc could match the dart QC values + 1000.
 
-         ! Set qc to 0 if none existed before
-         if(cnum_qc == 0) then
-            qc(1) = qc_status
-            call set_qc(obs, qc, 1)
-         endif
-      else
-         obs_value(1) = true_obs(1)
-         qc(1) = qc_status
-         call set_qc(obs, qc, 1)
-
-         ! FIXME: we could set different qc codes, like 1004, 1005, to
-         ! indicate why this obs isn't being processed - separate failed 
-         ! forward operators from those types not on the assim or eval lists.
-         ! the values 4, 5, etc could match the dart QC values + 1000.
-
-         ! if failed forward op logging requested, make sure we're
-         ! only writing out obs with real errors and not those that
-         ! end up in this code section because their type isn't in the namelist.
-         if(output_forward_op_errors) then
-            if ((istatus(1) /= 0) .and. (assimilate_this_ob .or. evaluate_this_ob)) &
-               write(forward_unit, *) keys(j), istatus
-         endif
+      ! if failed forward op logging requested, make sure we're
+      ! only writing out obs with real errors and not those that
+      ! end up in this code section because their type isn't in the namelist.
+      if(output_forward_op_errors) then
+         if ((istatus(1) /= 0) .and. (assimilate_this_ob .or. evaluate_this_ob)) &
+            write(forward_unit, *) keys(global_obs_num), istatus
       endif
 
-      call set_obs_values(obs, obs_value, 1)
-      call set_obs_values(obs, true_obs, 2)
-
-      ! Insert the observations into the sequence first copy
-      call set_obs(seq, obs, keys(j))
-
    end do
+
+   ! collect on task 0 and load up the obs_sequence
+   ! should we just allocate this in init_ensemble_manager?
+   allocate(fwd_op_ens_handle%vars(fwd_op_ens_handle%num_vars, fwd_op_ens_handle%my_num_copies))
+   allocate(qc_ens_handle%vars(qc_ens_handle%num_vars, qc_ens_handle%my_num_copies))
+   call all_copies_to_all_vars(fwd_op_ens_handle)
+   call all_copies_to_all_vars(qc_ens_handle)
+
+   ! Task 0 loads up the obs_sequence
+   if(my_task_id() == 0) then
+
+      do i = 1, fwd_op_ens_handle%num_vars
+
+         ! true obs is the forward operator
+         ! I'm doing the random noise on task 0 so we remain bitwise the trunk
+         true_obs(1) = fwd_op_ens_handle%vars(i, 1)
+
+         ! Get the observational error covariance (diagonal at present)
+         ! Generate the synthetic observations by adding in error samples
+         call get_obs_from_key(seq, keys(i), obs)
+         call get_obs_def(obs, obs_def)
+
+         ! If observation is not being evaluated or assimilated, skip it
+         ! Ends up setting a 1000 qc field so observation is not used again.
+         if( qc_ens_handle%vars(i, 1) == 0 ) then
+            obs_value(1) = random_gaussian(random_seq, true_obs(1), &
+               sqrt(get_obs_def_error_variance(obs_def)))
+
+            ! FIX ME SPINT: if the foward operater passed can we directly set the
+            ! qc status?
+
+            ! Set qc to 0 if none existed before
+            if(cnum_qc == 0) then
+               qc(1) = qc_ens_handle%vars(i, 1)
+               call set_qc(obs, qc, 1)
+            endif
+         else
+
+            obs_value(1) = true_obs(1)
+            qc(1) = qc_ens_handle%vars(i, 1)
+            call set_qc(obs, qc, 1)
+
+         endif
+
+         ! true obs is fowrard op
+         ! obs value is forward op plus noise
+         call set_obs_values(obs, obs_value, 1)
+         call set_obs_values(obs, true_obs, 2)
+
+         ! Insert the observations into the sequence first copy
+         call set_obs(seq, obs, keys(i))
+
+      enddo
+
+   endif
+
 
    ! Deallocate the keys storage
    deallocate(keys)
@@ -525,6 +551,7 @@ call trace_message('After  finalizing diagnostics file')
 ! Write out the sequence
 call trace_message('Before writing output sequence file')
 if (ens_handle%my_pe == 0) call write_obs_seq(seq, obs_seq_out_file_name)
+deallocate(fwd_op_ens_handle%vars, qc_ens_handle%vars)
 call trace_message('After  writing output sequence file')
 
 ! Output a restart file if requested
@@ -540,6 +567,7 @@ if(output_restart) then
 
       ! make space for write of vars array
       allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+      call all_copies_to_all_vars(ens_handle)
       call write_ensemble_restart(ens_handle, restart_out_file_name, 1, 1, &
            force_single_file = .true.)
       deallocate(ens_handle%vars)

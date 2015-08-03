@@ -101,6 +101,8 @@ character(len = 129)  :: msgstring
 !                                     but not as portable.
 
 logical  :: write_binary_restart_files = .true.
+!> @todo check the performance of large file support.
+!> Can we have large file support as the default?
 logical  :: netCDF_large_file_support  = .false.
 
 namelist /assim_model_nml/ write_binary_restart_files, &
