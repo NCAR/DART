@@ -38,7 +38,7 @@ function varargout = oned_ensemble(varargin)
 %
 % DART $Id$
 
-% Last Modified by GUIDE v2.5 28-Aug-2009 16:29:57
+% Last Modified by GUIDE v2.5 03-Aug-2015 17:30:44
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -60,7 +60,7 @@ end
 % End initialization code - DO NOT EDIT
 
 
-% --- Executes just before oned_ensemble is made visible.
+%% --- Executes just before oned_ensemble is made visible.
 function oned_ensemble_OpeningFcn(hObject, ~, handles, varargin)
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
@@ -134,10 +134,8 @@ axes(handles.axes1);
 % uiwait(handles.figure1);
 
 
-%----------------------------------------------------------------------
 
-
-% --- Outputs from this function are returned to the command line.
+%% --- Outputs from this function are returned to the command line.
 function varargout = oned_ensemble_OutputFcn(~, ~, handles)
 % varargout  cell array for returning output args (see VARARGOUT);
 % hObject    handle to figure
@@ -148,10 +146,8 @@ function varargout = oned_ensemble_OutputFcn(~, ~, handles)
 varargout{1} = handles.output;
 
 
-%----------------------------------------------------------------------
 
-
-% --- Executes on button press in pushbutton_create_new.
+%% --- Executes on button press in pushbutton_create_new.
 function pushbutton_create_new_Callback(hObject, ~, handles)
 % hObject    handle to pushbutton_create_new (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -249,9 +245,6 @@ set(handles.edit_obs_error_sd,     'Enable', 'On');
 set(handles.edit_inflation,        'Enable', 'On');
 
 
-%----------------------------------------------------------------------
-
-
 
 function edit_observation_Callback(hObject, ~, handles)
 % hObject    handle to edit_observation (see GCBO)
@@ -327,10 +320,8 @@ plot([xlower xupper], [0 0], 'k', 'Linewidth', 2);
 guidata(hObject, handles);
 
 
-%----------------------------------------------------------------------
 
-
-% --- Executes during object creation, after setting all properties.
+%% --- Executes during object creation, after setting all properties.
 function edit_observation_CreateFcn(hObject, ~, ~)
 % hObject    handle to edit_observation (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -342,8 +333,6 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
     set(hObject,'BackgroundColor','white');
 end
 
-
-%----------------------------------------------------------------------
 
 
 function edit_obs_error_sd_Callback(hObject, ~, handles)
@@ -419,10 +408,8 @@ plot([xlower xupper], [0 0], 'k', 'Linewidth', 2);
 guidata(hObject, handles);
 
 
-%----------------------------------------------------------------------
 
-
-% --- Executes during object creation, after setting all properties.
+%% --- Executes during object creation, after setting all properties.
 function edit_obs_error_sd_CreateFcn(hObject, ~, ~)
 % hObject    handle to edit_obs_error_sd (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -435,10 +422,8 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-%----------------------------------------------------------------------
 
-
-% --- Executes on selection change in popupmenu_filter_kind.
+%% --- Executes on selection change in popupmenu_filter_kind.
 function popupmenu_filter_kind_Callback(~, ~, ~)
 % hObject    handle to popupmenu_filter_kind (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -448,10 +433,8 @@ function popupmenu_filter_kind_Callback(~, ~, ~)
 %        contents{get(hObject,'Value')} returns selected item from popupmenu_filter_kind
 
 
-%----------------------------------------------------------------------
 
-
-% --- Executes during object creation, after setting all properties.
+%% --- Executes during object creation, after setting all properties.
 function popupmenu_filter_kind_CreateFcn(hObject, ~, ~)
 % hObject    handle to popupmenu_filter_kind (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -464,10 +447,8 @@ if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgr
 end
 
 
-%----------------------------------------------------------------------
 
-
-% --- Executes on button press in pushbutton_update_ens.
+%% --- Executes on button press in pushbutton_update_ens.
 function pushbutton_update_ens_Callback(hObject, ~, handles)
 % hObject    handle to pushbutton_update_ens (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -603,16 +584,13 @@ guidata(hObject, handles)
 
 
 
-
-
-% --- Executes on button press in checkbox_inflation.
+%% --- Executes on button press in checkbox_inflation.
 function checkbox_inflation_Callback(~, ~, ~)
 % hObject    handle to checkbox_inflation (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
 
 % Hint: get(hObject,'Value') returns toggle state of checkbox_inflation
-
 
 
 
@@ -625,7 +603,6 @@ set(handles.text9,  'Visible', 'off');
 set(handles.text10, 'Visible', 'off');
 set(handles.text11, 'Visible', 'off');
 set(handles.text12, 'Visible', 'off');
-
 
 
 
@@ -703,11 +680,7 @@ guidata(hObject, handles);
 
 
 
-
-
-
-
-% --- Executes during object creation, after setting all properties.
+%% --- Executes during object creation, after setting all properties.
 function edit_inflation_CreateFcn(hObject, ~, ~)
 % hObject    handle to edit_inflation (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -718,6 +691,14 @@ function edit_inflation_CreateFcn(hObject, ~, ~)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+
+%% --- Executes when uipanel5 is resized.
+function uipanel5_ResizeFcn(hObject, eventdata, handles)
+% hObject    handle to uipanel5 (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
 
 
 % <next few lines under version control, do not edit>
