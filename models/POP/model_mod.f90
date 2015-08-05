@@ -74,7 +74,6 @@ public :: get_model_size,                &
           get_vert,                      &
           set_vert,                      &
           set_which_vert,                &
-          info_file_name,                &
           construct_file_name_in,        &
           read_model_time,                &
           clamp_or_fail_it,              &
@@ -3626,17 +3625,6 @@ if (debug > 2 .and. do_output()) then
 endif
 
 end subroutine dpth2pres
-
-!--------------------------------------------------------------------
-!> construct info filename for get_state_variable_info
-function info_file_name(domain)
-
-integer, intent(in) :: domain
-character(len=256)  :: info_file_name
-
-call get_pop_restart_filename(info_file_name)
-
-end function info_file_name
 
 !--------------------------------------------------------------------
 !> construct restart file name for reading

@@ -50,9 +50,8 @@ public :: get_model_size, &
           model_interpolate_distrib, &
           query_vert_localization_coord, &
           vert_convert_distrib, &
-          variables_domains, fill_variable_list, &
           get_vert, set_vert, set_which_vert, &
-          info_file_name, construct_file_name_in, &
+          construct_file_name_in, &
           get_model_time, clamp_or_fail_it, do_clamp_or_fail, &
           pert_model_copies, &
           read_model_time, &
@@ -779,41 +778,6 @@ subroutine ens_mean_for_model(ens_mean)
 real(r8), intent(in) :: ens_mean(:)
 
 end subroutine ens_mean_for_model
-
-
-!------------------------------------------------------------------
-!> pass number of variables in the state out to filter 
-subroutine variables_domains(num_variables_in_state, num_doms)
-
-integer, intent(out) :: num_variables_in_state
-integer, intent(out) :: num_doms !< number of domains
-
-num_variables_in_state = model_size 
-num_doms = 1
-
-end subroutine variables_domains
-
-!--------------------------------------------------------------------
-!> pass variable list to filter
-function fill_variable_list(num_variables_in_state)
-
-integer            :: num_variables_in_state
-character(len=256) :: fill_variable_list(num_variables_in_state)
-
-fill_variable_list = 'nothing'
-
-end function fill_variable_list
-
-!--------------------------------------------------------------------
-!> construct info filename for get_state_variable_info
-!> @todo this does nothing
-function info_file_name(domain)
-
-integer, intent(in) :: domain
-character(len=256)  :: info_file_name
-
-
-end function info_file_name
 
 !--------------------------------------------------------------------
 !> construct restart file name for reading

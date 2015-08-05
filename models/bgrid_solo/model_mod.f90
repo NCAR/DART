@@ -114,7 +114,7 @@ public  get_model_size, adv_1step, get_state_meta_data_distrib, &
         vert_convert_distrib, &
         get_vert, set_vert, set_which_vert, &
         do_clamp_or_fail,clamp_or_fail_it, get_close_obs_distrib, &
-        info_file_name, construct_file_name_in, &
+        construct_file_name_in, &
         read_model_time, write_model_time
 
 !-----------------------------------------------------------------------
@@ -2010,17 +2010,6 @@ real(r8), intent(in) :: ens_mean(:)
 if ( .not. module_initialized ) call static_init_model
 
 end subroutine ens_mean_for_model
-
-!--------------------------------------------------------------------
-!> construct info filename for get_state_variable_info
-!> @todo this does nothing
-function info_file_name(domain)
-
-integer, intent(in) :: domain
-character(len=256)  :: info_file_name
-
-
-end function info_file_name
 
 !--------------------------------------------------------------------
 !> construct restart file name for reading
