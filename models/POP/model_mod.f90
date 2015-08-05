@@ -36,13 +36,15 @@ use      dart_pop_mod, only: set_model_time_step,                              &
                              read_horiz_grid, read_topography, read_vert_grid, &
                              get_pop_restart_filename
 
-use data_structure_mod,  only : ensemble_type, copies_in_window
+use data_structure_mod,    only : ensemble_type, copies_in_window
 
-use distributed_state_mod
+use distributed_state_mod, only : get_state
 
-use null_vert_convert
+use null_vert_convert,     only : query_vert_localization_coord, vert_convert_distrib, get_vert, set_vert, set_which_vert
 
-use state_structure_mod, only : add_domain, get_model_variable_indices
+use state_structure_mod,   only : add_domain, get_model_variable_indices
+
+use dart_time_io_mod,  only : write_model_time
 
 use typesizes
 use netcdf 
@@ -75,9 +77,11 @@ public :: get_model_size,                &
           set_vert,                      &
           set_which_vert,                &
           construct_file_name_in,        &
-          read_model_time,                &
+          read_model_time,               &
           clamp_or_fail_it,              &
-          do_clamp_or_fail
+          do_clamp_or_fail,              &
+          write_model_time
+
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
