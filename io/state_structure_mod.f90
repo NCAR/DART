@@ -71,8 +71,8 @@ type netcdf_var_type
    character(len=NF90_MAX_NAME) :: long_name
    character(len=NF90_MAX_NAME) :: units
    integer :: var_size = 0
-   integer :: index1 ! location in dart state vector of first occurrence
-   integer :: indexN ! location in dart state vector of last  occurrence
+   integer(i8) :: index1 ! location in dart state vector of first occurrence
+   integer(i8) :: indexN ! location in dart state vector of last  occurrence
    
    ! dimension information
    integer :: numdims  = 0! number of dims - excluding TIME?
@@ -347,8 +347,8 @@ integer :: ivar, jdim !< loop variables
 integer :: var_size, dom_size !< temporary sum variable
 integer :: ret ! netcdf retrun value
 
-integer :: ind1 ! first index of variable
-integer :: indN ! last index of variable
+integer(i8) :: ind1 ! first index of variable
+integer(i8) :: indN ! last index of variable
 
 dom_size = 0
 ind1 = state%model_size + 1
@@ -684,7 +684,7 @@ function get_ind1(idom,ivar)
 
 integer, intent(in) :: idom
 integer, intent(in) :: ivar
-integer :: get_ind1
+integer(i8) :: get_ind1
 
 get_ind1 = state%domain(idom)%variable(ivar)%index1
 
@@ -697,7 +697,7 @@ function get_indN(idom,ivar)
 
 integer, intent(in) :: idom
 integer, intent(in) :: ivar
-integer :: get_indN
+integer(i8) :: get_indN
 
 get_indN = state%domain(idom)%variable(ivar)%indexN
 
@@ -784,11 +784,11 @@ integer,     intent(out)           :: kloc
 integer,     intent(out), optional :: var_id
 integer,     intent(out), optional :: dom_id
 
-integer :: local_ind, ind1, indN
-integer :: index
-integer :: ndims, ndomains
-integer :: idom, ivar
-integer :: domid, varid, unlimid
+integer     :: local_ind
+integer(i8) ::  index, ind1, indN
+integer     :: ndims, ndomains
+integer     :: idom, ivar
+integer     :: domid, varid, unlimid
 integer, allocatable :: dimids(:), dsize(:)
 
 character(len=NF90_MAX_NAME) :: dname
@@ -825,7 +825,7 @@ FindVariable : do idom = 1, ndomains
 enddo FindVariable
 
 if( varid == -1 ) then
-   write(string1,*) 'Problem, cannot find base_offset, index_in is: ', index_in
+   write(string1,*) 'Problem, cannot find base offset, index_in is: ', index_in
    call error_handler(E_ERR, 'get_model_variable_indices',string1)
 endif
 
