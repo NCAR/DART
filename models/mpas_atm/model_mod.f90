@@ -932,6 +932,7 @@ subroutine model_interpolate_distrib(state_ens_handle, location, obs_type, istat
 !       ISTATUS = 19:  could not compute u using RBF code
 !       ISTATUS = 101: Internal error; reached end of subroutine without
 !                      finding an applicable case.
+!       ISTATUS = 201: Reject observation from user specified pressure level
 !
 
 ! passed variables
@@ -965,7 +966,7 @@ allocate(location_tmp(ens_size))
 allocate(location_array(ens_size))
 
 expected_obs = MISSING_R8
-istatus    = 99           ! must be positive (and integer)
+istatus      = 99         ! must be positive (and integer)
 location_array = location ! to make it ensemble size ( I think this is probably stupid)
 
 ! rename for sanity - we can't change the argument names
@@ -977,23 +978,6 @@ if (debug > 0) then
    call write_location(0,location,charstring=string1)
    print *, my_task_id(), 'kind, loc ', obs_kind, trim(string1)
 endif
-
-! Reject obs above a user specified pressure level.
-! this is expensive - only do it if users want to reject observations
-! at the top of the model.  negative values mean ignore this test.
-if (highest_obs_pressure_mb > 0.0) then
-   lpres = compute_pressure_at_loc(state_ens_handle, ens_size, location)
-   do e = 1, ens_size
-      if (lpres(e) < highest_obs_pressure_mb * 100.0_r8) then
-         if (debug > 4) print *, 'rejected, pressure < upper limit', lpres(e), highest_obs_pressure_mb
-         ! Exclude from assimilation the obs above a user specified level
-         expected_obs(e) = MISSING_R8
-         istatus(e) = 201
-         !goto 100
-      endif
-   enddo
-endif
-
 
 ! Reject obs if the station height is far way from the model terrain.
 ! HK is this the same across the ensemble?
@@ -1202,6 +1186,23 @@ else
    if (debug > 4) print *, 'called generic compute_w_bary, kind, val, istatus: ', obs_kind, expected_obs, istatus
    !if (istatus /= 0) goto 100
 
+endif
+
+! Reject obs above a user specified pressure level.
+! this is expensive - only do it if users want to reject observations
+! at the top of the model.  negative values mean ignore this test.
+if (highest_obs_pressure_mb > 0.0) then
+   lpres = compute_pressure_at_loc(state_ens_handle, ens_size, location)
+   do e = 1, ens_size
+      if (lpres(e) < highest_obs_pressure_mb * 100.0_r8) then
+         if (debug > 4) print *, 'rejected, pressure < upper limit', lpres(e), highest_obs_pressure_mb
+         print *, 'rejected, pressure < upper limit', lpres(e), highest_obs_pressure_mb
+         ! Exclude from assimilation the obs above a user specified level
+         expected_obs(e) = MISSING_R8
+         istatus(e) = 201
+         ! goto 100
+      endif
+   enddo
 endif
 
 100 continue
@@ -5936,6 +5937,11 @@ real(r8)    :: lat, lon, vert, llv(3), fract(listsize, ens_size), lowval(ens_siz
 integer     :: verttype, lower(listsize, ens_size), upper(listsize, ens_size), ncells, celllist(listsize)
 
 integer :: e ! loop index
+
+! start out assuming you will be sucessful, and then update
+! status if an error occurs
+ier = 0
+
 ! FIXME: make this cache the last value and if the location is
 ! the same as before and it's asking for V now instead of U,
 ! skip the expensive computation.
@@ -6058,8 +6064,6 @@ do e = 1, ens_size
    endif
 
 enddo
-
-ier = 0
 
 end subroutine compute_u_with_rbf
 
