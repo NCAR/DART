@@ -115,7 +115,7 @@ inflation_out(1) = 'inf_out1'
 inflation_out(2) = 'inf_out2'
 
 write(*,*) "7"
-call set_filenames(ens_size, inflation_in, inflation_out)
+call set_filenames(state_ens_handle, ens_size, inflation_in, inflation_out)
 
 !do icopy = 1,ens_size
 !   write(*,*) trim(restart_files_in(1,1))

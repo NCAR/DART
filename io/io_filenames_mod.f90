@@ -27,7 +27,7 @@ use utilities_mod,        only : do_nml_file, nmlfileunit, do_nml_term, &
 use model_mod,            only : construct_file_name_in
 use state_structure_mod,  only : get_num_domains, get_dim_length, get_dim_name, &
                                  get_num_dims, get_num_variables, get_variable_name
-use ensemble_manager_mod, only : is_single_restart_file_in
+use ensemble_manager_mod, only : is_single_restart_file_in, ensemble_type
 
 use netcdf
 
@@ -35,8 +35,6 @@ implicit none
 
 private
 
-! These should probably be set and get functions rather than 
-! direct access
 public :: io_filenames_init, set_filenames, get_input_file, get_output_file
 
 ! version controlled file description for error handling, do not edit
@@ -89,9 +87,10 @@ if (do_nml_term()) write(     *     , nml=io_filenames_nml)
 end subroutine io_filenames_init
 
 !-------------------------------------------------------------------------------
-subroutine set_filenames(ens_size, inflation_in, inflation_out)
+subroutine set_filenames(ens_handle, ens_size, inflation_in, inflation_out)
 
-integer,              intent(in) :: ens_size
+type(ensemble_type),  intent(in) :: ens_handle
+integer,              intent(in) :: ens_size ! number of actual copies
 character(len = *),   intent(in) :: inflation_in(2), inflation_out(2)
 
 character(len = 32)   :: ext
@@ -106,12 +105,16 @@ integer :: iunit, ios
 integer :: nlines
 character(len=512) :: fname
 character(len=256) :: msgstring
+integer :: c
 
 num_files   = ens_size + 10 !> @toto do you worry about spare copies?
 num_domains = get_num_domains()
 
 allocate(restart_files_in(num_files , num_domains))
 allocate(restart_files_out(num_files, num_domains, 2)) ! for prior and posterior filenames
+
+restart_files_in = 'null'
+restart_files_out = 'null'
 
 do idom = 1, num_domains
 
@@ -245,17 +248,22 @@ do idom = 1, num_domains
 
 enddo ! domain loop
 
+
+
 ! check that the netcdf files match the variables for this domain
 ! to prevent overwritting unwanted files.
-do i = 1, ens_size+6
+do i = 1, ens_handle%my_num_copies
+   c = ens_handle%my_copies(i)
    do dom = 1, num_domains
       ! check the prior files
-      if(file_exist(restart_files_out(i,dom,1))) &
-         call check_correct_variables(restart_files_out(i,dom,1),dom)
-
+      if(file_exist(restart_files_out(c,dom,1))) then
+         call check_correct_variables(restart_files_out(c,dom,1),dom)
+      endif
+                
       ! check the posterior files
-      if(file_exist(restart_files_out(i,dom,2))) &
-         call check_correct_variables(restart_files_out(i,dom,2),dom)
+      if(file_exist(restart_files_out(c,dom,2))) then
+         call check_correct_variables(restart_files_out(c,dom,2),dom)
+      endif
    enddo
 enddo
 

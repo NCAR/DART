@@ -66,7 +66,7 @@ model_size = get_model_size()
 ! make space for state ensemble
 call init_ensemble_manager(state_ens_handle, ens_size, model_size)
 
-call set_filenames(ens_size, inflation_in, inflation_out)
+call set_filenames(state_ens_handle, ens_size, inflation_in, inflation_out)
 
 ! read all of the files
 start = MPI_WTIME()

@@ -241,7 +241,7 @@ call init_ensemble_manager(ens_handle, 1, model_size, 1)
 
 ! Reading restart file:
 call setup_read_write(1)
-call set_filenames(1, "no_inf1", "no_inf2")
+call set_filenames(ens_handle, 1, "no_inf1", "no_inf2")
 
 if (start_from_restart) then
 

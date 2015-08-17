@@ -425,7 +425,7 @@ if (.not. direct_netcdf_read ) then ! expecting DART restart files
    deallocate(state_ens_handle%vars)
 endif
 
-call set_filenames(state_ens_handle%num_copies - num_extras, inf_in_file_name, inf_out_file_name)
+call set_filenames(state_ens_handle, state_ens_handle%num_copies - num_extras, inf_in_file_name, inf_out_file_name)
 
 if (direct_netcdf_read) then
    call filter_read_restart_direct(state_ens_handle, time1, num_extras, read_time_from_file )
