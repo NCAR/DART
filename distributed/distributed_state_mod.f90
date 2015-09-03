@@ -16,8 +16,8 @@ use mpi_utilities_mod,  only : datasize, my_task_id
 use types_mod,          only : r8, i8
 use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
 use window_mod,         only : create_mean_window, create_state_window, free_mean_window, &
-                               free_state_window, mean_win, state_win, row, num_rows
-
+                               free_state_window, mean_win, state_win, row, num_rows, &
+                               get_local_state, get_local_mean
 
 use mpi
 
@@ -89,10 +89,14 @@ call get_var_owner_index(index, owner_of_state, element_index) ! pe
 owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
 
 if (my_task_id() == owner_of_state) then
+   !For future use if we need to access the local window 
+   ! e.g. if %copies is modified while we are doing the forward operator. 
+   ! Currently, %copies is static => same as what is in the window.
+   !x = get_local_state(element_index)
    x = state_ens_handle%copies(1:num_rows, element_index)
 else
    ! Note all of copies array is in the window, not just the real ensemble members
-   target_disp = (element_index - 1) * state_ens_handle%num_copies
+   target_disp = (element_index - 1) * num_rows
    call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, state_win, ierr)
    call mpi_get(x, num_rows, datasize, owner_of_state, target_disp, num_rows, datasize, state_win, ierr)
    call mpi_win_unlock(owner_of_state, state_win, ierr)
@@ -119,6 +123,10 @@ call get_var_owner_index(index, owner_of_state, element_index) ! pe
 owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
 
 if (my_task_id() == owner_of_state) then
+   !For future use if we need to access the local window 
+   ! e.g. if %copies is modified while we are doing the forward operator. 
+   ! Currently, %copies is static => same as what is in the window.
+   !x = get_local_mean(element_index)
    x = state_ens_handle%copies(row, element_index)
 else
    target_disp = (element_index - 1)

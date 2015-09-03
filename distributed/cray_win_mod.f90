@@ -24,6 +24,9 @@ private
 public :: create_mean_window, create_state_window, free_mean_window, free_state_window, &
           mean_win, state_win, row, num_rows
 
+! Use these if %copies is modified during window access.
+public :: get_local_state, get_local_mean
+
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
    "$URL$"
@@ -66,8 +69,8 @@ num_rows = copies_in_window(state_ens_handle)
 ! allocate some RDMA accessible memory
 ! using MPI_ALLOC_MEM because the MPI standard allows vendors to require MPI_ALLOC_MEM for remote memory access
 call mpi_type_size(datasize, bytesize, ierr)
-window_size_state = my_num_vars*state_ens_handle%num_copies*bytesize
-a = malloc(my_num_vars*state_ens_handle%num_copies)
+window_size_state = my_num_vars*num_rows*bytesize
+a = malloc(my_num_vars*num_rows)
 call MPI_ALLOC_MEM(window_size_state, MPI_INFO_NULL, a, ierr)
 
 count = 1
@@ -76,7 +79,7 @@ count = 1
 ! Can't do array assignment with a cray pointer, so you need to loop
 !> @todo should you only fill the window with actual ensemble members?
 do ii = 1, my_num_vars
-   do jj = 1, state_ens_handle%num_copies
+   do jj = 1, num_rows
       duplicate_state(count) = state_ens_handle%copies(jj,ii)
       count = count + 1
    enddo
@@ -137,6 +140,38 @@ call mpi_win_free(mean_win, ierr)
 call MPI_FREE_MEM(duplicate_mean, ierr) ! not a
 
 end subroutine free_mean_window
+
+!-------------------------------------------------------------
+! The functions below are if you need to access data from your
+! own local window.
+!-------------------------------------------------------------
+!>
+function get_local_state(index)
+
+integer, intent(in) :: index
+real(r8) :: get_local_state(num_rows)
+
+integer :: ierr
+
+call mpi_win_lock(MPI_LOCK_SHARED, my_task_id(), 0, state_win, ierr)
+get_local_state = duplicate_state((index-1)*num_rows+1:index*num_rows+1)
+call mpi_win_unlock(my_task_id(), state_win, ierr)
+
+end function get_local_state
+
+!-------------------------------------------------------------
+function get_local_mean(index)
+
+integer, intent(in) :: index
+real(r8) :: get_local_mean
+
+integer :: ierr
+
+call mpi_win_lock(MPI_LOCK_SHARED, my_task_id(), 0, mean_win, ierr)
+get_local_mean = duplicate_mean(index)
+call mpi_win_unlock(my_task_id(), mean_win, ierr)
+
+end function get_local_mean
 
 !---------------------------------------------------------
 !> @}

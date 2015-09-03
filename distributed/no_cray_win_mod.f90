@@ -10,7 +10,7 @@ module window_mod
 !> \defgroup window window_mod
 !> @{
 use mpi_utilities_mod,  only : datasize, my_task_id
-use types_mod,          only : r8
+use types_mod,          only : r8, i8
 use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
                                copies_in_window, mean_row
 
@@ -20,6 +20,9 @@ implicit none
 
 private
 public :: create_mean_window, create_state_window, free_mean_window, free_state_window, mean_win, state_win, row, num_rows
+
+! Use these if %copies is modified during window access.
+public :: get_local_state, get_local_mean
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -36,10 +39,8 @@ integer(KIND=MPI_ADDRESS_KIND) window_size_mean
 
 ! Global memory to stick the mpi window to.
 ! Need a simply contiguous piece of memory to pass to mpi_win_create
-! For the forward operator copies, putting the whole of %copies array in
-! the window. This is to avoid making a dupilcate of 
-! state_ens_handle%copies(1:ens_size)
 real(r8), allocatable :: contiguous_mean(:)
+real(r8), allocatable :: contiguous_fwd(:, :)
 
 contains
 
@@ -56,17 +57,17 @@ integer :: my_num_vars !< my number of vars
 
 ! find how many variables I have
 my_num_vars = state_ens_handle%my_num_vars
-! The number of rows in the window is now state_ens_handle%num_copies.
-! The number of rows that a call to get_state will grab is still num_rows(ens_size)
-! FIXME For now, I am keeping the name copies_in_window().  This should be
-! changed to a more sensible name
+! find out how many rows to put in the window
 num_rows = copies_in_window(state_ens_handle)
 
 call mpi_type_size(datasize, bytesize, ierr)
-window_size_state = my_num_vars*state_ens_handle%num_copies*bytesize
+window_size_state = my_num_vars*num_rows*bytesize
+
+allocate(contiguous_fwd(num_rows, my_num_vars))
+contiguous_fwd = state_ens_handle%copies(1:num_rows, :)
 
 ! Expose local memory to RMA operation by other processes in a communicator.
-call mpi_win_create(state_ens_handle%copies, window_size_state, bytesize, MPI_INFO_NULL, mpi_comm_world, state_win, ierr)
+call mpi_win_create(contiguous_fwd, window_size_state, bytesize, MPI_INFO_NULL, mpi_comm_world, state_win, ierr)
 
 end subroutine create_state_window
 
@@ -102,6 +103,7 @@ subroutine free_state_window
 integer :: ierr
 
 call mpi_win_free(state_win, ierr)
+deallocate(contiguous_fwd)
 
 end subroutine free_state_window
 
@@ -114,6 +116,39 @@ call mpi_win_free(mean_win, ierr)
 deallocate(contiguous_mean)
 
 end subroutine free_mean_window
+
+
+!-------------------------------------------------------------
+! The functions below are if you need to access data from your
+! own local window.
+!-------------------------------------------------------------
+!>
+function get_local_state(index)
+
+integer, intent(in) :: index
+real(r8) :: get_local_state(num_rows)
+
+integer :: ierr
+
+call mpi_win_lock(MPI_LOCK_SHARED, my_task_id(), 0, state_win, ierr)
+get_local_state = contiguous_fwd(:, index)
+call mpi_win_unlock(my_task_id(), state_win, ierr)
+
+end function get_local_state
+
+!-------------------------------------------------------------
+function get_local_mean(index)
+
+integer, intent(in) :: index
+real(r8) :: get_local_mean
+
+integer :: ierr
+
+call mpi_win_lock(MPI_LOCK_SHARED, my_task_id(), 0, mean_win, ierr)
+get_local_mean = contiguous_mean(index)
+call mpi_win_unlock(my_task_id(), mean_win, ierr)
+
+end function get_local_mean
 
 !-------------------------------------------------------------
 !> @}
