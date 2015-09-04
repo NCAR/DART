@@ -14,7 +14,7 @@ module distributed_state_mod
 !> @{
 use mpi_utilities_mod,  only : datasize, my_task_id
 use types_mod,          only : r8, i8
-use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
+use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
 use window_mod,         only : create_mean_window, create_state_window, free_mean_window, &
                                free_state_window, mean_win, state_win, row, num_rows, &
                                get_local_state, get_local_mean

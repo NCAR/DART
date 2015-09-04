@@ -44,11 +44,24 @@
    inf_lower_bound             = 1.0,                    1.0,
    inf_upper_bound             = 10000.0,              10000.0,
    inf_sd_lower_bound          = 0.60,                   0.10
+   direct_netcdf_read = .true.
+   direct_netcdf_write = .true.
 /
+
+&state_vector_io_nml
+   single_precision_output    = .true.,
+   single_restart_file_out    = .false.,
+   write_binary_restart_files = .false.,
+/
+
+&io_filenames_nml
+   restart_in_stub = 'advance_temp'
+   restart_out_stub = 'advance_temp'
+/
+
 
 &ensemble_manager_nml
    single_restart_file_in  = .false.,
-   single_restart_file_out = .false. 
 /
 
 &smoother_nml
@@ -82,7 +95,7 @@
  /
 
 &assim_model_nml
-   write_binary_restart_files = .true.  /
+/
 
 &location_nml
    horiz_dist_only = .false.,

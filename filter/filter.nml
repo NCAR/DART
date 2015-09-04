@@ -42,5 +42,8 @@
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
    inf_sd_lower_bound          = 0.0,                     0.0
+
+   direct_netcdf_read = .true.,
+   direct_netcdf_read = .true.
 /
 

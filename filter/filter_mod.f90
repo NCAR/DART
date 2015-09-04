@@ -37,7 +37,6 @@ use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace
 use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,                &
                                   ensemble_type, get_copy, get_my_num_copies, put_copy,       &
                                   all_vars_to_all_copies, all_copies_to_all_vars,             &
-                                  read_ensemble_restart, write_ensemble_restart,              &
                                   compute_copy_mean, compute_copy_mean_sd,                    &
                                   compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
                                   get_ensemble_time, set_ensemble_time, broadcast_copy,       &
@@ -45,7 +44,8 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   prepare_to_read_from_copies,                                &
                                   prepare_to_write_to_copies, get_ensemble_time,              &
                                   map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
-                                  get_my_num_vars, single_restart_file_in, set_ensemble_time
+                                  get_my_num_vars, set_ensemble_time, &
+                                  copies_in_window, set_num_extra_copies
                                  
 
 use adaptive_inflate_mod,  only : adaptive_inflate_end, do_varying_ss_inflate,                &
@@ -59,19 +59,17 @@ use mpi_utilities_mod,     only : initialize_mpi_utilities, finalize_mpi_utiliti
 use smoother_mod,          only : smoother_read_restart, advance_smoother,                    &
                                   smoother_gen_copy_meta_data, smoother_write_restart,        &
                                   init_smoother, do_smoothing, smoother_mean_spread,          &
-                                  smoother_assim, filter_state_space_diagnostics,             &
+                                  smoother_assim,            &
                                   smoother_ss_diagnostics, smoother_end, set_smoother_trace
 
 use random_seq_mod,        only : random_seq_type, init_random_seq, random_gaussian
 
 use distributed_state_mod, only : create_state_window, free_state_window
 
-use data_structure_mod,    only : copies_in_window, set_num_extra_copies ! should this be through ensemble_manager?
-
 use state_vector_io_mod,   only : read_transpose, transpose_write, state_vector_io_init, &
-                                  setup_read_write, turn_read_copy_on, turn_write_copy_on, turn_write_copy_off
-
-use model_mod,             only : read_model_time
+                                  setup_read_write, turn_read_copy_on, turn_write_copy_on, &
+                                  turn_write_copy_off,read_ensemble_restart, write_ensemble_restart, &
+                                  filter_write_restart_direct, filter_read_restart_direct
 
 use io_filenames_mod,      only : io_filenames_init, get_input_file, set_filenames
 
@@ -82,14 +80,14 @@ use mpi
 use forward_operator_mod,  only : get_obs_ens_distrib_state 
 use quality_control_mod,   only : initialize_qc
 
+use state_space_diag_mod,  only : filter_state_space_diagnostics
+
 !------------------------------------------------------------------------------
 
 implicit none
 private
 
 public :: filter_sync_keys_time, &
-          filter_read_restart_direct, &
-          filter_write_restart_direct, &
           filter_set_initial_time, &
           filter_main
 
@@ -148,7 +146,6 @@ real(r8) :: perturbation_amplitude = 0.2_r8
 ! what should you do about diagnostic files.
 
 logical  :: diagnostic_files = .false. ! what should be the default
-!logical  :: skeleton_diagnostic_files = .true. ! If you do write diagnostic files, make them skeletons - this is what is happening at the moment, no whole diagnostic files are written.
 
 character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
                         obs_sequence_out_name = "obs_seq.final",  &
@@ -305,6 +302,7 @@ if(inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
 ! Setup the indices into the ensemble storage
 spare_copies = .true.
 if (num_output_state_members > 0) spare_copies = .false.
+if (diagnostic_files) spare_copies = .false. ! No point writing out this info twice
 if (spare_copies) then
    num_extras = 10  ! six plus spare copies
 else
@@ -694,7 +692,8 @@ AdvanceTime : do
    ! Store inflation mean copy in the spare copy. 
    ! The spare copy is left alone until the end
    ! shoving in four spare copies for now
-   if (spare_copies) then
+   if (spare_copies) then ! need to store prior copies until the end
+                                                       ! Note this is just for single time step runs
       state_ens_handle%copies(SPARE_COPY_MEAN, :)       = state_ens_handle%copies(ENS_MEAN_COPY, :)
       state_ens_handle%copies(SPARE_COPY_SPREAD, :)     = state_ens_handle%copies(ENS_SD_COPY, :)
       state_ens_handle%copies(SPARE_COPY_INF_MEAN, :)   = state_ens_handle%copies(PRIOR_INF_COPY, :)
@@ -705,28 +704,30 @@ AdvanceTime : do
        (time_step_number / output_interval * output_interval == time_step_number)) then
 
       if(diagnostic_files) then
-         ! skeleton just to write the time to diagnostic files.
+         ! Diagnostic files
          call filter_state_space_diagnostics(curr_ens_time, PriorStateUnit, state_ens_handle, &
             model_size, num_output_state_members, &
-            output_state_mean_index, output_state_spread_index, &
+            output_state_mean_index, output_state_spread_index, output_inflation,&
             ENS_MEAN_COPY, ENS_SD_COPY, &
             prior_inflate, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
 
-      endif
+      else ! only write output members as netcdf if you are not writing diagnostic files
 
-      ! write prior files if you have ensemble members to output
-      if (.not. spare_copies) then
-         call turn_write_copy_off(1, ens_size + num_extras) ! clean slate
-         call turn_write_copy_on(1, num_output_state_members)
-         ! need to ouput the diagnostic info in restart files
-            call turn_write_copy_on(ENS_MEAN_COPY)
-            call turn_write_copy_on(ENS_SD_COPY)
-            if (output_inflation) then
-               call turn_write_copy_on(PRIOR_INF_COPY)
-               call turn_write_copy_on(PRIOR_INF_SD_COPY)
-            endif
-         ! FIXME - what to do with lorenz_96 (or similar) here?
-         call filter_write_restart_direct(state_ens_handle, num_extras, isprior = .true.)
+         ! write prior files if you have ensemble members to output
+         if (.not. spare_copies) then
+            call turn_write_copy_off(1, ens_size + num_extras) ! clean slate
+            call turn_write_copy_on(1, num_output_state_members)
+            ! need to ouput the diagnostic info in restart files
+               call turn_write_copy_on(ENS_MEAN_COPY)
+               call turn_write_copy_on(ENS_SD_COPY)
+               if (output_inflation) then
+                  call turn_write_copy_on(PRIOR_INF_COPY)
+                  call turn_write_copy_on(PRIOR_INF_SD_COPY)
+               endif
+            !FIXME - what to do with lorenz_96 (or similar) here?
+            call filter_write_restart_direct(state_ens_handle, num_extras, isprior = .true.)
+         endif
+
       endif
 
    endif
@@ -859,7 +860,7 @@ AdvanceTime : do
          ! skeleton just to put time in the diagnostic file
          call filter_state_space_diagnostics(curr_ens_time, PosteriorStateUnit, state_ens_handle, &
             model_size, num_output_state_members, output_state_mean_index, &
-            output_state_spread_index, &
+            output_state_spread_index, output_inflation, &
             ENS_MEAN_COPY, ENS_SD_COPY, &
             post_inflate, POST_INF_COPY, POST_INF_SD_COPY)
          ! Cyclic storage for lags with most recent pointed to by smoother_head
@@ -976,6 +977,7 @@ if (output_restart)      call turn_write_copy_on(1,ens_size) ! restarts
 if (output_restart_mean) call turn_write_copy_on(ENS_MEAN_COPY)
 
 ! Prior_Diag copies - write spare copies
+! But don't bother writing if you are writting diagnostic files.
 if (spare_copies) then
    call turn_write_copy_on(SPARE_COPY_MEAN)
    call turn_write_copy_on(SPARE_COPY_SPREAD)
@@ -1437,46 +1439,6 @@ endif
 
 end subroutine filter_set_window_time
 
-!------------------------------------------------------------------
-!> Read the restart information directly from the model output
-!> netcdf file
-!> Which routine should find model size?
-!> 
-subroutine filter_read_restart_direct(state_ens_handle, time, num_extras, use_time_from_file)
-
-type(ensemble_type), intent(inout) :: state_ens_handle
-type(time_type),     intent(inout) :: time
-integer,             intent(in)    :: num_extras
-logical,             intent(in)    :: use_time_from_file
-
-integer                         :: model_size
-character(len=256), allocatable :: variable_list(:) !< does this need to be module storage
-integer                         :: dart_index !< where to start in state_ens_handle%copies
-integer                         :: domain !< loop index
-
-if(get_num_domains()==0) then
-   call error_handler(E_ERR, 'filter_read_restart_direct', 'model needs to call add_domain for direct_netcdf_read = .true.')
-endif
-
-! read time from input file if time not set in namelist
-!> @todo get_model_time should be read_model_time, and should be a namelist to set the filename
-!> also need a write_model_time for creating netcdf files
-if(use_time_from_file) then
-   time = read_model_time(get_input_file(1,1)) ! Any of the restarts?
-endif
-
-state_ens_handle%time = time
-
-! read in the data and transpose
-dart_index = 1 ! where to start in state_ens_handle%copies - this is modified by read_transpose
-do domain = 1, get_num_domains()
-   call read_transpose(state_ens_handle, domain, dart_index)
-enddo
-
-! Need Temporary print of initial model time?
-
-end subroutine filter_read_restart_direct
-
 !-------------------------------------------------------------------------
 
 subroutine filter_read_restart(state_ens_handle, time)
@@ -1523,28 +1485,6 @@ if(state_ens_handle%my_pe == 0) then
 endif
 
 end subroutine filter_read_restart
-
-!-------------------------------------------------------------------------
-!> write the restart information directly into the model netcdf file.
-subroutine filter_write_restart_direct(state_ens_handle, num_extras, isprior)
-
-type(ensemble_type), intent(inout) :: state_ens_handle
-integer,             intent(in)    :: num_extras ! non restart copies
-logical,             intent(in)    :: isprior
-
-integer :: dart_index !< where to start in state_ens_handle%copies
-integer :: domain !< loop index
-integer :: component_id
-
-!> @todo should we add a blank domain if there is not domains?
-
-! transpose and write out the data
-dart_index = 1
-do domain = 1, get_num_domains()
-   call transpose_write(state_ens_handle, num_extras, domain, dart_index, isprior)
-enddo
-
-end subroutine filter_write_restart_direct
 
 !-------------------------------------------------------------------------
 

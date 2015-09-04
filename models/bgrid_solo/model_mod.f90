@@ -82,11 +82,11 @@ use          obs_kind_mod, only: KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
 ! routines used by rma
 use mpi_utilities_mod,     only : my_task_id
 
-use data_structure_mod,    only : ensemble_type
+use ensemble_manager_mod,    only : ensemble_type
 
 use distributed_state_mod, only : get_state, get_state_array
 
-use data_structure_mod,    only : ensemble_type, copies_in_window
+use ensemble_manager_mod,    only : ensemble_type, copies_in_window
 
 use null_clamp,            only : do_clamp_or_fail,clamp_or_fail_it
 

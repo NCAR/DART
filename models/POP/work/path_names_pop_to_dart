@@ -1,7 +1,6 @@
 assim_model/assim_model_mod.f90
 common/types_mod.f90
 distributed/null_distributed_state_mod.f90
-ensemble_manager/data_structure_mod.f90
 io/state_structure_mod.f90
 location/threed_sphere/location_mod.f90
 models/null_vert_convert.f90

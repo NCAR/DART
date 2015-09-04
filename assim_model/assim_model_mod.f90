@@ -30,7 +30,7 @@ use     model_mod, only : get_model_size, static_init_model, get_state_meta_data
                           get_close_obs_distrib, clamp_or_fail_it, do_clamp_or_fail,       &
                           pert_model_copies
 
-use data_structure_mod, only : ensemble_type
+use ensemble_manager_mod, only : ensemble_type
 
 implicit none
 private
@@ -38,14 +38,14 @@ private
 public :: static_init_assim_model, init_diag_output, get_model_size,                       &
           get_closest_state_time_to, get_initial_condition, get_state_meta_data_distrib,   &
           get_model_time, get_model_state_vector, copy_assim_model,                        &
-          set_model_time, set_model_state_vector, write_state_restart, read_state_restart, &
+          set_model_time, set_model_state_vector,  &
           output_diagnostics, end_assim_model, assim_model_type, init_diag_input,          &
           input_diagnostics, get_diag_input_copy_meta_data, init_assim_model,              &
           finalize_diag_output, aoutput_diagnostics,                                       &
-          aread_state_restart, aget_closest_state_time_to, awrite_state_restart,           &
+           aget_closest_state_time_to,            &
           pert_model_state, netcdf_file_type, nc_append_time, nc_write_calendar_atts,      &
-          nc_get_tindex, get_model_time_step, open_restart_read, open_restart_write,       &
-          close_restart, adv_1step, aget_initial_condition, get_close_maxdist_init,        &
+          nc_get_tindex, get_model_time_step,       &
+         adv_1step, aget_initial_condition, get_close_maxdist_init,        &
           get_close_obs_init, ens_mean_for_model, interpolate_distrib,                     &
           get_close_obs_distrib, clamp_or_fail_it, do_clamp_or_fail, pert_model_copies
 
@@ -88,25 +88,16 @@ integer :: model_size
 ! Ensure init code is called exactly once
 logical :: module_initialized = .false.
 
-! Global storage for default restart formats
-character(len = 16) :: read_format = "unformatted", write_format = "unformatted"
 
 ! Global storage for error string output
 character(len = 129)  :: msgstring
 
 !-------------------------------------------------------------
-! Namelist with default values
-! write_binary_restart_files  == .true.  -> use unformatted file format. 
-!                                     Full precision, faster, smaller,
-!                                     but not as portable.
-
-logical  :: write_binary_restart_files = .true.
 !> @todo check the performance of large file support.
 !> Can we have large file support as the default?
 logical  :: netCDF_large_file_support  = .false.
 
-namelist /assim_model_nml/ write_binary_restart_files, &
-                           netCDF_large_file_support
+namelist /assim_model_nml/ netCDF_large_file_support
 !-------------------------------------------------------------
 
 contains
@@ -165,12 +156,7 @@ call check_namelist_read(iunit, io, "assim_model_nml")
 if (do_nml_file()) write(nmlfileunit, nml=assim_model_nml)
 if (do_nml_term()) write(     *     , nml=assim_model_nml)
 
-! Set the write format for restart files
-if(write_binary_restart_files) then
-   write_format = "unformatted"
-else
-   write_format = "formatted"
-endif
+
 
 ! Call the underlying model's static initialization
 call static_init_model()
@@ -736,321 +722,7 @@ assim_model%state_vector = state
 
 end subroutine set_model_state_vector
 
-
-
-subroutine write_state_restart(assim_model, funit, target_time)
-!----------------------------------------------------------------------
-!
-! Write a restart file given a model extended state and a unit number 
-! opened to the restart file. (Need to reconsider what is passed to 
-! identify file or if file can even be opened within this routine).
-
-implicit none
-
-type (assim_model_type), intent(in)           :: assim_model
-integer,                 intent(in)           :: funit
-type(time_type),         optional, intent(in) :: target_time
-
-if(present(target_time)) then
-   call awrite_state_restart(assim_model%time, assim_model%state_vector, funit, target_time)
-else
-   call awrite_state_restart(assim_model%time, assim_model%state_vector, funit)
-endif
-
-end subroutine write_state_restart
-
-
-
-
-subroutine awrite_state_restart(model_time, model_state, funit, target_time)
-!----------------------------------------------------------------------
-!
-! Write a restart file given a model extended state and a unit number 
-! opened to the restart file. (Need to reconsider what is passed to 
-! identify file or if file can even be opened within this routine).
-
-implicit none
-
-type(time_type), intent(in)           :: model_time
-real(r8),        intent(in)           :: model_state(:)
-integer,         intent(in)           :: funit
-type(time_type), optional, intent(in) :: target_time
-
-integer :: i, io, rc
-character(len = 16) :: open_format
-character(len=128) :: filename
-logical :: is_named
-
-if ( .not. module_initialized ) call static_init_assim_model()
-
-! Figure out whether the file is opened FORMATTED or UNFORMATTED
-inquire(funit, FORM=open_format)
-
-! assume success
-io = 0
-
-! Write the state vector
-if (ascii_file_format(open_format)) then
-   if(present(target_time)) call write_time(funit, target_time, ios_out=io)
-   if (io /= 0) goto 10
-   call write_time(funit, model_time, ios_out=io)
-   if (io /= 0) goto 10
-   do i = 1, size(model_state)
-      write(funit, *, iostat = io) model_state(i)
-      if (io /= 0) goto 10
-   end do
-else
-   if(present(target_time)) call write_time(funit, target_time, form="unformatted", ios_out=io)
-   if (io /= 0) goto 10
-   call write_time(funit, model_time, form="unformatted", ios_out=io)
-   if (io /= 0) goto 10
-   write(funit, iostat = io) model_state
-   if (io /= 0) goto 10
-endif
-
-! come directly here on error. 
-10 continue
-
-! if error, use inquire function to extract filename associated with
-! this fortran unit number and use it to give the error message context.
-if (io /= 0) then
-   inquire(funit, named=is_named, name=filename, iostat=rc)
-   if ((rc /= 0) .or. (.not. is_named)) filename = 'unknown file'
-   write(msgstring,*) 'error writing to restart file ', trim(filename)
-   call error_handler(E_ERR,'awrite_state_restart',msgstring,source,revision,revdate)
-endif
-
-
-end subroutine awrite_state_restart
-
-
-subroutine read_state_restart(assim_model, funit, target_time)
-!----------------------------------------------------------------------
-!
-! Read a restart file given a unit number (see write_state_restart)
-
-implicit none
-
-type(assim_model_type), intent(inout)         :: assim_model
-integer,                intent(in)            :: funit
-type(time_type),        optional, intent(out) :: target_time
-
-if ( .not. module_initialized ) call static_init_assim_model()
-
-if(present(target_time)) then
-   call aread_state_restart(assim_model%time, assim_model%state_vector, funit, target_time)
-else
-   call aread_state_restart(assim_model%time, assim_model%state_vector, funit)
-endif
-
-end subroutine read_state_restart
-
-
-
-
-subroutine aread_state_restart(model_time, model_state, funit, target_time)
-!----------------------------------------------------------------------
-!
-! Read a restart file given a unit number (see write_state_restart)
-
-implicit none
-
-type(time_type), intent(out)            :: model_time
-real(r8),        intent(out)            :: model_state(:)
-integer,         intent(in)             :: funit
-type(time_type), optional, intent(out) :: target_time
-
-character(len = 16) :: open_format
-integer :: ios, int1, int2
-
-if ( .not. module_initialized ) call static_init_assim_model()
-
-ios = 0
-
-! Figure out whether the file is opened FORMATTED or UNFORMATTED
-inquire(funit, FORM=open_format)
-
-if (ascii_file_format(open_format)) then
-   if(present(target_time)) target_time = read_time(funit)
-   model_time = read_time(funit)
-   read(funit,*,iostat=ios) model_state
-else
-   if(present(target_time)) target_time = read_time(funit, form = "unformatted")
-   model_time = read_time(funit, form = "unformatted")
-   read(funit,iostat=ios) model_state
-endif
-
-! If the model_state read fails ... dump diagnostics.
-if ( ios /= 0 ) then
-   ! messages are being used as error lines below.  in an MPI filter,
-   ! all messages are suppressed that aren't from PE0.  if an error
-   ! happens in another task, these lines won't be printed unless we
-   ! turn on output.
-   call set_output(.true.)
-
-   write(msgstring,*)'dimension of model state is ',size(model_state)
-   call error_handler(E_MSG,'aread_state_restart',msgstring,source,revision,revdate)
-
-   if(present(target_time)) then
-      call get_time(target_time, int1, int2)       ! time -> secs/days
-      write(msgstring,*)'target_time (secs/days) : ',int1,int2
-      call error_handler(E_MSG,'aread_state_restart',msgstring,source,revision,revdate)
-   endif
-
-   call get_time(model_time, int1, int2)       ! time -> secs/days
-   write(msgstring,*)'model_time (secs/days) : ',int1,int2
-   call error_handler(E_MSG,'aread_state_restart',msgstring,source,revision,revdate)
-
-   write(msgstring,'(''model max/min/first is'',3(1x,E12.6) )') &
-            maxval(model_state), minval(model_state), model_state(1)
-   call error_handler(E_MSG,'aread_state_restart',msgstring,source,revision,revdate)
-
-   call dump_unit_attributes(funit)
-
-   write(msgstring,*)'read error is : ',ios
-   call error_handler(E_ERR,'aread_state_restart',msgstring,source,revision,revdate)
-endif
-
-end subroutine aread_state_restart
-
-!----------------------------------------------------------------------
-
-
-function open_restart_write(file_name, override_write_format)
-!----------------------------------------------------------------------
-!
-! Opens a restart file for writing
-
-character(len = *), intent(in) :: file_name
-character(len = *), optional, intent(in) :: override_write_format
-
-integer :: open_restart_write, io
-
-if ( .not. module_initialized ) call static_init_assim_model()
-
-open_restart_write = get_unit()
-if(present(override_write_format)) then
-   open(unit = open_restart_write, file = file_name, form = override_write_format, &
-        iostat = io)
-else
-   open(unit = open_restart_write, file = file_name, form = write_format, iostat = io)
-endif
-if (io /= 0) then
-   write(msgstring,*) 'unable to open restart file ', trim(file_name), ' for writing'
-   call error_handler(E_ERR,'open_restart_write',msgstring,source,revision,revdate)
-endif
-
-end function open_restart_write
-
-
-function open_restart_read(file_name)
-!----------------------------------------------------------------------
-!
-! Opens a restart file for reading
-
-integer :: open_restart_read
-character(len = *), intent(in) :: file_name
-
-integer :: ios, ios_out
-!!logical :: old_output_state
-type(time_type) :: temp_time
-character(len=64) :: string2
-
-if ( .not. module_initialized ) call static_init_assim_model()
-
-! DEBUG -- if enabled, every task will print out as it opens the
-! restart files.  If questions about missing restart files, first start
-! by commenting in only the timestamp line.  If still concerns, then
-! go ahead and comment in all the lines.
-!!old_output_state = do_output()
-!!call set_output(.true.)
-!call timestamp("open_restart", "opening restart file "//trim(file_name), pos='')
-!!call set_output(old_output_state)
-!END DEBUG
-
-! if you want to document which file(s) are being opened before
-! trying the open (e.g. in case the fortran runtime library intercepts
-! the error and does not return to let us print out the name) then
-! comment this in and you can see what files are being opened.
-!write(msgstring, *) 'Opening restart file ',trim(adjustl(file_name))
-!call error_handler(E_MSG,'open_restart_read',msgstring,source,revision,revdate)
-
-! WARNING: Absoft Pro Fortran 9.0, on a power-pc mac, is convinced
-! that certain binary files are, in fact, ascii, because the read_time 
-! call is returning what seems like a good time even though it should
-! be garbage.  This code works fine on all other platforms/compilers
-! we've tried, so we're leaving it as-is.  Best solution if you're
-! using absoft on a mac is to set all files to be non-binary in the
-! namelist.  You may also have to set the format in both obs_model_mod.f90 
-! and interpolate_model.f90 to 'formatted' instead of the hardcoded 
-! 'unformatted' for async 2/4 model advance temp_ic and temp_ud files.
-
-! Autodetect format of restart file when opening
-! Know that the first thing in here has to be a time, so try to read it.
-! If it fails with one format, try the other. If it fails with both, punt.
-open_restart_read = get_unit()
-read_format = 'formatted'
-open(unit   = open_restart_read, &
-     file   = trim(file_name),   &
-     form   = read_format,       &
-     action = 'read',            &
-     status = 'old',             &
-     iostat = ios)
-! An opening error means something is wrong with the file, error and stop
-if(ios /= 0) goto 11
-temp_time = read_time(open_restart_read, read_format, ios_out)
-if(ios_out == 0) then 
-   ! It appears to be formatted, proceed
-   rewind open_restart_read
-   return
-endif
-
-! Next, try to see if an unformatted read works instead
-close(open_restart_read)
-
-open_restart_read = get_unit()
-read_format = 'unformatted'
-open(unit   = open_restart_read, &
-     file   = trim(file_name),   &
-     form   = read_format,       &
-     action = 'read',            &
-     status = 'old',             &
-     iostat = ios)
-! An opening error means something is wrong with the file, error and stop
-if(ios /= 0) goto 11
-rewind open_restart_read
-temp_time = read_time(open_restart_read, read_format, ios_out)
-if(ios_out == 0) then 
-   ! It appears to be unformatted, proceed
-   rewind open_restart_read
-   return
-endif
-
-! Otherwise, neither format works. Have a fatal error.
-11 continue
-
-write(msgstring, *) 'Problem opening file ',trim(file_name)
-write( string2 , *) 'OPEN status was ',ios
-call error_handler(E_ERR, 'open_restart_read', msgstring, &
-     source, revision, revdate, text2=string2)
-
-end function open_restart_read
-
-
-
-subroutine close_restart(file_unit)
-!----------------------------------------------------------------------
-!
-! Closes a restart file
-integer, intent(in) :: file_unit
-
-call close_file(file_unit)
-
-end subroutine close_restart
-
-
-
-
+!-------------------------------------------------------------------
 
 
 subroutine output_diagnostics(ncFileID, state, copy_index)

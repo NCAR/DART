@@ -1,5 +1,4 @@
 &assim_model_nml
-   write_binary_restart_files = .true.,
    netCDF_large_file_support  = .false.
   /
 

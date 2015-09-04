@@ -36,7 +36,7 @@ use      dart_pop_mod, only: set_model_time_step,                              &
                              read_horiz_grid, read_topography, read_vert_grid, &
                              get_pop_restart_filename
 
-use data_structure_mod,    only : ensemble_type, copies_in_window
+use ensemble_manager_mod,    only : ensemble_type, copies_in_window
 
 use distributed_state_mod, only : get_state
 

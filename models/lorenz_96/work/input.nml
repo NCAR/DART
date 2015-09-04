@@ -81,8 +81,6 @@
 
 &ensemble_manager_nml
    single_restart_file_in  = .true.,
-   single_restart_file_out = .true.,
-   perturbation_amplitude  = 0.2,
    /
 
 &assim_tools_nml
@@ -119,7 +117,6 @@
    /
 
 &assim_model_nml
-   write_binary_restart_files = .false.,
    netCDF_large_file_support  = .false.,
    /
 
@@ -243,7 +240,10 @@
    /
 
 &state_vector_io_nml
-   /   
+   single_restart_file_out    = .true.,
+   write_binary_restart_files = .false.,
+   perturbation_amplitude  = 0.2
+   /
 
 &io_filenames_nml
    restart_in_stub = 'advance_temp'

@@ -48,7 +48,7 @@ use       utilities_mod, only : register_module
 use        location_mod, only : location_type
 use     assim_model_mod, only : interpolate_distrib
 use        obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_SURFACE_ELEVATION
-use  data_structure_mod, only : ensemble_type, copies_in_window
+use  ensemble_manager_mod, only : ensemble_type, copies_in_window
 
 implicit none
 private

@@ -90,7 +90,7 @@ use      obs_kind_mod,   only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                                 get_raw_obs_kind_name
 
 !HK should model_mod know about the number of copies?
-use data_structure_mod,  only : ensemble_type, map_pe_to_task, get_var_owner_index, &
+use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_var_owner_index, &
                                 copies_in_window
 
 use sort_mod,            only : sort
@@ -1018,7 +1018,7 @@ integer                :: ens_size
 integer(i8) :: ugrid_1, ugrid_2, ugrid_3, ugrid_4, vgrid_1, vgrid_2, vgrid_3, vgrid_4
 integer(i8) :: z1d_ind1, z1d_ind2, t1d_ind, qv1d_ind
 
-ens_size = copies_in_window(state_ens_handle) ! data_structure_mod
+ens_size = copies_in_window(state_ens_handle) 
 allocate(x_ill(ens_size), x_iul(ens_size), x_ilr(ens_size), x_iur(ens_size))
 allocate(x_ugrid_1(ens_size), x_ugrid_2(ens_size), x_ugrid_3(ens_size), x_ugrid_4(ens_size))
 allocate(x_vgrid_1(ens_size), x_vgrid_2(ens_size), x_vgrid_3(ens_size), x_vgrid_4(ens_size))

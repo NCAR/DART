@@ -9,10 +9,14 @@ module obs_model_mod
 use utilities_mod,        only : register_module, error_handler,     &
                                  E_ERR, E_MSG, E_WARN,               &
                                  get_unit, file_exist, set_output
-use assim_model_mod,      only : aget_closest_state_time_to, get_model_time_step, &
-                                 open_restart_write, open_restart_read,           &
-                                 awrite_state_restart, close_restart, adv_1step,  &
-                                 aread_state_restart
+use assim_model_mod,      only : aget_closest_state_time_to,         &
+                                 get_model_time_step,  adv_1step
+
+
+use state_vector_io_mod,  only : aread_state_restart, open_restart_write, &
+                                 open_restart_read, awrite_state_restart, close_restart
+
+
 use obs_sequence_mod,     only : obs_sequence_type, obs_type,  &
                                  get_obs_def, init_obs, destroy_obs, get_num_copies, &
                                  get_num_qc, get_first_obs, get_next_obs_from_key,   &

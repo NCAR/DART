@@ -17,7 +17,6 @@ sort/sort_mod.f90
 time_manager/time_manager_mod.f90
 utilities/utilities_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
-ensemble_manager/data_structure_mod.f90
 distributed/distributed_state_mod.f90
 distributed/no_cray_win_mod.f90
 sort/sort_mod.f90

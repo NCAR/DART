@@ -65,7 +65,16 @@
    inf_damping                 = 1.0,                     1.0,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_sd_lower_bound          = 0.0,                     0.0,
+   direct_netcdf_read = .true.,
+   direct_netcdf_write = .true.,
+/
+
+&state_vector_io_nml
+   single_precision_output    = .false.,
+   single_restart_file_out    = .true.,
+   perturbation_amplitude     = 0.2,
+   write_binary_restart_files = .false.
 /
 
 &smoother_nml
@@ -88,8 +97,7 @@
 
 &ensemble_manager_nml
    single_restart_file_in  = .true.,
-   single_restart_file_out = .true.,
-   perturbation_amplitude  = 0.2  /
+/
 
 &cov_cutoff_nml
    select_localization = 1  /
@@ -117,7 +125,6 @@
    input_files              = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90'  /
 
 &assim_model_nml
-   write_binary_restart_files = .false.,
    netCDF_large_file_support  = .false. 
   /
 
@@ -320,8 +327,5 @@
 &quality_control_nml
    input_qc_threshold       =  3.0,
    outlier_threshold        = -1.0,
-   /
-
-&state_vector_io_nml
    /
 

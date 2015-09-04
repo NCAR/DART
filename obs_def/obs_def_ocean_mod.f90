@@ -136,7 +136,7 @@ use  assim_model_mod, only : interpolate_distrib
 use     obs_kind_mod, only : KIND_U_CURRENT_COMPONENT, &
                              KIND_V_CURRENT_COMPONENT
 
-use data_structure_mod, only : ensemble_type, copies_in_window
+use ensemble_manager_mod, only : ensemble_type, copies_in_window
 
 implicit none
 private

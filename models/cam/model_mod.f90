@@ -208,13 +208,16 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, KIND_
 use   random_seq_mod,      only : init_random_seq, random_seq_type, &
                                   random_gaussian
 
-use data_structure_mod,    only : ensemble_type, copies_in_window
+use ensemble_manager_mod,    only : ensemble_type, copies_in_window
 
 use distributed_state_mod, only : get_state
 
 use state_structure_mod,   only : add_domain, get_model_variable_indices, get_dim_name, &
                                   get_num_dims, get_variable_name, &
                                   get_unlimited_dimid
+
+use dart_time_io_mod,      only : dart_write_model_time => write_model_time
+
 ! end of use statements
 != = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = 
 ! CAM global/module declarations
@@ -234,7 +237,8 @@ public ::                                                             &
    clamp_or_fail_it, do_clamp_or_fail, construct_file_name_in,        &
    query_vert_localization_coord, vert_convert_distrib,               &
    get_vert, set_vert, set_which_vert,                                &
-   variables_domains, fill_variable_list, read_model_time
+   variables_domains, fill_variable_list, read_model_time, &
+   write_model_time
    !, convert_base_obs_location
 
 ! Why were these in public?   get_close_maxdist_init, get_close_obs_init, &
@@ -8270,6 +8274,17 @@ endif
 read_model_time = set_date(iyear,imonth,iday,ihour,imin,isec)
 
 end function read_model_time
+
+!-----------------------------------------------------------------------
+subroutine write_model_time(ncid, dart_time)
+
+integer,             intent(in) :: ncid !< netcdf file handle
+type(time_type),     intent(in) :: dart_time
+
+call error_handler(E_MSG, 'write_model_time', 'no routine for CAM write model time, writing dart time')
+call dart_write_model_time(ncid, dart_time)
+
+end subroutine write_model_time
 
 !-----------------------------------------------------------------------
 

@@ -68,7 +68,7 @@ use      obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                               get_raw_obs_kind_name
 
 !HK should model_mod know about the number of copies?
-use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
+use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
 
 use sort_mod, only : sort
 

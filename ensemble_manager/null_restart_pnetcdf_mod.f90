@@ -1,6 +1,6 @@
 module restart_pnetcdf_mod
 
-use data_structure_mod,  only : ensemble_type
+use ensemble_manager_mod,  only : ensemble_type
 use time_manager_mod,      only : time_type
 
 implicit none

@@ -37,7 +37,7 @@ use ensemble_manager_mod,  only : ensemble_type, compute_copy_mean_var, &
 use distributed_state_mod, only : create_state_window, free_state_window,   &
                                   get_state
 
-use data_structure_mod,    only : copies_in_window
+use ensemble_manager_mod,    only : copies_in_window
 
 use quality_control_mod,   only : check_outlier_threshold, get_dart_qc, &
                                   input_qc_ok, good_dart_qc

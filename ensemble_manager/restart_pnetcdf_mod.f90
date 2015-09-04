@@ -3,7 +3,7 @@ module restart_pnetcdf_mod
 use assim_model_mod,       only : awrite_state_restart, aread_state_restart
 use time_manager_mod,      only : time_type
 use types_mod,             only : r8
-use data_structure_mod,    only : ensemble_type
+use ensemble_manager_mod,    only : ensemble_type
 use pnetcdf_utilities_mod, only : pnet_check
 use mpi_utilities_mod,     only : datasize, my_task_id
 

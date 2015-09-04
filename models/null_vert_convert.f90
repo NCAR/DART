@@ -1,6 +1,6 @@
 module null_vert_convert
 
-use data_structure_mod, only : ensemble_type
+use ensemble_manager_mod, only : ensemble_type
 use location_mod,       only : location_type, get_close_obs, get_close_type
 use types_mod,          only : r8
 

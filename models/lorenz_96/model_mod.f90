@@ -16,7 +16,7 @@ use    utilities_mod, only : register_module, do_nml_file, do_nml_term,    &
                              nmlfileunit, find_namelist_in_file,           &
                              check_namelist_read, nc_check
 !HK
-use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
+use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
                                copies_in_window
 
 use mpi_utilities_mod, only : my_task_id
@@ -347,7 +347,7 @@ real(r8), allocatable :: x_upper(:) !< the upper piece of state vector
 integer :: ii
 integer :: ens_size
 
-ens_size = copies_in_window(state_ens_handle) ! data_structure_mod
+ens_size = copies_in_window(state_ens_handle) 
 
 allocate(x_lower(ens_size), x_upper(ens_size))
 

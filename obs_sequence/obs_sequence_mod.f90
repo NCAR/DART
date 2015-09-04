@@ -41,7 +41,7 @@ use    utilities_mod, only : get_unit, close_file, register_module, error_handle
 use mpi_utilities_mod, only : task_count, my_task_id
 use ensemble_manager_mod, only: get_var_owner_index, map_pe_to_task, &
                                 ensemble_type
-use data_structure_mod, only : copies_in_window
+use ensemble_manager_mod, only : copies_in_window
 
 use distributed_state_mod
 

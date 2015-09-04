@@ -49,7 +49,7 @@ use    utilities_mod, only : register_module, error_handler,               &
 use     location_mod, only : location_type, set_location, get_location 
 use  assim_model_mod, only : interpolate_distrib
 use   cov_cutoff_mod, only : comp_cov_factor
-use data_structure_mod, only : ensemble_type
+use ensemble_manager_mod, only : ensemble_type
 
 implicit none
 

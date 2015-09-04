@@ -62,6 +62,14 @@
    direct_netcdf_write = .true.
   /
 
+&state_vector_io_nml
+   single_precision_output    = .false.,
+   single_restart_file_out    = .false.,
+   perturbation_amplitude     = 0.2,
+   write_binary_restart_files = .false.
+/
+
+
 &mpi_utilities_nml
   /
 
@@ -75,7 +83,6 @@
 
 &ensemble_manager_nml
    single_restart_file_in  = .false.,
-   single_restart_file_out = .false.,
    perturbation_amplitude  = 0.2  /
   /
 
@@ -177,7 +184,6 @@
 !                              'GPS_PRECIPITABLE_WATER' /
 
 &assim_model_nml
-   write_binary_restart_files = .true.
    netCDF_large_file_support  = .true.,
 /
 
@@ -401,9 +407,6 @@
    print_every            = 1000
    dart_qc_threshold      = 3
    print_only             = .false.
-  /
-
-&state_vector_io_nml
   /
 
 # possible vertical coordinate systems are:

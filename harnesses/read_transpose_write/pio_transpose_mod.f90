@@ -7,7 +7,7 @@ use types_mod,            only : r8, missing_r8
 use mpi_utilities_mod,    only : task_count, my_task_id, get_dart_mpi_comm  
 use ensemble_manager_mod, only : ensemble_type
 use io_filenames_mod,     only : io_filenames_init, get_input_file, get_output_file
-use data_structure_mod,   only : copies_in_window
+use ensemble_manager_mod,   only : copies_in_window
 
 use state_structure_mod, only :  get_variable_name
 use state_vector_io_mod

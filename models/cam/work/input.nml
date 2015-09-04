@@ -46,8 +46,6 @@
    num_output_obs_members   = 80
    output_interval          = 1,
    num_groups               = 1,
-   input_qc_threshold       = 3.0,
-   outlier_threshold        = 3.0,
    output_forward_op_errors = .false.,
    output_inflation         = .true.,
    trace_execution          = .true.,
@@ -67,8 +65,23 @@
    inf_upper_bound             = 100.0,                 100.0,
    inf_damping                 = 0.9,                     0.9,
    inf_sd_initial              = 0.6,                     0.6,
-   inf_sd_lower_bound          = 0.6,                     0.6
+   inf_sd_lower_bound          = 0.6,                     0.6,
+   direct_netcdf_read = .true.,
+   direct_netcdf_read = .true.,
    /
+
+&state_vector_io_nml
+   single_precision_output    = .false.,
+   single_restart_file_out    = .false.,
+   perturbation_amplitude     = 0.2,
+   write_binary_restart_files = .false.,
+/
+
+&quality_control_nml
+  input_qc_threshold = 3.0,
+  outlier_threshold = 3.0,
+  enable_special_outlier_code = .false.
+/
 
 &perfect_model_obs_nml
   start_from_restart       = .true.
@@ -106,8 +119,6 @@
 
 &ensemble_manager_nml
    single_restart_file_in  = .true.
-   single_restart_file_out = .false.
-   perturbation_amplitude  = 0.2
    layout                  = 2
    tasks_per_node          = 15
    /
@@ -140,7 +151,6 @@
    /
 
 &assim_model_nml
-   write_binary_restart_files = .true.,
    netCDF_large_file_support  = .true.
    /
 

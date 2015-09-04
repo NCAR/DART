@@ -72,7 +72,7 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                              KIND_VORTEX_LAT, KIND_VORTEX_LON, KIND_VORTEX_PMIN, &
                              KIND_VORTEX_WMAX
 
-use data_structure_mod, only : ensemble_type, copies_in_window
+use ensemble_manager_mod, only : ensemble_type, copies_in_window
 
 implicit none
 private

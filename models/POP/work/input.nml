@@ -63,8 +63,18 @@
    inf_damping                 = 0.9,                     0.9,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.6,                     0.6
+   inf_sd_lower_bound          = 0.6,                     0.6,
+   direct_netcdf_read = .true.,
+   direct_netcdf_write = .true.,
   /
+
+&state_vector_io_nml
+   single_precision_output    = .false.,
+   single_restart_file_out    = .false.,
+   perturbation_amplitude     = 0.2,
+   write_binary_restart_files = .false.,
+/
+
 
 &smoother_nml
    num_lags              = 0,
@@ -89,8 +99,6 @@
 
 &ensemble_manager_nml
    single_restart_file_in  = .false.
-   single_restart_file_out = .false.
-   perturbation_amplitude  = 0.2
    layout                  = 1
    tasks_per_node          = 1
   /
@@ -141,7 +149,6 @@
   /
 
 &assim_model_nml
-   write_binary_restart_files = .true.,
    netCDF_large_file_support  = .true.
   /
 

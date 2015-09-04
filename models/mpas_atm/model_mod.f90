@@ -78,7 +78,9 @@ use mpi_utilities_mod, only: my_task_id
 
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 
-use data_structure_mod, only : ensemble_type, copies_in_window
+use ensemble_manager_mod, only : ensemble_type, copies_in_window
+
+use dart_time_io_mod,      only : dart_write_model_time => write_model_time
 
 use distributed_state_mod
 
@@ -132,7 +134,8 @@ public :: get_model_size,                 &
           construct_file_name_in,         &
           read_model_time,                 &
           clamp_or_fail_it,               &
-          do_clamp_or_fail
+          do_clamp_or_fail, &
+          write_model_time
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
@@ -142,7 +145,6 @@ public :: get_model_analysis_filename,  &
           analysis_file_to_statevector, &
           statevector_to_analysis_file, &
           get_analysis_time,            &
-          write_model_time,             &
           get_grid_dims,                &
           get_xland,                    &
           print_variable_ranges,        &
@@ -408,6 +410,11 @@ END INTERFACE
 interface vert_convert_distrib
    module procedure vert_convert_distrib_mean
    module procedure vert_convert_distrib_fwd
+end interface
+
+interface write_model_time
+   module procedure write_model_time_file
+   module procedure write_model_time_restart
 end interface
 
 
@@ -2960,7 +2967,7 @@ end function get_analysis_time_fname
 
 !------------------------------------------------------------------
 
-subroutine write_model_time(time_filename, model_time, adv_to_time)
+subroutine write_model_time_file(time_filename, model_time, adv_to_time)
  character(len=*), intent(in)           :: time_filename
  type(time_type),  intent(in)           :: model_time
  type(time_type),  intent(in), optional :: adv_to_time
@@ -2985,8 +2992,18 @@ endif
 
 call close_file(iunit)
 
-end subroutine write_model_time
+end subroutine write_model_time_file
 
+!-----------------------------------------------------------------------
+subroutine write_model_time_restart(ncid, dart_time)
+
+integer,             intent(in) :: ncid !< netcdf file handle
+type(time_type),     intent(in) :: dart_time
+
+call error_handler(E_MSG, 'write_model_time', 'no routine for mpas_atm write model time, writing dart time')
+call dart_write_model_time(ncid, dart_time)
+
+end subroutine write_model_time_restart
 
 !------------------------------------------------------------------
 

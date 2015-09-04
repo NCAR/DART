@@ -1,7 +1,5 @@
 &ensemble_manager_nml
    single_restart_file_in  = .true.,
-   single_restart_file_out = .true.,
-   perturbation_amplitude  = 0.2,
    layout = 1,
    tasks_per_node = 1,
    communication_configuration = 1,

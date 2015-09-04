@@ -798,7 +798,7 @@ use  assim_model_mod, only : get_state_meta_data_distrib, interpolate_distrib !H
 use     obs_kind_mod, only : assimilate_this_obs_kind, evaluate_this_obs_kind, &
                              max_obs_kinds, get_obs_kind_name, map_def_index, &
                              get_kind_from_menu
-use data_structure_mod, only : ensemble_type
+use ensemble_manager_mod, only : ensemble_type
 
 !HK temporary
 use mpi_utilities_mod, only    : my_task_id

@@ -15,14 +15,15 @@ use time_manager_mod,     only : time_type, get_time
 use utilities_mod,        only : register_module, open_file, close_file, &
                                  error_handler, E_ERR, E_MSG
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq
-use ensemble_manager_mod, only : ensemble_type, read_ensemble_restart, write_ensemble_restart,  &
+use ensemble_manager_mod, only : ensemble_type,   &
                                  get_copy_owner_index, prepare_to_write_to_vars,                &
                                  prepare_to_read_from_vars, prepare_to_update_vars, map_pe_to_task, all_vars_to_all_copies, all_copies_to_all_vars
 use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, datasize
 
 use state_vector_io_mod,  only : turn_read_copy_on, turn_write_copy_on, &
                                  turn_read_copies_off, &
-                                 read_transpose, transpose_write
+                                 read_transpose, transpose_write, &
+                                 read_ensemble_restart, write_ensemble_restart
 
 implicit none
 private

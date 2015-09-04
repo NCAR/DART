@@ -1,5 +1,4 @@
 common/types_mod.f90
-ensemble_manager/data_structure_mod.f90
 location/threed_sphere/location_mod.f90
 models/wrf/WRF_DART_utilities/add_pert_where_high_refl.f90
 models/wrf/WRF_DART_utilities/f2kcli.f90

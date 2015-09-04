@@ -13,7 +13,7 @@ module distributed_state_mod
 !> \defgroup distrib_state distributed_state_mod
 !> @{
 use types_mod,          only : r8, i8
-use data_structure_mod, only : ensemble_type
+use ensemble_manager_mod, only : ensemble_type
 
 implicit none
 

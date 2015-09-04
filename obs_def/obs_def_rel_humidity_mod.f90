@@ -61,7 +61,7 @@ use     location_mod, only : location_type, set_location, get_location, write_lo
 use  assim_model_mod, only : interpolate_distrib
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_PRESSURE, KIND_VAPOR_MIXING_RATIO
 
-use data_structure_mod, only : ensemble_type, copies_in_window
+use ensemble_manager_mod, only : ensemble_type, copies_in_window
 
 implicit none
 private

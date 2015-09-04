@@ -17,7 +17,7 @@ use ensemble_manager_mod, only : ensemble_type, print_ens_handle
 use io_filenames_mod,     only : restart_files_in
 use state_vector_io_mod
 use assim_tools_mod,      only : test_state_copies
-use data_structure_mod,   only : copies_in_window
+use ensemble_manager_mod,   only : copies_in_window
 
 use mpi
 use pnetcdf

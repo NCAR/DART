@@ -36,24 +36,26 @@ use mpi_utilities_mod,    only : task_count, task_sync, initialize_mpi_utilities
                                  finalize_mpi_utilities
 
 use   random_seq_mod,     only : random_seq_type, init_random_seq, random_gaussian
-use ensemble_manager_mod, only : init_ensemble_manager, write_ensemble_restart,              &
-                                 end_ensemble_manager, ensemble_type, read_ensemble_restart, &
+use ensemble_manager_mod, only : init_ensemble_manager,               &
+                                 end_ensemble_manager, ensemble_type,  &
                                  get_my_num_copies, get_ensemble_time, prepare_to_write_to_vars,      &
                                  prepare_to_read_from_vars, &
                                  all_vars_to_all_copies, &
                                  all_copies_to_all_vars
 
-use           filter_mod, only : filter_read_restart_direct, filter_write_restart_direct, &
-                                 filter_set_initial_time, filter_sync_keys_time
+use           filter_mod, only : filter_set_initial_time, filter_sync_keys_time
 
 use state_vector_io_mod,   only : read_transpose, transpose_write, state_vector_io_init, &
-                                  setup_read_write, turn_read_copy_on, turn_write_copy_on, turn_write_copy_off
+                                  setup_read_write, turn_read_copy_on, turn_write_copy_on,&
+                                  turn_write_copy_off, filter_read_restart_direct, &
+                                  filter_write_restart_direct, write_ensemble_restart, &
+                                  read_ensemble_restart
 
 use state_structure_mod,   only : get_num_domains, static_init_state_type
 use io_filenames_mod,      only : io_filenames_init, get_input_file, set_filenames
 use quality_control_mod,   only : set_input_qc, initialize_qc
 
-use data_structure_mod,    only : copies_in_window, set_num_extra_copies ! should this be through ensemble_manager?
+use ensemble_manager_mod,    only : copies_in_window, set_num_extra_copies ! should this be through ensemble_manager?
 use distributed_state_mod, only : create_state_window, free_state_window
 
 use forward_operator_mod, only : get_expected_obs_distrib_state

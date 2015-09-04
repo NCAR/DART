@@ -14,8 +14,7 @@ use  utilities_mod,       only : file_exist, check_namelist_read, do_output,  &
                                  find_namelist_in_file, register_module, error_handler, &
                                  E_ERR, E_MSG, nmlfileunit, logfileunit, timestamp,     &
                                  do_nml_file, do_nml_term
-use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, read_ensemble_restart, &
-                                 write_ensemble_restart, all_vars_to_all_copies,              &
+use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, all_vars_to_all_copies, &
                                  duplicate_ens, compute_copy_mean_sd,      &
                                  all_copies_to_all_vars, get_copy, map_task_to_pe
 use time_manager_mod,     only : time_type, operator(==), print_time
@@ -24,6 +23,8 @@ use assim_tools_mod,      only : filter_assim, get_missing_ok_status
 use obs_sequence_mod,     only : obs_sequence_type
 use adaptive_inflate_mod, only : adaptive_inflate_type, adaptive_inflate_init, &
                                  do_varying_ss_inflate, do_single_ss_inflate
+use state_vector_io_mod, only : read_ensemble_restart, &
+                                 write_ensemble_restart
 
 implicit none
 private
@@ -31,7 +32,7 @@ private
 public :: smoother_read_restart, advance_smoother,                     &
    smoother_gen_copy_meta_data, smoother_write_restart, init_smoother, &
    do_smoothing, smoother_mean_spread, smoother_assim,                 &
-   filter_state_space_diagnostics, smoother_ss_diagnostics,            &
+   smoother_ss_diagnostics,            &
    smoother_end, set_smoother_trace
 
 
@@ -464,42 +465,6 @@ do i = 1, num_current_lags
 end do
 
 end subroutine smoother_mean_spread
-
-!-----------------------------------------------------------
-!> Skeleton version just to write the time to the diagnostic file
-!> This needs to add to the netcdf file (restarts) for multi-step assimilation
-!> using aoutput_diagnostics -> nc_get_tindex
-subroutine filter_state_space_diagnostics(curr_ens_time, out_unit, ens_handle, model_size, &
-            num_output_state_members, output_state_mean_index, output_state_spread_index, &
-            ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY)
-
-type(time_type),             intent(in)    :: curr_ens_time
-type(netcdf_file_type),      intent(inout) :: out_unit
-type(ensemble_type),         intent(inout) :: ens_handle
-integer(i8),                 intent(in)    :: model_size
-integer,                     intent(in)    :: num_output_state_members
-integer,                     intent(in)    :: output_state_mean_index, output_state_spread_index
-! temp_ens is passed from above to avoid extra storage
-!real(r8),                    intent(out)   :: temp_ens(:)
-type(adaptive_inflate_type), intent(in)    :: inflate
-integer,                     intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, INF_COPY, INF_SD_COPY
-
-type(time_type) :: temp_time
-integer         :: ens_offset, j
-real(r8)        :: temp_ens(1) ! junk value
-
-! Assumes that mean and spread have already been computed
-
-! must have called init_smoother() before using this routine
-if ( .not. module_initialized ) then
-   write(errstring, *)'cannot be called before init_smoother() called'
-   call error_handler(E_ERR,'smoother_state_space_diagnostics',errstring,source,revision,revdate)
-endif
-
-! just to write the time
-if(my_task_id() == 0) call aoutput_diagnostics(out_unit, curr_ens_time, temp_ens, output_state_mean_index)
-
-end subroutine filter_state_space_diagnostics
 
 !-----------------------------------------------------------
 

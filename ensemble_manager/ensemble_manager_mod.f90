@@ -19,22 +19,29 @@ use utilities_mod,     only : register_module, do_nml_file, do_nml_term, &
                               error_handler, E_ERR, E_MSG, do_output, &
                               nmlfileunit, find_namelist_in_file,        &
                               check_namelist_read, timestamp, set_output
-use assim_model_mod,   only : aread_state_restart, awrite_state_restart, &
-                              open_restart_read, open_restart_write,     &
-                              close_restart, pert_model_state
+
 use time_manager_mod,  only : time_type, set_time
-use random_seq_mod,    only : random_seq_type, init_random_seq, random_gaussian
 use mpi_utilities_mod, only : task_count, my_task_id, send_to, receive_from, &
                               task_sync, broadcast_send, broadcast_recv
 use sort_mod,          only : index_sort
 
-use data_structure_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index
-
-use copies_on_off_mod,  only : query_read_copy, query_write_copy
-
 
 implicit none
 private
+
+public :: copies_in_window, mean_row, set_num_extra_copies
+
+public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_time,          &
+          ensemble_type,              duplicate_ens,            get_var_owner_index,        &
+          get_my_num_copies,          get_my_copies,            get_my_num_vars,            &
+          get_my_vars,                compute_copy_mean,        compute_copy_mean_sd,       &
+          get_copy,                   put_copy,                 all_vars_to_all_copies,     &
+          all_copies_to_all_vars,      &
+          compute_copy_mean_var,      get_copy_owner_index,     set_ensemble_time,          &
+          broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
+          prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
+          prepare_to_update_copies,   print_ens_handle,              &
+          map_task_to_pe,             map_pe_to_task, is_single_restart_file_in
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -42,22 +49,38 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
+type ensemble_type
+
+!> @todo Extra argument to init_ensemble_manager so you could set up an ensemble handle
+!> that allowed transposes (e.g. state, fwd_op) or not allow tranposes( e.g. static data)
+
+   !DIRECT ACCESS INTO STORAGE IS USED TO REDUCE COPYING: BE CAREFUL
+   !!!private
+   integer(i8)                  :: num_vars
+   integer                      :: num_copies, my_num_copies, my_num_vars
+   integer,        allocatable  :: my_copies(:)
+   integer(i8),    allocatable  :: my_vars(:)
+   ! Storage in next line is to be used when each pe has all copies of subset of vars
+   real(r8),       allocatable  :: copies(:, :)         ! Dimensioned (num_copies, my_num_vars)
+   ! Storage on next line is used when each pe has subset of copies of all vars
+   real(r8),       allocatable  :: vars(:, :)           ! Dimensioned (num_vars, my_num_copies)
+   ! Time is only related to var complete
+   type(time_type), allocatable :: time(:)
+   integer                      :: distribution_type
+   integer                      :: valid     ! copies modified last, vars modified last, both same
+   integer                      :: id_num
+   integer, allocatable         :: task_to_pe_list(:), pe_to_task_list(:) ! List of tasks
+   ! Flexible my_pe, layout_type which allows different task layouts for different ensemble handles
+   integer                      :: my_pe
+   integer                      :: layout_type
+
+end type ensemble_type
+
+integer               :: num_extras
+
 !PAR other storage option control can be implemented here. In particular, want to find
 !PAR some way, either allocating or multiple addressing, to use same chunk of storage
 !PAR for both copy and var complete representations.
-
-public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_time,          &
-          ensemble_type,              duplicate_ens,            get_var_owner_index,        &
-          get_my_num_copies,          get_my_copies,            get_my_num_vars,            &
-          get_my_vars,                compute_copy_mean,        compute_copy_mean_sd,       &
-          get_copy,                   put_copy,                 all_vars_to_all_copies,     &
-          all_copies_to_all_vars,     read_ensemble_restart,    write_ensemble_restart,     &
-          compute_copy_mean_var,      get_copy_owner_index,     set_ensemble_time,          &
-          broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
-          prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
-          prepare_to_update_copies,   print_ens_handle,         perturbation_amplitude,     &
-          map_task_to_pe,             map_pe_to_task,           single_restart_file_in,     &
-          single_restart_file_out, is_single_restart_file_in
 
 ! track if copies modified last, vars modified last, both are in sync
 ! (and therefore both valid to be used r/o), or unknown.
@@ -90,10 +113,13 @@ logical  :: use_var2copy_rec_loop  = .true.
 ! different restart types.
 ! If true a single restart file containing all ensemble vars is read/written
 ! If false, one restart file is used for each ensemble member
+!> @todo where should this go?
 logical  :: single_restart_file_in  = .true.
-logical  :: single_restart_file_out = .true.
-! Size of perturbations for creating ensembles when model won't do it
-real(r8) :: perturbation_amplitude  = 0.2_r8
+
+!-----------------------------------------------------------------
+!
+! namelist with default values
+
 ! Complain if unneeded transposes are done
 logical  :: flag_unneeded_transposes = .false.
 ! Communication configuration:
@@ -104,12 +130,10 @@ integer  :: layout = 1 ! default to my_pe = my_task_id(). Layout2 assumes that t
 integer  :: tasks_per_node = 1 ! default to 1 if the user does not specify a number of tasks per node.
 logical  :: debug = .false.
 
-namelist / ensemble_manager_nml / single_restart_file_in,  &
-                                  single_restart_file_out, &
-                                  perturbation_amplitude,  &
-                                  communication_configuration, &
+namelist / ensemble_manager_nml / communication_configuration, &
                                   layout, tasks_per_node,  &
-                                  debug, flag_unneeded_transposes
+                                  debug, flag_unneeded_transposes, &
+                                  single_restart_file_in
                                   
 !-----------------------------------------------------------------
 
@@ -223,229 +247,6 @@ call set_up_ens_distribution(ens_handle)
 if (debug) call print_ens_handle(ens_handle)
 
 end subroutine init_ensemble_manager
-
-!-------------------------------------------------------------------------------
-
-subroutine read_ensemble_restart(ens_handle, start_copy, end_copy, &
-   start_from_restart, file_name, init_time, force_single_file)
-
-type(ensemble_type),  intent(inout)           :: ens_handle
-integer,              intent(in)              :: start_copy, end_copy
-logical,              intent(in)              :: start_from_restart
-character(len = *),   intent(in)              :: file_name
-type(time_type),      intent(in),    optional :: init_time
-logical,              intent(in),    optional :: force_single_file
-
-! The ensemble being read from restart is stored in copies start_copy:end_copy
-! contiguously (by fiat). So if start_copy is 6, the first ensemble restart
-! goes in copy 6, the second in copy 7, etc. This lets higher level determine
-! where other copies like mean, inflation, etc., are stored.
-
-! Avoid num_vars size storage on stack; make this allocatable from heap
-real(r8), allocatable               :: ens(:) 
-integer                             :: iunit, i, j
-character(len = LEN(file_name) + 5) :: this_file_name
-character(len = 4)                  :: extension
-type(time_type)                     :: ens_time
-integer                             :: global_copy_index
-logical                             :: interf_provided
-logical                             :: single_file_override
-type(random_seq_type)               :: random_seq
-integer                             :: my_num_vars
-
-! timing variables
-double precision :: time_at_start
-
-! Does not make sense to have start_from_restart and single_restart_file_in BOTH false
-if(.not. start_from_restart .and. .not. single_restart_file_in) then
-   write(msgstring, *) 'start_from_restart in filter_nml and single_restart_file_in in &
-        &ensemble_manager_nml cannot both be false'
-   call error_handler(E_ERR,'read_ensemble_restart', msgstring, source, revision, revdate)
-endif
-
-! the code reads into the vars array
-ens_handle%valid = VALID_VARS
-
-! Some compilers (absoft, but others also) are particularly unhappy about
-! both checking present(N) _and_ evaluating N inside a single if() test.
-! (It evaluates both at the same time and blows up on the not present value.)
-! The standard says they do not have to evaluate right to left.  Common error
-! for anyone with a C programming background.   So -- set a separate local
-! logical variable which always has a value, whether the arg is present or not.
-if (present(force_single_file)) then
-  single_file_override = force_single_file
-else
-  single_file_override = .false.
-endif
-
-!-------- Block for single restart file or single member  being perturbed -----
-if(single_restart_file_in .or. .not. start_from_restart .or. &
-   single_file_override) then
-   ! Single restart file is read only by task 0 and then distributed
-   if(my_task_id() == 0) iunit = open_restart_read(file_name)
-   allocate(ens(ens_handle%num_vars))   ! used to be on stack.
-
-   ! Loop through the total number of copies
-   do i = start_copy, end_copy
-       ! Only task 0 does reading. Everybody can do their own perturbing
-       if(my_task_id() == 0) then
-       ! Read restarts in sequence; only read once for not start_from_restart
-          if(start_from_restart .or. i == start_copy) &
-               call aread_state_restart(ens_time, ens, iunit)
-         ! Override this time if requested by namelist
-         if(present(init_time)) ens_time = init_time
-      endif
-
-      ! Store this copy in the appropriate place on the appropriate process
-      ! map from my_pe to physical task number all done in send and receives only
-      call put_copy(map_task_to_pe(ens_handle,0), ens_handle, i, ens, ens_time)
-   end do
-   
-   deallocate(ens)
-   ! Task 0 must close the file it's been reading
-   if(my_task_id() == 0) call close_restart(iunit)
-
-else
-
-!----------- Block that follows is for multiple restart files -----------
-   ! Loop to read in all my ensemble members
-   READ_MULTIPLE_RESTARTS: do i = 1, ens_handle%my_num_copies
-      ! Get global index for my ith ensemble
-      global_copy_index = ens_handle%my_copies(i)
-      ! If this global copy is in the range being read in, proceed
-      if(global_copy_index >= start_copy .and. global_copy_index <= end_copy) then
-         ! File name extension is the global index number for the copy
-         write(extension, '(i4.4)') global_copy_index - start_copy + 1
-         this_file_name = trim(file_name) // '.' // extension
-         iunit = open_restart_read(this_file_name)
-
-         ! Read the file directly into storage
-         call aread_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
-         if(present(init_time)) ens_handle%time(i) = init_time
-         ! Close the restart file
-         call close_restart(iunit)
-
-      endif
-
-
-   end do READ_MULTIPLE_RESTARTS
-endif
-
-!------------------- Block that follows perturbs single base restart --------
-if(.not. start_from_restart) then
-   PERTURB_MY_RESTARTS: do i = 1, ens_handle%my_num_copies
-      global_copy_index = ens_handle%my_copies(i)
-      ! If this is one of the actual ensemble copies, then perturb
-      if(global_copy_index >= start_copy .and. global_copy_index <= end_copy) then
-         ! See if model has an interface to perturb
-         call pert_model_state(ens_handle%vars(:, i), ens_handle%vars(:, i), interf_provided)
-         ! If model does not provide a perturbing interface, do it here
-         if(.not. interf_provided) then
-            ! To reproduce for varying pe count, need  fixed sequence for each copy
-            call init_random_seq(random_seq, global_copy_index)
-            do j = 1, ens_handle%num_vars
-               if (ens_handle%vars(j,i) /= MISSING_R8) &
-               ens_handle%vars(j, i) = random_gaussian(random_seq, ens_handle%vars(j, i), &
-                     perturbation_amplitude)
-            end do
-         endif
-      endif
-   end do PERTURB_MY_RESTARTS
-endif
-
-end subroutine read_ensemble_restart
-
-!-----------------------------------------------------------------
-
-subroutine write_ensemble_restart(ens_handle, file_name, start_copy, end_copy, &
-   force_single_file)
-
-type(ensemble_type),  intent(inout) :: ens_handle
-character(len = *),   intent(in)    :: file_name
-integer,              intent(in)    :: start_copy, end_copy
-logical, optional,    intent(in)    :: force_single_file
-
-! Large temporary storage to be avoided if possible
-real(r8), allocatable               :: ens(:)
-type(time_type)                     :: ens_time
-integer                             :: iunit, i, global_index
-integer                             :: owner, owners_index
-character(len = LEN(file_name) + 10) :: this_file_name
-character(len = 4)                  :: extension
-logical                             :: single_file_forced
-
-! timing variables
-double precision :: start_at_time
-
-if (present(force_single_file) ) then
-   single_file_forced = force_single_file
-else
-   single_file_forced = .FALSE.
-endif
-
-! Error checking
-!if (ens_handle%valid /= VALID_VARS .and. ens_handle%valid /= VALID_BOTH) then
-!   call error_handler(E_ERR, 'write_ensemble_restart', &
-!        'last access not var-complete', source, revision, revdate)
-!endif
-
-! For single file, need to send restarts to pe0 and it writes them out.
-!-------------- Block for single_restart file -------------
-! Need to force single restart file for inflation files
-if(single_restart_file_out .or. single_file_forced) then
-
-   ! Single restart file is written only by task 0
-   if(my_task_id() == 0) then
-
-      iunit = open_restart_write(file_name)
-
-      ! Loop to write each ensemble member
-      allocate(ens(ens_handle%num_vars))   ! used to be on stack.
-      do i = start_copy, end_copy
-         ! Figure out where this ensemble member is being stored
-         call get_copy_owner_index(i, owner, owners_index)
-         ! If it's on task 0, just write it
-         if(map_pe_to_task(ens_handle, owner) == 0) then
-            call awrite_state_restart(ens_handle%time(owners_index), &
-               ens_handle%vars(:, owners_index), iunit)
-         else
-            ! Get the ensemble from the owner and write it out
-            ! This communication assumes index numbers are monotonically increasing
-            ! and that communications is blocking so that there are not multiple
-            ! outstanding messages from the same processors (also see send_to below).
-            call receive_from(map_pe_to_task(ens_handle, owner), ens, ens_time)
-            call awrite_state_restart(ens_time, ens, iunit)
-         endif
-      end do
-      deallocate(ens)
-      call close_restart(iunit)
-   else ! I must send my copies to task 0 for writing to file
-      do i = 1, ens_handle%my_num_copies
-         ! Figure out which global index this is
-         global_index = ens_handle%my_copies(i)
-         ! Ship this ensemble off to the master
-         if(global_index >= start_copy .and. global_index <= end_copy) &
-            call send_to(0, ens_handle%vars(:, i), ens_handle%time(i))
-      end do
-   endif
-
-else
-!-------------- Block for multiple restart files -------------
-   ! Everyone can just write their own files
-   do i = 1, ens_handle%my_num_copies
-      ! Figure out which global index this is
-      global_index = ens_handle%my_copies(i)
-      if(global_index >= start_copy .and. global_index <= end_copy) then
-         write(extension, '(i4.4)') ens_handle%my_copies(i)
-         this_file_name = trim(file_name) // '.' // extension
-         iunit = open_restart_write(this_file_name)
-         call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), iunit)
-         call close_restart(iunit)
-      endif
-   end do
-endif
-
-end subroutine write_ensemble_restart
 
 !-----------------------------------------------------------------
 
@@ -1087,6 +888,82 @@ do i = 1, pes_num_copies
 end do
 
 end subroutine get_copy_list
+
+!-----------------------------------------------------------------
+!> Given the var number, returns which PE stores it when copy complete
+!> and its index in that pes local storage. Depends on distribution_type
+!> with only option 1 currently implemented.
+!> Assumes that all tasks are used in the ensemble
+subroutine get_var_owner_index(var_number, owner, owners_index)
+
+integer(i8), intent(in)  :: var_number !> index into state vector
+integer,     intent(out) :: owner !> pe who owns the state element
+integer,     intent(out) :: owners_index !> local index on the owner
+
+integer :: div
+integer :: num_pes
+
+num_pes = task_count() !> @todo Fudge task_count()
+
+! Asummes distribution type 1: rount robin
+div = (var_number - 1) / num_pes
+owner = var_number - div * num_pes - 1
+owners_index = div + 1
+
+end subroutine get_var_owner_index
+
+!--------------------------------------------------------------------------------
+!> Return the physical task for my_pe
+function map_pe_to_task(ens_handle, p)
+
+type(ensemble_type), intent(in) :: ens_handle
+integer,             intent(in) :: p  !> pe number
+integer                         :: map_pe_to_task !> physical task number
+
+map_pe_to_task = ens_handle%pe_to_task_list(p + 1)
+
+end function map_pe_to_task
+
+!--------------------------------------------------------------------------------
+!> return the number of actual ensemble members (not extra copies)
+function copies_in_window(state_ens_handle)
+
+type(ensemble_type), intent(in) :: state_ens_handle
+integer                         :: copies_in_window
+
+!> @todo These are annoying -7, -6 or -10, -9
+copies_in_window = state_ens_handle%num_copies - num_extras
+
+end function copies_in_window
+
+!--------------------------------------------------------------------------------
+!> return the index of the mean row
+!> mean row is the row in state_ens_handle%copies(:,:) which is the mean. Typically
+!> has been state_ens_handle%copies -6 ( just the regular ensemble members
+function mean_row(state_ens_handle)
+
+type(ensemble_type), intent(in) :: state_ens_handle
+integer                         :: mean_row
+
+mean_row = state_ens_handle%num_copies - num_extras +1
+
+end function mean_row
+
+!--------------------------------------------------------------------------------
+!> Aim: allow filter to set the number of extra copies in this module
+!> This is necessary for copies_in_window, mean_row
+!> This is really ugly.
+subroutine set_num_extra_copies(state_ens_handle, n)
+
+type(ensemble_type), intent(inout) :: state_ens_handle
+integer,             intent(in)    :: n
+
+num_extras = n
+
+end subroutine set_num_extra_copies
+
+!-----------------------------------------------------------------
+
 
 !-----------------------------------------------------------------
 
@@ -1826,20 +1703,6 @@ do i = 1, n
 enddo
 
 end subroutine sort_task_list
-
-!!--------------------------------------------------------------------------------
-!
-!function map_pe_to_task(ens_handle, p)
-!
-!! Return the physical task for my_pe
-!
-!type(ensemble_type), intent(in) :: ens_handle
-!integer,             intent(in)    :: p
-!integer                            :: map_pe_to_task
-!
-!map_pe_to_task = ens_handle%pe_to_task_list(p + 1)
-!
-!end function map_pe_to_task
 
 !--------------------------------------------------------------------------------
 !> ! Return my_pe corresponding to the physical task
