@@ -168,9 +168,6 @@ ALL_OBSERVATIONS: do j = 1, my_num_obs
       endif
    else ! posterior
       global_qc_value = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) )
-      if (.not. good_dart_qc(global_qc_value)) then
-         cycle ALL_OBSERVATIONS ! prior forward op failed
-      endif
    endif
 
    ! Get the observation value and error variance
@@ -233,7 +230,7 @@ QC_LOOP: do j = 1, my_num_obs
    ! reset the mean/var to missing_r8, regardless of the DART QC status
    ! HK does this fail if you have groups?
    !>@todo Do we want to set all the groups to missing_r8? Not just the start?
-   if (.not. good_dart_qc(global_qc_value)) then
+   if ( any(obs_fwd_op_ens_handle%copies(1:ens_size, j) == missing_r8) ) then
       obs_fwd_op_ens_handle%copies(OBS_MEAN_START, j) = missing_r8
       obs_fwd_op_ens_handle%copies(OBS_VAR_START,  j) = missing_r8
    endif
