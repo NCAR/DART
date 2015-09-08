@@ -456,9 +456,8 @@ if (.not. lanai_bitwise) then
    ! convert the verical of all my observations to the localization coordinate
    ! this may not be bitwise with Lanai because of a different number of set_location calls
    do i = 1, obs_ens_handle%my_num_vars
-      
+      call vert_convert_distrib(ens_handle, my_obs_loc(i), my_obs_kind(i), vstatus)
       if (good_dart_qc(nint(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i)))) then
-         call vert_convert_distrib(ens_handle, my_obs_loc(i), my_obs_kind(i), vstatus)
          !> @todo Can I just use the OBS_GLOBAL_QC_COPY? Is it ok to skip the loop?
          if (vstatus /= 0) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = DARTQC_FAILED_VERT_CONVERT
       endif
