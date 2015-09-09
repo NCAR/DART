@@ -19,6 +19,17 @@ function bins = rank_hist(ens, verif)
 num_times = size(ens, 1);
 ens_size  = size(ens, 2);
 
+% If one of the dimensions of 'ens' is unity - it must be time.
+% If that happens, transpose these things. Why can't Matlab just
+% leave the dimensions alone! There has already been a check to make
+% sure the ensemble size is greater than 2, so it cannot be 1 here.
+
+if (ens_size == 1)
+    ens = ens';
+    num_times = size(ens,1);
+    ens_size  = size(ens,2);
+end
+
 % Need ens_size + 1 bins
 bins(1:ens_size + 1) = 0.0;
 
@@ -32,7 +43,6 @@ for i = 1:num_times
    end
    bins(count+1) = bins(count+1) + 1;
 end
-
 
 % <next few lines under version control, do not edit>
 % $URL$

@@ -37,6 +37,8 @@ function PlotBins(pinfo)
 
 if isempty(pinfo.num_ens_members)
     error('no ensemble members in %s, cannot create rank histogram.',pinfo.diagn_file)
+elseif (pinfo.num_ens_members < 2)
+    error('not ensemble members in %s, cannot create rank histogram.',pinfo.diagn_file)
 end
 
 % Get the state for the truth
@@ -137,7 +139,7 @@ switch lower(pinfo.model)
          axis tight
       end
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean','cam','wrf','mpas_atm','mpas_ocn','sqg'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','cam','wrf','mpas_atm','mpas_ocn','sqg','pop'}
 
       % It is intended that all 3D models have all the required information
       % set in the corresponding Get<model>Info.m script.

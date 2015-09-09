@@ -160,7 +160,7 @@ switch lower(pinfo.model)
       end
       legend boxoff
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf','cam','sqg'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf','cam','sqg','pop'}
 
       ens_mem_id = get_copy_index(pinfo.fname, pinfo.ens_mem);   % errors out if no ens_mem
 

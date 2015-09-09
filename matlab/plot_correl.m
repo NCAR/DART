@@ -127,6 +127,10 @@ switch lower(pinfo.model)
 
       pinfo = GetSqgInfo(pinfo, diagn_file, 'PlotCorrel');
 
+   case {'pop'}
+
+      pinfo = GetPOPInfo(pinfo, diagn_file, 'PlotCorrel');
+
    otherwise
 
       error('model %s not implemented yet', pinfo.model)

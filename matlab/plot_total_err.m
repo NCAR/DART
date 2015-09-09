@@ -59,6 +59,9 @@ switch lower(pinfo.model)
    case {'sqg'}
       pinfo = GetSqgInfo(pinfo, diagn_file, 'PlotTotalErr');
 
+   case {'pop'}
+      pinfo = GetPOPInfo(pinfo, diagn_file, 'PlotTotalErr');
+
    otherwise
 
       error('%s not implemented yet', pinfo.model)

@@ -20,7 +20,7 @@ if (exist(pinfo.fname,'file') ~= 2), error('%s does not exist.',pinfo.fname), en
 
 switch lower(pinfo.model)
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf','cam','sqg'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','wrf','cam','sqg','pop'}
 
       clf;
 

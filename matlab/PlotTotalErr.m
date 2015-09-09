@@ -259,7 +259,6 @@ switch lower(pinfo.model)
       BgridTotalError( pinfo )
 
    case 'pe2lyr'
-
       %% primitive equation 2 layer model
 
       Pe2lyrTotalError( pinfo )
@@ -288,6 +287,11 @@ switch lower(pinfo.model)
       %% unstructured grid atmosphere model
 
       MPAS_ATMTotalError( pinfo )
+
+   case 'pop'
+      %% parallel ocean program
+
+      POPTotalError( pinfo )
 
    case 'sqg'
 
@@ -663,7 +667,7 @@ end
 function SqgTotalError( pinfo )
 %% -------------------------------------------------------------------
 % netcdf has no state vector, it has prognostic variables.
-% We are going to plot the total error (over a horizontal slice) 
+% We are going to plot the total error (over a horizontal slice)
 % for each variable and annotate an area-weighted total.
 %---------------------------------------------------------------------
 
@@ -696,8 +700,8 @@ end
 rms          = zeros(num_times, pinfo.num_state_vars, num_levels);
 spread_final = zeros(num_times, pinfo.num_state_vars, num_levels);
 
-% Get the indices for the true state, ensemble mean and spread                  
-% The metadata is queried to determine which "copy" is appropriate.             
+% Get the indices for the true state, ensemble mean and spread
+% The metadata is queried to determine which "copy" is appropriate.
 truth_index      = get_copy_index(pinfo.truth_file, 'true state');
 ens_mean_index   = get_copy_index(pinfo.diagn_file, 'ensemble mean');
 ens_spread_index = get_copy_index(pinfo.diagn_file, 'ensemble spread');
@@ -730,7 +734,7 @@ for ivar=1:pinfo.num_state_vars,
    truth  = reshape( truth3D, num_times, num_tlats*num_tlons); clear truth3D
    ens    = reshape(   ens3D, num_times, num_tlats*num_tlons); clear ens3D
    spread = reshape(spread3D, num_times, num_tlats*num_tlons); clear spread3D
-   
+
    err        = total_err(              truth,    ens, twts);
    err_spread = total_err(zeros(size(spread)), spread, twts);
 
@@ -779,6 +783,19 @@ for ivar=1:pinfo.num_state_vars,
 
 end
 
+
+function POPTotalError( pinfo )
+%% -------------------------------------------------------------------
+% Lets face it - the total error is completely ill-defined for large
+% models. Just issue a statement and abort.
+%---------------------------------------------------------------------
+disp(' ')
+disp('There is no meaningful way to calculate total error for POP.')
+disp('Should each variable be considered separately?')
+disp('Should we normalize each variable - What about each level?')
+disp('The levels do not have the same number of ocean gridcells  ...')
+disp('Consequently, we are doing nothing. Sorry.')
+disp(' ')
 
 
 function slice = Get2D(fname, varname, copyindex, tstartind, tcount )
