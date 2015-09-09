@@ -29,7 +29,8 @@ use sort_mod,          only : index_sort
 implicit none
 private
 
-public :: copies_in_window, mean_row, set_num_extra_copies
+public :: copies_in_window, mean_row, set_num_extra_copies,   &
+          get_allow_transpose
 
 public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_time,          &
           ensemble_type,              duplicate_ens,            get_var_owner_index,        &
@@ -41,7 +42,9 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
           prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
           prepare_to_update_copies,   print_ens_handle,              &
-          map_task_to_pe,             map_pe_to_task, is_single_restart_file_in
+          map_task_to_pe,             map_pe_to_task,           is_single_restart_file_in,  &
+          allocate_single_copy,       put_single_copy,          get_single_copy,            &
+          deallocate_single_copy
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -73,10 +76,11 @@ type ensemble_type
    ! Flexible my_pe, layout_type which allows different task layouts for different ensemble handles
    integer                      :: my_pe
    integer                      :: layout_type
+   integer                      :: transpose_type
+   integer                      :: num_extras
 
 end type ensemble_type
 
-integer               :: num_extras
 
 !PAR other storage option control can be implemented here. In particular, want to find
 !PAR some way, either allocating or multiple addressing, to use same chunk of storage
@@ -142,15 +146,17 @@ contains
 !-----------------------------------------------------------------
 
 subroutine init_ensemble_manager(ens_handle, num_copies, &
-   num_vars, distribution_type_in, layout_type)
+   num_vars, distribution_type_in, layout_type, transpose_type_in)
 
 type(ensemble_type), intent(out)            :: ens_handle
 integer,             intent(in)             :: num_copies
 integer(i8),         intent(in)             :: num_vars
 integer,             intent(in), optional   :: distribution_type_in
 integer,             intent(in), optional   :: layout_type
+integer,             intent(in), optional   :: transpose_type_in  ! no vars, transposable, transpose and duplicate
 
 integer :: iunit, io
+integer :: transpose_type
 
 ! Distribution type controls pe layout of storage; Default is 1. 1 is only one implemented.
 if(.not. present(distribution_type_in)) then
@@ -178,6 +184,7 @@ if ( .not. module_initialized ) then
 
    ! Get mpi information for this process; it's stored in module storage
    num_pes = task_count()
+
 endif
 
 ! Optional layout_type argument to assign how my_pe is related to my_task_id
@@ -194,6 +201,18 @@ if (ens_handle%layout_type /= 1 .and. ens_handle%layout_type /=2 ) then
    call error_handler(E_ERR, 'init_ensemble_manager', 'only layout values 1 (standard), 2 (round-robin) allowed ', &
                       source, revision, revdate)
 endif
+
+! Optional transpose type:
+! 1 not transposable - always copy complete
+! 2 tranposable - has a vars array
+! 3 dupilcatable - really only 1 copy, but this gets duplicated as vars array on every task during a transpose
+if (.not. present(transpose_type_in)) then
+   transpose_type = 1
+else
+   transpose_type = transpose_type_in
+endif
+
+ens_handle%transpose_type = transpose_type
 
 allocate(ens_handle%task_to_pe_list(num_pes))
 allocate(ens_handle%pe_to_task_list(num_pes))
@@ -575,6 +594,8 @@ type(ensemble_type), intent(inout) :: ens_handle
 deallocate(ens_handle%my_copies, ens_handle%time, ens_handle%my_vars, &
            ens_handle%copies, ens_handle%task_to_pe_list, ens_handle%pe_to_task_list)
 
+if(allocated(ens_handle%vars)) deallocate(ens_handle%vars)
+
 end subroutine end_ensemble_manager
 
 !-----------------------------------------------------------------
@@ -733,6 +754,15 @@ allocate(ens_handle%my_copies(ens_handle%my_num_copies),              &
          ens_handle%my_vars  (ens_handle%my_num_vars),                &
          ens_handle%copies   (ens_handle%num_copies, ens_handle%my_num_vars))
 
+
+if(ens_handle%transpose_type == 2) then
+   allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+endif
+
+if(ens_handle%transpose_type == 3) then
+   allocate(ens_handle%vars(ens_handle%num_vars,1))
+endif
+
 ! Set everything to missing value
 ens_handle%copies = MISSING_R8
 
@@ -889,6 +919,22 @@ end do
 
 end subroutine get_copy_list
 
+
+!-----------------------------------------------------------------
+!> accessor function
+function get_allow_transpose(ens_handle)
+
+type(ensemble_type), intent(in) :: ens_handle
+logical :: get_allow_transpose
+
+if (ens_handle%transpose_type == 2 .or. ens_handle%transpose_type == 3) then
+   get_allow_transpose = .true.
+else
+   get_allow_transpose = .false.
+endif
+
+end function get_allow_transpose
+
 !-----------------------------------------------------------------
 !> Given the var number, returns which PE stores it when copy complete
 !> and its index in that pes local storage. Depends on distribution_type
@@ -926,13 +972,29 @@ end function map_pe_to_task
 
 !--------------------------------------------------------------------------------
 !> return the number of actual ensemble members (not extra copies)
-function copies_in_window(state_ens_handle)
+function copies_in_window(ens_handle)
 
-type(ensemble_type), intent(in) :: state_ens_handle
+type(ensemble_type), intent(in) :: ens_handle
 integer                         :: copies_in_window
 
-!> @todo These are annoying -7, -6 or -10, -9
-copies_in_window = state_ens_handle%num_copies - num_extras
+integer :: ens_size, i
+
+ens_size = ens_handle%num_copies - ens_handle%num_extras
+
+! Counting up the 'real' ensemble copies a task has.  Don't 
+! want the extras (mean, etc.)
+if (ens_handle%transpose_type == 1) then ! distibuted (all tasks have all copies)
+   copies_in_window = ens_size
+elseif (ens_handle%transpose_type == 2) then ! var complete (only some tasks have data)
+   copies_in_window = 0
+   do i = 1, ens_handle%my_num_copies
+      if (ens_handle%my_copies(i) <= ens_size) then ! mean copy on each process
+         copies_in_window = copies_in_window + 1
+      endif
+   enddo
+elseif(ens_handle%transpose_type == 3)then
+   copies_in_window = 1
+endif
 
 end function copies_in_window
 
@@ -940,12 +1002,12 @@ end function copies_in_window
 !> return the index of the mean row
 !> mean row is the row in state_ens_handle%copies(:,:) which is the mean. Typically
 !> has been state_ens_handle%copies -6 ( just the regular ensemble members
-function mean_row(state_ens_handle)
+function mean_row(ens_handle)
 
-type(ensemble_type), intent(in) :: state_ens_handle
+type(ensemble_type), intent(in) :: ens_handle
 integer                         :: mean_row
 
-mean_row = state_ens_handle%num_copies - num_extras +1
+mean_row = ens_handle%num_copies - ens_handle%num_extras +1
 
 end function mean_row
 
@@ -953,12 +1015,12 @@ end function mean_row
 !> Aim: allow filter to set the number of extra copies in this module
 !> This is necessary for copies_in_window, mean_row
 !> This is really ugly.
-subroutine set_num_extra_copies(state_ens_handle, n)
+subroutine set_num_extra_copies(ens_handle, n)
 
-type(ensemble_type), intent(inout) :: state_ens_handle
+type(ensemble_type), intent(inout) :: ens_handle
 integer,             intent(in)    :: n
 
-num_extras = n
+ens_handle%num_extras = n
 
 end subroutine set_num_extra_copies
 
@@ -1329,6 +1391,11 @@ endif
 
 ! Free up the temporary storage
 deallocate(var_list, transfer_temp, copy_list)
+
+if (ens_handle%transpose_type == 3) then
+   ! duplicate a single ensmeble member on all tasks
+   call broadcast_copy(ens_handle, 1, ens_handle%vars(:, 1))
+endif
 
 ! only output if there is a label
 if (present(label)) then
@@ -1715,6 +1782,57 @@ integer                         :: map_task_to_pe
 map_task_to_pe = ens_handle%task_to_pe_list(t + 1)
 
 end function map_task_to_pe
+
+!--------------------------------------------------------------------------------
+!> allocate enough space to an allocatable array to hold a single copy
+!> requires the ens_handle be copy-complete.  must know copy number to
+!> know how many items are on this task.  must be a collective call.
+subroutine allocate_single_copy(ens_handle, x)
+
+type(ensemble_type),   intent(in)    :: ens_handle
+real(r8), allocatable, intent(inout) :: x(:)
+
+allocate(x(ens_handle%my_num_vars))
+
+end subroutine allocate_single_copy
+
+!--------------------------------------------------------------------------------
+!> get the data from the ensemble handle for this single copy number
+!> requires the ens_handle be copy-complete
+subroutine get_single_copy(ens_handle, copy, x)
+
+type(ensemble_type),   intent(in)    :: ens_handle
+integer,               intent(in)    :: copy
+real(r8),              intent(inout) :: x(:)
+
+x(:) = ens_handle%copies(copy, :)
+
+end subroutine get_single_copy
+
+!--------------------------------------------------------------------------------
+!> put the data from an array into the ensemble handle for this single copy number
+!> requires the ens_handle be copy-complete
+subroutine put_single_copy(ens_handle, copy, x)
+
+type(ensemble_type),   intent(inout) :: ens_handle
+integer,               intent(in)    :: copy
+real(r8),              intent(in)    :: x(:)
+
+ens_handle%copies(copy, :) = x(:)
+
+end subroutine put_single_copy
+
+!--------------------------------------------------------------------------------
+!> cleanup routine
+subroutine deallocate_single_copy(ens_handle, x)
+
+type(ensemble_type),   intent(in)    :: ens_handle
+real(r8), allocatable, intent(inout) :: x(:)
+
+if (allocated(x)) deallocate(x)
+
+end subroutine deallocate_single_copy
+
 
 !---------------------------------------------------------------------------------
 ! HK this is so filter can see if it is a single file in for netcdf read. 

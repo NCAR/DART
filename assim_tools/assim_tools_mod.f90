@@ -143,13 +143,16 @@ logical  :: allow_missing_in_clm = .false.
 ! sections.  to try out the alternatives, set this to .false.
 logical  :: only_area_adapt  = .true.
 
+! Option to distribute the mean.
+logical  :: distribute_mean  = .true.
+
 namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    spread_restoration, sampling_error_correction,                          & 
    adaptive_localization_threshold, adaptive_cutoff_floor,                 &
    print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails, &
    output_localization_diagnostics, localization_diagnostics_file,         &
    special_localization_obs_types, special_localization_cutoffs,           &
-   allow_missing_in_clm
+   allow_missing_in_clm, distribute_mean
 
 !============================================================================
 
@@ -372,7 +375,7 @@ type(location_type) :: temp_loc
 integer :: vstatus !< for vertical conversion status. Can we just smash the dart qc instead?
 
 !HK debug
-lanai_bitwise = .false.
+lanai_bitwise = .true.
 
 ! we are going to read/write the copies array
 call prepare_to_update_copies(ens_handle)
@@ -383,7 +386,8 @@ if (.not. module_initialized) call assim_tools_init()
 
 !HK make window for mpi one-sided communication
 ! used for vertical conversion in get_close_obs
-call create_mean_window(ens_handle)
+! Need to give create_mean_window the mean copy
+call create_mean_window(ens_handle, ens_handle%num_copies - ens_handle%num_extras + 1, distribute_mean)
 
 ! filter kinds 1 and 8 return sorted increments, however non-deterministic
 ! inflation can scramble these. the sort is expensive, so help users get better 
@@ -2745,7 +2749,7 @@ write(task_str, '(i10)') state_ens_handle%my_pe
 file_copies = TRIM('statecopies_'  // TRIM(ADJUSTL(information)) // '.' // TRIM(ADJUSTL(task_str)))
 open(15, file=file_copies, status ='unknown')
 
-do i = 1, state_ens_handle%num_copies -10
+do i = 1, state_ens_handle%num_copies - state_ens_handle%num_extras
    write(15, *) state_ens_handle%copies(i,:)
 enddo
 

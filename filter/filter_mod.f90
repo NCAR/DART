@@ -45,9 +45,9 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   prepare_to_write_to_copies, get_ensemble_time,              &
                                   map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
                                   get_my_num_vars, set_ensemble_time, &
-                                  copies_in_window, set_num_extra_copies
-                                 
-
+                                  copies_in_window, set_num_extra_copies, get_allow_transpose, &
+                                  all_copies_to_all_vars, allocate_single_copy,               &
+                                  get_single_copy, put_single_copy, deallocate_single_copy
 use adaptive_inflate_mod,  only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                   do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
                                   do_obs_inflate, adaptive_inflate_type,                      &
@@ -142,6 +142,7 @@ logical  :: direct_netcdf_write = .true. ! default to write to netcdf file
 ! perturbation namelist parameters for.  For now these are in filter
 logical  :: perturb_restarts = .false.
 real(r8) :: perturbation_amplitude = 0.2_r8
+logical  :: distributed_state = .true. ! Default to do state complete forward operators.
 
 ! what should you do about diagnostic files.
 
@@ -191,7 +192,8 @@ namelist /filter_nml/ async, adv_ens_command, ens_size, tasks_per_model_advance,
    inf_output_restart, inf_deterministic, inf_in_file_name, inf_damping,            &
    inf_out_file_name, inf_diag_file_name, inf_initial, inf_sd_initial,              &
    inf_lower_bound, inf_upper_bound, inf_sd_lower_bound, perturb_restarts,          &
-   silence, direct_netcdf_read, direct_netcdf_write, diagnostic_files, output_inflation
+   silence, direct_netcdf_read, direct_netcdf_write, diagnostic_files, output_inflation, &
+   distributed_state
 
 
 !----------------------------------------------------------------
@@ -227,7 +229,8 @@ integer                 :: POST_INF_COPY, POST_INF_SD_COPY
 ! to avoid writing the prior diag
 integer                 :: SPARE_COPY_MEAN, SPARE_COPY_SPREAD
 integer                 :: SPARE_COPY_INF_MEAN, SPARE_COPY_INF_SPREAD
-integer                 :: OBS_VAL_COPY, OBS_ERR_VAR_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY
+integer                 :: OBS_VAL_COPY, OBS_ERR_VAR_COPY, OBS_KEY_COPY
+integer                 :: OBS_GLOBAL_QC_COPY,OBS_EXTRA_QC_COPY
 integer                 :: OBS_MEAN_START, OBS_MEAN_END
 integer                 :: OBS_VAR_START, OBS_VAR_END, TOTAL_OBS_COPIES
 integer                 :: input_qc_index, DART_qc_index
@@ -247,6 +250,7 @@ logical                 :: ds, all_gone, allow_missing
 real(r8), allocatable   :: results(:,:)
 integer                 :: ii, reps
 real(r8), allocatable   :: temp_ens(:)
+real(r8), allocatable   :: prior_qc_copy(:)
 character*20 task_str, file_obscopies, file_results
 
 !HK debug
@@ -327,10 +331,13 @@ OBS_ERR_VAR_COPY     = ens_size + 1
 OBS_VAL_COPY         = ens_size + 2
 OBS_KEY_COPY         = ens_size + 3
 OBS_GLOBAL_QC_COPY   = ens_size + 4
-OBS_MEAN_START       = ens_size + 5
+OBS_EXTRA_QC_COPY    = ens_size + 5
+OBS_MEAN_START       = ens_size + 6
 OBS_MEAN_END         = OBS_MEAN_START + num_groups - 1
 OBS_VAR_START        = OBS_MEAN_START + num_groups
 OBS_VAR_END          = OBS_VAR_START + num_groups - 1
+
+TOTAL_OBS_COPIES = ens_size + 5 + 2*num_groups
 
 ! Can't output more ensemble members than exist
 if(num_output_state_members > ens_size) num_output_state_members = ens_size
@@ -351,7 +358,11 @@ call trace_message('Before setting up space for ensembles')
 model_size = get_model_size()
 
 ! set up ensemble HK WATCH OUT putting this here.
-call init_ensemble_manager(state_ens_handle, ens_size + num_extras, model_size)
+if(distributed_state) then
+   call init_ensemble_manager(state_ens_handle, ens_size + num_extras, model_size)
+else
+   call init_ensemble_manager(state_ens_handle, ens_size + num_extras, model_size, transpose_type_in = 2)
+endif
 call set_num_extra_copies(state_ens_handle, num_extras)
 
 call trace_message('After  setting up space for ensembles')
@@ -374,7 +385,7 @@ call turn_read_copy_on(1, ens_size) ! need to read all restart copies
 
 ! allocating storage space in ensemble manager
 !  - should this be in ensemble_manager
-if(.not. direct_netcdf_read) allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
+if(.not. direct_netcdf_read .and. .not. get_allow_transpose(state_ens_handle) ) allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
 
 ! Moved this. Not doing anything with it, but when we do it should be before the read
 ! Read in or initialize smoother restarts as needed
@@ -420,7 +431,7 @@ if (.not. direct_netcdf_read ) then ! expecting DART restart files
    call filter_read_restart(state_ens_handle, time1)
    call all_vars_to_all_copies(state_ens_handle)
    ! deallocate whole state storage - should this be in ensemble_manager?
-   deallocate(state_ens_handle%vars)
+   if (.not. get_allow_transpose(state_ens_handle))deallocate(state_ens_handle%vars)
 endif
 
 call set_filenames(state_ens_handle, state_ens_handle%num_copies - num_extras, inf_in_file_name, inf_out_file_name)
@@ -436,7 +447,7 @@ endif
 if (perturb_restarts) then
 ! perturb the state if requested. This assumes that all of the ensemble members exist.
    if (perturb_bitwise) then
-      allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
+      if(.not. get_allow_transpose(state_ens_handle)) allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
       call all_copies_to_all_vars(state_ens_handle)
       do i = 1, state_ens_handle%my_num_copies 
          !>@todo if interface is not provided then you have to loop over
@@ -449,7 +460,7 @@ if (perturb_restarts) then
          endif
       enddo
       call all_vars_to_all_copies(state_ens_handle)
-      deallocate(state_ens_handle%vars)
+      if(.not. get_allow_transpose(state_ens_handle)) deallocate(state_ens_handle%vars)
    else
       call perturb_copies(state_ens_handle, perturbation_amplitude)
    endif
@@ -579,7 +590,7 @@ AdvanceTime : do
       call timestamp_message('Before running model', sync=.true.)
 
       ! allocating storage space in ensemble manager
-      allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
+      if(.not. allocated(state_ens_handle%vars)) allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
       call all_copies_to_all_vars(state_ens_handle)
 
       call advance_state(state_ens_handle, ens_size, next_ens_time, async, &
@@ -587,7 +598,7 @@ AdvanceTime : do
 
       call all_vars_to_all_copies(state_ens_handle)
       ! deallocate whole state storage
-      deallocate(state_ens_handle%vars)
+      if(.not. get_allow_transpose(state_ens_handle)) deallocate(state_ens_handle%vars)
 
       ! update so curr time is accurate.
       curr_ens_time = next_ens_time
@@ -611,10 +622,9 @@ AdvanceTime : do
    ! Create an ensemble for the observations from this time plus
    ! obs_error_variance, observed value, key from sequence, global qc, 
    ! then mean for each group, then variance for each group
-   TOTAL_OBS_COPIES = ens_size + 4 + 2*num_groups
-   call init_ensemble_manager(obs_fwd_op_ens_handle, TOTAL_OBS_COPIES, int(num_obs_in_set,i8), 1)
+   call init_ensemble_manager(obs_fwd_op_ens_handle, TOTAL_OBS_COPIES, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
    ! Also need a qc field for copy of each observation
-   call init_ensemble_manager(qc_ens_handle, ens_size, int(num_obs_in_set,i8), 1)
+   call init_ensemble_manager(qc_ens_handle, ens_size, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
 
    ! Allocate storage for the keys for this number of observations
    allocate(keys(num_obs_in_set)) ! This is still var size for writing out the observation sequence
@@ -656,14 +666,17 @@ AdvanceTime : do
    ! not the number of copies
    start = MPI_WTIME()
 
+   ! allocate() space for the prior qc copy
+   call allocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
+
    call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle, &
      seq, keys, obs_val_index, input_qc_index, &
-     OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-     OBS_MEAN_START, OBS_VAR_START, isprior=.true.)
+     OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, &
+     OBS_MEAN_START, OBS_VAR_START, isprior=.true., prior_qc_copy=prior_qc_copy)
 
-   finish = MPI_WTIME()
+   !finish = MPI_WTIME()
 
-   if (my_task_id() == 0) print*, 'distributed average ', (finish-start)
+   !if (my_task_id() == 0) print*, 'distributed average ', (finish-start)
    !call test_obs_copies(obs_fwd_op_ens_handle, 'prior')
 
    !goto 10011 !HK bail out after forward operators
@@ -832,10 +845,11 @@ AdvanceTime : do
 
     call get_obs_ens_distrib_state(state_ens_handle, obs_fwd_op_ens_handle, qc_ens_handle, &
      seq, keys, obs_val_index, input_qc_index, &
-     OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, &
-     OBS_MEAN_START, OBS_VAR_START, isprior=.false.)
+     OBS_ERR_VAR_COPY, OBS_VAL_COPY, OBS_KEY_COPY, OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, &
+     OBS_MEAN_START, OBS_VAR_START, isprior=.false., prior_qc_copy=prior_qc_copy)
 
    !call test_obs_copies(obs_fwd_op_ens_handle, 'post')
+   call deallocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)
 
    call timestamp_message('After  computing posterior observation values')
    call     trace_message('After  computing posterior observation values')
@@ -961,7 +975,7 @@ call turn_write_copy_off(1, ens_size + num_extras) ! clean slate
 if (.not. direct_netcdf_write ) then
    ! allocating storage space in ensemble manager
    !  - should this be in ensemble_manager?
-   allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
+   if (.not. get_allow_transpose(state_ens_handle)) allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
    call all_copies_to_all_vars(state_ens_handle)
 endif
 
@@ -977,7 +991,7 @@ if (output_restart)      call turn_write_copy_on(1,ens_size) ! restarts
 if (output_restart_mean) call turn_write_copy_on(ENS_MEAN_COPY)
 
 ! Prior_Diag copies - write spare copies
-! But don't bother writing if you are writting diagnostic files.
+! But don't bother writing if you are writing diagnostic files.
 if (spare_copies) then
    call turn_write_copy_on(SPARE_COPY_MEAN)
    call turn_write_copy_on(SPARE_COPY_SPREAD)
@@ -1550,8 +1564,6 @@ real(r8)              :: rvalue(1)
 ! Do verbose forward operator output if requested
 if(output_forward_op_errors) call verbose_forward_op_output(qc_ens_handle, prior_post, ens_size, keys)
 
-allocate(obs_fwd_op_ens_handle%vars(obs_fwd_op_ens_handle%num_vars, obs_fwd_op_ens_handle%my_num_copies))
-
 ! Make var complete for get_copy() calls below.
 ! Can you use a gather instead of a transpose and get copy?
 call all_copies_to_all_vars(obs_fwd_op_ens_handle)
@@ -1620,7 +1632,6 @@ endif
 
 ! clean up.
 deallocate(obs_temp)
-deallocate(obs_fwd_op_ens_handle%vars)
 
 end subroutine obs_space_diagnostics
 

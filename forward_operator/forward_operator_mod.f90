@@ -29,10 +29,15 @@ use obs_def_mod,           only : obs_def_type, get_obs_def_error_variance, &
                                   get_expected_obs_from_def_distrib_state,  &
                                   get_obs_kind 
 
+use obs_kind_mod,          only : assimilate_this_obs_kind, evaluate_this_obs_kind
+
 use ensemble_manager_mod,  only : ensemble_type, compute_copy_mean_var, &
                                   prepare_to_read_from_vars,            &
                                   prepare_to_write_to_vars,             &
-                                  get_my_num_copies
+                                  get_my_num_copies, copies_in_window,  &
+                                  get_allow_transpose, all_vars_to_all_copies, &
+                                  all_copies_to_all_vars, allocate_single_copy, &
+                                  get_single_copy, put_single_copy, deallocate_single_copy
 
 use distributed_state_mod, only : create_state_window, free_state_window,   &
                                   get_state
@@ -40,7 +45,9 @@ use distributed_state_mod, only : create_state_window, free_state_window,   &
 use ensemble_manager_mod,    only : copies_in_window
 
 use quality_control_mod,   only : check_outlier_threshold, get_dart_qc, &
-                                  input_qc_ok, good_dart_qc
+                                  input_qc_ok, good_dart_qc, DARTQC_BAD_INCOMING_QC, &
+                                  DARTQC_ASSIM_GOOD_FOP, DARTQC_EVAL_GOOD_FOP, &
+                                  DARTQC_NOT_IN_NAMELIST
 
 !------------------------------------------------------------------------------
 
@@ -57,6 +64,10 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 !------------------------------------------------------------------------------
+
+
+! Module storage for writing error messages
+character(len = 255) :: msgstring
 
 contains
 
@@ -84,9 +95,10 @@ contains
 subroutine get_obs_ens_distrib_state(ens_handle, obs_fwd_op_ens_handle, &
    qc_ens_handle, seq, keys, obs_val_index, input_qc_index, &
    OBS_ERR_VAR_COPY,   OBS_VAL_COPY,   OBS_KEY_COPY, &
-   OBS_GLOBAL_QC_COPY, OBS_MEAN_START, OBS_VAR_START, isprior)
+   OBS_GLOBAL_QC_COPY, OBS_EXTRA_QC_COPY, OBS_MEAN_START, &
+   OBS_VAR_START, isprior, prior_qc_copy)
 
-type(ensemble_type),     intent(in)    :: ens_handle 
+type(ensemble_type),     intent(inout) :: ens_handle
 type(ensemble_type),     intent(inout) :: obs_fwd_op_ens_handle
 type(ensemble_type),     intent(inout) :: qc_ens_handle 
 type(obs_sequence_type), intent(in)    :: seq
@@ -97,9 +109,11 @@ integer,                 intent(in)    :: OBS_ERR_VAR_COPY
 integer,                 intent(in)    :: OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_KEY_COPY
 integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY
+integer,                 intent(in)    :: OBS_EXTRA_QC_COPY
 integer,                 intent(in)    :: OBS_MEAN_START
 integer,                 intent(in)    :: OBS_VAR_START 
 logical,                 intent(in)    :: isprior
+real(r8),                intent(inout) :: prior_qc_copy(:)
 
 real(r8) :: input_qc(1), obs_value(1), obs_err_var, thisvar(1)
 real(r8) :: error, diff_sd, ratio
@@ -111,9 +125,12 @@ integer :: j, k !< index variables
 integer :: thiskey(1)
 integer :: global_obs_num, global_qc_value
 integer :: forward_min, forward_max !< for global qc
-integer :: ens_size, my_num_obs
+integer :: my_ensemble_copies
+integer :: copy !< loop index
+integer :: global_ens_index
 
 integer, allocatable  :: istatus(:)
+integer, allocatable  :: var_istatus(:)
 
 logical :: evaluate_this_ob, assimilate_this_ob
 logical :: failed
@@ -127,12 +144,12 @@ type(obs_type)     :: observation
 ! HK: I think it is also assumed that the ensemble members are in the same 
 ! order in each of the handles
 
-ens_size = copies_in_window(ens_handle)
-my_num_obs = obs_fwd_op_ens_handle%my_num_vars
+my_ensemble_copies = copies_in_window(ens_handle)
 
-! make some room for state vectors
-allocate(istatus(ens_size)) 
-allocate(expected_obs(ens_size))
+! make some room for status vectors and expected obs
+allocate(istatus(my_ensemble_copies))
+allocate(var_istatus(qc_ens_handle%num_copies))
+allocate(expected_obs(my_ensemble_copies))
 
 ! FIXME: these no longer do anything?
 ! call prepare_to_write_to_vars(obs_fwd_op_ens_handle)
@@ -142,8 +159,127 @@ allocate(expected_obs(ens_size))
 ! create the mpi window for the distributed state
 call create_state_window(ens_handle)
 
+if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued forward op
+
 ! Loop through all observations in the set
-ALL_OBSERVATIONS: do j = 1, my_num_obs
+   ALL_OBSERVATIONS: do j = 1, obs_fwd_op_ens_handle%num_vars
+      ! Get the information on this observation by placing it in temporary
+      call get_obs_from_key(seq, keys(j), observation)
+      call get_obs_def(observation, obs_def)
+      ! Check to see if this observation fails input qc test
+      call get_qc(observation, input_qc, input_qc_index)
+
+      ! Get the observation value and error variance
+      call get_obs_values(observation, obs_value(1:1), obs_val_index)
+      obs_err_var = get_obs_def_error_variance(obs_def)
+
+      ! Loop through all copies stored by this process and set values as needed
+      do k = 1, obs_fwd_op_ens_handle%my_num_copies
+         ! See if this is the copy for error variance or observed value
+         global_ens_index = obs_fwd_op_ens_handle%my_copies(k)
+         if(global_ens_index == OBS_ERR_VAR_COPY) then
+            ! This copy is the instrument observation error variance; read and
+            ! store
+            obs_fwd_op_ens_handle%vars(j, k) = obs_err_var
+
+         else if(global_ens_index == OBS_VAL_COPY) then
+            ! This copy is the observation from the instrument; read and store
+            obs_fwd_op_ens_handle%vars(j, k) = obs_value(1)
+         else if(global_ens_index == OBS_KEY_COPY) then
+            obs_fwd_op_ens_handle%vars(j, k) = keys(j)
+         else if(global_ens_index == OBS_GLOBAL_QC_COPY .and. isprior) then
+            obs_fwd_op_ens_handle%vars(j, k) = 0.0_r8
+         endif
+      enddo
+
+      ! If it is bad, set forward operator status value to -99 and return missing_r8 for obs_value
+      ! PAR THIS SUBROUTINE SHOULD EVENTUALLY GO IN THE QUALITY CONTROL MODULE
+      if(.not. input_qc_ok(input_qc(1), global_qc_value)) then
+
+         !> @todo global_qc_value
+         ! HK why is this being printed?
+         !write(*,*) 'bad global_qc_value', global_qc_value
+         
+         qc_ens_handle%vars(j, :) = 0
+
+         do k=1, obs_fwd_op_ens_handle%my_num_copies
+            global_ens_index = obs_fwd_op_ens_handle%my_copies(k)
+            ! Update prior/post obs values, mean, etc - but leave the key copy
+            ! and the QC copy alone.
+            if ((global_ens_index /= OBS_KEY_COPY) .and. &
+               (global_ens_index /= OBS_EXTRA_QC_COPY) .and. &
+               (global_ens_index /= OBS_GLOBAL_QC_COPY)) then
+               ! JH test if the global_ens_index is our extra bad qc copy
+               obs_fwd_op_ens_handle%vars(j, k) = missing_r8
+            endif
+            if (global_ens_index == OBS_GLOBAL_QC_COPY) then
+               ! JH set extra fwd_op_ens to bad incoming qc 
+               obs_fwd_op_ens_handle%vars(j, k) = global_qc_value
+            endif
+         enddo
+
+         ! No need to do anything else for a failed observation
+         cycle ALL_OBSERVATIONS
+      else
+         !write(*,*) 'good global_qc_value', global_qc_value
+      endif
+
+      thiskey(1) = keys(j)
+
+!> @todo Do we need this if statement?
+      if(qc_ens_handle%my_num_copies > 0) then
+         call get_expected_obs_distrib_state(seq, thiskey, &
+            dummy_time, isprior, istatus, &
+            assimilate_this_ob, evaluate_this_ob, ens_handle, expected_obs)
+            obs_fwd_op_ens_handle%vars(j, 1:my_ensemble_copies) = expected_obs
+      else ! need to know whether it was assimilate or evaluate this ob.
+
+         call assim_or_eval(seq, thiskey(1), ens_handle%num_vars, assimilate_this_ob, evaluate_this_ob)
+
+      endif
+
+      do k=1, obs_fwd_op_ens_handle%my_num_copies
+         global_ens_index = obs_fwd_op_ens_handle%my_copies(k)
+
+         if (global_ens_index == OBS_EXTRA_QC_COPY) then
+         ! JH assimilate_this_ob or evaluate_this_ob then set extra status
+            if (assimilate_this_ob) then
+               obs_fwd_op_ens_handle%vars(j, k) = DARTQC_ASSIM_GOOD_FOP
+            else if (evaluate_this_ob) then
+               obs_fwd_op_ens_handle%vars(j, k) = DARTQC_EVAL_GOOD_FOP
+            else
+               obs_fwd_op_ens_handle%vars(j, k) = DARTQC_NOT_IN_NAMELIST
+            endif
+         endif
+      enddo
+
+
+      do copy = 1, my_ensemble_copies
+
+         ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
+         ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
+         ! in the forward operator evaluation field
+         if(istatus(copy) == 0) then
+            if ((assimilate_this_ob .or. evaluate_this_ob) .and. (expected_obs(copy) == missing_r8)) then
+               write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
+               call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+            endif
+            qc_ens_handle%vars(j, copy) = 0
+         else if (istatus(copy) < 0) then
+            write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
+            call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+         else
+            qc_ens_handle%vars(j, copy) = istatus(copy)
+         endif
+
+      enddo
+
+   end do ALL_OBSERVATIONS
+
+else ! distributed state
+
+   ! Loop through all my observations in the set
+   MY_OBSERVATIONS: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
 
    ! convert the local obs number to global obs number
    global_obs_num = obs_fwd_op_ens_handle%my_vars(j) 
@@ -164,10 +300,13 @@ ALL_OBSERVATIONS: do j = 1, my_num_obs
       if(.not. input_qc_ok(input_qc(1), global_qc_value)) then
          obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = global_qc_value
          ! No need to do anything else for a failed observation
-         cycle ALL_OBSERVATIONS
+            cycle MY_OBSERVATIONS
       endif
    else ! posterior
       global_qc_value = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) )
+         ! if (.not. good_dart_qc(global_qc_value)) then
+         !    cycle MY_OBSERVATIONS ! prior forward op failed
+         ! endif
    endif
 
    ! Get the observation value and error variance
@@ -175,17 +314,16 @@ ALL_OBSERVATIONS: do j = 1, my_num_obs
 
    obs_err_var = get_obs_def_error_variance(obs_def)
 
-   ! temporaries to avoid passing array sections which was slow on PGI compiler
    call get_expected_obs_distrib_state(seq, thiskey, &
       dummy_time, isprior, istatus, &
       assimilate_this_ob, evaluate_this_ob, ens_handle, expected_obs)
 
-   obs_fwd_op_ens_handle%copies(1:ens_size, j) = expected_obs
+      obs_fwd_op_ens_handle%copies(1:my_ensemble_copies, j) = expected_obs
 
    ! collect dart qc
    global_qc_value = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j))
 
-   call get_dart_qc(istatus, ens_size, assimilate_this_ob, evaluate_this_ob, &
+      call get_dart_qc(istatus, my_ensemble_copies, assimilate_this_ob, evaluate_this_ob, &
                      isprior, global_qc_value)
 
    ! update the dart qc, error variance and for observed value
@@ -196,21 +334,45 @@ ALL_OBSERVATIONS: do j = 1, my_num_obs
    ! do we need this?  nsc: i think no 
    ! qc_ens_handle%copies(:, j) = istatus
 
-   ! redundant, right?
-   !obs_fwd_op_ens_handle%copies(OBS_KEY_COPY, j) = thiskey(1)
+   end do MY_OBSERVATIONS
 
-end do ALL_OBSERVATIONS
+endif
 
-!> @todo - don't you have the mean already?
-call compute_copy_mean_var(obs_fwd_op_ens_handle, 1, ens_size, &
+call free_state_window(ens_handle, obs_fwd_op_ens_handle, qc_ens_handle)
+
+if (get_allow_transpose(ens_handle)) then
+
+   if (.not. isprior) call put_single_copy(obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, prior_qc_copy)
+
+   ! JH transpose to copies then loop over my_observations and get_dart_qc
+   MY_OBS: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
+      ! collect dart qc
+      var_istatus = qc_ens_handle%copies(:,j) 
+   
+      assimilate_this_ob = (obs_fwd_op_ens_handle%copies(OBS_EXTRA_QC_COPY, j) == DARTQC_ASSIM_GOOD_FOP ) 
+      evaluate_this_ob   = (obs_fwd_op_ens_handle%copies(OBS_EXTRA_QC_COPY, j) == DARTQC_EVAL_GOOD_FOP)
+      ! write(*,*) 'global_qc_copy,j',j, obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j)
+      global_qc_value    = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j))
+   
+      ! update the status
+      call get_dart_qc(var_istatus, qc_ens_handle%num_copies, assimilate_this_ob, evaluate_this_ob, &
+                      isprior, global_qc_value)
+      obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = global_qc_value
+   
+   enddo MY_OBS
+
+endif
+
+call compute_copy_mean_var(obs_fwd_op_ens_handle, 1, qc_ens_handle%num_copies, &
         OBS_MEAN_START, OBS_VAR_START)
 
 !>@todo Science quesion: Should groups be considered separately for outlier
 ! we cannot get rid of two loops because we need obs mean and var to do the
 ! outlier check.  so we'll still need the obs_fwd_op handle to store the istatus,
 ! or we need a single column compute_mean_var to put inside the first loop.
-QC_LOOP: do j = 1, my_num_obs
+QC_LOOP: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
 
+   ! I don't think OBS_GLOBAL_QC_COPY is set in the transpose version
    global_qc_value = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j))
 
    ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
@@ -230,14 +392,15 @@ QC_LOOP: do j = 1, my_num_obs
    ! reset the mean/var to missing_r8, regardless of the DART QC status
    ! HK does this fail if you have groups?
    !>@todo Do we want to set all the groups to missing_r8? Not just the start?
-   if ( any(obs_fwd_op_ens_handle%copies(1:ens_size, j) == missing_r8) ) then
+   !write(*,*) 'global_qc_value', global_qc_value
+   if (any(obs_fwd_op_ens_handle%copies(1:my_ensemble_copies,j) == missing_r8)) then !.not. good_dart_qc(global_qc_value)) then
       obs_fwd_op_ens_handle%copies(OBS_MEAN_START, j) = missing_r8
       obs_fwd_op_ens_handle%copies(OBS_VAR_START,  j) = missing_r8
    endif
 
 end do QC_LOOP
 
-call free_state_window
+if (isprior) call get_single_copy(obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, prior_qc_copy)
 
 deallocate(expected_obs)
 deallocate(istatus)
@@ -273,7 +436,7 @@ logical,                 intent(out)   :: assimilate_this_ob
 logical,                 intent(out)   :: evaluate_this_ob
 !HK
 type(ensemble_type),     intent(in)    :: state_ens_handle
-real(r8), dimension(:),  intent(inout) :: expected_obs !> @todo needs to be 2d for a set of obs
+real(r8),                intent(inout) :: expected_obs(:) !> @todo needs to be 2d for a set of obs - no because you don't have an array of assimilate_this_ob, evaluate_this_ob
 
 type(obs_type)     :: obs
 type(obs_def_type) :: obs_def
@@ -314,9 +477,6 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
       assimilate_this_ob = .true.; evaluate_this_ob = .false.
    
    else ! do forward operator for this kind
-      !> Q. Do we loop around copies here? This would mean ens_size*times the comumication
-      !> The alternative is to alter the code in model_mod.f90 to work on arrays of ensemble size.
-      !> Currently looping in model_mod.f90 for lorenz_96 
 
       call get_expected_obs_from_def_distrib_state(keys(i), obs_def, obs_kind_ind, &
          state_time, isprior, istatus, &
@@ -330,6 +490,47 @@ end do
 call destroy_obs(obs)
 
 end subroutine get_expected_obs_distrib_state
+
+!---------------------------------------------------------------------------
+!> This is so a task that does not do a forward operator can still do QC.
+!> It is stored in OBS_EXTRA_QC_COPY.
+subroutine assim_or_eval(seq, thiskey, numvars, assimilate_this_ob, evaluate_this_ob)
+
+type(obs_sequence_type), intent(in)  :: seq
+integer,                 intent(in)  :: thiskey
+integer(i8),             intent(in)  :: numvars
+logical,                 intent(out) :: assimilate_this_ob
+logical,                 intent(out) :: evaluate_this_ob
+
+type(obs_type)      :: obs
+integer             :: obs_kind_ind
+type(obs_def_type)  :: obs_def
+
+call init_obs(obs, 0, 0)
+call get_obs_from_key(seq, thiskey, obs)
+call get_obs_def(obs, obs_def)
+obs_kind_ind = get_obs_kind(obs_def)
+
+if (obs_kind_ind < 0) then
+   if ( -obs_kind_ind > numvars ) then
+      call error_handler(E_ERR,  &
+      'get_expected_obs', &
+      'identity obs is outside of state vector ', &
+      source, revision, revdate)
+   endif
+
+   ! FIXME : we currently have no option to eval only identity obs,
+   ! or select to skip their assimilation via namelist.
+   assimilate_this_ob = .true.; evaluate_this_ob = .false.
+else
+
+   assimilate_this_ob = assimilate_this_obs_kind(obs_kind_ind)
+   evaluate_this_ob   = evaluate_this_obs_kind(obs_kind_ind)
+
+endif
+
+end subroutine assim_or_eval
+
 
 !------------------------------------------------------------------------------
 end module forward_operator_mod

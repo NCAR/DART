@@ -872,7 +872,7 @@ COPIES: do c = 1, ens_size
 
       if (query_read_copy(my_copy - recv_start+ 1)) then
          netcdf_filename = get_input_file((my_copy - recv_start +1), domain)
-         print*, 'opening netcdf_filename ', trim(netcdf_filename)
+         !print*, 'opening netcdf_filename ', trim(netcdf_filename)
          ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
          call nc_check(ret, 'read_transpose opening', netcdf_filename)
       endif

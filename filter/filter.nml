@@ -44,6 +44,7 @@
    inf_sd_lower_bound          = 0.0,                     0.0
 
    direct_netcdf_read = .true.,
-   direct_netcdf_read = .true.
+   direct_netcdf_read = .true.,
+   distributed_state  = .true.
 /
 
