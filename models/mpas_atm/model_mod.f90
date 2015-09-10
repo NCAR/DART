@@ -36,9 +36,8 @@ use     location_mod, only : location_type, get_dist, query_location,          &
                              vert_is_height,       VERTISHEIGHT,               &
                              vert_is_scale_height, VERTISSCALEHEIGHT,          &
                              get_close_obs_init, get_close_obs_destroy,        &
-                             loc_get_close_obs => get_close_obs, &
-                             get_vert, set_vert, set_which_vert
-
+                             loc_get_close_obs => get_close_obs
+                             
 use xyz_location_mod, only : xyz_location_type, xyz_get_close_maxdist_init,    &
                              xyz_get_close_type, xyz_set_location, xyz_get_location, &
                              xyz_get_close_obs_init, xyz_get_close_obs_destroy, &
@@ -124,9 +123,6 @@ public :: get_model_size,                 &
           get_close_obs_init,             &
           get_close_obs_distrib,          &
           ens_mean_for_model,             &
-          set_which_vert,                 &
-          get_vert,                       &
-          set_vert,                       &
           query_vert_localization_coord,  &
           vert_convert_distrib,           &
           variables_domains,              &

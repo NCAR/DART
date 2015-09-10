@@ -26,7 +26,8 @@ public :: location_type, get_location, set_location, &
           operator(==), operator(/=), get_dist, get_close_obs_destroy, &
           nc_write_location_atts, nc_get_location_varids, nc_write_location, &
           vert_is_height, vert_is_pressure, vert_is_undef, vert_is_level, &
-          vert_is_surface, has_vertical_localization
+          vert_is_surface, has_vertical_localization, &
+          set_vert, get_vert, set_which_vert
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -716,6 +717,36 @@ has_vertical_localization = .false.
 
 end function has_vertical_localization
 
+!--------------------------------------------------------------------
+!> dummy routine for models that don't have a vertical location
+function get_vert(loc)
+
+type(location_type), intent(in) :: loc
+real(r8) :: get_vert
+
+get_vert = 1 ! any old value
+
+end function get_vert
+
+!--------------------------------------------------------------------
+!> dummy routine for models that don't have a vertical location
+subroutine set_vert(loc, vloc)
+
+type(location_type), intent(inout) :: loc
+real(r8), intent(in) :: vloc
+
+
+end subroutine set_vert
+
+!----------------------------------------------------------------------------
+!> set the which vert
+subroutine set_which_vert(loc, which_vert)
+
+type(location_type), intent(inout) :: loc
+integer,                intent(in) :: which_vert !< vertical coordinate type
+
+
+end subroutine set_which_vert
 
 !----------------------------------------------------------------------------
 ! end of location/twod/location_mod.f90

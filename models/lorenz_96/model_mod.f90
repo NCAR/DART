@@ -19,18 +19,17 @@ use    utilities_mod, only : register_module, do_nml_file, do_nml_term,    &
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
                                copies_in_window
 
-use mpi_utilities_mod, only : my_task_id
+use mpi_utilities_mod,     only : my_task_id
 
 use distributed_state_mod, only : get_state
 use state_structure_mod,   only : add_domain
 
-use dart_time_io_mod,  only : read_model_time, write_model_time
+use dart_time_io_mod,      only : read_model_time, write_model_time
 
-use null_vert_convert, only : query_vert_localization_coord, &
-                              vert_convert_distrib, get_close_obs_distrib, &
-                              get_vert, set_vert, set_which_vert
+use null_vert_convert_mod, only : query_vert_localization_coord, &
+                                  vert_convert_distrib, get_close_obs_distrib
                               
-use null_clamp,        only : do_clamp_or_fail, clamp_or_fail_it
+use null_clamp_mod,        only : do_clamp_or_fail, clamp_or_fail_it
 
 implicit none
 private
@@ -50,7 +49,6 @@ public :: get_model_size, &
           model_interpolate_distrib, &
           query_vert_localization_coord, &
           vert_convert_distrib, &
-          get_vert, set_vert, set_which_vert, &
           construct_file_name_in, &
           get_model_time, clamp_or_fail_it, do_clamp_or_fail, &
           pert_model_copies, &

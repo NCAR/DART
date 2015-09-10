@@ -35,7 +35,8 @@ use       reg_factor_mod, only : comp_reg_factor
 
 use         location_mod, only : location_type, get_close_type, get_close_obs_destroy,    &
                                  operator(==), set_location_missing, write_location,      &
-                                 LocationDims, vert_is_surface, has_vertical_localization
+                                 LocationDims, vert_is_surface, has_vertical_localization,&
+                                 get_vert, set_vert, set_which_vert
 
 use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,             & 
                                  compute_copy_mean_var, get_var_owner_index,              &
@@ -55,7 +56,7 @@ use time_manager_mod,     only : time_type, get_time
 use assim_model_mod,      only : get_state_meta_data_distrib, get_close_maxdist_init,             &
                                  get_close_obs_init, get_close_obs_distrib
 
-use model_mod,            only : query_vert_localization_coord, vert_convert_distrib, get_vert, set_vert, set_which_vert
+use model_mod,            only : query_vert_localization_coord, vert_convert_distrib
 
 use distributed_state_mod, only : create_mean_window, free_mean_window
 
@@ -387,7 +388,7 @@ if (.not. module_initialized) call assim_tools_init()
 !HK make window for mpi one-sided communication
 ! used for vertical conversion in get_close_obs
 ! Need to give create_mean_window the mean copy
-call create_mean_window(ens_handle, ens_handle%num_copies - ens_handle%num_extras + 1, distribute_mean)
+call create_mean_window(ens_handle, ENS_MEAN_COPY, distribute_mean)
 
 ! filter kinds 1 and 8 return sorted increments, however non-deterministic
 ! inflation can scramble these. the sort is expensive, so help users get better 

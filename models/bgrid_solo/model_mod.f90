@@ -82,17 +82,14 @@ use          obs_kind_mod, only: KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
 ! routines used by rma
 use mpi_utilities_mod,     only : my_task_id
 
-use ensemble_manager_mod,    only : ensemble_type
+use ensemble_manager_mod,    only : ensemble_type, copies_in_window
 
 use distributed_state_mod, only : get_state, get_state_array
 
-use ensemble_manager_mod,    only : ensemble_type, copies_in_window
+use null_clamp_mod,        only : do_clamp_or_fail,clamp_or_fail_it
 
-use null_clamp,            only : do_clamp_or_fail,clamp_or_fail_it
-
-use null_vert_convert,     only : get_vert, set_vert, set_which_vert, &
-                                  query_vert_localization_coord,      &
-                                  vert_convert_distrib,&
+use null_vert_convert_mod, only : query_vert_localization_coord,  &
+                                  vert_convert_distrib, &
                                   get_close_obs_distrib
 
 use state_structure_mod,  only : add_domain, add_dimension_to_variable, &
@@ -112,7 +109,6 @@ public  get_model_size, adv_1step, get_state_meta_data_distrib, &
         model_interpolate_distrib, &
         query_vert_localization_coord, &
         vert_convert_distrib, &
-        get_vert, set_vert, set_which_vert, &
         do_clamp_or_fail,clamp_or_fail_it, get_close_obs_distrib, &
         construct_file_name_in, &
         read_model_time, write_model_time

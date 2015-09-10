@@ -3,7 +3,7 @@ common/types_mod.f90
 distributed/null_distributed_state_mod.f90
 io/state_structure_mod.f90
 location/threed_sphere/location_mod.f90
-models/null_vert_convert.f90
+models/null_vert_convert_mod.f90
 models/POP/dart_pop_mod.f90
 models/POP/model_mod.f90
 models/POP/pop_to_dart.f90

@@ -52,7 +52,7 @@ models/bgrid_solo/fms_src/shared/topography/gaussian_topog.f90
 models/bgrid_solo/fms_src/shared/topography/topography.f90
 models/bgrid_solo/fms_src/shared/tracer_manager/tracer_manager.F90
 models/bgrid_solo/model_mod.f90
-models/null_clamp.f90
+models/null_clamp_mod.f90
 models/null_vert_convert.f90
 mpi_utilities/mpi_utilities_mod.f90
 obs_def/obs_def_mod.f90

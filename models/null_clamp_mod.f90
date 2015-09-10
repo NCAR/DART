@@ -1,7 +1,7 @@
 ! Aim: to provide interfaces to state_vector_ip
 ! for models that don't clamp or fail out of bounds
 ! variables
-module null_clamp
+module null_clamp_mod
 
 use types_mod, only : r8
 
@@ -38,4 +38,4 @@ real(r8), intent(inout) :: variable(:) ! variable
 end subroutine clamp_or_fail_it
 
 
-end module null_clamp
+end module null_clamp_mod

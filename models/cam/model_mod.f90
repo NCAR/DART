@@ -136,7 +136,7 @@ use location_mod,      only : location_type, get_location, set_location, query_l
                               VERTISUNDEF, VERTISSURFACE, VERTISLEVEL,                           &
                               VERTISPRESSURE, VERTISHEIGHT, VERTISSCALEHEIGHT, write_location,   &
                               get_close_type, get_close_maxdist_init, get_close_obs_init,        &
-                              get_close_obs_destroy,get_dist,loc_get_close_obs => get_close_obs, get_vert, set_vert, set_which_vert
+                              get_close_obs_destroy,get_dist,loc_get_close_obs => get_close_obs
 
 use xyz_location_mod, only : xyz_location_type, xyz_get_close_maxdist_init,          &
                              xyz_get_close_type, xyz_set_location, xyz_get_location, &
@@ -236,7 +236,6 @@ public ::                                                             &
    get_close_maxdist_init, get_close_obs_init, get_close_obs_distrib, &
    clamp_or_fail_it, do_clamp_or_fail, construct_file_name_in,        &
    query_vert_localization_coord, vert_convert_distrib,               &
-   get_vert, set_vert, set_which_vert,                                &
    variables_domains, fill_variable_list, read_model_time, &
    write_model_time
    !, convert_base_obs_location

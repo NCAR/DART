@@ -52,8 +52,7 @@ use      location_mod,   only : location_type, get_location, set_location, &
                                 VERTISLEVEL, VERTISPRESSURE, VERTISHEIGHT, &
                                 VERTISSCALEHEIGHT, &
                                 get_close_type, get_dist, get_close_maxdist_init, &
-                                get_close_obs_init, loc_get_close_obs => get_close_obs, &
-                                get_vert, set_vert, set_which_vert
+                                get_close_obs_init, loc_get_close_obs => get_close_obs
 
 use     utilities_mod,  only  : file_exist, open_file, close_file, &
                                 register_module, error_handler, E_ERR, E_WARN, &
@@ -142,9 +141,6 @@ public ::  get_model_size,                &
            model_interpolate_distrib,     &
            vert_convert_distrib,          &
            query_vert_localization_coord, &
-           get_vert,                      &
-           set_vert,                      &
-           set_which_vert,                &
            construct_file_name_in,        &
            read_model_time,               &
            write_model_time,              &
