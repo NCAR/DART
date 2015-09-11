@@ -19,10 +19,12 @@ use     location_mod, only : location_type, set_location, write_location, get_di
                              query_location, LocationDims, get_location, &
                              VERTISHEIGHT
 use     obs_kind_mod, only : get_raw_obs_kind_name, get_raw_obs_kind_index
-use  assim_model_mod, only : open_restart_read, open_restart_write, close_restart, &
-                             aread_state_restart, awrite_state_restart, &
-                             netcdf_file_type, aoutput_diagnostics, &
+use  assim_model_mod, only : netcdf_file_type, aoutput_diagnostics, &
                              init_diag_output, finalize_diag_output
+
+use state_vector_io_mod, only : open_restart_read, open_restart_write, close_restart, &
+                             aread_state_restart, awrite_state_restart
+
 use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time,  &
                              print_date, print_time, operator(-)
 use        model_mod, only : static_init_model, get_model_size, get_state_meta_data, &

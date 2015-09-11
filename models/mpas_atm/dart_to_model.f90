@@ -26,7 +26,7 @@ use        types_mod, only : r8
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              logfileunit, open_file, close_file
-use  assim_model_mod, only : open_restart_read, aread_state_restart, close_restart
+use state_vector_io_mod, only : open_restart_read, aread_state_restart, close_restart
 use time_manager_mod, only : time_type, print_time, print_date, operator(-), &
                              get_time, get_date
 use        model_mod, only : static_init_model, statevector_to_analysis_file, &

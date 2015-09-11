@@ -14,15 +14,18 @@ use utilities_mod,       only : register_module,  &
                                 error_handler, E_MSG, nmlfileunit, &
                                 do_nml_file, do_nml_term,          &
                                 find_namelist_in_file, check_namelist_read
-use assim_model_mod,     only : static_init_assim_model, get_model_size,              &
-                                open_restart_read, open_restart_write, close_restart, &
-                                awrite_state_restart, aread_state_restart
+use assim_model_mod,     only : static_init_assim_model, get_model_size
+
 use obs_model_mod,        only : advance_state
 use ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, &
                                  prepare_to_write_to_vars
 use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilities, &
                                  task_count, iam_task0
 
+use state_vector_io_mod,  only : open_restart_read, open_restart_write, close_restart, &
+                                 awrite_state_restart, aread_state_restart
+
+use types_mod,            only : i8
 
 implicit none
 
@@ -34,7 +37,8 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 type(ensemble_type) :: ens_handle
 type(time_type)     :: target_time
-integer             :: iunit, model_size, rc
+integer             :: iunit, rc
+integer(i8)         :: model_size
 
 ! to overwrite the target time, set these to something >= 0
 integer :: target_days = -1, target_seconds = -1
@@ -116,7 +120,7 @@ call static_init_assim_model()
 model_size = get_model_size()
 
 ! Initialize an ensemble manager type with a single copy
-call init_ensemble_manager(ens_handle, num_copies=1, num_vars=model_size)
+call init_ensemble_manager(ens_handle, num_copies=1, num_vars=model_size, transpose_type_in = 2)
 call prepare_to_write_to_vars(ens_handle)
 
 if (iam_task0()) then

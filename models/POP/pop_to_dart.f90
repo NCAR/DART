@@ -26,7 +26,7 @@ use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read
 use        model_mod, only : restart_file_to_sv, static_init_model, &
                              get_model_size, get_pop_restart_filename
-use  assim_model_mod, only : awrite_state_restart, open_restart_write, close_restart
+use state_vector_io_mod, only : awrite_state_restart, open_restart_write, close_restart
 use time_manager_mod, only : time_type, print_time, print_date
 
 use netcdf

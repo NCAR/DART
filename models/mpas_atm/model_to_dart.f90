@@ -28,7 +28,7 @@ use    utilities_mod, only : initialize_utilities, finalize_utilities, &
 use        model_mod, only : get_model_size, analysis_file_to_statevector, &
                              get_model_analysis_filename, static_init_model, &
                              print_variable_ranges
-use  assim_model_mod, only : awrite_state_restart, open_restart_write, close_restart
+use state_vector_io_mod, only : awrite_state_restart, open_restart_write, close_restart
 use time_manager_mod, only : time_type, print_time, print_date
 
 implicit none

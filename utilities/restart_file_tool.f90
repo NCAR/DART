@@ -18,10 +18,12 @@ use utilities_mod,       only : register_module, error_handler, nmlfileunit, &
                                 check_namelist_read, logfileunit,            &
                                 do_nml_file, do_nml_term
                                 
-use assim_model_mod,     only : static_init_assim_model, get_model_size,   &
-                                open_restart_read, open_restart_write,     &
+use assim_model_mod,     only : static_init_assim_model, get_model_size
+
+use state_vector_io_mod, only : open_restart_read, open_restart_write,     &
                                 awrite_state_restart, aread_state_restart, &
                                 close_restart
+
 
 use ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, &
                                  prepare_to_write_to_vars
@@ -183,7 +185,7 @@ one_by_one = .not. (single_restart_file_in .or. single_restart_file_out)
 if (one_by_one) then
 
    ! Initialize the ens manager with enough room for a single ensemble member.
-   call init_ensemble_manager(ens_handle, num_copies=1, num_vars=model_size)
+   call init_ensemble_manager(ens_handle, num_copies=1, num_vars=model_size, transpose_type_in = 2)
    call prepare_to_write_to_vars(ens_handle)
 
    do member=1, ens_size
@@ -237,7 +239,7 @@ else
 
    ! Initialize the ens manager with enough room for all ensemble members.
    ! Either read, write, or both will need this.
-   call init_ensemble_manager(ens_handle, num_copies=ens_size, num_vars=model_size)
+   call init_ensemble_manager(ens_handle, num_copies=ens_size, num_vars=model_size, transpose_type_in = 2)
    call prepare_to_write_to_vars(ens_handle)
 
    ! make the defaults be a single filename, and overwrite them below if

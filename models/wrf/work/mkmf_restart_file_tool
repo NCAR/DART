@@ -7,7 +7,7 @@
 # DART $Id$
 
 ../../../mkmf/mkmf -p restart_file_tool -t ../../../mkmf/mkmf.template   \
- -a "../../.." -w path_names_restart_file_tool
+ -a "../../.."  path_names_restart_file_tool
 
 exit $status
 

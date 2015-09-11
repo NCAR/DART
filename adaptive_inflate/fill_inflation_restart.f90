@@ -15,9 +15,11 @@ use types_mod,            only : r8, i8
 use utilities_mod,        only : error_handler, E_MSG,  &
                                  initialize_utilities, finalize_utilities
 
-use ensemble_manager_mod, only : ensemble_type, write_ensemble_restart,       &
+use ensemble_manager_mod, only : ensemble_type,         &
                                  init_ensemble_manager, end_ensemble_manager, &
                                  prepare_to_write_to_vars
+
+use state_vector_io_mod,  only : write_ensemble_restart
 
 use assim_model_mod,      only : static_init_assim_model
 
@@ -73,7 +75,7 @@ model_size = get_model_size()
 write(msgstring, *) 'Model size/restart data length = ', model_size
 call error_handler(E_MSG,'',msgstring, source, revision, revdate)
 
-call init_ensemble_manager(ens_handle, 2, model_size)
+call init_ensemble_manager(ens_handle, 2, model_size, transpose_type_in = 2)
 call prepare_to_write_to_vars(ens_handle)
 
 ens_handle%vars(:, ss_inflate_index   ) = inf_initial

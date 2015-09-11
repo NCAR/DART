@@ -18,7 +18,7 @@ use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_s
 use ensemble_manager_mod, only : ensemble_type,   &
                                  get_copy_owner_index, prepare_to_write_to_vars,                &
                                  prepare_to_read_from_vars, prepare_to_update_vars, map_pe_to_task, all_vars_to_all_copies, all_copies_to_all_vars
-use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, datasize
+use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, reduce_min_max
 
 use state_vector_io_mod,  only : turn_read_copy_on, turn_write_copy_on, &
                                  turn_read_copies_off, &
@@ -105,8 +105,6 @@ logical,                     intent(in)    :: direct_netcdf_read
 character(len = 128) :: det, tadapt, sadapt, akind, rsread, nmread
 integer  :: restart_unit, io, owner, owners_index
 real(r8) :: minmax_mean(2), minmax_sd(2)
-
-integer  :: ierr !> for mpi_reduce call
 
 ! Record the module version if this is first initialize call
 if(.not. initialized) then
@@ -1078,8 +1076,6 @@ end subroutine get_minmax_task_zero
 !> from dart restart file)
 subroutine get_minmax_task_zero_distrib(inflation_handle, ens_handle, ss_inflate_index, ss_inflate_sd_index)
 
-use mpi
-
 type(adaptive_inflate_type), intent(inout) :: inflation_handle
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: ss_inflate_index
@@ -1095,19 +1091,8 @@ if (inflation_handle%mean_from_restart) then
    minmax_mean(1) = minval(ens_handle%copies(ss_inflate_index, :))
    minmax_mean(2) = maxval(ens_handle%copies(ss_inflate_index, :))
 
-   ! collect on task 0
-   if (datasize == mpi_real8) then
-
-      call mpi_reduce(minmax_mean(1), global_val(1), 1, mpi_real8, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
-      call mpi_reduce(minmax_mean(2), global_val(2), 1, mpi_real8, MPI_MAX, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
-
-   else ! single precision
-   
-      call mpi_reduce(minmax_mean(1), global_val(1), 1, mpi_real4, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
-      call mpi_reduce(minmax_mean(2), global_val(2), 1, mpi_real4, MPI_MAX, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
-
-   endif
-
+   ! collect on pe 0
+   call reduce_min_max(minmax_mean, map_pe_to_task(ens_handle, 0), global_val)
    if (ens_handle%my_pe == 0) inflation_handle%minmax_mean = global_val
 
 endif
@@ -1119,18 +1104,7 @@ if (inflation_handle%sd_from_restart) then
    minmax_sd(2) = maxval(ens_handle%copies(ss_inflate_sd_index, :))
 
    ! collect on task 0
-   if (datasize == mpi_real8) then
-
-      call mpi_reduce(minmax_sd(1), global_val(1), 1, mpi_real8, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
-      call mpi_reduce(minmax_sd(2), global_val(2), 1, mpi_real8, MPI_MAX, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
-
-   else ! single precision
-   
-      call mpi_reduce(minmax_sd(1), global_val(1), 1, mpi_real4, MPI_MIN, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
-      call mpi_reduce(minmax_sd(2), global_val(2), 1, mpi_real4, MPI_MAX, map_pe_to_task(ens_handle, 0), mpi_comm_world, ierr)
-
-   endif
-
+   call reduce_min_max(minmax_sd, map_pe_to_task(ens_handle, 0), global_val)
    if (ens_handle%my_pe == 0) inflation_handle%minmax_sd = minmax_sd
 
 endif

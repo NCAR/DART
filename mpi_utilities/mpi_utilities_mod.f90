@@ -196,16 +196,16 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
- !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
- ! interface block for getting return code back from system() routine
- interface
-  function system(string)
-   character(len=*) :: string
-   integer :: system
-  end function system
- end interface
- ! end block
- !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
+! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
+! ! interface block for getting return code back from system() routine
+! interface
+!  function system(string)
+!   character(len=*) :: string
+!   integer :: system
+!  end function system
+! end interface
+! ! end block
+! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
 
 
 !   ---- private data for mpi_utilities ----
@@ -220,7 +220,7 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_count, my_task_id, block_task, restart_task,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
-          sum_across_tasks, get_dart_mpi_comm, datasize
+          sum_across_tasks, get_dart_mpi_comm, datasize, reduce_min_max
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -1996,6 +1996,32 @@ function get_dart_mpi_comm()
 end function get_dart_mpi_comm
 
 !-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------
+! Collect min and max on task. This is for adaptive_inflate_mod
+subroutine reduce_min_max(minmax, task, global_val)
+
+real(r8), intent(in)  :: minmax(2) ! min max on each task
+integer,  intent(in)  :: task ! task to collect on
+real(r8), intent(out) :: global_val(2) ! only concerned with this on task collecting result
+
+integer :: errcode
+
+! collect on task 
+if (datasize == mpi_real8) then
+
+   call mpi_reduce(minmax(1), global_val(1), 1, mpi_real8, MPI_MIN,task, get_dart_mpi_comm(), errcode)
+   call mpi_reduce(minmax(2), global_val(2), 1, mpi_real8, MPI_MAX, task, get_dart_mpi_comm(), errcode)
+
+else ! single precision
+
+   call mpi_reduce(minmax(1), global_val(1), 1, mpi_real4, MPI_MIN, task, get_dart_mpi_comm(), errcode)
+   call mpi_reduce(minmax(2), global_val(2), 1, mpi_real4, MPI_MAX, task, get_dart_mpi_comm(), errcode)
+
+endif
+
+end subroutine reduce_min_max
+
+
 !-----------------------------------------------------------------------------
 
 end module mpi_utilities_mod

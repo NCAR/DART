@@ -8,7 +8,7 @@ program closest_member_tool
 
 ! Program to overwrite the time on each ensemble in a restart file.
 
-use types_mod,         only : r8
+use types_mod,         only : r8, i8
 use time_manager_mod,  only : time_type, set_time_missing,               &
                               operator(/=), print_time
  
@@ -25,12 +25,14 @@ use  obs_kind_mod,     only : get_num_raw_obs_kinds, get_raw_obs_kind_index, &
 use  sort_mod,         only : slow_index_sort
 
 use assim_model_mod,   only : static_init_assim_model, get_model_size,   &
-                              open_restart_read, aread_state_restart,    &
-                              close_restart, get_state_meta_data
+                              get_state_meta_data_distrib
+
+use state_vector_io_mod, only : aread_state_restart, open_restart_read, close_restart
 
 use mpi_utilities_mod, only : initialize_mpi_utilities, task_count,     &
                               finalize_mpi_utilities
 
+use ensemble_manager_mod, only : ensemble_type
 
 implicit none
 
@@ -41,6 +43,7 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 integer               :: iunit, model_size, io, ens, i, j, kindindex
+integer(i8)           :: ii
 integer, allocatable  :: index_list(:)
 character(len = 128)  :: ifile, msgstring, msgstring1
 real(r8), allocatable :: mean(:), member(:), diffs(:)
@@ -93,6 +96,9 @@ logical :: input_is_model_advance_file  = .false.
 ! it stays out.  but if you did have the mean, you could
 ! use this tool on it.
 
+type(ensemble_type) :: ens_handle ! dummy so you can call get state_meta_data_distrib.
+!> @todo seems like you are using get_state_meta_data just so you can get the kinds.
+!> WRF and MPAS will be doing the vertical conversion also.
 
 !----------------------------------------------------------------
 ! program start
@@ -201,10 +207,12 @@ if (.not. allkinds) then
    useindex(:) = .false.
 
    j = 0
-   do i=1, model_size
-      call get_state_meta_data(i, loc, stype)
+   do ii=1, model_size
+      !> @todo WRF and MPAS are doing vertical conversion here. Does this work
+      !> if you have the non-mpi version.
+      call get_state_meta_data_distrib(ens_handle, ii, loc, stype)
       if (stype < 1 .or. stype > num_kinds) then
-         write(msgstring, *) 'bad KIND from get_state_meta_data, ', stype, ' for index ', i 
+         write(msgstring, *) 'bad KIND from get_state_meta_data, ', stype, ' for index ', ii
          write(msgstring1, *) 'must be between 1 and ', num_kinds
          call error_handler(E_ERR,'closest_member_tool', msgstring, &
                             source,revision,revdate, text2=msgstring1)

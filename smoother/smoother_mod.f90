@@ -471,19 +471,12 @@ end subroutine smoother_mean_spread
 subroutine smoother_ss_diagnostics(model_size, num_output_state_members, &
    temp_ens, ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY)
 
-use mpi
-
 integer,         intent(in)  :: model_size, num_output_state_members
 ! JH Note temp_ens not being used in this routine
 real(r8),        intent(out) :: temp_ens(model_size)
 integer,         intent(in)  :: ENS_MEAN_COPY, ENS_SD_COPY, POST_INF_COPY, POST_INF_SD_COPY
 
 integer :: smoother_index, i
-
-! timing variables
-double precision :: start_at_time
-
-start_at_time = MPI_WTIME()
 
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
@@ -502,8 +495,6 @@ do i = 1, num_current_lags
     !  smoother_state_mean_index, smoother_state_spread_index, output_inflation, temp_ens, &
     !  ENS_MEAN_COPY, ENS_SD_COPY, lag_inflate, POST_INF_COPY, POST_INF_SD_COPY)
 end do
-
-if (my_task_id() == 0) print*, 'serial diagnostic time :', MPI_WTIME() - start_at_time
 
 end subroutine smoother_ss_diagnostics
 

@@ -14,8 +14,11 @@ use    utilities_mod, only : get_unit, error_handler, E_ERR, E_MSG, &
                              logfileunit, nmlfileunit, &
                              find_namelist_in_file, check_namelist_read, &
                              nc_check, do_nml_file, do_nml_term, finalize_utilities
-use  assim_model_mod, only : static_init_assim_model, open_restart_read, &
-                             aread_state_restart, close_restart
+use  assim_model_mod, only : static_init_assim_model
+
+use state_vector_io_mod, only : open_restart_read, &
+                                aread_state_restart, close_restart
+
 use        model_mod, only : max_state_variables, num_state_table_columns, &
                              get_wrf_state_variables, get_number_domains, &
                              get_model_size, get_wrf_static_data, trans_1Dto3D, &

@@ -62,8 +62,6 @@ use distributed_state_mod, only : create_mean_window, free_mean_window
 
 use quality_control_mod, only : good_dart_qc, DARTQC_FAILED_VERT_CONVERT
 
-use mpi
-
 implicit none
 private
 
@@ -376,7 +374,7 @@ type(location_type) :: temp_loc
 integer :: vstatus !< for vertical conversion status. Can we just smash the dart qc instead?
 
 !HK debug
-lanai_bitwise = .true.
+lanai_bitwise = .false.
 
 ! we are going to read/write the copies array
 call prepare_to_update_copies(ens_handle)

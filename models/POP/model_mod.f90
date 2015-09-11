@@ -40,8 +40,6 @@ use ensemble_manager_mod,  only : ensemble_type, copies_in_window
 
 use distributed_state_mod, only : get_state
 
-use null_vert_convert_mod, only : query_vert_localization_coord, vert_convert_distrib
-
 use state_structure_mod,   only : add_domain, get_model_variable_indices
 
 use dart_time_io_mod,      only : write_model_time
@@ -3716,6 +3714,31 @@ real(r8), intent(inout) :: variable(:) ! variable
 
 
 end subroutine clamp_or_fail_it
+
+!--------------------------------------------------------------------
+!> pass the vertical localization coordinate to assim_tools_mod
+function query_vert_localization_coord()
+
+integer :: query_vert_localization_coord
+
+query_vert_localization_coord = 1 ! any old value
+
+end function query_vert_localization_coord
+
+!--------------------------------------------------------------------
+!> This is used in the filter_assim. The vertical conversion is done using the 
+!> mean state.
+!> Calling this is a waste of time
+subroutine vert_convert_distrib(state_ens_handle, location, obs_kind, istatus)
+
+type(ensemble_type), intent(in)  :: state_ens_handle
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: obs_kind
+integer,             intent(out) :: istatus
+
+istatus = 0
+
+end subroutine vert_convert_distrib
 !--------------------------------------------------------------------
 !--------------------------------------------------------------------
 

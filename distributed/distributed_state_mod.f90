@@ -26,7 +26,7 @@ use mpi
 implicit none
 
 private
-public get_state_array, get_state, create_state_window, free_state_window, create_mean_window, free_mean_window
+public :: get_state_array, get_state, create_state_window, free_state_window, create_mean_window, free_mean_window
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &

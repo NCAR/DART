@@ -60,7 +60,8 @@ use          location_mod, only: location_type, get_location, set_location, &
                                  LocationDims, LocationName, LocationLName, &
                                  vert_is_pressure, vert_is_surface, &
                                  get_close_maxdist_init, get_close_obs_init, &
-                                 get_close_obs, VERTISSURFACE, VERTISLEVEL
+                                 get_close_obs, VERTISSURFACE, VERTISLEVEL, &
+                                 get_close_type
 
 
 use        random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
@@ -85,12 +86,6 @@ use mpi_utilities_mod,     only : my_task_id
 use ensemble_manager_mod,    only : ensemble_type, copies_in_window
 
 use distributed_state_mod, only : get_state, get_state_array
-
-use null_clamp_mod,        only : do_clamp_or_fail,clamp_or_fail_it
-
-use null_vert_convert_mod, only : query_vert_localization_coord,  &
-                                  vert_convert_distrib, &
-                                  get_close_obs_distrib
 
 use state_structure_mod,  only : add_domain, add_dimension_to_variable, &
                                  finished_adding_domain, get_variable_size, &
@@ -2299,6 +2294,74 @@ call nc_check( nf90_put_var(ncid, dart_secondsVarID, dart_seconds ), &
                "write_model_time", "dart_seconds put_var")
 
 end subroutine write_model_time
+
+!-------------------------------------------------------
+!> Null version
+!> Check whether you need to error out, clamp, or
+!> do nothing depending on the variable bounds
+function do_clamp_or_fail(var, dom)
+
+integer, intent(in) :: var ! variable index
+integer, intent(in) :: dom ! domain index
+logical             :: do_clamp_or_fail
+
+do_clamp_or_fail = .false.
+
+end function do_clamp_or_fail
+
+!-------------------------------------------------------
+!> Null version
+!> Check a variable for out of bounds and clamp or fail if
+!> needed
+subroutine clamp_or_fail_it(var_index, dom, variable)
+
+integer,     intent(in) :: var_index ! variable index
+integer,     intent(in) :: dom ! domain index
+real(r8), intent(inout) :: variable(:) ! variable
+
+
+end subroutine clamp_or_fail_it
+!--------------------------------------------------------------------
+!> pass the vertical localization coordinate to assim_tools_mod
+function query_vert_localization_coord()
+
+integer :: query_vert_localization_coord
+
+query_vert_localization_coord = 1 ! any old value
+
+end function query_vert_localization_coord
+
+!--------------------------------------------------------------------
+!> This is used in the filter_assim. The vertical conversion is done using the 
+!> mean state.
+!> Calling this is a waste of time
+subroutine vert_convert_distrib(state_ens_handle, location, obs_kind, istatus)
+
+type(ensemble_type), intent(in)  :: state_ens_handle
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: obs_kind
+integer,             intent(out) :: istatus
+
+istatus = 0
+
+end subroutine vert_convert_distrib
+
+!--------------------------------------------------------------------
+subroutine get_close_obs_distrib(gc, base_obs_loc, base_obs_kind, obs_loc, &
+                                 obs_kind, num_close, close_ind, dist, state_ens_handle)
+
+type(ensemble_type),         intent(inout)  :: state_ens_handle
+type(get_close_type),        intent(in)     :: gc
+type(location_type),         intent(inout)  :: base_obs_loc, obs_loc(:)
+integer,                     intent(in)     :: base_obs_kind, obs_kind(:)
+integer,                     intent(out)    :: num_close, close_ind(:)
+real(r8),                    intent(out)    :: dist(:)
+
+
+call get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
+                          num_close, close_ind, dist)
+
+end subroutine get_close_obs_distrib
 
 !#######################################################################
 

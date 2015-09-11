@@ -7,7 +7,7 @@
 # DART $Id$
 
 ../../../mkmf/mkmf -p obs_common_subset -t ../../../mkmf/mkmf.template   \
- -a "../../.." -w path_names_obs_common_subset
+ -a "../../.."  path_names_obs_common_subset
 
 exit $status
 

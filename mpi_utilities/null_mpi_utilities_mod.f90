@@ -160,16 +160,16 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
- !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
- ! interface block for getting return code back from system() routine
- interface
-  function system(string)    
-   character(len=*) :: string
-   integer :: system         
-  end function system
- end interface
- ! end block                 
- !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
+! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
+! ! interface block for getting return code back from system() routine
+! interface
+!  function system(string)    
+!   character(len=*) :: string
+!   integer :: system         
+!  end function system
+! end interface
+! ! end block                 
+! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
 
 !   ---- private data for mpi_utilities ----
 
@@ -182,7 +182,7 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_count, my_task_id, block_task, restart_task,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
-          sum_across_tasks
+          sum_across_tasks, reduce_min_max
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -770,6 +770,21 @@ subroutine sleep_seconds(naplength)
  call sleep(sleeptime)
 
 end subroutine sleep_seconds
+
+!-----------------------------------------------------------------------------
+! Collect min and max on task. This is for adaptive_inflate_mod
+subroutine reduce_min_max(minmax, task, global_val)
+
+real(r8), intent(in)  :: minmax(2) ! min max on each task
+integer,  intent(in)  :: task ! task to collect on
+real(r8), intent(out) :: global_val(2) ! only concerned with this on task collecting result
+
+integer :: errcode
+
+global_val(:) = minmax(:) ! only one task.
+
+end subroutine reduce_min_max
+
 
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------

@@ -47,3 +47,7 @@ obs_sequence/obs_sequence_mod.f90
 random_seq/random_seq_mod.f90
 time_manager/time_manager_mod.f90
 utilities/utilities_mod.f90
+ensemble_manager/ensemble_manager_mod.f90
+sort/sort_mod.f90
+distributed/null_distributed_state_mod.f90
+io/state_structure_mod.f90
