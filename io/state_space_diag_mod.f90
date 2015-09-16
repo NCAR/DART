@@ -23,7 +23,7 @@ module state_space_diag_mod
 use        types_mod,     only : r8, i8
 use time_manager_mod,     only : time_type, get_time
 use ensemble_manager_mod, only : ensemble_type, map_task_to_pe, get_copy, &
-                                 all_copies_to_all_vars
+                                 all_copies_to_all_vars, get_allow_transpose
 use assim_model_mod,      only : netcdf_file_type, aoutput_diagnostics, &
                                  netcdf_file_type
 use adaptive_inflate_mod, only : adaptive_inflate_type
@@ -93,7 +93,7 @@ integer                :: ens_offset, j
 real(r8), allocatable  :: temp_ens(:) ! junk value
 
 ! Assumes that mean and spread have already been computed
-allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+if (.not. get_allow_transpose(ens_handle)) allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
 call all_copies_to_all_vars(ens_handle)
 
 ! HK note that for single source we could pass the ens_mean storage
@@ -152,7 +152,7 @@ if (output_inflation) then
 
 endif
 
-deallocate(ens_handle%vars, temp_ens)
+if (.not. get_allow_transpose(ens_handle))deallocate(ens_handle%vars, temp_ens)
 
 end subroutine filter_state_space_diagnostics
 
