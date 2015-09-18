@@ -22,7 +22,9 @@ use mpi
 implicit none
 
 private
-public :: create_mean_window, create_state_window, free_mean_window, free_state_window, data_count, mean_win, state_win, mean_ens_handle
+public :: create_mean_window, create_state_window, free_mean_window, &
+          free_state_window, data_count, mean_win, state_win, current_win, &
+          mean_ens_handle, NO_WINDOW, MEAN_WINDOW, STATE_WINDOW
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -30,8 +32,18 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-integer state_win !< mpi window for the forward operator
-integer mean_win !< mpi window
+! mpi window handles
+integer :: state_win   !< window for the forward operator
+integer :: mean_win    !< window for the mean
+integer :: current_win !< keep track of current window, start out assuming an invalid window
+
+! parameters for keeping track of which window is open
+!>@todo should this be in the window_mod?  you will have to change in both cray 
+!> and non cray versions 
+integer, parameter :: NO_WINDOW    = -1
+integer, parameter :: MEAN_WINDOW  = 0 
+integer, parameter :: STATE_WINDOW = 2 
+
 integer :: data_count !> number of copies in the window
 integer(KIND=MPI_ADDRESS_KIND) :: window_size
 logical :: use_distributed_mean = .false. ! initialize to false
@@ -75,6 +87,9 @@ else
    call mpi_win_create(contiguous_fwd, window_size, bytesize, MPI_INFO_NULL, get_dart_mpi_comm(), state_win, ierr)
 endif
 
+! Set the current window to the state window
+current_win = STATE_WINDOW
+
 data_count = copies_in_window(state_ens_handle)
 
 end subroutine create_state_window
@@ -108,17 +123,18 @@ if (use_distributed_mean) then
    ! Need a simply contiguous piece of memory to pass to mpi_win_create
    ! Expose local memory to RMA operation by other processes in a communicator.
    call mpi_win_create(mean_ens_handle%copies, window_size, bytesize, MPI_INFO_NULL, get_dart_mpi_comm(), mean_win, ierr)
-
 else
-
    call init_ensemble_manager(mean_ens_handle, 1, state_ens_handle%num_vars, transpose_type_in = 3)
    call set_num_extra_copies(mean_ens_handle, 0)
    mean_ens_handle%copies(1,:) = state_ens_handle%copies(mean_copy, :)
    call all_copies_to_all_vars(mean_ens_handle) ! this is a transpose-duplicate
-
 endif
+   
+! grabbing mean directly, no windows are being used
+current_win = MEAN_WINDOW
 
 data_count = copies_in_window(mean_ens_handle) ! One.
+
 end subroutine create_mean_window
 
 !-------------------------------------------------------------
@@ -142,6 +158,8 @@ else
    deallocate(contiguous_fwd)
 endif
 
+current_win = NO_WINDOW
+
 end subroutine free_state_window
 
 !---------------------------------------------------------
@@ -155,6 +173,8 @@ else
    call mpi_win_free(mean_win, ierr)
    call end_ensemble_manager(mean_ens_handle)
 endif
+
+current_win = NO_WINDOW
 
 end subroutine free_mean_window
 

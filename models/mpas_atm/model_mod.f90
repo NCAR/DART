@@ -48,7 +48,8 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              nc_check, do_output, to_upper, nmlfileunit,       &
                              find_namelist_in_file, check_namelist_read,       &
                              open_file, file_exist, find_textfile_dims,        &
-                             file_to_text, close_file, do_nml_file, do_nml_term
+                             file_to_text, close_file, do_nml_file,            &
+                             do_nml_term, scalar
 
 use     obs_kind_mod, only : paramname_length,        &
                              get_raw_obs_kind_index,  &
@@ -1199,7 +1200,6 @@ if (highest_obs_pressure_mb > 0.0) then
    do e = 1, ens_size
       if (lpres(e) < highest_obs_pressure_mb * 100.0_r8) then
          if (debug > 4) print *, 'rejected, pressure < upper limit', lpres(e), highest_obs_pressure_mb
-         print *, 'rejected, pressure < upper limit', lpres(e), highest_obs_pressure_mb
          ! Exclude from assimilation the obs above a user specified level
          expected_obs(e) = MISSING_R8
          istatus(e) = 201
@@ -5539,13 +5539,13 @@ allocate(pt(ens_size), density(ens_size), qv(ens_size), tk(ens_size))
 ! Get the values of potential temperature, density, and vapor
 offset = (cellid - 1) * nlevs + lev - 1
 if (ens_size == 1) then
-   call get_state(pt(1),      pt_offset      + offset, state_ens_handle)!pt = x(pt_offset + offset)
-   call get_state(density(1), density_offset + offset, state_ens_handle)!density = x(density_offset + offset)
-   call get_state(qv(1),      qv_offset      + offset, state_ens_handle)!qv = x(qv_offset + offset)
+   pt(1)      =  scalar(get_state(pt_offset      + offset, state_ens_handle))!pt = x(pt_offset + offset)
+   density(1) =  scalar(get_state(density_offset + offset, state_ens_handle))!density = x(density_offset + offset)
+   qv(1)      =  scalar(get_state(qv_offset      + offset, state_ens_handle))!qv = x(qv_offset + offset)
 else
-   call get_state(pt,         pt_offset      + offset, state_ens_handle)!pt = x(pt_offset + offset)
-   call get_state(density,    density_offset + offset, state_ens_handle)!density = x(density_offset + offset)
-   call get_state(qv,         qv_offset      + offset, state_ens_handle)!qv = x(qv_offset + offset)
+   pt      =  get_state(pt_offset      + offset, state_ens_handle)!pt = x(pt_offset + offset)
+   density =  get_state(density_offset + offset, state_ens_handle)!density = x(density_offset + offset)
+   qv      =  get_state(qv_offset      + offset, state_ens_handle)!qv = x(qv_offset + offset)
 endif
 
       ! Default is no error
@@ -5702,7 +5702,7 @@ allocate(fdata(3, ens_size)) !, weights(3, ens_size))
 allocate(lower(3, ens_size), upper(3, ens_size))
 
 dval = MISSING_R8
-if(ens_size==1) print*, 'compute_scalar_with_barycentric ens_size = 1'
+! if(ens_size==1) print*, 'compute_scalar_with_barycentric ens_size = 1'
 
 call find_triangle_vert_indices (state_ens_handle, loc, nc, c, lower, upper, fract, weights, ier)
 
@@ -5721,10 +5721,10 @@ do k=1, n
 
       do i = 1, nc
 !        lowval(i) = x(index1 + (c(i)-1) * nvert + lower(i)-1)
-         call get_state(lowval(i,:), index1 + (c(i)-1)*nvert + lower(i, e)-1, state_ens_handle)
+         lowval(i,:) =  (get_state(index1 + (c(i)-1)*nvert + lower(i, e)-1, state_ens_handle))
 
 !        uppval(i) = x(index1 + (c(i)-1) * nvert + upper(i)-1)
-         call get_state(uppval(i, :), index1 + (c(i)-1) * nvert + upper(i, e)-1, state_ens_handle)
+         uppval(i,:) =  (get_state(index1 + (c(i)-1) * nvert + upper(i, e)-1, state_ens_handle))
 
          fdata(i, e) = lowval(i, e)*(1.0_r8 - fract(i, e)) + uppval(i, e)*fract(i, e)
 !        if((debug > 9) .and. do_output()) &
@@ -6033,11 +6033,11 @@ do i = 1, nedges
    !> @todo lower (upper) could be different levels in pressure
    !lowval = x(index1 + (edgelist(i)-1) * nvert + lower(i)-1)
    lowindx = int(index1,i8) + int((edgelist(i)-1) * nvert,i8) + int(lower(i,1)-1,i8)
-   call get_state(lowval, lowindx, state_ens_handle)
+   lowval =  get_state(lowindx, state_ens_handle)
 
    !uppval = x(index1 + (edgelist(i)-1) * nvert + upper(i)-1)
    upindx = int(index1,i8) + int((edgelist(i)-1) * nvert,i8) + int(upper(i,1)-1,i8)
-   call get_state(uppval, upindx, state_ens_handle)
+   uppval =  get_state(upindx, state_ens_handle)
 
    veldata(i, :) = lowval*(1.0_r8 - fract(i, :)) + uppval*fract(i, :)
 

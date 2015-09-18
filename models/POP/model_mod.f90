@@ -1171,7 +1171,7 @@ state_index = int(lat_index - 1,i8)*int(nlon,i8) + int(lon_index,i8) + int(offse
 ! Layout has lons varying most rapidly
 !get_val = x((lat_index - 1) * nlon + lon_index)
 ! The x above is only a horizontal slice, not the whole state.   HK WHY -1?
-call get_state(get_val, state_index, state_ens_handle)
+get_val = get_state(state_index, state_ens_handle)
 
 ! this is a valid ocean water cell, not land or below ocean floor
 masked = .false.

@@ -59,7 +59,7 @@ use     utilities_mod,  only  : file_exist, open_file, close_file, &
                                 E_MSG, nmlfileunit, do_output, nc_check, &
                                 find_namelist_in_file, check_namelist_read, &
                                 find_textfile_dims, file_to_text, &
-                                do_nml_file, do_nml_term
+                                do_nml_file, do_nml_term, scalar
 
 use  mpi_utilities_mod,  only : my_task_id
 
@@ -94,7 +94,7 @@ use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_var_owner_i
 
 use sort_mod,            only : sort
 
-use distributed_state_mod
+use distributed_state_mod, only : get_state
 
 use state_structure_mod, only : add_domain, get_model_variable_indices
 
@@ -188,21 +188,6 @@ public :: wrf_dom, wrf_static_data_for_dart
 ! This is because the forward operator works on the whole ensemble, and the
 ! vertical conversion only uses the mean copy.
 
-interface get_model_pressure_profile_distrib
-   module procedure get_model_pressure_profile_distrib_fwd, get_model_pressure_profile_distrib_mean
-end interface
-
-interface model_pressure_t_distrib
-   module procedure model_pressure_t_distrib_fwd, model_pressure_t_distrib_mean
-end interface
-
-interface model_rho_t_distrib
-   module procedure model_rho_t_distrib_fwd, model_rho_t_distrib_mean
-end interface
-
-interface get_model_height_profile_distrib
-   module procedure get_model_height_profile_distrib_fwd, get_model_height_profile_distrib_mean
-end interface
 
 ! HK ? interp_4pressure interface needed?
 
@@ -1014,7 +999,7 @@ integer                :: ens_size
 integer(i8) :: ugrid_1, ugrid_2, ugrid_3, ugrid_4, vgrid_1, vgrid_2, vgrid_3, vgrid_4
 integer(i8) :: z1d_ind1, z1d_ind2, t1d_ind, qv1d_ind
 
-ens_size = copies_in_window(state_ens_handle) 
+ens_size = copies_in_window(state_ens_handle) ! data_structure_mod
 allocate(x_ill(ens_size), x_iul(ens_size), x_ilr(ens_size), x_iur(ens_size))
 allocate(x_ugrid_1(ens_size), x_ugrid_2(ens_size), x_ugrid_3(ens_size), x_ugrid_4(ens_size))
 allocate(x_vgrid_1(ens_size), x_vgrid_2(ens_size), x_vgrid_3(ens_size), x_vgrid_4(ens_size))
@@ -1504,10 +1489,10 @@ else
                      ilr = new_dart_ind(lr(1), lr(2), uniquek(uk)+k2-1, wrf%dom(id)%type_u, id)
                      iur = new_dart_ind(ur(1), ur(2), uniquek(uk)+k2-1, wrf%dom(id)%type_u, id)
 
-                     call get_state(x_ill, ill, state_ens_handle)
-                     call get_state(x_iul, iul, state_ens_handle)
-                     call get_state(x_ilr, ilr, state_ens_handle)
-                     call get_state(x_iur, iur, state_ens_handle)
+                     x_ill = get_state(ill, state_ens_handle)
+                     x_iul = get_state(iul, state_ens_handle)
+                     x_ilr = get_state(ilr, state_ens_handle)
+                     x_iur = get_state(iur, state_ens_handle)
 
                      ugrid = dym*( dxm_u*x_ill + dx_u*x_ilr ) + dy*( dxm_u*x_iul + dx_u*x_iur )
 
@@ -1517,10 +1502,10 @@ else
                      ilr = new_dart_ind(lr_v(1), lr_v(2), uniquek(uk)+k2-1, wrf%dom(id)%type_v, id)
                      iur = new_dart_ind(ur_v(1), ur_v(2), uniquek(uk)+k2-1, wrf%dom(id)%type_v, id)
 
-                     call get_state(x_ill, ill, state_ens_handle)
-                     call get_state(x_iul, iul, state_ens_handle)
-                     call get_state(x_ilr, ilr, state_ens_handle)
-                     call get_state(x_iur, iur, state_ens_handle)
+                     x_ill = get_state(ill, state_ens_handle)
+                     x_iul = get_state(iul, state_ens_handle)
+                     x_ilr = get_state(ilr, state_ens_handle)
+                     x_iur = get_state(iur, state_ens_handle)
 
                      vgrid = dym_v*( dxm*x_ill + dx*x_ilr ) + dy_v*( dxm*x_iul + dx*x_iur )
 
@@ -1575,10 +1560,10 @@ else
                ilr = new_dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_u10, id)
                iur = new_dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_u10, id)
 
-               call get_state(x_ill, ill, state_ens_handle)
-               call get_state(x_iul, iul, state_ens_handle)
-               call get_state(x_ilr, ilr, state_ens_handle)
-               call get_state(x_iur, iur, state_ens_handle)
+               x_ill = get_state(ill, state_ens_handle)
+               x_iul = get_state(iul, state_ens_handle)
+               x_ilr = get_state(ilr, state_ens_handle)
+               x_iur = get_state(iur, state_ens_handle)
 
                ugrid = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
    
@@ -1588,10 +1573,10 @@ else
                ilr = new_dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_v10, id)
                iur = new_dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_v10, id)
 
-               call get_state(x_ill, ill, state_ens_handle)
-               call get_state(x_iul, iul, state_ens_handle)
-               call get_state(x_iur, iur, state_ens_handle)
-               call get_state(x_ilr, ilr, state_ens_handle)
+               x_ill = get_state(ill, state_ens_handle)
+               x_iul = get_state(iul, state_ens_handle)
+               x_iur = get_state(iur, state_ens_handle)
+               x_ilr = get_state(ilr, state_ens_handle)
 
                vgrid = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
 
@@ -1642,10 +1627,10 @@ else
                   ilr = new_dart_ind(lr(1), lr(2), uniquek(uk), wrf%dom(id)%type_t, id)
                   iur = new_dart_ind(ur(1), ur(2), uniquek(uk), wrf%dom(id)%type_t, id)
 
-                  call get_state(x_iul, iul, state_ens_handle)
-                  call get_state(x_ill, ill, state_ens_handle)
-                  call get_state(x_ilr, ilr, state_ens_handle)
-                  call get_state(x_iur, iur, state_ens_handle)
+                  x_iul = get_state(iul, state_ens_handle)
+                  x_ill = get_state(ill, state_ens_handle)
+                  x_ilr = get_state(ilr, state_ens_handle)
+                  x_iur = get_state(iur, state_ens_handle)
 
                   ! In terms of perturbation potential temperature
                   a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
@@ -1671,10 +1656,10 @@ else
                   ilr = new_dart_ind(lr(1), lr(2), uniquek(uk)+1, wrf%dom(id)%type_t, id)
                   iur = new_dart_ind(ur(1), ur(2), uniquek(uk)+1, wrf%dom(id)%type_t, id)
 
-                  call get_state(x_ill, ill, state_ens_handle)
-                  call get_state(x_iul, iul, state_ens_handle)
-                  call get_state(x_iur, iur, state_ens_handle)
-                  call get_state(x_ilr, ilr, state_ens_handle)
+                  x_ill = get_state(ill, state_ens_handle)
+                  x_iul = get_state(iul, state_ens_handle)
+                  x_iur = get_state(iur, state_ens_handle)
+                  x_ilr = get_state(ilr, state_ens_handle)
 
                   ! In terms of perturbation potential temperature
                   a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
@@ -1735,10 +1720,10 @@ else
                ilr = new_dart_ind(lr(1), lr(2), uniquek(uk), wrf%dom(id)%type_t, id)
                iur = new_dart_ind(ur(1), ur(2), uniquek(uk), wrf%dom(id)%type_t, id)
 
-               call get_state(x_ill, ill, state_ens_handle)
-               call get_state(x_iul, iul, state_ens_handle)
-               call get_state(x_ilr, ilr, state_ens_handle)
-               call get_state(x_iur, iur, state_ens_handle)
+               x_ill = get_state(ill, state_ens_handle)
+               x_iul = get_state(iul, state_ens_handle)
+               x_ilr = get_state(ilr, state_ens_handle)
+               x_iur = get_state(iur, state_ens_handle)
 
                do e = 1, ens_size
                   if ( k(e) == uniquek(uk) ) then
@@ -1752,10 +1737,10 @@ else
                ilr = new_dart_ind(lr(1), lr(2), uniquek(uk)+1, wrf%dom(id)%type_t, id)
                iur = new_dart_ind(ur(1), ur(2), uniquek(uk)+1, wrf%dom(id)%type_t, id)
 
-               call get_state(x_ill, ill, state_ens_handle)
-               call get_state(x_ill, ill, state_ens_handle)
-               call get_state(x_ilr, ilr, state_ens_handle)
-               call get_state(x_iur, iur, state_ens_handle)
+               x_ill = get_state(ill, state_ens_handle)
+               x_ill = get_state(ill, state_ens_handle)
+               x_ilr = get_state(ilr, state_ens_handle)
+               x_iur = get_state(iur, state_ens_handle)
 
                do e = 1, ens_size
                   if ( k(e) == uniquek(uk) ) then
@@ -1866,10 +1851,10 @@ else
                   ilr = new_dart_ind(lr(1), lr(2), uniquek(uk), wrf%dom(id)%type_qv, id)
                   iur = new_dart_ind(ur(1), ur(2), uniquek(uk), wrf%dom(id)%type_qv, id)
 
-                  call get_state(x_ill, ill, state_ens_handle)
-                  call get_state(x_iul, iul, state_ens_handle)
-                  call get_state(x_ilr, ilr, state_ens_handle)
-                  call get_state(x_iur, iur, state_ens_handle)
+                  x_ill = get_state(ill, state_ens_handle)
+                  x_iul = get_state(iul, state_ens_handle)
+                  x_ilr = get_state(ilr, state_ens_handle)
+                  x_iur = get_state(iur, state_ens_handle)
 
                   do e = 1, ens_size
                      if ( k(e) == uniquek(uk) ) then ! interpolate only if it is the correct k
@@ -1884,10 +1869,10 @@ else
                   ilr = new_dart_ind(lr(1), lr(2), uniquek(uk)+1, wrf%dom(id)%type_qv, id)
                   iur = new_dart_ind(ur(1), ur(2), uniquek(uk)+1, wrf%dom(id)%type_qv, id)
 
-                  call get_state(x_ill, ill, state_ens_handle)
-                  call get_state(x_ilr, ilr, state_ens_handle)
-                  call get_state(x_iul, iul, state_ens_handle)
-                  call get_state(x_iur, iur, state_ens_handle)
+                  x_ill = get_state(ill, state_ens_handle)
+                  x_ilr = get_state(ilr, state_ens_handle)
+                  x_iul = get_state(iul, state_ens_handle)
+                  x_iur = get_state(iur, state_ens_handle)
 
                   do e = 1, ens_size
                      if ( k(e) == uniquek(uk) ) then ! interpolate only if it is the correct
@@ -1920,10 +1905,10 @@ else
                ilr = new_dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_q2, id)
                iur = new_dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_q2, id)
 
-               call get_state(x_ill, ill, state_ens_handle)
-               call get_state(x_iul, iul, state_ens_handle)
-               call get_state(x_iur, iur, state_ens_handle)
-               call get_state(x_ilr, ilr, state_ens_handle)
+               x_ill = get_state(ill, state_ens_handle)
+               x_iul = get_state(iul, state_ens_handle)
+               x_iur = get_state(iur, state_ens_handle)
+               x_ilr = get_state(ilr, state_ens_handle)
 
                a1 = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
                fld(1,:) = a1 /(1.0_r8 + a1)
@@ -2020,10 +2005,10 @@ else
                ilr = new_dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_ps, id)
                iur = new_dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_ps, id)
 
-               call get_state(x_ill, ill, state_ens_handle)
-               call get_state(x_iul, iul, state_ens_handle)
-               call get_state(x_ilr, ilr, state_ens_handle)
-               call get_state(x_iur, iur, state_ens_handle)
+               x_ill = get_state(ill, state_ens_handle)
+               x_iul = get_state(iul, state_ens_handle)
+               x_ilr = get_state(ilr, state_ens_handle)
+               x_iur = get_state(iur, state_ens_handle)
 
                do e = 1, ens_size
                   ! I'm not quite sure where this comes from, but I will trust them on it....
@@ -2197,10 +2182,10 @@ else
                         ugrid_3 = new_dart_ind(ii1,  ii2,  k2,  wrf%dom(id)%type_u, id)
                         ugrid_4 = new_dart_ind(ii1,  ii2,  k2+1,wrf%dom(id)%type_u, id)
 
-                        call get_state(x_ugrid_1, ugrid_1, state_ens_handle)
-                        call get_state(x_ugrid_2, ugrid_2, state_ens_handle)
-                        call get_state(x_ugrid_3, ugrid_3, state_ens_handle)
-                        call get_state(x_ugrid_4, ugrid_4, state_ens_handle)
+                        x_ugrid_1 = get_state(ugrid_1, state_ens_handle)
+                        x_ugrid_2 = get_state(ugrid_2, state_ens_handle)
+                        x_ugrid_3 = get_state(ugrid_3, state_ens_handle)
+                        x_ugrid_4 = get_state(ugrid_4, state_ens_handle)
 
                         ugrid = (dx  * (x_ugrid_1  + x_ugrid_2) + dxm * (x_ugrid_3 + x_ugrid_4)) * 0.5_r8
 
@@ -2209,10 +2194,10 @@ else
                         vgrid_3 = new_dart_ind(ii1,  ii2,  k2+1,wrf%dom(id)%type_v, id)
                         vgrid_4 = new_dart_ind(ii1,  ii2+1,k2+1,wrf%dom(id)%type_v, id)
 
-                        call get_state(x_vgrid_1, vgrid_1, state_ens_handle)
-                        call get_state(x_vgrid_2, vgrid_2, state_ens_handle)
-                        call get_state(x_vgrid_3, vgrid_3, state_ens_handle)
-                        call get_state(x_vgrid_4, vgrid_4, state_ens_handle)
+                        x_vgrid_1 = get_state(vgrid_1, state_ens_handle)
+                        x_vgrid_2 = get_state(vgrid_2, state_ens_handle)
+                        x_vgrid_3 = get_state(vgrid_3, state_ens_handle)
+                        x_vgrid_4 = get_state(vgrid_4, state_ens_handle)
 
 !                     vgrid = (dx  * (x(wrf%dom(id)%dart_ind(ii1,  ii2,  k2,  wrf%dom(id)%type_v))  + &
 !                                     x(wrf%dom(id)%dart_ind(ii1,  ii2+1,k2,  wrf%dom(id)%type_v))) + &
@@ -2229,8 +2214,8 @@ else
                         ugrid_1 = new_dart_ind(ii1,  ii2,  1,wrf%dom(id)%type_u, id)
                         ugrid_2 = new_dart_ind(ii1+1,ii2,  1,wrf%dom(id)%type_u, id)
 
-                        call get_state(x_ugrid_1, ugrid_1, state_ens_handle)
-                        call get_state(x_ugrid_2, ugrid_2, state_ens_handle)
+                        x_ugrid_1 = get_state(ugrid_1, state_ens_handle)
+                        x_ugrid_2 = get_state(ugrid_2, state_ens_handle)
  
                         ugrid = (x_ugrid_1 + x_ugrid_2) * 0.5_r8
 
@@ -2240,8 +2225,8 @@ else
                         vgrid_1 = new_dart_ind(ii1,  ii2,  1,wrf%dom(id)%type_v, id)
                         vgrid_2 = new_dart_ind(ii1,  ii2+1,1,wrf%dom(id)%type_v, id)
 
-                        call get_state(x_vgrid_1, vgrid_1, state_ens_handle)
-                        call get_state(x_vgrid_2, vgrid_2, state_ens_handle)
+                        x_vgrid_1 = get_state(vgrid_1, state_ens_handle)
+                        x_vgrid_2 = get_state(vgrid_2, state_ens_handle)
 
                         vgrid = (x_vgrid_1 + x_vgrid_2) * 0.5_r8
 
@@ -2410,13 +2395,13 @@ else
 
 !                     t1d(k2) = x(wrf%dom(id)%dart_ind(ii1,ii2,k2,wrf%dom(id)%type_t)) + ts0
                      t1d_ind = new_dart_ind(ii1,ii2,k2,wrf%dom(id)%type_t, id)
-                     call get_state(t1d(k2, :), t1d_ind, state_ens_handle)
+                     t1d(k2, :) = get_state( t1d_ind, state_ens_handle)
                      t1d(k2, :) = t1d(k2, :) + ts0
                      !print*, 't1d(k2, 1)', t1d(k2, 1)
 
 !                     qv1d(k2)= x(wrf%dom(id)%dart_ind(ii1,ii2,k2,wrf%dom(id)%type_qv))
                      qv1d_ind = new_dart_ind(ii1,ii2,k2,wrf%dom(id)%type_qv, id)
-                     call get_state(qv1d(k2, :), qv1d_ind, state_ens_handle)
+                     qv1d(k2, :) = get_state(qv1d_ind, state_ens_handle)
                      !print*, 'qv1d(k2, 1)', qv1d(k2, 1)
 
 !                     z1d(k2) = (x(wrf%dom(id)%dart_ind(ii1,ii2,k2,  wrf%dom(id)%type_gz))+ &
@@ -2425,8 +2410,8 @@ else
                      z1d_ind1 = new_dart_ind(ii1,ii2,k2,  wrf%dom(id)%type_gz, id)
                      z1d_ind2 = new_dart_ind(ii1,ii2,k2+1,wrf%dom(id)%type_gz, id)
 
-                     call get_state(z1d_1(k2, :), z1d_ind1, state_ens_handle)
-                     call get_state(z1d_2(k2, :), z1d_ind2, state_ens_handle)
+                     z1d_1(k2, :) = get_state(z1d_ind1, state_ens_handle)
+                     z1d_2(k2, :) = get_state(z1d_ind2, state_ens_handle)
 
                      z1d(k2, :) = ( z1d_1(k2, :)+ z1d_2(k2, :) + &
                                     wrf%dom(id)%phb(ii1,ii2,k2)+wrf%dom(id)%phb(ii1,ii2,k2+1))*0.5_r8/gravity
@@ -2522,10 +2507,10 @@ else
                      !vgrid = x(wrf%dom(id)%dart_ind(ii1,ii2,1,wrf%dom(id)%type_v10))
 
                      ugrid_1 = new_dart_ind(ii1,ii2,1,wrf%dom(id)%type_u10, id)
-                     call get_state(x_ugrid_2, ugrid_2, state_ens_handle)
+                     x_ugrid_2 = get_state(ugrid_2, state_ens_handle)
  
                      vgrid_2 = new_dart_ind(ii1,ii2,1,wrf%dom(id)%type_v10, id)
-                     call get_state(x_vgrid_2, vgrid_2, state_ens_handle)
+                     x_vgrid_2 = get_state(vgrid_2, state_ens_handle)
 
                   else
 
@@ -2537,16 +2522,16 @@ else
                      ugrid_1 = new_dart_ind(ii1,  ii2,  1,wrf%dom(id)%type_u, id)
                      ugrid_2 = new_dart_ind(ii1+1,ii2,  1,wrf%dom(id)%type_u, id)
 
-                     call get_state(x_ugrid_1, ugrid_1, state_ens_handle)
-                     call get_state(x_ugrid_2, ugrid_2, state_ens_handle)
+                     x_ugrid_1 = get_state(ugrid_1, state_ens_handle)
+                     x_ugrid_2 = get_state(ugrid_2, state_ens_handle)
  
                      ugrid = (x_ugrid_1 + x_ugrid_2) * 0.5_r8
 
                      vgrid_1 = new_dart_ind(ii1,  ii2,  1,wrf%dom(id)%type_v, id)
                      vgrid_2 = new_dart_ind(ii1,  ii2+1,1,wrf%dom(id)%type_v, id)
 
-                     call get_state(x_vgrid_1, vgrid_1, state_ens_handle)
-                     call get_state(x_vgrid_2, vgrid_2, state_ens_handle)
+                     x_vgrid_1 = get_state(vgrid_1, state_ens_handle)
+                     x_vgrid_2 = get_state(vgrid_2, state_ens_handle)
 
                      vgrid = (x_vgrid_1 + x_vgrid_2) * 0.5_r8
 
@@ -2629,10 +2614,10 @@ else
             ilr = new_dart_ind(lr(1), lr(2), k(1), wrf%dom(id)%type_gz, id)
             iur = new_dart_ind(ur(1), ur(2), k(1), wrf%dom(id)%type_gz, id)
 
-            call get_state(x_ill, ill, state_ens_handle)
-            call get_state(x_iul, iul, state_ens_handle)
-            call get_state(x_iur, iur, state_ens_handle)
-            call get_state(x_ilr, ilr, state_ens_handle)
+            x_ill = get_state(ill, state_ens_handle)
+            x_iul = get_state(iul, state_ens_handle)
+            x_iur = get_state(iur, state_ens_handle)
+            x_ilr = get_state(ilr, state_ens_handle)
 
             fld(1,:) = ( dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur ) + &
                        dym*( dxm*wrf%dom(id)%phb(ll(1), ll(2), k)   + &
@@ -2646,10 +2631,10 @@ else
             ilr = new_dart_ind(lr(1), lr(2), k(1)+1, wrf%dom(id)%type_gz, id)
             iur = new_dart_ind(ur(1), ur(2), k(1)+1, wrf%dom(id)%type_gz, id)
 
-            call get_state(x_ill, ill, state_ens_handle)
-            call get_state(x_iul, iul, state_ens_handle)
-            call get_state(x_iur, iur, state_ens_handle)
-            call get_state(x_ilr, ilr, state_ens_handle)
+            x_ill = get_state(ill, state_ens_handle)
+            x_iul = get_state(iul, state_ens_handle)
+            x_iur = get_state(iur, state_ens_handle)
+            x_ilr = get_state(ilr, state_ens_handle)
 
             fld(2, :) = ( dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur ) + &
                        dym*( dxm*wrf%dom(id)%phb(ll(1), ll(2), k(1)+1)   + &
@@ -3018,17 +3003,17 @@ case (VERTISLEVEL)
       if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_t)) goto 100
 
       ! compute pressure at all neighboring mass points and interpolate
-      presa = model_pressure_t_distrib(ll(1), ll(2), k  ,id, state_ens_handle)
-      presb = model_pressure_t_distrib(ll(1), ll(2), k+1,id, state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(ll(1), ll(2), k  ,id, state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(ll(1), ll(2), k+1,id, state_ens_handle,1))
       pres1 = dzm*presa + dz*presb
-      presa = model_pressure_t_distrib(lr(1), lr(2), k  ,id, state_ens_handle)
-      presb = model_pressure_t_distrib(lr(1), lr(2), k+1,id, state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(lr(1), lr(2), k  ,id, state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(lr(1), lr(2), k+1,id, state_ens_handle,1))
       pres2 = dzm*presa + dz*presb
-      presa = model_pressure_t_distrib(ul(1), ul(2), k  ,id, state_ens_handle)
-      presb = model_pressure_t_distrib(ul(1), ul(2), k+1,id, state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(ul(1), ul(2), k  ,id, state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(ul(1), ul(2), k+1,id, state_ens_handle,1))
       pres3 = dzm*presa + dz*presb
-      presa = model_pressure_t_distrib(ur(1), ur(2), k  ,id, state_ens_handle)
-      presb = model_pressure_t_distrib(ur(1), ur(2), k+1,id, state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(ur(1), ur(2), k  ,id, state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(ur(1), ur(2), k+1,id, state_ens_handle,1))
       pres4 = dzm*presa + dz*presb
       zout = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
 
@@ -3081,17 +3066,17 @@ case (VERTISLEVEL)
       if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_t)) goto 100
 
       ! pressure at height
-      presa = model_pressure_t_distrib(ll(1), ll(2), k  ,id,state_ens_handle)
-      presb = model_pressure_t_distrib(ll(1), ll(2), k+1,id,state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(ll(1), ll(2), k  ,id,state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(ll(1), ll(2), k+1,id,state_ens_handle,1))
       pres1 = dzm*presa + dz*presb
-      presa = model_pressure_t_distrib(lr(1), lr(2), k  ,id,state_ens_handle)
-      presb = model_pressure_t_distrib(lr(1), lr(2), k+1,id,state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(lr(1), lr(2), k  ,id,state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(lr(1), lr(2), k+1,id,state_ens_handle,1))
       pres2 = dzm*presa + dz*presb
-      presa = model_pressure_t_distrib(ul(1), ul(2), k  ,id,state_ens_handle)
-      presb = model_pressure_t_distrib(ul(1), ul(2), k+1,id,state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(ul(1), ul(2), k  ,id,state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(ul(1), ul(2), k+1,id,state_ens_handle,1))
       pres3 = dzm*presa + dz*presb
-      presa = model_pressure_t_distrib(ur(1), ur(2), k  ,id,state_ens_handle)
-      presb = model_pressure_t_distrib(ur(1), ur(2), k+1,id,state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(ur(1), ur(2), k  ,id,state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(ur(1), ur(2), k+1,id,state_ens_handle,1))
       pres4 = dzm*presa + dz*presb
       zout = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
 
@@ -3129,7 +3114,7 @@ case (VERTISPRESSURE)
    allocate(v_p(0:wrf%dom(id)%bt)) 
    !HK This has already been called in model interpolate
    ! - not for observations that were not in the assimilate catagory
-   call get_model_pressure_profile_distrib(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,id,v_p, state_ens_handle)
+   call get_model_pressure_profile_distrib(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,id,v_p, state_ens_handle,1)
 
      !if (my_task_id() == 0) then
      !    write(10, *) v_p
@@ -3234,7 +3219,7 @@ case (VERTISHEIGHT)
    ! get model height profile and
    ! get height vertical co-ordinate in model level number 
    allocate(v_h(0:wrf%dom(id)%bt))
-   call get_model_height_profile_distrib(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,id,v_h, state_ens_handle)
+   call get_model_height_profile_distrib(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,id,v_h, state_ens_handle,1)
    call height_to_zk(zin, v_h, wrf%dom(id)%bt,zk,lev0)
    deallocate(v_h)
 
@@ -3262,17 +3247,17 @@ case (VERTISHEIGHT)
       if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_t)) goto 100
 
       ! compute pressure at all neighboring mass points and interpolate
-      presa = model_pressure_t_distrib(ll(1), ll(2), k  ,id,state_ens_handle)
-      presb = model_pressure_t_distrib(ll(1), ll(2), k+1,id,state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(ll(1), ll(2), k  ,id,state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(ll(1), ll(2), k+1,id,state_ens_handle,1))
       pres1 = dzm*presa + dz*presb
-      presa = model_pressure_t_distrib(lr(1), lr(2), k  ,id,state_ens_handle)
-      presb = model_pressure_t_distrib(lr(1), lr(2), k+1,id,state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(lr(1), lr(2), k  ,id,state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(lr(1), lr(2), k+1,id,state_ens_handle,1))
       pres2 = dzm*presa + dz*presb
-      presa = model_pressure_t_distrib(ul(1), ul(2), k  ,id,state_ens_handle)
-      presb = model_pressure_t_distrib(ul(1), ul(2), k+1,id,state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(ul(1), ul(2), k  ,id,state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(ul(1), ul(2), k+1,id,state_ens_handle,1))
       pres3 = dzm*presa + dz*presb
-      presa = model_pressure_t_distrib(ur(1), ur(2), k  ,id,state_ens_handle)
-      presb = model_pressure_t_distrib(ur(1), ur(2), k+1,id,state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(ur(1), ur(2), k  ,id,state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(ur(1), ur(2), k+1,id,state_ens_handle,1))
       pres4 = dzm*presa + dz*presb
       zout = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
 
@@ -3288,17 +3273,17 @@ case (VERTISHEIGHT)
       if(.not. boundsCheck(k, .false., id, dim=3, type=wrf%dom(id)%type_t)) goto 100
 
       ! pressure at height
-      presa = model_pressure_t_distrib(ll(1), ll(2), k  ,id,state_ens_handle)
-      presb = model_pressure_t_distrib(ll(1), ll(2), k+1,id,state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(ll(1), ll(2), k  ,id,state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(ll(1), ll(2), k+1,id,state_ens_handle,1))
       pres1 = dzm*presa + dz*presb
-      presa = model_pressure_t_distrib(lr(1), lr(2), k  ,id,state_ens_handle)
-      presb = model_pressure_t_distrib(lr(1), lr(2), k+1,id,state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(lr(1), lr(2), k  ,id,state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(lr(1), lr(2), k+1,id,state_ens_handle,1))
       pres2 = dzm*presa + dz*presb
-      presa = model_pressure_t_distrib(ul(1), ul(2), k  ,id,state_ens_handle)
-      presb = model_pressure_t_distrib(ul(1), ul(2), k+1,id,state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(ul(1), ul(2), k  ,id,state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(ul(1), ul(2), k+1,id,state_ens_handle,1))
       pres3 = dzm*presa + dz*presb
-      presa = model_pressure_t_distrib(ur(1), ur(2), k  ,id,state_ens_handle)
-      presb = model_pressure_t_distrib(ur(1), ur(2), k+1,id,state_ens_handle)
+      presa = scalar(model_pressure_t_distrib(ur(1), ur(2), k  ,id,state_ens_handle,1))
+      presb = scalar(model_pressure_t_distrib(ur(1), ur(2), k+1,id,state_ens_handle,1))
       pres4 = dzm*presa + dz*presb
       zout = dym*( dxm*pres1 + dx*pres2 ) + dy*( dxm*pres3 + dx*pres4 )
  
@@ -3342,7 +3327,7 @@ case (VERTISSCALEHEIGHT)
    ! get model pressure profile and
    ! get pressure vertical co-ordinate in model level number
    allocate(v_p(0:wrf%dom(id)%bt))
-   call get_model_pressure_profile_distrib(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,id,v_p, state_ens_handle)
+   call get_model_pressure_profile_distrib(i,j,dx,dy,dxm,dym,wrf%dom(id)%bt,id,v_p, state_ens_handle, 1)
    call pres_to_zk(exp(-zin)*psurf, v_p, wrf%dom(id)%bt,zk,lev0)
    deallocate(v_p)
 
@@ -4914,7 +4899,7 @@ end subroutine height_to_zk
 
 !#######################################################
 
-subroutine get_model_pressure_profile_distrib_fwd(i,j,dx,dy,dxm,dym,n,id,v_p, state_ens_handle, ens_size)
+subroutine get_model_pressure_profile_distrib(i,j,dx,dy,dxm,dym,n,id,v_p, state_ens_handle, ens_size)
 
 ! Calculate the full model pressure profile on half (mass) levels,
 ! horizontally interpolated at the observation location.
@@ -4966,10 +4951,10 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t 
       iul = new_dart_ind(ul(1), ul(2), 1, wrf%dom(id)%type_ps, id)
       iur = new_dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_ps, id)
 
-      call get_state(x_ill, ill, state_ens_handle)
-      call get_state(x_ilr, ilr, state_ens_handle)
-      call get_state(x_iul, iul, state_ens_handle)
-      call get_state(x_iur, iur, state_ens_handle)
+      x_ill = get_state(ill, state_ens_handle)
+      x_ilr = get_state(ilr, state_ens_handle)
+      x_iul = get_state(iul, state_ens_handle)
+      x_iur = get_state(iur, state_ens_handle)
 
       ! I'm not quite sure where this comes from, but I will trust them on it....
       ! Do you have to do this per ensemble?
@@ -5019,102 +5004,7 @@ endif
 
 deallocate(pres1, pres2, pres3, pres4, x_ill, x_ilr, x_iul, x_iur)
 
-end subroutine get_model_pressure_profile_distrib_fwd
-
-!#######################################################
-
-subroutine get_model_pressure_profile_distrib_mean(i,j,dx,dy,dxm,dym,n,id,v_p, state_ens_handle)
-
-! Calculate the full model pressure profile on half (mass) levels,
-! horizontally interpolated at the observation location.
-
-integer,  intent(in)  :: i,j,n,id
-real(r8), intent(in)  :: dx,dy,dxm,dym
-real(r8), intent(out) :: v_p(0:n)
-type(ensemble_type), intent(in)  :: state_ens_handle
-
-integer, dimension(2) :: ll, lr, ul, ur
-integer(i8)           :: ill, ilr, iul, iur
-integer               :: k, rc
-real(r8)              :: pres1, pres2, pres3, pres4
-logical               :: debug = .false.
-
-!HK 
-real(r8) :: x_ill, x_ilr, x_iul, x_iur
-
-if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
-     boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) then
-
-   call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-   if ( rc .ne. 0 ) &
-        print*, 'model_mod.f90 :: get_model_pressure_profile :: getCorners rc = ', rc
-
-
-   do k=1,n
-      pres1 = model_pressure_t_distrib(ll(1), ll(2), k,id,state_ens_handle)
-      pres2 = model_pressure_t_distrib(lr(1), lr(2), k,id,state_ens_handle)
-      pres3 = model_pressure_t_distrib(ul(1), ul(2), k,id,state_ens_handle)
-      pres4 = model_pressure_t_distrib(ur(1), ur(2), k,id,state_ens_handle)
-
-      v_p(k) = interp_4pressure(pres1, pres2, pres3, pres4, dx, dxm, dy, dym)
-   enddo
-
-
-   if (debug) &
-        print*, 'model_mod.f90 :: get_model_pressure_profile :: n, v_p() ', n, v_p(1:n)
-
-   if ( wrf%dom(id)%type_ps >= 0 ) then
-
-      ill = new_dart_ind(ll(1), ll(2), 1, wrf%dom(id)%type_ps, id)
-      ilr = new_dart_ind(lr(1), lr(2), 1, wrf%dom(id)%type_ps, id)
-      iul = new_dart_ind(ul(1), ul(2), 1, wrf%dom(id)%type_ps, id)
-      iur = new_dart_ind(ur(1), ur(2), 1, wrf%dom(id)%type_ps, id)
-
-      call get_state(x_ill, ill, state_ens_handle)
-      call get_state(x_ilr, ilr, state_ens_handle)
-      call get_state(x_iul, iul, state_ens_handle)
-      call get_state(x_iur, iur, state_ens_handle)
-
-      ! I'm not quite sure where this comes from, but I will trust them on it....
-      ! Do you have to do this per ensemble?
-
-      if ( x_ill /= 0.0_r8 .and. x_ilr /= 0.0_r8 .and. x_iul /= 0.0_r8 .and. &
-           x_iur /= 0.0_r8 ) then
-
-         v_p(0) = interp_4pressure(x_ill, x_ilr, x_iul, x_iur, dx, dxm, dy, dym)
-
-      else
-
-         pres1 = model_pressure_t_distrib(ll(1), ll(2), 2,id,state_ens_handle)
-         pres2 = model_pressure_t_distrib(lr(1), lr(2), 2,id,state_ens_handle)
-         pres3 = model_pressure_t_distrib(ul(1), ul(2), 2,id,state_ens_handle)
-         pres4 = model_pressure_t_distrib(ur(1), ur(2), 2,id,state_ens_handle)
-
-         v_p(0) = interp_4pressure(pres1, pres2, pres3, pres4, dx, dxm, dy, dym,  &
-               extrapolate=.true., edgep=v_p(1))
-
-      endif
-
-   else
-
-      pres1 = model_pressure_t_distrib(ll(1), ll(2), 2,id,state_ens_handle)
-      pres2 = model_pressure_t_distrib(lr(1), lr(2), 2,id,state_ens_handle)
-      pres3 = model_pressure_t_distrib(ul(1), ul(2), 2,id,state_ens_handle)
-      pres4 = model_pressure_t_distrib(ur(1), ur(2), 2,id,state_ens_handle)
-
-      v_p(0) = interp_4pressure(pres1, pres2, pres3, pres4, dx, dxm, dy, dym, &
-              extrapolate=.true., edgep=v_p(1))
-
-   endif
-
-   if (debug) &
-        print*, 'model_mod.f90 :: get_model_pressure_profile :: v_p(0) ', v_p(0)
-else
-   v_p(:) = missing_r8
-
-endif
-
-end subroutine get_model_pressure_profile_distrib_mean
+end subroutine get_model_pressure_profile_distrib
 
 !#######################################################
 !> Only for the mean value.
@@ -5130,8 +5020,12 @@ real(r8)                        :: model_pressure_distrib
 
 integer  :: off
 real(r8) :: pres1, pres2
+integer  :: ens_size
 
 model_pressure_distrib = missing_r8
+
+! since we are only working with the mean copy
+ens_size = 1
 
 ! If W-grid (on ZNW levels), then we need to average in vertical, unless
 !   we are at the upper or lower boundary in which case we will extrapolate.
@@ -5139,20 +5033,20 @@ if( (var_type == wrf%dom(id)%type_w) .or. (var_type == wrf%dom(id)%type_gz) ) th
 
    if( k == 1 ) then
 
-      pres1 = model_pressure_t_distrib(i, j, k,  id, state_ens_handle)
-      pres2 = model_pressure_t_distrib(i, j, k+1,id, state_ens_handle)
+      pres1 = scalar(model_pressure_t_distrib(i, j, k,  id, state_ens_handle, ens_size))
+      pres2 = scalar(model_pressure_t_distrib(i, j, k+1,id, state_ens_handle, ens_size))
       model_pressure_distrib = interp_pressure(pres1, pres2, extrapolate=.true.)
 
    elseif( k == wrf%dom(id)%var_size(3,wrf%dom(id)%type_w) ) then
 
-      pres1 = model_pressure_t_distrib(i,j,k-1,id, state_ens_handle)
-      pres2 = model_pressure_t_distrib(i,j,k-2,id, state_ens_handle)
+      pres1 = scalar(model_pressure_t_distrib(i,j,k-1,id, state_ens_handle, ens_size))
+      pres2 = scalar(model_pressure_t_distrib(i,j,k-2,id, state_ens_handle, ens_size))
       model_pressure_distrib = interp_pressure(pres1, pres2, extrapolate=.true.)
 
    else
 
-      pres1 = model_pressure_t_distrib(i, j, k,  id, state_ens_handle)
-      pres2 = model_pressure_t_distrib(i, j, k-1,id, state_ens_handle)
+      pres1 = scalar(model_pressure_t_distrib(i, j, k,  id, state_ens_handle, ens_size))
+      pres2 = scalar(model_pressure_t_distrib(i, j, k-1,id, state_ens_handle, ens_size))
       model_pressure_distrib = interp_pressure(pres1, pres2)
 
    endif
@@ -5167,15 +5061,15 @@ elseif( var_type == wrf%dom(id)%type_u ) then
       if ( wrf%dom(id)%periodic_x ) then
 
          ! We are at seam in longitude, take first and last M-grid points
-         pres1 = model_pressure_t_distrib(i-1,j,k,id, state_ens_handle)
-         pres2 = model_pressure_t_distrib(1,  j,k,id, state_ens_handle)
+         pres1 = scalar(model_pressure_t_distrib(i-1,j,k,id, state_ens_handle, ens_size))
+         pres2 = scalar(model_pressure_t_distrib(1,  j,k,id, state_ens_handle, ens_size))
          model_pressure_distrib = interp_pressure(pres1, pres2, vertical=.false.)
          
       else
 
          ! If not periodic, then try extrapolating
-         pres1 = model_pressure_t_distrib(i-1,j,k,id, state_ens_handle)
-         pres2 = model_pressure_t_distrib(i-2,j,k,id, state_ens_handle)
+         pres1 = scalar(model_pressure_t_distrib(i-1,j,k,id, state_ens_handle, ens_size))
+         pres2 = scalar(model_pressure_t_distrib(i-2,j,k,id, state_ens_handle, ens_size))
          model_pressure_distrib = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
 
       endif
@@ -5186,23 +5080,23 @@ elseif( var_type == wrf%dom(id)%type_u ) then
       if ( wrf%dom(id)%periodic_x ) then
 
          ! We are at seam in longitude, take first and last M-grid points
-         pres1 = model_pressure_t_distrib(i,             j,k,id, state_ens_handle)
-         pres2 = model_pressure_t_distrib(wrf%dom(id)%we,j,k,id, state_ens_handle)
+         pres1 = scalar(model_pressure_t_distrib(i,             j,k,id, state_ens_handle, ens_size))
+         pres2 = scalar(model_pressure_t_distrib(wrf%dom(id)%we,j,k,id, state_ens_handle, ens_size))
          model_pressure_distrib = interp_pressure(pres1, pres2, vertical=.false.)
          
       else
 
          ! If not periodic, then try extrapolating
-         pres1 = model_pressure_t_distrib(i,  j,k,id, state_ens_handle)
-         pres2 = model_pressure_t_distrib(i+1,j,k,id, state_ens_handle)
+         pres1 = scalar(model_pressure_t_distrib(i,  j,k,id, state_ens_handle, ens_size))
+         pres2 = scalar(model_pressure_t_distrib(i+1,j,k,id, state_ens_handle, ens_size))
          model_pressure_distrib = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
 
       endif
 
    else
 
-      pres1 = model_pressure_t_distrib(i,  j,k,id, state_ens_handle)
-      pres2 = model_pressure_t_distrib(i-1,j,k,id, state_ens_handle)
+      pres1 = scalar(model_pressure_t_distrib(i,  j,k,id, state_ens_handle, ens_size))
+      pres2 = scalar(model_pressure_t_distrib(i-1,j,k,id, state_ens_handle, ens_size))
       model_pressure_distrib = interp_pressure(pres1, pres2, vertical=.false.)
 
    endif
@@ -5220,15 +5114,15 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          off = i + wrf%dom(id)%we/2
          if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
 
-         pres1 = model_pressure_t_distrib(off,j-1,k,id, state_ens_handle)
-         pres2 = model_pressure_t_distrib(i  ,j-1,k,id, state_ens_handle)
+         pres1 = scalar(model_pressure_t_distrib(off,j-1,k,id, state_ens_handle, ens_size))
+         pres2 = scalar(model_pressure_t_distrib(i  ,j-1,k,id, state_ens_handle, ens_size))
          model_pressure_distrib = interp_pressure(pres1, pres2, vertical=.false.)
 
       ! If not periodic, then try extrapolating
       else
 
-         pres1 = model_pressure_t_distrib(i,j-1,k,id, state_ens_handle)
-         pres2 = model_pressure_t_distrib(i,j-2,k,id, state_ens_handle)
+         pres1 = scalar(model_pressure_t_distrib(i,j-1,k,id, state_ens_handle, ens_size))
+         pres2 = scalar(model_pressure_t_distrib(i,j-2,k,id, state_ens_handle, ens_size))
          model_pressure_distrib = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
 
       endif
@@ -5242,23 +5136,23 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          off = i + wrf%dom(id)%we/2
          if ( off > wrf%dom(id)%we ) off = off - wrf%dom(id)%we
 
-         pres1 = model_pressure_t_distrib(off,j,k,id, state_ens_handle)
-         pres2 = model_pressure_t_distrib(i,  j,k,id, state_ens_handle)
+         pres1 = scalar(model_pressure_t_distrib(off,j,k,id, state_ens_handle, ens_size))
+         pres2 = scalar(model_pressure_t_distrib(i,  j,k,id, state_ens_handle, ens_size))
          model_pressure_distrib = interp_pressure(pres1, pres2, vertical=.false.)
 
       ! If not periodic, then try extrapolating
       else
 
-         pres1 = model_pressure_t_distrib(i,j,  k,id, state_ens_handle)
-         pres2 = model_pressure_t_distrib(i,j+1,k,id, state_ens_handle)
+         pres1 = scalar(model_pressure_t_distrib(i,j,  k,id, state_ens_handle, ens_size))
+         pres2 = scalar(model_pressure_t_distrib(i,j+1,k,id, state_ens_handle, ens_size))
          model_pressure_distrib = interp_pressure(pres1, pres2, extrapolate=.true., vertical=.false.)
 
       endif
 
    else
 
-      pres1 = model_pressure_t_distrib(i,j,  k,id, state_ens_handle)
-      pres2 = model_pressure_t_distrib(i,j-1,k,id, state_ens_handle)
+      pres1 = scalar(model_pressure_t_distrib(i,j,  k,id, state_ens_handle, ens_size))
+      pres2 = scalar(model_pressure_t_distrib(i,j-1,k,id, state_ens_handle, ens_size))
       model_pressure_distrib = interp_pressure(pres1, pres2, vertical=.false.)
 
    endif
@@ -5274,7 +5168,7 @@ elseif( var_type == wrf%dom(id)%type_mu    .or. var_type == wrf%dom(id)%type_tsl
     
 else
 
-   pres1 = model_pressure_t_distrib(i,j,k,id, state_ens_handle)
+   pres1 = scalar(model_pressure_t_distrib(i,j,k,id, state_ens_handle, ens_size))
    model_pressure_distrib = pres1
 
 endif
@@ -5414,14 +5308,14 @@ end function model_surface_pressure_distrib
 
 !#######################################################
 
-function model_pressure_t_distrib_fwd(i,j,k,id,state_ens_handle, ens_size)
+function model_pressure_t_distrib(i,j,k,id,state_ens_handle, ens_size)
 
 ! Calculate total pressure on mass point (half (mass) levels, T-point).
 
 integer,             intent(in) :: ens_size
 integer,             intent(in) :: i,j,k,id
 type(ensemble_type), intent(in) :: state_ens_handle
-real(r8) :: model_pressure_t_distrib_fwd(ens_size)
+real(r8) :: model_pressure_t_distrib(ens_size)
 
 real (kind=r8), PARAMETER    :: rd_over_rv = gas_constant / gas_constant_v
 real (kind=r8), PARAMETER    :: cpovcv = 1.4_r8        ! cp / (cp - gas_constant)
@@ -5430,7 +5324,7 @@ integer(i8) :: iqv !< I think this is i for index
 integer(i8) :: it !< change to array
 real(r8) :: qvf1(ens_size),rho(ens_size), x_iqv(ens_size), x_it(ens_size)
 
-model_pressure_t_distrib_fwd = missing_r8
+model_pressure_t_distrib = missing_r8
 
 ! Adapted the code from WRF module_big_step_utilities_em.F ----
 !         subroutine calc_p_rho_phi      Y.-R. Guo (10/20/2004)
@@ -5446,8 +5340,8 @@ endif
 iqv = new_dart_ind(i,j,k,wrf%dom(id)%type_qv, id)
 it  = new_dart_ind(i,j,k,wrf%dom(id)%type_t, id)
 
-call get_state(x_iqv, iqv, state_ens_handle)
-call get_state(x_it, it, state_ens_handle)
+x_iqv = get_state(iqv, state_ens_handle)
+x_it  = get_state(it, state_ens_handle)
 
 qvf1(:) = 1.0_r8 + x_iqv(:) / rd_over_rv
 !print*, 'qvf1 ', qvf1
@@ -5456,56 +5350,10 @@ rho(:) = model_rho_t_distrib(i,j,k,id,state_ens_handle, ens_size)
 !print*, 'rho ', rho
 
 ! .. total pressure:
-model_pressure_t_distrib_fwd = ps0 * ( (gas_constant*(ts0+x_it)*qvf1) / &
+model_pressure_t_distrib = ps0 * ( (gas_constant*(ts0+x_it)*qvf1) / &
      (ps0/rho) )**cpovcv
 
-end function model_pressure_t_distrib_fwd
-
-!#######################################################
-
-function model_pressure_t_distrib_mean(i,j,k,id,state_ens_handle)
-
-! Calculate total pressure on mass point (half (mass) levels, T-point).
-
-integer,  intent(in)  :: i,j,k,id
-real(r8) :: model_pressure_t_distrib_mean
-type(ensemble_type), intent(in)  :: state_ens_handle
-
-real (kind=r8), PARAMETER    :: rd_over_rv = gas_constant / gas_constant_v
-real (kind=r8), PARAMETER    :: cpovcv = 1.4_r8        ! cp / (cp - gas_constant)
-
-integer(i8)  :: iqv !< I think this is i for index
-integer(i8)  :: it
-real(r8) :: qvf1, rho, x_iqv, x_it
-
-model_pressure_t_distrib_mean = missing_r8
-
-! Adapted the code from WRF module_big_step_utilities_em.F ----
-!         subroutine calc_p_rho_phi      Y.-R. Guo (10/20/2004)
-
-! Simplification: alb*mub = (phb(i,j,k+1) - phb(i,j,k))/dnw(k)
-
-if (wrf%dom(id)%type_qv < 0 .or. wrf%dom(id)%type_t < 0) then
-  call error_handler(E_ERR, 'model_pressure_t:', &
-      'BOTH QVAPOR and T must be in state vector to compute total pressure', &
-       source, revision, revdate)
-endif
-
-iqv = new_dart_ind(i,j,k,wrf%dom(id)%type_qv, id)
-it  = new_dart_ind(i,j,k,wrf%dom(id)%type_t, id)
-
-call get_state(x_iqv, iqv, state_ens_handle)
-call get_state(x_it, it, state_ens_handle)
-
-qvf1 = 1.0_r8 + x_iqv / rd_over_rv
-
-rho = model_rho_t_distrib(i,j,k,id,state_ens_handle)
-
-! .. total pressure:
-model_pressure_t_distrib_mean = ps0 * ( (gas_constant*(ts0+x_it)*qvf1) / &
-     (ps0/rho) )**cpovcv
-
-end function model_pressure_t_distrib_mean
+end function model_pressure_t_distrib
 
 !#######################################################
 
@@ -5531,12 +5379,12 @@ endif
 
 if ( wrf%dom(id)%type_ps >= 0 ) then
    ips = new_dart_ind(i,j,1,wrf%dom(id)%type_ps, id)
-   call get_state(x_ips, ips, state_ens_handle)
+   x_ips = scalar(get_state(ips, state_ens_handle))
    model_pressure_s_distrib = x_ips
 
 else
    imu = new_dart_ind(i,j,1,wrf%dom(id)%type_mu, id)
-   call get_state(x_imu, imu, state_ens_handle)
+   x_imu = minval(get_state(imu, state_ens_handle))
    model_pressure_s_distrib = wrf%dom(id)%p_top + wrf%dom(id)%mub(i,j) + x_imu
 
 endif
@@ -5742,19 +5590,19 @@ end function interp_4pressure
 
 !#######################################################
 
-function model_rho_t_distrib_fwd(i,j,k,id,state_ens_handle, ens_size)
+function model_rho_t_distrib(i,j,k,id,state_ens_handle, ens_size)
 
 ! Calculate the total density on mass point (half (mass) levels, T-point).
 
 integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: i,j,k,id
 type(ensemble_type), intent(in)  :: state_ens_handle
-real(r8) :: model_rho_t_distrib_fwd(ens_size)
+real(r8) :: model_rho_t_distrib(ens_size)
 
 integer(i8) :: imu,iph,iphp1
 real(r8)    :: ph_e(ens_size), x_imu(ens_size), x_iph(ens_size), x_iphp1(ens_size)
 
-model_rho_t_distrib_fwd(:) = missing_r8
+model_rho_t_distrib(:) = missing_r8
 
 ! Adapted the code from WRF module_big_step_utilities_em.F ----
 !         subroutine calc_p_rho_phi      Y.-R. Guo (10/20/2004)
@@ -5771,65 +5619,22 @@ imu   = new_dart_ind(i,j,1,  wrf%dom(id)%type_mu, id)
 iph   = new_dart_ind(i,j,k,  wrf%dom(id)%type_gz, id)
 iphp1 = new_dart_ind(i,j,k+1,wrf%dom(id)%type_gz, id)
 
-call get_state(x_imu, imu, state_ens_handle)
-call get_state(x_iph, iph, state_ens_handle)
-call get_state(x_iphp1, iphp1, state_ens_handle)
+x_imu = get_state(imu, state_ens_handle)
+x_iph = get_state(iph, state_ens_handle)
+x_iphp1 = get_state(iphp1, state_ens_handle)
 
 ph_e = ( (x_iphp1 + wrf%dom(id)%phb(i,j,k+1)) &
        - (x_iph   + wrf%dom(id)%phb(i,j,k  )) ) / wrf%dom(id)%dnw(k)
 
 ! now calculate rho = - mu / dphi/deta
 
-model_rho_t_distrib_fwd(:) = - (wrf%dom(id)%mub(i,j)+x_imu) / ph_e
+model_rho_t_distrib(:) = - (wrf%dom(id)%mub(i,j)+x_imu) / ph_e
 
-end function model_rho_t_distrib_fwd
-
-!#######################################################
-
-function model_rho_t_distrib_mean(i,j,k,id,state_ens_handle)
-
-! Calculate the total density on mass point (half (mass) levels, T-point).
-
-integer,             intent(in)  :: i,j,k,id
-type(ensemble_type), intent(in)  :: state_ens_handle
-real(r8)                         :: model_rho_t_distrib_mean
-
-integer(i8)  :: imu,iph,iphp1
-real(r8) :: ph_e, x_imu, x_iph, x_iphp1
-
-model_rho_t_distrib_mean = missing_r8
-
-! Adapted the code from WRF module_big_step_utilities_em.F ----
-!         subroutine calc_p_rho_phi      Y.-R. Guo (10/20/2004)
-
-! Simplification: alb*mub = (phb(i,j,k+1) - phb(i,j,k))/dnw(k)
-
-if (wrf%dom(id)%type_mu < 0 .or. wrf%dom(id)%type_gz < 0) then
-  call error_handler(E_ERR, 'model_rho_t:', &
-      'BOTH MU and PH must be in state vector to compute total density', &
-       source, revision, revdate)
-endif
-
-imu   = new_dart_ind(i,j,1,  wrf%dom(id)%type_mu, id)
-iph   = new_dart_ind(i,j,k,  wrf%dom(id)%type_gz, id)
-iphp1 = new_dart_ind(i,j,k+1,wrf%dom(id)%type_gz, id)
-
-call get_state(x_imu, imu, state_ens_handle)
-call get_state(x_iph, iph, state_ens_handle)
-call get_state(x_iphp1, iphp1, state_ens_handle)
-
-ph_e = ( (x_iphp1 + wrf%dom(id)%phb(i,j,k+1)) &
-       - (x_iph   + wrf%dom(id)%phb(i,j,k  )) ) / wrf%dom(id)%dnw(k)
-
-! now calculate rho = - mu / dphi/deta
-
-model_rho_t_distrib_mean = - (wrf%dom(id)%mub(i,j)+x_imu) / ph_e
-
-end function model_rho_t_distrib_mean
+end function model_rho_t_distrib
 
 !#######################################################
 
-subroutine get_model_height_profile_distrib_fwd(i,j,dx,dy,dxm,dym,n,id,v_h, state_ens_handle, ens_size)
+subroutine get_model_height_profile_distrib(i,j,dx,dy,dxm,dym,n,id,v_h, state_ens_handle, ens_size)
 
 ! Calculate the model height profile on half (mass) levels,
 ! horizontally interpolated at the observation location.
@@ -5873,10 +5678,10 @@ if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_gz
       ilr = new_dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_gz, id)
       iur = new_dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_gz, id)
 
-      call get_state(x_ill, ill, state_ens_handle)
-      call get_state(x_ilr, ilr, state_ens_handle)
-      call get_state(x_iul, iul, state_ens_handle)
-      call get_state(x_iur, iur, state_ens_handle)
+      x_ill = get_state(ill, state_ens_handle)
+      x_ilr = get_state(ilr, state_ens_handle)
+      x_iul = get_state(iul, state_ens_handle)
+      x_iur = get_state(iur, state_ens_handle)
 
       geop(:) = ( dym*( dxm*( wrf%dom(id)%phb(ll(1),ll(2),k) + x_ill ) + &
                       dx*( wrf%dom(id)%phb(lr(1),lr(2),k) + x_ilr ) ) + &
@@ -5921,99 +5726,7 @@ else
 
 endif
 
-end subroutine get_model_height_profile_distrib_fwd
-
-!#######################################################
-
-subroutine get_model_height_profile_distrib_mean(i,j,dx,dy,dxm,dym,n,id,v_h, state_ens_handle)
-
-! Calculate the model height profile on half (mass) levels,
-! horizontally interpolated at the observation location.
-! This routine used to compute geopotential heights; it now
-! computes geometric heights.
-
-integer,  intent(in)  :: i,j,n,id
-real(r8), intent(in)  :: dx,dy,dxm,dym
-real(r8), intent(out) :: v_h(0:n)
-type(ensemble_type), intent(in)  :: state_ens_handle
-integer e !< for ensemble loop
-
-real(r8)    :: fll(n+1), geop, lat
-integer(i8) :: ill, iul, ilr, iur
-integer     :: k, rc
-integer, dimension(2) :: ll, lr, ul, ur
-logical   :: debug = .false.
-real(r8)  :: x_ill, x_ilr, x_iul, x_iur
-
-
-if (wrf%dom(id)%type_gz < 0) then
-  call error_handler(E_ERR, 'get_model_height_profile:', &
-      'PH must be in state vector to compute height profile', &
-       source, revision, revdate)
-endif
-
-if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_gz ) .and. &
-     boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_gz ) ) then
-
-   call getCorners(i, j, id, wrf%dom(id)%type_gz, ll, ul, lr, ur, rc )
-   if ( rc .ne. 0 ) &
-        print*, 'model_mod.f90 :: get_model_height_profile :: getCorners rc = ', rc
-
-   do k = 1, wrf%dom(id)%var_size(3,wrf%dom(id)%type_gz)
-
-      ill = new_dart_ind(ll(1), ll(2), k, wrf%dom(id)%type_gz, id)
-      iul = new_dart_ind(ul(1), ul(2), k, wrf%dom(id)%type_gz, id)
-      ilr = new_dart_ind(lr(1), lr(2), k, wrf%dom(id)%type_gz, id)
-      iur = new_dart_ind(ur(1), ur(2), k, wrf%dom(id)%type_gz, id)
-
-      call get_state(x_ill, ill, state_ens_handle)
-      call get_state(x_ilr, ilr, state_ens_handle)
-      call get_state(x_iul, iul, state_ens_handle)
-      call get_state(x_iur, iur, state_ens_handle)
-
-      geop = ( dym*( dxm*( wrf%dom(id)%phb(ll(1),ll(2),k) + x_ill ) + &
-                      dx*( wrf%dom(id)%phb(lr(1),lr(2),k) + x_ilr ) ) + &
-                dy*( dxm*( wrf%dom(id)%phb(ul(1),ul(2),k) + x_iul ) + &
-                      dx*( wrf%dom(id)%phb(ur(1),ur(2),k) + x_iur ) ) )/gravity
-
-      lat = ( wrf%dom(id)%latitude(ll(1),ll(2)) + &
-              wrf%dom(id)%latitude(lr(1),lr(2)) + &
-              wrf%dom(id)%latitude(ul(1),ul(2)) + &
-              wrf%dom(id)%latitude(ur(1),ur(2)) ) / 4.0_r8
-
-      fll(k) = compute_geometric_height(geop, lat)
-
-   end do
-
-   do k=1,n
-      v_h(k) = 0.5_r8*(fll(k) + fll(k+1) )
-   end do
-
-   v_h(0) = dym*( dxm*wrf%dom(id)%hgt(ll(1), ll(2)) + &
-                   dx*wrf%dom(id)%hgt(lr(1), lr(2)) ) + &
-             dy*( dxm*wrf%dom(id)%hgt(ul(1), ul(2)) + &
-                   dx*wrf%dom(id)%hgt(ur(1), ur(2)) )
-
-   if (debug) &
-        print*, 'model_mod.f90 :: get_model_height_profile :: n, v_h() ', n, v_h(1:n)
-
-   if (debug) &
-        print*, 'model_mod.f90 :: get_model_height_profile :: v_h(0) ', v_h(0)
- 
-! If the boundsCheck functions return an unsatisfactory integer index, then set
-!   fld as missing data
-else
-
-   print*,'Not able the get height_profile'
-   print*,i,j,dx,dy,dxm,dym,n,id,wrf%dom(id)%var_size(1,wrf%dom(id)%type_gz), &
-        wrf%dom(id)%var_size(2,wrf%dom(id)%type_gz)
-
-   v_h(:) =  missing_r8
-
-endif
-
-end subroutine get_model_height_profile_distrib_mean
-
+end subroutine get_model_height_profile_distrib
 
 !#######################################################
 
@@ -6028,7 +5741,7 @@ real(r8)                        :: model_height_distrib
 
 integer(i8)  :: i1, i2, i3, i4
 integer      :: off
-real(r8)     :: x_i1, x_i2, x_i3, x_i4
+real(r8)     :: x_i1(1), x_i2(1), x_i3(1), x_i4(1)
 real(r8)     :: geop, lat
 
 model_height_distrib = missing_r8
@@ -6043,9 +5756,9 @@ endif
 if( (var_type == wrf%dom(id)%type_w) .or. (var_type == wrf%dom(id)%type_gz) ) then
 
    i1 = new_dart_ind(i,j,k,wrf%dom(id)%type_gz, id)
-   call get_state(x_i1, i1, state_ens_handle)
+   x_i1 = get_state(i1, state_ens_handle)
 
-   geop = (wrf%dom(id)%phb(i,j,k)+x_i1)/gravity
+   geop = minval((wrf%dom(id)%phb(i,j,k)+x_i1)/gravity)
    model_height_distrib = compute_geometric_height(geop, wrf%dom(id)%latitude(i, j))
 
 ! If U-grid, then height is defined between U points, both in horizontal 
@@ -6063,16 +5776,16 @@ elseif( var_type == wrf%dom(id)%type_u ) then
          i3 = new_dart_ind(1,  j,k  ,wrf%dom(id)%type_gz, id)
          i4 = new_dart_ind(1,  j,k+1,wrf%dom(id)%type_gz, id)
 
-         call get_state(x_i1, i1, state_ens_handle)
-         call get_state(x_i2, i2, state_ens_handle)
-         call get_state(x_i3, i3, state_ens_handle)
-         call get_state(x_i4, i4, state_ens_handle)
+         x_i1 = get_state(i1, state_ens_handle)
+         x_i2 = get_state(i2, state_ens_handle)
+         x_i3 = get_state(i3, state_ens_handle)
+         x_i4 = get_state(i4, state_ens_handle)
 
 
-         geop = ( (wrf%dom(id)%phb(i-1,j,k  ) + x_i1) &
+         geop = minval(( (wrf%dom(id)%phb(i-1,j,k  ) + x_i1) &
                  +(wrf%dom(id)%phb(i-1,j,k+1) + x_i2) &
                  +(wrf%dom(id)%phb(1  ,j,k  ) + x_i3) &
-                 +(wrf%dom(id)%phb(1  ,j,k+1) + x_i4) )/(4.0_r8*gravity)
+                 +(wrf%dom(id)%phb(1  ,j,k+1) + x_i4) )/(4.0_r8*gravity))
          
          lat = ( wrf%dom(id)%latitude(i-1,j)  &
                 +wrf%dom(id)%latitude(i-1,j)  &
@@ -6087,16 +5800,16 @@ elseif( var_type == wrf%dom(id)%type_u ) then
          i1 = new_dart_ind(i-1,j,k  ,wrf%dom(id)%type_gz, id)
          i2 = new_dart_ind(i-1,j,k+1,wrf%dom(id)%type_gz, id)
 
-         call get_state(x_i1, i1, state_ens_handle)
-         call get_state(x_i2, i2, state_ens_handle)
-         call get_state(x_i3, i1 -1, state_ens_handle)
-         call get_state(x_i4, i2 -1, state_ens_handle)
+         x_i1 = get_state(i1, state_ens_handle)
+         x_i2 = get_state(i2, state_ens_handle)
+         x_i3 = get_state(i1 -1, state_ens_handle)
+         x_i4 = get_state(i2 -1, state_ens_handle)
 
 
-         geop = ( 3.0_r8*(wrf%dom(id)%phb(i-1,j,k  )+x_i1) &
+         geop = minval(( 3.0_r8*(wrf%dom(id)%phb(i-1,j,k  )+x_i1) &
                  +3.0_r8*(wrf%dom(id)%phb(i-1,j,k+1)+x_i2) &
                         -(wrf%dom(id)%phb(i-2,j,k  )+x_i3) &
-                        -(wrf%dom(id)%phb(i-2,j,k+1)+x_i4) )/(4.0_r8*gravity)
+                        -(wrf%dom(id)%phb(i-2,j,k+1)+x_i4) )/(4.0_r8*gravity))
 
          lat = ( 3.0_r8*wrf%dom(id)%latitude(i-1,j)  &
                 +3.0_r8*wrf%dom(id)%latitude(i-1,j)  &
@@ -6119,15 +5832,15 @@ elseif( var_type == wrf%dom(id)%type_u ) then
          i3 = new_dart_ind(off,j,k  ,wrf%dom(id)%type_gz, id)
          i4 = new_dart_ind(off,j,k+1,wrf%dom(id)%type_gz, id)
 
-         call get_state(x_i1, i1, state_ens_handle)
-         call get_state(x_i2, i2, state_ens_handle)
-         call get_state(x_i3, i3, state_ens_handle)
-         call get_state(x_i4, i4, state_ens_handle)
+         x_i1 = get_state(i1, state_ens_handle)
+         x_i2 = get_state(i2, state_ens_handle)
+         x_i3 = get_state(i3, state_ens_handle)
+         x_i4 = get_state(i4, state_ens_handle)
 
-         geop = ( (wrf%dom(id)%phb(i  ,j,k  ) + x_i1) &
+         geop = minval(( (wrf%dom(id)%phb(i  ,j,k  ) + x_i1) &
                  +(wrf%dom(id)%phb(i  ,j,k+1) + x_i2) &
                  +(wrf%dom(id)%phb(off,j,k  ) + x_i3) &
-                 +(wrf%dom(id)%phb(off,j,k+1) + x_i4) )/(4.0_r8*gravity)
+                 +(wrf%dom(id)%phb(off,j,k+1) + x_i4) )/(4.0_r8*gravity))
          
          lat = ( wrf%dom(id)%latitude(i  ,j)  &
                 +wrf%dom(id)%latitude(i  ,j)  &
@@ -6142,16 +5855,16 @@ elseif( var_type == wrf%dom(id)%type_u ) then
          i1 = new_dart_ind(i,j,k  ,wrf%dom(id)%type_gz, id)
          i2 = new_dart_ind(i,j,k+1,wrf%dom(id)%type_gz, id)
 
-         call get_state(x_i1, i1, state_ens_handle)
-         call get_state(x_i2, i2, state_ens_handle)
-         call get_state(x_i3, i1 +1, state_ens_handle)
-         call get_state(x_i4, i2 +1, state_ens_handle)
+         x_i1 = get_state(i1, state_ens_handle)
+         x_i2 = get_state(i2, state_ens_handle)
+         x_i3 = get_state(i1 +1, state_ens_handle)
+         x_i4 = get_state(i2 +1, state_ens_handle)
 
 
-         geop = ( 3.0_r8*(wrf%dom(id)%phb(i  ,j,k  )+x_i1)   &
+         geop = minval(( 3.0_r8*(wrf%dom(id)%phb(i  ,j,k  )+x_i1)   &
                  +3.0_r8*(wrf%dom(id)%phb(i  ,j,k+1)+x_i2)   &
                         -(wrf%dom(id)%phb(i+1,j,k  )+x_i3) &
-                        -(wrf%dom(id)%phb(i+1,j,k+1)+x_i4) )/(4.0_r8*gravity)
+                        -(wrf%dom(id)%phb(i+1,j,k+1)+x_i4) )/(4.0_r8*gravity))
 
          lat = ( 3.0_r8*wrf%dom(id)%latitude(i  ,j)  &
                 +3.0_r8*wrf%dom(id)%latitude(i  ,j)  &
@@ -6167,16 +5880,16 @@ elseif( var_type == wrf%dom(id)%type_u ) then
       i1 = new_dart_ind(i,j,k  ,wrf%dom(id)%type_gz, id)
       i2 = new_dart_ind(i,j,k+1,wrf%dom(id)%type_gz, id)
 
-      call get_state(x_i1, i1, state_ens_handle)
-      call get_state(x_i2, i2, state_ens_handle)
-      call get_state(x_i3, i1 -1, state_ens_handle)
-      call get_state(x_i4, i2 -1, state_ens_handle)
+      x_i1 = get_state(i1, state_ens_handle)
+      x_i2 = get_state(i2, state_ens_handle)
+      x_i3 = get_state(i1 -1, state_ens_handle)
+      x_i4 = get_state(i2 -1, state_ens_handle)
 
 
-      geop = ( (wrf%dom(id)%phb(i  ,j,k  )+x_i1)   &
+      geop = minval(( (wrf%dom(id)%phb(i  ,j,k  )+x_i1)   &
               +(wrf%dom(id)%phb(i  ,j,k+1)+x_i2)   &
               +(wrf%dom(id)%phb(i-1,j,k  )+x_i3) &
-              +(wrf%dom(id)%phb(i-1,j,k+1)+x_i4) )/(4.0_r8*gravity)
+              +(wrf%dom(id)%phb(i-1,j,k+1)+x_i4) )/(4.0_r8*gravity))
 
       lat = (  wrf%dom(id)%latitude(i  ,j)  &
               +wrf%dom(id)%latitude(i  ,j)  &
@@ -6205,15 +5918,15 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          i3 = new_dart_ind(i  ,j-1,k  ,wrf%dom(id)%type_gz, id)
          i4 = new_dart_ind(i  ,j-1,k+1,wrf%dom(id)%type_gz, id)
 
-         call get_state(x_i1, i1, state_ens_handle)
-         call get_state(x_i2, i2, state_ens_handle)
-         call get_state(x_i3, i3, state_ens_handle)
-         call get_state(x_i4, i4, state_ens_handle)
+         x_i1 = get_state(i1, state_ens_handle)
+         x_i2 = get_state(i2, state_ens_handle)
+         x_i3 = get_state(i3, state_ens_handle)
+         x_i4 = get_state(i4, state_ens_handle)
 
-         geop = ( (wrf%dom(id)%phb(off,j-1,k  )+x_i1) &
+         geop = minval(( (wrf%dom(id)%phb(off,j-1,k  )+x_i1) &
                  +(wrf%dom(id)%phb(off,j-1,k+1)+x_i2) &
                  +(wrf%dom(id)%phb(i  ,j-1,k  )+x_i3) &
-                 +(wrf%dom(id)%phb(i  ,j-1,k+1)+x_i4) )/(4.0_r8*gravity)
+                 +(wrf%dom(id)%phb(i  ,j-1,k+1)+x_i4) )/(4.0_r8*gravity))
          
          lat = ( wrf%dom(id)%latitude(off,j-1)  &
                 +wrf%dom(id)%latitude(off,j-1)  &
@@ -6230,15 +5943,15 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          i3 = new_dart_ind(i,j-2,k  ,wrf%dom(id)%type_gz, id)
          i4 = new_dart_ind(i,j-2,k+1,wrf%dom(id)%type_gz, id)
 
-         call get_state(x_i1, i1, state_ens_handle)
-         call get_state(x_i2, i2, state_ens_handle)
-         call get_state(x_i3, i3, state_ens_handle)
-         call get_state(x_i4, i4, state_ens_handle)
+         x_i1 = get_state(i1, state_ens_handle)
+         x_i2 = get_state(i2, state_ens_handle)
+         x_i3 = get_state(i3, state_ens_handle)
+         x_i4 = get_state(i4, state_ens_handle)
 
-         geop = ( 3.0_r8*(wrf%dom(id)%phb(i,j-1,k  )+x_i1) &
+         geop = minval(( 3.0_r8*(wrf%dom(id)%phb(i,j-1,k  )+x_i1) &
                  +3.0_r8*(wrf%dom(id)%phb(i,j-1,k+1)+x_i2) &
                         -(wrf%dom(id)%phb(i,j-2,k  )+x_i3) &
-                        -(wrf%dom(id)%phb(i,j-2,k+1)+x_i4) )/(4.0_r8*gravity)
+                        -(wrf%dom(id)%phb(i,j-2,k+1)+x_i4) )/(4.0_r8*gravity))
 
          lat = ( 3.0_r8*wrf%dom(id)%latitude(i,j-1)  &
                 +3.0_r8*wrf%dom(id)%latitude(i,j-1)  &
@@ -6263,15 +5976,15 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          i3 = new_dart_ind(i  ,j,k  ,wrf%dom(id)%type_gz, id)
          i4 = new_dart_ind(i  ,j,k+1,wrf%dom(id)%type_gz, id)
 
-         call get_state(x_i1, i1, state_ens_handle)
-         call get_state(x_i2, i2, state_ens_handle)
-         call get_state(x_i3, i3, state_ens_handle)
-         call get_state(x_i4, i4, state_ens_handle)
+         x_i1 = get_state(i1, state_ens_handle)
+         x_i2 = get_state(i2, state_ens_handle)
+         x_i3 = get_state(i3, state_ens_handle)
+         x_i4 = get_state(i4, state_ens_handle)
 
-         geop = ( (wrf%dom(id)%phb(off,j,k  )+x_i1) &
+         geop = minval(( (wrf%dom(id)%phb(off,j,k  )+x_i1) &
                  +(wrf%dom(id)%phb(off,j,k+1)+x_i2) &
                  +(wrf%dom(id)%phb(i  ,j,k  )+x_i3) &
-                 +(wrf%dom(id)%phb(i  ,j,k+1)+x_i4) )/(4.0_r8*gravity)
+                 +(wrf%dom(id)%phb(i  ,j,k+1)+x_i4) )/(4.0_r8*gravity))
          
          lat = ( wrf%dom(id)%latitude(off,j)  &
                 +wrf%dom(id)%latitude(off,j)  &
@@ -6288,15 +6001,15 @@ elseif( var_type == wrf%dom(id)%type_v ) then
          i3 = new_dart_ind(i,j+1,k  ,wrf%dom(id)%type_gz, id)
          i4 = new_dart_ind(i,j+1,k+1,wrf%dom(id)%type_gz, id)
 
-         call get_state(x_i1, i1, state_ens_handle)
-         call get_state(x_i2, i2, state_ens_handle)
-         call get_state(x_i3, i3, state_ens_handle)
-         call get_state(x_i4, i4, state_ens_handle)
+         x_i1 = get_state(i1, state_ens_handle)
+         x_i2 = get_state(i2, state_ens_handle)
+         x_i3 = get_state(i3, state_ens_handle)
+         x_i4 = get_state(i4, state_ens_handle)
 
-         geop = ( 3.0_r8*(wrf%dom(id)%phb(i,j  ,k  )+x_i1) &
+         geop = minval(( 3.0_r8*(wrf%dom(id)%phb(i,j  ,k  )+x_i1) &
                  +3.0_r8*(wrf%dom(id)%phb(i,j  ,k+1)+x_i2) &
                         -(wrf%dom(id)%phb(i,j+1,k  )+x_i3) &
-                        -(wrf%dom(id)%phb(i,j+1,k+1)+x_i4) )/(4.0_r8*gravity)
+                        -(wrf%dom(id)%phb(i,j+1,k+1)+x_i4) )/(4.0_r8*gravity))
 
          lat = ( 3.0_r8*wrf%dom(id)%latitude(i,j  )  &
                 +3.0_r8*wrf%dom(id)%latitude(i,j  )  &
@@ -6314,15 +6027,15 @@ elseif( var_type == wrf%dom(id)%type_v ) then
       i3 = new_dart_ind(i,j-1,k  ,wrf%dom(id)%type_gz, id)
       i4 = new_dart_ind(i,j-1,k+1,wrf%dom(id)%type_gz, id)
 
-      call get_state(x_i1, i1, state_ens_handle)
-      call get_state(x_i2, i2, state_ens_handle)
-      call get_state(x_i3, i3, state_ens_handle)
-      call get_state(x_i4, i4, state_ens_handle)
+      x_i1 = get_state(i1, state_ens_handle)
+      x_i2 = get_state(i2, state_ens_handle)
+      x_i3 = get_state(i3, state_ens_handle)
+      x_i4 = get_state(i4, state_ens_handle)
 
-      geop = ( (wrf%dom(id)%phb(i,j  ,k  )+x_i1) &
+      geop = minval(( (wrf%dom(id)%phb(i,j  ,k  )+x_i1) &
               +(wrf%dom(id)%phb(i,j  ,k+1)+x_i2) &
               +(wrf%dom(id)%phb(i,j-1,k  )+x_i3) &
-              +(wrf%dom(id)%phb(i,j-1,k+1)+x_i4) )/(4.0_r8*gravity)
+              +(wrf%dom(id)%phb(i,j-1,k+1)+x_i4) )/(4.0_r8*gravity))
 
       lat = ( wrf%dom(id)%latitude(i,j  )  &
              +wrf%dom(id)%latitude(i,j  )  &
@@ -6361,11 +6074,11 @@ else
    i1 = new_dart_ind(i,j,k  ,wrf%dom(id)%type_gz, id)
    i2 = new_dart_ind(i,j,k+1,wrf%dom(id)%type_gz, id)
 
-   call get_state(x_i1, i1, state_ens_handle)
-   call get_state(x_i2, i2, state_ens_handle)
+   x_i1 = get_state(i1, state_ens_handle)
+   x_i2 = get_state(i2, state_ens_handle)
 
-   geop = ( (wrf%dom(id)%phb(i,j,k  )+x_i1) &
-           +(wrf%dom(id)%phb(i,j,k+1)+x_i2) )/(2.0_r8*gravity)
+   geop = minval(( (wrf%dom(id)%phb(i,j,k  )+x_i1) &
+           +(wrf%dom(id)%phb(i,j,k+1)+x_i2) )/(2.0_r8*gravity))
 
    lat = wrf%dom(id)%latitude(i,j)
 
@@ -6401,7 +6114,7 @@ endif
 
 i1 = new_dart_ind(i,j,k,wrf%dom(id)%type_gz, id)
 
-call get_state(x_i1, i1, state_ens_handle)
+x_i1 = minval(get_state(i1, state_ens_handle))
 
 geop = (wrf%dom(id)%phb(i,j,k) + x_i1)/gravity
 model_height_w_distrib = compute_geometric_height(geop, wrf%dom(id)%latitude(i, j))
@@ -7012,7 +6725,7 @@ subroutine get_close_obs_distrib(gc, base_obs_loc, base_obs_kind, obs_loc, &
 ! filter_assim, but will not propagate backwards to filter.
 
 !HK
-type(ensemble_type),         intent(inout)  :: state_ens_handle
+type(ensemble_type),         intent(in)  :: state_ens_handle
 type(get_close_type),        intent(in)     :: gc
 type(location_type),         intent(inout)  :: base_obs_loc, obs_loc(:)
 integer,                     intent(in)     :: base_obs_kind, obs_kind(:)
@@ -8868,10 +8581,10 @@ if ( in_state ) then
          ilr = new_dart_ind(lr(1), lr(2), uniquek(uk), wrf_type, id)
          iur = new_dart_ind(ur(1), ur(2), uniquek(uk), wrf_type, id)
 
-         call get_state(x_ill, ill, state_ens_handle)
-         call get_state(x_iul, iul, state_ens_handle)
-         call get_state(x_ilr, ilr, state_ens_handle)
-         call get_state(x_iur, iur, state_ens_handle)
+         x_ill = get_state(ill, state_ens_handle)
+         x_iul = get_state(iul, state_ens_handle)
+         x_ilr = get_state(ilr, state_ens_handle)
+         x_iur = get_state(iur, state_ens_handle)
 
          do e = 1, ens_size
             if ( k(e) == uniquek(uk) ) then
@@ -8885,10 +8598,10 @@ if ( in_state ) then
          ilr = new_dart_ind(lr(1), lr(2), uniquek(uk)+1, wrf_type, id)
          iur = new_dart_ind(ur(1), ur(2), uniquek(uk)+1, wrf_type, id)
 
-         call get_state(x_ill, ill, state_ens_handle)
-         call get_state(x_iul, iul, state_ens_handle)
-         call get_state(x_ilr, ilr, state_ens_handle)
-         call get_state(x_iur, iur, state_ens_handle)
+         x_ill = get_state(ill, state_ens_handle)
+         x_iul = get_state(iul, state_ens_handle)
+         x_ilr = get_state(ilr, state_ens_handle)
+         x_iur = get_state(iur, state_ens_handle)
 
          do e = 1, ens_size
             if ( k(e) == uniquek(uk) ) then
@@ -8951,10 +8664,10 @@ if ( ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf_type ) .and. 
      ilr = new_dart_ind(lr(1), lr(2), 1, wrf_surf_type, id)
      iur = new_dart_ind(ur(1), ur(2), 1, wrf_surf_type, id)
 
-     call get_state(x_ill, ill, state_ens_handle)
-     call get_state(x_iul, iul, state_ens_handle)
-     call get_state(x_iur, iur, state_ens_handle)
-     call get_state(x_ilr, ilr, state_ens_handle)
+     x_ill = get_state(ill, state_ens_handle)
+     x_iul = get_state(iul, state_ens_handle)
+     x_iur = get_state(iur, state_ens_handle)
+     x_ilr = get_state(ilr, state_ens_handle)
 
      fld(1, :) = dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur )
 

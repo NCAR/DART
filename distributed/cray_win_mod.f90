@@ -11,8 +11,8 @@ module window_mod
 
 !> \defgroup window window_mod
 !> @{
-use mpi_utilities_mod,  only : datasize, my_task_id
-use types_mod,          only : r8
+use mpi_utilities_mod,    only : datasize, my_task_id
+use types_mod,            only : r8
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
                                  copies_in_window, init_ensemble_manager, &
                                  get_allow_transpose, end_ensemble_manager, &
@@ -24,8 +24,9 @@ use mpi
 implicit none
 
 private
-public :: create_mean_window, create_state_window, free_mean_window, free_state_window, &
-          mean_win, state_win, data_count, mean_ens_handle
+public :: create_mean_window, create_state_window, free_mean_window, &
+          free_state_window, data_count, mean_win, state_win, current_win, &
+          mean_ens_handle, NO_WINDOW, MEAN_WINDOW, STATE_WINDOW
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -33,13 +34,21 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-integer state_win !< mpi window for the forward operator
-integer mean_win !< mpi window
+! mpi window handles
+integer :: state_win   !< window for the forward operator
+integer :: mean_win    !< window for the mean
+integer :: current_win !< keep track of current window, start out assuming an invalid window
 !< @todo the number of copies in the window is sloppy. You need to make this better.
-integer :: data_count !> number of copies in the window
 
+! parameters for keeping track of which window is open
+integer, parameter :: NO_WINDOW    = -1
+integer, parameter :: MEAN_WINDOW  = 0 
+integer, parameter :: STATE_WINDOW = 2 
+
+integer :: data_count !> number of copies in the window
 integer(KIND=MPI_ADDRESS_KIND) window_size
 logical :: use_distributed_mean = .false. ! initialize to false
+
 real(r8) :: duplicate_state(*)  !< duplicate array for cray pointer fwd
 pointer(a, duplicate_state)
 
@@ -92,6 +101,9 @@ else
    call mpi_win_create(duplicate_state, window_size, bytesize, MPI_INFO_NULL, mpi_comm_world, state_win, ierr)
 
 endif
+
+! Set the current window to the state window
+current_win = STATE_WINDOW
 
 data_count = copies_in_window(state_ens_handle)
 
@@ -148,7 +160,11 @@ else
 
 endif
 
+! Set the current window to the state window
+current_win = MEAN_WINDOW
+
 data_count = copies_in_window(mean_ens_handle) ! One
+
 end subroutine create_mean_window
 
 !-------------------------------------------------------------
@@ -172,6 +188,8 @@ else
    call MPI_FREE_MEM(duplicate_state, ierr)
 endif
 
+current_win = NO_WINDOW
+
 end subroutine free_state_window
 
 !---------------------------------------------------------
@@ -186,6 +204,8 @@ else
    call MPI_FREE_MEM(duplicate_mean, ierr)
    call end_ensemble_manager(mean_ens_handle)
 endif
+
+current_win = NO_WINDOW
 
 end subroutine free_mean_window
 

@@ -304,9 +304,10 @@ else ! distributed state
       endif
    else ! posterior
       global_qc_value = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) )
-         ! if (.not. good_dart_qc(global_qc_value)) then
-         !    cycle MY_OBSERVATIONS ! prior forward op failed
-         ! endif
+      if (.not. good_dart_qc(global_qc_value)) then
+         obs_fwd_op_ens_handle%copies(1:my_ensemble_copies,j) = missing_r8
+         cycle MY_OBSERVATIONS ! prior forward op failed
+      endif
    endif
 
    ! Get the observation value and error variance
@@ -323,8 +324,8 @@ else ! distributed state
    ! collect dart qc
    global_qc_value = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j))
 
-      call get_dart_qc(istatus, my_ensemble_copies, assimilate_this_ob, evaluate_this_ob, &
-                     isprior, global_qc_value)
+   call get_dart_qc(istatus, my_ensemble_copies, assimilate_this_ob, evaluate_this_ob, &
+                  isprior, global_qc_value)
 
    ! update the dart qc, error variance and for observed value
    obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = global_qc_value
@@ -470,7 +471,7 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
          'identity obs is outside of state vector ', &
          source, revision, revdate)
 
-      call get_state(expected_obs, -1*int(obs_kind_ind,i8), state_ens_handle)
+      expected_obs =  get_state(-1*int(obs_kind_ind,i8), state_ens_handle)
 
       ! FIXME : we currently have no option to eval only identity obs,
       ! or select to skip their assimilation via namelist.

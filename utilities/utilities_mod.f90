@@ -167,7 +167,7 @@ public :: file_exist, get_unit, open_file, close_file, timestamp,           &
           set_tasknum, set_output, do_output, set_nml_output, do_nml_file,  &
           E_DBG, E_MSG, E_WARN, E_ERR, DEBUG, MESSAGE, WARNING, FATAL,      &
           is_longitude_between, get_next_filename, ascii_file_format,       &
-          set_filename_list
+          set_filename_list, scalar
 
 ! this routine is either in the null_mpi_utilities_mod.f90, or in
 ! the mpi_utilities_mod.f90 file, but it is not a module subroutine.
@@ -179,6 +179,13 @@ interface
  subroutine exit_all(exitval)
   integer, intent(in) :: exitval
  end subroutine exit_all
+end interface
+
+! make a converter from a 1D array to a scalar
+interface scalar
+   module procedure to_scalar_real
+   module procedure to_scalar_int
+   module procedure to_scalar_int8
 end interface
 
 ! version controlled file description for error handling, do not edit
@@ -2005,6 +2012,37 @@ SELECT CASE (fform)
 END SELECT
 
 end function ascii_file_format
+
+
+!#######################################################################
+
+pure function to_scalar_real(x)
+ real(r8), intent(in) :: x(1)
+ real(r8) :: to_scalar_real
+ 
+to_scalar_real = x(1)
+
+end function to_scalar_real
+
+!#######################################################################
+
+pure function to_scalar_int(x)
+ integer, intent(in) :: x(1)
+ integer :: to_scalar_int
+ 
+to_scalar_int = x(1)
+
+end function to_scalar_int
+
+!#######################################################################
+
+pure function to_scalar_int8(x)
+ integer(i8), intent(in) :: x(1)
+ integer(i8) :: to_scalar_int8
+ 
+to_scalar_int8 = x(1)
+
+end function to_scalar_int8
 
 
 !=======================================================================

@@ -1239,7 +1239,7 @@ model_type = get_varid_from_kind(itype)
 
 ! Find the index into state array and return this value
 state_index = get_dart_vector_index(lon_index, lat_index, level, dom_id, model_type)
-call get_state(get_val, state_index, state_ens_handle)
+get_val = get_state(state_index, state_ens_handle)
 
 end function get_val
 

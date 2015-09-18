@@ -363,10 +363,10 @@ lctnfrac = lctn - int(lctn)
 ! Need to grab the correct pieces of state vector
 
 ! Lower index
-call get_state(x_lower, lower_index, state_ens_handle)
+x_lower = get_state(lower_index, state_ens_handle)
 
 ! Upper index
-call get_state(x_upper, upper_index, state_ens_handle)
+x_upper =  get_state(upper_index, state_ens_handle)
 
 ! calculate the obs value
 ! Loop around the ensemble copies

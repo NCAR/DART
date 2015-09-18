@@ -184,7 +184,8 @@
                               '../../../obs_def/obs_def_gps_mod.f90',
                               '../../../obs_def/obs_def_gts_mod.f90',
                               '../../../obs_def/obs_def_QuikSCAT_mod.f90',
-                              '../../../obs_def/obs_def_vortex_mod.f90'  /
+                              '../../../obs_def/obs_def_vortex_mod.f90' 
+/
 
 &obs_kind_nml
    assimilate_these_obs_types   = 'RADIOSONDE_U_WIND_COMPONENT',

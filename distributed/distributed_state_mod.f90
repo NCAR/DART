@@ -18,8 +18,10 @@ use types_mod,            only : r8, i8
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
                                  get_allow_transpose
 use window_mod,           only : create_mean_window, create_state_window, free_mean_window, &
-                                 free_state_window, mean_win, state_win, data_count, &
-                                 mean_ens_handle
+                                 free_state_window, mean_ens_handle, data_count, &
+                                 NO_WINDOW, MEAN_WINDOW, STATE_WINDOW, &
+                                 mean_win, state_win, current_win
+use utilities_mod,        only : error_handler, E_ERR
 
 use mpi
 
@@ -33,11 +35,6 @@ character(len=256), parameter :: source   = &
    "$URL$"
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
-
-interface get_state
-   module procedure get_fwd
-   module procedure get_mean
-end interface
 
 contains
 
@@ -60,7 +57,7 @@ not_done = .true.
 ! only grab state once unique state indices
 do e = 1, data_count
    if (not_done(e)) then
-      call get_state(x_tmp, index(e), state_ens_handle)
+      x_tmp = get_state(index(e), state_ens_handle)
       do i = e, data_count
          if(index(i) == index(e)) then
             x(i) = x_tmp(i)
@@ -71,6 +68,26 @@ do e = 1, data_count
 enddo
 
 end subroutine get_state_array
+
+!---------------------------------------------------------
+!> Gets all copies of an element of the state vector from the process who owns it
+!> Assumes ensemble complete
+function get_state(index, ens_handle) result (x)
+
+real(r8) :: x(data_count) !> all copies of an element of the state vector
+
+integer(i8),         intent(in)  :: index !> index into state vector
+type(ensemble_type), intent(in)  :: ens_handle
+
+if (current_win == MEAN_WINDOW) then
+   call get_mean(x, index, ens_handle)
+else if (current_win == STATE_WINDOW) then
+   call get_fwd(x, index, ens_handle)
+else
+   call error_handler(E_ERR, 'get_state',' No window currently open')
+endif
+
+end function get_state
 
 !---------------------------------------------------------
 !> Gets all copies of an element of the state vector from the process who owns it
@@ -116,7 +133,7 @@ end subroutine get_fwd
 !> Assumes ensemble complete
 subroutine get_mean(x, index, state_ens_handle)
 
-real(r8),            intent(out) :: x !> only grabing the mean
+real(r8),            intent(out) :: x(1) !> only grabing the mean
 integer(i8),         intent(in)  :: index !> index into state vector
 type(ensemble_type), intent(in)  :: state_ens_handle
 
@@ -126,7 +143,7 @@ integer(KIND=MPI_ADDRESS_KIND) :: target_disp
 integer                        :: ierr
 
 if (get_allow_transpose(mean_ens_handle)) then
-   x = mean_ens_handle%vars(index, 1)
+   x(1) = mean_ens_handle%vars(index, 1)
 else
 
    call get_var_owner_index(index, owner_of_state, element_index) ! pe
@@ -134,11 +151,11 @@ else
    owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
 
    if (my_task_id() == owner_of_state) then
-      x = mean_ens_handle%copies(1, element_index)
+      x(1) = mean_ens_handle%copies(1, element_index)
    else
       target_disp = (element_index - 1)
       call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, mean_win, ierr)
-      call mpi_get(x, 1, datasize, owner_of_state, target_disp, 1, datasize, mean_win, ierr)
+      call mpi_get(x(1), 1, datasize, owner_of_state, target_disp, 1, datasize, mean_win, ierr)
       call mpi_win_unlock(owner_of_state, mean_win, ierr)
    endif
 
