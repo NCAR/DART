@@ -1842,23 +1842,27 @@ real(r8),            intent(in)    :: pert_amp
 
 type(random_seq_type) :: random_seq
 
-logical, save :: random_seq_init = .false.
-logical :: interf_provided = .false.
+logical :: interf_provided, allow_missing
+integer :: i, j, num_ens
 
-integer :: i, j
+!> if it's possible to have missing values in the state
+!> then you have to look for them and skip them when perturbing
+allow_missing = get_missing_ok_status()
+
+num_ens = state_ens_handle%num_copies - state_ens_handle%num_extras
 
 call pert_model_copies(state_ens_handle, pert_amp, interf_provided)
 if(.not. interf_provided) then
    call init_random_seq(random_seq, my_task_id())
    do i=1,state_ens_handle%my_num_vars
-      do j=1,state_ens_handle%num_copies
-         if (state_ens_handle%copies(j,i) /= MISSING_R8) then
-            state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
-               state_ens_handle%copies(j,i), &
-               pert_amp)
-   
+      NEXT_ENS: do j=1,num_ens
+         if (allow_missing) then
+            if (state_ens_handle%copies(j,i) == MISSING_R8) cycle NEXT_ENS
          endif
-      enddo
+
+         state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
+                                        state_ens_handle%copies(j,i), pert_amp)
+      enddo NEXT_ENS
    enddo
 endif
 
