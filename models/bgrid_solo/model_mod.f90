@@ -100,7 +100,7 @@ public  get_model_size, adv_1step, get_state_meta_data_distrib, &
         get_model_time_step, end_model, static_init_model, init_time, &
         init_conditions, nc_write_model_atts, nc_write_model_vars, &
         pert_model_state, pert_model_copies, &
-        get_close_maxdist_init, get_close_obs_init, get_close_obs, ens_mean_for_model, &
+        get_close_maxdist_init, get_close_obs_init, get_close_obs, &
         model_interpolate_distrib, &
         query_vert_localization_coord, &
         vert_convert_distrib, &
@@ -1990,17 +1990,6 @@ end do
 call prog_var_to_vector(global_Var, pert_state, get_model_size())
 
 end subroutine pert_model_state
-
-
-subroutine ens_mean_for_model(ens_mean)
-!------------------------------------------------------------------
-! Not used in this model.
-
-real(r8), intent(in) :: ens_mean(:)
-
-if ( .not. module_initialized ) call static_init_model
-
-end subroutine ens_mean_for_model
 
 !--------------------------------------------------------------------
 !> construct restart file name for reading

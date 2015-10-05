@@ -114,7 +114,6 @@ public ::  get_model_size,                    &
            nc_write_model_atts,               &
            nc_write_model_vars,               &
            get_close_obs_distrib,             &
-           ens_mean_for_model,                &
            get_close_maxdist_init,            &
            get_close_obs_init,                &
            model_interpolate_distrib,         &
@@ -6238,21 +6237,6 @@ SUBROUTINE splint(xa,ya,y2a,n,x,y)
       y=a*ya(klo)+b*ya(khi)+((a**3-a)*y2a(klo)+(b**3-b)*y2a(khi))*(h**2)/6.
       return
 END subroutine splint
-
-
-!#######################################################################
-
-
-subroutine ens_mean_for_model(filter_ens_mean)
-
-! Not used in low-order models
-! Stores provided ensemble mean within the module for later use
-
-real(r8), intent(in) :: filter_ens_mean(:)
-
-call error_handler(E_ERR, 'ens_mean_for_model', 'not allowed in distributed version')
-
-end subroutine ens_mean_for_model
 
 
 !#######################################################################

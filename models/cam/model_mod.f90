@@ -230,7 +230,7 @@ private
 public ::                                                             &
    static_init_model, get_model_size, get_model_time_step,            &
    pert_model_state, pert_model_copies, get_state_meta_data_distrib,  &
-   model_interpolate_distrib, ens_mean_for_model,                     &
+   model_interpolate_distrib,                                         &
    nc_write_model_atts, nc_write_model_vars,                          &
    init_conditions, init_time, adv_1step, end_model,                  &
    get_close_maxdist_init, get_close_obs_init, get_close_obs_distrib, &
@@ -3135,29 +3135,6 @@ endif
 
 
 end subroutine get_state_meta_data_distrib
-
-!-----------------------------------------------------------------------
-!>
-!> Subroutine ens_mean_for_model
-!> makes the ensemble mean available to model_mod
-!> and generates the ensemble mean surface pressure arrays needed in get_close_obs.
-!> 
-!> @param[in] filter_ens_mean
-!> The ensemble mean state vector from filter.
-
-!HK not called by the distributed version
-subroutine ens_mean_for_model(filter_ens_mean)
-
-real(r8), intent(in) :: filter_ens_mean(:)
-
-if (.not. module_initialized) call static_init_model()
-
-call error_handler(E_ERR, 'ens_mean_for_model', 'not allowed in distributed version')
-
-!HK Not calling set ps_arrays, waste of communication and memory. This subroutine
-! is not called in the distrbuted version of filter.
-
-end subroutine ens_mean_for_model
 
 !-----------------------------------------------------------------------
 !>
@@ -6272,8 +6249,6 @@ elseif (old_which == VERTISLEVEL) then
 
 elseif (old_which == VERTISHEIGHT) then
 
-   ! Ens_mean is global storage that should have been filled
-   ! by a call from filter_assim to ens_mean_for_model.
    ! HK model_h is a global. Why are you passing it in?
    call model_heights_distrib_mean(num_levs, state_ens_handle, p_surf, old_loc,  model_h, istatus)
    if (istatus == 1) then

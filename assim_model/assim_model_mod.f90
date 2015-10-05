@@ -26,7 +26,7 @@ use     model_mod, only : get_model_size, static_init_model, get_state_meta_data
                           init_time, adv_1step, end_model, nc_write_model_atts,            &
                           nc_write_model_vars, pert_model_state,                           &
                           get_close_maxdist_init, get_close_obs_init,                      &
-                          ens_mean_for_model, model_interpolate_distrib,                   &
+                          model_interpolate_distrib,                                       &
                           get_close_obs_distrib, clamp_or_fail_it, do_clamp_or_fail,       &
                           pert_model_copies
 
@@ -46,7 +46,7 @@ public :: static_init_assim_model, init_diag_output, get_model_size,            
           pert_model_state, netcdf_file_type, nc_append_time, nc_write_calendar_atts,      &
           nc_get_tindex, get_model_time_step,       &
          adv_1step, aget_initial_condition, get_close_maxdist_init,        &
-          get_close_obs_init, ens_mean_for_model, interpolate_distrib,                     &
+          get_close_obs_init, interpolate_distrib,                                         &
           get_close_obs_distrib, clamp_or_fail_it, do_clamp_or_fail, pert_model_copies
 
 ! version controlled file description for error handling, do not edit

@@ -29,7 +29,7 @@ use utilities_mod,         only : register_module,  error_handler, E_ERR, E_MSG,
                                   open_file, close_file, do_nml_file, do_nml_term
 use assim_model_mod,       only : static_init_assim_model, get_model_size,                    &
                                   netcdf_file_type, init_diag_output, finalize_diag_output,   &
-                                  aoutput_diagnostics, ens_mean_for_model, end_assim_model,   &
+                                  aoutput_diagnostics, end_assim_model,                       &
                                   pert_model_copies, pert_model_state
 use assim_tools_mod,       only : filter_assim, set_assim_tools_trace, get_missing_ok_status, &
                                   test_state_copies

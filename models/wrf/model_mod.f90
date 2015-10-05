@@ -135,7 +135,6 @@ public ::  get_model_size,                &
            nc_write_model_atts,           &
            nc_write_model_vars,           &
            get_close_obs_distrib,         &
-           ens_mean_for_model,            &
            get_close_maxdist_init,        &
            get_close_obs_init,            &
            model_interpolate_distrib,     &
@@ -999,7 +998,7 @@ integer                :: ens_size
 integer(i8) :: ugrid_1, ugrid_2, ugrid_3, ugrid_4, vgrid_1, vgrid_2, vgrid_3, vgrid_4
 integer(i8) :: z1d_ind1, z1d_ind2, t1d_ind, qv1d_ind
 
-ens_size = copies_in_window(state_ens_handle) ! data_structure_mod
+ens_size = copies_in_window(state_ens_handle)
 allocate(x_ill(ens_size), x_iul(ens_size), x_ilr(ens_size), x_iur(ens_size))
 allocate(x_ugrid_1(ens_size), x_ugrid_2(ens_size), x_ugrid_3(ens_size), x_ugrid_4(ens_size))
 allocate(x_vgrid_1(ens_size), x_vgrid_2(ens_size), x_vgrid_3(ens_size), x_vgrid_4(ens_size))
@@ -6589,21 +6588,6 @@ SUBROUTINE splint(xa,ya,y2a,n,x,y)
       y=a*ya(klo)+b*ya(khi)+((a**3-a)*y2a(klo)+(b**3-b)*y2a(khi))*(h**2)/6.
       return
 END subroutine splint
-
-
-!#######################################################################
-
-
-subroutine ens_mean_for_model(filter_ens_mean)
-
-! Not used in low-order models
-! Stores provided ensemble mean within the module for later use
-
-real(r8), intent(in) :: filter_ens_mean(:)
-
-call error_handler(E_ERR, 'ens_mean_for_model', 'not allowed in distributed version')
-
-end subroutine ens_mean_for_model
 
 
 !#######################################################################

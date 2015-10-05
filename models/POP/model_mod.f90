@@ -68,7 +68,6 @@ public :: get_model_size,                &
           get_close_maxdist_init,        &
           get_close_obs_init,            &
           get_close_obs_distrib,         &
-          ens_mean_for_model,            &
           query_vert_localization_coord, &
           vert_convert_distrib,          &
           construct_file_name_in,        &
@@ -2538,21 +2537,6 @@ do i=1,state_ens_handle%my_num_vars
 enddo
 
 end subroutine pert_model_copies
-
-!------------------------------------------------------------------
-
-subroutine ens_mean_for_model(ens_mean)
- real(r8), intent(in) :: ens_mean(:)
-
-! If needed by the model interface, this is the current mean
-! for all state vector items across all ensembles. It is up to this
-! code to allocate space and save a copy if it is going to be used
-! later on.  For now, we are ignoring it.
-
-if ( .not. module_initialized ) call static_init_model
-
-
-end subroutine ens_mean_for_model
 
 !------------------------------------------------------------------
 

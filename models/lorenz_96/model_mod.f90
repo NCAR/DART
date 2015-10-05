@@ -41,7 +41,7 @@ public :: get_model_size, &
           nc_write_model_atts, &
           nc_write_model_vars, &
           pert_model_state, &
-          get_close_maxdist_init, get_close_obs_init,get_close_obs_distrib, ens_mean_for_model, &
+          get_close_maxdist_init, get_close_obs_init,get_close_obs_distrib, &
           model_interpolate_distrib, &
           query_vert_localization_coord, &
           vert_convert_distrib, &
@@ -762,16 +762,6 @@ logical,  intent(out)    :: interf_provided
 interf_provided = .false.
 
 end subroutine pert_model_state
-
-
-
-subroutine ens_mean_for_model(ens_mean)
-!------------------------------------------------------------------
-! Not used in low-order models
-
-real(r8), intent(in) :: ens_mean(:)
-
-end subroutine ens_mean_for_model
 
 !--------------------------------------------------------------------
 !> construct restart file name for reading

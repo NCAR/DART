@@ -123,7 +123,6 @@ public :: get_model_size,                 &
           get_close_maxdist_init,         &
           get_close_obs_init,             &
           get_close_obs_distrib,          &
-          ens_mean_for_model,             &
           query_vert_localization_coord,  &
           vert_convert_distrib,           &
           variables_domains,              &
@@ -1941,27 +1940,6 @@ if ( .not. module_initialized ) call static_init_model
 get_model_time_step = model_timestep
 
 end function get_model_time_step
-
-
-!------------------------------------------------------------------
-
-subroutine ens_mean_for_model(filter_ens_mean)
-
-! If needed by the model interface, this is the current mean
-! for all state vector items across all ensembles.
-
-real(r8), intent(in) :: filter_ens_mean(:)
-
-if ( .not. module_initialized ) call static_init_model
-
-ens_mean = filter_ens_mean
-
-if ((debug > 3) .and. do_output()) then
-   if (do_output()) print *, 'resetting ensemble mean: '
-   call print_variable_ranges(ens_mean)
-endif
-
-end subroutine ens_mean_for_model
 
 
 !------------------------------------------------------------------

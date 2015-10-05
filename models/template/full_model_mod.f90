@@ -68,8 +68,7 @@ public :: get_model_size,         &
           pert_model_state,       &
           get_close_maxdist_init, &
           get_close_obs_init,     &
-          get_close_obs,          &
-          ens_mean_for_model
+          get_close_obs
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
@@ -1304,22 +1303,6 @@ if (istatus1 == 0) then
 endif
 
 end subroutine get_close_obs
-
-
-
-subroutine ens_mean_for_model(filter_ens_mean)
-!------------------------------------------------------------------
-! If needed by the model interface, this is the current mean
-! for all state vector items across all ensembles.
-
-real(r8), intent(in) :: filter_ens_mean(:)
-
-if ( .not. module_initialized ) call static_init_model
-
-ens_mean = filter_ens_mean
-
-end subroutine ens_mean_for_model
-
 
 
 !==================================================================
