@@ -1,23 +1,11 @@
+The detailed documentaion of interface codes and scripts for 
+running will be added later. 
 
-There are several DART users who have working DART interface code
-to the LMDZ atmospheric general circulation model.  This model is
-developed and supported by the Laboratorie de Meteorologie Dynamique
-which is located at three French universities, one in Palaiseau and 
-two in Paris.
+Please contact me if you have any queries
 
-See here:
-
-http://lmdz.lmd.jussieu.fr/?set_language=en
-
-for more information on the model.  
-
-If you are interested in running DART with this model please contact 
-the DART group at 'dart@ucar.edu' for more information.  We currently do
-not have a copy of the model_mod interface code nor any of the scripting 
-required to run an assimilation, but we may be able to put you in contact 
-with the right people to get it.
-
-The DART Group
-17 Sept 2014
-
+Tarkeshwar Singh
+E-mail: tarkphysics87@gmail.com
+Research Scholar
+Centre for Atmospheric Sciences
+Indian Institute of Technology (IIT) Delhi
 

@@ -4628,7 +4628,7 @@ do id=1,num_domains
                          wrf%dom(id)%var_size(2,ind)/)
 
          allocate ( temp2d(dimsizes_2D(1),dimsizes_2D(2)) )
-         temp2d  = reshape(statevec(i:j), (/ dimsizes_3D(1),dimsizes_3D(2) /) )
+         temp2d  = reshape(statevec(i:j), (/ dimsizes_2D(1),dimsizes_2D(2) /) )
          call nc_check(nf90_put_var( ncFileID, VarID, temp2d, &
                                   start=(/ 1, 1, copyindex, timeindex /) ), &
                     'nc_write_model_vars','put_var '//trim(varname))
@@ -7898,10 +7898,11 @@ if ((.not. in_state_vector(KIND_PRESSURE)) .and. &
                        source, revision, revdate)
 endif
 
-! surface elevation is read in outside the state vector mechanism,
+! surface elevation and land mask are read outside the state vector mechanism,
 ! directly from the wrfinput template file, and does not vary from
 ! one ensemble member to another.
 in_state_vector(KIND_SURFACE_ELEVATION) = .true.
+in_state_vector(KIND_LANDMASK) = .true.
 
 ! there is no field that directly maps to the vortex measurements.
 ! if you have all the fields it needs, allow them.
@@ -7929,6 +7930,8 @@ if (in_state_vector(KIND_GEOPOTENTIAL_HEIGHT) .and. &
 ! ditto for power weighted fall speed.
 in_state_vector(KIND_RADAR_REFLECTIVITY) = .true.
 in_state_vector(KIND_POWER_WEIGHTED_FALL_SPEED) = .true.
+
+
 
 ! FIXME:  i was going to suggest nuking this routine all together because it makes
 ! the default behavior be to exit with an error when requesting to interpolate an

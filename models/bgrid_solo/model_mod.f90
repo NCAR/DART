@@ -1184,7 +1184,6 @@ if(vert_is_level(location) .or. vert_is_surface(location)) then
                      lon_above, lat_below, nint(level), obs_type)
    val(2, 2,:) =  get_val(state_ens_handle, my_ens_size, &
                      lon_above, lat_above, nint(level), obs_type)
-
 else
 ! Case of pressure specified in vertical
    val(1, 1,:) =  get_val_pressure(state_ens_handle, my_ens_size, &
@@ -1735,7 +1734,7 @@ endif
 !-------------------------------------------------------------------------------
 call check(nf90_sync(ncFileID),"atts sync")
 
-write (*,*)'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...'
+!write (*,*)'nc_write_model_atts: netCDF file ',ncFileID,' is synched ...'
 
 contains
 

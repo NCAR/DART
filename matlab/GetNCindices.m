@@ -304,13 +304,13 @@ for i = 1:ndims
            case 't'
                start(i) = time1;
                count(i) = timeN;
-           case {'lev','z'}
+           case {'lev','z','k'}
                start(i) = level1;
                count(i) = levelN;
-           case {'lat','y','iy'}
+           case {'lat','y','iy','j'}
                start(i) = lat1;
                count(i) = latN;
-           case {'lon','x','ix'}
+           case {'lon','x','ix','i'}
                start(i) = lon1;
                count(i) = lonN;
            case 'pft'

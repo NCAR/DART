@@ -51,6 +51,7 @@ use         obs_kind_mod, only : MARINE_SFC_U_WIND_COMPONENT, MARINE_SFC_V_WIND_
                                  MARINE_SFC_TEMPERATURE, MARINE_SFC_SPECIFIC_HUMIDITY,     &
                                  MARINE_SFC_ALTIMETER, MARINE_SFC_DEWPOINT,   &
                                  MARINE_SFC_RELATIVE_HUMIDITY
+use             sort_mod,  only : index_sort
 use obs_def_altimeter_mod, only : compute_altimeter
 use     obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
                                   create_3d_obs, getvar_int, getdimlen, set_missing_name
@@ -81,9 +82,9 @@ logical  :: file_exist, first_obs
 real(r8) :: sfcp_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
             vwnd, altim, palt, oerr, qobs, qerr, qsat, rh, slp_miss, elev_miss, qc
 
-integer,  allocatable :: tobs(:), plid(:), tobu(:)
+integer,  allocatable :: tobs(:), plid(:), tused(:), used(:), sorted_used(:)
 real(r8), allocatable :: lat(:), lon(:), elev(:), sfcp(:), tair(:), slp(:), & 
-                         tdew(:), wdir(:), wspd(:), latu(:), lonu(:)
+                         tdew(:), wdir(:), wspd(:)
 integer,  allocatable :: qc_sfcp(:), qc_slp(:), qc_tair(:), qc_tdew(:), qc_wdir(:), qc_wspd(:)
 
 type(obs_sequence_type) :: obs_seq
@@ -107,12 +108,12 @@ call getdimlen(ncid, "recNum", nobs)
 call set_missing_name("missing_value")
 
 allocate( lat(nobs))  ;  allocate( lon(nobs))
-allocate(latu(nobs))  ;  allocate(lonu(nobs))
 allocate(elev(nobs))  ;  allocate(plid(nobs))
 allocate(sfcp(nobs))  ;  allocate(slp(nobs))
 allocate(tair(nobs))  ;  allocate(tdew(nobs))
 allocate(wdir(nobs))  ;  allocate(wspd(nobs))
-allocate(tobs(nobs))  ;  allocate(tobu(nobs))
+allocate(tobs(nobs))  ;  allocate(tused(nobs))
+allocate(used(nobs))  ;  allocate(sorted_used(nobs))
 
 nvars = 4
 if (include_specific_humidity) nvars = nvars + 1
@@ -184,24 +185,38 @@ endif
 qc = 1.0_r8
 
 nused = 0
-obsloop: do n = 1, nobs
-
-  ! compute time of observation
-  time_obs = increment_time(comp_day0, tobs(n))
+obsloop1: do n = 1, nobs
 
   ! check the lat/lon values to see if they are ok
-  if ( lat(n) >  90.0_r8 .or. lat(n) <  -90.0_r8 ) cycle obsloop
-  if ( lon(n) > 180.0_r8 .or. lon(n) < -180.0_r8 ) cycle obsloop
+  if ( lat(n) >  90.0_r8 .or. lat(n) <  -90.0_r8 ) cycle obsloop1
+  if ( lon(n) > 180.0_r8 .or. lon(n) < -180.0_r8 ) cycle obsloop1
 
   ! change lon from -180 to 180 into 0-360
   if ( lon(n) < 0.0_r8 )  lon(n) = lon(n) + 360.0_r8
 
   ! Check for duplicate observations
   do i = 1, nused
-    if ( lon(n) == lonu(i) .and. &
-         lat(n) == latu(i) .and. &
-        tobs(n) == tobu(i) ) cycle obsloop
+    if ( lon(n) == lon(used(i)) .and. &
+         lat(n) == lat(used(i)) .and. &
+        tobs(n) == tobs(used(i)) ) cycle obsloop1
   end do
+
+  nused = nused + 1
+  used(nused) = n
+  tused(nused) = tobs(n)
+
+enddo obsloop1
+
+! sort indices only by time
+call index_sort(tused, sorted_used, nused)
+
+obsloop2: do i = 1, nused
+
+  ! get the next unique observation in sorted time order
+  n = used(sorted_used(i))
+
+  ! compute time of observation
+  time_obs = increment_time(comp_day0, tobs(n))
 
   if ( elev(n) /= elev_miss ) then
     palt = pres_alt_to_pres(elev(n)) * 0.01_r8
@@ -381,12 +396,7 @@ obsloop: do n = 1, nobs
 
 100 continue
 
-  nused = nused + 1
-  latu(nused) =  lat(n)
-  lonu(nused) =  lon(n)
-  tobu(nused) = tobs(n)
-
-end do obsloop
+end do obsloop2
 
 ! if we added any obs to the sequence, write it now.
 if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, marine_out_file)

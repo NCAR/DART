@@ -97,6 +97,10 @@ switch lower(pinfo.model)
 
       pinfo = GetSqgInfo(pinfo, diagn_file, 'PlotEnsMeanTimeSeries');
 
+   case {'pop'}
+
+      pinfo = GetPOPInfo(pinfo, diagn_file, 'PlotEnsMeanTimeSeries');
+
    otherwise
 
       error('model %s not implemented yet', pinfo.model)

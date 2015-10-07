@@ -138,7 +138,7 @@ switch lower(pinfo.model)
                ylabel('distance')
       end
 
-   case {'fms_bgrid','pe2lyr','mitgcm_ocean','cam','wrf','sqg'}
+   case {'fms_bgrid','pe2lyr','mitgcm_ocean','cam','wrf','sqg','pop'}
 
       clf;
 

@@ -77,12 +77,11 @@ real(r8) :: uwnd, vwnd, oerr, qc
 ! end FIXME
 
 
-real(r8), allocatable :: lat(:), lon(:), latu(:), lonu(:), &
-                          pres(:), prsu(:), tobs(:), &
-                          wdir(:), wspd(:)
-integer,  allocatable :: band(:), bndu(:)
+real(r8), allocatable :: lat(:), lon(:), pres(:),  &
+                         tobs(:), wdir(:), wspd(:)
+integer,  allocatable :: band(:), tused(:)
 integer,  allocatable :: qc_wdir(:), qc_wspd(:)
-integer,  allocatable :: indu(:), sorted_indu(:), tobu(:)
+integer,  allocatable :: used(:), sorted_used(:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
@@ -118,14 +117,10 @@ call nc_check( nf90_open(satwnd_netcdf_file, nf90_nowrite, ncid), &
 
 call getdimlen(ncid, "recNum", nobs)
 
-allocate( lat(nobs))  ;  allocate( lon(nobs))
-allocate(latu(nobs))  ;  allocate(lonu(nobs))
-allocate(pres(nobs))  ;  allocate(prsu(nobs))
-allocate(tobs(nobs))  ;  allocate(tobu(nobs))
-allocate(band(nobs))  ;  allocate(bndu(nobs))
-allocate(wdir(nobs))  ;  allocate(wspd(nobs))
-allocate(indu(nobs))  ;  allocate(sorted_indu(nobs))
-allocate(qc_wdir(nobs)) ;  allocate(qc_wspd(nobs))
+allocate(lat(nobs), lon(nobs), pres(nobs), tobs(nobs))
+allocate(band(nobs), wdir(nobs), wspd(nobs))
+allocate(tused(nobs), used(nobs), sorted_used(nobs))
+allocate(qc_wdir(nobs), qc_wspd(nobs))
 
 ! read in the data arrays
 call getvar_real(ncid, "obLat",       lat            ) ! latitude
@@ -185,11 +180,11 @@ obsloop1: do n = 1, nobs
 
   ! Check for duplicate observations
   do i = 1, nused
-    if ( lon(n) == lonu(i) .and. &
-         lat(n) == latu(i) .and. &
-        pres(n) == prsu(i) .and. &
-        band(n) == bndu(i) .and. &
-        nint(tobs(n)) == tobu(i) ) cycle obsloop1
+    if ( lon(n) ==  lon(used(i)) .and. &
+         lat(n) ==  lat(used(i)) .and. &
+        pres(n) == pres(used(i)) .and. &
+        band(n) == band(used(i)) .and. &
+        tobs(n) == tobs(used(i)) ) cycle obsloop1
   end do
 
   ! if selecting only certain bands, cycle if not wanted
@@ -200,22 +195,22 @@ obsloop1: do n = 1, nobs
          (band(n) == 3  .or.  band(n) == 5  .or. band(n) == 7)) cycle obsloop1
   endif
 
+  ! the 'used' array are the index numbers of used obs
+  ! the 'tused' array are the times of those obs so we can
+  ! sort them later by time.
   nused = nused + 1
-  indu(nused) = n
-  latu(nused) =  lat(n)
-  lonu(nused) =  lon(n)
-  prsu(nused) = pres(n)
-  bndu(nused) = band(n)
-  tobu(nused) = nint(tobs(n))
+  used(nused) = n
+  tused(nused) = tobs(n)
 
 end do obsloop1
 
-call index_sort(tobu, sorted_indu, nused)
+! sort by time
+call index_sort(tused, sorted_used, nused)
 
 obsloop2: do i = 1, nused
 
   ! get the next unique observation in sorted time order
-  n = indu(sorted_indu(i))
+  n = used(sorted_used(i))
 
   ! compute time of observation
   time_obs = increment_time(comp_day0, nint(tobs(n)))

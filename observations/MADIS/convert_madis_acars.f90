@@ -74,11 +74,11 @@ logical  :: file_exist, first_obs
 real(r8) :: palt_miss, tair_miss, relh_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
             vwnd, qobs, qsat, oerr, pres, qc, qerr
 
-integer,  allocatable :: tobs(:), tobu(:)
+integer,  allocatable :: tobs(:), tused(:)
 real(r8), allocatable :: lat(:), lon(:), palt(:), tair(:), relh(:), tdew(:), &
-                         wdir(:), wspd(:), latu(:), lonu(:), palu(:)
+                         wdir(:), wspd(:)
 integer,  allocatable :: qc_palt(:), qc_tair(:), qc_relh(:), qc_tdew(:), qc_wdir(:), qc_wspd(:)
-integer,  allocatable :: indu(:), sorted_indu(:)
+integer,  allocatable :: used(:), sorted_used(:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
@@ -104,10 +104,8 @@ allocate( lat(nobs))  ;  allocate( lon(nobs))
 allocate(palt(nobs))  ;  allocate(tobs(nobs))
 allocate(tair(nobs))  ;  allocate(relh(nobs))
 allocate(wdir(nobs))  ;  allocate(wspd(nobs))
-allocate(latu(nobs))  ;  allocate(lonu(nobs))
-allocate(palu(nobs))  ;  allocate(tdew(nobs))
-allocate(tobu(nobs))
-allocate(indu(nobs))  ;  allocate(sorted_indu(nobs))
+allocate(tdew(nobs))  ;  allocate(tused(nobs))
+allocate(used(nobs))  ;  allocate(sorted_used(nobs))
 
 nvars = 3
 if (include_specific_humidity) nvars = nvars + 1
@@ -188,27 +186,25 @@ obsloop1: do n = 1, nobs
 
   ! Check for duplicate observations
   do i = 1, nused
-    if ( lon(n)  == lonu(i) .and. &
-         lat(n)  == latu(i) .and. &
-         tobs(n) == tobu(i) .and. & 
-         palt(n) == palu(i) ) cycle obsloop1
+    if ( lon(n)  == lon(used(i)) .and. &
+         lat(n)  == lat(used(i)) .and. &
+         tobs(n) == tobs(used(i)) .and. & 
+         palt(n) == palt(used(i)) ) cycle obsloop1
   end do
 
   nused = nused + 1
-  indu(nused) = n
-  latu(nused) =  lat(n)
-  lonu(nused) =  lon(n)
-  palu(nused) = palt(n)
-  tobu(nused) = tobs(n)
+  used(nused) = n
+  tused(nused) = tobs(n)
 
 end do obsloop1
 
-call index_sort(tobu, sorted_indu, nused)
+! sort obs by time
+call index_sort(tused, sorted_used, nused)
 
 obsloop2: do i = 1, nused
 
   ! get the next unique observation in sorted time order
-  n = indu(sorted_indu(i))
+  n = used(sorted_used(i))
 
   ! compute time of observation
   time_obs = increment_time(comp_day0, tobs(n))

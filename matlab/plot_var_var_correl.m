@@ -119,6 +119,10 @@ switch lower(pinfo.model)
 
       pinfo = GetSqgInfo(pinfo, fname, 'PlotVarVarCorrel');
 
+   case {'pop'}
+
+      pinfo = GetPOPInfo(pinfo, fname, 'PlotVarVarCorrel');
+
    case {'tiegcm'}
 
       pinfo = GetTIEGCMInfo(pinfo, fname, 'PlotVarVarCorrel');

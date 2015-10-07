@@ -33,16 +33,17 @@
 #
 # the options for satellite names, and available data times are:
 #
-#    cosmic:    all 6 COSMIC : 2006.194 - now*
-#    cosmicrt:  COSMIC : realtime
-#    champ:     CHAMP : 2001.139 - 2008.274
-#    grace:     Grace-A : 2007.059 - now*
-#    tsx:       German TerraSAR-X : 2008.041 - now*
-#    metopa:    Metop-A/GRAS : 2008.061 - now*
-#    sacc:      Argentinan SAC-C : 2006.068 - now*
-#    saccrt:    SAC-C : realtime
-#    ncofs:     new Air Force C/NOFS : 2010.335 - now*
-#    ncofsrt:   C/NOFS : realtime
+#    cosmic:      all 6 COSMIC : 2006.194 - now*
+#    cosmic-2013: reprocessed COSMIC : 2006.194 - now*
+#    cosmicrt:    COSMIC : realtime
+#    champ:       CHAMP : 2001.139 - 2008.274
+#    grace:       Grace-A : 2007.059 - now*
+#    tsx:         German TerraSAR-X : 2008.041 - now*
+#    metopa:      Metop-A/GRAS : 2008.061 - now*
+#    sacc:        Argentinan SAC-C : 2006.068 - now*
+#    saccrt:      SAC-C : realtime
+#    ncofs:       new Air Force C/NOFS : 2010.335 - now*
+#    ncofsrt:     C/NOFS : realtime
 #
 #  - dates are YYYY.DDD where DDD is day number in year
 #  - now* means current date minus 3-4 months.  reprocessed data

@@ -48,10 +48,10 @@ function PlotSawtooth( pinfo )
 
 % Get some information from the truth_file, if it exists.
 if ( exist(pinfo.truth_file,'file') == 2 )
-   truth = CheckModelCompatibility(pinfo.truth_file, pinfo.posterior_file);
-   truth.truth_index = get_copy_index(pinfo.truth_file, 'true state' );
+    truth = CheckModelCompatibility(pinfo.truth_file, pinfo.posterior_file);
+    truth.truth_index = get_copy_index(pinfo.truth_file, 'true state' );
 else
-   truth = [];
+    truth = [];
 end
 
 %% Get some information from the prior_file
@@ -59,7 +59,7 @@ end
 %  and a 'doubled up' x axis plotting array is created.
 
 prior.ens_mean_index = get_copy_index(pinfo.prior_file,     'ensemble mean');
- post.ens_mean_index = get_copy_index(pinfo.posterior_file, 'ensemble mean');
+post.ens_mean_index = get_copy_index(pinfo.posterior_file, 'ensemble mean');
 
 x          = zeros(2,pinfo.time_series_length);
 x(1,:)     = pinfo.time;
@@ -73,9 +73,9 @@ metadata   = nc_varget(pinfo.prior_file,'CopyMetaData');
 %  routine.
 
 if isfield(pinfo,'var_inds')
-   PlotGivenIndices( pinfo, prior, post, truth, metadata);
+    PlotGivenIndices( pinfo, prior, post, truth, metadata);
 elseif isfield(pinfo,'var_names')
-   PlotGivenVariable(pinfo, truth, metadata);
+    PlotGivenVariable(pinfo, truth, metadata);
 end
 
 
@@ -89,78 +89,78 @@ iplot = 0;
 
 for ivar = pinfo.var_inds,
 
-   % Get the data from the netcdf files
+    % Get the data from the netcdf files
 
-   po_ens_mean = get_hyperslab('fname',pinfo.posterior_file, 'varname',pinfo.var, ...
-                 'copyindex',post.ens_mean_index, 'stateindex',ivar, ...
-                 'tindex1',pinfo.posterior_time(1), 'tcount',pinfo.posterior_time(2));
-   pr_ens_mean = get_hyperslab('fname',pinfo.prior_file, 'varname',pinfo.var, ...
-                 'copyindex',prior.ens_mean_index, 'stateindex',ivar, ...
-                 'tindex1',pinfo.prior_time(1), 'tcount',pinfo.prior_time(2));
+    po_ens_mean = get_hyperslab('fname',pinfo.posterior_file, 'varname',pinfo.var, ...
+        'copyindex',post.ens_mean_index, 'stateindex',ivar, ...
+        'tindex1',pinfo.posterior_time(1), 'tcount',pinfo.posterior_time(2));
+    pr_ens_mean = get_hyperslab('fname',pinfo.prior_file, 'varname',pinfo.var, ...
+        'copyindex',prior.ens_mean_index, 'stateindex',ivar, ...
+        'tindex1',pinfo.prior_time(1), 'tcount',pinfo.prior_time(2));
 
-   % Now we paste them together in a clever way to show
-   % the effect of the assimilation
-   ens_mean(1,:) = pr_ens_mean;
-   ens_mean(2,:) = po_ens_mean;
-   a             = ens_mean(:);
+    % Now we paste them together in a clever way to show
+    % the effect of the assimilation
+    ens_mean(1,:) = pr_ens_mean;
+    ens_mean(2,:) = po_ens_mean;
+    a             = ens_mean(:);
 
-   % Plot the true trajectory if it exists; the ens mean; annotate
+    % Plot the true trajectory if it exists; the ens mean; annotate
 
-   iplot = iplot + 1;
-   figure(iplot); clf;
+    iplot = iplot + 1;
+    figure(iplot); clf;
 
-   if ( exist(pinfo.truth_file,'file') == 2 )
+    if ( exist(pinfo.truth_file,'file') == 2 )
 
-     true_trajectory = get_hyperslab('fname',pinfo.truth_file, 'varname',pinfo.var, ...
-                       'copyindex',truth.truth_index, 'stateindex',ivar);
+        true_trajectory = get_hyperslab('fname',pinfo.truth_file, 'varname',pinfo.var, ...
+            'copyindex',truth.truth_index, 'stateindex',ivar);
 
-	 plot(truth.time, true_trajectory, 'k-','linewidth',1.0); hold on;
-	 plot(pinfo.xax, a, 'k-','linewidth',2.0);
-	 legend('truth','ensemble mean')
-   else
-	 plot(pinfo.xax, a, 'k-','linewidth',2.0); hold on;
-	 legend('ensemble mean')
-   end
+        plot(truth.time, true_trajectory, 'k-','linewidth',1.0); hold on;
+        plot(pinfo.xax, a, 'k-','linewidth',2.0);
+        legend('truth','ensemble mean')
+    else
+        plot(pinfo.xax, a, 'k-','linewidth',2.0); hold on;
+        legend('ensemble mean')
+    end
 
-   ylabel(sprintf('''%s'' index %d', pinfo.var, ivar ))
-   xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
-   title(sprintf('%s Trajectories',pinfo.model), ...
-                  'interpreter','none','fontweight','bold')
+    ylabel(sprintf('''%s'' index %d', pinfo.var, ivar ))
+    xlabel(sprintf('model "days" (%d timesteps)',pinfo.time_series_length))
+    title(sprintf('%s Trajectories',pinfo.model), ...
+        'interpreter','none','fontweight','bold')
 
-   % Now check to see if we are overlaying any individual ensemble members.
-   % if pinfo.copyindices = [], nothing happens.
+    % Now check to see if we are overlaying any individual ensemble members.
+    % if pinfo.copyindices = [], nothing happens.
 
-   ens_colors = get(gca,'ColorOrder');   % trying to cycle through colors
-   ncolors = size(ens_colors,1) - 1;     % last one is black, already used.
+    ens_colors = get(gca,'ColorOrder');   % trying to cycle through colors
+    ncolors = size(ens_colors,1) - 1;     % last one is black, already used.
 
-   nmem = 0;
-   for imem = pinfo.copyindices
-      nmem = nmem + 1;
+    nmem = 0;
+    for imem = pinfo.copyindices
+        nmem = nmem + 1;
 
-	  str1 = deblank(metadata(imem,:));
-      copy_index = get_copy_index(pinfo.prior_file, str1);
+        str1 = deblank(metadata(imem,:));
+        copy_index = get_copy_index(pinfo.prior_file, str1);
 
-      po_series  = get_hyperslab('fname',pinfo.posterior_file, 'varname',pinfo.var, ...
-                       'copyindex',copy_index, 'stateindex',ivar, ...
-                       'tindex1',pinfo.posterior_time(1), 'tcount',pinfo.posterior_time(2));
-      pr_series  = get_hyperslab('fname',pinfo.prior_file, 'varname',pinfo.var, ...
-                       'copyindex',copy_index, 'stateindex',ivar, ...
-                       'tindex1',pinfo.prior_time(1), 'tcount',pinfo.prior_time(2));
+        po_series  = get_hyperslab('fname',pinfo.posterior_file, 'varname',pinfo.var, ...
+            'copyindex',copy_index, 'stateindex',ivar, ...
+            'tindex1',pinfo.posterior_time(1), 'tcount',pinfo.posterior_time(2));
+        pr_series  = get_hyperslab('fname',pinfo.prior_file, 'varname',pinfo.var, ...
+            'copyindex',copy_index, 'stateindex',ivar, ...
+            'tindex1',pinfo.prior_time(1), 'tcount',pinfo.prior_time(2));
 
-	  ens_member(1,:) = pr_series;
-	  ens_member(2,:) = po_series;
-	  b               = ens_member(:);
+        ens_member(1,:) = pr_series;
+        ens_member(2,:) = po_series;
+        b               = ens_member(:);
 
-	  hold on;
-	  memcolor = 1 + mod(nmem-1,ncolors); % cycles through colors [1,6]
-	  h = plot(pinfo.xax, b,'linewidth',0.5,'Color',ens_colors(memcolor,:));
+        hold on;
+        memcolor = 1 + mod(nmem-1,ncolors); % cycles through colors [1,6]
+        h = plot(pinfo.xax, b,'linewidth',0.5,'Color',ens_colors(memcolor,:));
 
-	  [~, ~, outh, outm] = legend;
-	  nlines             = length(outm);
-      outm{nlines+1}     = str1;
-	  legend([outh; h],outm,0);
-   end
-   legend boxoff
+        [~, ~, outh, outm] = legend;
+        nlines             = length(outm);
+        outm{nlines+1}     = str1;
+        legend([outh; h],outm,0);
+    end
+    legend boxoff
 
 end
 
@@ -175,96 +175,91 @@ iplot = 0;
 
 for ivar = 1:length(var_names)
 
-   iplot = iplot + 1;
-   figure(iplot); clf;
-   ens_colors = get(gca,'ColorOrder');   % trying to cycle through colors
-   ncolors    = size(ens_colors,1) - 1;  % last one is black, already used.
+    iplot = iplot + 1;
+    figure(iplot); clf;
+    ens_colors = get(gca,'ColorOrder');   % trying to cycle through colors
+    ncolors    = size(ens_colors,1) - 1;  % last one is black, already used.
 
-   vname = var_names{ivar};
+    vname = var_names{ivar};
+    handles = zeros(1,pinfo.copies);
+    strings = cell(1,pinfo.copies);
+    for i = 1:pinfo.copies
 
-   for i = 1:pinfo.copies
+        %% multiple copies can get overlain on same axis
 
-      %% multiple copies can get overlain on same axis
+        imem = pinfo.copyindices(i);
 
-      imem = pinfo.copyindices(i);
+        if isfield(pinfo,'cellindex')
+            pr_series  = get_hyperslab('fname',pinfo.prior_file, 'varname',vname, ...
+                'tindex1',pinfo.prior_time(1), 'tcount',pinfo.prior_time(2), ...
+                'cellindex',pinfo.cellindex, ...
+                'levelindex',pinfo.levelindex, 'copyindex',imem);
+            po_series  = get_hyperslab('fname',pinfo.posterior_file, 'varname',vname, ...
+                'tindex1',pinfo.posterior_time(1), 'tcount',pinfo.posterior_time(2), ...
+                'cellindex',pinfo.cellindex, ...
+                'levelindex',pinfo.levelindex, 'copyindex',imem);
+        else
 
-      if isfield(pinfo,'cellindex')
-         pr_series  = get_hyperslab('fname',pinfo.prior_file, 'varname',vname, ...
-                       'tindex1',pinfo.prior_time(1), 'tcount',pinfo.prior_time(2), ...
-                       'cellindex',pinfo.cellindex, ...
-                       'levelindex',pinfo.levelindex, 'copyindex',imem);
-         po_series  = get_hyperslab('fname',pinfo.posterior_file, 'varname',vname, ...
-                       'tindex1',pinfo.posterior_time(1), 'tcount',pinfo.posterior_time(2), ...
-                       'cellindex',pinfo.cellindex, ...
-                       'levelindex',pinfo.levelindex, 'copyindex',imem);
-      else
+            pr_series  = get_hyperslab('fname',pinfo.prior_file, 'varname',vname, ...
+                'tindex1',pinfo.prior_time(1), 'tcount',pinfo.prior_time(2), ...
+                'lonindex',pinfo.lonindex,'latindex',pinfo.latindex, ...
+                'levelindex',pinfo.levelindex, 'copyindex',imem);
+            po_series  = get_hyperslab('fname',pinfo.posterior_file, 'varname',vname, ...
+                'tindex1',pinfo.posterior_time(1), 'tcount',pinfo.posterior_time(2), ...
+                'lonindex',pinfo.lonindex,'latindex',pinfo.latindex, ...
+                'levelindex',pinfo.levelindex, 'copyindex',imem);
+        end
 
-         pr_series  = get_hyperslab('fname',pinfo.prior_file, 'varname',vname, ...
-                       'tindex1',pinfo.prior_time(1), 'tcount',pinfo.prior_time(2), ...
-                       'lonindex',pinfo.lonindex,'latindex',pinfo.latindex, ...
-                       'levelindex',pinfo.levelindex, 'copyindex',imem);
-         po_series  = get_hyperslab('fname',pinfo.posterior_file, 'varname',vname, ...
-                       'tindex1',pinfo.posterior_time(1), 'tcount',pinfo.posterior_time(2), ...
-                       'lonindex',pinfo.lonindex,'latindex',pinfo.latindex, ...
-                       'levelindex',pinfo.levelindex, 'copyindex',imem);
-      end
+        % Paste Prior/Posterior into one series
 
-      % Paste Prior/Posterior into one series
+        ens_member(1,:) = pr_series;
+        ens_member(2,:) = po_series;
+        b               = ens_member(:);
+        strings{i}      = deblank(metadata(imem,:));
 
-      ens_member(1,:) = pr_series;
-      ens_member(2,:) = po_series;
-      b               = ens_member(:);
+        hold on;
+        memcolor = 1 + mod(i-1,ncolors); % cycles through colors [1,6]
 
-      hold on;
-      memcolor = 1 + mod(i-1,ncolors); % cycles through colors [1,6]
+        if (strcmp(strings{i},'ensemble mean') == 1)
+            handles(i) = plot(pinfo.xax, b,'k-','linewidth',2.0);
+        else
+            handles(i) = plot(pinfo.xax, b,'linewidth',0.5,'Color',ens_colors(memcolor,:));
+        end
 
-      str1 = deblank(metadata(imem,:));
+    end
 
-      if (strcmp(str1,'ensemble mean') == 1)
-	    h = plot(pinfo.xax, b,'k-','linewidth',2.0);
-      else
-	    h = plot(pinfo.xax, b,'linewidth',0.5,'Color',ens_colors(memcolor,:));
-      end
+    %% Plot the true trajectory if it exists
 
-      [~, ~, outh, outm] = legend;
-      nlines             = length(outm);
-      outm{nlines+1}     = str1;
-      legend([outh; h],outm,0);
-   end
+    if ( exist(pinfo.truth_file,'file') == 2 )      % plot it
 
-   %% Plot the true trajectory if it exists
+        if isfield(pinfo,'cellindex')
+            true_trajectory  = get_hyperslab('fname',pinfo.truth_file, 'varname',vname, ...
+                'tindex1',truth.truth_time(1), 'tcount',truth.truth_time(2), ...
+                'cellindex',pinfo.cellindex, ...
+                'levelindex',pinfo.levelindex, 'copyindex',truth.truth_index);
+        else
+            true_trajectory  = get_hyperslab('fname',pinfo.truth_file, 'varname',vname, ...
+                'tindex1',truth.truth_time(1), 'tcount',truth.truth_time(2), ...
+                'lonindex',pinfo.lonindex,'latindex',pinfo.latindex, ...
+                'levelindex',pinfo.levelindex, 'copyindex',truth.truth_index);
+        end
 
-   if ( exist(pinfo.truth_file,'file') == 2 )      % plot it
+        h = plot(truth.time, true_trajectory, 'k-*','linewidth',1.0); hold on;
 
-      if isfield(pinfo,'cellindex')
-         true_trajectory  = get_hyperslab('fname',pinfo.truth_file, 'varname',vname, ...
-                       'tindex1',truth.truth_time(1), 'tcount',truth.truth_time(2), ...
-                       'cellindex',pinfo.cellindex, ...
-                       'levelindex',pinfo.levelindex, 'copyindex',truth.truth_index);
-      else
-         true_trajectory  = get_hyperslab('fname',pinfo.truth_file, 'varname',vname, ...
-                       'tindex1',truth.truth_time(1), 'tcount',truth.truth_time(2), ...
-                       'lonindex',pinfo.lonindex,'latindex',pinfo.latindex, ...
-                       'levelindex',pinfo.levelindex, 'copyindex',truth.truth_index);
-      end
+        strings{length(strings)+1} = 'truth';
+        handles = [handles h];
+    end
 
-      h = plot(truth.time, true_trajectory, 'k-*','linewidth',1.0); hold on;
+    % annotate
 
-      [~, ~, outh, outm] = legend;
-      nlines             = length(outm);
-      outm{nlines+1}     = 'truth';
-      legend([outh; h],outm,0);
-   end
-
-   % annotate
-
-   h = ylabel(sprintf('''%s''  (%.3f,%.3fE) level index %d', vname, ...
-                  pinfo.latitude, pinfo.longitude, pinfo.levelindex ));
-   set(h,'Interpreter','none')
-   xdates(pinfo.time)
-   title(sprintf('%s Trajectories',pinfo.model), ...
-                  'Interpreter','none','fontweight','bold')
-   legend boxoff
+    h = ylabel(sprintf('''%s''  (%.3f,%.3fE) level index %d', vname, ...
+        pinfo.latitude, pinfo.longitude, pinfo.levelindex ));
+    set(h,'Interpreter','none')
+    xdates(pinfo.time)
+    title(sprintf('%s Trajectories',pinfo.model), ...
+        'Interpreter','none','fontweight','bold')
+    legend(handles,strings);
+    legend boxoff
 
 end
 
@@ -272,13 +267,13 @@ end
 
 function xdates(dates)
 if (length(dates) < 5)
-   set(gca,'XTick',dates);
-   datetick('x',31,'keepticks','keeplimits');
-   xlabel('Model date (YYYY-MM-DD HH:MM:SS)')
+    set(gca,'XTick',dates);
+    datetick('x',31,'keepticks','keeplimits');
+    xlabel('Model date (YYYY-MM-DD HH:MM:SS)')
 else
-   datetick('x','mm.dd.HH','keeplimits'); % 'mm/dd'
-   monstr = datestr(dates(1),31);
-   xlabel(sprintf('month.day.HH - %s start',monstr))
+    datetick('x','mm.dd.HH','keeplimits'); % 'mm/dd'
+    monstr = datestr(dates(1),31);
+    xlabel(sprintf('month.day.HH - %s start',monstr))
 end
 
 % <next few lines under version control, do not edit>

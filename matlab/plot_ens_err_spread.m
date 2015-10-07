@@ -82,6 +82,10 @@ switch lower(pinfo.model)
 
       pinfo = GetSqgInfo(pinfo, truth_file, 'PlotEnsErrSpread');
 
+   case {'pop'}
+
+      pinfo = GetPOPInfo(pinfo, truth_file, 'PlotEnsErrSpread');
+
    otherwise
 
       error('model %s not implemented yet', pinfo.model)

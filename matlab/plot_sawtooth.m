@@ -103,6 +103,10 @@ switch lower(pinfo.model)
 
       pinfo = GetSqgInfo(pinfo, prior_file, 'PlotSawtooth');
 
+   case {'pop'}
+
+      pinfo = GetPOPInfo(pinfo, prior_file, 'PlotSawtooth');
+
    otherwise
 
       error('model %s not implemented yet', pinfo.model)

@@ -23,7 +23,7 @@ use   time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, set_time
 use      utilities_mod, only : initialize_utilities, find_namelist_in_file,    &
                                check_namelist_read, nmlfileunit, do_nml_file,   &
                                get_next_filename, error_handler, E_ERR, E_MSG, &
-                               nc_check, find_textfile_dims, do_nml_term
+                               nc_check, find_textfile_dims, do_nml_term, finalize_utilities
 use       location_mod, only : VERTISHEIGHT, set_location
 use   obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq,       &
                                static_init_obs_sequence, init_obs, destroy_obs, &
@@ -52,13 +52,14 @@ character(len=128), parameter :: revdate  = "$Date$"
 integer, parameter ::   num_copies = 1,   &   ! number of copies in sequence
                         num_qc     = 1        ! number of QC entries
 
-character (len=129) :: msgstring, next_infile
-character (len=80)  :: name
+character (len=512) :: msgstring, msgstring2, next_infile
+character (len=NF90_MAX_NAME)  :: name
 character (len=6)   :: subset
 integer :: ncid, varid, nlevels, k, nfiles, num_new_obs, oday, osec, &
            iyear, imonth, iday, ihour, imin, isec, glat, glon, zloc, obs_num, &
-           io, iunit, nobs, filenum, dummy
-logical :: file_exist, first_obs, did_obs, from_list = .false.
+           io, iunit, nobs, filenum, dummy, numrejected
+character (len=1) :: badqc
+logical :: file_exist, first_obs, from_list = .false.
 real(r8) :: hght_miss, refr_miss, azim_miss, oerr,               & 
             qc, lato, lono, hghto, refro, azimo, wght, nx, ny,   & 
             nz, rfict, obsval, phs, obs_val(1), qc_val(1)
@@ -75,15 +76,15 @@ type(time_type)         :: time_obs, prev_time
 !  Declare namelist parameters
 !------------------------------------------------------------------------
 
-integer, parameter :: nmaxlevels = 200   !  max number of observation levels
+integer, parameter :: NMAXLEVELS = 200   !  max number of observation levels
 
-logical  :: local_operator = .true.   ! see html file for more on non/local
-real(r8) :: obs_levels(nmaxlevels) = -1.0_r8
-real(r8) :: ray_ds = 5000.0_r8    ! delta stepsize (m) along ray, nonlocal op
-real(r8) :: ray_htop = 15000.0_r8 ! max height (m) for nonlocal op
-character(len=128) :: gpsro_netcdf_file     = 'cosmic_gps_input.nc'
-character(len=128) :: gpsro_netcdf_filelist = 'cosmic_gps_input_list'
-character(len=128) :: gpsro_out_file        = 'obs_seq.gpsro'
+logical  :: local_operator         = .true.   ! see html file for more on non/local
+real(r8) :: obs_levels(NMAXLEVELS) = -1.0_r8
+real(r8) :: ray_ds                 = 5000.0_r8    ! delta stepsize (m) along ray, nonlocal op
+real(r8) :: ray_htop               = 15000.0_r8 ! max height (m) for nonlocal op
+character(len=256) :: gpsro_netcdf_file     = 'cosmic_gps_input.nc'
+character(len=256) :: gpsro_netcdf_filelist = 'cosmic_gps_input_list'
+character(len=256) :: gpsro_out_file        = 'obs_seq.gpsro'
 
 namelist /convert_cosmic_gps_nml/ obs_levels, local_operator, ray_ds,   &
                                   ray_htop, gpsro_netcdf_file,          &
@@ -110,10 +111,10 @@ if (do_nml_term()) write(     *     , nml=convert_cosmic_gps_nml)
 
 !  count observation levels, make sure observation levels increase from 0
 nlevels = 0
-do k = 1, nmaxlevels
-  if ( obs_levels(k) == -1.0_r8 )  exit
+LEVELLOOP: do k = 1, NMAXLEVELS
+  if ( obs_levels(k) == -1.0_r8 )  exit LEVELLOOP
   nlevels = k
-end do
+end do LEVELLOOP
 do k = 2, nlevels
   if ( obs_levels(k-1) >= obs_levels(k) ) then
     call error_handler(E_ERR, 'convert_cosmic_gps_cdf',       &
@@ -146,30 +147,32 @@ call init_obs(prev_obs, num_copies, num_qc)
 inquire(file=gpsro_out_file, exist=file_exist)
 if ( file_exist ) then
 
-   print *, "found existing obs_seq file, appending to ", trim(gpsro_out_file)
+   write(msgstring, *) "found existing obs_seq file, appending to ", trim(gpsro_out_file)
+   write(msgstring2, *) "adding up to a maximum of ", num_new_obs, " new observations"
+   call error_handler(E_MSG, 'convert_cosmic_gps_cdf', msgstring, &
+                      source, revision, revdate, text2=msgstring2)
    call read_obs_seq(gpsro_out_file, 0, 0, num_new_obs, obs_seq)
 
 else
 
-  print *, "no existing obs_seq file, creating ", trim(gpsro_out_file)
-  print *, "max entries = ", num_new_obs
-  call init_obs_sequence(obs_seq, num_copies, num_qc, num_new_obs)
+   write(msgstring,  *) "no previously existing obs_seq file, creating ", trim(gpsro_out_file)
+   write(msgstring2, *) "with up to a maximum of ", num_new_obs, " observations"
+   call error_handler(E_MSG, 'convert_cosmic_gps_cdf', msgstring, &
+                      source, revision, revdate, text2=msgstring2)
 
-  do k = 1, num_copies
-    call set_copy_meta_data(obs_seq, k, 'COSMIC GPS observation')
-  end do
-  do k = 1, num_qc
-    call set_qc_meta_data(obs_seq, k, 'COSMIC QC')
-  end do
+   call init_obs_sequence(obs_seq, num_copies, num_qc, num_new_obs)
+   call set_copy_meta_data(obs_seq, 1, 'COSMIC GPS observation')
+   call set_qc_meta_data(obs_seq, 1, 'COSMIC QC')
 
 end if
 
 
-did_obs = .false.
-
-! main loop that does either a single file or a list of files
+! main loop that does either a single file or a list of files.
+! the data is currently distributed as a single profile per file.
 
 filenum = 1
+numrejected = 0
+
 fileloop: do      ! until out of files
 
    ! get the single name, or the next name from a list
@@ -181,24 +184,41 @@ fileloop: do      ! until out of files
    endif
    if (next_infile == '') exit fileloop
   
-   !  open the occultation profile, check if it is within the window
+   !  open the next occultation profile
    call nc_check( nf90_open(next_infile, nf90_nowrite, ncid), 'file open', next_infile)
-   call nc_check( nf90_get_att(ncid,nf90_global,'year',  iyear) ,'get_att year')
-   call nc_check( nf90_get_att(ncid,nf90_global,'month', imonth),'get_att month')
-   call nc_check( nf90_get_att(ncid,nf90_global,'day',   iday)  ,'get_att day')
-   call nc_check( nf90_get_att(ncid,nf90_global,'hour',  ihour) ,'get_att hour')
-   call nc_check( nf90_get_att(ncid,nf90_global,'minute',imin)  ,'get_att minute')
-   call nc_check( nf90_get_att(ncid,nf90_global,'second',isec)  ,'get_att second')
+
+   ! this is new with the cosmic 2013 reprocessed obs.  they have included profiles
+   ! which have failed their QC checking but added a global attribute 'bad' which
+   ! is char "1" for bad profiles.   if there is no 'bad' attribute, or if there is one
+   ! and the value is "0", then it is ok to proceed.  otherwise close the file and
+   ! cycle the loop to pick up the next file.
+
+   io = nf90_get_att(ncid,nf90_global,'bad', badqc)
+   if ((io == nf90_noerr) .and. (badqc /= "0")) then
+      ! profile with a bad QC
+      numrejected = numrejected + 1
+      call nc_check( nf90_close(ncid) , 'close file', next_infile)
+      filenum = filenum + 1
+      cycle fileloop 
+   endif
+
+   ! process the profile
+   call nc_check( nf90_get_att(ncid,nf90_global,'year',  iyear) ,'get_att year',   next_infile)
+   call nc_check( nf90_get_att(ncid,nf90_global,'month', imonth),'get_att month',  next_infile)
+   call nc_check( nf90_get_att(ncid,nf90_global,'day',   iday)  ,'get_att day',    next_infile)
+   call nc_check( nf90_get_att(ncid,nf90_global,'hour',  ihour) ,'get_att hour',   next_infile)
+   call nc_check( nf90_get_att(ncid,nf90_global,'minute',imin)  ,'get_att minute', next_infile)
+   call nc_check( nf90_get_att(ncid,nf90_global,'second',isec)  ,'get_att second', next_infile)
    
    time_obs = set_date(iyear, imonth, iday, ihour, imin, isec)
    call get_time(time_obs,  osec, oday)
    
-   call nc_check( nf90_inq_dimid(ncid, "MSL_alt", varid), 'inq dimid MSL_alt')
-   call nc_check( nf90_inquire_dimension(ncid, varid, name, nobs), 'inq dim MSL_alt')
+   call nc_check( nf90_inq_dimid(ncid, "MSL_alt", varid),          'inq dimid MSL_alt', next_infile)
+   call nc_check( nf90_inquire_dimension(ncid, varid, name, nobs), 'inq dim MSL_alt',   next_infile)
    
-   call nc_check( nf90_get_att(ncid,nf90_global,'lon',  glon) ,'get_att lon'  )
-   call nc_check( nf90_get_att(ncid,nf90_global,'lat',  glat) ,'get_att lat'  )
-   call nc_check( nf90_get_att(ncid,nf90_global,'rfict',rfict),'get_att rfict')
+   call nc_check( nf90_get_att(ncid,nf90_global,'lon',  glon) ,'get_att lon',   next_infile)
+   call nc_check( nf90_get_att(ncid,nf90_global,'lat',  glat) ,'get_att lat',   next_infile)
+   call nc_check( nf90_get_att(ncid,nf90_global,'rfict',rfict),'get_att rfict', next_infile)
    rfict = rfict * 1000.0_r8
    
    allocate(hghtp(nobs)) ;  allocate(refrp(nobs))
@@ -207,36 +227,34 @@ fileloop: do      ! until out of files
    allocate(azim(nobs))
    
    ! read the latitude array
-   call nc_check( nf90_inq_varid(ncid, "Lat", varid) ,'inq varid Lat')
-   call nc_check( nf90_get_var(ncid, varid, lat)     ,'get var   Lat')
+   call nc_check( nf90_inq_varid(ncid, "Lat", varid) ,'inq varid Lat', next_infile)
+   call nc_check( nf90_get_var(ncid, varid, lat)     ,'get var   Lat', next_infile)
    
    ! read the latitude array
-   call nc_check( nf90_inq_varid(ncid, "Lon", varid) ,'inq varid Lon')
-   call nc_check( nf90_get_var(ncid, varid, lon)     ,'get var   Lon')
+   call nc_check( nf90_inq_varid(ncid, "Lon", varid) ,'inq varid Lon', next_infile)
+   call nc_check( nf90_get_var(ncid, varid, lon)     ,'get var   Lon', next_infile)
    
    ! read the altitude array
-   call nc_check( nf90_inq_varid(ncid, "MSL_alt", varid) ,'inq varid MSL_alt')
-   call nc_check( nf90_get_var(ncid, varid, hght)        ,'get_var   MSL_alt')
-   call nc_check( nf90_get_att(ncid, varid, '_FillValue', hght_miss) ,'get_att _FillValue MSL_alt')
+   call nc_check( nf90_inq_varid(ncid, "MSL_alt", varid) ,'inq varid MSL_alt', next_infile)
+   call nc_check( nf90_get_var(ncid, varid, hght)        ,'get_var   MSL_alt', next_infile)
+   call nc_check( nf90_get_att(ncid, varid, '_FillValue', hght_miss) ,'get_att _FillValue MSL_alt', next_infile)
    
    ! read the refractivity
-   call nc_check( nf90_inq_varid(ncid, "Ref", varid) ,'inq varid Ref')
-   call nc_check( nf90_get_var(ncid, varid, refr)    ,'get var   Ref')
-   call nc_check( nf90_get_att(ncid, varid, '_FillValue', refr_miss) ,'get_att _FillValue Ref')
+   call nc_check( nf90_inq_varid(ncid, "Ref", varid) ,'inq varid Ref', next_infile)
+   call nc_check( nf90_get_var(ncid, varid, refr)    ,'get var   Ref', next_infile)
+   call nc_check( nf90_get_att(ncid, varid, '_FillValue', refr_miss) ,'get_att _FillValue Ref', next_infile)
    
    ! read the dew-point temperature array
-   call nc_check( nf90_inq_varid(ncid, "Azim", varid) ,'inq varid Azim')
-   call nc_check( nf90_get_var(ncid, varid, azim)     ,'get var   Azim')
-   call nc_check( nf90_get_att(ncid, varid, '_FillValue', azim_miss) ,'get_att _FillValue Azim')
+   call nc_check( nf90_inq_varid(ncid, "Azim", varid) ,'inq varid Azim', next_infile)
+   call nc_check( nf90_get_var(ncid, varid, azim)     ,'get var   Azim', next_infile)
+   call nc_check( nf90_get_att(ncid, varid, '_FillValue', azim_miss) ,'get_att _FillValue Azim', next_infile)
    
-   call nc_check( nf90_close(ncid) , 'close file')
+   call nc_check( nf90_close(ncid) , 'close file', next_infile)
    
    ! convert units here.
    hghtp(:) = hght(:) * 1000.0_r8
    refrp(:) = refr(:) * 1.0e-6_r8
     
-   first_obs = .true.
-   
    obsloop2: do k = 1, nlevels
    
      call interp_height_wght(hght, obs_levels(k), nobs, zloc, wght)
@@ -278,8 +296,8 @@ fileloop: do      ! until out of files
    
        obsval = phs
        oerr   = 0.01_r8 * excess_obserr_percent(hghto * 0.001_r8) * obsval
-   !print *, 'hghto,obsval,perc,err=', hghto, obsval, &
-   !          excess_obserr_percent(hghto * 0.001_r8), oerr
+       !DEBUG print *, 'hghto,obsval,perc,err=', hghto, obsval, &
+       !DEBUG          excess_obserr_percent(hghto * 0.001_r8), oerr
        subset = 'GPSEXC'
    
      end if
@@ -301,8 +319,6 @@ fileloop: do      ! until out of files
 
      obs_num = obs_num+1
 
-     if (.not. did_obs) did_obs = .true.
-   
    end do obsloop2
 
   ! clean up and loop if there is another input file
@@ -312,22 +328,22 @@ fileloop: do      ! until out of files
 
 end do fileloop
 
-! done with main loop.  if we added any obs to the sequence, write it out.
-if (did_obs) then
-!print *, 'ready to write, nobs = ', get_num_obs(obs_seq)
-   if (get_num_obs(obs_seq) > 0) &
-      call write_obs_seq(obs_seq, gpsro_out_file)
+! done with main loop.  if we added any new obs to the sequence, write it out.
+if (obs_num > 1) call write_obs_seq(obs_seq, gpsro_out_file)
 
-   ! minor stab at cleanup, in the off chance this will someday get turned
-   ! into a subroutine in a module.  probably not all that needs to be done,
-   ! but a start.
-   call destroy_obs(obs)
-! if obs == prev_obs then you can't delete the same obs twice.
-! buf if they differ, then it's a leak.  for now, don't delete prev
-! since the program is exiting here anyway.
-   !call destroy_obs(prev_obs)
-   if (get_num_obs(obs_seq) > 0) call destroy_obs_sequence(obs_seq)
+! cleanup memory
+call destroy_obs_sequence(obs_seq)
+call destroy_obs(obs)   ! do not destroy prev_obs, which is same as obs
+
+write(msgstring, *) 'processed ', filenum-1, ' total profiles'
+call error_handler(E_MSG, 'convert_cosmic_gps_obs', msgstring, source, revision, revdate)
+
+if (numrejected > 0) then
+   write(msgstring,  *) numrejected, ' profiles rejected for bad incoming quality control'
+   call error_handler(E_MSG, 'convert_cosmic_gps_obs', msgstring, source, revision, revdate)
 endif
+
+call finalize_utilities()
 
 ! END OF MAIN ROUTINE
 

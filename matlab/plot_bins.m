@@ -87,6 +87,10 @@ switch lower(pinfo.model)
 
       pinfo = GetMPAS_ATMInfo(pinfo, diagn_file, 'PlotBins');
 
+   case {'pop'}
+
+      pinfo = GetPOPInfo(pinfo, diagn_file, 'PlotBins');
+
    case {'sqg'}
 
       pinfo = GetSqgInfo(pinfo, diagn_file, 'PlotBins');
