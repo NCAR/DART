@@ -636,15 +636,16 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
     call getvar_real_2d(ncid, "wsSigW", n, nsig, wspd, wspd_miss)
 
     if (use_input_qc) then
-       call get_or_fill_QC_2d(ncid, "htSigWQCR", n, nsig, qc_wdir)
+       call get_or_fill_QC_2d(ncid, "htSigWQCR", n, nsig, qc_hght)
        call get_or_fill_QC_2d(ncid, "wdSigWQCR", n, nsig, qc_wdir)
        call get_or_fill_QC_2d(ncid, "wsSigWQCR", n, nsig, qc_wspd)
     else
+       qc_hght = 0
        qc_wdir = 0
        qc_wspd = 0
     endif
 
-    do k = 1, nsig
+    levelloop: do k = 1, nsig
 
       !  add data to the observation sequence here.
       if ( wdir(k) /= wdir_miss .and. qc_wdir(k) == 0 .and. &
@@ -653,10 +654,12 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
          ! make sure elevation is a reasonable value if height comes
          ! in as zero and use it instead of 0.0
-         if (hght(k) == 0.0 .and. elev < 9999.0) then
-            hght(k) = elev
-         else
-            cycle
+         if (hght(k) == 0.0) then
+            if (elev < 9999.0) then
+               hght(k) = elev
+            else
+               cycle levelloop
+            endif
          endif
 
         call wind_dirspd_to_uv(wdir(k), wspd(k), uwnd, vwnd)
@@ -678,7 +681,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
       endif
 
-    end do
+    end do levelloop
     deallocate(hght, wdir, wspd, qc_hght, qc_wdir, qc_wspd)
 
   endif
