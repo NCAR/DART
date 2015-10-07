@@ -82,7 +82,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs 
 type(time_type)         :: obs_time, prev_time
-type(time_type)         :: base_time, time_diff
+type(time_type)         :: time_diff
 
 integer  :: ibin, nr, io, obstype
 integer  :: iyear, imonth, iday, ihour, imin
@@ -375,19 +375,22 @@ DAYLOOP: do idd = start_day, start_day + total_days - 1
             lon = tpw_avg%lon / real(num_avg)
             tpw = tpw_avg%tpw_value / real(num_avg)
 
+            ! sec_diff is the total running difference, in seconds, of all
+            ! the obs from the base time.  divide by the obs count to get 
+            ! the average diff from the base time.
             sec_diff = nint(real(sec_diff) / real(num_avg))
             if (sec_diff > 0) then
-               obs_time = increment_time(base_time, sec_diff)
+               obs_time = increment_time(tpw_base%time, sec_diff)
             else if (sec_diff < 0) then
-               obs_time = decrement_time(base_time, sec_diff)
+               obs_time = decrement_time(tpw_base%time, sec_diff)
             else
-               obs_time = base_time
+               obs_time = tpw_base%time
             endif
          else
-            lat = tpw_avg%lat
-            lon = tpw_avg%lon
-            tpw = tpw_avg%tpw_value
-            obs_time = base_time
+            lat = tpw_base%lat
+            lon = tpw_base%lon
+            tpw = tpw_base%tpw_value
+            obs_time = tpw_base%time
          endif
  
          ! at this point longitudes are between 0 and 720; subtract
