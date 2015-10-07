@@ -335,7 +335,7 @@ if (obs_num > 1) call write_obs_seq(obs_seq, gpsro_out_file)
 call destroy_obs_sequence(obs_seq)
 call destroy_obs(obs)   ! do not destroy prev_obs, which is same as obs
 
-write(msgstring, *) 'processed ', filenum, ' total profiles'
+write(msgstring, *) 'processed ', filenum-1, ' total profiles'
 call error_handler(E_MSG, 'convert_cosmic_gps_obs', msgstring, source, revision, revdate)
 
 if (numrejected > 0) then
