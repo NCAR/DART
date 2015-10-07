@@ -50,6 +50,7 @@ use      obs_kind_mod, only : METAR_U_10_METER_WIND, METAR_V_10_METER_WIND, &
                               METAR_TEMPERATURE_2_METER, METAR_SPECIFIC_HUMIDITY_2_METER, & 
                               METAR_DEWPOINT_2_METER, METAR_RELATIVE_HUMIDITY_2_METER, &
                               METAR_ALTIMETER                
+use             sort_mod,  only : index_sort
 use  obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
                                create_3d_obs, getvar_int, getdimlen, set_missing_name
 
@@ -82,9 +83,9 @@ logical  :: file_exist, first_obs
 real(r8) :: alti_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
             vwnd, palt, qobs, qsat, rh, oerr, pres, qerr, qc
 
-integer,  allocatable :: tobs(:), tobu(:)
+integer,  allocatable :: tobs(:), tused(:), used(:), sorted_used(:)
 real(r8), allocatable :: lat(:), lon(:), elev(:), alti(:), tair(:), & 
-                         tdew(:), wdir(:), wspd(:), latu(:), lonu(:)
+                         tdew(:), wdir(:), wspd(:)
 integer,  allocatable :: qc_alti(:), qc_tair(:), qc_tdew(:), qc_wdir(:), qc_wspd(:)
 
 type(obs_sequence_type) :: obs_seq
@@ -108,11 +109,11 @@ call getdimlen(ncid, "recNum", nobs)
 call set_missing_name("missing_value")
 
 allocate( lat(nobs))  ;  allocate( lon(nobs))
-allocate(latu(nobs))  ;  allocate(lonu(nobs))
 allocate(elev(nobs))  ;  allocate(alti(nobs))
 allocate(tair(nobs))  ;  allocate(tdew(nobs))
 allocate(wdir(nobs))  ;  allocate(wspd(nobs))
-allocate(tobs(nobs))  ;  allocate(tobu(nobs))
+allocate(tobs(nobs))  ;  allocate(tused(nobs))
+allocate(used(nobs))  ;  allocate(sorted_used(nobs))
 
 nvars = 4
 if (include_specific_humidity) nvars = nvars + 1
@@ -177,27 +178,41 @@ endif
 qc = 1.0_r8
 
 nused = 0
-obsloop: do n = 1, nobs
+obsloop1: do n = 1, nobs
 
   ! check to make sure this observation has not been used
   call getvar_char(ncid, "reportType", n, rtype)
-  if ( rtype /= 'METAR' .and. exclude_special )  cycle obsloop
-
-  ! compute time of observation
-  time_obs = increment_time(comp_day0, tobs(n))
+  if ( rtype /= 'METAR' .and. exclude_special )  cycle obsloop1
 
   ! check the lat/lon values to see if they are ok
-  if ( lat(n) >  90.0_r8 .or. lat(n) <  -90.0_r8 ) cycle obsloop
-  if ( lon(n) > 180.0_r8 .or. lon(n) < -180.0_r8 ) cycle obsloop
+  if ( lat(n) >  90.0_r8 .or. lat(n) <  -90.0_r8 ) cycle obsloop1
+  if ( lon(n) > 180.0_r8 .or. lon(n) < -180.0_r8 ) cycle obsloop1
 
   if ( lon(n) < 0.0_r8 )  lon(n) = lon(n) + 360.0_r8
 
   ! Check for duplicate observations
   do i = 1, nused
-    if ( lon(n) == lonu(i) .and. &
-         lat(n) == latu(i) .and. &
-        tobs(n) == tobu(i) ) cycle obsloop
+    if ( lon(n) == lon(used(i)) .and. &
+         lat(n) == lat(used(i)) .and. &
+        tobs(n) == tobs(used(i)) ) cycle obsloop1
   end do
+
+  nused = nused + 1
+  used(nused) = n
+  tused(nused) = tobs(n)
+
+enddo obsloop1
+
+! sort obs by time
+call index_sort(tused, sorted_used, nused)
+
+obsloop2: do i = 1, nused
+
+  ! get the next unique observation in sorted time order
+  n = used(sorted_used(i))
+
+  ! compute time of observation
+  time_obs = increment_time(comp_day0, tobs(n))
 
   palt = pres_alt_to_pres(elev(n)) * 0.01_r8
 
@@ -264,7 +279,7 @@ obsloop: do n = 1, nobs
     ! more than a degree larger, skip it completely.  if it is
     ! less, set them equal and continue.
     if (tdew(n) > tair(n)) then
-       if (tdew(n) > tair(n) + 1.0_r8) goto 100
+       if (tdew(n) > tair(n) + 1.0_r8) cycle obsloop2
        tdew(n) = tair(n)
     endif
 
@@ -334,14 +349,7 @@ obsloop: do n = 1, nobs
 
   endif  ! quality control/missing check on tair, tdew
 
-100 continue
-
-  nused = nused + 1
-  latu(nused) =  lat(n)
-  lonu(nused) =  lon(n)
-  tobu(nused) = tobs(n)
-
-end do obsloop
+end do obsloop2
 
 ! need to wait to close file because in the loop it queries the
 ! report types.

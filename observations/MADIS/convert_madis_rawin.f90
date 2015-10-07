@@ -59,6 +59,7 @@ use          obs_kind_mod, only : RADIOSONDE_U_WIND_COMPONENT,      &
                                   RADIOSONDE_RELATIVE_HUMIDITY,     &
                                   RADIOSONDE_DEWPOINT,              &
                                   RADIOSONDE_SURFACE_ALTIMETER 
+use             sort_mod,  only : index_sort
 use     obs_utilities_mod, only : add_obs_to_seq, create_3d_obs, &
                                   getdimlen, getvar_int, set_missing_name
 
@@ -72,18 +73,18 @@ character(len=129), parameter :: rawin_out_file = 'obs_seq.rawin'
 integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
                       num_qc     = 1        ! number of QC entries
 
-integer :: oday, osec, nman, nsig, nsound, nused, io, iunit, & 
+integer :: oday, osec, nsig, nsound, nused, io, iunit, & 
            nmaxml, nmaxsw, nmaxst, maxobs, nvars_man, nvars_sigt, k, n, i, ncid
 
-integer, allocatable :: obscnt(:)
+integer, allocatable :: obscnt(:), used(:), sorted_used(:), tused(:), nman(:)
+real(r8), allocatable :: lon(:), lat(:), elev(:), otime(:)
 
 logical :: fexist, first_obs
 
-real(r8) :: otime, lat, lon, elev, uwnd, vwnd, qobs, qsat, dptk, oerr, &
+real(r8) :: uwnd, vwnd, qobs, qsat, dptk, oerr, &
             pres_miss, wdir_miss, wspd_miss, tair_miss, tdew_miss, prespa, & 
             qc, altim, rh, qerr, hght_miss
 real(r8), parameter   :: HGHT_THRESHOLD = 40000.0_r8   
-real(r8), allocatable :: latu(:), lonu(:)
 
 real(r8), allocatable :: pres(:), wdir(:), wspd(:), tair(:), tdew(:), hght(:)
 integer,  allocatable :: qc_pres(:), qc_wdir(:), qc_wspd(:), qc_tair(:), qc_tdew(:), qc_hght(:)
@@ -163,13 +164,15 @@ call getdimlen(ncid, "recNum", nsound)
 call set_missing_name("missing_value")
 
 allocate(obscnt(nsound))  
-allocate(latu(nsound))  ; allocate(lonu(nsound))
+allocate(lon(nsound), lat(nsound), elev(nsound), otime(nsound))
+allocate(nman(nsound), used(nsound), sorted_used(nsound), tused(nsound))
+
 nmaxml = 0  ;  nmaxsw = 0  ;  nmaxst = 0
 
 call getvar_int(ncid, "numMand", obscnt)
 do n = 1, nsound 
   if ( obscnt(n) > nmaxml .and. obscnt(n) < 25 )  nmaxml = obscnt(n)
-end do
+enddo
 
 if ( do_significant_level_winds ) then
   if ( wind_use_vert_pressure ) then
@@ -179,14 +182,14 @@ if ( do_significant_level_winds ) then
   endif
   do n = 1, nsound
     if ( obscnt(n) > nmaxsw .and. obscnt(n) < 150 )  nmaxsw = obscnt(n)
-  end do
+  enddo
 endif
 
 if ( do_significant_level_temps ) then
   call getvar_int(ncid, "numSigT", obscnt)
   do n = 1, nsound
     if ( obscnt(n) > nmaxst .and. obscnt(n) < 150 )  nmaxst = obscnt(n)
-  end do
+  enddo
 endif
 
 nvars_man = 4
@@ -224,10 +227,10 @@ else
   call init_obs_sequence(obs_seq, num_copies, num_qc, maxobs)
   do n = 1, num_copies
     call set_copy_meta_data(obs_seq, n, 'MADIS observation')
-  end do
+  enddo
   do n = 1, num_qc
     call set_qc_meta_data(obs_seq, n, 'Data QC')
-  end do
+  enddo
 
 endif
 
@@ -236,73 +239,86 @@ endif
 qc = 1.0_r8
 
 nused = 0
-sondeloop : do n = 1, nsound !  loop over all soundings in the file 
+sondeloop1 : do n = 1, nsound !  loop over all soundings in the file 
 
-  call getvar_real_1d_1val(ncid, "staLat",  n, lat  )
-  call getvar_real_1d_1val(ncid, "staLon",  n, lon  )
-  call getvar_real_1d_1val(ncid, "staElev", n, elev )
-  call getvar_int_1d_1val (ncid, "numMand", n, nman )
-  call getvar_real_1d_1val(ncid, "synTime", n, otime)  !! , time_miss)
+  call getvar_real_1d_1val(ncid, "staLat",  n, lat(n)  )
+  call getvar_real_1d_1val(ncid, "staLon",  n, lon(n)  )
+  call getvar_real_1d_1val(ncid, "staElev", n, elev(n) )
+  call getvar_int_1d_1val (ncid, "numMand", n, nman(n) )
+  call getvar_real_1d_1val(ncid, "synTime", n, otime(n))  !! , time_miss)
   ! the original code had a line to get the fill value here but it
   ! was commented out.  is there one?  do we need it?
 
-  if (nman < 0 .or. nman > nmaxml) cycle sondeloop
+  if (nman(n) < 0 .or. nman(n) > nmaxml) cycle sondeloop1
 
-  if ( otime < 0.0_r8 ) cycle sondeloop
-
-  ! compute time of observation
-  time_obs = increment_time(comp_day0, nint(otime))
+  if ( otime(n) < 0.0_r8 ) cycle sondeloop1
 
   ! check the lat/lon values to see if they are ok
-  if ( lat >  90.0_r8 .or. lat <  -90.0_r8 ) cycle sondeloop
-  if ( lon > 180.0_r8 .or. lon < -180.0_r8 ) cycle sondeloop
-
-  ! change lon from -180 to 180 into 0-360
-  if (lon < 0.0_r8) lon = lon + 360.0_r8
+  if ( lat(n) >  90.0_r8 .or. lat(n) <  -90.0_r8 ) cycle sondeloop1
+  if ( lon(n) > 180.0_r8 .or. lon(n) < -180.0_r8 ) cycle sondeloop1
 
   ! Check for duplicate observations
   do i = 1, nused
-    if ( lon == lonu(i) .and. &
-         lat == latu(i) ) cycle sondeloop
-  end do
+    if ( lon(n) == lon(used(i)) .and. &
+         lat(n) == lat(used(i)) ) cycle sondeloop1
+  enddo
 
+  nused = nused + 1
+  used(nused) = n
+  tused(nused) = nint(otime(n))
+
+enddo sondeloop1
+
+! sort by obs time
+call index_sort(tused, sorted_used, nused)
+
+sondeloop2: do i = 1, nused
+
+  ! get the next unique observation in sorted time order
+  n = used(sorted_used(i))
+
+  ! change lon from -180 to 180 into 0-360
+  if (lon(n) < 0.0_r8) lon(n) = lon(n) + 360.0_r8
+
+  ! compute time of observation
+  time_obs = increment_time(comp_day0, nint(otime(n)))
 
   ! extract actual time of observation in file into oday, osec.
   call get_time(time_obs, osec, oday)
 
-  if (nman > 0) then
-    allocate(pres(nman))  ;  allocate(tair(nman))  ;  allocate(tdew(nman))
-    allocate(wdir(nman))  ;  allocate(wspd(nman))
+  if (nman(n) > 0) then
+    allocate(pres(nman(n)))  ;  allocate(tair(nman(n)))  ;  allocate(tdew(nman(n)))
+    allocate(wdir(nman(n)))  ;  allocate(wspd(nman(n)))
   
-    allocate(qc_pres(nman))  ;  allocate(qc_tair(nman))  ;  allocate(qc_tdew(nman))
-    allocate(qc_wdir(nman))  ;  allocate(qc_wspd(nman))
+    allocate(qc_pres(nman(n)))  ;  allocate(qc_tair(nman(n)))  ;  allocate(qc_tdew(nman(n)))
+    allocate(qc_wdir(nman(n)))  ;  allocate(qc_wspd(nman(n)))
   
-    call getvar_real_2d(ncid, "prMan", n, nman, pres, pres_miss)
-    call getvar_real_2d(ncid, "tpMan", n, nman, tair, tair_miss)
-    call getvar_real_2d(ncid, "tdMan", n, nman, tdew, tdew_miss)
-    call getvar_real_2d(ncid, "wdMan", n, nman, wdir, wdir_miss)
-    call getvar_real_2d(ncid, "wsMan", n, nman, wspd, wspd_miss)
+    call getvar_real_2d(ncid, "prMan", n, nman(n), pres, pres_miss)
+    call getvar_real_2d(ncid, "tpMan", n, nman(n), tair, tair_miss)
+    call getvar_real_2d(ncid, "tdMan", n, nman(n), tdew, tdew_miss)
+    call getvar_real_2d(ncid, "wdMan", n, nman(n), wdir, wdir_miss)
+    call getvar_real_2d(ncid, "wsMan", n, nman(n), wspd, wspd_miss)
   
     ! if user says to use QC, read them in or fill if not there
     if (use_input_qc) then
-       call get_or_fill_QC_2d(ncid, "prManQCR", n, nman, qc_pres)
-       call get_or_fill_QC_2d(ncid, "tpManQCR", n, nman, qc_tair)
-       call get_or_fill_QC_2d(ncid, "tdManQCR", n, nman, qc_tdew)
-       call get_or_fill_QC_2d(ncid, "wdManQCR", n, nman, qc_wdir)
-       call get_or_fill_QC_2d(ncid, "wsManQCR", n, nman, qc_wspd)
+       call get_or_fill_QC_2d(ncid, "prManQCR", n, nman(n), qc_pres)
+       call get_or_fill_QC_2d(ncid, "tpManQCR", n, nman(n), qc_tair)
+       call get_or_fill_QC_2d(ncid, "tdManQCR", n, nman(n), qc_tdew)
+       call get_or_fill_QC_2d(ncid, "wdManQCR", n, nman(n), qc_wdir)
+       call get_or_fill_QC_2d(ncid, "wsManQCR", n, nman(n), qc_wspd)
     else
        qc_pres = 0
        qc_tair = 0 ;  qc_tdew = 0
        qc_wdir = 0 ;  qc_wspd = 0
     endif
   
-    if ( pres(1) /= pres_miss .and. qc_pres(1) == 0 .and. elev < 9999.0) then
+    if ( pres(1) /= pres_miss .and. qc_pres(1) == 0 .and. elev(n) < 9999.0) then
   
-      altim = compute_altimeter(pres(1), elev)
-      oerr  = rawin_pres_error(pres_alt_to_pres(elev) * 0.01_r8)
+      altim = compute_altimeter(pres(1), elev(n))
+      oerr  = rawin_pres_error(pres_alt_to_pres(elev(n)) * 0.01_r8)
       if ( altim >= 890.0_r8 .and. altim <= 1100.0_r8 .and. oerr /= missing_r8 ) then
   
-        call create_3d_obs(lat, lon, elev, VERTISSURFACE, altim, &
+        call create_3d_obs(lat(n), lon(n), elev(n), VERTISSURFACE, altim, &
                            RADIOSONDE_SURFACE_ALTIMETER, oerr, oday, osec, qc, obs)
         call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
   
@@ -310,7 +326,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
   
     endif
   
-    do k = 2, nman   ! obtain the mandatory level data
+    do k = 2, nman(n)   ! obtain the mandatory level data
   
       prespa = pres(k) * 100.0_r8
   
@@ -322,11 +338,11 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
         if ( abs(uwnd) <= 150.0_r8 .and. & 
              abs(vwnd) <= 150.0_r8 .and. oerr /= missing_r8 ) then
   
-          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, uwnd, &
+          call create_3d_obs(lat(n), lon(n), prespa, VERTISPRESSURE, uwnd, &
                              RADIOSONDE_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
           call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
    
-          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, vwnd, &
+          call create_3d_obs(lat(n), lon(n), prespa, VERTISPRESSURE, vwnd, &
                              RADIOSONDE_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
           call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
   
@@ -340,7 +356,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
         if ( tair(k) >= 180.0_r8 .and. &
              tair(k) <= 330.0_r8 .and. oerr /= missing_r8 ) then
   
-          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, tair(k), &
+          call create_3d_obs(lat(n), lon(n), prespa, VERTISPRESSURE, tair(k), &
                              RADIOSONDE_TEMPERATURE, oerr, oday, osec, qc, obs)
           call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
   
@@ -379,7 +395,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
           if ( qobs >  0.0_r8  .and. &
                qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
     
-            call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, qobs, &
+            call create_3d_obs(lat(n), lon(n), prespa, VERTISPRESSURE, qobs, &
                                RADIOSONDE_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
             call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
     
@@ -399,7 +415,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
           if ( rh >  0.0_r8 .and. &
                rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
   
-            call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, rh, &
+            call create_3d_obs(lat(n), lon(n), prespa, VERTISPRESSURE, rh, &
                                RADIOSONDE_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
             call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
           endif
@@ -414,7 +430,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
           if ( rh >  0.0_r8 .and. &
                rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
   
-            call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, dptk, &
+            call create_3d_obs(lat(n), lon(n), prespa, VERTISPRESSURE, dptk, &
                                RADIOSONDE_DEWPOINT, oerr, oday, osec, qc, obs)
             call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
   
@@ -426,7 +442,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
   
 100 continue
 
-    end do
+    enddo
 
     deallocate(pres, wdir, wspd, tair, tdew, qc_pres, qc_wdir, qc_wspd, qc_tair, qc_tdew)
   endif
@@ -465,7 +481,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
         if ( tair(k) >= 180.0_r8 .and. &
              tair(k) <= 330.0_r8 .and. oerr /= missing_r8 ) then
 
-          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, tair(k), &
+          call create_3d_obs(lat(n), lon(n), prespa, VERTISPRESSURE, tair(k), &
                              RADIOSONDE_TEMPERATURE, oerr, oday, osec, qc, obs)
           call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
   
@@ -503,7 +519,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
           if ( qobs >  0.0_r8  .and. &
                qobs <= 0.07_r8 .and. qerr /= missing_r8 ) then
   
-            call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, qobs, &
+            call create_3d_obs(lat(n), lon(n), prespa, VERTISPRESSURE, qobs, &
                                RADIOSONDE_SPECIFIC_HUMIDITY, oerr, oday, osec, qc, obs)
             call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
   
@@ -523,7 +539,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
           if ( rh >  0.0_r8 .and. &
                rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
 
-            call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, rh, &
+            call create_3d_obs(lat(n), lon(n), prespa, VERTISPRESSURE, rh, &
                                RADIOSONDE_RELATIVE_HUMIDITY, oerr, oday, osec, qc, obs)
             call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
   
@@ -539,7 +555,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
           if ( rh >  0.0_r8 .and. &
                rh <= 1.5_r8 .and. oerr /= missing_r8 ) then
 
-            call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, dptk, &
+            call create_3d_obs(lat(n), lon(n), prespa, VERTISPRESSURE, dptk, &
                                RADIOSONDE_DEWPOINT, oerr, oday, osec, qc, obs)
             call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
   
@@ -551,7 +567,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
 200 continue
 
-    end do
+    enddo
     deallocate(pres, tair, tdew, qc_pres, qc_tair, qc_tdew)
 
   endif
@@ -569,12 +585,12 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
     allocate(qc_pres(nsig))  ;  allocate(qc_wdir(nsig))  ;  allocate(qc_wspd(nsig))
 
     !  read significant level data
-    call getvar_real_2d(ncid, "prSigW", n, nsig, pres, pres_miss)
+    call getvar_real_2d(ncid,   "prSigW", n, nsig, pres, pres_miss)
     call getvar_real_2d(ncid, "wdSigPrW", n, nsig, wdir, wdir_miss)
     call getvar_real_2d(ncid, "wsSigPrW", n, nsig, wspd, wspd_miss)
 
     if (use_input_qc) then
-       call get_or_fill_QC_2d(ncid, "prSigWQCR", n, nsig, qc_pres)
+       call get_or_fill_QC_2d(ncid,   "prSigWQCR", n, nsig, qc_pres)
        call get_or_fill_QC_2d(ncid, "wdSigPrWQCR", n, nsig, qc_wdir)
        call get_or_fill_QC_2d(ncid, "wsSigPrWQCR", n, nsig, qc_wspd)
     else
@@ -600,11 +616,11 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
         if ( abs(uwnd) <= 150.0_r8 .and. &
              abs(vwnd) <= 150.0_r8 .and. oerr /= missing_r8 ) then
 
-          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, uwnd, &
+          call create_3d_obs(lat(n), lon(n), prespa, VERTISPRESSURE, uwnd, &
                              RADIOSONDE_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
           call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
-          call create_3d_obs(lat, lon, prespa, VERTISPRESSURE, vwnd, &
+          call create_3d_obs(lat(n), lon(n), prespa, VERTISPRESSURE, vwnd, &
                              RADIOSONDE_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
           call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
@@ -612,7 +628,7 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
       endif
 
-    end do
+    enddo
 
     deallocate(pres, wdir, wspd, qc_pres, qc_wdir, qc_wspd)
 
@@ -636,15 +652,16 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
     call getvar_real_2d(ncid, "wsSigW", n, nsig, wspd, wspd_miss)
 
     if (use_input_qc) then
-       call get_or_fill_QC_2d(ncid, "htSigWQCR", n, nsig, qc_wdir)
+       call get_or_fill_QC_2d(ncid, "htSigWQCR", n, nsig, qc_hght)
        call get_or_fill_QC_2d(ncid, "wdSigWQCR", n, nsig, qc_wdir)
        call get_or_fill_QC_2d(ncid, "wsSigWQCR", n, nsig, qc_wspd)
     else
+       qc_hght = 0
        qc_wdir = 0
        qc_wspd = 0
     endif
 
-    do k = 1, nsig
+    levelloop: do k = 1, nsig
 
       !  add data to the observation sequence here.
       if ( wdir(k) /= wdir_miss .and. qc_wdir(k) == 0 .and. &
@@ -653,10 +670,12 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
 
          ! make sure elevation is a reasonable value if height comes
          ! in as zero and use it instead of 0.0
-         if (hght(k) == 0.0 .and. elev < 9999.0) then
-            hght(k) = elev
-         else
-            cycle
+         if (hght(k) == 0.0) then
+            if (elev(n) < 9999.0) then
+               hght(k) = elev(n)
+            else
+               cycle levelloop
+            endif
          endif
 
         call wind_dirspd_to_uv(wdir(k), wspd(k), uwnd, vwnd)
@@ -666,28 +685,23 @@ sondeloop : do n = 1, nsound !  loop over all soundings in the file
         if ( abs(uwnd) <= 150.0_r8 .and. & 
              abs(vwnd) <= 150.0_r8 .and. oerr /= missing_r8 ) then
 
-          call create_3d_obs(lat, lon, hght(k), VERTISHEIGHT, uwnd, &
+          call create_3d_obs(lat(n), lon(n), hght(k), VERTISHEIGHT, uwnd, &
                              RADIOSONDE_U_WIND_COMPONENT, oerr, oday, osec, qc, obs)
           call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
-          call create_3d_obs(lat, lon, hght(k), VERTISHEIGHT, vwnd, &
+          call create_3d_obs(lat(n), lon(n), hght(k), VERTISHEIGHT, vwnd, &
                              RADIOSONDE_V_WIND_COMPONENT, oerr, oday, osec, qc, obs)
           call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
-
         endif
-
       endif
 
-    end do
+    enddo levelloop
+
     deallocate(hght, wdir, wspd, qc_hght, qc_wdir, qc_wspd)
 
   endif
 
-  nused = nused + 1
-  latu(nused) = lat
-  lonu(nused) = lon
-
-enddo sondeloop
+enddo sondeloop2
 
 ! have to close at end of loop, unlike other versions of the madis converters
 call nc_check( nf90_close(ncid), &

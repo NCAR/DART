@@ -79,9 +79,9 @@ logical  :: file_exist, first_obs
 real(r8) :: alti_miss, tair_miss, tdew_miss, wdir_miss, wspd_miss, uwnd, &
             vwnd, palt, qobs, qsat, rh, oerr, pres, qerr, qc
 
-integer,  allocatable :: tobs(:), tobu(:), indu(:), sorted_indu(:)
+integer,  allocatable :: tobs(:), tused(:), used(:), sorted_used(:)
 real(r8), allocatable :: lat(:), lon(:), elev(:), alti(:), tair(:), & 
-                         tdew(:), wdir(:), wspd(:), latu(:), lonu(:)
+                         tdew(:), wdir(:), wspd(:)
 integer,  allocatable :: qc_alti(:), qc_tair(:), qc_tdew(:), qc_wdir(:), qc_wspd(:)
   
 type(obs_sequence_type) :: obs_seq
@@ -108,12 +108,11 @@ call getdimlen(ncid, "recNum", nobs)
 call set_missing_name("missing_value")
 
 allocate( lat(nobs))  ;  allocate( lon(nobs))
-allocate(latu(nobs))  ;  allocate(lonu(nobs))
 allocate(elev(nobs))  ;  allocate(alti(nobs))
 allocate(tair(nobs))  ;  allocate(tdew(nobs))
 allocate(wdir(nobs))  ;  allocate(wspd(nobs))
-allocate(tobs(nobs))  ;  allocate(tobu(nobs))
-allocate(indu(nobs))  ;  allocate(sorted_indu(nobs))
+allocate(tobs(nobs))  ;  allocate(tused(nobs))
+allocate(used(nobs))  ;  allocate(sorted_used(nobs))
 
 nvars = 4
 if (include_specific_humidity) nvars = nvars + 1
@@ -194,26 +193,25 @@ obsloop1: do n = 1, nobs
 
   ! check for duplicate observations
   do i=1, nused
-    if ( lon(n) == lonu(i) .and. &
-         lat(n) == latu(i) .and. &
-        tobs(n) == tobu(i) ) cycle obsloop1
+    if ( lon(n) == lon(used(i)) .and. &
+         lat(n) == lat(used(i)) .and. &
+        tobs(n) == tobs(used(i)) ) cycle obsloop1
   enddo
 
   nused = nused + 1
-  indu(nused) =  n
-  latu(nused) =  lat(n)
-  lonu(nused) =  lon(n)
-  tobu(nused) = tobs(n)
+  used(nused) =  n
+  tused(nused) = tobs(n)
 
 enddo obsloop1
 
 ! sort into time order
-call index_sort(tobu, sorted_indu, nused)
-
+call index_sort(tused, sorted_used, nused)
 
 obsloop2: do i = 1, nused
 
-  n = indu(sorted_indu(i))
+  ! get the next unique observation in sorted time order
+  n = used(sorted_used(i))
+
 
   ! compute time of observation
   time_obs = increment_time(comp_day0, tobs(n))
@@ -283,7 +281,7 @@ obsloop2: do i = 1, nused
     ! more than a degree larger, skip it completely.  if it is
     ! less, set them equal and continue.
     if (tdew(n) > tair(n)) then
-       if (tdew(n) > tair(n) + 1.0_r8) goto 100
+       if (tdew(n) > tair(n) + 1.0_r8) cycle obsloop2
        tdew(n) = tair(n)
     endif
 
@@ -352,8 +350,6 @@ obsloop2: do i = 1, nused
     endif
 
   endif  ! quality control/missing check on tair, tdew
-
-100 continue
 
 end do obsloop2
 

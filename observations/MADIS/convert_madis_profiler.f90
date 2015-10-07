@@ -39,6 +39,7 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                               set_copy_meta_data, set_qc_meta_data
 use       obs_err_mod, only : prof_wind_error
 use      obs_kind_mod, only : PROFILER_U_WIND_COMPONENT, PROFILER_V_WIND_COMPONENT
+use          sort_mod, only : index_sort
 use obs_utilities_mod, only : getvar_real, get_or_fill_QC, add_obs_to_seq, &
                               create_3d_obs, getvar_int, getdimlen, getvar_real_2d, &
                               getvar_int_2d, query_varname
@@ -131,7 +132,7 @@ call    getvar_real(ncid, namelist(index),  tobs           ) ! observation time
 
 call getvar_real_2d(ncid, "levels",      levs           ) ! height above station in meters
 call getvar_real_2d(ncid, "uComponent",  uwnd, uwnd_miss) ! e-w component
-call getvar_real_2d(ncid, "vComponent",  vwnd, uwnd_miss) ! n-s component
+call getvar_real_2d(ncid, "vComponent",  vwnd, vwnd_miss) ! n-s component
 
 ! if user says to use them, read in QCs if present
 if (use_input_qc) then
