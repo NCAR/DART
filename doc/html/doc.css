@@ -24,9 +24,9 @@ h2.indent2{font-size:1.50em; margin-left:4%}
 h3.indent2{font-size:1.25em; margin-left:4%}
 h4.indent2{font-size:1.00em; margin-left:4%}
 
-div.box   { 
-    border:solid; 
-    border-width:thin; 
+div.box   {
+    border:solid;
+    border-width:thin;
     width:100%;}
 
 div.namelist {
@@ -40,8 +40,7 @@ div.routine {
     background-color: rgb(240,240,240);
     padding: 1.0em;
     border: solid;
-    border-width: thin;
-    width: 100%;}
+    border-width: thin}
 
 div.routineIndent1 {
     background-color: rgb(240,240,240);
@@ -87,8 +86,13 @@ div.unix {
     font-family: monospace;
     padding: 1.0em;
     border: none;
-    margin-left: 4%;
-    width: 96%;}
+    margin-left: 4%;}
+
+div.unixnoindent {
+    background-color: rgb(204,204,204);
+    font-family: monospace;
+    padding: 1.0em;
+    border: none;}
 
 div.disclaimer {
     background-color: rgb(240,240,240);
@@ -155,13 +159,13 @@ td{font-weight:normal;}
 form{font-weight:normal;}
 option{font-weight:normal;}
 
-pre.indent1{ 
+pre.indent1{
     margin-left:  5%;
     margin-right:10%;
     font-weight:normal;}
 
 em.units{
-    color:crimson; 
+    color:crimson;
     font-style:normal;
     font-family:"Lucida Console", monospace;}
 
@@ -171,52 +175,51 @@ em.code{
     font-family:"Lucida Console", monospace;}
 
 em.changed{
-    color:blue; 
+    color:blue;
     font-style:oblique;
-    font-family:"Courier", monospace; 
+    font-family:"Courier", monospace;
     background-color: #FFCCFF;}
 
 em.removed{
-    color:blue; 
+    color:blue;
     font-style:oblique;
     text-decoration:line-through;}
 
 em.call{
-    color:blue; 
+    color:blue;
     font-style:normal;
-    font-family:"Courier", monospace; 
+    font-family:"Courier", monospace;
     font-size:1.5em;}
 
 em.input{
-    color:magenta; 
+    color:magenta;
     font-style:normal;
     font-family:"Lucida Console", monospace;
     font-weight:bold;}
 
+em.option{
+    color:blue;
+    font-family:oblique;}
+
 em.optionalcode{
-    color:red; 
+    color:red;
     font-style:oblique;
     font-family:"Lucida Console",monospace;}
 
 em.program{
-    color:green; 
+    color:green;
     font-style:oblique;
     font-family:"Lucida Console",monospace;}
 
 em.file{
-    color:green; 
+    color:green;
     font-style:normal;
     font-family:"Lucida Console",monospace;}
 
 em.mono{
-    color:black; 
+    color:black;
     font-style:normal;
     font-family:"Lucida Console",monospace;}
-
-em.option{
-    color:blue; 
-    font-size: 1.2em;
-    font-family:oblique;}
 
 em.nav{
     font-family:sans-serif;
@@ -228,32 +231,32 @@ em.sub{
     font-size:1.2em;}
 
 em.head{
-    color:white; 
-    font-family:sans-serif; 
+    color:white;
+    font-family:sans-serif;
     font-size:1.2em;}
 
 em.italic{
-    color:black; 
+    color:black;
     font-family:italic;}
 
 em.red{
-    color:crimson; 
+    color:crimson;
     font-family:sans-serif;}
 
 em.green{
-    color:green; 
+    color:green;
     font-family:sans-serif;}
 
 em.Navy{
-    color:Navy; 
+    color:Navy;
     font-family:sans-serif;}
 
 em.teal{
-    color:cornflowerblue; 
+    color:cornflowerblue;
     font-family:sans-serif;}
 
 em.redtt{
-    color:crimson; 
+    color:crimson;
     font-family:monospace;}
 
 em{
