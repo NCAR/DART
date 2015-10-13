@@ -99,8 +99,8 @@ use netcdf
 use get_geometry_mod
 use get_reconstruct_mod
 
-use state_structure_mod, only :  add_domain, get_model_variable_indices
-
+use state_structure_mod, only :  add_domain, get_model_variable_indices, &
+                                 state_structure_info, set_clamping
 
 implicit none
 private
@@ -129,8 +129,6 @@ public :: get_model_size,                 &
           fill_variable_list,             &
           construct_file_name_in,         &
           read_model_time,                 &
-          clamp_or_fail_it,               &
-          do_clamp_or_fail, &
           write_model_time
 
 ! generally useful routines for various support purposes.
@@ -473,6 +471,7 @@ integer :: nDimensions, nVariables, nAttributes, unlimitedDimID, TimeDimID
 integer :: cel1, cel2
 logical :: both
 integer :: domid
+real(r8) :: variable_bounds(max_state_variables, 2)
 
 if ( module_initialized ) return ! only need to do this once.
 
@@ -596,8 +595,6 @@ call nc_check( nf90_open(trim(model_analysis_filename), NF90_NOWRITE, ncid), &
 
 call verify_state_variables( mpas_state_variables, ncid, model_analysis_filename, &
                              nfields, variable_table )
-
-domid =  add_domain(trim(model_analysis_filename), nfields, variable_table(:,1))
 
 TimeDimID = FindTimeDimension( ncid )
 
@@ -809,6 +806,15 @@ if (extrapolate) then
 endif
 
 allocate( ens_mean(model_size) )
+
+variable_bounds(1:nfields, 1) = progvar(1:nfields)%range(1)
+variable_bounds(1:nfields, 2) = progvar(1:nfields)%range(2)
+
+domid =  add_domain( trim(model_analysis_filename), nfields, &
+                     variable_table(1:nfields,1), &
+                     variable_bounds(1:nfields,:) )
+
+if ( debug > 0 ) call state_structure_info(domid)
 
 end subroutine static_init_model
 
@@ -2691,6 +2697,12 @@ subroutine do_clamping(out_of_range_fail, range, dimsize, varname, array_1d, arr
  integer,          intent(in)    :: dimsize
  character(len=*), intent(in)    :: varname
  real(r8),optional,intent(inout) :: array_1d(:), array_2d(:,:), array_3d(:,:,:)
+
+! FIXME: This should be replaced by the clamp_variable in direct_netcdf_mpi.
+! clamp_variable currently works on one dimensional arrays for variables. This
+! only becomes an issue in statevector_to_analysis_file which requires the dimension
+! of the variable to output to a netcdf file, however, this information is
+! already stored in the state_structure.
 
 ! for a given directive and range, do the data clamping for the given
 ! input array.  only one of the optional array args should be specified - the
@@ -7284,79 +7296,6 @@ call nc_check(ret, 'closing', filename)
 
 
 end function read_model_time
-
-!-------------------------------------------------------
-!> Check whether you need to error out, clamp, or
-!> do nothing depending on the variable bounds
-function do_clamp_or_fail(var, dom)
-
-integer, intent(in) :: var ! variable index
-integer, intent(in) :: dom ! domain index
-logical             :: do_clamp_or_fail
-
-do_clamp_or_fail = .false.
-if (trim(mpas_state_bounds(4,var)) == 'FAIL') do_clamp_or_fail = .true.
-if (trim(mpas_state_bounds(4,var)) == 'CLAMP') do_clamp_or_fail = .true.
-
-end function do_clamp_or_fail
-
-!-------------------------------------------------------
-!> Check a variable for out of bounds and clamp or fail if
-!> needed
-subroutine clamp_or_fail_it(var_index, dom, variable)
-
-integer,     intent(in) :: var_index ! variable index
-integer,     intent(in) :: dom ! domain index
-real(r8), intent(inout) :: variable(:) ! variable
-
-
-if( trim(mpas_state_bounds(4,var_index)) == 'FAIL') then
-
-   ! is lower bound set
-   if ( progvar(var_index)%range(1) /= missing_r8 ) then
-
-      if ( minval(variable) < progvar(var_index)%range(1) ) then
-         write(string1, *) 'min data val = ', minval(variable), &
-                           'min data bounds = ', progvar(var_index)%range(1)
-         call error_handler(E_ERR, 'statevector_to_analysis_file', &
-                     'Variable '//trim(progvar(var_index)%varname)//' failed lower bounds check.', &
-                        source,revision,revdate)
-      endif
-
-   endif ! min range set
-
-   ! is upper bound set
-   if ( progvar(var_index)%range(2) /= missing_r8 ) then
-
-      if ( maxval(variable) > progvar(var_index)%range(2) ) then
-         write(string1, *) 'max data val = ', maxval(variable), &
-                           'max data bounds = ', progvar(var_index)%range(2)
-         call error_handler(E_ERR, 'statevector_to_analysis_file', &
-                     'Variable '//trim(progvar(var_index)%varname)//' failed upper bounds check.', &
-                        source,revision,revdate, text2=string1)
-      endif
-
-   endif ! max range set
-
-elseif ( trim(mpas_state_bounds(4,var_index)) == 'CLAMP') then
-
-   ! is lower bound set
-   if ( progvar(var_index)%range(1) /= missing_r8 ) then
-
-      where ( variable < progvar(var_index)%range(1) ) variable = progvar(var_index)%range(1)
-
-   endif ! min range set
-
-   ! is upper bound set
-   if ( progvar(var_index)%range(2) /= missing_r8 ) then
-
-      where ( variable > progvar(var_index)%range(2) ) variable = progvar(var_index)%range(2)
-
-   endif ! max range set
-
-endif
-
-end subroutine clamp_or_fail_it
 
 !===================================================================
 ! End of model_mod

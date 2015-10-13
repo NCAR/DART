@@ -15,9 +15,8 @@
 
 module state_structure_mod
 
-use utilities_mod,        only : E_ERR, error_handler
-use types_mod,            only : r8, i8
-use utilities_mod,        only : nc_check
+use utilities_mod,        only : E_ERR, error_handler, nc_check, do_output
+use types_mod,            only : r8, i8, missing_r8
 use sort_mod,             only : index_sort
 use netcdf
 
@@ -47,7 +46,22 @@ public :: static_init_state_type, &
           get_model_variable_indices,      &
           get_dart_vector_index,         &
           add_dimension_to_variable, &
-          finished_adding_domain
+          finished_adding_domain, &
+          set_clamping,           &
+          get_clamping_maxval,    &
+          get_clamping_minval,    &
+          do_clamping,            &
+          state_structure_info
+
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
+
+character(len=256) :: string1
+character(len=256) :: string2
+
 
 !-------------------------------------------------------------------------------
 ! global variables
@@ -79,6 +93,12 @@ type netcdf_var_type
    character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: dimname
    integer, dimension(NF90_MAX_VAR_DIMS) :: dimIds
    integer, dimension(NF90_MAX_VAR_DIMS) :: dimlens
+
+   ! restricting the range of variables
+   logical  :: clamping = .false.    ! does variable need to be range-restricted before
+   real(r8) :: minvalue = missing_r8 ! min value for clamping
+   real(r8) :: maxvalue = missing_r8 ! max value for clamping
+   ! logical  :: out_of_range_fail = .false. ! is out of range fatal if range-checking?
 
    ! FUTURE VARIABLES
    ! ! stride information
@@ -174,11 +194,13 @@ end subroutine static_init_state_type
 !> Set up the domain type
 !> Does this need to be a function or a subroutine
 !-------------------------------------------------------------------------------
-function add_domain_from_file(info_file, num_variables, var_names) result(dom_identifier)
+function add_domain_from_file(info_file, num_variables, var_names, clamping_values) result(dom_identifier)
 
 character(len=*), intent(in) :: info_file
 integer,          intent(in) :: num_variables
 character(len=*), intent(in) :: var_names(num_variables)
+real(r8), optional, intent(in) :: clamping_values(num_variables, 2)
+
 integer           :: dom_identifier
 
 integer :: ivar
@@ -207,15 +229,21 @@ call load_state_variable_info(state%domain(dom_identifier))
 ! load up the domain unique dimension info
 call load_unique_dim_info(dom_identifier)
 
+if ( present(clamping_values) ) then
+   call set_clamping(dom_identifier, num_variables, clamping_values)
+endif
+
 end function add_domain_from_file
 
 !-------------------------------------------------------------------------------
 !> @todo dart kinds in state structure
-function add_domain_from_spec(num_variables, var_names, dart_kinds) result(dom_identifier)
+function add_domain_from_spec(num_variables, var_names, dart_kinds, clamping_values) result(dom_identifier)
 
 integer,          intent(in) :: num_variables
 character(len=*), intent(in) :: var_names(num_variables)
 integer,          intent(in) :: dart_kinds(num_variables)
+real(r8), optional, intent(in) :: clamping_values(num_variables, 2)
+
 integer           :: dom_identifier
 
 integer :: ivar
@@ -238,6 +266,9 @@ do ivar = 1, num_variables
    state%domain(dom_identifier)%variable(ivar)%varname = var_names(ivar)
 enddo
 
+if ( present(clamping_values) ) then
+   call set_clamping(dom_identifier, num_variables, clamping_values)
+endif
 
 end function add_domain_from_spec
 
@@ -247,6 +278,7 @@ end function add_domain_from_spec
 function add_domain_blank(model_size) result(dom_identifier)
 
 integer(i8), intent(in) :: model_size
+
 integer                 :: dom_identifier
 
 if (.not. state_initialized) call static_init_state_type()
@@ -785,7 +817,7 @@ integer,     intent(out), optional :: var_id
 integer,     intent(out), optional :: dom_id
 
 integer     :: local_ind
-integer(i8) ::  index, ind1, indN
+integer(i8) :: index, ind1, indN
 integer     :: ndims, ndomains
 integer     :: idom, ivar
 integer     :: domid, varid, unlimid
@@ -912,10 +944,92 @@ endif
 end function get_dart_vector_index
 
 !-------------------------------------------------------------------------------
+! Set clamping bounds for variables.
+!   missing_r8 values are used to set no-clamping
+!-------------------------------------------------------------------------------
+subroutine set_clamping(domid, num_vars, clamp_vals)
+
+integer,  intent(in) :: domid
+integer,  intent(in) :: num_vars
+real(r8), intent(in) :: clamp_vals(num_vars, 2)
+
+real(r8) :: min_value, max_value
+integer  :: ivar
+
+! clamp_variables must contain entries for all variables in domain
+if (size(clamp_vals,1) /= num_vars) then 
+   write(string1,*) 'size of clamping_vals (', size(clamp_vals,2),') ', &
+                    'must equal num_vars', num_vars
+   call error_handler(E_ERR,'set_clamping',string1,source,revision,revdate)
+endif
+
+do ivar = 1, num_vars
+
+   min_value = clamp_vals(ivar, 1)
+   if (min_value /= missing_r8) then 
+      state%domain(domid)%variable(ivar)%clamping = .true.   
+      state%domain(domid)%variable(ivar)%minvalue = min_value
+   endif
+
+   max_value = clamp_vals(ivar, 2)
+   if (max_value /= missing_r8) then 
+      state%domain(domid)%variable(ivar)%clamping = .true.   
+      state%domain(domid)%variable(ivar)%maxvalue = max_value
+   endif
+
+enddo
+
+end subroutine set_clamping
+
+!-------------------------------------------------------------------------------
+! Return clamping maximum for a given variable
+!-------------------------------------------------------------------------------
+function get_clamping_maxval(idom, var_id)
+
+integer, intent(in) :: idom
+integer, intent(in) :: var_id
+
+real(r8)  :: get_clamping_maxval
+
+get_clamping_maxval= state%domain(idom)%variable(var_id)%maxvalue
+
+end function get_clamping_maxval
+
+!-------------------------------------------------------------------------------
+! Return clamping minimum for a given variable
+!-------------------------------------------------------------------------------
+function get_clamping_minval(idom, var_id)
+
+integer, intent(in) :: idom
+integer, intent(in) :: var_id
+
+real(r8)  :: get_clamping_minval
+
+get_clamping_minval= state%domain(idom)%variable(var_id)%minvalue
+
+end function get_clamping_minval
+
+!-------------------------------------------------------------------------------
+! Returns whether a variable should be clamped or not
+!-------------------------------------------------------------------------------
+function do_clamping(dom_id, var_id)
+
+integer, intent(in) :: dom_id ! domain identifier
+integer, intent(in) :: var_id
+
+logical :: do_clamping
+
+do_clamping = state%domain(dom_id)%variable(var_id)%clamping 
+
+end function do_clamping
+
+
+!-------------------------------------------------------------------------------
 ! Used to add dimenions to a variable.
 ! This allows the model to add meta data to state structure so a netcdf restart 
 ! can be created which has the T,U,V etc. from a cold start (no existing netcdf
-! info file) e.g. the bgrid model. The number of variables has already been given in add_domain_from_spec.
+! info file) e.g. the bgrid model. The number of variables has already been given 
+! in add_domain_from_spec.
 !-------------------------------------------------------------------------------
 subroutine add_dimension_to_variable(dom_id, var_id, dim_name, dim_size)
 
@@ -983,6 +1097,51 @@ enddo
 state%model_size = state%model_size + state%domain(dom_id)%size
 
 end subroutine finished_adding_domain
+ 
+!-------------------------------------------------------------------------------
+! Print information in the state structure
+!-------------------------------------------------------------------------------
+subroutine state_structure_info(dom_id)
+
+integer, intent(in) :: dom_id ! domain identifier
+
+integer :: ivar, jdim
+integer :: num_vars
+integer :: num_dims
+
+if ( .not. do_output() ) return
+
+num_vars = get_num_variables(dom_id)
+
+do ivar = 1, num_vars
+   write(*,*) ' '
+   write(*,*) 'varname     :', trim(state%domain(dom_id)%variable(ivar)%varname)
+ ! write(*,*) 'long_name   :', trim(state%domain(dom_id)%variable(ivar)%long_name)
+ ! write(*,*) 'units       :', state%domain(dom_id)%variable(ivar)%units
+   write(*,*) 'var_size    :', state%domain(dom_id)%variable(ivar)%var_size
+   write(*,*) 'index1      :', state%domain(dom_id)%variable(ivar)%index1
+   write(*,*) 'indexN      :', state%domain(dom_id)%variable(ivar)%indexN
+ ! write(*,*) 'kind_string :', trim(state%domain(dom_id)%variable(ivar)%kind_string)
+ ! write(*,*) 'update_var  :', trim(state%domain(dom_id)%variable(ivar)%update_var)
+   write(*,*) 'clamping    :', state%domain(dom_id)%variable(ivar)%clamping
+   write(*,*) 'minvalue    :', state%domain(dom_id)%variable(ivar)%minvalue
+   write(*,*) 'maxvalue    :', state%domain(dom_id)%variable(ivar)%maxvalue
+   write(*,*) 'numdims     :', state%domain(dom_id)%variable(ivar)%numdims
+   
+   num_dims = state%domain(dom_id)%variable(ivar)%numdims
+   do jdim = 1, num_dims
+       write(*,*) '    dimname :', trim(state%domain(dom_id)%variable(ivar)%dimname(jdim)), ',', &
+                       state%domain(dom_id)%variable(ivar)%dimlens(jdim)
+  !    write(*,*) '    dimIds  :', state%domain(dom_id)%variable(ivar)%dimIds(idims)
+  !    write(*,*) '    dimlens :', state%domain(dom_id)%variable(ivar)%dimlens(jdim)
+   enddo
+
+   write(*,*) ' '
+   
+enddo
+
+end subroutine state_structure_info
+
 
 !-------------------------------------------------------------------------------
 

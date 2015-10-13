@@ -96,7 +96,8 @@ use sort_mod,            only : sort
 
 use distributed_state_mod, only : get_state
 
-use state_structure_mod, only : add_domain, get_model_variable_indices
+use state_structure_mod, only : add_domain, get_model_variable_indices, &
+                                set_clamping, state_structure_info
 
 ! FIXME:
 ! the kinds KIND_CLOUD_LIQUID_WATER should be KIND_CLOUDWATER_MIXING_RATIO, 
@@ -142,9 +143,7 @@ public ::  get_model_size,                &
            query_vert_localization_coord, &
            construct_file_name_in,        &
            read_model_time,               &
-           write_model_time,              &
-           do_clamp_or_fail,              &
-           clamp_or_fail_it
+           write_model_time
 
 
 !  public stubs 
@@ -379,6 +378,7 @@ integer               :: ind, i, j, k, id, dart_index
 integer               :: my_index
 integer               :: var_element_list(max_state_variables)
 logical               :: var_update_list(max_state_variables)
+real(r8)              :: var_bounds_table(max_state_variables,2)
 ! not doing anything with this. If we do it should 
 ! be an array in module global storage
 integer               :: domain_id
@@ -729,8 +729,17 @@ WRFDomains : do id=1,num_domains
    !wrf%dom(id)%type_fall_spd = get_type_ind_from_type_string(id,'VT_DBZ_WT')
    wrf%dom(id)%type_hdiab  = get_type_ind_from_type_string(id,'H_DIABATIC')
 
+   ! variable bound table for setting upper and lower bounds of variables 
+   var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,1) = wrf%dom(id)%lower_bound
+   var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,2) = wrf%dom(id)%upper_bound
+
    ! add domain - not doing anything with domain_id yet so just overwriting it
-   domain_id = add_domain('wrfinput_d0'//idom, wrf%dom(id)%number_of_wrf_variables, wrf_state_variables(1,1:wrf%dom(id)%number_of_wrf_variables))
+   domain_id = add_domain( 'wrfinput_d0'//idom, &
+                           wrf%dom(id)%number_of_wrf_variables, &
+                           wrf_state_variables(1,1:wrf%dom(id)%number_of_wrf_variables), &
+                           var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,:) )
+                          
+   if (debug) call state_structure_info(domain_id)
 
 enddo WRFDomains 
 
@@ -8917,75 +8926,6 @@ call nc_check( nf90_put_var(ncid, var_id, timestring), &
                'write_model_time', 'put_var Times' )
 
 end subroutine write_model_time
-
-!-------------------------------------------------------
-!> Check whether you need to error out, clamp, or
-!> do nothing depending on the variable bounds
-function do_clamp_or_fail(var, dom)
-
-integer, intent(in) :: var ! variable index
-integer, intent(in) :: dom ! domain index
-logical             :: do_clamp_or_fail
-
-do_clamp_or_fail = .false.
-if (wrf%dom(dom)%clamp_or_fail(var) == 'FAIL') do_clamp_or_fail = .true.
-if (wrf%dom(dom)%clamp_or_fail(var) == 'CLAMP') do_clamp_or_fail = .true.
-
-end function do_clamp_or_fail
-
-!-------------------------------------------------------
-!> Check a variable for out of bounds and clamp or fail if
-!> needed
-subroutine clamp_or_fail_it(var_index, dom, variable)
-
-integer,     intent(in) :: var_index ! variable index
-integer,     intent(in) :: dom ! domain index
-real(r8), intent(inout) :: variable(:) ! variable
-
-if (wrf%dom(dom)%clamp_or_fail(var_index) == 'FAIL') then
-
-   if (minval(variable) < wrf%dom(dom)%lower_bound(var_index) ) then
-      call error_handler(E_ERR,'dart_to_wrf', &
-      'Variable '//trim(wrf_state_variables(1, var_index))// &
-      ' failed lower bounds check.', source,revision,revdate)
-   endif
-
-   if (maxval(variable) > wrf%dom(dom)%upper_bound(var_index) ) then
-      call error_handler(E_ERR,'dart_to_wrf', &
-      'Variable '//trim(wrf_state_variables(1, var_index))// &
-      ' failed upper bounds check.', source,revision,revdate)
-   endif
-
-
-elseif (wrf%dom(dom)%clamp_or_fail(var_index) == 'CLAMP') then
-
-   !  apply lower bound test
-   if ( wrf%dom(dom)%lower_bound(var_index) /= missing_r8 ) then
-
-      !if ( debug ) then
-      !   print*, 'Setting lower bound ',wrf%lower_bound(var_index),' on ', &
-      !                 trim(wrf_state_variables(1, var_index))
-      !endif
-
-      variable = max(wrf%dom(dom)%lower_bound(var_index),variable)
-
-   endif
-
-   !  apply upper bound test
-   if ( wrf%dom(dom)%upper_bound(var_index) /= missing_r8 ) then
-
-      !if ( debug ) then
-      !   print*, 'Setting upper bound ',wrf%upper_bound(var_index),' on ', &
-      !            trim(wrf_state_variables(1, var_index))
-      !endif
-
-      variable = min(wrf%dom(dom)%upper_bound(var_index),variable)
-
-   endif
-
-endif
-
-end subroutine clamp_or_fail_it
 
 !--------------------------------------------------------------------
 

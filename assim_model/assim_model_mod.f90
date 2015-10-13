@@ -27,8 +27,7 @@ use     model_mod, only : get_model_size, static_init_model, get_state_meta_data
                           nc_write_model_vars, pert_model_state,                           &
                           get_close_maxdist_init, get_close_obs_init,                      &
                           model_interpolate_distrib,                                       &
-                          get_close_obs_distrib, clamp_or_fail_it, do_clamp_or_fail,       &
-                          pert_model_copies
+                          get_close_obs_distrib, pert_model_copies
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -47,7 +46,7 @@ public :: static_init_assim_model, init_diag_output, get_model_size,            
           nc_get_tindex, get_model_time_step,       &
          adv_1step, aget_initial_condition, get_close_maxdist_init,        &
           get_close_obs_init, interpolate_distrib,                                         &
-          get_close_obs_distrib, clamp_or_fail_it, do_clamp_or_fail, pert_model_copies
+          get_close_obs_distrib, pert_model_copies
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &

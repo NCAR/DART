@@ -26,9 +26,8 @@ use utilities_mod,        only : error_handler, nc_check, check_namelist_read, &
                                  close_file, dump_unit_attributes, &
                                  register_module, set_output
 
-use assim_model_mod,      only : get_model_size, clamp_or_fail_it,             &
-                                do_clamp_or_fail, &
-                               pert_model_state, assim_model_type
+use assim_model_mod,      only : get_model_size, pert_model_state, &
+                                 assim_model_type
 
 use time_manager_mod,     only : time_type, read_time, write_time, &
                                  get_time

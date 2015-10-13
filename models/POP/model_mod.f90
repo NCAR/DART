@@ -72,8 +72,6 @@ public :: get_model_size,                &
           vert_convert_distrib,          &
           construct_file_name_in,        &
           read_model_time,               &
-          clamp_or_fail_it,              &
-          do_clamp_or_fail,              &
           write_model_time
 
 
@@ -3673,31 +3671,6 @@ read_model_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
 
 
 end function read_model_time
-
-!-------------------------------------------------------
-!> Check whether you need to error out, clamp, or
-!> do nothing depending on the variable bounds
-function do_clamp_or_fail(var, dom)
-
-integer, intent(in) :: var ! variable index
-integer, intent(in) :: dom ! domain index
-logical             :: do_clamp_or_fail
-
-do_clamp_or_fail = .false.
-
-end function do_clamp_or_fail
-
-!-------------------------------------------------------
-!> Check a variable for out of bounds and clamp or fail if
-!> needed
-subroutine clamp_or_fail_it(var_index, dom, variable)
-
-integer,     intent(in) :: var_index ! variable index
-integer,     intent(in) :: dom ! domain index
-real(r8), intent(inout) :: variable(:) ! variable
-
-
-end subroutine clamp_or_fail_it
 
 !--------------------------------------------------------------------
 !> pass the vertical localization coordinate to assim_tools_mod

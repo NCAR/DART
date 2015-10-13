@@ -104,7 +104,7 @@ public  get_model_size, adv_1step, get_state_meta_data_distrib, &
         model_interpolate_distrib, &
         query_vert_localization_coord, &
         vert_convert_distrib, &
-        do_clamp_or_fail,clamp_or_fail_it, get_close_obs_distrib, &
+        get_close_obs_distrib, &
         construct_file_name_in, &
         read_model_time, write_model_time
 
@@ -2283,32 +2283,6 @@ call nc_check( nf90_put_var(ncid, dart_secondsVarID, dart_seconds ), &
 
 end subroutine write_model_time
 
-!-------------------------------------------------------
-!> Null version
-!> Check whether you need to error out, clamp, or
-!> do nothing depending on the variable bounds
-function do_clamp_or_fail(var, dom)
-
-integer, intent(in) :: var ! variable index
-integer, intent(in) :: dom ! domain index
-logical             :: do_clamp_or_fail
-
-do_clamp_or_fail = .false.
-
-end function do_clamp_or_fail
-
-!-------------------------------------------------------
-!> Null version
-!> Check a variable for out of bounds and clamp or fail if
-!> needed
-subroutine clamp_or_fail_it(var_index, dom, variable)
-
-integer,     intent(in) :: var_index ! variable index
-integer,     intent(in) :: dom ! domain index
-real(r8), intent(inout) :: variable(:) ! variable
-
-
-end subroutine clamp_or_fail_it
 !--------------------------------------------------------------------
 !> pass the vertical localization coordinate to assim_tools_mod
 function query_vert_localization_coord()

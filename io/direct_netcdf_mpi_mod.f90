@@ -40,8 +40,7 @@ use time_manager_mod,     only : time_type
 use utilities_mod,        only : error_handler, nc_check, &
                                  E_MSG, E_ERR, file_exist
 
-use assim_model_mod,      only : get_model_size, clamp_or_fail_it, &
-                                 do_clamp_or_fail
+use assim_model_mod,      only : get_model_size
 
 use state_structure_mod,  only : get_domain_size, get_num_variables,           &
                                  get_dim_lengths, get_num_dims, get_dim_ids,   &
@@ -49,7 +48,9 @@ use state_structure_mod,  only : get_domain_size, get_num_variables,           &
                                  get_dim_name, get_dim_length,                 &
                                  get_unique_dim_name, get_num_unique_dims,     &
                                  get_unique_dim_length, get_sum_variables,     &
-                                 get_sum_variables_below, set_var_id
+                                 get_sum_variables_below, set_var_id,          &
+                                 get_clamping_minval, get_clamping_maxval,     &
+                                 do_clamping
 
 use io_filenames_mod,     only : get_input_file, get_output_file
 
@@ -63,6 +64,15 @@ use netcdf
 implicit none
 private
 public :: read_transpose, transpose_write
+
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
+
+character(len=256) :: string1
+character(len=256) :: string2
 
 ! Limit_mem, limit_procs are namelist items in state_vector_io_mod.
 ! There are set in this module on entry to read_transpose and transpose_write
@@ -726,7 +736,7 @@ integer,  intent(in) :: domain
 
 integer :: i
 integer :: count_displacement
-integer :: start_in_var_block
+integer :: start_in_var_block, end_in_var_block
 integer :: var_size
 integer, allocatable :: dims(:)
 integer :: var_id 
@@ -735,6 +745,7 @@ start_in_var_block = 1
 do i = start_var, end_var
 
    var_size = get_variable_size(domain, i)
+   end_in_var_block = start_in_var_block + var_size - 1
 
    ! number of dimensions and length of each
    allocate(dims(get_num_dims(domain, i)))
@@ -744,7 +755,7 @@ do i = start_var, end_var
    ret = nf90_inq_varid(ncfile_out, get_variable_name(domain, i), var_id)
    call nc_check(ret, 'write_variables', 'getting variable id')
 
-   ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:start_in_var_block+var_size-1), count=dims)
+   ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:end_in_var_block), count=dims)
    call nc_check(ret, 'write_variables', 'writing')
    start_in_var_block = start_in_var_block + var_size
 
@@ -766,7 +777,7 @@ integer,  intent(in) :: domain
 
 integer :: i
 integer :: count_displacement
-integer :: start_in_var_block
+integer :: start_in_var_block, end_in_var_block
 integer :: var_size
 integer, allocatable :: dims(:)
 integer :: var_id 
@@ -775,10 +786,11 @@ start_in_var_block = 1
 do i = start_var, end_var
 
    var_size = get_variable_size(domain, i)
+   end_in_var_block = start_in_var_block + var_size - 1
 
    ! check whether you have to do anything to the variable, clamp or fail
-   if (do_clamp_or_fail(i, domain)) then
-      call clamp_or_fail_it(i, domain, var_block(start_in_var_block:start_in_var_block+var_size-1))
+   if (do_clamping(domain, i)) then
+      call clamp_variable(domain, i, var_block(start_in_var_block:end_in_var_block))
    endif
 
    ! number of dimensions and length of each
@@ -1045,6 +1057,51 @@ enddo
 cumulative_tasks = cumulative_tasks + get_group_size(group*limit_procs -1, ens_size)
 
 end function cumulative_tasks
+
+!-------------------------------------------------------
+!> Check a variable for out of bounds and clamp or fail if
+!> needed
+subroutine clamp_variable(dom, var_index, variable)
+
+integer,     intent(in) :: dom ! domain index
+integer,     intent(in) :: var_index ! variable index
+real(r8), intent(inout) :: variable(:) ! variable
+
+real(r8) :: minclamp, maxclamp
+character(len=NF90_MAX_NAME) :: varname ! for debugging only
+
+! is lower bound set
+minclamp = get_clamping_minval(dom, var_index)
+if ( minclamp /= missing_r8 ) then
+   if ( minval(variable) < minclamp ) then
+      varname = get_variable_name(dom, var_index) 
+      write(string1, *) 'min data val = ', minval(variable), &
+                        'min data bounds = ', minclamp
+      call error_handler(E_MSG, 'clamp_variable', &
+                  'Clamping '//trim(varname)//', values out of bounds.', &
+                   source,revision,revdate, text2=string1)
+
+      variable = max(minclamp, variable)
+   endif
+endif ! min range set
+
+! is upper bound set
+maxclamp = get_clamping_maxval(dom, var_index)
+if ( maxclamp /= missing_r8 ) then
+   if ( maxval(variable) > maxclamp ) then
+      varname = get_variable_name(dom, var_index) 
+      write(string1, *) 'max data val = ', maxval(variable), &
+                        'max data bounds = ', maxclamp
+      call error_handler(E_MSG, 'clamp_variable', &
+                  'Clamping '//trim(varname)//', values out of bounds.', &
+                   source,revision,revdate, text2=string1)
+
+      variable = min(maxclamp, variable)
+   endif
+endif ! max range set
+
+end subroutine clamp_variable
+
 
 !------------------------------------------------------
 

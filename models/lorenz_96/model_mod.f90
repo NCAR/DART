@@ -46,7 +46,7 @@ public :: get_model_size, &
           query_vert_localization_coord, &
           vert_convert_distrib, &
           construct_file_name_in, &
-          get_model_time, clamp_or_fail_it, do_clamp_or_fail, &
+          get_model_time, &
           pert_model_copies, &
           read_model_time, &
           write_model_time
@@ -807,33 +807,6 @@ subroutine pert_model_copies(state_ens_handle, pert_amp, interf_provided)
 interf_provided = .false.
 
 end subroutine pert_model_copies
-
-!-------------------------------------------------------
-!> Null version
-!> Check whether you need to error out, clamp, or
-!> do nothing depending on the variable bounds
-function do_clamp_or_fail(var, dom)
-
-integer, intent(in) :: var ! variable index
-integer, intent(in) :: dom ! domain index
-logical             :: do_clamp_or_fail
-
-do_clamp_or_fail = .false.
-
-end function do_clamp_or_fail
-
-!-------------------------------------------------------
-!> Null version
-!> Check a variable for out of bounds and clamp or fail if
-!> needed
-subroutine clamp_or_fail_it(var_index, dom, variable)
-
-integer,     intent(in) :: var_index ! variable index
-integer,     intent(in) :: dom ! domain index
-real(r8), intent(inout) :: variable(:) ! variable
-
-
-end subroutine clamp_or_fail_it
 
 !--------------------------------------------------------------------
 !> pass the vertical localization coordinate to assim_tools_mod
