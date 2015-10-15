@@ -196,16 +196,16 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
-! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)
-!   character(len=*) :: string
-!   integer :: system
-!  end function system
-! end interface
-! ! end block
-! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
+ !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
+ ! interface block for getting return code back from system() routine
+ interface
+  function system(string)
+   character(len=*) :: string
+   integer :: system
+  end function system
+ end interface
+ ! end block
+ !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
 
 
 !   ---- private data for mpi_utilities ----
@@ -220,7 +220,8 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_count, my_task_id, block_task, restart_task,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
-          sum_across_tasks, get_dart_mpi_comm, datasize, reduce_min_max
+          sum_across_tasks, get_dart_mpi_comm, datasize, reduce_min_max,     &
+          get_from_fwd, get_from_mean
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -2021,8 +2022,48 @@ endif
 
 end subroutine reduce_min_max
 
+!-----------------------------------------------------------------------------
+! One sided communication
+
+subroutine get_from_mean(owner, window, index, x)
+
+integer,  intent(in)  :: owner  ! task in the window that owns the memory
+integer,  intent(in)  :: window ! window object
+integer,  intent(in)  :: index  ! index in the tasks memory
+real(r8), intent(out) :: x ! result
+
+integer(KIND=MPI_ADDRESS_KIND) :: target_disp
+integer :: errcode
+
+target_disp = (index - 1)
+call mpi_win_lock(MPI_LOCK_SHARED, owner, 0, window, errcode)
+call mpi_get(x, 1, datasize, owner, target_disp, 1, datasize, window, errcode)
+call mpi_win_unlock(owner, window, errcode)
+
+end subroutine get_from_mean
 
 !-----------------------------------------------------------------------------
+
+subroutine get_from_fwd(owner, window, index, num_rows, x)
+
+integer,  intent(in)  :: owner    ! task in the window that owns the memory
+integer,  intent(in)  :: window   ! window object
+integer,  intent(in)  :: index    ! index in the tasks memory
+integer,  intent(in)  :: num_rows ! number of rows in the window
+real(r8), intent(out) :: x(:)     ! result
+
+integer(KIND=MPI_ADDRESS_KIND) :: target_disp
+integer :: errcode
+
+target_disp = (index - 1)*num_rows
+call mpi_win_lock(MPI_LOCK_SHARED, owner, 0, window, errcode)
+call mpi_get(x, num_rows, datasize, owner, target_disp, num_rows, datasize, window, errcode)
+call mpi_win_unlock(owner, window, errcode)
+
+end subroutine get_from_fwd
+
+!-----------------------------------------------------------------------------
+
 
 end module mpi_utilities_mod
 

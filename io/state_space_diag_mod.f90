@@ -65,7 +65,7 @@ real(r8)        :: temp_ens(1) ! junk value
 ! Assumes that mean and spread have already been computed
 
 ! just to write the time
-if(my_task_id() == 0) call aoutput_diagnostics(out_unit, curr_ens_time, temp_ens, output_state_mean_index)
+!if(my_task_id() == 0) call aoutput_diagnostics(out_unit, curr_ens_time, temp_ens, output_state_mean_index)
 
 end subroutine skeleton_filter_state_space_diagnostics
 

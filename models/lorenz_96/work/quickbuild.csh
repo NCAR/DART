@@ -106,6 +106,13 @@ echo "build number $n is mkmf_wakeup_filter"
 csh  mkmf_wakeup_filter -mpi
 make || exit $n
 
+@ n = $n + 1
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_perfect_model_obs"
+csh  mkmf_perfect_model_obs -mpi
+make || exit $n
+
 \rm -f *.o *.mod input.nml*_default
 
 echo

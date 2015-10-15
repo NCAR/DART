@@ -1,3 +1,4 @@
+distributed/no_cray_win_mod.f90
 adaptive_inflate/adaptive_inflate_mod.f90
 assim_model/assim_model_mod.f90
 assim_tools/assim_tools_mod.f90
@@ -20,7 +21,6 @@ sort/sort_mod.f90
 time_manager/time_manager_mod.f90
 utilities/utilities_mod.f90
 distributed/distributed_state_mod.f90
-distributed/no_cray_win_mod.f90
 io/state_vector_io_mod.f90
 io/io_filenames_mod.f90
 io/copies_on_off_mod.f90

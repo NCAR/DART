@@ -13,7 +13,8 @@ module distributed_state_mod
 
 !> \defgroup distrib_state distributed_state_mod
 !> @{
-use mpi_utilities_mod,    only : datasize, my_task_id
+use mpi_utilities_mod,    only : my_task_id, &
+                                 get_from_fwd, get_from_mean
 use types_mod,            only : r8, i8
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_var_owner_index, &
                                  get_allow_transpose
@@ -22,8 +23,6 @@ use window_mod,           only : create_mean_window, create_state_window, free_m
                                  NO_WINDOW, MEAN_WINDOW, STATE_WINDOW, &
                                  mean_win, state_win, current_win
 use utilities_mod,        only : error_handler, E_ERR
-
-use mpi
 
 implicit none
 
@@ -100,8 +99,6 @@ type(ensemble_type), intent(in)  :: state_ens_handle
 
 integer                        :: owner_of_state !> task who owns the state
 integer                        :: element_index !> local index of element
-integer(KIND=MPI_ADDRESS_KIND) :: target_disp
-integer                        :: ierr
 
 if (get_allow_transpose(state_ens_handle)) then
    x = state_ens_handle%vars(index, 1:data_count)
@@ -118,11 +115,7 @@ else
       !x = get_local_state(element_index)
       x = state_ens_handle%copies(1:data_count, element_index)
    else
-      ! Note all of copies array is in the window, not just the real ensemble members
-      target_disp = (element_index - 1) * data_count
-      call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, state_win, ierr)
-      call mpi_get(x, data_count, datasize, owner_of_state, target_disp, data_count, datasize, state_win, ierr)
-      call mpi_win_unlock(owner_of_state, state_win, ierr)
+     call get_from_fwd(owner_of_state, state_win, element_index, data_count, x)
    endif
 endif
 
@@ -139,7 +132,6 @@ type(ensemble_type), intent(in)  :: state_ens_handle
 
 integer                        :: owner_of_state !> task who owns the state
 integer                        :: element_index !> local index of element
-integer(KIND=MPI_ADDRESS_KIND) :: target_disp
 integer                        :: ierr
 
 if (get_allow_transpose(mean_ens_handle)) then
@@ -153,10 +145,7 @@ else
    if (my_task_id() == owner_of_state) then
       x(1) = mean_ens_handle%copies(1, element_index)
    else
-      target_disp = (element_index - 1)
-      call mpi_win_lock(MPI_LOCK_SHARED, owner_of_state, 0, mean_win, ierr)
-      call mpi_get(x(1), 1, datasize, owner_of_state, target_disp, 1, datasize, mean_win, ierr)
-      call mpi_win_unlock(owner_of_state, mean_win, ierr)
+      call get_from_mean(owner_of_state, mean_win, element_index, x(1))
    endif
 
 endif

@@ -43,7 +43,7 @@ use ensemble_manager_mod, only : ensemble_type, get_my_num_vars, get_my_vars,   
                                  prepare_to_update_copies, map_pe_to_task
 
 use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,              & 
-                                 sum_across_tasks
+                                 sum_across_tasks, task_count
 
 use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,                   &
                                  do_varying_ss_inflate, get_inflate, set_inflate,         &
@@ -184,6 +184,10 @@ call check_namelist_read(iunit, io, "assim_tools_nml")
 ! Write the namelist values to the log file
 if (do_nml_file()) write(nmlfileunit, nml=assim_tools_nml)
 if (do_nml_term()) write(     *     , nml=assim_tools_nml)
+
+! Forcing distributed_mean for single processor.
+! Note null_win_mod.f90 ignores distibute_mean.
+if (task_count() == 1) distribute_mean = .true.
 
 ! FOR NOW, can only do spread restoration with filter option 1 (need to extend this)
 if(spread_restoration .and. .not. filter_kind == 1) then

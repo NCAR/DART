@@ -160,16 +160,16 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
-! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)    
-!   character(len=*) :: string
-!   integer :: system         
-!  end function system
-! end interface
-! ! end block                 
-! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
+ !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
+ ! interface block for getting return code back from system() routine
+ interface
+  function system(string)    
+   character(len=*) :: string
+   integer :: system         
+  end function system
+ end interface
+ ! end block                 
+ !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
 
 !   ---- private data for mpi_utilities ----
 
@@ -182,7 +182,8 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_count, my_task_id, block_task, restart_task,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
-          sum_across_tasks, reduce_min_max
+          sum_across_tasks, reduce_min_max, &
+          get_from_fwd, get_from_mean
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -784,6 +785,34 @@ integer :: errcode
 global_val(:) = minmax(:) ! only one task.
 
 end subroutine reduce_min_max
+
+!-----------------------------------------------------------------------------
+! One sided communication
+
+subroutine get_from_mean(owner, window, index, x)
+
+integer,  intent(in)  :: owner  ! task in the window that owns the memory
+integer,  intent(in)  :: window ! window object
+integer,  intent(in)  :: index  ! index in the tasks memory
+real(r8), intent(out) :: x ! result
+
+call error_handler(E_ERR,'get_from_mean', 'should not call this code', source, revision, revdate)
+
+end subroutine get_from_mean
+
+!-----------------------------------------------------------------------------
+
+subroutine get_from_fwd(owner, window, index, num_rows, x)
+
+integer, intent(in)  :: owner    ! task in the window that owns the memory
+integer,  intent(in)  :: window   ! window object
+integer,  intent(in)  :: index    ! index in the tasks memory
+integer,  intent(in)  :: num_rows ! number of rows in the window
+real(r8), intent(out) :: x(:)     ! result
+
+call error_handler(E_ERR,'get_from_fwd', 'should not call this code', source, revision, revdate)
+
+end subroutine get_from_fwd
 
 
 !-----------------------------------------------------------------------------

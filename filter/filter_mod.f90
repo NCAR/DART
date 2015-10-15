@@ -75,7 +75,7 @@ use io_filenames_mod,      only : io_filenames_init, get_input_file, set_filenam
 
 use state_structure_mod,   only : get_num_domains, static_init_state_type, add_domain
 
-use mpi
+!use mpi
 
 use forward_operator_mod,  only : get_obs_ens_distrib_state 
 use quality_control_mod,   only : initialize_qc
@@ -268,6 +268,8 @@ call check_namelist_read(iunit, io, "filter_nml")
 ! Record the namelist values used for the run ...
 if (do_nml_file()) write(nmlfileunit, nml=filter_nml)
 if (do_nml_term()) write(     *     , nml=filter_nml)
+
+if (task_count() == 1) distributed_state = .true.
 
 call set_trace(trace_execution, output_timestamps, silence)
 
@@ -664,7 +666,7 @@ AdvanceTime : do
    ! Compute the ensemble of prior observations, load up the obs_err_var
    ! and obs_values. ens_size is the number of regular ensemble members,
    ! not the number of copies
-   start = MPI_WTIME()
+   !start = MPI_WTIME()
 
    ! allocate() space for the prior qc copy
    call allocate_single_copy(obs_fwd_op_ens_handle, prior_qc_copy)

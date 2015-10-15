@@ -18,4 +18,5 @@ io/state_vector_io_mod.f90
 io/io_filenames_mod.f90
 io/state_structure_mod.f90
 io/direct_netcdf_no_mpi_mod.f90
-distributed/null_distributed_state_mod.f90
+distributed/distributed_state_mod.f90
+distributed/null_win_mod.f90

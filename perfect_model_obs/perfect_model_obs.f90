@@ -257,7 +257,7 @@ if (start_from_restart) then
    else ! reading from a dart file
 
       ! make space for read of vars array
-      allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
+         allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
       if(ens_handle%my_pe == 0) call perfect_read_restart(ens_handle, model_size)
       call all_vars_to_all_copies(ens_handle)
       deallocate(ens_handle%vars)
@@ -401,8 +401,8 @@ AdvanceTime: do
    call print_obs_time(seq, key_bounds(2), 'Time of last  observation in window')
 
    ! for multi-core runs, each core needs to store the forward operator and the qc value
-   call init_ensemble_manager(fwd_op_ens_handle, 1, int(num_obs_in_set,i8), 1)
-   call init_ensemble_manager(qc_ens_handle, 1, int(num_obs_in_set,i8), 1)
+   call init_ensemble_manager(fwd_op_ens_handle, 1, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
+   call init_ensemble_manager(qc_ens_handle, 1, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
 
 
    ! Allocate storage for observation keys for this part of sequence
@@ -477,9 +477,6 @@ AdvanceTime: do
    end do
 
    ! collect on task 0 and load up the obs_sequence
-   ! should we just allocate this in init_ensemble_manager?
-   allocate(fwd_op_ens_handle%vars(fwd_op_ens_handle%num_vars, fwd_op_ens_handle%my_num_copies))
-   allocate(qc_ens_handle%vars(qc_ens_handle%num_vars, qc_ens_handle%my_num_copies))
    call all_copies_to_all_vars(fwd_op_ens_handle)
    call all_copies_to_all_vars(qc_ens_handle)
 

@@ -1,10 +1,10 @@
+distributed/null_win_mod.f90
 adaptive_inflate/adaptive_inflate_mod.f90
 assim_model/assim_model_mod.f90
 assim_tools/assim_tools_mod.f90
 common/types_mod.f90
 cov_cutoff/cov_cutoff_mod.f90
 distributed/distributed_state_mod.f90
-distributed/no_cray_win_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
 filter/filter.f90
 filter/filter_mod.f90
@@ -17,7 +17,7 @@ io/state_space_diag_mod.f90
 location/threed_sphere/location_mod.f90
 models/wrf/model_mod.f90
 models/wrf/module_map_utils.f90
-mpi_utilities/mpi_utilities_mod.f90
+mpi_utilities/null_mpi_utilities_mod.f90
 obs_def/obs_def_mod.f90
 obs_kind/obs_kind_mod.f90
 obs_model/obs_model_mod.f90
@@ -29,4 +29,4 @@ smoother/smoother_mod.f90
 sort/sort_mod.f90
 time_manager/time_manager_mod.f90
 utilities/utilities_mod.f90
-io/direct_netcdf_mpi_mod.f90
+io/direct_netcdf_no_mpi_mod.f90
