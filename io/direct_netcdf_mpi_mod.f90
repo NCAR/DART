@@ -465,7 +465,7 @@ COPIES : do c = 1, ens_size
          if (my_pe < ens_size) then ! I am a writer
             if ( query_write_copy(my_copy + 1)) then
                !var_block = MISSING_R8  ! if you want to create a file for bitwise testing
-               if (my_copy <= state_ens_handle%num_copies - num_extras) then ! actual copy, may need clamping
+               if (my_copy + 1 <= state_ens_handle%num_copies - num_extras) then ! actual copy, may need clamping
                   call write_variables_clamp(var_block, start_var, end_var, domain)
                else ! extra copy, don't clamp
                   call write_variables(var_block, start_var, end_var, domain)
@@ -643,7 +643,7 @@ COPIES : do c = 1, ens_size
             if (my_pe < ens_size) then ! I am a writer
                if(query_write_copy(my_copy + 1)) then
                   !var_block = MISSING_R8  ! if you want to create a file for bitwise testing
-                  if (my_copy <= state_ens_handle%num_copies - num_extras) then ! actual copy, may need clamping
+                  if (my_copy + 1 <= state_ens_handle%num_copies - num_extras) then ! actual copy, may need clamping
                      call write_variables_clamp(var_block, start_var, end_var, domain)
                   else ! extra copy, don't clamp
                      call write_variables(var_block, start_var, end_var, domain)
