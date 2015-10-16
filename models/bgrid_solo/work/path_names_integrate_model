@@ -62,4 +62,5 @@ io/copies_on_off_mod.f90
 io/state_structure_mod.f90
 io/dart_time_io_mod.f90
 io/direct_netcdf_no_mpi_mod.f90
+io/direct_netcdf_common_mod.f90
 quality_control/quality_control_mod.f90

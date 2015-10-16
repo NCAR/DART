@@ -2000,7 +2000,7 @@ integer,            intent(in) :: domain
 integer,            intent(in) :: copy
 character(len=1024)            :: construct_file_name_in
 
-write(construct_file_name_in, '(A, i4.4)') TRIM(stub), copy
+write(construct_file_name_in, '(A, i4.4, A)') TRIM(stub), copy, '.nc'
 
 end function construct_file_name_in
 
