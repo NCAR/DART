@@ -84,7 +84,7 @@
    In order to facilitate the incorporation of new models, which in the 
    Geoscience community are frequently written in Fortran 90, the DART 
    software is written primarily in Fortran 90. Control scripts are primarily
-   in C Shell, and the distribution includes Matlab&reg; diagnostic scripts.
+   in C Shell, and the distribution includes Matlab&174; diagnostic scripts.
    </p>
    <p>
    The DART system comes with many models -- ranging from 1-dimensional
@@ -95,7 +95,7 @@
    <a href="Lanai_release.html">release notes</a> for
    instructions on how to build an executable, run the "workshop" experiments, 
    and look at the results.  The <em class=file>DART_LAB</em> directory contains
-   presentation slides and interactive MATLAB demonstrations which illustrate
+   presentation slides and interactive Matlab&174; demonstrations which illustrate
    and explain the fundamentals of the ensemble data assimilation algorithms.
    The <em class=file>tutorial</em> directory contains a series of PDF files
    which go into more mathematical detail on various ensemble data assimilation
@@ -374,7 +374,7 @@ nbsp's between the dates -->
       It has been used in several multi-day workshops and can be used as the basis 
       to teach a section on Data Assimilation. <!--add refs to people doing this already-->
       Download the DART software distribution and look in the <code>DART_LAB</code> subdirectory
-      for pdf and powerpoint presentations, and MATLAB GUI point-and-click examples and
+      for pdf and powerpoint presentations, and Matlab&#174; GUI point-and-click examples and
       hands-on demonstrations.  Also look in the
       <code>tutorial</code> subdirectory for pdf files for each of the 22 tutorial sections.
       <br />
