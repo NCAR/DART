@@ -41,10 +41,9 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   compute_copy_mean_var, duplicate_ens, get_copy_owner_index, &
                                   get_ensemble_time, set_ensemble_time, broadcast_copy,       &
                                   prepare_to_read_from_vars, prepare_to_write_to_vars,        &
-                                  prepare_to_read_from_copies,                                &
+                                  prepare_to_read_from_copies,  get_my_num_vars,              &
                                   prepare_to_write_to_copies, get_ensemble_time,              &
                                   map_task_to_pe,  map_pe_to_task, prepare_to_update_copies,  &
-                                  get_my_num_vars, set_ensemble_time, &
                                   copies_in_window, set_num_extra_copies, get_allow_transpose, &
                                   all_copies_to_all_vars, allocate_single_copy,               &
                                   get_single_copy, put_single_copy, deallocate_single_copy
@@ -683,14 +682,22 @@ AdvanceTime : do
 
    !goto 10011 !HK bail out after forward operators
 
-   ! While we're here, make sure the timestamp on the actual ensemble copy
-   ! for the mean has the current time.  If the user requests it be written
-   ! out, it needs a valid timestamp.
+   ! While we're here, make sure the timestamp on the extra ensemble copies
+   ! have the current time.  If the user requests it be written out, it needs 
+   ! a valid timestamp.
    if (my_task_id() == 0 ) print*, '************ MEAN TIME *****************'
-   call get_copy_owner_index(ENS_MEAN_COPY, mean_owner, mean_owners_index)
-   if(state_ens_handle%my_pe == mean_owner) then
-      ! Make sure the timestamp for the mean is the current time.
-      call set_ensemble_time(state_ens_handle, mean_owners_index, curr_ens_time)
+   call set_copy_time(state_ens_handle, ENS_MEAN_COPY,     curr_ens_time)
+   call set_copy_time(state_ens_handle, ENS_SD_COPY,       curr_ens_time)
+   call set_copy_time(state_ens_handle, PRIOR_INF_COPY,    curr_ens_time)
+   call set_copy_time(state_ens_handle, PRIOR_INF_SD_COPY, curr_ens_time)
+   call set_copy_time(state_ens_handle, POST_INF_COPY,     curr_ens_time)
+   call set_copy_time(state_ens_handle, POST_INF_SD_COPY,  curr_ens_time)
+
+   if (spare_copies) then
+      call set_copy_time(state_ens_handle, SPARE_COPY_MEAN,       curr_ens_time)
+      call set_copy_time(state_ens_handle, SPARE_COPY_SPREAD,     curr_ens_time)
+      call set_copy_time(state_ens_handle, SPARE_COPY_INF_MEAN,   curr_ens_time)
+      call set_copy_time(state_ens_handle, SPARE_COPY_INF_SPREAD, curr_ens_time)
    endif
 
    call timestamp_message('After  computing prior observation values')
@@ -1869,6 +1876,24 @@ if(.not. interf_provided) then
 endif
 
 end subroutine perturb_copies
+
+!------------------------------------------------------------------
+
+subroutine set_copy_time(ens_handle, copy_num, ens_time)
+
+type(ensemble_type), intent(inout) :: ens_handle
+integer,             intent(in)    :: copy_num
+type(time_type),     intent(in)    :: ens_time
+
+integer :: owner, owners_index
+
+! Set time for a given copy of an ensemble
+call get_copy_owner_index(copy_num, owner, owners_index)
+if(ens_handle%my_pe == owner) then
+   call set_ensemble_time(ens_handle, owners_index, ens_time)
+endif
+
+end subroutine set_copy_time
 
 !==================================================================
 ! TEST FUNCTIONS BELOW THIS POINT

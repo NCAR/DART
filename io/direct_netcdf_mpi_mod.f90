@@ -33,7 +33,8 @@ use types_mod,            only : r8, i4, MISSING_R8
 use mpi_utilities_mod,    only : task_count, send_to, receive_from, my_task_id,&
                                  datasize
 
-use ensemble_manager_mod, only : ensemble_type, map_pe_to_task
+use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, &
+                                 get_copy_owner_index, get_ensemble_time
 
 use time_manager_mod,     only : time_type
 
@@ -335,6 +336,7 @@ integer :: num_state_variables
 ! single file
 integer :: iunit
 type(time_type) :: dart_time
+integer :: time_owner, time_owner_index
 
 integer :: create_mode
 
@@ -382,7 +384,11 @@ COPIES : do c = 1, ens_size
             ret = nf90_create(netcdf_filename_out, create_mode, ncfile_out)
             call nc_check(ret, 'transpose_write: creating', trim(netcdf_filename_out))
 
-            dart_time = state_ens_handle%time(my_copy - recv_start + 1)
+            !>@todo This is grabbing the time assuming the ensemble is var complete.
+            !> Should we instead have all copies time in the ensemble handle?
+            call get_copy_owner_index(my_copy - recv_start + 1, time_owner, time_owner_index)
+            call get_ensemble_time(state_ens_handle, time_owner_index, dart_time)
+
             call create_state_output(ncfile_out, domain, dart_time, write_single_precision)
          endif
       endif

@@ -8,7 +8,8 @@
 module direct_netcdf_mod
 
 use types_mod,            only : r8, digits12, missing_r8
-use ensemble_manager_mod, only : ensemble_type
+use ensemble_manager_mod, only : ensemble_type, get_copy_owner_index, &
+                                 get_ensemble_time
 
 use state_structure_mod,  only : get_domain_size, get_num_variables 
                                  
@@ -137,6 +138,7 @@ integer :: start_var
 
 character(len=256)      :: msgstring
 type(time_type) :: dart_time
+integer :: time_owner, time_owner_index
 
 integer :: create_mode
 
@@ -169,7 +171,11 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
          ret = nf90_create(netcdf_filename_out, create_mode, ncfile_out)
          call nc_check(ret, 'transpose_write: creating', trim(netcdf_filename_out))
 
-         dart_time = state_ens_handle%time(1)
+         !>@todo This is grabbing the time assuming the ensemble is var complete.
+         !> Should we instead have all copies time in the ensemble handle?
+         call get_copy_owner_index(copy, time_owner, time_owner_index)
+         call get_ensemble_time(state_ens_handle, time_owner_index, dart_time)
+
          call create_state_output(ncfile_out, domain, dart_time, write_single_precision)
       endif
 
