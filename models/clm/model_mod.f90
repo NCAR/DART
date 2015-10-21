@@ -4635,8 +4635,10 @@ findVarIndex = -1
 
 ! Skip to the right variable
 VARTYPES : do i = 1,nfields
-    findVarIndex = i
-    if ( trim(progvar(i)%varname) == varstring) exit VARTYPES
+    if ( trim(progvar(i)%varname) == varstring) then
+       findVarIndex = i
+       exit VARTYPES
+    endif
 enddo VARTYPES
 
 if (findVarIndex < 1) then
