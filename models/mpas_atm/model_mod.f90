@@ -835,7 +835,8 @@ integer, optional,   intent(out) :: var_type
 
 ! Local variables
 
-integer  :: nxp, nzp, iloc, vloc, kloc, nf, n
+integer  :: i, j, k ! Indices into variable (note k is not used in MPAS)
+integer  :: nxp, nzp, iloc, vloc, nf, n
 integer  :: myindx
 integer  :: istatus
 real(r8) :: height
@@ -844,9 +845,20 @@ type(location_type) :: new_location
 if ( .not. module_initialized ) call static_init_model
 
 ! get the local indicies and type from dart index. kloc is a dummy variable for this subroutine
-call get_model_variable_indices(index_in, vloc, iloc, kloc, var_id=nf)
 
-nzp = progvar(nf)%numvertical
+call get_model_variable_indices(index_in, i, j, k, var_id=nf)
+
+if (progvar(nf)%numdims == 2) then  ! variable(vcol, iloc)
+   vloc = i
+   iloc = j
+elseif (progvar(nf)%numdims == 1) then ! variable(iloc)
+   iloc = i
+   vloc = 1
+else
+   call error_handler(E_ERR, 'get_state_meta_data ', 'expecting 1D or 2D variable')
+endif
+
+nzp  = progvar(nf)%numvertical
 
 ! the zGrid array contains the location of the cell top and bottom faces, so it has one
 ! more value than the number of cells in each column.  for locations of cell centers
@@ -892,19 +904,11 @@ endif
 ! which are not dense relative to the grid, this might be slower than doing the
 ! conversions on demand in the localization code (in get_close_obs()).
 
-! I don't think VERTISURFACE locations can enter this loop.
 if ( .not. horiz_dist_only .and. vert_localization_coord /= VERTISHEIGHT ) then
      new_location = location
      call vert_convert_distrib_mean(state_ens_handle, new_location, progvar(nf)%dart_kind, istatus)
      if(istatus == 0) location = new_location
 endif
-
-if (nzp <= 1) then ! do vertical conversion of surface
-     new_location = location
-     call vert_convert_distrib_mean(state_ens_handle, new_location, progvar(nf)%dart_kind, istatus)
-     if(istatus == 0) location = new_location
-endif
-
 
 if (debug > 12) then
 
