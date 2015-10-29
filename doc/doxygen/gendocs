@@ -16,8 +16,11 @@
 # and called relationship between subroutines, but the number and size
 # of files it generates is much larger.
 
-template=doxygen-config-template
-#template=doxygen-devel-config-template
+if [[ $1 == 'devel' || $1 == '-devel' ]]; then
+  template=doxygen-devel-config-template
+else
+  template=doxygen-config-template
+fi
 
 model=`pwd | sed -e 's;/work;;' -e 's;^.*/;;' `
 umodel=`echo $model | tr '[a-z]' '[A-Z]' `
