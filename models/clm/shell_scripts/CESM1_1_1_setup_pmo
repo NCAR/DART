@@ -24,7 +24,7 @@
 # DATM: We are using an ensemble of data atmospheres. This requires modification of
 #       the stream text files (and the stream files) for each CESM instance.
 #
-# DOCN: We are using a single data ocean.
+# SOCN: We are using a stub ocean.
 #
 # This script has a counterpart that is a multi-instance setup for either a
 # free run or an assimilation experiment. To make it easy to maintain (and
@@ -189,7 +189,7 @@ setenv TRUTHinstance 23
 setenv refdate      $refyear-$refmon-$refday
 setenv reftimestamp $refyear-$refmon-$refday-$reftod
 
-setenv stagedir /glade/scratch/afox/archive/$refcase/rest/${reftimestamp}
+setenv stagedir /glade/p/image/RDA_strawman/CESM_ensembles/CLM/CLM4/I_2000_CN_f09_f09/rest/${reftimestamp}
 
 setenv bug1730_workaround  on
 setenv bug1934_workaround  on
@@ -382,9 +382,9 @@ cd ${caseroot}
 
 source ./Tools/ccsm_getenv || exit -2
 
-# Make sure the case is configured with a data ocean and a data atmosphere.
+# Make sure the case is configured with a stub ocean and a data atmosphere.
 
-if ( (${COMP_OCN} != docn) || (${COMP_ATM} != datm) ) then
+if ( (${COMP_OCN} != socn) || (${COMP_ATM} != datm) ) then
    echo " "
    echo "ERROR: This setup script is not appropriate for active ocean or atmospheric compsets."
    echo "ERROR: Please use the models/CESM/shell_scripts examples for that case."

@@ -24,7 +24,7 @@
 # DATM: We are using an ensemble of data atmospheres. This requires modification of
 #       the stream text files (and the stream files) for each CESM instance.
 #
-# DOCN: We are using a single data ocean.
+# SOCN: We are using a stub ocean.
 #
 # This script has a counterpart that is a multi-instance setup for either a
 # free run or an assimilation experiment. To make it easy to maintain (and
@@ -114,6 +114,7 @@
 # ==============================================================================
 # 2000_DATM%QIA_CLM40%CN_SICE_SOCN_RTM_SGLC_SWAV (I_2000_CN)       (ICN)
 # 2000_DATM%QIA_CLM45%CN_SICE_SOCN_RTM_SGLC_SWAV (I_2000_CLM45_CN) (ICLM45CN)
+# 2000_DATM%QIA_CLM45%BGC_SICE_SOCN_RTM_SGLC_SWAV (I_2000_CLM45_BGC) (ICLM45BGC)
 
 setenv case                 clm1_2_1_pmo
 setenv compset              I_2000_CN
@@ -392,7 +393,7 @@ cd ${caseroot}
 
 source ./Tools/ccsm_getenv || exit -2
 
-# Make sure the case is configured with a data ocean and a data atmosphere.
+# Make sure the case is configured with a stub ocean and a data atmosphere.
 
 if ( (${COMP_OCN} != socn) || (${COMP_ATM} != datm) ) then
    echo " "

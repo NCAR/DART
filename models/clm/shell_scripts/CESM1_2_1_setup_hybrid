@@ -30,7 +30,7 @@
 # DATM: We are using an ensemble of data atmospheres. This requires modification of
 #       the stream text files (and the stream files) for each CESM instance.
 #
-# DOCN: We are using a single data ocean.
+# SOCN: We are using a stub ocean.
 #
 # Much of the complexity comes from ensuring compatibility between the namelists
 # for each instance and staging of the files. The original experiments were run
@@ -384,7 +384,7 @@ cd ${caseroot}
 
 source ./Tools/ccsm_getenv || exit -2
 
-# Make sure the case is configured with a data ocean and a data atmosphere.
+# Make sure the case is configured with a stub ocean and a data atmosphere.
 
 if ( (${COMP_OCN} != socn) || (${COMP_ATM} != datm) ) then
    echo " "
