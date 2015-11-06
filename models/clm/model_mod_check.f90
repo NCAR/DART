@@ -213,11 +213,11 @@ endif
 
 if (test1thru > 8) then
    write(*,*)
-   write(*,*)'Testing compute_gridcell_value() with "frac_sno" ...'
+   write(*,*)'Testing compute_gridcell_value() with KIND_SNOWCOVER_FRAC ...'
 
    loc = set_location(loc_of_interest(1), loc_of_interest(2), loc_of_interest(3), VERTISHEIGHT)
 
-   call compute_gridcell_value(statevector, loc, "frac_sno", interp_val, ios_out)
+   call compute_gridcell_value(statevector, loc, KIND_SNOWCOVER_FRAC, interp_val, ios_out)
 
    if ( ios_out == 0 ) then
       write(*,*)'compute_gridcell_value : value is ',interp_val
@@ -227,11 +227,11 @@ if (test1thru > 8) then
 
 
    write(*,*)
-   write(*,*)'Testing get_grid_vertval() with "T_SOISNO" ...'
+   write(*,*)'Testing get_grid_vertval() with KIND_SOIL_TEMPERATURE ...'
 
    loc = set_location(loc_of_interest(1), loc_of_interest(2), loc_of_interest(3), VERTISHEIGHT)
 
-   call get_grid_vertval(statevector, loc, "T_SOISNO", interp_val, ios_out)
+   call get_grid_vertval(statevector, loc, KIND_SOIL_TEMPERATURE, interp_val, ios_out)
 
    if ( ios_out == 0 ) then
       write(*,*)'get_grid_vertval : value is ',interp_val
