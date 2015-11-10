@@ -549,9 +549,9 @@ end subroutine get_expected_mopitt_co
 ! Allows passing of obs_def special information 
 
 integer,	 	intent(in)	:: key, co_nlevels
-real*8,dimension(10),	intent(in)	:: co_avgker	
-real*8,			intent(in)	:: co_prior
-real*8,			intent(in)	:: co_psurf
+real(r8),dimension(10),	intent(in)	:: co_avgker
+real(r8),			intent(in)	:: co_prior
+real(r8),			intent(in)	:: co_psurf
 character(len=129) 			:: msgstring
 
 if ( .not. module_initialized ) call initialize_module
