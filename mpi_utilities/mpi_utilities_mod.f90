@@ -2035,6 +2035,10 @@ real(r8), intent(out) :: x ! result
 integer(KIND=MPI_ADDRESS_KIND) :: target_disp
 integer :: errcode
 
+! Note to programmer: The data transfer is not guaranteed
+! to have occured until the call to mpi_win_unlock. 
+! => Don't do anything with x in between mpi_get and mpi_win_lock
+
 target_disp = (index - 1)
 call mpi_win_lock(MPI_LOCK_SHARED, owner, 0, window, errcode)
 call mpi_get(x, 1, datasize, owner, target_disp, 1, datasize, window, errcode)
@@ -2054,6 +2058,11 @@ real(r8), intent(out) :: x(:)     ! result
 
 integer(KIND=MPI_ADDRESS_KIND) :: target_disp
 integer :: errcode
+
+! Note to programmer: The data transfer is not guaranteed
+! to have occured until the call to mpi_win_unlock. 
+! => Don't do anything with x in between mpi_get and mpi_win_lock
+
 
 target_disp = (index - 1)*num_rows
 call mpi_win_lock(MPI_LOCK_SHARED, owner, 0, window, errcode)
