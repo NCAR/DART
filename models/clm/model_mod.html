@@ -441,7 +441,7 @@ prematurely terminating the namelist.
 </TR>
 
 <TR><TD>model_perturbation_amplitude</TD>
-    <TD>integer</TD>
+    <TD>real(r8)</TD>
     <TD>Required by the DART interfaces, but not used by CLM.</TD>
 </TR>
 
@@ -683,8 +683,7 @@ state vector. The location defines where the state variable is located.
     <TD>The location of state variable element.</TD></TR>
 
 <TR><TD><em class=optionalcode>var_type</em></TD>
-    <TD>Returns the type (always 1) of the indexed state 
-        variable as an optional argument.</TD></TR>
+    <TD>The generic DART kind of the state variable element.</TD></TR>
 
 </TABLE>
 
@@ -729,7 +728,9 @@ Given model state, returns the value interpolated to a given location.
     <TD> The interpolated value from the model.</TD></TR>
 
 <TR><TD><em class=code>istatus</em></TD>
-    <TD>Quality control information, always returned 0.</TD></TR>
+    <TD>If the interpolation was successful <em class=code>istatus = 0</em>.
+        If <em class=code>istatus /= 0</em> the interpolation failed.
+        Values less than zero are reserved for DART.</TD></TR>
 
 </TABLE>
 
@@ -1008,6 +1009,9 @@ real(r8),             intent(in)    :: <em class=code>maxdist</em>
 <!-- Description -->
 
 <P>
+In distance computations any two locations closer than the
+given <em class=code>maxdist</em> will be considered close
+by the <em class=code>get_close_obs()</em> routine.
 Pass-through to the 3D Sphere locations module. See
 <A HREF="../../location/threed_sphere/location_mod.html#get_close_maxdist_init">
 get_close_maxdist_init()</A> for the documentation of this subroutine.
