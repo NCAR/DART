@@ -125,8 +125,6 @@ public :: get_model_size,                 &
           get_close_obs,          &
           query_vert_localization_coord,  &
           vert_convert,           &
-          variables_domains,              &
-          fill_variable_list,             &
           construct_file_name_in,         &
           read_model_time,                 &
           write_model_time
@@ -7218,32 +7216,6 @@ integer :: query_vert_localization_coord
 query_vert_localization_coord = vert_localization_coord
 
 end function query_vert_localization_coord
-
-!--------------------------------------------------------------------
-
-!> pass number of variables in the state out to filter 
-subroutine variables_domains(num_variables_in_state, num_doms)
-
-integer, intent(out) :: num_variables_in_state
-integer, intent(out) :: num_doms !< number of domains
-
-num_variables_in_state = nfields
-num_doms = 1
-
-end subroutine variables_domains
-
-!--------------------------------------------------------------------
-!> pass variable list to filter
-function fill_variable_list(num_variables_in_state)
-
-integer            :: num_variables_in_state
-character(len=256) :: fill_variable_list(num_variables_in_state)
-
-! I believe this is every other element of the array
-fill_variable_list = mpas_state_variables(1:num_variables_in_state:2)
-
-end function fill_variable_list
-
 
 !--------------------------------------------------------------------
 !> construct restart file name for reading
