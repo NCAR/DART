@@ -21,6 +21,7 @@ use obs_sequence_mod,      only : read_obs_seq, obs_type, obs_sequence_type,    
                                   
 use obs_def_mod,           only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                                   get_obs_kind
+use obs_def_utilities_mod, only : set_debug_fwd_op
 use time_manager_mod,      only : time_type, get_time, set_time, operator(/=), operator(>),   &
                                   operator(-), print_time
 use utilities_mod,         only : register_module,  error_handler, E_ERR, E_MSG, E_DBG,       &
@@ -270,6 +271,7 @@ if (do_nml_term()) write(     *     , nml=filter_nml)
 
 if (task_count() == 1) distributed_state = .true.
 
+call set_debug_fwd_op(output_forward_op_errors)
 call set_trace(trace_execution, output_timestamps, silence)
 
 call     trace_message('Filter start')

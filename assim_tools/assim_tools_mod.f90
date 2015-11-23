@@ -53,10 +53,10 @@ use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,         
 
 use time_manager_mod,     only : time_type, get_time
 
-use assim_model_mod,      only : get_state_meta_data_distrib, get_close_maxdist_init,             &
-                                 get_close_obs_init, get_close_obs_distrib
+use assim_model_mod,      only : get_state_meta_data, get_close_maxdist_init,             &
+                                 get_close_obs_init, get_close_obs
 
-use model_mod,            only : query_vert_localization_coord, vert_convert_distrib
+use model_mod,            only : query_vert_localization_coord, vert_convert
 
 use distributed_state_mod, only : create_mean_window, free_mean_window
 
@@ -463,7 +463,7 @@ if (.not. lanai_bitwise) then
    ! convert the verical of all my observations to the localization coordinate
    ! this may not be bitwise with Lanai because of a different number of set_location calls
    do i = 1, obs_ens_handle%my_num_vars
-      call vert_convert_distrib(ens_handle, my_obs_loc(i), my_obs_kind(i), vstatus)
+      call vert_convert(ens_handle, my_obs_loc(i), my_obs_kind(i), vstatus)
       if (good_dart_qc(nint(obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i)))) then
          !> @todo Can I just use the OBS_GLOBAL_QC_COPY? Is it ok to skip the loop?
          if (vstatus /= 0) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = DARTQC_FAILED_VERT_CONVERT
@@ -478,7 +478,7 @@ call get_my_vars(ens_handle, my_state_indx)
 ! Get the location and kind of all my state variables
 !start = MPI_WTIME()
 do i = 1, ens_handle%my_num_vars
-   call get_state_meta_data_distrib(ens_handle, my_state_indx(i), my_state_loc(i), my_state_kind(i))
+   call get_state_meta_data(ens_handle, my_state_indx(i), my_state_loc(i), my_state_kind(i))
 end do
 !finish = MPI_WTIME()
 !print*, 'get state meta data time :', finish - start, 'rank ', my_task_id()
@@ -572,7 +572,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    if (base_obs_type > 0) then
       base_obs_kind = get_obs_kind_var_type(base_obs_type)
    else
-      call get_state_meta_data_distrib(ens_handle, -1 * int(base_obs_type,i8), dummyloc, base_obs_kind)  ! identity obs
+      call get_state_meta_data(ens_handle, -1 * int(base_obs_type,i8), dummyloc, base_obs_kind)  ! identity obs
    endif
    ! Get the value of the observation
    call get_obs_values(observation, obs, obs_val_index)
@@ -723,7 +723,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
 
    if (.not. close_obs_caching) then
-      call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
+      call get_close_obs(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
 
    else
  
@@ -733,7 +733,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          close_obs_dist(:) = last_close_obs_dist(:)
          num_close_obs_cached = num_close_obs_cached + 1
       else
-         call get_close_obs_distrib(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
+         call get_close_obs(gc_obs, base_obs_loc, base_obs_type, my_obs_loc, my_obs_kind, num_close_obs, close_obs_ind, close_obs_dist, ens_handle)
 
          last_base_obs_loc      = base_obs_loc
          last_num_close_obs     = num_close_obs
@@ -832,7 +832,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Find state variables on my process that are close to observation being assimilated
    if (.not. close_obs_caching) then
 
-       call get_close_obs_distrib(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
+       call get_close_obs(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
          num_close_states, close_state_ind, close_state_dist, ens_handle)
    else
       if (base_obs_loc == last_base_states_loc) then
@@ -842,7 +842,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          num_close_states_cached = num_close_states_cached + 1
       else
          !start = MPI_WTIME()
-         call get_close_obs_distrib(gc_state, base_obs_loc, base_obs_type, my_state_loc, &
+         call get_close_obs(gc_state, base_obs_loc, base_obs_type, my_state_loc, &
                   my_state_kind, num_close_states, close_state_ind,&
                   close_state_dist, ens_handle)
          !finish = MPI_WTIME()
@@ -2694,12 +2694,12 @@ Get_Obs_Locations: do i = 1, obs_ens_handle%my_num_vars
    if (my_obs_type(i) > 0) then
          my_obs_kind(i) = get_obs_kind_var_type(my_obs_type(i))
    else
-      !call get_state_meta_data_distrib(ens_handle, win, -1 * my_obs_type(i), dummyloc, my_obs_kind(i))    ! identity obs
+      !call get_state_meta_data(ens_handle, win, -1 * my_obs_type(i), dummyloc, my_obs_kind(i))    ! identity obs
       ! This is just to get the kind.  WRF needs state_ensemble_handle because it converts the state
       ! element to the required vertical coordinate.  Should this be allowed anyway?
       ! With dummy loc you are going to end up converting the vertical twice for identity obs. FIXME use
       ! actual ob location so you can store the converted vertical?
-      call get_state_meta_data_distrib(state_ens_handle, -1 * int(my_obs_type(i),i8), dummyloc, my_obs_kind(i))
+      call get_state_meta_data(state_ens_handle, -1 * int(my_obs_type(i),i8), dummyloc, my_obs_kind(i))
    endif
 end do Get_Obs_Locations
 
@@ -2761,7 +2761,7 @@ close(15)
 end subroutine test_state_copies
 
 !--------------------------------------------------------
-!> dump out the distances calculated in get_close_obs_distrib
+!> dump out the distances calculated in get_close_obs
 subroutine test_close_obs_dist(distances, num_close, ob)
 
 real(r8), intent(in) :: distances(:) !< array of distances calculated in get_close

@@ -686,8 +686,8 @@ ITEMS: do i = 1, 8
      case (get_expected_item)
         11 format(3A)
         write(obs_def_out_unit, 11) '      case(', trim(type_string(j)), ')'
-        write(obs_def_out_unit, 11) '         call interpolate_distrib(location, ', &
-           trim(kind_string(kind_index(j))), ', istatus, expected_obs, state_ens_handle)'
+        write(obs_def_out_unit, 11) '         call interpolate(state_handle, ens_size, location, ', &
+           trim(kind_string(kind_index(j))), ', expected_obs, istatus)'
      case (read_item, write_item, interactive_item)
         write(obs_def_out_unit, 11) '   case(', trim(type_string(j)), ')'
         write(obs_def_out_unit, 21) '      continue'

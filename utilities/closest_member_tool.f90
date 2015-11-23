@@ -25,7 +25,7 @@ use  obs_kind_mod,     only : get_num_raw_obs_kinds, get_raw_obs_kind_index, &
 use  sort_mod,         only : slow_index_sort
 
 use assim_model_mod,   only : static_init_assim_model, get_model_size,   &
-                              get_state_meta_data_distrib
+                              get_state_meta_data
 
 use state_vector_io_mod, only : aread_state_restart, open_restart_read, close_restart
 
@@ -96,7 +96,7 @@ logical :: input_is_model_advance_file  = .false.
 ! it stays out.  but if you did have the mean, you could
 ! use this tool on it.
 
-type(ensemble_type) :: ens_handle ! dummy so you can call get state_meta_data_distrib.
+type(ensemble_type) :: ens_handle ! dummy so you can call get_state_meta_data
 !> @todo seems like you are using get_state_meta_data just so you can get the kinds.
 !> WRF and MPAS will be doing the vertical conversion also.
 
@@ -210,7 +210,7 @@ if (.not. allkinds) then
    do ii=1, model_size
       !> @todo WRF and MPAS are doing vertical conversion here. Does this work
       !> if you have the non-mpi version.
-      call get_state_meta_data_distrib(ens_handle, ii, loc, stype)
+      call get_state_meta_data(ens_handle, ii, loc, stype)
       if (stype < 1 .or. stype > num_kinds) then
          write(msgstring, *) 'bad KIND from get_state_meta_data, ', stype, ' for index ', ii
          write(msgstring1, *) 'must be between 1 and ', num_kinds

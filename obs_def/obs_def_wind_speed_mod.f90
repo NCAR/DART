@@ -30,7 +30,7 @@
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !   case(RADIOSONDE_WIND_SPEED)
-!        call get_expected_windspeed(state, location, obs_val, istatus) 
+!        call get_expected_windspeed(state_handle, ens_size, location, expected_obs, istatus) 
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! The next few sections do nothing because there is no additional
@@ -68,6 +68,8 @@ use     location_mod, only : location_type
 use  assim_model_mod, only : interpolate
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT,  &
                              KIND_V_WIND_COMPONENT
+use  ensemble_manager_mod, only : ensemble_type
+use obs_def_utilities_mod, only : track_status
 
 implicit none
 private
@@ -99,41 +101,42 @@ end subroutine initialize_module
 
 ! ---------------------------------------------------
 
-subroutine get_expected_windspeed(state_vector, location, wspd, istatus)  
- real(r8),            intent(in)  :: state_vector(:)
- type(location_type), intent(in)  :: location
- real(r8),            intent(out) :: wspd
- integer,             intent(out) :: istatus
+subroutine get_expected_windspeed(state_handle, ens_size, location, wspd, istatus)  
+
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+type(location_type), intent(in)  :: location
+real(r8),            intent(out) :: wspd(ens_size)
+integer,             intent(out) :: istatus(ens_size)
 
 ! Forward operator for windspeed.  The argument list to this routine
 ! must match the call in the GET_EXPECTED_OBS_FROM_DEF section above.
 
-real(r8) :: uwind   ! zonal wind component
-real(r8) :: vwind   ! meridional wind component
+real(r8) :: uwind(ens_size)   ! zonal wind component
+real(r8) :: vwind(ens_size)   ! meridional wind component
+integer  :: this_istatus(ens_size)
+logical  :: return_now
 
 if ( .not. module_initialized ) call initialize_module
 
+istatus = 0   ! to use track_status, it must start out 0
+
 ! Zonal wind at this location - this calls the model_mod code.
-call interpolate(state_vector, location, KIND_U_WIND_COMPONENT, uwind, istatus)
-if (istatus /= 0) then
-   wspd = missing_r8
-   return
-endif
+call interpolate(state_handle, ens_size, location, KIND_U_WIND_COMPONENT, uwind, this_istatus)
+call track_status(ens_size, this_istatus, wspd, istatus, return_now)
+if (return_now) return
 
 ! Meridional wind at this location - this calls the model_mod code.
-call interpolate(state_vector, location, KIND_V_WIND_COMPONENT, vwind, istatus)
-if (istatus /= 0) then
-   wspd = missing_r8
-   return
-endif
+call interpolate(state_handle, ens_size, location, KIND_V_WIND_COMPONENT, vwind, istatus)
+call track_status(ens_size, this_istatus, wspd, istatus, return_now)
+if (return_now) return
 
 ! The actual forward operator computation.  This is the value that
 ! will be returned.  istatus (the return code) of 0 is good,
-! return any value > 0 for error.  (values < 0 reserved for
+! any value > 0 indicates an error.  (values < 0 reserved for
 ! system use.)
 
-wspd = sqrt(uwind**2 + vwind**2)
-istatus = 0
+where (istatus == 0) wspd = sqrt(uwind**2 + vwind**2)
     
 end subroutine get_expected_windspeed
 

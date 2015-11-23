@@ -36,7 +36,7 @@ use      dart_pop_mod, only: set_model_time_step,                              &
                              read_horiz_grid, read_topography, read_vert_grid, &
                              get_pop_restart_filename
 
-use ensemble_manager_mod,  only : ensemble_type, copies_in_window
+use ensemble_manager_mod,  only : ensemble_type
 
 use distributed_state_mod, only : get_state
 
@@ -54,8 +54,8 @@ private
 ! the arguments - they will be called *from* the DART code.
 public :: get_model_size,                &
           adv_1step,                     &
-          get_state_meta_data_distrib,   &
-          model_interpolate_distrib,     &
+          get_state_meta_data,   &
+          model_interpolate,     &
           get_model_time_step,           &
           static_init_model,             &
           end_model,                     &
@@ -67,9 +67,9 @@ public :: get_model_size,                &
           pert_model_copies,             &
           get_close_maxdist_init,        &
           get_close_obs_init,            &
-          get_close_obs_distrib,         &
+          get_close_obs,         &
           query_vert_localization_coord, &
-          vert_convert_distrib,          &
+          vert_convert,          &
           construct_file_name_in,        &
           read_model_time,               &
           write_model_time
@@ -794,13 +794,14 @@ end subroutine init_time
 
 !------------------------------------------------------------------
 
-subroutine model_interpolate_distrib(state_ens_handle, location, obs_type, istatus, expected_obs)
+subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
- type(ensemble_type), intent(in) :: state_ens_handle
+ type(ensemble_type), intent(in) :: state_handle
+ integer,             intent(in) :: ens_size
  type(location_type), intent(in) :: location
  integer,             intent(in) :: obs_type
- integer,            intent(out) :: istatus(:)
- real(r8),           intent(out) :: expected_obs(:) !< array of interpolated values
+ integer,            intent(out) :: istatus(ens_size)
+ real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolated values
 
 ! Model interpolate will interpolate any state variable (S, T, U, V, PSURF) to
 ! the given location given a state vector. The type of the variable being
@@ -817,7 +818,7 @@ real(r8)       :: hgt_fract
 real(r8)       :: top_val, bot_val
 integer        :: hstatus
 logical        :: convert_to_ssh
-integer        :: ens_size, e
+integer        :: e
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -833,7 +834,6 @@ if ( .not. module_initialized ) call static_init_model
 
 expected_obs(:) = MISSING_R8     ! the DART bad value flag
 istatus(:) = 99                ! unknown error
-ens_size = copies_in_window(state_ens_handle)
 
 ! Get the individual locations values
 loc_array = get_location(location)
@@ -868,7 +868,7 @@ endif
 if(obs_type == KIND_TEMPERATURE) then
    ! we know how to interpolate this from potential temp,
    ! salinity, and pressure based on depth.
-   call compute_temperature(state_ens_handle, llon, llat, lheight, expected_obs, istatus)
+   call compute_temperature(state_handle, ens_size, llon, llat, lheight, expected_obs, istatus)
    if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus
    return
 endif
@@ -903,7 +903,7 @@ endif
 ! SSP needs to be converted to a SSH if height is required.
 if( vert_is_surface(location) ) then
    ! HK CHECK surface observations
-   call lon_lat_interpolate(state_ens_handle, base_offset, llon, llat, obs_type, 1, expected_obs, istatus)
+   call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, 1, expected_obs, istatus)
    do e = 1, ens_size
       if (convert_to_ssh .and. (istatus(e) == 0)) then !HK why check istatus?
          expected_obs(e) = expected_obs(e) / 980.6_r8   ! POP uses CGS units
@@ -924,11 +924,11 @@ endif
 ! do a 2d interpolation for the value at the bottom level, then again for
 ! the top level, then do a linear interpolation in the vertical to get the
 ! final value.  this sets both interp_val and istatus.
-call do_interp(state_ens_handle, base_offset, hgt_bot, hgt_top, hgt_fract, &
+call do_interp(state_handle, ens_size, base_offset, hgt_bot, hgt_top, hgt_fract, &
                llon, llat, obs_type, expected_obs, istatus)
 if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus
 
-end subroutine model_interpolate_distrib
+end subroutine model_interpolate
 
 !------------------------------------------------------------------
 
@@ -952,13 +952,14 @@ end subroutine model_interpolate_distrib
 
 !------------------------------------------------------------------
 !> Is height ens_size? Should quad status be ens_size?
-subroutine lon_lat_interpolate(state_ens_handle, offset, lon, lat, var_type, height, expected_obs, istatus)
- type(ensemble_type), intent(in) :: state_ens_handle
- integer(i8),  intent(in) :: offset ! Not sure if this is the best way to do this
- real(r8), intent(in) :: lon, lat
- integer,  intent(in) :: var_type, height
- real(r8), intent(out) :: expected_obs(:)
- integer,  intent(out) :: istatus(:)
+subroutine lon_lat_interpolate(state_handle, ens_size, offset, lon, lat, var_type, height, expected_obs, istatus)
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+integer(i8),         intent(in)  :: offset ! Not sure if this is the best way to do this
+real(r8),            intent(in)  :: lon, lat
+integer,             intent(in)  :: var_type, height
+real(r8),            intent(out) :: expected_obs(ens_size)
+integer,             intent(out) :: istatus(ens_size)
 
 ! Subroutine to interpolate to a lon lat location given the state vector
 ! for that level, x. This works just on one horizontal slice.
@@ -972,18 +973,13 @@ subroutine lon_lat_interpolate(state_ens_handle, offset, lon, lat, var_type, hei
 integer  :: lat_bot, lat_top, lon_bot, lon_top, num_inds, start_ind
 integer  :: x_ind, y_ind
 real(r8) :: x_corners(4), y_corners(4)
-real(r8), allocatable :: p(:,:), xbot(:), xtop(:)
+real(r8) :: p(4,ens_size), xbot(ens_size), xtop(ens_size)
 real(r8) :: lon_fract, lat_fract
 logical  :: masked
 integer  :: quad_status
-integer  :: ens_size
 integer  :: e
 
 if ( .not. module_initialized ) call static_init_model
-
-ens_size = copies_in_window(state_ens_handle)
-
-allocate(p(4, ens_size), xbot(ens_size), xtop(ens_size))
 
 ! Succesful return has istatus of 0
 istatus = 0
@@ -1093,14 +1089,14 @@ if(lon_top > nx) lon_top = 1
 
 ! Get the values at the four corners of the box or quad
 ! Corners go around counterclockwise from lower left
-p(1, :) = get_val(lon_bot, lat_bot, nx, state_ens_handle, offset, ens_size, var_type, height, masked)
+p(1, :) = get_val(lon_bot, lat_bot, nx, state_handle, offset, ens_size, var_type, height, masked)
 if(masked) then
    istatus = 3
    return
 endif
 
 
-p(2, :) = get_val(lon_top, lat_bot, nx, state_ens_handle, offset, ens_size, var_type, height, masked)
+p(2, :) = get_val(lon_top, lat_bot, nx, state_handle, offset, ens_size, var_type, height, masked)
 if(masked) then
    istatus = 3
    return
@@ -1108,13 +1104,13 @@ endif
 
 
 
-p(3, :) = get_val(lon_top, lat_top, nx, state_ens_handle, offset, ens_size, var_type, height, masked)
+p(3, :) = get_val(lon_top, lat_top, nx, state_handle, offset, ens_size, var_type, height, masked)
 if(masked) then
    istatus = 3
    return
 endif
 
-p(4, :) = get_val(lon_bot, lat_top, nx, state_ens_handle, offset, ens_size, var_type, height, masked)
+p(4, :) = get_val(lon_bot, lat_top, nx, state_handle, offset, ens_size, var_type, height, masked)
 if(masked) then
    istatus = 3
    return
@@ -1133,15 +1129,13 @@ else
    expected_obs = xbot + lat_fract * (xtop - xbot)
 endif
 
-deallocate(p, xbot, xtop)
-
 end subroutine lon_lat_interpolate
 
 !------------------------------------------------------------
 
-function get_val(lon_index, lat_index, nlon, state_ens_handle, offset, ens_size, var_type, height, masked)
+function get_val(lon_index, lat_index, nlon, state_handle, offset, ens_size, var_type, height, masked)
  integer,             intent(in)  :: lon_index, lat_index, nlon, var_type, height
- type(ensemble_type), intent(in)  :: state_ens_handle
+ type(ensemble_type), intent(in)  :: state_handle
  integer(i8),         intent(in)  :: offset
  integer,             intent(in)  :: ens_size
  logical,             intent(out) :: masked
@@ -1168,7 +1162,7 @@ state_index = int(lat_index - 1,i8)*int(nlon,i8) + int(lon_index,i8) + int(offse
 ! Layout has lons varying most rapidly
 !get_val = x((lat_index - 1) * nlon + lon_index)
 ! The x above is only a horizontal slice, not the whole state.   HK WHY -1?
-get_val = get_state(state_index, state_ens_handle)
+get_val = get_state(state_index, state_handle)
 
 ! this is a valid ocean water cell, not land or below ocean floor
 masked = .false.
@@ -1732,8 +1726,8 @@ end function get_model_time_step
 
 !------------------------------------------------------------------
 
-subroutine get_state_meta_data_distrib(state_ens_handle, index_in, location, var_type)
- type(ensemble_type), intent(in)  :: state_ens_handle
+subroutine get_state_meta_data(state_handle, index_in, location, var_type)
+ type(ensemble_type), intent(in)  :: state_handle
  integer(i8),         intent(in)  :: index_in
  type(location_type), intent(out) :: location
  integer,             intent(out), optional :: var_type
@@ -1778,7 +1772,7 @@ if (present(var_type)) then
    endif
 endif
 
-end subroutine get_state_meta_data_distrib
+end subroutine get_state_meta_data
 
 !------------------------------------------------------------------
 
@@ -2487,9 +2481,9 @@ end subroutine pert_model_state
 
 !------------------------------------------------------------------
 
-subroutine pert_model_copies(state_ens_handle, pert_amp, interf_provided)
+subroutine pert_model_copies(state_handle, pert_amp, interf_provided)
 
- type(ensemble_type), intent(inout) :: state_ens_handle
+ type(ensemble_type), intent(inout) :: state_handle
  real(r8),  intent(in) :: pert_amp
  logical,  intent(out) :: interf_provided
 
@@ -2521,13 +2515,13 @@ endif
 
 ! only perturb the actual ocean cells; leave the land and
 ! ocean floor values alone.
-do i=1,state_ens_handle%my_num_vars
-   dart_index = state_ens_handle%my_vars(i)
+do i=1,state_handle%my_num_vars
+   dart_index = state_handle%my_vars(i)
    call get_state_kind_inc_dry(dart_index, var_type)
-   do j=1,state_ens_handle%num_copies
+   do j=1,state_handle%num_copies
       if (var_type /= KIND_DRY_LAND) then
-         state_ens_handle%copies(j,i) = random_gaussian(random_seq, & 
-            state_ens_handle%copies(j,i), &
+         state_handle%copies(j,i) = random_gaussian(random_seq, & 
+            state_handle%copies(j,i), &
             pert_amp)
    
       endif
@@ -3156,9 +3150,9 @@ end subroutine write_grid_netcdf
 
 !------------------------------------------------------------------
 
-subroutine get_close_obs_distrib(gc, base_obs_loc, base_obs_kind, &
-                         obs, obs_kind, num_close, close_ind, dist, state_ens_handle)
- type(ensemble_type),               intent(in) :: state_ens_handle
+subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
+                         obs, obs_kind, num_close, close_ind, dist, state_handle)
+ type(ensemble_type),               intent(in) :: state_handle
  type(get_close_type),              intent(in) :: gc
  type(location_type),               intent(in) :: base_obs_loc
  integer,                           intent(in) :: base_obs_kind
@@ -3209,7 +3203,7 @@ do k = 1, num_close
 enddo
 !endif
 
-end subroutine get_close_obs_distrib
+end subroutine get_close_obs
 
 !------------------------------------------------------------------
 
@@ -3306,12 +3300,13 @@ end subroutine test_interpolation
 
 !------------------------------------------------------------------
 
-subroutine compute_temperature(state_ens_handle, llon, llat, lheight, expected_obs, istatus)
+subroutine compute_temperature(state_handle, ens_size, llon, llat, lheight, expected_obs, istatus)
 
- type(ensemble_type), intent(in) :: state_ens_handle
- real(r8), intent(in)  :: llon, llat, lheight
- real(r8), intent(out) :: expected_obs(:)
- integer,  intent(out) :: istatus(:)
+ type(ensemble_type), intent(in)  :: state_handle
+ integer,             intent(in)  :: ens_size
+ real(r8),            intent(in)  :: llon, llat, lheight
+ real(r8),            intent(out) :: expected_obs(ens_size)
+ integer,             intent(out) :: istatus(ens_size)
 
 ! use potential temp, depth, and salinity to compute a sensible (in-situ)
 ! temperature
@@ -3319,16 +3314,12 @@ subroutine compute_temperature(state_ens_handle, llon, llat, lheight, expected_o
 integer  :: hstatus, hgt_bot, hgt_top
 real(r8) :: hgt_fract
 real(r8) :: pres_bot, pres_top
-real(r8), allocatable :: salinity_val(:), potential_temp(:), pres_val(:)
-integer,  allocatable :: temp_status(:)
-integer  :: ens_size, e
+real(r8) :: salinity_val(ens_size), potential_temp(ens_size), pres_val(ens_size)
+integer  :: temp_status(ens_size)
+integer  :: e
 
 expected_obs(:) = MISSING_R8
 istatus = 99
-
-ens_size = copies_in_window(state_ens_handle)
-allocate(salinity_val(ens_size), potential_temp(ens_size), pres_val(ens_size))
-allocate(temp_status(ens_size))
 
 ! Get the bounding vertical levels and the fraction between bottom and top
 !> @todo are the heights different for each ensemble member?
@@ -3340,7 +3331,7 @@ endif
 
 ! salinity - in msu (kg/kg).  converter will want psu (g/kg).
 ! I'm not sure about this start_index stuff.
-call do_interp(state_ens_handle, start_index(S_index), hgt_bot, hgt_top, hgt_fract, llon, llat, &
+call do_interp(state_handle, ens_size, start_index(S_index), hgt_bot, hgt_top, hgt_fract, llon, llat, &
                KIND_SALINITY, salinity_val, temp_status)
  istatus = temp_status
 
@@ -3348,7 +3339,7 @@ if(all(istatus /= 0)) return
 if (debug > 8) print *, 'salinity: ', salinity_val
 
 ! potential temperature - degrees C.
-call do_interp(state_ens_handle, start_index(T_index), hgt_bot, hgt_top, hgt_fract, llon, llat, &
+call do_interp(state_handle, ens_size, start_index(T_index), hgt_bot, hgt_top, hgt_fract, llon, llat, &
                KIND_POTENTIAL_TEMPERATURE, potential_temp, temp_status)
 do e = 1, ens_size
    if(temp_status(e) /= 0) istatus(e) = temp_status(e)
@@ -3373,33 +3364,31 @@ do e = 1, ens_size !> @todo should this vectorize inside insitu_temp?
    if (debug > 2) print *, 's,pt,pres,t: ', salinity_val(e), potential_temp(e), pres_val(e), expected_obs(e)
 enddo
 
-deallocate(salinity_val, potential_temp, pres_val)
-
 end subroutine compute_temperature
 
 !------------------------------------------------------------------
 
-subroutine do_interp(state_ens_handle, base_offset, hgt_bot, hgt_top, hgt_fract, &
+subroutine do_interp(state_handle, ens_size, base_offset, hgt_bot, hgt_top, hgt_fract, &
                      llon, llat, obs_type, expected_obs, istatus)
- type(ensemble_type), intent(in) :: state_ens_handle
- integer(i8), intent(in) :: base_offset
- integer,     intent(in) :: hgt_bot, hgt_top
- real(r8),    intent(in) :: hgt_fract, llon, llat
- integer,     intent(in) :: obs_type
- real(r8),   intent(out) :: expected_obs(:)
- integer,    intent(out) :: istatus(:)
+
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: ens_Size
+integer(i8),         intent(in) :: base_offset
+integer,             intent(in) :: hgt_bot, hgt_top
+real(r8),            intent(in) :: hgt_fract, llon, llat
+integer,             intent(in) :: obs_type
+real(r8),           intent(out) :: expected_obs(ens_size)
+integer,           intent(out) :: istatus(ens_size)
  
 ! do a 2d horizontal interpolation for the value at the bottom level, 
 ! then again for the top level, then do a linear interpolation in the 
 ! vertical to get the final value.
 
 integer(i8) :: offset
-real(r8), allocatable :: bot_val(:), top_val(:)
-integer  :: ens_size, e
-integer, allocatable  :: temp_status(:)
+real(r8)    :: bot_val(ens_size), top_val(ens_size)
+integer     :: e
+integer     :: temp_status(ens_size)
 
-ens_size = copies_in_window(state_ens_handle)
-allocate(bot_val(ens_size), top_val(ens_size), temp_status(ens_size))
 
 ! Find the base location for the bottom height and interpolate horizontally 
 !  on this level.  Do bottom first in case it is below the ocean floor; can
@@ -3408,7 +3397,7 @@ offset = base_offset + (hgt_bot - 1) * nx * ny
 if (debug > 6) &
    print *, 'bot, field, abs offset: ', hgt_bot, base_offset, offset
 
-call lon_lat_interpolate(state_ens_handle, offset, llon, llat, obs_type, hgt_bot, bot_val, temp_status)
+call lon_lat_interpolate(state_handle, ens_size, offset, llon, llat, obs_type, hgt_bot, bot_val, temp_status)
 ! Failed istatus from interpolate means give up
 istatus = temp_status
 if(all(istatus /= 0)) return
@@ -3421,7 +3410,7 @@ offset = base_offset + (hgt_top - 1) * nx * ny
 if (debug > 6) &
    print *, 'top, field, abs offset: ', hgt_top, base_offset, offset
 
-call lon_lat_interpolate(state_ens_handle, offset, llon, llat, obs_type, hgt_top, top_val, temp_status)
+call lon_lat_interpolate(state_handle, ens_size, offset, llon, llat, obs_type, hgt_top, top_val, temp_status)
 do e = 1, ens_size
    if(temp_status(e) /= 0) istatus(e) = temp_status(e)
 enddo
@@ -3434,7 +3423,6 @@ if (debug > 6) &
 expected_obs = bot_val + hgt_fract * (top_val - bot_val)
 if (debug > 2) print *, 'do_interp: interp val = ',expected_obs
 
-deallocate(bot_val, top_val)
 
 end subroutine do_interp
 
@@ -3686,16 +3674,16 @@ end function query_vert_localization_coord
 !> This is used in the filter_assim. The vertical conversion is done using the 
 !> mean state.
 !> Calling this is a waste of time
-subroutine vert_convert_distrib(state_ens_handle, location, obs_kind, istatus)
+subroutine vert_convert(state_handle, location, obs_kind, istatus)
 
-type(ensemble_type), intent(in)  :: state_ens_handle
+type(ensemble_type), intent(in)  :: state_handle
 type(location_type), intent(in)  :: location
 integer,             intent(in)  :: obs_kind
 integer,             intent(out) :: istatus
 
 istatus = 0
 
-end subroutine vert_convert_distrib
+end subroutine vert_convert
 !--------------------------------------------------------------------
 !--------------------------------------------------------------------
 

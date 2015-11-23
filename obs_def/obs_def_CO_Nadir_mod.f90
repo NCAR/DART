@@ -21,15 +21,15 @@
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(MOPITT_CO_RETRIEVAL)                                                           
-!            call get_expected_mopitt_co(state, location, obs_def%key, obs_val, istatus) 
+!            call get_expected_mopitt_co(state_handle, ens_size, location, obs_def%key, expected_obs, istatus) 
 !         case(IASI_CO_RETRIEVAL) 
-!            call get_expected_iasi_co(state, location, obs_def%key, obs_val, istatus)
+!            call get_expected_iasi_co(state_handle, ens_size, location, obs_def%key, expected_obs, istatus)
 !         case(GEO_CO_ASI) 
-!            call get_expected_mopitt_co(state, location, obs_def%key, obs_val, istatus)
+!            call get_expected_mopitt_co(state_handle, ens_size, location, obs_def%key, expected_obs, istatus)
 !         case(GEO_CO_NAM) 
-!            call get_expected_mopitt_co(state, location, obs_def%key, obs_val, istatus)
+!            call get_expected_mopitt_co(state_handle, ens_size, location, obs_def%key, expected_obs, istatus)
 !         case(GEO_CO_EUR) 
-!            call get_expected_mopitt_co(state, location, obs_def%key, obs_val, istatus)
+!            call get_expected_mopitt_co(state_handle, ens_size, location, obs_def%key, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -64,6 +64,8 @@ use     location_mod, only : location_type, set_location, get_location, VERTISPR
 
 use  assim_model_mod, only : interpolate
 use    obs_kind_mod, only  : KIND_CO, KIND_PRESSURE, KIND_SURFACE_PRESSURE
+use ensemble_manager_mod,  only : ensemble_type
+use obs_def_utilities_mod, only : track_status
 
 
 implicit none
@@ -235,33 +237,37 @@ key = num_mopitt_co_obs
 ! Otherwise, prompt for input for the three required beasts
 write(*, *) 'Creating an interactive_mopitt_co observation'
 write(*, *) 'Input the MOPITT Prior '
-read(*, *) mopitt_prior
+read(*, *) mopitt_prior(key)
 write(*, *) 'Input MOPITT Surface Pressure '
-read(*, *) mopitt_psurf(num_mopitt_co_obs)
+read(*, *) mopitt_psurf(key)
 write(*, *) 'Input the 10 Averaging Kernel Weights '
-read(*, *) avg_kernel(num_mopitt_co_obs,:)
+read(*, *) avg_kernel(key,:)
 
 end subroutine interactive_mopitt_co
 
 
- subroutine get_expected_iasi_co(state, location, key, val, istatus)
+ subroutine get_expected_iasi_co(state_handle, ens_size, location, key, val, istatus)
 !---------------------------------------------------------------------
-real(r8), intent(in)            :: state(:)
-type(location_type), intent(in) :: location
-integer, intent(in)             :: key
-real(r8), intent(out)           :: val
-integer, intent(out)            :: istatus
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: key
+real(r8),            intent(out) :: val(ens_size)
+integer,             intent(out) :: istatus(ens_size)
 integer :: i,j
 integer :: num_levs, lev
 type(location_type) :: loc1,loc2,loc3,loc3p,loc3m,locS
 real(r8)            :: mloc(3), mloc1(3), mloc2(3)
-real(r8)            :: obs_val, pres, surf_pres, obs_val_int
-real(r8)            :: top_pres, bot_pres, coef, mop_layer_wght
-real(r8)            :: i_top_pres, i_bot_pres, i_pres
-real(r8)            :: p_col(max_model_levs)
-real(r8)            :: mopitt_pres_local(mopitt_dim)
+real(r8)            :: obs_val(ens_size), obs_val_int(ens_size)
+real(r8)            :: top_pres(ens_size), bot_pres(ens_size), coef(ens_size), mop_layer_wght(ens_size)
+real(r8)            :: i_top_pres(ens_size), i_bot_pres(ens_size), i_pres
+real(r8)            :: p_col(ens_size, max_model_levs)
+real(r8)            :: mopitt_pres_local(ens_size, mopitt_dim)
 integer             :: nlevels, start_i, end_i
 integer,  allocatable :: dim_sizes(:)
+integer             :: p_col_istatus(ens_size), obs_val_int_istatus(ens_size)
+logical             :: return_now
+integer             :: imem
 
 if ( .not. module_initialized ) call initialize_module
 val = 0.0_r8
@@ -273,7 +279,9 @@ elseif (mloc(2)<-90.0_r8) then
     mloc(2)=-90.0_r8
 endif
 
-mopitt_pres_local = mopitt_pressure
+do imem = 1, ens_size
+   mopitt_pres_local(imem, :) = mopitt_pressure
+enddo
 
 nlevels = mopitt_nlevels(key)
 ! Modify AFAJ (072513)
@@ -285,111 +293,129 @@ end_i = mopitt_dim
 ! Find the number of model levels and the pressures on them.
 istatus = 0
 p_col = MISSING_R8
-CAM_levs: do lev = 1,100  
+lev = 1
+model_levels: do
    locS = set_location(mloc(1),mloc(2),real(lev,r8),VERTISLEVEL)
-   call interpolate(state, locS, KIND_PRESSURE, p_col(lev), istatus)
-   if (istatus /= 0) then
-      p_col(lev) = MISSING_R8
+   call interpolate(state_handle, ens_size, locS, KIND_PRESSURE, p_col(:, lev), p_col_istatus)
+   if (any(p_col_istatus /= 0)) then
+      p_col(:, lev) = MISSING_R8
       num_levs = lev - 1
-      exit CAM_levs
+      exit model_levels
    endif
-enddo CAM_levs
+   lev = lev + 1
+enddo model_levels
 
 ! KDR: see comments in the same place in get_expected_mopitt_co.
+
+! Reset istatus to zero, so that it can be used properly by track_status
+istatus = 0
 
 !Barre'; here p_col is the pressure levels at the grid points, we will need to have in
 !the future the pressure values at the mid-points (need to create a new function
 !plevs_cam in model_mod using the the mid-levels hybrid coefs)
 locS = set_location(mloc(1),mloc(2),0.0_r8,VERTISSURFACE)
-call interpolate(state, locS, KIND_SURFACE_PRESSURE, p_col(num_levs), istatus)
+call interpolate(state_handle, ens_size, locS, KIND_SURFACE_PRESSURE, p_col(:,num_levs), p_col_istatus)
+call track_status(ens_size, p_col_istatus, p_col(:,num_levs), istatus, return_now)
+if (return_now) return
 
-mopitt_pres_local(1) = p_col(num_levs)
+mopitt_pres_local(:, 1) = p_col(:, num_levs)
 ! KDR Should we really be redefining this global array element?
+!> @todo this is not a global array (anymore?) so it's ok
 
 do i=start_i, end_i
    obs_val=0.0_r8
 
-   bot_pres=mopitt_pres_local(i)
-   if (i == 10) then
-      top_pres=mopitt_pres_local(i)/2.0_r8
+   bot_pres(:)=mopitt_pres_local(:, i)
+   if (i == mopitt_dim) then
+      top_pres(:)=mopitt_pres_local(:, i)/2.0_r8
    else
-      top_pres=mopitt_pres_local(i+1)
+      top_pres(:)=mopitt_pres_local(:, i+1)
    endif
 !  This is used in all coefs, below.
    mop_layer_wght = 1.0_r8/abs(bot_pres-top_pres)
 
    do j=1,num_levs
-      i_bot_pres=p_col(j)
+      i_bot_pres(:)=p_col(:, j)
       if (j == 1) then
-         i_top_pres=0.0_r8
+         i_top_pres(:)=0.0_r8
       else
-         i_top_pres=p_col(j-1)
+         i_top_pres(:)=p_col(:, j-1)
       endif
 
       coef=0.0_r8
       obs_val_int=0.0_r8
-      if (bot_pres > top_pres) then
-         loc3 = set_location(mloc(1),mloc(2),real(j,r8), VERTISLEVEL)
-         call interpolate(state, loc3, KIND_CO, obs_val_int, istatus)
-         if (istatus /= 0) then
-            write(*,*) 'Interpolation failure at ',mloc(1),mloc(2),j
-            return
-         endif
 
-         if (i_bot_pres <= bot_pres .and. i_bot_pres > top_pres) then
-            if (i_top_pres <= top_pres) then
+!> @todo can this happen?  and if so, is it ok to call 
+!> interpolate anyway for all ensemble members?
+
+      if ( any(bot_pres > top_pres) ) then
+         loc3 = set_location(mloc(1),mloc(2),real(j,r8), VERTISLEVEL)
+         call interpolate(state_handle, ens_size, loc3, KIND_CO, obs_val_int, obs_val_int_istatus)
+         call track_status(ens_size, obs_val_int_istatus, obs_val_int, istatus, return_now)
+         if (return_now) return
+         
+         where (i_bot_pres <= bot_pres .and. i_bot_pres > top_pres)
+            where (i_top_pres <= top_pres)
                coef=abs(i_bot_pres-top_pres) * mop_layer_wght
-            else 
+            else where
                coef=abs(i_bot_pres-i_top_pres) * mop_layer_wght
-            endif
-         else if (i_bot_pres > bot_pres .and. i_top_pres < bot_pres) then
-            if (i_top_pres <= top_pres) then
+            end where
+         else where
+            where (i_top_pres <= top_pres)
                coef=abs(bot_pres-top_pres) * mop_layer_wght
-            else 
+            else where
                coef=abs(bot_pres-i_top_pres) * mop_layer_wght
-            endif
-         endif
+            end where
+         end where
       endif
 
-      obs_val = obs_val + obs_val_int * coef
-      if (coef<0 .or. coef>1) write(*,*) 'coef', coef, i, j, mloc(1),mloc(2)
-      if (coef<0 .or. coef>1) write(*,*) 'pres', i_bot_pres,i_top_pres,bot_pres,top_pres
+      where (istatus == 0) obs_val = obs_val + obs_val_int * coef
+      !>@todo FIXME JH need to figure out how to enclose write statements
+      ! where (coef<0 .or. coef>1) write(*,*) 'coef', coef, i, j, mloc(1),mloc(2)
+      ! where (coef<0 .or. coef>1) write(*,*) 'pres', i_bot_pres,i_top_pres,bot_pres,top_pres
       !if (obs_val_int<0) write(*,*) 'inerp neg', obs_val_int, i, j,mloc(1),mloc(2)
 
    enddo
-   if (obs_val > 0.0_r8) val = val + avg_kernel(key,i) * (obs_val)
+   where (obs_val > 0.0_r8) val = val + avg_kernel(key,i) * (obs_val)
 enddo
-val = val + mopitt_prior(key)
+
+where (istatus ==0) val = val + mopitt_prior(key)
 ! KDR Should this now be MISSING_R8?
 ! if (val < 0.0_r8) val=-777.0_r8
-if (val < 0.0_r8) then
+!> @todo check with the cam/chem guys - do they absolutely
+!> have to have -777 as some magic value for this failed case?
+where (val < 0.0_r8)
    val=MISSING_R8
    istatus = 7
-endif
+end where
 
  end subroutine get_expected_iasi_co
 
- subroutine get_expected_mopitt_co(state, location, key, val, istatus)
+ subroutine get_expected_mopitt_co(state_handle, ens_size, location, key, val, istatus)
 !----------------------------------------------------------------------
-real(r8), intent(in)            :: state(:)
-type(location_type), intent(in) :: location
-integer, intent(in)             :: key
-real(r8), intent(out)           :: val
-integer, intent(out)            :: istatus
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: key
+real(r8),            intent(out) :: val(ens_size)
+integer,             intent(out) :: istatus(ens_size)
 
 integer :: i,j
 type(location_type) :: loc1,loc2,loc3,loc3p,loc3m,locS
 real(r8)            :: mloc(3), mloc1(3), mloc2(3)
-real(r8)	    :: obs_val, pres, obs_val_int
+real(r8)	    :: obs_val(ens_size), obs_val_int(ens_size)
 
 integer             :: nlevels, start_i, end_i
 
-real(r8)            :: top_pres, bot_pres, coef, mop_layer_wght
-real(r8)            :: i_top_pres, i_bot_pres, i_pres
+real(r8)            :: top_pres(ens_size), bot_pres(ens_size), coef(ens_size), mop_layer_wght(ens_size)
+real(r8)            :: i_top_pres(ens_size), i_bot_pres(ens_size), i_pres
 integer             :: num_levs, lev
-real(r8)            :: p_col(max_model_levs)
-real(r8)            :: mopitt_pres_local(mopitt_dim)
+real(r8)            :: p_col(ens_size, max_model_levs)
+real(r8)            :: mopitt_pres_local(ens_size, mopitt_dim)
 integer,  allocatable :: dim_sizes(:)
+integer             :: p_col_istatus(ens_size), obs_val_int_istatus(ens_size)
+logical             :: return_now
+integer             :: imem
 
 if ( .not. module_initialized ) call initialize_module
 mloc = get_location(location)
@@ -411,7 +437,9 @@ elseif (mloc(2)<-90.0_r8) then
     mloc(2)=-90.0_r8
 endif
 
-mopitt_pres_local = mopitt_pressure
+do imem = 1, ens_size
+   mopitt_pres_local(imem, :) = mopitt_pressure
+enddo
 
 nlevels = mopitt_nlevels(key)
 ! Modify AFAJ (072513)
@@ -420,22 +448,25 @@ start_i = mopitt_dim-nlevels+1
 ! KDR Ack! redefining one element of a global array.
 !     Various elements will be redefined during various calls to this subroutine,
 !     because the array is initialized in the specification statement.
-mopitt_pres_local(start_i)=mopitt_psurf(key)
+mopitt_pres_local(:, start_i)=mopitt_psurf(key)
 end_i = mopitt_dim
 
 !JB: do partial columns aproximations
 ! Find the number of model levels and the pressures on them.
 istatus = 0
 p_col = MISSING_R8
-CAM_levs: do lev = 1,100  !!FIND A WAY TO GET THE MODEL LEVELS
+lev = 1
+model_levels: do 
    locS = set_location(mloc(1),mloc(2),real(lev,r8),VERTISLEVEL)
-   call interpolate(state, locS, KIND_PRESSURE, p_col(lev), istatus)
-   if (istatus /= 0) then
-      p_col(lev) = MISSING_R8
+   call interpolate(state_handle, ens_size, locS, KIND_PRESSURE, p_col(:, lev), p_col_istatus)
+   if (any(p_col_istatus /= 0)) then
+      p_col(:, lev) = MISSING_R8
       num_levs = lev - 1
-      exit CAM_levs
+      exit model_levels
    endif
-enddo CAM_levs
+   lev = lev + 1
+enddo model_levels
+
 !Barre: here p_col is the pressure levels at the grid points, we will need to have in
 !the future the pressure values at the mid-points (need to create a new function
 !plevs_cam in model_mod using the the mid-levels hybrid coefs)
@@ -447,11 +478,14 @@ enddo CAM_levs
 !     This all may be fine, since val is an accumulation of contributions 
 !     from pressure sub-layers.
 locS = set_location(mloc(1),mloc(2),0.0_r8,VERTISSURFACE)
-call interpolate(state, locS, KIND_SURFACE_PRESSURE, p_col(num_levs), istatus)
+call interpolate(state_handle, ens_size, locS, KIND_SURFACE_PRESSURE, p_col(:, num_levs), p_col_istatus)
+call track_status(ens_size, p_col_istatus, p_col(:,num_levs), istatus, return_now)
+if (return_now) return
 
 ! KDR Ack! redefining one element of a global array.
+!> @todo not global array
 !     This may be the 2nd redefinition of (1), or the first, if start_i /= 1.
-mopitt_pres_local(1) = p_col(num_levs)
+mopitt_pres_local(:,1) = p_col(:,num_levs)
 
 ! KDR; Algorithm; 
 !      Work through the MOPITT pressure level layers. (i loop)
@@ -464,58 +498,57 @@ mopitt_pres_local(1) = p_col(num_levs)
 do i=start_i, end_i
    obs_val=0.0_r8
 
-   bot_pres=mopitt_pres_local(i)
-   if (i == 10) then
-      top_pres=mopitt_pres_local(i)/2.0_r8 
+   bot_pres(:)=mopitt_pres_local(:, i)
+   if (i == mopitt_dim) then
+      top_pres(:)=mopitt_pres_local(:, i)/2.0_r8 
    else
-      top_pres=mopitt_pres_local(i+1)
+      top_pres(:)=mopitt_pres_local(:, i+1)
    endif
 !  This is used in all 'coef's, below.
    mop_layer_wght = 1.0_r8/abs(bot_pres-top_pres)
    
 !  KDR Search through CAM layers for the ones which overlap the current mopitt layer.
    do j=1,num_levs
-      i_bot_pres=p_col(j)
+      i_bot_pres(:)=p_col(:,j)
       if (j == 1) then
-         i_top_pres=0.0_r8
+         i_top_pres(:)=0.0_r8
       else
-         i_top_pres=p_col(j-1)
+         i_top_pres(:)=p_col(:,j-1)
       endif
 
       coef=0.0_r8
       obs_val_int=0.0_r8
-      if (bot_pres > top_pres) then
+!> @todo same comment as previous subroutine
+      if ( any(bot_pres > top_pres) ) then
          loc3 = set_location(mloc(1),mloc(2),real(j,r8), VERTISLEVEL)
-         call interpolate(state, loc3, KIND_CO, obs_val_int, istatus)
-         if (istatus /= 0) then
-             write(*,*) 'Interpolation failure at ',mloc(1),mloc(2),j
-             return
-         endif
+         call interpolate(state_handle, ens_size, loc3, KIND_CO, obs_val_int, obs_val_int_istatus)
+         call track_status(ens_size, obs_val_int_istatus, obs_val_int, istatus, return_now)
+         if (return_now) return
 
-         if (i_bot_pres <= bot_pres .and. i_bot_pres > top_pres) then
+         where (i_bot_pres <= bot_pres .and. i_bot_pres > top_pres)
 !           KDR CAM bottom P is bracketed by the current MOPITT pressures...
-            if (i_top_pres <= top_pres) then
+            where (i_top_pres <= top_pres)
                coef=abs(i_bot_pres-  top_pres) * mop_layer_wght
-            else
+            else where
                coef=abs(i_bot_pres-i_top_pres) * mop_layer_wght
-            endif
-         else if (i_bot_pres > bot_pres .and. i_top_pres < bot_pres) then
+            end where
+         else where
 !           KDR CAM pressures bracket this MOPITT bottom pressure.
-            if (i_top_pres <= top_pres) then 
+            where (i_top_pres <= top_pres)
 !              KDR Whole MOPITT layer is within CAM layer.
                coef=abs(bot_pres-  top_pres) * mop_layer_wght
-            else
+            else where 
                coef=abs(bot_pres-i_top_pres) * mop_layer_wght
-            endif
-         endif
+            end where
+         end where
       endif
 
 !     KDR This calc is done even if neither of the bracket if-blocks is entered.
 !         It's an accumulation of pieces, most of which are 0.
-      obs_val = obs_val + obs_val_int * coef
-
-      if (coef<0 .or. coef>1) write(*,*) 'coef', coef, i, j, mloc(1),mloc(2)
-      if (coef<0 .or. coef>1) write(*,*) 'pres', i_bot_pres,i_top_pres,bot_pres,top_pres
+      where (istatus == 0) obs_val = obs_val + obs_val_int * coef
+      !>@todo FIXME JH need to figure out how to enclose write statements
+      ! where (coef<0 .or. coef>1) write(*,*) 'coef', coef, i, j, mloc(1),mloc(2)
+      ! where (coef<0 .or. coef>1) write(*,*) 'pres', i_bot_pres,i_top_pres,bot_pres,top_pres
    enddo 
 
    !write(*,*) obs_val, log10(obs_val)
@@ -525,21 +558,21 @@ do i=start_i, end_i
    !write(*,*) 'neg!', obs_val, bot_pres, i_bot_pres, i_top_pres
    !endif
    ! KDR different from get_expected_iasi_co line
-   if (obs_val > 0.0_r8 .and. avg_kernel(key,i) > -700) val = val + avg_kernel(key,i) * log10(obs_val)
+   where (obs_val > 0.0_r8 .and. avg_kernel(key,i) > -700) val = val + avg_kernel(key,i) * log10(obs_val)
 enddo
 !val = val + 10.0_r8**mopitt_prior(key)
 !write(*,*) 'xm', val 
 !write(*,*) 'xa', mopitt_prior(key)
-val = val + mopitt_prior(key)
+where (istatus == 0) val = val + mopitt_prior(key)
 !write(*,*) 'before 10^', val
-val=10.0**val
+where (istatus == 0) val=10.0**val
 !write(*,*) 'after 10^', val
 
 ! if (val < 0.0_r8) val=-777.0_r8
-if (val < 0.0_r8) then
+where (val < 0.0_r8)
    val=MISSING_R8
    istatus = 6
-endif
+end where
 
 end subroutine get_expected_mopitt_co
 
@@ -548,11 +581,11 @@ end subroutine get_expected_mopitt_co
 !----------------------------------------------------------------------
 ! Allows passing of obs_def special information 
 
-integer,	 	intent(in)	:: key, co_nlevels
-real*8,dimension(10),	intent(in)	:: co_avgker	
-real*8,			intent(in)	:: co_prior
-real*8,			intent(in)	:: co_psurf
-character(len=129) 			:: msgstring
+integer,                        intent(in) :: key, co_nlevels
+real(r8),dimension(mopitt_dim),	intent(in) :: co_avgker
+real(r8),			intent(in) :: co_prior
+real(r8),			intent(in) :: co_psurf
+character(len=129) 			   :: msgstring
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -721,7 +754,7 @@ end subroutine write_mopitt_psurf
 function read_mopitt_avg_kernels(ifile, nlevels, fform)
 
 integer,                    intent(in) :: ifile, nlevels
-real(r8), dimension(10)        :: read_mopitt_avg_kernels
+real(r8), dimension(mopitt_dim)        :: read_mopitt_avg_kernels
 character(len=*), intent(in), optional :: fform
 
 character(len=5)   :: header
@@ -747,7 +780,7 @@ end function read_mopitt_avg_kernels
 subroutine write_mopitt_avg_kernels(ifile, avg_kernels_temp, nlevels_temp, fform)
 
 integer,                    intent(in) :: ifile, nlevels_temp
-real(r8), dimension(10), intent(in)  :: avg_kernels_temp
+real(r8), dimension(mopitt_dim), intent(in)  :: avg_kernels_temp
 character(len=32),          intent(in) :: fform
 
 character(len=5)   :: header

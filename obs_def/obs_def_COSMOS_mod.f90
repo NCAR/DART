@@ -43,7 +43,7 @@
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !      case(COSMOS_NEUTRON_INTENSITY)
-!         call get_expected_neutron_intensity(state, location, obs_def%key, obs_val, istatus)
+!         call get_expected_neutron_intensity(state_handle, ens_size, location, obs_def%key, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 
@@ -76,8 +76,11 @@ use     location_mod, only : location_type, set_location, get_location, &
                              vert_is_height,   VERTISHEIGHT,            &
                              vert_is_level,    VERTISLEVEL,             &
                              set_location_missing
-use        model_mod, only : model_interpolate
 use     obs_kind_mod, only : KIND_GEOPOTENTIAL_HEIGHT, KIND_SOIL_MOISTURE
+use  assim_model_mod, only : interpolate
+
+use obs_def_utilities_mod, only : track_status
+use ensemble_manager_mod,  only : ensemble_type
 
 use typesizes
 use netcdf
@@ -391,16 +394,17 @@ end function interactive
 
 
 
- subroutine get_expected_neutron_intensity(state, location, key, val, istatus)
+ subroutine get_expected_neutron_intensity(state_handle, ens_size, location, key, val, istatus)
 !----------------------------------------------------------------------
 ! Uses a weighting function calculated by COSMIC (COsmic-ray Soil
 ! Moisture Interaction Code)
 
-real(r8),            intent(in)  :: state(:) ! state vector
-type(location_type), intent(in)  :: location ! location of obs
-integer,             intent(in)  :: key      ! key into module metadata
-real(r8),            intent(out) :: val      ! value of obs
-integer,             intent(out) :: istatus  ! status of the calculation
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+type(location_type), intent(in)  :: location          ! location of obs
+integer,             intent(in)  :: key               ! key into module metadata
+real(r8),            intent(out) :: val(ens_size)     ! value of obs
+integer,             intent(out) :: istatus(ens_size) ! status of the calculation
 
 !========================================================================================
 ! COsmic-ray Soil Moisture Interaction Code (COSMIC) - Version 1.5
@@ -444,33 +448,37 @@ real(r8) :: zrad
 real(r8) :: ideg
 real(r8) :: costheta
 real(r8) :: dtheta
-real(r8) :: totflux     ! Total flux of above-ground fast neutrons
+real(r8), dimension(ens_size) :: totflux     ! Total flux of above-ground fast neutrons
 
-real(r8), dimension(:), allocatable :: dz          ! Soil layers (cm)
-real(r8), dimension(:), allocatable :: zthick      ! Soil layer thickness (cm)
-real(r8), dimension(:), allocatable :: vwc         ! Volumetric Water Content (m3/m3)
-real(r8), dimension(:), allocatable :: isoimass    ! Integrated dry soil mass above layer (g)
-real(r8), dimension(:), allocatable :: iwatmass    ! Integrated water mass above layer (g)
-real(r8), dimension(:), allocatable :: hiflux      ! High energy neutron flux
-real(r8), dimension(:), allocatable :: fastpot     ! Fast neutron source strength of layer
-real(r8), dimension(:), allocatable :: h2oeffdens  ! "Effective" density of water in layer (g/cm3)
-real(r8), dimension(:), allocatable :: idegrad     ! Integrated neutron degradation factor (-)
-real(r8), dimension(:), allocatable :: fastflux    ! Contribution to above-ground neutron flux
+real(r8), dimension(:,:), allocatable :: dz          ! Soil layers (cm)
+real(r8), dimension(:,:), allocatable :: zthick      ! Soil layer thickness (cm)
+real(r8), dimension(:,:), allocatable :: vwc         ! Volumetric Water Content (m3/m3)
+real(r8), dimension(:,:), allocatable :: isoimass    ! Integrated dry soil mass above layer (g)
+real(r8), dimension(:,:), allocatable :: iwatmass    ! Integrated water mass above layer (g)
+real(r8), dimension(:,:), allocatable :: hiflux      ! High energy neutron flux
+real(r8), dimension(:,:), allocatable :: fastpot     ! Fast neutron source strength of layer
+real(r8), dimension(:,:), allocatable :: h2oeffdens  ! "Effective" density of water in layer (g/cm3)
+real(r8), dimension(:,:), allocatable :: idegrad     ! Integrated neutron degradation factor (-)
+real(r8), dimension(:,:), allocatable :: fastflux    ! Contribution to above-ground neutron flux
 
 !rr: Not needed for DART
 !rr: real(r8), dimension(:), allocatable :: normfast ! Normalized contribution to neutron flux (-) [weighting factors]
 
 real(r8), parameter   :: h2odens = 1000.0_r8 ! Density of water (g/cm3)
 
-integer,  parameter   :: maxlayers = 1000 ! more than the maximum # of model soil layers
-real(r8), allocatable :: layerz(:)        ! original soil layer depths
-real(r8), allocatable :: soil_moisture(:) ! original soil layer moistures
+integer,  parameter   :: maxlayers = 1000   ! more than the maximum # of model soil layers
+real(r8), allocatable :: layerz(:,:)        ! original soil layer depths
+real(r8), allocatable :: soil_moisture(:,:) ! original soil layer moistures
 
 integer  :: angle, angledz, maxangle  ! loop indices for an integration interval
 integer  :: i, zi, nlevels
 real(r8) :: loc_array(3)
-real(r8) :: loc_lon, loc_lat, loc_value
+real(r8) :: loc_lon, loc_lat 
+real(r8) :: loc_value(ens_size)
 type(location_type) :: loc
+integer :: imem
+integer :: loc_value_istatus(ens_size), loc_istatus(ens_size), layerz_istatus(ens_size)
+logical :: return_now
 
 !=================================================================================
 
@@ -507,8 +515,8 @@ loc_lat   = loc_array(2)
 nlevels = 0
 COUNTLEVELS : do i = 1,maxlayers
    loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
-   call model_interpolate(state,loc,KIND_GEOPOTENTIAL_HEIGHT,loc_value,istatus)
-   if (istatus /= 0) exit COUNTLEVELS
+   call interpolate(state_handle, ens_size, loc, KIND_GEOPOTENTIAL_HEIGHT, loc_value, loc_istatus)
+   if ( any(loc_istatus /= 0 ) ) exit COUNTLEVELS
    nlevels = nlevels + 1
 enddo COUNTLEVELS
 
@@ -525,33 +533,37 @@ endif
 ! Now actually find the depths at each level
 ! While we're at it, might as well get the soil moisture there, too.
 
-allocate(layerz(nlevels),soil_moisture(nlevels))
+allocate(layerz(ens_size, nlevels),&
+         soil_moisture(ens_size, nlevels))
+
+! Set all of the istatuses back to zero for track_status
+istatus = 0
 
 FINDLEVELS : do i = 1,nlevels
    loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
-   call model_interpolate(state,loc,KIND_GEOPOTENTIAL_HEIGHT,layerz(i),istatus)
-   ! not checking this error code because it worked just a few lines earlier
+   call interpolate(state_handle, ens_size, loc, KIND_GEOPOTENTIAL_HEIGHT, layerz(:,i), layerz_istatus)
+   call track_status(ens_size, layerz_istatus, val, istatus, return_now)
+   if (return_now) return
 
-   loc = set_location(loc_lon, loc_lat, layerz(i), VERTISHEIGHT)
-   call model_interpolate(state,loc,KIND_SOIL_MOISTURE,loc_value,istatus)
-
-   if (istatus /= 0) then
+   loc = set_location(loc_lon, loc_lat, layerz(1,i), VERTISHEIGHT)
+   call interpolate(state_handle, ens_size, loc, KIND_SOIL_MOISTURE, loc_value, loc_value_istatus)
+   call track_status(ens_size, loc_value_istatus, val, istatus, return_now)
+   if ( any(loc_value_istatus /=0) ) then
       write(string1,*) 'FAILED to determine soil moisture for layer',i
-      if (debug) call error_handler(E_MSG,'get_expected_neutron_intensity',string1,source,revision,revdate)
-      istatus = 2
-      val     = MISSING_R8
-      return
+      where (loc_value_istatus /= 0) istatus = 2
+      if (return_now) return
    endif
 
-   soil_moisture(i) = loc_value
+   soil_moisture(:,i) = loc_value
 
 enddo FINDLEVELS
 
 !rr: DART soil layers are negative and given in meters while COSMIC needs them to be
 !rr: positive and in centimeters
-if     ( all(layerz < 0.0_r8) ) then
-   layerz(:) = -1.0_r8 * 100.0_r8 * layerz(:)
-elseif ( any(layerz < 0.0_r8) )then
+
+if ( all(layerz < 0.0_r8) ) then
+   layerz = -1.0_r8 * 100.0_r8 * layerz
+elseif ( any(layerz < 0.0_r8) ) then
    write(string1,*) 'unusual values of soil layers in model.'
    call error_handler(E_ERR,'get_expected_neutron_intensity',string1,source,revision,revdate)
 endif
@@ -560,25 +572,31 @@ endif
 ! COSMIC: Allocate arrays and initialize variables
 !=================================================================================
 
-allocate(dz(nlyr), zthick(nlyr), vwc(nlyr), &
-         hiflux(nlyr), fastpot(nlyr), h2oeffdens(nlyr), &
-        idegrad(nlyr), fastflux(nlyr), &
-        isoimass(nlyr), iwatmass(nlyr))
+allocate( dz(ens_size,nlyr),          &
+          zthick(ens_size,nlyr),      &
+          vwc(ens_size,nlyr),         &
+          hiflux(ens_size,nlyr),      &
+          fastpot(ens_size,nlyr),     &
+          h2oeffdens(ens_size,nlyr),  &
+          idegrad(ens_size,nlyr),     &
+          fastflux(ens_size,nlyr),    &
+          isoimass(ens_size,nlyr),    &
+          iwatmass(ens_size,nlyr) )
 
-totflux = 0.0_r8
+totflux(:) = 0.0_r8
 
 do i = 1,nlyr
 
-   dz(i)         = real(i,r8)/10.0_r8 ! 0.1 cm intervals ... for now.
-   zthick(i)     = 0.0_r8
-   h2oeffdens(i) = 0.0_r8
-   vwc(i)        = 0.0_r8
-   isoimass(i)   = 0.0_r8
-   iwatmass(i)   = 0.0_r8
-   hiflux(i)     = 0.0_r8
-   fastpot(i)    = 0.0_r8
-   idegrad(i)    = 0.0_r8
-   fastflux(i)   = 0.0_r8
+   dz(:,i)         = real(i,r8)/10.0_r8 ! 0.1 cm intervals ... for now.
+   zthick(:,i)     = 0.0_r8
+   h2oeffdens(:,i) = 0.0_r8
+   vwc(:,i)        = 0.0_r8
+   isoimass(:,i)   = 0.0_r8
+   iwatmass(:,i)   = 0.0_r8
+   hiflux(:,i)     = 0.0_r8
+   fastpot(:,i)    = 0.0_r8
+   idegrad(:,i)    = 0.0_r8
+   fastflux(:,i)   = 0.0_r8
 
     !rr: Not needed for DART
     !rr: normfast(i)    = 0.0_r8
@@ -590,17 +608,19 @@ enddo
 ! 1 mm intervals (down to 3 meters)
 
 do i = 1,nlyr
-
-   SOIL : do zi = 1,nlevels
-      if (dz(i) >= layerz(nlevels)) then
-         vwc(i) = soil_moisture(nlevels)
-         exit SOIL
-      elseif (dz(i) <= layerz(zi)) then
-         vwc(i) = soil_moisture(zi) ! soil moisture (m3/m3)
-         exit SOIL
-      endif
-   enddo SOIL
-
+   !>@todo JH can we some how fix this logic to not include an imem
+   !> loop?  can not use WHERE () when there is an exit.
+   do imem = 1,ens_size
+     SOIL : do zi = 1,nlevels
+        if (dz(imem,i) >= layerz(imem, nlevels)) then
+           vwc(imem, i) = soil_moisture(imem, nlevels)
+           exit SOIL
+        elseif (dz(imem, i) <= layerz(imem,  zi)) then
+           vwc(imem, i) = soil_moisture(imem,  zi) ! soil moisture (m3/m3)
+           exit SOIL
+        endif
+     enddo SOIL
+   enddo
 enddo
 
 deallocate(layerz ,soil_moisture)
@@ -611,9 +631,9 @@ deallocate(layerz ,soil_moisture)
 
 ! At some point, you might want to tinker around with non-uniform
 ! soil layer thicknesses.
-zthick(1) = dz(1) - 0.0_r8 ! Surface layer
+zthick(:, 1) = dz(:, 1) - 0.0_r8 ! Surface layer
 do i = 2,nlyr
-   zthick(i) = dz(i) - dz(i-1) ! Remaining layers
+   zthick(:, i) = dz(:, i) - dz(:, i-1) ! Remaining layers
 enddo
 
 ! Angle distribution parameters (HARDWIRED)
@@ -631,25 +651,28 @@ endif
 
 do i = 1,nlyr
 
+   !> @todo put these computations in a routine and call it
+   !> only if istatus is ok.
+
    ! High energy neutron downward flux
    ! The integration is now performed at the node of each layer (i.e., center of the layer)
-
-   h2oeffdens(i) = ((vwc(i)+vwclat)*h2odens)/1000.0_r8
+   h2oeffdens(:,i) = ((vwc(:,i)+vwclat)*h2odens)/1000.0_r8
 
    if(i > 1) then
       ! Assuming an area of 1 cm2
-      isoimass(i) = isoimass(i-1) + bd*(0.5_r8*zthick(i-1))*1.0_r8 + &
-                                    bd*(0.5_r8*zthick(i  ))*1.0_r8
+      isoimass(:,i) = isoimass(:,i-1) + bd*(0.5_r8*zthick(:,i-1))*1.0_r8 + &
+                                        bd*(0.5_r8*zthick(:,i  ))*1.0_r8
       ! Assuming an area of 1 cm2
-      iwatmass(i) = iwatmass(i-1) + h2oeffdens(i-1)*(0.5_r8*zthick(i-1))*1.0_r8 + &
-                                    h2oeffdens(i  )*(0.5_r8*zthick(i  ))*1.0_r8
+      iwatmass(:,i) = iwatmass(:,i-1) + h2oeffdens(:, i-1)*(0.5_r8*zthick(:, i-1))*1.0_r8 + &
+                                        h2oeffdens(:, i  )*(0.5_r8*zthick(:, i  ))*1.0_r8
    else
-      isoimass(i) =            bd*(0.5_r8*zthick(i))*1.0_r8 ! Assuming an area of 1 cm2
-      iwatmass(i) = h2oeffdens(i)*(0.5_r8*zthick(i))*1.0_r8 ! Assuming an area of 1 cm2
+      isoimass(:, i) =               bd*(0.5_r8*zthick(:, i))*1.0_r8 ! Assuming an area of 1 cm2
+      iwatmass(:, i) = h2oeffdens(:, i)*(0.5_r8*zthick(:, i))*1.0_r8 ! Assuming an area of 1 cm2
    endif
 
-   hiflux( i) = N*exp(-(isoimass(i)/L1 + iwatmass(i)/L2) )
-   fastpot(i) = zthick(i)*hiflux(i)*(alpha*bd + h2oeffdens(i))
+   !>@todo FIXME JH: probably will not do pointwise exponentiation
+   hiflux( :, i) = N*exp(-(isoimass(:, i)/L1 + iwatmass(:, i)/L2) )
+   fastpot(:, i) = zthick(:, i)*hiflux(:, i)*(alpha*bd + h2oeffdens(:, i))
 
    ! This second loop needs to be done for the distribution of angles for fast neutron release
    ! the intent is to loop from 0 to 89.5 by 0.5 degrees - or similar.
@@ -661,17 +684,17 @@ do i = 1,nlyr
       costheta = cos(zrad)
 
       ! Angle-dependent low energy (fast) neutron upward flux
-      fastflux(i) = fastflux(i) + fastpot(i)*exp(-(isoimass(i)/L3 + iwatmass(i)/L4)/costheta)*dtheta
+      !>@todo FIXME JH: probably will not do pointwise exponentiation
+      fastflux(:, i) = fastflux(:, i) + fastpot(:, i)*exp(-(isoimass(:, i)/L3 + iwatmass(:, i)/L4)/costheta)*dtheta
    enddo
 
    ! After contribution from all directions are taken into account,
    ! need to multiply fastflux by 2/PI
 
-   fastflux(i) = (2.0_r8/PI)*fastflux(i)
+   fastflux(:, i) = (2.0_r8/PI)*fastflux(:, i)
 
    ! Low energy (fast) neutron upward flux
-   totflux = totflux + fastflux(i)
-
+   totflux(:) = totflux(:) + fastflux(:, i)
 enddo
 
 deallocate(dz, zthick, vwc, hiflux, fastpot, &
@@ -680,8 +703,8 @@ deallocate(dz, zthick, vwc, hiflux, fastpot, &
 !=================================================================================
 ! ... and finally set the return the neutron intensity (i.e. totflux)
 
-val     = totflux
-istatus = 0        ! assume all is well if we get this far
+where (istatus == 0) val = totflux
+where (istatus /= 0) val = missing_r8
 
 return
 end subroutine get_expected_neutron_intensity

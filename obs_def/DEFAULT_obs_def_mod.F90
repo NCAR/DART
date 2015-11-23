@@ -11,6 +11,68 @@
 ! in the code, edit DEFAULT_obs_def_mod.F90, or edit the 
 ! observation specific obs_def_xxx_mod.f90 files.
 !----------------------------------------------------------------------
+!> Utilties that can be used by any of the obs_def_xxx_mods.
+!> In a separate module to obs_def_mod to avoid a circular dependency.
+module obs_def_utilities_mod
+
+use types_mod, only : r8, MISSING_R8
+
+implicit none
+
+private
+
+public :: track_status, set_debug_fwd_op
+
+logical :: debug = .false. ! Flag for debugging
+
+contains
+
+!----------------------------------------------------------------------
+!> This routine can be used to set the debugging level of track_status.
+!> It is called from filter_mod.
+subroutine set_debug_fwd_op(setme)
+
+logical, intent(in) :: setme
+
+debug = setme
+
+end subroutine set_debug_fwd_op
+
+!----------------------------------------------------------------------
+!> track_status can be used to keep track of the status of
+!> each ensemble member during multiple calls to model_interpolate
+!> for a given obs_def.
+!> It assumes that you are starting with istatus(:) = 0
+!> If debugging, return_now is only set to true if all istatuses are non-zero
+!> If not debugging, return_now is set to true if any istatues are non-zero
+subroutine track_status(ens_size, val_istatus, val_data, istatus, return_now)
+
+integer,  intent(in)    :: ens_size
+integer,  intent(in)    :: val_istatus(ens_size)
+real(r8), intent(inout) :: val_data(ens_size) !> expected_obs for obs_def
+integer,  intent(inout) :: istatus(ens_size) !> istatus for obs_def
+logical,  intent(out)   :: return_now
+
+where (istatus == 0) istatus = val_istatus
+where (istatus /= 0) val_data = MISSING_R8
+
+return_now = .false.
+if (debug) then
+   if( all(istatus /= 0))then
+      return_now = .true.
+      val_data(:) = missing_r8
+   endif
+else
+   if( any(istatus /= 0)) then
+      return_now = .true.
+      val_data(:) = missing_r8
+   endif
+endif
+
+end subroutine track_status
+!----------------------------------------------------------------------
+
+end module obs_def_utilities_mod
 
 
 !----------------------------------------------------------------------
@@ -35,8 +97,13 @@
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
+
+
+!----------------------------------------------------------------------
+!----------------------------------------------------------------------
 ! Start of main obs_def_mod module code
 !----------------------------------------------------------------------
+
 
 module obs_def_mod
 
@@ -52,7 +119,7 @@ use     location_mod, only : location_type, read_location, write_location, &
                              interactive_location, set_location_missing
 use time_manager_mod, only : time_type, read_time, write_time, &
                              set_time_missing, interactive_time
-use  assim_model_mod, only : get_state_meta_data_distrib, interpolate_distrib
+use  assim_model_mod, only : get_state_meta_data, interpolate
 use     obs_kind_mod, only : assimilate_this_obs_kind, evaluate_this_obs_kind, &
                              get_obs_kind_name, map_def_index, &
                              get_kind_from_menu
@@ -350,20 +417,20 @@ end subroutine set_obs_def_time
 
 !----------------------------------------------------------------------------
 
-subroutine get_expected_obs_from_def_distrib_state(key, obs_def, obs_kind_ind, &
-   state_time, isprior, istatus, assimilate_this_ob, evaluate_this_ob, expected_obs, state_ens_handle)
+subroutine get_expected_obs_from_def_distrib_state(state_handle, ens_size, key, obs_def, obs_kind_ind, &
+   state_time, isprior, assimilate_this_ob, evaluate_this_ob, expected_obs, istatus)
 
 ! Compute forward operator for a particular obs_def
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
 integer,             intent(in)  :: key
 type(obs_def_type),  intent(in)  :: obs_def
 integer,             intent(in)  :: obs_kind_ind
 type(time_type),     intent(in)  :: state_time
 logical,             intent(in)  :: isprior
-integer,             intent(out) :: istatus(:)
+integer,             intent(out) :: istatus(ens_size)
 logical,             intent(out) :: assimilate_this_ob, evaluate_this_ob
-!HK
-real(r8),            intent(out) :: expected_obs(:)
-type(ensemble_type), intent(in)  :: state_ens_handle
+real(r8),            intent(out) :: expected_obs(ens_size)
 
 
 type(location_type) :: location
@@ -387,7 +454,7 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
    ! obs_kind_ind is in fact a 'type' index number.  use the function
    ! get_obs_kind_var_type from the obs_kind_mod if you want to map
    ! from a specific type to a generic kind.  the third argument of
-   ! a call to the 'interpolate_distrib()' function must be a kind index and
+   ! a call to the 'interpolate()' function must be a kind index and
    ! not a type.  normally the preprocess program does this for you.
    select case(obs_kind_ind)
 
@@ -405,9 +472,8 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
       !   obs_val -- the computed forward operator value
       !   istatus -- return code: 0=ok, >0 is error, <0 reserved for system use
       !
-      ! to call interpolate_distrib() directly, the arg list MUST BE:
-      !  interpolate_distrib(location, KIND_xxx, istatus, expected_obs,
-      !  state_ens_handle, win)
+      ! to call interpolate() directly, the arg list MUST BE:
+      !  interpolate(state_handle, ens_size, location, KIND_xxx, expected_obs, istatus)
       !
       ! the preprocess program generates lines like this automatically,
       ! and this matches the interfaces in each model_mod.f90 file.
@@ -667,6 +733,8 @@ call set_obs_def_time(obs_def, set_time_missing() )
 call set_obs_def_error_variance( obs_def, missing_r8)
 
 end subroutine destroy_obs_def
+
+
 
 !---------------------------------------------------------------------------
 !---------------------------------------------------------------------------

@@ -16,7 +16,7 @@
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(RAW_STATE_1D_INTEGRAL)                                                         
-!            call get_expected_1d_integral(state_ens_handle, location, obs_def%key, expected_obs, istatus)  
+!            call get_expected_1d_integral(state_handle, ens_size, location, obs_def%key, expected_obs, istatus)  
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -47,9 +47,10 @@ use    utilities_mod, only : register_module, error_handler,               &
                              ! nmlfileunit, do_nml_file, do_nml_term
                              !! Routines only needed for namelist support. NML1
 use     location_mod, only : location_type, set_location, get_location 
-use  assim_model_mod, only : interpolate_distrib
+use  assim_model_mod, only : interpolate
 use   cov_cutoff_mod, only : comp_cov_factor
 use ensemble_manager_mod, only : ensemble_type
+use obs_def_utilities_mod, only : track_status
 
 implicit none
 
@@ -243,36 +244,35 @@ end subroutine interactive_1d_integral
 
 !----------------------------------------------------------------------
 
-subroutine get_expected_1d_integral(state_ens_handle, location, igrkey, val, istatus)
- type(ensemble_type), intent(in)  :: state_ens_handle
- type(location_type), intent(in)  :: location
- integer,             intent(in)  :: igrkey
- real(r8),            intent(out) :: val(:)
- integer,             intent(out) :: istatus(:)
+subroutine get_expected_1d_integral(state_handle, ens_size, location, igrkey, val, istatus)
+
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: igrkey
+real(r8),            intent(out) :: val(ens_size)
+integer,             intent(out) :: istatus(ens_size)
 
 ! The forward operator interface for this type of observation.  It is
 ! called with a state vector, a location, and a key to identify which
 ! observation is being processed.  The return 'val' is the expected
 ! observation value, and istatus is the return code.  0 is ok, 
 ! > 0 signals an error, and < 0 values are reserved for system use.
-! The call to 'interpolate_distrib()' below calls the forward operator in 
+! The call to 'interpolate()' below calls the forward operator in
 ! whatever model this code has been compiled with.
 
 type(location_type)   :: location2
 integer               :: i
 real(r8)              :: range, loc, bottom, dx, x
 integer               :: j !< loop variable
-real(r8), allocatable :: sum(:), dist(:), weight(:), weight_sum(:)
-integer               :: n !< number of forward operators to do.
+integer               :: point_istatus(ens_size)
+logical               :: return_now ! used to return early if an interpoaltion fails
+real(r8), dimension(ens_size) :: sum, dist, weight, weight_sum
 
 if ( .not. module_initialized ) call initialize_module
 
 ! Make sure key is within valid range
 call check_valid_key(igrkey, 'GIVEN', 'get_expected_1d_integral')
-
-n = size(val)
-
-allocate(sum(n), dist(n), weight_sum(n), weight(n))
 
 ! Figure out the total range of the integrated funtion (1 is max)
 range = 4.0_r8 * half_width(igrkey)
@@ -296,37 +296,28 @@ if(debug) print*, 'dx is ', dx
 ! to get weighted integral
 sum = 0.0_r8
 weight_sum = 0.0_r8
+istatus(:) = 0 ! so you can track istatus from 1 to num_points
+
 do i = 1, num_points(igrkey)
    x = bottom + (i - 1) * dx
    if(x > 1.0_r8) x = x - 1.0_r8
-   if(debug) print*, 'location for int ', i, 'is ', x
    location2 = set_location(x)
-   call interpolate_distrib(location2, 1, istatus, val, state_ens_handle)
-   if(debug) print*, 'model forward operator for ', i, ' returns ', val
-
-   do j = 1, n
-      if (istatus(j) /= 0) then
-         if(debug) print*, 'forward operator', i, 'returned error'
-         val(j) = missing_r8
-         !return !not returning for a single failure
-      endif
-      dist(j) = abs(loc - x)
-      if(dist(j) > 0.5_r8) dist(j) = 1.0_r8 - dist(j)
-   enddo
-
-   do j = 1, size(val) ! does this vectorize?
-      if(debug) print*, 'dist ', i, dist
+   call interpolate(state_handle, ens_size, location2, 1, val, point_istatus)
+   call track_status(ens_size, point_istatus, val, istatus, return_now)
+   do j = 1, ens_size
+      if (istatus(j) == 0) then
+         dist(j) = abs(loc - x)
+         if(dist(j) > 0.5_r8) dist(j) = 1.0_r8 - dist(j)
          weight(j) = comp_cov_factor(dist(j), half_width(igrkey), &
             localization_override = localization_type(igrkey))
-      if(debug) print*, 'weight ', i, weight
          sum(j) = sum(j) + weight(j) * val(j)
          weight_sum(j) = weight_sum(j) + weight(j)
+      endif
    enddo
+
 enddo
 
-val = sum / weight_sum
-
-deallocate(weight, weight_sum, dist, sum)
+where (istatus == 0) val = sum / weight_sum
 
 if(debug) print*, 'get_expected_1d_integral key is ', igrkey
 if(debug) print*, 'metadata values are: ', half_width(igrkey), num_points(igrkey), localization_type(igrkey)

@@ -20,7 +20,7 @@
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(TES_NADIR_OBS)                                                         
-!            call get_expected_TES_nadir_obs(state, location, obs_def%key, obs_val, istatus)  
+!            call get_expected_TES_nadir_obs(state_handle, ens_size, location, obs_def%key, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 
@@ -63,6 +63,10 @@ use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, &
                              KIND_SKIN_TEMPERATURE, &
                              KIND_NADIR_RADIANCE
 
+use ensemble_manager_mod, only : ensemble_type
+
+use obs_def_utilities_mod, only : track_status
+
 implicit none
 private
 
@@ -102,12 +106,6 @@ real(r8) :: fac_coeff1
 integer  :: nv, np, nt, ng
 real(r8), allocatable :: ck_v(:), ck_p(:), ck_t(:), gw(:)
 real(r8), allocatable :: values(:,:,:,:)
-
-! need arrays for storing vertical columns of pressure and temperature -- 
-!   the array size depends on N_layers, which is in the namelist
-real(r8), allocatable :: ret_p(:), ret_t(:), t_mid(:)  ! , p_mid(:)
-real(r8), allocatable :: corrk(:,:), corrk_tmp(:), dust_opt_dep(:)
-real(r8), allocatable :: opt_dep(:,:), trans10k(:,:), trans(:)
 
 ! Create a private module derived type to store extra observation metadata in
 !   This is modeled after Nancy's construction for obs_def_gps_mod
@@ -191,17 +189,6 @@ if (rc /= 0) then
    call error_handler(E_ERR,'initialize_module', errstring, &
                       source, revision, revdate)
 endif
-allocate( ret_p(0:N_layers) )
-allocate( ret_t(0:N_layers) )
-!allocate( p_mid(N_layers) )
-allocate( t_mid(N_layers) )
-allocate( corrk(0:N_layers, n_gauss) )
-allocate( corrk_tmp(n_gauss) )
-allocate( dust_opt_dep(0:N_layers) )
-allocate( opt_dep(0:N_layers,n_gauss) )
-allocate( trans10k(0:N_layers,n_gauss) )
-allocate( trans(0:N_layers) )
-
 
 ! Calculate and store some derived "conglomerate" parameters:
 !   alfa = 2.h.c^2 with units of J cm^2 s^-1 -- for Planck Law
@@ -599,7 +586,7 @@ write(*, *)
 end subroutine interactive_TES_nadir_obs
 
 
-  subroutine get_expected_TES_nadir_obs(state, location, teskey, val, istatus)
+  subroutine get_expected_TES_nadir_obs(state_handle, ens_size, location, teskey, expected_obs, istatus)
 !----------------------------------------------------------------------------
 ! subroutine get_expected_TES_nadir_obs(state, location, teskey, val, istatus)
 !
@@ -625,11 +612,12 @@ end subroutine interactive_TES_nadir_obs
 !   scan length (1 = lo-res, 2 = hi-res)
 !   uncertainty
 
-real(r8), intent(in)            :: state(:)
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: ens_size
 type(location_type), intent(in) :: location
 integer, intent(in)             :: teskey
-real(r8), intent(out)           :: val
-integer, intent(out)            :: istatus
+real(r8), intent(out)           :: expected_obs(ens_size)
+integer, intent(out)            :: istatus(ens_size)
 
 
 ! The first item of business is to get the vertical columns of temperature 
@@ -666,25 +654,44 @@ integer, intent(out)            :: istatus
 !         = 13 :: corrk trouble -- temperature too high & outside of 15 micron center
 !         = 14 :: corrk trouble -- should never return 4
 !         = 15 :: corrk trouble -- corner entries in array values are = -1
-!         = 88 :: originally set and somehow the code makes it through without changing
 
-integer  :: k, j, istat, iv, rc
+integer  :: k, j, istat, iv
 real(r8) :: obsloc(3), lon, lat
-real(r8) :: psfc, tsk, delz, isoP
-real(r8) :: vtmp, ptmp, ttmp, isothermalT, coeff1
-real(r8) :: atmos_now, surface_now, rad_now
+real(r8), dimension(ens_size) :: psfc, tsk, delz, isoP
+real(r8) :: vtmp, ptmp(ens_size), ttmp(ens_size), isothermalT(ens_size), coeff1
+real(r8) :: atmos_now, surface_now, rad_now(ens_size)
 real(r8), parameter :: tolerance = 0.05_r8
 logical,  parameter :: debug = .false., debug_ng = .false.
 
 type(location_type) :: location2
 integer  :: which_vert
 
+!> @todo See how much how stack this is using
+real(r8) :: ret_p(0:N_layers, ens_size), ret_t(0:N_layers, ens_size)
+real(r8) :: t_mid(N_layers, ens_size)
+real(r8) :: corrk(0:N_layers, n_gauss, ens_size)
+real(r8) :: corrk_tmp(n_gauss, ens_size)
+real(r8) :: dust_opt_dep(0:N_layers, ens_size)
+real(r8) :: opt_dep(0:N_layers,n_gauss, ens_size)
+real(r8) :: trans10k(0:N_layers,n_gauss, ens_size)
+real(r8) :: trans(0:N_layers, ens_size)
+
+real(r8) :: isothermalT_dummy(ens_size)
+integer  :: original_tmp_istat(ens_size)
+real(r8) :: ret_t_dummy(ens_size)
+
+integer  :: imem ! loop index for ensemble members
+! Istatus values for the various calls to interpolation
+integer, dimension(ens_size) :: psfc_istat, ret_t_istat, tmp_istat, tsk_istat
+! Return codes for k-table look-up
+integer, dimension(ens_size) :: rc1_istat, rc2_istat, rc3_istat, rc4_istat, rc5_istat, rc
+logical  :: return_now ! whether or not you can return after interpolation (e.g. all ens 
+                       ! members failed)
 
 ! Make sure the module is initialized -- we need the k-tables in memory!
 if ( .not. module_initialized ) call initialize_module
 
-! Initially assume istatus is 88 and leave it to code to change the value below
-istatus = 88
+istatus(:) = 0
 
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ! Find the wavenumber in k-table!
@@ -709,8 +716,8 @@ if ( iv == 0 ) then
    write(errstring, *)'Did not find wavenumber for ob!; TES obs key ', teskey
    call error_handler(E_WARN,'get_expected_TES_nadir_obs', errstring, &
                       source, revision, revdate)
-   val = missing_r8
-   istatus = 1
+   expected_obs(:) = missing_r8
+   istatus(:) = 1
    return
 end if
 
@@ -738,32 +745,35 @@ if (debug) print*, 'lon = ', lon, ';  lat = ', lat
 ! Get surface pressure at location
 which_vert = VERTISSURFACE
 location2 = set_location( lon, lat, missing_r8, which_vert )
-call interpolate( state, location2, KIND_SURFACE_PRESSURE, psfc, istat )
-if (debug) print*, 'psfc = ', psfc
-if ( istat > 0 ) then
-   write(errstring, *)'trouble with PSFC interpolation, key = ', teskey, '; istat = ', istat
+call interpolate(state_handle, ens_size, location2, KIND_SURFACE_PRESSURE, psfc, psfc_istat )
+call track_status(ens_size, psfc_istat, expected_obs, istatus, return_now)
+if ( any(psfc_istat > 0) ) then
+   !> @todo Are warnings written by tasks other than task 0?
+   write(errstring, *)'trouble with PSFC interpolation, key = ', teskey, '; istat = ', psfc_istat
    call error_handler(E_WARN,'get_expected_TES_nadir_obs', errstring, &
                       source, revision, revdate)
-   val = missing_r8
-   istatus = 2
-   return
 endif
+where (psfc_istat /= 0) istatus = 2
+if (return_now) return
+
+
 ! Make sure all pressures are actually in mbars, as the forward operator
 !   code (i.e., k-tables) is expecting.  The model uses Pascals.
 ! ptop is already in mbars
-psfc = psfc * 1.0e-2_r8
+where (istatus == 0) psfc = psfc * 1.0e-2_r8
 
 ! Now surface temperature at locations
-call interpolate( state, location2, KIND_SKIN_TEMPERATURE, tsk, istat )
-if (debug) print*, 'tsk = ', tsk
-if ( istat > 0 ) then
-   write(errstring, *)'trouble with TSK interpolation, key = ', teskey, '; istat = ', istat
+call interpolate(state_handle, ens_size, location2, KIND_SKIN_TEMPERATURE, tsk, tsk_istat)
+call track_status(ens_size, tsk_istat, expected_obs, istatus, return_now)
+
+if ( any(tsk_istat > 0) ) then
+   write(errstring, *)'trouble with TSK interpolation, key = ', teskey, '; istat = ', tsk_istat
    call error_handler(E_WARN,'get_expected_TES_nadir_obs', errstring, &
                       source, revision, revdate)
-   val = missing_r8
-   istatus = 3
-   return
 endif
+where (tsk_istat /= 0 .and. psfc_istat == 0) istatus = 3
+if(return_now) return
+
 
 ! We want to construct the vertical temperature and pressure profiles -- 
 !   Philosophically, we do not want to know what the vertical resolution of 
@@ -775,12 +785,19 @@ endif
 !   coordinate fashion where we have N_layers evenly spaced in log pressure
 !   over the pressure difference between p_surf and p_top.
 ! p([0:N]) = psfc * exp( -( log(psfc/ptop)/N ) * [0:N] )
-ret_p = 0.0_r8
-ret_p(0) = psfc
-delz = log( psfc / ptop ) / real(N_layers,r8)
-do k = 1, N_layers
-   ret_p(k) = psfc * exp( -delz * real(k,r8) )
-end do
+where (istatus == 0) then
+   ret_p(1:N_layers, :) = 0.0_r8
+   ret_p(0, :) = psfc(:)
+   delz(:) = log( psfc(:) / ptop ) / real(N_layers,r8)
+elsewhere
+   ret_p(1:N_layers, :) = missing_r8
+   delz(:) = missing_r8
+endwhere
+
+where (istatus == 0)
+      ret_p(k, :) = psfc * exp( -delz * real(k,r8) )
+end where
+
 if (debug) print*, 'ret_p = ', ret_p
 if (debug) print*, ' '
 
@@ -788,66 +805,106 @@ if (debug) print*, ' '
 !   model attains height isothermalP -- keep in mind that interpolate assumes 
 !   pressure is in Pa, not mbars.
 ! Store namelist item isothermalP in isoP so that we can change it if necessary
-isoP = isothermalP
+isoP(:) = isothermalP  ! At this point, isoP is the same across the ensemble
 which_vert = VERTISPRESSURE
 ptmp = isoP * 1.0e2_r8
-location2 = set_location( lon, lat, ptmp, which_vert )
-call interpolate( state, location2, KIND_TEMPERATURE, isothermalT, istat )
+
+location2 = set_location( lon, lat, ptmp(1), which_vert ) ! At this point, same across the ensemble
+
+call interpolate(state_handle, ens_size, location2, KIND_TEMPERATURE, isothermalT, tmp_istat)
+call track_status(ens_size, tmp_istat, expected_obs, istatus, return_now)
 if (debug) print*, 'isothermalT = ', isothermalT
+
 ! If we had trouble it is MOST LIKELY because isothermalP is above the model's
 !   value of ptop -- try lowering (in altitude) isothermalP.  For now we will
 !   (arbitrarily) try lowering it 6 times, and if we haven't found an acceptable
 !   value by then, then return with missing value because we won't be able to
 !   construct a reasonable T(p) profile for vertical intergration.
-if ( istat > 0 ) then
-   do k = 1, 6
-      isoP = 2.0_r8 * isoP
-      ptmp = 2.0_r8 * ptmp
-      location2 = set_location( lon, lat, ptmp, which_vert )
-      call interpolate( state, location2, KIND_TEMPERATURE, isothermalT, istat )
+!> @todo This needs refactoring at some point
+if ( any(tmp_istat > 0) ) then
+   original_tmp_istat = tmp_istat ! original pass/fails
+   LOWERING : do k = 1, 6
+
+      where (tmp_istat /= 0)  ! keep going if still not had an interpolation pass
+         isoP = 2.0_r8 * isoP
+         ptmp = 2.0_r8 * ptmp
+      end where
+      location2 = set_location( lon, lat, ptmp(1), which_vert )
+
+      call interpolate( state_handle, ens_size, location2, KIND_TEMPERATURE, isothermalT_dummy, tmp_istat )
+
       if (debug) print*, 'k = ', k, '  isothermalT = ', isothermalT
       write(errstring, *)'lowered isothermalP, key = ',teskey,'; new isoP = ', isoP
       call error_handler(E_MSG,'get_expected_TES_nadir_obs', errstring, &
                             source, revision, revdate)
-      if ( istat == 0 ) exit
-   end do
+
+      where (original_tmp_istat /= 0 .and. tmp_istat == 0)
+         ! update the original because we now have an interpolation that passed.
+         original_tmp_istat = 0
+         isothermalT = isothermalT_dummy
+      end where
+
+      if ( all(original_tmp_istat == 0 )) exit LOWERING! we have interpolations that passed for all ensemble members
+
+   end do LOWERING
+
    if ( k == 6 ) then
-      write(errstring, *)'could not find acceptable isothermalP level, key = ',teskey, &
+      write(errstring, *)'could not find acceptable isothermalP level for a least one ensemble member, key = ',teskey, &
                            '; last isoP = ', isoP
       call error_handler(E_WARN,'get_expected_TES_nadir_obs', errstring, &
                            source, revision, revdate)
-      val = missing_r8
-      istatus = 4
-      return
    end if
+
+   where(original_tmp_istat /= 0) ! did not find an acceptable isothermalP level
+      istatus = 4
+      expected_obs = missing_r8
+   end where
+   if (all(original_tmp_istat /=0)) return
+
 end if
 
 ! Now set the corresponding temperature profile -- TSK is surface; interpolate
 !   for others -- which_vert has already been set to VERTISPRESSURE
-ret_t = 0.0_r8
-ret_t(0) = tsk
-do k = 1, N_layers
-   ! Test whether we are surface-ward of the namelist specified isothermalP,
-   !   but compare to isoP in case we had to bring isothermalP closer to the 
-   !   surface to abide by the model's own value for p_top.
-   if ( ret_p(k) > isoP ) then
-      ! For model interpolation, make sure we are back in Pa
-      ptmp = ret_p(k) * 1.0e2_r8
-      location2 = set_location( lon, lat, ptmp, which_vert )
-      call interpolate( state, location2, KIND_TEMPERATURE, ret_t( k ), istat )
-      if ( istat > 0 ) then
-         write(errstring, *)'trouble with T interpolation, key = ', teskey, '; istat = ', &
-                               istat,'; level k = ', k
-         call error_handler(E_WARN,'get_expected_TES_nadir_obs', errstring, &
-                               source, revision, revdate)
-         val = missing_r8
-         istatus = 5
-         return
+ret_t(:, :) = 0.0_r8
+ret_t(0, :) = tsk
+
+!>@todo FIXME Possibly we could overload interpolate and set_location to take
+!> an array of locations
+!> then have interpolate sort the list into unique values, then call model_interpolate
+!> for only the unique locations. Or sort into unique values of isoP here.
+!> For now this is a loop around ensemble_size calling interpolate - overcommunicating
+do imem = 1, ens_size
+   do k = 1, N_layers
+      ! Test whether we are surface-ward of the namelist specified isothermalP,
+      !   but compare to isoP in case we had to bring isothermalP closer to the
+      !   surface to abide by the model's own value for p_top.
+      if ( (ret_p(k, imem) > isoP(imem)) )  then
+         ! For model interpolation, make sure we are back in Pa
+         ptmp(imem) = ret_p(k, imem) * 1.0e2_r8
+
+         location2 = set_location( lon, lat, ptmp(imem), which_vert )
+
+         call interpolate( state_handle, ens_size, location2, KIND_TEMPERATURE, ret_t_dummy( k ), ret_t_istat )
+
+         if ( ret_t_istat(imem) > 0 ) then
+            write(errstring, *)'trouble with T interpolation, key = ', teskey, '; istat = ', &
+                                 istat,'; level k = ', k
+            call error_handler(E_WARN,'get_expected_TES_nadir_obs', errstring, &
+                                 source, revision, revdate)
+            istatus(imem) = 5
+            expected_obs(imem) = missing_r8
+         end if
+
+         if (all(istatus /= 0)) return
+
+      else
+         ret_t(k, imem) = isothermalT(imem)
       end if
-   else
-      ret_t(k) = isothermalT
-   end if
-end do
+   end do
+
+enddo
+
+
 if (debug) print*, 'ret_t = ', ret_t
 if (debug) print*, ' '
 
@@ -863,7 +920,9 @@ if (debug) print*, ' '
 t_mid = 0.0_r8
 do k = 1, N_layers
    !p_mid(k) = exp( 0.5_r8 * ( log(ret_p(k)) + log(ret_p(k-1)) ) )
-   t_mid(k) = 0.5_r8 * ( ret_t(k) + ret_t(k-1) )
+   where (istatus == 0)
+      t_mid(k, :) = 0.5_r8 * ( ret_t(k, :) + ret_t(k-1, :) )
+   end where
 end do
 if (debug) print*, 't_mid = ', t_mid
 if (debug) print*, ' '
@@ -881,9 +940,12 @@ if (debug) print*, ' '
 !   the function mcd_mgs below -- keep in mind that mcd_mgs assumes inputs 
 !   are in Pa, NOT mbars!
 if ( fixed_dust ) then
-   do k = 0, N_layers
-      dust_opt_dep(k) = mcd_mgs( TES_data(teskey)%l_sub_s, lat, ret_p(k) )
-   end do
+   do imem = 1, ens_size
+      if (istatus(imem) /= 0) cycle
+      do k = 0, N_layers
+         dust_opt_dep(k, imem) = mcd_mgs( TES_data(teskey)%l_sub_s, lat, ret_p(k, imem) )
+      end do
+   enddo
 else
    ! INSERT DUST CODE HERE FOR ACTIVE DUST RUNS
 end if
@@ -895,7 +957,10 @@ if (debug) print*, ' '
 !   wavenumber we are currently treating
 ! Push this task into a subroutine below, and go and get the multiplier data
 !   from the Forget 1998 dust paper later.
-call dust_vis_to_ir( dust_opt_dep, N_layers+1, vtmp )
+do imem = 1, ens_size
+   if(istatus(imem) /= 0) cycle
+   call dust_vis_to_ir( dust_opt_dep(:, imem), N_layers+1, vtmp )
+enddo
 if (debug) print*, ' IR dust_opt_dep = ', dust_opt_dep
 if (debug) print*, ' '
 
@@ -905,119 +970,166 @@ if (debug) print*, ' '
 ! Now grab the appropriate entries in the correlated-k tables for the 
 !   pressures and temperatures of the vertical column we've created
 corrk = 0.0_r8
-do k = 0, N_layers
-   ptmp = ret_p(k)
-   ttmp = ret_t(k)
-   call get_corrk(iv, vtmp, ptmp, ttmp, n_gauss, corrk_tmp, rc)
+
+
+! The original (non-ensemble code) got the first failure, then returned
+! Tracking the status here.
+LAYERS: do k = 0, N_layers
+   ptmp = ret_p(k, :)
+   ttmp = ret_t(k, :)
+   do imem = 1, ens_size
+     if (istatus(imem) /= 0 ) cycle  ! to avoid missing_r8 going into this function
+     call get_corrk(iv, vtmp, ptmp(imem), ttmp(imem), n_gauss, corrk_tmp(:, imem), rc(imem))
+   enddo
    ! check return code:
    ! 1 = pressure out of range
    ! 2 = temperature too low
    ! 3 = temperature too high & outside of 15 micron center
    ! 4 = should never return 4
    ! 5 = corner entries in array values are = -1
-   if ( rc == 1 ) then
+
+! Return code 1
+   if ( any(rc == 1) ) then  ! does every task print warnings?
       write(errstring, *)'Pressure is outside of k-table bounds; key = ',teskey, &
                            '; p(mbar) = ',ptmp,'; level = ',k
       call error_handler(E_WARN,'get_expected_TES_nadir_obs', errstring, &
                            source, revision, revdate)
-      val = missing_r8
-      istatus = 10+rc
-      return
-   elseif ( rc == 2 ) then
+   endif
+   where (rc == 1 .and. istatus == 0) ! don't want to overwrite earlier failures
+      expected_obs = missing_r8
+      rc1_istat  = 10+rc
+   endwhere
+   call track_status(ens_size, rc1_istat, expected_obs, istatus, return_now)
+
+! Return code 2
+   if ( any(rc == 2)) then
       write(errstring, *)'Temperature is lower than k-table bounds; key = ',teskey, &
                            '; T(K) = ',ttmp,'; level = ',k
       call error_handler(E_WARN,'get_expected_TES_nadir_obs', errstring, &
                            source, revision, revdate)
-      val = missing_r8
-      istatus = 10+rc
-      return
-   elseif ( rc == 3 ) then
+   endif
+   where (rc == 2 .and. istatus == 0)
+      expected_obs = missing_r8
+      rc2_istat = 10+rc
+   endwhere
+   call track_status(ens_size, rc2_istat, expected_obs, istatus, return_now)
+
+! Return code 3
+   if (any(rc == 3)) then
       write(errstring, *)'Temperature is higher than k-table bounds; key = ',teskey, &
                            '; T(K) = ',ttmp,'; level = ',k
       call error_handler(E_WARN,'get_expected_TES_nadir_obs', errstring, &
-                           source, revision, revdate)
-      val = missing_r8
-      istatus = 10+rc
-      return
-   elseif ( rc == 4 ) then
+                              source, revision, revdate)
+   endif
+   where (rc == 3 .and. istatus == 0)
+      expected_obs = missing_r8
+      rc3_istat = 10+rc
+   endwhere
+   call track_status(ens_size, rc3_istat, expected_obs, istatus, return_now)
+
+! Return code 4
+   if (any(rc == 4)) then
       write(errstring, *)'This should not return; key = ',teskey
       call error_handler(E_WARN,'get_expected_TES_nadir_obs', errstring, &
-                           source, revision, revdate)
-      val = missing_r8
-      istatus = 10+rc
-      return
-   elseif ( rc == 5 ) then
+                              source, revision, revdate)
+   endif
+   where (rc == 4 .and. istatus == 0)
+      expected_obs = missing_r8
+      rc4_istat = 10+rc
+   endwhere
+   call track_status(ens_size, rc4_istat, expected_obs, istatus, return_now)
+
+   if (any(rc == 5)) then
       write(errstring, *)'Trying to interpolate where k-tables have no data; key = ',teskey
       call error_handler(E_WARN,'get_expected_TES_nadir_obs', errstring, &
                            source, revision, revdate)
-      val = missing_r8
-      istatus = 10+rc
-      return
-   end if
+   endif
+   where (rc == 5 .and. istatus == 0)
+      expected_obs = missing_r8
+      rc5_istat = 10+rc
+   endwhere
+   call track_status(ens_size, rc4_istat, expected_obs, istatus, return_now)
 
-   corrk(k,:) = corrk_tmp
-end do
+   do imem = 1, ens_size
+      if (istatus(imem) == 0) then
+         corrk(k, :, imem) = corrk_tmp(:,imem)
+      else
+         corrk(k, :, imem) = missing_r8
+      endif
+   enddo
+
+enddo LAYERS
+
 if (debug .and. debug_ng) print*, 'corrk = ', corrk
 if (debug .and. debug_ng) print*, ' '
 
 !%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ! Start the radiative transfer part
 
-! Take observation's emission angle into consideration here -- not very 
-!   sensitive because all obs are nadir viewing, which means emission 
-!   angle is within 2 degrees of nadir.  But still, it's a good idea.
-coeff1 = fac_coeff1 * COS( DEG2RAD * TES_data(teskey)%emission_angle )
+ENSEMBLE_MEMBERS: do imem = 1, ens_size
 
-! Evaluate opt_dep and trans10k
-opt_dep = 0.0_r8
-trans10k = 0.0_r8
-! Top layer first
-opt_dep(N_layers,:) = coeff1 * corrk(N_layers,:) * ret_p(N_layers) + dust_opt_dep(N_layers)
-trans10k(N_layers,:) = exp( -opt_dep(N_layers,:) )
-! Then fill in layers below
-do k = N_layers, 1, -1
-   opt_dep(k-1,:) = opt_dep(k,:) + coeff1 * 0.5_r8 * ( corrk(k-1,:) + corrk(k,:) ) * &
-                      ( ret_p(k-1) - ret_p(k) ) + dust_opt_dep(k-1) - dust_opt_dep(k)
-   trans10k(k-1,:) = exp( -opt_dep(k-1,:) )
-end do
-if (debug .and. debug_ng) print*, 'opt_dep = ', opt_dep
-if (debug .and. debug_ng) print*, ' '
-if (debug .and. debug_ng) print*, 'trans10k = ', trans10k
-if (debug .and. debug_ng) print*, ' '
+   if (istatus(imem) /= 0) cycle ENSEMBLE_MEMBERS
 
-! Calculate transmittance at each level
-trans = 0.0_r8
-do k = 0, N_layers
-   trans(k) = sum( trans10k(k,:) * gw )
-end do
-if (debug) print*, 'trans = ', trans
-if (debug) print*, ' '
+   !> @todo This should go into a subroutine
+   ! Take observation's emission angle into consideration here -- not very
+   !   sensitive because all obs are nadir viewing, which means emission
+   !   angle is within 2 degrees of nadir.  But still, it's a good idea.
+   coeff1 = fac_coeff1 * COS( DEG2RAD * TES_data(teskey)%emission_angle )
 
-! Get atmospheric contribution -- depends on t_mid
-atmos_now = 0.0_r8
-do k = 1, N_layers
-   atmos_now = atmos_now + ( alfa * vtmp**3 )/( exp( beta * vtmp / t_mid(k) ) - &
-                              1.0_r8 ) * ( trans(k) - trans(k-1) )
-end do
-atmos_now = atmos_now + ( alfa * vtmp**3 )/( exp( beta * vtmp / isothermalT ) - &
-                              1.0_r8 ) * ( 1 - trans(N_layers) )
-if (debug) print*, 'atmos_now = ', atmos_now
-if (debug) print*, ' '
+   ! Evaluate opt_dep and trans10k
+   opt_dep = 0.0_r8
+   trans10k = 0.0_r8
+   ! Top layer first
+   opt_dep(N_layers,:, imem) = coeff1 * corrk(N_layers,:, imem) * ret_p(N_layers, imem) + dust_opt_dep(N_layers, imem)
+   trans10k(N_layers,:, imem) = exp( -opt_dep(N_layers,:, imem) )
+   ! Then fill in layers below
+   do k = N_layers, 1, -1
+      opt_dep(k-1,:, imem) = opt_dep(k,:, imem) + coeff1 * 0.5_r8 * ( corrk(k-1,:, imem) + corrk(k,:, imem) ) * &
+                        ( ret_p(k-1, imem) - ret_p(k, imem) ) + dust_opt_dep(k-1, imem) - dust_opt_dep(k, imem)
+      trans10k(k-1,:, imem) = exp( -opt_dep(k-1,:, imem) )
+   end do
+   if (debug .and. debug_ng) print*, 'opt_dep = ', opt_dep(:, :, imem)
+   if (debug .and. debug_ng) print*, ' '
+   if (debug .and. debug_ng) print*, 'trans10k = ', trans10k(:, :, imem)
+   if (debug .and. debug_ng) print*, ' '
 
-! Get surface contribution
-surface_now = 0.0_r8
-surface_now = ( alfa * vtmp**3 )/( exp( beta * vtmp / ret_t(0) ) - 1.0_r8 ) * trans(0)
-if (debug) print*, 'surface_now = ', surface_now
-if (debug) print*, ' '
+   ! Calculate transmittance at each level
+   trans = 0.0_r8
+   do k = 0, N_layers
+      trans(k, imem) = sum( trans10k(k,:, imem) * gw )
+   end do
+   if (debug) print*, 'trans = ', trans(:, imem)
+   if (debug) print*, ' '
 
-! Total radiance measured at spacecraft
-rad_now = atmos_now + surface_now
-if (debug) print*, 'rad_now = ', rad_now
-if (debug) print*, ' '
+   ! Get atmospheric contribution -- depends on t_mid
+   atmos_now = 0.0_r8
+   do k = 1, N_layers
+      atmos_now = atmos_now + ( alfa * vtmp**3 )/( exp( beta * vtmp / t_mid(k, imem) ) - &
+                                 1.0_r8 ) * ( trans(k, imem) - trans(k-1, imem) )
+   end do
+   atmos_now = atmos_now + ( alfa * vtmp**3 )/( exp( beta * vtmp / isothermalT(imem) ) - &
+                                 1.0_r8 ) * ( 1 - trans(N_layers, imem) )
+   if (debug) print*, 'atmos_now = ', atmos_now
+   if (debug) print*, ' '
 
-! Assign observed value and exit with istatus = 0 (good job ;)
-val = rad_now
-istatus = 0
+   ! Get surface contribution
+   surface_now = 0.0_r8
+   surface_now = ( alfa * vtmp**3 )/( exp( beta * vtmp / ret_t(0, imem) ) - 1.0_r8 ) * trans(0, imem)
+   if (debug) print*, 'surface_now = ', surface_now
+   if (debug) print*, ' '
+
+   ! Total radiance measured at spacecraft
+   rad_now(imem) = atmos_now + surface_now
+   if (debug) print*, 'rad_now = ', rad_now
+   if (debug) print*, ' '
+
+enddo ENSEMBLE_MEMBERS
+
+where (istatus == 0)
+   expected_obs = rad_now
+elsewhere
+   expected_obs = missing_r8
+endwhere
 
 end subroutine get_expected_TES_nadir_obs
 

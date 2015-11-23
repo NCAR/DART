@@ -455,7 +455,7 @@ AdvanceTime: do
       call get_expected_obs_distrib_state(seq, keys(global_obs_num:global_obs_num), &
          ens_handle%time(1), .true., &
          istatus, assimilate_this_ob, evaluate_this_ob, &
-         ens_handle, true_obs)
+         ens_handle, copies_in_window(ens_handle), true_obs)
 
       fwd_op_ens_handle%copies(1, j) = true_obs(1)
 

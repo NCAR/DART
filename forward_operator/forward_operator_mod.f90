@@ -230,7 +230,7 @@ if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued
       if(qc_ens_handle%my_num_copies > 0) then
          call get_expected_obs_distrib_state(seq, thiskey, &
             dummy_time, isprior, istatus, &
-            assimilate_this_ob, evaluate_this_ob, ens_handle, expected_obs)
+            assimilate_this_ob, evaluate_this_ob, ens_handle, my_ensemble_copies, expected_obs)
             obs_fwd_op_ens_handle%vars(j, 1:my_ensemble_copies) = expected_obs
       else ! need to know whether it was assimilate or evaluate this ob.
 
@@ -317,7 +317,7 @@ else ! distributed state
 
    call get_expected_obs_distrib_state(seq, thiskey, &
       dummy_time, isprior, istatus, &
-      assimilate_this_ob, evaluate_this_ob, ens_handle, expected_obs)
+      assimilate_this_ob, evaluate_this_ob, ens_handle, my_ensemble_copies, expected_obs)
 
       obs_fwd_op_ens_handle%copies(1:my_ensemble_copies, j) = expected_obs
 
@@ -425,30 +425,26 @@ end subroutine get_obs_ens_distrib_state
 !> @param[inout] expected_obs - the computed forward operator value
 !------------------------------------------------------------------------------
 subroutine get_expected_obs_distrib_state(seq, keys, state_time, isprior, &
-   istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, expected_obs)
+   istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, num_ens, expected_obs)
 
+integer,                 intent(in)    :: num_ens
 type(obs_sequence_type), intent(in)    :: seq
 integer,                 intent(in)    :: keys(:)
-! integer,                 intent(in)    :: ens_index
 type(time_type),         intent(in)    :: state_time
 logical,                 intent(in)    :: isprior
-integer,                 intent(out)   :: istatus(:)
+integer,                 intent(out)   :: istatus(num_ens)
 logical,                 intent(out)   :: assimilate_this_ob
 logical,                 intent(out)   :: evaluate_this_ob
-!HK
 type(ensemble_type),     intent(in)    :: state_ens_handle
-real(r8),                intent(inout) :: expected_obs(:) !> @todo needs to be 2d for a set of obs - no because you don't have an array of assimilate_this_ob, evaluate_this_ob
+real(r8),                intent(inout) :: expected_obs(num_ens) !> @todo needs to be 2d for a set of obs - no because you don't have an array of assimilate_this_ob, evaluate_this_ob
 
 type(obs_type)     :: obs
 type(obs_def_type) :: obs_def
 
 integer :: obs_kind_ind
 integer :: num_obs, i
-integer :: length_of_expected_obs ! HK should this be passed in?
-
 
 num_obs = size(keys)
-length_of_expected_obs = copies_in_window(state_ens_handle)
 
 ! NEED to initialize istatus to okay value
 istatus = 0
@@ -479,9 +475,9 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
    
    else ! do forward operator for this kind
 
-      call get_expected_obs_from_def_distrib_state(keys(i), obs_def, obs_kind_ind, &
-         state_time, isprior, istatus, &
-         assimilate_this_ob, evaluate_this_ob, expected_obs, state_ens_handle)
+      call get_expected_obs_from_def_distrib_state(state_ens_handle, num_ens, keys(i), obs_def, obs_kind_ind, &
+         state_time, isprior, &
+         assimilate_this_ob, evaluate_this_ob, expected_obs, istatus)
 
    endif
 end do

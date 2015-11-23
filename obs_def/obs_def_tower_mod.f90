@@ -37,11 +37,11 @@
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !  case(TOWER_LATENT_HEAT_FLUX)
-!     call get_scalar_from_history('EFLX_LH_TOT_R', state_time, ens_index, location, obs_time, obs_val, istatus)
+!     call get_scalar_from_history('EFLX_LH_TOT_R', state_time, ens_size, location, obs_time, expected_obs, istatus)
 !  case(TOWER_SENSIBLE_HEAT_FLUX)
-!     call get_scalar_from_history('FSH', state_time, ens_index, location, obs_time, obs_val, istatus)
+!     call get_scalar_from_history('FSH', state_time, ens_size, location, obs_time, expected_obs, istatus)
 !  case(TOWER_NETC_ECO_EXCHANGE)
-!     call get_scalar_from_history('NEP', state_time, ens_index, location, obs_time, obs_val, istatus)
+!     call get_scalar_from_history('NEP', state_time, ens_size, location, obs_time, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !-----------------------------------------------------------------------------
 
@@ -88,6 +88,7 @@ use    utilities_mod, only : register_module, E_ERR, E_MSG, error_handler, &
                              check_namelist_read, find_namelist_in_file,   &
                              nmlfileunit, do_output, do_nml_file, do_nml_term, &
                              nc_check, file_exist, is_longitude_between
+use ensemble_manager_mod,  only : ensemble_type
 
 use typesizes
 use netcdf
@@ -417,26 +418,32 @@ end subroutine GetDimensions
 
 !======================================================================
 
-
-subroutine get_scalar_from_history(varstring, state_time, ens_index, location, &
+!> @todo Need to get the ensemble number from the state_handle. - Not
+!> necessarily 1-ens size.
+subroutine get_scalar_from_history(varstring, state_time, ens_size, location, &
                                    obs_time, obs_val, istatus)
 
+!type(ensemble_type), intent(in)  :: state_handle ! need this for time
 character(len=*),    intent(in)  :: varstring
 type(time_type),     intent(in)  :: state_time
-integer,             intent(in)  :: ens_index
+integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: location
 type(time_type),     intent(in)  :: obs_time
-real(r8),            intent(out) :: obs_val
-integer,             intent(out) :: istatus
+real(r8),            intent(out) :: obs_val(ens_size)
+integer,             intent(out) :: istatus(ens_size)
+
+integer :: imem
 
 if ( .not. module_initialized ) call initialize_module(state_time)
 
-if ( unstructured ) then
-   call get_scalar_from_2Dhistory(varstring,ens_index,location,obs_time,obs_val,istatus)
-else
-   call get_scalar_from_3Dhistory(varstring,ens_index,location,obs_time,obs_val,istatus)
-endif
-
+! JH: simple hack to get things to work.  I am sure that there is a more elegant solution
+do imem = 1, ens_size
+   if ( unstructured ) then
+      call get_scalar_from_2Dhistory(varstring,imem, location,obs_time,obs_val(imem),istatus(imem))
+   else
+      call get_scalar_from_3Dhistory(varstring,imem,location,obs_time,obs_val(imem),istatus(imem))
+   endif
+enddo
 end subroutine get_scalar_from_history
 
 

@@ -60,7 +60,8 @@ use          location_mod, only: location_type, get_location, set_location, &
                                  LocationDims, LocationName, LocationLName, &
                                  vert_is_pressure, vert_is_surface, &
                                  get_close_maxdist_init, get_close_obs_init, &
-                                 get_close_obs, VERTISSURFACE, VERTISLEVEL, &
+                                 loc_get_close_obs => get_close_obs, &
+                                 VERTISSURFACE, VERTISLEVEL, &
                                  get_close_type
 
 
@@ -96,15 +97,14 @@ use state_structure_mod,  only : add_domain, add_dimension_to_variable, &
 implicit none
 private
 
-public  get_model_size, adv_1step, get_state_meta_data_distrib, &
+public  get_model_size, adv_1step, get_state_meta_data, &
         get_model_time_step, end_model, static_init_model, init_time, &
         init_conditions, nc_write_model_atts, nc_write_model_vars, &
         pert_model_state, pert_model_copies, &
         get_close_maxdist_init, get_close_obs_init, get_close_obs, &
-        model_interpolate_distrib, &
+        model_interpolate, &
         query_vert_localization_coord, &
-        vert_convert_distrib, &
-        get_close_obs_distrib, &
+        vert_convert, &
         construct_file_name_in, &
         read_model_time, write_model_time
 
@@ -1015,14 +1015,14 @@ end function get_model_time_step
 !#######################################################################
 
 !---------------------------------------------------------------------
-! subroutine get_state_meta_data_distrib(index_in, location, var_type)
+! subroutine get_state_meta_data(index_in, location, var_type)
 !
 ! Given an integer index into the state vector structure, returns the
 ! associated location and optionally the generic kind.
 !---------------------------------------------------------------------
-subroutine get_state_meta_data_distrib(state_ens_handle, index_in, location, var_type)
+subroutine get_state_meta_data(state_handle, index_in, location, var_type)
 
-type(ensemble_type), intent(in)  :: state_ens_handle
+type(ensemble_type), intent(in)  :: state_handle
 integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type
@@ -1065,30 +1065,28 @@ location = set_location(lon, lat, lev, vtype)
 ! If the type is wanted, return it
 if(present(var_type)) var_type = thiskind
 
-end subroutine get_state_meta_data_distrib
+end subroutine get_state_meta_data
 
 !#######################################################################
 
-recursive subroutine model_interpolate_distrib(state_ens_handle, location, obs_type, istatus, expected_obs)
+recursive subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 
- type(ensemble_type), intent(in) :: state_ens_handle
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: ens_size
 type(location_type), intent(in) :: location
- integer,             intent(in) :: obs_type
- integer,            intent(out) :: istatus(:)
- real(r8),           intent(out) :: expected_obs(:) !< array of interpolated values
+integer,             intent(in) :: obs_type
+integer,            intent(out) :: istatus(ens_size)
+real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolated values
 
-integer :: num_lons, num_lats, lon_below, lon_above, lat_below, lat_above, i, my_ens_size
+integer :: num_lons, num_lats, lon_below, lon_above, lat_below, lat_above, i
 real(r8) :: bot_lon, top_lon, delta_lon, bot_lat, top_lat, delta_lat
 real(r8) :: lon_fract, lat_fract, temp_lon
 real(r8) :: lon, lat, level, lon_lat_lev(3), pressure
 
-integer :: tmp_status(size(expected_obs),4), e
-real(r8) :: val(2,2, size(expected_obs)), a(2, size(expected_obs))
+integer :: tmp_status(ens_size,4), e
+real(r8) :: val(2,2, ens_size), a(2, ens_size)
 
 if ( .not. module_initialized ) call static_init_model
-
-! number of ensemble members
-my_ens_size = copies_in_window(state_ens_handle)
 
 ! Need to check that status of all four temp vals.
 ! Start out assuming that all pass.
@@ -1109,7 +1107,7 @@ else if(vert_is_surface(location)) then
    ! level is not used for surface pressure observations
    level = -1
 else
-   call error_handler(E_ERR,'model_interpolate_distrib', &
+   call error_handler(E_ERR,'model_interpolate', &
       'Bgrid can only handle pressure or model level for obs vertical coordinate', &
       source, revision, revdate)
 endif
@@ -1176,23 +1174,23 @@ endif
 ! Case 1: model level specified in vertical
 if(vert_is_level(location) .or. vert_is_surface(location)) then
 ! Now, need to find the values for the four corners
-   val(1, 1,:) =  get_val(state_ens_handle, my_ens_size, &
+   val(1, 1,:) =  get_val(state_handle, ens_size, &
                      lon_below, lat_below, nint(level), obs_type)
-   val(1, 2,:) =  get_val(state_ens_handle, my_ens_size, &
+   val(1, 2,:) =  get_val(state_handle, ens_size, &
                      lon_below, lat_above, nint(level), obs_type)
-   val(2, 1,:) =  get_val(state_ens_handle, my_ens_size, &
+   val(2, 1,:) =  get_val(state_handle, ens_size, &
                      lon_above, lat_below, nint(level), obs_type)
-   val(2, 2,:) =  get_val(state_ens_handle, my_ens_size, &
+   val(2, 2,:) =  get_val(state_handle, ens_size, &
                      lon_above, lat_above, nint(level), obs_type)
 else
 ! Case of pressure specified in vertical
-   val(1, 1,:) =  get_val_pressure(state_ens_handle, my_ens_size, &
+   val(1, 1,:) =  get_val_pressure(state_handle, ens_size, &
                      lon_below, lat_below, pressure, obs_type, tmp_status(:,1))
-   val(1, 2,:) =  get_val_pressure(state_ens_handle, my_ens_size, &
+   val(1, 2,:) =  get_val_pressure(state_handle, ens_size, &
                      lon_below, lat_above, pressure, obs_type, tmp_status(:,2))
-   val(2, 1,:) =  get_val_pressure(state_ens_handle, my_ens_size, &
+   val(2, 1,:) =  get_val_pressure(state_handle, ens_size, &
                      lon_above, lat_below, pressure, obs_type, tmp_status(:,3))
-   val(2, 2,:) =  get_val_pressure(state_ens_handle, my_ens_size, &
+   val(2, 2,:) =  get_val_pressure(state_handle, ens_size, &
                      lon_above, lat_above, pressure, obs_type, tmp_status(:,4))
 endif
 
@@ -1206,22 +1204,22 @@ expected_obs = lat_fract * a(2,:) + (1.0 - lat_fract) * a(1,:)
 istatus = maxval(tmp_status, 2)
 
 ! if the forward operater failed set the value to missing_r8
-do e = 1, my_ens_size
+do e = 1, ens_size
    if (istatus(e) /= 0) then
       expected_obs(e) = MISSING_R8
    endif
 enddo
 
-end subroutine model_interpolate_distrib
+end subroutine model_interpolate
 
 !#######################################################################
 
-function get_val(state_ens_handle, my_ens_size, lon_index, lat_index, level, itype)
+function get_val(state_handle, ens_size, lon_index, lat_index, level, itype)
 
-type(ensemble_type), intent(in) :: state_ens_handle
+type(ensemble_type), intent(in) :: state_handle
 integer, intent(in) :: lon_index, lat_index, level, itype
-integer, intent(in) :: my_ens_size
-real(r8) :: get_val(my_ens_size)
+integer, intent(in) :: ens_size
+real(r8) :: get_val(ens_size)
 
 character(len = 129) :: msg_string
 integer :: model_type
@@ -1238,7 +1236,7 @@ model_type = get_varid_from_kind(itype)
 
 ! Find the index into state array and return this value
 state_index = get_dart_vector_index(lon_index, lat_index, level, dom_id, model_type)
-get_val = get_state(state_index, state_ens_handle)
+get_val = get_state(state_index, state_handle)
 
 end function get_val
 
@@ -1248,12 +1246,12 @@ end function get_val
 ! Gets the vertically interpolated value on pressure for variable type
 ! at lon_index, lat_index horizontal grid point
 
-recursive function get_val_pressure(state_ens_handle, my_ens_size, lon_index, lat_index, pressure, itype, istatus) result(val_pressure)
+recursive function get_val_pressure(state_handle, ens_size, lon_index, lat_index, pressure, itype, istatus) result(val_pressure)
 
-real(r8) :: val_pressure(my_ens_size)
+real(r8) :: val_pressure(ens_size)
 
-type(ensemble_type), intent(in) :: state_ens_handle
-integer,             intent(in) :: my_ens_size
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: ens_size
 real(r8),            intent(in) :: pressure
 integer,             intent(in) :: lon_index
 integer,             intent(in) :: lat_index
@@ -1261,10 +1259,10 @@ integer,             intent(in) :: itype
 integer,            intent(out) :: istatus(:)
 
 type(location_type) :: ps_location
-real(r8) :: ps(1, 1,my_ens_size), pfull(1, 1, Dynam%Vgrid%nlev), rfrac(my_ens_size)
-integer :: top_lev(my_ens_size), bot_lev(my_ens_size), i, e, model_type
-integer(i8) :: state_index_bottom(my_ens_size), state_index_top(my_ens_size)
-real(r8) :: bot_val(my_ens_size), top_val(my_ens_size), ps_lon
+real(r8) :: ps(1, 1,ens_size), pfull(1, 1, Dynam%Vgrid%nlev), rfrac(ens_size)
+integer :: top_lev(ens_size), bot_lev(ens_size), i, e, model_type
+integer(i8) :: state_index_bottom(ens_size), state_index_top(ens_size)
+real(r8) :: bot_val(ens_size), top_val(ens_size), ps_lon
 
 ! set all istatus to successful
 istatus(:) = 0
@@ -1275,7 +1273,7 @@ istatus(:) = 0
 
 if(itype == KIND_TEMPERATURE .or. itype == KIND_SURFACE_PRESSURE) then
 
-   ps(1,1,:) = get_val(state_ens_handle, my_ens_size, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE)
+   ps(1,1,:) = get_val(state_handle, ens_size, lon_index, lat_index, -1, KIND_SURFACE_PRESSURE)
 
 else
 
@@ -1285,11 +1283,11 @@ else
    if(ps_lon > 360.00_r8 .and. ps_lon < 360.00001_r8) ps_lon = 360.0_r8
 
    ps_location = set_location(ps_lon, v_lats(lat_index), -1.0_r8, VERTISSURFACE )
-   call model_interpolate_distrib(state_ens_handle, ps_location, KIND_SURFACE_PRESSURE, istatus, ps(1,1,:))
+   call model_interpolate(state_handle, ens_size, ps_location, KIND_SURFACE_PRESSURE, ps(1,1,:), istatus)
 
 endif
 
-do e = 1, my_ens_size
+do e = 1, ens_size
    ! Next, get the values on the levels for this ps,
    call compute_pres_full(Dynam%Vgrid, ps(:,:,e), pfull)
 
@@ -1329,16 +1327,16 @@ enddo
 
 model_type = get_varid_from_kind(itype)
 
-do e = 1, my_ens_size
+do e = 1, ens_size
    ! Find the index into state array and return this value
    state_index_bottom(e) = get_dart_vector_index(lon_index, lat_index, bot_lev(e), dom_id, model_type)
    state_index_top(e)    = get_dart_vector_index(lon_index, lat_index, top_lev(e), dom_id, model_type)
 enddo
 
-call get_state_array(bot_val, state_index_bottom, state_ens_handle)
-call get_state_array(top_val, state_index_top,    state_ens_handle)
+call get_state_array(bot_val, state_index_bottom, state_handle)
+call get_state_array(top_val, state_index_top,    state_handle)
 
-do e = 1, my_ens_size
+do e = 1, ens_size
    val_pressure(e) = (1.0_r8 - rfrac(e)) * bot_val(e) + rfrac(e) * top_val(e)
 enddo 
 
@@ -2005,9 +2003,9 @@ write(construct_file_name_in, '(A, i4.4, A)') TRIM(stub), copy, '.nc'
 end function construct_file_name_in
 
 !--------------------------------------------------------------------
-subroutine pert_model_copies(state_ens_handle, pert_amp, interf_provided)
+subroutine pert_model_copies(state_handle, pert_amp, interf_provided)
 
- type(ensemble_type), intent(inout) :: state_ens_handle
+ type(ensemble_type), intent(inout) :: state_handle
  real(r8),  intent(in) :: pert_amp
  logical,  intent(out) :: interf_provided
 
@@ -2297,22 +2295,22 @@ end function query_vert_localization_coord
 !> This is used in the filter_assim. The vertical conversion is done using the 
 !> mean state.
 !> Calling this is a waste of time
-subroutine vert_convert_distrib(state_ens_handle, location, obs_kind, istatus)
+subroutine vert_convert(state_handle, location, obs_kind, istatus)
 
-type(ensemble_type), intent(in)  :: state_ens_handle
+type(ensemble_type), intent(in)  :: state_handle
 type(location_type), intent(in)  :: location
 integer,             intent(in)  :: obs_kind
 integer,             intent(out) :: istatus
 
 istatus = 0
 
-end subroutine vert_convert_distrib
+end subroutine vert_convert
 
 !--------------------------------------------------------------------
-subroutine get_close_obs_distrib(gc, base_obs_loc, base_obs_kind, obs_loc, &
-                                 obs_kind, num_close, close_ind, dist, state_ens_handle)
+subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, &
+                                 obs_kind, num_close, close_ind, dist, state_handle)
 
-type(ensemble_type),         intent(inout)  :: state_ens_handle
+type(ensemble_type),         intent(inout)  :: state_handle
 type(get_close_type),        intent(in)     :: gc
 type(location_type),         intent(inout)  :: base_obs_loc, obs_loc(:)
 integer,                     intent(in)     :: base_obs_kind, obs_kind(:)
@@ -2320,10 +2318,10 @@ integer,                     intent(out)    :: num_close, close_ind(:)
 real(r8),                    intent(out)    :: dist(:)
 
 
-call get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
+call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
                           num_close, close_ind, dist)
 
-end subroutine get_close_obs_distrib
+end subroutine get_close_obs
 
 !#######################################################################
 

@@ -40,22 +40,22 @@
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !  use obs_def_radar_mod, only : write_radial_vel, read_radial_vel,           &
-!                            interactive_radial_vel, get_expected_radial_vel_distrib, &
-!                            read_radar_ref, get_expected_radar_ref_distrib,          &
-!                            get_expected_fall_velocity_distrib
+!                            interactive_radial_vel, get_expected_radial_vel, &
+!                            read_radar_ref, get_expected_radar_ref,          &
+!                            get_expected_fall_velocity
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 !-----------------------------------------------------------------------------
 
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !  case(DOPPLER_RADIAL_VELOCITY)
-!     call get_expected_radial_vel_distrib(state_ens_handle, location, obs_def%key, expected_obs, istatus)
+!     call get_expected_radial_vel(state_handle, ens_size, location, obs_def%key, expected_obs, istatus)
 !  case(RADAR_REFLECTIVITY)
-!     call get_expected_radar_ref_distrib(state_ens_handle, location, expected_obs, istatus)
+!     call get_expected_radar_ref(state_handle, ens_size, location, expected_obs, istatus)
 !  case(RADAR_CLEARAIR_REFLECTIVITY)
-!     call get_expected_radar_ref_distrib(state_ens_handle, location, expected_obs, istatus)
+!     call get_expected_radar_ref(state_handle, ens_size, location, expected_obs, istatus)
 !  case(PRECIPITATION_FALL_SPEED)
-!     call get_expected_fall_velocity_distrib(state_ens_handle, location, expected_obs, istatus)
+!     call get_expected_fall_velocity(state_handle, ens_size, location, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !-----------------------------------------------------------------------------
 
@@ -109,7 +109,7 @@ use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              ascii_file_format
 use     location_mod, only : location_type, write_location, read_location, &
                              interactive_location, get_location
-use  assim_model_mod, only : interpolate_distrib
+use  assim_model_mod, only : interpolate
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                              KIND_TEMPERATURE, KIND_VERTICAL_VELOCITY,     &
                              KIND_RAINWATER_MIXING_RATIO, KIND_DENSITY,    &
@@ -118,15 +118,16 @@ use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                              KIND_POWER_WEIGHTED_FALL_SPEED,               &
                              KIND_RADAR_REFLECTIVITY
 
-use ensemble_manager_mod, only : ensemble_type, copies_in_window
+use ensemble_manager_mod,  only : ensemble_type
+use obs_def_utilities_mod, only : track_status
 
 implicit none
 private
 
-public :: read_radar_ref, get_expected_radar_ref_distrib,                          &
+public :: read_radar_ref, get_expected_radar_ref,                          &
           read_radial_vel, write_radial_vel, interactive_radial_vel,       &
-          get_expected_radial_vel_distrib, get_obs_def_radial_vel, set_radial_vel, &
-          get_expected_fall_velocity_distrib
+          get_expected_radial_vel, get_obs_def_radial_vel, set_radial_vel, &
+          get_expected_fall_velocity
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -840,16 +841,17 @@ end subroutine interactive_nyquist_velocity
 
 !----------------------------------------------------------------------
 
-subroutine get_expected_radial_vel_distrib(state_ens_handle, location, velkey, &
+subroutine get_expected_radial_vel(state_handle, ens_size, location, velkey, &
                                    radial_vel, istatus)
 
 ! This is the main forward operator routine for radar Doppler velocity.
 
-type(ensemble_type),    intent(in) :: state_ens_handle
+type(ensemble_type),    intent(in) :: state_handle
+integer,                intent(in) :: ens_size
 type(location_type),    intent(in) :: location
 integer,                intent(in) :: velkey
-real(r8),              intent(out) :: radial_vel(:)
-integer,               intent(out) :: istatus(:)
+real(r8),              intent(out) :: radial_vel(ens_size)
+integer,               intent(out) :: istatus(ens_size)
 
 ! Given a location and the state vector from one of the ensemble members,
 ! compute the model-predicted radial velocity that would be observed
@@ -866,66 +868,41 @@ integer,               intent(out) :: istatus(:)
 
 real(r8) :: debug_location(3)
 logical  :: debug = .false.   ! set to .true. to enable debug printout
-integer  :: e, ens_size
-real(r8), allocatable :: u(:), v(:), w(:), qr(:), qg(:), qs(:), rho(:), temp(:), precip_fall_speed(:)
-integer,  allocatable :: track_status(:) ! need to track the istatus of the different ensmeble members
+real(r8), dimension(ens_size) :: u, v, w, qr, qg, qs, rho, temp, precip_fall_speed
+integer,  dimension(ens_size) :: u_istatus, v_istatus, w_istatus, qr_istatus, rho_istatus, temp_istatus, p_istatus
+logical  :: return_now
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = copies_in_window(state_ens_handle)
-allocate(track_status(ens_size), u(ens_size), v(ens_size), w(ens_size))
-allocate(qr(ens_size), qg(ens_size), qs(ens_size), rho(ens_size), &
-   temp(ens_size), precip_fall_speed(ens_size))
-
 ! Simple error check on key number before accessing the array
 call velkey_out_of_range(velkey)
+istatus(:)= 0
 
-call interpolate_distrib(location, KIND_U_WIND_COMPONENT, istatus, u, state_ens_handle)
-   if ( all(istatus /= 0) ) then
-      radial_vel(:) = missing_r8
-      return
-   endif
+call interpolate(state_handle, ens_size, location, KIND_U_WIND_COMPONENT, u, u_istatus)
+call track_status(ens_size, u_istatus, radial_vel, istatus, return_now)
+if (return_now) return
 
-track_status = istatus
-
-call interpolate_distrib(location, KIND_V_WIND_COMPONENT, istatus, v, state_ens_handle)
-   if ( all(istatus /= 0) ) then
-      radial_vel(:) = missing_r8
-      return
-   endif
-   do e = 1, ens_size
-      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-   enddo
+call interpolate(state_handle, ens_size, location, KIND_V_WIND_COMPONENT, v, v_istatus)
+call track_status(ens_size, v_istatus, radial_vel, istatus, return_now)
+if (return_now) return
 
 
-call interpolate_distrib(location, KIND_VERTICAL_VELOCITY, istatus, w, state_ens_handle)
-   if ( all(istatus /= 0) ) then
-      radial_vel(:) = missing_r8
-      return
-   endif
-   do e = 1, ens_size
-      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-   enddo
-
-call get_expected_fall_velocity_distrib(state_ens_handle, location, precip_fall_speed, istatus)
-   do e = 1, ens_size
-      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-   enddo
-
-radial_vel = radial_vel_data(velkey)%beam_direction(1) * u +    &
-             radial_vel_data(velkey)%beam_direction(2) * v +    &
-             radial_vel_data(velkey)%beam_direction(3) * (w - precip_fall_speed)
+call interpolate(state_handle, ens_size, location, KIND_VERTICAL_VELOCITY, w, w_istatus)
+call track_status(ens_size, w_istatus, radial_vel, istatus, return_now)
+if (return_now) return
 
 
-istatus = track_status
+call get_expected_fall_velocity(state_handle, ens_size, location, precip_fall_speed, p_istatus)
+call track_status(ens_size, p_istatus, radial_vel, istatus, return_now)
+if (return_now) return
 
-do e = 1, ens_size
-   if ( istatus(e) /= 0 ) radial_vel(e) = missing_r8
-enddo
+where (istatus == 0)
 
-! Good return code.  Reset possible istatus error from trying to compute
-! weighted fall speed directly.
-! istatus = 0 !> @todo How to do this?
+   radial_vel = radial_vel_data(velkey)%beam_direction(1) * u +    &
+                radial_vel_data(velkey)%beam_direction(2) * v +    &
+                radial_vel_data(velkey)%beam_direction(3) * (w - precip_fall_speed)
+
+end where
 
 if (debug) then
    debug_location = get_location(location)
@@ -943,7 +920,7 @@ if (debug) then
    print *, 'istatus: ', istatus
 endif
 
-end subroutine get_expected_radial_vel_distrib
+end subroutine get_expected_radial_vel
  
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
@@ -951,23 +928,25 @@ end subroutine get_expected_radial_vel_distrib
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
 
-subroutine get_expected_fall_velocity_distrib(state_ens_handle, &
-                location, precip_fall_speed, istatus)
+subroutine get_expected_fall_velocity(state_handle, &
+                ens_size, location, precip_fall_speed, istatus)
 
 ! This is the main forward operator routine for the expected
 ! fall velocity, and it also used as part of computing expected
 ! radial velocity.
 
-type(ensemble_type)                :: state_ens_handle
-type(location_type),    intent(in) :: location
-real(r8),            intent(out)   :: precip_fall_speed(:)
-integer,             intent(out)   :: istatus(:)
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+type(location_type), intent(in)  :: location
+real(r8),            intent(out) :: precip_fall_speed(ens_size)
+integer,             intent(out) :: istatus(ens_size)
 
 ! Local vars
-logical,         save :: first_time = .true.
-integer,  allocatable :: track_status(:)
-real(r8), allocatable :: qr(:), qg(:), qs(:), rho(:), temp(:), refl(:)
-integer               :: e, ens_size
+logical, save :: first_time = .true.
+real(r8), dimension(ens_size) :: qr, qg, qs, rho, temp, refl
+integer,  dimension(ens_size) :: qr_istatus, qg_istatus, qs_istatus, rho_istatus, refl_istatus, p_istatus, temp_istatus
+integer               :: imem
+logical               :: return_now
 ! If the model can return the precipitation fall speed directly, let it do
 ! so. Otherwise, attempt to compute if Kessler or Lin type microphysics,
 ! or see if the dbztowt routine is desired. Note that the computation for
@@ -975,17 +954,15 @@ integer               :: e, ens_size
 
 ! Should we check microphysics_type var or just go ahead and try to get a value?
 
-ens_size = copies_in_window(state_ens_handle)
-allocate(track_status(ens_size), qr(ens_size), qg(ens_size), qs(ens_size), &
-   rho(ens_size), temp(ens_size), refl(ens_size))
-
 istatus(:) = 0
 precip_fall_speed(:) = 0.0_r8
-call interpolate_distrib(location, KIND_POWER_WEIGHTED_FALL_SPEED, istatus, &
-         precip_fall_speed, state_ens_handle)
 
-! If able to get value, return here.
-if (any(istatus == 0) ) return  !> @todo should this be any or all?
+call interpolate(state_handle, ens_size, location, KIND_POWER_WEIGHTED_FALL_SPEED, &
+         precip_fall_speed, p_istatus)
+
+! If able to get value, KIND_POWER_WEIGHT_FALL_SPEED is the
+! the state so you can return here.
+if (any(istatus == 0) ) return
 
 ! If the user explicitly wanted to interpolate in the field, try to complain
 ! if it could not.  Note that the interp could fail for other reasons.
@@ -999,95 +976,62 @@ if (microphysics_type == 3 .or. microphysics_type == 4) then
    return
 endif
 
+! KIND_POWER_WEIGHT_FALL_SPEED is not in the state, try to interpolate
+! in a different way
+istatus(:) = 0
+
 ! If not in the state vector, try to calculate it here based on the
 ! setting of the microphysics_type namelist.
 
 ! if Kessler or Lin we can compute the fall velocity
 if (microphysics_type == 1 .or. microphysics_type == 2) then
-   call interpolate_distrib(location, KIND_RAINWATER_MIXING_RATIO, istatus, qr, state_ens_handle)
-   if ( all(istatus /= 0) ) then
-      precip_fall_speed = missing_r8
-      return
-   endif
-   do e = 1, ens_size
-      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-   enddo
+   call interpolate(state_handle, ens_size, location, KIND_RAINWATER_MIXING_RATIO, qr, qr_istatus)
+   call track_status(ens_size, qr_istatus, precip_fall_speed, istatus, return_now)
+   if (return_now) return
 
    if (microphysics_type == 2) then
-      call interpolate_distrib(location, KIND_GRAUPEL_MIXING_RATIO, istatus, qg, state_ens_handle)
-      if ( all(istatus /= 0) ) then
-         precip_fall_speed = missing_r8
-         return
-      endif
-      do e = 1, ens_size
-         if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-      enddo
+      call interpolate(state_handle, ens_size, location, KIND_GRAUPEL_MIXING_RATIO, qg, qg_istatus)
+      call track_status(ens_size, qg_istatus, precip_fall_speed, istatus, return_now)
+      if (return_now) return
 
-      call interpolate_distrib(location, KIND_SNOW_MIXING_RATIO, istatus, qs, state_ens_handle)
-      if ( all(istatus /= 0) ) then
-         precip_fall_speed = missing_r8
-         return
-      endif
-      do e = 1, ens_size
-         if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-      enddo
+      call interpolate(state_handle, ens_size, location, KIND_SNOW_MIXING_RATIO, qs, qs_istatus)
+      call track_status(ens_size, qs_istatus, precip_fall_speed, istatus, return_now)
+      if (return_now) return
+
    endif
 
    ! Done with Lin et al specific calls
-   call interpolate_distrib(location, KIND_DENSITY, istatus, rho, state_ens_handle)
-   if ( all(istatus /= 0) ) then
-      precip_fall_speed = missing_r8
-      return
-   endif
-   do e = 1, ens_size
-      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-   enddo
+   call interpolate(state_handle, ens_size, location, KIND_DENSITY, rho, rho_istatus)
+   call track_status(ens_size, rho_istatus, precip_fall_speed, istatus, return_now)
+   if (return_now) return
 
-   call interpolate_distrib(location, KIND_TEMPERATURE, istatus, temp, state_ens_handle)
-   if ( all(istatus /= 0) ) then
-      precip_fall_speed = missing_r8
-      return
-   endif
-   do e = 1, ens_size
-      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-   enddo
+   call interpolate(state_handle, ens_size, location, KIND_TEMPERATURE, temp, temp_istatus)
+   call track_status(ens_size, temp_istatus, precip_fall_speed, istatus, return_now)
+   if (return_now) return
 
-   do e = 1, ens_size
-      if (track_status(e) /= 0 ) then
-         precip_fall_speed(e) = missing_r8
-      else
-         call get_LK_precip_fall_speed(qr(e), qg(e), qs(e), rho(e), temp(e), precip_fall_speed(e))
+
+
+   do imem = 1, ens_size
+      if (istatus(imem) == 0) then
+         call get_LK_precip_fall_speed(qr(imem), qg(imem), qs(imem), rho(imem), temp(imem), precip_fall_speed(imem))
       endif
    enddo
-
-   istatus = track_status
 
    ! Done with Lin et al or Kessler -
 
 else if (microphysics_type == 5 .and. allow_dbztowt_conv) then
    ! Provided reflectivity field - will estimate fall velocity using empirical relations
-   call get_expected_radar_ref_distrib(state_ens_handle, location, refl, istatus)
-   if ( all(istatus /= 0) ) then
-      precip_fall_speed = missing_r8
-      return
-   endif
-   do e = 1, ens_size
-      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-   enddo
-   call interpolate_distrib(location, KIND_DENSITY, istatus, rho, state_ens_handle)
-   if ( all(istatus /= 0) ) then
-      precip_fall_speed = missing_r8
-      return
-   endif
-   do e = 1, ens_size
-      if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-   enddo
+   call get_expected_radar_ref(state_handle, ens_size, location, refl, refl_istatus)
+   call track_status(ens_size, refl_istatus, precip_fall_speed, istatus, return_now)
+   if (return_now) return
 
-   do e = 1, ens_size ! vectorize this routine?
-      precip_fall_speed(e) = dbztowt(refl(e), rho(e), missing_r8)
-   enddo
+   call interpolate(state_handle, ens_size, location, KIND_DENSITY, rho, rho_istatus)
+   call track_status(ens_size, rho_istatus, precip_fall_speed, istatus, return_now)
+   if (return_now) return
 
-   istatus = track_status
+   do imem = 1, ens_size ! vectorize this routine?
+      precip_fall_speed(imem) = dbztowt(refl(imem), rho(imem), missing_r8)
+   enddo
 
 else if (microphysics_type < 0) then
    ! User requested setting fall velocity to zero - use with caution
@@ -1100,7 +1044,7 @@ else
 endif
 
 
-end subroutine get_expected_fall_velocity_distrib
+end subroutine get_expected_fall_velocity
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------
@@ -1133,14 +1077,15 @@ end subroutine read_radar_ref
 
 !----------------------------------------------------------------------
 
-subroutine get_expected_radar_ref_distrib(state_ens_handle, location, ref, istatus)
+subroutine get_expected_radar_ref(state_handle, ens_size, location, ref, istatus)
 
 ! The main forward operator routine for radar reflectivity observations.
 
-type(ensemble_type)                :: state_ens_handle
+type(ensemble_type), intent(in)    :: state_handle
+integer,             intent(in)    :: ens_size
 type(location_type), intent(in)    :: location
-real(r8),            intent(out)   :: ref(:)
-integer,             intent(out)   :: istatus(:)
+real(r8),            intent(out)   :: ref(ens_size)
+integer,             intent(out)   :: istatus(ens_size)
 
 ! Given a location and the state vector from one of the ensemble members,
 ! compute the model-predicted radar reflectivity that would be observed
@@ -1154,19 +1099,19 @@ integer,             intent(out)   :: istatus(:)
 ! the routine "get_LK_reflectivity()" is called to compute the radar reflectivity
 ! factor value, Z, that corresponds to the hydrometeor and thermodynamic values.
 
-real(r8), allocatable :: qr(:), qg(:), qs(:), rho(:), temp(:)
-real(r8)              :: debug_location(3)
-logical               :: debug = .false.  ! set to .true. to enable debug printout
-logical, save         :: first_time = .true.
-integer               :: e, ens_size
-integer, allocatable  :: track_status(:)
+real(r8), dimension(ens_size) :: qr, qg, qs, rho, temp
+integer,  dimension(ens_size) :: qr_istatus, qg_istatus, qs_istatus
+integer,  dimension(ens_size) :: rho_istatus, temp_istatus
+
+real(r8)         :: debug_location(3)
+logical          :: debug = .false.  ! set to .true. to enable debug printout
+logical, save    :: first_time = .true.
+integer          :: imem
+logical          :: return_now
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = copies_in_window(state_ens_handle)
-allocate(qr(ens_size), qg(ens_size), qs(ens_size), rho(ens_size), temp(ens_size))
-allocate(track_status(ens_size))
-
+istatus(:) = 0
 ! Start with known values before calling interpolate routines.
 qr(:)   = 0.0_r8
 qg(:)   = 0.0_r8
@@ -1180,128 +1125,77 @@ temp(:) = 0.0_r8
 ! for the simple single-moment microphysics schemes (e.g., Kessler or Lin).
 
 ! Try to draw from state vector first
-call interpolate_distrib(location, KIND_RADAR_REFLECTIVITY, istatus, ref, state_ens_handle)
-if ( all(istatus /= 0) ) then !< @todo  How to deal with these istatuses
+call interpolate(state_handle, ens_size, location, KIND_RADAR_REFLECTIVITY, ref, istatus)
 
-   ! If the user explicitly wanted to interpolate in the field, try to complain
-   ! if it could not.  Note that the interp could fail for other reasons.
-   if (microphysics_type == 3 .or. microphysics_type == 5) then
-      ! Could return a specific istatus code here to indicate this condition.
-      if (first_time) then
-         call error_handler(E_MSG,'get_expected_radar_ref', &
+! If able to get value, KIND_RADAR_REFLECTIVITY is the
+! the state so you can return here.
+if (any(istatus == 0) ) return
+
+! If the user explicitly wanted to interpolate in the field, try to complain
+! if it could not.  Note that the interp could fail for other reasons.
+if (microphysics_type == 3 .or. microphysics_type == 5) then
+   ! Could return a specific istatus code here to indicate this condition.
+   if (first_time) then
+      call error_handler(E_MSG,'get_expected_radar_ref', &
                             'interpolate failed. Reflectivity may NOT be in state vector', '', '', '')
-         first_time = .false.
-      endif
-      return
+      first_time = .false.
    endif
+   return
 endif
 
-if ( any(istatus /= 0) ) then
-   track_status = istatus
-   if (microphysics_type == 1 .or. microphysics_type == 2) then
+istatus(:) = 0
 
-      call interpolate_distrib(location, KIND_RAINWATER_MIXING_RATIO, istatus, &
-                       qr, state_ens_handle)
-      if ( all(istatus /= 0) ) then
-         ref = missing_r8
-         return
-      endif
-      do e = 1, ens_size
-         if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-      enddo
+if (microphysics_type == 1 .or. microphysics_type == 2) then
 
-      if (microphysics_type == 2) then
-         ! Also need some ice vars
-         call interpolate_distrib(location, KIND_GRAUPEL_MIXING_RATIO, istatus, &
-                          qg, state_ens_handle)
-         if ( all(istatus /= 0) ) then
-            ref = missing_r8
-            return
-         endif
-         do e = 1, ens_size
-            if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-         enddo
+   call interpolate(state_handle, ens_size, location, KIND_RAINWATER_MIXING_RATIO, qr, qr_istatus)
+   call track_status(ens_size, qr_istatus, ref, istatus, return_now)
+   if (return_now) return
 
-         call interpolate_distrib(location, KIND_SNOW_MIXING_RATIO, istatus, &
-                          qs, state_ens_handle)
-         if ( all(istatus /= 0) ) then
-            ref = missing_r8
-            return
-         endif
-         do e = 1, ens_size
-            if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-         enddo
-      endif
+   if (microphysics_type == 2) then
+      ! Also need some ice vars
+      call interpolate(state_handle, ens_size, location, KIND_GRAUPEL_MIXING_RATIO, qg, qg_istatus)
+      call track_status(ens_size, qg_istatus, ref, istatus, return_now)
+      if (return_now) return
 
-      call interpolate_distrib(location, KIND_DENSITY, istatus, rho, state_ens_handle)
-         if ( all(istatus /= 0) ) then
-            ref = missing_r8
-            return
-         endif
-         do e = 1, ens_size
-            if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-         enddo
+      call interpolate(state_handle, ens_size, location, KIND_SNOW_MIXING_RATIO, qs, qs_istatus)
+      call track_status(ens_size, qs_istatus, ref, istatus, return_now)
+      if (return_now) return
 
-      call interpolate_distrib(location, KIND_TEMPERATURE, istatus, temp, state_ens_handle)
-         if ( all(istatus /= 0) ) then
-            ref = missing_r8
-            return
-         endif
-         do e = 1, ens_size
-            if (istatus(e) /= 0 ) track_status(e) = istatus(e)
-         enddo
-
-      do e = 1, ens_size
-         if (track_status(e) /= 0 ) then
-            ref(e) = missing_r8
-         else
-            call get_LK_reflectivity(qr(e), qg(e), qs(e), rho(e), temp(e), ref(e))
-            ! Always convert to dbz.  Make sure the value, before taking the logarithm,
-            ! is always slightly positive.
-            ! tiny() is a fortran intrinsic function that is > 0 by a very small amount.
-            ref(e) = 10.0_r8 * log10(max(tiny(ref(e)), ref(e)))
-         endif
-      enddo
-
-      istatus = track_status
-
-   else
-      ! not in state vector and not Lin et al or Kessler so can't do reflectivity
-      ref(:) = missing_r8
    endif
+
+   call interpolate(state_handle, ens_size, location, KIND_DENSITY, rho, rho_istatus)
+   call track_status(ens_size, rho_istatus, ref, istatus, return_now)
+   if (return_now) return
+
+
+   call interpolate(state_handle, ens_size, location, KIND_TEMPERATURE, temp, temp_istatus)
+   call track_status(ens_size, temp_istatus, ref, istatus, return_now)
+   if (return_now) return
+
+   do imem = 1, ens_size
+      if (istatus(imem) == 0 ) then
+         call get_LK_reflectivity(qr(imem), qg(imem), qs(imem), rho(imem), temp(imem), ref(imem))
+         ! Always convert to dbz.  Make sure the value, before taking the logarithm,
+         ! is always slightly positive.
+         ! tiny() is a fortran intrinsic function that is > 0 by a very small amount.
+         ref(imem) = 10.0_r8 * log10(max(tiny(ref(imem)), ref(imem)))
+      endif
+   enddo
+
+else
+   ! not in state vector and not Lin et al or Kessler so can't do reflectivity
+   ref(:) = missing_r8
+   istatus(:) = 1
 endif
 
-do e = 1, ens_size
-   if ((apply_ref_limit_to_fwd_op) .and. &
-       (ref(e) < reflectivity_limit_fwd_op) .and. (ref(e) /= missing_r8)) then
-      ref(e) = lowest_reflectivity_fwd_op
-   endif
-enddo
-
-! Do not return a missing data value with a successful return code. HK when does this happen?
-do e = 1, ens_size
-   if (ref(e) == missing_r8 .and. istatus(e) == 0) then
-      istatus(e) = 1
-   endif
-enddo
-
-if (debug) then
-   debug_location = get_location(location)
-   print *
-   print *, 'obs location (deg): ', debug_location(1),         &
-                                    debug_location(2),         debug_location(3)
-   print *, 'obs location (rad): ', debug_location(1)*deg2rad, &
-                                    debug_location(2)*deg2rad, debug_location(3)
-   print *, 'interpolated qr: ', qr
-   print *, 'interpolated qg: ', qg
-   print *, 'interpolated qs: ', qs
-   print *, 'interpolated rho: ', rho
-   print *, 'interpolated temp: ', temp
-   print *, 'final reflectivity: ', ref
-   print *, 'istatus: ', istatus
+if (apply_ref_limit_to_fwd_op) then
+   where ((ref < reflectivity_limit_fwd_op) .and. (istatus == 0))
+      ref = lowest_reflectivity_fwd_op
+   end where
 endif
 
-end subroutine get_expected_radar_ref_distrib
+
+end subroutine get_expected_radar_ref
 
 !----------------------------------------------------------------------
 !----------------------------------------------------------------------

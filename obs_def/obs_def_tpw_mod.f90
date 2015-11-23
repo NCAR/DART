@@ -36,9 +36,9 @@
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(AQUA_TOTAL_PRECIPITABLE_WATER,TERRA_TOTAL_PRECIPITABLE_WATER,GPS_TOTAL_PRECIPITABLE_WATER)
-!            call get_expected_tpw(state, location, obs_val, istatus)
+!            call get_expected_tpw(state_handle, ens_size, location, expected_obs, istatus)
 !         case(AMSR_TOTAL_PRECIPITABLE_WATER,MODIS_TOTAL_PRECIPITABLE_WATER)
-!            call get_expected_tpw(state, location, obs_val, istatus)
+!            call get_expected_tpw(state_handle, ens_size, location, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -77,6 +77,8 @@ use time_manager_mod, only : time_type, read_time, write_time, &
 use  assim_model_mod, only : interpolate
 use     obs_kind_mod, only : KIND_SURFACE_PRESSURE, KIND_SPECIFIC_HUMIDITY, &
                              KIND_TOTAL_PRECIPITABLE_WATER, KIND_PRESSURE
+use ensemble_manager_mod,  only : ensemble_type
+use obs_def_utilities_mod, only : track_status
 
 implicit none
 private
@@ -141,7 +143,7 @@ end subroutine initialize_module
 
 
 !------------------------------------------------------------------------------
-subroutine get_expected_tpw(state_vector, location, tpw, istatus)
+subroutine get_expected_tpw(state_handle, ens_size, location, tpw, istatus)
 
 !------------------------------------------------------------------------------
 ! Purpose:  To calculate total precipitable water in a column over oceans.
@@ -158,10 +160,11 @@ subroutine get_expected_tpw(state_vector, location, tpw, istatus)
 !  updated by n. collins  14 june 2012
 !------------------------------------------------------------------------------
 
-real(r8),            intent(in)  :: state_vector(:)
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: location
-real(r8),            intent(out) :: tpw
-integer,             intent(out) :: istatus
+real(r8),            intent(out) :: tpw(ens_size)
+integer,             intent(out) :: istatus(ens_size)
 
 ! local variables
 real(r8) :: lon, lat, height, obsloc(3)
@@ -169,18 +172,16 @@ type(location_type) :: location2
 
 ! we'll compute the midpoint value for each pressure range, so allocate one
 ! more than the number of expected values.
-real(r8) :: pressure(max_pressure_intervals+1), qv(max_pressure_intervals+1)
-real(r8) :: pressure_interval, psfc
+real(r8) :: pressure(ens_size, max_pressure_intervals+1), qv(ens_size, max_pressure_intervals+1)
+real(r8) :: pressure_interval(ens_size), psfc(ens_size)
 integer  :: which_vert, k, lastk, first_non_surface_level
+integer  :: this_istatus(ens_size)
+logical  :: return_now
 
 if ( .not. module_initialized ) call initialize_module
 
-! start assuming an error.  if we return early these will already
-! be set.  replace the 99 error code with more specific values, 
-! and then 99 will only be returned in case of an uncaught error.
-
 tpw = missing_r8
-istatus = 99
+istatus = 0
 
 ! check for bad values in the namelist which exceed the size of the
 ! arrays that are hardcoded here.
@@ -211,17 +212,16 @@ location2 = set_location(lon, lat, height,  which_vert)
 ! assumes the values returned from the interpolation will be in these units:
 !   surface pressure :  Pa
 !   moisture         :  kg/kg
-call interpolate(state_vector, location2, KIND_SURFACE_PRESSURE, pressure(1), istatus)
-if (istatus /= 0) then
-   return
-endif
-call interpolate(state_vector, location2, KIND_SPECIFIC_HUMIDITY, qv(1), istatus)
-if (istatus /= 0) then
-   return
-endif
+call interpolate(state_handle, ens_size, location2, KIND_SURFACE_PRESSURE, pressure(:, 1), this_istatus)
+call track_status(ens_size, this_istatus, tpw, istatus, return_now)
+if (return_now) return
+
+call interpolate(state_handle, ens_size, location2, KIND_SPECIFIC_HUMIDITY, qv(:, 1), this_istatus)
+call track_status(ens_size, this_istatus, tpw, istatus, return_now)
+if (return_now) return
 
 ! save this for use below
-psfc = pressure(1)
+psfc = pressure(:, 1)
 
 ! there are two options for constructing the column of values.  if 'model_levels'
 ! is true, we query the model by vertical level number.  the 'separate_surface_level'
@@ -259,12 +259,16 @@ if (model_levels) then
 
       which_vert = VERTISLEVEL
       location2 = set_location(lon, lat, real(k, r8),  which_vert)
+!> @todo --- This may be different for each ensemble memeber ---
+      call interpolate(state_handle, ens_size, location2, KIND_PRESSURE, pressure(:, lastk), this_istatus)
+      call track_status(ens_size, this_istatus, tpw, istatus, return_now)
+      if (any(pressure(:, lastk) < pressure_top)) exit LEVELS
+      if (return_now) return
 
-      call interpolate(state_vector, location2, KIND_PRESSURE, pressure(lastk), istatus)
-      if (istatus /= 0 .or. pressure(lastk) < pressure_top) exit LEVELS
-
-      call interpolate(state_vector, location2, KIND_SPECIFIC_HUMIDITY, qv(lastk), istatus)
-      if (istatus /= 0) return
+      call interpolate(state_handle, ens_size, location2, KIND_SPECIFIC_HUMIDITY, qv(:, lastk), this_istatus)
+      call track_status(ens_size, this_istatus, tpw, istatus, return_now)
+!--------------------------------------------------------------
+      if (return_now) return
    
       lastk = lastk + 1
    enddo LEVELS
@@ -290,9 +294,10 @@ else
    lastk = num_pressure_intervals + 1
    
    ! construct a pressure column at fixed pressure intervals
-   ! pressure(1) is always the surface pressure.
+   ! pressure(:, 1) is always the surface pressure.
+
    do k=2, lastk
-      pressure(k) =  pressure(1) - pressure_interval * (k-1)
+      where (istatus == 0 ) pressure(:, k) =  pressure(:, 1) - pressure_interval * (k-1)
    end do
    
    ! call the model_mod to get the specific humidity at each location from the model
@@ -300,10 +305,13 @@ else
    do k=2, lastk
 
       which_vert = VERTISPRESSURE
-      location2 = set_location(lon, lat, pressure(k),  which_vert)
+      !> @TODO - there should be only a single location here.  for now, use 1
+      !> but what to do in the general case?  set a fixed top and bottom pressure??
+      location2 = set_location(lon, lat, pressure(1, k),  which_vert)
    
-      call interpolate(state_vector, location2,  KIND_SPECIFIC_HUMIDITY, qv(k), istatus)
-      if (istatus /= 0) return
+      call interpolate(state_handle, ens_size, location2,  KIND_SPECIFIC_HUMIDITY, qv(:, k), this_istatus)
+      call track_status(ens_size, this_istatus, tpw, istatus, return_now)
+      if (return_now) return
    
    enddo
 endif
@@ -313,13 +321,16 @@ endif
 ! pressure is in pascals (not hPa or mb), and moisture is in kg/kg.
 tpw = 0.0
 do k=1, lastk - 1
-   tpw = tpw + 0.5 * (qv(k) + qv(k+1) ) * (pressure(k) - pressure(k+1) )  
+   where (istatus == 0) &
+      tpw = tpw + 0.5 * (qv(:, k) + qv(:, k+1) ) * (pressure(:, k) - pressure(:, k+1) )  
 enddo
 
 ! convert to centimeters of water and return
-tpw = 100.0 * tpw /(density*gravity)   ! -> cm
-
-istatus = 0
+where (istatus == 0)
+   tpw = 100.0 * tpw /(density*gravity)   ! -> cm
+elsewhere
+   tpw = missing_r8
+endwhere
 
 end subroutine get_expected_tpw
 

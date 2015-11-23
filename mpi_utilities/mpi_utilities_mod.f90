@@ -2008,17 +2008,8 @@ real(r8), intent(out) :: global_val(2) ! only concerned with this on task collec
 integer :: errcode
 
 ! collect on task 
-if (datasize == mpi_real8) then
-
-   call mpi_reduce(minmax(1), global_val(1), 1, mpi_real8, MPI_MIN,task, get_dart_mpi_comm(), errcode)
-   call mpi_reduce(minmax(2), global_val(2), 1, mpi_real8, MPI_MAX, task, get_dart_mpi_comm(), errcode)
-
-else ! single precision
-
-   call mpi_reduce(minmax(1), global_val(1), 1, mpi_real4, MPI_MIN, task, get_dart_mpi_comm(), errcode)
-   call mpi_reduce(minmax(2), global_val(2), 1, mpi_real4, MPI_MAX, task, get_dart_mpi_comm(), errcode)
-
-endif
+call mpi_reduce(minmax(1:1), global_val(1:1), 1, datasize, MPI_MIN,task, get_dart_mpi_comm(), errcode)
+call mpi_reduce(minmax(2:2), global_val(2:2), 1, datasize, MPI_MAX, task, get_dart_mpi_comm(), errcode)
 
 end subroutine reduce_min_max
 
@@ -2039,6 +2030,9 @@ integer :: errcode
 ! to have occured until the call to mpi_win_unlock. 
 ! => Don't do anything with x in between mpi_get and mpi_win_lock
 
+! Note to programmer: openmpi 1.10.0 does not
+! allow scalars in mpi calls. openmpi 1.10.1 fixes
+! this.
 target_disp = (index - 1)
 call mpi_win_lock(MPI_LOCK_SHARED, owner, 0, window, errcode)
 call mpi_get(x, 1, datasize, owner, target_disp, 1, datasize, window, errcode)

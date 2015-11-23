@@ -41,12 +41,12 @@
 ! END DART PREPROCESS KIND LIST
 
 ! BEGIN DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
-!   use obs_def_gts_mod, only : get_expected_thickness_distrib
+!   use obs_def_gts_mod, only : get_expected_thickness
 ! END DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE
 
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !         case(SATEM_THICKNESS)
-!            call get_expected_thickness_distrib(state_ens_handle, location, expected_obs, istatus)
+!            call get_expected_thickness(state_handle, ens_size, location, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 
 ! BEGIN DART PREPROCESS READ_OBS_DEF
@@ -71,15 +71,16 @@ use        types_mod, only : r8, missing_r8, gravity, gas_constant, gas_constant
 use    utilities_mod, only : register_module
 use     location_mod, only : location_type, set_location, get_location , &
                              VERTISSURFACE, VERTISPRESSURE, VERTISHEIGHT
-use  assim_model_mod, only : interpolate_distrib
+use  assim_model_mod, only : interpolate
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SPECIFIC_HUMIDITY, KIND_PRESSURE
 
-use ensemble_manager_mod, only : ensemble_type, copies_in_window
+use ensemble_manager_mod,  only : ensemble_type
+use obs_def_utilities_mod, only : track_status
 
 implicit none
 private
 
-public :: get_expected_thickness_distrib
+public :: get_expected_thickness
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -102,23 +103,24 @@ end subroutine initialize_module
 
 
 
-subroutine get_expected_thickness_distrib(state_ens_handle, location, thickness, istatus)
+subroutine get_expected_thickness(state_handle, ens_size, location, thickness, istatus)
 !-----------------------------------------------------------------------------
 ! inputs:
 !    state_vector:    DART state vector
 !
 ! output parameters:
 !    thickness: modeled satem thickness between the specified layers. (unit: m)
-!    istatus:  =0 normal; =1 outside of domain.
+!    istatus:  =0 normal; =1 either or both t or q interpolation failed
 !---------------------------------------------
 ! Hui Liu  NCAR/IMAGE  April 9, 2008
 !---------------------------------------------
 implicit none
 
-type(ensemble_type)              :: state_ens_handle
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: location
-real(r8),            intent(out) :: thickness(:)
-integer,             intent(out) :: istatus(:)
+real(r8),            intent(out) :: thickness(ens_size)
+integer,             intent(out) :: istatus(ens_size)
 
 ! local variables
 
@@ -127,7 +129,7 @@ integer, parameter :: nlevel = 9, num_press_int = 10
 real(r8) :: lon, lat, pressure, obsloc(3), obs_level(nlevel), press(num_press_int+1)
 real(r8) :: press_top, press_bot, press_int
 
-integer,  allocatable :: istatus0(:), istatus2(:), track_status(:)
+integer :: t_istatus(ens_size), q_istatus(ens_size)
 
 data  obs_level/85000.0, 70000.0, 50000.0, 40000.0, 30000.0, 25000.0, 20000.0, 15000.0, 10000.0/
 
@@ -135,16 +137,15 @@ real(r8), parameter::  rdrv1 = gas_constant_v/gas_constant - 1.0_r8
 
 real(r8) :: lon2, p
 type(location_type) :: location2
-integer :: which_vert
-real(r8), allocatable :: t(:), q(:), tv(:)
+integer  :: which_vert
+real(r8) :: t(ens_size), q(ens_size), tv(ens_size)
 
-integer :: e, ens_size
+logical :: return_now
 
 if ( .not. module_initialized ) call initialize_module
 
-ens_size = copies_in_window(state_ens_handle)
-
-allocate(istatus0(ens_size), istatus2(ens_size), track_status(ens_size))
+! Start out assuming passing status
+istatus = 0
 
 obsloc   = get_location(location)
 lon      = obsloc(1)                       ! degree: 0 to 360
@@ -190,47 +191,43 @@ if(lon > 360.0_r8 ) lon2 = lon - 360.0_r8
 if(lon <   0.0_r8 ) lon2 = lon + 360.0_r8
 
 which_vert = VERTISPRESSURE
-istatus0  = 0
-istatus2  = 0
 thickness = 0.0_r8
-
-track_status = 0
 
 do k=2, num_press_int+1, 2
    p = press(k)
    location2 = set_location(lon2, lat, p,  which_vert)
 
-   call interpolate_distrib(location2,  KIND_TEMPERATURE,       istatus0, t, state_ens_handle)
-   call interpolate_distrib(location2,  KIND_SPECIFIC_HUMIDITY, istatus2, q, state_ens_handle)
+   call interpolate(state_handle, ens_size, location2,  KIND_TEMPERATURE, t, t_istatus)
+   call track_status(ens_size, t_istatus, thickness, istatus, return_now)
+   ! don't return until we have the corresponding q to test
 
-   if(all(istatus0 > 0) .or. all(istatus2 > 0)  ) then
-      istatus = 1
-      thickness = missing_r8
-   endif
+   call interpolate(state_handle, ens_size, location2,  KIND_SPECIFIC_HUMIDITY, q, q_istatus)
+   call track_status(ens_size, q_istatus, thickness, istatus, return_now)
+
+   
+   ! use a consistent error code for failed t or q instead of
+   ! the model specific return code.
+   where (istatus > 0) istatus = 1
 
    ! t :  Kelvin, from top to bottom
    ! q :  kg/kg, from top to bottom
 
-   tv    = t * (1.0_r8 + rdrv1 * q )         ! virtual temperature
-   thickness = thickness + gas_constant/gravity * tv * log(press(k-1)/press(k+1))
+   where (istatus == 0)
+      tv    = t * (1.0_r8 + rdrv1 * q )         ! virtual temperature
+      thickness = thickness + gas_constant/gravity * tv * log(press(k-1)/press(k+1))
+   end where
 
-   do e = 1, ens_size
-      ! expected values are around 1 KM; this is a check for
-      ! wildly out of range values.
-      if( abs(thickness(e)) > 10000.0_r8 ) then
-         istatus(e) = 2
-         thickness(e) = missing_r8
-      endif
-      if (istatus(e) /= 0) track_status(e) = istatus(e)
-
-   enddo
+   !> @todo is this magic number reasonable? jeff thinks no.
+   where ( abs(thickness) > 10000.0_r8 )
+      istatus = 2
+      thickness = missing_r8
+   end where
 
 end do
 
-istatus = track_status
-
 return
-end subroutine get_expected_thickness_distrib
+
+end subroutine get_expected_thickness
 
 end module obs_def_gts_mod
 ! END DART PREPROCESS MODULE CODE

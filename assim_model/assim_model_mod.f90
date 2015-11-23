@@ -21,13 +21,13 @@ use utilities_mod, only : get_unit, close_file, register_module, error_handler, 
                           check_namelist_read, nc_check, do_nml_file, do_nml_term, &
                           find_textfile_dims, file_to_text, set_output,            &
                           ascii_file_format, set_output
-use     model_mod, only : get_model_size, static_init_model, get_state_meta_data_distrib,  &
-                          get_model_time_step, init_conditions,                            &
-                          init_time, adv_1step, end_model, nc_write_model_atts,            &
-                          nc_write_model_vars, pert_model_state,                           &
-                          get_close_maxdist_init, get_close_obs_init,                      &
-                          model_interpolate_distrib,                                       &
-                          get_close_obs_distrib, pert_model_copies
+use     model_mod, only : get_model_size, static_init_model, get_state_meta_data,  &
+                          get_model_time_step, init_conditions,                    &
+                          init_time, adv_1step, end_model, nc_write_model_atts,    &
+                          nc_write_model_vars, pert_model_state,                   &
+                          get_close_maxdist_init, get_close_obs_init,              &
+                          model_interpolate,                                       &
+                          get_close_obs, pert_model_copies
 
 use ensemble_manager_mod, only : ensemble_type
 
@@ -35,18 +35,18 @@ implicit none
 private
 
 public :: static_init_assim_model, init_diag_output, get_model_size,                       &
-          get_closest_state_time_to, get_initial_condition, get_state_meta_data_distrib,   &
+          get_closest_state_time_to, get_initial_condition, get_state_meta_data,           &
           get_model_time, get_model_state_vector, copy_assim_model,                        &
           set_model_time, set_model_state_vector,  &
           output_diagnostics, end_assim_model, assim_model_type, init_diag_input,          &
           input_diagnostics, get_diag_input_copy_meta_data, init_assim_model,              &
           finalize_diag_output, aoutput_diagnostics,                                       &
-           aget_closest_state_time_to,            &
+          aget_closest_state_time_to,            &
           pert_model_state, netcdf_file_type, nc_append_time, nc_write_calendar_atts,      &
           nc_get_tindex, get_model_time_step,       &
-         adv_1step, aget_initial_condition, get_close_maxdist_init,        &
-          get_close_obs_init, interpolate_distrib,                                         &
-          get_close_obs_distrib, pert_model_copies
+          adv_1step, aget_initial_condition, get_close_maxdist_init,        &
+          get_close_obs_init, interpolate,                                         &
+          get_close_obs, pert_model_copies
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -658,7 +658,7 @@ end do
 end subroutine copy_assim_model
 
 !> Pass through routine to model interpolate
-subroutine interpolate_distrib(location, loctype, istatus, expected_obs, state_ens_handle)
+subroutine interpolate(state_handle, ens_size, location, loctype, expected_obs, istatus)
 !---------------------------------------------------------------------
 !
 ! Interpolates from the state vector in an assim_model_type to the
@@ -671,17 +671,18 @@ subroutine interpolate_distrib(location, loctype, istatus, expected_obs, state_e
 
 implicit none
 
+type(ensemble_type),   intent(in)    :: state_handle
+integer,               intent(in)    :: ens_size
 type(location_type),   intent(in)    :: location
 integer,               intent(in)    :: loctype
-integer,               intent(out)   :: istatus(:)
-type(ensemble_type),   intent(in)    :: state_ens_handle
-real(r8),              intent(out)   :: expected_obs(:)
+real(r8),              intent(out)   :: expected_obs(ens_size)
+integer,               intent(out)   :: istatus(ens_size)
 
 istatus = 0
 
-call model_interpolate_distrib(state_ens_handle, location, loctype, istatus, expected_obs)
+call model_interpolate(state_handle, ens_size, location, loctype, expected_obs, istatus)
 
-end subroutine interpolate_distrib
+end subroutine interpolate
 
 
 subroutine set_model_time(assim_model, time)
