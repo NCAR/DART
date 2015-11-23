@@ -1836,7 +1836,7 @@ endif
 ! qc_ens_handle is a real representing an integer; values /= 0 get written out
 do i = 1, ens_size
    do j = 1, qc_ens_handle%my_num_vars
-      if(nint(qc_ens_handle%copies(i, j)) /= 0) write(forward_unit, *) keys(j), nint(qc_ens_handle%copies(i, j))
+      if(nint(qc_ens_handle%copies(i, j)) /= 0) write(forward_unit, *) i, keys(j), nint(qc_ens_handle%copies(i, j))
    end do
 end do
 
