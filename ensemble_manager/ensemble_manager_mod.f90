@@ -750,7 +750,7 @@ endif
 
 !Allocate the storage for copies and vars all at once
 allocate(ens_handle%my_copies(ens_handle%my_num_copies),              &
-         ens_handle%time     (ens_handle%num_copies),                 &
+         ens_handle%time     (ens_handle%my_num_copies),                 &
          ens_handle%my_vars  (ens_handle%my_num_vars),                &
          ens_handle%copies   (ens_handle%num_copies, ens_handle%my_num_vars))
 
@@ -770,7 +770,10 @@ ens_handle%copies = MISSING_R8
 call get_copy_list(ens_handle%num_copies, ens_handle%my_pe, ens_handle%my_copies, i)
 
 ! Initialize times to missing
-ens_handle%time(:) = set_time(0, 0) ! every task has the time for every copy
+! This is only initializing times for pes that have ensemble copies
+do i = 1, ens_handle%my_num_copies
+   ens_handle%time(i) = set_time(0, 0)
+end do
 
 ! Fill out the number of my vars
 call get_var_list(ens_handle%num_vars, ens_handle%my_pe, ens_handle%my_vars, i)
