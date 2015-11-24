@@ -1952,14 +1952,19 @@ logical,  intent(out) :: interf_provided
 logical, save :: first_call = .true.
 integer :: i, j, k
 
+! change the amount of perturbation here and recompile
+real(r8), parameter :: pert_stddev = 0.01_r8
+
 if ( .not. module_initialized ) call static_init_model
 
-! ! option 1: let filter do the perturbs
-! ! (comment this out to select other options below)
-! interf_provided = .false.
-! return
+! option 1: let filter do the perturbs
+! (comment this out to select other options below)
+interf_provided = .false.
+return
  
 ! (debug) option 2: tell filter we are going to perturb, but don't.
+!  generally you do NOT want to do this - your ensemble will have
+!  no spread.
 ! interf_provided = .true.
 ! pert_state = state
 ! return
@@ -1975,11 +1980,10 @@ endif
 
 call vector_to_prog_var(state, get_model_size(), global_Var)
 
-do k = 1, size(global_Var%t, 3)
-   do j = 1, size(global_Var%t, 2)
-      do i = 1, size(global_Var%t, 1)
-         global_Var%t(i, j, k) = global_Var%t(i, j, k) + &
-             random_gaussian(randtype, 0.0_r8, 0.01_r8)
+do k = lbound(global_Var%t, 3), ubound(global_Var%t, 3)
+   do j = lbound(global_Var%t, 2), ubound(global_Var%t, 2)
+      do i = lbound(global_Var%t, 1), ubound(global_Var%t, 1)
+         global_Var%t(i, j, k) = random_gaussian(randtype, global_Var%t(i,j,k), pert_stddev)
       end do
    end do
 end do
