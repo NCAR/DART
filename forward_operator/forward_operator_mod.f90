@@ -394,6 +394,7 @@ QC_LOOP: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
    ! HK does this fail if you have groups?
    !>@todo Do we want to set all the groups to missing_r8? Not just the start?
    !write(*,*) 'global_qc_value', global_qc_value
+   !> @todo This is a bug - it should be 1:ens_size
    if (any(obs_fwd_op_ens_handle%copies(1:my_ensemble_copies,j) == missing_r8)) then !.not. good_dart_qc(global_qc_value)) then
       obs_fwd_op_ens_handle%copies(OBS_MEAN_START, j) = missing_r8
       obs_fwd_op_ens_handle%copies(OBS_VAR_START,  j) = missing_r8
