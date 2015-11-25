@@ -936,6 +936,10 @@ AdvanceTime : do
          call timestamp_message('After  computing posterior state space inflation')
          call     trace_message('After  computing posterior state space inflation')
 
+         ! recalculate standard deviation since this was overwritten in filter_assim
+         call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
+
+
       endif  ! sd >= 0 or sd from restart file
    endif  ! if doing state space posterior inflate
 
