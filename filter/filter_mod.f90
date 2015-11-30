@@ -569,6 +569,7 @@ AdvanceTime : do
    ! Need to clean up and have a broadcast that just sends a single integer???
    ! PAR For now, can only broadcast real arrays
    call filter_sync_keys_time(state_ens_handle, key_bounds, num_obs_in_set, curr_ens_time, next_ens_time)
+
    if(key_bounds(1) < 0) then 
       call trace_message('No more obs to assimilate, exiting main loop', 'filter:', -1)
       exit AdvanceTime
@@ -1656,7 +1657,7 @@ subroutine filter_sync_keys_time(ens_handle, key_bounds, num_obs_in_set, time1, 
 
 integer,             intent(inout)  :: key_bounds(2), num_obs_in_set
 type(time_type),     intent(inout)  :: time1, time2
-type(ensemble_type), intent(in)     :: ens_handle
+type(ensemble_type), intent(inout)     :: ens_handle
 
 ! Have owner of copy 1 broadcast these values to all other tasks.
 ! Only tasks which contain copies have this info; doing it this way
@@ -1686,6 +1687,8 @@ else
    time1 = set_time(nint(rtime(1)), nint(rtime(2)))
    time2 = set_time(nint(rtime(3)), nint(rtime(4)))
 endif
+
+ens_handle%current_time = time1
 
 end subroutine filter_sync_keys_time
 

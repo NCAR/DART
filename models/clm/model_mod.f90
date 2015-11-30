@@ -27,7 +27,7 @@ module model_mod
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r4, r8, SECPERDAY, MISSING_R8,                    &
                              MISSING_I, MISSING_R4, rad2deg, deg2rad, PI,      &
-                             obstypelength
+                             obstypelength, i8
 use time_manager_mod, only : time_type, set_time, get_time, set_date, get_date,&
                              print_time, print_date, set_calendar_type,        &
                              operator(*),  operator(+),  operator(-),          &
@@ -42,14 +42,16 @@ use     location_mod, only : location_type, get_dist, query_location,          &
                              vert_is_level,    VERTISLEVEL,                    &
                              vert_is_pressure, VERTISPRESSURE,                 &
                              vert_is_height,   VERTISHEIGHT,                   &
-                             get_close_obs_init, get_close_obs, LocationDims
+                             get_close_obs_init, LocationDims,                 &
+                             loc_get_close_obs => get_close_obs
 
 use    utilities_mod, only : register_module, error_handler,                   &
                              E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
                              nc_check, do_output, to_upper,                    &
                              find_namelist_in_file, check_namelist_read,       &
                              file_exist, find_textfile_dims, file_to_text,     &
-                             open_file, close_file
+                             open_file, close_file, do_nml_file, do_nml_term,  &
+                             nmlfileunit
 
 use     obs_kind_mod, only : KIND_SOIL_TEMPERATURE,   &
                              KIND_SOIL_MOISTURE,      &
@@ -60,12 +62,28 @@ use     obs_kind_mod, only : KIND_SOIL_TEMPERATURE,   &
                              KIND_LEAF_CARBON,        &
                              KIND_WATER_TABLE_DEPTH,  &
                              KIND_GEOPOTENTIAL_HEIGHT,&
+                             KIND_LEAF_AREA_INDEX,    &
+                             KIND_VEGETATION_TEMPERATURE, &
+                             KIND_SNOWCOVER_FRAC, &
+                             KIND_LEAF_CARBON, &
+                             KIND_WATER_TABLE_DEPTH, &
                              paramname_length,        &
-                             get_raw_obs_kind_index
+                             get_raw_obs_kind_index, &
+                             get_raw_obs_kind_name
+
+ use ensemble_manager_mod, only : ensemble_type, &
+                                  map_pe_to_task, &
+                                  get_var_owner_index
+
+use distributed_state_mod, only : get_state
+use state_structure_mod,   only : add_domain
 
 use mpi_utilities_mod, only: my_task_id
 
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
+
+!> @todo FIXME write a write_model_time for CLM
+use dart_time_io_mod,      only : write_model_time
 
 use typesizes
 use netcdf
@@ -87,10 +105,14 @@ public :: get_model_size,         &
           nc_write_model_atts,    &
           nc_write_model_vars,    &
           pert_model_state,       &
+          pert_model_copies,      &
           get_close_maxdist_init, &
           get_close_obs_init,     &
-          get_close_obs,          &
-          ens_mean_for_model
+          get_close_obs, &
+          write_model_time, &
+          read_model_time, &
+          query_vert_localization_coord, &
+          vert_convert
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
@@ -99,12 +121,12 @@ public :: get_gridsize,                 &
           clm_to_dart_state_vector,     &
           sv_to_restart_file,           &
           get_clm_restart_filename,     &
-          get_state_time,               &
           get_grid_vertval,             &
           compute_gridcell_value,       &
           gridcell_components,          &
           DART_get_var,                 &
-          get_model_time
+          get_model_time,               &
+          construct_file_name_in
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -195,9 +217,9 @@ type progvartype
    integer  :: numdims
    integer  :: maxlevels
    integer  :: xtype
-   integer  :: varsize     ! prod(dimlens(1:numdims))
-   integer  :: index1      ! location in dart state vector of first occurrence
-   integer  :: indexN      ! location in dart state vector of last  occurrence
+   integer(i8)  :: varsize     ! prod(dimlens(1:numdims))
+   integer(i8)  :: index1      ! location in dart state vector of first occurrence
+   integer(i8)  :: indexN      ! location in dart state vector of last  occurrence
    integer  :: dart_kind
    integer  :: rangeRestricted
    real(r8) :: minvalue
@@ -295,7 +317,6 @@ integer,  allocatable, dimension(:)  :: cols1d_ityplun ! columntype ... lake, fo
 !------------------------------------------------------------------------------
 ! These are the metadata arrays that are the same size as the state vector.
 
-real(r8), allocatable, dimension(:) :: ens_mean     ! may be needed for forward ops
 integer,  allocatable, dimension(:) :: lonixy       ! longitude index of parent gridcell
 integer,  allocatable, dimension(:) :: latjxy       ! latitude  index of parent gridcell
 real(r8), allocatable, dimension(:) :: levels       ! depth
@@ -330,7 +351,7 @@ END INTERFACE
 
 INTERFACE get_state_time
       MODULE PROCEDURE get_state_time_ncid
-      MODULE PROCEDURE get_state_time_fname
+      MODULE PROCEDURE read_model_time
 END INTERFACE
 
 
@@ -381,16 +402,17 @@ end subroutine adv_1step
 
 
 
-subroutine get_state_meta_data(indx, location, var_type)
+subroutine get_state_meta_data(state_handle, indx, location, var_type)
 !------------------------------------------------------------------
 ! Given an integer index into the state vector structure, returns the
 ! associated array indices for lat, lon, and height, as well as the type.
 
 ! Passed variables
 
-integer, intent(in)            :: indx
-type(location_type)            :: location
-integer, OPTIONAL, intent(out) :: var_type
+type(ensemble_type), intent(in)    :: state_handle
+integer(i8), intent(in)            :: indx
+type(location_type), intent(out)   :: location
+integer, OPTIONAL, intent(out)     :: var_type
 
 ! Local variables
 
@@ -471,6 +493,10 @@ integer  :: spvalINT
 real(r4) :: spvalR4
 real(r8) :: spvalR8
 
+character(len=paramname_length) :: var_names(max_state_variables)
+real(r8) :: var_ranges(max_state_variables,2)
+integer :: nvars, domid
+
 if ( module_initialized ) return ! only need to do this once.
 
 ! Print module information to log file and stdout.
@@ -486,9 +512,8 @@ read(iunit, nml = model_nml, iostat = io)
 call check_namelist_read(iunit, io, 'model_nml')
 
 ! Record the namelist values used for the run
-if (do_output()) call error_handler(E_MSG,'static_init_model','model_nml values are')
-if (do_output()) write(logfileunit, nml=model_nml)
-if (do_output()) write(     *     , nml=model_nml)
+if (do_nml_file()) write(nmlfileunit, nml=model_nml)
+if (do_nml_term()) write(     *     , nml=model_nml)
 
 !---------------------------------------------------------------
 ! Set the time step ... causes clm namelists to be read.
@@ -729,8 +754,6 @@ if ((debug > 0) .and. do_output()) then
   write(     *     ,'("grid: nlon, nlat, nz =",2(1x,i6))') nlon, nlat
   write(     *     , *)'model_size = ', model_size
 endif
-
-allocate(ens_mean(model_size))
 
 !---------------------------------------------------------------
 ! Create the metadata arrays that are the same shape as the state vector.
@@ -1059,6 +1082,20 @@ do ivar=1, nfields
 
 enddo
 
+! Must group the variables according to the file they come from.
+!> @TODO FIXME ... add_domain() must do the right thing if nvars == 0
+!> @TODO FIXME ... io_filenames_nml:rpointer_file order must somehow match 
+!> - or be insensitive to - the add_domain() calls below (if nvars == 0) ...
+
+call cluster_variables(clm_restart_filename, nvars, var_names, var_ranges)
+domid =     add_domain(clm_restart_filename, nvars, var_names, var_ranges)
+
+call cluster_variables(clm_history_filename, nvars, var_names, var_ranges)
+domid =     add_domain(clm_history_filename, nvars, var_names, var_ranges)
+
+call cluster_variables(clm_vector_history_filename, nvars, var_names, var_ranges)
+domid =     add_domain(clm_vector_history_filename, nvars, var_names, var_ranges)
+
 end subroutine static_init_model
 
 
@@ -1083,7 +1120,6 @@ deallocate(land1d_ixy, land1d_jxy, land1d_wtxy)
 deallocate(cols1d_ixy, cols1d_jxy, cols1d_wtxy, cols1d_ityplun)
 deallocate(pfts1d_ixy, pfts1d_jxy, pfts1d_wtxy)
 
-deallocate(ens_mean)
 deallocate(lonixy, latjxy, landarea)
 
 end subroutine end_model
@@ -1872,26 +1908,144 @@ end subroutine pert_model_state
 
 
 
-subroutine ens_mean_for_model(filter_ens_mean)
-!------------------------------------------------------------------
-! If needed by the model interface, this is the current mean
-! for all state vector items across all ensembles.
+!--------------------------------------------------------------------
+subroutine pert_model_copies(state_handle, pert_amp, interf_provided)
 
-real(r8), intent(in) :: filter_ens_mean(:)
+ type(ensemble_type), intent(inout) :: state_handle
+ real(r8),  intent(in) :: pert_amp
+ logical,  intent(out) :: interf_provided
+
+! Perturbs a model state copies for generating initial ensembles.
+! The perturbed state is returned in pert_state.
+! A model may choose to provide a NULL INTERFACE by returning
+! .false. for the interf_provided argument. This indicates to
+! the filter that if it needs to generate perturbed states, it
+! may do so by adding a perturbation to each model state 
+! variable independently. The interf_provided argument
+! should be returned as .true. if the model wants to do its own
+! perturbing of states.
+
+interf_provided = .false.
+
+end subroutine pert_model_copies
+
+!--------------------------------------------------------------------
+!> pass the vertical localization coordinate to assim_tools_mod
+function query_vert_localization_coord()
+
+integer :: query_vert_localization_coord
+
+query_vert_localization_coord = 1 ! any old value
+
+end function query_vert_localization_coord
+
+!--------------------------------------------------------------------
+!> This is used in the filter_assim. The vertical conversion is done using the 
+!> mean state.
+subroutine vert_convert(state_handle, location, obs_kind, istatus)
+
+type(ensemble_type), intent(in)  :: state_handle
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: obs_kind
+integer,             intent(out) :: istatus
+
+istatus = 0
+
+end subroutine vert_convert
+
+
+!> @TODO dist should be optional ... should state_handle (intent in) be before the intent(out) 
+!> @TODO state_handle is only needed for vertical conversion,  should not be here at all ...
+
+subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
+                         obs_loc, obs_kind, num_close, close_ind, dist, state_handle)
+!
+! Given a DART location (referred to as "base") and a set of candidate
+! locations & kinds (obs, obs_kind), returns the subset close to the
+! "base", their indices, and their distances to the "base" ...
+
+! For vertical distance computations, general philosophy is to convert all
+! vertical coordinates to a common coordinate. This coordinate type can be
+! defined in the namelist with the variable "vert_localization_coord".
+! But we first try a single coordinate type as the model level here.
+! FIXME: We need to add more options later.
+
+! Note that both base_obs_loc and obs_loc are intent(inout), meaning that these
+! locations are possibly modified here and returned as such to the calling routine.
+! The calling routine is always filter_assim and these arrays are local arrays
+! within filter_assim. In other words, these modifications will only matter within
+! filter_assim, but will not propagate backwards to filter.
+
+type(get_close_type),              intent(in)    :: gc
+type(location_type),               intent(inout) :: base_obs_loc
+integer,                           intent(in)    :: base_obs_kind
+type(location_type), dimension(:), intent(inout) :: obs_loc
+integer,             dimension(:), intent(in)    :: obs_kind
+integer,                           intent(out)   :: num_close
+integer,             dimension(:), intent(out)   :: close_ind
+real(r8),            dimension(:), intent(out)   :: dist
+type(ensemble_type),               intent(in)    :: state_handle
+
+! Initialize variables to missing status
+
+num_close = 0
+close_ind = -99
+dist      = 1.0e9_r8   !something big and positive (far away) in radians
+
+! coordinate information yet (for obs_loc).
+call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
+                          num_close, close_ind, dist)
+
+end subroutine get_close_obs
+
+
+!--------------------------------------------------------------------
+! New RMA rountines
+!--------------------------------------------------------------------
+!> construct restart file name for reading
+!> model time for CESM format?
+function construct_file_name_in(stub, domain, copy)
+
+character(len=512), intent(in) :: stub
+integer,            intent(in) :: domain
+integer,            intent(in) :: copy
+character(len=1024)            :: construct_file_name_in
+
+write(construct_file_name_in, '(A, i4.4)') TRIM(stub), copy
+
+end function construct_file_name_in
+
+
+
+function read_model_time(filename)
+!------------------------------------------------------------------
+! the static_init_model ensures that the clm namelists are read.
+!
+type(time_type) :: read_model_time
+character(len=*), intent(in) :: filename
+
+integer         :: ncid
 
 if ( .not. module_initialized ) call static_init_model
 
-ens_mean = filter_ens_mean
+if ( .not. file_exist(filename) ) then
+   write(string1,*) 'cannot open file ', trim(filename),' for reading.'
+   call error_handler(E_ERR,'read_model_time',string1,source,revision,revdate)
+endif
 
-end subroutine ens_mean_for_model
+call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
+                  'read_model_time', 'open '//trim(filename))
 
+read_model_time = get_state_time_ncid(ncid)
+
+call nc_check(nf90_close(ncid),'read_model_time', 'close '//trim(filename))
+
+end function read_model_time
 
 
 !==================================================================
 ! The remaining PUBLIC interfaces come next
 !==================================================================
-
-
 
 subroutine get_gridsize(num_lon, num_lat, num_lev)
 integer, intent(out) :: num_lon, num_lat, num_lev
@@ -2333,8 +2487,8 @@ end subroutine sv_to_restart_file
 !==================================================================
 
 
+subroutine model_interpolate(state_handle, ens_size, location, obs_kind, expected_obs, istatus)
 
-subroutine model_interpolate(x, location, obs_kind, interp_val, istatus)
 
 ! PURPOSE:
 !
@@ -2350,18 +2504,31 @@ subroutine model_interpolate(x, location, obs_kind, interp_val, istatus)
 
 ! Passed variables
 
-real(r8),            intent(in)  :: x(:)
-type(location_type), intent(in)  :: location
-integer,             intent(in)  :: obs_kind
-real(r8),            intent(out) :: interp_val
-integer,             intent(out) :: istatus
+! Interpolates from state vector x to the location. It's not particularly
+! happy dumping all of this straight into the model. Eventually some
+! concept of a grid underlying models but above locations is going to
+! be more general. May want to wait on external infrastructure projects
+! for this?
+
+! Argument itype is not used here because there is only one type of variable.
+! Type is needed to allow swap consistency with more complex models.
+
+type(ensemble_type),    intent(in)  :: state_handle
+integer,                intent(in)  :: ens_size
+type(location_type),    intent(in)  :: location
+integer,                intent(in)  :: obs_kind
+real(r8),               intent(out) :: expected_obs(ens_size)
+integer,                intent(out) :: istatus(ens_size)
+
 
 ! Local storage
 
 real(r8), dimension(LocationDims) :: loc_array
 real(r8) :: llon, llat, lheight
-real(r8) :: interp_val_2
-integer  :: istatus_2
+integer  :: imem
+integer  :: istatus_2(ens_size)
+real(r8) :: interp_val_2(ens_size)
+character(len=32) :: kind_string
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2371,7 +2538,7 @@ if ( .not. module_initialized ) call static_init_model
 ! good value, and the last line here sets istatus to 0.
 ! make any error codes set here be in the 10s
 
-interp_val   = MISSING_R8     ! the DART bad value flag
+expected_obs = MISSING_R8     ! the DART bad value flag
 interp_val_2 = MISSING_R8     ! the DART bad value flag
 istatus = 99                ! unknown error
 
@@ -2384,54 +2551,50 @@ lheight   = loc_array(3)
 
 if ((debug > 6) .and. do_output()) print *, 'requesting interpolation at ', llon, llat, lheight
 
-! FIXME may be better to check the %maxlevels and kick the interpolation to the
-! appropriate routine based on that ... or check the dimnames for the
-! vertical coordinate  ...
+! Standard method of interpolation.
+! get_grid_vertval()       for quantities that have a vertical profile.
+! compute_gridcell_value() for quantities computed for the entire gridcell.
 
-if (obs_kind == KIND_SOIL_TEMPERATURE) then
-   call get_grid_vertval(x, location, 'T_SOISNO',  interp_val, istatus )
+select case( obs_kind )
 
-elseif (obs_kind == KIND_SOIL_MOISTURE) then
-   ! TJH FIXME - actually ROLAND FIXME
-   ! This is terrible ... the COSMOS operator wants m3/m3 ... CLM is kg/m2
-   call get_grid_vertval(x, location, 'H2OSOI_LIQ',interp_val  , istatus   )
-   call get_grid_vertval(x, location, 'H2OSOI_ICE',interp_val_2, istatus_2 )
-   if ((istatus == 0) .and. (istatus_2 == 0)) then
-      interp_val = interp_val + interp_val_2
-   else
-      interp_val = MISSING_R8
-      istatus = 6
-   endif
+   case ( KIND_SOIL_MOISTURE )
 
-elseif (obs_kind == KIND_LIQUID_WATER ) then
-   call get_grid_vertval(x, location, 'H2OSOI_LIQ',interp_val, istatus )
-elseif (obs_kind == KIND_ICE ) then
-   call get_grid_vertval(x, location, 'H2OSOI_ICE',interp_val, istatus )
-elseif (obs_kind == KIND_SNOWCOVER_FRAC ) then
-   call compute_gridcell_value(x, location, 'frac_sno', interp_val, istatus)
-elseif (obs_kind == KIND_LEAF_CARBON ) then
-   call compute_gridcell_value(x, location, 'leafc',    interp_val, istatus)
-elseif (obs_kind == KIND_WATER_TABLE_DEPTH ) then
-   call compute_gridcell_value(x, location, 'ZWT',    interp_val, istatus)
-elseif (obs_kind == KIND_SNOW_THICKNESS ) then
-   write(string1,*)'model_interpolate for DZSNO not written yet.'
-   call error_handler(E_ERR,'model_interpolate',string1,source,revision,revdate)
-   istatus = 5
-elseif ((obs_kind == KIND_GEOPOTENTIAL_HEIGHT) .and. vert_is_level(location)) then
-   if (nint(lheight) > nlevgrnd) then
-      interp_val = MISSING_R8
-      istatus = 1
-   else
-      interp_val = LEVGRND(nint(lheight))
-      istatus = 0
-   endif
-else
-   write(string1,*)'model_interpolate not written for (integer) kind ',obs_kind
-   call error_handler(E_ERR,'model_interpolate',string1,source,revision,revdate)
-   istatus = 5
-endif
+      ! TJH FIXME - actually ROLAND FIXME
+      ! This is terrible ... the COSMOS operator wants m3/m3 ... CLM is kg/m2
+      call get_grid_vertval(state_handle, ens_size, location, KIND_LIQUID_WATER, expected_obs,  istatus)
+      call get_grid_vertval(state_handle, ens_size, location, KIND_ICE,          interp_val_2, istatus_2)
 
-if ((debug > 6) .and. do_output()) write(*,*)'interp_val ',interp_val
+      do imem = 1,ens_size
+         if ((istatus(imem) == 0) .and. (istatus_2(imem) == 0)) then
+            expected_obs(imem) = expected_obs(imem) + interp_val_2(imem)
+         else
+            expected_obs(imem) = MISSING_R8
+            istatus(imem)      = 6
+         endif
+      enddo
+
+   case ( KIND_SOIL_TEMPERATURE, KIND_LIQUID_WATER, KIND_ICE )
+
+      call get_grid_vertval(state_handle, ens_size, location, obs_kind, expected_obs, istatus)
+
+   case ( KIND_SNOWCOVER_FRAC, KIND_LEAF_AREA_INDEX, KIND_LEAF_CARBON, KIND_WATER_TABLE_DEPTH, &
+          KIND_VEGETATION_TEMPERATURE)
+
+      call compute_gridcell_value(state_handle, ens_size, location, obs_kind, expected_obs, istatus)
+
+   case default
+
+      kind_string = get_raw_obs_kind_name(obs_kind)
+
+      write(string1,*)'not written for (integer) kind ',obs_kind
+      write(string2,*)'AKA '//trim(kind_string)
+      call error_handler(E_ERR, 'model_interpolate', string1, &
+             source, revision, revdate, text2=string2)
+      istatus = 5
+
+end select
+
+if ((debug > 6) .and. do_output()) write(*,*)'expected_obs ',expected_obs
 
 end subroutine model_interpolate
 
@@ -2439,7 +2602,7 @@ end subroutine model_interpolate
 !------------------------------------------------------------------
 
 
-subroutine compute_gridcell_value(x, location, varstring, interp_val, istatus)
+subroutine compute_gridcell_value(state_handle, ens_size, location, kind, interp_val, istatus)
 !
 ! Each gridcell may contain values for several land units, each land unit may contain
 ! several columns, each column may contain several pft's. BUT this routine never
@@ -2448,20 +2611,26 @@ subroutine compute_gridcell_value(x, location, varstring, interp_val, istatus)
 
 ! Passed variables
 
-real(r8),            intent(in)  :: x(:)         ! state vector
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: location     ! location somewhere in a grid cell
-character(len=*),    intent(in)  :: varstring    ! frac_sno, leafc
-real(r8),            intent(out) :: interp_val   ! area-weighted result
-integer,             intent(out) :: istatus      ! error code (0 == good)
+integer,             intent(in)  :: kind    ! frac_sno, leafc
+real(r8),            intent(out) :: interp_val(ens_size)   ! area-weighted result
+integer,             intent(out) :: istatus(ens_size)      ! error code (0 == good)
 
 ! Local storage
 
-integer  :: ivar, index1, indexN, indexi, counter
+integer  :: ivar, index1, indexN, counter(ens_size)
+integer(i8) :: indexi
 integer  :: gridloni,gridlatj
 real(r8) :: loc_lat, loc_lon
-real(r8) :: total, total_area
+real(r8) :: state(ens_size)
+real(r8) :: total(ens_size)
+real(r8) :: total_area(ens_size)
 real(r8), dimension(1) :: loninds,latinds
 real(r8), dimension(LocationDims) :: loc
+integer :: imem
+character(len=32) :: varstring
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2479,6 +2648,7 @@ loc_lon    = loc(1)
 loc_lat    = loc(2)
 
 ! determine the portion of interest of the state vector
+varstring = get_raw_obs_kind_name(kind)
 ivar   = findVarIndex(varstring, 'compute_gridcell_value')
 index1 = progvar(ivar)%index1 ! in the DART state vector, start looking here
 indexN = progvar(ivar)%indexN ! in the DART state vector, stop  looking here
@@ -2517,17 +2687,22 @@ ELEMENTS : do indexi = index1, indexN
 
    if (   lonixy(indexi) /=  gridloni ) cycle ELEMENTS
    if (   latjxy(indexi) /=  gridlatj ) cycle ELEMENTS
-   if (        x(indexi) == MISSING_R8) cycle ELEMENTS
    if ( landarea(indexi) ==   0.0_r8  ) cycle ELEMENTS
 
-   counter    = counter    + 1
-   total      = total      + x(indexi)*landarea(indexi)
-   total_area = total_area +           landarea(indexi)
+   state = get_state(indexi, state_handle)
+
+   do imem = 1, ens_size
+      if(state(imem) /= MISSING_R8) then
+         counter(imem)    = counter(imem)    + 1
+         total(imem)      = total(imem)      + state(imem)*landarea(indexi)
+         total_area(imem) = total_area(imem) +       landarea(indexi)
+      endif
+   enddo
 
    if ((debug > 5) .and. do_output()) then
       write(*,*)
-      write(*,*)'gridcell location match',counter,'at statevector index',indexi
-      write(*,*)'statevector value is (',x(indexi),')'
+      write(*,*)'gridcell location match',counter(1),'at statevector index',indexi
+  !    write(*,*)'statevector value is (',state(indexi),')'
       write(*,*)'area is              (',landarea(indexi),')'
       write(*,*)'LON index is         (',lonixy(indexi),')'
       write(*,*)'LAT index is         (',latjxy(indexi),')'
@@ -2538,7 +2713,8 @@ ELEMENTS : do indexi = index1, indexN
 
 enddo ELEMENTS
 
-if (total_area /= 0.0_r8) then ! All good.
+
+if (all(total_area /= 0.0_r8)) then ! All good.
    interp_val = total/total_area
    istatus    = 0
 else
@@ -2551,10 +2727,12 @@ else
    endif
 endif
 
+!> @todo FIXME Need to print debugging info for any task, not just task 0
 ! Print more information for the really curious
-if ((debug > 5) .and. do_output()) then
-   write(string1,*)'counter, total, total_area', counter, total, total_area
-   write(string2,*)'interp_val, istatus', interp_val, istatus
+if ((debug > 5)) then
+   ! write(string1,*)'counter, total, total_area', counter, total, total_area
+   write(string1,*)'counter, total_area', counter(1), total_area(1)
+   write(string2,*)'interp_val, istatus', interp_val(1), istatus(1)
    call error_handler(E_MSG,'compute_gridcell_value', string1, text2=string2)
 endif
 
@@ -2564,33 +2742,40 @@ end subroutine compute_gridcell_value
 !------------------------------------------------------------------
 
 
-subroutine get_grid_vertval(x, location, varstring, interp_val, istatus)
-!
+subroutine get_grid_vertval(state_handle, ens_size, location, kind, interp_val, istatus)
+
 ! Calculate the expected vertical value for the gridcell.
 ! Each gridcell value is an area-weighted value of an unknown number of
 ! column-based quantities.
 
 ! Passed variables
 
-real(r8),            intent(in)  :: x(:)         ! state vector
+type(ensemble_type), intent(in)  :: state_handle ! state vector
+integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: location     ! location somewhere in a grid cell
-character(len=*),    intent(in)  :: varstring    ! T_SOISNO, H2OSOI_LIQ, H2OSOI_ICE
-real(r8),            intent(out) :: interp_val   ! area-weighted result
-integer,             intent(out) :: istatus      ! error code (0 == good)
+integer,             intent(in)  :: kind    ! T_SOISNO, H2OSOI_LIQ, H2OSOI_ICE
+real(r8),            intent(out) :: interp_val(ens_size)   ! area-weighted result
+integer,             intent(out) :: istatus(ens_size)      ! error code (0 == good)
 
 ! Local storage
 
-integer  :: ivar, index1, indexN, indexi, counter1, counter2
+integer  :: ivar, index1, indexN, counter1, counter2
+integer(i8) :: indexi
 integer  :: gridloni,gridlatj
 real(r8), dimension(LocationDims) :: loc
 real(r8) :: loc_lat, loc_lon, loc_lev
-real(r8) :: value_below, value_above, total_area
+real(r8) :: value_below(ens_size), value_above(ens_size), total_area(ens_size)
 real(r8) :: depthbelow, depthabove
 real(r8) :: topwght, botwght
 real(r8), dimension(1) :: loninds,latinds
 
-real(r8), allocatable, dimension(:)   :: above, below
-real(r8), allocatable, dimension(:,:) :: myarea
+real(r8), allocatable, dimension(:, :) :: above, below
+real(r8), allocatable, dimension(:, :) :: area_above
+real(r8), allocatable, dimension(:, :) :: area_below
+integer :: counter, counter_above, counter_below
+integer :: imem
+real(r8) :: state(ens_size)
+character(len=32) :: varstring
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2617,6 +2802,7 @@ if ( loc_lev < 0.0_r8 ) then
 endif
 
 ! determine the portion of interest of the state vector
+varstring = get_raw_obs_kind_name(kind)
 ivar   = findVarIndex(varstring, 'get_grid_vertval')
 index1 = progvar(ivar)%index1 ! in the DART state vector, start looking here
 indexN = progvar(ivar)%indexN ! in the DART state vector, stop  looking here
@@ -2677,19 +2863,23 @@ endif
 ! I believe I have to keep track of all of them to sort out how to
 ! calculate the gridcell value at a particular depth.
 
+! These are just to get the max size
 counter1 = 0
 counter2 = 0
 GRIDCELL : do indexi = index1, indexN
+
+
    if ( lonixy(indexi) /=  gridloni )  cycle GRIDCELL
    if ( latjxy(indexi) /=  gridlatj )  cycle GRIDCELL
-   if (      x(indexi) == MISSING_R8)  cycle GRIDCELL
 
    if (levels(indexi) == depthabove) counter1 = counter1 + 1
    if (levels(indexi) == depthbelow) counter2 = counter2 + 1
 
 enddo GRIDCELL
 
-if ( (counter1+counter2) == 0 ) then
+counter = max(counter1, counter2)
+
+if ( counter == 0 ) then
    if ((debug > 0) .and. do_output()) then
       write(string1, *)'statevector variable '//trim(varstring)//' had no viable data'
       write(string2, *)'at gridcell lon/lat = (',gridloni,',',gridlatj,')'
@@ -2700,41 +2890,47 @@ if ( (counter1+counter2) == 0 ) then
    return
 endif
 
-allocate(above(counter1),below(counter2),myarea(max(counter1,counter2),2))
-above  = MISSING_R8
-below  = MISSING_R8
-myarea = 0.0_r8
 
-counter1 = 0
-counter2 = 0
+allocate(above(ens_size, counter),&
+         below(ens_size, counter),&
+         area_below(ens_size, counter), &
+         area_above(ens_size, counter))
+
+above(:, :)  = 0.0_r8
+below(:, :)  = 0.0_r8
+area_below(:, :) = 0.0_r8
+area_above(:, :) = 0.0_r8
+
+counter_above = 0
+counter_below = 0
 ELEMENTS : do indexi = index1, indexN
 
    if ( lonixy(indexi) /=  gridloni )  cycle ELEMENTS
    if ( latjxy(indexi) /=  gridlatj )  cycle ELEMENTS
-   if (      x(indexi) == MISSING_R8)  cycle ELEMENTS
 
 !  write(*,*)'level ',indexi,' is ',levels(indexi),' location depth is ',loc_lev
+   state = get_state(indexi, state_handle)
 
-   if (levels(indexi)     == depthabove) then
-      counter1            = counter1 + 1
-      above( counter1)    =        x(indexi)
-      myarea(counter1,1)  = landarea(indexi)
-   endif
-   if (levels(indexi)     == depthbelow) then
-      counter2            = counter2 + 1
-      below( counter2)    =        x(indexi)
-      myarea(counter2,2)  = landarea(indexi)
-   endif
+   if (levels(indexi) == depthabove) then
 
-   if ((levels(indexi) /= depthabove) .and. &
-       (levels(indexi) /= depthbelow)) then
+      counter_above           = counter_above + 1
+      above(:, counter_above) = state
+      where(state /= MISSING_R8) area_above(:, counter_above) = landarea(indexi)
+
+   elseif(levels(indexi) == depthbelow) then
+
+      counter_below            = counter_below + 1
+      below(:, counter_below)    =  state
+      where(state /= MISSING_R8) area_below(:, counter_below) = landarea(indexi)
+
+   else
       cycle ELEMENTS
    endif
 
    if ((debug > 4) .and. do_output()) then
    write(*,*)
    write(*,*)'gridcell location match at statevector index',indexi
-   write(*,*)'statevector value is (',x(indexi),')'
+   !write(*,*)'statevector value is (',state,')'
    write(*,*)'area is          (',landarea(indexi),')'
    write(*,*)'LON index is     (',lonixy(indexi),')'
    write(*,*)'LAT index is     (',latjxy(indexi),')'
@@ -2747,46 +2943,48 @@ enddo ELEMENTS
 
 ! could arise if the above or below was 'missing' ... but the mate was not.
 
-if ( counter1 /= counter2 ) then
+if ( counter_above /= counter_below ) then
    write(string1, *)'Variable '//trim(varstring)//' has peculiar interpolation problems.'
    write(string2, *)'uneven number of values "above" and "below"'
-   write(string3, *)'counter1 == ',counter1,' /= ',counter2,' == counter2'
+   write(string3, *)'counter_above == ',counter_above,' /= ',counter_below,' == counter_below'
    call error_handler(E_MSG,'get_grid_vertval', string1, &
                   text2=string2,text3=string3)
    return
 endif
 
-! Determine the value for the level above the depth of interest.
+do imem = 1, ens_size
 
-total_area = sum(myarea(1:counter1,1))
+   ! Determine the value for the level above the depth of interest.
+   total_area(imem) = sum(area_above(imem, :))
 
-if ( total_area /= 0.0_r8 ) then
-   ! normalize the area-based weights
-   myarea(1:counter1,1) = myarea(1:counter1,1) / total_area
-   value_above = sum(above(1:counter1) * myarea(1:counter1,1))
-else
-   write(string1, *)'Variable '//trim(varstring)//' had no viable data above'
-   write(string2, *)'at gridcell lon/lat/lev = (',gridloni,',',gridlatj,',',depthabove,')'
-   write(string3, *)'obs lon/lat/lev (',loc_lon,',',loc_lat,',',loc_lev,')'
-   call error_handler(E_ERR,'get_grid_vertval', string1, &
+   if ( total_area(imem) /= 0.0_r8 ) then
+      ! normalize the area-based weights
+      area_above(imem, :) = area_above(imem, :) / total_area(imem)
+      value_above(imem) = sum(above(imem, :) * area_above(imem, :))
+   else
+      write(string1, *)'Variable '//trim(varstring)//' had no viable data above'
+      write(string2, *)'at gridcell lon/lat/lev = (',gridloni,',',gridlatj,',',depthabove,')'
+      write(string3, *)'obs lon/lat/lev (',loc_lon,',',loc_lat,',',loc_lev,')'
+      call error_handler(E_ERR,'get_grid_vertval', string1, &
                   source, revision, revdate, text2=string2,text3=string3)
-endif
+   endif
 
-! Determine the value for the level below the depth of interest.
+   ! Determine the value for the level below the depth of interest.
+   total_area(imem) = sum(area_below(imem, :))
 
-total_area = sum(myarea(1:counter2,2))
-
-if ( total_area /= 0.0_r8 ) then
-   ! normalize the area-based weights
-   myarea(1:counter2,2) = myarea(1:counter2,2) / total_area
-   value_below = sum(below(1:counter2) * myarea(1:counter2,2))
-else
-   write(string1, *)'Variable '//trim(varstring)//' had no viable data below'
-   write(string2, *)'at gridcell lon/lat/lev = (',gridloni,',',gridlatj,',',depthbelow,')'
-   write(string3, *)'obs lon/lat/lev (',loc_lon,',',loc_lat,',',loc_lev,')'
-   call error_handler(E_ERR,'get_grid_vertval', string1, &
+   if ( total_area(imem) /= 0.0_r8 ) then
+      ! normalize the area-based weights
+      area_below(imem, :) = area_below(imem, :) / total_area(imem)
+      value_below(imem) = sum(below(imem, :) * area_below(imem, :))
+   else
+      write(string1, *)'Variable '//trim(varstring)//' had no viable data below'
+      write(string2, *)'at gridcell lon/lat/lev = (',gridloni,',',gridlatj,',',depthbelow,')'
+      write(string3, *)'obs lon/lat/lev (',loc_lon,',',loc_lat,',',loc_lev,')'
+      call error_handler(E_ERR,'get_grid_vertval', string1, &
                   source, revision, revdate, text2=string2,text3=string3)
-endif
+   endif
+
+enddo
 
 if (depthbelow == depthabove) then
    topwght = 1.0_r8
@@ -2797,9 +2995,9 @@ else
 endif
 
 interp_val = value_above*topwght + value_below*botwght
-istatus    = 0
+istatus      = 0
 
-deallocate(above, below, myarea)
+deallocate(above, below, area_above, area_below)
 
 end subroutine get_grid_vertval
 
@@ -3576,33 +3774,6 @@ end function get_state_time_ncid
 !------------------------------------------------------------------
 
 
-function get_state_time_fname(filename)
-!------------------------------------------------------------------
-! the static_init_model ensures that the clm namelists are read.
-!
-type(time_type) :: get_state_time_fname
-character(len=*), intent(in) :: filename
-
-integer         :: ncid
-
-if ( .not. module_initialized ) call static_init_model
-
-if ( .not. file_exist(filename) ) then
-   write(string1,*) 'cannot open file ', trim(filename),' for reading.'
-   call error_handler(E_ERR,'get_state_time_fname',string1,source,revision,revdate)
-endif
-
-call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
-                  'get_state_time_fname', 'open '//trim(filename))
-
-get_state_time_fname = get_state_time_ncid(ncid)
-
-call nc_check(nf90_close(ncid),'get_state_time_fname', 'close '//trim(filename))
-
-end function get_state_time_fname
-
-
-!------------------------------------------------------------------
 
 
 function set_model_time_step()
@@ -4955,6 +5126,41 @@ if ((debug > 0) .and. do_output()) then
 endif
 
 end function FindDesiredTimeIndx
+
+
+
+subroutine cluster_variables(filename, nvars, var_names, var_ranges)
+character(len=*), intent(in)  :: filename
+integer,          intent(out) :: nvars
+character(len=*), intent(out) :: var_names(:)
+real(r8),         intent(out) :: var_ranges(:,:)
+
+integer :: ivar
+
+nvars      = 0
+var_names  = 'no_variable_specified'
+var_ranges = MISSING_R8
+
+do ivar = 1,nfields
+
+   if (trim(progvar(ivar)%origin) == trim(filename)) then
+      nvars = nvars + 1
+      var_names(nvars)    = progvar(ivar)%varname
+      var_ranges(nvars,1) = progvar(ivar)%minvalue
+      var_ranges(nvars,2) = progvar(ivar)%maxvalue
+   endif
+
+enddo
+
+!>@todo FIXME ... this summary message is not finished
+if (do_output() .and. debug > 99) then
+   do ivar = 1,nvars
+      write(string1,*)trim(filename),' has ',trim(var_names(ivar)),var_ranges(ivar,1),var_ranges(ivar,2)
+      call error_handler(E_MSG,'cluster_variables',string1)
+   enddo
+endif
+
+end subroutine cluster_variables
 
 !===================================================================
 ! End of model_mod

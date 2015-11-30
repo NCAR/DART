@@ -37,11 +37,11 @@
 !-----------------------------------------------------------------------------
 ! BEGIN DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !  case(TOWER_LATENT_HEAT_FLUX)
-!     call get_scalar_from_history('EFLX_LH_TOT_R', state_time, ens_size, location, obs_time, expected_obs, istatus)
+!     call get_scalar_from_history('EFLX_LH_TOT_R', state_handle, ens_size, copy_indices, location, obs_time, expected_obs, istatus)
 !  case(TOWER_SENSIBLE_HEAT_FLUX)
-!     call get_scalar_from_history('FSH', state_time, ens_size, location, obs_time, expected_obs, istatus)
+!     call get_scalar_from_history('FSH', state_handle, ens_size, copy_indices, location, obs_time, expected_obs, istatus)
 !  case(TOWER_NETC_ECO_EXCHANGE)
-!     call get_scalar_from_history('NEP', state_time, ens_size, location, obs_time, expected_obs, istatus)
+!     call get_scalar_from_history('NEP', state_handle, ens_size, copy_indices, location, obs_time, expected_obs, istatus)
 ! END DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF
 !-----------------------------------------------------------------------------
 
@@ -418,15 +418,13 @@ end subroutine GetDimensions
 
 !======================================================================
 
-!> @todo Need to get the ensemble number from the state_handle. - Not
-!> necessarily 1-ens size.
-subroutine get_scalar_from_history(varstring, state_time, ens_size, location, &
+subroutine get_scalar_from_history(varstring, state_handle, ens_size, copy_indices, location, &
                                    obs_time, obs_val, istatus)
 
-!type(ensemble_type), intent(in)  :: state_handle ! need this for time
 character(len=*),    intent(in)  :: varstring
-type(time_type),     intent(in)  :: state_time
+type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
+integer,             intent(in)  :: copy_indices(ens_size) ! global ens_indicies
 type(location_type), intent(in)  :: location
 type(time_type),     intent(in)  :: obs_time
 real(r8),            intent(out) :: obs_val(ens_size)
@@ -434,16 +432,20 @@ integer,             intent(out) :: istatus(ens_size)
 
 integer :: imem
 
-if ( .not. module_initialized ) call initialize_module(state_time)
+! This initialize_module call is going to open all files on all tasks
+! when doing a distributed forward operator.
+if ( .not. module_initialized ) call initialize_module(state_handle%current_time)
 
-! JH: simple hack to get things to work.  I am sure that there is a more elegant solution
-do imem = 1, ens_size
-   if ( unstructured ) then
-      call get_scalar_from_2Dhistory(varstring,imem, location,obs_time,obs_val(imem),istatus(imem))
-   else
-      call get_scalar_from_3Dhistory(varstring,imem,location,obs_time,obs_val(imem),istatus(imem))
-   endif
-enddo
+if ( unstructured ) then
+   do imem = 1, ens_size
+      call get_scalar_from_2Dhistory(varstring, copy_indices(imem), location, obs_time, obs_val(imem), istatus(imem))
+   enddo
+else
+   do imem = 1, ens_size
+      call get_scalar_from_3Dhistory(varstring, copy_indices(imem), location, obs_time,obs_val(imem), istatus(imem))
+   enddo
+endif
+
 end subroutine get_scalar_from_history
 
 

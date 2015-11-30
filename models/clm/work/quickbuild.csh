@@ -109,6 +109,16 @@ make || exit $n
 
 \rm -f *.o *.mod
 
+@ n = $n + 1
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_perfect_model_obs"
+csh  mkmf_perfect_model_obs -mpi
+make || exit $n
+
+\rm -f *.o *.mod
+
+
 echo
 echo 'time to run filter here:'
 echo ' for lsf run "bsub < runme_filter"'

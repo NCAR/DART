@@ -24,6 +24,10 @@ To create html pages from the DART source:
   in the work directory.  All documentation will be created and put under 
   $DART/doc/doxygen/model_name.
 
+  To create documentation with diagrams of 'used by' and 'uses', run
+  './gendocs -devel' to enable the development diagrams.
+
+
 To use the documentation:
 
 - Open $DART/doc/doxygen/model_name/index.html in a browser and click

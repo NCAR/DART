@@ -121,16 +121,17 @@ real(r8) :: obs_prior_mean, obs_prior_var, obs_val
 
 real(r8), allocatable :: expected_obs(:) !Also regular obs now?
 
-integer :: j, k !< index variables 
+integer :: i, j, k !< index variables
 integer :: thiskey(1)
 integer :: global_obs_num, global_qc_value
 integer :: forward_min, forward_max !< for global qc
-integer :: my_ensemble_copies
+integer :: num_copies_to_calc
 integer :: copy !< loop index
 integer :: global_ens_index
 
 integer, allocatable  :: istatus(:)
 integer, allocatable  :: var_istatus(:)
+integer, allocatable  :: my_copy_indices(:) ! The global ens index for each copy a task has
 
 logical :: evaluate_this_ob, assimilate_this_ob
 logical :: failed
@@ -141,15 +142,15 @@ type(obs_def_type) :: obs_def
 type(obs_type)     :: observation
 
 ! IMPORTANT, IT IS ASSUMED THAT ACTUAL ENSEMBLES COME FIRST
-! HK: I think it is also assumed that the ensemble members are in the same 
+! It is also assumed that the ensemble members are in the same
 ! order in each of the handles
 
-my_ensemble_copies = copies_in_window(ens_handle)
+num_copies_to_calc = copies_in_window(ens_handle)
 
-! make some room for status vectors and expected obs
-allocate(istatus(my_ensemble_copies))
+allocate(istatus(num_copies_to_calc))
 allocate(var_istatus(qc_ens_handle%num_copies))
-allocate(expected_obs(my_ensemble_copies))
+allocate(expected_obs(num_copies_to_calc))
+allocate(my_copy_indices(num_copies_to_calc))
 
 ! FIXME: these no longer do anything?
 ! call prepare_to_write_to_vars(obs_fwd_op_ens_handle)
@@ -161,7 +162,9 @@ call create_state_window(ens_handle)
 
 if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued forward op
 
-! Loop through all observations in the set
+   my_copy_indices(:) = ens_handle%my_copies(:) ! var-complete forward operators
+
+   ! Loop through all observations in the set
    ALL_OBSERVATIONS: do j = 1, obs_fwd_op_ens_handle%num_vars
       ! Get the information on this observation by placing it in temporary
       call get_obs_from_key(seq, keys(j), observation)
@@ -230,8 +233,8 @@ if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued
       if(qc_ens_handle%my_num_copies > 0) then
          call get_expected_obs_distrib_state(seq, thiskey, &
             dummy_time, isprior, istatus, &
-            assimilate_this_ob, evaluate_this_ob, ens_handle, my_ensemble_copies, expected_obs)
-            obs_fwd_op_ens_handle%vars(j, 1:my_ensemble_copies) = expected_obs
+            assimilate_this_ob, evaluate_this_ob, ens_handle, num_copies_to_calc, my_copy_indices, expected_obs)
+            obs_fwd_op_ens_handle%vars(j, 1:num_copies_to_calc) = expected_obs
       else ! need to know whether it was assimilate or evaluate this ob.
 
          call assim_or_eval(seq, thiskey(1), ens_handle%num_vars, assimilate_this_ob, evaluate_this_ob)
@@ -254,7 +257,7 @@ if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued
       enddo
 
 
-      do copy = 1, my_ensemble_copies
+      do copy = 1, num_copies_to_calc
 
          ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
          ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
@@ -277,6 +280,10 @@ if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued
    end do ALL_OBSERVATIONS
 
 else ! distributed state
+
+   do i = 1, num_copies_to_calc
+      my_copy_indices(i) = i  ! copy-complete fwd operator so indices are 1 to ens_size
+   enddo
 
    ! Loop through all my observations in the set
    MY_OBSERVATIONS: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
@@ -305,7 +312,7 @@ else ! distributed state
    else ! posterior
       global_qc_value = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) )
       if (.not. good_dart_qc(global_qc_value)) then
-         obs_fwd_op_ens_handle%copies(1:my_ensemble_copies,j) = missing_r8
+         obs_fwd_op_ens_handle%copies(1:num_copies_to_calc,j) = missing_r8
          cycle MY_OBSERVATIONS ! prior forward op failed
       endif
    endif
@@ -317,14 +324,14 @@ else ! distributed state
 
    call get_expected_obs_distrib_state(seq, thiskey, &
       dummy_time, isprior, istatus, &
-      assimilate_this_ob, evaluate_this_ob, ens_handle, my_ensemble_copies, expected_obs)
+      assimilate_this_ob, evaluate_this_ob, ens_handle, num_copies_to_calc, my_copy_indices, expected_obs)
 
-      obs_fwd_op_ens_handle%copies(1:my_ensemble_copies, j) = expected_obs
+      obs_fwd_op_ens_handle%copies(1:num_copies_to_calc, j) = expected_obs
 
    ! collect dart qc
    global_qc_value = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j))
 
-   call get_dart_qc(istatus, my_ensemble_copies, assimilate_this_ob, evaluate_this_ob, &
+   call get_dart_qc(istatus, num_copies_to_calc, assimilate_this_ob, evaluate_this_ob, &
                   isprior, global_qc_value)
 
    ! update the dart qc, error variance and for observed value
@@ -395,7 +402,7 @@ QC_LOOP: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
    !>@todo Do we want to set all the groups to missing_r8? Not just the start?
    !write(*,*) 'global_qc_value', global_qc_value
    !> @todo This is a bug - it should be 1:ens_size
-   if (any(obs_fwd_op_ens_handle%copies(1:my_ensemble_copies,j) == missing_r8)) then !.not. good_dart_qc(global_qc_value)) then
+   if (any(obs_fwd_op_ens_handle%copies(1:num_copies_to_calc,j) == missing_r8)) then !.not. good_dart_qc(global_qc_value)) then
       obs_fwd_op_ens_handle%copies(OBS_MEAN_START, j) = missing_r8
       obs_fwd_op_ens_handle%copies(OBS_VAR_START,  j) = missing_r8
    endif
@@ -404,9 +411,8 @@ end do QC_LOOP
 
 if (isprior) call get_single_copy(obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, prior_qc_copy)
 
-deallocate(expected_obs)
-deallocate(istatus)
-  
+deallocate(expected_obs, istatus, var_istatus, my_copy_indices)
+
 end subroutine get_obs_ens_distrib_state
 
 !------------------------------------------------------------------------------
@@ -426,7 +432,7 @@ end subroutine get_obs_ens_distrib_state
 !> @param[inout] expected_obs - the computed forward operator value
 !------------------------------------------------------------------------------
 subroutine get_expected_obs_distrib_state(seq, keys, state_time, isprior, &
-   istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, num_ens, expected_obs)
+   istatus, assimilate_this_ob, evaluate_this_ob, state_ens_handle, num_ens, copy_indices, expected_obs)
 
 integer,                 intent(in)    :: num_ens
 type(obs_sequence_type), intent(in)    :: seq
@@ -437,6 +443,7 @@ integer,                 intent(out)   :: istatus(num_ens)
 logical,                 intent(out)   :: assimilate_this_ob
 logical,                 intent(out)   :: evaluate_this_ob
 type(ensemble_type),     intent(in)    :: state_ens_handle
+integer,                 intent(in)    :: copy_indices(num_ens)
 real(r8),                intent(inout) :: expected_obs(num_ens) !> @todo needs to be 2d for a set of obs - no because you don't have an array of assimilate_this_ob, evaluate_this_ob
 
 type(obs_type)     :: obs
@@ -476,7 +483,7 @@ do i = 1, num_obs !> @todo do you ever use this with more than one obs?
    
    else ! do forward operator for this kind
 
-      call get_expected_obs_from_def_distrib_state(state_ens_handle, num_ens, keys(i), obs_def, obs_kind_ind, &
+      call get_expected_obs_from_def_distrib_state(state_ens_handle, num_ens, copy_indices, keys(i), obs_def, obs_kind_ind, &
          state_time, isprior, &
          assimilate_this_ob, evaluate_this_ob, expected_obs, istatus)
 

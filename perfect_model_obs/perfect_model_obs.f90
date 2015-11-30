@@ -55,7 +55,7 @@ use state_structure_mod,   only : get_num_domains, static_init_state_type
 use io_filenames_mod,      only : io_filenames_init, get_input_file, set_filenames
 use quality_control_mod,   only : set_input_qc, initialize_qc
 
-use ensemble_manager_mod,    only : copies_in_window, set_num_extra_copies ! should this be through ensemble_manager?
+use ensemble_manager_mod,    only : set_num_extra_copies ! should this be through ensemble_manager?
 use distributed_state_mod, only : create_state_window, free_state_window
 
 use forward_operator_mod, only : get_expected_obs_distrib_state
@@ -166,7 +166,8 @@ integer                 :: global_obs_num
 type(time_type) :: time1
 integer         :: secs, days
 character*20    :: task_str ! string to hold the task number
-
+integer         :: ens_size = 1 ! This is to avoid magic number 1s
+integer         :: copy_indices(1) = 1
 
 ! Initialize all modules used that require it
 call perfect_initialize_modules_used()
@@ -239,7 +240,7 @@ call error_handler(E_MSG,'perfect_main',msgstring)
 
 ! Set up the ensemble storage and read in the restart file
 call trace_message('Before reading in ensemble restart file')
-call init_ensemble_manager(ens_handle, 1, model_size, 1)
+call init_ensemble_manager(ens_handle, ens_size, model_size, 1)
 
 ! Reading restart file:
 call setup_read_write(1)
@@ -401,8 +402,8 @@ AdvanceTime: do
    call print_obs_time(seq, key_bounds(2), 'Time of last  observation in window')
 
    ! for multi-core runs, each core needs to store the forward operator and the qc value
-   call init_ensemble_manager(fwd_op_ens_handle, 1, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
-   call init_ensemble_manager(qc_ens_handle, 1, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
+   call init_ensemble_manager(fwd_op_ens_handle, ens_size, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
+   call init_ensemble_manager(qc_ens_handle, ens_size, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
 
 
    ! Allocate storage for observation keys for this part of sequence
@@ -455,7 +456,7 @@ AdvanceTime: do
       call get_expected_obs_distrib_state(seq, keys(global_obs_num:global_obs_num), &
          ens_handle%time(1), .true., &
          istatus, assimilate_this_ob, evaluate_this_ob, &
-         ens_handle, copies_in_window(ens_handle), true_obs)
+         ens_handle, ens_size, copy_indices, true_obs)
 
       fwd_op_ens_handle%copies(1, j) = true_obs(1)
 

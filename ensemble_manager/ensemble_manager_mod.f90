@@ -78,6 +78,7 @@ type ensemble_type
    integer                      :: layout_type
    integer                      :: transpose_type
    integer                      :: num_extras
+   type(time_type)              :: current_time ! The current time, constant across the ensemble
 
 end type ensemble_type
 

@@ -42,10 +42,8 @@
    num_output_obs_members   = 20
    output_interval          = 1
    num_groups               = 1
-   input_qc_threshold       = 1.0
-   outlier_threshold        = 3.0
    output_forward_op_errors = .false.
-   output_timestamps        = .false.
+   output_timestamps        = .true.
    output_inflation         = .true.
    trace_execution          = .true.
    silence                  = .false.
@@ -87,14 +85,11 @@
    adaptive_localization_threshold = -1
    output_localization_diagnostics = .false.
    localization_diagnostics_file   = 'localization_diagnostics'
-   print_every_nth_obs             = 0
+   print_every_nth_obs             = 1000
    /
 
 
 &ensemble_manager_nml
-   single_restart_file_in  = .false.
-   single_restart_file_out = .false.
-   perturbation_amplitude  = 0.2
    layout                  = 1
    tasks_per_node          = 1
    /
@@ -127,7 +122,6 @@
                               '../../../obs_def/obs_def_COSMOS_mod.f90'
    /
 
-
 # hist_nhtfrq should be negative (hours) ... same context as in
 # the CLM namelist for the .h1. files.
 &obs_def_tower_nml
@@ -148,7 +142,6 @@
 
 
 &assim_model_nml
-   write_binary_restart_files = .true.
    netCDF_large_file_support  = .true.
    /
 
@@ -180,7 +173,7 @@
    model_perturbation_amplitude = 0.2
    output_state_vector          = .false.
    calendar                     = 'Gregorian'
-   debug                        = 2
+   debug                        = 0
    clm_variables  = 'frac_sno',    'KIND_SNOWCOVER_FRAC',         'NA',  'NA', 'restart' , 'NO_COPY_BACK',
                     'H2OSNO',      'KIND_SNOW_WATER',             '0.0', 'NA', 'restart' , 'UPDATE',
                     'H2OSOI_LIQ',  'KIND_SOIL_MOISTURE',          '0.0', 'NA', 'restart' , 'UPDATE',
@@ -368,3 +361,18 @@
    loc_of_interest      = 287.5, 82.48, 0.35
    /
 
+&state_vector_io_nml
+   write_binary_restart_files = .true.
+/
+
+&io_filenames_nml
+   rpointer      = .true.
+   rpointer_file = 'restart_files.txt', 
+                   'history_files.txt', 
+                   'history_vector_files.txt'
+/
+
+&quality_control_nml
+   input_qc_threshold       = 1.0
+   outlier_threshold        = 3.0
+/

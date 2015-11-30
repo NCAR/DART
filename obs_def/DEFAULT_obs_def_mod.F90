@@ -417,12 +417,13 @@ end subroutine set_obs_def_time
 
 !----------------------------------------------------------------------------
 
-subroutine get_expected_obs_from_def_distrib_state(state_handle, ens_size, key, obs_def, obs_kind_ind, &
+subroutine get_expected_obs_from_def_distrib_state(state_handle, ens_size, copy_indices, key, obs_def, obs_kind_ind, &
    state_time, isprior, assimilate_this_ob, evaluate_this_ob, expected_obs, istatus)
 
 ! Compute forward operator for a particular obs_def
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
+integer,             intent(in)  :: copy_indices(ens_size)
 integer,             intent(in)  :: key
 type(obs_def_type),  intent(in)  :: obs_def
 integer,             intent(in)  :: obs_kind_ind
@@ -459,9 +460,9 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
    select case(obs_kind_ind)
 
       ! arguments available to an obs_def forward operator code are:
-      !   state        -- the entire model state vector
-      !   state_time   -- the time of the state vector data
-      !   ens_index    -- the ensemble number
+      !   state_handle -- to access the state vector
+      !   ens_size     -- the number of ensemble members to do at once (between 1 and ens_size)
+      !   copy_indices -- the indicies the ensemble members (between 1 and ens_size)
       !   location     -- observation location
       !   obs_kind_ind -- the index of the observation specific type 
       !   obs_time     -- the time of the observation
