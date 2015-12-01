@@ -128,6 +128,7 @@ integer :: forward_min, forward_max !< for global qc
 integer :: num_copies_to_calc
 integer :: copy !< loop index
 integer :: global_ens_index
+integer :: ens_size
 
 integer, allocatable  :: istatus(:)
 integer, allocatable  :: var_istatus(:)
@@ -159,6 +160,8 @@ allocate(my_copy_indices(num_copies_to_calc))
 
 ! create the mpi window for the distributed state
 call create_state_window(ens_handle)
+
+ens_size = ens_handle%num_copies - ens_handle%num_extras
 
 if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued forward op
 
@@ -295,25 +298,25 @@ else ! distributed state
    call get_obs_from_key(seq, keys(global_obs_num), observation)
    call get_obs_def(observation, obs_def)
 
+   ! Get the information on this observation by placing it in temporary
+   ! storage. Check to see if this observation fails input qc test
+   call get_qc(observation, input_qc, input_qc_index)
+
    if (isprior) then
       ! this should only need to be done once, in the prior, right?
       obs_fwd_op_ens_handle%copies(OBS_KEY_COPY, j) = thiskey(1)
 
-      ! Get the information on this observation by placing it in temporary
-      ! storage. Check to see if this observation fails input qc test
-      call get_qc(observation, input_qc, input_qc_index)
-
-      ! Check to see if the forward operater failed
+      ! Check to see if the incoming data qc is bad
       if(.not. input_qc_ok(input_qc(1), global_qc_value)) then
          obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = global_qc_value
-         ! No need to do anything else for a failed observation
-            cycle MY_OBSERVATIONS
+         obs_fwd_op_ens_handle%copies(1:ens_size,j) = missing_r8
+         ! No need to do anything else for bad incoming qc
+         cycle MY_OBSERVATIONS
       endif
    else ! posterior
-      global_qc_value = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) )
-      if (.not. good_dart_qc(global_qc_value)) then
-         obs_fwd_op_ens_handle%copies(1:num_copies_to_calc,j) = missing_r8
-         cycle MY_OBSERVATIONS ! prior forward op failed
+      ! Check to see if the incoming data qc is bad
+      if(.not. input_qc_ok(input_qc(1), global_qc_value)) then
+         cycle MY_OBSERVATIONS
       endif
    endif
 
@@ -400,9 +403,7 @@ QC_LOOP: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
    ! reset the mean/var to missing_r8, regardless of the DART QC status
    ! HK does this fail if you have groups?
    !>@todo Do we want to set all the groups to missing_r8? Not just the start?
-   !write(*,*) 'global_qc_value', global_qc_value
-   !> @todo This is a bug - it should be 1:ens_size
-   if (any(obs_fwd_op_ens_handle%copies(1:num_copies_to_calc,j) == missing_r8)) then !.not. good_dart_qc(global_qc_value)) then
+   if (any(obs_fwd_op_ens_handle%copies(1:ens_size,j) == missing_r8)) then
       obs_fwd_op_ens_handle%copies(OBS_MEAN_START, j) = missing_r8
       obs_fwd_op_ens_handle%copies(OBS_VAR_START,  j) = missing_r8
    endif
