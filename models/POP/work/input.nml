@@ -158,6 +158,12 @@
    model_perturbation_amplitude = 0.2,
    output_state_vector          = .false.,
    debug                        = 0,
+   model_state_variables        = 'SALT_CUR ', 'KIND_SALINITY             ', 'UPDATE',
+                                  'TEMP_CUR ', 'KIND_POTENTIAL_TEMPERATURE', 'UPDATE',
+                                  'UVEL_CUR ', 'KIND_U_CURRENT_COMPONENT  ', 'UPDATE',
+                                  'VVEL_CUR ', 'KIND_V_CURRENT_COMPONENT  ', 'UPDATE',
+                                  'PSURF_CUR', 'KIND_SEA_SURFACE_PRESSURE ', 'UPDATE'
+
   /
 
 &pop_to_dart_nml

@@ -51,6 +51,8 @@ public :: static_init_state_type, &
           get_clamping_maxval,    &
           get_clamping_minval,    &
           do_clamping,            &
+          get_ind1,               &
+          get_indN,               &
           state_structure_info
 
 ! version controlled file description for error handling, do not edit

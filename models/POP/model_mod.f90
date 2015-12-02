@@ -22,13 +22,14 @@ use     location_mod, only : location_type, get_dist, get_close_maxdist_init,  &
                              loc_get_close_obs => get_close_obs, get_close_type
 use    utilities_mod, only : register_module, error_handler,                   &
                              E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
-                             nc_check, do_output,                              &
+                             nc_check, do_output, to_upper,                    &
                              find_namelist_in_file, check_namelist_read,       &
                              file_exist, find_textfile_dims, file_to_text
 use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_DRY_LAND,   &
                              KIND_U_CURRENT_COMPONENT,KIND_V_CURRENT_COMPONENT,&
                              KIND_SEA_SURFACE_HEIGHT, KIND_SEA_SURFACE_PRESSURE,&
-                             KIND_POTENTIAL_TEMPERATURE
+                             KIND_POTENTIAL_TEMPERATURE, get_raw_obs_kind_index,&
+                             get_raw_obs_kind_name, paramname_length 
 use mpi_utilities_mod, only: my_task_id
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use      dart_pop_mod, only: set_model_time_step,                              &
@@ -40,7 +41,9 @@ use ensemble_manager_mod,  only : ensemble_type
 
 use distributed_state_mod, only : get_state
 
-use state_structure_mod,   only : add_domain, get_model_variable_indices
+use state_structure_mod,   only : add_domain, get_model_variable_indices, &
+                                  get_num_variables, get_ind1, get_indN,  &
+                                  get_num_dims, get_domain_size
 
 use dart_time_io_mod,      only : write_model_time
 
@@ -86,11 +89,29 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-character(len=256) :: msgstring
+! message strings
+character(len=512) :: string1
+character(len=512) :: string2
+character(len=512) :: msgstring
+
 logical, save :: module_initialized = .false.
 
 ! Storage for a random sequence for perturbing a single initial state
 type(random_seq_type) :: random_seq
+
+! DART state vector contents are specified in the input.nml:&model_nml namelist.
+integer, parameter :: max_state_variables = 10 
+integer, parameter :: num_state_table_columns = 3
+! NOTE: may need to increase character length if netcdf variables are
+! larger than paramname_length = 32.
+character(len=paramname_length) :: variable_table( max_state_variables, num_state_table_columns )
+integer :: state_kinds_list( max_state_variables )
+logical :: update_list( max_state_variables )
+
+! identifiers for variable_table
+integer, parameter :: VAR_NAME_INDEX = 1
+integer, parameter :: VAR_KIND_INDEX = 2
+integer, parameter :: VAR_UPDATE_INDEX = 3
 
 ! things which can/should be in the model_nml
 logical  :: output_state_vector = .true.
@@ -98,6 +119,7 @@ integer  :: assimilation_period_days = 1
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
 logical  :: update_dry_cell_walls = .false.
+character(len=paramname_length) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
 integer  :: debug = 0   ! turn up for more and more debug messages
 
 ! FIXME: currently the update_dry_cell_walls namelist value DOES
@@ -110,44 +132,24 @@ namelist /model_nml/  &
    assimilation_period_seconds, &
    model_perturbation_amplitude,&
    update_dry_cell_walls,       &
+   model_state_variables,       &
    debug
 
 !------------------------------------------------------------------
 !
-! The DART state vector (control vector) will consist of:  S, T, U, V, PSURF
+! The default DART state vector (control vector) will consist of:  S, T, U, V, PSURF
 ! (Salinity, Temperature, U velocity, V velocity, Sea Surface Height).
 ! S, T are 3D arrays, located at cell centers.  U,V are at grid cell corners.
-! PSURF is a 2D field (X,Y only).  The Z direction is downward.
-!
-! FIXME: proposed change 1: we put SSH first, then T,U,V, then S, then
-!                           any optional tracers, since SSH is the only 2D
-!                           field; all tracers are 3D.  this simplifies the
-!                           mapping to and from the vars to state vector.
-!
-! FIXME: proposed change 2: we make this completely namelist driven,
-!                           both contents and order of vars.  this should
-!                           wait until restart files are in netcdf format,
-!                           to avoid problems with incompatible namelist
-!                           and IC files.  it also complicates the mapping
-!                           to and from the vars to state vector.
+! PSURF is a 2D field (X,Y only).  The Z direction is downward. 
+! 
+! Additional variables can be read into the state vector using the 
+! model_state_variables namelist by specifying the netcdf variable name
+! dart kind string and an update string.  Currently the update string
+! is not being used.
 !------------------------------------------------------------------
 
-integer, parameter :: n3dfields = 4
-integer, parameter :: n2dfields = 1
-integer, parameter :: nfields   = n3dfields + n2dfields
-
-! (the absoft compiler likes them to all be the same length during declaration)
-! we trim the blanks off before use anyway, so ...
-character(len=128) :: progvarnames(nfields) = (/'SALT ','TEMP ','UVEL ','VVEL ','PSURF'/)
-character(len=128) :: netcdfvarnames(nfields) = (/'SALT_CUR ','TEMP_CUR ','UVEL_CUR ','VVEL_CUR ','PSURF_CUR'/)
-
-integer, parameter :: S_index     = 1
-integer, parameter :: T_index     = 2
-integer, parameter :: U_index     = 3
-integer, parameter :: V_index     = 4
-integer, parameter :: PSURF_index = 5
-
-integer(i8) :: start_index(nfields)
+! Number of fields in the state vector
+integer :: nfields
 
 ! Grid parameters - the values will be read from a
 ! standard POP namelist and filled in here.
@@ -240,6 +242,9 @@ integer :: pole_x, t_pole_y, u_pole_y
 ! This should be initialized static_init_model. Code to do this is below.
 logical :: dipole_grid
 
+! global domain id to be used by routines in state_structure_mod
+integer :: domain_id
+
 contains
 
 !------------------------------------------------------------------
@@ -252,8 +257,6 @@ subroutine static_init_model()
 
 integer :: iunit, io
 integer :: ss, dd
-integer(i4) :: model_size_i4
-integer :: domain_id
 
 ! The Plan:
 !
@@ -322,17 +325,9 @@ call read_vert_grid( Nz, ZC, ZG)
 if (debug > 2) call write_grid_netcdf() ! DEBUG only
 if (debug > 2) call write_grid_interptest() ! DEBUG only
 
-! compute the offsets into the state vector for the start of each
-! different variable type.
-
-! record where in the state vector the data type changes
-! from one type to another, by computing the starting
-! index for each block of data.
-start_index(S_index)     = 1
-start_index(T_index)     = start_index(S_index) + (Nx * Ny * Nz)
-start_index(U_index)     = start_index(T_index) + (Nx * Ny * Nz)
-start_index(V_index)     = start_index(U_index) + (Nx * Ny * Nz)
-start_index(PSURF_index) = start_index(V_index) + (Nx * Ny * Nz)
+! verify that the model_state_variables namelist was filled in correctly.  
+! returns variable_table which has variable names, kinds and update strings.
+call verify_state_variables(model_state_variables, nfields, variable_table, state_kinds_list, update_list)
 
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 1 is 2D.
@@ -343,18 +338,19 @@ if (do_output()) write(logfileunit, *) 'Using grid : Nx, Ny, Nz = ', &
                                                      Nx, Ny, Nz
 if (do_output()) write(     *     , *) 'Using grid : Nx, Ny, Nz = ', &
                                                      Nx, Ny, Nz
-! must convert model_size to 64 bit integer for large models
-model_size = int(n3dfields * (Nx * Ny * Nz),i8) + int(n2dfields * (Nx * Ny),i8)
-if (do_output()) write(*,*) 'model_size = ', model_size
-
 ! initialize the pressure array - pressure in bars
 allocate(pressure(Nz))
 call dpth2pres(Nz, ZC, pressure)
 
 ! Initialize the interpolation routines
 call init_interp()
+
 !> @todo 'pop.r.nc' is hardcoded in dart_pop_mod.f90
-domain_id = add_domain('pop.r.nc', nfields, netcdfvarnames)
+domain_id = add_domain('pop.r.nc', nfields, variable_table(1:nfields, VAR_NAME_INDEX))
+
+model_size = get_domain_size(domain_id)
+if (do_output()) write(*,*) 'model_size = ', model_size
+
 
 end subroutine static_init_model
 
@@ -812,19 +808,14 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_type, expecte
 ! Local storage
 real(r8)       :: loc_array(3), llon, llat, lheight
 integer(i8)    :: base_offset
-integer        :: offset, ind
+integer        :: ind
 integer        :: hgt_bot, hgt_top
 real(r8)       :: hgt_fract
-real(r8)       :: top_val, bot_val
 integer        :: hstatus
 logical        :: convert_to_ssh
 integer        :: e
 
 if ( .not. module_initialized ) call static_init_model
-
-! print data min/max values
-! HK do you even want to be able to do this with the distributed version
-!if (debug > 2) call print_ranges(x)
 
 ! Let's assume failure.  Set return val to missing, then the code can
 ! just set istatus to something indicating why it failed, and return.
@@ -880,24 +871,24 @@ endif
 
 convert_to_ssh = .FALSE.
 
-if(obs_type == KIND_SALINITY) then
-   base_offset = start_index(S_index)
-else if(obs_type == KIND_POTENTIAL_TEMPERATURE) then
-   base_offset = start_index(T_index)
-else if(obs_type == KIND_U_CURRENT_COMPONENT) then
-   base_offset = start_index(U_index)
-else if(obs_type == KIND_V_CURRENT_COMPONENT) then
-   base_offset = start_index(V_index)
-else if(obs_type == KIND_SEA_SURFACE_PRESSURE) then
-   base_offset = start_index(PSURF_index)
-else if(obs_type == KIND_SEA_SURFACE_HEIGHT) then
-   base_offset = start_index(PSURF_index) ! simple linear transform of PSURF
-   convert_to_ssh = .TRUE.
-else
-   ! Not a legal type for interpolation, return istatus error
-   istatus = 15
-   return
-endif
+SELECT CASE (obs_type)
+   CASE (KIND_SALINITY,              &
+         KIND_POTENTIAL_TEMPERATURE, &
+         KIND_U_CURRENT_COMPONENT,   &
+         KIND_V_CURRENT_COMPONENT,   &
+         KIND_SEA_SURFACE_PRESSURE)
+      base_offset = get_ind1(domain_id, get_varid_from_kind(obs_type))
+
+   CASE (KIND_SEA_SURFACE_HEIGHT)
+      base_offset = get_ind1(domain_id, get_varid_from_kind(KIND_SEA_SURFACE_PRESSURE))
+      convert_to_ssh = .TRUE. ! simple linear transform of PSURF
+
+   CASE DEFAULT
+      ! Not a legal type for interpolation, return istatus error
+      istatus = 15
+      return
+
+END SELECT
 
 ! For Sea Surface Height or Pressure don't need the vertical coordinate
 ! SSP needs to be converted to a SSH if height is required.
@@ -1535,7 +1526,6 @@ subroutine quad_bilinear_interp(lon_in, lat, x_corners_in, y_corners, &
 integer :: i
 real(r8) :: m(3, 3), v(3), r(3), a, x_corners(4), lon
 ! real(r8) :: lon_mean
-integer :: e
 
 ! Watch out for wraparound on x_corners.
 lon = lon_in
@@ -1774,6 +1764,34 @@ endif
 
 end subroutine get_state_meta_data
 
+!--------------------------------------------------------------------
+
+function get_varid_from_kind(dart_kind)
+
+integer, intent(in) :: dart_kind
+integer             :: get_varid_from_kind
+
+! given a kind, return what variable number it is
+
+integer :: i
+
+do i = 1, get_num_variables(domain_id)
+   if (dart_kind == state_kinds_list(i)) then
+      get_varid_from_kind = i
+      return
+   endif
+end do
+
+write(string1, *) 'Kind ', dart_kind, ' not found in state vector'
+write(string2, *) 'AKA ', get_raw_obs_kind_name(dart_kind), ' not found in state vector'
+call error_handler(E_MSG,'get_varid_from_kind', string1, &
+                   source, revision, revdate, text2=string2)
+
+get_varid_from_kind = -1
+
+end function get_varid_from_kind
+
+
 !------------------------------------------------------------------
 
 subroutine get_state_kind(var_ind, var_type)
@@ -1786,17 +1804,7 @@ subroutine get_state_kind(var_ind, var_type)
 
 if ( .not. module_initialized ) call static_init_model
 
-if (var_ind == S_index) then
-   var_type = KIND_SALINITY  
-else if (var_ind == T_index) then
-   var_type = KIND_POTENTIAL_TEMPERATURE  
-else if (var_ind == U_index) then
-   var_type = KIND_U_CURRENT_COMPONENT
-else if (var_ind == V_index) then
-   var_type = KIND_V_CURRENT_COMPONENT
-else 
-   var_type = KIND_SEA_SURFACE_PRESSURE
-endif
+var_type = state_kinds_list(var_ind)
 
 end subroutine get_state_kind
 
@@ -1884,7 +1892,7 @@ integer :: ulonVarID, ulatVarID, tlonVarID, tlatVarID, ZGVarID, ZCVarID
 integer :: KMTVarID, KMUVarID
 
 ! for the prognostic variables
-integer :: SVarID, TVarID, UVarID, VVarID, PSURFVarID 
+integer :: SVarID, TVarID, UVarID, VVarID, PSURFVarID
 
 !----------------------------------------------------------------------
 ! variables for the namelist output
@@ -2193,77 +2201,87 @@ else
    !----------------------------------------------------------------------------
    ! Create the (empty) Prognostic Variables and the Attributes
    !----------------------------------------------------------------------------
+   
+   !>@todo JH : If we store the variable attributes in a structure we can simplly
+   ! loop over all of the variables and output prognostic variables and attributes
+   !> For now we are only writting the default variables if they exist.
+   if ( get_varid_from_kind(KIND_SALINITY) > 0 ) then
+      call nc_check(nf90_def_var(ncid=ncFileID, name='SALT', xtype=nf90_real, &
+            dimids = (/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=SVarID),&
+            'nc_write_model_atts', 'S def_var '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, SVarID, 'long_name', 'salinity'), &
+            'nc_write_model_atts', 'S long_name '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, SVarID, 'units', 'kg/kg'), &
+            'nc_write_model_atts', 'S units '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, SVarID, 'missing_value', NF90_FILL_REAL), &
+            'nc_write_model_atts', 'S missing '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, SVarID, '_FillValue', NF90_FILL_REAL), &
+            'nc_write_model_atts', 'S fill '//trim(filename))
+   endif
+
+   if ( get_varid_from_kind(KIND_POTENTIAL_TEMPERATURE) > 0 ) then
+      call nc_check(nf90_def_var(ncid=ncFileID, name='TEMP', xtype=nf90_real, &
+            dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=TVarID),&
+            'nc_write_model_atts', 'T def_var '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, TVarID, 'long_name', 'Potential Temperature'), &
+            'nc_write_model_atts', 'T long_name '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, TVarID, 'units', 'deg C'), &
+            'nc_write_model_atts', 'T units '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, TVarID, 'units_long_name', 'degrees celsius'), &
+            'nc_write_model_atts', 'T units_long_name '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, TVarID, 'missing_value', NF90_FILL_REAL), &
+            'nc_write_model_atts', 'T missing '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, TVarID, '_FillValue', NF90_FILL_REAL), &
+            'nc_write_model_atts', 'T fill '//trim(filename))
+   endif
 
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name='SALT', xtype=nf90_real, &
-         dimids = (/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=SVarID),&
-         'nc_write_model_atts', 'S def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, 'long_name', 'salinity'), &
-         'nc_write_model_atts', 'S long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, 'units', 'kg/kg'), &
-         'nc_write_model_atts', 'S units '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, 'missing_value', NF90_FILL_REAL), &
-         'nc_write_model_atts', 'S missing '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, SVarID, '_FillValue', NF90_FILL_REAL), &
-         'nc_write_model_atts', 'S fill '//trim(filename))
+   if ( get_varid_from_kind(KIND_U_CURRENT_COMPONENT) > 0 ) then
+      call nc_check(nf90_def_var(ncid=ncFileID, name='UVEL', xtype=nf90_real, &
+            dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=UVarID),&
+            'nc_write_model_atts', 'U def_var '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, UVarID, 'long_name', 'U velocity'), &
+            'nc_write_model_atts', 'U long_name '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, UVarID, 'units', 'cm/s'), &
+            'nc_write_model_atts', 'U units '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, UVarID, 'units_long_name', 'centimeters per second'), &
+            'nc_write_model_atts', 'U units_long_name '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, UVarID, 'missing_value', NF90_FILL_REAL), &
+            'nc_write_model_atts', 'U missing '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, UVarID, '_FillValue', NF90_FILL_REAL), &
+            'nc_write_model_atts', 'U fill '//trim(filename))
+   endif
 
 
-   call nc_check(nf90_def_var(ncid=ncFileID, name='TEMP', xtype=nf90_real, &
-         dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=TVarID),&
-         'nc_write_model_atts', 'T def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, 'long_name', 'Potential Temperature'), &
-         'nc_write_model_atts', 'T long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, 'units', 'deg C'), &
-         'nc_write_model_atts', 'T units '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, 'units_long_name', 'degrees celsius'), &
-         'nc_write_model_atts', 'T units_long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, 'missing_value', NF90_FILL_REAL), &
-         'nc_write_model_atts', 'T missing '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, TVarID, '_FillValue', NF90_FILL_REAL), &
-         'nc_write_model_atts', 'T fill '//trim(filename))
+   if ( get_varid_from_kind(KIND_V_CURRENT_COMPONENT) > 0 ) then
+      call nc_check(nf90_def_var(ncid=ncFileID, name='VVEL', xtype=nf90_real, &
+            dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=VVarID),&
+            'nc_write_model_atts', 'V def_var '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, VVarID, 'long_name', 'V Velocity'), &
+            'nc_write_model_atts', 'V long_name '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, VVarID, 'units', 'cm/s'), &
+            'nc_write_model_atts', 'V units '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, VVarID, 'units_long_name', 'centimeters per second'), &
+            'nc_write_model_atts', 'V units_long_name '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, VVarID, 'missing_value', NF90_FILL_REAL), &
+            'nc_write_model_atts', 'V missing '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, VVarID, '_FillValue', NF90_FILL_REAL), &
+            'nc_write_model_atts', 'V fill '//trim(filename))
+   endif
 
-
-   call nc_check(nf90_def_var(ncid=ncFileID, name='UVEL', xtype=nf90_real, &
-         dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=UVarID),&
-         'nc_write_model_atts', 'U def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, 'long_name', 'U velocity'), &
-         'nc_write_model_atts', 'U long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, 'units', 'cm/s'), &
-         'nc_write_model_atts', 'U units '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, 'units_long_name', 'centimeters per second'), &
-         'nc_write_model_atts', 'U units_long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, 'missing_value', NF90_FILL_REAL), &
-         'nc_write_model_atts', 'U missing '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, UVarID, '_FillValue', NF90_FILL_REAL), &
-         'nc_write_model_atts', 'U fill '//trim(filename))
-
-
-   call nc_check(nf90_def_var(ncid=ncFileID, name='VVEL', xtype=nf90_real, &
-         dimids=(/NlonDimID,NlatDimID,NzDimID,MemberDimID,unlimitedDimID/),varid=VVarID),&
-         'nc_write_model_atts', 'V def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, 'long_name', 'V Velocity'), &
-         'nc_write_model_atts', 'V long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, 'units', 'cm/s'), &
-         'nc_write_model_atts', 'V units '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, 'units_long_name', 'centimeters per second'), &
-         'nc_write_model_atts', 'V units_long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, 'missing_value', NF90_FILL_REAL), &
-         'nc_write_model_atts', 'V missing '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, VVarID, '_FillValue', NF90_FILL_REAL), &
-         'nc_write_model_atts', 'V fill '//trim(filename))
-
-
-   call nc_check(nf90_def_var(ncid=ncFileID, name='PSURF', xtype=nf90_real, &
-         dimids=(/NlonDimID,NlatDimID,MemberDimID,unlimitedDimID/),varid=PSURFVarID), &
-         'nc_write_model_atts', 'PSURF def_var '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, PSURFVarID, 'long_name', 'surface pressure'), &
-         'nc_write_model_atts', 'PSURF long_name '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, PSURFVarID, 'units', 'dyne/cm2'), &
-         'nc_write_model_atts', 'PSURF units '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, PSURFVarID, 'missing_value', NF90_FILL_REAL), &
-         'nc_write_model_atts', 'PSURF missing '//trim(filename))
-   call nc_check(nf90_put_att(ncFileID, PSURFVarID, '_FillValue', NF90_FILL_REAL), &
-         'nc_write_model_atts', 'PSURF fill '//trim(filename))
+   if ( get_varid_from_kind(KIND_SEA_SURFACE_PRESSURE) > 0 ) then
+      call nc_check(nf90_def_var(ncid=ncFileID, name='PSURF', xtype=nf90_real, &
+            dimids=(/NlonDimID,NlatDimID,MemberDimID,unlimitedDimID/),varid=PSURFVarID), &
+            'nc_write_model_atts', 'PSURF def_var '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, PSURFVarID, 'long_name', 'surface pressure'), &
+            'nc_write_model_atts', 'PSURF long_name '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, PSURFVarID, 'units', 'dyne/cm2'), &
+            'nc_write_model_atts', 'PSURF units '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, PSURFVarID, 'missing_value', NF90_FILL_REAL), &
+            'nc_write_model_atts', 'PSURF missing '//trim(filename))
+      call nc_check(nf90_put_att(ncFileID, PSURFVarID, '_FillValue', NF90_FILL_REAL), &
+            'nc_write_model_atts', 'PSURF fill '//trim(filename))
+   endif
 
    ! Finished with dimension/variable definitions, must end 'define' mode to fill.
 
@@ -2350,6 +2368,8 @@ real(r8), dimension(Nx,Ny,Nz) :: data_3d
 real(r8), dimension(Nx,Ny)    :: data_2d
 character(len=128)  :: filename
 
+integer :: S_index ,T_index ,U_index, V_index, PSURF_index 
+
 if ( .not. module_initialized ) call static_init_model
 
 ierr = -1 ! assume things go poorly
@@ -2385,41 +2405,61 @@ else
    ! Staggered grid causes some logistical problems.
    !----------------------------------------------------------------------------
 
-   call vector_to_prog_var(statevec, S_index, data_3d)
-   where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, 'SALT', VarID), &
-                'nc_write_model_vars', 'S inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                'nc_write_model_vars', 'S put_var '//trim(filename))
+   !>@todo JH: If we store the variable attributes in a structure we can simplly
+   !> loop over all of the variables and output prognostic variables and attributes.
+   !> For now we are only writting the default variables if they exist.
+   S_index = get_varid_from_kind(KIND_SALINITY)
+   if ( S_index > 0 ) then
+      !>@todo JH: do not need to use vector_to_prog_var to reshape variables for
+      !> netcdf file.  you can simply use the count=(dim1, dim2, dim3) in the 
+      !> netcdf optional arguments.
+      call vector_to_prog_var(statevec, S_index, data_3d)
+      where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
+      call nc_check(NF90_inq_varid(ncFileID, 'SALT', VarID), &
+                   'nc_write_model_vars', 'S inq_varid '//trim(filename))
+      call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
+                   'nc_write_model_vars', 'S put_var '//trim(filename))
+   endif
 
-   call vector_to_prog_var(statevec, T_index, data_3d)
-   where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, 'TEMP', VarID), &
-                'nc_write_model_vars', 'T inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                'nc_write_model_vars', 'T put_var '//trim(filename))
+   T_index = get_varid_from_kind(KIND_POTENTIAL_TEMPERATURE)
+   if ( T_index > 0 ) then
+      call vector_to_prog_var(statevec, T_index, data_3d)
+      where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
+      call nc_check(NF90_inq_varid(ncFileID, 'TEMP', VarID), &
+                   'nc_write_model_vars', 'T inq_varid '//trim(filename))
+      call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
+                   'nc_write_model_vars', 'T put_var '//trim(filename))
+   endif
 
-   call vector_to_prog_var(statevec, U_index, data_3d)
-   where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, 'UVEL', VarID), &
-                'nc_write_model_vars', 'U inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                'nc_write_model_vars', 'U put_var '//trim(filename))
+   U_index = get_varid_from_kind(KIND_U_CURRENT_COMPONENT)
+   if ( U_index > 0 ) then
+      call vector_to_prog_var(statevec, U_index, data_3d)
+      where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
+      call nc_check(NF90_inq_varid(ncFileID, 'UVEL', VarID), &
+                   'nc_write_model_vars', 'U inq_varid '//trim(filename))
+      call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
+                   'nc_write_model_vars', 'U put_var '//trim(filename))
+   endif
 
-   call vector_to_prog_var(statevec, V_index, data_3d)
-   where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, 'VVEL', VarID), &
-                'nc_write_model_vars', 'V inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
-                'nc_write_model_vars', 'V put_var '//trim(filename))
+   V_index = get_varid_from_kind(KIND_V_CURRENT_COMPONENT)
+   if ( V_index > 0 ) then
+      call vector_to_prog_var(statevec, V_index, data_3d)
+      where (data_3d == 0.0_r8) data_3d = NF90_FILL_REAL
+      call nc_check(NF90_inq_varid(ncFileID, 'VVEL', VarID), &
+                   'nc_write_model_vars', 'V inq_varid '//trim(filename))
+      call nc_check(nf90_put_var(ncFileID,VarID,data_3d,start=(/1,1,1,copyindex,timeindex/)),&
+                   'nc_write_model_vars', 'V put_var '//trim(filename))
+   endif
 
-   call vector_to_prog_var(statevec, PSURF_index, data_2d)
-   where (data_2d == 0.0_r8) data_2d = NF90_FILL_REAL
-   call nc_check(NF90_inq_varid(ncFileID, 'PSURF', VarID), &
-                'nc_write_model_vars', 'PSURF inq_varid '//trim(filename))
-   call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,copyindex,timeindex/)),&
-                'nc_write_model_vars', 'PSURF put_var '//trim(filename))
-
+   PSURF_index = get_varid_from_kind(KIND_SEA_SURFACE_PRESSURE)
+   if ( PSURF_index > 0 ) then
+      call vector_to_prog_var(statevec, PSURF_index, data_2d)
+      where (data_2d == 0.0_r8) data_2d = NF90_FILL_REAL
+      call nc_check(NF90_inq_varid(ncFileID, 'PSURF', VarID), &
+                   'nc_write_model_vars', 'PSURF inq_varid '//trim(filename))
+      call nc_check(nf90_put_var(ncFileID,VarID,data_2d,start=(/1,1,copyindex,timeindex/)),&
+                   'nc_write_model_vars', 'PSURF put_var '//trim(filename))
+   endif
 endif
 
 !-------------------------------------------------------------------------------
@@ -2532,50 +2572,6 @@ end subroutine pert_model_copies
 
 !------------------------------------------------------------------
 
-subroutine print_ranges(x)
- real(r8), intent(in) :: x(:)
-
-! intended for debugging use = print out the data min/max for each
-! field in the state vector, along with the starting and ending 
-! indices for each field.
-
-integer :: s, e
-
-!  S_index     = 1
-!  T_index     = 2
-!  U_index     = 3
-!  V_index     = 4
-!  PSURF_index = 5
-
-s = 1
-e = start_index(T_index)-1
-print *, 'min/max  salinity: ', minval(x(s:e)), maxval(x(s:e))
-print *, 's/e      salinity: ', s, e
-
-s = start_index(T_index)
-e = start_index(U_index)-1
-print *, 'min/max  pot temp: ', minval(x(s:e)), maxval(x(s:e))
-print *, 's/e      pot temp: ', s, e
-
-s = start_index(U_index)
-e = start_index(V_index)-1
-print *, 'min/max U current: ', minval(x(s:e)), maxval(x(s:e))
-print *, 's/e     U current: ', s, e
-
-s = start_index(V_index)
-e = start_index(PSURF_index)-1
-print *, 'min/max V current: ', minval(x(s:e)), maxval(x(s:e))
-print *, 's/e     V current: ', s, e
-
-s = start_index(PSURF_index)
-e = size(x)
-print *, 'min/max Surf Pres: ', minval(x(s:e)), maxval(x(s:e))
-print *, 's/e     Surf Pres: ', s, e
-
-end subroutine print_ranges
-
-!------------------------------------------------------------------
-
 subroutine restart_file_to_sv(filename, state_vector, model_time)
  character(len=*), intent(in)    :: filename 
  real(r8),         intent(inout) :: state_vector(:)
@@ -2592,7 +2588,6 @@ integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME) :: varname 
 integer :: VarID, numdims, dimlen
 integer :: ncid, iyear, imonth, iday, ihour, iminute, isecond
-character(len=256) :: myerrorstring 
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2657,98 +2652,78 @@ if (do_output()) &
 
 indx = 1
 
-! fill SALT, TEMP, UVEL, VVEL in that order
+! Fill the state vector with the variables that are provided.
 ! The POP restart files have two time steps for each variable,
 ! the variables are named SALT_CUR and SALT_OLD ... for example.
 ! We are only interested in the CURrent time step.
 
-do ivar=1, n3dfields
+do ivar=1, nfields
 
-   varname = trim(progvarnames(ivar))//'_CUR'
-   myerrorstring = trim(filename)//' '//trim(varname)
+   varname = trim(variable_table(ivar, VAR_NAME_INDEX))
+   numdims = get_num_dims(domain_id, ivar)
+   string2 = trim(filename)//' '//trim(varname)
 
-   ! Is the netCDF variable the right shape?
+   SELECT CASE (numdims)
+      CASE (3) ! 3D variable
 
-   call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
-            'restart_file_to_sv', 'inq_varid '//trim(myerrorstring))
+         do i = 1,numdims
+            write(msgstring,'(''inquire dimension'',i2,A)') i,trim(string2)
+            call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
+                  'restart_file_to_sv', msgstring)
 
-   call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
-            'restart_file_to_sv', 'inquire '//trim(myerrorstring))
+            if (dimlen /= size(data_3d_array,i)) then
+               write(msgstring,*) trim(string2),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
+               call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
+            endif
+         enddo   
 
-   if (numdims /= 3) then
-      write(msgstring,*) trim(myerrorstring),' does not have exactly 3 dimensions'
-      call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
-   endif
+         ! Actually get the variable and stuff it into the array
 
-   do i = 1,numdims
-      write(msgstring,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            'restart_file_to_sv', msgstring)
+         call nc_check(nf90_get_var(ncid, VarID, data_3d_array), 'restart_file_to_sv', &
+                      'get_var '//trim(varname))
 
-      if (dimlen /= size(data_3d_array,i)) then
-         write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
-         call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
-      endif
-   enddo   
+         !>@todo JH: use reshape instead of manualy unfolding the vector
+         do k = 1, Nz   ! size(data_3d_array,3)
+         do j = 1, Ny   ! size(data_3d_array,2)
+         do i = 1, Nx   ! size(data_3d_array,1)
+            state_vector(indx) = data_3d_array(i, j, k)
+            indx = indx + 1
+         enddo
+         enddo
+         enddo
 
-   ! Actually get the variable and stuff it into the array
+      CASE (2) ! 2D variable
 
-   call nc_check(nf90_get_var(ncid, VarID, data_3d_array), 'restart_file_to_sv', &
-                'get_var '//trim(varname))
+         do i = 1,numdims
+            write(msgstring,'(''inquire dimension'',i2,A)') i,trim(string2)
+            call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
+                  'restart_file_to_sv', msgstring)
 
-   do k = 1, Nz   ! size(data_3d_array,3)
-   do j = 1, Ny   ! size(data_3d_array,2)
-   do i = 1, Nx   ! size(data_3d_array,1)
-      state_vector(indx) = data_3d_array(i, j, k)
-      indx = indx + 1
-   enddo
-   enddo
-   enddo
+            if (dimlen /= size(data_2d_array,i)) then
+               write(msgstring,*) trim(string2),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
+               call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
+            endif
+         enddo   
 
-enddo
+         ! Actually get the variable and stuff it into the array
 
-! and finally, PSURF (and any other 2d fields)
-do ivar=(n3dfields+1), (n3dfields+n2dfields)
+         call nc_check(nf90_get_var(ncid, VarID, data_2d_array), 'restart_file_to_sv', &
+                      'get_var '//trim(varname))
 
-   varname = trim(progvarnames(ivar))//'_CUR'
-   myerrorstring = trim(varname)//' '//trim(filename)
+         !>@todo JH: use reshape instead of manualy unfolding the vector
+         do j = 1, Ny   ! size(data_3d_array,2)
+         do i = 1, Nx   ! size(data_3d_array,1)
+            state_vector(indx) = data_2d_array(i, j)
+            indx = indx + 1
+         enddo
+         enddo
 
-   ! Is the netCDF variable the right shape?
+      CASE DEFAULT
 
-   call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
-            'restart_file_to_sv', 'inq_varid '//trim(myerrorstring))
+         write(msgstring,*) trim(string2),'numdims ',numdims,' not supported'
+         call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
 
-   call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
-            'restart_file_to_sv', 'inquire '//trim(myerrorstring))
-
-   if (numdims /= 2) then
-      write(msgstring,*) trim(myerrorstring),' does not have exactly 2 dimensions'
-      call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
-   endif
-
-   do i = 1,numdims
-      write(msgstring,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            'restart_file_to_sv', msgstring)
-
-      if (dimlen /= size(data_2d_array,i)) then
-         write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
-         call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
-      endif
-   enddo   
-
-   ! Actually get the variable and stuff it into the array
-
-   call nc_check(nf90_get_var(ncid, VarID, data_2d_array), 'restart_file_to_sv', &
-                'get_var '//trim(varname))
-
-   do j = 1, Ny   ! size(data_3d_array,2)
-   do i = 1, Nx   ! size(data_3d_array,1)
-      state_vector(indx) = data_2d_array(i, j)
-      indx = indx + 1
-   enddo
-   enddo
-
+   END SELECT
 enddo
 
 end subroutine restart_file_to_sv
@@ -2771,7 +2746,6 @@ real(r8) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname 
-character(len=256)                    :: myerrorstring 
 
 integer :: i, ivar, ncid, VarID, numdims, dimlen
 
@@ -2821,77 +2795,57 @@ if (do_output()) &
 if (do_output()) &
     call print_date(pop_time,'date of restart file '//trim(filename))
 
-! fill S, T, U, V in that order
-do ivar=1, n3dfields
+! fill up the netcdf file with values
+do ivar=1, nfields
 
-   varname = trim(progvarnames(ivar))//'_CUR'
-   myerrorstring = trim(filename)//' '//trim(varname)
+   varname = trim(variable_table(ivar, VAR_NAME_INDEX))
+   numdims = get_num_dims(domain_id, ivar)
+   string2 = trim(filename)//' '//trim(varname)
 
-   ! Is the netCDF variable the right shape?
-   call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
-            'sv_to_restart_file', 'inq_varid '//trim(myerrorstring))
+   SELECT CASE (numdims)
+      CASE (3) ! 3D variable
 
-   call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
-            'sv_to_restart_file', 'inquire '//trim(myerrorstring))
+         do i = 1,numdims
+            write(msgstring,'(''inquire dimension'',i2,A)') i,trim(string2)
+            call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
+                  'sv_to_restart_file', msgstring)
 
-   if (numdims /= 3) then
-      write(msgstring,*) trim(myerrorstring),' does not have exactly 3 dimensions'
-      call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
-   endif
+            if (dimlen /= size(data_3d_array,i)) then
+               write(msgstring,*) trim(string2),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
+               call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
+            endif
+         enddo
 
-   do i = 1,numdims
-      write(msgstring,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            'sv_to_restart_file', msgstring)
+         call vector_to_prog_var(state_vector, ivar, data_3d_array)
 
-      if (dimlen /= size(data_3d_array,i)) then
-         write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
+         ! Actually stuff it into the netcdf file
+         call nc_check(nf90_put_var(ncid, VarID, data_3d_array), &
+                  'sv_to_restart_file', 'put_var '//trim(string2))
+
+      CASE (2) ! 2D variable
+
+         do i = 1,numdims
+            write(msgstring,'(''inquire dimension'',i2,A)') i,trim(string2)
+            call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
+                  'sv_to_restart_file', msgstring)
+      
+            if (dimlen /= size(data_2d_array,i)) then
+               write(msgstring,*) trim(string2),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
+               call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
+            endif
+         enddo
+      
+         call vector_to_prog_var(state_vector, ivar, data_2d_array)
+      
+         call nc_check(nf90_put_var(ncid, VarID, data_2d_array), &
+                  'sv_to_restart_file', 'put_var '//trim(string2))
+      
+      CASE DEFAULT
+
+         write(msgstring,*) trim(string2),'numdims ',numdims,' not supported'
          call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
-      endif
-   enddo
 
-   call vector_to_prog_var(state_vector, ivar, data_3d_array)
-
-   ! Actually stuff it into the netcdf file
-   call nc_check(nf90_put_var(ncid, VarID, data_3d_array), &
-            'sv_to_restart_file', 'put_var '//trim(myerrorstring))
-
-enddo
-
-! and finally, PSURF (and any other 2d fields)
-do ivar=(n3dfields+1), (n3dfields+n2dfields)
-
-   varname = trim(progvarnames(ivar))//'_CUR'
-   myerrorstring = trim(varname)//' '//trim(filename)
-
-   ! Is the netCDF variable the right shape?
-
-   call nc_check(nf90_inq_varid(ncid,   varname, VarID), &
-            'sv_to_restart_file', 'inq_varid '//trim(myerrorstring))
-
-   call nc_check(nf90_inquire_variable(ncid,VarId,dimids=dimIDs,ndims=numdims), &
-            'sv_to_restart_file', 'inquire '//trim(myerrorstring))
-
-   if (numdims /= 2) then
-      write(msgstring,*) trim(myerrorstring),' does not have exactly 2 dimensions'
-      call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
-   endif
-
-   do i = 1,numdims
-      write(msgstring,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            'sv_to_restart_file', msgstring)
-
-      if (dimlen /= size(data_2d_array,i)) then
-         write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
-         call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
-      endif
-   enddo
-
-   call vector_to_prog_var(state_vector, ivar, data_2d_array)
-
-   call nc_check(nf90_put_var(ncid, VarID, data_2d_array), &
-            'sv_to_restart_file', 'put_var '//trim(myerrorstring))
+   END SELECT
 
 enddo
 
@@ -2918,7 +2872,8 @@ if ( .not. module_initialized ) call static_init_model
 dim1 = size(data_2d_array,1)
 dim2 = size(data_2d_array,2)
 
-varname = progvarnames(varindex)
+! only used in error messages
+varname = variable_table(varindex, VAR_NAME_INDEX)
 
 if (dim1 /= Nx) then
    write(msgstring,*)trim(varname),' 2d array dim 1 ',dim1,' /= ',Nx
@@ -2929,7 +2884,7 @@ if (dim2 /= Ny) then
    call error_handler(E_ERR,'vector_to_2d_prog_var',msgstring,source,revision,revdate) 
 endif
 
-ii = start_index(varindex)
+ii = get_ind1(domain_id, varindex)
 
 do j = 1,Ny   ! latitudes
 do i = 1,Nx   ! longitudes
@@ -2960,7 +2915,8 @@ dim1 = size(data_3d_array,1)
 dim2 = size(data_3d_array,2)
 dim3 = size(data_3d_array,3)
 
-varname = progvarnames(varindex)
+! only used in error messages
+varname = variable_table(varindex, VAR_NAME_INDEX)
 
 if (dim1 /= Nx) then
    write(msgstring,*)trim(varname),' 3d array dim 1 ',dim1,' /= ',Nx
@@ -2975,7 +2931,7 @@ if (dim3 /= Nz) then
    call error_handler(E_ERR,'vector_to_3d_prog_var',msgstring,source,revision,revdate) 
 endif
 
-ii = start_index(varindex)
+ii = get_ind1(domain_id, varindex)
 
 do k = 1,Nz   ! vertical
 do j = 1,Ny   ! latitudes
@@ -3313,10 +3269,10 @@ subroutine compute_temperature(state_handle, ens_size, llon, llat, lheight, expe
 
 integer  :: hstatus, hgt_bot, hgt_top
 real(r8) :: hgt_fract
-real(r8) :: pres_bot, pres_top
 real(r8) :: salinity_val(ens_size), potential_temp(ens_size), pres_val(ens_size)
 integer  :: temp_status(ens_size)
 integer  :: e
+integer(i8) :: offset_salt, offset_temp
 
 expected_obs(:) = MISSING_R8
 istatus = 99
@@ -3329,9 +3285,11 @@ if(hstatus /= 0) then
    return
 endif
 
+offset_salt = get_ind1(domain_id, get_varid_from_kind(KIND_SALINITY))
+offset_temp = get_ind1(domain_id, get_varid_from_kind(KIND_POTENTIAL_TEMPERATURE))
+
 ! salinity - in msu (kg/kg).  converter will want psu (g/kg).
-! I'm not sure about this start_index stuff.
-call do_interp(state_handle, ens_size, start_index(S_index), hgt_bot, hgt_top, hgt_fract, llon, llat, &
+call do_interp(state_handle, ens_size, offset_salt, hgt_bot, hgt_top, hgt_fract, llon, llat, &
                KIND_SALINITY, salinity_val, temp_status)
  istatus = temp_status
 
@@ -3339,7 +3297,7 @@ if(all(istatus /= 0)) return
 if (debug > 8) print *, 'salinity: ', salinity_val
 
 ! potential temperature - degrees C.
-call do_interp(state_handle, ens_size, start_index(T_index), hgt_bot, hgt_top, hgt_fract, llon, llat, &
+call do_interp(state_handle, ens_size, offset_temp, hgt_bot, hgt_top, hgt_fract, llon, llat, &
                KIND_POTENTIAL_TEMPERATURE, potential_temp, temp_status)
 do e = 1, ens_size
    if(temp_status(e) /= 0) istatus(e) = temp_status(e)
@@ -3621,7 +3579,6 @@ character(len=1024) :: filename
 type(time_type) :: read_model_time
 
 
-integer :: ret !< netcdf return code
 integer :: ncid !< netcdf file id
 integer :: iyear, imonth, iday, ihour, iminute, isecond
 
@@ -3684,8 +3641,118 @@ integer,             intent(out) :: istatus
 istatus = 0
 
 end subroutine vert_convert
-!--------------------------------------------------------------------
-!--------------------------------------------------------------------
+
+!------------------------------------------------------------------
+!> Verify that the namelist was filled in correctly, and check
+!> that there are valid entries for the dart_kind. 
+!> Returns a table with columns:  
+!>
+!>    netcdf_variable_name ; dart_kind_string ; update_string
+!>
+subroutine verify_state_variables( state_variables, ngood, table, kind_list, update_list )
+
+character(len=*),  intent(inout) :: state_variables(:)
+integer,           intent(out) :: ngood
+character(len=*),  intent(out) :: table(:,:)
+integer,           intent(out) :: kind_list(:)   ! kind number
+logical, optional, intent(out) :: update_list(:) ! logical update
+
+integer :: nrows, i
+character(len=NF90_MAX_NAME) :: varname, dartstr, update
+
+if ( .not. module_initialized ) call static_init_model
+
+nrows = size(table,1)
+
+ngood = 0
+
+if ( state_variables(1) == ' ' ) then ! no model_state_variables namelist provided
+   call use_default_state_variables( state_variables )
+   string1 = 'model_nml:model_state_variables not specified using default variables'
+   call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate)
+endif
+
+MyLoop : do i = 1, nrows
+
+   varname = trim(state_variables(3*i -2))
+   dartstr = trim(state_variables(3*i -1))
+   update  = trim(state_variables(3*i   ))
+   
+   call to_upper(update)
+
+   table(i,1) = trim(varname)
+   table(i,2) = trim(dartstr)
+   table(i,3) = trim(update)
+
+   if ( table(i,1) == ' ' .and. table(i,2) == ' ' .and. table(i,3) == ' ') exit MyLoop ! Found end of list.
+
+   if ( table(i,1) == ' ' .or. table(i,2) == ' ' .or. table(i,3) == ' ' ) then
+      string1 = 'model_nml:model_state_variables not fully specified'
+      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
+   endif
+
+   ! Make sure DART kind is valid
+
+   kind_list(i) = get_raw_obs_kind_index(dartstr)
+   if( kind_list(i)  < 0 ) then
+      write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
+      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate)
+   endif
+   
+   ! Make sure the update variable has a valid name
+
+   if ( present(update_list) )then
+      SELECT CASE (update)
+         CASE ('UPDATE')
+            update_list(i) = .true.
+         CASE ('NO_COPY_BACK')
+            update_list(i) = .false.
+         CASE DEFAULT
+            write(string1,'(A)')  'only UPDATE or NO_COPY_BACK supported in model_state_variable namelist'
+            write(string2,'(6A)') 'you provided : ', trim(varname), ', ', trim(dartstr), ', ', trim(update)
+            call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate, text2=string2)
+      END SELECT
+   endif
+
+   ! Record the contents of the DART state vector
+
+   if (do_output()) then
+      write(string1,'(A,I2,6A)') 'variable ',i,' is ',trim(varname), ', ', trim(dartstr), ', ', trim(update)
+      call error_handler(E_MSG,'verify_state_variables',string1,source,revision,revdate)
+   endif
+
+   ngood = ngood + 1
+enddo MyLoop
+
+! check to see if temp and salinity are both in the state otherwise you will not
+! be able to interpolate in XXX subroutine
+if ( any(kind_list == KIND_SALINITY) ) then
+   ! check to see that temperature is also in the variable list
+   if ( .not. any(kind_list == KIND_POTENTIAL_TEMPERATURE) ) then
+      write(string1,'(A)') 'in order to compute temperature you need to have both '
+      write(string2,'(A)') 'KIND_SALINITY and KIND_POTENTIAL_TEMPERATURE in the model state'
+      call error_handler(E_ERR,'verify_state_variables',string1,source,revision,revdate, text2=string2)
+   endif
+endif
+ 
+end subroutine verify_state_variables
+
+!------------------------------------------------------------------
+!> Default state_variables from the original pop model_mod.  Must
+!> keep in the same order to be consistent with previous versions.
+subroutine use_default_state_variables( state_variables )
+
+character(len=*),  intent(inout) :: state_variables(:)
+
+! strings must all be the same length for the gnu compiler
+state_variables( 1:5*num_state_table_columns ) = &
+   (/ 'SALT_CUR                  ', 'KIND_SALINITY             ', 'UPDATE                    ', &
+      'TEMP_CUR                  ', 'KIND_POTENTIAL_TEMPERATURE', 'UPDATE                    ', &
+      'UVEL_CUR                  ', 'KIND_U_CURRENT_COMPONENT  ', 'UPDATE                    ', &
+      'VVEL_CUR                  ', 'KIND_V_CURRENT_COMPONENT  ', 'UPDATE                    ', &
+      'PSURF_CUR                 ', 'KIND_SEA_SURFACE_PRESSURE ', 'UPDATE                    ' /)
+
+end subroutine use_default_state_variables
 
 !------------------------------------------------------------------
 ! End of model_mod
