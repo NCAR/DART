@@ -2602,7 +2602,7 @@ end subroutine model_interpolate
 !------------------------------------------------------------------
 
 
-subroutine compute_gridcell_value(state_handle, ens_size, location, kind, interp_val, istatus)
+subroutine compute_gridcell_value(state_handle, ens_size, location, kind_index, interp_val, istatus)
 !
 ! Each gridcell may contain values for several land units, each land unit may contain
 ! several columns, each column may contain several pft's. BUT this routine never
@@ -2614,7 +2614,7 @@ subroutine compute_gridcell_value(state_handle, ens_size, location, kind, interp
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: location     ! location somewhere in a grid cell
-integer,             intent(in)  :: kind    ! frac_sno, leafc
+integer,             intent(in)  :: kind_index   ! KIND in DART state needed for interpolation 
 real(r8),            intent(out) :: interp_val(ens_size)   ! area-weighted result
 integer,             intent(out) :: istatus(ens_size)      ! error code (0 == good)
 
@@ -2630,7 +2630,7 @@ real(r8) :: total_area(ens_size)
 real(r8), dimension(1) :: loninds,latinds
 real(r8), dimension(LocationDims) :: loc
 integer :: imem
-character(len=32) :: varstring
+character(len=paramname_length) :: varstring
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2648,10 +2648,11 @@ loc_lon    = loc(1)
 loc_lat    = loc(2)
 
 ! determine the portion of interest of the state vector
-varstring = get_raw_obs_kind_name(kind)
-ivar   = findVarIndex(varstring, 'compute_gridcell_value')
+ivar   = findKindIndex(kind_index, 'compute_gridcell_value')
 index1 = progvar(ivar)%index1 ! in the DART state vector, start looking here
 indexN = progvar(ivar)%indexN ! in the DART state vector, stop  looking here
+
+varstring = progvar(ivar)%varname ! used in error messages
 
 ! BOMBPROOFING - check for a vertical dimension for this variable
 if (progvar(ivar)%maxlevels > 1) then
@@ -2742,7 +2743,7 @@ end subroutine compute_gridcell_value
 !------------------------------------------------------------------
 
 
-subroutine get_grid_vertval(state_handle, ens_size, location, kind, interp_val, istatus)
+subroutine get_grid_vertval(state_handle, ens_size, location, kind_index, interp_val, istatus)
 
 ! Calculate the expected vertical value for the gridcell.
 ! Each gridcell value is an area-weighted value of an unknown number of
@@ -2753,7 +2754,7 @@ subroutine get_grid_vertval(state_handle, ens_size, location, kind, interp_val, 
 type(ensemble_type), intent(in)  :: state_handle ! state vector
 integer,             intent(in)  :: ens_size
 type(location_type), intent(in)  :: location     ! location somewhere in a grid cell
-integer,             intent(in)  :: kind    ! T_SOISNO, H2OSOI_LIQ, H2OSOI_ICE
+integer,             intent(in)  :: kind_index   ! KIND in DART state needed for interpolation
 real(r8),            intent(out) :: interp_val(ens_size)   ! area-weighted result
 integer,             intent(out) :: istatus(ens_size)      ! error code (0 == good)
 
@@ -2775,7 +2776,7 @@ real(r8), allocatable, dimension(:, :) :: area_below
 integer :: counter, counter_above, counter_below
 integer :: imem
 real(r8) :: state(ens_size)
-character(len=32) :: varstring
+character(len=paramname_length) :: varstring
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2802,10 +2803,11 @@ if ( loc_lev < 0.0_r8 ) then
 endif
 
 ! determine the portion of interest of the state vector
-varstring = get_raw_obs_kind_name(kind)
-ivar   = findVarIndex(varstring, 'get_grid_vertval')
+ivar   = findKindIndex(kind_index, 'get_grid_vertval')
 index1 = progvar(ivar)%index1 ! in the DART state vector, start looking here
 indexN = progvar(ivar)%indexN ! in the DART state vector, stop  looking here
+
+varstring = progvar(ivar)%varname ! used in a lot of error messages
 
 ! BOMBPROOFING - check for a vertical dimension for this variable
 if (progvar(ivar)%maxlevels < 2) then
@@ -4795,29 +4797,31 @@ end function get_model_time
 
 
 
-function findVarIndex(kindstring, caller)
-character(len=*), intent(in) :: kindstring
+function findKindIndex(kind_index, caller)
+integer,          intent(in) :: kind_index
 character(len=*), intent(in) :: caller
-integer                      :: findVarIndex
+integer                      :: findKindIndex
 
 integer :: i
-
-findVarIndex = -1
+character(len=paramname_length) :: kind_string
+findKindIndex = -1
 
 ! Skip to the right variable
 VARTYPES : do i = 1,nfields
-    if ( trim(progvar(i)%kind_string) == kindstring) then
-       findVarIndex = i
+    if (progvar(i)%dart_kind == kind_index) then
+       findKindIndex = i
        exit VARTYPES
     endif
 enddo VARTYPES
 
-if (findVarIndex < 1) then
-   write(string1,*) trim(caller)//' cannot find "'//trim(kindstring)//'" in list of DART state variables.'
-   call error_handler(E_ERR,'findVarIndex',string1,source,revision,revdate)
+if (findKindIndex < 1) then
+   kind_string = get_raw_obs_kind_name( kind_index )
+   write(string1,*) trim(caller)//' cannot find "'//trim(kind_string)//'" in list of DART state variables.'
+   write(string2,*) trim(caller)//' looking for DART KIND (index) ', kind_index
+   call error_handler(E_ERR,'findKindIndex',string1,source,revision,revdate, text2=string2)
 endif
 
-end function findVarIndex
+end function findKindIndex
 
 
 
