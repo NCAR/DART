@@ -351,14 +351,17 @@
    loc_of_interest      =  90.0,  41.00, 0.35
 
 &model_mod_check_nml
-   input_file           = "dart_ics"
-   output_file          = "check_me_out"
-   advance_time_present = .FALSE.
-   verbose              = .TRUE.
-   test1thru            = 16
-   x_ind                = 720
-   kind_of_interest     = 'T_SOISNO'
-   loc_of_interest      = 287.5, 82.48, 0.35
+   verbose               = .false.
+   test1thru             = 5
+   x_ind                 = 720
+   kind_of_interest      = 'KIND_LEAF_CARBON'
+   loc_of_interest       = 287.5, 82.48, 0.35
+   interp_test_lonrange  = 0.0, 359.0 
+   interp_test_dlon      = 1.0
+   interp_test_latrange  = -89.0, 89.0
+   interp_test_dlat      = 1.0
+   interp_test_vertrange = 1.0, 2.0
+   interp_test_dvert     = 1.0
    /
 
 &state_vector_io_nml

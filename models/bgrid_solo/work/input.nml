@@ -319,6 +319,23 @@
    verbose               = .false.
    /
 
+&model_mod_check_nml
+   verbose               = .false.
+   test1thru             = 5
+   x_ind                 = 720
+   kind_of_interest      = 'KIND_SURFACE_PRESSURE'
+   loc_of_interest       = 287.5, 82.48, 0.35
+   interp_test_lonrange  = 0.0, 359.0 
+   interp_test_dlon      = 1.0
+   interp_test_latrange  = -89.0, 89.0
+   interp_test_dlat      = 1.0
+   interp_test_vertrange = -1.0, 12.0
+   interp_test_dvert     = 1.0
+   interp_test_vertcoord = 'VERTISLEVEL'
+   /
+ 
+
+
 &io_filenames_nml
    restart_in_stub = 'filter_input.'
    restart_out_stub = 'filter_output'

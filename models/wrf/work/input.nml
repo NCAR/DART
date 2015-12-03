@@ -577,3 +577,17 @@ assimilate_these_obs_types =
    latlim2 = 65.
 /
 
+&model_mod_check_nml
+   verbose               = .FALSE.
+   test1thru             = 5
+   loc_of_interest       = 320.0, 18.0, 5.0
+   x_ind                 = 100
+   kind_of_interest      = 'KIND_U_WIND_COMPONENT'
+   interp_test_lonrange  = 180.0, 359.0
+   interp_test_dlon      = 1.0
+   interp_test_latrange  = -40.0, 89.0
+   interp_test_dlat      = 1.0
+   interp_test_vertrange = 0.0,  1000.0
+   interp_test_dvert     = 100.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+  /

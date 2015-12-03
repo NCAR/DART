@@ -7228,9 +7228,9 @@ integer,            intent(in) :: copy
 character(len=1024)            :: construct_file_name_in
 
 if (copy < 10) then
-   write(construct_file_name_in, '(A, i1.1)') TRIM(stub), copy
+   write(construct_file_name_in, '(A, i1.1, A)') TRIM(stub), copy, "/x1.40962.restart.nc"
 else
-   write(construct_file_name_in, '(A, i2.2)') TRIM(stub), copy
+   write(construct_file_name_in, '(A, i2.2, A)') TRIM(stub), copy, "/x1.40962.restart.nc"
 endif
 
 end function construct_file_name_in
