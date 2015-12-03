@@ -4795,8 +4795,8 @@ end function get_model_time
 
 
 
-function findVarIndex(varstring, caller)
-character(len=*), intent(in) :: varstring
+function findVarIndex(kindstring, caller)
+character(len=*), intent(in) :: kindstring
 character(len=*), intent(in) :: caller
 integer                      :: findVarIndex
 
@@ -4806,14 +4806,14 @@ findVarIndex = -1
 
 ! Skip to the right variable
 VARTYPES : do i = 1,nfields
-    if ( trim(progvar(i)%varname) == varstring) then
+    if ( trim(progvar(i)%kind_string) == kindstring) then
        findVarIndex = i
        exit VARTYPES
     endif
 enddo VARTYPES
 
 if (findVarIndex < 1) then
-   write(string1,*) trim(caller)//' cannot find "'//trim(varstring)//'" in list of DART state variables.'
+   write(string1,*) trim(caller)//' cannot find "'//trim(kindstring)//'" in list of DART state variables.'
    call error_handler(E_ERR,'findVarIndex',string1,source,revision,revdate)
 endif
 
