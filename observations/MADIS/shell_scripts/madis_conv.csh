@@ -1,4 +1,4 @@
-#!/bin/csh
+#!/bin/csh 
 #
 # DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -16,14 +16,15 @@
 # requires an input.nml namelist file.
 
 
-# set this to true if you're planning to pass the start & end times
-# in as command line args.  set it to false if you're planning to set
-# the times by editing this file.
+# set the following variable to true if you're planning to pass the 
+# start & end times for this script in as command line args.  
+# set it to false if you're planning to set the times by editing this file.
 
 set command_line_args = false
 
 # set the type, and first and last times.  can roll over day, month and 
 # year boundaries.  hours go from 0 to 23; days 1 to 31; months 1 to 12.
+# do not add a preceeding 0 to any single digit values.
 
 if ($command_line_args == 'true') then
   if ($#argv != 9) then
@@ -56,14 +57,14 @@ else
   set end_hour    = 0
 endif
 
-# <ADDME> put more stuff here if you have user settable options
-
 # set this to true to make a single output file for each calendar day.
 # set it to false to make one output file per input file.
 set daily = true
 
-# locations for input madis netcdf files, output dart obs_seq files
-set src_base_dir = /Volumes/joshua3/romine/data/STEP2009/MADIS/
+# locations for input madis netcdf files, output dart obs_seq files.
+# assumes directory structure under this location with the naming
+# convention: .../YYYYMM/DD/${type}
+set src_base_dir = /Volumes/joshua3/romine/data/STEP2009/MADIS
 set out_dir = /users/romine/step09/MADIS/obs_sequence/conus
 
 set obs_out = obs_seq.${type}
@@ -127,15 +128,16 @@ while ( $h <= $totalhrs )
   echo starting processing for ${year} ${month} ${day} ${hour}
   #echo which is gregorian day: $gregday, $gregsec
 
+  ##################################################################
 
-  # <ADDME> your code goes here.  
-  # use $year, $month, $day, $hour, and $gregday, $gregsec as needed.
+  # $year, $month, $day, $hour, and $gregday, $gregsec are available
+  # to be used as needed.
 
   ##################################################################
 
   # make sure output dir exists.  could make it per month, or per day
   # by adding year, month, day to dirname here.
-  if (! -d $out_dir) mkdir $out_dir
+  if (! -d $out_dir) mkdir -p $out_dir
 
   # append YYYYMM/DD/type to the base directory
   set src_dir = ${src_base_dir}/${year}${month}/${day}/${type}
@@ -151,17 +153,26 @@ while ( $h <= $totalhrs )
 
   # if the input is still zipped, unzip it
   if ( -f $src_dir/${infn}.gz ) gunzip $src_dir/${infn}.gz
+  if ( ! -f $src_dir/$infn ) echo input filename $src_dir/$infn not found
 
   ln -sf $src_dir/$infn  ${type}_input.nc
 
-  # the rawinsonde converter needs two logicals for whether to output
-  # significant level data as well as the default data.  set these to
-  # T or F as you wish.  the other converters need no input.
+  # set these to T or F as you wish:
+  # the rawinsonde converter reads two logicals from standard input to
+  # control whether to ouput significant level winds and/or significant
+  # level temperatures in addition to the mandatory level info.
+  # the satwind converter reads three logicals to control whether to
+  # output IR, VIS, and/or WV band winds.
+  # the other converters read nothing from stdin.
   if ( ${type} == 'rawin') then
-    echo "T T" | ./convert_madis_${type} >&! out.convert_madis_${type}
+    set instring = 'T T'
+  else if ( ${type} == 'satwnd' ) then
+    set instring = 'T T T'
   else
-    ./convert_madis_${type} >&! out.convert_madis_${type}
+    set instring = ''
   endif
+
+  echo $instring | ./convert_madis_${type} >&! out.convert_madis_${type}
 
   if ($daily == 'true') then
     if ($hour == 23) mv $obs_out $out_dir/$outfn
