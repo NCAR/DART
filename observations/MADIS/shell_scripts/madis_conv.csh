@@ -151,17 +151,26 @@ while ( $h <= $totalhrs )
 
   # if the input is still zipped, unzip it
   if ( -f $src_dir/${infn}.gz ) gunzip $src_dir/${infn}.gz
+  if ( ! -f $src_dir/$infn ) echo input filename $src_dir/$infn not found
 
   ln -sf $src_dir/$infn  ${type}_input.nc
 
-  # the rawinsonde converter needs two logicals for whether to output
-  # significant level data as well as the default data.  set these to
-  # T or F as you wish.  the other converters need no input.
+  # set these to T or F as you wish:
+  # the rawinsonde converter reads two logicals from standard input to
+  # control whether to ouput significant level winds and/or significant
+  # level temperatures in addition to the mandatory level info.
+  # the satwind converter reads three logicals to control whether to
+  # output IR, VIS, and/or WV band winds.
+  # the other converters read nothing from stdin.
   if ( ${type} == 'rawin') then
-    echo "T T" | ./convert_madis_${type} >&! out.convert_madis_${type}
+    set instring = 'T T'
+  else if ( ${type} == 'satwnd' ) then
+    set instring = 'T T T'
   else
-    ./convert_madis_${type} >&! out.convert_madis_${type}
+    set instring = ''
   endif
+
+  echo $instring | ./convert_madis_${type} >&! out.convert_madis_${type}
 
   if ($daily == 'true') then
     if ($hour == 23) mv $obs_out $out_dir/$outfn
