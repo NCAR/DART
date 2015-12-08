@@ -276,7 +276,6 @@ type(time_type), intent(in) :: mTime
 
 type(time_type) :: Time_next
 integer :: i,j,k
-real(r8) :: temp_t
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -306,10 +305,9 @@ endif
 
 if(noise_sd > 0.0_r8) then
 ! Just modify T for now by multiplying by 1 + r(0.0, noise_sd) * dt
-   do i = 1, size(Var_dt%t, 1)
-      do j = 1, size(Var_dt%t, 2)
-         do k = 1, size(Var_dt%t, 3)
-            temp_t = Var_dt%t(i, j, k)
+   do i = lbound(Var_dt%t, 1), ubound(Var_dt%t, 1)
+      do j = lbound(Var_dt%t, 2), ubound(Var_dt%t, 2)
+         do k = lbound(Var_dt%t, 3), ubound(Var_dt%t, 3)
             Var_dt%t(i, j, k) = &
                (1.0_r8 + random_gaussian(randnoise, 0.0_r8, dble(noise_sd))) * Var_dt%t(i, j, k)
          end do
@@ -1248,8 +1246,6 @@ end function get_val
 
 recursive function get_val_pressure(state_handle, ens_size, lon_index, lat_index, pressure, itype, istatus) result(val_pressure)
 
-real(r8) :: val_pressure(ens_size)
-
 type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: ens_size
 real(r8),            intent(in) :: pressure
@@ -1257,6 +1253,8 @@ integer,             intent(in) :: lon_index
 integer,             intent(in) :: lat_index
 integer,             intent(in) :: itype
 integer,            intent(out) :: istatus(:)
+
+real(r8) :: val_pressure(ens_size)
 
 type(location_type) :: ps_location
 real(r8) :: ps(1, 1,ens_size), pfull(1, 1, Dynam%Vgrid%nlev), rfrac(ens_size)
