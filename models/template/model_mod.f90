@@ -13,15 +13,19 @@ module model_mod
 ! interface and look for NULL INTERFACE). 
 
 ! Modules that are absolutely required for use are listed
-use        types_mod, only : r8, MISSING_R8
-use time_manager_mod, only : time_type, set_time
-use     location_mod, only : location_type,      get_close_maxdist_init, &
-                             get_close_obs_init, get_close_obs, set_location, &
-                             set_location_missing
+use        types_mod, only : r8, i8, MISSING_R8
+use time_manager_mod, only : time_type, set_time, set_time_missing
+use     location_mod, only : location_type, get_close_type, get_close_maxdist_init, &
+                             get_close_obs_init, loc_get_close_obs => get_close_obs, &
+                             set_location, set_location_missing
 use    utilities_mod, only : register_module, error_handler, nc_check, &
                              E_ERR, E_MSG
                              ! nmlfileunit, do_output, do_nml_file, do_nml_term,  &
                              ! find_namelist_in_file, check_namelist_read
+
+use ensemble_manager_mod,  only : ensemble_type
+
+use dart_time_io_mod, only : write_model_time
 
 implicit none
 private
@@ -41,10 +45,15 @@ public :: get_model_size,         &
           nc_write_model_atts,    &
           nc_write_model_vars,    &
           pert_model_state,       &
+          pert_model_copies,      &
           get_close_maxdist_init, &
           get_close_obs_init,     &
           get_close_obs,          &
-          ens_mean_for_model
+          query_vert_localization_coord, &
+          vert_convert, &
+          construct_file_name_in, &
+          read_model_time, &
+          write_model_time
 
 ! not required by DART but for larger models can be useful for
 ! utility programs that are tightly tied to the other parts of
@@ -201,37 +210,41 @@ end subroutine init_time
 
 
 
-subroutine model_interpolate(x, location, itype, obs_val, istatus)
+
+subroutine model_interpolate(state_handle, ens_size, location, obs_type, expected_obs, istatus)
 !------------------------------------------------------------------
 !
-! Given a state vector, a location, and a model state variable type,
-! interpolates the state variable field to that location and returns
-! the value in obs_val. The istatus variable should be returned as
+! Given a state handle, a location, and a model state variable type,
+! interpolates the state variable fields to that location and returns
+! the values in expected_obs. The istatus variables should be returned as
 ! 0 unless there is some problem in computing the interpolation in
 ! which case an alternate value should be returned. The itype variable
-! is a model specific integer that specifies the type of field (for
+! is a model specific integer that specifies the kind of field (for
 ! instance temperature, zonal wind component, etc.). In low order
-! models that have no notion of types of variables, this argument can
+! models that have no notion of types of variables this argument can
 ! be ignored. For applications in which only perfect model experiments
 ! with identity observations (i.e. only the value of a particular
 ! state variable is observed), this can be a NULL INTERFACE.
 
-real(r8),            intent(in) :: x(:)
+
+
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: ens_size
 type(location_type), intent(in) :: location
-integer,             intent(in) :: itype
-real(r8),           intent(out) :: obs_val
-integer,            intent(out) :: istatus
+integer,             intent(in) :: obs_type
+real(r8),           intent(out) :: expected_obs(ens_size) !< array of interpolated values
+integer,            intent(out) :: istatus(ens_size)
 
 ! This should be the result of the interpolation of a
 ! given kind (itype) of variable at the given location.
-obs_val = MISSING_R8
+expected_obs(:) = MISSING_R8
 
 ! The return code for successful return should be 0. 
 ! Any positive number is an error.
 ! Negative values are reserved for use by the DART framework.
 ! Using distinct positive values for different types of errors can be
 ! useful in diagnosing problems.
-istatus = 1
+istatus(:) = 1
 
 end subroutine model_interpolate
 
@@ -252,7 +265,7 @@ end function get_model_time_step
 
 
 
-subroutine get_state_meta_data(index_in, location, var_type)
+subroutine get_state_meta_data(state_handle, index_in, location, var_type)
 !------------------------------------------------------------------
 !
 ! Given an integer index into the state vector structure, returns the
@@ -262,8 +275,9 @@ subroutine get_state_meta_data(index_in, location, var_type)
 ! required for all filter applications as it is required for computing
 ! the distance between observations and state variables.
 
-integer,             intent(in)            :: index_in
-type(location_type), intent(out)           :: location
+type(ensemble_type), intent(in)  :: state_handle
+integer(i8),         intent(in)  :: index_in
+type(location_type), intent(out) :: location
 integer,             intent(out), optional :: var_type
 
 ! these should be set to the actual location and obs kind
@@ -593,18 +607,105 @@ interf_provided = .false.
 end subroutine pert_model_state
 
 
-
-
-subroutine ens_mean_for_model(ens_mean)
 !------------------------------------------------------------------
-! Not used in low-order models
 
-real(r8), intent(in) :: ens_mean(:)
+subroutine pert_model_copies(state_handle, pert_amp, interf_provided)
 
-end subroutine ens_mean_for_model
+ type(ensemble_type), intent(inout) :: state_handle
+ real(r8),  intent(in) :: pert_amp
+ logical,  intent(out) :: interf_provided
+
+! Perturbs a model state copies for generating initial ensembles.
+! The perturbed state is returned in pert_state.
+! A model may choose to provide a NULL INTERFACE by returning
+! .false. for the interf_provided argument. This indicates to
+! the filter that if it needs to generate perturbed states, it
+! may do so by adding a perturbation to each model state
+! variable independently. The interf_provided argument
+! should be returned as .true. if the model wants to do its own
+! perturbing of states.
+
+interf_provided = .false.
+return
+
+end subroutine pert_model_copies
+
+!--------------------------------------------------------------------
+
+!> Pass through to the code in the locations module
+
+subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, &
+                         obs_kind, num_close, close_ind, dist, state_handle)
+
+type(ensemble_type),         intent(in)     :: state_handle
+type(get_close_type),        intent(in)     :: gc
+type(location_type),         intent(inout)  :: base_obs_loc, obs_loc(:)
+integer,                     intent(in)     :: base_obs_kind, obs_kind(:)
+integer,                     intent(out)    :: num_close, close_ind(:)
+real(r8),                    intent(out)    :: dist(:)
 
 
-!==================================================================
+call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
+                          num_close, close_ind, dist)
+
+end subroutine get_close_obs
+
+
+
+!--------------------------------------------------------------------
+!> pass the vertical localization coordinate to assim_tools_mod
+function query_vert_localization_coord()
+
+integer :: query_vert_localization_coord
+
+query_vert_localization_coord = 0 ! any value
+
+end function query_vert_localization_coord
+
+!--------------------------------------------------------------------
+!> This is used in the filter_assim. The vertical conversion is done using the
+!> mean state.
+!> Calling this is a waste of time
+subroutine vert_convert(state_handle, location, obs_kind, istatus)
+
+type(ensemble_type), intent(in)  :: state_handle
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: obs_kind
+integer,             intent(out) :: istatus
+
+istatus = 0
+
+end subroutine vert_convert
+
+!--------------------------------------------------------------------
+!> construct restart file name for reading
+function construct_file_name_in(stub, domain, copy)
+
+character(len=512), intent(in) :: stub
+integer,            intent(in) :: domain
+integer,            intent(in) :: copy
+character(len=1024)            :: construct_file_name_in
+
+write(construct_file_name_in, '(A, i4.4, A)') trim(stub), copy, ".nc"
+
+end function construct_file_name_in
+
+!--------------------------------------------------------------------
+!> read the time from the input file
+!> Stolen from pop model_mod.f90 restart_to_sv
+function read_model_time(filename)
+
+character(len=1024) :: filename
+type(time_type) :: read_model_time
+
+read_model_time = set_time_missing()
+
+
+end function read_model_time
+
+
+
+!=================================================================
 ! PUBLIC interfaces that aren't required by the DART code but are
 ! generally useful for other related utility programs.
 ! (less necessary for small models; generally used for larger models
