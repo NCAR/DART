@@ -4742,7 +4742,7 @@ do id=1,num_domains
                          wrf%dom(id)%var_size(2,ind)/)
 
          allocate ( temp2d(dimsizes_2D(1),dimsizes_2D(2)) )
-         temp2d  = reshape(statevec(i:j), (/ dimsizes_3D(1),dimsizes_3D(2) /) )
+         temp2d  = reshape(statevec(i:j), (/ dimsizes_2D(1),dimsizes_2D(2) /) )
          call nc_check(nf90_put_var( ncFileID, VarID, temp2d, &
                                   start=(/ 1, 1, copyindex, timeindex /) ), &
                     'nc_write_model_vars','put_var '//trim(varname))
