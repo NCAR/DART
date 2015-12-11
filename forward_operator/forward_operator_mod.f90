@@ -165,7 +165,7 @@ ens_size = ens_handle%num_copies - ens_handle%num_extras
 
 if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued forward op
 
-   my_copy_indices(:) = ens_handle%my_copies(:) ! var-complete forward operators
+   my_copy_indices(:) = ens_handle%my_copies(1:num_copies_to_calc) ! var-complete forward operators
 
    ! Loop through all observations in the set
    ALL_OBSERVATIONS: do j = 1, obs_fwd_op_ens_handle%num_vars
