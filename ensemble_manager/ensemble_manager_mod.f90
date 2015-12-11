@@ -992,11 +992,11 @@ if (ens_handle%transpose_type == 1) then ! distibuted (all tasks have all copies
 elseif (ens_handle%transpose_type == 2) then ! var complete (only some tasks have data)
    copies_in_window = 0
    do i = 1, ens_handle%my_num_copies
-      if (ens_handle%my_copies(i) <= ens_size) then ! mean copy on each process
+      if (ens_handle%my_copies(i) <= ens_size) then
          copies_in_window = copies_in_window + 1
       endif
    enddo
-elseif(ens_handle%transpose_type == 3)then
+elseif(ens_handle%transpose_type == 3)then ! mean copy on each process
    copies_in_window = 1
 endif
 
