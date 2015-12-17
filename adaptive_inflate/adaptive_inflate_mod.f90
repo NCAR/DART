@@ -247,9 +247,11 @@ if(inf_flavor >= 2) then
       ! if inflation array is already on PE0, just figure out the
       ! largest value in the array and we're done.
       if (owner == 0) then
-         call prepare_to_read_from_vars(ens_handle)
-         minmax_mean(1) = minval(ens_handle%vars(:, owners_index))
-         minmax_mean(2) = maxval(ens_handle%vars(:, owners_index))
+         if (ens_handle%my_pe == 0) then
+            call prepare_to_read_from_vars(ens_handle)
+            minmax_mean(1) = minval(ens_handle%vars(:, owners_index))
+            minmax_mean(2) = maxval(ens_handle%vars(:, owners_index))
+         endif
       else
          ! someone else has the inf array.  have the owner send the min/max
          ! values to PE0.  after this point only PE0 has the right value
@@ -269,9 +271,11 @@ if(inf_flavor >= 2) then
       ! if inflation sd array is already on PE0, just figure out the
       ! largest value in the array and we're done.
       if (owner == 0) then
-         call prepare_to_read_from_vars(ens_handle)
-         minmax_sd(1) = minval(ens_handle%vars(:, owners_index))
-         minmax_sd(2) = maxval(ens_handle%vars(:, owners_index))
+         if (ens_handle%my_pe == 0) then
+            call prepare_to_read_from_vars(ens_handle)
+            minmax_sd(1) = minval(ens_handle%vars(:, owners_index))
+            minmax_sd(2) = maxval(ens_handle%vars(:, owners_index))
+         endif
       else
          ! someone else has the sd array.  have the owner send the min/max
          ! values to PE0.  after this point only PE0 has the right value
@@ -366,20 +370,26 @@ call error_handler(E_MSG, trim(label) // ' inflation:', msgstring, source, revis
 ! if the inflation flavor is 2 there are 2 values: the min and max from the 
 ! state-vector-sized array.  for flavors 1 and 3 there is only a single value.
 ! also check for bad values (missing_r8s should not be found in the inflation files).
+! Only checking for missing_r8 for state space inflation.
 if (inf_flavor > 0) then
-   ! if my task owns the mean/sd, test for any missing_r8 and error out if found
-   call get_copy_owner_index(ss_inflate_index, owner, owners_index)
-   if (owner == ens_handle%my_pe) then
-      if (any(ens_handle%vars(:, owners_index) == MISSING_R8)) then
-         call error_handler(E_ERR, 'adaptive_inflate_init', 'illegal missing values found in inflation mean file', &
-            source, revision, revdate)
+   if (mean_from_restart .and. inf_flavor > 1) then
+      ! if my task owns the mean/sd, test for any missing_r8 and error out if found
+      call get_copy_owner_index(ss_inflate_index, owner, owners_index)
+      if (owner == ens_handle%my_pe) then
+         if (any(ens_handle%vars(:, owners_index) == MISSING_R8)) then
+            call error_handler(E_ERR, 'adaptive_inflate_init', 'illegal missing values found in inflation mean file', &
+               source, revision, revdate)
+         endif
       endif
    endif
-   call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
-   if (owner == ens_handle%my_pe)  then
-      if (any(ens_handle%vars(:, owners_index) == MISSING_R8)) then
-         call error_handler(E_ERR, 'adaptive_inflate_init', 'illegal missing values found in inflation sd file', &
-            source, revision, revdate)
+
+   if (sd_from_restart .and. inf_flavor > 1) then
+      call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
+      if (owner == ens_handle%my_pe)  then
+         if (any(ens_handle%vars(:, owners_index) == MISSING_R8)) then
+            call error_handler(E_ERR, 'adaptive_inflate_init', 'illegal missing values found in inflation sd file', &
+               source, revision, revdate)
+         endif
       endif
    endif
    ! task 0 knows the min and maxes and needs to print them for the log
@@ -436,16 +446,18 @@ if(inflate_handle%output_restart) then
    ! Flavor 1 is observation space, write its restart directly
    else if(do_obs_inflate(inflate_handle)) then
       ! Open the restart file
-      restart_unit = open_file(inflate_handle%out_file_name, &
+      if (my_task_id()==0) then
+         restart_unit = open_file(inflate_handle%out_file_name, &
                                form = 'formatted', action='write')
-      write(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
-      if (io /= 0) then
-         write(msgstring, *) 'unable to write into inflation restart file ', &
+         write(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
+         if (io /= 0) then
+            write(msgstring, *) 'unable to write into inflation restart file ', &
                               trim(inflate_handle%out_file_name)
-         call error_handler(E_ERR, 'adaptive_inflate_end', &
+            call error_handler(E_ERR, 'adaptive_inflate_end', &
             msgstring, source, revision, revdate)
+         endif
+         call close_file(restart_unit)
       endif
-      call close_file(restart_unit)
    endif
 endif
 
