@@ -11,4 +11,35 @@ into the fully-coupled CESM whole-system model.  It makes use
 of the existing POP (ocean), CLM (land), and CAM (atmosphere) 
 model_mod codes.
 
+Mon Nov  9 13:44:50 MST 2015
+
+We have adopted some terminology to help us keep things straight.
+1) CESM already uses the term 'fully-coupled', so we use that in
+   reference to CESM components only.
+2) We use the term 'single-component, fully-coupled' to denote the
+   situation in which the assimilations are performed separately for
+   any/all active model components. Atmospheric obs directly impact 
+   the atmosphere, ocean obs directly impact the ocean, land obs 
+   directly impact the land - any impact from the atmosphere to the ocean
+   happens through interaction with the CESM coupler.
+3) 'cross-component, fully-coupled' is used to specify the case
+   when observations of one component can directly impact any/all of
+   the other components without going through the coupler.
+
+Prior to 9 Nov 2015, models/CESM  had programs that were an attempt to
+achieve the cross-component, fully-coupled data assimilation. Since
+this is being implemented with the Remote Memory Access (RMA) strategy
+that is not consistent with the current SVN trunk, the files that allow
+that usage pattern are being removed from the SVN trunk.
+
+Only the single-component, fully-coupled assimilation pattern will 
+be supported in the SVN trunk.
+
+The models/CESM/work directory has nothing of use in it, since there 
+are no programs to interact with a cross-component DART state vector
+(a DART state that consists of atmosphere and/or ocean and/or land).
+
+The models/CESM/shell_scripts directory DOES have the scripts that 
+illustrate how to set up and run a single-component, fully-coupled 
+assimilation.
 

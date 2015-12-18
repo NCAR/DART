@@ -53,22 +53,26 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              open_file, close_file, do_nml_file, do_nml_term,  &
                              nmlfileunit
 
-use     obs_kind_mod, only : KIND_SOIL_TEMPERATURE,   &
-                             KIND_SOIL_MOISTURE,      &
-                             KIND_LIQUID_WATER,       &
-                             KIND_ICE,                &
-                             KIND_SNOWCOVER_FRAC,     &
-                             KIND_SNOW_THICKNESS,     &
-                             KIND_LEAF_CARBON,        &
-                             KIND_WATER_TABLE_DEPTH,  &
-                             KIND_GEOPOTENTIAL_HEIGHT,&
-                             KIND_LEAF_AREA_INDEX,    &
+use     obs_kind_mod, only : KIND_SOIL_TEMPERATURE,       &
+                             KIND_SOIL_MOISTURE,          &
+                             KIND_LIQUID_WATER,           &
+                             KIND_ICE,                    &
+                             KIND_SNOWCOVER_FRAC,         &
+                             KIND_SNOW_THICKNESS,         &
+                             KIND_LEAF_CARBON,            &
+                             KIND_LEAF_AREA_INDEX,        &
+                             KIND_WATER_TABLE_DEPTH,      &
+                             KIND_GEOPOTENTIAL_HEIGHT,    &
                              KIND_VEGETATION_TEMPERATURE, &
-                             KIND_SNOWCOVER_FRAC, &
-                             KIND_LEAF_CARBON, &
-                             KIND_WATER_TABLE_DEPTH, &
-                             paramname_length,        &
-                             get_raw_obs_kind_index, &
+                             KIND_FPAR,                   &
+                             KIND_FPAR_SUNLIT_DIRECT,     &
+                             KIND_FPAR_SUNLIT_DIFFUSE,    &
+                             KIND_FPAR_SHADED_DIRECT,     &
+                             KIND_FPAR_SHADED_DIFFUSE,    &
+                             KIND_FPAR_SHADED_DIRECT,     &
+                             KIND_FPAR_SHADED_DIFFUSE,    &
+                             paramname_length,            &
+                             get_raw_obs_kind_index,      &
                              get_raw_obs_kind_name
 
  use ensemble_manager_mod, only : ensemble_type, &
@@ -236,7 +240,6 @@ end type progvartype
 
 type(progvartype), dimension(max_state_variables) :: progvar
 
-
 !----------------------------------------------------------------------
 ! how many and which columns are in each gridcell
 !----------------------------------------------------------------------
@@ -291,17 +294,18 @@ logical :: unstructured = .false.
 ! scan along longitudes, then
 ! move to next latitude.
 
-integer :: Ngridcell = -1 ! Number of gridcells containing land
-integer :: Nlandunit = -1 ! Number of land units
-integer :: Ncolumn   = -1 ! Number of columns
-integer :: Npft      = -1 ! Number of plant functional types
-integer :: Nlevlak   = -1 ! Number of
-integer :: Nlevsno   = -1 ! Number of snow levels
-integer :: Nlevsno1  = -1 ! Number of snow level ... interfaces?
-integer :: Nlevtot   = -1 ! Number of total levels
-integer :: Nnumrad   = -1 ! Number of
-integer :: Nrtmlon   = -1 ! Number of river transport model longitudes
-integer :: Nrtmlat   = -1 ! Number of river transport model latitudes
+integer :: ngridcell = -1 ! Number of gridcells containing land
+integer :: nlandunit = -1 ! Number of land units
+integer :: ncolumn   = -1 ! Number of columns
+integer :: npft      = -1 ! Number of plant functional types
+integer :: nlevlak   = -1 ! Number of
+integer :: nlevsno   = -1 ! Number of snow levels
+integer :: nlevsno1  = -1 ! Number of snow level ... interfaces?
+integer :: nlevtot   = -1 ! Number of total levels
+integer :: nnumrad   = -1 ! Number of
+integer :: nrtmlon   = -1 ! Number of river transport model longitudes
+integer :: nrtmlat   = -1 ! Number of river transport model latitudes
+integer :: nlevcan   = -1 ! Number of canopy layers (*XY*)
 
 integer,  allocatable, dimension(:)  :: grid1d_ixy, grid1d_jxy ! 2D lon/lat index of corresponding gridcell
 integer,  allocatable, dimension(:)  :: land1d_ixy, land1d_jxy ! 2D lon/lat index of corresponding gridcell
@@ -557,13 +561,13 @@ ncid = 0; ! signal that netcdf file is closed
 
 call get_sparse_dims(ncid, clm_restart_filename, 'open')
 
-allocate(grid1d_ixy(Ngridcell), grid1d_jxy(Ngridcell))
-allocate(land1d_ixy(Nlandunit), land1d_jxy(Nlandunit), land1d_wtxy(Nlandunit))
-allocate(cols1d_ixy(Ncolumn),   cols1d_jxy(Ncolumn))
-allocate(cols1d_wtxy(Ncolumn),  cols1d_ityplun(Ncolumn))
-allocate(pfts1d_ixy(Npft),      pfts1d_jxy(Npft)     , pfts1d_wtxy(Npft))
-allocate(levtot(Nlevtot))
-if (Nlevsno > 0) allocate(zsno(Nlevsno,Ncolumn))
+allocate(grid1d_ixy(ngridcell), grid1d_jxy(ngridcell))
+allocate(land1d_ixy(nlandunit), land1d_jxy(nlandunit), land1d_wtxy(nlandunit))
+allocate(cols1d_ixy(ncolumn),   cols1d_jxy(ncolumn))
+allocate(cols1d_wtxy(ncolumn),  cols1d_ityplun(ncolumn))
+allocate(pfts1d_ixy(npft),      pfts1d_jxy(npft)     , pfts1d_wtxy(npft))
+allocate(levtot(nlevtot))
+if (nlevsno > 0) allocate(zsno(nlevsno,ncolumn))
 
 call get_sparse_geog(ncid, clm_restart_filename, 'close')
 
@@ -776,6 +780,9 @@ do ivar=1, nfields
    ! 1D variables are usually from the restart file
    ! FIXME this same logic is used for 2D variables from the 'vector' file which
    ! has a singleton dimension of 'time'
+   ! What if I check on the rank of the variable instead of the number of dimensions ...
+   ! If I require 'time' to be the unlimited dimension, it will always be 'last',
+   ! so the first N dimensions and the first N ranks are identical ...
 
    if (progvar(ivar)%numdims == 1) then
 
@@ -786,10 +793,10 @@ do ivar=1, nfields
       endif
 
       SELECT CASE ( trim(progvar(ivar)%dimnames(1)) )
-         CASE ("gridcell")
+         CASE ("gridcell","lndgrid")
             do i = 1, progvar(ivar)%dimlens(1)
                xi             = grid1d_ixy(i)
-               xj             = grid1d_jxy(i) ! always unity if unstructured
+               xj             = grid1d_jxy(i) ! nnnnn_jxy(:) always 1 if unstructured
                if (unstructured) then
                   lonixy(  indx) = xi
                   latjxy(  indx) = xi
@@ -805,7 +812,7 @@ do ivar=1, nfields
          CASE ("landunit")
             do i = 1, progvar(ivar)%dimlens(1)
                xi             = land1d_ixy(i)
-               xj             = land1d_jxy(i) ! always unity if unstructured
+               xj             = land1d_jxy(i) ! nnnnn_jxy(:) always 1 if unstructured
                if (unstructured) then
                   lonixy(  indx) = xi
                   latjxy(  indx) = xi
@@ -821,7 +828,7 @@ do ivar=1, nfields
          CASE ("column")
             do i = 1, progvar(ivar)%dimlens(1)
                xi             = cols1d_ixy(i)
-               xj             = cols1d_jxy(i) ! always unity if unstructured
+               xj             = cols1d_jxy(i) ! nnnnn_jxy(:) always 1 if unstructured
                if (unstructured) then
                   lonixy(  indx) = xi
                   latjxy(  indx) = xi
@@ -837,7 +844,7 @@ do ivar=1, nfields
          CASE ("pft")
             do i = 1, progvar(ivar)%dimlens(1)
                xi             = pfts1d_ixy(i)
-               xj             = pfts1d_jxy(i) ! always unity if unstructured
+               xj             = pfts1d_jxy(i) ! nnnnn_jxy(:) always 1 if unstructured
                if (unstructured) then
                   lonixy(  indx) = xi
                   latjxy(  indx) = xi
@@ -878,7 +885,7 @@ do ivar=1, nfields
             if ((debug > 8) .and. do_output()) write(*,*)'length grid1d_ixy ',size(grid1d_ixy)
             do j = 1, progvar(ivar)%dimlens(2)
                xi = grid1d_ixy(j)
-               xj = grid1d_jxy(j) ! always unity if unstructured
+               xj = grid1d_jxy(j) ! nnnnn_jxy(:) always 1 if unstructured
                do i = 1, progvar(ivar)%dimlens(1)
                   if (unstructured) then
                      lonixy(  indx) = xi
@@ -897,7 +904,7 @@ do ivar=1, nfields
             if ((debug > 8) .and. do_output()) write(*,*)'length land1d_ixy ',size(land1d_ixy)
             do j = 1, progvar(ivar)%dimlens(2)
                xi = land1d_ixy(j)
-               xj = land1d_jxy(j) ! always unity if unstructured
+               xj = land1d_jxy(j) ! nnnnn_jxy(:) always 1 if unstructured
                do i = 1, progvar(ivar)%dimlens(1)
                   if (unstructured) then
                      lonixy(  indx) = xi
@@ -927,7 +934,7 @@ do ivar=1, nfields
                call fill_levels(progvar(ivar)%dimnames(1),j,progvar(ivar)%dimlens(1),levtot)
 
                xi = cols1d_ixy(j)
-               xj = cols1d_jxy(j) ! always unity if unstructured
+               xj = cols1d_jxy(j) ! nnnnn_jxy(:) always 1 if unstructured
                VERTICAL :  do i = 1, progvar(ivar)%dimlens(1)
                   levels(  indx) = levtot(i)
                   if (unstructured) then
@@ -947,7 +954,7 @@ do ivar=1, nfields
             if ((debug > 8) .and. do_output()) write(*,*)'length pfts1d_ixy ',size(pfts1d_ixy)
             do j = 1, progvar(ivar)%dimlens(2)
                xi = pfts1d_ixy(j)
-               xj = pfts1d_jxy(j) ! always unity if unstructured
+               xj = pfts1d_jxy(j) ! nnnnn_jxy(:) always 1 if unstructured
                do i = 1, progvar(ivar)%dimlens(1)
                   if (unstructured) then
                      lonixy(  indx) = xi
@@ -965,12 +972,13 @@ do ivar=1, nfields
          CASE ("time")
 
             ! The vector history files can have things 'pft,time' or 'column,time'
+            ! The single-column history files can have things 'lndgrid,time', 'pft,time' or 'column,time'
 
             SELECT CASE ( trim(progvar(ivar)%dimnames(1)) )
                CASE ("pft")
                   do i = 1, progvar(ivar)%dimlens(1)
                      xi             = pfts1d_ixy(i)
-                     xj             = pfts1d_jxy(i) ! always unity if unstructured
+                     xj             = pfts1d_jxy(i) ! nnnnn_jxy(:) always 1 if unstructured
                      if (unstructured) then
                         lonixy(  indx) = xi
                         latjxy(  indx) = xi
@@ -986,7 +994,7 @@ do ivar=1, nfields
                CASE ("column")
                   do i = 1, progvar(ivar)%dimlens(1)
                      xi             = cols1d_ixy(i)
-                     xj             = cols1d_jxy(i) ! always unity if unstructured
+                     xj             = cols1d_jxy(i) ! nnnnn_jxy(:) always 1 if unstructured
                      if (unstructured) then
                         lonixy(  indx) = xi
                         latjxy(  indx) = xi
@@ -995,6 +1003,22 @@ do ivar=1, nfields
                         lonixy(  indx) = xi
                         latjxy(  indx) = xj
                         landarea(indx) = AREA2D(xi,xj) * LANDFRAC2D(xi,xj) * cols1d_wtxy(i)
+                     endif
+                     indx = indx + 1
+                  enddo
+
+               CASE ("lndgrid")
+                  do i = 1, progvar(ivar)%dimlens(1)
+                     xi             = cols1d_ixy(i)
+                     xj             = cols1d_jxy(i) ! nnnnn_jxy(:) always 1 if unstructured
+                     if (unstructured) then
+                        lonixy(  indx) = xi
+                        latjxy(  indx) = xi
+                        landarea(indx) = AREA1D(xi) * LANDFRAC1D(xi)
+                     else
+                        lonixy(  indx) = xi
+                        latjxy(  indx) = xj
+                        landarea(indx) = AREA2D(xi,xj) * LANDFRAC2D(xi,xj)
                      endif
                      indx = indx + 1
                   enddo
@@ -1212,6 +1236,7 @@ integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
 ! for the dimensions and coordinate variables
 integer ::     nlonDimID
 integer ::     nlatDimID
+integer ::  lndgridDimID
 integer :: gridcellDimID
 integer :: landunitDimID
 integer ::   columnDimID
@@ -1222,6 +1247,7 @@ integer ::   levsnoDimID
 integer ::  levsno1DimID
 integer ::   levtotDimID
 integer ::   numradDimID
+integer ::   levcanDimID
 
 ! for the prognostic variables
 integer :: ivar, VarID
@@ -1361,7 +1387,11 @@ else
    call nc_check(nf90_def_dim(ncid=ncFileID, name='lon', len = nlon, &
              dimid =     nlonDimID),'nc_write_model_atts', 'lon def_dim '//trim(filename))
    call nc_check(nf90_def_dim(ncid=ncFileID, name='lat', len = nlat, &
-             dimid =     NlatDimID),'nc_write_model_atts', 'lat def_dim '//trim(filename))
+             dimid =     nlatDimID),'nc_write_model_atts', 'lat def_dim '//trim(filename))
+   if (unstructured) then
+      call nc_check(nf90_def_dim(ncid=ncFileID, name='lndgrid', len = ngridcell, &
+             dimid = lndgridDimID),'nc_write_model_atts', 'lndgrid def_dim '//trim(filename))
+   endif
 
    call nc_check(nf90_def_dim(ncid=ncFileID, name='gridcell', len = ngridcell, &
              dimid = gridcellDimID),'nc_write_model_atts', 'gridcell def_dim '//trim(filename))
@@ -1383,6 +1413,9 @@ else
              dimid =   levtotDimID),'nc_write_model_atts', 'levtot def_dim '//trim(filename))
    call nc_check(nf90_def_dim(ncid=ncFileID, name='numrad', len = nnumrad, &
              dimid =   numradDimID),'nc_write_model_atts', 'numrad def_dim '//trim(filename))
+   if (nlevcan > 0) &
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='levcan', len = nlevcan, &
+             dimid =   levcanDimID),'nc_write_model_atts', 'levcan def_dim'//trim(filename))
 
    !----------------------------------------------------------------------------
    ! Create the (empty) Coordinate Variables and the Attributes
@@ -1390,7 +1423,7 @@ else
 
    ! Grid Longitudes
    call nc_check(nf90_def_var(ncFileID,name='lon', xtype=nf90_real, &
-                 dimids=(/ NlonDimID /), varid=VarID),&
+                 dimids=(/ nlonDimID /), varid=VarID),&
                  'nc_write_model_atts', 'lon def_var '//trim(filename))
    call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'coordinate longitude'), &
                  'nc_write_model_atts', 'lon long_name '//trim(filename))
@@ -1428,11 +1461,11 @@ else
    ! grid cell areas
    if (unstructured) then
       call nc_check(nf90_def_var(ncFileID,name='area', xtype=nf90_real, &
-                 dimids=(/ NlonDimID /), varid=VarID),&
+                 dimids=(/ nlonDimID /), varid=VarID),&
                  'nc_write_model_atts', 'area def_var '//trim(filename))
    else
       call nc_check(nf90_def_var(ncFileID,name='area', xtype=nf90_real, &
-                 dimids=(/ NlonDimID,nlatDimID /), varid=VarID),&
+                 dimids=(/ nlonDimID,nlatDimID /), varid=VarID),&
                  'nc_write_model_atts', 'area def_var '//trim(filename))
    endif
    call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'grid cell areas'), &
@@ -1443,11 +1476,11 @@ else
    ! grid cell land fractions
    if (unstructured) then
       call nc_check(nf90_def_var(ncFileID,name='landfrac', xtype=nf90_real, &
-                 dimids=(/ NlonDimID /), varid=VarID),&
+                 dimids=(/ nlonDimID /), varid=VarID),&
                  'nc_write_model_atts', 'landfrac def_var '//trim(filename))
    else
       call nc_check(nf90_def_var(ncFileID,name='landfrac', xtype=nf90_real, &
-                 dimids=(/ NlonDimID,nlatDimID /), varid=VarID),&
+                 dimids=(/ nlonDimID,nlatDimID /), varid=VarID),&
                  'nc_write_model_atts', 'landfrac def_var '//trim(filename))
    endif
    call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'land fraction'), &
@@ -2106,7 +2139,7 @@ state_vector = MISSING_R8
 ! number of snow layers
 ! time of restart file
 
-allocate(snlsno(Ncolumn))
+allocate(snlsno(ncolumn))
 call nc_check(nf90_open(trim(clm_restart_filename), NF90_NOWRITE, ncid), &
               'clm_to_dart_state_vector', 'open SNLSNO'//clm_restart_filename)
 call nc_check(nf90_inq_varid(ncid,'SNLSNO', VarID), &
@@ -2159,7 +2192,7 @@ do ivar=1, nfields
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
             'clm_to_dart_state_vector', string1)
 
-      ! Time dimension will be unity in progvar, but not necessarily
+      ! Time dimension will be 1 in progvar, but not necessarily
       ! in origin file. We only want a single matching time.
       ! static_init_model() only reserves space for a single time.
       
@@ -2215,7 +2248,7 @@ do ivar=1, nfields
 
          do j = 1, nj  ! loop over columns
             numsnowlevels = abs(snlsno(j))
-            do i = 1, Nlevsno - numsnowlevels  ! loop over layers
+            do i = 1, nlevsno - numsnowlevels  ! loop over layers
                data_2d_array(i,j) = MISSING_R8
             enddo
          enddo
@@ -2225,7 +2258,7 @@ do ivar=1, nfields
 
          do j = 1, nj  ! loop over columns
             numsnowlevels = abs(snlsno(j))
-            do i = 1, Nlevsno - numsnowlevels  ! loop over layers
+            do i = 1, nlevsno - numsnowlevels  ! loop over layers
                data_2d_array(i,j) = MISSING_R8
             enddo
          enddo
@@ -2529,6 +2562,7 @@ integer  :: imem
 integer  :: istatus_2(ens_size)
 real(r8) :: interp_val_2(ens_size)
 character(len=32) :: kind_string
+character(len=paramname_length) :: kind_string
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -3446,22 +3480,22 @@ endif
 
 call nc_check(nf90_inq_dimid(ncid, 'gridcell', dimid), &
             'get_sparse_dims','inq_dimid gridcell '//trim(fname))
-call nc_check(nf90_inquire_dimension(ncid, dimid, len=Ngridcell), &
+call nc_check(nf90_inquire_dimension(ncid, dimid, len=ngridcell), &
             'get_sparse_dims','inquire_dimension gridcell '//trim(fname))
 
 call nc_check(nf90_inq_dimid(ncid, 'landunit', dimid), &
             'get_sparse_dims','inq_dimid landunit '//trim(fname))
-call nc_check(nf90_inquire_dimension(ncid, dimid, len=Nlandunit), &
+call nc_check(nf90_inquire_dimension(ncid, dimid, len=nlandunit), &
             'get_sparse_dims','inquire_dimension landunit '//trim(fname))
 
 call nc_check(nf90_inq_dimid(ncid, 'column', dimid), &
             'get_sparse_dims','inq_dimid column '//trim(fname))
-call nc_check(nf90_inquire_dimension(ncid, dimid, len=Ncolumn), &
+call nc_check(nf90_inquire_dimension(ncid, dimid, len=ncolumn), &
             'get_sparse_dims','inquire_dimension column '//trim(fname))
 
 call nc_check(nf90_inq_dimid(ncid, 'pft', dimid), &
             'get_sparse_dims','inq_dimid pft '//trim(fname))
-call nc_check(nf90_inquire_dimension(ncid, dimid, len=Npft), &
+call nc_check(nf90_inquire_dimension(ncid, dimid, len=npft), &
             'get_sparse_dims','inquire_dimension pft '//trim(fname))
 
 call nc_check(nf90_inq_dimid(ncid, 'levgrnd', dimid), &
@@ -3477,18 +3511,26 @@ endif
 
 call nc_check(nf90_inq_dimid(ncid, 'levlak', dimid), &
             'get_sparse_dims','inq_dimid levlak '//trim(fname))
-call nc_check(nf90_inquire_dimension(ncid, dimid, len=Nlevlak), &
+call nc_check(nf90_inquire_dimension(ncid, dimid, len=nlevlak), &
             'get_sparse_dims','inquire_dimension levlak '//trim(fname))
 
 call nc_check(nf90_inq_dimid(ncid, 'levtot', dimid), &
             'get_sparse_dims','inq_dimid levtot '//trim(fname))
-call nc_check(nf90_inquire_dimension(ncid, dimid, len=Nlevtot), &
+call nc_check(nf90_inquire_dimension(ncid, dimid, len=nlevtot), &
             'get_sparse_dims','inquire_dimension levtot '//trim(fname))
 
 call nc_check(nf90_inq_dimid(ncid, 'numrad', dimid), &
             'get_sparse_dims','inq_dimid numrad '//trim(fname))
-call nc_check(nf90_inquire_dimension(ncid, dimid, len=Nnumrad), &
+call nc_check(nf90_inquire_dimension(ncid, dimid, len=nnumrad), &
             'get_sparse_dims','inquire_dimension numrad '//trim(fname))
+
+! CLM4 does not have a multi-level canopy.
+! CLM4.5 has a multi-level canopy.
+istatus = nf90_inq_dimid(ncid, 'levcan', dimid)
+if (istatus == nf90_noerr) then
+   call nc_check(nf90_inquire_dimension(ncid, dimid, len=nlevcan), &
+               'get_sparse_dims','inquire_dimension levcan '//trim(fname))
+endif
 
 ! levsno is presently required, but I can envision a domain/experiment that
 ! will not have snow levels. How this relates to variables dimensioned 'levtot'
@@ -3496,7 +3538,7 @@ call nc_check(nf90_inquire_dimension(ncid, dimid, len=Nnumrad), &
 
 istatus = nf90_inq_dimid(ncid, 'levsno', dimid)
 if (istatus == nf90_noerr) then
-   call nc_check(nf90_inquire_dimension(ncid, dimid, len=Nlevsno), &
+   call nc_check(nf90_inquire_dimension(ncid, dimid, len=nlevsno), &
                'get_sparse_dims','inquire_dimension levsno '//trim(fname))
 endif
 
@@ -3504,19 +3546,19 @@ endif
 
 istatus = nf90_inq_dimid(ncid, 'levsno1', dimid)
 if (istatus == nf90_noerr) then
-   call nc_check(nf90_inquire_dimension(ncid, dimid, len=Nlevsno1), &
+   call nc_check(nf90_inquire_dimension(ncid, dimid, len=nlevsno1), &
                'get_sparse_dims','inquire_dimension levsno1 '//trim(fname))
 endif
 
 istatus = nf90_inq_dimid(ncid, 'rtmlon', dimid)
 if (istatus == nf90_noerr) then
-   call nc_check(nf90_inquire_dimension(ncid, dimid, len=Nrtmlon), &
+   call nc_check(nf90_inquire_dimension(ncid, dimid, len=nrtmlon), &
                'get_sparse_dims','inquire_dimension rtmlon '//trim(fname))
 endif
 
 istatus = nf90_inq_dimid(ncid, 'rtmlat', dimid)
 if (istatus == nf90_noerr) then
-   call nc_check(nf90_inquire_dimension(ncid, dimid, len=Nrtmlat), &
+   call nc_check(nf90_inquire_dimension(ncid, dimid, len=nrtmlat), &
                'get_sparse_dims','inquire_dimension rtmlat '//trim(fname))
 endif
 
@@ -3529,32 +3571,34 @@ endif
 if ((debug > 7) .and. do_output()) then
    write(logfileunit,*)
    write(logfileunit,*)'get_sparse_dims output follows:'
-   write(logfileunit,*)'Ngridcell = ',Ngridcell
-   write(logfileunit,*)'Nlandunit = ',Nlandunit
-   write(logfileunit,*)'Ncolumn   = ',Ncolumn
-   write(logfileunit,*)'Npft      = ',Npft
-   write(logfileunit,*)'Nlevgrnd  = ',Nlevgrnd
-   write(logfileunit,*)'Nlevlak   = ',Nlevlak
-   write(logfileunit,*)'Nlevsno   = ',Nlevsno
-   write(logfileunit,*)'Nlevsno1  = ',Nlevsno1
-   write(logfileunit,*)'Nlevtot   = ',Nlevtot
-   write(logfileunit,*)'Nnumrad   = ',Nnumrad
-   write(logfileunit,*)'Nrtmlon   = ',Nrtmlon
-   write(logfileunit,*)'Nrtmlat   = ',Nrtmlat
+   write(logfileunit,*)'ngridcell = ',ngridcell
+   write(logfileunit,*)'nlandunit = ',nlandunit
+   write(logfileunit,*)'ncolumn   = ',ncolumn
+   write(logfileunit,*)'npft      = ',npft
+   write(logfileunit,*)'nlevgrnd  = ',nlevgrnd
+   write(logfileunit,*)'nlevlak   = ',nlevlak
+   write(logfileunit,*)'nlevsno   = ',nlevsno
+   write(logfileunit,*)'nlevsno1  = ',nlevsno1
+   write(logfileunit,*)'nlevtot   = ',nlevtot
+   write(logfileunit,*)'nnumrad   = ',nnumrad
+   write(logfileunit,*)'nlevcan   = ',nlevcan
+   write(logfileunit,*)'nrtmlon   = ',nrtmlon
+   write(logfileunit,*)'nrtmlat   = ',nrtmlat
    write(     *     ,*)
    write(     *     ,*)'get_sparse_dims output follows:'
-   write(     *     ,*)'Ngridcell = ',Ngridcell
-   write(     *     ,*)'Nlandunit = ',Nlandunit
-   write(     *     ,*)'Ncolumn   = ',Ncolumn
-   write(     *     ,*)'Npft      = ',Npft
-   write(     *     ,*)'Nlevgrnd  = ',Nlevgrnd
-   write(     *     ,*)'Nlevlak   = ',Nlevlak
-   write(     *     ,*)'Nlevsno   = ',Nlevsno
-   write(     *     ,*)'Nlevsno1  = ',Nlevsno1
-   write(     *     ,*)'Nlevtot   = ',Nlevtot
-   write(     *     ,*)'Nnumrad   = ',Nnumrad
-   write(     *     ,*)'Nrtmlon   = ',Nrtmlon
-   write(     *     ,*)'Nrtmlat   = ',Nrtmlat
+   write(     *     ,*)'ngridcell = ',ngridcell
+   write(     *     ,*)'nlandunit = ',nlandunit
+   write(     *     ,*)'ncolumn   = ',ncolumn
+   write(     *     ,*)'npft      = ',npft
+   write(     *     ,*)'nlevgrnd  = ',nlevgrnd
+   write(     *     ,*)'nlevlak   = ',nlevlak
+   write(     *     ,*)'nlevsno   = ',nlevsno
+   write(     *     ,*)'nlevsno1  = ',nlevsno1
+   write(     *     ,*)'nlevtot   = ',nlevtot
+   write(     *     ,*)'nnumrad   = ',nnumrad
+   write(     *     ,*)'nlevcan   = ',nlevcan
+   write(     *     ,*)'nrtmlon   = ',nrtmlon
+   write(     *     ,*)'nrtmlat   = ',nrtmlat
 endif
 
 end subroutine get_sparse_dims
@@ -3583,22 +3627,22 @@ endif
 ! Make sure the variables are the right size ...
 ! by comparing agains the size of the variable ...
 
-if ( Ngridcell < 0 ) then
+if ( ngridcell < 0 ) then
    write(string1,*)'Unable to read the number of gridcells.'
    call error_handler(E_ERR,'get_sparse_geog',string1,source,revision,revdate)
 endif
 
-if ( Nlandunit < 0 ) then
+if ( nlandunit < 0 ) then
    write(string1,*)'Unable to read the number of land units.'
    call error_handler(E_ERR,'get_sparse_geog',string1,source,revision,revdate)
 endif
 
-if ( Ncolumn < 0 ) then
+if ( ncolumn < 0 ) then
    write(string1,*)'Unable to read the number of columns.'
    call error_handler(E_ERR,'get_sparse_geog',string1,source,revision,revdate)
 endif
 
-if ( Npft < 0 ) then
+if ( npft < 0 ) then
    write(string1,*)'Unable to read the number of pfts.'
    call error_handler(E_ERR,'get_sparse_geog',string1,source,revision,revdate)
 endif
@@ -4843,7 +4887,7 @@ gridCellInfo(:,:)%npfts = 0
 
 ! Count up how many columns are in each gridcell
 
-do ij = 1,Ncolumn
+do ij = 1,ncolumn
    ilon = cols1d_ixy(ij)
    ilat = cols1d_jxy(ij)
    gridCellInfo(ilon,ilat)%ncols = gridCellInfo(ilon,ilat)%ncols + 1
@@ -4851,7 +4895,7 @@ enddo
 
 ! Count up how many pfts are in each gridcell
 
-do ij = 1,Npft
+do ij = 1,npft
    ilon = pfts1d_ixy(ij)
    ilat = pfts1d_jxy(ij)
    gridCellInfo(ilon,ilat)%npfts = gridCellInfo(ilon,ilat)%npfts + 1
@@ -4873,7 +4917,7 @@ enddo
 ! Fill the column pointer arrays
 
 currenticol(:,:) = 0
-do ij = 1,Ncolumn
+do ij = 1,ncolumn
 
    ilon = cols1d_ixy(ij)
    ilat = cols1d_jxy(ij)
@@ -4895,7 +4939,7 @@ enddo
 ! Fill the pft pointer arrays
 
 currentipft(:,:) = 0
-do ij = 1,Npft
+do ij = 1,npft
 
    ilon = pfts1d_ixy(ij)
    ilat = pfts1d_jxy(ij)

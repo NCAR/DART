@@ -355,16 +355,18 @@ if(inflate_handle%output_restart) then
       call error_handler(E_ERR, 'observation space', 'adaptive_inflate_end')
 
       ! Open the restart file
-      restart_unit = open_file(inflate_handle%out_file_name, &
+      if (my_task_id()==0) then
+         restart_unit = open_file(inflate_handle%out_file_name, &
                                form = 'formatted', action='write')
-      write(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
-      if (io /= 0) then
-         write(msgstring, *) 'unable to write into inflation restart file ', &
+         write(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
+         if (io /= 0) then
+            write(msgstring, *) 'unable to write into inflation restart file ', &
                               trim(inflate_handle%out_file_name)
-         call error_handler(E_ERR, 'adaptive_inflate_end', &
+            call error_handler(E_ERR, 'adaptive_inflate_end', &
             msgstring, source, revision, revdate)
+         endif
+         call close_file(restart_unit)
       endif
-      call close_file(restart_unit)
    endif
 endif
 

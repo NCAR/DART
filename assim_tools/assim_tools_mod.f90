@@ -81,6 +81,7 @@ integer                :: num_types = 0
 real(r8), allocatable  :: cutoff_list(:)
 logical                :: has_special_cutoffs
 logical                :: close_obs_caching = .true.
+real(r8), parameter    :: small = epsilon(1.0_r8)   ! threshold for avoiding NaNs/Inf
 
 character(len = 255)   :: msgstring, msgstring2, msgstring3
 
@@ -328,6 +329,7 @@ real(r8) :: close_obs_dist(obs_ens_handle%my_num_vars)
 real(r8) :: close_state_dist(ens_handle%my_num_vars)
 real(r8) :: last_close_obs_dist(obs_ens_handle%my_num_vars)
 real(r8) :: last_close_state_dist(ens_handle%my_num_vars)
+real(r8) :: diff_sd, outlier_ratio
 
 integer(i8) :: state_index
 integer(i8) :: my_state_indx(ens_handle%my_num_vars)
@@ -359,11 +361,12 @@ type(obs_type)       :: observation
 type(obs_def_type)   :: obs_def
 type(time_type)      :: obs_time, this_obs_time
 
+logical :: do_adapt_inf_update
+logical :: missing_in_state
 ! for performance, local copies 
 logical :: local_single_ss_inflate
 logical :: local_varying_ss_inflate
 logical :: local_obs_inflate
-logical :: missing_in_state
 
 ! HK observation location conversion
 logical  :: lanai_bitwise
@@ -623,17 +626,21 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                   ! have been needed.
                   ens_obs_mean = orig_obs_prior_mean(group)
                   ens_obs_var = orig_obs_prior_var(group)
+                  ! gamma is hardcoded as 1.0, so no test is needed here.
                   ens_var_deflate = ens_obs_var / &
                      (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
                   
                   ! If this is inflate_only (i.e. posterior) remove impact of this obs.
                   ! This is simulating independent observation by removing its impact.
-                  if(inflate_only) then
+                  if(inflate_only .and. &
+                        ens_var_deflate               > small .and. &
+                        obs_err_var                   > small .and. & 
+                        obs_err_var - ens_var_deflate > small ) then 
                      r_var = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
                      r_mean = r_var *(ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
                   else
-                     r_mean = ens_obs_mean
                      r_var = ens_var_deflate
+                     r_mean = ens_obs_mean
                   endif
 
                   ! Update the inflation value
@@ -925,7 +932,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
             ens_handle%copies(1:ens_size, state_index) + reg_factor * increment
       endif
 
-      ! Compute spatially-variing state space inflation
+      ! Compute spatially-varying state space inflation
       if(local_varying_ss_inflate) then
          ! base is the initial inflate value for this state variable
          ss_inflate_base = ens_handle%copies(ENS_SD_COPY, state_index)
@@ -940,23 +947,23 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                ens_obs_var =  orig_obs_prior_var(group)
 
                ! Remove the impact of inflation to allow efficient single pass with assim.
-               ens_var_deflate = ens_obs_var / &
-                  (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
+               if ( abs(gamma) > small ) then
+                  ens_var_deflate = ens_obs_var / &
+                     (1.0_r8 + gamma*(sqrt(ss_inflate_base) - 1.0_r8))**2
+               else
+                  ens_var_deflate = ens_obs_var
+               endif
                   
                ! If this is inflate only (i.e. posterior) remove impact of this obs.
-               if(inflate_only) then
-                  ! It's possible that obs_error variance is smaller than posterior
-                  ! Need to explain this, but fix here
-                  if(obs_err_var > ens_var_deflate) then 
-                     r_var  = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
-                     r_mean = r_var *(ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
-                  else
-                     r_var = ens_var_deflate
-                     r_mean = ens_obs_mean
-                  endif
+               if(inflate_only .and. &
+                     ens_var_deflate               > small .and. &
+                     obs_err_var                   > small .and. & 
+                     obs_err_var - ens_var_deflate > small ) then 
+                  r_var  = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
+                  r_mean = r_var *(ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
                else
+                  r_var = ens_var_deflate
                   r_mean = ens_obs_mean
-                  r_var  = ens_var_deflate
                endif
 
                ! IS A TABLE LOOKUP POSSIBLE TO ACCELERATE THIS?
@@ -964,9 +971,21 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                call update_inflation(inflate, varying_ss_inflate, varying_ss_inflate_sd, &
                   r_mean, r_var, obs(1), obs_err_var, gamma)
             endif
-            ! Copy updated values into ensemble obs storage
-            ens_handle%copies(ENS_INF_COPY, state_index) = varying_ss_inflate
-            ens_handle%copies(ENS_INF_SD_COPY, state_index) = varying_ss_inflate_sd
+
+            ! Update adaptive values if posterior outlier_ratio test doesn't fail.
+            ! Match code in obs_space_diags() in filter.f90
+            do_adapt_inf_update = .true.
+            if (inflate_only) then
+               diff_sd = sqrt(obs_err_var + r_var) 
+               if (diff_sd > 0.0_r8) then
+                  outlier_ratio = abs(obs(1) - r_mean) / diff_sd
+                  do_adapt_inf_update = (outlier_ratio <= 3.0_r8) 
+               endif
+            endif
+            if (do_adapt_inf_update) then   
+               ens_handle%copies(ENS_INF_COPY, state_index) = varying_ss_inflate
+               ens_handle%copies(ENS_INF_SD_COPY, state_index) = varying_ss_inflate_sd
+            endif
          end do GroupInflate
       endif
 
@@ -1052,7 +1071,7 @@ if (print_trace_details >= 0) call error_handler(E_MSG,'filter_assim:',msgstring
 
 ! diagnostics for stats on saving calls by remembering obs at the same location.
 ! change .true. to .false. in the line below to remove the output completely.
-if (close_obs_caching .and. .true.) then
+if (close_obs_caching) then
    if (num_close_obs_cached > 0 .and. do_output()) then
       print *, "Total number of calls made    to get_close_obs for obs/states:    ", &
                 num_close_obs_calls_made + num_close_states_calls_made
@@ -1132,10 +1151,9 @@ if(do_obs_inflate(inflate)) then
       prior_var  = sum((ens - prior_mean)**2) / (ens_size - 1)
 endif
 
-! If both obs_var and prior_var are 0 there is no right thing to do.
-! if obs_var == 0, delta function -- mean becomes obs value with no spread.
-! if prior_var == 0, obs has no effect -- increment is 0
-! if both true, stop with a fatal error.
+! If obs_var == 0, delta function.  The mean becomes obs value with no spread.
+! If prior_var == 0, obs has no effect.  The increments are 0.
+! If both obs_var and prior_var == 0 there is no right thing to do, so Stop.
 if ((obs_var == 0.0_r8) .and. (prior_var == 0.0_r8)) then
 
    ! fail if both obs variance and prior spreads are 0.

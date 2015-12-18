@@ -107,7 +107,15 @@ cd $temp_dir
 #-----------------------------------------------------------------------------
 
 set YYYYMM   = `printf %04d%02d                ${ATM_YEAR} ${ATM_MONTH}`
-set OBSFNAME = `printf obs_seq%04d%02d%02d%02d ${ATM_YEAR} ${ATM_MONTH} ${ATM_DAY} ${ATM_HOUR}`
+if (! -d ${BASEOBSDIR}/${YYYYMM}_6H) then
+   echo "CESM+DART requires 6 hourly obs_seq files in directories of the form YYYYMM_6H"
+   echo "The directory ${BASEOBSDIR}/${YYYYMM}_6H is not found.  Exiting"
+   exit -10
+endif
+
+# CESM time stamp format
+set OBSFNAME = `printf obs_seq.%04d-%02d-%02d-%05d ${ATM_YEAR} ${ATM_MONTH} ${ATM_DAY} ${ATM_SECONDS}`
+
 set OBS_FILE = ${BASEOBSDIR}/${YYYYMM}_6H/${OBSFNAME}
 
 if (  -e   ${OBS_FILE} ) then
@@ -140,7 +148,8 @@ if ( ! -e ${CASEROOT}/input.nml ) then
    exit -2
 endif
 
-sed -e "s#dart_ics#perfect_ics#" < ${CASEROOT}/input.nml >! input.nml
+sed -e "s/dart_ics/perfect_ics/" \
+    -e "s/obs_seq\.out/obs_seq.perfect/"  < ${CASEROOT}/input.nml >! input.nml
 
 # Turns out the .h0. files are timestamped with the START of the
 # run, which is *not* ATM_DATE_EXT ...  I just link to a whatever
@@ -151,6 +160,39 @@ set ATM_HISTORY_FILENAME = `ls -1t ../${CASE}.cam*.h0.* | head -n 1`
 
 ${LINK} $ATM_INITIAL_FILENAME caminput.nc
 ${LINK} $ATM_HISTORY_FILENAME cam_phis.nc
+
+# CAM-SE: DART needs a SEMapping_cs_grid.nc file for cubed-sphere grid mapping.
+# Use an existing file (given in the namelist), or DART will create one the
+# first time it runs.  To create one it needs an existing SEMapping.nc file,
+# which should be output from CAM-SE every forecast. CESM 1_1_1 called this
+# HommeMapping.nc but we require that the DART namelist use 'SEMapping.nc'
+# so we can rename it here.
+
+if ( $CAM_DYCORE == 'se' || $CAM_DYCORE == 'homme') then
+   # set the default filenames, and then check the input namelist to
+   # see if the user has specified a different cs grid filename.
+   set CS_GRID_FILENAME = 'SEMapping_cs_grid.nc'
+
+   if ( $CAM_DYCORE == 'homme') then
+      set MAPPING_FILENAME = 'HommeMapping.nc'
+   else
+      set MAPPING_FILENAME = 'SEMapping.nc'
+   endif
+
+   set MYSTRING = `grep cs_grid_file input.nml`
+   if ($#MYSTRING == 3) then
+      set MYSTRING = `echo $MYSTRING | sed -e "s#'# #g"`
+      set CS_GRID_FILENAME = $MYSTRING[3]
+   endif
+
+   # Grid file needs to be in run directory, or cam_to_dart will create one
+   # based on information from the MAPPING file (which was created by CAM).
+   if ( -f ../$CS_GRID_FILENAME ) then
+      ${LINK} ../$CS_GRID_FILENAME .
+   else
+      ${LINK} ../$MAPPING_FILENAME SEMapping.nc
+   endif
+endif
 
 #=========================================================================
 # Block 2: Convert 1 CAM restart file to a DART initial conditions file.
@@ -166,6 +208,13 @@ if ($status != 0) then
    echo "ERROR ... DART died in 'cam_to_dart' ... ERROR"
    echo "ERROR ... DART died in 'cam_to_dart' ... ERROR"
    exit -3
+endif
+
+if ( $CAM_DYCORE == 'se') then
+   # CAM-SE: if a new grid file was created, copy it to both the run dir and
+   # the case dir for future use.
+   if (! -f ../$CS_GRID_FILENAME)         ${COPY} $CS_GRID_FILENAME  ..
+   if (! -f $CASEROOT/$CS_GRID_FILENAME ) ${COPY} $CS_GRID_FILENAME $CASEROOT
 endif
 
 echo "`date` -- END CAM-TO-DART"

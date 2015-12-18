@@ -64,7 +64,7 @@ module obs_def_vortex_mod
 
 use        types_mod, only : r8, missing_r8, ps0, PI, gravity
 use    utilities_mod, only : register_module, error_handler, E_ERR
-use     location_mod, only : location_type, write_location, read_location
+use     location_mod, only : location_type
 use  assim_model_mod, only : interpolate
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                              KIND_TEMPERATURE, KIND_VERTICAL_VELOCITY, &

@@ -111,7 +111,7 @@ end
 # because it defines what observation types are supported.
 # ==============================================================================
 
-foreach MODEL ( cam clm CESM POP )
+foreach MODEL ( cam clm POP )
    set targetdir = $DARTROOT/models/$MODEL/work
    if ( ! -x $targetdir/filter ) then
       echo ""
@@ -221,11 +221,6 @@ ${COPY} ${DARTROOT}/models/POP/work/dart_to_pop        ${EXEROOT}
 ${COPY} ${DARTROOT}/models/POP/work/filter             ${EXEROOT}/filter_pop
 ${COPY} ${DARTROOT}/models/POP/work/perfect_model_obs  ${EXEROOT}/perfect_model_obs_pop
 
-${COPY} ${DARTROOT}/models/CESM/work/cesm_to_dart      ${EXEROOT}
-${COPY} ${DARTROOT}/models/CESM/work/dart_to_cesm      ${EXEROOT}
-${COPY} ${DARTROOT}/models/CESM/work/filter            ${EXEROOT}/filter_cesm
-${COPY} ${DARTROOT}/models/CESM/work/perfect_model_obs ${EXEROOT}/perfect_model_obs_cesm
-
 exit 0
 
 EndOfText
@@ -251,12 +246,26 @@ cat << EndOfText >! update_dart_namelists
 # WARNING: the output files contain ALL ensemble members ==> BIG
 
 if [[ -e cam_input.nml ]]; then
+
 ex cam_input.nml <<ex_end
 g;ens_size ;s;= .*;= ${NINST_ATM};
 g;num_output_state_members ;s;= .*;= ${NINST_ATM};
 g;num_output_obs_members ;s;= .*;= ${NINST_ATM};
 wq
 ex_end
+
+# If we are using WACCM (i.e. WCCM or WACCM) we have preferred values
+echo "${CCSM_COMPSET}" | grep CCM
+if [[ \$? == 0 ]]; then 
+ex cam_input.nml <<ex_end
+g;vert_normalization_scale_height ;s;= .*;= 2.5;
+g;highest_obs_pressure_Pa ;s;= .*;= 0.0001;
+g;highest_state_pressure_Pa ;s;= .*;= 0.01;
+g;vert_coord ;s;= .*;= 'log_invP';
+wq
+ex_end
+fi
+
 fi
 
 # CLM requires the CASE to be able to find the right *.h1.* file if need be.

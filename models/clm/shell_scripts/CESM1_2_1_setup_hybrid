@@ -4,7 +4,7 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id$
+# DART $Id: CESM1_2_1_setup_hybrid 9010 2015-11-05 22:39:22Z thoar $
 
 #*******************************************************************************
 #
@@ -53,7 +53,7 @@
 # and start assimilating observations when CESM stops at 2004-02-01 06Z ...
 #
 # This script relies heavily on the information in:
-# http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/book1.html
+# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/book1.html
 #
 # ---------------------
 # How to use this script.
@@ -90,7 +90,7 @@
 # settings, it is safest to delete everything and start the run from scratch.
 # For the brave, read
 #
-# http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x1142.html
+# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/x1080.html
 #
 # and you may be able to salvage something with
 # ./cesm_setup -clean
@@ -111,12 +111,22 @@
 # resolution    Sets the model grid resolution, see the CESM documentation.
 # cesmtag       The version of the CESM source code to use when building the code.
 # num_instances The number of ensemble members.
+#
+# A WORD ABOUT CLM 4.5
+#    This script uses CLM4.0 files. If you modify this script to run CLM4.5,
+# you must also make sure that the CLM input files are compatible with CLM4.5.
+# This may mean you will have to run 'interpinic'. The instructions are here:
+# http://www.cesm.ucar.edu/models/cesm1.2/clm/models/lnd/clm/doc/UsersGuide/x11704.html#example_createtemplate
+#
 # ==============================================================================
+# 2000_DATM%QIA_CLM40%CN_SICE_SOCN_RTM_SGLC_SWAV (I_2000_CN)       (ICN)
+# 2000_DATM%QIA_CLM45%CN_SICE_SOCN_RTM_SGLC_SWAV (I_2000_CLM45_CN) (ICLM45CN)
+# 2000_DATM%QIA_CLM45%BGC_SICE_SOCN_RTM_SGLC_SWAV (I_2000_CLM45_BGC) (ICLM45BGC)
 
-setenv case                 clm1_1_1_hybrid
+setenv case                 clm1_2_1_hybrid
 setenv compset              I_2000_CN
 setenv resolution           f09_f09
-setenv cesmtag              cesm1_1_1
+setenv cesmtag              cesm1_2_1
 setenv num_instances        80
 
 # ==============================================================================
@@ -124,7 +134,7 @@ setenv num_instances        80
 #
 # mach            Computer name
 # cesmroot        Location of the CESM code base.  This version of the script
-#                 only supports version cesm1_1_1.
+#                 only supports version cesm1_2_1.
 # caseroot        Will create the CESM case directory here, where the CESM+DART
 #                 configuration files will be stored.  This should probably not
 #                 be in scratch (on yellowstone, your 'work' partition is suggested).
@@ -161,6 +171,7 @@ setenv dartroot     /glade/u/home/${USER}/svn/DART/trunk
 # reftod
 #
 # stagedir   The directory location of the reference case files.
+#            This will surely change based on the compset and machine.
 #
 # bug1730_workaround   If ANY history file will be created in the 'vector' format,
 #                      this should be set to 'on'.
@@ -404,6 +415,7 @@ if ($num_instances <= 4) then
    @ cpl_tasks = $ptile * $num_instances
    @ glc_tasks = $ptile * $num_instances
    @ rof_tasks = $ptile * $num_instances * 4
+   @ wav_tasks = $ptile * $num_instances
 
 else
 
@@ -415,6 +427,7 @@ else
    @ cpl_tasks = $ptile * $num_instances
    @ glc_tasks = $ptile * $num_instances
    @ rof_tasks = $ptile * $num_instances * 2
+   @ wav_tasks = $ptile * $num_instances
 
 endif
 
@@ -428,6 +441,7 @@ echo "OCN gets $ocn_tasks"
 echo "CPL gets $cpl_tasks"
 echo "GLC gets $glc_tasks"
 echo "ROF gets $rof_tasks"
+echo "WAV gets $wav_tasks"
 echo ""
 
 ./xmlchange NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks,NINST_ATM=$num_instances
@@ -437,6 +451,7 @@ echo ""
 ./xmlchange NTHRDS_CPL=$nthreads,NTASKS_CPL=$cpl_tasks
 ./xmlchange NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=1
 ./xmlchange NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=$num_instances
+./xmlchange NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks,NINST_WAV=1
 ./xmlchange ROOTPE_ATM=0
 ./xmlchange ROOTPE_LND=0
 ./xmlchange ROOTPE_ICE=0
@@ -444,8 +459,9 @@ echo ""
 ./xmlchange ROOTPE_CPL=0
 ./xmlchange ROOTPE_GLC=0
 ./xmlchange ROOTPE_ROF=0
+./xmlchange ROOTPE_WAV=0
 
-# http://www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/c1158.html#run_start_stop
+# http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/c1096.html#run_start_stop
 # "A hybrid run indicates that CESM is initialized more like a startup, but uses
 # initialization datasets from a previous case. This is somewhat analogous to a
 # branch run with relaxed restart constraints. A hybrid run allows users to bring
@@ -464,6 +480,16 @@ echo ""
 # the same (single) filename. This is remedied by using patched [clm,rtm].buildnml.csh
 # scripts that exist in the SourceMods directory.
 
+# These are examples of how to add configure options.
+# They are just examples, do no use them if you do not want them.
+#
+#./xmlchange CLM_CONFIG_OPTS="-nofire" -append
+#./xmlchange CLM_CONFIG_OPTS="-vichydro off" -append
+#./xmlchange CLM_CONFIG_OPTS="-crop on" -append
+#./xmlchange CLM_CONFIG_OPTS="-snicar_frc on" -append
+#./xmlchange CLM_CONFIG_OPTS="-vsoilc_centbgc off" -append
+#./xmlchange CLM_CONFIG_OPTS="-clm4me on" -append
+
 ./xmlchange RUN_TYPE=hybrid
 ./xmlchange RUN_STARTDATE=${start_year}-${start_month}-${start_day}
 ./xmlchange START_TOD=$start_tod
@@ -481,6 +507,8 @@ echo ""
 ./xmlchange DATM_CPLHIST_YR_START=$stream_year_first
 ./xmlchange DATM_CPLHIST_YR_END=$stream_year_last
 
+# Do not change the CALENDAR or the CONTINUE_RUN
+
 ./xmlchange CALENDAR=GREGORIAN
 
 ./xmlchange STOP_OPTION=$stop_option
@@ -488,10 +516,11 @@ echo ""
 ./xmlchange CONTINUE_RUN=FALSE
 ./xmlchange RESUBMIT=$resubmit
 
+./xmlchange PIO_CONFIG_OPTS="--enable-netcdf4"
+./xmlchange PIO_TYPENAME=pnetcdf
+
 if ($bug1730_workaround == 'on') then
-   ./xmlchange PIO_TYPENAME=netcdf
-else
-   ./xmlchange PIO_TYPENAME=pnetcdf
+   ./xmlchange PIO_BUFFER_SIZE_LIMIT=0
 endif
 
 set TEST_MPI = `./xmlquery -valonly MPI_RUN_COMMAND | sed -e 's/MPI_RUN_COMMAND = //'`
@@ -500,11 +529,11 @@ if (${TEST_MPI} == 'UNSET') then
 endif
 
 # The river transport model ON is useful only when using an active ocean or
-# land surface diagnostics. Setting ROF_GRID to 'null' turns off the RTM.
-# We are also turning on the CLM biogeochemistry.
+# land surface diagnostics. Setting ROF_GRID, RTM_MODE to 'null' turns off the RTM.
+# If you turn it ON, you have more work to do ...
 
 ./xmlchange ROF_GRID='null'
-./xmlchange CLM_CONFIG_OPTS='-bgc cn'
+./xmlchange RTM_MODE='NULL'
 
 # These are archiving options that may be used.
 # You can turn the short/long term archivers on or off,
@@ -530,6 +559,89 @@ endif
 
 ./xmlchange DEBUG=FALSE
 ./xmlchange INFO_DBUG=0
+
+# ==============================================================================
+# Update source files.
+#    Ideally, using DART would not require any modifications to the model source.
+#    Until then, this script accesses sourcemods from a hardwired location.
+#    If you have additional sourcemods, they will need to be merged into any DART
+#    mods and put in the SourceMods subdirectory found in the 'caseroot' directory.
+# ==============================================================================
+
+if (    -d     ~/${cesmtag}/SourceMods ) then
+
+   # Copy all of the 'generic' SourceMods
+
+   ${COPY} -r  ~/${cesmtag}/SourceMods/* ${caseroot}/SourceMods/
+
+   # Each CLM version has some SourceMods. Link to the right version.
+   # must parse from a variable of the form:
+   # CLM_CONFIG_OPTS: -phys clm4_0 -bgc cn
+
+   set clm_opts = `echo $CLM_CONFIG_OPTS | sed -e "s/-//"`
+
+   @ iarg = 1
+   while ($iarg <= $#clm_opts)
+
+      @ iargp1 = $iarg + 1
+      set option = $clm_opts[$iarg]
+      set  value = $clm_opts[$iargp1]
+
+      switch ( ${option} )
+         case "phys":
+            if ( -e    SourceMods/src.clm/src/${value} ) then
+               cd      SourceMods/src.clm
+               ${LINK} src/${value}/*/*F90 .
+               cd      ../..
+            else
+               echo "No SourceMods for CLM <${value}>."
+               echo "Got the version from CLM_CONFIG_OPTS ...  <${CLM_CONFIG_OPTS}>"
+            endif
+         breaksw
+      #  case "bgc":  no special action needed here at this time
+      #  breaksw
+
+         default:
+         breaksw
+      endsw
+
+      @ iarg = $iarg + 2
+   end
+
+   if ( $bug1934_workaround != 'on' ) then
+      # if we do not want the bugfix, we do not want the bugfixed code.
+      ${REMOVE} ${caseroot}/SourceMods/src.clm/SnowHydrologyMod.F90
+   endif
+
+else
+   echo "ERROR - No SourceMods for this case."
+   echo "ERROR - No SourceMods for this case."
+   echo "DART requires modifications to several src files."
+   echo "Download the appropriate files for CESM 1_2_1 from:"
+   echo "http://www.image.ucar.edu/pub/DART/CESM"
+   echo "untar these into your HOME directory - they will create a"
+   echo "~/cesm1_2_1  directory with the appropriate SourceMods structure."
+   exit -4
+endif
+
+# The CESM multi-instance capability is relatively new and still has a few
+# implementation bugs. These are known problems and will be fixed soon.
+# this should be removed when the files are fixed:
+
+echo "REPLACING BROKEN CESM FILES HERE - SHOULD BE REMOVED WHEN FIXED"
+echo caseroot is ${caseroot}
+if ( -d ~/${cesmtag} ) then
+
+   # preserve the original version of the files
+   if ( ! -e  ${caseroot}/Buildconf/rtm.buildnml.csh.original ) then
+      ${COPY} ${caseroot}/Buildconf/rtm.buildnml.csh \
+              ${caseroot}/Buildconf/rtm.buildnml.csh.original
+   endif
+
+   # patch/replace the broken files (first used by cesm_setup)
+   ${COPY} ~/${cesmtag}/rtm.buildnml.csh  ${caseroot}/Buildconf/.
+
+endif
 
 # ==============================================================================
 # Set up the case.
@@ -571,66 +683,23 @@ switch ( $BATCH )
           chmod 755       ${case}.run
    breaksw
 
+   case msub*:
+      # juropa
+      set TIMEWALL=`grep MSUB ${case}.run | grep -e '-l walltime' `
+      set WALLTIME = `echo $TIMEWALL[$#TIMEWALL] | sed 's#=# #'`
+      sed -i /MSUB/s/$WALLTIME[$#WALLTIME]/$timewall/ ${case}.run
+   breaksw
+
    default:
    breaksw
 endsw
-
-# ==============================================================================
-# Update source files.
-#    Ideally, using DART would not require any modifications to the model source.
-#    Until then, this script accesses sourcemods from a hardwired location.
-#    If you have additional sourcemods, they will need to be merged into any DART
-#    mods and put in the SourceMods subdirectory found in the 'caseroot' directory.
-# ==============================================================================
-
-if (    -d     ~/${cesmtag}/SourceMods ) then
-   ${COPY} -r  ~/${cesmtag}/SourceMods/* ${caseroot}/SourceMods/
-   if ( $bug1934_workaround != 'on' ) then
-      # if we do not want the bugfix, we do not want the bugfixed code.
-      ${REMOVE} ${caseroot}/SourceMods/src.clm/SnowHydrologyMod.F90
-   endif
-else
-   echo "ERROR - No SourceMods for this case."
-   echo "ERROR - No SourceMods for this case."
-   echo "DART requires modifications to several src files."
-   echo "Download the appropriate files for CESM 1_1_1 from:"
-   echo "http://www.image.ucar.edu/pub/DART/CESM"
-   echo "untar these into your HOME directory - they will create a"
-   echo "~/cesm1_1_1  directory with the appropriate SourceMods structure."
-   exit -4
-endif
-
-# The CESM multi-instance capability is relatively new and still has a few
-# implementation bugs. These are known problems and will be fixed soon.
-# this should be removed when the files are fixed:
-
-echo "REPLACING BROKEN CESM FILES HERE - SHOULD BE REMOVED WHEN FIXED"
-echo caseroot is ${caseroot}
-if ( -d ~/${cesmtag} ) then
-
-   # preserve the original version of the files
-   if ( ! -e  ${caseroot}/Buildconf/clm.buildnml.csh.original ) then
-      ${COPY} ${caseroot}/Buildconf/clm.buildnml.csh \
-              ${caseroot}/Buildconf/clm.buildnml.csh.original
-   endif
-   if ( ! -e  ${caseroot}/preview_namelists.original ) then
-      ${COPY} ${caseroot}/preview_namelists \
-              ${caseroot}/preview_namelists.original
-   endif
-
-   # patch/replace the broken files
-   ${COPY} ~/${cesmtag}/clm.buildnml.csh  ${caseroot}/Buildconf/.
-   ${COPY} ~/${cesmtag}/preview_namelists ${caseroot}/.
-
-endif
 
 # ==============================================================================
 # Modify namelist templates for each instance.
 #
 # In a hybrid run with CONTINUE_RUN = FALSE (i.e. just starting up):
 #
-# CLM builds its own 'finidat' value from the REFCASE variables but in CESM1_1_1
-#     it does not use the instance string. There is a patch for clm.buildnml.csh
+# CLM builds its own 'finidat' value from the REFCASE variables.
 #
 # All of these must later on be staged with these same filenames.
 # OR - all these namelists can be changed to match whatever has been staged.
@@ -676,7 +745,9 @@ while ($inst <= $num_instances)
    # HAVE NO EFFECT once CONTINUE_RUN = TRUE so now is the time to set these.
    #
    # See page 65 of:
-   # http://www.cesm.ucar.edu/models/cesm1.1/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf
+   # http://www.cesm.ucar.edu/models/cesm1.2/clm/models/lnd/clm/doc/UsersGuide/clm_ug.pdf
+   # equivalently, Example 1-4 in:
+   # http://www.cesm.ucar.edu/models/cesm1.2/clm/models/lnd/clm/doc/UsersGuide/x1867.html
    #
    # DART's forward observation operators for these fluxes just reads them
    # from the .h1. file rather than trying to create them from the subset of
@@ -865,7 +936,7 @@ if ( \${CONTINUE_RUN} == TRUE ) then
    if (  \${DOUT_S} == TRUE ) then
 
       # The restarts should be in the short term archive directory.  See
-      # www.cesm.ucar.edu/models/cesm1.1/cesm/doc/usersguide/x1631.html#running_ccsm_restart_back
+      # www.cesm.ucar.edu/models/cesm1.2/cesm/doc/usersguide1_2/x1565.html#running_ccsm_restarts
       # for more help and information.
 
       set RESTARTDIR = \${DOUT_S_ROOT}/rest/\${restart_time}
@@ -999,7 +1070,7 @@ echo ""
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
+# $URL: https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/clm/shell_scripts/CESM1_2_1_setup_hybrid $
+# $Revision: 9010 $
+# $Date: 2015-11-05 15:39:22 -0700 (Thu, 05 Nov 2015) $
 

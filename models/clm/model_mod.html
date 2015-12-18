@@ -284,6 +284,58 @@ mainly to indicate the location of the DART observation sequence files on your s
 </TABLE>
 </div>
 
+<P>The following are only meant to be examples - they are not scientifically validated.
+   Some of these that are UPDATED are probably diagnostic quantities, Some of these that
+   should be updated may be marked NO_COPY_BACK. There are multiple choices for some
+   DART kinds. This list is by no means complete.<P>
+<pre>
+       'livecrootc',  'KIND_ROOT_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'deadcrootc',  'KIND_ROOT_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'livestemc',   'KIND_STEM_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'deadstemc',   'KIND_STEM_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'livecrootn',  'KIND_ROOT_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
+       'deadcrootn',  'KIND_ROOT_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
+       'livestemn',   'KIND_STEM_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
+       'deadstemn',   'KIND_STEM_NITROGEN',          'NA', 'NA', 'restart', 'UPDATE',
+       'litr1c',      'KIND_LEAF_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'litr2c',      'KIND_LEAF_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'litr3c',      'KIND_LEAF_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'soil1c',      'KIND_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'soil2c',      'KIND_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'soil3c',      'KIND_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'soil4c',      'KIND_SOIL_CARBON',            'NA', 'NA', 'restart', 'UPDATE',
+       'fabd',        'KIND_FPAR_DIRECT',            'NA', 'NA', 'restart', 'UPDATE',
+       'fabi',        'KIND_FPAR_DIFFUSE',           'NA', 'NA', 'restart', 'UPDATE',
+       'T_VEG',       'KIND_VEGETATION_TEMPERATURE', 'NA', 'NA', 'restart', 'UPDATE',
+       'fabd_sun_z',  'KIND_FPAR_SUNLIT_DIRECT',     'NA', 'NA', 'restart', 'UPDATE',
+       'fabd_sha_z',  'KIND_FPAR_SUNLIT_DIFFUSE',    'NA', 'NA', 'restart', 'UPDATE',
+       'fabi_sun_z',  'KIND_FPAR_SHADED_DIRECT',     'NA', 'NA', 'restart', 'UPDATE',
+       'fabi_sha_z',  'KIND_FPAR_SHADED_DIFFUSE',    'NA', 'NA', 'restart', 'UPDATE',
+       'elai',        'KIND_LEAF_AREA_INDEX',        'NA', 'NA', 'restart', 'UPDATE',
+</pre>
+<P>
+<strong>Only the first variable for a DART kind in the clm_variables list 
+   will be used for the forward observation operator.</strong> The following is 
+   perfectly legal (for CLM4, at least):</P>
+<pre>
+clm_variables = 'LAIP_VALUE', 'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'restart' , 'UPDATE',
+                'tlai',       'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'restart' , 'UPDATE',
+                'elai',       'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'restart' , 'UPDATE',
+                'ELAI',       'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'history' , 'NO_COPY_BACK',
+                'LAISHA',     'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'history' , 'NO_COPY_BACK',
+                'LAISUN',     'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'history' , 'NO_COPY_BACK',
+                'TLAI',       'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'history' , 'NO_COPY_BACK',
+                'TLAI',       'KIND_LEAF_AREA_INDEX', 'NA', 'NA', 'vector'  , 'NO_COPY_BACK'
+   /
+</pre>
+
+<P>however, only LAIP_VALUE will be used to calculate the LAI when an observation of
+LAI is encountered. All the other LAI variables in the DART state will be modified by
+the assimilation based on the relationship of LAIP_VALUE and the observation. Those
+coming from the restart file and marked 'UPDATE' <strong>will</strong> be updated in the
+CLM restart file.
+</P>
+
 <P></P>
 
 <!--===================== DESCRIPTION OF A NAMELIST =====================-->
@@ -312,22 +364,22 @@ prematurely terminating the namelist.
   model_perturbation_amplitude = 0.2,
   calendar                     = 'Gregorian',
   debug                        = 0
-  clm_variables  = 'frac_sno',    'KIND_SNOWCOVER_FRAC',         'NA',  'NA', 'restart' , 'NO_COPY_BACK',
+  clm_variables  = 'frac_sno',    'KIND_SNOWCOVER_FRAC',         'NA' , 'NA', 'restart' , 'NO_COPY_BACK',
                    'H2OSNO',      'KIND_SNOW_WATER',             '0.0', 'NA', 'restart' , 'UPDATE',
                    'H2OSOI_LIQ',  'KIND_SOIL_MOISTURE',          '0.0', 'NA', 'restart' , 'UPDATE',
                    'H2OSOI_ICE',  'KIND_ICE',                    '0.0', 'NA', 'restart' , 'UPDATE',
                    'T_SOISNO',    'KIND_SOIL_TEMPERATURE',       'NA' , 'NA', 'restart' , 'UPDATE',
+                   'SNOWDP',      'KIND_SNOW_THICKNESS',         'NA' , 'NA', 'restart' , 'UPDATE',
+                   'LAIP_VALUE',  'KIND_LEAF_AREA_INDEX',        'NA' , 'NA', 'restart' , 'NO_COPY_BACK',
                    'cpool',       'KIND_CARBON',                 '0.0', 'NA', 'restart' , 'UPDATE',
                    'frootc',      'KIND_ROOT_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
                    'leafc',       'KIND_LEAF_CARBON',            '0.0', 'NA', 'restart' , 'UPDATE',
                    'leafn',       'KIND_LEAF_NITROGEN',          '0.0', 'NA', 'restart' , 'UPDATE',
-                   'NEP',         'KIND_NET_CARBON_PRODUCTION',  'NA', 'NA', 'history'  , 'NO_COPY_BACK',
-                   'SNOWDP',      'KIND_SNOW_THICKNESS',         'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
-                   'TV',          'KIND_VEGETATION_TEMPERATURE', 'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
-                   'TLAI',        'KIND_LEAF_AREA_INDEX',        'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
-                   'RH2M_R',      'KIND_SPECIFIC_HUMIDITY',      'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
-                   'PBOT',        'KIND_SURFACE_PRESSURE',       'NA', 'NA', 'vector'   , 'NO_COPY_BACK',
-                   'TBOT',        'KIND_TEMPERATURE',            'NA', 'NA', 'vector'   , 'NO_COPY_BACK'
+                   'NEP',         'KIND_NET_CARBON_PRODUCTION',  'NA' , 'NA', 'history' , 'NO_COPY_BACK',
+                   'TV',          'KIND_VEGETATION_TEMPERATURE', 'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
+                   'RH2M_R',      'KIND_SPECIFIC_HUMIDITY',      'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
+                   'PBOT',        'KIND_SURFACE_PRESSURE',       'NA' , 'NA', 'vector'  , 'NO_COPY_BACK',
+                   'TBOT',        'KIND_TEMPERATURE',            'NA' , 'NA', 'vector'  , 'NO_COPY_BACK'
    /
 </pre>
 </div>
@@ -389,7 +441,7 @@ prematurely terminating the namelist.
 </TR>
 
 <TR><TD>model_perturbation_amplitude</TD>
-    <TD>integer</TD>
+    <TD>real(r8)</TD>
     <TD>Required by the DART interfaces, but not used by CLM.</TD>
 </TR>
 
@@ -631,8 +683,7 @@ state vector. The location defines where the state variable is located.
     <TD>The location of state variable element.</TD></TR>
 
 <TR><TD><em class=optionalcode>var_type</em></TD>
-    <TD>Returns the type (always 1) of the indexed state 
-        variable as an optional argument.</TD></TR>
+    <TD>The generic DART kind of the state variable element.</TD></TR>
 
 </TABLE>
 
@@ -677,7 +728,9 @@ Given model state, returns the value interpolated to a given location.
     <TD> The interpolated value from the model.</TD></TR>
 
 <TR><TD><em class=code>istatus</em></TD>
-    <TD>Quality control information, always returned 0.</TD></TR>
+    <TD>If the interpolation was successful <em class=code>istatus = 0</em>.
+        If <em class=code>istatus /= 0</em> the interpolation failed.
+        Values less than zero are reserved for DART.</TD></TR>
 
 </TABLE>
 
@@ -956,6 +1009,9 @@ real(r8),             intent(in)    :: <em class=code>maxdist</em>
 <!-- Description -->
 
 <P>
+In distance computations any two locations closer than the
+given <em class=code>maxdist</em> will be considered close
+by the <em class=code>get_close_obs()</em> routine.
 Pass-through to the 3D Sphere locations module. See
 <A HREF="../../location/threed_sphere/location_mod.html#get_close_maxdist_init">
 get_close_maxdist_init()</A> for the documentation of this subroutine.
@@ -1470,7 +1526,29 @@ none at this time
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FUTURE PLANS</H2>
 <P>
-none at this time
+Almost too many to list.
+<ol>
+<li>Implement a robust update_snow() routine that takes the modified SWE and
+    repartitions it into the respective snow layers in a manner that works
+    with both CLM4 and CLM4.5. This may mean modifying the clm_variables list
+    to contain SNOWDP, H2OSOI_LIQ, H2OSOI_ICE, T_SOISNO, and others that may
+    not be in the UPDATE list.
+ </li>
+<li>Implement a fast way to get the quantities needed for the calculation of
+    radiative transfer models - needs a whole column of CLM variables,
+    redundant if multiple frequencies are used.</li>
+<li>Figure out what to do when one or more of the ensemble members does not
+    have snow/leaves/etc. when the observation indicates there should be.
+    Ditto for removing snow/leaves/etc. when the observation indicates otherwise.</li>
+<li>Right now, the soil moisture observation operator is used by the COSMOS
+    code to calculate the expected neutron intensity counts. This is the right
+    idea, however, the COSMOS forward operator uses m3/m3 and the CLM units
+    are kg/m2 ... I have not checked to see if they are, in fact, identical.
+    This brings up a bigger issue in that the soil moisture observation 
+    operator would also be used to calculate whatever a TDT probe or ??? 
+    would measure. What units are they in? Can one operator support both?</li>
+<li>...</li>
+</ol>
 </P>
 
 <!--==================================================================-->
