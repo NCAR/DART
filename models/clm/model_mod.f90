@@ -2561,7 +2561,6 @@ real(r8) :: llon, llat, lheight
 integer  :: imem
 integer  :: istatus_2(ens_size)
 real(r8) :: interp_val_2(ens_size)
-character(len=32) :: kind_string
 character(len=paramname_length) :: kind_string
 
 if ( .not. module_initialized ) call static_init_model
