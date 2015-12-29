@@ -15,7 +15,7 @@ use             types_mod, only : r8, i8, missing_r8, metadatalength
 use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
                                   initialize_utilities, finalize_utilities,     &
                                   find_namelist_in_file, check_namelist_read,   &
-                                  nc_check, E_MSG, open_file, close_file
+                                  nc_check, E_MSG, open_file, close_file, do_output
 
 use          location_mod, only : location_type, set_location, write_location,  &
                                   get_dist, VERTISUNDEF, VERTISSURFACE,         &
@@ -105,11 +105,13 @@ integer, allocatable :: all_ios_out(:,:)
 test_interpolate_range = 0
 
 if ((interp_test_dlon < 0.0_r8) .or. (interp_test_dlat < 0.0_r8)) then
-   write(*,*)'Skipping the rigorous interpolation test because one of'
-   write(*,*)'interp_test_dlon,interp_test_dlat are < 0.0'
-   write(*,*)'interp_test_dlon  = ',interp_test_dlon
-   write(*,*)'interp_test_dlat  = ',interp_test_dlat
-   write(*,*)'interp_test_dvert = ',interp_test_dvert
+   if ( do_output() ) then
+      write(*,*)'Skipping the rigorous interpolation test because one of'
+      write(*,*)'interp_test_dlon,interp_test_dlat are < 0.0'
+      write(*,*)'interp_test_dlon  = ',interp_test_dlon
+      write(*,*)'interp_test_dlat  = ',interp_test_dlat
+      write(*,*)'interp_test_dvert = ',interp_test_dvert
+   endif
    return
 endif
 
@@ -154,8 +156,8 @@ do ilon = 1, nlon
               write(string1,*) 'interpolation return code was', ios_out
               call error_handler(E_MSG,'test_interpolate_range',string1,source,revision,revdate,text2=string2)
            endif
-           all_ios_out(nfailed,:) = ios_out
            nfailed = nfailed + 1
+           all_ios_out(nfailed,:) = ios_out
          endif
 
       enddo
@@ -168,8 +170,10 @@ write(iunit,'(''datmat = permute(datmat,[4,1,2,3]);'')')
 write(iunit,'(''datmat(datmat == missingvals) = NaN;'')')
 call close_file(iunit)
 
-write(*,*) 'total interpolations  : ', nlon*nlat*nvert
-write(*,*) 'failed interpolations : ', nfailed
+if ( do_output() ) then
+   write(*,*) 'total interpolations  : ', nlon*nlat*nvert
+   write(*,*) 'failed interpolations : ', nfailed
+endif
 
 call count_error_codes(all_ios_out, nfailed)
 
@@ -312,11 +316,12 @@ call model_interpolate(ens_handle, ens_size, loc, mykindindex, interp_vals, ios_
 
 do imem = 1, ens_size
    if (ios_out(imem) == 0 ) then
-      write(*,*) 'member ', imem, 'model_interpolate SUCCESS with value', interp_vals(imem)
+      if (do_output() ) &
+         write(*,*) 'member ', imem, 'model_interpolate SUCCESS with value', interp_vals(imem)
       num_passed = num_passed + 1
    else
-      write(*,*) 'member ', imem, 'model_interpolate ERROR with error code', ios_out(imem)
-      test_interpolate_single = test_interpolate_single
+      if (do_output() ) &
+         write(*,*) 'member ', imem, 'model_interpolate ERROR with error code', ios_out(imem)
    endif
 enddo
 

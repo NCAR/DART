@@ -15,7 +15,7 @@ use             types_mod, only : r8, i8, missing_r8, metadatalength
 use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
                                   initialize_utilities, finalize_utilities,     &
                                   find_namelist_in_file, check_namelist_read,   &
-                                  nc_check, E_MSG, open_file, close_file
+                                  nc_check, E_MSG, open_file, close_file, do_output
 
 use          location_mod, only : location_type, set_location, write_location,  &
                                   get_dist
@@ -131,8 +131,8 @@ do i = 1, nx
         write(string1,*) 'interpolation return code was', ios_out
         call error_handler(E_MSG,'test_interpolate_range',string1,source,revision,revdate,text2=string2)
      endif
-     all_ios_out(nfailed,:) = ios_out
      nfailed = nfailed + 1
+     all_ios_out(nfailed,:) = ios_out
    endif
 
 end do
@@ -143,8 +143,10 @@ write(iunit,'(''datmat = permute(datmat,[2,1]);'')')
 write(iunit,'(''datmat(datmat == missingvals) = NaN;'')')
 call close_file(iunit)
 
-write(*,*) 'total interpolations  : ', nx
-write(*,*) 'failed interpolations : ', nfailed
+if ( do_output() ) then
+   write(*,*) 'total interpolations  : ', nx
+   write(*,*) 'failed interpolations : ', nfailed
+endif
 
 call count_error_codes(all_ios_out, nfailed)
 
@@ -186,8 +188,8 @@ do imem = 1, ens_size
    call nc_check(nf90_def_var(ncid=ncid, name=field_name, xtype=nf90_double, &
            dimids=(/ nxDimID /), varid=VarID(imem)), 'test_interpolate_range', &
                     'field def_var '//trim(ncfilename))
-   kind_of_interest = get_raw_obs_kind_name(mykindindex)
-   call nc_check(nf90_put_att(ncid, VarID(imem), 'long_name', kind_of_interest), &
+   ! kind_of_interest = get_raw_obs_kind_name(mykindindex)
+   call nc_check(nf90_put_att(ncid, VarID(imem), 'long_name', 'KIND_MISSING'), &
               'test_interpolate_range', 'put_att field long_name '//trim(ncfilename))
    call nc_check(nf90_put_att(ncid, VarID(imem), '_FillValue', MISSING_R8), &
               'test_interpolate_range', 'put_att field FillValue '//trim(ncfilename))
@@ -257,11 +259,12 @@ call model_interpolate(ens_handle, ens_size, loc, mykindindex, interp_vals, ios_
 
 do imem = 1, ens_size
    if (ios_out(imem) == 0 ) then
-      write(*,*) 'member ', imem, 'model_interpolate SUCCESS with value', interp_vals(imem)
+      if ( do_output() ) &
+         write(*,*) 'member ', imem, 'model_interpolate SUCCESS with value', interp_vals(imem)
       num_passed = num_passed + 1
    else
-      write(*,*) 'member ', imem, 'model_interpolate ERROR with error code', ios_out(imem)
-      test_interpolate_single = test_interpolate_single
+      if (do_output() ) &
+         write(*,*) 'member ', imem, 'model_interpolate ERROR with error code', ios_out(imem)
    endif
 enddo
 

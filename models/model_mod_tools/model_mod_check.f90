@@ -15,14 +15,14 @@ use             types_mod, only : r8, i8, missing_r8, metadatalength
 use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
                                   initialize_utilities, finalize_utilities,     &
                                   find_namelist_in_file, check_namelist_read,   &
-                                  nc_check, E_MSG, open_file, close_file
+                                  nc_check, E_MSG, open_file, close_file, do_output
 
 use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
 
 use          location_mod, only : location_type, set_location, write_location,  &
                                   get_dist, get_location
 
-use          obs_kind_mod, only : get_obs_kind_name, get_raw_obs_kind_index,    &
+use          obs_kind_mod, only : get_raw_obs_kind_index,    &
                                   KIND_DRY_LAND
 
 use      obs_sequence_mod, only : static_init_obs_sequence
@@ -41,7 +41,7 @@ use   state_vector_io_mod, only : state_vector_io_init, setup_read_write,   &
                                   filter_read_restart_direct,               &
                                   filter_write_restart_direct
 
-use   state_structure_mod, only : static_init_state_type
+use   state_structure_mod, only : static_init_state_type, get_num_domains
 
 use            filter_mod, only : filter_set_initial_time
 
@@ -115,7 +115,7 @@ integer(i8)           :: model_size
 real(r8), allocatable :: interp_vals(:)
 
 ! misc. variables
-integer :: imem, num_failed
+integer :: idom, imem, num_failed, num_domains
 logical :: cartesian = .false.
 
 ! error handler strings
@@ -149,32 +149,27 @@ if ( interp_test_dx  /= missing_r8 .or. &
    cartesian = .true.
 endif
 
-write(*,*)
-write(*,*) '******************** RUNNING TEST 1 *********************'
-write(*,*) ' Reading the namelist and running static_init_model       '
-write(*,*) '  -- calling get_model_size()'
-write(*,*) '*********************************************************'
-write(*,*)
+call print_test_message('RUNNING TEST 1', &
+                        'Reading the namelist and running static_init_model', &
+                        'calling get_model_size()')
 
 call static_init_assim_model()
 
 model_size = get_model_size()
 
-write(*,*)
-write(*,'(''state vector has length'',i10)') model_size
-write(*,*)
+if ( do_output() ) then 
+   write(*,*)
+   write(*,'(''state vector has length'',i10)') model_size
+   write(*,*)
+endif
 
-write(*,*) '******************** FINISHED TEST 1 *********************'
-
+call print_test_message('FINISHED TEST 1')
 
 if ( test1thru == 1 ) call exit(0)
 
 
-write(*,*)
-write(*,*) '******************** RUNNING TEST 2 *********************'
-write(*,*) ' Read and write trivial restart file.                    '
-write(*,*) '*********************************************************'
-write(*,*)
+call print_test_message('RUNNING TEST 2', &
+                        'Read and write trivial restart file')
 
 call set_calendar_type(GREGORIAN)
 
@@ -190,28 +185,31 @@ call set_filenames(ens_handle, num_ens, "no_inf1", "no_inf2")
 !----------------------------------------------------------------------
 ! Open a test netcdf initial conditions file.
 !----------------------------------------------------------------------
-
-do imem = 1, num_ens
-   call turn_read_copy_on(imem)
-   write(*,*) 'reading  ', trim( get_input_file(imem, domain=1) )
+num_domains = get_num_domains()
+do idom = 1, num_domains
+   do imem = 1, num_ens
+      call turn_read_copy_on(imem)
+      if ( do_output() ) write(*,*) 'Reading File : ', trim( get_input_file(imem, domain=idom) )
+   enddo
 enddo
 
 call filter_read_restart_direct(ens_handle, time1, num_extras=0, use_time_from_file=.true.)
 model_time = time1
 
-do imem = 1, num_ens
-   call turn_write_copy_on(imem)
-   write(*,*) 'writting ', trim( get_output_file(imem, domain=1, isprior=.true.) )
+do idom = 1, num_domains
+   do imem = 1, num_ens
+      call turn_write_copy_on(imem)
+      if ( do_output() ) write(*,*) 'Writing File : ', trim( get_output_file(imem, domain=idom, isprior=.false.) )
+   enddo
 enddo
+
 call filter_write_restart_direct(ens_handle, num_extras=0, isprior=.true.)
 
 write(*,*) 
 call print_date( model_time,' model_mod_check:model date')
 call print_time( model_time,' model_mod_check:model time')
 
-write(*,*)
-write(*,*) '******************** FINISHED TEST 2 *********************'
-write(*,*)
+call print_test_message('FINISHED TEST 2')
 
 if ( test1thru == 2 ) call exit(0)
 
@@ -219,19 +217,16 @@ if ( test1thru == 2 ) call exit(0)
 ! Check the meta data
 !----------------------------------------------------------------------
 
-write(*,*) '******************** RUNNING TEST 3 *********************'
-write(*,*) ' Testing get_state_meta_data                             '
-write(*,*) '*********************************************************'
+call print_test_message('RUNNING TEST 3', &
+                        'Testing get_state_meta_data')
 
 if ( x_ind > 0 .and. x_ind <= model_size ) then
    call check_meta_data( x_ind )
 else
-   write(*,*) "x_ind = ", x_ind, " not in valid range of model 0-", model_size
+   if ( do_output() ) write(*,*) "x_ind = ", x_ind, " not in valid range of model 0-", model_size
 endif
 
-write(*,*)
-write(*,*) '******************** FINISHED TEST 3 *********************'
-write(*,*)
+call print_test_message('FINISHED TEST 3')
 
 if ( test1thru == 3 ) call exit(0)
 
@@ -239,11 +234,8 @@ if ( test1thru == 3 ) call exit(0)
 ! Check the interpolation - print initially to STDOUT
 !----------------------------------------------------------------------
 
-write(*,*)
-write(*,*) '******************** RUNNING TEST 4 *********************'
-write(*,*) ' Testing loc_of_interest for model_interpolate           '
-write(*,*) '*********************************************************'
-write(*,*)
+call print_test_message('RUNNING TEST 3', &
+                        'Testing loc_of_interest for model_interpolate')
 
 call create_state_window(ens_handle)
 
@@ -251,7 +243,7 @@ mykindindex = get_raw_obs_kind_index(kind_of_interest)
 
 allocate(interp_vals(num_ens), ios_out(num_ens))
 
-write(*,*) "interpolating at ", loc_of_interest
+if ( do_output() ) write(*,*) "interpolating at ", loc_of_interest
 
 num_failed = test_interpolate_single( ens_handle,            &
                                       num_ens,               &
@@ -263,17 +255,12 @@ num_failed = test_interpolate_single( ens_handle,            &
                                       interp_vals,           &
                                       ios_out )
 
-write(*,*)
-write(*,*) '******************** FINISHED TEST 4 *********************'
-write(*,*)
+call print_test_message('FINISHED TEST 4')
 
 if ( test1thru == 4 ) call exit(0)
 
-write(*,*)
-write(*,*) '******************** RUNNING TEST 5 *********************'
-write(*,*) ' Testing range of data for model_interpolate             '
-write(*,*) '*********************************************************'
-write(*,*)
+call print_test_message('RUNNING TEST 3', &
+                        'Testing range of data for model_interpolate')
 
 num_failed = test_interpolate_range( ens_handle,            &
                                      num_ens,               &
@@ -287,9 +274,7 @@ num_failed = test_interpolate_range( ens_handle,            &
                                      mykindindex,           &
                                      verbose )
 
-write(*,*)
-write(*,*) '******************** FINISHED TEST 5 *********************'
-write(*,*)
+call print_test_message('FINISHED TEST 5')
 
 ! finalize model_mod_check
 call error_handler(E_MSG,'full_model_mod_check','Finished successfully.',source,revision,revdate)
@@ -306,18 +291,23 @@ integer(i8), intent(in) :: iloc
 type(location_type) :: loc
 integer             :: var_type
 
-write(*,*)
-write(*,*)'Checking metadata routines.'
-write(*,*)
+if ( do_output() ) then
+   write(*,*)
+   write(*,*)'Checking metadata routines.'
+   write(*,*)
+endif
 
 call create_mean_window(ens_handle, 1, .false.)
 call get_state_meta_data(ens_handle, iloc, loc, var_type)
 call free_mean_window
 
 call write_location(42, loc, fform='formatted', charstring=string1)
-write(*,*)
-write(*,*)' indx ',iloc,' is type ',var_type
-write(*,*)'   ', trim(string1)
+
+if ( do_output() ) then
+   write(*,*)
+   write(*,*)' indx ',iloc,' is type ',var_type
+   write(*,*)'   ', trim(string1)
+endif 
 
 end subroutine check_meta_data
 
@@ -340,6 +330,35 @@ call state_vector_io_init()
 call io_filenames_init()
 
 end subroutine initialize_modules_used
+
+!----------------------------------------------------------------------
+
+subroutine print_test_message(test_msg, msg1, msg2, msg3)
+
+character(len=*), intent(in) :: test_msg
+character(len=*), intent(in), optional :: msg1
+character(len=*), intent(in), optional :: msg2
+character(len=*), intent(in), optional :: msg3
+
+character(len=64) :: msg_string
+character(len=64) :: msg_close
+
+if ( do_output() ) then
+   write(msg_string,*) '******************** ', trim(test_msg), ' *************************'
+   write(msg_close ,*) '*************************************************************'
+
+   write(*,*)
+                        write(*,*) trim(msg_string)
+   if ( present(msg1) ) write(*,*) ' ', trim(msg1)
+   if ( present(msg2) ) write(*,*) ' --', trim(msg2)
+   if ( present(msg3) ) write(*,*) ' --', trim(msg3)
+   if ( present(msg1) ) write(*,*) trim(msg_close)
+
+   write(*,*)
+endif
+
+end subroutine print_test_message
+
 
 !----------------------------------------------------------------------
 

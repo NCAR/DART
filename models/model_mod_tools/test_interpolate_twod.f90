@@ -15,7 +15,7 @@ use             types_mod, only : r8, i8, missing_r8, metadatalength
 use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
                                   initialize_utilities, finalize_utilities,     &
                                   find_namelist_in_file, check_namelist_read,   &
-                                  nc_check, E_MSG, open_file, close_file
+                                  nc_check, E_MSG, open_file, close_file, do_output
 
 use          location_mod, only : location_type, set_location, write_location,  &
                                   get_dist
@@ -136,8 +136,8 @@ do i = 1, nx
            write(string1,*) 'interpolation return code was', ios_out
            call error_handler(E_MSG,'test_interpolate_range',string1,source,revision,revdate,text2=string2)
         endif
-        all_ios_out(nfailed,:) = ios_out
         nfailed = nfailed + 1
+        all_ios_out(nfailed,:) = ios_out
       endif
 
    end do
@@ -149,8 +149,10 @@ write(iunit,'(''datmat = permute(datmat,[3,1,2]);'')')
 write(iunit,'(''datmat(datmat == missingvals) = NaN;'')')
 call close_file(iunit)
 
-write(*,*) 'total interpolations  : ', nx*ny
-write(*,*) 'failed interpolations : ', nfailed
+if ( do_output() ) then
+   write(*,*) 'total interpolations  : ', nx*ny
+   write(*,*) 'failed interpolations : ', nfailed
+endif
 
 call count_error_codes(all_ios_out, nfailed)
 
@@ -274,11 +276,12 @@ call model_interpolate(ens_handle, ens_size, loc, mykindindex, interp_vals, ios_
 
 do imem = 1, ens_size
    if (ios_out(imem) == 0 ) then
-      write(*,*) 'member ', imem, 'model_interpolate SUCCESS with value', interp_vals(imem)
+      if ( do_output() ) then &
+         write(*,*) 'member ', imem, 'model_interpolate SUCCESS with value', interp_vals(imem)
       num_passed = num_passed + 1
    else
-      write(*,*) 'member ', imem, 'model_interpolate ERROR with error code', ios_out(imem)
-      test_interpolate_single = test_interpolate_single
+      if ( do_output() ) then &
+         write(*,*) 'member ', imem, 'model_interpolate ERROR with error code', ios_out(imem)
    endif
 enddo
 
