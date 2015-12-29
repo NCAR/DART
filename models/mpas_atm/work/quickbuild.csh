@@ -5,6 +5,8 @@
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
+#
+# This script compiles all executables in this directory.
 
 #----------------------------------------------------------------------
 # 'preprocess' is a program that culls the appropriate sections of the
@@ -32,7 +34,7 @@ make || exit $n
 ./preprocess || exit 99
 
 #----------------------------------------------------------------------
-# Build all the targets
+# Build all the single-threaded targets
 #----------------------------------------------------------------------
 
 foreach TARGET ( mkmf_* )
@@ -52,22 +54,74 @@ foreach TARGET ( mkmf_* )
       make        || exit $n
       breaksw
    endsw
-   rm *.o *.mod
 end
 
-# for debug do not remove .o or .mod files
-#\rm -f *.o *.mod input.nml*_default
+\rm -f *.o *.mod 
 \rm -f input.nml*_default
-echo ""
-echo "Success: All DART programs compiled."
-echo ""
+
+if ( $#argv == 1 && "$1" == "-mpi" ) then
+  echo "Success: All single task DART programs compiled."  
+  echo "Script now compiling MPI parallel versions of the DART programs."
+else if ( $#argv == 1 && "$1" == "-nompi" ) then
+  echo "Success: All single task DART programs compiled."  
+  echo "Script is exiting without building the MPI version of the DART programs."
+  exit 0
+else
+  echo ""
+  echo "Success: All single task DART programs compiled."  
+  echo "Script now compiling MPI parallel versions of the DART programs."
+  echo "Run the quickbuild.csh script with a -nompi argument or"
+  echo "edit the quickbuild.csh script and add an exit line"
+  echo "to bypass compiling with MPI to run in parallel on multiple cpus."
+  echo ""
+endif
+
+#----------------------------------------------------------------------
+# to enable an MPI parallel version of filter for this model, 
+# call this script with the -mpi argument, or if you are going to build
+# with MPI all the time, remove or comment out the entire section above.
+#----------------------------------------------------------------------
+
+\rm -f filter wakeup_filter
+
+@ n = $n + 1
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_filter"
+csh   mkmf_filter -mpi
+make
+
+if ($status != 0) then
+   echo
+   echo "If this died in mpi_utilities_mod, see code comment"
+   echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
+   echo
+   exit $n
+endif
+
+@ n = $n + 1
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_wakeup_filter"
+csh  mkmf_wakeup_filter -mpi
+make || exit $n
+
+@ n = $n + 1
+echo
+echo "---------------------------------------------------"
+echo "build number $n is mkmf_perfect_model_obs"
+csh  mkmf_perfect_model_obs -mpi
+make || exit $n
+
+\rm -f *.o *.mod
+\rm -f input.nml*_default
+
+echo
 echo 'time to run filter here:'
 echo ' for lsf run "bsub < runme_filter"'
 echo ' for pbs run "qsub runme_filter"'
 echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
-echo ' for mpich run "mpd" once, then "runme_filter"'
 
-echo ""
 exit 0
 
 # <next few lines under version control, do not edit>
