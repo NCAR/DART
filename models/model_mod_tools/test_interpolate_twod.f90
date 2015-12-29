@@ -307,7 +307,8 @@ i = 1
 do while (count_errors < num_failed)
    results = count(error_codes(:,1) == i)
    if (results /= 0) then
-      write(*,'(i10, a, i3)') results + 1, " failed with ios_out ", i
+      if ( do_output() ) &
+         write(*,'(i10, a, i3)') results + 1, " failed with ios_out ", i
       count_errors = count_errors + results
    endif
    i = i+1
