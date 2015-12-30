@@ -802,27 +802,28 @@ owners_index = div + 1
 
 end subroutine get_copy_owner_index
 
-!!-----------------------------------------------------------------
-!
-!subroutine get_var_owner_index(var_number, owner, owners_index)
-!
-!! Given the var number, returns which PE stores it when copy complete
-!! and its index in that pes local storage. Depends on distribution_type
-!! with only option 1 currently implemented.
-!
-!! Assumes that all tasks are used in the ensemble
-!
-!integer, intent(in)  :: var_number
-!integer, intent(out) :: owner, owners_index
-!
-!integer :: div
-!
-!! Asummes distribution type 1
-!div = (var_number - 1) / num_pes
-!owner = var_number - div * num_pes - 1
-!owners_index = div + 1
-!
-!end subroutine get_var_owner_index
+!-----------------------------------------------------------------
+
+subroutine get_var_owner_index(var_number, owner, owners_index)
+
+! Given the var number, returns which PE stores it when copy complete
+! and its index in that pes local storage. Depends on distribution_type
+! with only option 1 currently implemented.
+
+! Assumes that all tasks are used in the ensemble
+
+integer(i8), intent(in)  :: var_number
+integer,     intent(out) :: owner
+integer,     intent(out) :: owners_index
+
+integer :: div
+
+! Asummes distribution type 1
+div = (var_number - 1) / num_pes
+owner = var_number - div * num_pes - 1
+owners_index = div + 1
+
+end subroutine get_var_owner_index
 
 !-----------------------------------------------------------------
 
@@ -938,29 +939,6 @@ else
 endif
 
 end function get_allow_transpose
-
-!-----------------------------------------------------------------
-!> Given the var number, returns which PE stores it when copy complete
-!> and its index in that pes local storage. Depends on distribution_type
-!> with only option 1 currently implemented.
-!> Assumes that all tasks are used in the ensemble
-subroutine get_var_owner_index(var_number, owner, owners_index)
-
-integer(i8), intent(in)  :: var_number !> index into state vector
-integer,     intent(out) :: owner !> pe who owns the state element
-integer,     intent(out) :: owners_index !> local index on the owner
-
-integer :: div
-integer :: num_pes
-
-num_pes = task_count() !> @todo Fudge task_count()
-
-! Asummes distribution type 1: rount robin
-div = (var_number - 1) / num_pes
-owner = var_number - div * num_pes - 1
-owners_index = div + 1
-
-end subroutine get_var_owner_index
 
 !--------------------------------------------------------------------------------
 !> Return the physical task for my_pe
