@@ -606,6 +606,7 @@ AdvanceTime : do
 
       ! update so curr time is accurate.
       curr_ens_time = next_ens_time
+      state_ens_handle%current_time = curr_ens_time
 
       ! only need to sync here since we want to wait for the
       ! slowest task to finish before outputting the time.
