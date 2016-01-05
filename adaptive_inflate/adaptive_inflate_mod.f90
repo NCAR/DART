@@ -245,15 +245,19 @@ if(inf_flavor >= 2) then
    if (mean_from_restart) then
       call get_copy_owner_index(ss_inflate_index, owner, owners_index)
       ! if inflation array is already on PE0, just figure out the
-      ! largest value in the array and we're done.
+      ! largest value in the array and we're done.  only task 0 has
+      ! the data to get the values so don't do it on other tasks.
       if (owner == 0) then
-         call prepare_to_read_from_vars(ens_handle)
-         minmax_mean(1) = minval(ens_handle%vars(:, owners_index))
-         minmax_mean(2) = maxval(ens_handle%vars(:, owners_index))
+         if (ens_handle%my_pe == 0) then
+            call prepare_to_read_from_vars(ens_handle)
+            minmax_mean(1) = minval(ens_handle%vars(:, owners_index))
+            minmax_mean(2) = maxval(ens_handle%vars(:, owners_index))
+         endif
       else
          ! someone else has the inf array.  have the owner send the min/max
          ! values to PE0.  after this point only PE0 has the right value
          ! in minmax_mean, but it is the only one who is going to print below.
+         ! if you aren't the sender or receiver, nothing to do.
          if (ens_handle%my_pe == 0) then
             call receive_from(map_pe_to_task(ens_handle, owner), minmax_mean)
          else if (ens_handle%my_pe == owner) then
@@ -269,13 +273,16 @@ if(inf_flavor >= 2) then
       ! if inflation sd array is already on PE0, just figure out the
       ! largest value in the array and we're done.
       if (owner == 0) then
-         call prepare_to_read_from_vars(ens_handle)
-         minmax_sd(1) = minval(ens_handle%vars(:, owners_index))
-         minmax_sd(2) = maxval(ens_handle%vars(:, owners_index))
+         if (ens_handle%my_pe == 0) then
+            call prepare_to_read_from_vars(ens_handle)
+            minmax_sd(1) = minval(ens_handle%vars(:, owners_index))
+            minmax_sd(2) = maxval(ens_handle%vars(:, owners_index))
+         endif
       else
          ! someone else has the sd array.  have the owner send the min/max
          ! values to PE0.  after this point only PE0 has the right value
          ! in minmax_sd, but it is the only one who is going to print below.
+         ! if you aren't the sender or receiver, nothing to do.
          if (ens_handle%my_pe == 0) then
             call receive_from(map_pe_to_task(ens_handle, owner), minmax_sd)
          else if (ens_handle%my_pe == owner) then 
@@ -295,6 +302,10 @@ else if(inf_flavor == 1) then
 
    ! Initialize observation space inflation values from restart files
    ! Only single values for inflation, inflation_sd (not arrays)
+   ! FIXME: this could be changed to have task 0 read the numbers
+   ! and broadcast them to the other tasks.  this code is correct
+   ! but it means every task opens the same file and reads the 2 numbers
+   ! at the same time.
    if(mean_from_restart .or. sd_from_restart) then
       ! Open the file
       restart_unit = open_file(in_file_name, form='formatted', action='read')
@@ -364,9 +375,10 @@ call error_handler(E_MSG, trim(label) // ' inflation:', msgstring, source, revis
 ! printed (further up in this routine).  for values set from a restart
 ! file, if the inflation flavor is 2, the values printed are the min and
 ! max from the entire array.  for flavors 1 and 3 there is only a single
-! value to print out.
+! value to print out.  only PE 0 has valid values in the minmax array, so
+! only try to format the strings if you are PE 0.
 if (inf_flavor > 0) then
-   if (mean_from_restart) then
+   if (mean_from_restart .and. ens_handle%my_pe == 0) then
       if (inf_flavor == 2) then
          write(msgstring, '(A, F8.3, A, F8.3)') &
             'inf mean   from restart file: min value: ', minmax_mean(1), ' max value: ', minmax_mean(2)
@@ -376,7 +388,7 @@ if (inf_flavor > 0) then
       endif
       call error_handler(E_MSG, trim(label) // ' inflation:', msgstring, source, revision, revdate)
    endif
-   if (sd_from_restart) then
+   if (sd_from_restart .and. ens_handle%my_pe == 0) then
       if (inf_flavor == 2) then
          write(msgstring, '(A, F8.3, A, F8.3)') &
             'inf stddev from restart file: min value: ', minmax_sd(1), ' max value: ', minmax_sd(2)
@@ -417,18 +429,21 @@ if(inflate_handle%output_restart) then
          ss_inflate_index, ss_inflate_sd_index, force_single_file = .true.)
 
    ! Flavor 1 is observation space, write its restart directly
+   ! but only one task needs to write.
    else if(do_obs_inflate(inflate_handle)) then
-      ! Open the restart file
-      restart_unit = open_file(inflate_handle%out_file_name, &
-                               form = 'formatted', action='write')
-      write(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
-      if (io /= 0) then
-         write(msgstring, *) 'unable to write into inflation restart file ', &
-                              trim(inflate_handle%out_file_name)
-         call error_handler(E_ERR, 'adaptive_inflate_end', &
-            msgstring, source, revision, revdate)
+      if (my_task_id() == 0) then
+         ! Open the restart file
+         restart_unit = open_file(inflate_handle%out_file_name, &
+                                  form = 'formatted', action='write')
+         write(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
+         if (io /= 0) then
+            write(msgstring, *) 'unable to write into inflation restart file ', &
+                                 trim(inflate_handle%out_file_name)
+            call error_handler(E_ERR, 'adaptive_inflate_end', &
+               msgstring, source, revision, revdate)
+         endif
+         call close_file(restart_unit)
       endif
-      call close_file(restart_unit)
    endif
 endif
 
