@@ -1,0 +1,312 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<HTML>
+<HEAD>
+<TITLE>program roms_to_dart</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>roms_to_dart</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P><a href="../../index.html">DART Documentation Main Index</a><br />
+          <small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+   <em class=program>roms_to_dart</em> is the program that reads metadata from
+   a ROMS grid definition file (usually linked to <em class=file>roms_grid.nc</em>),
+   the model state from a ROMS restart file (usually linked to
+   <em class=file>roms_restart.nc</em>) and creates a DART output/restart file
+   (e.g. <em class=file>perfect_ics, filter_ics</em>).
+   <br />
+   <br />
+   The list of variables used to create the DART state vector are specified in
+   the <em class="file">input.nml</em> file.
+   <br />
+   <br />
+   Conditions required for successful execution of <em class=program>roms_to_dart</em>:
+</P>
+
+<UL>
+   <LI>a valid <em class=file>input.nml</em> namelist file for DART</LI>
+   <LI>the ROMS grid file mentioned in the
+       <em class=file>input.nml</em>
+       <em class=code>&amp;model_nml:grid_definition_filename</em> variable.</LI>
+   <LI>the ROMS restart file mentioned in the
+       <em class=file>input.nml</em>
+       <em class=code>&amp;model_nml:model_restart_filename</em> variable.</LI>
+</UL>
+
+<P>
+Since this program is called repeatedly for every ensemble member,
+we have found it convenient to link the ROMS restart and grid files
+to the default filenames <em class=file>roms_restart.nc</em>,
+<em class=file>roms_history.nc</em>, respectively.
+The default DART output filename is <em class=file>dart_ics</em> -
+this may be moved or linked as necessary. The default filenames may be
+changed via the namelist.
+</P>
+
+<H2>Credits</H2>
+<P>
+<em class=program>roms_to_dart</em> was originally written by 
+Peng Xiu of the University of Maine and was subsequently modified by the DART team.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;roms_to_dart_nml
+   roms_to_dart_output_file  = 'dart.ics'
+   perturb_state             = .false.
+   print_data_ranges         = .true.
+   /
+</pre>
+</div>
+<br />
+<div class=namelist>
+<pre>
+&amp;model_nml
+   analysis_time                = '2011-01-03 00:00:00'
+   output_state_vector          = .false.
+   assimilation_period_days     = 5
+   assimilation_period_seconds  = 0
+   model_perturbation_amplitude = 0.2
+   hc                           = 250.0
+   model_restart_filename       = 'roms_restart.nc'
+   grid_definition_filename     = 'roms_grid.nc'
+   vert_localization_coord      = 3
+   debug     = 1
+   variables = 'temp',   'KIND_TEMPERATURE',
+               'salt',   'KIND_SALINITY',
+               'u',      'KIND_U_CURRENT_COMPONENT',
+               'v',      'KIND_V_CURRENT_COMPONENT',
+               'zeta',   'KIND_SEA_SURFACE_HEIGHT'
+  /
+
+</pre>
+</div>
+
+<br />
+<br />
+
+<P>The roms_to_dart namelist items:</P>
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD> roms_to_dart_output_file </TD>
+    <TD> character(len=256) </TD>
+    <TD>The name of the DART file containing the model state
+        derived from the ROMS restart file.
+</TD></TR>
+
+<TR><TD> perturb_state </TD>
+    <TD> logical </TD>
+    <TD> switch to add perturbations to the input ROMS state.
+         The perturbations come from the
+         <em class=file>model_mod.f90</em> <em class=program>pert_model_state()</em>
+          routine.
+</TD></TR>
+
+<TR><TD> print_data_ranges </TD>
+    <TD> logical </TD>
+    <TD> switch to print a summary of the min/max of each variable
+         that will be part of the DART vector.
+</TD></TR>
+</TBODY>
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<P>The &amp;model_nml namelist here is a subset of the full namelist.
+Only the values used by the converter are listed here.
+The full description of the <em class=code>model_nml</em> namelist is documented
+in the ROMS <a href="model_mod.html#Namelist">model_mod</a> documentation, but the
+most important variable for <em class=program>roms_to_dart</em> is repeated here.
+</P>
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD valign=top> analysis_time </TD>
+    <TD valign=top> character(len=20) </TD>
+    <TD>At present, this is a way to specify the valid time of the LAST
+        timestep in the ROMS restart file. When the restart file has
+        enough metadata to determine this, the <em class=code>analysis_time</em>
+        should be removed. An alternate way to override the file-derived start
+        time is to use the <em class=file>input.nml</em>
+        <em class=code>&amp;filter_nml: init_time_days, init_time_seconds</em>
+        mechanism.
+</TD></TR>
+
+<TR><TD valign=top> variables </TD>
+    <TD valign=top> character(len=NF90_MAX_NAME) ::<br />
+                    dimension(160) </TD>
+    <TD>The list of variable names in the ROMS restart file to use to
+        create the DART state vector and their corresponding DART kind.
+</TD></TR>
+
+</TBODY>
+</TABLE>
+</div>
+
+<P>
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>MODULES USED</H2>
+<PRE>
+assim_model_mod
+location_mod
+model_mod
+null_mpi_utilities_mod
+obs_kind_mod
+random_seq_mod
+time_manager_mod
+types_mod
+utilities_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES Read</H2>
+<UL><LI>ROMS grid file; <em class=file>roms_grid.nc</em></LI>
+    <LI>ROMS restart file; <em class=file>roms_restart.nc</em></LI>
+    <LI>DART namelist files; <em class=file>input.nml</em></LI>
+</UL>
+
+<H2>FILES Written</H2>
+<UL><LI>DART initial conditions/restart file; e.g. <em class=file>dart.ics</em></LI>
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<P>
+none - all error messages come from modules that have their own documentation.
+</P>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+<ol>
+   <li>Remove the hardcoded <em class=code>analysis_time</em> from the code.</li>
+</ol>
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>
