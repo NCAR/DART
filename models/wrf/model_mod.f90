@@ -4329,7 +4329,7 @@ do id=1,num_domains
 
       if ( debug ) write(*,*) 'Defining variable ',varname
 
-      if ( wrf%dom(id)%var_size(3,my_index) > 1 ) then ! 3D variable
+      if ( wrf%dom(id)%var_size(3,ind) > 1 ) then ! 3D variable
 
          dimids_3D(4:5) = (/MemberDimID,unlimitedDimID/)
 
@@ -4349,11 +4349,11 @@ do id=1,num_domains
          ! vertical dimension can be stag, unstag, or staggered soil
          ! need to use if/then/else instead of select because testing
          ! is against variables
-         if ( wrf%dom(id)%var_size(3,my_index) == wrf%dom(id)%bts ) then
+         if ( wrf%dom(id)%var_size(3,ind) == wrf%dom(id)%bts ) then
            dimids_3D(3)=btStagDimID(id)
-         elseif ( wrf%dom(id)%var_size(3,my_index) == wrf%dom(id)%bt ) then
+         elseif ( wrf%dom(id)%var_size(3,ind) == wrf%dom(id)%bt ) then
            dimids_3D(3)=btDimID(id)
-         elseif ( wrf%dom(id)%var_size(3,my_index) == wrf%dom(id)%sls ) then
+         elseif ( wrf%dom(id)%var_size(3,ind) == wrf%dom(id)%sls ) then
            dimids_3D(3)=slSDimID(id)
          else
            write(errstring,*)'Could not determine dim_id for vertical dimension to output variable '//varname
@@ -4389,22 +4389,22 @@ do id=1,num_domains
 
       endif ! 3D or 2D
 
-      unitsval = trim(wrf%dom(id)%units(my_index))
+      unitsval = trim(wrf%dom(id)%units(ind))
 
       call nc_check(nf90_put_att(ncFileID, var_id, "units", trim(unitsval)), &
                  'nc_write_model_atts','put_att '//varname//' units')
 
-      descriptionval = trim(wrf%dom(id)%description(my_index))
+      descriptionval = trim(wrf%dom(id)%description(ind))
 
       call nc_check(nf90_put_att(ncFileID, var_id, "description", trim(descriptionval)), &
                  'nc_write_model_atts','put_att '//varname//' description')
 
-      long_nameval = trim(wrf%dom(id)%description(my_index))
+      long_nameval = trim(wrf%dom(id)%description(ind))
 
       call nc_check(nf90_put_att(ncFileID, var_id, "long_name", trim(long_nameval)), &
                  'nc_write_model_atts','put_att '//varname//' long_name')
 
-      coordinatesval = trim(wrf%dom(id)%coordinates(my_index))
+      coordinatesval = trim(wrf%dom(id)%coordinates(ind))
       if (coordinatesval(1:7) .eq. 'XLONG_U') then
         coordinate_char = "XLONG_U_d0"//idom//" XLAT_U_d0"//idom
       else if (coordinatesval(1:7) .eq. 'XLONG_V') then
