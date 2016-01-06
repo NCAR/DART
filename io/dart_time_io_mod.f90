@@ -1,3 +1,9 @@
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
+
 ! Netcdf reading and writing dart model time
 ! Temporary module for dart time.
 !> @todo should this go in state_vector_io_mod or io_filename_mod?

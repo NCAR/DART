@@ -1111,14 +1111,14 @@ enddo
 !> @TODO FIXME ... io_filenames_nml:rpointer_file order must somehow match 
 !> - or be insensitive to - the add_domain() calls below (if nvars == 0) ...
 
-call cluster_variables(clm_restart_filename, nvars, var_names, var_ranges)
-domid =     add_domain(clm_restart_filename, nvars, var_names, var_ranges)
+call cluster_variables(clm_restart_filename, nvars, var_names,            var_ranges)
+domid =     add_domain(clm_restart_filename, nvars, var_names, clamp_vals=var_ranges)
 
-call cluster_variables(clm_history_filename, nvars, var_names, var_ranges)
-domid =     add_domain(clm_history_filename, nvars, var_names, var_ranges)
+call cluster_variables(clm_history_filename, nvars, var_names,            var_ranges)
+domid =     add_domain(clm_history_filename, nvars, var_names, clamp_vals=var_ranges)
 
-call cluster_variables(clm_vector_history_filename, nvars, var_names, var_ranges)
-domid =     add_domain(clm_vector_history_filename, nvars, var_names, var_ranges)
+call cluster_variables(clm_vector_history_filename, nvars, var_names,            var_ranges)
+domid =     add_domain(clm_vector_history_filename, nvars, var_names, clamp_vals=var_ranges)
 
 end subroutine static_init_model
 

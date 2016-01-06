@@ -95,7 +95,7 @@ use sort_mod,              only : sort
 use distributed_state_mod, only : get_state
 
 use state_structure_mod, only : add_domain, get_model_variable_indices, &
-                                set_clamping, state_structure_info
+                                state_structure_info
 
 ! FIXME:
 ! the kinds KIND_CLOUD_LIQUID_WATER should be KIND_CLOUDWATER_MIXING_RATIO, 
@@ -734,8 +734,8 @@ WRFDomains : do id=1,num_domains
    ! add domain - not doing anything with domain_id yet so just overwriting it
    domain_id = add_domain( 'wrfinput_d0'//idom, &
                            wrf%dom(id)%number_of_wrf_variables, &
-                           wrf_state_variables(1,1:wrf%dom(id)%number_of_wrf_variables), &
-                           var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,:) )
+                           var_names  = wrf_state_variables(1,1:wrf%dom(id)%number_of_wrf_variables), &
+                           clamp_vals = var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,:) )
                           
    if (debug) call state_structure_info(domain_id)
 

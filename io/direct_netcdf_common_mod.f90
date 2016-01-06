@@ -1,3 +1,9 @@
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id: direct_netcdf_common_mod.f90 9263 2015-12-18 21:56:37Z hendric $
+
 !-------------------------------------------------------------------------------
 ! module for common routines shared by both
 ! direct_netcdf_mpi_mod and direct_netcdf_no_mpi_mod
@@ -8,13 +14,13 @@ module direct_netcdf_common_mod
 use types_mod,           only : r8, missing_r8, digits12
 use utilities_mod,       only : E_MSG, error_handler, nc_check
 use time_manager_mod,    only : time_type
-use state_structure_mod, only : get_variable_name, get_clamping_maxval,   &
-                                get_clamping_minval, do_clamping,         &
-                                get_num_dims, get_dim_lengths,            &
-                                get_variable_size, get_num_unique_dims,   &
-                                get_unique_dim_name, get_dim_name,        &
-                                get_unique_dim_length, get_num_variables, &
-                                set_var_id
+use state_structure_mod, only : get_variable_name, get_io_clamping_maxval,   &
+                                get_io_clamping_minval, do_io_clamping,      &
+                                get_io_num_dims, get_io_dim_lengths,         &
+                                get_variable_size, get_io_num_unique_dims,   &
+                                get_io_unique_dim_name, get_dim_name,        &
+                                get_io_unique_dim_length, get_num_variables, &
+                                set_var_id, do_io_update
 use model_mod,           only : write_model_time
 
 use netcdf
@@ -50,7 +56,7 @@ real(r8) :: minclamp, maxclamp
 character(len=NF90_MAX_NAME) :: varname ! for debugging only
 
 ! is lower bound set
-minclamp = get_clamping_minval(dom_id, var_index)
+minclamp = get_io_clamping_minval(dom_id, var_index)
 if ( minclamp /= missing_r8 ) then
    !>@todo Calculating both minval, and max might be expensive for
    !> large variables.  Should we handle this in a different way?
@@ -71,7 +77,7 @@ if ( minclamp /= missing_r8 ) then
 endif ! min range set
 
 ! is upper bound set
-maxclamp = get_clamping_maxval(dom_id, var_index)
+maxclamp = get_io_clamping_maxval(dom_id, var_index)
 if ( maxclamp /= missing_r8 ) then
    if ( maxval(variable) > maxclamp ) then
       varname = get_variable_name(dom_id, var_index) 
@@ -106,6 +112,7 @@ integer :: start_in_var_block, end_in_var_block
 integer :: var_size
 integer, allocatable :: dims(:)
 integer :: ret, var_id
+character(len=NF90_MAX_NAME) :: varname
 
 start_in_var_block = 1
 
@@ -115,15 +122,16 @@ do i = start_var, end_var
    end_in_var_block = start_in_var_block + var_size - 1
 
    ! number of dimensions and length of each
-   allocate(dims(get_num_dims(domain, i)))
+   allocate(dims(get_io_num_dims(domain, i)))
 
-   dims = get_dim_lengths(domain, i)
+   dims = get_io_dim_lengths(domain, i)
+   varname = get_variable_name(domain, i)
 
-   ret = nf90_inq_varid(ncfile_in, get_variable_name(domain, i), var_id)
-   call nc_check(ret, 'read_variables: nf90_inq_varid',trim(get_variable_name(domain,i)) )
+   ret = nf90_inq_varid(ncfile_in, varname, var_id)
+   call nc_check(ret, 'read_variables: nf90_inq_varid',trim(varname) )
 
    ret = nf90_get_var(ncfile_in, var_id, var_block(start_in_var_block:end_in_var_block), count=dims)
-   call nc_check(ret, 'read_variables: nf90_get_var',trim(get_variable_name(domain,i)) )
+   call nc_check(ret, 'read_variables: nf90_get_var',trim(varname) )
 
    start_in_var_block = start_in_var_block + var_size
 
@@ -154,19 +162,22 @@ do i = start_var, end_var
    var_size = get_variable_size(domain, i)
    end_in_var_block = start_in_var_block + var_size - 1
 
-   ! number of dimensions and length of each
-   allocate(dims(get_num_dims(domain, i)))
+   if ( do_io_update(domain, i ) ) then
+      ! number of dimensions and length of each
+      allocate(dims(get_io_num_dims(domain, i)))
 
-   dims = get_dim_lengths(domain, i)
+      dims = get_io_dim_lengths(domain, i)
 
-   ret = nf90_inq_varid(ncfile_out, get_variable_name(domain, i), var_id)
-   call nc_check(ret, 'write_variables', 'getting variable id')
+      ret = nf90_inq_varid(ncfile_out, get_variable_name(domain, i), var_id)
+      call nc_check(ret, 'write_variables', 'getting variable id')
 
-   ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:end_in_var_block), count=dims)
-   call nc_check(ret, 'write_variables', 'writing')
+      ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:end_in_var_block), count=dims)
+      call nc_check(ret, 'write_variables', 'writing')
+      
+      deallocate(dims)
+   endif
+
    start_in_var_block = start_in_var_block + var_size
-
-   deallocate(dims)
 
 enddo
 
@@ -193,24 +204,27 @@ do i = start_var, end_var
    var_size = get_variable_size(domain, i)
    end_in_var_block = start_in_var_block + var_size - 1
 
-   ! check whether you have to do anything to the variable, clamp or fail
-   if ( do_clamping(domain, i) ) then
-      call clamp_variable(domain, i, var_block(start_in_var_block:end_in_var_block))
+   if ( do_io_update(domain, i ) ) then
+      ! check whether you have to do anything to the variable, clamp or fail
+      if ( do_io_clamping(domain, i) ) then
+         call clamp_variable(domain, i, var_block(start_in_var_block:end_in_var_block))
+      endif
+
+      ! number of dimensions and length of each
+      allocate(dims(get_io_num_dims(domain, i)))
+
+      dims = get_io_dim_lengths(domain, i)
+
+      ret = nf90_inq_varid(ncfile_out, get_variable_name(domain, i), var_id)
+      call nc_check(ret, 'write_variables_clamp', 'getting variable id')
+
+      ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:end_in_var_block), count=dims)
+      call nc_check(ret, 'write_variables_clamp', 'writing')
+
+      deallocate(dims)
    endif
 
-   ! number of dimensions and length of each
-   allocate(dims(get_num_dims(domain, i)))
-
-   dims = get_dim_lengths(domain, i)
-
-   ret = nf90_inq_varid(ncfile_out, get_variable_name(domain, i), var_id)
-   call nc_check(ret, 'write_variables_clamp', 'getting variable id')
-
-   ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:end_in_var_block), count=dims)
-   call nc_check(ret, 'write_variables_clamp', 'writing')
    start_in_var_block = start_in_var_block + var_size
-
-   deallocate(dims)
 
 enddo
 
@@ -243,8 +257,9 @@ integer :: xtype ! precision for netcdf file
 integer :: dimids(NF90_MAX_VAR_DIMS)
 
 ! define dimensions, loop around unique dimensions
-do i = 1, get_num_unique_dims(dom_id)
-   ret = nf90_def_dim(ncfile_out, get_unique_dim_name(dom_id, i), get_unique_dim_length(dom_id, i), new_dimid)
+do i = 1, get_io_num_unique_dims(dom_id)
+   ret = nf90_def_dim(ncfile_out, get_io_unique_dim_name(dom_id, i), &
+                                  get_io_unique_dim_length(dom_id, i), new_dimid)
    !> @todo if we already have a unique names we can take this test out
    if(ret /= NF90_NOERR .and. ret /= NF90_ENAMEINUSE) then
       call nc_check(ret, 'create_state_output', 'defining dimensions')
@@ -253,8 +268,12 @@ enddo
 
 ! define variables
 do i = 1, get_num_variables(dom_id) ! loop around state variables
+   
+   ! no need to define variables that are not updated
+   if ( .not. do_io_update(dom_id, i ) ) cycle
+
    ! double or single precision?
-   ndims = get_num_dims(dom_id, i)
+   ndims = get_io_num_dims(dom_id, i)
 
    if (single_precision_output) then
       xtype = nf90_real
@@ -267,13 +286,13 @@ do i = 1, get_num_variables(dom_id) ! loop around state variables
    endif
 
    ! query the dimension ids
-   do j = 1, get_num_dims(dom_id, i)
+   do j = 1, ndims
       ret = nf90_inq_dimid(ncfile_out, get_dim_name(dom_id, i, j), dimids(j))
       call nc_check(ret, 'create_state_output', 'querying dimensions')
    enddo
 
    ret = nf90_def_var(ncfile_out, trim(get_variable_name(dom_id, i)), &
-                      xtype=xtype, dimids=dimids(1:get_num_dims(dom_id, i)), &
+                      xtype=xtype, dimids=dimids(1:ndims), &
                       varid=new_varid)
 
    call nc_check(ret, 'create_state_output', 'defining variable')

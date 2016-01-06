@@ -100,7 +100,7 @@ use get_geometry_mod
 use get_reconstruct_mod
 
 use state_structure_mod, only :  add_domain, get_model_variable_indices, &
-                                 state_structure_info, set_clamping
+                                 state_structure_info
 
 implicit none
 private
@@ -592,7 +592,7 @@ call nc_check( nf90_open(trim(model_analysis_filename), NF90_NOWRITE, ncid), &
                   'static_init_model', 'open '//trim(model_analysis_filename))
 
 call verify_state_variables( mpas_state_variables, ncid, model_analysis_filename, &
-                             nfields, variable_table )
+                             nfields, variable_table)
 
 TimeDimID = FindTimeDimension( ncid )
 
@@ -808,9 +808,9 @@ allocate( ens_mean(model_size) )
 variable_bounds(1:nfields, 1) = progvar(1:nfields)%range(1)
 variable_bounds(1:nfields, 2) = progvar(1:nfields)%range(2)
 
-domid =  add_domain( trim(model_analysis_filename), nfields, &
-                     variable_table(1:nfields,1), &
-                     variable_bounds(1:nfields,:) )
+domid =  add_domain( trim(model_analysis_filename), nfields,    &
+                     var_names  = variable_table (1:nfields,1), &
+                     clamp_vals = variable_bounds(1:nfields,:) )
 
 if ( debug > 0 ) call state_structure_info(domid)
 

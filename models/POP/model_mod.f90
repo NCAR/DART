@@ -42,7 +42,7 @@ use ensemble_manager_mod,  only : ensemble_type
 use distributed_state_mod, only : get_state
 
 use state_structure_mod,   only : add_domain, get_model_variable_indices, &
-                                  get_num_variables, get_ind1, get_indN,  &
+                                  get_num_variables, get_index_start, &
                                   get_num_dims, get_domain_size
 
 use dart_time_io_mod,      only : write_model_time
@@ -106,7 +106,7 @@ integer, parameter :: num_state_table_columns = 3
 ! larger than paramname_length = 32.
 character(len=paramname_length) :: variable_table( max_state_variables, num_state_table_columns )
 integer :: state_kinds_list( max_state_variables )
-logical :: update_list( max_state_variables )
+logical :: update_var_list( max_state_variables )
 
 ! identifiers for variable_table
 integer, parameter :: VAR_NAME_INDEX = 1
@@ -327,7 +327,7 @@ if (debug > 2) call write_grid_interptest() ! DEBUG only
 
 ! verify that the model_state_variables namelist was filled in correctly.  
 ! returns variable_table which has variable names, kinds and update strings.
-call verify_state_variables(model_state_variables, nfields, variable_table, state_kinds_list, update_list)
+call verify_state_variables(model_state_variables, nfields, variable_table, state_kinds_list, update_var_list)
 
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 1 is 2D.
@@ -346,7 +346,9 @@ call dpth2pres(Nz, ZC, pressure)
 call init_interp()
 
 !> @todo 'pop.r.nc' is hardcoded in dart_pop_mod.f90
-domain_id = add_domain('pop.r.nc', nfields, variable_table(1:nfields, VAR_NAME_INDEX))
+domain_id = add_domain('pop.r.nc', nfields, &
+                       var_names = variable_table(1:nfields, VAR_NAME_INDEX), &
+                       update_list = update_var_list(1:nfields))
 
 model_size = get_domain_size(domain_id)
 if (do_output()) write(*,*) 'model_size = ', model_size
@@ -877,10 +879,10 @@ SELECT CASE (obs_type)
          KIND_U_CURRENT_COMPONENT,   &
          KIND_V_CURRENT_COMPONENT,   &
          KIND_SEA_SURFACE_PRESSURE)
-      base_offset = get_ind1(domain_id, get_varid_from_kind(obs_type))
+      base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
 
    CASE (KIND_SEA_SURFACE_HEIGHT)
-      base_offset = get_ind1(domain_id, get_varid_from_kind(KIND_SEA_SURFACE_PRESSURE))
+      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEA_SURFACE_PRESSURE))
       convert_to_ssh = .TRUE. ! simple linear transform of PSURF
 
    CASE DEFAULT
@@ -2884,7 +2886,7 @@ if (dim2 /= Ny) then
    call error_handler(E_ERR,'vector_to_2d_prog_var',msgstring,source,revision,revdate) 
 endif
 
-ii = get_ind1(domain_id, varindex)
+ii = get_index_start(domain_id, varindex)
 
 do j = 1,Ny   ! latitudes
 do i = 1,Nx   ! longitudes
@@ -2931,7 +2933,7 @@ if (dim3 /= Nz) then
    call error_handler(E_ERR,'vector_to_3d_prog_var',msgstring,source,revision,revdate) 
 endif
 
-ii = get_ind1(domain_id, varindex)
+ii = get_index_start(domain_id, varindex)
 
 do k = 1,Nz   ! vertical
 do j = 1,Ny   ! latitudes
@@ -3285,8 +3287,8 @@ if(hstatus /= 0) then
    return
 endif
 
-offset_salt = get_ind1(domain_id, get_varid_from_kind(KIND_SALINITY))
-offset_temp = get_ind1(domain_id, get_varid_from_kind(KIND_POTENTIAL_TEMPERATURE))
+offset_salt = get_index_start(domain_id, get_varid_from_kind(KIND_SALINITY))
+offset_temp = get_index_start(domain_id, get_varid_from_kind(KIND_POTENTIAL_TEMPERATURE))
 
 ! salinity - in msu (kg/kg).  converter will want psu (g/kg).
 call do_interp(state_handle, ens_size, offset_salt, hgt_bot, hgt_top, hgt_fract, llon, llat, &
@@ -3649,13 +3651,13 @@ end subroutine vert_convert
 !>
 !>    netcdf_variable_name ; dart_kind_string ; update_string
 !>
-subroutine verify_state_variables( state_variables, ngood, table, kind_list, update_list )
+subroutine verify_state_variables( state_variables, ngood, table, kind_list, update_var )
 
 character(len=*),  intent(inout) :: state_variables(:)
 integer,           intent(out) :: ngood
 character(len=*),  intent(out) :: table(:,:)
 integer,           intent(out) :: kind_list(:)   ! kind number
-logical, optional, intent(out) :: update_list(:) ! logical update
+logical, optional, intent(out) :: update_var(:) ! logical update
 
 integer :: nrows, i
 character(len=NF90_MAX_NAME) :: varname, dartstr, update
@@ -3701,12 +3703,12 @@ MyLoop : do i = 1, nrows
    
    ! Make sure the update variable has a valid name
 
-   if ( present(update_list) )then
+   if ( present(update_var) )then
       SELECT CASE (update)
          CASE ('UPDATE')
-            update_list(i) = .true.
+            update_var(i) = .true.
          CASE ('NO_COPY_BACK')
-            update_list(i) = .false.
+            update_var(i) = .false.
          CASE DEFAULT
             write(string1,'(A)')  'only UPDATE or NO_COPY_BACK supported in model_state_variable namelist'
             write(string2,'(6A)') 'you provided : ', trim(varname), ', ', trim(dartstr), ', ', trim(update)

@@ -26,7 +26,7 @@ use utilities_mod,        only : do_nml_file, nmlfileunit, do_nml_term, &
                                  open_file, find_textfile_dims
 use model_mod,            only : construct_file_name_in
 use state_structure_mod,  only : get_num_domains, get_dim_length, get_dim_name, &
-                                 get_num_dims, get_num_variables, get_variable_name
+                                 get_io_num_dims, get_num_variables, get_variable_name
 use ensemble_manager_mod, only : is_single_restart_file_in, ensemble_type
 
 use netcdf
@@ -313,14 +313,14 @@ do i = 1, get_num_variables(dom)
    call nc_check(ret, 'check_correct_variables', 'nf90_inquire_variable')
 
    ! check number of dimensions are the same - should you worry about the unlimited dimension?
-   if (ndims /= get_num_dims(dom,i)) then
-      write(msgstring,*) 'ndims ', get_num_dims(dom,i), ' in state does not', &
+   if (ndims /= get_io_num_dims(dom,i)) then
+      write(msgstring,*) 'ndims ', get_io_num_dims(dom,i), ' in state does not', &
                          ' match ndims ', ndims, ' in ', trim(netcdf_filename)
       call error_handler(E_ERR, 'check_correct_variables', msgstring)
    endif
 
    ! check if the dimensions are what we expect. The dimensions should be same size same order.
-   do j = 1, get_num_dims(dom,i)
+   do j = 1, get_io_num_dims(dom,i)
 
       ! get dimension names and lengths from ncfile
       ret = nf90_inquire_dimension(ncfile, dimids(j), name=name(j), len=length(j))

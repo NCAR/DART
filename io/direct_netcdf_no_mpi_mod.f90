@@ -1,3 +1,9 @@
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
+
 !> At the moment this is to have a null version of read_transpose
 !> and transpose_write for programs like closest_member_tool that
 !> read in an state vector (old school) but don't use mpi.  
