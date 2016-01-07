@@ -399,10 +399,6 @@ INTERFACE get_index_range
       MODULE PROCEDURE get_index_range_string
 END INTERFACE
 
-interface vert_convert
-   module procedure vert_convert_mean
-   module procedure vert_convert_fwd
-end interface
 
 interface write_model_time
    module procedure write_model_time_file
@@ -904,7 +900,7 @@ endif
 
 if ( .not. horiz_dist_only .and. vert_localization_coord /= VERTISHEIGHT ) then
      new_location = location
-     call vert_convert_mean(state_handle, new_location, progvar(nf)%dart_kind, istatus)
+     call vert_convert(state_handle, new_location, progvar(nf)%dart_kind, istatus)
      if(istatus == 0) location = new_location
 endif
 
@@ -1084,10 +1080,8 @@ else if (obs_kind == KIND_TEMPERATURE) then
    !if (istatus /= 0) goto 100
 
    ! convert pot_temp, density, vapor mixing ratio into sensible temperature
-   do e = 1, ens_size
-      expected_obs(e) = theta_to_tk(values(1, e), values(2, e), values(3, e))
-      if(istatus(e) /= 0) expected_obs(e) = missing_r8
-   enddo
+   expected_obs(:) = theta_to_tk(ens_size, values(1, :), values(2, :), values(3, :), istatus(:))
+   where (istatus /= 0) expected_obs = missing_r8
 
    if (debug > 4) then
       call write_location(0,location,charstring=string1)
@@ -1107,13 +1101,11 @@ else if (obs_kind == KIND_PRESSURE) then
 
 else if (obs_kind == KIND_GEOPOTENTIAL_HEIGHT) then
    location_tmp = location
-   call vert_convert(state_handle, location_tmp, KIND_GEOPOTENTIAL_HEIGHT, VERTISHEIGHT, istatus)
+   call convert_vert_distrib(state_handle, ens_size, location_tmp, KIND_GEOPOTENTIAL_HEIGHT, VERTISHEIGHT, istatus)
+   where (istatus /= 0) expected_obs = MISSING_R8
+
    do e = 1, ens_size
-      if (istatus(e) /= 0) then
-         expected_obs(e) = MISSING_R8
-         !goto 100
-      endif
-      expected_obs(e) = query_location(location_tmp(e), 'VLOC')
+     expected_obs(e) = query_location(location_tmp(e), 'VLOC')
    enddo
 
 else if (obs_kind == KIND_SPECIFIC_HUMIDITY) then
@@ -1122,17 +1114,15 @@ else if (obs_kind == KIND_SPECIFIC_HUMIDITY) then
    call compute_scalar_with_barycentric(state_handle, ens_size, location_array, 1, tvars, values, istatus)
    expected_obs = values(1, :)
    if (debug > 4) print *, 'called compute SH, kind, val, istatus: ', obs_kind, expected_obs, istatus
-   !if (istatus /= 0) goto 100
+   if ( all(istatus /= 0 ) ) goto 100
 
-   do e = 1, ens_size
-      if (expected_obs(e) >= 0.0_r8) then
-         expected_obs(e) = expected_obs(e) / (1.0 + expected_obs(e))
-      else
-         expected_obs(e) = MISSING_R8
-         istatus(e) = 203
-         !goto 100
-      endif
-   enddo
+   where (expected_obs >= 0.0_r8)
+      expected_obs = expected_obs / (1.0 + expected_obs)
+   else where
+      expected_obs = MISSING_R8
+      istatus = 203
+   end where
+   if ( all(istatus == 203 ) ) goto 100
    if (debug > 4) print *, 'return val is: ', expected_obs
 
 else if (obs_kind == KIND_SURFACE_ELEVATION) then
@@ -1141,7 +1131,7 @@ else if (obs_kind == KIND_SURFACE_ELEVATION) then
       location_tmp(e) = set_location(loc_array(1, e),loc_array(2, e),1.0_r8,VERTISLEVEL)
    enddo
    ! why do you have to call vert_convert for surface?
-   call vert_convert(state_handle, location_tmp, KIND_SURFACE_ELEVATION, VERTISHEIGHT, istatus)
+   call convert_vert_distrib(state_handle, ens_size, location_tmp, KIND_SURFACE_ELEVATION, VERTISHEIGHT, istatus)
    do e = 1, ens_size
       if (istatus(e) /= 0) then
          expected_obs(e) = MISSING_R8
@@ -1150,6 +1140,7 @@ else if (obs_kind == KIND_SURFACE_ELEVATION) then
          expected_obs(e) = query_location(location_tmp(e), 'VLOC')
       endif
    enddo
+   if ( all(istatus /= 0 ) ) goto 100
 
 !> @todo check againt trunk, it does KIND_PRECIPITABLE_WATER and KIND_SURFACE_PRESSURE in the same if
 !> statement
@@ -1157,11 +1148,9 @@ else if (obs_kind == KIND_PRECIPITABLE_WATER) then
    tvars(1) = ivar
    call compute_scalar_with_barycentric(state_handle, ens_size, location_array, 1, tvars, values, istatus)
    expected_obs = values(1, :)
-   do e = 1, ens_size
-      if(istatus(e) /=0) expected_obs(e) = missing_r8
-   enddo
+   where(istatus /= 0) expected_obs = missing_r8
 
-   !if (istatus /= 0) goto 100
+   if ( all(istatus /= 0) ) goto 100
 
 else if (obs_kind == KIND_SURFACE_PRESSURE) then
    tvars(1) = ivar
@@ -1172,10 +1161,8 @@ else if (obs_kind == KIND_SURFACE_PRESSURE) then
    location_array(:) = location_tmp ! all the same location
    call compute_scalar_with_barycentric(state_handle, ens_size, location_array, 1, tvars, values, istatus)
    expected_obs = values(1, :)
-   do e = 1, ens_size ! does this need to be a loop if they are all the same value
-      if(istatus(e) /= 0) expected_obs(e) = missing_r8
-   enddo
-   !if (istatus /= 0) goto 100
+   where(istatus /= 0) expected_obs = missing_r8
+   if ( all(istatus /= 0) ) goto 100
   
 else
    ! direct interpolation, kind is in the state vector
@@ -1183,11 +1170,9 @@ else
    tvars(1) = ivar
    call compute_scalar_with_barycentric(state_handle, ens_size, location_array, 1, tvars, values, istatus)
    expected_obs = values(1, :)
-   do e = 1, ens_size
-      if(istatus(e) /=0) expected_obs(e) = missing_r8
-   enddo
+   where(istatus /=0) expected_obs = missing_r8
    if (debug > 4) print *, 'called generic compute_w_bary, kind, val, istatus: ', obs_kind, expected_obs, istatus
-   !if (istatus /= 0) goto 100
+   if ( all(istatus /= 0) ) goto 100
 
 endif
 
@@ -1196,15 +1181,18 @@ endif
 ! at the top of the model.  negative values mean ignore this test.
 if (highest_obs_pressure_mb > 0.0) then
    lpres = compute_pressure_at_loc(state_handle, ens_size, location)
-   do e = 1, ens_size
-      if (lpres(e) < highest_obs_pressure_mb * 100.0_r8) then
-         if (debug > 4) print *, 'rejected, pressure < upper limit', lpres(e), highest_obs_pressure_mb
-         ! Exclude from assimilation the obs above a user specified level
-         expected_obs(e) = MISSING_R8
-         istatus(e) = 201
-         ! goto 100
-      endif
-   enddo
+   where (lpres < highest_obs_pressure_mb * 100.0_r8)
+      ! Exclude from assimilation the obs above a user specified level
+      expected_obs = MISSING_R8
+      istatus = 201
+      ! goto 100
+   end where
+
+   if (debug > 4) then
+      do e = 1, ens_size
+         if (istatus(e) == 201) print *, 'ens ', e, ' rejected, pressure < upper limit', lpres(e), highest_obs_pressure_mb
+      enddo
+   endif
 endif
 
 100 continue
@@ -2145,7 +2133,7 @@ if (.not. horiz_dist_only) then
   if (base_llv(3) == MISSING_R8) then
      istatus1 = 1
   else if (base_which /= vert_localization_coord) then
-      call vert_convert_mean(state_handle, base_obs_loc, base_obs_kind, istatus1)
+      call vert_convert(state_handle, base_obs_loc, base_obs_kind, istatus1)
       if(debug > 5) then
          call write_location(0,base_obs_loc,charstring=string1)
          call error_handler(E_MSG, 'get_close_obs: base_obs_loc',string1,source, revision, revdate)
@@ -2173,7 +2161,7 @@ if (istatus1 == 0) then
       ! contains the correct vertical coordinate (filter_assim's call to get_state_meta_data).
       if (.not. horiz_dist_only) then
           if (local_obs_which /= vert_localization_coord) then
-              call vert_convert_mean(state_handle, local_obs_loc, obs_kind(t_ind), istatus2)
+              call vert_convert(state_handle, local_obs_loc, obs_kind(t_ind), istatus2)
               obs_loc(t_ind) = local_obs_loc
           else
               istatus2 = 0
@@ -4415,15 +4403,12 @@ real(r8) :: compute_pressure_at_loc(ens_size)
 ! to a pressure.  if the vertical is undefined
 ! return a fixed 1000 mb.
 
-real(r8) :: tk
-real(r8), allocatable :: loc_array(:,:), values(:,:)
-type(location_type), allocatable :: new_location(:)
+real(r8), dimension(ens_size) :: tk
+real(r8), dimension(3, ens_size) :: loc_array, values
+type(location_type), dimension(ens_size) :: new_location
+integer, dimension(ens_size) :: istatus_ret
 integer :: ivars(3)
-integer, allocatable :: istatus(:)
 integer :: e ! loop index
-
-allocate(loc_array(3, ens_size), values(3, ens_size), istatus(ens_size))
-allocate(new_location(ens_size))
 
 ! default is failure
 compute_pressure_at_loc = MISSING_R8
@@ -4437,10 +4422,10 @@ if(vert_is_pressure(location)) then
 else if(vert_is_height(location) .or. vert_is_level(location)) then
    new_location = location
    ! FIXME: pick a hardcoded obs_kind for this call.
-   call vert_convert(state_handle, new_location, KIND_TEMPERATURE, VERTISPRESSURE, istatus)
+   call convert_vert_distrib(state_handle, ens_size, new_location, KIND_TEMPERATURE, VERTISPRESSURE, istatus_ret)
 
    do e = 1, ens_size
-      if(istatus(e) == 0) then
+      if(istatus_ret(e) == 0) then
          loc_array(:, e) = get_location(new_location(e))
          compute_pressure_at_loc(e) = loc_array(3, e)
       endif
@@ -4458,13 +4443,11 @@ else if(vert_is_surface(location)) then
    ivars(2) = get_progvar_index_from_kind(KIND_DENSITY)
    ivars(3) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
 
-   call compute_scalar_with_barycentric (state_handle, ens_size, new_location, 3, ivars, values, istatus)
-   !if (istatus /= 0) return
+   call compute_scalar_with_barycentric (state_handle, ens_size, new_location, 3, ivars, values, istatus_ret)
+   if ( all(istatus_ret /= 0) ) return
 
    ! Convert surface theta, rho, qv into pressure
-   do e = 1, ens_size
-      call compute_full_pressure(values(1, e), values(2, e), values(3, e), compute_pressure_at_loc(e), tk)
-   enddo
+   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), compute_pressure_at_loc(:), tk(:), istatus_ret(:) )
 
 else if(vert_is_undef(location)) then    ! not error, but no exact vert loc either
    compute_pressure_at_loc(:) = 100000.    ! 1000mb is roughly sea level,  or 0? not error.
@@ -4474,13 +4457,11 @@ else
         source, revision, revdate)
 endif
 
-deallocate(loc_array, values)
-
 end function compute_pressure_at_loc
 
 !------------------------------------------------------------------
 
-subroutine vert_convert_fwd(state_handle, location, obs_kind, ztypeout, istatus)
+subroutine convert_vert_distrib(state_handle, ens_size, location, obs_kind, ztypeout, istatus)
 
 ! This subroutine converts a given ob/state vertical coordinate to
 ! the vertical localization coordinate type requested through the
@@ -4505,33 +4486,25 @@ subroutine vert_convert_fwd(state_handle, location, obs_kind, ztypeout, istatus)
 !            is supplied to it.
 
 type(ensemble_type),    intent(in)    :: state_handle
-type(location_type),    intent(inout) :: location(:)  ! so you can do ens_size. This sucks
+integer,                intent(in)    :: ens_size
+type(location_type),    intent(inout) :: location(ens_size)  ! so you can do ens_size. This sucks
 integer,                intent(in)    :: obs_kind
 integer,                intent(in)    :: ztypeout
-integer,                intent(out)   :: istatus(:)
+integer,                intent(out)   :: istatus(ens_size)
 
 ! zin and zout are the vert values coming in and going out.
 ! ztype{in,out} are the vert types as defined by the 3d sphere
 ! locations mod (location/threed_sphere/location_mod.f90)
-real(r8), allocatable :: llv_loc(:,:)
-real(r8), allocatable :: zin(:), zout(:)
-real(r8) , allocatable :: tk(:), fullp(:), surfp(:)
+real(r8), dimension(3, ens_size) :: llv_loc
+real(r8), dimension(3,ens_size)  :: zk_mid, values, fract, fdata
+integer,  dimension(3,ens_size)  :: k_low, k_up
+real(r8), dimension(ens_size)    :: zin, zout
+real(r8), dimension(ens_size)    :: tk, fullp, surfp
+type(location_type), dimension(ens_size) :: surfloc
+
 real(r8) :: weights(3)
-real(r8), allocatable :: zk_mid(:,:), values(:,:), fract(:,:), fdata(:,:)
-integer  :: ztypein, i
-integer  :: c(3), n !k_low(3), k_up(3)
-integer, allocatable :: k_low(:,:), k_up(:,:)
-integer  :: ivars(3)
-type(location_type), allocatable :: surfloc(:)
-integer :: ens_size, e
-
-ens_size = size(istatus)
-
-allocate(llv_loc(3, ens_size), zin(ens_size), zout(ens_size))
-allocate(tk(ens_size), fullp(ens_size), surfp(ens_size))
-allocate(surfloc(ens_size))
-allocate(k_low(3, ens_size), k_up(3, ens_size))
-allocate(zk_mid(3, ens_size), values(3, ens_size), fract(3, ens_size), fdata(3, ens_size))
+integer  :: ztypein, i, e, n
+integer  :: c(3), ivars(3) 
 
 ! assume failure.
 istatus = 1
@@ -4603,7 +4576,7 @@ select case (ztypeout)
    ! and the fraction (fract) for vertical interpolation.
 
    call find_triangle_vert_indices (state_handle, location, n, c, k_low, k_up, fract, weights, istatus)
-   !if(istatus /= 0) return
+   if( all(istatus /= 0) ) return
 
    zk_mid = k_low + fract
    do e = 1, ens_size
@@ -4635,14 +4608,10 @@ select case (ztypeout)
 
    ! Get theta, rho, qv at the interpolated location
    call compute_scalar_with_barycentric (state_handle, ens_size, location, 3, ivars, values, istatus)
-   !if (istatus /= 0) return
+   if( all(istatus /= 0) ) return
 
    ! Convert theta, rho, qv into pressure
-   do e = 1, ens_size
-      if(istatus(e)==0) then
-         call compute_full_pressure(values(1, e), values(2, e), values(3, e), zout(e), tk(e))
-      endif
-   enddo
+   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), zout(:), tk(:), istatus(:))
    if ((debug > 9) .and. do_output()) then
       write(string2,'("zout_in_pressure, theta, rho, qv:",3F10.2,F15.10)') zout, values
       call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
@@ -4654,16 +4623,14 @@ select case (ztypeout)
    case (VERTISHEIGHT)
 
    call find_triangle_vert_indices (state_handle, location, n, c, k_low, k_up, fract, weights, istatus)
-   !if (istatus /= 0) return
+   if( all(istatus /= 0) ) return
 
    fdata = 0.0_r8
    do i = 1, n
-      do e = 1, ens_size
-         if(istatus(e) == 0) then
-               fdata(i, e) = zGridFace(k_low(i, e),c(i))*(1.0_r8 - fract(i, e)) + &
-                             zGridFace(k_up (i, e),c(i))*fract(i, e)
-         endif
-      enddo
+      where (istatus == 0)
+         fdata(i, :) = zGridFace(k_low(i, :),c(i))*(1.0_r8 - fract(i, :)) + &
+                       zGridFace(k_up (i, :),c(i))*fract(i, :)
+      end where
    enddo
 
    ! now have vertically interpolated values at cell centers.
@@ -4694,11 +4661,7 @@ select case (ztypeout)
    !if (istatus /= 0) return
 
    ! Convert theta, rho, qv into pressure
-   do e = 1, ens_size
-      if(istatus(e) == 0) then
-         call compute_full_pressure(values(1, e), values(2, e), values(3, e), fullp(e), tk(e))
-      endif
-   enddo
+   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), fullp(:), tk(:), istatus(:))
    if ((debug > 9) .and. do_output()) then
       write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F15.10)') fullp, values
       call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
@@ -4707,27 +4670,21 @@ select case (ztypeout)
    ! Get theta, rho, qv at the surface corresponding to the interpolated location
    surfloc(:) = set_location(llv_loc(1, 1), llv_loc(2, 1), 1.0_r8, VERTISLEVEL)
    call compute_scalar_with_barycentric (state_handle, ens_size, surfloc, 3, ivars, values, istatus)
-   !if (istatus /= 0) return
+   if( all(istatus /= 0) ) return
 
    ! Convert surface theta, rho, qv into pressure
-   do e = 1, ens_size
-      if(istatus(e) ==0) then
-         call compute_full_pressure(values(1, e), values(2, e), values(3, e), surfp(e), tk(e))
-      endif
-   enddo
+   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), surfp(:), tk(:), istatus(:))
    if ((debug > 9) .and. do_output()) then
       write(string2,'("zout_surf_pressure, theta, rho, qv:",3F10.2,F15.10)') surfp, values
       call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
    endif
 
    ! and finally, convert into scale height
-   do e = 1, ens_size
-      if (surfp(e) /= 0.0_r8) then
-         zout = -log(fullp(e) / surfp(e))
-      else
-         zout(e) = MISSING_R8
-      endif
-   enddo
+   where (surfp /= 0.0_r8)
+      zout = -log(fullp / surfp)
+   else where
+      zout = MISSING_R8
+   end where
 
    if ((debug > 9) .and. do_output()) then
       write(string2,'("zout_in_pressure:",F10.2)') zout
@@ -4755,11 +4712,11 @@ do e = 1, ens_size
 enddo
 
 
-end subroutine vert_convert_fwd
+end subroutine convert_vert_distrib
 
 !-------------------------------------------------------------------
 
-subroutine vert_convert_mean(state_handle, location, obs_kind, ierr)
+subroutine vert_convert(state_handle, location, obs_kind, ierr)
 
 ! This subroutine converts a given ob/state vertical coordinate to
 ! the vertical localization coordinate type requested through the
@@ -4784,248 +4741,24 @@ subroutine vert_convert_mean(state_handle, location, obs_kind, ierr)
 !            is supplied to it.
 
 type(ensemble_type),    intent(in)    :: state_handle
-type(location_type),    intent(inout) :: location  ! so you can do ens_size. This sucks
+type(location_type),    intent(inout) :: location
 integer,                intent(in)    :: obs_kind
-!integer,                intent(in)    :: ztypeout ! just set this to vert_localization_coord.
-! Do you want to have the option of different vertical localization coordinates.
 integer,                intent(out)   :: ierr
 
-! zin and zout are the vert values coming in and going out.
-! ztype{in,out} are the vert types as defined by the 3d sphere
-! locations mod (location/threed_sphere/location_mod.f90)
-real(r8), allocatable :: llv_loc(:,:)
-real(r8), allocatable :: zin(:), zout(:)
-real(r8) , allocatable :: tk(:), fullp(:), surfp(:)
-real(r8) :: weights(3)
-real(r8), allocatable :: zk_mid(:,:), values(:,:), fract(:,:), fdata(:,:)
-integer  :: ztypein, i
-integer  :: c(3), n !k_low(3), k_up(3)
-integer, allocatable :: k_low(:,:), k_up(:,:)
-integer  :: ivars(3)
-type(location_type), allocatable :: surfloc(:)
-integer :: ens_size ! mean only 
-type(location_type) :: location_single(1)
 integer :: istatus(1)
-integer :: ztypeout
+integer :: ztype
+type(location_type) :: new_location(1)
+integer :: ens_size = 1 ! just mean
 
-ztypeout = vert_localization_coord
+ztype = query_vert_localization_coord()
+new_location(1) = location
 
-ens_size = 1 ! mean only
+call convert_vert_distrib(state_handle, ens_size, new_location, obs_kind, ztype, istatus)
 
-location_single(1) = location
+ierr = istatus(1)
+location = new_location(1)
 
-allocate(llv_loc(3, ens_size), zin(ens_size), zout(ens_size))
-allocate(tk(ens_size), fullp(ens_size), surfp(ens_size))
-allocate(surfloc(ens_size))
-allocate(k_low(3, ens_size), k_up(3, ens_size))
-allocate(zk_mid(3, ens_size), values(3, ens_size), fract(3, ens_size), fdata(3, ens_size))
-
-! assume failure.
-ierr = 1
-
-! initialization
-k_low = 0.0_r8
-k_up = 0.0_r8
-weights = 0.0_r8
-
-! first off, check if ob is identity ob.  if so get_state_meta_data() will
-! have returned location information already in the requested vertical type.
-if (obs_kind < 0) then
-   call get_state_meta_data(state_handle, int(obs_kind,i8),location_single(1)) ! will be the same across the ensemble
-   location = location_single(1)
-   ierr = 0
-   return
-endif
-
-! if the existing coord is already in the requested vertical units
-! or if the vert is 'undef' which means no specifically defined
-! vertical coordinate, return now.
-ztypein  = nint(query_location(location_single(1), 'which_vert'))
-if ((ztypein == ztypeout) .or. (ztypein == VERTISUNDEF)) then
-   ierr = 0
-   return
-else
-   if ((debug > 9) .and. do_output()) then
-      write(string1,'(A,3X,2I3)') 'ztypein, ztypeout:',ztypein,ztypeout
-      call error_handler(E_MSG, 'vert_convert',string1,source, revision, revdate)
-   endif
-endif
-
-! we do need to convert the vertical.  start by
-! extracting the location lon/lat/vert values.
-llv_loc(:, 1) = get_location(location)
-
-! the routines below will use zin as the incoming vertical value
-! and zout as the new outgoing one.  start out assuming failure
-! (zout = missing) and wait to be pleasantly surprised when it works.
-zin(:)     = llv_loc(3, :)
-zout(:)    = missing_r8 ! this is not passed out, the location is.
-
-! if the vertical is missing to start with, return it the same way
-! with the requested type as out.
-if (zin(1) == missing_r8) then
-   location = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
-   return ! you can't return yet? You can if it is the mean
-endif
-
-! Convert the incoming vertical type (ztypein) into the vertical
-! localization coordinate given in the namelist (ztypeout).
-! Various incoming vertical types (ztypein) are taken care of
-! inside find_vert_level. So we only check ztypeout here.
-
-! convert into:
-select case (ztypeout)
-
-   ! ------------------------------------------------------------
-   ! outgoing vertical coordinate should be 'model level number'
-   ! ------------------------------------------------------------
-   case (VERTISLEVEL)
-
-   ! Identify the three cell ids (c) in the triangle enclosing the obs and
-   ! the vertical indices for the triangle at two adjacent levels (k_low and k_up)
-   ! and the fraction (fract) for vertical interpolation.
-
-   call find_triangle_vert_indices (state_handle, location_single, n, c, k_low, k_up, fract, weights, istatus)
-   if(istatus(1) /= 0) then
-      location = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
-      ierr = istatus(1)
-      return
-   endif
-
-   zk_mid = k_low + fract
-   zout(1) = sum(weights(:) * zk_mid(:, 1))
-
-   if ((debug > 9) .and. do_output()) then
-      write(string2,'("Zk:",3F8.2," => ",F8.2)') zk_mid,zout
-      call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
-   endif
-
-   ! ------------------------------------------------------------
-   ! outgoing vertical coordinate should be 'pressure' in Pa
-   ! ------------------------------------------------------------
-   case (VERTISPRESSURE)
-
-   ! Need to get base offsets for the potential temperature, density, and water
-   ! vapor mixing fields in the state vector
-   ivars(1) = get_progvar_index_from_kind(KIND_POTENTIAL_TEMPERATURE)
-   ivars(2) = get_progvar_index_from_kind(KIND_DENSITY)
-   ivars(3) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
-
-   if (any(ivars(1:3) < 0)) then
-      write(string1,*) 'Internal error, cannot find one or more of: theta, rho, qv'
-      call error_handler(E_ERR, 'vert_convert',string1,source, revision, revdate)
-   endif
-
-   ! Get theta, rho, qv at the interpolated location
-   call compute_scalar_with_barycentric (state_handle, ens_size, location_single, 3, ivars, values, istatus)
-   if(istatus(1) /= 0) then
-      location = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
-      ierr = istatus(1)
-      return
-   endif
-
-   ! Convert theta, rho, qv into pressure
-   call compute_full_pressure(values(1, 1), values(2, 1), values(3, 1), zout(1), tk(1))
-   if ((debug > 9) .and. do_output()) then
-      write(string2,'("zout_in_pressure, theta, rho, qv:",3F10.2,F15.10)') zout, values
-      call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
-   endif
-
-   ! ------------------------------------------------------------
-   ! outgoing vertical coordinate should be 'height' in meters
-   ! ------------------------------------------------------------
-   case (VERTISHEIGHT)
-
-   call find_triangle_vert_indices (state_handle, location_single, n, c, k_low, k_up, fract, weights, istatus)
-   if(istatus(1) /= 0) then
-      location = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
-      ierr = istatus(1)
-      return
-   endif
-
-   fdata = 0.0_r8
-   do i = 1, n
-      fdata(i, 1) = zGridFace(k_low(i, 1),c(i))*(1.0_r8 - fract(i, 1)) + &
-                       zGridFace(k_up (i, 1),c(i))*fract(i, 1)
-   enddo
-
-   ! now have vertically interpolated values at cell centers.
-   ! use horizontal weights to compute value at interp point.
-   zout(1) = sum(weights(:) * fdata(:,1))
-
-   ! ------------------------------------------------------------
-   ! outgoing vertical coordinate should be 'scale height' (a ratio)
-   ! ------------------------------------------------------------
-   case (VERTISSCALEHEIGHT)
-
-   ! Scale Height is defined here as: -log(pressure / surface_pressure)
-
-   ! Need to get base offsets for the potential temperature, density, and water
-   ! vapor mixing fields in the state vector
-   ivars(1) = get_progvar_index_from_kind(KIND_POTENTIAL_TEMPERATURE)
-   ivars(2) = get_progvar_index_from_kind(KIND_DENSITY)
-   ivars(3) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
-
-   ! Get theta, rho, qv at the interpolated location
-   call compute_scalar_with_barycentric (state_handle, ens_size, location_single, 3, ivars, values, istatus)
-   if(istatus(1) /= 0) then
-      location = set_location(llv_loc(1, 1),llv_loc(2, 1),missing_r8,ztypeout)
-      ierr = istatus(1)
-      return
-   endif
-
-   ! Convert theta, rho, qv into pressure
-   call compute_full_pressure(values(1, 1), values(2, 1), values(3, 1), fullp(1), tk(1))
-   if ((debug > 9) .and. do_output()) then
-      write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F15.10)') fullp, values
-      call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
-   endif
-
-   ! Get theta, rho, qv at the surface corresponding to the interpolated location
-   surfloc(:) = set_location(llv_loc(1, 1), llv_loc(2, 1), 1.0_r8, VERTISLEVEL)
-   call compute_scalar_with_barycentric (state_handle, ens_size, surfloc, 3, ivars, values, istatus)
-   if(istatus(1) /= 0) then
-      ierr = istatus(1)
-      return
-   endif
-
-   ! Convert surface theta, rho, qv into pressure
-   call compute_full_pressure(values(1, 1), values(2, 1), values(3, 1), surfp(1), tk(1))
-   if ((debug > 9) .and. do_output()) then
-      write(string2,'("zout_surf_pressure, theta, rho, qv:",3F10.2,F15.10)') surfp, values
-      call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
-   endif
-
-   ! and finally, convert into scale height
-   if (surfp(1) /= 0.0_r8) then
-      zout = -log(fullp(1) / surfp(1))
-   else
-      zout(1) = MISSING_R8
-   endif
-
-   if ((debug > 9) .and. do_output()) then
-      write(string2,'("zout_in_pressure:",F10.2)') zout
-      call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
-   endif
-
-   ! -------------------------------------------------------
-   ! outgoing vertical coordinate is unrecognized
-   ! -------------------------------------------------------
-   case default
-      write(string1,*) 'Requested vertical coordinate not recognized: ', ztypeout
-      call error_handler(E_ERR,'vert_convert', string1, &
-                         source, revision, revdate)
-
-end select   ! outgoing vert type
-
-! Returned location
-location = set_location(llv_loc(1, 1),llv_loc(2, 1),zout(1),ztypeout)
-! Set successful return code only if zout has good value
-if(zout(1) /= missing_r8) ierr = 0
-
-ierr = istatus(1) !> @todo why are you setting here?
-
-end subroutine vert_convert_mean
+end subroutine vert_convert
 
 
 !==================================================================
@@ -5543,11 +5276,7 @@ do e = 1, ens_size
 enddo
 
 ! Convert theta, rho, qv into pressure
-do e = 1, ens_size ! lazy loop for now
-   if (ier(e) == 0) then
-      call compute_full_pressure(pt(e), density(e), qv(e), pressure(e), tk(e)) !HK where is tk used?
-   endif
-enddo
+call compute_full_pressure(ens_size, pt(:), density(:), qv(:), pressure(:), tk(:), ier) !HK where is tk used?
 
 if (present(debug)) then
    if (debug) then
@@ -7152,36 +6881,41 @@ end subroutine r3_normalize
 
 !------------------------------------------------------------------
 
-function theta_to_tk (theta, rho, qv)
+function theta_to_tk (ens_size, theta, rho, qv, istatus_in)
 
 ! Compute sensible temperature [K] from potential temperature [K].
 ! code matches computation done in MPAS model
 
-real(r8), intent(in)  :: theta    ! potential temperature [K]
-real(r8), intent(in)  :: rho      ! dry density
-real(r8), intent(in)  :: qv       ! water vapor mixing ratio [kg/kg]
-real(r8)  :: theta_to_tk          ! sensible temperature [K]
+integer,                       intent(in)  :: ens_size
+real(r8), dimension(ens_size), intent(in)  :: theta    ! potential temperature [K]
+real(r8), dimension(ens_size), intent(in)  :: rho      ! dry density
+real(r8), dimension(ens_size), intent(in)  :: qv       ! water vapor mixing ratio [kg/kg]
+integer,  dimension(ens_size), intent(in)  :: istatus_in
+real(r8), dimension(ens_size) :: theta_to_tk          ! sensible temperature [K]
 
 ! Local variables
-real(r8) :: theta_m               ! potential temperature modified by qv
-real(r8) :: exner                 ! exner function
-real(r8) :: qv_nonzero            ! qv >= 0
+real(r8), dimension(ens_size) :: theta_m    ! potential temperature modified by qv
+real(r8), dimension(ens_size) :: exner      ! exner function
+real(r8), dimension(ens_size) :: qv_nonzero ! qv >= 0
 
 qv_nonzero = max(qv,0.0_r8)
-theta_m = (1.0_r8 + 1.61_r8 * qv_nonzero)*theta
 
-!theta_m = (1.0_r8 + 1.61_r8 * (max(qv, 0.0_r8)))*theta
-exner = ( (rgas/p0) * (rho*theta_m) )**rcv
-
-! Temperature [K]
-theta_to_tk = theta * exner
+where (istatus_in == 0)
+   theta_m = (1.0_r8 + 1.61_r8 * qv_nonzero)*theta
+   
+   !theta_m = (1.0_r8 + 1.61_r8 * (max(qv, 0.0_r8)))*theta
+   exner = ( (rgas/p0) * (rho*theta_m) )**rcv
+   
+   ! Temperature [K]
+   theta_to_tk = theta * exner
+endwhere
 
 end function theta_to_tk
 
 
 !------------------------------------------------------------------
 
-subroutine compute_full_pressure(theta, rho, qv, pressure, tk)
+subroutine compute_full_pressure(ens_size, theta, rho, qv, pressure, tk, istatus_in)
 
 ! Compute full pressure from the equation of state.
 ! since it has to compute sensible temp along the way,
@@ -7189,20 +6923,24 @@ subroutine compute_full_pressure(theta, rho, qv, pressure, tk)
 ! to call theta_to_tk() separately.
 ! code matches computation done in MPAS model
 
-real(r8), intent(in)  :: theta    ! potential temperature [K]
-real(r8), intent(in)  :: rho      ! dry density
-real(r8), intent(in)  :: qv       ! water vapor mixing ratio [kg/kg]
-real(r8), intent(out) :: pressure ! full pressure [Pa]
-real(r8), intent(out) :: tk       ! return sensible temperature to caller
+integer,  intent(in)  :: ens_size
+real(r8), dimension(ens_size), intent(in)  :: theta    ! potential temperature [K]
+real(r8), dimension(ens_size), intent(in)  :: rho      ! dry density
+real(r8), dimension(ens_size), intent(in)  :: qv       ! water vapor mixing ratio [kg/kg]
+real(r8), dimension(ens_size), intent(out) :: pressure ! full pressure [Pa]
+real(r8), dimension(ens_size), intent(out) :: tk       ! return sensible temperature to caller
+integer,  dimension(ens_size), intent(in)  :: istatus_in
 
 ! Local variables
-real(r8) :: qv_nonzero            ! qv >= 0
+real(r8), dimension(ens_size) :: qv_nonzero
 
 qv_nonzero = max(qv,0.0_r8)
-tk = theta_to_tk(theta, rho, qv_nonzero)
+tk = theta_to_tk(ens_size, theta, rho, qv_nonzero, istatus_in)
 
 !tk = theta_to_tk(theta, rho, max(qv,0.0_r8))
-pressure = rho * rgas * tk * (1.0_r8 + 1.61_r8 * qv)
+where (istatus_in == 0)
+   pressure = rho * rgas * tk * (1.0_r8 + 1.61_r8 * qv)
+end where
 !if ((debug > 9) .and. do_output()) print *, 't,r,q,p,tk =', theta, rho, qv, pressure, tk
 
 end subroutine compute_full_pressure
