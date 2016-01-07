@@ -93,7 +93,6 @@ character(len = 16) :: read_format = "unformatted", write_format = "unformatted"
 ! namelist variables with default values
 ! Aim: to have the regular transpose as the default
 integer :: limit_mem = HUGE(1_i4)!< This is the number of elements (not bytes) so you don't have times the number by 4 or 8
-integer :: limit_procs = 100000!< how many (~maximum) processors you want involved in each transpose.
 logical :: time_unlimited = .true. ! You need to keep track of the time.
 logical :: single_precision_output = .false. ! Allows you to write r4 netcdf files even if filter is double precision
 
@@ -106,7 +105,7 @@ real(r8) :: perturbation_amplitude  = 0.2_r8
 logical  :: write_binary_restart_files = .false.
 
 
-namelist /  state_vector_io_nml / limit_mem, limit_procs, time_unlimited, &
+namelist /  state_vector_io_nml / limit_mem, time_unlimited, &
    single_precision_output, single_restart_file_out, perturbation_amplitude, &
    write_binary_restart_files
 
@@ -721,7 +720,7 @@ state_ens_handle%time = time
 ! read in the data and transpose
 dart_index = 1 ! where to start in state_ens_handle%copies - this is modified by read_transpose
 do domain = 1, get_num_domains()
-   call read_transpose(state_ens_handle, domain, dart_index, limit_mem, limit_procs)
+   call read_transpose(state_ens_handle, domain, dart_index, limit_mem)
 enddo
 
 ! Need Temporary print of initial model time?
@@ -745,7 +744,7 @@ integer :: component_id
 ! transpose and write out the data
 dart_index = 1
 do domain = 1, get_num_domains()
-   call transpose_write(state_ens_handle, num_extras, domain, dart_index, isprior, limit_mem, limit_procs, single_precision_output)
+   call transpose_write(state_ens_handle, num_extras, domain, dart_index, isprior, limit_mem, single_precision_output)
 enddo
 
 end subroutine filter_write_restart_direct

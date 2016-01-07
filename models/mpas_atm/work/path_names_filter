@@ -15,8 +15,7 @@ io/state_structure_mod.f90
 io/state_vector_io_mod.f90
 io/state_space_diag_mod.f90
 io/dart_time_io_mod.f90
-io/direct_netcdf_mpi_mod.f90
-io/direct_netcdf_common_mod.f90
+io/direct_netcdf_mod.f90
 location/threed_cartesian/xyz_location_mod.f90
 location/threed_sphere/location_mod.f90
 models/mpas_atm/get_coeff_mod.f90
@@ -35,5 +34,3 @@ smoother/smoother_mod.f90
 sort/sort_mod.f90
 time_manager/time_manager_mod.f90
 utilities/utilities_mod.f90
-io/direct_netcdf_mpi_mod.f90
-io/direct_netcdf_common_mod.f90

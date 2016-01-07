@@ -65,5 +65,4 @@ smoother/smoother_mod.f90
 sort/sort_mod.f90
 time_manager/time_manager_mod.f90
 utilities/utilities_mod.f90
-io/direct_netcdf_mpi_mod.f90
-io/direct_netcdf_common_mod.f90
+io/direct_netcdf_mod.f90
