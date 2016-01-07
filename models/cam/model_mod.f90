@@ -8,6 +8,9 @@ module model_mod
 
 ! See 'Better damping' for the fix of the high level innovation damping algorithm.
 
+! See /glade/u/home/raeder/DART/Pre_lanai/models/cam for a version which is consistent
+! with the DART style guide.
+
 !----------------------------------------------------------------------
 ! Interface code between CAM and DART.  Contains the required 16 interfaces
 !  as specified by DART.  Also contains several utility routines which help
@@ -2030,6 +2033,8 @@ character(len=nf90_max_name), allocatable  :: att_names(:)
 character(len=nf90_max_name), allocatable  :: att_vals(:)
 real(r8)                                   :: resol, resol_1, resol_n
 
+coord_dimid = MISSING_I
+
 fld_exist = nf90_inq_varid(ncfileid, cfield, ncvarid)
 if (fld_exist /= nf90_noerr ) then
    var%label = ' '
@@ -2046,8 +2051,11 @@ if (ncerr /= nf90_noerr ) then
    return
 end if
 
-if (coord_dimid(1) == 0) then
-   coord_size = 1                 ! to handle P0
+if (coord_dimid(1) == MISSING_I) then
+   ! to handle P0
+   coord_size = 1                 
+   coord_dimid(1) = 0      ! This is the dimid for time, which has length 1,
+                           ! But time is the record/unlimited dimension, so this may not work.
 else
    coord_size = dim_sizes(coord_dimid(1))
 end if
@@ -4503,9 +4511,7 @@ else
    lon_fract = (temp_lon - top_lon) / delta_lon
 end if
 
-
 ! Next, compute neighboring lat rows
-! NEED TO BE VERY CAREFUL ABOUT POLES; WHAT'S BEING DONE MAY BE WRONG
 ! Inefficient search used for latitudes in Gaussian grid. Might want to speed up.
 ! CAM-FV; lat = -90., ...   ,90.
 !        slat =   -88.,...,88.
@@ -4909,10 +4915,6 @@ end if
 ! for all previous obs, and we want to use the most up to date state to get the best location.
 call model_heights(num_levs, st_vec, p_surf, location, model_h, vstatus)
 if (vstatus == 1) return    ! Failed to get model heights; return istatus = 1
-
-! debug
-! write(string1,'(A,6F7.0,/(10F7.0))') 'heights = ',(model_h(i), i=1,num_levs)
-! call error_handler(E_MSG, 'get_val_height', string1, source, revision, revdate)
 
 ! Exclude obs below the model's lowest level and above the highest level
 if (height >= model_h(1) .or. height <= model_h(num_levs)) return
@@ -5406,7 +5408,7 @@ integer               :: num_levs, top_lev, bot_lev
 integer               :: istatus, closest
 integer, dimension(4) :: cell_corners
 integer               :: lon_ind, lat_ind, cam_type
-real(r8)              :: p_surf, frac, l, m, lon_lat_vert(3)
+real(r8)              :: p_surf, frac, l, m, old_pressure
 type(location_type)   :: temp_loc
 
 character(len=8) :: cam_varname
@@ -5501,8 +5503,9 @@ if (old_which == VERTISLEVEL ) then
    end if
 else
    ! Make a vertical location that has a vert type of surface.
-   lon_lat_vert = get_location(old_loc)
-   temp_loc = set_location(lon_lat_vert(1), lon_lat_vert(2), 0.0_r8, VERTISSURFACE)
+   ! Don't need lon_lat_vert array because old_array is passed in,
+   ! which is get_location(old_loc)
+   temp_loc = set_location(old_array(1), old_array(2), 0.0_r8, VERTISSURFACE)
    ! Find ps at the ob point.  Need to interpolate.
    if (l_rectang) then
       ! Only interested in P (columns), so don't need to worry about staggered grids here.
@@ -5590,8 +5593,8 @@ else if (old_which == VERTISHEIGHT) then
 !   do while (old_array(3) <= model_h(bot_lev) .and. bot_lev <= num_levs)
 !      bot_lev = bot_lev + 1
 !   end do
-   Bottom: do bot_lev = 2,num_levs+1
-      if (old_array(3) <= model_h(bot_lev)) exit Bottom
+   Bottom: do bot_lev = 2,num_levs
+      if (old_array(3) > model_h(bot_lev)) exit Bottom
    end do Bottom
    top_lev = bot_lev - 1
 
@@ -5614,12 +5617,12 @@ else if (old_which == VERTISHEIGHT) then
       call error_handler(E_MSG, 'convert_vert', string1,source,revision,revdate)
    end if
 
-   new_array(3) = (1.0_r8 - frac) * p_col(bot_lev) + frac * p_col(top_lev)
+   old_pressure = (1.0_r8 - frac) * p_col(bot_lev) + frac * p_col(top_lev)
 
    if (vert_coord == 'pressure') then
       new_which = VERTISPRESSURE
    else if (vert_coord == 'log_invP') then
-      new_array(3) = scale_height(p_surface=p_surf, p_above=new_array(3))
+      new_array(3) = scale_height(p_surface=p_surf, p_above=old_pressure)
       new_which = VERTISSCALEHEIGHT
    end if
 
@@ -6650,7 +6653,7 @@ integer,                intent(out) :: istatus
 ! local variables; pterm must be dimensioned as an array because dcz2 has it that way
 real(r8), dimension(num_levs) :: phi, tv, q, t, pterm
 real(r8) :: pmln(num_levs+1), hybrid_As(num_levs+1,2), hybrid_Bs(num_levs+1,2)
-real(r8) :: phi_surf, ht_tmp
+real(r8) :: h_surf, ht_tmp
 real(r8) :: l                          ! location of ob in unit square space.
 real(r8) :: m                          ! location of ob in unit square space.
 integer, dimension(4) :: cell_corners  ! corners of the cell which contains the ob
@@ -6713,10 +6716,10 @@ do k = 2,num_levs +1
    hybrid_Bs(k,2) = hybm%vals(i)
 end do
 
-! Calculate phi_surf and tv for this column, for use by dcz2.
+! Calculate h_surf and tv for this column, for use by dcz2.
 if (l_rectang) then
 
-   call interp_lonlat(vec, base_obs_loc, KIND_SURFACE_ELEVATION, phi_surf, vstatus)
+   call interp_lonlat(vec, base_obs_loc, KIND_SURFACE_ELEVATION, h_surf, vstatus)
    ! newFIXME; put Fail message other places like this   ! Failure; istatus = 1
    if (vstatus == 1) then
       write(string1,'(A,1p3F12.6)') 'surface elevation could not be interpolated in interp_lonlat at ', &
@@ -6733,7 +6736,6 @@ if (l_rectang) then
    do k = 1, num_levs
       ! construct a location with the same lat/lon but cycle though the model levels
       temp_obs_loc = set_location(lon_lat_lev(1), lon_lat_lev(2), real(k,r8), VERTISLEVEL)
-
       call interp_lonlat(vec, temp_obs_loc, KIND_TEMPERATURE, t(k), vstatus)
       if (vstatus == 1) then
          write(string1,'(A,I2,A)') 'Temperature level ',k, &
@@ -6758,7 +6760,7 @@ else ! for cubed sphere:
    !        found in this call could be used in the loop over levels, below.
    !        It can now, but addition of "cell_corners, l, m" to call needs to be tested.
 
-   call interp_cubed_sphere(vec, base_obs_loc, KIND_SURFACE_ELEVATION, phi_surf, vstatus, cell_corners, l, m)
+   call interp_cubed_sphere(vec, base_obs_loc, KIND_SURFACE_ELEVATION, h_surf, vstatus, cell_corners, l, m)
    if (vstatus == 1) then
       write(string1,'(A)') 'surface elevation could not be interpolated in interp_cubed_sphere'
       call error_handler(E_WARN, 'model_heights', string1)
@@ -6789,7 +6791,7 @@ else ! for cubed sphere:
    end do
 end if
 
-call dcz2(num_levs, p_surf, phi_surf, tv, P0%vals(1) ,hybrid_As, hybrid_Bs, pmln, pterm, phi)
+call dcz2(num_levs, p_surf, h_surf, tv, P0%vals(1) ,hybrid_As, hybrid_Bs, pmln, pterm, phi)
 
 ! used; hybrid_Bs, hybrid_As, hprb
 ! output from dcz2;  pmln, pterm , phi
@@ -6807,7 +6809,7 @@ istatus = 0
 end subroutine  model_heights
 
 !=====================================================================
-subroutine dcz2(kmax,p_surf,phis0,tv,hprb,hybrid_As,hybrid_Bs,pmln,pterm,z2)
+subroutine dcz2(kmax,p_surf,h_surf,tv,hprb,hybrid_As,hybrid_Bs,pmln,pterm,z2)
 
 ! Compute geopotential height for a CESM hybrid coordinate column.
 ! All arrays except hybrid_As, hybrid_Bs are oriented top to bottom.
@@ -6819,7 +6821,7 @@ subroutine dcz2(kmax,p_surf,phis0,tv,hprb,hybrid_As,hybrid_Bs,pmln,pterm,z2)
 
 integer,  intent(in)  :: kmax                ! Number of vertical levels
 real(r8), intent(in)  :: p_surf              ! Surface pressure           (pascals)
-real(r8), intent(in)  :: phis0               ! Surface geopotential
+real(r8), intent(in)  :: h_surf               ! Surface height (m)
 real(r8), intent(in)  :: tv(kmax)            ! Virtual temperature, top to bottom
 real(r8), intent(in)  :: hprb                ! Hybrid base pressure       (pascals)
 real(r8), intent(in)  :: hybrid_As(kmax+1,2)
@@ -6827,7 +6829,7 @@ real(r8), intent(in)  :: hybrid_Bs(kmax+1,2)
 real(r8), intent(out) :: pmln(kmax+1)        ! logs of midpoint pressures
 real(r8), intent(out) :: pterm(kmax)         ! pressure profile
 real(r8), intent(out) :: z2(kmax)            ! Geopotential height, top to bottom
-
+                                             ! (not the geopotential)
 ! Local variables
 real(r8), parameter :: r = 287.04_r8    ! Different than model_heights !
 real(r8), parameter :: g0 = 9.80616_r8  ! Different than model_heights:gph2gmh:G !
@@ -6858,9 +6860,9 @@ END DO
 
 ! Initialize z2 to sum of ground height and thickness of top half-layer
 DO K = 1,kmax - 1
-   z2(k) = phis0/g0 + rbyg*tv(k)*0.5_r8* (pmln(K+1)-pmln(K))
+   z2(k) = h_surf + rbyg*tv(k)*0.5_r8* (pmln(K+1)-pmln(K))
 END DO
-z2(kmax) = phis0/g0 + rbyg*tv(kmax)* (log(p_surf*hybrid_Bs(1,1))-pmln(kmax))
+z2(kmax) = h_surf + rbyg*tv(kmax)* (log(p_surf*hybrid_Bs(1,1))-pmln(kmax))
 
 do k = 1,kmax - 1
     z2(k) = z2(k) + rbyg*tv(kmax)* (log(p_surf*hybrid_Bs(1,1))-0.5_r8* &
