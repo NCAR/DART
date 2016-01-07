@@ -4,25 +4,24 @@
 !
 ! $Id$
 
-program roms_to_dart
+!-----------------------------------------------------------------------
+!> Converts a subset of variables from a ROMS restart file to a DART file.
+!>
+!> Reads a ROMS "restart/analysis" file and
+!> reforms them into a DART state vector (control vector).
+!> Write out state vector in "proprietary" format for DART.
+!> The output is a "DART restart format" file.
+!> 
+!> The ROMS filename is read from the input.nmnl:model_mod namelist.
+!> The (output) DART filename is read from the 
+!> input.nml:roms_to_dart_nml namelist.
+!>
+!> author: PENG XIU 12/2013 @ University of Maine
+!>         peng.xiu@maine.edu
+!>
+!> subsequently modified by TJH 1/2015
 
-!----------------------------------------------------------------------
-! purpose: interface between ROMS and DART
-!
-! method: Read ROMS "restart" files of model state
-!         Reform fields into a DART state vector (control vector).
-!         Write out state vector in "proprietary" format for DART.
-!         The output is a "DART restart file" format.
-! 
-! USAGE:  The ROMS filename is read from the namelist
-!
-!----------------------------------------------------------------
-!
-! author: PENG XIU 12/2013 @ University of Maine
-!         peng.xiu@maine.edu
-!
-! subsequently modified by TJH 1/2015
-!----------------------------------------------------------------
+program roms_to_dart
 
 use        types_mod, only : r8
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &

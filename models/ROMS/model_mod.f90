@@ -4,18 +4,27 @@
 !
 ! $Id$
 !----------------------------------------------------------------
-!
-! author: PENG XIU 12/2013 @ University of Maine
-!         peng.xiu@maine.edu
-!
-! based on subroutines from others work in the DART package
-! NOTE: For now, this code does not rotate ROMS vectors,
-!       so, rotate them in the observation data if needed
+!>
+!> This is the interface between the ROMS ocean model and DART.
+!> There are 16 required public interfaces whose arguments CANNOT be changed.
+!> There are potentially many more public routines that are typically
+!> used by the converter programs. As the converter programs get phased out
+!> with the impending native netCDF read/write capability, these extra
+!> public interfaces may not need to be public. 
+!>
+!> author: PENG XIU 12/2013 @ University of Maine
+!>         peng.xiu@maine.edu
+!>
+!> based on subroutines from others work in the DART package
+!> NOTE: For now, this code does not rotate ROMS vectors,
+!>       so, rotate them in the observation data if needed
+!>
+!> subsequently modified by the DART team.
+!>
+!> \todo
 !----------------------------------------------------------------
 
 module model_mod
-
-! This is the interface between the ROMS ocean model and DART.
 
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r4, r8, digits12, SECPERDAY, DEG2RAD, rad2deg, PI, &
@@ -209,13 +218,19 @@ END INTERFACE
 
 contains
 
-!------------------------------------------------------------------
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> Called to do one time initialization of the model.
+!> In this case, it reads in the grid information, the namelist
+!> containing the variables of interest, where to get them, their size, 
+!> their associated DART KIND, etc.
+!>
+!> In addition to harvesting the model metadata (grid,
+!> desired model advance step, etc.), it also fills a structure
+!> containing information about what variables are where in the DART
+!> framework.
 
 subroutine static_init_model()
-
-! Called to do one time initialization of the model. In this case,
-! it reads in the grid information.
 
 integer :: iunit, io,index1,indexN,ivar
 integer :: ss, dd,i,TimeDimID
@@ -224,21 +239,15 @@ character(len=NF90_MAX_NAME)          :: varname,dimname
 character(len=paramname_length)       :: kind_string
 integer :: ncid, VarID, numdims, varsize, dimlen
 
-
 if ( module_initialized ) return
 
 ! The Plan:
 !
-!   read in the grid sizes from grid file
-!
-!   allocate space, and read in actual grid values
-!
-!   figure out model timestep
-!
-!   Compute the model size.
-!
-!   set the index numbers where the field types change
-!
+! * read in the grid sizes from grid file
+! * allocate space, and read in actual grid values
+! * figure out model timestep
+! * Compute the model size.
+! * set the index numbers where the field types change
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
@@ -259,7 +268,7 @@ call set_calendar_type( calendar )
 
 ! Set the time step ... causes ROMS namelists to be read.
 ! Ensures model_timestep is multiple of 'ocean_dynamics_timestep'
-! FIXME 'ocean_dynamics_timestep' could/should be gotten from ROMS 
+!> @todo FIXME 'ocean_dynamics_timestep' could/should be gotten from ROMS 
 
 model_timestep = set_model_time_step()
 
@@ -275,10 +284,10 @@ call get_grid()
 call nc_check( nf90_open(trim(model_restart_filename), NF90_NOWRITE, ncid), &
                   'static_init_model', 'open '//trim(model_restart_filename))
 
-call verify_state_variables( variables, ncid, model_restart_filename, &
+call verify_variables( variables, ncid, model_restart_filename, &
                              nfields, variable_table )
 
-TimeDimID = FindTimeDimension( ncid, model_restart_filename )
+TimeDimID = find_time_dimension( ncid, model_restart_filename )
 
 if (TimeDimID < 0 ) then
    write(*,*) 'CAUTION: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
@@ -427,30 +436,38 @@ allocate( ens_mean(model_size) )
 
 end subroutine static_init_model
 
-!------------------------------------------------------------
 
+!-----------------------------------------------------------------------
+!>
+!> Set the desired minimum model advance time. This is generally NOT the
+!> dynamical timestep of the model, but rather the shortest forecast length
+!> you are willing to make. This impacts how frequently the observations
+!> may be assimilated.
+!>
 
 function set_model_time_step()
-
-! the static_init_model ensures that the model namelists are read.
 
 type(time_type) :: set_model_time_step
 
 if ( .not. module_initialized ) call static_init_model
 
-! these are from the namelist
+! assimilation_period_seconds, assimilation_period_days are from the namelist
+
+!> @todo FIXME make sure set_model_time_step is an integer multiple of 
+!> the dynamical timestep or whatever strategy ROMS employs.
 
 set_model_time_step = set_time(assimilation_period_seconds, assimilation_period_days)
 
 end function set_model_time_step
 
 
-!------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> return the name of the ROMS analysis filename that was set
+!> in the model_nml namelist
+!>
 
 subroutine get_model_restart_filename( filename )
-
-! return the name of the analysis filename that was set
-! in the model_nml namelist
 
 character(len=*), intent(OUT) :: filename
 
@@ -460,13 +477,18 @@ filename = trim(model_restart_filename)
 
 end subroutine get_model_restart_filename
 
-!------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+!>
+!> Read the grid dimensions from the ROMS grid netcdf file.
+!> By reading the dimensions first, we can use them in variable
+!> declarations later - which is faster than using allocatable arrays.
+!>
+!> @todo FIXME Since every stagger dimension is specified, we should explicitly 
+!> use them instead of trying to add or subtract 1 from some nominal value 
+!>
 
 subroutine get_grid_dimensions()
-
-! Read the grid dimensions from the ROMS netcdf file.
-! By reading the dimensions first, we can use them in variable
-! declarations later - which is faster than using allocatable arrays.
 
 integer  :: ncid
 
@@ -509,16 +531,22 @@ call nc_check(nf90_close(ncid), &
 end subroutine get_grid_dimensions
 
 
-!------------------------------------------------------------
+!-----------------------------------------------------------------------
+!> 
+!> Read the actual grid values from the ROMS netcdf file.
+!>
+!> @todo FIXME If the grid variables do not exist, they are calculated.
+!> It is not clear to me if this code block is correct in all circumstances,
+!> as I do not have access to a good test file. Minimally, instead of requiring
+!> setting a hardcoded logical, a simple test to see if the required variables
+!> exist and then taking appropriate action would be greatly preferred.
 
 subroutine get_grid()
 
-! Read the actual grid values in from the ROMS netcdf file.
-!
-! The file name comes from module storage ... namelist.
-! This reads in the following arrays:
-
 integer  :: k,ncid, VarID,stat,i,j
+
+! The following 'automatic' arrays are more efficient than allocatable arrays.
+! This is, in part, why the grid dimensions were determined previously.
 
 real(r8) :: dzt0(Nx,Ny)
 real(r8) :: s_rho(Nz),Cs_r(Nz),SSH(Nx,Ny)
@@ -538,7 +566,7 @@ if (debug > 1) then
    call error_handler(E_MSG,'get_grid:',string1,text2=string2,text3=string3)
 endif
 
-! Read the netcdf file data
+! Open the netcdf file data
 
 call nc_check(nf90_open(trim(grid_definition_filename), nf90_nowrite, ncid), &
       'get_grid', 'open '//trim(grid_definition_filename))
@@ -557,10 +585,9 @@ if (.not. allocated(ZC))   allocate(  ZC(Nx,Ny,Nz))
 
 ! Read the variables
 
-!---------------------------------------
 ! If there are no lat and lon information in the file
-! TJH FIXME ... just test for the presence of the variables ... do not
-! depend on setting a logical
+!> @todo  FIXME ... just test for the presence of the variables ... 
+!> do not depend on setting a logical
 
 if (nolatlon) then
 
@@ -607,8 +634,6 @@ if (nolatlon) then
    VLON=TLON(:,1:Ny-1)
    VLAT=TLAT(:,1:Ny-1)
    
-   !---------------------------------------
-
 else
 
    call nc_check(nf90_inq_varid(ncid, 'lon_rho', VarID), &
@@ -693,7 +718,6 @@ call nc_check(nf90_close(ncid), &
 !            -0.00517297115481568, -0.00168895354075999/)
 
 
-
 ! Also get zeta values in order to calculate ZC
 
 call nc_check(nf90_open(trim(model_restart_filename), nf90_nowrite, ncid), &
@@ -717,16 +741,26 @@ end do
 end subroutine get_grid
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> Determines if the variables and DART KINDs specified by the 'variables'
+!> namelist variable are available in the ROMS analysis file and that the
+!> corresponding DART KIND is also supported.
+!>
+!>@param state_variables the list of variables and kinds from model_mod_nml
+!>@param ncid the netCDF handle to the ROMS analysis file
+!>@param filename the name of the ROMS analysis file (for error messages, mostly)
+!>@param ngood the number of variable/KIND pairs specified
+!>@param table a more convenient form for the variable/KIND pairs. Each row
+!>       is a pair, column 1 is the variable, column 2 is the DART KIND
 
+subroutine verify_variables( state_variables, ncid, filename, ngood, table )
 
-subroutine verify_state_variables( state_variables, ncid, filename, ngood, table )
-
-character(len=*), dimension(:),   intent(in)  :: state_variables
-integer,                          intent(in)  :: ncid
-character(len=*),                 intent(in)  :: filename
-integer,                          intent(out) :: ngood
-character(len=*), dimension(:,:), intent(inout) :: table
+character(len=*), intent(in)    :: state_variables(:)
+integer,          intent(in)    :: ncid
+character(len=*), intent(in)    :: filename
+integer,          intent(out)   :: ngood
+character(len=*), intent(inout) :: table(:,:)
 
 integer :: nrows, ncols, i, VarID
 character(len=NF90_MAX_NAME) :: varname
@@ -751,7 +785,7 @@ MyLoop : do i = 1, nrows
 
    if ( table(i,1) == ' ' .or. table(i,2) == ' ' ) then
       string1 = 'model_nml:model "variables" not fully specified'
-      call error_handler(E_ERR,'verify_state_variables:',string1,source,revision,revdate)
+      call error_handler(E_ERR,'verify_variables:',string1,source,revision,revdate)
    endif
 
    ! Make sure variable exists in model analysis variable list
@@ -759,16 +793,14 @@ MyLoop : do i = 1, nrows
    write(string1,'(''variable '',a,'' in '',a)') trim(varname), trim(filename)
    write(string2,'(''there is no '',a)') trim(string1)
    call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
-                 'verify_state_variables', trim(string2))
-
+                 'verify_variables', trim(string2))
 
    ! Make sure DART kind is valid
 
    if( get_raw_obs_kind_index(dartstr) < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR,'verify_state_variables:',string1,source,revision,revdate)
+      call error_handler(E_ERR,'verify_variables:',string1,source,revision,revdate)
    endif
-
 
    ngood = ngood + 1
 enddo MyLoop
@@ -777,30 +809,42 @@ enddo MyLoop
 if (ngood == nrows) then
    string1 = 'WARNING: There is a possibility you need to increase ''max_state_variables'''
    write(string2,'(''WARNING: you have specified at least '',i4,'' perhaps more.'')')ngood
-   call error_handler(E_MSG,'verify_state_variables:',string1,source,revision,revdate,text2=string2)
+   call error_handler(E_MSG,'verify_variables:',string1,source,revision,revdate,text2=string2)
 endif
 
 
-end subroutine verify_state_variables
+end subroutine verify_variables
 
 
-!------------------------------------------------------------------
-
+!-----------------------------------------------------------------------
+!>
+!> matches variable name in bounds table to assign
+!> the bounds if they exist.  otherwise sets the bounds
+!> to missing_r8 which means they are unbounded.
+!> @todo FIXME the roms_state_bounds module variable that specifies the
+!>       bounds is not actually set nor checked nor ... so all variables
+!>       are unbounded.
+!>
+!> @param bounds_table table specifying the numeric bounds for each variable.
+!>                     as currently envisioned, a table specifying the variable
+!>                     name and its boundaries must be supplied ... ?namelist?
+!> @param ivar the handle to the variable in question
+!>
 
 subroutine get_variable_bounds(bounds_table, ivar)
 
-! matches variable name in bounds table to assign
-! the bounds if they exist.  otherwise sets the bounds
-! to missing_r8
-!
-character(len=*), intent(in)  :: bounds_table(num_bounds_table_columns, max_state_variables)
-integer,          intent(in)  :: ivar
+character(len=*), intent(in) :: bounds_table(num_bounds_table_columns, max_state_variables)
+integer,          intent(in) :: ivar
 
 ! local variables
-character(len=50)             :: bounds_varname, bound
-character(len=10)             :: clamp_or_fail
-real(r8)                      :: lower_bound, upper_bound
-integer                       :: n
+character(len=50) :: bounds_varname, bound
+character(len=10) :: clamp_or_fail
+real(r8)          :: lower_bound, upper_bound
+integer           :: n
+
+write(string1,*)'WARNING routine not tested.'
+write(string2,*)'"roms_state_bounds" from namelist is not set, not tested.'
+call error_handler(E_MSG,'get_variable_bounds:',string1, text2=string2)
 
 n = 1
 do while ( trim(bounds_table(1,n)) /= 'NULL' .and. trim(bounds_table(1,n)) /= '' )
@@ -867,25 +911,34 @@ return
 end subroutine get_variable_bounds
 
 
-!-------------------------------------------------------------------
-
+!-----------------------------------------------------------------------
+!> 
+!> Reads the last timestep of the ROMS variables and packs them into a 
+!> DART state vector. At present, only the last timestep is considered.
+!> @todo determining the timestep of the DESIRED time might be a nice extension.
+!>
+!> @param filename the ROMS file that contains the variables of interest. 
+!> @param state_vector the DART state vector
+!> @param last_file_time the last time in the file.
+!>
+!> @todo FIXME last_file_time is provided as a convenience, not sure
+!>       I am decoding the information correctly given the test file 
+!>       that I had. It would be nice to get an accurate time and ensure
+!>       that the desired time is being read.
 
 subroutine restart_file_to_sv(filename, state_vector, last_file_time)
 
-! Reads the current time and state variables
-! file and packs them into a dart state vector.
-
-character(len=*), intent(in)    :: filename
-real(r8),         intent(inout) :: state_vector(:)
-type(time_type),  intent(out)   :: last_file_time
+character(len=*), intent(in)  :: filename
+real(r8),         intent(out) :: state_vector(:)
+type(time_type),  intent(out) :: last_file_time
 
 ! temp space to hold data while we are reading it
 integer  :: ndim1, ndim2, ndim3,ndim4
 integer  :: indx, iostatus, ivar
-real(r8), allocatable, dimension(:)         :: data_1d_array
-real(r8), allocatable, dimension(:,:)       :: data_2d_array
-real(r8), allocatable, dimension(:,:,:)     :: data_3d_array
-real(r8), allocatable, dimension(:,:,:,:)   :: data_4d_array
+real(r8), allocatable, dimension(:)       :: data_1d_array
+real(r8), allocatable, dimension(:,:)     :: data_2d_array
+real(r8), allocatable, dimension(:,:,:)   :: data_3d_array
+real(r8), allocatable, dimension(:,:,:,:) :: data_4d_array
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
 character(len=NF90_MAX_NAME) :: varname
@@ -922,7 +975,7 @@ call nc_check(iostatus, 'restart_file_to_sv', 'inquire '//trim(filename))
 ! IF the netCDF variable has an 'ocean_time' dimension, 
 ! we need to read the LAST timestep  ...
 
-TimeDimID = FindTimeDimension(ncid, filename, last_file_time)
+TimeDimID = find_time_dimension(ncid, filename, last_file_time)
 
 if (TimeDimID < 0) then
    write(string1,*) trim(filename)//' has no "ocean_time" coordinate variable.'
@@ -1053,13 +1106,13 @@ call nc_check(nf90_close(ncid), &
 end subroutine restart_file_to_sv
 
 
-!-----------------------------------------------------------
-
+!-----------------------------------------------------------------------
+!>
+!> parse the model_nml "analysis_time" string to extract a DART time.
+!> the expected format of the string is YYYY-MM-DD HH:MM:SS
+!> The time is expected to come from the Gregorian calendar.
 
 function get_time_from_namelist()
-
-! parse a string to extract time.
-! the expected format of the string is YYYY?MM?DD?hh
 
 type(time_type) :: get_time_from_namelist
 
@@ -1082,17 +1135,19 @@ get_time_from_namelist = set_date(iyear, imonth, iday, ihour, imin, isec)
 end function get_time_from_namelist
 
 
-!------------------------------------------------------------------
-
+!-----------------------------------------------------------------------
+!>
+!> Pack the values from a 1d array into the DART array
+!>
+!> @param data_1d_array the array containing the ROMS variable
+!> @param x the array containing the DART state
+!> @param ivar handle to the DART structure relating what variable is where.
 
 subroutine prog_var_1d_to_vector(data_1d_array, x, ivar)
 
-! convert the values from a 1d array into a 1d array
-! starting at an offset.
-
-real(r8), dimension(:),   intent(in)    :: data_1d_array
-real(r8), dimension(:),   intent(inout) :: x
-integer,                  intent(in)    :: ivar
+real(r8), intent(in)    :: data_1d_array(:)
+real(r8), intent(inout) :: x(:)
+integer,  intent(in)    :: ivar
 
 integer :: idim1,ii
 
@@ -1116,16 +1171,20 @@ endif
 end subroutine prog_var_1d_to_vector
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> Pack the values from a 2D array into the 1D DART array
+!> 
+!> @param data_2d_array the array containing the ROMS variable
+!> @param x the array containing the DART state
+!> @param ivar handle to the DART structure relating what variable is where.
+!>
 
 subroutine prog_var_2d_to_vector(data_2d_array, x, ivar)
 
-! convert the values from a 2d array into a 1d array
-! starting at an offset.
-
-real(r8), dimension(:,:), intent(in)    :: data_2d_array
-real(r8), dimension(:),   intent(inout) :: x
-integer,                  intent(in)    :: ivar
+real(r8), intent(in)    :: data_2d_array(:,:)
+real(r8), intent(inout) :: x(:)
+integer,  intent(in)    :: ivar
 
 integer :: idim1,idim2,ii
 
@@ -1150,16 +1209,21 @@ endif
 
 end subroutine prog_var_2d_to_vector
 
-!------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+!>
+!> Pack the values from a 3D array into the 1D DART array
+!> 
+!> @param data_3d_array the array containing the ROMS variable
+!> @param x the array containing the DART state
+!> @param ivar handle to the DART structure relating what variable is where.
+!>
 
 subroutine prog_var_3d_to_vector(data_3d_array, x, ivar)
 
-! convert the values from a 2d array into a 1d array
-! starting at an offset.
-
-real(r8), dimension(:,:,:), intent(in)    :: data_3d_array
-real(r8), dimension(:),     intent(inout) :: x
-integer,                    intent(in)    :: ivar
+real(r8), intent(in)    :: data_3d_array(:,:,:)
+real(r8), intent(inout) :: x(:)
+integer,  intent(in)    :: ivar
 
 integer :: idim1,idim2,idim3,ii
 
@@ -1187,17 +1251,20 @@ endif
 end subroutine prog_var_3d_to_vector
 
 
-!------------------------------------------------------------------
-
+!-----------------------------------------------------------------------
+!>
+!> Pack the values from a 4D array into the 1D DART array
+!> 
+!> @param data_4d_array the array containing the ROMS variable
+!> @param x the array containing the DART state
+!> @param ivar handle to the DART structure relating what variable is where.
+!>
 
 subroutine prog_var_4d_to_vector(data_4d_array, x, ivar)
 
-! convert the values from a 2d array into a 1d array
-! starting at an offset.
-
-real(r8), dimension(:,:,:,:), intent(in)    :: data_4d_array
-real(r8), dimension(:),       intent(inout) :: x
-integer,                      intent(in)    :: ivar
+real(r8), intent(in)    :: data_4d_array(:,:,:,:)
+real(r8), intent(inout) :: x(:)
+integer,  intent(in)    :: ivar
 
 integer :: idim1,idim2,idim3,idim4,ii
 
@@ -1226,17 +1293,21 @@ endif
 
 end subroutine prog_var_4d_to_vector
 
-!------------------------------------------------------------------
 
+!-----------------------------------------------------------------------
+!>
+!> Extract the values from the 1D DART array into a 1D array 
+!> 
+!> @param x the array containing the DART state
+!> @param ivar handle to the DART structure relating what variable is where.
+!> @param data_1d_array the array containing the ROMS variable
+!>
 
 subroutine vector_to_1d_prog_var(x, ivar, data_1d_array)
 
-! convert the values from a 1d array, starting at an offset,
-! into a 1d array.
-
-real(r8), dimension(:),   intent(in)  :: x
-integer,                  intent(in)  :: ivar
-real(r8), dimension(:),   intent(out) :: data_1d_array
+real(r8), intent(in)  :: x(:)
+integer,  intent(in)  :: ivar
+real(r8), intent(out) :: data_1d_array(:)
 
 integer :: idim1,ii
 
@@ -1260,16 +1331,20 @@ endif
 end subroutine vector_to_1d_prog_var
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!> 
+!> Extract the values from the 1D DART array into a 2D array 
+!> 
+!> @param x the array containing the DART state
+!> @param ivar handle to the DART structure relating what variable is where.
+!> @param data_2d_array the array containing the ROMS variable
+!>
 
 subroutine vector_to_2d_prog_var(x, ivar, data_2d_array)
 
-! convert the values from a 1d array, starting at an offset,
-! into a 2d array.
-
-real(r8), dimension(:),   intent(in)  :: x
-integer,                  intent(in)  :: ivar
-real(r8), dimension(:,:), intent(out) :: data_2d_array
+real(r8), intent(in)  :: x(:)
+integer,  intent(in)  :: ivar
+real(r8), intent(out) :: data_2d_array(:,:)
 
 integer :: idim1,idim2,ii
 
@@ -1295,16 +1370,20 @@ endif
 end subroutine vector_to_2d_prog_var
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> Extract the values from the 1D DART array into a 3D array 
+!> 
+!> @param x the array containing the DART state
+!> @param ivar handle to the DART structure relating what variable is where.
+!> @param data_3d_array the array containing the ROMS variable
+!>
 
 subroutine vector_to_3d_prog_var(x, ivar, data_3d_array)
 
-! convert the values from a 1d array, starting at an offset,
-! into a 3d array.
-
-real(r8), dimension(:),     intent(in)  :: x
-integer,                    intent(in)  :: ivar
-real(r8), dimension(:,:,:), intent(out) :: data_3d_array
+real(r8), intent(in)  :: x(:)
+integer,  intent(in)  :: ivar
+real(r8), intent(out) :: data_3d_array(:,:,:)
 
 integer :: idim1,idim2,idim3,ii
 
@@ -1332,12 +1411,17 @@ endif
 end subroutine vector_to_3d_prog_var
 
 
-!------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> given a DART KIND string,
+!> return the first and last index into the DART array of that KIND.
+!> 
+!> @param string the variable name
+!> @param index1 first index into the DART state
+!> @param indexN last index into the DART state
+!>
 
 subroutine get_index_range_string(string,index1,indexN)
-
-! Determine where a particular DART kind (string) exists in the
-! DART state vector.
 
 character(len=*),  intent(in)  :: string
 integer,           intent(out) :: index1
@@ -1359,15 +1443,21 @@ if (index1 == 0) then
    write(string1,*) 'Problem, cannot find indices for '//trim(string)
    call error_handler(E_ERR,'get_index_range_string:',string1,source,revision,revdate)
 endif
+
 end subroutine get_index_range_string
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> given a DART KIND integer,
+!> return the first and last index into the DART array of that KIND.
+!> 
+!> @param dartkind the integer describing the DART KIND
+!> @param index1 first index into the DART state
+!> @param indexN last index into the DART state
+!>
 
 subroutine get_index_range_int(dartkind,index1,indexN)
-
-! Determine where a particular DART kind (integer) exists in the
-! DART state vector.
 
 integer,           intent(in)  :: dartkind
 integer,           intent(out) :: index1
@@ -1396,12 +1486,27 @@ endif
 end subroutine get_index_range_int
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> Find the 'ocean_time' dimension in a ROMS netCDF file.
+!> If there is none - it is a fatal error.
+!> If the optional argument is present, the time of the last timestep
+!> is also returned.
+!>
+!> @param TimeDimID the netCDF dimension ID for 'ocean_time'
+!> @param ncid the netCDF handle to the ROMS netCDF file.
+!> @param filename the name of the ROMS netCDF file
+!>                 (used to generate useful error messages).
+!> @param last_time the time/date of the last timestep in the file.
+!>
+!> @todo FIXME Make sure the calculation is correct.
+!>       The metadata claims to have a julian calendar, the 64bit real
+!>       can support whole numbers that overflow a 32 bit integer. The
+!>       only test file I have is for year 223 or something like that.
+!>       DART normally uses a Gregorian calendar since our observations
+!>       use that same calendar.
 
-function FindTimeDimension(ncid, filename, last_time) result(TimeDimId)
-
-! Find the 'ocean_time' Dimension in a netCDF file.
-! If there is none - it is a fatal error.
+function find_time_dimension(ncid, filename, last_time) result(TimeDimId)
 
 integer                                :: TimeDimId
 integer,                   intent(in)  :: ncid
@@ -1420,7 +1525,7 @@ integer(i8) :: big_integer
 integer :: some_seconds, some_days
 
 call nc_check(nf90_inq_dimid(ncid,'ocean_time',dimid=TimeDimId), &
-       'FindTimeDimension','cannot find "ocean_time" dimension in '//trim(filename))
+       'find_time_dimension','cannot find "ocean_time" dimension in '//trim(filename))
 
 ! If you want the last time from the 'ocean_time' variable,
 ! you have to decode it a bit from the netCDF file metadata.
@@ -1428,15 +1533,15 @@ call nc_check(nf90_inq_dimid(ncid,'ocean_time',dimid=TimeDimId), &
 if (present(last_time)) then
 
    call nc_check(nf90_inquire_dimension(ncid, TimeDimID, len=dimlen), &
-          'FindTimeDimension', 'inquire_dimension ocean_time'//trim(filename))
+          'find_time_dimension', 'inquire_dimension ocean_time'//trim(filename))
 
    call nc_check(nf90_inq_varid(ncid, 'ocean_time', VarID), &
-          'FindTimeDimension', 'inq_varid ocean_time from '//trim(filename))
+          'find_time_dimension', 'inq_varid ocean_time from '//trim(filename))
 
    allocate(ocean_time(dimlen))
 
    call nc_check(nf90_get_var( ncid, VarID, ocean_time), &
-          'FindTimeDimension', 'get_var ocean_time from '//trim(filename))
+          'find_time_dimension', 'get_var ocean_time from '//trim(filename))
 
    ! Make sure the calendar is expected form
    ! ocean-time:calendar = "julian" ;
@@ -1444,14 +1549,14 @@ if (present(last_time)) then
    !                        1234567890123
    
    call nc_check(nf90_get_att(ncid, VarID, 'units', unitstring), &
-          'FindTimeDimension', 'get_att ocean_time units '//trim(filename))
+          'find_time_dimension', 'get_att ocean_time units '//trim(filename))
    call nc_check(nf90_get_att(ncid, VarID, 'calendar', calendarstring), &
-          'FindTimeDimension', 'get_att ocean_time units '//trim(filename))
+          'find_time_dimension', 'get_att ocean_time units '//trim(filename))
 
    if (trim(calendarstring) /= 'julian') then
       write(string1,*)'expecting ocean_time calendar of "julian"'
       write(string2,*)'got '//trim(calendarstring)
-      call error_handler(E_ERR,'FindTimeDimension:', string1, &
+      call error_handler(E_ERR,'find_time_dimension:', string1, &
                 source, revision, revdate, text2=string2, text3=string3)
    endif
 
@@ -1461,7 +1566,7 @@ if (present(last_time)) then
       write(string1,*)'expecting ocean_time units of "seconds since ..."'
       write(string2,*)'got '//trim(unitstring)
       write(string3,*)'Cannot proceed. Stopping.'
-      call error_handler(E_ERR,'FindTimeDimension:', string1, &
+      call error_handler(E_ERR,'find_time_dimension:', string1, &
                 source, revision, revdate, text2=string2, text3=string3)
    endif
 
@@ -1470,7 +1575,7 @@ if (present(last_time)) then
       write(string1,*)'Unable to read ocean_time units. Error status was ',ios
       write(string2,*)'expected "seconds since YYYY-MM-DD HH:MM:SS"'
       write(string3,*)'was      "'//trim(unitstring)//'"'
-      call error_handler(E_ERR, 'FindTimeDimension:', string1, &
+      call error_handler(E_ERR, 'find_time_dimension:', string1, &
              source, revision, revdate, text2=string2, text3=string3)
    endif
 
@@ -1491,28 +1596,28 @@ if (present(last_time)) then
    ! DART is interpreting this as the number of days of the 'origin'
 
    call nc_check(nf90_inq_varid(ncid, 'dstart', VarID), &
-          'FindTimeDimension', 'inq_varid dstart from '//trim(filename))
+          'find_time_dimension', 'inq_varid dstart from '//trim(filename))
 
    call nc_check(nf90_get_var( ncid, VarID, dstart), &
-          'FindTimeDimension', 'get_var dstart from '//trim(filename))
+          'find_time_dimension', 'get_var dstart from '//trim(filename))
 
    call nc_check(nf90_get_att(ncid, VarID, 'units', unitstring), &
-          'FindTimeDimension', 'get_att dstart units '//trim(filename))
+          'find_time_dimension', 'get_att dstart units '//trim(filename))
    call nc_check(nf90_get_att(ncid, VarID, 'calendar', calendarstring), &
-          'FindTimeDimension', 'get_att dstart units '//trim(filename))
+          'find_time_dimension', 'get_att dstart units '//trim(filename))
 
    if (unitstring(1:10) /= 'days since') then
       write(string1,*)'expecting dstart units of "days since ..."'
       write(string2,*)'got '//trim(unitstring)
       write(string3,*)'Cannot proceed. Stopping.'
-      call error_handler(E_ERR,'FindTimeDimension:', string1, &
+      call error_handler(E_ERR,'find_time_dimension:', string1, &
                 source, revision, revdate, text2=string2, text3=string3)
    endif
 
    if (trim(calendarstring) /= 'julian') then
       write(string1,*)'expecting dstart calendar of "julian"'
       write(string2,*)'got '//trim(calendarstring)
-      call error_handler(E_ERR,'FindTimeDimension:', string1, &
+      call error_handler(E_ERR,'find_time_dimension:', string1, &
                 source, revision, revdate, text2=string2, text3=string3)
    endif
 
@@ -1521,7 +1626,7 @@ if (present(last_time)) then
       write(string1,*)'Unable to read dtime units. Error status was ',ios
       write(string2,*)'expected "days since YYYY-MM-DD HH:MM:SS"'
       write(string3,*)'was      "'//trim(unitstring)//'"'
-      call error_handler(E_ERR, 'FindTimeDimension:', string1, &
+      call error_handler(E_ERR, 'find_time_dimension:', string1, &
              source, revision, revdate, text2=string2, text3=string3)
    endif
 
@@ -1546,15 +1651,25 @@ if (present(last_time)) then
    deallocate(ocean_time)
 endif
 
-end function FindTimeDimension
+end function find_time_dimension
 
-!------------------------------------------------------------------
 
+!-----------------------------------------------------------------------
+!> 
+!> Writes the (posterior) DART state into a ROMS netCDF analysis file.
+!> Just to be clear: only the ROMS variables that are part of the DART
+!> state are overwritten.
+!>
+!> @param state_vector the DART posterior state.
+!> @param filename the ROMS netCDF analysis file.
+!> @param statetime the DART time of the posterior.
+!>
+!> @todo FIXME ... use 'statetime' to find the proper time slot in the 
+!>       restart file. At present, we just stuff it into the last slot, 
+!>       regardless.
+!>
 
 subroutine sv_to_restart_file(state_vector, filename, statetime)
-
-! Writes the current time and state variables from a dart state
-! vector (1d array) into a ROMS netcdf analysis file.
 
 real(r8),         intent(in) :: state_vector(:)
 character(len=*), intent(in) :: filename
@@ -1562,9 +1677,9 @@ type(time_type),  intent(in) :: statetime
 
 ! temp space to hold data while we are writing it
 integer :: i, ivar
-real(r8), allocatable, dimension(:)         :: data_1d_array
-real(r8), allocatable, dimension(:,:)       :: data_2d_array
-real(r8), allocatable, dimension(:,:,:)     :: data_3d_array
+real(r8), allocatable, dimension(:)     :: data_1d_array
+real(r8), allocatable, dimension(:,:)   :: data_2d_array
+real(r8), allocatable, dimension(:,:,:) :: data_3d_array
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
 character(len=NF90_MAX_NAME) :: varname
@@ -1594,11 +1709,8 @@ call nc_check(nf90_open(trim(filename), NF90_WRITE, ncFileID), &
 ! IF the netCDF variable has a TIME dimension, it must be the last dimension,
 ! and we need to read the LAST timestep and effectively squeeze out the
 ! singleton dimension when we stuff it into the DART state vector.
-! FIXME ... it is also a good idea to make sure that the state time
-! matches the time in the restart file
-!>@TODO use 'statetime' to find proper slot for the write. 
 
-TimeDimID = FindTimeDimension( ncFileID, filename )
+TimeDimID = find_time_dimension( ncFileID, filename )
 
 if ( TimeDimID > 0 ) then
    call nc_check(nf90_inquire_dimension(ncFileID, TimeDimID, len=TimeDimLength), &
@@ -1724,20 +1836,35 @@ call nc_check(nf90_close(ncFileID), &
 end subroutine sv_to_restart_file
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> for a given directive and range, do the data clamping for the given
+!> input array.  only one of the optional array args should be specified - the
+!> one which matches the given dimsize.  this still has replicated sections for
+!> each possible dimensionality (which so far is only 1 to 3 - add 4-7 only
+!> if needed) but at least it is isolated to this subroutine.
+!> 
+!> @param out_of_range_fail switch to prescribe action. if TRUE and the data 
+!>                          value is outside the expected range, issue a FATAL 
+!>                          error. if FALSE, set the offending value to the 
+!>                          appropriate max or min described by the 'range' variable.
+!> @param range the expected min and max describing the allowable range. 
+!> @param dimsize the rank of the variable to be clamped. 
+!> @param varname the name of the variable to be clamped.
+!> @param array_1d if dimsize == 1, this contains the data to be clamped.
+!> @param array_2d if dimsize == 1, this contains the data to be clamped.
+!> @param array_3d if dimsize == 3, this contains the data to be clamped.
+!>
 
-subroutine do_clamping(out_of_range_fail, range, dimsize, varname, array_1d, array_2d, array_3d)
- logical,          intent(in)    :: out_of_range_fail
- real(r8),         intent(in)    :: range(2)
- integer,          intent(in)    :: dimsize
- character(len=NF90_MAX_NAME), intent(in)    :: varname
- real(r8),optional,intent(inout) :: array_1d(:), array_2d(:,:), array_3d(:,:,:)
-
-! for a given directive and range, do the data clamping for the given
-! input array.  only one of the optional array args should be specified - the
-! one which matches the given dimsize.  this still has replicated sections for
-! each possible dimensionality (which so far is only 1 to 3 - add 4-7 only
-! if needed) but at least it is isolated to this subroutine.
+subroutine do_clamping(out_of_range_fail, range, dimsize, varname, &
+                       array_1d, array_2d, array_3d)
+logical,                      intent(in)    :: out_of_range_fail
+real(r8),                     intent(in)    :: range(2)
+integer,                      intent(in)    :: dimsize
+character(len=NF90_MAX_NAME), intent(in)    :: varname
+real(r8), optional,           intent(inout) :: array_1d(:)
+real(r8), optional,           intent(inout) :: array_2d(:,:)
+real(r8), optional,           intent(inout) :: array_3d(:,:,:)
 
 ! these sections should all be identical except for the array_XX specified.
 ! if anyone can figure out a way to defeat fortran's strong typing for arrays
@@ -1888,13 +2015,22 @@ endif   ! dimsize
 end subroutine do_clamping
 
 
-!------------------------------------------------------------------
-
+!-----------------------------------------------------------------------
+!>
+!> writes the time of the current state and (optionally) the time
+!> to be conveyed to ROMS to dictate the length of the forecast.
+!> This file is then used by scripts to modify the ROMS run.
+!> The format in the time information is totally at your discretion.
+!>
+!> @param time_filename name of the file (name is set by dart_to_roms_nml:time_filename) 
+!> @param model_time the current time of the model state
+!> @param adv_to_time the time in the future of the next assimilation.
+!>
 
 subroutine write_model_time(time_filename, model_time, adv_to_time)
- character(len=*), intent(in)           :: time_filename
- type(time_type),  intent(in)           :: model_time
- type(time_type),  intent(in), optional :: adv_to_time
+character(len=*), intent(in)           :: time_filename
+type(time_type),  intent(in)           :: model_time
+type(time_type),  intent(in), optional :: adv_to_time
 
 integer :: iunit
 character(len=19) :: timestring
@@ -1919,17 +2055,27 @@ call close_file(iunit)
 end subroutine write_model_time
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> convert DART time type into a character string with the
+!> format of YYYYMMDDhh ... or DDhh
+!>
+!> @param time_to_string the character string containing the time
+!> @param t the time
+!> @param interval logical flag describing if the time is to be
+!>                 interpreted as a calendar date or a time increment.
+!>                 If the flag is merely present, the time is to be
+!>                 interpreted as an increment and the format is simply
+!>                 DDhh. If the flag is not present, the time is a full
+!>                 calendar (Gregorian) date and will be renedered with
+!>                 the YYYYMMDDhh format.
+!>
 
 function time_to_string(t, interval)
 
-! convert time type into a character string with the
-! format of YYYYMMDDhh
-
-! passed variables
- character(len=19) :: time_to_string
- type(time_type), intent(in) :: t
- logical, intent(in), optional :: interval
+character(len=19)              :: time_to_string
+type(time_type),   intent(in) :: t
+logical, optional, intent(in) :: interval
 
 ! local variables
 
@@ -1972,12 +2118,16 @@ endif
 
 end function time_to_string
 
-!------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+!>
+!> given a DART state vector; print out the min and max
+!> data values for all the variables in the vector.
+!>
+!> @param x the vector.
+!>
 
 subroutine print_variable_ranges(x)
-
-! given a state vector, print out the min and max
-! data values for the variables in the vector.
 
 real(r8), intent(in) :: x(:)
 
@@ -1989,12 +2139,14 @@ enddo
 
 end subroutine print_variable_ranges
 
-!------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+!>
+!> given a DART variable index and a state vector; print out the variable
+!> name, min, and max data values for that DART variable.
+!>
 
 subroutine print_minmax(ivar, x)
-
-! given an index and a state vector, print out the min and max
-! data values for the items corresponding to that progvar index.
 
 integer,  intent(in) :: ivar
 real(r8), intent(in) :: x(:)
@@ -2008,14 +2160,25 @@ call error_handler(E_MSG, '', string1, source,revision,revdate)
 
 end subroutine print_minmax
 
-!------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+!>
+!> Given a DART location (referred to as "base") and a set of candidate
+!> locations and kinds (obs, obs_kind); returns the subset close to the
+!> "base", their indices, and their distances to the "base" ...
+!>
+!> @param gc precomputed 'get_close_type' to speed up candidate selection 
+!> @param base_obs_loc location of the observation in question
+!> @param base_obs_kind DART KIND of observation in question
+!> @param obs_loc array of comparison locations
+!> @param obs_kind matching array of KINDs for the comparison locations
+!> @param num_close the number of obs_loc locations that are within the prespecified distance (information contained in 'gc')
+!> @param close_ind the indices of the obs_loc locations that are 'close'
+!> @param dist the distances of each of the close locations.
+!>
 
 subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
                          obs_loc, obs_kind, num_close, close_ind, dist)
-!
-! Given a DART location (referred to as "base") and a set of candidate
-! locations & kinds (obs, obs_kind), returns the subset close to the
-! "base", their indices, and their distances to the "base" ...
 
 ! Note that both base_obs_loc and obs_loc are intent(inout), meaning that these
 ! locations are possibly modified here and returned as such to the calling routine.
@@ -2023,14 +2186,14 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
 ! within filter_assim. In other words, these modifications will only matter within
 ! filter_assim, but will not propagate backwards to filter.
 
-type(get_close_type),              intent(in)    :: gc
-type(location_type),               intent(inout) :: base_obs_loc
-integer,                           intent(in)    :: base_obs_kind
-type(location_type), dimension(:), intent(inout) :: obs_loc
-integer,             dimension(:), intent(in)    :: obs_kind
-integer,                           intent(out)   :: num_close
-integer,             dimension(:), intent(out)   :: close_ind
-real(r8),            dimension(:), intent(out)   :: dist
+type(get_close_type), intent(in)    :: gc
+type(location_type),  intent(inout) :: base_obs_loc
+integer,              intent(in)    :: base_obs_kind
+type(location_type),  intent(inout) :: obs_loc(:)
+integer,              intent(in)    :: obs_kind(:)
+integer,              intent(out)   :: num_close
+integer,              intent(out)   :: close_ind(:)
+real(r8),             intent(out)   :: dist(:)
 
 integer                :: ztypeout
 integer                :: t_ind, istatus1, istatus2, k
@@ -2048,7 +2211,6 @@ close_ind = -99
 dist      = 1.0e9_r8   !something big and positive (far away) in radians
 istatus1  = 0
 istatus2  = 0
-
 
 base_llv = get_location(base_obs_loc)             ! lon/lat/vert
 base_which = nint(query_location(base_obs_loc))   ! base_obs_loc%which_vert
@@ -2110,38 +2272,46 @@ endif
 end subroutine get_close_obs
 
 
-!------------------------------------------------------------------
-
+!-----------------------------------------------------------------------
+!> 
+!> This subroutine converts a given ob/state vertical coordinate to
+!> the vertical localization coordinate type requested through the
+!> model_mod namelist.
+!>
+!> Notes: (1) obs_kind is only necessary to check whether the ob
+!>            is an identity observation.
+!>
+!>        (2) This subroutine can convert both obs' and state points'
+!>            vertical coordinates. Remember that state points get
+!>            their DART location information from get_state_meta_data
+!>            which is called by filter_assim during the assimilation
+!>            process.
+!>
+!>        (3) x is the relevant DART state vector for carrying out
+!>            computations necessary for the vertical coordinate
+!>            transformations. As the vertical coordinate is only used
+!>            in distance computations, this is actually the "expected"
+!>            vertical coordinate, so that computed distance is the
+!>            "expected" distance. Thus, under normal circumstances,
+!>            x that is supplied to vert_convert should be the
+!>            ensemble mean. Nevertheless, the subroutine has the
+!>            functionality to operate on any DART state vector that
+!>            is supplied to it.
+!>
+!> @param x DART state vector
+!> @param location the location of interest
+!> @param obs_kind the DART KIND at that location
+!> @param ztypeout the DESIRED vertical coordinate
+!> @param istatus flag to indicate success (0) or failure (/= 0)
+!>
 
 subroutine vert_convert(x, location, obs_kind, ztypeout, istatus)
 
-! This subroutine converts a given ob/state vertical coordinate to
-! the vertical localization coordinate type requested through the
-! model_mod namelist.
-!
-! Notes: (1) obs_kind is only necessary to check whether the ob
-!            is an identity ob.
-!        (2) This subroutine can convert both obs' and state points'
-!            vertical coordinates. Remember that state points get
-!            their DART location information from get_state_meta_data
-!            which is called by filter_assim during the assimilation
-!            process.
-!        (3) x is the relevant DART state vector for carrying out
-!            computations necessary for the vertical coordinate
-!            transformations. As the vertical coordinate is only used
-!            in distance computations, this is actually the "expected"
-!            vertical coordinate, so that computed distance is the
-!            "expected" distance. Thus, under normal circumstances,
-!            x that is supplied to vert_convert should be the
-!            ensemble mean. Nevertheless, the subroutine has the
-!            functionality to operate on any DART state vector that
-!            is supplied to it.
-
-real(r8), dimension(:), intent(in)    :: x
-type(location_type),    intent(inout) :: location
-integer,                intent(in)    :: obs_kind
-integer,                intent(in)    :: ztypeout
-integer,                intent(out)   :: istatus
+real(r8),            intent(in)    :: x(:)
+type(location_type), intent(inout) :: location
+integer,             intent(in)    :: obs_kind
+integer,             intent(in)    :: ztypeout
+integer,             intent(out)   :: istatus
 
 ! zin and zout are the vert values coming in and going out.
 ! ztype{in,out} are the vert types as defined by the 3d sphere
@@ -2205,9 +2375,7 @@ endif
 ! convert into:
 select case (ztypeout)
 
-   ! ------------------------------------------------------------
    ! outgoing vertical coordinate should be 'model level number'
-   ! ------------------------------------------------------------
    case (VERTISLEVEL)
 
 
@@ -2221,11 +2389,6 @@ select case (ztypeout)
 
    case (VERTISSURFACE)
 
-
-
-   ! -------------------------------------------------------
-   ! outgoing vertical coordinate is unrecognized
-   ! -------------------------------------------------------
    case default
       write(string1,*) 'Requested vertical coordinate not recognized: ', ztypeout
       call error_handler(E_ERR,'vert_convert:', string1, &
@@ -2239,18 +2402,20 @@ location = set_location(llv_loc(1),llv_loc(2),zout,ztypeout)
 ! Set successful return code only if zout has good value
 if(zout /= missing_r8) istatus = 0
 
-
 end subroutine vert_convert
 
 
-!------------------------------------------------------------------
-
+!-----------------------------------------------------------------------
+!>
+!> Determine the DART variable index of a particular DART KIND (integer)
+!>
+!> @param get_progvar_index_from_kind the DART variable index
+!> @param dartkind the DART KIND of interest
+!>
 
 function get_progvar_index_from_kind(dartkind)
 
-! Determine what index a particular DART kind (integer) is in the
-! progvar array.
-integer :: get_progvar_index_from_kind
+integer             :: get_progvar_index_from_kind
 integer, intent(in) :: dartkind
 
 integer :: i
@@ -2266,17 +2431,23 @@ get_progvar_index_from_kind = -1
 end function get_progvar_index_from_kind
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> Returns a model state vector, x, that is some sort of appropriate
+!> initial condition for starting up a long integration of the model.
+!> At present, this is only used if the namelist parameter
+!> start_from_restart is set to .false. in the program perfect_model_obs.
+!> If this option is not to be used in perfect_model_obs, or if no
+!> synthetic data experiments using perfect_model_obs are planned,
+!> this can be a NULL INTERFACE.
+!>
+!> NOTE: This is not supported for ROMS and will generate a FATAL ERROR. 
+!>       However, this is a required interface - so it must be present.
+!>
+!> @param x the ROMS initial conditions  
+!>
 
- subroutine init_conditions(x)
-!
-! Returns a model state vector, x, that is some sort of appropriate
-! initial condition for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter
-! start_from_restart is set to .false. in the program perfect_model_obs.
-! If this option is not to be used in perfect_model_obs, or if no
-! synthetic data experiments using perfect_model_obs are planned,
-! this can be a NULL INTERFACE.
+subroutine init_conditions(x)
 
 real(r8), intent(out) :: x(:)
 
@@ -2284,46 +2455,53 @@ if ( .not. module_initialized ) call static_init_model
 
 x = MISSING_R8
 
-write(string1,*) 'Cannot initialize ROMS state via subroutine call; start_from_restart cannot be F'
-call error_handler(E_ERR,'init_conditions:',string1,source,revision,revdate)
+write(string1,*)'Cannot initialize ROMS state via subroutine call.'
+write(string2,*)'namelist "start_from_restart" cannot be F'
+call error_handler(E_ERR, 'init_conditions:', string1, &
+                   source, revision, revdate, text2=string2)
 
 end subroutine init_conditions
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> Does a single timestep advance of the model in a subroutine call.
+!> This interface is only called if the namelist parameter
+!> async is set to 0 in perfect_model_obs of filter or if the
+!> program integrate_model is to be used to advance the model
+!> state as a separate executable. If one of these options
+!> is not going to be used (the model will only be advanced as
+!> a separate model-specific executable), this can be a
+!> NULL INTERFACE.
+!>
+!> NOTE: not supported for ROMS. Will intentionally generate a fatal error.
+!>
+!> @param x the model state before and after the model advance.
+!> @param time the desired time at the end of the model advance.
+!>
 
-
- subroutine adv_1step(x, time)
-!
-! Does a single timestep advance of the model. The input value of
-! the vector x is the starting condition and x is updated to reflect
-! the changed state after a timestep. The time argument is intent
-! in and is used for models that need to know the date/time to
-! compute a timestep, for instance for radiation computations.
-! This interface is only called if the namelist parameter
-! async is set to 0 in perfect_model_obs of filter or if the
-! program integrate_model is to be used to advance the model
-! state as a separate executable. If one of these options
-! is not going to be used (the model will only be advanced as
-! a separate model-specific executable), this can be a
-! NULL INTERFACE.
+subroutine adv_1step(x, time)
 
 real(r8),        intent(inout) :: x(:)
 type(time_type), intent(in)    :: time
 
 if ( .not. module_initialized ) call static_init_model
 
-write(string1,*) 'Cannot advance ROMS with a subroutine call; async cannot equal 0'
-call error_handler(E_ERR,'adv_1step:',string1,source,revision,revdate)
+write(string1,*)'Cannot advance ROMS with a subroutine call; async cannot equal 0'
+write(string2,*)'Unsupported method for ROMS.'
+call error_handler(E_ERR, 'adv_1step:', string1, &
+                   source, revision, revdate, text2=string2)
 
 end subroutine adv_1step
 
-!------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+!>
+!> Returns the size of the DART state vector (i.e. model) as an integer.
+!> Required for all applications.
+!> 
 
 function get_model_size()
-!
-! Returns the size of the model as an integer. Required for all
-! applications.
 
 integer :: get_model_size
 
@@ -2334,47 +2512,67 @@ get_model_size = model_size
 end function get_model_size
 
 
-!------------------------------------------------------------------
-
+!-----------------------------------------------------------------------
+!> 
+!> Companion interface to init_conditions. Returns a time that is somehow
+!> appropriate for starting up a long integration of the model.
+!> At present, this is only used if the namelist parameter
+!> start_from_restart is set to .false. in the program perfect_model_obs.
+!> If this option is not to be used in perfect_model_obs, or if no
+!> synthetic data experiments using perfect_model_obs are planned,
+!> this can be a NULL INTERFACE.
+!>
+!> NOTE: Since ROMS cannot start in this manner,
+!> DART will intentionally generate a fatal error.
+!>
+!> @param time the time to associate with the initial state
+!>
 
 subroutine init_time(time)
-!
-! Companion interface to init_conditions. Returns a time that is somehow
-! appropriate for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter
-! start_from_restart is set to .false. in the program perfect_model_obs.
-! If this option is not to be used in perfect_model_obs, or if no
-! synthetic data experiments using perfect_model_obs are planned,
-! this can be a NULL INTERFACE.
 
 type(time_type), intent(out) :: time
 
 if ( .not. module_initialized ) call static_init_model
 
-! for now, just set to 0
 time = set_time(0,0)
 
 write(string1,*) 'Cannot initialize ROMS time via subroutine call; start_from_restart cannot be F'
-call error_handler(E_ERR,'init_time:',string1,source,revision,revdate)
+write(string2,*)'Unsupported method for ROMS.'
+call error_handler(E_ERR, 'init_time:', string1, &
+                   source, revision, revdate, text2=string2)
 
 end subroutine init_time
 
-!------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+!> 
+!> Model interpolate will interpolate any DART state variable 
+!> (i.e. S, T, U, V, Eta) to the given location given a state vector. 
+!> The type of the variable being interpolated is obs_type since 
+!> normally this is used to find the expected value of an observation 
+!> at some location. The interpolated value is returned in interp_val 
+!> and istatus is 0 for success. NOTE: This is a workhorse routine and is
+!> the basis for all the forward observation operator code.
+!>
+!> @param x the DART state vector
+!> @param location the location of interest
+!> @param obs_type the DART KIND of interest
+!> @param interp_val the estimated value of the DART state at the location 
+!>          of interest (the interpolated value).
+!> @param istatus interpolation status ... 0 == success, /=0 is a failure
+!>
+!> @todo FIXME use some unique error code if the location is technically
+!> outside the domain, i.e. an extrapolation. At some point it will be
+!> useful to know if the interpolation failed because of some illegal
+!> state as opposed to simply being outside the domain.
 
 subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
-!
 
 real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
 integer,             intent(in) :: obs_type
 real(r8),           intent(out) :: interp_val
 integer,            intent(out) :: istatus
-
-! Model interpolate will interpolate any state variable (S, T, U, V, Eta) to
-! the given location given a state vector. The type of the variable being
-! interpolated is obs_type since normally this is used to find the expected
-! value of an observation at some location. The interpolated value is
-! returned in interp_val and istatus is 0 for success.
 
 ! Local storage
 real(r8)       :: loc_array(3), llon, llat, lheight
@@ -2482,7 +2680,6 @@ p(3)=tp_val
 call vert_interpolate(x(base_offset:top_offset),lon_bot,lat_top,obs_kind,lheight,tp_val)
 p(4)=tp_val
 
-
 call quad_bilinear_interp(llon, llat, x_corners, y_corners, p, interp_val)
 
 !write(*,*) 'Ending model interpolate ...'
@@ -2490,19 +2687,30 @@ call quad_bilinear_interp(llon, llat, x_corners, y_corners, p, interp_val)
 end subroutine model_interpolate
 
 
-!------------------------------------------------------------------
-
+!-----------------------------------------------------------------------
+!>
+!> use four corner points to interpolate for one specific layer.
+!> This needs to be careful since ROMS uses terrain-following coordinates.
+!>
+!> @param x the DART state vector
+!> @param lon the longitude of interest
+!> @param lat the latitude of interest
+!> @param var_type the DART KIND of interest
+!> @param height the layer index
+!> @param interp_val the estimated value of the DART state at the location 
+!>          of interest (the interpolated value).
+!> @param istatus interpolation status ... 0 == success, /=0 is a failure
+!> 
 
 subroutine lon_lat_interpolate(x, lon, lat, var_type, height, interp_val, istatus)
- real(r8), intent(in) :: x(:)
- real(r8), intent(in) :: lon, lat
- integer,  intent(in) :: var_type, height
- real(r8), intent(out) :: interp_val
- integer,  intent(out) :: istatus
 
-! use four corner points to interpolate
-! for one specific layer, this needs to be careful since
-! ROMS uses terrain following coordinates
+real(r8), intent(in)  :: x(:)
+real(r8), intent(in)  :: lon
+real(r8), intent(in)  :: lat
+integer,  intent(in)  :: var_type
+integer,  intent(in)  :: height
+real(r8), intent(out) :: interp_val
+integer,  intent(out) :: istatus
 
 ! Local storage
 integer  :: lat_bot, lat_top, lon_bot, lon_top
@@ -2551,7 +2759,6 @@ if(lon_top > progvar(ivar)%numxi) then
    return
 endif
 
-
 ! Get the values at the four corners of the box or quad
 ! Corners go around counterclockwise from lower left
 p(1) = get_val(lon_bot, lat_bot, height, x, var_type)
@@ -2580,67 +2787,97 @@ endif
 
 ! Full bilinear interpolation for quads
 
-   call quad_bilinear_interp(lon, lat, x_corners, y_corners, p, interp_val)
-
+call quad_bilinear_interp(lon, lat, x_corners, y_corners, p, interp_val)
 
 end subroutine lon_lat_interpolate
 
 
-!------------------------------------------------------------
+!-----------------------------------------------------------------------
+!> 
+!> given a state vector and horizontal location, linearly interpolate
+!> to some desired vertical location. If the location is deeper than the
+!> deepest level, the deepest value is returned. If the location is shallower
+!> than the shallowest level, the shallowest level value is returned.
+!>
+!> @param x the DART state vector
+!> @param height the vertical location of interest
+!> @param lonid the index of the longitude identifying the column.
+!> @param latid the index of the latitude identifying the column.
+!> @param var_type the DART KIND of interest
+!> @param interp_val the interpolated value at the desired height.
+!>
 
 subroutine vert_interpolate(x, lonid, latid, var_type, height, interp_val)
- real(r8), intent(in) :: x(:), height
- integer, intent(in) :: lonid, latid, var_type
- real(r8), intent(out) :: interp_val
-!
-! observation depth or height is positive.
-! so thus ROMS vertical depth. i.e., ZC should be positive.
 
- integer    :: i,iidd
- real(r8)   :: tp(Nz), zz(Nz)
+real(r8), intent(in)  :: x(:)
+real(r8), intent(in)  :: height
+integer,  intent(in)  :: lonid
+integer,  intent(in)  :: latid
+integer,  intent(in)  :: var_type
+real(r8), intent(out) :: interp_val
 
- tp=0.0
- iidd=0
- do i=1,Nz
-     tp(i)=get_val(lonid, latid, i, x, var_type)
-     zz(i)=ZC(lonid,latid,i)
- enddo
+! 'depth' or 'height' is positive; thus ROMS vertical depth. i.e., ZC should be positive.
+
+integer    :: i,iidd
+real(r8)   :: tp(Nz), zz(Nz)
+
+tp=0.0
+iidd=0
+do i=1,Nz
+    tp(i)=get_val(lonid, latid, i, x, var_type)
+    zz(i)=ZC(lonid,latid,i)
+enddo
 
 doloop: do i=Nz,1,-1
      if (zz(i) >= height) then
         iidd=i
         exit doloop
      endif
- enddo doloop
+enddo doloop
 
- if (iidd==0) then
+if (iidd==0) then
     interp_val=tp(1)
     return
- endif
- if (iidd==Nz) then
+endif
+
+if (iidd==Nz) then
     interp_val=tp(Nz)
     return
- endif
+endif
 
- interp_val=tp(iidd)+(tp(iidd+1)-tp(iidd))* &
-   ((height-zz(iidd))/(zz(iidd+1)-zz(iidd)))
+interp_val = tp(iidd) +(tp(iidd+1) - tp(iidd)) * &
+   ((height -zz(iidd))/(zz(iidd+1) - zz(iidd)))
 
- !write(*,*) 'model_mod: height, zz(iidd), val ', height, zz(iidd), interp_val
+!write(*,*) 'model_mod: height, zz(iidd), val ', height, zz(iidd), interp_val
 
- end subroutine vert_interpolate
+end subroutine vert_interpolate
 
-!------------------------------------------------------------
 
+!-----------------------------------------------------------------------
+!>
+!> Returns the DART state value for a given lat, lon, and level index.
+!> 'get_val' will be a MISSNG value if this is NOT a valid grid location
+!> (e.g. land, or below the ocean floor).
+!>
+!> @param get_val the value of the DART state at the gridcell of interest.
+!> @param lon_index the index of the longitude of interest.
+!> @param lat_index the index of the latitude of interest.
+!> @param level_index the index of the level of interest.
+!> @param x the DART state vector.
+!> @param var_type the DART KIND of interest.
+!>
+!> @ todo FIXME Johnny has a better way to do this.
 
 function get_val(lon_index, lat_index, level_index, x, var_type)
- integer,     intent(in) :: lon_index, lat_index, level_index,var_type
- real(r8),    intent(in) :: x(:)
- real(r8)                :: get_val
+
+integer,  intent(in) :: lon_index
+integer,  intent(in) :: lat_index
+integer,  intent(in) :: level_index
+integer,  intent(in) :: var_type
+real(r8), intent(in) :: x(:)
+real(r8)             :: get_val
 
 integer  ::  ii,jj,kk,tt,ivar
-! Returns the value from a single level array given the lat and lon indices
-! 'masked' returns true if this is NOT a valid grid location (e.g. land, or
-! below the ocean floor in shallower areas).
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2665,14 +2902,30 @@ enddo
 end function get_val
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> Given an integer index into the state vector structure, returns the
+!> associated array indices for lat, lon, and depth, as well as the type.
+!>
+!> @param offset relative (to the start of the KIND) index into the DART
+!>               vector for the KIND of interest.
+!> @param x_index the index of the longitude gridcell
+!> @param y_index the index of the latitude gridcell
+!> @param z_index the index of the vertical gridcell
+!> @param var_type the DART KIND of interest
+!>
+!> @todo FIXME move the intent(in) arguments first, then the intent(out)
+!> @todo FIXME Check to make sure that this routine is robust for all
+!> grid staggers, etc. Seems too simple given the staggers possible.
+!>
 
 subroutine get_state_indices(offset, x_index, y_index, z_index, var_type)
- integer, intent(in)  :: offset, var_type
- integer, intent(out) :: x_index, y_index, z_index
 
-! Given an integer index into the state vector structure, returns the
-! associated array indices for lat, lon, and depth, as well as the type.
+integer, intent(in)  :: offset
+integer, intent(out) :: x_index
+integer, intent(out) :: y_index
+integer, intent(out) :: z_index
+integer, intent(in)  :: var_type
 
 integer :: ivar, Nx, Ny
 
@@ -2695,13 +2948,37 @@ if (debug > 3) print *, 'lon, lat, depth index = ', x_index, y_index, z_index
 end subroutine get_state_indices
 
 
-!------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> Given a longitude and latitude (lon_in, lat), the longitude and
+!> latitude of the 4 corners of a quadrilateral and the values at the
+!> four corners, interpolates to (lon_in, lat) which is assumed to
+!> be in the quad. This is done by bilinear interpolation, fitting
+!> a function of the form a + bx + cy + dxy to the four points and
+!> then evaluating this function at (lon, lat). The fit is done by
+!> solving the 4x4 system of equations for a, b, c, and d. The system
+!> is reduced to a 3x3 by eliminating a from the first three equations
+!> and then solving the 3x3 before back substituting. There is concern
+!> about the numerical stability of this implementation. Implementation
+!> checks showed accuracy to seven decimal places on all tests.
+!> 
+!> @param lon_in longitude of interest
+!> @param lat latitude of interest
+!> @param x_corners_in the longitudes of the 4 surrounding corners
+!> @param y_corners the latitudes of the 4 surrounding corners
+!> @param p the values at the 4 surrounding corners
+!> @param interp_val the desired interpolated value
+!>
 
 subroutine quad_bilinear_interp(lon_in, lat, x_corners_in, y_corners, &
                                 p, interp_val)
 
- real(r8),  intent(in) :: lon_in, lat, x_corners_in(4), y_corners(4), p(4)
- real(r8), intent(out) :: interp_val
+real(r8), intent(in)  :: lon_in
+real(r8), intent(in)  :: lat
+real(r8), intent(in)  :: x_corners_in(4)
+real(r8), intent(in)  :: y_corners(4)
+real(r8), intent(in)  :: p(4)
+real(r8), intent(out) :: interp_val
 
 ! Given a longitude and latitude (lon_in, lat), the longitude and
 ! latitude of the 4 corners of a quadrilateral and the values at the
@@ -2784,16 +3061,19 @@ endif
 
 end subroutine quad_bilinear_interp
 
-!------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+!>
+!> Solves rank 3 linear system mr = v for r using Cramer's rule.
+!>
+!> @ todo This isn't the best choice for speed or numerical stability so 
+!> might want to replace this at some point.
+!>
 
 subroutine mat3x3(m, v, r)
- real(r8),  intent(in) :: m(3, 3), v(3)
- real(r8), intent(out) :: r(3)
-
-! Solves rank 3 linear system mr = v for r
-! using Cramer's rule. This isn't the best choice
-! for speed or numerical stability so might want to replace
-! this at some point.
+real(r8), intent(in)  :: m(3, 3)
+real(r8), intent(in)  :: v(3)
+real(r8), intent(out) :: r(3)
 
 real(r8) :: m_sub(3, 3), numer, denom
 integer  :: i
@@ -2811,13 +3091,16 @@ enddo
 
 end subroutine mat3x3
 
-!------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+!>
+!> Computes determinant of 3x3 matrix m
+!>
 
 function deter3(m)
- real(r8), intent(in) :: m(3, 3)
- real(r8)             :: deter3
 
-! Computes determinant of 3x3 matrix m
+real(r8), intent(in) :: m(3, 3)
+real(r8)             :: deter3
 
 deter3 = m(1,1)*m(2,2)*m(3,3) + m(1,2)*m(2,3)*m(3,1) + &
          m(1,3)*m(2,1)*m(3,2) - m(3,1)*m(2,2)*m(1,3) - &
@@ -2825,25 +3108,40 @@ deter3 = m(1,1)*m(2,2)*m(3,3) + m(1,2)*m(2,3)*m(3,1) + &
 
 end function deter3
 
-!------------------------------------------------------------
 
+!-----------------------------------------------------------------------
+!>
+!> Given a longitude and latitude in degrees returns the index of the
+!> regular lon-lat box that contains the point.
+!>
+!> @param lon the longitude of interest
+!> @param lat the latitude of interest
+!> @param LON_al the matrix of longitudes defining the boxes (grids).
+!> @param LAT_al the matrix of latitudes defining the boxes (grids).
+!> @param x_ind the 'x' (longitude) index of the location of interest.
+!> @param y_ind the 'y' (latitude) index of the location of interest.
+!>
+!> @todo FIXME should this really error out or silently fail?
+!> At this point it may silently fail.
 
 subroutine get_reg_box_indices(lon, lat, LON_al, LAT_al, x_ind, y_ind)
- real(r8), intent(in)  :: lon, lat
- real(r8), intent(in)  :: LON_al(:,:), LAT_al(:,:)
- integer,  intent(out) :: x_ind, y_ind
 
- real(r8) :: lon_dif,lat_dif,tp1,tp2
- real(r8),allocatable :: rtemp(:)
- integer,allocatable  :: itemp(:),jtemp(:)
- integer  :: i,j,t,loc1
-! Given a longitude and latitude in degrees returns the index of the regular
-! lon-lat box that contains the point.
+real(r8), intent(in)  :: lon
+real(r8), intent(in)  :: lat
+real(r8), intent(in)  :: LON_al(:,:)
+real(r8), intent(in)  :: LAT_al(:,:)
+integer,  intent(out) :: x_ind
+integer,  intent(out) :: y_ind
+
+real(r8)              :: lon_dif,lat_dif,tp1,tp2
+real(r8), allocatable :: rtemp(:)
+integer,  allocatable :: itemp(:),jtemp(:)
+integer               :: i,j,t,loc1
 
 ! tricky for rotated domain
 
-!calculate degree distance
-!just to find corners
+! calculate degree distance
+! just to find corners
 
 allocate(rtemp(size(LON_al,1)*size(LON_al,2)))
 allocate(itemp(size(LON_al,1)*size(LON_al,2)))
@@ -2851,57 +3149,65 @@ allocate(jtemp(size(LON_al,1)*size(LON_al,2)))
 
 t=0
 do i=1,size(LON_al,1)
-  do j=1,size(LON_al,2)
-     t=t+1
-     lon_dif = (lon - LON_al(i,j))*111.41288*cos(lat*DEG2RAD) &
-      - 0.09350 * cos(3.0 * lat*DEG2RAD) + 0.00012 * cos(5.0 * lat*DEG2RAD)
-     lat_dif = (lat - Lat_al(i,j))*111.13295
-     rtemp(t) = sqrt(lon_dif*lon_dif+lat_dif*lat_dif)
-     itemp(t) = i
-     jtemp(t) = j
-    enddo
- enddo
+   do j=1,size(LON_al,2)
+      t=t+1
+      lon_dif = (lon - LON_al(i,j)) * 111.41288_r8 * cos(lat * DEG2RAD) - &
+                0.09350_r8 * cos(3.0_r8 * lat * DEG2RAD) + &
+                0.00012_r8 * cos(5.0_r8 * lat * DEG2RAD)
+      lat_dif = (lat - Lat_al(i,j))*111.13295_r8
+      rtemp(t) = sqrt(lon_dif*lon_dif+lat_dif*lat_dif)
+      itemp(t) = i
+      jtemp(t) = j
+   enddo
+enddo
 
- !find minimum distances
+!find minimum distances
 
- loc1=FindMinimum(rtemp, 1, t)
+loc1 = FindMinimum(rtemp, 1, t)
 
- !check point location
+!check point location
 
- tp1=checkpoint(LON_al(itemp(loc1),jtemp(loc1)),LAT_al(itemp(loc1),jtemp(loc1)),&
-    LON_al(itemp(loc1)+1,jtemp(loc1)+1),LAT_al(itemp(loc1)+1,jtemp(loc1)+1),lon,lat)
+tp1 = checkpoint(LON_al(itemp(loc1)  , jtemp(loc1)  ), &
+                 LAT_al(itemp(loc1)  , jtemp(loc1)  ), &
+                 LON_al(itemp(loc1)+1, jtemp(loc1)+1), &
+                 LAT_al(itemp(loc1)+1, jtemp(loc1)+1), lon, lat)
 
- tp2=checkpoint(LON_al(itemp(loc1),jtemp(loc1)),LAT_al(itemp(loc1),jtemp(loc1)),&
-    LON_al(itemp(loc1),jtemp(loc1)+1),LAT_al(itemp(loc1),jtemp(loc1)+1),lon,lat)
+tp2 = checkpoint(LON_al(itemp(loc1), jtemp(loc1)  ), &
+                 LAT_al(itemp(loc1), jtemp(loc1)  ), &
+                 LON_al(itemp(loc1), jtemp(loc1)+1), &
+                 LAT_al(itemp(loc1), jtemp(loc1)+1), lon, lat)
 
- if( (tp1>0.0).and.(tp2>0.0)) then
-       x_ind=itemp(loc1)-1
-       y_ind=jtemp(loc1)
- elseif( (tp1>0.0).and.(tp2<0.0)) then
-       x_ind=itemp(loc1)
-       y_ind=jtemp(loc1)
- elseif( (tp1<0.0).and.(tp2>0.0)) then
-       x_ind=itemp(loc1)-1
-       y_ind=jtemp(loc1)-1
- elseif( (tp1<0.0).and.(tp2<0.0)) then
-       x_ind=itemp(loc1)
-       y_ind=jtemp(loc1)-1
- elseif((tp1==0.0) .and.(tp2>0.0)) then
-       x_ind=itemp(loc1)-1
-       y_ind=jtemp(loc1)
- elseif((tp1==0.0) .and.(tp2<0.0)) then
-       x_ind=itemp(loc1)
-       y_ind=jtemp(loc1)
- elseif((tp1>0) .and.(tp2==0.0)) then
-       x_ind=itemp(loc1)
-       y_ind=jtemp(loc1)
- elseif((tp1<0) .and.(tp2==0.0)) then
-       x_ind=itemp(loc1)-1
-       y_ind=jtemp(loc1)-1
- else
-       write(*,*) 'ERRORS in finding grid points, ?????????????????'
- endif
-
+if(    (tp1  > 0.0_r8) .and. (tp2  > 0.0_r8)) then
+   x_ind = itemp(loc1)-1
+   y_ind = jtemp(loc1)
+elseif((tp1  > 0.0_r8) .and. (tp2  < 0.0_r8)) then
+   x_ind = itemp(loc1)
+   y_ind = jtemp(loc1)
+elseif((tp1  < 0.0_r8) .and. (tp2  > 0.0_r8)) then
+   x_ind = itemp(loc1)-1
+   y_ind = jtemp(loc1)-1
+elseif((tp1  < 0.0_r8) .and. (tp2  < 0.0_r8)) then
+   x_ind = itemp(loc1)
+   y_ind = jtemp(loc1)-1
+elseif((tp1 == 0.0_r8) .and. (tp2  > 0.0_r8)) then
+   x_ind = itemp(loc1)-1
+   y_ind = jtemp(loc1)
+elseif((tp1 == 0.0_r8) .and. (tp2  < 0.0_r8)) then
+   x_ind = itemp(loc1)
+   y_ind = jtemp(loc1)
+elseif((tp1  > 0.0_r8) .and. (tp2 == 0.0_r8)) then
+   x_ind = itemp(loc1)
+   y_ind = jtemp(loc1)
+elseif((tp1  < 0.0_r8) .and. (tp2 == 0.0_r8)) then
+   x_ind = itemp(loc1)-1
+   y_ind = jtemp(loc1)-1
+else
+   write(string1,*)'ERROR in finding matching grid point for'
+   write(string2,*)'longitude ',lon
+   write(string3,*)'latitude  ',lat
+   call error_handler(E_MSG,'get_reg_box_indices:', string1, &
+              source, revision, revdate, text2=string2, text3=string3)
+endif
 
 deallocate(rtemp)
 deallocate(itemp)
@@ -2910,56 +3216,83 @@ deallocate(jtemp)
 end subroutine get_reg_box_indices
 
 
-! --------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> Find the minimum value 
+!> @todo FIXME .... uh ... totally replace with intrinsic 'minval' routine
+!> y = minval(x(iStart:iEnd))
 
-   INTEGER FUNCTION  FindMinimum(x, iStart, iEnd)
-      IMPLICIT  NONE
-      real(r8), DIMENSION(1:), INTENT(IN) :: x
-      INTEGER, INTENT(IN)                :: iStart, iEnd
-      INTEGER                            :: Minimum
-      INTEGER                            :: Location
-      INTEGER                            :: i
+INTEGER FUNCTION FindMinimum(x, iStart, iEnd)
+IMPLICIT  NONE
+real(r8), INTENT(IN) :: x(1:)
+INTEGER,  INTENT(IN) :: iStart, iEnd
 
-      Minimum  = x(iStart)              ! assume the first is the min
-      Location = iStart                 ! record its position
-      DO i = iStart+1, iEnd             ! start with next elements
-         IF (x(i) < Minimum) THEN       !   if x(i) less than the min?
-            Minimum  = x(i)             !      Yes, a new minimum found
-            Location = i                !      record its position
-         END IF
-      END DO
-      FindMinimum = Location            ! return the position
-   END FUNCTION  FindMinimum
+INTEGER                            :: Minimum
+INTEGER                            :: Location
+INTEGER                            :: i
 
-   REAL FUNCTION  checkpoint(x1,y1,x2,y2,xp,yp)
+Minimum  = x(iStart)              ! assume the first is the min
+Location = iStart                 ! record its position
+DO i = iStart+1, iEnd             ! start with next elements
+   IF (x(i) < Minimum) THEN       !   if x(i) less than the min?
+      Minimum  = x(i)             !      Yes, a new minimum found
+      Location = i                !      record its position
+   END IF
+END DO
+FindMinimum = Location            ! return the position
 
-   real(r8),intent(in) :: x1,y1,x2,y2,xp,yp
-   real(r8)            :: A,B,C
-   !check (xp,yp) with line (x1,y1)-->(x2,y2)
-   !if checkpoint>0, (xp,yp) is on the left side of the line
-   !if checkpoint<0, (xp,yp) is on the right side of the line
-   !counterclockwise direction
-   A=-(y2-y1)
-   B=x2-x1
-   C=-(A*x1+B*y1)
-   checkpoint=A*xp+B*yp+C
-
-   END FUNCTION checkpoint
+END FUNCTION  FindMinimum
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> check (xp,yp) with line (x1,y1)-->(x2,y2)
+!> if checkpoint>0, (xp,yp) is on the left side of the line
+!> if checkpoint<0, (xp,yp) is on the right side of the line
+!> counterclockwise direction
+!>
+
+real(r8) FUNCTION  checkpoint(x1,y1,x2,y2,xp,yp)
+
+real(r8), intent(in) :: x1
+real(r8), intent(in) :: y1
+real(r8), intent(in) :: x2
+real(r8), intent(in) :: y2
+real(r8), intent(in) :: xp
+real(r8), intent(in) :: yp
+
+real(r8) :: A,B,C
+
+A = -(y2-y1)
+B = x2-x1
+C = -(A*x1+B*y1)
+checkpoint = A*xp+B*yp+C
+
+END FUNCTION checkpoint
+
+
+!-----------------------------------------------------------------------
+!>
+!> Grabs the corners for a given quadrilateral from the global array of lower
+!> right corners.
+!>
+!> @param x the matrix of lower right corner locations
+!> @param i the 'x' or longitude index
+!> @param j the 'y' or latitude index
+!> @param corners the 2x2 matrix of the corner values
 
 subroutine get_quad_corners(x, i, j, corners)
- real(r8), intent(in)  :: x(:, :)
- integer,  intent(in)  :: i, j
- real(r8), intent(out) :: corners(4)
 
-! Grabs the corners for a given quadrilateral from the global array of lower
-! right corners. Note that corners go counterclockwise around the quad.
+real(r8), intent(in)  :: x(:, :)
+integer,  intent(in)  :: i
+integer,  intent(in)  :: j
+real(r8), intent(out) :: corners(4)
 
 integer :: ip1
 
-! Have to worry about wrapping in longitude but not in latitude
+! Note that corners go counterclockwise around the quad.
+! @todo Have to worry about wrapping in longitude but not in latitude
+
 ip1 = i + 1
 !if(ip1 > nx) ip1 = 1
 
@@ -2971,13 +3304,13 @@ corners(4) = x(i,   j+1)
 end subroutine get_quad_corners
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!> 
+!> Returns the the time step of the model; the smallest increment in 
+!> time that the model is capable of advancing the ROMS state.
+!>
 
 function get_model_time_step()
-!
-! Returns the the time step of the model; the smallest increment
-! in time that the model is capable of advancing the state in a given
-! implementation. This interface is required for all applications.
 
 type(time_type) :: get_model_time_step
 
@@ -2988,21 +3321,25 @@ get_model_time_step = model_timestep
 end function get_model_time_step
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> Given an integer index into the state vector structure, returns the
+!> associated location. A second intent(out) optional argument kind
+!> can be returned if the model has more than one type of field (for
+!> instance temperature and zonal wind component). This interface is
+!> required for all filter applications as it is required for computing
+!> the distance between observations and state variables.
+!>
+!> @param index_in the index into the DART state vector
+!> @param location the location at that index
+!> @param var_type the DART KIND at that index
+!>
 
+subroutine get_state_meta_data(index_in, location, var_type)
 
-subroutine get_state_meta_data(index_in, location,var_type)
-!
-! Given an integer index into the state vector structure, returns the
-! associated location. A second intent(out) optional argument kind
-! can be returned if the model has more than one type of field (for
-! instance temperature and zonal wind component). This interface is
-! required for all filter applications as it is required for computing
-! the distance between observations and state variables.
-
-integer,             intent(in)            :: index_in
-type(location_type), intent(out)           :: location
-integer, optional,   intent(out)           :: var_type
+integer,             intent(in)  :: index_in
+type(location_type), intent(out) :: location
+integer, optional,   intent(out) :: var_type
 
 ! Local variables
 
@@ -3068,15 +3405,18 @@ endif
 end subroutine get_state_meta_data
 
 
-!------------------------------------------------------------------
-
+!-----------------------------------------------------------------------
+!>
+!> Writes the model-specific attributes to a DART 'diagnostic' netCDF file.
+!> This includes coordinate variables and some metadata, but NOT the
+!> actual DART state. That may be done multiple times in nc_write_model_vars()
+!>
+!> @param ncFileID the netCDF handle of the DART diagnostic file opened by
+!>                 assim_model_mod:init_diag_output
+!> @param ierr status ... 0 == all went well, /= 0 failure 
 
 function nc_write_model_atts( ncFileID ) result (ierr)
 
-! TJH -- Writes the model-specific attributes to a netCDF file.
-!     This includes coordinate variables and some metadata, but NOT
-!     the model state vector.
-!
 ! assim_model_mod:init_diag_output uses information from the location_mod
 !     to define the location dimension and variable ID. All we need to do
 !     is query, verify, and fill ...
@@ -3096,9 +3436,7 @@ integer              :: ierr          ! return value of function
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
-!----------------------------------------------------------------------
 ! variables if we just blast out one long state vector
-!----------------------------------------------------------------------
 
 integer :: StateVarDimID   ! netCDF pointer to state variable dimension (model size)
 integer :: MemberDimID     ! netCDF pointer to dimension of ensemble    (ens_size)
@@ -3106,22 +3444,17 @@ integer :: TimeDimID       ! netCDF pointer to time dimension           (unlimit
 
 integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
 
-!----------------------------------------------------------------------
 ! variables if we parse the state vector into prognostic variables.
-!----------------------------------------------------------------------
 
 ! for the dimensions and coordinate variables
 integer :: nxirhoDimID,nxiuDimID,nxivDimID
 integer :: netarhoDimID,netauDimID,netavDimID
 integer :: nsrhoDimID,nswDimID
 
-
 ! for the prognostic variables
 integer :: ivar, VarID
 
-!----------------------------------------------------------------------
 ! local variables
-!----------------------------------------------------------------------
 
 ! we are going to need these to record the creation date in the netCDF file.
 ! This is entirely optional, but nice.
@@ -3137,35 +3470,27 @@ integer :: myndims
 
 character(len=256) :: filename
 
-
-
 if ( .not. module_initialized ) call static_init_model
 
 ierr = -1 ! assume things go poorly
 
-!--------------------------------------------------------------------
 ! we only have a netcdf handle here so we do not know the filename
 ! or the fortran unit number.  but construct a string with at least
 ! the netcdf handle, so in case of error we can trace back to see
 ! which netcdf file is involved.
-!--------------------------------------------------------------------
 
 write(filename,*) 'ncFileID', ncFileID
 
-!-------------------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file,
 ! and then put into define mode.
-!-------------------------------------------------------------------------------
 
 call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID),&
                                    'nc_write_model_atts', 'inquire '//trim(filename))
 call nc_check(nf90_Redef(ncFileID),'nc_write_model_atts',   'redef '//trim(filename))
 
-!-------------------------------------------------------------------------------
 ! We need the dimension ID for the number of copies/ensemble members, and
 ! we might as well check to make sure that Time is the Unlimited dimension.
 ! Our job is create the 'model size' dimension.
-!-------------------------------------------------------------------------------
 
 call nc_check(nf90_inq_dimid(ncid=ncFileID, name='copy', dimid=MemberDimID), &
                            'nc_write_model_atts', 'copy dimid '//trim(filename))
@@ -3178,16 +3503,12 @@ if ( TimeDimID /= unlimitedDimId ) then
    call error_handler(E_ERR,'nc_write_model_atts:', string1, source, revision, revdate)
 endif
 
-!-------------------------------------------------------------------------------
 ! Define the model size / state variable dimension / whatever ...
-!-------------------------------------------------------------------------------
 
 call nc_check(nf90_def_dim(ncid=ncFileID, name='StateVariable', len=model_size, &
         dimid = StateVarDimID),'nc_write_model_atts', 'state def_dim '//trim(filename))
 
-!-------------------------------------------------------------------------------
 ! Write Global Attributes
-!-------------------------------------------------------------------------------
 
 call DATE_AND_TIME(crdate,crtime,crzone,values)
 write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
@@ -3204,67 +3525,56 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model_revdate' ,revdate ), &
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'model',  'ROMS' ), &
            'nc_write_model_atts', 'model put '//trim(filename))
 
-!-------------------------------------------------------------------------------
 ! Here is the extensible part. The simplest scenario is to output the state vector,
 ! parsing the state vector into model-specific parts is complicated, and you need
 ! to know the geometry, the output variables (PS,U,V,T,Q,...) etc. We're skipping
 ! complicated part.
-!-------------------------------------------------------------------------------
 
 if ( output_state_vector ) then
 
-   !----------------------------------------------------------------------------
    ! Create a variable for the state vector
-   !----------------------------------------------------------------------------
-
    ! Define the actual (3D) state vector, which gets filled as time goes on ...
+
    call nc_check(nf90_def_var(ncid=ncFileID, name='state', xtype=nf90_real, &
                  dimids=(/StateVarDimID,MemberDimID,unlimitedDimID/),varid=StateVarID),&
                  'nc_write_model_atts','state def_var '//trim(filename))
    call nc_check(nf90_put_att(ncFileID,StateVarID,'long_name','model state or fcopy'),&
                  'nc_write_model_atts', 'state long_name '//trim(filename))
 
-   ! Leave define mode.
    call nc_check(nf90_enddef(ncFileID),'nc_write_model_atts','state enddef '//trim(filename))
 
 else
 
-   !----------------------------------------------------------------------------
    ! We need to output the prognostic variables.
-   !----------------------------------------------------------------------------
    ! Define the new dimensions IDs
-   !----------------------------------------------------------------------------
+   !> @todo FIXME we have the actual original dimensions ... why are we not using them here
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_rho', &
-          len = Nx, dimid = nxirhoDimID),'nc_write_model_atts', 'xi_rho def_dim '//trim(filename))
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_rho',  len = Nx, &
+        dimid = nxirhoDimID),'nc_write_model_atts', 'xi_rho def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_rho', &
-          len = Ny, dimid = netarhoDimID),'nc_write_model_atts', 'eta_rho def_dim '//trim(filename))
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_rho', len = Ny,&
+        dimid = netarhoDimID),'nc_write_model_atts', 'eta_rho def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='s_rho', &
-          len = Nz, dimid = nsrhoDimID),'nc_write_model_atts', 's_rho def_dim '//trim(filename))
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='s_rho',   len = Nz,&
+        dimid = nsrhoDimID),'nc_write_model_atts', 's_rho def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='s_w', &
-          len = Nz+1, dimid = nswDimID),'nc_write_model_atts','s_w def_dim '//trim(filename))
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='s_w',     len = Nz+1,&
+        dimid = nswDimID),'nc_write_model_atts','s_w def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_u', &
-          len = Nx-1, dimid = nxiuDimID),'nc_write_model_atts', 'xi_u def_dim '//trim(filename))
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_u',    len = Nx-1,&
+        dimid = nxiuDimID),'nc_write_model_atts', 'xi_u def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_v', &
-          len = Nx, dimid = nxivDimID),'nc_write_model_atts', 'xi_v def_dim '//trim(filename))
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_v',    len = Nx,&
+        dimid = nxivDimID),'nc_write_model_atts', 'xi_v def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_u', &
-          len = Ny, dimid = netauDimID),'nc_write_model_atts', 'eta_u def_dim '//trim(filename))
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_u',   len = Ny,&
+        dimid = netauDimID),'nc_write_model_atts', 'eta_u def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_v', &
-          len = Ny-1, dimid = netavDimID),'nc_write_model_atts', 'eta_v def_dim '//trim(filename))
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_v',   len = Ny-1,&
+        dimid = netavDimID),'nc_write_model_atts', 'eta_v def_dim '//trim(filename))
 
-
-   !----------------------------------------------------------------------------
    ! Create the (empty) Coordinate Variables and the Attributes
-   !----------------------------------------------------------------------------
 
-   ! Cell Longitudes
    call nc_check(nf90_def_var(ncFileID,name='lon_rho', xtype=nf90_double, &
                  dimids=(/ nxirhoDimID, netarhoDimID /), varid=VarID),&
                  'nc_write_model_atts', 'lon_rho def_var '//trim(filename))
@@ -3281,7 +3591,6 @@ else
    call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'degrees_north'), &
                  'nc_write_model_atts', 'lat_rho units '//trim(filename))
 
-
    call nc_check(nf90_def_var(ncFileID,name='lon_u', xtype=nf90_double, &
                  dimids=(/ nxiuDimID, netauDimID /), varid=VarID),&
                  'nc_write_model_atts', 'lon_u def_var '//trim(filename))
@@ -3297,7 +3606,6 @@ else
                  'nc_write_model_atts', 'lat_u long_name '//trim(filename))
    call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'degrees_north'), &
                  'nc_write_model_atts', 'lat_u units '//trim(filename))
-
 
    call nc_check(nf90_def_var(ncFileID,name='lon_v', xtype=nf90_double, &
                  dimids=(/ nxivDimID, netavDimID /), varid=VarID),&
@@ -3323,9 +3631,7 @@ else
    call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'm'), &
                  'nc_write_model_atts', 'z_c units '//trim(filename))
 
-   !----------------------------------------------------------------------------
    ! Create the (empty) Prognostic Variables and the Attributes
-   !----------------------------------------------------------------------------
 
    do ivar=1, nfields
 
@@ -3337,29 +3643,29 @@ else
       call define_var_dims(ncFileID, ivar, MemberDimID, unlimitedDimID, myndims, mydimids)
 
       ! define the variable and set the attributes
-      call nc_check(nf90_def_var(ncid=ncFileID, name=trim(varname), xtype=progvar(ivar)%xtype, &
-                    dimids = mydimids(1:myndims), varid=VarID),&
-                    'nc_write_model_atts', trim(string1)//' def_var' )
+      call nc_check(nf90_def_var(ncid=ncFileID, name=trim(varname), &
+              xtype = progvar(ivar)%xtype, dimids = mydimids(1:myndims), varid=VarID), &
+              'nc_write_model_atts', trim(string1)//' def_var' )
 
-      call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', trim(progvar(ivar)%long_name)), &
-           'nc_write_model_atts', trim(string1)//' put_att long_name' )
+      call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', &
+              trim(progvar(ivar)%long_name)), &
+              'nc_write_model_atts', trim(string1)//' put_att long_name' )
 
-      call nc_check(nf90_put_att(ncFileID, VarID, 'DART_kind', trim(progvar(ivar)%kind_string)), &
-           'nc_write_model_atts', trim(string1)//' put_att dart_kind' )
-      call nc_check(nf90_put_att(ncFileID, VarID, 'units', trim(progvar(ivar)%units)), &
-           'nc_write_model_atts', trim(string1)//' put_att units' )
+      call nc_check(nf90_put_att(ncFileID, VarID, 'DART_kind', &
+              trim(progvar(ivar)%kind_string)), &
+              'nc_write_model_atts', trim(string1)//' put_att dart_kind' )
+
+      call nc_check(nf90_put_att(ncFileID, VarID, 'units', &
+              trim(progvar(ivar)%units)), &
+              'nc_write_model_atts', trim(string1)//' put_att units' )
 
    enddo
 
-   !----------------------------------------------------------------------------
    ! Finished with dimension/variable definitions, must end 'define' mode to fill.
-   !----------------------------------------------------------------------------
 
    call nc_check(nf90_enddef(ncFileID), 'prognostic enddef '//trim(filename))
 
-   !----------------------------------------------------------------------------
    ! Fill the coordinate variables that DART needs and has locally
-   !----------------------------------------------------------------------------
 
    call nc_check(NF90_inq_varid(ncFileID, 'lon_rho', VarID), &
                  'nc_write_model_atts', 'lon_rho inq_varid '//trim(filename))
@@ -3398,9 +3704,7 @@ else
 
    endif
 
-!-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
 call nc_check(nf90_sync(ncFileID), 'nc_write_model_atts', 'atts sync')
 
 ierr = 0 ! If we got here, things went well.
@@ -3408,18 +3712,29 @@ ierr = 0 ! If we got here, things went well.
 end function nc_write_model_atts
 
 
-!------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> set a netCDF dimension ID array needed to augment the natural shape 
+!> of the variable with the two additional dimids needed by the DART
+!> diagnostic output. DART variables have an additional 'copy' and 
+!> 'unlimited' (time) dimension.
+!>
+!> @param ncid the netCDF handle 
+!> @param ivar the DART variable index 
+!> @param memberdimid the netCDF dimension ID of the 'copy' coordinate
+!> @param unlimiteddimid the netCDF dimension ID of the 'time' coordinate
+!> @param ndims the (extended) number of dimensions for this DART variable
+!> @param dimids the (extended) dimension IDs 
+!>
 
+subroutine define_var_dims(ncid, ivar, memberdimid, unlimiteddimid, ndims, dimids)
 
-subroutine define_var_dims(ncid,ivar, memberdimid, unlimiteddimid, ndims, dimids)
-
-! set the dimids array needed to augment the natural shape of the variable
-! with the two additional dimids needed by the DART diagnostic output.
-integer,               intent(in)  :: ncid
-integer,               intent(in)  :: ivar
-integer,               intent(in)  :: memberdimid, unlimiteddimid
-integer,               intent(out) :: ndims
-integer, dimension(:), intent(out) :: dimids
+integer, intent(in)  :: ncid
+integer, intent(in)  :: ivar
+integer, intent(in)  :: memberdimid
+integer, intent(in)  :: unlimiteddimid
+integer, intent(out) :: ndims
+integer, intent(out) :: dimids(:)
 
 integer :: i,mydimid
 
@@ -3447,8 +3762,18 @@ dimids(ndims) = unlimiteddimid
 
 end subroutine define_var_dims
 
-!------------------------------------------------------------------
 
+!-----------------------------------------------------------------------
+!>
+!> With each assimilation cycle, the DART prior and posterior files get
+!> inserted into the DART diagnostic files. This routine appends the new
+!> states into the unlimited dimension slot.
+!>
+!> @param ncFileID the netCDF file ID of the DART diagnostic file in question
+!> @param state_vec the DART state to insert into the diagnostic file
+!> @param copyindex the 'copy' index ... ensemble mean, member 23, etc.
+!> @param timeindex the index into the unlimited (time) dimension
+!> @param ierr error code. All errors are fatal. 0 == success.
 
 function nc_write_model_vars( ncFileID, state_vec, copyindex, timeindex ) result (ierr)
 
@@ -3469,11 +3794,11 @@ function nc_write_model_vars( ncFileID, state_vec, copyindex, timeindex ) result
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
 
-integer,                intent(in) :: ncFileID      ! netCDF file identifier
-real(r8), dimension(:), intent(in) :: state_vec
-integer,                intent(in) :: copyindex
-integer,                intent(in) :: timeindex
-integer                            :: ierr          ! return value of function
+integer,  intent(in) :: ncFileID
+real(r8), intent(in) :: state_vec(:)
+integer,  intent(in) :: copyindex
+integer,  intent(in) :: timeindex
+integer              :: ierr
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, mystart, mycount
 character(len=NF90_MAX_NAME)          :: varname
@@ -3490,18 +3815,14 @@ if ( .not. module_initialized ) call static_init_model
 
 ierr = -1 ! assume things go poorly
 
-!--------------------------------------------------------------------
 ! we only have a netcdf handle here so we do not know the filename
 ! or the fortran unit number.  but construct a string with at least
 ! the netcdf handle, so in case of error we can trace back to see
 ! which netcdf file is involved.
-!--------------------------------------------------------------------
 
 write(filename,*) 'ncFileID', ncFileID
 
-!-------------------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file,
-!-------------------------------------------------------------------------------
 
 call nc_check(nf90_inq_dimid(ncFileID, 'copy', dimid=CopyDimID), &
             'nc_write_model_vars', 'inq_dimid copy '//trim(filename))
@@ -3518,9 +3839,7 @@ if ( output_state_vector ) then
 
 else
 
-   !----------------------------------------------------------------------------
    ! We need to process the prognostic variables.
-   !----------------------------------------------------------------------------
 
    do ivar = 1,nfields
 
@@ -3563,7 +3882,6 @@ else
       where(dimIDs == CopyDimID) mycount = 1
       where(dimIDs == TimeDimID) mystart = timeindex
       where(dimIDs == TimeDimID) mycount = 1
-
 
       if (     progvar(ivar)%numdims == 1 ) then
 
@@ -3618,21 +3936,15 @@ else
 
       else
 
-         ! FIXME put an error message here
          write(string1,*)'no support (yet) for 4d fields'
          call error_handler(E_ERR, 'nc_write_model_vars:', string1, &
                             source, revision, revdate)
 
       endif
-
    enddo
-
-
 endif
 
-!-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
-!-------------------------------------------------------------------------------
 
 call nc_check(nf90_sync(ncFileID), 'nc_write_model_vars', 'sync '//trim(filename))
 
@@ -3641,18 +3953,32 @@ ierr = 0 ! If we got here, things went well.
 end function nc_write_model_vars
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> Perturbs a model state for generating initial ensembles.
+!> The perturbed state is returned in pert_state.
+!> A model may choose to provide a NULL INTERFACE by returning
+!> .false. for the interf_provided argument. This indicates to
+!> the filter that if it needs to generate perturbed states, it
+!> may do so by adding a perturbation to each model state
+!> variable independently. The interf_provided argument
+!> should be returned as .true. if the model wants to do its own
+!> perturbing of states.
+!> 
+!> @param state the base DART state vector to perturb
+!> @param pert_state the (new) perturbed DART state vector
+!> @param interf_provided logical flag that indicates that this routine
+!>               is unique for ROMS. TRUE means this routine will
+!>               somehow create the perturbed state, FALSE means
+!>               the default perturb routine will be used.
+!>
+!> @todo seems to me the DART state may have 'MISSING' values
+!>       which should not be perturbed. Have not tracked if the ROMS
+!>       MISSING values or the DART MISSING_R8 value is in use at
+!>       this point.
+!>
 
 subroutine pert_model_state(state, pert_state, interf_provided)
-! Perturbs a model state for generating initial ensembles.
-! The perturbed state is returned in pert_state.
-! A model may choose to provide a NULL INTERFACE by returning
-! .false. for the interf_provided argument. This indicates to
-! the filter that if it needs to generate perturbed states, it
-! may do so by adding a perturbation to each model state
-! variable independently. The interf_provided argument
-! should be returned as .true. if the model wants to do its own
-! perturbing of states.
 
 real(r8), intent(in)  :: state(:)
 real(r8), intent(out) :: pert_state(:)
@@ -3732,13 +4058,15 @@ enddo
 end subroutine pert_model_state
 
 
-!------------------------------------------------------------------
-
+!-----------------------------------------------------------------------
+!> 
+!> This updates the current ensemble mean in module storage which is 
+!> then available to be used for computations. The ensemble mean may
+!> or may not be needed by ROMS.
+!>
+!> @param filter_ens_mean the ensemble mean DART state vector
 
 subroutine ens_mean_for_model(filter_ens_mean)
-
-! If needed by the model interface, this is the current mean
-! for all state vector items across all ensembles.
 
 real(r8), intent(in) :: filter_ens_mean(:)
 
@@ -3747,18 +4075,19 @@ if ( .not. module_initialized ) call static_init_model
 ens_mean = filter_ens_mean
 
 if (do_output() .and. debug > 1) then
-   print *, 'resetting ensemble mean: '
+   call error_handler(E_MSG,'ens_mean_for_model','resetting ensemble mean: ')
    call print_variable_ranges(ens_mean)
 endif
 
 end subroutine ens_mean_for_model
 
-!------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+!> 
+!> Does any shutdown and clean-up needed for model.
+!>
 
 subroutine end_model()
-!
-! Does any shutdown and clean-up needed for model. Can be a NULL
-! INTERFACE if the model has no need to clean up storage, etc.
 
 ! good style ... perhaps you could deallocate stuff (from static_init_model?).
 ! deallocate(state_loc)
@@ -3775,33 +4104,39 @@ if (allocated(PN))   deallocate(PN)
 if (allocated(ANGL)) deallocate(ANGL)
 if (allocated(ZC))   deallocate(ZC)
 
-
 end subroutine end_model
 
 
-!------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!>
+!> gets the length of a netCDF dimension given the dimension name.
+!> This bundles the nf90_inq_dimid and nf90_inquire_dimension routines
+!> into a slightly easier-to-use function.
+!>
+!> @param dimlen the length of the netCDF dimension in question
+!> @param ncid the netCDF file handle
+!> @param dimension_name the character string of the dimension name
+!> @param filename the name of the netCDF file (for error message purposes)
+!>
 
-
-function get_dimension_length(ncid, varname, filename) result(dimlen)
+function get_dimension_length(ncid, dimension_name, filename) result(dimlen)
 
 integer                      :: dimlen
 integer,          intent(in) :: ncid
-character(len=*), intent(in) :: varname
+character(len=*), intent(in) :: dimension_name
 character(len=*), intent(in) :: filename
 
 integer :: DimID
 
-write(string1,*)'inq_dimid '//trim(varname)//' '//trim(filename)
-write(string2,*)'inquire_dimension '//trim(varname)//' '//trim(filename)
+write(string1,*)'inq_dimid '//trim(dimension_name)//' '//trim(filename)
+write(string2,*)'inquire_dimension '//trim(dimension_name)//' '//trim(filename)
 
-
-call nc_check(nf90_inq_dimid(ncid, trim(varname), DimID), &
+call nc_check(nf90_inq_dimid(ncid, trim(dimension_name), DimID), &
               'get_grid',string1)
 call nc_check(nf90_inquire_dimension(ncid, DimID, len=dimlen), &
               'get_grid', string2)
 
 end function get_dimension_length
-
 
 
 !===================================================================

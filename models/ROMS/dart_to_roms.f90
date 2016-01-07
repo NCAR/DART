@@ -4,29 +4,26 @@
 !
 ! $Id$
 
-program dart_to_roms
+!-----------------------------------------------------------------------
+!> One of the interface executables between DART and ROMS.
+!>
+!> Reads a file containing a DART state vector and overwrite the 
+!> corresponding values in a ROMS model analysis file.
+!> If the DART state vector has an 'advance_to_time' present, a
+!> file called model_in.DART is created with a time_manager_nml namelist 
+!> appropriate to advance model to the requested time.
+!>
+!> The dart_to_roms_nml namelist setting for advance_time_present 
+!> determines whether or not the input file has an 'advance_to_time'.
+!> Typically, only temporary files like 'assim_model_state_ic' have
+!> an 'advance_to_time'.
+!>
+!> author: PENG XIU 12/2013 @ University of Maine
+!>         peng.xiu@maine.edu
+!>
+!> subsequently modified by TJH 1/2015
 
-!----------------------------------------------------------------------
-! purpose: interface between DART and the ROMS model
-!
-!          overwrite ROMS restart file
-! method: Read DART state vector and overwrite values in a model analysis file.
-!         If the DART state vector has an 'advance_to_time' present, a
-!         file called model_in.DART is created with a time_manager_nml namelist 
-!         appropriate to advance model to the requested time.
-!
-!         The dart_to_roms_nml namelist setting for advance_time_present 
-!         determines whether or not the input file has an 'advance_to_time'.
-!         Typically, only temporary files like 'assim_model_state_ic' have
-!         an 'advance_to_time'.
-!
-!----------------------------------------------------------------
-!
-! author: PENG XIU 12/2013 @ University of Maine
-!         peng.xiu@maine.edu
-!
-! subsequently modified by TJH 1/2015
-!----------------------------------------------------------------
+program dart_to_roms
 
 use        types_mod, only : r8
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
