@@ -377,6 +377,9 @@ integer               :: my_index
 integer               :: var_element_list(max_state_variables)
 logical               :: var_update_list(max_state_variables)
 real(r8)              :: var_bounds_table(max_state_variables,2)
+! holds the variable names for a domain when calling add_domain
+character(len=129)    :: netcdf_variable_names(max_state_variables)
+
 ! not doing anything with this. If we do it should 
 ! be an array in module global storage
 integer               :: domain_id
@@ -731,10 +734,17 @@ WRFDomains : do id=1,num_domains
    var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,1) = wrf%dom(id)%lower_bound
    var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,2) = wrf%dom(id)%upper_bound
 
+   ! List of netcdf variable names in the domain
+   do i = 1, wrf%dom(id)%number_of_wrf_variables
+      my_index =  wrf%dom(id)%var_index_list(i) ! index in wrf_state_variables
+      netcdf_variable_names(i) = wrf_state_variables(1, my_index)
+   enddo
+
+
    ! add domain - not doing anything with domain_id yet so just overwriting it
    domain_id = add_domain( 'wrfinput_d0'//idom, &
                            wrf%dom(id)%number_of_wrf_variables, &
-                           var_names  = wrf_state_variables(1,1:wrf%dom(id)%number_of_wrf_variables), &
+                           var_names  = netcdf_variable_names(1:wrf%dom(id)%number_of_wrf_variables), &
                            clamp_vals = var_bounds_table(1:wrf%dom(id)%number_of_wrf_variables,:) )
                           
    if (debug) call state_structure_info(domain_id)
