@@ -22,6 +22,7 @@
 !> subsequently modified by the DART team.
 !>
 !> \todo
+!> @todo really check the land masking and _FillValue processing
 !----------------------------------------------------------------
 
 module model_mod
@@ -142,14 +143,15 @@ character(len=NF90_MAX_NAME) :: variables(max_state_variables * num_state_table_
 character(len=NF90_MAX_NAME) :: roms_state_bounds(num_bounds_table_columns, max_state_variables ) = ' '
 character(len=NF90_MAX_NAME) :: variable_table(max_state_variables, num_state_table_columns )
 
+integer :: nfields   ! This is the number of variables in the DART state vector.
 
-integer :: nfields
-
-! Everything needed to describe a variable
-! TJH FIXME ... replace numxi and numeta with simply nx or something.
-! TJH FIXME ... since the structure is an array - one for each variable -
-! TJH FIXME ... it doesn't make sense to declare a number of horizontal 
-! TJH FIXME ... locations of the edges for a variable that is on cell centers ...
+!> Everything needed to describe a variable. Basically all the metadata from
+!> a netCDF file is stored here as well as all the information about where
+!> the variable is stored in the DART state vector.
+!> @todo FIXME ... replace numxi and numeta with simply nx or something.
+!>       since the structure is an array - one for each variable -
+!>       it doesn't make sense to declare a number of horizontal 
+!>       locations of the edges for a variable that is on cell centers ...
 
 type progvartype
    private
@@ -186,9 +188,11 @@ type(progvartype), dimension(max_state_variables) :: progvar
 
 ! nx, ny and nz are the size of the rho grids.
 integer :: Nx = -1, Ny = -1, Nz = -1
-real(r8), allocatable :: ULAT(:,:), ULON(:,:), TLAT(:,:), TLON(:,:),     &
-                         VLAT(:,:), VLON(:,:),PM(:,:),PN(:,:),ANGL(:,:), &
-                         HT(:,:),ZC(:,:,:)
+real(r8), allocatable :: ULAT(:,:), ULON(:,:), &
+                         TLAT(:,:), TLON(:,:), &
+                         VLAT(:,:), VLON(:,:), &
+                           PM(:,:),   PN(:,:), &
+                         ANGL(:,:),   HT(:,:), ZC(:,:,:)
 
 real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 type(time_type) :: model_timestep
@@ -196,11 +200,17 @@ type(time_type) :: model_timestep
 integer :: model_size    ! the state vector length
 real(r8), allocatable :: ens_mean(:)
 
+!> Reshapes a part of the DART vector back to the original variable shape.
+!> @todo FIXME Replaces the DART MISSING value with the original _FillValue value.
+
 INTERFACE vector_to_prog_var
       MODULE PROCEDURE vector_to_1d_prog_var
       MODULE PROCEDURE vector_to_2d_prog_var
       MODULE PROCEDURE vector_to_3d_prog_var
 END INTERFACE
+
+!> Packs a ROMS variable into the DART vector.
+!> @todo FIXME Replaces the original _FillValue value with the DART MISSING value.
 
 INTERFACE prog_var_to_vector
       MODULE PROCEDURE prog_var_1d_to_vector
@@ -208,6 +218,8 @@ INTERFACE prog_var_to_vector
       MODULE PROCEDURE prog_var_3d_to_vector
       MODULE PROCEDURE prog_var_4d_to_vector
 END INTERFACE
+
+!> Return the first and last index into the DART array for a specific variable.
 
 INTERFACE get_index_range
       MODULE PROCEDURE get_index_range_int
@@ -586,14 +598,6 @@ call verify_variables( variables, ncid, model_restart_filename, &
                              nfields, variable_table )
 
 TimeDimID = find_time_dimension( ncid, model_restart_filename )
-
-if (TimeDimID < 0 ) then
-   write(*,*) 'CAUTION: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-   write(*,*)'unable to find a dimension named Time.'
-   write(*,*)'check time dimension name in the restart files'
-   write(*,*) 'CAUTION: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
-endif
-
 
 index1  = 1;
 indexN  = 0;
@@ -1077,6 +1081,16 @@ else
       call nc_check(nf90_put_att(ncFileID, VarID, 'units', &
               trim(progvar(ivar)%units)), &
               'nc_write_model_atts', trim(string1)//' put_att units' )
+
+      if     (progvar(ivar)%has_fill_value_r4) then
+         call nc_check(nf90_put_att(ncFileID, VarID, '_FillValue', &
+                                         progvar(ivar)%fill_value_r4), &
+              'nc_write_model_atts', trim(string1)//' put_att _FillValue' )
+      elseif (progvar(ivar)%has_fill_value_r8) then
+         call nc_check(nf90_put_att(ncFileID, VarID, '_FillValue', &
+                                         progvar(ivar)%fill_value_r8), &
+              'nc_write_model_atts', trim(string1)//' put_att _FillValue' )
+      endif
 
    enddo
 
@@ -1634,11 +1648,6 @@ call nc_check(iostatus, 'restart_file_to_sv', 'inquire '//trim(filename))
 
 TimeDimID = find_time_dimension(ncid, filename, last_file_time)
 
-if (TimeDimID < 0) then
-   write(string1,*) trim(filename)//' has no "ocean_time" coordinate variable.'
-   call error_handler(E_ERR,'restart_file_to_sv:',string1,source,revision,revdate)
-endif
-
 if (TimeDimID /= unlimitedDimID) then
    write(string1,*)'Time dimension is not the unlimited dimension in '//trim(filename)
    write(string2,*)'Time      dimension is dimension ID ',TimeDimID
@@ -1821,12 +1830,8 @@ call nc_check(nf90_open(trim(filename), NF90_WRITE, ncFileID), &
 
 TimeDimID = find_time_dimension( ncFileID, filename )
 
-if ( TimeDimID > 0 ) then
-   call nc_check(nf90_inquire_dimension(ncFileID, TimeDimID, len=TimeDimLength), &
-            'sv_to_restart_file', 'inquire timedimlength '//trim(filename))
-else
-   TimeDimLength = 0
-endif
+call nc_check(nf90_inquire_dimension(ncFileID, TimeDimID, len=TimeDimLength), &
+              'sv_to_restart_file', 'inquire timedimlength '//trim(filename))
 
 PROGVARLOOP : do ivar=1, nfields
 
@@ -2360,11 +2365,11 @@ end subroutine get_grid
 
 subroutine verify_variables( state_variables, ncid, filename, ngood, table )
 
-character(len=*), intent(in)    :: state_variables(:)
-integer,          intent(in)    :: ncid
-character(len=*), intent(in)    :: filename
-integer,          intent(out)   :: ngood
-character(len=*), intent(inout) :: table(:,:)
+character(len=*), intent(in)  :: state_variables(:)
+integer,          intent(in)  :: ncid
+character(len=*), intent(in)  :: filename
+integer,          intent(out) :: ngood
+character(len=*), intent(out) :: table(:,:)
 
 integer :: nrows, ncols, i, VarID
 character(len=NF90_MAX_NAME) :: varname
@@ -3618,7 +3623,8 @@ end subroutine vert_interpolate
 !> @param x the DART state vector.
 !> @param var_type the DART KIND of interest.
 !>
-!> @ todo FIXME Johnny has a better way to do this.
+!> @ todo FIXME Johnny may have a better way to do this if everything stays
+!>        rectangular. (i.e. not squeezing out the dry columns)
 
 function get_val(lon_index, lat_index, level_index, x, var_type)
 
@@ -3647,7 +3653,6 @@ do ii=1,progvar(ivar)%numvertical
       enddo
    enddo
 enddo
-
 
 end function get_val
 

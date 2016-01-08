@@ -281,7 +281,7 @@
    advance_time_present  = .FALSE.
    verbose               = .TRUE.
    test1thru             = 11
-   loc_of_interest       = 320.0, 18.0, 5.0
+   loc_of_interest       = 289.6, 37.0, 50.0
    kind_of_interest      = 'KIND_U_CURRENT_COMPONENT'
    interp_test_lonrange  = 0.0, 359.0
    interp_test_dlon      = 1.0

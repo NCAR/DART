@@ -262,11 +262,7 @@ if (test1thru > 6) then
    write(*,*)
    write(*,*)'------------------ Test #7 - find_closest_gridpoint() --------------'
 
-   if ( loc_of_interest(1) > 0.0_r8 ) then
-      write(*,*)'Skipping test because loc_of_interest not fully specified.'
-   else
-      call find_closest_gridpoint( loc_of_interest )
-   endif
+   call find_closest_gridpoint( loc_of_interest )
 
    write(*,*)'------------------ Test #7 complete --------------------------------'
 
