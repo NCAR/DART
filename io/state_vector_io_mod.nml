@@ -1,12 +1,6 @@
 &state_vector_io_nml
    limit_mem                  = HUGE(1_i4),
-   limit_procs                = 100000,
-
    time_unlimited             = .true.,
    single_precision_output    = .false.,
-
-   single_restart_file_out    = .true.,
-   perturbation_amplitude     = 0.2,
-
    write_binary_restart_files = .false.
 /
