@@ -145,7 +145,7 @@ private
 
 ! module local data
 
-integer, parameter :: E_DBG = -1,   E_MSG = 0,  E_WARN = 1, E_ERR = 2
+integer, parameter :: E_DBG = -2,   E_MSG = -1,  E_ALLMSG = 0, E_WARN = 1, E_ERR = 2
 integer, parameter :: DEBUG = -1, MESSAGE = 0, WARNING = 1, FATAL = 2
 integer, parameter :: NML_NONE = 0, NML_FILE = 1, NML_TERMINAL = 2, NML_BOTH = 3
 
@@ -165,7 +165,7 @@ public :: file_exist, get_unit, open_file, close_file, timestamp,           &
           initialize_utilities, finalize_utilities, dump_unit_attributes,   &
           find_namelist_in_file, check_namelist_read, do_nml_term,          &
           set_tasknum, set_output, do_output, set_nml_output, do_nml_file,  &
-          E_DBG, E_MSG, E_WARN, E_ERR, DEBUG, MESSAGE, WARNING, FATAL,      &
+          E_DBG, E_MSG, E_ALLMSG, E_WARN, E_ERR, DEBUG, MESSAGE, WARNING, FATAL,      &
           is_longitude_between, get_next_filename, ascii_file_format,       &
           set_filename_list, scalar
 
@@ -402,6 +402,8 @@ contains
          select case (TERMLEVEL)
              case (E_MSG)
                 ! do nothing
+             case (E_ALLMSG)
+                ! do nothing
              case (E_WARN)
                 ! do nothing
              case (E_ERR)
@@ -409,7 +411,7 @@ contains
              case default
                 print *, ' MESSAGE from initialize_utilities'
                 print *, ' namelist input of TERMLEVEL is ',TERMLEVEL
-                print *, ' possible values are ',E_MSG, E_WARN, E_ERR
+                print *, ' possible values are ',E_MSG, E_ALLMSG, E_WARN, E_ERR
                 if (TERMLEVEL < E_WARN ) TERMLEVEL = E_WARN
                 if (TERMLEVEL > E_ERR  ) TERMLEVEL = E_ERR
                 print *, ' using ',TERMLEVEL
@@ -781,6 +783,33 @@ select case(level)
         else
             write(taskstr, '(a,i5)' ) "PE ", task_number
         endif
+        write(     *     , *) trim(taskstr),': ',trim(routine),' ', trim(text)
+        write(logfileunit, *) trim(taskstr),': ',trim(routine),' ', trim(text)
+        if ( present(text2)) then
+           write(     *     , *) trim(taskstr),': ',trim(routine),' ... ', trim(text2)
+           write(logfileunit, *) trim(taskstr),': ',trim(routine),' ... ', trim(text2)
+        endif
+        if ( present(text3)) then
+           write(     *     , *) trim(taskstr),': ',trim(routine),' ... ', trim(text3)
+           write(logfileunit, *) trim(taskstr),': ',trim(routine),' ... ', trim(text3)
+        endif
+      endif
+
+   case (E_ALLMSG)
+
+      if ( single_task ) then
+        write(     *     , *) trim(routine),' ', trim(text)
+        write(logfileunit, *) trim(routine),' ', trim(text)
+        if ( present(text2)) then
+           write(     *     , *) trim(routine),' ... ', trim(text2)
+           write(logfileunit, *) trim(routine),' ... ', trim(text2)
+        endif
+        if ( present(text3)) then
+           write(     *     , *) trim(routine),' ... ', trim(text3)
+           write(logfileunit, *) trim(routine),' ... ', trim(text3)
+        endif
+      else
+        write(taskstr, '(a,i5)' ) "PE ", task_number
         write(     *     , *) trim(taskstr),': ',trim(routine),' ', trim(text)
         write(logfileunit, *) trim(taskstr),': ',trim(routine),' ', trim(text)
         if ( present(text2)) then

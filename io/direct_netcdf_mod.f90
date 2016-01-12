@@ -40,7 +40,7 @@ use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, &
 use time_manager_mod,     only : time_type
 
 use utilities_mod,        only : error_handler, nc_check, &
-                                 E_MSG, E_ERR, file_exist
+                                 E_MSG, E_ALLMSG, E_ERR, file_exist
 
 use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  get_sum_variables_below, &
@@ -655,12 +655,10 @@ if ( minclamp /= missing_r8 ) then
    !> do we want to have a message if the variable is being clamped?
    if ( minval(variable) < minclamp ) then
       
-      !>@todo info about clamped variables is only printed on task 0
-      !> E_MSG, but clamping may be done by other tasks
       varname = get_variable_name(dom_id, var_index) 
       write(msgstring, *) 'min val = ', minval(variable), &
-                        'min bounds = ', minclamp
-      call error_handler(E_MSG, 'clamp_variable', &
+                          'min bounds = ', minclamp
+      call error_handler(E_ALLMSG, 'clamp_variable', &
                   'Clamping '//trim(varname)//', values out of bounds.', &
                    source,revision,revdate, text2=msgstring)
 
@@ -675,7 +673,7 @@ if ( maxclamp /= missing_r8 ) then
       varname = get_variable_name(dom_id, var_index) 
       write(msgstring, *) 'max val = ', maxval(variable), &
                         'max bounds = ', maxclamp
-      call error_handler(E_MSG, 'clamp_variable', &
+      call error_handler(E_ALLMSG, 'clamp_variable', &
                   'Clamping '//trim(varname)//', values out of bounds.', &
                    source,revision,revdate, text2=msgstring)
 
@@ -841,9 +839,8 @@ integer :: ndims
 integer :: xtype ! precision for netcdf file
 integer :: dimids(NF90_MAX_VAR_DIMS)
 
-!> @todo ONLY task 0 prints messages.
 write(msgstring, *) 'Creating output file ', trim(filename)
-call error_handler(E_MSG,'state_vector_io_mod:', msgstring)
+call error_handler(E_ALLMSG,'create_and_open_state_output:', msgstring)
 
 ! What file options do you want?
 create_mode = ior(NF90_CLOBBER, NF90_64BIT_OFFSET)

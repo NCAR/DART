@@ -3,8 +3,16 @@
    write_nml = 'none'
 /
 
+&mpi_utilities_nml
+/
+
 &compare_states_nml
   do_all_numeric_fields = .true.,
   debug = .false.
 /
 
+&error_handler_test_nml
+  test1 = 1  ,
+  test2 = .false. ,
+  test3 = 2.0 ,
+/
