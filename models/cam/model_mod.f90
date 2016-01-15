@@ -3278,7 +3278,7 @@ integer              :: ierr          ! return value of function
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 integer :: MemberDimID, StateVarDimID, TimeDimID,ScalarDimID
 integer :: xVarID,StateVarID, StateVarVarID
-integer :: P_id(num_dims)
+integer :: P_id(num_dims+1)
 integer :: i, ifld, dim_id, g_id
 integer :: grid_id(grid_num_1d)
 character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
@@ -3369,6 +3369,12 @@ end do
 
 call nc_check(nf90_def_dim(ncid=ncFileID, name="scalar",   len = 1,   dimid = ScalarDimID) &
              ,'nc_write_model_atts', 'def_dim scalar')
+call nc_check(nf90_def_dim(ncid=ncfileID, name="P0",   len=1, dimid=P_id(num_dims+1)) &
+             ,'nc_write_model_atts', 'def_dim scalar')
+if (print_details .and. do_out) then
+   write(string1,'(I5,1X,A13,1X,2(I7,2X))') i,'P0',P0%length, P_id(i)
+   call error_handler(E_MSG, 'nc_write_model_atts', string1,source,revision,revdate)
+endif
 
 !-------------------------------------------------------------------------------
 ! Create the (empty) Coordinate Variables and their attributes
@@ -3442,9 +3448,9 @@ if (ilev%label /= ' ')  then
    call write_cam_coord_def(ncFileID,'ilev',ilev, dim_id, grid_id(g_id))
 end if
 if (P0%label /= ' ')  then
-   dim_id = P_id(P0%dim_id)
-   ! dim_id here is 0; will that work?  It's what's read in from caminput.nc
-   ! If not, then I'll need to (re)define grid_0d_kind, etc.
+   dim_id = P_id(num_dims+1)
+   ! At some point, replace the kluge of putting P0 in with 'coordinates' 
+   ! by defining grid_0d_kind, etc.
    g_id   = find_name('P0',grid_names_1d)
    call write_cam_coord_def(ncFileID,'P0',P0  , dim_id, grid_id(g_id))
 end if
