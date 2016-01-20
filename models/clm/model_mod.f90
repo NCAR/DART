@@ -1192,7 +1192,7 @@ end subroutine init_conditions
 
 
 
-function nc_write_model_atts( ncFileID ) result (ierr)
+function nc_write_model_atts( ncFileID, model_mod_writes_state_variables ) result (ierr)
 !------------------------------------------------------------------
 ! TJH -- Writes the model-specific attributes to a netCDF file.
 !     This includes coordinate variables and some metadata, but NOT
@@ -1213,6 +1213,7 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 ! NF90_CLOSE            ! close: save updated netCDF dataset
 
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
+logical, intent(out) :: model_mod_writes_state_variables
 integer              :: ierr          ! return value of function
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
@@ -1272,6 +1273,7 @@ character(len=128) :: filename
 if ( .not. module_initialized ) call static_init_model
 
 ierr = -1 ! assume things go poorly
+model_mod_writes_state_variables  = .true.
 
 !--------------------------------------------------------------------
 ! we only have a netcdf handle here so we do not know the filename
