@@ -1,3 +1,6 @@
+&state_space_diag_nml
+/
+
 &perfect_model_obs_nml
    start_from_restart    = .true.,
    output_restart        = .false.,

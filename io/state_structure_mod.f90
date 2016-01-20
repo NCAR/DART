@@ -5,24 +5,57 @@
 ! $Id$
 
 !-------------------------------------------------------------------------------
-! Aim: to have a progvar type that can be used for IO.
-! How do you do domains?
-! Different variables in different domains.  I think we could treat the components 
-! of CESM as different domains.
-!
-! Note:
-! (5) the format for 'wrf_state_variables' is an array of 5 strings:
-!     wrf netcdf variable name, dart KIND_xxx string, type string (must be
-!     unique, will soon be obsolete, we hope), 'UPDATE', and '999' if the
-!     array is part of all domains.  otherwise, it is a string with the domain
-!     numbers (e.g. '12' for domains 1 and 2, '13' for domains 1 and 3).
-!
-! Can we control the order of the state vector?
-!
-!-------------------------------------------------------------------------------
 
 module state_structure_mod
-
+!> \defgroup state_structure_mod state_structure_mod
+!> @{ @brief Contains the stucture of the state vector and routines to access this structure
+!> 
+!> Usage:
+!>     call add_domain() in static_init_model()
+!>         - must be called.
+!>         - may be called more than once in static_init_model if a model has
+!>           more than one domain (e.g. WRF).
+!>     
+!> The add_domain() call adds a 'domain' to the state. This may be a component in 
+!> the case of XCESM or another coupled model.
+!>  
+!> There are three ways to add a domain (these are overloaded as add_domain):
+!>    * add_domain_blank. This takes model size as an argument.
+!>    * add_domain_from_file. This takes a netcdf file and a list of variables
+!>    * add_domain_from_spec. This makes a skeleton structure for a domain. Dimensions
+!>      for each variable must be added using add_dimension_to_variable(). This is intended
+!>      to be used to create netcdf output for models like bgrid_solo that are spun up.
+!>      Usage:  call add_domain_from_spec
+!>              for each variable call add_dimension_to_variable() for each dimension in the variable
+!>              call finished_adding_domain_from_spec
+!>
+!> There are optional arguements to add_domain_from_spec and add_domain_from_file. These
+!> are:
+!>     * kind_list     - dart kind of each variable
+!>     * clamp_vals    - upper and lower bounds each variable (missing_r8 for no clamping)
+!>     * update_list   - true/false. Write out the variable. Default is .true.
+!>
+!> The state_structure hierarchy is:
+!>   state -> domain -> variable 
+!> Each time add_domain is called another domain is added to the state.
+!> Outside code can query with the state structure using domain_id and variable_id as
+!> arguements to accessor funcitons.
+!> Domain_id and variable_id are intergers currently.  It may be better to make domain_id
+!> a private type so other information can be stored in the domain_id.
+!>
+!> Interaction with the state_stucture depends on which module is accessing the structure.
+!> For example, model_mod querying the number of dimensions a variable is not concerned
+!> with the unlimited dimension, but state_vector_io_mod is concerned with the unlimtied
+!> dimension.
+!> The variable type has an io_type inside it to hold io information
+!> The io accessor functions have get_io_* in their name.
+!> There is no support for diagnoistic file structure at the moment.
+!>
+!> get_dart_vector_index() and its inverse get_model_variable_indices() link 
+!> a model x,y,z to dart index. The order of the state vector is no longer under model_mod
+!> control.  Beware when converting model_mods such as CAM that transform the order of
+!> variables after reading from a netcdf file.  There can be many calculations in model_mod
+!> that are assuming a transformed order which no longer exists.
 use utilities_mod, only : E_ERR, error_handler, nc_check, do_output, &
                           to_upper
 use  obs_kind_mod, only : paramname_length, get_raw_obs_kind_name, &
@@ -1470,5 +1503,5 @@ enddo
 end function get_num_varids_from_kind
 
 !-------------------------------------------------------------------------------
-
+!> @}
 end module state_structure_mod

@@ -82,16 +82,18 @@ use          obs_kind_mod, only: KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
 
 
 ! routines used by rma
-use mpi_utilities_mod,     only : my_task_id
+use mpi_utilities_mod,     only : my_task_id, task_count
 
-use ensemble_manager_mod,    only : ensemble_type, copies_in_window
+use ensemble_manager_mod,    only : ensemble_type, copies_in_window, &
+                                    get_var_owner_index, map_pe_to_task, &
+                                    get_copy_owner_index
 
 use distributed_state_mod, only : get_state, get_state_array
 
 use state_structure_mod,  only : add_domain, add_dimension_to_variable, &
                                  finished_adding_domain, get_variable_size, &
                                  get_num_variables, get_model_variable_indices, &
-                                 get_dart_vector_index
+                                 get_dart_vector_index, get_index_start, get_index_end
 
 
 implicit none
@@ -100,7 +102,7 @@ private
 public  get_model_size, adv_1step, get_state_meta_data, &
         get_model_time_step, end_model, static_init_model, init_time, &
         init_conditions, nc_write_model_atts, nc_write_model_vars, &
-        pert_model_state, pert_model_copies, &
+        pert_model_copies, &
         get_close_maxdist_init, get_close_obs_init, get_close_obs, &
         model_interpolate, &
         query_vert_localization_coord, &
@@ -216,7 +218,6 @@ integer, parameter :: timing_level = 1
 !-----------------------------------------------------------------------
 
 ! Stuff to allow addition of random 'sub-grid scale' noise
-! and also used in the pert_model_state() call.
 type(random_seq_type) :: randtype, randnoise
 logical :: first_call = .true.
 
@@ -1403,7 +1404,7 @@ end subroutine init_time
 
 
 
-function nc_write_model_atts( ncFileID ) result (ierr)
+function nc_write_model_atts( ncFileID, model_mod_writes_state_variables ) result (ierr)
 !-----------------------------------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
 ! TJH Dec 5 2002
@@ -1433,6 +1434,7 @@ use typeSizes
 use netcdf
 
 integer, intent(in)  :: ncFileID        ! netCDF file identifier
+logical, intent(out) :: model_mod_writes_state_variables
 integer              :: ierr            ! return value of function
 
 !-----------------------------------------------------------------------------------------
@@ -1461,6 +1463,7 @@ character(len=256) :: msgstring
 if ( .not. module_initialized ) call static_init_model
 
 ierr = 0     ! assume normal termination
+model_mod_writes_state_variables = .true. 
 
 !-------------------------------------------------------------------------------
 ! Get the bounds for storage on Temp and Velocity grids
@@ -1934,61 +1937,136 @@ contains
 
 end function nc_write_model_vars
 
+!--------------------------------------------------------------------
+subroutine pert_model_copies(ens_handle, ens_size, pert_amp, interf_provided)
 
+type(ensemble_type), intent(inout) :: ens_handle
+integer,             intent(in)    :: ens_size
+real(r8),            intent(in)    :: pert_amp
+logical,             intent(out)   :: interf_provided
 
+! Perturbs a model state copies for generating initial ensembles.
+! The perturbed state is returned in pert_state.
+! A model may choose to provide a NULL INTERFACE by returning
+! .false. for the interf_provided argument. This indicates to
+! the filter that if it needs to generate perturbed states, it
+! may do so by adding a perturbation to each model state 
+! variable independently. The interf_provided argument
+! should be returned as .true. if the model wants to do its own
+! perturbing of states.
 
-subroutine pert_model_state(state, pert_state, interf_provided)
-!------------------------------------------------------------------
-! Perturbs a model state for generating initial ensembles
-! Returning interf_provided means go ahead and do this with uniform
-! small independent perturbations.
-
-real(r8), intent(in)  :: state(:)
-real(r8), intent(out) :: pert_state(:)
-logical,  intent(out) :: interf_provided
-
-logical, save :: first_call = .true.
-integer :: i, j, k
-
+integer :: j, i
+integer :: temp_ind ! temperature variable position in state_kinds_list
+type(random_seq_type) :: r
+logical :: trunk_bitwise
 ! change the amount of perturbation here and recompile
-real(r8), parameter :: pert_stddev = 0.01_r8
+real(r8), parameter :: model_pert_amp = 0.01 ! This is hard coded in the trunk
 
 if ( .not. module_initialized ) call static_init_model
 
 ! option 1: let filter do the perturbs
 ! (comment this out to select other options below)
-interf_provided = .false.
-return
- 
+!interf_provided = .false.
+!return
+
 ! (debug) option 2: tell filter we are going to perturb, but don't.
-!  generally you do NOT want to do this - your ensemble will have
-!  no spread.
 ! interf_provided = .true.
 ! pert_state = state
 ! return
 
-! option 3: really perturb, t only
-
+! option 3: perturb t only
 interf_provided = .true.
+! Find temperature in kinds list
+do i = 1, size(state_kinds_list)
+   if (state_kinds_list(i) == KIND_TEMPERATURE) then
+      temp_ind = i
+      exit
+   endif
+enddo
 
-if (first_call) then
-   call init_random_seq(randtype, my_task_id()+1)
-   first_call = .false.
+trunk_bitwise = .true.
+
+if (trunk_bitwise) then
+
+   ! I think this is the order that a variable is in the state vector.
+   !do k = lbound(global_Var%t, 3), ubound(global_Var%t, 3)
+      !do j = lbound(global_Var%t, 2), ubound(global_Var%t, 2)
+         !do i = lbound(global_Var%t, 1), ubound(global_Var%t, 1)
+            !global_Var%t(i, j, k) = random_gaussian(randtype, global_Var%t(i,j,k), pert_stddev)
+         !end do
+      !end do
+   !end do
+
+   call pert_model_copies_bitwise_trunk(ens_handle, ens_size, model_pert_amp, temp_ind)
+
+else
+
+   call init_random_seq(r, my_task_id()+1)
+
+   do i = 1, ens_handle%my_num_vars
+      if (ens_handle%my_vars(i) >= get_index_start(dom_id, temp_ind) .and. ens_handle%my_vars(i) <= get_index_end(dom_id, temp_ind)) then
+         do j = 1, ens_size
+            ens_handle%copies(j, i)  = random_gaussian(r, ens_handle%copies(j,i), model_pert_amp)
+         enddo
+      endif
+   enddo
+
 endif
 
-call vector_to_prog_var(state, get_model_size(), global_Var)
 
-do k = lbound(global_Var%t, 3), ubound(global_Var%t, 3)
-   do j = lbound(global_Var%t, 2), ubound(global_Var%t, 2)
-      do i = lbound(global_Var%t, 1), ubound(global_Var%t, 1)
-         global_Var%t(i, j, k) = random_gaussian(randtype, global_Var%t(i,j,k), pert_stddev)
-      end do
-   end do
-end do
+end subroutine pert_model_copies
 
-call prog_var_to_vector(global_Var, pert_state, get_model_size())
+!--------------------------------------------------------------------
+! Perturb the state such that the perturbation is bitwise with 
+! a perturbed trunk.
+! Note this is not bitwise with itself (like the trunk) if task_count < ens_size
+!> If a task has more than one copy then the random number
+!> sequence continues from the end of one copy to the start of the other.
 
-end subroutine pert_model_state
+subroutine pert_model_copies_bitwise_trunk(ens_handle, ens_size, pert_amp, temp_ind)
+
+type(ensemble_type), intent(inout) :: ens_handle
+integer,             intent(in)    :: ens_size
+real(r8),            intent(in)    :: pert_amp
+integer,             intent(in)    :: temp_ind !>temperature variable position in state_kinds_list
+
+type(random_seq_type) :: r(ens_size)
+integer(i8) :: j ! loop variable
+integer     :: i ! loop variable
+integer     :: num_rand_seq ! number of different random sequences
+integer     :: temp_start, temp_end ! temperature start and end index
+integer     :: owner, owners_index
+real(r8)    :: random_number
+integer     :: copy_owner ! pe that would perturb state in trunk
+integer     :: sequence_to_use
+
+do i = 1, min(ens_size, task_count())
+   call init_random_seq(r(i), map_pe_to_task(ens_handle,i-1) +1) ! my_task_id + 1 in the trunk
+   sequence_to_use = i
+enddo
+
+! Looping around copies because this is what the trunk does. To be 
+! bitwise with the trunk we need to use the random number sequence 
+! in the same order.
+temp_start = get_index_start(dom_id, temp_ind)
+temp_end = get_index_end(dom_id, temp_ind)
+
+do i = 1, ens_size
+
+   call get_copy_owner_index(i, copy_owner, owners_index) ! owners index not used. Distribution type 1
+   sequence_to_use = copy_owner + 1
+   do j = temp_start, temp_end
+
+      random_number = random_gaussian(r(sequence_to_use), 0.0_r8, pert_amp)
+      call get_var_owner_index(j, owner, owners_index)
+      if (ens_handle%my_pe==owner) then
+         ens_handle%copies(i, owners_index) = ens_handle%copies(i, owners_index) + random_number
+      endif
+   enddo
+
+enddo
+
+end subroutine pert_model_copies_bitwise_trunk
 
 !--------------------------------------------------------------------
 !> construct restart file name for reading
@@ -2003,27 +2081,6 @@ character(len=1024)            :: construct_file_name_in
 write(construct_file_name_in, '(A, i4.4, A)') TRIM(stub), copy, '.nc'
 
 end function construct_file_name_in
-
-!--------------------------------------------------------------------
-subroutine pert_model_copies(state_handle, pert_amp, interf_provided)
-
- type(ensemble_type), intent(inout) :: state_handle
- real(r8),  intent(in) :: pert_amp
- logical,  intent(out) :: interf_provided
-
-! Perturbs a model state copies for generating initial ensembles.
-! The perturbed state is returned in pert_state.
-! A model may choose to provide a NULL INTERFACE by returning
-! .false. for the interf_provided argument. This indicates to
-! the filter that if it needs to generate perturbed states, it
-! may do so by adding a perturbation to each model state 
-! variable independently. The interf_provided argument
-! should be returned as .true. if the model wants to do its own
-! perturbing of states.
-
-interf_provided = .false.
- 
-end subroutine pert_model_copies
 
 !--------------------------------------------------------------------
 

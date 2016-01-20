@@ -18,13 +18,17 @@ use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, all_vars_
                                  duplicate_ens, compute_copy_mean_sd,      &
                                  all_copies_to_all_vars, get_copy, map_task_to_pe
 use time_manager_mod,     only : time_type, operator(==), print_time
-use assim_model_mod,      only : netcdf_file_type, init_diag_output, aoutput_diagnostics
+
+use state_space_diag_mod, only : netcdf_file_type, init_diag_output, aoutput_diagnostics
+!use assim_model_mod,      only : netcdf_file_type, init_diag_output, aoutput_diagnostics
+
 use assim_tools_mod,      only : filter_assim, get_missing_ok_status
 use obs_sequence_mod,     only : obs_sequence_type
 use adaptive_inflate_mod, only : adaptive_inflate_type, adaptive_inflate_init, &
                                  do_varying_ss_inflate, do_single_ss_inflate
 use state_vector_io_mod, only : read_ensemble_restart, &
                                  write_ensemble_restart
+use io_filenames_mod,    only : file_info_type
 
 implicit none
 private
@@ -122,7 +126,7 @@ allow_missing = get_missing_ok_status()
 ! NOTE: Using ens_handle here (not lag_handle) so it doesn't die for 0 lag choice
 if(num_lags > 0) call adaptive_inflate_init(lag_inflate, 0, .false., .false., .false., &
    .true., 'no_lag_inflate', 'no_lag_inflate', 'no_lag_inflate', 1.0_r8, 0.0_r8,       &
-   1.0_r8, 1.0_r8, 0.0_r8, ens_handle, POST_INF_COPY, POST_INF_SD_COPY, allow_missing, "Lag", direct_netcd_read)
+   1.0_r8, 1.0_r8, 0.0_r8, ens_handle, POST_INF_COPY, POST_INF_SD_COPY, allow_missing, "Lag")
 
 end subroutine init_smoother
 
@@ -166,11 +170,11 @@ if(start_from_restart) then
       write(temp_name, '(A, ".", I4.4)') trim(file_name), 1
       if (file_exist(file_name) .or. file_exist(temp_name)) then
          if(init_time_days >= 0) then
-            call read_ensemble_restart(lag_handle(smoother_index), 1, ens_size, &
-               start_from_restart, file_name, time1)
+          !  call read_ensemble_restart(lag_handle(smoother_index), 1, ens_size, &
+           !    start_from_restart, file_name, time1)
          else
-            call read_ensemble_restart(lag_handle(smoother_index), 1, ens_size, &
-               start_from_restart, file_name)
+          !  call read_ensemble_restart(lag_handle(smoother_index), 1, ens_size, &
+          !     start_from_restart, file_name)
          endif
          num_current_lags = num_current_lags + 1
    !write(errstring, '(A,I4,A,I4)') 'reading restart file ', i, ' into cycle number', smoother_index
@@ -339,6 +343,8 @@ integer,             intent(in)    :: start_copy, end_copy
 character(len = 256) :: file_name
 integer              :: i, smoother_index
 
+type(file_info_type) :: file_info
+
 ! must have called init_smoother() before using this routine
 if ( .not. module_initialized ) then
    write(errstring, *)'cannot be called before init_smoother() called'
@@ -354,7 +360,7 @@ if (.not. output_restart) return
 do i = 1, num_current_lags
    smoother_index = next_index(i)
    write(file_name, '("Lag_", I5.5, "_", A)') i, trim(restart_out_file_name)
-   call write_ensemble_restart(lag_handle(smoother_index), file_name, start_copy, end_copy)
+   call write_ensemble_restart(lag_handle(smoother_index), file_info, file_name, start_copy, end_copy)
    !write(errstring, '(A,I4,A,I4)') 'writing restart file ', i, ' from cycle number', smoother_index
    !call error_handler(E_MSG, 'smoother_write_restart', errstring)
 end do

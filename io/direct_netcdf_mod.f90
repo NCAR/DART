@@ -1,11 +1,24 @@
-!> Netcdf IO for a domain. \n
-!> Idea is to be generic. \n
-!> Don't want to go to the filesystem twice wrf => wrf_to_dart => dart => dart_to_wrf \n
-!> Every tasks needs the dimensions of each state variable to calculate
-!> what it is going to recieve in the IO transpose (this is calculated in add_domain)
-!> \par Aim:
+module direct_netcdf_mod
+!> \defgroup direct_netcdf_mod direct_netcdf_mod
+!> @{ \brief Routines for the limited transpose.
+!>
+!> Netcdf IO for a domain.
+!> The idea is to be generic rather than having a converter for each module.
+!> Also aim to go to the filesystem only once, e.g.
+!> \verbatim
+!>      wrf => dart => wrf
+!> \endverbatim
+!> rather than
+!> \verbatim
+!>      wrf => wrf_to_dart => dart => dart_to_wrf => wrf
+!> \endverbatim
+!>
+!> Every task needs the dimensions of each state variable to calculate
+!> what it is going to recieve in the IO transpose (this is calculated in add_domain )
+!> \par Aim of the limited transpose:
 !>
 !>To limit how much of the state vector you can read at once.
+!> You can limit the transpose by memory using <code>limit_mem</code>.
 !>
 !>What you (potentially) gain from this:
 !>
@@ -17,18 +30,23 @@
 !>  2. You only transpose the copies that are being written/read.
 !>
 !> This code has multiple places where round-robin layout of state onto task is assumed.
-!> These are in the section labelled:
+!> These are in the section labelled: \n
+!> \verbatim
+!>    !--------------------------------------------------------
 !>    ! Routines that are making the assumption that the ensemble
 !>    ! distribution is round-robin (distribution type 1)
-!>
-!> read_tranpose is the read routine
-!> transpose_write is the write routine
-!> Note dart_index is an inout variable to read_transpose and transpose_write. This is making the assumption
-!> that the calling code is using dart_index in the following way:  
+!>    !--------------------------------------------------------
+!> \endverbatim
+!> read_transpose() is the read routine.
+!> transpose_write() is the write routine.
+!> Note dart_index is an inout variable to read_transpose() and transpose_write(). 
+!> This is making the assumption that the calling code is using dart_index in the following way:
 !>  * dart_index going in to the subroutines is where the domain starts in the state vector.
 !>  * dart_index coming out of the subroutines is where the domain ends.
 !>  * The domain is contiguous in the state_vector.
-module direct_netcdf_mod
+!>
+!> Note there was a <code>limit_procs</code> in the limited transpose. This was removed in
+!> svn commit 9456.
 
 use types_mod,            only : r8, i4, MISSING_R8, digits12
 
@@ -53,7 +71,7 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  set_var_id, get_domain_size, do_io_update
 
 
-use io_filenames_mod,     only : get_input_file, get_output_file
+use io_filenames_mod,     only : get_input_file, get_output_file, restart_names_type
 
 use copies_on_off_mod,    only : query_read_copy, query_write_copy
 
@@ -71,17 +89,13 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-! Limit_mem, limit_procs are namelist items in state_vector_io_mod.
+! Limit_mem is a namelist item in state_vector_io_mod.
 
 integer :: ret !< netcdf return code
 
 character(len=256) :: msgstring
 
 contains
-!> \defgroup direct_netcdf_mod direct_netcdf_mod
-!> Contains all the routines and variables to deal with a limited tranpose
-!> You can limit the transpose by memory using <code>limit_mem</code>.
-!> @{
 
 !-------------------------------------------------
 ! Limited transpose code
@@ -89,36 +103,36 @@ contains
 !   * Single processor (no memory limit is applied)
 !   * Multi processor (memory limit applied)
 !-------------------------------------------------
-subroutine read_transpose(state_ens_handle, domain, dart_index, limit_mem)
+subroutine read_transpose(state_ens_handle, name_handle, domain, dart_index, limit_mem)
 
-type(ensemble_type), intent(inout) :: state_ens_handle
-integer,             intent(in)    :: domain
-integer,             intent(inout) :: dart_index !< This is for mulitple domains
-integer,             intent(in)    :: limit_mem !< How many state elements you can read at once
+type(ensemble_type),      intent(inout) :: state_ens_handle
+type(restart_names_type), intent(in)    :: name_handle
+integer,                  intent(in)    :: domain
+integer,                  intent(inout) :: dart_index !< This is for mulitple domains
+integer,                  intent(in)    :: limit_mem !< How many state elements you can read at once
 
 if (task_count() == 1) then
-   call read_transpose_single_task(state_ens_handle, domain, dart_index)
+   call read_transpose_single_task(state_ens_handle, name_handle, domain, dart_index)
 else ! multi task
-   call read_transpose_multi_task(state_ens_handle, domain, dart_index, limit_mem)
+   call read_transpose_multi_task(state_ens_handle, name_handle, domain, dart_index, limit_mem)
 endif
 
 end subroutine read_transpose
 !-------------------------------------------------
 
-subroutine transpose_write(state_ens_handle, num_extras, domain, dart_index, isprior, limit_mem, write_single_precision)
+subroutine transpose_write(state_ens_handle, name_handle, domain, dart_index, limit_mem, write_single_precision)
 
-type(ensemble_type), intent(inout) :: state_ens_handle
-integer,             intent(in)    :: num_extras ! non restart copies
-integer,             intent(in)    :: domain
-integer,             intent(inout) :: dart_index
-logical,             intent(in)    :: isprior
-integer,             intent(in)    :: limit_mem !< How many state elements you can write at once
-logical,             intent(in)    :: write_single_precision
+type(ensemble_type),      intent(inout) :: state_ens_handle
+type(restart_names_type), intent(in)    :: name_handle
+integer,                  intent(in)    :: domain
+integer,                  intent(inout) :: dart_index
+integer,                  intent(in)    :: limit_mem !< How many state elements you can write at once
+logical,                  intent(in)    :: write_single_precision
 
 if (task_count() == 1) then
-   call transpose_write_single_task(state_ens_handle, num_extras, domain, dart_index, isprior, write_single_precision)
+   call transpose_write_single_task(state_ens_handle, name_handle, domain, dart_index, write_single_precision)
 else ! multi task
-   call transpose_write_multi_task(state_ens_handle, num_extras, domain, dart_index, isprior, limit_mem, write_single_precision)
+   call transpose_write_multi_task(state_ens_handle, name_handle, domain, dart_index, limit_mem, write_single_precision)
 endif
 
 end subroutine transpose_write
@@ -130,11 +144,12 @@ end subroutine transpose_write
 !-------------------------------------------------
 !> Single processor version of read_transpose.  Reads ens_size whole vectors from
 !> netcdf files and fills up a row of %copies for each file.
-subroutine read_transpose_single_task(state_ens_handle, domain, dart_index)
+subroutine read_transpose_single_task(state_ens_handle, name_handle, domain, dart_index)
 
-type(ensemble_type), intent(inout) :: state_ens_handle
-integer,             intent(in)    :: domain
-integer,             intent(inout) :: dart_index !< This is for mulitple domains
+type(ensemble_type),      intent(inout) :: state_ens_handle
+type(restart_names_type), intent(in)    :: name_handle
+integer,                  intent(in)    :: domain
+integer,                  intent(inout) :: dart_index !< This is for mulitple domains
 
 real(r8), allocatable :: vector(:)
 
@@ -158,9 +173,9 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
 
    ! open netcdf file
    if (query_read_copy(copy)) then
-      netcdf_filename = get_input_file(copy, domain)
+      netcdf_filename = get_input_file(name_handle, copy, domain)
       ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
-      call nc_check(ret, 'read_restart_netcdf opening', netcdf_filename)
+      call nc_check(ret, 'read_transpose_single_task: opening', netcdf_filename)
    endif
 
    block_size = get_domain_size(domain)
@@ -171,7 +186,7 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
       call read_variables(ncfile, vector, 1, get_num_variables(domain), domain)
       ! close netcdf file
       ret = nf90_close(ncfile)
-      call nc_check(ret, 'read_restart_netcdf closing', netcdf_filename)
+      call nc_check(ret, 'read_transpose_single_task: closing', netcdf_filename)
       state_ens_handle%copies(copy, starting_point:ending_point) = vector
 
    endif
@@ -190,14 +205,13 @@ end subroutine read_transpose_single_task
 
 !> Single processor version of transpose write.  Takes copies array one row
 !> at a time and writes copy to a netcdf file.
-subroutine transpose_write_single_task(state_ens_handle, num_extras, domain, dart_index, isprior, write_single_precision)
+subroutine transpose_write_single_task(state_ens_handle, name_handle, domain, dart_index, write_single_precision)
 
-type(ensemble_type), intent(inout) :: state_ens_handle
-integer,             intent(in)    :: num_extras ! non restart copies
-integer,             intent(in)    :: domain
-integer,             intent(inout) :: dart_index
-logical,             intent(in)    :: isprior
-logical,             intent(in)    :: write_single_precision
+type(ensemble_type),      intent(inout) :: state_ens_handle
+type(restart_names_type), intent(in)    :: name_handle
+integer,                  intent(in)    :: domain
+integer,                  intent(inout) :: dart_index
+logical,                  intent(in)    :: write_single_precision
 
 integer :: ncfile_out !< netcdf output file handle
 character(len=256) :: netcdf_filename_out
@@ -211,8 +225,6 @@ integer :: start_var
 
 type(time_type) :: dart_time
 integer :: time_owner, time_owner_index
-
-integer :: create_mode
 
 ! need to read into a tempory array to fill with one copies
 allocate(vector(get_domain_size(domain)))
@@ -228,7 +240,7 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
 
    ! open netcdf file
    if (query_write_copy(copy)) then
-      netcdf_filename_out = get_output_file(copy, domain, isprior)
+      netcdf_filename_out = get_output_file(name_handle, copy, domain)
 
       if(file_exist(netcdf_filename_out)) then
          ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
@@ -283,12 +295,13 @@ end subroutine transpose_write_single_task
 !> has all copies of a subset of state variables (fill state_ens_handle%copies)
 !> Read and transpose data according to the memory limit imposed by
 !> limit_mem. Note limit_mem cannot be smaller than a variable.
-subroutine read_transpose_multi_task(state_ens_handle, domain, dart_index, limit_mem)
+subroutine read_transpose_multi_task(state_ens_handle, name_handle, domain, dart_index, limit_mem)
 
-type(ensemble_type), intent(inout) :: state_ens_handle
-integer,             intent(in)    :: domain
-integer,             intent(inout) :: dart_index !< This is for mulitple domains
-integer,             intent(in)    :: limit_mem !< How many state elements you can read at once
+type(ensemble_type),      intent(inout) :: state_ens_handle
+type(restart_names_type), intent(in)    :: name_handle
+integer,                  intent(in)    :: domain
+integer,                  intent(inout) :: dart_index !< This is for mulitple domains
+integer,                  intent(in)    :: limit_mem !< How many state elements you can read at once
 
 integer :: i
 integer :: start_var, end_var !< start/end variables in a read block
@@ -300,7 +313,6 @@ integer :: elm_count !< number of elements to send
 integer :: starting_point!< position in state_ens_handle%copies
 integer :: ending_point
 integer :: ens_size !< ensemble size
-integer :: remainder
 integer :: start_rank
 integer :: recv_start, recv_end
 integer :: send_start, send_end
@@ -311,7 +323,6 @@ integer :: c !< copies_read loop index
 integer :: copies_read
 integer :: num_state_variables
 logical :: is_reader ! pe is a reader or not
-integer :: limit_procs ! local variable that can be modified
 
 integer :: ncfile !< netcdf input file identifier
 character(len=256) :: netcdf_filename !< different for each task
@@ -347,7 +358,7 @@ COPIES: do c = 1, ens_size
    if (is_reader) then
 
       if (query_read_copy(my_copy)) then
-         netcdf_filename = get_input_file(my_copy, domain)
+         netcdf_filename = get_input_file(name_handle, my_copy, domain)
          !print*, 'opening netcdf_filename ', trim(netcdf_filename)
          ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
          call nc_check(ret, 'read_transpose opening', netcdf_filename)
@@ -382,7 +393,7 @@ COPIES: do c = 1, ens_size
          elm_count = num_elements_on_pe(recv_pe, start_rank, block_size)
          ending_point = starting_point + elm_count -1
 
-         ! work out the start in var_block for corresponding to the receiving pe
+         ! work out the start in var_block corresponding to the receiving pe
          i = find_start_point(recv_pe, start_rank)
 
          if (my_pe == recv_pe) then ! get ready to recieve from each reader
@@ -453,16 +464,14 @@ end subroutine read_transpose_multi_task
 !> 
 !> This is assuming round-robin layout of state on procesors (distribution type 1
 !> in the ensemble handle).
-subroutine transpose_write_multi_task(state_ens_handle, num_extras, domain, dart_index, isprior, limit_mem, write_single_precision)
+subroutine transpose_write_multi_task(state_ens_handle, name_handle, domain, dart_index, limit_mem, write_single_precision)
 
-type(ensemble_type), intent(inout) :: state_ens_handle
-integer,             intent(in)    :: num_extras ! non restart copies
-integer,             intent(in)    :: domain
-integer,             intent(inout) :: dart_index
-logical,             intent(in)    :: isprior
-integer,             intent(in)    :: limit_mem !< How many state elements you can read at once
-logical,             intent(in)    :: write_single_precision
-
+type(ensemble_type),      intent(inout) :: state_ens_handle
+type(restart_names_type), intent(in)    :: name_handle
+integer,                  intent(in)    :: domain
+integer,                  intent(inout) :: dart_index
+integer,                  intent(in)    :: limit_mem !< How many state elements you can read at once
+logical,                  intent(in)    :: write_single_precision
 
 integer :: i
 integer :: start_var, end_var !< start/end variables in a read block
@@ -474,12 +483,11 @@ integer :: elm_count !< number of elements to send
 integer :: starting_point!< position in state_ens_handle%copies
 integer :: ending_point
 integer :: ens_size !< ensemble size
-integer :: remainder
 integer :: start_rank
 integer :: recv_start, recv_end
 integer :: send_start, send_end
 integer :: ensemble_member
-integer :: dummy_loop, j
+integer :: dummy_loop
 integer :: my_copy !< which copy a pe is reading, starting from 1 to num_copies
 integer :: c !< copies_read loop index
 integer :: copies_written
@@ -492,9 +500,6 @@ integer :: num_state_variables
 ! single file
 type(time_type) :: dart_time
 integer :: time_owner, time_owner_index
-
-integer :: create_mode
-integer :: limit_procs
 
 logical :: is_writer
 
@@ -524,7 +529,7 @@ COPIES : do c = 1, ens_size
    ! writers open netcdf output file. This is a copy of the input file
    if (is_writer) then
       if ( query_write_copy(my_copy)) then
-         netcdf_filename_out = get_output_file((my_copy), domain, isprior)
+         netcdf_filename_out = get_output_file(name_handle, my_copy, domain)
 
          if(file_exist(netcdf_filename_out)) then
             ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
@@ -603,7 +608,7 @@ COPIES : do c = 1, ens_size
       if (is_writer) then ! I am a writer
          if ( query_write_copy(my_copy)) then
             !var_block = MISSING_R8  ! if you want to create a file for bitwise testing
-            if (my_copy <= state_ens_handle%num_copies - num_extras) then ! actual copy, may need clamping
+            if (my_copy <= state_ens_handle%num_copies - state_ens_handle%num_extras) then ! actual copy, may need clamping
                call write_variables_clamp(ncfile_out, var_block, start_var, end_var, domain)
             else ! extra copy, don't clamp
                call write_variables(ncfile_out, var_block, start_var, end_var, domain)

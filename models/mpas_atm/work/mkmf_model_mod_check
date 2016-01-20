@@ -39,8 +39,6 @@ if ( $usingmpi ) then
   touch using_mpi_for_model_mod_check
   sed -e 's;/null_mpi_util;/mpi_util;' path_names_model_mod_check.back >! path_names_model_mod_check
   cp -f path_names_model_mod_check path_names_model_mod_check.temp
-  sed -e 's;/direct_netcdf_no_mpi_mod;/direct_netcdf_mpi_mod;' path_names_model_mod_check.temp >! path_names_model_mod_check
-  cp -f path_names_model_mod_check path_names_model_mod_check.temp
   sed -e 's;/null_win_mod;/no_cray_win_mod;' path_names_model_mod_check.temp >! path_names_model_mod_check
 
   setenv wrapper_arg -w
@@ -50,8 +48,6 @@ else
   echo "Making Makefile without MPI"
   rm -f using_mpi_for_model_mod_check
   sed -e 's;/mpi_util;/null_mpi_util;' path_names_model_mod_check.back >! path_names_model_mod_check
-  cp -f path_names_model_mod_check path_names_model_mod_check.temp
-  sed -e 's;/direct_netcdf_mpi_mod;/direct_netcdf_no_mpi_mod;' path_names_model_mod_check.temp >! path_names_model_mod_check
   setenv wrapper_arg ""
   cp -f path_names_model_mod_check path_names_model_mod_check.temp
   sed '\,distributed/no_cray_win_mod,d' path_names_model_mod_check.temp >! path_names_model_mod_check

@@ -1,3 +1,6 @@
+&state_space_diag_nml
+/
+
 &quality_control_nml
   input_qc_threshold = 4,
   outlier_threshold = 3,

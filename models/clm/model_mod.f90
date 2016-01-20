@@ -108,7 +108,6 @@ public :: get_model_size,         &
           init_conditions,        &
           nc_write_model_atts,    &
           nc_write_model_vars,    &
-          pert_model_state,       &
           pert_model_copies,      &
           get_close_maxdist_init, &
           get_close_obs_init,     &
@@ -1890,8 +1889,10 @@ end function nc_write_model_vars
 
 
 
-subroutine pert_model_state(state, pert_state, interf_provided)
 !------------------------------------------------------------------
+
+subroutine pert_model_copies(ens_handle, ens_size, pert_amp, interf_provided)
+
 !
 ! Perturbs a single model state for generating initial ensembles.
 ! This (required interface) is unsupported in CLM and any attempt
@@ -1908,57 +1909,20 @@ subroutine pert_model_state(state, pert_state, interf_provided)
 ! values specific to each type.
 ! The WRF model mod has something that might be useful.
 
-real(r8), intent(in)  :: state(:)
-real(r8), intent(out) :: pert_state(:)
-logical,  intent(out) :: interf_provided
+type(ensemble_type), intent(inout) :: ens_handle
+integer,             intent(in)    :: ens_size
+real(r8),            intent(in)    :: pert_amp
+logical,             intent(out)   :: interf_provided
 
-integer :: i
-logical, save :: random_seq_init = .false.
 
 if ( .not. module_initialized ) call static_init_model
 
-call error_handler(E_ERR,'pert_model_state', &
+call error_handler(E_ERR,'pert_model_copies', &
                   'CLM cannot be started from a single vector', &
                   source, revision, revdate, &
-                  text2='see comments in clm/model_mod.f90::pert_model_state()')
+                  text2='see comments in clm/model_mod.f90::pert_model_copies()')
 
 interf_provided = .true.
-
-! Initialize my random number sequence
-if(.not. random_seq_init) then
-   call init_random_seq(random_seq, my_task_id())
-   random_seq_init = .true.
-endif
-
-! This does keep the compiler error messages down, but this
-! section of code must never be reached.
-do i=1,size(state)
-   pert_state(i) = random_gaussian(random_seq, state(i), &
-                                   model_perturbation_amplitude)
-enddo
-
-end subroutine pert_model_state
-
-
-
-!--------------------------------------------------------------------
-subroutine pert_model_copies(state_handle, pert_amp, interf_provided)
-
- type(ensemble_type), intent(inout) :: state_handle
- real(r8),  intent(in) :: pert_amp
- logical,  intent(out) :: interf_provided
-
-! Perturbs a model state copies for generating initial ensembles.
-! The perturbed state is returned in pert_state.
-! A model may choose to provide a NULL INTERFACE by returning
-! .false. for the interf_provided argument. This indicates to
-! the filter that if it needs to generate perturbed states, it
-! may do so by adding a perturbation to each model state 
-! variable independently. The interf_provided argument
-! should be returned as .true. if the model wants to do its own
-! perturbing of states.
-
-interf_provided = .false.
 
 end subroutine pert_model_copies
 

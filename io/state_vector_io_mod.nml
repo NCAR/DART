@@ -1,6 +1,5 @@
 &state_vector_io_nml
    limit_mem                  = HUGE(1_i4),
-   time_unlimited             = .true.,
    single_precision_output    = .false.,
    write_binary_restart_files = .false.
 /

@@ -6,28 +6,53 @@
 
 module io_filenames_mod
 
-!> \defgroup io_filenames io_filenames
-!> Aim is to store the io filenames
+!> \defgroup io_filenames_mod io_filenames_mod
+!> Filenames for state vector IO
+!> Aim is to store the io filenames for state read/writes
 !>  * Restarts
 !>  * Diagnostics
 !>  * Inflation files
 !>
-!> Any module can set the filenames here, then state_vector_io_mod
-!> can read from this module to get the filenames.
-!> Maybe this is a bit lazy, but I just want a way for the 
-!> different modules to set the filenames
+!> Usage:
+!> A file_info_type is created with a call to file_info_type = io_filenames_init()
+!>
+!> The file_info_type is public and contains:
+!>   * file_options_type (private)
+!>   * 3 restart_names_types (private):
+!>        - restart_files_in
+!>        - restart_files_out_prior (see state_space_diag_mod.f90 for where this is used.)
+!>        - restart_files_out
+!>
+!> The file_options_type contains all the read/write options that typically
+!> come from the filter or perfect_model_obs namelist. These options are passed from 
+!> the calling routine to io_file_namesames_init()
+!> 
+!> The restart_names_types contain a 2D array of filenames (num files, num_domains).
+!>
+!> The file_info_type is passed to the state IO routines: read_state, write_state, 
+!> and filter_state_space_diagnostics (diagnostic file)
+!> The internals of the file_info_type are accessed through the accessor functions
+!> listed below. assert_file_info_initiailzed() and assert_restart_names_initiailzed()
+!> should be used to check that the file_info_type has been initialized before
+!> attempting any IO.
 !>
 !> Diagnostic files could have different netcdf variable ids
 !> @{
 
-use utilities_mod,        only : do_nml_file, nmlfileunit, do_nml_term, &
-                                 check_namelist_read, find_namelist_in_file, &
-                                 file_exist, E_ERR, E_MSG, error_handler, nc_check, &
-                                 open_file, find_textfile_dims
+use utilities_mod,        only : file_exist, E_ERR, E_MSG, error_handler, &
+                                 nc_check, open_file, find_textfile_dims
 use model_mod,            only : construct_file_name_in
 use state_structure_mod,  only : get_num_domains, get_dim_length, get_dim_name, &
                                  get_io_num_dims, get_num_variables, get_variable_name
-use ensemble_manager_mod, only : is_single_restart_file_in, ensemble_type
+use ensemble_manager_mod, only : ensemble_type
+
+use copies_on_off_mod,    only : ENS_MEAN_COPY, ENS_SD_COPY, &
+                                 PRIOR_INF_COPY, PRIOR_INF_SD_COPY, &
+                                 POST_INF_COPY, POST_INF_SD_COPY, &
+                                 SPARE_PRIOR_MEAN, SPARE_PRIOR_SPREAD, &
+                                 SPARE_PRIOR_INF_MEAN, SPARE_PRIOR_INF_SPREAD, &
+                                 SPARE_POST_INF_MEAN, SPARE_POST_INF_SPREAD, &
+                                 query_copy_present
 
 use netcdf
 
@@ -35,7 +60,24 @@ implicit none
 
 private
 
-public :: io_filenames_init, set_filenames, get_input_file, get_output_file
+! File_info_type initialization and assertions.
+public :: io_filenames_init, &
+          file_info_type, &
+          assert_file_info_initiailzed, &
+          restart_names_type, &
+          assert_restart_names_initiailzed
+
+! Accessor functions:
+public :: get_input_file, &
+          get_output_file, &
+          get_read_from_netcdf, &
+          get_write_to_netcdf, &
+          get_output_restart, &
+          get_output_mean, &
+          get_restart_out_base, &
+          get_restart_in_base, &
+          get_read_from_single_file, &
+          get_write_to_single_file
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -43,55 +85,251 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-! How do people name there restart files?
-! What about domains?
+! Holds all the input options to io_filenames_init
+type file_options_type
+   private
+   logical            :: initialized       = .false.
+   logical            :: netcdf_read       = .true. ! Netcdf or DART format
+   logical            :: netcdf_write      = .true. ! Netcdf or DART format
+   character(len=512) :: restart_in_base   = 'input'
+   character(len=512) :: restart_out_base  = 'output'
 
-character(len=2048), allocatable :: restart_files_in(:,:), restart_files_out(:,:,:)
+   logical            :: overwrite_input   = .false. ! sets output file = input file
+   logical            :: domain_extension  = .false. ! add _d0X to filenames
 
-!-------------------------------------------------------------------------------
-! Namelist options
-!-------------------------------------------------------------------------------
-character(len=512) :: restart_in_stub  = 'input'
-character(len=512) :: restart_out_stub = 'output'
+   logical            :: rpointer          = .false. ! define a list of restart files
+   character(len=512) :: rpointer_file(10) = 'null'  ! list of restarts
+   character(len=512) :: inflation_in(2)   = 'null'  ! prior, post
+   character(len=512) :: inflation_out(2)  = 'null' ! prior, post
 
-logical            :: overwrite_input  = .false. ! sets output file = input file
-logical            :: domain_extension = .false. ! add _d0X to filenames
+   logical :: output_restart = .false.  ! Should these be true or false?
+   logical :: output_mean = .false.
 
-logical            :: rpointer          = .false. ! define a list of restart files
-character(len=512) :: rpointer_file(10) = 'null'  ! list of restarts
-! JH should we enforce the pointer file name?
-!-------------------------------------------------------------------------------
+   logical :: single_restart_file_in  = .false. ! all copies read from 1 file
+   logical :: single_restart_file_out = .false. ! all copies written to 1 file
+end type
 
-! Should probably get num_domains, num_restarts from elsewhere. In here for now
-namelist / io_filenames_nml / restart_in_stub, restart_out_stub, &
-overwrite_input, domain_extension, rpointer, rpointer_file
+! Holds an array of restart file names to be used with an ensemble handle
+type restart_names_type
+   private
+   logical                          :: initialized       = .false.
+   character(len=2048), allocatable :: filenames(:,:) ! num_files x num_domains
+end type
+
+
+! Fileninfo type
+! Composed of four types, - these types are private
+!  * One type containing the file options
+!  * Three restart_names_types: in, prior_out, posterior_out.
+! File info type is public so the restart names can be passed to read and write routines
+! using, for example, file_info_type%restart_files_out_prior
+type file_info_type
+   type(file_options_type) :: options
+
+   type(restart_names_type) :: restart_files_in
+   type(restart_names_type) :: restart_files_out_prior
+   type(restart_names_type) :: restart_files_out
+
+end type
 
 contains
 
 !-------------------------------------------------------------------------------
-!> read namelist and set up filename arrays
-subroutine io_filenames_init()
-
-integer :: iunit, io
-!call register_module(source, revision, revdate)
-
-! Read the namelist entry
-call find_namelist_in_file("input.nml", "io_filenames_nml", iunit)
-read(iunit, nml = io_filenames_nml, iostat = io)
-call check_namelist_read(iunit, io, "io_filenames_nml")
-
-! Write the namelist values to the log file
-if (do_nml_file()) write(nmlfileunit, nml=io_filenames_nml)
-if (do_nml_term()) write(     *     , nml=io_filenames_nml)
-
-end subroutine io_filenames_init
+! Accessor functions for file_info type
+!-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-subroutine set_filenames(ens_handle, ens_size, inflation_in, inflation_out)
+!> Test whether file_info_type has been initialized
+!> Error out if not, giving the name of the calling routine.
+subroutine assert_file_info_initiailzed(file_info, routine_name)
+
+type(file_info_type), intent(in) :: file_info
+character(len=*),     intent(in) :: routine_name
+
+if ( file_info%options%initialized .eqv. .false.) then
+   call error_handler(E_ERR, routine_name, ':: io_filenames_init must be used to initialize file_info_type')
+endif
+
+end subroutine assert_file_info_initiailzed
+
+!-------------------------------------------------------------------------------
+!> Test whether file_info_type has been initialized for routines that only
+!> have access the %restart_files(in/out/prior)
+!> Error out if not, giving the name of the calling routine.
+subroutine assert_restart_names_initiailzed(restart_names, routine_name)
+
+type(restart_names_type), intent(in) :: restart_names
+character(len=*),     intent(in) :: routine_name
+
+if ( restart_names%initialized .eqv. .false.) then
+   call error_handler(E_ERR, routine_name, ':: io_filenames_init must be used to initialize file_info_type')
+endif
+
+end subroutine assert_restart_names_initiailzed
+
+!-------------------------------------------------------------------------------
+! Accessor functions for file_info_type
+!-------------------------------------------------------------------------------
+
+function get_read_from_single_file(file_info)
+
+type(file_info_type), intent(in) :: file_info
+logical :: get_read_from_single_file
+
+get_read_from_single_file = file_info%options%single_restart_file_in
+
+end function get_read_from_single_file
+
+!-------------------------------------------------------------------------------
+
+function get_write_to_single_file(file_info)
+
+type(file_info_type), intent(in) :: file_info
+logical :: get_write_to_single_file
+
+get_write_to_single_file = file_info%options%single_restart_file_out
+
+end function get_write_to_single_file
+
+!-------------------------------------------------------------------------------
+
+function get_read_from_netcdf(file_info)
+
+type(file_info_type), intent(in) :: file_info
+logical :: get_read_from_netcdf
+
+get_read_from_netcdf = file_info%options%netcdf_read
+
+end function get_read_from_netcdf
+
+!-------------------------------------------------------------------------------
+function get_write_to_netcdf(file_info)
+
+type(file_info_type), intent(in) :: file_info
+logical :: get_write_to_netcdf
+
+get_write_to_netcdf = file_info%options%netcdf_write
+
+end function get_write_to_netcdf
+
+!-------------------------------------------------------------------------------
+function get_output_mean(file_info)
+
+type(file_info_type), intent(in) :: file_info
+logical :: get_output_mean
+
+get_output_mean = file_info%options%output_mean
+
+end function get_output_mean
+
+!-------------------------------------------------------------------------------
+function get_output_restart(file_info)
+
+type(file_info_type), intent(in) :: file_info
+logical :: get_output_restart
+
+get_output_restart = file_info%options%output_restart
+
+end function get_output_restart
+
+!-------------------------------------------------------------------------------
+function get_restart_out_base(file_info)
+
+type(file_info_type), intent(in) :: file_info
+character(len=512) :: get_restart_out_base
+
+get_restart_out_base = file_info%options%restart_out_base
+
+end function get_restart_out_base
+
+!-------------------------------------------------------------------------------
+function get_restart_in_base(file_info)
+
+type(file_info_type), intent(in) :: file_info
+character(len=512) :: get_restart_in_base
+
+get_restart_in_base = file_info%options%restart_in_base
+
+end function get_restart_in_base
+!-------------------------------------------------------------------------------
+!-------------------------------------------------------------------------------
+
+!-------------------------------------------------------------------------------
+!> Initialize file_info type
+!> The filenames come from above - this is so filter_nml or perfect_nml
+!> can hold the filenames.
+!> Previously the netcdf filenames were in io_filenames_mod - the user would
+!> have to change this namelist between running perfect_model_obs and
+!> filter.
+function io_filenames_init(ens_handle, single_restart_file_in,  single_restart_file_out, &
+             restart_in_base, restart_out_base, output_restart, netcdf_read, netcdf_write, &
+             output_restart_mean, domain_extension, rpointer, rpointer_file, overwrite_input, &
+             inflation_in, inflation_out) result(file_info)
+
+type(ensemble_type), intent(in) :: ens_handle
+logical,             intent(in) :: single_restart_file_in ! all copies read from one file
+logical,             intent(in) :: single_restart_file_out ! all copies written to one file
+character(len=*),    intent(in) :: restart_in_base
+character(len=*),    intent(in) :: restart_out_base
+logical,             intent(in) :: output_restart
+logical,             intent(in) :: netcdf_read  ! Netcdf or DART format
+logical,             intent(in) :: netcdf_write ! Netcdf of DART format
+! Optional arguements - apply to filter only
+logical,            optional, intent(in) :: output_restart_mean
+logical,            optional, intent(in) :: domain_extension ! add _d0X to filenames
+logical,            optional, intent(in) :: rpointer          ! define a list of restart files
+character(len=*),   optional, intent(in) :: rpointer_file(10) ! list of restarts
+logical,            optional, intent(in) :: overwrite_input  ! sets output file = input file
+character(len = *), optional, intent(in) :: inflation_in(2), inflation_out(2)
+type(file_info_type) :: file_info
+
+
+! load up filenames structure
+file_info%options%initialized = .true.
+
+file_info%options%single_restart_file_in = single_restart_file_in
+file_info%options%single_restart_file_out = single_restart_file_out
+file_info%options%restart_in_base = restart_in_base
+file_info%options%restart_out_base = restart_out_base
+file_info%options%output_restart = output_restart
+file_info%options%netcdf_read  = netcdf_read
+file_info%options%netcdf_write = netcdf_write
+
+if(present(output_restart_mean)) file_info%options%output_mean = output_restart_mean
+if(present(domain_extension))    file_info%options%domain_extension = domain_extension
+if(present(rpointer))            file_info%options%rpointer = rpointer
+if(present(rpointer))            file_info%options%rpointer_file = rpointer_file
+if(present(overwrite_input))     file_info%options%overwrite_input = overwrite_input
+if(present(inflation_in))        file_info%options%inflation_in = inflation_in
+if(present(inflation_out))       file_info%options%inflation_out = inflation_out
+
+!> @todo Need to be clearer about single_restart_file in and
+!> what to do with the filenames.
+!> Perfect_model_obs is single_restart_file_in - the name list 
+!> restart_in_file should be the whole name of the file
+!> filter can have single_restart_file_in - all members in one file, 
+!> but how does this interact with perturb_from_single_instance?
+!> Should we have a file_info%options%single_file_name?
+if (netcdf_read) then
+   call error_handler(E_MSG, 'io_filenames_init', 'cannot read multiple files from single netcdf file')
+endif
+
+! loads up filenames and checks any existing files are the correct shape
+call set_filenames(ens_handle, file_info)
+
+file_info%restart_files_in%initialized = .true.
+file_info%restart_files_out_prior%initialized = .true.
+file_info%restart_files_out%initialized = .true.
+
+end function io_filenames_init
+
+!-------------------------------------------------------------------------------
+!> Loads up filenames and checks any existing files are the correct shape
+!> Only the owners of the ensemble members check existing restart files.
+subroutine set_filenames(ens_handle, file_info)
 
 type(ensemble_type),  intent(in) :: ens_handle
-integer,              intent(in) :: ens_size ! number of actual copies
-character(len = *),   intent(in) :: inflation_in(2), inflation_out(2)
+type(file_info_type),  intent(inout) :: file_info
 
 character(len = 32)   :: ext
 character(len = 32)   :: dom_str = ''
@@ -100,169 +338,208 @@ integer :: num_domains
 integer :: dom, i
 integer :: idom, icopy ! loop variables
 integer :: num_files
+integer :: ens_size ! number of actual copies
 
 integer :: iunit, ios
 integer :: nlines
 character(len=512) :: fname
 character(len=256) :: msgstring
-integer :: c
+integer :: copy
 
-num_files   = ens_size + 10 !> @toto do you worry about spare copies?
+ens_size = ens_handle%num_copies - ens_handle%num_extras
+num_files   = ens_handle%num_copies
 num_domains = get_num_domains()
 
-allocate(restart_files_in(num_files , num_domains))
-allocate(restart_files_out(num_files, num_domains, 2)) ! for prior and posterior filenames
+allocate(file_info%restart_files_in%filenames(num_files , num_domains))
+allocate(file_info%restart_files_out_prior%filenames(num_files , num_domains)) ! prior
+allocate(file_info%restart_files_out%filenames(num_files , num_domains)) ! posterior
 
-restart_files_in = 'null'
-restart_files_out = 'null'
+file_info%restart_files_in%filenames = 'null'
+file_info%restart_files_out_prior%filenames = 'null'
+file_info%restart_files_out%filenames = 'null'
 
 do idom = 1, num_domains
 
    ! optional domain string
-   if (num_domains > 1 .or. domain_extension) then
+   if (num_domains > 1 .or. file_info%options%domain_extension) then
       write(dom_str, '(A, i2.2)') '_d', idom 
    else
       write(dom_str, '(A)') ''
    endif
 
    ! Read filenames from rpointer_file
-   if(rpointer) then
+   if(file_info%options%rpointer) then
       
-      write(msgstring,*) "reading restarts from ", trim(rpointer_file(idom))
+      write(msgstring,*) "reading restarts from ", trim(file_info%options%rpointer_file(idom))
       call error_handler(E_MSG,'set_filenames', &
                          msgstring, source, revision, revdate)
 
-      if ( .not. file_exist(rpointer_file(idom)) ) then
-         msgstring = 'io_filenames_mod:rpointer '//trim(rpointer_file(idom))//&
+      if ( .not. file_exist(file_info%options%rpointer_file(idom)) ) then
+         msgstring = 'io_filenames_mod:rpointer '//trim(file_info%options%rpointer_file(idom))//&
                      ' not found'
          call error_handler(E_ERR,'set_filenames', &
                 msgstring, source, revision, revdate)
       endif
       
       ! Check the dimensions of the pointer file
-      call find_textfile_dims(trim(rpointer_file(idom)), nlines)
+      call find_textfile_dims(trim(file_info%options%rpointer_file(idom)), nlines)
       if( nlines < ens_size) then
          write(msgstring,*) 'io_filenames_mod: expecting ',ens_size, &
-                            'files in ', trim(rpointer_file(idom)),  &
+                            'files in ', trim(file_info%options%rpointer_file(idom)),  &
                             'and only found ', nlines
          call error_handler(E_ERR,'set_filenames', &
                             msgstring, source, revision, revdate)
       endif 
 
       ! Read filenames in
-      iunit = open_file(trim(rpointer_file(idom)),action = 'read')
+      iunit = open_file(trim(file_info%options%rpointer_file(idom)),action = 'read')
         
       do icopy = 1, ens_size
-         read(iunit,'(A)',iostat=ios) restart_files_in(icopy, idom)
+         read(iunit,'(A)',iostat=ios) file_info%restart_files_in%filenames(icopy, idom)
       enddo
    else ! Construct restarts
 
-      if (is_single_restart_file_in()) then ! reading first restart for now
+      if (file_info%options%single_restart_file_in) then ! reading first restart for now
          !> @todo should we not append a copy number to single file?
-         restart_files_in(:, idom) = construct_file_name_in(restart_in_stub, idom, 1)
+         file_info%restart_files_in%filenames(:, idom) = construct_file_name_in(file_info%options%restart_in_base, idom, 1)
       else
          do icopy = 1, ens_size  ! restarts
-            restart_files_in(icopy, idom) = construct_file_name_in(restart_in_stub, idom,icopy)
+            file_info%restart_files_in%filenames(icopy, idom) = construct_file_name_in(file_info%options%restart_in_base, idom,icopy)
          enddo
       endif
 
    endif ! rpointer
 
-   ! Construct the output files
+   ! Construct the output files:
    do icopy = 1, ens_size  ! output restarts
       
       write(ext, '(2A, i4.4, A)') trim(dom_str), ".", icopy, ".nc"
-      write(restart_files_out(icopy, idom, 1),'(2A)') 'prior_member', ext
+      write(file_info%restart_files_out_prior%filenames(icopy, idom),'(2A)') 'prior_member', ext
 
-      if (overwrite_input) then
-         restart_files_out(icopy, idom, 2) = restart_files_in(icopy, idom)
+      if (file_info%options%overwrite_input) then
+         file_info%restart_files_out%filenames(icopy, idom) = file_info%restart_files_in%filenames(icopy, idom)
       else
-         restart_files_out(icopy, idom, 2) = construct_file_name_out(restart_out_stub, icopy, idom)
+         file_info%restart_files_out%filenames(icopy, idom) = construct_file_name_out(file_info, icopy, idom)
       endif
    enddo
 
-   ! input extras
+
+   ! ---- input extras -----------------
    ! mean -never used
-   write(restart_files_in(ens_size+1,idom), '(A)') 'xxx_mean' 
    ! sd -never used
-   write(restart_files_in(ens_size+2,idom), '(A)') 'xxx_sd'  
    ! prior inf copy
-   write(restart_files_in(ens_size+3,idom), '(3A)') trim(inflation_in(1)), '_mean'
+   if (query_copy_present(PRIOR_INF_COPY)) &
+      write(file_info%restart_files_in%filenames(PRIOR_INF_COPY,idom), '(3A)') trim(file_info%options%inflation_in(1)), '_mean'
    ! prior inf sd copy
-   write(restart_files_in(ens_size+4,idom), '(3A)') trim(inflation_in(1)), '_sd'  
+   if (query_copy_present(PRIOR_INF_SD_COPY)) &
+      write(file_info%restart_files_in%filenames(PRIOR_INF_SD_COPY,idom), '(3A)') trim(file_info%options%inflation_in(1)), '_sd'
    ! post inf copy
-   write(restart_files_in(ens_size+5,idom), '(3A)') trim(inflation_in(2)), '_mean'
+   if (query_copy_present(POST_INF_COPY)) &
+      write(file_info%restart_files_in%filenames(POST_INF_COPY,idom), '(3A)') trim(file_info%options%inflation_in(2)), '_mean'
    ! post inf sd copy
-   write(restart_files_in(ens_size+6,idom), '(3A)') trim(inflation_in(2)), '_sd'  
+   if (query_copy_present(POST_INF_SD_COPY))  &
+      write(file_info%restart_files_in%filenames(POST_INF_SD_COPY,idom), '(3A)') trim(file_info%options%inflation_in(2)), '_sd'
+   !-----------------------------------
 
-   ! output extras
-   ! Prior
+
+   ! ---- output extras ---------------
+   ! PRIOR
    ! mean
-   write(restart_files_out(ens_size+1,idom,1),'(A)') 'PriorDiag_mean'
+   if (query_copy_present(ENS_MEAN_COPY)) &
+      write(file_info%restart_files_out_prior%filenames(ENS_MEAN_COPY,idom),'(A)') 'PriorDiag_mean'
+
    ! sd
-   write(restart_files_out(ens_size+2,idom,1),'(A)') 'PriorDiag_sd' 
-   ! prior inf copy (should be the same as trim(inflation_in(1)), '_mean', should we write this out?) 
-   ! JH turn on adaptive inflation and test if files are the same.
-   write(restart_files_out(ens_size+3,idom,1),'(A)') 'PriorDiag_inf_mean'
+   if (query_copy_present(ENS_SD_COPY)) &
+      write(file_info%restart_files_out_prior%filenames(ENS_SD_COPY,idom),'(A)') 'PriorDiag_sd'
+
+   ! prior inf copy (should be the same as trim(inflation_in(1)), '_mean', should we write this out?)
+   if (query_copy_present(PRIOR_INF_COPY)) &
+      write(file_info%restart_files_out_prior%filenames(PRIOR_INF_COPY,idom),'(A)') 'PriorDiag_inf_mean'
+
    ! prior inf sd copy (should be the same as trim(inflation_in(1)), '_sd', should we write this out?)
-   ! JH turn on adaptive inflation and test if files are the same.
-   write(restart_files_out(ens_size+4,idom,1),'(A)') 'PriorDiag_inf_sd' 
-   ! post inf copy - not used
-   write(restart_files_out(ens_size+5,idom,1),'(2A)') trim(inflation_out(2)), 'xxx_mean'
-   ! post inf sd copy - not used
-   write(restart_files_out(ens_size+6,idom,1),'(2A)') trim(inflation_out(2)), 'xxx_sd_d'
+   if (query_copy_present(PRIOR_INF_SD_COPY)) &
+      write(file_info%restart_files_out_prior%filenames(PRIOR_INF_SD_COPY,idom),'(A)') 'PriorDiag_inf_sd'
 
-   ! Posterior
+   ! post inf copy - not used
+   ! post inf sd copy - not used
+
+   ! POSTERIOR
    ! mean
-   write(restart_files_out(ens_size+1,idom,2),'(A)') 'mean'
+   if (query_copy_present(ENS_MEAN_COPY)) &
+      write(file_info%restart_files_out%filenames(ENS_MEAN_COPY,idom),'(A)') 'mean'
+
    ! sd
-   write(restart_files_out(ens_size+2,idom,2),'(A)') 'sd' 
+   if (query_copy_present(ENS_SD_COPY)) &
+      write(file_info%restart_files_out%filenames(ENS_SD_COPY,idom),'(A)') 'sd'
+
    ! prior inf copy
-   write(restart_files_out(ens_size+3,idom,2),'(2A)') trim(inflation_out(1)), '_mean'
+   if (query_copy_present(PRIOR_INF_COPY)) &
+      write(file_info%restart_files_out%filenames(PRIOR_INF_COPY,idom),'(2A)') trim(file_info%options%inflation_out(1)), '_mean'
+
    ! prior inf sd copy
-   write(restart_files_out(ens_size+4,idom,2),'(2A)') trim(inflation_out(1)), '_sd'
+   if (query_copy_present(PRIOR_INF_SD_COPY)) &
+      write(file_info%restart_files_out%filenames(PRIOR_INF_SD_COPY,idom),'(2A)') trim(file_info%options%inflation_out(1)), '_sd'
+
    ! post inf copy
-   write(restart_files_out(ens_size+5,idom,2),'(2A)') trim(inflation_out(2)), '_mean'
+   if (query_copy_present(POST_INF_COPY)) &
+      write(file_info%restart_files_out%filenames(POST_INF_COPY,idom),'(2A)') trim(file_info%options%inflation_out(2)), '_mean'
+
    ! post inf sd copy
-   write(restart_files_out(ens_size+6,idom,2),'(2A)') trim(inflation_out(2)), '_sd'
-   
+   if (query_copy_present(POST_INF_SD_COPY)) &
+      write(file_info%restart_files_out%filenames(POST_INF_SD_COPY,idom),'(2A)') trim(file_info%options%inflation_out(2)), '_sd'
+
+   ! Filename for copies that would have gone in the Posterior_diag.nc if we
+   ! were to write it
+   if (query_copy_present(SPARE_POST_INF_MEAN)) &
+      file_info%restart_files_out%filenames(SPARE_POST_INF_MEAN ,idom) =  'PosteriorDiag_inf_mean'  ! inf_mean
+   if (query_copy_present(SPARE_POST_INF_SPREAD)) &
+      file_info%restart_files_out%filenames(SPARE_POST_INF_SPREAD,idom)  =  'PosteriorDiag_inf_sd' ! inf_sd
+
+   !-----------------------------------
+
+
    ! Add extension to extra files
    write(ext, '(2A)') trim(dom_str), ".nc"
-   do icopy = ens_size + 1, ens_size + 6
-      write(restart_files_in(icopy,idom), '(2A)') &
-            trim(restart_files_in(icopy,idom)), ext
+   ! Assumes the extras are at the end
+   do icopy = ens_size + 1, ens_handle%num_copies
+      write(file_info%restart_files_in%filenames(icopy,idom), '(2A)') trim(file_info%restart_files_in%filenames(icopy,idom)), ext
+      write(file_info%restart_files_out_prior%filenames(icopy,idom), '(2A)') trim(file_info%restart_files_out_prior%filenames(icopy,idom)), ext
+      write(file_info%restart_files_out%filenames(icopy,idom), '(2A)') trim(file_info%restart_files_out%filenames(icopy,idom)), ext
 
-      write(restart_files_out(icopy,idom,1), '(2A)') &
-            trim(restart_files_out(icopy,idom,1)), ext
-
-      write(restart_files_out(icopy,idom,2), '(2A)') &
-            trim(restart_files_out(icopy,idom,2)), ext
    enddo
 
-   ! Storage for copies that would have gone in the Prior_diag.nc if we 
-   ! were to write it
-   restart_files_out(ens_size+7 ,idom,2) =  restart_files_out(ens_size+1,idom, 1)
-   restart_files_out(ens_size+8 ,idom,2) =  restart_files_out(ens_size+2,idom, 1)
-   restart_files_out(ens_size+9 ,idom,2) =  restart_files_out(ens_size+3,idom, 1)
-   restart_files_out(ens_size+10,idom,2) =  restart_files_out(ens_size+4,idom, 1)
+   ! Filenames for copies that would have gone in the Prior_diag.nc if we were to write it, and
+   ! we saved writing these copies until the end of filter.
+   ! Assuming that there will always be an ens_mean_copy and ens_sd_copy.
+   if ( query_copy_present(SPARE_PRIOR_MEAN)) &
+      file_info%restart_files_out%filenames(SPARE_PRIOR_MEAN ,idom) =  file_info%restart_files_out_prior%filenames(ENS_MEAN_COPY,idom)
+
+   if (query_copy_present(SPARE_PRIOR_SPREAD)) &
+      file_info%restart_files_out%filenames(SPARE_PRIOR_SPREAD ,idom) =  file_info%restart_files_out_prior%filenames(ENS_SD_COPY,idom)
+
+   ! Testing for inflation copies (these may not be exist if there is no inflation)
+   if (query_copy_present(SPARE_PRIOR_INF_MEAN) .and. query_copy_present(PRIOR_INF_COPY)) &
+      file_info%restart_files_out%filenames(SPARE_PRIOR_INF_MEAN ,idom) =  file_info%restart_files_out_prior%filenames(PRIOR_INF_COPY,idom)
+
+   if (query_copy_present(SPARE_PRIOR_INF_SPREAD) .and. query_copy_present(PRIOR_INF_SD_COPY)) &
+      file_info%restart_files_out%filenames(SPARE_PRIOR_INF_SPREAD,idom) =  file_info%restart_files_out_prior%filenames(PRIOR_INF_SD_COPY,idom)
+
 
 enddo ! domain loop
 
-
-
 ! check that the netcdf files match the variables for this domain
 ! to prevent overwritting unwanted files.
-do i = 1, ens_handle%my_num_copies
-   c = ens_handle%my_copies(i)
+do i = 1, ens_handle%my_num_copies ! just have owners check
+   copy = ens_handle%my_copies(i)
    do dom = 1, num_domains
       ! check the prior files
-      if(file_exist(restart_files_out(c,dom,1))) then
-         call check_correct_variables(restart_files_out(c,dom,1),dom)
+      if(file_exist(file_info%restart_files_out_prior%filenames(copy,dom))) then
+         call check_correct_variables(file_info%restart_files_out_prior%filenames(copy,dom),dom)
       endif
                 
       ! check the posterior files
-      if(file_exist(restart_files_out(c,dom,2))) then
-         call check_correct_variables(restart_files_out(c,dom,2),dom)
+      if(file_exist(file_info%restart_files_out%filenames(copy,dom))) then
+         call check_correct_variables(file_info%restart_files_out%filenames(copy,dom),dom)
       endif
    enddo
 enddo
@@ -353,62 +630,68 @@ end subroutine check_correct_variables
 
 !--------------------------------------------------------------------
 !> construct restart file name for writing
-function construct_file_name_out(stub, copy, domain)
+function construct_file_name_out(file_info, copy, domain)
 
-character(len=512), intent(in) :: stub
-integer,            intent(in) :: copy
-integer,            intent(in) :: domain
-character(len=1024)            :: construct_file_name_out
+type(file_info_type), intent(in) :: file_info
+integer,             intent(in) :: copy
+integer,             intent(in) :: domain
+character(len=1024)             :: construct_file_name_out
 
 character(len = 32)   :: ext = ''
 
-if (get_num_domains() > 1 .or. domain_extension)then 
+if (get_num_domains() > 1 .or. file_info%options%domain_extension)then
    write(ext, '(A, i2.2)') '_d', domain
 endif
 
-write(construct_file_name_out, '( 2A,".",i4.4,".nc")') TRIM(stub), trim(ext), copy
+write(construct_file_name_out, '( 2A,".",i4.4,".nc")') TRIM(file_info%options%restart_out_base), trim(ext), copy
 
 end function construct_file_name_out
 
 !----------------------------------
 !> Return the appropriate input file for copy and domain
-function get_input_file(copy, domain)
+function get_input_file(name_handle, copy, domain)
 
-integer, intent(in) :: copy
-integer, intent(in) :: domain
+type(restart_names_type), intent(in) :: name_handle
+integer,             intent(in) :: copy
+integer,             intent(in) :: domain
 
 character(len=2048) :: get_input_file
 
-get_input_file = restart_files_in(copy, domain)
+get_input_file = name_handle%filenames(copy, domain)
 
 end function get_input_file
 
 !----------------------------------
 !> Return the appropriate output file for copy and domain
-function get_output_file(copy, domain, isprior)
+function get_output_file(name_handle, copy, domain)
 
-integer, intent(in) :: copy
-integer, intent(in) :: domain
-logical, intent(in) :: isprior
+type(restart_names_type), intent(in) :: name_handle
+integer,             intent(in) :: copy
+integer,             intent(in) :: domain
 
 character(len=2048) :: get_output_file
 
-if(isprior) then
-   get_output_file = restart_files_out(copy, domain, 1)
-else
-   get_output_file = restart_files_out(copy, domain, 2)
-endif
+get_output_file = name_handle%filenames(copy, domain)
 
 end function get_output_file
 
 !----------------------------------
 !> Destroy module storage
-subroutine end_io_filenames()
+subroutine end_io_filenames(file_info)
 
-deallocate(restart_files_in, restart_files_out)
+type(file_info_type), intent(inout) :: file_info
+
+deallocate(file_info%restart_files_in%filenames)
+deallocate(file_info%restart_files_out_prior%filenames)
+deallocate(file_info%restart_files_out%filenames)
+
+file_info%options%initialized = .false.
+file_info%restart_files_in%initialized = .false.
+file_info%restart_files_out_prior%initialized = .false.
+file_info%restart_files_out%initialized = .false.
 
 end subroutine end_io_filenames
 
 !----------------------------------
-!> @}
 end module io_filenames_mod
+!> @}

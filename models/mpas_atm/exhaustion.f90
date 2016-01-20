@@ -32,8 +32,6 @@ use     obs_kind_mod, only : get_raw_obs_kind_name, get_raw_obs_kind_index, &
                              KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT
 use  assim_model_mod, only : open_restart_read, open_restart_write, close_restart, &
                              aread_state_restart, awrite_state_restart, &
-                             netcdf_file_type, aoutput_diagnostics, &
-                             init_diag_output, finalize_diag_output
 use time_manager_mod, only : time_type, set_calendar_type, GREGORIAN, &
                              read_time, get_time, set_time,  &
                              print_date, get_date, &

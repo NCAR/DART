@@ -42,7 +42,7 @@ public :: init_ensemble_manager,      end_ensemble_manager,     get_ensemble_tim
           broadcast_copy,             prepare_to_write_to_vars, prepare_to_write_to_copies, &
           prepare_to_read_from_vars,  prepare_to_read_from_copies, prepare_to_update_vars,  &
           prepare_to_update_copies,   print_ens_handle,              &
-          map_task_to_pe,             map_pe_to_task,           is_single_restart_file_in,  &
+          map_task_to_pe,             map_pe_to_task,            &
           allocate_single_copy,       put_single_copy,          get_single_copy,            &
           deallocate_single_copy
 
@@ -114,17 +114,6 @@ logical  :: use_var2copy_rec_loop  = .true.
 !
 ! namelist with default values
 
-!PAR: Might want this to come from above now so multiple ensembles could have
-! different restart types.
-! If true a single restart file containing all ensemble vars is read/written
-! If false, one restart file is used for each ensemble member
-!> @todo where should this go?
-logical  :: single_restart_file_in  = .true.
-
-!-----------------------------------------------------------------
-!
-! namelist with default values
-
 ! Complain if unneeded transposes are done
 logical  :: flag_unneeded_transposes = .false.
 ! Communication configuration:
@@ -137,8 +126,7 @@ logical  :: debug = .false.
 
 namelist / ensemble_manager_nml / communication_configuration, &
                                   layout, tasks_per_node,  &
-                                  debug, flag_unneeded_transposes, &
-                                  single_restart_file_in
+                                  debug, flag_unneeded_transposes
                                   
 !-----------------------------------------------------------------
 
@@ -1814,18 +1802,6 @@ real(r8), allocatable, intent(inout) :: x(:)
 if (allocated(x)) deallocate(x)
 
 end subroutine deallocate_single_copy
-
-
-!---------------------------------------------------------------------------------
-! HK this is so filter can see if it is a single file in for netcdf read. 
-! I don't think this IO stuff should be in the ensemble manager.
-function is_single_restart_file_in()
-
-logical :: is_single_restart_file_in
-
-is_single_restart_file_in = single_restart_file_in
-
-end function is_single_restart_file_in
 
 !---------------------------------------------------------------------------------
 

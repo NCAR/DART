@@ -27,25 +27,24 @@ use          obs_kind_mod, only : get_raw_obs_kind_index,    &
 
 use      obs_sequence_mod, only : static_init_obs_sequence
 
-use       assim_model_mod, only : aoutput_diagnostics, init_diag_output,        &
-                                  finalize_diag_output, static_init_assim_model,&
-                                  netcdf_file_type
+use       assim_model_mod, only : static_init_assim_model
+
+use  state_space_diag_mod, only : aoutput_diagnostics, init_diag_output,        &
+                                  finalize_diag_output, netcdf_file_type
 
 use      time_manager_mod, only : time_type, set_calendar_type, GREGORIAN,      &
                                   set_time, print_time, print_date, operator(-)
 
 use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type
 
-use   state_vector_io_mod, only : state_vector_io_init, setup_read_write,   &
-                                  turn_read_copy_on, turn_write_copy_on,    &
-                                  filter_read_restart_direct,               &
-                                  filter_write_restart_direct
+use   state_vector_io_mod, only : state_vector_io_init,    &
+                                  read_state, write_state
 
 use   state_structure_mod, only : static_init_state_type, get_num_domains
 
 use            filter_mod, only : filter_set_initial_time
 
-use      io_filenames_mod, only : io_filenames_init, set_filenames,         &
+use      io_filenames_mod, only : io_filenames_init, file_info_type,        &
                                   get_input_file, get_output_file
 
 use             model_mod, only : static_init_model, get_model_size, &
@@ -90,6 +89,8 @@ real(r8)               :: interp_test_dz = missing_r8
 real(r8), dimension(2) :: interp_test_xrange = (/ missing_r8, missing_r8 /)
 real(r8), dimension(2) :: interp_test_yrange = (/ missing_r8, missing_r8 /)
 real(r8), dimension(2) :: interp_test_zrange = (/ missing_r8, missing_r8 /)
+character(len = 129)   :: restart_in_file_name  = 'input'
+character(len = 129)   :: restart_out_file_name = 'output'
 
 namelist /model_mod_check_nml/ x_ind, num_ens,                         &
                                loc_of_interest, kind_of_interest,      &
@@ -100,11 +101,14 @@ namelist /model_mod_check_nml/ x_ind, num_ens,                         &
                                interp_test_dy, interp_test_yrange,     &
                                interp_test_dz, interp_test_zrange,     &
                                interp_test_vertcoord,                  &
-                               verbose, test1thru
+                               verbose, test1thru,                     &
+                               restart_in_file_name, restart_out_file_name
 
 ! io variables
 integer :: iunit, io
 integer, allocatable :: ios_out(:)
+type(file_info_type) :: file_info
+logical              :: read_time_from_file = .true.
 
 ! model state variables
 type(ensemble_type) :: ens_handle
@@ -179,8 +183,9 @@ model_time  = set_time(21600, 149446)   ! 06Z 4 March 2010
 call init_ensemble_manager(ens_handle, num_ens, model_size)
 
 ! Reading netcdf restart file:
-call setup_read_write(num_ens)
-call set_filenames(ens_handle, num_ens, "no_inf1", "no_inf2")
+file_info = io_filenames_init(ens_handle, .false., .false., restart_in_file_name, restart_out_file_name, output_restart=.true., netcdf_read=.true., netcdf_write=.true.)
+
+
 
 !----------------------------------------------------------------------
 ! Open a test netcdf initial conditions file.
@@ -188,22 +193,18 @@ call set_filenames(ens_handle, num_ens, "no_inf1", "no_inf2")
 num_domains = get_num_domains()
 do idom = 1, num_domains
    do imem = 1, num_ens
-      call turn_read_copy_on(imem)
-      if ( do_output() ) write(*,*) 'Reading File : ', trim( get_input_file(imem, domain=idom) )
+      if ( do_output() ) write(*,*) 'Reading File : ', trim( get_input_file(file_info%restart_files_in, imem, domain=idom) )
    enddo
 enddo
-
-call filter_read_restart_direct(ens_handle, time1, num_extras=0, use_time_from_file=.true.)
+call read_state(ens_handle, file_info,  read_time_from_file, time1)
 model_time = time1
 
 do idom = 1, num_domains
    do imem = 1, num_ens
-      call turn_write_copy_on(imem)
-      if ( do_output() ) write(*,*) 'Writing File : ', trim( get_output_file(imem, domain=idom, isprior=.false.) )
+      if ( do_output() ) write(*,*) 'Writing File : ', trim( get_output_file(file_info%restart_files_out, imem, domain=idom) )
    enddo
 enddo
-
-call filter_write_restart_direct(ens_handle, num_extras=0, isprior=.true.)
+call write_state(ens_handle, file_info)
 
 write(*,*) 
 call print_date( model_time,' model_mod_check:model date')
@@ -327,7 +328,6 @@ call static_init_obs_sequence()
 
 call static_init_state_type()
 call state_vector_io_init()
-call io_filenames_init()
 
 end subroutine initialize_modules_used
 

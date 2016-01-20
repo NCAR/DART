@@ -1,4 +1,5 @@
 assim_model/assim_model_mod.f90
+adaptive_inflate/adaptive_inflate_mod.f90
 common/types_mod.f90
 cov_cutoff/cov_cutoff_mod.f90
 location/threed_sphere/location_mod.f90

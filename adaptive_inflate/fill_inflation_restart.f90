@@ -20,6 +20,7 @@ use ensemble_manager_mod, only : ensemble_type,         &
                                  prepare_to_write_to_vars
 
 use state_vector_io_mod,  only : write_ensemble_restart
+use io_filenames_mod,     only : file_info_type
 
 use assim_model_mod,      only : static_init_assim_model
 
@@ -43,6 +44,7 @@ character(len = 129) :: msgstring
 character(len = 32)  :: out_file_name = 'inflate_ics'
 
 type(ensemble_type)  :: ens_handle
+type(file_info_type) :: file_info ! dummy file_info type
 
 real(r8)     :: inf_initial, sd_initial
 integer      :: ss_inflate_index    = 1
@@ -81,7 +83,7 @@ call prepare_to_write_to_vars(ens_handle)
 ens_handle%vars(:, ss_inflate_index   ) = inf_initial
 ens_handle%vars(:, ss_inflate_sd_index) =  sd_initial
 
-call write_ensemble_restart(ens_handle, out_file_name, ss_inflate_index, &
+call write_ensemble_restart(ens_handle, file_info, out_file_name, ss_inflate_index, &
                             ss_inflate_sd_index, force_single_file = .true.)
 
 call end_ensemble_manager(ens_handle)

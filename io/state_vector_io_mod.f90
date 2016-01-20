@@ -4,45 +4,86 @@
 !
 ! $Id$
 
-!> Routines for reading the model state.
-!> The limited transpose routines are in direct_netcdf_mod.
+!----------------------------------------------------------------------
 module state_vector_io_mod
+!> \defgroup state_vector_io_mod state_vector_io_mod
+!> @{ \brief Routines for reading and writing the model state.
+!>
+!> Read_state() and write_state() are the major routines in this module. filter_write_restart_direct()
+!> is used in diagnostic files writes (for certain diagnostic options).
+!> They read/write state from an ensmeble_handle%copies array to files described in a file_info_type.
+!> The inflation handles (prior and posterior) are optional arguements to read/write_state since
+!> inflation is used in filter but not in perfect_model_obs.
+!>
+!> Two types of state files are supported:
+!>     * netcdf
+!>     * dart format (this may be ascii or binary set by namelist option: write_binary_restart_files )
+!> 
+!> netcdf files use \ref io_filenames_mod. See model_mod for construct_file_name_in() and
+!> io_filenames_mod for construct_file_name_out(). See \ref io_filenames_mod for filenames 
+!> for extra copies (mean, etc.)
+!> Each domain is written to a separate file.
+!>
+!> dart format files use the naming convention from Lanai, e.g. filter_ics.0001 where
+!>  filter_ics is the restart_in_base passed to io_filenames_init().
+!> 
+!> Perturbation (creating an ensemble from a single instance) is done separatly from the read.
+!> perturb_from_single_copy is passed as an arguement to read_state. When reading netcdf files
+!> only the first ensemble member is read and transposed.  Note for dart format restarts the 
+!> whole ensemble is transpose so this is over communicating. create_ensemble_from_single_file()
+!> is then called in filter to generate the ensemble.
+
+use adaptive_inflate_mod, only : adaptive_inflate_type, mean_from_restart, sd_from_restart, &
+                                 do_single_ss_inflate, do_varying_ss_inflate, get_inflate, &
+                                 get_sd, get_inflation_in_filename, get_inflation_out_filename, output_inf_restart, &
+                                 get_inflate_mean, get_inflate_sd, do_ss_inflate
 
 use direct_netcdf_mod,    only : read_transpose, transpose_write
 
-use types_mod,            only : r8, MISSING_R8, i4
+use types_mod,            only : r8, MISSING_R8, i4, i8
 
-use mpi_utilities_mod,    only : task_count, send_to, receive_from, my_task_id
+use mpi_utilities_mod,    only : task_count, send_to, receive_from, my_task_id, &
+                                 broadcast_send, broadcast_recv
 
 use ensemble_manager_mod, only : ensemble_type, map_pe_to_task, &
-                                 is_single_restart_file_in, map_task_to_pe, &
-                                 get_copy_owner_index, put_copy
+                                 map_task_to_pe, &
+                                 get_copy_owner_index, put_copy, get_allow_transpose, &
+                                 all_copies_to_all_vars, all_vars_to_all_copies, &
+                                 prepare_to_write_to_vars, get_var_owner_index
                                  
 
 use utilities_mod,        only : error_handler, nc_check, check_namelist_read, &
                                  find_namelist_in_file, nmlfileunit,           &
                                  do_nml_file, do_nml_term,          &
-                                 E_MSG, E_ERR, get_unit, ascii_file_format, &
+                                 E_MSG, E_ERR, E_DBG, get_unit, ascii_file_format, &
                                  close_file, dump_unit_attributes, &
                                  register_module, set_output
 
-use assim_model_mod,      only : get_model_size, pert_model_state, &
-                                 assim_model_type
+use assim_model_mod,      only : assim_model_type
 
 use time_manager_mod,     only : time_type, read_time, write_time, &
                                  get_time
 
-use io_filenames_mod,     only : get_input_file
-
-
-use random_seq_mod,       only : random_seq_type, init_random_seq, random_gaussian
+use io_filenames_mod,     only : get_input_file, file_info_type, get_read_from_netcdf, get_write_to_netcdf, &
+                                 get_output_restart, get_output_mean, get_restart_out_base, &
+                                 get_restart_in_base, get_read_from_single_file, get_write_to_single_file, &
+                                 assert_file_info_initiailzed, restart_names_type, &
+                                 assert_restart_names_initiailzed
 
 !> @todo  This should go through assim_model_mod
 use model_mod,            only : read_model_time
 
 use copies_on_off_mod,    only : setup_read_write, turn_read_copy_on,      &
                                  turn_write_copy_on, turn_read_copies_off, &
-                                 turn_write_copy_off
+                                 turn_write_copy_off, end_read_write, &
+                                 ENS_MEAN_COPY, &
+                                 PRIOR_INF_COPY, PRIOR_INF_SD_COPY, &
+                                 POST_INF_COPY, POST_INF_SD_COPY, &
+                                 SPARE_PRIOR_MEAN, SPARE_PRIOR_SPREAD, &
+                                 SPARE_PRIOR_INF_MEAN, SPARE_PRIOR_INF_SPREAD, &
+                                 SPARE_POST_INF_MEAN, SPARE_POST_INF_SPREAD, &
+                                 query_copy_present
+                                 
 
 use state_structure_mod,  only : get_num_domains
 
@@ -59,27 +100,30 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 private
 
+! Initialize, read, write routines for filter and perfect_model_obs
 public :: state_vector_io_init, &
-          read_transpose,       &
-          transpose_write,      &
-          setup_read_write,     &
-          turn_read_copy_on,    &
-          turn_write_copy_on,   &
-          turn_read_copies_off, &
+          read_state, &
+          write_state
+
+! For diagnostic file writes.
+public :: turn_write_copy_on, &
           turn_write_copy_off, &
-          aread_state_restart, &
-          awrite_state_restart, &
-          write_ensemble_restart, &
-          read_ensemble_restart, &
-          open_restart_read, &
-          open_restart_write, &
-          close_restart, &
-          filter_read_restart_direct, &
+          setup_read_write, &
+          end_read_write, &
           filter_write_restart_direct
 
-integer :: ret !< netcdf return code
-integer :: ncfile !< netcdf input file identifier
-integer :: ncfile_out !< netcdf output file handle
+! obs_model_mod - no netcdf calls in obs_model_mod yet
+! model converters - don't use netcdf.
+public :: aread_state_restart, &
+          awrite_state_restart, &
+          open_restart_read, &
+          open_restart_write, &
+          close_restart
+
+! smoother - this is left over code.
+public :: read_ensemble_restart, &
+          write_ensemble_restart
+
 
 ! Module storage for writing error messages
 character(len = 255) :: msgstring
@@ -93,26 +137,21 @@ character(len = 16) :: read_format = "unformatted", write_format = "unformatted"
 ! namelist variables with default values
 ! Aim: to have the regular transpose as the default
 integer :: limit_mem = HUGE(1_i4)!< This is the number of elements (not bytes) so you don't have times the number by 4 or 8
-logical :: time_unlimited = .true. ! You need to keep track of the time.
 logical :: single_precision_output = .false. ! Allows you to write r4 netcdf files even if filter is double precision
 
-logical  :: single_restart_file_out = .true.
-! Size of perturbations for creating ensembles when model won't do it
-real(r8) :: perturbation_amplitude  = 0.2_r8
-! write_binary_restart_files  == .true.  -> use unformatted file format. 
+! write_binary_restart_files  == .true.  -> use unformatted file format.
 !                                     Full precision, faster, smaller,
 !                                     but not as portable.
 logical  :: write_binary_restart_files = .false.
 
-
-namelist /  state_vector_io_nml / limit_mem, time_unlimited, &
-   single_precision_output, single_restart_file_out, perturbation_amplitude, &
+namelist /  state_vector_io_nml / limit_mem, &
+   single_precision_output, &
    write_binary_restart_files
 
 contains
 
 !-------------------------------------------------
-!> Initialize model 
+!> Initialize module
 !> so you can read the namelist
 subroutine state_vector_io_init()
 
@@ -137,7 +176,6 @@ call check_namelist_read(iunit, io, "state_vector_io_nml")
 
 endif
 
-
 ! Write the namelist values to the log file
 if (do_nml_file()) write(nmlfileunit, nml=state_vector_io_nml)
 if (do_nml_term()) write(     *     , nml=state_vector_io_nml)
@@ -145,8 +183,332 @@ if (do_nml_term()) write(     *     , nml=state_vector_io_nml)
 end subroutine state_vector_io_init
 
 !-------------------------------------------------
+!> Read in the state vectors into an ensemble handle
+!> The copies will end up in the state_ens_handle%copies array.
+!> If read_time_from_file = .true. then time is overwritten by the time read from 
+!> the restart. If read_time_from_file = .false. then the time associated with each ensemble 
+!> member is set to time.
+!> Inflation handles are optional (used by filter, not by perfect_model_obs)
+!>   - Note the user must give both inflation handles or neither.
+!> perturb_from_single_copy is optional (used by filter, not by perfect_model_obs)
+!>   - only 1 restart file is read in. For netcdf read only one copy is transposed. Still
+!>     doing a full all vars to all copies for dart format read though.
+subroutine read_state(state_ens_handle, file_info, read_time_from_file, time, prior_inflate_handle, post_inflate_handle, perturb_from_single_copy)
+
+type(ensemble_type),         intent(inout) :: state_ens_handle
+type(file_info_type),        intent(in)    :: file_info
+logical,                     intent(in)    :: read_time_from_file ! state time
+type(time_type),             intent(inout) :: time
+type(adaptive_inflate_type), optional, intent(in) :: prior_inflate_handle
+type(adaptive_inflate_type), optional, intent(in) :: post_inflate_handle
+logical,                     optional, intent(in) :: perturb_from_single_copy
+
+integer :: ens_size
+logical :: inflation_handles
+logical :: local_pert
+
+if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
+
+! check whether file_info handle is initialized
+call assert_file_info_initiailzed(file_info, 'read_state')
+
+! check that we either have both inflation handles or neither:
+if ( present(prior_inflate_handle) .neqv. present(post_inflate_handle) ) then
+   call error_handler(E_ERR, 'read_state', 'must have both inflation handles or neither')
+endif
+
+if (present(prior_inflate_handle) .and. present(post_inflate_handle)) then
+   inflation_handles = .true.
+else
+   inflation_handles = .false.
+endif
+
+if (present(perturb_from_single_copy)) then
+   local_pert = perturb_from_single_copy
+else
+   local_pert = .false.
+endif
+
+ens_size = state_ens_handle%num_copies - state_ens_handle%num_extras
+
+! set up arrays for which copies to read/write
+call setup_read_write(state_ens_handle%num_copies)
+call turn_read_copies_off(1, state_ens_handle%num_copies)
+
+if (local_pert) then
+   call error_handler(E_MSG,'read_state:', &
+      'Reading in a single ensemble and perturbing data for the other ensemble members')
+else
+   call error_handler(E_MSG,'read_state:', &
+      'Reading in initial condition/restart data for all ensemble members from file(s)')
+endif
+
+if (get_read_from_netcdf(file_info)) then ! netcdf
+
+   ! Read in restart files
+   if (local_pert) then
+      call turn_read_copy_on(1)
+   else
+      call turn_read_copy_on(1, ens_size) ! need to read all restart copies
+   endif
+
+   ! inflation read from netcdf files only for state_space_inflation
+   ! Ideally would only do a read transpose for VARYING state_space_inflation
+   if (inflation_handles) then
+      if (do_ss_inflate(prior_inflate_handle)) then
+         if (mean_from_restart(prior_inflate_handle)) call turn_read_copy_on(PRIOR_INF_COPY)
+         if (sd_from_restart(prior_inflate_handle))   call turn_read_copy_on(PRIOR_INF_SD_COPY)
+      endif
+
+      if (do_ss_inflate(post_inflate_handle)) then
+         if (mean_from_restart(post_inflate_handle)) call turn_read_copy_on(POST_INF_COPY)
+         if (sd_from_restart(post_inflate_handle))   call turn_read_copy_on(POST_INF_SD_COPY)
+      endif
+   endif
+
+   call filter_read_restart_direct(state_ens_handle, file_info, read_time_from_file, time)
+
+   ! Filling copies array for single state space inflation values if required.
+   if (inflation_handles) then
+
+      ! If inflation is single state space read from a file, the copies array is filled here.
+      call fill_single_ss_inflate_from_read(state_ens_handle, prior_inflate_handle, post_inflate_handle)
+
+      ! If inflation is from a namelist value it is set here.
+      call fill_ss_from_nameslist_value(state_ens_handle, prior_inflate_handle, post_inflate_handle)
+
+      ! To match Lanai filter_state_space_diagnostics, if not doing inflation set inf_mean = 1, inf_sd = 0
+      if (.not. do_ss_inflate(prior_inflate_handle)) then
+         state_ens_handle%copies(PRIOR_INF_COPY, :)    = 1.0_r8
+         state_ens_handle%copies(PRIOR_INF_SD_COPY, :) = 0.0_r8
+      endif
+      if (.not. do_ss_inflate(post_inflate_handle)) then
+         state_ens_handle%copies(POST_INF_COPY, :)    = 1.0_r8
+         state_ens_handle%copies(POST_INF_SD_COPY, :) = 0.0_r8
+      endif
+
+   endif
+
+else ! expecting DART restart files
+
+   ! Allocate storage space in ensemble manager.
+   ! First check that %vars is not already allocated.
+   if(.not. get_allow_transpose(state_ens_handle) ) allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
+
+   ! Read in restart files
+   call filter_read_restart(state_ens_handle, file_info, read_time_from_file, local_pert, time)
+
+   ! inflation read (for state_space_inflation only)
+   if (inflation_handles) then
+      if (do_ss_inflate(prior_inflate_handle)) then
+         ! This routine checks mean_from_restart, sd_from_restart
+         call read_state_space_inflation(state_ens_handle, prior_inflate_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
+      endif
+      if (do_ss_inflate(post_inflate_handle)) then
+         ! This routine checks mean_from_restart, sd_from_restart
+         call read_state_space_inflation(state_ens_handle, post_inflate_handle, POST_INF_COPY, POST_INF_SD_COPY)
+      endif
+   endif
+
+   call all_vars_to_all_copies(state_ens_handle)
+   if (.not. get_allow_transpose(state_ens_handle))deallocate(state_ens_handle%vars)
+
+endif
+
+call end_read_write()
+
+end subroutine read_state
+
+!-------------------------------------------------
+!> Write state vectors from an ensemble_handle
+!> The inflation handles are options (used by filter, not by perfect_model_obs)
+!> Note both inflation handles must be present (or neither)
+!> There is logic in write_state about spare_copies. These are extra state vector 
+!> copies that may be in the ensemble handle when doing large model, single timestep runs.
+subroutine write_state(state_ens_handle, file_info, prior_inflate_handle, post_inflate_handle)
+
+type(ensemble_type),         intent(inout) :: state_ens_handle
+type(file_info_type),        intent(in)    :: file_info
+type(adaptive_inflate_type), optional, intent(in)    :: prior_inflate_handle
+type(adaptive_inflate_type), optional, intent(in)    :: post_inflate_handle
+
+integer :: ens_size
+
+logical :: inflation_handles
+
+if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
+
+! check whether file_info handle is initialized
+call assert_file_info_initiailzed(file_info, 'write_state')
+
+! check that we either have both inflation handles or neither:
+if ( present(prior_inflate_handle) .neqv. present(post_inflate_handle) ) then
+   call error_handler(E_ERR, 'read_state', 'must have both inflation handles or neither')
+endif
+
+if (present(prior_inflate_handle) .and. present(post_inflate_handle)) then
+   inflation_handles = .true.
+else
+   inflation_handles = .false.
+endif
+
+ens_size = state_ens_handle%num_copies - state_ens_handle%num_extras
+
+! set up arrays for which copies to read/write
+! clean slate of files
+call setup_read_write(state_ens_handle%num_copies)
+call turn_write_copy_off(1, state_ens_handle%num_copies)
+
+if (get_write_to_netcdf(file_info)) then ! netcdf
+
+   ! ------ turn on copies for: restarts, mean and spread ------
+   if (get_output_restart(file_info)) call turn_write_copy_on(1, ens_size) ! restarts
+   if (get_output_mean(file_info))    call turn_write_copy_on(ENS_MEAN_COPY)
+
+   ! These two copies are the mean and spread that would have gone in the Prior_Diag.nc file
+   if(.true.) then ! spare copies, single time step
+      call turn_write_copy_on(SPARE_PRIOR_MEAN)
+      call turn_write_copy_on(SPARE_PRIOR_SPREAD)
+   endif
+   !--------------------------------------------
+
+
+   ! ------ turn on copies for: inflation ------
+   ! inflation written to netcdf files only for state_space_inflation
+   if (inflation_handles) then
+
+      ! PRIOR
+      if (do_ss_inflate(prior_inflate_handle)) then
+
+         ! These two copies are input for the next run of filter
+         if (output_inf_restart(prior_inflate_handle)) then
+            call turn_write_copy_on(PRIOR_INF_COPY)
+            call turn_write_copy_on(PRIOR_INF_SD_COPY)
+         endif
+
+         ! These two copies are the inflation values that would have gone in the Prior_Diag.nc file
+         ! Assume if they are there, they need to be written out
+         if (query_copy_present(SPARE_PRIOR_INF_MEAN))    call turn_write_copy_on(SPARE_PRIOR_INF_MEAN)
+         if (query_copy_present(SPARE_PRIOR_INF_SPREAD))  call turn_write_copy_on(SPARE_PRIOR_INF_SPREAD)
+
+      endif
+
+      ! POSTERIOR
+      if (do_ss_inflate(post_inflate_handle)) then
+
+         ! These two copies are input for the next run of filter
+         if (output_inf_restart(post_inflate_handle)) then
+            call turn_write_copy_on(POST_INF_COPY)
+            call turn_write_copy_on(POST_INF_SD_COPY)
+         endif
+
+         ! These two copies are the inflation values that would have gone in the Posterior_Diag.nc file
+         ! Assume if they are there, they need to be written out
+         if (query_copy_present(SPARE_POST_INF_MEAN))   call turn_write_copy_on(SPARE_POST_INF_MEAN)
+         if (query_copy_present(SPARE_POST_INF_SPREAD)) call turn_write_copy_on(SPARE_POST_INF_SPREAD)
+      endif
+      
+   endif
+   !----------------------------------------------
+
+   call filter_write_restart_direct(state_ens_handle, file_info%restart_files_out)
+   
+else ! dart format restarts
+
+   ! allocating storage space in ensemble manager
+   if (.not. get_allow_transpose(state_ens_handle)) allocate(state_ens_handle%vars(state_ens_handle%num_vars, state_ens_handle%my_num_copies))
+   call all_copies_to_all_vars(state_ens_handle)
+
+   if(get_output_restart(file_info)) then
+      call write_ensemble_restart(state_ens_handle, file_info, get_restart_out_base(file_info), 1, ens_size)
+   endif
+
+   if(get_output_mean(file_info)) then
+      call write_ensemble_restart(state_ens_handle, file_info, trim(get_restart_out_base(file_info))//'.mean', &
+                               ENS_MEAN_COPY, ENS_MEAN_COPY, .true.)
+   endif
+
+   if (inflation_handles) then
+      if (do_ss_inflate(prior_inflate_handle)) then
+         ! This routine checks output_inf_restart(inflate_handle)
+         call write_state_space_inflation(prior_inflate_handle, file_info, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
+      endif
+
+      if (do_ss_inflate(post_inflate_handle)) then
+         ! This routine checks output_inf_restart(inflate_handle)
+         call write_state_space_inflation(post_inflate_handle, file_info, state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
+      endif
+   endif
+
+   ! Destroying storage in ensemble manager.
+   if (.not. get_allow_transpose(state_ens_handle)) deallocate(state_ens_handle%vars)
+
+endif
+
+call end_read_write()
+
+end subroutine write_state
+
+!-------------------------------------------------
 ! DART read write (binary/ascii vector)
 !-------------------------------------------------
+
+!-------------------------------------------------------------------------
+!> Read in restart files from dart format files (time + vector)
+!> Restarts may be:
+!>   one file per restart
+!>   all restarts in one file
+!> The file_info type contains the read options (see get_read_from_single_file(file_info))
+subroutine filter_read_restart(state_ens_handle, file_info, read_time_from_file, perturb_from_single_copy,  time)
+
+type(ensemble_type),  intent(inout) :: state_ens_handle
+type(file_info_type), intent(in)    :: file_info
+logical,              intent(in)    :: read_time_from_file
+logical,              intent(in)    :: perturb_from_single_copy
+type(time_type),      intent(inout) :: time
+
+integer :: days, secs
+integer :: start_copy, end_copy ! 1, ens_size or 1,1 if perturbing from a single instance.
+
+! check whether file_info handle is initialized
+call assert_file_info_initiailzed(file_info, 'filter_read_restart')
+
+start_copy = 1
+if (perturb_from_single_copy) then
+   end_copy = 1
+else
+   end_copy = state_ens_handle%num_copies - state_ens_handle%num_extras ! ens_size
+endif
+
+! Only read in initial conditions for actual ensemble members, assuming these
+! are copies 1 to ens_size
+if(read_time_from_file) then
+
+   call read_ensemble_restart(state_ens_handle, start_copy, end_copy, get_restart_in_base(file_info), force_single_file=get_read_from_single_file(file_info))
+      !> @todo time
+   if (state_ens_handle%my_num_copies > 0) time = state_ens_handle%time(1)
+
+else
+
+   call read_ensemble_restart(state_ens_handle, start_copy, end_copy, get_restart_in_base(file_info), time, force_single_file=get_read_from_single_file(file_info))
+      call get_time(time, secs, days)
+      write(msgstring, '(A)') 'By namelist control, ignoring time found in restart file.'
+      call error_handler(E_MSG,'filter_read_restart:',msgstring,source,revision,revdate)
+      write(msgstring, '(A,I6,1X,I5)') 'Setting initial days, seconds to ',days,secs
+      call error_handler(E_MSG,'filter_read_restart:',msgstring,source,revision,revdate)
+
+endif
+
+! Temporary print of initial model time
+if(state_ens_handle%my_pe == 0) then
+   ! FIXME for the future: if pe 0 is not task 0, pe 0 can not print debug messages
+   call get_time(time, secs, days)
+   write(msgstring, *) 'initial model time of 1st ensemble member (days,seconds) ',days,secs
+   call error_handler(E_DBG,'filter_read_restart',msgstring,source,revision,revdate)
+endif
+
+end subroutine filter_read_restart
+!----------------------------------------------------------------------
 
 
 subroutine write_state_restart(assim_model, funit, target_time)
@@ -155,8 +517,6 @@ subroutine write_state_restart(assim_model, funit, target_time)
 ! Write a restart file given a model extended state and a unit number 
 ! opened to the restart file. (Need to reconsider what is passed to 
 ! identify file or if file can even be opened within this routine).
-
-implicit none
 
 type (assim_model_type), intent(in)           :: assim_model
 integer,                 intent(in)           :: funit
@@ -170,89 +530,309 @@ endif
 
 end subroutine write_state_restart
 
+!-----------------------------------------------------------------
+
+!-------------------------------------------------
+! Netcdf read write
+! Uses direct_netcdf_mod.f90
+!-------------------------------------------------
+
+!------------------------------------------------------------------
+!> Read the restart information directly from the model output
+!> netcdf file
+subroutine filter_read_restart_direct(state_ens_handle, file_info, use_time_from_file, time)
+
+type(ensemble_type),  intent(inout) :: state_ens_handle
+type(file_info_type), intent(in)    :: file_info
+logical,              intent(in)    :: use_time_from_file
+type(time_type),      intent(inout) :: time
+
+integer                         :: dart_index !< where to start in state_ens_handle%copies
+integer                         :: domain !< loop index
+
+! check whether file_info handle is initialized
+call assert_file_info_initiailzed(file_info, 'filter_read_restart_direct')
+
+! read time from input file if time not set in namelist
+!> @todo Check time constistency across files? This is assuming they are consistent.
+if(use_time_from_file) then
+   time = read_model_time(get_input_file(file_info%restart_files_in, 1,1)) ! Any of the restarts?
+endif
+
+state_ens_handle%time = time
+
+! read in the data and transpose
+dart_index = 1 ! where to start in state_ens_handle%copies - this is modified by read_transpose
+do domain = 1, get_num_domains()
+   call read_transpose(state_ens_handle, file_info%restart_files_in, domain, dart_index, limit_mem)
+enddo
+
+! Need Temporary print of initial model time?
+
+end subroutine filter_read_restart_direct
+
+!-------------------------------------------------------------------------
+!> write the restart information directly into the model netcdf file.
+subroutine filter_write_restart_direct(state_ens_handle, file_name_handle)
+
+type(ensemble_type),   intent(inout) :: state_ens_handle
+type(restart_names_type), intent(in) :: file_name_handle
+
+integer :: dart_index !< where to start in state_ens_handle%copies
+integer :: domain !< loop index
+
+if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
+
+! check whether file_info handle is initialized
+call assert_restart_names_initiailzed(file_name_handle, 'filter_write_restart_direct')
+
+! transpose and write out the data
+dart_index = 1
+
+! Different filenames for prior vs. posterior vs. diagnostic files
+do domain = 1, get_num_domains()
+   call transpose_write(state_ens_handle, file_name_handle, domain, dart_index, limit_mem, single_precision_output)
+enddo
 
 
+end subroutine filter_write_restart_direct
 
-subroutine awrite_state_restart(model_time, model_state, funit, target_time)
-!----------------------------------------------------------------------
-!
-! Write a restart file given a model extended state and a unit number 
-! opened to the restart file. (Need to reconsider what is passed to 
-! identify file or if file can even be opened within this routine).
+!------------------------------------------------------------------
+!> Single state space inflation from file value is only index 1 of 
+!> inflation vars array (mean and sd).
+!> This routine find the owner of the 1st element in the vars array
+!> The owner broadcasts the values of single state space inflation 
+!> to all other tasks who then update their copies array.
+!> Note filling both mean and sd values if at least one of mean
+!> or sd is read from file.  If one is set from a namelist the copies 
+!> array is overwritten in fill_ss_from_namelist value
+subroutine fill_single_ss_inflate_from_read(ens_handle, prior_inflate_handle, post_inflate_handle)
 
-implicit none
+type(ensemble_type),         intent(inout) :: ens_handle
+type(adaptive_inflate_type), intent(in)    :: prior_inflate_handle
+type(adaptive_inflate_type), intent(in)    :: post_inflate_handle
 
-type(time_type), intent(in)           :: model_time
-real(r8),        intent(in)           :: model_state(:)
-integer,         intent(in)           :: funit
-type(time_type), optional, intent(in) :: target_time
+integer :: owner, owners_index
+integer(i8) :: first_element
+real(r8), allocatable :: inf_array(:) ! 2 or 4 values
+integer :: inf_count
+logical :: return_me ! flag to return if not read any inflation values from files
 
-integer :: i, io, rc
-character(len = 16) :: open_format
-character(len=128) :: filename
-logical :: is_named
+! Return if not doing single state space inflation
+if (.not. do_single_ss_inflate(prior_inflate_handle) .and. .not. do_single_ss_inflate(post_inflate_handle)) return
 
-if ( .not. module_initialized ) call state_vector_io_init()
+return_me = .true.
+! Return if not reading any state space inflation values from files
+if ( do_single_ss_inflate(prior_inflate_handle)) then
+   if (mean_from_restart(prior_inflate_handle)) return_me = .false.
+   if (sd_from_restart(prior_inflate_handle))   return_me = .false.
+endif
+if ( do_single_ss_inflate(post_inflate_handle)) then
+   if (mean_from_restart(post_inflate_handle)) return_me = .false.
+   if (sd_from_restart(post_inflate_handle))   return_me = .false.
+endif
+if (return_me) return
 
-! Figure out whether the file is opened FORMATTED or UNFORMATTED
-inquire(funit, FORM=open_format)
+! At least some single state space inflation values are being read from files.
+inf_count = 0
+if (do_single_ss_inflate(prior_inflate_handle)) inf_count = 2
+if (do_single_ss_inflate(post_inflate_handle))  inf_count = inf_count + 2
 
-! assume success
-io = 0
+allocate(inf_array(inf_count)) ! for sending and recveiving inflation values
 
-! Write the state vector
-if (ascii_file_format(open_format)) then
-   if(present(target_time)) call write_time(funit, target_time, ios_out=io)
-   if (io /= 0) goto 10
-   call write_time(funit, model_time, ios_out=io)
-   if (io /= 0) goto 10
-   do i = 1, size(model_state)
-      write(funit, *, iostat = io) model_state(i)
-      if (io /= 0) goto 10
-   end do
+! Find out who owns the first element of vars array
+first_element = 1
+call get_var_owner_index(first_element, owner, owners_index)
+
+if (ens_handle%my_pe == owner) then
+   if (do_single_ss_inflate(prior_inflate_handle) .and. do_single_ss_inflate(post_inflate_handle)) then
+
+      inf_array(1) = ens_handle%copies(PRIOR_INF_COPY, owners_index)
+      inf_array(2) = ens_handle%copies(PRIOR_INF_SD_COPY, owners_index)
+      inf_array(3) = ens_handle%copies(POST_INF_COPY, owners_index)
+      inf_array(4) = ens_handle%copies(POST_INF_SD_COPY, owners_index)
+
+   elseif (do_single_ss_inflate(post_inflate_handle) .and. .not. do_single_ss_inflate(post_inflate_handle)) then
+
+      inf_array(1) = ens_handle%copies(PRIOR_INF_COPY, owners_index)
+      inf_array(2) = ens_handle%copies(PRIOR_INF_SD_COPY, owners_index)
+
+   elseif(.not. do_single_ss_inflate(post_inflate_handle) .and. do_single_ss_inflate(post_inflate_handle)) then
+
+      inf_array(1) = ens_handle%copies(POST_INF_COPY, owners_index)
+      inf_array(2) = ens_handle%copies(POST_INF_SD_COPY, owners_index)
+
+   endif
+
+   call broadcast_send(map_pe_to_task(ens_handle, owner), inf_array)
+
 else
-   if(present(target_time)) call write_time(funit, target_time, form="unformatted", ios_out=io)
-   if (io /= 0) goto 10
-   call write_time(funit, model_time, form="unformatted", ios_out=io)
-   if (io /= 0) goto 10
-   write(funit, iostat = io) model_state
-   if (io /= 0) goto 10
+
+   call broadcast_recv(map_pe_to_task(ens_handle, owner), inf_array)
+
+   if (do_single_ss_inflate(prior_inflate_handle) .and. do_single_ss_inflate(post_inflate_handle)) then
+
+      ens_handle%copies(PRIOR_INF_COPY, owners_index)     = inf_array(1)
+      ens_handle%copies(PRIOR_INF_SD_COPY, owners_index)  = inf_array(2)
+      ens_handle%copies(POST_INF_COPY, owners_index)      = inf_array(3)
+      ens_handle%copies(POST_INF_SD_COPY, owners_index)   = inf_array(4)
+
+   elseif (do_single_ss_inflate(prior_inflate_handle) .and. .not. do_single_ss_inflate(post_inflate_handle)) then
+
+      ens_handle%copies(PRIOR_INF_COPY, owners_index)    = inf_array(1)
+      ens_handle%copies(PRIOR_INF_SD_COPY, owners_index) = inf_array(2)
+
+   elseif(.not. do_single_ss_inflate(prior_inflate_handle) .and. do_single_ss_inflate(post_inflate_handle)) then
+
+      ens_handle%copies(POST_INF_COPY, owners_index)    = inf_array(1)
+      ens_handle%copies(POST_INF_SD_COPY, owners_index) = inf_array(2)
+
+   endif
+
 endif
 
-! come directly here on error. 
-10 continue
+end subroutine fill_single_ss_inflate_from_read
 
-! if error, use inquire function to extract filename associated with
-! this fortran unit number and use it to give the error message context.
-if (io /= 0) then
-   inquire(funit, named=is_named, name=filename, iostat=rc)
-   if ((rc /= 0) .or. (.not. is_named)) filename = 'unknown file'
-   write(msgstring,*) 'error writing to restart file ', trim(filename)
-   call error_handler(E_ERR,'awrite_state_restart',msgstring,source,revision,revdate)
+!------------------------------------------------------------------
+! Check whether inflation values come from namelist and
+! fill copies array with namelist values for inflation if they do.
+subroutine fill_ss_from_nameslist_value(ens_handle, prior_inflate_handle, post_inflate_handle)
+
+type(ensemble_type),         intent(inout) :: ens_handle
+type(adaptive_inflate_type), intent(in)    :: prior_inflate_handle
+type(adaptive_inflate_type), intent(in)    :: post_inflate_handle
+
+if (do_ss_inflate(prior_inflate_handle)) then
+   if (.not. mean_from_restart(prior_inflate_handle)) ens_handle%copies(PRIOR_INF_COPY, :)    = get_inflate_mean(prior_inflate_handle)
+   if (.not. sd_from_restart(prior_inflate_handle))   ens_handle%copies(PRIOR_INF_SD_COPY, :) = get_inflate_sd(prior_inflate_handle)
 endif
 
+if (do_ss_inflate(post_inflate_handle)) then
+   if (.not. mean_from_restart(post_inflate_handle)) ens_handle%copies(POST_INF_COPY, :)    = get_inflate_mean(post_inflate_handle)
+   if (.not. sd_from_restart(post_inflate_handle))   ens_handle%copies(POST_INF_SD_COPY, :) = get_inflate_sd(post_inflate_handle)
+endif
 
-end subroutine awrite_state_restart
+end subroutine fill_ss_from_nameslist_value
 
-!----------------------------------------------------------------------
-!
-! Closes a restart file
-subroutine close_restart(file_unit)
+!------------------------------------------------------------------
+! Reading/writing DART format inflation files
+!------------------------------------------------------------------
+!-------------------------------------------------
 
-integer, intent(in) :: file_unit
+!-------------------------------------------------
+!> Read the dart format state space inflation files
+subroutine read_state_space_inflation(ens_handle, inflate_handle, ss_inflate_mean_index, ss_inflate_sd_index)
 
-call close_file(file_unit)
+type(ensemble_type),         intent(inout) :: ens_handle
+type(adaptive_inflate_type), intent(in) :: inflate_handle
+integer,                     intent(in) :: ss_inflate_mean_index, ss_inflate_sd_index
 
-end subroutine close_restart
+integer :: owner, owners_index
+
+! Fixed or varying state space inflation types
+if(do_ss_inflate(inflate_handle)) then
+   ! Initialize state space inflation, copies in ensemble are given
+   ! by the inflate and inflate_sd indices. These should be contiguous.
+
+   ! Verify that indices are contiguous
+   if(ss_inflate_sd_index /= ss_inflate_mean_index + 1) then
+      write(msgstring, *) 'ss_inflate_mean_index = ', ss_inflate_mean_index, &
+         ' and ss_inflate_sd_index = ', ss_inflate_sd_index, ' must be continguous'
+      call error_handler(E_ERR, 'adaptive_inflate_init', &
+         msgstring, source, revision, revdate)
+   endif
+
+   ! Read in initial values from file OR get from namelist arguments
+
+   ! If either mean, sd, or both are to be read from the restart file, read them in.
+   ! There is no option to read only one; to get either you have to read both.
+   ! If one is to be set from the namelist, it gets overwritten in the block below
+   ! this one.
+   if(mean_from_restart(inflate_handle) .or. sd_from_restart(inflate_handle)) then
+      ! the .true. below is 'start_from_restart', which tells the read routine to
+      ! read in the full number of ensemble members requested (as opposed to reading
+      ! in one and perturbing it).
+      call read_ensemble_restart(ens_handle, ss_inflate_mean_index, ss_inflate_sd_index, get_inflation_in_filename(inflate_handle), force_single_file = .true.)
+
+   endif
+   ! Now, if one or both values come from the namelist (i.e. is a single static
+   ! value), write or overwrite the arrays here.
+   if (.not. mean_from_restart(inflate_handle) .or. .not. sd_from_restart(inflate_handle)) then
+      ! original code required an expensive transpose which is not necessary.
+      ! if setting initial values from the namelist, find out which task has the
+      ! inflation and inf sd values and set them only on that task.  this saves us
+      ! a transpose.
+      if (.not. mean_from_restart(inflate_handle)) then
+         call get_copy_owner_index(ss_inflate_mean_index, owner, owners_index)
+         if (owner == ens_handle%my_pe) then 
+            call prepare_to_write_to_vars(ens_handle)
+            ens_handle%vars(:, owners_index) = get_inflate_mean(inflate_handle)
+         endif
+
+      endif
+      if (.not. sd_from_restart(inflate_handle)) then
+
+        call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
+        if (owner == ens_handle%my_pe)  then
+           call prepare_to_write_to_vars(ens_handle)
+           ens_handle%vars(:, owners_index) = get_inflate_sd(inflate_handle)
+
+         endif
+
+      endif
+   endif
+
+! Misleading comment - the computation uses the whole array.
+   ! Inflation type 3 is spatially-constant.  Make sure the entire array is set to that
+   ! value. the computation only uses index 1, but the diagnostics write out the entire
+   ! array and it will be misleading if not constant.  the inf values were set above.  
+   ! if they were set by namelist, this code changes nothing.  but if they were read in
+   ! from a file, then it is possible the values vary across the array.  these lines
+   ! ensure the entire array contains a single constant value to match what the code uses.
+   if(do_single_ss_inflate(inflate_handle)) then
+      call get_copy_owner_index(ss_inflate_mean_index, owner, owners_index)
+      if (owner == ens_handle%my_pe) then
+         ens_handle%vars(:, owners_index) = ens_handle%vars(1, owners_index)
+      endif
+      call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
+      if (owner == ens_handle%my_pe) then
+         ens_handle%vars(:, owners_index) = ens_handle%vars(1, owners_index)
+      endif
+   endif
+
+endif
+
+end subroutine read_state_space_inflation
+
+!------------------------------------------------------------------
+subroutine write_state_space_inflation(inflate_handle, file_info, state_ens_handle, ss_inflate_mean_index, &
+   ss_inflate_sd_index)
+
+type(adaptive_inflate_type), intent(in)    :: inflate_handle
+type(file_info_type),        intent(in)    :: file_info
+type(ensemble_type),         intent(in)    :: state_ens_handle
+integer,                     intent(in)    :: ss_inflate_mean_index, ss_inflate_sd_index
+
+! check whether file_info handle is initialized
+call assert_file_info_initiailzed(file_info, 'write_state_space_inflation')
+
+if(output_inf_restart(inflate_handle)) then
+   ! Use the ensemble manager to output restart for state space (flavors 2 or 3)
+   if(do_ss_inflate(inflate_handle)) then
+
+      call write_ensemble_restart(state_ens_handle, file_info, get_inflation_out_filename(inflate_handle), &
+           ss_inflate_mean_index, ss_inflate_sd_index, force_single_file = .true.)
+   endif
+endif
+
+end subroutine write_state_space_inflation
 
 !---------------------------------------------------------------------------------
 
-subroutine read_ensemble_restart(ens_handle, start_copy, end_copy, &
-   start_from_restart, file_name, init_time, force_single_file)
+subroutine read_ensemble_restart(ens_handle, start_copy, end_copy, file_name, init_time, force_single_file)
 
 type(ensemble_type),  intent(inout)           :: ens_handle
 integer,              intent(in)              :: start_copy, end_copy
-logical,              intent(in)              :: start_from_restart
 character(len = *),   intent(in)              :: file_name
 type(time_type),      intent(in),    optional :: init_time
 logical,              intent(in),    optional :: force_single_file
@@ -264,25 +844,12 @@ logical,              intent(in),    optional :: force_single_file
 
 ! Avoid num_vars size storage on stack; make this allocatable from heap
 real(r8), allocatable               :: ens(:) 
-integer                             :: iunit, i, j
+integer                             :: iunit, i
 character(len = LEN(file_name) + 5) :: this_file_name
 character(len = 4)                  :: extension
 type(time_type)                     :: ens_time
 integer                             :: global_copy_index
-logical                             :: interf_provided
 logical                             :: single_file_override
-type(random_seq_type)               :: random_seq
-integer                             :: my_num_vars
-
-! timing variables
-double precision :: time_at_start
-
-! Does not make sense to have start_from_restart and single_restart_file_in BOTH false
-if(.not. start_from_restart .and. .not. is_single_restart_file_in()) then
-   write(msgstring, *) 'start_from_restart in filter_nml and single_restart_file_in in &
-        &ensemble_manager_nml cannot both be false'
-   call error_handler(E_ERR,'read_ensemble_restart', msgstring, source, revision, revdate)
-endif
 
 ! the code reads into the vars array
 !ens_handle%valid = VALID_VARS
@@ -299,36 +866,35 @@ else
   single_file_override = .false.
 endif
 
-!-------- Block for single restart file or single member  being perturbed -----
-if(is_single_restart_file_in() .or. .not. start_from_restart .or. &
-   single_file_override) then
-   ! Single restart file is read only by task 0 and then distributed
-   if(my_task_id() == 0) iunit = open_restart_read(file_name)
-   allocate(ens(ens_handle%num_vars))   ! used to be on stack.
+!-------- Block for single restart file -----
+if(single_file_override) then ! Single restart file is read only by task 0
 
-   ! Loop through the total number of copies
+   if (my_task_id() == 0) then
+      allocate(ens(ens_handle%num_vars))
+      iunit = open_restart_read(file_name)
+   else
+      allocate(ens(1)) ! dummy for put_copy
+   endif
+
    do i = start_copy, end_copy
-       ! Only task 0 does reading. Everybody can do their own perturbing
-       if(my_task_id() == 0) then
-       ! Read restarts in sequence; only read once for not start_from_restart
-          if(start_from_restart .or. i == start_copy) &
-               call aread_state_restart(ens_time, ens, iunit)
-         ! Override this time if requested by namelist
-         if(present(init_time)) ens_time = init_time
+      if(my_task_id() == 0) then
+         call aread_state_restart(ens_time, ens, iunit)
       endif
 
+      ! overwrite ens_time if needed
+      if(present(init_time)) ens_time = init_time
       ! Store this copy in the appropriate place on the appropriate process
-      ! map from my_pe to physical task number all done in send and receives only
+      ! Ensemble manager function so give pe not task.
       call put_copy(map_task_to_pe(ens_handle,0), ens_handle, i, ens, ens_time)
-   end do
-   
+
+   enddo
+
    deallocate(ens)
-   ! Task 0 must close the file it's been reading
-   if(my_task_id() == 0) call close_restart(iunit)
+   if (my_task_id() == 0) call close_restart(iunit)
 
 else
 
-!----------- Block that follows is for multiple restart files -----------
+!----------- Block for multiple restart files -----------
    ! Loop to read in all my ensemble members
    READ_MULTIPLE_RESTARTS: do i = 1, ens_handle%my_num_copies
       ! Get global index for my ith ensemble
@@ -348,40 +914,18 @@ else
 
       endif
 
-
    end do READ_MULTIPLE_RESTARTS
-endif
-
-!------------------- Block that follows perturbs single base restart --------
-if(.not. start_from_restart) then
-   PERTURB_MY_RESTARTS: do i = 1, ens_handle%my_num_copies
-      global_copy_index = ens_handle%my_copies(i)
-      ! If this is one of the actual ensemble copies, then perturb
-      if(global_copy_index >= start_copy .and. global_copy_index <= end_copy) then
-         ! See if model has an interface to perturb
-         call pert_model_state(ens_handle%vars(:, i), ens_handle%vars(:, i), interf_provided)
-         ! If model does not provide a perturbing interface, do it here
-         if(.not. interf_provided) then
-            ! To reproduce for varying pe count, need  fixed sequence for each copy
-            call init_random_seq(random_seq, global_copy_index)
-            do j = 1, ens_handle%num_vars
-               if (ens_handle%vars(j,i) /= MISSING_R8) &
-               ens_handle%vars(j, i) = random_gaussian(random_seq, ens_handle%vars(j, i), &
-                     perturbation_amplitude)
-            end do
-         endif
-      endif
-   end do PERTURB_MY_RESTARTS
 endif
 
 end subroutine read_ensemble_restart
 
 !-----------------------------------------------------------------
 
-subroutine write_ensemble_restart(ens_handle, file_name, start_copy, end_copy, &
+subroutine write_ensemble_restart(ens_handle, file_info, file_name, start_copy, end_copy, &
    force_single_file)
 
-type(ensemble_type),  intent(inout) :: ens_handle
+type(ensemble_type),  intent(in)    :: ens_handle
+type(file_info_type), intent(in)    :: file_info
 character(len = *),   intent(in)    :: file_name
 integer,              intent(in)    :: start_copy, end_copy
 logical, optional,    intent(in)    :: force_single_file
@@ -395,8 +939,8 @@ character(len = LEN(file_name) + 10) :: this_file_name
 character(len = 4)                  :: extension
 logical                             :: single_file_forced
 
-! timing variables
-double precision :: start_at_time
+! check whether file_info handle is initialized
+call assert_file_info_initiailzed(file_info, 'write_ensemble_restart')
 
 if (present(force_single_file) ) then
    single_file_forced = force_single_file
@@ -413,7 +957,7 @@ endif
 ! For single file, need to send restarts to pe0 and it writes them out.
 !-------------- Block for single_restart file -------------
 ! Need to force single restart file for inflation files
-if(single_restart_file_out .or. single_file_forced) then
+if(get_write_to_single_file(file_info) .or. single_file_forced) then
 
    ! Single restart file is written only by task 0
    if(my_task_id() == 0) then
@@ -468,18 +1012,89 @@ endif
 
 end subroutine write_ensemble_restart
 
+
+!----------------------------------------------------------------------
+
+subroutine awrite_state_restart(model_time, model_state, funit, target_time)
+!
+! Write a restart file given a model extended state and a unit number 
+! opened to the restart file. (Need to reconsider what is passed to 
+! identify file or if file can even be opened within this routine).
+
+type(time_type), intent(in)           :: model_time
+real(r8),        intent(in)           :: model_state(:)
+integer,         intent(in)           :: funit
+type(time_type), optional, intent(in) :: target_time
+
+integer :: i, io, rc
+character(len = 16) :: open_format
+character(len=128) :: filename
+logical :: is_named
+
+if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
+
+! Figure out whether the file is opened FORMATTED or UNFORMATTED
+inquire(funit, FORM=open_format)
+
+! assume success
+io = 0
+
+! Write the state vector
+if (ascii_file_format(open_format)) then
+   if(present(target_time)) call write_time(funit, target_time, ios_out=io)
+   if (io /= 0) goto 10
+   call write_time(funit, model_time, ios_out=io)
+   if (io /= 0) goto 10
+   do i = 1, size(model_state)
+      write(funit, *, iostat = io) model_state(i)
+      if (io /= 0) goto 10
+   end do
+else
+   if(present(target_time)) call write_time(funit, target_time, form="unformatted", ios_out=io)
+   if (io /= 0) goto 10
+   call write_time(funit, model_time, form="unformatted", ios_out=io)
+   if (io /= 0) goto 10
+   write(funit, iostat = io) model_state
+   if (io /= 0) goto 10
+endif
+
+! come directly here on error. 
+10 continue
+
+! if error, use inquire function to extract filename associated with
+! this fortran unit number and use it to give the error message context.
+if (io /= 0) then
+   inquire(funit, named=is_named, name=filename, iostat=rc)
+   if ((rc /= 0) .or. (.not. is_named)) filename = 'unknown file'
+   write(msgstring,*) 'error writing to restart file ', trim(filename)
+   call error_handler(E_ERR,'awrite_state_restart',msgstring,source,revision,revdate)
+endif
+
+
+end subroutine awrite_state_restart
+
+!----------------------------------------------------------------------
+!
+! Closes a restart file
+subroutine close_restart(file_unit)
+
+integer, intent(in) :: file_unit
+
+call close_file(file_unit)
+
+end subroutine close_restart
+
+
 subroutine read_state_restart(assim_model, funit, target_time)
 !----------------------------------------------------------------------
 !
 ! Read a restart file given a unit number (see write_state_restart)
 
-implicit none
-
 type(assim_model_type), intent(inout)         :: assim_model
 integer,                intent(in)            :: funit
 type(time_type),        optional, intent(out) :: target_time
 
-if ( .not. module_initialized ) call state_vector_io_init()
+if ( .not. module_initialized ) call error_handler(E_ERR, 'read_state_restart', 'module not initialized')
 
 if(present(target_time)) then
    !call aread_state_restart(assim_model%time, assim_model%state_vector, funit, target_time)
@@ -496,7 +1111,6 @@ subroutine aread_state_restart(model_time, model_state, funit, target_time)
 !
 ! Read a restart file given a unit number (see write_state_restart)
 
-implicit none
 
 type(time_type), intent(out)            :: model_time
 real(r8),        intent(out)            :: model_state(:)
@@ -506,7 +1120,7 @@ type(time_type), optional, intent(out) :: target_time
 character(len = 16) :: open_format
 integer :: ios, int1, int2
 
-if ( .not. module_initialized ) call state_vector_io_init()
+if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
 
 ios = 0
 
@@ -569,7 +1183,7 @@ character(len = *), optional, intent(in) :: override_write_format
 
 integer :: open_restart_write, io
 
-if ( .not. module_initialized ) call state_vector_io_init()
+if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
 
 open_restart_write = get_unit()
 if(present(override_write_format)) then
@@ -599,7 +1213,7 @@ integer :: ios, ios_out
 type(time_type) :: temp_time
 character(len=64) :: string2
 
-if ( .not. module_initialized ) call state_vector_io_init()
+if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
 
 ! DEBUG -- if enabled, every task will print out as it opens the
 ! restart files.  If questions about missing restart files, first start
@@ -679,75 +1293,6 @@ call error_handler(E_ERR, 'open_restart_read', msgstring, &
 
 end function open_restart_read
 
-
-!-----------------------------------------------------------------
-
-!-------------------------------------------------
-! Netcdf read write
-! Uses direct_netcdf_mpi_mod.f90 or direct_netcdf_no_mpi_mod.f90
-!-------------------------------------------------
-
-!------------------------------------------------------------------
-!> Read the restart information directly from the model output
-!> netcdf file
-!> Which routine should find model size?
-!> 
-subroutine filter_read_restart_direct(state_ens_handle, time, num_extras, use_time_from_file)
-
-type(ensemble_type), intent(inout) :: state_ens_handle
-type(time_type),     intent(inout) :: time
-integer,             intent(in)    :: num_extras
-logical,             intent(in)    :: use_time_from_file
-
-integer                         :: model_size
-character(len=256), allocatable :: variable_list(:) !< does this need to be module storage
-integer                         :: dart_index !< where to start in state_ens_handle%copies
-integer                         :: domain !< loop index
-
-if(get_num_domains()==0) then
-   call error_handler(E_ERR, 'filter_read_restart_direct', 'model needs to call add_domain for direct_netcdf_read = .true.')
-endif
-
-! read time from input file if time not set in namelist
-!> @todo get_model_time should be read_model_time, and should be a namelist to set the filename
-!> also need a write_model_time for creating netcdf files
-if(use_time_from_file) then
-   time = read_model_time(get_input_file(1,1)) ! Any of the restarts?
-endif
-
-state_ens_handle%time = time
-
-! read in the data and transpose
-dart_index = 1 ! where to start in state_ens_handle%copies - this is modified by read_transpose
-do domain = 1, get_num_domains()
-   call read_transpose(state_ens_handle, domain, dart_index, limit_mem)
-enddo
-
-! Need Temporary print of initial model time?
-
-end subroutine filter_read_restart_direct
-
-!-------------------------------------------------------------------------
-!> write the restart information directly into the model netcdf file.
-subroutine filter_write_restart_direct(state_ens_handle, num_extras, isprior)
-
-type(ensemble_type), intent(inout) :: state_ens_handle
-integer,             intent(in)    :: num_extras ! non restart copies
-logical,             intent(in)    :: isprior
-
-integer :: dart_index !< where to start in state_ens_handle%copies
-integer :: domain !< loop index
-integer :: component_id
-
-!> @todo should we add a blank domain if there is not domains?
-
-! transpose and write out the data
-dart_index = 1
-do domain = 1, get_num_domains()
-   call transpose_write(state_ens_handle, num_extras, domain, dart_index, isprior, limit_mem, single_precision_output)
-enddo
-
-end subroutine filter_write_restart_direct
-
+!> @}
 !-------------------------------------------------------
 end module state_vector_io_mod

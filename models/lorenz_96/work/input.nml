@@ -1,3 +1,6 @@
+&state_space_diag_nml
+/
+
 &quality_control_nml
    input_qc_threshold       =  3.0,
    outlier_threshold        = -1.0,
@@ -28,34 +31,39 @@
    /
 
 &filter_nml
-   async                    = 0,
-   adv_ens_command          = "../shell_scripts/advance_model.csh",
-   ens_size                 = 20,
-   start_from_restart       = .true.,
-   output_restart           = .true.,
-   obs_sequence_in_name     = "obs_seq.out",
-   obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "filter_ics",
-   restart_out_file_name    = "filter_restart",
-   init_time_days           = 0,
-   init_time_seconds        = 0,
-   first_obs_days           = -1,
-   first_obs_seconds        = -1,
-   last_obs_days            = -1,
-   last_obs_seconds         = -1,
-   num_output_state_members = 20,
-   num_output_obs_members   = 20,
-   output_interval          = 1,
-   num_groups               = 1,
-   output_forward_op_errors = .false.,
-   output_timestamps        = .true.,
-   trace_execution          = .true.,
-   silence                  = .false.,
-   direct_netcdf_read       = .false.,
-   direct_netcdf_write      = .false.,
-   diagnostic_files = .true.
+   async                        = 0,
+   adv_ens_command              = "./advance_model.csh",
+   ens_size                     = 20,
+   output_restart               = .true.,
+   obs_sequence_in_name         = "obs_seq.out",
+   obs_sequence_out_name        = "obs_seq.final",
+   restart_in_file_name         = "filter_ics",
+   restart_out_file_name        = "filter_restart",
+   init_time_days               = 0,
+   init_time_seconds            = 0,
+   first_obs_days               = -1,
+   first_obs_seconds            = -1,
+   last_obs_days                = -1,
+   last_obs_seconds             = -1,
+   num_output_state_members     = 20,
+   num_output_obs_members       = 20,
+   output_interval              = 1,
+   num_groups                   = 1,
+   output_forward_op_errors     = .false.,
+   output_restart_mean          = .false.,
+   output_timestamps            = .false.,
+   output_inflation             = .true.,
+   trace_execution              = .false.,
+   silence                      = .false.,
+   direct_netcdf_read           = .false.,
+   direct_netcdf_write          = .false.,
+   distributed_state            = .true.,
+   single_restart_file_in       = .true.,
+   single_restart_file_out      = .true.,
+   perturb_from_single_instance = .false.,
+   perturbation_amplitude       = 0.2,
 
-   inf_flavor                  = 2,                       0,
+   inf_flavor                  = 2,                       0,  
    inf_initial_from_restart    = .false.,                 .false.,
    inf_sd_initial_from_restart = .false.,                 .false.,
    inf_output_restart          = .true.,                  .true.,
@@ -69,7 +77,7 @@
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000000.0,               1000000.0,
    inf_sd_lower_bound          = 0.6,                     0.0,
-   /
+/
 
 &smoother_nml
    num_lags              = 0,
@@ -80,7 +88,6 @@
    /
 
 &ensemble_manager_nml
-   single_restart_file_in  = .true.,
    /
 
 &assim_tools_nml
@@ -240,9 +247,7 @@
    /
 
 &state_vector_io_nml
-   single_restart_file_out    = .true.,
    write_binary_restart_files = .false.,
-   perturbation_amplitude  = 0.2
    /
 
 &io_filenames_nml

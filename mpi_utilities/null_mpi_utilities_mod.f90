@@ -183,7 +183,7 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
           sum_across_tasks, reduce_min_max, &
-          get_from_fwd, get_from_mean
+          get_from_fwd, get_from_mean, all_reduce_min_max, broadcast_flag
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -780,11 +780,24 @@ real(r8), intent(in)  :: minmax(2) ! min max on each task
 integer,  intent(in)  :: task ! task to collect on
 real(r8), intent(out) :: global_val(2) ! only concerned with this on task collecting result
 
-integer :: errcode
-
 global_val(:) = minmax(:) ! only one task.
 
 end subroutine reduce_min_max
+
+!-----------------------------------------------------------------------------
+! Find min and max of each element of an array across tasks, put the result on every task.
+! For this null_mpi_version miv_var and max_var are unchanged because there is
+! only 1 task.
+subroutine all_reduce_min_max(min_var, max_var, num_elements)
+
+integer,  intent(in)    :: num_elements
+real(r8), intent(inout) :: min_var(num_elements)
+real(r8), intent(inout) :: max_var(num_elements)
+
+
+
+
+end subroutine all_reduce_min_max
 
 !-----------------------------------------------------------------------------
 ! One sided communication
@@ -817,6 +830,15 @@ end subroutine get_from_fwd
 
 !-----------------------------------------------------------------------------
 !-----------------------------------------------------------------------------
+
+! Broadcast logical
+subroutine broadcast_flag(flag, root)
+
+logical, intent(inout) :: flag
+integer, intent(in)    :: root ! in get_dart_mpi_comm()
+
+end subroutine broadcast_flag
+
 
 end module mpi_utilities_mod
 

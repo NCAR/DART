@@ -30,14 +30,15 @@ use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_DRY_LAND,   &
                              KIND_SEA_SURFACE_HEIGHT, KIND_SEA_SURFACE_PRESSURE,&
                              KIND_POTENTIAL_TEMPERATURE, get_raw_obs_kind_index,&
                              get_raw_obs_kind_name, paramname_length 
-use mpi_utilities_mod, only: my_task_id
+use mpi_utilities_mod, only: my_task_id, task_count
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use      dart_pop_mod, only: set_model_time_step,                              &
                              get_horiz_grid_dims, get_vert_grid_dim,           &
                              read_horiz_grid, read_topography, read_vert_grid, &
                              get_pop_restart_filename
 
-use ensemble_manager_mod,  only : ensemble_type
+use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_copy_owner_index, &
+                                  get_var_owner_index
 
 use distributed_state_mod, only : get_state
 
@@ -66,7 +67,6 @@ public :: get_model_size,                &
           init_conditions,               &
           nc_write_model_atts,           &
           nc_write_model_vars,           &
-          pert_model_state,              &
           pert_model_copies,             &
           get_close_maxdist_init,        &
           get_close_obs_init,            &
@@ -1849,8 +1849,9 @@ end subroutine end_model
 
 !------------------------------------------------------------------
 
-function nc_write_model_atts( ncFileID ) result (ierr)
+function nc_write_model_atts( ncFileID, model_mod_writes_state_variables ) result (ierr)
  integer, intent(in)  :: ncFileID      ! netCDF file identifier
+ logical, intent(out) :: model_mod_writes_state_variables
  integer              :: ierr          ! return value of function
 
 ! TJH -- Writes the model-specific attributes to a netCDF file.
@@ -1926,6 +1927,7 @@ integer  :: model_size_i4 ! this is for checking model_size
 if ( .not. module_initialized ) call static_init_model
 
 ierr = -1 ! assume things go poorly
+model_mod_writes_state_variables = .true. 
 
 !--------------------------------------------------------------------
 ! we only have a netcdf handle here so we do not know the filename
@@ -2476,61 +2478,14 @@ end function nc_write_model_vars
 
 !------------------------------------------------------------------
 
-subroutine pert_model_state(state, pert_state, interf_provided)
- real(r8), intent(in)  :: state(:)
- real(r8), intent(out) :: pert_state(:)
- logical,  intent(out) :: interf_provided
+subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
 
-! Perturbs a model state for generating initial ensembles.
-! The perturbed state is returned in pert_state.
-! A model may choose to provide a NULL INTERFACE by returning
-! .false. for the interf_provided argument. This indicates to
-! the filter that if it needs to generate perturbed states, it
-! may do so by adding a perturbation to each model state 
-! variable independently. The interf_provided argument
-! should be returned as .true. if the model wants to do its own
-! perturbing of states.
+ type(ensemble_type), intent(inout) :: state_ens_handle
+ integer,             intent(in)    :: ens_size
+ real(r8),            intent(in)    :: pert_amp
+ logical,             intent(out)   :: interf_provided
 
-integer     :: var_type
-integer(i8) :: i 
-
-logical, save :: random_seq_init = .false.
-
-if ( .not. module_initialized ) call static_init_model
-
-interf_provided = .true.
-
-! Initialize my random number sequence
-if(.not. random_seq_init) then
-   call init_random_seq(random_seq, my_task_id())
-   random_seq_init = .true.
-endif
-
-! only perturb the actual ocean cells; leave the land and
-! ocean floor values alone.
-do i=1,size(state)
-   call get_state_kind_inc_dry(i, var_type)
-   if (var_type /= KIND_DRY_LAND) then
-      pert_state(i) = random_gaussian(random_seq, state(i), &
-                                      model_perturbation_amplitude)
-   else
-      pert_state(i) = state(i)
-   endif
-enddo
-
-
-end subroutine pert_model_state
-
-!------------------------------------------------------------------
-
-subroutine pert_model_copies(state_handle, pert_amp, interf_provided)
-
- type(ensemble_type), intent(inout) :: state_handle
- real(r8),  intent(in) :: pert_amp
- logical,  intent(out) :: interf_provided
-
-! Perturbs a model state copies for generating initial ensembles.
-! The perturbed state is returned in pert_state.
+! Perturbs state copies for generating initial ensembles.
 ! A model may choose to provide a NULL INTERFACE by returning
 ! .false. for the interf_provided argument. This indicates to
 ! the filter that if it needs to generate perturbed states, it
@@ -2542,35 +2497,94 @@ subroutine pert_model_copies(state_handle, pert_amp, interf_provided)
 integer     :: var_type
 integer     :: j,i 
 integer(i8) :: dart_index
+real(r8)    :: random_number
 
-logical, save :: random_seq_init = .false.
+! Storage for a random sequence for perturbing a single initial state
+type(random_seq_type) :: random_seq
+logical :: lanai_bitwise
 
 if ( .not. module_initialized ) call static_init_model
 
 interf_provided = .true.
+lanai_bitwise = .true.
 
-! Initialize my random number sequence
-if(.not. random_seq_init) then
+if (lanai_bitwise) then
+   call pert_model_copies_bitwise_lanai(state_ens_handle, ens_size)
+else
+
+   ! Initialize random number sequence
    call init_random_seq(random_seq, my_task_id())
-   random_seq_init = .true.
+
+   ! only perturb the actual ocean cells; leave the land and
+   ! ocean floor values alone.
+   do i=1,state_ens_handle%my_num_vars
+      dart_index = state_ens_handle%my_vars(i)
+      call get_state_kind_inc_dry(dart_index, var_type)
+      do j=1, ens_size
+         if (var_type /= KIND_DRY_LAND) then
+            state_ens_handle%copies(j,i) = random_gaussian(random_seq, &
+               state_ens_handle%copies(j,i), &
+               model_perturbation_amplitude)
+   
+         endif
+      enddo
+   enddo
+
 endif
 
-! only perturb the actual ocean cells; leave the land and
-! ocean floor values alone.
-do i=1,state_handle%my_num_vars
-   dart_index = state_handle%my_vars(i)
-   call get_state_kind_inc_dry(dart_index, var_type)
-   do j=1,state_handle%num_copies
-      if (var_type /= KIND_DRY_LAND) then
-         state_handle%copies(j,i) = random_gaussian(random_seq, & 
-            state_handle%copies(j,i), &
-            pert_amp)
-   
-      endif
-   enddo
-enddo
 
 end subroutine pert_model_copies
+
+!------------------------------------------------------------------
+!> Perturb the state such that the perturbation is bitwise with
+!> a perturbed Lanai.
+!> Note:
+!> * This is not bitwise with itself (like Lanai) if task_count < ens_size
+!> * This is very slow because you have a loop around the length of the
+!> state inside a loop around the ensemble.
+!> If a task has more than one copy then the random number
+!> sequence continues from the end of one copy to the start of the other.
+subroutine pert_model_copies_bitwise_lanai(ens_handle, ens_size)
+
+type(ensemble_type), intent(inout) :: ens_handle
+integer,             intent(in)    :: ens_size
+
+type(random_seq_type) :: r(ens_size)
+integer     :: i ! loop variable
+integer(i8) :: j ! loop variable
+real(r8)    :: random_number
+integer     :: var_type
+integer     :: sequence_to_use
+integer     :: owner, owners_index
+integer     :: copy_owner
+
+do i = 1, min(ens_size, task_count())
+   call init_random_seq(r(i), map_pe_to_task(ens_handle,i-1)) ! my_task_id in Lanai
+   sequence_to_use = i 
+enddo
+
+
+do i = 1, ens_size
+
+   call get_copy_owner_index(i, copy_owner, owners_index) ! owners index not used. Distribution type 1
+   sequence_to_use = copy_owner + 1
+   do j = 1, ens_handle%num_vars
+
+      call get_state_kind_inc_dry(j, var_type)
+
+      if(var_type /= KIND_DRY_LAND) then
+         random_number = random_gaussian(r(sequence_to_use), 0.0_r8, model_perturbation_amplitude)
+         call get_var_owner_index(j, owner, owners_index)
+         if (ens_handle%my_pe==owner) then
+            ens_handle%copies(i, owners_index) = ens_handle%copies(i, owners_index) + random_number
+         endif
+      endif
+
+   enddo
+
+enddo
+
+end subroutine pert_model_copies_bitwise_lanai
 
 !------------------------------------------------------------------
 

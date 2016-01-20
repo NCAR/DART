@@ -42,7 +42,6 @@ public :: get_model_size, &
           init_conditions, &
           nc_write_model_atts, &
           nc_write_model_vars, &
-          pert_model_state, &
           get_close_maxdist_init, get_close_obs_init, get_close_obs, &
           model_interpolate, &
           query_vert_localization_coord, &
@@ -339,30 +338,16 @@ subroutine end_model()
 end subroutine end_model
 
 !------------------------------------------------------------------
-
+! Perturbs a model state copies for generating initial ensembles.
 ! Routine which could provide a custom perturbation routine to
 ! generate initial ensembles.  The default (if interface is not
 ! provided) is to add gaussian noise to each item in the state vector.
+subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
 
-subroutine pert_model_state(state, pert_state, interf_provided)
-
-real(r8), intent(in)    :: state(:)
-real(r8), intent(inout) :: pert_state(:)
-logical,  intent(out)   :: interf_provided
-
-interf_provided = .false.
-
-end subroutine pert_model_state
-
-!--------------------------------------------------------------------
-
-! Perturbs a model state copies for generating initial ensembles.
-
-subroutine pert_model_copies(state_handle, pert_amp, interf_provided)
-
-type(ensemble_type), intent(in)  :: state_handle
-real(r8),            intent(in)  :: pert_amp
-logical,             intent(out) :: interf_provided
+ type(ensemble_type), intent(inout) :: state_ens_handle
+ integer,   intent(in) :: ens_size
+ real(r8),  intent(in) :: pert_amp
+ logical,  intent(out) :: interf_provided
 
 interf_provided = .false.
 
@@ -470,13 +455,14 @@ end subroutine get_close_obs
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
 
-function nc_write_model_atts( ncFileID ) result (ierr)
+function nc_write_model_atts( ncFileID, model_mod_writes_state_variables ) result (ierr)
 
 use typeSizes
 use netcdf
 
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
 integer              :: ierr          ! return value of function
+logical, intent(out) :: model_mod_writes_state_variables
 
 !--------------------------------------------------------------------
 ! General netCDF variables
@@ -509,7 +495,7 @@ character(len=128)  :: filename
 type(ensemble_type) :: state_handle ! needed for compilation, not used here
 
 ierr = 0                      ! assume normal termination
-
+model_mod_writes_state_variables = .true. 
 
 !--------------------------------------------------------------------
 ! we only have a netcdf handle here so we do not know the filename
@@ -667,7 +653,7 @@ end function nc_write_model_atts
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
 
-function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
+function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex, write_my_own_variables) result (ierr)
 
 use typeSizes
 use netcdf
@@ -676,8 +662,9 @@ integer,                intent(in) :: ncFileID      ! netCDF file identifier
 real(r8), dimension(:), intent(in) :: statevec
 integer,                intent(in) :: copyindex
 integer,                intent(in) :: timeindex
+logical, optional,     intent(out) :: write_my_own_variables ! model_mod writes variables to 
+                                                             ! diagnostic files
 integer                            :: ierr          ! return value of function
-
 !--------------------------------------------------------------------
 ! General netCDF variables
 !--------------------------------------------------------------------
@@ -690,6 +677,12 @@ integer :: StateVarID
 !--------------------------------------------------------------------
 
 character(len=128) :: filename
+
+
+if (present(write_my_own_variables)) then
+   write_my_own_variables = .false.
+   return
+endif
 
 !--------------------------------------------------------------------
 ! we only have a netcdf handle here so we do not know the filename

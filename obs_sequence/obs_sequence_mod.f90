@@ -37,13 +37,6 @@ use time_manager_mod, only : time_type, operator(>), operator(<), &
 use    utilities_mod, only : get_unit, close_file, register_module, error_handler, &
                              find_namelist_in_file, check_namelist_read, &
                              E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term
-!HK
-use mpi_utilities_mod, only : task_count, my_task_id
-use ensemble_manager_mod, only: get_var_owner_index, map_pe_to_task, &
-                                ensemble_type
-use ensemble_manager_mod, only : copies_in_window
-
-use distributed_state_mod
 
 implicit none
 private

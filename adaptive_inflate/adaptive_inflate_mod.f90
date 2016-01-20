@@ -17,13 +17,10 @@ use utilities_mod,        only : register_module, open_file, close_file, &
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq
 use ensemble_manager_mod, only : ensemble_type,   &
                                  get_copy_owner_index, prepare_to_write_to_vars,                &
-                                 prepare_to_read_from_vars, prepare_to_update_vars, map_pe_to_task, all_vars_to_all_copies, all_copies_to_all_vars
-use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, reduce_min_max
+                                 prepare_to_read_from_vars, prepare_to_update_vars, &
+                                 map_pe_to_task
 
-use state_vector_io_mod,  only : turn_read_copy_on, turn_write_copy_on, &
-                                 turn_read_copies_off, &
-                                 read_transpose, transpose_write, &
-                                 read_ensemble_restart, write_ensemble_restart
+use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, reduce_min_max
 
 implicit none
 private
@@ -33,7 +30,10 @@ public :: update_inflation,           adaptive_inflate_end,          do_obs_infl
           adaptive_inflate_init,      adaptive_inflate_type,         get_inflate,        &
           get_sd,                     set_inflate,                   set_sd,             &
           output_inflate_diagnostics, deterministic_inflate,         solve_quadratic,    &
-          log_inflation_info,         get_minmax_task_zero_distrib
+          log_inflation_info,         get_minmax_task_zero,          mean_from_restart,  &
+          sd_from_restart,            get_inflation_in_filename,     get_inflation_out_filename,  &
+          output_inf_restart,         get_inflate_mean,              get_inflate_sd,     &
+          get_is_prior,               get_is_posterior,              do_ss_inflate
 
 
 ! version controlled file description for error handling, do not edit
@@ -63,6 +63,8 @@ type adaptive_inflate_type
    real(r8)              :: minmax_mean(2), minmax_sd(2)
    logical               :: mean_from_restart
    logical               :: sd_from_restart
+   logical               :: prior = .false.
+   logical               :: posterior = .false.
 end type adaptive_inflate_type
 
 ! Module storage for writing error messages
@@ -76,11 +78,118 @@ logical :: initialized = .false.
 contains
 
 !------------------------------------------------------------------
+! Accessor functions for adaptive inflate type
+function mean_from_restart(inflation)
+
+type(adaptive_inflate_type) :: inflation
+logical :: mean_from_restart
+
+mean_from_restart = inflation%mean_from_restart
+
+end function mean_from_restart
+
+!------------------------------------------------------------------
+
+function sd_from_restart(inflation)
+
+type(adaptive_inflate_type) :: inflation
+logical :: sd_from_restart
+
+sd_from_restart = inflation%sd_from_restart
+
+end function sd_from_restart
+
+!------------------------------------------------------------------
+
+function output_inf_restart(inflation)
+
+type(adaptive_inflate_type) :: inflation
+logical :: output_inf_restart
+
+output_inf_restart = inflation%output_restart
+
+end function output_inf_restart
+
+!------------------------------------------------------------------
+function get_inflation_in_filename(inflation)
+
+type(adaptive_inflate_type) :: inflation
+character(len = 129)  :: get_inflation_in_filename
+
+get_inflation_in_filename = inflation%in_file_name
+
+end function
+
+!------------------------------------------------------------------
+function get_inflation_out_filename(inflation)
+
+type(adaptive_inflate_type) :: inflation
+character(len = 129)  :: get_inflation_out_filename
+
+get_inflation_out_filename = inflation%out_file_name
+
+end function
+
+!------------------------------------------------------------------
+function get_inflate_mean(inflation)
+
+type(adaptive_inflate_type) :: inflation
+real(r8)  :: get_inflate_mean
+
+get_inflate_mean = inflation%inflate
+
+end function
+
+!------------------------------------------------------------------
+function get_inflate_sd(inflation)
+
+type(adaptive_inflate_type) :: inflation
+real(r8)  :: get_inflate_sd
+
+get_inflate_sd = inflation%sd
+
+end function
+
+!------------------------------------------------------------------
+function get_is_prior(inflation)
+
+type(adaptive_inflate_type) :: inflation
+logical :: get_is_prior
+
+get_is_prior = inflation%prior
+
+end function get_is_prior
+
+!------------------------------------------------------------------
+function get_is_posterior(inflation)
+
+type(adaptive_inflate_type) :: inflation
+logical :: get_is_posterior
+
+get_is_posterior = inflation%posterior
+
+end function get_is_posterior
+
+!------------------------------------------------------------------
+! Check for state_space_inflation
+function do_ss_inflate(inflation)
+
+type(adaptive_inflate_type), intent(in) :: inflation
+logical :: do_ss_inflate
+
+if (do_single_ss_inflate(inflation) .or. do_varying_ss_inflate(inflation)) then
+   do_ss_inflate = .true.
+else
+   do_ss_inflate = .false.
+endif
+
+end function do_ss_inflate
+!------------------------------------------------------------------
 
 subroutine adaptive_inflate_init(inflate_handle, inf_flavor, mean_from_restart, &
    sd_from_restart, output_restart, deterministic, in_file_name, out_file_name, &
    diag_file_name, inf_initial, sd_initial, inf_lower_bound, inf_upper_bound, &
-   sd_lower_bound, ens_handle, ss_inflate_index, ss_inflate_sd_index, missing_ok, label, direct_netcdf_read)
+   sd_lower_bound, ens_handle, ss_inflate_index, ss_inflate_sd_index, missing_ok, label)
 
 ! Initializes an adaptive_inflate_type 
 
@@ -100,10 +209,9 @@ type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
 logical,                     intent(in)    :: missing_ok
 character(len = *),          intent(in)    :: label
-logical,                     intent(in)    :: direct_netcdf_read
 
 character(len = 128) :: det, tadapt, sadapt, akind, rsread, nmread
-integer  :: restart_unit, io, owner, owners_index
+integer  :: restart_unit, io
 real(r8) :: minmax_mean(2), minmax_sd(2)
 
 ! Record the module version if this is first initialize call
@@ -165,7 +273,9 @@ inflate_handle%sd_lower_bound     = sd_lower_bound
 inflate_handle%allow_missing_in_clm = missing_ok
 inflate_handle%mean_from_restart  = mean_from_restart
 inflate_handle%sd_from_restart    = sd_from_restart
-
+! Prior and posterior are intialized to false
+if (trim(label)=='Prior') inflate_handle%prior = .true.
+if (trim(label)=='Posterior') inflate_handle%posterior = .true.
 
 ! Set obs_diag unit to -1 indicating it has not been opened yet
 inflate_handle%obs_diag_unit = -1
@@ -181,109 +291,15 @@ endif
 inflate_handle%minmax_mean(:) = missing_r8
 inflate_handle%minmax_sd(:)   = missing_r8
 
-!------ Block for state space inflation initialization ------
+! State space inflation is read in the IO routine read_state.
 
-! Types 2 and 3 are state space inflation types
-if(inf_flavor >= 2) then
-   ! Initialize state space inflation, copies in ensemble are given
-   ! by the inflate and inflate_sd indices. These should be contiguous.
-
-   ! Verify that indices are contiguous
-   if(ss_inflate_sd_index /= ss_inflate_index + 1) then
-      write(msgstring, *) 'ss_inflate_index = ', ss_inflate_index, &
-         ' and ss_inflate_sd_index = ', ss_inflate_sd_index, ' must be continguous'
-      call error_handler(E_ERR, 'adaptive_inflate_init', &
-         msgstring, source, revision, revdate)
-   endif
-
-   ! Read in initial values from file OR get from namelist arguments
-
-   ! If either mean, sd, or both are to be read from the restart file, read them in.
-   ! There is no option to read only one; to get either you have to read both.
-   ! If one is to be set from the namelist, it gets overwritten in the block below
-   ! this one.
-   if(mean_from_restart .or. sd_from_restart) then
-      ! the .true. below is 'start_from_restart', which tells the read routine to
-      ! read in the full number of ensemble members requested (as opposed to reading
-      ! in one and perturbing it).
-
-      call turn_read_copy_on(ss_inflate_index)
-      call turn_read_copy_on(ss_inflate_sd_index)
-
-      if (.not. direct_netcdf_read ) then ! read inflation as normal - asssumes you have allocated space
-
-         call read_ensemble_restart(ens_handle, ss_inflate_index, ss_inflate_sd_index, &
-            .true., in_file_name, force_single_file = .true.)
-
-         ! Collect the min and max of inflation on task 0
-         ! this block figures out what the min/max value of the mean/sd is
-         ! if we are reading in the values from a restart file.  it is used
-         ! in diagnostic output so it needs to get to PE0.  we also could check it
-         ! against the limits in the namelist to be sure the file values aren't
-         ! already outside the requested limits. (not sure that's necessary -
-         ! depends on when the code that changes the values imposes the limits.)
-         call get_minmax_task_zero(inflate_handle, ens_handle, ss_inflate_index, ss_inflate_sd_index)
-
-
-      endif
-
-
-   endif
-   ! Now, if one or both values come from the namelist (i.e. is a single static
-   ! value), write or overwrite the arrays here.
-   if (.not. mean_from_restart .or. .not. sd_from_restart) then
-      ! original code required an expensive transpose which is not necessary.
-      ! if setting initial values from the namelist, find out which task has the
-      ! inflation and inf sd values and set them only on that task.  this saves us
-      ! a transpose.
-      if (.not. mean_from_restart) then
-         if (direct_netcdf_read) then !copies
-            ens_handle%copies(ss_inflate_index, :) = inf_initial
-         else
-            call get_copy_owner_index(ss_inflate_index, owner, owners_index)
-            if (owner == ens_handle%my_pe) then !vars
-               call prepare_to_write_to_vars(ens_handle)
-               ens_handle%vars(:, owners_index) = inf_initial
-            endif
-         endif
-
-      endif
-      if (.not. sd_from_restart) then
-         if (direct_netcdf_read) then !copies
-            ens_handle%copies(ss_inflate_sd_index, :) = sd_initial
-         else
-            call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
-            if (owner == ens_handle%my_pe)  then !vars
-               call prepare_to_write_to_vars(ens_handle)
-               ens_handle%vars(:, owners_index) = sd_initial
-            endif
-         endif
-
-      endif
-   endif
-
-   ! Inflation type 3 is spatially-constant.  Make sure the entire array is set to that
-   ! value. the computation only uses index 1, but the diagnostics write out the entire
-   ! array and it will be misleading if not constant.  the inf values were set above.  
-   ! if they were set by namelist, this code changes nothing.  but if they were read in
-   ! from a file, then it is possible the values vary across the array.  these lines
-   ! ensure the entire array contains a single constant value to match what the code uses.
-   if(inf_flavor == 3) then
-      call error_handler(E_ERR, 'not dealing with inflation 3 yet', 'adaptive_inflate_init')
-   endif
-
-!------ Block for obs. space inflation initialization ------
-
-! Type 1 is observation space inflation
-else if(inf_flavor == 1) then
+! Read type 1 (observation space inflation)
+if(inf_flavor == 1) then
 
    ! Initialize observation space inflation values from restart files
    ! Only single values for inflation, inflation_sd (not arrays)
    if(mean_from_restart .or. sd_from_restart) then
       ! Open the file
-
-      call error_handler(E_ERR, 'Need to deal with read from file inf_flavor =1', 'adaptive_inflate_init')
-
       restart_unit = open_file(in_file_name, form='formatted', action='read')
       read(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
       if (io /= 0) then
@@ -305,76 +321,45 @@ else if(inf_flavor == 1) then
 
 endif
 
-
-! Write to log file what kind of inflation is being used.
-if (.not. direct_netcdf_read ) then
-   call log_inflation_info(inflate_handle, label)
-endif
-
 end subroutine adaptive_inflate_init
 
+
 !------------------------------------------------------------------
-!> should you be turning on copies here?
-!> They are redone in filter anyway.
+! For obs_space_inflation the restart file is written out here.
 subroutine adaptive_inflate_end(inflate_handle, state_ens_handle, ss_inflate_index, &
-   ss_inflate_sd_index, direct_netcdf_write)
+   ss_inflate_sd_index)
 
 type(adaptive_inflate_type), intent(in)    :: inflate_handle
 type(ensemble_type),         intent(inout) :: state_ens_handle
 integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
-logical,                     intent(in)    :: direct_netcdf_write
 
 integer :: restart_unit, io
 
-if(inflate_handle%output_restart) then
-   ! Use the ensemble manager to output restart for state space (flavors 2 or 3)
-   if(do_varying_ss_inflate(inflate_handle) .or. do_single_ss_inflate(inflate_handle)) then
+! Flavor 1 is observation space, write its restart directly
+if(do_obs_inflate(inflate_handle) .and. inflate_handle%output_restart) then
 
-      !> @todo I don't think they need to be contiguous any more
-      ! Verify that indices are contiguous
-      if(ss_inflate_sd_index /= ss_inflate_index + 1) then
-         write(msgstring, *) 'ss_inflate_index = ', ss_inflate_index, &
-            ' and ss_inflate_sd_index = ', ss_inflate_sd_index, ' must be continguous'
-         call error_handler(E_ERR, 'adaptive_inflate_end', &
-            msgstring, source, revision, revdate)
-      endif
-
-      ! Write the inflate and inflate_sd as two copies for a restart
-      call turn_write_copy_on(ss_inflate_index)
-      call turn_write_copy_on(ss_inflate_sd_index)
-
-      if (.not. direct_netcdf_write ) then
-
-         call write_ensemble_restart(state_ens_handle, inflate_handle%out_file_name, &
-            ss_inflate_index, ss_inflate_sd_index, force_single_file = .true.)
-      endif
-
-   ! Flavor 1 is observation space, write its restart directly
-   else if(do_obs_inflate(inflate_handle)) then
-
-      call error_handler(E_ERR, 'observation space', 'adaptive_inflate_end')
-
-      ! Open the restart file
+   ! Open the restart file
+   if (my_task_id() == 0) then
       if (my_task_id()==0) then
          restart_unit = open_file(inflate_handle%out_file_name, &
-                               form = 'formatted', action='write')
+                                 form = 'formatted', action='write')
          write(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
          if (io /= 0) then
             write(msgstring, *) 'unable to write into inflation restart file ', &
                               trim(inflate_handle%out_file_name)
             call error_handler(E_ERR, 'adaptive_inflate_end', &
-            msgstring, source, revision, revdate)
+               msgstring, source, revision, revdate)
          endif
          call close_file(restart_unit)
       endif
    endif
+
 endif
 
 ! Need to close diagnostic files for observation space if in use
 if(inflate_handle%obs_diag_unit > -1) call close_file(inflate_handle%obs_diag_unit)
    
 end subroutine adaptive_inflate_end
-
 
 !------------------------------------------------------------------
 
@@ -920,9 +905,6 @@ end subroutine solve_quadratic
 
 !------------------------------------------------------------------------
 !> Write to log file what kind of inflation is being used.  
-!> This used to be part of adaptive_inflate_init. It is in a separate funtion
-!> now because when using direct_netcdf_read = .true. you don't have 
-!> the minmax_mean(sd) in adaptive_inflate_init
 subroutine log_inflation_info(inflation_handle, label)
 
 type(adaptive_inflate_type), intent(inout) :: inflation_handle
@@ -1002,81 +984,16 @@ endif
 
 end subroutine log_inflation_info
 
+
 !-----------------------------------------------------------------------
-!> Collect onto task 0 the min and max of inflation from the tasks who
-!> owns the inflation copies 
-!> Assumes var complete (reading from dart restart file not directly from model netcdf files)
+! Collect the min and max of inflation on task 0
+! this block figures out what the min/max value of the mean/sd is
+! if we are reading in the values from a restart file.  it is used
+! in diagnostic output so it needs to get to PE0.  we also could check it
+! against the limits in the namelist to be sure the file values aren't
+! already outside the requested limits. (not sure that's necessary -
+! depends on when the code that changes the values imposes the limits.)
 subroutine get_minmax_task_zero(inflation_handle, ens_handle, ss_inflate_index, ss_inflate_sd_index)
-
-type(adaptive_inflate_type), intent(inout) :: inflation_handle
-type(ensemble_type),         intent(inout) :: ens_handle
-integer,                     intent(in)    :: ss_inflate_index
-integer,                     intent(in)    :: ss_inflate_sd_index
-
-integer :: owner, owners_index
-
-if (inflation_handle%inflation_flavor >= 2) then
-if (inflation_handle%mean_from_restart) then
-
-   call get_copy_owner_index(ss_inflate_index, owner, owners_index)
-   ! if inflation array is already on PE0, just figure out the
-   ! largest value in the array and we're done.
-   if (owner == 0) then
-      call prepare_to_read_from_vars(ens_handle)
-      inflation_handle%minmax_mean(1) = minval(ens_handle%vars(:, owners_index))
-      inflation_handle%minmax_mean(2) = maxval(ens_handle%vars(:, owners_index))
-   else
-      ! someone else has the inf array.  have the owner send the min/max
-      ! values to PE0.  after this point only PE0 has the right value
-      ! in minmax_mean, but it is the only one who is going to print below.
-      if (ens_handle%my_pe == 0) then
-         call receive_from(map_pe_to_task(ens_handle, owner), inflation_handle%minmax_mean)
-      else if (ens_handle%my_pe == owner) then
-         call prepare_to_read_from_vars(ens_handle)
-         inflation_handle%minmax_mean(1) = minval(ens_handle%vars(:, owners_index))
-         inflation_handle%minmax_mean(2) = maxval(ens_handle%vars(:, owners_index))
-         call send_to(map_pe_to_task(ens_handle, 0), inflation_handle%minmax_mean)
-      endif
-   endif
-
-endif
-
-
-if (inflation_handle%sd_from_restart) then
-
-   call get_copy_owner_index(ss_inflate_sd_index, owner, owners_index)
-   ! if inflation sd array is already on PE0, just figure out the
-   ! largest value in the array and we're done.
-   if (owner == 0) then
-      call prepare_to_read_from_vars(ens_handle)
-      inflation_handle%minmax_sd(1) = minval(ens_handle%vars(:, owners_index))
-      inflation_handle%minmax_sd(2) = maxval(ens_handle%vars(:, owners_index))
-   else
-      ! someone else has the sd array.  have the owner send the min/max
-      ! values to PE0.  after this point only PE0 has the right value
-      ! in minmax_sd, but it is the only one who is going to print below.
-      if (ens_handle%my_pe == 0) then
-         call receive_from(map_pe_to_task(ens_handle, owner), inflation_handle%minmax_sd)
-      else if (ens_handle%my_pe == owner) then
-         call prepare_to_read_from_vars(ens_handle)
-         inflation_handle%minmax_sd(1) = minval(ens_handle%vars(:, owners_index))
-         inflation_handle%minmax_sd(2) = maxval(ens_handle%vars(:, owners_index))
-         call send_to(map_pe_to_task(ens_handle, 0), inflation_handle%minmax_sd)
-      endif
-   endif
-
-endif
-endif
-
-end subroutine get_minmax_task_zero
-
-
-!-----------------------------------------------------------------------
-!> Collect onto task 0 the min and max of inflation from the tasks who
-!> owns the inflation copies 
-!> Assumes comy complete (reading directly from model netcdf files, not
-!> from dart restart file)
-subroutine get_minmax_task_zero_distrib(inflation_handle, ens_handle, ss_inflate_index, ss_inflate_sd_index)
 
 type(adaptive_inflate_type), intent(inout) :: inflation_handle
 type(ensemble_type),         intent(inout) :: ens_handle
@@ -1112,7 +1029,7 @@ if (inflation_handle%sd_from_restart) then
 endif
 endif
 
-end subroutine get_minmax_task_zero_distrib
+end subroutine get_minmax_task_zero
 
 !========================================================================
 ! end module adaptive_inflate_mod

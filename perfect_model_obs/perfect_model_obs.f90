@@ -29,7 +29,8 @@ use obs_sequence_mod,     only : read_obs_seq, obs_type, obs_sequence_type,     
 use      obs_def_mod,     only : obs_def_type, get_obs_def_error_variance, get_obs_def_time
 use    obs_model_mod,     only : move_ahead, advance_state, set_obs_model_trace
 use  assim_model_mod,     only : static_init_assim_model, get_model_size,                    &
-                                 aget_initial_condition, netcdf_file_type, init_diag_output, &
+                                 aget_initial_condition
+use state_space_diag_mod, only : netcdf_file_type, init_diag_output, &
                                  aoutput_diagnostics, finalize_diag_output
    
 use mpi_utilities_mod,    only : task_count, task_sync, initialize_mpi_utilities, &
@@ -45,14 +46,13 @@ use ensemble_manager_mod, only : init_ensemble_manager,               &
 
 use           filter_mod, only : filter_set_initial_time, filter_sync_keys_time
 
-use state_vector_io_mod,   only : read_transpose, transpose_write, state_vector_io_init, &
-                                  setup_read_write, turn_read_copy_on, turn_write_copy_on,&
-                                  turn_write_copy_off, filter_read_restart_direct, &
-                                  filter_write_restart_direct, write_ensemble_restart, &
-                                  read_ensemble_restart
+use state_vector_io_mod,   only : state_vector_io_init, &
+                                  read_state, write_state
 
 use state_structure_mod,   only : get_num_domains, static_init_state_type
-use io_filenames_mod,      only : io_filenames_init, get_input_file, set_filenames
+
+use io_filenames_mod,      only : io_filenames_init, file_info_type
+
 use quality_control_mod,   only : set_input_qc, initialize_qc
 
 use ensemble_manager_mod,    only : set_num_extra_copies ! should this be through ensemble_manager?
@@ -107,6 +107,7 @@ character(len = 129) :: restart_in_file_name  = 'perfect_ics',     &
                         obs_seq_in_file_name  = 'obs_seq.in',      &
                         obs_seq_out_file_name = 'obs_seq.out',     &
                         adv_ens_command       = './advance_model.csh'
+
 
 namelist /perfect_model_obs_nml/ start_from_restart, output_restart, async,         &
                                  init_time_days, init_time_seconds,                 &
@@ -163,11 +164,12 @@ logical                 :: all_gone, read_time_from_file
 integer                 :: qc_status
 integer                 :: global_obs_num
 
-type(time_type) :: time1
-integer         :: secs, days
-character*20    :: task_str ! string to hold the task number
-integer         :: ens_size = 1 ! This is to avoid magic number 1s
-integer         :: copy_indices(1) = 1
+type(time_type)      :: time1
+integer              :: secs, days
+character*20         :: task_str ! string to hold the task number
+integer              :: ens_size = 1 ! This is to avoid magic number 1s
+integer              :: copy_indices(1) = 1
+type(file_info_type) :: file_info ! handle for filenames
 
 ! Initialize all modules used that require it
 call perfect_initialize_modules_used()
@@ -242,28 +244,15 @@ call error_handler(E_MSG,'perfect_main',msgstring)
 call trace_message('Before reading in ensemble restart file')
 call init_ensemble_manager(ens_handle, ens_size, model_size, 1)
 
-! Reading restart file:
-call setup_read_write(1)
-call set_filenames(ens_handle, 1, "no_inf1", "no_inf2")
+! Initialize file names:
+file_info = io_filenames_init(ens_handle, .true., .true., restart_in_file_name, restart_out_file_name, output_restart, direct_netcdf_read, direct_netcdf_write)
+
+! Set a time type for initial time if namelist inputs are not negative
+call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time_from_file)
 
 if (start_from_restart) then
 
-   call turn_read_copy_on(1)
-
-   if (direct_netcdf_read) then
-      ! Netcdf file.
-      call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time_from_file)
-      call filter_read_restart_direct(ens_handle, time1, 0, read_time_from_file)
-
-   else ! reading from a dart file
-
-      ! make space for read of vars array
-         allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
-      if(ens_handle%my_pe == 0) call perfect_read_restart(ens_handle, model_size)
-      call all_vars_to_all_copies(ens_handle)
-      deallocate(ens_handle%vars)
-
-   endif
+   call read_state(ens_handle, file_info, read_time_from_file, time1)
 
 else ! model spin up
 
@@ -277,9 +266,11 @@ else ! model spin up
 endif
 
 ! Temporary print of initial model time
-call get_time(ens_handle%time(1),secs,days)
-write(msgstring, *) 'initial model time of perfect_model member (days,seconds) ',days,secs
-call error_handler(E_DBG,'perfect_read_restart',msgstring,source,revision,revdate)
+if (my_task_id() == 0) then
+   call get_time(ens_handle%time(1),secs,days)
+   write(msgstring, *) 'initial model time of perfect_model member (days,seconds) ',days,secs
+   call error_handler(E_DBG,'perfect_read_restart',msgstring,source,revision,revdate)
+endif
 
 call trace_message('After reading in ensemble restart file')
 
@@ -454,7 +445,7 @@ AdvanceTime: do
       ! Compute the observations from the state
       global_obs_num = fwd_op_ens_handle%my_vars(j)
       call get_expected_obs_distrib_state(seq, keys(global_obs_num:global_obs_num), &
-         ens_handle%time(1), .true., &
+         curr_ens_time, .true., &
          istatus, assimilate_this_ob, evaluate_this_ob, &
          ens_handle, ens_size, copy_indices, true_obs)
 
@@ -555,28 +546,9 @@ deallocate(fwd_op_ens_handle%vars, qc_ens_handle%vars)
 call trace_message('After  writing output sequence file')
 
 ! Output a restart file if requested
-if(output_restart) then
-
-   call trace_message('Before writing state restart file')
-   call turn_write_copy_on(1)
-
-   if (direct_netcdf_write) then
-      call filter_write_restart_direct(ens_handle, 0, isprior = .false.)
-
-   else ! ascii or binary
-
-      ! make space for write of vars array
-      allocate(ens_handle%vars(ens_handle%num_vars, ens_handle%my_num_copies))
-      call all_copies_to_all_vars(ens_handle)
-      call write_ensemble_restart(ens_handle, restart_out_file_name, 1, 1, &
-           force_single_file = .true.)
-      deallocate(ens_handle%vars)
-
-   endif
-
-   call trace_message('After  writing state restart file')
-
-endif
+call trace_message('Before writing state restart file if requested')
+call write_state(ens_handle, file_info)
+call trace_message('After  writing state restart file if requested')
 
 call trace_message('Before ensemble and obs memory cleanup')
 
@@ -616,43 +588,9 @@ call static_init_assim_model()
 ! Initialize the model class data now that obs_sequence is all set up
 call state_vector_io_init()
 call static_init_state_type()
-call io_filenames_init()
 call initialize_qc()
 
 end subroutine perfect_initialize_modules_used
-
-!---------------------------------------------------------------------
-
-subroutine perfect_read_restart(ens_handle, model_size)
-
-type(ensemble_type), intent(inout) :: ens_handle
-integer(i8),         intent(in)    :: model_size
-
-type(time_type) :: time1
-integer         :: secs, days
-
-call prepare_to_write_to_vars(ens_handle)
-
-! If not start_from_restart, use model to get ics for state and time
-! Read in initial conditions from restart file
-if(init_time_days >= 0) then
-   time1 = set_time(init_time_seconds, init_time_days)
-   call read_ensemble_restart(ens_handle, 1, 1, &
-         start_from_restart, restart_in_file_name, time1, force_single_file = .true.)
-
-   write(msgstring, '(A)') 'By namelist control, ignoring time found in restart file.'
-   call error_handler(E_MSG,'perfect_read_restart:',msgstring,source,revision,revdate)
-   write(msgstring, '(A,I6,1X,I5)') 'Setting initial days, seconds to ', &
-         init_time_days, init_time_seconds
-   call error_handler(E_MSG,'perfect_read_restart:',msgstring,source,revision,revdate)
-
-else
-   call read_ensemble_restart(ens_handle, 1, 1, &
-         start_from_restart, restart_in_file_name, force_single_file = .true.)
-endif
-
-end subroutine perfect_read_restart
-
 
 !-------------------------------------------------------------------------
 

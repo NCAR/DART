@@ -221,7 +221,7 @@ public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
           sum_across_tasks, get_dart_mpi_comm, datasize, reduce_min_max,     &
-          get_from_fwd, get_from_mean
+          get_from_fwd, get_from_mean, all_reduce_min_max, broadcast_flag
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -2014,6 +2014,33 @@ call mpi_reduce(minmax(2:2), global_val(2:2), 1, datasize, MPI_MAX, task, get_da
 end subroutine reduce_min_max
 
 !-----------------------------------------------------------------------------
+! Find min and max of each element of an array, put the result on every task.
+! Overwrites arrays min_var, max_var with the minimum and maximum for each 
+! element across all tasks.
+subroutine all_reduce_min_max(min_var, max_var, num_elements)
+
+integer,  intent(in)    :: num_elements
+real(r8), intent(inout) :: min_var(num_elements)
+real(r8), intent(inout) :: max_var(num_elements)
+
+integer :: errcode
+
+if (datasize == mpi_real8) then
+
+   call mpi_allreduce(MPI_IN_PLACE, min_var, num_elements, mpi_real8, MPI_MIN, get_dart_mpi_comm(), errcode)
+   call mpi_allreduce(MPI_IN_PLACE, max_var, num_elements, mpi_real8, MPI_MAX, get_dart_mpi_comm(), errcode)
+
+else ! single precision
+
+   call mpi_allreduce(MPI_IN_PLACE, min_var, num_elements, mpi_real4, MPI_MIN, get_dart_mpi_comm(), errcode)
+   call mpi_allreduce(MPI_IN_PLACE, max_var, num_elements, mpi_real4, MPI_MAX, get_dart_mpi_comm(), errcode)
+
+endif
+
+
+end subroutine all_reduce_min_max
+
+!-----------------------------------------------------------------------------
 ! One sided communication
 
 subroutine get_from_mean(owner, window, index, x)
@@ -2066,7 +2093,21 @@ call mpi_win_unlock(owner, window, errcode)
 end subroutine get_from_fwd
 
 !-----------------------------------------------------------------------------
+!-----------------------------------------------------------------------------
 
+! Broadcast logical
+subroutine broadcast_flag(flag, root)
+
+logical, intent(inout) :: flag
+integer, intent(in)    :: root ! in get_dart_mpi_comm()
+
+integer :: errcode
+
+call MPI_Bcast(flag, 1, MPI_LOGICAL, root, my_local_comm, errcode)
+
+end subroutine broadcast_flag
+
+!-----------------------------------------------------------------------------
 
 end module mpi_utilities_mod
 

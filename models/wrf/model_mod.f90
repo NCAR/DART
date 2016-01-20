@@ -61,7 +61,7 @@ use     utilities_mod,  only  : file_exist, open_file, close_file, &
                                 find_textfile_dims, file_to_text, &
                                 do_nml_file, do_nml_term, scalar
 
-use  mpi_utilities_mod,  only : my_task_id
+use  mpi_utilities_mod,  only : my_task_id, task_count
 
 use     random_seq_mod,  only : random_seq_type, init_random_seq, random_gaussian
 
@@ -88,14 +88,20 @@ use      obs_kind_mod,   only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT, &
                                 get_raw_obs_kind_index, get_num_raw_obs_kinds, &
                                 get_raw_obs_kind_name
 
-use ensemble_manager_mod,  only : ensemble_type
+!HK should model_mod know about the number of copies?
+use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_var_owner_index, &
+                                  get_my_vars, get_copy_owner_index
 
 use sort_mod,              only : sort
 
 use distributed_state_mod, only : get_state
 
 use state_structure_mod, only : add_domain, get_model_variable_indices, &
-                                state_structure_info, get_dart_vector_index
+                                state_structure_info, &
+                                get_index_start, get_index_end, &
+                                get_dart_vector_index
+
+use mpi_utilities_mod,   only : all_reduce_min_max
 
 ! FIXME:
 ! the kinds KIND_CLOUD_LIQUID_WATER should be KIND_CLOUDWATER_MIXING_RATIO, 
@@ -129,7 +135,6 @@ public ::  get_model_size,                &
            get_state_meta_data,           &
            get_model_time_step,           &
            static_init_model,             &
-           pert_model_state,              &
            pert_model_copies,             &
            nc_write_model_atts,           &
            nc_write_model_vars,           &
@@ -755,6 +760,28 @@ call error_handler(E_MSG, 'static_init_model', errstring)
 
 end subroutine static_init_model
 
+!#######################################################################
+!> Convert from the state structure id to the wrf domain number.
+!> These are the same if there is only WRF involved in the assimilation
+!> The state structure id may be different if WRF is coupled with another
+!> model.
+function get_wrf_domain(state_id)
+
+integer, intent(in) :: state_id
+integer :: get_wrf_domain
+
+integer :: i
+
+do i = 1, num_domains
+   if (domain_id(i) == state_id) then
+      get_wrf_domain = i
+      return
+   endif
+enddo
+
+call error_handler(E_ERR, 'get_wrf_domain', 'not a valid domain')
+
+end function get_wrf_domain
 
 !#######################################################################
 
@@ -854,11 +881,14 @@ logical     :: var_found
 real(r8)    :: lon, lat, lev
 character(len=129) :: string1
 
-integer :: i, id, var_id
+integer :: i, id, var_id, state_id
 logical, parameter :: debug = .false.
 
 ! from the dart index get the local variables indices
-call get_model_variable_indices(index_in, ip, jp, kp, var_id=var_id, dom_id=id)
+call get_model_variable_indices(index_in, ip, jp, kp, var_id=var_id, dom_id=state_id)
+
+! convert from state_structure domain number to wrf.
+id = get_wrf_domain(state_id)
 
 ! at this point, (ip,jp,kp) refer to indices in the variable's own grid
 
@@ -3583,7 +3613,7 @@ end subroutine get_wrf_horizontal_location
 !***********************************************************************
 
 
-function nc_write_model_atts( ncFileID ) result (ierr)
+function nc_write_model_atts( ncFileID, model_mod_writes_state_variables ) result (ierr)
 !-----------------------------------------------------------------
 ! Writes the model-specific attributes to a netCDF file
 ! A. Caya May 7 2003
@@ -3592,6 +3622,7 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 logical, parameter :: write_precip = .false.
 
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
+logical, intent(out) :: model_mod_writes_state_variables
 integer              :: ierr          ! return value of function
 
 !-----------------------------------------------------------------
@@ -3643,6 +3674,7 @@ logical               :: debug = .false.
 !-----------------------------------------------------------------
 
 ierr = 0     ! assume normal termination
+model_mod_writes_state_variables = .true. 
 
 !-----------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file, 
@@ -4688,7 +4720,8 @@ end subroutine adv_1step
 !**********************************************
 
 subroutine end_model()
-! nothing to do, which is fine.
+
+deallocate(domain_id)
 
 end subroutine end_model
 
@@ -6130,12 +6163,17 @@ model_height_w_distrib = compute_geometric_height(geop, wrf%dom(id)%latitude(i, 
 
 end function model_height_w_distrib
 
+
 !#######################################################
 
+subroutine pert_model_copies(ens_handle, ens_size,  dummy_pert_amp, interf_provided)
 
-subroutine pert_model_state(state, pert_state, interf_provided)
+type(ensemble_type), intent(inout) :: ens_handle
+integer,             intent(in)    :: ens_size
+real(r8),            intent(in)    :: dummy_pert_amp ! not used
+logical,             intent(out)   :: interf_provided
 
-! Perturbs a single model state for generating initial ensembles.
+! Perturbs model states for generating initial ensembles.
 ! Because this requires some care when using - see the comments in the
 ! code below - you must set a namelist variable to enable this functionality.
 
@@ -6147,19 +6185,22 @@ subroutine pert_model_state(state, pert_state, interf_provided)
 ! to evolve the ensemble members differently, which is the goal.
 !
 
-real(r8), intent(in)  :: state(:)
-real(r8), intent(out) :: pert_state(:)
-logical,  intent(out) :: interf_provided
-
 real(r8)              :: pert_amount = 0.005   ! 0.5%
 
 real(r8)              :: pert_ampl, range
 real(r8)              :: minv, maxv, temp
 type(random_seq_type) :: random_seq
 integer               :: id, i, j, s, e
-integer, save         :: counter = 0
+logical, allocatable  :: within_range(:)
+integer(i8), allocatable :: var_list(:)
+integer               :: num_variables
+real(r8), allocatable :: min_var(:), max_var(:)
+integer               :: start_ind, end_ind
+integer :: copy
+integer :: count
+logical :: bitwise_lanai
 
-! generally you do not want to just perturb a single state to begin an 
+! generally you do not want to just perturb a single state to begin an
 ! experiment, especially for a regional weather model, because the 
 ! resulting fields will have spread but they won't have organized features.
 ! we have had good luck with some global atmosphere models where there is
@@ -6185,16 +6226,123 @@ integer, save         :: counter = 0
 ! the code below to enable that functionality.
 
 if (.not. allow_perturbed_ics) then
-call error_handler(E_ERR,'pert_model_state', &
+call error_handler(E_ERR,'pert_model_copies', &
                      'starting WRF model from a single vector requires additional steps', &
                   source, revision, revdate, &
-                  text2='see comments in wrf/model_mod.f90::pert_model_state()')
+                  text2='see comments in wrf/model_mod.f90::pert_model_copies()')
 endif
 
 ! NOT REACHED unless allow_perturbed_ics is true in the namelist
 
 ! start of pert code
 interf_provided = .true.
+
+! Get min and max of each variable in each domain
+allocate(var_list(ens_handle%my_num_vars))
+
+num_variables = 0
+do id = 1, num_domains
+  num_variables = num_variables + wrf%dom(id)%number_of_wrf_variables
+enddo
+
+allocate(min_var(num_variables), max_var(num_variables))
+allocate(within_range(ens_handle%my_num_vars))
+
+do id = 1, num_domains
+   do i = 1, wrf%dom(id)%number_of_wrf_variables
+
+      start_ind = get_index_start(domain_id(id), i)
+      end_ind = get_index_end(domain_id(id), i)
+
+      call get_my_vars(ens_handle, var_list)
+      within_range =      var_list >= start_ind .and. var_list <= end_ind  ! &
+                    !.and. var_list >= start_domain .and. var_list <= end_domain
+      min_var(i) = minval(ens_handle%copies(1,:), MASK=within_range)
+      max_var(i) = maxval(ens_handle%copies(1,:), MASK=within_range)
+
+   enddo
+enddo
+
+call all_reduce_min_max(min_var, max_var, num_variables)
+
+bitwise_lanai = .true.
+if (bitwise_lanai) then
+
+   call pert_copies_lanai_bitwise(ens_handle, ens_size, pert_amount, min_var, max_var)
+
+else
+
+   call init_random_seq(random_seq, my_task_id())
+
+   count = 1 ! min and max are numbered 1 to n, where n is the total number of variables (all domains)
+   do id = 1, num_domains
+      do i = 1, num_variables
+
+         start_ind = get_index_start(domain_id(id), i)
+         end_ind = get_index_end(domain_id(id), i)
+
+         !! Option 1:
+         !! make the perturbation amplitude N% of the total
+         !! range of this variable.  values could vary a lot
+         !! over some of the types, like pressure
+         !range = max_var(count) - min_var(count)
+         !pert_ampl = pert_amount * range
+
+         do j=1, ens_handle%my_num_vars
+            if (ens_handle%my_vars(j) >= start_ind .and. ens_handle%my_vars(j) <= end_ind) then
+               do copy = 1, ens_size
+                  ! once you change pert_state, state is changed as well
+                  ! since they are the same storage as called from filter.
+                  ! you have to save it if you want to use it again.
+                  ! Option 2: perturb each value individually
+                  !! make the perturbation amplitude N% of this value
+                  pert_ampl = pert_amount * ens_handle%copies(copy, j)
+                  ens_handle%copies(copy, j) = random_gaussian(random_seq, ens_handle%copies(copy, j), pert_ampl)
+               enddo
+
+               ! keep variable from exceeding the original range
+               ens_handle%copies(1:ens_size,j) = max(min_var(count), ens_handle%copies(1:ens_size,j))
+               ens_handle%copies(1:ens_size,j) = min(max_var(count), ens_handle%copies(1:ens_size,j))
+
+            endif
+         enddo
+
+         count = count + 1
+
+      enddo
+   enddo
+
+endif
+
+end subroutine pert_model_copies
+
+!#######################################################
+!> Perturb copies such that the result is bitwise
+!> with Lanai
+!> Note that (like Lanai) this is not bitwise with itself across tasks
+!> for task_count < ens_size
+subroutine pert_copies_lanai_bitwise(ens_handle, ens_size, pert_amount, min_var, max_var)
+
+type(ensemble_type), intent(inout) :: ens_handle
+integer,             intent(in)    :: ens_size
+real(r8),            intent(in)    :: pert_amount
+real(r8),             intent(in)    :: min_var(:)
+real(r8),             intent(in)    :: max_var(:)
+
+
+integer :: start_ind ! start index variable in state
+integer :: end_ind ! end index variable in state
+integer :: owner ! pe that owns the state element
+integer :: owner_index ! local index on pe
+integer :: copy_owner
+integer :: copy, id, i ! loop index
+integer(i8) :: j ! loop index
+integer :: count ! keep track of which variable you are perturbing
+real(r8) :: pert_ampl
+type(random_seq_type) :: random_seq(ens_size)
+integer :: sequence_to_use
+integer, allocatable :: counter(:)
+real(r8) :: random_number
 
 ! the first time through get the task id (0:N-1) and set a unique seed 
 ! per task.  this should reproduce from run to run if you keep the number
@@ -6209,66 +6357,73 @@ interf_provided = .true.
 ! members/task).  it is assuming there are no more than 1000 ensembles/task,
 ! which seems safe given the current sizes of state vecs and hardware memory.
 
-if (counter == 0) counter = ((my_task_id()+1) * 1000)
+!if (counter == 0) counter = ((my_task_id()+1) * 1000) ! this is the code in Lanai
+allocate(counter(task_count()))
 
-call init_random_seq(random_seq, counter)
-counter = counter + 1
+! initialize ens_size random number sequences
+counter(:) = 0
 
-! do the perturbation per domain, per variable type
-do id=1, num_domains
-   do i=1, wrf%dom(id)%number_of_wrf_variables
-      ! starting and ending indices in the linear state vect
-      s = wrf%dom(id)%var_index(1, i)
-      e = wrf%dom(id)%var_index(2, i)
-      ! original min/max data values of each type
-      minv = minval(state(s:e))
-      maxv = maxval(state(s:e))
-      !! Option 1:
-      !! make the perturbation amplitude N% of the total
-      !! range of this variable.  values could vary a lot
-      !! over some of the types, like pressure
-      !range = maxv - minv
-      !pert_ampl = pert_amount * range
-      do j=s, e
-         ! once you change pert_state, state is changed as well
-         ! since they are the same storage as called from filter.
-         ! you have to save it if you want to use it again.
-         temp = state(j)  ! original value
-         ! Option 2: perturb each value individually
-         !! make the perturbation amplitude N% of this value
-         pert_ampl = pert_amount * temp
-         pert_state(j) = random_gaussian(random_seq, state(j), pert_ampl)
-         ! keep it from exceeding the original range
-         pert_state(j) = max(minv, pert_state(j))
-         pert_state(j) = min(maxv, pert_state(j))
+
+do copy = 1, ens_size
+
+   call get_copy_owner_index(copy, owner, owner_index)
+   if (counter(owner+1)==0) counter(owner+1) = ((map_pe_to_task(ens_handle, owner)+1) * 1000)
+   call init_random_seq(random_seq(copy), counter(owner+1))
+   counter(owner+1) = counter(owner+1) + 1
+
+
+   count = 1 ! min_var and max_var are numbered 1 to n, where n is the total number of variables (all domains)
+
+   do id = 1, num_domains
+      do i = 1, wrf%dom(id)%number_of_wrf_variables
+
+         start_ind = get_index_start(domain_id(id), i)
+         end_ind = get_index_end(domain_id(id), i)
+
+         !! Option 1:
+         !! make the perturbation amplitude N% of the total
+         !! range of this variable.  values could vary a lot
+         !! over some of the types, like pressure
+         !range = max_var(count) - min_var(count)
+         !pert_ampl = pert_amount * range
+
+         do j = start_ind, end_ind
+
+            call get_var_owner_index(j, owner, owner_index)
+
+               ! once you change pert_state, state is changed as well
+               ! since they are the same storage as called from filter.
+               ! you have to save it if you want to use it again.
+               ! Option 2: perturb each value individually
+               !! make the perturbation amplitude N% of this value
+
+            ! pert_ampl is only important on the task that uses it, but need to keep
+            ! the random number sequence in the same order on each task (call the same amount of times)
+            pert_ampl = pert_amount * ens_handle%copies(copy, min(owner_index, ens_handle%my_num_vars))
+            random_number = random_gaussian(random_seq(copy), 0.0_r8, pert_ampl)
+
+            if (ens_handle%my_pe == owner) then
+
+               ens_handle%copies(copy, owner_index) = ens_handle%copies(copy, owner_index) + random_number
+
+               ! keep variable from exceeding the original range
+               ens_handle%copies(copy,owner_index) = max(min_var(count), ens_handle%copies(copy,owner_index))
+               ens_handle%copies(copy,owner_index) = min(max_var(count), ens_handle%copies(copy,owner_index))
+
+            endif
+         enddo
+
+
+         count = count + 1
+
       enddo
    enddo
+
 enddo
 
+deallocate(counter)
 
-end subroutine pert_model_state
-
-!#######################################################
-
-subroutine pert_model_copies(state_handle, pert_amp, interf_provided)
-
- type(ensemble_type), intent(inout) :: state_handle
- real(r8),  intent(in) :: pert_amp
- logical,  intent(out) :: interf_provided
-
-! Perturbs a model state copies for generating initial ensembles.
-! The perturbed state is returned in pert_state.
-! A model may choose to provide a NULL INTERFACE by returning
-! .false. for the interf_provided argument. This indicates to
-! the filter that if it needs to generate perturbed states, it
-! may do so by adding a perturbation to each model state 
-! variable independently. The interf_provided argument
-! should be returned as .true. if the model wants to do its own
-! perturbing of states.
-
-interf_provided = .false.
-
-end subroutine pert_model_copies
+end subroutine pert_copies_lanai_bitwise
 
 !#######################################################
 ! !WARNING:: at the moment, this code is *not* called
