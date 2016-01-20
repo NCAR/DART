@@ -6914,7 +6914,6 @@ enddo
 if (l_rectang) then
 
    call interp_lonlat(vec, base_obs_loc, KIND_SURFACE_ELEVATION, h_surf, vstatus)
-   ! newFIXME; put Fail message other places like this   ! Failure; istatus = 1
    if (vstatus == 1) then
       write(string1,'(A,1p3F12.6)') 'surface elevation could not be interpolated in interp_lonlat at ', &
                            lon_lat_lev
