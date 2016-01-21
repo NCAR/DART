@@ -274,6 +274,8 @@ from model file format to DART state vector, and back.
 <LI>noah <A href="models/noah/noah_to_dart.html">noah_to_dart</A></LI>
 <LI>POP <A href="models/POP/dart_to_pop.html">dart_to_pop</A></LI>
 <LI>POP <A href="models/POP/pop_to_dart.html">pop_to_dart</A></LI>
+<LI>ROMS <A href="models/ROMS/dart_to_roms.html">dart_to_roms</A></LI>
+<LI>ROMS <A href="models/ROMS/roms_to_dart.html">roms_to_dart</A></LI>
 <LI>wrf <A href="models/wrf/shell_scripts/advance_model.html">advance_model</A></LI>
 <LI>wrf <A href="models/wrf/WRF_DART_utilities/dart_to_wrf.html">dart_to_wrf</A></LI>
 <LI>wrf <A href="models/wrf/WRF_DART_utilities/dart_to_wrf.html">wrf_to_dart</A></LI>
@@ -333,6 +335,7 @@ available, the link is to the .f90 source):
 <LI><A HREF="models/null_model/model_mod.html">null_model</A> (html)</LI>
 <LI><A HREF="models/pe2lyr/model_mod.html">pe2lyr</A> (html)</LI>
 <LI><A HREF="models/POP/model_mod.html">POP</A> (html)</LI>
+<LI><A HREF="models/ROMS/model_mod.html">ROMS</A> (html)</LI>
 <LI><A HREF="models/rose/model_mod.f90">Rose</A> (source)</LI>
 <LI><A HREF="models/simple_advection/model_mod.html">simple_advection</A> (html)</LI>
 <LI><A HREF="models/sqg/model_mod.html">SQG</A> (html)</LI>
@@ -464,6 +467,9 @@ We adhere to the F90 standard of starting a namelist with an ampersand
 <LI>POP <A HREF="models/POP/dart_to_pop.nml#Namelist">&amp;dart_to_pop_nml</A></LI>
 <LI>POP <A HREF="models/POP/model_mod.nml#Namelist">&amp;model_nml</A></LI>
 <LI>POP <A HREF="models/POP/pop_to_dart.nml#Namelist">&amp;pop_to_dart_nml</A></LI>
+<LI>ROMS <A HREF="models/ROMS/dart_to_roms.nml#Namelist">&amp;dart_to_roms</A></LI>
+<LI>ROMS <A HREF="models/ROMS/model_mod.nml#Namelist">&amp;model_nml</A></LI>
+<LI>ROMS <A HREF="models/ROMS/roms_to_dart.nml#Namelist">&amp;roms_to_dart_nml</A></LI>
 <LI>simple_advection <A HREF="models/simple_advection/model_mod.nml#Namelist">&amp;model_nml</A></LI>
 <LI>sqg <A HREF="models/sqg/model_mod.nml#Namelist">&amp;model_nml</A></LI>
 <LI>template <A HREF="models/template/model_mod.nml#Namelist">&amp;model_nml</A></LI>
@@ -601,11 +607,18 @@ all model_mod source files in the DART distribution tree:
 <LI><A href="models/NCOMMAS/model_mod.f90">models/NCOMMAS/model_mod</A> (source)</LI>
 <LI><A href="models/NCOMMAS/model_mod.html">models/NCOMMAS/model_mod</A> (html)</LI>
 <LI><A href="models/NCOMMAS/ncommas_to_dart.html">models/NCOMMAS/ncommas_to_dart</A></LI>
+
 <LI><A href="models/POP/dart_pop_mod.html">models/POP/dart_pop_mod</A> (html)</LI>
 <LI><A href="models/POP/dart_to_pop.html">models/POP/dart_to_pop</A></LI>
 <LI><A href="models/POP/model_mod.f90">models/POP/model_mod</A> (source)</LI>
 <LI><A href="models/POP/model_mod.html">models/POP/model_mod</A> (html)</LI>
 <LI><A href="models/POP/pop_to_dart.html">models/POP/pop_to_dart</A></LI>
+
+<LI><A href="models/ROMS/dart_to_roms.html">models/ROMS/dart_to_roms</A></LI>
+<LI><A href="models/ROMS/model_mod.f90">models/ROMS/model_mod</A> (source)</LI>
+<LI><A href="models/ROMS/model_mod.html">models/ROMS/model_mod</A> (html)</LI>
+<LI><A href="models/ROMS/roms_to_dart.html">models/ROMS/roms_to_dart</A></LI>
+
 <LI><A href="models/am2/model_mod.f90">models/am2/model_mod</A> (source)</LI>
 <LI><A href="models/bgrid_solo/model_mod.f90">models/bgrid_solo/model_mod</A> (source)</LI>
 <LI><A href="models/cam/cam_to_dart.html">models/cam/cam_to_dart</A></LI>

@@ -318,7 +318,7 @@ endif
 
 # ==============================================================================
 # Creating the code to add to the *.run script to call DART.
-# If there is one instance ... we MUST be running a perfect_model experiment.
+# If there is one instance ... we COULD be running a perfect_model experiment.
 # If there are many instances ... we MUST be assimilating.
 # The number of instances dictates what DART script will be used.
 # ==============================================================================
@@ -348,8 +348,8 @@ if ( $status == 0 ) then
    # If you want to use DART, use 'DARTSCRIPTNAME'
    # You can only use one of the two.
 
-   ${CASEROOT}/no_assimilate.csh      || exit 123
-#  ${CASEROOT}/DARTSCRIPTNAME         || exit 124
+   ${CASEROOT}/no_assimilate.csh
+#  ${CASEROOT}/DARTSCRIPTNAME
 
    if ( $status == 0 ) then
       echo "`date` -- DART HAS FINISHED"
@@ -439,7 +439,7 @@ Check the DART configuration:
 
 3) Modify what you need to in the DART namelist file, i.e. ${CASEROOT}/input.nml
 
-4) If you have recompiled any part of the DART system, 'stage_dart_files'
+4) If you have recompiled any part of the DART system, 'refresh_dart_files'
    will copy them into the correct places.
 
 5) If you stage your own inflation files, make sure you read the INFLATION section

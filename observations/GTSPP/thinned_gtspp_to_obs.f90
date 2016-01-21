@@ -3,12 +3,17 @@
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
 ! $Id$
+!
+! bjchoi 2014 May 15
+! Because a GTSPP profile has too many data in vertical direction,
+! we need to reduce the number of data in a single profile.
+! Just select data near the standard (nominal) depths.
 
-program gtspp_to_obs
+program thinned_gtspp_to_obs
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!     gtspp_to_obs - program that reads a list of NODS GTSPP observation 
+!     thinned_gtspp_to_obs - program that reads a list of NODS GTSPP observation 
 !                    profiles of ocean temperature and salinity in netcdf
 !                    format and writes a DART observation sequence file. 
 !
@@ -75,7 +80,7 @@ integer, parameter :: nmaxdepths = 5000   !  max number of observation depths
 real(r8) :: obs_depth(nmaxdepths)   = -1.0_r8
 real(r8) :: temperature(nmaxdepths) = MISSING_R8
 real(r8) :: salinity(nmaxdepths)    = MISSING_R8
-character(len=nmaxdepths) :: t_qc = '', s_qc = ''
+integer :: t_qc(nmaxdepths), s_qc(nmaxdepths)
 
 !------------------------------------------------------------------------
 !  Declare namelist parameters
@@ -87,9 +92,19 @@ character(len=128) :: gtspp_out_file        = 'obs_seq.gtspp'
 integer            :: avg_obs_per_file      = 500
 logical            :: debug                 = .false.
 
-namelist /gtspp_to_obs_nml/ gtspp_netcdf_file,                     &
-                            gtspp_netcdf_filelist, gtspp_out_file, &
-                            avg_obs_per_file, debug
+namelist /thinned_gtspp_to_obs_nml/ gtspp_netcdf_file, &
+                                    gtspp_netcdf_filelist, &
+                                    gtspp_out_file, &
+                                    avg_obs_per_file, &
+                                    debug
+
+!pseudo standard depth for a profile data. 5 lines were added by bjchoi
+integer  :: mdepth
+real(r8) :: std_depth(22)
+DATA std_depth(1:22) / 0.0, 15.0, 30.0, 50.0, 75.0, 100.0, 150.0, 200.0, 300.0, & 
+                     400.0, 500.0, 750.0, 1000.0, 1500.0, 2000.0, 2500.0, 3000.0, & 
+                    4000.0, 5000.0, 6000.0, 8000.0, 12000.0 /
+
 
 ! start of executable code
 
@@ -102,18 +117,18 @@ base_time = set_date(1900, 1, 1, 0, 0, 0)
 
 !  read the necessary parameters from input.nml
 call initialize_utilities()
-call find_namelist_in_file("input.nml", "gtspp_to_obs_nml", iunit)
-read(iunit, nml = gtspp_to_obs_nml, iostat = io)
+call find_namelist_in_file("input.nml", "thinned_gtspp_to_obs_nml", iunit)
+read(iunit, nml = thinned_gtspp_to_obs_nml, iostat = io)
 
 ! Record the namelist values used for the run 
-if (do_output()) write(nmlfileunit, nml=gtspp_to_obs_nml)
+if (do_output()) write(nmlfileunit, nml=thinned_gtspp_to_obs_nml)
 
 ! any needed namelist checks for sanity:
 
 ! cannot have both a single filename and a list; the namelist must
 ! shut one off.
 if (gtspp_netcdf_file /= '' .and. gtspp_netcdf_filelist /= '') then
-  call error_handler(E_ERR, 'gtspp_to_obs',                     &
+  call error_handler(E_ERR, 'thinned_gtspp_to_obs',                     &
                      'One of gtspp_netcdf_file or filelist must be NULL', &
                      source, revision, revdate)
 endif
@@ -134,8 +149,8 @@ call init_obs(obs, num_copies, num_qc)
 call init_obs(prev_obs, num_copies, num_qc)
 inquire(file=gtspp_out_file, exist=file_exist)
 ! for now, disable this.  too easy to make files with duplicate obs in them.
-!if ( file_exist ) then
-if (.false.) then
+if ( file_exist ) then
+!if (.false.) then
 
 print *, "found existing obs_seq file, appending to ", trim(gtspp_out_file)
    call read_obs_seq(gtspp_out_file, 0, 0, num_new_obs, obs_seq)
@@ -192,11 +207,11 @@ fileloop: do      ! until out of files
    call get_time(obs_time,  osec, oday)
    
    ! get the number of depths
-   call nc_check( nf90_inq_dimid(ncid, "depth", varid), 'inq dimid depth')
+   call nc_check( nf90_inq_dimid(ncid, "z", varid), 'inq dimid depth')
    call nc_check( nf90_inquire_dimension(ncid, varid, len=ndepths, name=dimname), 'inq dim depth')
    
    ! and read in the depth array
-   call nc_check( nf90_inq_varid(ncid, "depth", varid),'inq varid depth')
+   call nc_check( nf90_inq_varid(ncid, "z", varid),'inq varid depth')
    call nc_check( nf90_get_var(ncid, varid, obs_depth, &
                   start=(/1/), count=(/ndepths/)),'get var   depth')
 
@@ -214,10 +229,10 @@ fileloop: do      ! until out of files
       call nc_check( nf90_get_var(ncid, varid, temperature, &
             start=(/1,1,1,1/), count=(/1,1,ndepths,1/)), 'get var temperature')
 
-      ! for now, use the data qc from netcdf file
-      call nc_check( nf90_inq_varid(ncid,"TEMP_qparm",varid) ,'inq varid TEMP_qparam')
+      ! for now, use the data qc from netcdf file 't_qc'
+      call nc_check( nf90_inq_varid(ncid,"temperature_quality_flag",varid) ,'inq varid TEMP_qparam')
       call nc_check( nf90_get_var(ncid, varid, t_qc, &
-            start=(/1,1/), count=(/1,ndepths/)),   'get var   TEMP_qparam')
+            start=(/1/), count=(/ndepths/)),   'get var   TEMP_qparam')
 
    endif
 
@@ -229,11 +244,11 @@ fileloop: do      ! until out of files
       call nc_check( nf90_get_var(ncid, varid, salinity, &
             start=(/1,1,1,1/), count=(/1,1,ndepths,1/)), 'get var salinity')
 
-      ! for now, use the data qc from netcdf file
+      ! for now, use the data qc from netcdf file 's_qc'
 
-      call nc_check( nf90_inq_varid(ncid,"PSAL_qparm",varid) ,'inq varid PSAL_qparam')
+      call nc_check( nf90_inq_varid(ncid,"salinity_quality_flag",varid) ,'inq varid PSAL_qparam')
       call nc_check( nf90_get_var(ncid, varid, s_qc, &
-            start=(/1,1/), count=(/1,ndepths/)),   'get var   PSAL_qparam')
+            start=(/1/), count=(/ndepths/)),   'get var   PSAL_qparam')
 
    endif
 
@@ -248,15 +263,25 @@ fileloop: do      ! until out of files
    
  ! FIXME: these have no physical basis; selected to get us running
  ! but need some domain expertise for guidance.
-   terr = 1.0     ! temp error = fixed at 1 degrees C
-   serr = 0.001   ! salinity error = 1 g/kg, which is 0.001 kg/kg
+   terr = 0.5     ! temp error = fixed at 1 degrees C
+   serr = 0.05    ! salinity error = 1 g/kg, which is 0.001 kg/kg
 
    first_obs = .true.
+   mdepth = 1
    
    obsloop: do k = 1, ndepths
    
+    ! 5 lines were ADDED by bjchoi 2015.05.15.
+    ! It could be improved better than this.
+    if( obs_depth(k) .GE. std_depth(mdepth) ) then
+       mdepth = mdepth + 1 
+    else
+       t_qc(k) = -1
+       s_qc(k) = -1
+    endif    
+
      ! check qc here.  if bad, skip the rest of this block
-     read(t_qc(k:k), '(I1)') i_qc
+     i_qc = t_qc(k)
      if (have_temp .and. i_qc == 1) then
 
          ! set qc to a good dart val
@@ -297,7 +322,7 @@ fileloop: do      ! until out of files
 
 
       ! check qc here.  if bad, skip the rest of this block
-      read(s_qc(k:k), '(I1)') i_qc
+      i_qc = s_qc(k)
       if (have_salt .and. i_qc == 1) then
 
          ! set qc to good dart val
@@ -317,7 +342,8 @@ fileloop: do      ! until out of files
    
          ! incoming obs are g/kg (practical salinity units - psu)
          ! model works in kg/kg (model salinity units - msu) so convert here.
-         obs_val(1) = salinity(k) / 1000.0_r8
+         ! obs_val(1) = salinity(k) / 1000.0_r8
+         obs_val(1) = salinity(k)  ! ROMS use psu            
          call set_obs_values(obs, obs_val)
          qc_val(1)  = d_qc(1)
          call set_qc(obs, qc_val)
@@ -359,7 +385,7 @@ print *, 'ready to write, nobs = ', get_num_obs(obs_seq)
    if (get_num_obs(obs_seq) > 0) call destroy_obs_sequence(obs_seq)
 endif
 
-call error_handler(E_MSG,'gtspp_to_obs','Finished successfully.',source,revision,revdate)
+call error_handler(E_MSG,'thinned_gtspp_to_obs','Finished successfully.',source,revision,revdate)
 call finalize_utilities()
 
 ! END OF MAIN ROUTINE
@@ -372,7 +398,7 @@ call finalize_utilities()
 
 ! subroutine to fill an obs?
 
-end program gtspp_to_obs
+end program thinned_gtspp_to_obs
 
 ! <next few lines under version control, do not edit>
 ! $URL$
