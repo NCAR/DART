@@ -754,21 +754,22 @@ do i = start_var, end_var
 
    var_size = get_variable_size(domain, i)
    end_in_var_block = start_in_var_block + var_size - 1
+   
+   if ( do_io_update(domain, i ) ) then
+      ! number of dimensions and length of each
+      allocate(dims(get_io_num_dims(domain, i)))
 
-   ! number of dimensions and length of each
-   allocate(dims(get_io_num_dims(domain, i)))
+      dims = get_io_dim_lengths(domain, i)
 
-   dims = get_io_dim_lengths(domain, i)
+      ret = nf90_inq_varid(ncfile_out, get_variable_name(domain, i), var_id)
+      call nc_check(ret, 'write_variables', 'getting variable id')
 
-   ret = nf90_inq_varid(ncfile_out, get_variable_name(domain, i), var_id)
-   call nc_check(ret, 'write_variables', 'getting variable id')
+      ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:end_in_var_block), count=dims)
+      call nc_check(ret, 'write_variables', 'writing')
+      start_in_var_block = start_in_var_block + var_size
 
-   ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:end_in_var_block), count=dims)
-   call nc_check(ret, 'write_variables', 'writing')
-   start_in_var_block = start_in_var_block + var_size
-
-   deallocate(dims)
-
+      deallocate(dims)
+   endif
 enddo
 
 end subroutine write_variables
