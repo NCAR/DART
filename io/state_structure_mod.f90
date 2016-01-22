@@ -841,7 +841,7 @@ integer :: var_id
 
 var_id = get_varid_from_varname(dom_id, varname)
 
-get_index_end_from_varname = state%domain(dom_id)%variable(var_id)%index_start
+get_index_end_from_varname = state%domain(dom_id)%variable(var_id)%index_end
 
 end function get_index_end_from_varname
 
@@ -1249,8 +1249,8 @@ do ivar = 1, num_vars
    write(*,*) 'kind_string : ', get_kind_string(dom_id,ivar)
    write(*,'(A,I3)') ' dart_kind   : ', get_kind_index(dom_id,ivar)
    write(*,*) 'clamping    : ', do_io_clamping(dom_id,ivar)
-   write(*,*) 'minvalue    : ', get_io_clamping_maxval(dom_id,ivar)
-   write(*,*) 'maxvalue    : ', get_io_clamping_minval(dom_id,ivar)
+   write(*,*) 'minvalue    : ', get_io_clamping_minval(dom_id,ivar)
+   write(*,*) 'maxvalue    : ', get_io_clamping_maxval(dom_id,ivar)
    write(*,*) 'update      : ', do_io_update(dom_id,ivar)
    
    num_dims = get_num_dims(dom_id,ivar)
