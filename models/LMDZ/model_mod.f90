@@ -1,6 +1,8 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 module model_mod
 
@@ -19,7 +21,7 @@ use    utilities_mod, only : register_module, error_handler, nc_check,          
                              find_namelist_in_file, check_namelist_read,logfileunit,file_exist,  &
                              get_unit
 use mpi_utilities_mod, only : my_task_id, task_count
-!-------------------------------------------------------------------------
+
 use     location_mod,  only : location_type, get_location, set_location, query_location,         &
                               LocationDims, LocationName, LocationLName,horiz_dist_only,         &
                               vert_is_level, vert_is_pressure, vert_is_height,vert_is_surface,   &
@@ -28,7 +30,7 @@ use     location_mod,  only : location_type, get_location, set_location, query_l
                               get_close_type, get_close_maxdist_init, get_close_obs_init,        &
                               get_dist,loc_get_close_obs => get_close_obs
 
-! BEGIN DART PREPROCESS USED KINDS
+
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT,KIND_PRESSURE,         &
                              KIND_SURFACE_PRESSURE, KIND_TEMPERATURE,KIND_SPECIFIC_HUMIDITY,     &
                              KIND_CLOUD_LIQUID_WATER, KIND_SURFACE_ELEVATION
@@ -36,7 +38,6 @@ use   random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 ! end of use statements
 !==============================================================================================
-!
 ! LMDZ global/module declarations
 
 implicit none
@@ -44,29 +45,43 @@ private
 
 ! The first block are the 16 required interfaces.  The following block
 ! are additional useful interfaces that utility programs can call.
-public ::                                                            &
-   static_init_model, get_model_size, get_model_time_step,           &
-   pert_model_state, get_state_meta_data, model_interpolate,         &
-   nc_write_model_atts, nc_write_model_vars,                         &
-   init_conditions, init_time, adv_1step, end_model,                 &
-   get_close_maxdist_init, get_close_obs_init, get_close_obs,        &
-   ens_mean_for_model
+public :: static_init_model,      &
+          get_model_size,         &
+          get_model_time_step,    &
+          pert_model_state,       &
+          get_state_meta_data,    &
+          model_interpolate,      &
+          nc_write_model_atts,    &
+          nc_write_model_vars,    &
+          init_conditions,        &
+          init_time,              &
+          adv_1step,              &
+          end_model,              &
+          get_close_maxdist_init, &
+          get_close_obs_init,     &
+          get_close_obs,          &
+          ens_mean_for_model
 
-public ::                                                            &
-   data_2d_type,data_3d_type,PS,T,U,V,Q,CLDLIQ, prog_var_to_vector,  &
-    vector_to_prog_var,  read_lmdz_init, read_lmdz_init_size,        &
-   init_model_instance, end_model_instance, write_lmdz_init, coord_index
-   
-
+public :: data_2d_type, &
+          data_3d_type, &
+          PS, T, U, V, Q, CLDLIQ, &
+          prog_var_to_vector, &
+          vector_to_prog_var, &
+          read_lmdz_init, &
+          read_lmdz_init_size, &
+          init_model_instance, &
+          end_model_instance, &
+          write_lmdz_init, &
+          coord_index
 
 !----------------------------------------------------------------------------
 !----------------------------------------------------------------------------
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len= 32), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! Ensemble mean is used so that the same "state" will be used for the heigh calculations
 ! on all processors, for all ensemble members.
@@ -191,7 +206,7 @@ integer                 :: ens_member = 0
 logical                 :: do_out
 
 ! common message string used by many subroutines
-character(len=150)               :: msgstring, string2
+character(len=512)               :: msgstring, string2
 !----
 character (len=8), allocatable   :: cflds(:)
 integer                          :: nflds         ! # fields to read
@@ -807,15 +822,16 @@ end function get_model_size
 
 ! Initialize the storage space and return
 ! keep some others name of variabls
-    type(data_2D_type), intent(in) :: PS_local
-    type(data_3D_type), intent(in) :: U_local,V_local,T_local,Q_local,CLDLIQ_local
 
-    allocate(PS_local%vals(lon%length,lat%length))
-    allocate(T_local%vals(lon%length,lat%length,sigs%length))
-    allocate(U_local%vals(slon%length,lat%length,sigs%length))
-    allocate(V_local%vals(lon%length,slat%length,sigs%length))
-    allocate(Q_local%vals(lon%length,lat%length,sigs%length))
-    allocate(CLDLIQ_local%vals(lon%length,lat%length,sigs%length))
+    type(data_2D_type), intent(out) :: PS_local
+    type(data_3D_type), intent(out) :: U_local,V_local,T_local,Q_local,CLDLIQ_local
+
+    allocate(    PS_local%vals( lon%length, lat%length))
+    allocate(     T_local%vals( lon%length, lat%length, sigs%length))
+    allocate(     U_local%vals(slon%length, lat%length, sigs%length))
+    allocate(     V_local%vals( lon%length,slat%length, sigs%length))
+    allocate(     Q_local%vals( lon%length, lat%length, sigs%length))
+    allocate(CLDLIQ_local%vals( lon%length, lat%length, sigs%length))
 
 end subroutine init_model_instance
 
@@ -826,8 +842,8 @@ end subroutine init_model_instance
 
 ! Initialize the storage space and return
 ! keep some others name of variables
-    type(data_2D_type), intent(in) :: PS_local
-    type(data_3D_type), intent(in) ::  U_local,V_local,T_local,Q_local,CLDLIQ_local
+    type(data_2D_type), intent(inout) :: PS_local
+    type(data_3D_type), intent(inout) ::  U_local,V_local,T_local,Q_local,CLDLIQ_local
 
     deallocate(PS_local%vals)
     deallocate(U_local%vals)
@@ -4378,6 +4394,14 @@ end subroutine rad_to_degree
 end subroutine degree_to_rad
 
 
+!===================================================================
+! End of model_mod
+!===================================================================
+end module model_mod
 
-!======================================================
-end module
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+

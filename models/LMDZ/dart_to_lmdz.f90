@@ -1,6 +1,8 @@
-! DART software - Copyright 2004 - 2011 UCAR. This open source software is
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id$
 
 program dart_to_lmdz
 
@@ -19,7 +21,8 @@ use   utilities_mod, only : open_file, close_file, &
                             initialize_utilities, finalize_utilities, &
                             logfileunit, nmlfileunit, do_nml_file, do_nml_term, &
                             check_namelist_read, find_namelist_in_file
-use       model_mod, only : data_2d_type,data_3d_type, init_model_instance, write_lmdz_init, &
+use       model_mod, only : data_2d_type,data_3d_type, init_model_instance, &
+                            write_lmdz_init, &
                             vector_to_prog_var, static_init_model, get_model_size
 use assim_model_mod, only : aread_state_restart, open_restart_read, close_restart
 use time_manager_mod, only : time_type, print_time, print_date
@@ -27,20 +30,20 @@ use time_manager_mod, only : time_type, print_time, print_date
 implicit none
 
 ! version controlled file description for error handling, do not edit
-character(len=128), parameter :: &
-   source   = "$URL$", &
-   revision = "$Revision$", &
-   revdate  = "$Date$"
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len= 32), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 !------------------------------------------------------------------
 ! The namelist variables
 !------------------------------------------------------------------
 
-character (len = 128) :: dart_to_lmdz_input_file  = 'dart_ics'
-character (len = 128) :: dart_to_lmdz_output_file = 'start.nc'
-logical               :: advance_time_present    = .true.
+character(len=256) :: dart_to_lmdz_input_file  = 'dart_ics'
+character(len=256) :: dart_to_lmdz_output_file = 'start.nc'
+logical            :: advance_time_present     = .true.
 
-namelist /dart_to_lmdz_nml/ dart_to_lmdz_input_file,  &
+namelist /dart_to_lmdz_nml/ dart_to_lmdz_input_file, &
                            dart_to_lmdz_output_file, &
                            advance_time_present
 
