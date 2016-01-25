@@ -16,12 +16,12 @@ function two_experiments_overview(varargin)
 %
 % file1 = '/glade/scratch/raeder/POP_force/POP15/Diags_2010.08.15-31_0-500m/obs_diag_output.nc';
 % file2 = '/glade/scratch/raeder/ATM_spinup2/Diags_2010.08.15-31_Fixed_0-500m/obs_diag_output.nc';
-% two_experiments_overview('oldfile',file1,'newfile',file2)
+% two_experiments_overview('OldFile',file1,'NewFile',file2)
 %
 %
 % EXAMPLE specifying filenames and a 'flag level' to indicate 'weak' areas:
 %
-% two_experiments_overview('oldfile',file1,'newfile',file2,'flaglevel',0.10)
+% two_experiments_overview('OldFile',file1,'NewFile',file2,'FlagLevel',0.10)
 
 %% DART software - Copyright 2004 - 2016 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -32,36 +32,50 @@ function two_experiments_overview(varargin)
 %% handle the user input - somehow.
 
 p = inputParser;
-p.FunctionName = 'input parser :: no required arguments, optional input is flaglevel (percentage)';
+p.FunctionName = 'input parser :: no required arguments, optional input is FlagLevel (percentage)';
 
 % set defaults for optional parameters
 defaultFileOne = 'old_obs_diag_output.nc';
 defaultFileTwo = 'new_obs_diag_output.nc';
-defaultflaglevel = 0.00;   % ten percent would be 0.10
+defaultFlagLevel = 0.00;   % ten percent would be 0.10
+defaultVarCheck = -1;
 
-addParameter(p, 'flaglevel', defaultflaglevel, @isnumeric);
+addParameter(p, 'FlagLevel', defaultFlagLevel, @isnumeric);
 addParameter(p, 'FileOne',   defaultFileOne,   @ischar);
 addParameter(p, 'FileTwo',   defaultFileTwo,   @ischar);
+addParameter(p, 'VarCheck',  defaultVarCheck,  @isnumeric);
 
 p.parse(varargin{:}) % parse inputs
 
 % collect the results of parsing (makes code easier to read)
 
-flaglevel = p.Results.flaglevel;
-oldfile   = p.Results.FileOne;
-newfile   = p.Results.FileTwo;
+FlagLevel = p.Results.FlagLevel;
+OldFile   = p.Results.FileOne;
+NewFile   = p.Results.FileTwo;
+VarCheck  = p.Results.VarCheck;
+
+if (exist(OldFile,'file') ~= 2), error('File %s does not exist.',OldFile); end
+if (exist(NewFile,'file') ~= 2), error('File %s does not exist.',NewFile); end
 
 %% Create the list of vertical profile prior observation types in both files.
 
-verticalobs = parse_DART_vars(oldfile, newfile); 
+verticalobs = parse_DART_vars(OldFile, NewFile); 
+nvariables = length(verticalobs);
 
 %% plot some reference plot just to make sure we're not upside down or ...
 
-if (1 == 2)
+if ( VarCheck > nvariables )
+   fprintf('\nThere are only %d possible variables in %s\n',nvariables,OldFile)
+   for ivar=1:nvariables
+      fprintf('%40s is VarCheck %d\n',verticalobs{ivar},ivar)
+   end
+   error('VarCheck must be less than %d.',nvariables)
+
+elseif ( VarCheck > 0 )
    close all
-   files = {oldfile, newfile};
+   files = {OldFile, NewFile};
    titles = {'old','new'};
-   obsnames = {verticalobs{15}};
+   obsnames = {verticalobs{VarCheck}};
    copy = 'bias';
    prpo = 'forecast';
    % fires up N figure windows ... for each region
@@ -71,9 +85,8 @@ end
 
 %% plot the new stuff 
 
-nvariables = length(verticalobs);
-oldncid = netcdf.open(oldfile,'NOWRITE');
-newncid = netcdf.open(newfile,'NOWRITE');
+oldncid = netcdf.open(OldFile,'NOWRITE');
+newncid = netcdf.open(NewFile,'NOWRITE');
 
 dimid = netcdf.inqDimID(oldncid,'region');
 [~, nregions] = netcdf.inqDim(oldncid,dimid);
@@ -89,9 +102,9 @@ pressure_dimid = netcdf.inqDimID(oldncid,'plevel');
 plevels     = getvar(oldncid,'plevel');
 hlevels     = getvar(oldncid,'hlevel');
 
-biasindex = get_copy_index(oldfile,'bias');
-rmseindex = get_copy_index(oldfile,'rmse');
-nusedindx = get_copy_index(oldfile,'Nused');
+biasindex = get_copy_index(OldFile,'bias');
+rmseindex = get_copy_index(OldFile,'rmse');
+nusedindx = get_copy_index(OldFile,'Nused');
 
 f1 = gcf;    clf(f1); orient landscape
 f2 = figure; clf(f2); orient landscape
@@ -135,7 +148,7 @@ for ivar = 1:nvariables
     subplot(5,4,ivar)
     
     [hall, legendstr, weak] = obsplot(olddata(:,:,nusedindx)', newdata(:,:,nusedindx)', ...
-        verticalobs{ivar}, levels, region_name, '% observations used', flaglevel);
+        verticalobs{ivar}, levels, region_name, '% observations used', FlagLevel);
     
     if(ivar == nvariables)
         legend(hall,legendstr)
@@ -276,7 +289,7 @@ end
 %%----------------------------------------------------------------------
 
 function [hall, legendstr, weak] = obsplot(old, new, varname, levels, ...
-          regions, titlestring, flaglevel)
+          regions, titlestring, FlagLevel)
 
 % first step is to identify the maximum value of each column/region
 % since the known minimum is 0 (no observations).
@@ -295,7 +308,7 @@ for iregion = 1:nregions
 end
 
 % create a mask for the 'weak, sparsely-observed' cells
-weak = (old < flaglevel) | (new < flaglevel);
+weak = (old < FlagLevel) | (new < FlagLevel);
 
 % then offset from one another
 shift = ones(nlevels,1) * [0:nregions-1];
