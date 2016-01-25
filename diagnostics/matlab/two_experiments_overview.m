@@ -29,6 +29,12 @@ function two_experiments_overview(varargin)
 %
 % DART $Id$
 
+matver = ver('Matlab');
+
+if str2double(matver.Version) < 8.3
+    error('Need at least Matlab 2014a for this function.')
+end
+
 %% handle the user input - somehow.
 
 p = inputParser;
@@ -40,10 +46,19 @@ defaultFileTwo = 'new_obs_diag_output.nc';
 defaultFlagLevel = 0.00;   % ten percent would be 0.10
 defaultVarCheck = -1;
 
-addParameter(p, 'FlagLevel', defaultFlagLevel, @isnumeric);
-addParameter(p, 'FileOne',   defaultFileOne,   @ischar);
-addParameter(p, 'FileTwo',   defaultFileTwo,   @ischar);
-addParameter(p, 'VarCheck',  defaultVarCheck,  @isnumeric);
+% Thanks Mathworks, for making another unwarranted change.
+existisstupid = which('addParameter');
+if (isempty(existisstupid))
+   addParamValue(p, 'FlagLevel', defaultFlagLevel, @isnumeric);
+   addParamValue(p, 'FileOne',   defaultFileOne,   @ischar);
+   addParamValue(p, 'FileTwo',   defaultFileTwo,   @ischar);
+   addParamValue(p, 'VarCheck',  defaultVarCheck,  @isnumeric);
+else
+   addParameter(p, 'FlagLevel', defaultFlagLevel, @isnumeric);
+   addParameter(p, 'FileOne',   defaultFileOne,   @ischar);
+   addParameter(p, 'FileTwo',   defaultFileTwo,   @ischar);
+   addParameter(p, 'VarCheck',  defaultVarCheck,  @isnumeric);
+end
 
 p.parse(varargin{:}) % parse inputs
 
@@ -75,7 +90,7 @@ elseif ( VarCheck > 0 )
    close all
    files = {OldFile, NewFile};
    titles = {'old','new'};
-   obsnames = {verticalobs{VarCheck}};
+   obsnames{1} = verticalobs{VarCheck};
    copy = 'bias';
    prpo = 'forecast';
    % fires up N figure windows ... for each region
@@ -260,7 +275,7 @@ datmax = max(abs(datmat(:)));
 % xticklabel = {'North','Tropics','South'};
 xticklabel = cell(1,length(regions));
 for i=1:length(regions)
-    bob = strsplit(regions{i});
+    bob = mysplit(regions{i});
     xticklabel{i} = bob{1};
 end
 
@@ -276,7 +291,8 @@ set(gca,'YDir','normal', ...
 h = title({varname, titlestring});
 set(h,'interpreter','none');
 h = colorbar;
-set(h.Label,'String','positive means new is better');
+xh = get(h,'YLabel');
+set(xh,'String','positive means new is better');
 
 % plot a symbol at each of the weak region/levels
 
@@ -393,6 +409,22 @@ r = [(0:1:n-1)/n,ones(1,n+x)];
 g = [(0:1:n-1)/n,ones(1,x),(n-1:-1:0)/n]; 
 b = [ones(1,n+x),(n-1:-1:0)/n]; 
 c = [r(:),g(:),b(:)];
+
+end
+
+
+%%----------------------------------------------------------------------
+
+
+function firstword = mysplit(inputstring)
+% Because Mathworks refuses to leave well enough alone ... 
+
+existisstupid = which('strsplit');
+if (isempty(existisstupid))
+    firstword = {strtok(inputstring)};
+else
+    firstword = strsplit(inputstring);
+end
 
 end
 
