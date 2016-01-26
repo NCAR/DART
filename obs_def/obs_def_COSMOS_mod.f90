@@ -76,7 +76,7 @@ use     location_mod, only : location_type, set_location, get_location, &
                              vert_is_height,   VERTISHEIGHT,            &
                              vert_is_level,    VERTISLEVEL,             &
                              set_location_missing
-use        model_mod, only : model_interpolate
+use  assim_model_mod, only : interpolate
 use     obs_kind_mod, only : KIND_GEOPOTENTIAL_HEIGHT, KIND_SOIL_MOISTURE
 
 use typesizes
@@ -507,7 +507,7 @@ loc_lat   = loc_array(2)
 nlevels = 0
 COUNTLEVELS : do i = 1,maxlayers
    loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
-   call model_interpolate(state,loc,KIND_GEOPOTENTIAL_HEIGHT,loc_value,istatus)
+   call interpolate(state,loc,KIND_GEOPOTENTIAL_HEIGHT,loc_value,istatus)
    if (istatus /= 0) exit COUNTLEVELS
    nlevels = nlevels + 1
 enddo COUNTLEVELS
@@ -529,11 +529,11 @@ allocate(layerz(nlevels),soil_moisture(nlevels))
 
 FINDLEVELS : do i = 1,nlevels
    loc = set_location(loc_lon, loc_lat, real(i,r8), VERTISLEVEL)
-   call model_interpolate(state,loc,KIND_GEOPOTENTIAL_HEIGHT,layerz(i),istatus)
+   call interpolate(state,loc,KIND_GEOPOTENTIAL_HEIGHT,layerz(i),istatus)
    ! not checking this error code because it worked just a few lines earlier
 
    loc = set_location(loc_lon, loc_lat, layerz(i), VERTISHEIGHT)
-   call model_interpolate(state,loc,KIND_SOIL_MOISTURE,loc_value,istatus)
+   call interpolate(state,loc,KIND_SOIL_MOISTURE,loc_value,istatus)
 
    if (istatus /= 0) then
       write(string1,*) 'FAILED to determine soil moisture for layer',i
