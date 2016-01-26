@@ -148,10 +148,10 @@ integer :: nfields   ! This is the number of variables in the DART state vector.
 !> Everything needed to describe a variable. Basically all the metadata from
 !> a netCDF file is stored here as well as all the information about where
 !> the variable is stored in the DART state vector.
-!> @todo FIXME ... replace numxi and numeta with simply nx or something.
-!>       since the structure is an array - one for each variable -
-!>       it doesn't make sense to declare a number of horizontal 
-!>       locations of the edges for a variable that is on cell centers ...
+!> @todo FIXME ... do we need numvertical as opposed to ZonHalf ...
+!>
+!> @todo FIXME ... add a field for what kind of mask to use
+!>
 
 type progvartype
    private
@@ -188,11 +188,31 @@ type(progvartype), dimension(max_state_variables) :: progvar
 
 ! nx, ny and nz are the size of the rho grids.
 integer :: Nx = -1, Ny = -1, Nz = -1
+
+integer :: Nxi_rho
+integer :: Nxi_u
+integer :: Nxi_v
+integer :: Nxi_psi
+integer :: Neta_rho
+integer :: Neta_u
+integer :: Neta_v
+integer :: Neta_psi
+integer :: Nxi_vert
+integer :: Neta_vert
+integer :: Ns_rho
+integer :: Ns_w
+
 real(r8), allocatable :: ULAT(:,:), ULON(:,:), &
                          TLAT(:,:), TLON(:,:), &
                          VLAT(:,:), VLON(:,:), &
                            PM(:,:),   PN(:,:), &
                          ANGL(:,:),   HT(:,:), ZC(:,:,:)
+
+integer, parameter :: i2 = SELECTED_INT_KIND(2) ! need something to coerce to NF90_SHORT
+integer(i2), allocatable :: mask_rho(:,:), &
+                            mask_psi(:,:), &
+                              mask_u(:,:), &
+                              mask_v(:,:)
 
 real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 type(time_type) :: model_timestep
@@ -401,16 +421,15 @@ integer,            intent(out) :: istatus
 ! Local storage
 real(r8)       :: loc_array(3), llon, llat, lheight
 integer        :: base_offset, top_offset
-real(r8)       :: tp_val
 integer        :: ivar,obs_kind
 integer        :: x_ind, y_ind,lat_bot, lat_top, lon_bot, lon_top
-real(r8)       :: x_corners(4), y_corners(4),p(4)
+real(r8)       :: x_corners(4), y_corners(4), p(4)
 
 if ( .not. module_initialized ) call static_init_model
 
 ! Successful istatus is 0
-interp_val = 0.0_r8
-istatus = 0
+interp_val = MISSING_R8
+istatus = 99
 
 ! Get the individual locations values
 loc_array = get_location(location)
@@ -443,7 +462,7 @@ ivar = get_progvar_index_from_kind(obs_kind)
 ! Find the basic offset of this field
 
 base_offset = progvar(ivar)%index1
-top_offset = progvar(ivar)%indexN
+top_offset  = progvar(ivar)%indexN
 
 !print *, 'base offset now for ',trim(progvar(ivar)%varname),base_offset,top_offset
 
@@ -451,7 +470,7 @@ top_offset = progvar(ivar)%indexN
 !
 if( vert_is_surface(location) ) then
    call lon_lat_interpolate(x(base_offset:top_offset), llon, llat, &
-   obs_type, 1, interp_val,istatus)
+   obs_type, 1, interp_val, istatus)
    return
 endif
 
@@ -460,22 +479,22 @@ endif
 !2. do vertical interpolation at four corners
 !3. do a spatial interpolation
 
-   if(progvar(ivar)%kind_string == 'KIND_U_CURRENT_COMPONENT') then
-      call get_reg_box_indices(llon, llat, ULON, ULAT, x_ind, y_ind)
-      ! Getting corners for accurate interpolation
-      call get_quad_corners(ULON, x_ind, y_ind, x_corners)
-      call get_quad_corners(ULAT, x_ind, y_ind, y_corners)
-   elseif (progvar(ivar)%kind_string == 'KIND_V_CURRENT_COMPONENT') then
-      call get_reg_box_indices(llon, llat, VLON, VLAT, x_ind, y_ind)
-      ! Getting corners for accurate interpolation
-      call get_quad_corners(VLON, x_ind, y_ind, x_corners)
-      call get_quad_corners(VLAT, x_ind, y_ind, y_corners)
-   else
-      call get_reg_box_indices(llon, llat, TLON, TLAT, x_ind, y_ind)
-      ! Getting corners for accurate interpolation
-      call get_quad_corners(TLON, x_ind, y_ind, x_corners)
-      call get_quad_corners(TLAT, x_ind, y_ind, y_corners)
-   endif
+if(progvar(ivar)%kind_string == 'KIND_U_CURRENT_COMPONENT') then
+   call get_reg_box_indices(llon, llat, ULON, ULAT, x_ind, y_ind)
+   ! Getting corners for accurate interpolation
+   call get_quad_corners(ULON, x_ind, y_ind, x_corners)
+   call get_quad_corners(ULAT, x_ind, y_ind, y_corners)
+elseif (progvar(ivar)%kind_string == 'KIND_V_CURRENT_COMPONENT') then
+   call get_reg_box_indices(llon, llat, VLON, VLAT, x_ind, y_ind)
+   ! Getting corners for accurate interpolation
+   call get_quad_corners(VLON, x_ind, y_ind, x_corners)
+   call get_quad_corners(VLAT, x_ind, y_ind, y_corners)
+else
+   call get_reg_box_indices(llon, llat, TLON, TLAT, x_ind, y_ind)
+   ! Getting corners for accurate interpolation
+   call get_quad_corners(TLON, x_ind, y_ind, x_corners)
+   call get_quad_corners(TLAT, x_ind, y_ind, y_corners)
+endif
 
 lon_bot=x_ind
 lat_bot=y_ind
@@ -495,16 +514,23 @@ endif
 
 !write(*,*)'model_mod: obs loc vs. model loc ', llon, llat, TLON(x_ind,y_ind),TLAT(x_ind,y_ind)
 
-call vert_interpolate(x(base_offset:top_offset),lon_bot,lat_bot,obs_kind,lheight,tp_val)
-p(1)=tp_val
-call vert_interpolate(x(base_offset:top_offset),lon_top,lat_bot,obs_kind,lheight,tp_val)
-p(2)=tp_val
-call vert_interpolate(x(base_offset:top_offset),lon_top,lat_top,obs_kind,lheight,tp_val)
-p(3)=tp_val
-call vert_interpolate(x(base_offset:top_offset),lon_bot,lat_top,obs_kind,lheight,tp_val)
-p(4)=tp_val
+! If any of these fail, we can exit (fail) immediately.
+! The interp_val and istatus values are initially set to a failed value, so just use those.
+
+call vert_interpolate(x(base_offset:top_offset),lon_bot,lat_bot,obs_kind,lheight, p(1))
+if (p(1) == MISSING_R8) return
+
+call vert_interpolate(x(base_offset:top_offset),lon_top,lat_bot,obs_kind,lheight, p(2))
+if (p(2) == MISSING_R8) return
+
+call vert_interpolate(x(base_offset:top_offset),lon_top,lat_top,obs_kind,lheight, p(3))
+if (p(3) == MISSING_R8) return
+
+call vert_interpolate(x(base_offset:top_offset),lon_bot,lat_top,obs_kind,lheight, p(4))
+if (p(4) == MISSING_R8) return
 
 call quad_bilinear_interp(llon, llat, x_corners, y_corners, p, interp_val)
+istatus = 0  ! If we get this far, all good.
 
 !write(*,*) 'Ending model interpolate ...'
 
@@ -870,9 +896,9 @@ integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
 ! variables if we parse the state vector into prognostic variables.
 
 ! for the dimensions and coordinate variables
-integer :: nxirhoDimID,nxiuDimID,nxivDimID
-integer :: netarhoDimID,netauDimID,netavDimID
-integer :: nsrhoDimID,nswDimID
+integer :: nxirhoDimID, nxiuDimID, nxivDimID, nxipsiDimID, nxivertDimID
+integer :: netarhoDimID, netauDimID, netavDimID, netapsiDimID, netavertDimID
+integer :: nsrhoDimID, nswDimID
 
 ! for the prognostic variables
 integer :: ivar, VarID
@@ -972,29 +998,41 @@ else
    ! Define the new dimensions IDs
    !> @todo FIXME we have the actual original dimensions ... why are we not using them here
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_rho',  len = Nx, &
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_rho',  len = Nxi_rho, &
         dimid = nxirhoDimID),'nc_write_model_atts', 'xi_rho def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_rho', len = Ny,&
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_rho', len = Neta_rho,&
         dimid = netarhoDimID),'nc_write_model_atts', 'eta_rho def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='s_rho',   len = Nz,&
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='s_rho',   len = Ns_rho,&
         dimid = nsrhoDimID),'nc_write_model_atts', 's_rho def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='s_w',     len = Nz+1,&
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='s_w',     len = Ns_w,&
         dimid = nswDimID),'nc_write_model_atts','s_w def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_u',    len = Nx-1,&
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_u',    len = Nxi_u,&
         dimid = nxiuDimID),'nc_write_model_atts', 'xi_u def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_v',    len = Nx,&
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_v',    len = Nxi_v,&
         dimid = nxivDimID),'nc_write_model_atts', 'xi_v def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_u',   len = Ny,&
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_u',   len = Neta_u,&
         dimid = netauDimID),'nc_write_model_atts', 'eta_u def_dim '//trim(filename))
 
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_v',   len = Ny-1,&
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_v',   len = Neta_v,&
         dimid = netavDimID),'nc_write_model_atts', 'eta_v def_dim '//trim(filename))
+
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_psi',   len = Nxi_psi,&
+        dimid = nxipsiDimID),'nc_write_model_atts', 'xi_psi def_dim '//trim(filename))
+
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_psi',   len = Neta_psi,&
+        dimid = netapsiDimID),'nc_write_model_atts', 'eta_psi def_dim '//trim(filename))
+
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_vert',   len = Nxi_vert,&
+        dimid = nxivertDimID),'nc_write_model_atts', 'xi_vert def_dim '//trim(filename))
+
+   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_vert',   len = Neta_vert,&
+        dimid = netavertDimID),'nc_write_model_atts', 'eta_vert def_dim '//trim(filename))
 
    ! Create the (empty) Coordinate Variables and the Attributes
 
@@ -1053,6 +1091,38 @@ else
                  'nc_write_model_atts', 'z_c long_name '//trim(filename))
    call nc_check(nf90_put_att(ncFileID,  VarID, 'units', 'm'), &
                  'nc_write_model_atts', 'z_c units '//trim(filename))
+
+   call nc_check(nf90_def_var(ncFileID,name='mask_rho', xtype=nf90_short, &
+                 dimids=(/ nxirhoDimID, netarhoDimID /), varid=VarID),&
+                 'nc_write_model_atts', 'mask_rho def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'mask on RHO-points'), &
+                 'nc_write_model_atts', 'mask_rho long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  VarID, 'comment', '0==land, 1==water'), &
+                 'nc_write_model_atts', 'mask_rho comment '//trim(filename))
+
+   call nc_check(nf90_def_var(ncFileID,name='mask_psi', xtype=nf90_short, &
+                 dimids=(/ nxipsiDimID, netapsiDimID /), varid=VarID),&
+                 'nc_write_model_atts', 'mask_psi def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'mask on psi-points'), &
+                 'nc_write_model_atts', 'mask_psi long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  VarID, 'comment', '0==land, 1==water'), &
+                 'nc_write_model_atts', 'mask_psi units '//trim(filename))
+
+   call nc_check(nf90_def_var(ncFileID,name='mask_u', xtype=nf90_short, &
+                 dimids=(/ nxiuDimID, netauDimID /), varid=VarID),&
+                 'nc_write_model_atts', 'mask_u def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'mask on U-points'), &
+                 'nc_write_model_atts', 'mask_u long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  VarID, 'comment', '0==land, 1==water'), &
+                 'nc_write_model_atts', 'mask_u units '//trim(filename))
+
+   call nc_check(nf90_def_var(ncFileID,name='mask_v', xtype=nf90_short, &
+                 dimids=(/ nxivDimID, netavDimID /), varid=VarID),&
+                 'nc_write_model_atts', 'mask_v def_var '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  VarID, 'long_name', 'mask on V-points'), &
+                 'nc_write_model_atts', 'mask_v long_name '//trim(filename))
+   call nc_check(nf90_put_att(ncFileID,  VarID, 'comment', '0==land, 1==water'), &
+                 'nc_write_model_atts', 'mask_v units '//trim(filename))
 
    ! Create the (empty) Prognostic Variables and the Attributes
 
@@ -1134,6 +1204,26 @@ else
                  'nc_write_model_atts', 'z_c inq_varid '//trim(filename))
    call nc_check(nf90_put_var(ncFileID, VarID, ZC ), &
                 'nc_write_model_atts', 'z_c put_var '//trim(filename))
+
+   call nc_check(NF90_inq_varid(ncFileID, 'mask_rho', VarID), &
+                 'nc_write_model_atts', 'mask_rho inq_varid '//trim(filename))
+   call nc_check(nf90_put_var(ncFileID, VarID, mask_rho ), &
+                'nc_write_model_atts', 'mask_rho put_var '//trim(filename))
+
+   call nc_check(NF90_inq_varid(ncFileID, 'mask_psi', VarID), &
+                 'nc_write_model_atts', 'mask_psi inq_varid '//trim(filename))
+   call nc_check(nf90_put_var(ncFileID, VarID, mask_psi ), &
+                'nc_write_model_atts', 'mask_psi put_var '//trim(filename))
+
+   call nc_check(NF90_inq_varid(ncFileID, 'mask_u', VarID), &
+                 'nc_write_model_atts', 'mask_u inq_varid '//trim(filename))
+   call nc_check(nf90_put_var(ncFileID, VarID, mask_u ), &
+                'nc_write_model_atts', 'mask_u put_var '//trim(filename))
+
+   call nc_check(NF90_inq_varid(ncFileID, 'mask_v', VarID), &
+                 'nc_write_model_atts', 'mask_v inq_varid '//trim(filename))
+   call nc_check(nf90_put_var(ncFileID, VarID, mask_v ), &
+                'nc_write_model_atts', 'mask_v put_var '//trim(filename))
 
    endif
 
@@ -1409,6 +1499,7 @@ interf_provided = .true.
 ! this only executes the first time since counter
 ! gets incremented after the first use and the value
 ! is saved between calls.
+
 if (counter == 1) counter = counter + (my_task_id() * 1000)
 
 call init_random_seq(random_seq, counter)
@@ -1449,17 +1540,17 @@ end subroutine pert_model_state
 !> @param gc precomputed 'get_close_type' to speed up candidate selection 
 !> @param base_obs_loc location of the observation in question
 !> @param base_obs_kind DART KIND of observation in question
-!> @param obs_loc array of comparison locations
-!> @param obs_kind matching array of KINDs for the comparison locations
-!> @param num_close the number of obs_loc locations that are within the prespecified distance (information contained in 'gc')
-!> @param close_ind the indices of the obs_loc locations that are 'close'
+!> @param locs array of comparison locations
+!> @param loc_kind matching array of KINDs for the comparison locations
+!> @param num_close the number of locs locations that are within the prespecified distance (information contained in 'gc')
+!> @param close_ind the indices of the locs locations that are 'close'
 !> @param dist the distances of each of the close locations.
 !>
 
 subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
-                         obs_loc, obs_kind, num_close, close_ind, dist)
+                         locs, loc_kind, num_close, close_ind, dist)
 
-! Note that both base_obs_loc and obs_loc are intent(inout), meaning that these
+! Note that both base_obs_loc and locs are intent(inout), meaning that these
 ! locations are possibly modified here and returned as such to the calling routine.
 ! The calling routine is always filter_assim and these arrays are local arrays
 ! within filter_assim. In other words, these modifications will only matter within
@@ -1468,11 +1559,11 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
 type(get_close_type), intent(in)    :: gc
 type(location_type),  intent(inout) :: base_obs_loc
 integer,              intent(in)    :: base_obs_kind
-type(location_type),  intent(inout) :: obs_loc(:)
-integer,              intent(in)    :: obs_kind(:)
+type(location_type),  intent(inout) :: locs(:)
+integer,              intent(in)    :: loc_kind(:)
 integer,              intent(out)   :: num_close
 integer,              intent(out)   :: close_ind(:)
-real(r8),             intent(out)   :: dist(:)
+real(r8), OPTIONAL,   intent(out)   :: dist(:)
 
 integer                :: ztypeout
 integer                :: t_ind, istatus1, istatus2, k
@@ -1512,18 +1603,18 @@ if (.not. horiz_dist_only) then
 endif
 
 if (istatus1 == 0) then
-   call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
+   call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, locs, loc_kind, &
                           num_close, close_ind)
 
     do k = 1, num_close
 
       t_ind = close_ind(k)
-      local_obs_loc   = obs_loc(t_ind)
+      local_obs_loc   = locs(t_ind)
       local_obs_which = nint(query_location(local_obs_loc))
 
       if (.not. horiz_dist_only) then
           if (local_obs_which /= vert_localization_coord) then
-              call vert_convert(ens_mean, local_obs_loc, obs_kind(t_ind), ztypeout, istatus2)
+              call vert_convert(ens_mean, local_obs_loc, loc_kind(t_ind), ztypeout, istatus2)
           else
               istatus2 = 0
           endif
@@ -1537,8 +1628,8 @@ if (istatus1 == 0) then
             dist(k) = 1.0e9_r8
       else
 
-       ! if (get_obs_kind_var_type(base_obs_kind) == obs_kind(t_ind)) then
-           dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
+       ! if (get_obs_kind_var_type(base_obs_kind) == loc_kind(t_ind)) then
+           dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_kind, loc_kind(t_ind))
        ! else
        !    dist(k) = 1.0e9_r8
        ! endif
@@ -2093,46 +2184,30 @@ end function set_model_time_step
 !> By reading the dimensions first, we can use them in variable
 !> declarations later - which is faster than using allocatable arrays.
 !>
-!> @todo FIXME Since every stagger dimension is specified, we should explicitly 
-!> use them instead of trying to add or subtract 1 from some nominal value 
-!>
 
 subroutine get_grid_dimensions()
 
 integer  :: ncid
 
-integer :: xi_rho
-integer :: xi_u
-integer :: xi_v
-integer :: xi_psi
-integer :: eta_rho
-integer :: eta_u
-integer :: eta_v
-integer :: eta_psi
-integer :: xi_vert
-integer :: eta_vert
-integer :: s_rho
-integer :: s_w
-
 call nc_check(nf90_open(trim(grid_definition_filename), nf90_nowrite, ncid), &
               'get_grid_dimensions', 'open '//trim(grid_definition_filename))
 
-xi_rho   = get_dimension_length(ncid, 'xi_rho',   grid_definition_filename)
-xi_u     = get_dimension_length(ncid, 'xi_u',     grid_definition_filename)
-xi_v     = get_dimension_length(ncid, 'xi_v',     grid_definition_filename)
-xi_psi   = get_dimension_length(ncid, 'xi_psi',   grid_definition_filename)
-eta_rho  = get_dimension_length(ncid, 'eta_rho',  grid_definition_filename)
-eta_u    = get_dimension_length(ncid, 'eta_u',    grid_definition_filename)
-eta_v    = get_dimension_length(ncid, 'eta_v',    grid_definition_filename)
-eta_psi  = get_dimension_length(ncid, 'eta_psi',  grid_definition_filename)
-xi_vert  = get_dimension_length(ncid, 'xi_vert',  grid_definition_filename)
-eta_vert = get_dimension_length(ncid, 'eta_vert', grid_definition_filename)
-s_rho    = get_dimension_length(ncid, 's_rho',    grid_definition_filename)
-s_w      = get_dimension_length(ncid, 's_w',      grid_definition_filename)
+Nxi_rho   = get_dimension_length(ncid, 'xi_rho',   grid_definition_filename)
+Nxi_u     = get_dimension_length(ncid, 'xi_u',     grid_definition_filename)
+Nxi_v     = get_dimension_length(ncid, 'xi_v',     grid_definition_filename)
+Nxi_psi   = get_dimension_length(ncid, 'xi_psi',   grid_definition_filename)
+Neta_rho  = get_dimension_length(ncid, 'eta_rho',  grid_definition_filename)
+Neta_u    = get_dimension_length(ncid, 'eta_u',    grid_definition_filename)
+Neta_v    = get_dimension_length(ncid, 'eta_v',    grid_definition_filename)
+Neta_psi  = get_dimension_length(ncid, 'eta_psi',  grid_definition_filename)
+Nxi_vert  = get_dimension_length(ncid, 'xi_vert',  grid_definition_filename)
+Neta_vert = get_dimension_length(ncid, 'eta_vert', grid_definition_filename)
+Ns_rho    = get_dimension_length(ncid, 's_rho',    grid_definition_filename)
+Ns_w      = get_dimension_length(ncid, 's_w',      grid_definition_filename)
 
-Nx = xi_rho   ! Setting the 'global' variables ... instead of namelist
-Ny = eta_rho  ! Setting the 'global' variables ... instead of namelist
-Nz = s_rho    ! Setting the 'global' variables ... instead of namelist
+Nx =  Nxi_rho  ! Setting the nominal value of the 'global' variables
+Ny = Neta_rho  ! Setting the nominal value of the 'global' variables
+Nz =   Ns_rho  ! Setting the nominal value of the 'global' variables
 
 call nc_check(nf90_close(ncid), &
               'get_grid_dimensions','close '//trim(grid_definition_filename))
@@ -2152,21 +2227,29 @@ end subroutine get_grid_dimensions
 
 subroutine get_grid()
 
-integer  :: k,ncid, VarID,stat,i,j
+integer  :: k,ncid, VarID, stat, i, j
 
 ! The following 'automatic' arrays are more efficient than allocatable arrays.
 ! This is, in part, why the grid dimensions were determined previously.
 
 real(r8) :: dzt0(Nx,Ny)
-real(r8) :: s_rho(Nz),Cs_r(Nz),SSH(Nx,Ny)
-real(r8) :: x_rho(Nx,Ny), &
-            y_rho(Nx,Ny), &
-            x_u(Nx-1,Ny), &
-            y_u(Nx-1,Ny), &
-            x_v(Nx,Ny-1), &
-            y_v(Nx,Ny-1)
+real(r8) :: s_rho(Ns_rho), Cs_r(Ns_rho), SSH(Nx,Ny)
+
+!>@ todo FIXME these aren't needed all the time.
+!>       Should they be allocatable instead of automatic?
+real(r8) :: x_rho(Nxi_rho,Neta_rho), &
+            y_rho(Nxi_rho,Neta_rho), &
+            x_u(Nxi_u,Neta_u), &
+            y_u(Nxi_u,Neta_u), &
+            x_v(Nxi_v,Neta_v), &
+            y_v(Nxi_v,Neta_v)
 
 logical :: nolatlon = .false.
+
+logical :: mymask(Nx,Ny,Nz)
+
+real(r8), allocatable :: datmat(:,:)
+real(r8), parameter :: all_land = 0.001_r8
 
 if (debug > 1) then
    write(string1,*)'..  NX is ',Nx
@@ -2180,17 +2263,21 @@ endif
 call nc_check(nf90_open(trim(grid_definition_filename), nf90_nowrite, ncid), &
       'get_grid', 'open '//trim(grid_definition_filename))
 
-if (.not. allocated(ULAT)) allocate(ULAT(Nx-1,Ny))
-if (.not. allocated(ULON)) allocate(ULON(Nx-1,Ny))
-if (.not. allocated(TLAT)) allocate(TLAT(Nx,Ny))
-if (.not. allocated(TLON)) allocate(TLON(Nx,Ny))
-if (.not. allocated(VLAT)) allocate(VLAT(Nx,Ny-1))
-if (.not. allocated(VLON)) allocate(VLON(Nx,Ny-1))
-if (.not. allocated(HT))   allocate(  HT(Nx,Ny))
+if (.not. allocated(ULAT)) allocate(ULAT(Nxi_u,Neta_u))
+if (.not. allocated(ULON)) allocate(ULON(Nxi_u,Neta_u))
+if (.not. allocated(VLAT)) allocate(VLAT(Nxi_v,Neta_v))
+if (.not. allocated(VLON)) allocate(VLON(Nxi_v,Neta_v))
+if (.not. allocated(TLAT)) allocate(TLAT(Nxi_rho,Neta_rho))
+if (.not. allocated(TLON)) allocate(TLON(Nxi_rho,Neta_rho))
+if (.not. allocated(HT))   allocate(  HT(Nxi_rho,Neta_rho))
+if (.not. allocated(ANGL)) allocate(ANGL(Nxi_rho,Neta_rho))
+
+if (.not. allocated(ZC))   allocate(  ZC(Nx,Ny,Nz))
+
+!> todo are PM, PN used for anything?
+
 if (.not. allocated(PM))   allocate(  PM(Nx,Ny))
 if (.not. allocated(PN))   allocate(  PN(Nx,Ny))
-if (.not. allocated(ANGL)) allocate(ANGL(Nx,Ny))
-if (.not. allocated(ZC))   allocate(  ZC(Nx,Ny,Nz))
 
 ! Read the variables
 
@@ -2312,6 +2399,62 @@ call nc_check(nf90_inq_varid(ncid, 'Cs_r', VarID), &
 call nc_check(nf90_get_var( ncid, VarID, Cs_r), &
       'get_grid', 'get_var Cs_r '//trim(grid_definition_filename))
 
+! Allocate the masks and set them all to water.
+! 1 is water, 0 is land (apparently) There are seemingly no intermediate values.
+! In the ROMS netCDF file, these are typed 'double' (overkill), 
+! but we are implementing as short integer.
+! (Could even do logicals if netCDF (output) supported them.)
+
+if (.not. allocated(mask_rho)) allocate(mask_rho(Nxi_rho, Neta_rho))
+if (.not. allocated(mask_psi)) allocate(mask_psi(Nxi_psi, Neta_psi))
+if (.not. allocated(mask_u))   allocate(mask_u(  Nxi_u  , Neta_u  ))
+if (.not. allocated(mask_v))   allocate(mask_v(  Nxi_v  , Neta_v  ))
+
+mask_rho = 0
+mask_psi = 0
+mask_u   = 0
+mask_v   = 0
+
+! Read mask on RHO-points
+
+allocate(datmat(Nxi_rho, Neta_rho))
+call nc_check(nf90_inq_varid(ncid, 'mask_rho', VarID), &
+      'get_grid', 'inq_varid mask_rho '//trim(grid_definition_filename))
+call nc_check(nf90_get_var( ncid, VarID, datmat), &
+      'get_grid', 'get_var mask_rho '//trim(grid_definition_filename))
+where(datmat > all_land) mask_rho = 1
+deallocate(datmat)
+
+! Read mask on PSI-points
+
+allocate(datmat(Nxi_psi, Neta_psi))
+call nc_check(nf90_inq_varid(ncid, 'mask_psi', VarID), &
+      'get_grid', 'inq_varid mask_psi '//trim(grid_definition_filename))
+call nc_check(nf90_get_var( ncid, VarID, datmat), &
+      'get_grid', 'get_var mask_psi '//trim(grid_definition_filename))
+where(datmat > all_land) mask_psi = 1
+deallocate(datmat)
+
+! Read mask on U-points
+
+allocate(datmat(Nxi_u, Neta_u))
+call nc_check(nf90_inq_varid(ncid, 'mask_u', VarID), &
+      'get_grid', 'inq_varid mask_u '//trim(grid_definition_filename))
+call nc_check(nf90_get_var( ncid, VarID, datmat), &
+      'get_grid', 'get_var mask_u '//trim(grid_definition_filename))
+where(datmat > all_land) mask_u = 1
+deallocate(datmat)
+
+! Read mask on V-points
+
+allocate(datmat(Nxi_v, Neta_v))
+call nc_check(nf90_inq_varid(ncid, 'mask_v', VarID), &
+      'get_grid', 'inq_varid mask_v '//trim(grid_definition_filename))
+call nc_check(nf90_get_var( ncid, VarID, datmat), &
+      'get_grid', 'get_var mask_v '//trim(grid_definition_filename))
+where(datmat > all_land) mask_v = 1
+deallocate(datmat)
+
 call nc_check(nf90_close(ncid), &
              'get_var','close '//trim(grid_definition_filename))
 
@@ -2346,6 +2489,25 @@ do k=1,Nz
      dzt0(:,:) = (s_rho(k)-Cs_r(k))*hc + Cs_r(k) * HT(:,:)
      ZC(:,:,k) = -( dzt0(:,:) + SSH(:,:)*(1.0_r8 + dzt0(:,:)/HT(:,:)) )
 end do
+
+if (do_output() .and. debug > 3) then
+    write(string1,*)'    min/max ULON ',minval(ULON), maxval(ULON)
+    write(string2,*)'min/max ULAT ',minval(ULAT), maxval(ULAT)
+    call error_handler(E_MSG,'get_grid',string1, text2=string2)
+
+    write(string1,*)'    min/max VLON ',minval(VLON), maxval(VLON)
+    write(string2,*)'min/max VLAT ',minval(VLAT), maxval(VLAT)
+    call error_handler(E_MSG,'get_grid',string1, text2=string2)
+
+    write(string1,*)'    min/max TLON ',minval(TLON), maxval(TLON)
+    write(string2,*)'min/max TLAT ',minval(TLAT), maxval(TLAT)
+    call error_handler(E_MSG,'get_grid',string1, text2=string2)
+
+    mymask = ZC < 1.0E30 .and. ZC > -1.0E30
+    write(string1,*)'    min/max   ZC ',minval(ZC,mymask), maxval(ZC,mymask)
+    call error_handler(E_MSG,'get_grid',string1)
+
+endif
 
 end subroutine get_grid
 
@@ -3475,10 +3637,10 @@ integer,  intent(out) :: istatus
 integer  :: lat_bot, lat_top, lon_bot, lon_top
 integer  :: x_ind, y_ind,ivar
 real(r8) :: p(4), x_corners(4), y_corners(4)
-logical  :: masked
 
 ! Succesful return has istatus of 0
-istatus = 0
+istatus    = 99
+interp_val = MISSING_R8
 
 ivar = get_progvar_index_from_kind(var_type)
 
@@ -3518,32 +3680,25 @@ endif
 
 ! Get the values at the four corners of the box or quad
 ! Corners go around counterclockwise from lower left
-p(1) = get_val(lon_bot, lat_bot, height, x, var_type)
-if(masked) then
-   istatus = 3
-   return
-endif
+! If any one of these fail, go no furhter.
 
-p(2) = get_val(lon_top, lat_bot, height, x, var_type)
-if(masked) then
-   istatus = 3
-   return
-endif
+istatus = 3
+   p(1) = get_val(lon_bot, lat_bot, height, x, var_type)
+if(p(1) == MISSING_R8) return
 
-p(3) = get_val(lon_top, lat_top, height, x, var_type)
-if(masked) then
-   istatus = 3
-   return
-endif
+   p(2) = get_val(lon_top, lat_bot, height, x, var_type)
+if(p(2) == MISSING_R8) return
 
-p(4) = get_val(lon_bot, lat_top, height, x, var_type)
-if(masked) then
-   istatus = 3
-   return
-endif
+   p(3) = get_val(lon_top, lat_top, height, x, var_type)
+if(p(3) == MISSING_R8) return
+
+   p(4) = get_val(lon_bot, lat_top, height, x, var_type)
+if(p(4) == MISSING_R8) return
 
 ! Full bilinear interpolation for quads
+! istatus = 0 is good, whatever the interp_val is, it is ...
 
+istatus = 0
 call quad_bilinear_interp(lon, lat, x_corners, y_corners, p, interp_val)
 
 end subroutine lon_lat_interpolate
@@ -3578,8 +3733,11 @@ real(r8), intent(out) :: interp_val
 integer    :: i,iidd
 real(r8)   :: tp(Nz), zz(Nz)
 
-tp=0.0
-iidd=0
+tp   = 0.0_r8
+iidd = 0
+
+!>@ todo FIXME ... check ... get_val() can return MISSING_R8 ... is this possible
+
 do i=1,Nz
     tp(i)=get_val(lonid, latid, i, x, var_type)
     zz(i)=ZC(lonid,latid,i)
@@ -3613,14 +3771,14 @@ end subroutine vert_interpolate
 !-----------------------------------------------------------------------
 !>
 !> Returns the DART state value for a given lat, lon, and level index.
-!> 'get_val' will be a MISSNG value if this is NOT a valid grid location
+!> 'get_val' will be a MISSING value if this is NOT a valid grid location
 !> (e.g. land, or below the ocean floor).
 !>
 !> @param get_val the value of the DART state at the gridcell of interest.
 !> @param lon_index the index of the longitude of interest.
 !> @param lat_index the index of the latitude of interest.
 !> @param level_index the index of the level of interest.
-!> @param x the DART state vector.
+!> @param x the (contiguous) portion of the DART state vector for the variable of interest
 !> @param var_type the DART KIND of interest.
 !>
 !> @ todo FIXME Johnny may have a better way to do this if everything stays
@@ -3635,24 +3793,32 @@ integer,  intent(in) :: var_type
 real(r8), intent(in) :: x(:)
 real(r8)             :: get_val
 
-integer  ::  ii,jj,kk,tt,ivar
+integer :: tt     ! the (absolute) index into the DART state vector
+integer :: ivar
+integer :: Ndim1, Ndim2, Ndim3
+
+get_val = MISSING_R8 ! guilty until proven otherwise
 
 ivar = get_progvar_index_from_kind(var_type)
 
-tt=0
-do ii=1,progvar(ivar)%numvertical
-   do jj=1,progvar(ivar)%numeta
-      do kk=1,progvar(ivar)%numxi
-         tt=tt+1
-         if( (ii==level_index) .and. (jj==lat_index) .and. (kk==lon_index) ) then
-            get_val=x(tt)
-            return
-         else
-            get_val=MISSING_R8
-         endif
-      enddo
-   enddo
-enddo
+!> @ todo FIXME Implement the land masking. Must determine which mask
+!>        is appropriate for this variable ... extend progvar?
+
+Ndim3 = progvar(ivar)%numvertical
+Ndim2 = progvar(ivar)%numeta
+Ndim1 = progvar(ivar)%numxi
+
+if ( (  lon_index < 1 .or.   lon_index > Ndim1) .or. &
+     (  lat_index < 1 .or.   lat_index > Ndim2) .or. &
+     (level_index < 1 .or. level_index > Ndim3) ) return
+
+! implicit assumption on packing order into the DART vector
+
+tt = (level_index - 1) * Ndim1 * Ndim2 + &
+     (  lat_index - 1) * Ndim1 + &
+        lon_index
+
+if(tt > 0 .and. tt <= size(x)) get_val = x(tt)
 
 end function get_val
 
@@ -3682,21 +3848,26 @@ integer, intent(out) :: y_index
 integer, intent(out) :: z_index
 integer, intent(in)  :: var_type
 
-integer :: ivar, Nx, Ny
+integer :: ivar, numxi, numeta
 
-ivar = get_progvar_index_from_kind(var_type)
-Nx = progvar(ivar)%numxi
-Ny = progvar(ivar)%numeta
+ivar   = get_progvar_index_from_kind(var_type)
+numxi  = progvar(ivar)%numxi
+numeta = progvar(ivar)%numeta
 
 if (progvar(ivar)%kind_string=='KIND_SEA_SURFACE_HEIGHT') then
   z_index = 1
 else
-  z_index = ceiling( float(offset) / (Nx * Ny))
+  z_index = ceiling( float(offset) / (numxi * numeta))
 endif
-y_index = ceiling( float(offset - ((z_index-1)*Nx*Ny)) / Nx)
-x_index =  offset - ((z_index-1)*Nx*Ny) - ((y_index-1)*Nx)
+y_index = ceiling( float(offset - ((z_index-1)*numxi*numeta)) / numxi )
+x_index =  offset - ((z_index-1)*numxi*numeta) - ((y_index-1)*numxi)
 
-if (debug > 3) print *, 'lon, lat, depth index = ', x_index, y_index, z_index
+if (do_output() .and. debug > 3) then
+   write(string1,*) 'checking ',trim(progvar(ivar)%varname), ' offset = ', offset
+   write(string2,*) 'lon, lat, depth index = ', x_index, y_index, z_index
+   call error_handler(E_MSG,'get_state_indices:', string1, &
+              source, revision, revdate, text2=string2)
+endif
 
 end subroutine get_state_indices
 
@@ -3876,8 +4047,211 @@ end function deter3
 !>
 !> @todo FIXME should this really error out or silently fail?
 !> At this point it may silently fail.
+!>
+!> ROMS has a structured horizontal grid.
+!>
+!> We group the structured grid cells into regular boxes, 
+!> e.g., 70 x 40 boxes. 
+!>
+!> (1)calculate distances from a given point to the center cell of each box
+!> (2)after we find the box which is closest to the given point,
+!>    we can calculate distances to the cells within the box.
+!> bjchoi 2014/08/07
+!-------------------------------------------------------------
 
 subroutine get_reg_box_indices(lon, lat, LON_al, LAT_al, x_ind, y_ind)
+
+real(r8), intent(in)  :: lon
+real(r8), intent(in)  :: lat
+real(r8), intent(in)  :: LON_al(:,:)
+real(r8), intent(in)  :: LAT_al(:,:)
+integer,  intent(out) :: x_ind
+integer,  intent(out) :: y_ind
+
+real(r8),allocatable  :: boxLON(:,:), boxLAT(:,:)
+integer               :: i, j, ii, jj, Nx, Ny, nxbox, nybox
+integer               :: num_cell, loc_box, i_start,i_end,j_start,j_end
+real(r8)              :: lon_dif, lat_dif, tp1, tp2
+real(r8),allocatable  :: rtemp(:)
+integer, allocatable  :: itemp(:),jtemp(:)
+integer               :: t, loc1 
+integer               :: min_location(1) ! stupid parser
+
+! Divide the model grid cells into a group of boxes.
+! For example, divide the model domain into 47 x 70 subdomains (or boxes).
+! Each box contains num_cell * num_cell grid cells.
+num_cell = 20 ! please use even number,e.g., 4,6,8,10,12..., for num_cell  
+Nx = size(LON_al,1)
+Ny = size(LON_al,2)
+nxbox = ceiling( float(Nx) / num_cell )
+nybox = ceiling( float(Ny) / num_cell )
+
+! we define the center cell of each box:
+! boxLON and boxLAT
+allocate( boxLON(nxbox,nybox) )
+allocate( boxLAT(nxbox,nybox) )
+allocate( rtemp(Nx*Ny) )
+allocate( itemp(Nx*Ny) )
+allocate( jtemp(Nx*Ny) )
+
+do ii = 1, nxbox-1 
+  do jj = 1, nybox-1
+     i = (num_cell/2) + (ii-1)*num_cell
+     j = (num_cell/2) + (jj-1)*num_cell
+     boxLON(ii,jj) = LON_al(i,j)
+     boxLAT(ii,jj) = LAT_al(i,j)
+  enddo 
+  jj = nybox
+  i = (num_cell/2) + (ii-1)*num_cell
+  j = (num_cell/2) + (jj-1)*num_cell
+  if (j .GT. Ny) j = Ny
+  boxLON(ii,jj) = LON_al(i,j)
+  boxLAT(ii,jj) = LAT_al(i,j)
+enddo 
+
+ii = nxbox 
+i = (num_cell/2) + (ii-1)*num_cell
+if (i .GT. Nx) i = Nx
+do jj = 1, nybox-1
+   j = (num_cell/2) + (jj-1)*num_cell
+   boxLON(ii,jj) = LON_al(i,j)
+   boxLAT(ii,jj) = LAT_al(i,j)
+enddo 
+jj = nybox
+j = (num_cell/2) + (jj-1)*num_cell
+if (j .GT. Ny) j = Ny
+
+! find the box which the obs data belongs to
+t=0
+do ii=1,nxbox
+ do jj=1,nybox
+    t=t+1
+    lon_dif = (lon - boxLON(ii,jj))*111.41288*cos(lat*DEG2RAD) - &
+                 0.09350 * cos(3.0 * lat*DEG2RAD) + &
+                 0.00012 * cos(5.0 * lat*DEG2RAD)
+    lat_dif = (lat - boxLat(ii,jj))*111.13295
+    rtemp(t) = sqrt(lon_dif*lon_dif+lat_dif*lat_dif)
+    itemp(t) = ii
+    jtemp(t) = jj
+ enddo
+enddo
+
+! find minium distance
+min_location = minloc(rtemp)
+loc_box = min_location(1)
+
+! locate the box which contains the obs data (ii, jj)
+! set the ranges of i and j around the box.
+! the neighboring 4 model grid points are within this range.
+ii = itemp(loc_box)
+jj = jtemp(loc_box)
+i_start = max((ii-1)*num_cell - num_cell/2, 1) ! span 2 cells
+i_end   = min(    ii*num_cell + num_cell/2,Nx) ! span 2 cells
+j_start = max((jj-1)*num_cell - num_cell/2, 1)  
+j_end   = min(    jj*num_cell + num_cell/2,Ny)
+
+! now, calculate the distance between the obs and close candiate points
+t=0
+do i=i_start,i_end 
+ do j=j_start,j_end
+    t=t+1
+    lon_dif = (lon - LON_al(i,j))*111.41288*cos(lat*DEG2RAD) - &
+              0.09350 * cos(3.0 * lat*DEG2RAD) + &
+              0.00012 * cos(5.0 * lat*DEG2RAD)
+    lat_dif = (lat - Lat_al(i,j))*111.13295
+    rtemp(t) = sqrt(lon_dif*lon_dif+lat_dif*lat_dif)
+    itemp(t) = i
+    jtemp(t) = j
+  enddo
+enddo
+
+!find minimum distances
+min_location = minloc(rtemp)
+loc1 = min_location(1)
+
+!> @todo FIXME dies here with bounds checking turned on and you attempt
+!>       to interpolate something outside the domain. This WHOLE ROUTINE
+!>       can be replaced with something similar from POP.
+
+!check point location
+tp1 = checkpoint(LON_al(itemp(loc1)  ,jtemp(loc1)  ), &
+                 LAT_al(itemp(loc1)  ,jtemp(loc1)  ), &
+                 LON_al(itemp(loc1)+1,jtemp(loc1)+1), &
+                 LAT_al(itemp(loc1)+1,jtemp(loc1)+1),lon,lat)
+
+tp2 = checkpoint(LON_al(itemp(loc1)  ,jtemp(loc1)  ), &
+                 LAT_al(itemp(loc1)  ,jtemp(loc1)  ), &
+                 LON_al(itemp(loc1)  ,jtemp(loc1)+1), &
+                 LAT_al(itemp(loc1)  ,jtemp(loc1)+1),lon,lat)
+
+if(     (tp1  > 0.0_r8) .and. (tp2  > 0.0_r8)) then
+      x_ind=itemp(loc1)-1
+      y_ind=jtemp(loc1)
+elseif( (tp1  > 0.0_r8) .and. (tp2  < 0.0_r8)) then
+      x_ind=itemp(loc1)
+      y_ind=jtemp(loc1)
+elseif( (tp1  < 0.0_r8) .and. (tp2  > 0.0_r8)) then
+      x_ind=itemp(loc1)-1
+      y_ind=jtemp(loc1)-1
+elseif( (tp1  < 0.0_r8) .and. (tp2  < 0.0_r8)) then
+      x_ind=itemp(loc1)
+      y_ind=jtemp(loc1)-1
+elseif( (tp1 == 0.0_r8) .and. (tp2  > 0.0_r8)) then
+      x_ind=itemp(loc1)-1
+      y_ind=jtemp(loc1)
+elseif( (tp1 == 0.0_r8) .and. (tp2  < 0.0_r8)) then
+      x_ind=itemp(loc1)
+      y_ind=jtemp(loc1)
+elseif( (tp1  > 0.0_r8) .and. (tp2 == 0.0_r8)) then
+      x_ind=itemp(loc1)
+      y_ind=jtemp(loc1)
+elseif( (tp1  < 0.0_r8) .and. (tp2 == 0.0_r8)) then
+      x_ind=itemp(loc1)-1
+      y_ind=jtemp(loc1)-1
+else
+   write(string1,*)'ERROR in finding matching grid point for'
+   write(string2,*)'longitude ',lon
+   write(string3,*)'latitude  ',lat
+   call error_handler(E_MSG,'get_reg_box_indices:', string1, &
+              source, revision, revdate, text2=string2, text3=string3)
+endif
+
+if (do_output() .and. debug > 0) then
+
+   write(string1,*)'checking' 
+   write(string2,*)'longitude ',lon,' is index ',x_ind
+   write(string3,*)'latitude  ',lat,' is index ',y_ind
+   call error_handler(E_MSG,'get_reg_box_indices:', string1, &
+              source, revision, revdate, text2=string2, text3=string3)
+
+endif
+
+deallocate(boxLON, boxLAT)
+deallocate(rtemp)
+deallocate(itemp)
+deallocate(jtemp)
+
+end subroutine get_reg_box_indices
+                                        
+!-----------------------------------------------------------------------
+!>
+!> Given a longitude and latitude in degrees returns the index of the
+!> regular lon-lat box that contains the point. TJH ... this was the original
+!> version that dies when trying to interpolate something outside the domain.
+!> It dies with a run-time error when you have bounds-checking turned on.
+!>
+!> @param lon the longitude of interest
+!> @param lat the latitude of interest
+!> @param LON_al the matrix of longitudes defining the boxes (grids).
+!> @param LAT_al the matrix of latitudes defining the boxes (grids).
+!> @param x_ind the 'x' (longitude) index of the location of interest.
+!> @param y_ind the 'y' (latitude) index of the location of interest.
+!>
+!> @todo FIXME should this really error out or silently fail?
+!> At this point it may silently fail.
+!>
+
+subroutine get_reg_box_indices_org(lon, lat, LON_al, LAT_al, x_ind, y_ind)
 
 real(r8), intent(in)  :: lon
 real(r8), intent(in)  :: lat
@@ -3890,6 +4264,7 @@ real(r8)              :: lon_dif,lat_dif,tp1,tp2
 real(r8), allocatable :: rtemp(:)
 integer,  allocatable :: itemp(:),jtemp(:)
 integer               :: i,j,t,loc1
+integer               :: min_location(1) ! stupid parser
 
 ! tricky for rotated domain
 
@@ -3916,7 +4291,8 @@ enddo
 
 !find minimum distances
 
-loc1 = FindMinimum(rtemp, 1, t)
+min_location = minloc(rtemp)
+loc1 = min_location(1)
 
 !check point location
 
@@ -3966,35 +4342,7 @@ deallocate(rtemp)
 deallocate(itemp)
 deallocate(jtemp)
 
-end subroutine get_reg_box_indices
-
-
-!-----------------------------------------------------------------------
-!>
-!> Find the minimum value 
-!> @todo FIXME .... uh ... totally replace with intrinsic 'minval' routine
-!> y = minval(x(iStart:iEnd))
-
-INTEGER FUNCTION FindMinimum(x, iStart, iEnd)
-IMPLICIT  NONE
-real(r8), INTENT(IN) :: x(1:)
-INTEGER,  INTENT(IN) :: iStart, iEnd
-
-INTEGER                            :: Minimum
-INTEGER                            :: Location
-INTEGER                            :: i
-
-Minimum  = x(iStart)              ! assume the first is the min
-Location = iStart                 ! record its position
-DO i = iStart+1, iEnd             ! start with next elements
-   IF (x(i) < Minimum) THEN       !   if x(i) less than the min?
-      Minimum  = x(i)             !      Yes, a new minimum found
-      Location = i                !      record its position
-   END IF
-END DO
-FindMinimum = Location            ! return the position
-
-END FUNCTION  FindMinimum
+end subroutine get_reg_box_indices_org
 
 
 !-----------------------------------------------------------------------
