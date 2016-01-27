@@ -4697,6 +4697,7 @@ if (obs_kind == KIND_SURFACE_ELEVATION) then
    vals(1,2) = phis(lon_ind_below, lat_ind_above) / gravity_const
    vals(2,1) = phis(lon_ind_above, lat_ind_below) / gravity_const
    vals(2,2) = phis(lon_ind_above, lat_ind_above) / gravity_const
+   vstatus = 0
 
 elseif (vert_is_level(obs_loc)) then
    ! Pobs
