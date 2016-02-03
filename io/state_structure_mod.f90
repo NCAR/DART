@@ -164,8 +164,8 @@ type variable_type
    ! variable information
    character(len=NF90_MAX_NAME) :: varname
    integer     :: var_size = 0
-   integer(i8) :: index_start ! first occurance of variable in state
-   integer(i8) :: index_end   ! last occurance of variable in state
+   integer(i8) :: index_start = -1! first occurance of variable in state
+   integer(i8) :: index_end = -1  ! last occurance of variable in state
    
    ! dimension information
    integer :: numdims  = 0 ! number of dims - excluding TIME?
@@ -381,6 +381,8 @@ state%domain(dom_id)%variable(1)%varname   = 'state'
 state%domain(dom_id)%variable(1)%numdims   = 1
 state%domain(dom_id)%variable(1)%io_info%io_numdims   = 1
 state%domain(dom_id)%variable(1)%var_size  = model_size
+state%domain(dom_id)%variable(1)%index_start = 1
+state%domain(dom_id)%variable(1)%index_end = model_size
 
 ! dimension
 state%domain(dom_id)%variable(1)%dimname(1) = 'model_size'
@@ -897,7 +899,7 @@ get_sum_variables_below = 0
 
 do idom = 1, dom_id -1
    get_sum_variables_below = get_sum_variables_below + &
-                                state%domain(dom_id)%dom_size
+                                state%domain(idom)%dom_size
 enddo
 
 do ivar = 1, start_var -1
