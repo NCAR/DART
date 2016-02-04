@@ -1,0 +1,10 @@
+netcdf file1 {
+dimensions:
+	lat = 4 ;
+	lon = 7 ;
+variables:
+	double var1(lat, lon) ;
+	double lat(lat) ;
+	double lon(lon) ;
+}
+
