@@ -347,10 +347,10 @@ if (special_vert_normalization_obs_types(1) /= 'null' .or. &
                             text2=trim(special_vert_normalization_obs_types(i)))
       endif
 
-      per_type_vert_norm(VERTISLEVEL, i)       = special_vert_normalization_levels(i)
-      per_type_vert_norm(VERTISPRESSURE, i)    = special_vert_normalization_pressures(i)
-      per_type_vert_norm(VERTISHEIGHT, i)      = special_vert_normalization_heights(i)
-      per_type_vert_norm(VERTISSCALEHEIGHT, i) = special_vert_normalization_scale_heights(i)
+      per_type_vert_norm(VERTISLEVEL,       type_index) = special_vert_normalization_levels(i)
+      per_type_vert_norm(VERTISPRESSURE,    type_index) = special_vert_normalization_pressures(i)
+      per_type_vert_norm(VERTISHEIGHT,      type_index) = special_vert_normalization_heights(i)
+      per_type_vert_norm(VERTISSCALEHEIGHT, type_index) = special_vert_normalization_scale_heights(i)
       
    enddo
 
@@ -383,28 +383,39 @@ else
    write(msgstring,'(A,f17.5)') ' # scale heights ~ 1 horiz radian: ', vert_normalization_scale_height
    call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
 
-   do i = 1, num_special_vert_norms
-      if ((per_type_vert_norm(VERTISLEVEL,       i) /= vert_normalization_level) .or. &
-          (per_type_vert_norm(VERTISPRESSURE,    i) /= vert_normalization_pressure) .or. &
-          (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) .or. &
-          (per_type_vert_norm(VERTISSCALEHEIGHT, i) /= vert_normalization_scale_height)) then
+   if (allocated(per_type_vert_norm)) then
+      typecount = get_num_obs_kinds()  ! ignore function name, this is specific type count
+      do i = 1, typecount
+         if ((per_type_vert_norm(VERTISLEVEL,       i) /= vert_normalization_level) .or. &
+             (per_type_vert_norm(VERTISPRESSURE,    i) /= vert_normalization_pressure) .or. &
+             (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) .or. &
+             (per_type_vert_norm(VERTISSCALEHEIGHT, i) /= vert_normalization_scale_height)) then
  
-         write(msgstring,'(2A)') 'Altering vertical normalization for type ', trim(special_vert_normalization_obs_types(i))
-         call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
-         write(msgstring,'(A,f17.5)') '       # pascals ~ 1 horiz radian: ', &
-               per_type_vert_norm(VERTISPRESSURE, i)
-         call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
-         write(msgstring,'(A,f17.5)') '        # meters ~ 1 horiz radian: ', &
-               per_type_vert_norm(VERTISHEIGHT, i)
-         call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
-         write(msgstring,'(A,f17.5)') '  # model levels ~ 1 horiz radian: ', &
-               per_type_vert_norm(VERTISLEVEL, i)
-         call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
-         write(msgstring,'(A,f17.5)') ' # scale heights ~ 1 horiz radian: ', &
-               per_type_vert_norm(VERTISSCALEHEIGHT, i)
-         call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
-      endif
-   enddo
+            write(msgstring,'(2A)') 'Altering default vertical normalization for type ', trim(get_obs_kind_name(i))
+            call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+            if (per_type_vert_norm(VERTISPRESSURE,    i) /= vert_normalization_pressure) then
+               write(msgstring,'(A,f17.5)') '       # pascals ~ 1 horiz radian: ', &
+                     per_type_vert_norm(VERTISPRESSURE, i)
+               call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+            endif
+            if (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) then
+               write(msgstring,'(A,f17.5)') '        # meters ~ 1 horiz radian: ', &
+                     per_type_vert_norm(VERTISHEIGHT, i)
+               call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+            endif
+            if (per_type_vert_norm(VERTISLEVEL,       i) /= vert_normalization_level) then
+               write(msgstring,'(A,f17.5)') '  # model levels ~ 1 horiz radian: ', &
+                     per_type_vert_norm(VERTISLEVEL, i)
+               call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+            endif
+            if (per_type_vert_norm(VERTISSCALEHEIGHT, i) /= vert_normalization_scale_height) then
+               write(msgstring,'(A,f17.5)') ' # scale heights ~ 1 horiz radian: ', &
+                     per_type_vert_norm(VERTISSCALEHEIGHT, i)
+               call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+            endif
+         endif
+      enddo
+   endif
 endif
 
 ! Set up a lookup table for cos and sin for approximate but fast distances
