@@ -41,7 +41,13 @@ input_files = '../../../obs_def/obs_def_AIRS_mod.f90',
 /
 
 &test_state_structure_nml
-  test1 = 1
+   debug                    = .false.
+   one_dom_restart_filename = 'pop.r.nc'
+   one_dom_variables        = 'SALT_CUR ', 'KIND_SALINITY             ', 'UPDATE',
+                              'TEMP_CUR ', 'KIND_POTENTIAL_TEMPERATURE', 'UPDATE',
+                              'UVEL_CUR ', 'KIND_U_CURRENT_COMPONENT  ', 'UPDATE',
+                              'VVEL_CUR ', 'KIND_V_CURRENT_COMPONENT  ', 'UPDATE',
+                              'PSURF_CUR', 'KIND_SEA_SURFACE_PRESSURE ', 'UPDATE'
 /
 
 &test_read_write_restarts_nml
@@ -50,3 +56,5 @@ input_files = '../../../obs_def/obs_def_AIRS_mod.f90',
   direct_netcdf_read    = .false.
   direct_netcdf_write   = .false.
 /
+
+
