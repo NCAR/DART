@@ -903,10 +903,11 @@ end subroutine solve_quadratic
 
 !------------------------------------------------------------------------
 !> Write to log file what kind of inflation is being used.  
-subroutine log_inflation_info(inflation_handle, label)
+subroutine log_inflation_info(inflation_handle, mype, label)
 
-type(adaptive_inflate_type), intent(inout) :: inflation_handle
-character(len = *),          intent(in)    :: label
+type(adaptive_inflate_type), intent(in) :: inflation_handle
+integer,                     intent(in) :: mype
+character(len = *),          intent(in) :: label
 
 character(len = 128) :: det, tadapt, sadapt, akind, rsread, nmread
 
@@ -958,7 +959,7 @@ call error_handler(E_MSG, trim(label) // ' inflation:', msgstring, source, revis
 ! max from the entire array.  for flavors 1 and 3 there is only a single
 ! value to print out. 
 if (inflation_handle%inflation_flavor > 0) then
-   if (inflation_handle%mean_from_restart) then
+   if (inflation_handle%mean_from_restart .and. mype == 0) then
       if (inflation_handle%inflation_flavor == 2) then
          write(msgstring, '(A, F8.3, A, F8.3)') &
             'inf mean   from restart file: min value: ', inflation_handle%minmax_mean(1), ' max value: ', inflation_handle%minmax_mean(2)
@@ -968,7 +969,7 @@ if (inflation_handle%inflation_flavor > 0) then
       endif
       call error_handler(E_MSG, trim(label) // ' inflation:', msgstring, source, revision, revdate)
    endif
-   if (inflation_handle%sd_from_restart) then
+   if (inflation_handle%sd_from_restart .and. mype == 0) then
       if (inflation_handle%inflation_flavor == 2) then
          write(msgstring, '(A, F8.3, A, F8.3)') &
             'inf stddev from restart file: min value: ', inflation_handle%minmax_sd(1), ' max value: ', inflation_handle%minmax_sd(2)
