@@ -70,9 +70,12 @@ xlabel(obs.colnames{obs.lonindex});
 ylabel(obs.colnames{obs.latindex});
 zlabel(obs.colnames{obs.zindex});
 
+tmin = min(obs.time);
+tmax = max(obs.time);
+
 h = title({obs.ObsTypeString, ...
       sprintf('"%s"',obs.ObsCopyString), ...
-      sprintf('%s ---> %s',obs.timestring(1,:),obs.timestring(2,:)) });
+      sprintf('%s ---> %s',datestr(tmin),datestr(tmax)) });
 set(h,'Interpreter','none')
 linkdata on
 
