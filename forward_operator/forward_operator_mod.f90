@@ -149,7 +149,6 @@ type(obs_type)     :: observation
 num_copies_to_calc = copies_in_window(ens_handle)
 
 allocate(istatus(num_copies_to_calc))
-allocate(var_istatus(qc_ens_handle%num_copies))
 allocate(expected_obs(num_copies_to_calc))
 allocate(my_copy_indices(num_copies_to_calc))
 
@@ -158,7 +157,7 @@ allocate(my_copy_indices(num_copies_to_calc))
 ! call prepare_to_write_to_vars(qc_ens_handle)
 ! call prepare_to_read_from_vars(ens_handle)
 
-! create the mpi window for the distributed state
+! Set up access to the state
 call create_state_window(ens_handle)
 
 ens_size = ens_handle%num_copies - ens_handle%num_extras
@@ -202,10 +201,6 @@ if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued
       ! PAR THIS SUBROUTINE SHOULD EVENTUALLY GO IN THE QUALITY CONTROL MODULE
       if(.not. input_qc_ok(input_qc(1), global_qc_value)) then
 
-         !> @todo global_qc_value
-         ! HK why is this being printed?
-         !write(*,*) 'bad global_qc_value', global_qc_value
-         
          qc_ens_handle%vars(j, :) = 0
 
          do k=1, obs_fwd_op_ens_handle%my_num_copies
@@ -226,13 +221,10 @@ if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued
 
          ! No need to do anything else for a failed observation
          cycle ALL_OBSERVATIONS
-      else
-         !write(*,*) 'good global_qc_value', global_qc_value
       endif
 
       thiskey(1) = keys(j)
 
-!> @todo Do we need this if statement?
       if(qc_ens_handle%my_num_copies > 0) then
          call get_expected_obs_distrib_state(seq, thiskey, &
             dummy_time, isprior, istatus, &
@@ -247,8 +239,9 @@ if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued
       do k=1, obs_fwd_op_ens_handle%my_num_copies
          global_ens_index = obs_fwd_op_ens_handle%my_copies(k)
 
+         ! Storing assimilate_this_obs, evaluate_this_ob, or ob not in 
+         ! namelist in OBS_EXTRA_QC_COPY
          if (global_ens_index == OBS_EXTRA_QC_COPY) then
-         ! JH assimilate_this_ob or evaluate_this_ob then set extra status
             if (assimilate_this_ob) then
                obs_fwd_op_ens_handle%vars(j, k) = DARTQC_ASSIM_GOOD_FOP
             else if (evaluate_this_ob) then
@@ -259,26 +252,10 @@ if(get_allow_transpose(ens_handle)) then ! giant if for transpose or distribtued
          endif
       enddo
 
+      qc_ens_handle%vars(j, 1:num_copies_to_calc) = istatus(:)
 
-      do copy = 1, num_copies_to_calc
-
-         ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
-         ! and -2 for neither evaluate or assimilate. Otherwise pass through the istatus
-         ! in the forward operator evaluation field
-         if(istatus(copy) == 0) then
-            if ((assimilate_this_ob .or. evaluate_this_ob) .and. (expected_obs(copy) == missing_r8)) then
-               write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
-               call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
-            endif
-            qc_ens_handle%vars(j, copy) = 0
-         else if (istatus(copy) < 0) then
-            write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
-            call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
-         else
-            qc_ens_handle%vars(j, copy) = istatus(copy)
-         endif
-
-      enddo
+      call check_forward_operator_istatus(num_copies_to_calc, assimilate_this_ob, &
+                                 evaluate_this_ob, istatus, expected_obs)
 
    end do ALL_OBSERVATIONS
 
@@ -342,27 +319,40 @@ else ! distributed state
    obs_fwd_op_ens_handle%copies(OBS_ERR_VAR_COPY  , j) = obs_err_var
    obs_fwd_op_ens_handle%copies(OBS_VAL_COPY      , j) = obs_value(1)
 
-   ! do we need this?  nsc: i think no 
-   ! qc_ens_handle%copies(:, j) = istatus
+   qc_ens_handle%copies(:, j) = istatus
+
+   call check_forward_operator_istatus(num_copies_to_calc, assimilate_this_ob, evaluate_this_ob, &
+                               istatus, expected_obs)
 
    end do MY_OBSERVATIONS
 
 endif
 
+! End access to the state
 call free_state_window(ens_handle, obs_fwd_op_ens_handle, qc_ens_handle)
 
+
+! QC Section:
+! * Consolidate QC for non-distributed forward operator
+! * Check outlier threshold (prior only)
+! * Set mean and var to missing_r8 if any forward operator failed. 
+!   The failure test is any qc_ens_handle%copies = 0.
+!   Previously we were testing for any obs_fwd_op_ens_handle%copies = missing_r8 but
+!   some models (e.g. CAM) return a non-zero QC, but a forward operator value (not missing_r8) 
+
 if (get_allow_transpose(ens_handle)) then
+   ! Extra step for non-distributed to consolidate qc values for
+   ! each ensemble member into global_qc_value
+   allocate(var_istatus(qc_ens_handle%num_copies))
 
    if (.not. isprior) call put_single_copy(obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, prior_qc_copy)
 
-   ! JH transpose to copies then loop over my_observations and get_dart_qc
    MY_OBS: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
       ! collect dart qc
       var_istatus = qc_ens_handle%copies(:,j) 
    
       assimilate_this_ob = (obs_fwd_op_ens_handle%copies(OBS_EXTRA_QC_COPY, j) == DARTQC_ASSIM_GOOD_FOP ) 
       evaluate_this_ob   = (obs_fwd_op_ens_handle%copies(OBS_EXTRA_QC_COPY, j) == DARTQC_EVAL_GOOD_FOP)
-      ! write(*,*) 'global_qc_copy,j',j, obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j)
       global_qc_value    = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j))
    
       ! update the status
@@ -372,38 +362,33 @@ if (get_allow_transpose(ens_handle)) then
    
    enddo MY_OBS
 
+   deallocate(var_istatus)
+
 endif
 
 call compute_copy_mean_var(obs_fwd_op_ens_handle, 1, qc_ens_handle%num_copies, &
         OBS_MEAN_START, OBS_VAR_START)
 
-!>@todo Science quesion: Should groups be considered separately for outlier
-! we cannot get rid of two loops because we need obs mean and var to do the
-! outlier check.  so we'll still need the obs_fwd_op handle to store the istatus,
-! or we need a single column compute_mean_var to put inside the first loop.
+!>@todo Science quesion: Should groups be considered separately for outlier threshold test?
 QC_LOOP: do j = 1,  obs_fwd_op_ens_handle%my_num_vars
 
-   ! I don't think OBS_GLOBAL_QC_COPY is set in the transpose version
-   global_qc_value = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j))
-
-   ! If istatus is 0 (successful) then put 0 for assimilate, -1 for evaluate only
-   ! and -2 for neither evaluate or assimilate. Otherwise set the istatus
-   ! in the forward operator evaluation field
    if (isprior) then
+
+      global_qc_value = nint(obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j))
+      ! check_outlier_threshold could change the global_qc_value
       call check_outlier_threshold(obs_fwd_op_ens_handle%copies(OBS_MEAN_START,j), &
                                    obs_fwd_op_ens_handle%copies(OBS_VAR_START    , j),       &
                                    obs_fwd_op_ens_handle%copies(OBS_VAL_COPY     , j),       &
                                    obs_fwd_op_ens_handle%copies(OBS_ERR_VAR_COPY , j),  seq, &
                               nint(obs_fwd_op_ens_handle%copies(OBS_KEY_COPY     , j)), global_qc_value)
+
+      obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = global_qc_value
+
    endif
 
-   obs_fwd_op_ens_handle%copies(OBS_GLOBAL_QC_COPY, j) = global_qc_value
-
-   ! for either prior or posterior, if the forward operator failed,
+   ! for either prior or posterior, if any forward operator failed,
    ! reset the mean/var to missing_r8, regardless of the DART QC status
-   ! HK does this fail if you have groups?
-   !>@todo Do we want to set all the groups to missing_r8? Not just the start?
-   if (any(obs_fwd_op_ens_handle%copies(1:ens_size,j) == missing_r8)) then
+   if (any(qc_ens_handle%copies(:, j) /= 0)) then
       obs_fwd_op_ens_handle%copies(OBS_MEAN_START, j) = missing_r8
       obs_fwd_op_ens_handle%copies(OBS_VAR_START,  j) = missing_r8
    endif
@@ -412,7 +397,7 @@ end do QC_LOOP
 
 if (isprior) call get_single_copy(obs_fwd_op_ens_handle, OBS_GLOBAL_QC_COPY, prior_qc_copy)
 
-deallocate(expected_obs, istatus, var_istatus, my_copy_indices)
+deallocate(expected_obs, istatus, my_copy_indices)
 
 end subroutine get_obs_ens_distrib_state
 
@@ -498,8 +483,10 @@ call destroy_obs(obs)
 end subroutine get_expected_obs_distrib_state
 
 !---------------------------------------------------------------------------
-!> This is so a task that does not do a forward operator can still do QC.
-!> It is stored in OBS_EXTRA_QC_COPY.
+!> For a given obs (seq and key) returns the logicals assimilate_this_obs
+!> and evaluate_this_obs.
+!> This is so a task that does not do a forward operator can still do QC
+!> by storing this info in OBS_EXTRA_QC_COPY.
 subroutine assim_or_eval(seq, thiskey, numvars, assimilate_this_ob, evaluate_this_ob)
 
 type(obs_sequence_type), intent(in)  :: seq
@@ -537,6 +524,41 @@ endif
 
 end subroutine assim_or_eval
 
+!------------------------------------------------------------------------------
+!> Checks for errors from the model_mod forward operator
+!> Possible errors:
+!>   * Successful istatus but missing_r8 for forward operator
+!>   * Negative istatus
+!> This routine calls the error handler (E_ERR) if either of these happen.
+subroutine check_forward_operator_istatus(num_fwd_ops, assimilate_ob, evaluate_ob, istatus, expected_obs)
+
+integer,  intent(in) :: num_fwd_ops
+logical,  intent(in) :: assimilate_ob
+logical,  intent(in) :: evaluate_ob
+integer,  intent(in) :: istatus(num_fwd_ops)
+real(r8), intent(in) :: expected_obs(num_fwd_ops)
+
+
+integer :: copy
+
+! Check for errors from model_mod forward operator
+do copy = 1, num_fwd_ops
+
+   ! Successful istatus but missing_r8 for forward operator
+   if(istatus(copy) == 0) then
+      if ((assimilate_ob .or. evaluate_ob) .and. (expected_obs(copy) == missing_r8)) then
+         write(msgstring, *) 'istatus was 0 (OK) but forward operator returned missing value.'
+         call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+      endif
+   ! Negative istatus
+   else if (istatus(copy) < 0) then
+      write(msgstring, *) 'istatus must not be <0 from forward operator. 0=OK, >0 for error'
+      call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
+   endif
+
+enddo
+
+end subroutine check_forward_operator_istatus
 
 !------------------------------------------------------------------------------
 end module forward_operator_mod

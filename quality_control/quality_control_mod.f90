@@ -175,7 +175,7 @@ end function input_qc_ok
 !------------------------------------------------------------------------------
 !> Subroutine get_dart_qc
 !>
-!> Compute outlier test and consolidate forward operator qc
+!> Consolidate forward operator qc
 !> find the min and max istatus values across all ensemble members.  Chese are
 !> either set by dart code, or returned by the model-specific model_interpolate()
 !> routine, or by forward operator code in obs_def_xxx_mod files.
@@ -211,7 +211,7 @@ inconsistent = (minval(istatus(:)) /= 0)
 ! operator istatus without being caught, it will fail all cases below.
 ! add another line for 'internal inconsistency' to be safe.
 
-if(isprior) then !HK changed from
+if(isprior) then
 
    ! only do this for the priors.  the posterior failures
    ! don't change whether the prior worked or not.
