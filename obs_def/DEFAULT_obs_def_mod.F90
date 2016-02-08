@@ -45,6 +45,7 @@ end subroutine set_debug_fwd_op
 !> It assumes that you are starting with istatus(:) = 0
 !> If debugging, return_now is only set to true if all istatuses are non-zero
 !> If not debugging, return_now is set to true if any istatues are non-zero
+!>  and any remaining zero istatues are set to 1.
 subroutine track_status(ens_size, val_istatus, val_data, istatus, return_now)
 
 integer,  intent(in)    :: ens_size
@@ -66,6 +67,7 @@ else
    if( any(istatus /= 0)) then
       return_now = .true.
       val_data(:) = missing_r8
+      where (istatus == 0) istatus = 1
    endif
 endif
 
