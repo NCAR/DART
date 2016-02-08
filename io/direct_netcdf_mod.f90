@@ -766,10 +766,12 @@ do i = start_var, end_var
 
       ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:end_in_var_block), count=dims)
       call nc_check(ret, 'write_variables', 'writing')
-      start_in_var_block = start_in_var_block + var_size
 
       deallocate(dims)
    endif
+
+   start_in_var_block = start_in_var_block + var_size
+
 enddo
 
 end subroutine write_variables
@@ -811,10 +813,11 @@ do i = start_var, end_var
 
       ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:end_in_var_block), count=dims)
       call nc_check(ret, 'write_variables_clamp', 'writing')
-      start_in_var_block = start_in_var_block + var_size
 
       deallocate(dims)
    endif
+
+   start_in_var_block = start_in_var_block + var_size
 
 enddo
 
