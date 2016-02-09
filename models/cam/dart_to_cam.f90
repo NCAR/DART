@@ -18,16 +18,16 @@ program dart_to_cam
 !
 !----------------------------------------------------------------------
 
-use       types_mod, only : r8
-use   utilities_mod, only : open_file, close_file, &
-                            initialize_utilities, finalize_utilities, &
-                            logfileunit, nmlfileunit, do_nml_file, do_nml_term, &
-                            check_namelist_read, find_namelist_in_file
-use       model_mod, only : model_type, init_model_instance, write_cam_init, &
-                            vector_to_prog_var, static_init_model, get_model_size, &
-                            write_cam_times, end_model_instance
-use assim_model_mod, only : aread_state_restart, open_restart_read, close_restart
-use time_manager_mod, only : time_type, print_time, print_date
+use       types_mod,     only : r8
+use   utilities_mod,     only : open_file, close_file, &
+                                initialize_utilities, finalize_utilities, &
+                                logfileunit, nmlfileunit, do_nml_file, do_nml_term, &
+                                check_namelist_read, find_namelist_in_file
+use       model_mod,     only : model_type, init_model_instance, write_cam_init, &
+                                vector_to_prog_var, static_init_model, get_model_size, &
+                                write_cam_times, end_model_instance
+use state_vector_io_mod, only : aread_state_restart, open_restart_read, close_restart
+use time_manager_mod,    only : time_type, print_time, print_date
 
 implicit none
 

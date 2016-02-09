@@ -7,7 +7,7 @@
 # DART $Id$
 
 ../../../mkmf/mkmf -p cam_to_dart -t ../../../mkmf/mkmf.template   \
- -a "../../.." -w path_names_cam_to_dart
+ -a "../../.." path_names_cam_to_dart
 
 exit $status
 
