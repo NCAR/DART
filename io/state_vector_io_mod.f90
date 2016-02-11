@@ -126,13 +126,13 @@ public :: read_ensemble_restart, &
 
 
 ! Module storage for writing error messages
-character(len = 255) :: msgstring
+character(len=512) :: msgstring
 
 ! Logical flag for initialization of module
-logical              :: module_initialized = .false.
+logical :: module_initialized = .false.
 
 ! Global storage for default restart formats
-character(len = 16) :: read_format = "unformatted", write_format = "unformatted"
+character(len=16) :: read_format = "unformatted", write_format = "unformatted"
 
 ! namelist variables with default values
 ! Aim: to have the regular transpose as the default
@@ -150,9 +150,9 @@ namelist /  state_vector_io_nml / limit_mem, &
 
 contains
 
-!-------------------------------------------------
-!> Initialize module
-!> so you can read the namelist
+!-----------------------------------------------------------------------
+!> Initialize module and read the namelist
+
 subroutine state_vector_io_init()
 
 integer :: iunit, io
@@ -162,10 +162,10 @@ if ( .not. module_initialized ) then
    call register_module(source, revision, revdate)
    module_initialized = .true.
 
-! Read the namelist entry
-call find_namelist_in_file("input.nml", "state_vector_io_nml", iunit)
-read(iunit, nml = state_vector_io_nml, iostat = io)
-call check_namelist_read(iunit, io, "state_vector_io_nml")
+   ! Read the namelist entry
+   call find_namelist_in_file("input.nml", "state_vector_io_nml", iunit)
+   read(iunit, nml = state_vector_io_nml, iostat = io)
+   call check_namelist_read(iunit, io, "state_vector_io_nml")
 
    ! Set the write format for restart files
    if(write_binary_restart_files) then
@@ -182,7 +182,8 @@ if (do_nml_term()) write(     *     , nml=state_vector_io_nml)
 
 end subroutine state_vector_io_init
 
-!-------------------------------------------------
+
+!-----------------------------------------------------------------------
 !> Read in the state vectors into an ensemble handle
 !> The copies will end up in the state_ens_handle%copies array.
 !> If read_time_from_file = .true. then time is overwritten by the time read from 
@@ -193,6 +194,7 @@ end subroutine state_vector_io_init
 !> perturb_from_single_copy is optional (used by filter, not by perfect_model_obs)
 !>   - only 1 restart file is read in. For netcdf read only one copy is transposed. Still
 !>     doing a full all vars to all copies for dart format read though.
+
 subroutine read_state(state_ens_handle, file_info, read_time_from_file, time, prior_inflate_handle, post_inflate_handle, perturb_from_single_copy)
 
 type(ensemble_type),         intent(inout) :: state_ens_handle
@@ -319,12 +321,14 @@ call end_read_write()
 
 end subroutine read_state
 
-!-------------------------------------------------
+
+!-----------------------------------------------------------------------
 !> Write state vectors from an ensemble_handle
 !> The inflation handles are options (used by filter, not by perfect_model_obs)
 !> Note both inflation handles must be present (or neither)
 !> There is logic in write_state about spare_copies. These are extra state vector 
 !> copies that may be in the ensemble handle when doing large model, single timestep runs.
+
 subroutine write_state(state_ens_handle, file_info, prior_inflate_handle, post_inflate_handle)
 
 type(ensemble_type),         intent(inout) :: state_ens_handle
@@ -449,11 +453,12 @@ call end_read_write()
 
 end subroutine write_state
 
+
 !-------------------------------------------------
 ! DART read write (binary/ascii vector)
 !-------------------------------------------------
 
-!-------------------------------------------------------------------------
+!-----------------------------------------------------------------------
 !> Read in restart files from dart format files (time + vector)
 !> Restarts may be:
 !>   one file per restart
@@ -508,15 +513,14 @@ if(state_ens_handle%my_pe == 0) then
 endif
 
 end subroutine filter_read_restart
-!----------------------------------------------------------------------
 
+
+!----------------------------------------------------------------------
+!> Write a restart file given a model extended state and a unit number 
+!> opened to the restart file. (Need to reconsider what is passed to 
+!> identify file or if file can even be opened within this routine).
 
 subroutine write_state_restart(assim_model, funit, target_time)
-!----------------------------------------------------------------------
-!
-! Write a restart file given a model extended state and a unit number 
-! opened to the restart file. (Need to reconsider what is passed to 
-! identify file or if file can even be opened within this routine).
 
 type (assim_model_type), intent(in)           :: assim_model
 integer,                 intent(in)           :: funit
@@ -530,16 +534,15 @@ endif
 
 end subroutine write_state_restart
 
-!-----------------------------------------------------------------
 
 !-------------------------------------------------
 ! Netcdf read write
 ! Uses direct_netcdf_mod.f90
 !-------------------------------------------------
 
-!------------------------------------------------------------------
-!> Read the restart information directly from the model output
-!> netcdf file
+!----------------------------------------------------------------------
+!> Read the restart information directly from the model output netcdf file
+
 subroutine filter_read_restart_direct(state_ens_handle, file_info, use_time_from_file, time)
 
 type(ensemble_type),  intent(inout) :: state_ens_handle
@@ -547,8 +550,8 @@ type(file_info_type), intent(in)    :: file_info
 logical,              intent(in)    :: use_time_from_file
 type(time_type),      intent(inout) :: time
 
-integer                         :: dart_index !< where to start in state_ens_handle%copies
-integer                         :: domain !< loop index
+integer :: dart_index !< where to start in state_ens_handle%copies
+integer :: domain !< loop index
 
 ! check whether file_info handle is initialized
 call assert_file_info_initiailzed(file_info, 'filter_read_restart_direct')
@@ -571,8 +574,10 @@ enddo
 
 end subroutine filter_read_restart_direct
 
-!-------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
 !> write the restart information directly into the model netcdf file.
+
 subroutine filter_write_restart_direct(state_ens_handle, file_name_handle)
 
 type(ensemble_type),   intent(inout) :: state_ens_handle
@@ -594,10 +599,10 @@ do domain = 1, get_num_domains()
    call transpose_write(state_ens_handle, file_name_handle, domain, dart_index, limit_mem, single_precision_output)
 enddo
 
-
 end subroutine filter_write_restart_direct
 
-!------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
 !> Single state space inflation from file value is only index 1 of 
 !> inflation vars array (mean and sd).
 !> This routine find the owner of the 1st element in the vars array
@@ -606,6 +611,7 @@ end subroutine filter_write_restart_direct
 !> Note filling both mean and sd values if at least one of mean
 !> or sd is read from file.  If one is set from a namelist the copies 
 !> array is overwritten in fill_ss_from_namelist value
+
 subroutine fill_single_ss_inflate_from_read(ens_handle, prior_inflate_handle, post_inflate_handle)
 
 type(ensemble_type),         intent(inout) :: ens_handle
@@ -693,9 +699,11 @@ endif
 
 end subroutine fill_single_ss_inflate_from_read
 
-!------------------------------------------------------------------
-! Check whether inflation values come from namelist and
-! fill copies array with namelist values for inflation if they do.
+
+!-----------------------------------------------------------------------
+!> Check whether inflation values come from namelist and
+!> fill copies array with namelist values for inflation if they do.
+
 subroutine fill_ss_from_nameslist_value(ens_handle, prior_inflate_handle, post_inflate_handle)
 
 type(ensemble_type),         intent(inout) :: ens_handle
@@ -714,13 +722,14 @@ endif
 
 end subroutine fill_ss_from_nameslist_value
 
-!------------------------------------------------------------------
-! Reading/writing DART format inflation files
-!------------------------------------------------------------------
-!-------------------------------------------------
 
-!-------------------------------------------------
+!------------------------------------------------------------------
+! Reading/writing DART-format inflation files
+!------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
 !> Read the dart format state space inflation files
+
 subroutine read_state_space_inflation(ens_handle, inflate_handle, ss_inflate_mean_index, ss_inflate_sd_index)
 
 type(ensemble_type),         intent(inout) :: ens_handle
@@ -804,7 +813,9 @@ endif
 
 end subroutine read_state_space_inflation
 
-!------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+
 subroutine write_state_space_inflation(inflate_handle, file_info, state_ens_handle, ss_inflate_mean_index, &
    ss_inflate_sd_index)
 
@@ -827,13 +838,14 @@ endif
 
 end subroutine write_state_space_inflation
 
-!---------------------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
 
 subroutine read_ensemble_restart(ens_handle, start_copy, end_copy, file_name, init_time, force_single_file)
 
 type(ensemble_type),  intent(inout)           :: ens_handle
 integer,              intent(in)              :: start_copy, end_copy
-character(len = *),   intent(in)              :: file_name
+character(len=*),     intent(in)              :: file_name
 type(time_type),      intent(in),    optional :: init_time
 logical,              intent(in),    optional :: force_single_file
 
@@ -845,8 +857,8 @@ logical,              intent(in),    optional :: force_single_file
 ! Avoid num_vars size storage on stack; make this allocatable from heap
 real(r8), allocatable               :: ens(:) 
 integer                             :: iunit, i
-character(len = LEN(file_name) + 5) :: this_file_name
-character(len = 4)                  :: extension
+character(len=LEN(file_name) + 5)   :: this_file_name
+character(len=4)                    :: extension
 type(time_type)                     :: ens_time
 integer                             :: global_copy_index
 logical                             :: single_file_override
@@ -919,14 +931,15 @@ endif
 
 end subroutine read_ensemble_restart
 
-!-----------------------------------------------------------------
+
+!-----------------------------------------------------------------------
 
 subroutine write_ensemble_restart(ens_handle, file_info, file_name, start_copy, end_copy, &
    force_single_file)
 
 type(ensemble_type),  intent(in)    :: ens_handle
 type(file_info_type), intent(in)    :: file_info
-character(len = *),   intent(in)    :: file_name
+character(len=*),     intent(in)    :: file_name
 integer,              intent(in)    :: start_copy, end_copy
 logical, optional,    intent(in)    :: force_single_file
 
@@ -935,8 +948,8 @@ real(r8), allocatable               :: ens(:)
 type(time_type)                     :: ens_time
 integer                             :: iunit, i, global_index
 integer                             :: owner, owners_index
-character(len = LEN(file_name) + 10) :: this_file_name
-character(len = 4)                  :: extension
+character(len=LEN(file_name) + 10)  :: this_file_name
+character(len=4)                    :: extension
 logical                             :: single_file_forced
 
 ! check whether file_info handle is initialized
@@ -1013,13 +1026,12 @@ endif
 end subroutine write_ensemble_restart
 
 
-!----------------------------------------------------------------------
+!-----------------------------------------------------------------------
+!> Write a restart file given a model extended state and a unit number 
+!> opened to the restart file. (Need to reconsider what is passed to 
+!> identify file or if file can even be opened within this routine).
 
 subroutine awrite_state_restart(model_time, model_state, funit, target_time)
-!
-! Write a restart file given a model extended state and a unit number 
-! opened to the restart file. (Need to reconsider what is passed to 
-! identify file or if file can even be opened within this routine).
 
 type(time_type), intent(in)           :: model_time
 real(r8),        intent(in)           :: model_state(:)
@@ -1027,8 +1039,8 @@ integer,         intent(in)           :: funit
 type(time_type), optional, intent(in) :: target_time
 
 integer :: i, io, rc
-character(len = 16) :: open_format
-character(len=128) :: filename
+character(len=16)  :: open_format
+character(len=256) :: filename
 logical :: is_named
 
 if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
@@ -1073,9 +1085,10 @@ endif
 
 end subroutine awrite_state_restart
 
-!----------------------------------------------------------------------
-!
-! Closes a restart file
+
+!-----------------------------------------------------------------------
+!> Closes a restart file
+
 subroutine close_restart(file_unit)
 
 integer, intent(in) :: file_unit
@@ -1085,15 +1098,16 @@ call close_file(file_unit)
 end subroutine close_restart
 
 
-subroutine read_state_restart(assim_model, funit, target_time)
 !----------------------------------------------------------------------
-!
-! Read a restart file given a unit number (see write_state_restart)
+!> Read a restart file given a unit number (see write_state_restart)
+
+subroutine read_state_restart(assim_model, funit, target_time)
 
 type(assim_model_type), intent(inout)         :: assim_model
 integer,                intent(in)            :: funit
 type(time_type),        optional, intent(out) :: target_time
 
+!> @todo TJH why is this calling the error handler instead of just initializing the module
 if ( .not. module_initialized ) call error_handler(E_ERR, 'read_state_restart', 'module not initialized')
 
 if(present(target_time)) then
@@ -1104,20 +1118,18 @@ endif
 
 end subroutine read_state_restart
 
-!----------------------------------------------------------------------
+
+!-----------------------------------------------------------------------
+!> Read a restart file given a unit number (see write_state_restart)
 
 subroutine aread_state_restart(model_time, model_state, funit, target_time)
-!----------------------------------------------------------------------
-!
-! Read a restart file given a unit number (see write_state_restart)
-
 
 type(time_type), intent(out)            :: model_time
 real(r8),        intent(out)            :: model_state(:)
 integer,         intent(in)             :: funit
 type(time_type), optional, intent(out) :: target_time
 
-character(len = 16) :: open_format
+character(len=16) :: open_format
 integer :: ios, int1, int2
 
 if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
@@ -1170,16 +1182,14 @@ endif
 
 end subroutine aread_state_restart
 
-!----------------------------------------------------------------------
 
+!-----------------------------------------------------------------------
+!> Opens a restart file for writing
 
 function open_restart_write(file_name, override_write_format)
-!----------------------------------------------------------------------
-!
-! Opens a restart file for writing
 
-character(len = *), intent(in) :: file_name
-character(len = *), optional, intent(in) :: override_write_format
+character(len=*), intent(in) :: file_name
+character(len=*), optional, intent(in) :: override_write_format
 
 integer :: open_restart_write, io
 
@@ -1200,13 +1210,13 @@ endif
 end function open_restart_write
 
 
+!-----------------------------------------------------------------------
+!> Opens a restart file for reading
+
 function open_restart_read(file_name)
-!----------------------------------------------------------------------
-!
-! Opens a restart file for reading
 
 integer :: open_restart_read
-character(len = *), intent(in) :: file_name
+character(len=*), intent(in) :: file_name
 
 integer :: ios, ios_out
 !!logical :: old_output_state
