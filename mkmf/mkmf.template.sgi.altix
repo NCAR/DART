@@ -87,6 +87,17 @@
 #                which have priority over the others.
 #                (for those running on yellowstone, -axavx will enable the advanced
 #                vector instructions available on the sandy bridge processors.)
+#     -assume buffered_io  allows the runtime library to buffer up individual
+#                writes before calling the operating system.  in particular, we
+#                write our observation sequence files as a series of many individual
+#                calls to the write() routine.  when debugging you do not want to
+#                buffer so you can see the last output before the program dies.
+#                for production, however, you want to batch up writes into larger
+#                blocks before stopping to do i/o to disk.  an alternative at
+#                runtime is to set FORT_BUFFERED to 'true' in your environment.
+#                (e.g. csh family: setenv FORT_BUFFERED true    or
+#                ksh family: export FORT_BUFFERED=true).  
+#
 #
 # FFLAGS   possibly useful, not normally used by DART
 #     -fpp     run Fortran preprocessor on source files prior to compilation
@@ -138,7 +149,7 @@ LD = ifort
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
-FFLAGS  = -O $(INCS)
+FFLAGS  = -O -assume buffered_io $(INCS)
 LDFLAGS = $(FFLAGS) $(LIBS)
 
 # for development or debugging, use this instead:
