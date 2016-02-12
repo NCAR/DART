@@ -22,10 +22,10 @@ module state_space_diag_mod
 !> Different options for diagnostic files:
 !> 1. Single file - all copies, all time steps in one file.
 !>      model_mod::nc_write_model_atts is called which then returns
-!>      a flag whether dart should define and write the state variables.
+!>      a flag whether DART should define and write the state variables.
 !>      This allows the model to still write whatever it wants to 
-!>      the diagnostic file.
-!>      Routines still to write (using the state_structure):
+!>      the diagnostic file, and still have DART write the state if needed
+!>      using the following routines:
 !>         * dart_nc_write_model_atts
 !>         * dart_nc_write_model_vars
 !>
@@ -33,8 +33,8 @@ module state_space_diag_mod
 !>      Not sure if there is any desire for this.
 !>      Routines to write:
 !>         * init_diag_one_copy_per_file
-!>         * dart_nc_write_model_atts
-!>         * dart_nc_write_model_vars
+!>         * dart_nc_write_model_atts_one_copy_per_file
+!>         * dart_nc_write_model_vars_one_copy_per_file
 !>         * finalize_diag_output_one_copy_per_file
 !>
 !> 3. One copy per file, one timestep
@@ -81,7 +81,11 @@ use io_filenames_mod,     only : file_info_type
 use state_vector_io_mod,  only : setup_read_write, end_read_write, turn_write_copy_off, &
                                  turn_write_copy_on, filter_write_restart_direct
 
-use state_structure_mod, only : get_num_domains
+use state_structure_mod, only : get_num_domains, create_diagnostic_structure, &
+                                get_num_variables, get_num_dims, set_var_id, &
+                                get_dim_name, get_variable_name, get_dim_length, &
+                                get_index_start, get_index_end, get_dim_lengths, &
+                                end_diagnostic_structure
 
 use netcdf
 use typeSizes ! Part of netcdf?
@@ -122,6 +126,7 @@ type netcdf_file_type
    character(len=80)        :: fname     ! filename ...
    ! The following only applies to single file
    logical :: model_mod_will_write_state_variables = .false.
+   integer :: diag_id = -1  ! to access state_structure
 end type netcdf_file_type
 
 
@@ -220,17 +225,13 @@ if (make_diagnostic_files) then
 
    if (single_file) then
 
-      if (out_unit%model_mod_will_write_state_variables) then 
-         call write_model_mod_diagnostic_file(curr_ens_time, out_unit, ens_handle, model_size, &
-            num_output_state_members, output_state_mean_index, output_state_spread_index, &
+      call write_single_diagnostic_file(curr_ens_time, out_unit, ens_handle, model_size, &
+         num_output_state_members, output_state_mean_index, output_state_spread_index, &
            output_inflation, ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY)
-      else ! dart core code writes the diagnostic file
-         call dart_nc_write_model_vars(ens_handle, out_unit)
-      endif
 
    else  ! one file per copy. multiple time steps 1 copy per file.
 
-      call error_handler(E_ERR, 'filter_state_space_diagnostics', ' 1 copy per file no code yet')
+      call error_handler(E_ERR, 'filter_state_space_diagnostics', ' 1 copy per file no code yet', source,revision,revdate)
 
    endif ! single vs. multiple files
 
@@ -253,7 +254,7 @@ end subroutine filter_state_space_diagnostics
 !------------------------------------------------------------------
 !> The whole state vector is made avaible to the model_mod.
 !> Only task zero calls aoutput diagnostics.
-subroutine write_model_mod_diagnostic_file(curr_ens_time, out_unit, ens_handle, model_size, &
+subroutine write_single_diagnostic_file(curr_ens_time, out_unit, ens_handle, model_size, &
             num_output_state_members, output_state_mean_index, output_state_spread_index, &
            output_inflation, ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY)
 
@@ -334,26 +335,52 @@ deallocate(temp_ens)
 if (.not. get_allow_transpose(ens_handle)) deallocate(ens_handle%vars)
 
 
-end subroutine write_model_mod_diagnostic_file
+end subroutine write_single_diagnostic_file
 
 !------------------------------------------------------------------
 ! DART writing diagnostic files
 !------------------------------------------------------------------
 !> Write state to the last time slice of a file
-!> Does it ever need to write anywhere but the last slice of a file?
-!> call write_state but with different file names?
-subroutine dart_nc_write_model_vars(ens_handle, out_unit)
+!> This routine is called from aoutput_diagnostics if the model_mod
+!> nc_write_model_vars has returned 
+!> model_mod_will_write_state_varaibles = .false.
+subroutine dart_nc_write_model_vars(out_unit, model_state, copyindex, timeindex)
 
-type(ensemble_type), intent(inout) :: ens_handle
 type(netcdf_file_type), intent(in) :: out_unit
+real(r8),               intent(in) :: model_state(:)
+integer,                intent(in) :: copyindex
+integer,                intent(in) :: timeindex
 
-! Or transpose and write to single file?
-if (.not. get_allow_transpose(ens_handle)) allocate(ens_handle%vars(ens_handle%num_vars,  ens_handle%my_num_copies))
-call all_copies_to_all_vars(ens_handle)
+integer, dimension(NF90_MAX_VAR_DIMS) :: dim_lengths
+integer, dimension(NF90_MAX_VAR_DIMS) :: start_point
+integer :: start_index, end_index
+integer :: i
+integer :: ndims
+integer :: ret ! netcdf return code
+integer :: var_id ! netcdf variable id
 
-call error_handler(E_ERR, 'dart_nc_write_model_vars', 'no code yet')
+do i = 1, get_num_variables(out_unit%diag_id)
 
-if (.not. get_allow_transpose(ens_handle)) deallocate(ens_handle%vars)
+   start_index = get_index_start(out_unit%diag_id, i)
+   end_index = get_index_end(out_unit%diag_id, i)
+   ndims = get_num_dims(out_unit%diag_id, i)
+   dim_lengths(1:ndims) = get_dim_lengths(out_unit%diag_id, i)
+   dim_lengths(ndims + 1) = 1 ! copy
+   dim_lengths(ndims + 2) = 1 ! time
+
+   start_point(1:ndims) = 1
+   start_point(ndims + 1) = copyindex ! copy
+   start_point(ndims + 2) = timeindex ! time
+
+   ret = nf90_inq_varid(out_unit%ncid, get_variable_name(out_unit%diag_id, i), var_id)
+   call nc_check(ret, 'dart_nc_write_model_vars', 'getting variable id')
+
+   ret = nf90_put_var(out_unit%ncid, var_id, model_state(start_index:end_index), &
+                count=dim_lengths(1:ndims+2), start=start_point(1:ndims+2))
+   call nc_check(ret, 'dart_nc_write_model_vars', 'writing')
+
+
+enddo
 
 end subroutine dart_nc_write_model_vars
 
@@ -361,15 +388,82 @@ end subroutine dart_nc_write_model_vars
 !> Called if the model_mod is NOT going to write the state variables to
 !> the diagnostic file.
 !> This routine defines the state variables in the diagFile
-!> @todo What about multiple domains?
+!> Time and copy dimensions are already defined by init_diag_output
+!> State variables are defined:
+!>   variable(dim1, dim2, ...,  copy, time)
+!> If there are multiple domains the variables and dimensions are
+!> given the suffix _d0*, where * is the domain number.
 subroutine dart_nc_write_model_atts(diagFile)
 
-type(netcdf_file_type), intent(in) :: diagFile
+type(netcdf_file_type), intent(inout) :: diagFile
 
-call error_handler(E_ERR, 'dart_nc_write_model_atts', 'no code yet')
+integer :: diag_id ! local variable
+integer :: copy_dimId, time_dimId
+integer :: ret ! netcdf return code
+integer :: dummy
+integer :: dimids(NF90_MAX_VAR_DIMS)
+integer :: ndims
+integer :: xtype ! precision for netcdf variable
+integer :: i, j ! loop variables
+integer :: new_varid
 
-if (get_num_domains() > 1) then
-   call error_handler(E_ERR, 'dart_nc_write_model_atts', 'no mupltiple domains')
+diagFile%diag_id = create_diagnostic_structure()
+diag_id = diagFile%diag_id
+
+if(my_task_id()==0) then
+
+   if (r8 == digits12) then
+      xtype = nf90_double
+   else
+      xtype = nf90_real
+   endif
+
+   ret = nf90_inq_dimid(diagFile%ncid,'copy',dimid=copy_dimId)
+   call nc_check(ret, 'dart_nc_write_model_atts', 'inq_dimid copy')
+
+   ret = nf90_inq_dimid(diagFile%ncid,'time',dimid=time_dimId)
+   call nc_check(ret, 'dart_nc_write_model_atts', 'inq_dimid time')
+
+   ! Enter define mode
+   ret = nf90_Redef(diagFile%ncid)
+   call nc_check(ret, 'dart_nc_write_model_atts', 'redef')
+
+   ! Define dimensions for state
+   do i = 1, get_num_variables(diag_id)
+
+      ndims = get_num_dims(diag_id, i)
+
+      do j = 1, ndims
+         ret = nf90_def_dim(diagFile%ncid, get_dim_name(diag_id, i, j), get_dim_length(diag_id, i, j), dummy)
+         !> @todo if we already have a unique names we can take this test out
+         if(ret /= NF90_NOERR .and. ret /= NF90_ENAMEINUSE) then
+            call nc_check(ret, 'dart_nc_write_model_atts', 'defining dimensions')
+         endif
+      enddo
+
+      ! Define variables
+      ! query the dimension ids
+      do j = 1, ndims
+         ret = nf90_inq_dimid(diagFile%ncid, get_dim_name(diag_id, i, j), dimids(j))
+         call nc_check(ret, 'dart_nc_write_model_vars', 'querying dimensions')
+      enddo
+
+      dimids(ndims + 1) = copy_dimId
+      dimids(ndims + 2) = time_dimId
+
+      ret = nf90_def_var(diagFile%ncid, trim(get_variable_name(diag_id, i)), &
+                        xtype=xtype, dimids=dimids(1:ndims +2), &
+                        varid=new_varid)
+      call nc_check(ret, 'dart_nc_write_model_atts', 'defining variable')
+      call set_var_id(diag_id, i, new_varid)
+
+   enddo
+
+! Leave define mode
+ret = nf90_enddef(diagFile%ncid)
+call nc_check(ret, 'nc_write_model_atts', 'enddef')
+
+
 endif
 
 end subroutine dart_nc_write_model_atts
@@ -652,7 +746,7 @@ end function init_diag_output
 !--------------------------------------------------------------------------------
 subroutine init_diag_one_copy_per_file()
 
-    call error_handler(E_ERR, 'init_diag_output', 'no code yet')
+    call error_handler(E_ERR, 'init_diag_output', 'no code yet', source,revision,revdate)
 
 end subroutine init_diag_one_copy_per_file
 
@@ -671,6 +765,8 @@ if (single_file .and. my_task_id()==0) then
    ierr = NF90_close(ncFileID%ncid)
    if(associated(ncFileID%rtimes)) deallocate(ncFileID%rtimes, ncFileID%times )
 endif
+
+call end_diagnostic_structure()
 
 ncFileID%fname     = "notinuse"
 ncFileID%ncid      = -1
@@ -781,7 +877,11 @@ endif
 ! model_mod:nc_write_model_vars knows nothing about assim_model_types,
 ! so we must pass the components.
 ! No need to do this anymore
-i = nc_write_model_vars(ncFileID%ncid, model_state, copyindex, timeindex)
+if(ncFileID%model_mod_will_write_state_variables) then
+   i = nc_write_model_vars(ncFileID%ncid, model_state, copyindex, timeindex)
+else ! dart core code writes the diagnostic file
+   call dart_nc_write_model_vars(ncFileID, model_state, copyindex, timeindex)
+endif
 
 end subroutine aoutput_diagnostics
 

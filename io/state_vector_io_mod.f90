@@ -216,7 +216,8 @@ call assert_file_info_initiailzed(file_info, 'read_state')
 
 ! check that we either have both inflation handles or neither:
 if ( present(prior_inflate_handle) .neqv. present(post_inflate_handle) ) then
-   call error_handler(E_ERR, 'read_state', 'must have both inflation handles or neither')
+   call error_handler(E_ERR, 'read_state', 'must have both inflation handles or neither', &
+          source,revision,revdate)
 endif
 
 if (present(prior_inflate_handle) .and. present(post_inflate_handle)) then
@@ -347,7 +348,8 @@ call assert_file_info_initiailzed(file_info, 'write_state')
 
 ! check that we either have both inflation handles or neither:
 if ( present(prior_inflate_handle) .neqv. present(post_inflate_handle) ) then
-   call error_handler(E_ERR, 'read_state', 'must have both inflation handles or neither')
+   call error_handler(E_ERR, 'read_state', 'must have both inflation handles or neither', &
+        source,revision,revdate)
 endif
 
 if (present(prior_inflate_handle) .and. present(post_inflate_handle)) then

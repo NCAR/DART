@@ -49,7 +49,7 @@ module state_structure_mod
 !> dimension.
 !> The variable type has an io_type inside it to hold io information
 !> The io accessor functions have get_io_* in their name.
-!> There is no support for diagnoistic file structure at the moment.
+!> There is no support for diagnostic file structure at the moment.
 !>
 !> get_dart_vector_index() and its inverse get_model_variable_indices() link 
 !> a model x,y,z to dart index. The order of the state vector is no longer under model_mod
@@ -107,6 +107,10 @@ public :: static_init_state_type,     &
           finished_adding_domain,     &
           state_structure_info
 
+! diagnostic files
+public :: create_diagnostic_structure, &
+          end_diagnostic_structure
+
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
    "$URL$"
@@ -120,6 +124,7 @@ character(len=256) :: string2
 ! global variables
 !-------------------------------------------------------------------------------
 integer, parameter :: max_num_domains = 10
+integer, parameter :: diagnostic_domain = max_num_domains + 1 ! Need to separate this from state
 logical, save      :: state_initialized = .false.
 
 !-------------------------------------------------------------------------------
@@ -214,7 +219,8 @@ type state_type
 
    ! domains or separate files
    integer           :: num_domains = 0
-   type(domain_type) :: domain(max_num_domains) ! number of domains
+   ! number of domains + 1 for diagnostic domain
+   type(domain_type) :: domain(max_num_domains + 1)
 
    ! size of the state vector
    integer(i8) :: model_size
@@ -227,6 +233,12 @@ end type state_type
 ! module handle
 !-------------------------------------------------------------------------------
 type(state_type) :: state
+
+! This is used when dart writes the state to diagnostic files
+! It is a transformation of the state_type
+! One diagnostic file contains all domains.
+! It is not part of the state type
+logical :: diagnostic_initialized = .false.
 
 ! debug flag for get_state_indices
 logical :: debug = .false.
@@ -285,6 +297,7 @@ integer :: ivar
 if (.not. state_initialized) call static_init_state_type()
 
 ! add to domains
+call assert_below_max_num_domains()
 state%num_domains = state%num_domains + 1
 dom_id = state%num_domains !>@todo this should be a handle.
 
@@ -333,6 +346,7 @@ integer :: ivar
 if (.not. state_initialized) call static_init_state_type()
 
 ! add to domains
+call assert_below_max_num_domains()
 state%num_domains = state%num_domains + 1
 dom_id = state%num_domains
 
@@ -366,12 +380,14 @@ integer :: dom_id
 if (.not. state_initialized) call static_init_state_type()
 
 ! add to domains
+call assert_below_max_num_domains()
 state%num_domains = state%num_domains + 1
 dom_id = state%num_domains
 
 ! domain
 state%domain(dom_id)%num_variables = 1
 state%domain(dom_id)%dom_size      = model_size
+state%model_size = state%model_size + model_size
 
 ! variable
 allocate(state%domain(dom_id)%variable(1))
@@ -1505,5 +1521,85 @@ enddo
 end function get_num_varids_from_kind
 
 !-------------------------------------------------------------------------------
+!> Assert that adding a domain will not cause the maximum number of domains
+!> to be exceeded.
+subroutine assert_below_max_num_domains()
+
+if (state%num_domains + 1 > max_num_domains) then
+   call error_handler(E_ERR, 'state_structure_mod max number of domains exceeded', &
+                      'increase parameter max_num_domains')
+endif
+
+end subroutine
+
+!-------------------------------------------------------------------------------
+!> Transform the state type to a domain that can be used to write diagnostic 
+!> files.
+!> One domain for the whole state. If there is more than one domain:
+!>   Need to change variable names
+!>   Need to change dimension names
+!-------------------------------------------------------------------------------
+function create_diagnostic_structure() result (diag_id)
+
+integer :: diag_id
+
+integer :: i, j, k, var ! loop variables
+character(len = 8)   :: dom_str = ''
+
+diag_id = diagnostic_domain
+
+if (diagnostic_initialized) return
+
+diagnostic_initialized = .true.
+
+! Find total number of variables in state
+state%domain(diag_id)%num_variables = 0
+do i = 1, state%num_domains
+   state%domain(diag_id)%num_variables = state%domain(diag_id)%num_variables + state%domain(i)%num_variables
+enddo
+
+allocate(state%domain(diag_id)%variable(state%domain(diag_id)%num_variables))
+
+! Loop around each domain in the state and add that domain's variables
+! to the diagnostic domain
+var = 0
+do i = 1, state%num_domains
+   do j = 1, state%domain(i)%num_variables
+      var = var + 1
+
+      ! Add variable to diagnostic domain
+      state%domain(diag_id)%variable(var) = state%domain(i)%variable(j)
+      ! Change variable name
+      if (state%num_domains > 1) then
+         write(dom_str, '(A, i2.2)') '_d', i
+         state%domain(diag_id)%variable(var)%varname = &
+             trim(state%domain(diag_id)%variable(var)%varname) // trim(dom_str)
+         do k = 1, state%domain(i)%variable(j)%numdims
+            state%domain(diag_id)%variable(var)%dimname(k) = &
+              trim(state%domain(diag_id)%variable(var)%dimname(k)) //trim(dom_str)
+         enddo
+      endif
+   enddo
+enddo
+
+state%domain(diag_id)%dom_size = sum(state%domain(1:state%num_domains)%dom_size)
+
+end function create_diagnostic_structure
+!-------------------------------------------------------------------------------
+!> Clean up the diagnostic structure
+subroutine end_diagnostic_structure()
+
+if (diagnostic_initialized) then
+   diagnostic_initialized = .false.
+   deallocate(state%domain(diagnostic_domain)%variable)
+   state%domain(diagnostic_domain)%num_variables = 0
+   state%domain(diagnostic_domain)%dom_size = 0
+
+endif
+
+end subroutine end_diagnostic_structure
+
+!-------------------------------------------------------------------------------
+
 !> @}
 end module state_structure_mod

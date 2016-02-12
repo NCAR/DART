@@ -653,7 +653,7 @@ end function nc_write_model_atts
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
 
-function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex, write_my_own_variables) result (ierr)
+function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex) result (ierr)
 
 use typeSizes
 use netcdf
@@ -662,8 +662,6 @@ integer,                intent(in) :: ncFileID      ! netCDF file identifier
 real(r8), dimension(:), intent(in) :: statevec
 integer,                intent(in) :: copyindex
 integer,                intent(in) :: timeindex
-logical, optional,     intent(out) :: write_my_own_variables ! model_mod writes variables to 
-                                                             ! diagnostic files
 integer                            :: ierr          ! return value of function
 !--------------------------------------------------------------------
 ! General netCDF variables
@@ -677,12 +675,6 @@ integer :: StateVarID
 !--------------------------------------------------------------------
 
 character(len=128) :: filename
-
-
-if (present(write_my_own_variables)) then
-   write_my_own_variables = .false.
-   return
-endif
 
 !--------------------------------------------------------------------
 ! we only have a netcdf handle here so we do not know the filename
