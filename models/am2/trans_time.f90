@@ -19,10 +19,11 @@ program trans_time
 
 use time_manager_mod, only : time_type, read_time, write_time, &
                              get_time, set_time, operator(-), get_date, &
-                             set_calendar_type, GREGORIAN, NOLEAP
-use  assim_model_mod, only : static_init_assim_model, init_assim_model, open_restart_read, close_restart, &
-                             get_model_size, get_model_time, read_state_restart, assim_model_type
-use    utilities_mod, only : get_unit, initialize_utilities, finalize_utilities
+                             set_calendar_type, GREGORIAN, NOLEAP, &
+                             print_time, print_date
+use  assim_model_mod, only : open_restart_read, close_restart, aread_state_restart
+use        model_mod, only : static_init_model, get_model_size
+use    utilities_mod, only : get_unit, initialize_utilities, finalize_utilities, logfileunit
 use        types_mod, only : r8
 
 implicit none
@@ -33,24 +34,23 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-integer :: ntimes = 2, n, nhtfrq, calendar_type = GREGORIAN
-integer :: file_unit(2), year, month, day, hour, minute, second, &
-           cam_date, cam_tod
-type(time_type)       :: dart_time(2), forecast_length
-character (len = 128) :: file_name = 'temp_ic', file_out = 'times'
-type(assim_model_type)  :: x
+integer :: x_size, ntimes = 2, n, nhtfrq, calendar_type = GREGORIAN
+integer :: file_unit(2), year, month, day, hour, minute, second, cam_date, cam_tod
+type(time_type)  :: dart_time(2), forecast_length
+character(len=256) :: file_name = 'temp_ic', file_out = 'times'
+real(r8), allocatable :: x(:)
 
 call initialize_utilities('Trans_time')
 
 call set_calendar_type(calendar_type)
 
-! Static init assim model calls static_init_model
-call static_init_assim_model()
-call init_assim_model(x)
+! call model_mod:static_init_model() which reads the namelists, finds model size, etc.
+call static_init_model()
+x_size = get_model_size()
+allocate(x(x_size))
 
 file_unit(1) = open_restart_read(file_name)
-call read_state_restart(x, file_unit(1), dart_time(1))
-dart_time(2) = get_model_time(x)
+call aread_state_restart(dart_time(2), x, file_unit(1), dart_time(1))
 
 file_unit(2) = get_unit()
 open(unit = file_unit(2), file = file_out)
@@ -61,10 +61,10 @@ open(unit = file_unit(2), file = file_out)
 do n=1,ntimes
    call get_date(dart_time(n), year, month, day, hour, minute, second)
    PRINT*,'date = ',year, month, day, hour, minute, second
-   if (calendar_type.eq.GREGORIAN) then
+   if (calendar_type == GREGORIAN) then
       cam_date = year*10000 + month*100 + day
       cam_tod  = hour*3600 + minute*60 + second
-   elseif (calendar_type.eq.NOLEAP) then
+   elseif (calendar_type == NOLEAP) then
       cam_date = (1899 + year)*10000 + month*100 + day
       cam_tod  = hour*3600 + minute*60 + second
    endif
@@ -81,7 +81,7 @@ call get_time(forecast_length, second, day)
 PRINT*,'forecast length = ', day, second
 hour = second/3600
 minute = mod(second,3600)
-if (minute.ne.0) &
+if (minute /= 0) &
    print*,' not integer number of hours; nhtfrq error in trans_time'
 
 ! convert to hours, and negative to signal units are hours
@@ -91,6 +91,23 @@ nhtfrq = -1*(day*24 + hour)
 write (file_unit(2),'(I8)') nhtfrq
 
 close(file_unit(2))
+
+!----------------------------------------------------------------------
+! Log what we think we've done, and exit.
+!----------------------------------------------------------------------
+
+if ( 2 == 1 ) then ! just a DEBUG ... 
+   call print_date(dart_time(2),'trans_time:am2  model date')
+   call print_time(dart_time(2),'trans_time:DART model time')
+   call print_date(dart_time(2),'trans_time:am2  model date',logfileunit)
+   call print_time(dart_time(2),'trans_time:DART model time',logfileunit)
+
+   call print_time(dart_time(1),'trans_time:advance_to time')
+   call print_date(dart_time(1),'trans_time:advance_to date')
+   call print_time(dart_time(1),'trans_time:advance_to time',logfileunit)
+   call print_date(dart_time(1),'trans_time:advance_to date',logfileunit)
+endif
+
 
 call finalize_utilities()
 
