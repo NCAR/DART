@@ -223,7 +223,7 @@ obsloop:  do
       call error_handler(E_ERR,'real_obs_sequence', msgstring1, source, revision, revdate)
    endif
 
- 880 format(f4.2,2f9.4,e12.5,f7.2,f7.2,f9.0,f7.3,i4,i2,1x,a6,i2)
+ 880 format(f5.2,2f9.4,e12.5,f7.2,f7.2,f9.0,f7.3,i4,i2,1x,a6,i2)
 
    read_counter = read_counter + 1
 
