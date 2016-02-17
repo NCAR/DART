@@ -82,27 +82,6 @@ module mpi_utilities_mod
 !   code to open a named pipe per MPI task, read and write from them, and
 !   close and/or remove them.
 !
-!  *** make_pipe()        Function that creates a named pipe (fifo), opens it,
-!                         and returns the unit number.  Ok to call if the pipe
-!                         already exists or is already open; it will skip
-!                         those steps and just return the unit number.  The 
-!                         name argument is used as a base and a filename
-!                         in the form 'base.NNNN' is generated, where the N's
-!                         are the MPI rank number, 0 padded.
-!
-!  *** destroy_pipe()     The unit number is closed and the pipe file is 
-!                         removed.
-!
-!    * read_pipe()        The character string is read from the pipe.
-!                         (Can be overloaded to read ints if time or status
-!                         info is useful to exchange between processes.) 
-!                         This routine blocks until data is available.
-!
-!    * write_pipe()       The character string is written to the pipe.
-!                         (Can be overloaded to write ints if time or status
-!                         info is useful to exchange between processes.) 
-!                         This routine writes and returns immediately.
-!
 !   Wrappers for system functions.  Covers differences if you run with
 !   or without MPI.
 !
@@ -175,7 +154,6 @@ private
 
 integer :: myrank          ! my mpi number
 integer :: total_tasks     ! total mpi tasks/procs
-integer :: my_local_comm   ! duplicate communicator private to this file
 integer :: comm_size       ! if ens count < tasks, only the first N participate
 
 public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
@@ -396,7 +374,6 @@ end subroutine receive_from
 ! TODO: do i need to overload this for both integer and real?
 !       do i need to handle 1D, 2D, 3D inputs?
 
-
 subroutine transpose_array
 
 ! not implemented here yet.  will have arguments -- several of them.
@@ -441,12 +418,12 @@ end subroutine array_broadcast
 !       do i need to handle 2D inputs?
 
 subroutine array_distribute(srcarray, root, dstarray, dstcount, how, which)
- real(r8), intent(in) :: srcarray(:)
- integer, intent(in) :: root
- real(r8), intent(out) :: dstarray(:)
- integer, intent(out) :: dstcount
- integer, intent(in) :: how
- integer, intent(out) :: which(:)
+real(r8), intent(in)  :: srcarray(:)
+integer,  intent(in)  :: root
+real(r8), intent(out) :: dstarray(:)
+integer,  intent(out) :: dstcount
+integer,  intent(in)  :: how
+integer,  intent(out) :: which(:)
 
 ! 'srcarray' on the root task will be distributed across all the tasks
 ! into 'dstarray'.  dstarray must be large enough to hold each task's share
@@ -583,143 +560,6 @@ if ( .not. module_initialized ) call initialize_mpi_utilities()
 
 
 end subroutine restart_task
-
-
-!-----------------------------------------------------------------------------
-!    * make_pipe()        Function that creates a named pipe (fifo), opens it,
-!                         and returns the unit number.  Ok to call if the pipe
-!                         already exists or is already open; it will skip
-!                         those steps and just return the unit number.  The 
-!                         name argument is used as a base and a filename
-!                         in the form 'base.NNNN' is generated, where the N's
-!                         are the MPI rank number, 0 padded.
-!
-!-----------------------------------------------------------------------------
-
-function make_pipe(pipename, exists) result (iunit)
- character(len=*), intent(in) :: pipename
- logical, intent(in), optional :: exists
- integer :: iunit
-
-! Create, open, and return a fortran unit number for a named pipe.
-! The local MPI rank number will be appended to the given name to create
-! a file of the form 'base.NNNN', where N's are the MPI rank number, 0 padded.
-! TODO: based on the total number of tasks get extra style points for
-! creating the shortest name necessary; e.g. base.N, base.NN, base.NNN, etc.
-!
-! If the optional 'exists' flag is not present, then it is not an error
-! whether the pipe already exists or not.  It is made if it does not exist, 
-! it is opened if not already opened, and the fortran unit number is returned.
-! If 'exists' is present then it forces the issue of whether the pipe file
-! must exist already or not.  The error handler is called if things aren't 
-! as expected.  apologies to tim hoar for the intentional imitation of
-! the generic file utilities_mod.f90 code.
-
-logical :: open, there
-character(len=128) :: fname
-character(len=11) :: format
-integer :: rc
-
-if ( .not. module_initialized ) call initialize_mpi_utilities()
-
-write(fname, "(a,i4.4)") trim(pipename)//".", myrank
-print *, "fname now = ", trim(fname)
-
-! check to see if the pipe already exists; if so, we've got the unit number
-! (directly into the output value) and we're done.  otherwise, make it and
-! open it.
-inquire (file=fname, exist=there, opened=open, number=iunit, form=format)
-
-if (.not. open) then
-
-   if (.not. there) then
-      ! make pipe file; mkfifo should be standard on any unix/linux system.
-      rc = system('mkfifo '//trim(fname)//' '//char(0))
-
-      ! and check to be sure it was made
-      inquire (file=fname, exist=there)
-
-      if (.not. there) then
-        write(errstring, *) 'mkfifo command failed to create '//trim(fname)
-        call error_handler(E_ERR,'make_pipe', errstring, source, revision, revdate)
-      endif
-   endif
-
-   ! open pipe using an available unit number
-   iunit = get_unit()
-   open(unit=iunit, file=fname)
-
-endif
-
-! iunit contains the function return value.
-
-end function make_pipe
-
-
-!-----------------------------------------------------------------------------
-!    * destroy_pipe()     The unit number is closed and the pipe file is 
-!                         removed.
-!
-subroutine destroy_pipe(iunit)
- integer, intent(in) :: iunit
-
-character(len=128) :: pipename
-integer :: ios, rc
-
-if ( .not. module_initialized ) call initialize_mpi_utilities()
-
-write(errstring, *) 'not implemented yet'
-call error_handler(E_ERR,'destroy_pipe', errstring, source, revision, revdate)
-
-
-! general idea is:
-
-! call inquire to get name
-inquire(unit=iunit, name=pipename, iostat=ios)
-if (ios /= 0) then
-   write(errstring, '(a,i4)') 'failure trying to inquire about unit ', iunit
-   call error_handler(E_ERR,'destroy_pipe', errstring, source, revision, revdate)
-endif
-
-call close_file(iunit)
-
-! remove echo when we trust this command.
-rc = system('echo rm -f '//trim(pipename)//' '//char(0))
-
-
-end subroutine destroy_pipe
-
-!-----------------------------------------------------------------------------
-!    * read_pipe()        The character string is read from the pipe.
-!                         (Can be overloaded to read ints if time or status
-!                         info is useful to exchange between processes.) 
-!                         This routine blocks until data is available.
-!
-subroutine read_pipe(iunit, chardata)
- integer, intent(in) :: iunit
- character(len=*), intent(out) :: chardata
-
-write(errstring, *) 'not implemented yet'
-call error_handler(E_ERR,'read_pipe', errstring, source, revision, revdate)
-
-chardata = " "
- 
-end subroutine
-
-!-----------------------------------------------------------------------------
-!    * write_pipe()       The character string is written to the pipe.
-!                         (Can be overloaded to write ints if time or status
-!                         info is useful to exchange between processes.) 
-!                         This routine writes and returns immediately.
-!
-subroutine write_pipe(iunit, chardata)
- integer, intent(in) :: iunit
- character(len=*), intent(in) :: chardata
-
-write(errstring, *) 'not implemented yet'
-call error_handler(E_ERR,'write_pipe', errstring, source, revision, revdate)
- 
-end subroutine
 
 
 !-----------------------------------------------------------------------------

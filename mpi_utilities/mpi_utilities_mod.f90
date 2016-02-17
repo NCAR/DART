@@ -101,27 +101,6 @@ module mpi_utilities_mod
 !                         writes out a string to the model pipe to tell it 
 !                         the main executable is exiting.
 !
-!  *** make_pipe()        Function that creates a named pipe (fifo), opens it,
-!                         and returns the unit number.  Ok to call if the pipe
-!                         already exists or is already open; it will skip
-!                         those steps and just return the unit number.  The 
-!                         name argument is used as a base and a filename
-!                         in the form 'base.NNNN' is generated, where the N's
-!                         are the MPI rank number, 0 padded.
-!
-!  *** destroy_pipe()     The unit number is closed and the pipe file is 
-!                         removed.
-!
-!  *** read_pipe()        The character string is read from the pipe.
-!                         (Can be overloaded to read ints if time or status
-!                         info is useful to exchange between processes.) 
-!                         This routine blocks until data is available.
-!
-!  *** write_pipe()       The character string is written to the pipe.
-!                         (Can be overloaded to write ints if time or status
-!                         info is useful to exchange between processes.) 
-!                         This routine writes and returns immediately.
-!
 !   Wrappers for system functions.  Covers differences if you run with
 !   or without MPI.
 !
@@ -618,7 +597,7 @@ subroutine send_to(dest_id, srcarray, time, label)
 ! called receive to accept the data.  If the send_to/receive_from calls are 
 ! not paired correctly the code will hang.
 
-integer :: i, tag, errcode
+integer :: tag, errcode
 integer :: itime(2)
 integer :: itemcount, offset, nextsize
 real(r8), allocatable :: tmpdata(:)
@@ -740,7 +719,7 @@ subroutine receive_from(src_id, destarray, time, label)
 ! sent the data.  If the send_to/receive_from calls are not paired correctly 
 ! the code will hang.
 
-integer :: i, tag, errcode
+integer :: tag, errcode
 integer :: itime(2)
 integer :: status(MPI_STATUS_SIZE)
 integer :: itemcount, offset, nextsize
@@ -865,7 +844,6 @@ end subroutine receive_from
 !-----------------------------------------------------------------------------
 ! TODO: do i need to overload this for both integer and real?
 !       do i need to handle 1D, 2D, 3D inputs?
-
 
 subroutine transpose_array
 
@@ -1109,7 +1087,7 @@ subroutine broadcast_send(from, array1, array2, array3, array4, array5, &
 real(r8) :: packbuf1(PACKLIMIT1), packbuf2(PACKLIMIT2)
 real(r8) :: local(5)
 logical  :: doscalar, morethanone
-integer  :: itemcount, sindex, eindex
+integer  :: itemcount
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -1186,7 +1164,7 @@ subroutine broadcast_recv(from, array1, array2, array3, array4, array5, &
 real(r8) :: packbuf1(PACKLIMIT1), packbuf2(PACKLIMIT2)
 real(r8) :: local(5)
 logical :: doscalar, morethanone
-integer :: itemcount, sindex, eindex
+integer :: itemcount
 
 if ( .not. module_initialized ) then
    write(errstring, *) 'initialize_mpi_utilities() must be called first'
@@ -1677,7 +1655,7 @@ end subroutine restart_task
 subroutine finished_task(async)
  integer, intent(in) :: async
 
-character(len = 32) :: fifo_name, filter_to_model, non_pipe
+character(len = 32) :: filter_to_model, non_pipe
 integer :: rc
 
 if ( .not. module_initialized ) then
@@ -1708,157 +1686,6 @@ endif
 
 end subroutine finished_task
 
-
-!-----------------------------------------------------------------------------
-!    * make_pipe()        Function that creates a named pipe (fifo), opens it,
-!                         and returns the unit number.  Ok to call if the pipe
-!                         already exists or is already open; it will skip
-!                         those steps and just return the unit number.  The 
-!                         name argument is used as a base and a filename
-!                         in the form 'base.NNNN' is generated, where the N's
-!                         are the MPI rank number, 0 padded.
-!
-function make_pipe(pipename, exists) result (iunit)
- character(len=*), intent(in) :: pipename
- logical, intent(in), optional :: exists
- integer :: iunit
-
-! Create, open, and return a fortran unit number for a named pipe.
-! The local MPI rank number will be appended to the given name to create
-! a file of the form 'base.NNNN', where N's are the MPI rank number, 0 padded.
-! TODO: based on the total number of tasks get extra style points for
-! creating the shortest name necessary; e.g. base.N, base.NN, base.NNN, etc.
-!
-! If the optional 'exists' flag is not present, then it is not an error
-! whether the pipe already exists or not.  It is made if it does not exist, 
-! it is opened if not already opened, and the fortran unit number is returned.
-! If 'exists' is present then it forces the issue of whether the pipe file
-! must exist already or not.  The error handler is called if things aren't 
-! as expected.  apologies to tim hoar for the intentional imitation of
-! the generic file utilities_mod.f90 code.
-
-logical :: open, there
-character(len=128) :: fname
-character(len=11) :: format
-integer :: rc
-
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'make_pipe', errstring, source, revision, revdate)
-endif
-
-write(fname, "(a,i4.4)") trim(pipename)//".", myrank
-!print *, "fname now = ", trim(fname)
-
-! check to see if the pipe already exists; if so, we've got the unit number
-! (directly into the output value) and we're done.  otherwise, make it and
-! open it.
-inquire (file=fname, exist=there, opened=open, number=iunit, form=format)
-
-if (.not. open) then
-
-   if (.not. there) then
-      ! make pipe file; mkfifo should be standard on any unix/linux system.
-      rc = system('mkfifo '//trim(fname)//' '//char(0))
-
-      ! and check to be sure it was made
-      inquire (file=fname, exist=there)
-
-      if (.not. there) then
-        write(errstring, *) 'mkfifo command failed to create '//trim(fname)
-        call error_handler(E_ERR,'make_pipe', errstring, source, revision, revdate)
-      endif
-   endif
-
-   ! open pipe using an available unit number
-   iunit = get_unit()
-   open(unit=iunit, file=fname)
-
-endif
-
-! iunit contains the function return value.
-
-end function make_pipe
-
-
-!-----------------------------------------------------------------------------
-!    * destroy_pipe()     The unit number is closed and the pipe file is 
-!                         removed.
-!
-subroutine destroy_pipe(iunit)
- integer, intent(in) :: iunit
-
-character(len=128) :: pipename
-integer :: ios, rc
-
-if ( .not. module_initialized ) then
-   write(errstring, *) 'initialize_mpi_utilities() must be called first'
-   call error_handler(E_ERR,'destroy_pipe', errstring, source, revision, revdate)
-endif
-
-write(errstring, *) 'not implemented yet'
-call error_handler(E_ERR,'destroy_pipe', errstring, source, revision, revdate)
-
-
-! general idea is:
-
-! call inquire to get name
-inquire(unit=iunit, name=pipename, iostat=ios)
-if (ios /= 0) then
-   write(errstring, '(a,i4)') 'failure trying to inquire about unit ', iunit
-   call error_handler(E_ERR,'destroy_pipe', errstring, source, revision, revdate)
-endif
-
-call close_file(iunit)
-
-! remove echo when we trust this command.
-rc = system('echo rm -f '//trim(pipename)//' '//char(0))
-
-
-end subroutine destroy_pipe
-
-!-----------------------------------------------------------------------------
-!    * read_pipe()        The character string is read from the pipe.
-!                         (Can be overloaded to read ints if time or status
-!                         info is useful to exchange between processes.) 
-!                         This routine blocks until data is available.
-!
-subroutine read_pipe(iunit, chardata)
- integer, intent(in) :: iunit
- character(len=*), intent(out) :: chardata
- 
- integer :: ios
-
- read(iunit, *, iostat=ios) chardata
- if (ios /= 0) then
-   write(errstring, '(a,i4)') 'failure trying to read from unit ', iunit
-   call error_handler(E_ERR,'read_pipe', errstring, source, revision, revdate)
-endif
-
-end subroutine
-
-!-----------------------------------------------------------------------------
-!    * write_pipe()       The character string is written to the pipe.
-!                         (Can be overloaded to write ints if time or status
-!                         info is useful to exchange between processes.) 
-!                         This routine writes and returns immediately.
-!
-subroutine write_pipe(iunit, chardata)
- integer, intent(in) :: iunit
- character(len=*), intent(in) :: chardata
- 
- integer :: ios
-
- write(iunit, *, iostat=ios) chardata
- if (ios /= 0) then
-   write(errstring, '(a,i4)') 'failure trying to write from unit ', iunit
-   call error_handler(E_ERR,'write_pipe', errstring, source, revision, revdate)
-endif
-
-
-end subroutine
-
-
 !-----------------------------------------------------------------------------
 ! general system util wrappers.
 !-----------------------------------------------------------------------------
@@ -1878,7 +1705,7 @@ function shell_execute(execute_string, serialize)
 ! is true, do each call serially.
 
 logical :: all_at_once
-integer :: i, errcode, dummy(1)
+integer :: errcode, dummy(1)
 integer :: status(MPI_STATUS_SIZE)
 
    if (verbose) async2_verbose = .true.
