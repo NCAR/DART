@@ -619,8 +619,8 @@ AdvanceTime : do
    call trace_message('Before prior state space diagnostics')
    call timestamp_message('Before prior state space diagnostics')
 
-   ! For single time step, and num_output_state_members = 0, store the diagnostic copies
-   ! (mean, sd, inf_mean, inf_sd) and write them at the end.
+   ! If needed, store copies(mean, sd, inf_mean, inf_sd) that would have
+   ! gone in Prior_Diag.nc and write them at the end.
    call store_prior(state_ens_handle)
 
    if ((output_interval > 0) .and. &
@@ -753,7 +753,8 @@ AdvanceTime : do
    call trace_message('Before posterior state space diagnostics')
    call timestamp_message('Before posterior state space diagnostics')
 
-   ! For single time step store the diagnostic copies (inf_mean, inf_sd) 
+   ! If needed store the copies (inf_mean, inf_sd) that would have
+   ! gone in Posterior_Diag.nc and write them at the end
    call store_posterior(state_ens_handle)
 
    if ((output_interval > 0) .and. &
@@ -866,7 +867,7 @@ call trace_message('After  writing inflation restart files if required')
 call trace_message('Before writing state restart files if requested')
 call timestamp_message('Before writing state restart files if requested')
 
-call write_state(state_ens_handle, file_info, prior_inflate, post_inflate)
+call write_state(state_ens_handle, file_info, prior_inflate, post_inflate, skip_diag_files())
 
 if(ds) call smoother_write_restart(1, ens_size)
 call trace_message('After  writing state restart files if requested')
@@ -1800,8 +1801,10 @@ if (query_copy_present(SPARE_PRIOR_INF_SPREAD)) &
 end subroutine store_prior
 
 !------------------------------------------------------------------
-!> Copy the current mean, sd, inf_mean, inf_sd to spare copies
+!> Copy the current post_inf_mean, post_inf_sd to spare copies
 !> Assuming that if the spare copy is there you should fill it
+!> No need to store the mean and sd as you would with store_prior because
+!> mean and sd are not changed during filter_assim(inflate_only = .true.)
 subroutine store_posterior(ens_handle)
 
 type(ensemble_type), intent(inout) :: ens_handle
@@ -1840,19 +1843,29 @@ POST_INF_SD_COPY     = ens_size + 6
 num_extras = 6
 
 ! If there are no diagnostic files, we will need to store the
-! diagnostic information in spare copies in the ensemble.
+! copies that would have gone in Prior_Diag.nc and Posterior_Diag.nc
+! in spare copies in the ensemble.
 if (skip_diag_files() .and. num_output_state_members <= 0) then
 
-   ! Extra state storage for single time step, large models
+   ! Not stopping to write prior_members so keep these Prior copies
+   ! as extra copies and write them and the end.
    SPARE_PRIOR_MEAN       = ens_size + 7
    SPARE_PRIOR_SPREAD     = ens_size + 8
    SPARE_PRIOR_INF_MEAN   = ens_size + 9
    SPARE_PRIOR_INF_SPREAD = ens_size + 10
+   ! need to store posterior inflation mean and inflation spread since
+   ! these are overwritten in filter_assim(inflate_only=.true.)
    SPARE_POST_INF_MEAN    = ens_size + 11
    SPARE_POST_INF_SPREAD  = ens_size + 12
-
    num_extras = num_extras + 6
 
+elseif (skip_diag_files() .and. num_output_state_members > 0) then
+   ! Prior members and extra copies are written out prior to filter_assim.
+   ! Need to store posterior inflation mean and inflation spread since
+   ! these are overwritten in filter_assim(inflate_only=.true.)
+   SPARE_POST_INF_MEAN    = ens_size + 7
+   SPARE_POST_INF_SPREAD  = ens_size + 8
+   num_extras = num_extras + 2
 endif
 
 end subroutine set_state_copies

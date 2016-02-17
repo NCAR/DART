@@ -76,7 +76,7 @@ use model_mod,            only : read_model_time
 use copies_on_off_mod,    only : setup_read_write, turn_read_copy_on,      &
                                  turn_write_copy_on, turn_read_copies_off, &
                                  turn_write_copy_off, end_read_write, &
-                                 ENS_MEAN_COPY, &
+                                 ENS_MEAN_COPY, ENS_SD_COPY, &
                                  PRIOR_INF_COPY, PRIOR_INF_SD_COPY, &
                                  POST_INF_COPY, POST_INF_SD_COPY, &
                                  SPARE_PRIOR_MEAN, SPARE_PRIOR_SPREAD, &
@@ -330,16 +330,18 @@ end subroutine read_state
 !> There is logic in write_state about spare_copies. These are extra state vector 
 !> copies that may be in the ensemble handle when doing large model, single timestep runs.
 
-subroutine write_state(state_ens_handle, file_info, prior_inflate_handle, post_inflate_handle)
+subroutine write_state(state_ens_handle, file_info, prior_inflate_handle, post_inflate_handle, skip_diagnostic)
 
-type(ensemble_type),         intent(inout) :: state_ens_handle
-type(file_info_type),        intent(in)    :: file_info
+type(ensemble_type),                   intent(inout) :: state_ens_handle
+type(file_info_type),                  intent(in)    :: file_info
 type(adaptive_inflate_type), optional, intent(in)    :: prior_inflate_handle
 type(adaptive_inflate_type), optional, intent(in)    :: post_inflate_handle
+logical,                     optional, intent(in)    :: skip_diagnostic
 
 integer :: ens_size
 
 logical :: inflation_handles
+logical :: write_mean_and_sd
 
 if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
 
@@ -358,6 +360,12 @@ else
    inflation_handles = .false.
 endif
 
+if(present(skip_diagnostic)) then
+   write_mean_and_sd = skip_diagnostic
+else
+   write_mean_and_sd = .true.  ! default to writing mean and sd
+endif
+
 ens_size = state_ens_handle%num_copies - state_ens_handle%num_extras
 
 ! set up arrays for which copies to read/write
@@ -367,17 +375,24 @@ call turn_write_copy_off(1, state_ens_handle%num_copies)
 
 if (get_write_to_netcdf(file_info)) then ! netcdf
 
-   ! ------ turn on copies for: restarts, mean and spread ------
+   ! ------ turn on copies for: restarts, mean ------
    if (get_output_restart(file_info)) call turn_write_copy_on(1, ens_size) ! restarts
    if (get_output_mean(file_info))    call turn_write_copy_on(ENS_MEAN_COPY)
 
-   ! These two copies are the mean and spread that would have gone in the Prior_Diag.nc file
-   if(.true.) then ! spare copies, single time step
-      call turn_write_copy_on(SPARE_PRIOR_MEAN)
-      call turn_write_copy_on(SPARE_PRIOR_SPREAD)
-   endif
-   !--------------------------------------------
+   ! ------ turn on spare copies for: skipping Prior_Diag.nc, Posterior_Diag.nc ----
+   if (write_mean_and_sd) then
+      ! These two copies are the mean and spread that would have gone 
+      ! in the Prior_Diag.nc file
+      ! Assume if they are there, they need to be written out
+      if (query_copy_present(SPARE_PRIOR_MEAN))   call turn_write_copy_on(SPARE_PRIOR_MEAN)
+      if (query_copy_present(SPARE_PRIOR_SPREAD)) call turn_write_copy_on(SPARE_PRIOR_SPREAD)
 
+      ! If not writing diagnostic files need to write mean and spread 
+      ! that would have gone in the Posterior_Diag.nc file
+      call turn_write_copy_on(ENS_MEAN_COPY)
+      call turn_write_copy_on(ENS_SD_COPY)
+
+   endif
 
    ! ------ turn on copies for: inflation ------
    ! inflation written to netcdf files only for state_space_inflation
