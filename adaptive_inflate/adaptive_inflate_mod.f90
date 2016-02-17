@@ -210,9 +210,8 @@ integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_in
 logical,                     intent(in)    :: missing_ok
 character(len = *),          intent(in)    :: label
 
-character(len = 128) :: det, tadapt, sadapt, akind, rsread, nmread
+character(len = 128) :: rsread, nmread
 integer  :: restart_unit, io
-real(r8) :: minmax_mean(2), minmax_sd(2)
 
 ! Record the module version if this is first initialize call
 if(.not. initialized) then
@@ -849,28 +848,6 @@ endif
 
 end subroutine linear_bayes
 
-
-!------------------------------------------------------------------------
-
-subroutine comp_likelihood(dist_2, sigma_p_2, sigma_o_2, lambda_mean, gamma, like_bar)
-real(r8), intent(in)  :: dist_2, sigma_p_2, sigma_o_2, lambda_mean, gamma
-real(r8), intent(out) :: like_bar
-
-real :: theta_bar_2, u_bar, like_exp_bar, v_bar
-
-! Compute value of theta at current lambda_bar
-theta_bar_2 = (1.0_r8 + gamma * (sqrt(lambda_mean) - 1.0_r8))**2 * sigma_p_2 + sigma_o_2
-! Compute constanc coefficient for likelihood at lambda_bar
-u_bar = 1.0_r8 / (sqrt(2.0_r8 * PI) * sqrt(theta_bar_2))
-! Compute exponent of likelihood at lambda_bar
-like_exp_bar = dist_2 / (-2.0_r8 * theta_bar_2)
-! Compute exponential part of likelihood at lambda_bar
-v_bar = exp(like_exp_bar)
-! Compute value of likelihood at current lambda_bar value
-like_bar = u_bar * v_bar
-
-end subroutine comp_likelihood
-
 !------------------------------------------------------------------------
 
 subroutine solve_quadratic(a, b, c, r1, r2)
@@ -909,7 +886,7 @@ type(adaptive_inflate_type), intent(in) :: inflation_handle
 integer,                     intent(in) :: mype
 character(len = *),          intent(in) :: label
 
-character(len = 128) :: det, tadapt, sadapt, akind, rsread, nmread
+character(len = 128) :: det, tadapt, sadapt, akind
 
 if(inflation_handle%deterministic) then
   det = 'deterministic,'
@@ -1000,7 +977,6 @@ integer,                     intent(in)    :: ss_inflate_index
 integer,                     intent(in)    :: ss_inflate_sd_index
 
 real(r8) :: minmax_mean(2), minmax_sd(2), global_val(2)
-integer  :: ierr
 
 if (inflation_handle%inflation_flavor >= 0) then
 if (inflation_handle%mean_from_restart) then
