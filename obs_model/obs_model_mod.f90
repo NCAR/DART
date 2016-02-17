@@ -558,53 +558,8 @@ endif
 end subroutine advance_state
 
 !--------------------------------------------------------------------
-
-subroutine wait_if_needed(async) 
-
-! obsolete now that move_ahead and advance_state are separated?
-
-! returns true if this task has at least one ensemble to advance.
-! if not, this routine blocks until it is safe to return in sync
-! with all other tasks with work to do.
-
-integer,             intent(in)    :: async
-
-integer :: should_block
-
-
-! if async = 0, 2, or 5, no synchronizing needed.  return now.
-if ((async == 0) .or. (async == 2) .or. (async == 5)) return
-
-
-! If only task 0 is handling the advances for all tasks, we have to 
-! be sure they are all done writing out the ic files, and then afterwards
-! that they do not try to read the ud files before they are done.  
-! Also, this task needs to block, not spin, while the model advances.
-
-if (async == 4) then
-
-   ! make sure all tasks have finished writing their initial condition
-   ! files before letting process 0 start the model advances.
-   call task_sync()
-
-   ! collective call to see if the code is planning to block or not.
-   ! do not block only on this tasks behalf.  if no one needs to block, 
-   ! return here.
-   call sum_across_tasks(0, should_block)
-   if (should_block == 0) return
-
-   ! sleep (not spin) until the model advance has finished.
-   call block_task()
-  
-   return
-
-endif
-
-! should not reach here with valid values of async.
-write(errstring,*) 'input.nml - async is ',async,' must be 0, 2, 4 or 5'
-call error_handler(E_ERR, 'work_to_do', errstring, source, revision, revdate)
-
-end subroutine wait_if_needed
+! subroutine wait_if_needed(async) ! REMOVED Wed Feb 17 09:17:44 MST 2016 r9776ish
+!--------------------------------------------------------------------
 
 !--------------------------------------------------------------------
 
