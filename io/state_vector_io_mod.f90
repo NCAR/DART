@@ -517,26 +517,6 @@ endif
 end subroutine filter_read_restart
 
 
-!----------------------------------------------------------------------
-!> Write a restart file given a model extended state and a unit number 
-!> opened to the restart file. (Need to reconsider what is passed to 
-!> identify file or if file can even be opened within this routine).
-
-subroutine write_state_restart(assim_model, funit, target_time)
-
-type (assim_model_type), intent(in)           :: assim_model
-integer,                 intent(in)           :: funit
-type(time_type),         optional, intent(in) :: target_time
-
-if(present(target_time)) then
-!   call awrite_state_restart(assim_model%time, assim_model%state_vector, funit, target_time)
-else
-!   call awrite_state_restart(assim_model%time, assim_model%state_vector, funit)
-endif
-
-end subroutine write_state_restart
-
-
 !-------------------------------------------------
 ! Netcdf read write
 ! Uses direct_netcdf_mod.f90
@@ -1100,29 +1080,8 @@ call close_file(file_unit)
 end subroutine close_restart
 
 
-!----------------------------------------------------------------------
-!> Read a restart file given a unit number (see write_state_restart)
-
-subroutine read_state_restart(assim_model, funit, target_time)
-
-type(assim_model_type), intent(inout)         :: assim_model
-integer,                intent(in)            :: funit
-type(time_type),        optional, intent(out) :: target_time
-
-!> @todo TJH why is this calling the error handler instead of just initializing the module
-if ( .not. module_initialized ) call error_handler(E_ERR, 'read_state_restart', 'module not initialized')
-
-if(present(target_time)) then
-   !call aread_state_restart(assim_model%time, assim_model%state_vector, funit, target_time)
-else
-   !call aread_state_restart(assim_model%time, assim_model%state_vector, funit)
-endif
-
-end subroutine read_state_restart
-
-
 !-----------------------------------------------------------------------
-!> Read a restart file given a unit number (see write_state_restart)
+!> Read a restart file given a unit number
 
 subroutine aread_state_restart(model_time, model_state, funit, target_time)
 
