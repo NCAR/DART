@@ -40,9 +40,6 @@ module utilities_mod
 !      dump_unit_attributes    A debug routine that dumps out a long list of
 !                              attributes that can be queried from an open file unit.
 !
-!      print_version_number    Prints out a routine name and
-!                              version number to a specified unit
-!
 !      set_output       Set the status of printing.  Can be set on a per-task
 !                       basis if you are running with multiple tasks.
 !                       By default all warnings and errors print no matter
@@ -1041,46 +1038,6 @@ end subroutine error_handler
    endif
 
    end function open_file
-
-
-!#######################################################################
-
-
-   subroutine print_version_number (iunit, routine, version)
-
-! *** prints routine name and version number to a log file ***
-!
-!    in:  iunit    = unit number to direct output
-!         routine = routine name (character, max len=20)
-!         version = version name or number (character, max len=8)
-
-   integer,          intent(in) :: iunit
-   character(len=*), intent(in) :: routine, version
-
-   integer           :: n
-   character(len=20) :: myname
-   character(len=8)  :: vers
-
-   if ( .not. module_initialized ) call initialize_utilities
-   if ( .not. do_output_flag) return
-
-     n = min(len(routine),20); myname = adjustl(routine(1:n))
-     n = min(len(version), 8); vers   = adjustl(version(1:n))
-
-     if (iunit > 0) then
-         write (iunit,10) myname, vers
-     else
-         write (*,10) myname, vers
-     endif
-
-  10 format (/,60('-'),  &
-             /,10x, 'ROUTINE = ',a20, '  VERSION = ', a8, &
-             /,60('-'))
-
-! 10 format (/,1x, 12('>'), 1x, 'ROUTINE = ',a20, '  VERSION = ', a8, &
-!              1x, 12('<'),/)
-
-   end subroutine print_version_number
 
 
 !#######################################################################
