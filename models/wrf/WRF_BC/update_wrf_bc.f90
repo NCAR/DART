@@ -14,7 +14,7 @@ program update_wrf_bc
 use               types_mod, only : r8
 use           utilities_mod, only : file_exist, open_file, close_file, &
                                     initialize_utilities, finalize_utilities, register_module, &
-                                    error_handler, E_ERR, E_MSG, logfileunit, timestamp
+                                    error_handler, E_ERR, E_MSG, timestamp
 use module_netcdf_interface, only : get_dims_cdf, get_gl_att_real_cdf, put_gl_att_real_cdf, &
                                     get_var_3d_real_cdf, get_var_2d_real_cdf, put_var_3d_real_cdf, &
                                     put_var_2d_real_cdf, get_times_cdf, put_time_cdf, variable_exist

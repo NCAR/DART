@@ -342,7 +342,6 @@ integer :: ens_size ! number of actual copies
 
 integer :: iunit, ios
 integer :: nlines
-character(len=512) :: fname
 character(len=256) :: msgstring
 integer :: copy
 
@@ -570,7 +569,6 @@ integer :: ndims ! number of dimensions
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimids ! dimension ids for a variable
 character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: name ! dimension names for a variables
 integer, dimension(NF90_MAX_VAR_DIMS) :: length
-integer, dimension(NF90_MAX_VAR_DIMS) :: unique_dim_length
 integer :: xtype ! do we care about this? Yes.
 character(len=512) :: msgstring ! message handler
 
@@ -677,9 +675,14 @@ end function get_output_file
 
 !----------------------------------
 !> Destroy module storage
+!>@ todo should be called somewhere
+
 subroutine end_io_filenames(file_info)
 
 type(file_info_type), intent(inout) :: file_info
+
+call error_handler(E_ERR,'end_io_filenames','test this routine', &
+          source, revision, revdate)
 
 deallocate(file_info%restart_files_in%filenames)
 deallocate(file_info%restart_files_out_prior%filenames)

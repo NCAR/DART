@@ -8,8 +8,7 @@ PROGRAM select
 
 use        types_mod, only : r8, metadatalength
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
-                             register_module, logfileunit, &
-                             error_handler, E_MSG
+                             register_module, error_handler, E_MSG
 use obs_sequence_mod, only : obs_type, obs_sequence_type, init_obs_sequence, &
                              insert_obs_in_seq, get_first_obs, get_next_obs, &
                              write_obs_seq, &

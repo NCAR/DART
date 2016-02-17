@@ -132,7 +132,6 @@ type(ensemble_type), intent(in)  :: state_ens_handle
 
 integer                        :: owner_of_state !> task who owns the state
 integer                        :: element_index !> local index of element
-integer                        :: ierr
 
 if (get_allow_transpose(mean_ens_handle)) then
    x(1) = mean_ens_handle%vars(index, 1)

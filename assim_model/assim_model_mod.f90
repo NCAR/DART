@@ -74,10 +74,6 @@ integer :: model_size
 ! Ensure init code is called exactly once
 logical :: module_initialized = .false.
 
-
-! Global storage for error string output
-character(len = 129)  :: msgstring
-
 !-------------------------------------------------------------
 
 contains
@@ -113,8 +109,6 @@ end subroutine init_assim_model
 ! is initializing the position of the state variables as location types.
 
 implicit none
-
-integer :: iunit, io
 
 ! only execute this code once, even if called multiple times.
 if (module_initialized) return

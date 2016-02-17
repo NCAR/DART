@@ -694,7 +694,7 @@ integer, intent(in) :: dom_id ! domain
 integer, intent(in) :: ivar ! variable
 integer :: get_dim_lengths(state%domain(dom_id)%variable(ivar)%numdims)
 
-integer :: num_dims, jdim
+integer :: num_dims
 
 num_dims = get_num_dims(dom_id, ivar)
 
@@ -1378,7 +1378,6 @@ integer, intent(in)  :: dart_kind_index
 integer :: var_id
 
 integer :: ivar, num_vars
-character(len=paramname_length) :: dart_string
 
 var_id = -1
 
@@ -1403,8 +1402,6 @@ integer, intent(out) :: varid_table(:)
 
 integer :: ivar, indx
 integer :: num_vars
-
-character(len=paramname_length) :: dart_string ! for error checking
 
 if ( size(varid_table) < get_num_varids_from_kind(dom_id, dart_kind_index) ) then
    write(string1,*) 'Found ', get_num_varids_from_kind(dom_id, dart_kind_index)

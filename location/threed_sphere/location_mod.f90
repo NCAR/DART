@@ -247,7 +247,7 @@ contains
 
 subroutine initialize_module()
 
-integer :: iunit, io, i, v, k, typecount, type_index
+integer :: iunit, io, i, k, typecount, type_index
 
 
 if (module_initialized) return
@@ -1344,7 +1344,7 @@ type(get_close_type), intent(inout) :: gc
 real(r8),             intent(in)    :: maxdist
 real(r8), intent(in), optional      :: maxdist_list(:)
 
-integer :: i, typecount, distcount, mapnum
+integer :: i, typecount, distcount
 real(r8), allocatable :: distlist(:)
 
 ! Support per-loc-type localization more efficiently.

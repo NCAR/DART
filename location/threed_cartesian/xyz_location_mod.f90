@@ -77,9 +77,6 @@ character(len = 512) :: errstring
 
 !real(r8) :: radius     ! used only for converting points on a sphere into x,y,z and back
 
-! If maxdist stays the same, don't need to do box distance calculations
-integer :: last_maxdist = -1.0
-
 !-----------------------------------------------------------------
 ! Namelist with default values
 
@@ -89,18 +86,15 @@ integer :: ny               = 20
 integer :: nz               = 20
 
 ! tuning options
-integer :: nboxes           = 1000 ! suggestion for max number of nodes
-integer :: maxdepth         = 4    ! suggestion for max tree depth
 integer :: filled           = 10   ! threshold at which you quit splitting
 logical :: use_octree       = .false.  ! if false, use regular boxes
 
-! removed
-logical :: output_box_info  = .false.
-integer :: print_box_level  = 0
-logical :: compare_to_correct = .false.
+! extensible options - these may be useful for tuning the octree 
+! integer :: nboxes           = 1000 ! suggestion for max number of nodes
+! integer :: maxdepth         = 4    ! suggestion for max tree depth
 
 namelist /xyz_location_nml/ &
-   filled, nboxes, maxdepth, use_octree, &
+   filled, use_octree, &
    nx, ny, nz
 
 !-----------------------------------------------------------------
@@ -119,8 +113,7 @@ subroutine initialize_module
  
 ! things which need doing exactly once.
 
-integer :: iunit, io, i
-character(len=129) :: str1
+integer :: iunit, io
 
 if (module_initialized) return
 
@@ -416,9 +409,6 @@ subroutine xyz_get_close_maxdist_init(gc, maxdist)
 type(xyz_get_close_type), intent(inout) :: gc
 real(r8),             intent(in)    :: maxdist
 
-character(len=129) :: str1
-integer :: i
-
 ! set the default value.
 gc%maxdist = maxdist
 !print *, 'setting maxdist to ', maxdist
@@ -447,9 +437,7 @@ type(xyz_get_close_type), intent(inout) :: gc
 integer,              intent(in)    :: num
 type(xyz_location_type),  intent(in)    :: locs(num)
 
-logical :: old_out
-integer :: i
-
+! integer :: i
 
 ! FIXME: this space could be very sparse
 

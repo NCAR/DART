@@ -4275,8 +4275,6 @@ real(r8) :: surface, top
 
  100 format(a,3(f10.4,1x),i4,1x,f10.4)
  101 format(a,3(f10.4,1x),i4,1x,i10)
- 200 format(a,11(f10.4,1x))
- 201 format(a,11(i10,1x))
 
 ClosestLevelIndex = -1 ! set this to a 'bad' value.
 

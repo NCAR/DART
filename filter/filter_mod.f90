@@ -234,19 +234,16 @@ integer                 :: OBS_GLOBAL_QC_COPY,OBS_EXTRA_QC_COPY
 integer                 :: OBS_MEAN_START, OBS_MEAN_END
 integer                 :: OBS_VAR_START, OBS_VAR_END, TOTAL_OBS_COPIES
 integer                 :: input_qc_index, DART_qc_index
-integer                 :: mean_owner, mean_owners_index
-logical                 :: read_time_from_file, interf_provided
+logical                 :: read_time_from_file
 
-integer :: owner, owners_index
 integer :: num_extras ! the extra ensemble copies
 
 type(file_info_type) :: file_info
 
 logical                 :: ds, all_gone, allow_missing
 
-real(r8), allocatable   :: temp_ens(:)
+! real(r8), allocatable   :: temp_ens(:) ! for smoother
 real(r8), allocatable   :: prior_qc_copy(:)
-character*20 task_str, file_obscopies
 
 call filter_initialize_modules_used() ! static_init_model called in here
 
@@ -901,7 +898,7 @@ if(my_task_id() == 0) then
    write(logfileunit,*)
 endif
 
-10011 continue
+! 10011 continue
 ! YOU CAN NO LONGER WRITE TO THE LOG FILE BELOW THIS!
 ! After the call to finalize below, you cannot write to
 ! any fortran unit number.
@@ -943,7 +940,6 @@ character(len=metadatalength) :: prior_meta_data, posterior_meta_data
 ! Posterior file contains the posterior inflation mean and spread only
 character(len=metadatalength) :: state_meta(num_output_state_members + 4)
 integer :: i, ensemble_offset, num_state_copies, num_obs_copies
-integer :: ierr ! init_diag return code
 
 ! Section for state variables + other generated data stored with them.
 
@@ -1358,11 +1354,9 @@ integer,                 intent(in)    :: OBS_MEAN_START, OBS_VAR_START
 integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, DART_qc_index
 
-integer               :: j, k, ens_offset, forward_min, forward_max
-integer               :: forward_unit, ivalue
-real(r8)              :: error, diff_sd, ratio
+integer               :: j, k, ens_offset
+integer               :: ivalue
 real(r8), allocatable :: obs_temp(:)
-real(r8)              :: obs_prior_mean, obs_prior_var, obs_val, obs_err_var
 real(r8)              :: rvalue(1)
 
 ! Do verbose forward operator output if requested

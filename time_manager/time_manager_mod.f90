@@ -1130,9 +1130,6 @@ if ( .not. module_initialized ) call time_manager_init
 year = 1
 num_days = time%days
 
-111 continue
-
-
 ! No need to deal with months on Mars -- make it 1 by default so that other
 !    functions do not break (like print_date and month_name)
 month = 1

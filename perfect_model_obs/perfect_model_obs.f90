@@ -161,7 +161,6 @@ character(len=metadatalength) :: state_meta(1)
 logical                 :: assimilate_this_ob, evaluate_this_ob, pre_I_format
 logical                 :: all_gone, read_time_from_file
 
-integer                 :: qc_status
 integer                 :: global_obs_num
 
 type(time_type)      :: time1

@@ -115,7 +115,6 @@ integer,             intent(in) :: POST_INF_COPY, POST_INF_SD_COPY
 
 logical :: allow_missing
 
-logical :: direct_netcd_read !> @ todo smoother netcdf restarts
 ! static_init_smoother initializes module and read namelist
 if ( .not. module_initialized ) call static_init_smoother()
 

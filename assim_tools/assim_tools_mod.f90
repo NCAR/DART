@@ -65,7 +65,11 @@ use quality_control_mod, only : good_dart_qc, DARTQC_FAILED_VERT_CONVERT
 implicit none
 private
 
-public :: filter_assim, set_assim_tools_trace, get_missing_ok_status, test_state_copies
+public :: filter_assim, &
+          set_assim_tools_trace, &
+          get_missing_ok_status, &
+          test_state_copies, &
+          update_ens_from_weights  ! Jeff thinks this routine is in the wild.
 
 ! Indicates if module initialization subroutine has been called yet
 logical :: module_initialized = .false.
@@ -336,7 +340,7 @@ integer(i8) :: my_state_indx(ens_handle%my_num_vars)
 integer(i8) :: my_obs_indx(obs_ens_handle%my_num_vars)
 
 integer  :: my_num_obs, i, j, owner, owners_index, my_num_state
-integer  :: this_obs_key, obs_mean_index, obs_var_index
+integer  :: obs_mean_index, obs_var_index
 integer  :: grp_beg(num_groups), grp_end(num_groups), grp_size, grp_bot, grp_top, group
 integer  :: close_obs_ind(obs_ens_handle%my_num_vars)
 integer  :: close_state_ind(ens_handle%my_num_vars)
@@ -373,11 +377,8 @@ logical  :: lanai_bitwise
 real(r8) :: vert_obs_loc_in_localization_coord
 
 !HK timing
-double precision start, finish
+! double precision :: start, finish
 
-!HK bitwise for WRF
-real(r8) :: xyz_loc(3)
-type(location_type) :: temp_loc
 integer :: vstatus !< for vertical conversion status. Can we just smash the dart qc instead?
 
 !HK debug
@@ -2307,6 +2308,12 @@ real(r8) :: x(1:2*ens_size - 1), cumul_mass(1:2*ens_size - 1), new_ens(ens_size)
 real(r8) :: sort_inc(ens_size), updated_mass(2 * ens_size)
 real(r8) :: sx, prior_mean, prior_var, prior_sd, mass
 real(r8) :: total_mass_left, total_mass_right, alpha(2)
+
+! Initialize assim_tools_module if needed
+if (.not. module_initialized) call assim_tools_init()
+
+call error_handler(E_ERR,'update_ens_from_weight','Routine needs testing.', &
+           source, revision, revdate, text2='Talk to Jeff before using.')
 
 ! Do an index sort of the ensemble members
 call index_sort(ens, e_ind, ens_size)

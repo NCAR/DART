@@ -63,7 +63,7 @@ subroutine create_state_window(state_ens_handle)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
 
-integer :: ii, jj, count, ierr
+integer :: ierr
 integer :: bytesize !< size in bytes of each element in the window
 integer :: my_num_vars !< my number of vars
 
@@ -103,7 +103,7 @@ type(ensemble_type), intent(in)  :: state_ens_handle
 integer,             intent(in)  :: mean_copy
 logical,             intent(in)  :: distribute_mean
 
-integer               :: ii, ierr
+integer               :: ierr
 integer               :: bytesize
 integer               :: my_num_vars !< number of elements a task owns
 

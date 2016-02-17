@@ -30,7 +30,6 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 integer :: data_count !> number of copies in the window
-logical :: use_distributed_mean = .false. ! initialize to false
 type(ensemble_type) :: mean_ens_handle
 
 
@@ -69,10 +68,6 @@ type(ensemble_type), intent(in)  :: state_ens_handle
 integer,             intent(in)  :: mean_copy
 logical,             intent(in)  :: distribute_mean
 
-integer               :: ii, ierr
-integer               :: bytesize
-integer               :: my_num_vars !< number of elements a task owns
-
 call init_ensemble_manager(mean_ens_handle, 1, state_ens_handle%num_vars) ! distributed ensemble
 call set_num_extra_copies(mean_ens_handle, 0)
 mean_ens_handle%copies(1,:) = state_ens_handle%copies(mean_copy, :)
@@ -93,8 +88,6 @@ type(ensemble_type), intent(inout) :: state_ens_handle
 type(ensemble_type), intent(inout) :: fwd_op_ens_handle
 type(ensemble_type), intent(inout) :: qc_ens_handle
 
-integer :: ierr
-
 current_win = NO_WINDOW
 
 end subroutine free_state_window
@@ -102,7 +95,6 @@ end subroutine free_state_window
 !---------------------------------------------------------
 !> Free the mpi window
 subroutine free_mean_window
-integer :: ierr
 
 call end_ensemble_manager(mean_ens_handle)
 

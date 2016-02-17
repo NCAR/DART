@@ -31,7 +31,6 @@ function read_model_time(filename)
 character(len=1024), intent(in) :: filename
 type(time_type) :: read_model_time
 
-integer :: ret !< netcdf return code
 integer :: ncid, dart_secsVarID, dart_daysVarID
 integer :: seconds, days
 

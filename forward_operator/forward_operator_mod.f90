@@ -115,18 +115,14 @@ integer,                 intent(in)    :: OBS_VAR_START
 logical,                 intent(in)    :: isprior
 real(r8),                intent(inout) :: prior_qc_copy(:)
 
-real(r8) :: input_qc(1), obs_value(1), obs_err_var, thisvar(1)
-real(r8) :: error, diff_sd, ratio
-real(r8) :: obs_prior_mean, obs_prior_var, obs_val
+real(r8) :: input_qc(1), obs_value(1), obs_err_var
 
 real(r8), allocatable :: expected_obs(:) !Also regular obs now?
 
 integer :: i, j, k !< index variables
 integer :: thiskey(1)
 integer :: global_obs_num, global_qc_value
-integer :: forward_min, forward_max !< for global qc
 integer :: num_copies_to_calc
-integer :: copy !< loop index
 integer :: global_ens_index
 integer :: ens_size
 
@@ -135,7 +131,6 @@ integer, allocatable  :: var_istatus(:)
 integer, allocatable  :: my_copy_indices(:) ! The global ens index for each copy a task has
 
 logical :: evaluate_this_ob, assimilate_this_ob
-logical :: failed
 
 type(time_type) :: dummy_time
 
