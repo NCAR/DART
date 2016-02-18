@@ -210,7 +210,7 @@ obsloop:  do
    read(obs_unit,880,end=200) obs_err, lon, lat, lev, zob, zob2, rcount, time, &
                               obstype, iqc, subset, pc
 
- 880 format(f4.2,2f9.4,e12.5,f7.2,f7.2,f9.0,f7.3,i4,i2,1x,a6,i2)
+ 880 format(f5.2,2f9.4,e12.5,f7.2,f7.2,f9.0,f7.3,i4,i2,1x,a6,i2)
 
 !   A 'day' is from 03:01Z of one day through 03Z of the next.
 !   skip the observations at exact 03Z of the beginning of the day
