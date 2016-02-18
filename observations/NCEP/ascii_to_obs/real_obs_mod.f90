@@ -199,7 +199,7 @@ write(obsdate, '(i4.4,i2.2,i2.2)') year, month, day
 obsfile   = trim(adjustl(ObsBase))//obsdate//hourt
 obs_unit  = get_unit()
 open(unit = obs_unit, file = obsfile, form='formatted', status='old')
-write(msgstring1,*) 'input file opened >'//trim(obsfile)//'<'
+write(msgstring1,*) 'input file opened= '//trim(obsfile)
 call error_handler(E_MSG,'real_obs_sequence',msgstring1)
 rewind (obs_unit)
 
