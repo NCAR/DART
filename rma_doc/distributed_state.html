@@ -1,0 +1,104 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>RMA DART</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>Distributed State</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+The key part of RMA DART is having a state that is physically distributed across processors.
+The location in memory of any part of the state vector (which processor and where in memory on that processor)
+is completely under the control of filter, not model_mod.
+<p>
+Implications of this:
+<ul>
+<li> The model_mod never gets a whole state vector to use. So no whole vector for a forward operator, and
+no whole vector for the mean.
+<li> The model_mod can not make any assumptions about the order of elements in the state.
+<br> Currently, filter is ordering variables in the order they are listed in add_domain and with the
+dimenion order of the netcdf file. This is what is happening in most model_mod converters (model_to_dart,
+dart_to_model).  However CAM and bgrid_solo rearrange the state in Lanai. These model_mods (and converters)
+have been changed to not rearrage the state.
+</ul>
+
+So, how does the model_mod access the state without having the vector and not knowing the state order?
+- state accessor routines.
+
+<h4> State Accessor Routines </h4>
+
+<h5> Getting the dart index </h5>
+<P.
+<code>function get_dart_vector_index(i, j, k, dom_id, var_id)</code>
+<p>
+get_dart_vector_index returns the dart index for a given i,j,k of a variable.
+Note if the variable is 1D j and k are ignored. If a variable is 2D k is ignored. Note only
+variables upto 3D are supported, but this could be extended to support upto 7 dimensional variables
+(or whatever fortran and netcdf will support).
+
+<h5> Getting the state at a given dart index </h5>
+
+<code>function x = get_state(index, state_handle)</code>
+<p>
+get_state returns the state x at the given index. state_handle is a derived type which conatins the state information.
+state_handle is passed to the model_mod from above. get_state returns an array of values (the whole ensemble at index)
+during model_mod and a single value (the mean) during get_close_obs or vert_convert.
+<p>
+If you have an array of indices, for example a forward operator which is located in different levels
+on different ensemble members you can use get_state_array. An example of this is in CAM when an observation
+is in pressure, the level an observation is in depends on the state and so can vary across the ensemble.
+<p>
+<code>subroutine get_state_array(x(:), index(:), state_handle)</code>
+<p>
+The code inside get_state_array will do the minimum amount of communication to get you the indices you need.
+For example if
+<p>&nbsp; index = [ 3 4 3 3 4 3]
+<p>get_state_array will only do 2 mpi communications and return
+<p>&nbsp;  x = [state(3), state(4), state(3), state(3), state(4), state(3)]
+<p>
+
+A limited module diagram is shown below. A -> B means A uses B:
+
+<p>
+<img src="./Graphs/window.gv.svg">
+<p>
+
+Filter_mod and assim_tools_mod take care of making data available for use with get_state. Note get_state will only return
+data during <em> model_interpolate</em>, <em>get_close_obs</em>, or <em>vert_convert</em>. If you use get_state outside these routines you will
+get and error.
+<p>
+<b> Compliation Notes </b>
+<p>
+The Remote Memory Access programming model we are using uses mpi_windows. There are 2 ways to compile window mods for mpi and non-mpi filter. This
+is taken care of automatically when you run quickbuild.csh or an mkmf_* with -mpi or -nompi. However, if you use mpi, there is a choice of mpi_window mods:
+<ul>
+<li> cray_win_mod.f90
+<li> no_cray_win_mod.f90
+</ul>
+
+We have these two modules that you can swap in your path_names files because the MPI 2 standard states:<br>
+Implementors may restrict the use of RMA communication that is synchronized by lock calls to windows in memory
+allocated by MPI_ALLOC_MEM.<br> MPI_ALLOC_MEM uses cray pointers, thus we have supplied a window module that uses cray pointers.
+However, no_cray_win_mod.f90 is the default since some versions of gfortran (4.9.0) do not support cray pointers.
+These different modules will go away when we swap to MPI 3.
+
+</BODY>
+</HTML>

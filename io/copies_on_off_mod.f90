@@ -15,7 +15,7 @@ module copies_on_off_mod
 !>
 !> Usage for read:
 !>    call setup_read_write(num_copies)  
-!>    call turn_read_copy_on(1:ens_size)
+!>    call turn_read_copy_on(1,ens_size)
 !>    call turn_read_copy_on(mean)
 !>    --- IO is done ---
 !>    call end_read_write

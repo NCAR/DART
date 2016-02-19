@@ -1,0 +1,336 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>RMA DART</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>RMA Release notes</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+In the RMA version of DART, the state vector is not required to be stored completely on any process. This
+is achieved using Remote Memory Access (RMA).  The RMA programing model allows processes
+to read (and write) memory on other processors asynchronously.
+
+RMA DART supported models:
+<ul>
+<li> lorenz_96
+<li> bgrid_solo
+<li> wrf
+<li> pop
+<li> mpas (netcdf overwrite not supported for update_u_from_reconstruct = .true. )
+</ul>
+
+There are six major differences between Lanai and RMA DART:
+<ul>
+<li> Option to read and write netcdf restarts
+<li> Calculation of forward operators
+<li> Vertical conversion of observation locations
+<li> Diagnostic file changes
+<li> <a href="state_structure.html">State structure module </a>
+<li> Perturbation of the state
+</ul>
+
+<p> Before bitwise testing with Lanai please read <a href="bitwise_considerations.html">bitwise considerations</a>
+
+<h4> Netcdf Restarts </h4>
+
+The programs filter and perfect_model_obs have namelist options which allow reading/writing directly from netcdf files, rather than
+having to run converters (model_to_dart and dart_to_model).
+
+To facilitate this, there is a new required call <code>add_domain</code> which must be called during static_init_model.
+It can be called multiple times in static_model_mod, e.g. once for each netcdf file that contains state variables.
+There are three ways to add a domain.
+
+<ul>
+<code>
+<li> dom_id = add_domain(model_size)
+<li> dom_id = add_domain(info_file, num_vars, var_names, ...)
+<li> dom_id = add_domain(num_vars, var_names, ...)<br>
+     call add_dimension_to_variable(dom_id, var_id, dim_nam, dim_size) <br>
+     call finished_adding_domain
+</code>
+</ul>
+<p>
+For models without netcdf restarts, use add_domain(model_size). This is the minimum amount of information needed by DART to create
+a netdcf file.  For models with netcdf restarts use add_domain(info_file, num_vars, var_names) which lets DART read the netcdf
+dimensions for a list of variables from a file (info_file). There are several routines that can be used together to create a domain
+from a decsription:add_domain, add_dimension_to_variable, finished_adding_domain. This can be used in models such as bgrid_solo
+where the model is spun up in perfect_model_obs, but the model itself has variable structure (3D variables with names).
+
+See <a href="#namelist_changes">Additions/Changes to existing namelists for how to use netcdf IO</a>.
+
+<p>
+<b>Note</b> when using netcdf restarts, inflation files are netcdf also. The inflation mean and inflation standard deviation are in
+separate files when you use netcdf restarts. See <a href="netcdf_inflation_files.html">netcdf inflation files</a> for details.
+
+
+<p>
+<h4> Calculation of forward operators</h4>
+The forward operator code in model_mod now operates on an array of state values. See <a href="forward_operator.html">forward operator</a>
+for more detail about distributed vs. non-distributed forward operators.
+
+In distributed mode the forward operators for all ensemble members are
+calculated in the same model_interpolate call.  In non-distributed mode, the forward oeprators for all ensemble members a task owns (1-ens_size) are calculated at once.
+<p>
+
+
+<h4> Vertical conversion of observation locations </h4>
+The vertical conversion of observation locations is done before the assimilation. In Lanai this calculation is done in the assimilation as part
+of get_close_obs if a model_mod does vertical conversion. See <a href="vertical_conversion.html">vertical conversion</a> for details about this change.
+Note that not all models do vertical conversion or even have a concept of vertical location,
+ but every model_mod must have the following routines:
+
+<ul>
+<li>
+query_vert_localization_coord - returns the vertical localization coordiate (or does nothing if there is no vertical conversion)
+<li>
+vert_convert - converts location to required vertical (or does nothing if there is no vertical conversion)
+</ul>
+<p>
+
+<p>
+<h4> Diagnostic file changes </h4>
+For large models DART format diagnostic files (Prior_Diag.nc and Posterior_Diag.nc) are expensive to create.
+The namelist option make_diagnostic_files = .false. will turn off creating and writing these files so Prior_Diag.nc and Posterior_Diag.nc files are not created. Separate
+files for each copy that would have gone into Prior_Diag.nc and Posterior are made.
+<p>
+For Prior_Diag.nc:
+<ul>
+<li>Mean and standard deviation:
+   <br>&nbsp;&nbsp;PriorDiag_mean.nc
+   <br>&nbsp;&nbsp;PriorDiag_sd.nc
+<li>Inflation mean and standard deviation (if state space inflation is used):
+   <br>&nbsp;&nbsp;PriorDiag_inf_mean.nc
+   <br>&nbsp;&nbsp;PriorDiag_inf_sd.nc
+<li>The number of ensemble members specifed in filter_nml (num_output_state_members):
+   <br>&nbsp;&nbsp;prior_member.000*.nc
+</ul>
+
+<p>
+For Posterior_Diag.nc:
+<ul>
+<li>Mean and standard deviation:
+    <br>&nbsp;&nbsp;mean.nc
+    <br>&nbsp;&nbsp;sd.nc
+<li>Inflation mean and standard deviation (if state space inflation is used):
+   <br>&nbsp;&nbsp;PosteriorDiag_inf_mean.nc
+   <br>&nbsp;&nbsp;PosteriorDiag_inf_sd.nc
+</ul>
+<p>
+The num_output_state_members are not written separately from the restarts. Note that restarts will have been clamped if any clamping is applied (given as an arguement to add_domain). This is <em>different</em> to Posterior_Diag.nc which contains unclamped values.
+
+<p> For models with multiple domains the filenames above are appended with the domain number, e.g. PriorDiag_mean.nc becomes PriorDiag_mean_d01.nc, PriorDiag_mean_d02.nc, etc.
+
+<h5>Changes to nc_write_model_atts</h5>
+nc_write_model_atts has an new argument 'model_mod_writes_state_variables'. This is used to communicate to DART whether the model will create and write
+state variables in Prior_Diag.nc and Posterior_Diag.nc.  If model_model_writes_state_variables = .false. DART will define and write state variables to
+Prior_Diag.nc and Posterior_Diag.nc.  If model_model_writes_state_variables = .true. nc_write_model_vars is called as normal.
+
+<h4>Perturbations</h4>
+The option to perturb one ensemble member to produce an ensemble is in filter_nml:perturb_from_single_instance. The model_mod
+interface is now pert_model_copies not pert_model_state. Each task perturbs every ensemble member for its own subsection of state.
+This is more complicated than the Lanai routine pert_model_state, where a whole state vector is available. If a model_mod does
+not provide a perturb interface, filter will do the perturbing with an amplitude set in filter_nml:perturbation_amplitude. Note
+the perturb namelist options have been removed from ensemble_manager_nml.
+
+<H2> New Namelists </H2>
+
+<h4>state_space_diag_nml</h4>
+
+make_diagnosfic_files = .true. creates Prior_Diag.nc and Posterior_Diag.nc.
+netCDF_large_file_support has moved from assim_model_mod.
+
+<P>
+<div class=namelist>
+<pre>
+&amp;state_space_diag_nml
+   single_file               = .true. (.false. is not supported)
+   make_diagnostic_files     = .true.
+   netCDF_large_file_support = .true.
+/
+</pre>
+</div>
+<p>
+
+<h4>state_vector_io_nml</h4>
+
+<P>
+<div class=namelist>
+<pre>
+&amp;state_vector_io_nml
+   limit_mem                  = HUGE(1_i4),
+   single_precision_output    = .false.,
+   write_binary_restart_files = .false.
+/
+</pre>
+</div>
+<p>
+limit_mem can be used to limit how much of the state is read/written at once. It is for use with very large state vectors (e.g. 17GB)
+that cannot be read into one array.  Using this increases the number of communication calls during IO so it is only advisable to
+use this when your state vector size is approaching your total memory per node.  limit_mem is the number of elements to read/write
+and transpose in one step.  For example if you set 3000 element limit and had 3 variables of size 1000, 1500 and 1000. The 1500 element
+variable and 1000 elmement variable would be read and transposed together, but the next 1000 element variable would be read and tranposed in
+a second step.
+<p>
+single_precision_output allows you to run filter in double precision but write netcdf files in single presision.
+It does <b>not</b> effect binary or ascii restart files.
+<p>
+write_binary_restart_files has moved from ensemble_manager_mod. It only applies to dart format restart files (to selet either binary or ascii).
+
+
+<P>
+<h4>quality_control_nml</h4>
+
+These namelist options used to be in filter_nml, now they are in quality_control_nml.
+<P>
+<div class=namelist>
+<pre>
+&amp;quality_control_nml
+   input_qc_threshold          = 3,
+   outlier_threshold           = 4,
+   enable_special_outlier_code = .false.
+/
+</pre>
+</div>
+
+<A NAME="namelist_changes"></A>
+<H3> Additions/Changes to existing namelists </H3>
+
+<h4>filter_nml</h4>
+
+<P>
+<div class=namelist>
+<pre>
+&amp;filter_nml
+   direct_netcdf_read           = .true.,
+   direct_netcdf_write          = .true.,
+   add_domain_extension         = .false.,
+   use_restart_list             = .false.,
+   restart_list_file            = 'null',
+   overwrite_state_input        = .false.,
+   single_restart_file_in       = .false.,
+   single_restart_file_out      = .false.,
+   perturb_from_single_instance = .false.,
+   perturbation_amplitude       = 0.2_r8,
+   restart_in_file_name         = 'filter_ics',
+   restart_out_file_name        = 'filter_restart',
+   distributed_state            = .true.
+/
+</pre>
+</div>
+
+<p>
+<b>For Netcdf reads and writes:</b>
+<p>
+There are two ways to give the <b>input</b> file names:
+<ul>
+<li> Use restart_list_file to give a file (one for each domain) containing a list of restart files and set use_restart_list = .true.
+<li> Give a restart_in_file_name and have the model_mod construct the restart file names. Set use_restart_list = .false.
+</ul>
+<p>
+For <b>output</b> file names:
+<ul>
+<li> Give a restart_in_file_name.  The output file name will be of the form
+    TRIM(stub) // TRIM(ext) // copy number. Where ext is the domain number. The domain number is only written if the number of domains is greater than 1 or domain_extension = .true.
+<li>  Overwrite input files by setting overwrite_input = .true. <em>Be aware</em> that this destroys the state information in your input files.
+</ul>
+
+<p>
+<b>For Lanai style dart input and output restart files:</b> <br>
+<ul>
+<li>restart_in_file_name and restart_out_file_name are used in the same way as Lanai.
+<li>add_domain_extension, use_restart_list, restart_list_file, and overwrite_state_input
+    are ignored
+</ul>
+
+
+<h4>assim_tools_nml</h4>
+<P>
+<div class=namelist>
+<pre>
+&amp;assim_tools_nml
+   distribute_mean  = .true.
+/
+</pre>
+</div>
+<p>
+In previous DART releases, each processor gets a copy of the mean (in ens_mean_for_model).  In RMA DART, the mean is distributed
+across all processors.  However, a user can choose to have a copy of the mean on each processor by setting distribute_mean = .false.
+Note that the mean state is accessed through <code>get_state</code> whether distribute_mean is .true. or .false.
+
+
+
+<H3> Removed from existing namelists </H3>
+<pre>
+&amp;filter_nml
+   input_qc_threshold          = 3,
+   outlier_threshold           = 4,
+   enable_special_outlier_code = .false.
+   /
+</pre>
+</div>
+
+
+<pre>
+&amp;ensemble_manager_nml
+   single_restart_file_out = .true.
+   perturbation_amplitude  = 0.2,
+   /
+</pre>
+</div>
+
+
+<pre>
+&amp;assim_manager_nml
+   write_binary_restart_files = .true.,
+   netCDF_large_file_support  = .false.
+   /
+</pre>
+</div>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

@@ -1,0 +1,89 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>RMA DART</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>Forward Operator</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+In Lanai the forward operator is performed by the first ens_size processors. This was because access to the whole state vector is required for the forward operator, and only the first ens_size processors had the whole state vector. The distributed state forward operator has a diffent loop structure to Lanai because all processors can do the foward operator for their observations.
+
+<ul>
+<li>Lanai: the first ens_size processors loop around ALL OBSERVATIONS.</li>
+<li>Distributed state: ALL PROCESSORS loop around observations/num_procs.</li>
+</ul>
+<p>
+
+The forward operator is performed in <code>get_obs_ens_distrb_state</code>.  A limited call tree for <code>get_obs_ens_distrb_state</code> is shown below.
+
+<p>
+<img src="./Graphs/forward_operator.gv.svg">
+<p>
+
+
+The QC_LOOP is in <code>get_obs_ens_distrb_state</code> because the qc across the ensemble is known. This removes the need for a transpose of the forward_op_ens_handle. Note this is different from Lanai.
+
+The window opening and closing in <code>get_obs_ens_distrb_state</code> is as follows:
+
+<ol>
+<li>State window created (processors can access other processor's memory)</li>
+<li>Forward operator called</li>
+<li>QC calculated</li>
+<li>State window destroyed (processors can no longer access other processor's memory)</li>
+</ol>
+
+
+<p>
+However, there may be occasions where having only the first ens_size processors
+perform the forward operator. For example, if the forward operator is being read from a file, or the forward operator uses a large portion of the state. Or when
+debugging it may be easier to have 1 task per ensemble member.
+<p>
+
+To transpose and do the forward operators like Lanai, you can use the filter_nml
+namelist option distribute_state = .false. The process is the same as above except
+the window creation and destruction are transposing the state.
+
+<ol>
+<li>State window created (state ensemble is transposed var complete)</li>
+<li>Forward operator called</li>
+<li>QC calculated</li>
+<li>State window destroyed (state ensemble is tranaposed to copy complete)</li>
+</ol>
+
+Note, that if you have fewer tasks than ensemble members some tasks will still be doing vectorized forward operators (because they own more than one ensemble member).
+
+<h2> State Access </h2>
+
+
+Model_mod routines no longer get an array containing the state.  The state is accessed through the function <code>get_state</code>.
+<p>
+<code>
+x = get_state(i, state_handle)
+</code>
+<p>
+where x is the state at index i. <code>state_handle</code> is passed from above.
+During model_interpolate <code>get_state</code> returns an array.  Durring <code>get_state</code> returns a single value (the mean state).
+
+
+
+</body>
+</html>
