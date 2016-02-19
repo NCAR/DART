@@ -3534,6 +3534,7 @@ field_type = dart_to_cam_types(obs_kind)
 if (field_type <= 0 .or. field_type > nflds) return
 
 indx = index_from_grid(level, lon_index, lat_index, field_type)
+!> @todo pull this check out or error
 ! This check is not correct for XCESM - also don't you trust code in your own module?
 !if (indx > 0 .and. indx <= model_size) then
    istatus(:) = 0
@@ -4720,11 +4721,12 @@ type(location_type) :: temp_obs_loc
 
 integer :: k, i, imem
 integer :: vstatus(ens_size)
+istatus(:) = 1
 
 ! lat, lon and vertical in height
 lon_lat_lev = get_location(base_obs_loc)
 
-!****** HK I don't think hybrid_As and hybrid_Bs change thoughout a run of filter
+!> @todo I don't think hybrid_As and hybrid_Bs change thoughout a run of filter
 ! copy hybrid_As, hybrid_Bs to temporary arrays to pass to dcz2
 ! All arrays except hybrid_As, hybrid_Bs are oriented top to bottom.
 
