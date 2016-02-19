@@ -252,6 +252,8 @@ endif
 ! Figure out how the ensemble copies are partitioned
 call set_up_ens_distribution(ens_handle)
 
+ens_handle%num_extras = 0 ! This can be changed by calling set_num_extra_copies
+
 if (debug) call print_ens_handle(ens_handle)
 
 end subroutine init_ensemble_manager

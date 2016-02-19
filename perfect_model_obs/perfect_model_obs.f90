@@ -242,6 +242,7 @@ call error_handler(E_MSG,'perfect_main',msgstring)
 ! Set up the ensemble storage and read in the restart file
 call trace_message('Before reading in ensemble restart file')
 call init_ensemble_manager(ens_handle, ens_size, model_size, 1)
+call set_num_extra_copies(ens_handle, 0)
 
 ! Initialize file names:
 file_info = io_filenames_init(ens_handle, .true., .true., restart_in_file_name, restart_out_file_name, output_restart, direct_netcdf_read, direct_netcdf_write)
@@ -274,7 +275,6 @@ endif
 call trace_message('After reading in ensemble restart file')
 
 ! Create window for forward operators
-call set_num_extra_copies(ens_handle, 0)
 call create_state_window(ens_handle)
 
 call trace_message('Before initializing output diagnostic file')
