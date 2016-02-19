@@ -245,7 +245,7 @@ contains
 
 subroutine initialize_module()
 
-integer :: iunit, io, i, v, k, typecount, type_index
+integer :: iunit, io, i, k, typecount, type_index
 
 
 if (module_initialized) return
@@ -345,10 +345,10 @@ if (special_vert_normalization_obs_types(1) /= 'null' .or. &
                             text2=trim(special_vert_normalization_obs_types(i)))
       endif
 
-      per_type_vert_norm(VERTISLEVEL, i)       = special_vert_normalization_levels(i)
-      per_type_vert_norm(VERTISPRESSURE, i)    = special_vert_normalization_pressures(i)
-      per_type_vert_norm(VERTISHEIGHT, i)      = special_vert_normalization_heights(i)
-      per_type_vert_norm(VERTISSCALEHEIGHT, i) = special_vert_normalization_scale_heights(i)
+      per_type_vert_norm(VERTISLEVEL,       type_index) = special_vert_normalization_levels(i)
+      per_type_vert_norm(VERTISPRESSURE,    type_index) = special_vert_normalization_pressures(i)
+      per_type_vert_norm(VERTISHEIGHT,      type_index) = special_vert_normalization_heights(i)
+      per_type_vert_norm(VERTISSCALEHEIGHT, type_index) = special_vert_normalization_scale_heights(i)
       
    enddo
 
@@ -381,28 +381,39 @@ else
    write(msgstring,'(A,f17.5)') ' # scale heights ~ 1 horiz radian: ', vert_normalization_scale_height
    call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
 
-   do i = 1, num_special_vert_norms
-      if ((per_type_vert_norm(VERTISLEVEL,       i) /= vert_normalization_level) .or. &
-          (per_type_vert_norm(VERTISPRESSURE,    i) /= vert_normalization_pressure) .or. &
-          (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) .or. &
-          (per_type_vert_norm(VERTISSCALEHEIGHT, i) /= vert_normalization_scale_height)) then
+   if (allocated(per_type_vert_norm)) then
+      typecount = get_num_obs_kinds()  ! ignore function name, this is specific type count
+      do i = 1, typecount
+         if ((per_type_vert_norm(VERTISLEVEL,       i) /= vert_normalization_level) .or. &
+             (per_type_vert_norm(VERTISPRESSURE,    i) /= vert_normalization_pressure) .or. &
+             (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) .or. &
+             (per_type_vert_norm(VERTISSCALEHEIGHT, i) /= vert_normalization_scale_height)) then
  
-         write(msgstring,'(2A)') 'Altering vertical normalization for type ', trim(special_vert_normalization_obs_types(i))
-         call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
-         write(msgstring,'(A,f17.5)') '       # pascals ~ 1 horiz radian: ', &
-               per_type_vert_norm(VERTISPRESSURE, i)
-         call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
-         write(msgstring,'(A,f17.5)') '        # meters ~ 1 horiz radian: ', &
-               per_type_vert_norm(VERTISHEIGHT, i)
-         call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
-         write(msgstring,'(A,f17.5)') '  # model levels ~ 1 horiz radian: ', &
-               per_type_vert_norm(VERTISLEVEL, i)
-         call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
-         write(msgstring,'(A,f17.5)') ' # scale heights ~ 1 horiz radian: ', &
-               per_type_vert_norm(VERTISSCALEHEIGHT, i)
-         call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
-      endif
-   enddo
+            write(msgstring,'(2A)') 'Altering default vertical normalization for type ', trim(get_obs_kind_name(i))
+            call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+            if (per_type_vert_norm(VERTISPRESSURE,    i) /= vert_normalization_pressure) then
+               write(msgstring,'(A,f17.5)') '       # pascals ~ 1 horiz radian: ', &
+                     per_type_vert_norm(VERTISPRESSURE, i)
+               call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+            endif
+            if (per_type_vert_norm(VERTISHEIGHT,      i) /= vert_normalization_height) then
+               write(msgstring,'(A,f17.5)') '        # meters ~ 1 horiz radian: ', &
+                     per_type_vert_norm(VERTISHEIGHT, i)
+               call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+            endif
+            if (per_type_vert_norm(VERTISLEVEL,       i) /= vert_normalization_level) then
+               write(msgstring,'(A,f17.5)') '  # model levels ~ 1 horiz radian: ', &
+                     per_type_vert_norm(VERTISLEVEL, i)
+               call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+            endif
+            if (per_type_vert_norm(VERTISSCALEHEIGHT, i) /= vert_normalization_scale_height) then
+               write(msgstring,'(A,f17.5)') ' # scale heights ~ 1 horiz radian: ', &
+                     per_type_vert_norm(VERTISSCALEHEIGHT, i)
+               call error_handler(E_MSG,'location_mod:',msgstring,source,revision,revdate)
+            endif
+         endif
+      enddo
+   endif
 endif
 
 ! Set up a lookup table for cos and sin for approximate but fast distances
@@ -1317,7 +1328,7 @@ else
 endif
 
 ! make a gtt type array for each different cutoff distance
-! (just 1 type is the most common case.)
+! (a single type is the most common case)
 allocate(gc%gtt(gc%nt))
 
 if (present(maxdist_list)) then
@@ -1545,21 +1556,40 @@ close_ind = -99
 if(present(dist)) dist = -99.0_r8
 this_dist = 999999.0_r8   ! something big.
 
-! map from type index to gtt index
-if (base_obs_type < 1 .or. base_obs_type > size(gc%type_to_cutoff_map)) then
-   write(msgstring,'(A,I8)')'base_obs_type out of range, is ', base_obs_type
-   write(msgstring1,'(A,2I8)')'must be between ', 1, size(gc%type_to_cutoff_map)
-   call write_location (0, base_obs_loc, charstring=msgstring2)
-   call error_handler(E_ERR, 'get_close_obs', msgstring, source, revision, revdate, &
-                      text2=msgstring1, text3=msgstring2)
-endif
-bt = gc%type_to_cutoff_map(base_obs_type)
-if (bt < 1 .or. bt > gc%nt) then
-   write(msgstring,'(A,I8)')'mapped type index out of range, is ', bt
-   write(msgstring1,'(A,2I8)')'must be between ', 1, gc%nt
-   write(msgstring2, '(A)')'internal error, should not happen.  Contact DART Support'
-   call error_handler(E_ERR, 'get_close_obs', msgstring, source, revision, revdate, &
-                      text2=msgstring1, text3=msgstring2)
+! handle identity obs correctly -- only support them if there are no
+! per-obs-type cutoffs.  identity obs don't have a specific type, they
+! only have a generic kind based on what index into the state vector is
+! specified.  if this is absolutely needed by someone, i can rejigger the
+! code to try to use the default cutoff for identity obs, but it's tricky
+! to identify which obs type is using the default.  in theory it's possible
+! to specify a default cutoff and then specify a per-type cutoff for every
+! other type in the system.  in that case i don't have a map entry for the
+! default, and it's a pain to construct one.  so i'm punting for now.
+if (base_obs_type < 0) then
+   if (gc%nt > 1) then
+      write(msgstring,  '(A)') 'no support for identity obs if per-obs-type cutoffs are specified'
+      write(msgstring1, '(A)') 'contact dart support if you have a need for this combination'
+      call error_handler(E_ERR, 'get_close_obs', msgstring, source, revision, revdate, &
+                         text2=msgstring1)
+   endif
+   bt = 1
+else
+   ! map from type index to gtt index
+   if (base_obs_type < 1 .or. base_obs_type > size(gc%type_to_cutoff_map)) then
+      write(msgstring,'(A,I8)')'base_obs_type out of range, is ', base_obs_type
+      write(msgstring1,'(A,2I8)')'must be between ', 1, size(gc%type_to_cutoff_map)
+      call write_location (0, base_obs_loc, charstring=msgstring2)
+      call error_handler(E_ERR, 'get_close_obs', msgstring, source, revision, revdate, &
+                         text2=msgstring1, text3=msgstring2)
+   endif
+   bt = gc%type_to_cutoff_map(base_obs_type)
+   if (bt < 1 .or. bt > gc%nt) then
+      write(msgstring,'(A,I8)')'mapped type index out of range, is ', bt
+      write(msgstring1,'(A,2I8)')'must be between ', 1, gc%nt
+      write(msgstring2, '(A)')'internal error, should not happen.  Contact DART Support'
+      call error_handler(E_ERR, 'get_close_obs', msgstring, source, revision, revdate, &
+                         text2=msgstring1, text3=msgstring2)
+   endif
 endif
 
 ! the list of locations in the locs() argument must be the same
