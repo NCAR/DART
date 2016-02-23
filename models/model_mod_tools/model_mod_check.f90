@@ -235,7 +235,7 @@ if ( test1thru == 3 ) call exit(0)
 ! Check the interpolation - print initially to STDOUT
 !----------------------------------------------------------------------
 
-call print_test_message('RUNNING TEST 3', &
+call print_test_message('RUNNING TEST 4', &
                         'Testing loc_of_interest for model_interpolate')
 
 call create_state_window(ens_handle)
@@ -260,7 +260,7 @@ call print_test_message('FINISHED TEST 4')
 
 if ( test1thru == 4 ) call exit(0)
 
-call print_test_message('RUNNING TEST 3', &
+call print_test_message('RUNNING TEST 5', &
                         'Testing range of data for model_interpolate')
 
 num_failed = test_interpolate_range( ens_handle,            &
