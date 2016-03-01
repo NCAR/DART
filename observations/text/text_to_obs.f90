@@ -8,11 +8,14 @@ program text_to_obs
 
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
-!   text_to_obs - a program that only needs minor customization to read
-!      in a text-based dataset - either white-space separated values or
+!   text_to_obs - an example program to create DART format observations
+!      from a text-based input data file.  see below for where to adapt
+!      the read routine to match your white-space separated values or 
 !      fixed-width column data.
 !
 !     created 29 Mar 2010   nancy collins NCAR/IMAGe
+!     updated  8 Feb 2016   minor changes to wind conversion, and updated
+!                           comments to try to be more helpful.
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
@@ -50,7 +53,7 @@ real(r8) :: lat, lon, vert, uwnd, uerr, vwnd, verr
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
-type(time_type)         :: comp_day0, time_obs, prev_time
+type(time_type)         :: ref_day0, time_obs, prev_time
 
 ! start of executable code
 
@@ -59,10 +62,13 @@ call initialize_utilities('text_to_obs')
 ! time setup
 call set_calendar_type(GREGORIAN)
 
-!! some times are supplied as number of seconds since some reference
-!! date.  This is an example of how to support that.
-!! put the reference date into DART format
-!comp_day0 = set_date(1970, 1, 1, 0, 0, 0)
+!! Some times are supplied as number of seconds since some reference
+!! date.  To support that, set a base/reference time and then add
+!! the number of seconds to it.  (time_types support adding two time
+!! types together, or adding a scalar to a time_type.)
+!! Here is an example of setting a reference date, giving the
+!! call: year, month, day, hours, mins, secs
+!ref_day0 = set_date(1970, 1, 1, 0, 0, 0)
 
 ! open input text file
 
@@ -116,7 +122,8 @@ obsloop: do    ! no end limit - have the loop break when input ends
    !  error: very important - the instrument error plus representativeness error
    !        (see html file for more info)
 
-   ! assume here a line is a type (1/2), location, time, value, obs error
+   ! the code here assumes an input line has: a type (1/2), location, time, value, obs error
+   ! **this is probably where you will need to adapt this code for your input data values**
 
    ! read in entire text line into a buffer
    read(iunit, "(A)", iostat=rcio) input_line
@@ -134,9 +141,10 @@ obsloop: do    ! no end limit - have the loop break when input ends
    
    if (debug) print *, 'next observation type = ', otype
 
-   ! for this example, assume there is an obs type, where otype=1 is
-   ! a temperature measured in height, and if otype=2, there's a wind
-   ! speed and direction.
+   ! for this example, assume there is an obs type, where otype=1 is 
+   ! temperature measured at a location and a vertical height, 
+   ! and if otype=2, a wind speed and direction in degrees (0-360)
+   ! measured at a location and a vertical pressure.
 
    if (otype == 1) then
       read(input_line(3:129), *, iostat=rcio) lat, lon, vert, &
@@ -158,7 +166,8 @@ obsloop: do    ! no end limit - have the loop break when input ends
    
    if (debug) print *, 'next observation located at lat, lon = ', lat, lon
 
-   ! check the lat/lon values to see if they are ok
+   ! check the lat/lon values to see if they are ok.  we require
+   ! longitudes to be 0 to 360.
    if ( lat >  90.0_r8 .or. lat <  -90.0_r8 ) cycle obsloop
    if ( lon <   0.0_r8 .or. lon >  360.0_r8 ) cycle obsloop
 
@@ -172,15 +181,15 @@ obsloop: do    ! no end limit - have the loop break when input ends
 
    if (debug) call print_date(time_obs, 'next obs time is')
 
-   !! if time is given in seconds since 1/1/1970, here's how to add it.
-   !time_obs = comp_day0 + time_obs
+   !! if time is given in seconds since some date, here's how to add it.
+   !time_obs = ref_day0 + time_obs
 
    ! extract time of observation into gregorian day, sec.
    call get_time(time_obs, osec, oday)
 
    ! this example assumes there is an obs type, where otype=1 is
-   ! a temperature measured in height, and if otype=2, there's a wind
-   ! speed and direction and height is pressure.  any kind of observation
+   ! a temperature measured in height, and if otype=2, a wind speed
+   ! and direction with a vertical value in pressure.  any observation
    ! can use any of the vertical types; this is just an example.
 
    if (otype == 1) then
@@ -195,15 +204,20 @@ obsloop: do    ! no end limit - have the loop break when input ends
       if (debug) print *, 'added temperature obs to output seq'
    else
 
-      ! DART usually assimilates wind as 2 separate U and V components
-      ! instead of trying to assimilate a vector of speed and direction.
-      ! so convert a wind speed & direction into the U and V components
+      ! DART assimilates wind as 2 separate U and V components.  assimilating
+      ! "direction and speed" is difficult because direction is measured in 
+      ! cyclic coordinates so you can't do simple statistics to get a mean value.
+
+      ! convert a wind speed & direction into the U and V components
       ! and create 2 obs for it.  assume vert is in mb or hectopascals,
-      ! convert to pascals.  DART does assume all pressures are in pascals.
-      uwnd = sin(wdir * DEG2RAD) * wspeed
-      vwnd = cos(wdir * DEG2RAD) * wspeed
-      uerr = sin(wdir * DEG2RAD) * werr
-      verr = cos(wdir * DEG2RAD) * werr
+      ! convert to pascals.  DART assumes all pressures are in pascals.
+      ! check your data source; usually wind direction is specified as the 
+      ! direction the wind is coming from, increasing degrees going in a 
+      ! clockwise circle.  U and V wind components have the opposite sign.
+      uwnd = sin(wdir * DEG2RAD) * wspeed * -1.0_r8
+      vwnd = cos(wdir * DEG2RAD) * wspeed * -1.0_r8
+      uerr = werr
+      verr = werr
 
       ! convert hectopascals to pascals.
       vert = vert * 100.0_r8
