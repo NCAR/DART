@@ -20,10 +20,12 @@ You can select how many ensemble members you want to do, by default this is
 set to 32.
 
 The smaller files are here in this directory. It is suggested that new users
-build the input files from scratch following guidance in the WRF-DART wiki. 
-Send an e-mail to dart@ucar.edu to access the wiki site if you are not currently
-a subscriber. Otherwise, the large data files (observations, WPS processed files 
-and run output) are on the DART web server, at this http address:
+build the input files from scratch following guidance here:
+
+http://www.image.ucar.edu/wrfdart/tutorial
+
+The large data files (observations, WPS processed files and 
+run output) are on the DART web server, at this http address:
 
 http://www.image.ucar.edu/pub/DART/WRF/regression/CONUS-V3
 
