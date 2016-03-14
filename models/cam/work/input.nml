@@ -11,20 +11,21 @@
 !
 ! https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/cam/model_mod.html
 !
-! for recommendations on namlist settings for CAM. It has examples on configurations
+! for recommendations on namelist settings for CAM. It has examples on configurations
 ! for taking a single state and creating an ensemble, differences between using
 ! the FV core or SE core ... variable resolution grids, etc.
 
 ! ens_size, num_output_*  will be (re)set by the setup script
 
-! To use a pre-existing ensemble make the changes below:
-! (this includes the second step after starting from a single
-! ensemble member.)
+! To use a pre-existing ensemble search for the following variables
+! and make the following changes
+! (This applies to the second cycle after starting from a single ensemble member.)
 !    start_from_restart          = .true.,
 !    restart_in_file_name        = "filter_ics",
 !    inf_initial_from_restart    = .true.,                 .false.,
 !    inf_sd_initial_from_restart = .true.,                 .false.,
 !    single_restart_file_in      = .false.,
+! Also search for 'single model state' to make changes in model_nml.
 
 &filter_nml
    async                    = 0,
@@ -193,10 +194,12 @@
 !     highest_obs_pressure_Pa         = .0001,
 !     highest_state_pressure_Pa       = .01,
 !
-! Creation of initial ensemble from a single state.
-! pert_sd > 0 allows each point of the pert_names fields of each ens member 
-!   to be randomly perturbed with a standard deviation of pert_sd.  
-!   Used by filter's call to pert_model_state.
+! Creation of initial ensemble from a single model state.
+!     pert_names lists the state variables to be perturbed to make the ensemble.
+!                Providing an empty list is one of the changes to use an existing ensemble.
+!     pert_sd > 0 allows each point of the pert_names fields of each ens member 
+!             to be randomly perturbed with a standard deviation of pert_sd.  
+!     Used by filter's call to pert_model_state.
 !
 #========================================================================
 # CAM-FV Section
@@ -222,12 +225,12 @@
    which_vert_1d       = 0,
    which_vert_2d       = -1,
    which_vert_3d       = 6*1,
-   vert_coord          = 'pressure'
+   vert_coord          = 'log_invP'
    pert_names          = 'T'
    pert_sd             = 0.1,
    pert_base_vals      = -888888.0d0,
-   highest_obs_pressure_Pa   = 1000.0,
-   highest_state_pressure_Pa = 9400.0,
+   highest_obs_pressure_Pa   = 1.0,
+   highest_state_pressure_Pa = 0.0,
    max_obs_lat_degree        = 90.0,
    Time_step_seconds         = 21600,
    Time_step_days            = 0,
@@ -239,10 +242,10 @@
    vert_normalization_pressure = 20000.0, 
    vert_normalization_height   = 10000.0,
    vert_normalization_level    = 20.0,
-   vert_normalization_scale_height    = 2.5,
+   vert_normalization_scale_height    = 1.5,
    approximate_distance        = .true.,
-   nlon                        = 71, 
-   nlat                        = 36,
+   nlon                        = 141, 
+   nlat                        = 72,
    output_box_info             = .false.,
    print_box_level             = 0,
    /
@@ -445,7 +448,7 @@
    time_to_skip     =     0, 0, 1, 0, 0, 0 ,
    max_num_bins     = 1000,
    trusted_obs      = 'null',
-   plevel = 1000.,850.,700.,500.,400.,300.,200.,150.,100.
+   plevel = 1000.,850.,700.,500.,400.,300.,200.,150.,100.,50.,20.
    Nregions   = 4,
    lonlim1    =   0.0,   0.0,   0.0, 235.0,
    lonlim2    = 360.0, 360.0, 360.0, 295.0,
