@@ -81,10 +81,10 @@ cd $RUNDIR
 
 # Move any hidden restart sets back into the run directory so they can be used or purged.
 set echo verbose
-ls -d Hide*
+ls -d ../Hide*
 if ($status == 0) then
-   $MOVE Hide*/* .
-   rmdir Hide*
+   $MOVE ../Hide*/* .
+   rmdir ../Hide*
 endif
 
 # Cwd is currently RUNDIR.
