@@ -5195,7 +5195,8 @@ call plevs_cam(P0%vals(1), num_levs, p_col)
 !    highest_obs_level = highest_obs_level + 1
 ! enddo
 High: do highest_obs_level=1,num_levs
-   if (p_col(highest_obs_level) > highest_obs_pressure_Pa) exit High
+   if (p_col(highest_obs_level) > highest_obs_pressure_Pa .or. &
+       highest_obs_level == num_levs) exit High
 enddo High
 
 ! Test to be sure user hasn't set level so low that contributions from
@@ -5771,7 +5772,7 @@ elseif (old_which == VERTISHEIGHT) then
 !      bot_lev = bot_lev + 1
 !   end do
    Bottom: do bot_lev = 2,num_levs
-      if (old_array(3) > model_h(bot_lev)) exit Bottom
+      if (old_array(3) > model_h(bot_lev) .or. bot_lev == num_levs) exit Bottom
    end do Bottom
    top_lev = bot_lev - 1
 
