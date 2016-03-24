@@ -194,19 +194,11 @@ type(time_type)       :: model_time      ! valid time of the model state
 type(time_type)       :: model_timestep  ! smallest time to adv model
 real(r8), allocatable :: ens_mean(:)     ! may be needed for forward ops
 
-! set this to true if you want to print out the current time
-! after each N observations are processed, for benchmarking.
-
-logical :: print_timestamps = .false.
-integer :: print_every_Nth  = 10000
-
 integer, parameter :: nGhost = 2   ! number of ghost cells on all edges
 
 !------------------------------------------------------------------
 ! The gitm restart manager namelist variables
 !------------------------------------------------------------------
-
-character(len= 64) :: ew_boundary_type, ns_boundary_type
 
 INTERFACE vector_to_prog_var
       MODULE PROCEDURE vector_to_1d_prog_var

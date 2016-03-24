@@ -309,8 +309,6 @@ real(r8),            intent(in) :: x(:)
 type(location_type), intent(in) :: location
 real(r8),           intent(out) :: obs_val
 integer,            intent(out) :: istatus
-real(r8)                        :: mmro1, mmro2 ! mass mixing ratio 
-real(r8)                        :: pressure, temperature 
 
 if ( .not. module_initialized ) call initialize_module
 
