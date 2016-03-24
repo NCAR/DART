@@ -85,10 +85,10 @@ integer :: model_size
 logical :: module_initialized = .false.
 
 ! Global storage for default restart formats
-character(len = 16) :: read_format = "unformatted", write_format = "unformatted"
+character(len=16) :: read_format = "unformatted", write_format = "unformatted"
 
 ! Global storage for error string output
-character(len = 129)  :: msgstring
+character(len=512)  :: msgstring
 
 !-------------------------------------------------------------
 ! Namelist with default values
@@ -210,7 +210,7 @@ character(len=*), intent(in) :: meta_data_per_copy(copies_of_field_per_time)
 integer, OPTIONAL,intent(in) :: lagID
 type(netcdf_file_type)       :: ncFileID
 
-integer :: i, metadata_length, nlines, linelen, createmode
+integer :: i, metadata_length, nlines, linelen, createmode, oldmode
 
 integer ::   MemberDimID,   MemberVarID     ! for each "copy" or ensemble member
 integer ::     TimeDimID,     TimeVarID
@@ -294,8 +294,13 @@ call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_source", sou
               'init_diag_output', 'put_att assim_model_source '//trim(ncFileID%fname))
 call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revision", revision ), &
               'init_diag_output', 'put_att assim_model_revision '//trim(ncFileID%fname))
+
 call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revdate", revdate ), &
               'init_diag_output', 'put_att assim_model_revdate '//trim(ncFileID%fname))
+
+msgstring = nf90_inq_libvers()
+call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "netcdf_version", trim(msgstring) ), &
+              'init_diag_output', 'put_att netcdf_version '//trim(ncFileID%fname))
 
 if (present(lagID)) then
    call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "lag", lagID ), &
@@ -320,7 +325,6 @@ call nc_check(nf90_put_att(ncFileID%ncid, MemberVarID, "units",     "nondimensio
               'init_diag_output', 'units')
 call nc_check(nf90_put_att(ncFileID%ncid, MemberVarID, "valid_range", &
               (/ 1, copies_of_field_per_time /)), 'init_diag_output', 'put_att valid_range')
-
 
 !    Metadata for each Copy
 call nc_check(nf90_def_var(ncid=ncFileID%ncid,name="CopyMetaData", xtype=nf90_char,    &
@@ -353,7 +357,12 @@ allocate(ncFileID%rtimes(ncFileID%NtimesMAX), ncFileID%times(ncFileID%NtimesMAX)
 
 !-------------------------------------------------------------------------------
 ! Leave define mode so we can fill
+! Set the NOFILL ... noticeable performance gain from not prefilling.
+! Tests with WRF & POP show bit-for-bit under 'classic' storage layer.
 !-------------------------------------------------------------------------------
+
+i = nf90_set_fill(ncFileID%ncid, NF90_NOFILL, oldmode)
+call nc_check(i, 'init_diag_output', 'set_fill NOFILL on '//trim(ncFileID%fname))
 call nc_check(nf90_enddef(ncFileID%ncid), 'init_diag_output', 'enddef '//trim(ncFileID%fname))
 
 !-------------------------------------------------------------------------------
