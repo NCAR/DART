@@ -2190,6 +2190,17 @@ Set this namelist item to .false. to recover the previous behavior.</li>
 <li>Several more places where large arrays were put on the stack
 have been removed, decreasing the total amount of stack required by DART.
 </li>
+<br />
+
+<li>Performance Improvement
+   <ul><li>As of rev 9977 (24 Mar 2016) the creation of the 
+       <em class=file>Prior_Diag.nc</em> and <em class=file>Posterior_Diag.nc</em> 
+       should be faster and bitwise compatible.  DART's usage pattern allows us to 
+       skip the 'pre-filling' of the diagnostic netCDF variables since we completely 
+       fill the entire hyperslab when we write.  This has been observed to be up to 
+       10% faster for single-cycle assimilations! This is essentially a one-line change
+       in <em class=code>assim_model_mod:init_diag_output</em></li></ul>
+</li>
 
 </ul>
 
