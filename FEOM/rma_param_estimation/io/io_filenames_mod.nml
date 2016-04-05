@@ -1,8 +1,0 @@
-&io_filenames_nml
-   restart_in_stub  = 'input'
-   restart_out_stub = 'output'
-   overwrite_input  = .false.
-   domain_extension = .false.
-   rpointer         = .false.
-   rpointer_file    = 'null'
-/

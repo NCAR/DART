@@ -1,4 +1,0 @@
-&dart_to_ncommas_nml
-   dart_to_ncommas_input_file = 'dart.ic',
-   advance_time_present   = .false.  /
-

@@ -1,7 +1,0 @@
-&compare_states_nml
-  fieldnames = '', 
-  fieldlist_file = '',
-  fail_on_missing_field = .true.,
-  debug = .false., 
-/
-

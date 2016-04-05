@@ -1,9 +1,0 @@
-&location_nml
- /
-
-&utilities_nml
- module_details = .false.,
- /
-
-&obs_kind_nml
- /

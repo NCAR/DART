@@ -1,4 +1,0 @@
-&utilities_nml
-   TERMLEVEL = 1,
-   logfilename = 'dart_log.out'  /
-

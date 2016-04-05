@@ -1,5 +1,0 @@
-&dart_to_clm_nml
-   dart_to_clm_output_file      = 'dart_restart',
-   advance_time_present         = .false.,
-   /
-

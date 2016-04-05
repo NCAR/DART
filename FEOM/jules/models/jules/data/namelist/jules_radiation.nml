@@ -1,7 +1,0 @@
-&jules_radiation
-l_albedo_obs=.false.,
-l_cosz=.true.,
-l_snow_albedo=.false.,
-l_spec_alb_bs=.false.,
-l_spec_albedo=.true.,
-/

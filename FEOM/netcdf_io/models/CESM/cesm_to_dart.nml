@@ -1,4 +1,0 @@
-&cesm_to_dart_nml
-   cesm_to_dart_output_file = 'dart_ics'
-   /
-

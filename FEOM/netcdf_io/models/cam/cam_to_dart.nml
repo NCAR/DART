@@ -1,5 +1,0 @@
-
-&cam_to_dart_nml
-   cam_to_dart_input_file  = 'caminput.nc',
-   cam_to_dart_output_file = 'dart_ics', 
-   /

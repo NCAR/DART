@@ -1,9 +1,0 @@
-&jules_initial
-const_val=0.0,275.0,10.0,0.0,50.0,0.75,0.75,278.0,
-dump_file=.true.,
-file='./jules_restart.nc',
-nvars=8,
-total_snow=.true.,
-use_file=8*.true.,
-var='canopy','tstar_tile','cs','gs','rgrain','snow_tile','sthuf','t_soil',
-/

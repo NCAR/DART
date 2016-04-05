@@ -1,7 +1,0 @@
-This runs a 10-member ensemble test.
-
-You just need to copy over a filter executable
-and if you need to deal with a queue system
-edit the runme script.
-
-It does not try to do a WRF model advance.

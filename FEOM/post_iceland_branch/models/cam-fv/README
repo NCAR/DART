@@ -1,8 +1,0 @@
-This directory was imported from lightning:~arellano/Iceland/DART/models/cam.
-It's name was changed to reflect the new model_mod.f90 for the Finite Volume core
-of CAM.  
-
-The CVS directory will be incorrect, so Tim will need to commit this new directory
-and it will have to be re-updated in order to use CVS commands on it.
-This should be done into Pre-J, so that imminent users (4/19/06) will get it.
-

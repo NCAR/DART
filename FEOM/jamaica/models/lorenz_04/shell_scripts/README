@@ -1,7 +1,0 @@
-All of the csh_*.s scripts and the coseq.pl script
-should be moved into the work directory before running
-experiments.  
-
-If the user executes a make clean in the work directory
-the csh_*.s files will be deleted and it will be necessary 
-to copy them into the work directory again.

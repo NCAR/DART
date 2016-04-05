@@ -1,6 +1,0 @@
-&dart_to_cosmo_nml
-   dart_output_file         = 'dart.ud',
-   advance_time_present     = .false.,
-   new_cosmo_analysis_file  = 'out.grb'
-   /
-

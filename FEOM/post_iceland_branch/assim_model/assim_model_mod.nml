@@ -1,3 +1,0 @@
-&assim_model_nml
-   write_binary_restart_files = .true. /
-

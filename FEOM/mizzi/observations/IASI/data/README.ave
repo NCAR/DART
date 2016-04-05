@@ -1,5 +1,0 @@
-This directory was derived from text directory. 
-I modified this directory to read IASI data from
-a IDL code Gabi wrote (reading HDF to ascii).
-Some of the text/comments may still be coming
-from original text files

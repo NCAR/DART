@@ -1,5 +1,0 @@
-&dart_to_cam_nml
-   dart_to_cam_input_file  = 'dart_ics',
-   dart_to_cam_output_file = 'caminput.nc',
-   advance_time_present    = .true.,
-   /

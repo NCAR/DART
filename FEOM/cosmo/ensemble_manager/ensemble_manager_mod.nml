@@ -1,5 +1,0 @@
-&ensemble_manager_nml
-   single_restart_file_in  = .true.,
-   single_restart_file_out = .true.,
-   perturbation_amplitude  = 0.2  /
-

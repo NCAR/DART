@@ -1,5 +1,0 @@
-models/bgrid_solo/pressure_col_rand.f90
-random_seq/random_seq_mod.f90
-random_nr/random_nr_mod.f90
-utilities/utilities_mod.f90
-types_mod/utilities_mod.f90

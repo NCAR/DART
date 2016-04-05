@@ -1,2 +1,0 @@
-../../../mkmf/mkmf -p create_real_network_seq -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
- -a "../../.." path_names_create_real_network_seq

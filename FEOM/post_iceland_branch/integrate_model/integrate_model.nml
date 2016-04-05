@@ -1,6 +1,0 @@
-&integrate_model_nml
-   target_time_days = -1,
-   target_time_seconds = -1,
-   ic_file_name = "temp_ic",
-   ud_file_name = "temp_ud"  /
-
