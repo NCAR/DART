@@ -1,0 +1,21 @@
+
+# DART $Id$
+
+The programs in this directory are used to convert binary BUFR files
+into a format that works on Intel-processor based machines (e.g. Linux
+clusters, SGI Altix systems).  They are not needed on IBM Power systems.
+
+The main program is 'grabbufr', but it may need to be edited slightly to
+run on your system.  First try compiling and running it as-is.  If it does
+not work, use the 2 test programs 'stat_test' and 'arg_test' to diagnose
+what changes should be made to the grabbufr.f source.
+
+To compile 'grabbufr' you can look at the 'convert_bufr.csh' script, or
+you can just compile it with your standard fortran compiler, adding in
+the ../lib/bufrlib.a file.
+
+The test programs are self-contained and require no additional libs.
+
+
+
+

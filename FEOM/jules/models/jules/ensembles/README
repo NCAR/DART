@@ -1,0 +1,5 @@
+The ensembles (40) are generated from a single JULES restart file (./original_restart.nc). 
+The restart file is the result of a point scale JULES spinup run (20 cycles over the year 2014). 
+JULES namelist files for this run can be found in the ./namelist directiry. 
+Only soil moisture (sthuf) is perturbed to generate the ensembles.
+Date and time of the ensembles (yyyy-mm-dd-hh-mm-ss) : 2014-01-01-00-00-00

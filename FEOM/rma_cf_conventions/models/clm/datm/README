@@ -1,0 +1,51 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+
+The coupler history files produced by the CAM assimilation are 
+HPSS:/RAEDER/DAI/POP_force/POP15/obs_####/H_cplr.ha2x1d.gz.tar 
+
+bluefire:/ptmp/raeder/POP_force/doy_table_1997-2010 is required to
+decode the #### in the file names. Here is the synopsis.
+
+1998   1/ 1,  1/16,  1/31:   32 -  47 -  62
+1999   1/ 1,  1/16,  1/31:  397 - 412 - 427
+2000   1/ 1,  1/16,  1/31:  762 - 777 - 792
+2001   1/ 1,  1/16,  1/31:  1128 - 1143 - 1158
+2002   1/ 1,  1/16,  1/31:  1493 - 1508 - 1523
+2003   1/ 1,  1/16,  1/31:  1858 - 1873 - 1888
+2004   1/ 1,  1/16,  1/31:  2223 - 2238 - 2253
+2005   1/ 1,  1/16,  1/31:  2589 - 2604 - 2619
+2006   1/ 1,  1/16,  1/31:  2954 - 2969 - 2984
+2007   1/ 1,  1/16,  1/31:  3319 - 3334 - 3349
+2008   1/ 1,  1/16,  1/31:  3684 - 3699 - 3714
+2009   1/ 1,  1/16,  1/31:  4050 - 4065 - 4080
+2010   1/ 1,  1/16,  1/31:  4415 - 4430 - 4445
+
+tar -x -f H_cplr.ha2x1d.gz.tar
+tar -x -f H_cplr.ha2x1dx6h.gz.tar
+gunzip CAM_halo-O2-POP15-E#.cpl.ha2x1dx6h.YYYY-MM-DD.nc.gz
+  E#   = ensemble member
+  YYYY = year
+  MM   = month
+  DD   = day
+
+These have all the forcing fields written out from CAM, but since
+each one resulted from a cold-start of CAM, they all have the
+same time array ...  time = 0.25, 0.5, 0.75, 1 ; which (surprisingly)
+has no "units" metadata.
+
+Ultimately, we want to repackage these into annual files (about 1.8Gb),
+one per ensemble member. This requires us to overwrite the existing 
+time information such that the time variable in each file has the same
+units, i.e.,   time:units = "days since ${year}-01-01 00:00:00" ;
+
+While we're at it, I'm also including a 'time_bnds' array that defines
+the start and stop of the averaging period.
+
+GetCPLHISTdata.lsf      ... acquires and unpacks the data from the HPSS
+Process6hrlyCPLHIST.csh ... corrects the time array data/metadata and packages into a month
+AppendMonths.csh        ... packs all the days for a month into one annual file
+

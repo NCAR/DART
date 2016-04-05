@@ -1,0 +1,22 @@
+ obs_sequence
+obs_kind_definitions
+           1
+           2 RADIOSONDE_V_WIND_COMPONENT     
+  num_copies:            2  num_qc:            1
+  num_obs:            1  max_num_obs:            1
+observations                                                    
+truth                                                           
+Quality Control                                                 
+  first:            1  last:            1
+ OBS            1
+   2.9376011868235796     
+   2.9376011868235796     
+   1000.0000000000000     
+          -1          -1          -1
+obdef
+loc3d
+    0.6134401292493884       -0.8895471984870280         1000000.000000000      2
+kind
+           2
+     0          0
+   1.0000000000000000     

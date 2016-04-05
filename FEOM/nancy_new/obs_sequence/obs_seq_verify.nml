@@ -1,0 +1,13 @@
+
+&obs_seq_verify_nml
+   obs_sequences     = 'obs_seq.forecast.2008060100','obs_seq.forecast.2008060112'
+   obs_sequence_list = ''
+   input_template    = 'obsdef_mask.nc'
+   netcdf_out        = 'forecast.nc'
+   obtype_string     = 'RADIOSONDE_TEMPERATURE'
+   calendar          = 'gregorian'
+   verbose           = .true.
+   debug             = .false.
+   print_every       = 10000
+   /
+

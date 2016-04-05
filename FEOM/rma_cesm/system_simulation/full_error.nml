@@ -1,0 +1,6 @@
+
+&full_error_nml
+ens_size = 80, 
+output_filename = 'final_full',
+/ 
+

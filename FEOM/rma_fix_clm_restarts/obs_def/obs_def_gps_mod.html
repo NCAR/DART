@@ -1,0 +1,525 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module obs_def_gps_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE <em class=program>obs_def_gps_mod</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+DART GPS Radio Occultation observation module, including the observation operators for both
+local and non-local refractivity computations.
+</P>
+<P>
+Author and Contact information: 
+</P>
+<UL>
+<LI>GPS Science:  Hui Liu, hliu at ncar.edu</LI>
+<LI>DART Code:  Nancy Collins, nancy at ucar.edu</LI>
+</UL>
+
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>This namelist is now enabled by default.  The maximum number of
+GPS observations is settable at runtime by changing the value in
+the namelist.  If you get an error about a missing namelist add
+<em class=code>&amp;obs_def_gps_nml</em> using the example below 
+to your <em class=file>input.nml</em> namelist file and rerun.  
+No recompiling is needed.
+</P> <P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;obs_def_gps_nml
+  max_gpsro_obs = 100000,
+/ 
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR><TD>max_gpsro_obs</TD>
+    <TD>integer</TD>
+    <TD> The maximum number of GPS refractivity observations supported
+for a single execution.  Generally the default will be sufficient
+for a single run of filter, but not enough for a long diagnostics
+run to produce a time series.
+</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<!--==================================================================-->
+
+<A NAME="OtherModulesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+location_mod (threed_sphere)
+assim_model_mod
+obs_kind_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC INTERFACES</H2>
+
+<TABLE>
+<TR><TD><em class=call>use obs_def_gps_mod, only : </em></TD>
+                   <TD><A HREF="read_gpsro_ref">read_gpsro_ref</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="write_gpsro_ref">write_gpsro_ref</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="get_expected_gpsro_ref">get_expected_gpsro_ref</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="interactive_gpsro_ref">interactive_gpsro_ref</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="set_gpsro_ref">set_gpsro_ref</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="get_gpsro_ref">get_gpsro_ref</A></TD></TR>
+</TABLE>
+
+<P>
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
+   <em class=optionalcode>[like this]</em>.
+</P>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="read_gpsro_ref"></A>
+<br>
+<div class=routine>
+<em class=call> call read_gpsro_ref(gpskey, ifile,
+      <em class=optionalcode>[, fform]</em>) </em>
+<pre>
+integer,          intent(out)          :: <em class=code>gpskey</em>
+integer,          intent(in)           :: <em class=code>ifile</em>
+character(len=*), intent(in), optional :: <em class=optionalcode>fform</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Refractivity observations have several items of auxiliary data to read or write.
+This routine reads in the data for the next observation and returns
+the private GPS key index number that identifies the auxiliary data
+for this observation. 
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>gpskey&nbsp;&nbsp;</em></TD>
+    <TD>GPS key number returned to the caller.</TD></TR>
+<TR><TD valign=top><em class=code>ifile</em></TD>
+    <TD>Open file unit number to read from.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>fform</em></TD>
+    <TD>If specified, indicate whether the file was opened
+        formatted or unformatted.  Default is 'formatted'.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="write_gpsro_ref"></A>
+<br>
+<div class=routine>
+<em class=call> call write_gpsro_ref(gpskey, ifile,
+      <em class=optionalcode>[, fform]</em>) </em>
+<pre>
+integer,          intent(in)           :: <em class=code>gpskey</em>
+integer,          intent(in)           :: <em class=code>ifile</em>
+character(len=*), intent(in), optional :: <em class=optionalcode>fform</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Refractivity observations have several items of auxiliary data to read or write.
+This routine writes out the auxiliary data for the specified observation to the
+file unit given.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>gpskey&nbsp;&nbsp;</em></TD>
+    <TD>GPS key number identifying which observation to write aux data for.</TD></TR>
+<TR><TD valign=top><em class=code>ifile</em></TD>
+    <TD>Open file unit number to write to.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>fform</em></TD>
+    <TD>If specified, indicate whether the file was opened
+        formatted or unformatted.  Default is 'formatted'.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_expected_gpsro_ref"></A>
+<br>
+<div class=routine>
+<em class=call> call get_expected_gpsro_ref(state_vector, location, gpskey, ro_ref, istatus)</em>
+<pre>
+real(r8),            intent(in)  :: <em class=code>state_vector(:)</em>
+type(location_type), intent(in)  :: <em class=code>location</em>
+integer,             intent(in)  :: <em class=code>gpskey</em>
+real(r8),            intent(out) :: <em class=code>ro_ref</em>
+integer,             intent(out) :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given a location and the state vector from one of the ensemble members,
+compute the model-predicted GPS refractivity that would be observed
+at that location.  There are two types of operators: 
+modeled <em>local</em> refractivity (N-1)*1.0e6 or 
+<em>non_local</em> refractivity (excess phase, m)
+The type is indicated in the auxiliary information for each
+observation.
+<br>
+<br>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>state_vector&nbsp;&nbsp;</em></TD>
+    <TD>A one dimensional representation of the model state vector</TD></TR>
+<TR><TD valign=top><em class=code>location</em></TD>
+    <TD>Location of this observation</TD></TR>
+<TR><TD valign=top><em class=code>gpskey</em></TD>
+    <TD>Integer key identifying which GPS observation this is, so the
+        correct corresponding auxiliary information can be accessed.</TD></TR>
+<TR><TD valign=top><em class=code>ro_ref</em></TD>
+    <TD>The returned GPS refractivity value</TD></TR>
+<TR><TD valign=top><em class=code>istatus</em></TD>
+    <TD>Returned integer status code describing problems with applying
+        forward operator.  0 is a good value; any positive value
+        indicates an error; negative values are reserved for
+        internal DART use only.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="interactive_gpsro_ref"></A>
+<br>
+<div class=routine>
+<em class=call> call interactive_gpsro_ref(gpskey) </em>
+<pre>
+integer, intent(out) :: <em class=code>gpskey</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Prompts the user for the auxiliary information needed for a GPS
+refractivity observation, and returns the new key associated with this data.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>gpskey&nbsp;&nbsp;</em></TD>
+    <TD>Unique identifier associated with this GPS refractivity
+        observation.  In this code it is an integer index into module
+        local arrays which hold the additional data. This routine returns
+        the incremented value associated with this data.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="set_gpsro_ref"></A>
+<br>
+<div class=routine>
+<em class=call> call set_gpsro_ref(gpskey, nx, ny, nz, rfict0, ds, htop, subset0)</em>
+<pre>
+integer,          intent(out) :: <em class=code>gpskey</em>
+real(r8),         intent(in)  :: <em class=code>nx</em>
+real(r8),         intent(in)  :: <em class=code>ny</em>
+real(r8),         intent(in)  :: <em class=code>nz</em>
+real(r8),         intent(in)  :: <em class=code>rfict0</em>
+real(r8),         intent(in)  :: <em class=code>ds</em>
+real(r8),         intent(in)  :: <em class=code>htop</em>
+character(len=6), intent(in)  :: <em class=code>subset0</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Sets the auxiliary information associated with a GPS refractivity
+observation. This routine increments and returns the new key associated
+with these values.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>gpskey</em></TD>
+    <TD>Unique identifier associated with this GPS refractivity
+        observation.  In this code it is an integer index into module
+        local arrays which hold the additional data. This routine returns
+        the incremented value associated with this data.</TD></TR>
+<TR><TD valign=top><em class=code>nx</em></TD>
+    <TD>X component of direction of ray between the
+        LEO (detector) satellite and the GPS transmitter satellite
+        at the tangent point.</TD></TR>
+<TR><TD valign=top><em class=code>ny</em></TD>
+    <TD>Y component of tangent ray.</TD></TR>
+<TR><TD valign=top><em class=code>nz</em></TD>
+    <TD>Z component of tangent ray.</TD></TR>
+<TR><TD valign=top><em class=code>rfict0</em></TD>
+    <TD>Local curvature radius (meters).</TD></TR>
+<TR><TD valign=top><em class=code>ds</em></TD>
+    <TD>Delta S, increment to move along the ray in each direction
+        when integrating the non-local operator (meters).</TD></TR>
+<TR><TD valign=top><em class=code>htop</em></TD>
+    <TD>Elevation (in meters) where integration stops along
+        the ray.</TD></TR>
+<TR><TD valign=top><em class=code>subset0</em></TD>
+    <TD>The string 'GPSREF' for the local operator (refractivity computed
+        only at the tangent point), or 'GPSEXC' for the non-local operator
+        which computes excess phase along the ray.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_gpsro_ref"></A>
+<br>
+<div class=routine>
+<em class=call> call get_gpsro_ref(gpskey, nx, ny, nz, rfict0, ds, htop, subset0)</em>
+<pre>
+integer,          intent(in)  :: <em class=code>gpskey</em>
+real(r8),         intent(out) :: <em class=code>nx</em>
+real(r8),         intent(out) :: <em class=code>ny</em>
+real(r8),         intent(out) :: <em class=code>nz</em>
+real(r8),         intent(out) :: <em class=code>rfict0</em>
+real(r8),         intent(out) :: <em class=code>ds</em>
+real(r8),         intent(out) :: <em class=code>htop</em>
+character(len=6), intent(out) :: <em class=code>subset0</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Gets the auxiliary information associated with a GPS refractivity
+observation, based on the GPS key number specified.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>gpskey</em></TD>
+    <TD>Unique identifier associated with this GPS refractivity
+        observation.  In this code it is an integer index into module
+        local arrays which hold the additional data. The value specified
+        selects which observation to return data for.</TD></TR>
+<TR><TD valign=top><em class=code>nx</em></TD>
+    <TD>X component of direction of ray between the
+        LEO (detector) satellite and the GPS transmitter satellite
+        at the tangent point.</TD></TR>
+<TR><TD valign=top><em class=code>ny</em></TD>
+    <TD>Y component of tangent ray.</TD></TR>
+<TR><TD valign=top><em class=code>nz</em></TD>
+    <TD>Z component of tangent ray.</TD></TR>
+<TR><TD valign=top><em class=code>rfict0</em></TD>
+    <TD>Local curvature radius (meters).</TD></TR>
+<TR><TD valign=top><em class=code>ds</em></TD>
+    <TD>Delta S, increment to move along the ray in each direction
+        when integrating the non-local operator (meters).</TD></TR>
+<TR><TD valign=top><em class=code>htop</em></TD>
+    <TD>Elevation (in meters) where integration stops along
+        the ray.</TD></TR>
+<TR><TD valign=top><em class=code>subset0</em></TD>
+    <TD>The string 'GPSREF' for the local operator (refractivity computed
+        only at the tangent point), or 'GPSEXC' for the non-local operator
+        which computes excess phase along the ray.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL><LI>A DART observation sequence file containing GPS obs.
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<UL>
+<LI>Assimilation of GPS Radio Occultation Data for Numerical Weather
+Prediction, Kuo,Y.H., Sokolovskiy,S.V., Anthes,R.A., Vendenberghe,F.,
+Terrestrial Atm and Ocn Sciences, Vol 11, pp157-186, 2000.
+</LI>
+</UL>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>initialize_module</TD>
+    <!-- message --><TD VALIGN=top>initial allocation failed for gps observation data,
+                       itemcount = (max_gpsro_obs)</TD>
+    <!-- comment --><TD VALIGN=top>Need to increase max_gpsro_obs count in namelist</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>gpskey_out_of_range</TD>
+    <!-- message --><TD VALIGN=top>gpskey (key#) exceeds max_radial_gps_obs (maxval)</TD>
+    <!-- comment --><TD VALIGN=top>The number of GPS observations exceeds 
+                                   the array size allocated in the module. 
+                                   Need to increase max_gpsro_obs count in namelist.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>read_gpsro_ref</TD>
+    <!-- message --><TD VALIGN=top>Expected header 'gpsroref' in input file</TD>
+    <!-- comment --><TD VALIGN=top>The format of the input obs_seq file is not consistent.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>get_expected_gpsro_ref</TD>
+    <!-- message --><TD VALIGN=top>vertical location must be height; gps obs key #</TD>
+    <!-- comment --><TD VALIGN=top>GPS observations must have vertical coordinates of height</TD>
+</TR>
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+The current code first bins the very densely-sampled vertical profile into
+200 bins, and then interpolates the requested vertical location from that.
+The original profiles have been plotted and are smooth; there appears to be
+no need to pre-bin the ata.
+</P><P>
+The local operator needs no additional auxiliary data.  The observation
+files would be much smaller if the local operator observation was a separate
+type without aux data, and only the non-local operator observation types would
+need the ray direction, the curvature, etc.
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Nancy Collins, Hui Liu, Jeff Anderson </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

@@ -1,0 +1,505 @@
+2014-2-20
+Nancy forwarded a tip from Jerry Olson:
+cesm1_1_1/models/atm/cam/src/physics/cam/cam_diagnostics.F90
+
+this file was called SE_RUD_itwin1.cam_0001.r.2005-08-21-00000.head
+on bilbao (DAI/Homme) and in email.
+Renamed for clarity and future searches.
+
+--------------------------------------------
+2014-1-10
+
+I just compared the fields in the restart file with the (variations of the)
+names in the atm log file.  I identified most variables to varying degrees.
+The remaining fields have information from the source code.
+
+I had to dig for the 'dp' prefix:
+The dpVAR 'duplicates' appear to be 'coupled' tracer variables: dp * VAR,
+where dp is some sort of vertical pressure difference (forcing):
+
+./atm/cam/src/dynamics/homme/share/prim_driver_mod.F90
+        ! For new runs, and branch runs, convert state variable to (Qdp)
+    ! because initial conditon reads in Q, not Qdp
+    ! restart runs will read dpQ from restart file
+    ...
+    ! for restart runs, we read in Qdp for exact restart, and rederive Q
+             dp = ( hvcoord%hyai(k+1) - hvcoord%hyai(k) )*hvcoord%ps0 + &
+                  ( hvcoord%hybi(k+1) - hvcoord%hybi(k) )*elem(ie)%state%ps_v(i,j,t)
+             elem(ie)%state%Q(i,j,k,q,t)=elem(ie)%state%Qdp(i,j,k,q,t)/dp
+
+I interpret this as a layer thickness times a quantity density, yielding an
+amount of a quantity in a (vertical) grid box.
+
+./atm/cam/src/dynamics/homme/stepon.F90:
+
+      ! ftype=2:  apply forcing to Q,ps.  Return dynamics tendencies
+
+         ! apply forcing to states tl_f 
+         ! requires forward-in-time timestepping, checked in namelist_mod.F90
+!$omp parallel do private(k)
+         do k=1,nlev
+            dp(:,:,k) = ( hyai(k+1) - hyai(k) )*dyn_ps0 + &
+            ^^
+                 ( hybi(k+1) - hybi(k) )*dyn_in%elem(ie)%state%ps_v(:,:,tl_f)
+         enddo
+         do k=1,nlev
+            do j=1,np
+               do i=1,np
+                  do ic=1,pcnst
+                     ! back out tendency: Qdp*dtime 
+                     fq = dp(i,j,k)*(  dyn_in%elem(ie)%derived%FQ(i,j,k,ic,1) - &
+                          dyn_in%elem(ie)%state%Q(i,j,k,ic,tl_f))
+                     ! apply forcing to Qdp
+                    dyn_in%elem(ie)%state%Qdp(i,j,k,ic,tl_f) = &
+                                          ^^^
+                         dyn_in%elem(ie)%state%Qdp(i,j,k,ic,tl_f) + fq 
+                     dyn_in%elem(ie)%state%Qdp(i,j,k,ic,tl_f) = &
+                          dp(i,j,k)*dyn_in%elem(ie)%derived%FQ(i,j,k,ic,1)
+
+
+./atm/cam/src/dynamics/homme/share/prim_advection_mod.F90:     ! Compute velocity used to advance Qdp 
+./atm/cam/src/dynamics/homme/share/prim_advection_mod.F90:     ! advance Qdp
+
+
+
+
+netcdf SE_RUD_itwin1.cam_0001.r.2005-08-21-00000 {
+dimensions:
+        cal_strlen = 32 ;
+        lev = 30 ;
+        ilev = 31 ;
+        ncol_d = 86400 ;
+        ncol = 48602 ;
+        timelevels = UNLIMITED ; //              (1 currently)
+        pbuf_00030 = 30 ;
+        pbuf_00090 = 90 ;
+        pbuf_00031 = 31 ;
+        pbuf_00025 = 25 ;
+        max_chars = 256 ;
+        pcnst = 25 ;
+        ptapes = 8 ;
+        max_string_len = 256 ;
+        fieldname_lenp2 = 26 ;
+        pflds = 750 ;
+        max_fieldname_len = 27 ;
+        maxnflds = 37 ;
+        maxvarmdims = 1 ;
+variables:
+        char rst_calendar             (cal_strlen) ;
+        int rst_nstep ;
+        int rst_step_days ;
+        int rst_step_sec ;
+        int rst_start_ymd ;
+        int rst_start_tod ;
+        int rst_stop_ymd ;
+        int rst_stop_tod ;
+        int rst_ref_ymd ;
+        int rst_ref_tod ;
+        int rst_curr_ymd ;
+        int rst_curr_tod ;
+        int rst_perp_ymd ;
+        int rst_perp_cal_int ;
+        double hyai      (ilev) ;
+        double hyam      (lev) ;
+        double hybi      (ilev) ;
+        double hybm      (lev) ;
+        double time      (timelevels) ;
+        double U         (timelevels, lev, ncol_d) ;
+             5 U                                m/s                30 A  Zonal wind
+        double V         (timelevels, lev, ncol_d) ;
+             6 V                                m/s                30 A  Meridional wind
+        double T         (timelevels, lev, ncol_d) ;
+             4 T                                K                  30 A  Temperature
+        double OMEGA     (lev, ncol_d) ; 
+            61 OMEGA                           Pa/s               30 A  Vertical velocity (pressure)
+        double PS        (timelevels, ncol_d) ;
+             3 PS                               Pa                  1 A  Surface pressure
+        double PHIS      (ncol_d) ;
+             2 PHIS                             m2/s2               1 I  Surface geopotential
+        double Q         (timelevels, lev, ncol_d) ;
+             7 Q                                kg/kg              30 A  Specific humidity
+        double dpQ       (timelevels, lev, ncol_d) ;
+        double CLDLIQ    (timelevels, lev, ncol_d) ;
+          1621 CLDLIQ                           kg/kg              30 A  Grid box averaged cloud liquid amount
+        double dpCLDLIQ  (timelevels, lev, ncol_d) ;
+        double CLDICE    (timelevels, lev, ncol_d) ;
+          1623 CLDICE                           kg/kg              30 A  Grid box averaged cloud ice amount
+        double dpCLDICE  (timelevels, lev, ncol_d) ;
+        double NUMLIQ    (timelevels, lev, ncol_d) ;
+          1625 NUMLIQ                           kg/kg              30 A  Grid box averaged cloud liquid number
+        double dpNUMLIQ  (timelevels, lev, ncol_d) ;
+        double NUMICE    (timelevels, lev, ncol_d) ;
+          1627 NUMICE                           kg/kg              30 A  Grid box averaged cloud ice number
+        double dpNUMICE  (timelevels, lev, ncol_d) ;
+        double H2O2      (timelevels, lev, ncol_d) ;
+           704 H2O2                             kg/kg              30 A  H2O2 concentration
+        double dpH2O2    (timelevels, lev, ncol_d) ;
+        double H2SO4     (timelevels, lev, ncol_d) ;
+           711 H2SO4                            kg/kg              30 A  H2SO4 concentration
+        double dpH2SO4   (timelevels, lev, ncol_d) ;
+        double SO2       (timelevels, lev, ncol_d) ;
+           718 SO2                              kg/kg              30 A  SO2 concentration
+        double dpSO2     (timelevels, lev, ncol_d) ;
+        double DMS       (timelevels, lev, ncol_d) ;
+           725 DMS                              kg/kg              30 A  DMS concentration
+        double dpDMS     (timelevels, lev, ncol_d) ;
+?       double SOAG      (timelevels, lev, ncol_d) ;
+           732 SOAG                             kg/kg              30 A  SOAG concentration
+        double dpSOAG    (timelevels, lev, ncol_d) ;
+        double so4_a1    (timelevels, lev, ncol_d) ;
+           739 so4_a1                           kg/kg              30 A  so4_a1 concentration
+        double dpso4_a1  (timelevels, lev, ncol_d) ;
+        double pom_a1    (timelevels, lev, ncol_d) ;
+?          755 pom_a1                           kg/kg              30 A  pom_a1 concentration
+        double dppom_a1  (timelevels, lev, ncol_d) ;
+        double soa_a1    (timelevels, lev, ncol_d) ;
+?          771 soa_a1                           kg/kg              30 A  soa_a1 concentration
+        double dpsoa_a1  (timelevels, lev, ncol_d) ;
+        double bc_a1     (timelevels, lev, ncol_d) ;
+           787 bc_a1                            kg/kg              30 A  bc_a1 concentration
+        double dpbc_a1   (timelevels, lev, ncol_d) ;
+        double dst_a1    (timelevels, lev, ncol_d) ;
+           803 dst_a1                           kg/kg              30 A  dst_a1 concentration
+        double dpdst_a1  (timelevels, lev, ncol_d) ;
+?       double ncl_a1    (timelevels, lev, ncol_d) ;     sea salt?
+        double dpncl_a1  (timelevels, lev, ncol_d) ;
+        double num_a1    (timelevels, lev, ncol_d) ;
+               ./atm/cam/src/chemistry/utils/modal_aero_calcsize.F90:
+               real(r8) :: num_a1        ! working number (#/mol_air)
+           835 num_a1                           kg/kg              30 A  num_a1 concentration
+        double dpnum_a1  (timelevels, lev, ncol_d) ;
+        double so4_a2    (timelevels, lev, ncol_d) ;
+           851 so4_a2                           kg/kg              30 A  so4_a2 concentration
+        double dpso4_a2  (timelevels, lev, ncol_d) ;
+?       double soa_a2    (timelevels, lev, ncol_d) ;
+           867 soa_a2                           kg/kg              30 A  soa_a2 concentration
+        double dpsoa_a2  (timelevels, lev, ncol_d) ;
+?       double ncl_a2    (timelevels, lev, ncol_d) ;
+           883 ncl_a2                           kg/kg              30 A  ncl_a2 concentration
+        double dpncl_a2  (timelevels, lev, ncol_d) ;
+        double num_a2    (timelevels, lev, ncol_d) ;
+               ./atm/cam/src/chemistry/utils/modal_aero_calcsize.F90:
+               real(r8) :: num_a2        ! working number (#/mol_air)
+          1801 num_a2&IC                        kg/kg              30 I  num_a2
+               lots of refs, filename, etc. 
+        double dpnum_a2  (timelevels, lev, ncol_d) ;
+        double dst_a3    (timelevels, lev, ncol_d) ;
+           915 dst_a3                           kg/kg              30 A  dst_a3 concentration
+        double dpdst_a3  (timelevels, lev, ncol_d) ;
+?       double ncl_a3    (timelevels, lev, ncol_d) ;
+           931 ncl_a3                           kg/kg              30 A  ncl_a3 concentration
+        double dpncl_a3  (timelevels, lev, ncol_d) ;
+        double so4_a3    (timelevels, lev, ncol_d) ;
+           947 so4_a3                           kg/kg              30 A  so4_a3 concentration
+        double dpso4_a3  (timelevels, lev, ncol_d) ;
+?       double num_a3    (timelevels, lev, ncol_d) ;
+           963 num_a3                           kg/kg              30 A  num_a3 concentration
+        double dpnum_a3  (timelevels, lev, ncol_d) ;
+        double TEOUT     (ncol) ; 
+           199 TEOUT                           W/m2                 1 A  Total energy of physics output
+        double DTCORE    (pbuf_00030, ncol) ; 
+           201 DTCORE                          K/s                 30 I tendency due to dynamical core
+        double AST       (pbuf_00030, ncol) ;
+          1680 AST                              fraction           30 A  Stratus cloud fraction
+
+./atm/cam/src/physics/cam/clubb_intr.F90:    
+        double AIST      (pbuf_00030, ncol) ;
+               aist_idx    = pbuf_get_index('AIST')        ! Ice stratiform cloud fraction
+        double ALST      (pbuf_00030, ncol) ;
+               alst_idx    = pbuf_get_index('ALST')        ! Liquid stratiform cloud fraction
+        double QIST      (pbuf_00030, ncol) ;
+               qist_idx    = pbuf_get_index('QIST')        ! Physical in-stratus IWC
+        double QLST      (pbuf_00030, ncol) ;
+               qlst_idx    = pbuf_get_index('QLST')        ! Physical in-stratus LWC 
+        double CLD       (pbuf_00030, ncol) ;
+               cld_idx     = pbuf_get_index('CLD')         ! Cloud fraction
+
+        double CONCLD    (pbuf_00030, ncol) ;
+          1567 CONCLD                           fraction           30 A  Convective cloud cover
+        double QCWAT     (pbuf_00030, ncol) ;
+               QCWAT initialized with Q
+           156 QCWAT&IC                         kg/kg              30 I  q associated with cloud water
+        double LCWAT     (pbuf_00030, ncol) ;
+               LCWAT initialized with CLDICE + CLDLIQ
+           158 LCWAT&IC                         kg/kg              30 I  Cloud water (ice + liq
+        double ICCWAT    (pbuf_00030, ncol) ;
+               ICCWAT initialized with CLDICE
+
+./atm/cam/src/physics/cam/macrop_driver.F90:  
+        double NLWAT     (pbuf_00030, ncol) ;
+               real(r8), pointer, dimension(:,:) :: nlwat        ! Cloud liquid droplet number condentration. old.
+        double NIWAT     (pbuf_00030, ncol) ;
+               real(r8), pointer, dimension(:,:) :: niwat        ! Cloud ice    droplet number condentration. old.
+        double TCWAT     (pbuf_00030, ncol) ;
+               TCWAT initialized with T
+           157 TCWAT&IC                         kg/kg              30 I  T associated with cloud water
+               real(r8), pointer, dimension(:,:) :: tcwat        ! Cloud water old temperature
+
+./atm/cam/src/physics/cam/microp_aero.F90:   
+./atm/cam/src/physics/cam/micro_mg_cam.F90:
+./atm/cam/src/physics/cam/ndrop.F90:   
+        double CLDO      (pbuf_00030, ncol) ;
+               real(r8), pointer :: cldo(:,:)       ! old cloud fraction
+               real(r8), intent(in) :: cldo(pcols,pver)    ! cloud fraction on previous time step
+        double CC_T      (pbuf_00030, ncol) ;
+               real(r8), pointer :: CC_T(:,:)         ! Grid-mean microphysical tendency
+        double CC_qv     (pbuf_00030, ncol) ;
+               real(r8), pointer :: CC_qv(:,:)         ! Grid-mean microphysical tendency  excess saturation?
+               real(r8) :: qvres(pcols,pver)           ! Residual condensation term to remove excess saturation
+        double CC_ql     (pbuf_00030, ncol) ;
+               real(r8), pointer :: CC_ql(:,:)         ! Grid-mean microphysical tendency
+               CC_ql(:ncol,:pver)   = qcten(:ncol,:pver)
+               real(r8) :: qc(pcols,pver)    ! cloud water mixing ratio (kg/kg)
+        double CC_qi     (pbuf_00030, ncol) ;
+               real(r8), pointer :: CC_qi(:,:)         ! Grid-mean microphysical tendency
+               CC_qi(:ncol,:pver)   = qiten(:ncol,:pver)
+               real(r8) :: qi(pcols,pver)    ! cloud ice mixing ratio (kg/kg)
+        double CC_nl     (pbuf_00030, ncol) ;
+               real(r8), pointer :: CC_nl(:,:)         ! Grid-mean microphysical tendency
+               CC_nl(:ncol,:pver)   = ncten(:ncol,:pver)
+        double CC_ni     (pbuf_00030, ncol) ;
+               CC_ni(:ncol,:pver)   = niten(:ncol,:pver)
+               real(r8) :: ni(pcols,pver)    ! cloud ice number conc (1/kg)
+        double CC_qlst   (pbuf_00030, ncol) ;
+               real(r8), pointer :: CC_qlst(:,:)      ! In-liquid stratus microphysical tendency
+
+./atm/cam/src/physics/cam/micro_mg_cam.F90:   
+        double ACPRECL   (ncol) ;
+              real(r8), pointer, dimension(:) :: acprecl ! accumulated precip across timesteps
+        double ACGCME    (ncol) ;
+               real(r8), pointer, dimension(:) :: acgcme  ! accumulated condensation across timesteps
+               call pbuf_add_field('ACGCME',     'global',dtype_r8,(/pcols/), acgcme_idx) ! accumulated condensation
+        int ACNUM        (ncol) ;
+            integer,  pointer, dimension(:) :: acnum   ! counter for # timesteps accumulated
+
+        double num_c1    (pbuf_00030, ncol) ;
+               ./atm/cam/src/chemistry/utils/modal_aero_calcsize.F90:
+               real(r8) :: num_c1                ! working number (#/mol_air)
+           numptrcw                17="num_c1  "
+        double so4_c1    (pbuf_00030, ncol) ;
+           741 so4_c1                           kg/kg              30 A  so4_c1 in cloud water
+        double pom_c1    (pbuf_00030, ncol) ;
+           757 pom_c1                           kg/kg              30 A  pom_c1 in cloud water
+        double soa_c1    (pbuf_00030, ncol) ;
+           773 soa_c1                           kg/kg              30 A  soa_c1 in cloud water
+        double bc_c1             (pbuf_00030, ncol) ;
+           789 bc_c1                            kg/kg              30 A  bc_c1 in cloud water
+        double dst_c1    (pbuf_00030, ncol) ;
+           805 dst_c1                           kg/kg              30 A  dst_c1 in cloud water
+        double ncl_c1    (pbuf_00030, ncol) ;
+           821 ncl_c1                           kg/kg              30 A  ncl_c1 in cloud water
+        double num_c2    (pbuf_00030, ncol) ;
+               ./atm/cam/src/chemistry/utils/modal_aero_calcsize.F90:
+               real(r8) :: num_c2        ! working number (#/mol_air)
+           885 ncl_c2                           kg/kg              30 A  ncl_c2 in cloud water
+        double so4_c2    (pbuf_00030, ncol) ;
+           853 so4_c2                           kg/kg              30 A  so4_c2 in cloud water
+        double soa_c2    (pbuf_00030, ncol) ;
+           869 soa_c2                           kg/kg              30 A  soa_c2 in cloud water
+        double ncl_c2    (pbuf_00030, ncol) ;
+           885 ncl_c2                           kg/kg              30 A  ncl_c2 in cloud water
+        double num_c3    (pbuf_00030, ncol) ;
+           965 num_c3                           kg/kg              30 A  num_c3 in cloud water
+        double dst_c3    (pbuf_00030, ncol) ;
+           917 dst_c3                           kg/kg              30 A  dst_c3 in cloud water
+        double ncl_c3    (pbuf_00030, ncol) ;
+           933 ncl_c3                           kg/kg              30 A  ncl_c3 in cloud water
+        double so4_c3    (pbuf_00030, ncol) ;
+           949 so4_c3                           kg/kg              30 A  so4_c3 in cloud water
+        double DGNUM     (pbuf_00090, ncol) ;
+               ./atm/cam/src/physics/cam/microp_aero.F90:   
+               real(r8), pointer :: dgnum(:,:,:)    ! aerosol mode dry diameter
+               ./atm/cam/src/physics/cam/phys_prop.F90:   
+               real(r8) :: dgnum      ! geometric dry mean diameter of the number distribution for aerosol mode
+        double DGNUMWET  (pbuf_00090, ncol) ;
+               ./atm/cam/src/physics/cam/microp_aero.F90:   
+               real(r8), pointer :: dgnumwet(:,:,:) ! aerosol mode diameter
+               ./atm/cam/src/physics/cam/modal_aer_opt.F90:   
+               real(r8), intent(in)  :: dgnumwet(:,:)   ! aerosol wet number mode diameter (m)
+
+./atm/cam/src/physics/cam/cospsimulator_intr.F90:   
+        double DP_FLXPRC (pbuf_00031, ncol) ;
+               real(r8), pointer, dimension(:,:) :: dp_flxprc   ! deep interface gbm flux_convective_cloud_rain+snow 
+                                                                ! (kg m^-2 s^-1)
+        double DP_FLXSNW (pbuf_00031, ncol) ;
+               real(r8), pointer, dimension(:,:)::dp_flxsnw  ! deep interface gbm flux_convective_cloud_snow (kg m^-2 s^-1)
+        double DP_CLDLIQ (pbuf_00030, ncol) ;
+               real(r8), pointer, dimension(:,:) :: dp_cldliq   ! deep gbm cloud liquid water (kg/kg)
+        double DP_CLDICE (pbuf_00030, ncol) ;
+               real(r8), pointer, dimension(:,:) :: dp_cldice   ! deep gmb cloud ice water (kg/kg)
+
+        double cush      ncol) ;
+               CUSH initialized to 1000.
+           162 CUSH&IC                          m                   1 I  Convective Scale Height
+        double QRS       (pbuf_00030, ncol) ;
+          1314 QRS                              K/s                30 A  Solar heating rate
+        double QRL       (pbuf_00030, ncol) ;
+          1335 QRL                              K/s                30 A  Longwave heating rate
+        double pblh      (ncol) ;
+               PBLH initialized to 0.
+        double tke       (pbuf_00031, ncol) ;
+               TKE initialized to 0.01
+          1224 TKE                              m2/s2              31 A  Turbulent Kinetic Energy
+        double kvh       (pbuf_00031, ncol) ;
+          1229 KVH                              m2/s               31 A  Vertical diffusion diffusivities (heat/moisture)
+        double kvm       (pbuf_00031, ncol) ;
+          1230 KVM                              m2/s               31 A  Vertical diffusion diffusivities (momentum)
+        int         turbtype     (pbuf_00031, ncol) ;
+            1161 UW_turbtype                      no                 31 A  Interface Turbulence Type, I
+        double smaw      (pbuf_00031, ncol) ;
+               ./atm/cam/src/physics/cam/vertical_diffusion.F90:    
+               real(r8), pointer   :: smaw(:,:) ! Normalized Galperin instability function ( 0<= <=4.964 and 1 at neutral )
+        double tauresx   (ncol) ;
+               ./atm/cam/src/physics/cam/diffusion_solver.F90:    
+               real(r8), intent(inout) :: tauresx(pcols)        ! Input  : Reserved surface stress at previous time step
+               ./atm/cam/src/physics/cam/eddy_diff.F90:    
+               real(r8), intent(inout) :: tauresx(pcols)        ! Residual stress to be added in vdiff to correct for turb
+        double tauresy   (ncol) ;
+               ./atm/cam/src/physics/cam/diffusion_solver.F90:    
+               real(r8), intent(inout) :: tauresy(pcols) ! Output : Reserved surface stress at current  time step
+               ./atm/cam/src/physics/cam/eddy_diff.F90:    
+               real(r8), intent(inout) :: tauresy(pcols) ! Stress mismatch between sfc and atm accumulated in prior tsteps
+        double tpert     (ncol) ;
+          1226 TPERT                            K                   1 A  Perturbation temperature (eddies in PBL)
+        double qpert     (pbuf_00025, ncol) ;
+          1227 QPERT                            kg/kg               1 A  Perturbation specific humidity (eddies in PBL)
+        double T_TTEND   (pbuf_00030, ncol) ;
+               ./atm/cam/doc/ChangeLog:. 
+               The T_TTEND diagnostic had the wrong sign, and due to incorrect use of
+        int pbuf_time_idx ;
+        char tracer_cnst_curr_fname             (max_chars) ;
+        	tracer_cnst_curr_fname:offset_time = 0. ;
+        	tracer_cnst_curr_fname:actual_len = 37 ;
+        char prescribed_ozone_curr_fname             (max_chars) ;
+        	prescribed_ozone_curr_fname:offset_time = 0. ;
+        	prescribed_ozone_curr_fname:actual_len = 38 ;
+        char prescribed_volcaero_curr_fname             (max_chars) ;
+        	prescribed_volcaero_curr_fname:offset_time = 0. ;
+        	prescribed_volcaero_curr_fname:actual_len = 38 ;
+        double FSNT             (ncol) ;
+          1317 FSNT                             W/m2                1 A  Net solar flux at top of model
+        double FSNS             (ncol) ;
+          1316 FSNS                             W/m2                1 A  Net solar flux at surface
+        double FSDS             (ncol) ;
+          1326 FSDS                             W/m2                1 A  Downwelling solar flux at surface
+        double FLNT             (ncol) ;
+          1340 FLNT                             W/m2                1 A  Net longwave flux at top of model
+        double FLNS             (ncol) ;
+          1339 FLNS                             W/m2                1 A  Net longwave flux at surface
+        double LANDM             (ncol) ;
+        double SGH             (ncol) ;
+          1765 SGH                              m                   1 I  Standard deviation of orography
+        double SGH30             (ncol) ;
+          1766 SGH30                            m                   1 I  Standard deviation of 30s orography
+        double TREFMXAV             (ncol) ;
+           140 TREFMXAV                         K                   1 A  Average of TREFHT daily maximum
+        double TREFMNAV             (ncol) ;
+           139 TREFMNAV                         K                   1 A  Average of TREFHT daily minimum
+        double FLWDS             (ncol) ;
+        double SOLS             (ncol) ;
+          1311 SOLS                             W/m2                1 A  Solar downward visible direct  to surface
+        double SOLL             (ncol) ;
+          1310 SOLL                             W/m2                1 A  Solar downward near infrared direct  to surface
+        double SOLSD             (ncol) ;
+          1313 SOLSD                            W/m2                1 A  Solar downward visible diffuse to surface
+        double SOLLD             (ncol) ;
+          1312 SOLLD                            W/m2                1 A  Solar downward near infrared diffuse to surface
+
+./atm/cam/src/control/camsrfexch.F90:     
+        double BCPHIDRY             (ncol) ;
+               real(r8) :: bcphidry(pcols)     ! dry deposition of hydrophilic black carbon
+          1112 BCPHIDRY_D                       kg/m2/s             1 A  prescribed aero dep
+        double BCPHODRY             (ncol) ;
+               real(r8) :: bcphodry(pcols)     ! dry deposition of hydrophobic black carbon
+          1111 BCPHODRY_D                       kg/m2/s             1 A  prescribed aero dep
+        double OCPHIDRY             (ncol) ;
+               real(r8) :: ocphidry(pcols)     ! dry deposition of hydrophilic organic carbon
+          1115 OCPHIDRY_D                       kg/m2/s             1 A  prescribed aero dep
+        double OCPHODRY             (ncol) ;
+               real(r8) :: ocphodry(pcols)     ! dry deposition of hydrophobic organic carbon
+          1114 OCPHODRY_D                       kg/m2/s             1 A  prescribed aero dep
+ 
+        double     DSTDRY1             (ncol) ;
+           176 a2x_DSTDRY1                      kg/m2/s             1 A  drydep of dust (bin1)
+        double     DSTDRY2             (ncol) ;
+           178 a2x_DSTDRY2                      kg/m2/s             1 A  drydep of dust (bin2)
+        double     DSTDRY3             (ncol) ;
+           180 a2x_DSTDRY3                      kg/m2/s             1 A  drydep of dust (bin3)
+        double     DSTDRY4             (ncol) ;
+           182 a2x_DSTDRY4                      kg/m2/s             1 A  drydep of dust (bin4)
+        int rgnht             (ptapes) ;
+        int nhtfrq             (ptapes) ;
+        int nflds             (ptapes) ;
+        int nfils             (ptapes) ;
+        int mfilt             (ptapes) ;
+        char nfpath             (ptapes, max_string_len) ;
+        char cpath             (ptapes, max_string_len) ;
+        char nhfil             (ptapes, max_string_len) ;
+        int ndens             (ptapes) ;
+        char fincllonlat             (ptapes, pflds, max_chars) ;
+        int ncprec             (ptapes) ;
+        int ngroup             (ptapes) ;
+        double beg_time             (ptapes) ;
+        char fincl             (ptapes, pflds, fieldname_lenp2) ;
+        char fexcl             (ptapes, pflds, fieldname_lenp2) ;
+        char field_name             (ptapes, maxnflds, max_fieldname_len) ;
+        int decomp_type             (ptapes, maxnflds) ;
+        int numlev             (ptapes, maxnflds) ;
+        char hrestpath             (ptapes, max_string_len) ;
+        int hwrt_prec             (ptapes, maxnflds) ;
+        char avgflag             (ptapes, maxnflds) ;
+        char sampling_seq             (ptapes, maxnflds, max_chars) ;
+        char long_name             (ptapes, maxnflds, max_chars) ;
+        char units             (ptapes, maxnflds, max_chars) ;
+        int xyfill             (ptapes, maxnflds) ;
+        int lcltod_start             (ptapes) ;
+        int lcltod_stop             (ptapes) ;
+        double fillvalue             (ptapes, maxnflds) ;
+        int mdims             (ptapes, maxnflds, maxvarmdims) ;
+
+// global attributes:
+        	:ne = 30 ;
+        	:np = 4 ;
+        	:caseid = "SE_RUD_itwin1                                                                   " ;
+        	:aeres = 0 ;
+}
+===================================================================================================
+models/atm/cam/src/dynamics/homme/restart_dynamics.F90:
+...
+    ierr = PIO_Def_Var(File, 'U', pio_double, (/ncol_dimid, nlev_dimid, timelevels_dimid/), Udesc)
+...
+    do i=1,qsize_d
+       ierr = PIO_Def_Var(File,cnst_name(i), pio_double, (/ncol_dimid, nlev_dimid, timelevels_dimid/), Qdesc(i))
+       ierr = PIO_Def_Var(File,"dp"//cnst_name(i), pio_double, (/ncol_dimid, nlev_dimid, timelevels_dimid/), Qdesc_dp(i))
+    end do
+
+    type, public :: Var_desc_t
+#ifdef SEQUENCE
+        sequence
+#endif  
+        integer(i4)     :: varID
+        integer(i4)     :: rec   ! This is a record number or pointer into the unlim dimension of the       
+                                 ! netcdf file
+        integer(i4)     :: type
+        integer(i4)     :: ndims ! number of dimensions as defined on the netcdf file.
+        character(len=50) :: name ! vdc needed variable
+    end type
+
+
+models/utils/pio/piodarray.F90
+    if (IOproc) then
+       vlen = len_trim(vardesc%name)
+       cptr = c_loc(iobuf(1))
+       call WriteVDC2Var(cptr, start, count,  File%iosystem%IO_comm, Vardesc%rec, -1, -1, File%iosystem%num_iotasks, &
+                         F_C_STRING_DUP(varDesc%name(1:vlen)))
+    endif
+
+Oo, oo!  Following cnst_name looks promising.  $p/Models/cesm1_1_1/models/cnst_name.usage.
+Try grepping name fragments from below in that file,
+and look in the resulting filenames for the cnst_longnames
+
+and 
+./atm/cam/src/physics/cam/constituents.F90:          
+    write(iulog,'(i4,2x,a8,2x,a128,2x,a3)') i, cnst_name(i), cnst_longname(i), cnst_type(i)
+
+

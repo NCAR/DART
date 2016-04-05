@@ -1,0 +1,6 @@
+&dart_to_noah_nml
+   dart_to_noah_input_file = 'dart_restart',
+   skip_variables          = ' '
+   advance_time_present    = .true.,
+  /
+

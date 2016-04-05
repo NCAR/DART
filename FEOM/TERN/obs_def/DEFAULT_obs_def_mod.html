@@ -1,0 +1,161 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module DEFAULT_obs_def_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE DEFAULT_obs_def_mod</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+Beginning with the I-release of DART, a more flexible, powerful (and
+complicated) mechanism for incorporating new types of observations is part of
+DART. The DEFAULT_obs_def module being described here is used by the program
+<em class="unix">preprocess</em> to create 
+<em class="file">obs_def_mod.f90</em>.
+<br>
+<br>
+To read more detailed instructions for adding your own new
+observation types, see the documentation for
+<a href="obs_def_mod.html">obs_def_mod</a>.
+The process does not involve altering this
+<em class="file">DEFAULT_obs_def_mod.F90</em> file.  Instead, new obs_def
+files are specified as input to the <em class="unix">preprocess</em> program
+by namelist,
+and a new <em class="file">obs_def_mod.f90</em> file is generated.  The rest
+of the documentation here describes the internals of how the
+<em class="unix">preprocess</em> program uses the template file to
+do the code generation.
+<br>
+<br>
+Information from zero or more special obs_def modules, such as 
+<em class="file">obs_def_1d_state_mod.f90</em> or 
+<em class="file">obs_def_reanalyis_bufr_mod.f90</em>,
+(also documented in this directory) are incorporated into the template
+provided by DEFAULT_obs_def_mod. If no special obs_def files are included in
+the preprocessor namelist, a minimal 
+<em class="file">obs_def_mod.f90</em> is created which can only
+support identity forward observation operators.  Any identity observations on
+the obs_seq.out file will be assimilated, regardless of the kinds specified in
+assimilate_these_obs_types.  
+<br>
+<br> 
+This documentation file only describes the special formatting that is included
+in the DEFAULT_obs_def_mod in order to guide the preprocess program. Up to 
+seven sections of code are inserted into the DEFAULT_obs_def_mod from each of
+the special obs_def modules that are requested. The insertion point for each
+section is denoted by a special comment line that must be included VERBATIM in
+<em class="file">DEFAULT_obs_def_mod.F90</em>. 
+These special comment lines and their significance are:
+</P>
+<ol>
+<li>
+! DART PREPROCESS MODULE CODE INSERTED HERE <BR>
+Some special observation definition modules (see for instance
+<em class="file">obs_def_1d_state_mod.f90</em>) 
+contain code for evaluating forward observation
+operators, reading or writing special information about an observation
+definition to an obs sequence file, or for interactive definition of an
+observation. The entire module code section is inserted here, 
+so the resulting output file will be completely self-contained.
+Fortran 90 allows multiple modules to be defined in a single source
+file, and subsequent module code can use previously defined modules,
+so this statement must preceed the rest of the other comment lines.<br><br>
+</li>
+<li>
+! DART PREPROCESS USE FOR OBS_KIND_MOD INSERTED HERE <BR>
+Integer identifiers with a unique integer value corresponding to each
+available observation kind are defined in a table in the obs_kind_mod which is
+also created by the preprocessor. The use statements for these entries are
+inserted here.<br><br>
+</li>
+<li>
+! DART PREPROCESS USE OF SPECIAL OBS_DEF MODULE INSERTED HERE <BR>
+Some special observation definition modules (see for instance
+<em class="file">obs_def_1d_state_mod.f90</em>) 
+contain code for evaluating forward observation
+operators, reading or writing special information about an observation
+definition to an obs sequence file, or for interactive definition of an
+observation. The use statements for these routines from the special
+observation definition modules are inserted here.<br><br>
+</li>
+<li>
+! DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF INSERTED HERE <BR>
+Special observation definition modules must contain case statement code saying
+what to do to evaluate a forward observation operator for each observation kind
+that they define.
+This code is inserted here.<br><br>
+</li>
+<li>
+! DART PREPROCESS READ_OBS_DEF INSERTED HERE <BR>
+Special observation definition modules must contain case statement code saying
+what to do to read any additional information required for each observation kind
+that they define from an observation sequence file.
+This code is inserted here.<br><br>
+</li>
+<li>
+! DART PREPROCESS WRITE_OBS_DEF INSERTED HERE <BR>
+Special observation definition modules must contain case statement code saying
+what to do to write any additional information required for each observation
+kind that they define to an observation sequence file.
+This code is inserted here.<br><br>
+</li>
+<li>
+! DART PREPROCESS INTERACTIVE_OBS_DEF INSERTED HERE <BR>
+Special observation definition modules must contain case statement code saying
+what to do to interactively create any additional information required for each 
+observation kind that they define.
+This code is inserted here.<br><br>
+</li>
+</ol>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

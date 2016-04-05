@@ -1,0 +1,33 @@
+#
+# DART $Id$
+#
+# Open-boundaries
+ &OBCS_PARM01
+ OB_Ieast =  35*0,62*-1,19*0,109*-1,
+ OB_Jnorth = 166*0,90*-1,
+ useOBCSsponge = .TRUE.,
+ useOBCSprescribe = .true.,
+ OBEuFile = 'Rs_UobcsE_52_01_nPx1_c1.bin',
+ OBEvFile = 'Rs_VobcsE_52_01_nPx1.bin',
+ OBEtFile = 'Rs_TobcsE_52_01_nPx1.bin',
+ OBEsFile = 'Rs_SobcsE_52_01_nPx1.bin'
+ OBNuFile = 'Rs_UobcsN_52_01_nPy1.bin',
+ OBNvFile = 'Rs_VobcsN_52_01_nPy1_c1.bin',
+ OBNtFile = 'Rs_TobcsN_52_01_nPy1.bin',
+ OBNsFile = 'Rs_SobcsN_52_01_nPy1.bin',
+&
+
+# Orlanski parameters
+ &OBCS_PARM02
+#Cmax = 0.45,
+#cVelTimeScale = 1000.,
+ &
+# Sponge layer parameters
+ &OBCS_PARM03
+ spongeThickness = 10,
+ Urelaxobcsinner = 432000.0,
+ Urelaxobcsbound = 86400.0,
+ Vrelaxobcsinner = 432000.0,
+ Vrelaxobcsbound = 86400.0,
+&
+

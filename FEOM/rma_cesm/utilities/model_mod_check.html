@@ -1,0 +1,434 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>DART program model_mod_check</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>DART PROGRAM <em class=program>model_mod_check</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#Usage">USAGE </A> / 
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+   <em class="program">model_mod_check</em> tests some of the more
+   fundamental routines in any <em class="program">model_mod</em>.
+   This is intended to be used when adding a new model to DART - 
+   test the pieces as they are written.  As such, this program is
+   meant to be hacked up and customized to your own purpose. Right now,
+   it reads in a DART ics file and writes out restart files, netCDF files,
+   queries the metdata, etc. It also exercises 
+   <em class="program">static_init_model()</em>, which is the first routine
+   to get right ...
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;model_mod_check 
+   input_file           = "dart_ics",        
+   output_file          = "check_me",
+   advance_time_present = .FALSE.,
+   x_ind                = -1,
+   loc_of_interest      = -1.0, -1.0, -1.0,
+   kind_of_interest     = 'ANY'
+   verbose              = .FALSE.,
+   /
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD> input_file </TD>
+    <TD> character(len=129) </TD>
+    <TD>Name of a file containing DART initial conditions for the model.
+</TD></TR>  
+
+<TR><TD> output_file  </TD>
+    <TD> character(len=129) </TD>
+    <TD>base portion of the name of the test netCDF file that will exercise the
+DART routines that create the <em class="file">True_State.nc</em>, 
+<em class="file">Prior_Diag.nc</em>, and <em class="file">Posterior_Diag.nc</em>
+files. The proper file extension will be added.
+</TD></TR>  
+
+<TR><TD> advance_time_present </TD>
+    <TD> logical </TD>
+    <TD>Flag to indicate if the DART restart file has the 
+<em class="option">advance time</em> present in the file.
+</TD></TR>  
+
+<TR><TD> x_ind </TD>
+    <TD> integer </TD>
+    <TD>integer index into the DART state vector.  This will be used to test the
+metadata routines.  Answers questions about location, what variable type is
+stored there, etc.
+</TD></TR>  
+
+<TR><TD> loc_of_interest </TD>
+    <TD> real(r8), dimension(3) </TD>
+    <TD>The lat/lon/level for a particular location.  Tests the routine to find
+the closest gridpoint.
+</TD></TR>  
+
+<TR><TD> kind_of_interest </TD>
+    <TD> character(len=32) </TD>
+    <TD>Since there are usually many state variables on the same grid, it may be
+useful to restrict the search for a location of interest to include a
+particular kind of state variable.
+</TD></TR>  
+
+<TR><TD>   verbose   </TD>
+    <TD>   logical   </TD>
+    <TD>Print extra info about the model_mod_check run.
+</TD></TR>  
+
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+assim_model_mod
+types_mod
+location_mod
+model_mod
+null_mpi_utilities_mod
+obs_def_mod
+obs_kind_mod
+random_nr_mod
+random_seq_mod
+time_manager_mod
+model_mod_check
+utilities_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL><LI><em class="file">input.nml</em> is used for 
+        <em class="code">model_mod_check_nml</em></LI>
+
+    <LI><em class="file">the "input_file" </em> can either be a
+        DART "ics" file - in which case there is a single time associated
+        with the state, or a DART "ud" file - which has an additional
+        "advance_to" time record.</LI>
+    <LI><em class="file">the "output_file"</em> is a netCDF file that
+        exercises the model_mod netcdf routines. Check the attributes, 
+        values, etc.</LI>
+    <LI><em class="file">allones.ics</em> is a DART initial conditions 
+        file that contains all 1's (ones). This gets created by 
+        <em class="program">model_mod_check</em>.
+        </LI>
+</UL>
+
+<!--==================================================================-->
+<!-- Discuss  typical usage of model_mod_check.                              -->
+<!--==================================================================-->
+
+<A NAME="Usage"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>USAGE</H2>
+
+<P>
+Normal circumstances indicate that you are trying to put a new model into
+DART, so to be able to build and run <em class="program">model_mod_check</em>,
+you will need to create a <em class="file">path_names_model_mod_check</em>
+file with the following contents:
+</P>
+<pre>
+assim_model/assim_model_mod.f90
+common/types_mod.f90
+location/threed_sphere/location_mod.f90
+models/<em class="input">your_model</em>/model_mod.f90
+mpi_utilities/null_mpi_utilities_mod.f90
+obs_def/obs_def_mod.f90
+obs_kind/obs_kind_mod.f90
+random_nr/random_nr_mod.f90
+random_seq/random_seq_mod.f90
+time_manager/time_manager_mod.f90
+utilities/model_mod_check.f90
+utilities/utilities_mod.f90
+</pre>
+as well as a <em class="file">mkmf_model_mod_check</em> script.
+You should be able to look at any other <em class="file">mkmf_xxxx</em> 
+script and figure out what to change. Once they exist:
+<br />
+<br />
+<div class="unix">
+<pre>
+[~/DART/models/yourmodel/work] % <em class="input">csh mkmf_model_mod_check</em>
+[~/DART/models/yourmodel/work] % <em class="input">make</em>
+[~/DART/models/yourmodel/work] % <em class="input">./model_mod_check</em>
+</pre>
+</div>
+
+<P>
+Unlike other DART components, you are expected
+to modify <em class="file">model_mod_check.f90</em> to suit your needs as
+you develop your <em class="program">model_mod</em>. The code is roughly 
+divided into the following categories:
+</P>
+<ol><li>Check the geometry information,</li>
+    <li>write a trivial restart file,</li>
+    <li>read either a restart file,</li>
+    <li>check the netCDF routines used to create the diagnostic output files,</li>
+    <li>check the metadata, and</li>
+    <li>[optionally] run a test of the model interpolation routine.</li>
+</ol>
+
+<H3 class=indent1>Checking the Geometry Information:</H3>
+<P>
+The first block of code in <em class="program">model_mod_check</em>
+is intended to test some of the most basic routines, especially
+<em class="program">static_init_model</em> - which generally sets the
+geometry of the grid, the number of state variables and their shape, etc. 
+Virtually everything requires knowledge of the grid and state vector,
+so this block should never be skipped.
+</P>
+<pre>
+call initialize_utilities(progname='model_mod_check', output_flag=verbose)
+
+call find_namelist_in_file("input.nml", "model_mod_check_nml", iunit)
+read(iunit, nml = model_mod_check_nml, iostat = io)
+call check_namelist_read(iunit, io, "model_mod_check_nml")
+
+call static_init_model() ! Exercise the initialization process
+
+call get_gridsize(numlons, numlats, numlevs)
+write(*,'(''nlons, nlats, nlevs'',3(1x,i10))') numlons,numlats,numlevs
+
+x_size = get_model_size()
+write(*,'(''state vector has length'',i10)') x_size
+allocate(statevector(x_size))
+</pre>
+
+<H3 class=indent1>Writing a trivial restart file:</H3>
+<P>
+It's almost inconceivable that this cannot work, but sometimes it is
+just a nice sanity check to see how big a DART restart file for one
+ensemble member should be.
+</P>
+<pre>
+statevector = 1.0_r8;
+model_time  = set_time(21600, 149446)   ! 06Z 4 March 2010 in the Gregorian calendar
+
+iunit = open_restart_write('allones.ics')
+call awrite_state_restart(model_time, statevector, iunit)
+call close_restart(iunit)
+</pre>
+
+<H3 class=indent1>Reading a restart file:</H3>
+<P>
+I generally take the <em class="file">allones.ics</em> file into Matlab
+and stuff something interesting into the appropriate slots and write it
+out again so I can read it in for a more rigorous test of 
+<em class="program">model_mod:aread_state_restart()</em>. 
+Generally, I'll try to fill up what I *intend* to be the
+locations of the first variable with some constant value or some nice field
+from Matlab. The second variable gets its own field, etc. That way, when
+it's read it in, I know what I'm supposed to find in the output. 
+<em class="program">aread_state_restart()</em> is used to read restart files
+as well as the intermediate files created by DART right before the model advance.
+Those files (created internally by DART) have an additional data record specifying
+the "advance_to_time" of the model state. Common practice has the 
+<em class="program">dart_to_model</em> program reading this intermediate file and 
+communicating the advance_to_time to the model control mechanism and then parsing 
+the DART state vector into a form compatible with the model. <strong>TIP:</strong>
+if you write the restart files in ASCII, you can trivially add another DART time
+record in the first line to test the case in which the "advance_to_time" is present.
+</P>
+<pre>
+iunit = open_restart_read(input_file)
+if ( advance_time_present ) then
+   call aread_state_restart(model_time, statevector, iunit, adv_to_time)
+else
+   call aread_state_restart(model_time, statevector, iunit)
+endif
+
+call close_restart(iunit)
+call print_date( model_time,'model_mod_check:model date')
+call print_time( model_time,'model_mod_check:model time')
+</pre>
+
+<H3 class=indent1>Checking the diagnostic output netCDF routines:</H3>
+<P>This block happens after a call to 
+<em class="program">aread_state_restart()</em>, so, depending on 
+what was in the restart file (presumably, once you get 
+<em class="program">model_to_dart</em> working, you have converted
+a real model state to a DART restart and are using <em>that</em>), 
+you can fine-tune what gets put into the DART 
+<em class="file">True_State.nc</em>, 
+<em class="file">Prior_Diag.nc</em>, and
+<em class="file">Posterior_Diag.nc</em> diagnostic files. Only one
+ensemble member is needed to test the routines (hence the hardcoded 1
+in the test block).
+</P>
+<pre>
+state_meta(1) = 'restart test'
+ncFileID = init_diag_output(trim(output_file),'just testing a restart', 1, state_meta)
+call aoutput_diagnostics(ncFileID, model_time, statevector, 1)
+call nc_check( finalize_diag_output(ncFileID), 'model_mod_check:main', 'finalize')
+</pre>
+
+<H3 class=indent1>Check the metadata, and ... </H3>
+<P>It is critical to return the correct metadata for any given index into
+the DART state vector. This code block tests the two most common features of
+the metadata. As a bonus, this routine is also quite useful to determine
+EXACTLY where to place your first test observation. If you test precisely at
+a grid location, you should be able to really get a handle on debugging your
+<em class="program">model_interpolate()</em> routine. 
+The <em class="program">find_closest_gridpoint()</em> routine is designed to
+ensure that your variable layout is as you expect. "closest" in this context
+is close in the horizontal only - all vertical levels will be reported.
+</P>
+<pre>
+call check_meta_data( x_ind )
+call find_closest_gridpoint( loc_of_interest )
+</pre>
+
+<H3 class=indent1>... [optionally] run a test of the model interpolation routine.</H3>
+<P>
+If you like, and you have a <em class="program">test_interpolate</em> subroutine,
+this would be the place to run it.
+</P>
+<pre>
+call test_interpolate(statevector, test_pressure = 500.0_r8, &amp;
+                                   start_lon = 142.5_r8)
+</pre>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<P>There are no error conditions to check. This program is intended
+to demonstrate simple checks that will allow you to proceed with
+improving and testing the <em class="program">model_mod</em>. There
+will be plenty of run-time errors, I suggest compiling your code with 
+"bounds checking" turned on - at a minimum.
+</P>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>Expanded instructions on how to add a model, and how to methodically
+test piece-by-piece.
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

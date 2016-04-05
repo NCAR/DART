@@ -1,0 +1,74 @@
+
+&control
+
+do_bc     = .true.
+do_ic     = .true.
+domain    = 1
+
+dir_wrf              = '/data/$USER/WRFCHEM/'
+dir_moz = '/data/$USER/MOZART/'
+fn_moz  = 'hb0000.nc'
+moz_var_suffix  = ''
+
+spc_map = 'co -> CO',
+          'o3 -> O3',
+          'so2 -> SO2',
+          'no -> NO',
+          'no2 -> NO2',
+          'h2o2 -> H2O2',
+          'hno3 -> HNO3',
+          'n2o5 -> N2O5',
+          'hno3 -> HNO3',
+          'nh3 -> NH3',
+          'hcho -> CH2O',
+          'pan -> PAN',
+          'tpan -> MPAN',
+          'tol -> .75*TOLUENE',
+          'hno4 -> HO2NO2',
+          'eth -> C2H6',
+          'ete -> C2H4',
+          'hc3 -> C3H8',
+          'hc5 -> BIGALK',
+          'iso -> ISOP',
+          'macr -> MACR',
+          'ald -> GLYALD+CH3CHO',
+          'ket -> CH3COCH3',
+          'gly -> GLYOXAL', 
+          'mgly -> CH3COCHO', 
+          'hket -> HYAC',
+          'csl -> CRESOL',
+          'olt -> C3H6+MVK+0.5*BIGENE', 
+          'oli -> .5*BIGENE',
+          'paa -> CH3COOOH',
+          'onit -> ONIT+ONITR',
+          'ora2 -> CH3COOH',
+          'op1 -> CH3OOH',
+          'op2 -> C2H5OOH+ALKOOH+MEKOOH'
+          'ora2 -> CH3COOH',
+          'xyl -> .25*TOLUENE',
+          'ch4 -> CH4',
+          'sulf -> SO4;0.30173e6',
+          'orgpai->2.03507e-2*OC1+2.03507e-2*OC2;1.e9',
+          'orgpaj->0.37992*OC1+0.37992*OC2;1.e9',
+          'antha->0.011199*OC1+0.011199*OC2+0.1344*SOA;1.e9',
+          'eci->CB1+CB2;0.113571e9',
+          'ecj->CB1+CB2;0.264125e9',
+          'claj->1.2*SA1;1e9',
+          'naaj->0.8*SA1;1e9',
+          'seas->SA1+SA2+SA3;1.e9',
+          'orgalk1i->.244208*SOA;1.e9',
+          'orgalk1j->3.9595*SOA;1.e9',
+          'orgaro2i->.244208*SOA;1.e9',
+          'orgaro2j->3.9595*SOA;1.e9',
+          'orgaro1i->0.248134*SOA;1.e9',
+          'orgaro1j->4.669487*SOA;1.e9'
+          'so4ai->1.5563e-3*SO4;3.31423e9',
+          'so4aj->0.832*SO4;3.31423e9',
+          'no3ai->1.5563e-3*NH4NO3;2.76186e9',
+          'no3aj->0.832*NH4NO3;2.76186e9'
+          'p25i->4.66064*[DUST1];1.e9',
+          'p25j->4.66064*[DUST2];1.e9',
+          'soila->4.66064*[DUST3];1.e9',
+          'nu0->4.411755e14*OC1+4.411755e14*OC2+5.293920e15*SOA+4.3853645e15*CB1+4.3853645e15*CB2+4.3656995e15*SO4+1.034506e14*NH4NO3+3.954300e13*SA1+7.796950e13*[DUST1];2.387325e2'
+/
+

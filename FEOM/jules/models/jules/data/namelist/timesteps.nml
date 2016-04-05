@@ -1,0 +1,11 @@
+&jules_time
+l_360=.false.,
+l_leap=.true.,
+main_run_end='2014-01-02 03:00:00',
+main_run_start='2014-01-01 03:00:00',
+print_step=1,
+timestep_len=3600,
+/
+&jules_spinup
+max_spinup_cycles=0,
+/

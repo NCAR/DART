@@ -1,0 +1,83 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>RMA DART</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>Netcdf Inflation Files</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+The filter_nml namelist controls whether state IO is directly from netcdf files or from dart format
+files. If direct_netcdf_read/write = .true. Then filter will read/write the model state from netcdf files
+and also read/write inflation from netcdf files.
+<p>
+Netcdf inflation files are no longer special files.
+DART format inflation files are always 2 copies in one file (mean and standard devation). Taking away this
+special status of inflation files has the advantage that all copies (restarts, ensemble mean, ensemble
+standard deviation, inflation mean, inflation sd, etc.) can all be treated the same for IO purposes. Since there
+are two inflation files when reading/writing netcdf the filenames are different to DART format restart files.
+
+<p>
+The names of the netcdf inflation files are constructed from filter_nml options as follows:
+<p>
+<b>Input inflation file names</b><p>
+The filter_nml option:<p>
+<code>inf_in_file_name = prior_inflation_ics,   post_inflation_ics</code>
+<p>
+means for 1 domain filter is expecting to read:
+<p>
+prior_inflation_mean_ics<br>
+prior_inflation_sd_ics
+<P>
+For multiple domains (or with add_domain_extension = .true.) filter is expecting to
+read:
+<p>
+prior_inflation_ics_mean_d01<br>
+prior_inflation_ics_sd_d01<br>
+prior_inflation_ics_mean_d02<br>
+prior_inflation_ics_sd_d02<br>
+<P>
+where d0* is the domain number.
+<p>
+<b>Output inflation file names</b><p>
+The filter_nml option:<p>
+<code>inf_out_file_name = prior_inflation_restart,    post_inflation_restart</code>
+<p>
+means for 1 domain filter is expecting to write:
+<p>
+prior_inflation_restart_mean<br>
+prior_inflation_restart_sd
+<P>
+For multiple domains (or with add_domain_extension = .true.) filter is expecting to
+write:
+<p>
+prior_inflation_restart_mean_d01<br>
+prior_inflation_restart_sd_d01<br>
+prior_inflation_restart_mean_d02<br>
+prior_inflation_restart_sd_d02<br>
+<P>
+where d0* is the domain number.
+
+
+</BODY>
+</HTML>
+
+

@@ -1,0 +1,484 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program create_real_obs</TITLE>
+<link rel="stylesheet" type="text/css" href="../../../doc/html/doc.css" />
+<link href="../../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM create_real_obs</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Instructions">INSTRUCTIONS</A> / 
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+   Translating NCEP BUFR files into DART obs_seq.out files 
+   (input file to filter) is a 2 stage process.  
+   The first stage uses NCEP software to translate the BUFR file into 
+   an "intermediate" text file.
+   This is described in <A HREF="prep_bufr/prep_bufr.html" >prep_bufr</A>.
+   The second step is to translate the intermediate files into an 
+   <em class=file>obs_seq.out</em> files, which is done by 
+   <em class=program>create_real_obs</em>, as described in this document.
+</P>
+
+<P>
+   This program provides a number of options to select several observation 
+   types (radiosonde, aircraft, and satellite data, etc.) and the DART 
+   observation variables (U, V, T, Q, Ps) which are specified in its 
+   optional namelist interface
+   <A HREF="#Namelist"> <em class=code>&amp;ncepobs_nml</em> </A>
+   which may be read from file <em class=file>input.nml</em>.
+</P>
+
+
+<!--==================================================================-->
+
+<A NAME="Instructions"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>INSTRUCTIONS</H2>
+
+<UL>
+<LI> Go to DART/observations/NCEP/ascii_to_obs/work </LI>
+<LI> Use <em class=program>quickbuild.csh</em> to compile all executable
+     programs in the directory.  To rebuild just one program:
+<UL>
+<LI> Use <em class=program>mkmf_create_real_obs</em> to generate the 
+     makefile to compile <em class=file>create_real_obs.f90</em>.</LI>
+<LI> Type <em class=unix>make</em> to get the executable. </LI>
+</UL>
+
+<LI> Make appropriate changes to the <em class=code>&amp;ncep_obs_nml</em>
+     <A HREF="#Namelist">namelist</A> in <em class=file>input.nml</em>, 
+     as follows. </LI>
+<LI> run <em class=program>create_real_obs</em>. </LI>
+</UL>
+
+<P>
+The selection of any combinations of the specific observation fields 
+(T, Q, U/V, and surface pressure) and types 
+(radiosonde, aircraft reports, or satellite wind, etc.) is made in 
+the namelist <em class=code>&amp;ncepobs_nml</em>. 
+All the available combinations of fields X types (i.e. ADPUPA and obs_U) 
+will be written to the obs_seq file.
+(You will be able to select which of those to use during an assimilation in 
+another namelist (<em class=code>assimilate_these_obs</em>, 
+in <em class=code>&amp;obs_kind_nml</em>), 
+so be sure to include all the fields and types you might want.)
+You should change <em class=code>Obsbase</em> to the pathname of the 
+decoded PREPBUFR text data files. 
+Be sure that <em class=code>daily_file</em> is set to .TRUE. to create
+a single 24 hour file; .FALSE. converts input files one-for-one with
+output files.
+The default action is to tag each observation with the exact time it was
+taken and is the recommended setting.  However, if you want to bin the 
+observations in time, for example to do additional post-processing, 
+the time on all observations in the window
+can be overwritten and set to the nearest synoptic 
+time (e.g. 0Z, 6Z, 12Z, or 18Z), 
+by setting <em class=code>obs_time</em> to false.
+</P>
+
+<P>
+Generally you will want to customize the namelist for your own use.
+For example, here is a sample namelist:
+</P>
+<PRE>
+&amp;ncepobs_nml
+  year = 2007, 
+  month = 3,
+  day = 1,
+  tot_days = 31,
+  max_num = 700000,
+  ObsBase = '../prep_bufr/work/temp_obs.'
+  select_obs  = 1,
+  ADPUPA = .true., 
+  AIRCAR = .false.,  
+  AIRCFT = .true., 
+  SATEMP = .false., 
+  SFCSHP = .false.,
+  ADPSFC = .false.,  
+  SATWND = .true., 
+  obs_U  = .true., 
+  obs_V  = .true.,
+  obs_T  = .true.,
+  obs_PS = .false.,
+  obs_QV = .false.,
+  daily_file = .true.
+  obs_time = .true.,
+/
+
+&amp;obs_sequence_nml
+  write_binary_obs_sequence = .false.  
+/
+</PRE>
+
+<P>
+This will produce daily observation sequence files for the period of 
+March 2007, which have the selected observation types and fields; 
+T, U, and V from radiosondes (ADPUPA) and aircraft (AIRCFT).  
+No surface pressure or specific humidity would appear in the obs_seq files,
+nor observations from ACARS, satellites, and surface stations.
+The output files look like "obs_seq200703dd", with dd = 1,...,31.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;ncepobs_nml
+   year       = 2003,
+   month      = 1,
+   day        = 1,
+   tot_days   = 31,
+   max_num    = 800000,
+   select_obs = 0,
+   ObsBase    = 'temp_obs.',
+   ADPUPA     = .false., 
+   AIRCAR     = .false., 
+   AIRCFT     = .false., 
+   SATEMP     = .false., 
+   SFCSHP     = .false., 
+   ADPSFC     = .false., 
+   SATWND     = .false.,
+   obs_U      = .false., 
+   obs_V      = .false., 
+   obs_T      = .false.,
+   obs_PS     = .false.,
+   obs_QV     = .false.,
+   daily_file = .true.,
+   obs_time   = .true.,
+   lon1       =   0.0,
+   lon2       = 360.0,
+   lat1       = -90.0,
+   lat2       =  90.0  
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD> year, month, day </TD>
+    <TD> integer </TD>
+    <TD>Beginning year, month, day of the observation period.
+</TD></TR>
+
+<TR><TD> tot_days </TD>
+    <TD> integer </TD>
+    <TD>Total days in the observation period.  The converter cannot
+cross month boundaries.
+</TD></TR>
+
+<TR><TD> max_num </TD>
+    <TD> integer </TD>
+    <TD>Maximum observation number for the current one day files.
+</TD></TR>
+
+<TR><TD> select_obs </TD>
+    <TD> integer </TD>
+    <TD>Controls whether to select a subset of observations from the NCEP BUFR
+decoded daily ascii files. 
+       <UL style="list-style: none;">
+          <LI>0 = All observations are selected. </LI>
+          <LI>1 = Select observations using the logical parameters below.</LI>
+       </UL>
+</TD></TR>
+
+<TR><TD> daily_file </TD>
+    <TD> logical </TD>
+    <TD>Controls timespan of observations in each obs_seq file:
+        <UL>
+          <LI>true = 24 hour spans (3:01Z to 3:00Z of the next day). 
+              Filenames have the form obs_seqYYYYMMDD.</LI>
+	  <LI>false = 6 hour spans (3:01Z to 9:00Z, 9:01Z to 15:00Z, 
+              15:01Z to 21:00Z, and 21:01Z to 3:00Z of the next day.
+              Filenames have the form obs_seqYYYYMMDDHH, where HH
+	      is 06, 12, 18, and 24.</LI>
+        </UL>
+</TD></TR>
+
+<TR><TD> ObsBase </TD>
+    <TD> character(len=129) </TD>
+    <TD>Path that contains the decoded NCEP BUFR daily observation files.  To work
+with the example scripts this should be 'temp_obs.', or if it includes
+a pathname then it should end with a '/temp_obs.'
+
+</TD></TR>
+
+<TR><TD> include_specific_humidity, include_relative_humidity, include_dewpoint</TD>
+    <TD> logical </TD>
+    <TD>Controls which moisture observations are created.  The default is to
+create only specific humidity obs, but any, all, or none can be requested.
+Set to .TRUE. to output that obs type, .FALSE.  skips it.  
+</TD></TR>
+
+<TR><TD> ADPUPA </TD>
+    <TD> logical </TD>
+<TD>Select the NCEP type ADPUPA observations which includes land and ship
+launched radiosondes and pibals as well as a few  profile dropsonde. This
+involves,  at 00Z and 12Z, about 650 - 1000 stations, and at 06Z and 18Z
+(which are mostly pibals), about 150 - 400 stations.
+</TD></TR>
+
+<TR><TD> AIRCFT </TD>
+    <TD> logical </TD>
+    <TD>Select the NCEP type AIRCFT observations, which includes commercial, some
+military and reconnaissance reports. They are flight level reports.
+</TD></TR>
+
+<TR><TD> AIRCAR </TD>
+    <TD> logical </TD>
+    <TD>Select the NCEP type AIRCAR observations, which includes data from
+aircraft takeoff and landings.  Sometimes referred to as ACARS obs.
+</TD></TR>
+
+<TR><TD> SATEMP </TD>
+    <TD> logical </TD>
+    <TD>Select the NCEP type SATEMP observations, which includes NESDIS ATOVS
+virtual temperature soundings.
+</TD></TR>
+
+<TR><TD> SFCSHP </TD>
+    <TD> logical </TD>
+    <TD>Select the NCEP type SFCSHP observations, which includes surface marine
+(ship, buoy, c-man) reports.
+</TD></TR>
+
+<TR><TD> ADPSFC </TD>
+    <TD> logical </TD>
+    <TD>Select the NCEP type ADPSFC observations, which includes surface land
+synoptic station reports.
+</TD></TR>
+
+<TR><TD> SATWND </TD>
+    <TD> logical </TD>
+    <TD>Select the NCEP type SATWND observations, which includes winds derived
+from satellite cloud drift analysis.
+</TD></TR>
+
+<TR><TD> obs_U </TD>
+    <TD> logical </TD>
+    <TD>Select u-component of wind observations. 
+</TD></TR>
+
+<TR><TD> obs_V </TD>
+    <TD> logical </TD>
+    <TD>Select v-component of wind observations. 
+</TD></TR>
+
+<TR><TD> obs_T </TD>
+    <TD> logical </TD>
+    <TD>Select temperature observations. 
+</TD></TR>
+
+<TR><TD> obs_PS </TD>
+    <TD> logical </TD>
+    <TD>Select surface pressure observations. 
+</TD></TR>
+
+<TR><TD> obs_QV </TD>
+    <TD> logical </TD>
+    <TD>Select specific humidity observations. 
+</TD></TR>
+
+<TR><TD> lon1 </TD>
+    <TD> real </TD>
+    <TD>Western longitude bound of observations to keep.
+</TD></TR>
+
+<TR><TD> lon2 </TD>
+    <TD> real </TD>
+    <TD>Eastern longitude bound of observations to keep.  Can be less than 
+lon1 if region crosses prime meridian.
+</TD></TR>
+
+<TR><TD> lat1 </TD>
+    <TD> real </TD>
+    <TD>Lower latitude bound of observations to keep.
+</TD></TR>
+
+<TR><TD> lat2 </TD>
+    <TD> real </TD>
+    <TD>upper latitude bound of observations to keep.
+</TD></TR>
+
+<TR><TD> obs_time </TD>
+    <TD> logical </TD>
+    <TD>If .true. use the full time in the input data.  To force all observation
+times in the output to the synoptic time (e.g. 0Z, 6Z, 12Z, or 18Z) set this 
+to .false. (not recommended).
+</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+obs_utilities_mod
+obs_sequence_mod
+obs_kind_mod
+obs_def_mod
+assim_model_mod
+model_mod
+cov_cutoff_mod
+location_mod
+random_seq_mod
+random_nr_mod
+time_manager_mod
+null_mpi_utilities_mod
+real_obs_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL>
+    <LI> path_names_create_real_obs; the list of modules used in the
+         compilation of create_real_obs. </LI>
+    <LI> temp_obs.yyyymmdd; (input) NCEP BUFR (decoded/intermediate) 
+         observation file(s) Each one has 00Z of the next day on it.</LI>
+    <LI> input.nml; the namelist file used by create_real_obs. </LI>
+    <LI> obs_seqYYYYMMDD[HH]; (output) the obs_seq files used by DART. </LI>
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li>.../DART/observations/NCEP/prep_bufr/docs/* 
+    (NCEP text files describing the BUFR files)</li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>&nbsp;</TD>
+    <!-- message --><TD VALIGN=top>&nbsp;</TD>
+    <!-- comment --><TD VALIGN=top>&nbsp;</TD></TR>
+
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+Further development to get observations directly from original <BR />
+(undecoded) NCEP BUFR files.
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

@@ -1,0 +1,55 @@
+
+&control
+
+do_bc     = .true.
+do_ic     = .true.
+domain    = 1
+dir_wrf              = '/data/$USER/WRFCHEM/'
+dir_moz = '/data/$USER/MOZART/'
+fn_moz  = 'ha0004.nc'
+
+spc_map =  'co -> CO', 'o3 -> O3', 'so2 -> SO2', 'no -> NO', 'no2 -> NO2','sulf -> SO4',
+          'h2o2 -> H2O2', 'no3 -> NO3', 'n2o5 -> N2O5', 'hno3 -> HNO3', 'nh3 -> NH3',
+          'hcho -> CH2O', 'pan -> PAN', 'tol -> .75*TOLUENE', 'hno4 -> HO2NO2','iso -> ISOP',
+          'eth -> C2H6', 'par -> C3H6+3*C3H8+2*BIGENE+5*BIGALK', 'ch3oh -> CH3OH',
+          'ald -> GLYALD+CH3CHO', 'ket -> MEK+CH3COCH3+HYAC', 'mgly -> CH3COCHO',
+          'ol2 -> C2H4', 'olt -> .5*BIGENE', 'oli -> .5*BIGENE', 'xyl -> .25*TOLUENE',
+          'csl -> CRESOL', 'open -> BIGALD', 'isoprd -> MVK+MACR+HYDRALD', 'onit -> ONIT+ONITR',
+          'ora2 -> CH3COOH', 'op1 -> CH3OOH', 'op2 -> C2H5OOH', 'ch3o2 -> CH3O2', 'c2h5oh -> C2H5OH',
+          'oc_a01->9.60024e-2*OC1+9.60024e-2*OC2+1.152026*SOA;1.e9'            
+          'oc_a02->.254356*OC1+.254356*OC2+3.05226*SOA;1.e9',
+          'oc_a03->6.00723e-2*OC1+6.00723e-2*OC2+.720865*SOA;1.e9',
+	  'oc_a04->.00104*OC1+.00104*OC2+.012481*SOA;1.e9',
+          'bc_a01->CB1+CB2;.270629e9',
+          'bc_a02->CB1+CB2;10.5467e7',
+          'bc_a03->CB1+CB2;1.6787e6',
+	  'bc_a04->CB1+CB2;6.9571e2',
+          'so4_a01->2.4433e-2*SO4;3.31423e9',
+          'so4_a02->.47111*SO4;3.31423e9',
+	  'so4_a03->.47857*SO4;3.31423e9',
+          'so4_a04->2.5727e-2*SO4;3.31423e9',
+          'no3_a01->2.4433e-2*NH4NO3;2.76186e9',
+          'no3_a02->.47111*NH4NO3;2.76186e9',
+	  'no3_a03->.47857*NH4NO3;2.76186e9',       
+          'no3_a04->2.5727e-2*NH4NO3;2.76186e9',
+          'nh4_a01->2.4433e-2*NH4;6.22876e8',
+          'nh4_a02->.47111*NH4;6.22876e8',
+          'nh4_a03->.47857*NH4;6.22876e8',
+          'nh4_a04->2.5727e-2*NH4;6.22876e8',
+          'na_a01->.2*SA1;1.e9',
+	  'na_a02->.4*SA1;1.e9',
+          'na_a03->.2*SA1+.8*SA2;1.e9',
+          'na_a04->.8*SA3;1.e9',
+          'cl_a01->.3*SA1;1.e9',
+          'cl_a02->.6*SA1;1.e9',
+          'cl_a03->.3*SA1+1.2*SA2;1.e9',
+          'cl_a04->1.2*SA3;1.e9',
+          'oin_a01->1.16516*[DUST1];1.e9',
+          'oin_a02->2.33032*[DUST1];1.e9',
+          'oin_a03->1.16516*[DUST1]+4.66064*[DUST2];1.e9',
+          'oin_a04->4.66064*[DUST3]+4.66064*[DUST4];1.e9',
+          'num_a01->3.40e17*OC1+3.40e17*OC2+4.08e18*SOA+5.64e17*CB1+5.64e17*CB2+1.59e17*SO4+1.33e17*NH4NO3+3.00e16*NH4+3.22e17*SA1+4.83e17*SA1+1.59e18*[DUST1];1.0',
+          'num_a02->4.06e16*OC1+4.06e16*OC2+4.88e17*SOA+9.91e15*CB1+9.91e15*CB2+1.39e17*SO4+1.15e17*NH4NO3+2.60e16*NH4+2.90e16*SA1+4.36e16*SA1+1.43e17*[DUST1];1.0',
+          'num_a03->1.1e14*OC1+1.1e14*OC2+1.3e15*SOA+1.8e12*CB1+1.8e12*CB2+1.6e15*SO4+1.33e15*NH4NO3+3e14*NH4+4.12e14*SA1+1.645e15*SA2+8.11e14*[DUST1]+3.24e15*[DUST2];1',
+          'num_a04->8.70e10*OC1+8.70e10*OC2+1.04e12*SOA+3.42e07*CB1+3.42e07*CB2+3.96e12*SO4+3.30e12*NH4NO3+7.45e11*NH4+7.60e13*SA3+1.50e14*[DUST3]+1.50e14*[DUST4];1.0',
+/

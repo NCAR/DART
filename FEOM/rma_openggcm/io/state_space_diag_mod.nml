@@ -1,0 +1,5 @@
+&state_space_diag_nml
+   single_file                = .true.
+   make_diagnostic_files      = .true.
+   netCDF_large_file_support  = .true.
+/

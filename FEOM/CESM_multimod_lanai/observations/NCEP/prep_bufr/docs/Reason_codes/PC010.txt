@@ -1,0 +1,39 @@
+# DART $Id$
+Table 16.   Reason codes associated with step "OIQC", program code 010 (last revised 9/17/2001). 
+  
+
+KEY: 
+  IN "R.CODE" COLUMN: 
+              B - OCCURS ONLY IN THE GLOBAL(AVN/FNL) AND CDAS VERSIONS OF 
+                  OIQC (THE OIQC STEP DOES NOT RUN IN ANY OTHER NETWORKS). 
+
+  IN "MNEMONIC" COLUMN: 
+                #  - NEW VALUE CALCULATED. 
+  
+
+
+R.CODE   MEANING                                         MNEMONICS AFFECTED AND NEW VALUE FOR OBS, Q.M.
+======   ==============================================  ==============================================
+
+02 B     SSM/I OCEANIC WIND SPEED REPORT.  PERFROMS A    WRC-> UOB,VOB= #, WQM= 2 
+         MULTIVARIATE SURFACE WIND ANALYSIS AND ASSIGNS 
+         THE ANALYZED DIRECTION TO THE WIND SPEED
+         OBSERVATION.  THEN GENERATES NEW U- AND 
+         V-COMPONENTS FOR THE WIND VECTOR.
+
+04 B     OBSERVATION ORIGINALLY WITH A KEEP FLAG (=0)    PRC-> PQM=4 TRC-> TQM=4 WRC-> WQM=4
+         IS REJECTED BECAUSE IT IS MORE THAN 20 TIMES 
+         THE EXPECTED DIFFERENCE FROM THE INTERPOLATED
+         NEARBY INDEPENDENT INFORMATION.
+
+05 B     OBSERVATION ORIGINALLY WITH A GOOD QUALITY      PRC-> PQM=5 
+         MARK (=1) IS REJECTED BY THE OIQC CHECKING      TRC-> TQM=5 
+         ALGORITHM.                                      WRC-> WQM=5 
+
+06 B     OBSERVATION ORIGINALLY WITH A NEUTRAL           PRC-> PQM=6 
+         QUALITY MARK (=2) IS REJECTED BY THE OIQC       TRC-> TQM=6 
+         CHECKING ALGORITHM.                             WRC-> WQM=6 
+
+07 B     OBSERVATION ORIGINALLY WITH A SUSPECT           PRC-> PQM=7 
+         QUALITY MARK (=3) IS REJECTED BY THE OIQC       TRC-> TQM=7 
+         CHECKING ALGORITHM.                             WRC-> WQM=7 

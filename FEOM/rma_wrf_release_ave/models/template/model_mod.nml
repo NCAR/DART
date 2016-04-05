@@ -1,0 +1,5 @@
+&model_nml
+   output_state_vector = .true., 
+   time_step_days      = 0,
+   time_step_seconds   = 3600  /
+

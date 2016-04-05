@@ -1,0 +1,22 @@
+
+There is at least one DART user who had working DART interface code
+to the Community Multiscale Air Quality (CMAQ) modeling system.
+This model is supported and developed by the US Environmental
+Protection Agency (EPA) in North Carolina.
+
+See here:
+
+https://www.cmascenter.org/cmaq/
+
+for more information on the model.  
+
+If you are interested in running DART with this model please contact 
+the DART group at 'dart@ucar.edu' for more information.  We currently do
+not have a copy of the model_mod interface code nor any of the scripting 
+required to run an assimilation, but we may be able to put you in contact 
+with the right people to get it.
+
+The DART Group
+17 Sept 2014
+
+

@@ -1,0 +1,268 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program compare_states</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>compare_states</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+Utility program to compare fields in two NetCDF files and
+print out the min and max values from each file and the
+min and max of the differences between the two fields.
+The default is to compare all numeric variables in the files,
+but specific variables can be specified in the namelist or
+in a separate file.
+The two input NetCDF filenames are read from the console or
+can be echo'd into the standard input of the program.
+</P>
+
+<P>
+If you want to restrict the comparison to only specific
+variables in the files, 
+specify the list of field names to compare either in
+the namelist, or put a list of fields, one per line,
+in a text file and specify the name of the text file.
+Only data arrays can be compared, not character arrays,
+strings, or attribute values.
+</P>
+
+<P>
+Namelist interface
+<A HREF="#Namelist"><em class=code>&amp;compare_states_nml</em> </A>
+must be read from file <em class=file>input.nml</em>.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;compare_states_nml
+  do_all_numeric_fields = .true.,
+  fieldnames = '', 
+  fieldlist_file = '',
+  fail_on_missing_field = .true.,
+  debug = .false., 
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD>do_all_numeric_fields</TD>
+    <TD>logical</TD>
+    <TD>If .true., all integer, float, and double variables in the
+NetCDF files will have their values compared.  If .false. the list of
+specific variables to be compared must be given either directly in
+the namelist in the <em class=code>fieldnames</em> item, or else the
+field names must be listed in an ASCII file, one name per line, and
+the name of that file is specified in <em class=code>fieldlist_file</em>.
+</TD></TR>
+
+<TR><TD>fieldnames</TD>
+    <TD>character list</TD>
+    <TD>One or more names of arrays in the NetCDF files to be compared.
+Only read if <em class=code>do_all_numeric_fields</em> is .false.
+</TD></TR>
+
+<TR><TD>fieldlist_file</TD>
+    <TD>character</TD>
+    <TD>Name of a text file containing the fieldnames, one per line.  It is an
+error to specify both the fieldnames namelist item and this one.
+Only read if <em class=code>do_all_numeric_fields</em> is .false.
+</TD></TR>
+
+<TR><TD>fail_on_missing_field</TD>
+    <TD>logical</TD>
+    <TD>If .true. and any one of the field names is not found in both files it is
+a fatal error.  If .false. a message is printed about the missing field but
+execution continues.
+</TD></TR>
+
+<TR><TD>debug</TD>
+    <TD>logical</TD>
+    <TD>If true print out debugging info.
+<TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+parse_args_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL><LI>two NetCDF input files
+    <LI>compare_states.nml 
+    <LI>field names text file (optionally)
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>compare_states</TD>
+    <!-- message --><TD VALIGN=top>Only use single process</TD>
+    <!-- comment --><TD VALIGN=top>Only a single mpi process can be used 
+                                   with this program</TD></TR>
+
+<TR><!-- routine --><TD VALIGN=top>compare_states</TD>
+    <!-- message --><TD VALIGN=top>must specify data days and times</TD>
+    <!-- comment --><TD VALIGN=top>If overwrite_data_time is true,
+       the namelist must include the new day and time.</TD></TR>
+
+<TR><!-- routine --><TD VALIGN=top>compare_states</TD>
+    <!-- message --><TD VALIGN=top>output_is_model_advance_file must 
+                                   be true to set advance time</TD>
+    <!-- comment --><TD VALIGN=top>If overwrite_advance_time is true,
+              output_is_model_advance_file must also be true.</TD></TR>
+
+<TR><!-- routine --><TD VALIGN=top>compare_states</TD>
+    <!-- message --><TD VALIGN=top>must specify advance days and times</TD>
+    <!-- comment --><TD VALIGN=top>If overwrite_advance_time is true,
+       the namelist must include the new day and time.</TD></TR>
+
+<TR><!-- routine --><TD VALIGN=top>compare_states</TD>
+    <!-- message --><TD VALIGN=top>overwrite_advance_time must be true 
+                                   if output file has advance time</TD>
+    <!-- comment --><TD VALIGN=top>If the incoming file does not have
+                 a model advance time, the output cannot have one unless
+                 the user gives one in the namelist, and sets 
+                 overwrite_advance_time to true.</TD></TR>
+
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

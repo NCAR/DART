@@ -1,0 +1,45 @@
+
+&control
+
+do_bc     = .true.
+do_ic     = .true.
+domain    = 1
+
+dir_wrf              = '/data/$USER/WRFCHEM/' 
+dir_moz = '/data/$USER/MOZART/'
+fn_moz  = 'hb0068.nc'
+
+spc_map = 'co -> CO', 
+          'o3 -> O3', 
+          'so2 -> SO2', 
+          'no -> NO', 
+          'no2 -> NO2',
+          'h2o2 -> H2O2', 
+          'no3 -> NO3', 
+          'n2o5 -> N2O5', 
+          'hno3 -> HNO3', 
+          'nh3 -> NH3',
+          'hcho -> CH2O', 
+          'pan -> PAN', 
+          'tpan -> MPAN', 
+          'tol -> .75*TOLUENE', 
+          'hno4 -> HO2NO2',
+          'eth -> C2H6', 
+          'hc3 -> C3H8', 
+          'hc5 -> BIGALK', 
+          'iso -> ISOP', 
+          'ald -> GLYALD+CH3CHO+MACR', 
+          'ket -> CH3COCH3+HYAC', 
+          'gly -> GLYOXAL',
+          'mgly -> CH3COCHO', 
+          'csl -> CRESOL', 
+          'ol2 -> C2H4', 
+          'olt -> C3H6+MVK+.5*BIGENE', 
+          'oli -> .5*BIGENE', 
+          'paa -> CH3COOOH',
+          'onit -> ONIT+ONITR', 
+          'ora2 -> CH3COOH', 
+          'op1 -> CH3OOH', 
+          'op2 -> C2H5OOH+ALKOOH+MEKOOH'
+/
+

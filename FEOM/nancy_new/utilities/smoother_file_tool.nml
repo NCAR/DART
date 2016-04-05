@@ -1,0 +1,13 @@
+
+&smoother_file_tool_nml 
+   filter_restart_file_name     = "filter_restart",        
+   smoother_restart_file_name   = "smoother_restart",
+   ens_size                     = 50,
+   single_restart_file_in       = .false.,
+   single_restart_file_out      = .false.,
+   write_binary_restart_files   = .true.,
+   gregorian_cal                = .true.,
+   print_only                   = .false.
+/
+
+

@@ -1,0 +1,8 @@
+&jules_surface_types
+ice=9,
+lake=7,
+nnvg=4,
+npft=5,
+soil=8,
+urban=6,
+/

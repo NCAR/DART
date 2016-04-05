@@ -1,0 +1,25 @@
+        REAL*8          R8BFMS
+        PARAMETER       ( R8BFMS = 10.0E10 )
+C*                                      "Missing" value for BUFR data
+C*
+        PARAMETER       ( MXR8PM = 10 )
+C*                                      Maximum number of BUFR parameters
+C*
+        PARAMETER       ( MXR8LV = 400 )
+C*                                      Maximum number of BUFR levels
+C*
+        PARAMETER       ( MXR8VN = 10 )
+C*                                      Maximum number of BUFR event sequences
+C*
+        PARAMETER       ( MXR8VT = 6 )
+C*                                      Maximum number of BUFR variable types
+C*
+        PARAMETER       ( MXSTRL = 80 )
+C*                                      Maximum size of a string
+C*
+        REAL*8          hdr ( MXR8PM ),
+     +                  evns ( MXR8PM, MXR8LV, MXR8VN, MXR8VT )
+C*
+        COMMON  / PREPBC /      hdr, evns, nlev
+
+

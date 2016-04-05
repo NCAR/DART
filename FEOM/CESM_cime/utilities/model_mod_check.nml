@@ -1,0 +1,10 @@
+&model_mod_check 
+   input_file           = "dart_ics",        
+   output_file          = "check_me",
+   advance_time_present = .FALSE.,
+   x_ind                = -1,
+   loc_of_interest      = -1.0, -1.0, -1.0,
+   kind_of_interest     = 'ANY'
+   verbose              = .FALSE.,
+   /
+

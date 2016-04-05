@@ -1,0 +1,23 @@
+#!/bin/sh
+
+# create input to make one obs of each type in an input file
+
+# usage: $0 list_of_obs_types_one_per_line
+
+if [[ $# -lt 1 ]]; then
+   echo usage: $0 list_of_obs_types
+   exit -1
+fi
+
+# todo check for 
+typelist=$1
+outfile=${typelist}_COS.in
+
+ntypes=`cat $typelist | wc -l`
+
+echo $ntypes > $outfile
+awk -f make_COS_input.awk $typelist >> $outfile
+
+echo ready to run "create_obs_sequence < $outfile"
+exit 0
+

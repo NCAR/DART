@@ -1,0 +1,482 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program COSMOS_to_obs</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>COSMOS_to_obs</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#DataSources">DATA SOURCES</A> /
+<A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> / 
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H1>Overview</H1>
+
+<H4>COSMOS "Level 2" Text File to DART Converter</H4>
+
+<P>
+<a href="http://cosmos.hwr.arizona.edu/">COSMOS</a> is an NSF supported 
+project to measure soil moisture on the horizontal scale of hectometers 
+and depths of decimeters using cosmic-ray neutrons.
+The data for each station is available from the COSMOS data portal with 
+several levels of processing. The metadata for each station 
+(location, height, etc) is also available from the data portal.
+The <b>Level 2 Data</b> is most suited for use with DART.
+<br />
+<br />
+Since each site has a separate input data file, and the metadata for
+each site must essentially be hand-input to the converter program, it is
+generally easiest to convert the observations for each site separately
+and then use the <a href="../../obs_sequence/obs_sequence_tool.html">
+obs_sequence_tool.f90</a> to combine the observations from multiple sites
+and restrict the DART observation sequence file to contain just the 
+observations of the timeframe of interest.
+<br />
+<br />
+FYI - in DART, the soil moisture profile is converted to expected neutron counts using 
+the <b>CO</b>smic-ray <b>S</b>oil <b>M</b>oisture <b>I</b>nteraction <b>C</b>ode (COSMIC),
+developed at the University of Arizona by Rafael Rosolem and Jim Shuttleworth.
+<br />
+<br />
+The workflow is usually: 
+</P>
+<ol>
+<li><a href="http://cosmos.hwr.arizona.edu/Probes/probemap.php">get the site metadata</a>
+    and enter it in the <em class=file>input.nml</em>
+    <em class=input>&amp;COSMOS_to_obs_nml</em></li>
+
+<li>download the Level 2 Data and prefix the filename with the station name (or else they
+    all get named <em class=file>corcounts.txt</em>)
+    and enter the filename into <em class=input>&amp;COSMOS_to_obs_nml</em></li>
+
+<li>make sure the station soil parameters and COSMIC parameters are contained in the 
+    <em class=file>observations/COSMOS/data/COSMIC_parlist.nc</em>
+    (more on this in <a href="#COSMICparameters">the section on COSMIC parameters</a>)</li>
+
+<li>run <em class=program>COSMOS_to_obs</em> to generate a DART observation sequence 
+    file for the station and rename the output file if necessary
+    (you can explicity name the output file via the namelist).</li>
+
+<li>repeat steps 1-4 for this converter to generate a DART observation sequence 
+    file for each station.</li>
+
+<li>use the <a href="../../obs_sequence/obs_sequence_tool.html">obs_sequence_tool.f90</a> 
+    to combine the observations from multiple sites</li>
+</ol>
+
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>DATA SOURCES</H2>
+
+<P>
+The COSMOS data portal can be found at:
+<a href="http://cosmos.hwr.arizona.edu/Probes/probemap.php">
+http://cosmos.hwr.arizona.edu/Probes/probemap.php</a>
+The data for each station is available from the data portal with several
+levels of processing. The metadata for each station (location, height, etc) is also
+available from the data portal. The <b>Level 2 Data</b> is most suited for use with DART.
+An example of the Level 2 Data follows:
+</P>
+<pre>
+YYYY-MM-DD HH:MM  MOD PROBE PRESS  SCALE SANPE INTEN OTHER CORR ERR
+2009-10-23 18:34 5996 0.800 1.087 06.901 2.486 1.062 1.000 1768 022
+2009-10-23 19:34 5885 0.800 1.080 06.901 2.486 1.059 1.000 1729 022
+2009-10-23 20:34 6085 0.800 1.072 06.901 2.486 1.059 1.000 1774 022
+2009-10-23 21:34 6339 0.800 1.068 06.901 2.486 1.059 1.000 1843 023
+...
+</pre>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PROGRAMS</H2>
+<P>
+The <em class=file>COSMOS_to_obs.f90</em> file is the source code
+for the main converter program.
+At present there is an uncomfortable assumption that the order of the columns
+in the Level 2 data is fixed. I hope to relax that requirement in the near future.
+<em class=program>COSMOS_to_obs</em>
+reads each text line into a character buffer
+and then reads from that buffer to parse up the data items.
+The items are then combined with the COSMIC parameters for that site 
+and written to a DART-format observation sequence file. The DART format
+allows for the additional COSMIC parameters to be contained as metadata for
+each observation.
+</P>
+<P>
+To compile and test, go into the <em class=file>COSMOS/work</em> subdirectory and 
+run the <em class=program>quickbuild.csh</em>
+script to build the converter and a couple of general purpose utilities.
+The <a href="../../obs_sequence/obs_sequence_tool.html">obs_sequence_tool</a>
+manipulates (i.e. combines, subsets) DART observation files once they have been created.
+The default observations supported are those defined in 
+<a href="../../obs_def/obs_def_tower_mod.f90">DART/obs_def/obs_def_tower_mod.f90</a> and
+<a href="../../obs_def/obs_def_COSMOS_mod.f90">DART/obs_def/obs_def_COSMOS_mod.f90</a>.
+If you need additional observation types, you will have to add the 
+appropriate <em class=file>obs_def_XXX_mod.f90</em> file to the
+<em class=file>input.nml</em>&nbsp;<em class=code>&amp;preprocess_nml:input_files</em>
+variable and run <em class=program>quickbuild.csh</em> again.
+It rebuilds the table of supported observation types before 
+compiling the source code.
+</P>
+
+<A NAME="COSMICparameters"></A>
+<div class=indent1>
+<H3>COSMIC parameters</H3>
+<P>
+Additional information is needed by DART to convert soil moisture profiles
+to neutron counts. Each COSMOS instrument has site-specific parameters 
+describing soil properties etc. Those parameters have been inserted into
+the observation file as metadata for each observation to simplify the 
+DART observation operator.
+It is a bit redundant as currently implemented, but it is convenient.
+<br />
+<br />
+<em class=program>COSMOS_to_obs</em> reads the site name from
+the input namelist and the known station information from 
+<em class=file>COSMIC_parlist.nc</em>. The simplest way to add a new station to
+<em class=file>COSMIC_parlist.nc</em> is probably to:
+</P>
+<ol><li>manually enter the information into the "data" section of 
+        <em class=file>COSMIC_parlist_station.txt</em></li>
+    <li>then use <em class=program>ncgen</em> to convert 
+        <em class=file>COSMIC_parlist_station.txt</em> to a netCDF file.</li>
+    <li>That netCDF file can be concatenated onto <em class=file>COSMIC_parlist.nc</em>
+        with a simple <em class=program>ncrcat</em> command.</li>
+</ol>
+<P>
+Listing the sites already supported is easy:
+</P>
+<div class=unix>
+<pre>
+observations/COSMOS/data % <em class=input>ncdump -v sitenames COSMIC_parlist.nc</em>
+netcdf COSMIC_parlist {
+dimensions:
+        nsites = UNLIMITED ; // (42 currently)
+        strlength = 21 ;
+variables:
+        char sitenames(nsites, strlength) ;
+                sitenames:long_name = "COSMOS Site Names" ;
+        double longitude(nsites) ;
+                longitude:long_name = "Longitude" ;
+                longitude:units = "degrees" ;
+        double latitude(nsites) ;
+                latitude:long_name = "Latitude" ;
+                latitude:units = "degrees" ;
+        double elevation(nsites) ;
+                elevation:long_name = "Elevation" ;
+                elevation:units = "m" ;
+        double bd(nsites) ;
+                bd:long_name = "Dry Soil Bulk Density" ;
+                bd:units = "g cm{-3}" ;
+        double lattwat(nsites) ;
+                lattwat:long_name = "Lattice Water Content" ;
+                lattwat:units = "m{3} m{-3}" ;
+        double N(nsites) ;
+                N:long_name = "High Energy Neutron Intensity" ;
+                N:units = "relative counts" ;
+        double alpha(nsites) ;
+                alpha:long_name = "Ratio of Fast Neutron Creation Factor (Soil to Water)" ;
+                alpha:units = "-" ;
+        double L1(nsites) ;
+                L1:long_name = "High Energy Soil Attenuation Length" ;
+                L1:units = "g cm{-2}" ;
+        double L2(nsites) ;
+                L2:long_name = "High Energy Water Attenuation Length" ;
+                L2:units = "g cm{-2}" ;
+        double L3(nsites) ;
+                L3:long_name = "Fast Neutron Soil Attenuation Length" ;
+                L3:units = "g cm{-2}" ;
+        double L4(nsites) ;
+                L4:long_name = "Fast Neutron Water Attenuation Length" ;
+                L4:units = "g cm{-2}" ;
+
+// global attributes:
+                :website = "COsmic-ray Soil Moisture Observing System (COSMOS) - 
+                            http://cosmos.hwr.arizona.edu" ;
+data:
+
+ sitenames =
+  "ARM-1                ",
+  "Austin_Cary          ",
+  "Bondville            ",
+  "Brookings            ",
+  "Chestnut_Ridge_NOAA  ",
+  "Coastal_Sage_UCI     ",
+  "Daniel_Forest        ",
+  "Desert_Chaparral_UCI ",
+  "Fort_Peck            ",
+  "Harvard_Forest       ",
+  "Hauser_Farm_North    ",
+  "Hauser_Farm_South    ",
+  "Howland              ",
+  "Iowa_Validation_Site ",
+  "Island_Dairy         ",
+  "JERC                 ",
+  "Kendall              ",
+  "KLEE                 ",
+  "Manitou_Forest_Ground",
+  "Metolius             ",
+  "Morgan_Monroe        ",
+  "Mozark               ",
+  "Mpala_North          ",
+  "Neb_Field_3          ",
+  "P301                 ",
+  "Park_Falls           ",
+  "Pe-de-Gigante        ",
+  "Rancho_No_Tengo      ",
+  "Reynolds_Creek       ",
+  "Rietholzbach         ",
+  "Rosemount            ",
+  "San_Pedro_2          ",
+  "Santa_Rita_Creosote  ",
+  "Savannah_River       ",
+  "Silver_Sword         ",
+  "SMAP-OK              ",
+  "Soaproot             ",
+  "Sterling             ",
+  "Tonzi_Ranch          ",
+  "UMBS                 ",
+  "UVA                  ",
+  "Wind_River           " ;
+}
+</pre>
+</div>
+
+<P>The observation sequence files will look something like the following,
+the attributes in yellow are the information from <em class=file>COSMIC_parlist.nc</em>:
+</P>
+
+<div class=unix>
+<pre>
+ obs_sequence
+obs_kind_definitions
+           1
+          20 COSMOS_NEUTRON_INTENSITY
+  num_copies:            1  num_qc:            1
+  num_obs:         3840  max_num_obs:         3840
+observation
+COSMOS QC
+  first:            1  last:         3840
+ OBS            1
+   1048.0000000000000
+   1.0000000000000000
+          -1           2          -1
+obdef
+loc3d
+     4.154723123116714        0.7997185899100618         0.000000000000000     -1
+kind
+          20
+<div style="color: yellow"> cosmic
+  0.88500000000000001       5.84099999999999966E-002   336.95696938999998       0.31918025877000000
+   161.98621864285701        129.14558984999999        55.311849408000000        3.8086191933000002
+           1</div>
+ 77340     150034
+   1225.0000000000000
+   ...
+</pre>
+</div>
+</div><!-- end of block indent -->
+<P>&nbsp;</P><!-- needed to make 'top' align correctly -->
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from
+prematurely terminating the namelist.
+</P>
+
+
+<div class=namelist>
+<pre>
+&amp;COSMOS_to_obs_nml
+   site_metadata_file = 'COSMIC_parlist.nc'
+   text_input_file    = 'textdata.input',
+   obs_out_file       = 'obs_seq.out',
+   sitename           = 'missing',
+   maxgoodqc          =  3,
+   verbose            = .false.
+   /
+</pre>
+</div>
+
+<div>
+
+<TABLE border=0 cellpadding=3 width=100% summary='Cosmos namelist description'>
+<THEAD align=left>
+<TR><TH>Contents    </TH>
+    <TH>Type        </TH>
+    <TH>Description </TH></TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR>
+ <TD>site_metadata_file</TD>
+ <TD>character(len=256)</TD>
+ <TD>The netCDF file containing the parameter values for each site.
+</TD></TR>
+
+<TR>
+ <TD>text_input_file</TD>
+ <TD>character(len=128)</TD>
+ <TD>The text file containing the raw observations for each site.
+</TD></TR>
+
+<TR>
+ <TD>obs_out_file</TD>
+ <TD>character(len=128)</TD>
+ <TD>The output observation sequence file for DART.
+</TD></TR>
+
+<TR>
+ <TD>sitename</TD>
+ <TD>character(len=128)</TD>
+ <TD>The name of the site. Must match one of the site names in 
+the <em class=code>site_metadata_file</em>.  Case-insensitive match, 
+trailing blanks ignored.
+Use <em class=input>ncdump&nbsp;-v&nbsp;sitenames&nbsp;COSMIC_parlist.nc</em>
+</TD></TR>
+
+<TR>
+ <TD>maxgoodqc</TD>
+ <TD>integer</TD>
+ <TD>left for future implementation.
+</TD></TR>
+
+<TR>
+ <TD>verbose</TD>
+ <TD>logical</TD>
+ <TD>A switch to specify the amount of run-time output.
+<em class=code>.true.</em> the most amount of output.
+<em class=code>.false.</em> the least amount of output.
+</TD></TR>
+
+</TBODY>
+</TABLE>
+
+<H3 class=indent1>Example</H3>
+
+<pre>
+&amp;COSMOS_to_obs_nml
+   site_metadata_file = 'COSMIC_parlist.nc',
+   text_input_file    = 'SantaRita_corcounts.txt',
+   obs_out_file       = 'SantaRita_obs_seq.out',
+   sitename           = 'Santa_Rita_Creosote',
+</pre>
+
+</div>
+
+<!--==================================================================-->
+<!-- References.                                                      -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>References</H2>
+<ul>
+<li><a href="http://cosmos.hwr.arizona.edu">The COSMOS web page.</a></li>
+
+<li>Franz, T.E, M. Zreda, T.P.A. Ferre, R. Rosolem, C. Zweck, S. Stillman, 
+    X. Zeng and W.J. Shuttleworth, 2012: Measurement depth of the cosmic-ray 
+    soil moisture probe affected by hydrogen from various sources.
+    <span style="font-style: italic;"> Water Resources Research</span>
+    <span style="font-weight: bold;">48</span>, W08515, 
+    <a href="http://dx.doi.org/10.1029/2012WR011871">doi:10.1029/2012WR011871</a>
+    </li>
+
+<li>Franz, T.E, M. Zreda, R. Rosolem, T.P.A. Ferre, 2012: 
+    Field validation of cosmic-ray soil moisture probe using a distributed sensor network.
+    <span style="font-style: italic;">Vadose Zone Journal</span> (in press), 
+    <a href="http://dx.doi.org/10.2136/vzj2012.0046">doi:10.2136/vzj2012.0046</a>
+    </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<ul>
+<li>Implement a routine to automatically determine the column indices of
+the columns of interest.</li>
+<li>Implement a QC encoding that reflects the uncertainty of the measurement. 
+Presently, all Level 2 data have an incoming QC of 1.</li>
+</ul>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

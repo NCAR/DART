@@ -1,0 +1,4 @@
+&obs_add_pseudo_obs_nml
+   filename_in  = 'obs_seq.out', 
+   filename_out = 'obs_pseudo_seq.out', 
+/

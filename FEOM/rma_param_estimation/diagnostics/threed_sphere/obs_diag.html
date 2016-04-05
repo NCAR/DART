@@ -1,0 +1,1224 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program obs_diag</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>obs_diag</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">INTERFACES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#Usage">USAGE </A> / 
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+   Main program for evaluating filter performance in observation space. 
+   Primarily, the prior or posterior ensemble mean (and spread) are compared 
+   to the observation and several quantities are calculated. These quantities
+   are then saved in a netCDF file that has all the metadata to create
+   meaningful figures.
+</P>
+<P>
+   Each <em class="file">obs_seq.final</em> file contains an observation 
+   sequence that has multiple 'copies' of the observation. One copy is
+   the actual observation, another copy is the prior ensemble mean estimate 
+   of the observation, one is the spread of the prior ensemble estimate,
+   one may be the prior estimate from ensemble member 1, ... etc. 
+   If the original observation sequence 
+   is the result of a 'perfect model' experiment, there is an additional
+   copy called the 'truth' - the noise-free expected observation given 
+   the true model state. Since this copy does not, in general, exist for
+   the high-order models, all comparisons are made with the copy labelled
+   'observation'. <em class=changed>New! There is a namelist variable
+   (<em class=code>use_zero_error_obs</em>) to compare 
+   against the 'truth' instead; the observation error variance is then 
+   automatically set to zero.</em>
+</P>
+<P>
+   Each ensemble member applies a forward observation operator to the state to compute
+   the "expected" value of an observation.  <em class=changed>Please note:
+   the forward observation operator is applied <strong>AFTER</strong> any prior inflation
+   has taken place! Similarly, the forward observation operator is applied AFTER any posterior 
+   inflation. This has always been the case.</em> For a detailed 
+   look at the relationship between the observation operators and inflation, please look at the
+   <a href="../../filter/filter.html#DetailedProgramFlow">Detailed&nbsp;Program&nbsp;Execution Flow</a>
+   section of <a href="../../filter/filter.html">filter.html</a>.<br /><br />
+   Given multiple estimates of 
+   the observation, several quantities can be calculated. It is possible to
+   compute the expected observations from the state vector before 
+   assimilating (the "guess", "forecast", or "prior") or after the
+   assimilation (the "analysis", or "posterior"). 
+</P>
+<P>
+   Even with <em class="file">input.nml</em>:<em class="code">filter_nml:num_output_obs_members</em> 
+   set to <em class="code">0</em>; the full [prior,posterior] ensemble mean and
+   [prior,posterior] ensemble spread are preserved in the 
+   <em class="file">obs_seq.final</em> file. Consequently, the ensemble means and
+   spreads are used to calculate the diagnostics.
+
+   If the 
+   <em class="file">input.nml</em>:<em class="code">filter_nml:num_output_obs_members</em> 
+   is set to <em class="code">80</em> (for example); the first 80 ensemble members 
+   prior and posterior "expected" values of the observation are also included. 
+   In this case, the <em class="file">obs_seq.final</em> file contains enough 
+   information to calculate a rank histograms, verify forecasts, etc. 
+   The ensemble means are still used for many other calculations.
+</P>
+   <table width="100%"><tr>
+   <td rowspan=2><a href="../../doc/images/obs_diag_evolution_example.png"><img src="../../doc/images/obs_diag_evolution_example.png" width="300"></a>
+   <td rowspan=2><a href="../../doc/images/obs_diag_profile_example.png"><img src="../../doc/images/obs_diag_profile_example.png" width="300"></a>
+   <td><a href="../../doc/images/RankHistogram_ncview.png"><img src="../../doc/images/RankHistogram_ncview.png" width="200"></a></td>
+   </tr>
+   <tr><td><a href="../../doc/images/RankHistogram_matlab.png"><img src="../../doc/images/RankHistogram_matlab.png" width="200"></a></td>
+   </tr>
+   </table>
+
+<P>
+   There are two versions of this program, one for high-order models that have
+   real observations and another for low-order models. Since this program
+   is fundamentally interested in the response as a function of region, the 
+   division was made if the model has a threed_sphere or a oned 
+   <em class=file>location_mod.f90</em>. It did not make sense to ask the 
+   <em class=program>lorenz_96</em> model what part of North America you'd like
+   to investigate. The low-order models write out similar 
+   netCDF files and the Matlab scripts have been updated accordingly.
+   <em class=changed>The oned observations have locations conceptualized as being on
+   a unit sphere, so only the namelist input variables pertaining to longitude are
+   used.</em>
+</P>
+<P>
+   Identity observations (only possible from "perfect model experiments") 
+   are already explored with state-space diagnostics,
+   so <em class=program>obs_diag</em> simply skips them.
+</P>
+<P>
+   <em class="program">obs_diag</em> is designed to explore the effect of 
+   the assimilation in three ways; 1) as a function of time for a particular 
+   variable and level (this is the figure on the left), 2) as a 
+   time-averaged vertical profile (figure in the middle), and sometimes 
+   3) in terms of a rank histogram - "Where does the actual observation rank 
+   relative to the  rest of the ensemble?" (figures on the right).
+   The figures on the left and center were created by several Matlab&#174; 
+   scripts that query the <em class="file">obs_diag_output.nc</em> file: 
+   <em class="file">DART/diagnostics/matlab/<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_evolution.m">plot_evolution.m</a></em> and 
+   <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_profile.m">plot_profile.m</a>.
+   Both of these takes as input a 
+   file name and a 'quantity' to plot ('rmse','spread','totalspread',&nbsp;...)
+   and exhaustively plots the quantity (for every variable, every level, 
+   every region) in a single matlab figure window  - and creates a series 
+   of .ps files with multiple pages for each of the figures. 
+   The directory gets cluttered with them.
+   The rank histogram information can easily be plotted with <a href="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</a>,
+   a free third-party piece of software or with 
+   <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_rank_histogram.m">plot_rank_histogram.m</a>.
+</P>
+<P>
+   <em class=removed><em class="program">obs_diag</em>
+   is not explicitly designed to explore OSSE's.  In general, it is 
+   used for 'real' observations and looks through the metadata for
+   the observation sequence to identify which 'copy' is labeled 'observation'.
+   It is THAT copy that is used as the noisy estimate of the truth.</em>
+   <em class="program">obs_diag</em> can be configured to compare the 
+   ensemble estimates against the 'observation' copy or the 'truth' copy based
+   on the setting of the <em class=code>use_zero_error_obs</em> namelist variable.
+   
+</P>
+<P>
+   The observation sequence files contain only the time of the observation, 
+   nothing of the assimilation interval, etc. - so it requires user guidance 
+   to declare what sort of temporal binning for the temporal evolution 
+   plots. I do a 'bunch' of arithmetic on the namelist times to convert 
+   them to a series of temporal bin edges that are used when traversing 
+   the observation sequence. The actual algorithm is that the user input for
+   the start date and bin width set up a sequence that ends in one of two ways ...
+   the last time is reached or the number of bins has been reached. 
+</P>
+<P>
+   <em class=program>obs_diag</em> reads <em class=file>obs_seq.final</em>
+   files and calculates the following quantities (in no particular order) 
+   for an arbitrary number of regions and levels. It is necessary to query
+   the <em class=code>CopyMetaData</em> variable to determine the storage order
+   (i.e. "which copy is what?").
+</P>
+
+   <table width="90%">
+   <tr><td valign="top"><b>Nposs</b></td>
+       <td>The number of observations available to be assimilated.</td></tr>
+   <tr><td valign="top"><b>Nused</b></td>
+       <td>The number of observations that were assimilated.</td></tr>
+   <tr><td valign="top"><b><em class=removed>NbigQC</em></b></td>
+       <td><em class=changed>Deprecated. the number of observations that had 'large' 
+           (original) QC values;</em></td></tr>
+   <tr><td valign="top"><b><em class=removed>NbadIZ</em></b></td>
+       <td><em class=changed>Deprecated. the number of observations that had 'large' 
+           Innovation&nbsp;Z scores (large distance between it and the ensemble);</em></td></tr>
+   <tr><td valign="top"><b>NbadUV</b></td>
+       <td>the number of velocity observations that had a matching component 
+           that was not assimilated;</td></tr>
+   <tr><td valign="top"><b>NbadLV</b></td>
+       <td>the number of observations that were above or below the highest 
+           or lowest model level, respectively;</td></tr> 
+   <tr><td valign="top"><b>rmse</b></td>
+       <td>The root-mean-squared error (the horizontal wind components 
+           are also used to calculate the vector wind velocity 
+           and its RMS error).</td></tr>
+   <tr><td valign="top"><b>bias</b></td>
+       <td>The simple sum of forecast - observation. The bias of the 
+           horizontal wind speed (not velocity) is also computed.</td></tr>
+   <tr><td valign="top"><b>spread</b></td>
+       <td>The standard deviation of the univariate obs.
+           DART does not exploit the bivariate nature of U,V winds
+           and so the spread of the horizontal wind is defined as
+           the sum of the spreads of the U and V components.</td></tr>
+   <tr><td valign="top"><b>totalspread&nbsp;&nbsp;&nbsp;</b></td>
+       <td>The total standard deviation of the estimate. We pool the
+           ensemble variance of the observation plus the observation error 
+           variance and take the square root.</td></tr>
+   <tr><td valign="top"><b>NbadDARTQC&nbsp;&nbsp;&nbsp;</b></td>
+       <td>the number of observations that had a DART QC value 
+           (&gt; 1 for a prior, &gt; 3 for a posterior)</td></tr> 
+   <tr><td valign="top"><b>observation</b></td>
+       <td>the mean of the observation values</td></tr> 
+   <tr><td valign="top"><b>ens_mean</b></td>
+       <td>the ensemble mean of the model estimates of the observation values</td></tr> 
+   <tr><td valign="top"><b>N_DARTqc_0</b></td>
+       <td>the number of observations that had a DART QC value of 0</td></tr> 
+   <tr><td valign="top"><b>N_DARTqc_1</b></td>
+       <td>the number of observations that had a DART QC value of 1</td></tr>
+   <tr><td valign="top"><b>N_DARTqc_2</b></td>
+       <td>the number of observations that had a DART QC value of 2</td></tr>
+   <tr><td valign="top"><b>N_DARTqc_3</b></td>
+       <td>the number of observations that had a DART QC value of 3</td></tr>
+   <tr><td valign="top"><b>N_DARTqc_4</b></td>
+       <td>the number of observations that had a DART QC value of 4</td></tr>
+   <tr><td valign="top"><b>N_DARTqc_5</b></td>
+       <td>the number of observations that had a DART QC value of 5</td></tr>
+   <tr><td valign="top"><b>N_DARTqc_6</b></td>
+       <td>the number of observations that had a DART QC value of 6</td></tr>
+   <tr><td valign="top"><b>N_DARTqc_7</b></td>
+       <td>the number of observations that had a DART QC value of 7</td></tr>
+   </table>
+
+<P>
+   The temporal evolution of the above quantities for every observation 
+   type (RADIOSONDE_U_WIND_COMPONENT, AIRCRAFT_SPECIFIC_HUMIDITY, ...) is 
+   recorded in the output netCDF file - 
+   <em class="file"><b>obs_diag_output.nc</b></em>.
+   This netCDF file can then be loaded and displayed using the 
+   Matlab&#174; scripts in 
+   <em class=file>..../DART/diagnostics/matlab</em>.
+   (which may depend on functions in <em class=file>..../DART/matlab</em>).
+   The temporal, geographic, and vertical binning are under namelist
+   control.
+   Temporal averages of the above quantities are also stored in the netCDF
+   file. Normally, it is useful to skip the 'burn-in' period - the amount
+   of time to skip is under namelist control.
+</P>
+
+<P>
+   The DART QC flag is intended to provide information about whether the
+   observation was assimilated, evaluated only, whether the assimilation resulted
+   in a 'good' observation, etc. Here is the table that should explain things:
+</P> 
+
+<table width="80%">
+   <tr><th align="left">DART QC flag value</th><th align="left">meaning</th></tr>
+   <tr><td>0</td><td>observation assimilated</td></tr>
+   <tr><td>1</td><td>observation evaluated only (because of namelist settings)</td></tr>
+
+   <tr><th align="left" colspan=2>DART QC values lower than this mean the prior and posteriors are OK</th></tr>
+
+   <tr><td>2</td><td>assimilated, but the posterior forward operator failed</td></tr>
+   <tr><td>3</td><td>evaluated only, but the posterior forward operator failed</td></tr>
+
+   <tr><th align="left" colspan=2>DART QC values higher than this were not assimilated because ...</th></tr>
+
+   <tr><td>4</td><td>prior forward operator failed</td></tr>
+   <tr><td>5</td><td>not used because observation type not listed in namelist</td></tr>
+   <tr><td>6</td><td>rejected because incoming observation QC too large</td></tr>
+   <tr><td>7</td><td>rejected because failed outlier threshold test</td></tr>
+   <tr><td>8+</td><td>reserved for future use</td></tr>
+</table>
+<P></P>
+
+<!--==================================================================-->
+
+<A NAME="New"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>What is new in the Lanai Release.</H2>
+<P>
+   <em class=program>obs_diag</em> has several improvements:
+</P>
+<ol><li>Improved vertical specification. Namelist variables 
+        <em class=code>[h,p,m]level_edges</em> allow fine-grained control
+        over the vertical binning. It is not allowed to specify both the
+        edges and midpoints for the vertical bins.
+        </li><br />
+    <li>Improved error-checking for input specification, particularly
+        the vertical bins. Repeated values are squeezed out.
+        </li><br />
+    <li>Support for 'trusted' observations. Trusted observation types may
+        be specified in the namelist and all observations of that type will
+        be counted in the statistics despite the DART QC code (as long as the
+        forward observation operator succeeds).
+        See namelist variable <em class=code>trusted_obs</em>.
+        For more details, see the section on <A href="#Trusted">Trusted observations</A>.
+        </li><br />
+    <li>Support for 'true' observations (i.e. from an OSSE). If the
+        'truth' copy of an observation is desired for comparison (instead of
+        the default copy) the observation error variance is set to 0.0
+        and the statistics are calculated relative to the 'truth' copy
+        (as opposed to the normal 'noisy' or 'observation' copy).
+        See namelist variable <em class=code>use_zero_error_obs</em>.
+        </li><br />
+    <li>discontinued the use of <em class=code>rat_cri</em> and 
+        <em class=code>input_qc_threshold</em> namelist variables.
+        Their functionality was replaced by the DART QC mechanism long ago.
+        The netCDF file variables <b>NbadIZ</b> and <b>NbigQC</b> still
+        exist (so as to keep the structure of the obs_diag_output file
+        constant for the stragglers) but contain meaningless values.
+        The 'M' release of DART will remove these variables from the 
+        obs_diag_output file.
+        </li><br />
+     <li>The creation of the rank histogram (if possible) is now 
+        namelist-controlled by
+        namelist variable <em class=code>create_rank_histogram</em>.
+        </li>
+</ol>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;obs_diag_nml
+   obs_sequence_name = 'obs_seq.final',
+   obs_sequence_list = '',
+   first_bin_center =  2003, 1, 1, 0, 0, 0 ,
+   last_bin_center  =  2003, 1, 2, 0, 0, 0 ,
+   bin_separation   =     0, 0, 0, 6, 0, 0 ,
+   bin_width        =     0, 0, 0, 6, 0, 0 ,
+   time_to_skip     =     0, 0, 0, 6, 0, 0 ,
+   max_num_bins     = 1000,
+   <em class=removed>rat_cri            = 3.0,</em>
+   <em class=removed>input_qc_threshold = 3.0,</em>
+
+   plevel     = 1000, 925, 850, 700, 500, 400, 300, 250, 200, 150, 100,
+   hlevel     = 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000, 11000,
+   mlevel     = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+
+   Nregions   = 4,
+   lonlim1    =   0.0,   0.0,   0.0, 235.0,
+   lonlim2    = 360.0, 360.0, 360.0, 295.0,
+   latlim1    =  20.0, -80.0, -20.0,  25.0,
+   latlim2    =  80.0, -20.0,  20.0,  55.0,
+   reg_names  = 'Northern Hemisphere', 'Southern Hemisphere', 'Tropics', 'North America',
+
+   <em class=changed>trusted_obs      = 'null',</em>
+   print_mismatched_locs = .false.,
+   create_rank_histogram = .false.,
+   outliers_in_histogram = .false.,
+   <em class=changed>use_zero_error_obs             = .false.,</em>
+   verbose               = .false.  
+   /
+
+   <em class=changed>-or- plevel_edges = 1050, 962.5, 887.5, 775, 600, 450, 350, 275, 225, 175, 125, 75</em>
+   <em class=changed>-or- hlevel_edges = 0, 1500, 2500, 3500, 4500, 5500, 6500,</em>
+   <em class=changed>-or- mlevel_edges = 0.5, 1.5, 2.5, 3.5, 10.5,</em>
+</pre>
+</div>
+
+<br />
+<br />
+
+<P> The date-time integer arrays in this namelist have the form
+   (YYYY, MM, DY, HR, MIN, SEC). <br /> The allowable ranges for the region
+   boundaries are: latitude [-90.,90], longitude [0.,Inf.]
+</P>
+<P>
+   You can only specify <strong>either</strong> <em
+   class="code">obs_sequence_name</em> <strong>or</strong> <em
+   class="code">obs_sequence_list</em> -- not both.  One of them has to be an
+   empty string ... i.e. <em class="code">''</em>.
+</P>
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR><TD> obs_sequence_name </TD>
+    <TD> character </TD>
+    <TD>Name of the observation sequence file<em class=changed>(s)</em>. <br /> 
+This may be a relative or absolute filename. <em class=changed>Deprecated. If the filename contains a '/'
+the filename is considered to be comprised of everything to the right, and a
+directory structure to the left.  The directory structure is then queried to
+see if it can be incremented to handle a sequence of observation files. The
+default behavior of <em class="program">obs_diag</em> is to look for
+additional files to include until the files are exhausted or an 
+<em class=file>obs_seq.final</em> file is found that contains observations beyond
+the timeframe of interest.<br />
+e.g. 'obsdir_001/obs_seq.final' will cause <em class="program">obs_diag</em> to 
+look for 'obsdir_002/obs_seq.final', and so on.<br /> </em>
+If this is set, <em class=code>obs_sequence_list</em> must be set to '&nbsp;'
+(empty string).
+</TD></TR>
+
+<TR><TD> obs_sequence_list </TD>
+    <TD> character </TD>
+    <TD>Name of an ascii text file which contains a list of one or more
+observation sequence files, one per line.  If this is specified, 
+<em class=code>obs_sequence_name</em> must be set to '&nbsp;'.  Can be created by any
+method, including sending the output of the 'ls' command to a file, a text
+editor, or another program.  If this is set, <em class=code>obs_sequence_name</em> 
+must be set to '&nbsp;' (empty string).
+</TD></TR>
+
+<TR><TD> first_bin_center </TD>
+    <TD> integer, dimension(6) </TD>
+    <TD>first timeslot of the first obs_seq.final file to process.  The six
+integers are: year, month, day, hour, hour, minute, second, in that order.
+<em class="program">obs_diag</em> has improved run-time output that reports
+the time and date of the first and last observations in every observation
+sequence file.  Look for the string 'First observation date' in the logfile.
+If the <em class="code">verbose</em> is 'true', it is also written to the
+screen.</TD></TR>
+
+<TR><TD> last_bin_center </TD>
+    <TD> integer, dimension(6) </TD>
+    <TD>last timeslot of interest.  (reminder: the last timeslot of day 1 is hour
+0 of day 2) The six integers are: year, month, day, hour, hour, minute,
+second, in that order. This does not need to be exact, the values from 
+<em class=code>first_bin_center</em> and <em class=code>bin_separation</em> are
+used to populate the time array and stop on or before the time defined by <em
+class=code>last_bin_center</em>.  See also <em class=code>max_num_bins</em>.
+</TD></TR>
+
+<TR><TD> bin_separation </TD>
+    <TD> integer, dimension(6) </TD>
+    <TD>Time between bin centers.  The year and month values <em>must</em> be zero.
+</TD></TR>
+
+<TR><TD> bin_width </TD>
+    <TD> integer, dimension(6) </TD>
+    <TD>Time span around bin centers in which obs will be compared.  The year and
+month values <em>must</em> be zero.  Frequently, but not required to be, the
+same as the values for bin_separation.
+0</TD></TR>
+
+<TR><TD> time_to_skip </TD>
+    <TD> integer, dimension(6) </TD>
+    <TD>Time span at the beginning to skip when calculating vertical profiles of
+rms error and bias. The year and month values <em>must</em> be zero. Useful
+because it takes some time for the assimilation to settle down from the
+climatological spread at the start. <em class=code>time_to_skip</em> is an
+amount of time AFTER the first edge of the first bin.
+</TD></TR>
+
+<TR><TD> max_num_bins </TD>
+    <TD> integer </TD>
+    <TD>This provides an alternative way to declare the <em
+class=code>last_bin_center</em>.  If <em class=code>max_num_bins</em> is set
+to '10', only 10 timesteps will be output - provided <em class=code>last_bin_center</em> 
+is set to some later date.
+</TD></TR>
+
+<TR><TD> plevel </TD>
+    <TD> real, dimension(50) </TD>
+    <TD>The midpoints defining the pressure levels for the vertical binning.
+There is no specification of bin width - a continuum is used. If a single
+midpoint value is entered, the bin edges are +/- 10% of the midpoint value.
+If you'd like to change that see the routine <em class="routine">Rmidpoints2edges()</em>.
+        You may specify either <em class=code>plevel</em> or 
+        <em class=code>plevel_edges</em>, but not both.
+</TD></TR>
+
+<TR><TD> <em class=new>plevel_edges</em> </TD>
+    <TD> real, dimension(51) </TD>
+    <TD>The edges defining the pressure levels for the vertical binning.
+        You may specify either <em class=code>plevel</em> or 
+        <em class=code>plevel_edges</em>, but not both.
+</TD></TR>
+
+<TR><TD> hlevel </TD>
+    <TD> real, dimension(50) </TD>
+    <TD>Same, but for observations that have height(m) or depth(m) as the vertical coordinate.
+</TD></TR>
+<TR><TD> <em class=new>hlevel_edges</em> </TD>
+    <TD> real, dimension(51) </TD>
+    <TD>The edges defining the height (or depth) levels for the vertical binning.
+        You may specify either <em class=code>hlevel</em> or 
+        <em class=code>hlevel_edges</em>, but not both.
+</TD></TR>
+
+<TR><TD> mlevel </TD>
+    <TD> real, dimension(50) </TD>
+    <TD>Same, but for observations that have model level as the vertical coordinate.
+</TD></TR>
+<TR><TD> <em class=new>mlevel_edges</em> </TD>
+    <TD> real, dimension(51) </TD>
+    <TD>The edges defining the model levels for the vertical binning.
+        You may specify either <em class=code>mlevel</em> or 
+        <em class=code>mlevel_edges</em>, but not both.
+</TD></TR>
+
+
+<TR><TD> <em class=removed>rat_cri</em> </TD>
+    <TD> real </TD>
+    <TD><em class=changed>Deprecated. This was useful before the advent of the 
+        DART QC mechanism, which has been in place for years now. 
+	The only thing <em class=code>rat_cri</em> did was to count how many 
+	observations were 'far' away from the ensemble, something the DART QC 
+	codes convey much better. The histogram of the magnitude of the 
+	innovations is still in <em class=file>LargeInnov.txt</em>&nbsp;.</em>
+        
+</TD></TR>
+
+<TR><TD> <em class=removed>input_qc_threshold</em> </TD>
+    <TD> real </TD>
+    <TD><em class=changed>Deprecated. Observations with original quality control 
+    values greater than this were counted in <b>NbigQC</b>. The DART QC value 
+    has controlled whether or not the observation was rejected or not. </em>
+</TD></TR>
+
+<TR><TD> Nregions </TD>
+    <TD> integer </TD>
+    <TD>Number of regions of the globe for which obs space diagnostics 
+        are computed separately. Must be between [1,50].
+</TD></TR>
+
+<TR><TD> lonlim1 </TD>
+    <TD> real, dimension(50) </TD>
+    <TD>Westernmost longitudes of each of the regions.
+</TD></TR>
+
+<TR><TD> lonlim2 </TD>
+    <TD> real, dimension(50) </TD>
+    <TD>Easternmost longitudes of each of the regions.
+        <em class="new">If any of these values is <b>less than</b> the 
+	westernmost values, it defines a region that spans the prime meridian.
+	</em> e.g. a specification of <em class=code>lonlim1 = 330 , 
+	lonlim2 = 50</em> could identify a region like "Africa".
+</TD></TR>
+
+<TR><TD> latlim1 </TD>
+    <TD> real, dimension(50) </TD>
+    <TD> Southernmost latitudes of the regions.
+</TD></TR>
+
+<TR><TD> latlim2 </TD>
+    <TD> real, dimension(50) </TD>
+    <TD> Northernmost latitudes of the regions.
+</TD></TR>
+
+<TR><TD> reg_names </TD>
+    <TD> character(len=129), dimension(50) </TD>
+    <TD> Array of names for the regions to be analyzed.  Will be used
+         for plot titles.
+</TD></TR>
+
+<TR><TD> trusted_obs </TD>
+    <TD> character(len=32), dimension(50) </TD>
+    <TD> list of observation types that <strong>must</strong>
+         participate in the calculation of the statistics, regardless
+         of the DART QC (provided that the forward observation operator
+         can still be applied without failure). e.g. 'RADIOSONDE_TEMPERATURE', ...
+         For more details, see the section on <A href="#Trusted">Trusted observations</A>.
+</TD></TR>
+
+<TR><TD> use_zero_error_obs </TD>
+    <TD> logical </TD>
+    <TD> if <em class=code>.true.</em>, the observation copy used for the 
+         statistics calculations will be 'truth'.  Only 'perfect' observations
+	 (from <em class=program>perfect_model_obs</em>) have this copy. 
+	 The observation error variance will be set to zero.
+</TD></TR>
+
+<TR><TD> print_mismatched_locs </TD>
+    <TD> logical </TD>
+    <TD> Print instances where U and V "pairs" don't have the same location.
+</TD></TR>
+
+<TR><TD><em class=removed>print_obs_locations</em> </TD>
+    <TD><em class=removed>logical            </em> </TD>
+    <TD>No longer supported.
+        <strong>To plot the locations of observations,</strong> please convert 
+	your observation sequence file to netCDF with 
+	<a href="../../obs_sequence/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
+	and then plot with
+	<a href="../../diagnostics/matlab/plot_obs_netcdf.m">plot_obs_netcdf</a>
+</TD></TR>
+
+<TR><TD> create_rank_histogram </TD>
+    <TD> logical </TD>
+    <TD> if <em class=code>.true.</em> and there are actual ensemble estimates of the 
+         observations in the <em class=file>obs_seq.final</em> 
+         (i.e. <em class=code>filter_nml:num_output_obs_members</em> is
+         larger than zero), a rank histogram will be created.
+</TD></TR>
+
+<TR><TD> outliers_in_histogram </TD>
+    <TD> logical </TD>
+    <TD> if <em class=code>.true.</em> the  observations that have been 
+         rejected by the outlier threshhold mechanism will be <em> included</em>
+	 in the calculation of the rank histogram.
+</TD></TR>
+
+<TR><TD> verbose </TD>
+    <TD> logical </TD>
+    <TD> Print extra info about the obs_diag run.
+</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+obs_sequence_mod
+obs_kind_mod
+obs_def_mod (and possibly other obs_def_xxx mods)
+assim_model_mod
+random_seq_mod
+random_nr_mod
+model_mod
+location_mod
+types_mod
+time_manager_mod
+utilities_mod
+sort_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL><LI><em class="file">input.nml</em> is used for 
+        <em class="code">obs_diag_nml</em></LI>
+    <LI><em class="file">obs_diag_output.nc</em> is the 
+        netCDF output file</LI>
+    <LI>the oned version of <em class="program">obs_diag</em> outputs many
+    files of the form "OBS_TYPE_VARIABLE_diagnostic.dat" and one text file 
+    <em class="file">obsDiagAtts.m</em> containing the metadata</LI>
+    <LI><em class="file">dart_log.out</em> list directed output 
+        from the obs_diag.</LI>
+    <LI><em class="file">LargeInnov.txt</em> contains the distance ratio 
+	histogram -- useful for estimating the distribution of the 
+        magnitudes of the innovations.</LI>
+    <LI><em class=removed>observation_locations.xxx.dat contains the
+    locations for all the observation in temporal bin "xxx". These are 
+    only created if the namelist variable 
+    <am class=code>print_obs_locations</em> is set to .true.</em> 
+	</LI>
+</UL>
+
+<P>
+Obs_diag may require a model input file from which to get grid information, 
+metadata, and links to modules providing the models expected observations.
+It all depends on what's needed by the <em class="file">model_mod.f90</em> 
+</P>
+
+<H3 class=indent1>Discussion of obs_diag_output.nc</H3>
+
+<P>
+Every observation type encountered in the observation sequence file is 
+tracked separately, and aggregated into temporal and 3D spatial bins.
+There are two main efforts to this program. One is to track the temporal
+evolution of any of the quantities available in the netCDF file for any
+possible observation type: 
+</P>
+<div class="unix">ncdump -v CopyMetaData,ObservationTypes obs_diag_output.nc</div>
+<P>
+The other is to explore the vertical profile of a particular observation
+kind. By default, each observation kind has a 'guess/prior' value and
+an 'analysis/posterior' value - which shed some insight into the 
+innovations.
+</P>
+
+<P></P><hr width=40% align=left>
+
+<H4 class=indent1>temporal evolution</H4>
+
+<P>
+The <em class="file">obs_diag_output.nc</em> output file has all the
+metadata I could think of, as well as separate variables for every
+observation type in the observation sequence file. Furthermore, there
+is a separate variable for the 'guess/prior' and 'analysis/posterior'
+estimate of the observation. To distinguish between the two, a suffix
+is appended to the variable name.  An example seems appropriate:
+</P>
+<pre>
+  ...
+  char CopyMetaData(copy, stringlength) ;
+          CopyMetaData:long_name = "quantity names" ;
+  char ObservationTypes(obstypes, stringlength) ;
+          ObservationTypes:long_name = "DART observation types" ;
+          ObservationTypes:comment = "table relating integer to observation type string" ;
+  float RADIOSONDE_U_WIND_COMPONENT_guess(time, copy, plevel, region) ;
+          RADIOSONDE_U_WIND_COMPONENT_guess:_FillValue = -888888.f ;
+          RADIOSONDE_U_WIND_COMPONENT_guess:missing_value = -888888.f ;
+  float RADIOSONDE_V_WIND_COMPONENT_guess(time, copy, plevel, region) ;
+          RADIOSONDE_V_WIND_COMPONENT_guess:_FillValue = -888888.f ;
+          RADIOSONDE_V_WIND_COMPONENT_guess:missing_value = -888888.f ;
+  ...
+  float MARINE_SFC_ALTIMETER_guess(time, copy, surface, region) ;
+          MARINE_SFC_ALTIMETER_guess:_FillValue = -888888.f ;
+          MARINE_SFC_ALTIMETER_guess:missing_value = -888888.f ;
+  ...
+  float RADIOSONDE_WIND_VELOCITY_guess(time, copy, plevel, region) ;
+          RADIOSONDE_WIND_VELOCITY_guess:_FillValue = -888888.f ;
+          RADIOSONDE_WIND_VELOCITY_guess:missing_value = -888888.f ;
+  ...
+  float RADIOSONDE_U_WIND_COMPONENT_analy(time, copy, plevel, region) ;
+          RADIOSONDE_U_WIND_COMPONENT_analy:_FillValue = -888888.f ;
+          RADIOSONDE_U_WIND_COMPONENT_analy:missing_value = -888888.f ;
+  float RADIOSONDE_V_WIND_COMPONENT_analy(time, copy, plevel, region) ;
+          RADIOSONDE_V_WIND_COMPONENT_analy:_FillValue = -888888.f ;
+          RADIOSONDE_V_WIND_COMPONENT_analy:missing_value = -888888.f ;
+  ...
+</pre>
+
+<P>
+There are several things to note:
+</P>
+<ol>
+<li>the 'WIND_VELOCITY' component is nowhere 'near' the corresponding U,V components.</li>
+<li>all of the 'guess' variables come before the matching 'analy' variables.</li>
+<li>surface variables (i.e. <tt>MARINE_SFC_ALTIMETER</tt> have a
+coordinate called 'surface' as opposed to 'plevel' for the others in
+this example).</li>
+</ol>
+
+<P></P><hr width=40% align=left>
+
+<H4 class=indent1>vertical profiles</H4>
+<P>
+Believe it or not, there are another set of netCDF variables specifically 
+for the vertical profiles, essentially duplicating the previous
+variables but <b>without the 'time' dimension</b>. These are
+distinguished by the suffix added to the observation kind - 'VPguess'
+and 'VPanaly' - 'VP' for Vertical Profile. 
+</P>
+<pre>
+  ...
+  float SAT_WIND_VELOCITY_VPguess(copy, plevel, region) ;
+          SAT_WIND_VELOCITY_VPguess:_FillValue = -888888.f ;
+          SAT_WIND_VELOCITY_VPguess:missing_value = -888888.f ;
+  ...
+  float RADIOSONDE_U_WIND_COMPONENT_VPanaly(copy, plevel, region) ;
+          RADIOSONDE_U_WIND_COMPONENT_VPanaly:_FillValue = -888888.f ;
+          RADIOSONDE_U_WIND_COMPONENT_VPanaly:missing_value = -888888.f ;
+  ...
+</pre>
+<P>
+Observations flagged as 'surface' do not participate in the vertical
+profiles (Because surface variables cannot exist on any other level,
+there's not much to plot!). Observations on the lowest level DO 
+participate. There's a difference!
+</P>
+
+<P></P><hr width=40% align=left>
+
+<H4 class=indent1>rank histograms</H4>
+<P>
+If it is possible to calculate a rank histogram, there will also be :</P>
+<pre>
+   ...
+   int RADIOSONDE_U_WIND_COMPONENT_guess_RankHi(time, rank_bins, plevel, region) ;
+   ...
+   int RADIOSONDE_V_WIND_COMPONENT_guess_RankHi(time, rank_bins, plevel, region) ;
+   ...
+   int MARINE_SFC_ALTIMETER_guess_RankHist(time, rank_bins, surface, region) ;
+   ...
+</pre>
+<P>
+as well as some global attributes. The attributes reflect the namelist settings
+and can be used by plotting routines to provide additional annotation for 
+the histogram. 
+</P>
+<pre>
+		:DART_QCs_in_histogram = 0, 1, 2, 3, 7 ;
+		:outliers_in_histogram = "TRUE" ;
+</pre>
+<P>
+Please note:
+</P>
+<ol>
+<li>netCDF restricts variable names to 40 characters, so '_Rank_Hist' may
+    be truncated.</li>
+<li>It is sufficiently vague to try to calculate a rank histogram for a 
+    velocity derived from the assimilation of U,V components such that 
+    NO rank histogram is created for velocity.  A run-time log message will 
+    inform as to which variables are NOT having a rank histogram variable 
+    preserved in the <em class=file>obs_diag_output.nc</em> file -
+    IFF it is possible to calculate a rank histogram in the first place.</li>
+</ol>
+
+
+<table width="100%">
+<tr><td><a href="../../doc/images/RankHistogram_ncview.png"><img src="../../doc/images/RankHistogram_ncview.png" width="200"></a></td>
+    <td><a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#ncview_histogram">Instructions for viewing the rank histogram with ncview</a>.</td>
+</tr>
+<tr><td><a href="../../doc/images/RankHistogram_matlab.png"><img src="../../doc/images/RankHistogram_matlab.png" width="200"></a></td>
+    <td><a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#mat_obs">Instructions for viewing the rank histogram with Matlab</a>.</td>
+</tr>
+</table>
+
+<P></P><hr width=40% align=left>
+
+<A NAME="Trusted"></A>
+<H4 class=indent1>"Trusted" observation types</H4>
+<P>
+This needs to be stated up front: <em class=program>obs_diag</em> is a post-processor; 
+it cannot influence the assimilation. One interpretation of a TRUSTED observation is that
+the assimilation should <strong>always</strong> use the observation, even if it is far from 
+the ensemble.  At present (23 Feb 2015), the filter in DART does not forcibly assimilate 
+any one observation and selectively assimilate the others. 
+Still, it is useful to explore the results using a set of 'trusted type' observations,
+whether they were assimilated, evaluated, or rejected by the outlier threshhold.
+This is the important distinction.
+The diagnostics can be calculated differently for each <em>observation type</em>. 
+</P><P>
+The normal diagnostics calculate the metrics 
+(rmse, bias, etc.) only for the 'good' observations - those that were assimilated or evaluated.
+The <em class=code>outlier_threshold</em> essentially defines what observations are 
+considered too far from the ensemble <strong>prior</strong> to be useful. These 
+observations get a DART QC of 7 and are not assimilated. The observations with a 
+DART QC of 7 do not contribute the the metrics being calculated. Similarly, if the 
+forward observation operator fails, these observations cannot contribute. When the 
+operator fails, the 'expected' observation value is 'MISSING', and there is no 
+ensemble mean or spread.
+</P><P>
+'Trusted type' observation metrics are calculated using all the observations that 
+were assimilated or evaluated <strong>AND</strong> the observations that were rejected 
+by the outlier threshhold.  <em class=program>obs_diag</em> can post-process
+the DART QC and calculate the metrics appropriately for <strong>observation types</strong>
+listed in the <em class=code>trusted_obs</em> namelist variable. If there are trusted 
+observation types specified for <em class=program>obs_diag</em>, the 
+<em class=file>obs_diag_output.nc</em> has
+global metadata to indicate that a different set of criteria were used to calculate 
+the metrics. The individual variables also have an extra attribute. 
+In the following output, <em class=file>input.nml:obs_diag_nml:trusted_obs</em> 
+was set: 
+<em class=mono>trusted_obs&nbsp;=&nbsp;'RADIOSONDE_TEMPERATURE',&nbsp;'RADIOSONDE_U_WIND_COMPONENT'</em>
+</P>
+<pre>
+  ...
+        float RADIOSONDE_U_WIND_COMPONENT_guess(time, copy, plevel, region) ;
+                RADIOSONDE_U_WIND_COMPONENT_guess:_FillValue = -888888.f ;
+                RADIOSONDE_U_WIND_COMPONENT_guess:missing_value = -888888.f ;
+                RADIOSONDE_U_WIND_COMPONENT_guess:<em>TRUSTED = "TRUE" ;</em>
+        float RADIOSONDE_V_WIND_COMPONENT_guess(time, copy, plevel, region) ;
+                RADIOSONDE_V_WIND_COMPONENT_guess:_FillValue = -888888.f ;
+                RADIOSONDE_V_WIND_COMPONENT_guess:missing_value = -888888.f ;
+  ...
+// global attributes:
+  ...
+                :<em>trusted_obs_01 = "RADIOSONDE_TEMPERATURE" ;</em>
+                :<em>trusted_obs_02 = "RADIOSONDE_U_WIND_COMPONENT" ;</em>
+                :obs_seq_file_001 = "cam_obs_seq.1978-01-01-00000.final" ;
+                :obs_seq_file_002 = "cam_obs_seq.1978-01-02-00000.final" ;
+                :obs_seq_file_003 = "cam_obs_seq.1978-01-03-00000.final" ;
+  ...
+                :MARINE_SFC_ALTIMETER = 7 ;
+                :LAND_SFC_ALTIMETER = 8 ;
+                :RADIOSONDE_U_WIND_COMPONENT<em>--TRUSTED</em> = 10 ;
+                :RADIOSONDE_V_WIND_COMPONENT = 11 ;
+                :RADIOSONDE_TEMPERATURE<em>--TRUSTED</em> = 14 ;
+                :RADIOSONDE_SPECIFIC_HUMIDITY = 15 ;
+                :AIRCRAFT_U_WIND_COMPONENT = 21 ;
+  ...
+</pre>
+<table width=100%>
+<tr>
+<td width=45%>The Matlab scripts try to ensure that the trusted observation 
+        graphics clarify that the metrics plotted are somehow 'different' than 
+        the normal processing stream. Some text is added to indicate that the values 
+        include the outlying observations. <strong>IMPORTANT:</strong> The interpretation
+        of the number of observations 'possible' and 'used' still reflects what was 
+        used <strong>in the assimilation!</strong> The number of observations rejected
+        by the outlier threshhold is not explicilty plotted. To reinforce this, the
+        text for the observation axis on all graphics has been changed to 
+        <em class=mono>"o=possible,&nbsp;*=assimilated"</em>. In short, the distance 
+        between the number of observations possible and the number assimilated still
+        reflects the number of observations rejected by the outlier threshhold and the
+        number of failed forward observation operators.
+</td>
+<td>&nbsp;&nbsp;<a href="../../doc/images/RAD_T_trusted_bias_evolution.png"><img src="../../doc/images/RAD_T_trusted_bias_evolution.png" width=600></a>
+</td>
+</tr>
+</table>
+
+<P>There is ONE ambiguous case for trusted observations. There may be instances in 
+which the observation fails the outlier threshhold test (which is based on the prior) 
+and the posterior forward operator fails. 
+DART does not have a QC that explicilty covers this case. The current logic in 
+<em class=program>obs_diag</em> correctly handles these cases <strong>except</strong> 
+when trying to use 'trusted' observations. There is a section of code in 
+<em class=program>obs_diag</em> that may be enabled if you are encountering this 
+ambiguous case. As <em class=program>obs_diag</em> runs, a warning message is 
+issued and a summary count is printed if the ambiguous case is encountered.
+What normally happens is that if that specific observation type is trusted, 
+the posterior values include a MISSING value in the calculation which makes 
+them inaccurate. If the block of code is enabled, the DART QC is recast as the 
+PRIOR forward observation operator fails. This is technically incorrect, but for 
+the case of trusted observations, it results in only calculating statistics for 
+trusted observations that have a useful prior and posterior. <strong>This should 
+not be used unless you are willing to intentionally disregard 'trusted' observations 
+that were rejected by the outlier threshhold.</strong> Since the whole point of a trusted observation is to <em>include</em> observations potentially rejected by the outlier threshhold, you see the problem. Some people like to compare the posteriors. <em>THAT</em> can be the problem.
+</P>
+<pre>         if ((qc_integer == 7) .and. (abs(posterior_mean(1) - MISSING_R8) &lt; 1.0_r8)) then
+            write(string1,*)'WARNING ambiguous case for obs index ',obsindex
+            string2 = 'obs failed outlier threshhold AND posterior operator failed.'
+            string3 = 'Counting as a Prior QC == 7, Posterior QC == 4.'
+            if (trusted) then
+! COMMENT      string3 = 'WARNING changing DART QC from 7 to 4'
+! COMMENT      qc_integer = 4
+            endif
+            call error_handler(E_MSG,'obs_diag',string1,text2=string2,text3=string3)
+            num_ambiguous = num_ambiguous + 1
+         endif</pre>
+
+<P>
+</P>
+
+<!--==================================================================-->
+<!-- Discuss  typical usage of obs_diag.                              -->
+<!--==================================================================-->
+
+<A NAME="Usage"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>USAGE</H2>
+
+<P>
+<em class="program">obs_diag</em> is built in 
+.../DART/models/<em class=italic>your_model</em>/work, 
+in the same way as the other DART components.
+</P>
+
+<H3 class=indent1>multiple observation sequence files</H3>
+<P>
+There are two ways to specify input files for <em class=program>obs_diag</em>.
+You can either specify the name of a file containing a list of files (in
+<em class=code>obs_sequence_list</em>), or you may specify <em class=new>a single file via</em>
+<em class=code>obs_sequence_name</em>. <em class=changed>Deprecated ... which is descibed by the following illustration&nbsp;...</em>
+</P>
+<table width="100%">
+<TR><TH width=50% align=left>value</TH><TH>effect</TH></TR>
+
+<TR><TD valign="top">"obs_seq.final"</TD>
+    <TD>A single file is processed.
+        The file must exist in the current directory.</TD></TR>
+
+<TR><TD valign="top">"/path_to/nirvana/obs_seq.final"</TD>
+    <TD>A single file is processed.
+        The file must exist where you said it exists.</TD></TR>
+
+<TR><TD valign="top">"../nirvana/obs_seq.final"</TD>
+    <TD>A single file is processed.
+        Relative pathnames work just fine.</TD></TR>
+
+<TR><TD valign="top">"/path_to/nirvana_001/obs_seq.final"</TD>
+    <TD><em class=changed>Deprecated. A single file is processed, and more are expected.
+        Because the directory name contains an underscore ("_") and the 
+        portion of the directory to the right of the (rightmost) 
+        underscore can be incremented, <em class="program">obs_diag</em> 
+	   will try to look for the next directory in the sequence, i.e.
+        "/path_to/nirvana_002/obs_seq.final". The tricky part is that 
+	   the number of digits in the directory numbering must remain
+	   constant. Most (all?) of the DART scripts that produce these
+	   directories have historically used a constant number of digits
+	   so they alphabetically and numerically 'list' identically.
+	   <em class="program">obs_diag</em> will stop when it runs out
+	   of files to ingest, or if it encounters an observation sequence
+	   file whose first time is beyond the timeframe of interest.</em></TD></TR>
+</table>
+
+
+
+<H3 class=indent1>Example: observation sequence files spanning&nbsp;30&nbsp;days.</H3>
+<table width=95%>
+<tr><td>In this example, we will be accumulating metrics for 30 days over the 
+   entire globe. The <em class=file>obs_diag_output.nc</em> file will have 
+   exactly ONE timestep in it (so it won't be much use for the 
+   <em class="program">plot_evolution</em> functions) - but the 
+   <em class="program">plot_profile</em> functions and the 
+   <em class="program">plot_rank_histogram</em> function will be used to
+   explore the assimilation. By way of an example, we will NOT be using 
+   outlier observations in the rank histogram. Lets presume that all your 
+   <em class=file>obs_seq.final</em> files are in alphabetically-nice directories:</td>
+   <td>&nbsp;&nbsp;<img src="../../doc/images/RankHistogram_matlab.png" width="200"></td>
+</tr>
+</table>
+<pre>
+/Exp1/Dir01/obs_seq.final
+/Exp1/Dir02/obs_seq.final
+/Exp1/Dir03/obs_seq.final
+...
+/Exp1/Dir99/obs_seq.final
+</pre>
+<P>The first step is to create a file containing the list of observation sequence
+files you want to use. This can be done with the unix command 'ls' with 
+the -1 option (that's a number one) to put one file per line.
+</P>
+<div class=unix>
+ls -1 /Exp1/Dir*/obs_seq.final &gt; obs_file_list.txt
+</div>
+<P>It is necessary to turn on the verbose option to 
+check the first/last times that will be used for the histogram.
+Then, the namelist settings for 2008 07 31 12Z through 2008 08 30 12Z are:
+</P>
+<div class="routine">
+<pre>
+&amp;obs_diag_nml
+   obs_sequence_name  = '',
+   obs_sequence_list  = <em class="input">'obs_file_list.txt',</em>
+   first_bin_center   = <em class="input"> 2008, 8,15,12, 0, 0 ,</em>
+   last_bin_center    = <em class="input"> 2008, 8,15,12, 0, 0 ,</em>
+   bin_separation     = <em class="input">    0, 0,30, 0, 0, 0 ,</em>
+   bin_width          = <em class="input">    0, 0,30, 0, 0, 0 ,</em>
+   time_to_skip       = <em class="input">    0, 0, 0, 0, 0, 0 ,</em>
+   max_num_bins       = 1000,
+   <em class=removed>rat_cri            = 5000.0,</em>
+   <em class=removed>input_qc_threshold = 3.0,</em>
+   Nregions   = 1,
+   lonlim1    = <em class="input">  0.0,</em>
+   lonlim2    = <em class="input">360.0,</em>
+   latlim1    = <em class="input">-90.0,</em>
+   latlim2    = <em class="input"> 90.0,</em>
+   reg_names  = <em class="input">'Entire Domain',</em>
+   print_mismatched_locs = .false.,
+   <em class=removed>print_obs_locations   = .false.,</em>
+   verbose               = <em class="input">.true.,</em>
+   outliers_in_histogram = <em class="input">.false.</em>,
+   /
+</pre>
+</div>
+<P>
+then, simply run <em class=program>obs_diag</em> in the usual manner - you may want
+to save the run-time output to a file. Here is a portion of the run-time output:
+</P>
+<div class="unix">
+<pre>
+...
+Region  1 Entire Domain                    (WESN):     0.0000   360.0000   -90.0000    90.0000
+ Requesting            1  assimilation periods.
+
+epoch      1  start day=148865, sec=43201
+epoch      1 center day=148880, sec=43200
+epoch      1    end day=148895, sec=43200
+epoch      1  start 2008 Jul 31 12:00:01
+epoch      1 center 2008 Aug 15 12:00:00
+epoch      1    end 2008 Aug 30 12:00:00
+...
+MARINE_SFC_HORIZONTAL_WIND_guess_RankHis has            0 "rank"able observations. 
+SAT_HORIZONTAL_WIND_guess_RankHist       has            0 "rank"able observations.
+...
+</pre>
+</div>
+<P>
+Discussion: It should be pretty clear that there is exactly 1 assimilation period,
+it may surprise you that the start is 1 second past 12Z. This is deliberate and reflects
+the DART convention of starting intervals 1 second after the end of the previous interval. 
+The times in the netCDF variables reflect the defined start/stop of the period, regardless
+of the time of the first/last observation.
+<br />
+<br />
+Please note that none of the 'horizontal_wind' variables will have a rank histogram,
+so they are not written to the netCDF file. ANY variable that does not have a rank 
+histogram with some observations will NOT have a rank histogram variable 
+in the netCDF file.
+<br />
+<br />
+Now that you have the <em class=file>obs_diag_output.nc</em>, you can explore it with
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#mat_obs">plot_profile.m, plot_bias_xxx_profile.m, or plot_rmse_xxx_profile.m</a>,
+and look at the rank histograms with 
+<a href="http://meteora.ucsd.edu/~pierce/ncview_home_page.html">ncview</a> or
+<em class="program">plot_rank_histogram.m</em>.
+</P>
+
+  
+<H3 class=indent1><em class=removed>Example: plotting locations</em> deprecated</H3>
+<P>
+<strong>please convert your observation sequence file to netCDF format with <a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/obs_sequence/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
+and use 
+<a href="https://proxy.subversion.ucar.edu/DAReS/DART/trunk/diagnostics/matlab/plot_obs_netcdf.m">plot_obs_netcdf.m</a></strong>.
+</P>
+
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ol>
+<li> none </li>
+</ol>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>obs_diag</TD>
+    <!-- message --><TD VALIGN=top>No first observation  in sequence.</TD>
+    <!-- comment --><TD VALIGN=top>get_first_obs couldn't find a "first obs" 
+                                   in the obs_seq.final. </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>obs_diag</TD>
+    <!-- message --><TD VALIGN=top>No last observation in sequence</TD>
+    <!-- comment --><TD VALIGN=top>get_last_obs couldn't find a "last obs" 
+                                   in the obs_seq.final </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>obs_diag</TD>
+    <!-- message --><TD VALIGN=top>metadata incomplete</TD>
+    <!-- comment --><TD VALIGN=top>Couldn't find the index for the
+    observatoin value in the observation sequence file. It is the only
+    one that is required.</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>filter_get_obs_info</TD>
+    <!-- message --><TD VALIGN=top>Vertical coordinate not recognized</TD>
+    <!-- comment --><TD VALIGN=top>It must be "surface", "pressure", or "height"</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>Convert2Time</TD>
+    <!-- message --><TD VALIGN=top>namelist parameter out-of-bounds. Fix and try again</TD>
+    <!-- comment --><TD VALIGN=top>bin_width, bin_separation, and time_to_skip must have 
+                                   year = 0 and month = 0</TD>
+</TR>
+<TR><TD VALIGN=top><em class=removed>ObsLocationsExist</em></TD>
+    <TD VALIGN=top><em class=removed>Cannot have pre-existing obs location
+    output files. Stopping.</em></TD>
+    <TD VALIGN=top><em class=removed>It is far easier to implement the
+    logic to output these files if they don't exist in the first place.
+    Remove anything/everything like "observation_locations.xxx.dat" from
+    the current directory and try again.</em></TD>
+</TR>
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+The RMSE of the vector wind velocity is being used.
+The bias is actually the bias of the wind speed, with no regard to
+direction. Seems like this is not consistent ... 
+<br />
+<br />
+Use log(p) instead of pressure for binning/plotting.
+<br />
+<br />
+Hope to have a separate DART QC flag for observations outside the model state.
+Right now, all observations that have a DARt forward operator fail (extrapolate, mainly)
+get counted as observations that are rejected. Logically, these observations are not possible because most (all?) DART observation operators cannot extrapolate.
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

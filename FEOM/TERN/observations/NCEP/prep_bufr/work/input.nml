@@ -1,0 +1,35 @@
+&prep_bufr_nml 
+ obs_window     = 24.0,
+ otype_use      = 120.0, 130.0, 131.0, 132.0, 133.0, 180.0,
+                  181.0, 182.0, 220.0, 221.0, 230.0, 231.0,
+                  232.0, 233.0, 242.0, 243.0, 245.0, 246.0,
+                  252.0, 253.0, 255.0, 280.0, 281.0, 282.0,
+ qctype_use = 0,1,2,4,5,6,15
+ /
+
+
+! set obs_window to -1 and then set the per-type windows
+! to values to use different widths of time windows.
+
+! the above are suggested settings.  the full set of
+! namelist items (and defaults) are here:
+
+! qctype_use(:)            ! data qc values to accept (default all)
+! otype_use(:)             ! report types to use (default all)
+! obs_window       = 1.5   ! observation time window (+/-hours)
+! obs_window_upa   = 1.5   ! sonde time window (+/-hours)
+! obs_window_air   = 1.5   ! aircraft obs time window (+/-hours)
+! obs_window_sfc   = 0.8   ! surface obs time window (+/-hours)
+! obs_window_cw    = 1.5   ! cloud wind obs time window (+/-hours)
+! land_temp_error  = 2.5   ! assumed err surface temp. obs (K)
+! land_wind_error  = 3.5   ! assumed err surface wind obs (m/s)
+! land_moist_error = 0.2   ! assumed err surface moist. obs (%)
+!
+! other examples of use:
+! obs_window     = -1.,
+! obs_window     = 2.00,
+! obs_window     = 0.80,
+! otype_use      = 120.0, 180.0, 181.0, 182.0,
+! qctype_use     = 0, 1, 2, 4, 5, 6
+!
+

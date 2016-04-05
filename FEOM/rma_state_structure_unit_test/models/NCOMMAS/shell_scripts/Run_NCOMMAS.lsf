@@ -1,0 +1,97 @@
+#!/bin/csh
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+# 
+# DART $Id$
+# 
+#BXXX -b 18:00
+#BSUB -J ncommas
+#BSUB -o ncommas.%J.log
+#BSUB -N -u ${USER}@ucar.edu
+#BSUB -q economy
+#BSUB -n 16
+#BSUB -R "span[ptile=2]"
+#BSUB -W 2:00
+#BSUB -m  "cr0128en cr0129en cr0130en cr0131en cr0132en cr0133en cr0134en cr0135en cr0136en cr0137en cr0138en cr0139en cr0140en cr0141en cr0202en cr0201en"
+#
+#----------------------------------------------------------------------
+# End of script preamble.
+#----------------------------------------------------------------------
+
+#----------------------------------------------------------------------
+# Turns out the scripts are a lot more flexible if you don't rely on 
+# the queuing-system-specific variables -- so I am converting them to
+# 'generic' names and using the generics throughout the remainder.
+#----------------------------------------------------------------------
+
+if ($?LSB_HOSTS) then
+
+   setenv ORIGINALDIR $LS_SUBCWD 
+   setenv JOBNAME     $LSB_OUTPUTFILE:ar
+   setenv JOBID       $LSB_JOBID
+   setenv MYQUEUE     $LSB_QUEUE
+   setenv MYHOST      $LSB_SUB_HOST
+
+else
+
+   #-------------------------------------------------------------------
+   # You can run this interactively to check syntax, file motion, etc.
+   #-------------------------------------------------------------------
+
+   setenv ORIGINALDIR `pwd` 
+   setenv JOBNAME     ncommas
+   setenv JOBID       $$
+   setenv MYQUEUE     Interactive
+   setenv MYHOST      $host
+
+endif
+
+#----------------------------------------------------------------------
+# Just an echo of job attributes
+#----------------------------------------------------------------------
+
+echo
+echo "${JOBNAME} ($JOBID) submitted   from $ORIGINALDIR"
+echo "${JOBNAME} ($JOBID) submitted   from $MYHOST"
+echo "${JOBNAME} ($JOBID) running in queue $MYQUEUE"
+echo "${JOBNAME} ($JOBID) running       on $host"
+echo "${JOBNAME} ($JOBID) started  at "`date`
+echo
+
+#----------------------------------------------------------------------
+# Make a unique, (empty, clean) temporary directory.
+#----------------------------------------------------------------------
+
+setenv TMPDIR /ptmp/${user}/${JOBNAME}/job_${JOBID}
+
+mkdir -p ${TMPDIR}
+cd ${TMPDIR}
+
+#----------------------------------------------------------------------
+# Copy files from wherever you have them to HERE.
+#----------------------------------------------------------------------
+
+echo
+echo "Copying files to run-time directory ... "
+
+foreach FILE ( ncommas ncommas_in contents_history contents_movie \
+         contents_tavg contents_transport vert_grid.gx3v5 \
+         topography.gx3v5.i4ieee.le horiz_grid.gx3v5.r8ieee.le \
+         cx3.dart.001.ncommas.r.0002-01-01-00000.nc )
+   \cp -v /fs/image/home/thoar/SVN/DART/models/NCOMMAS/input/$FILE .
+end
+
+echo "cx3.dart.001.ncommas.r.0002-01-01-00000.nc" >! ncommas_pointer.restart
+
+mpirun.lsf ncommas
+
+echo
+echo "${JOBNAME} ($JOBID) finished at "`date`
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

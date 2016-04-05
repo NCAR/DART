@@ -1,0 +1,38 @@
+Example utilities that might be useful when writing
+either the run script or the advance_model script.
+
+trans_time:
+
+Usually during a model advance either the script or
+a namelist for the model needs to know the current
+time for the data that just came out of the assimilation
+(sometimes called the analysis), and the time that
+the model needs to advance to (sometimes called the
+forecast).  
+
+The 'trans_time.f90' source shows an example of
+reading the two timestamps from the front of any
+dart state vector, in either binary or ascii format,
+and unpacking it into the year, month, day, hour,
+minute, and second.  This program does assume
+a Gregorian calendar.  The output is an ascii file
+with the two times in it, but this code can be
+copied to the model-specific directory and
+the output customized for ease in integrating 
+with the model scripts.
+
+To test here, run:
+
+csh ./mkmf_trans_time
+make
+./trans_time
+
+The program reads an example state vector
+file called 'temp_ic', and writes a file
+called 'times'.
+
+cat times
+
+Will show the program output.
+
+

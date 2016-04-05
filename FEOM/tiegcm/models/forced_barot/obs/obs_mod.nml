@@ -1,0 +1,4 @@
+&obs_nml
+   close_lat_window = 10.0,
+   close_lon_window = 10.0  /
+

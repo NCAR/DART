@@ -1,0 +1,355 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>PROGRAM perfect_model_obs</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>perfect_model_obs</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+   Main program for creating synthetic observation sequences given a
+   model for use in filter assimilations. Reads in an observation sequence
+   file which has only observation definitions and generates synthetic
+   observation values for an output observation sequence file. The 
+   execution of perfect_model_obs is controlled by the input observation
+   sequence file and the model time-stepping capabilities in a manner
+   analogous to that used by the filter program.
+</P>
+
+<!--================================================================-->
+<!--============== DESCRIPTION OF A NAMELIST ========================-->
+<!--================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;perfect_model_obs_nml
+   start_from_restart       = .false.,
+   output_restart           = .false.,
+   async                    = 0,
+   tasks_per_model_advance  = 1,
+   init_time_days           = 0,
+   init_time_seconds        = 0,
+   first_obs_days           = -1,
+   first_obs_seconds        = -1,
+   last_obs_days            = -1,
+   last_obs_seconds         = -1,
+   obs_window_days          = -1,
+   obs_window_seconds       = -1,
+   output_timestamps        = .false.,
+   trace_execution          = .false.,
+   output_forward_op_errors = .false.,
+   print_every_nth_obs      = -1,
+   silence                  = .false.,
+   output_interval          = 1,
+   restart_in_file_name     = "perfect_ics",
+   restart_out_file_name    = "perfect_restart",
+   obs_seq_in_file_name     = "obs_seq.in",
+   obs_seq_out_file_name    = "obs_seq.out",
+   adv_ens_command          = "./advance_model.csh"  
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD>start_from_restart</TD>
+    <TD>logical</TD>
+    <TD>.true. means read starting state data from a restart file, 
+.false. means call model_mod routine to set initial condition data.
+</TD></TR>
+
+<TR><TD>output_restart</TD>
+    <TD>logical</TD>
+    <TD>.true. means output a restart file.
+</TD></TR>
+
+<TR><TD>async</TD>
+    <TD>integer</TD>
+    <TD>Controls method for advancing model:
+<UL style="list-style: none;">
+<LI>0 = subroutine call</LI>
+<LI>2 = shell command, single task model</LI>
+<LI>4 = shell command, parallel model</LI>
+</UL>
+</TD></TR>
+
+<TR><TD>init_time_days</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+If non-negative, override the initial data time read from restart file.
+</TD></TR>
+
+<TR><TD>init_time_seconds</TD>
+    <TD>integer</TD>
+    <TD>If negative don't use. 
+If non-negative, override the initial data time read from restart file.
+</TD></TR>
+
+<TR><TD>first_obs_days</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+If non-negative, ignore any observations before this time.
+</TD></TR>
+
+<TR><TD>first_obs_seconds</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+If non-negative, ignore any observations before this time.
+</TD></TR>
+
+<TR><TD>last_obs_days</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+If non-negative, ignore any observations after this time.
+</TD></TR>
+
+<TR><TD>last_obs_seconds</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+If non-negative, ignore any observations after this time.
+</TD></TR>
+
+<TR><TD>output_interval</TD>
+    <TD>integer</TD>
+    <TD>Output state and observation diagnostics every nth 
+assimilation time, n is output_interval.
+</TD></TR>
+
+<TR><TD>restart_in_file_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>File containing state restart vector. 
+</TD></TR>
+
+<TR><TD>restart_out_file_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>File to which to write state restart state vector. 
+</TD></TR>
+
+<TR><TD>obs_seq_in_file_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>File name from which to read an observation sequence.
+</TD></TR>
+
+<TR><TD>obs_seq_out_file_name</TD>
+    <TD>character(len=129)</TD>
+    <TD>File name to which to write output observation sequence.
+</TD></TR>
+
+<TR><TD>adv_ens_command</TD>
+    <TD>character(len=129)</TD>
+    <TD>Command sent to shell if async == 2 or 4.
+</TD></TR>
+
+<TR><TD>output_forward_op_errors</TD>
+    <TD>logical</TD>
+    <TD>True means output errors from forward observation operators.
+This is the 'istatus' error return code from the model
+interpolate routine.  An ascii text file 'forward_op_errors'
+will be created in the current directory.  Each line will 
+contain an observation key number, and the istatus return code.
+</TD></TR>
+
+<TR><TD>output_timestamps</TD>
+    <TD>logical</TD>
+    <TD>True means output timestamps before and after the model advance
+and the forward observation computation phases.
+</TD></TR>
+
+<TR><TD>trace_execution</TD>
+    <TD>logical</TD>
+    <TD>True means output very detailed messages about what routines
+are being called in the main loop.  Useful if a job
+hangs or otherwise doesn't execute as expected.
+</TD></TR>
+
+<TR><TD>silence</TD>
+    <TD>logical</TD>
+    <TD>True means output almost no runtime messages.  Not recommended
+for general use, but can speed test programs if the execution
+time becomes dominated by the volume of output.
+</TD></TR>
+
+<TR><TD>tasks_per_model_advance</TD>
+    <TD>integer</TD>
+    <TD>Reserved for future use.
+</TD></TR>
+
+<TR><TD>obs_window_days</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+If non-negative, reserved for future use.
+</TD></TR>
+
+<TR><TD>obs_window_seconds</TD>
+    <TD>integer</TD>
+    <TD>If negative, don't use.
+If non-negative, reserved for future use.
+</TD></TR>
+
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+time_manager_mod
+obs_sequence_mod
+obs_def_mod
+obs_model_mod
+assim_model_mod
+mpi_utilities_mod
+random_seq_mod
+ensemble_manager_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL><LI>observation sequence input file; name comes from obs_seq_in_file_name
+   <LI>observation sequence output file; name comes from obs_seq_out_file_name
+   <LI>input state vector file; name comes from restart_in_file_name
+   <LI>output state vector file; name comes from restart_out_file_name
+   <LI>perfect_model_mod.nml in input.nml
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>perfect_main</TD>
+    <!-- message --><TD VALIGN=top>Only use one mpi process here: ### were requested</TD>
+    <!-- comment --><TD VALIGN=top>Don't use mpi for this.</TD>
+</TR>
+
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Descibe Future Plans.                                            -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

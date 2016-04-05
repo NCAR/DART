@@ -1,0 +1,433 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>DART program model_mod_check</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>DART PROGRAM <em class=program>model_mod_check</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#Usage">USAGE </A> / 
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+   The program <em class="program">model_mod_check</em> allows you to run
+   standalone tests for the fundamental routines in the 
+   POP <em class="program">model_mod</em>.
+   This is intended to be used when testing new functionality of POP
+   <em class="program">model_mod</em>.  As such, this program is
+   meant to be hacked up and customized to your own purpose.  This check was
+   derived from a previous mpas_atm <em class="program">model_mod_check</em> 
+   and was written to test new functionality to the POP 
+   <em class="program">model_interpolate</em>, for models that use the tripole grid.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;model_mod_check_nml
+   dart_input_file       = 'dart_ics'
+   output_file           = 'check_me'
+   advance_time_present  = .FALSE.
+   verbose               = .FALSE.
+   test1thru             = 11
+   loc_of_interest       = 320.0, 18.0, 5.0
+   kind_of_interest      = 'KIND_U_CURRENT_COMPONENT'
+   interp_test_lonrange  = 0.0, 359.0
+   interp_test_dlon      = 1.0
+   interp_test_latrange  = -89.0, 89.0
+   interp_test_dlat      = 1.0
+   interp_test_vertrange = 1000.0,  1005.0
+   interp_test_dvert     = 2000.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+  /
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD> dart_input_file </TD>
+    <TD> character(len=256) </TD>
+    <TD>Name of a file containing DART initial conditions for the model. This
+    file can be produced by running <em class="file">pop_to_dart</em> with a
+    POP restart file.
+</TD></TR>  
+
+<TR><TD> output_file  </TD>
+    <TD> character(len=256) </TD>
+    <TD>base portion of the name of the test netCDF file that will exercise the
+    DART routines that create the <em class="file">True_State.nc</em>, 
+    <em class="file">Prior_Diag.nc</em>, and <em class="file">Posterior_Diag.nc</em>
+    files. The proper file extension will be added.
+</TD></TR>  
+
+<TR><TD> advance_time_present </TD>
+    <TD> logical </TD>
+    <TD>Flag to indicate if the DART restart file has the 
+    <em class="option">advance time</em> present in the file.
+</TD></TR>  
+
+<TR><TD>   verbose   </TD>
+    <TD>   logical   </TD>
+    <TD>Print extra info about the <em class="file">model_mod_check</em> run.
+</TD></TR>  
+
+<TR><TD> test1thru </TD>
+    <TD> integer </TD>
+    <TD>An integer that defines which test you would like to run up to. 
+</TD></TR>  
+
+<TR><TD> loc_of_interest </TD>
+    <TD> real(r8), dimension(3) </TD>
+    <TD>The lat/lon/level for a particular location.  Tests the routine to find
+    the closest gridpoint and a single interpolation.
+</TD></TR>  
+
+<TR><TD> kind_of_interest </TD>
+    <TD> character(len=32) </TD>
+    <TD>Since there are usually many state variables on the same grid, it may 
+    be useful to restrict the search for a location of interest to include a
+    particular kind of state variable.
+</TD></TR>  
+
+<TR><TD> interp_test_latrange </TD>
+    <TD> real(r8), dimension(2) </TD>
+    <TD> Range of latitudes used for rigorous model_interpolate. Valid
+    range is between -90.0 and 90.0.
+</TD></TR>  
+
+<TR><TD> interp_test_lonrange </TD>
+    <TD> real(r8), dimension(2) </TD>
+    <TD> Range of longitudes used for rigorous model_interpolate. Valid
+    range is between 0.0 and 360.0.
+</TD></TR>  
+
+<TR><TD> interp_test_vertrange </TD>
+    <TD> real(r8), dimension(2) </TD>
+    <TD> Range of longitudes used for rigorous model_interpolate. Valid
+    typically between 0 and 5000 (measured in meters), depending on the grid.
+</TD></TR>  
+
+<TR><TD> interp_test_dlon </TD>
+    <TD> real(r8), dimension(2) </TD>
+    <TD> Distance between longitudinal spacing for rigorous model_interpolate.
+</TD></TR>  
+
+<TR><TD> interp_test_dlat </TD>
+    <TD> real(r8), dimension(2) </TD>
+    <TD> Distance between latitudinal spacing for rigorous model_interpolate.
+</TD></TR>  
+
+<TR><TD> interp_test_dvert </TD>
+    <TD> real(r8), dimension(2) </TD>
+    <TD>  Distance between vertical spacing for rigorous model_interpolate (measured
+    in meters).
+</TD></TR>  
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+assim_model_mod
+dart_pop_mod
+location_mod
+model_mod
+null_mpi_utilities_mod
+obs_def_mod
+obs_kind_mod
+random_seq_mod
+time_manager_mod
+types_mod
+utilities_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL>
+    <LI><em class="file">input.nml</em> is used for  namelist parameters
+        <em class="code">model_mod_check_nml</em></LI>
+    <LI><em class="file">pop_in</em> is used for  namelist parameters
+        that give the location of the appropriate POP grid.
+    <LI><em class="file">the "dart_input_file" </em> can either be a
+        DART "ics" file - in which case there is a single time associated
+        with the state, or a DART "ud" file - which has an additional
+        "advance_to" time record.</LI>
+    <LI><em class="file">the "output_file"</em> is a netCDF file that
+        exercises the <em class="file">model_mod</em> netcdf routines. 
+        Check the attributes, values, etc.</LI>
+</UL>
+
+<!--==================================================================-->
+<!-- Discuss  typical usage of model_mod_check.                              -->
+<!--==================================================================-->
+
+<A NAME="Usage"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>USAGE</H2>
+
+<P>
+To be able to build and run <em class="program">model_mod_check</em>,
+you will need to create a <em class="file">path_names_model_mod_check</em>
+file with the following contents:
+</P>
+<pre>
+assim_model/assim_model_mod.f90
+common/types_mod.f90
+location/threed_sphere/location_mod.f90
+mpi_utilities/null_mpi_utilities_mod.f90
+obs_def/obs_def_mod.f90
+obs_kind/obs_kind_mod.f90
+random_seq/random_seq_mod.f90
+time_manager/time_manager_mod.f90
+utilities/utilities_mod.f90
+</pre>
+as well as a <em class="file">mkmf_model_mod_check</em> script.
+You should be able to look at any other <em class="file">mkmf_xxxx</em> 
+script and figure out what to change. Once they exist:
+<br />
+<br />
+<div class="unix">
+<pre>
+[~/DART/models/POP/work] % <em class="input">csh mkmf_model_mod_check</em>
+[~/DART/models/POP/work] % <em class="input">make</em>
+[~/DART/models/POP/work] % <em class="input">./model_mod_check</em>
+</pre>
+</div>
+
+<P>
+Unlike other DART components, you are expected
+to modify <em class="file">model_mod_check.f90</em> to suit your needs as
+you develop your <em class="program">model_mod</em>. The code is roughly 
+divided into the following categories:
+</P>
+<ul><li>Test #1 and Test #2: Initialization and geometry information,</li>
+    <li>Test #3: Read/write restart files,</li>
+    <li>Test #4: Read dart input_file,</li>
+    <li>Test #5: Check the netCDF routines used to create the diagnostic output files,</li>
+    <li>Test #6: Check the metadata,</li>
+    <li>Test #7: Find closest gridpoint to loc_of_interest,</li>
+    <li>Test #8: Run a test single model interpolate at loc_of_interest,</li>
+    <li>Test #9: Run a model interpolate on a range of points specified in the input.nml,</li>
+</ul>
+
+<H3 class=indent1>Test #1 and Test #2: Initialization and Geometry Information</H3>
+<P>
+The first block of code in <em class="program">model_mod_check</em>
+is intended to test the of the most basic routines, especially
+<em class="program">static_init_model</em> - which generally sets the
+geometry of the grid, the number of state variables and their shape, etc. 
+Virtually everything requires knowledge of the grid and state vector,
+so this block should never be skipped.
+</P>
+
+<H3 class=indent1>Test #3: Read/write restart files</H3>
+<P>
+This block of code tests <em class="program">restart_file_to_sv</em>, which 
+reads a POP restart file and converts it to a dart state vector.  
+The state vector is then written out using  awrite_state_restart which outputs 
+the state vector to <em class="program">output_file</em>.
+</P>
+
+<H3 class=indent1>Test #4: Read dart input file:</H3>
+<P>
+This block of code reads a <em class="program">dart_ics</em> file into the state vector.  
+The <em class="program">dart_ics</em> file can be generated by running 
+<em class="program">pop_to_dart</em> on a POP restart file. This step 
+is imperative for the interpolation tests.
+</pre>
+
+<H3 class=indent1>Test #5: Check the netCDF routines used to create the diagnostic output files</H3>
+<P>This block happens after a call to 
+<em class="program">aread_state_restart()</em>, so, depending on 
+what was in the restart file (presumably, once you get 
+<em class="program">model_to_dart</em> working, you have converted
+a real model state to a DART restart and are using <em>that</em>), 
+you can fine-tune what gets put into the DART 
+<em class="file">True_State.nc</em>, 
+<em class="file">Prior_Diag.nc</em>, and
+<em class="file">Posterior_Diag.nc</em> diagnostic files. Only one
+ensemble member is needed to test the routines (hence the hardcoded 1
+in the test block).
+</P>
+
+<H3 class=indent1>Test #6: Check the metadata</H3>
+<P>
+It is critical to return the correct metadata for any given index into
+the DART state vector. This code block tests the two most common features of
+the metadata. As a bonus, this routine is also quite useful to determine
+EXACTLY where to place your first test observation. If you test precisely at
+a grid location, you should be able to really get a handle on debugging your
+<em class="program">model_interpolate()</em> routine. 
+</P>
+
+<H3 class=indent1>Test #7: Find closest gridpoint</H3>
+<P>
+The <em class="program">find_closest_gridpoint()</em> routine is designed to
+ensure that your variable layout is as you expect. "closest" in this context
+is close in the horizontal only - all vertical levels will be reported.
+</P>
+
+<H3 class=indent1>Test #8: Run a test single model interpolate at loc_of_interest</H3>
+<P>
+Test the interpolation value of a single point point at 
+<em class="program">loc_of_interest</em>, of kind, <em class="program">kind_of_interest</em>.
+For POP models we can test KIND_U_CURRENT_COMPONENT and KIND_TEMPERATURE.
+</P>
+
+<H3 class=indent1>Test #9: Run a model interpolate on a range of points specified in the input.nml</H3>
+<P>
+Test a range of values of interpolation specified in input.nml.  Only returns
+the number of sucessful interpolations.  Interpolation locations
+that are over land are ignored (please see ERROR CODES and CONDITIONS). 
+Two output files are produced output_file_interptest.nc and output_file_interptest.m where the 
+interpolated values can be viewed.
+</P>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<P>
+The test_interpolate routine ignores interpolations that fail with ios_status = 1, and
+ios_status = 3. 
+In the current implementation model_interpolate returns:
+
+<ul>
+<li>ios_status = 1 occurs when there is no quads to search in the 'regular grid'.
+This is indicitive of dry land, as we do include quads in the 'regular grid' whos 
+corners are all dry.</li>
+<li>ios_status = 3 occurs when one of the four corners of the quad are over dry land.
+These values can not be interpolated and therefore are ignored.</li>
+</ul>
+
+When testing new interpolation methods please make sure this is the desired behavior.
+
+<pre>
+if (ios_out == 1 .or. ios_out == 3) then
+   nland = nland + 1
+else if (ios_out /= 0) then
+  if (verbose) then
+     write(string2,'(''ilon,jlat,kvert,lon,lat,vert'',3(1x,i6),3(1x,f14.6))') 
+                 ilon,jlat,kvert,lon(ilon),lat(jlat),vert(kvert)
+     write(string1,*) 'interpolation return code was', ios_out
+     call error_handler(E_MSG,'test_interpolate',string1,source,revision,revdate,text2=string2)
+  endif
+  nfailed = nfailed + 1
+endif
+</pre>
+</P>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Jonathan Hendricks </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

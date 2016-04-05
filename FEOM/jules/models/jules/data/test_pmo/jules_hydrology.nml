@@ -1,0 +1,6 @@
+&jules_hydrology
+l_pdm=.false.,
+l_top=.false.,
+dz_pdm=1.0,
+b_pdm=0.2,
+/

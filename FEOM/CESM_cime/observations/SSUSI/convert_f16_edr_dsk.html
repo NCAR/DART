@@ -1,0 +1,218 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>SSUSI Data</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>SSUSI F16 EDR-DSK format to observation sequence converters</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#DataSources">DATA SOURCES</A> /
+<A HREF="#Programs">PROGRAMS</A> / 
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">FUTURE PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+The Special Sensor Ultraviolet Spectrographic Imager 
+<a href="http://http://ssusi.jhuapl.edu/">SSUSI</a> is 
+designed to remotely sense the ionosphere and thermosphere.
+
+The following is repeated from the SSUSI home page:
+<blockquote><em class=italic>
+<b>Overview</b><br />
+Beginning in 2003, the Defense Meteorological Satellite Program (DMSP) satellites 
+began carrying the SSUSI instrument - a combination of spectrographic imaging 
+and photometric systems designed to remotely sense the ionosphere and thermosphere.
+<br />
+<br />
+The long term focus of the SSUSI program is to provide data concerning the 
+upper atmospheric response to the sun over the changing conditions of the solar 
+cycle. Data collected by SSUSI instrument can help identify structure in the 
+equatorial and polar regions.
+<br />
+<br />
+<b>Mission</b><br />
+SSUSI was designed for the DMSP Block 5D-3 satellites. These satellites are 
+placed into nearly polar, sun-synchronous orbits at an altitude of about 850 km. 
+SSUSI is a remote-sensing instrument which measures ultraviolet (UV) emissions in 
+five different wavelength bands from the Earth's upper atmosphere. SSUSI is 
+mounted on a nadir-looking panel of the satellite. The multicolor images from 
+SSUSI cover the visible Earth disk from horizon to horizon and the 
+anti-sunward limb up to an altitude of approximately 520 km.
+<br />
+<br />
+The UV images and the derived environmental data provide the Air Force Weather 
+Agency (Offutt Air Force Base, Bellevue, NE) with near real-time information that 
+can be utilized in a number of applications, such as maintenance of high 
+frequency (HF) communication links and related systems and assessment of the 
+environmental hazard to astronauts on the Space Station.</em></blockquote>
+</P>
+
+<P>
+<em class=program>convert_f16_edr_dsk.f90</em> will extract the ON2 
+observations from the F16 "edr-dsk" format files and create DART observation
+sequence files. There is one additional preprocessing step before the edr-dsk
+files may be converted.
+<br />
+<br />
+The ON2_UNCERTAINTY variable in the netcdf files have IEEE NaN values,
+but none of the required metadata to interpret them correctly.
+These 2 lines will add the required attributes so that NaNs are replaced with
+a fill value that can be queried and manipulated.
+Since the ON2_UNCERTAINTY is a standard deviation, it is sufficient to make
+the fill value negative. <a href-="#KnownBugs">See the section on Known Bugs</a>
+</P>
+<div class=unix>
+<pre>ncatted -a _FillValue,ON2_UNCERTAINTY,o,f,NaN        input_file.nc
+ncatted -a _FillValue,ON2_UNCERTAINTY,m,f,-1.0       input_file.nc</pre>
+</div>
+<P></P>
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>DATA SOURCES</H2>
+<P>
+<a href="http://ssusi.jhuapl.edu/data_products">http://ssusi.jhuapl.edu/data_products</a>
+</P>
+
+<P>Please read their <a href="http://ssusi.jhuapl.edu/home_data_usage">data usage</a> 
+policy.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PROGRAMS</H2>
+<P>
+<em class=file>DART/observations/SSUSI/convert_f16_edr_dsk.f90</em> 
+will extract ON2 data from the distribution files 
+and create DART observation sequence (obs_seq) files.
+Build it in the <em class=file>SSUSI/work</em> directory by running
+the <em class=program>./quickbuild.csh</em> script located there.
+In addition to the converters, the <em class=file>advance_time</em> and
+<em class=file>obs_sequence_tool</em> utilities will be built.
+</P>
+
+<P>
+An example data file is in the <em class=file>data</em> directory.
+An example scripts for adding the required metadata to the ON2_UNCERTAINTY
+variable in the <em class=file>shell_scripts</em> directory.  
+These are <em>NOT</em> intended to be turnkey scripts; they will
+certainly need to be customized for your use.  There are comments
+at the top of the scripts saying what options they include, and
+should be commented enough to indicate where changes will be
+likely to need to be made.
+</P>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERRORS</H2>
+<P>
+The code for setting observation error variances is using fixed values,
+and we are not certain if they are correct.  Incoming QC values larger
+than 0 are suspect, but it is not clear if they really signal unusable
+values or whether there are some codes we should accept.
+</P>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>KNOWN BUGS</H2>
+<P>
+The netCDF files - as distributed - have NaN values to indicate "MISSING".
+This makes it exceptionally hard to read or work with, as almost everything
+will core dump when trying to perform any math with NaNs. <em class=file>
+convert_f16_edr_dsk.f90</em> tries to count how many values are missing. If the
+NaN has not been replaced with a numerically valid MISSING value, the following
+FATAL ERROR is generated (by the Intel compiler, with debug and traceback enabled):</P>
+<PRE>
+ set_nml_output Echo NML values to log file only
+ Trying to open namelist log dart_log.nml
+forrtl: error (65): floating invalid
+Image              PC                Routine            Line        Source             
+convert_f16_edr_d  000000000051717D  MAIN__                    143  convert_f16_edr_dsk.f90
+convert_f16_edr_d  0000000000409B3C  Unknown               Unknown  Unknown
+libc.so.6          0000003101E1ED5D  Unknown               Unknown  Unknown
+convert_f16_edr_d  0000000000409A39  Unknown               Unknown  Unknown
+Abort (core dumped)
+</PRE>
+
+<P>
+The solution is to replace the NaN values with a viable MISSING value using
+the <em class=program>shell_scripts/netcdf_manip.csh</em> script.
+It relies on the netCDF Operators, freely available from&nbsp;
+<a href="http://nco.sourceforge.net">http://nco.sourceforge.net</a>
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

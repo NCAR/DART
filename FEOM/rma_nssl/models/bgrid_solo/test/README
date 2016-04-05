@@ -1,0 +1,17 @@
+Various observation sequences for testing the b-grid.
+
+obs_seq.1T_vl - Single RADIOSONDE_TEMPERATURE with vertical level location
+
+obs_seq.1PS_vp - Single RADIOSONDE_SURFACE_PRESSURE with vertical pressure location
+
+obs_seq.1V_vp1 - Single RADIOSONDE_V_WIND_COMPONENT with vertical pressure location
+  * pressure is above the top boundary
+
+obs_seq.1V_vp2 - Single RADIOSONDE_V_WIND_COMPONENT with vertical pressure location
+  * pressure in valid range
+
+obs_seq.4T_vp - 4 RADIOSONDE_TEMPERATURE with vertical pressure location
+
+obs_seq.identity - assorted t,u,v,p identity observations
+
+obs_seq.many - medium sized obs sequence file with vertical level locations

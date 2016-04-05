@@ -1,0 +1,13 @@
+&model_nml
+   model_size_x        = 36,
+   y_per_x             = 10,
+   forcing             = 15.00,
+   delta_t             = 0.005,
+   coupling_b          = 10.0,
+   coupling_c          = 10.0,
+   coupling_h          = 1.0,
+   output_state_vector = .false.,
+   local_y             = .false.,
+   time_step_days      = 0,
+   time_step_seconds   = 3600  /
+

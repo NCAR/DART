@@ -1,0 +1,37 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+NetCDF File layout for DART/COAMPS
+
+The NetCDF file layout for the DART/COAMPS model is relatively
+straightforward - the state vector is stored as one long entity.
+
+The state vector is defined with dimensions (time, copy, StateVariable).
+Time and StateVariable should be fairly self-explanatory, but the copy
+coordinate can differ depending on the DART configuration.
+
+In True_State.nc, the length of the copy dimension is 1 - there is only
+one truth.  In Prior_Diag.nc and Posterior_Diag.nc, though, there are
+more things to be stored:
+Copy 1:         Ensemble mean
+Copy 2:         Ensemble spread
+Copy 3-(end-2): Ensemble member state vectors
+                (note that this may be a subset of the actual ensemble:
+                adjust how many are written out by changing the 
+                num_output_state_members parameter in filter_nml)
+Copy (end-1):   The mean of the inflation parameter (as estimated
+                by the DART adaptive inflation procedure)
+Copy (end):     The standard deviation of the inflation parameter
+                (as estimated by the DART adaptive inflation procedure)
+
+If the output_inflation parameter is set to false in filter_nml, the last
+two entries will not be written, and the NetCDF file will contain only the
+ensemble mean, spread, and [select] members.
+
+To extract particular variables from the state vector, see the COAMPS
+matlab subdirectory - this contains several routines that process the
+restart.vars file that created the state vector to calculate the
+entries corresponding to particular fields.  

@@ -1,0 +1,27 @@
+&jules_frac
+file='static_input.nc',
+frac_name='tile_frac',
+/
+&jules_soil_props
+file='static_input.nc',
+const_z=.false.,
+nvars=9,
+use_file=9*.true.,
+var='albsoil','b','hcap','hcon','satcon','sathh','sm_crit','sm_sat','sm_wilt',
+var_name='albsoil','b','hcap','hcon','satcon','sathh','sm_crit','sm_sat','sm_wilt',
+/
+&jules_top
+file='static_input.nc',
+nvars=3,
+use_file=2*.false.,.true.,
+var='fexp','ti_sig','ti_mean',
+const_val=0.5,0.0,0.0,
+var_name=' ',' ','topo_idx',
+/
+&jules_agric
+/
+&jules_rivers_props
+/
+&jules_co2
+/
+

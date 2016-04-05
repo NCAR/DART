@@ -1,0 +1,7 @@
+&dart_to_roms_nml
+   dart_to_roms_input_file = 'dart.restart'
+   advance_time_present    = .false.
+   print_data_ranges       = .true.
+   time_filename           = 'roms_time'
+  /
+

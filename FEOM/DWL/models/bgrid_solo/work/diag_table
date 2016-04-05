@@ -1,0 +1,21 @@
+"Diagnostics from an FMS integration"
+0 0 0 0 0 0
+
+"atmos_10day", 240, "hours", 1, "days", "time",
+
+ "dynamics",    "bk",             "bk",             "atmos_10day", "all", .false., "none", 2,
+ "dynamics",    "pk",             "pk",             "atmos_10day", "all", .false., "none", 2,
+ "dynamics",    "zsurf",          "zsurf",          "atmos_10day", "all", .true.,  "none", 2,
+ "dynamics",    "ps",             "ps",             "atmos_10day", "all", .true.,  "none", 2,
+ "dynamics",    "ucomp",          "ucomp",          "atmos_10day", "all", .true.,  "none", 2,
+ "dynamics",    "vcomp",          "vcomp",          "atmos_10day", "all", .true.,  "none", 2,
+ "dynamics",    "temp",           "temp",           "atmos_10day", "all", .true.,  "none", 2,
+ "dynamics",    "omega",          "omega",          "atmos_10day", "all", .true.,  "none", 2,
+ "dynamics",    "div",            "div",            "atmos_10day", "all", .true.,  "none", 2,
+ "dynamics",    "vor",            "vor",            "atmos_10day", "all", .true.,  "none", 2,
+ "dynamics",    "idealized",      "idealized",      "atmos_10day", "all", .true.,  "none", 2,
+ "hs_forcing",  "tdt_ndamp",      "tdt_ndamp",      "atmos_10day", "all", .true.,  "none", 2,
+ "hs_forcing",  "udt_rdamp",      "udt_rdamp",      "atmos_10day", "all", .true.,  "none", 2,
+ "hs_forcing",  "vdt_rdamp",      "vdt_rdamp",      "atmos_10day", "all", .true.,  "none", 2,
+ "hs_forcing",  "teq",            "teq",            "atmos_10day", "all", .true.,  "none", 2,
+ "hs_forcing",  "diss_heat_rdamp","diss_heat_rdamp","atmos_10day", "all", .true.,  "none", 2,

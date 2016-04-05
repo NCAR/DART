@@ -1,0 +1,4 @@
+&obs_assim_count_nml
+   filename_in = ''
+   calendar = 'GREGORIAN'
+/

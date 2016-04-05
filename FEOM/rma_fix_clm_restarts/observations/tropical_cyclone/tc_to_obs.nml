@@ -1,0 +1,9 @@
+
+&tc_to_obs_nml
+   input_atcf_file         = 'input.txt'
+   fileformat              = 'b-deck'
+   obs_out_file            = 'obs_seq.out'
+   append_to_existing_file = .false.
+   debug                   = .false.
+ /
+

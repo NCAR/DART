@@ -1,0 +1,16 @@
+Ground GPS precipitable water (PW) observations
+
+Data resource:
+Observations can be found in http://www.suominet.ucar.edu/data/ in either ascii or netcdf format.
+For a full list of dataset with description, refer to http://www.suominet.ucar.edu/data.html.
+
+Converter:
+DART/observations/GPSPW/convert_gpspw.f90 can convert either daily netcdf data for the whole globe 
+or hourly netcdf files for the North America. A namelist parameter "global_data" in 
+&convert_gpspw_nml should be edited accordingly.
+For example, CsuPWVh_2012.146.12.00.0060_nc can be downloaded for the North America 
+(e.g., global_data = .false.) for 2012-05-25:12:00:00. 
+And the global data for the same day is available as GsuPWVd_2012.146.00.00.1440_nc and can be 
+converted w/ global_data = .true. at the specified time interval ("obs_window_hr" in 
+&convert_gpspw_nml).
+An input file to the converter program should be renamed as "gpspw_input.nc".

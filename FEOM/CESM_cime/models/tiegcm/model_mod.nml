@@ -1,0 +1,11 @@
+&model_nml
+   output_state_vector         = .false.
+   tiegcm_restart_file_name    = 'tiegcm_restart_p.nc'
+   tiegcm_secondary_file_name  = 'tiegcm_s.nc'
+   tiegcm_namelist_file_name   = 'tiegcm.nml'
+   assimilation_period_seconds = 3600
+   estimate_f10_7              = .false.
+   debug                       = 1
+   variables = ' '
+   /
+

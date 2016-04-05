@@ -1,0 +1,4 @@
+&dart_to_gcom_nml
+   dart_to_gcom_input_file = 'dart_restart',
+   advance_time_present   = .false.  /
+

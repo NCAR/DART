@@ -1,0 +1,10 @@
+
+&obs_seq_verify_nml
+   obs_sequence_list = '',
+   obs_sequence_name = 'obs_seq.forecast.YYYYMMDDHH',
+   station_template  = 'obsdef_mask.nc',
+   netcdf_out        = 'forecast.nc',
+   obtype_string     = 'METAR_U_10_METER_WIND',
+   verbose           = .true.,
+   /
+

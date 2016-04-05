@@ -1,0 +1,4 @@
+&clm_to_dart_nml
+   clm_to_dart_output_file      = 'dart_ics',
+   /
+

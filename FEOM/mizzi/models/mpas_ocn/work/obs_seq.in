@@ -1,0 +1,16 @@
+ obs_sequence
+obs_kind_definitions
+           1
+          10 ARGO_TEMPERATURE                
+  num_copies:            0  num_qc:            0
+  num_obs:            1  max_num_obs:            1
+  first:            1  last:            1
+ OBS            1
+          -1          -1          -1
+obdef
+loc3d
+     3.839724354387525         0.000000000000000        20.0000000000000      3
+kind
+          10
+     0          1
+   1.00000000000000     

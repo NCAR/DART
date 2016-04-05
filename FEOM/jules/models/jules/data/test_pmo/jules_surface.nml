@@ -1,0 +1,17 @@
+&jules_surface
+beta1=0.83,
+beta2=0.93,
+fwe_c3=0.5,
+fwe_c4=2.0e4,
+hleaf=5.7e4,
+hwood=1.1e4,
+iscrntdiag=0,
+kaps=0.5e-8,
+kaps_roth=3.22e-7,9.65e-9,2.12e-8,6.43e-10,
+l_aggregate=.false.,
+l_anthrop_heat_src=.false.,
+l_epot_corr=.false.,
+l_land_ice_imp=.false.,
+l_point_data=.false.,
+q10_soil=2.0,
+/

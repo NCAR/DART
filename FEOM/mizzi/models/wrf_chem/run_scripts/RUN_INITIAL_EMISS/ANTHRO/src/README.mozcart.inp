@@ -1,0 +1,47 @@
+
+     The file mozcart.inp is a template setup to map emissions from the 
+     Community Earth System Model (CESM) dataset to the matching WRF-Chem species 
+     assuming the MOZCART chemistry option (chem_opt = 112). 
+
+     The template is provided as an example to help the users set up their own
+     namelist to prepare anthropogenic emission data sets for their WRF-Chem simulations.
+
+     Please note :
+
+     (a) the anthro_dir variable must be set to the directory containing
+         the input anthropogenic emission datasets
+
+     (b) the input anthropogenic emission datasets all have a file name of
+         the form, in this example :
+
+         IPCC_emissions_<species>_surface_1850-2000_1.9x2.5.nc
+
+         where <species> is one of the names in the src_names variable such
+         as NO
+
+     (c) since there is no molecular weight information in the CESM emission
+         datasets all the species specified in the spc_nam variable have
+         a molecular weight suffix
+
+     (d) only the variable "anthro" is read from each CESM dataset
+
+     (e) anthro_emis will output a series of wrfchemi_d01_<date> files
+
+         starting at <date> = 2010-05-01_00:00:00 
+         ending   at <date> = 2010-10-31_00:00:00
+         
+         each output file is for a single time, <date>, with a one day
+         interval between files.
+
+         thus the files form the following sequence :
+
+         {wrfchemi_d01_2010-05-01_00:00:00, wrfchemi_d01_2010-05-02_00:00:00, 
+                                          .
+                                          .
+          wrfchemi_d01_2010-10-30_00:00:00, wrfchemi_d01_2010-10-31_00:00:00} 
+
+     (f) anthro_emis expects all output dates to be bracketed by the times spanning
+         the IPCC emissions files
+
+     Refer to the documentation in the file README.anthro_emis if you have any
+     questions about the settings in the mozcart.inp file.

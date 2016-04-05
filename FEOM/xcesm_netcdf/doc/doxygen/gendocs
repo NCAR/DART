@@ -1,0 +1,95 @@
+#!/bin/sh
+
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+# generate a family of directories for each of the executables
+# in this directory (created by scanning the path_names_* files)
+#
+# before using this script, copy it to a model's work directory, along 
+# with one of the doxygen configuration template files listed below.
+
+# pick one: the second tries to create diagrams showing the calling
+# and called relationship between subroutines, but the number and size
+# of files it generates is much larger.
+
+template=doxygen-config-template
+#template=doxygen-devel-config-template
+
+model=`pwd | sed -e 's;/work;;' -e 's;^.*/;;' `
+umodel=`echo $model | tr '[a-z]' '[A-Z]' `
+toppath=`cd ../../../; pwd`
+
+destdir=$toppath/doc/doxygen/$model
+
+echo Generating documentation for all executables in the current directory
+echo for the model ${model}.   All html files will be located under the directory
+echo $destdir
+
+if [ ! -d $destdir ]; then mkdir -p $destdir; fi
+
+for i in path_names_*
+do
+
+  exename=`echo $i | sed -e 's/path_names_//' `
+  echo generating documentation for $exename
+
+  lcount=`wc -l $i | sed -e 's/^[\t ]*\([0-9][0-9]*\)*.*$/\1/'`
+  let lcount=lcount-1
+  sed -e "1,${lcount}s/\$/ \\\\/" -e "s;^;${toppath}/;" $i > flist
+
+  # THISEXECUTABLE -> exename
+  # THISMODEL -> model
+  # THISDESTDIR -> destdir
+  # flist -> multiline path_names_xx content with \ after every
+  # line except the last one
+
+  sed -e "s;THISDESTDIR;${destdir};" -e "s/THISEXECUTABLE/$exename/" -e "s/THISMODEL/$model/" -e "/^INPUT  /r flist" $template > doxygen-$exename
+
+  doxygen doxygen-$exename
+  
+  rm doxygen-$exename
+done
+
+# create an overall TOC file
+
+cat > index.html <<EOF
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>${umodel}/DART executables</title>
+</head>
+<body>
+<div> 
+
+<H1>${umodel}/DART executables</H1>
+<br />
+
+<H3>Documentation for the following ${umodel}/DART executables:
+<ul>
+EOF
+
+for i in path_names_*
+do
+  exename=`echo $i | sed -e 's/path_names_//' `
+  echo "<li><a href=\"${exename}/html/index.html\">${exename}</a></li>" >> index.html
+done
+
+cat >> index.html <<EOF
+</ul>
+
+</div>
+</body>
+</html>
+EOF
+
+mv index.html $destdir
+
+echo Open $destdir/index.html
+echo in your browser to access the documentation.
+
+exit 0
+

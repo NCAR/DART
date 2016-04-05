@@ -1,0 +1,67 @@
+&nhyd_model
+   config_test_case = 0
+   config_time_integration = 'SRK3'
+   config_dt = 900
+   config_start_time = '2010-10-23_03:00:00'
+   config_run_duration = '00_00:15:00'
+   config_number_of_sub_steps = 6
+   config_h_mom_eddy_visc2 = 0000.
+   config_h_mom_eddy_visc4 = 0.
+   config_v_mom_eddy_visc2 = 00.0
+   config_h_theta_eddy_visc2 = 0000.
+   config_h_theta_eddy_visc4 = 00.
+   config_v_theta_eddy_visc2 = 00.0
+   config_theta_adv_order = 2
+   config_scalar_adv_order = 2
+   config_positive_definite = .false.
+   config_monotonic = .false.
+   config_epssm = 0.1
+   config_smdiv = 0.1
+   config_h_ScaleWithMesh = .false.
+   config_newpx = .false.
+/
+   config_stop_time  = '0000-01-16_00:00:00'
+   config_sfc_update_interval = "0:00:00"
+
+&damping
+   config_zd = 22000.0
+   config_xnutr = 0.0
+/
+
+&dimensions
+   config_nvertlevels = 41
+/
+
+&io
+   config_input_name = 'mpas_input_new.nc'
+   config_sfc_update_name = 'sfc_update.nc'
+   config_output_name = 'output.10242.nc'
+   config_restart_name = 'restart.10242.nc'
+   config_output_interval = '00_00:15:00'
+   config_decomp_file_prefix = 'x1.10242.graph.info.part.'
+   config_frames_per_outfile = 1
+/
+
+&restart
+   config_restart_interval = '00_06:00:00'
+   config_do_restart = .false.
+/
+
+&physics
+   config_n_physics = 01
+   config_n_microp  = 01
+   config_n_conv    = 01
+   config_n_pbl     = 01
+   config_n_eddy    = 01
+   config_n_radt_lw = 01
+   config_n_radt_sw = 01
+   config_microp_scheme       = 'wsm6'
+   config_conv_shallow_scheme = 'off'
+   config_conv_deep_scheme    = 'kain_fritsch'
+   config_eddy_scheme         = 'off'
+   config_lsm_scheme          = 'noah'
+   config_pbl_scheme          = 'ysu'
+   config_radt_lw_scheme      = 'rrtmg_lw'
+   config_radt_sw_scheme      = 'rrtmg_sw'
+   config_sfclayer_scheme     = 'monin_obukhov'
+/

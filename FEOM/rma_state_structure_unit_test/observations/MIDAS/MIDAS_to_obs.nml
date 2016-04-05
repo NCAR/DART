@@ -1,0 +1,6 @@
+&MIDAS_to_obs_nml
+   input_file    = 'infile.nc'
+   obs_out_file  = 'obs_seq.out',
+   verbose       = .false.
+   /
+

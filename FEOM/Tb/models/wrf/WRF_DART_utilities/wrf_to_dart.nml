@@ -1,0 +1,7 @@
+
+&wrf_to_dart_nml
+    dart_restart_name = "dart_wrf_vector", 
+    print_data_ranges = .false., 
+    debug             = .false.
+/
+

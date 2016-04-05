@@ -1,0 +1,22 @@
+
+There are several DART users who have working DART interface code
+to the ECHAM atmospheric general circulation model.  This model
+is developed and supported by the Max Planck Institute for Meterology 
+in Hamburg, Germany.
+
+See here:
+
+http://www.mpimet.mpg.de/en/science/models/echam.html
+
+for more information on the model.  
+
+If you are interested in running DART with this model please contact 
+the DART group at 'dart@ucar.edu' for more information.  We currently do
+not have a copy of the model_mod interface code nor any of the scripting 
+required to run an assimilation, but we may be able to put you in contact 
+with the right people to get it.
+
+The DART Group
+17 Sept 2014
+
+

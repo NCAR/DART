@@ -1,0 +1,9 @@
+
+&model_nml 
+  output_state_vector = .false.
+  channel_center = 45.0
+  channel_width = 40.0
+  assimilation_period_days = 0
+  assimilation_period_seconds = 21600
+  debug = .false.
+/

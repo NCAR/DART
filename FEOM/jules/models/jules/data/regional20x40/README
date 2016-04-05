@@ -1,0 +1,65 @@
+SHAMS - I need a tile_fraction.nc and a land_fraction_mask.nc for the following.
+I suspect the land_fraction_mask.nc is just a 20x40 matrix of all 1.0 ... 
+if that's the case I can make one trivially - just let me know.
+The tile_fraction.nc is a different matter.
+
+
+netcdf regional_norect.dump.20140102.10800 {
+dimensions:
+        land = 800 ;
+        tile = 9 ;
+        scpool = 1 ;
+        soil = 4 ;
+variables:
+        float canopy(tile, land) ;
+        float cs(scpool, land) ;
+        float gs(land) ;
+        float snow_tile(tile, land) ;
+        float sthuf(soil, land) ;
+        float t_soil(soil, land) ;
+        float tstar_tile(tile, land) ;
+        float rho_snow(tile, land) ;
+        float snow_depth(tile, land) ;
+}
+
+netcdf regional_norect.hour {
+dimensions:
+        x = 20 ;
+        y = 40 ;
+        soil = 4 ;
+        tile = 9 ;
+        time = UNLIMITED ; // (24 currently)
+        nt = 2 ;
+variables:
+        float time_bounds(time, nt) ;
+                time_bounds:long_name = "Time bounds for each time stamp" ;
+                time_bounds:units = "seconds since 2014-01-01 03:00:00" ;
+        float time(time) ;
+                time:standard_name = "time" ;
+                time:long_name = "Time of data" ;
+                time:units = "seconds since 2014-01-01 03:00:00" ;
+                time:bounds = "time_bounds" ;
+                time:calendar = "standard" ;
+        float latitude(y, x) ;
+                latitude:long_name = "Gridbox latitude" ;
+                latitude:units = "degrees" ;
+                latitude:standard_name = "latitude" ;
+        float longitude(y, x) ;
+                longitude:long_name = "Gridbox longitude" ;
+                longitude:units = "degrees" ;
+                longitude:standard_name = "longitude" ;
+        float precip(time, y, x) ;
+                precip:missing_value = -1.e+20f ;
+                precip:_FillValue = -1.e+20f ;
+                precip:coordinates = "latitude longitude" ;
+                precip:long_name = "Gridbox precipitation rate" ;
+                precip:units = "kg m-2 s-1" ;
+                precip:cell_methods = "time : point" ;
+        float latent_heat(time, y, x) ;
+                latent_heat:missing_value = -1.e+20f ;
+                latent_heat:_FillValue = -1.e+20f ;
+                latent_heat:coordinates = "latitude longitude" ;
+                latent_heat:long_name = "Gridbox surface latent heat flux" ;
+                latent_heat:units = "W m-2" ;
+                latent_heat:cell_methods = "time : point" ;
+

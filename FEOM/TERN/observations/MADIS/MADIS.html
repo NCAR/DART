@@ -1,0 +1,205 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>MADIS Data</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MADIS Data Ingest System</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#DataSources">DATA SOURCES</A> /
+<A HREF="#Programs">PROGRAMS</A> / 
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">FUTURE PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+
+<P>
+The <a href="http://madis.noaa.gov/">MADIS</a>
+(Meteorological Assimilation Data Ingest System)
+service provides access to real-time and archived
+data of a variety of types, with added Quality Control (QC)
+and integration of data from a variety of sources.
+</P>
+
+<P>
+To convert a series of MADIS data files (where different types of
+observations are distributed in separate files), one high level
+view of the workflow is:
+</P>
+<ol>
+<li>convert each madis file, by platform type, into an obs_seq file.
+    one file in, one file out.  no time changes.  use the 
+    <em class=file>shell_scripts/madis_conv.csh</em> script.
+    there are script options for hourly output files, or a single daily
+    output file.</li>
+<li>if you aren't using the wrf preprocessing program, you're ready to go.</li>
+<li>if you do want to do subsequent wrf preprocessing, you need to:
+<ol>
+<li>decide on the windowing.  each platform has a different convention
+    and if you're going to put them into the wrf preprocessing you'll need
+    to have the windowing match.  use the
+    <em class=file>shell_scripts/windowing.csh</em> script.</li>
+<li>the wrf preprocessing takes a list of files and assumes they will all
+    be assimilated at the same time, for superob'ing purposes, so it should
+    match the expected assimilation window when running filter.</li>
+</ol>
+</ol>
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<HR />
+<H2>DATA SOURCES</H2>
+
+<P>
+<a href="http://madis.noaa.gov/">http://madis.noaa.gov</a>
+</P>
+
+<P>There are two satellite wind converter programs; the one in
+this directory and one in the
+<a href="../SSEC/SSEC.html">SSEC</a> directory.
+The observations distributed here come from
+<a href="http://www.nesdis.noaa.gov">NESDIS</a>.
+The SSEC observations are processed by SSEC itself and
+will differ from the observations converted here.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<HR />
+<H2>PROGRAMS</H2>
+<P>
+The programs in the <em class=file>DART/observations/MADIS/</em> 
+directory extract data from the distribution files 
+and create DART observation sequence (obs_seq) files.
+Build them in the <em class=file>work</em> directory by running
+the <em class=program>./quickbuild.csh</em> script.  In addition
+to the converters, the <em class=file>advance_time</em> and
+<em class=file>obs_sequence_tool</em> utilities will be built.
+</P>
+<P>
+There are currently converters for these data types:</P>
+<TABLE border=0 cellpadding=3 summary="">
+<TBODY valign=top>
+<TR> <TD> ACARS aircraft T,U,V,Q data </TD>  <TD> convert_madis_acars    </TD>
+<TR> <TD> Marine surface data         </TD>  <TD> convert_madis_marine   </TD>
+<TR> <TD> Mesonet surface data        </TD>  <TD> convert_madis_mesonet  </TD>
+<TR> <TD> Metar data                  </TD>  <TD> convert_madis_metar    </TD>
+<TR> <TD> Wind Profiler data          </TD>  <TD> convert_madis_profiler </TD>
+<TR> <TD> Rawinsonde/Radiosonde data  </TD>  <TD> convert_madis_rawin    </TD>
+<TR> <TD> Satellite Wind data         </TD>  <TD> convert_madis_satwnd   </TD>
+</TABLE>
+<P>
+Example data files are in the <em class=file>data</em> directory.
+Example scripts for converting batches of these files are
+in the <em class=file>shell_scripts</em> directory.  
+These are <em>NOT</em> intended to be turnkey scripts; they will
+certainly need to be customized for your use.  There are comments
+at the top of the scripts saying what options they include, and
+should be commented enough to indicate where changes will be
+likely to need to be made.
+</P>
+<P>Several converters have compile-time choices
+for outputting various types of moist variables.
+Check the source code for more details.
+Some converters also read multiple T/F strings
+from the console (standard input) to control at
+run-time what types of observations to convert.
+Again, check the source code for more details.
+</P>
+<P>Each converter has hard-coded input and output filenames:</P>
+<TABLE border=0 cellpadding=5 summary="input/output filenames">
+<TBODY valign=top>
+<TR> <TD>convert_madis_acars:   </TD> <TD> acars_input.nc    </TD> <TD> obs_seq.acars    </TD>
+<TR> <TD>convert_madis_marine:  </TD> <TD> marine_input.nc   </TD> <TD> obs_seq.marine   </TD>
+<TR> <TD>convert_madis_mesonet: </TD> <TD> mesonet_input.nc  </TD> <TD> obs_seq.mesonet  </TD>
+<TR> <TD>convert_madis_metar:   </TD> <TD> metar_input.nc    </TD> <TD> obs_seq.metar    </TD>
+<TR> <TD>convert_madis_profiler:</TD> <TD> profiler_input.nc </TD> <TD> obs_seq.profiler </TD>
+<TR> <TD>convert_madis_rawin:   </TD> <TD> rawin_input.nc    </TD> <TD> obs_seq.rawin    </TD>
+<TR> <TD>convert_madis_satwnd:  </TD> <TD> satwnd_input.nc   </TD> <TD> obs_seq.satwnd   </TD>
+</TABLE>
+
+<P>The expected usage pattern is that a script will copy,
+rename, or make a symbolic link from the actual input file
+(which often contains a timestamp in the name) to the fixed input 
+name before conversion, and move the output file to an
+appropriate filename before the next invocation of the converter.  
+If an existing observation sequence file of the same output name is 
+found when the converter is run again, it will open that file and append
+the next set of observations to it.
+</P>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<HR />
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<HR />
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> nancy collins </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

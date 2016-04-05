@@ -1,0 +1,16 @@
+&model_nml
+   model_size = 539400,
+   naz        = 120,
+   nrad       = 31, 
+   nzed       = 29,
+   ntype      = 5,
+   daz        = 3.0,
+   drad       = 0.01,
+   dzed       = 0.005,
+   inner_rad  = 0.08,
+   outer_rad  = 0.3,
+   depth      = 0.14,
+   delta_t    = 0.1,
+   time_step_days    = 0,
+   time_step_seconds = 2160  /
+

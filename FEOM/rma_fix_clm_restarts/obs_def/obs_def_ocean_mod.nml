@@ -1,0 +1,6 @@
+
+&obs_def_ocean_nml
+   max_radial_vel_obs = 1000000,
+   debug              = .false.,
+   /
+

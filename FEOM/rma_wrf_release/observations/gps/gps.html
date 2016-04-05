@@ -1,0 +1,332 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>GPS Observations</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>GPS Observations</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#DataSources">DATA SOURCES</A> /
+<A HREF="#Programs">PROGRAMS</A> / 
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">FUTURE PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+
+<P>
+GPS Radio Occultation data are being returned from a series of satellites as
+part of the <a href="http://www.cosmic.ucar.edu">COSMIC</a> project.  The
+programs in this directory extract the data from the distribution files and
+put them into DART observation sequence (obs_seq) file format.
+</P>
+<P>
+The COSMIC satellites measure the phase delay caused
+by deviation of the
+straight-line path of the GPS satellite signal as
+it passes through the Earth's atmosphere when the
+GPS and COSMIC
+satellites rise and set relative to each other.
+This deviation results from changes in the angle of refraction of light
+as it passes through regions of varying density of atmosphere.
+These changes are a result of variations in the temperature,
+pressure, and moisture content.
+Vertical profiles of temperature and moisture can be derived as 
+the signal passes through more and more atmosphere 
+until it is obscured by the earth's horizon.
+There are thousands of observations each day
+distributed around the globe, including in areas which
+previously were poorly observed.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>DATA SOURCES</H2>
+
+<P>
+Data from 
+<a href="http://www.cosmic.ucar.edu">COSMIC</a> 
+is available by signing up on the
+<a href="http://cosmic-io.cosmic.ucar.edu/cdaac">data access</a>
+web page.
+It is delivered in
+<a href="http://www.unidata.ucar.edu/software/netcdf">netCDF</a>
+file format.
+The files we use as input to these conversion programs are
+the Level 2 data, Atmospheric Profiles (filenames include
+the string 'atmPrf').
+</P>
+
+<P>
+Currently each vertical profile is stored in a separate file,
+and there are between 1000-3000 profiles/day, so converting a day's
+worth of observations involves downloading many individual files.
+There are plans in place by the data providers to bundle these 
+profiles together in a tar file to make it simpler to download the raw data.
+</P>
+
+<P>
+The scripts in the <em class=file>shell_scripts</em> directory now
+by default try to download profiles from any of the available
+satellites that return GPS RO data to the CDAAC web site.  See the
+<em class=file>do_convert.csh</em> script for a list of what 
+satellites are checked by default.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PROGRAMS</H2>
+
+<P>
+The data are distributed in
+<a href="http://www.unidata.ucar.edu/software/netcdf">netCDF</a>
+file format.  DART requires all observations to be in a proprietary
+format often called DART "obs_seq" format.
+The files in this directory (a combination
+of C shell scripts and a Fortran source executable)
+do this data conversion.
+</P>
+<P>
+The shell_scripts directory contains several example scripts, including one 
+which downloads the raw data files a day at a time (download_script.csh), 
+and one which executes the conversion program (convert_script.csh).  
+These scripts make 6 hour files by default, but have options for other times.  
+Each profile is stored in a separate netcdf file and there are usually
+between 1000-3000 files/day, so the download process can be
+lengthy.  You probably want to download as a separate preprocess step
+and do not use the script options to automatically delete the input files.
+Keep the files around until you are sure you are satisified with the
+output files and then delete them by hand.
+</P>
+<P>
+The conversion executable <em class=file>convert_cosmic_gps_cdf</em>, 
+reads the namelist
+<A HREF="#Namelist"> <em class=code>&amp;convert_cosmic_gps_nml</em> </A>
+from the file <em class=file>input.nml</em>.
+</P>
+<P>
+The namelist lets you select from one of two different forward
+operators.  The 'local' forward operator computes the expected
+observation value at a single point: the requested height at the
+tangent point of the ray between satellites.  The 'non-local' operator
+computes values along the ray-path and does an integration to get
+the expected value.  The length of the integration segments and
+height at which to end the integration are given in the namelist.
+In some experiments the difference between the two types of
+operators was negligible.  This choice is made at the time of
+the conversion, and the type of operator is stored in the observation,
+so at runtime the corresponding forward operator will be used to
+compute the expected observation value.
+</P>
+<P>
+The namelist also lets you specify at what heights you want
+observations to be extracted.  The raw data is very dense in
+the vertical; using all values would not results in a set of
+independent observations.  The current source code no longer
+does an intermediate interpolation; the original profiles
+appear to be smooth enough that this is not needed.  The requested
+vertical output heights are interpolated directly from the full profile.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;convert_cosmic_gps_nml
+  obs_levels             = -1.0
+  local_operator         = .true.
+  ray_ds                 = 5000.0
+  ray_htop               = 15000.0
+  gpsro_netcdf_file      = 'cosmic_gps_input.nc'
+  gpsro_netcdf_filelist  = 'cosmic_gps_input_list'
+  gpsro_out_file         = 'obs_seq.gpsro'
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+  
+<TR><TD> obs_levels </TD>
+    <TD> integer(200) </TD>
+    <TD>A series of heights, in kilometers, where observations from this profile
+should be interpolated.  (Note that the other distances and heights in the
+namelist are specified in meters.)  The values should be listed in increasing
+height order.
+</TD></TR>
+  
+<TR><TD> local_operator </TD>
+    <TD> logical </TD>
+   <TD>If .true. compute the observation using a method which assumes all
+effects occur at the tangent point.  If .false. integrate along the tangent
+line and do ray-path reconstruction.
+</TD></TR>
+  
+<TR><TD> ray_ds </TD>
+    <TD> real(r8) </TD>
+    <TD>For the non-local operator only, the delta stepsize, in meters, to use
+for the along-path integration in each direction out from the tangent point.
+</TD></TR>
+  
+<TR><TD> ray_htop </TD>
+    <TD> real(r8) </TD>
+    <TD>For the non-local operator only, stop the integration when one of the
+endpoints of the next integration step goes above this height.  Specify in meters.
+</TD></TR>
+  
+<TR><TD> gpsro_netcdf_file </TD>
+    <TD> character(len=128) </TD>
+    <TD>The input filename when converting a single profile.  Only one of the 
+file or filelist items can have a valid value, so to use the single filename
+set the list name 'gpsro_netcdf_filelist' to the empty string ('&nbsp;').
+</TD></TR>
+
+<TR><TD> gpsro_netcdf_filelist </TD>
+    <TD> character(len=128) </TD> 
+    <TD>To convert a series of profiles in a single execution create a text file
+which contains each input file, in ascii, one filename per line.  Set this
+item to the name of that file, and set 'gpsro_netcdf_file' to the empty
+string ('&nbsp;').  
+</TD></TR>
+
+<TR><TD> gpsro_out_file </TD>
+    <TD> character(len=128) </TD> 
+    <TD>The output file to be created.  To be compatible with earlier
+versions of this program, if this file already exists it will be read in and
+the new data will be appended to that file.  
+</TD></TR>
+
+</TBODY> 
+</TABLE> 
+</div>
+
+<br />
+<br />
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+time_manager_mod
+utilities_mod
+location_mod
+obs_sequence_mod
+obs_def_mod
+obs_def_gps_mod
+obs_kind_mod
+obs_utilities_mod
+netcdf
+</PRE>
+
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>KNOWN BUGS</H2>
+<P>
+Some COSMIC files seem to have internal times which differ from the
+times encoded in the filenames by as much as 2-3 minutes.  If it is
+important to get all the observations within a particular time window
+files with filenames from a few minutes before and after the window 
+should be converted.
+Times really outside the window can be excluded in a separate step using the
+<a href="../../obs_sequence/obs_sequence_tool.html">obs_sequence_tool</a>.
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+The current code bins the data into 200 vertical bins as a first step,
+and then reinterpolates again onto the requested vertical heights.
+The original intent was to smooth out any noise in the dense profiles
+before interpolating onto the final heights, but plots have shown that
+the original data is smooth and can be used directly.  There are plans
+to remove the intermediate binning step.
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> nancy collins </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

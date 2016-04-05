@@ -1,0 +1,24 @@
+# DART $Id$
+
+Table 9.   Reason codes associated with step "SYNDATA", program code 002 (last revised 10/26/2001). 
+  
+
+KEY: 
+   IN "R.CODE" COLUMN:
+                 B - OCCURS ONLY IN GLOBAL(AVN/FNL) AND ETA/EDAS VERSIONS 
+                     OF SYNDATA (THE SYNDATA STEP DOES NOT RUN IN ANY OTHER NETWORKS). 
+   IN "MNEMONIC" COLUMN: 
+                 ** - OBSERVATION OR QUALITY MARKER IS OBTAINED AS DEFINED IN EVENT MEANING. 
+  
+  
+R.CODE                MEANING                                   MNEMONICS AFFECTED AND NEW VALUE FOR OBS, Q.M.
+======      ===============================================     ==============================================
+ 
+0 B         ORIGINAL BOGUS DATA CREATED BY THIS PROGRAM.        PRC-> POB= **, PQM= 1
+                                                                TRC-> TOB= **, TQM= 0
+                                                                ZRC-> ZOB= **, ZQM= 0
+                                                                WRC-> UOB,VOB= **, WQM= 0  
+
+10 B        REPORT IN THE VICINITY OF A TROPICAL STORM.         PRC-> PQM= 10 
+            PRESSURE ON ALL LEVELS FLAGGED SO REPORT WILL 
+            NOT BE ASSIMILATED.

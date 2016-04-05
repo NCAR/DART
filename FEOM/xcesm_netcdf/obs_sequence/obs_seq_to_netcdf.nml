@@ -1,0 +1,15 @@
+
+# note that only one of name or list can be used, and the other 
+# must be set to '' to avoid ambiguity.
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_list = ''
+   append_to_netcdf  = .false.
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
+   verbose    = .false.
+   /
+

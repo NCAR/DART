@@ -1,0 +1,43 @@
+#!/bin/csh
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+ 
+#==================================================================
+#BSUB -J JOB_NAME 
+#BSUB -o logs/JOB_NAME.%J.log
+#BSUB -q QUEUE  
+#BSUB -n NENS
+#BSUB -P PROJ_NUMBER
+#BSUB -W JOB_TIME
+#BSUB -x
+############################################
+if(! -e logs) mkdir logs
+set jobnum = `bjobs -w | grep JOB_NAME | awk '{print $1}'`
+set logfile = logs/JOB_NAME.${jobnum}.log
+echo $logfile
+
+set myname = $0     # this is the name of this script
+set start_time = `date +%s`
+echo "host is " `hostname`
+
+echo $start_time >&! filter_started
+
+setenv TARGET_CPU_LIST -1
+mpirun.lsf job_memusage.exe ./filter     
+wait
+
+if ( -e obs_seq.final )  touch filter_done
+
+set end_time = `date  +%s`
+@ length_time = $end_time - $start_time
+echo "duration_secs = $length_time"
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

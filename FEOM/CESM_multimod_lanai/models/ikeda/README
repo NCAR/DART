@@ -1,0 +1,76 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+
+Contained is the model_mod.f90 file for use with the Ikeda map, a 2D chaotic 
+map useful for visualization of data assimilation updating directly in state
+space.  There are three parameters:  a, b, & mu.  The state is 2D, x = [X Y].
+The equations are:
+
+X(i+1) = 1 + mu * ( X(i) * cos( t ) - Y(i) * sin( t ) )
+Y(i+1) =     mu * ( X(i) * sin( t ) + Y(i) * cos( t ) ), 
+where
+t = a - b / ( X(i)**2 + Y(i)**2 + 1 )
+
+Note the system is time-discrete already, meaning there is no delta_t.  The
+system stems from nonlinear optics (Ikeda 1979, Optics Communications).
+
+The model_mod.f90 file is very similar to that of the lorenz_63 system.
+
+
+I have also included an updated input.nml file, which is again very similar
+to that used by the lorenz_63 system, differing only in the model_nml 
+entries.
+
+Included also is an updated suite of the path_names files.  I updated all
+those present in the template directory, though I don't believe all are
+used by the system (for instance, integrate_model).  
+
+Lastly, I found that I needed to update several of the matlab diagnostics 
+in order to use them (they register which model is being used and complain
+if the current one is unrecognized).  Almost all the modifications were 
+simply adding 'ikeda' into the switch / case structures.  I didn't modify 
+all the matlab code, only the routines necessary to run the diagnostics 
+I thought most relevant / illuminating (plot_ens_err_spread, plot_bins, &
+plot_total_err).  I have included these updated files in a subdirectory 
+called /matlab.
+
+
+I have essentially stuck to only the required fields to render a model
+DART compliant.  I noticed that lorenz_63 includes some extra subroutines
+beyond what template (and the /docs directory) claims is required for 
+DART compliance.  These extra subroutines include:  linear_dt, 
+inv_linear_dt, and linearize.  I didn't write versions of these for the 
+ikeda map -- are they necessary?
+
+
+Lastly, I have left many of the code comments in model_mod.f90 from the 
+original template file.  If that is bad form, then I can go back and 
+remove them.  Please let me know.
+
+Thanks,
+
+Greg Lawson
+
+wglawson@gps.caltech.edu
+
+ ~~~~~~~~~~
+
+Additions by Tim Hoar -- Thu Mar 29 11:02:52 MDT 2007
+No worries.  I can extend the 'default' matlab routines to support the
+ikeda model - your routines were useful guidelines -- thanks.
+
+I removed all the (original) code comments - while they may have been useful
+to you (the code developer), I looked at the difference between the 
+comments and the code and would guess that it would probably do more to 
+confuse the casual 'observer' than help. Basically, I made a command decision
+not to include "clutter" in the version going into the repository.
+
+The extra routines are just that -- so what you gave me was perfect. Thanks!
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

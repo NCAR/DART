@@ -1,0 +1,109 @@
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+This table contains the description of a value, followed by the line(s)
+that should be added to the DART input.nml namelist &model_nml, 
+'wrf_state_variables' list.  All items must be strings.  The 5 columns are:
+Exact variable name in WRF netcdf file, DART Kind String, a Type
+column that has a suggested value but is unused, a flag to say
+whether the variable should be updated or not (currently only 'UPDATE' is
+supported), and a flag to say which of multiple domains should have this
+variable, where '999' means all domains.
+
+
+Horizontal Winds:
+   'U', 'KIND_U_WIND_COMPONENT', 'TYPE_U', 'UPDATE', '999',
+   'V', 'KIND_V_WIND_COMPONENT', 'TYPE_V', 'UPDATE', '999',
+   'U10', 'KIND_U_WIND_COMPONENT', 'TYPE_U10', 'UPDATE', '999',
+   'V10', 'KIND_V_WIND_COMPONENT', 'TYPE_V10', 'UPDATE', '999',
+
+Sensible Temperature:
+   'T', 'KIND_TEMPERATURE', 'TYPE_T', 'UPDATE', '999',
+   'T2', 'KIND_TEMPERATURE', 'TYPE_T2', 'UPDATE', '999',
+
+Potential Temperature:
+   'Theta', 'KIND_POTENTIAL_TEMPERATURE', 'TYPE_Theta', 'UPDATE', '999',
+   'TH2', 'KIND_POTENTIAL_TEMPERATURE', 'TYPE_TH2', 'UPDATE', '999',
+
+Density:
+   'Rho', 'KIND_DENSITY', 'TYPE_Rho', 'UPDATE', '999',
+
+Vertical Wind:
+   'W', 'KIND_VERTICAL_VELOCITY', 'TYPE_W', 'UPDATE', '999',
+
+Specific Humidity:
+   'SH', 'KIND_SPECIFIC_HUMIDITY', 'TYPE_SH', 'UPDATE', '999',
+   'SH2', 'KIND_SPECIFIC_HUMIDITY', 'TYPE_SH2', 'UPDATE', '999',
+
+Vapor Mixing Ratio:
+   'QVAPOR', 'KIND_VAPOR_MIXING_RATIO', 'TYPE_Q2', 'UPDATE', '999',
+   'Q2', 'KIND_VAPOR_MIXING_RATIO', 'TYPE_Q2', 'UPDATE', '999',
+
+Rainwater Mixing Ratio:
+   'QRAIN', 'KIND_RAINWATER_MIXING_RATIO', 'TYPE_QRAIN', 'UPDATE', '999',
+
+Graupel Mixing Ratio:
+   'QGRAUPEL', 'KIND_GRAUPEL_MIXING_RATIO', 'TYPE_QGRAUPEL', 'UPDATE', '999',
+
+Snow Mixing Ratio:
+   'QSNOW', 'KIND_SNOW_MIXING_RATIO', 'TYPE_QSNOW', 'UPDATE', '999',
+
+Ice Mixing Ratio:
+   'QICE', 'KIND_CLOUD_ICE', 'TYPE_QICE', 'UPDATE', '999',
+(after next major release of dart, will be:
+   'QICE', 'KIND_ICE_MIXING_RATIO', 'TYPE_QICE', 'UPDATE', '999',)
+
+Cloud Mixing Ratio:
+   'QCLOUD', 'KIND_CLOUD_LIQUID_WATER', 'TYPE_QCLOUD', 'UPDATE', '999',
+(after next major release of dart, will be:
+   'QCLOUD', 'KIND_CLOUDWATER_MIXING_RATIO', 'TYPE_QCLOUD', 'UPDATE', '999',)
+
+Droplet Number Concentration:
+   'QNDRP', 'KIND_DROPLET_NUMBER_CONCENTR', 'TYPE_QNDRP', 'UPDATE', '999',
+
+Ice Number Concentration:
+   'QNICE', 'KIND_ICE_NUMBER_CONCENTRATION', 'TYPE_QNICE', 'UPDATE', '999',
+(after next major release of dart, will be:
+   'QNICE', 'KIND_ICE_NUMBER_CONCENTR', 'TYPE_QNICE', 'UPDATE', '999',)
+
+Snow Number Concentration:
+   'QNSNOW', 'KIND_SNOW_NUMBER_CONCENTR', 'TYPE_QNSNOW', 'UPDATE', '999',
+
+Rain Number Concentration:
+   'QNRAIN', 'KIND_RAIN_NUMBER_CONCENTR', 'TYPE_QNRAIN', 'UPDATE', '999',
+
+Graupel Number Concentration:
+   'QNGRAUPEL', 'KIND_GRAUPEL_NUMBER_CONCENTR', 'TYPE_QNGRAUPEL', 'UPDATE', '999',
+
+Prev time condensational heating:
+   'H_DIABATIC', 'KIND_CONDENSATIONAL_HEATING', 'TYPE_H_DIABATIC', 'UPDATE', '999',
+
+Reflect wghted precip fall spd:
+   'FALL_SPD_Z_WEIGHTED', 'KIND_POWER_WEIGHTED_FALL_SPEED', 'TYPE_FALL_SPD_Z_WEIGHTED', 'UPDATE', '999',
+
+Pressure:
+   'MU', 'KIND_PRESSURE', 'TYPE_MU', 'UPDATE', '999',
+   'PSFC', 'KIND_SURFACE_PRESSURE', 'TYPE_PSFC', 'UPDATE', '999',
+
+Radar Reflectivity:
+   'REFL_10CM', 'KIND_RADAR_REFLECTIVITY', 'TYPE_REFL_10CM', 'UPDATE', '999',
+
+Geopotential Height:
+   'PH', 'KIND_GEOPOTENTIAL_HEIGHT', 'TYPE_PH', 'UPDATE', '999',
+
+Surface Elevation:
+   'HGT', 'KIND_SURFACE_ELEVATION', 'TYPE_HGT', 'UPDATE', '999',
+
+Surface Skin Temperature:
+   'TSK', 'KIND_SKIN_TEMPERATURE', 'TYPE_TSK', 'UPDATE', '999',
+
+Land Mask:
+   'XLAND', 'KIND_LANDMASK', 'TYPE_XLAND', 'UPDATE', '999',
+
+Vortex Center (Center Lat, Center Lon, Min Pressure, Max Winds):
+  The vortex obs kinds will be supported if the following fields are
+  in the state vector:   U, V, T, QVAPOR, MU
+

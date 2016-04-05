@@ -1,0 +1,7 @@
+&location_nml
+ /
+
+&utilities_nml
+ module_details = .false.,
+ /
+

@@ -1,0 +1,16 @@
+ obs_sequence
+obs_kind_definitions
+           1
+          44 SUPER_DARN_ELECTRIC_POTENTIAL   
+  num_copies:            0  num_qc:            0
+  num_obs:            1  max_num_obs:            1
+  first:            1  last:            1
+ OBS            1
+          -1          -1          -1
+obdef
+loc3d
+     4.188790204786391        0.6981317007977318        -888888.0000000000     -2
+kind
+          44
+ 33600     147320
+   1.0000000000000000     

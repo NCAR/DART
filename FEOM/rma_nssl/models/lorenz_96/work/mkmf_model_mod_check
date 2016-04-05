@@ -1,0 +1,18 @@
+#!/bin/csh
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id: mkmf_dart_to_pop 6256 2013-06-12 16:19:10Z thoar $
+
+../../../mkmf/mkmf -p model_mod_check -t ../../../mkmf/mkmf.template   \
+ -a "../../.." path_names_model_mod_check
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_model_mod_check/models/POP/work/mkmf_dart_to_pop $
+# $Revision: 6256 $
+# $Date: 2013-06-12 10:19:10 -0600 (Wed, 12 Jun 2013) $
+

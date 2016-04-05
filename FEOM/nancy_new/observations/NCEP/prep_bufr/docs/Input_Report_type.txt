@@ -1,0 +1,72 @@
+# DART $ Id: $
+
+(T29)
+Table 6.  Code table for input report types (last revised 7/10/2001). 
+  
+Report Type                 Definition
+-----------                 -------------------------------------------------------------------------------
+11                          Fixed land RAOB and PIBAL by block and station number
+
+12                          Fixed land RAOB and PIBAL by call letters
+                            
+13                          Mobile land RAOB, including CLAS soundings
+                            
+22                          Ship RAOB with name
+                            
+23                          Ship RAOB without name (report id set to "SHIP")
+                            
+31                          Reconnaissance aircraft or dropwinsonde
+                            
+41                          Aircraft flight-level (all types)
+                            
+61                          Satellite soundings/retrievals/radiances
+                            
+63                          Satellite-derived winds
+                            
+65                          SSM/I total precipitable water (ocean) product
+                            
+66                          SSM/I rain rate product
+                            
+68                          SSM/I brightness temperatures
+                            
+69                          SSM/I cloud water (ocean) product
+                            
+71                          NOAA/FSL wind profiler
+                            
+72                          NEXRAD vertical azimuth display (VAD) winds
+                            
+73                          Wind profiler originating in PIBAL bulletins (tropical and European)
+                            
+511                         Land surface by block and station number (synoptic)
+                            
+512                         Land surface by call letters (METAR)
+                            
+522                         Ship with name
+                            
+523                         Ship without name (report id set to "SHIP")
+                            
+531                         C-MAN platform
+                            
+532                         Tide gauge report
+                            
+551                         Sea-level pressure bogus
+                            
+561                         Fixed buoy
+                            
+562                         Drifting buoy
+                            
+571                         SSM/I wind speed (ocean) product
+                            
+573                         SSM/I soil moisture product
+                            
+574                         SSM/I snow depth product
+                            
+575                         SSM/I additional products (surface tag, ice concentration, ice age, ice edge, calculated surface type)
+                            
+576                         SSM/I surface (skin) temperature product
+                            
+577                         SSM/I sea surface temperature product
+                            
+581                         ERS scatterometer winds
+                            
+582                         quikSCAT scatterometer winds

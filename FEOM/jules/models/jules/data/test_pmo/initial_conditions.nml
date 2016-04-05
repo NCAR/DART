@@ -1,0 +1,11 @@
+&jules_initial
+const_val=0.0,276.78,12.1,0.0,50.0,0.9,275.0,0.0,
+dump_file=.true.,
+file='./np.dump.20060101.0.nc',
+nvars=8,
+total_snow=.true.,
+use_file=8*.true.,
+var='canopy','tstar_tile','cs','gs','rgrain','sthuf','t_soil',
+'snow_tile',
+var_name='',
+/

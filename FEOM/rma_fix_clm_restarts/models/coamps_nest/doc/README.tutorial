@@ -1,0 +1,436 @@
+# DART $Id$
+
+Tutorial for COAMPS DART Implementation
+=======================================
+v 0.5 (20080805)
+T. R. Whitcomb
+=======================================
+
+INTRODUCTION
+------------
+This tutorial is based loosely on the DART tutorial and assumes that
+the reader is familiar with running COAMPS as well as running DART:
+the DART tutorial using the Lorenz (1963) model is sufficient 
+background.  
+
+This outlines the procedure to create a simple 2-member ensemble based
+on a single observation location.  A small ensemble of a small model
+domain allows for rapid feedback, but is easily scaled by adding more
+ensemble members and changing the model setup.  If a 2-member ensemble
+works correctly in this scenario, a 100-member ensemble should work as
+well provided there is disk space available.
+
+PRESENTATION NOTES
+------------------
+For each step, there is a brief description of the goals and
+procedures of that particular step, a description of what is necessary
+to perform the tasks in that step, and what is produced after that
+step is finished.
+
+PREPARATION
+-----------
+Before beginning this run, ensure that you are in a location with
+functioning compilers as defined in the DART mkmf.template file (see
+the DART documentation for more details - if you have already run
+another DART model like Lorenz (1963) you have already performed this
+step).  Since the DART/COAMPS software uses code in C as well as 
+Fortran 90, you will need to ensure that both the CC and MPICC variables
+are defined appropriately.
+
+Some of the shell scripts (like advance_model.csh and advance_ens.csh)
+are customized to use the ACESGrid modules to enable access to programs
+like mpiexec.  These scripts also are built to work with the ACES PBS
+queue system and queue names.  If the system used does not support
+modules or the PBS queue or ACES queue names, these scripts must be
+modified to conform to the system in question.  Changing the resources
+requested, though, will be performed automatically by the initialization
+script based on the experiment's particular configuration.
+
+TABLE OF CONTENTS
+-----------------
+STEP 1: RUN COAMPS MODEL
+STEP 2: CREATE THE PATH INFORMATION FILE
+STEP 3: DEFINE THE DART STATE VECTOR
+STEP 4: INITIALIZE DART EXPERIMENT DIRECTORY
+STEP 5: GENERATE OBSERVATION SEQUENCE
+STEP 6: GENERATE PERFECT MODEL OBSERVATIONS
+STEP 7: ASSIMILATE DATA INTO THE ENSEMBLE
+-----------------
+
+STEP 1: RUN COAMPS MODEL
+------------------------
+Description:
+Run the COAMPS analysis/model to provide COAMPS restart file(s) that
+will be used to create initial conditions for perfect_model_obs and
+filter.
+
+Needs:
+A functional copy of the U.S. Navy's COAMPS model
+
+Yields:
+COAMPS domain data files (datahd and terrht)
+COAMPS initial conditions
+COAMPS restart file
+
+Notes:
+Since it is impossible to code into DART a procedure that generates
+initial conditions for every scenario in a model as large and complex
+as COAMPS, the model initial conditions are generated using the COAMPS
+analysis program (atmos_analysis.exe).
+
+Define a model run with the domain details and run characteristics 
+desired by either directly editing the namelist files or by customizing 
+one of the COAMPS run scripts.  Make a note of the directory where the 
+COAMPS flat files will be written (namelist variable 'dsnrff') - this 
+will be used by later steps to copy some needed files into DART.
+
+Run the analysis program - this will generate the files containing
+information about the model domain and the model options, initial
+conditions, and (if necessary) boundary condition.
+
+Once the initial conditions are created, we need to generate a COAMPS
+restart file that will allow DART to build a state vector.  The
+initial conditions cannot be used by themselves, so we run a short
+forecast (usually 1-3 hours) to create the COAMPS restart file.
+
+To ensure that a restart file will be written, set the
+namelist variable 'ksavea' to the same value as 'ktauf' - this 
+will force COAMPS to write a restart file at the target time.  
+
+Run atmos_forecast.exe - once this is completed, move to the directory
+where the flat files are located and ensure that the restart file for
+the desired time is present.
+
+For a pre-existing ensemble (e.g. a COAMPS ensemble based on a NOGAPS 
+ensemble run for initial conditions and boundary forcing), simply contain 
+each ensemble member within its own directory using some sort of numbering 
+system like mbr000, mbr001, mbr002, etc..
+
+STEP 2: DEFINE THE DART STATE VECTOR
+------------------------------------
+Description:
+Customize the data file that defines the variables included in the
+DART state vector - what they are, what levels they're on, how to 
+perturb them.
+
+Needs:
+Template file [suggested]
+
+Yields:
+A state vector definition file that will be used by the DART experiment
+creation script.
+
+Notes:
+Since there are so many ways that COAMPS can be configured, the state
+vector used by DART is equally flexible.  The user can choose to include
+or exclude any variable that is written out in the COAMPS restart file.
+
+The template EXAMPLE.restart.dat shows the basic structure of this file,
+and there are many options that can be modified.  The most important are:
+
+1. Including of variables used for interpolation (p2, exbm, exbw,
+   th2, and thbm) if non-identity observations will be used
+2. Ensuring that the number of levels specified matches the number of
+   levels in the corresponding COAMPS run (e.g. specifying 45 levels when
+   the model only uses 30 will crash the programs)
+3. Ensuring that the perturbation type and amount is appropriate for
+   each variable
+
+There are several ways that DART will perturb a variable if a pre-
+existing ensemble is not available.  The option NOPERTS will not
+perturb a particular variable.  This is useful for things like micro-
+physical variables and mean state variables.  The option UNIFORM will
+generate a random real number, with mean 0 and variance given as a 
+parameter in the restart.dat file, then add that same number to each
+element at a particular model level.  The option INDIVID will generate
+a random number at each point within the field and add it to the 
+corresponding element.
+
+STEP 3: CREATE THE PATH INFORMATION FILE
+----------------------------------------
+Description: 
+Customize the data file that defines the location of COAMPS and DART
+files for the initialization script.
+
+Needs:
+Template file [suggested]
+
+Yields:
+A path information file that will be used by the DART experiment
+creation script.
+
+Notes:
+The file provides definitions in bash shell script syntax, since it is
+used by a bash shell script.  If creating this file from scratch, the 
+format is variable=definition with no spaces.
+
+Since the variables defined in this file are used in a shell script,
+variables already defined can be used in the definitions of other
+variables.  For example, one can define shortcuts
+        DIR_1=/home/user
+        DIR_2=${DIR_1}/DART/models/coamps
+so that long paths do not need to be completely typed out if repeatedly
+defining entries in their subdirectories.
+
+There are several different categories of variables defined in this
+file. There are the directories that will be used to locate programs 
+and source code:
+COAMPS_HOME         The location of the COAMPS model top-level directory
+COAMPS_UTIL_HOME    The location of the COAMPS model's utility package
+DART_HOME           The location of the DART COAMPS source directory
+
+There are the locations of pre-existing data directories and data files:
+COAMPS_DATA         The path to the directory where the data files 
+                    produced in Step 1 reside on disk (this is the 
+                    'dsnrff' variable from that namelist).  
+                    For a pre-existing ensemble, this should include a 
+                    format code (like %03d) so when COAMPS_DATA and the 
+                    ensemble member number is passed to the shell's 
+                    "printf" command, a valid path results.
+COAMPS_RESTART_FILE The full path to the COAMPS restart file to use as
+                    the DART initial condition.  This can (and should)
+                    be defined in terms of COAMPS_DATA.
+                    Since multiple restart files may be produced by
+                    COAMPS (if npr0nam = 0 in the COAMPS namelist), use
+                    wildcards as placeholders so when COAMPS_RESTART_FILE
+                    is passed to the copy command, all the files are 
+                    included - restart? will match restart1, restart2,
+                    and restart3.
+COAMPS_NAMELIST     The full path to the namelist used to create
+                    the model run in Step 1.
+DART_NAMELIST       A version of the DART input.nml namelist customized
+                    for this run.  Many options will be changed by the
+                    script, so don't worry about specifying the ensemble
+                    size here.  Some things that may be changed:
+                        The name of the observation sequence in/out file
+                        The types of variables included in the assimilation
+                        The localization/inflation details 
+
+There are options that define the characteristics of the ensemble:
+ENSEMBLE_SIZE   The number of ensemble members
+CONCURRENT_RUNS The number of ensemble members to integrate at once
+                For MPICH p4 systems, this can be at most 2.
+PBS_QUEUE_ENS   The PBS queue to use for the ensemble integration
+
+Since filter supports MPI, we have a few options for that as well:
+PBS_QUEUE_FILTER    The queue that the filter program will execute in.
+                    Note that filter continues to run while the ensemble
+                    advances, so this queue should have a long wallclock
+                    time limit.
+FILTER_PROCS        The number of processors to use for filter.
+
+There is the directory tree that will be created by the script:
+DART_BASE      The top-level directory for the DART experiment.
+               **THIS WILL BE WIPED IF IT EXISTS WHEN THE SCRIPT IS RUN**
+
+These are all the directories and data files necessary to create the
+directory where the ensemble experiment will run and all of them must be
+defined.
+
+If a pre-existing ensemble is used, there are two additional parameters
+to define:
+PERFECT_OBS_DATA        Similar to the COAMPS_DATA parameter, but defines
+                        the ensemble member that will be used as the initial 
+                        (and perhaps boundary) conditions for the "truth" run
+PERFECT_RESTART_FILE    Similar to COAMPS_RESTART_FILE, but defined in
+                        terms of PERFECT_OBS_DATA instead of COAMPS_DATA
+
+
+STEP 4: INITIALIZE DART EXPERIMENT DIRECTORY
+--------------------------------------------
+Description: 
+Use the initialize_dart script to create a directory tree with all
+the data files, programs, and subdirectories to run DART with a COAMPS
+ensemble.
+
+Needs:
+The path information file defined in Step 2.
+A DART/mkmf/mkmf.template file customized to the current location
+
+Yields:
+A directory housing the domain data files for the COAMPS run and
+subdirectories for each ensemble member each containing all the files
+necessary to run COAMPS.
+DART run scripts modified to point at the proper directories
+Symbolic links to all DART binary programs
+DART initial condition file(s) created from the COAMPS restart file(s)
+
+Notes:
+This uses the initialize_dart.sh script, found in the shell_scripts
+subdirectory of the DART COAMPS installation, to perform most of the
+initialization required.  Briefly, this script
+ - Creates the DART experiment folder
+ - Copies data files from the COAMPS data directory and the DART
+   template directory that the DART binaries need to run
+ - Copies the shell scripts needed to run the ensemble/model and
+   parallel assimilation
+ - Updates the shells scripts to point to the working directory
+   structure  
+ - Builds the DART binaries (by calling another script)
+ - Links the DART binaries to the working directory
+ - Creates the DART initial conditions restart file
+ - Populates the ensemble data files (by calling another script)
+
+The only item required to run the script is to provide the location of
+the path configuration file created in Step 2 in an argument:
+$ ./initialize_dart.sh -c PATH_CONFIGURATION_FILE 
+
+The shell script batch_initialize.csh is provided as a template wrapper
+for running the initialization script as a batch job.
+
+STEP 5: GENERATE OBSERVATION SEQUENCE
+-------------------------------------
+Description: 
+Create the observational network that will be used for a perfect model
+experiment, using create_obs_sequence to create the observation type 
+definition and create_fixed_network_seq to create the actual observation 
+network.
+
+Needs:
+Initialized DART working directory structure
+Functioning DART binary files
+
+Yields:
+Observational network definition that can be used by perfect_model_obs
+and filter.
+
+Notes:
+From this point onward, work is done in the DART_BASE directory created by
+the initialize_dart.sh script.  All binary files are located here as
+well as the ensemble member data directories.  Change to this
+directory.
+
+Depending on the test required, there are two possible ways to
+generate the observational network.  To test if programs are running 
+correctly, a single identity observation is the easiest and fastest to 
+use.  To test if the interpolation is working correctly, a single 
+observation of an actual variable should suffice.
+
+The create_obs_sequence program prints a list of available variable types
+(like humidity or zonal wind) when prompting for the type of observation.
+The types on the list will vary depending on the forward operators in use 
+(see the DART documentation for the preprocess program and the specification
+of obs_def modules for more details), but all entries contain a type number 
+and a type name.  For example, this is the list of variable types that can
+be processed by obs_def_navdas_mod:
+                  1 GEOPOTENTIAL_HEIGHT
+                  2 LOG_SPECIFIC_HUMIDITY
+                  3 AIR_TEMPERATURE
+                  4 U_WIND_COMPONENT
+                  5 V_WIND_COMPONENT
+Choosing an entry off this list (by specifying either the type name or the
+type number) will result in the model state vector being interpolated to the
+specified variable type at the specified location.  If a negative number
+is entered, no interpolation takes place and that entry of the state vector
+is the value of the observation (e.g. -125 picks out the 125th element
+of the state vector).
+
+To set up an observational network with an identity observation, run
+create_obs_sequence to define a sequence with a single identity
+observation by inserting a negative number into the variable type
+field.  The variance is the user's choice.
+
+To test the interpolation, input an integer from the types list that
+corresponds to the desired observation type.  Enter the observation 
+level, then the longitude and latitude of the observation.  Make sure 
+that the location is within the domain defined for the COAMPS run.
+
+Once the set_def.out file is defined, run the DART program
+create_fixed_network_seq to generate the observing network.
+For this simple case, we will create an observation that repeats regularly
+every hour, beginning at the initialization time.  Since we need to
+check that DART can properly integrate the model, make sure that there
+are at least 2 observation times in the sequence.
+
+When prompted for the initial time, enter the time (in days/seconds) 
+of the COAMPS restart file used to create the DART initial conditions.  
+For example, if the COAMPS run in Step 1 was a 3-hour forecast, then 
+the DART initial time is 0 days 10800 seconds.  The period of the hourly 
+observations is 0 days 3600 seconds.
+
+After supplying the time information, the observational network will
+be created and written to disk, ready for the perfect model observation 
+generation program.
+
+STEP 6: GENERATE PERFECT MODEL OBSERVATIONS
+------------------------------------------
+Description: 
+Run the DART program to generate synthetic observations
+
+Needs:
+An observation network definition
+Updated advance_ens.csh and advance_model.csh scripts
+
+Yields:
+NetCDF file with the "true" model state
+Observations file that can be used by the filter program
+
+Notes:
+Most of the work in getting perfect_model_obs to run is by making sure
+that the advance_model.csh scripts and the advance_ens.csh are set up
+with the proper paths and information.  This has been largely taken
+care of by the initialize_dart.sh script, but look at the files and 
+make sure that the updates were properly performed .
+
+Running DART with COAMPS is almost exactly the same as running DART
+with a model like Lorenz (1963) but there are several notable
+differences since the model runs asynchronously: the model code is not 
+internal to DART and has to be externally called via a shell script.  
+The key namelist variables to check are "async" and "adv_ens_command".  
+The value for async needs to be 2 (instead of 0 for L63) and 
+adv_ens_command should point to the perfect_wrapper.csh script.
+
+The initialize_dart.sh script converts the COAMPS restart file(s) into a
+DART restart file called "perfect_ics" - ensure that
+start_from_restart is set to .true. and that restart_in_file_name
+points to this file.
+
+Run perfect_model_obs to generate data observation sequence.  This
+should use the DART restart file to generate an observation at the
+current time and then advance the model 1 hour to generate the second
+observation.  If this is successful, then advancing multiple times
+will pose no difficulty.
+
+STEP 7: ASSIMILATE DATA INTO THE ENSEMBLE
+-----------------------------------------
+Description: 
+Run a COAMPS ensemble and assimilate data from the perfect model.
+
+Needs:
+The observation sequence data created in Step 5.
+
+Yields:
+NetCDF files containing posterior and prior state estimates
+
+Notes:
+The filter program is the core of the DART program - it handles
+running the ensemble as well as the data assimilation.  As of the 
+Jamaica release of DART, it runs as an MPI application.
+
+Since the method of running MPI programs varies across machine
+configurations, check the run_filter.csh script to make sure what
+is done is compatible with the local setup.
+
+Depending on whether the experiment was built against a pre-existing
+COAMPS ensemble or a single model run, the initial conditions for
+filter will be either a single file (filter_ics) with start_from_restart
+set to .false. in input.nml or multiple files (filter_ics.%04d) with
+start_from_restart set to .true. in input.nml - when this value is false,
+DART uses the perturbation structure specified in the state vector
+definition file to perturb the single state vector into multiple 
+ensemble members.  When the value is true, the individual files are
+assumed to contain ensemble members that have already been perturbed.
+
+The DART state vector <-> COAMPS restart file translation program works
+by reading and writing only portions of the COAMPS restart file.  To
+avoid the possibility of strange errors or configuration changes not
+being effected immediately, it is best to reset the ensemble to use
+pristine restart file(s) before executing filter.  Running the 
+initialize_ensemble.sh script will copy over the original version of the
+COAMPS restart file(s) into each member directory.
+
+Run the filter program, using the script run_filter.csh.
+
+If filter runs successfully and produces the PosteriorDiag.nc and
+PriorDiag.nc files, everything is properly set up to run with a larger
+ensemble size.

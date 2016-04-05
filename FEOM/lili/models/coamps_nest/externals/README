@@ -1,0 +1,11 @@
+# DART $Id$
+
+This externals directory is created to handle DART now being
+distributed via subversion - this means that we will no longer be able
+to track local revisions outside the COAMPS subdirectory.
+
+This directory contains versioned files that are modified in the
+external directory structure: location module, observation
+definitions, etc.  These can either be copied/linked in the proper
+directories, or mkmf can be modified to point to their current
+location.

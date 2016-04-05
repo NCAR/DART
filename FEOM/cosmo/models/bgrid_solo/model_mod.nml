@@ -1,0 +1,70 @@
+# Group of namelists required for bgrid model
+
+ &model_nml
+     current_time =  0, 0, 0, 0
+     override = .false.,
+     dt_atmos = 3600,
+     days     = 10,
+     hours    = 0, 
+     minutes  = 0,
+     seconds  = 0,
+     noise_sd = 0.0,
+     dt_bias  = -1,
+     output_state_vector = .false. /
+#
+# namelists used for cold start of bgrid core (N45L20)
+# running the held-suarez benchmark
+#
+#     nlon = 144, nlat = 90, nlev = 20,
+#     nlon = 60, nlat = 30, nlev = 5,
+
+ &fms_nml
+     domains_stack_size = 90000  /
+
+# only used if initial conditions file not specified in run
+ &bgrid_cold_start_nml
+     nlon = 60, 
+     nlat = 30, 
+     nlev = 5,
+     equal_vert_spacing = .true. /
+
+#Values set in hs_forcing_nml are from:
+#Held, I. M., and M. J. Suarez, 1994: A proposal for the intercomparison
+#of the dynamical cores of atmospheric general circulation models.
+#Bulletin of the American Meteorological Society, 75(10), 1825-1830.
+
+ &hs_forcing_nml
+     delh      =  60.,
+     t_zero    = 315.,
+     t_strat   = 200.,
+     delv      =  10.,
+     eps       =   0.,
+     ka        = -40.,
+     ks        =  -4.,
+     kf        =  -1.,
+     sigma_b   =  .7,
+     do_conserve_energy = .false. /
+
+ &bgrid_core_driver_nml
+     damp_coeff_wind   = 0.10,
+     damp_coeff_temp   = 0.10,
+     damp_coeff_tracer = 0.10,
+     advec_order_wind   = 4,
+     advec_order_temp   = 2,
+     advec_order_tracer = 2,
+     num_sponge_levels = 1,
+     sponge_coeff_wind   = 1.00,
+     sponge_coeff_temp   = 1.00,
+     sponge_coeff_tracer = 1.00,
+     num_fill_pass = 2,
+     decomp = 0,0,
+     num_adjust_dt = 3,
+     num_advec_dt  = 3,
+     halo = 1,
+     do_conserve_energy = .false. /
+
+ &bgrid_integrals_nml
+     file_name  = 'dynam_integral.out',
+     time_units = 'days',
+     output_interval = 1.00   /
+

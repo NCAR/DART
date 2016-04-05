@@ -1,0 +1,31 @@
+
+&preprocess_nml
+    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
+   input_files              = '../../../obs_def/obs_def_dwl_mod.f90',
+ /
+
+&dwl_to_obs_nml
+   text_input_file = 'dwldata.input'
+   obs_out_file    = 'obs_seq.out' 
+   max_obs         = 100000
+   add_obs_data    = .true.
+   debug           = .false.
+ /
+
+&obs_kind_nml
+ /
+
+&location_nml
+ /
+
+&utilities_nml
+   module_details = .false.
+ /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.  
+ /
+

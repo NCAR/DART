@@ -1,0 +1,9 @@
+&COSMOS_to_obs_nml
+   site_metadata_file = 'COSMIC_parlist.nc'
+   text_input_file    = 'corcounts.txt'
+   obs_out_file       = 'obs_seq.out',
+   sitename           = 'missing',
+   maxgoodqc          =    3,
+   verbose            = .false.
+   /
+

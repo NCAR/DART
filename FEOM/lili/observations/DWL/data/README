@@ -1,0 +1,18 @@
+This directory contains a short example of the format that
+the converter is expecting as input.
+
+The observations are one per line. The items on each line
+should be separated either by spaces or commas.
+
+The first two numbers are the latitude/longitude locations.
+
+The next is the vertical elevation, in height in meters.
+
+Then the time of the observation - day, month, year, hour, minute,
+second, in this format: dd-mm-ccyy_hh:mm:ss  
+
+The last 3 values are the actual 2 wind observation values,
+U and V,  and an error estimate. The wind speeds and errors 
+are in m/s.
+
+

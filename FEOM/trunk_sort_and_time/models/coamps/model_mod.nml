@@ -1,0 +1,7 @@
+&model_nml
+  cdtg = '2006072500',
+  y_bound_skip = 3,
+  x_bound_skip = 3,
+  need_mean = .false.,
+/
+

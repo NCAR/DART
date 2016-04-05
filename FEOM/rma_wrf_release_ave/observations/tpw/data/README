@@ -1,0 +1,16 @@
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+11 June 2013
+
+The input data files for the TPW converter are too large to include
+in the DART distribution. An example data file may be downloaded from:
+
+http://www.image.ucar.edu/pub/DART/Obs_sets/tpw
+
+Thanks for your patience,
+The DART Development Group
+

@@ -1,0 +1,17 @@
+#!/bin/csh
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+../../../mkmf/mkmf -p mpas_dart_obs_preprocess -t ../../../mkmf/mkmf.template   \
+ -a "../../.." path_names_mpas_dart_obs_preprocess
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

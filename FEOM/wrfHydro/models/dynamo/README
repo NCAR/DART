@@ -1,0 +1,82 @@
+Dynamo interface to DART
+========================
+Goal of this interface is to estimate the time variation of velocities to
+match given spatio-temporal observation of magnetic fields. Key points to
+note:
+
+1. A small number of time varying parameters need to be reconstructed, so
+
+2. async = 2 is chosen i.e. both filter and model is serial, however
+
+3. advance_model spawns ens_size (20) number of model instances concurrently
+   with small variation/reorganization in distributed version of this script.
+
+4. At each invocation of advance_model, 
+
+     (a) first the model is advanced starting from the restart file of
+         previous iteration. (executable dyn.out)
+
+     (b) Again the model is advanced with small variation in input vector 
+         from the same restart as in (a) (executable dyn.out) to evaluate
+
+   the numerically the 1st derivative of observation (executable x_plus_delta
+   and dobsdx) to be used by model_interpolate particularly to evaluate 
+   posterior observation value. (output file: obsval.dat.$ens_num)
+
+5. After that input vector is perturbed adding a small amplitude of Gaussian
+   noise (executable gau_param) and then dart_to_model converts this for filter.
+
+The list of files attached:
+./model_mod.f90            - Modifed to interface with dynamo
+./model_to_dart.f90        - Modifed to interface with dynamo
+./dart_to_model.f90        - Modifed to interface with dynamo
+./perfect_model.sh         - Dispenses perfect model velocity amplitude at 
+                             each time step (1-852).
+./x_plus_delta.f90         - Adds del to vector x, to differentiate obs
+./dobsdx.f90               - Evaluates the d/dx (obs)
+./gau_param.f90            - Adds Gaussian noise to vector components
+
+./data/obsval.dat          - A sample output observation from model
+
+./work/adv_model_par.csh   - Advances each ens member (slightly modified
+                             version of the distributed version).
+./work/advance_model.ksh   - Invoked by perfect_model/filter, a small wrapper
+                             to launch ens_size adv_model_par.csh concurrently
+./work/batch.cmd           - LSF batch cmd file
+
+./work/obsval.dat          - soft link to ./dynamo/obsval.dat
+./work/input.nml           - input.nml used for sample run
+./work/perfect_ics         - initial input vector
+./work/set_def.out         - output of create_obs_sequence used by 
+                             create_fixed_network_seq.
+./work/clean               - Cleans debris from a previous run
+./work/dynamo              - Link to ./dynamo
+./work/obs_seq.final       - Sample run output 
+./work/obs_seq.in          - Sample run output
+./work/obs_seq.out         - Sample run output
+./work/dyn_dart_err.725015 - Sample run output (stderr)
+./work/dyn_dart_out.725015 - Sample run output (stdout)
+./work/Posterior_Diag.nc   - Sample run output
+./work/Prior_Diag.nc       - Sample run output
+./work/True_State.nc       - Sample run output
+./work/filter_restart      - Sample run output
+./work/ens_time_series.ps  - Sample run output (ps version of ens time series)
+./work/ens_time_series.pdf - Sample run output (pdf version of ens time series)
+
+./work/mkmf_dart_to_model
+./work/mkmf_dobsdx
+./work/mkmf_gau_param
+./work/mkmf_model_to_dart
+./work/mkmf_x_plus_delta
+./work/mkmf_create_fixed_network_seq
+./work/mkmf_perfect_model_obs
+./work/mkmf_filter
+
+./work/path_names_create_fixed_network_seq
+./work/path_names_dart_to_model
+./work/path_names_dobsdx
+./work/path_names_filter
+./work/path_names_gau_param
+./work/path_names_model_to_dart
+./work/path_names_perfect_model_obs
+./work/path_names_x_plus_delta

@@ -1,0 +1,47 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>RMA DART</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>Bitwise Considerations</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+By bitwise we mean bit for bit identical results in the output obs_sequence file and the restarts (netcdf-to-netcdf or dart format-to-dart format) when comparing one version of the code to another.
+
+For testing the code to be bitwise with Lanai there are several things to change/set in RMA_DART and your mkmf:
+
+<ol>
+<li>assim_tools_mod.f90:<br>
+     <code>lanai_bitwise = .true.</code>  This is hard coded to false because it is very slow to be bitwise with Lanai.  <code>lanai_bitwise = .true.</code> causes the vertical conversion of observations to be done in get_close_obs inside the sequential obs do loop.  See <a href="vertical_conversion.html">vertical conversion</a> for details about this change.
+<li>filter_nml:<br>
+    <code>output_forward_op_errors = .true.</code> This will cause the forward operator code to calculate all forward operators, even if some ensemble members fail. 
+<li>mkmf:<br>
+    ifort fp-model precise<br>
+    In general use the debugging FLAGS in the mkmfs provided with DART.
+</ol>
+
+<h3>Important</h3>
+The <em>CAM</em> and <em>bgrid_solo</em> model_mods have been altered so the state is in a different order inside filter. Thus dart format restarts will <b>not</b> be bitwise with Lanai dart format restarts, but netcdf files will be (after running dart_to_cam).
+
+
+</BODY>
+</HTML>

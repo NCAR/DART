@@ -1,0 +1,357 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program obs_impact_tool</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>obs_impact_tool</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Examples">EXAMPLES</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<A NAME="Overview"></A>
+<H2>Overview</H2>
+
+<P>
+Utility program which assists in constructing a table that is read
+by filter at run time to alter how the assimilation
+of different types of observations impact the state vector values
+based on their dart kind, and other observations based on their 
+observation type or dart kind.  This tool allows users to group related
+collections of observation types and state vector kinds by name
+and then express the relationship of the named groups to each
+other in a concise way.
+</P>
+<P>
+At run time filter reads the output file from this tool
+and uses it to control the impact at assimilation time based
+on the relationships specified.
+</P>
+<P>
+This version of this tool requires the last numeric
+column to be 0.0 or 1.0, but future extensions may allow 
+different values to be used.
+</P>
+<P>
+All the listed observation types and state vector kinds
+must be known by the system.  If they are not, look at the
+&preprocess_nml :: input_items namelist which specifies
+which obs_def_xxx_mod.f90 files are included, which is
+where observation types are defined.  kinds are defined
+in the obs_kinds/DEFAULT_obs_kinds_mod.F90 file and
+are static.  (note you must add new kinds in 2 places 
+if you do alter this file.)
+</P>
+<P>
+This program can define groups of observation types and
+then describe the relationship of groups to groups.
+It can also define relationships by exceptions.
+</P>
+
+<P>
+Format of the input file can be any combination of these
+types of sections:
+</P>
+
+<div>
+<pre>
+
+
+# hash mark starts a comment.
+
+# the GROUP keyword starts a group and must be followed
+# by a name.  All types or kinds listed before the END
+# line becomes members of this group.
+
+# GROUPs cannot contain nested groups.
+
+GROUP groupname1
+ KIND_xxx  KIND_xxx  KIND_xxx
+ KIND_xxx                          # comments can be here
+END GROUP
+
+GROUP groupname2
+ KIND_xxx  
+ KIND_xxx  
+ KIND_xxx
+ KIND_xxx
+END GROUP
+
+# GROUPs can also be defined by specifying ALL, ALLKINDS,
+# or ALLTYPES and then EXCEPT and listing the types or
+# kinds which should be removed from this group.
+# ALL EXCEPT must be the first line in a group, and all
+# subsequent items are removed from the list.
+# The items listed after EXCEPT can include the names
+# of other groups.
+
+GROUP groupnameM
+ALL EXCEPT KIND_xxx KIND_xxx
+KIND_xxx
+END GROUP
+
+GROUP groupnameN
+ALL EXCEPT groupnameY
+END GROUP
+
+
+# once any groups have been defined, a single instance
+# of the IMPACT table is specified by listing a TYPE,
+# KIND, or group in column 1, then a KIND or GROUP
+# in column 2 (the second name cannot be a specific type).
+# column 3 must be 0.0 or 1.0.  subsequent entries
+# that overlap previous entries have precedence
+# (last entry wins).
+
+IMPACT
+ KIND_xxx    KIND_xxx     0.0
+ KIND_xxx    groupname1   0.0
+ groupname1  KIND_xxx     0.0
+ groupname1  groupname1   0.0
+END IMPACT
+
+</pre>
+</div>
+
+<P>
+Namelist interface
+<A HREF="#Namelist"><em class=code>&amp;obs_impact_tool_nml</em> </A>
+must be read from file <em class=file>input.nml</em>.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;obs_impact_tool_nml
+  input_filename         = 'cross_correlations.txt'
+  output_filename        = 'control_impact_runtime.txt'
+  debug                  = .true.
+  /
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD>input_filename</TD>
+    <TD>character(len=512)</TD>
+    <TD>Name of an ascii text file which describes how the interaction
+of observations to state vector values and observations to other observations
+should be controlled.  See the <a href="#Overview">Overview</a> section for 
+details about the format of the input file entries. 
+</TD></TR>
+
+<TR><TD>output_filename</TD>
+    <TD>character(len=512)</TD>
+    <TD>Name of an ascii text file which created by this tool.
+It can be read at filter run time to control the impact of observations
+on state vector items and other observation values.
+The format of this file is set by this tool and should
+not be modified by hand.  Rerun this tool to recreate
+the file.
+</TD></TR>
+
+<TR><TD>debug</TD>
+    <TD>logical</TD>
+    <TD>If true print out debugging info.
+<TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+<P></P>
+
+<!--==================================================================-->
+
+<A NAME="Examples"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>EXAMPLES</H2>
+
+<P>
+To prevent chemistry species from impacting the meterological
+variables in the model state, and vice versa:
+</P>
+
+<div>
+<pre>
+GROUP chem
+ KIND_CO KIND_NO KIND_C2H4
+END GROUP
+
+GROUP met
+ ALLKINDS EXCEPT chem
+END GROUP
+
+IMPACT
+ chem   met    0.0
+ met    chem   0.0
+END IMPACT
+
+</pre>
+</div>
+
+<P>
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>MODULES USED</H2>
+
+<PRE>
+types_mod
+utilities_mod
+parse_args_mod
+</PRE>
+<P></P>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL><LI>two text files, one input and one output.
+    <LI>obs_impact_tool.nml 
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>obs_impact_tool</TD>
+    <!-- message --><TD VALIGN=top>Only use single process</TD>
+    <!-- comment --><TD VALIGN=top>Only a single mpi process can be used 
+                                   with this program</TD></TR>
+
+<TR><!-- routine --><TD VALIGN=top>obs_impact_tool</TD>
+    <!-- message --><TD VALIGN=top>cannot nest groups</TD>
+    <!-- comment --><TD VALIGN=top>Groups cannot contain other
+       groups.  You can exclude a group from another group.</TD></TR>
+
+<TR><!-- routine --><TD VALIGN=top>obs_impact_tool</TD>
+    <!-- message --><TD VALIGN=top>Impact must be 0.0 or 1.0</TD>
+    <!-- comment --><TD VALIGN=top>Currently the impact can be
+       either full or nothing.  Contact the DART developers if you
+       want to experiment with other values.</TD></TR>
+
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2015 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

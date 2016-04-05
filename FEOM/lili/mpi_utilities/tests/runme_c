@@ -1,0 +1,63 @@
+#!/bin/tcsh
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+#
+# start this script like:
+#   bsub < runme_c   (for lsf)
+#   qsub runme_c     (for pbs)
+#   ./runme_c        (for everything else)
+#
+#----------------------------------------------------------------------
+#### LSF options for BSUB
+### -J      job name    (master script job.csh presumes filter.xxxx.log)
+### -o      output listing filename 
+### -P      account number
+### -q      queue
+### -n      number of tasks (processors)
+### -x      exclusive use of node
+### -R "span[ptile=(num procs you want on each node)]"
+#
+#BSUB -J ctest
+#BSUB -o c.log
+#BSUB -e c.err
+#BSUB -q regular
+#BSUB -n 4
+#----------------------------------------------------------------------
+
+
+#----------------------------------------------------------------------
+# directives to allow this to run as a batch jobs under PBS.
+#PBS -N ctest
+#PBS -r n
+#PBS -e c.err
+#PBS -o c.log
+#PBS -q small
+#PBS -l nodes=4
+#----------------------------------------------------------------------
+
+
+if ( $?LSB_HOSTS) then
+
+   mpirun.lsf ./ctest_mpi
+
+else if ( $?PBS_O_WORKDIR) then
+
+   mpirun ./ctest_mpi
+
+else
+
+   mpirun -np 4 -nolocal ./ctest_mpi
+
+endif
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

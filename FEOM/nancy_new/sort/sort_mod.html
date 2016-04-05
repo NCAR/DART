@@ -1,0 +1,461 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>MODULE sort_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE sort_mod</H1>
+
+<table border=0 summary="dart header" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<!--==================================================================-->
+<!-- End of standard header info, start of specific info              -->
+<!--==================================================================-->
+
+<H2>Overview</H2>
+
+<P>
+Simple sorting routines of two basic flavors: 
+<UL>
+<LI>sort an array of values in place, or </LI>
+<LI>take an array of values and return a sorted list of integer
+indices which, if followed, will traverse the array in sorted order.</LI>
+</UL>
+</P>
+<P>
+There are overloaded versions of these routines for integer and real
+values, and a version which allows the user to provide their own
+ordering routine to support sorting items of any kind.
+</P>
+
+<!--==================================================================-->
+<!-- Description of the namelist                                      -->
+<!--==================================================================-->
+
+<!-- see the html programs in DART/doc/html/boilerplate to generate this table -->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This module has no namelist at this time.
+</P>
+
+<br />
+
+<!--============== DESCRIPTION OF PUBLIC INTERFACES ================-->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+</PRE>
+
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC INTERFACES</H2>
+
+<TABLE summary='public interfaces'>
+<TR><TD><em class=call>use sort_mod, only : </em></TD>
+                   <TD><A HREF="#sort"> sort </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#index_sort"> index_sort </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#slow_sort"> slow_sort </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#slow_index_sort"> slow_index_sort </A></TD></TR>
+</TABLE>
+
+<P>
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
+   <em class=optionalcode>[like this]</em>.
+</P>
+
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
+
+<A NAME="sort"></A>
+<br />
+<div class=routine>
+<em class=call> function sort(x) </em>
+<pre>
+real(r8), dimension(:)             :: <em class=code>sort</em>
+real(r8), dimension(:), intent(in) :: <em class=code>x</em>
+</pre>
+or
+<pre>
+integer,  dimension(:)             :: <em class=code>sort</em>
+integer,  dimension(:), intent(in) :: <em class=code>x</em>
+</pre>
+</div>
+ 
+<div class=indent1>
+<!-- Description -->
+ 
+<P>
+Uses a heap sort algorithm on input array x(:) which can be
+either type real(r8) or integer. The input array
+is unmodified; this function returns a copy of the sorted array.
+No item count is passed in, it is determined by using the 
+<em class=code>size(x)</em> intrinsic to get the number of
+items in the array.  Therefore x(:) must be allocated or 
+declared to be exactly the intended size.
+All items in x(:) are sorted, lowest to highest in value.
+</P>
+ 
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TBODY valign=top>
+<TR><TD><em class=code> sort  </em></TD>
+    <TD> Function return value.  A copy of the x(:) array with the items
+         in sorted order, low to high.</TD>
+</TR>
+<TR><TD><em class=code> x  </em></TD>
+    <TD>Input array of values to be sorted.  Not modified by this routine.</TD>
+</TR>
+</TBODY>
+</TABLE>
+</div>
+<br />
+
+<!--============= DESCRIPTION OF A SUBROUTINE ======================-->
+
+<A NAME="index_sort"></A>
+<br />
+<div class=routine>
+<em class=call> subroutine index_sort(x,index,num) </em>
+<pre>
+real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
+integer,  dimension(:), intent(out) :: <em class=code>index</em>
+integer,                intent(in)  :: <em class=code>num</em>
+</pre>
+or
+<pre>
+integer, dimension(:), intent(in)  :: <em class=code>x</em>
+integer, dimension(:), intent(out) :: <em class=code>index</em>
+integer,               intent(in)  :: <em class=code>num</em>
+</pre>
+</div>
+or
+<div class=routine>
+<em class=call> subroutine index_sort(index,num,comparefunc) </em>
+<pre>
+integer,  dimension(:), intent(out) :: <em class=code>index</em>
+integer,                intent(in)  :: <em class=code>num</em>
+interface
+  integer function <em class=code>comparefunc</em>(a, b)
+    integer, intent(in) :: a, b
+  end function <em class=code>comparefunc</em>
+end interface
+</pre>
+</div>
+ 
+<div class=indent1>
+<!-- Description -->
+ 
+<P>
+Uses a heap-sort algorithm for efficiency even on large item counts.
+The basic index_sort() routine takes an input array x(:) which can be
+either type real(r8) or integer.  The input array is unmodified.  The
+subroutine fills in an integer index(:) array, which does not need to
+be initialized before calling this routine.  If array x(:) is traversed 
+in this index order the values will be low to high.  e.g:
+</P>
+<pre>
+call index_sort(vals, idx, count)
+
+do i = 1, count
+   next = vals(idx(i))    ! next vals(:) item in sorted order
+enddo
+
+</pre>
+<P>
+This subroutine has a third version of the interface
+that takes a user-supplied sorting function.  See below
+for an example of how to use this.
+</P>
+ 
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TBODY valign=top>
+<TR><TD><em class=code> x  </em></TD>
+    <TD>Array of values to be sorted.  Unchanged by this routine.
+        Used in two of the three interfaces for this subroutine.</TD>
+</TR>
+<TR><TD><em class=code> index  </em></TD>
+    <TD>Output array of integer index values.  If array x(:) is traversed 
+        in this index order the values will be low to high.
+        Required for all versions of this subroutine.</TD>
+</TR>
+<TR><TD><em class=code> num  </em></TD>
+    <TD>Number of items in arrays x(:) and index(:).
+        Required for all versions of this subroutine.</TD>
+</TR>
+<TR><TD><em class=code> comparefunc  </em></TD>
+    <TD>A user-supplied function that takes 2 integer arguments
+        and returns an integer value which is then 
+        used by the sort routine to order the items.
+        Only needed for the third interface version of this 
+        subroutine. See the following notes for details and 
+        examples of how to use this version.
+    </TD>
+</TR>
+</TBODY>
+</TABLE>
+<br />
+
+<P>
+If you have an array of items which are neither real(r8) or integer, it
+is still possible to have this routine sort your items.  In your own code
+you must write a function of exactly this form:
+</P>
+<pre>
+type(my_type) :: myitems(:)  ! any array type that's not real(r8) or integer
+
+function orderitems(a, b)
+ integer :: orderitems
+ integer, intent(in) :: a, b
+
+! a and b are integer index numbers into any array of items
+! in your own program.  use those index numbers to compare
+! items a and b, and have this function return:
+!
+!  -1 if item(a) is less than item(b)
+!   0 if items a and b are equal
+!   1 if item(a) is greater than item(b)
+!
+! the comparison of ordering can be any criteria
+! of your own choosing.
+ 
+ if (myitems(a) < myitems(b)) then
+   orderitems = -1
+ else if (myitems(a) > myitems(b)) then
+   orderitems =  1
+ else
+   orderitems = 0
+
+end function orderitems
+</pre>
+<P>
+To use the index sort routine, call it:
+</P>
+<pre>
+   integer :: i, itemcount
+   integer :: index(itemcount)
+   type(my_type) :: myitems(itemcount)
+
+   ! 'orderitems()' here is the function name for your
+   ! comparison routine.
+
+   call index_sort(index, itemcount, orderitems) 
+
+   do i = 1, itemcount
+     next = myitems(index(i))      ! next item in sorted order
+   enddo
+</pre>
+<P>
+If you have a real(r8) or integer array it is more efficient
+to call the built-in sort routine, which does a simple in-line
+numeric compare to order the values.  But if you require a more
+complicate comparison, e.g. a value inside a derived type,
+complex numbers, multi-dimensional arrays sorted by a
+distance, etc, then you can still get back a sorted index array
+based on the comparison routine that you supply.
+</P>
+</div>
+<br />
+
+<!--============= DESCRIPTION OF A FUNCTION ========================-->
+
+<A NAME="slow_sort"></A>
+<br />
+<div class=routine>
+<em class=call> function slow_sort(x) </em>
+<pre>
+real(r8), dimension(:)             :: <em class=code>slow_sort</em>
+real(r8), dimension(:), intent(in) :: <em class=code>x</em>
+</pre>
+</div>
+ 
+<div class=indent1>
+<!-- Description -->
+ 
+<P>
+Sorts a real(r8) input array x(:) using a simple bubble sort algorithm.
+The input array
+is unmodified; this function returns a copy of the sorted array.
+x(:) must be allocated or declared to be exactly the intended size;
+all items in x(:) are sorted, lowest to highest in value.
+Bubble sorts are O(N^2) which are slow for large item counts.
+</P>
+ 
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TBODY valign=top>
+<TR><TD><em class=code> sort  </em></TD>
+    <TD> Function return value.  A copy of the x(:) array with the items
+         in sorted order, low to high.</TD>
+</TR>
+<TR><TD><em class=code> x  </em></TD>
+    <TD>Input array of values to be sorted.  Not modified by this routine.</TD>
+</TR>
+</TBODY>
+</TABLE>
+</div>
+<br />
+
+<!--============= DESCRIPTION OF A SUBROUTINE ======================-->
+
+<A NAME="slow_index_sort"></A>
+<br />
+<div class=routine>
+<em class=call> subroutine slow_index_sort(x,index,num) </em>
+<pre>
+real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
+integer,  dimension(:), intent(out) :: <em class=code>index</em>
+integer,                intent(in)  :: <em class=code>num</em>
+</pre>
+</div>
+ 
+<div class=indent1>
+<!-- Description -->
+ 
+<P>
+A simple bubble sort implementation of an index sort based on a real(r8)
+input array x(:).  The input array is unmodified.  
+The subroutine fills in an integer index(:) array, which does not need to
+be initialized before calling this routine.  If array x(:) is traversed 
+in this index order the values will be low to high.  e.g:
+</P>
+<pre>
+call index_sort(vals, idx, count)
+
+do i = 1, count
+   next = vals(idx(i))   ! next vals(:) item in sorted order
+enddo
+
+</pre>
+<P>
+Bubble sorts are O(N^2) which are slow for large item counts.
+</P>
+
+ 
+<TABLE width=100% border=0 summary="argument description" cellpadding=3>
+<TBODY valign=top>
+<TR><TD><em class=code> x  </em></TD>
+    <TD>Array of real(r8) values to be sorted.  Unchanged by this routine.</TD>
+</TR>
+<TR><TD><em class=code> index  </em></TD>
+    <TD>Output array of integer index values.  If array x(:) is traversed 
+        in this index order the values will be low to high.</TD>
+</TR>
+<TR><TD><em class=code> num  </em></TD>
+    <TD>Number of items in arrays x(:) and index(:).</TD>
+</TR>
+</TBODY>
+</TABLE>
+</div>
+<br />
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+
+<P>
+none.
+</P>
+
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+
+<P>
+none.
+</P>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+
+<P>
+none.
+</P>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="subversion information">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

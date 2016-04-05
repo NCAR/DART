@@ -1,0 +1,217 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program rad_3dvar_to_dart</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>rad_3dvar_to_dart</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">FUTURE PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+   Programs to convert MM5 3D-VAR 2.0 Radar data files into DART observation
+   sequence files. The capability of the program is limited to
+   DOPPLER_RADIAL_VELOCITY and RADAR_REFLECTIVITY.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;rad_3dvar_to_dart_nml
+   var_file = 'qc_radr_3dvar_2002083100.dat',
+   obs_seq_out_file_name = 'obs_seq.out',
+   calendar_type = 3  
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+    
+<TR><TD> var_file </TD>
+    <TD> character(len=129) </TD>
+    <TD>This is the name of the file containing MM5 3D-VAR 2.0 Radar observations.
+</TD></TR>
+<TR><TD> obs_seq_out_file_name </TD>
+    <TD> character(len=129) </TD>
+    <TD>File name for output observation sequence file.
+</TD></TR>
+<TR><TD> calendar_type </TD>
+    <TD> integer </TD>
+    <TD>Calendar type. We recommend using 3 (GREGORIAN).
+</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>MODULES DIRECTLY USED</H2>
+<PRE>
+types_mod
+obs_sequence_mod
+obs_def_mod
+obs_def/obs_def_radar_mod
+obs_kind_mod
+location/threed_sphere/location_mod
+time_manager_mod
+utilities_mod
+</PRE>
+
+<H2>MODULES INDIRECTLY USED</H2>
+<PRE>
+assim_model_mod
+models/wrf/model_mod
+models/wrf/module_map_utils
+random_seq_mod
+random_nr_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL>
+   <LI>input namelist ; <em class=file>input.nml</em>
+   <LI>Input observation file; <em class=file>qc_radr_3dvar_2002083100.dat</em>
+   <LI>Output observation file; <em class=file>obs_seq.out</em> 
+</UL>
+
+<H3>File formats</H3>
+
+<P>
+<em class=file>input.nml</em> and <em
+class=file>qc_radr_3dvar_2002083100.dat</em> are ASCII files. <em
+class=file>obs_seq.out</em> is either ASCII or binary, depending on the logical
+write_binary_obs_sequence, which is the namelist entry for obs_sequence_mod.
+</P>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<UL>
+<LI><A HREF="http://www.mmm.ucar.edu/wrf/WG4/">3DVAR GROUP PAGE</A>
+</UL>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<P>
+none
+</P>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<ol>
+<LI>Use the preprocessor to include the observation list 
+    provided by obs_kind_mod.</LI>
+<LI>Add the capability to convert from DART to MM5 3D-VAR 2.0 
+    Radar data file format.</LI>
+</ol>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

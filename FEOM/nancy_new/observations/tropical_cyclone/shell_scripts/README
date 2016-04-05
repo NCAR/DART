@@ -1,0 +1,12 @@
+This directory has the skeleton of a script that increments
+a time and does something once an hour.  For the TC obs this
+may not be as useful as for some other types of obs, but it
+is here as an example.
+
+It might be useful if you want to generate a lot of observations
+from different tracks, and then split the observations into
+hourly files for assimilating once an hour, or into 3 hour files
+for assimilating once every 3 hours.
+
+nancy
+

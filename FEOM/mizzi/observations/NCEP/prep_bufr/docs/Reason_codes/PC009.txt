@@ -1,0 +1,20 @@
+# DART $Id$
+Table 15.   Reason codes associated with step "CQCPROF", program code 009 (last revised 5/30/2001). 
+  
+
+KEY: 
+     IN "R.CODE" COLUMN: 
+                 B - OCCURS IN ALL OPERATIONAL VERSIONS OF CQCPROF EXCEPT CDAS 
+                     (THE CQCPROF STEP DOES NOT RUN IN THE CDAS NETWORK). 
+  
+
+R.CODE   MEANING                                         MNEMONICS AFFECTED AND NEW VALUE FOR OBS, Q.M.
+======   ==============================================  ==============================================
+
+03 B     WIND OBSERVATION IS FOUND TO BE OF              WRC-> WQM=3 
+         QUESTIONABLE QUALITY.
+
+13 B     WIND OBSERVATION FAILED Q.C. CHECKS.            WRC-> WQM=13
+
+
+  

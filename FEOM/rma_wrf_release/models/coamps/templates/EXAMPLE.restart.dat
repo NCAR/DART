@@ -1,0 +1,81 @@
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+
+# This is a data file to for use with the DART populate_restart_vars
+# Perl script.  Comments are supported and blank lines are tolerated.
+
+# Each line of this file contains information about a variable to be
+# put in the DART restart.vars file that defines the DART state 
+# vector.
+
+# Each line contains several pieces of information:
+#  1.  The name of the variable
+#  2.  The number of levels for this variable
+#       NOTE: This is not constrained to make sense!  This means that
+#             the program will be perfectly happy if you insert a 
+#             surface variable (only defined at 1 level) and tell the
+#             script that it has 50 levels - 50 instances of this 
+#             surface variable will be inserted into the restart.vars
+#             file, which is probably not what you want to do
+#  3.  The type of perturbation (NOPERTS/INDIVID/UNIFORM)
+#  4.  The variance of the Gaussian to draw perturbations from
+#  5.  Whether this variable is defined on mass or w sigma levels
+#  6.  The DART variable KIND (see DART obs_kind module)
+#  7.  Whether to update the variable (UPDATE/FREEZE) - this allows
+#      inclusion of variables in the state vector that are needed
+#      for computation (e.g. mean pressure/theta fields) but should
+#      not be subjected to "data assimilation"
+#  8.  Whether this field is a mean variable or not (TRUE/FALSE)
+#  9.  Whether this field is constrained to be positive (semi)definite
+#      or not (NOPOSDEF/ISPOSDEF).  Setting this flag means that
+#      before the DART state vector is written into a COAMPS restart
+#      file, negative values are set to zero.
+
+# Here is an example of what one of these lines actually looks like
+# 1
+# |  2
+# |  |  3
+# |  |  |       4
+# |  |  |       |     5 
+# |  |  |       |     | 6
+# |  |  |       |     | |                     7
+# |  |  |       |     | |                     |      8
+# |  |  |       |     | |                     |      |     9
+# |  |  |       |     | |                     |      |     |
+# u2 45 NOPERTS 1.000 M KIND_U_WIND_COMPONENT UPDATE FALSE NOPOSDEF
+
+############################################################
+#### BEGIN ACTUAL DATA DEFINITION
+
+# Momentum variables
+u2   45 UNIFORM 2.000 M KIND_U_WIND_COMPONENT         UPDATE FALSE NOPOSDEF
+v2   45 UNIFORM 2.000 M KIND_V_WIND_COMPONENT         UPDATE FALSE NOPOSDEF
+w2   46 NOPERTS 0.000 W KIND_VERTICAL_VELOCITY        UPDATE FALSE NOPOSDEF
+
+# Temperature variables
+th2  45 NOPERTS 0.000 M KIND_POTENTIAL_TEMPERATURE    UPDATE FALSE NOPOSDEF
+thbm 45 NOPERTS 0.000 M KIND_POTENTIAL_TEMPERATURE    FREEZE TRUE  NOPOSDEF
+
+# "Pressure" variables - COAMPS uses mean/perturbation Exner function
+p2   45 NOPERTS 0.000 M KIND_EXNER_FUNCTION           UPDATE FALSE NOPOSDEF
+exbm 45 NOPERTS 0.000 M KIND_EXNER_FUNCTION           FREEZE TRUE  NOPOSDEF
+exbw 46 NOPERTS 0.000 W KIND_EXNER_FUNCTION           FREEZE TRUE  NOPOSDEF
+
+# Microphysical variables - vapor, cloud water, rain, ice, snow
+# These are mixing ratios, so they should be positive (semi)definite
+qv2  45 NOPERTS 0.000 M KIND_SPECIFIC_HUMIDITY	      UPDATE FALSE ISPOSDEF
+qc2  45 NOPERTS 0.000 M KIND_CLOUD_LIQUID_WATER       UPDATE FALSE ISPOSDEF
+qr2  45 NOPERTS 0.000 M KIND_RAINWATER_MIXING_RATIO   UPDATE FALSE ISPOSDEF
+qi2  45 NOPERTS 0.000 M KIND_CLOUD_ICE                UPDATE FALSE ISPOSDEF
+qs2  45 NOPERTS 0.000 M KIND_SNOW_MIXING_RATIO        UPDATE FALSE ISPOSDEF
+
+#### END ACTUAL DATA DEFINITION
+############################################################
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$

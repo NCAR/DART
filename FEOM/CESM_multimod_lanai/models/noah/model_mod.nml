@@ -1,0 +1,16 @@
+&model_nml
+     noah_netcdf_filename         = 'restart.nc',
+     assimilation_period_days     =    0,
+     assimilation_period_seconds  = 3600,
+     model_perturbation_amplitude = 0.0,
+     output_state_vector          = .false.
+     debug                        = 1,
+     noah_state_variables         = 'SOIL_T',   'KIND_SOIL_TEMPERATURE',
+                                    'SOIL_M',   'KIND_SOIL_MOISTURE',
+                                    'SOIL_W',   'KIND_SOIL_LIQUID_WATER',
+                                    'SKINTEMP', 'KIND_SKIN_TEMPERATURE',
+                                    'SNODEP',   'KIND_SNOW_THICKNESS',
+                                    'WEASD',    'KIND_SNOW_WATER',
+                                    'CANWAT',   'KIND_CANOPY_WATER',
+                                    'QFX',      'KIND_LATENT_HEAT_FLUX',
+  /

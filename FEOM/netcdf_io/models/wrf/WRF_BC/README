@@ -1,0 +1,44 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+update_wrf_bc:
+
+File list:
+
+update_wrf_bc.f90
+module_couple_uv.f90
+module_netcdf_interface.f90
+module_timediff.f90
+
+Files needed:
+
+wrfinput_d01        	Updated WRF IC (3DVAR analysis)
+wrfbdy_d01              Original WRF BC
+input.nml               namelist
+
+------------------------------------------------------------------
+NOTE:
+
+wrfinput_d01     will be READ only.
+wrfbdy_d01       will be OVERWRITTEN.
+
+------------------------------------------------------------------
+
+Compile:
+
+	mkmf_update_wrf_bc
+
+	make
+
+	(make clean to remove objs and execs)
+
+Run:
+
+	update_wrf_bc
+
+	(make sure you have all three files mentioned above)
+
+------------------------------------------------------------------

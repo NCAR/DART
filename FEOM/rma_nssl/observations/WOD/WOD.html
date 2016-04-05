@@ -1,0 +1,338 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>WOD Observations</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>WOD Observations</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#DataSources">DATA SOURCES</A> /
+<A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">FUTURE PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+
+<P>
+The WOD (World Ocean Database) data is a collection of data from various
+sources, combined into a single format with uniform treatment.
+The <a href="http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html">WOD 2009 page</a> 
+has detailed information about the repository, observations, and datasets.
+The programs in this directory convert from the packed ASCII files
+found in the repository into DART observation sequence (obs_seq) file format.
+<br>
+<br>
+There are 2 sets of available files - the raw observations, and
+the observations binned onto standard levels.  The recommended
+datasets are the ones on standard levels.  The raw data can
+be very dense in the vertical and are not truly independent
+observations.  This leads to too much certainty in the updated
+values during the assimilation.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>DATA SOURCES</H2>
+
+<P>
+Data from the WOD09 can be downloaded interactively from links on
+<a href="http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html">this page</a>.
+One suggestion is to pick the 'sorted by year link' and download the
+files (you can select multiple years at once) for each data type for
+the years of interest.  Make sure to select the standard level versions
+of each dataset.
+</P>
+
+<P>
+UCAR/NCAR users with access to the DSS data repository can download
+WOD09 files from
+<a href="http://dss.ucar.edu/datazone/dsszone/ds285.0/#WOD09">here</a>.
+A UCAR DSS userid is required to access this page.  The files to use
+are named "yearly_*_STD.tar".
+</P>
+
+<P>
+Requested citation if you use this data:
+</P>
+<pre>
+Johnson, D.R., T.P. Boyer, H.E. Garcia, R.A. Locarnini, O.K. Baranova, and M.M. Zweng, 
+2009. World Ocean Database 2009 Documentation. Edited by Sydney Levitus. NODC 
+Internal Report 20, NOAA Printing Office, Silver Spring, MD, 175 pp.  
+Available at http://www.nodc.noaa.gov/OC5/WOD09/pr_wod09.html. 
+</pre>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PROGRAMS</H2>
+<P>
+The data is distributed in a specialized packed ASCII format.  In this
+directory is a program called <em class=file>wodFOR.f</em> which is an
+example reader program to print out data values from the files.  The program
+<em class=file>wod_to_obs</em> converts these packed ASCII files into DART
+obs_sequence files.
+</P> 
+<P>
+As with most other DART directories, the <em class=file>work</em> directory
+contains a <em class=file>quickbuild.csh</em> script to build all necessary
+executables.
+</P>
+
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;wod_to_obs_nml
+   wod_input_file       =  'XBTS2005',
+   wod_input_filelist   =  '',
+   wod_out_file         =  'obs_seq.wod',
+   avg_obs_per_file     =  500000,
+   debug                =  .false.,
+   timedebug            =  .false.,
+   print_qc_summary     =  .true.,
+   max_casts            =  -1,
+   no_output_file       =  .false.,
+   print_every_nth_cast =  -1,
+   temperature_error    =  0.5,
+   salinity_error       =  0.5, 
+ /
+! temperature error is in degrees C, salinity error in g/kg.
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD> wod_input_file </TD>
+    <TD> character(len=128) </TD>
+    <TD>The input filename when converting a single file.  Only one of the
+two namelist items that specify input files can have a valid value,
+so to use a single filename set the list name 'wod_input_filelist' 
+to the empty string ('&nbsp;').
+</TD></TR>
+  
+<TR><TD> wod_input_filelist </TD>
+    <TD> character(len=128) </TD>
+    <TD>To convert one or more files in a single execution create a text file
+which contains each input filename, in ascii, one filename per line.  Set
+this item to the name of that file, and set 'wod_input_file' to the empty
+string ('&nbsp;').
+</TD></TR>
+  
+<TR><TD> wod_out_file </TD>
+    <TD> character(len=128) </TD>
+    <TD>The output file to be created.  Note that unlike earlier versions of some
+converters, this program will overwrite an existing output file instead of
+appending to it.  The risk of replicated observations, which are difficult to
+detect since most of the contents are floating point numbers, outweighed the
+possible utility.
+</TD></TR>
+  
+<TR><TD> avg_obs_per_file </TD>
+    <TD> integer </TD>
+    <TD>The code needs an upper limit on the number of observations generated by
+this program.  It can be larger than the actual number of observations
+converted.  The total number of obs is computed by multiplying this number by
+the number of input files.  If you get an error because there is no more room
+to add observations to the output file, increase this number.  Do not make
+this an unreasonably huge number, however, since the code does preallocate
+space and will be slow if the number of obs becomes very large.
+</TD></TR>
+  
+<TR><TD> print_every_nth_cast </TD>
+    <TD> integer </TD>
+    <TD>If a value greater than 0, the program will print a message after
+processing every N casts.  This allows the user to monitor the progress of
+the conversion.
+</TD></TR>
+  
+<TR><TD> print_qc_summary </TD>
+    <TD> logical </TD>
+    <TD>If .TRUE. the program will print out a summary of the number of
+casts which had a non-zero quality control values (current files appear to
+use values of 1-9).
+</TD></TR>
+  
+<TR><TD> debug </TD>
+    <TD> logical </TD>
+    <TD>If .TRUE. the program will print out debugging information.
+</TD></TR>
+  
+<TR><TD> timedebug </TD>
+    <TD> logical </TD>
+    <TD>If .TRUE. the program will print out specialized time-related debugging
+information.
+</TD></TR>
+  
+<TR><TD> max_casts </TD>
+    <TD> integer </TD>
+    <TD>If a value greater than 0 the program will only convert at most
+this number of casts from each input file.  Generally only expected to be
+useful for debugging.  A negative value will convert all data from the input file.
+</TD></TR>
+  
+<TR><TD> no_output_file </TD>
+    <TD> logical </TD>
+    <TD>If .TRUE. the converter will do all the work needed to convert
+the observations, count the number of each category of QC values, etc, but
+will not create the final obs_seq file.  Can be useful if checking an input
+file for problems, or for getting QC statistics without waiting for a full
+output file to be constructed, which can be slow for large numbers of obs.
+Only expected to be useful for debugging.
+</TD></TR>
+  
+<TR><TD> temperature_error </TD>
+    <TD> real(r8) </TD>
+    <TD>The combined expected error of temperature observations from all sources,
+including instrument error, model bias, and representativeness error (e.g.
+larger or smaller grid box sizes affecting expected accuracy), in degrees
+Centigrade.  Values in output file are error variance, which will be
+this value squared.
+</TD></TR>
+  
+<TR><TD> salinity_error </TD>
+    <TD> real(r8) </TD>
+    <TD>The combined expected error of salinity observations from all sources,
+including instrument error, model bias, and representativeness error (e.g.
+larger or smaller grid box sizes affecting expected accuracy) in g/kg (psu).
+Values in output file are error variance, and use units of msu
+(kg/kg), so the numbers will be this value / 1000.0, squared.
+</TD></TR>
+  
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<!--==================================================================-->
+
+<A NAME="Modules"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+time_manager_mod
+utilities_mod
+location_mod
+obs_sequence_mod
+obs_def_mod
+obs_def_ocean_mod
+obs_kind_mod
+</PRE>
+
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERRORS and KNOWN BUGS</H2>
+<P>
+The code for setting observation error variances is using fixed values,
+and we are not certain if they are correct.  Incoming QC values larger
+than 0 are suspect, but it is not clear if they really signal unusable
+values or whether there are some codes we should accept.
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+This converter is currently being used on WOD09 data, but the standard
+files generally stop with early 2009 data.  There are subsequent additional
+new obs files available from the download site.
+</P>
+<P>
+The fractional-time field, and sometimes the day-of-month field in a
+small percentage of the obs have bad values.  The program currently
+discards these obs, but it may be possible to recover the original
+good day number and/or time of day.  There is a subroutine at the end
+of the <em class="file">wod_to_obs.f90</em> file which contains all
+the reject/accept/correction information for the year, month, day, time
+fields.  To accept or correct the times on more obs, edit this subroutine
+and make the necessary changes.
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

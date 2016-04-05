@@ -1,0 +1,34 @@
+ obs_sequence
+obs_kind_definitions
+           1
+           4 RADIOSONDE_SURFACE_PRESSURE     
+  num_copies:            2  num_qc:            1
+  num_obs:            2  max_num_obs:            2
+observations                                                    
+truth                                                           
+Quality Control                                                 
+  first:            1  last:            2
+ OBS            1
+   100290.69949595648     
+   100277.30763514461     
+   0.0000000000000000     
+          -1           2          -1
+obdef
+loc3d
+    0.6134401292493884       -0.8895471984870280        -12345.00000000000     -1
+kind
+           4
+     0          0
+   10000.000000000000     
+ OBS            2
+   100447.88002383483     
+   100288.80642924676     
+   0.0000000000000000     
+           1          -1          -1
+obdef
+loc3d
+    0.6134401292493884       -0.8895471984870280        -12345.00000000000     -1
+kind
+           4
+  3600          0
+   10000.000000000000     

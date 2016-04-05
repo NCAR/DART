@@ -1,0 +1,43 @@
+
+To reproduce the experiments we were doing to compare
+the quad filter with the default filters:
+
+0. run 'quickbuild.csh' to compile everything.
+
+1. construct an input obs_seq.in file for the perfect_model_obs.
+generally this means running create_obs_sequence to make the
+observation definitions, then running create_fixed_network to
+create a time series of observations.  then run perfect_model_obs
+with the output of create_fixed_network as the input observation
+sequence.  this creates the obs_seq.out for filter, and the
+True_State.nc file for the diagnostics.  (see below* for what
+is currently in the repository for this model.)
+
+2. add the pseudo obs.  run ./obs_add_pseudo_obs and set the
+input and output obs_sequences.  use the output from perfect_model_obs
+as the input to this tool, and set the namelist for filter to use
+the output from this tool as the input to filter.
+
+3. make sure 'quad_filter' is true, and 'quad_filter_eval_only' is false.
+run filter.  this creates an output obs_sequence, and Prior_Diag.nc
+and Posterior_Diag.nc.  
+
+4. run the state space diagnostics, by running matlab and then use
+the 'plot_total_err' script that comes with dart.  it requires the
+three netcdf files 'True_State.nc', 'Prior_Diag.nc', and 'Posterior_Diag.nc'.
+
+5. to compare the quad filter results to the standard filter, simply
+set 'quad_filter_eval_only' to true and rerun filter.  rerun the same
+diagnostics as in #4 and compare the resulting plots.
+
+6. to run any of the observation space diagnostic tools, first use the
+obs_sequence_tool to remove the pseudo observations.  the namelist setting 
+should be 'keep_types' = false and the type to remove should be QUAD_FILTER_SQUARED_ERROR.
+then you should be able to run the obs_diag program on the resulting
+obs_seq.final file.
+
+
+* the repository has an example obs_seq.in file called 'obs_seq.three.in'
+which has all 3 variables observed at 4 hour intervals.  the namelists
+in the input.nml are set up to use these files.
+

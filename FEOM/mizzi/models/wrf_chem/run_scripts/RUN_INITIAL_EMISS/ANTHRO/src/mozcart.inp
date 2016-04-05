@@ -1,0 +1,19 @@
+&CONTROL
+ anthro_dir =  ' '
+ src_file_prefix = 'IPCC_emissions_'
+ src_file_suffix = '_surface_1850-2000_1.9x2.5.nc'
+ src_names = 'CO(28)','NO(30)','BIGALK(72)','BIGENE(56)','C2H4(28)','C2H5OH(46)',
+             'C2H6(30)','C3H6(42)','C3H8(44)','CH2O(30)','CH3CHO(44)','CH3COCH3(58)',
+             'CH3OH(32)','MEK(72)','SO2(64)','TOLUENE(92)','NH3(17)',
+             'OC(12)','BC(12)','CH3COOH(60)'
+ sub_categories = 'anthro'
+ emis_map = 'CO->CO','NO->NO','BIGALK->BIGALK','C2H4->C2H4','C2H5OH->C2H5OH',
+            'C2H6->C2H6','C3H6->C3H6','C3H8->C3H8','CH2O->CH2O','CH3CHO->CH3CHO',
+            'CH3COCH3->CH3COCH3','CH3OH->CH3OH','MEK->MEK','SO2->SO2','TOLUENE->TOLUENE',
+            'NH3->NH3','OC(a)->OC','BC(a)->BC','CH3COOH->CH3COOH'
+ sub_categories = 'anthro'
+ serial_output     = .true.
+ start_output_time = '2010-05-01_00:00:00'
+ stop_output_time  = '2010-10-31_00:00:00'
+ output_interval   = 86400
+/

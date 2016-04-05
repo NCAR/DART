@@ -1,0 +1,12 @@
+&model_nml
+   model_size        = 960,
+   forcing           = 15.00,
+   delta_t           = 0.001,
+   space_time_scale  = 10.00,
+   coupling          = 3.00,
+   K                 = 32,
+   smooth_steps      = 12,
+   time_step_days    = 0,
+   time_step_seconds = 3600,
+   model_number      = 3  /
+

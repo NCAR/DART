@@ -1,0 +1,262 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program MIDAS_to_obs</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>MIDAS_to_obs</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id: MIDAS_to_obs.html 6341 2013-07-31 14:24:51Z nancy $</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#DataSources">DATA SOURCES</A> /
+<A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> / 
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H1>Overview</H1>
+
+<H4>MIDAS netCDF File to DART observation converter</H4>
+
+<P>Alex Chartier (University of Bath, UK) is the point-of-contact for this effort.
+</P>
+<blockquote>
+"MIDAS runs in Matlab.
+The raw observations come from GPS receivers as RINEX files,
+but we can't use them directly just yet ... 
+Currently, the 'slant' (satellite-to-receiver path) observations are inverted 
+by MIDAS to make vertical, column-integrated 'observations' of plasma density."
+</blockquote>
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>DATA SOURCES</H2>
+
+<P>
+Contact Alex for MIDAS observations. 
+<br />
+<br />
+Alex writes out netCDF files that may be converted to DART observation sequence files.
+The netCDF files have a pretty simple format.
+</P>
+<pre>
+netcdf Test {
+dimensions:
+        latitude = 5 ;
+        longitude = 6 ;
+        height = 30 ;
+        time = UNLIMITED ; // (1 currently)
+variables:
+        double latitude(latitude) ;
+                latitude:units = "degrees_north" ;
+                latitude:long_name = "latitude" ;
+                latitude:standard_name = "latitude" ;
+        double longitude(longitude) ;
+                longitude:units = "degrees_east" ;
+                longitude:long_name = "longitude" ;
+                longitude:standard_name = "longitude" ;
+        double height(height) ;
+                height:units = "metres" ;
+                height:long_name = "height" ;
+                height:standard_name = "height" ;
+        double time(time) ;
+                time:units = "Days since 1601-01-01" ;
+                time:long_name = "Time (UT)" ;
+                time:standard_name = "Time" ;
+        double Ne(height, latitude, longitude) ;
+                Ne:grid_mapping = "standard" ;
+                Ne:units = "1E11 e/m^3" ;
+                Ne:long_name = "electron density" ;
+                Ne:coordinates = "latitude longitude" ;
+        double TEC(time, latitude, longitude) ;
+                TEC:grid_mapping = "standard" ;
+                TEC:units = "1E16 e/m^2" ;
+                TEC:long_name = "total electron content" ;
+                TEC:coordinates = "latitude longitude" ;
+        double Variance(time, latitude, longitude) ;
+                Variance:grid_mapping = "standard" ;
+                Variance:units = "1E16 e/m^2" ;
+                Variance:long_name = "Variance of total electron content" ;
+                Variance:coordinates = "latitude longitude" ;
+                Variance:standard_name = "TEC variance" ;
+// global attributes:
+                :Conventions = "CF-1.5" ;
+}</pre>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PROGRAMS</H2>
+<P>
+The <em class=file>MIDAS_to_obs.f90</em> file is the source code
+for the main converter program.
+<br />
+<br />
+To compile and test, go into the <em class=file>MIDAS/work</em> subdirectory and 
+run the <em class=program>quickbuild.csh</em>
+script to build the converter and a couple of general purpose utilities.
+The <a href="../../obs_sequence/obs_sequence_tool.html">obs_sequence_tool</a>
+manipulates (i.e. combines, subsets) DART observation files once they have been created.
+The default observations supported are those defined in 
+<a href="../../obs_def/obs_def_upper_atm_mod.f90">DART/obs_def/obs_def_upper_atm_mod.f90</a>.
+If you need additional observation types, you will have to add the 
+appropriate <em class=file>obs_def_XXX_mod.f90</em> file to the
+<em class=file>input.nml</em>&nbsp;<em class=code>&amp;preprocess_nml:input_files</em>
+variable and run <em class=program>quickbuild.csh</em> again.
+It rebuilds the table of supported observation types before 
+compiling the source code.
+</P>
+
+<P>&nbsp;</P><!-- needed to make 'top' align correctly -->
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;MIDAS_to_obs_nml
+   input_file    = 'infile.nc'
+   obs_out_file  = 'obs_seq.out',
+   verbose       = .false.
+   /
+</pre>
+</div>
+
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR>
+ <TD> input_file </TD>
+ <TD> character(len=256) </TD>
+ <TD> Name of the input netCDF MIDAS file to read.
+ </TD> </TR>
+
+<TR>
+ <TD> obs_out_file </TD>
+ <TD> character(len=256) </TD>
+ <TD> Name of the output observation sequence file that is created.
+ </TD> </TR>
+
+<TR>
+ <TD> verbose </TD>
+ <TD> logical </TD>
+ <TD> Controls how much informational output is printed during a conversion.
+<em class=code>.true.</em> the most amount of output.
+<em class=code>.false.</em> the least amount of output.
+ </TD> </TR>
+
+</TBODY> 
+</TABLE>
+
+
+<H3 class=indent1>Example</H3>
+
+<pre>
+&amp;MIDAS_to_obs_nml
+   input_file    = '../data/Test.nc',
+   obs_out_file  = 'obs_seq.out',
+   verbose       = .TRUE.,
+</pre>
+
+<!--==================================================================-->
+<!-- References.                                                      -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>References</H2>
+<!-- ul>
+<li><a href="http://MIDAS.hwr.arizona.edu">The MIDAS web page.</a></li>
+
+</ul -->
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision: 6341 $ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL: https://subversion.ucar.edu/DAReS/DART/trunk/observations/MIDAS/MIDAS_to_obs.html $ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date: 2013-07-31 08:24:51 -0600 (Wed, 31 Jul 2013) $ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

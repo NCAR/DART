@@ -1,0 +1,5 @@
+&compute_error_nml
+   truth_file_name = 'True_State.nc',
+   diag_file_name = 'Prior_Diag.nc',
+   skip_first_ntimes = 0,
+   /

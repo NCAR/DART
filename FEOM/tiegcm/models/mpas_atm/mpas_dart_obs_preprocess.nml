@@ -1,0 +1,47 @@
+&mpas_obs_preproc_nml
+
+  file_name_input          = 'obs_seq.old'
+  file_name_output         = 'obs_seq.new'
+
+  sonde_extra              = 'obs_seq.rawin'
+  land_sfc_extra           = 'obs_seq.land_sfc'
+  metar_extra              = 'obs_seq.metar'
+  marine_sfc_extra         = 'obs_seq.marine'
+  sat_wind_extra           = 'obs_seq.satwnd'
+  profiler_extra           = 'obs_seq.profiler'
+  gpsro_extra              = 'obs_seq.gpsro'
+  acars_extra              = 'obs_seq.acars'
+  gpspw_extra              = 'obs_seq.gpspw'
+  trop_cyclone_extra       = 'obs_seq.tc'
+
+  overwrite_obs_time       = .false.
+  windowing_obs_time       = .false.
+  windowing_int_hour       = 1.5
+
+  obs_boundary             = 0.0
+  increase_bdy_error       = .false.
+  maxobsfac                = 2.5
+  obsdistbdy               = 15.0
+
+  sfc_elevation_check      = .false.
+  sfc_elevation_tol        = 300.0
+  obs_pressure_top         = 0.0
+  obs_height_top           = 2.0e10
+
+  include_sig_data         = .true.
+  tc_sonde_radii           = -1.0
+  superob_qc_threshold     = 4
+
+  superob_aircraft         = .false.
+  aircraft_horiz_int       = 36.0
+  aircraft_pres_int        = 2500.0
+
+  superob_sat_winds        = .false.
+  sat_wind_horiz_int       = 100.0
+  sat_wind_pres_int        = 2500.0
+
+  overwrite_ncep_satwnd_qc = .false.
+  overwrite_ncep_sfc_qc    = .false.
+
+  max_num_obs              = 1000000
+/

@@ -1,0 +1,19 @@
+#!/bin/csh
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+../../../mkmf/mkmf -p obs_seq_verify -t ../../../mkmf/mkmf.template \
+ -a "../../.." $* path_names_obs_seq_verify
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL:
+# http://subversion.ucar.edu/DAReS/DART/trunk/models/wrf/work/mkmf_obs_seq_verify $
+# $Revision$
+# $Date$
+

@@ -1,0 +1,34 @@
+&control
+
+do_bc     = .true.
+do_ic     = .true.
+domain    = 1
+dir_wrf              = '/data/$USER/WRFCHEM/'
+dir_moz = '/data/$USER/MOZART/'
+fn_moz  = 'hb0000.nc'
+
+spc_map = 'o3 -> O3', 'o -> O', 'o1d_cb4 -> O1D', 'n2o -> N2O', 'no -> NO',
+          'no2 -> NO2', 'no3 -> NO3', 'nh3 -> NH3', 'hno3 -> HNO3', 'hno4 -> HO2NO2',
+          'n2o5 -> N2O5', 'h2 -> H2', 'ho -> OH', 'ho2 -> HO2', 'h2o2 -> H2O2',
+          'ch4 -> CH4', 'co -> CO', 'ch3o2 -> CH3O2', 'ch3ooh -> CH3OOH',
+          'hcho -> CH2O', 'ch3oh -> CH3OH', 'c2h4 -> C2H4',
+          'ald -> CH3CHO', 'ch3cooh -> CH3COOH', 'acet -> CH3COCH3', 'mgly -> CH3COCHO',
+          'aco3 -> CH3CO3', 'paa -> CH3COOOH', 'gly -> GLYOXAL', 'c3h6ooh -> POOH',
+          'pan -> PAN', 'mpan -> MPAN', 'mco3 -> MCO3', 'macr -> MACR', 'mvko2 -> MACRO2',
+          'mvkooh -> MACROOH', 'mvk -> MVK', 'c2h6 -> C2H6', 'c3h6 -> C3H6', 'c3h8 -> C3H8',
+          'c2h5oh -> C2H5OH', 'etooh -> C2H5OOH', 'pro2 -> C3H7O2', 'prooh -> C3H7OOH', 'c10h16 -> C10H16',
+          'acetp -> ROOH', 'onit -> ONIT', 'onitr -> ONITR', 'isopr -> ISOP',
+          'isooh -> ISOPOOH', 'isopn -> ISOPNO3', 'acetol -> HYAC', 'glyald -> GLYALD',
+          'hydrald -> HYDRALD', 'mek -> MEK', 'eto2 -> C2H5O2',
+          'bigene -> BIGENE', 'open -> BIGALD', 'bigalk -> BIGALK', 'alko2 -> ALKO2', 'alkooh -> ALKOOH',
+          'mekooh -> MEKOOH', 'tol -> TOLUENE', 'to2 -> TOLO2', 'tolooh -> TOLOOH',
+          'terpooh -> TERPOOH', 'cres -> CRESOL', 'dms -> DMS', 'so2 -> SO2', 'so4 -> SO4',
+          'xooh -> XOOH',
+          'BC1 -> .4143*CB1;1.e9', 'BC2 -> .4143*CB2;1.e9',
+          'OC1 -> .4143*OC1;1.e9', 'OC2 -> .4143*OC2;1.e9',
+          'SEAS_1 -> 2.*SA1;1.e9', 'SEAS_2 -> 2.*SA2;1.e9',
+          'SEAS_3 -> 2.*SA3;1.e9', 'SEAS_4 -> 2.*SA4;1.e9'
+          'DUST_1 -> 1.1738*[DUST1];1.e9', 'DUST_2 -> .939*[DUST2];1.e9',
+          'DUST_3 -> .2348*[DUST2]+.939*[DUST3];1.e9',
+          'DUST_4 -> .2348*[DUST3]+.5869*[DUST4];1.e9', 'DUST_5 -> .5869*[DUST4];1.e9'
+/

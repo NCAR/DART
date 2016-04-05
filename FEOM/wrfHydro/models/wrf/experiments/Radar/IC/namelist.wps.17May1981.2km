@@ -1,0 +1,29 @@
+&share
+ wrf_core = 'ARW',
+ max_dom = 1,
+ start_date = '1981-05-17_16:20:00',
+ end_date   = '1981-05-17_17:26:00',
+ interval_seconds = 21600,
+ io_form_geogrid = 2,
+ debug_level = 1000
+/
+
+&geogrid
+ parent_id         =   1,
+ parent_grid_ratio =   1,
+ i_parent_start    =   1,
+ j_parent_start    =   1,
+ e_we              =  47,
+ e_sn              =  47,
+ geog_data_res     = '30s'
+ dx = 2000.0,
+ dy = 2000.0,
+ map_proj = 'lambert',
+ ref_lat   =  35.704,
+ ref_lon   = -97.321,
+ truelat1  =  35.704,
+ truelat2  =  35.704,
+ stand_lon = -97.321,
+ geog_data_path = '/mmm/users/wrfhelp/WPS_GEOG',
+/
+

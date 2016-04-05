@@ -1,0 +1,18 @@
+#!/bin/csh
+#
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+
+../../../mkmf/mkmf -p restart_file_tool -t ../../../mkmf/mkmf.template -c"-Duse_netCDF" \
+ -a "../../.." path_names_restart_file_tool
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

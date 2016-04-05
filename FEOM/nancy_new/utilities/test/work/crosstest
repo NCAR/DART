@@ -1,0 +1,12 @@
+GROUP chem
+ KIND_CO KIND_NO KIND_C2H4
+END GROUP
+
+GROUP met
+ ALLKINDS EXCEPT chem
+END GROUP
+
+IMPACT
+ chem   met    0.0
+ met    chem   0.0
+END IMPACT

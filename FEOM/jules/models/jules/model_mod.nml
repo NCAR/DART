@@ -1,0 +1,20 @@
+&model_nml
+   jules_restart_filename         = 'jules_restart.nc',
+   jules_history_filename         = 'jules_history.nc',
+   assimilation_period_days     = 1,
+   assimilation_period_seconds  = 0,
+   model_perturbation_amplitude = 0.2,
+   output_state_vector          = .false.,
+   calendar                     = 'Gregorian',
+   debug                        = 0,
+   variables = 'canopy',     'KIND_LAND_COVER_TYPE',        'NA',  'NA', 'restart', 'NO_COPY_BACK',
+               'gs',         'KIND_SURFACE_CONDUCTANCE',    'NA',  'NA', 'restart', 'UPDATE',
+               'tstar_tile', 'KIND_SKIN_TEMPERATURE',       '0.0', 'NA', 'restart', 'UPDATE',
+               't_soil',     'KIND_SOIL_TEMPERATURE',       '0.0', 'NA', 'restart', 'UPDATE',
+               'cs',         'KIND_SOIL_CARBON',            '0.0', 'NA', 'restart', 'UPDATE',
+               'sthuf',      'KIND_SOIL_MOISTURE_FRACTION', '0.0', '1.', 'restart', 'UPDATE',
+               'snow_tile',  'KIND_SNOW_WATER',             '0.0', 'NA', 'restart', 'UPDATE',
+               'rho_snow',   'KIND_SNOW_BULK_DENSITY',      '0.0', 'NA', 'restart', 'UPDATE',
+               'snow_depth', 'KIND_SNOW_THICKNESS',         '0.0', 'NA', 'restart', 'UPDATE',
+   /
+

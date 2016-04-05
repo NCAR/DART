@@ -1,0 +1,312 @@
++ W_START_DATE=2008060106
++ export W_START_DATE
++ W_START_DATE=2008062800
++ export W_START_DATE
++ W_END_DATE=2008063018
++ export W_END_DATE
++ W_INITIAL_DATE=2008060106
++ export W_INITIAL_DATE
++ W_INITIAL_FILE_DATE=2008-06-01_06:00:00
++ export W_INITIAL_FILE_DATE
++ W_FIRST_FILTER_DATE=2008060112
++ export W_FIRST_FILTER_DATE
++ W_CYCLE_PERIOD=6
++ export W_CYCLE_PERIOD
++ W_FCST_PERIOD=6
++ export W_FCST_PERIOD
++ W_RUN_INITIAL=false
++ export W_RUN_INITIAL
++ W_EXPERIMENT=Ex2_Mg_MOPnIAS_p10p30_100km_bloc
++ export W_EXPERIMENT
++ NL_APM_SCALE=1.
++ export NL_APM_SCALE
++ NL_APM_SCALE_SW=.FALSE.
++ export NL_APM_SCALE_SW
++ W_PROJ_NUMBER=P19010000
++ export W_PROJ_NUMBER
++ W_PROJ_NUMBER=NNES0003
++ export W_PROJ_NUMBER
++ W_PROJ_NUMBER=NACD0002
++ export W_PROJ_NUMBER
++ W_PROJECT_DIR=/glade/p/work/mizzi
++ export W_PROJECT_DIR
++ W_SCRATCH_DIR=/glade/scratch/mizzi
++ export W_SCRATCH_DIR
++ W_ACD_DIR=/glade/p/acd/mizzi
++ export W_ACD_DIR
++ W_HSI_DIR=/MIZZI
++ export W_HSI_DIR
++ W_TRUNK_DIR=/glade/p/work/mizzi/TRUNK
++ export W_TRUNK_DIR
++ W_DART_DIR=/glade/p/work/mizzi/TRUNK/DART_CHEM
++ export W_DART_DIR
++ W_RUN_SCRIPT_DIR=/glade/p/work/mizzi/TRUNK/DART_CHEM/models/wrf_chem/run_scripts/RUN_WRF_CHEM/EXPERIMENT_SCRIPTS
++ export W_RUN_SCRIPT_DIR
++ W_RUN_DIR=/glade/scratch/mizzi/RUN_Ex2_Mg_MOPnIAS_p10p30_100km_bloc
++ export W_RUN_DIR
++ [[ ! -d /glade/scratch/mizzi/RUN_Ex2_Mg_MOPnIAS_p10p30_100km_bloc ]]
++ mkdir -p /glade/scratch/mizzi/RUN_Ex2_Mg_MOPnIAS_p10p30_100km_bloc
++ cd /glade/scratch/mizzi/RUN_Ex2_Mg_MOPnIAS_p10p30_100km_bloc
++ cp /glade/p/work/mizzi/TRUNK/DART_CHEM/models/wrf_chem/work/input.nml ./.
++ cp /glade/p/work/mizzi/TRUNK/DART_CHEM/models/wrf_chem/work/advance_time ./.
++ cp /glade/p/work/mizzi/TRUNK/DART_CHEM/models/wrf_chem/run_scripts/RUN_WRF_CHEM/EXPERIMENT_SCRIPTS/run_Exp2_Mig_MOPnIAS_100km_bloc.ksh run_script.ksh
++ chmod +x run_script.ksh
++ W_DATE=2008062800
++ export W_DATE
++ [[ 2008062800 -le 2008063018 ]]
++ false
++ [[ 2008062800 -eq 2008062800 ]]
++ W_RUN_WARM=true
++ export W_RUN_WARM
++ W_WARM_FILTER=true
++ export W_WARM_FILTER
++ W_WARM_WRFCHEM=false
++ export W_WARM_WRFCHEM
++ W_WARM_ARCHIVE=false
++ export W_WARM_ARCHIVE
++ ./run_script.ksh
++ 1> Ex2_Mg_MOPnIAS_p10p30_100km_bloc_2008062800 2>& 1
++ W_RUN_INITIAL=false
++ export W_RUN_INITIAL
++ ./advance_time
++ echo 2008062800 +6h
++ W_NEXT_DATE=2008062806
++ export W_NEXT_DATE
++ W_DATE=2008062806
++ export W_DATE
++ [[ 2008062806 -le 2008063018 ]]
++ false
++ [[ 2008062806 -eq 2008062800 ]]
++ W_RUN_WARM=true
++ export W_RUN_WARM
++ W_WARM_FILTER=true
++ export W_WARM_FILTER
++ W_WARM_WRFCHEM=false
++ export W_WARM_WRFCHEM
++ W_WARM_ARCHIVE=false
++ export W_WARM_ARCHIVE
++ ./run_script.ksh
++ 1> Ex2_Mg_MOPnIAS_p10p30_100km_bloc_2008062806 2>& 1
++ W_RUN_INITIAL=false
++ export W_RUN_INITIAL
++ ./advance_time
++ echo 2008062806 +6h
++ W_NEXT_DATE=2008062812
++ export W_NEXT_DATE
++ W_DATE=2008062812
++ export W_DATE
++ [[ 2008062812 -le 2008063018 ]]
++ false
++ [[ 2008062812 -eq 2008062800 ]]
++ W_RUN_WARM=true
++ export W_RUN_WARM
++ W_WARM_FILTER=true
++ export W_WARM_FILTER
++ W_WARM_WRFCHEM=false
++ export W_WARM_WRFCHEM
++ W_WARM_ARCHIVE=false
++ export W_WARM_ARCHIVE
++ ./run_script.ksh
++ 1> Ex2_Mg_MOPnIAS_p10p30_100km_bloc_2008062812 2>& 1
++ W_RUN_INITIAL=false
++ export W_RUN_INITIAL
++ ./advance_time
++ echo 2008062812 +6h
++ W_NEXT_DATE=2008062818
++ export W_NEXT_DATE
++ W_DATE=2008062818
++ export W_DATE
++ [[ 2008062818 -le 2008063018 ]]
++ false
++ [[ 2008062818 -eq 2008062800 ]]
++ W_RUN_WARM=true
++ export W_RUN_WARM
++ W_WARM_FILTER=true
++ export W_WARM_FILTER
++ W_WARM_WRFCHEM=false
++ export W_WARM_WRFCHEM
++ W_WARM_ARCHIVE=false
++ export W_WARM_ARCHIVE
++ ./run_script.ksh
++ 1> Ex2_Mg_MOPnIAS_p10p30_100km_bloc_2008062818 2>& 1
++ W_RUN_INITIAL=false
++ export W_RUN_INITIAL
++ ./advance_time
++ echo 2008062818 +6h
++ W_NEXT_DATE=2008062900
++ export W_NEXT_DATE
++ W_DATE=2008062900
++ export W_DATE
++ [[ 2008062900 -le 2008063018 ]]
++ false
++ [[ 2008062900 -eq 2008062800 ]]
++ W_RUN_WARM=true
++ export W_RUN_WARM
++ W_WARM_FILTER=true
++ export W_WARM_FILTER
++ W_WARM_WRFCHEM=false
++ export W_WARM_WRFCHEM
++ W_WARM_ARCHIVE=false
++ export W_WARM_ARCHIVE
++ ./run_script.ksh
++ 1> Ex2_Mg_MOPnIAS_p10p30_100km_bloc_2008062900 2>& 1
++ W_RUN_INITIAL=false
++ export W_RUN_INITIAL
++ ./advance_time
++ echo 2008062900 +6h
++ W_NEXT_DATE=2008062906
++ export W_NEXT_DATE
++ W_DATE=2008062906
++ export W_DATE
++ [[ 2008062906 -le 2008063018 ]]
++ false
++ [[ 2008062906 -eq 2008062800 ]]
++ W_RUN_WARM=true
++ export W_RUN_WARM
++ W_WARM_FILTER=true
++ export W_WARM_FILTER
++ W_WARM_WRFCHEM=false
++ export W_WARM_WRFCHEM
++ W_WARM_ARCHIVE=false
++ export W_WARM_ARCHIVE
++ ./run_script.ksh
++ 1> Ex2_Mg_MOPnIAS_p10p30_100km_bloc_2008062906 2>& 1
++ W_RUN_INITIAL=false
++ export W_RUN_INITIAL
++ ./advance_time
++ echo 2008062906 +6h
++ W_NEXT_DATE=2008062912
++ export W_NEXT_DATE
++ W_DATE=2008062912
++ export W_DATE
++ [[ 2008062912 -le 2008063018 ]]
++ false
++ [[ 2008062912 -eq 2008062800 ]]
++ W_RUN_WARM=true
++ export W_RUN_WARM
++ W_WARM_FILTER=true
++ export W_WARM_FILTER
++ W_WARM_WRFCHEM=false
++ export W_WARM_WRFCHEM
++ W_WARM_ARCHIVE=false
++ export W_WARM_ARCHIVE
++ ./run_script.ksh
++ 1> Ex2_Mg_MOPnIAS_p10p30_100km_bloc_2008062912 2>& 1
++ W_RUN_INITIAL=false
++ export W_RUN_INITIAL
++ ./advance_time
++ echo 2008062912 +6h
++ W_NEXT_DATE=2008062918
++ export W_NEXT_DATE
++ W_DATE=2008062918
++ export W_DATE
++ [[ 2008062918 -le 2008063018 ]]
++ false
++ [[ 2008062918 -eq 2008062800 ]]
++ W_RUN_WARM=true
++ export W_RUN_WARM
++ W_WARM_FILTER=true
++ export W_WARM_FILTER
++ W_WARM_WRFCHEM=false
++ export W_WARM_WRFCHEM
++ W_WARM_ARCHIVE=false
++ export W_WARM_ARCHIVE
++ ./run_script.ksh
++ 1> Ex2_Mg_MOPnIAS_p10p30_100km_bloc_2008062918 2>& 1
++ W_RUN_INITIAL=false
++ export W_RUN_INITIAL
++ ./advance_time
++ echo 2008062918 +6h
++ W_NEXT_DATE=2008063000
++ export W_NEXT_DATE
++ W_DATE=2008063000
++ export W_DATE
++ [[ 2008063000 -le 2008063018 ]]
++ false
++ [[ 2008063000 -eq 2008062800 ]]
++ W_RUN_WARM=true
++ export W_RUN_WARM
++ W_WARM_FILTER=true
++ export W_WARM_FILTER
++ W_WARM_WRFCHEM=false
++ export W_WARM_WRFCHEM
++ W_WARM_ARCHIVE=false
++ export W_WARM_ARCHIVE
++ ./run_script.ksh
++ 1> Ex2_Mg_MOPnIAS_p10p30_100km_bloc_2008063000 2>& 1
++ W_RUN_INITIAL=false
++ export W_RUN_INITIAL
++ ./advance_time
++ echo 2008063000 +6h
++ W_NEXT_DATE=2008063006
++ export W_NEXT_DATE
++ W_DATE=2008063006
++ export W_DATE
++ [[ 2008063006 -le 2008063018 ]]
++ false
++ [[ 2008063006 -eq 2008062800 ]]
++ W_RUN_WARM=true
++ export W_RUN_WARM
++ W_WARM_FILTER=true
++ export W_WARM_FILTER
++ W_WARM_WRFCHEM=false
++ export W_WARM_WRFCHEM
++ W_WARM_ARCHIVE=false
++ export W_WARM_ARCHIVE
++ ./run_script.ksh
++ 1> Ex2_Mg_MOPnIAS_p10p30_100km_bloc_2008063006 2>& 1
++ W_RUN_INITIAL=false
++ export W_RUN_INITIAL
++ ./advance_time
++ echo 2008063006 +6h
++ W_NEXT_DATE=2008063012
++ export W_NEXT_DATE
++ W_DATE=2008063012
++ export W_DATE
++ [[ 2008063012 -le 2008063018 ]]
++ false
++ [[ 2008063012 -eq 2008062800 ]]
++ W_RUN_WARM=true
++ export W_RUN_WARM
++ W_WARM_FILTER=true
++ export W_WARM_FILTER
++ W_WARM_WRFCHEM=false
++ export W_WARM_WRFCHEM
++ W_WARM_ARCHIVE=false
++ export W_WARM_ARCHIVE
++ ./run_script.ksh
++ 1> Ex2_Mg_MOPnIAS_p10p30_100km_bloc_2008063012 2>& 1
++ W_RUN_INITIAL=false
++ export W_RUN_INITIAL
++ ./advance_time
++ echo 2008063012 +6h
++ W_NEXT_DATE=2008063018
++ export W_NEXT_DATE
++ W_DATE=2008063018
++ export W_DATE
++ [[ 2008063018 -le 2008063018 ]]
++ false
++ [[ 2008063018 -eq 2008062800 ]]
++ W_RUN_WARM=true
++ export W_RUN_WARM
++ W_WARM_FILTER=true
++ export W_WARM_FILTER
++ W_WARM_WRFCHEM=false
++ export W_WARM_WRFCHEM
++ W_WARM_ARCHIVE=false
++ export W_WARM_ARCHIVE
++ ./run_script.ksh
++ 1> Ex2_Mg_MOPnIAS_p10p30_100km_bloc_2008063018 2>& 1
++ W_RUN_INITIAL=false
++ export W_RUN_INITIAL
++ ./advance_time
++ echo 2008063018 +6h
++ W_NEXT_DATE=2008070100
++ export W_NEXT_DATE
++ W_DATE=2008070100
++ export W_DATE
++ [[ 2008070100 -le 2008063018 ]]
++ rm -rf input.nml
++ rm -rf advance_time
++ rm -rf dart_log.out
++ exit

@@ -1,0 +1,14 @@
+&create_ocean_obs_nml
+   year     = 1996, 
+   month    =    1,
+   day      =    1,
+   tot_days =   31,
+   max_num  = 80000,
+   fname    = 'raw_ocean_obs.txt',
+   fname    = 'raw_ocean_obs_seq.out',
+   lon1     =   0.0,
+   lon2     = 360.0,
+   lat1     = -90.0,
+   lat2     =  90.0,
+   hfradar  = .false.   /
+

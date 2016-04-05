@@ -1,0 +1,34 @@
+Doxygen automatic documentation generation.
+
+To create html pages from the DART source:
+
+Copy these 3 files into any model's "work" directory, and run
+'gendocs'.  You must have doxygen installed somewhere on your
+search path.  The 'gendocs' script will generate a single
+index.html page, plus directories of documentation for each
+executable that has an mkmf_xxx and path_names_xxx pair of
+files in the work directory.  All documentation will be
+created and put under $DART/doxygen/model_name.
+
+To use the documentation:
+
+Open the $DART/doxygen/model_name/index.html and click
+on any executable name.
+
+Click on the triangle in front of 'Data Types List' to open the list.
+
+There is a second 'Data Types List'.  Click on that triangle in
+front of the second 'Data Types List' to open the list. You
+should see a list of modules.
+
+If you click on the text 'Data Types List' instead of the triangle,
+you get a different view of all the modules with the defined data
+types listed.
+
+Click on one of the modules.  You will then see the reference page
+for that module, with the public types, functions, subroutines,
+and private types, functions, and subroutines.  
+
+Any text in blue can be clicked on and it will take you to the
+reference page for that type, function or subroutine.
+

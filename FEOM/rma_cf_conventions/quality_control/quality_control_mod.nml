@@ -1,0 +1,5 @@
+&quality_control_nml
+   input_qc_threshold          = 3, 
+   outlier_threshold           = 4,
+   enable_special_outlier_code = .false.
+/

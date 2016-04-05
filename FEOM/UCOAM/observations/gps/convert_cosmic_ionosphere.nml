@@ -1,0 +1,6 @@
+&convert_cosmic_ion_nml
+  obs_levels          = -1.0_r8
+  ion_netcdf_file     = 'cosmic_ion_input.nc'
+  ion_netcdf_filelist = 'cosmic_ion_input_list'
+  ion_out_file        = 'obs_seq.iondens'
+/

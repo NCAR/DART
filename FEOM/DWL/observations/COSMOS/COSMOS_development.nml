@@ -1,0 +1,10 @@
+&COSMOS_development_nml
+   site_metadata_file = 'COSMIC_parlist.nc'
+   text_input_file    = 'textdata.input',
+   obs_out_file       = 'obs_seq.out',
+   sitename           = 'missing',
+   year               = -1,
+   maxgoodqc          =  3,
+   verbose            = .false.
+   /
+

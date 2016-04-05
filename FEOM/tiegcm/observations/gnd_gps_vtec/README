@@ -1,0 +1,11 @@
+This is a modification of a standard "text" converter that comes with DART. 
+
+It reads VTEC text files (which I get from OpenMadrigal at http://madrigal.haystack.mit.edu/)
+and outputs DART obs_seq.out files.
+
+Please examine work/input.nml:&text_to_obs_nml as it specifies the name of the input and the output files
+
+The provided file work/gps021201g.002.txt is only for example 
+(only 2 datapoints are shown) and not for real estimation.
+
+Alexey Morozov alexeymor at google mail 5/22/13

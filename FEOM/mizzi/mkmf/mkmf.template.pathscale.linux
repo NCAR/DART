@@ -1,0 +1,69 @@
+# Template for Pathscale f90 Compiler on a Linux cluster
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+# typical use with mkmf
+# mkmf -t mkmf.template.xxxx ...
+#
+# NETCDF and LIBS needs to be customized for your site
+#
+# FFLAGS   useful for benchmarking
+#   -O0                     no optimization
+#   -Wuninitialized         Warn about unitialized automatic variables
+#   -ffortran-bounds-check  check bounds
+#   -fno-fast-math          Conform to ANSI & IEEE math rules at expense of speed
+#   -fno-fast-stdlib        Do not use faster versions of std library functions
+#   -fullwarn               more warnings, especially about missing prototypes
+#
+# FFLAGS   useful for speed
+#    -O                      'same as -O2'
+#    -O3                     'full optimization'
+#    -Ofast                  'default fast option configuration'
+#
+# IF YOU HAVE MORE CURRENT COMPILER INFORMATION, PLEASE SHARE IT WITH US.
+
+#----------------------------------------------------------------------
+
+MPIFC = mpif90
+MPILD = mpif90
+FC = pathf90
+LD = pathf90
+
+# DISCUSSION ABOUT NETCDF. DART works with both V3 and V4 flavors of netCDF.
+# Some V4 installations also require the HDF5 libraries. Some don't.
+# Some netCDF installations require both -lnetcdff and -lnetcdf, some only
+# require -lnetcdf. The permutations make it difficult to cover the possible
+# installations. Here are some candidates, you might just have to resort to
+# trial and error:
+# LIBS = -L$(NETCDF)/lib -lnetcdf
+# LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
+# LIBS = -L$(NETCDF)/lib -lnetcdf           -lcurl -lhdf5_hl -lhdf5 -lz -lm
+# LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -lcurl -lhdf5_hl -lhdf5 -lz -lm
+#
+# If you get an error "ld: library not found for -lnetcdff" (note 2 f's),
+# remove it from the LIBS line. The same is true for any library. If 'ld'
+# does not complain - it worked.
+
+# If your NETCDF environment variable is not set correctly,
+# uncomment the following line and set value to where lib and include
+# are found for the netcdf files that match this compiler.
+#
+# NETCDF = /opt/local
+
+INCS = -I$(NETCDF)/include
+LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
+FFLAGS  = -O $(INCS)
+LDFLAGS = $(FFLAGS) $(LIBS)
+
+# for development/debugging, use these flags instead:
+#FFLAGS = -Wuninitialized -ffortran-bounds-check -fullwarn -g -I$(NETCDF)/include
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

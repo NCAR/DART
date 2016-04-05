@@ -1,0 +1,3 @@
+&gcom_to_dart_nml
+   gcom_to_dart_output_file = 'dart_ics'  /
+

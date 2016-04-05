@@ -1,0 +1,23 @@
+&model_nml
+   analysis_time                = '2001010106',
+   output_state_vector          = .true.,
+   assimilation_period_days     = 7,
+   assimilation_period_seconds  = 0,
+   model_perturbation_amplitude = 0.2,
+   NX                     = 43,  !grid size at rho points
+   NY                    = 82,
+   NZ                      = 16,
+   hc                     = 10.0,
+   model_restart_filename         = 'roms_restart.nc',
+   grid_definition_filename = 'roms_grid.nc'
+   /
+
+&roms_vars_nml
+   roms_state_variables = 'temperature',  'KIND_TEMPERATURE',
+                          'salinity',     'KIND_SALINITY',
+                          'rho',          'KIND_DENSITY',
+                          'u',            'KIND_EDGE_NORMAL_SPEED',
+                          'h',            'KIND_SEA_SURFACE_HEIGHT',
+                          'tracer1',      'KIND_TRACER_CONCENTRATION'
+   /
+

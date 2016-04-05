@@ -1,0 +1,6 @@
+&obs_impact_tool_nml
+  input_filename         = 'cross_correlations.txt'
+  output_filename        = 'control_impact_runtime.txt'
+  allow_any_factor_value = .false.
+  debug                  = .true.
+  /

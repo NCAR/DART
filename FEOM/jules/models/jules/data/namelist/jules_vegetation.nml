@@ -1,0 +1,16 @@
+&jules_vegetation
+can_model=3,
+can_rad_mod=4,
+ilayers=10,
+l_bvoc_emis=.false.,
+l_gleaf_fix=.false.,
+l_ht_compete=.false.,
+l_irrig_dmd=.false.,
+l_landuse=.false.,
+l_o3_damage=.false.,
+l_phenol=.false.,
+l_q10=.true.,
+l_stem_resp_fix=.false.,
+l_trait_phys=.false.,
+l_triffid=.false.,
+/

@@ -1,0 +1,143 @@
+netcdf wrfinput {
+dimensions:
+	Time = 1 ;
+	south_north = 1 ;
+	west_east = 1 ;
+variables:
+	float IVGTYP(Time, south_north, west_east) ;
+		IVGTYP:FieldType = 106 ;
+		IVGTYP:MemoryOrder = "XY" ;
+		IVGTYP:description = "DOMINANT VEGETATION CATEGORY" ;
+		IVGTYP:units = "" ;
+		IVGTYP:stagger = "" ;
+		IVGTYP:coordinates = "XLONG XLAT" ;
+		IVGTYP:_FillValue = -999. ;
+	float ISLTYP(Time, south_north, west_east) ;
+		ISLTYP:FieldType = 106 ;
+		ISLTYP:MemoryOrder = "XY" ;
+		ISLTYP:description = "DOMINANT SOIL CATEGORY" ;
+		ISLTYP:units = "" ;
+		ISLTYP:stagger = "" ;
+		ISLTYP:coordinates = "XLONG XLAT" ;
+		ISLTYP:_FillValue = -999. ;
+	float HGT(Time, south_north, west_east) ;
+		HGT:FieldType = 104 ;
+		HGT:MemoryOrder = "XY" ;
+		HGT:description = "Terrain Height" ;
+		HGT:units = "m" ;
+		HGT:stagger = "" ;
+		HGT:coordinates = "XLONG XLAT" ;
+		HGT:_FillValue = -999. ;
+	float XLAT(Time, south_north, west_east) ;
+		XLAT:coordinates = "XLONG XLAT" ;
+		XLAT:FieldType = 104 ;
+		XLAT:MemoryOrder = "XY" ;
+		XLAT:description = "LATITUDE, SOUTH IS NEGATIVE" ;
+		XLAT:units = "degree_north" ;
+		XLAT:stagger = "" ;
+		XLAT:_FillValue = -999. ;
+	float XLONG(Time, south_north, west_east) ;
+		XLONG:coordinates = "XLONG XLAT" ;
+		XLONG:FieldType = 104 ;
+		XLONG:MemoryOrder = "XY" ;
+		XLONG:description = "LONGITUDE, WEST IS NEGATIVE" ;
+		XLONG:units = "degree_east" ;
+		XLONG:stagger = "" ;
+		XLONG:_FillValue = -999. ;
+	float TMN(Time, south_north, west_east) ;
+		TMN:FieldType = 104 ;
+		TMN:MemoryOrder = "XY" ;
+		TMN:description = "SOIL TEMPERATURE AT LOWER BOUNDARY" ;
+		TMN:units = "K" ;
+		TMN:stagger = "" ;
+		TMN:coordinates = "XLONG XLAT" ;
+		TMN:_FillValue = -999. ;
+
+// global attributes:
+		:TITLE = " OUTPUT FROM REAL_EM V3.1.1 PREPROCESSOR" ;
+		:START_DATE = "1901-01-01_00:00:00" ;
+		:SIMULATION_START_DATE = "1901-01-01_00:00:00" ;
+		:WEST-EAST_GRID_DIMENSION = 1 ;
+		:SOUTH-NORTH_GRID_DIMENSION = 1 ;
+		:BOTTOM-TOP_GRID_DIMENSION = 1 ;
+		:DX = 1000. ;
+		:DY = 1000. ;
+		:GRIDTYPE = "C" ;
+		:DIFF_OPT = 1 ;
+		:KM_OPT = 4 ;
+		:DAMP_OPT = 0 ;
+		:DAMPCOEF = 0.2 ;
+		:KHDIF = 0. ;
+		:KVDIF = 0. ;
+		:MP_PHYSICS = 3 ;
+		:RA_LW_PHYSICS = 1 ;
+		:RA_SW_PHYSICS = 1 ;
+		:SF_SFCLAY_PHYSICS = 1 ;
+		:SF_SURFACE_PHYSICS = 2 ;
+		:BL_PBL_PHYSICS = 1 ;
+		:CU_PHYSICS = 1 ;
+		:SURFACE_INPUT_SOURCE = 1 ;
+		:SST_UPDATE = 0 ;
+		:GRID_FDDA = 0 ;
+		:GFDDA_INTERVAL_M = 0 ;
+		:GFDDA_END_H = 0 ;
+		:GRID_SFDDA = 0 ;
+		:SGFDDA_INTERVAL_M = 0 ;
+		:SGFDDA_END_H = 0 ;
+		:WEST-EAST_PATCH_START_UNSTAG = 1 ;
+		:WEST-EAST_PATCH_END_UNSTAG = 1 ;
+		:WEST-EAST_PATCH_START_STAG = 1 ;
+		:WEST-EAST_PATCH_END_STAG = 1 ;
+		:SOUTH-NORTH_PATCH_START_UNSTAG = 1 ;
+		:SOUTH-NORTH_PATCH_END_UNSTAG = 1 ;
+		:SOUTH-NORTH_PATCH_START_STAG = 1 ;
+		:SOUTH-NORTH_PATCH_END_STAG = 1 ;
+		:BOTTOM-TOP_PATCH_START_UNSTAG = 1 ;
+		:BOTTOM-TOP_PATCH_END_UNSTAG = 27 ;
+		:BOTTOM-TOP_PATCH_START_STAG = 1 ;
+		:BOTTOM-TOP_PATCH_END_STAG = 1 ;
+		:GRID_ID = 1 ;
+		:PARENT_ID = 0 ;
+		:I_PARENT_START = 1 ;
+		:J_PARENT_START = 1 ;
+		:PARENT_GRID_RATIO = 1 ;
+		:DT = 180.f ;
+		:CEN_LAT = 31.9085 ;
+		:CEN_LON = -110.8394 ;
+		:TRUELAT1 = 31. ;
+		:TRUELAT2 = 31. ;
+		:MOAD_CEN_LAT = 31.9085 ;
+		:STAND_LON = -110.8394 ;
+		:POLE_LAT = 90. ;
+		:POLE_LON = 0. ;
+		:GMT = 0. ;
+		:JULYR = 1901 ;
+		:JULDAY = 1 ;
+		:MAP_PROJ = 1 ;
+		:MMINLU = "MODIFIED_IGBP_MODIS_NOAH" ;
+		:NUM_LAND_CAT = 20 ;
+		:ISWATER = 17 ;
+		:ISLAKE = -1 ;
+		:ISICE = 15 ;
+		:ISURBAN = 13 ;
+		:ISOILWATER = 14 ;
+data:
+
+ IVGTYP =
+  7 ;
+
+ ISLTYP =
+  3 ;
+
+ HGT =
+  989.0 ;
+
+ XLAT =
+  31.9085 ;
+
+ XLONG =
+  -110.8394 ;
+
+ TMN =
+  292.8018 ;
+}

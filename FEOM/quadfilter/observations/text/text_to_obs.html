@@ -1,0 +1,196 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program text_to_obs</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>text_to_obs</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#DataSources">DATA SOURCES</A> /
+<A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#Decisions">DECISIONS</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> / 
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H1>Overview</H1>
+
+<H4>Text File to DART Converter</H4>
+
+<P>
+If you have observations in spreadsheet or column format, in text, 
+with a single line per observation, then the files this directory
+are a template for how to convert these observations
+into a format suitable for DART use.
+</P>
+<P>
+The workflow is usually: 
+</P>
+<ul>
+<li>read in the needed information about each
+observation - location, time, data value, observation type - from 
+a data source (usually a file)</li>
+<li>call a series of DART library routines to construct a derived type that
+contains all the information about a single observation</li>
+<li>call another set of DART library
+routines to put it into a time-sorted series</li>
+<li>repeat the last 2 steps until all observations are processed</li>
+<li>finally, call a write subroutine that writes out the entire series to a file in 
+a format that DART can read in</li>
+</ul>
+<P>
+It is not recommended that you try to mimic the ascii file format
+by other means; the format is subject to change and the library routines
+will continue to be supported even if the physical format changes.
+</P>
+<P>
+If your input data is in some kind of format like netCDF or HDF,
+then one of the other converters (e.g. the MADIS ones for netCDF) might
+be a better starting place for adapting code.
+</P>
+
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<HR />
+<H2>DATA SOURCES</H2>
+
+<P>
+This part is up to you.  
+For each observation you will need a location, a data value,
+a type, a time, and some kind of error estimate.  The error 
+estimate can be hardcoded in the converter if they are not 
+available in the input data.  See below for more details on 
+selecting an appropriate error value.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<HR />
+<H2>PROGRAMS</H2>
+<P>
+The <em class=file>text_to_obs.f90</em> file is the source
+for the main converter program.
+Look at the source code where it reads the example data file.  You will
+almost certainly need to change the "read" statement to match your data
+format.  The example code 
+reads each text line into a character buffer
+and then reads from that buffer to parse up the data items.
+</P> <P>
+To compile and test,
+go into the work subdirectory and run the <em class=file>quickbuild.csh</em>
+script to build the converter and a couple of general purpose utilities.
+<em class=file>advance_time</em> helps with calendar and time computations,
+and the
+<em class=file>obs_sequence_tool</em> manipulates DART observation files
+once they have been created.
+</P>
+<P>
+To change the observation types, look in the 
+<em class=file>DART/obs_def</em> directory.  If you can
+find an obs_def_XXX_mod.f90 file with an appropriate set
+of observation types, change the 'use' lines in the converter
+source to include those types.  Then add that filename in the 
+<em class=file>input.nml</em> namelist file
+to the &amp;preprocess_nml namelist, the 'input_files' variable.
+Multiple files can be listed.  Then run quickbuild.csh again.
+It remakes the table of supported observation types before 
+trying to recompile the source code.
+</P>
+<P>
+An example script for converting batches of files is
+in the <em class=file>shell_scripts</em> directory. A tiny example
+data file is in the <em class=file>data</em> directory.
+These are <em>NOT</em> intended to be turnkey scripts; they will
+certainly need to be customized for your use.  There are comments
+at the top of the script saying what options they include, and
+should be commented enough to indicate where changes will be
+likely to need to be made.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Decisions"></A>
+<HR />
+<H2>DECISIONS YOU MIGHT NEED TO MAKE</H2>
+
+<P>
+See the discussion in the
+<a href="../observations.html#Decisions">observations introduction</a> 
+page about what options are available for the things you need to
+specify.  These include setting a time, specifying an expected error,
+setting a location, and an observation type.
+</P>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<HR />
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<HR />
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> nancy collins </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

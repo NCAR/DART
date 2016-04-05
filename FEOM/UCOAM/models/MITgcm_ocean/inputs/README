@@ -1,0 +1,72 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+The MITgcm_ocean model needs a bunch of input files.
+Peruse the namelists in the 'data*' files and make sure that 
+all the files mentioned live in the 'MITgcm_ocean/inputs' directory.
+
+To allow DART to control the model advances, a couple things have to be
+coordinated.
+
+#1 - data: &PARM03 : startTime = 0
+     DART:advance_model.csh reformats its state vector (trans_sv_pv) and 
+     renames the files to be those declared by the variables in &PARM05.
+
+#2 - data: &PARM03 : endTime = xxxx
+     This is fundamentally the assimilation period. The model stops
+     after xxxx seconds. DART reads the &PARM03 namelist and uses
+     'endTime' as the 'model_time_step'. Given the time from the DART
+     initial conditions (or input.nml:filter_nml:init_time_[days,seconds])
+     the model may be advanced in 'steps' of 'endTime'. Observations 
+     within +/- half of 'endTime' (centered at the current time) are 
+     assimilated.
+
+#3 - The ocean code was compiled as a parallel executable to use 20 MPI tasks.
+     in SIZE.h ... the nprocs for the latitudes was 5 (we needed 225 lats)
+     and 4 for the longitudes (we needed 256). There are some magic '20's 
+     floating around and ONLY ASYNC == 4 WAS TESTED. At present,
+     async = 2 is guaranteed not to work without modifications to the 
+     job.simple.csh and advance_model.csh scripts.
+
+     Because the code and datasets were configured to run for the Gulf of Mexico
+     (we had to start somewhere) the following boundary conditions,
+     forcing, and namelist files are needed to advance the model - with or 
+     without DART. Some of them are pretty big and consequently are not part
+     of the DART code tree. Contact Tim Hoar thoar 'at' ucar . edu to get
+     the rest of the input datasets.
+
+     data
+     data.cal
+     data.exf
+     data.kpp
+     data.obcs
+     data.pkg
+     eedata
+     ncep_air_19960101.bin
+     ncep_dlwrf_19960101.bin
+     ncep_dswrf_19960101.bin
+     ncep_nswrs_19960101.bin
+     ncep_prate_19960101.bin
+     ncep_shum_19960101.bin
+     ncep_uwnd_19960101.bin
+     ncep_vwnd_19960101.bin
+     bathymetry.bin
+     gom_H_199601.bin
+     gom_S_199601.bin
+     gom_T_199601.bin
+     gom_U_199601.bin
+     gom_V_199601.bin
+     run-off.bin_1x1
+     lev05_monthly_sss_relax.bin
+     lev05_monthly_sst_relax.bin
+     Rs_SobcsE_52_01_nPx1.bin
+     Rs_SobcsN_52_01_nPy1.bin
+     Rs_TobcsE_52_01_nPx1.bin
+     Rs_TobcsN_52_01_nPy1.bin
+     Rs_UobcsE_52_01_nPx1_c1.bin
+     Rs_UobcsN_52_01_nPy1.bin
+     Rs_VobcsE_52_01_nPx1.bin
+     Rs_VobcsN_52_01_nPy1_c1.bin

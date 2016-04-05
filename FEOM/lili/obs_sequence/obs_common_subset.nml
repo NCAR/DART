@@ -1,0 +1,11 @@
+&obs_common_subset_nml
+ filename_seq1       = '',
+ filename_seq_list1  = '',
+ filename_seq2       = '',
+ filename_seq_list2  = '',
+ filename_out_suffix = '.common' ,
+ print_only          = .false.,
+ calendar            = 'Gregorian',
+/
+
+

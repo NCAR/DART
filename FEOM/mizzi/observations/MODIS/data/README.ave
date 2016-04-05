@@ -1,0 +1,5 @@
+This directory was derived from text directory. 
+I modified this directory to read MODIS data from
+a MATLAB code I wrote (reading HDF to ascii).
+Some of the text/comments may still be coming
+from original text files

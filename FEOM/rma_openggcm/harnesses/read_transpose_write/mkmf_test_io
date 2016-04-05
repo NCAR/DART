@@ -1,0 +1,6 @@
+DART_DIR=/glade/p/work/hendric/DART/johnny_rma_trunk
+wrapper_arg="-w"
+
+$DART_DIR/mkmf/mkmf -p test_io -t mkmf.template   \
+        -a "$DART_DIR" -w path_names_test
+

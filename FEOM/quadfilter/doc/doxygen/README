@@ -1,0 +1,48 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+Doxygen automatic documentation generation.
+
+To create html pages from the DART source:
+
+- You must have doxygen installed somewhere on your search path.  
+  From a terminal window type 'which doxygen'.  For Linux systems
+  in many cases this is already installed.  For Macs try one of
+  the package managers like 'macports'.  The GUI download .dmg
+  file will install a GUI interface but apparently not the command
+  line version we need.  If 'which doxygen' gives you an error and
+  you believe it is already installed you may need to add the directory
+  where the binary was installed to your PATH environment variable.  
+
+- Copy the 3 files in this directory into any model's 'work' directory,
+  cd into that directory and run the './gendocs' shell script.  It will 
+  generate a single index.html main page plus separate documentation pages 
+  for each executable that has a mkmf_xxx and path_names_xxx pair of files 
+  in the work directory.  All documentation will be created and put under 
+  $DART/doc/doxygen/model_name.
+
+To use the documentation:
+
+- Open $DART/doc/doxygen/model_name/index.html in a browser and click
+  on any executable name.
+
+- Click on the triangle in front of 'Data Types List' to open the list.
+
+- There is a second 'Data Types List'.  Click on that triangle in
+  front of the second 'Data Types List' to open the list. You
+  should see a list of modules.
+
+- If you click on the text 'Data Types List' instead of the triangle,
+  you get a different view of all the modules with the defined data
+  types listed.
+
+- Click on one of the modules.  You will then see the reference page
+  for that module, with the public types, functions, subroutines,
+  and private types, functions, and subroutines.  
+
+- Any text in blue can be clicked on and it will take you to the
+  reference page for that type, function or subroutine.
+

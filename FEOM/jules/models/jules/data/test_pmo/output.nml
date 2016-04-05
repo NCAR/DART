@@ -1,0 +1,16 @@
+&jules_output
+nprofiles=1,
+output_dir='./',
+run_id='np',
+/
+&jules_output_profile
+file_period=0,
+nvars=6,
+output_main_run=.true.,
+output_period=3600,
+output_spinup=.false.,
+output_type=6*'S',
+profile_name='hour',
+var='precip','latent_heat','smcl','soil_wet','esoil','tstar_gb',
+var_name='precip','latent_heat','smcl','soil_wet','esoil','tstar_gb',
+/

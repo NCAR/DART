@@ -1,0 +1,21 @@
+#!/bin/sh
+
+# create the &obs_kind_nml list for "assimilate_these_obs_types"
+
+# usage: $0 list_of_obs_types_one_per_line
+
+if [[ $# -lt 1 ]]; then
+   echo usage: $0 list_of_obs_types
+   exit -1
+fi
+
+# todo check for 
+typelist=$1
+outfile=${typelist}_obskind.nml
+
+awk -f make_assim_list.awk $typelist > $outfile
+
+echo created "$outfile"
+echo add this section to your \&obs_kind_nml in input.nml
+exit 0
+

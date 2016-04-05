@@ -1,0 +1,50 @@
+# DART $Id$
+
+Using Nested Grids in COAMPS/DART
+=================================
+
+The original COAMPS/DART framework supported only a single nest.  Since
+future work will involve nested grids, I am adding support for COAMPS nests.
+
+There are several challenges using nested grids that do not occur in the 
+single-grid case:
+1.  Forward operator computation
+    Which grid to use?  The consensus seems to be that given a lat/lon/height
+    of an observation, the forward operator should be computed using the 
+    highest resolution nest available.
+
+2.  Restart file conversion
+    Unlike many of the COAMPS flat files, the datahd file and restart file
+    contain all the nests.  This means that now, we need to compute the
+    total amount of space required by each nest so we can seek within the 
+    restart file to the beginning of the nest record.
+
+3.  Lat/lon <-> gridpoint conversion
+    The COAMPS builtin ll2ij/ij2ll functions compute the correspondence 
+    between the globe and the grid, but only the coarse grid - this means
+    that we need a reliable method to convert between child and parent
+    grid points
+
+New Domain Data Structure
+-------------------------
+Previous versions of the DART/COAMPS framework used a single "coamps_grid"
+data structure to store information relevant to the coarse domain.  In the 
+new version, this is replaced by a "coamps_domain" structure, which consists
+of two parts - static grid data (the new "coamps_grid") which includes almost
+all the parameters linking the COAMPS mesh to a lat/lon grid and nest data
+(the new "coamps_nest") containing data specific to the nest itself.  
+
+The coamps_nest structure includes the grid spacing in x and y, the number
+of points in x and y, and the anchor point within the parent nest.  For ease
+of computation, each nest also stores a pointer to its parent nest and to all
+of its child nests.  This will make recursing down the grid much easier.
+
+There is some parent/child information stored in the datahd file, but it is
+broken up by nest *level*, not by specific nests - this means that there can
+be two 3km nests embedded within two separate 9km nests, but they will still
+show up as children of both.
+
+Since we can't use the datahd parent/child nest data directly, we need to
+set up a registration procedure - when each nest is read in, it will register
+itself with its parent nest so the parent nest contains pointers to only those
+nests that are within its boundaries.

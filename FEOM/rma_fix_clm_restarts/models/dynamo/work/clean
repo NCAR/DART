@@ -1,0 +1,2 @@
+
+rm -fr assim_model_state_* advance_temp* inrestart.dat* obsval.dat.* filter_control*

@@ -1,0 +1,1193 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module utilities_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE utilities_mod</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+Provides a number of tools used by most DART modules including tools for
+file IO, diagnostic tools for registering modules and recording namelist
+arguments, and an error handler.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;utilities_nml
+   TERMLEVEL      = 1,
+   logfilename    = 'dart_log.out',
+   nmlfilename    = 'dart_log.nml',
+   module_details = .true.,
+   print_debug    = .false.,
+   write_nml      = 'file'
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+<P>
+The namelist controls how the logging, namelist, messages, and general
+utility routines behave.
+</P>
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD>TERMLEVEL</TD>
+    <TD>integer</TD>
+    <TD>Level at which calls to error manager terminate program.  The default
+setting is warnings and errors terminate the program. Setting this to 2
+(E_ERR) means only errors terminate.  Setting this to 3 means even errors do
+not cause an exit (which is not a good idea).
+/TD></TR>
+
+<TR><TD>logfilename</TD>
+    <TD>character(len=129)</TD>
+    <TD>File to which the log messages are written. 
+</TD></TR>
+
+<TR><TD>nmlfilename</TD>
+    <TD>character(len=129)</TD>
+    <TD>File to which the namelist output is written.  Can be the same name as
+the logfile.
+</TD></TR>
+
+<TR><TD>module_details</TD>
+    <TD>logical</TD>
+    <TD>Each source code module can write out the repository version number and
+filename to the logfile.  Verbose, but useful for knowing what version of the
+code was used during the run.
+</TD></TR>
+
+<TR><TD>print_debug</TD>
+    <TD>logical</TD>
+    <TD>Setting this to .true. causes additional debug messages to print. These
+can be very verbose and by default are turned off.
+</TD></TR>
+
+<TR><TD>write_nml</TD>
+    <TD>character(len=32)</TD>
+    <TD>String which controls where to write the namelist values that
+are being used for this execution. 
+Valid values are:  'none', 'file', 'terminal', 'both'.  'none' turns
+off this write.  'file' writes a copy only to the <em class=code>nmlfilename</em>.
+Writes are always in append mode, so the most recent information will be
+at the end of an existing file.  'terminal' will write to the job's standard
+output.  'both' will write both to the nml file and the standard output unit.
+</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+
+<!--==================================================================-->
+
+<A NAME="OtherModulesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+types_mod
+netCDF
+</PRE>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC INTERFACES</H2>
+
+<TABLE>
+<TR><TD><em class=call>use utilities, only : </em></TD>
+                   <TD><A HREF="#file_exist">file_exist</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_unit">get_unit</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#open_file">open_file</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#close_file">close_file</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#timestamp">timestamp</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#register_module">register_module</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#error_handler">error_handler</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#to_upper">to_upper</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_check">nc_check</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#logfileunit">logfileunit</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nmlfileunit">nmlfileunit</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#initialize_utilities">initialize_utilities</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#finalize_utilities">finalize_utilities</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#dump_unit_attributes">dump_unit_attributes</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#find_namelist_in_file">find_namelist_in_file</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#check_namelist_read">check_namelist_read</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#find_textfile_dims">find_textfile_dims</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#file_to_text">file_to_text</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#is_longitude_between">is_longitude_between</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_next_filename">get_next_filename</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_filename_list">set_filename_list</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_tasknum">set_tasknum</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_output">set_output</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#do_output">do_output</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_DBG, DEBUG</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_MSG, MESSAGE</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_WARN, WARNING</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ERROR_LEVELS">E_ERR, FATAL</A></TD></TR>
+</TABLE>
+
+<P>
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
+   <em class=optionalcode>[like this]</em>.
+</P>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="file_exist"></A>
+<br>
+<div class=routine>
+<em class=call> var = file_exist(file_name) </em>
+<pre>
+logical                      :: <em class=code>file_exist</em>
+character(len=*), intent(in) :: <em class=code>file_name</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns true if file_name exists in the working directory, else false. 
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>True if file_name exists in working directory.</TD></TR>
+<TR><TD valign=top><em class=code>file_name&nbsp;&nbsp;</em></TD>
+    <TD>Name of file to look for.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_unit"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_unit() </em>
+<pre>
+integer :: <em class=code>get_unit</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns an unused unit number for IO. 
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>An unused unit number.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="open_file"></A>
+<br>
+<div class=routine>
+<em class=call> var = open_file(fname <em class=optionalcode>[, form, action]</em>) </em>
+<pre>
+integer                                :: <em class=code>open_file</em>
+character(len=*), intent(in)           :: <em class=code>fname</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>form</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>action</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns a unit number that is opened to the file fname. If form is not
+present or if form is "formatted" or "FORMATTED", file is opened for
+formatted IO. Otherwise, it is unformatted. The action string is the
+standard action string for Fortran IO (see F90 language description).
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Unit number opened to file fname.</TD></TR>
+<TR><TD valign=top><em class=code>fname&nbsp;&nbsp;</em></TD>
+    <TD>Name of file to be opened.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>form&nbsp;&nbsp;</em></TD>
+    <TD>Format: 'formatted' or 'FORMATTED' give formatted, anything else 
+       is unformatted. Default is formatted.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>action&nbsp;&nbsp;</em></TD>
+    <TD>Standard fortran string description of requested file open action.</TD>
+</TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="timestamp"></A>
+<br>
+<div class=routine>
+<em class=call> call timestamp(<em class=optionalcode>[string1, string2, string3,] &nbsp;</em>pos) </em>
+<pre>
+character(len=*), optional, intent(in) :: <em class=optionalcode>string1</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>string2</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>string3</em>
+character(len=*), intent(in)           :: <em class=code>pos</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Prints the message 'Time is YYYY MM DD HH MM SS' to the logfile
+along with three optional message strings. If the pos argument is
+'end', the message printed is 'Finished... at YYYY MM DD HH MM SS'
+and the logfile is closed.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=optionalcode>string1&nbsp;&nbsp;</em></TD>
+    <TD>An optional message to be printed.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>string2&nbsp;&nbsp;</em></TD>
+    <TD>An optional message to be printed.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>string3&nbsp;&nbsp;</em></TD>
+    <TD>An optional message to be printed.</TD></TR>
+<TR><TD valign=top><em class=code>pos&nbsp;&nbsp;</em></TD>
+    <TD>If 'end' terminates log_file output.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="close_file"></A>
+<br>
+<div class=routine>
+<em class=call> call close_file(iunit) </em>
+<pre>
+integer, intent(in) :: <em class=code>iunit</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Closes the given unit number. If the unit is not open, nothing happens. 
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>iunit&nbsp;&nbsp;</em></TD>
+    <TD>File unit to be closed.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="register_module"></A>
+<br>
+<div class=routine>
+<em class=call> call register_module(src, rev, rdate) </em>
+<pre>
+character(len=*), intent(in) :: <em class=code>src</em>
+character(len=*), intent(in) :: <em class=code>rev</em>
+character(len=*), intent(in) :: <em class=code>rdate</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Writes the source name, revision number and revision date to both
+the logfileunit and to standard out. All dart modules are supposed
+to register when first called.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>src&nbsp;&nbsp;</em></TD>
+    <TD>source file name.</TD></TR>
+<TR><TD valign=top><em class=code>rev&nbsp;&nbsp;</em></TD>
+    <TD>Revision number of source.</TD></TR>
+<TR><TD valign=top><em class=code>rdate&nbsp;&nbsp;</em></TD>
+    <TD>Date of revision.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="error_handler"></A>
+<br>
+<div class=routine>
+<em class=call> call error_handler(level, routine, text, src, rev, rdate 
+              <em class=optionalcode>[, aut, text2, text3]</em>) </em>
+<pre>
+integer, intent(in)                    :: <em class=code>level</em>
+character(len=*), intent(in)           :: <em class=code>routine</em>
+character(len=*), intent(in)           :: <em class=code>text</em>
+character(len=*), intent(in)           :: <em class=code>src</em>
+character(len=*), intent(in)           :: <em class=code>rev</em>
+character(len=*), intent(in)           :: <em class=code>rdate</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>aut</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>text2</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>text3</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Prints an error message to standard out and to the logfileunit. The
+message contains the routine name, an error message, the source
+file, revision and revision date, and optionally the author. The level
+of severity is message, debug, warning, or error. If the level is
+greater than or equal to the TERMLEVEL (set in the namelist), execution
+is terminated. The default TERMLEVEL only stops for ERRORS.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>level&nbsp;&nbsp;</em></TD>
+    <TD>Error severity (message, debug, warning, error). See below for specific
+ations.</TD></TR>
+<TR><TD valign=top><em class=code>routine&nbsp;&nbsp;</em></TD>
+    <TD>Name of routine generating error.</TD></TR>
+<TR><TD valign=top><em class=code>text&nbsp;&nbsp;</em></TD>
+    <TD>Error message.</TD></TR>
+<TR><TD valign=top><em class=code>src&nbsp;&nbsp;</em></TD>
+    <TD>Source file containing routine generating message.</TD></TR>
+<TR><TD valign=top><em class=code>rev&nbsp;&nbsp;</em></TD>
+    <TD>Revision number of source file.</TD></TR>
+<TR><TD valign=top><em class=code>rdate&nbsp;&nbsp;</em></TD>
+    <TD>Revision date of source file.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>aut&nbsp;&nbsp;</em></TD>
+    <TD>Author of routine.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>text2&nbsp;&nbsp;</em></TD>
+    <TD>If specified, the second line of text for the error message.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>text3&nbsp;&nbsp;</em></TD>
+    <TD>If specified, the third line of text for the error message.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="find_namelist_in_file"></A>
+<br>
+<div class=routine>
+<em class=call> call find_namelist_in_file(namelist_file_name, nml_name, 
+     iunit, <em class=optionalcode>[,write_to_logfile_in]</em>) </em>
+<pre>
+character(len=*),  intent(in)          :: <em class=code>namelist_file_name</em>
+character(len=*),  intent(in)          :: <em class=code>nml_name</em>
+integer,           intent(out)         :: <em class=code>iunit</em>
+logical, optional, intent(in)          :: <em class=optionalcode>write_to_logfile_in</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+  Opens the file namelist_file_name if it exists on unit iunit. A fatal error occurs
+  if the file does not exist (DART requires an input.nml to be available, even if it
+  contains no values). Searches through the file for a line containing ONLY the 
+  string &amp;nml_name (for instance &amp;filter_nml if nml_name is "filter_nml"). If
+  this line is found, the file is rewound and the routine returns. Otherwise,
+  a fatal error message is issued.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>namelist&nbsp;&nbsp;</em></TD>
+    <TD>Name of file assumed to hold the namelist. </TD></TR>
+<TR><TD valign=top><em class=code>nml_name&nbsp;&nbsp;</em></TD>
+    <TD>Name of the namelist to be searched for in the file, for
+        instance, filter_nml.</TD></TR>
+<TR><TD valign=top><em class=code>iunit&nbsp;&nbsp;</em></TD>
+    <TD>Channel number on which file is opened.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>write_to_logfile_in&nbsp;&nbsp;</em></TD>
+    <TD>When the namelist for the utilities module is read, the logfile has not
+        yet been open because its name is in the namelist. If errors are found,
+        have to write to standard out. So, when utilities module calls this
+        internally, this optional argument is set to false. For all other
+        applications, it is normally not used (default is false).</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="check_namelist_read"></A>
+<br>
+<div class=routine>
+<em class=call> call check_namelist_read(iunit, iostat_in, nml_name,
+              <em class=optionalcode>[, write_to_logfile_in]</em>) </em>
+<pre>
+integer, intent(in)                    :: <em class=code>iunit</em>
+integer, intent(in)                    :: <em class=code>iostat_in</em>
+character(len=*), intent(in)           :: <em class=code>nml_name</em>
+logical, optional, intent(in)          :: <em class=optionalcode>write_to_logfile_in</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+ Once a namelist has been read from an opened namelist file, this routine checks 
+ for possible errors in the read. If the namelist read was successful, the file
+ opened on iunit is closed and the routine returns. If iostat is not zero, an 
+ attempt is made to rewind the file on iunit and read the last line that was
+ successfully read. If this can be done, this last line is printed with the
+ preamble "INVALID NAMELIST ENTRY". If the attempt to read the line after rewinding
+ fails, it is assumed that the original read (before the call to this subroutine)
+ failed by reaching the end of the file. An error message stating that the namelist
+ started but was never terminated is issued.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>iunit&nbsp;&nbsp;</em></TD>
+    <TD>Channel number on which file is opened.</TD></TR>
+<TR><TD valign=top><em class=code>iostat_in&nbsp;&nbsp;</em></TD>
+    <TD>Error status return from an attempted read of a namelist from
+        this file.</TD></TR>
+<TR><TD valign=top><em class=code>nml_name&nbsp;&nbsp;</em></TD>
+    <TD>The name of the namelist that is being read (for instance 
+        filter_nml).</TD></TR>
+<TR><TD valign=top><em class=optionalcode>write_to_logfile_in&nbsp;&nbsp;</em></TD>
+    <TD>When the namelist for the utilities module is read, the logfile has not
+        yet been open because its name is in the namelist. If errors are found,
+        have to write to standard out. So, when utilities module calls this
+        internally, this optional argument is set to false. For all other
+        applications, it is normally not used (default is false).</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="find_textfile_dims"></A>
+<br>
+<div class=routine>
+<em class=call> call find_textfile_dims (fname, nlines, linelen)</em>
+<pre>
+character(len=*), intent (IN)  :: <em class=code>fname</em>
+integer,          intent (OUT) :: <em class=code>nlines</em>
+integer,          intent (OUT) :: <em class=code>linelen</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+ Determines the number of lines and maximum line length of an
+ ASCII text file.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>fname</em></TD>
+    <TD>input, character string file name</TD></TR>
+<TR><TD valign=top><em class=code>nlines</em></TD>
+    <TD>output, number of lines in the file</TD></TR>
+<TR><TD valign=top><em class=code>linelen</em></TD>
+    <TD>output, length of longest line in the file</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="file_to_text"></A>
+<br>
+<div class=routine>
+<em class=call> call file_to_text (fname, textblock)</em>
+<pre>
+character(len=*),               intent (IN)  :: <em class=code>fname</em>
+character(len=*), dimension(:), intent (OUT) :: <em class=code>textblock</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+ Opens the given filename and reads ASCII text lines into a
+ character array.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>fname</em></TD>
+    <TD>input, character string file name</TD></TR>
+<TR><TD valign=top><em class=code>textblock</em></TD>
+    <TD>output, character array of text in the file</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="is_longitude_between"></A>
+<br>
+<div class=routine>
+<em class=call> var = is_longitude_between(lon, minlon, maxlon 
+                      <em class=optionalcode>[, doradians]</em>) </em>
+<pre>
+real(r8), intent(in)           :: <em class=code>lon</em>
+real(r8), intent(in)           :: <em class=code>minlon</em>
+real(r8), intent(in)           :: <em class=code>maxlon</em>
+logical,  intent(in), optional :: <em class=optionalcode>doradians</em>
+logical                        :: <em class=code>is_longitude_between</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+  Uniform way to test longitude ranges, in degrees, on a globe.
+  Returns true if lon is between min and max, starting at min
+  and going EAST until reaching max.  Wraps across 0 longitude.
+  If min equals max, all points are inside.  Includes endpoints.
+  If optional arg doradians is true, do computation in radians
+  between 0 and 2*PI instead of default 360.  There is no rejection
+  of input values based on range; they are all converted to a known
+  range by calling modulo() first.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>True if lon is between min and max.</TD></TR>
+<TR><TD valign=top><em class=code>lon </em></TD>
+    <TD>Location to test.</TD></TR>
+<TR><TD valign=top><em class=code>minlon </em></TD>
+    <TD>Minimum longitude.  Region will start here and go east.</TD></TR>
+<TR><TD valign=top><em class=code>maxlon </em></TD>
+    <TD>Maximum longitude.  Region will end here.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>doradians </em></TD>
+    <TD>Optional argument.  Default computations are in degrees.  If
+        this argument is specified and is .true., do the computation
+        in radians, and wrap across the globe at 2 * PI.  All inputs
+        must then be specified in radians.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_next_filename"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_next_filename( listname, lineindex ) </em>
+
+<pre>
+character(len=*),  intent(in) :: <em class=code>listname</em>
+integer,           intent(in) :: <em class=code>lineindex</em>
+character(len=128)            :: <em class=code>get_next_filename</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the specified line of a text file, given a filename and a line number.
+It returns an empty string when the line number is larger than the
+number of lines in a file.
+</P>
+<P>
+Intended as an easy way to process a list of files.  Use a command
+like 'ls &gt; out' to 
+create a file containing the list, in order, of files to be processed.
+Then call this function with an increasing index number until the return
+value is empty.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var </em></TD>
+    <TD>An ascii string, up to 128 characters long, containing the
+        contents of line <em class=code>lineindex</em> of the input file.</TD></TR>
+<TR><TD valign=top><em class=code>listname </em></TD>
+    <TD>The filename to open and read lines from.</TD></TR>
+<TR><TD valign=top><em class=code>lineindex </em></TD>
+    <TD>Integer line number, starting at 1.  If larger than the
+        number of lines in the file, the empty string '' will be returned.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="set_filename_list"></A>
+<br>
+<div class=routine>
+<em class=call> var = set_filename_list( name_array, listname, caller_name ) </em>
+
+<pre>
+character(len=*),  intent(inout) :: <em class=code>name_array</em>
+character(len=*),  intent(in)    :: <em class=code>listname</em>
+character(len=*),  intent(in)    :: <em class=code>caller_name</em>
+integer                          :: <em class=code>var</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the count of filenames specified.  
+Verifies that one of either the name_array or the listname was specified but
+not both.  If the input was a listname copy the names into the name_array
+so when this routine returns all the filenames are in name_array().
+Verifies that no more than the allowed number of names was specified if
+the input was a listname file.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var </em></TD>
+    <TD>The count of input files specified.</TD></TR>
+<TR><TD valign=top><em class=code>name_array </em></TD>
+    <TD>Array of input filename strings. Either this item or the listname
+        must be specified, but not both.</TD></TR>
+<TR><TD valign=top><em class=code>listname </em></TD>
+    <TD>The filename to open and read filenames from, one per line. 
+        Either this item or the name_array must be specified but not both.</TD></TR>
+<TR><TD valign=top><em class=code>caller_name</em></TD>
+    <TD>Calling subroutine name, used for error messages.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="to_upper"></A>
+<br>
+<div class=routine>
+<em class=call> call to_upper(string)</em>
+<pre>
+character(len=*), intent (INOUT) :: <em class=code>string</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+ Converts the character string to UPPERCASE - in place. The input
+ string <strong>is</strong> modified.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top width="15%"><em class=code>string</em></TD>
+    <TD>any character string</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="nc_check"></A>
+<br>
+<div class=routine>
+<em class=call> call nc_check(istatus, subr_name
+              <em class=optionalcode>[, context]</em>) </em>
+<pre>
+integer, intent(in)                    :: <em class=code>istatus</em>
+character(len=*), intent(in)           :: <em class=code>subr_name</em>
+character(len=*), optional, intent(in) :: <em class=optionalcode>context</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+ Check the return code from a netcdf call.  If no error, return without
+ taking any action.  If an error is indicated (in the <em class=code>istatus</em>
+ argument) then call the error handler with the subroutine name and any additional
+ context information (e.g. which file or which variable was being processed at
+ the time of the error).  All errors are currently hardcoded to be 
+ <em class=code>FATAL</em> and this routine will not return. 
+</P>
+ This routine calls a netCDF library routine to construct the text
+ error message corresponding to the error code in the first argument.
+ An example use of this routine is:
+<pre>
+call nc_check(nf90_create(path = trim(ncFileID%fname), cmode = nf90_share, ncid = ncFileID%ncid), &amp;
+             'init_diag_output', 'create '//trim(ncFileID%fname))
+
+</pre>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
+    <TD>The return value from any netCDF call.</TD></TR>
+<TR><TD valign=top><em class=code>subr_name&nbsp;&nbsp;</em></TD>
+    <TD>String name of the current subroutine, used in case of error.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>context&nbsp;&nbsp;</em></TD>
+    <TD>Additional text to be used in the error message, for example to 
+        indicate which file or which variable is being processed.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="set_tasknum"></A>
+<br>
+<div class=routine>
+<em class=call> call set_tasknum(tasknum)</em>
+<pre>
+integer, intent(in)               :: <em class=code>tasknum</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+ Intended to be used in the MPI multi-task case.  Sets the
+ local task number, which is then prepended to subsequent messages.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>tasknum&nbsp;&nbsp;</em></TD>
+    <TD>Task number returned from MPI_Comm_Rank().  MPI task numbers
+        are 0 based, so for a 4-task job these numbers are 0-3.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="set_output"></A>
+<br>
+<div class=routine>
+<em class=call> call set_output(doflag)</em>
+<pre>
+logical, intent(in)               :: <em class=code>doflag</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Set the status of output.  Can be set on a per-task
+basis if you are running with multiple tasks.
+If set to false only warnings and fatal errors will
+write to the log.  The default in the multi-task case
+is controlled by the MPI module initialization code,
+which sets task 0 to .TRUE. and all other tasks to .FALSE.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>doflag&nbsp;&nbsp;</em></TD>
+    <TD>Sets, on a per-task basis, whether messages are to be
+        written to the logfile or standard output.  Warnings and
+        errors are always output.</TD></TR> 
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="do_output"></A>
+<br>
+<div class=routine>
+<em class=call> var = do_output() </em>
+<pre>
+logical                      :: <em class=code>do_output</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns true if this task should write to the log, false otherwise.
+Set by the <em class=code>set_output()</em> routine.  Defaults to
+true for the single task case.
+Can be used in code like so:
+</P>
+<pre>
+if (do_output()) then
+ write(*,*) 'At this point in the code'
+endif
+</pre>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>True if this task should write output.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="initialize_utilities"></A>
+<br>
+<div class=routine>
+<em class=call> call initialize_utilities( 
+                             <em class=optionalcode>[progname]</em>
+                             <em class=optionalcode>[, alternatename]</em>
+                                         ) </em>
+<pre>
+character(len=*), intent(in), optional :: <em class=optionalcode>progname</em>
+character(len=*), intent(in), optional :: <em class=optionalcode>alternatename</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads the namelist and opens the logfile. Records the values of the
+namelist and registers this module.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=optionalcode>progname&nbsp;&nbsp;</em></TD>
+    <TD>If given, use in the timestamp message in the log file to say which
+        program is being started.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>alternatename&nbsp;&nbsp;</em></TD>
+    <TD>If given, log filename to use instead of the value in the namelist.
+        This permits, for example, different programs sharing the same
+        input.nml file to have different logs. If not given here and no
+        value is specified in the namelist, this defaults to dart_log.out</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="finalize_utilities"></A>
+<br>
+<div class=routine>
+<em class=call> call finalize_utilities() </em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Closes the logfile; using utilities after this call is a bad idea.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="dump_unit_attributes"></A>
+<br>
+<div class=routine>
+<em class=call> call dump_unit_attributes(iunit) </em>
+<pre>
+integer, intent(in) :: <em class=code>iunit</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Writes all information about the status of the IO unit to the error 
+handler with error level message.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>iunit&nbsp;&nbsp;</em></TD>
+    <TD>Unit about which information is requested.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A CONSTANT =====================-->
+
+<A NAME="ERROR_LEVELS"></A>
+<br>
+<div class=routine>
+<pre>
+integer :: <em class=code>E_DBG, DEBUG</em>
+integer :: <em class=code>E_MSG, MESSAGE</em>
+integer :: <em class=code>E_WARN, WARNING</em>
+integer :: <em class=code>E_ERR, FATAL</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>&nbsp;&nbsp;</em></TD>
+    <TD>Severity levels to be passed to error handler. Levels are debug, 
+message, warning and fatal. The namelist parameter TERMLEVEL can be used
+to control at which level program termination should occur.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A CONSTANT =====================-->
+
+<A NAME="logfileunit"></A>
+<br>
+<div class=routine>
+<pre>
+integer :: <em class=code>logfileunit</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top width="15%"><em class=code>logfileunit</em></TD>
+    <TD>Unit opened to file for diagnostic output.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A CONSTANT =====================-->
+
+<A NAME="nmlfileunit"></A>
+<br>
+<div class=routine>
+<pre>
+integer :: <em class=code>nmlfileunit</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top width="15%"><em class=code>nmlfileunit</em></TD>
+    <TD>Unit opened to file for diagnostic output of namelist files.
+        Defaults to same as <em class=code>logfileunit</em>. Provides the
+        flexibility to log namelists to a separate file, reducing the clutter
+        in the log files and perhaps increasing readability.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL>
+    <LI>assim_model_mod.nml in input.nml
+    <LI>logfile, name specified in namelist
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>get_unit</TD>
+    <!-- message --><TD VALIGN=top>No available units</TD>
+    <!-- comment --><TD VALIGN=top>Unable to open enough IO channels</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>check_nml_error</TD>
+    <!-- message --><TD VALIGN=top>while reading namelist _____</TD>
+    <!-- comment --><TD VALIGN=top>Fatal error reading namelist. This could
+be caused by having an entry in the namelist input file that is not in the
+namelist, by having illegal values for namelist variables, or by a 
+variety of other compiler dependent problems. </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>find_namelist_in_file</TD>
+    <!-- message --><TD VALIGN=top>Namelist entry &amp;____ must exist in namelist_nml.</TD>
+    <!-- comment --><TD VALIGN=top>There must be an entry for the required namelist,
+for instance &amp;filter_nml, in the input.nml namelist file. Even if no values are to be 
+changed from the default, an entry like &amp;filter_nml followed by a line containing only
+/ is required. </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>find_namelist_in_file</TD>
+    <!-- message --><TD VALIGN=top>Namelist input file: input.nml must exist</TD>
+    <!-- comment --><TD VALIGN=top>The namelist input file (usually input.nml) 
+                                   must exist. </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>check_namelist_read</TD>
+    <!-- message --><TD VALIGN=top>INVALID NAMELIST ENTRY: ___ in namelist ____</TD>
+    <!-- comment --><TD VALIGN=top> While reading the namelist, either a bad
+entry was found or an end of file was encountered. The most confusing case is
+when a namelist is being read successfully but is not appropriately terminated
+with a /. The line printed out by the error message will be the start of the
+next namelist in the input.nml file in this case. </TD>
+</TR>
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

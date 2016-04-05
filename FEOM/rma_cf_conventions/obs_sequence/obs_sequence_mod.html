@@ -1,0 +1,2289 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module obs_sequence</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE obs_sequence_mod</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>    
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />          
+          <small><small>version information for this file: <br />          
+          <!-- version tag follows, do not edit --> 
+          $Id$</small></small>
+       </P></td> 
+</tr>
+</table>
+
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+Provides interfaces to the observation type and observation sequence
+type. An observation contains everything there is to know about an
+observation including all metadata contained in the observation definition
+and any number of copies of data associated with the observation (for
+instance an actual observation, an ensemble of first guess values, etc).
+An observation sequence is a time-ordered set of observations that is 
+defined by a linked list so that observations can be easily added or
+deleted. A number of commands to extract observations depending on 
+the times at which they were taken are provided. For now, the observations
+are only ordered by time, but the ability to add extra sort keys could
+be added.
+</P>
+
+<P>
+These routines are commonly used in conversion programs which read
+observation data from various formats and create a DART observation
+sequence in memory, and then write it out to a file.  See the
+<a href="../observations/observations.html">observations</a>
+directory for examples of programs which create and manipulate
+observations using this routines.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="OtherModulesUsed"></A>
+<br>
+<H2>OTHER MODULES USED</H2>
+<PRE>
+types_mod
+location_mod (depends on model_choice)
+obs_def_mod
+time_manager_mod
+utilities_mod
+obs_kind_mod
+</PRE>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC INTERFACES</H2>
+
+<TABLE>
+<TR><TD><em class=call>use obs_sequence_mod, only : </em></TD>
+                   <TD><A HREF="#obs_sequence_type">obs_sequence_type</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_obs_sequence">init_obs_sequence</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#interactive_obs_sequence">interactive_obs_sequence</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_num_copies">get_num_copies</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_num_qc">get_num_qc</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_num_obs">get_num_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_max_num_obs">get_max_num_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_copy_meta_data">get_copy_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_qc_meta_data">get_qc_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_next_obs">get_next_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_prev_obs">get_prev_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_next_obs_from_key">get_next_obs_from_key</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_prev_obs_from_key">get_prev_obs_from_key</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#insert_obs_in_seq">insert_obs_in_seq</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#delete_obs_from_seq">delete_obs_from_seq</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_copy_meta_data">set_copy_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_qc_meta_data">set_qc_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_first_obs">get_first_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_last_obs">get_last_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#add_copies">add_copies</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#add_qc">add_qc</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#write_obs_seq">write_obs_seq</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_obs_seq">read_obs_seq</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#append_obs_to_seq">append_obs_to_seq</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_from_key">get_obs_from_key</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_time_range">get_obs_time_range</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_obs">set_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_time_range_keys">get_time_range_keys</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_num_times">get_num_times</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#static_init_obs_sequence">static_init_obs_sequence</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#destroy_obs_sequence">destroy_obs_sequence</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_obs_seq_header">read_obs_seq_header</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_expected_obs">get_expected_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#delete_seq_head">delete_seq_head</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#delete_seq_tail">delete_seq_tail</A></TD></TR>
+
+<TR><TD>&nbsp;</TD><TD>                                   </TD></TR>
+<TR><TD>&nbsp;</TD><TD>LINKS BELOW FOR OBS_TYPE INTERFACES</TD></TR>
+<TR><TD>&nbsp;</TD><TD>                                   </TD></TR>
+
+<TR><TD>&nbsp;</TD><TD><A HREF="#obs_type">obs_type</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_obs">init_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#destroy_obs">destroy_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_def">get_obs_def</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_obs_def">set_obs_def</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_obs_values">get_obs_values</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_obs_values">set_obs_values</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#replace_obs_values">replace_obs_values</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_qc">get_qc</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#set_qc">set_qc</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#replace_qc">replace_qc</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#write_obs">write_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_obs">read_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#interactive_obs">interactive_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#copy_obs">copy_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#copy_obs">assignment(=)</A></TD></TR>
+</TABLE>
+
+<!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
+
+<A NAME="obs_sequence_type"></A>
+<br>
+<div class=type><pre>
+<em class=call>type obs_sequence_type</em>
+   private
+   integer                       :: num_copies
+   integer                       :: num_qc
+   integer                       :: num_obs
+   integer                       :: max_num_obs
+   character(len=64), pointer    :: copy_meta_data(:)
+   character(len=64), pointer    :: qc_meta_data(:)
+   integer                       :: first_time
+   integer                       :: last_time
+   type(obs_type), pointer       :: obs(:)
+end type obs_sequence_type
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+The obs_sequence type represents a series of observations including 
+multiple copies of data and quality control fields and complete metadata
+about the observations. The sequence is organized as an integer pointer
+linked list using a fixed array of storage for obs (type obs_type). Each
+observation points to the previous and next observation in time order 
+(additional sort keys could be added if needed) and has a unique integer
+key (see obs_type below). The maximum number of observations in the 
+sequence is represented in the type as max_num_obs, the current number
+of observations is in num_obs. The number of quality control (qc) fields
+per observation is num_qc and the number of data values associated with
+each observation is num_copies. Metadata for each copy of the data is
+in copy_meta_data and metadata for the qc fields is in qc_meta_data. The
+first and last pointers into the time linked list are in first_time and
+last_time. A capability to write and read an obs_sequence structure to disk
+is available. At present, the entire observation sequence is read in to 
+core memory. An on-disk implementation may be necessary for very large
+observational datasets. 
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Component   </TH>
+    <TH align=left>Description </TH></TR>
+
+<TR><TD valign=top> num_copies</TD>
+    <TD>Number of data values associated with each observation. </TD></TR>
+
+<TR><TD valign=top> num_qc </TD>
+    <TD>Number of qc fields associated with each observation. </TD></TR>
+
+<TR><TD valign=top> num_obs</TD>
+    <TD>Number of observations currently in sequence. </TD></TR>
+
+<TR><TD valign=top> max_num_obs</TD>
+    <TD>Upper bounds on number of observations in sequence. </TD></TR>
+
+<TR><TD valign=top> copy_meta_data</TD>
+    <TD>Text describing each copy of data associated with observations. </TD></TR>
+
+<TR><TD valign=top> qc_meta_data</TD>
+    <TD>Text describing each quality control field. </TD></TR>
+
+<TR><TD valign=top> first_time </TD>
+    <TD>Location of first observation in sequence. </TD></TR>
+
+<TR><TD valign=top> last_time</TD>
+    <TD>Location of last observation in sequence. </TD></TR>
+
+<TR><TD valign=top> obs</TD>
+    <TD>Storage for all of the observations in the sequence. </TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
+
+<A NAME="obs_type"></A>
+<br>
+<div class=type>
+<pre>
+<em class=call>type obs_type</em>
+   private
+   integer            :: key
+   type(obs_def_type) :: def
+   real(r8), pointer  :: values(:)
+   real(r8), pointer  :: qc(:)
+   integer            :: prev_time
+   integer            :: next_time
+   integer            :: cov_group
+end type obs_type
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Structure to represent everything known about a given observation and to help
+with storing the observation in the observation sequence structure (see above).
+The prev_time and next_time are integer pointers that allow a linked list sorted
+on time to be constructed. If needed, other sort keys could be introduced (for
+instance by time available?). Each observation in a sequence has a unique key
+and each observation has an obs_def_type that contains all the definition and
+metadata for the observation. A set of values is associated with the observation
+along with a set of qc fields. The cov_group is not yet implemented but will allow
+non-diagonal observation error covariances in a future release.
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Component   </TH>
+    <TH align=left>Description </TH></TR>
+
+<TR><TD valign=top> key
+    <TD>Unique integer key when in an obs_sequence.</TD></TR>
+
+<TR><TD valign=top> def
+    <TD>The definition of the observation (see obs_def_mod). </TD></TR>
+
+<TR><TD valign=top> values
+    <TD>Values associated with the observation.</TD></TR>
+
+<TR><TD valign=top> qc
+    <TD>Quality control fields associated with the observation.</TD></TR>
+
+<TR><TD valign=top> prev_time
+    <TD>When in an obs_sequence, points to previous time sorted observation.</TD></TR>
+
+<TR><TD valign=top> next_time
+    <TD>When in an obs_sequence, points to next time sorted observation.</TD></TR>
+
+<TR><TD valign=top> cov_group
+    <TD>Not currently implemented.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="init_obs_sequence"></A>
+<br>
+<div class=routine>
+<em class=call> call init_obs_sequence(seq, num_copies, num_qc, 
+                 expected_max_num_obs) </em>
+<pre>
+type(obs_sequence_type), intent(out) :: <em class=code>seq</em>
+integer,                 intent(in)  :: <em class=code>num_copies</em>
+integer,                 intent(in)  :: <em class=code>num_qc</em>
+integer,                 intent(in)  :: <em class=code>expected_max_num_obs</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Constructor to create a variable of obs_sequence_type. This routine must
+be called before using an obs_sequence_type. The number of copies of the data
+to be associated with each observation (for instance the observation from an
+instrument, an ensemble of prior guesses, etc.) and the number of quality
+control fields associated with each observation must be specified. Also, an
+estimated upper bound on the number of observations to be stored in the
+sequence is helpful in making creation of the sequence efficient.
+</P>
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>The observation sequence being constructed</TD></TR>
+<TR><TD valign=top><em class=code>num_copies&nbsp;&nbsp;</em></TD>
+    <TD>Number of copies of data to be associated with each observation</TD></TR>
+<TR><TD valign=top><em class=code>num_qc&nbsp;&nbsp;</em></TD>
+    <TD>Number of quality control fields associated with each observation</TD></TR>
+<TR><TD valign=top><em class=code>expected_max_num_obs&nbsp;&nbsp;</em></TD>
+    <TD>An estimate of the largest number of observations the 
+        sequence might contain</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="interactive_obs_sequence"></A>
+<br>
+<div class=routine>
+<em class=call> var = interactive_obs_sequence() </em>
+<pre>
+type(obs_sequence_type) :: <em class=code>interactive_obs_sequence</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Uses input from standard in to create an observation sequence. Initialization
+of the sequence is handled by the function.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence created from standard input</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_num_copies"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_num_copies(seq) </em>
+<pre>
+integer                             :: <em class=code>get_num_copies</em>
+type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns number of copies of data associated with each observation in an 
+observation sequence.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Returns number of copies of data associated with each 
+        observation in sequence</TD></TR>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_num_qc"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_num_qc(seq) </em>
+<pre>
+integer                             :: <em class=code>get_num_qc</em>
+type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns number of quality control fields associated with each observation
+in an observation sequence.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Returns number of quality control fields associated 
+         with each observation in sequence</TD></TR>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_num_obs"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_num_obs(seq) </em>
+<pre>
+integer                             :: <em class=code>get_num_obs</em>
+type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns number of observations currently in an observation sequence.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Returns number of observations currently in an 
+        observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_max_num_obs"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_max_num_obs(seq) </em>
+<pre>
+integer                             :: <em class=code>get_max_num_obs</em>
+type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns maximum number of observations an observation sequence can hold.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Returns maximum number of observations an 
+          observation sequence can hold</TD></TR>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_copy_meta_data"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_copy_meta_data(seq, copy_num) </em>
+<pre>
+character(len=64)                   :: <em class=code>get_copy_meta_data</em>
+type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
+integer,                 intent(in) :: <em class=code>copy_num</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns metadata associated with a given copy of data in an observation sequence.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Returns metadata associated with a copy of data 
+         in observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>copy_num&nbsp;&nbsp;</em></TD>
+    <TD>Return metadata for this copy</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_qc_meta_data"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_qc_meta_data(seq,qc_num) </em>
+<pre>
+character(len=64)                   :: <em class=code>get_qc_meta_data</em>
+type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
+integer,                 intent(in) :: <em class=code>qc_num</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns metadata associated with a given copy of quality control fields 
+associated with observations in an observation sequence.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Returns metadata associated with a given qc copy</TD></TR>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>qc_num&nbsp;&nbsp;</em></TD>
+    <TD>Return metadata for this copy</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_next_obs"></A>
+<br>
+<div class=routine>
+<em class=call> call get_next_obs(seq, obs, next_obs, is_this_last) </em>
+<pre>
+type(obs_sequence_type), intent(in)  :: <em class=code>seq</em>
+type(obs_type),          intent(in)  :: <em class=code>obs</em>
+type(obs_type),          intent(out) :: <em class=code>next_obs</em>
+logical,                 intent(out) :: <em class=code>is_this_last</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given an observation in a sequence, returns the next observation in
+the sequence. If there is no next observation, is_this_last is set
+to true.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>Find the next observation after this one</TD></TR>
+<TR><TD valign=top><em class=code>next_obs&nbsp;&nbsp;</em></TD>
+    <TD>Return the next observation here</TD></TR>
+<TR><TD valign=top><em class=code>is_this_last&nbsp;&nbsp;</em></TD>
+    <TD>True if obs is the last obs in sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_prev_obs"></A>
+<br>
+<div class=routine>
+<em class=call> call get_prev_obs(seq, obs, prev_obs, is_this_first) </em>
+<pre>
+type(obs_sequence_type), intent(in)  :: <em class=code>seq</em>
+type(obs_type),          intent(in)  :: <em class=code>obs</em>
+type(obs_type),          intent(out) :: <em class=code>prev_obs</em>
+logical,                 intent(out) :: <em class=code>is_this_first</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given an observation in a sequence, returns the previous observation in
+the sequence. If there is no previous observation, is_this_first is set
+to true.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>Find the previous observation before this one</TD></TR>
+<TR><TD valign=top><em class=code>prev_obs&nbsp;&nbsp;</em></TD>
+    <TD>Return the previous observation here</TD></TR>
+<TR><TD valign=top><em class=code>is_this_first&nbsp;&nbsp;</em></TD>
+    <TD>True if obs is the first obs in sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_next_obs_from_key"></A>
+<br>
+<div class=routine>
+<em class=call> call get_next_obs_from_key(seq, last_key_used, next_obs, 
+                is_this_last) </em>
+<pre>
+type(obs_sequence_type), intent(in)  :: <em class=code>seq</em>
+integer,                 intent(in)  :: <em class=code>last_key_used</em>
+type(obs_type),          intent(out) :: <em class=code>next_obs</em>
+logical,                 intent(out) :: <em class=code>is_this_last</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given the last key used in a sequence, returns the next observation in
+the sequence. If there is no next observation, is_this_last is set
+to true.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>last_key_used&nbsp;&nbsp;</em></TD>
+    <TD>Find the next observation after this key</TD></TR>
+<TR><TD valign=top><em class=code>next_obs&nbsp;&nbsp;</em></TD>
+    <TD>Return the next observation here</TD></TR>
+<TR><TD valign=top><em class=code>is_this_last&nbsp;&nbsp;</em></TD>
+    <TD>True if obs is the last obs in sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_prev_obs_from_key"></A>
+<br>
+<div class=routine>
+<em class=call> call get_prev_obs_from_key(seq, last_key_used, prev_obs, 
+                 is_this_first) </em>
+<pre>
+type(obs_sequence_type), intent(in)  :: <em class=code>seq</em>
+integer,                 intent(in)  :: <em class=code>last_key_used</em>
+type(obs_type),          intent(out) :: <em class=code>prev_obs</em>
+logical,                 intent(out) :: <em class=code>is_this_first</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given the last key used in a sequence, returns the previous observation in
+the sequence. If there is no previous observation, is_this_first is set
+to true.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>last_key_used&nbsp;&nbsp;</em></TD>
+    <TD>Find the previous observation before this key</TD></TR>
+<TR><TD valign=top><em class=code>prev_obs&nbsp;&nbsp;</em></TD>
+    <TD>Return the previous observation here</TD></TR>
+<TR><TD valign=top><em class=code>is_this_first&nbsp;&nbsp;</em></TD>
+    <TD>True if obs is the first obs in sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_obs_from_key"></A>
+<br>
+<div class=routine>
+<em class=call> call get_obs_from_key(seq, key, obs) </em>
+<pre>
+type(obs_sequence_type), intent(in)  :: <em class=code>seq</em>
+integer,                 intent(in)  :: <em class=code>key</em>
+type(obs_type),          intent(out) :: <em class=code>obs</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Each entry in an observation sequence has a unique integer key. 
+This subroutine returns the observation given an integer key.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>key&nbsp;&nbsp;</em></TD>
+    <TD>Return the observation with this key</TD></TR>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>The returned observation</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="insert_obs_in_seq"></A>
+<br>
+<div class=routine>
+<em class=call> call insert_obs_in_seq(seq, obs
+   <em class=optionalcode>[,&nbsp;prev_obs]</em>) </em>
+<pre>
+type(obs_sequence_type),  intent(inout) :: <em class=code>seq</em>
+type(obs_type),           intent(inout) :: <em class=code>obs</em>
+type(obs_type), optional, intent(in)    :: <em class=optionalcode>prev_obs</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Inserts an observation in a sequence in appropriate time order. If the
+optional argument prev_obs is present, the new observation is inserted
+directly after the prev_obs. If an incorrect prev_obs is provided so that
+the sequence is no longer time ordered, bad things will happen.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>An observation to be inserted in the sequence</TD></TR>
+<TR><TD valign=top><em class=optionalcode>prev_obs&nbsp;&nbsp;</em></TD>
+    <TD>If present, says the new observation belongs 
+         immediately after this one</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="delete_obs_from_seq"></A>
+<br>
+<div class=routine>
+<em class=call> call delete_obs_from_seq(seq, obs) </em>
+<pre>
+type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
+type(obs_type),          intent(inout) :: <em class=code>obs</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given an observation and a sequence, removes the observation with 
+the same key from the observation sequence.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>The observation to be deleted from the sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="set_copy_meta_data"></A>
+<br>
+<div class=routine>
+<em class=call> call set_copy_meta_data(seq, copy_num, meta_data) </em>
+<pre>
+type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
+integer,                 intent(in)    :: <em class=code>copy_num</em>
+character(len=64),       intent(in)    :: <em class=code>meta_data</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Sets the copy metadata for this copy of the observations in an
+observation sequence.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>copy_num&nbsp;&nbsp;</em></TD>
+    <TD>Set metadata for this copy of data</TD></TR>
+<TR><TD valign=top><em class=code>meta_data&nbsp;&nbsp;</em></TD>
+    <TD>The metadata</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="set_qc_meta_data"></A>
+<br>
+<div class=routine>
+<em class=call> call set_qc_meta_data(seq, qc_num, meta_data) </em>
+<pre>
+type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
+integer,                 intent(in)    :: <em class=code>qc_num</em>
+character(len=64),       intent(in)    :: <em class=code>meta_data</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Sets the quality control metadata for this copy of the qc in an
+observation sequence.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>qc_num&nbsp;&nbsp;</em></TD>
+    <TD>Set metadata for this quality control field</TD></TR>
+<TR><TD valign=top><em class=code>meta_data&nbsp;&nbsp;</em></TD>
+    <TD>The metadata</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_first_obs"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_first_obs(seq, obs) </em>
+<pre>
+logical                              :: <em class=code>get_first_obs</em>
+type(obs_sequence_type), intent(in)  :: <em class=code>seq</em>
+type(obs_type),          intent(out) :: <em class=code>obs</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the first observation in a sequence. If there are no observations
+in the sequence, the function returns false, else true.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Returns false if there are no obs in sequence</TD></TR>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>The first observation in the sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_last_obs"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_last_obs(seq, obs) </em>
+<pre>
+logical                              :: <em class=code>get_last_obs</em>
+type(obs_sequence_type), intent(in)  :: <em class=code>seq</em>
+type(obs_type),          intent(out) :: <em class=code>obs</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the last observation in a sequence. If there are no observations
+in the sequence, the function returns false, else true.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Returns false if there are no obs in sequence</TD></TR>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>The last observation in the sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="add_copies"></A>
+<br>
+<div class=routine>
+<em class=call> call add_copies(seq, num_to_add) </em>
+<pre>
+type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
+integer,                 intent(in)    :: <em class=code>num_to_add</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Increases the number of copies of data associated with each 
+observation by num_to_add. 
+The current implementation re-creates the entire 
+observation sequence by deallocating and reallocating each entry
+with a larger size.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>num_to_add&nbsp;&nbsp;</em></TD>
+    <TD>Number of copies of data to add</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="add_qc"></A>
+<br>
+<div class=routine>
+<em class=call> call add_qc(seq, num_to_add) </em>
+<pre>
+type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
+integer,                 intent(in)    :: <em class=code>num_to_add</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Increases the number of quality control fields associated with each 
+observation by num_to_add.
+The current implementation re-creates the entire 
+observation sequence by deallocating and reallocating each entry
+with a larger size.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>num_to_add&nbsp;&nbsp;</em></TD>
+    <TD>Number of quality control fields to add</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="read_obs_seq"></A>
+<br>
+<div class=routine>
+<em class=call> call read_obs_seq(file_name, add_copies, add_qc, 
+                add_obs, seq) </em>
+<pre>
+character(len=*),        intent(in)  :: <em class=code>file_name</em>
+integer,                 intent(in)  :: <em class=code>add_copies</em>
+integer,                 intent(in)  :: <em class=code>add_qc</em>
+integer,                 intent(in)  :: <em class=code>add_obs</em>
+type(obs_sequence_type), intent(out) :: <em class=code>seq</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Read an observation sequence from <em class=code>file_name</em>. 
+The sequence will have enough
+space for the number of observations in the file plus any additional
+space requested by the "add_xx" args.  It is more efficient to allocate the
+additional space at create time rather than try to add it in later.
+The arguments can specify that the caller wants
+to add additional data copies associated with each observation, or to add
+additional quality control fields, or to add space for additional 
+observations. 
+The format of the file (<tt>formatted</tt> vs. <tt>unformatted</tt>) has been
+automatically detected since the I release.
+The obs_sequence
+file format with I and later releases has a header that associates
+observation kind strings with an integer which was not present in 
+previous versions. The default definitions from earlier
+releases are assumed when an old format sequence file is detected.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>file_name&nbsp;&nbsp;</em></TD>
+    <TD>Read from this file</TD></TR>
+<TR><TD valign=top><em class=code>add_copies&nbsp;&nbsp;</em></TD>
+    <TD>Add this number of copies of data to the obs_sequence on file</TD></TR>
+<TR><TD valign=top><em class=code>add_qc&nbsp;&nbsp;</em></TD>
+    <TD>Add this number of qc fields to the obs_sequence on file</TD></TR>
+<TR><TD valign=top><em class=code>add_obs&nbsp;&nbsp;</em></TD>
+    <TD>Add space for this number of additional observations 
+             to the obs_sequence on file</TD></TR>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>The observation sequence read in with any additional space</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="write_obs_seq"></A>
+<br>
+<div class=routine>
+<em class=call> call write_obs_seq(seq, file_name) </em>
+<pre>
+type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
+character(len=*),        intent(in) :: <em class=code>file_name</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Write the observation sequence to file file_name. The format is
+controlled by the namelist parameter write_binary_obs_sequence.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>file_name&nbsp;&nbsp;</em></TD>
+    <TD>Write the sequence to this file</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="set_obs"></A>
+<br>
+<div class=routine>
+<em class=call> call set_obs(seq,obs <em class=optionalcode>[,&nbsp;key_in]</em>) </em>
+<pre>
+type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
+type(obs_type),          intent(in)    :: <em class=code>obs</em>
+integer, optional,       intent(in)    :: <em class=optionalcode>key_in</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given an observation, copies this observation into the observation
+sequence using the key specified in the observation. If the optional
+key_in argument is present, the observation is instead copied into 
+this element of the observation sequence (and the key is
+changed to be key_in).
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>Observation to be put in sequence</TD></TR>
+<TR><TD valign=top><em class=optionalcode>key_in&nbsp;&nbsp;</em></TD>
+    <TD>If present, the obs is copied into this key of 
+        the sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="append_obs_to_seq"></A>
+<br>
+<div class=routine>
+<em class=call> call append_obs_to_seq(seq, obs) </em>
+<pre>
+type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
+type(obs_type),          intent(inout) :: <em class=code>obs</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Append an observation to an observation sequence. An error results
+if the time of the observation is not equal to or later than the 
+time of the last observation currently in the sequence.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>Append this observation to the sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_obs_time_range"></A>
+<br>
+<div class=routine>
+<em class=call> call get_obs_time_range(seq, time1, time2, key_bounds, 
+                num_keys, out_of_range
+               <em class=optionalcode>[,&nbsp;obs]</em>) </em>
+<pre>
+type(obs_sequence_type),  intent(in)  :: <em class=code>seq</em>
+type(time_type),          intent(in)  :: <em class=code>time1</em>
+type(time_type),          intent(in)  :: <em class=code>time2</em>
+integer, dimension(2),    intent(out) :: <em class=code>key_bounds</em>
+integer,                  intent(out) :: <em class=code>num_keys</em>
+logical,                  intent(out) :: <em class=code>out_of_range</em>
+type(obs_type), optional, intent(in)  :: <em class=optionalcode>obs</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given a time range specified by a beginning and ending time, find the 
+keys that bound all observations in this time range and the number
+of observations in the time range. The routine get_time_range_keys
+can then be used to get a list of all the keys in the range if
+desired.
+The logical out_of_range is returned as true if the beginning time of
+the time range is after the time of the latest observation in the sequence.
+The optional argument obs can increase the efficiency of the search
+through the sequence by indicating that all observations before obs
+are definitely at times before the start of the time range.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>time1&nbsp;&nbsp;</em></TD>
+    <TD>Lower time bound</TD></TR>
+<TR><TD valign=top><em class=code>time2&nbsp;&nbsp;</em></TD>
+    <TD>Upper time bound</TD></TR>
+<TR><TD valign=top><em class=code>key_bounds&nbsp;&nbsp;</em></TD>
+    <TD>Lower and upper bounds on keys that are in the time range</TD></TR>
+<TR><TD valign=top><em class=code>num_keys&nbsp;&nbsp;</em></TD>
+    <TD>Number of keys in the time range</TD></TR>
+<TR><TD valign=top><em class=code>out_of_range&nbsp;&nbsp;</em></TD>
+    <TD>Returns true if the time range is entirely past the time 
+         of the last obs in sequence</TD></TR>
+<TR><TD valign=top><em class=optionalcode>obs&nbsp;&nbsp;</em></TD>
+    <TD>If present, can start search for time range from this observation</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_time_range_keys"></A>
+<br>
+<div class=routine>
+<em class=call> call get_time_range_keys(seq, key_bounds, num_keys, keys) </em>
+<pre>
+type(obs_sequence_type),      intent(in)  :: <em class=code>seq</em>
+integer, dimension(2),        intent(in)  :: <em class=code>key_bounds</em>
+integer,                      intent(in)  :: <em class=code>num_keys</em>
+integer, dimension(num_keys), intent(out) :: <em class=code>keys</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given the keys of the observations at the start and end of a time range
+and the number of observations in the time range (these are returned by
+<em class=code>get_obs_time_range()</em>), return a list of 
+the keys of all observations in the time range. 
+Combining the two routines allows one to get a list
+of all observations in any time range by key.  The <em class=code>keys</em> 
+array must be at least <em class=code>num_keys</em> long to hold the 
+return values.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>key_bounds&nbsp;&nbsp;</em></TD>
+    <TD>Keys of first and last observation in a time range</TD></TR>
+<TR><TD valign=top><em class=code>num_keys&nbsp;&nbsp;</em></TD>
+    <TD>Number of obs in the time range</TD></TR>
+<TR><TD valign=top><em class=code>keys&nbsp;&nbsp;</em></TD>
+    <TD>Output list of keys of all obs in the time range</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_num_times"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_num_times(seq) </em>
+<pre>
+integer                             :: <em class=code>get_num_times</em>
+type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the number of unique times associated with observations in an
+observation sequence.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Number of unique times for observations in a sequence</TD></TR>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_num_key_range"></A>
+<br>
+<div class=routine>
+<em class=call> var = get_num_key_range(seq, key1, key2) </em>
+<pre>
+integer                             :: <em class=code>get_num_key_range</em>
+type(obs_sequence_type), intent(in) :: <em class=code>seq</em>
+integer, optional,       intent(in) :: <em class=code>key1, key2</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the number of observations between the two given keys.
+The default key numbers are the first and last in the sequence file.
+This routine can be used to count the actual number of observations
+in a sequence and will be accurate even if the sequence has been
+trimmed with delete_seq_head() or delete_seq_tail().
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;</em></TD>
+    <TD>Number of unique times for observations in a sequence</TD></TR>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>key1&nbsp;&nbsp;</em></TD>
+    <TD>The starting key number.  Defaults to the first observation
+        in the sequence.</TD></TR>
+<TR><TD valign=top><em class=code>key2&nbsp;&nbsp;</em></TD>
+    <TD>The ending key number.  Defaults to the last observation
+        in the sequence.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="static_init_obs_sequence"></A>
+<br>
+<div class=routine>
+<em class=call> call static_init_obs_sequence() </em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Initializes the obs_sequence module and reads namelists. This MUST
+BE CALLED BEFORE USING ANY OTHER INTERFACES.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="destroy_obs_sequence"></A>
+<br>
+<div class=routine>
+<em class=call> call destroy_obs_sequence(seq) </em>
+<pre>
+type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Releases all allocated storage associated with an observation 
+sequence.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="read_obs_seq_header"></A>
+<br>
+<div class=routine>
+<em class=call> call read_obs_seq_header(file_name, num_copies, num_qc, 
+        num_obs, max_num_obs, file_id, read_format, pre_I_format
+        <em class=optionalcode>[,&nbsp;close_the_file]</em>) </em>
+<pre>
+character(len=*),   intent(in)  :: <em class=code>file_name</em>
+integer,            intent(out) :: <em class=code>num_copies</em>
+integer,            intent(out) :: <em class=code>num_qc</em>
+integer,            intent(out) :: <em class=code>num_obs</em>
+integer,            intent(out) :: <em class=code>max_num_obs</em>
+integer,            intent(out) :: <em class=code>file_id</em>
+character(len=*),   intent(out) :: <em class=code>read_format</em>
+logical,            intent(out) :: <em class=code>pre_I_format</em>
+logical, optional,  intent(in)  :: <em class=optionalcode>close_the_file</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Allows one to see the global metadata associated with an observation
+sequence that has been written to a file without reading the whole file. 
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>file_name&nbsp;&nbsp;</em></TD>
+    <TD>File contatining an obs_sequence</TD></TR>
+<TR><TD valign=top><em class=code>num_copies&nbsp;&nbsp;</em></TD>
+    <TD>Number of copies of data associated with each observation</TD></TR>
+<TR><TD valign=top><em class=code>num_qc&nbsp;&nbsp;</em></TD>
+    <TD>Number of quality control fields associated with 
+        each observation</TD></TR>
+<TR><TD valign=top><em class=code>num_obs&nbsp;&nbsp;</em></TD>
+    <TD>Number of observations in sequence</TD></TR>
+<TR><TD valign=top><em class=code>max_num_obs&nbsp;&nbsp;</em></TD>
+    <TD>Maximum number of observations sequence could hold</TD></TR>
+<TR><TD valign=top><em class=code>file_id&nbsp;&nbsp;</em></TD>
+    <TD>File channel/descriptor returned from opening the file</TD></TR>
+<TR><TD valign=top><em class=code>read_format&nbsp;&nbsp;</em></TD>
+    <TD>Either the string <tt>'unformatted'</tt> or 
+        <tt>'formatted'</tt></TD></TR>
+<TR><TD valign=top><em class=code>pre_I_format&nbsp;&nbsp;</em></TD>
+    <TD>Returns .true. if the file was written before
+        the observation type string/index number table was added
+        to the standard header starting with the I release.</TD></TR>
+<TR><TD valign=top><em class=optionalcode>close_the_file&nbsp;&nbsp;</em></TD>
+    <TD>If specified and .TRUE. close the file after the header
+        has been read.  The default is to leave the file open.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="init_obs"></A>
+<br>
+<div class=routine>
+<em class=call> call init_obs(obs, num_copies, num_qc) </em>
+<pre>
+type(obs_type), intent(out) :: <em class=code>obs</em>
+integer,        intent(in)  :: <em class=code>num_copies</em>
+integer,        intent(in)  :: <em class=code>num_qc</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Initializes an obs_type variable. This allocates storage for the
+observation type and creates the appropriate obs_def_type and
+related structures. IT IS ESSENTIAL THAT OBS_TYPE VARIABLES BE
+INITIALIZED BEFORE USE.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>An obs_type data structure to be initialized</TD></TR>
+<TR><TD valign=top><em class=code>num_copies&nbsp;&nbsp;</em></TD>
+    <TD>Number of copies of data associated with observation</TD></TR>
+<TR><TD valign=top><em class=code>num_qc&nbsp;&nbsp;</em></TD>
+    <TD>Number of qc fields associated with observation</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="destroy_obs"></A>
+<br>
+<div class=routine>
+<em class=call> call destroy_obs(obs) </em>
+<pre>
+type(obs_type), intent(inout) :: <em class=code>obs</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Destroys an observation variable by releasing all associated storage.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>An observation variable to be destroyed</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_obs_def"></A>
+<br>
+<div class=routine>
+<em class=call> call get_obs_def(obs, obs_def) </em>
+<pre>
+type(obs_type),     intent(in)  :: <em class=code>obs</em>
+type(obs_def_type), intent(out) :: <em class=code>obs_def</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Extracts the definition portion of an observation.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>An observation</TD></TR>
+<TR><TD valign=top><em class=code>obs_def&nbsp;&nbsp;</em></TD>
+    <TD>The definition portion of the observation</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="set_obs_def"></A>
+<br>
+<div class=routine>
+<em class=call> call set_obs_def(obs, obs_def) </em>
+<pre>
+type(obs_type),     intent(out) :: <em class=code>obs</em>
+type(obs_def_type), intent(in)  :: <em class=code>obs_def</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given an observation and an observation definition, insert the
+definition in the observation structure.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>An observation whose definition portion will be updated</TD></TR>
+<TR><TD valign=top><em class=code>obs_def&nbsp;&nbsp;</em></TD>
+    <TD>The observation definition that will be inserted in obs</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_obs_values"></A>
+<br>
+<div class=routine>
+<em class=call> call get_obs_values(obs, values
+   <em class=optionalcode>[,&nbsp;copy_indx]</em>) </em>
+<pre>
+type(obs_type),         intent(in)  :: <em class=code>obs</em>
+real(r8), dimension(:), intent(out) :: <em class=code>values</em>
+integer, optional,      intent(in)  :: <em class=optionalcode>copy_indx</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Extract copies of the data from an observation. 
+If <em class=optionalcode>copy_indx</em>
+is present extract a single value indexed by
+<em class=optionalcode>copy_indx</em> into
+<em class=code>values(1)</em>.
+&nbsp;<em class=optionalcode>copy_indx</em> must be
+between 1 and <tt>num_copies</tt>, inclusive.
+If <em class=optionalcode>copy_indx</em> is not present 
+extract all copies of data into the
+<em class=code>values</em> array which must be 
+<tt>num_copies</tt> long
+(See <A HREF="#get_num_copies"><em class=code>get_num_copies</em></A>.)
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>Observation from which to extract values</TD></TR>
+<TR><TD valign=top><em class=code>values&nbsp;&nbsp;</em></TD>
+    <TD>The values extracted</TD></TR>
+<TR><TD valign=top><em class=optionalcode>copy_indx&nbsp;&nbsp;</em></TD>
+    <TD>If present extract only this copy, otherwise extract 
+        all copies</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_qc"></A>
+<br>
+<div class=routine>
+<em class=call> call get_qc(obs, qc
+   <em class=optionalcode>[,&nbsp;qc_indx]</em>) </em>
+<pre>
+type(obs_type),         intent(in)  :: <em class=code>obs</em>
+real(r8), dimension(:), intent(out) :: <em class=code>qc</em>
+integer, optional,      intent(in)  :: <em class=optionalcode>qc_indx</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Extract quality control fields from an observation. 
+If <em class=optionalcode>qc_indx</em>
+is present extract a single field indexed by
+<em class=optionalcode>qc_indx</em> into
+<em class=code>qc(1)</em>.
+&nbsp;<em class=optionalcode>qc_indx</em> must be
+between 1 and <tt>num_qc</tt>, inclusive.
+If <em class=optionalcode>qc_indx</em> is not present 
+extract all quality control fields into the
+<em class=code>qc</em> array which must be
+<tt>num_qc</tt> long
+(See <A HREF="#get_num_qc"><em class=code>get_num_qc</em></A>.)
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>Observation from which to extract qc field(s)</TD></TR>
+<TR><TD valign=top><em class=code>qc&nbsp;&nbsp;</em></TD>
+    <TD>Extracted qc fields</TD></TR>
+<TR><TD valign=top><em class=optionalcode>qc_indx&nbsp;&nbsp;</em></TD>
+    <TD>If present extract only this field, otherwise extract 
+        all qc fields</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="set_obs_values"></A>
+<br>
+<div class=routine>
+<em class=call> call set_obs_values(obs, values
+   <em class=optionalcode>[,&nbsp;copy_indx]</em>) </em>
+<pre>
+type(obs_type),         intent(out) :: <em class=code>obs</em>
+real(r8), dimension(:), intent(in)  :: <em class=code>values</em>
+integer, optional,      intent(in)  :: <em class=optionalcode>copy_indx</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Set value(s) of data in this observation.
+If <em class=optionalcode>copy_indx</em>
+is present set the single value indexed by
+<em class=optionalcode>copy_indx</em> to
+<em class=code>values(1)</em>.
+&nbsp;<em class=optionalcode>copy_indx</em> must be
+between 1 and <tt>num_copies</tt>, inclusive.
+If <em class=optionalcode>copy_indx</em> is not present 
+set all copies of data from the 
+<em class=code>values</em> array which must be 
+<tt>num_copies</tt> long
+(See <A HREF="#get_num_copies"><em class=code>get_num_copies</em></A>.)
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>Observation whose values are being set</TD></TR>
+<TR><TD valign=top><em class=code>values&nbsp;&nbsp;</em></TD>
+    <TD>Array of value(s) to be set</TD></TR>
+<TR><TD valign=top><em class=optionalcode>copy_indx&nbsp;&nbsp;</em></TD>
+    <TD>If present set only this copy of data, otherwise set all copies</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="replace_obs_values"></A>
+<br>
+<div class=routine>
+<em class=call> call replace_obs_values(seq, key, values
+   <em class=optionalcode>[,&nbsp;copy_indx]</em>) </em>
+<pre>
+type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
+integer,                 intent(in)    :: <em class=code>key</em>
+real(r8), dimension(:),  intent(in)    :: <em class=code>values</em>
+integer, optional,       intent(in)    :: <em class=optionalcode>copy_indx</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Set value(s) of data in the observation from a
+sequence with the given <em class=code>key</em>.
+If <em class=optionalcode>copy_indx</em>
+is present set the single value indexed by
+<em class=optionalcode>copy_indx</em> to
+<em class=code>values(1)</em>.
+&nbsp;<em class=optionalcode>copy_indx</em> must be
+between 1 and <tt>num_copies</tt>, inclusive.
+If <em class=optionalcode>copy_indx</em> is not present 
+set all copies of data from the 
+<em class=code>values</em> array which must be 
+<tt>num_copies</tt> long
+(See <A HREF="#get_num_copies"><em class=code>get_num_copies</em></A>.)
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>Sequence which contains observation to update</TD></TR>
+<TR><TD valign=top><em class=code>key&nbsp;&nbsp;</em></TD>
+    <TD>Key to select which observation</TD></TR>
+<TR><TD valign=top><em class=code>values&nbsp;&nbsp;</em></TD>
+    <TD>Array of value(s) to be set</TD></TR>
+<TR><TD valign=top><em class=optionalcode>copy_indx&nbsp;&nbsp;</em></TD>
+    <TD>If present set only this copy of data, otherwise set all copies</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="set_qc"></A>
+<br>
+<div class=routine>
+<em class=call> call set_qc(obs, qc
+   <em class=optionalcode>[,&nbsp;qc_indx]</em>) </em>
+<pre>
+type(obs_type),         intent(out) :: <em class=code>obs</em>
+real(r8), dimension(:), intent(in)  :: <em class=code>qc</em>
+integer, optional,      intent(in)  :: <em class=optionalcode>qc_indx</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Sets the quality control fields in an observation.
+If <em class=optionalcode>qc_indx</em>
+is present set a single field indexed by
+<em class=optionalcode>qc_indx</em> to
+<em class=code>qc(1)</em>.
+&nbsp;<em class=optionalcode>qc_indx</em> must be
+between 1 and <tt>num_qc</tt>, inclusive.
+If <em class=optionalcode>qc_indx</em> is not present 
+set all quality control fields from the
+<em class=code>qc</em> array which must be
+<tt>num_qc</tt> long
+(See <A HREF="#get_num_qc"><em class=code>get_num_qc</em></A>.)
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>Observation having its qc fields set</TD></TR>
+<TR><TD valign=top><em class=code>qc&nbsp;&nbsp;</em></TD>
+    <TD>Input values of qc fields</TD></TR>
+<TR><TD valign=top><em class=optionalcode>qc_indx&nbsp;&nbsp;</em></TD>
+    <TD>If present update only this field, otherwise update 
+        all qc fields</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="replace_qc"></A>
+<br>
+<div class=routine>
+<em class=call> call replace_qc(seq, key, qc
+   <em class=optionalcode>[,&nbsp;qc_indx]</em>) </em>
+<pre>
+type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
+integer,                 intent(in)    :: <em class=code>key</em>
+real(r8), dimension(:),  intent(in)    :: <em class=code>qc</em>
+integer, optional,       intent(in)    :: <em class=optionalcode>qc_indx</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Set value(s) of the quality control fields in the observation from a
+sequence with the given <em class=code>key</em>.
+If <em class=optionalcode>qc_indx</em>
+is present set the single value indexed by
+<em class=optionalcode>qc_indx</em> to
+<em class=code>qc(1)</em>.
+&nbsp;<em class=optionalcode>qc_indx</em> must be
+between 1 and <tt>num_qc</tt>, inclusive.
+If <em class=optionalcode>qc_indx</em> is not present
+set all quality control fields from the
+<em class=code>qc</em> array which must be
+<tt>num_qc</tt> long
+(See <A HREF="#get_num_qc"><em class=code>get_num_qc</em></A>.)
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>Observation sequence containing observation to update</TD></TR>
+<TR><TD valign=top><em class=code>key&nbsp;&nbsp;</em></TD>
+    <TD>Key to select which observation</TD></TR>
+<TR><TD valign=top><em class=code>qc&nbsp;&nbsp;</em></TD>
+    <TD>Input values of qc fields</TD></TR>
+<TR><TD valign=top><em class=optionalcode>qc_indx&nbsp;&nbsp;</em></TD>
+    <TD>If present, only update single qc field, else update 
+          all qc fields</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="write_obs"></A>
+<br>
+<div class=routine>
+<em class=call> call write_obs(obs, file_id, num_copies, num_qc) </em>
+<pre>
+type(obs_type), intent(in) :: <em class=code>obs</em>
+integer,        intent(in) :: <em class=code>file_id</em>
+integer,        intent(in) :: <em class=code>num_copies</em>
+integer,        intent(in) :: <em class=code>num_qc</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Writes an observation and all its associated metadata to a disk
+file that has been opened with a format consistent with the namelist
+parameter <tt>write_binary_obs_sequence</tt>.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>Observation to be written to file</TD></TR>
+<TR><TD valign=top><em class=code>file_id&nbsp;&nbsp;</em></TD>
+    <TD>Channel open to file for writing</TD></TR>
+<TR><TD valign=top><em class=code>num_copies&nbsp;&nbsp;</em></TD>
+    <TD>The number of copies of data associated with the 
+          observation to be output</TD></TR>
+<TR><TD valign=top><em class=code>num_qc&nbsp;&nbsp;</em></TD>
+    <TD>The number of qc fields associated with the 
+          observation to be output</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="read_obs"></A>
+<br>
+<div class=routine>
+<em class=call> call read_obs(file_id, num_copies, add_copies, 
+                  num_qc, add_qc, key, obs, read_format
+                  <em class=optionalcode>[,&nbsp;max_obs]</em>) </em>
+<pre>
+integer,            intent(in)    :: <em class=code>file_id</em>
+integer,            intent(in)    :: <em class=code>num_copies</em>
+integer,            intent(in)    :: <em class=code>add_copies</em>
+integer,            intent(in)    :: <em class=code>num_qc</em>
+integer,            intent(in)    :: <em class=code>add_qc</em>
+integer,            intent(in)    :: <em class=code>key</em>
+type(obs_type),     intent(inout) :: <em class=code>obs</em>
+character(len=*),   intent(in)    :: <em class=code>read_format</em>
+integer, optional,  intent(in)    :: <em class=optionalcode>max_obs</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads an observation from an obs_sequence file. The
+number of copies of data and the number of qc values associated with 
+each observation must be provided. If additional copies of data or
+additional qc fields are needed, arguments allow them to be added.
+WARNING: The key argument is no longer used and should be removed.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>file_id&nbsp;&nbsp;</em></TD>
+    <TD>Channel open to file from which to read</TD></TR>
+
+<TR><TD valign=top><em class=code>num_copies&nbsp;&nbsp;</em></TD>
+    <TD>Number of copies of data associated with observation in file</TD></TR>
+
+<TR><TD valign=top><em class=code>add_copies&nbsp;&nbsp;</em></TD>
+    <TD>Number of additional copies of observation to be added</TD></TR>
+
+<TR><TD valign=top><em class=code>num_qc&nbsp;&nbsp;</em></TD>
+    <TD>Number of qc fields associated with observation in file</TD></TR>
+
+<TR><TD valign=top><em class=code>add_qc&nbsp;&nbsp;</em></TD>
+    <TD>Number of additional qc fields to be added</TD></TR>
+
+<TR><TD valign=top><em class=code>key&nbsp;&nbsp;</em></TD>
+    <TD>No longer used, should be deleted</TD></TR>
+
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>The observation being read in</TD></TR>
+
+<TR><TD valign=top><em class=code>read_format&nbsp;&nbsp;</em></TD>
+    <TD>Either the string <tt>'formatted'</tt> 
+        or <tt>'unformatted'</tt></TD></TR>
+
+<TR><TD valign=top><em class=optionalcode>max_obs&nbsp;&nbsp;</em></TD>
+    <TD>If present, specifies the largest observation key number
+        in the sequence.  This is used only for additional error
+        checks on the next and previous obs linked list values.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="interactive_obs"></A>
+<br>
+<div class=routine>
+<em class=call> call interactive_obs(num_copies, num_qc, obs, key) </em>
+<pre>
+integer,        intent(in)    :: <em class=code>num_copies</em>
+integer,        intent(in)    :: <em class=code>num_qc</em>
+type(obs_type), intent(inout) :: <em class=code>obs</em>
+integer,        intent(in)    :: <em class=code>key</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Use standard input to create an observation. The number of values,
+number of qc fields, and an observation type-specific key associated 
+with the observation are input.  (Note that the key here is not the
+same as the key in an observation sequence.)
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>num_copies&nbsp;&nbsp;</em></TD>
+    <TD>Number of copies of data to be associated with observation</TD></TR>
+<TR><TD valign=top><em class=code>num_qc&nbsp;&nbsp;</em></TD>
+    <TD>Number of qc fields to be associated with observation</TD></TR>
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;</em></TD>
+    <TD>Observation created via standard input</TD></TR>
+<TR><TD valign=top><em class=code>key&nbsp;&nbsp;</em></TD>
+    <TD>An observation type-specific key can be associated
+        with each observation for use by the obs_def code.</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="copy_obs"></A>
+<br>
+<div class=routine>
+<em class=call> call copy_obs(obs1, obs2) </em>
+<pre>
+type(obs_type), intent(out) :: <em class=code>obs1</em>
+type(obs_type), intent(in)  :: <em class=code>obs2</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Copies the observation type obs2 to obs1. If the sizes of obs
+fields are not compatible, the space in obs1 is deallocated and
+reallocated with the appropriate size. This is overloaded to 
+assignment(=). 
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>obs1&nbsp;&nbsp;</em></TD>
+    <TD>Copy obs2 to here (destination)</TD></TR>
+<TR><TD valign=top><em class=code>obs2&nbsp;&nbsp;</em></TD>
+    <TD>Copy into obs1 (source)</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="get_expected_obs"></A>
+<br>
+<div class=routine>
+<em class=call> call get_expected_obs(seq, keys, ens_index, state, 
+      state_time, obs_vals, istatus, assimilate_this_ob, evaluate_this_ob) </em>
+<pre>
+type(obs_sequence_type), intent(in)  :: <em class=code>seq</em>
+integer, dimension(:),   intent(in)  :: <em class=code>keys</em>
+integer,                 intent(in)  :: <em class=code>ens_index</em>
+real(r8), dimension(:),  intent(in)  :: <em class=code>state</em>
+type(time_type),         intent(in)  :: <em class=code>state_time</em>
+real(r8), dimension(:),  intent(out) :: <em class=code>obs_vals</em>
+integer,                 intent(out) :: <em class=code>istatus</em>
+logical,                 intent(out) :: <em class=code>assimilate_this_ob</em>
+logical,                 intent(out) :: <em class=code>evaluate_this_ob</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Used to compute the expected value of a set of observations in an
+observation sequence given a model state vector. Also returns a
+status variable that reports on problems taking forward operators.
+This is normally applied to a single observation at a time but
+can also be a list for computational efficiency.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>keys&nbsp;&nbsp;</em></TD>
+    <TD>List of integer keys that specify observations in seq</TD></TR>
+<TR><TD valign=top><em class=code>ens_index&nbsp;&nbsp;</em></TD>
+    <TD>The ensemble number for this state vector</TD></TR>
+<TR><TD valign=top><em class=code>state&nbsp;&nbsp;</em></TD>
+    <TD>Model state vector</TD></TR>
+<TR><TD valign=top><em class=code>state_time&nbsp;&nbsp;</em></TD>
+    <TD>The time of the state data</TD></TR>
+<TR><TD valign=top><em class=code>obs_vals&nbsp;&nbsp;</em></TD>
+    <TD>Returned expected values of the observations</TD></TR>
+<TR><TD valign=top><em class=code>istatus&nbsp;&nbsp;</em></TD>
+    <TD>Integer error code for use in quality control
+        (0 means no error)</TD></TR>
+<TR><TD valign=top><em class=code>assimilate_this_ob&nbsp;&nbsp;</em></TD>
+    <TD>Returns true if this observation kind is being assimilated</TD></TR>
+<TR><TD valign=top><em class=code>evaluate_this_ob&nbsp;&nbsp;</em></TD>
+    <TD>Returns true if this observation kind is being 
+           evaluated but not assimilated</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="delete_seq_head"></A>
+<br>
+<div class=routine>
+<em class=call> call delete_seq_head(first_time, seq, all_gone)</em>
+<pre>
+type(time_type),         intent(in)    :: <em class=code>first_time</em>
+type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
+logical,                 intent(out)   :: <em class=code>all_gone</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Deletes all observations in the sequence with times before first_time.
+If no observations remain, return all_gone as .true.
+If no observations fall into the time window (e.g. all before first_time
+or empty sequence to begin with), no deletions are done and all_gone
+is simply returned as .true.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>first_time&nbsp;&nbsp;</em></TD>
+    <TD>Delete all observations with times before this</TD></TR>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>all_gone&nbsp;&nbsp;</em></TD>
+    <TD>Returns true if there are no valid observations remaining
+        in the sequence after first_time</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE ======================-->
+
+<A NAME="delete_seq_tail"></A>
+<br>
+<div class=routine>
+<em class=call> call delete_seq_tail(last_time, seq, all_gone)</em>
+<pre>
+type(time_type),         intent(in)    :: <em class=code>last_time</em>
+type(obs_sequence_type), intent(inout) :: <em class=code>seq</em>
+logical,                 intent(out)   :: <em class=code>all_gone</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Deletes all observations in the sequence with times after last_time.
+If no observations remain, return all_gone as .true.
+If no observations fall into the time window (e.g. all after last_time
+or empty sequence to begin with), no deletions are done and all_gone
+is simply returned as .true.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+<TR><TD valign=top><em class=code>last_time&nbsp;&nbsp;</em></TD>
+    <TD>Delete all observations with times after this</TD></TR>
+<TR><TD valign=top><em class=code>seq&nbsp;&nbsp;</em></TD>
+    <TD>An observation sequence</TD></TR>
+<TR><TD valign=top><em class=code>all_gone&nbsp;&nbsp;</em></TD>
+    <TD>Returns true if there are no valid observations remaining
+        in the sequence before last_time</TD></TR>
+</TABLE>
+
+</div>
+<br>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;obs_sequence_nml
+   write_binary_obs_sequence = .false.  
+/
+</pre>
+</div>
+
+<br />
+<br />
+
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD valign=top>write_binary_obs_sequence</TD>
+    <TD>logical</TD>
+    <TD>If true, write binary obs_sequence files.
+If false, write ascii obs_sequence files.</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL>
+   <LI>obs_sequence_mod.nml in input.nml</LI>
+   <LI>Files for reading and writing obs_sequences and obs specified 
+       in filter_nml.</LI>
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li> none </li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TR><!-- routine --><TD VALIGN=top>insert_obs_in_seq</TD>
+    <!-- message --><TD VALIGN=top>ran out of room, num_obs # &gt; max_num_obs #</TD>
+    <!-- comment --><TD VALIGN=top>Overflowed number of obs in sequence. 
+                                   Called from many public entries.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>append_obs_to_seq</TD>
+    <!-- message --><TD VALIGN=top>tried to append an obs to sequence with bad time</TD>
+    <!-- comment --><TD VALIGN=top>Tried to append an obs with earlier time than 
+                                   last obs in sequence.</TD>
+</TR>
+
+<TR><!-- routine --><TD VALIGN=top>append_obs_to_seq</TD>
+    <!-- message --><TD VALIGN=top>ran out of room, max_num_obs = #</TD>
+    <!-- comment --><TD VALIGN=top>Overflowed the obs sequence.</TD>
+</TR>
+
+
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+Future versions should automate file reading and only the write namelist 
+parameter should remain.
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

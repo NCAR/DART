@@ -1,0 +1,75 @@
+#!/bin/csh
+
+set OP_SYS=`uname -s`
+if( $OP_SYS == "Linux" ) then
+  setenv FC pgf90
+else
+  setenv FC xlf90
+endif
+
+if( ! $?NETCDF_DIR ) then
+#------------------------------------------------------------
+#  check for netcdf library
+#------------------------------------------------------------
+  set found_ncf_lib = 0
+  foreach tst_dir (/usr/local /usr /opt)
+    foreach tst_lib (lib64 lib netcdf)
+      if( -e $tst_dir/$tst_lib/libnetcdf.a ) then
+         set found_ncf_lib = 1
+         break
+      endif
+    end
+    if( $found_ncf_lib ) then
+      break
+    endif
+  end
+  if( $OP_SYS == "Linux" ) then
+    if( $found_ncf_lib ) then
+      setenv NETCDF_DIR $tst_dir
+    else
+      setenv NETCDF_DIR /usr/
+    endif
+  else
+    if( $found_ncf_lib ) then
+      setenv NETCDF_DIR $tst_dir
+    else
+      setenv NETCDF_DIR /usr/local
+    endif
+  endif
+  echo " "
+  echo "Using $FC fortan90 compiler"
+endif
+
+echo "NETCDF_DIR = $NETCDF_DIR"
+echo " "
+
+#------------------------------------------------------------
+#  check argument
+#------------------------------------------------------------
+set arg = `echo $1 | tr '[a-z]' '[A-z]'`
+switch( $arg )
+  case EXO_COLDENS:
+    set arg1 = exo_coldens
+    breaksw
+  case WESELY:
+    set arg1 = wesely
+    breaksw
+  default:
+    echo "+++++++++++++++++++++++++++++++++++++++++++++++++"
+    echo "Usage: argument '$1' is not one of the following:"
+    echo "       exo_coldens, wesely"
+    echo "+++++++++++++++++++++++++++++++++++++++++++++++++"
+    exit -1
+endsw
+
+#------------------------------------------------------------
+#  build the executable
+#------------------------------------------------------------
+make clean >& /dev/null
+make  $arg1 || echo "Failed to build bio_emiss" && exit -1
+echo " "
+make cleanup >& /dev/null
+echo "++++++++++++++++++++++++"
+echo "$arg1 build successful"
+echo "++++++++++++++++++++++++"
+exit 0

@@ -1,0 +1,330 @@
+&perfect_model_obs_nml
+   start_from_restart    = .true.
+   output_restart        = .false.
+   async                 = 2
+   init_time_days        = -1
+   init_time_seconds     = -1
+   first_obs_days        = -1
+   first_obs_seconds     = -1
+   last_obs_days         = -1
+   last_obs_seconds      = -1
+   output_interval       = 1
+   trace_execution       = .false.
+   restart_in_file_name  = "perfect_ics"
+   restart_out_file_name = "perfect_restart"
+   obs_seq_in_file_name  = "obs_seq.in"
+   obs_seq_out_file_name = "obs_seq.perfect"
+   adv_ens_command       = "./advance_model.csh"
+   output_timestamps     = .false.
+   trace_execution       = .false.
+   output_forward_op_errors = .false.
+   print_every_nth_obs   = -1
+   silence               = .false.
+   /
+
+&filter_nml
+   async                    = 2
+   adv_ens_command          = "./advance_model.csh"
+   ens_size                 =  10
+   start_from_restart       = .true.
+   output_restart           = .true.
+   obs_sequence_in_name     = "obs_seq.out"
+   obs_sequence_out_name    = "obs_seq.final"
+   restart_in_file_name     = "filter_ics"
+   restart_out_file_name    = "filter_restart"
+   init_time_days           = -1
+   init_time_seconds        = -1
+   first_obs_days           = -1
+   first_obs_seconds        = -1
+   last_obs_days            = -1
+   last_obs_seconds         = -1
+   num_output_state_members = 10
+   num_output_obs_members   = 10
+   output_interval          = 1
+   num_groups               = 1
+   input_qc_threshold       = 1.0
+   outlier_threshold        = 3.0
+   output_forward_op_errors = .false.
+   output_timestamps        = .false.
+   output_inflation         = .true.
+   trace_execution          = .true.
+   silence                  = .false.
+
+   inf_flavor                  = 0,                       0
+   inf_initial_from_restart    = .false.,                 .false.
+   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_output_restart          = .true.,                  .true.
+   inf_deterministic           = .true.,                  .true.
+   inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics'
+   inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart'
+   inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag'
+   inf_initial                 = 1.0,                     1.0
+   inf_sd_initial              = 0.0,                     0.0
+   inf_damping                 = 1.0,                     1.0
+   inf_lower_bound             = 1.0,                     1.0
+   inf_upper_bound             = 1000000.0,               1000000.0
+   inf_sd_lower_bound          = 0.0,                     0.0
+   /
+
+
+&smoother_nml
+   num_lags              = 0
+   start_from_restart    = .false.
+   output_restart        = .false.
+   restart_in_file_name  = 'smoother_ics'
+   restart_out_file_name = 'smoother_restart'
+   /
+
+
+# cutoff of 0.03 (radians) is about 200km
+&assim_tools_nml
+   filter_kind                     = 1
+   cutoff                          = 0.05
+   allow_missing_in_cable          = .true.
+   sort_obs_inc                    = .false.
+   spread_restoration              = .false.
+   sampling_error_correction       = .false.
+   adaptive_localization_threshold = -1
+   output_localization_diagnostics = .true.
+   localization_diagnostics_file   = 'localization_diagnostics'
+   print_every_nth_obs             = 0
+   /
+
+
+&ensemble_manager_nml
+   single_restart_file_in  = .false.
+   single_restart_file_out = .false.
+   perturbation_amplitude  = 0.2
+   layout                  = 1
+   tasks_per_node          = 1
+   /
+
+
+&cov_cutoff_nml
+   select_localization = 1
+   /
+
+
+&reg_factor_nml
+   select_regression    = 1
+   input_reg_file       = "time_mean_reg"
+   save_reg_diagnostics = .false.
+   reg_diagnostics_file = "reg_diagnostics"
+   /
+
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+   /
+
+
+&preprocess_nml
+    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90'
+   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90'
+     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90'
+    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90'
+   input_files              = '../../../obs_def/obs_def_tower_mod.f90'
+                              '../../../obs_def/obs_def_COSMOS_mod.f90'
+   /
+
+
+# casename will get overwritten in the assimilate.csh script.
+# hist_nhtfrq should be negative (hours) ... same context as in
+# the CLM namelist for the .h1. files.
+&obs_def_tower_nml
+   casename    = '../cable_dart'
+   hist_nhtfrq = -HISTORY_OUTPUT_INTERVAL
+   debug       = .false.
+   /
+
+
+&obs_kind_nml
+   assimilate_these_obs_types = 'TOWER_NETC_ECO_EXCHANGE'
+                                'TOWER_LATENT_HEAT_FLUX'
+                                'TOWER_SENSIBLE_HEAT_FLUX'
+                                'COSMOS_NEUTRON_INTENSITY'
+                                'WATER_TABLE_DEPTH'
+                                'SOIL_TEMPERATURE'
+                                'SOIL_MOISTURE'
+   evaluate_these_obs_types   = 'null'
+   /
+
+
+&assim_model_nml
+   write_binary_restart_files = .false.
+   netCDF_large_file_support  = .true.
+   /
+
+   cable_gridinfo_filename      = '/short/xa5/CABLE-AUX/offline/gridinfo_CSIRO_1x1_modified.nc'
+
+&model_nml
+   cable_restart_filename       = 'CABLE_restart.nc'
+   cable_gridinfo_filename      = 'CABLE_gridinfo.nc'
+   assimilation_period_days     = 1
+   assimilation_period_seconds  = 0
+   model_perturbation_amplitude = 0.2
+   output_state_vector          = .false.
+   calendar                     = 'Gregorian'
+   debug                        = 0
+   cable_variables              = 'wb',     'KIND_SOIL_MOISTURE'
+                                  'wbice',  'KIND_SOIL_ICE'
+                                  'tss',    'KIND_SKIN_TEMPERATURE'
+                                  'tgg',    'KIND_SOIL_TEMPERATURE'
+                                  'snowd',  'KIND_SNOW_WATER'
+   /
+
+
+# FIXME ... argument to print range for variables as we convert
+# cable_to_dart
+# The atmospheric forcing file I have starts at 1980,1,1,2,30,0
+# When staging an experiment, set replace_cable_time to .true.
+# but it should be .false. in general.
+
+&cable_to_dart_nml
+   cable_to_dart_output_file  = 'dart_ics'
+   /
+
+# FIXME ... argument to print range for variables as we convert
+# dart_to_cable
+# When assimilating, advance_time_present is .true.
+# When general testing ... it is usually .false.
+
+&dart_to_cable_nml
+   dart_to_cable_input_file   = 'dart_restart'
+   cable_time_file            = 'CABLE_time_file.nc'
+   advance_time_present       = .true.
+   /
+
+
+&location_nml
+   horiz_dist_only             = .true.
+   vert_normalization_pressure = 100000.0
+   vert_normalization_height   = 10000.0
+   vert_normalization_level    = 20.0
+   approximate_distance        = .false.
+   nlon                        = 71
+   nlat                        = 36
+   output_box_info             = .true.
+   /
+
+
+&utilities_nml
+   TERMLEVEL = 2
+   module_details = .false.
+   logfilename = 'dart_log.out'
+   nmlfilename = 'dart_log.nml'
+   write_nml   = 'file'
+   /
+
+
+&mpi_utilities_nml
+   /
+
+
+# Gregorian: 12 Z 1 January 1996 <==> DART: 144270 days 43200 seconds
+# Gregorian: 12 Z 1 January 2000 <==> DART: 145731 days 43200 seconds
+
+&restart_file_tool_nml
+   input_file_name              = "filter_restart"
+   output_file_name             = "filter_updated_restart"
+   ens_size                     = 1
+   single_restart_file_in       = .true.
+   single_restart_file_out      = .true.
+   write_binary_restart_files   = .true.
+   overwrite_data_time          = .false.
+   new_data_days                = -1
+   new_data_secs                = -1
+   input_is_model_advance_file  = .false.
+   output_is_model_advance_file = .false.
+   overwrite_advance_time       = .false.
+   new_advance_days             = -1
+   new_advance_secs             = -1
+   gregorian_cal                = .true.
+   /
+
+
+# The times in the namelist for the obs_diag program are vectors
+# that follow the following sequence:
+# year   month   day   hour   minute   second
+# max_num_bins can be used to specify a fixed number of bins
+# in which case last_bin_center should be safely in the future.
+#
+# Acceptable latitudes range from  [-90,  90]
+# Acceptable longitudes range from [  0, Inf]
+
+&obs_diag_nml
+   obs_sequence_name = ''
+   obs_sequence_list = 'fileList.txt'
+   first_bin_center =  2004, 1,  1, 0, 0, 0 
+   last_bin_center  =  2004, 1,  8, 0, 0, 0 
+   bin_separation   =     0, 0,  1, 0, 0, 0 
+   bin_width        =     0, 0,  1, 0, 0, 0 
+   time_to_skip     =     0, 0,  0, 0, 0, 0 
+   max_num_bins     = 1000
+   trusted_obs      = 'null'
+   Nregions   = 4
+   lonlim1    =     0.0,     0.0,    0.0,  180.0
+   lonlim2    =   360.0,   360.0,  180.0,  360.0
+   latlim1    =   -90.0,     0.0,  -90.0,  -90.0
+   latlim2    =     0.0,    90.0,   90.0,   90.0
+   reg_names  = 'South', 'North', 'East', 'West'
+   hlevel_edges =  0.0, 1.0, 2.0, 5.0, 10.0, 40.0
+   print_mismatched_locs = .false.
+   create_rank_histogram = .true.
+   outliers_in_histogram = .true.
+   use_zero_error_obs    = .false.
+   verbose               = .true.
+   /
+
+
+&obs_sequence_tool_nml
+   filename_seq      = ''
+   filename_seq_list = 'pieces.txt'
+   filename_out      = 'obs_seq.combined'
+   print_only        = .false.
+   gregorian_cal     = .true.
+   synonymous_qc_list = 'COSMOS QC','Ameriflux QC'
+   /
+
+
+&schedule_nml
+   calendar        = 'Gregorian'
+   first_bin_start =  1601,  1,  1,  0,  0,  0
+   first_bin_end   =  2999,  1,  1,  0,  0,  0
+   last_bin_end    =  2999,  1,  1,  0,  0,  0
+   bin_interval_days    = 1000000
+   bin_interval_seconds = 0
+   max_num_bins         = 1000
+   print_table          = .true.
+   /
+
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_list = ''
+   append_to_netcdf  = .false.
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
+   verbose    = .false.
+   /
+
+! useful input for model_mod_check_nml ...
+! set model_nml debug level to 11 and write out DART_metadata_file.txt
+! Provides a table relating DART state index to CABLE metadata
+
+   loc_of_interest      = 140.50, -25.50, 0.0
+   loc_of_interest      = 173.50, 67.50, 0.022
+&model_mod_check_nml
+   input_file           = "dart_ics"
+   output_file          = "check_me_out"
+   advance_time_present = .FALSE.
+   verbose              = .TRUE.
+   test1thru            = 16
+   x_ind                = 105907
+   loc_of_interest      = 173.50, 67.50, 1.085
+   variable_of_interest = 'tgg'
+   kind_of_interest     = 'KIND_SOIL_TEMPERATURE'
+   /
+

@@ -1,0 +1,18 @@
+The scripts in this directory are:
+
+advance_model.csh - 
+Normally small models (including this one) are compiled directly with
+the filter program to make a single executable that does both the data
+assimilation and the model advances.  However, to test the mode where the
+model is a separate executable, this script is an example of what is needed.
+See the filter.html documentation for async mode 2 for more details.
+
+The scripts in this directory are:
+
+advance_model.csh - 
+Normally small models (including this one) are compiled directly with
+the filter program to make a single executable that does both the data
+assimilation and the model advances.  However, to test the mode where the
+model is a separate executable, this script is an example of what is needed.
+See the filter.html documentation for async mode 2 for more details.
+

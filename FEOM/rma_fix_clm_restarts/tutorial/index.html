@@ -1,0 +1,171 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+"http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+      <!-- $Id$ -->
+      <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+      <title>Data Assimilation Research Testbed Tutorial -- DART Tutorial</title>
+      <link href="../images/dart.ico" rel="shortcut icon" />
+      <link href="../doc/html/doc.css"  rel="stylesheet" type="text/css" />
+</head>
+<body>
+<a name="TOP"></a>
+
+<H1>DART Tutorial</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<P>The DART Tutorial is intended to aid in the understanding of 
+ensemble data assimilation theory and consists of step-by-step concepts and
+companion exercises with DART. The diagnostics in the tutorial use 
+Matlab&reg; (to see how to configure your environment to use Matlab 
+and the DART diagnostics, see the documentation for 
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_Documentation.php#configure_matlab">Configuring&nbsp;Matlab&reg;&nbsp;for&nbsp;netCDF&nbsp;&amp;&nbsp;DART</a>).
+
+<table border=0 summary="List of DART Tutorial Sections" cellpadding=5 width=100%>
+
+<tr><td valign=top>Section&nbsp;1</td>
+    <td valign=top><a href="section_01.pdf">[pdf]</a>&nbsp;&nbsp;</td>
+    <td>Filtering For a One Variable System</td></tr>
+
+<tr><td valign=top>Section&nbsp;2</td>
+    <td valign=top><a href="section_02.pdf">[pdf]</a></td>
+    <td>The DART Directory Tree</td></tr>
+
+<tr><td valign=top>Section&nbsp;3</td>
+    <td valign=top><a href="section_03.pdf">[pdf]</a></td>
+    <td>DART Runtime Control and Documentation</td></tr>
+
+<tr><td valign=top>Section&nbsp;4</td>
+    <td valign=top><a href="section_04.pdf">[pdf]</a></td>
+    <td>How should observations of a state variable impact an 
+        unobserved state variable? Multivariate assimilation.</td></tr>
+
+<tr><td valign=top>Section&nbsp;5</td>
+    <td valign=top><a href="section_05.pdf">[pdf]</a></td>
+    <td>Comprehensive Filtering Theory: Non-Identity Observations 
+        and the Joint Phase Space</td></tr>
+
+<tr><td valign=top>Section&nbsp;6</td>
+    <td valign=top><a href="section_06.pdf">[pdf]</a></td>
+    <td>Other Updates for An Observed Variable</td></tr>
+
+<tr><td valign=top>Section&nbsp;7</td>
+    <td valign=top><a href="section_07.pdf">[pdf]</a></td>
+    <td>Some Additional Low-Order Models</td></tr>
+
+<tr><td valign=top>Section&nbsp;8</td>
+    <td valign=top><a href="section_08.pdf">[pdf]</a></td>
+    <td>Dealing with Sampling Error</td></tr>
+
+<tr><td valign=top>Section&nbsp;9</td>
+    <td valign=top><a href="section_09.pdf">[pdf]</a></td>
+    <td>More on Dealing with Error; Inflation</td></tr>
+
+<tr><td valign=top>Section&nbsp;10</td>
+    <td valign=top><a href="section_10.pdf">[pdf]</a></td>
+    <td>Regression and Nonlinear Effects</td></tr>
+
+<tr><td valign=top>Section&nbsp;11</td>
+    <td valign=top><a href="section_11.pdf">[pdf]</a></td>
+    <td>Creating DART Executables</td></tr>
+
+<tr><td valign=top>Section&nbsp;12</td>
+    <td valign=top><a href="section_12.pdf">[pdf]</a></td>
+    <td>Adaptive Inflation</td></tr>
+
+<tr><td valign=top>Section&nbsp;13</td>
+    <td valign=top><a href="section_13.pdf">[pdf]</a></td>
+    <td>Hierarchical Group Filters and Localization</td></tr>
+
+<tr><td valign=top>Section&nbsp;14</td>
+    <td valign=top><a href="section_14.pdf">[pdf]</a></td>
+    <td>Observation Quality Control</td></tr>
+
+<tr><td valign=top>Section&nbsp;15</td>
+    <td valign=top><a href="section_15.pdf">[pdf]</a></td>
+    <td>DART Experiments: Control and Design</td></tr>
+
+<tr><td valign=top>Section&nbsp;16</td>
+    <td valign=top><a href="section_16.pdf">[pdf]</a></td>
+    <td>Diagnostic Output</td></tr>
+
+<tr><td valign=top>Section&nbsp;17</td>
+    <td valign=top><a href="section_17.pdf">[pdf]</a></td>
+    <td>Creating Observation Sequences</td></tr>
+
+<tr><td valign=top>Section&nbsp;18</td>
+    <td valign=top><a href="section_18.pdf">[pdf]</a></td>
+    <td>Lost in Phase Space: The Challenge of Not Knowing the Truth</td></tr>
+
+<tr><td valign=top>Section&nbsp;19</td>
+    <td valign=top><a href="section_19.pdf">[pdf]</a></td>
+    <td>DART-Compliant Models and Making Models Compliant</td></tr>
+
+<tr><td valign=top>Section&nbsp;20</td>
+    <td valign=top><a href="section_20.pdf">[pdf]</a></td>
+    <td>Model Parameter Estimation</td></tr>
+
+<tr><td valign=top>Section&nbsp;21</td>
+    <td valign=top><a href="section_21.pdf">[pdf]</a></td>
+    <td>Observation Types and Observing System Design</td></tr>
+
+<tr><td valign=top>Section&nbsp;22</td>
+    <td valign=top><a href="section_22.pdf">[pdf]</a></td>
+    <td>Parallel Algorithm Implementation</td></tr>
+
+<tr><td valign=top>Section&nbsp;23</td>
+    <td valign=top></td>
+    <td>Location module design (not available)</td></tr>
+
+<tr><td valign=top>Section&nbsp;24</td>
+    <td valign=top></td>
+    <td>Fixed lag smoother (not available)</td></tr>
+
+<tr><td valign=top>Section&nbsp;Carbon</td>
+    <td valign=top><a href="section_carbon.pdf">[pdf]</a></td>
+    <td>A Simple 1D Advection Model</td></tr>
+
+</table>
+
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<a name="Legalese"></a>
+<hr />
+<h2>Terms of Use</h2>
+
+<p>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</p>
+
+<table border=0 cellpadding=0 width=100% summary="">
+<tr><td valign=top>Contact:       </td><td> DART core group   </td></tr>
+<tr><td valign=top>Revision:      </td><td> $Revision$ </td></tr>
+<tr><td valign=top>Source:        </td><td> $URL$ </td></tr>
+<tr><td valign=top>Change Date:   </td><td> $Date$ </td></tr>
+<tr><td valign=top>Change&nbsp;history:&nbsp;</td><td> try "svn&nbsp;log" or "svn&nbsp;diff" </td></tr>
+</table>
+
+<!--==================================================================-->
+
+</body>
+</html>

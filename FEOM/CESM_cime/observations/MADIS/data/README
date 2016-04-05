@@ -1,0 +1,40 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+These are example data files.  They need to be unzipped
+and either renamed or be the target of a symbolic link
+in order to be used with the converters.  See the html file
+in the parent directory for more info on how to run
+the workflow for the converters.
+
+The current version of the converters automatically detects
+if the input NetCDF files contain Data QC fields or not
+and uses them if present.  There is a compile-time variable
+that can be set to ignore all QC information.  See the
+logical parameters near the top of the source files.
+
+Unlike previous versions of these converters they no longer
+require input arguments, except for the rawinsonde converter.
+The rawinsonde converter always converts mandatory level
+wind and temperature observations, and then prompts for two
+logical inputs (T or F) to select whether to convert and
+output significant level wind obs, and significant level 
+temperature obs.
+
+Each converter has a hardcoded input filename.  The intent
+is that the calling script will copy, rename, or make a 
+symbolic link to the actual input data file before executing 
+the program.  Input filenames must be:
+
+convert_madis_acars:    'acars_input.nc'
+convert_madis_marine:   'marine_input.nc'
+convert_madis_mesonet:  'mesonet_input.nc'
+convert_madis_metar:    'metar_input.nc'
+convert_madis_profiler: 'profiler_input.nc'
+convert_madis_rawin:    'rawin_input.nc'
+convert_madis_satwnd:   'satwnd_input.nc'
+
+

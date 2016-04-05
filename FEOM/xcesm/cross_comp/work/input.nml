@@ -1,0 +1,85 @@
+&cross_comp_localization_nml
+   cross_component_updates  = .true.,
+   metafile                 = "xcomp-sec-tatmtocn_metafile.txt",
+   atm_lookup_table         = "xcomp-sec-tatmtocn_atmfile.txt",
+   ocn_lookup_table         = "xcomp-sec-tatmtocn_ocnfile.txt",
+   cutoff_cross               = 0.2
+/
+
+# cutoff of 0.03 (radians) is about 200km
+&assim_tools_nml
+   filter_kind                     = 1,
+   cutoff                          = 0.20,
+   sort_obs_inc                    = .false.,
+   spread_restoration              = .false.,
+   sampling_error_correction       = .false.,
+   adaptive_localization_threshold = -1,
+   output_localization_diagnostics = .false.,
+   localization_diagnostics_file   = 'localization_diagnostics',
+   print_every_nth_obs             = 0
+  /
+
+&ensemble_manager_nml
+   single_restart_file_in  = .false.
+   single_restart_file_out = .false.
+   perturbation_amplitude  = 0.2
+   layout                  = 1
+   tasks_per_node          = 1
+  /
+
+&cov_cutoff_nml
+   select_localization = 1
+  /
+
+&reg_factor_nml
+   select_regression    = 1,
+   input_reg_file       = "time_mean_reg",
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = "reg_diagnostics"
+  /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+  /
+
+&obs_kind_nml
+  /
+
+&preprocess_nml
+    input_obs_kind_mod_file = '../../obs_kind/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../obs_kind/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../obs_def/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../obs_def/obs_def_mod.f90',
+   input_files              = '../../obs_def/obs_def_ocean_mod.f90'
+                              '../../obs_def/obs_def_reanalysis_bufr_mod.f90'
+  /
+
+&assim_model_nml
+   write_binary_restart_files = .true.,
+   netCDF_large_file_support  = .true.
+  /
+
+&model_nml
+  /
+
+&location_nml
+   horiz_dist_only             = .true.,
+   vert_normalization_pressure = 100000.0,
+   vert_normalization_height   = 10000.0,
+   vert_normalization_level    = 20.0,
+   approximate_distance        = .false.,
+   nlon                        = 71,
+   nlat                        = 36,
+   output_box_info             = .true.
+  /
+
+&utilities_nml
+   TERMLEVEL = 1,
+   module_details = .false.,
+   logfilename = 'dart_log.out',
+   nmlfilename = 'dart_log.nml'
+  /
+
+&mpi_utilities_nml
+   /
+

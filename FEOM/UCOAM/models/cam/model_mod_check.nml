@@ -1,0 +1,19 @@
+&model_mod_check_nml
+   dart_input_file       = 'dart_ics'
+   output_file           = 'check_me'
+   advance_time_present  = .FALSE.
+   test1thru             = -1
+   lon_of_interest       = 300.5
+   lat_of_interest       = 79.0
+   verts_of_interest     = 2700., 3700., 4900., 6000., 7000., 8000., 9000., 10000., 11000., 12000., 13000.
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   kind_of_interest      = 'ANY'
+   verbose               = .FALSE.
+   interp_test_dlon      = 1.0
+   interp_test_dlat      = 1.0
+   interp_test_dvert     = 1000.0
+   interp_test_lonrange  = (/   0.0, 360.0 /)
+   interp_test_latrange  = (/ -90.0,  90.0 /)
+   interp_test_vertrange = (/  1000.0, 5000.0 /)
+  /
+

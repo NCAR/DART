@@ -1,0 +1,707 @@
+# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+This README was last updated July 14, 2004 by Jim Hansen.  
+It is relevant for the Guam release of DART.
+
+The MITgcm model in annulus configuration and its current 
+implementation within the DART framework are described
+below.
+
+o For details on the MITgcm, read the MODEL section
+  below.
+o For specifics on how the MITgcm was implemented in the DART
+  framework, read the DART section below.
+o For a step-by-step tutorial on how to use the model in
+  DART, read the EXAMPLE section below.  Please note that
+  the tutorial is not meant to be an "operational" implementation
+  of the data assimilation scheme, it is designed to be run
+  quickly and simply.
+
+MODEL
+
+The MITgcm annulus model as configured for this application
+within DART is a non-hydrostatic, rigid lid, C-grid, primitive
+equation model utilizing a cylindrical coordinate system.  For 
+detailed information about the MITgcm, see http://mitgcm.org.
+
+DART
+
+~/DART/shell_scripts
+
+	o advance_ens_fisher_oneproc.csh
+
+	The advance_ens.csh script is meant to be machine
+	dependent.  I didn't like the four processor fisher
+	version in ~/DART/shell_scripts, so I modified it to
+	a single processor version.
+
+~/DART/location/annulus
+
+	o location_mod.f90
+
+	The location_mod.f90 for the annulus is a modified version
+	of ~/DART/location/threed_sphere/location_mod.f90.  The most
+	important thing to keep in mind in the annulus version is that
+	longitude actually mean azimuthal angle, and latitude actually
+	means radius.
+
+~/DART/obs_kind/annulus
+
+	o obs_kind_mod.f90
+
+	The only modification that was made to the default
+	obs_kind_mod.f90 was to alter the interactive_kind
+	subroutine so that only the five variables passed
+	to DART by the MITgcm are made available.
+
+~/DART/models/MITgcm_annulus
+
+	Lots and lots of modifications in this directory!
+
+	o trans_MITgcm_to_dart.f90
+
+	As the name implies, it was necessary to create a
+	program to translate between the MITgcm restart file
+	and the dart restart file.  This program is called by
+	advance_model.csh.
+
+	o trans_dart_to_MITgcm.f90
+
+	This program translates between the dart restart file
+	and the MITgcm restart file.  It too is called by
+	advance model.csh.  It seems silly to have both this
+	program and trans_MITgcm_to_dart.f90, and at some
+	point they will probably be combined.
+
+	o trans_perfect_ics.f90
+
+	This program is very similar to trans MITgcm_to_dart.f90.
+	It is only used to go from the default initial MITgcm
+	state to a dart initial condition file.
+
+	o model_mod.f90
+
+	Where to start!?
+
+	This model_mod.f90 is modified from the lorenz_04
+	model_mod.f90.  Thus, there were many many changes
+	that were made.
+
+	The default namelist for the annulus is:
+
+	model_size            length of the data assimilation control
+        	               vector, and is = naz*nrad*nzed*ntype
+	naz                   number of gridpoints in the azimuthal direction
+	nrad                  number of gridpoints in the radial direction
+	nzed                  number of gridpoints in the z direction
+	ntype                 number of variables at each grid point that
+	                       are impacted by the data assimilation
+	daz                   the gridpoint increment in the azimuthal
+	                       direction (degrees)
+	drad                  the gridpoint increment in the radial
+	                       direction (meters)
+	dzed                  the gridpoint increment in the z
+	                       direction (meters)
+	inner_rad             the radius of the inner cylinder of the
+	                       annulus (meters)
+	outer_rad             the radius of the outer cylinder of the
+	                       annulus (meters)
+	depth                 the overall depth of the fluid (meters)
+	delta_t               the model integration time step (in seconds)
+	time_step_days        the number of days in an integration time step
+	time_step_seconds     the number of seconds in an integration time step.
+	                       this is not real time, this is time scales by the
+	                       tank's rotation rate.  f=0.5 mean a "day" is 4sec.
+	                       equate 4sec to 86400sec and determine the dart
+	                       time step
+
+	There are various arrays, vectors and types defined
+	to handle mapping between the 1d control vector and the
+	associated 3d state array, and to handle grid definitions.
+
+		o subroutine static_init_model
+
+		Here, space is allocated for the various grid and
+		prognostic variable vectors and arrays.  The locations
+		of the model state variables are defined, and the
+		model time_step is sorted out.  The annulus time step
+		is on the order of 0.1 seconds, a time step not supported
+		by DART.  To address this problem, the model time step is
+		scaled by the tank's rotati rate (one tank revolution is
+		defined as one day), and the associated time step is
+		determined.  For example, f0 = 0.5 means \Omega=0.25,
+		or 1 day is 4 seconds.  For a dt of 0.1, a model time
+		step is 1/40th of a day.  There are 86400 seconds in a
+		day, so a dart "second" becomes 1/40th of 86400 = 2160.
+
+		o subroutine comp_dt
+
+		Empty.  Is meaningless when model is integrated off line.
+
+		o subroutine init_conditions
+
+		Empty.  Is meaningless when model is integrated off line.
+
+		o subroutine adv_1step
+
+		Empty.  Is meaningless when model is integrated off line.
+
+		o subroutine model_interpolate
+
+		Didn't do anything here as for the moment am
+		concentrating on identity obs.  This will have to 
+		be sorted out before real observations can be used.
+
+		o subroutine get_state_meta_data
+
+		Given an integer index into the state vector structure,
+		this routine returns the assocated 3d-location.  All the
+		heavy lifting for this routine is done once in the
+		static_init_model subroutine.
+
+		o subroutine model_get_close_states
+
+		I tried hard to get this subroutine to work, but in the
+		interest of time I ended up going with the default brute
+		force approach.  My efforts still reside in the 
+		subroutine, but are commented out.
+	
+		o subroutine vector_to_prog_var
+
+		This subroutine takes in the control vector and
+		splits it into 3d model variable fields.  It is used
+		by the nc_write_model_vars routine to put the state
+		into netCDF files in a sensible form.
+
+		o function nc_write_model_atts
+
+		All kinds of stuff was added to this routine in order
+		to define the output files for the control variables.
+
+		o function nc_write_model_vars
+
+		The MITgcm annulus uses the C-grid, and the current 
+		configuration is passing five prognostic variables to 
+		DART.  The routine "vector_to_prog_var" pulls the 
+		prognostic variables from the control vector and places 
+		them into 3d variables that are output to netCDF.
+
+~/DART/models/MITgcm_annulus/shell_scripts
+
+	o byteswap.c
+
+	For reasons I don't fully understand, it is necessary to do
+	all kinds of byte swapping on the MITgcm restart files.  The
+	associated executable is called by advance_model.csh.
+
+	o advance_ens.csh
+
+	This script is copied down from 
+	~/DART/shell_scripts/advance_ens_fisher_oneproc.csh, and as
+	the name implies, it is the script that is called by DART 
+	to advance the ensemble offline.
+
+	o makestuff.csh
+
+	This script contains all mkmf and make commands that are
+	necessary for building the MITgcm annulus DART distribution.
+	Note that it does not contain commands for building the
+	MITgcm executable.
+
+	o advance_model.csh
+
+	This script is called by advance_ens.csh and advances each
+	ensemble member individually.  The basic idea is that each
+	ensemble member is run by the same MITgcm executable, but in
+	a working directory that is defined by the ensemble number.
+
+	o coseq.pl
+
+	This script generates a file that is redirected into
+	create_obs_sequence.  The benefit of this script is you
+	don't have to enter tens of thousands of pieces of
+	observational information to create_obs_sequence by
+	hand.  It takes in the spacing between observations
+	and the observational error covariance for each of the
+	variables passed to DART, and makes sure that no
+	observations pop up in the middle of the ice bucket!
+
+~/DART/models/MITgcm_annulus/work
+
+	o path_names_create_fixed_network_seq
+
+	Various paths had to be altered in order to point to
+	the MITgcm_annulus directory, the annulus obs_kind
+	directory, and the annulus location_mod directory.
+
+	o path_names_filter
+
+	Various paths had to be altered in order to point to
+	the MITgcm_annulus directory, the annulus obs_kind
+	directory, and the annulus location_mod directory.
+
+	o path_names_create_obs_sequence
+
+	Various paths had to be altered in order to point to
+	the MITgcm_annulus directory, the annulus obs_kind
+	directory, and the annulus location_mod directory.
+
+	o path_names_perfect_model_obs
+
+	Various paths had to be altered in order to point to
+	the MITgcm_annulus directory, the annulus obs_kind
+	directory, and the annulus location_mod directory.
+
+	o path_names_MITgcm_to_dart
+
+	Various paths had to be altered in order to point to
+	the MITgcm_annulus directory, the annulus obs_kind
+	directory, and the annulus location_mod directory.
+
+	o path_names_dart_to_MITgcm
+
+	Various paths had to be altered in order to point to
+	the MITgcm_annulus directory, the annulus obs_kind
+	directory, and the annulus location_mod directory.
+
+	o path_names_perfect_ics
+
+	Various paths had to be altered in order to point to
+	the MITgcm_annulus directory, the annulus obs_kind
+	directory, and the annulus location_mod directory.
+
+	o mkmf_MITgcm_to_dart
+
+	Had to construct the mkmf file for this new program.
+
+	o mkmf_dart_to_MITgcm
+
+	Had to construct the mkmf file for this new program.
+
+	o mkmf_perfect_ics
+
+	Had to construct the mkmf file for this new program.
+
+EXAMPLE
+
+1) Obtain MITgcmDART.tar and ens.tgz and place them on a filesystem with 
+   lots of space (pretend that directory is called $LOTSOFSPACE).  At 
+   the time of writing, these two files can be found at
+
+   http://wind.mit.edu/~hansen/MITgcmDART.tar
+   http://wind.mit.edu/~hansen/ens.tgz
+
+2) Create a subdirectory called MITgcm, and move MITgcmDART.tar to that
+   subdirectory
+
+   > mkdir $LOTSOFSPACE/MITgcm
+   > cd MITgcm
+   > mv ../MITgcmDART.tar .
+
+3) Unpack the MITgcm
+
+   > tar xvf MITgcmDART.tar 
+
+4) Compile the MITgcm
+
+   > cd verification/osse/build  
+   > ../../../tools/genmake -mods=../code
+   > make depend
+   > make
+
+5) Copy the big initial ensemble to the relevant directory
+   ($LOTSOFSPACE/MITgcm/verification/osse/da) and unpack using 
+   the relevant script.  Note that mkens.DART defaults to a 
+   maximum of 30 ensemble members.  You will have to alter the
+   script to support a larger ensemble size.
+
+   > cd ../da # now in $LOTSOFSPACE/MITgcm/verification/osse/da
+   > mv $LOTSOFSPACE/ens.tgz .
+   > ./mkens.DART
+
+6) Move to the DART MITgcm annulus work directory (here am assuming
+   it is a subdirectory off of your home directory)
+
+   > cd ~/DART/models/MITgcm_annulus/work
+
+7) Create a link to the MITgcm distribution
+
+   > ln -s $LOTSOFSPACE/MITgcm MITgcm
+
+8) Copy contents of shell_scripts into work directory
+
+   > cp ../shell_scripts/* .
+
+9) Copy relevant adance_ens script from DART distribution
+
+   > cp ~/DART/shell_scripts/advance_ens_fisher_oneproc.csh .
+   > mv advance_ens_fisher_oneproc.csh advance_ens.csh
+
+10) Build the byte swapping utility (and remove the code so that
+    subsequent make calls don't accidentally include it).
+
+    > gcc byteswap.c
+    > mv a.out byteswap
+    > rm byteswap.c
+
+11) Compile all the DART stuff
+
+    > ./makestuff.csh
+
+12) The MITgcm DART distribution comes with model initial conditions.
+    It is necessary to translate those initial conditions into something
+    DART-consumable.
+
+    > cp MITgcm/verification/osse/da/00/assimilate/pickup.in .
+    > cp MITgcm/verification/osse/da/00/assimilate/pickup_nh.in .
+    > ./byteswap pickup.in pickup.in.swap -w 8
+    > ./byteswap pickup_nh.in pickup_nh.in.swap -w 8
+    > ./trans_perfect_ics
+    > rm pickup*
+
+13) The MITgcm initial condition is already spun up, but to keep things
+    consistent with other DART examples, we'll do a short spin up.
+    To get a model initial condition "on the attractor" have to begin
+    by constructing observation definitions. 
+    [See http://www.cgd.ucar.edu/DAI/Fiji_release.html for explaination]
+
+    > ./create_obs_sequence
+
+	1000  		# upper bound on num obs for memory allocation
+	0		# creating a definition
+	0		# no quality control necessary
+	0		# have some obs info to input
+	-3		# means an identity obs at model component 3
+	0, 43200	# see comments on time below
+	100000000	# obs error variance (ignore obs)
+	-1		# no more obs info to enter
+	set_def.out	# input file name
+
+    > ./create_fixed_network_seq
+
+	set_def.out 	# input filename
+	1		# regularly repeating time sequence
+	100		# number of observations in sequence
+	0, 43200	# time of initial ob in sequence in days and seconds
+	0, 43200 	# period of obs in days and seconds
+	obs_seq.in	# file name for output of obs_sequence
+
+    Time doesn't really have any meaning with the current (July 2004)
+    implementation of the MITgcm annulus for DART.  The number of
+    timesteps between observions is hardcoded in the MITgcm (although
+    scripts can (and will) be easily written to make this more variable.
+    An additional problem is that DART does not support timesteps
+    shorter than one minute.  The timestep for the annulus is 0.1
+    seconds, so it was necessary to scale time (for the purpose of
+    DART) with respect to the annulus rotation rate.  The current
+    hard-coded time between observations within the MITgcm is 2
+    seconds.  This is half a "day" according to an f value of 0.5,
+    thus, the observation period of 43200 seconds (12 hours) above.
+
+14) Construct the namelist file that will be modified throughout the
+    example:
+
+    > cp input.nml.perfect_model_obs_default input.nml
+    > cat input.nml.filter_default >> input.nml
+
+    This places both the perfect_model_obs namelist and the filter
+    namelist into the same file.
+
+15) Edit the namelist so that a random initial condition is propagated
+    forward for a period of time and allowed to fall onto the attractor.
+
+    In input.nml, set output_restart to .true. and start_from_restart
+    to .true. under &perfect_model_obs_nml.  Also set async = 2 so that 
+    DART knows to advance the model off line.
+
+16) Run perfect_model_obs (this takes around 30 mintues on fisher)
+
+    > ./perfect_model_obs
+
+17) Before running the filter to generate our initial ensemble, it
+    is necessary to play some games with the MITgcm restart files.
+    DART is passed only a subset of the restart information needed
+    by the MITgcm, and the extra information is stored in the
+    da/QQ/assimilate/pickup*.* files.  One must take case to ensure
+    that the pickup files are consistent with the information being
+    passed by DART.  If one were to blindly run filter at this stage,
+    ensemble member 01 would have pickup information consistent with
+    the end of the perfect_model_obs (t=50 days) run rather than the 
+    beginning of the perfect_model_obs run (t=0 days).  We will still 
+    need the pickup information at t=50 days, so that will be saved
+    before restoring the t=0 pickup information in da/01/assimilate.
+
+    > cd MITgcm/verification/osse/da
+    > mkdir store_50
+    > cd store_50
+    > mkdir truth
+    > cd truth
+    > cp ../../01/assimilate/pickup* .
+    > cd ../..
+    > cp 02/assimilate/pickup* 01/assimilate
+    > cd ../../../..
+
+18) Edit the namelist to get ready for the initial ensemble generation.
+
+    In input.nml, set start_from_restart to .false., output_restart to 
+    .true., and num_output_state_members to 20 under &filter_nml.  Also
+    set async = 2 so the filter knows that the model is being advanced
+    off line, and set num_output_state_members to zero to conserve
+    disk space.  Set restart_in_file_name to perfect_ics.
+
+19) Run the filter to generate the ensemble.  The filter is still using
+    the observation information set in item 13 (1 ob every 12 hours with 
+    an error variance of 100000000.0).  This means that the observation is
+    ignored, and filter generates an ensemble spread across the attractor.
+    Spinning up this initial ensemble takes a good 10-12 hours on fisher.
+
+    > ./filter
+
+20) Copy the resulting truth and ensemble restart files to initial
+    condition files.
+
+    > cp perfect_restart perfect_ics
+    > cp filter_restart filter_ics
+
+21) The MITgcm/verification/osse/da directories now contain pickup
+    information at time t=50days which is consistent with the new
+    perfect_ics and filter_ics files.  Because we are likely to want
+    to go back to these ics for various experiments we need to store
+    the ensemble restart information.  Remember from item 17 above that
+    the truth pickup files were stored in
+    MITgcm/verification/osse/da/store_50/truth.  We now want to save
+    the ensemble pickup files in 
+    MITgcm/verification/osse/da/store_50/ensemble directories.
+
+    > cd MITgcm/verification/osse/da/store_50
+    > mkdir ensemble
+    > cd ensemble
+    > bash
+    > for i in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20; do
+       mkdir $i
+       cp ../../$i/assimilate/pickup.in $i
+       cp ../../$i/assimilate/pickup_nh.in $i
+       cp ../../$i/assimilate/pickup.out $i
+       cp ../../$i/assimilate/pickup_nh.out $i
+      done
+    > exit
+    > cd ..
+
+    Obviously, the for loop will have to be as long as the number of
+    ensemble members.
+
+22) The next step is to generate a trajectory of observations, so 
+    it is necessary to restore the "truth" pickup files in the
+    MITgcm tree.  From 21 above, we are already in the
+    MITgcm/verification/osse/da/store_50 directory.
+
+    > cp truth/* ../01/assimilate
+    > cd cd ../../../../..
+
+23) The initial ensemble and associated truth state have been generated.
+    Time to do some real data assimilation.  The process begins by 
+    specifying the observation information.  The first step is to run
+    create_obs_sequence.  Since create_obs_sequence requires the user to
+    enter observation location and error variance information by hand,
+    a script called coseq.pl has been constructed to ease the process.
+    coseq.pl generates a file that can be input to create_obs_sequence.
+    Instead of entering each location and variance, the user enters
+    the spacing between observations and a single observation error
+    variance that is applied to all observations of a specified type.
+
+    > ./coseq.pl
+
+	50			# spacing between U observations
+	0.00000025		# U observation error variance
+	50			# spacing between V observations
+	0.00000025		# V observation error variance
+	50			# spacing between W observations
+	0.00000025		# W observation error variance
+	50			# spacing between T observations
+	0.01			# T observation error variance
+	50			# spacing between P observations
+	0.00000000000001	# P observation error variance
+
+24) Redirect results of coseq.pl to create_obs_sequence
+
+    > ./create_obs_sequence < coseq.dat
+
+25) Generate the observation sequence using create_fixed_network_seq
+
+    > ./create_fixed_network_seq
+
+	set_def.out	# observation set definition file
+	1		# regularly spaced obs in time
+	10		# number of observation times
+	50, 0		# first observation at day 50
+	0, 43200	# observations every 12 hours
+	obs_seq.in	# output file for obs sequence definition
+
+    Remember, the chosen start time and observation period
+    are scaled by the rotation rate of the tank; they do not
+    represent physical time.  Also, remember that the observation
+    period is currently hard coded in the MITgcm.
+
+26) Produce the observations described by create_obs_set_def and
+    create_obs_sequence using perfect_model_obs.
+
+    > ./perfect_model_obs
+
+27) Since truth was propagated forward in da/01/assimilate
+    to generate the observations, it is necessary to restore
+    the pickup files in da/01/assimilate back to t=50 days
+    for ensemble member 1
+
+    > cd MITgcm/verification/osse/da
+    > cp store_50/ensemble/01/* 01/assimilate
+    > cd ../../../..
+
+28) Adjust the namelist to do proper data assimilation.
+
+    In input.nml under &filter_nml, make sure async = 2, 
+    cutoff = 0.06, cov_inflate = 1.1, start_from_restart=.true.
+    restart_in_file_name="filter_ics", and num_output_state_members=20.
+
+29) Run the filter to do the DA
+
+    > ./filter
+
+30) The bits of matlab below can be used to see how the DA performed.
+
+% load the true trajectory and the analysis ensembles
+clear;pack
+
+% set the necessary dart paths (script is attached below)
+dartpath
+
+% load the truth state
+ncload('True_State.nc');
+
+% specify the dimensions of the annulus
+naz=length(az);nrad=length(rad);nzed=length(zed);
+
+% remove the ensemble dimension from U
+Utruth(:,:,:,:) = U(:,1,:,:,:);
+
+% to produce a plot of analysis error as a function
+% of time, reshape the truth matrix into a vector
+len=length(Utruth(:,1,1,1,1));
+for i=1:len
+ utmp(:,:,:)=Utruth(i,:,:,:);
+ Utvect(i,:)=reshape(utmp,1,naz*nrad*nzed);
+end
+
+% load the ensemble analysis states
+ncload('Posterior_Diag.nc');
+
+% grab the ensemble mean and do some reshaping
+% (remember, nens+1 is the ensemble mean!)
+for i=1:len
+ utmp(:,:,:)=U(i,21,:,:,:);
+ Umean(i,:,:,:)=U(i,21,:,:,:);
+ Umvect(i,:)=reshape(utmp,1,naz*nrad*nzed);
+end
+
+% calculate the distance between the ensemble mean
+% and the truth (note: this really should be area
+% weighted)
+for i=1:len
+ d(i)=norm(Utvect(i,:)-Umvect(i,:));
+end
+
+% plot the analysis error
+figure(1);
+plot(time,d)
+xlabel('days');ylabel('RMS analysis error (not area weighted!)')
+title('RMS distance between true U and analysis ensemble mean U')
+
+% now plot the true U, the analysis ensemble mean U, and the
+% difference between them at the end of the run and in the
+% middle of the fluid
+Ut(:,:)=Utruth(10,15,:,:);
+Um(:,:)=Umean(10,15,:,:);
+
+% do some wrapping in the azimuthal direction to make the
+% plots look nice
+az2=az;az2(121)=360;
+Ut(:,121)=Ut(:,1);
+Um(:,121)=Um(:,1);
+
+% replace 0's with NaN's to make the plots look nicer
+for i=1:nrad;for j=1:naz+1
+ if(Ut(i,j)==0) Ut(i,j)=NaN;end
+ if(Um(i,j)==0) Um(i,j)=NaN;end
+end;end
+
+% make some pretty pictures
+figure(2)
+subplot(2,2,1);cylplot(rad,deg2rad(az2),Ut','pcolor')
+title('truth')
+subplot(2,2,2);cylplot(rad,deg2rad(az2),Um','pcolor')
+title('analysis ensemble mean')
+subplot(2,2,3);cylplot(rad,deg2rad(az2),Ut'-Um','pcolor')
+title('truth - ensemble mean')
+
+
+%DARTPATH  Add relevant directories to the matlab path
+%	DARTPATH adds directories to the matlab path that
+%	are needed to utilize netCDF.
+%
+%	The paths below are, of course, unique to my
+%	personal environment.  
+
+addpath /home/hansenj/DART/matlab
+addpath /home/hansenj/matlab/matlab_netcdf_5_0/
+addpath /home/hansenj/matlab/netcdf/           
+addpath /home/hansenj/matlab/netcdf/ncutility/
+addpath /home/hansenj/matlab/netcdf/nctype/   
+addpath /home/hansenj/matlab/netcdf/ncfiles/  
+
+
+%CYLPLOT  Plot in cylindrical coordinates
+%       CYLPLOT(R,THETA,Z,METHOD) produces a plot of the contents of the 
+%       size(THETA) x size(R) Z matrix.  THETA and R are vectors giving 
+%       the azimuthal and radial coordinates.
+%
+%       METHOD is either 'pcolor' or 'contourf' or 'contour'
+
+function [] = cylplot(R,THETA,Z,METHOD)
+
+[r,theta]=meshgrid(R,THETA);
+x=r.*cos(theta);
+y=r.*sin(theta);
+if(METHOD(1:6)=='pcolor')
+ eval([METHOD,'(x,y,Z)']);
+ axis square
+ axis off
+ shading flat
+ colorbar
+else
+ eval(['c=',METHOD,'(x,y,Z);']);
+ clabel(c);
+ if(length(METHOD)==8)
+  axis square
+  axis off
+ else
+  axis square
+  axis off
+ end
+end
+
+inner=R(1);
+outer=R(length(R));
+for i=1:1000
+ irad(i,1)=inner*sin(((2*pi)/999)*i);
+ irad(i,2)=inner*cos(((2*pi)/999)*i);
+ orad(i,1)=outer*sin(((2*pi)/999)*i);
+ orad(i,2)=outer*cos(((2*pi)/999)*i);
+end
+hold on
+h=plot(irad(:,1),irad(:,2),'k');
+set(h,'LineWidth',2)
+h=plot(orad(:,1),orad(:,2),'k');
+set(h,'LineWidth',2)

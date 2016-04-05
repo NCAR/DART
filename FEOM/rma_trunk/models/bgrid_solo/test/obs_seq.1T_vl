@@ -1,0 +1,22 @@
+ obs_sequence
+obs_kind_definitions
+           1
+           5 RADIOSONDE_TEMPERATURE          
+  num_copies:            2  num_qc:            1
+  num_obs:            1  max_num_obs:            1
+observations                                                    
+truth                                                           
+Quality Control                                                 
+  first:            1  last:            1
+ OBS            1
+   255.133918608119     
+   255.000000000000     
+  0.000000000000000E+000
+          -1          -1          -1
+obdef
+loc3d
+     1.968710172129510        0.4610498290636200         3.000000000000000      1
+kind
+           5
+     0          0
+   1.00000000000000     

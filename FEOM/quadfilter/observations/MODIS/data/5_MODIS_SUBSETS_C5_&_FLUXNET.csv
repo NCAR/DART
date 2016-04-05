@@ -1,0 +1,1169 @@
+SITE NAME,COUNTRY,LATITUDE,LONGITUDE,MODIS SITE ID,FLUXNET ID,FLUXNET KEY ID
+,,,,,,
+Tomakomai National Forest,Japan,42.73697,141.51864,fn_jptomako,JP-Tom,jp.tomakomai.01
+Arvaikheer,Mongolia,46.23382,102.82512,fn_mnarvaik,MN-Arv,mn.arvaikheer.01
+Brasschaat (De Inslag Forest),Belgium,51.30917,4.52056,fn_bebrasch,BE-Bra,be.braschaat.01
+Soroe- LilleBogeskov,Denmark,55.48694,11.64583,fn_dksorohw,DK-Sor,dk.soro_hardwood.01
+Store Ebberup,Denmark,55.4833,11.6333,fn_dkstoreb,DK-Sto,dk.store_ebberup.01
+Hyytiala,Finland,61.84742,24.29477,fn_fihyytia,FI-Hyy,fi.hyytiala.01
+Kaamanen wetland,Finland,69.140694,27.29503,fn_fikaaman,FI-Kaa,fi.kaamanen.01
+Sodankyla,Finland,67.36186,26.63783,fn_fisodank,FI-Sod,fi.sodankyla.01
+Hesse Forest- Sarrebourg,France,48.67422,7.06462,fn_frhesse,FR-Hes,fr.hesse.01
+Le Bray (after 6/28/1998),France,44.71711,-0.7693,fn_frlebray,FR-LBr,fr.bordeaux.01
+Puechabon,France,43.74139,3.59583,fn_frpuecha,FR-Pue,fr.puechabon.01
+Gebesee,Germany,51.1001,10.9143,fn_degebese,DE-Geb,de.gebesee.01
+Hainich,Germany,51.07927,10.452176,fn_dehainic,DE-Hai,de.hainich_park.01
+Charlie Lake 1,Canada,45.8847,-67.3569,fn_cacharl1,CA-Cha,ca.charlie1.01
+New Brunswick- Nashwaak Lake 1,Canada,46.4722,-67.1,fn_canashw1,CA-Na1,ca.nashwaak1.01
+New Brunswick- Nashwaak Lake 2,Canada,46.47583,-67.07694,fn_canashw2,CA-Na2,ca.nashwaak2.01
+Ontario- Groundhog River-Mature Boreal Mixed Wood,Canada,48.2167,-82.1556,fn_cagrndhg,CA-Gro,ca.groundhogriver.01
+Quebec Boreal Cutover Site,Canada,49.26712,-74.0365,fn_caquebct,CA-Qcu,ca.quebeccutover.01
+Quebec Mature Boreal Forest Site,Canada,49.6925,-74.34206,fn_caquebft,CA-Qfo,ca.quebecforest.01
+Sask- 1994 Harv. Jack Pine,Canada,53.908,-104.656,fn_cajp1994,CA-SJ1,ca.ssa_jackpine_1994.01
+Sask- 2002 Harvested Jack Pine,Canada,53.945,-104.649,fn_cajp2002,CA-SJ2,ca.ssa_jackpine_2002.01
+Sask- SSA 1975 Harv Yng Jack Pine,Canada,53.87581,-104.64529,fn_cassyjp2,CA-SJ3,ca.ssa_yngjackpine.01
+Sask- SSA Fen,Canada,53.80206,-104.61798,fn_cassafen,CA-SFe,ca.ssa_fen.01
+Sask- SSA Old Aspen,Canada,53.62889,-106.19779,fn_cassaoap,CA-Oas,ca.oldaspen.01
+Sask- SSA Old Black Spruce,Canada,53.98717,-105.11779,fn_cassaobs,CA-Obs,ca.oldblackspruce.01
+Sask- SSA Old Jack Pine,Canada,53.91634,-104.69203,fn_cassaojp,CA-Ojp,ca.oldjackpine.01
+Sask- Fire 1989,Canada,54.25392,-105.8775,fn_cafr1989,CA-SF2,ca.ssa_fire_1989.01
+Sask- Fire 1998,Canada,54.09156,-106.00526,fn_cafr1998,CA-SF3,ca.ssa_fire_1998.01
+Suwon Suburban Rice Paddy,Korea,37.26947,126.94022,fn_krsuwonp,KR-Suw,kr.suwon.01
+Mixed Vegetation Site,Thailand,16.93986,99.42986,fn_thmixveg,TH-Mix,th.mixedvegetation.01
+Braganca (Para),Brazil,-0.72371,-48.5081,fn_brbragan,BR-Bra,br.braganca.01
+Manaus - ZF2 C14,Brazil,-2.5892,-60.1149,fn_brmana14,BR-Ma1,br.manaus_zf2km14.01
+Manaus - ZF2 K34,Brazil,-2.6091,-60.2093,fn_brmana34,BR-Ma2,br.manaus_zf2km34.01
+Rond.- Faz. Nossa Senhora-Ji Parana-pasture,Brazil,-10.76181,-62.35722,fn_brjipapa,BR-Ji1,br.jiparana_pasture.01
+Rond.- Rebio Jaru Ji Parana- Tower A,Brazil,-10.08319,-61.9309,fn_br00jipa,BR-Ji2,br.jiparana_towera.01
+Rond.- Rebio Jaru Ji Parana- Tower B,Brazil,-10.07806,-61.9331,fn_brjipatb,BR-Ji3,br.jiparana_towerb.02
+Sinop- Mato Grosso,Brazil,-11.41229,-55.3247,fn_brmatogr,BR-Mtg,br.matogrosso_sinop.01
+Santarem-Km67-Primary Forest,Brazil,-2.85667,-54.95889,fn_br00sant,BR-Sa1,br.santarem_forest.01
+Santarem-Km77-Pasture,Brazil,-3.0119,-54.53652,fn_brsant77,BR-Sa2,br.santarem_km77_pasture.01
+Santarem-Km83-Logged Forest,Brazil,-3.01803,-54.97144,fn_brsant83,BR-Sa3,br.santarem_km83_loggedforest.01
+Zobelboden,Austria,47.83831,14.43835,fn_atzobelb,N/A,N/A
+Ghanzi/Okwa River Crossing,Botswana,-22.40917,21.71306,fn_bwghanzi,N/A,bw.ghanzi.01
+Pandamatenga,Botswana,-18.65528,25.50028,fn_bwpandam,BW-Pan,bw.pandamatenga.01
+Tshane,Botswana,-24.16417,21.89278,fn_bwtshane,BW-Tsh,bw.tshane.01
+Acadia Road 16,Canada,46.0167,-66.3694,fn_caaca16,N/A,N/A
+UCI-1930 burn site,Canada,55.90583,-98.52472,fn_cansa30,CA-NS2,ca.nsa_burn_1930.01
+UCI-1964 burn site,Canada,55.91167,-98.38222,fn_cansab63,CA-NS3,ca.nsa_burn_1964.01
+UCI-1981 burn site,Canada,55.86306,-98.485,fn_cansab81,CA-NS5,ca.nsa_burn_1981.01
+UCI-1989 burn site,Canada,55.91667,-98.96444,fn_cansab89,CA-NS6,ca.nsa_burn_1989.01
+UCI-1998 burn site,Canada,56.63583,-99.94833,fn_cansab98,CA-NS7,ca.nsa_burn_1998.01
+Lethbridge,Canada,49.70928,-112.94017,fn_calethbr,CA-Let,ca.lethbridge.01
+La Selva,Costa Rica,10.42333,-84.02111,fn_crlaselv,CR-Lse,cr.la_selva.01
+La Paz,Mexico,24.12925,-110.43803,fn_mxlapaz,MX-Lpa,mx.lapaz.01
+Atqasuk- Alaska,USA,70.46961,-157.40894,fn_usatqasu,US-Atq,us.atqasuk.01
+Barrow- Alaska,USA,71.32252,-156.62588,fn_usakbarr,US-Brw,us.barrow.01
+Upad- Alaska,USA,70.28147,-148.88483,fn_usupadal,US-Upa,us.prudhoe.01
+Audubon Research Ranch- Arizona,USA,31.59073,-110.51038,fn_usaudubn,US-ARR,us.audubon.01
+Blodgett Forest- California,USA,38.89525,-120.63275,fn_uscablod,US-Blo,us.blodgett_forest.01
+Jasper Ridge- California,USA,37.40213,-122.22103,fn_usjasper,US-Jas,us.jasper_ridge.01
+Sky Oaks- Old Stand-  California,USA,33.37389,-116.62289,fn_uscaskyo,US-SO2,us.sky_oaks_old.01
+Sky Oaks- Young Stand-  California,USA,33.37719,-116.62269,fn_uscaskyy,US-SO3,us.sky_oaks_yng.01
+Tonzi Ranch- California,USA,38.4316,-120.96598,fn_ustonzir,US-Ton,us.tonzi.01
+Vaira Ranch- Ione- California,USA,38.40667,-120.95073,fn_usvairar,US-Vai,us.vaira_ranch.01
+Niwot Ridge Forest- Colorado (LTER NWT1),USA,40.03288,-105.5464,fn_usniwot1,US-NR1,us.niwot_ridge.01
+Florida-Kennedy Space Center (scrub oak),USA,28.60858,-80.67153,fn_usksfcso,US-KS2,us.ksc_scruboak.01
+Florida-Kennedy Space Center (slash pine),USA,28.4583,-80.6709,fn_usksfcsp,US-KS1,us.ksc_pine_flatwoods.01
+Cypress wetland-Florida,USA,29.77043,-82.2081,fn_uscypres,US-Cyp,us.cypress_bald.01
+Slashpine-Austin Cary- 65yrs nat regen-FL,USA,29.73807,-82.21877,fn_ussplong,US-SP1,us.slash_longleaf_regen.01
+Slashpine-Donaldson-mid-rot- 12yrs-FL,USA,29.75477,-82.16328,fn_usspmid1,US-SP3,us.slash_pine_mid.01
+Slashpine-Mize-clearcut-3yr-regen-FL,USA,29.7648,-82.24482,fn_usspcler,US-SP2,us.slash_pine_clear.01
+Slashpine-Rayonier-mid-rot- 12yrs-FL,USA,29.80282,-82.20315,fn_usspmidb,US-SP4,us.slash_pine_mid_burn.01
+Bondville- Illinois,USA,40.0061,-88.29187,fn_usilbond,US-Bo1,us.bondville.01
+Konza Prairie LTER- Kansas (KNZ),USA,39.08239,-96.56028,fn_uskskonz,US-Kon,us.konza.01
+Mead - rainfed maize-soybean rotation site- Nebraska,USA,41.17967,-96.43965,fn_usmeadrf,US-Ne3,us.mead_maize_soybean_rainfed.01
+Ruokolahti,Finland,61.53,28.72,fn_firuokol,N/A,N/A
+Sammaltunturi (Pallas) GAW site,Finland,67.97333,24.11611,fn_fisammal,N/A,N/A
+Sodankyla  2,Finland,67.37005,26.65,fn_fisodan2,N/A,N/A
+Aurade,France,43.54944,1.10778,fn_fraurade,FR-Aur,fr.aurade.01
+Avignon,France,43.91639,4.87917,fn_fravigno,FR-Avi,fr.avignon.01
+Bilos  (after 6/20/2004),France,44.49389,-0.95594,fn_frbilos0,FR-Bil,fr.bilos.01
+Carpentras,France,44.0834,5.0593,fn_frcarpen,N/A,N/A
+Couhins,France,44.75556,-0.55556,fn_frcouhin,FR-Cou,fr.couhins.01
+Creteil,France,48.7885,2.44278,fn_frcretei,N/A,N/A
+Fontainebleau 2,France,48.40667,2.6805,fn_frfonta2,N/A,N/A
+Fontainebleau,France,48.47634,2.78015,fn_frfontai,FR-Fon,fr.fontainebleau.01
+Grignon  (after 6/5/2005),France,48.84404,1.95243,fn_frgrigno,FR-Gri,fr.grignon.01
+Lamasquere,France,43.49333,1.23722,fn_frlamasq,FR-Lam,fr.lamasquere.01
+Laqueuille,France,45.64414,2.73703,fn_frlaqueu,FR-Lq1,fr.laqueuille.01
+Larzac,France,43.95,3.12,fn_frlarzac,N/A,N/A
+Le Larzac (VALERI),France,43.93751,3.12295,fn_frlelarz,N/A,N/A
+Les Alpilles 2 (VALERI),France,43.80732,4.74259,fn_frlesal2,N/A,N/A
+Les Alpilles 1 (VALERI),France,43.81035,4.71461,fn_frlesalp,N/A,N/A
+Lille,France,50.61167,3.14167,fn_frlill10,N/A,N/A
+Yakutsk,Russia,61.66194,129.36667,fn_ruyakuts,N/A,N/A
+Zotino,Russia,60.8008,89.35081,fn_ruzotino,RU-Zo2,ru.zotino.01
+Solar_Village,Saudi Arabia,24.91,46.41,fn_sasolarv,N/A,N/A
+Demokeya,Sudan,13.2829,30.4783,fn_sddemoke,SD-Dem,sd.demokeya.01
+Asa,Sweden,57.16667,14.8,fn_seasa01,SE-Asa,se.asa.01
+Asa Nybygget,Sweden,57.1495,14.73866,fn_seasany,SE-As2,se.asa_nybygget.01
+Degero Stormyr (NECC),Sweden,64.18333,19.55,fn_sedegero,SE-Deg,se.degero.01
+Knottasen,Sweden,60.98333,16.21667,fn_seknotta,SE-Kno,se.knottasen.01
+Norunda 2,Sweden,60.08,17.48,fn_senorun2,N/A,se.norunda.02
+Skyttorp,Sweden,60.11667,17.83333,fn_seskytt1,SE-Sk2,se.skyttorp.01
+Skyttorp1 young,Sweden,60.125,17.91806,fn_seskytt2,SE-Sk1,se.skyttorp_yng.01
+Stordalen Grassland (Mire),Sweden,68.36667,19.05,fn_sestorda,SE-St2,se.stordalen.01
+Polana 2,Slovak Republic,48.63333,19.46667,fn_skpolana,SK-Pol,sk.polana.01
+Dakar,Senegal,14.39417,-16.95861,fn_sndakar1,N/A,N/A
+COMPLET 137  (16.9194 N 23.1815 E),Chad,16.9194,23.1815,fn_tdcomple,N/A,N/A
+Maeklong- Kanchanabri,Thailand,14.575,98.85833,fn_thmaeklo,TH-Mae,th.maeklong.01
+North_East_Thailand,Thailand,14.466,102.379,fn_thnorthe,N/A,N/A
+Chao_Phraya_riverKogma,Thailand,18.81,98.9,fn_thriverk,N/A,N/A
+Chao_Phraya_riverLampang,Thailand,18.4,99.47,fn_thriverl,N/A,N/A
+Chao_Phraya_riverPhitsanulok,Thailand,16.85,100.48,fn_thriverp,N/A,N/A
+Chao_Phraya_riverS,Thailand,17.83,99.69,fn_thrivers,N/A,N/A
+Sakaerat- Nakonrachasima,Thailand,14.49333,101.92194,fn_thsakaer,TH-Sak,th.sakaeret.01
+COMPLET 152  (37.6048 N 37.3347 E),Turkey,37.6048,37.3347,fn_trcom152,N/A,N/A
+Chiayi Rice Paddy Station (TWCIR),Taiwan,23.49105,120.40728,fn_twchiari,N/A,N/A
+Chiayi Meteorology Station (TWCIM),Taiwan,23.49778,120.42444,fn_twchiayi,N/A,N/A
+Chilan (TWCL),Taiwan,24.59094,121.49897,fn_twchilan,TW-Chn,tw.chilan.01
+Chiayi Urban Station (TWCIU),Taiwan,23.47324,120.45014,fn_twchiurb,N/A,N/A
+Huisun Forest Station (TWHS),Taiwan,24.0425,121.07333,fn_twhuisun,TW-Hui,tw.huisun.01
+NCHU (TWNCHU),Taiwan,24.12056,120.67806,fn_twnchu,TW-Nch,tw.nchu.01
+NCU (TWNCU),Taiwan,24.96769,121.18525,fn_twncu,N/A,N/A
+Taibao (TWTB),Taiwan,23.49954,120.48501,fn_twtaibao,N/A,N/A
+Taipei_CWB,Taiwan,25.03,121.5,fn_twtaipei,N/A,N/A
+TARI (TWTARI),Taiwan,24.03122,120.68839,fn_twtari,TW-Tar,tw.tari.01
+COMPLET 124  (-6.3065 S 36.246 E),Tanzania,-6.3065,36.246,fn_tzcomple,N/A,N/A
+COMPLET 160  (50.6694 N 27.8992 E),Ukraine,50.6694,27.8992,fn_uacomple,N/A,N/A
+Aspen4 (49.9833 N -96.8333 W),Canada,49.9833,-96.8333,fn_caaspen4,N/A,N/A
+Aspen5 (53.9017 N -111.168 W),Canada,53.9017,-111.168,fn_caaspen5,N/A,N/A
+Aspen6 (54.7333 N -113.103 W),Canada,54.7333,-113.103,fn_caaspen6,N/A,N/A
+Aspen7 (60.5167 N -134.267 W),Canada,60.5167,-134.267,fn_caaspen7,N/A,N/A
+Aspen8 (60.8234 N -115.78 W),Canada,60.8234,-115.78,fn_caaspen8,N/A,N/A
+BOREAS NSA Fen Pond,Canada,55.91481,-98.42072,fn_cansafen,N/A,N/A
+BOREAS NSA Old Jack Pine,Canada,55.92842,-98.62396,fn_cansaojp,N/A,N/A
+BOREAS NSA Young Jack Pine,Canada,55.89575,-98.28706,fn_cansayjp,N/A,N/A
+BOREAS SSA Young Aspen,Canada,53.65601,-105.32314,fn_cassayap,N/A,N/A
+Charlie Lake 3,Canada,45.8806,-67.3792,fn_cacharl3,N/A,N/A
+Indian Head,Canada,50.5644,-103.674683,fn_caindian,N/A,N/A
+Newell County Rangeland- Alberta,Canada,50.3,-111.64,fn_canewell,N/A,N/A
+Ngotto Forest,Central African Republic,3.87,17.3,fn_cfngotto,N/A,N/A
+RAC,Central African Republic,9.44,26.01,fn_cfrac,N/A,N/A
+Dunhuang,China,40.2,94.43,fn_cndunhua,N/A,N/A
+Suchow,China,31.4095,120.7268,fn_cnsuchow,N/A,N/A
+Crawford_Point 1,Denmark,69.8819,-46.97358,fn_dkcrawf1,N/A,N/A
+Crawford_Point 2,Denmark,69.91333,-46.85472,fn_dkcraw2,N/A,N/A
+DYE-2,Denmark,66.48096,-46.27995,fn_dkdye2,N/A,N/A
+Novaggio,Switzerland,46.02391,8.83542,fn_chnovagg,N/A,N/A
+Othmarsingen,Switzerland,47.40089,8.42785,fn_chothmar,N/A,N/A
+Payerne,Switzerland,46.8123,6.9421,fn_chpayern,N/A,N/A
+Schanis,Switzerland,47.16634,9.06819,fn_chschani,N/A,N/A
+Vordemwald,Switzerland,47.27542,7.88779,fn_chvordem,N/A,N/A
+Alice Holt,UK,51.15315,-0.85744,fn_ukaliceh,N/A,N/A
+Barton Bendish- East Anglia,UK,52.61403,0.52444,fn_ukbarben,N/A,N/A
+Moor House/Upper Teesdale,UK,54.68674,-2.41112,fn_ukmoorho,N/A,N/A
+Wytham,UK,51.77278,-1.326,fn_ukwytham,N/A,N/A
+Bonanza Creek LTER: DF87- Alaska,USA,63.9192,-145.3722,fn_usbona87,N/A,N/A
+Bonanza Creek LTER: DF94- Alaska,USA,63.8117,-145.0964,fn_usbona94,N/A,N/A
+Bonanza Creek LTER: DFTB- Alaska,USA,63.922,-145.7428,fn_usbonatb,N/A,N/A
+Maricopa Agricultural Center- Arizona,USA,33.07,-111.97,fn_usmarico,N/A,N/A
+Mammoth Mountain- California,USA,37.6167,-119.0333,fn_usmammtn,N/A,N/A
+Boulder SURFRAD Station- Colorado,USA,40.12557,-105.23775,fn_usbouldr,N/A,N/A
+Saddle Site- Niwot Ridge LTER- Colorado,USA,40.0543,-105.589,fn_ussaddle,N/A,N/A
+Soddie Site- Niwot Ridge LTER- Colorado,USA,40.0477,-105.5712,fn_ussoddie,N/A,N/A
+Training Compartment D at Fort Benning- Georgia,USA,32.39545,-84.7289,fn_usftbenn,N/A,N/A
+Pleasant Plains- Illinois,USA,39.5,-89.8833,fn_uspplain,N/A,N/A
+Beltsville Agricultural Research Center- Maryland,USA,39.03218,-76.84475,fn_usbeltsv,N/A,N/A
+Coweeta LTER- North Carolina,USA,35.05058,-83.45006,fn_uscoweet,N/A,N/A
+Jornada LTER- New Mexico (JRN1),USA,32.59071,-106.8446,fn_usjornad,N/A,N/A
+Walnut Gulch Watershed- Arizona,USA,31.74,-109.85,fn_usazkend,N/A,N/A
+Sevilleta BigFoot- New Mexico,USA,34.36213,-106.70086,fn_usbsevib,N/A,N/A
+Sevilleta Nat Refuge-Mackenzie Flats - New Mexico (SEV1),USA,34.35869,-106.66937,fn_ussevimf,N/A,N/A
+White Sands- New Mexico,USA,32.8972,-106.4261,fn_uswsands,N/A,N/A
+Ivanpah Playa Nevada/California,USA,35.5503,-115.3875,fn_usivanpa,N/A,N/A
+Lake Tahoe- Nevada,USA,39.18063,-120.11928,fn_ustaho,N/A,N/A
+Railroad Valley Playa 2,USA,38.4969,-115.698,fn_usrailro,N/A,N/A
+Cascades/H.J. Andrews LTER- Oregon,USA,44.24885,-122.18035,fn_usandrew,N/A,N/A
+Allegheny National Forest-  Pennsylvania,USA,41.8667,-78.9167,fn_usallegh,N/A,N/A
+ARS-NE PLRC- Pennsylvania,USA,40.6167,-76.6667,fn_usplrcpa,N/A,N/A
+Penn State SURFRAD Station- Pennsylvania,USA,40.72033,-77.931,fn_uspennst,N/A,N/A
+UW-Milwaukee Field Station- Wisconsin,USA,43.38729,-88.02339,fn_usmilwau,N/A,N/A
+Howard Springs,Australia,-12.49428,131.15231,fn_auhoward,AU-How,au.howardsprings.01
+Janina,Australia,-30.07667,144.13639,fn_aujanina,AU-Jan,au.janina.01
+Mackay,Australia,-21.23806,149.10694,fn_aumackay,N/A,N/A
+Tinga Tingana,Australia,-29,139.83,fn_autinga,N/A,N/A
+Mongu,Zambia,-15.43885,23.25258,fn_af00mong,ZM-Mon,zm.mongu.01
+Chukotka,Russia,65.59483,171.0525,fn_ruchukot,RU-Chu,ru.chukotka.01
+Krasnoyarsk,Russia,57.27,91.6,fn_rukrasn1,N/A,N/A
+Ubs Nur- Hakasija-grassland,Russia,54.72528,90.00222,fn_ruhak1,RU-Ha1,ru.ubsu_nur_hak1.01
+Ubs Nur- Hakasija-recovering grassland,Russia,54.77306,89.95667,fn_ruhak2,RU-Ha2,ru.ubsu_nur_hak2.01
+Yakutsk-Larch,Russia,62.255,129.61889,fn_ruyaklar,RU-Yak,ru.yakutsk_larch.01
+Yakutsk-Pine,Russia,62.24139,129.65056,fn_ruyakpin,RU-Ya2,ru.yakutsk_pine.01
+Sardinilla Pasture,Panama,9.30775,-79.63031,fn_pasarpas,PA-Sa1,pa.sardinilla_pasture.01
+El Saler,Spain,39.34597,-0.31881,fn_eselsale,ES-ES1,es.elsaler.01
+Hegyhatsal,Hungary,46.95583,16.65222,fn_huhegyha,HU-He1,hu.hegyhatsal.01
+Yatir,Israel,31.347,35.052,fn_ilyeatir,IL-Yat,il.yatir.01
+Zerbolo-Parco Ticino- Canarazzo,Italy,45.20087,9.06104,fn_itcanara,IT-PT1,it.canarazzo.01
+Island of Pianosa,Italy,42.58387,10.0784,fn_itpianos,IT-Pia,it.pianosa.01
+Gwangneung Coniferous Forest,Korea,37.74861,127.16252,fn_krkwangc,KR-Kw1,kr.kwangnung_coniferous.01
+Harwood,UK,55.21642,-2.02431,fn_ukharwoo,UK-Har,uk.harwood.01
+Walnut Gulch Lucky Hills Shrub- Arizona,USA,31.74383,-110.05222,fn_usazluck,US-WGL,us.az_luckyhills_shrub.01
+Cub Hill (Baltimore)- Maryland,USA,39.41251,-76.5208,fn_usbaltim,US-Cub,us.md_baltimore.01
+Cedar Bridge- New Jersey,USA,39.83794,-74.3791,fn_uscedarb,US-Ced,us.nj_cedarbridge.01
+Morgan Monroe State Forest- Indiana,USA,39.32315,-86.41314,fn_usinmorg,US-MMS,us.morganmonroe.01
+ARM Southern Great Plains site- Lamont- Oklahoma,USA,36.605,-97.4884,fn_uslamont,US-ARM,us.lamont.01
+Mead - irrigated continuous maize site- Nebraska,USA,41.16506,-96.47664,fn_usmeadig,US-Ne1,us.mead_maize.01
+Mead - irrigated maize-soybean rotation site- Nebraska,USA,41.16487,-96.4701,fn_usmeadir,US-Ne2,us.mead_maize_soybean_irrigated.01
+Berchtesgaden,Germany,47.61667,12.58333,fn_deberch0,DE-Ber,de.berch.01
+Demmin,Germany,53.92,13.25,fn_dedemmin,N/A,N/A
+Gilching (VALERI),Germany,48.08186,11.32049,fn_degilchi,N/A,N/A
+Hamburg,Germany,53.56833,9.97333,fn_dehambur,N/A,N/A
+Kannenbruch Forest,Germany,53.78333,10.6,fn_dekannen,DE-Kan,de.kannenbruch.01
+Klingenberg,Germany,50.89288,13.52251,fn_deklinge,DE-Kli,de.klingenberg.01
+IFT-Leipzig,Germany,51.3525,12.4355,fn_deleipzi,N/A,N/A
+Lindenberg,Germany,52.2,14.11999,fn_delinden,N/A,N/A
+Mehrstedt1,Germany,51.27531,10.65547,fn_demehrs1,DE-Meh,de.mehrstedt.01
+Mehrstedt2,Germany,51.28497,10.64886,fn_demehrs2,DE-Meh,de.mehrstedt.02
+Oberbarenburg,Germany,50.78667,13.72222,fn_deoberba,DE-Obe,de.oberbarenburg.01
+Schonau,Germany,47.6,12.96667,fn_deschona,DE-Sch,de.schonau.01
+Solling FL,Germany,51.76667,9.58333,fn_desollin,DE-Sol,de.solling.01
+Foulum,Denmark,56.48422,9.58722,fn_dkfoulum,DK-Fou,dk.foulum.01
+Lille Valby (Rimi),Denmark,55.68333,12.08333,fn_dklillev,DK-Lva,dk.lille_valby.01
+Risbyholm 2,Denmark,55.53333,12.08833,fn_dkrisby2,DK-Ri2,dk.risbyholm.02
+Risbyholm,Denmark,55.53028,12.09722,fn_dkrisbyh,DK-Ris,dk.risbyholm.01
+Ulborg,Denmark,56.28333,8.43333,fn_dkulborg,DK-Ulb,dk.ulborg.01
+ETH/CU_Swiss Camp,Denmark,69.57317,-49.29517,fn_dkswissc,N/A,N/A
+JAR1,Denmark,69.49835,-49.68156,fn_dkjar1,N/A,N/A
+JAR2,Denmark,69.42,-50.0575,fn_dkjar2,N/A,N/A
+Saddle,Denmark,66.00055,-44.50139,fn_dksaddle,N/A,N/A
+SM2,Denmark,69.47836,-49.87796,fn_dksm2,N/A,N/A
+South Dome,Denmark,63.14889,-44.81667,fn_dksdome,N/A,N/A
+Summit BSRN,Denmark,72.57944,-38.50417,fn_dksummit,N/A,N/A
+Nile Delta,Egypt,31.1,31.03,fn_egnilede,N/A,N/A
+Lahemaa EMEP station,Estonia,59.51472,25.92833,fn_eelahema,N/A,N/A
+Saareja'rve IM site,Estonia,58.65722,26.75889,fn_eesaarej,N/A,N/A
+Toravere BSRN Station,Estonia,58.25378,26.46161,fn_eetorave,N/A,N/A
+Vilsandi IM site,Estonia,58.38417,21.85028,fn_eevilsan,N/A,N/A
+Orgavany,Hungary,46.80038,19.46707,fn_huorgava,N/A,N/A
+Novara,Italy,44.7938,8.42,fn_itnovara,N/A,N/A
+Po Valley,Italy,44.7872,8.12,fn_itpovall,N/A,N/A
+Tateno,Japan,36.0587,140.126,fn_jptateno,N/A,N/A
+Mt. Hallasan Park,Korea,33.36667,126.53754,fn_krhallas,N/A,N/A
+Mt. Jumbongsan Reserve,Korea,38.03378,128.46685,fn_krjumbon,N/A,N/A
+Libya3,Libya,23.15,23.1,fn_lylibya3,N/A,N/A
+Mandalgovi,Mongolia,45.99499,106.32702,fn_manmong,N/A,N/A
+Hapex-Sahel,Niger,13.5,2.5,fn_nehapexs,N/A,N/A
+Nigeria,Nigeria,11.53,11.14,fn_ngnigeri,N/A,N/A
+Arabia1,Saudi Arabia,18.88,46.76,fn_saarabia,N/A,N/A
+Dahra North,Senegal,15.4119,-15.4335,fn_sndahran,N/A,N/A
+Dahra South,Senegal,15.37127,-15.40082,fn_sndahras,N/A,N/A
+Tessekre North,Senegal,15.89602,-15.06087,fn_sntessen,N/A,N/A
+Tessekre South,Senegal,15.81917,-15.06087,fn_sntesses,N/A,N/A
+Alptal,Switzerland,47.04995,8.71369,fn_chalptal,N/A,N/A
+Beatenberg,Switzerland,46.7164,7.76334,fn_chbeaten,N/A,N/A
+Bettlachstock,Switzerland,47.22652,7.4176,fn_chbettla,N/A,N/A
+Celerina,Switzerland,46.49358,9.88985,fn_chcelery,N/A,N/A
+Lausanne,Switzerland,46.58506,6.65887,fn_chlausan,N/A,N/A
+Nationalpark,Switzerland,46.66392,10.23098,fn_chntlprk,N/A,N/A
+Neunkirch,Switzerland,47.68506,8.53688,fn_chneunki,N/A,N/A
+Tumbarumba,Australia,-35.65572,148.15208,fn_autumbar,AU-Tum,au.tumbarumba.01
+Uardry/NSW,Australia,-34.38789,145.30276,fn_as00uard,N/A,N/A
+Virginia Park,Australia,-19.88333,146.55389,fn_auvrgprk,AU-Vir,au.virginiapark.01
+Maun- Mopane Woodland,Botswana,-19.91546,23.56047,fn_bwmaun1,BW-Ma1,bw.maun.01
+Skukuza- Kruger National Park,South Africa,-25.01972,31.49688,fn_sa00skuk,ZA-Kru,za.kruger_skukuza.01
+Howland Forest (harvest site)- Maine,USA,45.20722,-68.725,fn_usmehowl,US-Ho3,us.howland.03
+Metolius-intermediate aged ponderosa pine- Oregon,USA,44.45243,-121.55717,fn_usmetipp,US-Me2,us.metolius_int.01
+Duke Forest - loblolly pine- North Carolina,USA,35.97817,-79.0942,fn_usncduke,US-Dk3,us.duke_loblolly.01
+North Temperate Lakes - Trout Lake Station (NTL1),USA,46.01374,-89.67969,fn_usntlake,N/A,N/A
+Smithsonian Research Center (SERC)- Maryland,USA,38.88998,-76.55988,fn_ussercmd,US-SRC,us.serc.01
+Sardinilla Plantation,Panama,9.31673,-79.63486,fn_pasarplt,PA-Sa2,pa.sardinilla_plantation.01
+Missouri Ozark Site,USA,38.74411,-92.20001,fn_usmozark,US-MOz,us.moozark.01
+Guzelyayla,Turkey,40.2057,41.4537,fn_trguzely,N/A,N/A
+Ovacik,Turkey,40.2473,41.001,fn_trovacik,N/A,N/A
+Falls Creek,Australia,-36.86687,147.34577,fn_aumchugh,AU-Fac,au.falls_creek.01
+COMPLET 119  (-13.5645 S 17.375 E),Angola,-13.5645,17.375,fn_aocomple,N/A,N/A
+McMurdo Dry Valleys LTER (MCM1),Antarctica,-77.625,162.88278,fn_aqmcmurd,N/A,N/A
+Palmer Station - Anvers Island (PAL1),Antarctica,-64.7,-64,fn_aqpalmer,N/A,N/A
+CEILAP-BA,Argentina,-34.56667,-58.5,fn_arceilap,N/A,N/A
+COMPLET 102  (-49.4919 S  -71.8992 W),Argentina,-49.4919,-71.8992,fn_arcom102,N/A,N/A
+COMPLET 105  (-34.25 S -67.9073 W),Argentina,-34.25,-67.9073,fn_arcom105,N/A,N/A
+Cordoba-CETT,Argentina,-31.52408,-64.46368,fn_arcordob,N/A,N/A
+La Ciguena – Santa Fe,Argentina,-29.264,-61.028,fn_arlacigu,AR-Lac,ar.laciguena.01
+Laprida (VALERI),Argentina,-36.99037,-60.55259,fn_arlaprid,N/A,N/A
+Univ. of Mich. Biological Station- Michigan,USA,45.55984,-84.71382,fn_usmiumbs,US-UMB,us.umbs.01
+Goodwin Creek- Mississippi,USA,34.25,-89.97,fn_usgoodwi,US-Goo,us.goodwin_creek.01
+Fort Peck- Montana,USA,48.30788,-105.10053,fn_usftpeck,US-FPe,us.fort_peck.01
+Duke Forest-hardwoods- North Carolina,USA,35.97358,-79.10043,fn_usdukehd,US-Dk2,us.duke_hardwoods.01
+Duke Forest-open field- North Carolina,USA,35.971202,-79.093376,fn_usdukeof,US-Dk1,us.duke_grassyfield.01
+Camerons,Australia,-32.59,116.26,fn_aucamero,N/A,N/A
+Canberra,Australia,-35.2713,149.11111,fn_aucanber,N/A,N/A
+COMPLET 103  (-43.6855 S -67.9073 W),Argentina,-43.6855,-67.9073,fn_aucom103,N/A,N/A
+COMPLET 104  (-37.1532 S 145.8427 E),Australia,-37.1532,145.8427,fn_aucom104,N/A,N/A
+COMPLET 106  (-31.7097 S 121.1653 E),Australia,-31.7097,121.1653,fn_aucom106,N/A,N/A
+COMPLET 107  (-28.4435 S 150.1976 E),Australia,-28.4435,150.1976,fn_aucom107,N/A,N/A
+Walnut Gulch Kendall Grasslands- Arizona,USA,31.73653,-109.94189,fn_usazkend,Us-WGK,us.az_kendall_grassland.01
+Lewis Springs Mesquite- Arizona,USA,31.56584,-110.13438,fn_usazmesq,US-LSM,us.az_lewissprings_mesquite.01
+COMPLET 111  (-25.9032 S -66.0927 W),Argentina,-25.9032,-66.0927,fn_aucom111,N/A,N/A
+COMPLET 112  (-25.9032 S 136.4073 E),Australia,-25.9032,136.4073,fn_aucom112,N/A,N/A
+COMPLET 113  (-24.0887 S 122.9798 E),Australia,-24.0887,122.9798,fn_aucom113,N/A,N/A
+COMPLET 117  (-17.5565 S 30.4395 E),Zimbabwe,-17.5565,30.4395,fn_aucom117,N/A,N/A
+COMPLET 118  (-17.1935 S 134.5927 E),Australia,-17.1935,134.5927,fn_aucom118,N/A,N/A
+Daly River Cleared,Australia,-14.13428,131.38451,fn_audalycl,AU-Da1,au.daly_cleared.01
+Daly River Savanna,Australia,-14.15928,131.388,fn_audalysv,AU-Da2,au.daly_savanna.01
+Darwin TWP C3,Australia,-12.42472,130.89167,fn_audarwin,N/A,N/A
+Fogg Dam,Australia,-12.54253,131.30688,fn_aufoggdm,AU-Fog,au.fogg_dam.01
+Gnangara,Australia,-32.37,116.11,fn_augnanga,N/A,N/A
+Melbourne (Preston),Australia,-37.73056,145.01468,fn_aumelbou,AU-Meb,au.melbourne.01
+Otway,Australia,-38.53234,142.81681,fn_auotway,AU-Otw,au.otway.01
+Wallaby Creek,Australia,-37.429,145.18725,fn_auwallab,AU-Wal,au.wallaby_creek.01
+Jalhay,Belgium,50.56389,6.07333,fn_bejalhay,BE-Jal,be.jalhay.01
+Lonzee,Belgium,50.55219,4.74494,fn_belonzee,BE-Lon,be.lonzee.01
+Soignes,Belgium,50.78,4.42,fn_besoigne,N/A,N/A
+Bondoukoui,Burkina Faso,11.85,-2.25,fn_bfbondou,N/A,N/A
+Ouagadougou,Burkina Faso,12.2,-1.4,fn_bfouagad,N/A,N/A
+Oueme,Benin,9.5,2,fn_bjoueme0,N/A,N/A
+Turco (VALERI),Bolivia,-18.23945,-68.19332,fn_boturco0,N/A,N/A
+Atlantic Forest Sao Paulo,Brazil,-23.32847,-45.09311,fn_bratlfor,BR-Afs,br.atlantic_forest.01
+Balbina,Brazil,-1.91698,-59.4868,fn_brbalbin,N/A,N/A
+Belterra,Brazil,-2.64848,-54.95165,fn_brbelter,N/A,N/A
+Ecotone Bananal Island,Brazil,-9.82442,-50.15911,fn_brbnisld,BR-Ban,br.bananal_island.01
+Bragansa,Brazil,-0.834,-46.641,fn_brbragsa,N/A,N/A
+Brasilia,Brazil,-15.917,-47.9,fn_brbrasil,N/A,N/A
+Caxiuana 2,Brazil,-1.71,-51.51,fn_brcaxiu2,N/A,N/A
+Caxiuana Forest-Almeirim,Brazil,-1.71972,-51.45898,fn_brcaxiua,BR-Cax,br.caxiuana.01
+COMPLET 108  (-27.7177 S -50.8508 W),Brazil,-27.7177,-50.8508,fn_brcom108,N/A,N/A
+COMPLET 116  (-19.0081 S -53.0282 W),Brazil,-19.0081,-53.0282,fn_brcom116,N/A,N/A
+COMPLET 122  (-9.2097 S -42.8669 W),Brazil,-9.2097,-42.8669,fn_brcom122,N/A,N/A
+COMPLET 123  (-6.6694 S -53.3911 W),Brazil,-6.6694,-53.3911,fn_brcom123,N/A,N/A
+New Brunswick 2,Canada,47.4,-66.2,fn_canewbr2,N/A,N/A
+BOREAS NSA Young Jack Pine 2,Canada,55.90278,-98.29,fn_cansayj2,N/A,N/A
+NorthWest Territories,Canada,61.5,-123.8,fn_canwterr,N/A,N/A
+Ontario 2,Canada,48.9,-88.8,fn_caontar2,N/A,N/A
+Ontario 3,Canada,50.3,-80.5,fn_caontar3a,N/A,N/A
+Ontario,Canada,44.6,-76.6,fn_caontari,N/A,N/A
+Ontario 4,Canada,44.6,-79.6,fn_caontari3b,N/A,N/A
+Quebec 2,Canada,53.1,-77.7,fn_caquebe2,N/A,N/A
+Quebec 3,Canada,51.7,-61.4,fn_caquebe3,N/A,N/A
+Quebec,Canada,54.5,-75.7,fn_caquebec,N/A,N/A
+Research Farm Field 14,Canada,45.2929,-75.76692,fn_carff140,N/A,N/A
+Research Farm Field 25,Canada,45.30236,-75.74315,fn_carff250,N/A,N/A
+Sable Island,Canada,43.93333,-60.01667,fn_casable,N/A,N/A
+Sask- Fire 1977,Canada,54.48503,-105.81757,fn_casaskfi,CA-SF1,ca.saskfire77.01
+Sasketchewan,Canada,50.3,-103.7,fn_casaskwa,N/A,N/A
+Sherbrooke,Canada,45.4012,-71.9085,fn_casherbr,N/A,N/A
+SSA_YJP_BOREAS,Canada,53.675,-104.65,fn_cassayj2,N/A,N/A
+Temagami,Canada,47.42,-80.35,fn_catemaga,N/A,N/A
+Ontario- Turkey Point Young White Pine,Canada,42.77442,-80.45878,fn_caturk15,CA-TP2,ca.turkeypoint15.01
+Wexford,Ireland,52.29819,-6.49978,fn_iewexfor,IE-Wex,ie.wexford.01
+Nes_Ziona,Israel,31.9225,34.78917,fn_ilneszio,N/A,N/A
+SEDE_BOKER,Israel,30.855,34.78222,fn_ilsedebo,N/A,N/A
+COMPLET 140  (20.5484 N 80.5202 E),India,20.5484,80.5202,fn_incomple,N/A,N/A
+Kanpur,India,26.45,80.346,fn_inkanpur,N/A,N/A
+COMPLET 148  (30.3468 N 58.0202 E),Iran,30.3468,58.0202,fn_ircomple,N/A,N/A
+Gunnarsholt,Iceland,63.83333,-20.21667,fn_isgunnar,IS-Gun,is.gunnarsholt.01
+Abruzzi,Italy,41.86667,13.63333,fn_itabruzz,N/A,it.abruzzi.01
+Amplero  (after 6/28/2004),Italy,41.9041,13.60516,fn_itampler,IT-Amp,it.amplero.01
+Bonis,Italy,39.47778,16.53472,fn_itbonis0,IT-Bon,it.bonis.01
+Borgo Cioffi,Italy,40.52375,14.95744,fn_itborgoc,IT-BCi,it.borgo_cioffi.01
+Grosseto,Italy,43.71667,10.28333,fn_itgrosse,IT-Gro,it.grosseto.01
+La Mandria,Italy,45.58131,7.15463,fn_itlamand,IT-LMa,it.lamandria.01
+Lampedusa,Italy,35.51667,12.63167,fn_itlampus,N/A,N/A
+Lecceto,Italy,43.30461,11.27064,fn_itleccet,IT-Lec,it.lecceto.01
+Malga Arpaco,Italy,46.11667,11.70278,fn_itmalgaa,IT-Mal,it.malga_arpaco.01
+Monte Bondone,Italy,46.01466,11.04583,fn_itmonteb,IT-MBo,it.montebondone.01
+Negrisia,Italy,45.74756,12.44673,fn_itnegris,IT-Neg,it.negrisia.01
+Rome_Tor_Vergata,Italy,41.83955,12.64733,fn_itrometo,N/A,N/A
+Ticino,Italy,45.66,9.91,fn_itticino,N/A,N/A
+Tolfa,Italy,42.18967,11.92211,fn_ittolfa0,IT-Tol,it.tolfa.01
+Appi Forest Meteorology,Japan,40,141.56667,fn_jpappifo,JP-App,jp.appi_forest.01
+Fujiyoshida Forest Met. Research Site,Japan,35.45137,138.76527,fn_jpfujiyo,JP-Fuj,jp.fujiyoshida.01
+Hachihama Observatory (Ohtaki),Japan,34.53333,133.93333,fn_jphachih,JP-Hac,jp.hachihama.01
+Sapporo Forest Meteorology Research Site,Japan,42.98684,141.38529,fn_jphitsui,JP-Hit,jp.hitsuijigaoka.01
+Kahoku experimental watershed,Japan,33.1337,130.71187,fn_jpkahoku,JP-Kah,jp.kahoku.01
+Oak_Ridge,USA,35.96001,-84.29,fn_ustnoakr,N/A,N/A
+Edinburg 17 NNE- Lower Rio Grande Valley NWR (La Sal Del Rey),USA,26.5258,-98.0633,fn_ustxedin,N/A,N/A
+Freeman Ranch- Grassland-Texas,USA,29.93,-98.01,fn_ustxfrgr,US-FR1,us.freeman_grassland.01
+Freeman Ranch Mesquite Juniper- Texas,USA,29.94949,-97.99623,fn_ustxfrtr,US-FR2,us.freeman_transition.01
+Freeman Ranch- Woodland- Texas,USA,29.94,-97.99,fn_ustxfrwd,US-FR3,us.freeman_woodland.01
+J-17 Savanna Site- Texas,USA,30.17551,-97.8778,fn_ustxj17s,US-J17,us.tx_j17savanna.01
+Muleshoe 19 S- Muleshoe National Wildlife Refuge (Headquarters Site),USA,33.95569,-102.77389,fn_ustxmule,N/A,N/A
+Palestine 6 WNW- NASA (National Scientific Balloon Facility),USA,31.77958,-95.72319,fn_ustxpale,N/A,N/A
+Monahans 6 ENE- (Sandhills State Park),USA,31.62189,-102.80708,fn_ustxsand,N/A,N/A
+Chesapeake Lt. Station,USA,36.9,-75.71667,fn_usvaches,N/A,N/A
+NASA_LaRC,USA,37.10496,-76.37864,fn_usvalarc,N/A,N/A
+Cape Charles 5 ENE- Anheuser Busch Coastal Res. Ctr. Univ. of VA (Oyster),USA,37.2907,-75.927,fn_usvaoyst,N/A,N/A
+Phillips Creek Marsh (PHCK),USA,37.46069,-75.83471,fn_usvapcrk,N/A,N/A
+Virginia,USA,38.02,102.25,fn_usvavirg,N/A,N/A
+Darrington 21 NNE- North Cascades National Park (Marblemount),USA,48.54052,-121.446,fn_uswamarb,N/A,N/A
+Necedah 5 WNW- Necedah National Wildlife Refuge (Rynearson Dam No. 2),USA,44.0604,-90.1737,fn_uswinece,N/A,N/A
+North Temperate Lakes - Madison Lakes (NTL2),USA,43.2085,-89.35187,fn_uswintl2,N/A,N/A
+North Temperate Lakes - Trout Lake 2 (NTL3),USA,46.00694,-89.68333,fn_uswintlt,N/A,N/A
+Elkins 21 ENE- Canaan Valley Resort State Park (Cabins Area),USA,39.013,-79.4743,fn_uswvelki,N/A,N/A
+Glacier Lakes Ecosystem Experiment Station,USA,41.36826,-106.24426,fn_uswyglee,N/A,N/A
+Moose 1 NNE- Grand Teton National Park,USA,43.6615,-110.712,fn_uswymoos,N/A,N/A
+Lander 11 SSE- Nature Conservancy (Red Canyon Ranch),USA,42.6754,-108.66861,fn_uswyredc,N/A,N/A
+University of Wyoming,USA,41.3121,-105.675,fn_uswyuniv,N/A,N/A
+COMPLET 154  (40.5081 N 62.375 E),Uzbekistan,40.5081,62.375,fn_uzcom154,N/A,N/A
+Department Moreno- Santiago del Estero,Argentina,-27.20778,-63.03719,fn_arsantia,N/A,N/A
+Langenfeld,Austria,47.06383,10.96452,fn_atlangen,AT-Lan,at.langenfeld.01
+Leutasch,Austria,47.37887,11.16558,fn_atleutas,AT-Leu,at.leutasch.01
+Schlitters,Austria,47.3682,11.85617,fn_atschlit,AT-Sch,at.schlitters.01
+Burdekin Delta,Australia,-19.56667,147.4,fn_aucairns,AU-Cas,au.cairns_sugarcane.01
+Brasilia - Campo Sujo Bienal Tardia,Brazil,-15.95,-47.86667,fn_brsujobi,BR-Su1,br.sujo_bienal.01
+Alberta (54 N -115 W),Canada,54.5,-115.7,fn_caalbta1,N/A,N/A
+Alberta 2 (51N -113 W),Canada,51.7,-113.9,fn_caalbta2,N/A,N/A
+Alert,Canada,82.45,-62.51667,fn_caalert,N/A,N/A
+Baker Lake,Canada,64.31667,-96.03333,fn_cabaker,N/A,N/A
+BERMS Tall Tower,Canada,54.35358,-104.98678,fn_caberms,N/A,N/A
+BERMSOld_Black_SpruceM,Canada,54,-105.12004,fn_cabermso,N/A,N/A
+Bratts Lake,Canada,50.204,-104.713,fn_cabratts,N/A,N/A
+British Columbia50.3 N -122.3 W),Canada,50.3,-122.3,fn_cabritc1,N/A,N/A
+British Columbia 2 (51.7N -126.3 W),Canada,51.7,-126.3,fn_cabritc2,N/A,N/A
+British Columbia 3 (55.9N -122.7 W),Canada,55.9,-122.7,fn_cabritc3,N/A,N/A
+Ontario- Camp Borden,Canada,44.31667,-79.9333,fn_cacampbo,CA-Cbo,ca.camp_borden.01
+Cartel,Canada,45.37933,-71.93133,fn_cacartel,N/A,N/A
+Candle Lake,Canada,53.733,-105.267,fn_cacdlake,N/A,N/A
+Chebogue Point,Nova Scotia,43.747,-66.123,fn_cachebog,N/A,N/A
+Churchill,Canada,58.7375,-93.81889,fn_cachurch,N/A,N/A
+COMPLET 163 (56.1129 N -69.3589 W),Canada,56.1129,-69.3589,fn_cacom163,N/A,N/A
+COMPLET 165  (58.2903 N -117.9879 W),Canada,58.2903,-117.9879,fn_cacom165,N/A,N/A
+COMPLET 170  (63.371N -96.5766 W),Canada,63.371,-96.5766,fn_cacom170,N/A,N/A
+COMPLET 172  (64.4597N -68.996 W),Canada,64.4597,-68.996,fn_cacom172,N/A,N/A
+CIPHA-ALD1,Canada,52.66228,-114.85841,fn_cacpald1,N/A,N/A
+CIPHA-ALD2,Canada,52.65488,-114.91558,fn_cacpald2,N/A,N/A
+CIPHA-ALD3,Canada,52.60148,-114.96574,fn_cacpald3,N/A,N/A
+CIPHA-BAT1,Canada,52.75554,-106.14556,fn_cacpbat1,N/A,N/A
+CIPHA-BAT2,Canada,52.73731,-106.1395,fn_cacpbat2,N/A,N/A
+CIPHA-BAT3,Canada,52.73166,-106.14312,fn_cacpbat3,N/A,N/A
+CIPHA-BIG1,Canada,52.37589,-107.83524,fn_cacpbig1,N/A,N/A
+CIPHA-BIG2,Canada,52.35612,-107.80577,fn_cacpbig2,N/A,N/A
+CIPHA-BIG3,Canada,52.31623,-107.76355,fn_cacpbig3,N/A,N/A
+CIPHA-CAL1,Canada,55.2922,-112.9692,fn_cacpcal1,N/A,N/A
+CIPHA-CAL2,Canada,55.27773,-112.97555,fn_cacpcal2,N/A,N/A
+CIPHA-CAL3,Canada,55.27522,-112.94304,fn_cacpcal3,N/A,N/A
+CIPHA-CHA1,Canada,47.69227,-83.48368,fn_cacpcha1,N/A,N/A
+Zhangye Oasis,China,39,100,fn_cnzhangy,CN-Zha,cn.zhangye_oasis.01
+Guanacaste Conservation Area,Costa Rica,10.88,-85.66,fn_crguanac,N/A,N/A
+Los Inocentes,Costa Rica,11.01667,-85.5,fn_crlosino,CR-Lin,cr.los_inocentes.01
+Santa Rosa National Park,Costa Rica,10.81472,-85.615,fn_crsantar,CR-Sro,cr.santa_rosa.01
+Sal Island,Capo Verde,16.7325,-22.9355,fn_cvsalisl,N/A,N/A
+COMPLET 146  (29.2581 N 5.7621 E),Algeria,29.2581,5.7621,fn_dzcomple,N/A,N/A
+COMPLET 127 (-2.3145 S -78.4315 W),Ecuador,-2.3145,-78.4315,fn_eccomple,N/A,N/A
+Jarvselja,Estonia,58.29,27.29,fn_eejarvs2,N/A,N/A
+Jarvselja (VALERI),Estonia,58.2986,27.2624,fn_eejarvse,N/A,N/A
+COMPLET 143 (25.629 N 30.0766 E),Egypt,25.629,30.0766,fn_egcom143,N/A,N/A
+Vall d'Alinya,Spain,42.15217,1.4485,fn_esalinya,ES-VDA,es.alinya.01
+Barrax (VALERI),Spain,39.07285,-2.10395,fn_esbarrax,N/A,N/A
+El Saler-Sueca,Spain,39.27553,-0.31522,fn_eselsal2,ES-ES2,es.elsaler_sueca.01
+Llano de los Juanes,Spain,36.92825,-2.75047,fn_esljuane,ES-LJu,es.ljuanes.01
+Las Majadas del Tietar,Spain,39.9415,-5.77336,fn_eslma01,ES-LMa,es.lma.01
+Toledo,Spain,39.86005,-4.03006,fn_estoledo,ES-Tol,es.toledo.01
+Valencia,Spain,39.57083,-1.28833,fn_esvalenc,N/A,N/A
+Valladolid,Spain,41.81486,-4.93247,fn_esvallad,ES-Vad,es.valladolid.01
+COMPLET 131  (3.129 N -64.2782 W),Venezuela,3.129,-64.2782,fn_vecom131,N/A,N/A
+COMPLET 132  (7.8468 N -69.3589 W),Venezuela,7.8468,-69.3589,fn_vecom132,N/A,N/A
+Ganaderos,Venezuela,8.90011,-68.15094,fn_vesanchz,VE-Gan,ve.sanchez.01
+COMPLET 136  (12.5645 N 107.7379 E),Vietnam,12.5645,107.7379,fn_vncom136,N/A,N/A
+COMPLET 109  (-27.7177 S 29.7137 E),South Africa,-27.7177,29.7137,fn_zacom109,N/A,N/A
+Kruger Acacia,South Africa,-25.02018,31.49753,fn_zakruger,N/A,N/A
+Skukuza_Aeroport,South Africa,-24.969,31.593,fn_zaskaero,N/A,N/A
+Skukuza,South Africa,-24.9917,31.5875,fn_zaskukuz,N/A,za.skukuza.01
+COMPLET 121  (-9.5726 S 29.3508 E),Zambia,-9.5726,29.3508,fn_zmcom121,N/A,N/A
+Mongu 2,Zambia,-15.25361,23.15083,fn_zmmongu2,N/A,N/A
+Cape Tribulation,Australia,-16.10315,145.44688,fn_audaintr,AU-Ctr,au.daintree.01
+Vielsalm,Belgium,50.30553,5.99683,fn_bevielsa,BE-Vie,be.vielsalm.01
+Maun- Floodplain,Botswana,-19.60759,23.28693,fn_bwmaun2,BW-Ma2,bw.maun.02
+British Columbia- Campbell River - Clearcut Site,Canada,49.87048,-125.29087,fn_cacampct,CA-Ca2,ca.campbell_river_cut.01
+British Columbia- Campbell River - Mature Forest Site,Canada,49.86725,-125.3336,fn_cacamprr,CA-Ca1,ca.campbell_river.01
+British Columbia- Campbell River - Young Plantation Site,Canada,49.53462,-124.90044,fn_cacampyg,CA-Ca3,ca.campbell_river_yng.01
+Kejimikujik,Canada,44.5,-65.5,fn_cakejimk,N/A,N/A
+Western Peatland- LaBiche-Black Spruce/Larch Fen,Canada,54.95384,-112.46698,fn_cawpeatl,CA-WP1,ca.westernpeatland.01
+Lamto,Cote D'Ivoire,6.21,-5.03,fn_cilamto,N/A,N/A
+Bily Kriz- Beskidy Mountains,Czech Republic,49.50263,18.53842,fn_czbilykr,CZ-BK1,cz.bilykriz.01
+Grillenburg- grass station,Germany,50.94947,13.51252,fn_degrille,DE-Gri,de.grillenburg.01
+Bayreuth-Waldstein/WeidenBrunnen,Germany,50.14194,11.86694,fn_deweiden,DE-Bay,de.weidenbrunnen.01
+Delta Junction 1920 Control site,USA,N/A,N/A,fn_usbona87,US-Bn1,us.ak_bonanza_1920.01
+Delta Junction 1987 Burn site,USA,N/A,N/A,fn_usbona87,US-Bn2,us.ak_bonanza_1987.01
+Delta Junction 1999 Burn site,USA,N/A,N/A,fn_usbonatb,US-Bn3,us.ak_bonanza_1999.01
+Lavarone (after 3/2002),Italy,45.95526,11.28118,fn_itlavar1,IT-Lav,it.lavarone.01
+Tamanrasset,Algeria,N/A,N/A,fn_dztamanr,N/A,N/A
+Syowa,Antarctica,-69,39.583333,fn_aqsyowa,N/A,N/A
+Alice Springs,Australia,N/A,N/A,fn_aualsprg,N/A,N/A
+Greenland Plateau,Denmark,N/A,N/A,fn_dkgreenp,N/A,N/A
+Le Bray  (before 6/28/1998),France,N/A,N/A,fn_frlebray,N/A,N/A
+Zambrana,Spain,42.93272,-2.85308,fn_eszambrn,ES-Zam,es.zambrana.01
+Hirsikangas (VALERI),Finland,62.6439,27.01143,fn_fihirsik,N/A,N/A
+Kotovaara,Finland,67.75,29.61667,fn_fikotova,FI-Kot,fi.kotovaara.01
+Lompolojankka wetland,Finland,67.99719,24.20919,fn_filompol,N/A,N/A
+Loppi Scots Pine Forest,Finland,60.64683,24.355,fn_filoppi,N/A,N/A
+Rovaniemi (VALERI),Finland,66.45463,25.34333,fn_firovani,N/A,N/A
+Budongo Forest,Uganda,1.72419,31.53889,fn_ugbudong,N/A,N/A
+Island_Ascension,Island,-7.9765,-14.41472,fn_ukascens,N/A,N/A
+Auchencorth Moss- Scotland,UK,55.79167,-3.23889,fn_ukauchen,UK-AMo,uk.auchencorth.01
+Cairngorms- Scotland,UK,57.23333,-3.5,fn_ukcairng,UK-Cai,uk.cairngorms.01
+Cirencester,UK,52.7,-1.98333,fn_ukcirenc,UK-Cir,uk.cirencester.01
+Easter Bush- Scotland,UK,55.866,-3.20578,fn_ukeaster,UK-EBu,uk.easter_bush.01
+East Saltoun,UK,55.9,-2.5,fn_ukesalto,UK-ESa,uk.esaltoun.01
+Hampshire,UK,51.12083,-0.86083,fn_ukhampsh,UK-Ham,uk.hampshire.01
+Hertfordshire,UK,51.78378,-0.47608,fn_ukhertfo,UK-Her,uk.hertford.01
+Moor House,UK,54.69633,-2.39638,fn_ukmoorh2,UK-MoH,uk.moor_house.01
+Pang/ Lambourne (crop),UK,51.53333,-1.48333,fn_ukpang01,UK-PL1,uk.pang.01
+Pang/ Lambourne (grassland),UK,51.43333,-1.23333,fn_ukpang02,UK-PL2,uk.pang.02
+Pang/ Lambourne (forest),UK,51.45,-1.26667,fn_ukpang03,UK-PL3,uk.pang.03
+Polden- Scotland,UK,55.28683,-3.4015,fn_ukpolden,UK-Pol,uk.polden.01
+Arctic LTER (ARC1),USA,68.62833,-149.59333,fn_usakarc1,N/A,N/A
+Barrow,USA,71.3122,-156.665,fn_usakbar2,N/A,N/A
+ARM_North_Slope_of_Alaska- Barrow,USA,71.32,-156.61667,fn_usakbarm,N/A,N/A
+Bonanza Creek (BNZ1),USA,64.74332,-148.31345,fn_usakbnz1,N/A,N/A
+Bonanza Creek (BNZ2) - Caribou Poker Creek Watershed,USA,65.15533,-147.48772,fn_usakbnz2,N/A,N/A
+COMPLET 167  (60.4677 N -158.996 W),USA,60.4677,-158.996,fn_usakc167,N/A,N/A
+COMPLET 173  (65.5484 N -141.2137 W),USA,65.5484,-141.2137,fn_usakc173,N/A,N/A
+Fairbanks 11 NE- NOAA / NESDIS (FCDAS),USA,64.9735,-147.51,fn_usakfair,N/A,N/A
+Happy Valley- Alaska,USA,69.13333,-148.83333,fn_usakhapp,US-HVa,us.happy_valley.01
+COMPLET 130  (0.5887 N 14.8347 E),Dem. Republic of the Congo,0.5887,14.8347,fn_cdcom130,N/A,N/A
+COMPLET 133  (8.5726 N 19.9153 E),Central African Republic,8.5726,19.9153,fn_cdcom133,N/A,N/A
+COMPLET 149  (31.7984 N 97.5766 E),China,31.7984,97.5766,fn_cdcom149,N/A,N/A
+COMPLET 150  (32.5242 N 117.8992 E),China,32.5242,117.8992,fn_cdcom150,N/A,N/A
+COMPLET 151 (36.5161 N 76.5282 E),China,36.5161,76.5282,fn_cdcom151,N/A,N/A
+COMPLET 153 (37.9677 N 87.4153 E),China,37.9677,87.4153,fn_cdcom153,N/A,N/A
+COMPLET 155  (40.871N 107.7379 E),China,40.871,107.7379,fn_cdcom155,N/A,N/A
+Eucalyptus of Congo-Hinda,Dem. Republic of the Congo,-4,12,fn_cdcongoe,CG-Euc,cd.congo_eucalyptus.01
+Chamau grassland,Switzerland,47.20833,8.40833,fn_chchamau,CH-Cha,ch.chamau.01
+Fruebuel grassland,Switzerland,47.11667,8.53333,fn_chfrubul,CH-Fru,ch.fruebuel.01
+Jungfraujoch,Switzerland,46.55,7.98333,fn_chjungfr,N/A,N/A
+Laegeren,Switzerland,47.47808,8.365,fn_chlaeger,CH-Lae,ch.laegeren.01
+Oensingen1 grass,Switzerland,47.28564,7.73214,fn_choensin,CH-Oe1,ch.oensingen.01
+Concepcion (VALERI),Chile,-37.46727,-73.47038,fn_clconcep,N/A,N/A
+Blandy Experimental Farm- Virginia,USA,39.05957,-78.07238,fn_usvaarbr,US-Bla,us.va_blandy.01
+Chatham 1 SE- Michigan State University,USA,46.3345,-86.92,fn_usmichat,N/A,N/A
+Island_Midway,Island,28.21,-177.37833,fn_usmidway,N/A,N/A
+KBS Crops,USA,42.41008,-85.37567,fn_usmikbsc,US-KBS,us.mi_kbs_crops.01
+Kellogg Biological Station (KBS1),USA,42.41333,-85.37194,fn_usmikell,N/A,N/A
+Cedar Creek Natural History Area (CDR1),USA,45.40093,-93.20137,fn_usmncdr1,N/A,N/A
+Goodridge 12 NNW- Agassiz National Wildlife Refuge,USA,48.3055,-95.8744,fn_usmngood,N/A,N/A
+Marcell Experimental Forest,USA,47.5117,-93.4685,fn_usmnmarc,N/A,N/A
+Rosemount- G19- Minnesota,USA,44.72171,-93.08934,fn_usmnrg19,US-Ro3,us.rosemount_g19.01
+Rosemount- C7- Minnesota,USA,44.72879,-93.08885,fn_usmnroc7,US-Ro2,us.rosemount_c7.01
+Rosemount- G21- Minnesota,USA,44.71431,-93.08984,fn_usmnrose,US-Ro1,us.rosemount.01
+KUOM tower- Minnesota,USA,44.9983,-93.1886,fn_usmnurba,US-KUO,us.urban_kuom.01
+Chillicothe 22 ENE - University of Missouri (Forage Systems Research Station),USA,39.8668,-93.147,fn_usmochll,N/A,N/A
+Goodwin Creek- Mississippi 2,USA,34.25,-89.86667,fn_usmsgood,N/A,N/A
+Newton 5 ENE- Mississippi State University (Coastal Plain Exp. Station),USA,32.33778,-89.07028,fn_usmsnewt,N/A,N/A
+Missoula,USA,46.91667,-114.08334,fn_usmtmiss,N/A,N/A
+St. Mary 1 SSW- Glacier National Park (St. Mary Site),USA,48.7412,-113.43244,fn_usmtstma,N/A,N/A
+Wolf Point 34 NE- Fort Peck Indian Res. (Give Out Morgan Site),USA,48.4887,-105.2096,fn_usmtwo34,N/A,N/A
+Albemarle- North Carolina,USA,36,-78,fn_usncalbe,N/A,N/A
+Asheville 13 S- NC Mtn. Horticultural Crops Res. Ctr. (Backlund Site),USA,35.4185,-82.55667,fn_usncas13,N/A,N/A
+Asheville 8 SSW- North Carolina Arboretum (Bierbaum Site),USA,35.49453,-82.61417,fn_usncash8,N/A,N/A
+NC_Clearcut,USA,35.81147,-76.71147,fn_usncclea,US-NC1,us.nc_clearcut.01
+NC_Loblolly Plantation,USA,35.8031,-76.66791,fn_usnclobl,US-NC2,us.nc_loblolly.01
+Ivotuk- Alaska,USA,68.48647,-155.75031,fn_usakivot,US-Ivo,us.ak_ivotuk.01
+Alaskan Tundra- Prudhoe Bay- 1997,USA,70.03139,-148.63139,fn_usakprud,N/A,N/A
+Alaskan Tundra- Pump Station 2,USA,69.50556,-148.225,fn_usakpump,N/A,N/A
+Sitka 1 NE - USGS Sitka Magnetic Observatory,USA,57.0574,-135.3266,fn_usaksitk,N/A,N/A
+St. Paul 4 NE - NOAA National Weather Service,USA,57.1575,-170.2119,fn_usakstpl,N/A,N/A
+Barrow-TUND,USA,71.27,-156.61,fn_usaktund,N/A,N/A
+Gadsden 19 N - Sand Mountain,USA,34.2851,-85.9621,fn_usalgads,N/A,N/A
+Selma 13 WNW - Auburn,USA,32.4567,-87.2422,fn_usalselm,N/A,N/A
+Audubon Elgin 5 S-  (AppletonWhittell),USA,31.59069,-110.50869,fn_usazaudu,N/A,N/A
+Phoenix Urban (CAP),USA,33.427,-111.933,fn_usazcap0,N/A,N/A
+Maricopa,USA,33.06902,-111.9723,fn_usazmari,N/A,N/A
+Mt Bigelow- Arizona,USA,32.41667,-110.72551,fn_usazmtbi,US-MtB,us.az_mtbigelow.01
+Santa Rita Mesquite- Arizona,USA,31.82143,-110.86611,fn_usazsant,US-SRM,us.santarita_mesquite.01
+Tucson,USA,32.233,-110.953,fn_usaztuc2,N/A,N/A
+Tucson 11 W- Sonora Desert Museum,USA,32.2395,-111.16958,fn_usaztucs,N/A,N/A
+Red_Bluff,USA,40.15,-122.25,fn_uscabluff,N/A,N/A
+California Current Ecosystem (CCE1),USA,32.8736,-120.2798,fn_uscacce1,N/A,N/A
+Merced 23 WSW- Kesterson Reservoir,USA,37.2381,-120.8825,fn_uscamerc,N/A,N/A
+Monterey,USA,36.59255,-121.85487,fn_uscamont,N/A,N/A
+Redding 12 WNW- Whiskeytown,USA,40.6507,-122.6068,fn_uscaredd,N/A,N/A
+Santa Barbara Coastal LTER (SBC1),USA,34.49544,-119.91182,fn_uscasbc1,N/A,N/A
+Sherman Island,USA,38.0373,-121.75365,fn_uscasher,US-She,us.sherman_island.01
+Sky Oaks- California,USA,33.38444,-116.64026,fn_uscaskyo,US-SO1,us.sky_oaks.01
+Stovepipe Wells 1 SW- Death Valley National Park,USA,36.602,-117.1449,fn_uscastov,N/A,N/A
+Table_Mountain,USA,34.38,-117.68,fn_uscatabl,N/A,N/A
+Trinidad Head,USA,41.05,-124.15,fn_uscatrin,N/A,N/A
+Boulder BOU site,USA,40.05003,-105.00385,fn_uscobou,N/A,N/A
+Cortez 8 SE - Mesa Verde National Park,USA,37.2553,-108.5033,fn_uscocort,N/A,N/A
+CRP grazed site (Briggsdale)- Colorado,USA,40.72514,-104.30138,fn_uscocrpg,US-Co1,us.crp_grazed.01
+CRP minimum-till site (Briggsdale)- Colorado,USA,40.7345,-104.30128,fn_uscocrpm,US-Co2,us.crp_mintill.01
+CRP ungrazed site (Briggsdale)- Colorado,USA,40.72965,-104.30134,fn_uscocrpu,US-Co3,us.crp_ungrazed.01
+Dinosaur 2 E- Dinosaur National Monument,USA,40.2446,-108.9677,fn_uscodino,N/A,N/A
+Fraser Experimental Forest,USA,39.87985,-105.86702,fn_uscofras,N/A,N/A
+La Junta 17 WSW- USDA Comanche National Grassland,USA,37.8639,-103.8224,fn_uscolaju,N/A,N/A
+Montrose 11 ENE- Black Canyon,USA,38.544,-107.6928,fn_uscomont,N/A,N/A
+Boulder 14 W- Mountain Research Station,USA,40.0354,-105.5409,fn_uscomtst,N/A,N/A
+Nunn 7 NNE- Ag. Res. Svc. Central Plains Exp. Range,USA,40.8066,-104.7552,fn_usconunn,N/A,N/A
+Shortgrass Steppe LTER (SGS1),USA,40.80784,-104.18793,fn_uscosgs1,N/A,N/A
+Shortgrass Steppe LTER (SGS2),USA,40.86907,-104.75513,fn_uscosgs2,N/A,N/A
+Shortgrass Steppe LTER (SGS3),USA,40.86885,-104.67247,fn_uscosgs3,N/A,N/A
+Shortgrass Steppe LTER (SGS4),USA,40.8065,-104.67279,fn_uscosgs4,N/A,N/A
+Table_Mountain 2,USA,40.125,-105.237,fn_uscotabl,N/A,N/A
+South Denver Urban Tower,USA,39.65942,-105.01274,fn_uscourba,US-SDU,us.urban_denver.01
+Great Mountain Forest- Connecticut,USA,41.96667,-73.23333,fn_usctgrea,US-GMF,us.greatmtn_CT.01
+Shark River Slough (Tower SRS-6)- Florida Everglades,USA,25.36463,-81.07795,fn_usfleman,US-SRS,us.fl_everglades_mangrove.01
+Florida Coastal Everglades (FCE1),USA,25.46821,-80.85328,fn_usfleve1,N/A,N/A
+Dry_Tortugas,USA,24.6,-82.8,fn_usfltort,N/A,N/A
+Brunswick 23 S- Cumberland Island National Seashore (Stafford Field),USA,30.8078,-81.4596,fn_usgabrun,N/A,N/A
+Georgia Coastal Ecosystems (GCE1),USA,31.41389,-81.28333,fn_usgalter,N/A,N/A
+Newton 11 SW- Robert W. Woodruff Foundation,USA,31.1923,-84.4465,fn_usganew2,N/A,N/A
+Newton 8 W- Robert W. Woodruff Foundation (IchauwayGeorge Site),USA,31.31269,-84.47061,fn_usganewt,N/A,N/A
+Watkinsville 5 SSE- USDA/ARS Watkinsville (Colham Ferry Site),USA,33.78375,-83.38961,fn_usgawatk,N/A,N/A
+Hilo 5 S - University of Hawaii Waiakea Experiment Station,USA,19.645,-155.0827,fn_ushihilo,N/A,N/A
+Mauna Loa 5 NNE - Mauna Loa Slope Observatory,USA,19.5354,-155.576,fn_ushimaun,N/A,N/A
+Happy Valley 1995-Alaskan Tundra,USA,69.16722,-148.85694,fn_ushpvall,N/A,N/A
+Brooks Field Site 1011- Ames-Iowa,USA,41.97565,-93.69252,fn_usia1011,US-Br2,us.ames_tl1011.01
+Kingston 1 NW- University of Rhode Island (Plains Road Site),USA,41.491,-71.541,fn_usriplai,N/A,N/A
+Columbia_SC,USA,34.0228,-81.03633,fn_ussccolb,N/A,N/A
+Blackville 3 W- Clemson University (Edisto Research & Edu. Ctr.),USA,33.355,-81.32789,fn_usscedis,N/A,N/A
+McClellanville 7 NE- SCDNR (Santee Coastal Reserve),USA,33.15319,-79.36369,fn_usscsant,N/A,N/A
+Brookings- South Dakota,USA,44.34529,-96.83617,fn_ussdbroo,US-Bro,us.brookings.01
+Buffalo 13 ESE- SDSU Antelope Research Station (Calving Pasture Site),USA,45.516,-103.3017,fn_ussdbuff,N/A,N/A
+Sioux_Falls,USA,43.73628,-96.62598,fn_ussdfall,N/A,N/A
+Rannells Ranch (ungrazed)- Kansas,USA,39.139,-96.523,fn_usrannun,US-Ra1,us.ks_rannellsranch.01
+Walnut River Watershed- Kansas (Smileyburg),USA,37.52083,-96.855,fn_uswalnut,US-WRW,us.walnut_river.01
+Harvard Forest EMS Tower- Massachusetts (HFR1),USA,42.53776,-72.17148,fn_usmaharv,US-Ha1,us.harvard_forest.01
+Howland Forest (main tower)- Maine,USA,45.20407,-68.74028,fn_ushwmain,US-Ho1,us.howland.01
+Howland Forest (west tower)- Maine,USA,45.20912,-68.747,fn_ushwwest,US-Ho2,us.howland.02
+Northern Michigan Jack Pine Stand,USA,46.6465,-88.5194,fn_usnmijps,US-NMi,us.no_mich_jackpine.01
+Sylvania Wilderness Area- Michigan,USA,46.24202,-89.34765,fn_ussylvan,US-Syl,us.no_mich_sylvania.01
+Eucaliptus Sao Paulo,Brazil,-21.5835,-47.60231,fn_breucali,BR-Euc,br.eucaliptus.01
+Jaru_Reserve,Brazil,-10.08333,-61.93333,fn_brjarure,N/A,N/A
+Manaus TWP C1,Brazil,-2.06141,147.42528,fn_brmanaus,N/A,N/A
+Pantanal,Brazil,-19.56,-57.01,fn_brpantan,N/A,N/A
+Brasilia-Reserva Ecol  Aguas Emendadas,Brazil,-15.55,-47.6,fn_brreserv,BR-Res,br.reserva_ecologica.01
+Rio_Branco,Brazil,-9.95747,-67.86935,fn_brriobra,N/A,N/A
+Pandeiros,Brazil,-14.84828,-43.98797,fn_brsanchz,BR-Pan,br.sanchez.01
+Santarem 2,Brazil,-2.43333,-54.75,fn_brsantr2,N/A,N/A
+Sao Gabriel da Cachoeira,Brazil,0.21233,-66.76473,fn_brsaogab,BR-Sga,br.saogabriel.01
+Sao_Paulo,Brazil,-23.5615,-46.73498,fn_brsaopau,N/A,N/A
+Sao Paulo Cerrado,Brazil,-21.61947,-47.64989,fn_brsaosav,BR-Sp1,br.saopaulo_savannah.01
+Sao Paulo Sugar Cane,Brazil,-21.63706,-47.79025,fn_brsaosug,BR-Sp2,br.saopaulo_sugarcane.01
+CIPHA-CHA2,Canada,47.62702,-83.19625,fn_cacpcha2,N/A,N/A
+CIPHA-CHA3,Canada,47.51976,-82.99047,fn_cacpcha3,N/A,N/A
+CIPHA-DUN1,Canada,51.68943,-106.70732,fn_cacpdun1,N/A,N/A
+CIPHA-DUN2,Canada,51.6975,-106.71498,fn_cacpdun2,N/A,N/A
+CIPHA-DUN3,Canada,51.68355,-106.71681,fn_cacpdun3,N/A,N/A
+CIPHA-DVG1,Canada,55.87078,-118.07584,fn_cacpdvg1,N/A,N/A
+CIPHA-DVG2,Canada,55.82765,-118.21181,fn_cacpdvg2,N/A,N/A
+CIPHA-DVG3,Canada,55.83062,-118.26253,fn_cacpdvg3,N/A,N/A
+CIPHA-EDG1,Canada,52.59698,-110.61837,fn_cacpedg1,N/A,N/A
+CIPHA-EDG3,Canada,52.60027,-110.60715,fn_cacpedg3,N/A,N/A
+CIPHA-FIS1,Canada,53.59487,-106.23372,fn_cacpfis1,N/A,N/A
+CIPHA-FIS2,Canada,53.63054,-106.19881,fn_cacpfis2,N/A,N/A
+CIPHA-FIS3,Canada,53.61399,-106.18152,fn_cacpfis3,N/A,N/A
+CIPHA-FTN1,Canada,58.76324,-121.62256,fn_cacpftn1,N/A,N/A
+CIPHA-FTN2,Canada,58.75483,-121.61868,fn_cacpftn2,N/A,N/A
+CIPHA-FTN3,Canada,58.74447,-121.75901,fn_cacpftn3,N/A,N/A
+CIPHA-GER1,Canada,49.93914,-86.50052,fn_cacpger1,N/A,N/A
+CIPHA-GER2,Canada,49.74812,-86.7123,fn_cacpger2,N/A,N/A
+CIPHA-GLA1,Canada,53.59541,-108.58375,fn_cacpgla1,N/A,N/A
+CIPHA-GLA2,Canada,53.5905,-108.59279,fn_cacpgla2,N/A,N/A
+CIPHA-GLA3,Canada,53.59148,-108.5717,fn_cacpgla3,N/A,N/A
+CIPHA-HAR1,Canada,49.47275,-100.76776,fn_cacphar1,N/A,N/A
+CIPHA-HAR2,Canada,49.48714,-100.63519,fn_cacphar2,N/A,N/A
+CIPHA-HAR3,Canada,49.50069,-100.77781,fn_cacphar3,N/A,N/A
+CIPHA-HIG1,Canada,58.37444,-117.23621,fn_cacphig1,N/A,N/A
+CIPHA-HIG2,Canada,58.33864,-117.23692,fn_cacphig2,N/A,N/A
+CIPHA-HIG3,Canada,58.22646,-117.23838,fn_cacphig3,N/A,N/A
+CIPHA-MIN1,Canada,53.35987,-112.93755,fn_cacpmin1,N/A,N/A
+CIPHA-MIN2,Canada,53.27599,-112.93065,fn_cacpmin2,N/A,N/A
+CIPHA-MIN3,Canada,53.33179,-112.93551,fn_cacpmin3,N/A,N/A
+CIPHA-MOO1,Canada,49.83668,-101.55752,fn_cacpmoo1,N/A,N/A
+CIPHA-MOO2,Canada,49.81187,-101.83008,fn_cacpmoo2,N/A,N/A
+CIPHA-MOO3,Canada,49.99205,-101.68591,fn_cacpmoo3,N/A,N/A
+CIPHA-MOR1,Canada,55.27538,-106.08909,fn_cacpmor1,N/A,N/A
+CIPHA-MOR2,Canada,55.10959,-105.92739,fn_cacpmor2,N/A,N/A
+CIPHA-MOR3,Canada,55.14328,-106.0735,fn_cacpmor3,N/A,N/A
+CIPHA-NOT1,Canada,57.15013,-117.20715,fn_cacpnot1,N/A,N/A
+CIPHA-NOT2,Canada,57.27723,-117.18328,fn_cacpnot2,N/A,N/A
+CIPHA-NOT3,Canada,57.28861,-117.16902,fn_cacpnot3,N/A,N/A
+CIPHA-PAS1,Canada,53.61168,-101.6871,fn_cacppas1,N/A,N/A
+CIPHA-PAS2,Canada,53.61039,-101.67993,fn_cacppas2,N/A,N/A
+CIPHA-PAS3,Canada,53.59992,-101.67434,fn_cacppas3,N/A,N/A
+CIPHA-PET1,Canada,55.77188,-108.79854,fn_cacppet1,N/A,N/A
+CIPHA-PET2,Canada,55.74501,-108.77766,fn_cacppet2,N/A,N/A
+CIPHA-PET3,Canada,55.73598,-108.72452,fn_cacppet3,N/A,N/A
+CIPHA-POP1,Canada,61.34009,-121.74457,fn_cacppop1,N/A,N/A
+CIPHA-POP2,Canada,61.337,-121.75071,fn_cacppop2,N/A,N/A
+CIPHA-POP3,Canada,61.27996,-122.37357,fn_cacppop3,N/A,N/A
+CIPHA-POR1,Canada,52.48214,-101.19932,fn_cacppor1,N/A,N/A
+CIPHA-POR2,Canada,52.47714,-101.20866,fn_cacppor2,N/A,N/A
+CIPHA-POR3,Canada,52.4603,-101.16637,fn_cacppor3,N/A,N/A
+CIPHA-RED1,Canada,56.77402,-115.278,fn_cacpred1,N/A,N/A
+CIPHA-RED2,Canada,56.60634,-115.30925,fn_cacpred2,N/A,N/A
+CIPHA-RED3,Canada,56.62367,-115.30738,fn_cacpred3,N/A,N/A
+CIPHA-SAN1,Canada,49.16378,-95.91485,fn_cacpsan1,N/A,N/A
+CIPHA-SAN2,Canada,52.76622,-96.16765,fn_cacpsan2,N/A,N/A
+CIPHA-SAN3,Canada,49.11611,-95.89895,fn_cacpsan3,N/A,N/A
+CIPHA-SRF1,Canada,49.25166,-82.05272,fn_cacpsrf1,N/A,N/A
+CIPHA-SRF2,Canada,49.05188,-81.20209,fn_cacpsrf2,N/A,N/A
+CIPHA-SRF3,Canada,49.32993,-81.80759,fn_cacpsrf3,N/A,N/A
+CIPHA-TAT1,Canada,54.61078,-109.55814,fn_cacptat1,N/A,N/A
+CIPHA-TAT2,Canada,54.62562,-109.62117,fn_cacptat2,N/A,N/A
+CIPHA-TAT3,Canada,54.63413,-109.86236,fn_cacptat3,N/A,N/A
+CIPHA-TBY1,Canada,48.73452,-89.07985,fn_cacptby1,N/A,N/A
+CIPHA-TBY2,Canada,48.72822,-89.08218,fn_cacptby2,N/A,N/A
+CIPHA-TBY3,Canada,48.69687,-89.08761,fn_cacptby3,N/A,N/A
+CIPHA-TOB1,Canada,53.75095,-103.03494,fn_cacptob1,N/A,N/A
+CIPHA-TOB2,Canada,53.73729,-103.06622,fn_cacptob2,N/A,N/A
+CIPHA-TOB3,Canada,53.75211,-103.04454,fn_cacptob3,N/A,N/A
+CIPHA-YPT1,Canada,55.16887,-117.60825,fn_cacpypt1,N/A,N/A
+CIPHA-YPT2,Canada,55.16049,-117.59579,fn_cacpypt2,N/A,N/A
+CIPHA-YPT3,Canada,55.15843,-117.55846,fn_cacpypt3,N/A,N/A
+CIPHA-YRK1,Canada,51.32637,-103.08892,fn_cacpyrk1,N/A,N/A
+CIPHA-YRK2,Canada,51.33895,-103.11165,fn_cacpyrk2,N/A,N/A
+CIPHA-YRK3,Canada,51.31019,-103.15991,fn_cacpyrk3,N/A,N/A
+Egbert- Environment Canada CARE,Canada,44.23261,-79.781,fn_caegbert,N/A,N/A
+Egbert,Canada,44.22567,-79.75,fn_caegvrt2,N/A,N/A
+Estevan Point,Canada,49.58444,-126.36861,fn_caestevn,N/A,N/A
+Fraserdale,Canada,49.87528,-81.57017,fn_cafraser,N/A,N/A
+Hinton,Canada,53.1,-117.92,fn_cahinton,N/A,N/A
+Kejimkujik 2,Canada,44.38333,-65.28333,fn_cakejim2,N/A,N/A
+Larose (VALERI),Canada,45.38046,-75.217,fn_calarose,N/A,N/A
+UCI-1964 burn site wet,Canada,55.91167,-98.38222,fn_cansab63,CA-NS4,ca.nsa_burn_1964_wet.01
+Mont_Joli 2,Canada,48.64,-68.156,fn_camontj2,N/A,N/A
+Mont_Joli,Canada,48.59,-68.1927,fn_camontjo,N/A,N/A
+Munster/Sudbury,Canada,46.85,-81.47,fn_camunste,N/A,N/A
+New Brunswick,Canada,46,-66.8,fn_canewbr1,N/A,N/A
+Ontario- Turkey Point Middle-aged White Pine,Canada,42.70681,-80.34831,fn_caturk30,CA-TP3,ca.turkeypoint30.01
+Ontario- Turkey Point Mature White Pine,Canada,42.70978,-80.3574,fn_caturk60,CA-TP4,ca.turkeypoint60.01
+Ontario- Turkey Point Seedling White Pine,Canada,42.66094,-80.55952,fn_caturke1,CA-TP1,ca.turkeypoint.01
+Watson Lake,Canada,60.09,-129.38,fn_cawatson,N/A,N/A
+Whitecourt,Canada,54.04,-115.79,fn_cawhitec,N/A,N/A
+Little Washita Watershed- Oklahoma,USA,34.9604,-97.9789,fn_uswashit,US-LWW,us.little_washita.01
+Metolius-old aged ponderosa pine- Oregon,USA,44.49917,-121.62237,fn_usormeti,US-Me4,us.metolius_old.01
+Metolius-first young aged pine- Oregon,USA,44.43719,-121.56676,fn_usmetypp,US-Me5,us.metolius_yng.01
+Sisters (juniper-sagebrush)- Oregon,USA,44.265,-121.38417,fn_usjunipe,N/A,N/A
+Black Hills- South Dakota,USA,44.158,-103.65,fn_usbhills,US-BHi,us.blackhills_sd_ponderosa.01
+Chestnut Ridge- Oak Ridge,USA,35.93109,-84.33242,fn_uschridg,US-ChR,us.chestnut_ridge.01
+Walker Branch Watershed- Tennessee,USA,35.95877,-84.28743,fn_ustnwalk,US-WBW,us.walker_branch.01
+Utah- Crested Wheatgrass Site,USA,40.28297,-112.463,fn_usrushwg,US-Ru3,us.rushvalley_wheatgrass.01
+Utah- Juniper Woodland Site,USA,40.25932,-112.47812,fn_usrushju,US-Ru1,us.rushvalley_juniper.01
+Utah- Sagebrush Site,USA,40.28284,-112.47157,fn_usrushsb,US-Ru2,us.rushvalley_sagebrush.01
+Wind River Crane Site- Washington,USA,45.82049,-121.95191,fn_uswawind,US-WRi,us.wind_river.01
+Lost Creek- Wisconsin,USA,46.08268,-89.97919,fn_uslcreek,US-Los,us.lost_creek.01
+Park Falls/WLEF- Wisconsin,USA,45.94588,-90.2723,fn_uswipark,US-PFa,us.park_falls.01
+Willow Creek- Wisconsin,USA,45.80593,-90.07986,fn_uswiwill,US-WCr,us.willow_creek.01
+Canaan Valley- West Virginia,USA,39.06333,-79.42083,fn_uscanaan,US-CaV,us.canaan_valley.01
+Acadia Road 9,Canada,45.9847,-66.3,fn_caacad9,N/A,N/A
+Annapolis Valley,Canada,44.9019,-65.1217,fn_caannapo,N/A,N/A
+Aspen1 (45.4333 N -75.7333 W),Canada,45.4333,-75.7333,fn_caaspen1,N/A,N/A
+Aspen2 (46.3415 N -63.5102 W),Canada,46.3415,-63.5102,fn_caaspen2,N/A,N/A
+Aspen3 (49.9172 N -101.204 W),Canada,49.9172,-101.204,fn_caaspen3,N/A,N/A
+Leinefelde,Germany,51.32826,10.36785,fn_deleinef,DE-Lei,de.leinefelde.01
+Tharandt- Anchor Station,Germany,50.96361,13.56694,fn_detharan,DE-Tha,de.tharandt.01
+Wetzstein,Germany,50.4535,11.45753,fn_dewetzst,DE-Wet,de.wetzstein.01
+Castelporziano,Italy,41.70525,12.37611,fn_itcastel,IT-Cpz,it.castelporziano.01
+Collelongo- Selva Piana,Italy,41.84944,13.58806,fn_itcollel,IT-Col,it.collelongo.01
+Nonantola,Italy,44.68981,11.08868,fn_itnonant,IT-Non,it.nonantola.01
+Renon/Ritten (Bolzano),Italy,46.58778,11.43472,fn_itbolzan,IT-Ren,it.bolzano_renon.01
+Roccarespampani2,Italy,42.39026,11.92093,fn_itrocca1,IT-Ro1,it.rocca.01
+Roccarespampani1,Italy,42.40812,11.93002,fn_itrocca2,IT-Ro2,it.rocca.02
+San Rossore,Italy,43.729722,10.286944,fn_itsanros,IT-SRo,it.san_rossore.01
+Loobos,Netherlands,52.16786,5.74396,fn_nlloobos,NL-Loo,nl.loobos.01
+Espirra,Portugal,38.63938,-8.6018,fn_ptespirr,PT-Esp,pt.espirra.01
+Mitra (Evora),Portugal,38.5407,-8.0004,fn_ptevora,PT-Mi1,pt.evora.01
+Flakaliden,Sweden,64.11278,19.45694,fn_seflakal,SE-Fla,se.flakaliden.01
+Norunda,Sweden,60.08622,17.49883,fn_senorun1,SE-Nor,se.norunda.01
+Davos- Seehorn forest 2,Switzerland,46.8175,9.85972,fn_chdavoss,N/A,N/A
+Griffin- Aberfeldy-Scotland,UK,56.60655,-3.79682,fn_ukgrifin,UK-Gri,uk.griffin.01
+Tadham Moor,UK,51.20714,-2.82864,fn_uktadham,UK-Tad,uk.tadham_moor.01
+Neustift/Stubai Valley,Austria,47.116667,11.31861,fn_atneusti,AT-Neu,at.neustift.01
+Alkkia Scots pine forest,Finland,62.18336,22.78347,fn_fipeatld,FI-Alk,fi.peatland.01
+Kenttarova (Matorova) spruce forest,Finland,67.98722,24.24306,fn_fimatoro,FI-Mat,fi.matorova.01
+Davos- Seehorn forest,Switzerland,46.81639,9.85694,fn_chsehorn,CH-Dav,ch.seehornwald.01
+Northern Plains Site,USA,42.31289,-106.55711,fn_usplains,US-NPl,us.northernplains.01
+BOREAS NSA - Old Black Spruce,Canada,55.87962,-98.48081,fn_ca03born,CA-Man,ca.manitoba.01
+Eastern Peatland- Mer Bleue,Canada,45.4094,-75.52,fn_camerble,CA-Mer,ca.mer_bleue.01
+GLEES- Wyoming,USA,41.36564,-106.23961,fn_usglacie,US-GLE,us.glacierlake.01
+Shionomisaki Laboratory,Japan,33.44278,135.75944,fn_jpshiono,JP-Shi,jp.shionomisaki.01
+Takayama,Japan,36.14617,137.42311,fn_jptakaya,JP-Tak,jp.takayama.01
+Changbaishan- Jilin P,China,41.05,128,fn_cdchang2,N/A,N/A
+COMPLET 114  (-22.6371 S -68.6331 W),Chile,-22.6371,-68.6331,fn_cdcom114,N/A,N/A
+COMPLET 128  (-1.2258 S 26.4476 E),Dem. Republic of the Congo,-1.2258,26.4476,fn_cdcom128,N/A,N/A
+Anhui poplar plantation,China,30.48303,116.984,fn_cnanhui0,N/A,N/A
+Beijing Daxing,China,39.53056,116.25194,fn_cnbeiji2,CN-Bei,cn.beijing_daxing.01
+Beijing,China,39.97689,116.38137,fn_cnbeijin,N/A,N/A
+Changbaishan,China,42.4025,128.09583,fn_cnchang1,CN-Cha,cn.changbaishan.01
+Dangxiong,China,30.85,91.08333,fn_cndangxi,CN-Dan,cn.dangxiong.01
+Dinghushan,China,23.16667,112.53333,fn_cndinghu,CN-Din,cn.dinghushan.01
+Dongtan 2,China,31.5847,121.9035,fn_cndongt2,CN-Do2,cn.dongtan2.01
+Dongtan 3,China,31.5169,121.9717,fn_cndongt3,CN-Do3,cn.dongtan3.01
+Dongtan 1,China,31.5167,121.9607,fn_cndongta,CN-Do1,cn.dongtan1.01
+Dongtinghu poplar plantation,China,29.533,112.92658,fn_cndongti,N/A,N/A
+Dongwu_grassland,China,45.56014,117.00028,fn_cndongwu,CN-Dwu,cn.dongwu_grassland.01
+Dunhuang 2,China,40.03778,94.79389,fn_cndunhu2,N/A,N/A
+Duolun_cropland,China,42.04556,116.67139,fn_cnduocrp,CN-Du1,cn.duolun_cropland.01
+Duolun_grassland,China,42.04667,116.28361,fn_cnduogrs,CN-Du2,cn.duolun_grassland.01
+Haibei,China,37.6,101.3,fn_cnhaibei,CN-Hab,cn.haibei.01
+Himalayas,China,27.959,86.813,fn_cnhimal0,N/A,N/A
+Boreal Forest Ecosystem Station (Houzhou- Heliongjiang),China,51.5917,123.21345,fn_cnhouzho,N/A,N/A
+Hulunber Grassland,China,49.32695,120.05038,fn_cnhulunb,CN-Hul,cn.hulunber.01
+Northern_South_China_Sea_Southern_ JapanM,China,25.03,121.52,fn_cnjapanm,N/A,N/A
+Northern_South_China_Sea_Southern_ JapanS,China,24.967,121.181,fn_cnjapans,N/A,N/A
+Jingzhou agricultural land,China,41.14317,121.20217,fn_cnjingzh,N/A,N/A
+Kubuqi_populus forest,China,40.53833,108.69361,fn_cnkubuft,CN-Ku1,cn.kubuqi_forest.01
+Kubuqi_shrubland,China,40.38083,108.54861,fn_cnkubush,CN-Ku2,cn.kubuqi_shrubland.01
+Liping- Guizhou P,China,26.03,108.8,fn_cnliping,N/A,N/A
+Lake Tai,China,31.69972,120.35972,fn_cnlketai,N/A,N/A
+Panjin wetland,China,41.14067,121.91183,fn_cnpanjin,N/A,N/A
+Qianyanzhou,China,26.73333,115.06667,fn_cnqianya,CN-Qia,cn.qianyanzhou.01
+Study Site,China,32,119.52733,fn_cnstudys,N/A,N/A
+TibetMS3478,China,31.92597,91.715,fn_cntib3478,N/A,N/A
+TibetMS3608,China,31.226,91.783,fn_cntib3608,N/A,N/A
+TibetD110,China,32.69298,91.874,fn_cntibe10,N/A,N/A
+TibetD66,China,35.523,93.785,fn_cntibe66,N/A,N/A
+TibetAmdo,China,32.241,91.625,fn_cntibeam,N/A,N/A
+TibetANNI,China,31.254,92.172,fn_cntibean,N/A,N/A
+TibetD105,China,33.064,91.943,fn_cntibed5,N/A,N/A
+TibetBJ,China,31.369,91.899,fn_cntibetb,N/A,N/A
+TibetGaize,China,32.3,84.05,fn_cntibetg,N/A,N/A
+TibetS,China,32,91.89889,fn_cntibets,N/A,N/A
+TibetToutouhe,China,34.21601,92.438,fn_cntibett,N/A,N/A
+Xianghe,China,39.75389,116.96194,fn_cnxiangh,N/A,N/A
+Xilinhot_degraded Leymus grassland,China,43.55444,116.27972,fn_cnxilinh,CN-Xi1,cn.xilinhot.01
+Xishuangbanna,China,21.95,101.2,fn_cnxishua,CN-Xsh,cn.xishuangbanna.01
+Yucheng,China,36.95,116.6,fn_cnyuchen,CN-Yuc,cn.yucheng.01
+Zhang_Bei,China,41.29,114.69,fn_cnzhang1,N/A,N/A
+Zhangbei (VALERI),China,41.27892,114.68773,fn_cnzhang2,N/A,N/A
+Lusignan,France,46.43333,-0.46667,fn_frlusign,FR-Lus,fr.lusignan.01
+Nezer (VALERI),France,44.56803,-1.03825,fn_frnezer0,N/A,N/A
+Plan de dieu,France,44.2,4.95,fn_frplande,N/A,N/A
+Puechabon (VALERI),France,43.72464,3.6518,fn_frpuech2,N/A,N/A
+Romilly,France,48.45,3.94,fn_frromil2,N/A,N/A
+Romilly-sur-Seine (VALERI),France,48.44316,3.77199,fn_frromill,N/A,N/A
+Sud-Ouest (VALERI),France,43.5063,1.23752,fn_frsudoue,N/A,N/A
+Toulouse 2,France,43.56194,1.4765,fn_frtouls2,N/A,N/A
+Toulouse 3,France,43.57472,1.374,fn_frtouls3,N/A,N/A
+Counami (VALERI),French Guyana,5.34346,-53.23683,fn_gfcounam,N/A,N/A
+Guyaflux,French Guyana,5.28167,-52.91222,fn_gfguyafl,GF-Guy,gf.guyaflux.01
+Burkina- Ghana (GLOWA project),Ghana,8.34679,-1.22224,fn_ghburkin,N/A,N/A
+COMPLET 171  (64.0968 N -44.3185 W),Greenland,64.0968,-44.3185,fn_glcom171,N/A,N/A
+COMPLET 135  (11.1129 N -8.754 W),Guinea,11.1129,-8.754,fn_gncom135,N/A,N/A
+Mogostos Forest,Greece,38,22.61667,fn_grmogost,GR-Mog,gr.mogostos_forest.01
+Budapest-Lorinc,Hungary,47.83333,19.08333,fn_hubudlor,N/A,N/A
+Bugacpuszta,Hungary,46.69113,19.60133,fn_hubugacp,HU-Bug,hu.bugacputza.01
+Matra,Hungary,47.84687,19.72602,fn_humatra0,HU-Mat,hu.matra.01
+Aek Loba- Sumatra (VALERI),Indonesia,2.63105,99.57606,fn_idaeklob,N/A,N/A
+Bukit Soeharto- East Kalimantan,Indonesia,-0.83333,117.05,fn_idbukits,ID-Buk,id.bukit_soeharto.01
+COMPLET 125  (-6.3065 S 140.3992 E),Indonesia,-6.3065,140.3992,fn_idcom125,N/A,N/A
+COMPLET 129  (0.2258 N 113.9073 E),Indonesia,0.2258,113.9073,fn_idcom129,N/A,N/A
+Island_Equatorial,Indonesia,0.2,100.32,fn_idequato,N/A,N/A
+Carlow1,Ireland,55.85879,-6.91814,fn_iecarlow,IE-Ca2,ie.carlow.01
+Dripsey,Ireland,51.98669,-8.75181,fn_iedripse,IE-Dri,ie.dripsey.01
+Killorglin,Ireland,51.96836,-9.90031,fn_iekillor,IE-Kil,ie.killorglin.01
+Mace_Head,Ireland,53.33,-9.9,fn_iemacehd,N/A,N/A
+Kawagoe Forest Met. Research Site,Japan,35.15,139.08333,fn_jpkawago,JP-Kwa,jp.kawagoe.01
+Kyushu National Agricultural Experiment Station,Japan,31.73472,131.01389,fn_jpkyushu,N/A,N/A
+Tokyo_Tanashi,Japan,35.73102,139.544,fn_jptanash,N/A,N/A
+Tateno 2,Japan,36.05,140.13333,fn_jptaten2,N/A,N/A
+Grassland-National Institute-Tsukuba,Japan,36,140.01667,fn_jptsukub,JP-Tsu,jp.tsukuba.02
+Kakamega Forest,Kenya,0.35319,34.88118,fn_kekakame,N/A,N/A
+Msambweni Division- Kwale District,Kenya,-4.32677,39.34414,fn_kekwale0,N/A,N/A
+Haenam Farmland,Korea,34.55395,126.5697,fn_krhaenan,N/A,N/A
+Gwangneung Deciduous Forest,Korea,37.74871,127.14895,fn_krkwangn,N/A,N/A
+Korean_Peninsula,Korea,37.44,127.9,fn_krpenins,N/A,N/A
+Seoul_SNU,Korea,37.45806,126.95111,fn_krseoul0,N/A,N/A
+Shortandy AL1,Kazakhstan,51.51361,71.46278,fn_kzal101,KZ-AL1,kz.al1.01
+Shortandy AL2,Kazakhstan,51.48361,71.10472,fn_kzal201,KZ-AL2,kz.al2.01
+Shortandy AL3,Kazakhstan,51.58722,71.00083,fn_kzal301,KZ-AL3,kz.al3.01
+Shortandy AL4,Kazakhstan,51.68147,71.14369,fn_kzal401,KZ-AL4,kz.al4.01
+COMPLET 158  (48.8548 N 70.7218 E),Kazakhstan,48.8548,70.7218,fn_kzcom158,N/A,N/A
+Shortandy CW1,Kazakhstan,51.5275,71.48278,fn_kzcw101,KZ-CW1,kz.cw1.01
+Shortandy VL2,Kazakhstan,51.4775,71.10361,fn_kzvl201,KZ-VL2,kz.vl2.01
+Shortandy VL3,Kazakhstan,51.62333,70.96944,fn_kzvl301,KZ-VL3,kz.vl3.01
+Shortandy VL4,Kazakhstan,51.67556,71.15444,fn_kzvl401,KZ-VL4,kz.vl4.01
+Shortandy VLBR,Kazakhstan,51.57583,71.26806,fn_kzvlbr01,KZ-VL5,kz.vlbr.01
+Shortandy Wht,Kazakhstan,51.57361,71.25972,fn_kzwht01,KZ-Wht,kz.wht.01
+COMPLET 145  (25.9919 N 15.9234 E),Libya,25.9919,15.9234,fn_lycom145,N/A,N/A
+Haouz (VALERI),Morocco,31.65924,-7.60029,fn_mahaouz0,N/A,N/A
+Moldova,Moldova,47.0001,28.8156,fn_mdmoldov,N/A,N/A
+COMPLET 115  (-20.8226 S 46.7702 E),Madagascar,-20.8226,46.7702,fn_mgcom115,N/A,N/A
+Kwajalein- Marshall Islands,Marshall Islands,8.71667,167.73333,fn_mhkwajal,N/A,N/A
+Gourma (VALERI),Mali,15.3232,-1.5561,fn_mlgourma,N/A,N/A
+Hombori (VALERI),Mali,15.33102,-1.47491,fn_mlhombor,N/A,N/A
+COMPLET 141  (23.4516 N 95.7621 E),Myanmar,23.4516,95.7621,fn_mmcom141,N/A,N/A
+COMPLET 157  (48.4919 N 98.6653 E),Mongolia,48.4919,98.6653,fn_mncom157,N/A,N/A
+Dalanzadgad,Mongolia,43.57722,104.41917,fn_mndalanz,N/A,N/A
+Inner Mongolia steppe,Mongolia,44.13417,116.32383,fn_mninner2,N/A,N/A
+Inner_Mongolia 3,Mongolia,44.46,122.12,fn_mninner3,N/A,N/A
+Inner_Mongolia 4,Mongolia,42.68319,115.9537,fn_mninner4,N/A,N/A
+Inner Mongolia,Mongolia,43.5,117.45,fn_mninnerm,MN-Inn,mn.inner_mongolia.01
+MongoliaA3,Mongolia,46.01298,106.264,fn_mnmonga3,N/A,N/A
+MongoliaA6,Mongolia,46.283,106.264,fn_mnmonga6,N/A,N/A
+MongoliaC2,Mongolia,45.923,106.522,fn_mnmongc2,N/A,N/A
+MongoliaC4,Mongolia,46.103,106.523,fn_mnmongc4,N/A,N/A
+MongoliaD0,Mongolia,45.74,106.651,fn_mnmongd0,N/A,N/A
+MongoliaD7,Mongolia,46.552,106.651,fn_mnmongd7,N/A,N/A
+MongoliaE2,Mongolia,45.923,106.78,fn_mnmonge2,N/A,N/A
+MongoliaE4,Mongolia,46.103,106.78,fn_mnmonge4,N/A,N/A
+MongoliaF0,Mongolia,45.743,106.908,fn_mnmongf0,N/A,N/A
+MongoliaG6,Mongolia,46.283,107.037,fn_mnmongg6,N/A,N/A
+MongoliaGUS,Mongolia,46.054,107.489,fn_mnmonggu,N/A,N/A
+MongoliaH7,Mongolia,46.552,107.423,fn_mnmongh7,N/A,N/A
+MongolBTS,Mongolia,46.776,107.142,fn_mnmongib,N/A,N/A
+MongolDRS,Mongolia,46.209,106.715,fn_mnmongid,N/A,N/A
+MongolMGS,Mongolia,45.742,106.264,fn_mnmongim,N/A,N/A
+MongolDGS,Mongolia,46.127,106.368,fn_mnmongis,N/A,N/A
+MAGIM,China,43.55472,116.67806,fn_mnmongol,MN-Mag,mn.mongolia.01
+MongoliaS,Mongolia,46.283,107.298,fn_mnmongs0,N/A,N/A
+Tongyu,Mongolia,44.417,122.867,fn_mntongyu,N/A,N/A
+COMPLET 142  (24.5403 N -6.5766 W),Mauritania,24.5403,-6.5766,fn_mrcomple,N/A,N/A
+Lodgepole Forest- Montana,USA,46.95225,-110.88527,fn_mtforest,US-Ldg,us.mt_lodgepole.01
+Riparian Meadow- Montana,USA,46.94537,-110.88724,fn_mtmeadow,US-Rip,us.mt_meadow.01
+Chamela Biological Station,Mexico,19.50928,-105.04018,fn_mxchamel,MX-Cha,mx.chamela.01
+COMPLET 144  (25.9919 N -103.1089 W),Mexico,25.9919,-103.1089,fn_mxcomple,N/A,N/A
+Sierra_Cincua 2,Mexico,19.52,-100.28,fn_mxsierr2,N/A,N/A
+Sierra Cincua (VALERI),Mexico,19.67466,-100.28206,fn_mxsierra,N/A,N/A
+COMPLET 110  (-27.3548 S 20.2782 E),Namibia,-27.3548,20.2782,fn_nacomple,N/A,N/A
+Southern Gellap Ost Research Farm,Namibia,-26.40183,18.00534,fn_nanamgel,N/A,N/A
+Northern Kavango Region,Namibia,-18.30242,19.25875,fn_nanamkav,N/A,N/A
+Central Namibia (Omatako Ranch),Namibia,-21.50931,16.73552,fn_nanamoma,N/A,N/A
+Banizoumbou,Niger,13.54117,2.66475,fn_nebanizo,N/A,N/A
+COMPLET 138  (18.0081N 4.6734 E),Niger,18.0081,4.6734,fn_necom138,N/A,N/A
+Niamey Aeroport,Niger,13.4833,2.1666,fn_neniamey,N/A,N/A
+COMPLET 134  (8.9355 N 11.56833 E),Nigeria,8.9355,11.56833,fn_ngcom134,N/A,N/A
+Ilorin 2,Nigeria,8.53333,4.56667,fn_ngilori2,N/A,N/A
+Ilorin,Nigeria,8.32,4.34,fn_ngilorin,N/A,N/A
+Cabauw,Netherlands,51.971,4.927,fn_nlcabauw,NL-Ca1,nl.cabauw.01
+Cabauw extension (after 5/25/2004),Netherlands,51.95361,4.90286,fn_nlcabex1,NL-Ca2,nl.cabext.01
+Cabauw extension (before 5/25/2004),Netherlands,52.00361,4.80556,fn_nlcabex2,N/A,N/A
+The_Hague,Netherlands,52.11048,4.32682,fn_nlhague0,N/A,N/A
+Horstermeer,Netherlands,52.02889,5.0675,fn_nlhorste,NL-Hor,nl.horster.01
+Lelystad,Netherlands,52.5,5.5,fn_nllelyst,NL-Lel,nl.lelystad.01
+COMPLET 168  (60.4677 N 10.4798 E),Norway,60.4677,10.4798,fn_nocomple,N/A,N/A
+TWP C2 Nauru ARM,Nauru,-0.5206,166.9159,fn_nrtwpc20,N/A,N/A
+Purerua,New Zealand,-33.16667,174.08333,fn_nzpureru,N/A,N/A
+COMPLET 120  (-9.9355 S -73.7137 W),Peru,-9.9355,-73.7137,fn_pecom120,N/A,N/A
+COMPLET 126  (-3.0403 S -71.5363 W),Peru,-3.0403,-71.5363,fn_pecom126,N/A,N/A
+MCR Moorea Coreal Reef (MCR1),French Polynesia,17.501,-149.833,fn_pfmcr101,N/A,N/A
+Island-Manaus,Island,-2.058,147.425,fn_pgarmman,N/A,N/A
+Island-Manaus-Momote,Papua New Guinea,-2.05,147.43333,fn_pgmomote,N/A,N/A
+Brenna,Poland,40.66667,18.93333,fn_plbrenna,PL-Bre,pl.brenna.01
+Polana,Poland,48.63333,19.53333,fn_plpolana,PL-Pol,pl.polana.01
+Polwet,Poland,52.76222,16.30944,fn_plpolwet,PL-wet,pl.polwet.01
+Luquillo LTER (LUQ1),Puerto Rico,18.32389,-65.8175,fn_prluquil,N/A,N/A
+Roosevelt_Roads,Puerto Rico,18.2,-65.6,fn_prroosev,N/A,N/A
+Alfusqueiro,Portugal,40.59167,-8.375,fn_ptalfusq,N/A,N/A
+Evora,Portugal,38.56783,-7.9115,fn_ptevor2,N/A,N/A
+Mitra IV Tojal,Portugal,38.47654,-8.02455,fn_ptmitra4,PT-Mi2,pt.mitra4.01
+Aimeliik,Republic of Palau,7.46,134.4799,fn_pwaimeli,N/A,N/A
+Peleliu,Republic of Palau,7.05,134.2701,fn_pwpeleli,N/A,N/A
+Fundulea (VALERI),Romania,44.40557,26.58512,fn_rofundul,N/A,N/A
+Cherskii,Russia,68.61472,161.33917,fn_ruchersk,RU-Che,ru.cherskii.01
+Chokurdakh,Russia,70.61667,147.88333,fn_ruchokur,RU-Cho,ru.chokurdakh.01
+COMPLET 139  (18.371 N 48.2218 E),Saudi Arabia,18.371,48.2218,fn_rucom139,N/A,N/A
+COMPLET 147  (29.2581N 40.6008 E),Saudi Arabia,29.2581,40.6008,fn_rucom147,N/A,N/A
+COMPLET 159  (50.3065 N 39.1492 E),Russia,50.3065,39.1492,fn_rucom159,N/A,N/A
+COMPLET 161 (55.0242 N 159.2702 E),Russia,55.0242,159.2702,fn_rucom161,N/A,N/A
+COMPLET 162  (55.3871 N 132.7782 E),Russia,55.3871,132.7782,fn_rucom162,N/A,N/A
+COMPLET 164  (56.8387 N 105.1976 E),Russia,56.8387,105.1976,fn_rucom164,N/A,N/A
+COMPLET 166  (59.379 N 73.2621 E),Russia,59.379,73.2621,fn_rucom166,N/A,N/A
+COMPLET 169  (61.9194  N 46.0444 E),Russia,61.9194,46.0444,fn_rucom169,N/A,N/A
+COMPLET 174  (65.5485 N 148.3831 E),Russia,65.5485,148.3831,fn_rucom174,N/A,N/A
+COMPLET 175  (67.7258 N 85.2379 E),Russia,67.7258,85.2379,fn_rucom175,N/A,N/A
+COMPLET 176 (68.4516 N 108.1008 E),Russia,68.4516,108.1008,fn_rucom176,N/A,N/A
+COMPLET 177 (69.5403 N 119.7137 E),Russia,69.5403,119.7137,fn_rucom177,N/A,N/A
+Eastern_Siberia_TaigaS,Russia,62,129.66702,fn_ruesibta,N/A,N/A
+Eastern_Siberia_Tundra,Russia,71.617,128.75,fn_ruesibtu,N/A,N/A
+Fedorovskoje-drained spruce stand,Russia,56.46167,32.92306,fn_ruffedon,RU-Fyo,ru.ffedorovskoje_new.01
+Fedorovskoje-old spruce forest,Russia,56.44778,32.90194,fn_ruffedoo,RU-Fy2,ru.ffedorovskoje_old.01
+Ubs Nur-Hakasija- Site 3,Russia,54.72,90.05,fn_ruhak3,RU-Ha3,ru.ubsu_nur_hak3.01
+Krasnoyarsk 2,Russia,55.98333,92.76667,fn_rukrasn2,N/A,N/A
+Samoylov Island- Lena Delta,Russia,72.37333,126.49778,fn_rusamoyl,RU-Sam,ru.samoylov.01
+Tuva,Russia,50.15,94.45,fn_rutuva,RU-Tuv,ru.tuva.01
+Brooks Field Site 10- Ames-Iowa,USA,41.69148,-93.69139,fn_usiaam10,US-Br1,us.ames_tl10.01
+Brooks Field Site 11- Ames-Iowa,USA,41.97472,-93.69357,fn_usiaam11,US-Br3,us.ames_tl11.01
+Neal Smith Prairie- Ames,USA,41.55788,-93.29619,fn_usiaames,US-NSP,us.ames_prairie.01
+Des Moines 17 E- Neal Smith NWR (NOAA Station Site),USA,41.5562,-93.2855,fn_usiadesm,N/A,N/A
+SMEX,USA,41.936,-93.664,fn_usiasmex,N/A,N/A
+Arco 17 SW- Craters of the Moon NM & Preserve (Headquarters Area),USA,43.46211,-113.556,fn_usidarco,N/A,N/A
+Mica Creek,USA,47.18428,-116.29056,fn_usidmica,US-MCr,us.id_mica_creek.01
+Murphy 10 W- ARS NW Watershed Research Cntr. (Reynolds Creek Site),USA,43.2044,-116.7505,fn_usidmurp,N/A,N/A
+Rimrock,USA,46.4875,-116.99167,fn_usidrimr,N/A,N/A
+Fermi National Accelerator Laboratory- Batavia- Illinois (Agricultural site),USA,41.8593,-88.22273,fn_usilbata,US-IL1,us.il_bat_ag.01
+Fermi National Accelerator Laboratory- Batavia- Illinois (Prairie site),USA,41.84062,-88.24103,fn_usilbatp,US-IL2,us.il_bat_prairie.01
+Champaign 9 SW- Univ. of Illinois (Bondville Environ. & Atmos. Resrch. Stn.),USA,40.0528,-88.3729,fn_usilcham,N/A,N/A
+Shabbona 5 NNE- Northern Illinois Agronomy Research Center,USA,41.843,-88.8513,fn_usilshab,N/A,N/A
+Illinois Site 1,USA,39.93205,-89.63338,fn_usilsit1,N/A,N/A
+Illinois Site 2,USA,39.88153,-89.58681,fn_usilsit2,N/A,N/A
+Illinois Site 3,USA,39.87275,-89.83936,fn_usilsit3,N/A,N/A
+Illinois Site 4,USA,39.84099,-89.8492,fn_usilsit4,N/A,N/A
+Illinois Site 5,USA,39.7661,-89.86468,fn_usilsit5,N/A,N/A
+Illinois Site 6,USA,39.80637,-89.99042,fn_usilsit6,N/A,N/A
+Manhattan (cedar forest 30 km N)- Kansas,USA,39.46,-96.757,fn_usksceda,US-Man,us.ks_cedarforest.01
+Manhattan 6 SSW- Kansas State University (Konza Prairie Biological Station),USA,39.1027,-96.6098,fn_usksmanh,N/A,N/A
+Oakley 19 SSW - The Nature Conservancy Kansas (Smoky Valley Ranch),USA,38.8701,-100.9627,fn_usksoakl,N/A,N/A
+ARM SGP Extended Facility #8-Coldwater,USA,37.333,-99.309,fn_usksokco,N/A,N/A
+ARM SGP Extended Facility #4-Plevna,USA,37.953,-98.329,fn_usksokpl,N/A,N/A
+Bowling Green 21 NNE- Mammoth Cave National Park,USA,37.2504,-86.2325,fn_uskybowl,N/A,N/A
+Versailles 3 NNW- University of Kentucky (Woodford County Site),USA,38.0945,-84.7465,fn_uskyvers,N/A,N/A
+Lafayette 13 SE- University of Louisiana at Lafayette (Cade Farm),USA,30.0918,-91.8731,fn_uslalafa,N/A,N/A
+Monroe 26 N- Upper Ouachita National Wildlife Refuge,USA,32.88333,-92.1165,fn_uslamonr,N/A,N/A
+Cart Cr. - Forested Headwater Catchment,USA,42.76944,-70.91694,fn_usmacart,N/A,N/A
+Cedar Sw - Wetland Headwater Catchment,USA,42.54944,-71.09083,fn_usmacedr,N/A,N/A
+Harvard_Forest,USA,42.532,-72.188,fn_usmafort,N/A,N/A
+Little Prospect Hill- Massachusetts,USA,42.54186,-72.18496,fn_usmalitt,US-LPH,us.ma_little_prospect_hill.01
+MVCO,USA,41.3,-70.55,fn_usmamvco,N/A,N/A
+Marshes-Patmos,USA,42.74513,-70.84497,fn_usmapatm,N/A,N/A
+Plum Island Ecosystem LTER (PIE1),USA,42.759,-70.891,fn_usmaplum,N/A,N/A
+Parker River - Marshview,USA,42.75747,-70.88921,fn_usmaprive,N/A,N/A
+Rock Springs SURFRAD,USA,40.71667,-77.93333,fn_usmarock,N/A,N/A
+SawMill Br. - Urban Headwater Catchment,USA,42.52278,-71.18639,fn_usmasawm,N/A,N/A
+Baltimore Ecosystem Study (BES1),USA,39.40028,-76.77028,fn_usmdbes1,N/A,N/A
+Argyle,USA,45.0344,-68.68203,fn_usmeargy,US-Arg,us.me_argyle.01
+Limestone 4 NNW- Aroostook National Wildlife Ref.,USA,46.9601,-67.8833,fn_usmelime,N/A,N/A
+Old Town 2 W- University of Maine (Rogers Farm Site),USA,44.9281,-68.7006,fn_usmeoldt,N/A,N/A
+Presque Isle,USA,46.689,-68.0448,fn_usmepres,N/A,N/A
+COMPLET 156 (border of North and South Dakota),USA,45.9516,-97.6653,fn_usndc156,N/A,N/A
+Chequamegon,USA,45.93333,-90.25,fn_usndcheq,N/A,N/A
+Medora 7 E- Theodore Roosevelt National Park (Painted Canyon Site),USA,46.8946,-103.3769,fn_usndmedo,N/A,N/A
+University of North Dakota,USA,47.9492,-97.1761,fn_usndund0,N/A,N/A
+Harrison 20 SSE- Agate Fossil Beds National Monument (Visitor Center Site),USA,42.42481,-103.73583,fn_usneharr,N/A,N/A
+Lincoln 11 SW- Audubon Society (Spring Creek Prairie Site),USA,40.6954,-96.8541,fn_usneli11,N/A,N/A
+Lincoln 8 ENE- University of Nebraska (Prairie Pines Site),USA,40.8484,-96.5651,fn_usnelin8,N/A,N/A
+Whitman 5 ENE- Gudmundsen Sandhills Laboratory (Site 1),USA,42.068,-101.445,fn_usnewhit,N/A,N/A
+Bartlett Experimental Forest- New Hampshire,USA,44.06464,-71.28808,fn_usnhbart,US-Bar,us.bartlett.01
+Mt_Bigelow,USA,32.42002,-110.73004,fn_usnhbige,N/A,N/A
+Durham 2 SSW- University of New Hampshire (Thompson Farm Site),USA,43.109,-70.949,fn_usnhdrsw,N/A,N/A
+Durham 2 N- University of New Hampshire (Kingman Farm Site),USA,43.172,-70.928,fn_usnhdurh,N/A,N/A
+Hubbard Brook LTER (HBR1),USA,43.93972,-71.75139,fn_usnhhbr1,N/A,N/A
+Sargent Center,USA,42.94033,-72.00044,fn_usnhsarg,N/A,N/A
+Fort Dix- New Jersey,USA,39.97123,-74.43455,fn_usnjfort,US-Dix,us.nj_fort_dix.01
+Silas Little Experimental Forest- New Jersey,USA,39.91375,-74.59598,fn_usnjsilo,US-Sil,us.nj_silos_little.01
+Carlsbad,USA,32.36883,-104.23317,fn_usnmcarl,N/A,N/A
+Jornada,USA,32.35111,-106.51694,fn_usnmjorn,N/A,N/A
+Los Alamos 13 W- Valles Caldera National Preserve (Valle Grande Site),USA,35.8584,-106.5214,fn_usnmlosa,N/A,N/A
+Sevilleta,USA,34.35472,-106.885,fn_usnmsevl,N/A,N/A
+Valles Caldera- New Mexico,USA,35.87548,-106.47655,fn_usnmvall,US-Vca,us.valles_caldera.01
+Baker 5 W- Great Basin National Park (Gravel Pit Site),USA,39.0118,-114.209,fn_usnvbake,N/A,N/A
+Mercury 3 SSW- Nevada Test Site (Desert Rock Meteorological Lab),USA,36.624,-116.0225,fn_usnvmerc,N/A,N/A
+Railroad Valley Playa,USA,38.50389,-115.96194,fn_usnvrail,N/A,N/A
+Brookhaven,USA,40.87,-72.88917,fn_usnybroo,N/A,N/A
+CCNY,USA,40.82131,-73.94904,fn_usnyccny,N/A,N/A
+GISS,USA,40.7977,-73.9599,fn_usnygiss,N/A,N/A
+Ithaca 13 E- Cornell University,USA,42.44011,-76.24619,fn_usnyitha,N/A,N/A
+Millbrook 3 W- Institute of Ecosystem Studies,USA,41.7857,-73.7422,fn_usnymill,N/A,N/A
+Oak Openings- Ohio,USA,41.55454,-83.84376,fn_usohiooa,US-Ohi,us.ohio_oak.01
+ARM/CAT Ponca 2,USA,36.64,-97.5,fn_usokarm2,N/A,N/A
+ARM/CAT Ponca,USA,36.92997,-96.86,fn_usokarmp,N/A,N/A
+Cart Site,USA,36.60667,-97.48639,fn_usokcart,N/A,N/A
+ARM SGP Extended Facility #22-Cordell,USA,35.354,-98.977,fn_usokcord,N/A,N/A
+ARM SGP Extended Facility #19-El Reno,USA,35.557,-98.017,fn_usokelre,N/A,N/A
+Goodwell 2 E- OK Panhandle Research & Extn. Center (Native Grassland Site),USA,36.5993,-101.595,fn_usokgood,N/A,N/A
+ARM SGP Extended Faciltiy #18-Morris,USA,35.688,-95.856,fn_usokmorr,N/A,N/A
+ARM SGP Extended Facility #12-Pawhuska,USA,36.841,-96.427,fn_usokpawh,N/A,N/A
+ARM Burn Experiment-El Reno,USA,35.548,-98.0385,fn_usokreno,N/A,N/A
+Stillwater 2 W- Oklahoma State Univ. (Ag. Research Farm Site),USA,36.1181,-97.0914,fn_usoksti2,N/A,N/A
+Stillwater 5 WNW- Oklahoma State Univ. (Efaw Farm Site),USA,36.1346,-97.10819,fn_usoksti5,N/A,N/A
+HJ Andrews Aeronet Sunphotometer (AND1),USA,44.23889,-122.22389,fn_usorand1,N/A,N/A
+Marys River (Fir) site- Oregon,USA,44.64649,-123.55148,fn_usoregon,US-Fir,us.oregon_fir.01
+John Day 35 WNW- Fossil Beds Nat'l. Mon.(Sheep Rock Hdqs.),USA,44.55597,-119.64589,fn_usorjohn,N/A,N/A
+Metolius - Eyerly burn- Oregon,USA,44.57944,-121.50008,fn_usormtey,US-Me1,us.metolius_eyerlyburn.01
+Metolius-second young aged pine- Oregon,USA,44.31569,-121.60789,fn_usormtny,US-Me3,us.metolius_newyng.01
+Riley 10 WSW- Northern Great Basin Experimental Range (Rainout Site),USA,43.4711,-119.6917,fn_usorrile,N/A,N/A
+Kingston 1 W- University of Rhode Island (Peckham Farm Site),USA,41.478,-71.542,fn_usripeck,N/A,N/A
+Titusville 7 E - NASA Kennedy Space Center- SLF Mid-Field Site,USA,28.6159,-80.6929,fn_ustitusv,N/A,N/A
+Crossville 7 NW- Univ. of Tennessee (Plateau Research and Education Center),USA,36.0138,-85.1345,fn_ustncros,N/A,N/A
+Intermediate hardwood (IHW),USA,46.73047222,-91.23294444,fn_uswiihwd,US-Wi1,us.wi_ihwd.01
+Intermediate red pine (IRP),USA,46.68688889,-91.15283333,fn_uswiirpi,US-Wi2,us.wi_irpi.01
+Mature hardwood (MHW),USA,46.63472222,-91.09866667,fn_uswimhwd,US-Wi3,us.wi_mhwd.01
+Mature red pine (MRP),USA,46.73933333,-91.16625,fn_uswimrpi,US-Wi4,us.wi_mrpi.01
+Mixed young jack pine (MYJP),USA,46.65308333,-91.08580556,fn_uswimyjp,US-Wi5,us.wi_myjp.01
+Pine barrens #1 (PB1),USA,46.62488889,-91.29822222,fn_uswipbar,US-Wi6,us.wi_pbar.01
+Red pine clearcut (RPCC),USA,46.64911111,-91.06927778,fn_uswirpcc,US-Wi7,us.wi_rpcc.01
+Young hardwood clearcut (YHW),USA,46.72233333,-91.25241667,fn_uswiyhwd,US-Wi8,us.wi_yhwd.01
+Young Jack pine (YJP),USA,46.61877778,-91.08144444,fn_uswiyjpi,US-Wi9,us.wi_yjpi.01
+Young red pine (YRP),USA,46.61877778,-91.08144444,fn_uswiyrpi,US-Wi10,us.wi_yrpi.01
+CocoFlux,Vanuatu,-15.44272222,167.1919444,fn_vucocofl,VU-Coc,vu.cocoflux.01
+Tchizalamou,Dem. Republic of the Congo,-4.289166667,11.65641667,fn_cntchzal,CN-Tch,cd.tchizalamou.01
+Poor Fen,Canada,55.5375,-112.3343,fn_cafenpor,CA-WP2,ca.fen_poor.01
+Xilinhot_fenced grassland (abbr. NX06),China,43.545833,116.677778,fn_cnxilfen,N/A,cn.xilinhot_fenced.01
+Palangkaraya,Indonesia,-2.345,114.0363889,fn_idpalaya,ID-Pal,id.palangkaraya.01
+Ghanzi Grass Site,Botswana,-21.51,21.74,fn_bwghanz2,BW-Ghg,bw.ghanzi.02
+Fajemyr (NECC),Sweden,56.25,13.55,fn_sefajmyr,SE-Faj,se.fajemyr.01
+Amoladeras,Spain,36.83477778,-2.251138889,fn_esamolas,ES-Amo,es.amoladeras.01
+Zotino forest West,Russia,60.75,89.38333,fn_ruzotfor,RU-Zfw,ru.zotino_forest.01
+Zotino bog,Russia,60.75,89.38333,fn_ruzotbog,RU-Zbo,ru.zotino_bog.01
+Aguamarga,Spain,36.94055556,-2.033,fn_esaguamg,ES-Agu,es.aguamarga.01
+Co.Laois,Ireland,52.95,-7.25,fn_iecolais,IE-CLa,ie.colaois.01
+Bily Kriz- grassland,Czech Republic,49.4953325,18.5448,fn_czbilygr,CZ-BK2,cz.bilykriz_grass.01
+CZECHWET,Czech Republic,N/A,N/A,fn_czczhwet,CZ-wet,cz.czechwet.01
+Laqueuille extensive,France,45.63919444,2.737027778,fn_frlaqext,FR-Lq2,fr.laqueuille_ext.01
+Molenweg,Netherlands,51.65,4.639083333,fn_nlmolenw,NL-Mol,nl.molenweg.01
+Vredepeel,Netherlands,51.53166667,5.844111111,fn_nlvredpl,NL-Vre,nl.vredepeel.01
+Tatra,Slovak Republic,49.12077778,20.1635,fn_sktatra1,SK-Tat,sk.tatra.01
+Lutjewad,Netherlands,53.38333333,6.366666667,fn_nllutwad,NL-Lut,nl.lutjewad.01
+Ghanzi Mixed Site,Botswana,-21.2,21.75,fn_bwghanz3,BW-Ghm,bw.ghanzi.03
+Mongu - Kalahari Transect,Zambia,-15.438,23.253,fn_zmmonguk,ZM-Mok,zm.mongu_kalahari.01
+Maun - Kalahari Transect,Botswana,-19.923,23.594,fn_bwmaunk,BW-MaK,bw.maun_kalahari.01
+Xilinhot grassland site (X03),China,43.554444,116.671389,fn_cnxilgrz,CN-Xi2,cn.xilinhot_grassland.01
+Hartheim,Germany,47.93445,-7.100555,fn_deharthm,DE-Har,de.hartheim.01
+Djougou M,Benin,9.7393,2.643017,fn_bjdjougm,N/A,bj.djougou_m.01
+Djougou OF,Benin,9.75,1.8,fn_bjdjouof,N/A,bj.djougou_of.01
+Djougou OFr,Benin,9.783333,1.7166667,fn_bjdjoofr,N/A,bj.djougou_ofr.01
+Maun,Botswana,-19.9,23.55,fn_bwmaunb,N/A,bw.maun_botswana.01
+Parque Stadual de Mata Seca,Brazil,-14.878227,-43.9875777,fn_brparque,N/A,br.parque_stadual.01
+Pointe-Noire,Congo,-4.681111,12.0036111,fn_cgpnoir1,N/A,cg.pointenoire1.01
+Pointe-Noire,Congo,-4.791389,11.9822222,fn_cgpnoir2,N/A,cg.pointenoire2.01
+Pointe-Noire,Congo,-4.289167,11.656417,fn_cgpnoir3,N/A,cg.pointenoire3.01
+Ghana,Ghana,5.2685333,-2.69405,fn_ghghana1,N/A,gh.ghana_csir.01
+Monte Pino ,Italy,41.105556,14.743333,fn_itmtpino,N/A,it.monte_pino.01
+"CC-LaG site, Teshio Experimental Forest",Japan,45.056339,142.106203,fn_jpteshio,N/A,jp.teshio.01
+Agoufou F,Mali,15.253767,-1.56525,fn_mlagouff,N/A,ml.agoufou_f.01
+Agoufou G,Mali,15.3399,-1.4797333,fn_mlagoufg,N/A,ml.agoufou_g.01
+Agoufou S,Mali,15.499617,-1.39008333,fn_mlagoufs,N/A,ml.agoufou_s.01
+Bamba,Mali,17.0666667,-1.1833333,fn_mlbamba1,N/A,ml.bamba.01
+Wankama D,Niger,13.6463167,2.643017,fn_newankad,N/A,ne.wankama_d.01
+Wankama F,Niger,13.6441833,2.634833,fn_newankaf,N/A,ne.wankama_f.01
+Wankama M,Niger,13.6403833,2.631683,fn_newankam,N/A,ne.wankama_m.01
+Skukuza,South Africa,-25.0197,31.4969,fn_zaskukua,N/A,za.skukuza.01
+"El Demokeya, North Kordofan, El Obeid",Sudan,13.4747222,30.8063888,fn_sdeldemo,N/A,sd.eldemokeya_nk.01
+"Desert Chaparral, SCCG - California",USA,33.609444,-116.450556,fn_ussccgch,N/A,us.ca_sccg_chap.01
+"Desert, SCCG - California",USA,33.816667,-116.3725,fn_ussccgde,N/A,us.ca_sccg_desert.01
+"Grassland, SCCG - California",USA,33.736389,-117.694722,fn_ussccggr,N/A,us.ca_sccg_grass.01
+"Coastal sage, SCCG - California",USA,33.734167,-117.696111,fn_ussccgsa,N/A,us.ca_sccg_sage.01
+"Oak/pine forest, SCCG - California",USA,33.808056,-116.771667,fn_ussccgop,N/A,us.ca_sccg_opf.01
+"Pinyon juniper, SCCG - California",USA,33.604722,-116.452667,fn_ussccgpj,N/A,us.ca_sccg_pj.01
+"San Joaquin Freshwater Marsh, Tower 1 - California",USA,33.66,-117.85,fn_uscajoa1,N/A,us.ca_sjfm_tower.01
+"San Joaquin Freshwater Marsh, Tower 2 - California",USA,33.66,-117.85,fn_uscajoa2,N/A,us.ca_sjfm_tower.02
+Everglades (long hydroperiod marsh) - Florida,USA,25.36463056,-81.07794611,fn_useverlg,N/A,us.fl_everglade_lhm.01
+Everglades (short hydroperiod marsh) - Florida,USA,25.36463056,-81.07794611,fn_useversh,N/A,us.fl_everglade_lhm.02
+Howland Forest (west nutrient addition) - Maine,USA,45.204022,-68.740509,fn_ushowwna,N/A,us.me_howland_forest.01
+KCMP Tall Tower - Minnesota,USA,44.688611,-93.072778,fn_uskcmptt,N/A,us.mn_kcmp.01
+Desert grassland (Sevilleta LTER),USA,34.3402,-106.68542,fn_ussevdgr,N/A,us.nm_sevilleta_dg.01
+Desert shrubland (Sevilleta LTER),USA,34.3338,-106.73401,fn_ussevdes,N/A,us.nm_sevilleta_ds.01
+Juniper savanna,USA,34.425489,-105.861545,fn_usjunsav,N/A,us.nm_sevilleta_js.01
+Pinon-juniper ,USA,34.358554,-106.266586,fn_uspinonj,N/A,us.nm_sevilleta_pj.01
+Ponderosa Pine (Valles Caldera),USA,35.86236,-106.59743,fn_usvalpon,N/A,us.nm_valles_caldera_pp.01
+Mixed Conifer (Valles Caldera),USA,35.888447,-106.532114,fn_usvalcon,N/A,us.nm_valles_caldera_mc.01
+Cottonwood - South Dakota,USA,43.94995,-101.84661,fn_uscotton,N/A,us.sd_cottonwood.01
+Houston Yellowcab Site,USA,29.789539,-95.3534278,fn_ushuston,N/A,us.tx_houston_yc.01
+Malta,USA,42.4964,-113.4166,fn_usmalta1,N/A,us.mt_malta.01
+Mongu,Zambia,-15.4388488,23.2525795,fn_af00mong,N/A,zm.mongu.02
+Alert,Canada,82.5,-62.3,fn_caalert2,N/A,N/A
+Eureka,Canada,79.98,-85.93,fn_caeureka,N/A,N/A
+CP1,Greenland,69.8819,-46.9736,fn_dkandcp1,N/A,N/A
+CP2,Greenland,69.9133,-46.8547,fn_dkandcp2,N/A,N/A
+KAR,Greenland,69.6995,-32.9998,fn_dkandkar,N/A,N/A
+Aurora,Greenland,67.1352,-47.2911,fn_dkaurora,N/A,N/A
+NASA-E,Greenland,75,-29.9997,fn_dkdnasae,N/A,N/A
+NASA-U,Greenland,73.8333,-49.4953,fn_dkdnasau,N/A,N/A
+NGRIP,Greenland,75.0998,-42.3326,fn_dkdngrip,N/A,N/A
+Tunu-N,Greenland,78.0168,-33.9939,fn_dkdtunun,N/A,N/A
+Humboldt Gl.,Greenland,78.5266,-56.8305,fn_dkhumbdt,N/A,N/A
+NASA-SE,Greenland,66.4797,-42.5002,fn_dknasase,N/A,N/A
+DYE-2,Greenland,66.481,-46.28,fn_dknddye2,N/A,N/A
+GITS,Greenland,77.1433,-61.095,fn_dkndgits,N/A,N/A
+JAR1,Greenland,69.4984,-49.6816,fn_dkndjar1,N/A,N/A
+JAR2,Greenland,69.42,-50.0575,fn_dkndjar2,N/A,N/A
+JAR3,Greenland,69.3954,-50.3104,fn_dkndjar3,N/A,N/A
+KULU,Greenland,65.7584,-39.6018,fn_dkndkulu,N/A,N/A
+Saddle,Greenland,66.0006,-44.5014,fn_dksaddle,N/A,N/A
+South Dome,Greenland,63.1489,-44.8167,fn_dkstdome,N/A,N/A
+Summit,Greenland,72.5794,-38.5042,fn_dksummit,N/A,N/A
+Swiss Camp,Greenland,69.5732,-49.5952,fn_dkswcamp,N/A,N/A
+Siikaneva (NECC),Finland,61.83268333,24.19278333,fn_fisiiknv,N/A,N/A
+Soldankyla/Pallas,Finland,67.27,26.633,fn_fisoldpa,N/A,N/A
+Sardinia/Arca di Noe,Italy,40.60611111,8.150555556,fn_itardnoe,N/A,N/A
+Mase Paddy,Japan,36.053972,140.026917,fn_jpmpaddy,N/A,N/A
+Ny-Alesund,Norway,78.9,11.9,fn_nyalesun,N/A,N/A
+Cherskii,Russia,69,161,fn_ruchskii,RU-Che,ru.cherskii.01
+Tiksi,Russia,71.6,128.9,fn_rutiksi1,N/A,N/A
+Barrow,USA,71.32,-156.61,fn_usbarrow,N/A,N/A
+ARM Southern Great Plains burn site- Lamont- Oklahoma,USA,35.54974,-98.04023,fn_usokarmb,N/A,N/A
+ARM Southern Great Plains control site- Lamont- Oklahoma,USA,35.54649,-98.04006,fn_usokarmc,N/A,N/A

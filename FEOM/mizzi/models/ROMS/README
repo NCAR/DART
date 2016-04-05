@@ -1,0 +1,26 @@
+
+There are several DART users who have working DART interface code
+to the Regional Ocean Modeling System (ROMS).  This is a community
+ocean model funded by the Office of Naval Research.  See here:
+
+https://www.myroms.org/
+
+for more information on the model.  The lead developers are
+at Rutgers and UCLA, but the list of associate developers is
+extensive. See here:
+
+https://www.myroms.org/index.php?page=roms_devs
+
+for more information on the developers.
+
+If you are interested in running DART with this model please contact 
+the DART group at 'dart@ucar.edu' for more information.  We currently
+are working with collaborators to optimize the model_mod interface 
+and associated scripting to run data assimilation experiments with 
+this model.  We may be able to put you in contact with the right 
+people to get a copy of the code.
+
+The DART Group
+17 Sept 2014
+
+

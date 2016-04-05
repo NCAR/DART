@@ -1,0 +1,17 @@
+
+&ncommas_vars_nml
+   ncommas_state_variables = 'U',   'KIND_U_WIND_COMPONENT',
+                             'V',   'KIND_V_WIND_COMPONENT',
+                             'W',   'KIND_VERTICAL_VELOCITY',
+                             'TH',  'KIND_POTENTIAL_TEMPERATURE',
+                             'DBZ', 'KIND_RADAR_REFLECTIVITY',
+                             'WZ',  'KIND_VERTICAL_VORTICITY',
+                             'PI',  'KIND_EXNER_FUNCTION',
+                             'QV',  'KIND_VAPOR_MIXING_RATIO',
+                             'QC',  'KIND_CLOUDWATER_MIXING_RATIO',
+                             'QR',  'KIND_RAINWATER_MIXING_RATIO',
+                             'QI',  'KIND_ICE_MIXING_RATIO',
+                             'QS',  'KIND_SNOW_MIXING_RATIO',
+                             'QH',  'KIND_GRAUPEL_MIXING_RATIO'
+  /
+

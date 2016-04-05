@@ -1,0 +1,21 @@
+The example data file TC48_2012.atcf in this directory is one of the 
+'b-deck' datasets for tropical cyclone #48 from 2012.  The converter 
+code is set up to read this file.  
+
+Lots of other text formats, spacing, column counts are available - the 
+converter code may need the read format section changed for your use.
+
+This converter must be compiled with obs_def_vortex_mod.f90 in the
+&preprocess_nml :: input_files namelist.
+
+Run the quickbuild.csh script in the ../work directory to build
+the converter.
+
+The other data file, bal012013.dat, is an example of one of the
+many variants of the formatting where the columns are fixed width 
+and there are more fields defined on each line.  The converter 
+does not read this file as-is; it would need a new format line 
+defined which matched these fields.  See tc_to_obs.f90 and
+look for the 'select case' section where you can add new
+sections to read in the data of interest.
+

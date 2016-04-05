@@ -1,0 +1,14 @@
+# DART $Id : $
+
+(cat)
+
+PREPBUFR data level category (local descriptor 0-01-194) defined as: 
+
+  0 - Surface level (mass reports only) 
+  1 - Mandatory level (upper-air profile reports) 
+  2 - Significant temperature level (upper-air profile reports) 
+  3 - Winds-by-pressure level (upper-air profile reports) 
+  4 - Winds-by-height level (upper-air profile reports) 
+  5 - Tropopause level (upper-air profile reports) 
+  6 - Reports on a single level (e.g., aircraft, satellite-wind, surface wind, precipitable water retrievals, etc.) {default} 
+  9 - Auxiliary levels generated via interpolation from spanning levels (upper-air profile reports) 

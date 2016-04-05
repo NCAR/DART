@@ -1,0 +1,6 @@
+
+&obs_info_nml
+   filename_in  = 'obs_seq.in'
+   calendar     = 'Gregorian'
+   /
+

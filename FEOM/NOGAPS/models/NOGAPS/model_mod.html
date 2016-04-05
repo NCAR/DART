@@ -1,0 +1,1481 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module model_mod</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE model_mod (for NOGAPS)</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/html/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+<P>
+NOGAPS requires the LAPACK library. The system used to derive the
+NOGAPS/DART code used the Intel 10.1 compiler suite with the Intel Math
+Kernel Libraries on an Intel x86-64 chipset (little-endian). The following
+compiler arguments were required in the <em class=file>mkmf.template</em>:
+</P> 
+
+<pre>
+INCS = -I$(NETCDF)/include
+LIBS = -L$(NETCDF)/lib -lnetcdf -lmkl -lmkl_lapack -lguide -lpthread
+FFLAGS  = -g -O2 -fpe0 -convert big_endian -assume byterecl -132 $(INCS)
+LDFLAGS = $(FFLAGS) $(LIBS)
+</pre>
+
+
+<H class=indent12>This is the BIG PICTURE:</H2>
+<P>
+<em class=program>NOGAPS</em>, 
+<em class=program>filter</em>, 
+<em class=program>wakeup_filter</em>, 
+<em class=program>dart_to_nogaps</em>, and 
+<em class=program>nogaps_to_dart</em> are necessarily compiled with MPI support. 
+<em class=program>perfect_model_obs</em> and 
+<em class=program>trans_time</em> are single-threaded.
+</P>
+<ol>
+
+<li><P> <em class=program>NOGAPS/src/libnogaps.a</em> must be created. 
+   Only Tim Whitcomb knows how to do this. 
+   <em class=program>libnogaps.a</em> is used by both 
+   <em class=program>dart_to_nogaps</em> and
+   <em class=program>nogaps_to_dart</em>.</P>
+
+<li><P> <em class=program>NOGAPS/shell_script/config.csh</em> must be edited to reflect the 
+   locations of the executables, etc.</P>
+
+<li><P> A set of NOGAPS files are converted to DART initial conditions 
+   files by the script <em class=program>NOGAPS/shell_scripts/run_nogapsIC_to_dart.csh</em>.
+   <em class=program>run_nogapsIC_to_dart.csh</em> is a batch script that uses Job Array
+   syntax to launch N "identical" jobs - one for each ensemble member
+   to convert to a DART initial conditions file.  This script also
+   creates the "experiment directory", the run-time filesystem for all
+   future assimilation runs of this experiment. </P>
+
+<li><P> <em class=program>NOGAPS/shell_scripts/run_perfect.csh</em> will select ONE of these
+   initial conditions files 
+   (<em class=option>input.nml:&amp;perfect_model_obs_nml:restart_in_file_name</em>)
+   and use it as though it is the true model trajectory - and harvest 
+   synthetic observations from this trajectory at the times/locations 
+   specified in <em class=file>obs_seq.in</em>&nbsp;. 
+   The synthetic observations will be in <em class=file>obs_seq.out</em>&nbsp;.</P>
+
+<li><P> <em class=program>NOGAPS/shell_scripts/run_filter.csh</em> will launch multiple MPI-aware
+   programs that successively use the entire processor set. At this time,
+   it is not possible to have some of the executables simultaneously use 
+   subsets of the processor pool.</P>
+
+</ol>
+<P>
+Now for the detail:
+<br />
+</P>
+
+
+<hr />
+<h2 class=indent1>Section 1: <em class=program>libnogaps.a</em></h2>
+<div class=indent1>
+<P>Just for convenience, we put the NOGAPS source code in <em class=file>DART/models/NOGAPS/src</em> 
+because we could. It can go anywhwere (but it must be specified in <em class=file>config.csh</em>, 
+<em class=file>mkmf_dart_to_nogaps</em>, and <em class=file>mkmf_nogaps_to_dart</em>).
+Not only did we build the NOGAPS executable in this directory, it was useful to build a 
+library out of all the routines in NOGAPS because so many of them were needed to convert 
+from the NOGAPS spectral representation to one more natively applicable to DART. 
+
+<!-- 
+From: whitcomb@nrlmry.navy.mil
+Subject: RE: some notes on nogaps and a new machine
+Date: August 12, 2010 8:44:39 AM MDT
+To: thoar@ucar.edu
+Cc: nancy@ucar.edu
+
+Tim (& Nancy):
+
+About the only "notes" that I have are in the sed script.  
+Essentially I did the following:
+
+Given that the NOGAPS makefile lists every object file, I found the 
+one (forecast.o) that contains the Fortran PROGRAM statement and hence 
+the main routine.  I remove it from the main list of objects into its 
+own variable.  Then, I create a new target for using ar to combine all 
+the non-main object files into a static library and create an "all" 
+target that will build both the main executable and the library.
+
+This means that to create the library, you run 
+models/nogaps/shell_scripts/fix_makefile.sed with the original makefile 
+as input, and it will output a makefile with the modified target and 
+object file listings:
+$ cd DART/models/nogaps/src
+$ ../shell_scripts/fix_makefile.sed < makefile > makefile.lib
+$ make -f makefile.lib all
+
+You should now have a libhogaps.a file in the directory.
+
+I will add editing your docs to my to-do list, 
+but hopefully this is enough to get you started.  
+Let me know if you have any questions.
+
+TRW -->
+
+</P>
+<p>
+To build <em class=program>libnogaps.a</em>, the original NOGAPS makefile
+must be modified.  While this modification can be performed by hand, it is
+much easier to use the provided script <em class=file>fix_makefile.sed</em>,
+found in the <em class=file>shell_scripts</em> directory.  This
+script requires the original makefile on standard input and will return a
+modified makefile with a new library target to standard output, so running
+looks like:
+<pre>
+    $ cd DART/models/NOGAPS/src
+    $ ../shell_scripts/fix_makefile.sed &lt; makefile &gt; makefile.lib
+    $ make -f makefile.lib all
+</pre>
+The script makes the following modifications:
+<ul>
+    <li><p>Remove <em class=file>forecast.o</em> (which contains the main
+    routine) from the master list of objects.</p>
+    <li><p>Change name of objects list and executable target (to emphasize
+    that the library is now separated)</p>
+    <li><p>Add a new target for building the library</p>
+    <li><p>Add a new target (<em>all</em>) to build the library and NOGAPS
+    executable.</p>
+    <li>Modify the executable target to include the objects in the library
+    and the main <em class=file>forecast.o</em> object.</p>
+</ul>
+</p>
+</div>
+
+
+<hr />
+<h2 class=indent1>Section 2: <em class=program>config.csh</em> - define what's where.</h2>
+
+<div class=indent1>
+<P>
+The idea is that the <em class=file>NOGAPS/shell_scripts/config.csh</em> 
+will be copied to the experiment directory to be used by the subsequent 
+processes.  Fundamentally, the combination of <em class=code>$scratch_dir</em> 
+and <em class=code>$experiment_name</em>
+define the variable <em class=code>$experiment_dir</em> 
+(aka <em class=code>CENTRALDIR</em>). 
+This is where all the run-time action takes place, here is an example of PART 
+of the <em class=file>config.csh</em> script:
+</P>
+<pre>
+set dart_base_dir     = "/fs/image/home/thoar/SVN/DART/models/NOGAPS"
+set ocards_files      = "${dart_base_dir}/templates/ocards_files"
+set scratch_dir       = "/ptmp/thoar/NOGAPS1"
+set experiment_name   = "test6"
+set experiment_dir    = ${scratch_dir}/${experiment_name}
+set dtg               = 2008080100
+set resolution        = 159
+set n_levels          = 30
+set NOGAPS_exec_dir   = "${dart_base_dir}/src"
+set NOGAPS_exec_name  = "got${resolution}l${n_levels}"
+set perturb_dir       = "/home/coral/hansenj/DART_experiments/cookbook/DART/models/NOGAPS/init_perts_T${resolution}L${n_levels}"
+set climo             = "${dart_base_dir}/climo${resolution}"
+</pre>
+
+<table width=100%>
+   <tr><td valign=top>dart_base_dir</td>
+       <td>This is the fully-qualified path to <em class=file>DART/models/NOGAPS</em>. 
+           The DART executable are expected to be in $dart_base_dir/work/*, 
+           the shell scripts are expected to be in $dart_base_dir/shell_scripts. You
+           can change all of this if you want to muck about with the rest of 
+           <em class=program>config.csh</em> </td></tr>
+   <tr><td valign=top>ocards_files</td>
+       <td>directory containing ... </td></tr>
+   <tr><td valign=top>scratch_dir</td>
+       <td>large directory for the experiments ... </td></tr>
+   <tr><td valign=top>experiment_name</td>
+       <td>run-time execution directory</td></tr>
+   <tr><td valign=top>experiment_dir</td>
+       <td>fully-qualified directory name for an experiment</td></tr>
+   <tr><td valign=top>dtg</td>
+       <td>date-time-group</td></tr>
+   <tr><td valign=top>resolution</td>
+       <td>horizontal resolution for running NOGAPS</td></tr>
+   <tr><td valign=top>n_levels</td>
+       <td>number of vertical levels</td></tr>
+   <tr><td valign=top>NOGAPS_exec_dir</td>
+       <td>directory containing the NOGAPS executable</td></tr>
+   <tr><td valign=top>NOGAPS_exec_name&nbsp;&nbsp;&nbsp;</td>
+       <td>the NOGAPS executable file name - contains horizontal and vertical resolution information</td></tr>
+   <tr><td valign=top>perturb_dir</td>
+       <td>directory containing ... </td></tr>
+   <tr><td valign=top>climo</td>
+       <td>directory containing READONLY versions of the climatology files</td></tr>
+</table>
+</div>
+
+<hr />
+<h2 class=indent1>Section 3: <em class=program>run_nogapsIC_to_dart.csh</em> - 
+              Generating the DART initial conditions.</h2>
+
+<div class=indent1>
+
+<P>
+The <em class=program>run_nogapsIC_to_dart.csh</em> script is written to exploit
+the Job Array syntax of LSF and PBS and can easily be modified to
+incorporate others. The idea is simple. Multiple copies of the job
+are spawned when the job is submitted ONCE. Each copy of the job
+has a unique Array ID or Task Identifier or ... I translate all the
+queueing-system specific variables to generic ones and use the generic
+ones throughout the rest of the script. This one script will work on 
+multiple platforms. This is what the preamble would look like for a 
+40-member ensemble:
+</P>
+<pre>
+#BSUB -J mbr<em class=input>[1-40]</em>
+...
+#PBS <em class=input>-t 1-40</em>
+...
+if ($?LSB_QUEUE) then
+
+   #-------------------------------------------------------------------
+   # This is used by LSF
+   #-------------------------------------------------------------------
+
+   setenv ORIGINALDIR $LS_SUBCWD
+   setenv JOBNAME     $LSB_OUTPUTFILE:ar
+   setenv JOBID       $LSB_JOBID
+   setenv MYQUEUE     $LSB_QUEUE
+   setenv MYHOST      $LSB_SUB_HOST
+   setenv mem_id      $LSB_JOBINDEX
+   setenv f_mbr       $LSB_JOBINDEX_END
+
+else if ($?PBS_QUEUE) then
+
+   #-------------------------------------------------------------------
+   # This is used by PBS - f_mbr cannot be set with PBS Job Array ...
+   #-------------------------------------------------------------------
+
+   setenv ORIGINALDIR $PBS_O_WORKDIR
+   setenv JOBNAME     $PBS_JOBNAME
+   setenv JOBID       $PBS_JOBID:ar
+   setenv MYQUEUE     $PBS_QUEUE
+   setenv MYHOST      $PBS_O_HOST
+   setenv mem_id      $PBS_ARRAYID
+   setenv f_mbr       xx
+
+else
+
+   #-------------------------------------------------------------------
+   # You can run this interactively to check syntax, file motion, etc.
+   # These are all just make-believe.
+   #-------------------------------------------------------------------
+
+   setenv ORIGINALDIR `pwd`
+   setenv JOBNAME     mbr001
+   setenv JOBID       $$
+   setenv MYQUEUE     Interactive
+   setenv MYHOST      $host
+   setenv mem_id      3
+   setenv f_mbr       20
+
+endif
+</pre>
+<P>
+The number of copies of jobs spawned is controlled through
+the job array syntax. We use one copy for each desired ensemble member.
+This must be hand-entered as part of the LSF/PBS directives. Each has
+their own separate syntax.
+<br />
+<br />
+The script makes some assumptions about filenames.
+</P>
+<pre>
+&amp;nogaps_to_dart_nml
+   nogaps_restart_filename    = 'specfiles/shist000000',
+   nogaps_to_dart_output_file = 'dart_new_vector',
+   nogaps_data_time_filename  = 'CRDATE.dat'
+   /
+</pre>
+<P>
+Each ensemble member gets a unique directory and the files and
+executables are copied to these directories. The weak spot here is that
+ALL of the ensemble members are trying to link and populate the SAME
+climo directory. Since this is readonly anyway, I'd prefer to just
+point everything to the souce of the link and be done with it. 
+(i.e. in <em class=program>config.csh</em> just 
+<em class=input>set climo = "${climo_dir}/climo${resolution}"</em>)
+Dan created tarfiles with the specfiles for multiple ensemble members. 
+The appropriate tarfile (which remains in-situ and) is unpacked. 
+The contents are then moved to the expected locations. i.e. those 
+specified in <em class=option>input.nml:&amp;nogaps_to_dart_nml:nogaps_restart_filename</em>
+(<em class=file>specfiles/shist000000</em>).
+<br />
+<br />
+The namelists for NOGAPS are created. All directories use relative
+pathnames (i.e. '.') for the shortest possible names. There were commments
+in the original scripts that the length of the strings was a concern.
+Since the namelists used to use 'temp' - which was a relative link - or
+'$HOME' which was the same place as 'temp' and '.', there is no reason
+to make things more complicated than necessary.
+<br />
+<br />
+FIXME: may be possible to remove the <em class=program>trans_time</em> ... or not.
+<br />
+<br /> 
+All the bits and pieces necessary to run <em class=program>nogaps_to_dart</em> are
+assembled in the unique run directory and <em class=program>nogaps_to_dart</em> is run.
+The output file is namelist specified as <em class=file>dart_new_vector</em> and is 
+renamed to be consistent with what <em class=program>filter</em> will expect from the
+<em class=option>input.nml:&amp;filter_nml:restart_in_file_name</em> (usually <em class=file>filter_ic</em>).
+</P>
+</div>
+
+<hr />
+<h2 class=indent1>Section 4: (optional) <em class=program>run_perfect.csh</em> -
+               Running a perfect model experiment.
+</h2>
+
+<div class=indent1>
+<P>I am going to assume that the target observation sequence
+file is already created somewhere and is called <em class=file>obs_seq.in</em>.
+Furthermore, <em class=program>perfect_model_obs</em> is a single-threaded application
+while the model is MPI-aware. This means that only one MPI-aware
+application is running at one time - a pretty simple scenario.
+<br />
+<br /> 
+There are several comment blocks for PBS or LSF directives
+that make it possible to use the same script for both batch queueing
+systems. The first executable portion of the script simply translates
+the queueing-system-specific variables to generic names that can be
+used throughout the remainder of the script. The <em class=code>experiment_dir</em>
+(i.e. <em class=code>CENTRALDIR</em>) is known from the original 
+<em class=program>config.csh</em>, so the first
+that happens is to 'cd' to <em class=code>CENTRALDIR</em>.
+<br />
+<br /> 
+All the executables and input control files are copied
+to <em class=code>CENTRALDIR</em>. The ensemble member to be used as THE TRUTH is defined 
+by <em class=option>input.nml:&amp;perfect_model_obs_nml:restart_in_file_name</em>
+(right now it is set to <em class=file>filter_ic.0001</em>) which must be a pre-existing
+file in <em class=code>CENTRALDIR</em> (created by 
+<em class=program>run_nogapsIC_to_dart.csh</em>).
+<br />
+<br /> 
+Really all that is left is to set the value of the MPI 
+command that is needed by the model executable. If you are using 
+a queueing system, the MPI command is already known 
+(from <em class=program>config.csh</em>, actually); if not, there is some work to be done.
+The block with the comment <tt>"# WARNING: This block is untested ..."</tt>
+is, <em class=italic>well ...</em>, untested and unlikely to work 
+without modification.
+<br />
+<br /> 
+This is a great way to test changes to the <em class=program>advance_model.csh</em>
+script. The same <em class=program>advance_model.csh</em> script can be (should be?) used
+by both <em class=program>perfect_model_obs</em> and by <em class=program>filter</em>.
+</P>
+</div>
+
+<hr />
+<h2 class=indent1>Section 5: <em class=program>run_filter.csh</em> -
+        Running an assimilation experiment.</h2>
+
+<div class=indent1>
+<P>
+<em class=program>run_filter.csh</em> has the same strategy as 
+<em class=program>run_perfect.csh</em> and 
+<em class=program>run_nogapsIC_to_dart.csh</em>
+as pertains to the submission directives and variable-name translation.
+All the input files/executables are copied to <em class=code>CENTRALDIR</em>.
+There is some shell trickery to extract bits from the input.nml - namely;
+the ensemble size, the filter 'async' variable, and the string
+containing the model advance command.  All of these have bearing
+on the logic of the script.
+<br />
+<br /> 
+Essentially, if the model is an MPI-aware program and <em class=program>filter</em>
+is an MPI-aware program ... getting the O/S to run both of these at
+the same time has been tricky. <em class=program>filter</em> runs in the background and
+quite literally goes to sleep while the model executes. When the model
+advance is complete, <em class=program>wakeup_filter</em> is executed to wake 
+<em class=program>filter</em> and
+continue. The communication for this is through named pipes - which 
+are like files but don't have the delay of the filesystem. The one
+problem with this is that sometimes filter fails and doesn't exit
+cleanly - causing the job to hang. system-dependent, but we're working
+on a more reliable mechanism.
+<br />
+<br /> 
+Since NOGAPS and the convert routines ARE MPI-aware,
+the <em class=code>$parallel_model</em> variable must be TRUE. The logic for the
+<em class=code>parallel_model = .false.</em> is included for completeness only.
+<br />
+<br /> 
+In the current implementation, the <em class=file>filter_control00000</em> file
+created by <em class=program>filter</em> contains all the information to advance 
+all of the ensemble members - one after another - sequentially.
+</P>
+</div>
+
+<hr />
+<h2 class=indent1>Explanation of <em class=program>advance_model.csh</em> - 
+      how one member advances.</h2>
+
+<div class=indent1>
+<P><em class=program>advance_model.csh</em> should not need to be modified from
+one run to another unless different NOGAPS files are needed.
+<br />
+<br /> 
+<em class=program>advance_model.csh</em> gets spawned by either 
+<em class=program>perfect_model_obs</em> or <em class=program>filter</em>. 
+The <em class=option>input.nml:&amp;filter_nml:adv_ens_command</em>
+(or <em class=option>&amp;perfect_model_obs_nml:adv_ens_command</em>) specify which
+shell script gets invoked. For the scenario when all of the MPI
+tasks available to the job are used to advance a single ensemble member,
+<em class=program>advance_model.csh</em> is the right choice.
+<em class=program>advance_model_batch.csh</em> is
+under development for the scenario when the model advance is a 
+self-contained job for the queueing system.  The remainder of the
+discussion is for <em class=program>advance_model.csh</em> and is intended to 
+be the 'cleanest' (i.e. simplest?) example upon which to build future scripts.  
+<br />
+<br /> 
+<em class=program>advance_model.csh</em> is called with precisely three arguments.
+The process number of the caller, the number of ensemble members that
+must be advanced by the process, and the name of the control file for
+the process. These are used to control the iterations (one for each
+ensemble member) inside <em class=program>advance_model.csh</em>.
+<br />
+<br /> 
+A fundamental tenet is that all the files needed by
+<em class=program>advance_model.csh</em> are available in the run-time 
+directory of <em class=program>filter</em> (i.e. <em class=code>CENTRALDIR</em>).
+<em class=program>filter</em> will fork the <em class=program>advance_model.csh</em> 
+script - which will cd to a local directory in which to advance the model. 
+All the files are moved/copied into this local directory, the work 
+is done, and the output file get moved/copied back to <em class=code>CENTRALDIR</em>. 
+</P>
+
+<ol>
+<li><P>Some error-checking is performed to ensure the directories
+     required by NOGAPS exist. I have no idea what is supposed to
+     be in those directories, so ...
+     <br />
+     <br /> 
+     The (private, local) sub-directory is created and populated with
+     generic bits from <em class=code>CENTRALDIR</em>. The DART state vector file is
+     queried (by <em class=program>trans_time</em>) to extract the current/valid date of 
+     the state vector, the target or "advance_to" date, and the 
+     forecast length - in hours. <em class=program>trans_time</em> is based on a little DART
+     utility and is customized for NOGAPS - so it is the assembla
+     repository as opposed to the general DART repository. <em class=program>trans_time</em>
+     expects the input filename to be <em class=file>temp_ic</em> and the output
+     file containing the time information to be <em class=file>time_info</em>. These
+     are hardwired. <em class=file>time_info</em> has three things - one per line:<br />
+     <tt>dtg</tt><br />
+     <tt>dtgnext</tt><br />
+     <tt>endtau - the forecast length</tt><br />
+     The NOGAPS namelists are created. There had been a circular
+     dependence on some environment variables to specify both
+     absolute and relative pathname information to the same directory;
+     all pathnames are now relative to the current private run-time
+     directory by using the "./" methodology.</P>
+
+<li> <P>The dart state is converted to a nogaps specfile. <em class=program>nogaps_to_dart</em>
+     is MPI-aware and requires some of the nogaps code - which requires 
+     a file named <em class=file>CRDATE.dat</em> containing a valid "$dtg". 
+     <em class=program>nogaps_to_dart</em>
+     also creates a file that is not needed - the default name is
+     <em class=file>dart_data.time</em> - 
+     This is the same format as from the <em class=program>trans_time</em>
+     routine - containing the same data - so it's redundant.</P>
+
+<li> <P>The model is advanced using <em class=file>CRDATE.dat</em> (i.e. $dtg) for a forecast
+     length of $endtau (via namelist) to the time specified by $dtgnext 
+     FIXME: CRDATE.dat is manually updated with the new time/date. 
+     If possible, this is the number one thing I would fix. If the 
+     model advance fails but does not cause an error exit, the whole 
+     machine can march blindly on ...</P>
+   
+<li> <P>Convert the nogaps state to a dart state - which requires
+     some of the nogaps code - which requires a <em class=file>CRDATE.dat</em> file.
+     The updated DART state is moved back to <em class=code>CENTRALDIR</em> with the
+     required filename.</P>
+
+<li> <P>The indices to extract information from the <em class=file>filter_control00000</em> file
+     are updated and the current working directory is moved back to 
+     <em class=code>CENTRALDIR</em>.</P>
+</ol>
+
+<P>
+After all ensemble members have been advanced, the 
+<em class=file>filter_control00000</em> file is removed. 
+IMPORTANT - if this file still exists when the 
+<em class=program>advance_model.csh</em> script has finished - IT IS AN ERROR - 
+and filter will die a very theatrical death.
+</P>
+</div>
+
+<hr />
+<h2 class=indent1>And then a miracle happens ...</h2>
+
+<div class=indent1>
+<P>
+All of this is predicated on the ability to assimilate 
+as many cycles as you want in a single job - which is unrealistic
+and not very smart. When DART finishes, it writes out restart files
+that can be used as input for subsequent assimilations. Coming
+up with a naming scheme to archive these files is left as an
+exercise ... as are the scripts that manipulate the observation 
+sequences and/or times that appear in the 
+<em class=option>input.nml:&amp;filter_nml</em> namelist. 
+</P>
+</div>
+
+<!--=====================================================================-->
+<!--===================== DESCRIPTION OF A NAMELIST =====================-->
+<!--=====================================================================-->
+
+<A NAME="Namelist"></A>
+<hr />
+<H2>NAMELIST</H2>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+The declarations have a different syntax, naturally.
+</P>
+<div class=namelist>
+<pre>
+<em class=call>namelist / model_nml / output_state_vector, time_step_days, &amp;
+             time_step_seconds, geometry_text_file, debug</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+This namelist is read in a file called <em class=file>input.nml</em>
+</P>
+
+<TABLE border=0 cellpadding=3 width=100%>
+<TR><TH align=left>Contents    </TH>
+    <TH align=left>Type        </TH>
+    <TH align=left>Description </TH></TR>
+<TR><!--contents--><TD valign=top>output_state_vector  </TD>
+    <!--  type  --><TD valign=top>logical              </TD>
+    <!--descript--><TD>.true. results in netcdf files (i.e. 
+           <em class=file>True_State.nc</em>, <em class=file>Prior_Diag.nc</em>, and 
+           <em class=file>Posterior_Diag.nc</em>) with 'prognostic' variables. 
+          .false. results in the DART state vector being passed 'as-is'
+          Default: .true. </TD></TR>
+
+<TR><!--contents--><TD valign=top>time_step_days       </TD>
+    <!--  type  --><TD valign=top>integer              </TD>
+    <!--descript--><TD>minimum number of days to advance model.
+                       Default : 0 </TD></TR>
+
+<TR><!--contents--><TD valign=top>time_step_seconds    </TD>
+    <!--  type  --><TD valign=top>integer              </TD>
+    <!--descript--><TD>minimum number of seconds to advance model.
+                       Default : 900</TD></TR>
+
+<TR><!--contents--><TD valign=top>geometry_text_file   </TD>
+    <!--  type  --><TD valign=top>character(len=128)   </TD>
+    <!--descript--><TD>name of the file containing the geometry information.
+                       Default: noggeom.txt</TD></TR>
+
+<TR><!--contents--><TD valign=top>debug               </TD>
+    <!--  type  --><TD valign=top>integer             </TD>
+    <!--descript--><TD>turn up for more and more debug messages
+                       Default: 0 (relatively silent)</TD></TR>
+</TABLE>
+
+
+</div>
+<br>
+
+<!--=====================================================================-->
+<!--===================== DESCRIPTION OF A NAMELIST =====================-->
+<!--=====================================================================-->
+
+<A NAME="Interface"></A>
+<hr />
+<h2>General discussion of interfaces</h2>
+
+<div class=indent1>
+<P>
+Several of the routines listed below are allowed
+to be a NULL INTERFACE.  This means the subroutine or function name
+must exist in this file, but it is ok if it contains no executable code.
+<br><br>
+A few of the routines listed below are allowed
+to be a PASS-THROUGH INTERFACE.  This means the subroutine or function 
+name can be listed on the 'use' line from the <em class=code>location_mod</em>, 
+and no subroutine or function with that name is supplied in this file.
+Alternatively, this file can provide an implementation which calls
+the underlying routines from the <em class=code>location_mod</em> and 
+then alters or augments the results based on model-specific requirements.
+</P>
+</div>
+
+<!--==================================================================-->
+
+<hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+types_mod
+time_manager_mod
+threed_sphere/location_mod
+utilities_mod
+obs_kind_mod
+typesizes
+netcdf
+nogaps_interp_mod
+</PRE>
+
+<P>This seems like the right place to describe the following, even though
+they are not necessarily directly used by <em class=program>model_mod</em>. 
+NOGAPS has a few modules that are required:
+</P>
+<pre>
+basediab.mod
+cubic.mod
+cupsum.mod
+diagnos.mod
+dyncons.mod
+fields.mod
+gcvars.mod
+mpinog.mod
+navdas.mod
+symem.mod
+times.mod
+</pre>
+<P>and a couple include files:</P> 
+<pre>imp.h
+param.h</pre>
+<P>
+These, as well as <em class=program>libnogaps.a</em>, are expected to be in the 
+<em class=file>DART/models/NOGAPS/src</em> directory by the 
+<em class=program>mkmf_</em> scripts.
+</P>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+
+<hr />
+<H2>PUBLIC INTERFACES</H2>
+
+<TABLE>
+<TR><TD><em class=call>use model_mod, only : </em></TD>
+                   <TD><A HREF="#get_model_size">get_model_size</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_state_meta_data">get_state_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#model_interpolate">model_interpolate</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time_step">get_model_time_step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#static_init_model">static_init_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#end_model">end_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_time">init_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_conditions">init_conditions</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_state">pert_model_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
+</TABLE>
+
+<P>
+Optional namelist interface
+<a href="#Namelist"><em class=code>&amp;model_nml</em></a>
+may be read from file <em class=file>input.nml</em>.
+The details of the namelist are always model-specific 
+(there are no generic namelist values).
+</P>
+
+<P>
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
+   <em class=optionalcode>[like this]</em>.
+</P>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_model_size"></A>
+<br>
+<div class=routine>
+<em class=call>model_size = get_model_size( )</em>
+<pre>
+integer :: <em class=code>get_model_size</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the length of the model state vector.
+Required.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>model_size</em></TD>
+    <TD>The length of the model state vector.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="adv_1step"></A>
+<br>
+<div class=routine>
+<em class=call>call adv_1step(x, time)</em>
+<pre>
+real(r8), dimension(:), intent(inout) :: <em class=code>x</em>
+type(time_type),        intent(in)    :: <em class=code>time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Intended to perform a single timestep advance of the model IFF the model
+can be called as a subroutine. This is a NULL INTERFACE for the NOGAPS model.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>x</em></TD>
+    <TD>State vector of length model_size.</TD></TR>
+
+<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Specifies time of the initial model state.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_state_meta_data"></A>
+<br>
+<div class=routine>
+<em class=call>call get_state_meta_data (index_in, location, 
+                          <em class=optionalcode>[,&nbsp;var_type]</em> )</em>
+<pre>
+integer,             intent(in)  :: <em class=code>index_in</em>
+type(location_type), intent(out) :: <em class=code>location</em>
+integer, optional,   intent(out) :: <em class=optionalcode> var_type </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given an integer index into the state vector structure, returns the
+associated location. A second intent(out) optional argument kind
+can be returned if the model has more than one type of field (for
+instance temperature and zonal wind component). This routine could
+also be called get_state_location_plus() since it returns not the 
+data value, but the location of that value, plus an optional 
+variable type (e.g. U_WIND or V_WIND). 
+This interface is required for all applications as it is used 
+to compute the distance between observations and state variables. 
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>index_in&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Index of state vector element about which information is requested.</TD></TR>
+
+<TR><TD valign=top><em class=code>location</em></TD>
+    <TD>The location of state variable element.</TD></TR>
+
+<TR><TD valign=top><em class=optionalcode>var_type</em></TD>
+    <TD>The type of the state variable element.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="model_interpolate"></A>
+<br>
+<div class=routine>
+<em class=call>call model_interpolate(x, location, itype, obs_val, istatus)</em>
+<pre>
+real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
+type(location_type),    intent(in)  :: <em class=code>location</em>
+integer,                intent(in)  :: <em class=code>itype</em>
+real(r8),               intent(out) :: <em class=code>obs_val</em>
+integer,                intent(out) :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given a state vector, a location, and a model state variable type,
+interpolates the state variable field to that location and returns 
+the value in obs_val. The istatus variable should be returned as
+0 unless there is some problem in computing the interpolation in
+which case an alternate value should be returned. The itype variable
+is a model specific integer that specifies the type of field (for 
+instance temperature, zonal wind component, etc.).
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>x</em></TD>
+    <TD>A model state vector.</TD></TR>
+
+<TR><TD valign=top><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Location to which to interpolate.</TD></TR>
+
+<TR><TD valign=top><em class=code>itype</em></TD>
+    <TD>Type of state field to be interpolated.</TD></TR>
+
+<TR><TD valign=top><em class=code>obs_val</em></TD>
+    <TD> The interpolated value from the model.</TD></TR>
+
+<TR><TD valign=top><em class=code>istatus</em></TD>
+    <TD>Integer value returning 0 for success.<br />
+        128 == latitude out-of-range<br />
+        130 == below ground</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_model_time_step"></A>
+<br>
+<div class=routine>
+<em class=call>var = get_model_time_step()</em>
+<pre>
+type(time_type) :: <em class=code>get_model_time_step</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the time step (forecast length) of the model;
+the smallest increment in time that the model is capable of 
+advancing the state in a given implementation.
+The actual value may be set by the model_mod namelist (depends on the model).
+This interface is required for all applications. 
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Smallest time step of model. The values of
+        <em class=option>input.nml&amp;model_nml:time_step_seconds,time_step_days</em> 
+        are used to define the smallest time step of the model. </TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="static_init_model"></A>
+<br>
+<div class=routine>
+<em class=call>call static_init_model()</em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Called to do one-time initialization of the model.
+This routine reads the &amp;model_nml namelist, sets the calendar
+to 'GREGORIAN', reads the geometry_text_file 
+(usually <em class=file>noggeom.txt</em>), and sets up the rest
+of the geometry information.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="end_model"></A>
+<br>
+<div class=routine>
+<em class=call>call end_model()</em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Does any shutdown and clean-up needed for model.
+For NOGAPS, this is just deallocating the module variables invoked
+by <em class=routine>static_init_model()</em>.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_time"></A>
+<br>
+<div class=routine>
+<em class=call>call init_time(time)</em>
+<pre>
+type(time_type), intent(out) :: <em class=code>time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns a time that is somehow
+appropriate for starting up a long integration of the model.
+At present, this is only used if the namelist parameter
+start_from_restart is set to .false. in the program perfect_model_obs.
+If this option is not to be used in perfect_model_obs, or if no
+synthetic data experiments using perfect_model_obs are planned,
+this can be a NULL INTERFACE. NOGAPS actually sets the time to 0.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>time&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Initial model time.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_conditions"></A>
+<br>
+<div class=routine>
+<em class=call>call init_conditions(x)</em>
+<pre>
+real(r8), dimension(:), intent(out) :: <em class=code>x</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns a model state vector, x, that is some sort of appropriate
+initial condition for starting up a long integration of the model.
+At present, this is only used if the namelist parameter
+start_from_restart is set to .false. in the program perfect_model_obs.
+If this option is not to be used in perfect_model_obs, or if no 
+synthetic data experiments using perfect_model_obs are planned,
+this can be a NULL INTERFACE. NOGAPS returns a vector of MISSING values.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>x&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Initial conditions for state vector.<br />
+       default is MISSING_R8 (-888888.0) </TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="nc_write_model_atts"></A>
+<br>
+<div class=routine>
+<em class=call>ierr = nc_write_model_atts(ncFileID)</em>
+<pre>
+integer             :: <em class=code>nc_write_model_atts</em>
+integer, intent(in) :: <em class=code>ncFileID</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+This routine writes the NOGAPS attributes to a netCDF file. 
+This includes coordinate variables and any metadata, but NOT
+the model state vector. SPACE is allocated for the model state 
+vector (all copies), but that variable gets filled as the model advances.
+<br />
+<br />
+The namelist variable <em class=code>&amp;model_nml:output_state_vector</em> controls
+whether the DART state vector is output as-is, or converted to a 
+NOGAPS set of 'prognostic' variables.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Integer file descriptor to previously-opened netCDF file.</TD></TR>
+
+<TR><TD valign=top><em class=code>ierr</em></TD>
+    <TD>Returns a 0 for successful completion.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="nc_write_model_vars"></A>
+<br>
+<div class=routine>
+<em class=call>ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
+<pre>
+integer                            :: <em class=code>nc_write_model_vars</em>
+integer,                intent(in) :: <em class=code>ncFileID</em>
+real(r8), dimension(:), intent(in) :: <em class=code>statevec</em>
+integer,                intent(in) :: <em class=code>copyindex</em>
+integer,                intent(in) :: <em class=code>timeindex</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+This routine writes the model state vector (all copies) to a netCDF file. 
+<br><br>
+The namelist variable <em class=code>&amp;model_nml:output_state_vector</em> controls
+whether the DART state vector is output as-is, or converted to a 
+NOGAPS set of 'prognostic' variables.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>ncFileID</em></TD>
+    <TD>file descriptor to previously-opened netCDF file.</TD></TR>
+
+<TR><TD valign=top><em class=code>statevec</em></TD>
+    <TD>A single copy of the model state vector.</TD></TR>
+
+<TR><TD valign=top><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD> Integer index of copy to be written.</TD></TR>
+
+<TR><TD valign=top><em class=code>timeindex</em></TD>
+    <TD>The timestep counter for the given state.</TD></TR>
+
+<TR><TD valign=top><em class=code>ierr</em></TD>
+    <TD>Returns 0 for normal completion.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="pert_model_state"></A>
+<br>
+<div class=routine>
+<em class=call>call pert_model_state(state, pert_state, interf_provided)</em>
+<pre>
+real(r8), dimension(:), intent(in)  :: <em class=code>state</em>
+real(r8), dimension(:), intent(out) :: <em class=code>pert_state</em>
+logical,                intent(out) :: <em class=code>interf_provided</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>The NOGAPS model_mod relies on the default DART mechanism to simply
+add a small amount of noise to the state vector to generate a new ensemble
+from a given model state. 
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>state</em></TD>
+    <TD>State vector to be perturbed.</TD></TR>
+
+<TR><TD valign=top><em class=code>pert_state</em></TD>
+    <TD>Perturbed state vector.
+        NOGAPS returns a vector of MISSING values. </TD></TR>
+
+<TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>NOGAPS always returns 'false' - indicating the default
+        DART algorithms are to be used.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_maxdist_init"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_maxdist_init(gc, maxdist)</em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+real(r8),             intent(in)    :: <em class=code>maxdist</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+In distance computations any two locations closer than the
+given <em class=code>maxdist</em> will be considered close
+by the <em class=code>get_close_obs()</em> routine.
+This is a PASS-THROUGH ROUTINE that uses the default
+routine in the <em class=file>location_mod</em>.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>gc</em></TD>
+    <TD>The get_close_type which stores precomputed information
+        about the locations to speed up searching</TD></TR>
+
+<TR><TD valign=top><em class=code>maxdist&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Anything closer than this will be considered close.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_obs_init"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_obs_init(gc, num, obs)</em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+integer,              intent(in)    :: <em class=code>num</em>
+type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+This is a PASS-THROUGH ROUTINE that uses the default
+routine in the <em class=file>location_mod</em>.
+This routine precomputes information to accelerate
+the distance computations done by <em class=code>get_close_obs()</em>.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>gc</em></TD>
+    <TD>The get_close_type which stores precomputed information
+        about the locations to speed up searching</TD></TR>
+
+<TR><TD valign=top><em class=code>num</em></TD>
+    <TD>The number of items in the third argument</TD></TR>
+
+<TR><TD valign=top><em class=code>obs&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>A list of locations which will be part
+        of the subsequent distance computations</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_obs"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind,
+  obs, obs_kind, num_close, close_ind, dist) </em>
+<pre>
+type(get_close_type), intent(in)  :: <em class=code>gc</em>
+type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
+integer,              intent(in)  :: <em class=code>base_obs_kind</em>
+type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
+integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
+integer,              intent(out) :: <em class=code>num_close</em>
+integer,              intent(out) :: <em class=code>close_ind(:)</em>
+real(r8),             intent(out) :: <em class=code>dist(:)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given a location and kind, compute the distances to all other locations 
+in the <em class=code>obs</em> list.  The return values are the number
+of items which are within maxdist of the base, the index numbers in the 
+original obs list, and optionally the distances.  The <em class=code>gc</em>
+contains precomputed information to speed the computations.
+<br />
+<br />
+This subroutine will be called after <em class=code>get_close_maxdist_init</em> 
+and <em class=code>get_close_obs_init</em>.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>gc</em></TD>
+    <TD>The get_close_type which stores precomputed information
+        about the locations to speed up searching</TD></TR>
+
+<TR><TD valign=top><em class=code>base_obs_loc</em></TD>
+    <TD>Reference location.  The distances will be computed
+        between this location and every other location in the obs list</TD></TR>
+
+<TR><TD valign=top><em class=code>base_obs_kind&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>The kind of base_obs_loc</TD></TR>
+
+<TR><TD valign=top><em class=code>obs</em></TD>
+    <TD>Compute the distance between the base_obs_loc and each
+        of the locations in this list</TD></TR>
+
+<TR><TD valign=top><em class=code>obs_kind</em></TD>
+    <TD>The corresponding kind of each item in the obs list</TD></TR>
+
+<TR><TD valign=top><em class=code>num_close</em></TD>
+    <TD>The number of items from the obs list
+        which are within maxdist of the base location</TD></TR>
+
+<TR><TD valign=top><em class=code>close_ind</em></TD>
+    <TD>The list of index numbers from the obs list 
+        which are within maxdist of the base location</TD></TR>
+
+<TR><TD valign=top><em class=code>dist</em></TD>
+    <TD>the distance between each entry
+        in the close_ind list and the base location.
+        </TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="ens_mean_for_model"></A>
+<br>
+<div class=routine>
+<em class=call>call ens_mean_for_model(ens_mean)</em>
+<pre>
+real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+A model-size vector with the means of the ensembles for each of
+the state vector items.  This mean may be used to compute distances 
+and is used to compute vertical information from a 'common' sigma
+coordinate system. This mean is always 'current' - it is updated 
+after each model advance.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>ens_mean&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>State vector containing the ensemble mean.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<hr />
+<H2>FILES</H2>
+<UL>
+   <LI>Models are free to read and write files as they see fit.
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<hr />
+<H2>REFERENCES</H2>
+<ol>
+<li> none </li>
+</ol>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+
+<UL><LI>Models are free to issue calls to the error handler as they see fit. 
+        No standard error handler calls are mandated.</LI>
+</UL>
+<P>
+Restarting a bombed run ... remove the *lock files!
+</P>
+
+
+<H2>KNOWN BUGS</H2>
+<div class=indent1>
+<h3><em class=program>filter</em> or <em class=program>run_filter.csh</em> hangs.</h3>
+<P>
+The DART scripts require that the master task runs on the head node in 
+order to effectively read and write to the named pipes. If the master task 
+is not on the head node, <em class=program>filter</em> starts to run, does what it
+can do, and then has to communicate. No communication takes place and the 
+<em class=program>filter</em> program hangs. The layout of the tasks is
+the domain of the batch system and MPI and is beyond the control of DART.
+If one configuration causes things to fail, DART is configurable to try
+the opposite task layout. At this time (Aug 2010), it is required to actually
+edit the <em class=file>DART/mpi_utilities/mpi_utilities.f90</em> to uncomment
+a line to allow the use of a namelist. This namelist <strong>must</strong> 
+also then be present in <em class=file>input.nml</em>. The appropriate lines of
+interest in <em class=file>mpi_utilities.f90</em> are:
+</P>
+<pre>
+! if your batch system does the task layout backwards, set this to true
+! so the last task will communicate with the script in async 4 mode.
+! as of now, mpich and mvapich do it forward, openmpi does it backwards.
+logical :: reverse_task_layout  = .false.   ! task 0 on head node; task N-1 if .true.
+
+...
+
+! NAMELIST: change the following from .false. to .true. to enable
+! the reading of this namelist.  This is the only place you need
+! to make this change.
+logical :: use_namelist = <em class=input>.true.</em>
+</pre>
+<P>
+And the following must be inserted into <em class=file>input.nml</em>&nbsp;:
+</P>
+<pre>
+&amp;mpi_utilities_nml
+   reverse_task_layout = .true.,
+   /
+</pre>
+<P>The reason it is required to edit the source code is a backwards compatibility 
+issue.  With the next release, editing the source code will not be required, 
+but it WILL be required to have an
+<em class=code>mpi_utilities_nml</em> namelist in <em class=file>input.nml</em>.
+</P>
+
+</div>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<hr />
+<H2>FUTURE PLANS</H2>
+<P>
+Search the code for instances of the string 'FIXME' ...
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<hr />
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+N/A
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2011 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> your_name_here </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

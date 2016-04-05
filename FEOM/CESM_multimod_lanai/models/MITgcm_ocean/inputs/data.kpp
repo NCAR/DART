@@ -1,0 +1,10 @@
+#
+# DART $Id$
+#
+# KPP parameters
+ &KPP_PARM01
+ KPPmixingMaps   = .FALSE.,
+ KPPwriteState   = .FALSE.,
+ kpp_dumpFreq    = 864000.0,
+ Riinfty = 0.3,
+&

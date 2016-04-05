@@ -1,0 +1,376 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>PROGRAM OR MODULE name_of_thing</TITLE>
+<link rel="stylesheet" type="text/css" href="../doc/html/doc.css" />
+<link href="../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+
+<!--
+This template is appropriate for a file at the level of DART/dir1/here
+To use at another directory level in the tree, all 4 relative references
+(e.g. ../doc/html/) need to be changed.
+-->
+
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRM OR MODULE name_of_thing</H1>
+
+<table border=0 summary="dart header" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#ModulesUsed">MODULES USED</A> /
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<!--==================================================================-->
+<!-- End of standard header info, start of specific info              -->
+<!--==================================================================-->
+
+<H2>Overview</H2>
+
+<P>
+Explain in general terms what this is.
+</P>
+
+<!--==================================================================-->
+<!-- Description of the namelist                                      -->
+<!--==================================================================-->
+
+<!-- see the html programs in DART/doc/html/boilerplate to generate this table -->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+DART namelists are
+always read from file <em class=file>input.nml</em>.
+</P>
+<P>We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;NAMELIST_NML 
+   name=value,
+   name=value, 
+   name=value
+/
+</pre>
+</div>
+
+<P>
+Any comments about the namelist as a whole.
+</P>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> 
+</TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR><TD>name</TD>
+    <TD>type</TD>
+    <TD>(often multi-line) description
+    </TD>
+</TR>
+<!-- repeat until done -->
+</TBODY>
+</TABLE>
+
+</div>
+<br />
+
+<!--==================================================================-->
+
+<A NAME="ModulesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>MODULES USED</H2>
+<PRE>
+types_mod
+utilities_mod
+random_seq_mod
+time_manager_mod
+ensemble_manager_mod
+</PRE>
+
+<!--==================================================================-->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PUBLIC INTERFACES</H2>
+
+<!-- see the html programs in DART/doc/html/boilerplate to generate this table -->
+
+<TABLE summary='public interfaces'>
+<TR><TD><em class=call>use this_module_name_mod, only : </em></TD>
+                   <TD><A HREF="#tag"> subr/function name  </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#tag2"> name2 </A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#tag3"> name3 </A></TD></TR>
+<!-- repeat until done -->
+</TABLE>
+
+<P>
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
+   <em class=optionalcode>[like this]</em>.
+</P>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<!-- see the html programs in DART/doc/html/boilerplate to generate this table -->
+
+<A NAME="subroutine1"></A>
+<br />
+<div class=routine>
+<em class=call> subroutine subroutine1(arg1, <em class=optionalcode>[, arg2]</em>)</em>
+<pre>
+real(r8),           intent(in) :: <em class=code>arg1</em>
+real(r8), optional, intent(in) :: <em class=optionalcode>arg2</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+describe what this subroutine does.
+</P>
+
+<TABLE width=100% border=0 summary="argument details" cellpadding=3>
+<TBODY valign=top>
+<TR><TD><em class=code> arg1 </em></TD>
+    <TD>Describe arg1.
+    </TD>
+</TR>
+<TR><TD><em class=optionalcode> arg2 </em></TD>
+    <TD>Describe optional arg2.
+    </TD>
+</TR>
+<!-- repeat until done -->
+</TBODY>
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<!-- see the html programs in DART/doc/html/boilerplate to generate this table -->
+
+<A NAME="function1"></A>
+<br />
+<div class=routine>
+<em class=call> function function1(arg1) </em>
+<pre>
+logical,             :: <em class=code>function1</em>
+integer, intent(in)  :: <em class=code>arg1</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Describe function.
+</P>
+
+<TABLE width=100% border=0 summary="argument details" cellpadding=3>
+<TBODY valign=top>
+<TR><TD><em class=code> function1 </em></TD>
+    <TD>describe what this function returns
+    </TD></TR>
+<TR><TD><em class=code> arg1 </em></TD>
+    <TD>describe function argument
+    </TD></TR>
+<!-- repeat until done -->
+</TBODY>
+</TABLE>
+
+</div>
+<br />
+
+<!--=================== DESCRIPTION OF A LOCAL TYPE ==================-->
+
+<!-- see the html programs in DART/doc/html/boilerplate to generate this table -->
+
+<A NAME="bob_type"></A>
+<br />
+<div class=type><pre>
+<em class=call>type bob_type</em>
+   private
+   integer :: bob1
+   integer :: bob2
+end type bob_type
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+describe bob
+</P>
+
+<TABLE border=0 cellpadding=3 width=100% summary='derived type'>
+<THEAD align=left>
+<TR><TH> Component </TH>
+    <TH> Description </TH>
+</TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR><TD> bob1 </TD>
+    <TD> Describe bob1.
+    </TD>
+</TR>
+
+<TR><TD> bob2 </TD>
+    <TD> Describe bob2.
+    </TD>
+</TR>
+<!-- repeat until done -->
+</TBODY>
+</TABLE>
+
+</div>
+<br />
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+
+<P>
+describe files used by code
+</P>
+
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<ul>
+<li>author, title.
+<span style="font-style: italic;">publication</span>,
+<span style="font-weight: bold;">volume</span>, pages.<br />
+<a href="http://dx.doi.org/nn.yyyy/rest_of_number"
+target="_blank" >
+doi: nn.yyyy/rest_of_number </a><br />
+</li>
+</ul>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100% summary='error codes'>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+
+<TBODY valign=top>
+<TR><!-- routine --><TD>subroutine_name</TD>
+    <!-- message --><TD>error message text
+                   </TD>
+    <!-- comment --><TD>what it means to the end user.
+                    </TD>
+</TR>
+<!-- repeat until done -->
+
+</TBODY>
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PRIVATE COMPONENTS</H2>
+<P>
+no discussion
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="subversion information">
+<TR><TD valign=top>Contact:       </TD><TD> DART core group   </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change history:</TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

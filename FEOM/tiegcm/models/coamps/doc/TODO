@@ -1,0 +1,61 @@
+#
+# DART $Id$
+#
+
+COAMPS DART import TODO list:
+
+X Define DART state vector
+X Identify the restart files needed for the model to run
+X Handle DART<->COAMPS conversion
+  	X state vector conversion
+	X time conversion
+X Implement DART functions
+	X get_model_size
+	X get_state_meta_data
+	X get_model_time_step
+	X static_init_model
+	X nc_write_model_atts
+	X nc_write_model_vars
+X clean up and appropriately modify advance_model.csh
+X put in proper modules in the mkmf stuff
+X write namelist parser/condenser
+X verify
+X Allow dynamic switching from real*4 to real*8
+X Rewrite translation modules for restart files rather than flat files
+X Rewrite translation programs to reflect changes in modules.
+X Redo dynamic choices of restart files - quick static fix in there for now.
+X Fix model_mod to include the new dynamic state definition
+X Allow for parallel DA
+X Include terrain height in COAMPS grid information
+X Convert COAMPS innovation files to DART observations
+X Incorporate KIND information in the dynamic state definition
+X Implement ability to get a restart index based on a name/sigma index
+X Implement additional DART functions
+	X model_get_close_states (FIX)
+	X model_interpolate
+X Add in capability to read/process w levels in datahd file
+X Interpolate sea level pressure 
+X Include dynamic perturbations in model_mod
+X Allow the omission of fields to write to restart files (like mean values)
+X Allow namelist parser to handle multiple entries per line
+X Let converter write single REALS instead of an entire field
+X Rewrite converter to allow files written by multiple I/O processes
+X Allow vertical interpolation code to use type R8
+X Check for positive definite quantities in restart vector
+X Allow for interpolation onto Z surfaces as well as P
+X Allow converter to not write boundaries
+_ Allow for longer integration times by adjusting DTG
+X Audit all REAL variables to force COAMPS/DART type (either 4 or 8)
+X Use the IOSTAT option in all the OPEN commands
+X Rename coamps_util_mod as coamps_restart_mod and propagate changes
+X Clean up and reorder the source code files
+X Allow get_restart_index_by_properties to return -1 if not found
+- Speed up model_get_close_states
+X Allow entire variables in dynamic state rather than just level by level
+  (accomplished using shell script - keep as level by level in the main
+   restart.vars file)
+_ Add resilience to read_restart_vars
+    _ Skip if the sigma level is higher than the model's maximum
+    _ Resize the restart_vars array to be the number of elements
+      successfully processed, not the number at the top of the file
+_ Modify the converter to process the model mean state separately

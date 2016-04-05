@@ -1,0 +1,91 @@
+
+	The wesely utility, a single cpu code, reads WRF and Mozart
+        input files and produces netcdf files, on a per WRF domain basis,
+        containing overhead O2 and O3 column densities.  These files
+        are only used for the WRF-chem MOZART and MOZCART chemistry options.
+        
+	Building the wesely utility
+        ======== === ====== =======
+
+	The executable is created with the
+
+	make_util
+
+	script.  The make_util script is invoked as :
+
+	make_util wesely
+
+	make_util should work on any platform with either a Portland
+	Group or IBM fortran90 compiler.  The only required library
+	is netcdf.  If you require another compiler send email to :
+
+        stacy@ucar.edu
+	
+        Throughout this documentation <nn> represents an integer,
+	two digit number, starting with 01, denoting the WRF grid.
+
+        The wesely program reads WRF wrfinput_d<nn> files and
+        a Mozart data file containing dry emission parameters.
+        The default Mozart data file is season_wes_usgs.nc.
+        
+	The wesely utility reads a short namelist which consists of :
+
+	Namelist control variables
+        ======== ======= =========
+
+	Variable name             Variable type                                   default value
+	-------- ----             -------- ----                                   ------- -----
+
+        wrf_dir                   character(len=80),scalar                        (current directory)
+        pft_dir                   character(len=80),scalar                        (current directory)
+        pft_flnm                  character(len=80),scalar                        season_wes_usgs.nc
+        domains                   integer,scalar                                   1
+
+	domains         - an integer representing the number of wrf domains
+	wrf_dir         - a character variable representing the full path
+                          to the wrfinput_d<nn> files.  This variable should
+	                  NOT end in the forward slash character "/"
+        pft_dir         - same as wrf_dir except represents the directory
+                          of the Mozart dry deposition parameters dataset
+	pft_flnm        - a character variable representing the filename of
+	                  the Mozart dry deposition parameters dataset
+
+	Running wesely
+        ======= ======
+
+	To run wesely issue the command:
+
+	wesely < wesely.inp > wesely.out
+
+        Redirected input is required. Redirected output is optional.
+        The wesely.inp, wesely.out filenames are for illustration
+        only: you may use any valid filename in place of wesely.inp,
+        wesely.out.  The wesely.out is an ascii file containing the
+        complete output from running wesely.  In almost all cases it is
+        sensible to let the ascii output from running wesely go to the screen as in :
+
+	wesely < wesely.inp
+
+	Example input file
+	======= ===== ====
+
+	The file wesely.inp listed directly below
+
+
+&control
+
+wrf_dir = '/myhome/WRF/datasets'
+domains = 2,
+
+/
+
+	directs wesely to produce output files wrf_season_wes_usgs_d01.nc and
+        wrf_season_wes_usgs_d02.nc using wrfinput_d01 and wrfinput_d02 files and 
+        the season_wes_usgs.nc file.  Since pft_dir is not set in the example
+        namelist the Mozart input file is expected to be in the directory where
+        wesely is invoked.  And the WRF wrfinput_d<nn> files are expected to be
+        in the directory /myhome/WRF/datasets.
+
+	If you have questions please contact :
+
+	Gabriele Pfister (pfister@ucar.edu) or Stacy Walters (stacy@ucar.edu)

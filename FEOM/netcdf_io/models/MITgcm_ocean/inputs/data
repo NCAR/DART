@@ -1,0 +1,116 @@
+#
+# DART $Id$
+#
+# ====================
+# | Model parameters |
+# ====================
+#
+# Continuous equation parameters
+ &PARM01
+ tRef       = 23.,22.,21.,20.,19.,18.,17.,16.,15.,14.,13.,
+              12.,11.,9.,8.,7.,6.,5.,4.,3.,2*2.,18*1.,
+ sRef       = 40*34.5,
+ viscAz     = 1.E-4,
+ viscA4     = 2.e9,
+ viscAh     = 2e1,
+ cosPower   = 3.,
+ no_slip_sides  = .True.,
+ no_slip_bottom = .TRUE.,
+ bottomDragQuadratic = 0.002,
+ rhonil         = 1035.,
+ rhoConstFresh  = 1000.,
+ diffKhT     = 1.e1,
+ diffk4T     = 1.E9,
+ diffKzT     = 1.E-6,
+ diffKhS     = 1.e1,
+ diffk4S     = 1.E9
+ diffKzS     = 1.E-6,
+ tAlpha      = 2.E-4,
+ sBeta       = 7.4E-4,
+ gravity     = 9.81,
+ rigidLid    = .FALSE.,
+ eosType           = 'JMD95Z',
+ readBinaryPrec    = 32,
+ writeBinaryPrec   = 32,
+ globalFiles       = .false.,
+ useSingleCpuIO    = .true.,
+ tempAdvScheme     = 30,
+ saltAdvScheme     = 30,
+ hFacMin           = 0.3,
+ hFacMinDz         = 50.,
+ multiDimAdvection = .FALSE.,
+ staggerTimeStep   = .TRUE.,
+ implicitDiffusion = .true.,
+ implicitViscosity = .true.,
+ implicitFreeSurface = .TRUE.,
+ useCDscheme       = .FALSE.,
+ vectorInvariantMomentum = .TRUE.,
+ allowFreezing     = .false.,
+ convertFW2Salt    = -1.,
+ debugMode         = .false.,
+ debugLevel        = 0,
+ exactConserv      = .false.,
+ &
+
+# Elliptic solver parameters
+ &PARM02
+ cg2dMaxIters=1000,
+ cg2dTargetResidual=1.E-8,
+ &
+
+# Time stepping parameters
+# endTime           =  172800.,   2 days
+# endTime           = 1209600.,  14 days
+# endTime           = 1728000.,  20 days
+# to get N ensemble members ... from a 20 day run ... 
+# simply change the output frequency to generate the appropriate number
+# of snapshot files and then use MakeInitialEnsemble.csh
+# dumpFreq          = 86400.,   (daily assimilation cycle)
+# taveFreq          = 86400.,   (daily assimilation cycle)
+# dumpFreq          = 43200.,   (12-hourly assimilation cycle)
+# taveFreq          = 43200.,   (12-hourly assimilation cycle)
+ &PARM03
+ startTime         = 0.,
+ endTime           = 86400.,
+ deltaTmom         = 150.,
+ deltaTtracer      = 150.,
+ deltaTClock       = 150.,
+ abEps             = 0.1,
+ chkptFreq         = 0.,
+ pChkptFreq        = 0.,
+ dumpFreq          = 86400.,
+ taveFreq          = 86400., 
+ tauThetaClimRelax = 0.,
+ tauSaltClimRelax  = 0.,
+ monitorFreq       = 0.,
+ forcing_In_AB     =.false.
+ &
+
+# Gridding parameters
+ &PARM04
+ usingCartesianGrid = .FALSE.,
+ usingSphericalPolarGrid = .TRUE.,
+ ygOrigin = 25.0,
+ xgOrigin = 269.5,
+ delY   =  144*0.0208,
+ delX   =  240*0.0208,
+ delZ   =          4.0006,    4.0650,    4.1477,    4.2538,
+    4.3899,    4.5645,    4.7885,    5.0756,    5.4434,
+    5.9145,    6.5174,    7.2881,    8.2723,    9.5270,
+   11.1235,   13.1497,   15.7131,   18.9431,   22.9922,
+   28.0359,   34.2688,   41.8962,   51.1191,   62.1111,
+   74.9885,   89.7745,  106.3658,  124.5091,  143.7993,
+  163.7053,  183.6236,  202.9492,  221.1473,  237.8065,
+  252.6677,  265.6217,  276.6874,  285.9780,  293.6654,
+  299.1094,
+&
+# Input datasets
+ &PARM05
+ bathyFile       = 'bathymetry.bin',
+ hydrogThetaFile = 'gom_T_199601.bin',
+ hydrogSaltFile  = 'gom_S_199601.bin',
+ uVelInitFile    = 'gom_U_199601.bin',
+ vVelInitFile    = 'gom_V_199601.bin',
+ pSurfInitFile   = 'gom_H_199601.bin', 
+&
+

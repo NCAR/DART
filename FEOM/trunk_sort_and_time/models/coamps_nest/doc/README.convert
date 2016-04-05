@@ -1,0 +1,68 @@
+# DART $Id$
+
+In order to use the COAMPS files with DART in an asynchronous run, we
+have to be able to convert the files dumped by COAMPS into a format
+readable by DART and vice versa.  This requires several things:
+
+* The DART state vector file is in a native byte-ordering format, but
+  if COAMPS was run using an I/O processor, the COAMPS restart files
+  are big-endian.  Use some C byteswapping code to handle the conversion
+  for wide compiler compatibility.
+* Use the COAMPS restart file, which is one large file consisting of
+  many different fields dumped at once.  This bypasses the earlier
+  requirement to write out a plethora of COAMPS flat files.
+* The COAMPS files involve date and time information - need to figure
+  out how to incorporate this into the DART structure.
+* We'll probably need a basic namelist for some of the variables to
+  figure out file names.
+
+In order to dynamically specify which fields we will read in, we turn
+to a configuration file and namelist file.  The namelist is documented
+elsewhere, but contains information like the name of the configuration
+file to read and some date/time information.  The configuration file
+is then read in and consists of the following format:
+	  	 
+Line 1-1: {Number of fields to read in}
+Line 2-N: {Variable name} {Level desired}
+
+Whitespace serves as a delimiter.  This file is read in line by line, 
+stopping after reading in the number of records specified in the
+first line.  
+
+Once the file read is complete, the converter has a populated data
+structure that contains all the information necessary to read the
+desired records from the restart flat file.  This derived type
+contains the following information:
+	 - Number of x grid points
+	 - Number of y grid points
+	 - Sigma levels
+	 - Array of variable information:
+	   - Variable name (4 characters)
+	   - Variable type (1D/2D/3D/3DW)
+	   - Variable record number in dimensional subset
+	   - Sigma level record number
+	   - Perturbation amount 
+	   - Perturbation type
+       - Whether or not to update the field when writing out
+       - If the field is defined on mass or w sigma levels
+       - Whether the field is a mean variable
+       - Whether or not the field is restricted to values >= 0
+
+The "dimensional" record numbers are the record numbers of the
+particular variables in the 1dvar, 2dvar, 3dvar arrays that are
+written in sequence to the restart file.  The sigma level record
+number is the point in the larger variable that corresponds to the
+sigma level desired.  The variable type, record number, and sigma
+level allow the program to calculate the overall "record number" of
+the particular level in the binary file.  Rather than reading in the
+whole thing sequentially, we treat the restart file as a direct access
+file with the record length coinciding with the size of a grid level.
+This makes it possible to read in either an entire 2D variable or
+some/all of a 3D variable as desired.  
+
+Finally, we have the option of how much to perturb a variable.  This is
+specified for each variable type since the magnitude of each entry may
+differ substantially from others (e.g. perturbation Exner function vs.
+potential temperature).  Note that it looks like
+most of the 2D variables are calculated values not used by the model
+itself, and are therefore useless to perturb. 

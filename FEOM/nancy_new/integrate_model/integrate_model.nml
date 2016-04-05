@@ -1,0 +1,14 @@
+&integrate_model_nml
+   ens_size                    =  1
+   input_filename              = "temp_ic" 
+   output_filename             = "temp_ud"
+   write_binary_restart_files  = .true.
+   trace_execution             = .false.
+   input_is_model_advance_file = .true.
+   target_days                 = -1
+   target_seconds              = -1
+   init_days                   = -1
+   init_seconds                = -1
+   single_restart_file_in      = .true.
+   single_restart_file_out     = .true.
+   /

@@ -1,0 +1,477 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>TPW Data</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>Total Precipitable Water Observations</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#DataSources">DATA SOURCES</A> /
+<A HREF="#Programs">PROGRAMS</A> / 
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#KnownBugs">KNOWN BUGS</A> /
+<A HREF="#FuturePlans">FUTURE PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+Several satellites contain instruments that return
+observations of integrated Total Precipitable Water (TPW).
+There are two <a href="http://modis.gsfc.nasa.gov/">MODIS</a> 
+Spectroradiometers, one aboard the 
+<a href="http://terra.nasa.gov/">TERRA</a> satellite, and
+the other aboard the <a href="http://aqua.nasa.gov/">AQUA</a> satellite.
+There is also an
+<a href="http://wwwghcc.msfc.nasa.gov/AMSR/">AMSR-E</a> instrument
+on the AQUA satellite.
+</P>
+
+<P>
+These instruments produce a variety of data products which are 
+generally distributed in HDF format using the HDF-EOS libraries.
+The converter code in this directory IS NOT USING THESE FILES
+AS INPUT.  The code is expecting to read ASCII TEXT files, which
+contain one line per observation, with the latitude,
+longitude, TPW data value, and the observation time. The Fortran
+read line is:
+</P>
+<pre>
+      read(iunit, '(f11.6, f13.5, f10.4, 4x, i4, 4i3, f7.3)') &amp;
+                lat, lon, tpw, iyear, imonth, iday, ihour, imin, seconds
+</pre>
+<P>
+No program to convert between the HDF and text files
+is currently provided.
+Contact <a href="mailto:dart@ucar.edu">dart@ucar.edu</a>
+for more information if you are interested in using this converter.
+</P>
+
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<HR />
+<H2>DATA SOURCES</H2>
+
+<P>
+This converter reads files produced as part of a data research effort.  
+Contact <a href="mailto:dart@ucar.edu">dart@ucar.edu</a>
+for more information if you are interested in this data.
+</P>
+<P>
+Alternatively, if you can read HDF-EOS files and output a text
+line per observation in the format listed above, then you can
+use this converter on TPW data from any MODIS file.
+</P>
+
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<HR />
+<H2>PROGRAMS</H2>
+<P>
+The programs in the <em class=file>DART/observations/tpw</em> 
+directory extract data from the distribution text files 
+and create DART observation sequence (obs_seq) files.
+Build them in the <em class=file>work</em> directory by running
+the <em class=program>./quickbuild.csh</em> script.  In addition
+to the converters, several other general observation sequence
+file utilities will be built.
+</P>
+<P>
+Generally the input data comes in daily files, with the
+string YYYYMMDD (year, month, day) as part of the name.
+This converter has the option to loop over multiple days
+within the same month and create an output file per day.
+</P>
+<P>
+Like many kinds of satellite data, the TWP data is dense
+and generally needs to be subsampled or averaged (super-ob'd)
+before being used for data assimilation.  This converter 
+will average in both space and time.  There are 4 namelist items
+(see the <a href="#Namelist">namelist </a> section below) which
+set the centers and widths of time bins for each day.  All observations
+within a single time bin are eligible to be averaged together.
+The next available observation in the bin is selected and any other 
+remaining observations in that bin that are within delta latitude and 
+delta longitude of it are averaged in both time and space.  Then all
+observations which were averaged are removed from the bin, so each
+observation is only averaged into one output observation.
+Observations that are within delta longitude of the prime meridian
+are handled correctly by averaging observations on both sides
+of the boundary.
+</P>
+<P>
+It is possible to restrict the output observation sequence to contain
+data from a region of interest using namelist settings.
+If your region spans the Prime Meridian
+min_lon can be a larger number than max_lon.
+For example, a region from 300 E to 40 E and 60 S to 30 S (some of
+the South Atlantic), specify 
+<em class="input">min_lon = 300, max_lon = 40, 
+min_lat = -60, max_lat = -30</em>.
+So 'min_lon' sets the western boundary, 'max_lon' the eastern.
+</P>
+<P>
+The specific type of observation created in the output observation 
+sequence file can be select by namelist.  "MODIS_TOTAL_PRECIPITABLE_WATER"
+is the most general term, or a more satellite-specific name can be
+chosen.  The choice of which observations to assimilate or evaluate
+are made using this name.  The observation-space diagnostics also
+aggregate statistics based on this name.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;convert_tpw_nml
+   start_year          = 2008
+   start_month         = 1
+   start_day           = 1
+   total_days          = 31
+   max_obs             = 150000
+   time_bin_start      = 0.0  
+   time_bin_interval   = 0.50
+   time_bin_half_width = 0.25
+   time_bin_end        = 24.0
+   delta_lat_box       = 1.0
+   delta_lon_box       = 1.0
+   min_lon             =   0.0
+   max_lon             = 360.0
+   min_lat             = -90.0
+   max_lat             =  90.0
+   ObsBase             = '../data'
+   InfilePrefix        = 'datafile.'
+   InfileSuffix        = '.txt'
+   OutfilePrefix       = 'obs_seq.'
+   OutfileSuffix       = ''
+   observation_name    = 'MODIS_TOTAL_PRECIPITABLE_WATER'
+ /
+</pre>
+</div>
+<!--
+
+   ! alternate obs types:
+   !observation_name    = 'AQUA_TOTAL_PRECIPITABLE_WATER'
+   !observation_name    = 'TERRA_TOTAL_PRECIPITABLE_WATER'
+   !observation_name    = 'AMSR_TOTAL_PRECIPITABLE_WATER'
+
+! items in namelist, along with default values
+integer  :: start_year  = 2008
+integer  :: start_month = 1
+integer  :: start_day   = 1
+integer  :: total_days  = 31
+integer  :: max_obs     = 150000
+real(r8) :: time_bin_start      =  0.00_r8  ! fractional hours
+real(r8) :: time_bin_interval   =  0.50_r8  ! fractional hours
+real(r8) :: time_bin_half_width =  0.25_r8  ! fractional hours
+real(r8) :: time_bin_end        = 24.00_r8  ! fractional hours
+real(r8) :: delta_lat_box = 1.0_r8
+real(r8) :: delta_lon_box = 1.0_r8
+real(r8) :: min_lon = missing_r8
+real(r8) :: max_lon = missing_r8
+real(r8) :: min_lat = missing_r8
+real(r8) :: max_lat = missing_r8
+! the date, in 'YYYYMMDD' format, will be inserted between
+! the input and output file prefix and suffix.  ObsBase is
+! only prepended to the input file
+character(len=128) :: ObsBase       = '../data'
+character(len=64)  :: InfilePrefix  = 'datafile.'
+character(len=64)  :: InfileSuffix  = '.txt'
+character(len=64)  :: OutfilePrefix = 'obs_seq.'
+character(len=64)  :: OutfileSuffix = ''
+character(len=31)  :: observation_name = 'MODIS_TOTAL_PRECIPITABLE_WATER'
+-->
+
+<!-- or border=3 rules=all ? -->
+<TABLE border=0 cellpadding=10 width=100% summary='TPW namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR>
+ <TD> start_year </TD>
+ <TD> integer </TD>
+ <TD> The year for the first day to be converted.
+(The converter will optionally loop over multiple days in the same month.)
+ </TD> </TR>
+
+<TR>
+ <TD> start_month </TD>
+ <TD> integer </TD>
+ <TD> The month number for the first day to be converted.
+(The converter will optionally loop over multiple days in the same month.) 
+ </TD> </TR>
+
+<TR>
+ <TD> start_day </TD>
+ <TD> integer </TD>
+ <TD> The day number for the first day to be converted.
+(The converter will optionally loop over multiple days in the same month.) 
+ </TD> </TR>
+
+<TR>
+ <TD> total_days </TD>
+ <TD> integer </TD>
+ <TD>The number of days to be converted.
+(The converter will optionally loop over multiple days in the same month.)
+The observations for each day will be created in a separate output file which
+will include the YYYYMMDD date as part of the output filename.  
+ </TD> </TR>
+
+<TR>
+ <TD> max_obs </TD>
+ <TD> integer </TD>
+ <TD>The largest number of obs in the output file.
+If you get an error, increase this number and run again. 
+ </TD> </TR>
+
+<TR>
+ <TD> time_bin_start </TD>
+ <TD> real(r8) </TD>
+ <TD>The next four namelist values define a series of time intervals
+that define time bins which are used for averaging.  The input data
+from the satellite is very dense and generally the data values need
+to be subsetted in some way before assimilating.
+All observations in the same time bin are eligible to be averaged in
+space if they are within the latitude/longitude box.  The input files
+are distributed as daily files, so use care when defining the first
+and last bins of the day.  The units are in hours.  This item defines
+the midpoint of the first bin.
+ </TD> </TR>
+
+<TR>
+ <TD> time_bin_interval </TD>
+ <TD> real(r8) </TD>
+ <TD> Increment added the time_bin_start to compute the center
+of the next time bin. The units are in hours.
+ </TD> </TR>
+
+<TR>
+ <TD> time_bin_half_width </TD>
+ <TD> real(r8) </TD>
+ <TD> The amount of time added to and subtracted from the time bin
+center to define the full bin.  The units are in hours.
+ </TD> </TR>
+
+<TR>
+ <TD> time_bin_end </TD>
+ <TD> real(r8) </TD>
+ <TD> The center of the last bin of the day.  The units are in hours.
+ </TD> </TR>
+
+<TR>
+ <TD> delta_lat_box </TD>
+ <TD> real(r8) </TD>
+ <TD> For all observations in the same time bin, the next available
+observation is selected.  All other observations in that bin that are
+within delta latitude or longitude of it are averaged together and a single
+observation is output.  Observations which are averaged with others
+are removed from the bin and so only contribute to the output data once.
+The units are degrees.
+ </TD> </TR>
+
+<TR>
+ <TD> delta_lon_box </TD>
+ <TD> real(r8) </TD>
+ <TD> See delta_lat_box above.
+ </TD> </TR>
+
+<TR>
+ <TD> min_lon </TD>
+ <TD> real(r8) </TD>
+ <TD> The output observations can be constrained to only those which 
+lie between two longitudes and two latitudes.  If specified, this is the
+western-most longitude.  The units are degrees, and valid values are
+between 0.0 and 360.0.  To define a box that crosses the prime meridian
+(longitude = 0.0) it is legal for this value to be larger than max_lon.
+Observations on the boundaries are included in the output.
+ </TD> </TR>
+
+<TR>
+ <TD> max_lon </TD>
+ <TD> real(r8) </TD>
+ <TD> The output observations can be constrained to only those which 
+lie between two longitudes and two latitudes.  If specified, this is the
+eastern-most longitude.  The units are degrees, and valid values are
+between 0.0 and 360.0.  To define a box that crosses the prime meridian
+(longitude = 0.0) it is legal for this value to be smaller than min_lon.
+Observations on the boundaries are included in the output.
+ </TD> </TR>
+
+<TR>
+ <TD> min_lat </TD>
+ <TD> real(r8) </TD>
+ <TD> The output observations can be constrained to only those which 
+lie between two longitudes and two latitudes.  If specified, this is the
+southern-most latitude.  The units are degrees, and valid values are
+between -90.0 and 90.0.
+Observations on the boundaries are included in the output.
+ </TD> </TR>
+
+<TR>
+ <TD> max_lat </TD>
+ <TD> real(r8) </TD>
+ <TD> The output observations can be constrained to only those which 
+lie between two longitudes and two latitudes.  If specified, this is the
+northern-most latitude.  The units are degrees, and valid values are
+between -90.0 and 90.0.
+Observations on the boundaries are included in the output.
+ </TD> </TR>
+
+<TR>
+ <TD> ObsBase </TD>
+ <TD> character(len=128) </TD>
+ <TD> A directory name which is prepended to the input filenames only.
+For files in the current directory, specify '.' (dot).
+ </TD> </TR>
+
+<TR>
+ <TD> InfilePrefix </TD>
+ <TD> character(len=64) </TD>
+ <TD> The input filenames are constructed by prepending this string before
+the string 'YYYYMMDD' (year, month, day) and then the suffix is appended.  
+This string can be ' ' (empty).
+ </TD> </TR>
+
+<TR>
+ <TD> InfileSuffix </TD>
+ <TD> character(len=64) </TD>
+ <TD> The input filenames are constructed by appending this string to
+the filename.  This string can be ' ' (empty).
+ </TD> </TR>
+
+<TR>
+ <TD> OutfilePrefix </TD>
+ <TD> character(len=64) </TD>
+ <TD> The output files are always created in the current directory,
+and the filenames are constructed by prepending this string 
+before the string 'YYYYMMDD'
+(year, month day) and then the suffix is appended.
+This string can be ' ' (empty).
+ </TD> </TR>
+
+<TR>
+ <TD> OutfileSuffix </TD>
+ <TD> character(len=64) </TD>
+ <TD> The output filenames are constructed by appending this string to
+the filename.  This string can be ' ' (empty).
+ </TD> </TR>
+
+<TR>
+ <TD> observation_name </TD>
+ <TD> character(len=31) </TD>
+ <TD> The specific observation type to use when creating the output
+observation sequence file.  The possible values are:
+<UL>
+<LI> "AQUA_TOTAL_PRECIPITABLE_WATER" </LI>
+<LI> "TERRA_TOTAL_PRECIPITABLE_WATER" </LI>
+<LI> "AMSR_TOTAL_PRECIPITABLE_WATER" </LI>
+<LI> "MODIS_TOTAL_PRECIPITABLE_WATER" </LI>
+</UL>
+These must match the parameters defined in the 'obs_def_tpw_mod.f90' file
+in the DART/obs_def directory.  There is a maximum limit of 31 characters
+in these names.
+ </TD> </TR>
+
+</TBODY> 
+</TABLE>
+
+<br />
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<HR />
+<H2>KNOWN BUGS</H2>
+<P>
+The input files are daily; be cautious of time bin boundaries
+at the start and end of the day.
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<HR />
+<H2>FUTURE PLANS</H2>
+<P>
+This program should use the HDF-EOS libraries to read the
+native MODIS granule files.
+</P>
+<P>
+This program could loop over arbitrary numbers of days by
+using the time manager calendar functions to increment the
+bins across month and year boundaries; it could also use the
+schedule module to define the bins.
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TBODY valign=top>
+<TR><TD>Contact:       </TD><TD> nancy collins </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD>Change history: </TD><TD> try "svn log" or "svn diff" </TD></TR>
+</TBODY></TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

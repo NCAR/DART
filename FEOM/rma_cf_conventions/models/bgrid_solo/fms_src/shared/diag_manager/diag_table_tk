@@ -1,0 +1,1685 @@
+#!/usr/bin/perl 
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+
+eval 'exec /usr/local/bin/perl -w -S $0 ${1+"$@"}'
+    if 0; # not running under some shell
+
+require 5.004;
+
+use English;
+use Tk;
+use Cwd;
+
+
+require Tk::FileSelect;
+require Tk::Text;
+use Tk::widgets qw/Dialog ErrorDialog ROText/;
+use Tk::FileDialog; 
+use Tk::Balloon;
+use File::Find;
+    
+use subs qw/invoke lsearch see_code see_vars list_output_files multiple_a_entries/; 
+use subs qw/refresh_table show_stat edit_entry varParse varList remove_b/;
+use vars qw/$MW $FONT $WIDTRIB $DEMO_FILE $outputFile $FLD_NM/;
+use vars qw/$CODE $CODE_RERUN $CODE_TEXT $VARS $VIEW $VIEW_TEXT/;
+use vars qw/$OUTPUT_FREQUENCY $OUTPUT_FREQUENCY_UNITS $FORMAT $FORMAT_ID $TIME_UNITS $TIME_LONG_NAME/;
+use vars qw/$fname $statusA $statusB $tmpEntry $nlist $output $mult $num/;
+use vars qw/$MODULE $OUTPUT_FILE $TIME_SAMPLING $OUTPUTFILE @delay_load/;
+use vars qw/$TIME_AVG $OTHER_OPS $PACK $FIELD_NAME $current_b_cascade $current_a_cascade/; 
+use vars qw/$GLOBAL_ATTS $INITIAL_YEAR $INITIAL_MONTH $INITIAL_DAY/;
+use vars qw/$BSTATUS_VAR $ASTATUS_VAR $t @DATA $entrySelected $added/;
+use vars qw/$BCOUNT $ACOUNT $entrylist $FR $EDIT @RL $mb2 $PATH_NAME $col1 $statusB/;
+use strict;                     
+
+use vars qw/$TOP/;
+
+if (-e '/tmp/table_b.dat') {
+    system("rm /tmp/table_b.dat ");}
+
+if (-e '/tmp/table_a.dat') {
+    system("rm /tmp/table_a.dat");}
+
+
+
+# Setup the Main Window 
+#--------------------------------------------------------------------------
+
+$MW = MainWindow->new();
+
+my($LoadDialog) = $MW->FileDialog(-Title =>'File Browser ...',
+				    -Create =>1);
+
+$LoadDialog->configure(-FPat => '*',
+		       -ShowAll => 'NO');
+
+
+ $MW->title('Flexible Modeling Diagnostics Interface');
+$FONT = '-*-Helvetica-Medium-R-Normal--*-140-*-*-*-*-*-*';
+
+# Setup Menubar
+#--------------------------------------------------------------------------
+
+my $menubar = $MW->Frame;
+$menubar->grid(qw/-sticky ew/);
+my $file = $menubar->Menubutton(qw/-text File -underline 0 -menuitems/ =>
+    [
+     [Button    => '~Load Table ...', -command => [\&load_table]],
+     [Button    => '~Save ...', -command => [\&save_table]],
+     [Button    => '~Quit', -command => [\&exit]],
+    ]);
+$file->pack("-side" => "left");
+$file = $menubar->Menubutton(qw/-text Help -underline 0 -menuitems/ =>
+    [
+     [Button    => '~Help ...', -command => [\&help_main]],
+    ]); 
+$file->pack("-side" => "right");
+
+# Setup Scrolled Widget
+#--------------------------------------------------------------------------
+
+my $T = $MW->Scrolled('ROText',
+    -scrollbars => 'oe',		  
+    -wrap       => 'word',
+    -width      => 55,
+    -height     => 20, 
+    -font       => $FONT,
+    -setgrid    => 1,
+)->grid(qw/-sticky nsew/);
+
+my $STATUS_VAR;
+my $status = $MW->Label(-textvariable => \$STATUS_VAR, qw/-anchor w/);
+$status->grid(qw/-sticky ew/);
+
+$T->tagConfigure(qw/title -font -*-Helvetica-Bold-R-Normal--*-180-*-*-*-*-*-*/);
+$T->tagConfigure(qw/link -lmargin1 1c -lmargin2 1c -foreground blue/);
+
+if ($MW->depth  == 1) {
+    $T->tagConfigure(qw/hot -background black -foreground white/);
+    $T->tagConfigure(qw/visited -lmargin1 1c -lmargin2 1c -underline 1/);
+} else {
+    $T->tagConfigure(qw/hot -relief raised -borderwidth 1 -foreground red/);
+    $T->tagConfigure(qw/visited -lmargin1 1c -lmargin2 1c -foreground/ =>
+	    '#303080');
+}
+
+$T->tagBind(qw/link <ButtonRelease-1>/ => sub {invoke $T->index('current')});
+my $last_line = '';
+$T->tagBind(qw/link <Enter>/ => [sub {
+	my($text, $sv) = @_;
+	my $e = $text->XEvent;
+	my($x, $y) = ($e->x, $e->y);
+	$last_line = $text->index("\@$x,$y linestart");
+	$text->tagAdd('hot', $last_line, "$last_line lineend");
+	$text->configure(qw/-cursor hand2/);
+	show_stat $sv, $text, $text->index('current');
+    }, \$STATUS_VAR]
+);
+$T->tagBind(qw/link <Leave>/ => [sub {
+	my($text, $sv) = @_;
+	$text->tagRemove(qw/hot 1.0 end/);
+	$text->configure(qw/-cursor xterm/);
+	$$sv = '';
+    }, \$STATUS_VAR]
+);
+$T->tagBind(qw/link <Motion>/ => [sub {
+	my($text, $sv) = @_;
+	my $e = $text->XEvent;
+	my($x, $y) = ($e->x, $e->y);
+	my $new_line = $text->index("\@$x,$y linestart");
+	if ($new_line ne $last_line) {
+	    $text->tagRemove(qw/hot 1.0 end/);
+	    $last_line = $new_line;
+	    $text->tagAdd('hot', $last_line, "$last_line lineend");
+	}
+	show_stat $sv, $text, $text->index('current');
+    }, \$STATUS_VAR]
+);
+
+# Create the text for the text widget.
+
+$T->insert('end', "Flexible Modeling Diagnostics Table Interface\n", 'title');
+$T->insert('end', 
+"\nSelect Entry for editing\n");
+
+# Define globals for toplevels,
+
+$T->insert('end', "Define global file attributes.\n",
+    [qw/link table-global_atts/]);
+
+$T->insert('end', "Modify File Entry (table A).\n",
+    [qw/link table-table_a/]);
+
+$T->insert('end', "Modify Output Field Entry (table B).\n",
+    [qw/link table-table_b/]);
+
+
+
+MainLoop;
+
+
+sub invoke {
+
+    # This procedure is called when the user clicks on a Text Widget.
+
+    my($index) = @_;
+
+    my @tags = $T->tagNames($index);
+    my $i = lsearch('table\-.*', @tags);
+    return if $i < 0;
+    my($table) = $tags[$i] =~ /table-(.*)/;
+    $T->tagAdd('visited', "$index linestart", "$index lineend");
+    {
+	no strict 'refs'; 
+	&$table($table);
+	
+    }
+
+} # end invoke
+
+sub lsearch {
+
+    # Search the list using the supplied regular expression and return it's
+    # ordinal, or -1 if not found.
+
+    my($regexp, @list) = @_;
+    my($i);
+
+    for ($i=0; $i<=$#list; $i++) {
+	return $i if $list[$i] =~ /$regexp/;
+    }
+    return -1;
+
+} # end lsearch
+
+sub see_vars {
+
+    # Create a top-level window that displays a bunch of global variable values
+    # and keeps the display up-to-date even when the variables change value.
+    # $args is a pointer to a list of list of 2: 
+    #
+    #   ["variable description", \$VAR]
+    #
+    # The old trick of passing a string to serve as the description and a soft
+    # reference to the variable no longer works with lexicals and use strict.
+    
+    
+    $entrySelected="Entry List";
+    my($parent,$tbl) = @_;
+    my $read = 0;
+    $VARS-> destroy if Exists($VARS);
+    $VARS = $parent->Toplevel;
+    $VARS->title('Table');
+    $VARS->iconname('Table');
+    
+    if ($tbl == '1' && Exists('/tmp/table_b.dat')){
+	open(TBL,'< /tmp/table_b.dat');
+	$read = 1;
+	}
+	
+    elsif ($tbl == '2' && Exists('/tmp/table_a.dat')){
+	open(TBL,'< /tmp/table_a.dat');
+	$read = 1;	
+	}
+	
+   #if($read == 1){@DATA = <TBL>;}
+
+   undef $/;
+
+   close(TBL);
+
+    $/= "\n";
+    
+    $VARS->option('add','*Text.background'=>'white');
+
+    $t = $VARS->Scrolled('Text',"-relief" => "raised",
+		     "-bd" => "2",
+		     "-setgrid" => "True",
+		     "-width" => "90",);
+
+    $t->pack(-expand => 1, "-fill"   => "both");
+    $t->tag("configure", "underline","-underline","on");
+    
+    
+    $FR = $VARS->Frame(-bd => "2",
+    		       )
+		      ->pack("-fill" => "x", "-side" => "bottom");
+     
+    my $Dis = $FR->Button(-text => 'Dismiss',
+			  -command => [$VARS => 'destroy'],
+	)->
+	pack(qw/-pady 2 -padx 100 -side left/);
+    
+    my $delete = $FR->Button(-text => 'Delete Entry', 
+	-command => [sub {
+			if($entrySelected ne('Entry List')){
+			my $counter=0;
+			my $numeric = substr($entrySelected, 6)-1;
+			
+			if($tbl == '2'){
+			  my $fileN = $_;
+    			  my @spl;	
+			  my $rot = 0;
+			  my $lin;
+ 			  foreach $lin (@DATA){
+			  if($rot == $numeric){
+			  @spl = split(/,/,$DATA[$rot]);
+			  last;
+			  }
+			  $rot++;
+			  }
+			  &remove_b($spl[0]);
+			  }
+			if($tbl == '1'){open(TBL,'< /tmp/table_b.dat') or @DATA = "";}
+			elsif($tbl == '2'){open(TBL,'< /tmp/table_a.dat')or @DATA = "";}
+			@DATA = <TBL>;
+			close(TBL);
+			    
+			if($tbl == '1'){open(TBL,'> /tmp/table_b.dat') or @DATA = "";
+					$BCOUNT--;}
+			elsif($tbl == '2'){open(TBL,'> /tmp/table_a.dat')or @DATA = "";
+			     $ACOUNT--;}
+			   
+			for(my $x = $numeric; $x<=$#DATA; $x++){
+			$DATA[$x] = $DATA[($x+1)];}
+			
+			foreach(@DATA){
+				if($counter != $#DATA){
+				print TBL $DATA[$counter];}
+				$counter++;
+				}
+			close TBL;
+			
+			$entrylist->children->delete('0','end');
+			if($tbl == 1){
+			$current_b_cascade = $entrylist; 
+	    		for(my $count=1;$count<=$BCOUNT;$count++){
+	    		if((($count != 1) && (($count % 25)== 1))||($count==26)){my $b = $current_b_cascade
+			->cascade(-label=> "<more>",
+			-tearoff => '0',);
+    			  $current_b_cascade = $b;}
+      			  $current_b_cascade->radiobutton(
+				-label => "Entry $count",
+				-variable => \$entrySelected,
+				);  
+	    		};
+			}
+			elsif($tbl ==2){
+			$current_a_cascade = $entrylist; 
+	    		for(my $count=1;$count<=$ACOUNT;$count++){
+	    		if((($count != 1) && (($count % 25)== 1))||($count==26)){my $a = $current_a_cascade
+			->cascade(-label=> "<more>",
+			-tearoff => '0',);
+    			  $current_a_cascade = $a;}
+      			  $current_a_cascade->radiobutton(
+				-label => "Entry $count",
+				-variable => \$entrySelected,
+				);  
+	    		};
+			}
+			
+			&refresh_table($tbl);
+			$BSTATUS_VAR = "Entry ".($numeric+1)." deleted";
+			$ASTATUS_VAR = "Entry ".($numeric+1)." deleted";
+			$t->yview(($numeric));
+			$EDIT-> destroy if Exists($EDIT);
+			}
+			}])->
+	pack(qw/-pady 2 -side right/);
+	
+    my $eButton = $FR->Button(-text => 'Edit Entry', 
+	-command => [\&edit_entry, $tbl]
+	)->
+	pack(qw/-pady 2 -side right/);
+
+    $entrylist = $FR->Menubutton(
+	-textvariable => \$entrySelected,
+	-tearoff => '0',
+	-width =>10,
+	-relief =>'raised')->pack("-side" => "right");
+    
+    my $y=0;
+    my $buttonCount = 0;
+    my @b;
+    my $num=0;
+    my $currCascade;
+    $b[$num] = $entrylist;
+    $currCascade = $b[$num];
+    
+    unless($ACOUNT){$ACOUNT = 0;}
+    unless($BCOUNT){$BCOUNT = 0;}
+    if($tbl == 1){
+	for($y=1; $y <= $BCOUNT; $y++){
+	if($buttonCount ==25){
+	$num++;
+	$b[$num] = $b[$num-1] ->cascade(-label=> "<more>",
+					-tearoff => '0',);
+	$buttonCount = 0;
+	$currCascade = $b[$num];
+	}
+	 
+	$currCascade->radiobutton(
+		-label => "Entry $y",
+		-variable => \$entrySelected,
+	);
+	$buttonCount++;
+    }
+    }
+    else{
+	for($y=1; $y <= $ACOUNT; $y++){
+	  
+	  if($buttonCount ==26){
+	  $num++;
+	  $b[$num] = $b[$num-1] ->cascade(-label=> "<more>");
+	  $buttonCount = 0;
+	  $currCascade = $b[$num];
+	  }
+	 $currCascade->radiobutton(
+		-label => "Entry $y",
+		-variable => \$entrySelected,
+	);
+	$buttonCount++;
+    }
+    }
+    if($tbl == '1'){
+    $current_b_cascade = $currCascade;
+    my $balloon = $TOP->Balloon(-statusbar => $statusB,
+    				-initwait => "900");       
+    $balloon->attach($Dis,              
+    		-statusmsg  => 'Click Button-1 to close Table.');       
+    $balloon->attach($delete,              
+	-statusmsg  => 'Click Button-1 to delete the entry selected.');        
+    $balloon->attach($eButton,              
+		-statusmsg  => 'Click Button-1 to edit the entry selected.');
+    $balloon->attach($entrylist,
+    		-statusmsg => 'Click Button-1 to choose an entry.');
+    }
+    else{
+    $current_a_cascade = $currCascade;
+    my $balloon2 = $TOP->Balloon(-statusbar => $statusA,
+    				-initwait => "900");       
+    $balloon2->attach($Dis,              
+    		-statusmsg  => 'Click Button-1 to close Table.');       
+    $balloon2->attach($delete,              
+	-statusmsg  => 'Click Button-1 to delete the entry selected.');        
+    $balloon2->attach($eButton,              
+		-statusmsg  => 'Click Button-1 to edit the entry selected.');
+    $balloon2->attach($entrylist,
+    		-statusmsg => 'Click Button-1 to choose an entry.');
+    }
+		
+    &refresh_table($tbl);
+   
+} # end see_vars
+
+	
+sub refresh_table {
+   
+   my($tbl) = @_;
+   my $counter = 0;
+   $entrySelected="Entry List";
+   
+    if ($tbl == '1') {
+	if((open(TBL,'< /tmp/table_b.dat'))){
+	@DATA = <TBL>;}
+	}
+    else {
+	if((open(TBL,'< /tmp/table_a.dat'))){
+	@DATA = <TBL>;
+	}
+	}
+	
+    #undef $/;
+
+    close(TBL);
+    my @test;	
+    
+    if(($tbl == '1' && $BCOUNT>0) or ($tbl == '2' && $ACOUNT>0)){
+    foreach(@DATA){
+	$#test++;
+	$test[$counter] = ($counter+1).") ".$DATA[$counter];
+	$counter++;
+    }
+    }
+ 
+    $counter = 0;
+    if($t){
+    $t->delete('0.0', 'end');
+    $t->insert("0.0", "TABLE CONTENTS \n\n");
+    if(@test){for(my $x = 0; $x<=$#test; $x++){
+	$test[$x] =~ s/ +//g;
+	$t->insert("end", "$test[$x]");
+    }
+    $t->yview("end");
+    $/="\n";
+    }
+    }
+  
+} # end refresh_table
+
+sub show_stat {
+
+    # Display name of current selection.  $sv is a reference to the
+    # status Label -textvariable, $text is the Text widget reference and
+    # $index is the index in the Text widget.
+
+    my($sv, $text, $index) = @_;
+
+    my @tags = $text->tagNames($index);
+    my $i = lsearch('table\-.*', @tags);
+    return if $i < 0;
+    my($table) = $tags[$i] =~ /table-(.*)/;
+    $$sv = "Click Button-1 to input \"$table\" data .";
+
+} # end show_stat
+
+sub list_output_files {
+	my @spl; my $buttonCount; my $num=0; my @b;
+	$b[$num] = $outputFile;
+	my $currCascade = $b[$num];
+	if((open(TBL,'< /tmp/table_a.dat'))){
+	@DATA = <TBL>;
+	close TBL;
+	}
+	foreach my $line (@DATA){
+	@spl = split(/,/,$line);
+	$spl[0] =~ s/"//;
+	chop($spl[0]);
+	
+	$buttonCount++;
+	if($buttonCount ==26){
+	$num++;
+	$b[$num] = $b[$num-1] ->cascade(-label=> "<more>",);
+	$buttonCount = 1;
+	$currCascade = $b[$num];}
+	
+	$currCascade->radiobutton(
+		-label => $spl[0],
+		-variable => \$OUTPUTFILE)
+		
+	}
+	
+	
+} #end list_output_files
+
+sub edit_entry {
+	
+	if($entrySelected ne "Entry List"){
+	my $sc;
+	my $temp;
+	my($tbl) = @_;
+	my $entryNum = substr($entrySelected,6);
+	my $editText;
+	$EDIT-> destroy if Exists($EDIT);
+	$EDIT = $VARS->Toplevel;
+	$EDIT->title("Edit Entry $entryNum");	
+	$EDIT->iconname('Edit Entry');
+	if($tbl == '1') {open(TBL,'< /tmp/table_b.dat') or @DATA = "";
+		@DATA = <TBL>;}
+	else{open(TBL,'< /tmp/table_a.dat')or @DATA = "";
+		@DATA = <TBL>;}
+
+	close(TBL);
+
+	$sc = $EDIT->Text("-height" => "3",
+		"-relief" => "raised",
+		"-bd" => "1",
+		"-width" => "83.75");
+
+	$sc->pack(-expand => 1, "-fill"   => "x");
+	$sc->tag("configure", "underline","-underline","on");
+	$DATA[$entryNum-1] =~ s/\s+//;
+	$sc->insert("0.0", "$DATA[$entryNum-1]\n");
+	
+	$EDIT->Button(-text => 'Dismiss',
+		-command => [$EDIT => 'destroy']
+	)->
+	pack(qw/-pady 2 -side right/);
+	
+	
+	$EDIT->Button(-text => 'Save Changes', 
+		-command => [sub {
+			     $editText = $sc->get('0.0','end');
+			     $editText =~ s/\n/ /g ;
+			     $editText =~ s/ +//;
+			     if(chomp($editText)){chomp($editText)};
+			     $editText = $editText."\n";
+			     $DATA[$entryNum-1] = $editText;
+			     if($tbl == '2'){
+			     open(TBL1,">/tmp/table_a.dat");
+			     foreach my $i (@DATA){print TBL1 "$i";}
+			     }
+			     else{
+			     open(TBL1,">/tmp/table_b.dat");
+			     foreach my $i (@DATA){print TBL1 "$i";}
+			     }
+			     close(TBL1);
+			     &refresh_table($tbl);
+			     $BSTATUS_VAR = "Entry ".($entryNum)." saved";
+			     $ASTATUS_VAR = "Entry ".($entryNum)." saved";
+			     $t->yview(($entryNum+1));
+			     }]
+	)->
+	pack(qw/-pady 2 -side right/);
+}
+} # end edit_entry
+
+sub varParse {
+my @tem; 		my $b=0;
+my @total; 		my $line_counter;			
+my @parse;		my $module_name;
+my @session;		my $var_name;	
+my $linenum;		my $new_module_name;
+my $ul=1;
+
+$#total = 0;
+if($PATH_NAME eq ""){$PATH_NAME = cwd;}
+#open($PATH_NAME) || die "$PATH_NAME is not a valid directory";
+
+find sub {
+    $BSTATUS_VAR = "Searching: ".substr($PATH_NAME, rindex($PATH_NAME, "/"));
+    $statusB -> update();
+    return if $_ eq "." or $_ eq "..";
+    return if !(/\.f90/i);
+    $tem[$b] =  "$File::Find::name";
+    $b++;
+   }, "$PATH_NAME";
+
+foreach (@tem){
+        my $old = $BSTATUS_VAR;
+	$BSTATUS_VAR = $BSTATUS_VAR.substr($_, rindex($_, "/"));
+	$statusB -> update();
+	$BSTATUS_VAR = $old;
+$BSTATUS_VAR = "Compiling variable list";
+$statusB -> update();
+    open(FNINE, $_);
+    @total = <FNINE>;
+    close FNINE;
+    unless(grep /register_/, @total){next;}
+    $line_counter = 0;
+    foreach (@total){
+    if(($_ =~ /^!/)||($_ =~ /^\n/)){
+    $line_counter++;
+    next;}
+    if(((/register_diag_field \(/ig)||(/register_static_field \(/ig))){ 
+	$_ = $total[$line_counter].$total[$line_counter+1];
+	$_ =~ s/\s+|&//g;
+	@_ = s/\(/,/;
+    	@parse = split(/,/,$_);
+    	$module_name = $parse[1];
+	if(/'/){
+    	$var_name = $parse[2]; 
+	if($var_name =~ /trim/){
+	@parse = split(/'/,$var_name);
+	$var_name = $parse[1];}
+	}
+	else{
+	my @next_line = split(/,/,$total[$line_counter+1]);
+	$var_name = $next_line[0];
+	if($var_name =~ /\(/){
+	@parse = split(/\(/,$var_name);
+	$var_name = $parse[1]."*";}
+	}
+	if($module_name =~ /\(/){@parse = split(/\(/,$module_name);
+	$module_name = $parse[1];
+	}
+	if(($module_name)&&($var_name)){$session[$#session++] = ($module_name.",".$var_name);
+	}		
+    }
+    $line_counter++;
+    }
+    pop(@session);
+foreach my $sline (@session){
+    @parse = split(/,/,$sline);
+    if($parse[0] =~ /'/){
+    $new_module_name = $parse[0];
+    }
+    else{
+    foreach my $line (@total){
+    	if($_ =~ /^!/){next;}
+    	if($line =~ /$module_name =/i){
+		$line =~ s/\(|\)//g;
+    		my @parse2 = split(/=/,$line);
+		$new_module_name = $parse2[$#parse2];
+		my @parse3 = split(/,/,$new_module_name);
+		$new_module_name = $parse3[0];
+		chomp($new_module_name);
+		last;	
+	}	
+	}
+    }
+    foreach my $line (@RL){
+		(my $modName, my $vaName) = split(/,/,$line);
+		if($vaName eq $parse[1]){$parse[1] = $parse[1].".";}
+		}
+		$sline = $new_module_name.",".$parse[1];
+		chomp($sline);
+		my $exists = 0;
+		foreach (@RL){
+		(my $modName, my $vaName) = split(/,/,$_);
+		$sline =~ s/\s+|'|\(|\)//g;
+		if($sline =~ /$_\.+/){$exists = 1; last;}}
+		unless((grep /$sline/,@RL)||($exists == 1)){
+			$sline =~ s/\s+|'//g;
+			$RL[++$#RL] = $sline;
+		my $old = $BSTATUS_VAR;
+		$BSTATUS_VAR = $BSTATUS_VAR.": "."$sline";
+		$statusB->update();
+		$BSTATUS_VAR = $old;	
+		}
+    }
+    @session = "";
+    }
+@RL = sort(@RL);
+&varList;
+
+} #end VarParse
+
+sub varList {
+	
+if(Exists($mb2->children)){
+	$mb2->children->delete('0','end');}
+	my $currMod;
+	my $m;
+	my $buttonCount;
+        my $currCascade;
+	my $num=0;
+	my @b;
+	
+	(my $mod, my $varName) = split(/,/,$RL[0]);
+	if($mod){$m= $mb2->cascade(-label=> "$mod");}
+	$currMod = $mod;
+	$currCascade = $m;
+	$buttonCount = 0;
+	    
+	foreach my $line (@RL) {
+	($mod, $varName) = split(/,/,$line);
+	if($currMod ne $mod){
+	$m = $mb2->cascade(-label=> "$mod");
+	$currCascade = $m;
+	$buttonCount = 0;}
+	
+	if($varName){
+	$buttonCount++;
+	if($buttonCount ==26){
+	if($currCascade == $m){$b[$num] = $m;}
+	$num++;
+	$b[$num] = $b[$num-1] ->cascade(-label=> "<more>");
+	$buttonCount = 1;
+	$currCascade = $b[$num];}
+	
+	$currCascade->radiobutton(
+		-label => $varName,
+		-variable => \$FIELD_NAME,
+		-command => [sub{
+				foreach my $line (@RL){
+				(my $modName, my $vaName) = split(/,/,$line);
+				if($vaName eq $FIELD_NAME){$MODULE = $modName;}
+				}	 
+				$FLD_NM = $FIELD_NAME;
+				$output->update();
+				}
+				]);
+	}
+	$currMod = $mod;
+	
+    }
+    my $numVars;
+    unless($added){$added--;}
+    $BSTATUS_VAR = "";
+    if(($#RL=='0')){$BSTATUS_VAR = "No variables found in $PATH_NAME";}
+    else{
+    if($#RL == $added){$numVars = 0;}
+    else{$numVars = ($#RL)-$added;}
+    $BSTATUS_VAR = $numVars." variable(s) added";
+    $added = $#RL;    
+}
+}
+
+sub multiple_a_entries {
+    $num = @_;
+    my @sline;
+    @sline = split(/,/,$delay_load[$num]);
+    $mult-> destroy if Exists($mult);
+	$mult = $MW->Toplevel;
+	$mult->title("Duplicate Output File Names");	
+
+	open(TBL,'< /tmp/table_a.dat')or @DATA = "";
+		@DATA = <TBL>;
+	close(TBL);
+	
+	my $lb1 = $mult->Label(-text => "Loaded entry $sline[0] is a duplicate output file name, 
+	enter new output file name or cancel entry", 
+	-relief=>'raised', 
+	-borderwidth=>2,
+	-anchor=>"w");
+	
+	$lb1->pack(-side=>"top",-fill=>"x");
+
+	my $sc = $mult->Text("-height" => "2",
+		"-relief" => "raised",
+		"-bd" => "1",
+		"-width" => "60");
+
+	$sc->pack(-expand => 1, "-fill"   => "x");
+	$sc->tag("configure", "underline","-underline","on");
+	$sc->insert("0.0", "$sline[0]");
+	
+	$mult->Button(-text => 'Cancel',
+		-command => [ $mult => 'destroy',
+			     sub {
+			     print "$num $#delay_load\n";
+			     unless($num >= $#delay_load){print "in here\n";
+			     &multiple_a_entries($num);}
+			     }]
+	)->
+	pack(qw/-pady 2 -side left/);
+	
+	$mult->Button(-text => 'Save Changes',
+			-command => [$mult => 'destroy',
+			     sub {
+			     #$num++;
+			     unless($num >= $#delay_load){&multiple_a_entries($num);}
+			     }]
+			)-> 
+    	pack(qw/-pady 2 -side right/);
+	
+    
+} #end multiple_a_entries
+
+ 
+sub remove_b {
+    my $fileN = "$_[0]";
+    my @spl;
+    my @newDATA;
+    $#newDATA = 0;
+    open(TBL,'< /tmp/table_b.dat');
+    my @tDATA = <TBL>; 
+    foreach my $line (@tDATA){
+    @spl = split(/,/,$line);
+    if($spl[3] ne $fileN){$newDATA[$#newDATA++]=$line}
+    else{$BCOUNT--;}
+    }
+    close TBL;
+    open(TBL,'> /tmp/table_b.dat');
+    print TBL @newDATA;
+    close TBL;
+} #end remove_b
+
+sub store_entry_table_b  {
+
+my $chk=0;
+if(($FIELD_NAME ne "")&&($OUTPUTFILE ne "")){
+	
+    if($FIELD_NAME =~ /\./){chop($FIELD_NAME);
+			    $chk = 1;}
+
+    # Enter data into Array
+    my($args)=@_;
+    open(TBL1,">> /tmp/table_b.dat") or die "Can't write to /tmp/table_b.dat: $!\n";
+     
+    print TBL1 "\"$MODULE\",\"$FIELD_NAME\",\"$FLD_NM\",\"$OUTPUTFILE\",\"$TIME_SAMPLING\",$TIME_AVG,\"$OTHER_OPS\",$PACK,\n";
+    
+    close(TBL1);
+    
+    $BCOUNT++;
+    $BSTATUS_VAR = "Entry $BCOUNT Stored";
+    unless($current_b_cascade){$current_b_cascade = $entrylist;}
+    
+    if(Exists $VARS ){ 
+    if((($BCOUNT != 1) && (($BCOUNT % 25)== 1))||($BCOUNT==26)){my $b = $current_b_cascade ->cascade(-label=> "<more>",
+    													-tearoff => '0',);
+    			  $current_b_cascade = $b;}
+    $current_b_cascade->radiobutton(
+	-label => "Entry $BCOUNT",
+	-variable => \$entrySelected,
+	);
+	
+    if($chk ==1){$FIELD_NAME = $FIELD_NAME.".";}
+    &refresh_table("1");}
+}
+
+if($FIELD_NAME eq ""){
+$BSTATUS_VAR = "Error: Field cannot be blank";}
+elsif($OUTPUTFILE eq ""){
+$BSTATUS_VAR = "Error: Must choose an output file";}
+    
+    
+} # End store_entry_table_b
+
+sub store_entry_table_a {
+ 
+   
+	my $duplicate=0;
+	my @spl;
+	if((open(TBL,'< /tmp/table_a.dat'))){
+	@DATA = <TBL>;
+	close(TBL);
+	}
+	foreach my $line (@DATA){
+	if($line){@spl = split(/,/,$line);}
+	if($spl[0]){
+	if($spl[0] eq "\"$OUTPUT_FILE\""){$ASTATUS_VAR = "$OUTPUT_FILE entry already exists";
+					 $duplicate = 1;}}
+	}
+	if($duplicate != 1){
+    
+    # Enter data into Array
+    my($args)=@_;
+   
+    open(TBL2,">> /tmp/table_a.dat") or die "Can't write to /tmp/table_a.dat: $!\n";
+    print TBL2 "\"$OUTPUT_FILE\",$OUTPUT_FREQUENCY,\"$OUTPUT_FREQUENCY_UNITS\",$FORMAT_ID,\"$TIME_UNITS\",\"$TIME_LONG_NAME\",\n";
+   
+    close(TBL2);    
+    
+    $ACOUNT++;
+    $ASTATUS_VAR = "Entry $ACOUNT Stored";
+    
+    unless($current_a_cascade){$current_a_cascade = $entrylist;}
+    
+    if(Exists $VARS ){ 
+    if((($ACOUNT != 1) && (($ACOUNT % 25)== 1))||($ACOUNT==26)){my $a = $current_a_cascade ->cascade(-label=> "<more>",
+    												-tearoff => '0',);
+    			  $current_a_cascade = $a;}
+    $current_a_cascade->radiobutton(
+	-label => "Entry $ACOUNT",
+	-variable => \$entrySelected,
+	);
+ 
+    &refresh_table("2");}
+}
+
+} # End store_entry_table_a
+
+sub table_b {
+    
+    $BSTATUS_VAR= "";
+
+    my($table) = @_; 
+
+    $TOP->destroy if Exists($TOP);
+
+    $TOP = $MW->Toplevel(
+	-title    => 'Table B',
+    );
+	       
+    my $store = $TOP->Button(
+	-text    => 'Store Entry',
+	-command => [\&store_entry_table_b, [\$MODULE, \$FIELD_NAME, \$FLD_NM, \$OUTPUTFILE, \$TIME_SAMPLING, \$TIME_AVG, \$OTHER_OPS, \$PACK]],
+	-relief => 'raised',		     
+	-borderwidth=>5,
+    );
+
+    my $see = $TOP->Button(
+	-text    => 'Show Table',
+	-command => [\&see_vars, $TOP, "1"],
+	-relief => 'raised',
+	-borderwidth=>5,		     
+    );
+   
+    my $dismiss = $TOP->Button(
+	-text    => 'Cancel',
+	-command => [$TOP => 'destroy'],
+	-relief => 'raised',
+	-borderwidth=>5,		     
+    );
+
+    my $fnam = "/tmp/table_b.dat";
+
+    my $delete = $TOP->Button(
+	-text    => 'Delete Last Entry',
+	-command => [sub {
+	    if(((substr($entrySelected,6)!=$BCOUNT))||(!(Exists($EDIT)))){
+	    if($BCOUNT==0){$BSTATUS_VAR = "No Entry to Delete";}
+	    else{
+	    open(FH,"+< /tmp/table_b.dat") or die "Can't read /tmp/table_b.dat: \!\n";;
+	    my $value=0;
+	    my $addr;$addr = 0;
+	    while (<FH>) {
+		$addr = tell(FH) unless eof(FH);
+		$value = 1;	
+	    }
+	    if($value){$BSTATUS_VAR = "Entry $BCOUNT Deleted";
+			$BCOUNT--;}
+	    else{$BSTATUS_VAR = "No Entry to Delete";}
+	    truncate(FH,$addr);
+	    close(FH);
+	    $EDIT-> destroy if Exists($EDIT);
+	    if(Exists $VARS){
+	    $entrylist->children->delete('0','end');
+	    my $count = 1;
+	    $current_b_cascade = $entrylist;
+	    foreach(@DATA){
+	    if($count > ($#DATA)){last;}
+	    if((($count != 1) && (($count % 25)== 1))||($count==26)){my $b = $current_b_cascade ->cascade(-label=> "<more>");
+    			  $current_b_cascade = $b;}
+      		$current_b_cascade->radiobutton(
+		-label => "Entry $count",
+		-variable => \$entrySelected,
+		);  
+	    $count++;
+	    };
+	    &refresh_table("1");} 
+	    }
+	    }
+	}],
+	-relief => 'raised',
+	-borderwidth=>5,		     
+    );
+    
+    my @pl = qw/-side bottom -pady 1 -padx .5 -anchor w/;  
+    
+    $statusB = $TOP->Label(-textvariable=> \$BSTATUS_VAR, 
+	-relief=>'raised', 
+	-borderwidth=>2,
+	-anchor=>"w");
+
+    $statusB->pack(-side=>"bottom",-fill=>"x");
+    
+    @pl = qw/-side left -expand 1 -padx .5c -pady .5c/;
+
+    $col1 = $TOP->Frame->pack(@pl);
+    
+    @pl = qw/-side top -pady 1 -padx .5 -anchor w/;
+
+    $PATH_NAME = cwd;
+    
+    @pl = qw/-side top -pady 5 -padx .5 -anchor w/;
+    
+    $col1->Label(-text => "Enter Directory Path")->pack(@pl);
+
+    @pl = qw/-side top -pady 0 -padx .5 -anchor w/;
+    
+    my $direct =$col1->Entry(
+	    		-textvariable => \$PATH_NAME,
+	    		-width => '35')->pack(@pl);
+
+    @pl = qw/-side top -pady 5 -padx .5 -anchor w/;
+	    
+    $col1->Label(-text => "Field")->pack(@pl);
+
+    $FIELD_NAME = '';
+    
+    $mb2 = $col1->Menubutton(
+		-textvariable=> \$FIELD_NAME,
+		-width => 10,
+		-relief =>'raised',
+		)->pack(qw/-side top -pady 4 -padx .5 -anchor w/);
+    
+    my $path = $TOP->Button(
+	-text    => 'Search',
+	-command => [\&varParse, $PATH_NAME],
+	-relief => 'raised',
+	-borderwidth=>5,		     
+    );    
+    
+    $TOP->bind("<Return>", sub { $path->invoke });
+    
+    my $browse = $TOP->Button(
+	-text	=> 'Browse',
+	-command => [sub {chdir($PATH_NAME);
+			my $fs = $TOP->FileSelect(
+				-verify => ["-d"],
+				-initialfile => cwd
+				);
+			$fs->title("Choose Directory:");
+			my $dir = $fs->Show;
+			if($dir ne ""){
+			$PATH_NAME = $dir;}
+			else{$PATH_NAME = cwd;}
+			chdir($PATH_NAME);
+			}],
+	-relief => 'raised',
+	-borderwidth=>5,
+    );
+    
+    $FLD_NM = "";
+    
+    $col1->Label(-text => "Output Name:")->pack(qw/-side top -pady 5 -padx .5 -anchor w/);
+	
+	$output = $col1->Entry(
+	    	-textvariable => \$FLD_NM,
+		)->pack(qw/-side top -pady 5 -padx .5 -anchor w/);
+
+    if((open(TBL,'< /tmp/table_a.dat'))){@DATA = <TBL>;}
+    if($DATA[0]){
+    my @spl = split(/,/,$DATA[0]);
+    $spl[0] =~ s/"//;
+    chop($spl[0]);
+	
+    $OUTPUTFILE = $spl[0];
+    }
+
+    $col1->Label(-text => "Output File")->pack(@pl);
+	
+	$outputFile = $col1->Menubutton(
+		-width => 10,
+		-relief =>'raised',
+		-textvariable => \$OUTPUTFILE
+		)->pack(@pl);
+		
+	&list_output_files;
+
+    $TIME_SAMPLING = 'all';
+
+    $col1->Label(-text => "Time Sampling (not implemented)")->pack(@pl);
+
+	my $time = $col1->Entry(
+	    	-textvariable => \$TIME_SAMPLING
+		)->pack(@pl);
+
+    $TIME_AVG = ".false.";
+
+    $col1->Label(-text => "Time Avg")->pack(@pl);
+
+my $timeAvg =$col1->Checkbutton(
+	    -text     => 'time avg',
+	    -variable => \$TIME_AVG,
+	    -relief   => 'flat',
+	    -offvalue => '.false.',
+	    -onvalue  => '.true.'
+	)->pack(@pl);
+
+
+    $col1->Label(-text => "Other Ops (not implemented)")->pack(@pl);
+
+    $OTHER_OPS = 'none';
+
+    my $mb3 = $col1->Menubutton(
+	-textvariable=> \$OTHER_OPS,
+	-width => 10,
+	-relief =>'raised')->pack(@pl);
+
+    foreach my $ops (qw/none avg_axis_1 avg_axis_2/) {
+	$mb3->radiobutton(
+	    -label     => $ops,
+	    -variable => \$OTHER_OPS,
+	);
+    }
+
+    $PACK = 2;
+
+    $col1->Label(-text => "Packing (# words to 1 word)")->pack(@pl);
+ 
+    my $mb4 = $col1->Menubutton(
+	-textvariable=> \$PACK,
+	-width => 10,
+	-relief =>'raised')->pack(@pl);
+
+    foreach my $pk (qw/1 2 4/) {
+	$mb4->radiobutton(
+	    -label     => "$pk",
+	    -variable => \$PACK,
+	);
+    }
+
+
+    @pl = qw/-side bottom -padx 1 -pady 1 -expand 1/;
+         
+    my $balloon2 = $TOP->Balloon(-statusbar => $statusB,
+    				 -initwait => "4000");
+    $balloon2->attach($TOP,
+    		-statusmsg => '');
+    
+    my $balloon = $TOP->Balloon(-statusbar => $statusB,
+    				-initwait => "900");       
+    $balloon->attach($see,              
+    		-statusmsg  => 'Click Button-1 to see entries stored.');       
+    $balloon->attach($store,              
+		-statusmsg  => 'Click Button-1 to store a Table B entry.'); 
+    $balloon->attach($dismiss,              
+    		-statusmsg  => 'Click Button-1 to close the Table B form.');       
+    $balloon->attach($delete,              
+		-statusmsg  => 'Click Button-1 to delete the last entry in the table.');
+    $balloon->attach($browse,              
+    		-statusmsg  => 'Click Button-1 to browse for a directory.');       
+    $balloon->attach($path,              
+	-statusmsg  => 'Click Button-1 to search the specified directory for fields.');
+    $balloon->attach($direct,              
+    	-statusmsg  => 'Enter a directory pathname to search for register calls.'); 
+    $balloon->attach($mb2,              
+		-statusmsg  => 'Click Button-1 to display the Module lists.'); 
+    $balloon->attach($output,              
+    		-statusmsg  => 'Name of variable in diagnostic file.');       
+    $balloon->attach($outputFile,              
+		-statusmsg  => 'Output file : From TABLE_A.');
+    $balloon->attach($time,              
+    		-statusmsg  => 'Time sampling : e.g. all.');       
+    $balloon->attach($mb4,              
+	-statusmsg  => 'Packing (# words to 1 word).');
+	
+    $store->pack(@pl);
+    $see->pack(@pl);
+    $dismiss->pack(@pl);
+    $delete->pack(@pl);
+    @pl = qw/-side right -padx 0 pady 38 -expand 1/;
+    $browse->pack(@pl);
+    $path->pack(@pl);
+    $STATUS_VAR = "";
+    
+    if($#RL>0){&varList;}
+
+} # end table_b
+
+sub table_a {
+
+    $ASTATUS_VAR= "";    
+
+    my($table) = @_;
+
+    $TOP->destroy if Exists($TOP);
+
+    $TOP = $MW->Toplevel(
+	-title    => 'Table A',
+    );
+
+
+    my $store = $TOP->Button(
+	-text    => 'Store Entry',
+	-command => [\&store_entry_table_a, [\$OUTPUT_FILE, \$OUTPUT_FREQUENCY,
+	\$OUTPUT_FREQUENCY_UNITS, \$FORMAT_ID, \$TIME_UNITS, \$TIME_LONG_NAME]],
+	-relief => 'raised',
+	-borderwidth=>5,		     
+    );
+
+
+    my $see = $TOP->Button(
+	-text    => 'Show Table',
+	-command => [\&see_vars, $TOP,"2"],
+	-relief => 'raised',
+	-borderwidth=>5,		     
+    );
+    my $dismiss = $TOP->Button(
+	-text    => 'Cancel',
+	-command => [$TOP => 'destroy'],
+	-relief => 'raised',
+	-borderwidth=>5,
+    );
+
+    my $delete = $TOP->Button(
+	-text    => 'Delete Last Entry',
+	-command => [sub {
+	    if(((substr($entrySelected,6) eq $ACOUNT))||(!(Exists($EDIT)))){
+	    if($ACOUNT==0){$ASTATUS_VAR = "No Entry to Delete";}
+	    else{
+	    my $addr;$addr = 0;
+	    my $value=0;
+	    open(FH,"+< /tmp/table_a.dat") or die "Can't read /tmp/table_a.dat: \!\n";;
+	    my @FH = <FH>;
+	    close(FH);
+	    my @fileN = split(/,/,$FH[$#FH]);
+	    &remove_b($fileN[0]);
+	    open(FH,"+< /tmp/table_a.dat") or die "Can't read /tmp/table_a.dat: \!\n";;
+	    while (<FH>) {
+		$addr = tell(FH) unless eof(FH);
+		$value = 1;
+	    }
+	    truncate(FH,$addr);
+	    if($value){$ASTATUS_VAR = "Entry $ACOUNT Deleted";
+			$ACOUNT--;}
+	    else{$ASTATUS_VAR = "No Entry to Delete";}
+	    close(FH);
+	    if(Exists $VARS ){
+	    $entrylist->children->delete('0','end');
+	    my $count = 1;
+	    $current_a_cascade = $entrylist;
+	    foreach(@DATA){
+	    if($count > ($#DATA)){last;}
+	    if((($count != 1) && (($count % 25)== 1))||($count==26)){my $a = $current_a_cascade ->cascade(-label=> "<more>");
+    			  $current_a_cascade = $a;}
+      		$current_a_cascade->radiobutton(
+		-label => "Entry $count",
+		-variable => \$entrySelected,
+		);  
+	    $count++;
+	    };
+	    &refresh_table("2");}
+	    }
+	    }
+	   
+	   
+	}],
+	-relief => 'raised',
+	-borderwidth=>5,		     
+    );
+
+    my @pl = qw/-side bottom -pady 1 -padx .5 -anchor w/;  
+    
+    $statusA = $TOP->Label(-textvariable=> \$ASTATUS_VAR, 
+	-relief=>'raised', 
+	-borderwidth=>2,
+	-anchor=>"w");
+
+    $statusA->pack(-side=>"bottom",-fill=>"x");
+
+    @pl = qw/-side left -expand 1 -padx .5c -pady .5c/;
+
+    $col1 = $TOP->Frame->pack(@pl);
+
+
+    @pl = qw/-side top -pady 1 -padx .5 -anchor w/;
+
+
+    $col1->Label(-text => "Output File")->pack(@pl);
+
+    $OUTPUT_FILE = 'file.nc';
+
+    my $outputFile = $col1->Entry(
+		-textvariable => \$OUTPUT_FILE
+		)->pack(@pl);
+
+
+    $col1->Label(-text => "Output Frequency")->pack(@pl);
+
+    $OUTPUT_FREQUENCY = '86400';
+
+    my $freq = $col1->Entry(
+		-textvariable => \$OUTPUT_FREQUENCY,
+		)->pack(@pl);
+
+    $col1->Label(-text => "Output Frequency Units")->pack(@pl);
+
+    $OUTPUT_FREQUENCY_UNITS='seconds';
+
+    my $freqUnits = $col1->Menubutton(
+		-width => 10,
+		-textvariable => \$OUTPUT_FREQUENCY_UNITS,
+		-relief => 'raised'
+		)->pack(@pl);
+    
+    foreach my $un (qw/seconds minutes hours days months years/) {
+    	$freqUnits->radiobutton(
+	    -label     => $un,
+	    -variable => \$OUTPUT_FREQUENCY_UNITS,
+	);
+    }
+
+
+    $col1->Label(-text => "Format")->pack(@pl);
+
+    $FORMAT = 'NetCDF';
+    $FORMAT_ID = 1;
+
+    
+    $mb2 = $col1->Menubutton(
+	-textvariable=> \$FORMAT,
+	-width => 10,
+	-relief =>'raised')->pack(@pl);
+
+    my $i = 0;
+    foreach my $for (qw/NetCDF/) {
+	$i++;
+	$mb2->radiobutton(
+	    -label     => $for,
+	    -value     => $i,
+	    -variable => \$FORMAT_ID,
+	);
+    }
+
+    $col1->Label(-text => "Units for NetCDF time axis")->pack(@pl);
+
+    $TIME_UNITS = 'days';
+
+    my $mb3 = $col1->Menubutton(
+	-textvariable=> \$TIME_UNITS,
+	-width => 10,
+	-relief =>'raised')->pack(@pl);
+
+    foreach my $tu (qw/minutes hours days/) {
+	$mb3->radiobutton(
+	    -label     => $tu,
+	    -variable => \$TIME_UNITS,
+	);
+    }
+
+
+    $TIME_LONG_NAME = 'time';
+
+    $col1->Label(-text => "Time Long Name")->pack(@pl);
+
+    my $timeL = $col1->Entry(
+	    -textvariable => \$TIME_LONG_NAME
+	)->pack(@pl);
+	
+    my $balloon2 = $TOP->Balloon(-statusbar => $statusA,
+    				 -initwait => "4000");
+    $balloon2->attach($TOP,
+    		-statusmsg => '');
+
+    my $balloon = $TOP->Balloon(-statusbar => $statusA,
+    				-initwait => "900");       
+    $balloon->attach($see,              
+    		-statusmsg  => 'Click Button-1 to see entries stored.');       
+    $balloon->attach($store,              
+		-statusmsg  => 'Click Button-1 to store a Table A entry.'); 
+    $balloon->attach($dismiss,              
+    		-statusmsg  => 'Click Button-1 to close the Table A form.');       
+    $balloon->attach($delete,              
+		-statusmsg  => 'Click Button-1 to delete the last entry in the table.');
+    $balloon->attach($outputFile,              
+    		-statusmsg  => 'File name for output file.');       
+    $balloon->attach($freq,              
+	-statusmsg  => 'Frequency for outputting data to file.');
+    $balloon->attach($freqUnits,              
+    	-statusmsg  => 'Output frequency units: e.g. seconds, hours, days.'); 
+    $balloon->attach($mb3,              
+		-statusmsg  => 'Units for time axis: e.g. minutes, hours, days.');
+    $balloon->attach($timeL,              
+		-statusmsg  => 'Time units in file.');
+    
+
+    @pl = qw/-side bottom -padx 1 -pady 1 -expand 1/;
+
+    $store->pack(@pl);
+    $see->pack(@pl);
+    $dismiss->pack(@pl);
+    $delete->pack(@pl);
+    
+    unless($INITIAL_YEAR){$INITIAL_YEAR = '1979';}
+    unless($INITIAL_MONTH){$INITIAL_MONTH = '1';}
+    unless($INITIAL_DAY){$INITIAL_DAY = '1';}
+
+} # end table_a
+
+sub global_atts {
+
+    unless($INITIAL_YEAR){$INITIAL_YEAR = '1979';}
+    unless($INITIAL_MONTH){$INITIAL_MONTH = '1';}
+    unless($INITIAL_DAY){$INITIAL_DAY = '1';}
+
+    $TOP->destroy if Exists($TOP);
+
+    $TOP = $MW->Toplevel(
+	-title    => 'Global File Attributes',
+    );
+
+
+    my $ok = $TOP->Button(
+	-text    => 'OK',
+	-command => [$TOP => 'destroy'],
+    );
+
+    my @pl = qw/-side right -expand 1 -padx .5c -pady .5c/;
+
+    my $win = $TOP->Frame->pack(@pl);
+
+    @pl = qw/-side top -pady 1 -padx .5 -anchor w/;
+
+    $win->Label(-text => "Global File Attributes (up to 128 characters)")->pack(@pl);
+
+    unless($GLOBAL_ATTS){$GLOBAL_ATTS = 'blank';}
+
+    $win->Label(-text => "Global Title Attribute")->pack(@pl);
+
+    $win->Scrolled('Entry',
+	-scrollbars => 'os',
+	-textvariable => \$GLOBAL_ATTS,
+	)->pack(@pl);
+  
+    $win->Label(-text => "Initial year for time axis")->pack(@pl);
+
+    $win->Entry(
+	 -textvariable => \$INITIAL_YEAR,
+		)->pack(@pl);
+
+    $win->Label(-text => "Initial month for time axis")->pack(@pl);
+
+    $win->Entry(
+	 -textvariable => \$INITIAL_MONTH,
+		)->pack(@pl);
+    $win->Label(-text => "Initial day for time axis")->pack(@pl);
+
+    $win->Entry(
+	 -textvariable => \$INITIAL_DAY,
+		)->pack(@pl);
+
+	
+    @pl = qw/-side bottom -padx 1 -pady 1 -expand 1/;
+
+    $ok->pack(@pl);
+
+} # end global_atts
+
+sub help_main {
+    
+    $TOP->destroy if Exists($TOP);
+
+    $TOP = $MW->Toplevel(
+	-title    => 'Help',
+    );
+
+
+    $TOP->option('add','*Text.background'=>'white');
+
+    my $t = $TOP->Scrolled('Text',"-relief" => "raised",
+		     "-bd" => "2",
+		     "-setgrid" => "true");
+
+    $t->pack(-expand => 1, "-fill"   => "both");
+    $t->tag("configure", "underline","-underline","on");
+
+    $t->insert("0.0",
+
+"Using this interface, you can create a diagnostics table 
+which is interpreted inside FMS module diag_manager_mod.  
+Enter global file information including the title amd base_time
+for the diagnostics file. There are two tables: table_a contains 
+file information and table_b contains variable information.  
+
+TABLE_A
+
+1. File name
+
+2. Output frequency: frequency for outputting data to file. 
+One time axis per file (files with a time axis can contain static 
+data which are output once).
+
+3. Output frequency units:  e.g. seconds, hours, days
+
+4. Format : currently only NetCDF.
+
+5. Time units: Time units in file.
+
+TABLE_B
+
+1. Directory Path: to search for calls to register_diag_field.
+
+2. Field_name: from call to register_diag_field.
+
+3. Output name: name of variable in diagnostic file
+
+4. Output file : From TABLE_A 
+
+5. Time sampling : e.g. all, 0-3GMT, first day of month 
+   (just all for now).
+
+6. Time average? 
+
+7. Pack : #words to word. (e.g. 64bit->32bit = 2)	  
+
+You can load an existing table using the \"File->Load\" option.  
+This will grab the table entries and append them to your current
+table information.  Global attributes remain unchanged.
+
+After you have made an entry, you can view the current table information
+using the \"Show Table\" button.  Use the \"Delete last entry\" button if
+you made a mistake.
+
+Upon completion. Use the \"File->Save\" menubar to store your table.
+
+Contact: mjh\@gfdl.gov
+
+
+");
+
+    $TOP->Button(-text => 'Dismiss', -command => [$TOP => 'destroy'])->
+	pack(qw/-side bottom -pady 2/);
+
+
+} # end help
+
+sub save_table{
+    $fname = $LoadDialog->Show(-Horiz => 1);
+    if (!defined($fname)) {return};	
+    open(TBL1,"</tmp/table_a.dat");		
+    open(FH,"> $fname");
+    print FH "$GLOBAL_ATTS\n";
+    print FH " $INITIAL_YEAR $INITIAL_MONTH $INITIAL_DAY 0 0 0\n";
+    while(<TBL1>) {print FH "$_";};
+    close(TBL1);
+    open(TBL2,"< /tmp/table_b.dat");
+    while(<TBL2>) {print FH "$_";};
+    close(TBL2);
+    close(FH);
+}  #end save_table
+
+
+sub load_table{
+    my ($i,$line,@a,$gatts1, $gatts2, $gatts);
+    $fname = $LoadDialog->Show(-Horiz => 1);
+    if (!defined($fname)) {return};
+    open(TBL2,"+>> /tmp/table_a.dat");  		 
+    open(FH,"< $fname");				 
+    $gatts1= <FH>;
+    $gatts2= <FH>;
+    if($gatts2 =~ /0 0 0/){
+    my @tp = split(/ /, $gatts2);
+    if($tp[0]){
+    $INITIAL_YEAR = $tp[0]; 
+    $INITIAL_MONTH = $tp[1];
+    $INITIAL_DAY = $tp[2];
+    }
+    else{
+    $INITIAL_YEAR = $tp[1]; 
+    $INITIAL_MONTH = $tp[2];
+    $INITIAL_DAY = $tp[3];
+    }
+    }
+    $GLOBAL_ATTS = $gatts1;
+    	chomp($GLOBAL_ATTS);
+    close FH;
+    open(FH,"< $fname");
+    
+    $line = <FH>;
+    
+    @a=split /\s+/, $line;
+    my @hold = <FH>;
+    close(FH);
+    open(FH,"< /tmp/table_a.dat/");
+    
+    my @aDATA;
+    open(TBL,'< /tmp/table_a.dat');
+    @aDATA = <TBL>;
+    close TBL;	
+   
+    my @bList; my @aList;
+    my $bTrack=0; my $aTrack=0;
+    my $b_first=0;
+    foreach my $line (@hold){
+	my @sub = split /,/g, $line;
+	if(defined($sub[7])){my $wp = $sub[7];
+	if(($wp== 1)||($wp== 2)||($wp== 4)){
+		$b_first=1;
+		unless($line =~ /$\#/){$bList[$bTrack] = $line;}
+		$bTrack++;
+		}
+		}
+	elsif(defined ($sub[5])&&($b_first!=1)){
+		unless($line =~ /$\#/){$aList[$aTrack] = $line;}
+		$aTrack++;}
+    }    
+    foreach $line (@aList){$line =~ s/\s+//g;
+    			  my $skip_load;
+			  if($line ne ""){
+    			  foreach (@aDATA) {
+			  my @exLine = split(/,/,$_);
+			  my @addLine = split(/,/,$line);
+			  #if($exLine[0] eq $addLine[0]){$skip_load = 1;
+			  #			if($#delay_load == -1){$#delay_load = 0;}
+			#			@delay_load[$#delay_load] = $line}
+			  }
+			  #if($skip_load == 1){$skip_load = 0; next;}
+			  chomp $line;
+			  print TBL2 "$line\n";
+			  $ACOUNT++;}}
+    close(TBL2);
+    open(TBL1,"+>> /tmp/table_b.dat");
+    foreach my $line (@bList){
+    			  $line =~ s/\s+//g;
+			  if($line ne ""){
+    			  print TBL1 "$line\n"; 
+			  $BCOUNT++;}}
+    close(TBL1);
+    #if($#delay_load > -1){&multiple_a_entries, 0;}
+    if((Exists($TOP)&&(($TOP->title) eq 'Table A')) && (Exists($VARS))){
+      if(Exists($entrylist->children)){$entrylist->children->delete('0','end');}
+	$current_a_cascade = $entrylist;
+	for(my $count=1; $count <= $ACOUNT; $count++){
+	if((($count != 1) && (($count % 25)== 1))||($count==26)){my $a = $current_b_cascade ->cascade(-label=> "<more>");
+    		$current_a_cascade = $a;}
+      	if($current_b_cascade){
+	$current_b_cascade->radiobutton(
+		-label => "Entry $count",
+		-variable => \$entrySelected,
+	);  
+	}
+	}; 
+    &refresh_table(2);
+    }
+    elsif((Exists($TOP)&&(($TOP->title) eq 'Table B')) && (Exists($VARS))){
+       if(Exists($entrylist->children)){$entrylist->children->delete('0','end');}
+	$current_b_cascade = $entrylist;
+	for(my $count=1; $count <= $BCOUNT; $count++){
+	if((($count != 1) && (($count % 25)== 1))||($count==26)){my $b = $current_b_cascade 
+	->cascade(-label=> "<more>"
+		 ,-tearoff => '0',);
+    		$current_b_cascade = $b;}
+      	$current_b_cascade->radiobutton(
+		-label => "Entry $count",
+		-variable => \$entrySelected,
+	);  
+	};
+    	&refresh_table(1);
+    	&list_output_files;
+	
+	}
+}  
+
+
+#end load_table
+1;
+
+
+__END__
+
+=head1 NAME
+
+
+
+=head1 SYNOPSYS
+  
+
+
+=head1 DESCRIPTION 
+
+
+=head2 History
+
+ #
+ # M.J. Harrison : 5/10/99
+
+=head1 AUTHOR
+
+M.J. Harrison (mjh@gfdl.gov)
+
+=cut 
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

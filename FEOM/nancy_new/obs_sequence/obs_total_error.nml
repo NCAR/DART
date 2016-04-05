@@ -1,0 +1,7 @@
+&obs_total_error_nml
+   filename_in   = '' 
+   filename_list = '' 
+   lastN         = 50
+   calendar      = 'Gregorian'
+/
+

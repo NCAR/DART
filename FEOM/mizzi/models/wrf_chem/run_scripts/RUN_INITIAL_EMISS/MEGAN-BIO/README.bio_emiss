@@ -1,0 +1,177 @@
+
+	The megan_bio_emiss utility, a single cpu code, reads transformed
+        MEGAN biogenic input files and produces wrfbiochemi_d<nn>
+        files needed to run WRF-Chem with the MEGAN biogenic emission
+        option.
+        
+        Throughout this documentation <nn> represents an integer,
+	two digit number, starting with 01, denoting the WRF grid.
+
+	The utilities used to create the transformed MEGAN input
+        files to megan_bio_emiss are :
+
+	megan xform
+	surfdata_xform
+
+	Building the megan utilies
+        ======== === ===== =======
+
+	All the executables can be created with the
+
+	make_util
+
+	script.  The make_util script is invoked as :
+
+	make_util util_name
+
+	where util_name is one of {megan_bio_emiss,megan_xform,surfdata_xform}.
+
+	make_util should work on any platform with either a Portland
+	Group or IBM fortran90 compiler.  The only required library
+	is netcdf.  If you need to use another compiler such as the Intel
+        Fortran90 compiler, ifort, you can set the environment variable
+
+	FC
+
+	before invoking make_util.  As an example you would issue
+	the command :
+
+	export FC=ifort 
+
+	in the sh, bash, or ksh Linux shells or
+
+	setenv FC ifort
+
+	in the csh or tcsh shells.  Presently the make_util utility recognizes
+        the following FC settings :
+
+        pgf90                 (PGI)
+        gfortran              (GNU)
+        ifort                 (Intel)
+        lf95                  (Lahey)
+        xlf90                 (IBM)
+
+	The megan utilities require the netcdf library and make_util
+	will attempt to locate the libnetcdf.a library.  However, this is
+	not a foolproof process and thus you may need to set the environment variable
+	
+	NETCDF_DIR
+
+	to the directory containing the file lib/libnetcdf.a.  As an example
+        in the ksh shell, if you issued the command :
+
+	export NETCDF_DIR=/usr/local/netcdf-4.1.2
+
+	then make_util would look for the file libnetcdf.a in the
+	directory /usr/local/netcdf-4.1.2/lib (make_util automatically
+	appends the /lib string to the NETCDF_DIR string).
+
+        If you require assistance with compiler and/or netcdf issues send email to :
+
+        stacy@ucar.edu
+	
+	The megan_xform and surfdata_xform tools take "raw" megan
+	and surface datasets and produce transformed datasets consistent
+        with wrf horizontal coordinate ordering.  These programs
+	must be run in the directory containing the raw MEGAN files.
+        One good way to do this is to link, using "ln -s", the actual
+	raw files to the directory where you run the megan_xform and
+        surfdata_xform programs.
+
+	If you use the provided MEGAN input datasets you do NOT need to run 
+	these programs, you only need megan_bio_emiss.  	
+
+        The megan_bio_emiss program reads wrf wrfinput_d<nn> files and
+        megan and surface data files, transformed with megan_xform
+        and surfdata_xform, to produce wrfbiochemi_d<nn> wrf input files.
+        
+	The megan_bio_emiss program reads a short namelist which consists of :
+
+	Namelist control variables
+        ======== ======= =========
+
+	Variable name             Variable type                                   default value
+	-------- ----             -------- ----                                   ------- -----
+
+        wrf_dir                   character(len=100),scalar                       (current directory)
+        megan_dir                 character(len=100),scalar                       (current directory)
+        domains                   integer,scalar                                   1
+        start_lai_mnth            integer,scalar                                   1
+        end_lai_mnth              integer,scalar                                   12
+
+	domains         - an integer representing the number of wrf domains
+	wrf_dir         - a character variable representing the full path
+                          to the wrfinput_d<nn> files.  This variable should
+	                  NOT end in the forward slash character "/"
+        megan_dir       - same as wrf_dir except represents the directory
+                          of the transformed megan and surfdata files
+        start_lai_mnth  - an integer representing the starting month
+                          for the monthly lai megan files; must be in the range [1,12]
+        end_lai_mnth    - an integer representing the ending month
+                          for the monthly lai megan files; must be in the range [1,12]
+
+	Running megan_bio_emiss
+        ======= ===============
+
+	To run megan_bio_emiss issue the command:
+
+	megan_bio_emiss < bioemiss.inp > bioemiss.out
+
+        Redirected input is required. Redirected output is optional.
+        The bioemiss.inp and bioemiss.out filenames are for illustration only; you
+        may use any valid filename in place of bioemiss.inp,bioemiss.out.
+
+	Example input file
+	======= ===== ====
+
+	The file megan_bio_emiss.inp listed directly below
+
+
+&control
+
+domains = 3,
+start_lai_mnth = 5,
+end_lai_mnth   = 6,
+wrf_dir   = '/home/stacy/megan/wrf_files',
+megan_dir = '/home/stacy/megan/30sec'
+
+/
+
+	directs megan_bio_emiss to produce wrfbiochemi_d<nn> output files for
+        three domains using wrfinput_d<nn> file from /home/stacy/megan/wrf_files and
+        megan input files from /home/stacy/megan/30sec where <nn> = {01,02,03}.  With 
+	the start_lai_mnth and end_lai_mnth variables set to 5 and 6, respectively,
+ 	the resultant wrfbiochemi_d<nn> files contain only May and June monthly data
+	(e.g. needed for a June simulation).  
+        ------------------------------------------------------------------------
+
+        NOTE: The MEGAN biogenic emission option requires input data sets for
+        both the month of the simulation and the previous month.
+        Thus with the setting above the wrfbiochemi_<domain> file created
+        is suited for a WRF simulation, with MEGAN biogenic emission option,
+        for the month of June.  If you are simulating in January then you will
+        have to do all months;
+	start_lai_month = 1,
+        end_lai_month = 12,
+
+        ------------------------------------------------------------------------
+	To run megan_bio_emiss using the megan_bio_emiss.inp input namelist file 	
+	one would issue the following command :
+
+	megan_bio_emiss < megan_bio_emiss.inp > megan_bio_emiss.out
+
+	The megan_bio_emiss.out is an ascii file containing the complete output from
+	running megan_bio_emiss.  Although not necessary it is advisable to redirect
+        standard output to a file.
+
+	FYI
+	===
+
+	The megan_bio_emiss utility can take up to or even more than a wall clock hour
+	to run on for polar stereographic WRF grids if the WRF grid includes points
+	near or at a pole.  Generally lambert conformal or mercator WRF grids take less
+	than 10 wall clock minutes on most modern workstations or laptops.
+
+	If you have questions please contact :
+
+	Gabriele Pfister (pfister@ucar.edu) or Stacy Walters (stacy@ucar.edu)

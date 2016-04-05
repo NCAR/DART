@@ -1,0 +1,6 @@
+&model_nml
+   dt_bias  = -3, 
+   noise_sd = 128.0, 
+   override = .true.,
+   output_state_vector = .false.  /
+

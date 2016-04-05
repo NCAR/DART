@@ -1,0 +1,69 @@
+netcdf COSMIC_parlist_station {
+dimensions:
+	nsites = UNLIMITED ; // (1 currently)
+	strlength = 21 ;
+variables:
+	char sitenames(nsites, strlength) ;
+		sitenames:long_name = "COSMOS Site Names" ;
+	double longitude(nsites) ;
+		longitude:long_name = "Longitude" ;
+		longitude:units = "degrees" ;
+	double latitude(nsites) ;
+		latitude:long_name = "Latitude" ;
+		latitude:units = "degrees" ;
+	double elevation(nsites) ;
+		elevation:long_name = "Elevation" ;
+		elevation:units = "m" ;
+	double bd(nsites) ;
+		bd:long_name = "Dry Soil Bulk Density" ;
+		bd:units = "g cm{-3}" ;
+	double lattwat(nsites) ;
+		lattwat:long_name = "Lattice Water Content" ;
+		lattwat:units = "m{3} m{-3}" ;
+	double N(nsites) ;
+		N:long_name = "High Energy Neutron Intensity" ;
+		N:units = "relative counts" ;
+	double alpha(nsites) ;
+		alpha:long_name = "Ratio of Fast Neutron Creation Factor (Soil to Water)" ;
+		alpha:units = "-" ;
+	double L1(nsites) ;
+		L1:long_name = "High Energy Soil Attenuation Length" ;
+		L1:units = "g cm{-2}" ;
+	double L2(nsites) ;
+		L2:long_name = "High Energy Water Attenuation Length" ;
+		L2:units = "g cm{-2}" ;
+	double L3(nsites) ;
+		L3:long_name = "Fast Neutron Soil Attenuation Length" ;
+		L3:units = "g cm{-2}" ;
+	double L4(nsites) ;
+		L4:long_name = "Fast Neutron Water Attenuation Length" ;
+		L4:units = "g cm{-2}" ;
+
+// global attributes:
+		:instructions = "Fill in your own site information, use ncgen to create a netCDF file, and then ncrcat it to the existing COSMIC_parlist.nc" ;
+data:
+
+ sitenames = "deadwood             " ;
+
+ longitude = -103.7292 ;
+
+ latitude  = 44.3767 ;
+
+ elevation = 1381 ;
+
+ bd        = 1.402 ; 
+
+ lattwat   = 0.0752874 ;
+
+ N         = 429.43771308 ;
+
+ alpha     = 0.23651358859 ;
+
+ L1        = 161.986218642857 ;
+
+ L2        = 129.14558985 ;
+
+ L3        = 137.01382718 ;
+
+ L4        = 3.8086191933 ;
+}

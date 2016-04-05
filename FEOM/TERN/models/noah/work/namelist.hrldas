@@ -1,0 +1,38 @@
+
+### THIS IS FOR DART ###
+FORCING_FILE_DIRECTORY = "/Users/thoar/svn/DART/devel/models/noah/forcing/santarita"
+
+&NOAHLSM_OFFLINE
+
+   HRLDAS_CONSTANTS_FILE = "wrfinput"
+   INDIR  = "."
+   OUTDIR = "."
+
+   RESTART_FILENAME_REQUESTED = "restart.nc"
+
+   KHOUR                   = 1
+   FORCING_TIMESTEP        = 3600
+   NOAH_TIMESTEP           = 3600
+   OUTPUT_TIMESTEP         = 3600
+   RESTART_FREQUENCY_HOURS = 1
+   SPLIT_OUTPUT_COUNT      = 1
+
+   NSOIL=4
+   ZSOIL(1) = -0.10
+   ZSOIL(2) = -0.40
+   ZSOIL(3) = -1.00
+   ZSOIL(4) = -2.00
+
+   ZLVL      = 3.3
+   ZLVL_WIND = 3.3
+
+   IZ0TLND       = 0
+   SFCDIF_OPTION = 0
+   UPDATE_SNOW_FROM_FORCING = .FALSE.
+
+/
+
+&URBAN_OFFLINE
+   SF_URBAN_PHYSICS = 0
+   ZLVL_URBAN       = 15.0
+/

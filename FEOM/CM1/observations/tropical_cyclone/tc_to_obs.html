@@ -1,0 +1,296 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>program tc_to_obs</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>PROGRAM <em class=program>tc_to_obs</em></H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#DataSources">DATA SOURCES</A> /
+<A HREF="#Programs">PROGRAMS</A> /
+<A HREF="#ObservationalErrors">EXPECTED ERROR</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#KnownBugs">KNOWN BUGS</A> /
+<A HREF="#FuturePlans">PLANS</A> / 
+<A HREF="#Legalese">TERMS OF USE</A>
+
+
+<H1>Tropical Cyclone ATCF File to DART Converter</H4>
+
+<H2>Overview</H1>
+
+<P>
+Tropical Cyclone data created 
+by the 'Automated Tropical Cyclone Forecast (ATCF) System'
+can be converted into DART observations of the storm center
+location, minimum sea level pressure, and maximum wind speed.
+Several of the options can be customized at runtime by 
+setting values in a Fortran namelist.  See the <a href="#Namelist">namelist</a>
+section below for more details.
+In the current release of DART only the 
+<a href="../../models/wrf/model_mod.html">WRF model</a>
+has forward operator code to generate expected obs values for these
+vortex observations.
+</P>
+<P>
+<a href="http://www.ral.ucar.edu/hurricanes/realtime/index.php#about_atcf_data_files">
+This webpage</a> documents many things about the ATCF system and
+the various file formats that are used for storm track data and 
+other characteristics.
+</P>
+<P>
+The converter in this directory is only configured to read the packed "b-deck"
+format (as described on the webpage referenced above).  There are sections 
+in the fortran code which can be filled in to read other format variants.  
+This should mostly be a
+matter of changing the read format string to match the data in the file.
+</P>
+
+<P><br /></P>
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>DATA SOURCES</H2>
+
+<P>
+A collection of past storm ATCF information can be found
+<a href="http://www.ral.ucar.edu/hurricanes/repository">here</a>.
+
+For each observation you will need a location, a data value,
+a type, a time, and some kind of error estimate.  The error 
+estimates will need to be hardcoded or computed in the
+converter since they are not available in the input data.  
+See below for more details on 
+selecting an appropriate error value.
+</P>
+
+<P><br /></P>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PROGRAMS</H2>
+<P>
+The <em class=file>tc_to_obs.f90</em> file is the source
+for the main converter program.
+Look at the source code where it reads the example data file.  Given the
+variety of formatting details in different files, you may quite possibly
+need to change the "read" statement to match your data format.  
+There is a 'select case' section which is intended to let you add
+more formats and select them at runtime via namelist.
+</P> <P>
+To compile and test,
+go into the work subdirectory and run the <em class=file>quickbuild.csh</em>
+script to build the converter and a couple of general purpose utilities.
+<em class=file>advance_time</em> helps with calendar and time computations,
+and the
+<em class=file>obs_sequence_tool</em> manipulates DART observation files
+once they have been created.
+</P>
+<P>
+This converter creates observation types defined in the
+<em class=file>DART/obs_def/obs_def_vortex_mod.f90</em> file.
+This file must be listed in the
+<em class=file>input.nml</em> namelist file,
+in the <em class=file>&amp;preprocess_nml</em> namelist, 
+in the 'input_files' variable,
+for any programs which are going to process these observations.
+If you have to change the 
+<em class=file>&amp;preprocess_nml</em> namelist you
+will have to run <em class=file>quickbuild.csh</em> 
+again to build and execute the <em class=program>preprocess</em>
+program before compiling other executables.
+It remakes the table of supported observation types before 
+trying to recompile other source code.
+</P>
+<P>
+There is an example b-deck data file in the
+<em class=file>data</em> directory.  This format is
+what is supported in the code as distributed.  There are
+other variants of this format which have more spaces
+so the columns line up, and variants which have many
+more fields than what is read here.
+</P>
+
+<P><br /></P>
+
+<!--==================================================================-->
+
+<A NAME="ObservationalErrors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>SPECIFYING EXPECTED ERROR</H2>
+
+<P>
+The ATCF files DO NOT include any estimated error values.  The source code
+currently has hardcoded values for location, sea level pressure, and max
+wind errors.  These may need to be adjusted as needed if they
+do not give the expected results.
+</P>
+
+<P><br /></P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST ====================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;tc_to_obs_nml
+   input_atcf_file         = 'input.txt'
+   fileformat              = 'b-deck'
+   obs_out_file            = 'obs_seq.out'
+   append_to_existing_file = .false.
+   debug                   = .false.
+ /
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR><TD>input_atcf_file</TD>
+    <TD>character(len=256)</TD>
+    <TD>Name of the input ascii text file in ATCF format.
+ </TD></TR>
+
+<TR><TD>fileformat</TD>
+    <TD>character(len=128)</TD>
+    <TD>Currently only supports 'b-deck' but if other format strings
+are added, can switch at runtime between reading different varieties
+of ATCF file formats.
+ </TD></TR>
+
+<TR><TD>obs_out_file</TD>
+    <TD>character(len=256)</TD>
+    <TD>Name of the output observation sequence file to create.
+ </TD></TR>
+
+<TR><TD>append_to_existing_file</TD>
+    <TD>logical</TD>
+    <TD>If .false., this program will overwrite an existing file.
+If .true. and if a file already exists with the same name the
+newly converted observations will be appended to that file.
+Useful if you have multiple small input files that you want
+to concatenate into a single output file.  However, there is
+no code to check for duplicated observations. If this is
+.true. and you run the converter twice you will get duplicate
+observations in the file which is bad. (It will affect the
+quality of your assimilation results.)  Use with care.<br />
+You can concatenate multiple obs sequence files as a postprocessing
+step with the <a href="../../obs_sequence/obs_sequence_tool.html">
+observation sequence tool</a> which comes with DART
+and is in fact built by the quickbuild.csh script
+in the TC converter work directory.
+ </TD></TR>
+
+<TR><TD>debug</TD>
+    <TD>logical</TD>
+    <TD>Set to .true. to print out more details during the conversion
+process.
+ </TD></TR>
+
+
+</TBODY>
+</TABLE>
+</div>
+
+<P><br /></P>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<P><br /></P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+If users add support for some of the other format variants,
+the DART group would be happy to accept code contributions.
+</P>
+
+<P><br /></P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> nancy collins </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

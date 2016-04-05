@@ -1,0 +1,19 @@
+
+&control
+
+do_bc     = .true.
+do_ic     = .true.
+domain    = 1
+dir_wrf   = '/data/$USER/WRFCHEM/' 
+dir_moz = '/data/$USER/MOZART/'
+fn_moz  = 'hb0068.nc'
+
+spc_map = 'BC1 -> .4143*CB1;1.e9', 'BC2 -> .4143*CB2;1.e9',
+          'OC1 -> .4143*OC1;1.e9', 'OC2 -> .4143*OC2;1.e9',
+          'DUST_1 -> 1.1738*[DUST1];1.e9', 'DUST_2 -> .939*[DUST2];1.e9',
+          'DUST_3 -> .2348*[DUST2]+.939*[DUST3];1.e9',
+          'DUST_4 -> .2348*[DUST3]+.5869*[DUST4];1.e9', 'DUST_5 -> .5869*[DUST4];1.e9',
+          'SEAS_1 -> 2.*SA1;1.e9', 'SEAS_2 -> 2.*SA2;1.e9',
+          'SEAS_3 -> 2.*SA3;1.e9', 'SEAS_4 -> 2.*SA4;1.e9' 
+/
+

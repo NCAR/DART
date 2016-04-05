@@ -1,0 +1,46 @@
+# need a way to say hours vs seconds for the latter here
+#output_filename_pattern = '(A,I4.4,3(I2.2))'   works ok
+#output_filename_pattern = '(A,I4.4,"-",I2.2,"-",I2.2,"-",I5.5))'  prints hours instead of secs
+
+&prepbufr_to_obs_nml
+   startyear     = 2004,
+   startmonth    = 8,
+   startday      = 2,
+   starthour     = 3
+   endyear       = 2004,
+   endmonth      = 8,
+   endday        = 4,
+   endhour       = 3
+   windowdays    = 0,
+   windowhours   = 6
+   windowseconds = 0
+   midnight_24   = .true.
+   input_filename_base = '/glade/p/image/Observations/bufr/200408_6Hnew/temp_obs.',
+   input_filename_pattern = '(A,I4.4,3(I2.2))'
+   output_filename_base = './obs_seq.',
+   output_filename_pattern = '(A,I4.4,3(I2.2))'
+   max_num_obs = 800000,
+   select_obs = .false.,
+   ADPUPA = .false., 
+   AIRCAR = .false., 
+   AIRCFT = .false., 
+   SATEMP = .false., 
+   SFCSHP = .false., 
+   ADPSFC = .false., 
+   SATWND = .false.,
+   obs_U  = .false., 
+   obs_V  = .false., 
+   obs_T  = .false.,
+   obs_PS = .false.,
+   obs_QV = .false.,
+   include_specific_humidity = .true.,
+   include_relative_humidity = .false.,
+   include_dewpoint = .false.,
+   lon1   =   0.0,
+   lon2   = 360.0,
+   lat1   = -90.0,
+   lat2   =  90.0  
+   print_timestamps = .false., 
+   print_every_Nth = 100000, 
+   debug = .false.
+/

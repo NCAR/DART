@@ -1,0 +1,352 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>QuikSCAT SeaWinds Data</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>QuikSCAT SeaWinds Data</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#DataSources">DATA SOURCES</A> /
+<A HREF="#Programs">PROGRAMS</A> / 
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">FUTURE PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+NASA's QuikSCAT mission is described in 
+<A href="http://winds.jpl.nasa.gov/missions/quikscat/index.cfm">
+http://winds.jpl.nasa.gov/missions/quikscat/</A>.
+"QuikSCAT" refers to the satellite, "SeaWinds" refers to the 
+instrument that provides near-surface wind speeds and directions 
+over large bodies of water. QuikSCAT has an orbit of about 100 minutes,
+and the SeaWinds microwave radar covers a swath under the satellite.
+The swath is comprised of successive scans (or rows) and each scan
+has many wind-vector-cells (WVCs). For the purpose of this document,
+we will focus only the <b>Level 2B</b> product at 25km resolution.
+If you go to the official JPL data distribution site
+<a href="http://podaac.jpl.nasa.gov/DATA_CATALOG/quikscatinfo.html"
+>http://podaac.jpl.nasa.gov/DATA_CATALOG/quikscatinfo.html</a>
+, we are using the product labelled <b>L2B OWV 25km Swath</b>.
+Each orbit consists of (potentially) 76 WVCs in each of 1624 rows or
+scans. The azimuthal diversity of the radar returns affects the
+error characteristics of the retrieved wind speeds and directions,
+as does rain, interference of land in the radar footprint, and very
+low wind speeds.  Hence, not all wind retrievals are created equal.
+</P>
+<P>
+The algorithm that converts the 'sigma naughts' (the measure of radar
+backscatter) into wind speeds and directions has multiple solutions.
+Each candidate solution is called an 'ambiguity', and there are several
+ways of choosing 'the best' ambiguity. Beauty is in the eye of the
+beholder. At present, the routine to convert the original L2B data files
+(one per orbit) in HDF format into the DART observation sequence file
+makes several assumptions:
+</P>
+<ol>
+<li>All retrievals are labelled with a 10m height, in accordance with 
+    the retrieval algorithm.</li>
+<li>Only the highest-ranked (by the MLE method) solution is desired.</li>
+<li>Only the WVCs with a wvc_quality_flag of <b>zero</b> are desired.</li>
+<li>The mission specification of a wind speed rms error of 2 ms 
+    (for winds less than 20 m/s) and 10% for windspeeds between 
+    20 and 30 m/s can be extended to all winds with a qc flag of zero.</li>
+<li>The mission specification of an error in direction of 20 degrees rms 
+    is applicable to all retrieved directions.</li>
+<li>All retrievals with wind speeds less than 1.0 are not used.</li>
+<li>The above error characterstics can be simplified when deriving the 
+    horizontal wind components (i.e. U,V). <b>Note :</b> this may or may
+    not be a good assumption, and efforts to assimilate the speed and 
+    direction directly are under way.</li>
+</ol>
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<HR />
+<H2>DATA SOURCES</H2>
+
+<P>
+The NASA Jet Propulsion Laboratory (JPL) 
+<A href="http://winds.jpl.nasa.gov/imagesAnim/quikscat.cfm">
+data repository</A> has a collection of animations and data
+sets from this instrument. In keeping with NASA tradition,
+these data are in HDF format (specifically, HDF4), so if you want
+to read these files directly, you will need to install the HDF4
+libraries (which can be downloaded from 
+<a href="http://www.hdfgroup.org/products/hdf4/"
+>http://www.hdfgroup.org/products/hdf4/</a>)
+</P>
+<P>
+If you go to the official JPL data distribution site
+<a href="http://podaac.jpl.nasa.gov/DATA_CATALOG/quikscatinfo.html"
+>http://podaac.jpl.nasa.gov/DATA_CATALOG/quikscatinfo.html</a>, 
+we are using the product labelled <b>L2B OWV 25km Swath</b>. They are
+organized in folders by day ... with each orbit (each revolution)
+in one compressed file. There are 14 revolutions per day. 
+The conversion to DART observation sequence format is done on each
+revolution, multiple revolutions may be combined 'after the fact' by
+any <em class="program">obs_sequence_tool</em> in the 
+<em class="file">work</em> directory of any model.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<HR />
+<H2>PROGRAMS</H2>
+
+<P>There are several programs that are distributed from the JPL www-site,
+<a href="ftp://podaac.jpl.nasa.gov/pub/ocean_wind/quikscat/L2B/sw/"
+>ftp://podaac.jpl.nasa.gov/pub/ocean_wind/quikscat/L2B/sw/</a>; 
+we specifically started from the Fortran file 
+<a
+href="ftp://podaac.jpl.nasa.gov/pub/ocean_wind/quikscat/L2B/sw/FORTRAN/read_qscat2b.f">read_qscat2b.f</a>
+and modified it to be called as a subroutine to make it more similar to
+the rest of the DART framework. The original 
+<em class="file">Makefile</em> and  
+<em class="file">read_qscat2b.f</em> are included in the DART
+distribution in the <em class="file">DART/observations/quikscat</em>
+directory. You will have to modify the <em class="file">Makefile</em> 
+to build the executable.  
+</P>
+
+<h3>convert_L2b.f90</h3>
+<P>
+<em class="program">convert_L2b</em> is the executable that reads the
+HDF files distributed by JPL.  
+<em class="file">DART/observations/quikscat/work</em> has the expected
+<em class="file">mkmf_convert_L2b</em> and 
+<em class="file">path_names_convert_L2b</em> files and compiles the 
+executable in the typical DART fashion - with one exception.
+The location of the HDF (and possible dependencies) installation must
+be conveyed to the <em class="program">mkmf</em> build mechanism. Since
+this information is not required by the rest of DART, it made sense
+(to me) to isolate it in the <em class="file">mkmf_convert_L2b</em>
+script. <b>It will be necessary to modify the <em
+class="file">mkmf_convert_L2b</em> script to
+be able to build <em class="program">convert_L2b</em></b>. In particular,
+you will have to change the two lines specifying the location of the HDF 
+(and probably the JPG) libraries. The rest of the script should require
+little, if any, modification.
+</P>
+
+<div class="routine">
+set JPGDIR = <em class="input">/contrib/jpeg-6b_gnu-4.1.2-64</em><br />
+set HDFDIR = <em class="input">/contrib/hdf-4.2r4_gnu-4.1.2-64</em><br />
+</div>
+
+<P>
+There are a lot of observations in every QuikSCAT orbit. Consequently,
+the observation sequence files are pretty large - particularly if you
+use the ASCII format. Using the binary format (i.e. 
+<em class="input">obs_sequence_nml:write_binary_obs_sequence = .true.</em>)
+will result in observation sequence files that are about <em>half</em>
+the size of the ASCII format.
+</P>
+<P>
+Since there are about 14 QuikSCAT orbits per day, it may be useful to
+convert individual orbits to an observation sequence file and then
+concatenate multiple observation sequence files into one file per day.
+This may be trivially accomplished with the 
+<em class="program">obs_sequence_tool</em> program in any <em
+class="file">model/xxxx/work</em> directory. Be sure to include the
+<em class="code">'../../../obs_def/obs_def_QuikSCAT_mod.f90'</em> string
+in <em class="code">input.nml&amp;preprocess_nml:input_files</em> when you
+run <em class="program">preprocess</em>.
+</P>
+
+<h3>obs_to_table.f90, plot_wind_vectors.m</h3>
+<P>
+<em class="file">DART/diagnostics/threed_sphere/obs_to_table.f90</em> is
+a potentially useful tool. You can run the observation sequence files
+through this filter to come up with a 'XYZ'-like file that can be readily
+plotted with 
+<em class="file">DART/diagnostics/matlab/plot_wind_vectors.m</em>.
+</P>
+
+<!--==================================================================-->
+<!--=================== DESCRIPTION OF A NAMELIST  ===================-->
+<!--==================================================================-->
+
+<A NAME="Namelist"></A>
+<HR />
+<H2>NAMELIST</H2>
+<P>This namelist is read from the file <em class=file>input.nml</em>.
+We adhere to the F90 standard of starting a namelist with an ampersand
+'&amp;' and terminating with a slash '/' for all our namelist input.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from prematurely terminating the namelist.
+The following values are the defaults for these namelist items.
+</P>
+<div class=namelist>
+<pre>
+&amp;convert_L2b_nml
+   l2b_file = '',
+   datadir = '.',
+   outputdir = '.',
+   lon1 = 0.0, 
+   lon2 = 360.0, 
+   lat1 = -90.0, 
+   lat2 = 90.0,
+   along_track_thin = 0,
+   cross_track_thin = 0
+ /
+</pre>
+</div>
+
+<br />
+
+<div>
+
+<P>
+It is possible to restrict the output observation sequence to contain
+data from a region of interest throught the use of the namelist
+parameters. If you need a region that spans the Prime Meridian
+lon1 can be a larger number than lon2,
+for example, a region from 300 E to 40 E and 60 S to 30 S (some of 
+the South Atlantic), would be <em class="input">lon1 = 300, lon2 =
+40, lat1 = -60, lat2 = -30</em>.
+</P>
+
+<TABLE border=0 cellpadding=3 width=100% summary='QuikSCAT namelist description'>
+<THEAD align=left>
+<TR><TH>Contents    </TH>
+    <TH>Type        </TH>
+    <TH>Description </TH></TR>
+</THEAD>
+
+<TBODY valign=top>
+<TR><TD>l2b_file             </TD>
+    <TD>character(len=128)   </TD>
+    <TD>name of the HDF file to read - NOT including 
+        the directory, e.g. QS_S2B44444.20080021548</TD></TR>
+
+<TR><TD>datadir              </TD>
+    <TD>character(len=128)   </TD>
+    <TD>the directory containing the HDF files</TD></TR>
+
+<TR><TD>outputdir            </TD>
+    <TD>character(len=128)   </TD>
+    <TD>the directory for the output observation sequence files.</TD></TR>
+
+<TR><TD>lon1                 </TD>
+    <TD>real(r4)             </TD>
+    <TD>the West-most longitude of interest in degrees. [0.0, 360]</TD></TR>
+
+<TR><TD>lon2                 </TD>
+    <TD>real(r4)             </TD>
+    <TD>the East-most longitude of interest in degrees. [0.0, 360]</TD></TR>
+
+<TR><TD>lat1                 </TD>
+    <TD>real(r4)             </TD>
+    <TD>the South-most latitude of interest in degrees. [-90.0, 90.0]</TD></TR>
+
+<TR><TD>lat2                 </TD>
+    <TD>real(r8)             </TD>
+    <TD>the North-most latitude of interest in degrees. [-90.0, 90.0]</TD></TR>
+
+<TR><TD>along_track_thin     </TD>
+    <TD>integer              </TD>
+    <TD>provides ability to thin the data by keeping only
+        every Nth row.  e.g. 3 == keep every 3rd row.</TD></TR>
+
+<TR><TD>cross_track_thin     </TD>
+    <TD>integer              </TD>
+    <TD>provides ability to thin the data by keeping only every Nth 
+        wind vector cell in a particular row. 
+        e.g. 5 == keep every 5th cell.</TD></TR>
+</TBODY>
+</TABLE>
+
+</div>
+<br />
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<HR />
+<H2>KNOWN BUGS</H2>
+<P>
+There are no known bugs at this time.
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<HR />
+<H2>FUTURE PLANS</H2>
+<ol>
+   <li>There is one bit of error-checking that did not survive the
+       conversion from F77 to F90. I need to restore the check that the
+       HDF file being read is a 'Level 2B' product.</li>
+   <li>There is a lot of error-checking that is not being done. I need
+       to bulletproof the code more.</li>
+   <li>We need namelist options to select something other than the 
+       highest-ranked ambiguity.</li>
+   <li>We need namelist options to select more QC flags - not 
+       just the ones with the 'perfect' QC value of 0</li>
+   <li>Add an option to leave the observations as speed and direction
+       instead of converting them to U,V components. This is a 
+       natural implementation of the instrument error 
+       characteristics. However, it would require writing a specialized 
+       forward operator in order to assimilate obs of this type (speed,
+       direction), and there is still a numerical problem with trying to 
+       do the statistics required during the assimilation of a 
+       cyclic direction value.</li>
+</ol>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> Tim Hoar </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

@@ -1,0 +1,83 @@
+# Template for IBM XLF compiler on an IBM AIX platform
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+# typical use with mkmf
+# mkmf -t mkmf.template.xxxx ...
+#
+# FFLAGS   used all the time
+#   -qsuffix=f=f90:cpp=F90      invoke the preprocessor at right time
+#   -q64                        use 64bit addressing
+#   -qarch=auto                 optimize for _this_ architecture
+#   -qmaxmem=-1
+#
+# FFLAGS   useful for debugging
+#   -C                        array bounds checking
+#   -qfullpath -g             for totalview
+#
+#   to abort when computing with (signalling) NaNs
+#   -qsigtrap=xl__trcedump -qflttrap=ov:zero:inv:en
+#
+# FFLAGS   useful for benchmarking
+#   -O0                       turn off optimization
+#
+# FFLAGS   useful for production
+#   -O2                       turn up optimization (at your own risk)
+#
+# FFLAGS   we no longer use
+#   -qdpc                     double precision constants
+#   -qrealsize=8              autopromote (more than you think)
+#   -qintsize=4               ditto
+#
+# IF YOU HAVE MORE CURRENT COMPILER INFORMATION, PLEASE SHARE IT WITH US.
+
+MPIFC = mpxlf95_r
+MPILD = mpxlf95_r
+FC = xlf90_r
+LD = xlf90_r
+
+# Our installation has the system of compiling the libraries with both 64 bit
+# and 32 bit addressing, and incorporates the 'autopromotion' flags into
+# the library directory node. Hence, the netCDF libraries compiled with
+# 64bit addressing will be in /usr/local/lib64 and if no autopromotion
+# flags are set, the libraries will be installed into
+# /usr/local/lib64/r4i4 -- TJH.
+#
+# DISCUSSION ABOUT NETCDF. DART works with both V3 and V4 flavors of netCDF.
+# Some V4 installations also require the HDF5 libraries. Some don't.
+# Some netCDF installations require both -lnetcdff and -lnetcdf, some only
+# require -lnetcdf. The permutations make it difficult to cover the possible
+# installations. Here are some candidates, you might just have to resort to
+# trial and error:
+# LIBS = -L$(NETCDF)/lib -lnetcdf
+# LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf
+# LIBS = -L$(NETCDF)/lib -lnetcdf           -lcurl -lhdf5_hl -lhdf5 -lz -lm
+# LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf -lcurl -lhdf5_hl -lhdf5 -lz -lm
+#
+# If you get an error "ld: library not found for -lnetcdff" (note 2 f's),
+# remove it from the LIBS line. The same is true for any library. If 'ld'
+# does not complain - it worked.
+
+# If your NETCDF environment variable is not set correctly,
+# uncomment the following line and set value to where lib and include
+# are found for the netcdf files that match this compiler.
+#
+# NETCDF = /opt/local
+
+INCS = -I/usr/local/lib64/r4i4 -I/usr/local/include
+LIBS = -L/usr/local/lib64/r4i4 -lnetcdf
+FFLAGS  = -qsuffix=f=f90:cpp=F90 -q64 -b64 -qarch=auto -qmaxmem=-1 -O $(INCS)
+LDFLAGS = $(FFLAGS) $(LIBS)
+
+#FFLAGS = -qsuffix=f=f90:cpp=F90 -q64 -b64 -qarch=auto -qmaxmem=-1 -C -g -qfullpath \
+#         -qsigtrap=xl__trcedump -qflttrap=ov:zero:inv:en $(INCS)
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

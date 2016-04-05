@@ -1,0 +1,11 @@
+&jules_snow
+dtland=2.0,
+frac_snow_subl_melt=0,
+kland_numerator=0.3,
+l_snowdep_surf=.false.,
+maskd=50.0,
+nsmax=0,
+rho_snow_const=250.0,
+snow_hcap=0.63e6,
+snow_hcon=0.265,
+/

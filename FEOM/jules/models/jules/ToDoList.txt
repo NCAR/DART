@@ -1,0 +1,92 @@
+
+Tue Aug 18 14:01:26 MDT 2015
+
+Preamble: This file contains a list of tasks that Tim, Rafael, and Shams identified. 
+The idea is that whomever decides to work on the issue will put their initials in front
+of the item in the list. This will prevent duplication of effort. I took the liberty
+of assigning everyone a task - for an example. This list is by no means complete.
+Feel free to add to the list as you see fit.
+
+Checklist DART-JULES   (XX means DONE)
+
+- SR - Divide perfect_model.csh into a setup_pmo.csh and a run_pmo.csh (Comment: done, checked)
+- SR - Establish a pool of ensemble members with instance names and 
+          dates in the expected form along with appropriate sets of JULES 
+          namelists and supporting resource files (e.g., mask file) (Comment: 40 ensembles for point scale run)
+          RESOLVED: Shams created a Nx=3,Ny=5, Nlon=14,Nlat=1 case
+                    'ensembles_synthetic_test_case'
+- SR - Build setup_filter.csh and run_filter.csh  
+- RR - Update COSMIC code into DART 
+-    - Write matlab scripts for visualization 
+-    - Write model_mod.html (documentation) 
+-    - Write model interpolate code 
+-    - Prune out unused variables 
+- TH - Download and run JULES on yellowstone 
+-    - Update the state-space Matlab scripts to support JULES 
+-    - Make sure the script exit strategy works with the link options in use 
+-    - Add JULES namelists to the diagnostic file output 
+- SR - to test new advance_model.csh with JULES (Comment: new advance_model.csh works fine) 
+- RR - Check FIXME along codes
+
+Questions for 27 Aug:
+
+*) Is it required to have a land mask when nx=ny=1? Ans: NO.
+
+*) The synthetic_test_case is interesting ... the static_input.nc file has 'full' lat/lon arrays,
+   i.e. x = 3, y = 5 ... the jules_restart.nc is 'land=14' I suspect the jules_output.nc has X=14,Y=1
+   ANS: model_grid_nml:land_only= true/false controls this behavior
+   
+*) the files in data/namelist should be moved to one of the run_id directories - or - 
+   the run_id directories should be populated with appropriate namelists and netCDF files
+   and the files in data/namelist should be deleted.
+   ANS: Everything gets piled into one directory - namelists mention local filenames.
+   The restart/output files get names like:
+   ensemble.dump.0001.20140101.00000.nc
+   ensemble.hour.0001.20140101.00000.nc
+   and all the 'static' data (land mask, tile fractions, etc.) get put into a single
+   netCDF file - mentioned in ancillaries.nml and model_grid.nml
+
+Fri Aug 28 14:16:17 MDT 2015
+
+   Decided we should always use 
+   model_grid.nml:jules_model_grid:land_only     = .true.         and
+   model_grid.nml:jules_model_grid:force_1d_grid = .true.   
+   to reduce permutations. The model grid will always be 'sparse', the input
+   grids (containing the tile_fractions) will always be 2D - so a land mask
+   will always be needed to resolve the two.  One nuisance - the
+   restart files have dimension 'land' - the output file has dimension 'x',
+   the land mask and tile fractions have dimensions Nx,Ny - but Nx is not 'x',
+   and 'x' is 'land' ... bookkeeping nuisance in the DART diagnostic files.
+
+Questions for 3 Sep:
+
+*) Confirm that the depths are the locations of the variables - there are no
+   quantities which live 'off' the depths ... ACTUALLY ... the quantities are
+   representative of the entire layer, so is it probably more accurate to use
+   the midpoint of the layer as the 'depth'. 
+
+*) Go over the setup_pmo/run_pmo strategy.
+
+*) talk about the set_model_time_step() routine.
+
+*) ask Shams if he has any questions about this so far ...
+
+Status as of Fri Sep 11 15:59:03 MDT 2015
+   I believe I have most of model_interpolate working and I have pruned out a lot of the
+   dead code. The get_close() routine should be tested a bit more to make sure it gives
+   the right 'sparse' location - right now it is returning the proper one, but the test
+   location is nearly right ON a (sparse/model) grid cell. Determine if the closest one is too far away ...
+
+   Only the vertical interpolation has been tested.
+   The agggregation of the tiles has not been implemented.
+
+Thu Nov 12 14:14:39 MST 2015
+
+   Decided that IFF the physically shaped lat/lon/tile_frac/land_mask arrays
+   are available, that we should always use them. Require them to be present?
+   Then, only a few lookup tables would be needed. Right now I'm struggling
+   with unpacking the tile fractions in the same manner as the state ...
+   making a lookup table is the right solution.
+
+
+

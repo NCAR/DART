@@ -1,0 +1,39 @@
+#!/bin/ksh -x
+###############################################################################
+#
+#  Script to run wrf_chem test for Stacy Walters
+#
+############################################################################### 
+#
+# Go to test directory
+cd /glade/scratch/mizzi/DART_TEST_AVE/MOPCOMB_Exp_1_STACY/DART_CENTRALDIR/advance_temp_0020
+#
+# Set job submission parameters
+export PROJ_NUMBER=P19010000
+export TIME_LIMIT_WRFCHEM=1:40
+export NUM_TASKS=32
+export TASKS_PER_NODE=16
+export JOB_CLASS=small
+RANDOM=$$
+export JOBRND=conv_$RANDOM
+#
+#!/bin/ksh -aeux
+#BSUB -P ${PROJ_NUMBER}
+#BSUB -x                                    # exclusive use of node (not_shared)
+#BSUB -n ${NUM_TASKS}                       # number of total (MPI) tasks
+#BSUB -R "span[ptile=${TASKS_PER_NODE}]"    # mpi tasks per node
+#BSUB -J ${JOBRND}                          # job name
+#BSUB -o ${JOBRND}.jout                      # output filename
+#BSUB -e ${JOBRND}.jerr                      # error filename
+#BSUB -W ${TIME_LIMIT_WRFCHEM}               # wallclock time (minutes)
+#BSUB -q ${JOB_CLASS}
+#
+# Remove output files from previous test
+rm -rf *.jerr
+rm -rf *.jout
+rm rsl.*.*
+rm wrfout_*
+rm index_*
+#
+mpirun.lsf ./wrf.exe > index_wrfchem.html 2>&1 
+exit

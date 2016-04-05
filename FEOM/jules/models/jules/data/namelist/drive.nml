@@ -1,0 +1,17 @@
+&jules_drive
+data_end='2014-12-31 21:00:00',
+data_period=3600,
+data_start='2014-01-01 03:00:00',
+file='/users/ar15645/coupling_simulations/regional_simulations/data/regional_forcing.nc',
+interp=8*'nf',
+l_daily_disagg=.false.,
+l_imogen=.false.,
+nvars=8,
+read_list=.false.,
+tpl_name='',
+var='sw_down','lw_down','tot_rain','tot_snow','t','wind',
+'pstar','q',
+var_name='sw_down','lw_down','tot_rain','tot_snow','t','wind',
+'pstar','q',
+z1_tq_vary=.false.,
+/

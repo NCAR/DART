@@ -1,0 +1,18 @@
+#!/bin/csh
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id: mkmf_preprocess 6908 2014-04-21 22:29:53Z thoar $
+
+../../../mkmf/mkmf -p preprocess -t ../../../mkmf/mkmf.template   \
+ -a "../../.." path_names_preprocess
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL: https://subversion.ucar.edu/DAReS/DART/trunk/observations/MODIS/work/mkmf_preprocess $
+# $Revision: 6908 $
+# $Date: 2014-04-21 16:29:53 -0600 (Mon, 21 Apr 2014) $
+

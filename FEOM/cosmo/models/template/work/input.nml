@@ -1,0 +1,201 @@
+&perfect_model_obs_nml
+   start_from_restart    = .true.,
+   output_restart        = .true.,
+   async                 = 0,
+   init_time_days        = 0,
+   init_time_seconds     = 0,
+   first_obs_days        = -1,
+   first_obs_seconds     = -1,
+   last_obs_days         = -1,
+   last_obs_seconds      = -1,
+   output_interval       = 1,
+   restart_in_file_name  = "perfect_ics",
+   restart_out_file_name = "perfect_restart",
+   obs_seq_in_file_name  = "obs_seq.in",
+   obs_seq_out_file_name = "obs_seq.out",
+   adv_ens_command       = "./advance_model.csh",
+   output_timestamps     = .false.,
+   trace_execution       = .false.,
+   output_forward_op_errors = .false.,
+   print_every_nth_obs   = -1,
+   silence               = .false.,
+  /
+
+&filter_nml
+   async                    = 0,
+   adv_ens_command          = "./advance_model.csh",
+   ens_size                 = 20,
+   start_from_restart       = .true.,
+   output_restart           = .true.,
+   obs_sequence_in_name     = "obs_seq.out",
+   obs_sequence_out_name    = "obs_seq.final",
+   restart_in_file_name     = "filter_ics",
+   restart_out_file_name    = "filter_restart",
+   init_time_days           = 0,
+   init_time_seconds        = 0,
+   first_obs_days           = -1,
+   first_obs_seconds        = -1,
+   last_obs_days            = -1,
+   last_obs_seconds         = -1,
+   num_output_state_members = 20,
+   num_output_obs_members   = 0,
+   output_interval          = 1,
+   num_groups               = 1,
+   input_qc_threshold       =  3.0,
+   outlier_threshold        = -1.0,
+   output_forward_op_errors = .false.,
+   output_timestamps        = .false.,
+   output_inflation         = .true.,
+   trace_execution          = .false.,
+   silence                  = .false.,
+
+   inf_flavor                  = 0,                       0,
+   inf_initial_from_restart    = .false.,                 .false.,
+   inf_sd_initial_from_restart = .false.,                 .false.,
+   inf_output_restart          = .true.,                  .true.,
+   inf_deterministic           = .true.,                  .true.,
+   inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics',
+   inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
+   inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
+   inf_initial                 = 1.0,                     1.0,
+   inf_sd_initial              = 0.0,                     0.0,
+   inf_damping                 = 1.0,                     1.0,
+   inf_lower_bound             = 1.0,                     1.0,
+   inf_upper_bound             = 1000000.0,               1000000.0,
+   inf_sd_lower_bound          = 0.0,                     0.0
+/
+
+&smoother_nml
+   num_lags              = 0,
+   start_from_restart    = .false.,
+   output_restart        = .false.,
+   restart_in_file_name  = 'smoother_ics',
+   restart_out_file_name = 'smoother_restart'  /
+
+&ensemble_manager_nml
+   single_restart_file_in  = .true.,
+   single_restart_file_out = .true.,
+   perturbation_amplitude  = 0.2  /
+
+&assim_tools_nml
+   filter_kind                     = 1,
+   cutoff                          = 1000000.0,
+   sort_obs_inc                    = .true.,
+   spread_restoration              = .false.,
+   sampling_error_correction       = .false.,
+   adaptive_localization_threshold = -1,
+   output_localization_diagnostics = .false.,
+   localization_diagnostics_file   = 'localization_diagnostics',
+   print_every_nth_obs             = 0  /
+
+&cov_cutoff_nml
+   select_localization = 1  /
+
+&reg_factor_nml
+   select_regression    = 1,
+   input_reg_file       = "time_mean_reg",
+   save_reg_diagnostics = .false.,
+   reg_diagnostics_file = "reg_diagnostics"  /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.  /
+
+&obs_kind_nml
+   assimilate_these_obs_types = 'RAW_STATE_VARIABLE'   /
+
+&assim_model_nml
+   write_binary_restart_files = .false.,
+   netCDF_large_file_support  = .false.
+  /
+
+&model_nml
+   output_state_vector = .true., 
+   time_step_days      = 0,
+   time_step_seconds   = 3600  /
+
+&utilities_nml
+   TERMLEVEL = 1,
+   module_details = .false.,
+   logfilename = 'dart_log.out',
+   nmlfilename = 'dart_log.nml',
+   write_nml   = 'file'  /
+
+&preprocess_nml
+    input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90', 
+   output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90', 
+   input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90', 
+  output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90', 
+               input_files = '../../../obs_def/obs_def_1d_state_mod.f90'  /
+
+&obs_sequence_tool_nml
+   num_input_files   = 2,
+   filename_seq      = 'obs_seq.one', 'obs_seq.two',
+   filename_out      = 'obs_seq.processed',
+   first_obs_days    = -1,
+   first_obs_seconds = -1,
+   last_obs_days     = -1,
+   last_obs_seconds  = -1,
+   print_only        = .false.,
+   min_lat           = -90.0,
+   max_lat           =  90.0,
+   min_lon           =   0.0,
+   max_lon           = 360.0,
+   gregorian_cal     = .true.
+   /
+
+# other possible obs tool namelist items:
+#
+# keep only the U and V radiosonde winds:
+#   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
+#                        'RADIOSONDE_V_WIND_COMPONENT',
+#   keep_types         = .true.,
+#
+# remove the U and V radiosonde winds:
+#   obs_types          = 'RADIOSONDE_U_WIND_COMPONENT',
+#                        'RADIOSONDE_V_WIND_COMPONENT',
+#   keep_types         = .false.,
+#
+# keep only observations with a DART QC of 0:
+#   qc_metadata        = 'Dart quality control',
+#   min_qc             = 0,
+#   max_qc             = 0,
+#
+# keep only radiosonde temp obs between 250 and 300 K:
+#   copy_metadata      = 'NCEP BUFR observation',
+#   copy_type          = 'RADIOSONDE_TEMPERATURE',
+#   min_copy           = 250.0,
+#   max_copy           = 300.0,
+#
+
+
+&restart_file_tool_nml
+   input_file_name              = "filter_restart",
+   output_file_name             = "filter_updated_restart",
+   ens_size                     = 1,
+   single_restart_file_in       = .true.,
+   single_restart_file_out      = .true.,
+   write_binary_restart_files   = .true.,
+   overwrite_data_time          = .false.,
+   new_data_days                = -1,
+   new_data_secs                = -1,
+   input_is_model_advance_file  = .false.,
+   output_is_model_advance_file = .false.,
+   overwrite_advance_time       = .false.,
+   new_advance_days             = -1,
+   new_advance_secs             = -1,
+   gregorian_cal                = .true.
+/
+
+
+&obs_diag_nml
+   obs_sequence_name  = 'obs_seq.final',
+   iskip_days         = 0,
+   obs_select         = 1,
+   rat_cri            = 4.0,
+   input_qc_threshold = 3.0,
+   bin_width_seconds = 0,
+   lonlim1   = 0.0, 0.0, 0.5, -1.0,
+   lonlim2   = 1.0, 0.5, 1.5, -1.0,
+   reg_names = 'whole', 'yin', 'yang', 'bogus',
+   verbose   = .false.  /
+

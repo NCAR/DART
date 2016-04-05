@@ -1,0 +1,330 @@
+
+       The FINN fire_emis utility creates global gridded fire emissions files
+       from the original FINN files of emissions for individual fires.  The 
+       resulting files are named emissions_<spcname>_<resol>.nc, where:
+
+           <spcname> is an output species name
+                     (see "glb2fire_map" in the "Namelist control variables" section below)
+           <resol>   is the horizontal resolution of the output
+                     (see "resol" in the "Namelist control variables" section below)
+
+        The output fire emissions datasets contain species fire emissions.
+        The species emissions are in the variable "fire" and have units of
+        molecules/cm^2/s. Fire emission output datasets may contain either
+	daily or monthly values( see "output_timing" in the "Namelist control
+	variables" section below).
+
+	The fire_emis utility allows for a versatile mapping from each global
+        species to species in the "base" fire emission files including multiple
+        "base" fire emission species per single global species with an individual 
+        weight factor per "base" fire emission species
+
+	fire_emis reads a namelist input file that specifies all aspects
+	of the mapping from the "base" fire emission file to a global simulation
+        and checks key namelist control variables for validity.  Below is a
+        complete listing of all namelist control variables.
+
+	Building fire_emis
+        ======== =========
+
+	In the fire_emis source code directory issue the command :
+
+	make_fire_emis
+
+	That's it.  The make_fire_emis script is presently setup to compile
+	on either Linux or AIX systems using the Portland Group Fortan90
+	compile, pgf90, on Linux system or the xlf90 compiler on IBM
+	AIX systems.  If you need to use another compiler such as the Intel
+	Fortran90 compiler, ifort, you can set the environment variable
+
+	FC
+
+	before invoking make_fire_emis.  As an example you would issue
+	the command :
+
+	export FC=ifort 
+
+	in the sh, bash, or ksh Linux shells or
+
+	setenv FC ifort
+
+	in the csh or tcsh shells.
+
+	The fire_emis utility requires the netcdf library and make_fire_emis
+	will attempt to locate the libnetcdf.a library.  However, this is
+	not a foolproof process and thus you may need to set the environment variable
+	
+	NETCDF_DIR
+
+	to the directory containing the file lib/libnetcdf.a.  As an example
+        in the ksh shell, if you issued the command :
+
+	export NETCDF_DIR=/usr/local/netcdf-3.6.2
+
+	then make_fire_emis would look for the file libnetcdf.a in the
+	directory /usr/local/netcdf-3.6.2/lib (make_fire_emis automatically
+	appends the /lib string to the NETCDF_DIR string.
+
+        If you require assistance with compiler and/or netcdf issues send email to :
+
+	stacy@ucar.edu
+
+
+	Namelist control variables
+        ======== ======= =========
+
+	Variable name             Variable type                                   default value
+	-------- ----             -------- ----                                   ------- -----
+
+        fire_directory            character(len=132),scalar                       (None)
+        fire_filename             character(len=132),array(5)                     (None)
+        glb2fire_map              character(len=164),array(500)                   (None)
+        start_date                character(len=10),scalar                        (None)
+        end_date                  character(len=10),scalar                        (None)
+        resol                     character(len=16),scalar                        (None)
+
+        output_timing             character(len=7),scalar                          'daily'
+        diag_level                integer,scalar                                   100
+
+	The first six variables must be set in the input namelist file or fire_emis will error halt.
+
+	None of the remaining namelist variables need be set.
+
+        Namelist variable notes
+	======== ======== =====
+
+	fire_directory
+	--------------
+
+	  Specifies the directory where fire_emis expects to find the "base"
+	  fire emission dataset and the vegetation cover datasets.  Note that
+          fire_directory must end with a "/" as in :
+
+	  /myhome/FIRE_data/
+
+	fire_filename
+	-------------
+
+	  Specifies a list of up to five filenames of the "base" fire emission datasets.
+
+          The "base" fire emissions were calculated by Christine Wiedinmyer (christin@ucar.edu)
+          with the Fire INventory from NCAR (FINN). These can be downloaded from:
+		http://bai.acd.ucar.edu/Data/fire/ 
+
+          The "base" fire emission datasets are available for 3 chemical mechanisms, 
+          MOZART-4 ("MOZ4"), SAPR99 and GEOS-chem.
+
+	  The ACD WRF repository contains files for the years 2005 through
+	  2010 for each group.  Each file is in compressed format and contains fire
+	  emission data for an entire year.  When the files are uncompressed they produce
+          a file with the filename of the following form :
+
+	  FINNv1_<year>_<group>_<creation_date>
+
+	  where :
+
+	  year           =  year of the emissions in form yyyy
+	  group          =  group name
+	  creation_date  =  date on which the file was created
+
+          Thus a "MOZART" emission file for year 2009 that was
+	  created on May 1, 2011 will uncompress into the file
+
+	  FINNv1_2009_MOZ4_20110501
+
+          and a counterpart for the SAPRC99 group uncompress to
+
+	  FINNv1_2009_SAPRC99_20110501
+
+          Please NOTE that the compressed files yield differing
+          numbers of uncompressed files depending on the year
+	  of the emissions.  Furthermore, the <date> portion of
+	  the uncompressed names varies depending on the year
+	  of the emissions and the number of uncompressed files.
+	  Thus you should look carefully at the uncompressed filenames
+	  before setting this namelist variable.
+
+          You may wish to specify more than one fire_filename input.
+	  Consider the case where you want fire emissions for a MOZ4
+	  case for the last week of December, 2006 and the first week
+	  of January, 2007.  You specify this with the following
+	  fire_filename settings :
+
+	  fire_filename(1) = 'FINNv1_2006_MOZ4_20110501'
+	  fire_filename(2) = 'FINNv1_2007_MOZ4_20110501'
+          start_date       = '2006-12-25'
+          end_date         = '2007-01-07'
+
+          If you specify multiple fire filenames the times in the input
+          files must be consecutive with no gaps.
+
+	glb2fire_map
+	------------
+
+	  Specifies the mapping between global model variables and fire emission variables.
+	  glb2fire_map is a character array of size 500.  If you enter more than 500
+	  variables there is no error halt but only the first 500 will be mapped.
+
+          Each entry in the is of the form :
+
+	  <global_variable> -> multiplier * <fire_emission_variable> + multiplier * <fire_emission_variable>
+
+	  Where
+
+	  <global_variable> is the name of the global variable and is used to annotate the
+          file name of the output emission files.
+
+	  multiplier is any legal, positive fortran real or integer number.  multiplier defaults
+          to 1. and may vary from fire emission variable to fire emission variable.
+
+	  <fire_emission_variable> is the exact name of a variable in the fire emission dataset.
+          You may have any number of fire emission variables per each  global variable.
+
+	  Individual entries in the glb2fire_map namelist variable are separated by commas and
+          each entry must fit on a single line in the input file.  Each src_map entry is limited
+          to 164 characters.
+
+	  The following are two examples of src_map specification; as such they are each only
+	  for one global variable.
+
+	  glb2fire_map = 'co -> CO'
+
+	  maps the fire emission variable CO to the global variable co.
+  
+          glb2fire_map = 'co -> CO', 'hc3 -> alk2 +  1.11 * alk3 + 0.4 * meoh'
+
+	  maps as in the prior example and adds a weighted combination of fire emission variables
+          alk2, alk2 and meoh to the global variable hc3.
+          
+	start_date
+	----------
+
+	  Specifies the start date for the output fire emissions.
+	  <date> is a date of format yyyy-mm-dd wherein
+
+	  yyyy = four digit year
+          mm   = two  digit month of year
+          dd   = two  digit day of month
+
+	  thus a start_date of 2008-06-11 is for June 11, 2008.
+
+	end_date
+	--------
+
+	  Specifies the end date for the output fire emissions.
+	  <date> is a date of format yyyy-mm-dd wherein
+
+	  yyyy = four digit year
+          mm   = two  digit month of year
+          dd   = two  digit day of month
+
+	  thus a start_date of 2008-06-17 is for June 17, 2008.
+
+	resol
+	-----
+
+	  Specifies the horizontal resolution of the output emission datasets.
+
+	  The valid settings for resol are :
+
+	  '0.5x0.5'            half degree resolution (720x360)
+	  '1x1'                one degree resolution  (360x180)
+	  'T42LR'              Lin-Rood t42 grid      (128x64)
+	  'T63LR'              Lin-Rood t63 grid      (192x96)
+	  'T85LR'              Lin-Rood t85 grid      (256x128)
+	  'T106LR'             Lin-Rood t106 grid     (320x160)
+	  'T170LR'             Lin-Rood t170 grid     (512x256)
+	  '1.9x2.5'            Lin-Rood grid          (144x96)
+
+	output_timing
+	-------------
+
+	  Specifies the temporal frequency of emissions output.
+
+          The output_timing variable may either be :
+
+	  'daily' or 'monthly'
+
+	  and defaults to 'daily'.
+
+	diag_level
+	----------
+
+	  Specifies the level of diagnostics output when running fire_emis.  The default
+	  value of 100 results in the minimum diagnostic output.  The diag level is set
+	  in multiples of 100.  Setting diag_level to 400 produces maximal diagnostics
+	  and is appropriate when a prior fire_emis invocation has failed.
+
+	Following is an example of a namelist input file (e.g. fire_emis.inp) for MOZART chemistry:
+	
+&control
+        fire_directory = '/home/user/fire/',
+	fire_filename(1)  = 'FINNv1_2008_MOZ4_20110501',
+	start_date     = '2008-06-26',
+	end_date       = '2008-07-15',
+        resol          = '1x1',
+        output_timing  = 'monthly',
+
+        glb2fire_map = 'co -> CO', 'no -> NO', 'so2 -> SO2', 'bigalk -> BIGALK',
+            'bigene -> BIGENE', 'c2h4 -> C2H4', 'c2h5oh -> C2H5OH',
+            'c2h6 -> C2H6', 'c3h8 -> C3H8','c3h6 -> C3H6','ch2o -> CH2O', 'ch3cho -> CH3CHO',
+            'ch3coch3 -> CH3COCH3','ch3oh -> CH3OH','mek -> MEK','toluene -> TOLUENE',
+            'nh3 -> NH3','no2 -> NO2','open -> BIGALD','c10h16 -> C10H16',
+            'ch3cooh -> CH3COOH','cres -> CRESOL','glyald -> GLYALD','mgly -> CH3COCHO',
+            'gly -> CH3COCHO','acetol -> HYAC','isop -> ISOP','macr -> MACR', 'mvk -> MVK',
+            'oc -> OC', 'bc -> BC'
+/
+
+
+	Running fire_emis
+        ======= =========
+
+	To run fire_emis issue the command:
+
+	fire_emis < fire_emis.inp > fire_emis.out
+
+        (Redirected input is required. Redirected output to fire_emis.out is optional.
+         The fire_emis.inp and fire_emis.out filenames are for illustration only; you
+         may use any valid filename in place of fire_emis.inp, fire_emis.out)
+
+        Once you have downloaded and compiled the fire_emis utility you can
+	perform a short test.  Assuming that you have placed the fire emission
+	files in the top level directory fire_emis you should :
+
+	(1)   Go to the ACD FINNv1 website and down load the file
+
+	      GLOB_MAY_SEPT2008_05062011_MOZ4.tgz
+
+	      to the fire_emis/data_files directory.
+
+	(2)   Unzip and untar the GLOB*tgz file via :
+
+              tar -zxf GLOB_MAY_SEPT2008_05062011_MOZ4.txt
+
+              This should yield three files
+
+	      GLOB_JAN_APR2008_05062011_MOZ4.txt
+	      GLOB_MAY_SEPT2008_05062011_MOZ4.txt
+	      GLOB_OCT_DEC2008_05062011_MOZ4.txt
+
+	(3)   get into the fire_emis/test directory
+
+	(4)   issue the command :
+
+              ../src/fire_emis < fire_emis.glb.inp
+
+	fire_emis should take about 3 to 5 minutes to run.  The output should
+	be 7 files of the form :
+
+	emissions_<species>_1x1.nc   where <species> = {co,no,so2,bigalk,bigene,c2h4,oc}
+
+        Each file contains the monthly average fire emissions for June, 2008.
+
+	Contacts
+        ========
+
+	For questions or comments please send email to:
+
+	Stacy Walters           stacy@ucar.edu 
+	Gabriele Pfister	pfister@ucar.edu
+	Christine Wiedinmyer    christin@ucar.edu

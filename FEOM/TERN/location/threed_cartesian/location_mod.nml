@@ -1,0 +1,13 @@
+&location_nml
+   use_octree          = .false.,
+   nx                  = 10,
+   ny                  = 10,
+   nz                  = 10,
+   filled              = 10,
+   nboxes              = 1000,
+   maxdepth            = 4, 
+   compare_to_correct, = .false.,
+   output_box_info     = .false.,
+   print_box_level     = 0,
+/
+

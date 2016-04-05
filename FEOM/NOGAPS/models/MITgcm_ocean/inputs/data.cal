@@ -1,0 +1,11 @@
+#
+# DART $Id$
+#
+# *******************
+# Calendar Parameters
+# *******************
+&CAL_NML
+  TheCalendar = 'gregorian',
+  startDate_1 = 20080601,
+  startDate_2 = 00000,
+ &

@@ -1,0 +1,13 @@
+
+&obs_common_subset_nml
+   num_to_compare_at_once   = 2
+   filename_seq             = ''
+   filename_seq_list        = ''
+   filename_out_suffix      = '.common' 
+   calendar                 = 'Gregorian'
+   print_every              = 10000
+   dart_qc_threshold        = 3
+   print_only               = .false.
+   eval_and_assim_can_match = .false.
+   /
+

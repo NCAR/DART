@@ -1,0 +1,6 @@
+&roms_to_dart_nml
+   roms_to_dart_output_file = 'dart.ics'
+   perturb_state            = .false.
+   print_data_ranges        = .true.
+  /
+

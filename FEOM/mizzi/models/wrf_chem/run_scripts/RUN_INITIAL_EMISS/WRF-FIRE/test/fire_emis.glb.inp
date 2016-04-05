@@ -1,0 +1,11 @@
+&control
+fire_directory = '../data_files/',
+fire_filename(1)  = 'GLOB_MAY-SEPT2008_05062011_MOZ4.txt',
+start_date     = '2010-06-01',
+end_date       = '2010-06-30',
+output_timing  = 'monthly',
+resol          = '1x1'
+
+glb2fire_map = 'co -> CO', 'no -> NO', 'so2 -> SO2', 'bigalk -> BIGALK',
+               'bigene -> BIGENE', 'c2h4 -> C2H4', 'oc -> OC;aerosol(12.010997)'
+/

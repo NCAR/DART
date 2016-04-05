@@ -1,0 +1,7 @@
+DART_DIR=/Users/hendric/XDART/rma_filenames
+
+wrapper_arg="-w"
+
+$DART_DIR/mkmf/mkmf -p test_filenames -t $DART_DIR/mkmf/mkmf.template   \
+        -a "$DART_DIR" -w path_names_test
+

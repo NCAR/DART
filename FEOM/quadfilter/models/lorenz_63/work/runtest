@@ -1,0 +1,81 @@
+#!/bin/sh
+
+# This is the script I used to test the quad filter code.
+# To use, set the variables at the top of this file, edit the
+# input.nml namelist to select the options to be tested, and then
+# run this script with a single argument -- the name of a directory
+# where the output files will be saved.  The dir cannot exist already.
+#
+# The script compiles the code, runs perfect_model_obs to generate 
+# the truth diagnostic file, runs filter to assimilate, saves files
+# in the given subdirectory, runs matlab to run plot_total_err,
+# and saves the plot as a jpg file.
+
+# things you might need to set:
+
+# what are the obs_seq files called?  this must match
+# the input and output filenames in the input.nml.
+# the input.nml that is committed to the repository follows
+# the pattern:  obs_seq.three.in for perfect_model_obs input,
+# obs_seq.three.out for output, obs_pseudo.three.out for
+# input to filter, obs_pseudo.three.final for output.
+# 'three' is because this obs_seq observes all 3 variables 
+# in the Lorenz 63 model.  Use 'create_obs_sequence' and
+# 'create_fixed_network' to make other input obs_seq files.
+this=three
+
+# compile filter with mpi or not?
+qb_arg=-nompi
+#qb_arg=-mpi
+
+# if mpi, run test with how many tasks?
+ntasks=1
+#ntasks=3
+
+# end of things you should have to set.
+
+
+if [ $# != 1 ]; then
+  echo usage: $0 dirname
+  exit 1
+fi
+
+dirname=$1
+
+if [ -e $dirname ]; then
+  echo error: $dirname cannot already exist
+  exit 1
+fi
+
+rm -f dart_log.*
+
+./quickbuild.csh $qb_arg     # build executables
+./perfect_model_obs          # generate truth file
+./obs_add_pseudo_obs         # add pseudo obs
+if [ $ntasks == 1 ]; then
+ ./filter                    # run filter 
+else
+ mpirun -np $ntasks ./filter
+fi
+./obs_sequence_tool          # remove pseudo obs before diags
+
+mkdir $dirname
+
+# files to save.  the first list is moved, the second list is copied only.
+mv P*nc dart_log.* obs_seq.$this.final obs_pseudo.$this.final filter_restart \
+   perfect_restart prior_inflate_restart $dirname
+cp T*nc input.nml obs_pseudo.$this.out obs_seq.$this.in set_def.$this.out $dirname
+
+cd $dirname
+
+cat > mscript <<EOF
+  plot_total_err;
+  figure1=figure(1);
+  saveas(figure1,'$dirname','jpg');
+  quit
+EOF
+
+matlab < ./mscript        # generate a jpg plot of total error time evolution
+
+exit 0
+
