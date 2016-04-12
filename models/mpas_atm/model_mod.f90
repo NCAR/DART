@@ -7042,10 +7042,10 @@ end function query_vert_localization_coord
 !> model time for CESM format?
 function construct_file_name_in(stub, domain, copy)
 
-character(len=512), intent(in) :: stub
+character(len=256), intent(in) :: stub
 integer,            intent(in) :: domain
 integer,            intent(in) :: copy
-character(len=1024)            :: construct_file_name_in
+character(len=256) :: construct_file_name_in
 
 if (copy < 10) then
    write(construct_file_name_in, '(A, i1.1, A)') TRIM(stub), copy, "/x1.40962.restart.nc"
@@ -7060,7 +7060,7 @@ end function construct_file_name_in
 !> stolen get_analysis_time_fname
 function read_model_time(filename)
 
-character(len=1024), intent(in) :: filename
+character(len=256), intent(in) :: filename
 
 type(time_type) :: read_model_time
 integer         :: ncid  ! netcdf file id

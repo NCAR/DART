@@ -1,0 +1,46 @@
+netcdf cf_out{
+
+dimensions:
+level = 5;
+time = UNLIMITED ; //(1 currently)
+variables:
+
+int A(level);
+A:units = "units A";
+A:long_name = "variable A" ;
+A:short_name = "short A" ; 
+A:missing_value = -77 ;
+A:_FillValue = -77 ;
+
+float B(level);
+B:units = "units B" ;
+B:long_name = "variable B" ;
+B:short_name = "short B" ;
+B:missing_value = -777.77 ;
+B:_FillValue = -777.77 ;
+
+double C(level);
+C:units = "units C" ;
+C:long_name = "variable C" ;
+C:short_name = "short C" ;
+C:missing_value = -88888.88888 ;
+C:_FillValue = -88888.88888 ;
+C:scale_factor = 0.2 ;
+C:add_offset = 2.0 ;
+
+double D(level);
+
+float time(time);
+time:units = "hours" ;
+
+//global attributes:
+
+:title = "cf restart" ;
+
+data:
+A = 1, 2, 3, 4, 5 ;
+B = 1.1, 2.2, 3.3, 4.4, 5.5 ;
+C = -10.1, 20.2, 30.3, 40.4, 50.5 ;
+D = -100.1, 200.2, 300.3, 400.4, 500.5 ;
+time = 1 ;
+}

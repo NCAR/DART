@@ -32,18 +32,22 @@ module io_filenames_mod
 !> The file_info_type is passed to the state IO routines: read_state, write_state, 
 !> and filter_state_space_diagnostics (diagnostic file)
 !> The internals of the file_info_type are accessed through the accessor functions
-!> listed below. assert_file_info_initiailzed() and assert_restart_names_initiailzed()
+!> listed below. assert_file_info_initialized() and assert_restart_names_initialized()
 !> should be used to check that the file_info_type has been initialized before
 !> attempting any IO.
 !>
 !> Diagnostic files could have different netcdf variable ids
 !> @{
 
+use types_mod,            only : r4, r8, MISSING_R8
 use utilities_mod,        only : file_exist, E_ERR, E_MSG, error_handler, &
                                  nc_check, open_file, find_textfile_dims
 use model_mod,            only : construct_file_name_in
 use state_structure_mod,  only : get_num_domains, get_dim_length, get_dim_name, &
-                                 get_io_num_dims, get_num_variables, get_variable_name
+                                 get_io_num_dims, get_num_variables, get_variable_name, &
+                                 get_units, get_long_name, get_short_name, get_missing_value, &
+                                 get_FillValue, get_xtype, get_add_offset, get_scale_factor, &
+                                 get_has_missing_value
 use ensemble_manager_mod, only : ensemble_type
 
 use copies_on_off_mod,    only : ENS_MEAN_COPY, ENS_SD_COPY, &
@@ -62,14 +66,15 @@ private
 
 ! File_info_type initialization and assertions.
 public :: io_filenames_init, &
+          end_io_filenames, &
           file_info_type, &
-          assert_file_info_initiailzed, &
+          assert_file_info_initialized, &
           restart_names_type, &
-          assert_restart_names_initiailzed
-
+          assert_restart_names_initialized
 ! Accessor functions:
 public :: get_input_file, &
           get_output_file, &
+          get_file_description, &
           get_read_from_netcdf, &
           get_write_to_netcdf, &
           get_output_restart, &
@@ -113,7 +118,8 @@ end type
 type restart_names_type
    private
    logical                          :: initialized       = .false.
-   character(len=2048), allocatable :: filenames(:,:) ! num_files x num_domains
+   character(len=256), allocatable  :: filenames(:,:)  ! num_files x num_domains
+   character(len=512),  allocatable :: file_description(:,:)  !  information about file
 end type
 
 
@@ -132,6 +138,8 @@ type file_info_type
 
 end type
 
+character(len=512) :: msgstring ! message handler
+
 contains
 
 !-------------------------------------------------------------------------------
@@ -141,7 +149,7 @@ contains
 !-------------------------------------------------------------------------------
 !> Test whether file_info_type has been initialized
 !> Error out if not, giving the name of the calling routine.
-subroutine assert_file_info_initiailzed(file_info, routine_name)
+subroutine assert_file_info_initialized(file_info, routine_name)
 
 type(file_info_type), intent(in) :: file_info
 character(len=*),     intent(in) :: routine_name
@@ -150,13 +158,13 @@ if ( file_info%options%initialized .eqv. .false.) then
    call error_handler(E_ERR, routine_name, ':: io_filenames_init must be used to initialize file_info_type')
 endif
 
-end subroutine assert_file_info_initiailzed
+end subroutine assert_file_info_initialized
 
 !-------------------------------------------------------------------------------
 !> Test whether file_info_type has been initialized for routines that only
 !> have access the %restart_files(in/out/prior)
 !> Error out if not, giving the name of the calling routine.
-subroutine assert_restart_names_initiailzed(restart_names, routine_name)
+subroutine assert_restart_names_initialized(restart_names, routine_name)
 
 type(restart_names_type), intent(in) :: restart_names
 character(len=*),     intent(in) :: routine_name
@@ -165,7 +173,7 @@ if ( restart_names%initialized .eqv. .false.) then
    call error_handler(E_ERR, routine_name, ':: io_filenames_init must be used to initialize file_info_type')
 endif
 
-end subroutine assert_restart_names_initiailzed
+end subroutine assert_restart_names_initialized
 
 !-------------------------------------------------------------------------------
 ! Accessor functions for file_info_type
@@ -274,7 +282,7 @@ character(len=*),    intent(in) :: restart_out_base
 logical,             intent(in) :: output_restart
 logical,             intent(in) :: netcdf_read  ! Netcdf or DART format
 logical,             intent(in) :: netcdf_write ! Netcdf of DART format
-! Optional arguements - apply to filter only
+! Optional arguments - apply to filter only
 logical,            optional, intent(in) :: output_restart_mean
 logical,            optional, intent(in) :: domain_extension ! add _d0X to filenames
 logical,            optional, intent(in) :: rpointer          ! define a list of restart files
@@ -317,9 +325,9 @@ endif
 ! loads up filenames and checks any existing files are the correct shape
 call set_filenames(ens_handle, file_info)
 
-file_info%restart_files_in%initialized = .true.
+file_info%restart_files_in%initialized        = .true.
 file_info%restart_files_out_prior%initialized = .true.
-file_info%restart_files_out%initialized = .true.
+file_info%restart_files_out%initialized       = .true.
 
 end function io_filenames_init
 
@@ -331,7 +339,6 @@ subroutine set_filenames(ens_handle, file_info)
 type(ensemble_type),  intent(in) :: ens_handle
 type(file_info_type),  intent(inout) :: file_info
 
-character(len = 32)   :: ext
 character(len = 32)   :: dom_str = ''
 
 integer :: num_domains
@@ -342,7 +349,7 @@ integer :: ens_size ! number of actual copies
 
 integer :: iunit, ios
 integer :: nlines
-character(len=256) :: msgstring
+character(len=256) :: file_string
 integer :: copy
 
 ens_size = ens_handle%num_copies - ens_handle%num_extras
@@ -352,6 +359,9 @@ num_domains = get_num_domains()
 allocate(file_info%restart_files_in%filenames(num_files , num_domains))
 allocate(file_info%restart_files_out_prior%filenames(num_files , num_domains)) ! prior
 allocate(file_info%restart_files_out%filenames(num_files , num_domains)) ! posterior
+
+allocate(file_info%restart_files_out_prior%file_description(num_files , num_domains)) ! prior
+allocate(file_info%restart_files_out%file_description(num_files , num_domains)) ! posterior
 
 file_info%restart_files_in%filenames = 'null'
 file_info%restart_files_out_prior%filenames = 'null'
@@ -412,14 +422,22 @@ do idom = 1, num_domains
    ! Construct the output files:
    do icopy = 1, ens_size  ! output restarts
       
-      write(ext, '(2A, i4.4, A)') trim(dom_str), ".", icopy, ".nc"
-      write(file_info%restart_files_out_prior%filenames(icopy, idom),'(2A)') 'prior_member', ext
+      ! prior member file names and descriptions
+      write(file_string, '(''prior_member'',A, I4.4,''.nc'')') trim(dom_str), icopy
+      file_info%restart_files_out_prior%filenames(icopy, idom) = file_string
 
+      write(file_string,'(A,I2.2,A)') 'dart prior member ', icopy, trim(dom_str)
+      file_info%restart_files_out_prior%file_description(icopy,idom) = file_string
+
+      !  restart file names and descriptions
       if (file_info%options%overwrite_input) then
          file_info%restart_files_out%filenames(icopy, idom) = file_info%restart_files_in%filenames(icopy, idom)
       else
          file_info%restart_files_out%filenames(icopy, idom) = construct_file_name_out(file_info, icopy, idom)
       endif
+
+      write(file_string,'(A,I2.2,A)') 'dart output member ', icopy, trim(dom_str)
+      file_info%restart_files_out%file_description(icopy,idom) = file_string
    enddo
 
 
@@ -428,16 +446,16 @@ do idom = 1, num_domains
    ! sd -never used
    ! prior inf copy
    if (query_copy_present(PRIOR_INF_COPY)) &
-      write(file_info%restart_files_in%filenames(PRIOR_INF_COPY,idom), '(3A)') trim(file_info%options%inflation_in(1)), '_mean'
+      write(file_info%restart_files_in%filenames(PRIOR_INF_COPY,idom),    '(2A)') trim(file_info%options%inflation_in(1)), '_mean'
    ! prior inf sd copy
    if (query_copy_present(PRIOR_INF_SD_COPY)) &
-      write(file_info%restart_files_in%filenames(PRIOR_INF_SD_COPY,idom), '(3A)') trim(file_info%options%inflation_in(1)), '_sd'
+      write(file_info%restart_files_in%filenames(PRIOR_INF_SD_COPY,idom), '(2A)') trim(file_info%options%inflation_in(1)), '_sd'
    ! post inf copy
    if (query_copy_present(POST_INF_COPY)) &
-      write(file_info%restart_files_in%filenames(POST_INF_COPY,idom), '(3A)') trim(file_info%options%inflation_in(2)), '_mean'
+      write(file_info%restart_files_in%filenames(POST_INF_COPY,idom),     '(2A)') trim(file_info%options%inflation_in(2)), '_mean'
    ! post inf sd copy
    if (query_copy_present(POST_INF_SD_COPY))  &
-      write(file_info%restart_files_in%filenames(POST_INF_SD_COPY,idom), '(3A)') trim(file_info%options%inflation_in(2)), '_sd'
+      write(file_info%restart_files_in%filenames(POST_INF_SD_COPY,idom),  '(2A)') trim(file_info%options%inflation_in(2)), '_sd'
    !-----------------------------------
 
 
@@ -445,19 +463,23 @@ do idom = 1, num_domains
    ! PRIOR
    ! mean
    if (query_copy_present(ENS_MEAN_COPY)) &
-      write(file_info%restart_files_out_prior%filenames(ENS_MEAN_COPY,idom),'(A)') 'PriorDiag_mean'
+      call write_output_file_info(file_info%restart_files_out_prior, ENS_MEAN_COPY, idom, &
+             'PriorDiag_mean','dart prior ensemble mean', dom_str)
 
    ! sd
    if (query_copy_present(ENS_SD_COPY)) &
-      write(file_info%restart_files_out_prior%filenames(ENS_SD_COPY,idom),'(A)') 'PriorDiag_sd'
+      call write_output_file_info(file_info%restart_files_out_prior, ENS_SD_COPY, idom, &
+             'PriorDiag_sd', 'dart prior ensemble sd', dom_str)
 
    ! prior inf copy (should be the same as trim(inflation_in(1)), '_mean', should we write this out?)
    if (query_copy_present(PRIOR_INF_COPY)) &
-      write(file_info%restart_files_out_prior%filenames(PRIOR_INF_COPY,idom),'(A)') 'PriorDiag_inf_mean'
+      call write_output_file_info(file_info%restart_files_out_prior, PRIOR_INF_COPY, idom, &
+             'PriorDiag_inf_mean', 'dart prior inflation mean', dom_str)
 
    ! prior inf sd copy (should be the same as trim(inflation_in(1)), '_sd', should we write this out?)
    if (query_copy_present(PRIOR_INF_SD_COPY)) &
-      write(file_info%restart_files_out_prior%filenames(PRIOR_INF_SD_COPY,idom),'(A)') 'PriorDiag_inf_sd'
+      call write_output_file_info(file_info%restart_files_out_prior, PRIOR_INF_SD_COPY, idom, &
+             'PriorDiag_inf_sd', 'dart prior inflation sd', dom_str)
 
    ! post inf copy - not used
    ! post inf sd copy - not used
@@ -465,47 +487,53 @@ do idom = 1, num_domains
    ! POSTERIOR
    ! mean
    if (query_copy_present(ENS_MEAN_COPY)) &
-      write(file_info%restart_files_out%filenames(ENS_MEAN_COPY,idom),'(A)') 'mean'
+      call write_output_file_info(file_info%restart_files_out, ENS_MEAN_COPY, idom, &
+             'mean', 'dart posterior ensemble mean', dom_str)
 
    ! sd
    if (query_copy_present(ENS_SD_COPY)) &
-      write(file_info%restart_files_out%filenames(ENS_SD_COPY,idom),'(A)') 'sd'
+      call write_output_file_info(file_info%restart_files_out, ENS_SD_COPY, idom, &
+             'sd', 'dart posterior ensemble sd', dom_str)
 
-   ! prior inf copy
-   if (query_copy_present(PRIOR_INF_COPY)) &
-      write(file_info%restart_files_out%filenames(PRIOR_INF_COPY,idom),'(2A)') trim(file_info%options%inflation_out(1)), '_mean'
+   ! potentially updated prior inflation mean ( analysis )
+   if (query_copy_present(PRIOR_INF_COPY)) then
+      write(file_string,*) trim(file_info%options%inflation_out(1))//'_mean'
+      call write_output_file_info(file_info%restart_files_out, PRIOR_INF_COPY, idom, &
+             file_string, 'dart prior inflation mean', dom_str)
+   endif
 
-   ! prior inf sd copy
-   if (query_copy_present(PRIOR_INF_SD_COPY)) &
-      write(file_info%restart_files_out%filenames(PRIOR_INF_SD_COPY,idom),'(2A)') trim(file_info%options%inflation_out(1)), '_sd'
+   ! potentially updated prior inflation sd ( analysis )
+   if (query_copy_present(PRIOR_INF_SD_COPY)) then
+      write(file_string,*) trim(file_info%options%inflation_out(1))//'_sd'
+      call write_output_file_info(file_info%restart_files_out, PRIOR_INF_SD_COPY, idom, &
+             file_string, 'dart prior inflation sd', dom_str)
+   endif
 
-   ! post inf copy
-   if (query_copy_present(POST_INF_COPY)) &
-      write(file_info%restart_files_out%filenames(POST_INF_COPY,idom),'(2A)') trim(file_info%options%inflation_out(2)), '_mean'
+   ! potentially updated posterior inflation mean ( analysis )
+   if (query_copy_present(POST_INF_COPY)) then
+      write(file_string,*) trim(file_info%options%inflation_out(2))//'_mean'
+      call write_output_file_info(file_info%restart_files_out, POST_INF_COPY, idom, &
+             file_string, 'dart posterior inflation mean', dom_str)
+   endif
 
-   ! post inf sd copy
-   if (query_copy_present(POST_INF_SD_COPY)) &
-      write(file_info%restart_files_out%filenames(POST_INF_SD_COPY,idom),'(2A)') trim(file_info%options%inflation_out(2)), '_sd'
+   ! potentially updated posterior inflation sd ( analysis )
+   if (query_copy_present(POST_INF_SD_COPY)) then
+      write(file_string,*) trim(file_info%options%inflation_out(2))//'_sd'
+      call write_output_file_info(file_info%restart_files_out, POST_INF_SD_COPY, idom, &
+             file_string, 'dart posterior inflation sd', dom_str)
+   endif
 
    ! Filename for copies that would have gone in the Posterior_diag.nc if we
    ! were to write it
    if (query_copy_present(SPARE_POST_INF_MEAN)) &
-      file_info%restart_files_out%filenames(SPARE_POST_INF_MEAN ,idom) =  'PosteriorDiag_inf_mean'  ! inf_mean
+      call write_output_file_info(file_info%restart_files_out, SPARE_POST_INF_MEAN, idom, &
+             'PosteriorDiag_inf_mean', 'dart posterior inflation mean', dom_str)
+
    if (query_copy_present(SPARE_POST_INF_SPREAD)) &
-      file_info%restart_files_out%filenames(SPARE_POST_INF_SPREAD,idom)  =  'PosteriorDiag_inf_sd' ! inf_sd
+      call write_output_file_info(file_info%restart_files_out, SPARE_POST_INF_SPREAD, idom, &
+             'PosteriorDiag_inf_sd', 'dart posterior inflation sd', dom_str)
 
    !-----------------------------------
-
-
-   ! Add extension to extra files
-   write(ext, '(2A)') trim(dom_str), ".nc"
-   ! Assumes the extras are at the end
-   do icopy = ens_size + 1, ens_handle%num_copies
-      write(file_info%restart_files_in%filenames(icopy,idom), '(2A)') trim(file_info%restart_files_in%filenames(icopy,idom)), ext
-      write(file_info%restart_files_out_prior%filenames(icopy,idom), '(2A)') trim(file_info%restart_files_out_prior%filenames(icopy,idom)), ext
-      write(file_info%restart_files_out%filenames(icopy,idom), '(2A)') trim(file_info%restart_files_out%filenames(icopy,idom)), ext
-
-   enddo
 
    ! Filenames for copies that would have gone in the Prior_diag.nc if we were to write it, and
    ! we saved writing these copies until the end of filter.
@@ -532,18 +560,36 @@ do i = 1, ens_handle%my_num_copies ! just have owners check
    copy = ens_handle%my_copies(i)
    do dom = 1, num_domains
       ! check the prior files
-      if(file_exist(file_info%restart_files_out_prior%filenames(copy,dom))) then
+      if(file_exist(file_info%restart_files_out_prior%filenames(copy,dom))) &
          call check_correct_variables(file_info%restart_files_out_prior%filenames(copy,dom),dom)
-      endif
-                
+
       ! check the posterior files
-      if(file_exist(file_info%restart_files_out%filenames(copy,dom))) then
+      if(file_exist(file_info%restart_files_out%filenames(copy,dom))) &
          call check_correct_variables(file_info%restart_files_out%filenames(copy,dom),dom)
-      endif
    enddo
 enddo
 
 end subroutine set_filenames
+
+!-------------------------------------------------------
+!> Write output file name and description
+subroutine write_output_file_info(restart_type, copy_number, domain, stub, desc, domain_string)      
+type(restart_names_type), intent(inout) :: restart_type
+integer,                  intent(in)    :: copy_number
+integer,                  intent(in)    :: domain
+character(len=*),         intent(in)    :: stub
+character(len=*),         intent(in)    :: desc
+character(len=*),         intent(in)    :: domain_string
+   
+character(len=256) :: string1
+
+write(string1,'(2A,''.nc'')') trim(stub), trim(domain_string)
+restart_type%filenames(copy_number,domain) = adjustl(trim(string1))
+
+write(string1,'(2A)') trim(desc), trim(domain_string)
+restart_type%file_description(copy_number,domain) = adjustl(trim(string1))
+
+end subroutine write_output_file_info
 
 !-------------------------------------------------------
 !> Check that the netcdf file matches the variables
@@ -570,7 +616,6 @@ integer, dimension(NF90_MAX_VAR_DIMS) :: dimids ! dimension ids for a variable
 character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: name ! dimension names for a variables
 integer, dimension(NF90_MAX_VAR_DIMS) :: length
 integer :: xtype ! do we care about this? Yes.
-character(len=512) :: msgstring ! message handler
 
 ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
 call nc_check(ret, 'check_correct_variables opening ', netcdf_filename)
@@ -593,6 +638,9 @@ do i = 1, get_num_variables(dom)
                          ' match ndims ', ndims, ' in ', trim(netcdf_filename)
       call error_handler(E_ERR, 'check_correct_variables', msgstring)
    endif
+   
+   ! check that the attributes are the same as the state structure
+   call check_attributes(ncFile, netcdf_filename, var_id, dom, i)
 
    ! check if the dimensions are what we expect. The dimensions should be same size same order.
    do j = 1, get_io_num_dims(dom,i)
@@ -627,13 +675,152 @@ call nc_check(ret, 'check_correct_variables closing', netcdf_filename)
 end subroutine check_correct_variables
 
 !--------------------------------------------------------------------
+!> check that cf-convention attributes are consistent across restarts
+subroutine check_attributes(ncFile, filename, ncVarId, domid, varid)
+
+integer,          intent(in) :: ncFile
+character(len=*), intent(in) :: filename
+integer,          intent(in) :: ncVarID
+integer,          intent(in) :: domid
+integer,          intent(in) :: varid
+
+integer  :: spvalINT
+real(r4) :: spvalR4
+real(r8) :: spvalR8
+
+call check_attributes_name(ncFile, filename, ncVarId, 'units'     , get_units     (domid, varid) )
+call check_attributes_name(ncFile, filename, ncVarId, 'long_name' , get_long_name (domid, varid) )
+call check_attributes_name(ncFile, filename, ncVarId, 'short_name', get_short_name(domid, varid) )
+
+if ( get_has_missing_value(domid, varid) ) then
+   select case (get_xtype(domid,varid))
+      case (NF90_INT)
+
+         call get_FillValue(domid, varid, spvalINT)
+         call check_attribute_value_int(ncFile, filename, ncVarID, '_FillValue', spvalINT)
+         call get_missing_value(domid, varid, spvalINT)
+         call check_attribute_value_int(ncFile, filename, ncVarID, 'missing_value', spvalINT)
+      case (NF90_FLOAT)
+
+         call get_FillValue(domid, varid, spvalR4)
+         call check_attribute_value_r4(ncFile, filename, ncVarID, '_FillValue', spvalR4)
+         call get_missing_value(domid, varid, spvalR4)
+         call check_attribute_value_r4(ncFile, filename, ncVarID, 'missing_value', spvalR4)
+      case (NF90_DOUBLE)
+
+         call get_FillValue(domid, varid, spvalR8)
+         call check_attribute_value_r8(ncFile, filename, ncVarID, '_FillValue', spvalR8)
+         call get_missing_value(domid, varid, spvalR8)
+         call check_attribute_value_r8(ncFile, filename, ncVarID, 'missing_value', spvalR8)
+      case default
+         call error_handler(E_ERR, 'check_attributes', 'unknown xtype')
+   end select
+endif
+         
+!@>todo FIXME : for now we are only storing r8 offset and scale since DART is not using them
+call check_attribute_value_r8(ncFile, filename, ncVarID, 'add_offset'  , get_add_offset(domid,varid))
+call check_attribute_value_r8(ncFile, filename, ncVarID, 'scale_factor', get_scale_factor(domid,varid))
+
+end subroutine check_attributes
+
+!--------------------------------------------------------------------
+!> check integer values are the same
+subroutine check_attribute_value_int(ncFile, filename, ncVarID, att_string, spvalINT)
+
+integer,          intent(in) :: ncFile
+character(len=*), intent(in) :: filename
+integer,          intent(in) :: ncVarID
+character(len=*), intent(in) :: att_string
+integer,          intent(in) :: spvalINT
+
+integer :: ret_spvalINT
+
+if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalINT) == NF90_NOERR ) then
+   if (spvalINT /= ret_spvalINT) then
+      write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalINT, &
+                         ' does not match ', trim(att_string), ' ', ret_spvalINT, ' in ', trim(filename)
+      call error_handler(E_ERR, 'check_attributes', msgstring)
+   endif
+endif
+
+end subroutine check_attribute_value_int
+
+!--------------------------------------------------------------------
+!> check r4 values are the same
+subroutine check_attribute_value_r4(ncFile, filename, ncVarID, att_string, spvalR4)
+
+integer,          intent(in) :: ncFile
+character(len=*), intent(in) :: filename
+integer,          intent(in) :: ncVarID
+character(len=*), intent(in) :: att_string
+real(r4),         intent(in) :: spvalR4
+
+real(r4) :: ret_spvalR4
+
+if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR4) == NF90_NOERR ) then
+   if (spvalR4 /= ret_spvalR4) then
+      write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR4, &
+                         ' does not match ', trim(att_string), ' ', ret_spvalR4, ' in ', trim(filename)
+      call error_handler(E_ERR, 'check_attribute_value_r4', msgstring)
+   endif
+endif
+
+end subroutine check_attribute_value_r4
+
+!--------------------------------------------------------------------
+!> check r8 values are the same
+subroutine check_attribute_value_r8(ncFile, filename, ncVarID, att_string, spvalR8)
+
+integer,          intent(in) :: ncFile
+character(len=*), intent(in) :: filename
+integer,          intent(in) :: ncVarID
+character(len=*), intent(in) :: att_string
+real(r8),         intent(in) :: spvalR8
+
+real(r8) :: ret_spvalR8
+
+if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR8) == NF90_NOERR ) then
+   if (spvalR8 /= ret_spvalR8) then
+      write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR8, &
+                         ' does not match ', trim(att_string), ' ', ret_spvalR8, ' in ', trim(filename)
+      call error_handler(E_ERR, 'check_attribute_value_r8', msgstring)
+   endif
+endif
+
+end subroutine check_attribute_value_r8
+
+!--------------------------------------------------------------------
+!> check attribute name is consistent across restarts
+subroutine check_attributes_name(ncFile, filename, ncVarId, att_string, comp_string)
+
+integer,                    intent(in) :: ncFile
+character(len=*),           intent(in) :: filename
+integer,                    intent(in) :: ncVarID
+character(len=*),           intent(in) :: att_string
+character(len=*),           intent(in) :: comp_string
+
+character(len=NF90_MAX_NAME) :: att_name
+
+if ( nf90_get_att(ncFile, ncVarID, att_string, att_name) == NF90_NOERR ) then
+   ! inflation files will all have unitless attributes while restarts may
+   ! have some measurement real units
+   if (comp_string /= att_name .and. trim(att_name) /= 'unitless') then
+      write(msgstring,*) ' variable attribute ,', trim(att_string), ' in state : ', trim(comp_string), &
+                         ', does not match ', trim(att_name), ' in ', trim(filename)
+      call error_handler(E_ERR, 'check_attributes_name', msgstring)
+   end if
+endif
+
+end subroutine check_attributes_name
+
+!--------------------------------------------------------------------
 !> construct restart file name for writing
 function construct_file_name_out(file_info, copy, domain)
 
 type(file_info_type), intent(in) :: file_info
 integer,             intent(in) :: copy
 integer,             intent(in) :: domain
-character(len=1024)             :: construct_file_name_out
+character(len=256) :: construct_file_name_out
 
 character(len = 32)   :: ext = ''
 
@@ -653,7 +840,7 @@ type(restart_names_type), intent(in) :: name_handle
 integer,             intent(in) :: copy
 integer,             intent(in) :: domain
 
-character(len=2048) :: get_input_file
+character(len=256) :: get_input_file
 
 get_input_file = name_handle%filenames(copy, domain)
 
@@ -667,11 +854,25 @@ type(restart_names_type), intent(in) :: name_handle
 integer,             intent(in) :: copy
 integer,             intent(in) :: domain
 
-character(len=2048) :: get_output_file
+character(len=256) :: get_output_file
 
 get_output_file = name_handle%filenames(copy, domain)
 
 end function get_output_file
+
+!----------------------------------
+!> Return whether the file is an input, output or prior files
+function get_file_description(name_handle, copy, domain)
+
+type(restart_names_type), intent(in) :: name_handle
+integer,                  intent(in) :: copy
+integer,                  intent(in) :: domain
+
+character(len=512) :: get_file_description
+
+get_file_description= name_handle%file_description(copy, domain)
+
+end function get_file_description
 
 !----------------------------------
 !> Destroy module storage

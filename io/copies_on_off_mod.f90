@@ -74,6 +74,7 @@ public :: setup_read_write, end_read_write
 public :: query_read_copy, query_write_copy
 public :: turn_read_copy_on, turn_read_copies_off
 public :: turn_write_copy_on, turn_write_copy_off
+public :: is_inflation_copy, is_mean_copy, is_sd_copy, is_ensemble_copy
 
 ! These are public integers for now.  
 ! There is no protection against code using this module changing the
@@ -88,6 +89,9 @@ public :: ENS_MEAN_COPY, ENS_SD_COPY, &
 
 ! Used to test if a copy is not in use, e.g. the spare copies may not be in use.
 integer, parameter :: COPY_NOT_PRESENT = -1
+
+!>@todo FIXME : this should be a derived type with a copy number and a long name
+!>@             associated with the file.
 
 ! Global indices into ensemble storage for state
 ! These are initialized to to COPY_NOT_PRESENT
@@ -290,6 +294,65 @@ else
 endif
 
 end function
+
+!------------------------------------------------------------------
+! Test whether the copy is an ensemble member
+!>@todo FIXME : There is probably a better way to do this. This is strictly 
+!>              assuming the ensemble members are before ENS_MEAN_COPY
+function is_ensemble_copy(copy)
+integer, intent(in) :: copy
+logical :: is_ensemble_copy
+
+is_ensemble_copy= .false.
+
+if( copy < ENS_MEAN_COPY ) is_ensemble_copy= .true.
+
+end function is_ensemble_copy
+
+!------------------------------------------------------------------
+! Test whether the copy is ensemble sd
+function is_sd_copy(copy)
+integer, intent(in) :: copy
+logical :: is_sd_copy
+
+is_sd_copy = .false.
+
+if( copy == ENS_SD_COPY ) is_sd_copy = .true.
+
+end function is_sd_copy
+
+!------------------------------------------------------------------
+! Test whether the copy is ensemble mean
+function is_mean_copy(copy)
+integer, intent(in) :: copy
+logical :: is_mean_copy
+
+is_mean_copy = .false.
+
+if( copy == ENS_MEAN_COPY ) is_mean_copy = .true.
+
+end function is_mean_copy
+
+!------------------------------------------------------------------
+! Test whether the copy is inflation copy
+function is_inflation_copy(copy)
+integer, intent(in) :: copy
+logical :: is_inflation_copy
+
+is_inflation_copy = .false.
+
+if( copy == PRIOR_INF_COPY         .or. &
+    copy == PRIOR_INF_SD_COPY      .or. &
+    copy == POST_INF_COPY          .or. &
+    copy == POST_INF_SD_COPY       .or. &
+    copy == SPARE_PRIOR_INF_MEAN   .or. &
+    copy == SPARE_PRIOR_INF_SPREAD .or. &
+    copy == SPARE_POST_INF_MEAN    .or. &
+    copy == SPARE_POST_INF_SPREAD ) then
+   is_inflation_copy = .true.
+endif
+
+end function is_inflation_copy
 
 !-------------------------------------------------------
 end module copies_on_off_mod

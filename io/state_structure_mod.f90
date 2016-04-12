@@ -60,7 +60,7 @@ use utilities_mod, only : E_ERR, error_handler, nc_check, do_output, &
                           to_upper
 use  obs_kind_mod, only : paramname_length, get_raw_obs_kind_name, &
                           get_raw_obs_kind_index
-use     types_mod, only : r8, i8, missing_r8
+use     types_mod, only : r8, r4, i8, digits12, MISSING_R8, MISSING_R4, MISSING_I
 use      sort_mod, only : index_sort
 
 use netcdf
@@ -103,6 +103,15 @@ public :: static_init_state_type,     &
           get_model_variable_indices, &
           get_dart_vector_index,      &
           get_num_varids_from_kind,   &
+          get_xtype,                  &
+          get_units,                  &
+          get_long_name,              &
+          get_short_name,             &
+          get_has_missing_value,      &
+          get_FillValue,              &
+          get_missing_value,          &
+          get_add_offset,             &
+          get_scale_factor,           &
           add_dimension_to_variable,  &
           finished_adding_domain,     &
           state_structure_info
@@ -117,8 +126,8 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-character(len=256) :: string1
-character(len=256) :: string2
+character(len=512) :: string1
+character(len=512) :: string2
 
 !-------------------------------------------------------------------------------
 ! global variables
@@ -149,11 +158,21 @@ type io_information
    
    ! update information
    logical :: update = .true. ! default to update variables
+   
+   ! CF-Conventions
+   character(len=NF90_MAX_NAME) :: units      = ' '
+   character(len=NF90_MAX_NAME) :: short_name = ' '
+   character(len=NF90_MAX_NAME) :: long_name  = ' '
+   logical  :: has_missing_value
+   integer  :: missingINT   = MISSING_I   ! missing values
+   real(r4) :: missingR4    = MISSING_R4
+   real(r8) :: missingR8    = MISSING_R8
+   integer  :: spvalINT     = MISSING_I   ! fill values
+   real(r4) :: spvalR4      = MISSING_R4
+   real(r8) :: spvalR8      = MISSING_R8
+   real(r8) :: scale_factor = MISSING_R8
+   real(r8) :: add_offset   = MISSING_R8
 
-   ! FUTURE VARIABLES
-   ! character(len=NF90_MAX_NAME) :: long_name
-   ! character(len=NF90_MAX_NAME) :: units
-  
 end type io_information
 
 
@@ -259,6 +278,18 @@ interface get_index_end
    module procedure get_index_end_from_varid
 end interface
 
+interface get_missing_value
+   module procedure get_missing_value_r8
+   module procedure get_missing_value_r4
+   module procedure get_missing_value_int
+end interface
+
+interface get_FillValue
+   module procedure get_spval_r8
+   module procedure get_spval_r4
+   module procedure get_spval_int
+end interface
+
 contains
 
 !-------------------------------------------------------------------------------
@@ -319,6 +350,9 @@ call load_state_variable_info(state%domain(dom_id))
 
 ! load up the domain unique dimension info
 call load_unique_dim_info(dom_id)
+
+! load up any cf-conventions if they exist
+call load_common_cf_conventions(state%domain(dom_id))
 
 if ( present(kind_list)  )  call set_dart_kinds (dom_id, num_vars, kind_list)
 if ( present(clamp_vals)  ) call set_clamping   (dom_id, num_vars, clamp_vals)
@@ -623,6 +657,135 @@ enddo
 deallocate(array_of_dimids, array_of_names, array_of_lengths, array_of_indices, unique)
 
 end subroutine load_unique_dim_info
+
+!-------------------------------------------------------------------------------
+!> Check to see if the template file has any of the common cf-conventions
+!>
+!>  * units
+!>  * short_name
+!>  * long_name
+!>  * short_name
+!>  * _FillValue
+!>  * missing_value
+!>  * add_offset
+!>  * scale_factor
+!>
+!> If they exist, load them up into the state structure.
+!-------------------------------------------------------------------------------
+subroutine load_common_cf_conventions(domain)
+
+type(domain_type), intent(inout) :: domain
+
+integer :: ivar
+integer :: nvars
+
+! netcdf variables
+integer  :: ret, ncid, VarID
+integer  :: var_xtype
+integer  :: cf_spvalINT
+real(r4) :: cf_spvalR4
+real(r8) :: cf_spvalR8
+real(r8) :: cf_scale_factor, cf_add_offset
+character(len=512) :: ncFilename
+character(len=NF90_MAX_NAME) :: var_name
+character(len=NF90_MAX_NAME) :: cf_long_name, cf_short_name, cf_units
+
+ncFilename = domain%info_file
+
+! open netcdf file
+ret = nf90_open(ncFilename, NF90_NOWRITE, ncid)
+call nc_check(ret, 'load_common_cf_conventions','nf90_open '//trim(ncFilename))
+
+nvars = domain%num_variables
+
+do ivar = 1, nvars
+   var_name = domain%variable(ivar)%varname
+
+   call nc_check(nf90_inq_varid(ncid, trim(var_name), VarID), &
+            'load_common_cf_conventions', 'inq_varid '//trim(var_name))
+
+   ! If the short_name, long_name and/or units attributes are set, get them.
+   ! They are not REQUIRED by DART but are nice to keep around if they are present.
+
+   if( nf90_inquire_attribute(    ncid, VarID, 'long_name') == NF90_NOERR ) then
+      call nc_check( nf90_get_att(ncid, VarID, 'long_name' , cf_long_name), &
+                     'load_common_cf_conventions', 'get_att long_name '//trim(var_name))
+      domain%variable(ivar)%io_info%long_name = cf_long_name
+   endif
+
+   if( nf90_inquire_attribute(    ncid, VarID, 'short_name') == NF90_NOERR ) then
+      call nc_check( nf90_get_att(ncid, VarID, 'short_name' , cf_short_name), &
+                     'load_common_cf_conventions', 'get_att short_name '//trim(var_name))
+      domain%variable(ivar)%io_info%short_name = cf_short_name
+   endif
+
+   if( nf90_inquire_attribute(    ncid, VarID, 'units') == NF90_NOERR )  then
+      call nc_check( nf90_get_att(ncid, VarID, 'units' , cf_units), &
+                  'load_common_cf_conventions', 'get_att units '//trim(var_name))
+      domain%variable(ivar)%io_info%units = cf_units
+   endif
+
+   ! Saving any FillValue, missing_value attributes ...
+
+   var_xtype = domain%variable(ivar)%io_info%xtype
+   select case (var_xtype)
+      case ( NF90_INT )
+          if (nf90_get_att(ncid, VarID, '_FillValue'    , cf_spvalINT) == NF90_NOERR) then
+             domain%variable(ivar)%io_info%spvalINT     = cf_spvalINT
+             domain%variable(ivar)%io_info%has_missing_value = .true.
+          endif
+          if (nf90_get_att(ncid, VarID, 'missing_value' , cf_spvalINT) == NF90_NOERR) then
+             domain%variable(ivar)%io_info%missingINT   = cf_spvalINT
+             domain%variable(ivar)%io_info%has_missing_value = .true.
+          endif
+
+      case ( NF90_FLOAT )
+          if (nf90_get_att(ncid, VarID, '_FillValue'    , cf_spvalR4) == NF90_NOERR) then
+             domain%variable(ivar)%io_info%spvalR4      = cf_spvalR4
+             domain%variable(ivar)%io_info%has_missing_value = .true.
+          endif
+          if (nf90_get_att(ncid, VarID, 'missing_value' , cf_spvalR4) == NF90_NOERR) then
+             domain%variable(ivar)%io_info%missingR4    = cf_spvalR4
+             domain%variable(ivar)%io_info%has_missing_value = .true.
+          endif
+
+      case ( NF90_DOUBLE )
+          if (nf90_get_att(ncid, VarID, '_FillValue'    , cf_spvalR8) == NF90_NOERR) then
+             domain%variable(ivar)%io_info%spvalR8      = cf_spvalR8
+             domain%variable(ivar)%io_info%has_missing_value = .true.
+          endif
+          if (nf90_get_att(ncid, VarID, 'missing_value' , cf_spvalR8) == NF90_NOERR) then
+             domain%variable(ivar)%io_info%missingR8    = cf_spvalR8
+             domain%variable(ivar)%io_info%has_missing_value = .true.
+          endif
+      case DEFAULT
+         write(string1,*) ' unsupported netcdf variable type : ', var_xtype
+         call error_handler(E_ERR, 'load_common_cf_conventions',string1,source,revision,revdate)
+   end select
+
+   !>@todo FIXME : Not using scale factor or offset at the moment. Need to
+   !>              pack and unpack the variable if these attributes exist.
+   if (nf90_get_att(ncid, VarID, 'scale_factor',   cf_scale_factor) == NF90_NOERR) then
+      domain%variable(ivar)%io_info%scale_factor = cf_scale_factor
+      write(string1,*) 'scale_factor not supported at the moment'
+      write(string2,*) 'contact DART if you would like to get this to work'
+      call error_handler(E_ERR, 'load_common_cf_conventions',string1,source,revision,revdate,text2=string2)
+   endif
+
+   if (nf90_get_att(ncid, VarID, 'add_offset', cf_add_offset) == NF90_NOERR) then
+      domain%variable(ivar)%io_info%add_offset = cf_add_offset
+      write(string1,*) 'add_offset not supported at the moment'
+      write(string2,*) 'contact DART if you would like to get this to work'
+      call error_handler(E_ERR, 'load_common_cf_conventions',string1,source,revision,revdate,text2=string2)
+   endif
+
+enddo
+
+! close netcdf file
+ret = nf90_close(ncid)
+call nc_check(ret, 'load_common_cf_conventions nf90_close', trim(ncFilename))
+
+end subroutine load_common_cf_conventions
 
 !-------------------------------------------------------------------------------
 !> Returns the number of domains being used in the state structure
@@ -1253,6 +1416,9 @@ integer :: num_dims
 integer :: array_ids(NF90_MAX_VAR_DIMS)
 integer :: array_lengths(NF90_MAX_VAR_DIMS)
 character(len=NF90_MAX_VAR_DIMS) :: dim_name
+integer  :: missingINT, spval_int
+real(r4) :: missingR4,  spval_r4
+real(r8) :: missingR8,  spval_r8
 
 if ( .not. do_output() ) return
 
@@ -1260,39 +1426,75 @@ num_vars = get_num_variables(dom_id)
 
 do ivar = 1, num_vars
    write(*,*) ' '
-   write(*,*) 'varname     : ', trim(get_variable_name(dom_id,ivar))
-   write(*,*) 'var_size    : ', get_variable_size(dom_id,ivar)
-   write(*,*) 'index_start : ', get_index_start(dom_id,ivar)
-   write(*,*) 'index_end   : ', get_index_end(dom_id,ivar)
-   write(*,*) 'kind_string : ', get_kind_string(dom_id,ivar)
+   write(*,*)         'varname     : ', trim(get_variable_name(dom_id,ivar))
+   write(*,*)         'var_size    : ', get_variable_size(dom_id,ivar)
+   write(*,*)         'index_start : ', get_index_start(dom_id,ivar)
+   write(*,*)         'index_end   : ', get_index_end(dom_id,ivar)
+   write(*,*)         'kind_string : ', get_kind_string(dom_id,ivar)
    write(*,'(A,I3)') ' dart_kind   : ', get_kind_index(dom_id,ivar)
-   write(*,*) 'clamping    : ', do_io_clamping(dom_id,ivar)
-   write(*,*) 'minvalue    : ', get_io_clamping_minval(dom_id,ivar)
-   write(*,*) 'maxvalue    : ', get_io_clamping_maxval(dom_id,ivar)
-   write(*,*) 'update      : ', do_io_update(dom_id,ivar)
-   
+   write(*,*)         'clamping    : ', do_io_clamping(dom_id,ivar)
+   write(*,*)         'minvalue    : ', get_io_clamping_minval(dom_id,ivar)
+   write(*,*)         'maxvalue    : ', get_io_clamping_maxval(dom_id,ivar)
+   write(*,*)         'update      : ', do_io_update(dom_id,ivar)
+
    num_dims = get_num_dims(dom_id,ivar)
-   write(*,*) 'numdims     : ', num_dims
+   write(*,'('' numdims     : '',I1)') num_dims
 
    array_lengths(1:num_dims) = get_dim_lengths(dom_id,ivar)
    do jdim = 1, num_dims
        dim_name = get_dim_name(dom_id, ivar, jdim)
-       write(*,'("  dim_id[",I2,"] ",A15," , length = ",I6)') array_ids(jdim), &
-                                                              trim(dim_name), &
-                                                              array_lengths(jdim)
+       write(*,'("       state   dim_id[",I1,"] ",A15,", length = ",I6)') jdim, &
+                                                                          trim(dim_name), &
+                                                                          array_lengths(jdim)
    enddo
 
    num_dims = get_io_num_dims(dom_id,ivar)
-   write(*,*) 'io_numdims     : ', num_dims
+   write(*,'('' io_numdims  : '',I1)') num_dims
 
    array_ids(1:num_dims)     = get_io_dim_ids(dom_id,ivar)
    array_lengths(1:num_dims) = get_io_dim_lengths(dom_id,ivar)
    do jdim = 1, num_dims
        dim_name = get_dim_name(dom_id, ivar, jdim)
-       write(*,'("  dim_id[",I2,"] ",A15," , length = ",I6)') array_ids(jdim), &
-                                                              trim(dim_name), &
-                                                              array_lengths(jdim)
+       write(*,'("       netCDF  dim_id[",I1,"] ",A15,", length = ",I6)') array_ids(jdim), &
+                                                                          trim(dim_name), &
+                                                                          array_lengths(jdim)
    enddo
+
+   write(*,*) 'CF-Conventions that exist in : ', trim(state%domain(dom_id)%info_file)
+   write(*,*) 'units             : ', trim(get_units(dom_id,ivar))
+   write(*,*) 'short_name        : ', trim(get_short_name(dom_id,ivar))
+   write(*,*) 'long_name         : ', trim(get_long_name(dom_id,ivar))
+   write(*,*) 'has_missing_value : ', get_has_missing_value(dom_id,ivar)
+   if (get_has_missing_value(dom_id,ivar)) then
+      select case (get_xtype(dom_id,ivar))
+         case (NF90_INT)
+           call get_missing_value(dom_id,ivar,missingINT)
+           call get_FillValue    (dom_id,ivar,spval_int)
+           write(*,*) 'xtype             : ', 'NF90_INT'
+           write(*,*) 'missing_value     : ', missingINT
+           write(*,*) 'get_FillValue     : ', spval_int
+         case (NF90_FLOAT)
+           call get_missing_value(dom_id,ivar,missingR4)
+           call get_FillValue    (dom_id,ivar,spval_r4)
+           write(*,*) 'xtype             : ', 'NF90_FLOAT'
+           write(*,*) 'missing_value     : ', missingR4
+           write(*,*) 'get_FillValue     : ', spval_r4
+         case (NF90_DOUBLE)
+           call get_missing_value(dom_id,ivar,missingR8)
+           call get_FillValue    (dom_id,ivar,spval_r8)
+           write(*,*) 'xtype             : ', 'NF90_DOUBLE'
+           write(*,*) 'missing_value     : ', missingR8
+           write(*,*) 'get_FillValue     : ', spval_r8
+      end select
+   endif
+
+   !>@todo FIXME : only storing r8 at the moment since DART is not using these values
+   !>              to compress and uncompress file information
+   if (get_add_offset(dom_id,ivar)   /= MISSING_R8 .and. &
+       get_scale_factor(dom_id,ivar) /= MISSING_R8 ) then
+      write(*,*) 'add_offset        : ', get_add_offset(dom_id,ivar)
+      write(*,*) 'scale_factor      : ', get_scale_factor(dom_id,ivar)
+   endif
 
    write(*,*) ' '
    
@@ -1516,6 +1718,176 @@ do ivar = 1, get_num_variables(dom_id)
 enddo
 
 end function get_num_varids_from_kind
+
+!-------------------------------------------------------------------------------
+!> Return units of a variable if it exist
+!-------------------------------------------------------------------------------
+function get_units(dom_id, var_id)
+
+integer, intent(in) :: dom_id
+integer, intent(in) :: var_id
+character(len=NF90_MAX_NAME) :: get_units
+
+get_units = state%domain(dom_id)%variable(var_id)%io_info%units
+
+end function get_units
+
+!-------------------------------------------------------------------------------
+!> Return long_name of a variable if it exist
+!-------------------------------------------------------------------------------
+function get_long_name(dom_id, var_id)
+
+integer, intent(in) :: dom_id
+integer, intent(in) :: var_id
+character(len=NF90_MAX_NAME) :: get_long_name
+
+get_long_name = state%domain(dom_id)%variable(var_id)%io_info%long_name
+
+end function get_long_name
+
+!-------------------------------------------------------------------------------
+!> Return short_name of a variable if it exist
+!-------------------------------------------------------------------------------
+function get_short_name(dom_id, var_id)
+
+integer, intent(in) :: dom_id
+integer, intent(in) :: var_id
+character(len=NF90_MAX_NAME) :: get_short_name
+
+get_short_name = state%domain(dom_id)%variable(var_id)%io_info%short_name
+
+end function get_short_name
+
+!-------------------------------------------------------------------------------
+!> Return if a variable has a missing value
+!-------------------------------------------------------------------------------
+function get_has_missing_value(dom_id, var_id)
+
+integer, intent(in) :: dom_id
+integer, intent(in) :: var_id
+logical :: get_has_missing_value
+
+get_has_missing_value = state%domain(dom_id)%variable(var_id)%io_info%has_missing_value
+
+end function get_has_missing_value
+
+!-------------------------------------------------------------------------------
+!> Return xtype of a variable
+!-------------------------------------------------------------------------------
+function get_xtype(dom_id, var_id)
+
+integer, intent(in) :: dom_id
+integer, intent(in) :: var_id
+integer :: get_xtype
+
+get_xtype = state%domain(dom_id)%variable(var_id)%io_info%xtype
+
+end function get_xtype
+
+!-------------------------------------------------------------------------------
+!> Return missingR8 value of a variable if it exist
+!-------------------------------------------------------------------------------
+subroutine get_missing_value_r8(dom_id, var_id, missing_value_r8)
+
+integer,  intent(in)  :: dom_id
+integer,  intent(in)  :: var_id
+real(digits12), intent(out) :: missing_value_r8
+
+missing_value_r8 = state%domain(dom_id)%variable(var_id)%io_info%missingR8
+
+end subroutine get_missing_value_r8
+
+!-------------------------------------------------------------------------------
+!> Return missingR4 value of a variable if it exist
+!-------------------------------------------------------------------------------
+subroutine get_missing_value_r4(dom_id, var_id, missing_value_r4)
+
+integer,  intent(in)  :: dom_id
+integer,  intent(in)  :: var_id
+real(r4), intent(out) :: missing_value_r4
+
+missing_value_r4 = state%domain(dom_id)%variable(var_id)%io_info%missingR4
+
+end subroutine get_missing_value_r4
+
+!-------------------------------------------------------------------------------
+!> Return missingINT value of a variable if it exist
+!-------------------------------------------------------------------------------
+subroutine get_missing_value_int(dom_id, var_id, missing_value_int)
+
+integer, intent(in)  :: dom_id
+integer, intent(in)  :: var_id
+integer, intent(out) :: missing_value_int
+
+missing_value_int = state%domain(dom_id)%variable(var_id)%io_info%missingINT
+
+end subroutine get_missing_value_int
+
+!-------------------------------------------------------------------------------
+!> Return spvalR8 value of a variable if it exist
+!-------------------------------------------------------------------------------
+subroutine get_spval_r8(dom_id, var_id, spval_r8)
+
+integer,  intent(in)  :: dom_id
+integer,  intent(in)  :: var_id
+real(digits12), intent(out) :: spval_r8
+
+spval_r8 = state%domain(dom_id)%variable(var_id)%io_info%spvalR8
+
+end subroutine get_spval_r8
+
+!-------------------------------------------------------------------------------
+!> Return spvalR4 value of a variable if it exist
+!-------------------------------------------------------------------------------
+subroutine get_spval_r4(dom_id, var_id, spval_r4)
+
+integer,  intent(in)  :: dom_id
+integer,  intent(in)  :: var_id
+real(r4), intent(out) :: spval_r4
+
+spval_r4 = state%domain(dom_id)%variable(var_id)%io_info%spvalR4
+
+end subroutine get_spval_r4
+
+!-------------------------------------------------------------------------------
+!> Return spvalINT value of a variable if it exist
+!-------------------------------------------------------------------------------
+subroutine get_spval_int(dom_id, var_id, spval_int)
+
+integer, intent(in)  :: dom_id
+integer, intent(in)  :: var_id
+integer, intent(out) :: spval_int
+
+spval_int = state%domain(dom_id)%variable(var_id)%io_info%spvalINT
+
+end subroutine get_spval_int
+
+!-------------------------------------------------------------------------------
+!> Return offset of a variable if it exists
+!-------------------------------------------------------------------------------
+function get_add_offset(dom_id, var_id)
+
+integer, intent(in) :: dom_id
+integer, intent(in) :: var_id
+real(r8) :: get_add_offset
+
+get_add_offset = state%domain(dom_id)%variable(var_id)%io_info%add_offset
+
+end function get_add_offset
+
+!-------------------------------------------------------------------------------
+!> Return scale factor of a variable if it exists
+!-------------------------------------------------------------------------------
+function get_scale_factor(dom_id, var_id)
+
+integer, intent(in) :: dom_id
+integer, intent(in) :: var_id
+real(r8) :: get_scale_factor
+
+get_scale_factor = state%domain(dom_id)%variable(var_id)%io_info%scale_factor
+
+end function get_scale_factor
+
 
 !-------------------------------------------------------------------------------
 !> Assert that adding a domain will not cause the maximum number of domains

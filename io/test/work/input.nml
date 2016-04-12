@@ -40,6 +40,20 @@ input_files = '../../../obs_def/obs_def_AIRS_mod.f90',
 &mpi_utilities_nml
 /
 
+&obs_kind_nml
+/
+
+&ensemble_manager_nml
+/
+
+&state_vector_io_nml
+/
+
+&state_space_diag_nml
+   make_diagnostic_files = .false.
+   single_file = .true.
+/
+
 &test_state_structure_nml
    debug                    = .false.
    one_dom_restart_filename = 'pop.r.nc'

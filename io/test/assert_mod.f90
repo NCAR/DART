@@ -17,6 +17,9 @@ interface assert_equal
    module procedure assert_equal_double
    module procedure assert_equal_int
    module procedure assert_equal_int8
+   module procedure assert_equal_strings
+   module procedure assert_equal_int_array
+   module procedure assert_equal_logical
 end interface
 
 interface assert_not_equal
@@ -65,7 +68,7 @@ end subroutine assert_equal_int
 !-------------------------------
 subroutine assert_equal_int8(a, b, message)
 
-integer*8, intent(in) :: a, b
+integer*8,        intent(in) :: a, b
 character(len=*), intent(in) :: message
 
 if (a /= b) print*, 'FAIL: ',  trim(message),' assertion ', a, '==', b, 'failed'
@@ -73,15 +76,64 @@ if (a /= b) print*, 'FAIL: ',  trim(message),' assertion ', a, '==', b, 'failed'
 end subroutine assert_equal_int8
 
 !-------------------------------
+subroutine assert_equal_strings(a, b, message)
+
+character(len=*), intent(in) :: a, b
+character(len=*), intent(in) :: message
+
+if (trim(a) == "" .and. trim(b) == "") return ! both strings blank
+
+if (trim(a) /= trim(b)) print*, 'FAIL: ',  trim(message), &
+           ' assertion "', trim(a), '" == "', trim(b), '" failed'
+
+end subroutine assert_equal_strings
+
+!-------------------------------
+subroutine assert_equal_int_array(a, b, message)
+
+integer, dimension(:), intent(in) :: a, b
+character(len=*),      intent(in) :: message
+
+integer :: i
+
+if (size(a) /= size(b)) print*, 'FAIL: ',  trim(message), &
+           ' array assertion failed because of unequal lengths'
+
+if (any(a /= b)) then
+
+   print*, 'FAIL: ', trim(message), ' array assertion failed.'
+
+   if (size(a) < 100) then
+      do i = 1,size(a)
+         write(*,'(''       element('',i3,'') '',i3,'' ?==? '',i3)')i, a(i), b(i)
+      enddo
+   else
+      print*, 'arrays too long to concisely specify where/how failed.'
+   endif
+endif
+
+end subroutine assert_equal_int_array
+
+!-------------------------------
+subroutine assert_equal_logical(a, b, message)
+
+logical,          intent(in) :: a, b
+character(len=*), intent(in) :: message
+
+if (a .neqv. b) print*, 'FAIL: ',  trim(message), &
+           ' assertion ', a, '==', b, ' failed'
+
+end subroutine assert_equal_logical
+
+!-------------------------------
 ! Assert greater
 !-------------------------------
 subroutine assert_greater_int(a, b, message)
 
-integer, intent(in) :: a, b
+integer,          intent(in) :: a, b
 character(len=*), intent(in) :: message
 
 if (a <= b) print*, 'FAIL: ',  trim(message),' assertion ', a, ' >', b, 'failed'
-
 
 end subroutine assert_greater_int
 
@@ -96,6 +148,7 @@ character(len=*), intent(in) :: message
 if (a == b) print*, 'FAIL: ',  trim(message),' assertion ', a, '/=', b, 'failed'
 
 end subroutine assert_not_equal_real
+
 !-------------------------------
 subroutine assert_not_equal_int(a, b, message)
 

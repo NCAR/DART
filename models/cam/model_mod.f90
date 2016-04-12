@@ -5168,7 +5168,7 @@ function construct_file_name_in(stub, domain, copy)
 character(len=512), intent(in) :: stub
 integer,            intent(in) :: domain
 integer,            intent(in) :: copy
-character(len=1024)            :: construct_file_name_in
+character(len=256) :: construct_file_name_in
 
 ! fv_testcase.cam_0003.i.2004-01-15-00000.nc
 write(construct_file_name_in, '(A, i4.4, A)') TRIM(stub), copy, '.i.2004-01-15-00000.nc'
@@ -5192,7 +5192,7 @@ end function query_vert_localization_coord
 !> read the time from the input file
 function read_model_time(file_name)
 
-character(len=1024), intent(in) :: file_name
+character(len=256), intent(in) :: file_name
 
 type(time_type) :: read_model_time
 

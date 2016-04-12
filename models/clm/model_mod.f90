@@ -2005,10 +2005,10 @@ end subroutine get_close_obs
 !> model time for CESM format?
 function construct_file_name_in(stub, domain, copy)
 
-character(len=512), intent(in) :: stub
+character(len=256), intent(in) :: stub
 integer,            intent(in) :: domain
 integer,            intent(in) :: copy
-character(len=1024)            :: construct_file_name_in
+character(len=256) :: construct_file_name_in
 
 write(construct_file_name_in, '(A, i4.4)') TRIM(stub), copy
 

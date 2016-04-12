@@ -3573,10 +3573,10 @@ end subroutine dpth2pres
 !> construct restart file name for reading
 function construct_file_name_in(stub, domain, copy)
 
-character(len=512), intent(in) :: stub
+character(len=256), intent(in) :: stub
 integer,            intent(in) :: domain
 integer,            intent(in) :: copy
-character(len=1024)            :: construct_file_name_in
+character(len=256) :: construct_file_name_in
 
 ! stub is found in input.nml io_filename_nml
 ! restart files typically are of the form
@@ -3591,7 +3591,7 @@ end function construct_file_name_in
 !> Stolen from pop model_mod.f90 restart_to_sv
 function read_model_time(filename)
 
-character(len=1024) :: filename
+character(len=256) :: filename
 type(time_type) :: read_model_time
 
 

@@ -67,8 +67,8 @@ use time_manager_mod,     only : time_type, read_time, write_time, &
 use io_filenames_mod,     only : get_input_file, file_info_type, get_read_from_netcdf, get_write_to_netcdf, &
                                  get_output_restart, get_output_mean, get_restart_out_base, &
                                  get_restart_in_base, get_read_from_single_file, get_write_to_single_file, &
-                                 assert_file_info_initiailzed, restart_names_type, &
-                                 assert_restart_names_initiailzed
+                                 assert_file_info_initialized, restart_names_type, &
+                                 assert_restart_names_initialized
 
 !> @todo  This should go through assim_model_mod
 use model_mod,            only : read_model_time
@@ -212,7 +212,7 @@ logical :: local_pert
 if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
 
 ! check whether file_info handle is initialized
-call assert_file_info_initiailzed(file_info, 'read_state')
+call assert_file_info_initialized(file_info, 'read_state')
 
 ! check that we either have both inflation handles or neither:
 if ( present(prior_inflate_handle) .neqv. present(post_inflate_handle) ) then
@@ -346,7 +346,7 @@ logical :: write_mean_and_sd
 if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
 
 ! check whether file_info handle is initialized
-call assert_file_info_initiailzed(file_info, 'write_state')
+call assert_file_info_initialized(file_info, 'write_state')
 
 ! check that we either have both inflation handles or neither:
 if ( present(prior_inflate_handle) .neqv. present(post_inflate_handle) ) then
@@ -377,14 +377,14 @@ if (get_write_to_netcdf(file_info)) then ! netcdf
 
    ! ------ turn on copies for: restarts, mean ------
    if (get_output_restart(file_info)) call turn_write_copy_on(1, ens_size) ! restarts
-   if (get_output_mean(file_info))    call turn_write_copy_on(ENS_MEAN_COPY)
+   if (get_output_mean(file_info))   call turn_write_copy_on(ENS_MEAN_COPY)
 
    ! ------ turn on spare copies for: skipping Prior_Diag.nc, Posterior_Diag.nc ----
    if (write_mean_and_sd) then
       ! These two copies are the mean and spread that would have gone 
       ! in the Prior_Diag.nc file
       ! Assume if they are there, they need to be written out
-      if (query_copy_present(SPARE_PRIOR_MEAN))   call turn_write_copy_on(SPARE_PRIOR_MEAN)
+      if (query_copy_present(SPARE_PRIOR_MEAN)  ) call turn_write_copy_on(SPARE_PRIOR_MEAN)
       if (query_copy_present(SPARE_PRIOR_SPREAD)) call turn_write_copy_on(SPARE_PRIOR_SPREAD)
 
       ! If not writing diagnostic files need to write mean and spread 
@@ -493,7 +493,7 @@ integer :: days, secs
 integer :: start_copy, end_copy ! 1, ens_size or 1,1 if perturbing from a single instance.
 
 ! check whether file_info handle is initialized
-call assert_file_info_initiailzed(file_info, 'filter_read_restart')
+call assert_file_info_initialized(file_info, 'filter_read_restart')
 
 start_copy = 1
 if (perturb_from_single_copy) then
@@ -551,7 +551,7 @@ integer :: dart_index !< where to start in state_ens_handle%copies
 integer :: domain !< loop index
 
 ! check whether file_info handle is initialized
-call assert_file_info_initiailzed(file_info, 'filter_read_restart_direct')
+call assert_file_info_initialized(file_info, 'filter_read_restart_direct')
 
 ! read time from input file if time not set in namelist
 !> @todo Check time constistency across files? This is assuming they are consistent.
@@ -586,7 +586,7 @@ integer :: domain !< loop index
 if ( .not. module_initialized ) call state_vector_io_init() ! to read the namelist
 
 ! check whether file_info handle is initialized
-call assert_restart_names_initiailzed(file_name_handle, 'filter_write_restart_direct')
+call assert_restart_names_initialized(file_name_handle, 'filter_write_restart_direct')
 
 ! transpose and write out the data
 dart_index = 1
@@ -822,7 +822,7 @@ type(ensemble_type),         intent(in)    :: state_ens_handle
 integer,                     intent(in)    :: ss_inflate_mean_index, ss_inflate_sd_index
 
 ! check whether file_info handle is initialized
-call assert_file_info_initiailzed(file_info, 'write_state_space_inflation')
+call assert_file_info_initialized(file_info, 'write_state_space_inflation')
 
 if(output_inf_restart(inflate_handle)) then
    ! Use the ensemble manager to output restart for state space (flavors 2 or 3)
@@ -950,7 +950,7 @@ character(len=4)                    :: extension
 logical                             :: single_file_forced
 
 ! check whether file_info handle is initialized
-call assert_file_info_initiailzed(file_info, 'write_ensemble_restart')
+call assert_file_info_initialized(file_info, 'write_ensemble_restart')
 
 if (present(force_single_file) ) then
    single_file_forced = force_single_file

@@ -8937,10 +8937,10 @@ end function query_vert_localization_coord
 !> model time for CESM format?
 function construct_file_name_in(stub, domain, copy)
 
-character(len=512), intent(in) :: stub
+character(len=256), intent(in) :: stub
 integer,            intent(in) :: domain
 integer,            intent(in) :: copy
-character(len=1024)            :: construct_file_name_in
+character(len=256) :: construct_file_name_in
 
 !write(construct_file_name, '(A, i2.2, A, i2.2, A)') TRIM(stub), domain, '.', copy, '.nc'
 
@@ -8962,7 +8962,7 @@ end function construct_file_name_in
 !> read the time from the input file
 function read_model_time(filename)
 
-character(len=1024), intent(in) :: filename
+character(len=256),  intent(in) :: filename
 integer                         :: year, month, day, hour, minute, second
 integer                         :: ret !< netcdf return code
 integer                         :: ndims, dimids(2), ivtype, ncid, var_id

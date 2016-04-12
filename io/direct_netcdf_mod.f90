@@ -48,7 +48,7 @@ module direct_netcdf_mod
 !> Note there was a <code>limit_procs</code> in the limited transpose. This was removed in
 !> svn commit 9456.
 
-use types_mod,            only : r8, i4, MISSING_R8, digits12
+use types_mod,            only : r4, r8, i4, MISSING_R8, MISSING_R4, MISSING_I
 
 use mpi_utilities_mod,    only : task_count, send_to, receive_from, my_task_id
 
@@ -68,12 +68,18 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  get_variable_size, get_io_num_unique_dims,   &
                                  get_io_unique_dim_name, get_dim_name,        &
                                  get_io_unique_dim_length, get_num_variables, &
-                                 set_var_id, get_domain_size, do_io_update
+                                 set_var_id, get_domain_size, do_io_update, &
+                                 get_units, get_long_name, get_short_name, &
+                                 get_has_missing_value, get_FillValue, &
+                                 get_missing_value, get_add_offset, get_scale_factor, &
+                                 get_xtype, get_num_domains
 
+use io_filenames_mod,     only : get_input_file, get_output_file, restart_names_type, &
+                                 get_file_description
 
-use io_filenames_mod,     only : get_input_file, get_output_file, restart_names_type
-
-use copies_on_off_mod,    only : query_read_copy, query_write_copy
+use copies_on_off_mod,    only : query_read_copy, query_write_copy, &
+                                 is_inflation_copy, is_mean_copy, is_sd_copy, &
+                                 is_ensemble_copy
 
 use model_mod,            only : write_model_time
 
@@ -93,7 +99,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 integer :: ret !< netcdf return code
 
-character(len=256) :: msgstring
+character(len=512) :: msgstring
 
 contains
 
@@ -245,13 +251,14 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
       if(file_exist(netcdf_filename_out)) then
          ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
          call nc_check(ret, 'transpose_write: opening', trim(netcdf_filename_out))
+         call nc_write_global_att_clamping(ncfile_out, copy, domain)
       else ! create and open file
 
          !>@todo This is grabbing the time assuming the ensemble is var complete.
          !> Should we instead have all copies time in the ensemble handle?
          call get_copy_owner_index(copy, time_owner, time_owner_index)
          call get_ensemble_time(state_ens_handle, time_owner_index, dart_time)
-         ncfile_out = create_and_open_state_output(netcdf_filename_out, domain, dart_time, write_single_precision)
+         ncfile_out = create_and_open_state_output(name_handle, domain, copy, dart_time, write_single_precision)
 
       endif
 
@@ -534,6 +541,7 @@ COPIES : do c = 1, ens_size
          if(file_exist(netcdf_filename_out)) then
             ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
             call nc_check(ret, 'transpose_write: opening', trim(netcdf_filename_out))
+            call nc_write_global_att_clamping(ncfile_out, my_copy, domain)
          else ! create and open output file
 
             !>@todo This is grabbing the time assuming the ensemble is var complete.
@@ -541,7 +549,7 @@ COPIES : do c = 1, ens_size
             call get_copy_owner_index(my_copy, time_owner, time_owner_index)
             call get_ensemble_time(state_ens_handle, time_owner_index, dart_time)
 
-            ncfile_out = create_and_open_state_output(netcdf_filename_out, domain, dart_time, write_single_precision)
+            ncfile_out = create_and_open_state_output(name_handle, domain, my_copy, dart_time, write_single_precision)
          endif
       endif
 
@@ -643,14 +651,19 @@ end subroutine transpose_write_multi_task
 !-------------------------------------------------------------------------------
 !> Check a variable for out of bounds and clamp or fail if needed
 !-------------------------------------------------------------------------------
-subroutine clamp_variable(dom_id, var_index, variable)
+function clamp_variable(dom_id, var_index, variable)
 
 integer,     intent(in) :: dom_id ! domain id
 integer,     intent(in) :: var_index ! variable index
 real(r8), intent(inout) :: variable(:) ! variable
 
+logical :: clamp_variable
+
 real(r8) :: minclamp, maxclamp
 character(len=NF90_MAX_NAME) :: varname ! for debugging only
+
+! assume the variable will not be clamped
+clamp_variable = .false.
 
 ! is lower bound set
 minclamp = get_io_clamping_minval(dom_id, var_index)
@@ -663,11 +676,15 @@ if ( minclamp /= missing_r8 ) then
       varname = get_variable_name(dom_id, var_index) 
       write(msgstring, *) 'min val = ', minval(variable), &
                           'min bounds = ', minclamp
+      !@>todo FIXME : do we want to reduce and print out the absolute max/min
       call error_handler(E_ALLMSG, 'clamp_variable', &
                   'Clamping '//trim(varname)//', values out of bounds.', &
                    source,revision,revdate, text2=msgstring)
 
+      !>@todo FIXME : if allow_missing_in_state then we need to be careful
+      !>              not to clamp missing values
       variable = max(minclamp, variable)
+      clamp_variable = .true.
    endif
 endif ! min range set
 
@@ -677,16 +694,17 @@ if ( maxclamp /= missing_r8 ) then
    if ( maxval(variable) > maxclamp ) then
       varname = get_variable_name(dom_id, var_index) 
       write(msgstring, *) 'max val = ', maxval(variable), &
-                        'max bounds = ', maxclamp
+                          'max bounds = ', maxclamp
       call error_handler(E_ALLMSG, 'clamp_variable', &
                   'Clamping '//trim(varname)//', values out of bounds.', &
                    source,revision,revdate, text2=msgstring)
 
       variable = min(maxclamp, variable)
+      clamp_variable = .true.
    endif
 endif ! max range set
 
-end subroutine clamp_variable
+end function clamp_variable
 
 !-------------------------------------------------------------------------------
 !> Read in variables from start_var to end_var
@@ -790,6 +808,7 @@ integer,  intent(in) :: domain
 integer :: start_in_var_block, end_in_var_block
 integer, allocatable :: dims(:)
 integer :: i, ret, var_id, var_size
+logical :: clamped
 
 start_in_var_block = 1
 do i = start_var, end_var
@@ -800,7 +819,7 @@ do i = start_var, end_var
    if ( do_io_update(domain, i ) ) then
       ! check whether you have to do anything to the variable, clamp or fail
       if ( do_io_clamping(domain, i) ) then
-         call clamp_variable(domain, i, var_block(start_in_var_block:end_in_var_block))
+         clamped = clamp_variable(domain, i, var_block(start_in_var_block:end_in_var_block))
       endif
 
       ! number of dimensions and length of each
@@ -831,12 +850,13 @@ end subroutine write_variables_clamp
 !>     direct_netcdf_write = .true.
 !>@todo The file is not closed here.
 !-------------------------------------------------------------------------------
-function create_and_open_state_output(filename, dom_id, dart_time, single_precision_output) result(ncfile_out)
+function create_and_open_state_output(ens_name_handle, dom_id, copy_number, dart_time, single_precision_output) result(ncfile_out)
 
-character(len=*), intent(in) :: filename
-integer,          intent(in) :: dom_id !< domain
-type(time_type),  intent(in) :: dart_time
-logical,          intent(in) :: single_precision_output
+type(restart_names_type), intent(in) :: ens_name_handle
+integer,                  intent(in) :: dom_id !< domain
+integer,                  intent(in) :: copy_number
+type(time_type),          intent(in) :: dart_time
+logical,                  intent(in) :: single_precision_output
 integer :: ncfile_out
 
 integer :: ret !> netcdf return code
@@ -848,13 +868,26 @@ integer :: ndims
 integer :: xtype ! precision for netcdf file
 integer :: dimids(NF90_MAX_VAR_DIMS)
 
-write(msgstring, *) 'Creating output file ', trim(filename)
+character(len=NF90_MAX_NAME) :: filename
+
+filename = get_output_file(ens_name_handle, copy_number, dom_id)
+
+write(msgstring,*) 'Creating output file ', trim(filename)
 call error_handler(E_ALLMSG,'create_and_open_state_output:', msgstring)
 
 ! What file options do you want?
 create_mode = ior(NF90_CLOBBER, NF90_64BIT_OFFSET)
 ret = nf90_create(filename, create_mode, ncfile_out)
 call nc_check(ret, 'create_and_open_state_output: creating', trim(filename))
+
+! filename discription
+call nc_write_file_information(ncfile_out, filename, get_file_description(ens_name_handle, copy_number, dom_id))
+
+! revision information
+call nc_write_revision_info(ncfile_out)
+
+! clamping information
+call nc_write_global_att_clamping(ncfile_out, copy_number, dom_id, from_scratch=.true.)
 
 ! define dimensions, loop around unique dimensions
 do i = 1, get_io_num_unique_dims(dom_id)
@@ -871,13 +904,10 @@ do i = 1, get_num_variables(dom_id) ! loop around state variables
    ndims = get_io_num_dims(dom_id, i)
 
    if (single_precision_output) then
-      xtype = nf90_real
+      xtype = NF90_REAL
    else ! write output that is the precision of filter
-      if (r8 == digits12) then ! datasize = MPI_REAL8  ! What should we be writing?
-         xtype = nf90_double
-      else
-         xtype = nf90_real
-      endif
+      xtype = get_xtype(dom_id, i)
+      if (r8 == r4 .and. xtype == NF90_DOUBLE) xtype = NF90_REAL
    endif
 
    ! query the dimension ids
@@ -886,13 +916,18 @@ do i = 1, get_num_variables(dom_id) ! loop around state variables
       call nc_check(ret, 'create_and_open_state_output', 'querying dimensions')
    enddo
 
-   ret = nf90_def_var(ncfile_out, trim(get_variable_name(dom_id, i)), &
-                      xtype=xtype, dimids=dimids(1:ndims), &
-                      varid=new_varid)
+   !>@todo FIXME : need to include all state variables to the diagnostic files
+   !>@             this will include adding some extra logic in write_variable
 
+   ! define variable name and attributes
+   ret = nf90_def_var(ncfile_out, trim(get_variable_name(dom_id, i)), &
+                      xtype=xtype, dimids=dimids(1:ndims), varid=new_varid)
    call nc_check(ret, 'create_and_open_state_output', 'defining variable')
-      !variable_ids(i, dom_id) = new_varid
+   !variable_ids(i, dom_id) = new_varid
    call set_var_id(dom_id, i, new_varid)
+
+   call nc_write_attributes(ncfile_out, filename, new_varid, dom_id, i, copy_number)
+
 enddo
 
 ret = nf90_enddef(ncfile_out)
@@ -902,6 +937,286 @@ call write_model_time(ncfile_out, dart_time)
 
 end function create_and_open_state_output
 
+!-------------------------------------------------
+!> Write model attributes if they exist
+subroutine nc_write_attributes(ncFileID, filename, ncVarID, domid, varid, copy_number)
+
+integer,          intent(in) :: ncFileID
+character(len=*), intent(in) :: filename
+integer,          intent(in) :: ncVarID
+integer,          intent(in) :: domid
+integer,          intent(in) :: varid
+integer,          intent(in) :: copy_number
+
+if ( get_long_name(domid, varid) /= ' ' ) then
+  call nc_check(nf90_put_att(ncFileID,ncVarID,'long_name',get_long_name(domid, varid)),&
+                'nc_write_attributes','long_name in : '//trim(filename))
+endif
+
+if ( get_short_name(domid, varid) /= ' ' ) then
+  call nc_check(nf90_put_att(ncFileID,ncVarID,'short_name',get_short_name(domid, varid)),&
+                'nc_write_attributes','short_name in : '//trim(filename))
+endif
+
+! attributes that are only restart files
+if ( is_ensemble_copy(copy_number) ) then
+   call  nc_write_variable_att_clamping(ncFileID, filename, ncVarID, domid, varid)
+endif 
+
+! attributes plus an extra note about clamping for mean and sd files 
+if ( is_mean_copy(copy_number) ) then
+   call  nc_write_variable_att_clamping(ncFileID, filename, ncVarID, domid, varid)
+   write(msgstring,'(A)') 'mean computed prior to clamping'
+   call nc_check(nf90_put_att(ncFileID,NF90_GLOBAL,'DART_note',msgstring),&
+                   'nc_write_attributes','note in : '//trim(filename))
+endif
+
+if ( is_sd_copy(copy_number) ) then
+   call  nc_write_variable_att_clamping(ncFileID, filename, ncVarID, domid, varid)
+   write(msgstring,'(A)') 'sd computed prior to clamping'
+   call nc_check(nf90_put_att(ncFileID,NF90_GLOBAL,'DART_note',msgstring),&
+                   'nc_write_attributes','note in :'//trim(filename))
+endif
+
+! attributes that are only important for inflation copies
+if( is_inflation_copy(copy_number) ) then 
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'units','unitless'),&
+                'nc_write_attributes','units in :'//trim(filename))
+else if ( get_units(domid, varid) /= ' ' ) then
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'units',get_units(domid, varid)),&
+                'nc_write_attributes','units in :'//trim(filename))
+endif
+     
+! check to see if template file has missing value attributes
+if ( get_has_missing_value(domid, varid) ) then
+   select case ( get_xtype(domid, varid) )
+      case ( NF90_INT )
+         call nc_write_missing_value_int(ncFileID, filename, ncVarID, domid, varid)
+      case ( NF90_FLOAT )
+         call nc_write_missing_value_r4 (ncFileID, filename, ncVarID, domid, varid)
+      case ( NF90_DOUBLE )
+         call nc_write_missing_value_r8 (ncFileID, filename, ncVarID, domid, varid)
+   end select
+endif
+
+!>@todo FIXME: also need to have different routines for different different types
+!>             of numbers for add_offset and scale_factor.  Keeping it simple for
+!>             now since they are not being used.
+if (get_scale_factor(domid, varid) /= MISSING_R8) then
+  call nc_check(nf90_put_att(ncFileID,ncVarID,'scale_factor',get_scale_factor(domid, varid)),&
+                'nc_write_attributes','scale_factor '//trim(filename))
+endif
+
+if (get_add_offset(domid, varid) /= MISSING_R8) then
+  call nc_check(nf90_put_att(ncFileID,ncVarID,'add_offset',get_add_offset(domid, varid)),&
+                'nc_write_attributes','add_offset '//trim(filename))
+endif
+
+end subroutine nc_write_attributes
+
+!-------------------------------------------------
+!> Write global clamping attributes to files that already exist
+
+!>@todo FIXME : use derived type for copy number and get long name
+
+subroutine nc_write_file_information(ncFileID, filename, description)
+
+integer,          intent(in) :: ncFileID
+character(len=*), intent(in) :: filename
+character(len=*), intent(in) :: description
+
+call nc_check(nf90_put_att(ncFileID,NF90_GLOBAL,'DART_file_information',description),&
+             'nc_write_file_information','file_information'//trim(filename))
+
+end subroutine nc_write_file_information
+
+!-------------------------------------------------
+!> Write clamping to variable attributes to files created from scratch
+subroutine nc_write_variable_att_clamping(ncFileID, filename, ncVarID, domid, varid)
+
+integer,          intent(in) :: ncFileID
+character(len=*), intent(in) :: filename
+integer,          intent(in) :: ncVarID
+integer,          intent(in) :: domid
+integer,          intent(in) :: varid
+
+real(r8) :: clamp_val
+
+if ( do_io_clamping(domid, varid) ) then
+   clamp_val = get_io_clamping_maxval(domid, varid)
+
+   ! max clamping attribute
+   if ( clamp_val /= MISSING_R8 ) then
+      call nc_check(nf90_put_att(ncFileID,ncVarID,'DART_clamp_max',clamp_val),&
+                   'nc_write_variable_att_clamping','DART_clamp_max'//trim(filename))
+   endif
+
+   ! min clamping attribute
+   clamp_val = get_io_clamping_minval(domid, varid)
+   if ( clamp_val /= MISSING_R8 ) then
+      call nc_check(nf90_put_att(ncFileID,ncVarID,'DART_clamp_min',clamp_val),&
+                   'nc_write_variable_att_clamping','DART_clamp_min'//trim(filename))
+   endif
+
+endif
+
+
+end subroutine nc_write_variable_att_clamping
+
+!-------------------------------------------------
+!> Write global clamping attributes for variables that have clamping
+
+subroutine nc_write_global_att_clamping(ncFileID, copy, domid, from_scratch)
+
+integer, intent(in)  :: ncFileID
+integer, intent(in)  :: copy
+integer, intent(in)  :: domid
+logical, intent(in), optional :: from_scratch
+
+integer  :: ivar
+real(r8) :: clamp_val
+character(len=NF90_MAX_NAME) :: clamp_max, clamp_min, att_name
+logical :: need_netcdf_def_mode
+
+need_netcdf_def_mode = .true.
+
+if (present(from_scratch)) then
+   if (from_scratch) need_netcdf_def_mode = .false.
+endif
+
+if (need_netcdf_def_mode) call nc_check(nf90_Redef(ncFileID),'nc_write_global_att_clamping',   'redef ')
+
+   if ( (is_ensemble_copy(copy)) .or. &
+        (is_mean_copy(copy)) ) then
+      
+   do ivar = 1,get_num_variables(domid)
+      if ( do_io_clamping(domid, ivar) ) then
+   
+        write(clamp_min,*)  'NA'
+        write(clamp_max,*)  'NA'
+        
+        clamp_val = get_io_clamping_maxval(domid, ivar)
+        if ( clamp_val /= MISSING_R8 ) write(clamp_max,*)  clamp_val
+        
+        clamp_val = get_io_clamping_minval(domid, ivar)
+        if ( clamp_val /= MISSING_R8 ) write(clamp_min,*)  clamp_val
+        
+        write(msgstring,'(''min_val = '',A15,'' , max val = '',A15)') trim(clamp_min), trim(clamp_max)
+        write(att_name,'(2A)')  'DART_clamp_', trim(get_variable_name(domid, ivar))
+        call nc_check(nf90_put_att(ncFileID,NF90_GLOBAL,att_name, msgstring), &
+                   'nc_write_global_att_clamping','DART_clamping_range')
+      endif
+   enddo
+endif
+
+if (need_netcdf_def_mode) call nc_check(nf90_enddef(ncFileID), 'nc_write_global_att_clamping', 'end define mode')
+
+end subroutine nc_write_global_att_clamping
+
+!-------------------------------------------------
+!> Write revision information
+subroutine nc_write_revision_info(ncFileID)
+
+integer,          intent(in) :: ncFileID
+
+! we are going to need these to record the creation date in the netCDF file.
+! This is entirely optional, but nice.
+
+character(len=8)      :: crdate      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=10)     :: crtime      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=5)      :: crzone      ! needed by F90 DATE_AND_TIME intrinsic
+integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
+character(len=NF90_MAX_NAME) :: str1
+
+call DATE_AND_TIME(crdate,crtime,crzone,values)
+write(str1,'(''YYYY MM DD HH MM SS = '',i4,5(1x,i2.2))') &
+                  values(1), values(2), values(3), values(5), values(6), values(7)
+
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_creation_date' ,str1    ), &
+           'nc_write_revision_info', 'creation put ')
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_source'  ,source  ), &
+           'nc_write_revision_info', 'source put ')
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_revision',revision), &
+           'nc_write_revision_info', 'revision put ')
+call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_revdate' ,revdate ), &
+           'nc_write_revision_info', 'revdate put ')
+
+end subroutine nc_write_revision_info
+
+!-------------------------------------------------
+!> Write model integer missing_value/_FillValue attributes if they exist
+subroutine nc_write_missing_value_int(ncFileID, filename, ncVarID, domid, varid)
+
+integer,          intent(in) :: ncFileID
+character(len=*), intent(in) :: filename
+integer,          intent(in) :: ncVarID
+integer,          intent(in) :: domid
+integer,          intent(in) :: varid
+
+integer :: missingValINT, spvalINT
+
+call get_missing_value(domid, varid, missingValINT)
+if (missingValINT /= MISSING_I) then
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'missing_value',missingValINT), &
+                 'nc_write_missing_value_int','missing_value '//trim(filename))
+endif
+call get_fillValue(domid, varid, spvalINT)
+if (spvalINT /= MISSING_I) then
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'_FillValue',spvalINT), &
+                 'nc_write_missing_value_int','_FillValue'//trim(filename))
+endif
+
+end subroutine nc_write_missing_value_int
+
+!-------------------------------------------------
+!> Write model r4 missing_value/_FillValue attributes if they exist
+subroutine nc_write_missing_value_r4(ncFileID, filename, ncVarID, domid, varid)
+
+integer,          intent(in) :: ncFileID
+character(len=*), intent(in) :: filename
+integer,          intent(in) :: ncVarID
+integer,          intent(in) :: domid
+integer,          intent(in) :: varid
+
+real(r4) :: missingValR4, spvalR4
+
+call get_missing_value(domid, varid, missingValR4)
+if (missingValR4 /= MISSING_R4) then
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'missing_value',missingValR4), &
+                 'nc_write_missing_value_r4','missing_value '//trim(filename))
+endif
+call get_fillValue(domid, varid, spvalR4)
+if (spValR4 /= MISSING_R4) then
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'_FillValue',spvalR4), &
+                 'nc_write_missing_value_r4','_FillValue'//trim(filename))
+endif
+
+end subroutine nc_write_missing_value_r4
+
+!-------------------------------------------------
+!> Write model r8 missing_value/_FillValue attributes if they exist
+subroutine nc_write_missing_value_r8(ncFileID, filename, ncVarID, domid, varid)
+
+integer,          intent(in) :: ncFileID
+character(len=*), intent(in) :: filename
+integer,          intent(in) :: ncVarID
+integer,          intent(in) :: domid
+integer,          intent(in) :: varid
+
+real(r8) :: missingValR8, spvalR8
+
+call get_missing_value(domid, varid, missingValR8)
+if (missingValR8 /= MISSING_R8) then
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'missing_value',missingValR8), &
+                 'nc_write_missing_value_r8','missing_value '//trim(filename))
+endif
+call get_fillValue(domid, varid, spvalR8)
+if (spvalR8 /= MISSING_R8) then
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'_FillValue',spvalR8), &
+                 'nc_write_missing_value_r8','_FillValue'//trim(filename))
+endif
+
+end subroutine nc_write_missing_value_r8
 
 !-------------------------------------------------
 !> Calculate how many variables to read in one go.
