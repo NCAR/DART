@@ -4,9 +4,20 @@
 !
 ! $Id$
 
-program closest_member_tool
+!> Program to find one or more ensemble members where the values
+!> are the "closest" to the ensemble mean.  There are several metrics
+!> for measuring this, which can be selected via a namelist option.
+!>
+!> This program should be compiled in a particular model's work directory.
+!> It uses subroutines from the model_mod.f90 file, in particular 
+!> get_state_meta_data() to find the location and variable type of
+!> each item in the state vector.
+!> 
+!> It also has namelist options to only compute "distances" for a
+!> subset of the state vector kinds.
+!>
 
-! Program to overwrite the time on each ensemble in a restart file.
+program closest_member_tool
 
 use types_mod,         only : r8
 use time_manager_mod,  only : time_type, set_time_missing,               &
