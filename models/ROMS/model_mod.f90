@@ -364,7 +364,7 @@ else
      call error_handler(E_ERR,'get_state_meta_data:',string1,source,revision,revdate)
 endif
 
-call get_state_indices(myindx, iloc, jloc, vloc, progvar(nf)%dart_kind)
+call get_state_indices(progvar(nf)%dart_kind, myindx, iloc, jloc, vloc)
 
 nzp  = progvar(nf)%numvertical
 if(nzp==1) then
@@ -479,12 +479,12 @@ endif
 !2. do vertical interpolation at four corners
 !3. do a spatial interpolation
 
-write(*,*)'TJH ', trim(progvar(ivar)%varname)//' '//trim(progvar(ivar)%kind_string), &
-                  llon, llat, lheight
-do istatus=1,progvar(ivar)%numdims
-   write(*,*)'TJH ',istatus, trim(progvar(ivar)%dimname(istatus)), &
-                                  progvar(ivar)%dimlens(istatus)
-enddo
+! write(*,*)'TJH ', trim(progvar(ivar)%varname)//' '//trim(progvar(ivar)%kind_string), &
+!                   llon, llat, lheight
+! do istatus=1,progvar(ivar)%numdims
+!    write(*,*)'TJH ',istatus, trim(progvar(ivar)%dimname(istatus)), &
+!                                   progvar(ivar)%dimlens(istatus)
+! enddo
 istatus = 0
 
 if(progvar(ivar)%kind_string == 'KIND_U_CURRENT_COMPONENT') then
@@ -1004,7 +1004,6 @@ else
 
    ! We need to output the prognostic variables.
    ! Define the new dimensions IDs
-   !> @todo FIXME we have the actual original dimensions ... why are we not using them here
 
    call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_rho',  len = Nxi_rho, &
         dimid = nxirhoDimID),'nc_write_model_atts', 'xi_rho def_dim '//trim(filename))
@@ -1555,7 +1554,7 @@ end subroutine pert_model_state
 !> @param dist the distances of each of the close locations.
 !>
 
-subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
+subroutine get_close_obs(gc, base_obs_loc, base_obs_type, &
                          locs, loc_kind, num_close, close_ind, dist)
 
 ! Note that both base_obs_loc and locs are intent(inout), meaning that these
@@ -1566,13 +1565,14 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_kind, &
 
 type(get_close_type), intent(in)    :: gc
 type(location_type),  intent(inout) :: base_obs_loc
-integer,              intent(in)    :: base_obs_kind
+integer,              intent(in)    :: base_obs_type
 type(location_type),  intent(inout) :: locs(:)
 integer,              intent(in)    :: loc_kind(:)
 integer,              intent(out)   :: num_close
 integer,              intent(out)   :: close_ind(:)
 real(r8), OPTIONAL,   intent(out)   :: dist(:)
 
+integer                :: base_obs_kind ! for sanity
 integer                :: ztypeout
 integer                :: t_ind, istatus1, istatus2, k
 integer                :: base_which, local_obs_which
@@ -1585,6 +1585,8 @@ hor_dist = 1.0e9_r8
 if ( .not. module_initialized ) call static_init_model
 
 ! Initialize variables to missing status
+
+base_obs_kind = base_obs_type ! because it really is a KIND
 
 num_close = 0
 close_ind = -99
@@ -2235,7 +2237,7 @@ end subroutine get_grid_dimensions
 
 subroutine get_grid()
 
-integer  :: k,ncid, VarID, stat, i, j
+integer  :: k,ncid, VarID, stat
 
 ! The following 'automatic' arrays are more efficient than allocatable arrays.
 ! This is, in part, why the grid dimensions were determined previously.
@@ -2243,20 +2245,6 @@ integer  :: k,ncid, VarID, stat, i, j
 real(r8) :: dzt0(Nx,Ny)
 real(r8) :: s_rho(Ns_rho), Cs_r(Ns_rho), SSH(Nx,Ny)
 
-!>@ todo FIXME these aren't needed all the time.
-!>       Should they be allocatable instead of automatic?
-real(r8) :: x_rho(Nxi_rho,Neta_rho), &
-            y_rho(Nxi_rho,Neta_rho), &
-            x_u(Nxi_u,Neta_u), &
-            y_u(Nxi_u,Neta_u), &
-            x_v(Nxi_v,Neta_v), &
-            y_v(Nxi_v,Neta_v)
-
-logical :: nolatlon = .false.
-
-logical :: mymask(Nx,Ny,Nz)
-
-real(r8), allocatable :: datmat(:,:)
 real(r8), parameter :: all_land = 0.001_r8
 
 if (debug > 1) then
@@ -2287,91 +2275,37 @@ if (.not. allocated(ZC))   allocate(  ZC(Nx,Ny,Nz))
 if (.not. allocated(PM))   allocate(  PM(Nx,Ny))
 if (.not. allocated(PN))   allocate(  PN(Nx,Ny))
 
-! Read the variables
+! If there is no lat and lon information in the file JUST DIE
 
-! If there are no lat and lon information in the file
-!> @todo  FIXME ... just test for the presence of the variables ...
-!> do not depend on setting a logical
+call nc_check(nf90_inq_varid(ncid, 'lon_rho', VarID), &
+   'get_grid', 'inq_varid lon_rho '//trim(grid_definition_filename))
+call nc_check(nf90_get_var( ncid, VarID, TLON), &
+      'get_grid', 'get_var lon_rho '//trim(grid_definition_filename))
 
-if (nolatlon) then
+call nc_check(nf90_inq_varid(ncid, 'lat_rho', VarID), &
+      'get_grid', 'inq_varid lat_rho '//trim(grid_definition_filename))
+call nc_check(nf90_get_var( ncid, VarID, TLAT), &
+      'get_grid', 'get_var lat_rho '//trim(grid_definition_filename))
 
-   call nc_check(nf90_inq_varid(ncid, 'x_rho', VarID), &
-         'get_grid', 'inq_varid x_rho '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, x_rho), &
-         'get_grid', 'get_var x_rho '//trim(grid_definition_filename))
+call nc_check(nf90_inq_varid(ncid, 'lon_u', VarID), &
+      'get_grid', 'inq_varid lon_u '//trim(grid_definition_filename))
+call nc_check(nf90_get_var( ncid, VarID, ULON), &
+      'get_grid', 'get_var lon_u '//trim(grid_definition_filename))
 
-   call nc_check(nf90_inq_varid(ncid, 'y_rho', VarID), &
-         'get_grid', 'inq_varid y_rho '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, y_rho), &
-         'get_grid', 'get_var y_rho '//trim(grid_definition_filename))
+call nc_check(nf90_inq_varid(ncid, 'lat_u', VarID), &
+      'get_grid', 'inq_varid lat_u '//trim(grid_definition_filename))
+call nc_check(nf90_get_var( ncid, VarID, ULAT), &
+      'get_grid', 'get_var lat_u '//trim(grid_definition_filename))
 
-   call nc_check(nf90_inq_varid(ncid, 'x_u', VarID), &
-         'get_grid', 'inq_varid x_u '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, x_u), &
-         'get_grid', 'get_var x_u '//trim(grid_definition_filename))
+call nc_check(nf90_inq_varid(ncid, 'lon_v', VarID), &
+      'get_grid', 'inq_varid lon_v '//trim(grid_definition_filename))
+call nc_check(nf90_get_var( ncid, VarID, VLON), &
+      'get_grid', 'get_var lon_v '//trim(grid_definition_filename))
 
-   call nc_check(nf90_inq_varid(ncid, 'y_u', VarID), &
-         'get_grid', 'inq_varid y_u '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, y_u), &
-         'get_grid', 'get_var y_u '//trim(grid_definition_filename))
-
-   call nc_check(nf90_inq_varid(ncid, 'x_v', VarID), &
-         'get_grid', 'inq_varid x_v '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID,x_v), &
-         'get_grid', 'get_var x_v '//trim(grid_definition_filename))
-
-   call nc_check(nf90_inq_varid(ncid, 'y_v', VarID), &
-         'get_grid', 'inq_varid y_v '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, y_v), &
-         'get_grid', 'get_var y_v '//trim(grid_definition_filename))
-
-   do i=1,Nx
-     do j=1,Ny
-        TLON(i,j)=i*(360.0_r8/(Nx-1))-(360.0_r8/(Nx-1))
-        TLAT(i,j)=j*(160.0_r8/(Ny-1))-(80.0_r8*(Ny+1)/(Ny-1))
-     enddo
-   enddo
-
-   ULON=TLON(1:Nx-1,:)
-   ULAT=TLAT(1:Nx-1,:)
-
-   VLON=TLON(:,1:Ny-1)
-   VLAT=TLAT(:,1:Ny-1)
-
-else
-
-   call nc_check(nf90_inq_varid(ncid, 'lon_rho', VarID), &
-      'get_grid', 'inq_varid lon_rho '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, TLON), &
-         'get_grid', 'get_var lon_rho '//trim(grid_definition_filename))
-
-   call nc_check(nf90_inq_varid(ncid, 'lat_rho', VarID), &
-         'get_grid', 'inq_varid lat_rho '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, TLAT), &
-         'get_grid', 'get_var lat_rho '//trim(grid_definition_filename))
-
-   call nc_check(nf90_inq_varid(ncid, 'lon_u', VarID), &
-         'get_grid', 'inq_varid lon_u '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, ULON), &
-         'get_grid', 'get_var lon_u '//trim(grid_definition_filename))
-
-   call nc_check(nf90_inq_varid(ncid, 'lat_u', VarID), &
-         'get_grid', 'inq_varid lat_u '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, ULAT), &
-         'get_grid', 'get_var lat_u '//trim(grid_definition_filename))
-
-   call nc_check(nf90_inq_varid(ncid, 'lon_v', VarID), &
-         'get_grid', 'inq_varid lon_v '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, VLON), &
-         'get_grid', 'get_var lon_v '//trim(grid_definition_filename))
-
-   call nc_check(nf90_inq_varid(ncid, 'lat_v', VarID), &
-         'get_grid', 'inq_varid lat_v '//trim(grid_definition_filename))
-   call nc_check(nf90_get_var( ncid, VarID, VLAT), &
-         'get_grid', 'get_var lat_v '//trim(grid_definition_filename))
-
-endif
-
+call nc_check(nf90_inq_varid(ncid, 'lat_v', VarID), &
+      'get_grid', 'inq_varid lat_v '//trim(grid_definition_filename))
+call nc_check(nf90_get_var( ncid, VarID, VLAT), &
+      'get_grid', 'get_var lat_v '//trim(grid_definition_filename))
 
 call nc_check(nf90_inq_varid(ncid, 'h', VarID), &
       'get_grid', 'inq_varid h '//trim(grid_definition_filename))
@@ -2425,43 +2359,35 @@ mask_v   = 0
 
 ! Read mask on RHO-points
 
-allocate(datmat(Nxi_rho, Neta_rho))
 call nc_check(nf90_inq_varid(ncid, 'mask_rho', VarID), &
       'get_grid', 'inq_varid mask_rho '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, datmat), &
+call nc_check(nf90_get_var( ncid, VarID, mask_rho), &
       'get_grid', 'get_var mask_rho '//trim(grid_definition_filename))
-where(datmat > all_land) mask_rho = 1
-deallocate(datmat)
+where(mask_rho > all_land) mask_rho = 1
 
 ! Read mask on PSI-points
 
-allocate(datmat(Nxi_psi, Neta_psi))
 call nc_check(nf90_inq_varid(ncid, 'mask_psi', VarID), &
       'get_grid', 'inq_varid mask_psi '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, datmat), &
+call nc_check(nf90_get_var( ncid, VarID, mask_psi), &
       'get_grid', 'get_var mask_psi '//trim(grid_definition_filename))
-where(datmat > all_land) mask_psi = 1
-deallocate(datmat)
+where(mask_psi > all_land) mask_psi = 1
 
 ! Read mask on U-points
 
-allocate(datmat(Nxi_u, Neta_u))
 call nc_check(nf90_inq_varid(ncid, 'mask_u', VarID), &
       'get_grid', 'inq_varid mask_u '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, datmat), &
+call nc_check(nf90_get_var( ncid, VarID, mask_u), &
       'get_grid', 'get_var mask_u '//trim(grid_definition_filename))
-where(datmat > all_land) mask_u = 1
-deallocate(datmat)
+where(mask_u > all_land) mask_u = 1
 
 ! Read mask on V-points
 
-allocate(datmat(Nxi_v, Neta_v))
 call nc_check(nf90_inq_varid(ncid, 'mask_v', VarID), &
       'get_grid', 'inq_varid mask_v '//trim(grid_definition_filename))
-call nc_check(nf90_get_var( ncid, VarID, datmat), &
+call nc_check(nf90_get_var( ncid, VarID, mask_v), &
       'get_grid', 'get_var mask_v '//trim(grid_definition_filename))
-where(datmat > all_land) mask_v = 1
-deallocate(datmat)
+where(mask_v > all_land) mask_v = 1
 
 call nc_check(nf90_close(ncid), &
              'get_var','close '//trim(grid_definition_filename))
@@ -2500,21 +2426,16 @@ end do
 
 if (do_output() .and. debug > 0) then
     write(string1,*)'    min/max ULON ',minval(ULON), maxval(ULON)
-    write(string2,*)'min/max ULAT ',minval(ULAT), maxval(ULAT)
+    write(string2,*)    'min/max ULAT ',minval(ULAT), maxval(ULAT)
     call error_handler(E_MSG,'get_grid',string1, text2=string2)
 
     write(string1,*)'    min/max VLON ',minval(VLON), maxval(VLON)
-    write(string2,*)'min/max VLAT ',minval(VLAT), maxval(VLAT)
+    write(string2,*)    'min/max VLAT ',minval(VLAT), maxval(VLAT)
     call error_handler(E_MSG,'get_grid',string1, text2=string2)
 
     write(string1,*)'    min/max TLON ',minval(TLON), maxval(TLON)
-    write(string2,*)'min/max TLAT ',minval(TLAT), maxval(TLAT)
+    write(string2,*)    'min/max TLAT ',minval(TLAT), maxval(TLAT)
     call error_handler(E_MSG,'get_grid',string1, text2=string2)
-
-    mymask = ZC < 1.0E30 .and. ZC > -1.0E30
-    write(string1,*)'    min/max   ZC ',minval(ZC,mymask), maxval(ZC,mymask)
-    call error_handler(E_MSG,'get_grid',string1)
-
 endif
 
 end subroutine get_grid
@@ -3688,7 +3609,7 @@ endif
 
 ! Get the values at the four corners of the box or quad
 ! Corners go around counterclockwise from lower left
-! If any one of these fail, go no furhter.
+! If any one of these fail, go no further.
 
 istatus = 3
    p(1) = get_val(lon_bot, lat_bot, height, x, var_type)
@@ -3811,6 +3732,7 @@ ivar = get_progvar_index_from_kind(var_type)
 
 !> @ todo FIXME Implement the land masking. Must determine which mask
 !>        is appropriate for this variable ... extend progvar?
+!> could check dimension names of the variables against the dimension names of the masks
 
 Ndim3 = progvar(ivar)%numvertical
 Ndim2 = progvar(ivar)%numeta
@@ -3836,25 +3758,24 @@ end function get_val
 !> Given an integer index into the state vector structure, returns the
 !> associated array indices for lat, lon, and depth, as well as the type.
 !>
+!> @param var_type the DART KIND of interest
 !> @param offset relative (to the start of the KIND) index into the DART
 !>               vector for the KIND of interest.
 !> @param x_index the index of the longitude gridcell
 !> @param y_index the index of the latitude gridcell
 !> @param z_index the index of the vertical gridcell
-!> @param var_type the DART KIND of interest
 !>
-!> @todo FIXME move the intent(in) arguments first, then the intent(out)
 !> @todo FIXME Check to make sure that this routine is robust for all
 !> grid staggers, etc. Seems too simple given the staggers possible.
 !>
 
-subroutine get_state_indices(offset, x_index, y_index, z_index, var_type)
+subroutine get_state_indices(var_type, offset, x_index, y_index, z_index)
 
+integer, intent(in)  :: var_type
 integer, intent(in)  :: offset
 integer, intent(out) :: x_index
 integer, intent(out) :: y_index
 integer, intent(out) :: z_index
-integer, intent(in)  :: var_type
 
 integer :: ivar, numxi, numeta
 
@@ -4401,8 +4322,6 @@ integer :: ip1
 
 ! Note that corners go counterclockwise around the quad.
 ! @todo Have to worry about wrapping in longitude but not in latitude
-
-write(*,*)'i,j ',i,j   ! TJH DEBUG
 
 ip1 = i + 1
 !if(ip1 > nx) ip1 = 1
