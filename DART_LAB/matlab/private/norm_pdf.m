@@ -15,7 +15,6 @@ function [y] = norm_pdf(x, mu, sigma)
 %
 % DART $Id$
 
-
 e = exp(1);
 
 basen = (1.0 / (sigma * sqrt(2*pi)));
