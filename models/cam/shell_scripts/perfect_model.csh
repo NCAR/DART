@@ -19,8 +19,17 @@ set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 # The FORCE options are not optional.
 # The VERBOSE options are useful for debugging though
 # some systems don't like the -v option to any of the following
-
 switch ("`hostname`")
+   case be*:
+      # NCAR "bluefire"
+      set   MOVE = '/usr/local/bin/mv -fv'
+      set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
+      set   LINK = '/usr/local/bin/ln -fvs'
+      set REMOVE = '/usr/local/bin/rm -fr'
+
+      set BASEOBSDIR = /glade/proj3/image/Observations/ACARS
+   breaksw
+
    case ys*:
       # NCAR "yellowstone"
       set   MOVE = 'mv -fv'
@@ -28,18 +37,7 @@ switch ("`hostname`")
       set   LINK = 'ln -fvs'
       set REMOVE = 'rm -fr'
 
-      # BASEOBSDIR has the month/year and specific date appended (see usage below).
-      set BASEOBSDIR    = /glade/p/image/Observations/ACARS
-   breaksw
-
-   case linux_system_with_utils_in_other_dirs*:
-      # example of pointing this script at a different set of basic commands
-      set   MOVE = '/usr/local/bin/mv -fv'
-      set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
-      set   LINK = '/usr/local/bin/ln -fvs'
-      set REMOVE = '/usr/local/bin/rm -fr'
-
-      set BASEOBSDIR = /glade/proj3/image/Observations/ACARS
+      set BASEOBSDIR = /glade/p/image/Observations/ACARS
    breaksw
 
    default:
