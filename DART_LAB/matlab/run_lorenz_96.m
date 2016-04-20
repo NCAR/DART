@@ -26,6 +26,8 @@ function run_lorenz_96
 %% DART software - Copyright 2004 - 2016 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% DART $Id$
 
 help run_lorenz_96
 
@@ -1018,6 +1020,8 @@ set(h_obs, 'Visible', 'Off');
 
 end
 
-
-
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$
 

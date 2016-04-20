@@ -16,6 +16,8 @@ function gaussian_product
 %% DART software - Copyright 2004 - 2016 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
 % http://www.image.ucar.edu/DAReS/DART/DART_download
+%
+% DART $Id$
 
 atts = stylesheet;  % get the default fonts and colors
 
@@ -323,3 +325,9 @@ g_prod_plot(handles);
     end
 
 end
+
+% <next few lines under version control, do not edit>
+% $URL$
+% $Revision$
+% $Date$
+
