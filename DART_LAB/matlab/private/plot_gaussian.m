@@ -1,4 +1,4 @@
-function[plot_handle] = plot_gaussian(mymean, sd, weight)
+function [plot_handle, xlim, ylim] = plot_gaussian(mymean, sd, weight)
 %% plot_gaussian Plot gaussian over 5 standard deviations
 
 %% DART software - Copyright 2004 - 2013 UCAR. This open source software is
@@ -18,6 +18,8 @@ x = x_min:interval:x_max;
 y = weight * norm_pdf(x, mymean, sd);
 
 plot_handle = plot(x, y);
+xlim        = [x_min x_max];
+ylim        = [min(y) max(y)];
 
 % <next few lines under version control, do not edit>
 % $URL$
