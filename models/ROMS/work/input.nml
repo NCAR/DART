@@ -287,8 +287,8 @@
    interp_test_vertrange =  10.0, 1000.0
    interp_test_vertcoord = 'VERTISHEIGHT'
    test1thru             = 2
-   restart_in_file_name  = 'input'
-   restart_out_file_name = 'output'
+   restart_in_file_name  = 'roms_restart.nc'
+   restart_out_file_name = 'roms_output'
    verbose               = .true.
   /
 

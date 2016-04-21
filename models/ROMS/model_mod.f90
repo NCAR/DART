@@ -1536,7 +1536,7 @@ character(len=256) :: construct_file_name_in
 
 !>@todo FIXME : JPH. Need to construct filename properly!!!!
 
-! write(construct_file_name_in, '(A, i4.4, A)') trim(stub), copy, ".nc"
+write(construct_file_name_in, '(A)') trim(stub)
 
 
 end function construct_file_name_in
