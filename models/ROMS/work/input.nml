@@ -275,18 +275,18 @@
    kind_of_interest      = 'KIND_U_CURRENT_COMPONENT'
 
 &model_mod_check_nml
-   x_ind                 = -1
+   x_ind                 = 1
    num_ens               = 1
-   loc_of_interest       = 230.0, 36.0, 50.0
-   kind_of_interest      = 'ANY'
+   loc_of_interest       = 129.0, 40.0, -0.01
+   kind_of_interest      = 'KIND_TEMPERATURE'
    interp_test_dlon      = 0.1
    interp_test_dlat      = 0.1
    interp_test_dvert     = 5.0
-   interp_test_lonrange  = 226.0,  244.0
-   interp_test_latrange  =  30.0,   48.0
-   interp_test_vertrange =  10.0, 1000.0
+   interp_test_lonrange  = 205.0,  226.0
+   interp_test_latrange  =  30.0,   47.0
+   interp_test_vertrange =  0.0,    10.0
    interp_test_vertcoord = 'VERTISHEIGHT'
-   test1thru             = 2
+   test1thru             = 5
    restart_in_file_name  = 'roms_restart.nc'
    restart_out_file_name = 'roms_output'
    verbose               = .true.
