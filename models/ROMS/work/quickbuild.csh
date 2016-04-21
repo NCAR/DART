@@ -42,11 +42,16 @@ foreach TARGET ( mkmf_* )
    switch ( $TARGET )
    case mkmf_preprocess:
       breaksw
+   case mkmf_dart_to_roms:
+      breaksw
+   case mkmf_roms_to_dart:
+      breaksw
    default:
       @ n = $n + 1
       echo
       echo "---------------------------------------------------"
       echo "${MODEL} build number ${n} is ${PROG}" 
+\rm -f *.o *.mod
       \rm -f ${PROG}
       csh $TARGET || exit $n
       make        || exit $n
