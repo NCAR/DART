@@ -73,7 +73,12 @@ use distributed_state_mod, only : get_state
 use state_structure_mod,   only : add_domain, get_model_variable_indices, &
                                   get_num_variables, get_index_start, &
                                   get_num_dims, get_domain_size, get_varid_from_kind, &
-                                  get_dart_vector_index, state_structure_info
+                                  get_dart_vector_index, state_structure_info, &
+                                  get_index_start, get_index_end, get_variable_name, &
+                                  get_kind_index, get_kind_string, get_dim_length, &
+                                  get_dim_name, get_missing_value, get_units, &
+                                  get_long_name, get_xtype, get_has_missing_value, &
+                                  get_dim_lengths
 
 use typesizes
 use netcdf
@@ -109,8 +114,7 @@ public :: get_model_size,                &
 public :: restart_file_to_sv,         &
           sv_to_restart_file,         &
           get_model_restart_filename, &
-          get_time_from_namelist,     &
-          print_variable_ranges
+          get_time_from_namelist
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -166,35 +170,6 @@ integer :: domain_id ! global variable for state_structure_mod routines
 !>
 !> @todo FIXME ... add a field for what kind of mask to use
 !>
-
-type progvartype
-   private
-   character(len=NF90_MAX_NAME) :: varname
-   character(len=NF90_MAX_NAME) :: long_name
-   character(len=NF90_MAX_NAME) :: units
-   character(len=NF90_MAX_NAME), dimension(NF90_MAX_VAR_DIMS) :: dimname
-   integer, dimension(NF90_MAX_VAR_DIMS) :: dimlens
-   integer :: xtype         ! netCDF variable type (NF90_double, etc.)
-   integer :: numdims       ! number of dims - excluding TIME
-   integer :: numvertical   ! number of vertical levels in variable
-   integer :: numxi         ! number of horizontal locations (cell centers)
-   integer :: numeta        ! number of horizontal locations (edges for velocity components)
-   integer :: varsize       ! prod(dimlens(1:numdims))
-   integer :: index1        ! location in dart state vector of first occurrence
-   integer :: indexN        ! location in dart state vector of last  occurrence
-   integer :: dart_kind
-   character(len=paramname_length) :: kind_string
-   logical  :: clamping     ! does variable need to be range-restricted before
-   real(r8) :: range(2)     ! being stuffed back into analysis file.
-   logical  :: out_of_range_fail  ! is out of range fatal if range-checking?
-   real(r4) :: fill_value_r4
-   real(r8) :: fill_value_r8
-   logical  :: has_fill_value_r4
-   logical  :: has_fill_value_r8
-end type progvartype
-
-type(progvartype), dimension(max_state_variables) :: progvar
-
 
 ! Grid parameters - the values will be read from a
 ! standard ROMS namelist and filled in here.
@@ -340,7 +315,7 @@ integer, optional,   intent(out) :: var_type
 ! Local variables
 
 integer  :: nxp, nzp, iloc, vloc, nf, n,nyp,jloc
-integer  :: myindx
+integer  :: myindx, my_var_id
 integer  :: ivar
 real(r8) :: depth
 
@@ -349,50 +324,30 @@ if ( .not. module_initialized ) call static_init_model
 myindx = -1
 nf     = -1
 
-! Determine the right variable
-FindIndex : do n = 1,nfields
-    if( (progvar(n)%index1 <= index_in) .and. (index_in <= progvar(n)%indexN) ) THEN
-      nf = n
-      myindx = index_in - progvar(n)%index1 + 1
-      exit FindIndex
-    endif
-enddo FindIndex
+call get_model_variable_indices(index_in, iloc, jloc, vloc, var_id=my_var_id)
 
 if (present(var_type)) then
-   var_type = progvar(nf)%dart_kind
+   var_type = get_kind_index(domain_id, my_var_id)
 endif
 
-if( myindx == -1 ) then
-     write(string1,*) 'Problem, cannot find base_offset, index_in is: ', index_in
-     call error_handler(E_ERR,'get_state_meta_data:',string1,source,revision,revdate)
-endif
 
 ! Now that we know the variable, find the cell or edge
 
-if (     progvar(nf)%numxi /= MISSING_I .AND. progvar(nf)%numeta /= MISSING_I ) then
-   nyp = progvar(nf)%numxi
-   nxp = progvar(nf)%numeta
-else
-     write(string1,*) 'ERROR, ',trim(progvar(nf)%varname),' is not defined on xi or eta'
-     call error_handler(E_ERR,'get_state_meta_data:',string1,source,revision,revdate)
-endif
-
-call get_state_indices(progvar(nf)%dart_kind, myindx, iloc, jloc, vloc)
-
-nzp  = progvar(nf)%numvertical
+!>@todo FIXME : JPH. We should probably do a check that _s is in the
+!>                   dimension name string.
+nzp  = get_dim_length(domain_id, my_var_id, 3)
 if(nzp==1) then
   depth=0.0
 else
   depth= ZC(iloc,jloc,vloc)
 endif
 
-ivar = get_progvar_index_from_kind(progvar(nf)%dart_kind)
-
-if (progvar(ivar)%kind_string=='KIND_SEA_SURFACE_HEIGHT') then
+!>@todo FIXME : JPH. It would be safer to test against kind_index
+if (get_kind_string(domain_id,my_var_id)=='KIND_SEA_SURFACE_HEIGHT') then
       location = set_location(TLON(iloc,jloc),TLAT(iloc,jloc), depth, VERTISSURFACE)
-elseif (progvar(ivar)%kind_string=='KIND_U_CURRENT_COMPONENT') then
+elseif (get_kind_string(domain_id,my_var_id)=='KIND_U_CURRENT_COMPONENT') then
       location = set_location(ULON(iloc,jloc),ULAT(iloc,jloc), depth, VERTISHEIGHT)
-elseif (progvar(ivar)%kind_string=='KIND_V_CURRENT_COMPONENT') then
+elseif (get_kind_string(domain_id,my_var_id)=='KIND_V_CURRENT_COMPONENT') then
       location = set_location(VLON(iloc,jloc),VLAT(iloc,jloc), depth, VERTISHEIGHT)
 else
       location = set_location(TLON(iloc,jloc),TLAT(iloc,jloc), depth, VERTISHEIGHT)
@@ -439,6 +394,7 @@ integer        :: base_offset, top_offset
 integer        :: ivar,obs_kind
 integer        :: x_ind, y_ind,lat_bot, lat_top, lon_bot, lon_top
 real(r8)       :: x_corners(4), y_corners(4), p(4)
+integer        :: numxi, numeta
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -471,23 +427,16 @@ else   ! if pressure or undefined, we don't know what to do
 endif
 
 obs_kind = obs_type
-ivar = get_progvar_index_from_kind(obs_kind)
+ivar = get_varid_from_kind(domain_id, obs_kind)
 
 ! Do horizontal interpolations for the appropriate levels
 ! Find the basic offset of this field
-
-base_offset = progvar(ivar)%index1
-top_offset  = progvar(ivar)%indexN
-
-!print *, 'base offset now for ',trim(progvar(ivar)%varname),base_offset,top_offset
 
 ! For Sea Surface Height or Pressure don't need the vertical coordinate
 !
 if( vert_is_surface(location) ) then
    call lon_lat_interpolate(state_handle, ens_size, llon, llat, &
    obs_type, 1, interp_val, istatus)
-   ! call lon_lat_interpolate(x(base_offset:top_offset), llon, llat, &
-   ! obs_type, 1, interp_val, istatus)
    return
 endif
 
@@ -496,20 +445,20 @@ endif
 !2. do vertical interpolation at four corners
 !3. do a spatial interpolation
 
-! write(*,*)'TJH ', trim(progvar(ivar)%varname)//' '//trim(progvar(ivar)%kind_string), &
+! write(*,*)'TJH ', trim(get_variable_name(domain_id, ivar))//' '//trim(get_kind_string(domain_id, ivar), &
 !                   llon, llat, lheight
-! do istatus=1,progvar(ivar)%numdims
-!    write(*,*)'TJH ',istatus, trim(progvar(ivar)%dimname(istatus)), &
-!                                   progvar(ivar)%dimlens(istatus)
+! do istatus=1,get_num_dims(domain_id, ivar)
+!    write(*,*)'TJH ',istatus, trim(get_dim_name(domain_id, istatus)), &
+!                                   get_dim_length(domain_id, istatus)
 ! enddo
 istatus = 0
 
-if(progvar(ivar)%kind_string == 'KIND_U_CURRENT_COMPONENT') then
+if(get_kind_string(domain_id, ivar) == 'KIND_U_CURRENT_COMPONENT') then
    call get_reg_box_indices(llon, llat, ULON, ULAT, x_ind, y_ind)
    ! Getting corners for accurate interpolation
    call get_quad_corners(ULON, x_ind, y_ind, x_corners)
    call get_quad_corners(ULAT, x_ind, y_ind, y_corners)
-elseif (progvar(ivar)%kind_string == 'KIND_V_CURRENT_COMPONENT') then
+elseif (get_kind_string(domain_id, ivar) == 'KIND_V_CURRENT_COMPONENT') then
    call get_reg_box_indices(llon, llat, VLON, VLAT, x_ind, y_ind)
    ! Getting corners for accurate interpolation
    call get_quad_corners(VLON, x_ind, y_ind, x_corners)
@@ -524,15 +473,20 @@ endif
 lon_bot=x_ind
 lat_bot=y_ind
 
+!>@todo FIXME : JPH. We should probably do a check that eta or xi is in the
+!>                   dimension name string.
+numeta = get_dim_length(domain_id, ivar, 1)
+numxi  = get_dim_length(domain_id, ivar, 2)
+
 ! Find the indices to get the values for interpolating
 lat_top = lat_bot + 1
-if(lat_top > progvar(ivar)%numeta) then
+if(lat_top > numeta) then
    istatus = 2
    return
 endif
 
 lon_top = lon_bot + 1
-if(lon_top > progvar(ivar)%numxi) then
+if(lon_top > numxi) then
    istatus = 2
    return
 endif
@@ -821,6 +775,8 @@ integer, dimension(NF90_MAX_VAR_DIMS) :: mydimids
 integer :: myndims
 
 character(len=256) :: filename
+real(r4) :: fill_value_r4
+real(r8) :: fill_value_r8
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1025,7 +981,7 @@ else
 
    do ivar=1, nfields
 
-      varname = trim(progvar(ivar)%varname)
+      varname = trim(get_variable_name(domain_id, ivar))
       string1 = trim(filename)//' '//trim(varname)
 
       ! match shape of the variable to the dimension IDs
@@ -1034,29 +990,32 @@ else
 
       ! define the variable and set the attributes
       call nc_check(nf90_def_var(ncid=ncFileID, name=trim(varname), &
-              xtype = progvar(ivar)%xtype, dimids = mydimids(1:myndims), varid=VarID), &
+              xtype = get_xtype(domain_id, ivar), dimids = mydimids(1:myndims), varid=VarID), &
               'nc_write_model_atts', trim(string1)//' def_var' )
 
       call nc_check(nf90_put_att(ncFileID, VarID, 'long_name', &
-              trim(progvar(ivar)%long_name)), &
+              trim(get_long_name(domain_id, ivar))), &
               'nc_write_model_atts', trim(string1)//' put_att long_name' )
 
       call nc_check(nf90_put_att(ncFileID, VarID, 'DART_kind', &
-              trim(progvar(ivar)%kind_string)), &
+              trim(get_kind_string(domain_id, ivar))), &
               'nc_write_model_atts', trim(string1)//' put_att dart_kind' )
 
       call nc_check(nf90_put_att(ncFileID, VarID, 'units', &
-              trim(progvar(ivar)%units)), &
+              trim(get_units(domain_id, ivar))), &
               'nc_write_model_atts', trim(string1)//' put_att units' )
 
-      if     (progvar(ivar)%has_fill_value_r4) then
-         call nc_check(nf90_put_att(ncFileID, VarID, '_FillValue', &
-                                         progvar(ivar)%fill_value_r4), &
-              'nc_write_model_atts', trim(string1)//' put_att _FillValue' )
-      elseif (progvar(ivar)%has_fill_value_r8) then
-         call nc_check(nf90_put_att(ncFileID, VarID, '_FillValue', &
-                                         progvar(ivar)%fill_value_r8), &
-              'nc_write_model_atts', trim(string1)//' put_att _FillValue' )
+      if (get_has_missing_value(domain_id, ivar)) then
+         select case (get_xtype(domain_id, ivar))
+            case (NF90_FLOAT)
+               call get_missing_value(domain_id, ivar, fill_value_r4)
+               call nc_check(nf90_put_att(ncFileID, VarID, '_FillValue', fill_value_r4), &
+                    'nc_write_model_atts', trim(string1)//' put_att _FillValue' )
+            case (NF90_DOUBLE)
+               call get_missing_value(domain_id, ivar, fill_value_r8)
+               call nc_check(nf90_put_att(ncFileID, VarID, '_FillValue', fill_value_r8), &
+                    'nc_write_model_atts', trim(string1)//' put_att _FillValue' )
+         end select
       endif
 
    enddo
@@ -1212,7 +1171,7 @@ else
 
    do ivar = 1,nfields
 
-      varname = trim(progvar(ivar)%varname)
+      varname = trim(get_variable_name(domain_id, ivar))
       string2 = trim(filename)//' '//trim(varname)
 
       ! Ensure netCDF variable is conformable with progvar quantity.
@@ -1227,14 +1186,14 @@ else
 
       mystart = 1   ! These are arrays, actually
       mycount = 1
-      DimCheck : do i = 1,progvar(ivar)%numdims
+      DimCheck : do i = 1,get_num_dims(domain_id, ivar)
 
          write(string1,'(a,i2,A)') 'inquire dimension ',i,trim(string2)
          call nc_check(nf90_inquire_dimension(ncFileID, dimIDs(i), len=dimlen), &
                'nc_write_model_vars', trim(string1))
 
-         if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-            write(string1,*) trim(string2),' dim/dimlen ',i,dimlen,' not ',progvar(ivar)%dimlens(i)
+         if ( dimlen /= get_dim_length(domain_id, ivar, i) ) then
+            write(string1,*) trim(string2),' dim/dimlen ',i,dimlen,' not ',get_dim_length(domain_id, ivar, i)
             write(string2,*)' but it should be.'
             call error_handler(E_ERR, 'nc_write_model_vars:', trim(string1), &
                             source, revision, revdate, text2=trim(string2))
@@ -1252,7 +1211,7 @@ else
       where(dimIDs == TimeDimID) mystart = timeindex
       where(dimIDs == TimeDimID) mycount = 1
 
-      if (     progvar(ivar)%numdims == 1 ) then
+      if (     get_num_dims(domain_id, ivar) == 1 ) then
 
          if ( ncNdims /= 3 ) then
             write(string1,*)trim(varname),' no room for copy,time dimensions.'
@@ -1261,14 +1220,14 @@ else
                             source, revision, revdate, text2=string2)
          endif
 
-         allocate(data_1d_array( progvar(ivar)%dimlens(1) ) )
+         allocate(data_1d_array( get_dim_length(domain_id, ivar, 1) ) )
          call vector_to_prog_var(state_vec, ivar, data_1d_array)
          call nc_check(nf90_put_var(ncFileID, VarID, data_1d_array, &
              start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
                    'nc_write_model_vars', 'put_var '//trim(string2))
          deallocate(data_1d_array)
 
-      elseif ( progvar(ivar)%numdims == 2 ) then
+      elseif ( get_num_dims(domain_id, ivar) == 2 ) then
 
          if ( ncNdims /= 4 ) then
             write(string1,*)trim(varname),' no room for copy,time dimensions.'
@@ -1277,15 +1236,15 @@ else
                             source, revision, revdate, text2=string2)
          endif
 
-         allocate(data_2d_array( progvar(ivar)%dimlens(1),  &
-                                 progvar(ivar)%dimlens(2) ))
+         allocate(data_2d_array( get_dim_length(domain_id, ivar, 1),  &
+                                 get_dim_length(domain_id, ivar, 2) ))
          call vector_to_prog_var(state_vec, ivar, data_2d_array)
          call nc_check(nf90_put_var(ncFileID, VarID, data_2d_array, &
              start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
                    'nc_write_model_vars', 'put_var '//trim(string2))
          deallocate(data_2d_array)
 
-      elseif ( progvar(ivar)%numdims == 3) then
+      elseif ( get_num_dims(domain_id, ivar) == 3 ) then
 
          if ( ncNdims /= 5 ) then
             write(string1,*)trim(varname),' no room for copy,time dimensions.'
@@ -1294,9 +1253,9 @@ else
                             source, revision, revdate, text2=string2)
          endif
 
-         allocate(data_3d_array( progvar(ivar)%dimlens(1), &
-                                 progvar(ivar)%dimlens(2), &
-                                 progvar(ivar)%dimlens(3)))
+         allocate(data_3d_array( get_dim_length(domain_id, ivar, 1), &
+                                 get_dim_length(domain_id, ivar, 2), &
+                                 get_dim_length(domain_id, ivar, 3)))
          call vector_to_prog_var(state_vec, ivar, data_3d_array)
          call nc_check(nf90_put_var(ncFileID, VarID, data_3d_array, &
              start = mystart(1:ncNdims), count=mycount(1:ncNdims)), &
@@ -1764,7 +1723,7 @@ call nc_check(nf90_inquire_dimension(ncid, TimeDimID, len=TimeDimLength), &
 
 do ivar=1, nfields
 
-   varname = trim(progvar(ivar)%varname)
+   varname = trim(get_variable_name(domain_id, ivar))
    msgstring = trim(filename)//' '//trim(varname)
 
    ! determine the shape of the netCDF variable
@@ -1780,15 +1739,15 @@ do ivar=1, nfields
 
    ! Only checking the shape of the variable
 
-   DimCheck : do indx = 1,progvar(ivar)%numdims
+   DimCheck : do indx = 1,get_num_dims(domain_id, ivar)
 
       write(string1,'(''inquire dimension'',i2,A)') indx,trim(msgstring)
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(indx), len=dimlen), &
             'restart_file_to_sv', string1)
 
-      if ( dimlen /= progvar(ivar)%dimlens(indx) ) then
+      if ( dimlen /= get_dim_length(domain_id, ivar, indx) ) then
          write(string1,*) trim(msgstring),' dim/dimlen ',&
-                          indx, dimlen,' not ',progvar(ivar)%dimlens(indx)
+                          indx, dimlen,' not ',get_dim_length(domain_id, ivar, indx)
          call error_handler(E_ERR,'restart_file_to_sv:',string1,source,revision,revdate)
       endif
 
@@ -1938,7 +1897,7 @@ call nc_check(nf90_inquire_dimension(ncFileID, TimeDimID, len=TimeDimLength), &
 
 PROGVARLOOP : do ivar=1, nfields
 
-   varname = trim(progvar(ivar)%varname)
+   varname = trim(get_variable_name(domain_id, ivar))
    msgstring = trim(filename)//' '//trim(varname)
 
    ! Ensure netCDF variable is conformable with progvar quantity.
@@ -1953,14 +1912,14 @@ PROGVARLOOP : do ivar=1, nfields
 
    mystart = 1   ! These are arrays, actually.
    mycount = 1
-   DimCheck : do i = 1,progvar(ivar)%numdims
+   DimCheck : do i = 1,get_num_dims(domain_id, ivar)
 
       write(string1,'(''inquire dimension'',i2,A)') i,trim(msgstring)
       call nc_check(nf90_inquire_dimension(ncFileID, dimIDs(i), len=dimlen), &
             'sv_to_restart_file', string1)
 
-      if ( dimlen /= progvar(ivar)%dimlens(i) ) then
-         write(string1,*) trim(msgstring),' dim/dimlen ',i,dimlen,' not ',progvar(ivar)%dimlens(i)
+      if ( dimlen /= get_dim_length(domain_id, ivar, i) ) then
+         write(string1,*) trim(msgstring),' dim/dimlen ',i,dimlen,' not ',get_dim_length(domain_id, ivar, i)
          write(string2,*)' but it should be.'
          call error_handler(E_ERR, 'sv_to_restart_file:', string1, &
                          source, revision, revdate, text2=string2)
@@ -1980,12 +1939,12 @@ PROGVARLOOP : do ivar=1, nfields
       call error_handler(E_MSG, 'sv_to_restart_file:', msgstring, &
                         text2=string2, text3=string3)
 
-      write(string2,*)'         shape is ',progvar(ivar)%dimlens(1:progvar(ivar)%numdims)
+      write(string2,*)'         shape is ',get_dim_lengths(domain_id, ivar)
       call error_handler(E_MSG, 'sv_to_restart_file:', msgstring, &
                         text2=string2)
    endif
 
-   if (progvar(ivar)%numdims == 1) then
+   if (get_num_dims(domain_id, ivar) == 1) then
       allocate(data_1d_array(mycount(1)))
 
       call vector_to_prog_var(state_vector, ivar, data_1d_array)
@@ -1999,38 +1958,22 @@ PROGVARLOOP : do ivar=1, nfields
             'sv_to_restart_file', 'put_var '//trim(varname))
       deallocate(data_1d_array)
 
-   elseif (progvar(ivar)%numdims == 2) then
+   elseif (get_num_dims(domain_id, ivar) == 2) then
 
       allocate(data_2d_array(mycount(1), mycount(2)))
 
       call vector_to_prog_var(state_vector, ivar, data_2d_array)
-
-      ! did the user specify lower and/or upper bounds for this variable?
-      ! if so, follow the instructions to either fail on out-of-range values,
-      ! or set out-of-range values to the given min or max vals
-      if ( progvar(ivar)%clamping ) then
-         call do_clamping(progvar(ivar)%out_of_range_fail, progvar(ivar)%range, &
-                          progvar(ivar)%numdims, varname, array_2d = data_2d_array)
-      endif
 
       call nc_check(nf90_put_var(ncFileID, VarID, data_2d_array, &
             start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
             'sv_to_restart_file', 'put_var '//trim(varname))
       deallocate(data_2d_array)
 
-   elseif (progvar(ivar)%numdims == 3) then
+   elseif (get_num_dims(domain_id, ivar) == 3) then
 
       allocate(data_3d_array(mycount(1), mycount(2), mycount(3)))
 
       call vector_to_prog_var(state_vector, ivar, data_3d_array)
-
-      ! did the user specify lower and/or upper bounds for this variable?
-      ! if so, follow the instructions to either fail on out-of-range values,
-      ! or set out-of-range values to the given min or max vals
-      if ( progvar(ivar)%clamping ) then
-         call do_clamping(progvar(ivar)%out_of_range_fail, progvar(ivar)%range, &
-                          progvar(ivar)%numdims, varname, array_3d = data_3d_array)
-      endif
 
       call nc_check(nf90_put_var(ncFileID, VarID, data_3d_array, &
             start=mystart(1:ncNdims), count=mycount(1:ncNdims)), &
@@ -2095,30 +2038,6 @@ endif
 get_time_from_namelist = set_date(iyear, imonth, iday, ihour, imin, isec)
 
 end function get_time_from_namelist
-
-
-!-----------------------------------------------------------------------
-!>
-!> given a DART state vector; print out the min and max
-!> data values for all the variables in the vector.
-!>
-!> @param x the vector.
-!>
-
-subroutine print_variable_ranges(x)
-
-real(r8), intent(in) :: x(:)
-
-integer :: ivar
-
-if ( .not. module_initialized ) call static_init_model
-
-do ivar = 1, nfields
-   call print_minmax(ivar, x)
-enddo
-
-end subroutine print_variable_ranges
-
 
 !-----------------------------------------------------------------------
 ! The remaining (private) interfaces come last.
@@ -2497,84 +2416,87 @@ end subroutine verify_variables
 !> @param ivar the handle to the variable in question
 !>
 
-subroutine get_variable_bounds(bounds_table, ivar)
+!>@todo FIXME : JPH. we should be passing in the clamping information into the 
+!>@                  add_domain call.  This can be paresd in the verify_variables
 
-character(len=*), intent(in) :: bounds_table(num_bounds_table_columns, max_state_variables)
-integer,          intent(in) :: ivar
-
-! local variables
-character(len=50) :: bounds_varname, bound
-character(len=10) :: clamp_or_fail
-real(r8)          :: lower_bound, upper_bound
-integer           :: n
-
-write(string1,*)'WARNING routine not tested.'
-write(string2,*)'"roms_state_bounds" from namelist is not set, not tested.'
-call error_handler(E_MSG,'get_variable_bounds:',string1, text2=string2)
-
-n = 1
-do while ( trim(bounds_table(1,n)) /= 'NULL' .and. trim(bounds_table(1,n)) /= '' )
-
-   bounds_varname = trim(bounds_table(1,n))
-
-   if ( bounds_varname == trim(progvar(ivar)%varname) ) then
-
-        bound = trim(bounds_table(2,n))
-        if ( bound /= 'NULL' .and. bound /= '' ) then
-             read(bound,'(d16.8)') lower_bound
-        else
-             lower_bound = missing_r8
-        endif
-
-        bound = trim(bounds_table(3,n))
-        if ( bound /= 'NULL' .and. bound /= '' ) then
-             read(bound,'(d16.8)') upper_bound
-        else
-             upper_bound = missing_r8
-        endif
-
-        ! How do we want to handle out of range values?
-        ! Set them to predefined limits (clamp) or simply fail (fail).
-        clamp_or_fail = trim(bounds_table(4,n))
-        if ( clamp_or_fail == 'NULL' .or. clamp_or_fail == '') then
-             write(string1, *) 'instructions for CLAMP_or_FAIL on ', &
-                                trim(bounds_varname), ' are required'
-             call error_handler(E_ERR,'get_variable_bounds:',string1, &
-                                source,revision,revdate)
-        else if ( clamp_or_fail == 'CLAMP' ) then
-             progvar(ivar)%out_of_range_fail = .FALSE.
-        else if ( clamp_or_fail == 'FAIL' ) then
-             progvar(ivar)%out_of_range_fail = .TRUE.
-        else
-             write(string1, *) 'last column must be "CLAMP" or "FAIL" for ', &
-                  trim(bounds_varname)
-             call error_handler(E_ERR,'get_variable_bounds:',string1, &
-                  source,revision,revdate, text2='found '//trim(clamp_or_fail))
-        endif
-
-        ! Assign the clamping information into the variable
-        progvar(ivar)%clamping = .true.
-        progvar(ivar)%range    = (/ lower_bound, upper_bound /)
-
-        return
-   endif
-
-   n = n + 1
-
-enddo !n
-
-! we got through all the entries in the bounds table and did not
-! find any instructions for this variable.  set the values to indicate
-! we are not doing any processing when we write the updated state values
-! back to the model restart file.
-
-progvar(ivar)%clamping = .false.
-progvar(ivar)%range = missing_r8
-progvar(ivar)%out_of_range_fail = .false.  ! should be unused so setting shouldn't matter
-
-return
-
-end subroutine get_variable_bounds
+!%! subroutine get_variable_bounds(bounds_table, ivar)
+!%! 
+!%! character(len=*), intent(in) :: bounds_table(num_bounds_table_columns, max_state_variables)
+!%! integer,          intent(in) :: ivar
+!%! 
+!%! ! local variables
+!%! character(len=50) :: bounds_varname, bound
+!%! character(len=10) :: clamp_or_fail
+!%! real(r8)          :: lower_bound, upper_bound
+!%! integer           :: n
+!%! 
+!%! write(string1,*)'WARNING routine not tested.'
+!%! write(string2,*)'"roms_state_bounds" from namelist is not set, not tested.'
+!%! call error_handler(E_MSG,'get_variable_bounds:',string1, text2=string2)
+!%! 
+!%! n = 1
+!%! do while ( trim(bounds_table(1,n)) /= 'NULL' .and. trim(bounds_table(1,n)) /= '' )
+!%! 
+!%!    bounds_varname = trim(bounds_table(1,n))
+!%! 
+!%!    if ( bounds_varname == trim(get_variable_name(domain_id, ivar)) ) then
+!%! 
+!%!         bound = trim(bounds_table(2,n))
+!%!         if ( bound /= 'NULL' .and. bound /= '' ) then
+!%!              read(bound,'(d16.8)') lower_bound
+!%!         else
+!%!              lower_bound = missing_r8
+!%!         endif
+!%! 
+!%!         bound = trim(bounds_table(3,n))
+!%!         if ( bound /= 'NULL' .and. bound /= '' ) then
+!%!              read(bound,'(d16.8)') upper_bound
+!%!         else
+!%!              upper_bound = missing_r8
+!%!         endif
+!%! 
+!%!         ! How do we want to handle out of range values?
+!%!         ! Set them to predefined limits (clamp) or simply fail (fail).
+!%!         clamp_or_fail = trim(bounds_table(4,n))
+!%!         if ( clamp_or_fail == 'NULL' .or. clamp_or_fail == '') then
+!%!              write(string1, *) 'instructions for CLAMP_or_FAIL on ', &
+!%!                                 trim(bounds_varname), ' are required'
+!%!              call error_handler(E_ERR,'get_variable_bounds:',string1, &
+!%!                                 source,revision,revdate)
+!%!         else if ( clamp_or_fail == 'CLAMP' ) then
+!%!              progvar(ivar)%out_of_range_fail = .FALSE.
+!%!         else if ( clamp_or_fail == 'FAIL' ) then
+!%!              progvar(ivar)%out_of_range_fail = .TRUE.
+!%!         else
+!%!              write(string1, *) 'last column must be "CLAMP" or "FAIL" for ', &
+!%!                   trim(bounds_varname)
+!%!              call error_handler(E_ERR,'get_variable_bounds:',string1, &
+!%!                   source,revision,revdate, text2='found '//trim(clamp_or_fail))
+!%!         endif
+!%! 
+!%!         ! Assign the clamping information into the variable
+!%!         progvar(ivar)%clamping = .true.
+!%!         progvar(ivar)%range    = (/ lower_bound, upper_bound /)
+!%! 
+!%!         return
+!%!    endif
+!%! 
+!%!    n = n + 1
+!%! 
+!%! enddo !n
+!%! 
+!%! ! we got through all the entries in the bounds table and did not
+!%! ! find any instructions for this variable.  set the values to indicate
+!%! ! we are not doing any processing when we write the updated state values
+!%! ! back to the model restart file.
+!%! 
+!%! progvar(ivar)%clamping = .false.
+!%! progvar(ivar)%range = missing_r8
+!%! progvar(ivar)%out_of_range_fail = .false.  ! should be unused so setting shouldn't matter
+!%! 
+!%! return
+!%! 
+!%! end subroutine get_variable_bounds
 
 
 !-----------------------------------------------------------------------
@@ -2593,7 +2515,7 @@ integer,  intent(in)    :: ivar
 
 integer :: idim1,ii
 
-ii = progvar(ivar)%index1
+ii = get_index_start(domain_id, ivar)
 
 do idim1 = 1, size(data_1d_array, 1)
    x(ii) = data_1d_array(idim1)
@@ -2601,9 +2523,9 @@ do idim1 = 1, size(data_1d_array, 1)
 enddo
 
 ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' read wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
+if ( ii /= get_index_end(domain_id, ivar) ) then
+   write(string1, *)'Variable '//trim(get_variable_name(domain_id, ivar))//' read wrong.'
+   write(string2, *)'Should have ended at ',get_index_end(domain_id, ivar),' actually ended at ',ii
    call error_handler(E_ERR,'prog_var_1d_to_vector:', string1, &
                     source, revision, revdate, text2=string2)
 endif
@@ -2628,7 +2550,7 @@ integer,  intent(in)    :: ivar
 
 integer :: idim1,idim2,ii
 
-ii = progvar(ivar)%index1
+ii = get_index_start(domain_id, ivar)
 
 do idim2 = 1,size(data_2d_array, 2)
    do idim1 = 1,size(data_2d_array, 1)
@@ -2638,10 +2560,10 @@ do idim2 = 1,size(data_2d_array, 2)
 enddo
 
 ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' read wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'prog_var_2d_to_vector:', string1, &
+if ( ii /= get_index_end(domain_id, ivar) ) then
+   write(string1, *)'Variable '//trim(get_variable_name(domain_id, ivar))//' read wrong.'
+   write(string2, *)'Should have ended at ',get_index_end(domain_id, ivar),' actually ended at ',ii
+   call error_handler(E_ERR,'prog_var_1d_to_vector:', string1, &
                     source, revision, revdate, text2=string2)
 endif
 
@@ -2665,7 +2587,7 @@ integer,  intent(in)    :: ivar
 
 integer :: idim1,idim2,idim3,ii
 
-ii = progvar(ivar)%index1
+ii = get_index_start(domain_id, ivar)
 
 do idim3 = 1,size(data_3d_array, 3)
    do idim2 = 1,size(data_3d_array, 2)
@@ -2677,10 +2599,10 @@ do idim3 = 1,size(data_3d_array, 3)
 enddo
 
 ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' read wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'prog_var_3d_to_vector:', string1, &
+if ( ii /= get_index_end(domain_id, ivar) ) then
+   write(string1, *)'Variable '//trim(get_variable_name(domain_id, ivar))//' read wrong.'
+   write(string2, *)'Should have ended at ',get_index_end(domain_id, ivar),' actually ended at ',ii
+   call error_handler(E_ERR,'prog_var_1d_to_vector:', string1, &
                     source, revision, revdate, text2=string2)
 endif
 
@@ -2704,7 +2626,7 @@ integer,  intent(in)    :: ivar
 
 integer :: idim1,idim2,idim3,idim4,ii
 
-ii = progvar(ivar)%index1
+ii = get_index_start(domain_id, ivar)
 
 do idim4 = 1,size(data_4d_array, 4)
    do idim3 = 1,size(data_4d_array, 3)
@@ -2718,10 +2640,10 @@ do idim4 = 1,size(data_4d_array, 4)
 enddo
 
 ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' read wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'prog_var_4d_to_vector:', string1, &
+if ( ii /= get_index_end(domain_id, ivar) ) then
+   write(string1, *)'Variable '//trim(get_variable_name(domain_id, ivar))//' read wrong.'
+   write(string2, *)'Should have ended at ',get_index_end(domain_id, ivar),' actually ended at ',ii
+   call error_handler(E_ERR,'prog_var_1d_to_vector:', string1, &
                     source, revision, revdate, text2=string2)
 endif
 
@@ -2745,7 +2667,7 @@ real(r8), intent(out) :: data_1d_array(:)
 
 integer :: idim1,ii
 
-ii = progvar(ivar)%index1
+ii = get_index_start(domain_id, ivar)
 
 do idim1 = 1, size(data_1d_array, 1)
    data_1d_array(idim1) = x(ii)
@@ -2753,10 +2675,10 @@ do idim1 = 1, size(data_1d_array, 1)
 enddo
 
 ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' filled wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'vector_to_1d_prog_var:', string1, &
+if ( ii /= get_index_end(domain_id, ivar) ) then
+   write(string1, *)'Variable '//trim(get_variable_name(domain_id, ivar))//' filled wrong.'
+   write(string2, *)'Should have ended at ',get_index_end(domain_id, ivar),' actually ended at ',ii
+   call error_handler(E_ERR,'prog_var_1d_to_vector:', string1, &
                     source, revision, revdate, text2=string2)
 endif
 
@@ -2780,7 +2702,7 @@ real(r8), intent(out) :: data_2d_array(:,:)
 
 integer :: idim1,idim2,ii
 
-ii = progvar(ivar)%index1
+ii = get_index_start(domain_id, ivar)
 
 do idim2 = 1,size(data_2d_array, 2)
    do idim1 = 1,size(data_2d_array, 1)
@@ -2790,10 +2712,10 @@ do idim2 = 1,size(data_2d_array, 2)
 enddo
 
 ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' filled wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'vector_to_2d_prog_var:', string1, &
+if ( ii /= get_index_end(domain_id, ivar) ) then
+   write(string1, *)'Variable '//trim(get_variable_name(domain_id, ivar))//' filled wrong.'
+   write(string2, *)'Should have ended at ',get_index_end(domain_id, ivar),' actually ended at ',ii
+   call error_handler(E_ERR,'prog_var_1d_to_vector:', string1, &
                     source, revision, revdate, text2=string2)
 endif
 
@@ -2817,7 +2739,7 @@ real(r8), intent(out) :: data_3d_array(:,:,:)
 
 integer :: idim1,idim2,idim3,ii
 
-ii = progvar(ivar)%index1
+ii = get_index_start(domain_id, ivar)
 
 do idim3 = 1,size(data_3d_array, 3)
    do idim2 = 1,size(data_3d_array, 2)
@@ -2829,10 +2751,10 @@ do idim3 = 1,size(data_3d_array, 3)
 enddo
 
 ii = ii - 1
-if ( ii /= progvar(ivar)%indexN ) then
-   write(string1, *)'Variable '//trim(progvar(ivar)%varname)//' filled wrong.'
-   write(string2, *)'Should have ended at ',progvar(ivar)%indexN,' actually ended at ',ii
-   call error_handler(E_ERR,'vector_to_3d_prog_var:', string1, &
+if ( ii /= get_index_end(domain_id, ivar) ) then
+   write(string1, *)'Variable '//trim(get_variable_name(domain_id, ivar))//' filled wrong.'
+   write(string2, *)'Should have ended at ',get_index_end(domain_id, ivar),' actually ended at ',ii
+   call error_handler(E_ERR,'prog_var_1d_to_vector:', string1, &
                     source, revision, revdate, text2=string2)
 endif
 
@@ -2861,9 +2783,9 @@ index1 = 0
 if (present(indexN)) indexN = 0
 
 FieldLoop : do indx=1,nfields
-   if (progvar(indx)%kind_string /= trim(string)) cycle FieldLoop
-   index1 = progvar(indx)%index1
-   if (present(indexN)) indexN = progvar(indx)%indexN
+   if (trim(get_kind_string(domain_id, indx)) /= trim(string)) cycle FieldLoop
+   index1 = get_index_start(domain_id, indx)
+   if (present(indexN)) indexN = get_index_end(domain_id, indx)
    exit FieldLoop
 enddo FieldLoop
 
@@ -2898,9 +2820,9 @@ index1 = 0
 if (present(indexN)) indexN = 0
 
 FieldLoop : do indx=1,nfields
-   if (progvar(indx)%dart_kind /= dartkind) cycle FieldLoop
-   index1 = progvar(indx)%index1
-   if (present(indexN)) indexN = progvar(indx)%indexN
+   if (get_kind_index(domain_id, indx) /= dartkind) cycle FieldLoop
+   index1 = get_index_start(domain_id, indx)
+   if (present(indexN)) indexN = get_index_end(domain_id, indx)
    exit FieldLoop
 enddo FieldLoop
 
@@ -3327,54 +3249,6 @@ end function time_to_string
 
 !-----------------------------------------------------------------------
 !>
-!> given a DART variable index and a state vector; print out the variable
-!> name, min, and max data values for that DART variable.
-!>
-
-subroutine print_minmax(ivar, x)
-
-integer,  intent(in) :: ivar
-real(r8), intent(in) :: x(:)
-
-write(string1, '(A,A32,2ES16.7)') 'data  min/max ', &
-           trim(progvar(ivar)%varname), &
-           minval(x(progvar(ivar)%index1:progvar(ivar)%indexN)), &
-           maxval(x(progvar(ivar)%index1:progvar(ivar)%indexN))
-
-call error_handler(E_MSG, '', string1, source,revision,revdate)
-
-end subroutine print_minmax
-
-
-
-!-----------------------------------------------------------------------
-!>
-!> Determine the DART variable index of a particular DART KIND (integer)
-!>
-!> @param get_progvar_index_from_kind the DART variable index
-!> @param dartkind the DART KIND of interest
-!>
-
-function get_progvar_index_from_kind(dartkind)
-
-integer             :: get_progvar_index_from_kind
-integer, intent(in) :: dartkind
-
-integer :: i
-
-FieldLoop : do i=1,nfields
-   if (progvar(i)%dart_kind /= dartkind) cycle FieldLoop
-   get_progvar_index_from_kind = i
-   return
-enddo FieldLoop
-
-get_progvar_index_from_kind = -1
-
-end function get_progvar_index_from_kind
-
-
-!-----------------------------------------------------------------------
-!>
 !> use four corner points to interpolate for one specific layer.
 !> This needs to be careful since ROMS uses terrain-following coordinates.
 !>
@@ -3407,21 +3281,21 @@ integer  :: x_ind, y_ind,ivar
 real(r8) :: p(ens_size,4), x_corners(ens_size,4), y_corners(ens_size,4)
 
 integer(i8) :: state_index
-integer     :: var_id
+integer     :: var_id, numeta, numxi
 
 ! Succesful return has istatus of 0
 istatus    = 99
 interp_val = MISSING_R8
 
-ivar = get_progvar_index_from_kind(var_type)
+ivar = get_varid_from_kind(domain_id, var_type)
 
    ! Is this on the U or T grid?
-   if(progvar(ivar)%kind_string == 'KIND_U_CURRENT_COMPONENT') then
+   if(get_kind_string(domain_id, ivar) == 'KIND_U_CURRENT_COMPONENT') then
       call get_reg_box_indices(lon, lat, ULON, ULAT, x_ind, y_ind)
       ! Getting corners for accurate interpolation
       call get_quad_corners(ULON, x_ind, y_ind, x_corners)
       call get_quad_corners(ULAT, x_ind, y_ind, y_corners)
-   elseif (progvar(ivar)%kind_string == 'KIND_V_CURRENT_COMPONENT') then
+   elseif (get_kind_string(domain_id, ivar) == 'KIND_V_CURRENT_COMPONENT') then
       call get_reg_box_indices(lon, lat, VLON, VLAT, x_ind, y_ind)
       ! Getting corners for accurate interpolation
       call get_quad_corners(VLON, x_ind, y_ind, x_corners)
@@ -3436,15 +3310,20 @@ ivar = get_progvar_index_from_kind(var_type)
 lon_bot=x_ind
 lat_bot=y_ind
 
+!>@todo FIXME : JPH. We should probably do a check that eta or xi is in the
+!>                   dimension name string.
+numeta = get_dim_length(domain_id, ivar, 1)
+numxi  = get_dim_length(domain_id, ivar, 2)
+
 ! Find the indices to get the values for interpolating
 lat_top = lat_bot + 1
-if(lat_top > progvar(ivar)%numeta) then
+if(lat_top > numeta) then
    istatus = 2
    return
 endif
 
 lon_top = lon_bot + 1
-if(lon_top > progvar(ivar)%numxi) then
+if(lon_top > numxi) then
    istatus = 2
    return
 endif
@@ -3554,54 +3433,6 @@ interp_vals(:) = tp(:,iidd) +(tp(:,iidd+1) - tp(:,iidd)) * &
 !write(*,*) 'model_mod: height, zz(iidd), val ', height, zz(iidd), interp_vals
 
 end subroutine vert_interpolate
-
-
-!-----------------------------------------------------------------------
-!>
-!> Given an integer index into the state vector structure, returns the
-!> associated array indices for lat, lon, and depth, as well as the type.
-!>
-!> @param var_type the DART KIND of interest
-!> @param offset relative (to the start of the KIND) index into the DART
-!>               vector for the KIND of interest.
-!> @param x_index the index of the longitude gridcell
-!> @param y_index the index of the latitude gridcell
-!> @param z_index the index of the vertical gridcell
-!>
-!> @todo FIXME Check to make sure that this routine is robust for all
-!> grid staggers, etc. Seems too simple given the staggers possible.
-!>
-
-subroutine get_state_indices(var_type, offset, x_index, y_index, z_index)
-
-integer, intent(in)  :: var_type
-integer, intent(in)  :: offset
-integer, intent(out) :: x_index
-integer, intent(out) :: y_index
-integer, intent(out) :: z_index
-
-integer :: ivar, numxi, numeta
-
-ivar   = get_progvar_index_from_kind(var_type)
-numxi  = progvar(ivar)%numxi
-numeta = progvar(ivar)%numeta
-
-if (progvar(ivar)%kind_string=='KIND_SEA_SURFACE_HEIGHT') then
-  z_index = 1
-else
-  z_index = ceiling( float(offset) / (numxi * numeta))
-endif
-y_index = ceiling( float(offset - ((z_index-1)*numxi*numeta)) / numxi )
-x_index =  offset - ((z_index-1)*numxi*numeta) - ((y_index-1)*numxi)
-
-if (do_output() .and. debug > 3) then
-   write(string1,*) 'checking ',trim(progvar(ivar)%varname), ' offset = ', offset
-   write(string2,*) 'lon, lat, depth index = ', x_index, y_index, z_index
-   call error_handler(E_MSG,'get_state_indices:', string1, &
-              source, revision, revdate, text2=string2)
-endif
-
-end subroutine get_state_indices
 
 
 !-----------------------------------------------------------------------
@@ -4172,13 +4003,13 @@ integer :: i,mydimid
 ndims  = 0
 dimids = 0
 
-do i = 1,progvar(ivar)%numdims
+do i = 1,get_num_dims(domain_id, ivar)
 
    ! Each of these dimension names
    ! must exist in the DART diagnostic netcdf files.
 
-   call nc_check(nf90_inq_dimid(ncid, trim(progvar(ivar)%dimname(i)), mydimid), &
-              'define_var_dims','inq_dimid '//trim(progvar(ivar)%dimname(i)))
+   call nc_check(nf90_inq_dimid(ncid, trim(get_dim_name(domain_id, ivar, i)), mydimid), &
+              'define_var_dims','inq_dimid '//trim(get_dim_name(domain_id, ivar, i)))
 
    ndims = ndims + 1
 
