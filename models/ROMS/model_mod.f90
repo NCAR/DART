@@ -509,7 +509,7 @@ if (p(3) == MISSING_R8) return
 call vert_interpolate(state_handle,ens_size,lon_bot,lat_top,obs_kind,lheight, p(4))
 if (p(4) == MISSING_R8) return
 
-call quad_bilinear_interp(llon, llat, x_corners, y_corners, p, ens_size, interp_val)
+call quad_bilinear_interp(llon, llat, x_corners, y_corners, ens_size, p, interp_val)
 istatus = 0  ! If we get this far, all good.
 
 !write(*,*) 'Ending model interpolate ...'
@@ -3269,7 +3269,7 @@ if(any(p(:,4) == MISSING_R8)) return
 ! istatus = 0 is good, whatever the interp_val is, it is ...
 
 istatus = 0
-call quad_bilinear_interp(lon, lat, x_corners, y_corners, p, ens_size, interp_val)
+call quad_bilinear_interp(lon, lat, x_corners, y_corners, ens_size, p, interp_val)
 
 end subroutine lon_lat_interpolate
 
@@ -3370,14 +3370,14 @@ end subroutine vert_interpolate
 !>
 
 subroutine quad_bilinear_interp(lon_in, lat, x_corners_in, y_corners, &
-                                p, ens_size, interp_vals)
+                                ens_size, p, interp_vals)
 
 real(r8), intent(in)  :: lon_in
 real(r8), intent(in)  :: lat
 real(r8), intent(in)  :: x_corners_in(4)
 real(r8), intent(in)  :: y_corners(4)
-real(r8), intent(in)  :: p(ens_size,4)
 integer , intent(in)  :: ens_size
+real(r8), intent(in)  :: p(ens_size,4)
 real(r8), intent(out) :: interp_vals(ens_size)
 
 ! Given a longitude and latitude (lon_in, lat), the longitude and
