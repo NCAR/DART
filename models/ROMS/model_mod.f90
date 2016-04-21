@@ -65,6 +65,16 @@ use mpi_utilities_mod, only: my_task_id
 
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 
+use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_copy_owner_index, &
+                                  get_var_owner_index
+
+use distributed_state_mod, only : get_state
+
+use state_structure_mod,   only : add_domain, get_model_variable_indices, &
+                                  get_num_variables, get_index_start, &
+                                  get_num_dims, get_domain_size, get_varid_from_kind, &
+                                  get_dart_vector_index, state_structure_info
+
 use typesizes
 use netcdf
 
@@ -73,22 +83,24 @@ private
 
 ! these routines must be public and you cannot change
 ! the arguments - they will be called *from* the DART code.
-public :: get_model_size,         &
-          adv_1step,              &
-          get_state_meta_data,    &
-          model_interpolate,      &
-          get_model_time_step,    &
-          static_init_model,      &
-          end_model,              &
-          init_time,              &
-          init_conditions,        &
-          nc_write_model_atts,    &
-          nc_write_model_vars,    &
-          pert_model_state,       &
-          get_close_maxdist_init, &
-          get_close_obs_init,     &
-          get_close_obs,          &
-          ens_mean_for_model
+public :: get_model_size,                &
+          adv_1step,                     &
+          get_state_meta_data,           &
+          model_interpolate,             &
+          get_model_time_step,           &
+          static_init_model,             &
+          end_model,                     &
+          init_time,                     &
+          init_conditions,               &
+          nc_write_model_atts,           &
+          nc_write_model_vars,           &
+          pert_model_copies,             &
+          get_close_maxdist_init,        &
+          get_close_obs_init,            &
+          query_vert_localization_coord, &
+          vert_convert,                  &
+          construct_file_name_in,        &
+          get_close_obs
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
@@ -97,6 +109,7 @@ public ::  restart_file_to_sv,         &
            get_model_restart_filename, &
            get_time_from_namelist,     &
            write_model_time,           &
+           read_model_time,            &
            print_variable_ranges
 
 ! version controlled file description for error handling, do not edit
@@ -144,6 +157,8 @@ character(len=NF90_MAX_NAME) :: roms_state_bounds(num_bounds_table_columns, max_
 character(len=NF90_MAX_NAME) :: variable_table(max_state_variables, num_state_table_columns )
 
 integer :: nfields   ! This is the number of variables in the DART state vector.
+
+integer :: domain_id ! global variable for state_structure_mod routines
 
 !> Everything needed to describe a variable. Basically all the metadata from
 !> a netCDF file is stored here as well as all the information about where
@@ -313,16 +328,22 @@ end subroutine adv_1step
 !> required for all filter applications as it is required for computing
 !> the distance between observations and state variables.
 !>
+!> @param state_handle DART ensemble handle
 !> @param index_in the index into the DART state vector
 !> @param location the location at that index
 !> @param var_type the DART KIND at that index
 !>
 
-subroutine get_state_meta_data(index_in, location, var_type)
+subroutine get_state_meta_data(state_handle, index_in, location, var_type)
 
-integer,             intent(in)  :: index_in
+type(ensemble_type), intent(in)  :: state_handle
+integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type
+
+! integer,             intent(in)  :: index_in
+! type(location_type), intent(out) :: location
+! integer, optional,   intent(out) :: var_type
 
 ! Local variables
 
@@ -394,11 +415,12 @@ end subroutine get_state_meta_data
 !> (i.e. S, T, U, V, Eta) to the given location given a state vector.
 !> The type of the variable being interpolated is obs_type since
 !> normally this is used to find the expected value of an observation
-!> at some location. The interpolated value is returned in interp_val
+!> at some location. The interpolated value is returned in interp_vals
 !> and istatus is 0 for success. NOTE: This is a workhorse routine and is
 !> the basis for all the forward observation operator code.
 !>
-!> @param x the DART state vector
+!> @param state_handle DART ensemble handle
+!> @param ens_size DART ensemble size
 !> @param location the location of interest
 !> @param obs_type the DART KIND of interest
 !> @param interp_val the estimated value of the DART state at the location
@@ -410,13 +432,20 @@ end subroutine get_state_meta_data
 !> useful to know if the interpolation failed because of some illegal
 !> state as opposed to simply being outside the domain.
 
-subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
+subroutine model_interpolate(state_handle, ens_size, location, obs_type, interp_val, istatus)
 
-real(r8),            intent(in) :: x(:)
-type(location_type), intent(in) :: location
-integer,             intent(in) :: obs_type
-real(r8),           intent(out) :: interp_val
-integer,            intent(out) :: istatus
+ type(ensemble_type), intent(in) :: state_handle
+ integer,             intent(in) :: ens_size
+ type(location_type), intent(in) :: location
+ integer,             intent(in) :: obs_type
+ integer,            intent(out) :: istatus(ens_size)
+ real(r8),           intent(out) :: interp_val(ens_size) !< array of interpolated values
+
+! real(r8),            intent(in) :: x(:)
+! type(location_type), intent(in) :: location
+! integer,             intent(in) :: obs_type
+! real(r8),           intent(out) :: interp_val
+! integer,            intent(out) :: istatus
 
 ! Local storage
 real(r8)       :: loc_array(3), llon, llat, lheight
@@ -469,8 +498,10 @@ top_offset  = progvar(ivar)%indexN
 ! For Sea Surface Height or Pressure don't need the vertical coordinate
 !
 if( vert_is_surface(location) ) then
-   call lon_lat_interpolate(x(base_offset:top_offset), llon, llat, &
+   call lon_lat_interpolate(state_handle, ens_size, llon, llat, &
    obs_type, 1, interp_val, istatus)
+   ! call lon_lat_interpolate(x(base_offset:top_offset), llon, llat, &
+   ! obs_type, 1, interp_val, istatus)
    return
 endif
 
@@ -525,19 +556,19 @@ endif
 ! If any of these fail, we can exit (fail) immediately.
 ! The interp_val and istatus values are initially set to a failed value, so just use those.
 
-call vert_interpolate(x(base_offset:top_offset),lon_bot,lat_bot,obs_kind,lheight, p(1))
+call vert_interpolate(state_handle,ens_size,lon_bot,lat_bot,obs_kind,lheight, p(1))
 if (p(1) == MISSING_R8) return
 
-call vert_interpolate(x(base_offset:top_offset),lon_top,lat_bot,obs_kind,lheight, p(2))
+call vert_interpolate(state_handle,ens_size,lon_top,lat_bot,obs_kind,lheight, p(2))
 if (p(2) == MISSING_R8) return
 
-call vert_interpolate(x(base_offset:top_offset),lon_top,lat_top,obs_kind,lheight, p(3))
+call vert_interpolate(state_handle,ens_size,lon_top,lat_top,obs_kind,lheight, p(3))
 if (p(3) == MISSING_R8) return
 
-call vert_interpolate(x(base_offset:top_offset),lon_bot,lat_top,obs_kind,lheight, p(4))
+call vert_interpolate(state_handle,ens_size,lon_bot,lat_top,obs_kind,lheight, p(4))
 if (p(4) == MISSING_R8) return
 
-call quad_bilinear_interp(llon, llat, x_corners, y_corners, p, interp_val)
+call quad_bilinear_interp(llon, llat, x_corners, y_corners, p, ens_size, interp_val)
 istatus = 0  ! If we get this far, all good.
 
 !write(*,*) 'Ending model interpolate ...'
@@ -629,144 +660,19 @@ call nc_check( nf90_open(trim(model_restart_filename), NF90_NOWRITE, ncid), &
                   'static_init_model', 'open '//trim(model_restart_filename))
 
 call verify_variables( variables, ncid, model_restart_filename, &
-                             nfields, variable_table )
+                            nfields, variable_table )
+
+domain_id = add_domain(model_restart_filename, nfields, &
+                    var_names = variable_table(:,1))
+
+call state_structure_info(domain_id)
 
 TimeDimID = find_time_dimension( ncid, model_restart_filename )
-
-index1  = 1;
-indexN  = 0;
-do ivar = 1, nfields
-
-   varname                   = trim(variable_table(ivar,1))
-   kind_string               = trim(variable_table(ivar,2))
-   progvar(ivar)%varname     = varname
-   progvar(ivar)%kind_string = kind_string
-   progvar(ivar)%dart_kind   = get_raw_obs_kind_index( progvar(ivar)%kind_string )
-   progvar(ivar)%numdims     = 0
-   progvar(ivar)%numvertical = 1
-   progvar(ivar)%dimlens     = MISSING_I
-   progvar(ivar)%numxi       = MISSING_I
-   progvar(ivar)%numeta      = MISSING_I
-   progvar(ivar)%has_fill_value_r4 = .false.
-   progvar(ivar)%has_fill_value_r8 = .false.
-   progvar(ivar)%fill_value_r4 = MISSING_R4
-   progvar(ivar)%fill_value_r8 = MISSING_R8
-
-   string2 = trim(model_restart_filename)//' '//trim(varname)
-
-   call nc_check(nf90_inq_varid(ncid, trim(varname), VarID), &
-            'static_init_model', 'inq_varid '//trim(string2))
-
-   call nc_check(nf90_inquire_variable(ncid, VarID, xtype=progvar(ivar)%xtype, &
-           dimids=dimIDs, ndims=numdims), 'static_init_model', 'inquire '//trim(string2))
-
-   ! If the long_name and/or units attributes are set, get them.
-   ! They are not REQUIRED to exist but are nice to use if they are present.
-
-   if( nf90_inquire_attribute(    ncid, VarID, 'long_name') == NF90_NOERR ) then
-      call nc_check( nf90_get_att(ncid, VarID, 'long_name' , progvar(ivar)%long_name), &
-                  'static_init_model', 'get_att long_name '//trim(string2))
-   else
-      progvar(ivar)%long_name = varname
-   endif
-
-   if( nf90_inquire_attribute(    ncid, VarID, 'units') == NF90_NOERR )  then
-      call nc_check( nf90_get_att(ncid, VarID, 'units' , progvar(ivar)%units), &
-                  'static_init_model', 'get_att units '//trim(string2))
-   else
-      progvar(ivar)%units = 'unknown'
-   endif
-
-   if ( progvar(ivar)%xtype == NF90_FLOAT ) then
-      if( nf90_inquire_attribute(    ncid,VarID,'_FillValue') == NF90_NOERR )  then
-         call nc_check( nf90_get_att(ncid,VarID,'_FillValue', progvar(ivar)%fill_value_r4), &
-                   'static_init_model', 'get_att _FillValue '//trim(string2))
-         progvar(ivar)%has_fill_value_r4 = .true.
-      endif
-   elseif ( progvar(ivar)%xtype == NF90_DOUBLE ) then
-      if( nf90_inquire_attribute(    ncid,VarID,'_FillValue') == NF90_NOERR )  then
-         call nc_check( nf90_get_att(ncid,VarID,'_FillValue', progvar(ivar)%fill_value_r8), &
-                   'static_init_model', 'get_att _FillValue '//trim(string2))
-         progvar(ivar)%has_fill_value_r8 = .true.
-      endif
-   endif
-
-   ! Since we are not concerned with the TIME dimension, we need to skip it.
-   ! When the variables are read, only a single timestep is ingested into
-   ! the DART state vector.
-
-   varsize = 1
-   dimlen  = 1
-   DimensionLoop : do i = 1,numdims
-
-      if (dimIDs(i) == TimeDimID) cycle DimensionLoop
-
-      write(string1,'(''inquire dimension'',i2,A)') i,trim(string2)
-      call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen, name=dimname), &
-                                          'static_init_model', string1)
-
-      progvar(ivar)%numdims    = progvar(ivar)%numdims + 1  !without time dimensions
-      progvar(ivar)%dimlens(i) = dimlen
-      progvar(ivar)%dimname(i) = trim(dimname)
-      varsize = varsize * dimlen
-
-      select case ( trim(dimname(1:2)) )
-         case ('xi')
-            progvar(ivar)%numxi = dimlen
-         case ('et')
-            progvar(ivar)%numeta = dimlen
-         case ('s_')
-            progvar(ivar)%numvertical = dimlen
-      end select
-
-   enddo DimensionLoop
-
-   ! this call sets: clamping, bounds, and out_of_range_fail in the progvar entry
-   call get_variable_bounds(roms_state_bounds, ivar)
-
-   if (progvar(ivar)%numvertical == Nz) then
-      progvar(ivar)%ZonHalf = .TRUE.
-   else
-      progvar(ivar)%ZonHalf = .FALSE.
-   endif
-
-   progvar(ivar)%varsize     = varsize
-   progvar(ivar)%index1      = index1
-   progvar(ivar)%indexN      = index1 + varsize - 1
-   index1                    = index1 + varsize      ! sets up for next variable
-
-   if (do_output() .and. debug > 0) then
-
-      ! Write a summary of what is packed into the DART state vector.
-
-      write(*,*)'variable number ',ivar,' is ',trim(progvar(ivar)%varname)
-      write(*,*)'  long_name   ',trim(progvar(ivar)%long_name)
-      write(*,*)'  units       ',trim(progvar(ivar)%units)
-      write(*,*)'  kind_string ',trim(progvar(ivar)%kind_string)
-      write(*,*)'  dart_kind   ',progvar(ivar)%dart_kind
-      write(*,*)'  xtype       ',progvar(ivar)%xtype
-      write(*,*)'  numdims     ',progvar(ivar)%numdims
-      write(*,*)'  varsize     ',progvar(ivar)%varsize
-      write(*,*)'  index1      ',progvar(ivar)%index1
-      write(*,*)'  indexN      ',progvar(ivar)%indexN
-      do i = 1,progvar(ivar)%numdims
-         write(*,'(''   dimension '',i2,'' is length '',i9,'' and is named '',A)') &
-               i, progvar(ivar)%dimlens(i), trim(progvar(ivar)%dimname(i))
-      enddo
-      if ( progvar(ivar)%has_fill_value_r4) &
-             write(*,*)'  R4 fill_value    ',progvar(ivar)%fill_value_r4
-      if ( progvar(ivar)%has_fill_value_r8) &
-             write(*,*)'  R8 fill_value    ',progvar(ivar)%fill_value_r8
-      write(*,*)
-
-   endif
-
-enddo
 
 call nc_check( nf90_close(ncid), &
                   'static_init_model', 'close '//trim(model_restart_filename))
 
-model_size = progvar(nfields)%indexN
+model_size = get_domain_size(domain_id)
 
 allocate( ens_mean(model_size) )
 
@@ -872,7 +778,7 @@ end subroutine init_conditions
 !>                 assim_model_mod:init_diag_output
 !> @param ierr status ... 0 == all went well, /= 0 failure
 
-function nc_write_model_atts( ncFileID ) result (ierr)
+function nc_write_model_atts( ncFileID, model_writes_state ) result (ierr)
 
 ! assim_model_mod:init_diag_output uses information from the location_mod
 !     to define the location dimension and variable ID. All we need to do
@@ -888,8 +794,9 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 !    NF90_put_var       ! provide values for variable
 ! NF90_CLOSE            ! close: save updated netCDF dataset
 
-integer, intent(in)  :: ncFileID      ! netCDF file identifier
-integer              :: ierr          ! return value of function
+integer, intent(in)  :: ncFileID          ! netCDF file identifier
+logical, intent(out) :: model_writes_state ! netCDF file identifier
+integer              :: ierr              ! return value of function
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
@@ -930,6 +837,7 @@ character(len=256) :: filename
 if ( .not. module_initialized ) call static_init_model
 
 ierr = -1 ! assume things go poorly
+model_writes_state = .true.
 
 ! we only have a netcdf handle here so we do not know the filename
 ! or the fortran unit number.  but construct a string with at least
@@ -1431,7 +1339,6 @@ ierr = 0 ! If we got here, things went well.
 
 end function nc_write_model_vars
 
-
 !-----------------------------------------------------------------------
 !>
 !> Perturbs a model state for generating initial ensembles.
@@ -1444,98 +1351,45 @@ end function nc_write_model_vars
 !> should be returned as .true. if the model wants to do its own
 !> perturbing of states.
 !>
-!> @param state the base DART state vector to perturb
-!> @param pert_state the (new) perturbed DART state vector
+!> @param state_ens_handle the DART state ensemble handle
+!> @param ens_size ensemble size
+!> @param pert_amp perturbation amplitude
 !> @param interf_provided logical flag that indicates that this routine
 !>               is unique for ROMS. TRUE means this routine will
 !>               somehow create the perturbed state, FALSE means
 !>               the default perturb routine will be used.
 !>
-!> @todo seems to me the DART state may have 'MISSING' values
-!>       which should not be perturbed. Have not tracked if the ROMS
-!>       MISSING values or the DART MISSING_R8 value is in use at
-!>       this point.
-!>
 
-subroutine pert_model_state(state, pert_state, interf_provided)
+subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
 
-real(r8), intent(in)  :: state(:)
-real(r8), intent(out) :: pert_state(:)
-logical,  intent(out) :: interf_provided
+ type(ensemble_type), intent(inout) :: state_ens_handle
+ integer,             intent(in)    :: ens_size
+ real(r8),            intent(in)    :: pert_amp
+ logical,             intent(out)   :: interf_provided
 
-real(r8)              :: pert_ampl
-real(r8)              :: minv, maxv, temp
-type(random_seq_type) :: random_seq
-integer               :: i, j, s, e
-integer, save         :: counter = 1
+! Perturbs state copies for generating initial ensembles.
+! A model may choose to provide a NULL INTERFACE by returning
+! .false. for the interf_provided argument. This indicates to
+! the filter that if it needs to generate perturbed states, it
+! may do so by adding a perturbation to each model state 
+! variable independently. The interf_provided argument
+! should be returned as .true. if the model wants to do its own
+! perturbing of states.
 
-! generally you do not want to perturb a single state
-! to begin an experiment - unless you make minor perturbations
-! and then run the model free for long enough that differences
-! develop which contain actual structure.
-!
-! the subsequent code is a pert routine which
-! can be used to add minor perturbations which can be spun up.
-!
-! if all values in a field are identical (i.e. 0.0) this
-! routine will not change those values since it won't
-! make a new value outside the original min/max of that
-! variable in the state vector.  to handle this case you can
-! remove the min/max limit lines below.
+! Storage for a random sequence for perturbing a single initial state
 
 if ( .not. module_initialized ) call static_init_model
 
-write(string1,*)'..  WARNING: pert_model_state() not finished.'
+interf_provided = .false.
+
+!>@ todo FIXME : do we need to take into consideration the land mask when
+!>               perturbing the state copies??
+write(string1,*)'..  WARNING: pert_model_copies() not finished.'
 write(string2,*)'WARNING: Does not respect MISSING values.'
 write(string3,*)'WARNING: Fix before using.'
-call error_handler(E_MSG,'pert_model_state:', string1, text2=string2, text3=string3)
+call error_handler(E_ERR,'pert_model_copies:', string1, text2=string2, text3=string3)
 
-! start of pert code
-
-interf_provided = .true.
-
-! the first time through get the task id (0:N-1)
-! and set a unique seed per task.  this won't
-! be consistent between different numbers of mpi
-! tasks, but at least it will reproduce with
-! multiple runs with the same task count.
-! best i can do since this routine doesn't have
-! the ensemble member number as an argument
-! (which i think it needs for consistent seeds).
-!
-! this only executes the first time since counter
-! gets incremented after the first use and the value
-! is saved between calls.
-
-if (counter == 1) counter = counter + (my_task_id() * 1000)
-
-call init_random_seq(random_seq, counter)
-counter = counter + 1
-
-do i=1, nfields
-   ! starting and ending indices in the linear state vect
-   ! for each different state kind.
-   s = progvar(i)%index1
-   e = progvar(i)%indexN
-   ! original min/max data values of each type
-   minv = minval(state(s:e))
-   maxv = maxval(state(s:e))
-   do j=s, e
-      ! once you change pert_state, state is changed as well
-      ! since they are the same storage as called from filter.
-      ! you have to save it if you want to use it again.
-      temp = state(j)  ! original value
-      ! perturb each value individually
-      ! make the perturbation amplitude N% of this value
-      pert_ampl = model_perturbation_amplitude * temp
-      pert_state(j) = random_gaussian(random_seq, state(j), pert_ampl)
-      ! keep it from exceeding the original range
-      pert_state(j) = max(minv, pert_state(j))
-      pert_state(j) = min(maxv, pert_state(j))
-   enddo
-enddo
-
-end subroutine pert_model_state
+end subroutine pert_model_copies
 
 
 !-----------------------------------------------------------------------
@@ -1552,10 +1406,20 @@ end subroutine pert_model_state
 !> @param num_close the number of locs locations that are within the prespecified distance (information contained in 'gc')
 !> @param close_ind the indices of the locs locations that are 'close'
 !> @param dist the distances of each of the close locations.
+!> @param state_handle handle to the dart state
 !>
 
 subroutine get_close_obs(gc, base_obs_loc, base_obs_type, &
-                         locs, loc_kind, num_close, close_ind, dist)
+                         locs, loc_kind, num_close, close_ind, dist, state_handle)
+ type(ensemble_type),               intent(in)    :: state_handle
+ type(get_close_type),              intent(in)    :: gc
+ type(location_type),               intent(inout) :: base_obs_loc
+ integer,                           intent(in)    :: base_obs_type
+ type(location_type), dimension(:), intent(in)    :: locs
+ integer,             dimension(:), intent(in)    :: loc_kind
+ integer,                           intent(out)   :: num_close
+ integer,             dimension(:), intent(out)   :: close_ind
+ real(r8), OPTIONAL,  dimension(:), intent(out)   :: dist !does this need to be optional? It is not in WRF
 
 ! Note that both base_obs_loc and locs are intent(inout), meaning that these
 ! locations are possibly modified here and returned as such to the calling routine.
@@ -1563,14 +1427,14 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_type, &
 ! within filter_assim. In other words, these modifications will only matter within
 ! filter_assim, but will not propagate backwards to filter.
 
-type(get_close_type), intent(in)    :: gc
-type(location_type),  intent(inout) :: base_obs_loc
-integer,              intent(in)    :: base_obs_type
-type(location_type),  intent(inout) :: locs(:)
-integer,              intent(in)    :: loc_kind(:)
-integer,              intent(out)   :: num_close
-integer,              intent(out)   :: close_ind(:)
-real(r8), OPTIONAL,   intent(out)   :: dist(:)
+! type(get_close_type), intent(in)    :: gc
+! type(location_type),  intent(inout) :: base_obs_loc
+! integer,              intent(in)    :: base_obs_type
+! type(location_type),  intent(inout) :: locs(:)
+! integer,              intent(in)    :: loc_kind(:)
+! integer,              intent(out)   :: num_close
+! integer,              intent(out)   :: close_ind(:)
+! real(r8), OPTIONAL,   intent(out)   :: dist(:)
 
 integer                :: base_obs_kind ! for sanity
 integer                :: ztypeout
@@ -1586,7 +1450,7 @@ if ( .not. module_initialized ) call static_init_model
 
 ! Initialize variables to missing status
 
-base_obs_kind = base_obs_type ! because it really is a KIND
+base_obs_kind = base_obs_type
 
 num_close = 0
 close_ind = -99
@@ -1603,7 +1467,7 @@ if (.not. horiz_dist_only) then
   if (base_llv(3) == MISSING_R8) then
      istatus1 = 1
   else if (base_which /= vert_localization_coord) then
-      call vert_convert(ens_mean, base_obs_loc, base_obs_kind, ztypeout, istatus1)
+      call convert_vert(state_handle, base_obs_loc, base_obs_kind, ztypeout, istatus1)
       if(debug > 1) then
          call write_location(0,base_obs_loc,charstring=string1)
          call error_handler(E_MSG, 'get_close_obs: base_obs_loc', string1, &
@@ -1624,7 +1488,7 @@ if (istatus1 == 0) then
 
       if (.not. horiz_dist_only) then
           if (local_obs_which /= vert_localization_coord) then
-              call vert_convert(ens_mean, local_obs_loc, loc_kind(t_ind), ztypeout, istatus2)
+              call convert_vert(state_handle, local_obs_loc, loc_kind(t_ind), ztypeout, istatus2)
           else
               istatus2 = 0
           endif
@@ -1652,31 +1516,6 @@ endif
 
 
 end subroutine get_close_obs
-
-
-!-----------------------------------------------------------------------
-!>
-!> This updates the current ensemble mean in module storage which is
-!> then available to be used for computations. The ensemble mean may
-!> or may not be needed by ROMS.
-!>
-!> @param filter_ens_mean the ensemble mean DART state vector
-
-subroutine ens_mean_for_model(filter_ens_mean)
-
-real(r8), intent(in) :: filter_ens_mean(:)
-
-if ( .not. module_initialized ) call static_init_model
-
-ens_mean = filter_ens_mean
-
-if (do_output() .and. debug > 1) then
-   call error_handler(E_MSG,'ens_mean_for_model','resetting ensemble mean: ')
-   call print_variable_ranges(ens_mean)
-endif
-
-end subroutine ens_mean_for_model
-
 
 !-----------------------------------------------------------------------
 ! The remaining PUBLIC interfaces come next.
@@ -2102,39 +1941,95 @@ end function get_time_from_namelist
 !> This file is then used by scripts to modify the ROMS run.
 !> The format in the time information is totally at your discretion.
 !>
-!> @param time_filename name of the file (name is set by dart_to_roms_nml:time_filename)
+!> @param ncfile_out name of the file (name is set by dart_to_roms_nml:ncfile_out)
 !> @param model_time the current time of the model state
 !> @param adv_to_time the time in the future of the next assimilation.
 !>
 
-subroutine write_model_time(time_filename, model_time, adv_to_time)
-character(len=*), intent(in)           :: time_filename
-type(time_type),  intent(in)           :: model_time
-type(time_type),  intent(in), optional :: adv_to_time
+subroutine write_model_time(ncfile_out, model_time, adv_to_time)
+integer,         intent(in)           :: ncfile_out
+type(time_type), intent(in)           :: model_time
+type(time_type), intent(in), optional :: adv_to_time
 
-integer :: iunit
-character(len=19) :: timestring
-type(time_type)   :: deltatime
+! integer :: iunit
+! character(len=19) :: timestring
+! type(time_type)   :: deltatime
 
 if ( .not. module_initialized ) call static_init_model
 
-iunit = open_file(time_filename, action='write')
+!>@todo FIXME : JPH. Need to write the model time properly to
+!>                   the netcdf file
 
-timestring = time_to_string(model_time)
-write(iunit, '(A)') timestring
-
-if (present(adv_to_time)) then
-   timestring = time_to_string(adv_to_time)
-   write(iunit, '(A)') timestring
-
-   deltatime = adv_to_time - model_time
-   timestring = time_to_string(deltatime, interval=.true.)
-   write(iunit, '(A)') timestring
-endif
-
-call close_file(iunit)
+! iunit = open_file(ncfile_out, action='write')
+! 
+! timestring = time_to_string(model_time)
+! write(iunit, '(A)') timestring
+! 
+! if (present(adv_to_time)) then
+!    timestring = time_to_string(adv_to_time)
+!    write(iunit, '(A)') timestring
+! 
+!    deltatime = adv_to_time - model_time
+!    timestring = time_to_string(deltatime, interval=.true.)
+!    write(iunit, '(A)') timestring
+! endif
+! 
+! call close_file(iunit)
 
 end subroutine write_model_time
+
+!--------------------------------------------------------------------
+!>
+!> read the time from the input file
+!>
+!> @param filename name of file that contains the time
+!>
+
+function read_model_time(filename)
+
+character(len=256) :: filename
+type(time_type) :: read_model_time
+
+!>@todo FIXME : JPH. Need to read the model time properly from
+!>                   the netcdf file. This is an example from POP
+
+! integer :: ncid !< netcdf file id
+! integer :: iyear, imonth, iday, ihour, iminute, isecond
+! 
+! if ( .not. module_initialized ) call static_init_model
+! 
+! if ( .not. file_exist(filename) ) then
+!    write(msgstring,*) 'cannot open file ', trim(filename),' for reading.'
+!    call error_handler(E_ERR,'read_model_time',msgstring,source,revision,revdate)
+! endif
+! 
+! call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
+!                   'read_model_time', 'open '//trim(filename))
+! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iyear'  , iyear), &
+!                   'read_model_time', 'get_att iyear')
+! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'imonth' , imonth), &
+!                   'read_model_time', 'get_att imonth')
+! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iday'   , iday), &
+!                   'read_model_time', 'get_att iday')
+! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ihour'  , ihour), &
+!                   'read_model_time', 'get_att ihour')
+! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iminute', iminute), &
+!                   'read_model_time', 'get_att iminute')
+! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'isecond', isecond), &
+!                   'read_model_time', 'get_att isecond')
+! 
+! ! FIXME: we don't allow a real year of 0 - add one for now, but
+! ! THIS MUST BE FIXED IN ANOTHER WAY!
+! if (iyear == 0) then
+!   call error_handler(E_MSG, 'read_model_time', &
+!                      'WARNING!!!   year 0 not supported; setting to year 1')
+!   iyear = 1
+! endif
+! 
+! read_model_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
+
+
+end function read_model_time
 
 
 !-----------------------------------------------------------------------
@@ -3377,6 +3272,71 @@ call error_handler(E_MSG, '', string1, source,revision,revdate)
 
 end subroutine print_minmax
 
+!--------------------------------------------------------------------
+!>
+!> This is used to pass the vertical localization coordinate 
+!> to assim_tools_mod
+!>
+
+function query_vert_localization_coord()
+
+integer :: query_vert_localization_coord
+
+query_vert_localization_coord = VERTISHEIGHT
+
+end function query_vert_localization_coord
+
+!--------------------------------------------------------------------
+!>
+!> This is used in the filter_assim. The vertical conversion is done using the 
+!> mean state.
+!>
+!> @param state_handle handle to the dart state
+!> @param location
+!> @param obs_kind 
+!> @param istatus
+!>
+
+subroutine vert_convert(state_handle, location, obs_kind, istatus)
+
+type(ensemble_type), intent(in)  :: state_handle
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: obs_kind
+integer,             intent(out) :: istatus
+
+! !>@ todo FIXME : JPH. need to come back and wrap this properly 
+! !> can do something similar to MPAS with
+! !> convert_vert(state_handle, location, obs_kind, ztypeout, istatus)
+
+! integer :: ztype
+! ! type(location_type) :: new_location(1)
+! 
+! ztype = query_vert_localization_coord()
+! ! new_location(1) = location
+! 
+! call convert_vert(state_handle, ens_size, obs_kind, ztype, istatus)
+! 
+! ierr = istatus(1)
+! location = new_location(1)
+! ! old_loc = obs_loc
+! ! old_array = get_location(obs_loc)
+! ! old_which = query_location(obs_loc, 'which_vert')
+! ! 
+! ! if (old_which == query_vert_localization_coord() ) then
+! !    return
+! ! endif
+! ! 
+! ! if(new_which == MISSING_I) then
+! !    vstatus = 1
+! ! else
+! !    obs_loc = set_location(new_array(1), new_array(2), new_array(3), new_which)
+! ! endif
+
+
+istatus = 0
+
+
+end subroutine vert_convert
 
 !-----------------------------------------------------------------------
 !>
@@ -3399,25 +3359,31 @@ end subroutine print_minmax
 !>            in distance computations, this is actually the "expected"
 !>            vertical coordinate, so that computed distance is the
 !>            "expected" distance. Thus, under normal circumstances,
-!>            x that is supplied to vert_convert should be the
+!>            x that is supplied to convert_vert should be the
 !>            ensemble mean. Nevertheless, the subroutine has the
 !>            functionality to operate on any DART state vector that
 !>            is supplied to it.
 !>
-!> @param x DART state vector
+!> @param state_handle handle to the dart state
 !> @param location the location of interest
 !> @param obs_kind the DART KIND at that location
 !> @param ztypeout the DESIRED vertical coordinate
 !> @param istatus flag to indicate success (0) or failure (/= 0)
 !>
 
-subroutine vert_convert(x, location, obs_kind, ztypeout, istatus)
+subroutine convert_vert(state_handle, location, obs_kind, ztypeout, istatus)
 
-real(r8),            intent(in)    :: x(:)
+type(ensemble_type), intent(in)    :: state_handle
 type(location_type), intent(inout) :: location
 integer,             intent(in)    :: obs_kind
 integer,             intent(in)    :: ztypeout
 integer,             intent(out)   :: istatus
+
+! real(r8),            intent(in)    :: x(:)
+! type(location_type), intent(inout) :: location
+! integer,             intent(in)    :: obs_kind
+! integer,             intent(in)    :: ztypeout
+! integer,             intent(out)   :: istatus
 
 ! zin and zout are the vert values coming in and going out.
 ! ztype{in,out} are the vert types as defined by the 3d sphere
@@ -3437,7 +3403,7 @@ k_up    = 0.0_r8
 ! first off, check if ob is identity ob.  if so get_state_meta_data() will
 ! have returned location information already in the requested vertical type.
 if (obs_kind < 0) then
-   call get_state_meta_data(obs_kind,location)
+   call get_state_meta_data(state_handle, int(obs_kind,i8), location)
    istatus = 0
    return
 endif
@@ -3452,7 +3418,7 @@ if ((ztypein == ztypeout) .or. (ztypein == VERTISUNDEF)) then
 else
    if (debug > 3) then
       write(string1,'(A,3X,2I3)') 'ztypein, ztypeout:',ztypein,ztypeout
-      call error_handler(E_MSG, 'vert_convert:',string1, source, revision, revdate)
+      call error_handler(E_MSG, 'convert_vert:',string1, source, revision, revdate)
    endif
 endif
 
@@ -3497,7 +3463,7 @@ select case (ztypeout)
 
    case default
       write(string1,*) 'Requested vertical coordinate not recognized: ', ztypeout
-      call error_handler(E_ERR,'vert_convert:', string1, &
+      call error_handler(E_ERR,'convert_vert:', string1, &
                          source, revision, revdate)
 
 end select   ! outgoing vert type
@@ -3508,7 +3474,7 @@ location = set_location(llv_loc(1),llv_loc(2),zout,ztypeout)
 ! Set successful return code only if zout has good value
 if(zout /= missing_r8) istatus = 0
 
-end subroutine vert_convert
+end subroutine convert_vert
 
 
 !-----------------------------------------------------------------------
@@ -3542,7 +3508,7 @@ end function get_progvar_index_from_kind
 !> use four corner points to interpolate for one specific layer.
 !> This needs to be careful since ROMS uses terrain-following coordinates.
 !>
-!> @param x the DART state vector
+!> @param state_handle handle to the dart state
 !> @param lon the longitude of interest
 !> @param lat the latitude of interest
 !> @param var_type the DART KIND of interest
@@ -3552,20 +3518,26 @@ end function get_progvar_index_from_kind
 !> @param istatus interpolation status ... 0 == success, /=0 is a failure
 !>
 
-subroutine lon_lat_interpolate(x, lon, lat, var_type, height, interp_val, istatus)
+subroutine lon_lat_interpolate(state_handle, ens_size, lon, lat, var_type, height, interp_val, istatus)
 
-real(r8), intent(in)  :: x(:)
-real(r8), intent(in)  :: lon
-real(r8), intent(in)  :: lat
-integer,  intent(in)  :: var_type
-integer,  intent(in)  :: height
-real(r8), intent(out) :: interp_val
-integer,  intent(out) :: istatus
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in)  :: ens_size
+real(r8),            intent(in)  :: lon
+real(r8),            intent(in)  :: lat
+integer,             intent(in)  :: var_type
+integer,             intent(in)  :: height
+real(r8),            intent(out) :: interp_val(ens_size)
+integer,             intent(out) :: istatus(ens_size)
+
+!real(r8), intent(in)  :: x(:)
 
 ! Local storage
 integer  :: lat_bot, lat_top, lon_bot, lon_top
 integer  :: x_ind, y_ind,ivar
-real(r8) :: p(4), x_corners(4), y_corners(4)
+real(r8) :: p(ens_size,4), x_corners(ens_size,4), y_corners(ens_size,4)
+
+integer(i8) :: state_index
+integer     :: var_id
 
 ! Succesful return has istatus of 0
 istatus    = 99
@@ -3615,23 +3587,29 @@ endif
 !>               properly for locations that have dry land
 
 istatus = 3
-   p(1) = get_val(lon_bot, lat_bot, height, x, var_type)
-if(p(1) == MISSING_R8) return
+var_id  = get_varid_from_kind(domain_id, var_type)
 
-   p(2) = get_val(lon_top, lat_bot, height, x, var_type)
-if(p(2) == MISSING_R8) return
+       state_index = get_dart_vector_index(lon_bot, lat_bot, height, domain_id, var_id)
+       p(:,1) = get_state(state_index, state_handle)
+if(any(p(:,1) == MISSING_R8)) return
 
-   p(3) = get_val(lon_top, lat_top, height, x, var_type)
-if(p(3) == MISSING_R8) return
+       state_index = get_dart_vector_index(lon_top, lat_bot, height, domain_id, var_id)
+       p(:,2) = get_state(state_index, state_handle)
+if(any(p(:,2) == MISSING_R8)) return
 
-   p(4) = get_val(lon_bot, lat_top, height, x, var_type)
-if(p(4) == MISSING_R8) return
+       state_index = get_dart_vector_index(lon_top, lat_top, height, domain_id, var_id)
+       p(:,2) = get_state(state_index, state_handle)
+if(any(p(:,3) == MISSING_R8)) return
+
+       state_index = get_dart_vector_index(lon_bot, lat_top, height, domain_id, var_id)
+       p(:,4) = get_state(state_index, state_handle)
+if(any(p(:,4) == MISSING_R8)) return
 
 ! Full bilinear interpolation for quads
 ! istatus = 0 is good, whatever the interp_val is, it is ...
 
 istatus = 0
-call quad_bilinear_interp(lon, lat, x_corners, y_corners, p, interp_val)
+call quad_bilinear_interp(lon, lat, x_corners, y_corners, p, ens_size, interp_val)
 
 end subroutine lon_lat_interpolate
 
@@ -3643,35 +3621,43 @@ end subroutine lon_lat_interpolate
 !> deepest level, the deepest value is returned. If the location is shallower
 !> than the shallowest level, the shallowest level value is returned.
 !>
-!> @param x the DART state vector
+!> @param state_handle handle to the dart state
+!> @param ens_size number of ensemble members
 !> @param height the vertical location of interest
 !> @param lonid the index of the longitude identifying the column.
 !> @param latid the index of the latitude identifying the column.
 !> @param var_type the DART KIND of interest
-!> @param interp_val the interpolated value at the desired height.
+!> @param interp_vals the interpolated value at the desired height.
 !>
 
-subroutine vert_interpolate(x, lonid, latid, var_type, height, interp_val)
+subroutine vert_interpolate(state_handle, ens_size, lonid, latid, var_type, height, interp_vals)
 
-real(r8), intent(in)  :: x(:)
-real(r8), intent(in)  :: height
-integer,  intent(in)  :: lonid
-integer,  intent(in)  :: latid
-integer,  intent(in)  :: var_type
-real(r8), intent(out) :: interp_val
+type(ensemble_type), intent(in)  :: state_handle
+integer,             intent(in)  :: ens_size
+real(r8),            intent(in)  :: height
+integer,             intent(in)  :: lonid
+integer,             intent(in)  :: latid
+integer,             intent(in)  :: var_type
+real(r8),            intent(out) :: interp_vals(ens_size)
 
 ! 'depth' or 'height' is positive; thus ROMS vertical depth. i.e., ZC should be positive.
 
 integer    :: i,iidd
-real(r8)   :: tp(Nz), zz(Nz)
+real(r8)   :: tp(ens_size,Nz), zz(Nz)
 
-tp   = 0.0_r8
-iidd = 0
+integer(i8) :: state_index
+integer     :: var_id
 
-!>@ todo FIXME ... check ... get_val() can return MISSING_R8 ... is this possible
+tp(:,:) = 0.0_r8
+iidd    = 0
+
+!>@ todo FIXME ... check ... get_state() can return MISSING_R8 ... is this possible
+
+var_id = get_varid_from_kind(domain_id, var_type)
 
 do i=1,Nz
-    tp(i)=get_val(lonid, latid, i, x, var_type)
+    state_index = get_dart_vector_index(lonid, latid, i, domain_id, var_id)
+    tp(:,i)=get_state(state_index, state_handle)
     zz(i)=ZC(lonid,latid,i)
 enddo
 
@@ -3683,19 +3669,19 @@ doloop: do i=Nz,1,-1
 enddo doloop
 
 if (iidd==0) then
-    interp_val=tp(1)
+    interp_vals(:)=tp(:,1)
     return
 endif
 
 if (iidd==Nz) then
-    interp_val=tp(Nz)
+    interp_vals(:)=tp(:,Nz)
     return
 endif
 
-interp_val = tp(iidd) +(tp(iidd+1) - tp(iidd)) * &
+interp_vals(:) = tp(:,iidd) +(tp(:,iidd+1) - tp(:,iidd)) * &
    ((height -zz(iidd))/(zz(iidd+1) - zz(iidd)))
 
-!write(*,*) 'model_mod: height, zz(iidd), val ', height, zz(iidd), interp_val
+!write(*,*) 'model_mod: height, zz(iidd), val ', height, zz(iidd), interp_vals
 
 end subroutine vert_interpolate
 
@@ -3823,18 +3809,20 @@ end subroutine get_state_indices
 !> @param x_corners_in the longitudes of the 4 surrounding corners
 !> @param y_corners the latitudes of the 4 surrounding corners
 !> @param p the values at the 4 surrounding corners
-!> @param interp_val the desired interpolated value
+!> @param ens_size number of ensemble members
+!> @param interp_vals the desired interpolated value
 !>
 
 subroutine quad_bilinear_interp(lon_in, lat, x_corners_in, y_corners, &
-                                p, interp_val)
+                                p, ens_size, interp_vals)
 
 real(r8), intent(in)  :: lon_in
 real(r8), intent(in)  :: lat
 real(r8), intent(in)  :: x_corners_in(4)
 real(r8), intent(in)  :: y_corners(4)
-real(r8), intent(in)  :: p(4)
-real(r8), intent(out) :: interp_val
+real(r8), intent(in)  :: p(ens_size,4)
+integer , intent(in)  :: ens_size
+real(r8), intent(out) :: interp_vals(ens_size)
 
 ! Given a longitude and latitude (lon_in, lat), the longitude and
 ! latitude of the 4 corners of a quadrilateral and the values at the
@@ -3849,7 +3837,7 @@ real(r8), intent(out) :: interp_val
 ! checks showed accuracy to seven decimal places on all tests.
 
 integer :: i
-real(r8) :: m(3, 3), v(3), r(3), a, x_corners(4), lon
+real(r8) :: m(3, 3), v(ens_size,3), r(3), a(ens_size), x_corners(4), lon
 ! real(r8) :: lon_mean
 
 ! Watch out for wraparound on x_corners.
@@ -3879,40 +3867,42 @@ do i = 1, 3
    m(i, 1) = x_corners(i) - x_corners(i + 1)
    m(i, 2) = y_corners(i) - y_corners(i + 1)
    m(i, 3) = x_corners(i)*y_corners(i) - x_corners(i + 1)*y_corners(i + 1)
-   v(i) = p(i) - p(i + 1)
+   v(:,i) = p(:,i) - p(:,i + 1)
 enddo
 
 ! Solve the matrix for b, c and d
 call mat3x3(m, v, r)
 
 ! r contains b, c, and d; solve for a
-a = p(4) - r(1) * x_corners(4) - r(2) * y_corners(4) - &
+a(:) = p(:,4) - r(1) * x_corners(4) - r(2) * y_corners(4) - &
    r(3) * x_corners(4)*y_corners(4)
 
 
 !----------------- Implementation test block
 ! When interpolating on dipole x3 never exceeded 1e-9 error in this test
 !!!do i = 1, 4
-   !!!interp_val = a + r(1)*x_corners(i) + r(2)*y_corners(i)+ r(3)*x_corners(i)*y_corners(i)
-   !!!if(abs(interp_val - p(i)) > 1e-9) then
-      !!!write(*, *) 'large interp residual ', interp_val - p(i)
+   !!!interp_vals = a + r(1)*x_corners(i) + r(2)*y_corners(i)+ r(3)*x_corners(i)*y_corners(i)
+   !!!if(abs(interp_vals - p(i)) > 1e-9) then
+      !!!write(*, *) 'large interp residual ', interp_vals - p(i)
    !!!endif
 !!!enddo
 !----------------- Implementation test block
 
 
 ! Now do the interpolation
-interp_val = a + r(1)*lon + r(2)*lat + r(3)*lon*lat
+interp_vals(:) = a(:) + r(1)*lon + r(2)*lat + r(3)*lon*lat
 
 !********
 ! Avoid exceeding maxima or minima as stopgap for poles problem
 ! When doing bilinear interpolation in quadrangle, can get interpolated
 ! values that are outside the range of the corner values
-if(interp_val > maxval(p)) then
-   interp_val = maxval(p)
-else if(interp_val < minval(p)) then
-   interp_val = minval(p)
-endif
+do i = 1,ens_size
+   if(interp_vals(i) > maxval(p(i,:))) then
+      interp_vals(i) = maxval(p(i,:))
+   else if(interp_vals(i) < minval(p(i,:))) then
+      interp_vals(i) = minval(p(i,:))
+   endif
+enddo
 !********
 
 end subroutine quad_bilinear_interp
@@ -4421,6 +4411,30 @@ call nc_check(nf90_inquire_dimension(ncid, DimID, len=dimlen), &
 
 end function get_dimension_length
 
+!--------------------------------------------------------------------
+!>
+!> construct restart file name for reading
+!>
+!> @param stub stub of restart file
+!> @param domain for multiple domains in your state
+!> @param copy copy number in ensemble handle
+!>
+
+function construct_file_name_in(stub, domain, copy)
+
+character(len=256), intent(in) :: stub
+integer,            intent(in) :: domain
+integer,            intent(in) :: copy
+character(len=256) :: construct_file_name_in
+
+! stub is found in input.nml io_filename_nml
+
+!>@todo FIXME : JPH. Need to construct filename properly!!!!
+
+! write(construct_file_name_in, '(A, i4.4, A)') trim(stub), copy, ".nc"
+
+
+end function construct_file_name_in
 
 !===================================================================
 ! End of model_mod

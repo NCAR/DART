@@ -38,6 +38,9 @@ if ( $usingmpi ) then
   echo "Making Makefile with MPI"
   touch using_mpi_for_filter
   sed -e 's;/null_mpi_util;/mpi_util;' path_names_filter.back >! path_names_filter
+  cp -f path_names_filter path_names_filter.temp
+  sed -e 's;/null_win_mod;/no_cray_win_mod;' path_names_filter.temp >! path_names_filter
+
   setenv wrapper_arg -w
 
 else
@@ -46,6 +49,15 @@ else
   rm -f using_mpi_for_filter
   sed -e 's;/mpi_util;/null_mpi_util;' path_names_filter.back >! path_names_filter
   setenv wrapper_arg ""
+  cp -f path_names_filter path_names_filter.temp
+  sed '\,distributed/no_cray_win_mod,d' path_names_filter.temp >! path_names_filter
+  cp -f path_names_filter path_names_filter.temp
+  sed '\,distributed/cray_win_mod,d' path_names_filter.temp >! path_names_filter
+  set p=`grep distributed/null_win_mod.f90 path_names_filter | wc -w`
+  if ( $p == 0) then
+  #  echo distributed/null_win_mod.f90 >> path_names_filter
+     echo 'distributed/null_win_mod.f90' | cat - path_names_filter > temp && mv temp path_names_filter
+  endif
 
 endif
 
