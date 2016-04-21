@@ -100,17 +100,17 @@ public :: get_model_size,                &
           query_vert_localization_coord, &
           vert_convert,                  &
           construct_file_name_in,        &
+          write_model_time,              &
+          read_model_time,               &
           get_close_obs
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
-public ::  restart_file_to_sv,         &
-           sv_to_restart_file,         &
-           get_model_restart_filename, &
-           get_time_from_namelist,     &
-           write_model_time,           &
-           read_model_time,            &
-           print_variable_ranges
+public :: restart_file_to_sv,         &
+          sv_to_restart_file,         &
+          get_model_restart_filename, &
+          get_time_from_namelist,     &
+          print_variable_ranges
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -163,7 +163,6 @@ integer :: domain_id ! global variable for state_structure_mod routines
 !> Everything needed to describe a variable. Basically all the metadata from
 !> a netCDF file is stored here as well as all the information about where
 !> the variable is stored in the DART state vector.
-!> @todo FIXME ... do we need numvertical as opposed to ZonHalf ...
 !>
 !> @todo FIXME ... add a field for what kind of mask to use
 !>
@@ -180,7 +179,6 @@ type progvartype
    integer :: numvertical   ! number of vertical levels in variable
    integer :: numxi         ! number of horizontal locations (cell centers)
    integer :: numeta        ! number of horizontal locations (edges for velocity components)
-   logical :: ZonHalf       ! vertical coordinate has dimension nVertLevels
    integer :: varsize       ! prod(dimlens(1:numdims))
    integer :: index1        ! location in dart state vector of first occurrence
    integer :: indexN        ! location in dart state vector of last  occurrence
@@ -341,10 +339,6 @@ integer(i8),         intent(in)  :: index_in
 type(location_type), intent(out) :: location
 integer, optional,   intent(out) :: var_type
 
-! integer,             intent(in)  :: index_in
-! type(location_type), intent(out) :: location
-! integer, optional,   intent(out) :: var_type
-
 ! Local variables
 
 integer  :: nxp, nzp, iloc, vloc, nf, n,nyp,jloc
@@ -440,12 +434,6 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_type, interp_
  integer,             intent(in) :: obs_type
  integer,            intent(out) :: istatus(ens_size)
  real(r8),           intent(out) :: interp_val(ens_size) !< array of interpolated values
-
-! real(r8),            intent(in) :: x(:)
-! type(location_type), intent(in) :: location
-! integer,             intent(in) :: obs_type
-! real(r8),           intent(out) :: interp_val
-! integer,            intent(out) :: istatus
 
 ! Local storage
 real(r8)       :: loc_array(3), llon, llat, lheight
@@ -776,6 +764,8 @@ end subroutine init_conditions
 !>
 !> @param ncFileID the netCDF handle of the DART diagnostic file opened by
 !>                 assim_model_mod:init_diag_output
+!> @param model_writes_state have the state structure write out all of the
+!>                 state variables
 !> @param ierr status ... 0 == all went well, /= 0 failure
 
 function nc_write_model_atts( ncFileID, model_writes_state ) result (ierr)
@@ -1427,15 +1417,6 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_type, &
 ! within filter_assim. In other words, these modifications will only matter within
 ! filter_assim, but will not propagate backwards to filter.
 
-! type(get_close_type), intent(in)    :: gc
-! type(location_type),  intent(inout) :: base_obs_loc
-! integer,              intent(in)    :: base_obs_type
-! type(location_type),  intent(inout) :: locs(:)
-! integer,              intent(in)    :: loc_kind(:)
-! integer,              intent(out)   :: num_close
-! integer,              intent(out)   :: close_ind(:)
-! real(r8), OPTIONAL,   intent(out)   :: dist(:)
-
 integer                :: base_obs_kind ! for sanity
 integer                :: ztypeout
 integer                :: t_ind, istatus1, istatus2, k
@@ -1467,7 +1448,9 @@ if (.not. horiz_dist_only) then
   if (base_llv(3) == MISSING_R8) then
      istatus1 = 1
   else if (base_which /= vert_localization_coord) then
-      call convert_vert(state_handle, base_obs_loc, base_obs_kind, ztypeout, istatus1)
+      !>@todo FIXME : JPH. vert_convert needs some work... it's not doing anything
+      !>              at the moment.
+      call vert_convert(state_handle, base_obs_loc, base_obs_kind, istatus1)
       if(debug > 1) then
          call write_location(0,base_obs_loc,charstring=string1)
          call error_handler(E_MSG, 'get_close_obs: base_obs_loc', string1, &
@@ -1488,7 +1471,7 @@ if (istatus1 == 0) then
 
       if (.not. horiz_dist_only) then
           if (local_obs_which /= vert_localization_coord) then
-              call convert_vert(state_handle, local_obs_loc, loc_kind(t_ind), ztypeout, istatus2)
+              call vert_convert(state_handle, local_obs_loc, local_obs_kind(tind), istatus2)
           else
               istatus2 = 0
           endif
@@ -1516,6 +1499,194 @@ endif
 
 
 end subroutine get_close_obs
+
+
+!--------------------------------------------------------------------
+!>
+!> This is used to pass the vertical localization coordinate 
+!> to assim_tools_mod
+!>
+
+function query_vert_localization_coord()
+
+integer :: query_vert_localization_coord
+
+query_vert_localization_coord = VERTISHEIGHT
+
+end function query_vert_localization_coord
+
+!-----------------------------------------------------------------------
+!>
+!> This subroutine converts a given ob/state vertical coordinate to
+!> the vertical localization coordinate type requested through the
+!> model_mod namelist. This is used in filter_assim(). The vertical
+!> conversion is done using the mean state.
+!>
+!> Notes: (1) obs_kind is only necessary to check whether the ob
+!>            is an identity observation.
+!>
+!>        (2) This subroutine can convert both obs' and state points'
+!>            vertical coordinates. Remember that state points get
+!>            their DART location information from get_state_meta_data
+!>            which is called by filter_assim during the assimilation
+!>            process.
+!>
+!>        (3) state_handle contains relevant DART state information for 
+!>            carrying out computations necessary for the vertical coordinate
+!>            transformations. As the vertical coordinate is only used
+!>            in distance computations, this is actually the "expected"
+!>            vertical coordinate, so that computed distance is the
+!>            "expected" distance. Thus, under normal circumstances,
+!>            state_handle that is supplied to convert_vert should be the
+!>            ensemble mean. Nevertheless, the subroutine has the
+!>            functionality to operate on any DART state vector that
+!>            is supplied to it.
+!>
+!> @param state_handle handle to the dart state
+!> @param location
+!> @param obs_kind 
+!> @param istatus
+!>
+
+subroutine vert_convert(state_handle, location, obs_kind, istatus)
+
+type(ensemble_type), intent(in)  :: state_handle
+type(location_type), intent(in)  :: location
+integer,             intent(in)  :: obs_kind
+integer,             intent(out) :: istatus
+
+!>@ todo FIXME : JPH. We need to make sure we are converting the observations
+!>               vertical values to be the same as the state properly.
+
+istatus = 0
+
+
+end subroutine vert_convert
+
+
+!--------------------------------------------------------------------
+!>
+!> construct restart file name for reading
+!>
+!> @param stub stub of restart file
+!> @param domain for multiple domains in your state
+!> @param copy copy number in ensemble handle
+!>
+
+function construct_file_name_in(stub, domain, copy)
+
+character(len=256), intent(in) :: stub
+integer,            intent(in) :: domain
+integer,            intent(in) :: copy
+character(len=256) :: construct_file_name_in
+
+! stub is found in input.nml io_filename_nml
+
+!>@todo FIXME : JPH. Need to construct filename properly!!!!
+
+! write(construct_file_name_in, '(A, i4.4, A)') trim(stub), copy, ".nc"
+
+
+end function construct_file_name_in
+
+
+!-----------------------------------------------------------------------
+!>
+!> writes the time of the current state and (optionally) the time
+!> to be conveyed to ROMS to dictate the length of the forecast.
+!> This file is then used by scripts to modify the ROMS run.
+!> The format in the time information is totally at your discretion.
+!>
+!> @param ncfile_out name of the file (name is set by dart_to_roms_nml:ncfile_out)
+!> @param model_time the current time of the model state
+!> @param adv_to_time the time in the future of the next assimilation.
+!>
+
+subroutine write_model_time(ncfile_out, model_time, adv_to_time)
+integer,         intent(in)           :: ncfile_out
+type(time_type), intent(in)           :: model_time
+type(time_type), intent(in), optional :: adv_to_time
+
+! integer :: iunit
+! character(len=19) :: timestring
+! type(time_type)   :: deltatime
+
+if ( .not. module_initialized ) call static_init_model
+
+!>@todo FIXME : JPH. Need to write the model time properly to
+!>                   the netcdf file
+
+! iunit = open_file(ncfile_out, action='write')
+! 
+! timestring = time_to_string(model_time)
+! write(iunit, '(A)') timestring
+! 
+! if (present(adv_to_time)) then
+!    timestring = time_to_string(adv_to_time)
+!    write(iunit, '(A)') timestring
+! 
+!    deltatime = adv_to_time - model_time
+!    timestring = time_to_string(deltatime, interval=.true.)
+!    write(iunit, '(A)') timestring
+! endif
+! 
+! call close_file(iunit)
+
+end subroutine write_model_time
+
+!--------------------------------------------------------------------
+!>
+!> read the time from the input file
+!>
+!> @param filename name of file that contains the time
+!>
+
+function read_model_time(filename)
+
+character(len=256) :: filename
+type(time_type) :: read_model_time
+
+!>@todo FIXME : JPH. Need to read the model time properly from
+!>                   the netcdf file. This is an example from POP
+
+! integer :: ncid !< netcdf file id
+! integer :: iyear, imonth, iday, ihour, iminute, isecond
+! 
+! if ( .not. module_initialized ) call static_init_model
+! 
+! if ( .not. file_exist(filename) ) then
+!    write(msgstring,*) 'cannot open file ', trim(filename),' for reading.'
+!    call error_handler(E_ERR,'read_model_time',msgstring,source,revision,revdate)
+! endif
+! 
+! call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
+!                   'read_model_time', 'open '//trim(filename))
+! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iyear'  , iyear), &
+!                   'read_model_time', 'get_att iyear')
+! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'imonth' , imonth), &
+!                   'read_model_time', 'get_att imonth')
+! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iday'   , iday), &
+!                   'read_model_time', 'get_att iday')
+! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ihour'  , ihour), &
+!                   'read_model_time', 'get_att ihour')
+! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iminute', iminute), &
+!                   'read_model_time', 'get_att iminute')
+! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'isecond', isecond), &
+!                   'read_model_time', 'get_att isecond')
+! 
+! ! FIXME: we don't allow a real year of 0 - add one for now, but
+! ! THIS MUST BE FIXED IN ANOTHER WAY!
+! if (iyear == 0) then
+!   call error_handler(E_MSG, 'read_model_time', &
+!                      'WARNING!!!   year 0 not supported; setting to year 1')
+!   iyear = 1
+! endif
+! 
+! read_model_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
+
+
+end function read_model_time
+
 
 !-----------------------------------------------------------------------
 ! The remaining PUBLIC interfaces come next.
@@ -1932,104 +2103,6 @@ endif
 get_time_from_namelist = set_date(iyear, imonth, iday, ihour, imin, isec)
 
 end function get_time_from_namelist
-
-
-!-----------------------------------------------------------------------
-!>
-!> writes the time of the current state and (optionally) the time
-!> to be conveyed to ROMS to dictate the length of the forecast.
-!> This file is then used by scripts to modify the ROMS run.
-!> The format in the time information is totally at your discretion.
-!>
-!> @param ncfile_out name of the file (name is set by dart_to_roms_nml:ncfile_out)
-!> @param model_time the current time of the model state
-!> @param adv_to_time the time in the future of the next assimilation.
-!>
-
-subroutine write_model_time(ncfile_out, model_time, adv_to_time)
-integer,         intent(in)           :: ncfile_out
-type(time_type), intent(in)           :: model_time
-type(time_type), intent(in), optional :: adv_to_time
-
-! integer :: iunit
-! character(len=19) :: timestring
-! type(time_type)   :: deltatime
-
-if ( .not. module_initialized ) call static_init_model
-
-!>@todo FIXME : JPH. Need to write the model time properly to
-!>                   the netcdf file
-
-! iunit = open_file(ncfile_out, action='write')
-! 
-! timestring = time_to_string(model_time)
-! write(iunit, '(A)') timestring
-! 
-! if (present(adv_to_time)) then
-!    timestring = time_to_string(adv_to_time)
-!    write(iunit, '(A)') timestring
-! 
-!    deltatime = adv_to_time - model_time
-!    timestring = time_to_string(deltatime, interval=.true.)
-!    write(iunit, '(A)') timestring
-! endif
-! 
-! call close_file(iunit)
-
-end subroutine write_model_time
-
-!--------------------------------------------------------------------
-!>
-!> read the time from the input file
-!>
-!> @param filename name of file that contains the time
-!>
-
-function read_model_time(filename)
-
-character(len=256) :: filename
-type(time_type) :: read_model_time
-
-!>@todo FIXME : JPH. Need to read the model time properly from
-!>                   the netcdf file. This is an example from POP
-
-! integer :: ncid !< netcdf file id
-! integer :: iyear, imonth, iday, ihour, iminute, isecond
-! 
-! if ( .not. module_initialized ) call static_init_model
-! 
-! if ( .not. file_exist(filename) ) then
-!    write(msgstring,*) 'cannot open file ', trim(filename),' for reading.'
-!    call error_handler(E_ERR,'read_model_time',msgstring,source,revision,revdate)
-! endif
-! 
-! call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
-!                   'read_model_time', 'open '//trim(filename))
-! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iyear'  , iyear), &
-!                   'read_model_time', 'get_att iyear')
-! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'imonth' , imonth), &
-!                   'read_model_time', 'get_att imonth')
-! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iday'   , iday), &
-!                   'read_model_time', 'get_att iday')
-! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'ihour'  , ihour), &
-!                   'read_model_time', 'get_att ihour')
-! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'iminute', iminute), &
-!                   'read_model_time', 'get_att iminute')
-! call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'isecond', isecond), &
-!                   'read_model_time', 'get_att isecond')
-! 
-! ! FIXME: we don't allow a real year of 0 - add one for now, but
-! ! THIS MUST BE FIXED IN ANOTHER WAY!
-! if (iyear == 0) then
-!   call error_handler(E_MSG, 'read_model_time', &
-!                      'WARNING!!!   year 0 not supported; setting to year 1')
-!   iyear = 1
-! endif
-! 
-! read_model_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
-
-
-end function read_model_time
 
 
 !-----------------------------------------------------------------------
@@ -3272,209 +3345,6 @@ call error_handler(E_MSG, '', string1, source,revision,revdate)
 
 end subroutine print_minmax
 
-!--------------------------------------------------------------------
-!>
-!> This is used to pass the vertical localization coordinate 
-!> to assim_tools_mod
-!>
-
-function query_vert_localization_coord()
-
-integer :: query_vert_localization_coord
-
-query_vert_localization_coord = VERTISHEIGHT
-
-end function query_vert_localization_coord
-
-!--------------------------------------------------------------------
-!>
-!> This is used in the filter_assim. The vertical conversion is done using the 
-!> mean state.
-!>
-!> @param state_handle handle to the dart state
-!> @param location
-!> @param obs_kind 
-!> @param istatus
-!>
-
-subroutine vert_convert(state_handle, location, obs_kind, istatus)
-
-type(ensemble_type), intent(in)  :: state_handle
-type(location_type), intent(in)  :: location
-integer,             intent(in)  :: obs_kind
-integer,             intent(out) :: istatus
-
-! !>@ todo FIXME : JPH. need to come back and wrap this properly 
-! !> can do something similar to MPAS with
-! !> convert_vert(state_handle, location, obs_kind, ztypeout, istatus)
-
-! integer :: ztype
-! ! type(location_type) :: new_location(1)
-! 
-! ztype = query_vert_localization_coord()
-! ! new_location(1) = location
-! 
-! call convert_vert(state_handle, ens_size, obs_kind, ztype, istatus)
-! 
-! ierr = istatus(1)
-! location = new_location(1)
-! ! old_loc = obs_loc
-! ! old_array = get_location(obs_loc)
-! ! old_which = query_location(obs_loc, 'which_vert')
-! ! 
-! ! if (old_which == query_vert_localization_coord() ) then
-! !    return
-! ! endif
-! ! 
-! ! if(new_which == MISSING_I) then
-! !    vstatus = 1
-! ! else
-! !    obs_loc = set_location(new_array(1), new_array(2), new_array(3), new_which)
-! ! endif
-
-
-istatus = 0
-
-
-end subroutine vert_convert
-
-!-----------------------------------------------------------------------
-!>
-!> This subroutine converts a given ob/state vertical coordinate to
-!> the vertical localization coordinate type requested through the
-!> model_mod namelist.
-!>
-!> Notes: (1) obs_kind is only necessary to check whether the ob
-!>            is an identity observation.
-!>
-!>        (2) This subroutine can convert both obs' and state points'
-!>            vertical coordinates. Remember that state points get
-!>            their DART location information from get_state_meta_data
-!>            which is called by filter_assim during the assimilation
-!>            process.
-!>
-!>        (3) x is the relevant DART state vector for carrying out
-!>            computations necessary for the vertical coordinate
-!>            transformations. As the vertical coordinate is only used
-!>            in distance computations, this is actually the "expected"
-!>            vertical coordinate, so that computed distance is the
-!>            "expected" distance. Thus, under normal circumstances,
-!>            x that is supplied to convert_vert should be the
-!>            ensemble mean. Nevertheless, the subroutine has the
-!>            functionality to operate on any DART state vector that
-!>            is supplied to it.
-!>
-!> @param state_handle handle to the dart state
-!> @param location the location of interest
-!> @param obs_kind the DART KIND at that location
-!> @param ztypeout the DESIRED vertical coordinate
-!> @param istatus flag to indicate success (0) or failure (/= 0)
-!>
-
-subroutine convert_vert(state_handle, location, obs_kind, ztypeout, istatus)
-
-type(ensemble_type), intent(in)    :: state_handle
-type(location_type), intent(inout) :: location
-integer,             intent(in)    :: obs_kind
-integer,             intent(in)    :: ztypeout
-integer,             intent(out)   :: istatus
-
-! real(r8),            intent(in)    :: x(:)
-! type(location_type), intent(inout) :: location
-! integer,             intent(in)    :: obs_kind
-! integer,             intent(in)    :: ztypeout
-! integer,             intent(out)   :: istatus
-
-! zin and zout are the vert values coming in and going out.
-! ztype{in,out} are the vert types as defined by the 3d sphere
-! locations mod (location/threed_sphere/location_mod.f90)
-real(r8) :: llv_loc(3)
-real(r8) :: zin, zout
-integer  :: ztypein
-integer  :: k_low(3), k_up(3)
-
-! assume failure.
-istatus = 1
-
-! initialization
-k_low   = 0.0_r8
-k_up    = 0.0_r8
-
-! first off, check if ob is identity ob.  if so get_state_meta_data() will
-! have returned location information already in the requested vertical type.
-if (obs_kind < 0) then
-   call get_state_meta_data(state_handle, int(obs_kind,i8), location)
-   istatus = 0
-   return
-endif
-
-! if the existing coord is already in the requested vertical units
-! or if the vert is 'undef' which means no specifically defined
-! vertical coordinate, return now.
-ztypein  = nint(query_location(location, 'which_vert'))
-if ((ztypein == ztypeout) .or. (ztypein == VERTISUNDEF)) then
-   istatus = 0
-   return
-else
-   if (debug > 3) then
-      write(string1,'(A,3X,2I3)') 'ztypein, ztypeout:',ztypein,ztypeout
-      call error_handler(E_MSG, 'convert_vert:',string1, source, revision, revdate)
-   endif
-endif
-
-! we do need to convert the vertical.  start by
-! extracting the location lon/lat/vert values.
-llv_loc = get_location(location)
-
-! the routines below will use zin as the incoming vertical value
-! and zout as the new outgoing one.  start out assuming failure
-! (zout = missing) and wait to be pleasantly surprised when it works.
-zin     = llv_loc(3)
-zout    = missing_r8
-
-! if the vertical is missing to start with, return it the same way
-! with the requested type as out.
-if (zin == missing_r8) then
-   location = set_location(llv_loc(1),llv_loc(2),missing_r8,ztypeout)
-   return
-endif
-
-! Convert the incoming vertical type (ztypein) into the vertical
-! localization coordinate given in the namelist (ztypeout).
-! Various incoming vertical types (ztypein) are taken care of
-! inside find_vert_level. So we only check ztypeout here.
-
-! convert into:
-select case (ztypeout)
-
-   ! outgoing vertical coordinate should be 'model level number'
-   case (VERTISLEVEL)
-
-
-   case (VERTISPRESSURE)
-
-
-   case (VERTISHEIGHT)
-
-!  in most cases, input surface values only, just need to convert to depth
-   zout = -0.0
-
-   case (VERTISSURFACE)
-
-   case default
-      write(string1,*) 'Requested vertical coordinate not recognized: ', ztypeout
-      call error_handler(E_ERR,'convert_vert:', string1, &
-                         source, revision, revdate)
-
-end select   ! outgoing vert type
-
-! Returned location
-location = set_location(llv_loc(1),llv_loc(2),zout,ztypeout)
-
-! Set successful return code only if zout has good value
-if(zout /= missing_r8) istatus = 0
-
-end subroutine convert_vert
 
 
 !-----------------------------------------------------------------------
@@ -3684,62 +3554,6 @@ interp_vals(:) = tp(:,iidd) +(tp(:,iidd+1) - tp(:,iidd)) * &
 !write(*,*) 'model_mod: height, zz(iidd), val ', height, zz(iidd), interp_vals
 
 end subroutine vert_interpolate
-
-
-!-----------------------------------------------------------------------
-!>
-!> Returns the DART state value for a given lat, lon, and level index.
-!> 'get_val' will be a MISSING value if this is NOT a valid grid location
-!> (e.g. land, or below the ocean floor).
-!>
-!> @param get_val the value of the DART state at the gridcell of interest.
-!> @param lon_index the index of the longitude of interest.
-!> @param lat_index the index of the latitude of interest.
-!> @param level_index the index of the level of interest.
-!> @param x the (contiguous) portion of the DART state vector for the variable of interest
-!> @param var_type the DART KIND of interest.
-!>
-!> @ todo FIXME Johnny may have a better way to do this if everything stays
-!>        rectangular. (i.e. not squeezing out the dry columns)
-
-function get_val(lon_index, lat_index, level_index, x, var_type)
-
-integer,  intent(in) :: lon_index
-integer,  intent(in) :: lat_index
-integer,  intent(in) :: level_index
-integer,  intent(in) :: var_type
-real(r8), intent(in) :: x(:)
-real(r8)             :: get_val
-
-integer :: tt     ! the (absolute) index into the DART state vector
-integer :: ivar
-integer :: Ndim1, Ndim2, Ndim3
-
-get_val = MISSING_R8 ! guilty until proven otherwise
-
-ivar = get_progvar_index_from_kind(var_type)
-
-!> @ todo FIXME Implement the land masking. Must determine which mask
-!>        is appropriate for this variable ... extend progvar?
-!> could check dimension names of the variables against the dimension names of the masks
-
-Ndim3 = progvar(ivar)%numvertical
-Ndim2 = progvar(ivar)%numeta
-Ndim1 = progvar(ivar)%numxi
-
-if ( (  lon_index < 1 .or.   lon_index > Ndim1) .or. &
-     (  lat_index < 1 .or.   lat_index > Ndim2) .or. &
-     (level_index < 1 .or. level_index > Ndim3) ) return
-
-! implicit assumption on packing order into the DART vector
-
-tt = (level_index - 1) * Ndim1 * Ndim2 + &
-     (  lat_index - 1) * Ndim1 + &
-        lon_index
-
-if(tt > 0 .and. tt <= size(x)) get_val = x(tt)
-
-end function get_val
 
 
 !-----------------------------------------------------------------------
@@ -4410,31 +4224,6 @@ call nc_check(nf90_inquire_dimension(ncid, DimID, len=dimlen), &
               'get_grid', string2)
 
 end function get_dimension_length
-
-!--------------------------------------------------------------------
-!>
-!> construct restart file name for reading
-!>
-!> @param stub stub of restart file
-!> @param domain for multiple domains in your state
-!> @param copy copy number in ensemble handle
-!>
-
-function construct_file_name_in(stub, domain, copy)
-
-character(len=256), intent(in) :: stub
-integer,            intent(in) :: domain
-integer,            intent(in) :: copy
-character(len=256) :: construct_file_name_in
-
-! stub is found in input.nml io_filename_nml
-
-!>@todo FIXME : JPH. Need to construct filename properly!!!!
-
-! write(construct_file_name_in, '(A, i4.4, A)') trim(stub), copy, ".nc"
-
-
-end function construct_file_name_in
 
 !===================================================================
 ! End of model_mod
