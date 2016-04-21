@@ -1471,7 +1471,7 @@ if (istatus1 == 0) then
 
       if (.not. horiz_dist_only) then
           if (local_obs_which /= vert_localization_coord) then
-              call vert_convert(state_handle, local_obs_loc, local_obs_kind(tind), istatus2)
+              call vert_convert(state_handle, local_obs_loc, loc_kind(t_ind), istatus2)
           else
               istatus2 = 0
           endif
