@@ -1,0 +1,25 @@
+
+&model_mod_check_nml
+   x_ind                 = -1
+   num_ens               = 1
+   loc_of_interest       = 280.0, 40.0, 10.0
+   kind_of_interest      = 'ANY'
+   interp_test_dlon      = 0.5
+   interp_test_dlat      = 0.5
+   interp_test_dvert     = 5.0
+   interp_test_lonrange  = 0.0, 120.0
+   interp_test_latrange  = 0.0,  90.0
+   interp_test_vertrange = 0.0, 100.0
+   interp_test_dx        = 50.0
+   interp_test_dy        = 50.0
+   interp_test_dz        = 50.0
+   interp_test_xrange    = 0.0, 1000.0
+   interp_test_yrange    = 0.0, 1000.0
+   interp_test_zrange    = 0.0,  100.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   test1thru             = 1
+   restart_in_file_name  = 'input'
+   restart_out_file_name = 'output'
+   verbose               = .true.
+  /
+

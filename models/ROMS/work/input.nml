@@ -67,6 +67,9 @@
    inf_sd_lower_bound          = 0.0,                     0.0
   /
 
+&state_vector_io_nml
+   write_binary_restart_files = .false.
+  /
 
 &smoother_nml
    num_lags              = 0
@@ -142,19 +145,6 @@
                'zeta',   'KIND_SEA_SURFACE_HEIGHT'
   /
 
-&roms_to_dart_nml
-   roms_to_dart_output_file = 'dart.ics'
-   print_data_ranges        = .true.
-   perturb_state            = .false.
-  /
-
-&dart_to_roms_nml
-   dart_to_roms_input_file = 'dart.restart'
-   print_data_ranges       = .true.
-   advance_time_present    = .false.
-   time_filename           = 'roms_time'
-  /
-
 &location_nml
    horiz_dist_only             = .false.
    vert_normalization_pressure = 100000.0
@@ -224,7 +214,7 @@
 #
 # Acceptable latitudes range from  [-90,  90]
 # Acceptable longitudes range from [  0, Inf]
-# hlevel_edges should be changed to more realistic values for ROMS 
+# hlevel_edges should be changed to more realistic values for ROMS
 
 &obs_diag_nml
    obs_sequence_name = ''
@@ -275,23 +265,23 @@
   /
 
 
-   interp_test_lonrange  = 258.0, 320.0
-   interp_test_latrange  = 8.0, 54.0
-&model_mod_check_nml
-   dart_input_file       = 'dart.ics'
-   output_file           = 'check_me_out'
-   advance_time_present  = .FALSE.
-   verbose               = .TRUE.
-   test1thru             = 11
-   loc_of_interest       = 289.6, 37.0, 50.0
    kind_of_interest      = 'KIND_U_CURRENT_COMPONENT'
-   interp_test_lonrange  = 270.0, 280.0
-   interp_test_dlon      = 0.1
-   interp_test_latrange  = 10.0, 50.0
-   interp_test_dlat      = 0.1
-   interp_test_vertrange = 1000.0,  1005.0
-   interp_test_dvert     = 2000.0
-   interp_test_vertcoord = 'VERTISHEIGHT'
-  /
 
+&model_mod_check_nml
+   x_ind                 = -1
+   num_ens               = 1
+   loc_of_interest       = 230.0, 36.0, 50.0
+   kind_of_interest      = 'ANY'
+   interp_test_dlon      = 0.1
+   interp_test_dlat      = 0.1
+   interp_test_dvert     = 5.0
+   interp_test_lonrange  = 226.0,  244.0
+   interp_test_latrange  =  30.0,   48.0
+   interp_test_vertrange =  10.0, 1000.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   test1thru             = 1
+   restart_in_file_name  = 'input'
+   restart_out_file_name = 'output'
+   verbose               = .true.
+  /
 

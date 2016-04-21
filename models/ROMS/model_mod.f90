@@ -210,8 +210,6 @@ integer :: Neta_rho
 integer :: Neta_u
 integer :: Neta_v
 integer :: Neta_psi
-integer :: Nxi_vert
-integer :: Neta_vert
 integer :: Ns_rho
 integer :: Ns_w
 
@@ -932,12 +930,6 @@ else
 
    call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_psi',   len = Neta_psi,&
         dimid = netapsiDimID),'nc_write_model_atts', 'eta_psi def_dim '//trim(filename))
-
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='xi_vert',   len = Nxi_vert,&
-        dimid = nxivertDimID),'nc_write_model_atts', 'xi_vert def_dim '//trim(filename))
-
-   call nc_check(nf90_def_dim(ncid=ncFileID, name='eta_vert',   len = Neta_vert,&
-        dimid = netavertDimID),'nc_write_model_atts', 'eta_vert def_dim '//trim(filename))
 
    ! Create the (empty) Coordinate Variables and the Attributes
 
@@ -2178,8 +2170,6 @@ Neta_rho  = get_dimension_length(ncid, 'eta_rho',  grid_definition_filename)
 Neta_u    = get_dimension_length(ncid, 'eta_u',    grid_definition_filename)
 Neta_v    = get_dimension_length(ncid, 'eta_v',    grid_definition_filename)
 Neta_psi  = get_dimension_length(ncid, 'eta_psi',  grid_definition_filename)
-Nxi_vert  = get_dimension_length(ncid, 'xi_vert',  grid_definition_filename)
-Neta_vert = get_dimension_length(ncid, 'eta_vert', grid_definition_filename)
 Ns_rho    = get_dimension_length(ncid, 's_rho',    grid_definition_filename)
 Ns_w      = get_dimension_length(ncid, 's_w',      grid_definition_filename)
 
@@ -2217,10 +2207,14 @@ real(r8), parameter :: all_land = 0.001_r8
 
 if (debug > 1) then
    write(string1,*)'..  NX is ',Nx
-   write(string2,*)'NY is ',Ny
-   write(string3,*)'NZ is ',Nz
+   write(string2,*)    'NY is ',Ny
+   write(string3,*)    'NZ is ',Nz
    call error_handler(E_MSG,'get_grid:',string1,text2=string2,text3=string3)
 endif
+
+write(string1,*)'..  WARNING: routine is not written - more than a stub but does not.' 
+write(string2,*)    'WARNING: do anything with the vertical coordinates.'
+call error_handler(E_MSG,'get_grid:',string1,text2=string2)
 
 ! Open the netcdf file data
 
@@ -2250,6 +2244,8 @@ call nc_check(nf90_inq_varid(ncid, 'lon_rho', VarID), &
 call nc_check(nf90_get_var( ncid, VarID, TLON), &
       'get_grid', 'get_var lon_rho '//trim(grid_definition_filename))
 
+where (TLON < 0.0_r8) TLON = TLON + 360.0_r8
+
 call nc_check(nf90_inq_varid(ncid, 'lat_rho', VarID), &
       'get_grid', 'inq_varid lat_rho '//trim(grid_definition_filename))
 call nc_check(nf90_get_var( ncid, VarID, TLAT), &
@@ -2260,6 +2256,8 @@ call nc_check(nf90_inq_varid(ncid, 'lon_u', VarID), &
 call nc_check(nf90_get_var( ncid, VarID, ULON), &
       'get_grid', 'get_var lon_u '//trim(grid_definition_filename))
 
+where (ULON < 0.0_r8) ULON = ULON + 360.0_r8
+
 call nc_check(nf90_inq_varid(ncid, 'lat_u', VarID), &
       'get_grid', 'inq_varid lat_u '//trim(grid_definition_filename))
 call nc_check(nf90_get_var( ncid, VarID, ULAT), &
@@ -2269,6 +2267,8 @@ call nc_check(nf90_inq_varid(ncid, 'lon_v', VarID), &
       'get_grid', 'inq_varid lon_v '//trim(grid_definition_filename))
 call nc_check(nf90_get_var( ncid, VarID, VLON), &
       'get_grid', 'get_var lon_v '//trim(grid_definition_filename))
+
+where (VLON < 0.0_r8) VLON = VLON + 360.0_r8
 
 call nc_check(nf90_inq_varid(ncid, 'lat_v', VarID), &
       'get_grid', 'inq_varid lat_v '//trim(grid_definition_filename))
@@ -2374,18 +2374,18 @@ call nc_check(nf90_close(ncid), &
 
 ! Also get zeta values in order to calculate ZC
 
-call nc_check(nf90_open(trim(model_restart_filename), nf90_nowrite, ncid), &
-      'get_grid', 'open '//trim(model_restart_filename))
+! TJH call nc_check(nf90_open(trim(model_restart_filename), nf90_nowrite, ncid), &
+! TJH       'get_grid', 'open '//trim(model_restart_filename))
+! TJH 
+! TJH call nc_check(nf90_inq_varid(ncid, 'zeta', VarID), &
+! TJH       'get_grid', 'inq_varid zeta '//trim(model_restart_filename))
+! TJH call nc_check(nf90_get_var( ncid, VarID, SSH), &
+! TJH       'get_grid', 'get_var zeta '//trim(model_restart_filename))
+! TJH 
+! TJH call nc_check(nf90_close(ncid), &
+! TJH              'get_var','close '//trim(grid_definition_filename))
 
-call nc_check(nf90_inq_varid(ncid, 'zeta', VarID), &
-      'get_grid', 'inq_varid zeta '//trim(model_restart_filename))
-call nc_check(nf90_get_var( ncid, VarID, SSH), &
-      'get_grid', 'get_var zeta '//trim(model_restart_filename))
-
-call nc_check(nf90_close(ncid), &
-             'get_var','close '//trim(grid_definition_filename))
-
-!this depends on the transform in ROMS, try to modify it if you are using a different one
+!>@ TODO FIXME this depends on the transform in ROMS 
 
 do k=1,Nz
      dzt0(:,:) = (s_rho(k)-Cs_r(k))*hc + Cs_r(k) * HT(:,:)
