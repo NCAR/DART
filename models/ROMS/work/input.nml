@@ -79,13 +79,8 @@
    restart_out_file_name = 'smoother_restart'
   /
 
-# If you specify layout=2, you must set tasks_per_node correctly.
 &ensemble_manager_nml
-   single_restart_file_in  = .false.
-   single_restart_file_out = .false.
-   layout = 2
-   tasks_per_node = 16
-   perturbation_amplitude  = 0.2  /
+  /
 
 &assim_tools_nml
    filter_kind                     = 2
@@ -127,6 +122,18 @@
    netCDF_large_file_support  = .true.
   /
 
+# Each variable must have 5 entries.
+# 1: variable name
+# 2: DART KIND
+# 3: minimum value - as a character string - if none, use 'NA'
+# 4: maximum value - as a character string - if none, use 'NA'
+# 5: does the variable get updated in the restart file or not ...
+#    only variables from restart files may be updated.
+#    'UPDATE' =>        update the variable in the restart file
+#    'NO_COPY_BACK' => do not update the variable in the restart file
+#    all these variables will be updated INTERNALLY IN DART
+#    only variables marked 'UPDATE' will be modified for ROMS.
+
 &model_nml
    analysis_time                = '2011-01-03 00:00:00'
    output_state_vector          = .false.
@@ -138,11 +145,11 @@
    grid_definition_filename     = 'roms_grid.nc'
    vert_localization_coord      = 3
    debug     = 1
-   variables = 'temp',   'KIND_TEMPERATURE',
-               'salt',   'KIND_SALINITY',
-               'u',      'KIND_U_CURRENT_COMPONENT',
-               'v',      'KIND_V_CURRENT_COMPONENT',
-               'zeta',   'KIND_SEA_SURFACE_HEIGHT'
+   variables = 'temp',   'KIND_TEMPERATURE',          'NA', 'NA', 'update',
+               'salt',   'KIND_SALINITY',            '0.0', 'na', 'update',
+               'u',      'KIND_U_CURRENT_COMPONENT',  'NA', 'NA', 'UPDATE',
+               'v',      'KIND_V_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+               'zeta',   'KIND_SEA_SURFACE_HEIGHT'    'NA', 'NA', 'no_copy_back',
   /
 
 &location_nml
@@ -279,7 +286,7 @@
    interp_test_latrange  =  30.0,   48.0
    interp_test_vertrange =  10.0, 1000.0
    interp_test_vertcoord = 'VERTISHEIGHT'
-   test1thru             = 1
+   test1thru             = 2
    restart_in_file_name  = 'input'
    restart_out_file_name = 'output'
    verbose               = .true.

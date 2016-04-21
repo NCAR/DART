@@ -22,7 +22,7 @@
 !> subsequently modified by the DART team.
 !>
 !> \todo
-!> @todo really check the land masking and _FillValue processing
+!>@ todo really check the land masking and _FillValue processing
 !----------------------------------------------------------------
 
 module model_mod
@@ -152,13 +152,14 @@ namelist /model_nml/  &
    debug,                       &
    variables
 
-! DART state vector contents are specified in the input.nml:&mpas_vars_nml namelist.
-integer, parameter :: max_state_variables = 80
-integer, parameter :: num_state_table_columns = 2
-integer, parameter :: num_bounds_table_columns = 4
-character(len=NF90_MAX_NAME) :: variables(max_state_variables * num_state_table_columns ) = ' '
-character(len=NF90_MAX_NAME) :: roms_state_bounds(num_bounds_table_columns, max_state_variables ) = ' '
-character(len=NF90_MAX_NAME) :: variable_table(max_state_variables, num_state_table_columns )
+! DART contents are specified in the input.nml:&model_nml namelist.
+integer, parameter :: MAX_STATE_VARIABLES = 80
+integer, parameter :: num_state_table_columns = 5
+character(len=NF90_MAX_NAME) :: variables(MAX_STATE_VARIABLES * num_state_table_columns ) = ' '
+character(len=NF90_MAX_NAME) :: var_names(MAX_STATE_VARIABLES) = ' '
+logical  ::                   update_list(MAX_STATE_VARIABLES) = .FALSE.
+integer  ::                     kind_list(MAX_STATE_VARIABLES) = MISSING_I
+real(r8) ::                    clamp_vals(MAX_STATE_VARIABLES,2) = MISSING_R8
 
 integer :: nfields   ! This is the number of variables in the DART state vector.
 
@@ -599,11 +600,11 @@ call get_grid()
 call nc_check( nf90_open(trim(model_restart_filename), NF90_NOWRITE, ncid), &
                   'static_init_model', 'open '//trim(model_restart_filename))
 
-call verify_variables( variables, ncid, model_restart_filename, &
-                            nfields, variable_table )
+! parse_variable_input() fills var_names, kind_list, clamp_vals, update_list
+call parse_variable_input(variables, ncid, model_restart_filename, nfields)
 
 domain_id = add_domain(model_restart_filename, nfields, &
-                    var_names = variable_table(:,1))
+                    var_names, kind_list, clamp_vals, update_list )
 
 call state_structure_info(domain_id)
 
@@ -2124,6 +2125,10 @@ real(r8) :: s_rho(Ns_rho), Cs_r(Ns_rho), SSH(Nx,Ny)
 
 real(r8), parameter :: all_land = 0.001_r8
 
+write(string1,*)'..  WARNING: routine is not finished - more than a stub but does not.' 
+write(string2,*)    'WARNING: do anything with the vertical coordinates.'
+call error_handler(E_MSG,'get_grid:',string1,text2=string2)
+
 if (debug > 1) then
    write(string1,*)'..  NX is ',Nx
    write(string2,*)    'NY is ',Ny
@@ -2151,7 +2156,7 @@ if (.not. allocated(ANGL)) allocate(ANGL(Nxi_rho,Neta_rho))
 
 if (.not. allocated(ZC))   allocate(  ZC(Nx,Ny,Nz))
 
-!> todo are PM, PN used for anything?
+!>@ todo are PM, PN used for anything?
 
 if (.not. allocated(PM))   allocate(  PM(Nx,Ny))
 if (.not. allocated(PN))   allocate(  PN(Nx,Ny))
@@ -2304,7 +2309,7 @@ call nc_check(nf90_close(ncid), &
 ! TJH call nc_check(nf90_close(ncid), &
 ! TJH              'get_var','close '//trim(grid_definition_filename))
 
-!>@ TODO FIXME this depends on the transform in ROMS 
+!>@ todo FIXME this depends on the transform in ROMS 
 
 do k=1,Nz
      dzt0(:,:) = (s_rho(k)-Cs_r(k))*hc + Cs_r(k) * HT(:,:)
@@ -2332,171 +2337,77 @@ end subroutine get_grid
 !>
 !> Determines if the variables and DART KINDs specified by the 'variables'
 !> namelist variable are available in the ROMS analysis file and that the
-!> corresponding DART KIND is also supported.
+!> corresponding DART KIND is also supported. Sets the module arrays that
+!> relate the DART KIND, min or max allowable values, and whether or not
+!> to update the variable in the ROMS file.
 !>
 !>@param state_variables the list of variables and kinds from model_mod_nml
-!>@param ncid the netCDF handle to the ROMS analysis file
-!>@param filename the name of the ROMS analysis file (for error messages, mostly)
+!>@param ncid the netCDF handle of the ROMS file
+!>@param filename the name of the ROMS file (for error messages, mostly)
 !>@param ngood the number of variable/KIND pairs specified
-!>@param table a more convenient form for the variable/KIND pairs. Each row
-!>       is a pair, column 1 is the variable, column 2 is the DART KIND
 
-subroutine verify_variables( state_variables, ncid, filename, ngood, table )
+subroutine parse_variable_input( state_variables, ncid, filename, ngood )
 
 character(len=*), intent(in)  :: state_variables(:)
 integer,          intent(in)  :: ncid
 character(len=*), intent(in)  :: filename
 integer,          intent(out) :: ngood
-character(len=*), intent(out) :: table(:,:)
 
-integer :: nrows, ncols, i, VarID
-character(len=NF90_MAX_NAME) :: varname
-character(len=NF90_MAX_NAME) :: dartstr
+integer :: nrows, i, VarID
+character(len=NF90_MAX_NAME) :: varname       ! column 1
+character(len=NF90_MAX_NAME) :: dartstr       ! column 2
+character(len=NF90_MAX_NAME) :: minvalstring  ! column 3
+character(len=NF90_MAX_NAME) :: maxvalstring  ! column 4
+character(len=NF90_MAX_NAME) :: state_or_aux  ! column 5   change to updateable
+
 logical :: failure
 
 failure = .FALSE. ! perhaps all with go well
 
-nrows = size(table,1)
-ncols = size(table,2)
-
 ngood = 0
-MyLoop : do i = 1, nrows
+MyLoop : do i = 1, MAX_STATE_VARIABLES
 
-   varname    = trim(state_variables(2*i -1))
-   dartstr    = trim(state_variables(2*i   ))
-   table(i,1) = trim(varname)
-   table(i,2) = trim(dartstr)
-   if ( table(i,1) == ' ' .and. table(i,2) == ' ' ) exit MyLoop ! Found end of list.
+   varname      = trim(state_variables(num_state_table_columns*i-4))
+   dartstr      = trim(state_variables(num_state_table_columns*i-3))
+   minvalstring = trim(state_variables(num_state_table_columns*i-2))
+   maxvalstring = trim(state_variables(num_state_table_columns*i-1))
+   state_or_aux = trim(state_variables(num_state_table_columns*i  ))
 
-   if ( table(i,1) == ' ' .or. table(i,2) == ' ' ) then
+   if ( varname == ' ' .and. dartstr == ' ' ) exit MyLoop ! Found end of list.
+
+   if ( varname == ' ' .or. dartstr == ' ' ) then
       string1 = 'model_nml:model "variables" not fully specified'
-      call error_handler(E_ERR,'verify_variables:',string1,source,revision,revdate)
+      call error_handler(E_ERR,'parse_variable_input:',string1,source,revision,revdate)
    endif
-
-   ! Make sure variable exists in model analysis variable list
-
-   write(string1,'(''variable '',a,'' in '',a)') trim(varname), trim(filename)
-   write(string2,'(''there is no '',a)') trim(string1)
-   call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
-                 'verify_variables', trim(string2))
 
    ! Make sure DART kind is valid
 
    if( get_raw_obs_kind_index(dartstr) < 0 ) then
       write(string1,'(''there is no obs_kind <'',a,''> in obs_kind_mod.f90'')') trim(dartstr)
-      call error_handler(E_ERR,'verify_variables:',string1,source,revision,revdate)
+      call error_handler(E_ERR,'parse_variable_input:',string1,source,revision,revdate)
    endif
 
+   call to_upper(minvalstring)
+   call to_upper(maxvalstring)
+   call to_upper(state_or_aux)
+
+   var_names(   i) = varname
+   kind_list(   i) = get_raw_obs_kind_index(dartstr)
+   clamp_vals(i,1) = string_to_numeric(minvalstring)
+   clamp_vals(i,2) = string_to_numeric(maxvalstring)
+   update_list( i) = string_to_logical(state_or_aux)
+
    ngood = ngood + 1
+
 enddo MyLoop
 
-
-if (ngood == nrows) then
-   string1 = 'WARNING: There is a possibility you need to increase ''max_state_variables'''
+if (ngood == MAX_STATE_VARIABLES) then
+   string1 = 'WARNING: There is a possibility you need to increase ''MAX_STATE_VARIABLES'''
    write(string2,'(''WARNING: you have specified at least '',i4,'' perhaps more.'')')ngood
-   call error_handler(E_MSG,'verify_variables:',string1,source,revision,revdate,text2=string2)
+   call error_handler(E_MSG,'parse_variable_input:',string1,source,revision,revdate,text2=string2)
 endif
 
-
-end subroutine verify_variables
-
-
-!-----------------------------------------------------------------------
-!>
-!> matches variable name in bounds table to assign
-!> the bounds if they exist.  otherwise sets the bounds
-!> to missing_r8 which means they are unbounded.
-!> @todo FIXME the roms_state_bounds module variable that specifies the
-!>       bounds is not actually set nor checked nor ... so all variables
-!>       are unbounded.
-!>
-!> @param bounds_table table specifying the numeric bounds for each variable.
-!>                     as currently envisioned, a table specifying the variable
-!>                     name and its boundaries must be supplied ... ?namelist?
-!> @param ivar the handle to the variable in question
-!>
-
-!>@todo FIXME : JPH. we should be passing in the clamping information into the 
-!>@                  add_domain call.  This can be paresd in the verify_variables
-
-!%! subroutine get_variable_bounds(bounds_table, ivar)
-!%! 
-!%! character(len=*), intent(in) :: bounds_table(num_bounds_table_columns, max_state_variables)
-!%! integer,          intent(in) :: ivar
-!%! 
-!%! ! local variables
-!%! character(len=50) :: bounds_varname, bound
-!%! character(len=10) :: clamp_or_fail
-!%! real(r8)          :: lower_bound, upper_bound
-!%! integer           :: n
-!%! 
-!%! write(string1,*)'WARNING routine not tested.'
-!%! write(string2,*)'"roms_state_bounds" from namelist is not set, not tested.'
-!%! call error_handler(E_MSG,'get_variable_bounds:',string1, text2=string2)
-!%! 
-!%! n = 1
-!%! do while ( trim(bounds_table(1,n)) /= 'NULL' .and. trim(bounds_table(1,n)) /= '' )
-!%! 
-!%!    bounds_varname = trim(bounds_table(1,n))
-!%! 
-!%!    if ( bounds_varname == trim(get_variable_name(domain_id, ivar)) ) then
-!%! 
-!%!         bound = trim(bounds_table(2,n))
-!%!         if ( bound /= 'NULL' .and. bound /= '' ) then
-!%!              read(bound,'(d16.8)') lower_bound
-!%!         else
-!%!              lower_bound = missing_r8
-!%!         endif
-!%! 
-!%!         bound = trim(bounds_table(3,n))
-!%!         if ( bound /= 'NULL' .and. bound /= '' ) then
-!%!              read(bound,'(d16.8)') upper_bound
-!%!         else
-!%!              upper_bound = missing_r8
-!%!         endif
-!%! 
-!%!         ! How do we want to handle out of range values?
-!%!         ! Set them to predefined limits (clamp) or simply fail (fail).
-!%!         clamp_or_fail = trim(bounds_table(4,n))
-!%!         if ( clamp_or_fail == 'NULL' .or. clamp_or_fail == '') then
-!%!              write(string1, *) 'instructions for CLAMP_or_FAIL on ', &
-!%!                                 trim(bounds_varname), ' are required'
-!%!              call error_handler(E_ERR,'get_variable_bounds:',string1, &
-!%!                                 source,revision,revdate)
-!%!         else if ( clamp_or_fail == 'CLAMP' ) then
-!%!              progvar(ivar)%out_of_range_fail = .FALSE.
-!%!         else if ( clamp_or_fail == 'FAIL' ) then
-!%!              progvar(ivar)%out_of_range_fail = .TRUE.
-!%!         else
-!%!              write(string1, *) 'last column must be "CLAMP" or "FAIL" for ', &
-!%!                   trim(bounds_varname)
-!%!              call error_handler(E_ERR,'get_variable_bounds:',string1, &
-!%!                   source,revision,revdate, text2='found '//trim(clamp_or_fail))
-!%!         endif
-!%! 
-!%!         ! Assign the clamping information into the variable
-!%!         progvar(ivar)%clamping = .true.
-!%!         progvar(ivar)%range    = (/ lower_bound, upper_bound /)
-!%! 
-!%!         return
-!%!    endif
-!%! 
-!%!    n = n + 1
-!%! 
-!%! enddo !n
-!%! 
-!%! ! we got through all the entries in the bounds table and did not
-!%! ! find any instructions for this variable.  set the values to indicate
-!%! ! we are not doing any processing when we write the updated state values
-!%! ! back to the model restart file.
-!%! 
-!%! progvar(ivar)%clamping = .false.
-!%! progvar(ivar)%range = missing_r8
-!%! progvar(ivar)%out_of_range_fail = .false.  ! should be unused so setting shouldn't matter
-!%! 
-!%! return
-!%! 
-!%! end subroutine get_variable_bounds
+end subroutine parse_variable_input
 
 
 !-----------------------------------------------------------------------
@@ -2849,7 +2760,7 @@ end subroutine get_index_range_int
 !>                 (used to generate useful error messages).
 !> @param last_time the time/date of the last timestep in the file.
 !>
-!> @todo FIXME Make sure the calculation is correct.
+!>@ todo FIXME Make sure the calculation is correct.
 !>       The metadata claims to have a julian calendar, the 64bit real
 !>       can support whole numbers that overflow a 32 bit integer. The
 !>       only test file I have is for year 223 or something like that.
@@ -3557,7 +3468,7 @@ end subroutine quad_bilinear_interp
 !>
 !> Solves rank 3 linear system mr = v for r using Cramer's rule.
 !>
-!> @ todo This isn't the best choice for speed or numerical stability so
+!>@ todo This isn't the best choice for speed or numerical stability so
 !> might want to replace this at some point.
 !>
 
@@ -3612,7 +3523,7 @@ end function deter3
 !> @param x_ind the 'x' (longitude) index of the location of interest.
 !> @param y_ind the 'y' (latitude) index of the location of interest.
 !>
-!> @todo FIXME should this really error out or silently fail?
+!>@ todo FIXME should this really error out or silently fail?
 !> At this point it may silently fail.
 !>
 !> ROMS has a structured horizontal grid.
@@ -3738,7 +3649,7 @@ enddo
 min_location = minloc(rtemp)
 loc1 = min_location(1)
 
-!> @todo FIXME dies here with bounds checking turned on and you attempt
+!>@ todo FIXME dies here with bounds checking turned on and you attempt
 !>       to interpolate something outside the domain. This WHOLE ROUTINE
 !>       can be replaced with something similar from POP.
 
@@ -3816,7 +3727,7 @@ end subroutine get_reg_box_indices
 !> @param x_ind the 'x' (longitude) index of the location of interest.
 !> @param y_ind the 'y' (latitude) index of the location of interest.
 !>
-!> @todo FIXME should this really error out or silently fail?
+!>@ todo FIXME should this really error out or silently fail?
 !> At this point it may silently fail.
 !>
 
@@ -3961,7 +3872,7 @@ real(r8), intent(out) :: corners(4)
 integer :: ip1
 
 ! Note that corners go counterclockwise around the quad.
-! @todo Have to worry about wrapping in longitude but not in latitude
+!>@ todo Have to worry about wrapping in longitude but not in latitude
 
 ip1 = i + 1
 !if(ip1 > nx) ip1 = 1
@@ -4055,6 +3966,43 @@ call nc_check(nf90_inquire_dimension(ncid, DimID, len=dimlen), &
               'get_grid', string2)
 
 end function get_dimension_length
+
+!-----------------------------------------------------------------------
+!>
+
+function string_to_numeric(inputstring)
+
+character(len=*), intent(in) :: inputstring
+real(r8)                     :: string_to_numeric
+
+integer :: io
+
+! if the string converts - great, if not, it's MISSING_R8
+read(inputstring,*,iostat=io)string_to_numeric
+if (io /= 0) string_to_numeric = MISSING_R8
+
+end function string_to_numeric
+
+!-----------------------------------------------------------------------
+!>
+
+function string_to_logical(inputstring)
+
+character(len=*), intent(in) :: inputstring
+logical                      :: string_to_logical
+
+!>@ todo FIXME check on tolerance for copy back
+! The input string has already been converted to uppercase
+! If they match no_copy_back exactly - so be it.
+! If they misspell it, the default action is to overwrite ... OK
+
+if (trim(inputstring) == 'NO_COPY_BACK') then
+   string_to_logical = .false.
+else
+   string_to_logical = .true.
+endif
+
+end function string_to_logical
 
 !===================================================================
 ! End of model_mod
