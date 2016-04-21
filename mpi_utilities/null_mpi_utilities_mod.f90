@@ -155,12 +155,13 @@ private
 integer :: myrank          ! my mpi number
 integer :: total_tasks     ! total mpi tasks/procs
 integer :: comm_size       ! if ens count < tasks, only the first N participate
+integer :: datasize        ! should be an accessor function, not a public
 
 public :: initialize_mpi_utilities, finalize_mpi_utilities,                  &
           task_count, my_task_id, block_task, restart_task,                  &
           task_sync, array_broadcast, send_to, receive_from, iam_task0,      &
           broadcast_send, broadcast_recv, shell_execute, sleep_seconds,      &
-          sum_across_tasks, reduce_min_max, &
+          sum_across_tasks, reduce_min_max, datasize,                        &
           get_from_fwd, get_from_mean, all_reduce_min_max, broadcast_flag
 
 ! version controlled file description for error handling, do not edit
@@ -227,8 +228,11 @@ total_tasks = 1
 comm_size = total_tasks
 
 if (r8 /= digits12) then
+   datasize = 4
    write(errstring, *) "Using real * 4 for datasize of r8"
    call error_handler(E_MSG,'initialize_mpi_utilities: ',errstring,source,revision,revdate)
+else
+   datasize = 8
 endif
 
 ! non-MPI successfully initialized.
