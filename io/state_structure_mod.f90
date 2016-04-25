@@ -1443,7 +1443,7 @@ do ivar = 1, num_vars
    array_lengths(1:num_dims) = get_dim_lengths(dom_id,ivar)
    do jdim = 1, num_dims
        dim_name = get_dim_name(dom_id, ivar, jdim)
-       write(*,'("       state   dim_id[",I1,"] ",A15,", length = ",I6)') jdim, &
+       write(*,'("       state   dim_id[",I2,"] ",A15,", length = ",I6)') jdim, &
                                                                           trim(dim_name), &
                                                                           array_lengths(jdim)
    enddo
@@ -1455,7 +1455,7 @@ do ivar = 1, num_vars
    array_lengths(1:num_dims) = get_io_dim_lengths(dom_id,ivar)
    do jdim = 1, num_dims
        dim_name = get_dim_name(dom_id, ivar, jdim)
-       write(*,'("       netCDF  dim_id[",I1,"] ",A15,", length = ",I6)') array_ids(jdim), &
+       write(*,'("       netCDF  dim_id[",I2,"] ",A15,", length = ",I6)') array_ids(jdim), &
                                                                           trim(dim_name), &
                                                                           array_lengths(jdim)
    enddo
