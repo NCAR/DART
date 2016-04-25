@@ -1510,6 +1510,88 @@ integer,             intent(out) :: istatus
 !>@ todo FIXME : JPH. We need to make sure we are converting the observations
 !>               vertical values to be the same as the state properly.
 
+! zin and zout are the vert values coming in and going out.
+! ztype{in,out} are the vert types as defined by the 3d sphere
+! locations mod (location/threed_sphere/location_mod.f90)
+
+real(r8) :: llv_loc(3)
+real(r8) :: zin, zout
+integer  :: ztypein, ztypeout
+type(location_type) :: my_location
+
+! assume failure.
+istatus = 1
+
+my_location = location
+ztypeout = VERTISHEIGHT
+
+! first off, check if ob is identity ob.  if so get_state_meta_data() will
+! have returned location information already in the requested vertical type.
+if (obs_kind < 0) then
+   call get_state_meta_data(state_handle, int(obs_kind,i8),my_location)
+   istatus = 0
+   return
+endif
+
+! if the existing coord is already in the requested vertical units
+! or if the vert is 'undef' which means no specifically defined
+! vertical coordinate, return now.
+ztypein  = nint(query_location(location, 'which_vert'))
+if ((ztypein == ztypeout) .or. (ztypein == VERTISUNDEF)) then
+   istatus = 0
+   return
+else
+   if (debug > 3) then
+      write(string1,'(A,3X,2I3)') 'ztypein, ztypeout:',ztypein,ztypeout
+      call error_handler(E_MSG, 'vert_convert:',string1, source, revision, revdate)
+   endif
+endif
+
+! we do need to convert the vertical.  start by
+! extracting the location lon/lat/vert values.
+llv_loc = get_location(location)
+
+! the routines below will use zin as the incoming vertical value
+! and zout as the new outgoing one.  start out assuming failure
+! (zout = missing) and wait to be pleasantly surprised when it works.
+zin     = llv_loc(3)
+zout    = missing_r8
+
+! if the vertical is missing to start with, return it the same way
+! with the requested type as out.
+if (zin == missing_r8) then
+   my_location = set_location(llv_loc(1),llv_loc(2),missing_r8,ztypeout)
+   return
+endif
+
+! Convert the incoming vertical type (ztypein) into the vertical
+! localization coordinate given in the namelist (ztypeout).
+! Various incoming vertical types (ztypein) are taken care of
+! inside find_vert_level. So we only check ztypeout here.
+
+! convert into:
+select case (ztypeout)
+
+   case (VERTISHEIGHT)
+
+!  in most cases, input surface values only, just need to convert to depth
+   zout = -0.0
+
+   case (VERTISSURFACE)
+
+   case default
+      write(string1,*) 'Requested vertical coordinate not recognized: ', ztypeout
+      call error_handler(E_ERR,'vert_convert:', string1, &
+                         source, revision, revdate)
+
+end select   ! outgoing vert type
+
+! Returned location
+my_location = set_location(llv_loc(1),llv_loc(2),zout,ztypeout)
+
+! Set successful return code only if zout has good value
+if(zout /= missing_r8) istatus = 0
+
 istatus = 0
 
 
@@ -3961,9 +4043,9 @@ write(string1,*)'inq_dimid '//trim(dimension_name)//' '//trim(filename)
 write(string2,*)'inquire_dimension '//trim(dimension_name)//' '//trim(filename)
 
 call nc_check(nf90_inq_dimid(ncid, trim(dimension_name), DimID), &
-              'get_grid',string1)
+              'get_dimension_length',string1)
 call nc_check(nf90_inquire_dimension(ncid, DimID, len=dimlen), &
-              'get_grid', string2)
+              'get_dimension_length', string2)
 
 end function get_dimension_length
 
