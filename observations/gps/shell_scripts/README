@@ -4,16 +4,18 @@
 #
 # DART $Id$
 
-Description of the scripts provided to process the COSMIC and 
-CHAMP GPS radio occultation data.
+Description of the scripts provided to process the COSMIC, CHAMP, GRACE and 
+other GPS radio occultation data.
 
 Summary of workflow:  
 1) cd to the ../work directory and run ./quickbuild.csh to compile everything.  
 2) Edit ./gpsro_to_obsseq.csh once to set the directory where the DART
     code is installed, and your CDAAC web site user name and password.
-3) Edit ./do_convert.csh to set the days of data to download/convert/remove.
+3) Edit ./do_convert.csh to set the days of data to download/convert/remove,
+   and what directory you want the work to be done in.
 4) Run ./do_convert.csh
 5) For additional days repeat steps 3 and 4.
+6) For long conversions, edit ./do_convert.lsf and submit it to the batch system.
 
 
 More details:
@@ -60,6 +62,10 @@ any errors in the script or conversion (file system full, bad file format,
 etc) and the script doesn't exit, it can delete the input files before 
 the conversion has succeeded.  But if you have file quota concerns
 this allows you to keep the total disk usage lower.
+
+My recommendation is to run a few days without the autodelete option and
+check the logs carefully.  When it seems to be working correctly, turn 
+the autodelete option on before doing a long run.
 
 
 

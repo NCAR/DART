@@ -16,13 +16,13 @@
 # -------------------
 
 # set the first and last days.  can roll over month and year boundaries.
-set start_year=2009
-set start_month=9
+set start_year=2010
+set start_month=1
 set start_day=1
 
-set end_year=2009
-set end_month=9
-set end_day=3
+set end_year=2010
+set end_month=1
+set end_day=7
 
 
 # for each day: download the data or not, convert to daily obs_seq files 
@@ -40,22 +40,40 @@ set do_delete   = 'no'
 # - only select one of reprocessed or realtime for a particular
 #   satellite or you will get duplicate observations.
 
+# WARNING: this table is almost certainly out of date.  check the CDAAC web 
+# site for the currently available days.
+#
+# champ2014:  latest reprocessing of original champ data : 2001.138 - 2008.279
+# cnofs:     Air Force C/NOFS : 2010.060 - 2011.365
+# cnofsrt:   C/NOFS realtime : 2012.001 - 2015.193
+# cosmic2013: COSMIC reprocessed : 2006.112 - 2014.120
+# cosmic:    COSMIC : 2014.121 - 2015.150
+# cosmicrt:  COSMIC realtime : 2014.181 - now* (2015.237)
+# gpsmet:    ? : 1995.111 - 1997.047
+# gpsmetas:  ? : 1995.237 - 1997.016
+# champ:     CHAMP : unavailable now
+# grace:     Grace-A : 2007.059 - now* (2015.089)
+# metopa2016:  Metop-A/GRAS reprocessed in 2016 : 2007.273 - 2011.364
+# metopa:    Metop-A/GRAS : 2012.001 - 2015.059
+# metopb:    Metop-B/GRAS : 2013.032 - 2015.059
+# sacc:      Argentinan SAC-C : 2006.068 - 2011.215
+# saccrt:    SAC-C realtime : 2011.329 - 2013.226
+# tsx:       German TerraSAR-X : 2008.041 - now* (2015.058)
+
+# which satellites to include:
 rm -fr satlist
-echo cosmic      >>! satlist  # all 6 COSMIC : 2006.194 - now*
-## echo cosmicrt >>! satlist  # COSMIC : realtime
-echo sacc        >>! satlist  # Argentinan SAC-C : 2006.068 - now*
-## echo saccrt   >>! satlist  # SAC-C : realtime
-echo ncofs       >>! satlist  # new Air Force C/NOFS : 2010.335 - now*
-## echo ncofsrt  >>! satlist  # C/NOFS : realtime
+echo cnofs       >>! satlist  # new Air Force C/NOFS : 2010.335 - now*
+echo cosmic2013  >>! satlist  # all 6 COSMIC : 2006.194 - now*, reprocessed 2013
 echo grace       >>! satlist  # Grace-A : 2007.059 - now*
+echo metopa2016  >>! satlist  # Metop-A/GRAS : 2008.061 - now*, reprocessed 2016
+echo sacc        >>! satlist  # Argentinan SAC-C : 2006.068 - now*
 echo tsx         >>! satlist  # German TerraSAR-X : 2008.041 - now*
-echo metopa      >>! satlist  # Metop-A/GRAS : 2008.061 - now*
-echo champ       >>! satlist  # CHAMP : 2001.139 - 2008.274
 
 
 # where to download the data and do the conversions, relative to
-# this shell_scripts directory.
-set datadir = ../gpsro
+# this shell_scripts directory.  the script below will add YYYYMM
+# to the end of this string.
+set datadir = /glade/p/image/Observations/GPS/staged
 
 # end of things you should have to set in this script
 
@@ -112,7 +130,7 @@ while ( $d <= $totaldays )
 
   # THE WORK HAPPENS HERE:  call the convert script for each day.
 
-  ./gpsro_to_obsseq.csh ${year}${month}${day} $datadir \
+  ./gpsro_to_obsseq.csh ${year}${month}${day} $datadir/${year}${month} \
                          $do_download $do_convert $do_delete ./satlist
 
 
@@ -120,7 +138,7 @@ while ( $d <= $totaldays )
   set curday=`echo ${year}${month}${day}00 +1d | ./advance_time`
 
   # advance the loop counter
-  @ d += 1
+  @ d++
  
 end
 
