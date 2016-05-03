@@ -74,7 +74,7 @@
 # start of user-settable section - should only need to set these once
 
 # top level DART directory
-setenv DART_DIR    /glade/p/work/$USER/subversion/newtrunk
+setenv DART_DIR    /glade/p/home/$USER/DART
 
 # your CDAAC web site user name and password
 set cdaac_user    = nscollins
