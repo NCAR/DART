@@ -29,80 +29,78 @@
 # edit the input.nml in the work directory to select any options;
 # it will be copied to the various places it is needed.
 #
-# the processing directory name is relative to the 'work' directory.
+# if the processing directory name is a relative path, it should
+# be relative to the gps converter 'work' directory.
 #
 # CHECK these against the cdaac web site for latest info.  as an
-# example, a snapshot of available data as of aug 2015 is:
+# example, a snapshot of available data as of May 2016 is:
 #
-#    champ2014:  latest reprocessing of original champ data : 2001.138 - 2008.279
-#    champ:     CHAMP : superceeded by reprocessed data
-#    cnofs:     Air Force C/NOFS : 2010.060 - 2011.365
-#    cnofsrt:   C/NOFS realtime : 2012.001 - 2015.193
-#    cosmic2013: COSMIC reprocessed : 2006.112 - 2014.120
-#    cosmic:    COSMIC : 2014.121 - 2015.150
-#    cosmicrt:  COSMIC realtime : 2014.181 - now* (2015.237)
-#    gpsmet:    ? : 1995.111 - 1997.047
-#    gpsmetas:  ? : 1995.237 - 1997.016
-#    grace:     Grace-A : 2007.059 - now* (2015.089)
-#    metopa2016:  Metop-A/GRAS reprocessed : 2007.274 - 2015.365
-#    metopa:    Metop-A/GRAS : 2012.001 - 2015.059
-#    metopb:    Metop-B/GRAS : 2013.032 - 2015.059
-#    sacc:      Argentinan SAC-C : 2006.068 - 2011.215
-#    saccrt:    SAC-C realtime : 2011.329 - 2013.226
-#    tsx:       German TerraSAR-X : 2008.041 - now* (2015.058)
-#
-#  - dates are YYYY.DDD where DDD is day number in year
-#  - now* means current date minus 3-4 months.  reprocessed data
-#    lags that much behind.  realtime means up to today's date,
-#    with less quality control.
-#  - only select one of reprocessed or realtime for a satellite 
-#    or you will get duplicated observations.
-#
+# champ2014  2001.138 - 2008.279 
+# cnofs      2010.060 - 2011.365
+# cnofsrt    2012.001 - 2015.193
+# cosmic2013 2006.112 - 2014.120
+# cosmic     2014.121 - 2015.364
+# cosmicrt   2014.181 - 2016.123
+# gpsmet     1995.111 - 1997.047
+# gpsmetas   1995.237 - 1997.016
+# grace      2007.059 - 2015.364
+# kompsat5rt 2015.305 - 2016.123
+# metopa2016 2007.274 - 2015.365
+# metopb     2013.032 - 2015.059
+# sacc       2006.068 - 2011.215
+# saccrt     2011.329 - 2013.226
+# tsx        2008.041 - 2015.333
 #
 #     created June 2008, Ryan Torn NCAR/MMM
 #     updated Nov  2008, nancy collins ncar/cisl
 #     updated Aug  2009, nancy collins ncar/cisl
 #     updated Oct  2010, Ryan and nancy
 #     updated Jul  2011, nancy (added support for other satellites)
+#     revised May  2016, nancy (full support for daily tar files)
 # 
 #
-# ------- 
-# This script uses the CDAAC web site with 'wget' to download
-# the files needed to do this process.  They are available as
-# a single tar file per satellite per day which contains all
-# available profiles for that day.  For example:
+# This script uses the 'wget' command to download data from the CDAAC
+# web site.  Data is available as a single tar file per satellite per day.  
+# The profiles are stored one per file after untarring the archive.  
+# The current filename scheme includes the satellite and YYYY.DOY, e.g.:
 #
-#    http://cdaac-www.cosmic.ucar.edu/cdaac/rest/tarservice/data/cosmic/atmPrf/2012.304
+# wget http://cdaac-www.cosmic.ucar.edu/cdaac/rest/tarservice/data/cosmic/atmPrf/2012.304
 #        -O cosmic_atmPrf_2012.304.tar 
 #   
+# If this changes (again) this script will need to be updated.
 #
 ########################################################################
 
-########################################################################
+# start of user-settable section - should only need to set these once
 
-# should only have to set the DART_DIR, and if downloading, set the
-# web site user name and password for access.  expects to use the 'wget'
-# utility to download files from the web page.  
+# top level DART directory
+setenv DART_DIR    /glade/p/work/$USER/subversion/newtrunk
 
-# top level directory (root where observations/gps dir is found)
-setenv DART_DIR    /glade/p/home/$USER/DART/trunk
+# your CDAAC web site user name and password
 set cdaac_user    = nscollins
-set cdaac_pw      = xxxxxxxx
+set cdaac_pw      = xxxxxxx
 
-# CDAAC web site path:
-set gps_repository_path = 'http://cdaac-www.cosmic.ucar.edu/cdaac/rest/tarservice/data'
+# end of user-settable section
+
+########################################################################
 
 setenv DART_WORK_DIR  ${DART_DIR}/observations/gps/work
 setenv CONV_PROG      convert_cosmic_gps_cdf
 setenv DATE_PROG      advance_time
 
+# CDAAC web site path:
+set gps_repository_path = 'http://cdaac-www.cosmic.ucar.edu/cdaac/rest/tarservice/data'
+
 # wget seems to print a lot of output showing progress.
-# this flag tries to print less often but i haven't found
-# the way to turn it off completely.
+# this flag tries to print less often but i haven't found a way to turn 
+# it off completely.  --progress:none was discussed in a wget forum 
+# but i see no indication it was implemented
 set wget_cmd            = 'wget --progress=dot:mega '
 
-# this helps with debugging
+# this helps with debugging and isn't really that verbose
 set chatty=yes
+
+# start of executable stuff
 
 if ($# != 6) then
    echo usage: $0 date workdir downld convert cleanup satlist

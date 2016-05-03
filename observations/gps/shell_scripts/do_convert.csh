@@ -9,11 +9,25 @@
 # this script loops over days, calling the GPS convert script
 # once per day.  it can roll over month and year boundaries.
 #
+# it can download data on demand from the CDAAC web site,
+# convert it, and delete it, or any combination of these
+# three functions, depending on need.  e.g. if the data is
+# already downloaded, it can just convert.  it can download
+# and convert and not delete until the results are checked
+# and then in a second pass just delete, etc, etc.
+#
 # this script requires the executable 'advance_time' to be
 # built and exist in the current directory, and advance_time
-# requires a minimal input.nml namelist file (empty utilities_nml only).
-
+# requires a minimal input.nml namelist file (empty &utilities_nml only).
+#
+# this script constructs the arguments needed for the script that
+# is doing all the "real" work:  gpsro_to_obsseq.csh
+# see that script for details of what is involved in doing
+# the actual conversion.
+# 
 # -------------------
+
+# start of things you should have to set in this script
 
 # set the first and last days.  can roll over month and year boundaries.
 set start_year=2010
@@ -25,54 +39,65 @@ set end_month=1
 set end_day=7
 
 
-# for each day: download the data or not, convert to daily obs_seq files 
-# or not, and delete the data files after conversion or not.
+# for each day: 
+#  download the data from the web site or not, 
+#  convert to daily obs_seq files or not, and 
+#  delete the data files after conversion or not.
+
 set do_download = 'yes'
 set do_convert  = 'yes'
-set do_delete   = 'no'
+set do_delete   = 'yes'
 
 
 # set the list of satellite data to convert.
-# - in the comments below, 'now*' is the current date minus 3-4 months 
-#   since the reprocessed datasets lag the realtime data.  'realtime' 
-#   is data from up to today's date but with less quality control.
-# - dates below are YYYY.DDD  where DDD is day number in the year.
+# - in the comments below, 'realtime' is usually data up to the
+#   current date with less quality control.
+# - 'reprocessed' generally has the highest quality
+# - dates are YYYY.DDD  where DDD is day number in the year.
 # - only select one of reprocessed or realtime for a particular
-#   satellite or you will get duplicate observations.
-
-# WARNING: this table is almost certainly out of date.  check the CDAAC web 
-# site for the currently available days.
+#   satellite or you will get duplicate observations if they
+#   have overlapping time periods.
 #
-# champ2014:  latest reprocessing of original champ data : 2001.138 - 2008.279
-# cnofs:     Air Force C/NOFS : 2010.060 - 2011.365
-# cnofsrt:   C/NOFS realtime : 2012.001 - 2015.193
-# cosmic2013: COSMIC reprocessed : 2006.112 - 2014.120
-# cosmic:    COSMIC : 2014.121 - 2015.150
-# cosmicrt:  COSMIC realtime : 2014.181 - now* (2015.237)
-# gpsmet:    ? : 1995.111 - 1997.047
-# gpsmetas:  ? : 1995.237 - 1997.016
-# champ:     CHAMP : unavailable now
-# grace:     Grace-A : 2007.059 - now* (2015.089)
-# metopa2016:  Metop-A/GRAS reprocessed in 2016 : 2007.273 - 2011.364
-# metopa:    Metop-A/GRAS : 2012.001 - 2015.059
-# metopb:    Metop-B/GRAS : 2013.032 - 2015.059
-# sacc:      Argentinan SAC-C : 2006.068 - 2011.215
-# saccrt:    SAC-C realtime : 2011.329 - 2013.226
-# tsx:       German TerraSAR-X : 2008.041 - now* (2015.058)
+# WARNING: the available obs are updated frequently as the
+# data is reprocessed and new obs arrive.
+# check the CDAAC web site for the currently available days.  
+#
+# these dates were current as of May 2016:
+#
+# name_to_use    date range           what instrument?
+# -----------    ----------           ---------------
+# champ2014    2001.138 - 2008.279    CHAMP
+# cnofs        2010.060 - 2011.365    Air Force C/NOFS
+# cnofsrt      2012.001 - 2015.193      "    (realtime)
+# cosmic2013   2006.112 - 2014.120    COSMIC, reprocessed
+# cosmic       2014.121 - 2015.364      "    (not reprocessed yet)
+# cosmicrt     2014.181 - 2016.123      "    (realtime)
+# gpsmet       1995.111 - 1997.047    ?
+# gpsmetas     1995.237 - 1997.016    ?
+# grace        2007.059 - 2015.364    Grace-A
+# kompsat5rt   2015.305 - 2016.123    ?
+# metopa2016   2007.274 - 2015.365    Metop-A/GRAS, reprocessed 2016
+# metopb       2013.032 - 2015.059    Metop-B/GRAS 
+# sacc         2006.068 - 2011.215    Argentinan SAC-C
+# saccrt       2011.329 - 2013.226      "    (realtime)
+# tsx          2008.041 - 2015.333    German TerraSAR-X
+#
 
 # which satellites to include:
+
 rm -fr satlist
-echo cnofs       >>! satlist  # new Air Force C/NOFS : 2010.335 - now*
-echo cosmic2013  >>! satlist  # all 6 COSMIC : 2006.194 - now*, reprocessed 2013
-echo grace       >>! satlist  # Grace-A : 2007.059 - now*
-echo metopa2016  >>! satlist  # Metop-A/GRAS : 2008.061 - now*, reprocessed 2016
-echo sacc        >>! satlist  # Argentinan SAC-C : 2006.068 - now*
-echo tsx         >>! satlist  # German TerraSAR-X : 2008.041 - now*
+echo cnofs       >> satlist
+echo cosmic2013  >> satlist
+echo grace       >> satlist
+echo metopa2016  >> satlist
+echo sacc        >> satlist
+echo tsx         >> satlist
 
 
 # where to download the data and do the conversions, relative to
 # this shell_scripts directory.  the script below will add YYYYMM
 # to the end of this string.
+
 set datadir = /glade/p/image/Observations/GPS/staged
 
 # end of things you should have to set in this script
