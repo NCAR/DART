@@ -14,8 +14,7 @@ module model_mod
 
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r8, i8, MISSING_R8
-use time_manager_mod, only : time_type, set_time, set_time_missing, set_calendar_type, &
-                             GREGORIAN
+use time_manager_mod, only : time_type, set_time, set_time_missing
 use     location_mod, only : location_type, get_close_type, get_close_maxdist_init, &
                              get_close_obs_init, loc_get_close_obs => get_close_obs, &
                              set_location, set_location_missing
@@ -26,7 +25,7 @@ use    utilities_mod, only : register_module, error_handler, nc_check, &
 
 use ensemble_manager_mod,  only : ensemble_type
 
-use state_structure_mod,  only : add_domain, get_domain_size, state_structure_info
+use state_structure_mod,  only : add_domain, get_domain_size
 
 use obs_kind_mod,  only : get_raw_obs_kind_index
 
@@ -68,7 +67,6 @@ public :: get_model_size,         &
 public :: model_file_to_dart_vector, &
           dart_vector_to_model_file
 
-
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
    "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_cf_conventions/models/template/model_mod.f90 $"
@@ -97,7 +95,7 @@ integer, parameter :: num_state_table_columns = 5
 
 integer, allocatable :: state_kinds_list(:)
 
-! this defines what variables are in the state, and in what order.                  !------------- 
+! this defines what variables are in the state, and in what order.
 character(len=13) :: state_variables(num_state_table_columns*max_state_variables) = '             '
 logical :: output_state_vector = .true.
 
@@ -120,29 +118,23 @@ integer  :: statekindlist(max_state_variables)
 real(r8) :: stateclampvals(max_state_variables,2)
 logical  :: stateupdatelist(max_state_variables)                                         
 character(len=129), dimension(max_state_variables, num_state_table_columns):: var_table = ' '
-integer  :: numvar = 4
 
 ! Print module information to log file and stdout.
 call register_module(source, revision, revdate)
 
-! set calendar type
-call set_calendar_type(GREGORIAN)
-
-                      !----5----10--     -------------    -------------    -------------    -------------
-state_variables(1:numvar*num_state_table_columns)  = [character(len=13) ::  &
-                   (/ 'A            ',  'KIND_PRESSURE', 'NA           ', 'NA           ', 'UPDATE       ', &
+state_variables(1:4*num_state_table_columns)  = &
+                   (/ 'A            ',  'KIND_PRESSURE', 'NA           ', 'NA           ', 'NO_COPY_BACK ', &
                       'B            ',  'KIND_PRESSURE', '0.0          ', 'NA           ', 'UPDATE       ', &
-                      'C            ',  'KIND_PRESSURE', 'NA           ', '3.0          ', 'UPDATE       ', &
-                      'D            ',  'KIND_PRESSURE', '0.0          ', '200.0        ', 'NO_COPY_BACK ' /)]
+                      'C            ',  'KIND_PRESSURE', '0.0          ', 'NA           ', 'UPDATE       ', &
+                      'temp         ',  'KIND_GPSRO   ', '-1           ', '234567       ', 'UPDATE       ' /)
+                      !----5----10--     -------------    -------------    -------------    -------------
 
 call parse_variable_table( state_variables, nfields, var_table, statekindlist, stateclampvals, stateupdatelist )
 
-domid = add_domain('cf_test.nc', nfields, var_names = var_table(1:nfields, VT_VARNAMEINDX), &
+domid = add_domain('simple.nc', nfields, var_names = var_table(1:nfields, VT_VARNAMEINDX), &
                    kind_list   = statekindlist(1:nfields), &
                    clamp_vals  = stateclampvals(1:nfields,:), &
                    update_list = stateupdatelist(1:nfields))
-
-call state_structure_info(domid)
 
 model_size = get_domain_size(domid)
 ! ! The time_step in terms of a time type must also be initialized.
@@ -371,8 +363,12 @@ integer              :: ierr          ! return value of function
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
 
+integer :: StateVarDimID   ! netCDF pointer to state variable dimension (model size)
 integer :: MemberDimID     ! netCDF pointer to dimension of ensemble    (ens_size)
 integer :: TimeDimID       ! netCDF pointer to time dimension           (unlimited)
+
+integer :: StateVarVarID   ! netCDF pointer to state variable coordinate array
+integer :: StateVarID      ! netCDF pointer to 3D [state,copy,time] array
 
 character(len=129)    :: errstring
 
@@ -392,19 +388,9 @@ character(len=NF90_MAX_NAME) :: str1
 
 ierr = -1 ! assume things go poorly
 
-!-------------------------------------------------------------------------------
-! Have dart write out the prognostic variables
-!-------------------------------------------------------------------------------
-model_mod_writes_state_variables = .false.
-
-!-------------------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file, 
-! and then put into define mode.
-!-------------------------------------------------------------------------------
-
-call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID),&
-                                   'nc_write_model_atts', 'inquire ')
-call nc_check(nf90_Redef(ncFileID),'nc_write_model_atts',   'redef ')
+call nc_check(nf90_inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID), &
+                     "nc_write_model_atts", "inquire")
+call nc_check(nf90_redef(ncFileID), "nc_write_model_atts", "redef")
 
 !-------------------------------------------------------------------------------
 ! We need the dimension ID for the number of copies/ensemble members, and
@@ -422,6 +408,13 @@ if ( TimeDimID /= unlimitedDimId ) then
                      " should equal Unlimited Dimension ID",unlimitedDimID
    call error_handler(E_ERR,"nc_write_model_atts", errstring, source, revision, revdate)
 endif
+
+!-------------------------------------------------------------------------------
+! Define the model size / state variable dimension / whatever ...
+!-------------------------------------------------------------------------------
+! call nc_check(nf90_def_dim(ncid=ncFileID, name="StateVariable",  &
+!                            len=model_size, dimid=StateVarDimID), &
+!                            "nc_write_model_atts", "def_dim state")
 
 !-------------------------------------------------------------------------------
 ! Write Global Attributes 
@@ -442,10 +435,62 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate" ,revdate), &
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","template"), &
                           "nc_write_model_atts", "put_att model")
 
-! Finished with dimension/variable definitions, must end 'define' mode to fill.
+!-------------------------------------------------------------------------------
+! Here is the extensible part. The simplest scenario is to output the state vector,
+! parsing the state vector into model-specific parts is complicated, and you need
+! to know the geometry, the output variables (PS,U,V,T,Q,...) etc. We're skipping
+! complicated part.
+!-------------------------------------------------------------------------------
 
-call nc_check(NF90_enddef(ncfileID), 'prognostic enddef ')
+if ( output_state_vector ) then
 
+   !----------------------------------------------------------------------------
+   ! Create a variable for the state vector
+   !----------------------------------------------------------------------------
+
+  ! Define the state vector coordinate variable and some attributes.
+   call nc_check(nf90_def_var(ncid=ncFileID,name="StateVariable", xtype=NF90_INT, &
+                              dimids=StateVarDimID, varid=StateVarVarID), &
+                             "nc_write_model_atts", "def_var StateVariable")
+   call nc_check(nf90_put_att(ncFileID, StateVarVarID,"long_name","State Variable ID"), &
+                             "nc_write_model_atts", "put_att StateVariable long_name")
+   call nc_check(nf90_put_att(ncFileID, StateVarVarID, "units",     "indexical"), &
+                             "nc_write_model_atts", "put_att StateVariable units")
+   ! call nc_check(nf90_put_att(ncFileID, StateVarVarID, "valid_range", (/ 1, model_size /)), &
+   !                           "nc_write_model_atts", "put_att StateVariable valid_range")
+
+   ! Define the actual (3D) state vector, which gets filled as time goes on ... 
+   call nc_check(nf90_def_var(ncid=ncFileID, name="state", xtype=NF90_REAL, &
+                 dimids = (/ StateVarDimID, MemberDimID, unlimitedDimID /), &
+                 varid=StateVarID), "nc_write_model_atts", "def_var state")
+   call nc_check(nf90_put_att(ncFileID, StateVarID, "long_name", "model state or fcopy"), &
+                             "nc_write_model_atts", "put_att state long_name")
+
+   ! Leave define mode so we can fill the coordinate variable.
+   call nc_check(nf90_enddef(ncfileID),"nc_write_model_atts", "state_vector enddef")
+
+   ! Fill the state variable coordinate variable
+   ! call nc_check(nf90_put_var(ncFileID, StateVarVarID, (/ (i,i=1,model_size) /)), &
+   !                                  "nc_write_model_atts", "put_var state")
+
+else
+
+   !----------------------------------------------------------------------------
+   ! We need to process the prognostic variables.
+   !----------------------------------------------------------------------------
+
+   ! This block is a stub for something more complicated.
+   ! Usually, the control for the execution of this block is a namelist variable.
+   ! Take a peek at the bgrid model_mod.f90 for a (rather complicated) example.
+
+   call nc_check(nf90_enddef(ncfileID), "nc_write_model_atts", "prognostic enddef")
+
+endif
+
+!-------------------------------------------------------------------------------
+! Flush the buffer and leave netCDF file open
+!-------------------------------------------------------------------------------
+call nc_check(nf90_sync(ncFileID),"nc_write_model_atts", "sync")
 
 ierr = 0 ! If we got here, things went well.
 
@@ -654,7 +699,7 @@ integer,            intent(in) :: domain
 integer,            intent(in) :: copy
 character(len=1024)            :: construct_file_name_in
 
-write(construct_file_name_in, '(2A, i4.4, A)') trim(stub), ".", copy, ".nc"
+write(construct_file_name_in, '(A, i4.4, A)') trim(stub), copy, ".nc"
 
 end function construct_file_name_in
 
@@ -663,7 +708,7 @@ end function construct_file_name_in
 !> Stolen from pop model_mod.f90 restart_to_sv
 function read_model_time(filename)
 
-character(len=256) :: filename
+character(len=1024) :: filename
 type(time_type) :: read_model_time
 
 read_model_time = set_time_missing()
@@ -714,13 +759,12 @@ end subroutine dart_vector_to_model_file
 !>  This routine checks the user input against the variables available in the
 !>  input netcdf file to see if it is possible to construct the DART state vector
 !>  specified by the input.nml:model_nml:clm_variables  variable.
-!>  Each variable must have 6 entries.
+!>  Each variable must have 5 entries.
 !>  1: variable name
 !>  2: DART KIND
 !>  3: minimum value - as a character string - if none, use 'NA'
 !>  4: maximum value - as a character string - if none, use 'NA'
-!>  5: what file contains the variable - '.r. => restart', '.h0. => h0 history file'
-!>  6: does the variable get updated in the restart file or not ...
+!>  5: does the variable get updated in the restart file or not ...
 !>     only variables from restart files may be updated.
 !>     'UPDATE'       => update the variable in the restart file
 !>     'NO_COPY_BACK' => do not copy the variable back to the restart file
@@ -743,7 +787,7 @@ character(len=NF90_MAX_NAME) :: varname       ! column 1
 character(len=NF90_MAX_NAME) :: dartstr       ! column 2
 character(len=NF90_MAX_NAME) :: minvalstring  ! column 3
 character(len=NF90_MAX_NAME) :: maxvalstring  ! column 4
-character(len=NF90_MAX_NAME) :: state_or_aux  ! column 6
+character(len=NF90_MAX_NAME) :: state_or_aux  ! column 5
 
 real(r8) :: minvalue, maxvalue
 

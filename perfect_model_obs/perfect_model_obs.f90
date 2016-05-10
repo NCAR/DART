@@ -49,8 +49,6 @@ use           filter_mod, only : filter_set_initial_time, filter_sync_keys_time
 use state_vector_io_mod,   only : state_vector_io_init, &
                                   read_state, write_state
 
-use state_structure_mod,   only : get_num_domains, static_init_state_type
-
 use io_filenames_mod,      only : io_filenames_init, file_info_type
 
 use quality_control_mod,   only : set_input_qc, initialize_qc
@@ -586,7 +584,6 @@ call static_init_obs_sequence()
 call static_init_assim_model()
 ! Initialize the model class data now that obs_sequence is all set up
 call state_vector_io_init()
-call static_init_state_type()
 call initialize_qc()
 
 end subroutine perfect_initialize_modules_used

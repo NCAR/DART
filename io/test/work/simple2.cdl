@@ -1,0 +1,68 @@
+netcdf simple{
+
+dimensions:
+level = 4;
+lat = 5;
+lon = 6;
+time = UNLIMITED ; //(1 currently)
+variables:
+
+int A(level);
+A:units = "meters";
+A:long_name = "variable A" ;
+A:short_name = "short A" ; 
+A:missing_value = 22 ;
+
+float B(level);
+B:units = "meters/second" ;
+B:long_name = "variable B" ;
+B:short_name = "short B" ;
+B:missing_value = 111.11 ;
+
+double C(level);
+C:units = "meters/kg" ;
+C:long_name = "variable C" ;
+C:short_name = "short C" ;
+C:missing_value = 111.11 ;
+
+double temp(time,lon,lat,level);
+temp:units = "palm trees" ;
+temp:long_name = "ambient spectacular temperature from some really great planet and season" ;
+temp:short_name = "temperature" ;
+
+float time(time);
+time:units = "hours" ;
+
+//global attributes:
+
+:title = "simple_file" ;
+
+data:
+A = 10, 20, 30, 40 ;
+B = 10.0, 20.0, 30.0, 40.0;
+C = 100.0, 200.0, 300.0, 400.0;
+time = 1 ;
+
+temp = 
+   10.0, 20.0, 30.0,
+   10.0, 20.0, 30.0,
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0, 
+   10.0, 20.0, 30.0;
+
+}

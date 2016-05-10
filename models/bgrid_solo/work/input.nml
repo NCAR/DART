@@ -30,11 +30,10 @@
    async                    = 0,
    adv_ens_command          = "../shell_scripts/advance_model.csh",
    ens_size                 = 20,
-   start_from_restart       = .false.,
    output_restart           = .true.,
    obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "filter_ics",
+   restart_in_file_name     = "perfect_restart.",
    restart_out_file_name    = "filter_restart",
    init_time_days           = 0,
    init_time_seconds        = 0,
@@ -53,7 +52,7 @@
    silence                  = .false.,
    direct_netcdf_read       = .true.,
    direct_netcdf_write      = .true.,
-   perturb_restarts         = .true.,
+   perturb_from_single_instance = .true.
 
    inf_flavor                  = 0,                       0,
    inf_initial_from_restart    = .false.,                 .false.,
@@ -75,8 +74,6 @@
 
 &state_vector_io_nml
    single_precision_output    = .false.,
-   single_restart_file_out    = .true.,
-   perturbation_amplitude     = 0.2,
    write_binary_restart_files = .false.
 /
 
@@ -99,7 +96,6 @@
    print_every_nth_obs             = 0  /
 
 &ensemble_manager_nml
-   single_restart_file_in  = .true.,
 /
 
 &cov_cutoff_nml

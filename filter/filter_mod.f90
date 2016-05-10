@@ -67,8 +67,6 @@ use state_vector_io_mod,   only : state_vector_io_init, read_state, write_state
 
 use io_filenames_mod,      only : io_filenames_init, file_info_type
 
-use state_structure_mod,   only : static_init_state_type
-
 use forward_operator_mod,  only : get_obs_ens_distrib_state
 use quality_control_mod,   only : initialize_qc
 
@@ -1044,8 +1042,6 @@ call static_init_obs_sequence()
 call trace_message('Before init_model call')
 call static_init_assim_model()
 call trace_message('After  init_model call')
-call static_init_state_type()
-call trace_message('After  init_state_type call')
 call state_vector_io_init()
 call trace_message('After  init_state_vector_io call')
 call initialize_qc()

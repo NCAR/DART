@@ -28,7 +28,7 @@ contains
 !--------------------------------------------------------------------
 function read_model_time(filename)
 
-character(len=1024), intent(in) :: filename
+character(len=*), intent(in) :: filename
 type(time_type) :: read_model_time
 
 integer :: ncid, dart_secsVarID, dart_daysVarID

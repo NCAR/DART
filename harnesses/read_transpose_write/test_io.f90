@@ -1,3 +1,9 @@
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id: dart_time_io_mod.f90 9779 2016-02-17 16:54:11Z hendric $
+
 !> Test harness for a limited transpose code
 program test_io_read_transpose
 
@@ -14,8 +20,6 @@ use utilities_mod,        only : find_namelist_in_file, check_namelist_read
 use io_filenames_mod,     only : set_filenames, io_filenames_init
 
 use state_vector_io_mod
-use state_structure_mod,     only : static_init_state_type
-use state_structure_mod,     only : static_init_state_type
 
 use pio_transpose_mod
 
@@ -53,9 +57,6 @@ call find_namelist_in_file('input.nml', 'test_io_nml', iunit)
 read(iunit, nml = test_io_nml, iostat = io)
 call check_namelist_read(iunit, io, 'test_io_nml')
 
-! initalize state type for netcdf variables
-call static_init_state_type()
-  
 ! intialize model mod to get number of domains and model size
 call static_init_assim_model()
 call state_vector_io_init()
@@ -103,3 +104,9 @@ call end_ensemble_manager(state_ens_handle)
 call finalize_mpi_utilities(async=0)
 
 end program test_io_read_transpose
+
+! <next few lines under version control, do not edit>
+! $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_state_structure_unit_test/filter/filter.f90 $
+! $Id: filter.f90 7492 2015-01-27 22:36:58Z hkershaw $
+! $Revision: 7492 $
+! $Date: 2015-01-27 15:36:58 -0700 (Tue, 27 Jan 2015) $

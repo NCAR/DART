@@ -40,7 +40,7 @@ use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type
 use   state_vector_io_mod, only : state_vector_io_init,    &
                                   read_state, write_state
 
-use   state_structure_mod, only : static_init_state_type, get_num_domains
+use   state_structure_mod, only : get_num_domains
 
 use            filter_mod, only : filter_set_initial_time
 
@@ -326,7 +326,6 @@ call register_module(source,revision,revdate)
 ! Initialize modules used that require it
 call static_init_obs_sequence()
 
-call static_init_state_type()
 call state_vector_io_init()
 
 end subroutine initialize_modules_used

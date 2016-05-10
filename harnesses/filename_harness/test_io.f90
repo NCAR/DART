@@ -1,3 +1,9 @@
+! DART software - Copyright 2004 - 2013 UCAR. This open source software is
+! provided by UCAR, "as is", without charge, subject to all terms of use at
+! http://www.image.ucar.edu/DAReS/DART/DART_download
+!
+! $Id: dart_time_io_mod.f90 9779 2016-02-17 16:54:11Z hendric $
+
 !> Test harness for a limited transpose code
 program test_io_read_transpose
 
@@ -16,8 +22,7 @@ use io_filenames_mod,     only : io_filenames_init,restart_files_in,set_filename
 use state_vector_io_mod
 use state_structure_mod, only: get_num_domains, get_domain_size,&
                                get_num_variables, &
-                               ! get_state_indices, get_num_variables, &
-                               get_variable_name, static_init_state_type
+                               get_variable_name
 
 use mpi
 
@@ -61,18 +66,11 @@ call find_namelist_in_file('input.nml', 'test_io_nml', iunit)
 read(iunit, nml = test_io_nml, iostat = io)
 call check_namelist_read(iunit, io, 'test_io_nml')
 
-write(*,*) "1"
 ! intialize model mod to get number of domains and model size
 call static_init_assim_model()
 
-write(*,*) "2"
 call state_vector_io_init()
 
-write(*,*) "3"
-! initalize state type for netcdf variables
-call static_init_state_type()
-
-write(*,*) "4"
 call init_ensemble_manager(state_ens_handle, ens_size , model_size)
 
 
@@ -103,18 +101,15 @@ call init_ensemble_manager(state_ens_handle, ens_size , model_size)
 ! call get_state_indices(ind_in, lat_index, lon_index, depth_index, var_type)
 
 ! get filenames
-write(*,*) "5"
 call state_vector_io_init()
 
-write(*,*) "6"
 call io_filenames_init()
 
-inflation_in(1) = 'inf_in1'
-inflation_in(2) = 'inf_in2'
+inflation_in(1)  = 'inf_in1'
+inflation_in(2)  = 'inf_in2'
 inflation_out(1) = 'inf_out1'
 inflation_out(2) = 'inf_out2'
 
-write(*,*) "7"
 call set_filenames(state_ens_handle, ens_size, inflation_in, inflation_out)
 
 !do icopy = 1,ens_size
@@ -123,7 +118,12 @@ call set_filenames(state_ens_handle, ens_size, inflation_in, inflation_out)
 
 call end_ensemble_manager(state_ens_handle)
 
-write(*,*) "8"
 call finalize_mpi_utilities(async=0)
 
 end program test_io_read_transpose
+
+! <next few lines under version control, do not edit>
+! $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_state_structure_unit_test/filter/filter.f90 $
+! $Id: filter.f90 7492 2015-01-27 22:36:58Z hkershaw $
+! $Revision: 7492 $
+! $Date: 2015-01-27 15:36:58 -0700 (Tue, 27 Jan 2015) $

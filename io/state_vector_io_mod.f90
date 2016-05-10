@@ -70,7 +70,7 @@ use io_filenames_mod,     only : get_input_file, file_info_type, get_read_from_n
                                  assert_file_info_initialized, restart_names_type, &
                                  assert_restart_names_initialized
 
-!> @todo  This should go through assim_model_mod
+!> @todo FIXME This should go through assim_model_mod
 use model_mod,            only : read_model_time
 
 use copies_on_off_mod,    only : setup_read_write, turn_read_copy_on,      &

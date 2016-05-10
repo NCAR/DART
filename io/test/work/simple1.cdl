@@ -1,0 +1,71 @@
+netcdf simple{
+
+dimensions:
+level = 3;
+dump_trucks = 5;
+brown_trout = 5;
+lat = 4;
+lon = 5;
+palm_trees = 5;
+time = UNLIMITED ; //(1 currently)
+variables:
+
+int A(level);
+A:units = "meters";
+A:long_name = "variable A" ;
+A:short_name = "short A" ; 
+A:missing_value = 22 ;
+
+float B(level);
+B:units = "meters/second" ;
+B:long_name = "variable B" ;
+B:short_name = "short B" ;
+B:missing_value = 111.11 ;
+
+double C(level);
+C:units = "meters/kg" ;
+C:long_name = "variable C" ;
+C:short_name = "short C" ;
+C:missing_value = 111.11 ;
+
+double temp(time,lon,lat,level);
+temp:units = "palm trees" ;
+temp:long_name = "ambient spectacular temperature from some really great planet and season" ;
+temp:short_name = "temperature" ;
+
+float time(time);
+time:units = "hours" ;
+
+//global attributes:
+
+:title = "simple_file" ;
+
+data:
+A = 1, 2, 3 ;
+B = 1.0, 2.0, 3.0 ;
+C = 10.0, 20.0, 30.0;
+time = 1 ;
+
+temp = 
+   1.0, 2.0, 3.0,
+   1.0, 2.0, 3.0,
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0, 
+   1.0, 2.0, 3.0;
+
+}
