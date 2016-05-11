@@ -155,7 +155,8 @@ type(file_info_type), intent(in) :: file_info
 character(len=*),     intent(in) :: routine_name
 
 if ( file_info%options%initialized .eqv. .false.) then
-   call error_handler(E_ERR, routine_name, ':: io_filenames_init must be used to initialize file_info_type')
+   call error_handler(E_ERR, routine_name, ':: io_filenames_init must be used to initialize file_info_type', &
+                      source, revision, revdate)
 endif
 
 end subroutine assert_file_info_initialized
@@ -170,7 +171,9 @@ type(restart_names_type), intent(in) :: restart_names
 character(len=*),     intent(in) :: routine_name
 
 if ( restart_names%initialized .eqv. .false.) then
-   call error_handler(E_ERR, routine_name, ':: io_filenames_init must be used to initialize file_info_type')
+   call error_handler(E_ERR, routine_name, ':: io_filenames_init must be used to initialize file_info_type', &
+                      source, revision, revdate)
+
 endif
 
 end subroutine assert_restart_names_initialized
@@ -386,8 +389,8 @@ do idom = 1, num_domains
       if ( .not. file_exist(file_info%options%rpointer_file(idom)) ) then
          msgstring = 'io_filenames_mod:rpointer '//trim(file_info%options%rpointer_file(idom))//&
                      ' not found'
-         call error_handler(E_ERR,'set_filenames', &
-                msgstring, source, revision, revdate)
+         call error_handler(E_ERR,'set_filenames', msgstring, &
+                            source, revision, revdate)
       endif
       
       ! Check the dimensions of the pointer file
@@ -396,8 +399,8 @@ do idom = 1, num_domains
          write(msgstring,*) 'io_filenames_mod: expecting ',ens_size, &
                             'files in ', trim(file_info%options%rpointer_file(idom)),  &
                             'and only found ', nlines
-         call error_handler(E_ERR,'set_filenames', &
-                            msgstring, source, revision, revdate)
+         call error_handler(E_ERR,'set_filenames', msgstring, &
+                            source, revision, revdate)
       endif 
 
       ! Read filenames in
@@ -636,7 +639,8 @@ do i = 1, get_num_variables(dom)
    if (ndims /= get_io_num_dims(dom,i)) then
       write(msgstring,*) 'ndims ', get_io_num_dims(dom,i), ' in state does not', &
                          ' match ndims ', ndims, ' in ', trim(netcdf_filename)
-      call error_handler(E_ERR, 'check_correct_variables', msgstring)
+      call error_handler(E_ERR, 'check_correct_variables', msgstring, &
+                         source, revision, revdate)
    endif
    
    ! check that the attributes are the same as the state structure
@@ -653,15 +657,17 @@ do i = 1, get_num_variables(dom)
       if (get_dim_name(dom,i,j) /= name(j)) then
          write(msgstring,*) 'dim name', trim(get_dim_name(dom,i,j)), ' in state does', &
                             ' not match dim name', name(j), ' in ', trim(netcdf_filename)
-         call error_handler(E_ERR, 'check_correct_variables', msgstring)
+         call error_handler(E_ERR, 'check_correct_variables', msgstring, &
+                            source, revision, revdate)
       endif
 
       ! check that the dimension lengths are the same
       if (get_dim_length(dom,i,j) /= length(j)) then
-         write(msgstring,*) 'dimension ', name(j), "'s length ", &
+         write(msgstring,*) 'dimension ', trim(name(j)), "'s length ", &
                             get_dim_length(dom,i,j), ' in state does not match', &
                             ' dimension length ', length(j), ' in ', trim(netcdf_filename)
-         call error_handler(E_ERR, 'check_correct_variables', msgstring)
+         call error_handler(E_ERR, 'check_correct_variables', msgstring, &
+                            source, revision, revdate)
       endif
 
    enddo
@@ -713,7 +719,8 @@ if ( get_has_missing_value(domid, varid) ) then
          call get_missing_value(domid, varid, spvalR8)
          call check_attribute_value_r8(ncFile, filename, ncVarID, 'missing_value', spvalR8)
       case default
-         call error_handler(E_ERR, 'check_attributes', 'unknown xtype')
+         call error_handler(E_ERR, 'check_attributes', 'unknown xtype', &
+                            source, revision, revdate)
    end select
 endif
          
@@ -739,7 +746,8 @@ if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalINT) == NF90_NOERR ) the
    if (spvalINT /= ret_spvalINT) then
       write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalINT, &
                          ' does not match ', trim(att_string), ' ', ret_spvalINT, ' in ', trim(filename)
-      call error_handler(E_ERR, 'check_attributes', msgstring)
+      call error_handler(E_ERR, 'check_attributes', msgstring, &
+                         source, revision, revdate)
    endif
 endif
 
@@ -761,7 +769,8 @@ if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR4) == NF90_NOERR ) then
    if (spvalR4 /= ret_spvalR4) then
       write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR4, &
                          ' does not match ', trim(att_string), ' ', ret_spvalR4, ' in ', trim(filename)
-      call error_handler(E_ERR, 'check_attribute_value_r4', msgstring)
+      call error_handler(E_ERR, 'check_attribute_value_r4', msgstring, &
+                         source, revision, revdate)
    endif
 endif
 
@@ -783,7 +792,8 @@ if ( nf90_get_att(ncFile, ncVarID, att_string, ret_spvalR8) == NF90_NOERR ) then
    if (spvalR8 /= ret_spvalR8) then
       write(msgstring,*) ' variable attribute, ', trim(att_string), ' in state', spvalR8, &
                          ' does not match ', trim(att_string), ' ', ret_spvalR8, ' in ', trim(filename)
-      call error_handler(E_ERR, 'check_attribute_value_r8', msgstring)
+      call error_handler(E_ERR, 'check_attribute_value_r8', msgstring, &
+                         source, revision, revdate)
    endif
 endif
 
@@ -807,7 +817,8 @@ if ( nf90_get_att(ncFile, ncVarID, att_string, att_name) == NF90_NOERR ) then
    if (comp_string /= att_name .and. trim(att_name) /= 'unitless') then
       write(msgstring,*) ' variable attribute ,', trim(att_string), ' in state : ', trim(comp_string), &
                          ', does not match ', trim(att_name), ' in ', trim(filename)
-      call error_handler(E_ERR, 'check_attributes_name', msgstring)
+      call error_handler(E_ERR, 'check_attributes_name', msgstring, &
+                         source, revision, revdate)
    end if
 endif
 
@@ -883,7 +894,7 @@ subroutine end_io_filenames(file_info)
 type(file_info_type), intent(inout) :: file_info
 
 call error_handler(E_ERR,'end_io_filenames','test this routine', &
-          source, revision, revdate)
+                   source, revision, revdate)
 
 deallocate(file_info%restart_files_in%filenames)
 deallocate(file_info%restart_files_out_prior%filenames)
@@ -899,3 +910,10 @@ end subroutine end_io_filenames
 !----------------------------------
 end module io_filenames_mod
 !> @}
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$
+
