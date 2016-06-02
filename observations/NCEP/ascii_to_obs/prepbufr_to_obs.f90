@@ -11,7 +11,7 @@ use     utilities_mod, only : get_unit, open_file, close_file, file_exist, &
                               register_module, error_handler, &
                               timestamp, is_longitude_between, &
                               initialize_utilities, register_module,            &
-                              do_output, logfileunit, do_nml_file, do_nml_term, &
+                              do_output, nmlfileunit, do_nml_file, do_nml_term, &
                               finalize_utilities, E_ERR, E_MSG,  &
                               find_namelist_in_file, check_namelist_read
 use  obs_def_mod,      only : obs_def_type, get_obs_def_time, read_obs_def, &
@@ -143,7 +143,7 @@ read(iunit, nml = prepbufr_to_obs_nml, iostat = io)
 call check_namelist_read(iunit, io, "prepbufr_to_obs_nml")
 
 ! Record the namelist values used for the run
-if (do_nml_file()) write(logfileunit, nml=prepbufr_to_obs_nml)
+if (do_nml_file()) write(nmlfileunit, nml=prepbufr_to_obs_nml)
 if (do_nml_term()) write(     *     , nml=prepbufr_to_obs_nml)
 
 ! set observation calendar type and start/end dates

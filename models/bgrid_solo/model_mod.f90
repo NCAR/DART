@@ -557,8 +557,8 @@ call check_namelist_read(iunit, io, "atmosphere_nml")
 !----- write version and namelist to log file -----
 
    call write_version_number ( version, tag )
-   if (do_nml_file()) write (stdlog(),    nml=atmosphere_nml)
-   if (do_nml_term()) write (nmlfileunit, nml=atmosphere_nml)
+   if (do_nml_file()) write (nmlfileunit, nml=atmosphere_nml)
+   if (do_nml_term()) write (stdlog(),    nml=atmosphere_nml)
 
 !---- compute physics/atmos time step in seconds ----
 
