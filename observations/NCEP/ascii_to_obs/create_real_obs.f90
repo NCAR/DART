@@ -11,7 +11,7 @@ use obs_sequence_mod, only : obs_sequence_type, write_obs_seq, &
                              static_init_obs_sequence, destroy_obs_sequence 
 use     real_obs_mod, only : real_obs_sequence
 use    utilities_mod, only : initialize_utilities, register_module,            &
-                             do_output, logfileunit, do_nml_file, do_nml_term, &
+                             do_output, nmlfileunit, do_nml_file, do_nml_term, &
                              error_handler, finalize_utilities, E_ERR, E_MSG,  &
                              find_namelist_in_file, check_namelist_read
 
@@ -96,7 +96,7 @@ read(iunit, nml = ncepobs_nml, iostat = io)
 call check_namelist_read(iunit, io, "ncepobs_nml")
 
 ! Record the namelist values used for the run ...
-if (do_nml_file()) write(logfileunit, nml=ncepobs_nml)
+if (do_nml_file()) write(nmlfileunit, nml=ncepobs_nml)
 if (do_nml_term()) write(     *     , nml=ncepobs_nml)
 
 ! Loop through the days interested.
