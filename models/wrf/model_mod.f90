@@ -4389,11 +4389,11 @@ do id=1,num_domains
          ! vertical dimension can be stag, unstag, or staggered soil
          ! need to use if/then/else instead of select because testing
          ! is against variables
-         if ( wrf%dom(id)%var_size(3,ind) == wrf%dom(id)%bts ) then
+         if ( wrf%dom(id)%var_size(3,my_index) == wrf%dom(id)%bts ) then
            dimids_3D(3)=btStagDimID(id)
-         elseif ( wrf%dom(id)%var_size(3,ind) == wrf%dom(id)%bt ) then
+         elseif ( wrf%dom(id)%var_size(3,my_index) == wrf%dom(id)%bt ) then
            dimids_3D(3)=btDimID(id)
-         elseif ( wrf%dom(id)%var_size(3,ind) == wrf%dom(id)%sls ) then
+         elseif ( wrf%dom(id)%var_size(3,my_index) == wrf%dom(id)%sls ) then
            dimids_3D(3)=slSDimID(id)
          else
            write(errstring,*)'Could not determine dim_id for vertical dimension to output variable '//varname
@@ -4429,22 +4429,22 @@ do id=1,num_domains
 
       endif ! 3D or 2D
 
-      unitsval = trim(wrf%dom(id)%units(ind))
+      unitsval = trim(wrf%dom(id)%units(my_index))
 
       call nc_check(nf90_put_att(ncFileID, var_id, "units", trim(unitsval)), &
                  'nc_write_model_atts','put_att '//varname//' units')
 
-      descriptionval = trim(wrf%dom(id)%description(ind))
+      descriptionval = trim(wrf%dom(id)%description(my_index))
 
       call nc_check(nf90_put_att(ncFileID, var_id, "description", trim(descriptionval)), &
                  'nc_write_model_atts','put_att '//varname//' description')
 
-      long_nameval = trim(wrf%dom(id)%description(ind))
+      long_nameval = trim(wrf%dom(id)%description(my_index))
 
       call nc_check(nf90_put_att(ncFileID, var_id, "long_name", trim(long_nameval)), &
                  'nc_write_model_atts','put_att '//varname//' long_name')
 
-      coordinatesval = trim(wrf%dom(id)%coordinates(ind))
+      coordinatesval = trim(wrf%dom(id)%coordinates(my_index))
       if (coordinatesval(1:7) .eq. 'XLONG_U') then
         coordinate_char = "XLONG_U_d0"//idom//" XLAT_U_d0"//idom
       else if (coordinatesval(1:7) .eq. 'XLONG_V') then
@@ -5060,7 +5060,7 @@ type(ensemble_type), intent(in) :: state_handle
 integer,             intent(in) :: i,j,k,id,var_type
 real(r8)                        :: model_pressure_distrib
 
-integer  :: off
+integer  :: off, type_x
 real(r8) :: pres1, pres2
 integer  :: ens_size
 
@@ -5073,13 +5073,19 @@ ens_size = 1
 !   we are at the upper or lower boundary in which case we will extrapolate.
 if( (var_type == wrf%dom(id)%type_w) .or. (var_type == wrf%dom(id)%type_gz) ) then
 
+   if (var_type == wrf%dom(id)%type_w) then
+      type_x = wrf%dom(id)%type_w
+   else
+      type_x = wrf%dom(id)%type_gz
+   endif
+
    if( k == 1 ) then
 
       pres1 = scalar(model_pressure_t_distrib(i, j, k,  id, state_handle, ens_size))
       pres2 = scalar(model_pressure_t_distrib(i, j, k+1,id, state_handle, ens_size))
       model_pressure_distrib = interp_pressure(pres1, pres2, extrapolate=.true.)
 
-   elseif( k == wrf%dom(id)%var_size(3,wrf%dom(id)%type_w) ) then
+   elseif( k == wrf%dom(id)%var_size(3,type_x) ) then
 
       pres1 = scalar(model_pressure_t_distrib(i,j,k-1,id, state_handle, ens_size))
       pres2 = scalar(model_pressure_t_distrib(i,j,k-2,id, state_handle, ens_size))
