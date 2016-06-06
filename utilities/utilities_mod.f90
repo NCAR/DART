@@ -900,10 +900,11 @@ end subroutine error_handler
 !#######################################################################
 
 
-   function open_file (fname, form, action) result (iunit)
+   function open_file (fname, form, action, return_rc) result (iunit)
 
-   character(len=*), intent(in) :: fname
-   character(len=*), intent(in), optional :: form, action
+   character(len=*), intent(in)            :: fname
+   character(len=*), intent(in) , optional :: form, action
+   integer,          intent(out), optional :: return_rc
    integer  :: iunit
 
    integer           :: nc, rc
@@ -912,96 +913,86 @@ end subroutine error_handler
    character(len=6)  :: pos
    character(len=9)  :: act
    character(len=7)  :: stat
+   character(len=32) :: msgstring1
 
    if ( .not. module_initialized ) call initialize_utilities
 
    inquire (file=trim(fname), opened=open, number=iunit,  &
             form=format, iostat=rc)
 
+   ! if already open, return now
    if (open) then
-! ---------- check format ??? ---------
-! ---- (skip this and let fortran i/o catch bug) -----
+      if (present(return_rc)) return_rc = rc
+      return
+   endif
 
-    !    if (present(form)) then
-    !        nc = min(11,len(form))
-    !        if (format == 'UNFORMATTED') then
-    !             if (form(1:nc) /= 'unformatted' .and.  &
-    !                 form(1:nc) /= 'UNFORMATTED')       &
-    !                 call error_mesg ('open_file in utilities_mod', &
-    !                                  'invalid form argument', 2)
-    !        else if (format(1:9) == 'FORMATTED') then
-    !             if (form(1:nc) /= 'formatted' .and.  &
-    !                 form(1:nc) /= 'FORMATTED')       &
-    !                 call error_mesg ('open_file in utilities_mod', &
-    !                                  'invalid form argument', 2)
-    !        else
-    !             call error_mesg ('open_file in utilities_mod', &
-    !                       'unexpected format returned by inquire', 2)
-    !        endif
-    !    endif
+   ! not already open, so open it.
          
+   ! this code used to only set the form and position, not the action.
+   ! not specifying 'read' meant that many compilers would create an
+   ! empty file instead of returning a read error.  this leads to lots
+   ! of confusion.  add an explicit action here.  if the incoming argument
+   ! is read, make sure the open() call passes that in as an action.
+
+   format   = 'formatted'
+   act      = 'readwrite'
+   pos      = 'rewind'
+   stat     = 'unknown'
+
+   if (present(form)) then
+       nc = min(len(format),len(form))
+       format(1:nc) = form(1:nc)
+   endif
+
+   if (present(action)) then
+       select case(action)
+
+          case ('read', 'READ')
+          ! open existing file.  fail if not found.  read from start.
+             act  = 'read'
+             stat = 'old'
+             pos  = 'rewind'
+
+          case ('write', 'WRITE')
+          ! create new file/replace existing file.  write at start.
+             act  = 'write'
+             stat = 'replace'
+             pos  = 'rewind'
+
+          case ('append', 'APPEND')
+          ! create new/open existing file.  write at end.
+             act  = 'readwrite'
+             stat = 'unknown'
+             pos  = 'append'
+
+          case default
+          ! leave defaults specified above, currently
+          ! create new/open existing file.  write at start.
+             !print *, 'action specified, and is ', action
+       end select
+   endif
+
+   iunit = get_unit()
+
+   if (format == 'formatted' .or. format == 'FORMATTED') then
+       open (iunit, file=trim(fname), form=format,     &
+             position=pos, delim='apostrophe',         &
+             action=act, status=stat, iostat=rc)
    else
-! ---------- open file ----------
+       open (iunit, file=trim(fname), form=format,     &
+             position=pos, action=act, status=stat, iostat=rc)
+   endif
 
-      ! this code used to only set the form and position, not the action.
-      ! not specifying 'read' meant that many compilers would create an
-      ! empty file instead of returning a read error.  this leads to lots
-      ! of confusion.  add an explicit action here.  if the incoming argument
-      ! is read, make sure the open() call passes that in as an action.
+   if (present(return_rc)) then
+      return_rc = rc
+      return
+   endif
 
-      format   = 'formatted'
-      act      = 'readwrite'
-      pos      = 'rewind'
-      stat     = 'unknown'
-
-      if (present(form)) then
-          nc = min(len(format),len(form))
-          format(1:nc) = form(1:nc)
-      endif
-
-      if (present(action)) then
-          select case(action)
-
-             case ('read', 'READ')
-             ! open existing file.  fail if not found.  read from start.
-                act  = 'read'
-                stat = 'old'
-                pos  = 'rewind'
-
-             case ('write', 'WRITE')
-             ! create new file/replace existing file.  write at start.
-                act  = 'write'
-                stat = 'replace'
-                pos  = 'rewind'
-
-             case ('append', 'APPEND')
-             ! create new/open existing file.  write at end.
-                act  = 'readwrite'
-                stat = 'unknown'
-                pos  = 'append'
-
-             case default
-             ! leave defaults specified above, currently
-             ! create new/open existing file.  write at start.
-                !print *, 'action specified, and is ', action
-          end select
-      endif
-
-      iunit = get_unit()
-
-      if (format == 'formatted' .or. format == 'FORMATTED') then
-          open (iunit, file=trim(fname), form=format,     &
-                position=pos, delim='apostrophe',    &
-                action=act, status=stat, iostat=rc)
-      else
-          open (iunit, file=trim(fname), form=format,     &
-                position=pos, action=act, status=stat, iostat=rc)
-      endif
-
-      if (rc /= 0) then
-         write(msgstring,*)'Cannot open file "'//trim(fname)//'" for '//trim(act)
-         call error_handler(E_ERR, 'open_file: ', msgstring, source, revision, revdate)
-      endif
+   if (rc /= 0) then
+      write(msgstring,*)'Cannot open file "'//trim(fname)//'" for '//trim(act)
+      write(msgstring1,*)'Error code was ', rc
+      call error_handler(E_ERR, 'open_file: ', msgstring, source, revision, revdate, &
+                         text2=msgstring1)
    endif
 
    end function open_file

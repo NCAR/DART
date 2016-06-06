@@ -21,7 +21,7 @@ use utilities_mod, only : get_unit, close_file, register_module, error_handler, 
                           dump_unit_attributes, find_namelist_in_file,             &
                           check_namelist_read, nc_check, do_nml_file, do_nml_term, &
                           find_textfile_dims, file_to_text, set_output,            &
-                          ascii_file_format, set_output
+                          ascii_file_format, set_output, file_exist, open_file, close_file
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data,  &
                           get_model_time_step, model_interpolate, init_conditions, &
                           init_time, adv_1step, end_model, nc_write_model_atts,    &
@@ -958,29 +958,17 @@ function open_restart_read(file_name)
 integer :: open_restart_read
 character(len = *), intent(in) :: file_name
 
-integer :: ios, ios_out
-!!logical :: old_output_state
+integer :: ios
 type(time_type) :: temp_time
-character(len=64) :: string2
+character(len=256) :: string2
 
 if ( .not. module_initialized ) call static_init_assim_model()
 
-! DEBUG -- if enabled, every task will print out as it opens the
-! restart files.  If questions about missing restart files, first start
-! by commenting in only the timestamp line.  If still concerns, then
-! go ahead and comment in all the lines.
-!!old_output_state = do_output()
-!!call set_output(.true.)
-!call timestamp("open_restart", "opening restart file "//trim(file_name), pos='')
-!!call set_output(old_output_state)
-!END DEBUG
-
-! if you want to document which file(s) are being opened before
-! trying the open (e.g. in case the fortran runtime library intercepts
-! the error and does not return to let us print out the name) then
-! comment this in and you can see what files are being opened.
-!write(msgstring, *) 'Opening restart file ',trim(adjustl(file_name))
-!call error_handler(E_MSG,'open_restart_read',msgstring,source,revision,revdate)
+if (.not. file_exist(file_name)) then
+   write(msgstring, *) 'Restart file "'//trim(file_name)//'" not found'
+   call error_handler(E_ERR, 'open_restart_read', msgstring, &
+                     source, revision, revdate)
+endif
 
 ! WARNING: Absoft Pro Fortran 9.0, on a power-pc mac, is convinced
 ! that certain binary files are, in fact, ascii, because the read_time
@@ -995,51 +983,47 @@ if ( .not. module_initialized ) call static_init_assim_model()
 ! Autodetect format of restart file when opening
 ! Know that the first thing in here has to be a time, so try to read it.
 ! If it fails with one format, try the other. If it fails with both, punt.
-open_restart_read = get_unit()
+
 read_format = 'formatted'
-open(unit   = open_restart_read, &
-     file   = trim(file_name),   &
-     form   = read_format,       &
-     action = 'read',            &
-     status = 'old',             &
-     iostat = ios)
-! An opening error means something is wrong with the file, error and stop
-if(ios /= 0) goto 11
-temp_time = read_time(open_restart_read, read_format, ios_out)
-if(ios_out == 0) then
+open_restart_read = open_file(file_name, read_format, 'read', return_rc=ios)
+if (ios /= 0) then
+   write(msgstring, *) 'Unable to open restart file "'//trim(file_name)//'"'
+   write(string2, *) 'Error code was ', ios
+   call error_handler(E_ERR, 'open_restart_read', msgstring, &
+                     source, revision, revdate, text2=string2)
+endif
+
+! check read() iostatus code and return now if it succeeds.
+temp_time = read_time(open_restart_read, read_format, ios)
+if(ios == 0) then
    ! It appears to be formatted, proceed
    rewind open_restart_read
    return
 endif
 
-! Next, try to see if an unformatted read works instead
-close(open_restart_read)
+! No, so try an unformatted read instead
+call close_file(open_restart_read)
 
-open_restart_read = get_unit()
 read_format = 'unformatted'
-open(unit   = open_restart_read, &
-     file   = trim(file_name),   &
-     form   = read_format,       &
-     action = 'read',            &
-     status = 'old',             &
-     iostat = ios)
-! An opening error means something is wrong with the file, error and stop
-if(ios /= 0) goto 11
-rewind open_restart_read
-temp_time = read_time(open_restart_read, read_format, ios_out)
-if(ios_out == 0) then
-   ! It appears to be unformatted, proceed
-   rewind open_restart_read
-   return
+open_restart_read = open_file(file_name, read_format, 'read', return_rc=ios)
+if (ios /= 0) then
+   write(msgstring, *) 'Unable to open restart file "'//trim(file_name)//'"'
+   write(string2, *) 'Error code was ', ios
+   call error_handler(E_ERR, 'open_restart_read', msgstring, &
+                     source, revision, revdate, text2=string2)
 endif
 
-! Otherwise, neither format works. Have a fatal error.
-11 continue
+! we caught the formatted read error, but this time for an 
+! unformatted read it might not fail even with bad values, 
+! so let read_time do the error handling.  it won't return if 
+! the read() fails or if the values are out of range.
+temp_time = read_time(open_restart_read, read_format)
 
-write(msgstring, *) 'Problem opening file ',trim(file_name)
-write( string2 , *) 'OPEN status was ',ios
-call error_handler(E_ERR, 'open_restart_read', msgstring, &
-     source, revision, revdate, text2=string2)
+! if read_time returns then we seems to have an unformatted
+! file.  proceed.
+
+rewind open_restart_read
+return
 
 end function open_restart_read
 
