@@ -19,11 +19,11 @@ end
 locs    = nc_varget(fname,'location');
 
 obs.fname         = fname;
-obs.ObsTypeString = nc_attget(fname,nc_global,'obs_of_interest');
+obs.ObsTypeString = nc_read_att(fname,nc_global,'obs_of_interest');
 obs.stations      = nc_varget(fname,'stations');
 obs.ntimes        = nc_varget(fname,'ntimes');
 obs.times         = nc_varget(fname,'time');
-obs.timeunits     = nc_attget(fname,'time','units');
+obs.timeunits     = nc_read_att(fname,'time','units');
 
 obs.lons       = locs(:,1);
 obs.lats       = locs(:,2);

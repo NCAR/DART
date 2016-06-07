@@ -86,16 +86,20 @@ QCStrings      = cellstr(nc_varget(fname,'QCMetaData'));
 t              = nc_varget(fname,'time');
 obs_type       = nc_varget(fname,'obs_type');
 obs_keys       = nc_varget(fname,'obs_keys');
-z_type         = nc_varget(fname,'which_vert');
+
+% FIXME ... if which_vert exists, get it  cartesian models do not have it
+% if it doesn't exist - they all have the same z_type
+%z_type         = nc_varget(fname,'which_vert');
+z_type  = ones(size(obs_keys));
 
 loc            = nc_varget(fname,'location');
 obs            = nc_varget(fname,'observations');
 qc             = nc_varget(fname,'qc');
 
 my_types       = unique(obs_type);  % only ones in the file, actually.
-timeunits      = nc_attget(fname,'time','units');
-timerange      = nc_attget(fname,'time','valid_range');
-calendar       = nc_attget(fname,'time','calendar');
+timeunits      = nc_read_att(fname,'time','units');
+timerange      = nc_read_att(fname,'time','valid_range');
+calendar       = nc_read_att(fname,'time','calendar');
 timebase       = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin     = datenum(timebase(1),timebase(2),timebase(3));
 timestring     = datestr(timerange + timeorigin);

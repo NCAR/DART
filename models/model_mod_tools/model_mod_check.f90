@@ -4,11 +4,13 @@
 !
 ! $Id: model_mod_check.f90 6739 2014-01-15 20:44:54Z hkershaw $
 
-program model_mod_check
+!----------------------------------------------------------------------
+!> purpose: test model_mod routines.  this version works for models
+!> with any location type.  depends on a location-specific module
+!> for test_interpolate_single and test_interpolate_range.
+!----------------------------------------------------------------------
 
-!----------------------------------------------------------------------
-! purpose: test routines.  this version for models with oned locations.
-!----------------------------------------------------------------------
+program model_mod_check
 
 use             types_mod, only : r8, i8, missing_r8, metadatalength
 

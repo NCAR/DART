@@ -85,9 +85,9 @@ plotdat.plevel        = local_nc_varget(fname,'plevel');
 plotdat.plevel_edges  = local_nc_varget(fname,'plevel_edges');
 plotdat.hlevel        = local_nc_varget(fname,'hlevel');
 plotdat.hlevel_edges  = local_nc_varget(fname,'hlevel_edges');
-plotdat.Nrhbins       = length(nc_varget(fname,'rank_bins'));
-plotdat.ncopies       = length(nc_varget(fname,'copy'));
-plotdat.nregions      = length(nc_varget(fname,'region'));
+plotdat.Nrhbins       = nc_dim_exists(fname,'rank_bins');
+plotdat.ncopies       = nc_dim_exists(fname,'copy');
+plotdat.nregions      = nc_dim_exists(fname,'region');
 plotdat.region_names  = strtrim(nc_varget(fname,'region_names'));
 
 % Matlab does a crazy thing with the strings for 1 region
@@ -95,17 +95,17 @@ if (plotdat.nregions == 1 && (size(plotdat.region_names,2) == 1) )
    plotdat.region_names = deblank(plotdat.region_names');
 end
 
-dimensionality             = local_nc_attget(fname, nc_global, 'LocationRank');
-plotdat.timeseparation     = nc_attget(fname, nc_global, 'bin_separation');
-plotdat.timewidth          = nc_attget(fname, nc_global, 'bin_width');
-plotdat.biasconv           = nc_attget(fname, nc_global, 'bias_convention');
-time_to_skip               = nc_attget(fname, nc_global, 'time_to_skip');
-plotdat.outlierstring      = nc_attget(fname, nc_global, 'outliers_in_histogram');
-plotdat.QCsusedstring      = nc_attget(fname, nc_global, 'DART_QCs_in_histogram');
-plotdat.lonlim1            = nc_attget(fname, nc_global, 'lonlim1');
-plotdat.lonlim2            = nc_attget(fname, nc_global, 'lonlim2');
-plotdat.latlim1            = local_nc_attget(fname, nc_global, 'latlim1');
-plotdat.latlim2            = local_nc_attget(fname, nc_global, 'latlim2');
+dimensionality             = nc_read_att(fname, nc_global, 'LocationRank');
+plotdat.timeseparation     = nc_read_att(fname, nc_global, 'bin_separation');
+plotdat.timewidth          = nc_read_att(fname, nc_global, 'bin_width');
+plotdat.biasconv           = nc_read_att(fname, nc_global, 'bias_convention');
+time_to_skip               = nc_read_att(fname, nc_global, 'time_to_skip');
+plotdat.outlierstring      = nc_read_att(fname, nc_global, 'outliers_in_histogram');
+plotdat.QCsusedstring      = nc_read_att(fname, nc_global, 'DART_QCs_in_histogram');
+plotdat.lonlim1            = nc_read_att(fname, nc_global, 'lonlim1');
+plotdat.lonlim2            = nc_read_att(fname, nc_global, 'lonlim2');
+plotdat.latlim1            = nc_read_att(fname, nc_global, 'latlim1');
+plotdat.latlim2            = nc_read_att(fname, nc_global, 'latlim2');
 
 % Make sure the time index makes sense.
 
@@ -116,8 +116,8 @@ end
 
 % Coordinate between time types and dates
 
-calendar     = nc_attget(fname,'time','calendar');
-timeunits    = nc_attget(fname,'time','units');
+calendar     = nc_read_att(fname,'time','calendar');
+timeunits    = nc_read_att(fname,'time','units');
 timebase     = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin   = datenum(timebase(1),timebase(2),timebase(3));
 skip_seconds = time_to_skip(4)*3600 + time_to_skip(5)*60 + time_to_skip(6);
@@ -129,6 +129,8 @@ plotdat.timecenters = plotdat.timecenters + timeorigin;
 plotdat.timeedges   = plotdat.timeedges   + timeorigin;
 plotdat.Ntimes      = length(plotdat.timecenters);
 plotdat.toff        = plotdat.timecenters(1) + iskip;
+
+if (plotdat.Ntimes ==1 ), plotdat.timeedges = plotdat.timeedges'; end
 
 if ( timeindex < 1 )
    plotdat.timeindex = 1:plotdat.Ntimes;
@@ -211,7 +213,7 @@ for ivar = 1:plotdat.nvars
       plotdat.level_units = 'undefined';
    else
       plotdat.level       = nc_varget(fname, guessdims{3});
-      plotdat.level_units = nc_attget(fname, guessdims{3}, 'units');
+      plotdat.level_units = nc_read_att(fname, guessdims{3}, 'units');
    end
    plotdat.nlevels = length(plotdat.level);
 
@@ -474,27 +476,6 @@ if (variable_present)
    netcdf.close(ncid)
 else
    value = [];
-end
-
-
-%=====================================================================
-
-
-function value = local_nc_attget(fname,varid,varname)
-%% If the (global) attribute exists, return the value.
-% If it does not, do not throw a hissy-fit.
-
-value = [];
-if (varid == nc_global)
-   finfo = ncinfo(fname);
-   for iatt = 1:length(finfo.Attributes)
-      if (strcmp(finfo.Attributes(iatt).Name, deblank(varname)))
-         value = finfo.Attributes(iatt).Value;
-         return
-      end
-   end
-else
-   fprintf('function not supported for local variables, only global atts.\n')
 end
 
 

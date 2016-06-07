@@ -1,0 +1,42 @@
+
+# The times in the namelist for the obs_diag program are vectors
+# that follow the following sequence:
+# year   month   day   hour   minute   second
+# max_num_bins can be used to specify a fixed number of bins,
+# in which case last_bin_center should be safely in the future.
+#
+# Acceptable latitudes range from  [-90,  90]
+# Acceptable longitudes range from [  0, Inf]
+#
+# you can specify either [phm]level_edges or [phm]level,
+# but not both. You can mix and match. plevel & hlevel_edges is fine.
+
+   plevel_edges = 1050, 962.5, 887.5, 775, 600, 450, 350, 275, 225, 175, 125, 75
+   hlevel_edges = 0, 1500, 2500, 3500, 4500, 5500, 6500,
+   mlevel_edges = 0.5, 1.5, 2.5, 3.5, 10.5,
+
+&obs_diag_nml
+   obs_sequence_name = 'obs_seq.final',
+   obs_sequence_list = '',
+   first_bin_center =  2003, 1, 1, 0, 0, 0 ,
+   last_bin_center  =  2003, 1, 2, 0, 0, 0 ,
+   bin_separation   =     0, 0, 0, 6, 0, 0 ,
+   bin_width        =     0, 0, 0, 6, 0, 0 ,
+   time_to_skip     =     0, 0, 0, 6, 0, 0 ,
+   max_num_bins     = 1000,
+
+   Nregions   = 1,
+   xlim1      = -1.0e32
+   xlim2      =  1.0e32
+   ylim1      = -1.0e32
+   ylim2      =  1.0e32
+   reg_names  = 'All'
+
+   trusted_obs           = 'null',
+   use_zero_error_obs    = .false.,
+   print_mismatched_locs = .false.,
+   create_rank_histogram = .true.,
+   outliers_in_histogram = .true.,
+   verbose               = .false.
+   /
+

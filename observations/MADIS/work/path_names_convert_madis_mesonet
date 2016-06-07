@@ -19,14 +19,14 @@ location/threed_sphere/location_mod.f90
 models/template/model_mod.f90
 mpi_utilities/null_mpi_utilities_mod.f90
 obs_def/obs_def_mod.f90
-obs_kind/obs_kind_mod.f90
-obs_model/obs_model_mod.f90
-obs_sequence/obs_sequence_mod.f90
 observations/MADIS/convert_madis_mesonet.f90
 observations/MADIS/meteor_mod.f90
 observations/obs_error/dewpoint_obs_err_mod.f90
 observations/obs_error/ncep_obs_err_mod.f90
 observations/utilities/obs_utilities_mod.f90
+obs_kind/obs_kind_mod.f90
+obs_model/obs_model_mod.f90
+obs_sequence/obs_sequence_mod.f90
 quality_control/quality_control_mod.f90
 random_seq/random_seq_mod.f90
 reg_factor/reg_factor_mod.f90

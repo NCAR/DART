@@ -184,6 +184,13 @@ integer, parameter, public :: &
 integer, parameter, public :: &
     KIND_WIND_TURBINE_POWER          = 65
 
+! kinds for surface fields
+integer, parameter, public :: &
+    KIND_SURFACE_TEMPERATURE         = 66, &
+    KIND_2M_TEMPERATURE              = 67, &
+    KIND_10M_U_WIND_COMPONENT        = 68, &
+    KIND_10M_V_WIND_COMPONENT        = 69
+
 ! kinds for planetary remote sensing (wglawson, c.lee)
 integer, parameter, public :: &
     KIND_SKIN_TEMPERATURE            = 70, &
@@ -547,7 +554,10 @@ obs_kind_names(62) = obs_kind_type(KIND_LANDMASK, 'KIND_LANDMASK')
 obs_kind_names(63) = obs_kind_type(KIND_EDGE_NORMAL_SPEED, 'KIND_EDGE_NORMAL_SPEED')
 obs_kind_names(64) = obs_kind_type(KIND_CLW_PATH, 'KIND_CLW_PATH')
 obs_kind_names(65) = obs_kind_type(KIND_WIND_TURBINE_POWER, 'KIND_WIND_TURBINE_POWER')
-
+obs_kind_names(66) = obs_kind_type(KIND_SURFACE_TEMPERATURE, 'KIND_SURFACE_TEMPERATURE')
+obs_kind_names(67) = obs_kind_type(KIND_2M_TEMPERATURE, 'KIND_2M_TEMPERATURE')
+obs_kind_names(68) = obs_kind_type(KIND_10M_U_WIND_COMPONENT, 'KIND_10M_U_WIND_COMPONENT')
+obs_kind_names(69) = obs_kind_type(KIND_10M_V_WIND_COMPONENT, 'KIND_10M_V_WIND_COMPONENT')
 obs_kind_names(70) = obs_kind_type(KIND_SKIN_TEMPERATURE, 'KIND_SKIN_TEMPERATURE')
 obs_kind_names(71) = obs_kind_type(KIND_NADIR_RADIANCE, 'KIND_NADIR_RADIANCE')
 obs_kind_names(72) = obs_kind_type(KIND_TRACER_1_MIXING_RATIO, 'KIND_TRACER_1_MIXING_RATIO')

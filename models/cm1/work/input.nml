@@ -1,0 +1,297 @@
+&assim_model_nml
+  netcdf_large_file_support = .false.
+/
+
+
+&assim_tools_nml
+  adaptive_localization_threshold = -1
+  cutoff                          = 100
+  filter_kind                     = 1
+  gaussian_likelihood_tails       = .false.
+  localization_diagnostics_file   = 'localization_diagnostics'
+  output_localization_diagnostics = .false.
+  print_every_nth_obs             = 0
+  rectangular_quadrature          = .true.
+  sampling_error_correction       = .false.
+  sort_obs_inc                    = .false.
+  spread_restoration              = .false.
+/
+
+
+&cov_cutoff_nml
+  select_localization = 1
+/
+
+
+&ensemble_manager_nml
+  single_restart_file_in = .true.
+/
+
+
+&filter_nml
+  adv_ens_command             = "../shell_scripts/advance_model.csh"
+  async                       = 2
+  diagnostic_files            = .true.
+  direct_netcdf_read          = .true.
+  direct_netcdf_write         = .true.
+  ens_size                    = 20
+  first_obs_days              = -1
+  first_obs_seconds           = -1
+  inf_damping                 = 0.9,                     1.0
+  inf_deterministic           = .true.,                  .true.
+  inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag'
+  inf_flavor                  = 2,                       0
+  inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics'
+  inf_initial                 = 1.0,                     1.0
+  inf_initial_from_restart    = .false.,                 .false.
+  inf_lower_bound             = 1.0,                     1.0
+  inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart'
+  inf_output_restart          = .true.,                  .true.
+  inf_sd_initial              = 0.6,                     0.0
+  inf_sd_initial_from_restart = .false.,                 .false.
+  inf_sd_lower_bound          = 0.6,                     0.0
+  inf_upper_bound             = 1000000.0,               1000000.0
+  init_time_days              = -1
+  init_time_seconds           = -1
+  last_obs_days               = -1
+  last_obs_seconds            = -1
+  num_groups                  = 1
+  num_output_obs_members      = 20
+  num_output_state_members    = 20
+  obs_sequence_in_name        = "obs_seq.out"
+  obs_sequence_out_name       = "obs_seq.final"
+  output_forward_op_errors    = .false.
+  output_interval             = 1
+  output_restart              = .true.
+  output_timestamps           = .true.
+  restart_in_file_name        = "filter_ics"
+  restart_out_file_name       = "filter_restart"
+  silence                     = .false.
+  start_from_restart          = .true.
+  trace_execution             = .true.
+/
+
+
+&io_filenames_nml
+  restart_in_stub  = 'BADcm1out_rst_'
+  restart_out_stub = 'dart_restart_cm1'
+  rpointer         = .true.
+  rpointer_file    = 'input_filelist.txt'
+/
+
+
+&location_nml
+/
+
+
+&model_mod_check_nml
+  x_ind            = 1000000
+  num_ens               = 1
+  loc_of_interest  = 1000.0, 500.0, 120.0
+  kind_of_interest = 'KIND_TEMPERATURE'
+  verbose          = .true.
+  interp_test_xrange  = 500.0, 1000.0
+  interp_test_dx      = 10.0
+  interp_test_yrange  = 500.0, 1000.0
+  interp_test_dy      = 10.0
+  interp_test_zrange  = 100.0,  101.0
+  interp_test_dz      = 1.0
+  interp_test_vertcoord = 'VERTISHEIGHT'
+  test1thru             = 4
+  restart_in_file_name  = 'dart_ics.nc'
+  restart_out_file_name = 'cm1_output'
+  verbose               = .true.
+  /
+
+
+&model_nml
+  output_state_vector = .true.
+  assimilation_period_days = 0
+  assimilation_period_seconds = 60
+  model_perturbation_amplitude = 0.2
+  cm1_template_file = 'cm1out_rst_000001.nc'
+  calendar = 'Gregorian'
+  debug = 0
+  model_variables = 'tha', 'KIND_TEMPERATURE',           'UPDATE'  , '0.0' , '1.0e28',
+                    'tsk', 'KIND_SURFACE_TEMPERATURE',   'UPDATE'  , 'NULL', 'NULL'  , 
+                    'ua' , 'KIND_U_WIND_COMPONENT',      'UPDATE'  , '0.0',  'NULL'  ,
+                    'va' , 'KIND_V_WIND_COMPONENT'       'UPDATE'  , 'NULL', '0.03'  ,
+                    'ppi', 'KIND_PRESSURE',              'UPDATE'  , 'NULL', 'NULL'  ,
+                    'u0' , 'KIND_U_WIND_COMPONENT',      'NOUPDATE', 'NULL', 'NULL'
+  periodic_x = .true.
+  periodic_y = .true.
+/
+
+
+&mpi_utilities_nml
+/
+
+
+&obs_diag_nml
+  obs_sequence_name     = '/glade/u/home/lmadaus/diag_test/obs_seq.diag'
+  first_bin_center      = 2014, 8, 8, 14, 0, 0
+  last_bin_center       = 2014, 8, 8, 14, 0, 0
+  bin_width             =    0, 0, 0, 0, 30, 0
+  bin_separation        =    0, 0, 0, 0, 30, 0
+  time_to_skip          =    0, 0, 0, 0,  0, 0
+  Nregions              = 1
+  reg_names             = 'whole'
+  xlim1                 = -1.0
+  xlim2                 = 1000000.0
+  ylim1                 = -1.0
+  ylim2                 = 1000000.0
+  hlevel_edges          = -1.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0, 32000.0, 64000.0
+  trusted_obs           = 'null'
+  create_rank_histogram = .false.
+  outliers_in_histogram = .true.
+  debug                 = 1
+/
+
+
+&obs_kind_nml
+  assimilate_these_obs_types = 'RADIOSONDE_TEMPERATURE'
+/
+
+
+&obs_model_nml
+/
+
+
+&obs_seq_to_netcdf_nml
+  append_to_netcdf  = .false.
+  lonlim1           = -10000000.0
+  lonlim2           =  10000000.0
+  latlim1           = -10000000.0
+  latlim2           =  10000000.0
+  obs_sequence_list = ''
+  obs_sequence_name = 'obs_seq.out'
+  verbose           = .true.
+/
+
+
+&obs_sequence_nml
+  write_binary_obs_sequence = .false.
+/
+
+
+&obs_sequence_tool_nml
+  filename_out      = 'obs_seq.combined'
+  filename_seq      = 'obs1.out', 'obs2.out'
+  filename_seq_list = ''
+  first_obs_days    = -1
+  first_obs_seconds = -1
+  gregorian_cal     = .false.
+  last_obs_days     = -1
+  last_obs_seconds  = -1
+  print_only        = .false.
+/
+
+
+&perfect_model_obs_nml
+  adv_ens_command          = "../shell_scripts/advance_model.csh"
+  async                    = 2
+  direct_netcdf_read       = .true.
+  direct_netcdf_write      = .true.
+  first_obs_days           = -1
+  first_obs_seconds        = -1
+  init_time_days           = -1
+  init_time_seconds        = -1
+  last_obs_days            = -1
+  last_obs_seconds         = -1
+  obs_seq_in_file_name     = "obs_seq.in"
+  obs_seq_out_file_name    = "obs_seq.out"
+  output_forward_op_errors = .false.
+  output_interval          = 1
+  output_restart           = .true.
+  output_timestamps        = .false.
+  print_every_nth_obs      = -1
+  restart_in_file_name     = "perfect_ics"
+  restart_out_file_name    = "perfect_restart"
+  silence                  = .false.
+  start_from_restart       = .true.
+  trace_execution          = .false.
+/
+
+
+&preprocess_nml
+  input_files              = '../../../obs_def/obs_def_reanalysis_bufr_mod.f90',
+                             '../../../obs_def/obs_def_surface_mod.f90'
+  input_obs_def_mod_file   = '../../../obs_def/DEFAULT_obs_def_mod.F90'
+  input_obs_kind_mod_file  = '../../../obs_kind/DEFAULT_obs_kind_mod.F90'
+  output_obs_def_mod_file  = '../../../obs_def/obs_def_mod.f90'
+  output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90'
+  overwrite_output         = .true.
+/
+
+
+&quality_control_nml
+  enable_special_outlier_code = .false. 
+  input_qc_threshold          = 3.0
+  outlier_threshold           = -1.0
+/
+
+
+&reg_factor_nml
+  input_reg_file       = "time_mean_reg"
+  reg_diagnostics_file = "reg_diagnostics"
+  save_reg_diagnostics = .false.
+  select_regression    = 1
+/
+
+
+&restart_file_tool_nml
+  ens_size                     = 1
+  gregorian_cal                = .false.
+  input_file_name              = "filter_restart"
+  input_is_model_advance_file  = .false.
+  new_advance_days             = -1
+  new_advance_secs             = -1
+  new_data_days                = -1
+  new_data_secs                = -1
+  output_file_name             = "filter_updated_restart"
+  output_is_model_advance_file = .false.
+  overwrite_advance_time       = .false.
+  overwrite_data_time          = .false.
+  single_restart_file_in       = .true.
+  single_restart_file_out      = .true.
+  write_binary_restart_files   = .true.
+/
+
+
+&schedule_nml
+  bin_interval_days    = 1000000
+  bin_interval_seconds = 0
+  calendar             = 'Gregorian'
+  first_bin_end        = 2999,  1,  1,  0,  0,  0
+  first_bin_start      = 1601,  1,  1,  0,  0,  0
+  last_bin_end         = 2999,  1,  1,  0,  0,  0
+  max_num_bins         = 1000
+  print_table          = .true.
+/
+
+
+&smoother_nml
+  num_lags              = 0
+  output_restart        = .true.
+  restart_in_file_name  = 'ics'
+  restart_out_file_name = 'restart'
+  start_from_restart    = .false.
+/
+
+
+&state_vector_io_nml
+  perturbation_amplitude     = 0.2
+  single_restart_file_out    = .true.
+  write_binary_restart_files = .false.
+/
+
+
+&utilities_nml
+  logfilename    = 'dart_log.out'
+  module_details = .false.
+  nmlfilename    = 'dart_log.nml'
+  print_debug    = .false.
+  termlevel      = 1
+  write_nml      = 'file'
+/
+

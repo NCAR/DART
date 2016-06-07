@@ -1,0 +1,27 @@
+ obs_sequence
+obs_kind_definitions
+           0
+  num_copies:            1  num_qc:            0
+  num_obs:            2  max_num_obs:            2
+observation                                                     
+  first:            1  last:            2
+ OBS            1
+   273.000000000000     
+          -1           2          -1
+obdef
+loc3Dxyz
+     500.0000000000000         500.0000000000000         40.00000000000000    
+kind
+          -1
+     46800     150996
+   1.00000000000000     
+ OBS            2
+   274.000000000000     
+           1          -1          -1
+obdef
+loc3Dxyz
+     1500.000000000000         500.0000000000000         40.00000000000000    
+kind
+          -2
+     46860          150996
+   1.00000000000000     

@@ -289,19 +289,19 @@ fieldloop : do i=1, 100000
       case (0)
          write(tmpstring, '(2A)')       trim(nextfield), ' [scalar value]'
       case (1)
-         write(tmpstring, '(2A,1I5,A)') trim(nextfield), '(', dimlen(1),   ')'
+         write(tmpstring, '(2A,1I8,A)') trim(nextfield), '(', dimlen(1),   ')'
       case (2)
-         write(tmpstring, '(2A,2I5,A)') trim(nextfield), '(', dimlen(1:2), ')'
+         write(tmpstring, '(2A,2I8,A)') trim(nextfield), '(', dimlen(1:2), ')'
       case (3)
-         write(tmpstring, '(2A,3I5,A)') trim(nextfield), '(', dimlen(1:3), ')'
+         write(tmpstring, '(2A,3I8,A)') trim(nextfield), '(', dimlen(1:3), ')'
       case (4)
-         write(tmpstring, '(2A,4I5,A)') trim(nextfield), '(', dimlen(1:4), ')'
+         write(tmpstring, '(2A,4I8,A)') trim(nextfield), '(', dimlen(1:4), ')'
       case (5)
-         write(tmpstring, '(2A,5I5,A)') trim(nextfield), '(', dimlen(1:5), ')'
+         write(tmpstring, '(2A,5I8,A)') trim(nextfield), '(', dimlen(1:5), ')'
       case (6)
-         write(tmpstring, '(2A,6I5,A)') trim(nextfield), '(', dimlen(1:6), ')'
+         write(tmpstring, '(2A,6I8,A)') trim(nextfield), '(', dimlen(1:6), ')'
       case (7)
-         write(tmpstring, '(2A,7I5,A)') trim(nextfield), '(', dimlen(1:7), ')'
+         write(tmpstring, '(2A,7I8,A)') trim(nextfield), '(', dimlen(1:7), ')'
       case default
          ! "can't happen"
          write(msgstring, *) 'array dimension is illegal value: ', ndims

@@ -547,7 +547,7 @@ type(time_type),     intent(in)    :: mtime
 
 if(indx < 1 .or. indx > ens_handle%my_num_copies) then
    write(msgstring, *) 'indx: ', indx, ' cannot exceed ', ens_handle%my_num_copies
-   call error_handler(E_ERR,'get_ensemble_time', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'set_ensemble_time', msgstring, source, revision, revdate)
 endif
 
 ens_handle%time(indx) = mtime

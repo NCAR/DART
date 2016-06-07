@@ -50,7 +50,11 @@ logical :: use_distributed_mean = .false. ! initialize to false
 
 ! Global memory to stick the mpi window to.
 ! Need a simply contiguous piece of memory to pass to mpi_win_create
-real(r8), allocatable :: contiguous_fwd(:, :)
+! Openmpi 1.10.0 will not compile with ifort 16 if
+! you create a window with a 2d array.
+real(r8), allocatable :: contiguous_fwd(:)
+real(r8), allocatable :: mean_1d(:)
+
 type(ensemble_type) :: mean_ens_handle
 
 contains
@@ -80,8 +84,8 @@ else
    call mpi_type_size(datasize, bytesize, ierr)
    window_size = my_num_vars*data_count*bytesize
 
-   allocate(contiguous_fwd(data_count, my_num_vars))
-   contiguous_fwd = state_ens_handle%copies(1:data_count, :)
+   allocate(contiguous_fwd(data_count*my_num_vars))
+   contiguous_fwd = reshape(state_ens_handle%copies(1:data_count, :), (/my_num_vars*data_count/))
 
    ! Expose local memory to RMA operation by other processes in a communicator.
    call mpi_win_create(contiguous_fwd, window_size, bytesize, MPI_INFO_NULL, get_dart_mpi_comm(), state_win, ierr)
@@ -114,6 +118,8 @@ if (use_distributed_mean) then
    call init_ensemble_manager(mean_ens_handle, 1, state_ens_handle%num_vars) ! distributed ensemble
    call set_num_extra_copies(mean_ens_handle, 0)
    mean_ens_handle%copies(1,:) = state_ens_handle%copies(mean_copy, :)
+   allocate(mean_1d(state_ens_handle%my_num_vars))
+   mean_1d(:) = mean_ens_handle%copies(1,:)
 
    ! find out how many variables I have
    my_num_vars = mean_ens_handle%my_num_vars
@@ -122,7 +128,7 @@ if (use_distributed_mean) then
 
    ! Need a simply contiguous piece of memory to pass to mpi_win_create
    ! Expose local memory to RMA operation by other processes in a communicator.
-   call mpi_win_create(mean_ens_handle%copies, window_size, bytesize, MPI_INFO_NULL, get_dart_mpi_comm(), mean_win, ierr)
+   call mpi_win_create(mean_1d, window_size, bytesize, MPI_INFO_NULL, get_dart_mpi_comm(), mean_win, ierr)
 else
    call init_ensemble_manager(mean_ens_handle, 1, state_ens_handle%num_vars, transpose_type_in = 3)
    call set_num_extra_copies(mean_ens_handle, 0)
@@ -171,6 +177,7 @@ if(get_allow_transpose(mean_ens_handle)) then
    call end_ensemble_manager(mean_ens_handle)
 else
    call mpi_win_free(mean_win, ierr)
+   deallocate(mean_1d)
    call end_ensemble_manager(mean_ens_handle)
 endif
 

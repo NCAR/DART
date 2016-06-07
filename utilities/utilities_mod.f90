@@ -134,7 +134,7 @@ module utilities_mod
 !
 !-----------------------------------------------------------------------
 
-use types_mod, only : r4, r8, digits12, i4, i8, PI
+use types_mod, only : r4, r8, digits12, i4, i8, PI, MISSING_R8, MISSING_I
 use netcdf
 
 implicit none
@@ -164,7 +164,8 @@ public :: file_exist, get_unit, open_file, close_file, timestamp,           &
           set_tasknum, set_output, do_output, set_nml_output, do_nml_file,  &
           E_DBG, E_MSG, E_ALLMSG, E_WARN, E_ERR, DEBUG, MESSAGE, WARNING, FATAL,      &
           is_longitude_between, get_next_filename, ascii_file_format,       &
-          set_filename_list, scalar
+          set_filename_list, scalar, string_to_real, string_to_integer,     &
+          string_to_logical
 
 ! this routine is either in the null_mpi_utilities_mod.f90, or in
 ! the mpi_utilities_mod.f90 file, but it is not a module subroutine.
@@ -2029,6 +2030,66 @@ pure function to_scalar_int8(x)
 to_scalar_int8 = x(1)
 
 end function to_scalar_int8
+
+!-----------------------------------------------------------------------
+!>
+
+function string_to_real(inputstring)
+
+character(len=*), intent(in) :: inputstring
+real(r8)                     :: string_to_real
+
+integer :: io
+
+! if the string converts - great, if not, it's MISSING_R8
+read(inputstring,*,iostat=io)string_to_real
+if (io /= 0) string_to_real = MISSING_R8
+
+end function string_to_real
+
+!-----------------------------------------------------------------------
+!>
+
+function string_to_integer(inputstring)
+
+character(len=*), intent(in) :: inputstring
+real(r8)                     :: string_to_integer
+
+integer :: io
+
+! if the string converts - great, if not, it's MISSING_I
+read(inputstring,*,iostat=io)string_to_integer
+if (io /= 0) string_to_integer = MISSING_I
+
+end function string_to_integer
+
+
+!-----------------------------------------------------------------------
+!>  string needs to be all upper case or lower case to match
+!>  TRUE, true, FALSE, or false.  also match .TRUE., .true.,
+!>  .FALSE., .false.  if a string to match is provided, no
+!>  upper casing is done and string must match exactly.
+
+function string_to_logical(inputstring, match_is_true)
+
+character(len=*), intent(in)           :: inputstring
+character(len=*), intent(in), optional :: match_is_true
+logical                                :: string_to_logical
+
+if (present(match_is_true)) then
+   string_to_logical = (inputstring == match_is_true)
+else
+   select case (inputstring)
+      case ("TRUE", ".TRUE.", "true", ".true.")
+         string_to_logical = .true.
+      case ("FALSE", ".FALSE.", "false", ".false.")
+         string_to_logical = .false.
+      case default 
+         string_to_logical = .false.   !????
+   end select
+endif
+
+end function string_to_logical
 
 
 !=======================================================================

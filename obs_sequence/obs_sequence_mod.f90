@@ -290,7 +290,6 @@ do i = 1, max_num_obs
    if(end_it_all == -1) exit
    ! Need to have key available for specialized observation modules
    call interactive_obs(num_copies, num_qc, obs, i)
-   !call error_handler(E_ERR, 'Helen has broken this :', 'look at get state meta data')
    if(i == 1) then
       call insert_obs_in_seq(interactive_obs_sequence, obs)
    else

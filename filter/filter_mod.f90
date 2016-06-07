@@ -29,8 +29,7 @@ use utilities_mod,         only : register_module,  error_handler, E_ERR, E_MSG,
                                   do_output, find_namelist_in_file, check_namelist_read,      &
                                   open_file, close_file, do_nml_file, do_nml_term
 use assim_model_mod,       only : static_init_assim_model, get_model_size,                    &
-                                  end_assim_model,                       &
-                                  pert_model_copies
+                                  end_assim_model,  pert_model_copies
 use assim_tools_mod,       only : filter_assim, set_assim_tools_trace, get_missing_ok_status, &
                                   test_state_copies
 use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace

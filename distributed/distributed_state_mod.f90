@@ -27,7 +27,8 @@ use utilities_mod,        only : error_handler, E_ERR
 implicit none
 
 private
-public :: get_state_array, get_state, create_state_window, free_state_window, create_mean_window, free_mean_window
+public :: get_state_array, get_state, create_state_window, &
+          free_state_window, create_mean_window, free_mean_window
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -41,10 +42,10 @@ contains
 !> Gets all copies of an element of the state vector from the process who owns it
 !> Assumes ensemble complete. This differes from get_state as it now works on an
 !> array of state indices rather than a single index.
-subroutine get_state_array(x, index, state_ens_handle)
+subroutine get_state_array(x, my_index, state_ens_handle)
 
 real(r8),            intent(out) :: x(data_count) !> all copies of an element of the state vector
-integer(i8),         intent(in)  :: index(data_count) !> index into state vector
+integer(i8),         intent(in)  :: my_index(data_count) !> index into state vector
 type(ensemble_type), intent(in)  :: state_ens_handle
 
 real(r8) :: x_tmp(data_count) !> all copies of an element of the state vector
@@ -56,9 +57,9 @@ not_done = .true.
 ! only grab state once unique state indices
 do e = 1, data_count
    if (not_done(e)) then
-      x_tmp = get_state(index(e), state_ens_handle)
+      x_tmp = get_state(my_index(e), state_ens_handle)
       do i = e, data_count
-         if(index(i) == index(e)) then
+         if(my_index(i) == my_index(e)) then
             x(i) = x_tmp(i)
             not_done(i) = .false. 
          endif
@@ -71,17 +72,17 @@ end subroutine get_state_array
 !---------------------------------------------------------
 !> Gets all copies of an element of the state vector from the process who owns it
 !> Assumes ensemble complete
-function get_state(index, ens_handle) result (x)
+function get_state(my_index, ens_handle) result (x)
 
 real(r8) :: x(data_count) !> all copies of an element of the state vector
 
-integer(i8),         intent(in)  :: index !> index into state vector
+integer(i8),         intent(in)  :: my_index !> index into state vector
 type(ensemble_type), intent(in)  :: ens_handle
 
 if (current_win == MEAN_WINDOW) then
-   call get_mean(x, index, ens_handle)
+   call get_mean(x, my_index, ens_handle)
 else if (current_win == STATE_WINDOW) then
-   call get_fwd(x, index, ens_handle)
+   call get_fwd(x, my_index, ens_handle)
 else
    call error_handler(E_ERR, 'get_state',' No window currently open')
 endif
@@ -91,20 +92,20 @@ end function get_state
 !---------------------------------------------------------
 !> Gets all copies of an element of the state vector from the process who owns it
 !> Assumes ensemble complete
-subroutine get_fwd(x, index, state_ens_handle)
+subroutine get_fwd(x, my_index, state_ens_handle)
 
 real(r8),            intent(out) :: x(data_count) !> all copies of an element of the state vector
-integer(i8),         intent(in)  :: index !> index into state vector
+integer(i8),         intent(in)  :: my_index !> index into state vector
 type(ensemble_type), intent(in)  :: state_ens_handle
 
 integer                        :: owner_of_state !> task who owns the state
 integer                        :: element_index !> local index of element
 
 if (get_allow_transpose(state_ens_handle)) then
-   x = state_ens_handle%vars(index, 1:data_count)
+   x = state_ens_handle%vars(my_index, 1:data_count)
 else
 
-   call get_var_owner_index(index, owner_of_state, element_index) ! pe
+   call get_var_owner_index(my_index, owner_of_state, element_index) ! pe
 
    owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
 
@@ -124,20 +125,20 @@ end subroutine get_fwd
 !---------------------------------------------------------
 !> Gets all copies of an element of the state vector from the process who owns it
 !> Assumes ensemble complete
-subroutine get_mean(x, index, state_ens_handle)
+subroutine get_mean(x, my_index, state_ens_handle)
 
 real(r8),            intent(out) :: x(1) !> only grabing the mean
-integer(i8),         intent(in)  :: index !> index into state vector
+integer(i8),         intent(in)  :: my_index !> index into state vector
 type(ensemble_type), intent(in)  :: state_ens_handle
 
 integer                        :: owner_of_state !> task who owns the state
 integer                        :: element_index !> local index of element
 
 if (get_allow_transpose(mean_ens_handle)) then
-   x(1) = mean_ens_handle%vars(index, 1)
+   x(1) = mean_ens_handle%vars(my_index, 1)
 else
 
-   call get_var_owner_index(index, owner_of_state, element_index) ! pe
+   call get_var_owner_index(my_index, owner_of_state, element_index) ! pe
 
    owner_of_state = map_pe_to_task(state_ens_handle, owner_of_state)        ! task
 

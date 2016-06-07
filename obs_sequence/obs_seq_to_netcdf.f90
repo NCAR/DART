@@ -209,8 +209,8 @@ call get_time_from_schedule(TimeMin, schedule,       1, 1)
 call get_time_from_schedule(TimeMax, schedule, Nepochs, 2)
 call get_calendar_string(calendarstring)
 
-minl = set_location( (/ lonlim1, latlim1, 0.0_r8, 1.0_r8 /)) ! vertical unimportant
-maxl = set_location( (/ lonlim2, latlim2, 0.0_r8, 1.0_r8 /)) ! vertical unimportant
+minl = set_location( (/ lonlim1, latlim1, -huge(0.0_r8), 1.0_r8 /))
+maxl = set_location( (/ lonlim2, latlim2,  huge(0.0_r8), 1.0_r8 /))
 
 !----------------------------------------------------------------------
 ! Prepare the variables

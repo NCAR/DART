@@ -1835,7 +1835,7 @@ real(r8), intent(out) :: global_val(2) ! only concerned with this on task collec
 integer :: errcode
 
 ! collect on task 
-call mpi_reduce(minmax(1:1), global_val(1:1), 1, datasize, MPI_MIN,task, get_dart_mpi_comm(), errcode)
+call mpi_reduce(minmax(1:1), global_val(1:1), 1, datasize, MPI_MIN, task, get_dart_mpi_comm(), errcode)
 call mpi_reduce(minmax(2:2), global_val(2:2), 1, datasize, MPI_MAX, task, get_dart_mpi_comm(), errcode)
 
 end subroutine reduce_min_max
@@ -1863,7 +1863,6 @@ else ! single precision
    call mpi_allreduce(MPI_IN_PLACE, max_var, num_elements, mpi_real4, MPI_MAX, get_dart_mpi_comm(), errcode)
 
 endif
-
 
 end subroutine all_reduce_min_max
 

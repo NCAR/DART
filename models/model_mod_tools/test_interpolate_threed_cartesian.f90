@@ -60,7 +60,7 @@ integer               , intent(in)    :: ens_size
 real(r8)              , intent(in)    :: interp_test_dx
 real(r8)              , intent(in)    :: interp_test_dy
 real(r8)              , intent(in)    :: interp_test_dz
-integer,                intent(in)    :: interp_test_vertcoord
+character(len=*)      , intent(in)    :: interp_test_vertcoord
 real(r8), dimension(2), intent(in)    :: interp_test_xrange
 real(r8), dimension(2), intent(in)    :: interp_test_yrange
 real(r8), dimension(2), intent(in)    :: interp_test_zrange

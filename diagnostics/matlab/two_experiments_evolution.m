@@ -188,18 +188,16 @@ for i = 1:nexp
 
    varexist(filenames{i}, {priornames{:}, postenames{:}, 'time', 'time_bounds'})
 
-   diminfo = nc_getdiminfo(filenames{i},    'copy'); ncopies   = diminfo.Length;
-   diminfo = nc_getdiminfo(filenames{i},'obstypes'); nobstypes = diminfo.Length;
-   diminfo = nc_getdiminfo(filenames{i},  'region'); nregions  = diminfo.Length;
 
-   commondata{i}.ncopies   = ncopies;
-   commondata{i}.nobstypes = nobstypes;
-   commondata{i}.nregions  = nregions;
+   commondata{i}.ncopies   = nc_dim_exists(filenames{i}, 'copy');
+   commondata{i}.nobstypes = nc_dim_exists(filenames{i}, 'obstypes');
+   commondata{i}.nregions  = nc_dim_exists(filenames{i}, 'region');
    commondata{i}.times     = nc_varget(filenames{i},'time');
    commondata{i}.time_bnds = nc_varget(filenames{i},'time_bounds');
    commondata{i}.copyindex = get_copy_index(filenames{i},copystring);
-   commondata{i}.lonlim1   = nc_attget(filenames{i},nc_global,'lonlim1');
-   commondata{i}.lonlim2   = nc_attget(filenames{i},nc_global,'lonlim2');
+
+   commondata{i}.lonlim1   = nc_read_att(filenames{i},nc_global,'lonlim1');
+   commondata{i}.lonlim2   = nc_read_att(filenames{i},nc_global,'lonlim2');
    commondata{i}.latlim1   = nc_read_att(filenames{i}, nc_global,'latlim1');
    commondata{i}.latlim2   = nc_read_att(filenames{i}, nc_global,'latlim2');
 
@@ -269,21 +267,21 @@ plotdat.plevel        = local_nc_varget(fname,'plevel');
 plotdat.plevel_edges  = local_nc_varget(fname,'plevel_edges');
 plotdat.hlevel        = local_nc_varget(fname,'hlevel');
 plotdat.hlevel_edges  = local_nc_varget(fname,'hlevel_edges');
-plotdat.ncopies       = length(nc_varget(fname,'copy'));
+plotdat.ncopies       = nc_dim_exists(fname,'copy');
 
 dimensionality        = nc_read_att(fname, nc_global, 'LocationRank');
-plotdat.biasconv      = nc_attget(fname, nc_global, 'bias_convention');
-plotdat.binseparation = nc_attget(fname, nc_global, 'bin_separation');
-plotdat.binwidth      = nc_attget(fname, nc_global, 'bin_width');
-plotdat.lonlim1       = nc_attget(fname, nc_global, 'lonlim1');
-plotdat.lonlim2       = nc_attget(fname, nc_global, 'lonlim2');
+plotdat.biasconv      = nc_read_att(fname, nc_global, 'bias_convention');
+plotdat.binseparation = nc_read_att(fname, nc_global, 'bin_separation');
+plotdat.binwidth      = nc_read_att(fname, nc_global, 'bin_width');
+plotdat.lonlim1       = nc_read_att(fname, nc_global, 'lonlim1');
+plotdat.lonlim2       = nc_read_att(fname, nc_global, 'lonlim2');
 plotdat.latlim1       = nc_read_att(fname, nc_global, 'latlim1');
 plotdat.latlim2       = nc_read_att(fname, nc_global, 'latlim2');
 
 % Coordinate between time types and dates
 
-timeunits             = nc_attget(fname,'time','units');
-calendar              = nc_attget(fname,'time','calendar');
+timeunits             = nc_read_att(fname,'time','units');
+calendar              = nc_read_att(fname,'time','calendar');
 timebase              = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin            = datenum(timebase(1),timebase(2),timebase(3));
 
@@ -335,7 +333,7 @@ elseif ( strfind(guessdims{3},'undef') > 0 )
    plotdat.level_edges = [];
 else
    plotdat.level       = nc_varget(fname, guessdims{3});
-   plotdat.level_units = nc_attget(fname, guessdims{3}, 'units');
+   plotdat.level_units = nc_read_att(fname, guessdims{3}, 'units');
    plotdat.level_edges = nc_varget(fname,sprintf('%s_edges',guessdims{3}));
 end
 

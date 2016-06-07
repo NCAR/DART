@@ -86,26 +86,24 @@ end
 plotdat.fname         = fname;
 plotdat.copystring    = copy;
 
-plotdat.binseparation = nc_attget(fname, nc_global, 'bin_separation');
-plotdat.binwidth      = nc_attget(fname, nc_global, 'bin_width');
-time_to_skip          = nc_attget(fname, nc_global, 'time_to_skip');
-plotdat.lonlim1       = nc_attget(fname, nc_global, 'lonlim1');
-plotdat.lonlim2       = nc_attget(fname, nc_global, 'lonlim2');
-plotdat.latlim1       = nc_attget(fname, nc_global, 'latlim1');
-plotdat.latlim2       = nc_attget(fname, nc_global, 'latlim2');
-plotdat.biasconv      = nc_attget(fname, nc_global, 'bias_convention');
+plotdat.binseparation = nc_read_att(fname, nc_global, 'bin_separation');
+plotdat.binwidth      = nc_read_att(fname, nc_global, 'bin_width');
+time_to_skip          = nc_read_att(fname, nc_global, 'time_to_skip');
+plotdat.lonlim1       = nc_read_att(fname, nc_global, 'lonlim1');
+plotdat.lonlim2       = nc_read_att(fname, nc_global, 'lonlim2');
+plotdat.latlim1       = nc_read_att(fname, nc_global, 'latlim1');
+plotdat.latlim2       = nc_read_att(fname, nc_global, 'latlim2');
+plotdat.biasconv      = nc_read_att(fname, nc_global, 'bias_convention');
 
+plotdat.mlevel        = local_nc_varget(fname, 'mlevel');
+plotdat.plevel        = local_nc_varget(fname, 'plevel');
+plotdat.plevel_edges  = local_nc_varget(fname, 'plevel_edges');
+plotdat.hlevel        = local_nc_varget(fname, 'hlevel');
+plotdat.hlevel_edges  = local_nc_varget(fname, 'hlevel_edges');
 plotdat.bincenters    = nc_varget(fname, 'time');
 plotdat.binedges      = nc_varget(fname, 'time_bounds');
-plotdat.mlevel        = nc_varget(fname, 'mlevel');
-plotdat.plevel        = nc_varget(fname, 'plevel');
-plotdat.plevel_edges  = nc_varget(fname, 'plevel_edges');
-plotdat.hlevel        = nc_varget(fname, 'hlevel');
-plotdat.hlevel_edges  = nc_varget(fname, 'hlevel_edges');
-
-diminfo               = nc_getdiminfo(fname,'region');
-plotdat.nregions      = diminfo.Length;
-plotdat.region_names  = nc_varget(fname,'region_names');
+plotdat.region_names  = nc_varget(fname, 'region_names');
+plotdat.nregions      = nc_dim_exists(fname,'region');
 
 % Matlab wants character matrices to be Nx1 instead of 1xN.
 
@@ -115,8 +113,8 @@ end
 
 % Coordinate between time types and dates
 
-calendar              = nc_attget(fname,'time','calendar');
-timeunits             = nc_attget(fname,'time','units');
+calendar              = nc_read_att(fname,'time','calendar');
+timeunits             = nc_read_att(fname,'time','units');
 timebase              = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin            = datenum(timebase(1),timebase(2),timebase(3));
 timefloats            = zeros(size(time_to_skip));  % stupid int32 type conversion
@@ -456,14 +454,16 @@ basedims  = struct([]);
 for i = 1:length(x.allvarnames)
    dimnames = lower(x.allvardims{i});
    if (isempty(strfind(dimnames,'time')))
-      j = j + 1;
-
-      basenames{j} = ReturnBase(x.allvarnames{i});
-      basedims{j}  = x.allvardims{i};
+      platform = ReturnBase(x.allvarnames{i});
+      if (~ isempty(platform))
+         j = j + 1;
+         basenames{j} = platform;
+         basedims{j}  = x.allvardims{i};
+      end
    end
 end
 
-[~,i,j] = unique(basenames);
+[~,i,~] = unique(basenames);
 y       = struct([]);
 ydims   = struct([]);
 
@@ -493,7 +493,7 @@ if ( isempty(leveldim) )
 end
 
 level_org   = nc_varget(fname,varinfo.Dimension{leveldim});
-level_units = nc_attget(fname,varinfo.Dimension{leveldim},'units');
+level_units = nc_read_att(fname,varinfo.Dimension{leveldim},'units');
 nlevels     = varinfo.Size(leveldim);
 edgename    = sprintf('%s_edges',varinfo.Dimension{leveldim});
 level_edges = nc_varget(fname, edgename);
@@ -653,6 +653,24 @@ figdata = struct('expcolors',  {{'k','r','b','m','g','c','y'}}, ...
    'prpolines',  {{'-','--'}}, 'position', position, ...
    'fontsize',fontsize, 'orientation',orientation, ...
    'linewidth',linewidth);
+
+
+%=====================================================================
+
+
+function value = local_nc_varget(fname,varname)
+%% If the variable exists in the file, return the contents of the variable.
+% if the variable does not exist, return empty value instead of error-ing
+% out.
+
+[variable_present, varid] = nc_var_exists(fname,varname);
+if (variable_present)
+   ncid  = netcdf.open(fname,'NOWRITE');
+   value = netcdf.getVar(ncid, varid);
+   netcdf.close(ncid)
+else
+   value = [];
+end
 
 
 % <next few lines under version control, do not edit>

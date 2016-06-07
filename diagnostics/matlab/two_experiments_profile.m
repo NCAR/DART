@@ -243,21 +243,17 @@ for i = 1:nexp
 
    varexist(filenames{i}, {priornames{:}, postenames{:}, 'time', 'time_bounds'})
 
-   diminfo = nc_getdiminfo(filenames{i},    'copy'); ncopies   = diminfo.Length;
-   diminfo = nc_getdiminfo(filenames{i},'obstypes'); nobstypes = diminfo.Length;
-   diminfo = nc_getdiminfo(filenames{i},  'region'); nregions  = diminfo.Length;
-
    commondata{i}.copyindex    = get_copy_index(filenames{i},copystring);
-   commondata{i}.ncopies      = ncopies;
-   commondata{i}.nobstypes    = nobstypes;
-   commondata{i}.nregions     = nregions;
+   commondata{i}.ncopies      = nc_dim_exists(filenames{i}, 'copy');
+   commondata{i}.nobstypes    = nc_dim_exists(filenames{i}, 'obstypes');
+   commondata{i}.nregions     = nc_dim_exists(filenames{i}, 'region');
    commondata{i}.times        = nc_varget(filenames{i},'time');
    commondata{i}.time_bnds    = nc_varget(filenames{i},'time_bounds');
-   commondata{i}.time_to_skip = nc_attget(filenames{i},nc_global,'time_to_skip');
-   commondata{i}.lonlim1      = nc_attget(filenames{i},nc_global,'lonlim1');
-   commondata{i}.lonlim2      = nc_attget(filenames{i},nc_global,'lonlim2');
-   commondata{i}.latlim1      = nc_attget(filenames{i},nc_global,'latlim1');
-   commondata{i}.latlim2      = nc_attget(filenames{i},nc_global,'latlim2');
+   commondata{i}.time_to_skip = nc_read_att(filenames{i},nc_global,'time_to_skip');
+   commondata{i}.lonlim1      = nc_read_att(filenames{i},nc_global,'lonlim1');
+   commondata{i}.lonlim2      = nc_read_att(filenames{i},nc_global,'lonlim2');
+   commondata{i}.latlim1      = nc_read_att(filenames{i},nc_global,'latlim1');
+   commondata{i}.latlim2      = nc_read_att(filenames{i},nc_global,'latlim2');
 
 end
 
@@ -304,8 +300,8 @@ common = commondata{1};
 
 % Coordinate between time types and dates
 
-timeunits         = nc_attget(filenames{1},'time','units');
-calendar          = nc_attget(filenames{1},'time','calendar');
+timeunits         = nc_read_att(filenames{1},'time','units');
+calendar          = nc_read_att(filenames{1},'time','calendar');
 timebase          = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin        = datenum(timebase(1),timebase(2),timebase(3));
 timefloats        = zeros(size(commondata{1}.time_to_skip));  % stupid int32 type conversion
@@ -337,17 +333,16 @@ plotdat.varname       = varname;
 plotdat.copystring    = copystring;
 plotdat.region        = regionindex;
 
-plotdat.binseparation = nc_attget(fname,nc_global,'bin_separation');
-plotdat.binwidth      = nc_attget(fname,nc_global,'bin_width');
-time_to_skip          = nc_attget(fname,nc_global,'time_to_skip');
-plotdat.lonlim1       = nc_attget(fname,nc_global,'lonlim1');
-plotdat.lonlim2       = nc_attget(fname,nc_global,'lonlim2');
-plotdat.latlim1       = nc_attget(fname,nc_global,'latlim1');
-plotdat.latlim2       = nc_attget(fname,nc_global,'latlim2');
-plotdat.biasconv      = nc_attget(fname,nc_global,'bias_convention');
+plotdat.binseparation = nc_read_att(fname,nc_global,'bin_separation');
+plotdat.binwidth      = nc_read_att(fname,nc_global,'bin_width');
+time_to_skip          = nc_read_att(fname,nc_global,'time_to_skip');
+plotdat.lonlim1       = nc_read_att(fname,nc_global,'lonlim1');
+plotdat.lonlim2       = nc_read_att(fname,nc_global,'lonlim2');
+plotdat.latlim1       = nc_read_att(fname,nc_global,'latlim1');
+plotdat.latlim2       = nc_read_att(fname,nc_global,'latlim2');
+plotdat.biasconv      = nc_read_att(fname,nc_global,'bias_convention');
 
-diminfo               = nc_getdiminfo(fname,'region');
-plotdat.nregions      = diminfo.Length;
+plotdat.nregions      = nc_dim_exists(fname,'region');
 plotdat.region_names  = nc_varget(fname,'region_names');
 
 % Matlab wants character matrices to be Nx1 instead of 1xN.
@@ -358,8 +353,8 @@ end
 
 % Coordinate between time types and dates
 
-timeunits             = nc_attget(fname,'time','units');
-calendar              = nc_attget(fname,'time','calendar');
+timeunits             = nc_read_att(fname,'time','units');
+calendar              = nc_read_att(fname,'time','calendar');
 timebase              = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin            = datenum(timebase(1),timebase(2),timebase(3));
 timefloats            = zeros(size(time_to_skip));  % stupid int32 type conversion
@@ -404,7 +399,7 @@ if (isempty(plotdat.trusted)), plotdat.trusted = 'NO'; end
 
 priordims             = nc_getvarinfo(fname,plotdat.priorvar);
 plotdat.levels        = nc_varget(fname,priordims.Dimension{2});
-plotdat.level_units   = nc_attget(fname,priordims.Dimension{2},'units');
+plotdat.level_units   = nc_read_att(fname,priordims.Dimension{2},'units');
 plotdat.nlevels       = length(plotdat.levels);
 plotdat.level_edges   = nc_varget(fname,sprintf('%s_edges',priordims.Dimension{2}));
 

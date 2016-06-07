@@ -123,8 +123,8 @@ plotdat.plevel        = local_nc_varget(fname,'plevel');
 plotdat.plevel_edges  = local_nc_varget(fname,'plevel_edges');
 plotdat.hlevel        = local_nc_varget(fname,'hlevel');
 plotdat.hlevel_edges  = local_nc_varget(fname,'hlevel_edges');
-plotdat.ncopies       = length(nc_varget(fname,'copy'));
-plotdat.nregions      = length(nc_varget(fname,'region'));
+plotdat.ncopies       = nc_dim_exists(fname,'copy');
+plotdat.nregions      = nc_dim_exists(fname,'region');
 plotdat.region_names  = nc_varget(fname,'region_names');
 
 % Matlab wants character matrices to be Nx1 instead of 1xN.
@@ -145,8 +145,8 @@ plotdat.biasconv      = nc_read_att(fname, nc_global, 'bias_convention');
 
 % Coordinate between time types and dates
 
-calendar     = nc_attget(fname,'time','calendar');
-timeunits    = nc_attget(fname,'time','units');
+calendar     = nc_read_att(fname,'time','calendar');
+timeunits    = nc_read_att(fname,'time','units');
 timebase     = sscanf(timeunits,'%*s%*s%d%*c%d%*c%d'); % YYYY MM DD
 timeorigin   = datenum(timebase(1),timebase(2),timebase(3));
 if ( isempty(time_to_skip) == 1)
@@ -233,7 +233,7 @@ for ivar = 1:plotdat.nvars
       plotdat.level_units = 'undefined';
    else
       plotdat.level       = nc_varget(fname, guessdims{3});
-      plotdat.level_units = nc_attget(fname, guessdims{3}, 'units');
+      plotdat.level_units = nc_read_att(fname, guessdims{3}, 'units');
    end
    plotdat.nlevels = length(plotdat.level);
 

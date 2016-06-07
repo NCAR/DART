@@ -2037,7 +2037,9 @@ subroutine check_domain_id(dom_id, message)
 integer,          intent(in) :: dom_id
 character(len=*), intent(in) :: message
 
-if (dom_id > state%num_domains .or. dom_id < 0) then
+if (dom_id == diagnostic_domain) return
+
+if (dom_id > state%num_domains .or. dom_id < 0 ) then
    write(string1,*)'number of known domains is ',state%num_domains
    write(string2,*)'requesting information for unknown domain ',dom_id
    call error_handler(E_ERR,'check_domain_id', message, &

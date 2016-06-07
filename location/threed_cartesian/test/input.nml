@@ -1,7 +1,20 @@
 &location_nml
- filled = 5
- use_octree = .true.
- /
+   nx                  = 10
+   ny                  = 10
+   nz                  = 10
+   x_is_periodic       = .true.
+   min_x_for_periodic  =    0.0
+   max_x_for_periodic  =  100.0
+   y_is_periodic       = .true.
+   min_y_for_periodic  =    0.0
+   max_y_for_periodic  =  100.0
+   z_is_periodic       = .false.
+   min_z_for_periodic  =    0.0
+   max_z_for_periodic  =  100.0
+   compare_to_correct  = .false.
+   output_box_info     = .false.
+   print_box_level     = 0
+/
 
 &utilities_nml
  module_details = .false.,
