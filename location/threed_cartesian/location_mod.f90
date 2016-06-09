@@ -42,7 +42,7 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 type location_type
-   !private
+   private
    real(r8) :: x, y, z
 end type location_type
 

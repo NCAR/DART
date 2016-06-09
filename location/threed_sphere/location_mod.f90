@@ -66,7 +66,7 @@ integer, parameter :: VERTISHEIGHT      =  3  ! by height (in meters)
 integer, parameter :: VERTISSCALEHEIGHT =  4  ! by scale height (unitless)
 
 type location_type
-   !private
+   private
    real(r8) :: lon, lat        ! lon, lat are stored in radians
    real(r8) :: vloc            ! units vary based on value of which_vert
    integer  :: which_vert      ! determines if vert is level, height, pressure, ...
@@ -1371,7 +1371,7 @@ else
 endif
 
 ! make a gtt type array for each different cutoff distance
-! (just 1 type is the most common case.)
+! (a single type is the most common case)
 allocate(gc%gtt(gc%nt))
 
 if (present(maxdist_list)) then
@@ -1599,9 +1599,23 @@ close_ind = -99
 if(present(dist)) dist = -99.0_r8
 this_dist = 999999.0_r8   ! something big.
 
-! handle identity obs correctly
+! handle identity obs correctly -- only support them if there are no
+! per-obs-type cutoffs.  identity obs don't have a specific type, they
+! only have a generic kind based on what index into the state vector is
+! specified.  if this is absolutely needed by someone, i can rejigger the
+! code to try to use the default cutoff for identity obs, but it's tricky
+! to identify which obs type is using the default.  in theory it's possible
+! to specify a default cutoff and then specify a per-type cutoff for every
+! other type in the system.  in that case i don't have a map entry for the
+! default, and it's a pain to construct one.  so i'm punting for now.
 if (base_obs_type < 0) then
-   bt = gc%type_to_cutoff_map(1)
+   if (gc%nt > 1) then
+      write(msgstring,  '(A)') 'no support for identity obs if per-obs-type cutoffs are specified'
+      write(msgstring1, '(A)') 'contact dart support if you have a need for this combination'
+      call error_handler(E_ERR, 'get_close_obs', msgstring, source, revision, revdate, &
+                         text2=msgstring1)
+   endif
+   bt = 1
 else
    ! map from type index to gtt index
    if (base_obs_type < 1 .or. base_obs_type > size(gc%type_to_cutoff_map)) then
