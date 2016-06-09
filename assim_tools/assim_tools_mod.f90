@@ -2746,6 +2746,7 @@ integer,             intent(in) :: num_vars
 
 character*20  :: task_str !< string to hold the task number
 character*129 :: file_meta !< output file name
+character(len=128) :: locinfo
 integer :: i
 
 write(task_str, '(i10)') my_task_id()
@@ -2754,7 +2755,8 @@ file_meta = TRIM('test_get_state_meta_data' // TRIM(ADJUSTL(task_str)))
 open(15, file=file_meta, status = 'unknown')
 
 do i = 1, num_vars
-   write(15,*) locations(i)
+   call write_location(-1, locations(i), charstring=locinfo)
+   write(15,*) trim(locinfo)
 enddo
 
 close(15)
