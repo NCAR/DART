@@ -2588,7 +2588,7 @@ elseif(vert_is_level(obslocation)) then
    ! at one point, negative (model) levels were used to indicate
    ! surface observations - ancient history ...
    if (obslevel < 1.0_r8 ) obslevel = 1.0_r8  ! TJH negative model level
-   ParseLevel         = ClosestLevelIndex(obslevel, VERTISLEVEL)
+   ParseLevel         = find_my_level(obslevel, VERTISLEVEL)
    which_vert(flavor) = VERTISLEVEL
 
    if ( (1 == 2) .and. (ParseLevel > 0) .and. (ParseLevel < MaxLevels)) &
@@ -2597,7 +2597,7 @@ elseif(vert_is_level(obslocation)) then
          mlevel(ParseLevel), ParseLevel, 'level'
 
 elseif(vert_is_pressure(obslocation)) then
-   ParseLevel         = ClosestLevelIndex(obslevel, VERTISPRESSURE)
+   ParseLevel         = find_my_level(obslevel, VERTISPRESSURE)
    which_vert(flavor) = VERTISPRESSURE
 
    if ( (1 == 2) .and. (ParseLevel > 0) .and. (ParseLevel < MaxLevels)) &
@@ -2606,7 +2606,7 @@ elseif(vert_is_pressure(obslocation)) then
          plevel(ParseLevel), ParseLevel, 'pressure'
 
 elseif(vert_is_height(obslocation)) then
-   ParseLevel         = ClosestLevelIndex(obslevel, VERTISHEIGHT)
+   ParseLevel         = find_my_level(obslevel, VERTISHEIGHT)
    which_vert(flavor) = VERTISHEIGHT
 
    if ( (1 == 2) .and. (ParseLevel > 0) .and. (ParseLevel < MaxLevels)) &
@@ -2615,7 +2615,7 @@ elseif(vert_is_height(obslocation)) then
          hlevel(ParseLevel), ParseLevel, 'height'
 
 elseif(vert_is_scale_height(obslocation)) then
-   ParseLevel         = ClosestLevelIndex(obslevel, VERTISSCALEHEIGHT)
+   ParseLevel         = find_my_level(obslevel, VERTISSCALEHEIGHT)
    which_vert(flavor) = VERTISSCALEHEIGHT
 
    if ( (1 == 2) .and. (ParseLevel > 0) .and. (ParseLevel < MaxLevels)) &
@@ -4235,7 +4235,7 @@ end Function Redges2levels
 !======================================================================
 
 
-Function ClosestLevelIndex(level_in, leveltype)
+Function find_my_level(level_in, leveltype)
 ! The levels, intervals are ordered :
 ! closest to the center of the earth == 1
 ! outer space                        == N
@@ -4266,52 +4266,32 @@ Function ClosestLevelIndex(level_in, leveltype)
 
 real(r8), intent(in) :: level_in         ! target level
 integer,  intent(in) :: leveltype        ! indicator for surface, height, etc.
-integer              :: ClosestLevelIndex
+integer              :: find_my_level
 
-integer :: a(1), i, oldLevelIndex
-
-real(r8), dimension(MaxLevels) :: dx
+integer  :: i
 real(r8) :: surface, top
 
- 100 format(a,3(f10.4,1x),i4,1x,f10.4)
- 101 format(a,3(f10.4,1x),i4,1x,i10)
-
-ClosestLevelIndex = -1 ! set this to a 'bad' value.
+find_my_level = -1 ! set this to a 'bad' value.
 
 if (leveltype == VERTISHEIGHT .or. &
     leveltype == VERTISSCALEHEIGHT) then ! we have heights levels
 
    if      ( level_in < hlevel_edges(1) ) then
-      ClosestLevelIndex = -1
+      find_my_level = -1
    else if ( level_in > hlevel_edges(Nhlevels+1) ) then
-      ClosestLevelIndex = 100 + Nhlevels
+      find_my_level = 100 + Nhlevels
+   else if ( level_in == hlevel_edges(1) ) then
+      find_my_level = 1
    else
-      dx(1:Nhlevels) = abs(level_in - hlevel(1:Nhlevels))
-      a              = minloc(dx(1:Nhlevels))
-      oldLevelIndex  = a(1)
 
       ! Starting close to the center of the earth ...
       HEIGHTLOOP : do i = 1,Nhlevels
          if (level_in >  hlevel_edges(i) .and. &
              level_in <= hlevel_edges(i+1)) then
-            ClosestLevelIndex = i
+            find_my_level = i
             exit HEIGHTLOOP
          endif
       enddo HEIGHTLOOP
-
-      ! case to replicate previous behavior
-      if ( level_in == hlevel_edges(1) ) ClosestLevelIndex = 1
-
-      if ( oldLevelIndex /= ClosestLevelIndex ) then
-      write(string1,*) 'hlevel index old/=new ', oldLevelIndex, ClosestLevelIndex, &
-               ' for level',level_in
-      write(string2,100)'old',hlevel_edges(oldLevelIndex),  level_in, &
-         hlevel_edges(oldLevelIndex+1),oldLevelIndex,hlevel(oldLevelIndex)
-      write(string3,100)'new',hlevel_edges(ClosestLevelIndex),level_in, &
-         hlevel_edges(ClosestLevelIndex+1),ClosestLevelIndex,hlevel(ClosestLevelIndex)
-      call error_handler(E_ERR,'ClosestLevelIndex',string1,source,revision,revdate, &
-               text2=string2, text3=string3)
-      endif
 
    endif
 
@@ -4321,46 +4301,27 @@ else if (leveltype == VERTISLEVEL) then   ! we have model levels
    top     = maxval(mlevel_edges(1:Nmlevels+1))
 
    if (      level_in < surface ) then
-      write(*,*)'obs index ',obsindex,' level is ',level_in, &
-                ' below smallest level', surface
-      ClosestLevelIndex = -1
+      find_my_level = -1
    else if ( level_in > top     ) then
-      write(*,*)'obs index ',obsindex,' level is ',level_in, &
-                ' greater than largest level',top
-      ClosestLevelIndex = 100 + Nmlevels
+      find_my_level = 100 + Nmlevels
+   else if ( level_in == mlevel_edges(1) ) then
+      find_my_level = 1
    else
-      dx(1:Nmlevels) = abs(level_in - mlevel(1:Nmlevels))
-      a              = minloc(dx(1:Nmlevels))
-      oldLevelIndex  = a(1)
 
       ! Starting close to the center of the earth ...
       LEVELLOOP : do i = 1,Nmlevels
          if (level_in >  mlevel_edges(i) .and. &
              level_in <= mlevel_edges(i+1)) then
-            ClosestLevelIndex = i
+            find_my_level = i
             exit LEVELLOOP
          endif
       enddo LEVELLOOP
-
-      ! case to replicate previous behavior
-      if ( level_in == mlevel_edges(1) ) ClosestLevelIndex = 1
-
-      if ( oldLevelIndex /= ClosestLevelIndex ) then
-      write(string1,*) 'mlevel index old/=new ', oldLevelIndex, ClosestLevelIndex, &
-               ' for level',level_in
-      write(string2,101)'old',mlevel_edges(oldLevelIndex),level_in, &
-         mlevel_edges(oldLevelIndex+1),oldLevelIndex,mlevel(oldLevelIndex)
-      write(string3,101)'new',mlevel_edges(ClosestLevelIndex),level_in, &
-         mlevel_edges(ClosestLevelIndex+1),ClosestLevelIndex,mlevel(ClosestLevelIndex)
-      call error_handler(E_ERR,'ClosestLevelIndex',string1,source,revision,revdate, &
-               text2=string2, text3=string3)
-      endif
 
    endif
 
 else if (leveltype == VERTISUNDEF) then
 
-      ClosestLevelIndex = VERTISUNDEF    ! VERTISUNDEF == -2, a good bad value
+      find_my_level = VERTISUNDEF    ! VERTISUNDEF == -2, a good bad value
 
 else  ! we have pressure levels (or surface obs ... also in pressure units)
 
@@ -4368,42 +4329,28 @@ else  ! we have pressure levels (or surface obs ... also in pressure units)
    top     = plevel_edges(Nplevels+1)
 
    if (      level_in > surface ) then ! below the lowest layer
-      ClosestLevelIndex = -1
+      find_my_level = -1
    else if ( level_in < top     ) then ! above the highest layer
-      ClosestLevelIndex = 100 + Nplevels
+      find_my_level = 100 + Nplevels
+   else if ( level_in == plevel_edges(1) ) then
+      find_my_level = 1
    else
-      dx(1:Nplevels) = abs(level_in - plevel(1:Nplevels))
-      a              = minloc(dx(1:Nplevels))
-      oldLevelIndex  = a(1)
 
       ! Starting close to the center of the earth ...
       ! pressure greatest at surface.
       PRESSURELOOP : do i = 1,Nplevels
          if (level_in <  plevel_edges(i) .and. &
              level_in >= plevel_edges(i+1)) then
-            ClosestLevelIndex = i
+            find_my_level = i
             exit PRESSURELOOP
          endif
       enddo PRESSURELOOP
-
-      ! case to replicate previous behavior
-      if ( level_in == plevel_edges(1) ) ClosestLevelIndex = 1
-
-      if ( oldLevelIndex /= ClosestLevelIndex ) then
-      write(string1,*)'plevel index old/=new ',oldLevelIndex,ClosestLevelIndex,'for level',level_in
-      write(string2,100) 'old', plevel_edges(oldLevelIndex+1), level_in, &
-         plevel_edges(oldLevelIndex),oldLevelIndex,plevel(oldLevelIndex)
-      write(string3,100) 'new',plevel_edges(ClosestLevelIndex+1),level_in, &
-         plevel_edges(ClosestLevelIndex),ClosestLevelIndex,plevel(ClosestLevelIndex)
-      call error_handler(E_ERR,'ClosestLevelIndex',string1,source,revision,revdate, &
-               text2=string2, text3=string3)
-      endif
 
    endif
 
 endif
 
-end Function ClosestLevelIndex
+end Function find_my_level
 
 
 !======================================================================
