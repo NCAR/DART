@@ -4051,7 +4051,7 @@ integer,             intent(out)   :: new_which
 integer  :: num_levs, top_lev, bot_lev
 integer  :: istatus(1), closest
 integer  :: lon_ind, lat_ind, cam_type
-real(r8)              :: p_surf(1), frac, l, m, old_pressure
+real(r8)              :: p_surf(1), frac, l, m, new_pressure
 type(location_type)   :: temp_loc
 integer               :: slon_index
 
@@ -4252,12 +4252,13 @@ elseif (old_which == VERTISHEIGHT) then
       call error_handler(E_MSG, 'convert_vert', string1,source,revision,revdate)
    endif
 
-   old_pressure = (1.0_r8 - frac) * p_col(bot_lev) + frac * p_col(top_lev)
+   new_pressure = (1.0_r8 - frac) * p_col(bot_lev) + frac * p_col(top_lev)
 
    if (vert_coord == 'pressure') then
+      new_array(3) = new_pressure
       new_which = VERTISPRESSURE
    else if (vert_coord == 'log_invP') then
-      new_array(3) = scale_height(p_surface=p_surf(1), p_above=old_pressure)
+      new_array(3) = scale_height(p_surface=p_surf(1), p_above=new_pressure)
       new_which = VERTISSCALEHEIGHT
    endif
 
