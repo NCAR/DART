@@ -30,7 +30,8 @@ use obs_sequence_mod, only : read_obs_seq, obs_type, obs_sequence_type, get_firs
                              get_last_obs, destroy_obs, get_num_qc, get_qc_meta_data
 use      obs_def_mod, only : obs_def_type, get_obs_def_error_variance, get_obs_def_time, &
                              get_obs_def_location,  get_obs_kind
-use     obs_kind_mod         ! don't use 'only' and you get all kinds
+use     obs_kind_mod, only : max_obs_kinds, get_obs_kind_var_type, get_obs_kind_name, &
+                             KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT
 use     location_mod, only : location_type, get_location, set_location_missing,   &
                              write_location, operator(/=), is_location_in_region, &
                              set_location, query_location, LocationDims
@@ -216,7 +217,7 @@ namelist /obs_diag_nml/ obs_sequence_name, obs_sequence_list,           &
 !-----------------------------------------------------------------------
 
 integer, parameter :: Ncopies = 22
-character(len=stringlength), dimension(Ncopies) :: copy_names =                &
+character(len=stringlength), dimension(Ncopies) :: copy_names =                  &
    (/ 'Nposs      ', 'Nused      ', 'NbigQC     ', 'NbadIZ     ', 'NbadUV     ', &
       'NbadLV     ', 'rmse       ', 'bias       ', 'spread     ', 'totalspread', &
       'NbadDARTQC ', 'observation', 'ens_mean   ',                               &
@@ -465,11 +466,13 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    if (num_copies > 0) allocate( copyvals(num_copies) )
 
    if ( debug > 0 ) then
+      write(logfileunit,*)
       write(logfileunit,*)'num_copies          is ',num_copies
       write(logfileunit,*)'num_qc              is ',num_qc
       write(logfileunit,*)'num_obs             is ',num_obs
       write(logfileunit,*)'max_num_obs         is ',max_num_obs
       write(logfileunit,*)'obs_seq_read_format is ',trim(obs_seq_read_format)
+      write(    *      ,*)
       write(    *      ,*)'num_copies          is ',num_copies
       write(    *      ,*)'num_qc              is ',num_qc
       write(    *      ,*)'num_obs             is ',num_obs
@@ -540,7 +543,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    endif
 
    !--------------------------------------------------------------------
-   ! Prepare some variables for the rank histogram. 
+   ! Prepare some variables for the rank histogram.
    ! FIXME : Make sure this observation sequence file has the same number of
    ! ensemble members as 'the first one' (which defines the bins) ...
 
@@ -574,8 +577,8 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    ! Find the index of obs, ensemble mean, spread ... etc.
    !--------------------------------------------------------------------
    ! Only require obs_index to be present; this allows the program
-   ! to be run on obs_seq.in files which have no means or spreads.
-   ! You can still plot locations, but that's it.
+   ! to be run on obs_seq.[in,out] files which have no means or spreads.
+   ! You can still plot obs count, incoming QC, obs values ...
    !--------------------------------------------------------------------
    ! Each observation sequence file can have its copies in any order.
 
@@ -586,9 +589,11 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
 
    if ( any( (/ prior_mean_index,     prior_spread_index, &
             posterior_mean_index, posterior_spread_index /) < 0) ) then
-      string1 = 'observation sequence has no prior/posterior information.'
-      string2 = 'For simple information, you may want to use "obs_seq_to_netcdf" instead.'
-      call error_handler(E_ERR,'obs_diag',string1,source,revision,revdate,text2=string2)
+      string1 = 'Observation sequence has no prior/posterior information.'
+      string2 = 'You will still get a count, maybe observation value, incoming qc, ...'
+      string3 = 'For simple information, you may want to use "obs_seq_to_netcdf" instead.'
+      call error_handler(E_MSG, 'obs_diag', string1, &
+                 source, revision, revdate, text2=string2, text3=string3)
    endif
 
    !====================================================================
@@ -646,7 +651,11 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          obsz   = obsloc3(3)
 
          ! Check to see if this is a trusted observation
-         if ( num_trusted > 0 ) trusted = is_observation_trusted(obsname)
+         if ( num_trusted > 0 ) then
+            trusted = is_observation_trusted(obsname)
+         else
+            trusted = .false.
+         endif
 
          ! Check to see if it is an identity observation.
          ! If it is, we count them and skip them since they are better
@@ -684,11 +693,15 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          prior_spread(1)     = 0.0_r8
          posterior_spread(1) = 0.0_r8
 
-         call get_obs_values(observation,              obs,              obs_index)
-         call get_obs_values(observation,       prior_mean,       prior_mean_index)
-         call get_obs_values(observation,   posterior_mean,   posterior_mean_index)
-         call get_obs_values(observation,     prior_spread,     prior_spread_index)
-         call get_obs_values(observation, posterior_spread, posterior_spread_index)
+            call get_obs_values(observation,              obs,              obs_index)
+         if (prior_mean_index > 0) &
+            call get_obs_values(observation,       prior_mean,       prior_mean_index)
+         if (posterior_mean_index > 0) &
+            call get_obs_values(observation,   posterior_mean,   posterior_mean_index)
+         if (prior_spread_index > 0) &
+            call get_obs_values(observation,     prior_spread,     prior_spread_index)
+         if (posterior_spread_index > 0) &
+            call get_obs_values(observation, posterior_spread, posterior_spread_index)
 
          !--------------------------------------------------------------
          ! Check to see if there are any observations with wild values
@@ -731,15 +744,15 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          endif
 
          !--------------------------------------------------------------
-         ! There is a ambiguous case wherein the prior is rejected (DART QC ==7) 
-         ! and the posterior forward operator fails (DART QC ==4). In this case, 
-         ! the DART_QC only reflects the fact the prior was rejected - HOWEVER - 
-         ! the posterior mean,spread are set to MISSING. 
+         ! There is a ambiguous case wherein the prior is rejected (DART QC ==7)
+         ! and the posterior forward operator fails (DART QC ==4). In this case,
+         ! the DART_QC only reflects the fact the prior was rejected - HOWEVER -
+         ! the posterior mean,spread are set to MISSING.
          !
          ! If it is your intent to compare identical prior and posterior TRUSTED
          ! observations, then you should enable the following few lines of code.
          ! and realize that the number of observations rejected because of the
-         ! outlier threshold will be wrong. 
+         ! outlier threshold will be wrong.
          !
          ! This is the only block of code you should need to change.
          !--------------------------------------------------------------
@@ -894,7 +907,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
             !-----------------------------------------------------------
 
             call CountDartQC_4D(qc_integer, iepoch, level_index, iregion, &
-                    flavor, prior, poste, po_mean)
+                    flavor, prior, poste, posterior_mean=po_mean)
 
             !-----------------------------------------------------------
             ! Count 'large' innovations
@@ -959,6 +972,9 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
                      call IPE(poste%NbadIZ(iepoch,level_index,iregion,wflavor), 1)
                   endif
 
+                  call CountDartQC_4D(qc_integer, iepoch, level_index, iregion, &
+                                      wflavor, prior, poste, uqc=U_qc)
+
                   call Bin4D(qc_integer, iepoch, level_index, iregion, wflavor, &
                      .false., obs(1), obs_err_var, pr_mean, pr_sprd, po_mean, po_sprd, &
                      rank_histogram_bin, U_obs, U_obs_err_var, U_pr_mean, &
@@ -989,7 +1005,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
             !-----------------------------------------------------------
 
             call CountDartQC_3D(qc_integer, level_index, iregion, flavor, &
-                    priorAVG, posteAVG, po_mean)
+                    priorAVG, posteAVG, posterior_mean=po_mean)
 
             ! Count 'large' innovations
 
@@ -1028,6 +1044,9 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
                   if( (po_zscore > rat_cri) .or. (zscoreU > rat_cri) )  then
                      call IPE(posteAVG%NbadIZ(level_index,iregion,wflavor), 1)
                   endif
+
+                  call CountDartQC_3D(qc_integer, level_index, &
+                          iregion, wflavor, priorAVG, posteAVG, uqc=U_qc)
 
                   call Bin3D(qc_integer, level_index, iregion,  &
                       wflavor, .false., obs(1), obs_err_var, pr_mean, pr_sprd,      &
@@ -1191,12 +1210,8 @@ if ( sum(obs_used_in_epoch) == 0 ) then
    call print_date(AllseqTN,' Last  observation date')
    call print_date( TimeMin,' First REQUESTED   date')
    call print_date( TimeMax,' Last  REQUESTED   date')
-   write(    *      ,*)
-   write(logfileunit,*)
-   write(string1,*)'WARNING: NO OBSERVATIONS in requested time bins.'
-   call error_handler(E_MSG,'obs_diag',string1,source,revision,revdate)
-   call error_handler(E_MSG,'obs_diag',string1,source,revision,revdate)
-   call error_handler(E_MSG,'obs_diag',string1,source,revision,revdate)
+   write(string1,*)'NO OBSERVATIONS in requested time bins.'
+   call error_handler(E_ERR,'obs_diag',string1,source,revision,revdate)
 endif
 
 !----------------------------------------------------------------------
@@ -1221,7 +1236,7 @@ CONTAINS
 !======================================================================
 
 
-Function grok_observation_names(my_names)
+function grok_observation_names(my_names)
 !----------------------------------------------------------------------
 ! Define/Append the 'horizontal wind' obs_kinds to supplant the list declared
 ! in obs_kind_mod.f90 i.e. if there is a RADIOSONDE_U_WIND_COMPONENT
@@ -1323,13 +1338,13 @@ do ivar = 1,grok_observation_names
    my_names(ivar) = names(ivar)
 enddo
 
-end Function grok_observation_names
+end function grok_observation_names
 
 
 !======================================================================
 
 
-Subroutine Namelist2Times( )
+subroutine Namelist2Times( )
 
 ! Global-scope variables read in this routine:
 ! first_bin_center   comes from namelist
@@ -1337,7 +1352,7 @@ Subroutine Namelist2Times( )
 !   bin_separation   comes from namelist
 !        bin_width   comes from namelist
 !     time_to_skip   comes from namelist
-! 
+!
 ! Global-scope variables set in this routine:
 ! type(time_type), intent(out) :: beg_time     ! first_bin_center
 ! type(time_type), intent(out) :: end_time     ! last_bin_center
@@ -1428,16 +1443,16 @@ if ( debug > 0 ) then
    call print_time(    binwidth,'requested bin      width',logfileunit)
    call print_time(    binwidth,'requested bin      width')
    call print_time(halfbinwidth,'implied     halfbinwidth',logfileunit)
-   call print_time(halfbinwidth,'implied     halfbinidth')
+   call print_time(halfbinwidth,'implied     halfbinwidth')
 endif
 
-end Subroutine Namelist2Times
+end subroutine Namelist2Times
 
 
 !======================================================================
 
 
-Subroutine DefineTimeBins()
+subroutine DefineTimeBins()
 ! Determine temporal bin characteristics.
 ! The user input is not guaranteed to align on bin centers.
 ! So -- we will assume the start time is correct and take strides till we
@@ -1534,8 +1549,6 @@ do iepoch = 1,Nepochs
    call print_time(bincenter( iepoch),string2)
    call print_time(binedges(2,iepoch),string3)
 
-   write(logfileunit,*)
-   write(     *     ,*)
    call print_date(binedges(1,iepoch),string1,logfileunit)
    call print_date(bincenter( iepoch),string2,logfileunit)
    call print_date(binedges(2,iepoch),string3,logfileunit)
@@ -1563,7 +1576,7 @@ if ( debug > 0 ) then
    call print_date(TimeMax,'Last  date of interest')
 endif
 
-end Subroutine DefineTimeBins
+end subroutine DefineTimeBins
 
 
 !======================================================================
@@ -1575,12 +1588,12 @@ end Subroutine DefineTimeBins
 !> 1) take the default
 !> 2) specify the interfaces between each layer
 
-Subroutine setHeightLevels()
+subroutine setHeightLevels()
 
 integer  :: iedge, ndum1, ndum2
 real(r8) :: z_edges(size(hlevel_edges))
 
-if ( all(hlevel_edges == MISSING_R8) ) then ! default case 
+if ( all(hlevel_edges == MISSING_R8) ) then ! default case
    hlevel_edges(1:8) = (/ 0.0_r8,  1000.0_r8,  2000.0_r8, &
                   4000.0_r8, 8000.0_r8, 16000.0_r8, 32000.0_r8, 64000.0_r8 /)
 endif
@@ -1634,14 +1647,14 @@ if (debug > 0) then
    enddo
 endif
 
-end Subroutine setHeightLevels
+end subroutine setHeightLevels
 
 
 !======================================================================
 
 !> Set the min and max location_types for each region
 
-Subroutine DefineRegions()
+subroutine DefineRegions()
 
 ! globally-scoped variables set by this routine:
 ! xlim1, xlim2
@@ -1685,13 +1698,13 @@ if (debug > 0) then
    enddo
 endif
 
-end Subroutine DefineRegions
+end subroutine DefineRegions
 
 
 !======================================================================
 
 
-Subroutine CountTrustedObsTypes()
+subroutine CountTrustedObsTypes()
 
 ! Count up the number of 'trusted' observations types from those
 ! specified in the input namelist 'trusted_obs' argument.
@@ -1771,13 +1784,13 @@ else
    call error_handler(E_MSG, 'CountTrustedObsTypes', string1, source, revision, revdate)
 endif
 
-end Subroutine CountTrustedObsTypes
+end subroutine CountTrustedObsTypes
 
 
 !======================================================================
 
 
-Subroutine  SetScaleFactors()
+subroutine  SetScaleFactors()
 
 ! The surface pressure in the obs_sequence is in Pa, we want to convert
 ! from Pa to hPa for plotting. The specific humidity is a similar thing.
@@ -1794,11 +1807,6 @@ Subroutine  SetScaleFactors()
 
 character(len=stringlength) :: obs_string
 integer :: ivar
-
-if (debug > 0) then ! whitespace
-   write(     *     ,*)
-   write(logfileunit,*)
-endif
 
 scale_factor = 1.0_r8
 
@@ -1817,20 +1825,17 @@ do ivar = 1,SIZE(scale_factor)
    ! Somehow, we should plot statistics on the dBZ scale for these ...
    ! scale_factor(KIND_RADAR_REFLECTIVITY) = 10log10(z)
 
-   if (debug > 0) then
-      write(     *     ,*)'scaling of ',scale_factor(ivar),obs_string
-      write(logfileunit,*)'scaling of ',scale_factor(ivar),obs_string
-   endif
+   ! The scaling is summarized in WriteNetCDF if the verbose option is chosen.
 
 enddo
 
-end Subroutine SetScaleFactors
+end subroutine SetScaleFactors
 
 
 !======================================================================
 
 
-Subroutine InitializeVariables( ntimes, nlevs, nareas, ntypes )
+subroutine InitializeVariables( ntimes, nlevs, nareas, ntypes )
 
 ! Global variables set in this routine:
 ! type(TLRV_type), intent(out) :: poste,    prior
@@ -2047,13 +2052,13 @@ posteAVG%num_levels    = nlevs
 posteAVG%num_regions   = nareas
 posteAVG%num_variables = ntypes
 
-end Subroutine InitializeVariables
+end subroutine InitializeVariables
 
 
 !======================================================================
 
 
-Subroutine GetFirstLastObs(my_fileid, my_sequence, my_obs1, my_obsN, my_seqT1, my_seqTN, my_AllseqT1, my_AllseqTN)
+subroutine GetFirstLastObs(my_fileid, my_sequence, my_obs1, my_obsN, my_seqT1, my_seqTN, my_AllseqT1, my_AllseqTN)
 ! We need to know the time of the first and last observations in the sequence,
 ! primarily just to see if they intersect the desired Epoch window.
 ! We also record these times so we can report the first/last times of all
@@ -2108,13 +2113,13 @@ write(logfileunit,*)
 write(*,*)
 
 
-end Subroutine GetFirstLastObs
+end subroutine GetFirstLastObs
 
 
 !======================================================================
 
 
-Function GetEnsSize()
+function GetEnsSize()
 !-----------------------------------------------------------------------
 !  Loop over all the metadata to count the number of ensemble members
 !  available in the observation sequence file. We need this count to
@@ -2136,15 +2141,15 @@ MetaDataLoop : do i=1, get_num_copies(seq)
 enddo MetaDataLoop
 
 write(string1,'(''There are '',i4,'' ensemble members.'')') GetEnsSize
-call error_handler(E_MSG,'obs_diag',string1,source,revision,revdate)
+call error_handler(E_MSG,'GetEnsSize',string1,source,revision,revdate)
 
-end Function GetEnsSize
+end function GetEnsSize
 
 
 !======================================================================
 
 
-Subroutine SetIndices( obs_index, org_qc_index, dart_qc_index,     &
+subroutine SetIndices( obs_index, org_qc_index, dart_qc_index,     &
                        prior_mean_index,   posterior_mean_index,   &
                        prior_spread_index, posterior_spread_index, &
                        ens_copy_index )
@@ -2216,36 +2221,41 @@ enddo QCMetaDataLoop
 !--------------------------------------------------------------------
 
 if ( prior_mean_index       < 0 ) then
-   write(string1,*)'metadata:prior ensemble mean not found'
-   call error_handler(E_ERR,'obs_diag',string1,source,revision,revdate)
+   write(string1,*)'metadata:"prior ensemble mean" not found'
+   call error_handler(E_MSG,'SetIndices',string1,source,revision,revdate)
 endif
 if ( posterior_mean_index   < 0 ) then
-   write(string1,*)'metadata:posterior ensemble mean not found'
-   call error_handler(E_ERR,'obs_diag',string1,source,revision,revdate)
+   write(string1,*)'metadata:"posterior ensemble mean" not found'
+   call error_handler(E_MSG,'SetIndices',string1,source,revision,revdate)
 endif
 if ( prior_spread_index     < 0 ) then
-   write(string1,*)'metadata:prior ensemble spread not found'
-   call error_handler(E_ERR,'obs_diag',string1,source,revision,revdate)
+   write(string1,*)'metadata:"prior ensemble spread" not found'
+   call error_handler(E_MSG,'SetIndices',string1,source,revision,revdate)
 endif
 if ( posterior_spread_index < 0 ) then
-   write(string1,*)'metadata:posterior ensemble spread not found'
-   call error_handler(E_ERR,'obs_diag',string1,source,revision,revdate)
+   write(string1,*)'metadata:"posterior ensemble spread" not found'
+   call error_handler(E_MSG,'SetIndices',string1,source,revision,revdate)
 endif
 if (           org_qc_index < 0 ) then
-   write(string1,*)'metadata:Quality Control not found'
-   call error_handler(E_ERR,'obs_diag',string1,source,revision,revdate)
+   write(string1,*)'metadata:"Quality Control" not found'
+   call error_handler(E_MSG,'SetIndices',string1,source,revision,revdate)
 endif
 if (          dart_qc_index < 0 ) then
-   write(string1,*)'metadata:DART quality control not found'
-   call error_handler(E_ERR,'obs_diag',string1,source,revision,revdate)
+   write(string1,*)'metadata:"DART quality control" not found'
+   call error_handler(E_MSG,'SetIndices',string1,source,revision,revdate)
 endif
-if (              obs_index < 0 ) then
+
+! Only require obs_index to be present; this allows the program
+! to be run on obs_seq.[in,out] files which have no means or spread.
+! Can still count number of obs, observation mean, ...
+
+if ( obs_index < 0 ) then
    if ( use_zero_error_obs ) then
-      write(string1,*)'metadata:truth       not found'
+      write(string1,*)'metadata:"truth"       not found'
    else
-      write(string1,*)'metadata:observation not found'
+      write(string1,*)'metadata:"observation" not found'
    endif
-   call error_handler(E_ERR,'obs_diag',string1,source,revision,revdate)
+   call error_handler(E_ERR,'SetIndices',string1,source,revision,revdate)
 endif
 
 !--------------------------------------------------------------------
@@ -2253,45 +2263,57 @@ endif
 !--------------------------------------------------------------------
 
 if ( use_zero_error_obs ) then
-   write(string1,'(''truth                index '',i2,'' metadata '',a)') &
+   write(string1,'(''"truth"                index '',i2,'' metadata '',a)') &
      obs_index, trim(get_copy_meta_data(seq,obs_index))
 else
-   write(string1,'(''observation          index '',i2,'' metadata '',a)') &
+   write(string1,'(''"observation"          index '',i2,'' metadata '',a)') &
      obs_index, trim(get_copy_meta_data(seq,obs_index))
 endif
-call error_handler(E_MSG,'obs_diag',string1,source,revision,revdate)
+call error_handler(E_MSG,'SetIndices',string1,source,revision,revdate)
 
-write(string1,'(''prior mean           index '',i2,'' metadata '',a)') &
-     prior_mean_index, trim(get_copy_meta_data(seq,prior_mean_index))
-call error_handler(E_MSG,'obs_diag',string1,source,revision,revdate)
+if (prior_mean_index > 0 ) then
+   write(string1,'(''"prior mean"           index '',i2,'' metadata '',a)') &
+        prior_mean_index, trim(get_copy_meta_data(seq,prior_mean_index))
+   call error_handler(E_MSG,'SetIndices',string1,source,revision,revdate)
+endif
 
-write(string1,'(''posterior mean       index '',i2,'' metadata '',a)') &
-     posterior_mean_index, trim(get_copy_meta_data(seq,posterior_mean_index))
-call error_handler(E_MSG,'obs_diag',string1,source,revision,revdate)
+if (posterior_mean_index > 0 ) then
+   write(string1,'(''"posterior mean"       index '',i2,'' metadata '',a)') &
+        posterior_mean_index, trim(get_copy_meta_data(seq,posterior_mean_index))
+   call error_handler(E_MSG,'SetIndices',string1,source,revision,revdate)
+endif
 
-write(string1,'(''prior spread         index '',i2,'' metadata '',a)') &
-     prior_spread_index, trim(get_copy_meta_data(seq,prior_spread_index))
-call error_handler(E_MSG,'obs_diag',string1,source,revision,revdate)
+if (prior_spread_index > 0 ) then
+   write(string1,'(''"prior spread"         index '',i2,'' metadata '',a)') &
+        prior_spread_index, trim(get_copy_meta_data(seq,prior_spread_index))
+   call error_handler(E_MSG,'SetIndices',string1,source,revision,revdate)
+endif
 
-write(string1,'(''posterior spread     index '',i2,'' metadata '',a)') &
-     posterior_spread_index, trim(get_copy_meta_data(seq,posterior_spread_index))
-call error_handler(E_MSG,'obs_diag',string1,source,revision,revdate)
+if (posterior_spread_index > 0 ) then
+   write(string1,'(''"posterior spread"     index '',i2,'' metadata '',a)') &
+        posterior_spread_index, trim(get_copy_meta_data(seq,posterior_spread_index))
+   call error_handler(E_MSG,'SetIndices',string1,source,revision,revdate)
+endif
 
-write(string1,'(''Quality Control      index '',i2,'' metadata '',a)') &
-      org_qc_index, trim(get_qc_meta_data(seq,org_qc_index))
-call error_handler(E_MSG,'obs_diag',string1,source,revision,revdate)
+if (org_qc_index > 0 ) then
+   write(string1,'(''"Quality Control"      index '',i2,'' metadata '',a)') &
+         org_qc_index, trim(get_qc_meta_data(seq,org_qc_index))
+   call error_handler(E_MSG,'SetIndices',string1,source,revision,revdate)
+endif
 
-write(string1,'(''DART quality control index '',i2,'' metadata '',a)') &
-     dart_qc_index, trim(get_qc_meta_data(seq,dart_qc_index))
-call error_handler(E_MSG,'obs_diag',string1,source,revision,revdate)
+if (dart_qc_index > 0 ) then
+   write(string1,'(''"DART quality control" index '',i2,'' metadata '',a)') &
+        dart_qc_index, trim(get_qc_meta_data(seq,dart_qc_index))
+   call error_handler(E_MSG,'SetIndices',string1,source,revision,revdate)
+endif
 
-end Subroutine SetIndices
+end subroutine SetIndices
 
 
 !======================================================================
 
 
-Function is_observation_trusted(obsname)
+function is_observation_trusted(obsname)
 
 ! Is the observation one that we 'trust'.
 ! If so, disregard the DART QC ==7 (outlier rejection) and use it to
@@ -2310,14 +2332,14 @@ if ( trim(obsname) == trim(trusted_list(i)) ) then
    endif
 enddo rUtrusted
 
-end Function is_observation_trusted
+end function is_observation_trusted
 
 
 
 !======================================================================
 
 
-Function InnovZscore(obsval, prmean, prspred, errvar, qcval, qcmaxval)
+function InnovZscore(obsval, prmean, prspred, errvar, qcval, qcmaxval)
 
 ! This function tries to get a handle on the magnitude of the innovations.
 ! If the ratio of the observation to the prior mean is 'big', it is an outlier.
@@ -2327,11 +2349,11 @@ Function InnovZscore(obsval, prmean, prspred, errvar, qcval, qcmaxval)
 !
 ! In Jan of 2014 I ran into a special case. We are performing a perfect model
 ! experiment - perturbing a single state and then assimilating. We wanted
-! to compare against the true observation value (errvar = 0.0) and for the 
+! to compare against the true observation value (errvar = 0.0) and for the
 ! first time step, there is no ensemble spread either. In this case the denom
 ! was really zero and the calculation blew up. Since we only use this to track
 ! how far apart these things are, we can restrict the distance to the worst-case
-! scenario ... the last bin. 
+! scenario ... the last bin.
 
 real(r8)             :: InnovZscore
 real(r8), intent(in) :: obsval, prmean, prspred, errvar
@@ -2356,13 +2378,13 @@ if ( qcval <= qcmaxval ) then ! QC indicates a valid obs
 
 endif
 
-end Function InnovZscore
+end function InnovZscore
 
 
 !======================================================================
 
 
-Function Rank_Histogram(copyvalues, obs_index, &
+function Rank_Histogram(copyvalues, obs_index, &
                     error_variance, ens_copy_index ) result(rank)
 
 ! Calculates the bin/rank
@@ -2431,13 +2453,13 @@ if ( 2 == 1 )  then
    write(*,*)
 endif
 
-end Function Rank_Histogram
+end function Rank_Histogram
 
 
 !======================================================================
 
 
-Function CheckMate(vflavor, uflavor, obsloc1, obsloc2, flavor )
+function CheckMate(vflavor, uflavor, obsloc1, obsloc2, flavor )
 
 ! This routine ensures that the U,V components of wind
 ! are from the same observation location so we can convert
@@ -2534,7 +2556,7 @@ endif
 
 if (index(vobs_string, uobs_string(1:indx1)) < 1) then
    write(string1,*) 'around OBS ', keys(obsindex), 'observation types not compatible.'
-   call error_handler(E_WARN,'obs_diag',string1,source,revision,revdate, &
+   call error_handler(E_WARN,'CheckMate',string1,source,revision,revdate, &
                           text2=vobs_string, text3=uobs_string)
 endif
 
@@ -2553,27 +2575,36 @@ enddo MyType
 
 if (CheckMate /= 0) then
    write(string1,*) 'around OBS ', keys(obsindex), 'observation types not known.'
-   call error_handler(E_ERR,'obs_diag',string1,source,revision,revdate,&
+   call error_handler(E_ERR,'CheckMate',string1,source,revision,revdate,&
                           text2=vobs_string, text3=uobs_string)
 endif
 
-end Function CheckMate
+end function CheckMate
 
 
 !======================================================================
 
 
-Subroutine CountDartQC_4D(myqc, iepoch, ilevel, iregion, itype, prior, poste, &
-                          posterior_mean)
+subroutine CountDartQC_4D(inqc, iepoch, ilevel, iregion, itype, prior, poste, &
+                          posterior_mean, uqc)
 
-integer,         intent(in)    :: myqc
+integer,         intent(in)    :: inqc
 integer,         intent(in)    :: iepoch
 integer,         intent(in)    :: ilevel
 integer,         intent(in)    :: iregion
 integer,         intent(in)    :: itype
 type(TLRV_type), intent(inout) :: prior
 type(TLRV_type), intent(inout) :: poste
-real(r8),        intent(in)    :: posterior_mean
+real(r8),        intent(in), optional :: posterior_mean
+integer,         intent(in), optional :: uqc
+
+integer :: myqc
+
+if (present(uqc)) then
+   myqc = maxval((/ inqc, uqc /))
+else
+   myqc = inqc
+endif
 
 if (        myqc == 0 ) then
    call IPE(prior%NDartQC_0(iepoch,ilevel,iregion,itype), 1)
@@ -2606,30 +2637,41 @@ elseif (    myqc == 6 ) then
 elseif (    myqc == 7 ) then
    call IPE(prior%NDartQC_7(iepoch,ilevel,iregion,itype), 1)
 
-   if ( abs(posterior_mean - MISSING_R8) < 1.0_r8 ) then
-      ! ACTUALLY A FAILED FORWARD OPERATOR - ambiguous case
-      call IPE(poste%NDartQC_4(iepoch,ilevel,iregion,itype), 1)
-   else
-      call IPE(poste%NDartQC_7(iepoch,ilevel,iregion,itype), 1)
+   if (present(posterior_mean)) then
+      if ( abs(posterior_mean - MISSING_R8) < 1.0_r8 ) then
+         ! ACTUALLY A FAILED FORWARD OPERATOR - ambiguous case
+         call IPE(poste%NDartQC_4(iepoch,ilevel,iregion,itype), 1)
+      else
+         call IPE(poste%NDartQC_7(iepoch,ilevel,iregion,itype), 1)
+      endif
    endif
 
 endif
 
-end Subroutine CountDartQC_4D
+end subroutine CountDartQC_4D
 
 
 !======================================================================
 
 
-Subroutine CountDartQC_3D(myqc, ilevel, iregion, itype, prior, poste, posterior_mean)
+subroutine CountDartQC_3D(inqc, ilevel, iregion, itype, prior, poste, posterior_mean, uqc)
 
-integer,         intent(in)    :: myqc
+integer,         intent(in)    :: inqc
 integer,         intent(in)    :: ilevel
 integer,         intent(in)    :: iregion
 integer,         intent(in)    :: itype
 type(LRV_type),  intent(inout) :: prior
 type(LRV_type),  intent(inout) :: poste
-real(r8),        intent(in)    :: posterior_mean
+real(r8),        intent(in), optional   :: posterior_mean
+integer,         intent(in), optional   :: uqc
+
+integer :: myqc
+
+if (present(uqc)) then
+   myqc = maxval((/ inqc, uqc /))
+else
+   myqc = inqc
+endif
 
 if (        myqc == 0 ) then
    call IPE(prior%NDartQC_0(ilevel,iregion,itype), 1)
@@ -2662,22 +2704,24 @@ elseif (    myqc == 6 ) then
 elseif (    myqc == 7 ) then
    call IPE(prior%NDartQC_7(ilevel,iregion,itype), 1)
 
-   if ( abs(posterior_mean - MISSING_R8) < 1.0_r8 ) then
-      ! ACTUALLY A FAILED FORWARD OPERATOR - ambiguous case
-      call IPE(poste%NDartQC_4(ilevel,iregion,itype), 1)
-   else
-      call IPE(poste%NDartQC_7(ilevel,iregion,itype), 1)
+   if (present(posterior_mean)) then
+      if ( abs(posterior_mean - MISSING_R8) < 1.0_r8 ) then
+         ! ACTUALLY A FAILED FORWARD OPERATOR - ambiguous case
+         call IPE(poste%NDartQC_4(ilevel,iregion,itype), 1)
+      else
+         call IPE(poste%NDartQC_7(ilevel,iregion,itype), 1)
+      endif
    endif
 
 endif
 
-end Subroutine CountDartQC_3D
+end subroutine CountDartQC_3D
 
 
 !======================================================================
 
 
-Subroutine Bin4D(iqc, iepoch, ilevel, iregion, flavor, trusted, &
+subroutine Bin4D(iqc, iepoch, ilevel, iregion, flavor, trusted, &
              obsval,  obserrvar,  prmean,  prsprd,  pomean,  posprd, rank, &
                uobs, uobserrvar, uprmean, uprsprd, upomean, uposprd, uqc)
 !----------------------------------------------------------------------
@@ -2724,9 +2768,9 @@ prior_qc     = iqc
 posterior_qc = iqc
 
 ! There is a ambiguous case wherein the prior is rejected (DART QC ==7)
-! and the posterior forward operator fails (DART QC ==4). In this case, 
-! the DART_QC reflects the fact the prior was rejected - HOWEVER - 
-! the posterior mean,spread are set to MISSING. 
+! and the posterior forward operator fails (DART QC ==4). In this case,
+! the DART_QC reflects the fact the prior was rejected - HOWEVER -
+! the posterior mean,spread are set to MISSING.
 
 if ((prior_qc == 7) .and. (abs(pomean - MISSING_R8) > 1.0_r8)) posterior_qc = 4
 
@@ -2770,7 +2814,7 @@ if ( all(optionals) ) then
    ! counted.
    myrank = -99
 
-else if ( any(optionals) ) then
+elseif ( any(optionals) ) then
    call error_handler(E_ERR,'Bin4D','wrong number of optional arguments', &
                       source,revision,revdate)
 else
@@ -2809,7 +2853,7 @@ call IPE(prior%Nposs(iepoch,ilevel,iregion,flavor), 1)
 call IPE(poste%Nposs(iepoch,ilevel,iregion,flavor), 1)
 
 !----------------------------------------------------------------------
-! Select which set of qcs are valid and accrue everything 
+! Select which set of qcs are valid and accrue everything
 !----------------------------------------------------------------------
 
 if ( trusted ) then
@@ -2845,13 +2889,13 @@ else
    call IPE(poste%NbadDartQC(iepoch,ilevel,iregion,flavor),       1    )
 endif
 
-end Subroutine Bin4D
+end subroutine Bin4D
 
 
 !======================================================================
 
 
-Subroutine Bin3D(iqc, ilevel, iregion, flavor, trusted, &
+subroutine Bin3D(iqc, ilevel, iregion, flavor, trusted, &
              obsval,  obserrvar,  prmean,  prsprd,  pomean,  posprd, &
                uobs, uobserrvar, uprmean, uprsprd, upomean, uposprd, uqc  )
 !----------------------------------------------------------------------
@@ -2887,9 +2931,9 @@ prior_qc     = iqc
 posterior_qc = iqc
 
 ! There is a ambiguous case wherein the prior is rejected (DART QC ==7)
-! and the posterior forward operator fails (DART QC ==4). In this case, 
-! the DART_QC reflects the fact the prior was rejected - HOWEVER - 
-! the posterior mean,spread are set to MISSING. 
+! and the posterior forward operator fails (DART QC ==4). In this case,
+! the DART_QC reflects the fact the prior was rejected - HOWEVER -
+! the posterior mean,spread are set to MISSING.
 
 if ((prior_qc == 7) .and. (abs(pomean - MISSING_R8) > 1.0_r8)) posterior_qc = 4
 
@@ -2925,7 +2969,7 @@ if ( all(optionals) ) then
    priorspredplus = prsprd**2 + obserrvar + uprsprd**2 + uobserrvar
    postspredplus  = posprd**2 + obserrvar + uposprd**2 + uobserrvar
 
-else if ( any(optionals) ) then
+elseif ( any(optionals) ) then
    call error_handler(E_ERR,'Bin3D','wrong number of optional arguments', &
                       source,revision,revdate)
 else
@@ -2950,7 +2994,7 @@ call IPE(priorAVG%Nposs(ilevel,iregion,flavor), 1)
 call IPE(posteAVG%Nposs(ilevel,iregion,flavor), 1)
 
 !----------------------------------------------------------------------
-! Select which set of qcs are valid and accrue everything 
+! Select which set of qcs are valid and accrue everything
 !----------------------------------------------------------------------
 
 if ( trusted ) then
@@ -2971,7 +3015,7 @@ if ((      trusted .and. any(trusted_prior_qcs == prior_qc)) .or. &
 else
    call IPE(priorAVG%NbadDartQC(ilevel,iregion,flavor),      1     )
 endif
-   
+
 ! Accrue the POSTERIOR quantities
 if ((      trusted .and. any(trusted_poste_qcs == posterior_qc)) .or. &
     (.not. trusted .and. any(   good_poste_qcs == posterior_qc))) then
@@ -2986,13 +3030,16 @@ else
    call IPE(posteAVG%NbadDartQC(ilevel,iregion,flavor),      1    )
 endif
 
-end Subroutine Bin3D
+end subroutine Bin3D
 
 
 !======================================================================
 
 
-Subroutine Normalize4Dvars()
+subroutine Normalize4Dvars()
+
+! The vertical coordinate system definition is summarized in WriteNetCDF
+! if the verbose option is chosen.
 
 if (debug > 0) then
    write(logfileunit,*)'Normalizing time-level-region-variable quantities.'
@@ -3089,13 +3136,13 @@ do i=0,MaxSigmaBins
 enddo
 call close_file(nsigmaUnit)
 
-end Subroutine Normalize4Dvars
+end subroutine Normalize4Dvars
 
 
 !======================================================================
 
 
-Subroutine Normalize3Dvars()
+subroutine Normalize3Dvars()
 if (debug > 0) then
    write(logfileunit,*)'Normalize quantities for all levels.'
    write(     *     ,*)'Normalize quantities for all levels.'
@@ -3178,13 +3225,13 @@ enddo
 enddo
 enddo
 
-end Subroutine Normalize3Dvars
+end subroutine Normalize3Dvars
 
 
 !======================================================================
 
 
-Subroutine WriteNetCDF(fname)
+subroutine WriteNetCDF(fname)
 character(len=*), intent(in) :: fname
 
 integer :: ncid, i, indx1, nobs, typesdimlen
@@ -3360,10 +3407,10 @@ do ivar = 1,max_obs_kinds
          string1 = obs_type_strings(ivar)
       endif
 
-      call nc_check(nf90_put_att(ncid, NF90_GLOBAL, string1, ivar), & 
+      call nc_check(nf90_put_att(ncid, NF90_GLOBAL, string1, ivar), &
          'WriteNetCDF', 'put_att:obs_type_string '//trim(obs_type_strings(ivar)))
    endif
-   
+
 enddo
 
 if (typesdimlen < 1) then
@@ -3381,40 +3428,40 @@ endif
 !----------------------------------------------------------------------------
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name='time', len=NF90_UNLIMITED, dimid=TimeDimID), &
-              'WriteNetCDF', 'time:def_dim '//trim(fname))
+          name='time', len=NF90_UNLIMITED, dimid=TimeDimID), &
+          'WriteNetCDF', 'time:def_dim '//trim(fname))
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name='bounds', len=2, dimid=BoundsDimID), &
-              'WriteNetCDF', 'bounds:def_dim '//trim(fname))
+          name='bounds', len=2, dimid=BoundsDimID), &
+          'WriteNetCDF', 'bounds:def_dim '//trim(fname))
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name='copy', len=Ncopies, dimid=CopyDimID), &
-              'WriteNetCDF', 'copy:def_dim '//trim(fname))
+          name='copy', len=Ncopies, dimid=CopyDimID), &
+          'WriteNetCDF', 'copy:def_dim '//trim(fname))
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name='obstypes', len=max_obs_kinds, dimid=TypesDimID), &
-              'WriteNetCDF', 'types:def_dim '//trim(fname))
+          name='obstypes', len=max_obs_kinds, dimid=TypesDimID), &
+          'WriteNetCDF', 'types:def_dim '//trim(fname))
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name='region', len=Nregions, dimid=RegionDimID), &
-              'WriteNetCDF', 'region:def_dim '//trim(fname))
+          name='region', len=Nregions, dimid=RegionDimID), &
+          'WriteNetCDF', 'region:def_dim '//trim(fname))
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name='hlevel', len=Nlevels, dimid=ZlevDimID), &
-              'WriteNetCDF', 'hlevel:def_dim '//trim(fname))
+          name='hlevel', len=Nlevels, dimid=ZlevDimID), &
+          'WriteNetCDF', 'hlevel:def_dim '//trim(fname))
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name='z_interfaces', len=Nlevels+1, dimid=ZlevIntDimID), &
-              'WriteNetCDF', 'z_interfaces:def_dim '//trim(fname))
+          name='z_interfaces', len=Nlevels+1, dimid=ZlevIntDimID), &
+          'WriteNetCDF', 'z_interfaces:def_dim '//trim(fname))
 
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name='stringlength', len=stringlength, dimid=StringDimID), &
-              'WriteNetCDF', 'stringlength:def_dim '//trim(fname))
+          name='stringlength', len=stringlength, dimid=StringDimID), &
+          'WriteNetCDF', 'stringlength:def_dim '//trim(fname))
 
 if (create_rank_histogram) then
 call nc_check(nf90_def_dim(ncid=ncid, &
-              name='rank_bins', len=ens_size+1, dimid=RankDimID), &
-              'WriteNetCDF', 'rank_bins:def_dim '//trim(fname))
+          name='rank_bins', len=ens_size+1, dimid=RankDimID), &
+          'WriteNetCDF', 'rank_bins:def_dim '//trim(fname))
 endif
 
 !----------------------------------------------------------------------------
@@ -3442,19 +3489,19 @@ call nc_check(nf90_put_att(ncid, TypesVarID, 'explanation', 'see ObservationType
 !----------------------------------------------------------------------------
 
 call nc_check(nf90_def_var(ncid=ncid, name='hlevel', xtype=nf90_real, &
-         dimids=ZlevDimID, varid=ZlevVarID), 'WriteNetCDF', 'hlevel:def_var')
+          dimids=ZlevDimID, varid=ZlevVarID), 'WriteNetCDF', 'hlevel:def_var')
 call nc_check(nf90_put_att(ncid, ZlevVarID, 'long_name', 'vertical bin midpoints'), &
-        'WriteNetCDF', 'hlevel:long_name')
+          'WriteNetCDF', 'hlevel:long_name')
 call nc_check(nf90_put_att(ncid, ZlevVarID, 'units',     'm'), &
-        'WriteNetCDF', 'hlevel:units')
+          'WriteNetCDF', 'hlevel:units')
 call nc_check(nf90_put_att(ncid, ZlevVarID, 'axis',     'Z'), &
-        'WriteNetCDF', 'hlevel:axis')
+          'WriteNetCDF', 'hlevel:axis')
 call nc_check(nf90_put_att(ncid, ZlevVarID, 'valid_range', &
-        (/ minval(hlevel(1:Nlevels)), maxval(hlevel(1:Nlevels)) /)), &
-        'WriteNetCDF', 'hlevel:valid_range')
+          (/ minval(hlevel(1:Nlevels)), maxval(hlevel(1:Nlevels)) /)), &
+          'WriteNetCDF', 'hlevel:valid_range')
 
 call nc_check(nf90_def_var(ncid=ncid, name='hlevel_edges', xtype=nf90_real, &
-      dimids=ZlevIntDimID, varid=ZlevIntVarID), 'WriteNetCDF', 'hlevel_edges:def_var')
+          dimids=ZlevIntDimID, varid=ZlevIntVarID), 'WriteNetCDF', 'hlevel_edges:def_var')
 call nc_check(nf90_put_att(ncid, ZlevIntVarID, 'long_name', 'vertical bin edges'), &
           'WriteNetCDF', 'hlevel_edges:long_name')
 call nc_check(nf90_put_att(ncid, ZlevIntVarID, 'units',     'm'), &
@@ -3462,7 +3509,7 @@ call nc_check(nf90_put_att(ncid, ZlevIntVarID, 'units',     'm'), &
 call nc_check(nf90_put_att(ncid, ZlevIntVarID, 'axis',     'Z'), &
           'WriteNetCDF', 'hlevel_edges:axis')
 call nc_check(nf90_put_att(ncid, ZlevIntVarID, 'valid_range', &
-   (/ minval(hlevel_edges(1:Nlevels+1)), maxval(hlevel_edges(1:Nlevels+1)) /)), &
+          (/ minval(hlevel_edges(1:Nlevels+1)), maxval(hlevel_edges(1:Nlevels+1)) /)), &
           'WriteNetCDF', 'hlevel_edges:valid_range')
 
 !----------------------------------------------------------------------------
@@ -3526,7 +3573,7 @@ call nc_check(nf90_def_var(ncid=ncid, name='ObservationTypes', xtype=nf90_char, 
 call nc_check(nf90_put_att(ncid, TypesMetaVarID, 'long_name', 'DART observation types'), &
           'WriteNetCDF', 'typesmeta:long_name')
 call nc_check(nf90_put_att(ncid, TypesMetaVarID, 'comment', &
-      'table relating integer to observation type string'), &
+          'table relating integer to observation type string'), &
           'WriteNetCDF', 'typesmeta:comment')
 
 if ( create_rank_histogram ) then
@@ -3536,7 +3583,7 @@ call nc_check(nf90_def_var(ncid=ncid, name='rank_bins', xtype=nf90_int, &
 call nc_check(nf90_put_att(ncid, RankVarID, 'long_name', 'rank histogram bins'), &
           'WriteNetCDF', 'rank_bins:long_name')
 call nc_check(nf90_put_att(ncid, RankVarID, 'comment', &
-      'position of the observation among the sorted noisy ensemble members'), &
+          'position of the observation among the sorted noisy ensemble members'), &
           'WriteNetCDF', 'rank_bins:comment')
 endif
 
@@ -3545,7 +3592,7 @@ endif
 !----------------------------------------------------------------------------
 
 call nc_check(nf90_set_fill(ncid, NF90_NOFILL, i),  &
-         'WriteNetCDF', 'set_nofill '//trim(fname))
+          'WriteNetCDF', 'set_nofill '//trim(fname))
 
 !----------------------------------------------------------------------------
 ! Leave define mode so we can fill
@@ -3559,28 +3606,28 @@ call nc_check(nf90_enddef(ncid), 'WriteNetCDF', 'enddef '//trim(fname))
 !----------------------------------------------------------------------------
 
 call nc_check(nf90_put_var(ncid, CopyVarId, (/ (i,i=1,Ncopies) /) ), &
-           'WriteNetCDF', 'copy:put_var')
+          'WriteNetCDF', 'copy:put_var')
 
 call nc_check(nf90_put_var(ncid, CopyMetaVarID, copy_names), &
-           'WriteNetCDF', 'copymeta:put_var')
+          'WriteNetCDF', 'copymeta:put_var')
 
 call nc_check(nf90_put_var(ncid, TypesVarId, (/ (i,i=1,max_obs_kinds) /) ), &
-           'WriteNetCDF', 'types:put_var')
+          'WriteNetCDF', 'types:put_var')
 
 call nc_check(nf90_put_var(ncid, TypesMetaVarID, obs_type_strings(1:max_obs_kinds)), &
-           'WriteNetCDF', 'typesmeta:put_var')
+          'WriteNetCDF', 'typesmeta:put_var')
 
 call nc_check(nf90_put_var(ncid, ZlevVarID, hlevel(1:Nlevels)), &
-           'WriteNetCDF', 'hlevel:put_var')
+          'WriteNetCDF', 'hlevel:put_var')
 
 call nc_check(nf90_put_var(ncid, ZlevIntVarID, hlevel_edges(1:Nlevels+1)), &
-           'WriteNetCDF', 'hlevel_edges:put_var')
+          'WriteNetCDF', 'hlevel_edges:put_var')
 
 call nc_check(nf90_put_var(ncid, TimeVarID, epoch_center ), &
-           'WriteNetCDF', 'time:put_var')
+          'WriteNetCDF', 'time:put_var')
 
 call nc_check(nf90_put_var(ncid, TimeBoundsVarID, epoch_edges ), &
-           'WriteNetCDF', 'time_bounds:put_var')
+          'WriteNetCDF', 'time_bounds:put_var')
 
 call nc_check(nf90_put_var(ncid, RegionNamesVarID, reg_names(1:Nregions)), &
           'WriteNetCDF', 'region_names:put_var')
@@ -3608,13 +3655,13 @@ ierr = WriteLRV( ncid, posteAVG,            CopyDimID, RegionDimID)
 call nc_check(nf90_sync( ncid), 'WriteNetCDF', 'sync '//trim(fname))
 call nc_check(nf90_close(ncid), 'init_diag_output', 'close '//trim(fname))
 
-end Subroutine WriteNetCDF
+end subroutine WriteNetCDF
 
 
 !======================================================================
 
 
-Subroutine DestroyVariables()
+subroutine DestroyVariables()
 
 deallocate(obs_seq_filenames)
 
@@ -3658,13 +3705,13 @@ deallocate(epoch_center, epoch_edges, bincenter, obs_used_in_epoch)
 
 deallocate(obs_type_strings, scale_factor)
 
-end Subroutine DestroyVariables
+end subroutine DestroyVariables
 
 
 !======================================================================
 
 
-Function vertical_bin_index(z_in)
+function vertical_bin_index(z_in)
 
 ! defined:   50      150     350     750      1250
 ! derived:    |  100  |  250  |  550  |  1000  |
@@ -3706,28 +3753,28 @@ if (debug > 2) then
    call error_handler(E_MSG,'vertical_bin_index',string1, text2=string2)
 endif
 
-end Function vertical_bin_index
+end function vertical_bin_index
 
 
 !======================================================================
 
 
-Subroutine RPE(x,y)
+subroutine RPE(x,y)
    real(r8), intent(inout) :: x
    real(r8), intent(in) :: y
    x = x + y
-end Subroutine RPE
-Subroutine IPE(x,y)
+end subroutine RPE
+subroutine IPE(x,y)
    integer, intent(inout) :: x
    integer, intent(in) :: y
    x = x + y
-end Subroutine IPE
+end subroutine IPE
 
 
 !======================================================================
 
 
-Function WriteTLRV(ncid, vrbl, TimeDimID, CopyDimID, RegionDimID, RankDimID)
+function WriteTLRV(ncid, vrbl, TimeDimID, CopyDimID, RegionDimID, RankDimID)
 integer,           intent(in) :: ncid
 type(TLRV_type),   intent(in) :: vrbl
 integer,           intent(in) :: TimeDimID, CopyDimID, RegionDimID
@@ -3791,7 +3838,7 @@ DEFINE : do ivar = 1,num_obs_types
       endif
 
       write(string3,*)ndata,' observations '//trim(string2)
-      call error_handler(E_MSG,'Rank Histogram',string3)
+      call error_handler(E_MSG,'WriteTLRV',string3)
 
    endif
 
@@ -3888,13 +3935,13 @@ enddo FILL
 
 WriteTLRV = 0
 
-end Function WriteTLRV
+end function WriteTLRV
 
 
 !======================================================================
 
 
-Function WriteLRV(ncid, vrbl, CopyDimID, RegionDimID)
+function WriteLRV(ncid, vrbl, CopyDimID, RegionDimID)
 integer,         intent(in) :: ncid
 type(LRV_type),  intent(in) :: vrbl
 integer,         intent(in) :: CopyDimID, RegionDimID
@@ -3906,7 +3953,7 @@ character(len=NF90_MAX_NAME) :: string1, string2
 integer :: VarID, LevelDimID, oldmode
 real(r4), allocatable, dimension(:,:,:) :: chunk
 
-! It is efficient to go into redefine mode once, 
+! It is efficient to go into redefine mode once,
 ! define all the variables, attributes, etc ...
 ! exit define mode and then loop again to fill.
 
@@ -4002,7 +4049,7 @@ enddo FILL
 
 WriteLRV = 0
 
-end Function WriteLRV
+end function WriteLRV
 
 
 !======================================================================
