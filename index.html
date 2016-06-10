@@ -201,6 +201,20 @@ committed since the original release of the Lanai code.
 </TR>
 -->
 
+<TR><TD> 10 June 2016 </TD>
+    <TD> 10354 </TD>
+    <TD> The <em class=file>threed_sphere/obs_diag.f90</em> program 
+was updated to correctly set the QC values for the (computed) 
+*HORIZONTAL_WIND metrics.  Recovering capability to run on 
+<em class=file>obs_seq.in</em> and <em class=file>obs_seq.out</em>
+files for the purpose of determining how many obs are in what regions, 
+the summary of what obs are in the file, etc.
+    <br />The <em class=file>obs_kind/DEFAULT_obs_kind_mod.F90</em> code 
+was bugfixed so <em class=program>get_raw_obs_kind()</em> correctly 
+finds 'KIND_RAW_STATE_VARIABLE' KINDS.
+    </TD>
+</TR>
+
 <TR><TD> 20 April 2016 </TD>
     <TD> 10131 </TD>
     <TD> The DART_LAB scripts became out-of-date with changes 
