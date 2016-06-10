@@ -573,7 +573,7 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
    endif
 
    !--------------------------------------------------------------------
-   ! Prepare some variables for the rank histogram. 
+   ! Prepare some variables for the rank histogram.
    ! FIXME : Make sure this observation sequence file has the same number of
    ! ensemble members as 'the first one' (which defines the bins) ...
 
@@ -805,15 +805,15 @@ ObsFileLoop : do ifile=1, size(obs_seq_filenames)
          endif
 
          !--------------------------------------------------------------
-         ! There is a ambiguous case wherein the prior is rejected (DART QC ==7) 
-         ! and the posterior forward operator fails (DART QC ==4). In this case, 
-         ! the DART_QC only reflects the fact the prior was rejected - HOWEVER - 
-         ! the posterior mean,spread are set to MISSING. 
+         ! There is a ambiguous case wherein the prior is rejected (DART QC ==7)
+         ! and the posterior forward operator fails (DART QC ==4). In this case,
+         ! the DART_QC only reflects the fact the prior was rejected - HOWEVER -
+         ! the posterior mean,spread are set to MISSING.
          !
          ! If it is your intent to compare identical prior and posterior TRUSTED
          ! observations, then you should enable the following few lines of code.
          ! and realize that the number of observations rejected because of the
-         ! outlier threshold will be wrong. 
+         ! outlier threshold will be wrong.
          !
          ! This is the only block of code you should need to change.
          !--------------------------------------------------------------
@@ -1410,7 +1410,7 @@ subroutine Namelist2Times( )
 !   bin_separation   comes from namelist
 !        bin_width   comes from namelist
 !     time_to_skip   comes from namelist
-! 
+!
 ! Global-scope variables set in this routine:
 ! type(time_type), intent(out) :: beg_time     ! first_bin_center
 ! type(time_type), intent(out) :: end_time     ! last_bin_center
@@ -1697,8 +1697,6 @@ real(r8), dimension(:), intent(inout) :: layerMiddles
 real(r8), dimension(:), intent(inout) :: layerEdges
 integer,                intent(  out) :: nLayers
 
-! FIXME ... do these NEED to be sorted ...
-
 if (any(layerMiddles /= MISSING_R8) .and. any(layerEdges /= MISSING_R8)) then
 
    ! user has specified both ... do we want to support that ... no.
@@ -1755,8 +1753,6 @@ subroutine setModelLevels(layerMiddles, layerEdges, nLayers)
 real(r8), dimension(:), intent(inout) :: layerMiddles
 real(r8), dimension(:), intent(inout) :: layerEdges
 integer,                intent(  out) :: nLayers
-
-! FIXME ... do these NEED to be sorted ...
 
 if (any(layerMiddles /= MISSING_R8) .and. any(layerEdges /= MISSING_R8)) then
 
@@ -1985,11 +1981,6 @@ subroutine  SetScaleFactors()
 
 character(len=stringlength) :: obs_string
 integer :: ivar
-
-if (verbose) then ! whitespace
-   write(     *     ,*)
-   write(logfileunit,*)
-endif
 
 scale_factor = 1.0_r8
 
@@ -2667,11 +2658,11 @@ function InnovZscore(obsval, prmean, prspred, errvar, qcval, qcmaxval)
 !
 ! In Jan of 2014 I ran into a special case. We are performing a perfect model
 ! experiment - perturbing a single state and then assimilating. We wanted
-! to compare against the true observation value (errvar = 0.0) and for the 
+! to compare against the true observation value (errvar = 0.0) and for the
 ! first time step, there is no ensemble spread either. In this case the denom
 ! was really zero and the calculation blew up. Since we only use this to track
 ! how far apart these things are, we can restrict the distance to the worst-case
-! scenario ... the last bin. 
+! scenario ... the last bin.
 
 real(r8)             :: InnovZscore
 real(r8), intent(in) :: obsval, prmean, prspred, errvar
@@ -3089,9 +3080,9 @@ prior_qc     = iqc
 posterior_qc = iqc
 
 ! There is a ambiguous case wherein the prior is rejected (DART QC ==7)
-! and the posterior forward operator fails (DART QC ==4). In this case, 
-! the DART_QC reflects the fact the prior was rejected - HOWEVER - 
-! the posterior mean,spread are set to MISSING. 
+! and the posterior forward operator fails (DART QC ==4). In this case,
+! the DART_QC reflects the fact the prior was rejected - HOWEVER -
+! the posterior mean,spread are set to MISSING.
 
 if ((prior_qc == 7) .and. (abs(pomean - MISSING_R8) > 1.0_r8)) posterior_qc = 4
 
@@ -3174,7 +3165,7 @@ call IPE(prior%Nposs(iepoch,ilevel,iregion,flavor), 1)
 call IPE(poste%Nposs(iepoch,ilevel,iregion,flavor), 1)
 
 !----------------------------------------------------------------------
-! Select which set of qcs are valid and accrue everything 
+! Select which set of qcs are valid and accrue everything
 !----------------------------------------------------------------------
 
 if ( trusted ) then
@@ -3252,9 +3243,9 @@ prior_qc     = iqc
 posterior_qc = iqc
 
 ! There is a ambiguous case wherein the prior is rejected (DART QC ==7)
-! and the posterior forward operator fails (DART QC ==4). In this case, 
-! the DART_QC reflects the fact the prior was rejected - HOWEVER - 
-! the posterior mean,spread are set to MISSING. 
+! and the posterior forward operator fails (DART QC ==4). In this case,
+! the DART_QC reflects the fact the prior was rejected - HOWEVER -
+! the posterior mean,spread are set to MISSING.
 
 if ((prior_qc == 7) .and. (abs(pomean - MISSING_R8) > 1.0_r8)) posterior_qc = 4
 
@@ -3315,7 +3306,7 @@ call IPE(priorAVG%Nposs(ilevel,iregion,flavor), 1)
 call IPE(posteAVG%Nposs(ilevel,iregion,flavor), 1)
 
 !----------------------------------------------------------------------
-! Select which set of qcs are valid and accrue everything 
+! Select which set of qcs are valid and accrue everything
 !----------------------------------------------------------------------
 
 if ( trusted ) then
@@ -3336,7 +3327,7 @@ if ((      trusted .and. any(trusted_prior_qcs == prior_qc)) .or. &
 else
    call IPE(priorAVG%NbadDartQC(ilevel,iregion,flavor),      1     )
 endif
-   
+
 ! Accrue the POSTERIOR quantities
 if ((      trusted .and. any(trusted_poste_qcs == posterior_qc)) .or. &
     (.not. trusted .and. any(   good_poste_qcs == posterior_qc))) then
@@ -3733,10 +3724,10 @@ do ivar = 1,max_obs_kinds
          string1 = obs_type_strings(ivar)
       endif
 
-      call nc_check(nf90_put_att(ncid, NF90_GLOBAL, string1, ivar), & 
+      call nc_check(nf90_put_att(ncid, NF90_GLOBAL, string1, ivar), &
          'WriteNetCDF', 'put_att:obs_type_string '//trim(obs_type_strings(ivar)))
    endif
-   
+
 enddo
 
 if (typesdimlen < 1) then
@@ -4299,7 +4290,7 @@ real(r8), intent(in) :: level_in         ! target level
 integer,  intent(in) :: leveltype        ! indicator for surface, height, etc.
 integer              :: find_my_level
 
-integer :: i
+integer  :: i
 real(r8) :: surface, top
 
 find_my_level = -1 ! set this to a 'bad' value.
@@ -4579,7 +4570,7 @@ character(len=NF90_MAX_NAME) :: string1, string2
 integer :: VarID, LevelDimID, oldmode
 real(r4), allocatable, dimension(:,:,:) :: chunk
 
-! It is efficient to go into redefine mode once, 
+! It is efficient to go into redefine mode once,
 ! define all the variables, attributes, etc ...
 ! exit define mode and then loop again to fill.
 
