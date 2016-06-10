@@ -384,7 +384,7 @@ state space variables over all times.  It can
 be a single value per state space variable, constant
 in time.  And finally, it can vary with time, adapting
 to different densities of observations in time and space.
-To enable state space inflation, see the <em>flavor</em>
+To enable state space inflation, see the <em>inf_flavor</em>
 namelist options below.
 To allow the values to adapt through time in each 
 assimilation window see the <em>inf_sd_initial</em> description.
@@ -411,12 +411,12 @@ where to start.
 In the namelist each entry has
 two values.  The first is for Prior inflation
 and the second is for Posterior inflation.
-If <em>flavor</em> is 0, all other settings for that
+If <em>inf_flavor</em> is 0, all other settings for that
 column are ignored.
 </P>
 <dl>
 <dt>
-<em>&amp;filter_nml :: flavor</em><br />
+<em>&amp;filter_nml :: inf_flavor</em><br />
 valid values: 0, 1, 2, 3
 <dd>
 Set the type of Prior and Posterior inflation applied
@@ -556,9 +556,9 @@ so the total file size will be two times the state vector length.
 <P>
 The suggested procedure for testing inflation options 
 is to start without
-any (both <em>flavor</em> values set to 0).  Then enable Prior
+any (both <em>inf_flavor</em> values set to 0).  Then enable Prior
 state space, spatially-varying inflation, with no Posterior
-inflation (set <em>flavor</em> to [2, 0]).  Then try damped
+inflation (set <em>inf_flavor</em> to [2, 0]).  Then try damped
 inflation (set <em>inf_damping</em> to 0.9 and set <em>inf_sd_initial</em>
 and <em>inf_sd_lower_bound</em> to 0.6).  The inflation values and
 standard deviation are written out to the Prior_Diag.nc
