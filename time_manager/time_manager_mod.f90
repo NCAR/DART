@@ -137,7 +137,7 @@ end interface
 
 logical, save :: module_initialized = .false.
 
-character(len=129) :: errstring
+character(len=512) :: errstring, errstring2
 
 !======================================================================
 
@@ -165,9 +165,10 @@ days_in = 0;  if (present(days)) days_in = days
 
 ! Negative time offset is illegal
 
-write(errstring,*)'seconds, days are ',seconds, days_in,' cannot be negative'
-if(seconds < 0 .or. days_in < 0) &
+if(seconds < 0 .or. days_in < 0) then
+   write(errstring,*)'seconds, days are ',seconds, days_in,' cannot be negative'
    call error_handler(E_ERR,'set_time',errstring,source,revision,revdate)
+endif
 
 ! Make sure seconds greater than a day are fixed up.
 ! Extra parens to force the divide before the multiply are REQUIRED 
@@ -178,9 +179,10 @@ set_time%seconds = seconds - (seconds / (60*60*24)) * (60*60*24)
 
 ! Check for overflow on days before doing operation
 
-write(errstring,*)'seconds is ',seconds,' overflowing conversion to days'
-if(seconds / (60*60*24)  >= huge(days_in) - days_in) &
+if(seconds / (60*60*24)  >= huge(days_in) - days_in) then
+   write(errstring,*)'seconds is ',seconds,' overflowing conversion to days'
    call error_handler(E_ERR,'set_time',errstring,source,revision,revdate)
+endif
 
 set_time%days = days_in + seconds / (60*60*24)
 
@@ -2964,6 +2966,11 @@ if ( .not. module_initialized ) call time_manager_init
 
   if (present(iunit)) unit_in = iunit
 
+  ! make this routine silently return if there is no calendar.
+  ! that way we can always call it without having to check each 
+  ! time first.
+  if ( calendar_type == NO_CALENDAR ) return
+
   call get_date (time,y,mo,d,h,m,s)
 
   ! print_date assumes an Earth calendar -- so check for calendar_type  
@@ -3003,6 +3010,16 @@ end subroutine print_date
 function read_time(file_unit, form, ios_out)
 !--------------------------------------------------------------------------------
 !
+! read a 2-integer timestamp from an already opened file.
+! 'form', if specified, must indicate a formatted or unformatted file
+! so the correct read() call will be used.
+! if 'ios_out' is present this routine will not call the error
+! handler even on error - the calling code must check the ios_out
+! return code.  if non-zero, it will be the return code from a
+! failed read() call.  if zero, then the time derived type has
+! the time values.  they should be checked - if the values read were
+! out of legal range they will both have been set to MISSING_I
+! (the integer missing value).
 
 integer,          intent(in)            :: file_unit
 character(len=*), intent(in),  optional :: form
@@ -3011,7 +3028,7 @@ integer,          intent(out), optional :: ios_out
 type(time_type)   :: read_time
 integer           :: secs, days, ios
 
-character(len=128) :: filename
+character(len=256) :: filename
 logical :: is_named
 integer :: rc
 
@@ -3023,10 +3040,19 @@ else
    read(file_unit, iostat=ios) secs, days
 endif
 
-if ( ios /= 0 ) then
+! we always write timestamps as 2 ints: secs, days.  test for both
+! an error from the read call or garbage values for the integers.
+! with a binary file we might get a good read return but the
+! values could be garbage.  testing here gives us a better shot
+! at generating a useful error message.
 
-   ! If ios_out argument is present, just return a non-zero ios
+if ( ios /= 0 .or. secs < 0 .or. days < 0 .or. secs > 86400) then
+
+   ! If ios_out argument is present return to the caller.
+   ! Note that this could be 0 now if the values being read are
+   ! garbage.  The caller needs to sort this out.
    if(present(ios_out)) then
+      read_time = set_time_missing()
       ios_out = ios
       return
    endif
@@ -3037,9 +3063,14 @@ if ( ios /= 0 ) then
    if ((rc /= 0) .or. (.not. is_named)) filename = 'unknown'
 
    ! Otherwise, read error is fatal, print message and stop
-   call dump_unit_attributes(file_unit)   ! TJH DEBUG statement
-   write(errstring,*)'read returned status ', ios, 'from input file ', trim(filename)
-   call error_handler(E_ERR,'read_time',errstring,source,revision,revdate)
+   !call dump_unit_attributes(file_unit)   ! TJH DEBUG statement
+   write(errstring,*)'read returned status ', ios, ' from input file ', trim(filename)
+   if (ios /= 0) then
+      call error_handler(E_ERR,'read_time',errstring,source,revision,revdate)
+   else
+      write(errstring2,*)'seconds/days read was ', secs, days
+      call error_handler(E_ERR,'read_time',errstring,source,revision,revdate,text2=errstring2)
+   endif
 else
    read_time = set_time(secs, days)
    if(present(ios_out)) ios_out = 0
