@@ -517,9 +517,9 @@ integer,           intent(in)    :: ncfile ! netdcf file id - should this be par
 type(domain_type), intent(inout) :: domain
 
 integer :: ivar, jdim, num_vars, num_dims !< loop variables
-integer :: variable_size, domain_size !< temporary sum variable
+integer :: variable_size
 integer :: ret ! netcdf return value
-integer(i8) :: index_start
+integer(i8) :: index_start, domain_size
 
 domain_size = 0
 num_vars    = domain%num_variables
@@ -805,7 +805,7 @@ end function get_num_domains
 function get_domain_size(dom_id)
 
 integer, intent(in) :: dom_id
-integer :: get_domain_size
+integer(i8) :: get_domain_size
 
 call check_domain_id(dom_id,'get_domain_size')
 
