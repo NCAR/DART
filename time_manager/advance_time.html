@@ -76,9 +76,10 @@ namelist (which can be empty) exists.
 <H2>USAGE</H2>
 
 <P>
-Interface identical to <em class=program>advance_cymdh</em>, except for reading 
-the arg line from standard input, to be more portable since iargc() is 
-nonstandard across different fortran implementations.
+Reads a time string and an amount to add or subtract, plus an optional
+formatting flag, from standard input and prints out the resulting time.
+Currently reads from the console/standard input because the iargc() function
+to get command line arguments is nonstandard across different fortran implementations.
 </P>
 
 <UL>
@@ -88,6 +89,7 @@ nonstandard across different fortran implementations.
 <LI>can digest various input date format if it still has the right order (ie. cc yy mm dd hh nn ss)</LI>
 <LI>can digest flexible time increment</LI>
 <LI>can output in wrf date format (ccyy-mm-dd_hh:nn:ss)</LI>
+<LI>can output in CESM date format (ccyy-mm-dd-sssss)</LI>
 <LI>can specify output date format</LI>
 <LI>can output Julian day</LI>
 <LI>can output Gregorian days and seconds (since year 1601)</LI>
