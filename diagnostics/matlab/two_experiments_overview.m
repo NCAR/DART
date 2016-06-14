@@ -3,8 +3,8 @@ function two_experiments_overview(varargin)
 % With no arguments, two_experiments_overview will create 4 figures that attempt
 % to provide an overview of two experiments. Each experiment must have been
 % summarized by obs_diag() and have its own 'obs_diag_output.nc' file.
-% The 'old' (or first) experiment has a default name of 'old_obs_diag_output.nc'
-% The 'new' (or second) experiment has a default name of 'new_obs_diag_output.nc'
+% The 'old' experiment has a default name of 'old_obs_diag_output.nc'
+% The 'new' experiment has a default name of 'new_obs_diag_output.nc'
 %
 %
 % EXAMPLE using defaults:
@@ -16,12 +16,12 @@ function two_experiments_overview(varargin)
 %
 % file1 = '/glade/scratch/raeder/POP_force/POP15/Diags_2010.08.15-31_0-500m/obs_diag_output.nc';
 % file2 = '/glade/scratch/raeder/ATM_spinup2/Diags_2010.08.15-31_Fixed_0-500m/obs_diag_output.nc';
-% two_experiments_overview('FileOne',file1,'FileTwo',file2)
+% two_experiments_overview('OldFile',file1,'NewFile',file2)
 %
 %
 % EXAMPLE specifying filenames and a 'flag level' to indicate 'weak' areas:
 %
-% two_experiments_overview('FileOne',file1,'FileTwo',file2,'FlagLevel',0.10)
+% two_experiments_overview('OldFile',file1,'NewFile',file2,'FlagLevel',0.10)
 
 %% DART software - Copyright 2004 - 2016 UCAR. This open source software is
 % provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -41,8 +41,8 @@ p = inputParser;
 p.FunctionName = 'input parser :: no required arguments, optional input is FlagLevel (percentage)';
 
 % set defaults for optional parameters
-defaultFileOne = 'old_obs_diag_output.nc';
-defaultFileTwo = 'new_obs_diag_output.nc';
+defaultOldFile = 'old_obs_diag_output.nc';
+defaultNewFile = 'new_obs_diag_output.nc';
 defaultFlagLevel = 0.00;   % ten percent would be 0.10
 defaultVarCheck = -1;
 
@@ -50,13 +50,13 @@ defaultVarCheck = -1;
 existisstupid = which('addParameter');
 if (isempty(existisstupid))
    addParamValue(p, 'FlagLevel', defaultFlagLevel, @isnumeric);
-   addParamValue(p, 'FileOne',   defaultFileOne,   @ischar);
-   addParamValue(p, 'FileTwo',   defaultFileTwo,   @ischar);
+   addParamValue(p, 'OldFile',   defaultOldFile,   @ischar);
+   addParamValue(p, 'NewFile',   defaultNewFile,   @ischar);
    addParamValue(p, 'VarCheck',  defaultVarCheck,  @isnumeric);
 else
    addParameter(p, 'FlagLevel', defaultFlagLevel, @isnumeric);
-   addParameter(p, 'FileOne',   defaultFileOne,   @ischar);
-   addParameter(p, 'FileTwo',   defaultFileTwo,   @ischar);
+   addParameter(p, 'OldFile',   defaultOldFile,   @ischar);
+   addParameter(p, 'NewFile',   defaultNewFile,   @ischar);
    addParameter(p, 'VarCheck',  defaultVarCheck,  @isnumeric);
 end
 
@@ -65,22 +65,22 @@ p.parse(varargin{:}) % parse inputs
 % collect the results of parsing (makes code easier to read)
 
 FlagLevel = p.Results.FlagLevel;
-FileOne   = p.Results.FileOne;
-FileTwo   = p.Results.FileTwo;
+OldFile   = p.Results.OldFile;
+NewFile   = p.Results.NewFile;
 VarCheck  = p.Results.VarCheck;
 
-if (exist(FileOne,'file') ~= 2), error('File %s does not exist.',FileOne); end
-if (exist(FileTwo,'file') ~= 2), error('File %s does not exist.',FileTwo); end
+if (exist(OldFile,'file') ~= 2), error('File %s does not exist.',OldFile); end
+if (exist(NewFile,'file') ~= 2), error('File %s does not exist.',NewFile); end
 
 %% Create the list of vertical profile prior observation types in both files.
 
-verticalobs = parse_DART_vars(FileOne, FileTwo); 
+verticalobs = parse_DART_vars(OldFile, NewFile); 
 nvariables = length(verticalobs);
 
 %% plot some reference plot just to make sure we're not upside down or ...
 
 if ( VarCheck > nvariables )
-   fprintf('\nThere are only %d possible variables in %s\n',nvariables,FileOne)
+   fprintf('\nThere are only %d possible variables in %s\n',nvariables,OldFile)
    for ivar=1:nvariables
       fprintf('%40s is VarCheck %d\n',verticalobs{ivar},ivar)
    end
@@ -88,7 +88,7 @@ if ( VarCheck > nvariables )
 
 elseif ( VarCheck > 0 )
    close all
-   files = {FileOne, FileTwo};
+   files = {OldFile, NewFile};
    titles = {'old','new'};
    obsnames{1} = verticalobs{VarCheck};
    copy = 'bias';
@@ -100,8 +100,8 @@ end
 
 %% plot the new stuff 
 
-oldncid = netcdf.open(FileOne,'NOWRITE');
-newncid = netcdf.open(FileTwo,'NOWRITE');
+oldncid = netcdf.open(OldFile,'NOWRITE');
+newncid = netcdf.open(NewFile,'NOWRITE');
 
 dimid = netcdf.inqDimID(oldncid,'region');
 [~, nregions] = netcdf.inqDim(oldncid,dimid);
@@ -117,9 +117,9 @@ pressure_dimid = netcdf.inqDimID(oldncid,'plevel');
 plevels     = getvar(oldncid,'plevel');
 hlevels     = getvar(oldncid,'hlevel');
 
-biasindex = get_copy_index(FileOne,'bias');
-rmseindex = get_copy_index(FileOne,'rmse');
-nusedindx = get_copy_index(FileOne,'Nused');
+biasindex = get_copy_index(OldFile,'bias');
+rmseindex = get_copy_index(OldFile,'rmse');
+nusedindx = get_copy_index(OldFile,'Nused');
 
 f1 = gcf;    clf(f1); orient landscape
 f2 = figure; clf(f2); orient landscape
