@@ -200,19 +200,15 @@ elseif (ds < 0) then
    base_time = decrement_time(base_time, -ds)
 endif
 
-
 call get_date(base_time, ccyy, mm, dd, hh, nn, ss)
-
 
 write(ccyymmddhhnnss(1:14), fmt='(i4, 5i2.2)')  ccyy, mm, dd, hh, nn, ss
 if ( nargum == 2 ) then
-write(12, *) 'datelen,nn,ss ', datelen, nn, ss
    if (datelen == 13) datelen=10
    if (datelen<14) then
       if(nn /= 0) datelen=12
       if(ss /= 0) datelen=14
    endif
-write(12, *) 'datelen,nn,ss ', datelen, nn, ss
    write(unit=stdout, fmt='(a)') ccyymmddhhnnss(1:datelen)
 elseif ( nargum > 2 ) then
    i = 3
@@ -375,10 +371,7 @@ if (ih /= 0) formatdate(ih:ih+1) = datein(9:10)
 if (in /= 0) formatdate(in:in+1) = datein(11:12)
 if (is /= 0) formatdate(is:is+1) = datein(13:14)
 
-return
-
 end function formatdate
-
 
 !-----------------------------------------------------------------------
 !>
@@ -403,8 +396,6 @@ integer :: fffff
 
 fffff = hh*3600 + nn*60 + ss
 write(formatCESMdate, '(i4.4,1a,2(i2.2,1a),i5.5)') ccyy, '-', mm, '-', dd, '-', fffff
-
-return
 
 end function formatCESMdate
 
