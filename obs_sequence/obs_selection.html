@@ -271,28 +271,32 @@ Set this to "no_calendar" if the observations are not using any calendar.
 <H2>BUILDING</H2>
 
 <P>
-Most <tt>$DART/models/*/work</tt> directories will build the tool along with
-other executable programs.  It is also possible to build the
-tool in the <tt>$DART/observations/utilities</tt> directory.
-The <tt>preprocess</tt> program must be built and run first, to define
+Most <em class=file>$DART/models/*/work</em> directories contain files
+needed to build this tool along with the other executable programs.  
+It is also possible to build this tool in the 
+<em class=file>$DART/observations/utilities</em> directory.
+In either case the
+<em class=file>preprocess</em> program must be built and run first to define
 what set of observation types will be supported.  See the
 <a href="../preprocess/preprocess.html">preprocess documentation</a>
 for more details on how to define the list and run it.
-The combined list of all observation types which will be encountered
-over all input files must be in the preprocess input list.
+The <em class=code>&amp;preprocess_nml</em>
+namelist in the <em class=file>input.nml</em> file must contain files with
+definitions for the combined set of all observation types which 
+will be encountered over all input obs_seq files.
 The other important choice when building the tool is to include a
-compatible locations module.  For the low-order models,
-the <tt>oned</tt> module should be used; for real-world observations,
-the <tt>threed_sphere</tt> module should be used.
+compatible locations module in the <em class=file>path_names_obs_selection</em> file.  
+For the low-order models the <em class=file>oned</em> module should be used; 
+for real-world observations the <em class=file>threed_sphere</em> module should be used.
 </P>
-<P>Generally the directories where executables are built will include
-a "quickbuild.csh" script which will build and run preprocess and then
-build the rest of the executables.  The "input.nml" namelist file may 
-need to be edited to include all the required observation types first.
-If this tool is not built, you must add a "path_names_obs_selection"
-and "mkmf_obs_selection" file in the current directory.  One can be
-copied from another model and edited to be consistent with the model
-you are building.
+<P>Usually the directories where executables are built will include
+a <em class=file>quickbuild.csh</em> script which builds and runs preprocess 
+and then builds the rest of the executables by executing all files
+with names starting with <em class=file>mkmf_</em>.
+If the obs_selection tool is not built because there is no <em class=file>mkmf_obs_selection</em>
+and <em class=file>path_names_obs_selection</em> file in the current directory they can be
+copied from another model.  The <em class=file>path_names_obs_selection</em> file
+will need to be edited to be consistent with the model you are building.
 </P>
 
 
