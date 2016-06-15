@@ -22,7 +22,7 @@ use  location_mod,     only : location_type
 use  obs_kind_mod,     only : get_num_raw_obs_kinds, get_raw_obs_kind_index, &
                               paramname_length, get_raw_obs_kind_name
 
-use  sort_mod,         only : slow_index_sort
+use  sort_mod,         only : index_sort
 
 use assim_model_mod,   only : static_init_assim_model, get_model_size,   &
                               get_state_meta_data
@@ -299,7 +299,7 @@ endif
 
 !------------------- Print out results     -----------------------
 
-call slow_index_sort(diffs, index_list, ens_size)
+call index_sort(diffs, index_list, ens_size)
 call error_handler(E_MSG, '', ' ')
 write(msgstring, "(A,I5)") 'Member with the minimum difference from the mean is ', index_list(1)
 call error_handler(E_MSG, '', msgstring)
