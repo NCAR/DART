@@ -61,8 +61,8 @@ else
 
 endif
 
-# remove temp file and now really call mkmf to generate makefile
-rm -f path_names_filter.back
+# remove temp files and now really call mkmf to generate makefile
+rm -f path_names_filter.back path_names_filter.temp
 
 ../../../mkmf/mkmf -p filter -t ../../../mkmf/mkmf.template   \
         -a "../../.." ${wrapper_arg} path_names_filter
