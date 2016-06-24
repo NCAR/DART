@@ -3,17 +3,17 @@
  hist_avg = .true.  
  histfreq = 'd','m','x','x','x'
  histfreq_n = 1,1,1,1,1
- ice_ic = '/glade/scratch/yfzhang/inputdata_cam/ice/sp2000_ens1.cice.r.2043-01-01-00000.nc'
+ ice_ic = 'cice.r.nc'
  lcdf64 = .true. 
  xndt_dyn =  1.0 
 /
 &grid_nml
- grid_file = '/glade/scratch/yfzhang/inputdata_cam/ocn/pop/gx1v6/grid/horiz_grid_20010402.ieeer8'
+ grid_file = 'horiz_grid_20010402.ieeer8'
  grid_format = 'bin'
  grid_type = 'displaced_pole'
  gridcpl_file = 'unknown_gridcpl_file'
  kcatbound =  0 
- kmt_file = '/glade/scratch/yfzhang/inputdata_cam/ocn/pop/gx1v6/grid/topography_20090204.ieeei4'
+ kmt_file = 'topography_20090204.ieeei4'
 /
 &ice_nml
  advection = 'remap'

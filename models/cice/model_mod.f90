@@ -3204,7 +3204,7 @@ character(len=256) :: construct_file_name_in
 ! stub is found in input.nml io_filename_nml
 ! restart files typically are of the form
 ! cice.r0001.nc
-write(construct_file_name_in, '(A, i4.4, A)') trim(stub), copy, ".nc"
+write(construct_file_name_in, '(A, A)') trim(stub), ".nc"
 
 end function construct_file_name_in
 
