@@ -19,7 +19,7 @@
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 
-set MODEL = "CLM"
+set MODEL = "CICE"
 
 @ n = 1
 
@@ -83,7 +83,7 @@ endif
 # Build the MPI-enabled target(s) 
 #----------------------------------------------------------------------
 
-\rm -f *.o *.mod filter wakeup_filter
+\rm -f *.o *.mod filter 
 
 @ n = $n + 1
 echo
@@ -99,15 +99,6 @@ if ($status != 0) then
    echo
    exit $n
 endif
-
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_wakeup_filter"
-csh  mkmf_wakeup_filter -mpi
-make || exit $n
-
-\rm -f *.o *.mod
 
 @ n = $n + 1
 echo
