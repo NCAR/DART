@@ -1,0 +1,228 @@
+#!/bin/csh
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+#-----------------------------------------------------------------------
+# Purpose, describe things here, etc.
+#-----------------------------------------------------------------------
+
+# ==============================================================================
+# CASE options:
+#
+# CASE          The value of "CASE" will be used many ways; directory and file
+#               names both locally and on HPSS, and script names; so consider
+#               its length and information content.
+# compset       Defines the vertical resolution and physics packages to be used.
+#               Must be a standard CESM compset; see the CESM documentation.
+# resolution    Defines the horizontal resolution and dynamics; see CESM docs.
+# cesmtag       The version of the CESM source code to use when building the code.
+#    TJH        A directory with this name must exist in your home directory,
+#    TJH        and have SourceMods in it. See the SourceMods section.
+#    TJH        http://www.image.ucar.edu/pub/DART/CESM/README
+# NUM_INSTANCES The number of ensemble members.
+# ==============================================================================
+# AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV (F_AMIP_CAM5) (FAMIPC5)
+
+setenv CASE           Dtest_single
+setenv resolution     T62_g16
+setenv compset        DTEST
+setenv cesmtag        cesm1_5_beta06c
+setenv NUM_INSTANCES  1
+
+# ==============================================================================
+# Directories
+# cesmdata        Location of some supporting CESM data files.
+# cesmroot        Location of the CESM code base.  This version of the script
+#                 only supports version cesm1_2_1.
+# caseroot        Will create the CESM case directory here, where the CESM+DART
+#                 configuration files will be stored.  This should probably not
+#                 be in scratch (on yellowstone, your 'work' partition is suggested).
+#                 This script will delete any existing caseroot, so this script,
+#                 and other useful things should be kept elsewhere.
+# rundir          Will create the CESM run directory here.  Will need large
+#                 amounts of disk space, generally on a scratch partition.
+# exeroot         Will create the CESM executable directory here, where the
+#                 CESM executables will be built.  Medium amount of space
+#                 needed, generally on a scratch partition.
+# archdir         Will create the CESM short-term archive directories here.
+#                 Large, generally on a scratch partition.  Files will remain
+#                 here until the long-term archiver moves it to permanent storage.
+# dartroot        Location of the root of _your_ DART installation
+# baseobsdir      Part of the directory name containing the obs_seq.out files to be used in the 
+#                 assimilation. The year, month, and filename will be provided in assimilate.csh.
+#                 Will be inherited by CESM#_#_DART_config and inserted into assimilate.csh
+# ==============================================================================
+
+setenv machine      yellowstone
+setenv cesmdata     /glade/p/cesm/cseg/inputdata
+# setenv cesmroot     /glade/p/cesmdata/cseg/.dev/${cesmtag}
+setenv cesmroot     /glade/scratch/bitz/darttest/cesm1_5_beta06c
+
+setenv caseroot     /glade/p/work/${USER}/cesmcases/${CASE}
+setenv rundir       /glade/scratch/${USER}/${CASE}/run
+setenv exeroot      /glade/scratch/${USER}/${CASE}/bld
+setenv archdir      /glade/scratch/${USER}/${CASE}/archive
+setenv dartroot     /glade/u/home/${USER}/DART/Trunk
+
+# set caseroot = "$WORK/cesmcases/"
+# set rundir  = "$SCRATCH/cesmruns/"
+
+
+# ==============================================================================
+# standard commands:
+#
+# If you are running on a machine where the standard commands are not in the
+# expected location, add a case for them below.
+# ==============================================================================
+
+# set nonomatch       # suppress "rm" warnings if wildcard does not match anything
+
+# The FORCE options are not optional.
+# The VERBOSE options are useful for debugging though
+# some systems don't like the -v option to any of the following
+switch ("`hostname`")
+    case be*:
+          # NCAR "bluefire"
+          set   MOVE = '/usr/local/bin/mv -fv'
+          set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
+          set   LINK = '/usr/local/bin/ln -fvs'
+          set REMOVE = '/usr/local/bin/rm -fr'
+       breaksw
+    default:
+          # NERSC "hopper", NWSC "yellowstone"
+          set   MOVE = '/bin/mv -fv'
+          set   COPY = '/bin/cp -fv --preserve=timestamps'
+          set   LINK = '/bin/ln -fvs'
+          set REMOVE = '/bin/rm -fr'
+       breaksw
+endsw
+
+# if ( -d $caseroot) then
+#     echo "CASE existed"
+#     echo "to delete the old CASE, use \
+#           rm -rf $caseroot/$CASE" ;exit
+# endif
+
+# fatal idea to make caseroot the same dir as where this setup script is
+# since the build process removes all files in the caseroot dir before
+# populating it.  try to prevent shooting yourself in the foot.
+
+if ( $caseroot == `pwd` ) then
+   echo "ERROR: the setup script should not be located in the caseroot"
+   echo "directory, because all files in the caseroot dir will be removed"
+   echo "before creating the new case.  move the script to a safer place."
+   exit 11
+endif
+
+echo "removing old files from ${caseroot}"
+echo "removing old files from ${exeroot}"
+echo "removing old files from ${rundir}"
+${REMOVE} ${caseroot}
+${REMOVE} ${exeroot}
+${REMOVE} ${rundir}
+
+${cesmroot}/cime/scripts/create_newcase  -res  $resolution \
+                                         -mach $machine \
+                                         -compset $compset \
+                                         -case $caseroot \
+                                         -project P86850054
+
+cd $caseroot
+
+# Save a copy for debug purposes
+foreach FILE ( *xml )
+   if ( ! -e        ${FILE}.original ) then
+      ${COPY} $FILE ${FILE}.original
+   endif
+end
+
+# Grab machine-specific resources values
+
+setenv MAX_TASKS_PER_NODE `./xmlquery MAX_TASKS_PER_NODE -value`
+@ ptile = $MAX_TASKS_PER_NODE / 2
+@ nthreads = 1
+
+#> @TODO stream template files & multiple years. Do we need to specify
+#> year 1 and year N (performance penalty?). Can we change years on-the-fly
+#> during a run
+
+set stream_year_align = 2000
+set stream_year_first = 2000
+set stream_year_last  = 2000
+
+# TJH ... DIN_LOC_ROOT ... redundant or can we remove it from the stream templates
+# TJH ... resubmit 0 
+
+# ./xmlchange  CESMSCRATCHROOT="$rundir/"
+# ./xmlchange DIN_LOC_ROOT="$SCRATCH/inputdata_cam"
+#./xmlchange RUNDIR="$rundir/$CASE/run"
+./xmlchange STOP_OPTION=ndays
+./xmlchange STOP_N=1
+./xmlchange RESUBMIT=0
+
+#./xmlchange DATM_MODE=CPLHIST3HrWx
+#./xmlchange DATM_CPLHIST_YR_START=$stream_year_first
+#./xmlchange DATM_CPLHIST_YR_END=$stream_year_last
+#./xmlchange DATM_CPLHIST_YR_ALIGN=$stream_year_align
+
+./xmlchange RUN_STARTDATE=${stream_year_first}-01-01
+
+@ nodes_per_instance = 3
+
+@ atm_tasks = $ptile * $NUM_INSTANCES * $nodes_per_instance
+@ lnd_tasks = $ptile * $NUM_INSTANCES * $nodes_per_instance
+@ ice_tasks = $ptile * $NUM_INSTANCES * $nodes_per_instance
+@ ocn_tasks = $ptile * $NUM_INSTANCES
+@ cpl_tasks = $ptile * $NUM_INSTANCES
+@ wav_tasks = $ptile * $NUM_INSTANCES
+
+# TJH determine glacier
+set glacier = CISM2P
+# CESM1_5_beta03: CISM1 (the default) can only handle 1 task per member.
+if ($glacier == 'CISM1' || $glacier == 'CISM2S') then
+    @ glc_tasks = $NUM_INSTANCES
+else if ($glacier == 'CISM2P') then
+    @ glc_tasks = $ptile * $NUM_INSTANCES * $nodes_per_instance
+else
+   # @ glc_tasks = 1   Exercised in ATM_spinup5, which failed to run in some MCT mapping routine.
+    @ glc_tasks = $ptile * $NUM_INSTANCES
+endif
+
+# TJH determine river_runoff
+set river_runoff = bob
+if ($river_runoff == 'RTM' || $river_runoff == 'MOSART') then
+   @ rof_tasks = $ptile * $NUM_INSTANCES * $nodes_per_instance
+else
+   @ rof_tasks = $ptile * $nodes_per_instance
+endif
+
+./xmlchange  NTHRDS_CPL=$nthreads,NTASKS_CPL=$cpl_tasks
+./xmlchange  NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks,NINST_ATM=$NUM_INSTANCES
+./xmlchange  NTHRDS_OCN=$nthreads,NTASKS_OCN=$ocn_tasks,NINST_OCN=$NUM_INSTANCES
+./xmlchange  NTHRDS_LND=$nthreads,NTASKS_LND=$lnd_tasks,NINST_LND=$NUM_INSTANCES
+./xmlchange  NTHRDS_ICE=$nthreads,NTASKS_ICE=$ice_tasks,NINST_ICE=$NUM_INSTANCES
+./xmlchange  NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=$NUM_INSTANCES
+./xmlchange  NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=$NUM_INSTANCES
+./xmlchange  NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks,NINST_WAV=$NUM_INSTANCES
+
+./xmlchange ROOTPE_ATM=0
+./xmlchange ROOTPE_LND=0
+./xmlchange ROOTPE_ICE=0
+./xmlchange ROOTPE_OCN=0
+./xmlchange ROOTPE_CPL=0
+./xmlchange ROOTPE_GLC=0
+./xmlchange ROOTPE_ROF=0
+./xmlchange ROOTPE_WAV=0
+
+#./xmlchange TOTALPES=64
+#./xmlchange MAX_TASKS_PER_NODE=16
+
+./case.setup
+echo "case setup finished"
+
+./case.build
+  
