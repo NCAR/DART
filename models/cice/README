@@ -1,0 +1,88 @@
+Possible bug found in model_mod.f90 for pop where set_date is sent sec this day the routine wants sec this min
+
+use     dart_cice_mod, only: set_model_time_step,               &
+                             get_horiz_grid_dims,               &
+                             read_horiz_grid, read_topography,  &
+                             get_cice_restart_filename
+
+
+14 May 2016 - CMB diving in
+
+created ../../obs_def/obs_def_cice_mod.f90 to make new obs_kinds used in model_mod.f90 and input.nml. Flailed around only. Not sure what to do.
+
+not sure about KIND_TRACERARRAY_CATSp
+
+edited ../obs_kind/obs_kind_mod.f90 but should not have. It is supposed to be rewritten anyway. removed edits but date changed
+
+CICE manual "The spatial discretization is specialized for a generalized orthogonal B-grid as in [51] or [63]. The ice and snow area, volume and energy are given at the center of the cell, velocity is defined at the corners, and the internal ice stress tensor takes four different values within a grid cell; bilinear approximations are used for the stress tensor and the ice velocity across the cell, as described in [33]. This tends to avoid the grid decoupling problems associated with the B-grid. " Hence:
+
+U, V are at gridcell corners
+T, h, hs, etc are at centers
+
+I'll assume for now that the grid is identical to pop
+
+!CMB I do not understand this part, leaving but may be unneeded in cice
+INTERFACE vector_to_prog_var
+      MODULE PROCEDURE vector_to_2d_prog_var
+      MODULE PROCEDURE vector_to_3d_prog_var
+END INTERFACE
+
+subroutine vector_to_3d_prog_var(x, varindex, data_3d_array)
+subroutine get_gridsize(num_x, num_y, num_z) ! not used in pop so of course not used now in cice either, why?
+
+
+! CMB come back here, some changes made below but need to look line-by-line still
+subroutine get_state_meta_data(state_handle, index_in, location, var_type)
+
+Fortran Files:
+cice_to_dart.f90        dart_to_cice.f90        model_mod_check.f90
+dart_cice_mod.f90       model_mod.f90           test_dipole_interp.f90
+
+-rw-r--r--  1 bitz  staff  142664 May 26 17:12 model_mod.f90
+-rw-r--r--  1 bitz  staff    4439 May 21 07:55 cice_to_dart.f90
+-rw-r--r--  1 bitz  staff    5676 May 21 07:49 dart_to_cice.f90
+-rw-r--r--  1 bitz  staff   24008 May 18 21:55 dart_cice_mod.f90
+-rw-r--r--  1 bitz  staff   24294 May 14 16:30 model_mod_check.f90
+-rw-r--r--  1 bitz  staff    2270 May 14 16:30 test_dipole_interp.f90
+
+dart_to_cice.f90 think it is done
+cice_to_dart.f90 is trivial so hope it's done too
+test_dipole_interp.f90 also trivial, nothing to change?
+model_mod_check.f90
+
+rma-cice/location/ has a bunch of subdirs each with a location_mod.f90
+
+dart_cice_mod.f90 should it have a get_cat_dim?
+
+in model_mod.f90 still have
+!CMB I do not understand this part, but appears in clm too 
+INTERFACE vector_to_prog_var
+!      MODULE PROCEDURE vector_to_1d_prog_var ! this is in clm
+      MODULE PROCEDURE vector_to_2d_prog_var ! this is in pop 
+      MODULE PROCEDURE vector_to_3d_prog_var ! this is in pop
+END INTERFACE
+
+! these routines must be public and you cannot change
+! the arguments - they will be called *from* the DART code.
+public :: get_model_size,                &
+          adv_1step,                     &
+          get_state_meta_data,           &
+          model_interpolate,             &
+          get_model_time_step,           &
+          static_init_model,             &
+          end_model,                     &
+          init_time,                     &
+          init_conditions,               &
+          nc_write_model_atts,           &
+          nc_write_model_vars,           &
+          pert_model_copies,             &
+          get_close_maxdist_init,        &
+          get_close_obs_init,            &
+          get_close_obs,                 &
+          query_vert_localization_coord, &
+          vert_convert,                  &
+          construct_file_name_in,        &
+          read_model_time,               &
+          write_model_time
+
+

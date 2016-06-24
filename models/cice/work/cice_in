@@ -1,0 +1,110 @@
+&setup_nml
+ diagfreq =  24   
+ hist_avg = .true.  
+ histfreq = 'd','m','x','x','x'
+ histfreq_n = 1,1,1,1,1
+ ice_ic = '/glade/scratch/yfzhang/inputdata_cam/ice/sp2000_ens1.cice.r.2043-01-01-00000.nc'
+ lcdf64 = .true. 
+ xndt_dyn =  1.0 
+/
+&grid_nml
+ grid_file = '/glade/scratch/yfzhang/inputdata_cam/ocn/pop/gx1v6/grid/horiz_grid_20010402.ieeer8'
+ grid_format = 'bin'
+ grid_type = 'displaced_pole'
+ gridcpl_file = 'unknown_gridcpl_file'
+ kcatbound =  0 
+ kmt_file = '/glade/scratch/yfzhang/inputdata_cam/ocn/pop/gx1v6/grid/topography_20090204.ieeei4'
+/
+&ice_nml
+ advection = 'remap'
+ albedo_type = 'default'
+ albicei = 0.45
+ albicev = 0.75
+ albsnowi = 0.73
+ albsnowv = 0.98
+ cf = 45.2172
+ dt_mlt_in =  1.50 
+ evp_damping = .false.
+ kdyn =  1 
+ kitd =  1 
+ krdg_partic = 1
+ krdg_redist = 1
+ kstrength =  1 
+ maskhalo_bound = .true.
+ maskhalo_dyn = .true.
+ maskhalo_remap = .true.
+ maskhalo_stress = .true.
+ ndte =  120 
+ r_snw = 1.61738
+ rsnw_melt_in =  1500. 
+ shortwave = 'dEdd'
+ splitcomm_dyn = .false.
+/
+&tracer_nml
+ tr_aero =  .true. 
+ tr_fy =  .true. 
+ tr_iage =  .true. 
+ tr_pond =  .true. 
+/
+&domain_nml
+ distribution_type = 'blkrobin'
+ ew_boundary_type = 'cyclic'
+ ns_boundary_type = 'open'
+ processor_shape = 'null'
+/
+&ice_prescribed_nml
+ prescribed_ice = .false.
+/
+&icefields_nml
+ f_aero = 'mxxxx'
+ f_aicen = 'dmxxx'
+ f_aisnap = 'mdxxx'
+ f_apondn = 'mxxxx'
+ f_congel = 'mxxxx'
+ f_daidtd = 'mxxxx'
+ f_daidtt = 'mxxxx'
+ f_divu = 'mxxxx'
+ f_dvidtd = 'mxxxx'
+ f_dvidtt = 'mxxxx'
+ f_faero_atm = 'mxxxx'
+ f_faero_ocn = 'mxxxx'
+ f_fhocn = 'mxxxx'
+ f_fhocn_ai = 'mxxxx'
+ f_frazil = 'mxxxx'
+ f_fresh = 'mxxxx'
+ f_fresh_ai = 'mxxxx'
+ f_frz_onset = 'dmxxx'
+ f_frzmlt = 'dmxxx'
+ f_fsalt = 'mxxxx'
+ f_fsalt_ai = 'mxxxx'
+ f_fy = 'mdxxx'
+ f_hisnap = 'mdxxx'
+ f_icepresent = 'mxxxx'
+ f_meltb = 'mxxxx'
+ f_meltl = 'mxxxx'
+ f_meltt = 'mxxxx'
+ f_mlt_onset = 'xxxxx'
+ f_opening = 'mxxxx'
+ f_shear = 'mxxxx'
+ f_sig1 = 'mxxxx'
+ f_sig2 = 'mxxxx'
+ f_snoice = 'mxxxx'
+ f_sss = 'dmxxx'
+ f_sst = 'dmxxx'
+ f_strairx = 'mxxxx'
+ f_strairy = 'mxxxx'
+ f_strcorx = 'mxxxx'
+ f_strcory = 'mxxxx'
+ f_strength = 'mxxxx'
+ f_strintx = 'mxxxx'
+ f_strinty = 'mxxxx'
+ f_strocnx = 'mxxxx'
+ f_strocny = 'mxxxx'
+ f_strtltx = 'xxxxx'
+ f_strtlty = 'xxxxx'
+ f_uocn = 'xxxxx'
+ f_uvel = 'mxxxx'
+ f_vicen = 'mxxxx'
+ f_vocn = 'xxxxx'
+ f_vvel = 'mxxxx'
+/
