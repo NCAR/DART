@@ -11,7 +11,8 @@ module model_mod
 ! borrowed heavily from ?
 
 ! Modules that are absolutely required for use are listed
-use        types_mod,    only : r4, r8, i4, i8, SECPERDAY, MISSING_R8, rad2deg, PI
+use        types_mod,    only : r4, r8, i4, i8, SECPERDAY, MISSING_R8, rad2deg, &
+                                PI, parmnamelength
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
                              print_time, print_date,                           &
                              operator(*),  operator(+), operator(-),           &
@@ -32,8 +33,8 @@ use     location_mod, only : location_type, get_dist, get_close_maxdist_init,  &
 !                             vert_is_height,   VERTISHEIGHT,                   &
 
 use    utilities_mod, only : register_module, error_handler,                   &
-                             E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
-                             nc_check, do_output, to_upper,                    &
+                             E_ERR, E_WARN, E_MSG, nmlfileunit, get_unit,      &
+                             nc_check, do_output, to_upper, logfileunit,       &
                              find_namelist_in_file, check_namelist_read,       &
                              file_exist, find_textfile_dims, file_to_text
 
@@ -48,7 +49,7 @@ use     obs_kind_mod, only : KIND_SEAICE_AGREG_CONCENTR ,  &
                              KIND_SEAICE_SNOWVOLUME,      &
                              KIND_DRY_LAND,               &
                              get_raw_obs_kind_index,      &
-                             get_raw_obs_kind_name, paramname_length 
+                             get_raw_obs_kind_name
 use mpi_utilities_mod, only: my_task_id, task_count
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use     dart_cice_mod, only: set_model_time_step,               &
@@ -124,9 +125,8 @@ type(random_seq_type) :: random_seq
 ! DART state vector contents are specified in the input.nml:&model_nml namelist.
 integer, parameter :: max_state_variables = 10 
 integer, parameter :: num_state_table_columns = 3
-! NOTE: may need to increase character length if netcdf variables are
-! larger than paramname_length = 32.
-character(len=paramname_length) :: variable_table( max_state_variables, num_state_table_columns )
+! FIXME: this isn't the right length limit for netcdf variable names.
+character(len=parmnamelength) :: variable_table( max_state_variables, num_state_table_columns )
 integer :: state_kinds_list( max_state_variables )
 logical :: update_var_list( max_state_variables )
 
@@ -141,7 +141,7 @@ integer  :: assimilation_period_days = 1
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
 logical  :: update_dry_cell_walls = .false.
-character(len=paramname_length) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
+character(len=parmnamelength) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
 integer  :: debug = 0   ! turn up for more and more debug messages
 
 ! FIXME: currently the update_dry_cell_walls namelist value DOES
@@ -326,7 +326,7 @@ call check_namelist_read(iunit, io, 'model_nml')
 
 ! Record the namelist values used for the run
 call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-if (do_output()) write(logfileunit, nml=model_nml)
+if (do_output()) write(nmlfileunit, nml=model_nml)
 if (do_output()) write(     *     , nml=model_nml)
 
 ! Set the time step ... causes cice namelists to be read.
@@ -883,25 +883,31 @@ base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
 SELECT CASE (obs_type)
    CASE (KIND_SEAICE_AGREG_CONCENTR , &  ! these kinds are just 2D vars
          KIND_SEAICE_AGREG_VOLUME, &
-         KIND_SEAICE_AGREG_SNOWVOLUME, &
-         KIND_U_SEAICE_COMPONENT    , &
-         KIND_V_SEAICE_COMPONENT    )
-      ! 2d vars, do nothing
+         KIND_SEAICE_AGREG_SNOWVOLUME )
+      ! this is going to do the sum inside the subroutine, so when it returns
+      ! we are done
+  ! FIXME: write this
+  !    call lon_lat_agreg_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, expected_obs, istatus)
+      if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus
+      return
    CASE (KIND_SEAICE_CONCENTR       , &  ! these kinds have an additional dim for category
          KIND_SEAICE_VOLUME         , &
          KIND_SEAICE_SNOWVOLUME      )
       ! 3d vars move pointer to the particular category
       base_offset = base_offset + (cat_index-1) * Nx * Ny 
+   CASE ( KIND_U_SEAICE_COMPONENT    , &
+          KIND_V_SEAICE_COMPONENT    )
+      ! these are really 2d fields - which can fall through to lon_lat_interp
    CASE DEFAULT
       ! Not a legal type for interpolation, return istatus error
       istatus = 15
       return
 END SELECT
 
-! finally the 2D interpolation either for velocity comp., agreggate var, or particular cat
-   call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, expected_obs, istatus)
+! finally the 2D interpolation either for velocity comp., or particular cat
+call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, expected_obs, istatus)
+if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus
 
-   if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus
 
 end subroutine model_interpolate
 
