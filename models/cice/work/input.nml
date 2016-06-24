@@ -29,9 +29,10 @@
    adv_ens_command          = "no_advance_script"
    ens_size                 =  3
    output_restart           = .true.
+   output_restart_mean      = .true.
    obs_sequence_in_name     = "obs_seq.out"
    obs_sequence_out_name    = "obs_seq.final"
-   restart_in_file_name     = "cice.r"
+   restart_in_file_name     = "cice_in.r"
    restart_out_file_name    = "cice_out.r"
    init_time_days           = -1
    init_time_seconds        = -1
@@ -50,10 +51,10 @@
    silence                  = .false.
    direct_netcdf_read       = .true.
    direct_netcdf_write      = .true.
-   use_restart_list         = .false.
+   use_restart_list         = .true.
    restart_list_file        = 'cice_restarts.txt'
-   perturb_from_single_instance = .true.
-   perturbation_amplitude       = 0.002
+   perturb_from_single_instance = .false.
+   perturbation_amplitude       = 0.2
 
    inf_flavor                  = 0,                       0
    inf_initial_from_restart    = .false.,                 .false.
@@ -85,7 +86,7 @@
 &assim_tools_nml
    filter_kind                     = 1
    cutoff                          = 0.05
-   allow_missing_in_clm            = .true.
+   allow_missing_in_clm            = .false.
    sort_obs_inc                    = .false.
    spread_restoration              = .false.
    sampling_error_correction       = .false.
@@ -158,7 +159,7 @@
 &model_nml
    assimilation_period_days     = 1
    assimilation_period_seconds  = 0
-   model_perturbation_amplitude = 0.2
+   model_perturbation_amplitude = 0.00002
    output_state_vector          = .false.
    debug                        = 0
    model_state_variables  =       'aicen', 'KIND_SEAICE_CONCENTR'        , 'UPDATE',
@@ -305,19 +306,19 @@
    loc_of_interest      =  90.0,  41.00, 0.35
 
 &model_mod_check_nml
- !  dart_input_file       = 'dart_ics',
- !  output_file           = 'checkme_out',
+   restart_in_file_name  = 'cice.r'
+   restart_out_file_name = 'cice_mm_out.r'
    verbose               = .false.,
    test1thru             = 5
-   x_ind                 = 720
+   x_ind                 = 3210
    kind_of_interest      = 'KIND_SEAICE_CONCENTR'
    loc_of_interest       = 287.5, 82.48, 1
    interp_test_lonrange  = 0.0, 359.0 
    interp_test_dlon      = 1.0
    interp_test_latrange  = -89.0, 89.0
    interp_test_dlat      = 1.0
-   !interp_test_vertrange = 1.0, 2.0
-   !interp_test_dvert     = 1.0
+   interp_test_vertrange = 1.0, 2.0
+   interp_test_dvert     = 1.0
    /
 
 &state_vector_io_nml
