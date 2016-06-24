@@ -1,21 +1,21 @@
 <streamstemplate>
       <general_comment>
-         streams template for datm in CCSM4
+         streams template for datm in CESM1_5
       </general_comment>
 <stream>
       <comment>
          Stream description file for CPL history 3-hourly Precip data at 0.9x1.25 resolution
       </comment>
       <dataSource>
-         CPL
+         Raeder et al. 80 member CAM/DART reanalysis
       </dataSource>
       <domainInfo>
          <variableNames>
-            time        time
-            doma_lon          lon
-            doma_lat          lat
-            doma_area        area
-            doma_mask        mask
+            time          time
+            doma_lon      lon
+            doma_lat      lat
+            doma_area     area
+            doma_mask     mask
          </variableNames>
          <filePath>
             /glade/p/image/RDA_strawman/DATM_ensembles/annual
@@ -41,7 +41,7 @@
             -10800
          </offset>
          <fileNames>
-          CAM_DATM.cpl_NINST.ha2x1dx6h.$RUNYEAR.nc
+          CAM_DATM.cpl_NINST.ha2x1dx6h.RUNYEAR.nc
           CAM_DATM.cpl_NINST.ha2x1dx6h.2001.nc
           CAM_DATM.cpl_NINST.ha2x1dx6h.2002.nc
           CAM_DATM.cpl_NINST.ha2x1dx6h.2003.nc

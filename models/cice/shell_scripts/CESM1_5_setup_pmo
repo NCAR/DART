@@ -23,7 +23,7 @@
 #    TJH        A directory with this name must exist in your home directory,
 #    TJH        and have SourceMods in it. See the SourceMods section.
 #    TJH        http://www.image.ucar.edu/pub/DART/CESM/README
-# NUM_INSTANCES The number of ensemble members.
+# num_instances The number of ensemble members.
 # ==============================================================================
 # AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV (F_AMIP_CAM5) (FAMIPC5)
 
@@ -31,7 +31,7 @@ setenv CASE           Dtest_single
 setenv resolution     T62_g16
 setenv compset        DTEST
 setenv cesmtag        cesm1_5_beta06c
-setenv NUM_INSTANCES  1
+setenv num_instances  3
 
 # ==============================================================================
 # Directories
@@ -66,7 +66,7 @@ setenv caseroot     /glade/p/work/${USER}/cesmcases/${CASE}
 setenv rundir       /glade/scratch/${USER}/${CASE}/run
 setenv exeroot      /glade/scratch/${USER}/${CASE}/bld
 setenv archdir      /glade/scratch/${USER}/${CASE}/archive
-setenv dartroot     /glade/u/home/${USER}/DART/Trunk
+setenv dartroot     /glade/u/home/${USER}/work/DART/rma_trunk
 
 # set caseroot = "$WORK/cesmcases/"
 # set rundir  = "$SCRATCH/cesmruns/"
@@ -155,6 +155,7 @@ set stream_year_first = 2000
 set stream_year_last  = 2000
 
 # TJH ... DIN_LOC_ROOT ... redundant or can we remove it from the stream templates
+# Fei uses DIN_LOC_ROOT on the TACC machines for datasets that are automatically downloaded by CESM
 # TJH ... resubmit 0 
 
 # ./xmlchange  CESMSCRATCHROOT="$rundir/"
@@ -164,50 +165,56 @@ set stream_year_last  = 2000
 ./xmlchange STOP_N=1
 ./xmlchange RESUBMIT=0
 
-#./xmlchange DATM_MODE=CPLHIST3HrWx
-#./xmlchange DATM_CPLHIST_YR_START=$stream_year_first
-#./xmlchange DATM_CPLHIST_YR_END=$stream_year_last
-#./xmlchange DATM_CPLHIST_YR_ALIGN=$stream_year_align
+# TODO FIXME The env_batch.xml job has queues and limits - but the resource
+# has the same name for the run-time and the st_archive ... no good.
+
+./xmlchange JOB_QUEUE=regular
+./xmlchange JOB_WALLCLOCK_TIME=1:00 
+
+./xmlchange DATM_MODE=CPLHIST3HrWx
+./xmlchange DATM_CPLHIST_YR_START=$stream_year_first
+./xmlchange DATM_CPLHIST_YR_END=$stream_year_last
+./xmlchange DATM_CPLHIST_YR_ALIGN=$stream_year_align
 
 ./xmlchange RUN_STARTDATE=${stream_year_first}-01-01
 
-@ nodes_per_instance = 3
+@ nodes_per_instance = 2
 
-@ atm_tasks = $ptile * $NUM_INSTANCES * $nodes_per_instance
-@ lnd_tasks = $ptile * $NUM_INSTANCES * $nodes_per_instance
-@ ice_tasks = $ptile * $NUM_INSTANCES * $nodes_per_instance
-@ ocn_tasks = $ptile * $NUM_INSTANCES
-@ cpl_tasks = $ptile * $NUM_INSTANCES
-@ wav_tasks = $ptile * $NUM_INSTANCES
+@ atm_tasks = $ptile * $num_instances * $nodes_per_instance
+@ lnd_tasks = $ptile * $num_instances * $nodes_per_instance
+@ ice_tasks = $ptile * $num_instances * $nodes_per_instance
+@ ocn_tasks = $ptile * $num_instances
+@ cpl_tasks = $ptile * $num_instances
+@ wav_tasks = $ptile * $num_instances
 
 # TJH determine glacier
 set glacier = CISM2P
 # CESM1_5_beta03: CISM1 (the default) can only handle 1 task per member.
 if ($glacier == 'CISM1' || $glacier == 'CISM2S') then
-    @ glc_tasks = $NUM_INSTANCES
+    @ glc_tasks = $num_instances
 else if ($glacier == 'CISM2P') then
-    @ glc_tasks = $ptile * $NUM_INSTANCES * $nodes_per_instance
+    @ glc_tasks = $ptile * $num_instances * $nodes_per_instance
 else
    # @ glc_tasks = 1   Exercised in ATM_spinup5, which failed to run in some MCT mapping routine.
-    @ glc_tasks = $ptile * $NUM_INSTANCES
+    @ glc_tasks = $ptile * $num_instances
 endif
 
 # TJH determine river_runoff
 set river_runoff = bob
 if ($river_runoff == 'RTM' || $river_runoff == 'MOSART') then
-   @ rof_tasks = $ptile * $NUM_INSTANCES * $nodes_per_instance
+   @ rof_tasks = $ptile * $num_instances * $nodes_per_instance
 else
    @ rof_tasks = $ptile * $nodes_per_instance
 endif
 
 ./xmlchange  NTHRDS_CPL=$nthreads,NTASKS_CPL=$cpl_tasks
-./xmlchange  NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks,NINST_ATM=$NUM_INSTANCES
-./xmlchange  NTHRDS_OCN=$nthreads,NTASKS_OCN=$ocn_tasks,NINST_OCN=$NUM_INSTANCES
-./xmlchange  NTHRDS_LND=$nthreads,NTASKS_LND=$lnd_tasks,NINST_LND=$NUM_INSTANCES
-./xmlchange  NTHRDS_ICE=$nthreads,NTASKS_ICE=$ice_tasks,NINST_ICE=$NUM_INSTANCES
-./xmlchange  NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=$NUM_INSTANCES
-./xmlchange  NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=$NUM_INSTANCES
-./xmlchange  NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks,NINST_WAV=$NUM_INSTANCES
+./xmlchange  NTHRDS_ICE=$nthreads,NTASKS_ICE=$ice_tasks,NINST_ICE=$num_instances
+./xmlchange  NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks,NINST_ATM=$num_instances
+./xmlchange  NTHRDS_OCN=$nthreads,NTASKS_OCN=$ocn_tasks,NINST_OCN=$num_instances
+./xmlchange  NTHRDS_LND=$nthreads,NTASKS_LND=$lnd_tasks,NINST_LND=1
+./xmlchange  NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=1
+./xmlchange  NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=1
+./xmlchange  NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks,NINST_WAV=1
 
 ./xmlchange ROOTPE_ATM=0
 ./xmlchange ROOTPE_LND=0
@@ -218,11 +225,80 @@ endif
 ./xmlchange ROOTPE_ROF=0
 ./xmlchange ROOTPE_WAV=0
 
-#./xmlchange TOTALPES=64
-#./xmlchange MAX_TASKS_PER_NODE=16
+./xmlchange DATA_ASSIMILATION=FALSE
+./xmlchange DATA_ASSIMILATION_CYCLES=1
+./xmlchange DATA_ASSIMILATION_SCRIPT=assimilate.csh
 
 ./case.setup
 echo "case setup finished"
 
+@ inst = 1
+while ( $inst <= $num_instances )
+
+    set inst_string = `printf %04d $inst`
+    set inst_2d = `printf %02d $inst`
+
+    # ===========================================================================
+    set fname = "user_nl_datm"_${inst_string}
+    # ===========================================================================
+    # DATM namelist
+
+    echo "streams  = 'datm.streams.txt.CPLHIST3HrWx.Solar_$inst_string             $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
+    echo "           'datm.streams.txt.CPLHIST3HrWx.Precip_$inst_string            $stream_year_align $stream_year_first $stream_year_last'," >> ${fname}
+    echo "           'datm.streams.txt.CPLHIST3HrWx.nonSolarNonPrecip_$inst_string $stream_year_align $stream_year_first $stream_year_last'"  >> ${fname}
+    echo "           'datm.streams.txt.presaero.clim_2000_$inst_string 1 1 1'"  >> ${fname}
+    echo "vectors  = 'u:v' "     >> ${fname}
+    echo "mapmask  = 'nomask', " >> ${fname}
+    echo "           'nomask', " >> ${fname}
+    echo "           'nomask', " >> ${fname}
+    echo "           'nomask'  " >> ${fname}
+    echo "tintalgo = 'coszen', " >> ${fname}
+    echo "           'nearest'," >> ${fname}
+    echo "           'linear', " >> ${fname}
+    echo "           'linear'  " >> ${fname}
+
+    # TJH should the stream template files precede with user_   as the old ones did.
+
+    # Create stream files for each ensemble member
+    cp ${dartroot}/models/cice/shell_scripts/datm.streams.txt.CPLHIST3HrWx.Precip_template \
+                                        user_datm.streams.txt.CPLHIST3HrWx.Precip_${inst_string}
+    cp ${dartroot}/models/cice/shell_scripts/datm.streams.txt.CPLHIST3HrWx.Solar_template \
+                                        user_datm.streams.txt.CPLHIST3HrWx.Solar_${inst_string}
+    cp ${dartroot}/models/cice/shell_scripts/datm.streams.txt.CPLHIST3HrWx.nonSolarNonPrecip_template \
+                                        user_datm.streams.txt.CPLHIST3HrWx.nonSolarNonPrecip_${inst_string}
+ 
+    foreach FNAME ( user_datm.streams.txt*_${inst_string} )
+       echo "modifying $FNAME"
+       sed s/NINST/${inst_string}/g $FNAME >! temp
+       sed s/RUNYEAR/${stream_year_first}/g temp >! $FNAME
+    end
+
+    # ===========================================================================
+     set fname = "user_nl_cice_${inst_string}"
+    # ===========================================================================
+    # CICE namelist
+
+# At some point, Fei will hand me a collection of CICE5 restart files.
+#    echo "ice_ic    = '/glade/scratch/yfzhang/inputdata_cam/ice/cice/sp2000_ens1.cice.r.2043-01-01-00000.nc' " >> $fname
+#    echo "ice_ic    = '/glade/p/image/RDA_strawman/CESM_ensembles/CICE/CICE5/DTEST/sp2000_ens1.cice.r.2043-01-01-00000.nc' " >> $fname
+    echo "histfreq_n =  1,1,1,1,1  "            >> $fname
+    echo "histfreq   = 'd','m','x','x','x' "    >> $fname
+    echo "f_sst = 'dmxxx' "                     >> $fname
+    echo "f_sss = 'dmxxx' "                     >> $fname
+    echo "f_frzmlt = 'dmxxx' "                  >> $fname
+    echo "f_frz_onset = 'dmxxx' "               >> $fname
+    echo "f_aicen = 'dmxxx' "                   >> $fname
+    
+    @ inst = $inst + 1
+end
+
+./preview_namelist
+
 ./case.build
-  
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
