@@ -57,6 +57,7 @@ setenv num_instances  3
 #                 Will be inherited by CESM#_#_DART_config and inserted into assimilate.csh
 # ==============================================================================
 
+setenv project      P86850054
 setenv machine      yellowstone
 setenv cesmdata     /glade/p/cesm/cseg/inputdata
 # setenv cesmroot     /glade/p/cesmdata/cseg/.dev/${cesmtag}
@@ -66,10 +67,9 @@ setenv caseroot     /glade/p/work/${USER}/cesmcases/${CASE}
 setenv rundir       /glade/scratch/${USER}/${CASE}/run
 setenv exeroot      /glade/scratch/${USER}/${CASE}/bld
 setenv archdir      /glade/scratch/${USER}/${CASE}/archive
-setenv dartroot     /glade/u/home/${USER}/work/DART/rma_trunk
 
-# set caseroot = "$WORK/cesmcases/"
-# set rundir  = "$SCRATCH/cesmruns/"
+setenv dartroot     /glade/u/home/${USER}/work/DART/rma_trunk
+setenv baseobsdir   /glade/p/image/Observations/PMicro
 
 # ==============================================================================
 # standard commands:
@@ -78,7 +78,7 @@ setenv dartroot     /glade/u/home/${USER}/work/DART/rma_trunk
 # expected location, add a case for them below.
 # ==============================================================================
 
-# set nonomatch       # suppress "rm" warnings if wildcard does not match anything
+set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 
 # The FORCE options are not optional.
 # The VERBOSE options are useful for debugging though
@@ -93,18 +93,12 @@ switch ("`hostname`")
        breaksw
     default:
           # NERSC "hopper", NWSC "yellowstone"
-          set   MOVE = '/bin/mv -fv'
-          set   COPY = '/bin/cp -fv --preserve=timestamps'
-          set   LINK = '/bin/ln -fvs'
-          set REMOVE = '/bin/rm -fr'
+          set   MOVE = '/bin/mv -v'
+          set   COPY = '/bin/cp -v --preserve=timestamps'
+          set   LINK = '/bin/ln -vs'
+          set REMOVE = '/bin/rm -r'
        breaksw
 endsw
-
-# if ( -d $caseroot) then
-#     echo "CASE existed"
-#     echo "to delete the old CASE, use \
-#           rm -rf $caseroot/$CASE" ;exit
-# endif
 
 # fatal idea to make caseroot the same dir as where this setup script is
 # since the build process removes all files in the caseroot dir before
@@ -120,16 +114,40 @@ endif
 echo "removing old files from ${caseroot}"
 echo "removing old files from ${exeroot}"
 echo "removing old files from ${rundir}"
-${REMOVE} ${caseroot}
-${REMOVE} ${exeroot}
-${REMOVE} ${rundir}
+${REMOVE} -f ${caseroot}
+${REMOVE} -f ${exeroot}
+${REMOVE} -f ${rundir}
 
 ${cesmroot}/cime/scripts/create_newcase  -res  $resolution \
                                          -mach $machine \
                                          -compset $compset \
                                          -case $caseroot \
-                                         -project P86850054
+                                         -project $project || exit 1
 
+# ==============================================================================
+# Record the DARTROOT directory and copy the DART setup script to CASEROOT.
+# CESM_DART_config can be run at some later date if desired, but it must
+# be run from a CASEROOT directory.
+# ==============================================================================
+
+# TODO FIXME more seds for assimilate script
+#
+# Preserve a copy of this script as it was run.
+set ThisFileName = $0:t
+${COPY} $ThisFileName ${caseroot}/${ThisFileName}.original
+
+if (   -e CESM1_5_DART_config ) then
+   sed -e "s#BOGUS_DART_ROOT_STRING#${dartroot}#" < CESM1_5_DART_config \
+           >! ${caseroot}/CESM_DART_config  || exit 20
+   chmod 755  ${caseroot}/CESM_DART_config
+else
+   echo "ERROR: the script to configure for data assimilation is not available."
+   echo "       CESM1_5_DART_config MUST be present in ${dartroot}/models/cice/shell_scripts/"
+   exit 21
+endif
+
+# ==============================================================================
+# ==============================================================================
 cd $caseroot
 
 # Save a copy for debug purposes
@@ -235,7 +253,7 @@ endif
 ./xmlchange ROOTPE_ROF=0,NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=1
 ./xmlchange ROOTPE_WAV=0,NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks,NINST_WAV=1
 
-./xmlchange DATA_ASSIMILATION=FALSE
+./xmlchange DATA_ASSIMILATION=TRUE
 ./xmlchange DATA_ASSIMILATION_CYCLES=1
 ./xmlchange DATA_ASSIMILATION_SCRIPT=assimilate.csh
 
@@ -282,6 +300,7 @@ while ( $inst <= $num_instances )
        sed s/NINST/${inst_string}/g $FNAME >! temp
        sed s/RUNYEAR/${stream_year_first}/g temp >! $FNAME
     end
+    ${REMOVE} temp
 
     # ===========================================================================
      set fname = "user_nl_cice_${inst_string}"
@@ -302,10 +321,9 @@ while ( $inst <= $num_instances )
     @ inst = $inst + 1
 end
 
-./preview_namelist
-
 ./case.build
 
+./preview_namelist
 
 exit 0
 

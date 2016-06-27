@@ -7,31 +7,20 @@
 program dart_to_cice
 
 !----------------------------------------------------------------------
-! purpose: interface between DART and the CICE model
+! purpose: muck with cice state vector after filter
 !
-! method: Read DART state vector and overwrite values in a CICE restart file.
-!         If the DART state vector has an 'advance_to_time' present, a
-!         file called cice_in.DART is created with a time_manager_nml namelist 
-!         appropriate to advance CICE to the requested time.
-!
-!         The dart_to_cice_nml namelist setting for advance_time_present 
-!         determines whether or not the input file has an 'advance_to_time'.
-!         Typically, only temporary files like 'assim_model_state_ic' have
-!         an 'advance_to_time'.
+! method: Read in restart (restart with prior) and out restart (restart 
+!         with posterior) written by DART after filter. 
 !
 ! author: C Bitz June 2016
-! borrowed heavily from Tim Hoar 25 Jun 09, revised 12 July 2010
 !----------------------------------------------------------------------
 
 use        types_mod, only : r8
 use    utilities_mod, only : initialize_utilities, finalize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
-                             logfileunit
-use  state_vector_io_mod, only : open_restart_read, aread_state_restart, close_restart
-use time_manager_mod, only : time_type, print_time, print_date, operator(-)
-use        model_mod, only : static_init_model, sv_to_restart_file, &
-                             get_model_size, get_cice_restart_filename
-use     dart_cice_mod, only : write_cice_namelist
+                             logfileunit, nc_check, E_ERR, file_exist, &
+                             error_handler
+use netcdf 
 
 implicit none
 
@@ -42,88 +31,134 @@ character(len=32 ), parameter :: revision = "$Revision: 8565 $"
 character(len=128), parameter :: revdate  = "$Date: 2015-09-11 10:16:08 -0700 (Fri, 11 Sep 2015) $"
 
 !------------------------------------------------------------------
-! The namelist variables
-!------------------------------------------------------------------
 
-character (len = 128) :: dart_to_cice_input_file   = 'dart_restart'
-logical               :: advance_time_present     = .false.
+character (len = 128) :: dart_to_cice_input_file   = 'dart_restart.nc'
+character (len = 128) :: balance_method = 'simple_squeeze'
+namelist /dart_to_cice_nml/ dart_to_cice_input_file, balance_method
 
-namelist /dart_to_cice_nml/ dart_to_cice_input_file, &
-                           advance_time_present
-
-!----------------------------------------------------------------------
-
-integer               :: iunit, io, x_size
-type(time_type)       :: model_time, adv_to_time
-real(r8), allocatable :: statevector(:)
-character (len = 128) :: cice_restart_filename = 'no_cice_restart_file'
+character(len=512) :: msgstring
+character (len = 15) :: varname
+integer, parameter :: Nx=320, Ny=384  ! hardwire for now
+integer, parameter :: Ncat=5          ! number of categories in ice-thickness dist, hardwire
+real(r8) :: aicen(Nx,Ny,Ncat), vicen(Nx,Ny,Ncat), vsnon(Nx,Ny,Ncat)
+real(r8) :: aice(Nx,Ny)
+integer  :: i, j, k
+integer :: VarID, ncid, iunit, io
+real(r8) :: squeeze
+logical  :: update_restart = .false.
 
 !----------------------------------------------------------------------
 
 call initialize_utilities(progname='dart_to_cice')
 
-!----------------------------------------------------------------------
-! Call model_mod:static_init_model() which reads the CICE namelists
-! to set grid sizes, etc.
-!----------------------------------------------------------------------
-
-call static_init_model()
-
-x_size = get_model_size()
-allocate(statevector(x_size))
-
-! Read the namelist to get the input filename. 
-
 call find_namelist_in_file("input.nml", "dart_to_cice_nml", iunit)
 read(iunit, nml = dart_to_cice_nml, iostat = io)
 call check_namelist_read(iunit, io, "dart_to_cice_nml")
 
-call get_cice_restart_filename( cice_restart_filename )
-
 write(*,*)
-write(*,'(''dart_to_cice:converting DART file '',A, &
-      &'' to CICE restart file '',A)') &
-     trim(dart_to_cice_input_file), trim(cice_restart_filename)
+write(*,'(''dart_to_cice:converting DART output restart file '',A, &
+      &'' to one CICE will like'')') &
+     trim(dart_to_cice_input_file)
 
-!----------------------------------------------------------------------
-! Reads the valid time, the state, and the target time.
-!----------------------------------------------------------------------
-
-iunit = open_restart_read(dart_to_cice_input_file)
-
-if ( advance_time_present ) then
-   call aread_state_restart(model_time, statevector, iunit, adv_to_time)
-else
-   call aread_state_restart(model_time, statevector, iunit)
-endif
-call close_restart(iunit)
-
-!----------------------------------------------------------------------
-! update the current CICE state vector
-! Convey the amount of time to integrate the model ...
-! time_manager_nml: stop_option, stop_count increments
-!----------------------------------------------------------------------
-
-call sv_to_restart_file(statevector, cice_restart_filename, model_time)
-
-if ( advance_time_present ) then
-   call write_cice_namelist(model_time, adv_to_time)
+if ( .not. file_exist(dart_to_cice_input_file) ) then
+   write(msgstring,*) 'cannot open file ', trim(dart_to_cice_input_file),' for updating.'
+   call error_handler(E_ERR,'dart_to_cice:filename not found ',trim(dart_to_cice_input_file))
 endif
 
-!----------------------------------------------------------------------
-! Log what we think we're doing, and exit.
-!----------------------------------------------------------------------
+! open file with read and write 
+call nc_check( nf90_open(trim(dart_to_cice_input_file), NF90_WRITE, ncid), &
+                  'dart_to_cice', 'open '//trim(dart_to_cice_input_file))
 
-call print_date( model_time,'dart_to_cice:CICE model date')
-call print_time( model_time,'dart_to_cice:DART model time')
-call print_date( model_time,'dart_to_cice:CICE model date',logfileunit)
-call print_time( model_time,'dart_to_cice:DART model time',logfileunit)
+! get the key restart variables
 
-if ( advance_time_present ) then
-call print_time(adv_to_time,'dart_to_cice:advance_to time')
-call print_date(adv_to_time,'dart_to_cice:advance_to date')
-call print_time(adv_to_time,'dart_to_cice:advance_to time',logfileunit)
-call print_date(adv_to_time,'dart_to_cice:advance_to date',logfileunit)
+varname='aicen'
+call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
+         'dart_to_cice', trim(varname)//' inq_varid '//trim(dart_to_cice_input_file))
+call nc_check(nf90_get_var(ncid, VarID, aicen), 'dart_to_cice', &
+         'get_var '//trim(varname))
+
+varname='vicen'
+call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
+         'dart_to_cice', trim(varname)//' inq_varid '//trim(dart_to_cice_input_file))
+call nc_check(nf90_get_var(ncid, VarID, vicen), 'dart_to_cice', &
+         'get_var '//trim(varname))
+
+varname='vsnon'
+call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
+         'dart_to_cice', trim(varname)//' inq_varid '//trim(dart_to_cice_input_file))
+call nc_check(nf90_get_var(ncid, VarID, vsnon), 'dart_to_cice', &
+         'get_var '//trim(varname))
+
+aice = aicen(:,:,1)
+do k = 2, Ncat  
+  aice = aice+aicen(:,:,k)
+enddo
+
+! fix me if (.not. present(balance_method)) balance_method='simple_squeeze'
+
+SELECT CASE (balance_method)
+  CASE ('simple_squeeze')
+     do j = 1, Ny   ! size(data_3d_array,2)
+        do i = 1, Nx   ! size(data_3d_array,1)
+           if (aice(i,j).lt.0.) then
+              aicen(i,j,:)=0.
+              vicen(i,j,:)=0.
+              vsnon(i,j,:)=0.
+              update_restart = .true.
+           elseif (aice(i,j).gt.1.) then
+              squeeze=1./aice(i,j)
+              aicen(i,j,:)=aicen(i,j,:)*squeeze
+              vicen(i,j,:)=vicen(i,j,:)*squeeze
+              vsnon(i,j,:)=vsnon(i,j,:)*squeeze
+              update_restart = .true.
+           endif
+        enddo
+     enddo
+  CASE ('tendency_weight')  ! this is identical to the above for now
+     do j = 1, Ny   ! size(data_3d_array,2)
+        do i = 1, Nx   ! size(data_3d_array,1)
+           if (aice(i,j).lt.0.) then
+              aicen(i,j,:)=0.
+              vicen(i,j,:)=0.
+              vsnon(i,j,:)=0.
+              update_restart = .true.
+           elseif (aice(i,j).gt.1.) then
+              squeeze=1./aice(i,j)
+              aicen(i,j,:)=aicen(i,j,:)*squeeze
+              vicen(i,j,:)=vicen(i,j,:)*squeeze
+              vsnon(i,j,:)=vsnon(i,j,:)*squeeze
+              update_restart = .true.
+           endif
+        enddo
+     enddo
+END SELECT
+
+!for testing make something to fix
+!  update_restart = .true.
+!  aicen(10,10,1)=1.1
+!  write(*,*) (aicen(10,10,k), k=1,5)
+
+if (update_restart) then
+! now update the variables
+
+varname='aicen'
+call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
+         'dart_to_cice', trim(varname)//' inq_varid '//trim(dart_to_cice_input_file))
+call nc_check(nf90_put_var(ncid, VarID, aicen), 'dart_to_cice', &
+         'get_var '//trim(varname))
+
+varname='vicen'
+call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
+         'dart_to_cice', trim(varname)//' inq_varid '//trim(dart_to_cice_input_file))
+call nc_check(nf90_put_var(ncid, VarID, vicen), 'dart_to_cice', &
+         'get_var '//trim(varname))
+
+varname='vsnon'
+call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
+         'dart_to_cice', trim(varname)//' inq_varid '//trim(dart_to_cice_input_file))
+call nc_check(nf90_put_var(ncid, VarID, vsnon), 'dart_to_cice', &
+         'get_var '//trim(varname))
+
 endif
 
 call finalize_utilities('dart_to_cice')

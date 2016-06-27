@@ -1,0 +1,343 @@
+#!/bin/csh
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+# ---------------------
+# Purpose
+# ---------------------
+#
+# This script integrates DART with a pre-existing CESM multi-instance case.
+# It must be run from a valid CASEROOT directory and some environment variables
+# must be set (as in CESM#_#_setup_YYY). If the case was created
+# using one of the DART scripts, this script should be staged in the
+# CASEROOT directory automatically, and DARTROOT is set at that time.
+#
+# CAM is the only active model component.
+# CESM starts and stops to allow for CAM to assimilate every 6 hours.
+#
+# This script will build the DART executables if they are not found.
+#
+# There are many CESM binary files in big-endian format, and DART reads
+# some of them, so you MUST compile DART accordingly e.g.,
+# ifort -convert big_endian
+# Contact dart@ucar.edu if you want to use another compiler.
+#
+# ---------------------
+# How to set up the script
+# ---------------------
+#
+# -- Ensure DARTROOT references a valid DART directory.
+# -- Examine the whole script to identify things to change for your experiments.
+# -- Provide any initial files needed by your run:
+#       inflation
+#       sampling error correction
+# -- Run this script.
+# -- Edit the DART input.nml that appears in the ${CASEROOT} directory.
+# -- Submit the job using ${CASEROOT}/${CASE}.submit
+#
+# ==============================================================================
+# Get the environment of the case - defines number of instances/ensemble size ...
+# Each model component has their own number of instances.
+# ==============================================================================
+
+if ( ! -e ./xmlquery ) then
+   echo "ERROR: $0 must be run from a CASEROOT directory".
+   exit -1
+endif
+
+setenv CASE      `./xmlquery CASE           -value`
+setenv CASEROOT  `./xmlquery CASEROOT       -value`
+setenv COMPSET   `./xmlquery COMPSET        -value`
+setenv EXEROOT   `./xmlquery EXEROOT        -value`
+setenv RUNDIR    `./xmlquery RUNDIR         -value`
+setenv NINST_ICE `./xmlquery NINST_ICE      -value`
+
+set num_instances = $NINST_ICE
+
+# DARTROOT is set by the DART CESM_configure scripts. Under certain
+# situations, you may need to set this manually. It should reference the
+# base portion of the DART code tree.
+
+setenv DARTROOT  BOGUS_DART_ROOT_STRING
+
+# ==============================================================================
+# Some
+# ==============================================================================
+
+set nonomatch       # suppress "rm" warnings if wildcard does not match anything
+
+# The FORCE options are not optional.
+# The VERBOSE options are useful for debugging though
+# some systems don't like the -v option to any of the following
+switch ("`hostname`")
+   case be*:
+      # NCAR "bluefire"
+      set   MOVE = '/usr/local/bin/mv -fv'
+      set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
+      set   LINK = '/usr/local/bin/ln -fvs'
+      set REMOVE = '/usr/local/bin/rm -fr'
+
+   breaksw
+   default:
+      # NERSC "hopper", NWSC "yellowstone"
+      set   MOVE = '/bin/mv -v'
+      set   COPY = '/bin/cp -v --preserve=timestamps'
+      set   LINK = '/bin/ln -vs'
+      set REMOVE = '/bin/rm -r'
+
+   breaksw
+endsw
+
+echo ""
+
+# ==============================================================================
+# make sure the required directories exist
+# VAR is the shell variable name, DIR is the value
+# ==============================================================================
+
+foreach VAR ( CASEROOT DARTROOT )
+   set DIR = `eval echo \${$VAR}`
+   if ( ! -d $DIR ) then
+      echo "ERROR: directory '$DIR' not found"
+      echo "       In the setup script check the setting of: $VAR"
+      exit -1
+   endif
+end
+
+# ==============================================================================
+# Make sure the DART executables exist or build them if we can't find them.
+# The DART input.nml in the model directory IS IMPORTANT during this part
+# because it defines what observation types are supported.
+# ==============================================================================
+
+foreach MODEL ( cice )
+   set targetdir = $DARTROOT/models/$MODEL/work
+   if ( ! -x $targetdir/filter ) then
+      echo ""
+      echo "WARNING: executable file 'filter' not found."
+      echo "         Looking for: $targetdir/filter "
+      echo "         Trying to rebuild all executables for $MODEL now ..."
+      (cd $targetdir; ./quickbuild.csh -mpi)
+      if ( ! -x $targetdir/filter ) then
+         echo "ERROR: executable file 'filter' not found."
+         echo "       Unsuccessfully tried to rebuild: $targetdir/filter "
+         echo "       Required DART assimilation executables are not found."
+         echo "       Stopping prematurely."
+         exit -1
+      endif
+   endif
+end
+
+# ==============================================================================
+# Stage the required parts of DART in the CASEROOT directory.
+# ==============================================================================
+
+# The new case.st_archive job script calls st_archive.  It runs after the case.run job.
+# It submits the next case.run job, if RESUBMIT > 0.
+# Fix some pieces.
+# /X/ means search for lines with X in them.
+# 'c' means replace the line with the following.
+# This might want to have a conditional around it, to only execute if it's a bsub machine.
+sed -e "/BSUB[ ]*-o/c\#BSUB  -o cesm_st_arch.stdout.%J" \
+    -e "/BSUB[ ]*-e/c\#BSUB  -e cesm_st_arch.stderr.%J" \
+    -e "/BSUB[ ]*-J/c\#BSUB  -J ${CASE}.st_arch" case.st_archive >! temp.$$  || exit 20
+${MOVE} temp.$$ case.st_archive
+chmod 755       case.st_archive
+
+# Same for lt_archive
+# CESM1_5; queue and wall_clock can/should be modified via xmlchange in CESM1_5_setup_advanced 
+# (see env_batch.xml)
+sed -e "/BSUB[ ]*-o/c\#BSUB  -o cesm_lt_arch.stdout.%J  \n" \
+    -e "/BSUB[ ]*-e/c\#BSUB  -e cesm_lt_arch.stderr.%J  \n" \
+    -e "/BSUB[ ]*-J/c\#BSUB  -J ${CASE}.lt_arch         \n" case.lt_archive >! temp.$$  || exit 21
+${MOVE} temp.$$ case.lt_archive
+chmod 755       case.lt_archive
+
+# SetupFileName comes from CESM#_#_setup*, the calling script.
+sed -e "s#BOGUSCASEROOT#$CASEROOT#" \
+    ${DARTROOT}/models/cice/shell_scripts/assimilate1_5.csh > assimilate.csh || exit 23
+
+chmod 755 assimilate.csh
+
+# TODO FIXME 
+# chmod 755 perfect_model.csh
+
+# ==============================================================================
+# Stage the DART executables in the CESM execution root directory: EXEROOT
+# If you recompile the DART code (maybe to support more observation types)
+# we're making a script to make it easy to install new DART executables.
+# ==============================================================================
+
+cat << EndOfText >! stage_dart_files
+#!/bin/sh
+
+# Run this script in the ${CASEROOT} directory.
+# This script copies over the dart executables and POSSIBLY a namelist
+# to the proper directory.  If you have to update any dart executables,
+# do it in the ${DARTROOT} directory and then rerun stage_dart_files.
+# If an input.nml does not exist in the ${CASEROOT} directory,
+# a default one will be copied into place.
+#
+# This script was autogenerated by $0 using the variables set in that script.
+
+if [[ -e input.nml ]]; then
+   echo "stage_dart_files: Using existing ${CASEROOT}/input.nml"
+   if [[ -e input.nml.original ]]; then
+      echo "input.nml.original already exists - not making another"
+   else
+      ${COPY} input.nml input.nml.original
+   fi
+
+elif [[ -e ${DARTROOT}/models/cice/work/input.nml ]]; then
+   ${COPY} ${DARTROOT}/models/cice/work/input.nml  input.nml
+   if [[ -x update_dart_namelists ]]; then
+          ./update_dart_namelists
+   fi
+else
+   echo "ERROR: stage_dart_files could not find an input.nml.  Aborting"
+   exit -99
+fi
+
+${COPY} ${DARTROOT}/models/cice/work/dart_to_cice      ${EXEROOT}
+${COPY} ${DARTROOT}/models/cice/work/filter            ${EXEROOT}
+${COPY} ${DARTROOT}/models/cice/work/perfect_model_obs ${EXEROOT}
+
+exit 0
+
+EndOfText
+chmod 0755 stage_dart_files
+
+./stage_dart_files  || exit -8
+
+# ==============================================================================
+# Ensure the DART namelists are consistent with the ensemble size,
+# suggest settings for num members in the output diagnostics files, etc.
+# The user is free to update these after setup and before running.
+# ==============================================================================
+
+cat << EndOfText >! update_dart_namelists
+#!/bin/sh
+
+# this script makes certain namelist settings consistent with the number
+# of ensemble members built by the setup script.
+# this script was autogenerated by $0
+# using the variables set in that script
+
+# Ensure that the input.nml ensemble size matches the number of instances.
+# WARNING: the output files contain ALL ensemble members ==> BIG
+
+ex input.nml <<ex_end
+g;ens_size ;s;= .*;= ${NINST_ICE};
+g;num_output_state_members ;s;= .*;= ${NINST_ICE};
+g;num_output_obs_members ;s;= .*;= ${NINST_ICE};
+wq
+ex_end
+
+exit 0
+
+EndOfText
+chmod 0755 update_dart_namelists
+
+./update_dart_namelists || exit -9
+
+#=========================================================================
+# Stage the files needed for SAMPLING ERROR CORRECTION - even if not
+# initially requested. The file is static, small, and may be needed later.
+#
+# If it is requested and is not present ... it is an error.
+#
+# The sampling error correction is a lookup table.  Each ensemble size
+# has its own (static) file.  It is only needed if any
+# input.nml:&assim_tools_nml:sampling_error_correction = .true.,
+#=========================================================================
+
+if ( $num_instances > 1 ) then
+   set SAMP_ERR_FILE = ${DARTROOT}/system_simulation/final_full_precomputed_tables/final_full.${num_instances}
+   if (  -e   ${SAMP_ERR_FILE} ) then
+      ${COPY} ${SAMP_ERR_FILE} .
+   else
+      echo ""
+      echo "WARNING: no final_full.xx file found for an ensemble size of ${num_instances}."
+      echo "         This file is NOT needed unless you want to turn on the"
+      echo "         sampling_error_correction feature in any of the models."
+      echo "         To use it, in addition to setting the namelist to .true., cd to:"
+      echo "         ${DARTROOT}/system_simulation"
+      echo "         and create a final_full.${num_instances} file"
+      echo "         one can be generated for any ensemble size; see docs."
+      echo "         Copy it into ${CASEROOT} before running."
+      echo ""
+   endif
+   
+   foreach N ( input.nml )
+      set  MYSTRING = `grep sampling_error_correction $N`
+      set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
+      set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
+      set SECSTRING = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
+   
+      if ( ${SECSTRING} == true ) then
+         if ( ! -e  ${SAMP_ERR_FILE} ) then
+            echo "ERROR: no sampling error correction file for this ensemble size."
+            echo "ERROR: looking for ${SAMP_ERR_FILE} in"
+            echo "ERROR: ${DARTROOT}/system_simulation/final_full_precomputed_tables"
+            echo "ERROR: one can be generated for any ensemble size; see docs."
+            exit -3
+         endif
+      endif
+   end
+else
+   # sampling error correction not used for perfect_model_obs
+endif
+
+# ==============================================================================
+# What to do next
+# ==============================================================================
+
+
+cat << EndOfText >! DART_instructions.txt
+
+-------------------------------------------------------------------------
+
+Check the DART configuration:
+
+1) The default behavior is to invoke DART (set in CESM1_5_setup_...) .
+   If your confidence is not high that the CESM1_5 configuration will be correct,
+   we recommend turning off the assimilation at first.
+
+2) If you want to turn off DART, edit the env_run.xml: DATA_ASSIMILATION_* 
+   to disable running a DART script (assimilate.csh or perfect_model.csh)
+   after the model forecast.
+
+3) Modify what you need to in the DART namelist file, i.e. 
+   ${CASEROOT}/input.nml
+
+4) If you have recompiled any part of the DART system, 'stage_dart_files'
+   will copy them into the correct places.
+
+5) If you stage your own inflation files, make sure you read the INFLATION section in
+   ${CASEROOT}/CESM_DART_config
+
+6) Make sure the observation directory name in assimilate.csh or perfect_model.csh 
+   matches the one on your system.
+
+7) Submit the CESM job in the normal way.
+
+8) You can use ${CASEROOT}/stage_cesm_files
+    to stage files to restart a run.
+
+-------------------------------------------------------------------------
+
+EndOfText
+
+cat DART_instructions.txt
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

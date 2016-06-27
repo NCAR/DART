@@ -167,20 +167,15 @@
                                   'vsnon', 'KIND_SEAICE_SNOWVOLUME'      , 'UPDATE',
    /
 
-# See the clm model_mod.html for a larger listing of CLM variables and their associated DART KINDs.
+# See the cice model_mod.html for a larger listing of CICE variables and their associated DART KINDs.
 # Be aware that some variables exist in both restart and history files, so it makes a difference where
 # the variable comes from. Only those in the CESM restart file are relevant for future model advances. 
 # The list is by no means complete.
 
 
-&cice_to_dart_nml
-   cice_to_dart_output_file  = 'dart_ics'
-   /
-
-
 &dart_to_cice_nml
-   dart_to_cice_input_file   = 'dart_restart'
-   advance_time_present     = .false.
+   dart_to_cice_input_file   = 'dart_restart.nc'
+   balance_method            = 'simple_squeeze'
    /
 
 
@@ -324,6 +319,9 @@
 &state_vector_io_nml
    write_binary_restart_files = .true.
 /
+
+
+# TJH TODO FIXME ... what do these do?
 
 &io_filenames_nml
    rpointer      = .true.
