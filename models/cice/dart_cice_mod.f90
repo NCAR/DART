@@ -13,8 +13,8 @@ use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, 
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
                              register_module, error_handler, nc_check, &
                              find_namelist_in_file, check_namelist_read, &
-                             E_ERR, E_MSG, find_textfile_dims, &
-                             logfileunit
+                             E_ERR, E_MSG, find_textfile_dims
+                             
 
 use typesizes
 use netcdf

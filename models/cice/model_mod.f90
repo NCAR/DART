@@ -12,16 +12,16 @@ module model_mod
 
 ! Modules that are absolutely required for use are listed
 use        types_mod,    only : r4, r8, i4, i8, SECPERDAY, MISSING_R8, rad2deg, &
-                                PI, parmnamelength
+                                PI, metadatalength
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
                              print_time, print_date,                           &
                              operator(*),  operator(+), operator(-),           &
                              operator(>),  operator(<), operator(/),           &
                              operator(/=), operator(<=)
 
-!CMB not sure about this:
-! location_mod is at rma-cice/location/etc
-! with the specific subdir from path_names_xxx
+! location_mod is at rma-cice/location/xxx/location_mod.f90
+! with the specific subdir set in path_names_xxx
+! in our case, threed_sphere is the most appropriate choice
 use     location_mod, only : location_type, get_dist, get_close_maxdist_init,  &
                              get_close_obs_init, set_location, get_location,   &
                              loc_get_close_obs => get_close_obs, get_close_type, &
@@ -36,9 +36,10 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              E_ERR, E_WARN, E_MSG, nmlfileunit, get_unit,      &
                              nc_check, do_output, to_upper, logfileunit,       &
                              find_namelist_in_file, check_namelist_read,       &
-                             file_exist, find_textfile_dims, file_to_text
+                             file_exist, find_textfile_dims, file_to_text,     &
+                             do_nml_file, do_nml_term
 
-! ../../obs_kin/DEFAULT_obs_kind_mod.F90
+! to add more kinds, edit ../../obs_kind/DEFAULT_obs_kind_mod.F90
 use     obs_kind_mod, only : KIND_SEAICE_AGREG_CONCENTR ,  &  
                              KIND_SEAICE_AGREG_VOLUME,     &
                              KIND_SEAICE_AGREG_SNOWVOLUME, &
@@ -103,6 +104,7 @@ public :: get_model_size,                &
 
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
+! FIXME: we should no longer need restart_file_to_sv and sv_to_restart_file
 public :: get_gridsize, restart_file_to_sv, sv_to_restart_file, &
           get_cice_restart_filename, test_interpolation
 
@@ -126,7 +128,7 @@ type(random_seq_type) :: random_seq
 integer, parameter :: max_state_variables = 10 
 integer, parameter :: num_state_table_columns = 3
 ! FIXME: this isn't the right length limit for netcdf variable names.
-character(len=parmnamelength) :: variable_table( max_state_variables, num_state_table_columns )
+character(len=metadatalength) :: variable_table( max_state_variables, num_state_table_columns )
 integer :: state_kinds_list( max_state_variables )
 logical :: update_var_list( max_state_variables )
 
@@ -141,7 +143,7 @@ integer  :: assimilation_period_days = 1
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
 logical  :: update_dry_cell_walls = .false.
-character(len=parmnamelength) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
+character(len=metadatalength) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
 integer  :: debug = 0   ! turn up for more and more debug messages
 
 ! FIXME: currently the update_dry_cell_walls namelist value DOES
@@ -195,6 +197,9 @@ integer :: nfields
 ! standard cice namelist and filled in here.
 
 ! grid counts for each field
+! FIXME: Ncat could be a namelist variable if the number of categories
+! could ever change in the model.  we should also make sure we never
+! hardwire the value '5' anywhere - always refer to Ncat in loops.
 integer :: Nx=-1, Ny=-1   ! size of the dipole (or irregular) grids. 
 integer :: Ncat=5        ! number of categories in ice-thickness dist, hardwire
 
@@ -215,6 +220,14 @@ type(time_type) :: model_time, model_timestep
 
 integer(i8) :: model_size    ! the state vector length
 
+
+! FIXME: i would like to remove these routines.  we can reshape 
+! arrays with the reshape() fortran intrinsic if needed in this code.  
+! (but i cannot see where it will be needed anymore.)
+! if we are reading/writing a netcdf variable we can give counts 
+! along with a 1d array source and the netcdf libraries will reshape 
+! the array as it writes without needing to allocate, iterate, deallocate.
+! this is good:  faster, and less code to maintain.
 INTERFACE vector_to_prog_var
       MODULE PROCEDURE vector_to_2d_prog_var
       MODULE PROCEDURE vector_to_3d_prog_var
@@ -326,8 +339,8 @@ call check_namelist_read(iunit, io, 'model_nml')
 
 ! Record the namelist values used for the run
 call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
-if (do_output()) write(nmlfileunit, nml=model_nml)
-if (do_output()) write(     *     , nml=model_nml)
+if (do_nml_file())  write(nmlfileunit, nml=model_nml)
+if (do_nml_term()) write(     *     , nml=model_nml)
 
 ! Set the time step ... causes cice namelists to be read.
 ! Ensures model_timestep is multiple of 'ice_thermo_timestep'
@@ -510,9 +523,11 @@ do i = 1, nx
    enddo
 enddo
 
-if (do_output()) write(*,*)'to determine (minimum) max_reg_list_num values for new grids ...'
-if (do_output()) write(*,*)'u_dipole_num is ',maxval(u_dipole_num)
-if (do_output()) write(*,*)'t_dipole_num is ',maxval(t_dipole_num)
+if (debug > 1 .and. do_output()) then
+   write(*,*)'to determine (minimum) max_reg_list_num values for new grids ...'
+   write(*,*)'u_dipole_num is ',maxval(u_dipole_num)
+   write(*,*)'t_dipole_num is ',maxval(t_dipole_num)
+endif
 
 ! Invert the temporary data structure. The total number of entries will be 
 ! the sum of the number of dipole cells for each regular cell. 
@@ -852,7 +867,7 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_type, expecte
 ! Local storage
 real(r8)       :: loc_array(3), llon, llat
 integer(i8)    :: base_offset
-integer        :: cat_index
+integer        :: cat_index, cat_signal
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -880,32 +895,35 @@ if (debug > 1) print *, 'requesting interpolation of ', obs_type, ' at ', llon, 
 
 base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))  
 
+! adjust the base_offset if needed, and set the cat_signal that will be passed
+! into the lon_lat_interpolate() routine.  cat_signal says whether to aggregate
+! multiple categories into a sum, interpolate in a single 3d variable, or handle
+! a 2d variable.
 SELECT CASE (obs_type)
-   CASE (KIND_SEAICE_AGREG_CONCENTR , &  ! these kinds are just 2D vars
-         KIND_SEAICE_AGREG_VOLUME, &
+   CASE (KIND_SEAICE_AGREG_CONCENTR, &  ! these kinds are aggregate sums
+         KIND_SEAICE_AGREG_VOLUME,   &
          KIND_SEAICE_AGREG_SNOWVOLUME )
-      ! this is going to do the sum inside the subroutine, so when it returns
-      ! we are done
-  ! FIXME: write this
-  !    call lon_lat_agreg_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, expected_obs, istatus)
-      if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus
-      return
-   CASE (KIND_SEAICE_CONCENTR       , &  ! these kinds have an additional dim for category
-         KIND_SEAICE_VOLUME         , &
+      ! tells lon_lat_interp to aggregate multiple categories into a sum
+      cat_signal = 0 ! for aggregate variable
+   CASE (KIND_SEAICE_CONCENTR,      &  ! these kinds have an additional dim for category
+         KIND_SEAICE_VOLUME,        &
          KIND_SEAICE_SNOWVOLUME      )
       ! 3d vars move pointer to the particular category
+      ! then treat as 2d field - which can fall through to lon_lat_interp
       base_offset = base_offset + (cat_index-1) * Nx * Ny 
-   CASE ( KIND_U_SEAICE_COMPONENT    , &
+      cat_signal = 1 ! for full ice thickness category variable
+   CASE ( KIND_U_SEAICE_COMPONENT,  &
           KIND_V_SEAICE_COMPONENT    )
       ! these are really 2d fields - which can fall through to lon_lat_interp
+      cat_signal = 2 ! for boring 2d field
    CASE DEFAULT
       ! Not a legal type for interpolation, return istatus error
       istatus = 15
       return
 END SELECT
 
-! finally the 2D interpolation either for velocity comp., or particular cat
-call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, expected_obs, istatus)
+! finally the interpolation for all sea ice kinds
+call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal, expected_obs, istatus)
 if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus
 
 
@@ -913,14 +931,17 @@ end subroutine model_interpolate
 
 !------------------------------------------------------------------
 
-! Three different types of grids are used here. The POP dipole 
-! grid is referred to as a dipole grid and each region is
-! referred to as a quad, short for quadrilateral. 
-! The longitude latitude rectangular grid with possibly irregular
-! spacing in latitude used for some POP applications and testing
+! Four different types of grids are used here.  
+! The dipole grid is referred to as a dipole grid and each 
+! region is referred to as a quad, short for quadrilateral.  
+! The tripole grid uses the same interpolation scheme as the
+! dipole grid, and so for most of the code we refer to
+! the tripole grid as a dipole grid.
+! The longitude/latitude rectangular grid with possibly irregular
+! spacing in latitude used for some applications and testing
 ! is referred to as the irregular grid and each region is 
 ! called a box.
-! Finally, a regularly spaced longitude latitude grid is used
+! Finally, a regularly spaced longitude/latitude grid is used
 ! as a computational tool for interpolating from the dipole
 ! grid. This is referred to as the regular grid and each region
 ! is called a box. 
@@ -932,15 +953,15 @@ end subroutine model_interpolate
 ! west for all applications.
 
 !------------------------------------------------------------------
-! CMB notes: changed to remove height which was only used to mask out
-! below bathymetrey
+! CMB notes: changed to deal with need to aggregate over categories
 ! offset is index of variable block w/o regard to lon, lat, or cat
-subroutine lon_lat_interpolate(state_handle, ens_size, offset, lon, lat, var_type, expected_obs, istatus)
+subroutine lon_lat_interpolate(state_handle, ens_size, offset, lon, lat, var_type, cat_signal, expected_obs, istatus)
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
-integer(i8),         intent(in)  :: offset ! Not sure if this is the best way to do this
+integer(i8),         intent(in)  :: offset 
 real(r8),            intent(in)  :: lon, lat
 integer,             intent(in)  :: var_type
+integer,             intent(in)  :: cat_signal
 real(r8),            intent(out) :: expected_obs(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
@@ -952,10 +973,12 @@ integer  :: lat_bot, lat_top, lon_bot, lon_top, num_inds, start_ind
 integer  :: x_ind, y_ind
 real(r8) :: x_corners(4), y_corners(4)
 real(r8) :: p(4,ens_size), xbot(ens_size), xtop(ens_size)
+real(r8) :: work_expected_obs(ens_size)
 real(r8) :: lon_fract, lat_fract
 logical  :: masked
 integer  :: quad_status
-integer  :: e
+integer  :: e, iterations, Niterations
+integer(i8) :: next_offset 
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1065,47 +1088,67 @@ endif
 lon_top = lon_bot + 1
 if(lon_top > nx) lon_top = 1
 
-! Get the values at the four corners of the box or quad
-! Corners go around counterclockwise from lower left
-p(1, :) = get_val(lon_bot, lat_bot, nx, state_handle, offset, ens_size, var_type, masked)
-if(masked) then
-   istatus = 3
-   return
-endif
-
-
-p(2, :) = get_val(lon_top, lat_bot, nx, state_handle, offset, ens_size, var_type, masked)
-if(masked) then
-   istatus = 3
-   return
-endif
-
-
-
-p(3, :) = get_val(lon_top, lat_top, nx, state_handle, offset, ens_size, var_type, masked)
-if(masked) then
-   istatus = 3
-   return
-endif
-
-p(4, :) = get_val(lon_bot, lat_top, nx, state_handle, offset, ens_size, var_type, masked)
-if(masked) then
-   istatus = 3
-   return
-endif
-
-! Full bilinear interpolation for quads
-if(dipole_grid) then
-   do e = 1, ens_size
-      call quad_bilinear_interp(lon, lat, x_corners, y_corners, p(:,e), ens_size, expected_obs(e))
-   enddo
+if ( cat_signal == 0 )  then
+   Niterations = Ncat ! only iterate if aggregating over all types
 else
-   ! Rectangular bilinear interpolation - horizontal plane only
-   xbot = p(1, :) + lon_fract * (p(2, :) - p(1, :))  ! bot is really south
-   xtop = p(4, :) + lon_fract * (p(3, :) - p(4, :))  ! top is really north
-   ! Now interpolate in latitude
-   expected_obs = xbot + lat_fract * (xtop - xbot)
+   Niterations = 1 ! no need to iterate
 endif
+
+work_expected_obs = 0.0_r8
+expected_obs = 0.0_r8
+
+next_offset = offset
+
+do iterations = 1, Niterations
+
+   ! FIXME: this should use the state structure routine 'get_dart_vector_index'
+   ! to get the start of the next category layer.  this code assumes it knows
+   ! exactly how the state vector is laid out (reasonable, but might not be true
+   ! in future versions of dart.)
+   if (iterations > 1) next_offset = next_offset + (iterations-1) * Nx * Ny 
+
+   ! Get the values at the four corners of the box or quad
+   ! Corners go around counterclockwise from lower left
+   p(1, :) = get_val(lon_bot, lat_bot, nx, state_handle, next_offset, ens_size, var_type, masked)
+   if(masked) then
+      istatus = 3
+      return
+   endif
+   
+   p(2, :) = get_val(lon_top, lat_bot, nx, state_handle, next_offset, ens_size, var_type, masked)
+   if(masked) then
+      istatus = 3
+      return
+   endif
+   
+   p(3, :) = get_val(lon_top, lat_top, nx, state_handle, next_offset, ens_size, var_type, masked)
+   if(masked) then
+      istatus = 3
+      return
+   endif
+   
+   p(4, :) = get_val(lon_bot, lat_top, nx, state_handle, next_offset, ens_size, var_type, masked)
+   if(masked) then
+      istatus = 3
+      return
+   endif
+   
+   ! Full bilinear interpolation for quads
+   if(dipole_grid) then
+      do e = 1, ens_size
+         call quad_bilinear_interp(lon, lat, x_corners, y_corners, p(:,e), ens_size, work_expected_obs(e))
+      enddo
+   else
+      ! Rectangular bilinear interpolation - horizontal plane only
+      xbot = p(1, :) + lon_fract * (p(2, :) - p(1, :))  ! bot is really south
+      xtop = p(4, :) + lon_fract * (p(3, :) - p(4, :))  ! top is really north
+      ! Now interpolate in latitude
+      work_expected_obs = xbot + lat_fract * (xtop - xbot)
+   endif
+
+   expected_obs = expected_obs+work_expected_obs
+
+enddo
 
 end subroutine lon_lat_interpolate
 
@@ -1137,11 +1180,13 @@ endif
 
 masked = .false.  ! cell is water
 
-! layout has lons varying most rapidly
+! FIXME: this should call get_dart_vector_index() to convert from lat,lon,cat
+! to offset in the state vector.
+! this code assumes it knows the layout (lons varying most rapidly)
 ! state index must be 8byte integer
 state_index = int(lat_index - 1,i8)*int(nlon,i8) + int(lon_index,i8) + int(offset-1,i8)
 
-! this function gets the index for each ensemble member
+! this function gets the state vector value for each ensemble member
 get_val = get_state(state_index, state_handle) 
 
 end function get_val
@@ -1160,7 +1205,7 @@ subroutine get_irreg_box(lon, lat, lon_array, lat_array, &
 ! Given a longitude and latitude of a point (lon and lat) and the
 ! longitudes and latitudes of the lower left corner of the regular grid
 ! boxes, gets the indices of the grid box that contains the point and
-! the fractions along each directrion for interpolation.
+! the fractions along each direction for interpolation.
 
 ! Local storage
 integer  :: lat_status, lon_top, lat_top
@@ -1725,10 +1770,12 @@ do i = 1, get_num_variables(domain_id)
    endif
 end do
 
-write(string1, *) 'Kind ', dart_kind, ' not found in state vector'
-write(string2, *) 'AKA ', get_raw_obs_kind_name(dart_kind), ' not found in state vector'
-call error_handler(E_MSG,'get_varid_from_kind', string1, &
-                   source, revision, revdate, text2=string2)
+if (debug > 1) then
+   write(string1, *) 'Kind ', dart_kind, ' not found in state vector'
+   write(string2, *) 'AKA ', get_raw_obs_kind_name(dart_kind), ' not found in state vector'
+   call error_handler(E_MSG,'get_varid_from_kind', string1, &
+                      source, revision, revdate, text2=string2)
+endif
 
 get_varid_from_kind = -1
 
@@ -2120,7 +2167,7 @@ else
    
    !>@todo JH : If we store the variable attributes in a structure we can simply
    ! loop over all of the variables and output prognostic variables and attributes
-   !> For now we are only writting the default variables if they exist.
+   !> For now we are only writing the default variables if they exist.
    if ( get_varid_from_kind(KIND_SEAICE_CONCENTR) > 0 ) then
       call nc_check(nf90_def_var(ncid=ncFileID, name='aice', xtype=nf90_real, &
             dimids = (/NlonDimID,NlatDimID,NcatDimID,MemberDimID,unlimitedDimID/),varid=AVarID),&
@@ -2491,6 +2538,9 @@ enddo
 end subroutine pert_model_copies_bitwise_lanai
 
 !------------------------------------------------------------------
+
+! FIXME: should not be needed anymore - filter reads directly from
+! the model netcdf files.  same with companion sv_to_restart_file.
 
 !CMB changed a lot
 subroutine restart_file_to_sv(filename, state_vector, model_time)
