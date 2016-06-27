@@ -27,7 +27,7 @@
 # ==============================================================================
 # AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV (F_AMIP_CAM5) (FAMIPC5)
 
-setenv CASE           Dtest_single
+setenv CASE           Dtest_ens
 setenv resolution     T62_g16
 setenv compset        DTEST
 setenv cesmtag        cesm1_5_beta06c
@@ -70,7 +70,6 @@ setenv dartroot     /glade/u/home/${USER}/work/DART/rma_trunk
 
 # set caseroot = "$WORK/cesmcases/"
 # set rundir  = "$SCRATCH/cesmruns/"
-
 
 # ==============================================================================
 # standard commands:
@@ -158,24 +157,44 @@ set stream_year_last  = 2000
 # Fei uses DIN_LOC_ROOT on the TACC machines for datasets that are automatically downloaded by CESM
 # TJH ... resubmit 0 
 
+# Turn off short-term archiving for now
+./xmlchange DOUT_S=FALSE
+
 # ./xmlchange  CESMSCRATCHROOT="$rundir/"
 # ./xmlchange DIN_LOC_ROOT="$SCRATCH/inputdata_cam"
-#./xmlchange RUNDIR="$rundir/$CASE/run"
+# ./xmlchange RUNDIR="$rundir/$CASE/run"
 ./xmlchange STOP_OPTION=ndays
 ./xmlchange STOP_N=1
 ./xmlchange RESUBMIT=0
 
-# TODO FIXME The env_batch.xml job has queues and limits - but the resource
-# has the same name for the run-time and the st_archive ... no good.
-
-./xmlchange JOB_QUEUE=regular
+./xmlchange JOB_QUEUE=small
 ./xmlchange JOB_WALLCLOCK_TIME=1:00 
+./xmlchange -subgroup st_archive JOB_WALLCLOCK_TIME=1:30 
 
 ./xmlchange DATM_MODE=CPLHIST3HrWx
 ./xmlchange DATM_CPLHIST_YR_START=$stream_year_first
 ./xmlchange DATM_CPLHIST_YR_END=$stream_year_last
 ./xmlchange DATM_CPLHIST_YR_ALIGN=$stream_year_align
 
+# TODO FIXME set the calendar to Gregorian ... defaults to noLeap
+
+#      --- In a hybrid run the model is initialized as a startup, BUT uses
+#      initialization datasets FROM A PREVIOUS case.  This
+#      is somewhat analogous to a branch run with relaxed restart
+#      constraints.  A hybrid run allows users to bring together combinations
+#      of initial/restart files from a previous case (specified by
+#      RUN_REFCASE) at a given model output date (specified by
+#      RUN_REFDATE). Unlike a branch run, the starting date of a hybrid run
+#      (specified by RUN_STARTDATE) can be modified relative to the reference
+#      case. In a hybrid run, the model does not continue in a bit-for-bit
+#      fashion with respect to the reference case. The resulting climate,
+#      however, should be continuous provided that no model source code or
+#      namelists are changed in the hybrid run.  In a hybrid initialization,
+#      the ocean model does not start until the second ocean coupling
+#      (normally the second day), and the coupler does a cold start without
+#      a restart file.</desc>
+
+./xmlchange RUN_TYPE=startup
 ./xmlchange RUN_STARTDATE=${stream_year_first}-01-01
 
 @ nodes_per_instance = 2
@@ -207,23 +226,14 @@ else
    @ rof_tasks = $ptile * $nodes_per_instance
 endif
 
-./xmlchange  NTHRDS_CPL=$nthreads,NTASKS_CPL=$cpl_tasks
-./xmlchange  NTHRDS_ICE=$nthreads,NTASKS_ICE=$ice_tasks,NINST_ICE=$num_instances
-./xmlchange  NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks,NINST_ATM=$num_instances
-./xmlchange  NTHRDS_OCN=$nthreads,NTASKS_OCN=$ocn_tasks,NINST_OCN=$num_instances
-./xmlchange  NTHRDS_LND=$nthreads,NTASKS_LND=$lnd_tasks,NINST_LND=1
-./xmlchange  NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=1
-./xmlchange  NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=1
-./xmlchange  NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks,NINST_WAV=1
-
-./xmlchange ROOTPE_ATM=0
-./xmlchange ROOTPE_LND=0
-./xmlchange ROOTPE_ICE=0
-./xmlchange ROOTPE_OCN=0
-./xmlchange ROOTPE_CPL=0
-./xmlchange ROOTPE_GLC=0
-./xmlchange ROOTPE_ROF=0
-./xmlchange ROOTPE_WAV=0
+./xmlchange ROOTPE_CPL=0,NTHRDS_CPL=$nthreads,NTASKS_CPL=$cpl_tasks
+./xmlchange ROOTPE_ICE=0,NTHRDS_ICE=$nthreads,NTASKS_ICE=$ice_tasks,NINST_ICE=$num_instances
+./xmlchange ROOTPE_ATM=0,NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks,NINST_ATM=$num_instances
+./xmlchange ROOTPE_OCN=0,NTHRDS_OCN=$nthreads,NTASKS_OCN=$ocn_tasks,NINST_OCN=$num_instances
+./xmlchange ROOTPE_LND=0,NTHRDS_LND=$nthreads,NTASKS_LND=$lnd_tasks,NINST_LND=1
+./xmlchange ROOTPE_GLC=0,NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=1
+./xmlchange ROOTPE_ROF=0,NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=1
+./xmlchange ROOTPE_WAV=0,NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks,NINST_WAV=1
 
 ./xmlchange DATA_ASSIMILATION=FALSE
 ./xmlchange DATA_ASSIMILATION_CYCLES=1
@@ -296,7 +306,10 @@ end
 
 ./case.build
 
+
 exit 0
+
+./xmlchange CONTINUE_RUN=TRUE
 
 # <next few lines under version control, do not edit>
 # $URL$
