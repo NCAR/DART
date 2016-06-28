@@ -39,7 +39,7 @@ use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               open_file, close_file, error_handler, E_ERR, &
                               do_nml_file, do_nml_term, nmlfileunit, &
                               find_namelist_in_file, check_namelist_read, &
-                              get_unit
+                              nc_check
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, set_time, &
                               operator(>=), increment_time, get_date, get_time, &
                               operator(-), GREGORIAN, operator(+), print_date
@@ -61,8 +61,14 @@ use      obs_kind_mod, only : &
   SAT_SEAICE_VOLUME, &
   SAT_SEAICE_SNOWVOLUME
 
+! netcdf access for land mask
+!use netcdf
 
 implicit none
+
+! this is based on the model, not on the satellite grid.
+! ignore this for now.
+!character(len=256) :: land_mask_file  = 'cice_hist.nc'
 
 !> namelist items
 !> @todo : give them reasonable defaults later.
@@ -88,20 +94,22 @@ logical            :: use_obsseq_filename_pattern = .true.
 character(len=256) :: obsseq_filename_pattern     = 'obs_seq.YYYYMMDD'
 character(len=256) :: obsseq_out_file             = 'obs_seq.out'
 logical            :: append_to_existing_file     = .false.
+logical            :: ignore_zero_obs = .false.
 logical            :: debug           = .false.
 
 
 character(len=256) :: input_line, input_filename, next_file, out_file
 
-integer :: oday, osec, rcio, iunit, otype, io
+integer :: oday, osec, rcio, iunit, otype, io, rc
 integer :: year, month, day, hour, minute, second
 integer :: num_copies, num_qc, max_obs, ilon, ilat, i, j
-integer :: start_index
+integer :: start_index, ncid, varid
            
 logical  :: file_exist, first_obs
 
 real(r8), allocatable :: lat(:,:), lon(:,:), percent(:,:)
 real(r8) :: perr, qc
+!integer, allocatable :: tmask(:,:)
 integer(i2), allocatable :: rawdata_i2(:)
 integer(i4), allocatable :: rawdata_i4(:)
 
@@ -109,10 +117,11 @@ type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
 type(time_type)         :: time_obs, prev_time, curr_time, end_time, one_day
 
+!   land_mask_file,    &
+
 namelist /cice_to_obs_nml/ &
    cice_lat_file,     &
    cice_lon_file,     &
-   obsseq_out_file,   &
    num_latitudes,     &
    num_longitudes,    &
    start_year,        &
@@ -133,6 +142,7 @@ namelist /cice_to_obs_nml/ &
    obsseq_filename_pattern,     &
    obsseq_out_file,             &
    append_to_existing_file,     &
+   ignore_zero_obs,             &
    debug
 
 
@@ -162,6 +172,8 @@ one_day    = set_time(0, 1)  ! one day
 
 call get_date(curr_time, year, month, day, hour, minute, second)
 
+!         tmask(num_latitudes,num_longitudes), &
+
 ! make space for the data arrays
 allocate(lat(num_latitudes,num_longitudes), &
          lon(num_latitudes,num_longitudes), &
@@ -169,7 +181,6 @@ allocate(lat(num_latitudes,num_longitudes), &
          rawdata_i2(num_latitudes*num_longitudes), &
          rawdata_i4(num_latitudes*num_longitudes))
 
-print *, 'i2 = ', i2
 
 ! read in lats/lons first.  applies to all data files.
 
@@ -188,6 +199,18 @@ call close_file(iunit)
 
 ! lon given as -180 and 180 - convert all values at once
 where (lon < 0.0_r8)  lon = lon + 360.0_r8  ! changes into 0-360
+
+! !
+! ! read in land mask.  we are going to skip obs over land.
+! rc = nf90_open(land_mask_file, nf90_nowrite, ncid)
+! call nc_check(rc, 'cice_to_obs', 'opening land mask file '//trim(land_mask_file))
+! rc = nf90_inq_varid(ncid, "tmask", varid)
+! call nc_check(rc, 'cice_to_obs', 'inquire var "tmask"')
+! rc = nf90_get_var(ncid, varid, tmask)
+! call nc_check(rc, 'cice_to_obs', 'getting var "tmask"')
+! rc = nf90_close(ncid)
+! call nc_check(rc, 'cice_to_obs', 'closing land mask file '//trim(land_mask_file))
+!
 
 ! each observation in this series will have a single observation value 
 ! the max possible number of obs needs to be specified but it will only 
@@ -281,19 +304,28 @@ call set_qc_meta_data(obs_seq, 1, 'Data QC')
    ! in the following loop.  doc says:
    !    land_missing_value = -800
    !    pole_missing_value = -100
+   ! count these to see if they actually exist
+
+   ! make this an error handler call
+   print *, 'total obs = ', size(percent), ' out of range = ',  count (percent < 0.0_r8 .or. percent > 100.0_r8) 
 
    where (percent < 0.0_r8 .or. percent > 100.0_r8) percent = missing_r8
 
    do ilon=1, num_longitudes
       do ilat=1, num_latitudes
  
+         ! here is where we decide to ignore obs or not
+
          if (percent(ilat, ilon) == missing_r8) cycle
 
          if (percent(ilat, ilon) /= 0.0_r8) then
             perr = percent(ilat, ilon) * error_factor   ! percentage from namelist
          else
+            if (ignore_zero_obs) cycle
             perr = error_factor ! if obs value is 0, give a non-zero error
          endif
+
+         !if (tmask(ilat, ilon) /= 1) cycle   ! land point
 
          ! make an obs derived type, and then add it to the sequence
          call create_3d_obs(lat(ilat, ilon), lon(ilat, ilon), 0.0_r8, VERTISUNDEF, &

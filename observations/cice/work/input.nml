@@ -7,6 +7,9 @@
    input_files              = '../../../obs_def/obs_def_cice_mod.f90',
  /
 
+ ! not needed?
+ ! land_mask_file   = '../data/cice_hist.nc'
+
 &cice_to_obs_nml
  cice_lat_file    = '../data/psn25lats_v3.dat'
  cice_lon_file    = '../data/psn25lons_v3.dat'
@@ -29,6 +32,7 @@
  obsseq_filename_pattern     = 'obs_seq.YYYYMMDD'
  obsseq_out_file             = 'obs_seq.out'
  append_to_existing_file     = .false.
+ ignore_zero_obs             = .true.
  debug                       = .false.
 /
 
