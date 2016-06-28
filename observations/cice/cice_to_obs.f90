@@ -34,13 +34,14 @@ program cice_to_obs
 !
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-use         types_mod, only : r8, i2, missing_r8
+use         types_mod, only : r8, i2, i4, missing_r8
 use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               open_file, close_file, error_handler, E_ERR, &
                               do_nml_file, do_nml_term, nmlfileunit, &
-                              find_namelist_in_file, check_namelist_read
+                              find_namelist_in_file, check_namelist_read, &
+                              get_unit
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, set_time, &
-                              operator(>), increment_time, get_date, get_time, &
+                              operator(>=), increment_time, get_date, get_time, &
                               operator(-), GREGORIAN, operator(+), print_date
 use      location_mod, only : VERTISLEVEL, VERTISUNDEF
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
@@ -75,6 +76,7 @@ integer            :: start_day       = 1
 integer            :: end_year        = 1980
 integer            :: end_month       = 1
 integer            :: end_day         = 1
+real(r8)           :: grid_scale_factor = 100000.0
 real(r8)           :: data_scale_factor = 10.0
 real(r8)           :: error_factor    = 0.10
 integer            :: land_missing_value = -800
@@ -90,7 +92,6 @@ logical            :: debug           = .false.
 
 
 character(len=256) :: input_line, input_filename, next_file, out_file
-character(len=32)  :: buf
 
 integer :: oday, osec, rcio, iunit, otype, io
 integer :: year, month, day, hour, minute, second
@@ -101,7 +102,8 @@ logical  :: file_exist, first_obs
 
 real(r8), allocatable :: lat(:,:), lon(:,:), percent(:,:)
 real(r8) :: perr, qc
-integer(i2), allocatable :: rawdata(:,:)
+integer(i2), allocatable :: rawdata_i2(:)
+integer(i4), allocatable :: rawdata_i4(:)
 
 type(obs_sequence_type) :: obs_seq
 type(obs_type)          :: obs, prev_obs
@@ -119,14 +121,18 @@ namelist /cice_to_obs_nml/ &
    end_year,          &
    end_month,         &
    end_day,           &
+   grid_scale_factor, &
    data_scale_factor, &
-   use_data_filename_pattern, &
-   data_filename_pattern,     &
-   cice_data_file,            &
+   error_factor,      &
+   land_missing_value,          &
+   pole_missing_value,          &
+   use_data_filename_pattern,   &
+   data_filename_pattern,       &
+   cice_data_file,              &
    use_obsseq_filename_pattern, &
    obsseq_filename_pattern,     &
    obsseq_out_file,             &
-   append_to_existing_file,   &
+   append_to_existing_file,     &
    debug
 
 
@@ -157,23 +163,27 @@ one_day    = set_time(0, 1)  ! one day
 call get_date(curr_time, year, month, day, hour, minute, second)
 
 ! make space for the data arrays
-allocate(lat(num_latitudes,num_longitudes), lon(num_latitudes,num_longitudes), &
-         percent(num_latitudes,num_longitudes), rawdata(num_latitudes,num_longitudes))
+allocate(lat(num_latitudes,num_longitudes), &
+         lon(num_latitudes,num_longitudes), &
+         percent(num_latitudes,num_longitudes), &
+         rawdata_i2(num_latitudes*num_longitudes), &
+         rawdata_i4(num_latitudes*num_longitudes))
+
+print *, 'i2 = ', i2
 
 ! read in lats/lons first.  applies to all data files.
 
-! data is binary, distributed as packed short integers
-iunit = open_file(cice_lat_file, 'unformatted', 'read')
+! data is binary, distributed as scaled 4-byte integers
+iunit = open_file(cice_lat_file, 'unformatted', 'read', 'stream')
 if (debug) print *, 'opened input file ' // trim(cice_lat_file)
-read(iunit) rawdata
-lat(:,:) = real(rawdata(:,:),r8) / 10.0_r8
+read(iunit) rawdata_i4
+lat(:,:) = reshape(real(rawdata_i4(:),r8) / grid_scale_factor, (/ num_latitudes, num_longitudes /) )
 call close_file(iunit)
 
-iunit = open_file(cice_lon_file, 'unformatted', 'read')
+iunit = open_file(cice_lon_file, 'unformatted', 'read', 'stream')
 if (debug) print *, 'opened input file ' // trim(cice_lon_file)
-read(iunit) rawdata
-! convert from packed short ints to real values
-lon(:,:) = real(rawdata(:,:),r8) / 10.0_r8
+read(iunit) rawdata_i4
+lon(:,:) = reshape(real(rawdata_i4(:),r8) / grid_scale_factor, (/ num_latitudes, num_longitudes /) )
 call close_file(iunit)
 
 ! lon given as -180 and 180 - convert all values at once
@@ -208,7 +218,7 @@ call set_qc_meta_data(obs_seq, 1, 'Data QC')
 
 ! existing file found, append to it
 inquire(file=obsseq_out_file, exist=file_exist)
-if ( file_exist) then
+if (file_exist) then
    if (append_to_existing_file .and. .not. use_obsseq_filename_pattern) then
       call read_obs_seq(obsseq_out_file, 0, 0, max_obs, obs_seq)
    else
@@ -239,6 +249,7 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
 ! create a new, empty obs_seq.  you must give a max limit
 ! on number of obs.  increase the size if too small.
 call init_obs_sequence(obs_seq, num_copies, num_qc, max_obs)
+first_obs = .true.
 
 ! the first one needs to contain the string 'observation' and the
 ! second needs the string 'QC'.
@@ -255,9 +266,9 @@ call set_qc_meta_data(obs_seq, 1, 'Data QC')
    endif
 
    ! read in concentration data
-   iunit =  open_file(next_file, 'unformatted', 'read')
-   read(iunit) rawdata
-   percent(:,:) = real(rawdata, r8)
+   iunit = open_file(next_file, 'unformatted', 'read', 'stream')
+   read(iunit) rawdata_i2
+   percent(:,:) = reshape(real(rawdata_i2, r8) / data_scale_factor, (/ num_latitudes, num_longitudes /) )
    call close_file(iunit)
 
    ! all observations in this file have the same time?  midnight?
@@ -278,7 +289,11 @@ call set_qc_meta_data(obs_seq, 1, 'Data QC')
  
          if (percent(ilat, ilon) == missing_r8) cycle
 
-         perr = percent(ilat, ilon) * error_factor   ! percentage from namelist
+         if (percent(ilat, ilon) /= 0.0_r8) then
+            perr = percent(ilat, ilon) * error_factor   ! percentage from namelist
+         else
+            perr = error_factor ! if obs value is 0, give a non-zero error
+         endif
 
          ! make an obs derived type, and then add it to the sequence
          call create_3d_obs(lat(ilat, ilon), lon(ilat, ilon), 0.0_r8, VERTISUNDEF, &
@@ -305,7 +320,7 @@ call set_qc_meta_data(obs_seq, 1, 'Data QC')
  !> @todo FIXME destroy the obs_seq so we don't have a mem leak
 
    curr_time = curr_time + one_day
-   if (curr_time > end_time) exit obsloop
+   if (curr_time >= end_time) exit obsloop
 
    call get_date(curr_time, year, month, day, hour, minute, second)
 
@@ -336,6 +351,8 @@ integer,          intent(in)  :: year
 integer,          intent(in)  :: month
 integer,          intent(in)  :: day
 
+character(len=32)  :: buf
+
 outstring = inpattern
 
 !> substitute year for YYYY, month for MM, day for DD
@@ -343,17 +360,17 @@ outstring = inpattern
 
 start_index = index(outstring, 'YYYY')
 if (start_index < 0) stop
-write(buf, '(A)') year
+write(buf, '(I4.4)') year
 outstring(start_index:start_index+3) = buf(1:4)
 
 start_index = index(outstring, 'MM')
 if (start_index < 0) stop
-write(buf, '(A)') month
+write(buf, '(I2.2)') month
 outstring(start_index:start_index+1) = buf(1:2)
 
 start_index = index(outstring, 'DD')
 if (start_index < 0) stop
-write(buf, '(A)') day
+write(buf, '(I2.2)') day
 outstring(start_index:start_index+1) = buf(1:2)
 
 end subroutine fix_filename

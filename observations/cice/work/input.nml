@@ -7,6 +7,31 @@
    input_files              = '../../../obs_def/obs_def_cice_mod.f90',
  /
 
+&cice_to_obs_nml
+ cice_lat_file    = '../data/psn25lats_v3.dat'
+ cice_lon_file    = '../data/psn25lons_v3.dat'
+ num_latitudes    = 448
+ num_longitudes   = 304
+ start_year       = 1980
+ start_month      = 1
+ start_day        = 1
+ end_year         = 1980
+ end_month        = 1
+ end_day          = 1
+ data_scale_factor = 10.0
+ error_factor      = 0.10
+ land_missing_value = -800
+ pole_missing_value = -100
+ use_data_filename_pattern   = .true.
+ data_filename_pattern       = '../data/bt_YYYYMMDD_n07_v02_n.bin'
+ cice_data_file              = '../data/bt_19800101_n07_v02_n.bin'
+ use_obsseq_filename_pattern = .true.
+ obsseq_filename_pattern     = 'obs_seq.YYYYMMDD'
+ obsseq_out_file             = 'obs_seq.out'
+ append_to_existing_file     = .false.
+ debug                       = .false.
+/
+
 &obs_kind_nml
  /
 
