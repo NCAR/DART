@@ -58,6 +58,10 @@ setenv NINST_ICE `./xmlquery NINST_ICE      -value`
 
 set num_instances = $NINST_ICE
 
+./xmlchange DATA_ASSIMILATION=TRUE
+./xmlchange DATA_ASSIMILATION_CYCLES=1
+./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/assimilate.csh
+
 # DARTROOT is set by the DART CESM_configure scripts. Under certain
 # situations, you may need to set this manually. It should reference the
 # base portion of the DART code tree.

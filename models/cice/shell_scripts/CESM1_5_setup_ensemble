@@ -11,21 +11,18 @@
 #-----------------------------------------------------------------------
 
 # ==============================================================================
-# CASE options:
+# Options defining the experiment:
 #
 # CASE          The value of "CASE" will be used many ways; directory and file
-#               names both locally and on HPSS, and script names; so consider
-#               its length and information content.
+#               names both locally and (possibly) on the HPSS, and script names;
+#               so consider its length and information content.
 # compset       Defines the vertical resolution and physics packages to be used.
 #               Must be a standard CESM compset; see the CESM documentation.
 # resolution    Defines the horizontal resolution and dynamics; see CESM docs.
 # cesmtag       The version of the CESM source code to use when building the code.
-#    TJH        A directory with this name must exist in your home directory,
-#    TJH        and have SourceMods in it. See the SourceMods section.
-#    TJH        http://www.image.ucar.edu/pub/DART/CESM/README
 # num_instances The number of ensemble members.
 # ==============================================================================
-# AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV (F_AMIP_CAM5) (FAMIPC5)
+# FIXME AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV (F_AMIP_CAM5) (FAMIPC5)
 
 setenv CASE           Dtest_ens
 setenv resolution     T62_g16
@@ -34,23 +31,24 @@ setenv cesmtag        cesm1_5_beta06c
 setenv num_instances  3
 
 # ==============================================================================
-# Directories
+# Directories:
 # cesmdata        Location of some supporting CESM data files.
 # cesmroot        Location of the CESM code base.  This version of the script
-#                 only supports version cesm1_2_1.
-# caseroot        Will create the CESM case directory here, where the CESM+DART
+#                 only supports version cesm1_5_beta06c.
+# caseroot        Defines the CESM case directory - where the CESM+DART
 #                 configuration files will be stored.  This should probably not
 #                 be in scratch (on yellowstone, your 'work' partition is suggested).
 #                 This script will delete any existing caseroot, so this script,
 #                 and other useful things should be kept elsewhere.
-# rundir          Will create the CESM run directory here.  Will need large
+# rundir          Defines the location of the CESM run directory.  Will need large
 #                 amounts of disk space, generally on a scratch partition.
-# exeroot         Will create the CESM executable directory here, where the
+# exeroot         Defines the location of the CESM executable directory , where the
 #                 CESM executables will be built.  Medium amount of space
 #                 needed, generally on a scratch partition.
-# archdir         Will create the CESM short-term archive directories here.
-#                 Large, generally on a scratch partition.  Files will remain
-#                 here until the long-term archiver moves it to permanent storage.
+# archdir         Defines the location of the CESM short-term archive directories.
+#                 Requires large amounts of disk space, may be on a scratch partition if
+#                 the long-term archiver is invoked to move these files to permanent storage.
+#                 Files will remain here until the long-term archiver moves it to permanent storage.
 # dartroot        Location of the root of _your_ DART installation
 # baseobsdir      Part of the directory name containing the obs_seq.out files to be used in the 
 #                 assimilation. The year, month, and filename will be provided in assimilate.csh.
@@ -99,7 +97,7 @@ switch ("`hostname`")
          set REMOVE = '/usr/local/bin/rm -rf'
       breaksw
    default:
-         # NERSC "hopper" or anything else
+         # NERSC "hopper", TACC "stampede" ... many more
          set   MOVE = 'mv -v'
          set   COPY = 'cp -v --preserve=timestamps'
          set   LINK = 'ln -vs'
@@ -107,11 +105,11 @@ switch ("`hostname`")
       breaksw
 endsw
 
-# fatal idea to make caseroot the same dir as where this setup script is
+# FATAL idea to make caseroot the same dir as where this setup script is
 # since the build process removes all files in the caseroot dir before
 # populating it.  try to prevent shooting yourself in the foot.
 
-if ( $caseroot == `pwd` ) then
+if ( ${caseroot} == `pwd` ) then
    echo "ERROR: the setup script should not be located in the caseroot"
    echo "directory, because all files in the caseroot dir will be removed"
    echo "before creating the new case.  move the script to a safer place."
@@ -125,11 +123,11 @@ ${REMOVE} ${caseroot}
 ${REMOVE} ${exeroot}
 ${REMOVE} ${rundir}
 
-${cesmroot}/cime/scripts/create_newcase  -res  $resolution \
-                                         -mach $machine \
-                                         -compset $compset \
-                                         -case $caseroot \
-                                         -project $project || exit 1
+${cesmroot}/cime/scripts/create_newcase  -res  ${resolution} \
+                                         -mach ${machine} \
+                                         -compset ${compset} \
+                                         -case ${caseroot} \
+                                         -project ${project} || exit 1
 
 # ==============================================================================
 # Preserve a copy of this script as it was run.
@@ -154,7 +152,7 @@ else
 endif
 
 # ==============================================================================
-cd $caseroot
+cd ${caseroot}
 # ==============================================================================
 
 # Save a copy for debug purposes
@@ -260,12 +258,17 @@ endif
 ./xmlchange ROOTPE_ROF=0,NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=1
 ./xmlchange ROOTPE_WAV=0,NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks,NINST_WAV=1
 
-./xmlchange DATA_ASSIMILATION=TRUE
-./xmlchange DATA_ASSIMILATION_CYCLES=1
-./xmlchange DATA_ASSIMILATION_SCRIPT=${caseroot}/assimilate.csh
+# Data assimilation is turned off initially. After things are working, you can 
+# turn it on by running CASEROOT/CESM_DART_config
+
+./xmlchange DATA_ASSIMILATION=FALSE
 
 ./case.setup
 echo "case setup finished"
+
+# Customize the user namelists and text stream files for each instance (aka ensemble member)
+# The default multi-instance behaviour is to run N identical instances, which is not
+# what we want to do. 
 
 @ inst = 1
 while ( $inst <= $num_instances )
@@ -336,14 +339,35 @@ end
 cat << EndOfText >! CESM_instructions.txt
 
 -------------------------------------------------------------------------
-CESM instructions go here ..
-1) cd ${CASEROOT}
-2) check things
-3) run a single day, verify that it works without assimilation
-4) run  ${CASEROOT}/CESM_DART_config
-5) verify that worked
-./xmlchange CONTINUE_RUN=TRUE
-that sort of thing
+Time to check the case.
+
+1) cd ${rundir}
+   and check the compatibility between the namelists/pointer files
+   and the files that were staged.
+
+2) cd ${caseroot}
+
+3) check things
+
+4) run a single day, verify that it works without assimilation
+   ./case.submit
+
+5) IF NEEDED, compile all the DART executables by
+   cd  ${dartroot}/models/cice/work
+   ./quickbuild.csh -mpi
+
+5) configure the case to be able to DART by executing
+   cd ${caseroot}
+   ./CESM_DART_config
+
+6) Make sure the DART-related parts are appropriate. 
+   Check the input.nml
+   Check the assimilate.csh
+   ./case.submit
+
+7) If that works 
+   ./xmlchange CONTINUE_RUN=TRUE
+   that sort of thing
 -------------------------------------------------------------------------
 
 EndOfText
