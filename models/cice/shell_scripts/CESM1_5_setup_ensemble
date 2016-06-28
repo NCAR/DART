@@ -22,7 +22,7 @@
 # cesmtag       The version of the CESM source code to use when building the code.
 # num_instances The number of ensemble members.
 # ==============================================================================
-# FIXME AMIP_CAM5_CLM40%SP_CICE%PRES_DOCN%DOM_RTM_SGLC_SWAV (F_AMIP_CAM5) (FAMIPC5)
+# 2000_DATM%NYF_SLND_CICE_DOCN%SOM_DROF%NYF_SGLC_SWAV_TEST
 
 setenv CASE           Dtest_ens
 setenv resolution     T62_g16
@@ -222,32 +222,36 @@ set stream_year_last  = 2000
 
 @ nodes_per_instance = 2
 
-@ atm_tasks = $ptile * $num_instances * $nodes_per_instance
-@ lnd_tasks = $ptile * $num_instances * $nodes_per_instance
-@ ice_tasks = $ptile * $num_instances * $nodes_per_instance
-@ ocn_tasks = $ptile * $num_instances
-@ cpl_tasks = $ptile * $num_instances
-@ wav_tasks = $ptile * $num_instances
+@ atm_tasks = $ptile * $nodes_per_instance * $num_instances
+@ lnd_tasks = $ptile * $nodes_per_instance * $num_instances
+@ ice_tasks = $ptile * $nodes_per_instance * $num_instances
+@ ocn_tasks = $ptile * $nodes_per_instance
+@ cpl_tasks = $ptile * $nodes_per_instance
+@ wav_tasks = $ptile * $nodes_per_instance
+@ esp_tasks = $ptile * $nodes_per_instance
 
-# TJH determine glacier
-set glacier = CISM2P
-# CESM1_5_beta03: CISM1 (the default) can only handle 1 task per member.
-if ($glacier == 'CISM1' || $glacier == 'CISM2S') then
-    @ glc_tasks = $num_instances
-else if ($glacier == 'CISM2P') then
-    @ glc_tasks = $ptile * $num_instances * $nodes_per_instance
-else
-   # @ glc_tasks = 1   Exercised in ATM_spinup5, which failed to run in some MCT mapping routine.
-    @ glc_tasks = $ptile * $num_instances
-endif
+# # TJH determine glacier
+# set glacier = CISM2P
+# # CESM1_5_beta03: CISM1 (the default) can only handle 1 task per member.
+# if ($glacier == 'CISM1' || $glacier == 'CISM2S') then
+#     @ glc_tasks = $num_instances
+# else if ($glacier == 'CISM2P') then
+#     @ glc_tasks = $ptile * $nodes_per_instance * $num_instances
+# else
+#    # @ glc_tasks = 1   Exercised in ATM_spinup5, which failed to run in some MCT mapping routine.
+#     @ glc_tasks = $ptile * $nodes_per_instance
+# endif
+# 
+# # TJH determine river_runoff
+# set river_runoff = bob
+# if ($river_runoff == 'RTM' || $river_runoff == 'MOSART') then
+#    @ rof_tasks = $ptile * $nodes_per_instance * $num_instances
+# else
+#    @ rof_tasks = $ptile * $nodes_per_instance
+# endif
 
-# TJH determine river_runoff
-set river_runoff = bob
-if ($river_runoff == 'RTM' || $river_runoff == 'MOSART') then
-   @ rof_tasks = $ptile * $num_instances * $nodes_per_instance
-else
-   @ rof_tasks = $ptile * $nodes_per_instance
-endif
+@ glc_tasks = $ptile * $nodes_per_instance
+@ rof_tasks = $ptile * $nodes_per_instance
 
 ./xmlchange ROOTPE_CPL=0,NTHRDS_CPL=$nthreads,NTASKS_CPL=$cpl_tasks
 ./xmlchange ROOTPE_ICE=0,NTHRDS_ICE=$nthreads,NTASKS_ICE=$ice_tasks,NINST_ICE=$num_instances
@@ -257,6 +261,7 @@ endif
 ./xmlchange ROOTPE_GLC=0,NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=1
 ./xmlchange ROOTPE_ROF=0,NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=1
 ./xmlchange ROOTPE_WAV=0,NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks,NINST_WAV=1
+./xmlchange ROOTPE_ESP=0,NTHRDS_ESP=$nthreads,NTASKS_ESP=$esp_tasks,NINST_ESP=1
 
 # Data assimilation is turned off initially. After things are working, you can 
 # turn it on by running CASEROOT/CESM_DART_config

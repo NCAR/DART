@@ -106,22 +106,21 @@ cd $temp_dir
 # PERFECT model obs output appends .perfect to the filenames
 
 set YYYYMM   = `printf %04d%02d                ${ICE_YEAR} ${ICE_MONTH}`
-if (! -d ${BASEOBSDIR}/${YYYYMM}_CESM) then
-   echo "CESM+DART requires 6 hourly obs_seq files in directories of the form YYYYMM_CESM"
-   echo "The directory ${BASEOBSDIR}/${YYYYMM}_CESM is not found.  Exiting"
+if (! -d ${BASEOBSROOT}/${YYYYMM}) then
+   echo "CESM+DART requires 6 hourly obs_seq files in directories of the form YYYYMM"
+   echo "The directory ${BASEOBSROOT}/${YYYYMM} is not found.  Exiting"
    exit -10
 endif
 
 set OBSFNAME = `printf obs_seq.%04d-%02d-%02d-%05d ${ICE_YEAR} ${ICE_MONTH} ${ICE_DAY} ${ICE_SECONDS}`
 
-set OBS_FILE = ${BASEOBSDIR}/${YYYYMM}_CESM/${OBSFNAME}
-echo "OBS_FILE = $OBS_FILE"
+set OBS_FILE = ${BASEOBSROOT}/${YYYYMM}/${OBSFNAME}
 
 if (  -e   ${OBS_FILE} ) then
    ${LINK} ${OBS_FILE} obs_seq.out
 else
-   echo "ERROR ... no observation file $OBS_FILE"
-   echo "ERROR ... no observation file $OBS_FILE"
+   echo "ERROR ... no observation file ${OBS_FILE}"
+   echo "ERROR ... no observation file ${OBS_FILE}"
    exit -1
 endif
 
@@ -401,18 +400,18 @@ else
   # TODO error out if we
 endif
 
-cat ../rpointer.ice_* >!  cice_restarts.txt
+ls -1 ../rpointer.ice_* >!  cice_restarts.txt
 
-# TODO error out if the number of files in cice_restart.txt does not match the
+# TODO error out if the number of files in cice_restarts.txt does not match the
 # ensemble size
 
 
-# CP the priors since everything in cice_restart.txt will be overwritten by filter
+# CP the priors since everything in cice_restarts.txt will be overwritten by filter
 
 set member = 1
 while ( ${member} <= ${ensemble_size} )
 
-   set ICE_FILENAME = `head -n $member cice_restart.txt | tail -n 1`
+   set ICE_FILENAME = `head -n $member cice_restarts.txt | tail -n 1`
    
    set DART_FILENAME = `printf cice_out.r.%04d     ${member}`
 
@@ -446,6 +445,14 @@ echo "`date` -- END ICE-TO-DART for all ${ensemble_size} members."
 # &ensemble_manager_nml: single_restart_file_out = .false.
 #
 #=========================================================================
+
+# The cice model_mod.f90:static_init_model() has a hardcoded 'cice.r.nc'
+# that must exist. The cice_in namelist must also exist in this directory 
+
+set TEMPLATEFILE = `head -n 1 cice_restarts.txt`
+ln -sf $TEMPLATEFILE   cice.r.nc
+ln -sf ../ice_in_0001  cice_in
+ln -sf ../drv_in       drv_in
 
 echo "`date` -- BEGIN FILTER"
 ${LAUNCHCMD} ${EXEROOT}/filter || exit -7
@@ -532,8 +539,6 @@ if (${nsuccess} != ${ensemble_size}) then
 endif
 
 echo "`date` -- END DART-TO-ICE for all ${ensemble_size} members."
-
-#
 
 #-------------------------------------------------------------------------
 # Cleanup
