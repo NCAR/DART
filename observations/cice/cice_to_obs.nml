@@ -1,7 +1,6 @@
 &cice_to_obs_nml
  cice_lat_file    = 'psn25lats_v3.dat'
  cice_lon_file    = 'psn25lons_v3.dat'
- obs_out_file     = 'obs_seq.out'
  num_latitudes    = 448
  num_longitudes   = 304
  start_year       = 1980
@@ -10,8 +9,17 @@
  end_year         = 1980
  end_month        = 1
  end_day          = 1
- use_data_filename_pattern = .true.
- data_filename_pattern     = 'bt_YYYYMMDD_n07_v02_n.bin'
- cice_data_file            = 'bt_19800101_n07_v02_n.bin'
- append_to_existing_file   = .false.
- debug                     = .false.
+ data_scale_factor = 10.0
+ error_factor    = 0.10
+ land_missing_value = -800
+ pole_missing_value = -100
+ use_data_filename_pattern   = .true.
+ data_filename_pattern       = 'bt_YYYYMMDD_n07_v02_n.bin'
+ cice_data_file              = 'bt_19800101_n07_v02_n.bin'
+ use_obsseq_filename_pattern = .true.
+ obsseq_filename_pattern     = 'obs_seq.YYYYMMDD'
+ obsseq_out_file             = 'obs_seq.out'
+ append_to_existing_file     = .false.
+ debug                       = .false.
+/
+
