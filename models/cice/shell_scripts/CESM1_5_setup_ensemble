@@ -84,20 +84,27 @@ set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 # The VERBOSE options are useful for debugging though
 # some systems don't like the -v option to any of the following
 switch ("`hostname`")
-    case be*:
-          # NCAR "bluefire"
-          set   MOVE = '/usr/local/bin/mv -fv'
-          set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
-          set   LINK = '/usr/local/bin/ln -fvs'
-          set REMOVE = '/usr/local/bin/rm -fr'
-       breaksw
-    default:
-          # NERSC "hopper", NWSC "yellowstone"
-          set   MOVE = '/bin/mv -v'
-          set   COPY = '/bin/cp -v --preserve=timestamps'
-          set   LINK = '/bin/ln -vs'
-          set REMOVE = '/bin/rm -r'
-       breaksw
+   case ys*:
+         # NCAR "yellowstone"
+         set   MOVE = '/bin/mv -v'
+         set   COPY = '/bin/cp -v --preserve=timestamps'
+         set   LINK = '/bin/ln -vs'
+         set REMOVE = '/bin/rm -rf'
+      breaksw
+   case be*:
+         # NCAR "bluefire"
+         set   MOVE = '/usr/local/bin/mv -v'
+         set   COPY = '/usr/local/bin/cp -v --preserve=timestamps'
+         set   LINK = '/usr/local/bin/ln -vs'
+         set REMOVE = '/usr/local/bin/rm -rf'
+      breaksw
+   default:
+         # NERSC "hopper" or anything else
+         set   MOVE = 'mv -v'
+         set   COPY = 'cp -v --preserve=timestamps'
+         set   LINK = 'ln -vs'
+         set REMOVE = 'rm -rf'
+      breaksw
 endsw
 
 # fatal idea to make caseroot the same dir as where this setup script is
@@ -114,9 +121,9 @@ endif
 echo "removing old files from ${caseroot}"
 echo "removing old files from ${exeroot}"
 echo "removing old files from ${rundir}"
-${REMOVE} -f ${caseroot}
-${REMOVE} -f ${exeroot}
-${REMOVE} -f ${rundir}
+${REMOVE} ${caseroot}
+${REMOVE} ${exeroot}
+${REMOVE} ${rundir}
 
 ${cesmroot}/cime/scripts/create_newcase  -res  $resolution \
                                          -mach $machine \
@@ -125,30 +132,30 @@ ${cesmroot}/cime/scripts/create_newcase  -res  $resolution \
                                          -project $project || exit 1
 
 # ==============================================================================
-# Record the DARTROOT directory and copy the DART setup script to CASEROOT.
-# CESM_DART_config can be run at some later date if desired, but it must
-# be run from a CASEROOT directory.
+# Preserve a copy of this script as it was run.
+# Copy the DART setup script (CESM_DART_config) to CASEROOT.
+# Since we know the DARTROOT and BASEOBSDIR now, record them into 
+# CASEROOT/CESM_DART_config now.
 # ==============================================================================
 
-# TODO FIXME more seds for assimilate script
-#
-# Preserve a copy of this script as it was run.
 set ThisFileName = $0:t
 ${COPY} $ThisFileName ${caseroot}/${ThisFileName}.original
 
-if (   -e CESM1_5_DART_config ) then
-   sed -e "s#BOGUS_DART_ROOT_STRING#${dartroot}#" < CESM1_5_DART_config \
+if (   -e ${dartroot}/models/cice/shell_scripts/CESM1_5_DART_config ) then
+   sed -e "s#BOGUS_DART_ROOT_STRING#${dartroot}#" \
+       -e "s#BOGUS_DART_OBS_STRING#${baseobsdir}#" \
+          ${dartroot}/models/cice/shell_scripts/CESM1_5_DART_config \
            >! ${caseroot}/CESM_DART_config  || exit 20
    chmod 755  ${caseroot}/CESM_DART_config
 else
    echo "ERROR: the script to configure for data assimilation is not available."
-   echo "       CESM1_5_DART_config MUST be present in ${dartroot}/models/cice/shell_scripts/"
+   echo "       ${dartroot}/models/cice/shell_scripts/CESM1_5_DART_config MUST exist."
    exit 21
 endif
 
 # ==============================================================================
-# ==============================================================================
 cd $caseroot
+# ==============================================================================
 
 # Save a copy for debug purposes
 foreach FILE ( *xml )
@@ -178,7 +185,7 @@ set stream_year_last  = 2000
 # Turn off short-term archiving for now
 ./xmlchange DOUT_S=FALSE
 
-# ./xmlchange  CESMSCRATCHROOT="$rundir/"
+# ./xmlchange CESMSCRATCHROOT="$rundir/"
 # ./xmlchange DIN_LOC_ROOT="$SCRATCH/inputdata_cam"
 # ./xmlchange RUNDIR="$rundir/$CASE/run"
 ./xmlchange STOP_OPTION=ndays
@@ -255,7 +262,7 @@ endif
 
 ./xmlchange DATA_ASSIMILATION=TRUE
 ./xmlchange DATA_ASSIMILATION_CYCLES=1
-./xmlchange DATA_ASSIMILATION_SCRIPT=assimilate.csh
+./xmlchange DATA_ASSIMILATION_SCRIPT=${caseroot}/assimilate.csh
 
 ./case.setup
 echo "case setup finished"
@@ -264,7 +271,6 @@ echo "case setup finished"
 while ( $inst <= $num_instances )
 
     set inst_string = `printf %04d $inst`
-    set inst_2d = `printf %02d $inst`
 
     # ===========================================================================
     set fname = "user_nl_datm"_${inst_string}
@@ -284,8 +290,6 @@ while ( $inst <= $num_instances )
     echo "           'nearest'," >> ${fname}
     echo "           'linear', " >> ${fname}
     echo "           'linear'  " >> ${fname}
-
-    # TJH should the stream template files precede with user_   as the old ones did.
 
     # Create stream files for each ensemble member
     cp ${dartroot}/models/cice/shell_scripts/datm.streams.txt.CPLHIST3HrWx.Precip_template \
@@ -321,13 +325,33 @@ while ( $inst <= $num_instances )
     @ inst = $inst + 1
 end
 
+./preview_namelists
+
 ./case.build
 
-./preview_namelist
+# ==============================================================================
+# What to do next
+# ==============================================================================
+
+cat << EndOfText >! CESM_instructions.txt
+
+-------------------------------------------------------------------------
+CESM instructions go here ..
+1) cd ${CASEROOT}
+2) check things
+3) run a single day, verify that it works without assimilation
+4) run  ${CASEROOT}/CESM_DART_config
+5) verify that worked
+./xmlchange CONTINUE_RUN=TRUE
+that sort of thing
+-------------------------------------------------------------------------
+
+EndOfText
+
+cat CESM_instructions.txt
+
 
 exit 0
-
-./xmlchange CONTINUE_RUN=TRUE
 
 # <next few lines under version control, do not edit>
 # $URL$

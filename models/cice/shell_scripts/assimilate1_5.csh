@@ -19,45 +19,36 @@ set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 # some systems don't like the -v option to any of the following
 switch ("`hostname`")
    case ys*:
-      # NCAR "yellowstone"
-      set   MOVE = 'mv -fv'
-      set   COPY = 'cp -fv --preserve=timestamps'
-      set   LINK = 'ln -fvs'
-      set REMOVE = 'rm -fr'
-      set TASKS_PER_NODE = `echo $LSB_SUB_RES_REQ | sed -ne '/ptile/s#.*\[ptile=\([0-9][0-9]*\)]#\1#p'`
-      setenv MP_DEBUG_NOTIMEOUT yes
-
-      set BASEOBSDIR = BOGUSBASEOBSDIR
-      set BASEOBSDIR = /glade/p/work/thoar/DART/rma_trunk/models/cice/work
-      set  LAUNCHCMD = mpirun.lsf
-   breaksw
-
+         # NCAR "yellowstone"
+         set      MOVE = '/bin/mv -v'
+         set      COPY = '/bin/cp -v --preserve=timestamps'
+         set      LINK = '/bin/ln -vs'
+         set    REMOVE = '/bin/rm -rf'
+         set LAUNCHCMD = mpirun.lsf
+         set TASKS_PER_NODE = `echo $LSB_SUB_RES_REQ | sed -ne '/ptile/s#.*\[ptile=\([0-9][0-9]*\)]#\1#p'`
+         setenv MP_DEBUG_NOTIMEOUT yes
+      breaksw
    case linux_system_with_utils_in_other_dirs*:
-      # example of pointing this script at a different set of basic commands
-      set   MOVE = '/usr/local/bin/mv -fv'
-      set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
-      set   LINK = '/usr/local/bin/ln -fvs'
-      set REMOVE = '/usr/local/bin/rm -fr'
-
-      set BASEOBSDIR = BOGUSBASEOBSDIR
-      set LAUNCHCMD  = mpirun.lsf
-   breaksw
-
+         # example of pointing this script at a different set of basic commands
+         set      MOVE = '/usr/local/bin/mv -v'
+         set      COPY = '/usr/local/bin/cp -v --preserve=timestamps'
+         set      LINK = '/usr/local/bin/ln -vs'
+         set    REMOVE = '/usr/local/bin/rm -fr'
+         set LAUNCHCMD = mpirun.lsf
+      breaksw
    default:
-      # NERSC "hopper"
-      set   MOVE = 'mv -fv'
-      set   COPY = 'cp -fv --preserve=timestamps'
-      set   LINK = 'ln -fvs'
-      set REMOVE = 'rm -fr'
-
-      set BASEOBSDIR = BOGUSBASEOBSDIR
-      set LAUNCHCMD  = "aprun -n $NTASKS"
-
-   breaksw
+         # NERSC "hopper"
+         set      MOVE = 'mv -v'
+         set      COPY = 'cp -v --preserve=timestamps'
+         set      LINK = 'ln -vs'
+         set    REMOVE = 'rm -fr'
+         set LAUNCHCMD = "aprun -n $NTASKS"
+      breaksw
 endsw
 
-# This next nonsensical string gets replaced when CESM_DART_config is run
-setenv CASEROOT BOGUSCASEROOT
+# The bogus strings get replaced when CESM_DART_config is run
+setenv    CASEROOT BOGUSCASEROOT
+setenv BASEOBSROOT BOGUSBASEOBSDIR
 
 #-------------------------------------------------------------------------
 # Get the case-specific variables
@@ -141,7 +132,7 @@ endif
 echo "`date` -- BEGIN COPY BLOCK"
 
 if (  -e   ${CASEROOT}/input.nml ) then
-   # ${COPY} ${CASEROOT}/input.nml .
+   ${COPY} ${CASEROOT}/input.nml .
    # TODO FIXME ... ripping out comments? not needed.
 #  sed -e "/#/d;/^\!/d;/^[ ]*\!/d" ${CASEROOT}/input.nml >! input.nml  || exit 39
 

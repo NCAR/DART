@@ -63,6 +63,7 @@ set num_instances = $NINST_ICE
 # base portion of the DART code tree.
 
 setenv DARTROOT  BOGUS_DART_ROOT_STRING
+setenv OBSROOT   BOGUS_DART_OBS_STRING
 
 # ==============================================================================
 # Some
@@ -74,22 +75,27 @@ set nonomatch       # suppress "rm" warnings if wildcard does not match anything
 # The VERBOSE options are useful for debugging though
 # some systems don't like the -v option to any of the following
 switch ("`hostname`")
+   case ys*:
+         # NCAR "yellowstone"
+         set   MOVE = '/bin/mv -v'
+         set   COPY = '/bin/cp -v --preserve=timestamps'
+         set   LINK = '/bin/ln -vs'
+         set REMOVE = '/bin/rm -rf'
+      breaksw
    case be*:
-      # NCAR "bluefire"
-      set   MOVE = '/usr/local/bin/mv -fv'
-      set   COPY = '/usr/local/bin/cp -fv --preserve=timestamps'
-      set   LINK = '/usr/local/bin/ln -fvs'
-      set REMOVE = '/usr/local/bin/rm -fr'
-
-   breaksw
+         # NCAR "bluefire"
+         set   MOVE = '/usr/local/bin/mv -v'
+         set   COPY = '/usr/local/bin/cp -v --preserve=timestamps'
+         set   LINK = '/usr/local/bin/ln -vs'
+         set REMOVE = '/usr/local/bin/rm -rf'
+      breaksw
    default:
-      # NERSC "hopper", NWSC "yellowstone"
-      set   MOVE = '/bin/mv -v'
-      set   COPY = '/bin/cp -v --preserve=timestamps'
-      set   LINK = '/bin/ln -vs'
-      set REMOVE = '/bin/rm -r'
-
-   breaksw
+         # NERSC "hopper"
+         set   MOVE = 'mv -v'
+         set   COPY = 'cp -v --preserve=timestamps'
+         set   LINK = 'ln -vs'
+         set REMOVE = 'rm -rf'
+      breaksw
 endsw
 
 echo ""
@@ -159,7 +165,8 @@ chmod 755       case.lt_archive
 
 # SetupFileName comes from CESM#_#_setup*, the calling script.
 sed -e "s#BOGUSCASEROOT#$CASEROOT#" \
-    ${DARTROOT}/models/cice/shell_scripts/assimilate1_5.csh > assimilate.csh || exit 23
+    -e "s#BOGUSBASEOBSDIR#$OBSROOT#" \
+    ${DARTROOT}/models/cice/shell_scripts/assimilate1_5.csh >! assimilate.csh || exit 23
 
 chmod 755 assimilate.csh
 
@@ -290,6 +297,31 @@ if ( $num_instances > 1 ) then
    end
 else
    # sampling error correction not used for perfect_model_obs
+endif
+
+# ==============================================================================
+# INFLATION : Initial setup for the default inflation scenario.
+# ==============================================================================
+# The initial settings for adaptive state-space prior inflation
+# are in the filter_nml and ... during an assimilation experiment, the output
+# from one assimilation is the input for the next. To facilitate this operationally,
+# it is useful to specify an initial file of inflation values for the first
+# assimilation step. However, I can think of no general way to do this. The
+# utility that creates the initial inflation values (fill_inflation_restart)
+# needs the model size from model_mod. To get that, CAM needs a 'caminput.nc'
+# file which we generally don't have at this stage of the game (it exists after
+# a model advance). So ... until I think of something better ... I am making a
+# cookie file that indicates this is the very first assimilation. If this
+# cookie file exists, the assimilate.csh script will make the inflation restart
+# file before it performs the assimilation. After the first assimilation takes
+# place, the cookie file must be 'eaten' so that subsequent assimilations do not
+# overwrite whatever _should_ be there.
+#
+# IMPORTANT: If you stage your own inflation file, you must REMOVE the cookie
+# file from the RUNDIR directory.
+
+if ( $num_instances > 1 ) then
+   date >! ${RUNDIR}/ice_inflation_cookie
 endif
 
 # ==============================================================================
