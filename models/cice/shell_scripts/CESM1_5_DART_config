@@ -245,6 +245,7 @@ ex input.nml <<ex_end
 g;ens_size ;s;= .*;= ${NINST_ICE};
 g;num_output_state_members ;s;= .*;= ${NINST_ICE};
 g;num_output_obs_members ;s;= .*;= ${NINST_ICE};
+g;overwrite_state_input ;s;= .*;= .true.;
 wq
 ex_end
 
