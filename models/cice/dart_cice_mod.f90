@@ -23,7 +23,7 @@ implicit none
 private
 
 public :: get_cice_calendar, set_model_time_step, &
-          get_horiz_grid_dims, &
+          get_horiz_grid_dims, get_ncat_dim,      &
           read_horiz_grid, read_topography,       &
           write_cice_namelist, get_cice_restart_filename
 
@@ -229,6 +229,43 @@ module_initialized = .true.
 call register_module(source, revision, revdate)
 
 end subroutine initialize_module
+
+!------------------------------------------------------------------
+
+subroutine get_ncat_dim(Ncat)
+
+!
+! Read the ncat size from the restart netcdf file.
+
+integer, intent(out) :: Ncat   ! Number of categories in ice-thick dist
+
+integer :: grid_id, dimid, nc_rc
+
+if ( .not. module_initialized ) call initialize_module
+
+call nc_check(nf90_open(trim(ic_filename), nf90_nowrite, grid_id), &
+         'get_ncat_dim','open '//trim(ic_filename))
+
+! ncat : get dimid for 'ncat' and then get value
+nc_rc = nf90_inq_dimid(grid_id, 'ncat', dimid)
+if (nc_rc /= nf90_noerr) then
+   nc_rc = nf90_inq_dimid(grid_id, 'Ncat', dimid)
+   if (nc_rc /= nf90_noerr) then
+      msgstring = "unable to find either 'ncat' or 'Ncat' in file "//trim(ic_filename)
+      call error_handler(E_ERR, 'get_horiz_grid_dims', msgstring, &
+                         source,revision,revdate) 
+   endif
+endif
+
+call nc_check(nf90_inquire_dimension(grid_id, dimid, len=Ncat), &
+         'get_ncat_dim','inquire_dimension ni '//trim(ic_filename))
+
+! tidy up
+
+call nc_check(nf90_close(grid_id), &
+         'get_ncat_dim','close '//trim(ic_filename) )
+
+end subroutine get_ncat_dim
 
 !------------------------------------------------------------------
 

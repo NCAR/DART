@@ -141,8 +141,8 @@ END SELECT
 
 !for testing make something to fix
 !  update_restart = .true.
-   aicen(10,10,1)=1.1
-   write(*,*) (aicen(10,10,k), k=1,5)
+!  aicen(10,10,1)=1.1
+!  write(*,*) (aicen(10,10,k), k=1,5)
 
 if (update_restart) then
    ! now update the variables

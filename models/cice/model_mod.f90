@@ -37,14 +37,48 @@ use         utilities_mod, only : register_module, error_handler,               
                                   do_nml_file, do_nml_term
 
 ! to add more kinds, edit ../../obs_kind/DEFAULT_obs_kind_mod.F90
-use          obs_kind_mod, only : KIND_SEAICE_AGREG_CONCENTR ,  &  
-                                  KIND_SEAICE_AGREG_VOLUME,     &
+use          obs_kind_mod, only : KIND_SEAICE_AGREG_CONCENTR  , &  
+                                  KIND_SEAICE_AGREG_VOLUME    , &
                                   KIND_SEAICE_AGREG_SNOWVOLUME, &
-                                  KIND_U_SEAICE_COMPONENT,      &
-                                  KIND_V_SEAICE_COMPONENT,      &
-                                  KIND_SEAICE_CONCENTR,         &
-                                  KIND_SEAICE_VOLUME,           &
-                                  KIND_SEAICE_SNOWVOLUME,       &
+                                  KIND_SEAICE_AGREG_THICKNESS , &
+                                  KIND_SEAICE_AGREG_SNOWDEPTH , &
+                                  KIND_U_SEAICE_COMPONENT     , &
+                                  KIND_V_SEAICE_COMPONENT     , &
+                                  KIND_SEAICE_ALBEDODIRVIZ    , &
+                                  KIND_SEAICE_ALBEDODIRNIR    , &
+                                  KIND_SEAICE_ALBEDOINDVIZ    , &
+                                  KIND_SEAICE_ALBEDOINDNIR    , &
+                                  KIND_SEAICE_CONCENTR        , &
+                                  KIND_SEAICE_VOLUME          , &
+                                  KIND_SEAICE_SNOWVOLUME      , &
+                                  KIND_SEAICE_SURFACETEMP     , &
+                                  KIND_SEAICE_FIRSTYEARAREA   , &
+                                  KIND_SEAICE_ICEAGE          , &
+                                  KIND_SEAICE_LEVELAREA       , &
+                                  KIND_SEAICE_LEVELVOLUME     , &
+                                  KIND_SEAICE_MELTPONDAREA    , &
+                                  KIND_SEAICE_MELTPONDDEPTH   , &
+                                  KIND_SEAICE_MELTPONDLID     , &
+                                  KIND_SEAICE_MELTPONDSNOW    , &
+                                  KIND_SEAICE_SALINITY001     , &
+                                  KIND_SEAICE_SALINITY002     , &
+                                  KIND_SEAICE_SALINITY003     , &
+                                  KIND_SEAICE_SALINITY004     , &
+                                  KIND_SEAICE_SALINITY005     , &
+                                  KIND_SEAICE_SALINITY006     , &
+                                  KIND_SEAICE_SALINITY007     , &
+                                  KIND_SEAICE_SALINITY008     , &
+                                  KIND_SEAICE_ICEENTHALPY001  , &
+                                  KIND_SEAICE_ICEENTHALPY002  , &
+                                  KIND_SEAICE_ICEENTHALPY003  , &
+                                  KIND_SEAICE_ICEENTHALPY004  , &
+                                  KIND_SEAICE_ICEENTHALPY005  , &
+                                  KIND_SEAICE_ICEENTHALPY006  , &
+                                  KIND_SEAICE_ICEENTHALPY007  , &
+                                  KIND_SEAICE_ICEENTHALPY008  , &
+                                  KIND_SEAICE_SNOWENTHALPY001 , &
+                                  KIND_SEAICE_SNOWENTHALPY002 , &
+                                  KIND_SEAICE_SNOWENTHALPY003 , &
                                   KIND_DRY_LAND,                &
                                   get_raw_obs_kind_index,       &
                                   get_raw_obs_kind_name
@@ -55,6 +89,7 @@ use        random_seq_mod, only : random_seq_type, init_random_seq, random_gauss
 
 use         dart_cice_mod, only : set_model_time_step,               &
                                   get_horiz_grid_dims,               &
+                                  get_ncat_dim,                      &
                                   read_horiz_grid, read_topography,  &
                                   get_cice_restart_filename
 
@@ -161,23 +196,29 @@ namelist /model_nml/  &
 !
 ! The DART state vector (control vector) will consist of (from cice restart):  
 ! uvel(i,j), vvel(i,j)     ice velocity
-! aicen(i,j,n)             concentration
-! vicen(i,j,n)             volume of ice
-! vsnon(i,j,n)             volume of snow
+! aicen(i,j,n)             area of ice (unitless, also called as conc. or frac.)
+! vicen(i,j,n)             volume of ice (volume per unit area)
+! vsnon(i,j,n)             volume of snow (volume per unit area)
 ! Tsfcn(i,j,n)             ice/snow surface temperature
-! sice001(i,j,n)           sea ice salinity per volume, layers 001-008
-! qice001(i,j,n)           sea ice enthalpy per volume, layers 001-008
+! iage(i,j,n)              ice age (purely diagnostic)
+! FY(i,j,n)                firstyear ice fraction of each cat area (purely diag.)
+! alvl(i,j,n)    area of level ice (purely diagnostic)
+! vlvl(i,j,n)    volume of level ice (purely diagnostic)
+! swvdr(i,j)
+! swvdf(i,j)
+! swidr(i,j)
+! swidf(i,j)
+! apnd(i,j,n)    melt pond area fraction
+! hpnd(i,j,n)    melt pond depth
+! ipnd(i,j,n)    melt pond refrozen lid thickness
+! dhs(i,j,n)     depth difference for snow on sea ice and pond ice
+! sice001(i,j,n)           sea ice salinity per volume in each cat, layers 001-008
+! qice001(i,j,n)           sea ice enthalpy per volume in each cat, layers 001-008
 ! qsno001(i,j,n)           snow enthalpy per snovol, layers 001-003
-! The main thermo variable names write 'ice' or 'sno' or 'sfc' and 
-! put an 'n' at the end to indicate they are per category
+
+! The 4 main thermo variable names have 'ice' or 'sno' or 'sfc'
+! with an 'n' at the end to indicate they are per category
 ! All are located at cell centers, except uvel, vvel are at grid cell corners.
-! Will leave out Tsfcn, sice, qice, qsno since they all scale with one of the 
-! other state variables. Hence if dart changes vicen, there is no need to 
-! change qice and sice, unless we want to vary the T,S profiles. I can't
-! imagine we do want to vary T,S profiles since there is no data to do it
-! further it could cause a serious blood bath in CICE code.
-! possibly we would find some weak covariability between T,S profiles and other
-! state vars, but I doubt it. Will reconsider later.
 !
 ! consider the 3 dimensions lat, lon, and cat
 ! so starting from POP code had to change vert dimension to cat throughout 
@@ -195,11 +236,10 @@ integer :: nfields
 ! standard cice namelist and filled in here.
 
 ! grid counts for each field
-! FIXME: Ncat could be a namelist variable if the number of categories
-! could ever change in the model.  we should also make sure we never
+! We should also make sure we never
 ! hardwire the value '5' anywhere - always refer to Ncat in loops.
 integer :: Nx=-1, Ny=-1   ! size of the dipole (or irregular) grids. 
-integer :: Ncat=5        ! number of categories in ice-thickness dist, hardwire
+integer :: Ncat=-1        ! number of categories in ice-thickness dist
 
 ! These arrays store the longitude and latitude of the lower left corner of
 ! each of the dipole u quadrilaterals and t quadrilaterals.
@@ -356,6 +396,7 @@ call error_handler(E_MSG,'static_init_model',msgstring,source,revision,revdate)
 ! and actually fill in the arrays.
 
 call get_horiz_grid_dims(Nx, Ny)
+call get_ncat_dim(Ncat)
 
 ! Allocate space for grid variables. 
 allocate(ULAT(Nx,Ny), ULON(Nx,Ny), TLAT(Nx,Ny), TLON(Nx,Ny))
@@ -873,6 +914,7 @@ subroutine model_interpolate(state_handle, ens_size, location, obs_type, expecte
 real(r8)       :: loc_array(3), llon, llat
 integer(i8)    :: base_offset
 integer        :: cat_index, cat_signal
+real(r8)       :: expected_aggr_conc(ens_size) ! array of interpolated values
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -893,40 +935,75 @@ cat_index = int(loc_array(3))
 
 if (debug > 1) print *, 'requesting interpolation of ', obs_type, ' at ', llon, llat, cat_index
 
-! CMB one of the most important things I've assumed is the following:
-! I think base_offset is the index of state vector that corresponds to 
-! this variable block without regard to level or location, so it can be 
+! The base_offset is the index of state vector that corresponds to 
+! a variable block without regard to level or location, so it can be 
 ! viewed as pointing to first cat for cice 3d vars
 
 ! set the base_offset. for aggregate quantities set it to the start of the first
-! category. set the cat_signal that will be passed into the lon_lat_interpolate() routine
-! cat_signal says whether to aggregate multiple categories into a sum, interpolate 
-! in a single 3d variable, or handle a 2d variable.
+! category of the appropriate kind. set the cat_signal that will be passed into 
+! the lon_lat_interpolate() routine
+! cat_signal says whether to aggregate multiple categories into a sum, interpolate a 3d var 
+! on a particular level, or interpolate a simple 2d variable.
 SELECT CASE (obs_type)
-   CASE (KIND_SEAICE_AGREG_CONCENTR)    ! these first 3 kinds are aggregate sums
-      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_CONCENTR))  
-      cat_signal = 0    ! aggregate over all categories 
-
-   CASE (KIND_SEAICE_AGREG_VOLUME)    
+   CASE (KIND_SEAICE_AGREG_THICKNESS )  ! these kinds require aggregating 3D vars to make a 2D var
+      cat_signal = -1 ! for extra special procedure to aggregate
       base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_VOLUME))  
-      cat_signal = 0
-
-   CASE (KIND_SEAICE_AGREG_SNOWVOLUME )
-      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_SNOWVOLUME))
-      cat_signal = 0
-
-   CASE (KIND_SEAICE_CONCENTR,      &  ! these kinds have an additional dim for category
-         KIND_SEAICE_VOLUME,        &
-         KIND_SEAICE_SNOWVOLUME      )
-      ! 3d vars move pointer to the particular category
-      ! then treat as 2d field below in lon_lat_interp
+   CASE (KIND_SEAICE_AGREG_SNOWDEPTH )  ! these kinds require aggregating 3D vars to make a 2D var
+      cat_signal = -1 ! for extra special procedure to aggregate
+      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_SNOWVOLUME))  
+   CASE (KIND_SEAICE_AGREG_CONCENTR )   ! these kinds require aggregating a 3D var to make a 2D var
+      cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
+      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_CONCENTR))  
+   CASE (KIND_SEAICE_AGREG_VOLUME   )   ! these kinds require aggregating a 3D var to make a 2D var
+      cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
+      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_VOLUME))  
+   CASE (KIND_SEAICE_AGREG_SNOWVOLUME ) ! these kinds require aggregating a 3D var to make a 2D var
+      cat_signal = 0 ! for aggregate variable, send signal to lon_lat_interp
+      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_SNOWVOLUME))  
+   CASE (KIND_SEAICE_CONCENTR       , &  ! these kinds have an additional dim for category
+         KIND_SEAICE_VOLUME         , &
+         KIND_SEAICE_SNOWVOLUME     , &
+         KIND_SEAICE_SURFACETEMP    , &
+         KIND_SEAICE_FIRSTYEARAREA  , &
+         KIND_SEAICE_ICEAGE         , &
+         KIND_SEAICE_LEVELAREA      , &
+         KIND_SEAICE_LEVELVOLUME    , &
+         KIND_SEAICE_MELTPONDAREA   , &
+         KIND_SEAICE_MELTPONDDEPTH  , &
+         KIND_SEAICE_MELTPONDLID    , &
+         KIND_SEAICE_MELTPONDSNOW   , &
+         KIND_SEAICE_SALINITY001    , &
+         KIND_SEAICE_SALINITY002    , &
+         KIND_SEAICE_SALINITY003    , &
+         KIND_SEAICE_SALINITY004    , &
+         KIND_SEAICE_SALINITY005    , &
+         KIND_SEAICE_SALINITY006    , &
+         KIND_SEAICE_SALINITY007    , &
+         KIND_SEAICE_SALINITY008    , &
+         KIND_SEAICE_ICEENTHALPY001 , &
+         KIND_SEAICE_ICEENTHALPY002 , &
+         KIND_SEAICE_ICEENTHALPY003 , &
+         KIND_SEAICE_ICEENTHALPY004 , &
+         KIND_SEAICE_ICEENTHALPY005 , &
+         KIND_SEAICE_ICEENTHALPY006 , &
+         KIND_SEAICE_ICEENTHALPY007 , &
+         KIND_SEAICE_ICEENTHALPY008 , &
+         KIND_SEAICE_SNOWENTHALPY001, &
+         KIND_SEAICE_SNOWENTHALPY002, &
+         KIND_SEAICE_SNOWENTHALPY003  )
+      ! move pointer to the particular category
+      ! then treat as 2d field in lon_lat_interp
+      base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
       base_offset = base_offset + (cat_index-1) * Nx * Ny 
-      cat_signal = 1    ! for full ice thickness category variable
-
-   CASE ( KIND_U_SEAICE_COMPONENT,  &
-          KIND_V_SEAICE_COMPONENT    )
-      cat_signal = 2   ! for 2d field
-
+      cat_signal = 1 ! now same as boring 2d field
+   CASE ( KIND_U_SEAICE_COMPONENT    , &   ! these kinds are just 2D vars
+          KIND_V_SEAICE_COMPONENT    , &
+          KIND_SEAICE_ALBEDODIRVIZ   , &
+          KIND_SEAICE_ALBEDODIRNIR   , &
+          KIND_SEAICE_ALBEDOINDVIZ   , &
+          KIND_SEAICE_ALBEDOINDNIR   )
+      base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))
+      cat_signal = 2 ! also boring 2d field (treat same as cat_signal 1)
    CASE DEFAULT
       ! Not a legal type for interpolation, return istatus error
       istatus = 15
@@ -935,8 +1012,15 @@ END SELECT
 
 ! finally the interpolation for all sea ice kinds
 call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal, expected_obs, istatus)
-if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus
 
+if (cat_signal == -1) then
+      ! we need to know the aggregate sea ice concentration for these special cases
+      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_CONCENTR))  
+      call lon_lat_interpolate(state_handle, ens_size, base_offset, llon, llat, obs_type, cat_signal, expected_aggr_conc, istatus)
+      expected_obs = expected_obs/max(expected_aggr_conc,1.0e-8)  ! hope this is allowed so we never divide by zero
+endif
+
+if (debug > 1) print *, 'interp val, istatus = ', expected_obs, istatus
 
 end subroutine model_interpolate
 
@@ -1099,7 +1183,7 @@ endif
 lon_top = lon_bot + 1
 if(lon_top > nx) lon_top = 1
 
-if ( cat_signal == 0 )  then
+if ( cat_signal < 1 )  then
    Niterations = Ncat ! only iterate if aggregating over all types
 else
    Niterations = 1 ! no need to iterate
