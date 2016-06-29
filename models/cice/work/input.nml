@@ -336,4 +336,5 @@
 /
 
 &state_space_diag_nml
+    make_diagnostic_files = .false.
 /
