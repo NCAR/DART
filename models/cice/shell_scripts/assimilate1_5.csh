@@ -400,7 +400,14 @@ else
   # TODO error out if we
 endif
 
-ls -1 ../rpointer.ice_* >!  cice_restarts.txt
+# create the list of restart files by dereferencing the pointer files. 
+# While we are at it, we have to account for the fact they are 1 dir up.
+${REMOVE} cice_restarts.txt
+
+foreach FILE ( ../rpointer.ice_* )
+   set MYFILE = `head -n 1 $FILE`
+   echo "../"`echo $MYFILE:t` >> cice_restarts.txt
+end
 
 # TODO error out if the number of files in cice_restarts.txt does not match the
 # ensemble size

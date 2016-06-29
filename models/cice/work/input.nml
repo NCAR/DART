@@ -161,7 +161,7 @@
    assimilation_period_seconds  = 0
    model_perturbation_amplitude = 0.00002
    output_state_vector          = .false.
-   debug                        = 0
+   debug                        = 1
    model_state_variables  =       'aicen', 'KIND_SEAICE_CONCENTR'        , 'UPDATE',
                                   'vicen', 'KIND_SEAICE_VOLUME'          , 'UPDATE',
                                   'vsnon', 'KIND_SEAICE_SNOWVOLUME'      , 'UPDATE',

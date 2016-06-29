@@ -11,66 +11,66 @@ module model_mod
 ! borrowed heavily from ?
 
 ! Modules that are absolutely required for use are listed
-use        types_mod,    only : r4, r8, i4, i8, SECPERDAY, MISSING_R8, rad2deg, &
-                                PI, metadatalength
-use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
-                             print_time, print_date,                           &
-                             operator(*),  operator(+), operator(-),           &
-                             operator(>),  operator(<), operator(/),           &
-                             operator(/=), operator(<=)
+use              types_mod, only : r4, r8, i4, i8, SECPERDAY, MISSING_R8, rad2deg, &
+                                   PI, metadatalength
+
+use      time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
+                                  print_time, print_date, set_calendar_type, &
+                                  operator(*),  operator(+), operator(-), &
+                                  operator(>),  operator(<), operator(/), &
+                                  operator(/=), operator(<=)
 
 ! location_mod is at rma-cice/location/xxx/location_mod.f90
 ! with the specific subdir set in path_names_xxx
 ! in our case, threed_sphere is the most appropriate choice
-use     location_mod, only : location_type, get_dist, get_close_maxdist_init,  &
-                             get_close_obs_init, set_location, get_location,   &
-                             loc_get_close_obs => get_close_obs, get_close_type, &
-                             vert_is_undef,    VERTISUNDEF,                    &
-                             vert_is_level,    VERTISLEVEL  ! treat cat as vert level
-! CMB not options for CICE:
-!                             vert_is_surface,  VERTISSURFACE,                  &
-!                             vert_is_pressure, VERTISPRESSURE,                 &
-!                             vert_is_height,   VERTISHEIGHT,                   &
+use          location_mod, only : location_type, get_dist, get_close_maxdist_init,  &
+                                  get_close_obs_init, set_location, get_location,   &
+                                  loc_get_close_obs => get_close_obs, get_close_type, &
+                                  vert_is_undef,    VERTISUNDEF,                    &
+                                  vert_is_level,    VERTISLEVEL  ! treat cat as vert level
 
-use    utilities_mod, only : register_module, error_handler,                   &
-                             E_ERR, E_WARN, E_MSG, nmlfileunit, get_unit,      &
-                             nc_check, do_output, to_upper, logfileunit,       &
-                             find_namelist_in_file, check_namelist_read,       &
-                             file_exist, find_textfile_dims, file_to_text,     &
-                             do_nml_file, do_nml_term
+use         utilities_mod, only : register_module, error_handler,               &
+                                  E_ERR, E_WARN, E_MSG, nmlfileunit, get_unit,  &
+                                  nc_check, do_output, to_upper, logfileunit,   &
+                                  find_namelist_in_file, check_namelist_read,   &
+                                  file_exist, find_textfile_dims, file_to_text, &
+                                  do_nml_file, do_nml_term
 
 ! to add more kinds, edit ../../obs_kind/DEFAULT_obs_kind_mod.F90
-use     obs_kind_mod, only : KIND_SEAICE_AGREG_CONCENTR ,  &  
-                             KIND_SEAICE_AGREG_VOLUME,     &
-                             KIND_SEAICE_AGREG_SNOWVOLUME, &
-                             KIND_U_SEAICE_COMPONENT,     &
-                             KIND_V_SEAICE_COMPONENT,     &
-                             KIND_SEAICE_CONCENTR,        &
-                             KIND_SEAICE_VOLUME,          &
-                             KIND_SEAICE_SNOWVOLUME,      &
-                             KIND_DRY_LAND,               &
-                             get_raw_obs_kind_index,      &
-                             get_raw_obs_kind_name
-use mpi_utilities_mod, only: my_task_id, task_count
-use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
-use     dart_cice_mod, only: set_model_time_step,               &
-                             get_horiz_grid_dims,               &
-                             read_horiz_grid, read_topography,  &
-                             get_cice_restart_filename
+use          obs_kind_mod, only : KIND_SEAICE_AGREG_CONCENTR ,  &  
+                                  KIND_SEAICE_AGREG_VOLUME,     &
+                                  KIND_SEAICE_AGREG_SNOWVOLUME, &
+                                  KIND_U_SEAICE_COMPONENT,      &
+                                  KIND_V_SEAICE_COMPONENT,      &
+                                  KIND_SEAICE_CONCENTR,         &
+                                  KIND_SEAICE_VOLUME,           &
+                                  KIND_SEAICE_SNOWVOLUME,       &
+                                  KIND_DRY_LAND,                &
+                                  get_raw_obs_kind_index,       &
+                                  get_raw_obs_kind_name
 
-use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_copy_owner_index, &
+use     mpi_utilities_mod, only : my_task_id, task_count
+
+use        random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
+
+use         dart_cice_mod, only : set_model_time_step,               &
+                                  get_horiz_grid_dims,               &
+                                  read_horiz_grid, read_topography,  &
+                                  get_cice_restart_filename
+
+use  ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_copy_owner_index, &
                                   get_var_owner_index
 
 ! ../../distributed/distributed_state_mod.f90
 use distributed_state_mod, only : get_state
 
 ! ../../io/state_structure_mod.f90
-use state_structure_mod,   only : add_domain, get_model_variable_indices, &
+use   state_structure_mod, only : add_domain, get_model_variable_indices, &
                                   get_num_variables, get_index_start, &
-                                  get_num_dims, get_domain_size
+                                  get_num_dims, get_domain_size, state_structure_info
 
 ! ../../io/dart_time_io_mod
-use dart_time_io_mod,      only : write_model_time
+use      dart_time_io_mod, only : write_model_time
 
 use typesizes
 use netcdf 
@@ -101,7 +101,6 @@ public :: get_model_size,                &
           read_model_time,               &
           write_model_time
 
-
 ! generally useful routines for various support purposes.
 ! the interfaces here can be changed as appropriate.
 ! FIXME: we should no longer need restart_file_to_sv and sv_to_restart_file
@@ -127,8 +126,7 @@ type(random_seq_type) :: random_seq
 ! DART state vector contents are specified in the input.nml:&model_nml namelist.
 integer, parameter :: max_state_variables = 10 
 integer, parameter :: num_state_table_columns = 3
-! FIXME: this isn't the right length limit for netcdf variable names.
-character(len=metadatalength) :: variable_table( max_state_variables, num_state_table_columns )
+character(len=NF90_MAX_NAME) :: variable_table( max_state_variables, num_state_table_columns )
 integer :: state_kinds_list( max_state_variables )
 logical :: update_var_list( max_state_variables )
 
@@ -151,12 +149,12 @@ integer  :: debug = 0   ! turn up for more and more debug messages
 ! wet, but within 1 cell of the bottom/sides/etc.  
 
 namelist /model_nml/  &
-   output_state_vector,         &
-   assimilation_period_days,    &  ! for now, this is the timestep
-   assimilation_period_seconds, &
-   model_perturbation_amplitude,&
-   update_dry_cell_walls,       &
-   model_state_variables,       &
+   output_state_vector,          &
+   assimilation_period_days,     &  ! for now, this is the timestep
+   assimilation_period_seconds,  &
+   model_perturbation_amplitude, &
+   update_dry_cell_walls,        &
+   model_state_variables,        &
    debug
 
 !------------------------------------------------------------------
@@ -342,6 +340,8 @@ call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
 if (do_nml_file())  write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
+call set_calendar_type('Gregorian')
+
 ! Set the time step ... causes cice namelists to be read.
 ! Ensures model_timestep is multiple of 'ice_thermo_timestep'
 
@@ -365,15 +365,17 @@ allocate(  HT(Nx,Ny),   HU(Nx,Ny))
 ! Fill them in.
 ! horiz grid initializes ULAT/LON, TLAT/LON as well.
 ! kmt initializes HT/HU if present in input file.
+
 call read_horiz_grid(Nx, Ny, ULAT, ULON, TLAT, TLON)
 call read_topography(Nx, Ny,  KMT,  KMU)
 
-if (debug > 2) call write_grid_netcdf() ! DEBUG only
+if (debug > 2) call write_grid_netcdf()     ! DEBUG only
 if (debug > 2) call write_grid_interptest() ! DEBUG only
 
 ! verify that the model_state_variables namelist was filled in correctly.  
 ! returns variable_table which has variable names, kinds and update strings.
-call verify_state_variables(model_state_variables, nfields, variable_table, state_kinds_list, update_var_list)
+call verify_state_variables(model_state_variables, nfields, variable_table, &
+                            state_kinds_list, update_var_list)
 
 ! in spite of the staggering, all grids are the same size
 ! and offset by half a grid cell.  4 are 3D and 2 are 2D.
@@ -389,10 +391,12 @@ if (do_output()) write(     *     , *) 'Using grid : Nx, Ny, Ncat = ', &
 call init_interp()
 
 !CMB I do not understand this next bit, maybe this is the dart restart file 
-!> @todo 'pop.r.nc' is hardcoded in dart_pop_mod.f90
+!> @todo 'cice.r.nc' is hardcoded in dart_cice_mod.f90
 domain_id = add_domain('cice.r.nc', nfields, &
                        var_names = variable_table(1:nfields, VAR_NAME_INDEX), &
                        update_list = update_var_list(1:nfields))
+
+if (debug > 0) call state_structure_info(domain_id)
 
 model_size = get_domain_size(domain_id)
 if (do_output()) write(*,*) 'model_size = ', model_size
@@ -2426,6 +2430,7 @@ ierr = 0 ! If we got here, things went well.
 end function nc_write_model_vars
 
 !------------------------------------------------------------------
+!> @TODO FIXME ... lanai_bitwise makes no sense here ... 
 
 ! CMB no change
 subroutine pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)
