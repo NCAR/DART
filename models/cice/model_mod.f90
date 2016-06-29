@@ -1192,15 +1192,13 @@ endif
 work_expected_obs = 0.0_r8
 expected_obs = 0.0_r8
 
-next_offset = offset
-
 do iterations = 1, Niterations
 
    ! FIXME: this should use the state structure routine 'get_dart_vector_index'
    ! to get the start of the next category layer.  this code assumes it knows
    ! exactly how the state vector is laid out (reasonable, but might not be true
    ! in future versions of dart.)
-   if (iterations > 1) next_offset = next_offset + (iterations-1) * Nx * Ny 
+   next_offset = offset + (iterations-1) * Nx * Ny 
 
    ! Get the values at the four corners of the box or quad
    ! Corners go around counterclockwise from lower left
