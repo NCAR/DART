@@ -898,29 +898,35 @@ if (debug > 1) print *, 'requesting interpolation of ', obs_type, ' at ', llon, 
 ! this variable block without regard to level or location, so it can be 
 ! viewed as pointing to first cat for cice 3d vars
 
-base_offset = get_index_start(domain_id, get_varid_from_kind(obs_type))  
-
-! adjust the base_offset if needed, and set the cat_signal that will be passed
-! into the lon_lat_interpolate() routine.  cat_signal says whether to aggregate
-! multiple categories into a sum, interpolate in a single 3d variable, or handle
-! a 2d variable.
+! set the base_offset. for aggregate quantities set it to the start of the first
+! category. set the cat_signal that will be passed into the lon_lat_interpolate() routine
+! cat_signal says whether to aggregate multiple categories into a sum, interpolate 
+! in a single 3d variable, or handle a 2d variable.
 SELECT CASE (obs_type)
-   CASE (KIND_SEAICE_AGREG_CONCENTR, &  ! these kinds are aggregate sums
-         KIND_SEAICE_AGREG_VOLUME,   &
-         KIND_SEAICE_AGREG_SNOWVOLUME )
-      ! tells lon_lat_interp to aggregate multiple categories into a sum
-      cat_signal = 0 ! for aggregate variable
+   CASE (KIND_SEAICE_AGREG_CONCENTR)    ! these first 3 kinds are aggregate sums
+      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_CONCENTR))  
+      cat_signal = 0    ! aggregate over all categories 
+
+   CASE (KIND_SEAICE_AGREG_VOLUME)    
+      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_VOLUME))  
+      cat_signal = 0
+
+   CASE (KIND_SEAICE_AGREG_SNOWVOLUME )
+      base_offset = get_index_start(domain_id, get_varid_from_kind(KIND_SEAICE_SNOWVOLUME))
+      cat_signal = 0
+
    CASE (KIND_SEAICE_CONCENTR,      &  ! these kinds have an additional dim for category
          KIND_SEAICE_VOLUME,        &
          KIND_SEAICE_SNOWVOLUME      )
       ! 3d vars move pointer to the particular category
-      ! then treat as 2d field - which can fall through to lon_lat_interp
+      ! then treat as 2d field below in lon_lat_interp
       base_offset = base_offset + (cat_index-1) * Nx * Ny 
-      cat_signal = 1 ! for full ice thickness category variable
+      cat_signal = 1    ! for full ice thickness category variable
+
    CASE ( KIND_U_SEAICE_COMPONENT,  &
           KIND_V_SEAICE_COMPONENT    )
-      ! these are really 2d fields - which can fall through to lon_lat_interp
-      cat_signal = 2 ! for boring 2d field
+      cat_signal = 2   ! for 2d field
+
    CASE DEFAULT
       ! Not a legal type for interpolation, return istatus error
       istatus = 15
