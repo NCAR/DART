@@ -2,7 +2,7 @@
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: model_mod.f90 10096 2016-04-12 17:44:42Z hendric $
+! $Id$
 
 module model_mod
 
@@ -109,9 +109,9 @@ public :: get_gridsize, restart_file_to_sv, sv_to_restart_file, &
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_cice/models/cice/model_mod.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 10096 $"
-character(len=128), parameter :: revdate  = "$Date: 2016-04-12 10:44:42 -0700 (Tue, 12 Apr 2016) $"
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! message strings
 character(len=512) :: string1
@@ -3465,7 +3465,7 @@ end subroutine use_default_state_variables
 end module model_mod
 
 ! <next few lines under version control, do not edit>
-! $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_cice/models/cice/model_mod.f90 $
-! $Id: model_mod.f90 10096 2016-04-12 17:44:42Z hendric $
-! $Revision: 10096 $
-! $Date: 2016-04-12 10:44:42 -0700 (Tue, 12 Apr 2016) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

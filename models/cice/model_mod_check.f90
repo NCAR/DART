@@ -2,7 +2,7 @@
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: model_mod_check.f90 8565 2015-09-11 17:16:08Z hkershaw $
+! $Id$
 
 program model_mod_check
 
@@ -38,9 +38,9 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_cice/models/cice/model_mod_check.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 8565 $"
-character(len=128), parameter :: revdate  = "$Date: 2015-09-11 10:16:08 -0700 (Fri, 11 Sep 2015) $"
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 ! standard output string
 character(len=256) :: string1, string2
@@ -619,7 +619,7 @@ end function test_interpolate
 end program model_mod_check
 
 ! <next few lines under version control, do not edit>
-! $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_cice/models/cice/model_mod_check.f90 $
-! $Id: model_mod_check.f90 8565 2015-09-11 17:16:08Z hkershaw $
-! $Revision: 8565 $
-! $Date: 2015-09-11 10:16:08 -0700 (Fri, 11 Sep 2015) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

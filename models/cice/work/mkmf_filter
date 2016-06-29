@@ -4,7 +4,7 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: mkmf_filter 9456 2016-01-07 19:04:21Z hkershaw $
+# DART $Id$
 #
 # usage: mkmf_filter [ -mpi | -nompi ]
 #
@@ -70,7 +70,7 @@ rm -f path_names_filter.back path_names_filter.temp
 exit $status
 
 # <next few lines under version control, do not edit>
-# $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_cice/models/clm/work/mkmf_filter $
-# $Revision: 9456 $
-# $Date: 2016-01-07 11:04:21 -0800 (Thu, 07 Jan 2016) $
+# $URL$
+# $Revision$
+# $Date$
 

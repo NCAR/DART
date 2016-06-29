@@ -2,7 +2,7 @@
 ! provided by UCAR, "as is", without charge, subject to all terms of use at
 ! http://www.image.ucar.edu/DAReS/DART/DART_download
 !
-! $Id: dart_to_cice.f90 8565 2015-09-11 17:16:08Z hkershaw $
+! $Id$
 
 program dart_to_cice
 
@@ -26,26 +26,39 @@ implicit none
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_cice/models/CICE/dart_to_cice.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 8565 $"
-character(len=128), parameter :: revdate  = "$Date: 2015-09-11 10:16:08 -0700 (Fri, 11 Sep 2015) $"
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 !------------------------------------------------------------------
 
-character (len = 128) :: dart_to_cice_input_file   = 'dart_restart.nc'
-character (len = 128) :: balance_method = 'simple_squeeze'
+character(len=256) :: dart_to_cice_input_file   = 'dart_restart.nc'
+character(len=256) :: balance_method = 'simple_squeeze'
 namelist /dart_to_cice_nml/ dart_to_cice_input_file, balance_method
 
-character(len=512) :: msgstring
-character (len = 15) :: varname
-integer, parameter :: Nx=320, Ny=384  ! hardwire for now
-integer, parameter :: Ncat=5          ! number of categories in ice-thickness dist, hardwire
-real(r8) :: aicen(Nx,Ny,Ncat), vicen(Nx,Ny,Ncat), vsnon(Nx,Ny,Ncat)
-real(r8) :: aice(Nx,Ny)
+character(len=512) :: string1, string2, string3, msgstring
+character(len=15) :: varname
+
+integer :: Nx, Ny
+integer :: Ncat   ! number of categories in ice-thickness dist
+
+real(r8), allocatable :: aicen(:,:,:)
+real(r8), allocatable :: vicen(:,:,:)
+real(r8), allocatable :: vsnon(:,:,:)
+real(r8), allocatable ::  aice(:,:)
+
+! real(r8) :: aicen(Nx,Ny,Ncat), vicen(Nx,Ny,Ncat), vsnon(Nx,Ny,Ncat)
+! real(r8) :: aice(Nx,Ny)
+
 integer  :: i, j, k
-integer :: VarID, ncid, iunit, io
+integer  :: DimID, VarID, ncid, iunit, io, ndims
 real(r8) :: squeeze
+
+! TODO FIXME ... CC ... don't understand the purpose of this.
 logical  :: update_restart = .false.
+
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, dimLengths
+character(len=NF90_MAX_NAME)          :: dimName
 
 !----------------------------------------------------------------------
 
@@ -61,7 +74,7 @@ write(*,'(''dart_to_cice:converting DART output restart file '',A, &
      trim(dart_to_cice_input_file)
 
 if ( .not. file_exist(dart_to_cice_input_file) ) then
-   write(msgstring,*) 'cannot open file ', trim(dart_to_cice_input_file),' for updating.'
+   write(string1,*) 'cannot open file ', trim(dart_to_cice_input_file),' for updating.'
    call error_handler(E_ERR,'dart_to_cice:filename not found ',trim(dart_to_cice_input_file))
 endif
 
@@ -70,24 +83,17 @@ call nc_check( nf90_open(trim(dart_to_cice_input_file), NF90_WRITE, ncid), &
                   'dart_to_cice', 'open '//trim(dart_to_cice_input_file))
 
 ! get the key restart variables
+! the variables are allocated in the routine
 
-varname='aicen'
-call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
-         'dart_to_cice', trim(varname)//' inq_varid '//trim(dart_to_cice_input_file))
-call nc_check(nf90_get_var(ncid, VarID, aicen), 'dart_to_cice', &
-         'get_var '//trim(varname))
+call get_3d_variable(ncid, 'aicen', aicen, dart_to_cice_input_file)
+call get_3d_variable(ncid, 'vicen', vicen, dart_to_cice_input_file)
+call get_3d_variable(ncid, 'vsnon', vsnon, dart_to_cice_input_file)
 
-varname='vicen'
-call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
-         'dart_to_cice', trim(varname)//' inq_varid '//trim(dart_to_cice_input_file))
-call nc_check(nf90_get_var(ncid, VarID, vicen), 'dart_to_cice', &
-         'get_var '//trim(varname))
+Nx   = size(aicen,1)
+Ny   = size(aicen,2)
+Ncat = size(aicen,3)
 
-varname='vsnon'
-call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
-         'dart_to_cice', trim(varname)//' inq_varid '//trim(dart_to_cice_input_file))
-call nc_check(nf90_get_var(ncid, VarID, vsnon), 'dart_to_cice', &
-         'get_var '//trim(varname))
+allocate( aice(Nx,Ny) )
 
 aice = aicen(:,:,1)
 do k = 2, Ncat  
@@ -98,8 +104,8 @@ enddo
 
 SELECT CASE (balance_method)
   CASE ('simple_squeeze')
-     do j = 1, Ny   ! size(data_3d_array,2)
-        do i = 1, Nx   ! size(data_3d_array,1)
+     do j = 1, Ny
+        do i = 1, Nx
            if (aice(i,j).lt.0.) then
               aicen(i,j,:)=0.
               vicen(i,j,:)=0.
@@ -115,8 +121,8 @@ SELECT CASE (balance_method)
         enddo
      enddo
   CASE ('tendency_weight')  ! this is identical to the above for now
-     do j = 1, Ny   ! size(data_3d_array,2)
-        do i = 1, Nx   ! size(data_3d_array,1)
+     do j = 1, Ny
+        do i = 1, Nx
            if (aice(i,j).lt.0.) then
               aicen(i,j,:)=0.
               vicen(i,j,:)=0.
@@ -135,38 +141,82 @@ END SELECT
 
 !for testing make something to fix
 !  update_restart = .true.
-!  aicen(10,10,1)=1.1
-!  write(*,*) (aicen(10,10,k), k=1,5)
+   aicen(10,10,1)=1.1
+   write(*,*) (aicen(10,10,k), k=1,5)
 
 if (update_restart) then
-! now update the variables
-
-varname='aicen'
-call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
-         'dart_to_cice', trim(varname)//' inq_varid '//trim(dart_to_cice_input_file))
-call nc_check(nf90_put_var(ncid, VarID, aicen), 'dart_to_cice', &
-         'get_var '//trim(varname))
-
-varname='vicen'
-call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
-         'dart_to_cice', trim(varname)//' inq_varid '//trim(dart_to_cice_input_file))
-call nc_check(nf90_put_var(ncid, VarID, vicen), 'dart_to_cice', &
-         'get_var '//trim(varname))
-
-varname='vsnon'
-call nc_check(NF90_inq_varid(ncid, trim(varname), VarID), &
-         'dart_to_cice', trim(varname)//' inq_varid '//trim(dart_to_cice_input_file))
-call nc_check(nf90_put_var(ncid, VarID, vsnon), 'dart_to_cice', &
-         'get_var '//trim(varname))
-
+   ! now update the variables
+   
+   varname='aicen'
+   io = nf90_inq_varid(ncid, trim(varname), VarID)
+   call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(dart_to_cice_input_file))
+   io = nf90_put_var(ncid, VarID, aicen)
+   call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(dart_to_cice_input_file))
+   
+   varname='vicen'
+   io = nf90_inq_varid(ncid, trim(varname), VarID)
+   call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(dart_to_cice_input_file))
+   io = nf90_put_var(ncid, VarID, vicen)
+   call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(dart_to_cice_input_file))
+   
+   varname='vsnon'
+   io = nf90_inq_varid(ncid, trim(varname), VarID)
+   call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(varname)//' '//trim(dart_to_cice_input_file))
+   io = nf90_put_var(ncid, VarID, vsnon)
+   call nc_check(io, 'dart_to_cice', 'put_var '//trim(varname)//' '//trim(dart_to_cice_input_file))
+   
 endif
 
+call nc_check(nf90_close(ncid),'dart_to_cice', 'close '//trim(dart_to_cice_input_file))
+
 call finalize_utilities('dart_to_cice')
+
+!-----------------------------------------------------------------------
+contains
+!-----------------------------------------------------------------------
+
+subroutine get_3d_variable(ncid, varname, var, filename)
+
+integer,          intent(in) :: ncid
+character(len=*), intent(in) :: varname
+real(r8),         intent(in) :: var(:,:,:)
+
+integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, dimLengths
+character(len=NF90_MAX_NAME)          :: dimName
+
+write(msgstring,*) trim(varname)//' '//trim(filename)
+
+io = nf90_inq_varid(ncid, trim(varname), VarID)
+call nc_check(io, 'dart_to_cice', 'inq_varid '//trim(msgstring))
+
+io = nf90_inquire_variable(ncid, VarID, dimids=dimIDs, ndims=ndims)
+call nc_check(io, 'dart_to_cice', 'inquire_variable '//trim(msgstring))
+
+if (ndims /= 3) then
+   write(string2,*) 'expected 3 dimension, got ', ndims
+   call error_handler(E_ERR,'dart_to_cice',msgstring,text2=string2)
+endif
+
+dimLengths = 1
+DimensionLoop : do i = 1,ndims
+
+   write(string1,'(''inquire dimension'',i2,A)') i,trim(msgstring)
+   io = nf90_inquire_dimension(ncid, dimIDs(i), name=dimname, len=dimLengths(i))
+   call nc_check(io, 'dart_to_cice', string1)
+
+enddo DimensionLoop
+
+allocate( var(dimLengths(1), dimLengths(2), dimLengths(3)) )
+
+call nc_check(nf90_get_var(ncid, VarID, var), 'dart_to_cice', &
+         'get_var '//trim(msgstring))
+
+end subroutine get_3d_variable
 
 end program dart_to_cice
 
 ! <next few lines under version control, do not edit>
-! $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_cice/models/CICE/dart_to_cice.f90 $
-! $Id: dart_to_cice.f90 8565 2015-09-11 17:16:08Z hkershaw $
-! $Revision: 8565 $
-! $Date: 2015-09-11 10:16:08 -0700 (Fri, 11 Sep 2015) $
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

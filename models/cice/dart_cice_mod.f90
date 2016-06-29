@@ -29,9 +29,9 @@ public :: get_cice_calendar, set_model_time_step, &
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
-   "$URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_cice/models/cice/dart_cice_mod.f90 $"
-character(len=32 ), parameter :: revision = "$Revision: 7832 $"
-character(len=128), parameter :: revdate  = "$Date: 2015-04-02 13:10:32 -0700 (Thu, 02 Apr 2015) $"
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
 
 character(len=256) :: msgstring
 logical, save :: module_initialized = .false.
@@ -650,6 +650,6 @@ end subroutine get_cice_restart_filename
 end module dart_cice_mod
 
 ! <next few lines under version control, do not edit>
-! $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_cice/models/cice/dart_cice_mod.f90 $
+! $URL$
 ! $Id: dart_cice_mod.f90
 
