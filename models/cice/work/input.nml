@@ -32,8 +32,6 @@
    output_restart_mean      = .true.
    obs_sequence_in_name     = "obs_seq.out"
    obs_sequence_out_name    = "obs_seq.final"
-   restart_in_file_name     = "cice_in.r"
-   restart_out_file_name    = "cice_out.r"
    init_time_days           = -1
    init_time_seconds        = -1
    first_obs_days           = -1
@@ -49,10 +47,16 @@
    output_inflation         = .true.
    trace_execution          = .true.
    silence                  = .false.
-   direct_netcdf_read       = .true.
-   direct_netcdf_write      = .true.
-   use_restart_list         = .true.
-   restart_list_file        = 'cice_restarts.txt'
+
+   direct_netcdf_read           = .true.
+   direct_netcdf_write          = .true.
+   use_restart_list             = .true.
+   restart_list_file            = 'cice_restarts.txt'
+   restart_in_file_name         = "cice_in.r"
+   overwrite_state_input        = .false. ! overwrites model netcdf files with output from filter
+   restart_out_file_name        = "cice_out.r"
+   single_restart_file_in       = .false. ! all copies read from 1 file
+   single_restart_file_out      = .false. ! all copies written to 1 file
    perturb_from_single_instance = .false.
    perturbation_amplitude       = 0.2
 
@@ -320,15 +324,6 @@
    write_binary_restart_files = .true.
 /
 
-
-# TJH TODO FIXME ... what do these do?
-
-&io_filenames_nml
-   rpointer      = .true.
-   rpointer_file = 'restart_files.txt', 
-                   'history_files.txt', 
-                   'history_vector_files.txt'
-/
 
 &quality_control_nml
    input_qc_threshold       = 1.0
