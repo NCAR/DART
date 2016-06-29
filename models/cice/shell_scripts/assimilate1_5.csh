@@ -402,27 +402,22 @@ endif
 
 # create the list of restart files by dereferencing the pointer files. 
 # While we are at it, we have to account for the fact they are 1 dir up.
+# CP the input (prior) CICE states for restart purposes.
+# The original CICE files will be updated directly by filter.
+
 ${REMOVE} cice_restarts.txt
-
-foreach FILE ( ../rpointer.ice_* )
-   set MYFILE = `head -n 1 $FILE`
-   echo "../"`echo $MYFILE:t` >> cice_restarts.txt
-end
-
-# TODO error out if the number of files in cice_restarts.txt does not match the
-# ensemble size
-
-
-# CP the priors since everything in cice_restarts.txt will be overwritten by filter
 
 set member = 1
 while ( ${member} <= ${ensemble_size} )
 
-   set ICE_FILENAME = `head -n $member cice_restarts.txt | tail -n 1`
-   
-   set DART_FILENAME = `printf cice_out.r.%04d     ${member}`
+   set  SAFETY_FILE = `printf cice_prior.r.%04d.nc ${member}`
+   set POINTER_FILE = `printf ../rpointer.ice_%04d ${member}`
 
-   ${COPY} ${ICE_FILENAME} ${DART_FILENAME} &
+   set MYFILE = `head -n 1 $POINTER_FILE`
+   set ICE_FILENAME = `echo $MYFILE:t`
+   echo "../"${ICE_FILENAME} >> cice_restarts.txt
+
+   ${COPY} ../${ICE_FILENAME} ${SAFETY_FILE} &
 
    @ member++
 end
@@ -454,7 +449,7 @@ echo "`date` -- END ICE-TO-DART for all ${ensemble_size} members."
 #=========================================================================
 
 # The cice model_mod.f90:static_init_model() has a hardcoded 'cice.r.nc'
-# that must exist. The cice_in namelist must also exist in this directory 
+# that must exist. The cice_in,drv_in namelists must also exist in this directory 
 
 set TEMPLATEFILE = `head -n 1 cice_restarts.txt`
 ln -sf $TEMPLATEFILE   cice.r.nc
@@ -465,15 +460,31 @@ echo "`date` -- BEGIN FILTER"
 ${LAUNCHCMD} ${EXEROOT}/filter || exit -7
 echo "`date` -- END FILTER"
 
-# ${MOVE} Prior_Diag.nc      ../ice_Prior_Diag.${ICE_DATE_EXT}.nc
-# ${MOVE} Posterior_Diag.nc  ../ice_Posterior_Diag.${ICE_DATE_EXT}.nc
-# ${MOVE} obs_seq.final      ../ice_obs_seq.${ICE_DATE_EXT}.final
-# ${MOVE} dart_log.out       ../ice_dart_log.${ICE_DATE_EXT}.out
+# tag the output with the current model date
+
+foreach FILE ( prior_member????.nc     \
+               Prior_Diag.nc           \
+               Posterior_Diag.nc       \
+               PriorDiag_sd.nc         \
+               PriorDiag_mean.nc       \
+               PriorDiag_sd.nc         \
+               PriorDiag_inf_mean.nc   \
+               PriorDiag_inf_sd.nc     \
+               mean.nc sd.nc dart_log* \
+               obs_seq.final )
+
+   if ( -e $FILE ) then
+      set  FEXT = $FILE:e
+      set FBASE = $FILE:r
+      ${MOVE} $FILE ${FBASE}.${ICE_DATE_EXT}.${FEXT}
+   endif
+
+end
 
 # Copy obs_seq.final files to a place that won't be archived,
 # so that they don't need to be retrieved from the HPSS.
 if (! -d ../../Obs_seqs) mkdir ../../Obs_seqs
-${COPY} ../ice_obs_seq.${ICE_DATE_EXT}.final ../../Obs_seqs &
+${COPY} obs_seq.${ICE_DATE_EXT}.final ../../Obs_seqs &
 
 # Accommodate any possible inflation files
 # 1) rename file to reflect current date
@@ -506,10 +517,8 @@ if (-f $reg_diag) then
    $MOVE $reg_diag ../ice_${reg_diag}.${ICE_DATE_EXT}
 endif
 
-# 
 #=========================================================================
 # Block 6: Update the ice restart files ... simultaneously ...
-#
 # Each member will do its job in its own directory.
 # Block 7: The ice files have now been updated, move them into position.
 #=========================================================================
@@ -518,18 +527,21 @@ echo "`date` -- BEGIN DART-TO-ICE"
 set member = 1
 while ( $member <= $ensemble_size )
 
-   cd member_${member}
+   set inst_string = `printf       _%04d $member`
+   set  member_dir = `printf member_%04d $member`
+
+   if (! -d ${member_dir}) mkdir ${member_dir}
+   cd ${member_dir}
 
    ${REMOVE} output.${member}.dart_to_ice
 
+   set ICE_FILENAME = `head -n $member ../cice_restarts.txt | tail -n 1`
+
+   ${LINK} ../${ICE_FILENAME} dart_restart.nc || exit -9
+   ${LINK} ../input.nml .
+
    echo "starting dart_to_ice for member ${member} at "`date`
-   ${EXEROOT}/dart_to_ice >! output.${member}.dart_to_ice &
-
-   set inst_string = `printf _%04d $member`
-
-   set ICE_INITIAL_FILENAME = ${CASE}.ice${inst_string}.i.${ICE_DATE_EXT}.nc
-
-   ${LINK} ${ICE_INITIAL_FILENAME} dart_restart.nc || exit -9
+   ${EXEROOT}/dart_to_cice >! output.${member}.dart_to_ice &
 
    cd ..
 

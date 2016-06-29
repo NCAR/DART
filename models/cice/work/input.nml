@@ -27,7 +27,7 @@
 &filter_nml
    async                    = 0
    adv_ens_command          = "no_advance_script"
-   ens_size                 =  3
+   ens_size                 =  30
    output_restart           = .true.
    output_restart_mean      = .true.
    obs_sequence_in_name     = "obs_seq.out"
@@ -38,8 +38,8 @@
    first_obs_seconds        = -1
    last_obs_days            = -1
    last_obs_seconds         = -1
-   num_output_state_members = 20
-   num_output_obs_members   = 20
+   num_output_state_members = 30
+   num_output_obs_members   = 30
    output_interval          = 1
    num_groups               = 1
    output_forward_op_errors = .false.
@@ -53,9 +53,9 @@
    use_restart_list             = .true.
    restart_list_file            = 'cice_restarts.txt'
    restart_in_file_name         = "cice_in.r"
-   overwrite_state_input        = .false. ! overwrites model netcdf files with output from filter
-   restart_out_file_name        = "cice_out.r"
-   single_restart_file_in       = .false. ! all copies read from 1 file
+   overwrite_state_input        = .true. ! overwrites model files with filter output
+   restart_out_file_name        = "filter_cice_out.r"
+   single_restart_file_in       = .false. ! all copies read  from 1 file
    single_restart_file_out      = .false. ! all copies written to 1 file
    perturb_from_single_instance = .false.
    perturbation_amplitude       = 0.2
@@ -133,8 +133,6 @@
      input_files = '../../../obs_def/obs_def_cice_mod.f90'
    /
 
-# hist_nhtfrq should be negative (hours) ... same context as in
-# the CLM namelist for the .h1. files.
 
 &obs_kind_nml
    assimilate_these_obs_types = 'SAT_SEAICE_AGREG_CONCENTR',
@@ -171,10 +169,8 @@
                                   'vsnon', 'KIND_SEAICE_SNOWVOLUME'      , 'UPDATE',
    /
 
-# See the cice model_mod.html for a larger listing of CICE variables and their associated DART KINDs.
-# Be aware that some variables exist in both restart and history files, so it makes a difference where
-# the variable comes from. Only those in the CESM restart file are relevant for future model advances. 
-# The list is by no means complete.
+# See the cice model_mod.html for a larger listing of CICE variables and their
+# associated DART KINDs. The list is by no means complete.
 
 
 &dart_to_cice_nml
@@ -242,11 +238,11 @@
 &obs_diag_nml
    obs_sequence_name = ''
    obs_sequence_list = 'obs_seq_files.txt'
-   first_bin_center =  2004, 1,  1, 0, 0, 0 
-   last_bin_center  =  2004, 1,  8, 0, 0, 0 
-   bin_separation   =     0, 0,  1, 0, 0, 0 
-   bin_width        =     0, 0,  1, 0, 0, 0 
-   time_to_skip     =     0, 0,  0, 0, 0, 0 
+   first_bin_center =  2004, 1,  1, 0, 0, 0
+   last_bin_center  =  2004, 1,  8, 0, 0, 0
+   bin_separation   =     0, 0,  1, 0, 0, 0
+   bin_width        =     0, 0,  1, 0, 0, 0
+   time_to_skip     =     0, 0,  0, 0, 0, 0
    max_num_bins     = 1000
    trusted_obs      = 'null'
    Nregions   = 4
@@ -297,6 +293,7 @@
    verbose    = .false.
    /
 
+
 ! useful input for model_mod_check_nml ...
 
    x_inds    of interest   720, 7000
@@ -312,7 +309,7 @@
    x_ind                 = 3210
    kind_of_interest      = 'KIND_SEAICE_CONCENTR'
    loc_of_interest       = 287.5, 82.48, 1
-   interp_test_lonrange  = 0.0, 359.0 
+   interp_test_lonrange  = 0.0, 359.0
    interp_test_dlon      = 1.0
    interp_test_latrange  = -89.0, 89.0
    interp_test_dlat      = 1.0
@@ -320,16 +317,19 @@
    interp_test_dvert     = 1.0
    /
 
+
 &state_vector_io_nml
    write_binary_restart_files = .true.
-/
+   /
 
 
 &quality_control_nml
    input_qc_threshold       = 1.0
    outlier_threshold        = 3.0
-/
+   /
+
 
 &state_space_diag_nml
-    make_diagnostic_files = .false.
-/
+   make_diagnostic_files = .false.
+   /
+
