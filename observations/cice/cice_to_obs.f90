@@ -352,8 +352,8 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
    !> destroy the obs_seq so we don't have a mem leak
    call destroy_obs_sequence(obs_seq)
 
-   curr_time = curr_time + one_day
    if (curr_time >= end_time) exit obsloop
+   curr_time = curr_time + one_day
 
    call get_date(curr_time, year, month, day, hour, minute, second)
 
