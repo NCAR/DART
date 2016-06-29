@@ -177,9 +177,10 @@ contains
 
 subroutine get_3d_variable(ncid, varname, var, filename)
 
-integer,          intent(in) :: ncid
-character(len=*), intent(in) :: varname
-real(r8),         intent(in) :: var(:,:,:)
+integer,               intent(in)  :: ncid
+character(len=*),      intent(in)  :: varname
+real(r8), allocatable, intent(out) :: var(:,:,:)
+character(len=*),      intent(in)  :: filename
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs, dimLengths
 character(len=NF90_MAX_NAME)          :: dimName
