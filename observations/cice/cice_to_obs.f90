@@ -46,7 +46,7 @@ use  time_manager_mod, only : time_type, set_calendar_type, set_date, set_time, 
 use      location_mod, only : VERTISLEVEL, VERTISUNDEF
 use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                               static_init_obs_sequence, init_obs, write_obs_seq, & 
-                              init_obs_sequence, get_num_obs, & 
+                              init_obs_sequence, get_num_obs, destroy_obs_sequence, & 
                               set_copy_meta_data, set_qc_meta_data
 use obs_utilities_mod, only : create_3d_obs, add_obs_to_seq
 use      obs_kind_mod, only : &
@@ -223,11 +223,11 @@ num_qc     = 1
 call static_init_obs_sequence()
 call init_obs(obs,      num_copies, num_qc)
 call init_obs(prev_obs, num_copies, num_qc)
-first_obs = .true.
 
 ! create a new, empty obs_seq.  you must give a max limit
 ! on number of obs.  increase the size if too small.
 call init_obs_sequence(obs_seq, num_copies, num_qc, max_obs)
+first_obs = .true.
 
 ! the first one needs to contain the string 'observation' and the
 ! second needs the string 'QC'.
@@ -269,15 +269,15 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
   
       !> @todo FIXME open the new output file?
 
-! create a new, empty obs_seq.  you must give a max limit
-! on number of obs.  increase the size if too small.
-call init_obs_sequence(obs_seq, num_copies, num_qc, max_obs)
-first_obs = .true.
+      ! create a new, empty obs_seq.  you must give a max limit
+      ! on number of obs.  increase the size if too small.
+      call init_obs_sequence(obs_seq, num_copies, num_qc, max_obs)
+      first_obs = .true.
 
-! the first one needs to contain the string 'observation' and the
-! second needs the string 'QC'.
-call set_copy_meta_data(obs_seq, 1, 'observation')
-call set_qc_meta_data(obs_seq, 1, 'Data QC')
+      ! the first one needs to contain the string 'observation' and the
+      ! second needs the string 'QC'.
+      call set_copy_meta_data(obs_seq, 1, 'observation')
+      call set_qc_meta_data(obs_seq, 1, 'Data QC')
 
       
    else
@@ -343,13 +343,14 @@ call set_qc_meta_data(obs_seq, 1, 'Data QC')
    !> @todo FIXME: here if we're looping over the output, write the
    !> obs_seq file and open a new one
 
- ! if we added any obs to the sequence, write it out to a file now.
- if ( get_num_obs(obs_seq) > 0 ) then
-    if (debug) print *, 'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
-    call write_obs_seq(obs_seq, obsseq_out_file)
- endif
+   ! if we added any obs to the sequence, write it out to a file now.
+   if ( get_num_obs(obs_seq) > 0 .and. use_obsseq_filename_pattern ) then
+      if (debug) print *, 'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
+      call write_obs_seq(obs_seq, obsseq_out_file)
+   endif
 
- !> @todo FIXME destroy the obs_seq so we don't have a mem leak
+   !> destroy the obs_seq so we don't have a mem leak
+   call destroy_obs_sequence(obs_seq)
 
    curr_time = curr_time + one_day
    if (curr_time >= end_time) exit obsloop
@@ -358,13 +359,14 @@ call set_qc_meta_data(obs_seq, 1, 'Data QC')
 
 end do obsloop
 
-! if we added any obs to the sequence, write it out to a file now.
-if ( get_num_obs(obs_seq) > 0 ) then
+! if we haven't already written the obs_seq file inside the loop above, write it now
+if ( .not. use_obsseq_filename_pattern .and. get_num_obs(obs_seq) > 0 ) then
    if (debug) print *, 'writing obs_seq, obs_count = ', get_num_obs(obs_seq)
    call write_obs_seq(obs_seq, obsseq_out_file)
 endif
 
-!> @todo FIXME destroy the obs_seq so we don't have a mem leak
+!> clean up
+call destroy_obs_sequence(obs_seq)
 
 ! end of main program
 call finalize_utilities()
