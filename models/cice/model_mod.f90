@@ -394,6 +394,7 @@ call init_interp()
 !> @todo 'cice.r.nc' is hardcoded in dart_cice_mod.f90
 domain_id = add_domain('cice.r.nc', nfields, &
                        var_names = variable_table(1:nfields, VAR_NAME_INDEX), &
+                       kind_list = state_kinds_list(1:nfields), &
                        update_list = update_var_list(1:nfields))
 
 if (debug > 0) call state_structure_info(domain_id)
