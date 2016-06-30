@@ -39,7 +39,7 @@ use     utilities_mod, only : initialize_utilities, finalize_utilities, &
                               open_file, close_file, error_handler, E_ERR, &
                               do_nml_file, do_nml_term, nmlfileunit, &
                               find_namelist_in_file, check_namelist_read, &
-                              nc_check
+                              nc_check, get_unit
 use  time_manager_mod, only : time_type, set_calendar_type, set_date, set_time, &
                               operator(>=), increment_time, get_date, get_time, &
                               operator(-), GREGORIAN, operator(+), print_date
@@ -49,56 +49,44 @@ use  obs_sequence_mod, only : obs_sequence_type, obs_type, read_obs_seq, &
                               init_obs_sequence, get_num_obs, destroy_obs_sequence, & 
                               set_copy_meta_data, set_qc_meta_data
 use obs_utilities_mod, only : create_3d_obs, add_obs_to_seq
-use      obs_kind_mod, only : &
-  SAT_SEAICE_AGREG_CONCENTR, &
-  SAT_SEAICE_AGREG_VOLUME, &
-  SAT_SEAICE_AGREG_SNOWVOLUME, &
-  SAT_SEAICE_AGREG_THICKNESS, &
-  SAT_SEAICE_AGREG_SNOWDEPTH, &
-  SAT_U_SEAICE_COMPONENT, &
-  SAT_V_SEAICE_COMPONENT, &
-  SAT_SEAICE_CONCENTR, &
-  SAT_SEAICE_VOLUME, &
-  SAT_SEAICE_SNOWVOLUME
+use      obs_kind_mod, only : SAT_SEAICE_AGREG_CONCENTR, &
+                              SAT_SEAICE_AGREG_VOLUME, &
+                              SAT_SEAICE_AGREG_SNOWVOLUME, &
+                              SAT_SEAICE_AGREG_THICKNESS, &
+                              SAT_SEAICE_AGREG_SNOWDEPTH, &
+                              SAT_U_SEAICE_COMPONENT, &
+                              SAT_V_SEAICE_COMPONENT, &
+                              SAT_SEAICE_CONCENTR, &
+                              SAT_SEAICE_VOLUME, &
+                              SAT_SEAICE_SNOWVOLUME
 
-! netcdf access for land mask
+
+!> @todo FIXME - originally i thought we needed to read the netcdf file
+!> which contained the model land mask.  but creating observations from
+!> the binary files is unrelated to the model grid so this code is
+!> currently commented out and probably should be removed. BUT: it could 
+!> be useful to create an obs_seq.in (synthetic obs) for  
+!> a perfect_model_obs experiment, so i've left it for now.   
+!> (all related code marked with LANDMASK tag for easier cleanup.)
+!> nsc 30jun2016
+
+! netcdf access for land mask LANDMASK
 !use netcdf
 
 implicit none
 
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
+
 ! this is based on the model, not on the satellite grid.
-! ignore this for now.
+! ignore this for now. LANDMASK
 !character(len=256) :: land_mask_file  = 'cice_hist.nc'
 
-!> namelist items
-!> @todo : give them reasonable defaults later.
-character(len=256) :: cice_lat_file   = 'psn25lats_v3.dat'
-character(len=256) :: cice_lon_file   = 'psn25lons_v3.dat'
-integer            :: num_latitudes   = 448
-integer            :: num_longitudes  = 304
-integer            :: start_year      = 1980
-integer            :: start_month     = 1
-integer            :: start_day       = 1
-integer            :: end_year        = 1980
-integer            :: end_month       = 1
-integer            :: end_day         = 1
-real(r8)           :: grid_scale_factor = 100000.0
-real(r8)           :: data_scale_factor = 10.0
-real(r8)           :: error_factor    = 0.10
-integer            :: land_missing_value = -800
-integer            :: pole_missing_value = -100
-logical            :: use_data_filename_pattern = .true.
-character(len=256) :: data_filename_pattern     = 'bt_YYYYMMDD_n07_v02_n.bin'
-character(len=256) :: cice_data_file            = 'bt_19800101_n07_v02_n.bin'
-logical            :: use_obsseq_filename_pattern = .true.
-character(len=256) :: obsseq_filename_pattern     = 'obs_seq.YYYYMMDD'
-character(len=256) :: obsseq_out_file             = 'obs_seq.out'
-logical            :: append_to_existing_file     = .false.
-logical            :: ignore_zero_obs = .false.
-logical            :: debug           = .false.
-
-
 character(len=256) :: input_line, input_filename, next_file, out_file
+character(len=256) :: msgstring, msgstring1
 
 integer :: oday, osec, rcio, iunit, otype, io, rc
 integer :: year, month, day, hour, minute, second
@@ -109,6 +97,7 @@ logical  :: file_exist, first_obs
 
 real(r8), allocatable :: lat(:,:), lon(:,:), percent(:,:)
 real(r8) :: perr, qc
+! LANDMASK
 !integer, allocatable :: tmask(:,:)
 integer(i2), allocatable :: rawdata_i2(:)
 integer(i4), allocatable :: rawdata_i4(:)
@@ -118,6 +107,77 @@ type(obs_type)          :: obs, prev_obs
 type(time_type)         :: time_obs, prev_time, curr_time, end_time, one_day
 
 !   land_mask_file,    &
+!> namelist items
+!> @todo : check that these defaults are reasonable
+
+!> these are determined by the format of the binary data files
+!> and probably shouldn't be changed.
+character(len=256) :: cice_lat_file   = 'psn25lats_v3.dat'
+character(len=256) :: cice_lon_file   = 'psn25lons_v3.dat'
+integer            :: num_latitudes   = 448
+integer            :: num_longitudes  = 304
+real(r8)           :: grid_scale_factor = 100000.0
+real(r8)           :: data_scale_factor = 10.0
+integer            :: land_missing_value = -800
+integer            :: pole_missing_value = -100
+
+!> the observation error will be set by multiplying
+!> the obs value by this factor.  we can also change
+!> this to be a fixed value, or ??   but for now the
+!> obs error will be 10% of the observed value.
+!> (or whatever you specify in the namelist)
+real(r8)           :: error_factor    = 0.10
+
+!> science question - like radar obs with no reflectivity,
+!> there are many obs with 0 ice.  this is information and
+!> these obs could be assimilated to remove ice where it
+!> isn't observed.  but it greatly increases the number of
+!> obs created.  it should be tested to see if these obs
+!> are worth using.
+logical            :: ignore_zero_obs = .false.
+
+!> these are alternatives for specifying the input file(s).
+!> if pattern is .true. the YYYY, MM, and DD will be
+!> replaced by the actual year, month, day and the program
+!> will loop from the start year/month/day to the end date. 
+!> if pattern is false, it will ignore the start/end values 
+!> below and simply open the single cice_data_file.
+logical            :: use_data_filename_pattern = .true.
+character(len=256) :: data_filename_pattern     = 'bt_YYYYMMDD_n07_v02_n.bin'
+character(len=256) :: cice_data_file            = 'bt_19800101_n07_v02_n.bin'
+
+!> these are alternatives for specifying the output file(s).
+!> if pattern is .true. the YYYY, MM, and DD will be
+!> replaced by the actual year, month, day and the program
+!> will create a different output file for each day.
+!> if pattern is false, all the obs will be added to a single
+!> output obs_seq file with the name given below.
+logical            :: use_obsseq_filename_pattern = .true.
+character(len=256) :: obsseq_filename_pattern     = 'obs_seq.YYYYMMDD'
+character(len=256) :: obsseq_out_file             = 'obs_seq.out'
+
+!> if using an input filename pattern, this program can loop 
+!> over multiple days.  this section controls how many days to do.  
+!> to do a single day make the start/end values the same or 
+!> make the input pattern false.
+integer            :: start_year      = 1980
+integer            :: start_month     = 1
+integer            :: start_day       = 1
+
+integer            :: end_year        = 1980
+integer            :: end_month       = 1
+integer            :: end_day         = 1
+
+!> probably not as useful here as might be in other converters.
+!> if looping outside this program (from a script), you can
+!> set this to true to append more obs to an existing obs_seq file.
+!> since this program loops already, you normally want to leave
+!> this as .false.
+logical            :: append_to_existing_file     = .false.
+
+!> set to true to print out more info.
+logical            :: debug           = .false.
+
 
 namelist /cice_to_obs_nml/ &
    cice_lat_file,     &
@@ -172,6 +232,7 @@ one_day    = set_time(0, 1)  ! one day
 
 call get_date(curr_time, year, month, day, hour, minute, second)
 
+! LANDMASK
 !         tmask(num_latitudes,num_longitudes), &
 
 ! make space for the data arrays
@@ -185,14 +246,38 @@ allocate(lat(num_latitudes,num_longitudes), &
 ! read in lats/lons first.  applies to all data files.
 
 ! data is binary, distributed as scaled 4-byte integers
-iunit = open_file(cice_lat_file, 'unformatted', 'read', 'stream')
-if (debug) print *, 'opened input file ' // trim(cice_lat_file)
+!> @todo FIXME once i update the utilities_mod to support
+!> an access method, use this line:
+!iunit = open_file(cice_lat_file, 'unformatted', 'read', 'stream')
+iunit = get_unit()
+open (iunit, file=trim(cice_lat_file), form='unformatted', action='read', &
+               position='rewind', access='stream', status='old', iostat=rc)
+if (rc /= 0) then
+   write(msgstring,*)'Cannot open file "'//trim(cice_lat_file)//'" for reading'
+   write(msgstring1,*)'Error code was ', rc
+   call error_handler(E_ERR, 'open_file: ', msgstring, source, revision, revdate, &
+                      text2=msgstring1)
+
+endif
+
+if (debug) print *, 'opened input latitude file ' // trim(cice_lat_file)
 read(iunit) rawdata_i4
 lat(:,:) = reshape(real(rawdata_i4(:),r8) / grid_scale_factor, (/ num_latitudes, num_longitudes /) )
 call close_file(iunit)
 
-iunit = open_file(cice_lon_file, 'unformatted', 'read', 'stream')
-if (debug) print *, 'opened input file ' // trim(cice_lon_file)
+!> ditto
+!iunit = open_file(cice_lon_file, 'unformatted', 'read', 'stream')
+iunit = get_unit()
+open (iunit, file=trim(cice_lon_file), form='unformatted', action='read', &
+               position='rewind', access='stream', status='old', iostat=rc)
+if (rc /= 0) then
+   write(msgstring,*)'Cannot open file "'//trim(cice_lon_file)//'" for reading'
+   write(msgstring1,*)'Error code was ', rc
+   call error_handler(E_ERR, 'open_file: ', msgstring, source, revision, revdate, &
+                      text2=msgstring1)
+
+endif
+if (debug) print *, 'opened input longitude file ' // trim(cice_lon_file)
 read(iunit) rawdata_i4
 lon(:,:) = reshape(real(rawdata_i4(:),r8) / grid_scale_factor, (/ num_latitudes, num_longitudes /) )
 call close_file(iunit)
@@ -200,7 +285,7 @@ call close_file(iunit)
 ! lon given as -180 and 180 - convert all values at once
 where (lon < 0.0_r8)  lon = lon + 360.0_r8  ! changes into 0-360
 
-! !
+! ! LANDMASK
 ! ! read in land mask.  we are going to skip obs over land.
 ! rc = nf90_open(land_mask_file, nf90_nowrite, ncid)
 ! call nc_check(rc, 'cice_to_obs', 'opening land mask file '//trim(land_mask_file))
@@ -306,8 +391,10 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
    !    pole_missing_value = -100
    ! count these to see if they actually exist
 
-   ! make this an error handler call
-   print *, 'total obs = ', size(percent), ' out of range = ',  count (percent < 0.0_r8 .or. percent > 100.0_r8) 
+   ! make this an error handler call?
+   if (debug) print *, 'total obs = ', size(percent), &
+              ' out of range = ',  count (percent < 0.0_r8 .or. percent > 100.0_r8) , &
+              ' zeros = ', count (percent == 0.0_r8)
 
    where (percent < 0.0_r8 .or. percent > 100.0_r8) percent = missing_r8
 
@@ -319,17 +406,18 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
          if (percent(ilat, ilon) == missing_r8) cycle
 
          if (percent(ilat, ilon) /= 0.0_r8) then
-            perr = percent(ilat, ilon) * error_factor   ! percentage from namelist
+            perr = percent(ilat, ilon) / 100.0_r8 * error_factor   ! percentage from namelist
          else
             if (ignore_zero_obs) cycle
             perr = error_factor ! if obs value is 0, give a non-zero error
          endif
 
+         ! LANDMASK
          !if (tmask(ilat, ilon) /= 1) cycle   ! land point
 
          ! make an obs derived type, and then add it to the sequence
          call create_3d_obs(lat(ilat, ilon), lon(ilat, ilon), 0.0_r8, VERTISUNDEF, &
-                            percent(ilat, ilon), SAT_SEAICE_AGREG_CONCENTR, &
+                            percent(ilat, ilon)/100.0_r8, SAT_SEAICE_AGREG_CONCENTR, &
                             perr, oday, osec, qc, obs)
          call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
 
@@ -368,6 +456,11 @@ endif
 !> clean up
 call destroy_obs_sequence(obs_seq)
 
+! LANDMASK
+!          tmask, 
+
+deallocate(lat, lon, percent, rawdata_i2, rawdata_i4)
+
 ! end of main program
 call finalize_utilities()
 
@@ -393,17 +486,32 @@ outstring = inpattern
 !> @todo add error handling
 
 start_index = index(outstring, 'YYYY')
-if (start_index < 0) stop
+if (start_index < 0) then
+   write(msgstring,*)'String "YYYY" was not found in pattern "'//trim(inpattern)//'"'
+   write(msgstring1, *)'Trying to replace YYYY with year ', year
+   call error_handler(E_ERR, 'cice_to_obs: ', msgstring, source, revision, revdate, &
+                      text2=msgstring1)
+endif
 write(buf, '(I4.4)') year
 outstring(start_index:start_index+3) = buf(1:4)
 
 start_index = index(outstring, 'MM')
-if (start_index < 0) stop
+if (start_index < 0) then
+   write(msgstring,*)'String "MM" was not found in pattern "'//trim(inpattern)//'"'
+   write(msgstring1, *)'Trying to replace MM with month ', month
+   call error_handler(E_ERR, 'cice_to_obs: ', msgstring, source, revision, revdate, &
+                      text2=msgstring1)
+endif
 write(buf, '(I2.2)') month
 outstring(start_index:start_index+1) = buf(1:2)
 
 start_index = index(outstring, 'DD')
-if (start_index < 0) stop
+if (start_index < 0) then
+   write(msgstring,*)'String "DD" was not found in pattern "'//trim(inpattern)//'"'
+   write(msgstring1, *)'Trying to replace DD with day ', day
+   call error_handler(E_ERR, 'cice_to_obs: ', msgstring, source, revision, revdate, &
+                      text2=msgstring1)
+endif
 write(buf, '(I2.2)') day
 outstring(start_index:start_index+1) = buf(1:2)
 
