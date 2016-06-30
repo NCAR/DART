@@ -91,7 +91,8 @@ use         dart_cice_mod, only : set_model_time_step,               &
                                   get_horiz_grid_dims,               &
                                   get_ncat_dim,                      &
                                   read_horiz_grid, read_topography,  &
-                                  get_cice_restart_filename
+                                  get_cice_restart_filename,         &
+                                  set_binary_file_conversion
 
 use  ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_copy_owner_index, &
                                   get_var_owner_index
@@ -179,6 +180,10 @@ logical  :: update_dry_cell_walls = .false.
 character(len=metadatalength) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
 integer  :: debug = 0   ! turn up for more and more debug messages
 
+! valid values:  native, big_endian, little_endian
+character(len=64) :: binary_file_format = 'big_endian'
+
+
 ! FIXME: currently the update_dry_cell_walls namelist value DOES
 ! NOTHING.  it needs additional code to detect the cells which are
 ! wet, but within 1 cell of the bottom/sides/etc.  
@@ -190,6 +195,7 @@ namelist /model_nml/  &
    model_perturbation_amplitude, &
    update_dry_cell_walls,        &
    model_state_variables,        &
+   binary_file_format,           &
    debug
 
 !------------------------------------------------------------------
@@ -392,6 +398,9 @@ call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
 write(msgstring,*)'assimilation period is ',dd,' days ',ss,' seconds'
 call error_handler(E_MSG,'static_init_model',msgstring,source,revision,revdate)
 
+! BEFORE calling grid routines, set the endian-ness of the binary files if needed.
+call set_binary_file_conversion(binary_file_format)
+
 ! get data dimensions, then allocate space, then open the files
 ! and actually fill in the arrays.
 
@@ -438,7 +447,7 @@ domain_id = add_domain('cice.r.nc', nfields, &
                        kind_list = state_kinds_list(1:nfields), &
                        update_list = update_var_list(1:nfields))
 
-if (debug > 0) call state_structure_info(domain_id)
+if (debug > 2) call state_structure_info(domain_id)
 
 model_size = get_domain_size(domain_id)
 if (do_output()) write(*,*) 'model_size = ', model_size

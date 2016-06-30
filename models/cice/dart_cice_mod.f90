@@ -25,7 +25,8 @@ private
 public :: get_cice_calendar, set_model_time_step, &
           get_horiz_grid_dims, get_ncat_dim,      &
           read_horiz_grid, read_topography,       &
-          write_cice_namelist, get_cice_restart_filename
+          write_cice_namelist, get_cice_restart_filename, &
+          set_binary_file_conversion
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -42,6 +43,13 @@ character(len=256) :: ic_filename      = 'cice.r.nc'
 ! after each N observations are processed, for benchmarking.
 logical :: print_timestamps = .false.
 integer :: print_every_Nth  = 10000
+
+! if the binary grid files are big_endian and you are running on
+! a little_endian machine, set this string so the convert will
+! happen correctly.  options are:  'native', 'big_endian', 'little_endian'
+
+character(len=64) :: conversion = 'native'    ! no conversion
+
 
 !------------------------------------------------------------------
 ! The CICE grid info namelist 
@@ -449,7 +457,7 @@ grid_unit = get_unit()
 INQUIRE(iolength=reclength) ULAT
 
 open(grid_unit, file=trim(grid_file), form='unformatted', &
-            access='direct', recl=reclength, status='old', action='read' )
+     access='direct', recl=reclength, status='old', action='read', convert=conversion)
 read(grid_unit, rec=1) ULAT
 read(grid_unit, rec=2) ULON
 !read(grid_unit, rec=3) HTN
@@ -635,7 +643,7 @@ topo_unit = get_unit()
 INQUIRE(iolength=reclength) KMT
 
 open( topo_unit, file=trim(kmt_file), form='unformatted', &
-            access='direct', recl=reclength, status='old', action='read' )
+            access='direct', recl=reclength, status='old', action='read', convert=conversion)
 read( topo_unit, rec=1) KMT
 close(topo_unit)
 
@@ -683,6 +691,19 @@ filename   = trim(ic_filename)
 
 end subroutine get_cice_restart_filename
 
+!------------------------------------------------------------------
+
+subroutine set_binary_file_conversion(convertstring)
+character(len=*), intent(in) :: convertstring
+
+if ( .not. module_initialized ) call initialize_module
+
+conversion = convertstring
+
+end subroutine set_binary_file_conversion
+
+
+!------------------------------------------------------------------
 
 end module dart_cice_mod
 
