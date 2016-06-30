@@ -1,16 +1,10 @@
 
-This directory contains data files from yongfei that contain
-sea ice percentage observations from the snow and ice data center,
-along with an ncl converter from binary to netcdf, and netcdf
-to obs_seq.
+The converter 'cice_to_obs' will loop over multiple days
+converting each into a separate obs_seq file in a single step.
 
-the 'cice_to_obs' source code right now is still the text converter.
-this is a NON_WORKING baseline.  i am updating this
-right now.  unless i run into problems, my plan is to try to
-read the binary files directly and convert to obs_seq in a
-single step, rather than go through netcdf intermediates.
+I have left the original converter files from yongfei that
+convert the binary to netcdf first and then convert to obs_seq
+format as a second step.  
 
 nancy
-28 jun 2016
-10:00 am
-
+30 jun 2016
