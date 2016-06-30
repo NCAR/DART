@@ -181,7 +181,7 @@ character(len=metadatalength) :: model_state_variables(max_state_variables * num
 integer  :: debug = 0   ! turn up for more and more debug messages
 
 ! valid values:  native, big_endian, little_endian
-character(len=64) :: binary_file_format = 'big_endian'
+character(len=64) :: binary_grid_file_format = 'big_endian'
 
 
 ! FIXME: currently the update_dry_cell_walls namelist value DOES
@@ -195,7 +195,7 @@ namelist /model_nml/  &
    model_perturbation_amplitude, &
    update_dry_cell_walls,        &
    model_state_variables,        &
-   binary_file_format,           &
+   binary_grid_file_format,      &
    debug
 
 !------------------------------------------------------------------
@@ -399,7 +399,7 @@ write(msgstring,*)'assimilation period is ',dd,' days ',ss,' seconds'
 call error_handler(E_MSG,'static_init_model',msgstring,source,revision,revdate)
 
 ! BEFORE calling grid routines, set the endian-ness of the binary files if needed.
-call set_binary_file_conversion(binary_file_format)
+call set_binary_file_conversion(binary_grid_file_format)
 
 ! get data dimensions, then allocate space, then open the files
 ! and actually fill in the arrays.
@@ -3077,8 +3077,8 @@ if ( .not. module_initialized ) call static_init_model
 is_dry_land = .FALSE.    ! start out thinking everything is wet.
 
 is_ugrid = is_on_ugrid(obs_type)
-if ((      is_ugrid .and. 0 > KMU(lon_index, lat_index)) .or. &
-    (.not. is_ugrid .and. 0 > KMT(lon_index, lat_index))) then
+if ((      is_ugrid .and. 0 == KMU(lon_index, lat_index)) .or. &
+    (.not. is_ugrid .and. 0 == KMT(lon_index, lat_index))) then
    is_dry_land = .TRUE.
    return
 endif
