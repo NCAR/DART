@@ -265,7 +265,7 @@ read(iunit) rawdata_i4
 lat(:,:) = reshape(real(rawdata_i4(:),r8) / grid_scale_factor, (/ num_latitudes, num_longitudes /) )
 call close_file(iunit)
 
-!> ditto
+!> see comment in cice_lat_file section
 !iunit = open_file(cice_lon_file, 'unformatted', 'read', 'stream')
 iunit = get_unit()
 open (iunit, file=trim(cice_lon_file), form='unformatted', action='read', &
@@ -374,7 +374,18 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
    endif
 
    ! read in concentration data
-   iunit = open_file(next_file, 'unformatted', 'read', 'stream')
+   !> see comment in cice_lat_file section
+   !iunit = open_file(next_file, 'unformatted', 'read', 'stream')
+   iunit = get_unit()
+   open (iunit, file=trim(next_file), form='unformatted', action='read', &
+               position='rewind', access='stream', status='old', iostat=rc)
+   if (rc /= 0) then
+      write(msgstring,*)'Cannot open file "'//trim(next_file)//'" for reading'
+      write(msgstring1,*)'Error code was ', rc
+      call error_handler(E_ERR, 'open_file: ', msgstring, source, revision, revdate, &
+                         text2=msgstring1)
+   endif
+   if (debug) print *, 'opened data file ' // trim(next_file)
    read(iunit) rawdata_i2
    percent(:,:) = reshape(real(rawdata_i2, r8) / data_scale_factor, (/ num_latitudes, num_longitudes /) )
    call close_file(iunit)
