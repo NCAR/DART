@@ -10,7 +10,7 @@ MODULE types_mod
 implicit none
 private 
 
-public :: i4, i8, r4, c4, r8, c8, digits12
+public :: i2, i4, i8, r4, c4, r8, c8, digits12
 public :: PI, DEG2RAD, RAD2DEG, MISSING_R4, MISSING_R8
 public :: MISSING_I, MISSING_DATA
 public :: SECPERDAY
@@ -18,6 +18,7 @@ public :: t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, gas_constant
 public :: L_over_Rv, ps0, earth_radius, gravity
 public :: metadatalength
 public :: obstypelength
+public :: parmnamelength
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -33,6 +34,7 @@ SAVE
 
 integer, parameter :: metadatalength = 64 ! 75 is max w/out wrapping in ncdump
 integer, parameter :: obstypelength  = 32 ! set by compiler/param limits
+integer, parameter :: parmnamelength = 32 ! max name of any parameter
 
 !----------------------------------------------------------------------------
 ! Attributes for variable kinds -- no need to rely on -r8 switch in compiler
@@ -48,6 +50,7 @@ integer, parameter :: obstypelength  = 32 ! set by compiler/param limits
 
 ! These comply with the CCM4 standard, as far as I can tell.
 
+  integer, parameter :: i2 = SELECTED_INT_KIND(3)
   integer, parameter :: i4 = SELECTED_INT_KIND(8)
   integer, parameter :: i8 = SELECTED_INT_KIND(13)
   integer, parameter :: r4 = SELECTED_REAL_KIND(6,30)
