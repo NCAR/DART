@@ -163,6 +163,7 @@
    assimilation_period_seconds  = 0
    model_perturbation_amplitude = 0.00002
    output_state_vector          = .false.
+   binary_file_format           = 'big_endian'
    debug                        = 1
    model_state_variables  =       'aicen', 'KIND_SEAICE_CONCENTR'        , 'UPDATE',
                                   'vicen', 'KIND_SEAICE_VOLUME'          , 'UPDATE',
