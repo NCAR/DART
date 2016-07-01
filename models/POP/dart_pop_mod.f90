@@ -25,7 +25,8 @@ private
 public :: get_pop_calendar, set_model_time_step, &
           get_horiz_grid_dims, get_vert_grid_dim, &
           read_horiz_grid, read_topography, read_vert_grid, &
-          write_pop_namelist, get_pop_restart_filename
+          write_pop_namelist, get_pop_restart_filename, &
+          set_binary_file_conversion
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -43,6 +44,12 @@ character(len=256) :: ic_filename      = 'pop.r.nc'
 ! after each N observations are processed, for benchmarking.
 logical :: print_timestamps = .false.
 integer :: print_every_Nth  = 10000
+
+! if the binary grid files are big_endian and you are running on
+! a little_endian machine, set this string so the convert will
+! happen correctly.  options are:  'native', 'big_endian', 'little_endian'
+
+character(len=64) :: conversion = 'native'    ! no conversion
 
 !------------------------------------------------------------------
 ! The POP time manager namelist variables
@@ -452,7 +459,7 @@ endif
 grid_unit = get_unit()
 INQUIRE(iolength=reclength) ULAT
 
-open(grid_unit, file=trim(horiz_grid_file), form='unformatted', &
+open(grid_unit, file=trim(horiz_grid_file), form='unformatted', convert=conversion, &
             access='direct', recl=reclength, status='old', action='read' )
 read(grid_unit, rec=1) ULAT
 read(grid_unit, rec=2) ULON
@@ -630,10 +637,11 @@ endif
 topo_unit = get_unit()
 INQUIRE(iolength=reclength) KMT
 
-open( topo_unit, file=trim(topography_file), form='unformatted', &
+open( topo_unit, file=trim(topography_file), form='unformatted', convert=conversion, &
             access='direct', recl=reclength, status='old', action='read' )
 read( topo_unit, rec=1) KMT
 close(topo_unit)
+
 
 ! the equation numbered 3.2 on page 15 of this document:
 !  http://www.cesm.ucar.edu/models/cesm1.0/pop2/doc/sci/POPRefManual.pdf
@@ -743,12 +751,10 @@ enddo
 
 end subroutine read_vert_grid
 
-
 !------------------------------------------------------------------
 
-
 subroutine get_pop_restart_filename( filename )
-character(len=*), intent(OUT) :: filename
+character(len=*), intent(out) :: filename
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -756,6 +762,18 @@ filename   = trim(ic_filename)
 
 end subroutine get_pop_restart_filename
 
+!------------------------------------------------------------------
+
+subroutine set_binary_file_conversion(convertstring)
+character(len=*), intent(in) :: convertstring
+
+if ( .not. module_initialized ) call initialize_module
+
+conversion = convertstring
+
+end subroutine set_binary_file_conversion
+
+!------------------------------------------------------------------
 
 end module dart_pop_mod
 

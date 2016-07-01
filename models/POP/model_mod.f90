@@ -35,7 +35,7 @@ use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use      dart_pop_mod, only: set_model_time_step,                              &
                              get_horiz_grid_dims, get_vert_grid_dim,           &
                              read_horiz_grid, read_topography, read_vert_grid, &
-                             get_pop_restart_filename
+                             get_pop_restart_filename, set_binary_file_conversion
 
 use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_copy_owner_index, &
                                   get_var_owner_index
@@ -58,8 +58,8 @@ private
 ! the arguments - they will be called *from* the DART code.
 public :: get_model_size,                &
           adv_1step,                     &
-          get_state_meta_data,   &
-          model_interpolate,     &
+          get_state_meta_data,           &
+          model_interpolate,             &
           get_model_time_step,           &
           static_init_model,             &
           end_model,                     &
@@ -70,9 +70,9 @@ public :: get_model_size,                &
           pert_model_copies,             &
           get_close_maxdist_init,        &
           get_close_obs_init,            &
-          get_close_obs,         &
+          get_close_obs,                 &
           query_vert_localization_coord, &
-          vert_convert,          &
+          vert_convert,                  &
           construct_file_name_in,        &
           read_model_time,               &
           write_model_time
@@ -122,6 +122,9 @@ logical  :: update_dry_cell_walls = .false.
 character(len=paramname_length) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
 integer  :: debug = 0   ! turn up for more and more debug messages
 
+! valid values:  native, big_endian, little_endian
+character(len=64) :: binary_grid_file_format = 'big_endian'
+
 ! FIXME: currently the update_dry_cell_walls namelist value DOES
 ! NOTHING.  it needs additional code to detect the cells which are
 ! wet, but within 1 cell of the bottom/sides/etc.  
@@ -133,6 +136,7 @@ namelist /model_nml/  &
    model_perturbation_amplitude,&
    update_dry_cell_walls,       &
    model_state_variables,       &
+   binary_grid_file_format,     &
    debug
 
 !------------------------------------------------------------------
@@ -302,6 +306,8 @@ call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
 write(msgstring,*)'assimilation period is ',dd,' days ',ss,' seconds'
 call error_handler(E_MSG,'static_init_model',msgstring,source,revision,revdate)
 
+! BEFORE calling grid routines, set the endian-ness of the binary files if needed.
+call set_binary_file_conversion(binary_grid_file_format)
 
 ! get data dimensions, then allocate space, then open the files
 ! and actually fill in the arrays.

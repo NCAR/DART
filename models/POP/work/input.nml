@@ -160,6 +160,7 @@
    assimilation_period_seconds  = 0,
    model_perturbation_amplitude = 0.2,
    output_state_vector          = .false.,
+   binary_grid_file_format      = "big_endian"
    debug                        = 0,
    model_state_variables        = 'SALT_CUR ', 'KIND_SALINITY             ', 'UPDATE',
                                   'TEMP_CUR ', 'KIND_POTENTIAL_TEMPERATURE', 'UPDATE',
