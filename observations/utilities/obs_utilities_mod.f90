@@ -420,7 +420,7 @@ subroutine getvar_int(ncid, varname, darray, dmiss)
  integer,  optional, intent(out)  :: dmiss
 
 integer  :: varid, nfrc
-real(r8) :: fill, miss
+integer  :: fill, miss
 logical  :: found_miss
 
 ! read the data for the requested array, and get the fill value
@@ -700,7 +700,7 @@ subroutine getvar_int_2d(ncid, varname, darray, dmiss)
  integer,  optional, intent(out)  :: dmiss
 
 integer  :: varid, nfrc
-real(r8) :: fill, miss
+integer  :: fill, miss
 logical  :: found_miss
 
 ! read the data for the requested array, and get the fill value
@@ -909,10 +909,9 @@ end subroutine get_or_fill_QC_2d_slice
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !
 !   query_varname - given a list of variable names, check the netcdf file
-!           for their existence.  if none of the given names are in the
-!           file, return -1 for index.  otherwise return the index of
-!           the first name found. an optional arg can be used to force
-!           it to fail if a match is not found. 
+!           for their existence and return the first one found.  if none 
+!           of the given names are in the file, return -1 for index.
+!           an optional arg can be used to force it to fail if a match is not found. 
 !
 !      ncid - open netcdf file handle
 !      nname - number of names in the namelist array
@@ -931,9 +930,6 @@ subroutine query_varname(ncid, nnames, namelist, index, force)
 
 integer :: varid, nfrc, i
 character(128) :: msgstring
-
-! test to see if variable is present.  if yes, read it in.
-! otherwise, set to fill value, or 0 if none given.
 
 index = -1
 do i=1, nnames
