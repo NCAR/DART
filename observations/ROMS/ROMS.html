@@ -1,0 +1,361 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>MADIS Data</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>ROMS observations</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#DataSources">DATA SOURCES</A> /
+<A HREF="#Programs">PROGRAMS</A> / 
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Modules">MODULES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">FUTURE PLANS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+
+<P>
+The relationship between ROMS and DART is slightly different
+than other models.  We ask the ROMS model to compute the
+expected observation values at the closest model time, as the
+model is advancing during the forecast step.  These obs are
+written out to a netcdf file.  This converter reads these
+expected values and creates a DART obs_seq file which includes
+these precomputed FOs.
+</P>
+
+
+Only updated to here.  FIX EVERYTHING BELOW!
+
+
+
+<P>
+The ROMS/DART workflow is expected to be as follows:
+</P>
+<ol>
+<li>convert each madis file, by platform type, into an obs_seq file.
+    one file in, one file out.  no time changes.  use the 
+    <em class=file>shell_scripts/madis_conv.csh</em> script.
+    there are script options for hourly output files, or a single daily
+    output file.</li>
+<li>if you aren't using the wrf preprocessing program, you're ready to go.</li>
+<li>if you do want to do subsequent wrf preprocessing, you need to:
+<ol>
+<li>decide on the windowing.  each platform has a different convention
+    and if you're going to put them into the wrf preprocessing you'll need
+    to have the windowing match.  use the
+    <em class=file>shell_scripts/windowing.csh</em> script.</li>
+<li>the wrf preprocessing takes a list of files and assumes they will all
+    be assimilated at the same time, for superob'ing purposes, so it should
+    match the expected assimilation window when running filter.</li>
+</ol>
+</ol>
+
+<!--==================== DESCRIPTION OF A NAMELIST =====================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;convert_roms_obs_nml
+   roms_input_obs_file   = 'roms_obs.nc'
+   roms_mod_obs_files    = 'roms_mod.nc'
+   roms_mod_obs_filelist = ''
+   dart_output_obs_file  = 'obs_seq.out'
+   type_translations     = 'NULL'
+   locations_in_IJK      = .true.
+   add_random_noise      = .false.
+   pert_amplitude        = 0.01
+   append_to_existing    = .false.
+   ens_size              = 1
+   verbose               = 0
+  /
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD> roms_input_obs_file </TD>
+    <TD> character(len=512) </TD>
+    <TD> The file with the original obs definitions.  Contrast with the
+"mod" files.
+</TD></TR>
+
+<TR><TD> roms_mods_obs_files </TD>
+    <TD> character(len=512), dimension(500) </TD>
+    <TD> List of filenames, one per ensemble member, that contain the
+expected obs values for each ensemble member.  These are output from
+the ROMS program.  If listing the files explicitly in this list,
+'roms_mod_obs_filelist' must be '&nbsp' (null).
+</TD></TR>
+
+<TR><TD> roms_mods_obs_filelist </TD>
+    <TD> character(len=512) </TD>
+    <TD> The name of an ASCII file which contains, one per line,
+a list of filenames, one per ensemble member, that contain the
+expected obs values for each ensemble member.  The
+filenames should NOT be quoted. These are output from
+the ROMS program.  If using a filelist, then
+'roms_mod_obs_files' must be '&nbsp' (null).
+</TD></TR>
+
+<TR><TD> dart_output_obs_file </TD>
+    <TD> character(len=512) </TD>
+    <TD> The name of the DART obs_seq file to create.  If a file
+already exists with this name, it is either appended to or overwritten
+depending on the 'append_to_existing' setting below.
+</TD></TR>
+
+<TR><TD> type_translations </TD>
+    <TD> character(100), dimension(2, 100) </TD>
+    <TD> A set of strings which control the mapping of ROMS
+observation types to DART observation types.  These should
+be specified in pairs.  The first column should be a string
+that occurs in the 'roms_input_obs_file' in the attribute
+'flag_meanings' on the 'obs_provenance' variable.
+Note that this information also occurs as a global variable
+in the same file; this information is currently ignored.
+The second column should be a DART specific obs type that
+is found in DART/obs_kind/obs_kind_mod.f90, which is created
+by the DART preprocess program.
+</TD></TR>
+
+<TR><TD> locations_in_IJK </TD>
+    <TD> logical </TD>
+    <TD> Observation location information can exist in the
+'roms_input_obs_file' as either fractional grid indices I,J,K
+or as 'obs_lat', 'obs_lon'.  If this flag is .true., the
+I,J,K indices will be read.
+</TD></TR>
+
+<TR><TD> add_random_noise </TD>
+    <TD> logical </TD>
+    <TD> Almost always should be .false. . The exception is
+the first cycle of an assimilation if all the ROMS input
+files are identical (no ensemble currently exists).  
+To create differences in the forward
+operator values (since they are computed by ROMS), we can
+add gaussian noise here to give them perturbed values.
+This should be set as well as the 
+"perturb_from_single_instance = .true."
+namelist in the &amp;filter_nml namelist.
+After the first cycle, both these should be set back
+to .false. .
+</TD></TR>
+
+<TR><TD> pert_amplitude </TD>
+    <TD> real(r8) </TD>
+    <TD> Ignored unless 'add_random_noise' is .true. .
+Controls the range of random values added to the
+expected obs values.  Sets the width of a gaussian.
+</TD></TR>
+
+<TR><TD> append_to_existing </TD>
+    <TD> logical </TD>
+    <TD> If an existing 'dart_output_obs_file' is found,
+this namelist item controls how it is handled.  If .true.
+the new observations are appended to the existing file.
+If .false. the new observations overwrite the existing file.
+</TD></TR>
+
+<TR><TD> ens_size </TD>
+    <TD> integer </TD>
+    <TD> Number of ensemble members which are expected to
+be found when creating the expected obs values.  This must
+match the number of ROMS "mod" files listed in either the
+'roms_mod_obs_files' or 'roms_mod_obs_filelist' namelist
+items.  It is an error if they are not the same length.
+</TD></TR>
+
+<TR><TD> verbose </TD>
+    <TD> integer </TD>
+    <TD> If greater than 0, prints more information during
+the conversion.  
+</TD></TR>
+
+</TBODY>
+</TABLE>
+</div>
+
+<br />
+<br />
+
+
+<!--==================================================================-->
+
+<A NAME="DataSources"></A>
+<HR />
+<H2>DATA SOURCES</H2>
+
+<P>
+<a href="http://madis.noaa.gov/">http://madis.noaa.gov</a>
+</P>
+
+<P>There are two satellite wind converter programs; the one in
+this directory and one in the
+<a href="../SSEC/SSEC.html">SSEC</a> directory.
+The observations distributed here come from
+<a href="http://www.nesdis.noaa.gov">NESDIS</a>.
+The SSEC observations are processed by SSEC itself and
+will differ from the observations converted here.
+</P>
+
+<!--==================================================================-->
+
+<A NAME="Programs"></A>
+<HR />
+<H2>PROGRAMS</H2>
+<P>
+The programs in the <em class=file>DART/observations/MADIS/</em> 
+directory extract data from the distribution files 
+and create DART observation sequence (obs_seq) files.
+Build them in the <em class=file>work</em> directory by running
+the <em class=program>./quickbuild.csh</em> script.  In addition
+to the converters, the <em class=file>advance_time</em> and
+<em class=file>obs_sequence_tool</em> utilities will be built.
+</P>
+<P>
+There are currently converters for these data types:</P>
+<TABLE border=0 cellpadding=3 summary="">
+<TBODY valign=top>
+<TR> <TD> ACARS aircraft T,U,V,Q data </TD>  <TD> convert_madis_acars    </TD>
+<TR> <TD> Marine surface data         </TD>  <TD> convert_madis_marine   </TD>
+<TR> <TD> Mesonet surface data        </TD>  <TD> convert_madis_mesonet  </TD>
+<TR> <TD> Metar data                  </TD>  <TD> convert_madis_metar    </TD>
+<TR> <TD> Wind Profiler data          </TD>  <TD> convert_madis_profiler </TD>
+<TR> <TD> Rawinsonde/Radiosonde data  </TD>  <TD> convert_madis_rawin    </TD>
+<TR> <TD> Satellite Wind data         </TD>  <TD> convert_madis_satwnd   </TD>
+</TABLE>
+<P>
+Example data files are in the <em class=file>data</em> directory.
+Example scripts for converting batches of these files are
+in the <em class=file>shell_scripts</em> directory.  
+These are <em>NOT</em> intended to be turnkey scripts; they will
+certainly need to be customized for your use.  There are comments
+at the top of the scripts saying what options they include, and
+should be commented enough to indicate where changes will be
+likely to need to be made.
+</P>
+<P>Several converters have compile-time choices
+for outputting various types of moist variables.
+Check the source code for more details.
+Some converters also read multiple T/F strings
+from the console (standard input) to control at
+run-time what types of observations to convert.
+Again, check the source code for more details.
+</P>
+<P>Each converter has hard-coded input and output filenames:</P>
+<TABLE border=0 cellpadding=5 summary="input/output filenames">
+<TBODY valign=top>
+<TR> <TD>convert_madis_acars:   </TD> <TD> acars_input.nc    </TD> <TD> obs_seq.acars    </TD>
+<TR> <TD>convert_madis_marine:  </TD> <TD> marine_input.nc   </TD> <TD> obs_seq.marine   </TD>
+<TR> <TD>convert_madis_mesonet: </TD> <TD> mesonet_input.nc  </TD> <TD> obs_seq.mesonet  </TD>
+<TR> <TD>convert_madis_metar:   </TD> <TD> metar_input.nc    </TD> <TD> obs_seq.metar    </TD>
+<TR> <TD>convert_madis_profiler:</TD> <TD> profiler_input.nc </TD> <TD> obs_seq.profiler </TD>
+<TR> <TD>convert_madis_rawin:   </TD> <TD> rawin_input.nc    </TD> <TD> obs_seq.rawin    </TD>
+<TR> <TD>convert_madis_satwnd:  </TD> <TD> satwnd_input.nc   </TD> <TD> obs_seq.satwnd   </TD>
+</TABLE>
+
+<P>The expected usage pattern is that a script will copy,
+rename, or make a symbolic link from the actual input file
+(which often contains a timestamp in the name) to the fixed input 
+name before conversion, and move the output file to an
+appropriate filename before the next invocation of the converter.  
+If an existing observation sequence file of the same output name is 
+found when the converter is run again, it will open that file and append
+the next set of observations to it.
+</P>
+
+<!--==================================================================-->
+<!-- Describe the bugs.                                               -->
+<!--==================================================================-->
+
+<A NAME="KnownBugs"></A>
+<HR />
+<H2>KNOWN BUGS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<HR />
+<H2>FUTURE PLANS</H2>
+<P>
+none
+</P>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<HR />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br />
+This open source software is provided by UCAR, "as is",<br />
+without charge, subject to all terms of use at<br />
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD valign=top>Contact:       </TD><TD> nancy collins </TD></TR>
+<TR><TD valign=top>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD valign=top>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD valign=top>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

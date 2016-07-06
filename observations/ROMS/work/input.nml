@@ -1,0 +1,64 @@
+
+&preprocess_nml
+    input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90',
+   output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90',
+     input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90',
+    output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90',
+   input_files              = '../../../obs_def/obs_def_ocean_mod.f90',
+ /
+
+&convert_roms_obs_nml
+   roms_input_obs_file = "../data/wc13_obs.nc"
+   roms_mod_obs_files = ""
+   roms_mod_obs_filelist = 'flist'
+   dart_output_obs_file = "obs_seq.out"
+   locations_in_IJK = .true.
+   add_random_noise = .true.
+   pert_amplitude = 0.01
+   append_to_existing = .false.
+   ens_size = 3
+   type_translations = "gridded_AVISO_SLA",            "SATELLITE_SSH",
+                       "blended_SST",                  "SATELLITE_MICROWAVE_SST",
+                       "XBT_Met_Office",               "XBT_TEMPERATURE",
+                       "CTD_temperature_Met_Office",   "CTD_TEMPERATURE",
+                       "CTD_salinity_Met_Office",      "CTD_SALINITY",
+                       "ARGO_temperature_Met_Office",  "ARGO_TEMPERATURE",
+                       "ARGO_salinity_Met_Office",     "ARGO_SALINITY",
+                       "CTD_temperature_CalCOFI",      "CTD_TEMPERATURE",
+                       "CTD_salinity_CalCOFI",         "CTD_SALINITY",
+                       "CTD_temperature_GLOBEC",       "CTD_TEMPERATURE",
+                       "CTD_salinity_GLOBEC",          "CTD_SALINITY",
+   verbose = 1
+ /
+
+&model_nml
+   output_state_vector          = .false.
+   assimilation_period_days     = 1
+   assimilation_period_seconds  = 0
+   roms_ini_filename            = '../data/wc13_ini.nc'
+   grid_definition_filename     = '../data/wc13_grd.nc'
+   depths_definition_filename   = '../data/wc13_depths.nc'
+   vert_localization_coord      = 3
+   debug     = 0
+   variables = 'temp',   'KIND_TEMPERATURE',          'NA', 'NA', 'update',
+               'salt',   'KIND_SALINITY',            '0.0', 'NA', 'update',
+               'u',      'KIND_U_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+               'v',      'KIND_V_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+               'zeta',   'KIND_SEA_SURFACE_HEIGHT'    'NA', 'NA', 'update',
+  /
+
+&obs_kind_nml
+ /
+
+&location_nml
+ /
+
+&utilities_nml
+ module_details = .false.
+ write_nml = "file"
+ /
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.  
+ /
+

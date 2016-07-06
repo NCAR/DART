@@ -1,0 +1,13 @@
+&convert_roms_obs_nml
+   roms_input_obs_file   = 'roms_obs.nc'
+   roms_mod_obs_files    = 'roms_mod.nc'
+   roms_mod_obs_filelist = ''
+   dart_output_obs_file  = 'obs_seq.out'
+   type_translations     = 'NULL'
+   locations_in_IJK      = .true.
+   add_random_noise      = .false.
+   pert_amplitude        = 0.01
+   append_to_existing    = .false.
+   ens_size              = 1
+   verbose               = 0
+  /
