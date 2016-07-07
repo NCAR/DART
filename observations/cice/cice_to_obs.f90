@@ -16,7 +16,7 @@
 !> ; satellite cannot cover due to orbit inclination.
 !> ;
 !> ; (nsc -- what are these? ...)
-!> ; little-endian byte order no mention of hearder
+!> ; little-endian byte order no mention of header
 !> ; One-byte (scaled, unsigned integer) flat binary arrays preceded by a 300-byte header;
 !> ; *uint8
 !> ;=====================================================================================
