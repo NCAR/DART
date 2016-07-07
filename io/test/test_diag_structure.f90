@@ -30,7 +30,7 @@ use assert_mod,          only : assert_equal, assert_greater, assert_not_equal
 implicit none
 
 integer :: diag_id, domain_id
-integer(i8) :: model_size
+integer(i8) :: model_size, m
 integer :: i, j, n
 
 model_size = 44
@@ -62,11 +62,11 @@ do i = 1, get_num_variables(diag_id)
 enddo
 
 ! Test domain_size of diag domain is equal to SUM(domain_sizes)
-n = 0
+m = 0
 do i = 1, get_num_domains()
-      n = n + get_domain_size(i)
+      m = m + get_domain_size(i)
 enddo
-call assert_equal(get_domain_size(diag_id), n, 'size of diag')
+call assert_equal(get_domain_size(diag_id), m, 'size of diag')
 
 ! End diagnostic domain
 call end_diagnostic_structure()
@@ -76,7 +76,7 @@ call end_diagnostic_structure()
 call assert_equal(get_num_variables(diag_id), 0, 'num vars after ended')
 
 ! Size should be equal to zero
-call assert_equal(get_domain_size(diag_id), 0, 'domain size after ended')
+call assert_equal(get_domain_size(diag_id), int(0,i8), 'domain size after ended')
 
 ! Add more domains to the state
 print*, '---- multiple domains -----'
@@ -97,11 +97,11 @@ enddo
 call assert_equal(n, get_num_variables(diag_id), 'num vars in use')
 
 ! Test domain_size of diag domain is equal to SUM(domain_sizes)
-n = 0
+m = 0
 do i = 1, get_num_domains()
-      n = n + get_domain_size(i)
+      m = m + get_domain_size(i)
 enddo
-call assert_equal(get_domain_size(diag_id), n, 'size of diag')
+call assert_equal(get_domain_size(diag_id), m, 'size of diag')
 
 
 ! Print out variable names
@@ -123,6 +123,7 @@ call end_diagnostic_structure()
 
 ! Note this errors out so you should have this at the end
 ! Add domains until you reach max_num_domains
+print *, 'this last test is expected to cause a fatal error:'
 do i = 1, 20 ! so you don't end up in an infinite loop
    domain_id = add_domain(model_size)
 enddo
