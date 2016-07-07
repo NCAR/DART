@@ -25,7 +25,6 @@
    async                    = 0,
    adv_ens_command          = "../shell_scripts/advance_model.csh",
    ens_size                 = 20,
-   start_from_restart       = .true.,
    output_restart           = .true.,
    obs_sequence_in_name     = "obs_seq.out",
    obs_sequence_out_name    = "obs_seq.final",
@@ -41,14 +40,15 @@
    num_output_obs_members   = 20,
    output_interval          = 1,
    num_groups               = 1,
-   input_qc_threshold       =  3.0,
-   outlier_threshold        = -1.0,
-   enable_special_outlier_code = .false.,
    output_forward_op_errors = .false.,
    output_inflation         = .true.,
    output_timestamps        = .false.,
    trace_execution          = .false.,
    silence                  = .false.,
+   single_restart_file_in   = .true.,
+   single_restart_file_out  = .true.,
+   direct_netcdf_read       = .false.,
+   direct_netcdf_write      = .false.,
 
    inf_flavor                  = 0,                       0,
    inf_initial_from_restart    = .false.,                 .false.,
@@ -75,9 +75,6 @@
    /
 
 &ensemble_manager_nml
-   single_restart_file_in  = .true.,
-   single_restart_file_out = .true.,
-   perturbation_amplitude  = 0.2,
    /
 
 # the localization cutoff in this file is distributed is too
@@ -240,3 +237,16 @@
    verbose    = .true.
    /
 
+&state_vector_io_nml
+/
+
+&quality_control_nml
+   input_qc_threshold       =  3.0,
+   outlier_threshold        = -1.0,
+/
+
+&forward_operator_nml
+/
+
+&state_space_diag_nml
+/
