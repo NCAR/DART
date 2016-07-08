@@ -5212,7 +5212,7 @@ if (hybm%vals(highest_obs_level) > 0.0_r8) then
       endif
    enddo findzero
    write(string1, '(A)') 'invalid value for namelist "highest_obs_pressure_Pa"'
-   write(string2, '(A)') 'value is too large (and so located too low in atmosphere)'
+   write(string2, '(A)') 'value is too large (located out of the pure pressure levels of the atmosphere)'
    write(string3, '(A,F9.3,A)') 'must specify a value located above pressure ', p_col(lowest_ok), ' Pascals'
    call error_handler(E_ERR, 'set_highest_obs_limit', string1, source, revision, revdate, &
                       text2=string2, text3=string3)
@@ -5798,6 +5798,7 @@ elseif (old_which == VERTISHEIGHT) then
    old_pressure = (1.0_r8 - frac) * p_col(bot_lev) + frac * p_col(top_lev)
 
    if (vert_coord == 'pressure') then
+      new_array(3) = old_pressure
       new_which = VERTISPRESSURE
    else if (vert_coord == 'log_invP') then
       new_array(3) = scale_height(p_surface=p_surf, p_above=old_pressure)
