@@ -1,0 +1,18 @@
+test for reading both ascii and binary obs_seq files,
+and testing the writing out.
+
+there's a new option to open binary obs_seq files with
+a specific endian-ness on read.
+
+this still needs a main script to run multiple tests in
+a semi-automated fashion.
+
+you can do:  echo filein fileout | ./obs_rwtest
+but if you want to change the obs_seq namelist to
+set the read endianness you still have to do that
+with a sed command on the input.nml.  i've run out
+of energy on this - if anyone is inspired to try to
+make a shell script to run some test cases, bravo.
+
+nsc
+11jul2016

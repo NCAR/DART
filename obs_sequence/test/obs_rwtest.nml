@@ -1,0 +1,8 @@
+&obs_rwtest_nml
+   prompt_for_filenames = .true.
+   filename_in   = ''
+   filename_out  = ''
+   print_only    = .false.
+   calendar      = 'Gregorian'
+/
+
