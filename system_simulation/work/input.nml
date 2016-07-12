@@ -1,4 +1,5 @@
 &utilities_nml
+   module_details = .false.
    /
 
 &full_error_nml
