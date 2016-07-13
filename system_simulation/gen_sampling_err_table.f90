@@ -10,7 +10,7 @@
 !> Submitted for publication, Jan 2011.  Contact author.
 
 !> this version of the program creates entries for any ensemble size
-!> from 2 to 1000 and outputs the values in netcdf file format.
+!> from 3 to 200 and outputs the values in netcdf file format.
 !> it has no namelist - the output file is named 'sampling_error_correction_table.nc'
 
 program gen_sampling_err_table
@@ -35,9 +35,8 @@ character(len=128), parameter :: revdate  = "$Date$"
 integer, parameter :: num_times   = 1
 integer, parameter :: num_samples = 100000000
 
-integer, parameter :: min_ens_size = 4
-!!!!!integer, parameter :: max_ens_size = 2000
-integer, parameter :: max_ens_size = 10
+integer, parameter :: min_ens_size = 3
+integer, parameter :: max_ens_size = 200
 
 integer, parameter :: nentries = 200
 
@@ -137,7 +136,7 @@ do ens_size=min_ens_size, max_ens_size
    end do
    
    ! print out just to stdout how many counts, if any, fell below bin 0
-   write(*, *) 'bin, count, mean ', 0, bin_count(0), 0, 0
+   write(*, *) 'bin, count, mean, alpha ', 0, bin_count(0), 0, 0
 
    ! always generate exactly 'nentries' entries in the output file
    do i = 1, nentries
@@ -164,13 +163,13 @@ do ens_size=min_ens_size, max_ens_size
          alpha(i) = beta / (1.0_r8 + beta)
       endif
    
-      write(*, *) 'bin, count, mean ', i, bin_count(i), true_correl_mean(i), alpha(i)
+      write(*, *) 'bin, count, mean, alpha ', i, bin_count(i), true_correl_mean(i), alpha(i)
 !      write(iunit, 10)   i, bin_count(i), true_correl_mean(i), alpha(i)
 10 format (I4,I9,2G25.14)
    end do
    
    ! print out just to stdout how many counts, if any, fell beyond bin 'nentries'
-   write(*, *) 'bin, count, mean ', nentries+1, bin_count(nentries+1), 0, 0
+   write(*, *) 'bin, count, mean, alpha ', nentries+1, bin_count(nentries+1), 0, 0
    
    call write_output_file(ncid, ens_size, count_id, bin_count(1:nentries), &
                                           corrmean_id, true_correl_mean, &
@@ -388,7 +387,7 @@ integer,          intent(out) :: id1
 
 integer :: rc
 
-rc = nf90_def_var(ncid, name=c1, xtype=nf90_real, dimids=(/ d1, d2 /), varid=id1)
+rc = nf90_def_var(ncid, name=c1, xtype=nf90_double, dimids=(/ d1, d2 /), varid=id1)
 call nc_check(rc, 'setup_sec_data', 'defining variable '//trim(c1))
 
 end subroutine setup_sec_data_real
