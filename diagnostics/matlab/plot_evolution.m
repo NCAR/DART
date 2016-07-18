@@ -40,7 +40,7 @@ function plotdat = plot_evolution(fname, copy, varargin)
 %         A postscript file containing a page for each level - each region.
 %         The other file is a simple text file containing summary information
 %         about how many observations were assimilated, how many were available, etc.
-%         Both of these filenames contain the observation type, 
+%         Both of these filenames contain the observation type,
 %         copy and region as part of the name.
 %
 % EXAMPLE 1 - plot the evolution of the bias for all observation types, all levels
@@ -51,7 +51,7 @@ function plotdat = plot_evolution(fname, copy, varargin)
 %
 %
 % EXAMPLE 2 - plot the evolution of the rmse for just the radiosonde temperature obs
-%             This requires that the 'RADIOSONDE_TEMPERATURE' is one of the known 
+%             This requires that the 'RADIOSONDE_TEMPERATURE' is one of the known
 %             observation types in the netCDF file.
 %
 % fname   = 'obs_diag_output.nc';
@@ -78,9 +78,15 @@ p = inputParser;
 
 addRequired(p,'fname',@ischar);
 addRequired(p,'copy',@ischar);
-addParamValue(p,'obsname',default_obsname,@ischar);
-addParamValue(p,'range',default_range,@isnumeric);
-addParamValue(p,'level',default_level,@isnumeric);
+if (exist('inputParser/addParameter','file') == 2)
+   addParameter(p,'obsname',default_obsname,@ischar);
+   addParameter(p,'range',default_range,@isnumeric);
+   addParameter(p,'level',default_level,@isnumeric);
+else
+   addParamValue(p,'obsname',default_obsname,@ischar);
+   addParamValue(p,'range',default_range,@isnumeric);
+   addParamValue(p,'level',default_level,@isnumeric);
+end
 parse(p, fname, copy, varargin{:});
 
 % if you want to echo the input
@@ -187,6 +193,7 @@ figuredata = setfigure();
 %%---------------------------------------------------------------------
 % Loop around (time-copy-level-region) observation types
 %----------------------------------------------------------------------
+psfname = cell(plotdat.nvars);
 
 for ivar = 1:plotdat.nvars
 
@@ -270,7 +277,7 @@ for ivar = 1:plotdat.nvars
    end
 
    if (p.Results.level < 0)
-      wantedlevels = [1:plotdat.nlevels];
+      wantedlevels = 1:plotdat.nlevels;
    else
       wantedlevels = p.Results.level;
    end
@@ -393,11 +400,10 @@ plotdat.subtitle = sprintf('%s   %s',string_guess, string_analy);
 % don't need to be set.
 
 ax1 = subplot('position',figdata.position);
-set(ax1,'YAxisLocation','left','FontSize',figdata.fontsize)
-
 h1 = plot(tg,cg,'k+-',ta,ca,'ro-','LineWidth',figdata.linewidth);
-h  = legend('forecast', 'analysis');
-set(h,'Interpreter','none','Box','off')
+set(ax1,'YAxisLocation','left','FontSize',figdata.fontsize)
+h  = legend(h1,'forecast', 'analysis');
+set(h,'Interpreter','none','Box','off','FontSize',figdata.fontsize)
 
 % get the range of the existing axis and replace with
 % replace y axis values
@@ -406,7 +412,6 @@ set(h,'Interpreter','none','Box','off')
 axlims = axis;
 axlims = [axlims(1:2) plotdat.Yrange];
 axis(axlims)
-
 
 switch lower(plotdat.copystring)
    case 'bias'
@@ -422,31 +427,35 @@ end
 ttot = plotdat.bincenters(plotdat.Nbins) - plotdat.bincenters(1) + 1;
 
 if ((plotdat.bincenters(1) > 1000) && (ttot > 5))
-   datetick('x',6,'keeplimits','keepticks');
-   monstr = datestr(plotdat.bincenters(1),21);
-   xlabelstring = sprintf('month/day - %s start',monstr);
+    datetick('x',6,'keeplimits','keepticks');
+    monstr = datestr(plotdat.bincenters(1),21);
+    xlabelstring = sprintf('month/day - %s start',monstr);
 elseif (plotdat.bincenters(1) > 1000)
-   datetick('x',15,'keeplimits','keepticks')
-   monstr = datestr(plotdat.bincenters(1),21);
-   xlabelstring = sprintf('%s start',monstr);
+    datetick('x',15,'keeplimits','keepticks')
+    monstr = datestr(plotdat.bincenters(1),21);
+    xlabelstring = sprintf('%s start',monstr);
 else
-   xlabelstring = 'days';
+    xlabelstring = 'days';
 end
 set(get(ax1,'Xlabel'),'String',xlabelstring, ...
-   'Interpreter','none','FontSize',figdata.fontsize)
+    'Interpreter','none','FontSize',figdata.fontsize)
 
 title({plotdat.myregion, plotdat.title, plotdat.subtitle}, ...
       'Interpreter', 'none', 'Fontsize', figdata.fontsize, 'FontWeight', 'bold')
 BottomAnnotation(plotdat)
 
 % create a separate scale for the number of observations
-ax2 = axes('position',get(ax1,'Position'), ...
-   'XAxisLocation','top', ...
-   'YAxisLocation','right', ...
+ax2 = axes( ...
+   'Position',get(ax1,'Position'), ...
+   'FontSize',get(ax1,'FontSize'), ...
+   'XColor'  ,get(ax1,'Xcolor'), ...
+   'XLim'    ,get(ax1,'XLim'), ...
+   'XTick'   ,get(ax1,'XTick'), ...
+   'YDir'    ,get(ax1,'YDir'), ...
    'Color','none', ...
-   'XColor',get(ax1,'Xcolor'), ...
    'YColor','b', ...
-   'FontSize',get(ax1,'FontSize'));
+   'XAxisLocation','top', ...
+   'YAxisLocation','right');
 
 h2 = line(t,nobs_poss,'Color','b','Parent',ax2);
 h3 = line(t,nobs_used,'Color','b','Parent',ax2);
@@ -519,7 +528,7 @@ for i = 1:length(x.allvarnames)
    end
 end
 
-[~,i,j] = unique(basenames);
+[~,i,~] = unique(basenames);
 y     = cell(length(i),1);
 ydims = cell(length(i),1);
 for k = 1:length(i)
