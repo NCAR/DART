@@ -20,11 +20,11 @@ function two_experiments_evolution(files, titles, obsnames, copy, prpo, varargin
 %
 % USAGE: two_experiments_evolution(files, titles, obsnames, copy, prpo, 'level', 1)
 %
-% files    : Cell array containing the locations of the obs_diag_output.nc 
+% files    : Cell array containing the locations of the obs_diag_output.nc
 %            files to compare. Each file is presumed to be the results from
 %            a single experiment.
 %
-% titles   : Cell array containing the titles used to annotate each of the experiments. 
+% titles   : Cell array containing the titles used to annotate each of the experiments.
 %
 % obsnames : Cell array containing the strings of each observation type to plot.
 %            Each observation type will be plotted in a separate graphic.
@@ -40,7 +40,7 @@ function two_experiments_evolution(files, titles, obsnames, copy, prpo, varargin
 %
 % level    : The index of the level to plot. Defaults to level 1.
 %
-% OUTPUT: A .pdf of each graphic is created. Each .pdf has a name that 
+% OUTPUT: A .pdf of each graphic is created. Each .pdf has a name that
 %         reflects the variable, quantity, and region being plotted.
 %
 % EXAMPLE
@@ -74,7 +74,13 @@ addRequired(p,'titles',@iscell);
 addRequired(p,'obsnames',@iscell);
 addRequired(p,'copy',@ischar);
 addRequired(p,'prpo',@ischar);
-addParamValue(p,'level',default_level,@isnumeric);
+
+if (exist('inputParser/addParameter','file') == 2)
+   addParameter(p,'level',default_level,@isnumeric);
+else
+   addParamValue(p,'level',default_level,@isnumeric);
+end
+
 parse(p, files, titles, obsnames, copy, prpo, varargin{:});
 
 % if you want to echo the input
@@ -476,15 +482,17 @@ end
 
 % Create another axes to use for plotting the observation counts
 
-ax2 = axes('position',get(ax1,'Position'), ...
-   'XAxisLocation','top', ...
-   'YAxisLocation','right', ...
+ax2 = axes( ...
+   'Position',get(ax1,'Position'), ...
+   'FontSize',get(ax1,'FontSize'), ...
+   'XColor'  ,get(ax1,'XColor'), ...
+   'XLim'    ,get(ax1,'XLim'), ...
+   'XTick'   ,get(ax1,'XTick'), ...
+   'YDir'    ,get(ax1,'YDir'), ...
    'Color','none', ...
-   'XColor',get(ax1,'XColor'), ...
    'YColor','b', ...
-   'XLim',get(ax1,'XLim'), ...
-   'YDir',get(ax1,'YDir'), ...
-   'FontSize',get(ax1,'FontSize'));
+   'XAxisLocation','top', ...
+   'YAxisLocation','right');
 
 % Plot the data, which sets the range of the axis
 for i = 1:Nexp
@@ -578,7 +586,7 @@ for ifile = 1:Nexp
    set(h, 'Interpreter', 'none', ...
           'HorizontalAlignment','left', ...
           'FontSize', 8);
-      
+
    % If the observation is trusted for this experiment, annotate as such.
 
    switch lower(plotstruct{ifile}.trusted)
