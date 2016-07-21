@@ -36,7 +36,7 @@ integer, parameter :: num_times   = 1
 integer, parameter :: num_samples = 100000000
 
 integer, parameter :: min_ens_size = 3
-integer, parameter :: max_ens_size = 200
+integer, parameter :: max_ens_size = 128
 
 integer, parameter :: nentries = 200
 
