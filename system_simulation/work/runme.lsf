@@ -1,0 +1,15 @@
+#!/bin/sh
+
+#BSUB -J gentable
+#BSUB -o gentable.log
+#BSUB -q caldera
+#BSUB -n 1
+#BSUB -P P86850054
+#BSUB -W 24:00
+
+# this takes a while.  run this on a post-processing node
+# as a single task, with a 24 hour wallclock limit.
+
+./gen_sampling_err_table
+
+exit 0
