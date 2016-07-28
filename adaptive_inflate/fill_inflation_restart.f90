@@ -4,93 +4,36 @@
 !
 ! $Id$ 
 
+! THIS PROGRAM HAS BEEN OBSOLETED by converting our restart files to
+! NetCDF format.  you can assign a value with 'ncap2', one of the NCO
+! utility program.  for now i'm going to leave the mkmf and path_names
+! files around and the program will just print out a helpful message.
+! in a few months/years we should remove this program entirely.
+!
+! here's an example of using ncap2 to set the T,U and V inf values:
+!  ncap2 -s 'T=1.0;U=1.0;V=1.0' wrfinput_d01 prior_inf.nc
+!  ncap2 -s 'T=0.6;U=0.6;V=0.6' wrfinput_d01 prior_sd.nc 
+!
+! this works as long as you have at least version 4.4.2 of the NCO utils.
+! some earlier versions change the full 3d arrays into a single scalar.
+! if you see this, get a more recent version of the nco tools.
+!
+! nsc 27jul2016
+
 program fill_inflation_restart
 
-! Write an inflation restart file with the right number of entries,
-! based on a single inflate and standard deviation value read from the console.
-! (alternatively we could read them from a namelist, but it seems like overkill.)
-
-use types_mod,            only : r8, i8
-
-use utilities_mod,        only : error_handler, E_MSG,  &
-                                 initialize_utilities, finalize_utilities
-
-use ensemble_manager_mod, only : ensemble_type,         &
-                                 init_ensemble_manager, end_ensemble_manager, &
-                                 prepare_to_write_to_vars
-
-use state_vector_io_mod,  only : write_ensemble_restart
-use io_filenames_mod,     only : file_info_type
-
-use assim_model_mod,      only : static_init_assim_model
-
-use            model_mod, only : get_model_size
-
-implicit none
-
-! version controlled file description for error handling, do not edit
-character(len=256), parameter :: source   = &
-   "$URL$"
-character(len=32 ), parameter :: revision = "$Revision$"
-character(len=128), parameter :: revdate  = "$Date$"
-
-! Read 2 floating point values from the console - the initial inflation value
-! and the inflation standard deviation.  Will write an output file named
-! 'inflation_ics' -- rename it to match what filter will read in.
-! (the name of the inflation restart file is a namelist option.)
-
-! Module storage for writing messages
-character(len = 129) :: msgstring
-character(len = 32)  :: out_file_name = 'inflate_ics'
-
-type(ensemble_type)  :: ens_handle
-type(file_info_type) :: file_info ! dummy file_info type
-
-real(r8)     :: inf_initial, sd_initial
-integer      :: ss_inflate_index    = 1
-integer      :: ss_inflate_sd_index = 2
-integer(i8)  :: model_size
-
-!============================================================================
-
-call initialize_utilities('fill_inflation_restart')
-
-msgstring = 'Both mean and sd will be read from console'
-call error_handler(E_MSG, 'fill_inflate_restart', trim(msgstring), &
-                   source, revision, revdate)
-msgstring = 'Full mean and sd fields will be written to this restart file: ' // trim(out_file_name)
-call error_handler(E_MSG, 'fill_inflate_restart', trim(msgstring), &
-                   source, revision, revdate)
-
-print *, 'Enter initial values for inflation mean and standard deviation:'
-read *, inf_initial, sd_initial
-
-write(msgstring, '(A, F12.6, 1X, F12.6)') 'mean and sd read from console as ', &
-         inf_initial, sd_initial
-call error_handler(E_MSG, 'fill_inflate_restart', trim(msgstring), &
-                   source, revision, revdate)
-
-! initialize the assim_model and model code
-call static_init_assim_model()
-model_size = get_model_size()
-
-write(msgstring, *) 'Model size/restart data length = ', model_size
-call error_handler(E_MSG,'',msgstring, source, revision, revdate)
-
-call init_ensemble_manager(ens_handle, 2, model_size, transpose_type_in = 2)
-call prepare_to_write_to_vars(ens_handle)
-
-ens_handle%vars(:, ss_inflate_index   ) = inf_initial
-ens_handle%vars(:, ss_inflate_sd_index) =  sd_initial
-
-call write_ensemble_restart(ens_handle, file_info, out_file_name, ss_inflate_index, &
-                            ss_inflate_sd_index, force_single_file = .true.)
-
-call end_ensemble_manager(ens_handle)
-
-call finalize_utilities()
-
-!========================================================================
+write(*,*) ''
+write(*,*) 'This program is OBSOLETE since DART inflation files are now in NetCDF format.' 
+write(*,*) 'To fill an initial inflation file use one of the standard NCO utilities like "ncap2" with'
+write(*,*) 'a copy of a model restart file to set the initial inflation mean, and a second file'
+write(*,*) 'for the initial inflation standard deviation.  Inflation mean and sd values now'
+write(*,*) 'are formatted in the files exactly like restart values, e.g. arranged by variable'
+write(*,*) 'type like T, U, V, etc.'
+write(*,*) ''
+write(*,*) 'Here is an example using version 4.4.2 or later of the NCO tools:'
+write(*,*) '  ncap2 -s "T=1.0;U=1.0;V=1.0" wrfinput_d01 prior_inf.nc'
+write(*,*) '  ncap2 -s "T=0.6;U=0.6;V=0.6" wrfinput_d01 prior_sd.nc'
+write(*,*) ''
 
 end program fill_inflation_restart
 

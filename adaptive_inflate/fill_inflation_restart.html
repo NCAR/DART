@@ -36,30 +36,23 @@
 <H2>Overview</H2>
 
 <P>
-Utility program to create inflation restart files with constant values.
-Useful for a multi-step assimilation, so the values
-<em class=code>inf_initial_from_restart</em> and
-<em class=code>inf_sd_initial_from_restart</em> items in the &amp;filter_nml
-namelist can be .TRUE. from the beginning.
-</P><P>
-This program reads two values from the console: the initial inflation value
-and the initial inflation standard deviation.  For example:
+This program is now OBSOLETE since DART inflation files are now in
+NetCDF format.  Use one of the standard NCO utilities like "ncap2" on a
+copy of another restart file to set the initial inflation mean, and another
+for the initial inflation standard deviation.  Inflation mean and sd values
+look exactly like restart values, arranged by variable type like T, U, V, etc.
 </P>
-<pre>
-> echo 1.0 0.6 | ./fill_inflation_restart
-</pre>
-or 
-<pre>
-> fill_inflation_restart
-1.0 0.6
->
-</pre>
 <P>
-This program uses the information from the model_mod code to determine
-the number of items in the state vector.  It must be compiled with the
-right model's model_mod, and if the items in the state vector are selectable
-by namelist options, the namelist when running this program must match
-exactly the namelist used during the assimilation run.
+Here's an example of using ncap2 to set the T,U and V inf values:
+<PRE>
+  ncap2 -s 'T=1.0;U=1.0;V=1.0' wrfinput_d01 prior_inf.nc
+  ncap2 -s 'T=0.6;U=0.6;V=0.6' wrfinput_d01 prior_sd.nc
+</PRE>
+
+This works as long as you have at least version 4.4.2 of the NCO utils.
+Some earlier versions change the full 3d arrays into a single scalar
+with this syntax.  If that's your result (check with <tt>ncdump -h</tt>)
+use a more recent version of the NCO tools.
 </P>
 
 
@@ -71,8 +64,7 @@ exactly the namelist used during the assimilation run.
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
 <P>
-This program has no namelist but uses other modules in the
-system which require namelists, e.g. &amp;utilities_mod, etc.
+none
 </P>
 
 <!--==================================================================-->
@@ -80,14 +72,9 @@ system which require namelists, e.g. &amp;utilities_mod, etc.
 <A NAME="Modules"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>MODULES USED</H2>
-<PRE>
-types_mod
-utilities_mod
-ensemble_manager_mod
-assim_model_mod
-model_mod
-mpi_utilities_mod
-</PRE>
+<P>
+none
+</P>
 
 <!--==================================================================-->
 <!-- Describe the Files Used by this module.                          -->
@@ -96,8 +83,9 @@ mpi_utilities_mod
 <A NAME="FilesUsed"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>FILES</H2>
-<UL><LI>writes <em class=file>inflate_ics</em>
-</UL>
+<P>
+none
+</P>
 
 <!--==================================================================-->
 <!-- Cite references, if need be.                                     -->
@@ -117,17 +105,9 @@ mpi_utilities_mod
 <A NAME="Errors"></A>
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>ERROR CODES and CONDITIONS</H2>
-<div class=errors>
-<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
-<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
-
-<TR><!-- routine --><TD VALIGN=top>write_ensemble_restart</TD>
-    <!-- message --><TD VALIGN=top>any</TD>
-    <!-- comment --><TD VALIGN=top>reports failure to write the inflation
-                                   restart file</TD></TR>
-
-</TABLE>
-</div>
+<P>
+none
+</P>
 
 <H2>KNOWN BUGS</H2>
 <P>
