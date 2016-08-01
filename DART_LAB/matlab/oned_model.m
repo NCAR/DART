@@ -1093,7 +1093,7 @@ reset_button_Callback()
         
         plot(x, handles.ens, 'b*', 'MarkerSize', 6);
         hold on;
-        str = 'x = x + (x+model bias) + a{\cdot}x{\cdot}{\mid}x{\mid}';
+        str = 'x_t_+_1 = x_t + (x_t+model bias) + a{\cdot}x_t{\cdot}{\mid}x_t{\mid}';
         title({str,'observation is a draw from N(0,1)'},'FontSize',18)
         
         % Include the 0 line as the truth for all times
