@@ -10,11 +10,15 @@ function [prior_mean, prior_sd, obs_mean, obs_err_sd, is_err] = g_prod_plot(h)
 % Successful return as default
 is_err = false;
 
+atts = stylesheet;   % get the uniform colors, etc.
+
+FontSize = get(h.graph,'FontSize');
+
 % Default failed returns for other quantities
 prior_mean = 0; prior_sd   = -1;
 obs_mean   = 0; obs_err_sd = -1;
 
-h_prior_mean = get(h.edit1);
+h_prior_mean = get(h.ui_edit_prior_mean);
 prior_mean = str2double(h_prior_mean.String);
 % The mean must be a number
 if(isnan(prior_mean))
@@ -23,7 +27,7 @@ if(isnan(prior_mean))
    return
 end
 
-h_prior_sd = get(h.edit2);
+h_prior_sd = get(h.ui_edit_prior_sd);
 prior_sd = str2double(h_prior_sd.String);
 
 % Prior sd must be a number
@@ -39,13 +43,13 @@ if(prior_sd <= 0)
    is_err = true;
    return
 end
- 
+
 hold off
 prior_handle = plot_gaussian(prior_mean, prior_sd, 1);
-set(prior_handle, 'Color', [0 0.73 0], 'LineWidth', 2);
+set(prior_handle, 'Color', atts.green, 'LineWidth', 2);
 hold on
 
-h_obs_mean = get(h.edit3);
+h_obs_mean = get(h.ui_edit_observation);
 obs_mean = str2double(h_obs_mean.String);
 
 % Obs value must be a number
@@ -55,7 +59,7 @@ if(isnan(obs_mean))
    return
 end
 
-h_obs_err_sd = get(h.edit4);
+h_obs_err_sd = get(h.ui_edit_obs_error_sd);
 obs_err_sd = str2double(h_obs_err_sd.String);
 
 % Obs error sd must be a positive number
@@ -72,10 +76,12 @@ if(obs_err_sd <= 0)
 end
 
 obs_handle = plot_gaussian(obs_mean, obs_err_sd, 1);
-set(obs_handle, 'Color', 'r', 'LineStyle', '--', 'LineWidth', 2);
+set(obs_handle, 'Color', atts.red, 'LineStyle', '--', 'LineWidth', 2);
 
-% Put on a legend
-legend('Prior', 'Obs. Likelihood');
+% Put on a title and a legend
+title('gaussian_product','Interpreter','none')
+legend('Prior', 'Obs. Likelihood', 'Location', 'NorthWest');
+set(gca, 'FontSize', atts.fontsize);
 
 end
 
@@ -84,6 +90,8 @@ end
 % Internal function to write error banner
 function error_banner(h, message)
 
+   atts = stylesheet;   % get the uniform colors, etc.
+
    hold off
    x= [1 2];
    plot(x, 'Visible', 'off')
@@ -91,12 +99,9 @@ function error_banner(h, message)
    x_limits = get(h_fig.CurrentAxes, 'Xlim');
    y_limits = get(h_fig.CurrentAxes, 'Ylim');
    text(x_limits(1) * 7/8 + x_limits(2) / 8, mean(y_limits), ...
-      message, 'fontsize', 16, 'Color', 'r');
+      message, 'FontSize', atts.fontsize + 2, 'Color', 'r');
 
-   % While we're at it, clear out the values for posterior, too
-   set(h.text7, 'String', 'Posterior Mean = ');
-   set(h.text8, 'String', 'Posterior SD = ');
-   set(h.text9, 'String', 'Weight = ');
+   % the values for the posterior get reset by gaussian_product.m 
    return;
 
 end
