@@ -2053,7 +2053,7 @@ end function string_to_real
 function string_to_integer(inputstring)
 
 character(len=*), intent(in) :: inputstring
-real(r8)                     :: string_to_integer
+integer                      :: string_to_integer
 
 integer :: io
 
