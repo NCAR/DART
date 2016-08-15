@@ -1095,6 +1095,14 @@ else if (obs_kind == KIND_GEOPOTENTIAL_HEIGHT) then
    endif
    interp_val = query_location(location_tmp, 'VLOC')
 
+else if (obs_kind == KIND_VAPOR_MIXING_RATIO) then
+   tvars(1) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
+   call compute_scalar_with_barycentric(x, location, 1, tvars, values, istatus)
+   if (istatus /= 0) goto 100
+
+   ! Don't accept negative moisture
+   interp_val = max(values(1),0.0_r8)
+
 else if (obs_kind == KIND_SPECIFIC_HUMIDITY) then
    ! compute vapor pressure, then: sh = vp / (1.0 + vp)
    tvars(1) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
