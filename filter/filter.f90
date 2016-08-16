@@ -9,13 +9,18 @@
 
 program filter
 
-use filter_mod
+use mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
+use        filter_mod, only : filter_main
 
 implicit none
 
 !----------------------------------------------------------------
 
+call initialize_mpi_utilities('Filter')
+
 call filter_main()
+
+call finalize_mpi_utilities()
 
 end program filter
 

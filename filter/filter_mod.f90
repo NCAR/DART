@@ -51,8 +51,7 @@ use adaptive_inflate_mod,  only : adaptive_inflate_end, do_varying_ss_inflate,  
                                   do_obs_inflate, adaptive_inflate_type,                      &
                                   output_inflate_diagnostics, log_inflation_info, &
                                   get_minmax_task_zero
-use mpi_utilities_mod,     only : initialize_mpi_utilities, finalize_mpi_utilities,           &
-                                  my_task_id, task_sync, broadcast_send, broadcast_recv,      &
+use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
 use smoother_mod,          only : smoother_read_restart, advance_smoother,                    &
                                   smoother_gen_copy_meta_data, smoother_write_restart,        &
@@ -897,15 +896,6 @@ if(my_task_id() == 0) then
 endif
 
 ! 10011 continue
-! YOU CAN NO LONGER WRITE TO THE LOG FILE BELOW THIS!
-! After the call to finalize below, you cannot write to
-! any fortran unit number.
-
-! Make this the very last thing done, especially for SGI systems.
-! It shuts down MPI and if you try to write after that, some libraries
-! choose to discard output that is written after mpi is finalized, or 
-! worse, the processes can hang.
-call finalize_mpi_utilities(async=async)
 
 end subroutine filter_main
 
@@ -1028,9 +1018,6 @@ end subroutine filter_generate_copy_meta_data
 !-------------------------------------------------------------------------
 
 subroutine filter_initialize_modules_used()
-
-! Initialize modules used that require it
-call initialize_mpi_utilities('Filter')
 
 call register_module(source,revision,revdate)
 

@@ -29,8 +29,7 @@ use utilities_mod,         only : register_module,  error_handler, E_ERR, E_MSG,
                                   do_output, find_namelist_in_file, check_namelist_read,      &
                                   open_file, close_file, do_nml_file, do_nml_term
 use assim_model_mod,       only : static_init_assim_model, get_model_size,                    &
-                                  end_assim_model,                       &
-                                  pert_model_copies
+                                  end_assim_model,  pert_model_copies
 use assim_tools_mod,       only : filter_assim, set_assim_tools_trace, get_missing_ok_status, &
                                   test_state_copies
 use obs_model_mod,         only : move_ahead, advance_state, set_obs_model_trace
@@ -52,8 +51,7 @@ use adaptive_inflate_mod,  only : adaptive_inflate_end, do_varying_ss_inflate,  
                                   do_obs_inflate, adaptive_inflate_type,                      &
                                   output_inflate_diagnostics, log_inflation_info, &
                                   get_minmax_task_zero
-use mpi_utilities_mod,     only : initialize_mpi_utilities, finalize_mpi_utilities,           &
-                                  my_task_id, task_sync, broadcast_send, broadcast_recv,      &
+use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
                                   task_count
 use smoother_mod,          only : smoother_read_restart, advance_smoother,                    &
                                   smoother_gen_copy_meta_data, smoother_write_restart,        &
@@ -237,19 +235,16 @@ integer                 :: OBS_GLOBAL_QC_COPY,OBS_EXTRA_QC_COPY
 integer                 :: OBS_MEAN_START, OBS_MEAN_END
 integer                 :: OBS_VAR_START, OBS_VAR_END, TOTAL_OBS_COPIES
 integer                 :: input_qc_index, DART_qc_index
-integer                 :: mean_owner, mean_owners_index
-logical                 :: read_time_from_file, interf_provided
+logical                 :: read_time_from_file
 
-integer :: owner, owners_index
 integer :: num_extras ! the extra ensemble copies
 
 type(file_info_type) :: file_info
 
 logical                 :: ds, all_gone, allow_missing
 
-real(r8), allocatable   :: temp_ens(:)
+! real(r8), allocatable   :: temp_ens(:) ! for smoother
 real(r8), allocatable   :: prior_qc_copy(:)
-character*20 task_str, file_obscopies
 
 call filter_initialize_modules_used() ! static_init_model called in here
 
@@ -402,6 +397,7 @@ call get_minmax_task_zero(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR
 call log_inflation_info(prior_inflate, state_ens_handle%my_pe, 'Prior')
 call get_minmax_task_zero(post_inflate, state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
 call log_inflation_info(post_inflate, state_ens_handle%my_pe, 'Posterior')
+
 
 if (perturb_from_single_instance) then
    ! Only zero has the time, so broadcast the time to all other copy owners
@@ -624,8 +620,8 @@ AdvanceTime : do
    call trace_message('Before prior state space diagnostics')
    call timestamp_message('Before prior state space diagnostics')
 
-   ! For single time step, and num_output_state_members = 0, store the diagnostic copies
-   ! (mean, sd, inf_mean, inf_sd) and write them at the end.
+   ! If needed, store copies(mean, sd, inf_mean, inf_sd) that would have
+   ! gone in Prior_Diag.nc and write them at the end.
    call store_prior(state_ens_handle)
 
    if ((output_interval > 0) .and. &
@@ -758,7 +754,8 @@ AdvanceTime : do
    call trace_message('Before posterior state space diagnostics')
    call timestamp_message('Before posterior state space diagnostics')
 
-   ! For single time step store the diagnostic copies (inf_mean, inf_sd) 
+   ! If needed store the copies (inf_mean, inf_sd) that would have
+   ! gone in Posterior_Diag.nc and write them at the end
    call store_posterior(state_ens_handle)
 
    if ((output_interval > 0) .and. &
@@ -871,7 +868,7 @@ call trace_message('After  writing inflation restart files if required')
 call trace_message('Before writing state restart files if requested')
 call timestamp_message('Before writing state restart files if requested')
 
-call write_state(state_ens_handle, file_info, prior_inflate, post_inflate)
+call write_state(state_ens_handle, file_info, prior_inflate, post_inflate, skip_diag_files())
 
 if(ds) call smoother_write_restart(1, ens_size)
 call trace_message('After  writing state restart files if requested')
@@ -903,16 +900,7 @@ if(my_task_id() == 0) then
    write(logfileunit,*)
 endif
 
-10011 continue
-! YOU CAN NO LONGER WRITE TO THE LOG FILE BELOW THIS!
-! After the call to finalize below, you cannot write to
-! any fortran unit number.
-
-! Make this the very last thing done, especially for SGI systems.
-! It shuts down MPI and if you try to write after that, some libraries
-! choose to discard output that is written after mpi is finalized, or 
-! worse, the processes can hang.
-call finalize_mpi_utilities(async=async)
+! 10011 continue
 
 end subroutine filter_main
 
@@ -945,7 +933,6 @@ character(len=metadatalength) :: prior_meta_data, posterior_meta_data
 ! Posterior file contains the posterior inflation mean and spread only
 character(len=metadatalength) :: state_meta(num_output_state_members + 4)
 integer :: i, ensemble_offset, num_state_copies, num_obs_copies
-integer :: ierr ! init_diag return code
 
 ! Section for state variables + other generated data stored with them.
 
@@ -1036,9 +1023,6 @@ end subroutine filter_generate_copy_meta_data
 !-------------------------------------------------------------------------
 
 subroutine filter_initialize_modules_used()
-
-! Initialize modules used that require it
-call initialize_mpi_utilities('Filter')
 
 call register_module(source,revision,revdate)
 
@@ -1358,11 +1342,9 @@ integer,                 intent(in)    :: OBS_MEAN_START, OBS_VAR_START
 integer,                 intent(in)    :: OBS_GLOBAL_QC_COPY, OBS_VAL_COPY
 integer,                 intent(in)    :: OBS_ERR_VAR_COPY, DART_qc_index
 
-integer               :: j, k, ens_offset, forward_min, forward_max
-integer               :: forward_unit, ivalue
-real(r8)              :: error, diff_sd, ratio
+integer               :: j, k, ens_offset
+integer               :: ivalue
 real(r8), allocatable :: obs_temp(:)
-real(r8)              :: obs_prior_mean, obs_prior_var, obs_val, obs_err_var
 real(r8)              :: rvalue(1)
 
 ! Do verbose forward operator output if requested
@@ -1819,8 +1801,10 @@ if (query_copy_present(SPARE_PRIOR_INF_SPREAD)) &
 end subroutine store_prior
 
 !------------------------------------------------------------------
-!> Copy the current mean, sd, inf_mean, inf_sd to spare copies
+!> Copy the current post_inf_mean, post_inf_sd to spare copies
 !> Assuming that if the spare copy is there you should fill it
+!> No need to store the mean and sd as you would with store_prior because
+!> mean and sd are not changed during filter_assim(inflate_only = .true.)
 subroutine store_posterior(ens_handle)
 
 type(ensemble_type), intent(inout) :: ens_handle
@@ -1859,19 +1843,29 @@ POST_INF_SD_COPY     = ens_size + 6
 num_extras = 6
 
 ! If there are no diagnostic files, we will need to store the
-! diagnostic information in spare copies in the ensemble.
+! copies that would have gone in Prior_Diag.nc and Posterior_Diag.nc
+! in spare copies in the ensemble.
 if (skip_diag_files() .and. num_output_state_members <= 0) then
 
-   ! Extra state storage for single time step, large models
+   ! Not stopping to write prior_members so keep these Prior copies
+   ! as extra copies and write them and the end.
    SPARE_PRIOR_MEAN       = ens_size + 7
    SPARE_PRIOR_SPREAD     = ens_size + 8
    SPARE_PRIOR_INF_MEAN   = ens_size + 9
    SPARE_PRIOR_INF_SPREAD = ens_size + 10
+   ! need to store posterior inflation mean and inflation spread since
+   ! these are overwritten in filter_assim(inflate_only=.true.)
    SPARE_POST_INF_MEAN    = ens_size + 11
    SPARE_POST_INF_SPREAD  = ens_size + 12
-
    num_extras = num_extras + 6
 
+elseif (skip_diag_files() .and. num_output_state_members > 0) then
+   ! Prior members and extra copies are written out prior to filter_assim.
+   ! Need to store posterior inflation mean and inflation spread since
+   ! these are overwritten in filter_assim(inflate_only=.true.)
+   SPARE_POST_INF_MEAN    = ens_size + 7
+   SPARE_POST_INF_SPREAD  = ens_size + 8
+   num_extras = num_extras + 2
 endif
 
 end subroutine set_state_copies
