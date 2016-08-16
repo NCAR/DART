@@ -14,7 +14,7 @@ module model_mod
 
 ! Modules that are absolutely required for use are listed
 
-use        types_mod, only : r8, r4, MISSING_R8, metadatalength
+use        types_mod, only : r8, r4, MISSING_R8, metadatalength, obstypelength
 use time_manager_mod, only : time_type, set_calendar_type, operator(/=), &
                              set_time, print_time, set_date, print_date
 use     location_mod, only : location_type,      get_close_maxdist_init, &
@@ -27,7 +27,7 @@ use    utilities_mod, only : register_module, error_handler, nc_check, &
                              find_namelist_in_file, check_namelist_read, &
                              do_nml_file, do_nml_term, do_output, &
                              nmlfileunit, logfileunit
-use     obs_kind_mod, only : paramname_length, get_raw_obs_kind_index
+use     obs_kind_mod, only : get_raw_obs_kind_index
 
 use netcdf
 use typesizes
@@ -105,7 +105,7 @@ type progvartype
    integer :: index1        ! location in dart state vector of first occurrence
    integer :: indexN        ! location in dart state vector of last  occurrence
    integer :: dart_kind
-   character(len=paramname_length) :: kind_string
+   character(len=obstypelength) :: kind_string
    logical  :: clamping     ! does variable need to be range-restricted before 
    real(r8) :: range(2)     ! being stuffed back into MPAS analysis file.
 end type progvartype

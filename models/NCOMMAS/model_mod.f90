@@ -10,7 +10,8 @@ module model_mod
 
 ! Modules that are absolutely required for use are listed
 use        types_mod, only : r4, r8, digits12, SECPERDAY, MISSING_R8,          &
-                             rad2deg, deg2rad, PI
+                             rad2deg, deg2rad, PI, obstypelength
+
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
                              print_time, print_date, set_calendar_type,        &
                              operator(*),  operator(+), operator(-),           &
@@ -37,7 +38,6 @@ use    utilities_mod, only : register_module, error_handler,                   &
 use     obs_kind_mod, only : KIND_U_WIND_COMPONENT,   &
                              KIND_V_WIND_COMPONENT,   &
                              KIND_VERTICAL_VELOCITY,  &
-                             paramname_length,        &
                              get_raw_obs_kind_index
 
 use mpi_utilities_mod, only: my_task_id
@@ -159,7 +159,7 @@ type progvartype
    integer :: index1      ! location in dart state vector of first occurrence
    integer :: indexN      ! location in dart state vector of last  occurrence
    integer :: dart_kind
-   character(len=paramname_length) :: kind_string
+   character(len=obstypelength) :: kind_string
 end type progvartype
 
 type(progvartype), dimension(max_state_variables) :: progvar
@@ -426,7 +426,7 @@ subroutine static_init_model()
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname
-character(len=paramname_length)       :: kind_string
+character(len=obstypelength)          :: kind_string
 integer :: ncid, VarID, numdims, dimlen, varsize
 integer :: iunit, io, ivar, i, index1, indexN
 integer :: ss, dd
