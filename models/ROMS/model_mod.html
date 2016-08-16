@@ -1,0 +1,1512 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+<HTML>
+<HEAD>
+<TITLE>module model_mod (ROMS)</TITLE>
+<link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
+<link href="../../doc/images/dart.ico" rel="shortcut icon" />
+</HEAD>
+<BODY>
+<A NAME="TOP"></A>
+
+<H1>MODULE model_mod (ROMS)</H1>
+
+<table border=0 summary="" cellpadding=5>
+<tr>
+    <td valign=middle>
+    <img src="../../doc/images/Dartboard7.png" alt="DART project logo" height=70 />
+    </td>
+    <td>
+       <P>Jump to <a href="../../index.html">DART Documentation Main Index</a><br />
+          <small><small>version information for this file: <br />
+          <!-- version tag follows, do not edit -->
+          $Id$</small></small>
+       </P></td>
+</tr>
+</table>
+
+<A HREF="#Namelist">NAMELIST</A> /
+<A HREF="#Interface">INTERFACES</A> /
+<A HREF="#FilesUsed">FILES</A> /
+<A HREF="#References">REFERENCES</A> /
+<A HREF="#Errors">ERRORS</A> /
+<A HREF="#FuturePlans">PLANS</A> /
+<A HREF="#PrivateComponents">PRIVATE COMPONENTS</A> /
+<A HREF="#Legalese">TERMS OF USE</A>
+
+<H2>Overview</H2>
+
+<P>
+DART interface module for the ROMS model.  This page documents the details of
+the module compiled into DART that interfaces with the ROMS data in
+the state vector. 
+</P>
+
+<H2>WARNING: NOT UPDATED FOR ROMS YET.  all below is from the WRF docs</H2>
+<H2>WARNING: NOT UPDATED FOR ROMS YET.  all below is from the WRF docs</H2>
+<H2>WARNING: NOT UPDATED FOR ROMS YET.  all below is from the WRF docs</H2>
+<H2>WARNING: NOT UPDATED FOR ROMS YET.  all below is from the WRF docs</H2>
+
+
+<P>
+<a href="http://www.image.ucar.edu/ROMSdart/tutorial">
+http://www.image.ucar.edu/ROMSdart/tutorial</a>
+</P>
+<P>
+The ROMS model_mod code reads the state data from a filter initial condition/restart
+file, typically called <em class=file>filter_ics</em> or <em class=file>filter_restart</em>.
+It also requires a NetCDF file named <em class=file>ROMSinput_d01</em> in the
+current directory (and <em class=file>d02</em>, etc. for multiple domain cases).
+This file must be at the same resolution and have the same surface elevation
+data as the files converted to create the DART initial conditions.  No data
+will be read from this file, but the grid information must match exactly.
+See the <a href="ROMS_DART_utilities/dart_to_ROMS.html">ROMS_to_dart</a>
+documentation for more information on how to generate DART IC/restart files
+given ROMS NetCDF files.
+</P>
+<P>
+The model interface code supports ROMS configurations with multiple domains.  
+Data for all
+domains is read into the DART state vector.  During the computation of the
+forward operators (getting the estimated observation values from each
+ensemble member), the search starts in the domain with the highest number,
+which is generally the finest nest or one of multiple finer nests.
+The search stops as soon as a domain contains the observation location,
+working its way from largest number to smallest number domain, ending
+with domain 1.
+For example, in a 4 domain case the data in the state vector that came 
+from <em class=file>ROMSinput_d04</em> is searched first, then
+<em class=file>ROMSinput_d03</em>, <em class=file>ROMSinput_d02</em>, 
+and finally
+<em class=file>ROMSinput_d01</em>.
+The forward operator is computed from the first domain grid that
+contains the lat/lon of the observation.   
+During the assimilation phase, when the state values are adjusted based on 
+the correlations and assimilation increments, all points in all domains 
+that are within the localization radius are adjusted, regardless of domain.
+The impact of an observation on the state depends only on the distance between
+the observation and the state vector point, and the regression coefficient 
+based on the correlation between the distributions of the ensemble of state 
+vector points and the ensemble of observation forward operator values.
+</P>
+<P>
+The fields from ROMS that are copied into the DART state vector are
+controlled by namelist.  See below for the documentation on the &amp;model_nml
+entries.  The state vector should include all fields needed to restart
+a ROMS run.  There may be additional fields needed depending on the
+microphysics scheme selected.  See the ascii file <em class=file>ROMS_state_variables_table</em>
+in the <em class=file>models/ROMS</em> directory for a list of
+fields that are often included in the DART state.
+</P>
+<P>
+The 16 public interfaces
+are standardized for all DART compliant models. These interfaces allow
+DART to advance the model, get the model state and metadata describing 
+this state, find state variables that are close to a given location, 
+and do spatial interpolation for a variety of variables required in
+observational operators.
+</P>
+
+<!--==================== DESCRIPTION OF A NAMELIST =====================-->
+
+<A NAME="Namelist"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>NAMELIST</H2>
+<P>
+This namelist is read from the file <em class=file>input.nml</em>.
+Namelists start with an ampersand
+'&amp;' and terminate with a slash '/'.
+Character strings that contain a '/' must be
+enclosed in quotes to prevent them from 
+prematurely terminating the namelist.
+</P>
+
+<div class=namelist>
+<pre>
+&amp;model_nml
+   default_state_variables     = .true.,
+   ROMS_state_variables         = 'NULL',
+   ROMS_state_bounds            = 'NULL',
+   num_domains                 = 1,
+   output_state_vector         = .false.,
+   calendar_type               = 3,
+   assimilation_period_seconds = 21600,
+   allow_obs_below_vol         = .false.,
+   vert_localization_coord     = 3,
+   center_search_half_length   = 500000.,
+   center_spline_grid_scale    = 10,
+   circulation_pres_level      = 80000.0,
+   circulation_radius          = 108000.0,
+   sfc_elev_max_diff           = -1.0,
+   polar                       = .false.,
+   periodic_x                  = .false.,
+   periodic_y                  = .false.,
+   scm                         = .false.  
+/
+
+# Notes for model_nml:
+# (1) vert_localization_coord must be one of:
+#     1 = model level
+#     2 = pressure
+#     3 = height
+#     4 = scale height
+# (2) see bottom of this file for explanations of polar, periodic_x, 
+#     periodic_y, and scm
+# (3) calendar = 3 is GREGORIAN, which is what ROMS uses.
+# (4) if 'default_state_variables' is .true. the model_mod.f90 code will
+#     fill the state variable table with the following ROMS vars: 
+#        U, V, W, PH, T, MU
+#     you must set it to false before you change the value 
+#     of 'ROMS_state_variables' and have it take effect.
+# (5) the format for 'ROMS_state_variables' is an array of 5 strings:
+#     ROMS netcdf variable name, dart KIND_xxx string, type string (must be 
+#     unique, will soon be obsolete, we hope), 'UPDATE', and '999' if the 
+#     array is part of all domains.  otherwise, it is a string with the domain
+#     numbers (e.g. '12' for domains 1 and 2, '13' for domains 1 and 3).
+#   example:
+# ROMS_state_variables='U','KIND_U_WIND_COMPONENT','TYPE_U','UPDATE','999',
+#                     'V','KIND_V_WIND_COMPONENT','TYPE_V','UPDATE','999',
+#                     'W','KIND_VERTICAL_VELOCITY','TYPE_W','UPDATE','999',
+#                     'T','KIND_POTENTIAL_TEMPERATURE','TYPE_T','UPDATE','999',
+#                     'PH','KIND_GEOPOTENTIAL_HEIGHT','TYPE_GZ','UPDATE','999',
+#                     'MU','KIND_PRESSURE','TYPE_MU','UPDATE','999',
+#                     'QVAPOR','KIND_VAPOR_MIXING_RATIO','TYPE_QV','UPDATE','999',
+#                     'QCLOUD','KIND_CLOUD_LIQUID_WATER','TYPE_QC','UPDATE','999',
+#                     'QRAIN','KIND_RAINWATER_MIXING_RATIO','TYPE_QR','UPDATE','999',
+#                     'U10','KIND_U_WIND_COMPONENT','TYPE_U10','UPDATE','999',
+#                     'V10','KIND_V_WIND_COMPONENT','TYPE_V10','UPDATE','999',
+#                     'T2','KIND_TEMPERATURE','TYPE_T2','UPDATE','999',
+#                     'TH2','KIND_POTENTIAL_TEMPERATURE','TYPE_TH2','UPDATE','999',
+#                     'Q2','KIND_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
+#                     'PSFC','KIND_PRESSURE','TYPE_PS','UPDATE','999',
+# (6) the format for 'ROMS_state_bounds' is an array of 4 strings:
+#     ROMS netcdf variable name, minimum value, maximum value, and either
+#     FAIL or CLAMP.  FAIL will halt the program if an out of range value
+#     is detected.  CLAMP will set out of range values to the min or max.
+#     The special string 'NULL' will map to plus or minus infinity and will
+#     not change the values.  arrays not listed in this table will not
+#     be changed as they are read or written.
+#
+#
+# polar and periodic_x are used in global ROMS.  if polar is true, the 
+# grid interpolation routines will wrap over the north and south poles.  
+# if periodic_x is true, when the east and west edges of the grid are
+# reached the interpolation will wrap.  note this is a separate issue
+# from regional models which cross the GMT line; those grids are marked
+# as having a negative offset and do not need to wrap; this flag controls
+# what happens when the edges of the grid are reached.
+
+# the scm flag is used for the 'single column model' version of ROMS.
+# it needs the periodic_x and periodic_y flags set to true, in which
+# case the X and Y directions are periodic; no collapsing of the grid
+# into a single location like the 3d-spherical polar flag implies.
+</pre>
+</div>
+
+<br />
+<br />
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD> default_state_variables </TD>
+    <TD> logical </TD>
+    <TD>If .true., the dart state vector contains the fields U, V, W, PH, T, MU,
+in that order, and only those.  Any values listed in the ROMS_state_variables
+namelist item will be ignored.
+</TD></TR>
+
+<TR><TD> ROMS_state_variables </TD>
+    <TD>character(:, 5) </TD>
+    <TD>A 2D array of strings, 5 per ROMS array
+to be added to the dart state vector.  If default_state_variables
+is .true., this is ignored.  When .false., this list of array
+names controls which arrays and the order that they are added
+to the state vector.  The 5 strings are:  
+<OL><LI>ROMS field name - must match netcdf name exactly</LI>
+    <LI>DART KIND name - must match a valid DART KIND_xxx exactly</LI>
+    <LI>TYPE_NN - will hopefully be obsolete, but for now NN 
+       should match the field name. </LI>
+    <LI>the string UPDATE.  at some future point, non-updatable
+       fields may become part of the state vector. </LI>
+    <LI>A numeric string listing the domain numbers this array
+       is part of.  The specical string 999 means all domains.
+       For example, '12' means domains 1 and 2, '13' means 1 and 3.</LI>
+</OL>
+</TD></TR>
+
+<TR><TD> ROMS_state_bounds </TD>
+    <TD>character(:, 4)          </TD>
+    <TD>A 2D array of strings, 4 per ROMS array.  During the copy of data to and
+from the ROMS netcdf file, variables listed here will have minimum and maximum
+values enforced.  The 4 strings are:
+<OL><LI>ROMS field name - must match netcdf name exactly</LI>
+    <LI>Minimum -- specified as a string but must be a numeric value
+       (e.g. '0.1')  Can be 'NULL' to allow any minimum value.</LI>
+    <LI>Maximum -- specified as a string but must be a numeric value
+       (e.g. '0.1')  Can be 'NULL' to allow any maximum value.</LI>
+    <LI>Action -- valid strings are 'CLAMP', 'FAIL'.  'FAIL' means if
+       a value is found outside the range, the code fails with an error.
+       'CLAMP' simply sets the out of range values to the given minimum
+       or maximum without error.</LI>
+</OL>
+</TD></TR>
+
+<TR><TD> output_state_vector </TD>
+    <TD> logical </TD>
+    <TD>Controls the output to netCDF files. If .true., output the raw dart state
+vector. If .false., output the prognostic flavor (gridded data) for easier
+plotting (recommended).
+</TD></TR>
+
+<TR><TD> num_domains </TD>
+    <TD> integer </TD>
+    <TD>Total number of ROMS domains, including nested domains.
+</TD></TR>
+
+<TR><TD> calendar_type </TD>
+    <TD> integer </TD>
+    <TD>Calendar type. Should be 3 (GREGORIAN) for ROMS.
+</TD></TR>
+
+<TR><TD> assimilation_period_seconds </TD>
+    <TD> integer </TD>
+    <TD>The time (in seconds) between assimilations. 
+This is modified if necessary to be an integer 
+multiple of the underlying model timestep.
+</TD></TR>
+    
+<TR><TD> periodic_x </TD>
+    <TD> logical </TD>
+    <TD>If .true., the grid is periodic in longitude, and points above the last
+grid cell and points below the first grid cell are wrapped.  Note this is not
+the same as a grid which crosses the prime meridian.  ROMS handles that with an
+offset in longitude and points beyond the last grid index are outside the domain.
+</TD></TR>
+
+<TR><TD> periodic_y </TD>
+    <TD> logical </TD>
+    <TD>Used for the Single Column Model to make the grid wrap in Y (see scm
+below).  This is NOT the same as wrapping in latitude (see polar below).
+</TD></TR>
+
+<TR><TD> polar </TD>
+    <TD> logical </TD>
+<TD>If .true., points at the poles are wrapped across the grid. It is not
+clear this is a good idea since the grid is degnerate here.
+</TD></TR>
+
+<TR><TD> scm </TD>
+    <TD> logical </TD>
+    <TD>If .true. the Single Column Model is assumed.  The grid is a single
+vertical column, and there are 9 cells arranged in a 3x3 grid.  See the ROMS
+documentation for more information on this configuration.  periodic_x and
+periodic_y should also be .true. in this case.
+</TD></TR>
+
+<TR><TD> sfc_elev_max_diff </TD>
+    <TD> real(r8) </TD>
+    <TD>If > 0, the maximum difference, in meters, between an observation marked
+as a 'surface obs' as the vertical type (with the surface elevation, in
+meters, as the numerical vertical location), and the surface elevation as
+defined by the model.  Observations further away from the surface than this
+threshold are rejected and not assimilated.   If the value is negative, this
+test is skipped.
+</TD></TR>
+
+<TR><TD> allow_obs_below_vol </TD>
+    <TD> logical </TD>
+    <TD>If .false. then if an observation with a vertical coordinate 
+of pressure or height (i.e. not a surface observation) is below the lowest 3d
+sigma level, it is outside the field volume and the interpolation routine rejects
+it.  If this is set to .true. and the observation is above the surface
+elevation but below the lowest field volume level, the code will extrapolate
+downward from data values at levels 1 and 2.
+</TD></TR>
+
+<TR><TD> center_search_half_length </TD>
+    <TD> real(r8) </TD>
+    <TD>The model_mod now contains two schemes for searching for a vortex 
+center location.  If the <strong>old</strong> scheme is compiled in, then this 
+and the center_spline_grid_scale namelist items are used. (Search code for
+'use_old_vortex'.) Half length (in meters) of a square box for searching the
+vortex center.
+</TD></TR>
+    
+<TR><TD> center_spline_grid_scale </TD>
+    <TD> integer </TD>
+    <TD>The model_mod now contains two schemes for searching for a vortex 
+center location.  If the <strong>old</strong> scheme is compiled in, then this 
+and the center_search_half_length namelist items are used.  (Search code for
+'use_old_vortex'.) Ratio of refining grid for spline-interpolation in
+determining the vortex center.
+</TD></TR>
+    
+<TR><TD> circulation_pres_level </TD>
+    <TD> real(r8) </TD>
+    <TD>The model_mod now contains two schemes for searching for a vortex 
+center location.  If the <strong>new</strong> scheme is compiled in, then this 
+and the circulation_radius namelist items are used.   (Search code for
+'use_old_vortex'.) Pressure, in pascals, of the level at which the
+circulation is computed when searching for the vortex center.
+</TD></TR>
+    
+<TR><TD> circulation_radius </TD>
+    <TD> real(r8) </TD>
+    <TD>The model_mod now contains two schemes for searching for a vortex 
+center location.  If the <strong>new</strong> scheme is compiled in, then this 
+and the circulation_pres_level namelist items are used.    (Search code for
+'use_old_vortex'.) Radius, in meters, of the circle over which the
+circulation calculation is done when searching for the vortex center.
+</TD></TR>
+    
+<TR><TD> vert_localization_coord </TD>
+    <TD> integer </TD>
+    <TD>Vertical coordinate for vertical localization.
+       <UL style="list-style: none;"> 
+           <LI>1 = model level</LI>
+           <LI>2 = pressure (in pascals)</LI>
+           <LI>3 = height (in meters)</LI>
+           <LI>4 = scale height (unitless)</LI>
+       </UL>
+</TD></TR>
+    
+</TBODY> 
+</TABLE>
+</div>
+
+<P> The following items used to be in the ROMS namelist
+but have been removed.  The first 4 are no longer needed,
+and the last one was moved to
+<a href="ROMS_DART_utilities/dart_to_ROMS.html#Namelist">&amp;dart_to_ROMS_nml</a>
+in 2010.
+In the Lanai release having these values in the namelist
+does not cause a fatal error, but more recent versions of
+the code will fail if any of these values are specified.
+Remove them from your namelist to avoid errors.
+</P>
+
+<div>
+<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
+<THEAD align=left>
+<TR><TH> Item </TH>
+    <TH> Type </TH>
+    <TH> Description </TH> </TR>
+</THEAD>
+
+<TBODY valign=top>
+
+<TR><TD> surf_obs </TD>
+    <TD> logical </TD>
+    <TD>OBSOLETE -- now an error to specify this.
+</TD></TR>
+
+<TR><TD> soil_data </TD>
+    <TD> logical </TD>
+    <TD>OBSOLETE -- now an error to specify this.
+</TD></TR>
+
+<TR><TD> h_diab </TD>
+    <TD> logical </TD>
+    <TD>OBSOLETE -- now an error to specify this.
+</TD></TR>
+
+<TR><TD> num_moist_vars </TD>
+    <TD> integer </TD>
+    <TD>OBSOLETE -- now an error to specify this.
+</TD></TR>
+
+<TR><TD> adv_mod_command </TD>
+    <TD> character(len=32) </TD>
+    <TD>OBSOLETE -- This variable was moved to the 
+<a href="ROMS_DART_utilities/dart_to_ROMS.html#Namelist">&amp;dart_to_ROMS_nml</a>
+namelist. Now an error to specify this here.
+</TD></TR>
+
+</TBODY> 
+</TABLE>
+</div>
+
+<br />
+<br />
+
+<!--==================================================================-->
+
+<A NAME="Interface"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>OTHER MODULES USED</H2>
+<PRE>
+types_mod
+time_manager_mod
+threed_sphere/location_mod
+utilities_mod
+obs_kind_mod
+map_utils
+netcdf
+typesizes
+</PRE>
+
+<!--==================================================================-->
+<!-- Declare all public entities ...                                  -->
+<!-- duplicate public routines template as many times as necessary    -->
+<!-- make sure you replace all yyyroutine?? strings                   -->
+<!--==================================================================-->
+<!--Note to authors. The first row of the table is different.         -->
+<!--==================================================================-->
+
+<hr />
+<H2>PUBLIC INTERFACES</H2>
+
+<TABLE>
+<TR><TD><em class=call>use model_mod, only : </em></TD>
+                   <TD><A HREF="#get_model_size">get_model_size</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_state_meta_data">get_state_meta_data</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#model_interpolate">model_interpolate</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_model_time_step">get_model_time_step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#static_init_model">static_init_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_state">pert_model_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#adv_1step">adv_1step</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#end_model">end_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_time">init_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#init_conditions">init_conditions</A></TD></TR>
+</TABLE>
+
+<P>
+The last 4 interfaces are only required for low-order models where advancing
+the model can be done by a call to a subroutine. The ROMS model only advances by
+executing the program ROMS.exe. Thus the last 4 interfaces only appear as stubs
+in the ROMS module.
+<br><br>
+The interface pert_model_state is presently not provided for ROMS. The initial
+ensemble has to be generated off-line. If coherent structures are not required,
+the filter can generate an ensemble with uncorrelated random Gaussian noise of
+0.002. This is of course not appropriate for a model like ROMS which has
+variables expressed in a wide range of scales. It is thus recommended to
+generate the initial ensemble off-line, perhaps with the tools provided in
+models/ROMS/PERTURB/3DVAR-COVAR.
+</P>
+
+<P>
+   A note about documentation style.
+   Optional arguments are enclosed in brackets
+   <em class=optionalcode>[like this]</em>.
+</P>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_model_size"></A>
+<br>
+<div class=routine>
+<em class=call>model_size = get_model_size( )</em>
+<pre>
+integer :: <em class=code>get_model_size</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the length of the model state vector as an integer.
+This includes all nested domains.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>model_size</em></TD>
+    <TD>The length of the model state vector.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_state_meta_data"></A>
+<br>
+<div class=routine>
+<em class=call>call get_state_meta_data (index_in, location 
+                          <em class=optionalcode>[,&nbsp;var_type_out,&nbsp;id_out]</em> )</em>
+<pre>
+integer,             intent(in)  :: <em class=code>index_in</em>
+type(location_type), intent(out) :: <em class=code>location</em>
+integer, optional,   intent(out) :: <em class=optionalcode>var_type_out</em>
+integer, optional,   intent(out) :: <em class=optionalcode>id_out</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns metadata about a given element, indexed by index_in, in the model 
+state vector. The location defines where the state variable is located 
+while the type of the variable (for instance temperature, 
+or u wind component) is returned by var_type. The integer values used to 
+indicate different variable types in var_type are themselves defined as 
+public interfaces to model_mod if required.
+The last optional argument is the ROMS domain identification number - 
+obviously this is unique to the ROMS version of this <em>required</em> 
+routine.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>index_in&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Index of state vector element about which information is requested.</TD></TR>
+
+<TR><TD valign=top><em class=code>location</em></TD>
+    <TD>Returns location of indexed state variable. The location should 
+use a location_mod that is appropriate for the model domain. For 
+realistic atmospheric models, for instance, a three-dimensional 
+spherical location module that can represent height in a variety  
+of ways is provided. </TD></TR>
+
+<TR><TD valign=top><em class=optionalcode>var_type_out</em></TD>
+    <TD>Returns the type of the indexed state variable as an optional
+    argument.</TD></TR>
+
+<TR><TD valign=top><em class=optionalcode>id_out</em></TD>
+    <TD>Returns the ROMS domain identification number of the indexed state
+    variable as an optional argument.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="model_interpolate"></A>
+<br>
+<div class=routine>
+<em class=call> call model_interpolate(x, location, obs_kind, obs_val,
+istatus)</em>
+<pre>
+real(r8), dimension(:), intent(in)  :: <em class=code>x</em>
+type(location_type),    intent(in)  :: <em class=code>location</em>
+integer,                intent(in)  :: <em class=code>obs_kind</em>
+real(r8),               intent(out) :: <em class=code>obs_val</em>
+integer,                intent(out) :: <em class=code>istatus</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given model state, returns the value of observation type interpolated to a given 
+location by a method of the model's choosing. All observation kinds defined in
+obs_kind_mod are supported. In the case where the observational operator is not
+defined at the given location (e.g. the observation is below the model surface
+or outside the domain), obs_val is returned as -888888.0 and istatus =
+1. Otherwise, istatus = 0. The interpolation is performed in the domain with
+the highest resolution containing the observation.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>x</em></TD>
+    <TD>A model state vector.</TD></TR>
+
+<TR><TD valign=top><em class=code>location&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Location to which to interpolate.</TD></TR>
+
+<TR><TD valign=top><em class=code>obs_kind</em></TD>
+    <TD>Integer indexing which type of observation is to be
+    interpolated.</TD></TR>
+
+<TR><TD valign=top><em class=code>obs_val</em></TD>
+    <TD> The interpolated value from the model.</TD></TR>
+
+<TR><TD valign=top><em class=code>istatus</em></TD>
+    <TD>Integer flag indicating the result of the interpolation.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_model_time_step"></A>
+<br>
+<div class=routine>
+<em class=call>var = get_model_time_step()</em>
+<pre>
+type(time_type) :: <em class=code>get_model_time_step</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Returns the model base time step as a time_type. For the model ROMS, it returns
+the time step used for domain 1 (usually the largest time step among all
+domains because domain 1 is the coarser grid). The time step is read from
+the ROMSinput_d01 file (used to be namelist.input). In the long run, 
+a more general extended interface may be required that specifies the models 
+range of time stepping possibilities.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>var&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Smallest time step of model.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="static_init_model"></A>
+<br>
+<div class=routine>
+<em class=call>call static_init_model()</em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Used for runtime initialization of the model. This is the first call 
+made to the model by any DART compliant assimilation routine. It reads the
+model
+namelist parameters, set the calendar type (the GREGORIAN calendar is used with
+the ROMS model), and determine the dart vector length. This subroutine requires
+that ROMSinput_d01, ROMSinput_d02, ... (one file for each domain) be present in
+the
+working directory to retrieve model information (grid dimensions and spacing,
+time step, pressure at the top of the model, map projection parameters, etc).
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="nc_write_model_atts"></A>
+<br>
+<div class=routine>
+<em class=call>ierr = nc_write_model_atts(ncFileID)</em>
+<pre>
+integer             :: <em class=code>nc_write_model_atts</em>
+integer, intent(in) :: <em class=code>ncFileID</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Function to write model specific attributes to a netCDF file. At present, DART 
+is using the NetCDF format to output diagnostic information. This is not a 
+requirement, and models could choose to provide output in other formats. 
+This function writes the metadata associated with the model to a NetCDF file 
+opened to a file identified by ncFileID.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>ncFileID&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Integer file descriptor to previously-opened netCDF file.</TD></TR>
+
+<TR><TD valign=top><em class=code>ierr</em></TD>
+    <TD>Returns a 0 for successful completion.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="nc_write_model_vars"></A>
+<br>
+<div class=routine>
+<em class=call>ierr = nc_write_model_vars(ncFileID, statevec, copyindex, timeindex)</em>
+<pre>
+integer                            :: <em class=code>nc_write_model_vars</em>
+integer,                intent(in) :: <em class=code>ncFileID</em>
+real(r8), dimension(:), intent(in) :: <em class=code>statevec</em>
+integer,                intent(in) :: <em class=code>copyindex</em>
+integer,                intent(in) :: <em class=code>timeindex</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Writes a copy of the state variables to a netCDF file. Multiple copies
+of the state for a given time are supported, allowing, for instance,
+a single file to include multiple ensemble estimates of the state.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>ncFileID</em></TD>
+    <TD>file descriptor to previously-opened netCDF file.</TD></TR>
+
+<TR><TD valign=top><em class=code>statevec</em></TD>
+    <TD>A model state vector.</TD></TR>
+
+<TR><TD valign=top><em class=code>copyindex&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD> Integer index of copy to be written.</TD></TR>
+
+<TR><TD valign=top><em class=code>timeindex</em></TD>
+    <TD>The timestep counter for the given state.</TD></TR>
+
+<TR><TD valign=top><em class=code>ierr</em></TD>
+    <TD>Returns 0 for normal completion.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="pert_model_state"></A>
+<br>
+<div class=routine>
+<em class=call>call pert_model_state(state, pert_state, interf_provided)</em>
+<pre>
+real(r8), dimension(:), intent(in)  :: <em class=code>state</em>
+real(r8), dimension(:), intent(out) :: <em class=code>pert_state</em>
+logical,                intent(out) :: <em class=code>interf_provided</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given a model state, produces a perturbed model state. This is used to
+generate initial ensemble conditions perturbed around some control
+trajectory state when one is preparing to spin-up ensembles. A DART
+compliant model can choose not to provide an implementation of this
+algorithm and use the default mechanism in DART by simply returning .false.
+as a returned value for the interf_provided argument. In this case, DART
+perturbs the state to generate ensemble members by adding a random sample
+from a N(0.0, 0.002) distribution independently to each state variable.
+Models should override this if some structure is required for perturbations
+or if the magnitude of perturbations in DART is too large. It is thus
+recommended to generate the initial ensemble off-line, perhaps with the
+tools provided in models/ROMS/PERTURB/3DVAR-COVAR.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>state</em></TD>
+    <TD>State vector to be perturbed.</TD></TR>
+
+<TR><TD valign=top><em class=code>pert_state</em></TD>
+    <TD>Perturbed state vector is returned. </TD></TR>
+
+<TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Return false to have DART perturb state .</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_maxdist_init"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_maxdist_init(gc, maxdist)</em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+real(r8),             intent(in)    :: <em class=code>maxdist</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Pass-through to the 3-D sphere locations module. See
+<A HREF="../../location/threed-sphere/location_mod.html#get_close_maxdist_init">
+get_close_maxdist_init()</A> for the documentation of this subroutine.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_obs_init"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_obs_init(gc, num, obs)</em>
+<pre>
+type(get_close_type), intent(inout) :: <em class=code>gc</em>
+integer,              intent(in)    :: <em class=code>num</em>
+type(location_type),  intent(in)    :: <em class=code>obs(num)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Pass-through to the 3-D sphere locations module. See
+<A HREF="../../location/threed-sphere/location_mod.html#get_close_obs_init">
+get_close_obs_init()</A> for the documentation of this subroutine.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="get_close_obs"></A>
+<br>
+<div class=routine>
+<em class=call>call get_close_obs(gc, base_obs_loc, base_obs_kind,
+  obs, obs_kind, num_close, close_ind
+  <em class=optionalcode>[,&nbsp;dist]</em>) </em>
+<pre>
+type(get_close_type), intent(in)  :: <em class=code>gc</em>
+type(location_type),  intent(in)  :: <em class=code>base_obs_loc</em>
+integer,              intent(in)  :: <em class=code>base_obs_kind</em>
+type(location_type),  intent(in)  :: <em class=code>obs(:)</em>
+integer,              intent(in)  :: <em class=code>obs_kind(:)</em>
+integer,              intent(out) :: <em class=code>num_close</em>
+integer,              intent(out) :: <em class=code>close_ind(:)</em>
+real(r8), optional,   intent(out) :: <em class=optionalcode>dist(:)</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Calls the 3-D sphere locations module to get a list of potentially
+close state vector points, and again for unassimilated observations.
+See <A HREF="../../location/threed-sphere/location_mod.html#get_close_obs">
+get_close_obs()</A> for the documentation of the locations module
+version of this code.  Then,
+if vertical localization is enabled, this code converts all vertical
+locations to the selected vertical type (&amp;model_nml::vert_localization_coord).
+It then computes a real 3D distance and returns it to the calling code.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="ens_mean_for_model"></A>
+<br>
+<div class=routine>
+<em class=call>call ens_mean_for_model(ens_mean)</em>
+<pre>
+real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+A local copy is kept and used during other computations in the 
+model_mod code.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>ens_mean&nbsp;&nbsp;&nbsp;</em></TD>
+    <TD>Ensemble mean state vector</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="adv_1step"></A>
+<br>
+<div class=routine>
+<em class=call>call adv_1step(x, time)</em>
+<pre>
+real(r8), dimension(:),   intent(inout) :: <em class=code> x </em>
+type(time_type),          intent(in)    :: <em class=code> time </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+This operation is not defined for the ROMS model. 
+If called it will throw a fatal error.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>x</em></TD>
+    <TD>State vector of length model_size.</TD></TR>
+
+<TR><TD valign=top><em class=code>time</em></TD>
+    <TD>Gives time of the initial model state.
+    </TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="end_model"></A>
+<br>
+<div class=routine>
+<em class=call>call end_model( )</em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Called when use of a model is completed to clean up storage, etc. 
+A stub is provided for the ROMS model.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_time"></A>
+<br>
+<div class=routine>
+<em class=call>call init_time(i_time) </em>
+<pre>
+type(time_type),        intent(in)  :: <em class=code> i_time </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Not supported for the ROMS model.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<A NAME="init_conditions"></A>
+<br>
+<div class=routine>
+<em class=call>call init_conditions( x )</em>
+<pre>
+real(r8), dimension(:), intent(out) :: <em class=code> x </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Not supported for the ROMS model.  Will throw a fatal error if called.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>x</em></TD>
+    <TD>Model state vector.</TD></TR>
+
+</TABLE>
+
+</div>
+<br>
+
+<!--==================================================================-->
+<!-- Describe the Files Used by this module.                          -->
+<!--==================================================================-->
+
+<A NAME="FilesUsed"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FILES</H2>
+<UL> <LI>model_nml in input.nml
+     <LI>ROMSinput_d01, ROMSinput_d02, ... (one file for each domain)
+     <LI>netCDF output state diagnostics files
+</UL>
+
+<!--==================================================================-->
+<!-- Cite references, if need be.                                     -->
+<!--==================================================================-->
+
+<A NAME="References"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>REFERENCES</H2>
+<a href="http://www.mmm.ucar.edu/ROMS/users/docs/user_guide/contents.html">
+http://www.mmm.ucar.edu/ROMS/users/docs/user_guide/contents.html</a>
+
+<!--==================================================================-->
+<!-- Describe all the error conditions and codes.                     -->
+<!--==================================================================-->
+
+<A NAME="Errors"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>ERROR CODES and CONDITIONS</H2>
+<div class=errors>
+<TABLE border=1 cellspacing=1 cellpadding=10 width=100%>
+<TR><TH>Routine</TH><TH>Message</TH><TH>Comment</TH></TR>
+<TR><!-- routine --><TD VALIGN=top>static_init_model <BR>
+                                   nc_write_model_vars</TD>
+    <!-- message --><TD VALIGN=top>num_moist_vars is too large</TD>
+    <!-- comment --><TD VALIGN=top>The maximum number of moist variable in
+    ROMSV2.1 is 7</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>static_init_model</TD>
+    <!-- message --><TD VALIGN=top>'Please put ROMSinput_d0'//idom//' in the
+    work directory.'</TD>
+    <!-- comment --><TD VALIGN=top>One of the ROMSinput_d0# is missing in the
+    work directory</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>static_init_model </TD>
+    <!-- message --><TD VALIGN=top>Map projection no supported</TD>
+    <!-- comment --><TD VALIGN=top>Try PROJ_LATLON(0), PROJ_LC(1), PROJ_PS(2),
+    PROJ_MERC(3)</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>static_init_model <BR>
+                                   nc_write_model_atts <BR>
+                                   nc_write_model_vars <BR></TD>
+    <!-- message --><TD VALIGN=top>Various NetCDF-f90 interface error
+    messages</TD>
+    <!-- comment --><TD VALIGN=top>From one of the NetCDF calls in the named
+    routine</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>get_state_meta_data </TD>
+    <!-- message --><TD VALIGN=top>dart index out of range</TD>
+    <!-- comment --><TD VALIGN=top>Unlikely. Would indicate a serious bug in
+    the code</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>model_interpolate <BR> get_dist_ROMS </TD>
+    <!-- message --><TD VALIGN=top>wrong option for which_vert</TD>
+    <!-- comment --><TD VALIGN=top>See which_vert description in
+    location/threed_sphere/location_mod.html </TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>model_interpolate </TD>
+    <!-- message --><TD VALIGN=top>'do not recognize obs kind ',obs_kind</TD>
+    <!-- comment --><TD VALIGN=top>See list in 'use obs_kind_mod' statement in
+    model_mod.f90</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>get_ROMS_index </TD>
+    <!-- message --><TD VALIGN=top>'Indices ',i,j,k,' exceed grid dimensions:
+    ',#1,#2,#3 </TD>
+    <!-- comment --><TD VALIGN=top>One of the grid indices exceeds the
+    corresponding dimension for the var_type input. Unlikely to happen but
+    would indicate a serious bug in the code</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>get_dist_ROMS </TD>
+    <!-- message --><TD VALIGN=top>Unable to define vloc</TD>
+    <!-- comment --><TD VALIGN=top>The vertical location is below the model
+    surface or above the model lid</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>nc_write_model_atts</TD>
+    <!-- message --><TD VALIGN=top>Time dimension ID # must match Unlimited
+    Dimension ID #</TD>
+    <!-- comment --><TD VALIGN=top>NetCDF file writing error</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>read_dt_from_ROMS_nml</TD>
+    <!-- message --><TD VALIGN=top>Please put namelist.input in the work
+    directory</TD>
+    <!-- comment --><TD VALIGN=top>The file namelist.input is missing in the
+    work directory</TD>
+</TR>
+<TR><!-- routine --><TD VALIGN=top>read_dt_from_ROMS_nml</TD>
+    <!-- message --><TD VALIGN=top>'max_dom in namelist.input =
+    ',max_dom'num_domains in input.nml  = ',num_domains'Make them
+    consistent.'</TD>
+    <!-- comment --><TD VALIGN=top>The number of ROMS domains in namelist.input
+    and in input.nml do not match</TD>
+</TR>
+
+</TABLE>
+</div>
+
+<H2>KNOWN BUGS</H2>
+<P>
+Only the Lambert projection (MAP_PROJ = 1) is working. Other map projections
+(0=none, 2=polar, 3=Mercator) are likely to break the code.
+</P>
+
+<!--==================================================================-->
+<!-- Describe Future Plans.                                           -->
+<!--==================================================================-->
+
+<A NAME="FuturePlans"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>FUTURE PLANS</H2>
+<P>
+none at this time
+</P>
+
+<!--==================================================================-->
+<!-- PrivateComponents                                                -->
+<!--==================================================================-->
+
+<A NAME="PrivateComponents"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>PRIVATE COMPONENTS</H2>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<br>
+<div class=routine>
+<em class=call> ind = get_ROMS_index(i,j,k,var_type,id)</em>
+<pre>
+integer                               :: <em class=code>get_ROMS_index </em>
+integer,                  intent(in)  :: <em class=code>i,j,k,var_type,id
+</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given grid indices, variable type, and domain identification number, returns
+the index in the model state vector as an integer.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<br>
+<div class=routine>
+<em class=call> dist = get_dist_ROMS( i, j, k, var_type, o_loc, id, x )</em>
+<pre>
+real(r8)                              :: <em class=code>get_dist_ROMS </em>
+integer,                  intent(in)  :: <em class=code>i,j,k,var_type,id
+</em>
+type(location_type),      intent(in)  :: <em class=code>o_loc </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given grid indices, variable type, and domain identification number, computes
+the distance to the observation at location o_loc.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<br>
+<div class=routine>
+<em class=call> call get_ROMS_horizontal_location( i, j, var_type, id, long, lat
+)</em>
+<pre>
+integer,                  intent(in)  :: <em class=code>i,j,var_type,id </em>
+real(r8),                 intent(out) :: <em class=code>long, lat </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given horizontal grid indices, variable type, and domain identification number,
+returns the longitude and latitude in degrees.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<br>
+<div class=routine>
+<em class=call> call toGrid (x, j, dx, dxm)</em>
+<pre>
+real(r8),                 intent(in)  :: <em class=code>x </em>
+real(r8),                 intent(out) :: <em class=code>dx, dxm </em>
+integer ,                 intent(out) :: <em class=code>j </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Given position x, find nearest grid point j (but smaller than or equal to x)
+and calculate its distance to grid j and j+1.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<br>
+<div class=routine>
+<em class=call> call pres_to_zk(pres, mdl_v, n3, zk)</em>
+<pre>
+real(r8),                  intent(in)  :: <em class=code>pres </em>
+integer                    intent(in)  :: <em class=code>n3 </em>
+real(r8), dimension(0:n3), intent(in)  :: <em class=code>mdl_v </em>
+real(r8),                  intent(out) :: <em class=code>zk </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Calculate the position zk on half (mass) levels in the profile mdl_v
+corresponding to pressure location pres.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<br>
+<div class=routine>
+<em class=call> call height_to_zk(obs_v, mdl_v, n3, zk)</em>
+<pre>
+real(r8),                  intent(in)  :: <em class=code>obs_v </em>
+integer                    intent(in)  :: <em class=code>n3 </em>
+real(r8), dimension(0:n3), intent(in)  :: <em class=code>mdl_v </em>
+real(r8),                  intent(out) :: <em class=code>zk </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Calculate the position zk on half (mass) levels in the profile mdl_v
+corresponding to height location obs_v.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<br>
+<div class=routine>
+<em class=call> call
+get_model_pressure_profile(i,j,dx,dy,dxm,dym,n,x,id,v_p)</em>
+<pre>
+integer                   intent(in)  :: <em class=code>i,j,n,id </em>
+real(r8),                 intent(in)  :: <em class=code>dx,dy,dxm,dym </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
+real(r8), dimension(0:n), intent(out) :: <em class=code>v_p </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Extract the pressure profile at position (i+dx, j+dy) on the
+non-staggered vertical grid (half (mass) levels).
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<br>
+<div class=routine>
+<em class=call> vloc = model_pressure(i,j,k,id,var_type,x)</em>
+<pre>
+real(r8),                             :: <em class=code>model_pressure </em>
+integer                   intent(in)  :: <em class=code>i,j,k,id,var_type
+</em>
+real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Calculate the pressure at grid point (i,j,k), domain id. The grid is defined
+according to var_type.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<br>
+<div class=routine>
+<em class=call> pres = model_pressure_t(i,j,k,id,x)</em>
+<pre>
+real(r8)                              :: <em class=code>model_pressure_t </em>
+integer                   intent(in)  :: <em class=code>i,j,k,id </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Calculate the pressure at grid point (i,j,k), domain id, on mass point (half
+(mass) levels, T-point).
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<br>
+<div class=routine>
+<em class=call> rho = model_rho_t(i,j,k,id,x)</em>
+<pre>
+real(r8)                              :: <em class=code>model_rho_t </em>
+integer                   intent(in)  :: <em class=code>i,j,k,id </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Calculate the total density at grid point (i,j,k), domain id, on mass point
+(half (mass) levels, T-point).
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<br>
+<div class=routine>
+<em class=call> call
+get_model_height_profile(i,j,dx,dy,dxm,dym,n,x,id,fld)</em>
+<pre>
+integer                   intent(in)  :: <em class=code>i,j,n,id </em>
+real(r8),                 intent(in)  :: <em class=code>dx,dy,dxm,dym </em>
+real(r8), dimension(:),   intent(in)  :: <em class=code>x </em>
+real(r8), dimension(n),   intent(out) :: <em class=code>fld </em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Extract the height profile at position (i+dx, j+dy) on the
+non-staggered vertical grid.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<br>
+<div class=routine>
+<em class=call> vloc = model_height(i,j,k,id,var_type,x)</em>
+<pre>
+real(r8)                              :: <em class=code>model_height</em>
+integer                   intent(in)  :: <em class=code>i,j,k,id,var_type</em>
+real(r8), dimension(:),   intent(in)  :: <em class=code>x</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Calculate the height at grid point (i,j,k), domain id. The grid is defined
+according to var_type.
+</P>
+
+</div>
+<br>
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+
+<br>
+<div class=routine>
+<em class=call> call read_dt_from_ROMS_nml( )</em>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Read the ROMS model time step from namelist.input for all domains.
+</P>
+
+</div>
+<br>
+
+<!--==================================================================-->
+<!-- Legalese & Metadata                                              -->
+<!--==================================================================-->
+
+<A NAME="Legalese"></A>
+<div class="top">[<a href="#">top</a>]</div><hr />
+<H2>Terms of Use</H2>
+
+<P>
+DART software - Copyright 2004 - 2013 UCAR.<br>
+This open source software is provided by UCAR, "as is",<br>
+without charge, subject to all terms of use at<br>
+<a href="http://www.image.ucar.edu/DAReS/DART/DART_download">
+http://www.image.ucar.edu/DAReS/DART/DART_download</a>
+</P>
+
+<TABLE border=0 cellpadding=0 width=100% summary="">
+<TR><TD>Contact:       </TD><TD> Hui Liu, Glen Romine, Chris Synder, David Dowell </TD></TR>
+<TR><TD>Revision:      </TD><TD> $Revision$ </TD></TR>
+<TR><TD>Source:        </TD><TD> $URL$ </TD></TR>
+<TR><TD>Change Date:   </TD><TD> $Date$ </TD></TR>
+<TR><TD valign=top>Change&nbsp;history:&nbsp;</TD><TD> try "svn&nbsp;log" or "svn&nbsp;diff" </TD></TR>
+</TABLE>
+
+<!--==================================================================-->
+
+</BODY>
+</HTML>

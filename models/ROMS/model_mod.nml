@@ -1,23 +1,23 @@
-&model_nml
-   analysis_time                = '2001010106',
-   output_state_vector          = .true.,
-   assimilation_period_days     = 7,
-   assimilation_period_seconds  = 0,
-   model_perturbation_amplitude = 0.2,
-   NX                     = 43,  !grid size at rho points
-   NY                    = 82,
-   NZ                      = 16,
-   hc                     = 10.0,
-   model_restart_filename         = 'roms_restart.nc',
-   grid_definition_filename = 'roms_grid.nc'
-   /
 
-&roms_vars_nml
-   roms_state_variables = 'temperature',  'KIND_TEMPERATURE',
-                          'salinity',     'KIND_SALINITY',
-                          'rho',          'KIND_DENSITY',
-                          'u',            'KIND_EDGE_NORMAL_SPEED',
-                          'h',            'KIND_SEA_SURFACE_HEIGHT',
-                          'tracer1',      'KIND_TRACER_CONCENTRATION'
-   /
+# Each variable must have 5 entries.
+# 1: variable name
+# 2: DART KIND
+# 3: minimum value - as a character string - if none, use 'NA'
+# 4: maximum value - as a character string - if none, use 'NA'
+# 5: does the variable get updated in the restart file or not ...
+#    only variables from restart files may be updated.
+#    'UPDATE' =>        update the variable in the restart file
+#    'NO_COPY_BACK' => do not update the variable in the restart file
+#    all these variables will be updated INTERNALLY IN DART
+#    only variables marked 'UPDATE' will be modified for ROMS.
+
+&model_nml
+   roms_filename               = 'roms_init.nc'
+   assimilation_period_days    = 1
+   assimilation_period_seconds = 0
+   vert_localization_coord     = 3
+   output_state_vector         = .false.
+   debug                       = 0
+   variables                   = ''
+/
 

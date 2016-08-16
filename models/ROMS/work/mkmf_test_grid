@@ -1,0 +1,18 @@
+#!/bin/csh
+#
+# DART software - Copyright 2004 - 2013 UCAR. This open source software is
+# provided by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id: mkmf_test_grid 7097 2014-08-01 21:53:34Z thoar $
+
+../../../mkmf/mkmf -p test_grid -t ../../../mkmf/mkmf.template \
+ -a "../../.." path_names_test_grid
+
+exit $status
+
+# <next few lines under version control, do not edit>
+# $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_roms/models/ROMS/work/mkmf_test_grid $
+# $Revision: 7097 $
+# $Date: 2014-08-01 15:53:34 -0600 (Fri, 01 Aug 2014) $
+
