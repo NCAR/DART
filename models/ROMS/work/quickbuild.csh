@@ -1,4 +1,4 @@
-#!/bin/csh
+#!/bin/csh 
 #
 # DART software - Copyright 2004 - 2013 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
@@ -13,11 +13,21 @@
 # so this MUST be run first.
 #----------------------------------------------------------------------
 
+# 1 is true, 0 is false
+
+if ( $#argv == 1 && "$1" == "-mpi" ) then
+  set with_mpi = 1 
+else if ( $#argv == 1 && "$1" == "-nompi" ) then
+  set with_mpi = 0
+else  # default
+  set with_mpi = 1
+endif
+
 \rm -f preprocess *.o *.mod
 \rm -f ../../../obs_def/obs_def_mod.f90
 \rm -f ../../../obs_kind/obs_kind_mod.f90
 
-set MODEL = "roms"
+set MODEL = "ROMS"
 
 @ n = 1
 
@@ -42,6 +52,12 @@ foreach TARGET ( mkmf_* )
    switch ( $TARGET )
    case mkmf_preprocess:
       breaksw
+   case mkmf_filter:
+   case mkmf_model_mod_check:
+   case mkmf_perfect_model_obs:
+      if ( $with_mpi ) then
+         breaksw
+      endif
    default:
       @ n = $n + 1
       echo
@@ -50,35 +66,28 @@ foreach TARGET ( mkmf_* )
       \rm -f ${PROG}
       csh $TARGET || exit $n
       make        || exit $n
+      #echo 'removing all files between serial builds'
+      #\rm -f *.o *.mod
       breaksw
    endsw
 end
 
-\rm -f *.o *.mod
+\rm -f *.o *.mod input.nml*_default
 
-if ( $#argv == 1 && "$1" == "-mpi" ) then
-  echo ""
-  echo "======================================================================"
+if ( $with_mpi ) then
   echo "Success: All single task DART programs compiled."  
   echo "Script now compiling MPI parallel versions of the DART programs."
-  echo "======================================================================"
-  echo ""
-else if ( $#argv == 1 && "$1" == "-nompi" ) then
-  echo ""
-  echo "======================================================================"
+else if ( ! $with_mpi ) then
   echo "Success: All single task DART programs compiled."  
   echo "Script is exiting without building the MPI version of the DART programs."
-  echo "======================================================================"
-  echo ""
   exit 0
 else
   echo ""
-  echo "======================================================================"
   echo "Success: All single task DART programs compiled."  
   echo "Script now compiling MPI parallel versions of the DART programs."
-  echo "Run the quickbuild.csh script with a -nompi argument"
-  echo "to bypass compiling with MPI."
-  echo "======================================================================"
+  echo "Run the quickbuild.csh script with a -nompi argument or"
+  echo "edit the quickbuild.csh script and add an exit line"
+  echo "to bypass compiling with MPI to run in parallel on multiple cpus."
   echo ""
 endif
 
@@ -92,38 +101,23 @@ endif
 # Build the MPI-enabled target(s) 
 #----------------------------------------------------------------------
 
-\rm -f filter wakeup_filter
+foreach TARGET ( mkmf_filter mkmf_model_mod_check mkmf_perfect_model_obs )
 
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_filter"
-csh   mkmf_filter -mpi
-make
+   set PROG = `echo $TARGET | sed -e 's#mkmf_##'`
 
-if ($status != 0) then
+   @ n = $n + 1
    echo
-   echo "If this died in mpi_utilities_mod, see code comment"
-   echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
-   echo
-   exit $n
-endif
+   echo "---------------------------------------------------"
+   echo "${MODEL} build number ${n} is ${PROG}" 
+   \rm -f ${PROG}
+   csh $TARGET -mpi || exit $n
+   make             || exit $n
+   #echo 'removing all files between parallel builds'
+   #\rm -f *.o *.mod
 
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_wakeup_filter"
-csh  mkmf_wakeup_filter -mpi
-make || exit $n
+end
 
-\rm -f *.o *.mod
-
-echo
-echo 'time to run filter here:'
-echo ' for lsf run "bsub < runme_filter"'
-echo ' for pbs run "qsub runme_filter"'
-echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
-echo ' for mpich run "mpd" once, then "runme_filter"'
+\rm -f *.o *.mod input.nml*_default
 
 exit 0
 
