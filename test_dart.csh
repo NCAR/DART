@@ -11,56 +11,21 @@ set clobber
 
 switch ( $#argv )
    case 0:
-      # supplying no args - default is 'TestDir'
-      # The results of each run-time test will be stored in this directory.
-      # This will facilitate checks across platforms.
-
-      set BASEOUTPUTDIR = TestDir
+      # supplying no args - ok
       breaksw
-   case 1:
-      # supplying one argument -- the base output directory.
-      # The results of each run-time test will be stored in this directory.
-      # This will facilitate checks across platforms.
-      set BASEOUTPUTDIR = $1
-
-      breaksw
+      
    default:
       echo " "
-      echo "usage: $SNAME:t OutputDirectory"
+      echo "usage: $SNAME:t"
       echo " "
-      echo "This script compiles ?every? program unit for a wide range of models and then"
-      echo "does relatively extensive tests of the L96 programs with a variety of options."
-      echo "The L96 tests are best run from a 'clean' starting point - i.e. one that"
-      echo "is as close to the distribution state as possible. Picking up in the middle"
-      echo "is not particularly easy. I always run the script end-to-end. TJH"
-      echo " "
-      echo "An attempt is made to preserve the state of the input.nml, obs_seq.xx?, and"
-      echo "some initial conditions files. If the script completes without errors, your"
-      echo "original files are reinstated. If not, your lorenz_96/work directory is a mess."
-      echo " "
+      echo "This script compiles all available models for this branch of the DART code."
       echo "This must be run from the top-level 'DART' directory."
-      echo " "
-      echo "The OutputDirectory will contain the output of the L96 runs and is "
-      echo "intended to be useful for comparing results from multiple compilers/platforms."
-      echo "If the directory exists, it is guaranteed that the contents will be removed ..."
-      echo "If you specify a relative filename for the directory, look in "
-      echo "DART/models/lorenz_96/work/ ..."
-      echo " "
-      echo "Some of the tests should be bit-wise reproducible -- if this fails ... "
-      echo "$SNAME:t will abort."
-      echo " "
-      echo "This is a pretty verbose process, so if you are logging the output,"
-      echo "make sure you have plenty of space:"
-      echo " "
-      echo "./$SNAME:t TestDir |& tee DART_test.log"
-      echo " "
-      echo "can easily result in a 750 Kb log file"
       exit 1
       breaksw
 endsw
 
-if ( ! -d models/lorenz_96 ) then
-   echo "models/lorenz_96 does not exist. $SNAME:t must be run from the top-level"
+if ( ! -d models ) then
+   echo "models does not exist. $SNAME:t must be run from the top-level"
    echo "DART directory -- please try again."
    exit 2
 else
@@ -132,6 +97,7 @@ if ( 1 == 1 ) then
 foreach MODEL ( \
   bgrid_solo \
   cam \
+  cice \
   cm1 \
   lorenz_96 \
   mpas_atm \
@@ -147,6 +113,9 @@ foreach MODEL ( \
     cd ${DARTHOME}/models/${MODEL}/work
 
     ./quickbuild.csh ${QUICKBUILD_ARG} || exit 3
+
+    echo "Trying to run pmo for model $MODEL as a test"
+    ./perfect_model_obs
 
     echo "Removing the newly-built objects ..."
     ${REMOVE} *.o *.mod 
