@@ -10,7 +10,7 @@ program obs_loop
 ! and copies them to a new output file.   this is intended to be a
 ! template for programs that want to alter existing obs in some simple way.
 
-use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
+use        types_mod, only : r8, missing_r8, metadatalength
 use    utilities_mod, only : register_module, initialize_utilities,            &
                              find_namelist_in_file, check_namelist_read,       &
                              error_handler, E_ERR, E_MSG, nmlfileunit,         &

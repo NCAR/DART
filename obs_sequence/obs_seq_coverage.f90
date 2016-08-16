@@ -1225,7 +1225,7 @@ integer :: voxelVarID, TimeVarID, NTimesVarID, &
 real(digits12), allocatable, dimension(:) :: mytimes
 integer, dimension(num_voxels) :: gooduns    ! Cray compiler likes this better
 
-character(len=obstypelength) :: string32(1) ! MUST BE A '2D' ARRAY
+character(len=obstypelength) :: stringOb(1) ! must be an array of strings
 
 !----------------------------------------------------------------------------
 ! Find the current length of the unlimited dimension so we can add correctly.
@@ -1276,11 +1276,11 @@ WriteObs : do voxelindex = 1,num_voxels
    ! for the obs_type variable. Dunno why this is so hard.
 
    string1     = ' '
-   string32(1) = ' '
+   stringOb(1) = ' '
    string1 = get_obs_kind_name(voxels(voxelindex)%obs_type)
-   write(string32(1),'(A)') string1(1:obstypelength)
+   write(stringOb(1),'(A)') string1(1:obstypelength)
 
-   call nc_check(nf90_put_var(ncid, ObsTypeVarId, string32, &
+   call nc_check(nf90_put_var(ncid, ObsTypeVarId, stringOb, &
                 start=(/ 1, voxelindex /), count=(/ obstypelength, 1 /) ), &
                 'WriteNetCDF', 'put_var:obs_type_string')
 

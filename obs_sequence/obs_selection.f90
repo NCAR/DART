@@ -21,7 +21,7 @@ program obs_selection
 
 ! this latest addition has select by list of obs types.
 
-use        types_mod, only : r8, missing_r8, metadatalength, obstypelength
+use        types_mod, only : r8, missing_r8, metadatalength
 use    utilities_mod, only : timestamp, register_module, initialize_utilities, &
                              find_namelist_in_file, check_namelist_read, &
                              error_handler, E_ERR, E_MSG, nmlfileunit,   &
