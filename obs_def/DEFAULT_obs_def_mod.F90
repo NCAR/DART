@@ -11,7 +11,7 @@
 ! in the code, edit DEFAULT_obs_def_mod.F90, or edit the 
 ! observation specific obs_def_xxx_mod.f90 files.
 !----------------------------------------------------------------------
-!> Utilties that can be used by any of the obs_def_xxx_mods.
+!> Utilities that can be used by any of the obs_def_xxx_mods.
 !> In a separate module to obs_def_mod to avoid a circular dependency.
 module obs_def_utilities_mod
 
@@ -114,17 +114,19 @@ module obs_def_mod
 ! program is used to add in extra observation kinds at the indicated spots in
 ! the code.
 
-use        types_mod, only : r8, i8, missing_i, missing_r8
+use        types_mod, only : r8, i8, missing_i, missing_r8, obstypelength
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, &
                              ascii_file_format
 use     location_mod, only : location_type, read_location, write_location, &
                              interactive_location, set_location_missing
 use time_manager_mod, only : time_type, read_time, write_time, &
-                             set_time_missing, interactive_time
+                             set_time_missing, interactive_time, set_time
 use  assim_model_mod, only : get_state_meta_data, interpolate
 use     obs_kind_mod, only : assimilate_this_obs_kind, evaluate_this_obs_kind, &
                              get_obs_kind_name, map_def_index, &
-                             get_kind_from_menu
+                             get_kind_from_menu, &
+                             use_ext_prior_this_obs_kind
+use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, end_ensemble_manager
 
 use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, &
                                  end_ensemble_manager
@@ -173,13 +175,16 @@ public :: init_obs_def, get_obs_def_key, get_obs_def_location, get_obs_kind, &
    set_obs_def_kind, set_obs_def_time, set_obs_def_error_variance, &
    set_obs_def_key, interactive_obs_def, write_obs_def, read_obs_def, &
    obs_def_type, get_expected_obs_from_def_distrib_state, destroy_obs_def, copy_obs_def, &
-   assignment(=), get_obs_name
+   assignment(=), get_obs_name, set_obs_def_external_FO, set_obs_def_write_external_FO
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
    "$URL$"
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
+
+! FIXME: should write_external_FO be some kind of global instead of
+! being per-obs?
 
 type obs_def_type
 ! In revision, obs_kind module is responsible for taking care of 
@@ -190,10 +195,18 @@ type obs_def_type
    type(time_type)       :: time
    real(r8)              :: error_variance
    integer               :: key        ! Used by specialized observation types
+   logical               :: write_external_FO = .false.
+   logical               :: has_external_FO   = .false.
+   real(r8), allocatable :: external_FO(:)
+   integer               :: external_FO_key
+   integer               :: ens_size
 end type obs_def_type
 
 logical, save :: module_initialized = .false.
 
+! define a fixed integer code that specifies whether a record 
+! in a binary obs_sequence file is a precomputed FO rather than a time_type
+integer, parameter :: external_prior_code = -123
 
 contains
 
@@ -255,6 +268,12 @@ obs_def1%key            = obs_def2%key
 ! Should this be pointer assignment or regular
 !obs_def1%platform_qc >= or == obs_def2%platform_qc
 !obs_def1%aperture = obs_def2%aperture
+
+obs_def1%has_external_FO = obs_def2%has_external_FO
+if ( obs_def1%has_external_FO ) then
+   call set_obs_def_external_FO(obs_def1, obs_def1%has_external_FO, obs_def2%write_external_FO,  &
+                                obs_def2%external_FO_key, obs_def2%ens_size, obs_def2%external_FO)
+endif
 
 end subroutine copy_obs_def
 
@@ -336,7 +355,7 @@ function get_obs_name(obs_kind_ind)
 ! Returns observation name
 
 integer, intent(in) :: obs_kind_ind
-character(len = 32) :: get_obs_name
+character(len=obstypelength) :: get_obs_name
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -391,6 +410,49 @@ end subroutine set_obs_def_key
 
 !----------------------------------------------------------------------------
 
+subroutine set_obs_def_external_FO(obs_def, has_external_FO, write_external_FO, external_FO_key, &
+                                    ens_size, external_FO_values)
+
+! Sets whether an obs_def has an external prior associated with it
+
+type(obs_def_type), intent(inout) :: obs_def
+logical,            intent(in)    :: has_external_FO
+logical,            intent(in)    :: write_external_FO
+integer,            intent(in)    :: external_FO_key, ens_size
+real(r8),           intent(in)    :: external_FO_values(ens_size)
+
+if ( .not. module_initialized ) call initialize_module
+
+if ( .not. allocated(obs_def%external_FO)) allocate(obs_def%external_FO(ens_size))
+
+obs_def%has_external_FO   = has_external_FO
+obs_def%write_external_FO = write_external_FO
+obs_def%external_FO_key   = external_FO_key
+obs_def%ens_size          = ens_size
+obs_def%external_FO(1:ens_size)  = external_FO_values(1:ens_size)
+
+end subroutine set_obs_def_external_FO 
+
+!----------------------------------------------------------------------------
+
+subroutine set_obs_def_write_external_FO(obs_def, write_external_FO)
+
+! Sets whether to write out the external FO values or not.
+! Should be true for programs which create these obs in the first place,
+! should also be true for programs like the obs_sequence_tool.  Should be
+! false for filter.
+
+type(obs_def_type), intent(inout) :: obs_def
+logical,            intent(in)    :: write_external_FO
+
+if ( .not. module_initialized ) call initialize_module
+
+obs_def%write_external_FO = write_external_FO
+
+end subroutine set_obs_def_write_external_FO 
+
+!----------------------------------------------------------------------------
+
 subroutine set_obs_def_kind(obs_def, kind)
 
 ! Sets the kind of an obs_def
@@ -442,10 +504,12 @@ type(location_type) :: location
 type(time_type)     :: obs_time
 integer             :: obs_key
 real(r8)            :: error_var
+logical             :: use_precomputed_FO
 
 ! Load up the assimilate and evaluate status for this observation kind
 assimilate_this_ob = assimilate_this_obs_kind(obs_kind_ind)
 evaluate_this_ob = evaluate_this_obs_kind(obs_kind_ind)
+use_precomputed_FO = use_ext_prior_this_obs_kind(obs_kind_ind)
 
 ! If not being assimilated or evaluated return with missing_r8 and istatus 0
 if(assimilate_this_ob .or. evaluate_this_ob) then
@@ -455,46 +519,66 @@ if(assimilate_this_ob .or. evaluate_this_ob) then
    obs_key   = obs_def%key
    error_var = obs_def%error_variance
 
-   ! Compute the forward operator.  In spite of the variable name,
-   ! obs_kind_ind is in fact a 'type' index number.  use the function
-   ! get_obs_kind_var_type from the obs_kind_mod if you want to map
-   ! from a specific type to a generic kind.  the third argument of
-   ! a call to the 'interpolate()' function must be a kind index and
-   ! not a type.  normally the preprocess program does this for you.
-   select case(obs_kind_ind)
-
-      ! arguments available to an obs_def forward operator code are:
-      !   state_handle -- to access the state vector
-      !   ens_size     -- the number of ensemble members to do at once (between 1 and ens_size)
-      !   copy_indices -- the indicies the ensemble members (between 1 and ens_size)
-      !   location     -- observation location
-      !   obs_kind_ind -- the index of the observation specific type 
-      !   obs_time     -- the time of the observation
-      !   error_var    -- the observation error variance
-      !   isprior      -- true for prior eval; false for posterior
-      !
-      ! the routine must return values for:
-      !   obs_val -- the computed forward operator value
-      !   istatus -- return code: 0=ok, >0 is error, <0 reserved for system use
-      !
-      ! to call interpolate() directly, the arg list MUST BE:
-      !  interpolate(state_handle, ens_size, location, KIND_xxx, expected_obs, istatus)
-      !
-      ! the preprocess program generates lines like this automatically,
-      ! and this matches the interfaces in each model_mod.f90 file.
-      !
-      ! CASE statements and algorithms for specific observation kinds are
-      ! inserted here by the DART preprocess program.
-
-      ! DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF INSERTED HERE
-
-      ! If the observation kind is not available, it is an error. The DART 
-      ! preprocess program should provide code for all available kinds.
-      case DEFAULT
-         call error_handler(E_ERR, 'get_expected_obs_from_def', &
-            'Attempt to evaluate or assimilate undefined obs_kind type.', &
-             source, revision, revdate)
-   end select
+   ! the decision process here is that if some external source computed
+   ! the prior forward operator values then we can use them or not, but
+   ! if we use them there is no way to compute a consistent posterior.
+   ! so the posteriors are always marked as 'failed forward operator'.
+   if (use_precomputed_FO) then 
+      if (isprior) then
+         if ( obs_def%has_external_FO ) then
+            expected_obs(:) = obs_def%external_FO(:) 
+            istatus = 0 
+         else 
+            call error_handler(E_ERR, 'get_expected_obs_from_def', &
+                  'Attempt to access an external FO that is not present in the observation information.', &
+                   source, revision, revdate, text2='observation type '//trim(get_obs_name(obs_def%kind)))
+         endif 
+      else ! posterior - missing value
+         expected_obs(:) = missing_r8
+         istatus = 1 
+      endif
+   else 
+      ! Compute the forward operator.  In spite of the variable name,
+      ! obs_kind_ind is in fact a 'type' index number.  use the function
+      ! get_obs_kind_var_type from the obs_kind_mod if you want to map
+      ! from a specific type to a generic kind.  the third argument of
+      ! a call to the 'interpolate()' function must be a kind index and
+      ! not a type.  normally the preprocess program does this for you.
+      select case(obs_kind_ind)
+   
+         ! arguments available to an obs_def forward operator code are:
+         !   state_handle -- to access the state vector
+         !   ens_size     -- the number of ensemble members to do at once (between 1 and ens_size)
+         !   copy_indices -- the indicies the ensemble members (between 1 and ens_size)
+         !   location     -- observation location
+         !   obs_kind_ind -- the index of the observation specific type 
+         !   obs_time     -- the time of the observation
+         !   error_var    -- the observation error variance
+         !   isprior      -- true for prior eval; false for posterior
+         !
+         ! the routine must return values for:
+         !   expected_obs -- the computed forward operator values for all ensemble members
+         !   istatus -- return code: 0=ok, >0 is error, <0 reserved for system use
+         !
+         ! to call interpolate() directly, the arg list MUST BE:
+         !  interpolate(state_handle, ens_size, location, KIND_xxx, expected_obs, istatus)
+         !
+         ! the preprocess program generates lines like this automatically,
+         ! and this matches the interfaces in each model_mod.f90 file.
+         !
+         ! CASE statements and algorithms for specific observation kinds are
+         ! inserted here by the DART preprocess program.
+   
+         ! DART PREPROCESS GET_EXPECTED_OBS_FROM_DEF INSERTED HERE
+   
+         ! If the observation kind is not available, it is an error. The DART 
+         ! preprocess program should provide code for all available kinds.
+         case DEFAULT
+            call error_handler(E_ERR, 'get_expected_obs_from_def', &
+               'Attempt to evaluate or assimilate undefined obs_kind type.', &
+                source, revision, revdate)
+      end select
+   endif 
 else
    ! Not computing forward operator for this kind
    expected_obs(:) = missing_r8
@@ -528,6 +612,11 @@ character(len=5)  :: header
 integer           :: o_index
 logical           :: is_ascii
 character(len=32) :: fileformat   ! here for backwards compatibility only
+character(len=11) :: header_external_FO 
+integer           :: ii, secs,days 
+character(len=128) :: string 
+logical           :: time_set
+integer, save     :: counter = 0
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -593,8 +682,45 @@ select case(obs_def%kind)
          source, revision, revdate)
 end select
 
+! We need to see whether there is external prior metadata.
+! If so, we need to read it in, but that doesn't necessarily mean
+! the precomputed FO will acutally be used for that particular obs_type
+time_set = .false.
+obs_def%write_external_FO = .false.  ! Always false when actually running DART
+if (is_ascii) then
+   read(ifile,fmt='(a)') string
+   if (string(1:11) /= 'external_FO') then 
+      ! no metadata, we really just read the time.
+      backspace(ifile) ! go back to previous line to prepare to read time
+      obs_def%has_external_FO = .false.
+   else ! we have a precomputed FO
+      read(string, *) header_external_FO, obs_def%ens_size, obs_def%external_FO_key
+      ! FIXME: remove this if * works ok
+      !read(string, FMT='(a11, 2i8)') header_external_FO, obs_def%ens_size, obs_def%external_FO_key
+      if ( .not. allocated(obs_def%external_FO)) allocate(obs_def%external_FO(obs_def%ens_size))
+      read(ifile, *) (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
+      obs_def%has_external_FO = .true.
+   endif
+else
+   read(ifile) secs, days
+   if ( days /= external_prior_code ) then
+      ! no metadata, we really just read the time
+      ! can't use backspace on a binary file.
+      obs_def%time = set_time(secs, days)
+      time_set = .true.
+      obs_def%has_external_FO = .false.
+   else ! we have a precomputed FO
+      counter = counter + 1
+      obs_def%ens_size = secs
+      obs_def%external_FO_key = counter
+      if ( .not. allocated(obs_def%external_FO)) allocate(obs_def%external_FO(obs_def%ens_size))
+      read(ifile)    (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
+      obs_def%has_external_FO = .true.
+   endif
+endif
+
 ! Read the time for the observation
-obs_def%time = read_time(ifile, fform)
+if ( .not. time_set ) obs_def%time = read_time(ifile, fform) 
 
 if (is_ascii) then
    read(ifile, *) obs_def%error_variance
@@ -617,6 +743,8 @@ character(len=*), intent(in), optional :: fform
 
 logical           :: is_ascii
 character(len=32) :: fileformat   ! here for backwards compatibility only
+
+integer            :: ii ! CSS
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -661,6 +789,27 @@ select case(obs_def%kind)
          source, revision, revdate)
 end select
 
+! obs_def%write_external_FO should only be true for program 
+! actually WRITING the external data.  When running DART
+! obs_def%write_external_FO should be false and no metadata will be written
+! Also want obs_def%write_external_FO to somehow be true when this called from
+! the obs_sequence_tool program
+if ( obs_def%has_external_FO .and. obs_def%write_external_FO ) then 
+   if ( .not. allocated(obs_def%external_FO)) then
+      call error_handler(E_ERR, 'write_obs_def', &
+         'obs_def%external_FO not allocated but writing was requested.', &
+         source, revision, revdate, text2='observation type '//trim(get_obs_name(obs_def%kind)))
+   endif
+   if (is_ascii) then
+      write(ifile, 12) obs_def%ens_size, obs_def%external_FO_key
+      write(ifile, *) (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
+   else
+      write(ifile)    obs_def%ens_size, external_prior_code
+      write(ifile)    (obs_def%external_FO(ii), ii=1,obs_def%ens_size)
+   endif
+12  format('external_FO', 2i8)
+endif
+
 call write_time(ifile, obs_def%time, fform)
 
 if (is_ascii) then
@@ -681,7 +830,7 @@ type(obs_def_type), intent(inout) :: obs_def
 integer,               intent(in) :: key
 
 ! FIXME: hack!!! remove this if we can stop passing an
-! ensemble handle into get_state_meta_data()  
+! ensemble handle into get_state_meta_data()
 !> @todo remove ens handle from get_state_meta_data
 
 type(ensemble_type) :: cache_ens_handle
@@ -713,19 +862,21 @@ end select
 ! If the kind is an identity observation, don't need to call location
 ! Get location from state meta_data
 if(obs_def%kind < 0) then
-   ! Get the location of the corresponding state item from model
+   ! Get the location of this from model
    call get_state_meta_data(cache_ens_handle, -1_i8 * obs_def%kind, obs_def%location)
-else ! Get the location from the user
+else! Get the location
    call interactive_location(obs_def%location)
 endif
 
 ! Get the time
 call interactive_time(obs_def%time)
 
-write(*, *) 'Input error variance for this observation definition '
+write(*, *) 'Input the error variance for this observation definition '
 read(*, *) obs_def%error_variance
-
-! TJH -- might want to do some sort of error checking (i.e. for positive values)
+do while (obs_def%error_variance < 0) 
+   write(*, *) 'The error variance must be positive, please try again'
+   read(*, *) obs_def%error_variance
+enddo
 
 call end_ensemble_manager(cache_ens_handle)
 
@@ -741,10 +892,16 @@ type(obs_def_type), intent(inout) :: obs_def
 
 if ( .not. module_initialized ) call initialize_module
 
+! FIXME: not clear why we have to set all these to missing...
+! we definitely have to do the deallocate but the others seem
+! like unnecessary work.
+
 call set_obs_def_location(obs_def, set_location_missing() )
 obs_def%kind = missing_i
 call set_obs_def_time(obs_def, set_time_missing() )
-call set_obs_def_error_variance( obs_def, missing_r8)
+call set_obs_def_error_variance( obs_def, missing_r8) 
+call set_obs_def_external_FO(obs_def, .false., .false., missing_i, 1, (/missing_r8/))
+if ( allocated(obs_def%external_FO)) deallocate(obs_def%external_FO) ! CSS
 
 end subroutine destroy_obs_def
 

@@ -14,6 +14,7 @@
 
 module obs_kind_mod
 
+use        types_mod, only : obstypelength
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_WARN,  &
                              logfileunit, find_namelist_in_file,             &
                              check_namelist_read, do_output, ascii_file_format
@@ -23,9 +24,9 @@ private
 
 public :: get_obs_kind_name, assimilate_this_obs_kind, &
           evaluate_this_obs_kind, get_obs_kind_var_type, get_obs_kind_index, &
-          write_obs_kind, read_obs_kind, get_kind_from_menu, map_def_index
-! Added by TRW for restart file functionality
-public :: get_raw_obs_kind_name, get_raw_obs_kind_index
+          write_obs_kind, read_obs_kind, get_kind_from_menu, map_def_index,  &
+          use_ext_prior_this_obs_kind, get_raw_obs_kind_name, get_raw_obs_kind_index
+
 ! Added by nsc to try to limit the number of global vars exported from
 ! this program.  i do not like this terminology, but since we are still
 ! using kind where we mean type, raw kind is as good a solution as anything.
@@ -43,11 +44,6 @@ public :: do_obs_form_pair, add_wind_names
 ! be rerun to generate a obs_kind_mod.f90 file for use by the rest of the
 ! DART system.  Future versions of the preprocess program will be able to
 ! generate this table automatically.
-
-! F90 currently has a maximum length of 32 characters for the NAME of
-! any Fortran PARAMETER.
-
-integer, parameter, public :: paramname_length = 32
 
 ! Definition and public access to the observation types/kinds
 ! Unique index values associated with each observation type and
@@ -406,9 +402,8 @@ integer, parameter, public :: &
   KIND_SEAICE_SNOWENTHALPY002        = 351, &
   KIND_SEAICE_SNOWENTHALPY003        = 352
 
-
-!! PRIVATE ONLY TO THIS MODULE. see comment below near the max_obs_specific
-!! declaration.
+! max_obs_generic is private to this module.  see comment below near the max_obs_specific
+! declaration for more info about publics and private values.
 
 integer, parameter :: max_obs_generic = 352
 
@@ -446,9 +441,10 @@ logical, save :: module_initialized = .false.
 !! which are public are using 'kind' where it needs to be 'type'.
 integer, parameter :: max_obs_specific = max_obs_kinds
 
-character(len=129) :: msg_string
+character(len=512) :: msg_string, msg_string1
 
-integer :: num_kind_assimilate, num_kind_evaluate
+integer :: num_kind_assimilate, num_kind_evaluate 
+integer :: num_kind_use_precomputed_FOs
 
 ! Map from values of kind in obs_def to the fixed values in the list above.
 ! Initially, these are undefined and have values -1.
@@ -467,10 +463,11 @@ integer :: map(2, max_obs_specific) = -1
 ! restrictions on the length of parameter identifiers.
 type obs_type_type
    integer              :: index
-   character(len = paramname_length) :: name
+   character(len=obstypelength) :: name
    integer              :: generic_kind
    logical              :: assimilate
    logical              :: evaluate
+   logical              :: use_precomputed_FO
 end type obs_type_type
 
 ! An obs_type_type is defined by the preprocessor to store the association
@@ -480,7 +477,7 @@ type(obs_type_type) :: obs_type_info(max_obs_specific)
 
 type obs_kind_type
    integer              :: index
-   character(len = paramname_length) :: name
+   character(len=obstypelength) :: name
 end type obs_kind_type
 
 ! An obs_kind_name_type is defined by the preprocess program to store
@@ -490,10 +487,13 @@ end type obs_kind_type
 type(obs_kind_type) :: obs_kind_names(0:max_obs_generic)
 
 ! Namelist array to turn on any requested observation types
-character(len = 129) :: assimilate_these_obs_types(max_obs_specific) = 'null'
-character(len = 129) :: evaluate_these_obs_types(max_obs_specific) = 'null'
+character(len=obstypelength) :: assimilate_these_obs_types(500) = 'null'
+character(len=obstypelength) :: evaluate_these_obs_types(500) = 'null'
+character(len=obstypelength) :: use_precomputed_FOs_these_obs_types(500) = 'null' 
 
-namelist /obs_kind_nml/ assimilate_these_obs_types, evaluate_these_obs_types
+
+namelist /obs_kind_nml/ assimilate_these_obs_types, evaluate_these_obs_types, &
+                        use_precomputed_FOs_these_obs_types
 
 contains
 
@@ -788,7 +788,25 @@ do i = 1, max_obs_specific
    num_kind_evaluate = i
 end do
 
-if (do_output() .and. (num_kind_assimilate > 0 .or. num_kind_evaluate > 0)) then
+! Special case when all obs_types should use precomputed_FOs
+if( any(use_precomputed_FOs_these_obs_types .eq. 'all') ) then
+   num_kind_use_precomputed_FOs = num_kind_assimilate + num_kind_evaluate
+   j = 1
+   if ( num_kind_assimilate > 0 ) then
+      use_precomputed_FOs_these_obs_types(j:num_kind_assimilate) = assimilate_these_obs_types(1:num_kind_assimilate)
+      j = j + num_kind_assimilate
+   endif
+   if ( num_kind_evaluate > 0 ) use_precomputed_FOs_these_obs_types(j:num_kind_use_precomputed_FOs) = evaluate_these_obs_types(1:num_kind_evaluate)
+else
+   num_kind_use_precomputed_FOs = 0
+   do i = 1, max_obs_specific
+      if(use_precomputed_FOs_these_obs_types(i) == 'null' .or.  len_trim(use_precomputed_FOs_these_obs_types(i)) == 0) exit
+      num_kind_use_precomputed_FOs = i
+   end do
+endif
+
+if (do_output() .and. (num_kind_assimilate > 0 .or. num_kind_evaluate > 0 .or.  &
+                       num_kind_use_precomputed_FOs > 0 )) then  
    write(*, *) '------------------------------------------------------'
    write(*, *)
 
@@ -810,6 +828,17 @@ if (do_output() .and. (num_kind_assimilate > 0 .or. num_kind_evaluate > 0)) then
    end do
    write(*, *) '------------------------------------------------------'
    write(*, *)
+
+   write(logfileunit, *) 'Use the precomputed Prior Forward Operators for these obs types'
+   write(*, *) '---------- USE_PRECOMPUTED_FO_OBS_TYPES --------------'
+
+   do i = 1, num_kind_use_precomputed_FOs
+      write(logfileunit, *) trim(use_precomputed_FOs_these_obs_types(i))
+      write(     *     , *) trim(use_precomputed_FOs_these_obs_types(i))
+   end do
+   write(*, *) '------------------------------------------------------'
+   write(*, *)
+
 endif
 
 
@@ -847,6 +876,23 @@ if (num_kind_evaluate > 0) then
          '" from obs_kind_nml is not a legal observation kind to evaluate'
       call error_handler(E_ERR, 'initialize_module', err_string, source, revision, revdate)
       55 continue
+   end do
+endif
+
+if (num_kind_use_precomputed_FOs > 0) then
+   do i = 1, num_kind_use_precomputed_FOs
+      ! Search for the matching string
+      do j = 1, max_obs_specific
+         if(use_precomputed_FOs_these_obs_types(i) == obs_type_info(j)%name) then
+            obs_type_info(j)%use_precomputed_FO = .true.
+            goto 66
+         endif
+      end do
+      ! Falling off the end is an error
+      write(err_string, *) '"',trim(use_precomputed_FOs_these_obs_types(i)), &
+         '" from obs_kind_nml is not a legal observation type'
+      call error_handler(E_ERR, 'initialize_module', err_string, source, revision, revdate)
+      66 continue
    end do
 endif
 
@@ -900,7 +946,7 @@ function get_obs_kind_name(obs_type_ind)
 ! Returns observation type name
 
 integer, intent(in) :: obs_type_ind
-character(len = paramname_length) :: get_obs_kind_name
+character(len=obstypelength) :: get_obs_kind_name
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -925,7 +971,7 @@ function get_raw_obs_kind_name(obs_kind_ind)
 ! Returns observation kind name
 
 integer, intent(in) :: obs_kind_ind
-character(len=paramname_length) :: get_raw_obs_kind_name
+character(len=obstypelength) :: get_raw_obs_kind_name
 
 if (.not. module_initialized) call initialize_module
 
@@ -1058,6 +1104,21 @@ end function evaluate_this_obs_kind
 
 !----------------------------------------------------------------------------
 
+function use_ext_prior_this_obs_kind(obs_type_ind)
+
+! Returns true if this obs_type should use externally computed priors
+
+logical             :: use_ext_prior_this_obs_kind
+integer, intent(in) :: obs_type_ind
+
+if ( .not. module_initialized ) call initialize_module
+
+use_ext_prior_this_obs_kind = obs_type_info(obs_type_ind)%use_precomputed_FO
+
+end function use_ext_prior_this_obs_kind
+
+!----------------------------------------------------------------------------
+
 function get_obs_kind_var_type(obs_type_ind)
 
 ! Returns the associated generic kind associated with the
@@ -1146,31 +1207,23 @@ end subroutine write_obs_kind
 subroutine read_obs_kind(ifile, pre_I_format, fform)
 
 ! Reads the observation kind strings and corresponding integer
-! indices as a header for an obs_sequence file. If this isn't
-! present, need to revert to default mapping for backwards
-! compatibility.
+! indices as a header for an obs_sequence file. 
 
 integer,                    intent(in) :: ifile
 logical,                    intent(in) :: pre_I_format
 character(len=*), intent(in), optional :: fform
 
 character(len=20)  :: header
-character(len=paramname_length) :: o_name
-integer            :: i, num_def_kinds, o_index, list_index
+character(len=obstypelength) :: o_name
+integer            :: i, num_def_kinds, o_index, list_index, rc
 logical            :: is_ascii
 
 if ( .not. module_initialized ) call initialize_module
 
-! If this is old format, there's no obs_kind header to read
-! Still need to initialize input kind map to use the order in
-! the obs_kind file. It's users responsibility to make sure
-! that this order is consistent with what the obs_sequence
-! file thinks.
+! pre_I_format has been deprecated.  
 if(pre_I_format) then
-   do i = 1, max_obs_specific
-      map(1, i) = i; map(2, i) = i
-   end do
-   return
+   call error_handler(E_ERR, 'read_obs_kind: ', 'pre_I_format no longer supported', &
+                      source, revision, revdate)
 endif
 
 is_ascii = ascii_file_format(fform)
@@ -1178,15 +1231,16 @@ is_ascii = ascii_file_format(fform)
 ! Read the 20 character identifier which identifies the start
 ! of the obstype number/name table for this sequence file.
 if (is_ascii) then
-   read(ifile, *) header
+   read(ifile, *, iostat=rc) header
 else
-   read(ifile)    header
+   read(ifile,    iostat=rc) header
 endif
 
-if(header /= 'obs_kind_definitions') then
-   call error_handler(E_ERR, 'read_obs_kind', &
-      'Did not find obs_kind_definitions string', &
-      source, revision, revdate)
+if(rc /= 0 .or. header /= 'obs_kind_definitions') then
+   write(msg_string,  *) 'Did not find expected "obs_kind_definitions" string at start of obs_seq file '
+   write(msg_string1, *) 'Bad file format, corrupted file, or wrong-endian binary file'
+   call error_handler(E_ERR, 'read_obs_kind', msg_string, &
+      source, revision, revdate, text2=msg_string1)
 endif
 
 ! Loop through the list to read the integer indices and strings
@@ -1210,8 +1264,8 @@ do i = 1, num_def_kinds
    list_index = get_obs_kind_index(o_name)
    ! Check for error
    if(list_index == -1) then
-      write(msg_string, *) 'Did not find observation kind ', o_name, &
-         ' in obs_kind_mod list'
+      write(msg_string, *) 'Did not find observation kind "', o_name, &
+         '" in obs_kind_mod list'
       call error_handler(E_ERR, 'read_obs_kind', msg_string, &
          source, revision, revdate)
    endif
@@ -1228,7 +1282,7 @@ function get_kind_from_menu()
 integer :: get_kind_from_menu
 
 integer :: i, ierr
-character(len=paramname_length) :: in
+character(len=obstypelength) :: in
 
 if ( .not. module_initialized ) call initialize_module
 
@@ -1284,8 +1338,8 @@ character(len=*), pointer :: my_names(:) ! INTENT OUT, btw
 integer :: add_wind_names
 
 integer :: ivar, nwinds
-character(len=paramname_length) :: str1, str2, str3
-character(len=paramname_length), dimension(2*max_obs_kinds) :: names
+character(len=obstypelength) :: str1, str2, str3
+character(len=obstypelength), dimension(2*max_obs_kinds) :: names
 
 ! Initially, the array of obs_kind_names is exactly 'max_num_obs' in length.
 ! This block finds the U,V wind pairs and creates the 'horizontal_wind'
