@@ -1440,8 +1440,12 @@ MYLOOP : do i = 1, ens_handle%my_num_vars
       ens_handle%copies(  sd_copy, i) = MISSING_R8
    else
       ens_handle%copies(mean_copy, i) = sum(ens_handle%copies(start_copy:end_copy, i)) / num_copies
-      ens_handle%copies(  sd_copy, i) = sqrt((sum((ens_handle%copies(start_copy:end_copy, i) - &
-                                        ens_handle%copies(mean_copy, i))**2) / (num_copies - 1)))
+      if(num_copies >= 2) then
+         ens_handle%copies(  sd_copy, i) = sqrt((sum((ens_handle%copies(start_copy:end_copy, i) - &
+                                           ens_handle%copies(mean_copy, i))**2) / (num_copies - 1)))
+      else
+         ens_handle%copies(  sd_copy, i) = 0.0_r8
+      endif
    endif
 
 end do MYLOOP
@@ -1479,8 +1483,12 @@ MYLOOP : do i = 1, ens_handle%my_num_vars
       ens_handle%copies( var_copy, i) = MISSING_R8
    else
       ens_handle%copies(mean_copy, i) = sum(ens_handle%copies(start_copy:end_copy, i)) / num_copies
-      ens_handle%copies( var_copy, i) = (sum((ens_handle%copies(start_copy:end_copy, i) - &
-         ens_handle%copies(mean_copy, i))**2) / (num_copies - 1))
+      if (num_copies >= 2) then
+         ens_handle%copies( var_copy, i) = (sum((ens_handle%copies(start_copy:end_copy, i) - &
+            ens_handle%copies(mean_copy, i))**2) / (num_copies - 1))
+      else
+         ens_handle%copies( var_copy, i) = 0.0_r8
+      endif
    endif
 end do MYLOOP
 
