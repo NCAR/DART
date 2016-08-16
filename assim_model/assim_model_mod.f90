@@ -13,11 +13,11 @@ use location_mod, only : location_type
 use time_manager_mod, only : time_type,                                            &
                              operator(<), operator(>), operator(+), operator(-),   &
                              operator(/), operator(*), operator(==), operator(/=)
-use utilities_mod, only : register_module, error_handler,    &
+use utilities_mod, only : register_module, error_handler,                          &
                           E_ERR, E_WARN, E_MSG, E_DBG, nmlfileunit,                &
                           dump_unit_attributes, find_namelist_in_file,             &
-                          check_namelist_read, do_nml_file, do_nml_term, &
-                          set_output,                          &
+                          check_namelist_read, do_nml_file, do_nml_term,           &
+                          set_output,                                              &
                           ascii_file_format, set_output
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data,  &
                           get_model_time_step, init_conditions,                    &
@@ -61,9 +61,9 @@ character(len=128), parameter :: revdate  = "$Date$"
 type assim_model_type
    !private
    real(r8), pointer :: state_vector(:)
-   type(time_type) :: time
-   integer                           :: model_size
-   integer                           :: copyID
+   type(time_type)   :: time
+   integer           :: model_size
+   integer           :: copyID
 ! would like to include character string to indicate which netCDF variable --
 ! replace "state" in output_diagnostics ...
 end type assim_model_type
