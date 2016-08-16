@@ -179,7 +179,10 @@ interface
  end subroutine exit_all
 end interface
 
-! make a converter from a 1D array to a scalar
+! make a converter from a 1 element 1D array to a scalar.
+! (will this have problems compiling if "integer" is coerced to I8 by
+! compiler flags?  making to_scalar_int and to_scalar_int8 the same?
+! if so, make to_scalar_int explicitly I4, i guess.)
 interface scalar
    module procedure to_scalar_real
    module procedure to_scalar_int
@@ -934,108 +937,154 @@ end subroutine error_handler
 !#######################################################################
 
 
-   function open_file (fname, form, action) result (iunit)
+   function open_file (fname, form, action, access, convert, delim, reclen, return_rc) result (iunit)
 
-   character(len=*), intent(in) :: fname
-   character(len=*), intent(in), optional :: form, action
+   character(len=*), intent(in)            :: fname
+   character(len=*), intent(in),  optional :: form, action, access, convert, delim
+   integer,          intent(in),  optional :: reclen
+   integer,          intent(out), optional :: return_rc
    integer  :: iunit
 
-   integer           :: nc, rc
-   logical           :: open
-   character(len=11) :: format
-   character(len=6)  :: pos
-   character(len=9)  :: act
-   character(len=7)  :: stat
+   integer           :: nc, rc, rlen
+   logical           :: open, use_recl
+   character(len=32) :: format, pos, act, stat, acc, conversion, recl, del
+   character(len=128) :: msgstring1, msgstring2
+
 
    if ( .not. module_initialized ) call initialize_utilities
 
-   inquire (file=trim(fname), opened=open, number=iunit,  &
-            form=format, iostat=rc)
-
+   ! if file already open, set iunit and return
+   inquire (file=trim(fname), opened=open, number=iunit, iostat=rc)
    if (open) then
-! ---------- check format ??? ---------
-! ---- (skip this and let fortran i/o catch bug) -----
+      if (present(return_rc)) return_rc = rc
+      return
+   endif
 
-    !    if (present(form)) then
-    !        nc = min(11,len(form))
-    !        if (format == 'UNFORMATTED') then
-    !             if (form(1:nc) /= 'unformatted' .and.  &
-    !                 form(1:nc) /= 'UNFORMATTED')       &
-    !                 call error_mesg ('open_file in utilities_mod', &
-    !                                  'invalid form argument', 2)
-    !        else if (format(1:9) == 'FORMATTED') then
-    !             if (form(1:nc) /= 'formatted' .and.  &
-    !                 form(1:nc) /= 'FORMATTED')       &
-    !                 call error_mesg ('open_file in utilities_mod', &
-    !                                  'invalid form argument', 2)
-    !        else
-    !             call error_mesg ('open_file in utilities_mod', &
-    !                       'unexpected format returned by inquire', 2)
-    !        endif
-    !    endif
+   ! not already open, so open it.
          
-   else
-! ---------- open file ----------
+   ! set defaults, and then modify depending on what user requests
+   ! via the arguments.  this combination of settings either creates
+   ! a new file or overwrites an existing file from the beginning.
 
-      ! this code used to only set the form and position, not the action.
-      ! not specifying 'read' meant that many compilers would create an
-      ! empty file instead of returning a read error.  this leads to lots
-      ! of confusion.  add an explicit action here.  if the incoming argument
-      ! is read, make sure the open() call passes that in as an action.
+   format     = 'formatted'
+   act        = 'readwrite'
+   pos        = 'rewind'
+   stat       = 'unknown'
+   acc        = 'sequential'
+   rlen       = 1
+   del        = 'apostrophe'
+   conversion = 'native'
 
-      format   = 'formatted'
-      act      = 'readwrite'
-      pos      = 'rewind'
-      stat     = 'unknown'
+   if (present(form)) format = form
+   call to_upper(format)  
 
-      if (present(form)) then
-          nc = min(len(format),len(form))
-          format(1:nc) = form(1:nc)
-      endif
+   ! change defaults based on intended action.
+   if (present(action)) then
+       select case(action)
 
-      if (present(action)) then
-          select case(action)
-
-             case ('read', 'READ')
+          case ('read', 'READ')
              ! open existing file.  fail if not found.  read from start.
-                act  = 'read'
-                stat = 'old'
-                pos  = 'rewind'
+             act  = 'read'
+             stat = 'old'
 
-             case ('write', 'WRITE')
+          case ('write', 'WRITE')
              ! create new file/replace existing file.  write at start.
-                act  = 'write'
-                stat = 'replace'
-                pos  = 'rewind'
+             act  = 'write'
+             stat = 'replace'
 
-             case ('append', 'APPEND')
-             ! create new/open existing file.  write at end.
-                act  = 'readwrite'
-                stat = 'unknown'
-                pos  = 'append'
+          case ('append', 'APPEND')
+             ! create new/open existing file.  write at end if existing.
+             act  = 'readwrite'
+             pos  = 'append'
 
-             case default
-             ! leave defaults specified above, currently
-             ! create new/open existing file.  write at start.
-                !print *, 'action specified, and is ', action
-          end select
+          case default
+             ! if the user specifies an action, make sure it is a valid one.
+             call error_handler(E_ERR, 'open_file ', &
+                                'unrecognized action, "'//trim(action)//'"; valid values: "read", "write", "append"', &
+                                source, revision, revdate)
+       end select
+   endif
+
+   ! from the ibm help pages:
+   !   valid values for access: SEQUENTIAL, DIRECT or STREAM. 
+   !   If ACCESS= is DIRECT, RECL= must be specified. 
+   !   If ACCESS= is STREAM, RECL= must not be specified.
+   !   SEQUENTIAL is the default, for which RECL= is optional
+   ! i can't see how to specify all the options in any kind of reasonable way.
+   ! but i need to be able to specify 'stream'... so here's a stab at it.
+
+   if (present(access)) then
+      acc = access
+      call to_upper(acc)
+   endif
+
+   ! recl can't apply to stream files, is required for direct,
+   ! and is optional for sequential.  ugh.
+   if (present(reclen)) then
+      rlen = reclen
+      use_recl = .true.
+   else if (acc == 'DIRECT') then
+      use_recl = .true.
+   else
+      use_recl = .false.
+   endif
+
+   ! endian-conversion only applies to binary files
+   ! valid values seem to be:  'native', 'big-endian', 'little-endian', and possibly 'cray'
+   ! depending on the compiler.
+   if (present(convert)) then 
+      if (format == 'FORMATTED') then
+         call error_handler(E_ERR, 'open_file ', 'cannot specify binary conversion on a formatted file', &
+                            source, revision, revdate)
       endif
+      conversion = convert
+   endif
 
-      iunit = get_unit()
+   ! string delimiters only apply to ascii files
+   if (present(delim)) then
+      if (format /= 'FORMATTED') then
+         call error_handler(E_ERR, 'open_file ', 'cannot specify a delimiter on an unformatted file', &
+                            source, revision, revdate)
+      endif
+      del = delim
+   endif
 
-      if (format == 'formatted' .or. format == 'FORMATTED') then
-          open (iunit, file=trim(fname), form=format,     &
-                position=pos, delim='apostrophe',    &
-                action=act, status=stat, iostat=rc)
+   ! ok, now actually open the file
+
+   iunit = get_unit()
+
+   if (format == 'FORMATTED') then
+      ! formatted file: only pass in recl if required
+      if (use_recl) then
+         open (iunit, file=trim(fname), form=format, access=acc, recl=rlen, &
+               delim=del, position=pos, action=act, status=stat, iostat=rc)
       else
-          open (iunit, file=trim(fname), form=format,     &
-                position=pos, action=act, status=stat, iostat=rc)
+         open (iunit, file=trim(fname), form=format, access=acc,            &
+               delim=del, position=pos, action=act, status=stat, iostat=rc)
       endif
+   else  
+      ! unformatted file - again, only pass in recl if required 
+      if (use_recl) then
+         open (iunit, file=trim(fname), form=format, access=acc, recl=rlen, &
+               convert=conversion, position=pos, action=act, status=stat, iostat=rc)
+      else
+         open (iunit, file=trim(fname), form=format, access=acc,            &
+               convert=conversion, position=pos, action=act, status=stat, iostat=rc)
+      endif
+   endif
+   if (rc /= 0 .and. print_debug) call dump_unit_attributes(iunit) 
 
-      if (rc /= 0) then
-         write(msgstring,*)'Cannot open file "'//trim(fname)//'" for '//trim(act)
-         call error_handler(E_ERR, 'open_file: ', msgstring, source, revision, revdate)
-      endif
+   if (present(return_rc)) then
+      return_rc = rc
+      return
+   endif
+
+   if (rc /= 0) then
+      write(msgstring, *)'Cannot open file "'//trim(fname)//'" for '//trim(act)
+      write(msgstring1,*)'File may not exist or permissions may prevent the requested operation'
+      write(msgstring2,*)'Error code was ', rc
+      call error_handler(E_ERR, 'open_file: ', msgstring, source, revision, revdate, &
+                         text2=msgstring1, text3=msgstring2)
    endif
 
    end function open_file
@@ -2065,29 +2114,47 @@ end function string_to_integer
 
 
 !-----------------------------------------------------------------------
-!>  string needs to be all upper case or lower case to match
-!>  TRUE, true, FALSE, or false.  also match .TRUE., .true.,
-!>  .FALSE., .false.  if a string to match is provided, no
-!>  upper casing is done and string must match exactly.
+!>  if matching true or false, uppercase the string so any
+!>  combination of upper and lower case matches.  match with
+!>  and without the enclosing periods (e.g. .true. and true
+!>  both match, as would .TrUe.).  also allow plain T and F.
+!>  if 'string to match' is provided, no upper casing is done
+!>  and the string must match exactly.
 
-function string_to_logical(inputstring, match_is_true)
+function string_to_logical(inputstring, string_to_match)
 
 character(len=*), intent(in)           :: inputstring
-character(len=*), intent(in), optional :: match_is_true
+character(len=*), intent(in), optional :: string_to_match
 logical                                :: string_to_logical
 
-if (present(match_is_true)) then
-   string_to_logical = (inputstring == match_is_true)
-else
-   select case (inputstring)
-      case ("TRUE", ".TRUE.", "true", ".true.")
-         string_to_logical = .true.
-      case ("FALSE", ".FALSE.", "false", ".false.")
-         string_to_logical = .false.
-      case default 
-         string_to_logical = .false.   !????
-   end select
+! to_upper() works in place, so if looking for true/false
+! make a copy first so the input string can stay intent(in).
+
+character(len=len_trim(inputstring)) :: ucase_instring
+
+! see if the input matches the string given by the caller
+if (present(string_to_match)) then
+   string_to_logical = (inputstring == string_to_match)
+   return
 endif
+
+! see if the input matches true or false
+ucase_instring = trim(inputstring)
+call to_upper(ucase_instring)
+
+select case (ucase_instring)
+   case ("TRUE", ".TRUE.", "T")
+      string_to_logical = .true.
+   case ("FALSE", ".FALSE.", "F")
+      string_to_logical = .false.
+   case default 
+      ! we can't give any context here for where it was
+      ! being called, but if it isn't true or false, error out.
+      msgstring = '.TRUE., TRUE, T or .FALSE., FALSE, F are valid values'         
+      call error_handler(E_ERR,'string_to_logical', &
+                 'Cannot parse true or false value from string: "'//trim(inputstring)//'"', &
+                  source, revision, revdate, text2=msgstring)
+end select
 
 end function string_to_logical
 

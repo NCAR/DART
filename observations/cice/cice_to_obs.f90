@@ -245,20 +245,9 @@ allocate(lat(num_latitudes,num_longitudes), &
 
 ! read in lats/lons first.  applies to all data files.
 
-! data is binary, distributed as scaled 4-byte integers
-!> @todo FIXME once i update the utilities_mod to support
-!> an access method, use this line:
-!iunit = open_file(cice_lat_file, 'unformatted', 'read', 'stream')
-iunit = get_unit()
-open (iunit, file=trim(cice_lat_file), form='unformatted', action='read', &
-               position='rewind', access='stream', status='old', iostat=rc)
-if (rc /= 0) then
-   write(msgstring,*)'Cannot open file "'//trim(cice_lat_file)//'" for reading'
-   write(msgstring1,*)'Error code was ', rc
-   call error_handler(E_ERR, 'open_file: ', msgstring, source, revision, revdate, &
-                      text2=msgstring1)
-
-endif
+! data is binary, distributed as scaled 4-byte integers in stream format
+! (no record counts).
+iunit = open_file(cice_lat_file, 'unformatted', 'read', 'stream')
 
 if (debug) print *, 'opened input latitude file ' // trim(cice_lat_file)
 read(iunit) rawdata_i4
@@ -375,10 +364,10 @@ obsloop: do    ! no end limit - have the loop break when end time exceeded
 
    ! read in concentration data
    !> see comment in cice_lat_file section
-   !iunit = open_file(next_file, 'unformatted', 'read', 'stream')
-   iunit = get_unit()
-   open (iunit, file=trim(next_file), form='unformatted', action='read', &
-               position='rewind', access='stream', status='old', iostat=rc)
+   iunit = open_file(next_file, 'unformatted', 'read', 'stream')
+   !iunit = get_unit()
+   !open (iunit, file=trim(next_file), form='unformatted', action='read', &
+   !            position='rewind', access='stream', status='old', iostat=rc)
    if (rc /= 0) then
       write(msgstring,*)'Cannot open file "'//trim(next_file)//'" for reading'
       write(msgstring1,*)'Error code was ', rc

@@ -35,7 +35,7 @@
 
  end_year         = 1980
  end_month        = 1
- end_day          = 3
+ end_day          = 1
 
  append_to_existing_file     = .false.
  debug                       = .true.

@@ -8,7 +8,7 @@ program closest_member_tool
 
 ! Program to overwrite the time on each ensemble in a restart file.
 
-use types_mod,         only : r8, i8
+use types_mod,         only : r8, i8, obstypelength
 use time_manager_mod,  only : time_type, set_time_missing,               &
                               operator(/=), print_time
  
@@ -20,7 +20,7 @@ use utilities_mod,     only : register_module, find_namelist_in_file,        &
 use  location_mod,     only : location_type
 
 use  obs_kind_mod,     only : get_num_raw_obs_kinds, get_raw_obs_kind_index, &
-                              paramname_length, get_raw_obs_kind_name
+                              get_raw_obs_kind_name
 
 use  sort_mod,         only : index_sort
 
@@ -68,7 +68,7 @@ character(len = 128) :: output_file_name       = "closest_restart"
 integer              :: ens_size               = 1
 logical              :: single_restart_file_in = .true.
 integer              :: difference_method      = 4
-character(len = paramname_length) :: use_only_kinds(max_list_len) = ''
+character(len = obstypelength) :: use_only_kinds(max_list_len) = ''
 
 !----------------------------------------------------------------
 ! different methods to compute 'distance' from mean:

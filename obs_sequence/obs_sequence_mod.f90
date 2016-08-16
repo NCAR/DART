@@ -27,16 +27,16 @@ use      obs_def_mod, only : obs_def_type, get_obs_def_time, read_obs_def, &
                              write_obs_def, destroy_obs_def, copy_obs_def, &
                              interactive_obs_def, get_obs_def_location, &
                              get_obs_kind, &
-                             get_obs_def_key, &
-                             get_expected_obs_from_def_distrib_state !HK
+                             get_obs_def_key
 use     obs_kind_mod, only : write_obs_kind, read_obs_kind, max_obs_kinds, &
                              get_obs_kind_index
 use time_manager_mod, only : time_type, operator(>), operator(<), &
                              operator(>=), operator(/=), set_time, &
                              operator(-), operator(+), operator(==)
-use    utilities_mod, only : get_unit, close_file, register_module, error_handler, &
+use    utilities_mod, only : get_unit, register_module, error_handler, &
                              find_namelist_in_file, check_namelist_read, &
-                             E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term
+                             E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term, &
+                             open_file, close_file
 
 implicit none
 private
@@ -111,17 +111,20 @@ type obs_cov_type
 end type obs_cov_type
 
 ! for errors
-character(len=512) :: string1, string2
+character(len=512) :: string1, string2, string3
 
 !-------------------------------------------------------------
 ! Namelist with default values
-! write_binary_restart_files  == .true.  -> use unformatted file format.
-!                                     Full precision, faster, smaller,
-!                                     but not as portable.
 
+! if .true., use unformatted files which are full precision, 
+! faster, smaller but not necessarily portable between machines.
 logical :: write_binary_obs_sequence = .false.
 
-namelist /obs_sequence_nml/ write_binary_obs_sequence
+! try reading in binary obs_seq files with a different byte order.
+! valid values are: native, little_endian, big_endian
+character(len=32) :: read_binary_file_format = 'native'
+
+namelist /obs_sequence_nml/ write_binary_obs_sequence, read_binary_file_format
 
 !--------------------------------------------------------------
 
@@ -1071,20 +1074,20 @@ character(len=11) :: useform
 
 if(write_binary_obs_sequence) then
    useform = 'unformatted'
+   file_id = open_file(file_name, form=useform, action='write',               return_rc=rc)
 else
    useform = 'formatted'
+   file_id = open_file(file_name, form=useform, action='write', delim='none', return_rc=rc)
 endif
 
-! Open the file. nsc - why is this not using open_file()?
-file_id = get_unit()
-write(string1, *) 'opening '// trim(useform) // ' file ',trim(file_name)
-call error_handler(E_MSG,'write_obs_seq',string1)
 
-open(unit = file_id, file = file_name, form = useform, &
-     action='write', position='rewind', iostat=rc)
 if (rc /= 0) then
-   write(string1, *) 'unable to create file '//trim(file_name)
-   call error_handler(E_ERR,'write_obs_seq',string1,source,revision,revdate)
+   write(string1, *) 'unable to create observation sequence file "'//trim(file_name)//'"'
+   write(string2, *) 'open file return code = ', rc
+   call error_handler(E_ERR,'write_obs_seq',string1,source,revision,revdate, text2=string2)
+else
+   write(string1, *) 'opening '// trim(useform) // ' observation sequence file "'//trim(file_name)//'"'
+   call error_handler(E_MSG,'write_obs_seq',string1)
 endif
 
 ! Write the initial string for help in figuring out binary
@@ -1141,7 +1144,7 @@ end do
 ! Close up the file
 call close_file(file_id)
 
-write(string1, *) 'closed file '//trim(file_name)
+write(string1, *) 'closed observation sequence file "'//trim(file_name)//'"'
 call error_handler(E_MSG,'write_obs_seq',string1)
 
 end subroutine write_obs_seq
@@ -1158,12 +1161,12 @@ type(obs_sequence_type), intent(out) :: seq
 
 integer :: i, num_copies, num_qc, num_obs, max_num_obs, file_id, io
 character(len=16) :: label(2)
-logical :: pre_I_format
 character(len=32) :: read_format
+logical :: dummy
 
 ! Use read_obs_seq_header to get file format and header info
 call read_obs_seq_header(file_name, num_copies, num_qc, num_obs, &
-   max_num_obs, file_id, read_format, pre_I_format)
+   max_num_obs, file_id, read_format, dummy)
 
 call init_obs_sequence(seq, num_copies + add_copies, &
    num_qc + add_qc, num_obs + add_obs)
@@ -1245,10 +1248,17 @@ end subroutine read_obs_seq
 
 !------------------------------------------------------------------
 
+! previous versions of this code had logic to read an older
+! format obs_seq file.  that code can't work with the current
+! files so it's been removed to simplify the code.  since pre_I_format
+! is in the interface it stays for now, but it always returns .false.
+! it should be deprecated at some point.
+!
+! Return the num_copies, num_qc, num_obs and max_num_obs along
+! with the file format:  formatted or unformatted
+
 subroutine read_obs_seq_header(file_name, num_copies, num_qc, num_obs, &
    max_num_obs, file_id, read_format, pre_I_format, close_the_file)
-
-! Be able to increase size at read in time for efficiency
 
 character(len=*),  intent(in)  :: file_name
 integer,           intent(out) :: num_copies, num_qc, num_obs, max_num_obs, file_id
@@ -1260,117 +1270,120 @@ character(len=16) :: label(2)
 character(len=12) :: header
 integer :: ios
 
-! Determine the format for an obs_sequence file to be read. Options are:
-! 1. Formatted, I-release format
-! 2. Formatted, Hawaii-release format
-! 3. Unformatted, I-release format
-! 4. Unformatted, Hawaii-release format
-!
-! Also return the num_copies, num_qc, num_obs and max_num_obs along
-! with the read_format (formatted or unformatted) and release version
-! (pre_I_format).
-
-! Have to be backwards compatible: assume new format for now
+! always false now, should be deprecated
 pre_I_format = .false.
 
-! Try opening the file as formatted
-file_id = get_unit()
+! Try opening the file.  if it doesn't exist or can't be
+! opened this call won't return.
+
 read_format = 'formatted'
-open(unit = file_id, file = file_name, form = read_format, &
-   action = 'read', status = 'old', iostat = ios)
-! If opening error, move to unformatted; else try to find lines
-if(ios == 0) then
-   ! Try to read in the I-format file header
-   read(file_id, *, iostat = ios) header
+file_id = open_file(file_name, form=read_format, action='read')
 
-   ! If read succeeds and header is 'obs_sequence' it is I-format, formatted
-   if(ios == 0 .and. header == 'obs_sequence') goto 31
+! if open_file() returns, we have opened the file.  try to read
+! what we expect to find in a valid obs_seq file. if that fails
+! close the file and reopen as unformatted and try again to read.
 
-   ! Maybe it's formatted old H-format
-   rewind file_id
-   read(file_id, *, iostat = ios) label(1), num_copies, label(2), num_qc
+! the check routine reads enough of the file to verify it is ok,
+! and leaves the file positioned right after reading the initial 
+! header string 'obs_sequence'
 
-   ! If read succeeds and label(1) is 'num_copies:' it is pre_I, formatted
-   if(ios == 0 .and. label(1) == 'num_copies:') then
-      pre_I_format = .true.
-      ! Can read next line to extract rest of header information and return
-      read(file_id, *, iostat = ios) label(1), num_obs, label(2), max_num_obs
-      ! Also call read_obs_kind to initialize default obs_kind mapping
-      call read_obs_kind(file_id, pre_I_format, read_format)
-      goto 51
+ios = check_obs_seq_header(file_id, read_format)
+if(ios /= 0) then
+   call close_file(file_id)
+
+   read_format = 'unformatted'
+   file_id = open_file(file_name, form=read_format, action='read', convert=read_binary_file_format)
+ 
+   ios = check_obs_seq_header(file_id, read_format)
+   if(ios /= 0) then
+
+      ! the file exists but isn't recognizable as one of our obs_seq files.
+      ! it could be the wrong byte order, or just not an obs_seq file.
+      write(string1, *) 'File "', trim(file_name), '" is not recognized as a DART observation sequence file.'
+      write(string2, *) 'Attempted to read both as a formatted (ascii) and unformatted (binary) file.'
+      write(string3, *) 'For binary files, endian selection was "'//trim(read_binary_file_format)//'"' 
+      call error_handler(E_ERR, 'read_obs_seq_header', string1, &
+                         source, revision, revdate, text2=string2, text3=string3)
    endif
-
 endif
 
-! Next try unformatted open and reads
-close(file_id)
-read_format = 'unformatted'
-pre_I_format = .false.
-open(unit = file_id, file = file_name, form = read_format, &
-   action = 'read', status = 'old', iostat = ios)
-! If no opening error try to detect pre_i or I format, else error
-if(ios == 0) then
-   ! Try reading the 'obs_sequence' header
-   read(file_id, iostat = ios) header
-   if(header == 'obs_sequence') goto 41
+! if we get here we've opened the file in the right format
+! and we've read the 'obs_sequence' header string.
 
-   ! Maybe it's unformatted but in the old format
-   rewind file_id
-   read(file_id, iostat = ios) num_copies, num_qc, num_obs, max_num_obs
-   ! If it's pre-i unformatted, we've read in the header and we're done
-   ! Initialize the default mapping for obs_kind by calling read_obs_kind
-   ! If you have a binary file on the wrong endian machine, you end up
-   ! here.  the test for num_copies and num_qc will catch bad binary
-   ! numbers and kick you out here -- nsc
-   if(ios == 0 .and. num_copies < 1000000 .and. num_qc < 1000000) then
-      pre_I_format = .true.
-      call read_obs_kind(file_id, pre_I_format, read_format)
-      goto 51
-   endif
+! Read in the obs_kind mapping table.  (second arg was pre_I_format)
+call read_obs_kind(file_id, .false., read_format)
 
+! Read in the rest of the header information
+if (read_format == 'formatted') then
+   read(file_id, *) label(1), num_copies, label(2), num_qc
+   read(file_id, *) label(1), num_obs, label(2), max_num_obs
 else
-   ! Unable to figure out what to do with file or it doesn't exist
-   write(string1, *) 'Unable to open file ', trim(file_name)
-   call error_handler(E_ERR, 'read_obs_seq_header', string1, &
-      source, revision, revdate)
+   read(file_id) num_copies, num_qc, num_obs, max_num_obs
 endif
 
-! Falling off the end here means file didn't correspond with any 
-! expected format
-write(string1, *) 'Unable to determine format of file ', trim(file_name)
-call error_handler(E_ERR, 'read_obs_seq_header', string1, &
-   source, revision, revdate)
-
-
-! Format is I and formatted
-31 continue
-! Read in the obs_kind mapping table
-call read_obs_kind(file_id, pre_I_format, read_format)
-! Read in the rest of the header information
-read(file_id, *) label(1), num_copies, label(2), num_qc
-read(file_id, *) label(1), num_obs, label(2), max_num_obs
-goto 51
-
-! Format is I and unformatted
-41 continue
-! Read in the obs_kind mapping table
-call read_obs_kind(file_id, pre_I_format, read_format)
-! Read in the rest of the header information
-read(file_id) num_copies, num_qc, num_obs, max_num_obs
-
-
-! Ready to exit, close the file if requested by optional argument
-51 continue
+! Close the file if requested by optional argument
 if(present(close_the_file)) then
-   if(close_the_file) close(file_id)
+   if(close_the_file) call close_file(file_id)
 endif
-!write(*, *) 'pre_I is ', pre_I_format
-!write(*, *) 'format is ', read_format
-!write(*, *) num_copies, num_qc, num_obs, max_num_obs
 
 end subroutine read_obs_seq_header
+
 !-------------------------------------------------
 
+! ok, this needs some explanation.  for a binary formatted file,
+! even if the wrong endian-ness, the first read succeeds and only
+! when trying to read the second string does it fail.  at that
+! point we're in the obs_kind module and there's no context to 
+! tell you what file, what might be wrong, etc.  so this routine
+! reads the first 2 lines of the file and returns 0 only if both succeed.
+! it then rewinds the file and rereads the first line so the calling code
+! is able to call the table_of_contents read routine.
+
+function check_obs_seq_header(file_id, read_format)
+ 
+integer,          intent(in) :: file_id
+character(len=*), intent(in) :: read_format
+integer :: check_obs_seq_header
+
+integer :: ios
+character(len=12) :: file_header   ! 'obs_sequence'
+character(len=20) :: toc_header    ! 'obs_kind_definitions'
+
+if (read_format == 'formatted') then
+   read(file_id, *, iostat = ios) file_header
+else
+   read(file_id, iostat = ios) file_header
+endif
+   
+if(ios /= 0 .or. file_header /= 'obs_sequence') then
+   check_obs_seq_header = -1
+   return
+endif
+
+if (read_format == 'formatted') then
+   read(file_id, *, iostat = ios) toc_header
+else
+   read(file_id, iostat = ios) toc_header
+endif
+   
+if(ios /= 0 .or. toc_header /= 'obs_kind_definitions') then
+   check_obs_seq_header = -1
+   return
+endif
+
+rewind(file_id)
+
+if (read_format == 'formatted') then
+   read(file_id, *, iostat = ios) file_header
+else
+   read(file_id, iostat = ios) file_header
+endif
+   
+check_obs_seq_header = 0
+
+end function check_obs_seq_header
+
+!-------------------------------------------------
 
 subroutine delete_seq_head(first_time, seq, all_gone)
 

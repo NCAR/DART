@@ -39,7 +39,7 @@ character(len=128), parameter :: id  = "$Id$"
 integer :: ios, i
 
 ! make all strings the same as the max length of the parameter limit
-integer, parameter :: string_length = paramname_length
+integer, parameter :: string_length = obstypelength
 
 integer, parameter :: MAXLINELEN = 512
 character(len=MAXLINELEN) :: readbuf
