@@ -171,6 +171,7 @@ type progvartype
    integer :: indexN        ! location in dart state vector of last  occurrence
    integer :: dart_kind
    character(len=paramname_length) :: kind_string
+   character(len=paramname_length) :: mask
    logical  :: clamping     ! does variable need to be range-restricted before
    real(r8) :: range(2)     ! being stuffed back into analysis file.
    logical  :: out_of_range_fail  ! is out of range fatal if range-checking?
@@ -181,7 +182,6 @@ type progvartype
 end type progvartype
 
 type(progvartype), dimension(max_state_variables) :: progvar
-
 
 ! Grid parameters - the values will be read from a
 ! standard ROMS namelist and filled in here.
@@ -467,10 +467,10 @@ top_offset  = progvar(ivar)%indexN
 !print *, 'base offset now for ',trim(progvar(ivar)%varname),base_offset,top_offset
 
 ! For Sea Surface Height or Pressure don't need the vertical coordinate
-!
+! but the surface layer is the LAST layer.
 if( vert_is_surface(location) ) then
    call lon_lat_interpolate(x(base_offset:top_offset), llon, llat, &
-   obs_type, 1, interp_val, istatus)
+   obs_type, Ns_rho, interp_val, istatus)
    return
 endif
 
@@ -720,6 +720,16 @@ do ivar = 1, nfields
       end select
 
    enddo DimensionLoop
+
+   !> @TODO FIXME (check, really) Are there any variables that use the mask_psi
+
+   if (    progvar(ivar)%varname == 'u') then
+           progvar(ivar)%mask    = 'mask_u'
+   elseif (progvar(ivar)%varname == 'v') then
+           progvar(ivar)%mask    = 'mask_v'
+   else
+           progvar(ivar)%mask    = 'mask_rho'
+   endif
 
    ! this call sets: clamping, bounds, and out_of_range_fail in the progvar entry
    call get_variable_bounds(roms_state_bounds, ivar)
@@ -3665,10 +3675,15 @@ real(r8)   :: tp(Nz), zz(Nz)
 tp   = 0.0_r8
 iidd = 0
 
-!>@ todo FIXME ... check ... get_val() can return MISSING_R8 ... is this possible
+! if the lonid, latid is a missing_r8, then the id is a land point
+! and no interpolation is possible. Just return a MISSING_R8 value.
 
 do i=1,Nz
-    tp(i)=get_val(lonid, latid, i, x, var_type)
+    tp(i) = get_val(lonid, latid, i, x, var_type)
+    if (tp(i) == MISSING_R8) then
+       interp_val = MISSING_R8
+       return
+    endif
     zz(i)=ZC(lonid,latid,i)
 enddo
 
@@ -3701,7 +3716,7 @@ end subroutine vert_interpolate
 !>
 !> Returns the DART state value for a given lat, lon, and level index.
 !> 'get_val' will be a MISSING value if this is NOT a valid grid location
-!> (e.g. land, or below the ocean floor).
+!> (e.g. land)
 !>
 !> @param get_val the value of the DART state at the gridcell of interest.
 !> @param lon_index the index of the longitude of interest.
@@ -3730,10 +3745,6 @@ get_val = MISSING_R8 ! guilty until proven otherwise
 
 ivar = get_progvar_index_from_kind(var_type)
 
-!> @ todo FIXME Implement the land masking. Must determine which mask
-!>        is appropriate for this variable ... extend progvar?
-!> could check dimension names of the variables against the dimension names of the masks
-
 Ndim3 = progvar(ivar)%numvertical
 Ndim2 = progvar(ivar)%numeta
 Ndim1 = progvar(ivar)%numxi
@@ -3741,6 +3752,19 @@ Ndim1 = progvar(ivar)%numxi
 if ( (  lon_index < 1 .or.   lon_index > Ndim1) .or. &
      (  lat_index < 1 .or.   lat_index > Ndim2) .or. &
      (level_index < 1 .or. level_index > Ndim3) ) return
+
+! Checking the mask. 0 is water, 1 is land. nothing else possible
+
+select case ( trim(progvar(ivar)%mask) )
+   case ('mask_u')
+      if (mask_u(  lon_index, lat_index) /= 0) return
+   case ('mask_v')
+      if (mask_v(  lon_index, lat_index) /= 0) return
+   case ('mask_rho')
+      if (mask_rho(lon_index, lat_index) /= 0) return
+   case ('mask_psi')
+      if (mask_psi(lon_index, lat_index) /= 0) return
+end select
 
 ! implicit assumption on packing order into the DART vector
 
