@@ -9,7 +9,8 @@ module model_mod
 ! This is the interface between the POP ocean model and DART.
 
 ! Modules that are absolutely required for use are listed
-use        types_mod,    only : r4, r8, i4, i8, SECPERDAY, MISSING_R8, rad2deg, PI
+use        types_mod, only : r4, r8, i4, i8, SECPERDAY, MISSING_R8, rad2deg, PI, &
+                             vtablenamelength
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
                              print_time, print_date,                           &
                              operator(*),  operator(+), operator(-),           &
@@ -29,7 +30,7 @@ use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, KIND_DRY_LAND,   &
                              KIND_U_CURRENT_COMPONENT,KIND_V_CURRENT_COMPONENT,&
                              KIND_SEA_SURFACE_HEIGHT, KIND_SEA_SURFACE_PRESSURE,&
                              KIND_POTENTIAL_TEMPERATURE, get_raw_obs_kind_index,&
-                             get_raw_obs_kind_name, paramname_length 
+                             get_raw_obs_kind_name
 use mpi_utilities_mod, only: my_task_id, task_count
 use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
 use      dart_pop_mod, only: set_model_time_step,                              &
@@ -102,9 +103,7 @@ type(random_seq_type) :: random_seq
 ! DART state vector contents are specified in the input.nml:&model_nml namelist.
 integer, parameter :: max_state_variables = 10 
 integer, parameter :: num_state_table_columns = 3
-! NOTE: may need to increase character length if netcdf variables are
-! larger than paramname_length = 32.
-character(len=paramname_length) :: variable_table( max_state_variables, num_state_table_columns )
+character(len=vtablenamelength) :: variable_table( max_state_variables, num_state_table_columns )
 integer :: state_kinds_list( max_state_variables )
 logical :: update_var_list( max_state_variables )
 
@@ -119,11 +118,11 @@ integer  :: assimilation_period_days = 1
 integer  :: assimilation_period_seconds = 0
 real(r8) :: model_perturbation_amplitude = 0.2
 logical  :: update_dry_cell_walls = .false.
-character(len=paramname_length) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
+character(len=vtablenamelength) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
 integer  :: debug = 0   ! turn up for more and more debug messages
 
-! valid values:  native, big_endian, little_endian
-character(len=64) :: binary_grid_file_format = 'big_endian'
+! only valid values:  native, big_endian, little_endian
+character(len=32) :: binary_grid_file_format = 'big_endian'
 
 ! FIXME: currently the update_dry_cell_walls namelist value DOES
 ! NOTHING.  it needs additional code to detect the cells which are
