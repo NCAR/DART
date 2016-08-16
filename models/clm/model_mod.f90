@@ -28,6 +28,7 @@ module model_mod
 use        types_mod, only : r4, r8, SECPERDAY, MISSING_R8,                    &
                              MISSING_I, MISSING_R4, rad2deg, deg2rad, PI,      &
                              obstypelength, i8
+
 use time_manager_mod, only : time_type, set_time, get_time, set_date, get_date,&
                              print_time, print_date, set_calendar_type,        &
                              operator(*),  operator(+),  operator(-),          &
@@ -71,7 +72,6 @@ use     obs_kind_mod, only : KIND_SOIL_TEMPERATURE,       &
                              KIND_FPAR_SHADED_DIFFUSE,    &
                              KIND_FPAR_SHADED_DIRECT,     &
                              KIND_FPAR_SHADED_DIFFUSE,    &
-                             paramname_length,            &
                              get_raw_obs_kind_index,      &
                              get_raw_obs_kind_name
 
@@ -232,7 +232,7 @@ type progvartype
    real(r8) :: spvalR8, missingR8
    logical  :: has_fill_value      ! intended for future use
    logical  :: has_missing_value   ! intended for future use
-   character(len=paramname_length) :: kind_string
+   character(len=obstypelength) :: kind_string
    character(len=512) :: origin    ! the file it came from
    logical  :: update
 end type progvartype
@@ -496,7 +496,7 @@ integer  :: spvalINT
 real(r4) :: spvalR4
 real(r8) :: spvalR8
 
-character(len=paramname_length) :: var_names(max_state_variables)
+character(len=obstypelength) :: var_names(max_state_variables)
 real(r8) :: var_ranges(max_state_variables,2)
 integer :: nvars, domid
 
@@ -2527,7 +2527,7 @@ real(r8) :: llon, llat, lheight
 integer  :: imem
 integer  :: istatus_2(ens_size)
 real(r8) :: interp_val_2(ens_size)
-character(len=paramname_length) :: kind_string
+character(len=obstypelength) :: kind_string
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2629,7 +2629,7 @@ real(r8) :: total_area(ens_size)
 real(r8), dimension(1) :: loninds,latinds
 real(r8), dimension(LocationDims) :: loc
 integer :: imem
-character(len=paramname_length) :: varstring
+character(len=obstypelength) :: varstring
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2775,7 +2775,7 @@ real(r8), allocatable, dimension(:, :) :: area_below
 integer :: counter, counter_above, counter_below
 integer :: imem
 real(r8) :: state(ens_size)
-character(len=paramname_length) :: varstring
+character(len=obstypelength) :: varstring
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -4812,7 +4812,7 @@ character(len=*), intent(in) :: caller
 integer                      :: findKindIndex
 
 integer :: i
-character(len=paramname_length) :: kind_string
+character(len=obstypelength) :: kind_string
 findKindIndex = -1
 
 ! Skip to the right variable

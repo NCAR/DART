@@ -7,6 +7,7 @@
 module model_mod
 
 use        types_mod, only : r8, MISSING_R8, obstypelength
+
 use time_manager_mod, only : time_type, set_time, set_date, get_time,          &
                              print_time, print_date, set_calendar_type,        &
                              operator(*),  operator(+), operator(-),           &
@@ -36,7 +37,6 @@ use     obs_kind_mod, only : KIND_SOIL_TEMPERATURE,    &
                              KIND_LEAF_CARBON,         &
                              KIND_WATER_TABLE_DEPTH,   &
                              KIND_GEOPOTENTIAL_HEIGHT, &
-                             paramname_length,         &
                              get_raw_obs_kind_index
 
 use mpi_utilities_mod, only: my_task_id
@@ -199,7 +199,7 @@ type progvartype
    integer  :: rangeRestricted
    real(r8) :: maxvalue
    real(r8) :: minvalue
-   character(len=paramname_length) :: kind_string
+   character(len=obstypelength) :: kind_string
 end type progvartype
 
 type(progvartype), dimension(MAX_STATE_VARIABLES) :: progvar
@@ -245,7 +245,7 @@ subroutine static_init_model()
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname
 character(len=NF90_MAX_NAME)          :: dimname
-character(len=paramname_length)       :: kind_string
+character(len=obstypelength)          :: kind_string
 
 integer  :: VarID, dimlen, varsize
 integer  :: iunit, io, ivar

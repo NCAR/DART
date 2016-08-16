@@ -17,8 +17,9 @@ module model_mod
 
 ! Routines in other modules that are used here.
 
-use        types_mod, only : r4, r8, i8, digits12, SECPERDAY, MISSING_R8,          &
-                             rad2deg, deg2rad, PI, MISSING_I
+use        types_mod, only : r4, r8, i8, digits12, SECPERDAY, MISSING_R8,      &
+                             rad2deg, deg2rad, PI, MISSING_I, obstypelength
+
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
                              print_time, print_date, set_calendar_type,        &
                              operator(*),  operator(+), operator(-),           &
@@ -51,8 +52,7 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              file_to_text, close_file, do_nml_file,            &
                              do_nml_term, scalar
 
-use     obs_kind_mod, only : paramname_length,        &
-                             get_raw_obs_kind_index,  &
+use     obs_kind_mod, only : get_raw_obs_kind_index,  &
                              get_raw_obs_kind_name,   &
                              KIND_SURFACE_ELEVATION,  &
                              KIND_SURFACE_PRESSURE,   &
@@ -289,7 +289,7 @@ type progvartype
    integer :: index1        ! location in dart state vector of first occurrence
    integer :: indexN        ! location in dart state vector of last  occurrence
    integer :: dart_kind
-   character(len=paramname_length) :: kind_string
+   character(len=obstypelength) :: kind_string
    logical  :: clamping     ! does variable need to be range-restricted before
    real(r8) :: range(2)     ! being stuffed back into MPAS analysis file.
    logical  :: out_of_range_fail  ! is out of range fatal if range-checking?
@@ -460,7 +460,7 @@ subroutine static_init_model()
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
 character(len=NF90_MAX_NAME)          :: varname,dimname
-character(len=paramname_length)       :: kind_string
+character(len=obstypelength)       :: kind_string
 integer :: ncid, VarID, numdims, varsize, dimlen
 integer :: iunit, io, ivar, i, index1, indexN, iloc, kloc
 integer :: ss, dd, z1, m1
@@ -4091,7 +4091,7 @@ integer,  intent(in)           :: ivar
 !%!    integer :: index1        ! location in dart state vector of first occurrence
 !%!    integer :: indexN        ! location in dart state vector of last  occurrence
 !%!    integer :: dart_kind
-!%!    character(len=paramname_length) :: kind_string
+!%!    character(len=obstypelength) :: kind_string
 !%!    logical  :: clamping     ! does variable need to be range-restricted before
 !%!    real(r8) :: range(2)     ! being stuffed back into MPAS analysis file.
 !%! end type progvartype
@@ -4404,7 +4404,7 @@ integer(i8),           intent(out) :: index1
 integer(i8), optional, intent(out) :: indexN
 
 integer :: i
-character(len=paramname_length) :: string
+character(len=obstypelength) :: string
 
 index1 = 0
 if (present(indexN)) indexN = 0

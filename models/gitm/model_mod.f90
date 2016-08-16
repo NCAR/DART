@@ -11,7 +11,8 @@ module model_mod
 ! Modules that are absolutely required for use are listed
 
 use        types_mod, only : r4, r8, digits12, SECPERDAY, MISSING_R8,          &
-                             rad2deg, deg2rad, PI
+                             rad2deg, deg2rad, PI, obstypelength
+
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time,&
                              print_time, print_date, set_calendar_type,        &
                              operator(*),  operator(+), operator(-),           &
@@ -35,8 +36,7 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              open_file, file_exist, find_textfile_dims,        &
                              file_to_text, close_file
 
-use     obs_kind_mod, only : paramname_length,        &
-                             get_raw_obs_kind_index,  &
+use     obs_kind_mod, only : get_raw_obs_kind_index,  &
                              get_raw_obs_kind_name,   &
                              KIND_GEOPOTENTIAL_HEIGHT
 
@@ -161,7 +161,7 @@ type progvartype
    integer :: index1      ! location in dart state vector of first occurrence
    integer :: indexN      ! location in dart state vector of last  occurrence
    integer :: dart_kind
-   character(len=paramname_length) :: kind_string
+   character(len=obstypelength) :: kind_string
 end type progvartype
 
 type(progvartype), dimension(max_state_variables) :: progvar
@@ -546,7 +546,7 @@ subroutine static_init_model()
 ! Local variables - all the important ones have module scope
 
 character(len=NF90_MAX_NAME)    :: varname
-character(len=paramname_length) :: kind_string
+character(len=obstypelength) :: kind_string
 integer :: varsize
 integer :: iunit, io, ivar, index1, indexN
 integer :: ss, dd
@@ -2081,7 +2081,7 @@ integer,  intent(out) :: NgridAlt   ! Number of Vertical grid centers
 integer,  intent(out) :: nBlocksLon, nBlocksLat
 real(r8), intent(out) :: LatStart, LatEnd, LonStart
 
-character(len=paramname_length) :: filename = 'UAM.in'
+character(len=10) :: filename = 'UAM.in'
 
 character(len=100) :: cLine  ! iCharLen_ == 100
 character(len=256) :: fileloc
@@ -3054,7 +3054,7 @@ integer, intent(in) :: dartkind
 integer, intent(out) :: index1,indexN
 
 integer :: i
-character(len=paramname_length) :: string
+character(len=obstypelength) :: string
 
 index1 = 0
 indexN = 0

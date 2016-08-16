@@ -31,10 +31,8 @@ use    utilities_mod, only : register_module, error_handler,                   &
                              file_to_text, close_file, do_nml_file,            &
                              do_nml_term, string_to_real, string_to_logical
 
-use     obs_kind_mod, only : paramname_length,        &
-                             get_raw_obs_kind_index,  &
-                             get_raw_obs_kind_name, &
-                             KIND_U_WIND_COMPONENT, KIND_V_WIND_COMPONENT
+use     obs_kind_mod, only : get_raw_obs_kind_index,  &
+                             get_raw_obs_kind_name
 
 use mpi_utilities_mod, only : my_task_id
 
