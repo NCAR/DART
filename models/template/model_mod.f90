@@ -300,51 +300,18 @@ end subroutine end_model
 
 
 
-function nc_write_model_atts( ncFileID , model_mod_will_write_state_variables) result (ierr)
+function nc_write_model_atts( ncFileID , model_writes_state ) result (ierr)
 !------------------------------------------------------------------
 ! TJH 24 Oct 2006 -- Writes the model-specific attributes to a netCDF file.
-!     This includes coordinate variables and some metadata, but NOT
-!     the model state vector. We do have to allocate SPACE for the model
-!     state vector, but that variable gets filled as the model advances.
+!     This includes coordinate variables and some metadata, and the state
+!     as a single vector.
 !
-! As it stands, this routine will work for ANY model, with no modification.
-!
-! The simplest possible netCDF file would contain a 3D field
-! containing the state of 'all' the ensemble members. This requires
-! three coordinate variables -- one for each of the dimensions 
-! [model_size, ensemble_member, time]. A little metadata is useful, 
-! so we can also create some 'global' attributes. 
-! This is what is implemented here.
-!
-! Once the simplest case is working, this routine (and nc_write_model_vars)
-! can be extended to create a more logical partitioning of the state vector,
-! fundamentally creating a netCDF file with variables that are easily 
-! plotted. The bgrid model_mod is perhaps a good one to view, keeping
-! in mind it is complicated by the fact it has two coordinate systems. 
-! There are stubs in this template, but they are only stubs.
-!
-! TJH 29 Jul 2003 -- for the moment, all errors are fatal, so the
-! return code is always '0 == normal', since the fatal errors stop execution.
-!
-! assim_model_mod:init_diag_output uses information from the location_mod
-!     to define the location dimension and variable ID. All we need to do
-!     is query, verify, and fill ...
-!
-! Typical sequence for adding new dimensions,variables,attributes:
-! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode 
-!    NF90_def_dim       ! define additional dimensions (if any)
-!    NF90_def_var       ! define variables: from name, type, and dims
-!    NF90_put_att       ! assign attribute values
-! NF90_ENDDEF           ! end definitions: leave define mode
-!    NF90_put_var       ! provide values for variable
-! NF90_CLOSE            ! close: save updated netCDF dataset
 
 use typeSizes
 use netcdf
 
 integer, intent(in)  :: ncFileID      ! netCDF file identifier
-logical, intent(out) :: model_mod_will_write_state_variables  ! DART lib will write if .false.
+logical, intent(out) :: model_writes_state ! if true, dart libs will write state
 integer              :: ierr          ! return value of function
 
 integer :: nDimensions, nVariables, nAttributes, unlimitedDimID
@@ -368,6 +335,8 @@ integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=NF90_MAX_NAME) :: str1
 
 integer :: i
+
+model_writes_state = .true.
 
 !-------------------------------------------------------------------------------
 ! make sure ncFileID refers to an open netCDF file, 
@@ -416,9 +385,6 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model_revdate" ,revdate), &
 call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, "model","template"), &
                           "nc_write_model_atts", "put_att model")
 
-!-------------------------------------------------------------------------------
-
-model_mod_will_write_state_variables = .false.
 
 !-------------------------------------------------------------------------------
 ! Flush the buffer and leave netCDF file open
@@ -475,7 +441,6 @@ end function nc_write_model_vars
 !------------------------------------------------------------------
 
 subroutine pert_model_copies(state_handle, ens_size, pert_amp, interf_provided)
-
  type(ensemble_type), intent(inout) :: state_handle
  integer,             intent(in)    :: ens_size
  real(r8),            intent(in)    :: pert_amp
