@@ -60,10 +60,10 @@ module state_structure_mod
 
 use utilities_mod, only : E_ERR, error_handler, nc_check, do_output
 
-use  obs_kind_mod, only : paramname_length, get_raw_obs_kind_name, &
-                          get_raw_obs_kind_index
+use  obs_kind_mod, only : get_raw_obs_kind_name, get_raw_obs_kind_index
 
-use     types_mod, only : r8, r4, i8, digits12, MISSING_R8, MISSING_R4, MISSING_I
+use     types_mod, only : r8, r4, i8, digits12, MISSING_R8, MISSING_R4, MISSING_I, &
+                          obstypelength
 
 use      sort_mod, only : index_sort
 
@@ -201,7 +201,7 @@ type variable_type
 
    ! dart information
    integer :: dart_kind = -1
-   character(len=paramname_length) :: kind_string = 'unknown'
+   character(len=obstypelength) :: kind_string = 'unknown'
 
    type(io_information) :: io_info
 
@@ -1589,7 +1589,7 @@ function get_kind_string(dom_id, var_id)
 
 integer, intent(in) :: dom_id ! domain
 integer, intent(in) :: var_id ! variable
-character(len=paramname_length)  :: get_kind_string
+character(len=obstypelength)  :: get_kind_string
 
 get_kind_string = state%domain(dom_id)%variable(var_id)%kind_string
 
