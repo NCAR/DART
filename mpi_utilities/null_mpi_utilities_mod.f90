@@ -121,7 +121,7 @@ module mpi_utilities_mod
 !
 !-----------------------------------------------------------------------------
 
-use types_mod, only        : r8, digits12
+use types_mod, only        : i8, r8, digits12
 use utilities_mod, only    : register_module, error_handler,             &
                              initialize_utilities, get_unit, close_file, & 
                              E_ERR, E_WARN, E_MSG, E_DBG, finalize_utilities
@@ -139,17 +139,23 @@ private
 ! this directory.  It is a sed script that comments in and out the interface
 ! block below.  Please leave the BLOCK comment lines unchanged.
 
-! !!SYSTEM_BLOCK_EDIT START COMMENTED_OUT
-! ! interface block for getting return code back from system() routine
-! interface
-!  function system(string)    
-!   character(len=*) :: string
-!   integer :: system         
-!  end function system
-! end interface
-! ! end block                 
-! !!SYSTEM_BLOCK_EDIT END COMMENTED_OUT
+ !!SYSTEM_BLOCK_EDIT START COMMENTED_IN
+ ! interface block for getting return code back from system() routine
+ interface
+  function system(string)    
+   character(len=*) :: string
+   integer :: system         
+  end function system
+ end interface
+ ! end block                 
+ !!SYSTEM_BLOCK_EDIT END COMMENTED_IN
 
+
+interface sum_across_tasks
+   module procedure sum_across_tasks_int4
+   module procedure sum_across_tasks_int8
+   module procedure sum_across_tasks_real
+end interface
 !   ---- private data for mpi_utilities ----
 
 integer :: myrank          ! my mpi number
@@ -530,17 +536,31 @@ call array_broadcast(array1, from)
 end subroutine broadcast_recv
 
 !-----------------------------------------------------------------------------
-subroutine sum_across_tasks(addend, sum)
+subroutine sum_across_tasks_int4(addend, sum)
  integer, intent(in) :: addend
  integer, intent(out) :: sum
 
-! cover routine for MPI all-reduce
+sum = addend
 
-if ( .not. module_initialized ) call initialize_mpi_utilities()
+end subroutine sum_across_tasks_int4
+
+!-----------------------------------------------------------------------------
+subroutine sum_across_tasks_int8(addend, sum)
+ integer(i8), intent(in) :: addend
+ integer(i8), intent(out) :: sum
 
 sum = addend
 
-end subroutine sum_across_tasks
+end subroutine sum_across_tasks_int8
+
+!-----------------------------------------------------------------------------
+subroutine sum_across_tasks_real(addend, sum)
+ real(r8), intent(in) :: addend
+ real(r8), intent(out) :: sum
+
+sum = addend
+
+end subroutine sum_across_tasks_real
 
 
 !-----------------------------------------------------------------------------
