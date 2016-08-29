@@ -55,7 +55,7 @@
 module obs_def_rel_humidity_mod
 
 use        types_mod, only : r8, missing_r8, L_over_Rv
-use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG
+use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, E_ALLMSG
 use     location_mod, only : location_type, set_location, get_location, write_location, &
                              read_location, vert_is_pressure
 use  assim_model_mod, only : interpolate
@@ -130,7 +130,7 @@ where (tmpk <= 0.0_r8)
    istatus = 99
 endwhere
 
-if(all(istatus == 0)) return  ! not using return_now because where clause modifies istatus.
+if(all(istatus /= 0)) return  ! not using return_now because where clause modifies istatus.
 
 !  interpolate the pressure, if observation location is not pressure
 if ( vert_is_pressure(location) ) then
@@ -145,7 +145,7 @@ else
       rh = missing_r8
       istatus = 99
    end where
-   if(all(istatus == 0)) return  ! not using return_now because where clause modifies istatus.
+   if(all(istatus /= 0)) return  ! not using return_now because where clause modifies istatus.
 
 endif
 
@@ -158,24 +158,32 @@ end where
 
 ! Warnings - first time only
 
-if (first_time_warn_low) then
+! nsc - my dilemma: each task does these obs independently.  if you use E_ALLMSG you'll
+! get a message from every processor which runs into this case.  if you use E_MSG you'll
+! only see those on task 0.  for now i've removed the test and you'll get the message (once)
+! even if there aren't any values outside the valid range.  i can't see a good way to
+! enforce that you get only one message when this could happen on any task and probably
+! will happen on many tasks.
 
-   if (any(rh < MIN_VALUE .and. istatus == 0)) then
-      write(msgstring, '(A,F12.6)') 'values lower than low limit detected, e.g.', rh
+if (first_time_warn_low) then
+   !if (any(rh < MIN_VALUE .and. istatus == 0)) then
+   !   write(msgstring, '(A,F12.6)') 'values lower than low limit detected, e.g.', minval(rh, istatus==0)
+      write(msgstring, *) 'checking relative humidity value computed by the forward operator'
       call error_handler(E_MSG,'get_expected_relative_humidity', msgstring,      &
                          text2='all values lower than 1e-9 will be set to 1e-9', &
                          text3='this message will only print once')
       first_time_warn_low = .false.
-   endif
+   !endif
 endif
 if (first_time_warn_high) then
-   if (any(rh < MAX_VALUE)) then
-      write(msgstring, '(A,F12.6)') 'values higher than high limit detected, e.g.', rh
+   !if (any(rh > MAX_VALUE .and. istatus == 0)) then
+   !   write(msgstring, '(A,F12.6)') 'values higher than high limit detected, e.g.', maxval(rh, istatus==0)
+      write(msgstring, *) 'checking relative humidity value computed by the forward operator'
       call error_handler(E_MSG,'get_expected_relative_humidity', msgstring,      &
                          text2='all values larger than 1.1 will be set to 1.1', &
                          text3='this message will only print once')
       first_time_warn_high = .false.
-   endif
+   !endif
 endif
 
 ! Actually force the relative humidity to be between MIN_VALUE and MAX_VALUE
