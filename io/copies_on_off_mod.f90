@@ -85,7 +85,7 @@ public :: ENS_MEAN_COPY, ENS_SD_COPY, &
           SPARE_PRIOR_MEAN, SPARE_PRIOR_SPREAD, &
           SPARE_PRIOR_INF_MEAN, SPARE_PRIOR_INF_SPREAD, &
           SPARE_POST_INF_MEAN, SPARE_POST_INF_SPREAD, &
-          query_copy_present
+          query_copy_present, COPY_NOT_PRESENT
 
 ! Used to test if a copy is not in use, e.g. the spare copies may not be in use.
 integer, parameter :: COPY_NOT_PRESENT = -1
