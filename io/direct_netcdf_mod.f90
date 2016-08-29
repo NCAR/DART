@@ -93,7 +93,8 @@ use netcdf
 
 implicit none
 private
-public :: read_transpose, transpose_write
+public :: read_transpose, transpose_write, &
+          read_variables
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
