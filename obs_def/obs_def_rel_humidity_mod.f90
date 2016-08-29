@@ -79,7 +79,7 @@ character(len=128), parameter :: revdate  = "$Date$"
 logical, save       :: module_initialized   = .false.
 logical, save       :: first_time_warn_low  = .true.
 logical, save       :: first_time_warn_high = .true.
-character(len=64)   :: msgstring
+character(len=512)  :: msgstring
 real(r8), parameter :: MIN_VALUE = 1.0e-9
 real(r8), parameter :: MAX_VALUE = 1.1
 
