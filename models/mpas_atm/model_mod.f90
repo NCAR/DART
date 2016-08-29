@@ -7115,9 +7115,9 @@ integer,            intent(in) :: copy
 character(len=256) :: construct_file_name_in
 
 if (copy < 10) then
-   write(construct_file_name_in, '(A, i1.1, A)') TRIM(stub), copy, "/", trim(model_analysis_filename)
+   write(construct_file_name_in, '(A, i1.1, A, A)') TRIM(stub), copy, "/", trim(model_analysis_filename)
 else
-   write(construct_file_name_in, '(A, i2.2, A)') TRIM(stub), copy, "/", trim(model_analysis_filename)
+   write(construct_file_name_in, '(A, i2.2, A, A)') TRIM(stub), copy, "/", trim(model_analysis_filename)
 endif
 
 end function construct_file_name_in
