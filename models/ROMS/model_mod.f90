@@ -442,6 +442,7 @@ if( vert_is_height(location) ) then
 elseif ( vert_is_surface(location) ) then
    ! Nothing to do
 elseif (vert_is_level(location)) then
+   !> @todo FIXME ... what should happen in this block
    ! convert the level index to an actual depth
    !ind = nint(loc_array(3))
    !if ( (ind < 1) .or. (ind > size(zc)) ) then
@@ -464,8 +465,6 @@ ivar = get_progvar_index_from_kind(obs_kind)
 base_offset = progvar(ivar)%index1
 top_offset  = progvar(ivar)%indexN
 
-!print *, 'base offset now for ',trim(progvar(ivar)%varname),base_offset,top_offset
-
 ! For Sea Surface Height or Pressure don't need the vertical coordinate
 ! but the surface layer is the LAST layer.
 if( vert_is_surface(location) ) then
@@ -485,7 +484,6 @@ endif
 !    write(*,*)'TJH ',istatus, trim(progvar(ivar)%dimname(istatus)), &
 !                                   progvar(ivar)%dimlens(istatus)
 ! enddo
-istatus = 0
 
 if(progvar(ivar)%kind_string == 'KIND_U_CURRENT_COMPONENT') then
    call get_reg_box_indices(llon, llat, ULON, ULAT, x_ind, y_ind)
@@ -721,7 +719,7 @@ do ivar = 1, nfields
 
    enddo DimensionLoop
 
-   !> @TODO FIXME (check, really) Are there any variables that use the mask_psi
+   !> @todo FIXME (check, really) Are there any variables that use the mask_psi
 
    if (    progvar(ivar)%varname == 'u') then
            progvar(ivar)%mask    = 'mask_u'
@@ -2255,7 +2253,8 @@ integer  :: k,ncid, VarID, stat
 real(r8) :: dzt0(Nx,Ny)
 real(r8) :: s_rho(Ns_rho), Cs_r(Ns_rho), SSH(Nx,Ny)
 
-real(r8), parameter :: all_land = 0.001_r8
+integer(i2), parameter :: LAND  = 0_i2
+integer(i2), parameter :: WATER = 1_i2
 
 if (debug > 1) then
    write(string1,*)'..  NX is ',Nx
@@ -2351,8 +2350,8 @@ call nc_check(nf90_inq_varid(ncid, 'Cs_r', VarID), &
 call nc_check(nf90_get_var( ncid, VarID, Cs_r), &
       'get_grid', 'get_var Cs_r '//trim(grid_definition_filename))
 
-! Allocate the masks and set them all to water.
-! 1 is water, 0 is land (apparently) There are seemingly no intermediate values.
+! Allocate the masks and set them all to land.
+! 0 is land, 1 is water. There are seemingly no intermediate values.
 ! In the ROMS netCDF file, these are typed 'double' (overkill),
 ! but we are implementing as short integer.
 ! (Could even do logicals if netCDF (output) supported them.)
@@ -2362,10 +2361,10 @@ if (.not. allocated(mask_psi)) allocate(mask_psi(Nxi_psi, Neta_psi))
 if (.not. allocated(mask_u))   allocate(mask_u(  Nxi_u  , Neta_u  ))
 if (.not. allocated(mask_v))   allocate(mask_v(  Nxi_v  , Neta_v  ))
 
-mask_rho = 0
-mask_psi = 0
-mask_u   = 0
-mask_v   = 0
+mask_rho = LAND
+mask_psi = LAND
+mask_u   = LAND
+mask_v   = LAND
 
 ! Read mask on RHO-points
 
@@ -2373,7 +2372,7 @@ call nc_check(nf90_inq_varid(ncid, 'mask_rho', VarID), &
       'get_grid', 'inq_varid mask_rho '//trim(grid_definition_filename))
 call nc_check(nf90_get_var( ncid, VarID, mask_rho), &
       'get_grid', 'get_var mask_rho '//trim(grid_definition_filename))
-where(mask_rho > all_land) mask_rho = 1
+where(mask_rho > LAND) mask_rho = WATER
 
 ! Read mask on PSI-points
 
@@ -2381,7 +2380,7 @@ call nc_check(nf90_inq_varid(ncid, 'mask_psi', VarID), &
       'get_grid', 'inq_varid mask_psi '//trim(grid_definition_filename))
 call nc_check(nf90_get_var( ncid, VarID, mask_psi), &
       'get_grid', 'get_var mask_psi '//trim(grid_definition_filename))
-where(mask_psi > all_land) mask_psi = 1
+where(mask_psi > LAND) mask_psi = WATER
 
 ! Read mask on U-points
 
@@ -2389,7 +2388,7 @@ call nc_check(nf90_inq_varid(ncid, 'mask_u', VarID), &
       'get_grid', 'inq_varid mask_u '//trim(grid_definition_filename))
 call nc_check(nf90_get_var( ncid, VarID, mask_u), &
       'get_grid', 'get_var mask_u '//trim(grid_definition_filename))
-where(mask_u > all_land) mask_u = 1
+where(mask_u > LAND) mask_u = WATER
 
 ! Read mask on V-points
 
@@ -2397,7 +2396,7 @@ call nc_check(nf90_inq_varid(ncid, 'mask_v', VarID), &
       'get_grid', 'inq_varid mask_v '//trim(grid_definition_filename))
 call nc_check(nf90_get_var( ncid, VarID, mask_v), &
       'get_grid', 'get_var mask_v '//trim(grid_definition_filename))
-where(mask_v > all_land) mask_v = 1
+where(mask_v > LAND) mask_v = WATER
 
 call nc_check(nf90_close(ncid), &
              'get_var','close '//trim(grid_definition_filename))
@@ -3023,8 +3022,9 @@ if (present(last_time)) then
    call nc_check(nf90_get_att(ncid, VarID, 'calendar', calendarstring), &
           'find_time_dimension', 'get_att ocean_time units '//trim(filename))
 
-   if (trim(calendarstring) /= 'julian') then
-      write(string1,*)'expecting ocean_time calendar of "julian"'
+   if ((trim(calendarstring) /= 'julian') .and. &
+       (trim(calendarstring) /= 'gregorian')) then
+      write(string1,*)'expecting ocean_time calendar of "julian" or "gregorian"'
       write(string2,*)'got '//trim(calendarstring)
       call error_handler(E_ERR,'find_time_dimension:', string1, &
                 source, revision, revdate, text2=string2, text3=string3)
@@ -3084,8 +3084,9 @@ if (present(last_time)) then
                 source, revision, revdate, text2=string2, text3=string3)
    endif
 
-   if (trim(calendarstring) /= 'julian') then
-      write(string1,*)'expecting dstart calendar of "julian"'
+   if ((trim(calendarstring) /= 'julian') .and. &
+       (trim(calendarstring) /= 'gregorian')) then
+      write(string1,*)'expecting ocean_time calendar of "julian" or "gregorian"'
       write(string2,*)'got '//trim(calendarstring)
       call error_handler(E_ERR,'find_time_dimension:', string1, &
                 source, revision, revdate, text2=string2, text3=string3)
@@ -3757,13 +3758,13 @@ if ( (  lon_index < 1 .or.   lon_index > Ndim1) .or. &
 
 select case ( trim(progvar(ivar)%mask) )
    case ('mask_u')
-      if (mask_u(  lon_index, lat_index) /= 0) return
+      if (mask_u(  lon_index, lat_index) /= WATER) return
    case ('mask_v')
-      if (mask_v(  lon_index, lat_index) /= 0) return
+      if (mask_v(  lon_index, lat_index) /= WATER) return
    case ('mask_rho')
-      if (mask_rho(lon_index, lat_index) /= 0) return
+      if (mask_rho(lon_index, lat_index) /= WATER) return
    case ('mask_psi')
-      if (mask_psi(lon_index, lat_index) /= 0) return
+      if (mask_psi(lon_index, lat_index) /= WATER) return
 end select
 
 ! implicit assumption on packing order into the DART vector
@@ -4345,7 +4346,7 @@ real(r8), intent(out) :: corners(4)
 integer :: ip1
 
 ! Note that corners go counterclockwise around the quad.
-! @todo Have to worry about wrapping in longitude but not in latitude
+! @todo FIXME Have to worry about wrapping in longitude but not in latitude
 
 ip1 = i + 1
 !if(ip1 > nx) ip1 = 1
