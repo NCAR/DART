@@ -1262,6 +1262,19 @@ end subroutine get_grid_dimensions
 !>
 !> Read the actual grid values from the ROMS netcdf file.
 !>
+!> @todo FIXME:  the original implementation opened 3 different files
+!> to get the grid info - the namelist was:
+!>    roms_ini_filename            = '../data/wc13_ini.nc'
+!>    grid_definition_filename     = '../data/wc13_grd.nc'
+!>    depths_definition_filename   = '../data/wc13_depths.nc'
+!>
+!> these have been consolidated by hernan for the santa cruz version
+!> into a single file.  check with the other rutgers folks to see if
+!> they still need to open 3 different files.  if so, we might need
+!> to restore the 3 namelist items and we can use the same file for
+!> all 3 types of grid info in the first case, and 3 different files
+!> for the second case.
+!>
 
 subroutine get_grid()
 
@@ -1480,7 +1493,7 @@ integer :: ios, DimID, VarID, dimlen, i
 character(len=64) :: unitstring
 character(len=32) :: calendarstring
 
-integer :: year, month, day, hour, minute, second
+integer :: year, month, day, hour, minute, second, rc
 real(digits12), allocatable :: these_times(:)
 type(time_type) :: time_offset, base_time
 
@@ -1501,8 +1514,10 @@ call nc_check(nf90_inq_varid(ncid, var_name, VarID), &
        'get_time_information', 'inq_varid '//trim(var_name)//' from '//trim(filename))
 if (present(myvarid)) myvarid = VarID
 
-call nc_check(nf90_get_att(ncid, VarID, 'calendar', calendarstring), &
-       'get_time_information', 'get_att '//trim(var_name)//' units '//trim(filename))
+! assume gregorian calendar unless there's a calendar attribute saying elsewise
+rc = nf90_get_att(ncid, VarID, 'calendar', calendarstring)
+if (rc /= nf90_noerr) calendarstring = 'gregorian'
+
 if (present(calendar)) calendar = trim(calendarstring)
 
 if (trim(calendarstring) /= 'gregorian') then
