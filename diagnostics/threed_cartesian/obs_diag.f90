@@ -398,7 +398,7 @@ U_obs_loc = set_location_missing()
 ! Open file for histogram of innovations, as a function of standard deviation.
 !----------------------------------------------------------------------
 
-nsigmaUnit = open_file('LargeInnov.txt',form='formatted',action='rewind')
+nsigmaUnit = open_file('LargeInnov.txt',form='formatted',action='write')
 write(nsigmaUnit,'(a)')'Any observations flagged as bad are dumped into the last bin.'
 write(nsigmaUnit,'(a)')'   day   secs            x              y            level&
                        &         obs           prior  zscore     key    kind'
