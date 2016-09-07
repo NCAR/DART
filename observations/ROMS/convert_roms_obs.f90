@@ -47,7 +47,7 @@ use          sort_mod, only : index_sort
 
 use obs_utilities_mod, only : getvar_real, add_obs_to_seq, &
                               create_3d_obs, getvar_int, getdimlen, &
-                              query_varname
+                              query_varname, set_missing_name
 
 use    random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
@@ -76,7 +76,7 @@ logical  :: file_exist, first_obs
 character(len=512) :: msgstring, msgstring1
 
 integer, parameter :: MAX_TYPES = 100
-character(len=obstypelength) :: roms_types(MAX_TYPES)
+character(len=128) :: roms_types(MAX_TYPES)
 
 ! mapping between roms type numbers and dart types.
 ! use the roms number as the index; the value is the dart kind
@@ -90,6 +90,7 @@ real(r8), allocatable :: lat(:), lon(:), depth(:), ovar(:),  &
                          oval(:), raw_qc(:), combined_qc(:), &
                          temp_fo(:), forw_ops(:,:)
 integer, allocatable  :: otype(:)
+real(r8) :: missing
 
 ! roms grid in i,j,k space - needs model_mod routine to convert
 ! to lat/lon/depth
@@ -106,17 +107,18 @@ type(time_type)         :: time_obs, prev_time
 
 ! Namelist information and defaults
 
+integer  :: ens_size                                  = 1
 character(len=256) :: roms_input_obs_file             = 'roms_obs.nc'
 character(len=256) :: roms_mod_obs_files(MAX_ENS)     = ''
 character(len=256) :: roms_mod_obs_filelist           = 'filelist.txt'
 character(len=256) :: dart_output_obs_file            = 'obs_seq.out'
-character(len=256) :: type_translations(2, MAX_TYPES) = 'NULL'
-logical  :: locations_in_IJK                          = .true.
+logical  :: append_to_existing                        = .false.
+logical  :: use_precomputed_values                    = .true.
+logical  :: locations_in_IJK                          = .false.
 logical  :: add_random_noise                          = .false.
 real(r8) :: pert_amplitude                            = 0.01
-logical  :: append_to_existing                        = .false.
-integer  :: ens_size                                  = 1
 integer  :: verbose                                   = 0
+character(len=256) :: type_translations(2, MAX_TYPES) = 'NULL'
 
 !> @TODO: FIXME -
 !> we could get the ens size from the number of input files
@@ -124,22 +126,39 @@ integer  :: verbose                                   = 0
 !> so we can error out if the counts don't match.
 
 !> @TODO: FIXME -
-!> i vote to remove the roms_obs_files() mechanism since roms_mod_obs_filelist
+!> TJH: I vote to remove the roms_obs_files() mechanism since roms_mod_obs_filelist
 !> is so much more flexible. The roms_obs_files variable just mucks up the 
 !> namelist print and log files.
 
+!> @TODO: FIXME -
+!> TJH: I vote to remove the roms_input_obs_file mechanism.
+!> The first file in either the roms_mod_obs_filelist() or the
+!> roms_mod_obs_files() [should that stay] should be used.
+
+!> @TODO: FIXME -
+!> TJH: The type_translations table is currently implemented as an explicit
+!> set of type translations ... it _could_ be made to exist as a superset with
+!> multiple ROMS variants that relate to the same DART TYPE. hernan and tim
+!> prefer the superset, Chris and Nancy prefer the subset ... Andy?
+
+!> @TODO: FIXME -
+!> TJH: could remove the locations_in_IJK variable by simply checking 
+!> if the obs_lon,obs_lat variables exist. 
+!> If they do exist, use them; if not - try the IJK method.
+
 namelist /convert_roms_obs_nml/ &
+   ens_size, &
    roms_input_obs_file, &
    roms_mod_obs_files, &
    roms_mod_obs_filelist, &
    dart_output_obs_file, &
-   type_translations, &
+   append_to_existing, &
+   use_precomputed_values, &
    locations_in_IJK, &
    add_random_noise, &
    pert_amplitude, &
-   append_to_existing, &
-   ens_size, &
-   verbose
+   verbose, &
+   type_translations
 
 !------------
 ! start of executable code
@@ -173,38 +192,46 @@ call nc_check( nf90_open(roms_input_obs_file, nf90_nowrite, ncid), &
 
 call getdimlen(ncid, "datum", nobs)
 
-allocate(lat(nobs))
-allocate(lon(nobs))
-allocate(depth(nobs))
 allocate(otype(nobs))
 allocate(oval(nobs))
 allocate(ovar(nobs))
 allocate(otim(nobs))
-!allocate(raw_qc(ens_size, nobs))
 allocate(raw_qc(nobs))
 allocate(combined_qc(nobs))
 allocate(temp_fo(nobs))
 allocate(forw_ops(ens_size, nobs))
-allocate(Xgrid(nobs))
-allocate(Ygrid(nobs))
-allocate(Zgrid(nobs))
 
 ! read in the data arrays
+!> @TODO FIXME make sure the missing values in the depth arrays are handled
+! correctly further downstream
+
+call set_missing_name('missing_value')
 
 if (locations_in_IJK) then
+   allocate(Xgrid(nobs))
+   allocate(Ygrid(nobs))
+   allocate(Zgrid(nobs))
    call getvar_real(ncid, "obs_Xgrid", Xgrid)
    call getvar_real(ncid, "obs_Ygrid", Ygrid)
-   call getvar_real(ncid, "obs_depth", Zgrid)
+   call getvar_real(ncid, "obs_depth", Zgrid, dmiss=missing)
+   where(Zgrid == missing) Zgrid = MISSING_R8
 else
+   allocate(lat(nobs))
+   allocate(lon(nobs))
+   allocate(depth(nobs))
    call getvar_real(ncid, "obs_lat", lat)
    call getvar_real(ncid, "obs_lon", lon)
-   call getvar_real(ncid, "obs_depth", depth)
-   depth = abs(depth)
+   call getvar_real(ncid, "obs_depth", depth, dmiss=missing)
+   where(depth == missing)
+       depth = MISSING_R8
+   elsewhere
+       depth = abs(depth)
+   end where
 endif
 
 call getvar_real(ncid, "obs_value", oval)
 call getvar_real(ncid, "obs_error", ovar)  ! already squared, so variance not stddev
-call getvar_int(ncid, "obs_type", otype)
+call getvar_int( ncid, "obs_type", otype)
 
 ! these come back as dart time types
 call get_time_information(roms_input_obs_file, ncid, "obs_time", "datum", all_times=otim)
@@ -223,9 +250,15 @@ call get_translation_table(typemap, typecount)
 call nc_check( nf90_close(ncid) , &
                'convert_roms_obs', 'closing file '//trim(roms_input_obs_file))
 
+! Set the incoming data quality control.  this combines
+! the qcs (scale) from all ensembles to make a combined value.
+
+combined_qc(:) = 0.0_r8
 
 ! loop over the ensemble of mod files, opening each file and
 ! reading in both the expected values per obs, and also the qc
+
+call set_missing_name('_FillValue')
 
 do i = 1, ens_size
 
@@ -242,11 +275,15 @@ do i = 1, ens_size
                          source, revision, revdate)
    endif
 
-   call getvar_real(ncid, "NLmodel_value", temp_fo)
-   call getvar_real(ncid, "obs_scale", raw_qc)
+   call getvar_real(ncid, "NLmodel_value", temp_fo, dmiss=missing)
+   where (temp_fo == missing) temp_fo = MISSING_R8
+   call getvar_real(ncid, "obs_scale",     raw_qc,  dmiss=missing)
+   where (raw_qc == missing) raw_qc = huge(missing)
 
    forw_ops(i, :) = temp_fo(:)
-   combined_qc(:) = combined_qc(:) + raw_qc(:)
+
+   ! 'max' works on arrays ... who knew ...
+   combined_qc = max(combined_qc, raw_qc)
 
    call nc_check( nf90_close(ncid) , &
                   'convert_roms_obs', 'closing file '//trim(roms_mod_obs_files(i)))
@@ -280,12 +317,9 @@ else
 
 endif
 
-! Set the incoming data quality control.  this should combine
-! the qcs (scale) from all ensembles to make a combined value.
-
-combined_qc(:) = 0.0_r8
-
 obsloop: do n = 1, nobs
+
+   if (combined_qc(n) == huge(missing)) cycle obsloop
 
    ! time of observation
    time_obs = otim(n)
@@ -325,6 +359,9 @@ obsloop: do n = 1, nobs
 
    if ( lon(n) < 0.0_r8 )  lon(n) = lon(n) + 360.0_r8
 
+   !> @TODO FIXME ... depth may be MISSING_R8 ... in that the parent variable
+   !> "obs_depth" has a 'missing_value' attribute
+
    ! extract actual time of observation in file into oday, osec.
    call get_time(time_obs, osec, oday)
 
@@ -338,7 +375,8 @@ obsloop: do n = 1, nobs
    endif
 
    call get_obs_def(obs, obs_def)
-   call set_obs_def_external_FO(obs_def, .true., .false., n, ens_size, forw_ops(:, n))
+   call set_obs_def_external_FO(obs_def, .true., use_precomputed_values, &
+                                n, ens_size, forw_ops(:, n))
    call set_obs_def(obs, obs_def)
 
    call add_obs_to_seq(obs_seq, obs, time_obs, prev_obs, prev_time, first_obs)
@@ -402,6 +440,8 @@ integer :: dart_kind, status
 type(location_type) :: dart_location
 real(r8) :: dummy(3)
 
+!> @TODO FIXME ... r_kloc may be MISSING_R8 ... in that the parent variable
+!> "obs_depth" in the IJK world has a 'missing_value' attribute
 
 ! convert from specific obs type to a generic obs kind
 dart_kind = get_obs_kind_var_type(dart_type)
@@ -450,7 +490,7 @@ character(len=MAX_PROV_STRLEN) :: provenance_str2
 ! and not the global attribute.
 
 call nc_check(nf90_get_att(ncid, NF90_GLOBAL, 'obs_provenance', provenance_str), &
-              'convert_roms_obs', 'read global variable "obs_provenance"')
+              'convert_roms_obs', 'read global attribute "obs_provenance"')
 
 call nc_check(nf90_inq_varid(ncid, 'obs_provenance', varid), &
       'get_provenance_maps', 'inq_varid obs_provenance '//trim(roms_input_obs_file))
@@ -461,7 +501,7 @@ call nc_check(nf90_inquire_attribute(ncid, varid, 'flag_values', len=flag_count)
 allocate(flag_vals(flag_count))
 
 call nc_check(nf90_get_att(ncid, varid, 'flag_values', flag_vals), &
-              'convert_roms_obs', 'read "obs_provenance:flag_vals"')
+              'convert_roms_obs', 'read "obs_provenance:flag_values"')
 
 call nc_check(nf90_get_att(ncid, varid, 'flag_meanings', provenance_str2), &
               'convert_roms_obs', 'read "obs_provenance:flag_meanings"')
@@ -534,19 +574,22 @@ parseloop: do i=1, maxpossible
    romstype = match_roms_flag(type_translations(1, i))
 
    if (romstype < 0) then
-      call error_handler(E_ERR, 'convert_roms_obs', 'unrecognized roms description: '//trim(type_translations(1, i)), &
+      call error_handler(E_ERR, 'convert_roms_obs', &
+                 'unrecognized roms description: '//trim(type_translations(1, i)), &
                          source, revision, revdate)
    endif
 
    if (romstype > MAX_TYPES) then
-      call error_handler(E_ERR, 'convert_roms_obs', 'too many roms types; increase MAX_TYPES in converter', &
+      call error_handler(E_ERR, 'convert_roms_obs', &
+                 'too many roms types; increase MAX_TYPES in converter', &
                          source, revision, revdate)
    endif
 
    ! dart specific type number
    darttype = get_obs_kind_index(type_translations(2, i))
    if (darttype < 0) then
-      call error_handler(E_ERR, 'convert_roms_obs', 'unknown DART Observation TYPE: '//trim(type_translations(2, i)), &
+      call error_handler(E_ERR, 'convert_roms_obs', &
+                 'unknown DART Observation TYPE: '//trim(type_translations(2, i)), &
                          source, revision, revdate)
    endif
 

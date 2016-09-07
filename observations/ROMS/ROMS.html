@@ -35,43 +35,51 @@
 
 <H2>Overview</H2>
 
-
 <P>
 The relationship between ROMS and DART is slightly different
-than other models.  We ask the ROMS model to compute the
-expected observation values at the closest model time, as the
-model is advancing during the forecast step.  These obs are
-written out to a netcdf file.  This converter reads these
-expected values and creates a DART obs_seq file which includes
-these precomputed FOs.
+than most other models.  ROMS has the ability to apply its own forward operator 
+as the model is advancing (a capability needed for variational assimilation) 
+which produces something the ROMS community calls '<em class=italic>verification</em>' 
+observations.  The observation file that is input to ROMS is specified by the 
+<em class=file>s4dvar.in</em>:<em class=code>OBSname</em> variable.
+The verification obs are written out to a netcdf file whose name is specified by the
+<em class=file>s4dvar.in</em>:<em class=code>MODname</em> variable.
+Since each ROMS model is advancing independently, a set of verification observation
+files are created during a DART/ROMS assimilation cycle. This set of files
+can be converted using <em class=program>convert_roms_obs</em> to produce a 
+DART observation sequence file that has precomputed forward operators (FOs).  
+<em class=program>convert_roms_obs</em> can also convert 
+<em class=file>s4dvar.in</em>:<em class=code>OBSname</em>,<em class=code>MODname</em> 
+files to a DART observation sequence file that does not have the precomputed FOs.
 </P>
-
-
-Only updated to here.  FIX EVERYTHING BELOW!
-
-
 
 <P>
-The ROMS/DART workflow is expected to be as follows:
+The ROMS verification observation files <strong>must</strong> contain
+the following variables:
 </P>
-<ol>
-<li>convert each madis file, by platform type, into an obs_seq file.
-    one file in, one file out.  no time changes.  use the 
-    <em class=file>shell_scripts/madis_conv.csh</em> script.
-    there are script options for hourly output files, or a single daily
-    output file.</li>
-<li>if you aren't using the wrf preprocessing program, you're ready to go.</li>
-<li>if you do want to do subsequent wrf preprocessing, you need to:
-<ol>
-<li>decide on the windowing.  each platform has a different convention
-    and if you're going to put them into the wrf preprocessing you'll need
-    to have the windowing match.  use the
-    <em class=file>shell_scripts/windowing.csh</em> script.</li>
-<li>the wrf preprocessing takes a list of files and assumes they will all
-    be assimilated at the same time, for superob'ing purposes, so it should
-    match the expected assimilation window when running filter.</li>
-</ol>
-</ol>
+<ul>
+   <li>either <em class=mono>obs_Xgrid,obs_Ygrid,obs_depth</em> -or-
+    <em class=mono>obs_lat,obs_long,obs_depth</em></li>
+   <li><em class=mono>obs_value</em></li>
+   <li><em class=mono>obs_error</em></li>
+   <li><em class=mono>obs_type</em></li>
+   <li><em class=mono>obs_time</em></li>
+   <li><em class=mono>NLmodel_value</em></li>
+   <li><em class=mono>obs_scale</em></li>
+   <li><em class=mono>obs_provenance</em> which must have <br />
+       <em class=mono>obs_provenance:flag_values</em>, and <br />
+       <em class=mono>obs_provenance:flag_meanings</em> attributes.
+   </li>
+</ul>
+
+<P>
+The conversion of a (set of) ROMS verification observations requires metadata to
+coordinate the relationship of the ROMS observation provenance to a DART observation TYPE.
+ROMS provides significant flexibility when specifying the observation provenance and it
+is simply impractical for DART to try to support all of them. 
+An example of the current practice is described in the <a href="#Programs">PROGRAMS</a>
+section below.
+</P>
 
 <!--==================== DESCRIPTION OF A NAMELIST =====================-->
 
@@ -90,17 +98,18 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;convert_roms_obs_nml
-   roms_input_obs_file   = 'roms_obs.nc'
-   roms_mod_obs_files    = 'roms_mod.nc'
-   roms_mod_obs_filelist = ''
-   dart_output_obs_file  = 'obs_seq.out'
-   type_translations     = 'NULL'
-   locations_in_IJK      = .true.
-   add_random_noise      = .false.
-   pert_amplitude        = 0.01
-   append_to_existing    = .false.
-   ens_size              = 1
-   verbose               = 0
+   ens_size               = 1
+   roms_input_obs_file    = 'roms_obs.nc'
+   roms_mod_obs_files     = ''
+   roms_mod_obs_filelist  = 'filelist.txt'
+   dart_output_obs_file   = 'obs_seq.out'
+   append_to_existing     = .false.
+   use_precomputed_values = .true.
+   locations_in_IJK       = .false.
+   add_random_noise       = .false.
+   pert_amplitude         = 0.01
+   verbose                = 0
+   type_translations      = 'NULL'
   /
 </pre>
 </div>
@@ -118,49 +127,64 @@ prematurely terminating the namelist.
 
 <TBODY valign=top>
 
+<TR><TD> ens_size </TD>
+    <TD> integer </TD>
+    <TD> Number of ensemble members which are expected to
+be found when creating the expected obs values.  This must
+match the number of ROMS "mod" files listed in either the
+'roms_mod_obs_files' or 'roms_mod_obs_filelist' namelist
+items.  It is an error if they are not the same length.
+</TD></TR>
+
 <TR><TD> roms_input_obs_file </TD>
-    <TD> character(len=512) </TD>
-    <TD> The file with the original obs definitions.  Contrast with the
-"mod" files.
+    <TD> character(len=256) </TD>
+    <TD> The file with the original obs definitions.
+         Contrast with the "mod" files.
 </TD></TR>
 
 <TR><TD> roms_mods_obs_files </TD>
-    <TD> character(len=512), dimension(500) </TD>
+    <TD> character(len=256), dimension(100) </TD>
     <TD> List of filenames, one per ensemble member, that contain the
-expected obs values for each ensemble member.  These are output from
+observation values for each ensemble member.  These are output from
 the ROMS program.  If listing the files explicitly in this list,
-'roms_mod_obs_filelist' must be '&nbsp' (null).
+'roms_mod_obs_filelist' must be '&nbsp;' (null).
 </TD></TR>
 
 <TR><TD> roms_mods_obs_filelist </TD>
-    <TD> character(len=512) </TD>
+    <TD> character(len=256) </TD>
     <TD> The name of an ASCII file which contains, one per line,
 a list of filenames, one per ensemble member, that contain the
 expected obs values for each ensemble member.  The
 filenames should NOT be quoted. These are output from
 the ROMS program.  If using a filelist, then
-'roms_mod_obs_files' must be '&nbsp' (null).
+'roms_mod_obs_files' must be '&nbsp;' (null).
 </TD></TR>
 
 <TR><TD> dart_output_obs_file </TD>
-    <TD> character(len=512) </TD>
+    <TD> character(len=256) </TD>
     <TD> The name of the DART obs_seq file to create.  If a file
 already exists with this name, it is either appended to or overwritten
 depending on the 'append_to_existing' setting below.
 </TD></TR>
 
-<TR><TD> type_translations </TD>
-    <TD> character(100), dimension(2, 100) </TD>
-    <TD> A set of strings which control the mapping of ROMS
-observation types to DART observation types.  These should
-be specified in pairs.  The first column should be a string
-that occurs in the 'roms_input_obs_file' in the attribute
-'flag_meanings' on the 'obs_provenance' variable.
-Note that this information also occurs as a global variable
-in the same file; this information is currently ignored.
-The second column should be a DART specific obs type that
-is found in DART/obs_kind/obs_kind_mod.f90, which is created
-by the DART preprocess program.
+<TR><TD> append_to_existing </TD>
+    <TD> logical </TD>
+    <TD> If an existing 'dart_output_obs_file' is found,
+this namelist item controls how it is handled.  If .true.
+the new observations are appended to the existing file.
+If .false. the new observations overwrite the existing file.
+</TD></TR>
+
+<TR><TD> use_precomputed_values </TD>
+    <TD> logical </TD>
+    <TD> flag to indicate that the output DART observation 
+         sequence file should include the verification observation 
+         values from all of the ROMS observation files. 
+         If <em class=mono>.true.</em> this will result in the 
+         DART file having the precomputed FOs to be used in the 
+         DART assimilation. 
+         If <em class=mono>.false.</em> this will result in 
+         DART files having the instrument values only.
 </TD></TR>
 
 <TR><TD> locations_in_IJK </TD>
@@ -193,27 +217,24 @@ Controls the range of random values added to the
 expected obs values.  Sets the width of a gaussian.
 </TD></TR>
 
-<TR><TD> append_to_existing </TD>
-    <TD> logical </TD>
-    <TD> If an existing 'dart_output_obs_file' is found,
-this namelist item controls how it is handled.  If .true.
-the new observations are appended to the existing file.
-If .false. the new observations overwrite the existing file.
-</TD></TR>
-
-<TR><TD> ens_size </TD>
-    <TD> integer </TD>
-    <TD> Number of ensemble members which are expected to
-be found when creating the expected obs values.  This must
-match the number of ROMS "mod" files listed in either the
-'roms_mod_obs_files' or 'roms_mod_obs_filelist' namelist
-items.  It is an error if they are not the same length.
-</TD></TR>
-
 <TR><TD> verbose </TD>
     <TD> integer </TD>
     <TD> If greater than 0, prints more information during
 the conversion.  
+</TD></TR>
+
+<TR><TD> type_translations </TD>
+    <TD> character(256), dimension(2, 100) </TD>
+    <TD> A set of strings which control the mapping of ROMS
+observation types to DART observation types.  These should
+be specified in pairs.  The first column should be a string
+that occurs in the 'roms_input_obs_file' in the attribute
+'flag_meanings' on the 'obs_provenance' variable.
+Note that this information also occurs as a global variable
+in the same file; this information is currently ignored.
+The second column should be a DART specific obs type that
+is found in <em class=file>DART/obs_kind/obs_kind_mod.f90</em>, 
+which is created by the DART <em class=program>preprocess</em> program.
 </TD></TR>
 
 </TBODY>
@@ -231,16 +252,7 @@ the conversion.
 <H2>DATA SOURCES</H2>
 
 <P>
-<a href="http://madis.noaa.gov/">http://madis.noaa.gov</a>
-</P>
-
-<P>There are two satellite wind converter programs; the one in
-this directory and one in the
-<a href="../SSEC/SSEC.html">SSEC</a> directory.
-The observations distributed here come from
-<a href="http://www.nesdis.noaa.gov">NESDIS</a>.
-The SSEC observations are processed by SSEC itself and
-will differ from the observations converted here.
+The origin of the input observation files used by ROMS are completely unknown to me.
 </P>
 
 <!--==================================================================-->
@@ -248,16 +260,61 @@ will differ from the observations converted here.
 <A NAME="Programs"></A>
 <HR />
 <H2>PROGRAMS</H2>
+
+<ul><li><a href="../convert_roms_obs.html">convert_roms_obs</a>
+    <li><a href="../../obs_sequence/obs_seq_to_netcdf.html">obs_seq_to_netcdf</a>
+    <li><a href="../../obs_sequence/obs_sequence_tool.html">obs_sequence_tool</a>
+    <li><a href="../../preprocess/preprocess.html">preprocess</a>
+    <li><a href="../../time_manager/advance_time.html">advance_time</a>
+</ul>
+
 <P>
-The programs in the <em class=file>DART/observations/MADIS/</em> 
-directory extract data from the distribution files 
-and create DART observation sequence (obs_seq) files.
-Build them in the <em class=file>work</em> directory by running
-the <em class=program>./quickbuild.csh</em> script.  In addition
-to the converters, the <em class=file>advance_time</em> and
-<em class=file>obs_sequence_tool</em> utilities will be built.
+Only <em class=program>convert_roms_obs</em> will be discussed here. 
+
+The ROMS input netCDF file(s) must have an <em class=mono>obs_provenance</em> 
+variable with at least the following attributes:
 </P>
-<P>
+
+<pre>
+	int obs_provenance(datum) ;
+		obs_provenance:flag_values = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ;
+		obs_provenance:flag_meanings = "gridded_AVISO_SLA blended_SST XBT_Met_Office CTD_temperature_Met_Office CTD_salinity_Met_Office ARGO_temperature_Met_Office ARGO_salinity_Met_Office CTD_temperature_CalCOFI CTD_salinity_CalCOFI CTD_temperature_GLOBEC CTD_salinity_GLOBEC" ;
+</pre>
+
+<P>The <em class=mono>flag_meanings</em> attribute is used to relate observation provenance to DART observation TYPES by <strong>exactly</strong> specifying the character strings as in the following example:
+</P>
+
+<pre>
+# the roms_input_obs_file should be the same as the first item in the precomputed_files.txt
+&amp;convert_roms_obs_nml
+   ens_size               = 3
+   roms_input_obs_file    = '../data/wc13_obs.nc'
+   roms_mod_obs_filelist  = 'precomputed_files.txt'
+   dart_output_obs_file   = 'obs_seq.out'
+   append_to_existing     = .false.
+   use_precomputed_values = .true.
+   locations_in_IJK       = .false.
+   add_random_noise       = .false.
+   pert_amplitude         = 0.01
+   verbose                = 1
+   type_translations = "gridded_AVISO_SLA",            "SATELLITE_SSH",
+                       "blended_SST",                  "SATELLITE_MICROWAVE_SST",
+                       "XBT_Met_Office",               "XBT_TEMPERATURE",
+                       "CTD_temperature_Met_Office",   "CTD_TEMPERATURE",
+                       "CTD_salinity_Met_Office",      "CTD_SALINITY",
+                       "ARGO_temperature_Met_Office",  "ARGO_TEMPERATURE",
+                       "ARGO_salinity_Met_Office",     "ARGO_SALINITY",
+                       "CTD_temperature_CalCOFI",      "CTD_TEMPERATURE",
+                       "CTD_salinity_CalCOFI",         "CTD_SALINITY",
+                       "CTD_temperature_GLOBEC",       "CTD_TEMPERATURE",
+                       "CTD_salinity_GLOBEC",          "CTD_SALINITY",
+ /
+</pre>
+
+<P>A complete list of DART observation TYPES is available in <a href="../../obs_def/obs_def_ocean_mod.f90">obs_def_ocean_mod.f90</a>
+</P>
+
+<!-- P>
 There are currently converters for these data types:</P>
 <TABLE border=0 cellpadding=3 summary="">
 <TBODY valign=top>
@@ -307,7 +364,7 @@ appropriate filename before the next invocation of the converter.
 If an existing observation sequence file of the same output name is 
 found when the converter is run again, it will open that file and append
 the next set of observations to it.
-</P>
+</P -->
 
 <!--==================================================================-->
 <!-- Describe the bugs.                                               -->
@@ -328,8 +385,20 @@ none
 <HR />
 <H2>FUTURE PLANS</H2>
 <P>
-none
-</P>
+<OL><li>either remove the need for <em class=mono>ens_size</em> or use
+        it to check the consistency of the number of files to convert. </li>
+    <li>remove the <em class=mono>roms_obs_files()</em> mechanism.</li>
+    <li>remove the <em class=mono>roms_obs_file</em> mechanism -or- IF
+        the <em class=mono><em class=mono>ens_size</em> is specified, just
+        use the first file</em> and ignore the <em class=mono>roms_obs_file</em>.</li>
+    <li>extend the <em class=mono>type_translations</em> table to be able to
+        support a superset of obs_provenance-to-DART_TYPE relationships.</li>
+    <li>could remove the <em class=mono>locations_in_IJK</em> variable by simply
+        checking if the <em class=code>obs_lon,obs_lat</em> variables exist.
+        If <em class=code>obs_lon,obs_lat</em> exist, they should be used;
+        if not, try the IJK method.
+        </li>
+</OL>
 
 <!--==================================================================-->
 <!-- Legalese & Metadata                                              -->

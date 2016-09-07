@@ -7,16 +7,18 @@
    input_files              = '../../../obs_def/obs_def_ocean_mod.f90',
  /
 
+# the roms_input_obs_file should be the same as the first item in the precomputed_files.txt
 &convert_roms_obs_nml
-   roms_input_obs_file = "../data/wc13_obs.nc"
-   roms_mod_obs_files = ""
-   roms_mod_obs_filelist = 'flist'
-   dart_output_obs_file = "obs_seq.out"
-   locations_in_IJK = .true.
-   add_random_noise = .true.
-   pert_amplitude = 0.01
-   append_to_existing = .false.
-   ens_size = 3
+   ens_size               = 3
+   roms_input_obs_file    = '../data/wc13_obs.nc'
+   roms_mod_obs_filelist  = 'precomputed_files.txt'
+   dart_output_obs_file   = 'obs_seq.out'
+   append_to_existing     = .false.
+   use_precomputed_values = .true.
+   locations_in_IJK       = .false.
+   add_random_noise       = .false.
+   pert_amplitude         = 0.01
+   verbose                = 1
    type_translations = "gridded_AVISO_SLA",            "SATELLITE_SSH",
                        "blended_SST",                  "SATELLITE_MICROWAVE_SST",
                        "XBT_Met_Office",               "XBT_TEMPERATURE",
@@ -28,7 +30,6 @@
                        "CTD_salinity_CalCOFI",         "CTD_SALINITY",
                        "CTD_temperature_GLOBEC",       "CTD_TEMPERATURE",
                        "CTD_salinity_GLOBEC",          "CTD_SALINITY",
-   verbose = 1
  /
 
 &model_nml

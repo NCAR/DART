@@ -1,13 +1,14 @@
 &convert_roms_obs_nml
-   roms_input_obs_file   = 'roms_obs.nc'
-   roms_mod_obs_files    = 'roms_mod.nc'
-   roms_mod_obs_filelist = ''
-   dart_output_obs_file  = 'obs_seq.out'
-   type_translations     = 'NULL'
-   locations_in_IJK      = .true.
-   add_random_noise      = .false.
-   pert_amplitude        = 0.01
-   append_to_existing    = .false.
-   ens_size              = 1
-   verbose               = 0
+   ens_size               = 1
+   roms_input_obs_file    = 'roms_obs.nc'
+   roms_mod_obs_files     = ''
+   roms_mod_obs_filelist  = 'filelist.txt'
+   dart_output_obs_file   = 'obs_seq.out'
+   append_to_existing     = .false.
+   use_precomputed_values = .true.
+   locations_in_IJK       = .false.
+   add_random_noise       = .false.
+   pert_amplitude         = 0.01
+   verbose                = 0
+   type_translations      = 'NULL'
   /
