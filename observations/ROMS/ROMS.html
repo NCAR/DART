@@ -2,14 +2,14 @@
           "http://www.w3.org/TR/html4/strict.dtd">
 <HTML>
 <HEAD>
-<TITLE>MADIS Data</TITLE>
+<TITLE>ROMS verification observations to DART observation sequences</TITLE>
 <link rel="stylesheet" type="text/css" href="../../doc/html/doc.css" />
 <link href="../../doc/images/dart.ico" rel="shortcut icon" />
 </HEAD>
 <BODY>
 <A NAME="TOP"></A>
 
-<H1>ROMS observations</H1>
+<H1>ROMS observations to DART observation sequences</H1>
 
 <table border=0 summary="" cellpadding=5>
 <tr>
@@ -58,18 +58,17 @@ The ROMS verification observation files <strong>must</strong> contain
 the following variables:
 </P>
 <ul>
-   <li>either <em class=mono>obs_Xgrid,obs_Ygrid,obs_depth</em> -or-
-    <em class=mono>obs_lat,obs_long,obs_depth</em></li>
-   <li><em class=mono>obs_value</em></li>
-   <li><em class=mono>obs_error</em></li>
-   <li><em class=mono>obs_type</em></li>
-   <li><em class=mono>obs_time</em></li>
-   <li><em class=mono>NLmodel_value</em></li>
-   <li><em class=mono>obs_scale</em></li>
-   <li><em class=mono>obs_provenance</em> which must have <br />
-       <em class=mono>obs_provenance:flag_values</em>, and <br />
-       <em class=mono>obs_provenance:flag_meanings</em> attributes.
-   </li>
+   <li>either <em class=green>obs_Xgrid, obs_Ygrid, obs_depth</em> -or-
+              <em class=green>obs_lat, obs_long, obs_depth</em></li>
+   <li><em class=green>obs_value</em></li>
+   <li><em class=green>obs_error</em></li>
+   <li><em class=green>obs_type</em></li>
+   <li><em class=green>obs_time</em></li>
+   <li><em class=green>NLmodel_value</em></li>
+   <li><em class=green>obs_scale</em></li>
+   <li><em class=green>obs_provenance</em> which must have <br />
+       <em class=green>obs_provenance:flag_values</em>, and <br />
+       <em class=green>obs_provenance:flag_meanings</em> attributes.</li>
 </ul>
 
 <P>
@@ -385,17 +384,17 @@ none
 <HR />
 <H2>FUTURE PLANS</H2>
 <P>
-<OL><li>either remove the need for <em class=mono>ens_size</em> or use
+<OL><li>either remove the need for <em class=green>ens_size</em> or use
         it to check the consistency of the number of files to convert. </li>
-    <li>remove the <em class=mono>roms_obs_files()</em> mechanism.</li>
-    <li>remove the <em class=mono>roms_obs_file</em> mechanism -or- IF
-        the <em class=mono><em class=mono>ens_size</em> is specified, just
-        use the first file</em> and ignore the <em class=mono>roms_obs_file</em>.</li>
-    <li>extend the <em class=mono>type_translations</em> table to be able to
+    <li>remove the <em class=green>roms_obs_files()</em> mechanism.</li>
+    <li>remove the <em class=green>roms_obs_file</em> mechanism -or- IF
+        the <em class=green>ens_size</em> is specified, just
+        use the first file and ignore the <em class=green>roms_obs_file</em>.</li>
+    <li>extend the <em class=green>type_translations</em> table to be able to
         support a superset of obs_provenance-to-DART_TYPE relationships.</li>
-    <li>could remove the <em class=mono>locations_in_IJK</em> variable by simply
-        checking if the <em class=code>obs_lon,obs_lat</em> variables exist.
-        If <em class=code>obs_lon,obs_lat</em> exist, they should be used;
+    <li>could remove the <em class=green>locations_in_IJK</em> variable by simply
+        checking if the <em class=green>obs_lon, obs_lat</em> variables exist.
+        If <em class=green>obs_lon, obs_lat</em> exist, they should be used;
         if not, try the IJK method.
         </li>
 </OL>
