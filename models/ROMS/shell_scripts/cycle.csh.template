@@ -58,8 +58,6 @@
 #PBS -q dedicated
 #PBS -l nodes=10:ppn=2
 
-#>todo FIXME : make this automagic for the setup script
-
 cd EXPERIMENT_DIRECTORY
 
 @ instance = 0
@@ -83,22 +81,25 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
       exit 1
    endif
 
+   # sometimes we need the full name, sometimes we need it without the extension
+   set DIA_FILE = MyDAINAME
+   set OBS_FILE = MyOBSname
+   set DIA_ROOT = ${DIA_FILE}:r
+   set OBS_ROOT = $OBS_FILE}:r
+
    # tag the output with the model time 
    # Create a ROMS_POSTERIOR file that will be updated by DART.
    # Save off a copy of the forecast as the PRIOR.
-   set OCEAN_TIME_STRING = `ncdump -v ocean_time MyDAINAME | grep '^ ocean_time = '`
+   set OCEAN_TIME_STRING = `ncdump -v ocean_time ${DIA_FILE} | grep '^ ocean_time = '`
    set OCEAN_TIME = `echo $OCEAN_TIME_STRING | sed -e "s#[=;a-z_ ]##g"`
 
-   set DIA_BASE = MyDAINAME:r
-   set OBS_BASE = MyOBSname:r
+   set ROMS_PRIOR     = `printf %s_%04d_%d.nc ${DIA_ROOT} $instance $OCEAN_TIME`
+   set ROMS_POSTERIOR = `printf roms_pos_%04d_%d.nc       $instance $OCEAN_TIME`
+   set ROMS_OBSFILE   = `printf %s_%04d_%d.nc ${OBS_ROOT} $instance $OCEAN_TIME`
 
-   set ROMS_PRIOR     = `printf %s_%04d_%d.nc $DIA_BASE $instance $OCEAN_TIME`
-   set ROMS_POSTERIOR = `printf roms_pos_%04d_%d.nc     $instance $OCEAN_TIME`
-   set ROMS_OBSFILE   = `printf %s_%04d_%d.nc $OBS_BASE $instance $OCEAN_TIME`
-
-   \cp -v MyDAINAME   ${ROMS_POSTERIOR}
-   \mv -v MyDAINAME   ${ROMS_PRIOR}
-   \mv -v MyOBSname   ${ROMS_OBSFILE}
+   \cp -v ${DIA_FILE} ${ROMS_POSTERIOR}
+   \mv -v ${DIA_FILE} ${ROMS_PRIOR}
+   \mv -v ${OBS_FILE} ${ROMS_OBSFILE}
 
    echo
    echo "#---------------------------------------------------------------------"
@@ -121,12 +122,12 @@ end
 # a (single) ROMS input file is required to satisfy 'static_init_model()' 
 # any one will do
 
-ln -sf instance_0001/${DIA_BASE}_????_${OCEAN_TIME}.nc MyDAINAME
+ln -sf instance_0001/${DIA_ROOT}_????_${OCEAN_TIME}.nc MyDAINAME
 
 # Collect all the ROMS_OBSFILEs into a list of input files 
 # and then convert them to a single DART observation sequence file.
 
-ls -1 instance_*/${OBS_BASE}*_${OCEAN_TIME}.nc  >! precomputed_files.txt
+ls -1 instance_*/${OBS_ROOT}*_${OCEAN_TIME}.nc  >! precomputed_files.txt
 
 ./convert_roms_obs  || exit 2
 
@@ -172,12 +173,17 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
    # We want to preserve the unique posterior but want ROMS
    # to read from the (single) filename in ocean.in INIFILE
 
-   ln -sf ${filename}  roms_input.nc || exit 4
+   ln -sf ${filename}  MyININAME || exit 4
 
    cd ..
 
    # Update the ocean.in file with the new ../new_dstart.txt DSTART value
 
+   cat ../new_dstart.txt
+
+   # must either find and replace the old dstart ... or recreate using the whole 
+   # template for every assimilation cycle
+   
 end
 
 

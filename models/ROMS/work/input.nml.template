@@ -1,0 +1,374 @@
+&perfect_model_obs_nml
+   start_from_restart    = .true.
+   output_restart        = .true.
+   async                 = 0
+   init_time_days        = -1
+   init_time_seconds     = -1
+   first_obs_days        = -1
+   first_obs_seconds     = -1
+   last_obs_days         = -1
+   last_obs_seconds      = -1
+   output_interval       = 1
+   restart_in_file_name  = "pmo_restart_in_file_not_used"
+   restart_out_file_name = "pmo_restart_out_file_not_used"
+   obs_seq_in_file_name  = "obs_seq.in"
+   obs_seq_out_file_name = "obs_seq.out"
+   adv_ens_command       = "./DART_trying_to_advance_ROMS_not_supported.csh"
+   output_timestamps     = .false.
+   trace_execution       = .false.
+   output_forward_op_errors = .false.
+   print_every_nth_obs   = -1
+   silence               = .false.
+   direct_netcdf_read    = .true.
+   direct_netcdf_write   = .true.
+  /
+
+
+&filter_nml
+   async                    = 0
+   adv_ens_command          = "./DART_trying_to_advance_ROMS_not_supported.csh"
+   perturb_from_single_instance = .false.
+   ens_size                 = Myens_size
+   output_restart           = .true.
+   use_restart_list         = .true.
+   restart_list_file        = 'restart_files.txt'
+   overwrite_state_input    = .true.
+   obs_sequence_in_name     = "obs_seq.out"
+   obs_sequence_out_name    = "obs_seq.final"
+   restart_in_file_name     = "no_restart_in"
+   restart_out_file_name    = "no_restart_out"
+   init_time_days           = -1
+   init_time_seconds        = -1
+   first_obs_days           = -1
+   first_obs_seconds        = -1
+   last_obs_days            = -1
+   last_obs_seconds         = -1
+   obs_window_days          = 2
+   obs_window_seconds       = 0
+   num_output_state_members = 0
+   num_output_obs_members   = Myens_size
+   output_interval          = 1
+   num_groups               = 1
+   output_forward_op_errors = .false.
+   output_timestamps        = .false.
+   output_inflation         = .false.
+   trace_execution          = .true.
+   silence                  = .false.
+   direct_netcdf_read       = .true.
+   direct_netcdf_write      = .true.
+
+   inf_flavor                  = 0,                       0
+   inf_initial_from_restart    = .false.,                 .false.
+   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_output_restart          = .true.,                  .true.
+   inf_deterministic           = .true.,                  .true.
+   inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics'
+   inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart'
+   inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag'
+   inf_initial                 = 1.0,                     1.0
+   inf_sd_initial              = 0.0,                     0.0
+   inf_damping                 = 1.0,                     1.0
+   inf_lower_bound             = 1.0,                     1.0
+   inf_upper_bound             = 1000000.0,               1000000.0
+   inf_sd_lower_bound          = 0.0,                     0.0
+  /
+
+
+&state_vector_io_nml
+   write_binary_restart_files = .false.
+  /
+
+
+&smoother_nml
+   num_lags              = 0
+   start_from_restart    = .false.
+   output_restart        = .false.
+   restart_in_file_name  = 'smoother_ics'
+   restart_out_file_name = 'smoother_restart'
+  /
+
+
+&ensemble_manager_nml
+  /
+
+
+&assim_tools_nml
+   filter_kind                     = 1
+   cutoff                          = 0.02
+   sort_obs_inc                    = .false.
+   spread_restoration              = .false.
+   sampling_error_correction       = .false.
+   adaptive_localization_threshold = -1
+   output_localization_diagnostics = .false.
+   localization_diagnostics_file   = 'localization_diagnostics'
+   print_every_nth_obs             = 1000
+  /
+
+
+&assim_model_nml
+   write_binary_restart_files = .true.
+   netCDF_large_file_support  = .true.
+  /
+
+
+&cov_cutoff_nml
+   select_localization = 1
+  /
+
+
+&reg_factor_nml
+   select_regression    = 1
+   input_reg_file       = "time_mean_reg"
+   save_reg_diagnostics = .false.
+   reg_diagnostics_file = "reg_diagnostics"
+  /
+
+
+&obs_sequence_nml
+   write_binary_obs_sequence = .false.
+  /
+
+
+&convert_roms_obs_nml
+   ens_size               = 3
+   roms_input_obs_file    = 'MyMODname'
+   roms_mod_obs_filelist  = 'precomputed_files.txt'
+   dart_output_obs_file   = 'obs_seq.out'
+   append_to_existing     = .false.
+   use_precomputed_values = .true.
+   locations_in_IJK       = .false.
+   add_random_noise       = .false.
+   pert_amplitude         = 0.01
+   verbose                = 1
+   type_translations = "gridded_AVISO_sea_level_anomaly_(zeta)", "SATELLITE_SSH",
+                       "gridded_Aquarius_SSS_(salinity)",        "SATELLITE_SSS",
+                       "XBT_from_Met_Office_(temperature)",      "XBT_TEMPERATURE",
+                       "CTD_from_Met_Office_(temperature)",      "CTD_TEMPERATURE",
+                       "CTD_from_Met_Office_(salinity)",         "CTD_SALINITY",
+                       "ARGO_floats_(temperature)",              "ARGO_TEMPERATURE",
+                       "ARGO_floats_(salinity)",                 "ARGO_SALINITY",
+                       "glider_UCSD_(temperature)",              "GLIDER_TEMPERATURE",
+                       "glider_UCSD_(salinity)",                 "GLIDER_SALINITY",
+                       "blended_satellite_SST_(temperature)",    "SATELLITE_MICROWAVE_SST"
+  /
+
+&obs_kind_nml
+   assimilate_these_obs_types = 'ARGO_TEMPERATURE',
+                                'ARGO_SALINITY',
+                                'SATELLITE_SSH'
+   use_precomputed_FOs_these_obs_types = 'ARGO_TEMPERATURE',
+                                         'ARGO_SALINITY',
+                                         'SATELLITE_SSH'
+  /
+
+
+# Each variable must have 5 entries.
+# 1: variable name
+# 2: DART KIND
+# 3: minimum value - as a character string - if none, use 'NA'
+# 4: maximum value - as a character string - if none, use 'NA'
+# 5: does the variable get updated in the restart file or not ...
+#    only variables from restart files may be updated.
+#    'UPDATE' =>        update the variable in the restart file
+#    'NO_COPY_BACK' => do not update the variable in the restart file
+#    all these variables will be updated INTERNALLY IN DART
+#    only variables marked 'UPDATE' will be modified for ROMS.
+
+&model_nml
+   roms_filename               = 'MyDAINAME'
+   output_state_vector         = .false.
+   assimilation_period_days    = 8
+   assimilation_period_seconds = 0
+   vert_localization_coord     = 3
+   debug                       = 1
+   variables = 'temp',   'KIND_TEMPERATURE',          'NA', 'NA', 'update',
+               'salt',   'KIND_SALINITY',            '0.0', 'NA', 'update',
+               'u',      'KIND_U_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+               'v',      'KIND_V_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+               'zeta',   'KIND_SEA_SURFACE_HEIGHT'    'NA', 'NA', 'update',
+  /
+
+
+&location_nml
+   horiz_dist_only             = .false.
+   vert_normalization_pressure = 100000.0
+   vert_normalization_height   = 10000.0
+   vert_normalization_level    = 20.0
+   approximate_distance        = .false.
+   nlon                        = 71
+   nlat                        = 36
+   output_box_info             = .true.
+  /
+
+
+&utilities_nml
+   TERMLEVEL = 1
+   module_details = .false.
+   logfilename = 'dart_log.out'
+   nmlfilename = 'dart_log.nml'
+   write_nml   = 'file'
+  /
+
+
+&preprocess_nml
+    input_obs_def_mod_file = '../../../obs_def/DEFAULT_obs_def_mod.F90'
+   output_obs_def_mod_file = '../../../obs_def/obs_def_mod.f90'
+   input_obs_kind_mod_file = '../../../obs_kind/DEFAULT_obs_kind_mod.F90'
+  output_obs_kind_mod_file = '../../../obs_kind/obs_kind_mod.f90'
+               input_files = '../../../obs_def/obs_def_ocean_mod.f90'
+  /
+
+
+&obs_sequence_tool_nml
+   num_input_files   = 2
+   filename_seq      = 'obs_seq.one', 'obs_seq.two'
+   filename_out      = 'obs_seq.processed'
+   first_obs_days    = -1
+   first_obs_seconds = -1
+   last_obs_days     = -1
+   last_obs_seconds  = -1
+   print_only        = .false.
+   min_lat           = -90.0
+   max_lat           =  90.0
+   min_lon           =   0.0
+   max_lon           = 360.0
+   gregorian_cal     = .true.
+  /
+
+
+&restart_file_tool_nml
+   input_file_name              = "dart.restart"
+   output_file_name             = "dart.output"
+   single_restart_file_in       = .false.
+   single_restart_file_out      = .false.
+   ens_size                     = 5
+   write_binary_restart_files   = .false.
+   overwrite_data_time          = .false.
+   new_data_days                = 0
+   new_data_secs                = 0
+   input_is_model_advance_file  = .false.
+   output_is_model_advance_file = .false.
+   overwrite_advance_time       = .false.
+   new_advance_days             = -1
+   new_advance_secs             = -1
+   gregorian_cal                = .true.
+  /
+
+
+# The times in the namelist for the obs_diag program are vectors
+# that follow the following sequence:
+# year   month   day   hour   minute   second
+# max_num_bins can be used to specify a fixed number of bins,
+# in which case last_bin_center should be safely in the future.
+#
+# Acceptable latitudes range from  [-90,  90]
+# Acceptable longitudes range from [  0, Inf]
+# hlevel_edges should be changed to more realistic values for ROMS
+
+&obs_diag_nml
+   obs_sequence_name = ''
+   obs_sequence_list = 'obs_seq_files.txt'
+   first_bin_center  =  2013, 1,  1, 0, 0, 0
+   last_bin_center   =  2013, 1,  8, 0, 0, 0
+   bin_separation    =     0, 0,  1, 0, 0, 0
+   bin_width         =     0, 0,  1, 0, 0, 0
+   time_to_skip      =     0, 0,  0, 0, 0, 0
+   max_num_bins = 1000
+   trusted_obs  = 'null'
+   Nregions     = 1
+   lonlim1      =     0.0
+   lonlim2      =   360.0
+   latlim1      =   -90.0
+   latlim2      =    90.0
+   reg_names    = 'Earth'
+   hlevel_edges =  0.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0
+   print_mismatched_locs = .false.
+   create_rank_histogram = .true.
+   outliers_in_histogram = .true.
+   use_zero_error_obs    = .false.
+   verbose               = .true.
+  /
+
+
+&schedule_nml
+   calendar        = 'Gregorian'
+   first_bin_start =  1601,  1,  1,  0,  0,  0
+   first_bin_end   =  2999,  1,  1,  0,  0,  0
+   last_bin_end    =  2999,  1,  1,  0,  0,  0
+   bin_interval_days    = 1000000
+   bin_interval_seconds = 0
+   max_num_bins         = 1000
+   print_table          = .true.
+  /
+
+
+&obs_seq_to_netcdf_nml
+   obs_sequence_name = 'obs_seq.final'
+   obs_sequence_list = ''
+   append_to_netcdf  = .false.
+   lonlim1    =    0.0
+   lonlim2    =  360.0
+   latlim1    =  -90.0
+   latlim2    =   90.0
+   verbose    = .false.
+  /
+
+
+&quality_control_nml
+   input_qc_threshold       =  3.0
+   enable_special_outlier_code = .false.
+   outlier_threshold        = -1.0
+/
+
+&state_space_diag_nml
+   make_diagnostic_files = .false.
+/
+
+
+&forward_operator_nml
+/
+
+   kind_of_interest      = 'KIND_U_CURRENT_COMPONENT'
+                            KIND_SEA_SURFACE_HEIGHT
+   x_ind                 = 4210 #TEMP (229, 36.6667, 4.xx)
+   x_ind                 = 367400 # SSH (229 36.6667)
+   x_ind                 = 93530
+   x_ind                 = 124330
+
+
+&model_mod_check_nml
+   x_ind                 = 87370
+   num_ens               = 1
+   loc_of_interest       = 231.0, 40.0, 10.0
+   kind_of_interest      = 'KIND_SEA_SURFACE_HEIGHT'
+   interp_test_dlon      = 0.1
+   interp_test_dlat      = 0.1
+   interp_test_dvert     = 5.0
+   interp_test_lonrange  = 205.0,  226.0
+   interp_test_latrange  =  30.0,   47.0
+   interp_test_vertrange =  0.0,    10.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   test1thru             = 4
+   restart_in_file_name  = 'Data/wc13_ini.nc'
+   restart_out_file_name = 'roms_output'
+   verbose               = .true.
+  /
+
+
+&test_grid_nml
+   x_ind                 = 87370
+   loc_of_interest       = 16.0500, 35.1000, 2.5
+   kind_of_interest      = 'KIND_CLOUD_ICE'
+   interp_test_di        = 0.5
+   interp_test_dj        = 0.5
+   interp_test_dk        = 1.0
+   interp_test_irange    = 0.0, 56.0
+   interp_test_jrange    = 0.0, 56.0
+   interp_test_krange    = 0.0, 31.0
+   interp_test_vertcoord = 'VERTISHEIGHT'
+   test1thru             = 5
+   restart_in_file_name  = '../Data/wc13_ini.nc'
+   restart_out_file_name = 'roms_output'
+   verbose               = .false.
+  /
+
