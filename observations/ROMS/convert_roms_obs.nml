@@ -1,6 +1,5 @@
 &convert_roms_obs_nml
    ens_size               = 1
-   roms_input_obs_file    = 'roms_obs.nc'
    roms_mod_obs_files     = ''
    roms_mod_obs_filelist  = 'filelist.txt'
    dart_output_obs_file   = 'obs_seq.out'

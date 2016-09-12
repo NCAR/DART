@@ -7,11 +7,9 @@
    input_files              = '../../../obs_def/obs_def_ocean_mod.f90',
  /
 
-# the roms_input_obs_file should be the same as the first item in the precomputed_files.txt
 &convert_roms_obs_nml
    ens_size               = 3
-   roms_input_obs_file    = '../data/wc13_obs.nc'
-   roms_mod_obs_filelist  = 'precomputed_files.txt'
+   roms_mod_obs_filelist  = 'filelist.txt'
    dart_output_obs_file   = 'obs_seq.out'
    append_to_existing     = .false.
    use_precomputed_values = .true.
@@ -33,12 +31,10 @@
  /
 
 &model_nml
+   roms_filename                = '../data/wc13_ini.nc'
    output_state_vector          = .false.
    assimilation_period_days     = 1
    assimilation_period_seconds  = 0
-   roms_ini_filename            = '../data/wc13_ini.nc'
-   grid_definition_filename     = '../data/wc13_grd.nc'
-   depths_definition_filename   = '../data/wc13_depths.nc'
    vert_localization_coord      = 3
    debug     = 0
    variables = 'temp',   'KIND_TEMPERATURE',          'NA', 'NA', 'update',

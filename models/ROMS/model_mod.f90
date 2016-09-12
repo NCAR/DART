@@ -59,13 +59,13 @@ use    utilities_mod, only : register_module, error_handler, do_nml_term,       
                              file_to_text, do_output, close_file,               &
                              string_to_real, string_to_logical
 
-use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY,                   &
+use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, &
                              KIND_U_CURRENT_COMPONENT,                          &
                              KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT, &
                              KIND_SEA_SURFACE_PRESSURE,                         &
                              KIND_POTENTIAL_TEMPERATURE,                        &
                              get_raw_obs_kind_index,                            &
-                             get_raw_obs_kind_name,get_obs_kind_var_type
+                             get_raw_obs_kind_name
 
 use mpi_utilities_mod, only: my_task_id
 
@@ -1517,7 +1517,6 @@ if (present(myvarid)) myvarid = VarID
 ! assume gregorian calendar unless there's a calendar attribute saying elsewise
 rc = nf90_get_att(ncid, VarID, 'calendar', calendarstring)
 if (rc /= nf90_noerr) calendarstring = 'gregorian'
-
 if (present(calendar)) calendar = trim(calendarstring)
 
 if (trim(calendarstring) /= 'gregorian') then
@@ -1572,9 +1571,9 @@ if (present(last_time) .or. present(origin_time) .or. present(all_times)) then
       offset_in_seconds = .false.
 
    else
-      write(string1,*)'expecting time attribute units of "seconds since ..."'
-      write(string2,*)'got '//trim(unitstring)
-      write(string3,*)'Cannot proceed. Stopping.'
+      write(string1,*)'expecting time attribute units of "seconds since ..." -OR-'
+      write(string2,*)'                              "days since ..."'
+      write(string3,*)'got "'//trim(unitstring)//'"'
       call error_handler(E_ERR,'get_time_information:', string1, &
                 source, revision, revdate, text2=string2, text3=string3)
    endif

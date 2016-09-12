@@ -108,7 +108,6 @@ type(time_type)         :: time_obs, prev_time
 ! Namelist information and defaults
 
 integer  :: ens_size                                  = 1
-character(len=256) :: roms_input_obs_file             = 'roms_obs.nc'
 character(len=256) :: roms_mod_obs_files(MAX_ENS)     = ''
 character(len=256) :: roms_mod_obs_filelist           = 'filelist.txt'
 character(len=256) :: dart_output_obs_file            = 'obs_seq.out'
@@ -131,11 +130,6 @@ character(len=256) :: type_translations(2, MAX_TYPES) = 'NULL'
 !> namelist print and log files.
 
 !> @TODO: FIXME -
-!> TJH: I vote to remove the roms_input_obs_file mechanism.
-!> The first file in either the roms_mod_obs_filelist() or the
-!> roms_mod_obs_files() [should that stay] should be used.
-
-!> @TODO: FIXME -
 !> TJH: The type_translations table is currently implemented as an explicit
 !> set of type translations ... it _could_ be made to exist as a superset with
 !> multiple ROMS variants that relate to the same DART TYPE. hernan and tim
@@ -148,7 +142,6 @@ character(len=256) :: type_translations(2, MAX_TYPES) = 'NULL'
 
 namelist /convert_roms_obs_nml/ &
    ens_size, &
-   roms_input_obs_file, &
    roms_mod_obs_files, &
    roms_mod_obs_filelist, &
    dart_output_obs_file, &
@@ -187,8 +180,8 @@ call init_random_seq(my_rand)
 
 call static_init_model()
 
-call nc_check( nf90_open(roms_input_obs_file, nf90_nowrite, ncid), &
-               'convert_roms_obs', 'opening file '//trim(roms_input_obs_file))
+call nc_check( nf90_open(roms_mod_obs_files(1), nf90_nowrite, ncid), &
+               'convert_roms_obs', 'opening file '//trim(roms_mod_obs_files(1)))
 
 call getdimlen(ncid, "datum", nobs)
 
@@ -234,7 +227,7 @@ call getvar_real(ncid, "obs_error", ovar)  ! already squared, so variance not st
 call getvar_int( ncid, "obs_type", otype)
 
 ! these come back as dart time types
-call get_time_information(roms_input_obs_file, ncid, "obs_time", "datum", all_times=otim)
+call get_time_information(roms_mod_obs_files(1), ncid, "obs_time", "datum", all_times=otim)
 
 ! right now i'm getting the mapping from the string attribute on the
 ! obs_provenance netcdf variable, NOT the global attribute "obs_provenance"
@@ -248,7 +241,7 @@ call get_translation_table(typemap, typecount)
 ! ensemble of mod files, reading in the expected values and QCs only
 
 call nc_check( nf90_close(ncid) , &
-               'convert_roms_obs', 'closing file '//trim(roms_input_obs_file))
+               'convert_roms_obs', 'closing file '//trim(roms_mod_obs_files(1)))
 
 ! Set the incoming data quality control.  this combines
 ! the qcs (scale) from all ensembles to make a combined value.
@@ -493,7 +486,7 @@ call nc_check(nf90_get_att(ncid, NF90_GLOBAL, 'obs_provenance', provenance_str),
               'convert_roms_obs', 'read global attribute "obs_provenance"')
 
 call nc_check(nf90_inq_varid(ncid, 'obs_provenance', varid), &
-      'get_provenance_maps', 'inq_varid obs_provenance '//trim(roms_input_obs_file))
+      'get_provenance_maps', 'inq_varid obs_provenance '//trim(roms_mod_obs_files(1)))
 
 call nc_check(nf90_inquire_attribute(ncid, varid, 'flag_values', len=flag_count), &
               'convert_roms_obs', 'inquire_attribute "obs_provenance:flag_values"')
