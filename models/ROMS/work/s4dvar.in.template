@@ -1,0 +1,752 @@
+! DART note: original:/glade/p/work/thoar/roms/test/WC13/I4DVAR/s4dvar.in
+!
+!  4DVar assimilation input parameters.
+!
+!svn $Id: s4dvar.in 797 2016-05-11 01:53:51Z arango $
+!========================================================= Hernan G. Arango ===
+!  Copyright (c) 2002-2016 The ROMS/TOMS Group                                !
+!    Licensed under a MIT/X style license                                     !
+!    See License_ROMS.txt                                                     !
+!==============================================================================
+!                                                                             !
+! Input parameters can be entered in ANY order, provided that the parameter   !
+! KEYWORD (usually, upper case) is typed correctly followed by "="  or "=="   !
+! symbols. Any comment lines are allowed and must begin with an exclamation   !
+! mark (!) in column one.  Comments may  appear to the right of a parameter   !
+! specification to improve documentation.  Comments will be ignored  during   !
+! reading.  Blank lines are also allowed and ignored. Continuation lines in   !
+! a parameter specification are allowed and must be preceded by a backslash   !
+! (\).  In some instances, more than one value is required for a parameter.   !
+! If fewer values are provided, the  last value  is assigned for the entire   !
+! parameter array.  The multiplication symbol (*),  without blank spaces in   !
+! between, is allowed for a parameter specification.  For example, in a two   !
+! grids nested application:                                                   !
+!                                                                             !
+!    AKT_BAK == 2*1.0d-6  2*5.0d-6              ! m2/s                        !
+!                                                                             !
+! indicates that the first two entries of array AKT_BAK,  in fortran column-  !
+! major order, will have the same value of "1.0d-6" for grid 1,  whereas the  !
+! next two entries will have the same value of "5.0d-6" for grid 2.           !
+!                                                                             !
+! In multiple levels of nesting and/or multiple connected domains  step-ups,  !
+! "Ngrids" entries are expected for some of these parameters.  In such case,  !
+! the order of the entries for a parameter is extremely important.  It  must  !
+! follow the same order (1:Ngrids) as in the state variable declaration. The  !
+! USER may follow the above guidelines for specifying his/her values.  These  !
+! parameters are marked by "==" plural symbol after the KEYWORD.              !
+!                                                                             !
+!==============================================================================
+!
+
+! Number of iterations in the biconjugate gradient algorithm used to solve
+! the elliptic equation for sea surface height in the error covariance
+! balance operator, [1:Ngrids].
+
+          Nbico == 200
+
+! Parameters used to compute balanced salinity in terms of temperature using
+! empirical T-S relationships in the error covariance balance operator,
+! [1:Ngrids].
+
+       dTdz_min == 0.001d0                ! minimum dT/dz (Celsius/m)
+       ml_depth == 100.0d0                ! mixed-layer depth (m; positive)
+
+! Balance operator level of no motion depth (m) used when computing balanced
+! free-surface contribution, [1:Ngrids].
+
+      LNM_depth == 1000.0d0               ! meters, positive
+
+! Balance operator level of no motion flag used to compute balanced
+! free-surface contribution:
+!
+!      [0] Integrate from local bottom to the surface
+!      [1] Integrate from LNM_depth to surface or integrate from local bottom
+!          if shallower than LNM_depth
+!
+
+      LNM_flag  =  1
+
+! Balance operator logical switches for state variables to consider in the
+! error covariance multivariate constraints.
+
+balance(isSalt) =  T                      ! salinity
+balance(isFsur) =  T                      ! free-sruface
+balance(isVbar) =  F                      ! 2D momentum (ubar, vbar)
+balance(isVvel) =  T                      ! 3D momentum (u, v)
+
+! Parameter to process the Nvct eigenvector of the stabilized representer
+! matrix when computing array modes (here, Nvct=Ninner is the most important
+! while Nvct=1 is the less important) OR cut-off parameter for the clipped
+! analysis to disregard potentially unphysical array modes (that is, all
+! the eigenvectors < Nctv are disgarded).
+
+           Nvct =  50
+
+! Upper bound on the relative error of the gradient for the Lanczos
+! conjugate gradient algorithm.
+
+        GradErr = 1.0d-4
+
+! Maximum error bound on Hessian eigenvectors in the Lanczos conjugate
+! gradient algorithm.  Note that even quite inaccurate eigenvectors are
+! useful for pre-conditioning purposes.
+
+       HevecErr = 1.0d-1
+
+! Switch (T/F) to compute approximated Hessian eigenpairs in the Lanzos
+! conjugate gradient algorithm.
+
+     LhessianEV = T
+
+! Switch (T/F) to activate hot start in weak-constraint (W4DVAR and
+! W4DPSAS) algorithms of subsequent outer loops.
+
+      LhotStart = T
+
+! Switch (T/F) to activate IS4DVAR conjugate gradient preconditioning.
+! Two types of Limited-Memory Preconditioner (LMP) are available
+! (Tshimanga et al., 2008): spectral LMP and Ritz LMP.
+
+       Lprecond = F
+
+! Switch to activate either Ritz Limited-Memory Preconditioner (T)
+! or spectral Limited-Memory Preconditioner (F) to the IS4DVAR algorithm.
+
+          Lritz = T
+
+! If preconditioning, specify number of eigenpairs to use. If zero,
+! use HevecErr parameter to determine the number of converged eigenpairs.
+
+        NritzEV = 0
+
+! If weak constraint 4DVar, set number of iterations in the Lanczos
+! algorithm used to estimate the posterior analysis error covariance
+! matrix.
+
+         NpostI = 50
+
+! If weak constraint 4DVar, set diffusive relaxation coefficients (m2/s)
+! used to relax representer tangent linear solution to privious Picard
+! iteration linearized trajectory.
+
+      tl_M2diff ==   0.0d0                ! 2D momentum
+      tl_M3diff ==   0.0d0                ! 3D momentum
+
+       tl_Tdiff ==   0.0d0  0.0d0         ! NT tracers
+
+! Switches (T/F) to create and write error covariance normalization
+! factors for model, initial conditions, boundary conditions, and
+! surface forcing. If TRUE, these factors are computed and written
+! to NRMname(1:4) NetCDF files. If FALSE, they are read from NRMname(1:4)
+! NetCDF file. The computation of these factors is very expensive and
+! need to be computed only once for a particular application provided
+! that grid land/sea masking, and decorrelation scales remains
+! the same. Notice that four values are needed (1=initial conditions,
+! 2=model, 3=boundary conditions, 4=surface forcing) per each nested
+! grid, [1:4,1:Ngrids].
+
+        LdefNRM == F F F F                ! Create a new normalization files
+        LwrtNRM == F F F F                ! Compute and write normalization
+
+! Switches to compute the correlation normalization coefficients for
+! model error covariance.
+
+ CnormM(isFsur) =  T                      ! 2D variable at RHO-points
+ CnormM(isUbar) =  T                      ! 2D variable at U-points
+ CnormM(isVbar) =  T                      ! 2D variable at V-points
+ CnormM(isUvel) =  T                      ! 3D variable at U-points
+ CnormM(isVvel) =  T                      ! 3D variable at V-points
+ CnormM(isTvar) =  T T                    ! NT tracers
+
+! Switches to compute the correlation normalization coefficients for
+! initial conditions error covariance.
+
+ CnormI(isFsur) =  T                      ! 2D variable at RHO-points
+ CnormI(isUbar) =  T                      ! 2D variable at U-points
+ CnormI(isVbar) =  T                      ! 2D variable at V-points
+ CnormI(isUvel) =  T                      ! 3D variable at U-points
+ CnormI(isVvel) =  T                      ! 3D variable at V-points
+ CnormI(isTvar) =  T T                    ! NT tracers
+
+! Switches to compute the correlation normalization coefficients for
+! boundary conditions error covariance.
+
+ CnormB(isFsur) =  T                      ! 2D variable at RHO-points
+ CnormB(isUbar) =  T                      ! 2D variable at U-points
+ CnormB(isVbar) =  T                      ! 2D variable at V-points
+ CnormB(isUvel) =  T                      ! 3D variable at U-points
+ CnormB(isVvel) =  T                      ! 3D variable at V-points
+ CnormB(isTvar) =  T T                    ! NT tracers
+
+! Switches to compute the correlation normalization coefficients for
+! initial conditions error covariance.
+
+ CnormF(isUstr) =  T                      ! surface U-momentum stress
+ CnormF(isVstr) =  T                      ! surface V-momentum stress
+ CnormF(isTsur) =  T T                    ! NT surface tracers flux
+
+! Correlation normalization method:
+!
+!      [0] Exact, very expensive
+!      [1] Approximated, randomization
+
+        Nmethod == 0
+
+! If randomization, select random number generation scheme:
+!
+!      [1] Gaussian distributed deviates, numerical recipes
+
+        Rscheme == 1
+
+! Number of iterations to compute correlation normalization coefficients
+! via the randomization approach. A large number is required to be
+! statistically meaningful and achieve zero expectation mean and unit
+! variance. These factors insure that the error covariance diagonal
+! elements are equal to unity.
+
+        Nrandom =  5000
+
+! Horizontal and vertical stability and accuracy factors (< 1) used to
+! time-step discretized convolution operators below its theoretical limit.
+! Notice that four values [1:4] are needed for each factor to facilitate
+! the error covariance modeling: 1=initial conditions, 2=model,
+! 3=boundary conditions, and 4=surface forcing.
+!
+!                  IC       Model    OBC      Sur For
+
+         Hgamma =  0.5      0.5      0.5      0.5       ! horizontal operator
+         Vgamma =  0.0005   0.0005   0.0005   0.0005    ! vertical operator
+
+! Model error covariance: horizontal, isotropic decorrelation scales (m).
+! This scales are only used in weak-constraint data assimilation.
+
+HdecayM(isFsur) ==  50.0d+3                               ! free-surface
+HdecayM(isUbar) ==  50.0d+3                               ! 2D U-momentum
+HdecayM(isVbar) ==  50.0d+3                               ! 2D V-momentum
+HdecayM(isUvel) ==  50.0d+3                               ! 3D U-momentum
+HdecayM(isVvel) ==  50.0d+3                               ! 3D V-momentum
+HdecayM(isTvar) ==  50.0d+3   50.0d+3                     ! 1:NT tracers
+
+! Model error covariance: vertical, isotropic decorrelation scales (m).
+
+VdecayM(isUvel) ==  30.0d0                                ! 3D U-momentum
+VdecayM(isVvel) ==  30.0d0                                ! 3D V-momentum
+VdecayM(isTvar) ==  30.0d0    30.0d0                      ! 1:NT tracers
+
+! Initial conditions error covariance: horizontal, isotropic decorrelation
+! scales (m).
+
+HdecayI(isFsur) ==  50.0d+3                               ! free-surface
+HdecayI(isUbar) ==  50.0d+3                               ! 2D U-momentum
+HdecayI(isVbar) ==  50.0d+3                               ! 2D V-momentum
+HdecayI(isUvel) ==  50.0d+3                               ! 3D U-momentum
+HdecayI(isVvel) ==  50.0d+3                               ! 3D V-momentum
+HdecayI(isTvar) ==  50.0d+3   50.0d+3                     ! 1:NT tracers
+
+! Initial conditions error covariance: vertical, isotropic decorrelation
+! scales (m).
+
+VdecayI(isUvel) ==  30.0d0                                ! 3D U-momentum
+VdecayI(isVvel) ==  30.0d0                                ! 3D V-momentum
+VdecayI(isTvar) ==  30.0d0    30.0d0                      ! 1:NT tracers
+
+! Boundary conditions error covariance: horizontal, isotropic decorrelation
+! scales (m). A value is expected for each boundary edge in the following
+! order:
+!                  1: west  2: south  3: east  4: north
+
+HdecayB(isFsur) == 100.0d+3 100.0d+3 100.0d+3 100.0d+3    ! free-surface
+HdecayB(isUbar) == 100.0d+3 100.0d+3 100.0d+3 100.0d+3    ! 2D U-momentum
+HdecayB(isVbar) == 100.0d+3 100.0d+3 100.0d+3 100.0d+3    ! 2D V-momentum
+HdecayB(isUvel) == 100.0d+3 100.0d+3 100.0d+3 100.0d+3    ! 3D U-momentum
+HdecayB(isVvel) == 100.0d+3 100.0d+3 100.0d+3 100.0d+3    ! 3D V-momentum
+HdecayB(isTvar) == 4*100.0d+3  4*100.0d+3                 ! 1:NT tracers
+
+! Boundary conditions error covariance: vertical, isotropic decorrelation
+! scales (m). A value is expected for each boundary edge in the following
+! order:
+!                 1: west  2: south  3: east  4: north
+
+VdecayB(isUvel) ==  30.0d0   30.0d0   30.0d0   30.0d0     ! 3D U-momentum
+VdecayB(isVvel) ==  30.0d0   30.0d0   30.0d0   30.0d0     ! 3D V-momentum
+VdecayB(isTvar) == 4*30.d0  4*30.d0                       ! 1:NT tracers
+
+! Surface forcing error covariance: horizontal, isotropic decorrelation
+! scales (m).
+
+HdecayF(isUstr) == 100.0d+3                       ! surface U-momentum stress
+HdecayF(isVstr) == 100.0d+3                       ! surface V-momentum stress
+HdecayF(isTsur) == 100.0d+3  100.0d+3             ! 1:NT surface tracers flux
+
+! If applicable, set switches (T/F) used to adjust surface tracer flux,
+! [1:NT,1:Ngrids].
+
+        Lstflux ==  T T                   ! NT tracers
+
+! If applicable, set switches to adjust state variables at the open
+! boundaries. Notice that a value is expected for each boundary segment
+! per nested grid, [1:4,1:Ngrids].  The boundary order is: 1=west,
+! 2=south, 3=east, and 4=north. That is, anticlockwise starting at
+! the western boundary.
+!
+! When processing momentum, you need to activate both components. If
+! processing 2D momentum, you need to activate both free-surface and
+! 3D-momentum at the processing boundary.
+!
+!                  W   S   E   N           _____N_____
+!                  e   o   a   o          |     4     |
+!                  s   u   s   r          |           |
+!                  t   t   t   t        1 W           E 3
+!                      h       h          |           |
+!                                         |_____S_____|
+!                  1   2   3   4                2
+
+  Lobc(isFsur) ==  T   T   F   T          ! free-surface
+  Lobc(isUbar) ==  T   T   F   T          ! 2D U-momentum
+  Lobc(isVbar) ==  T   T   F   T          ! 2D V-momentum
+  Lobc(isUvel) ==  T   T   F   T          ! 3D U-momentum
+  Lobc(isVvel) ==  T   T   F   T          ! 3D V-momentum
+
+! If applicable, set switches to adjust state tracer variables at the
+! open boundaries.  Notice that a value is expected for each tracer at each
+! boundary segment per nested grid, [1:4,1:NT,1:Ngrids]. The boundary order
+! is the same as above. Notice that the first line has the values for
+! temperature boundaries, the second is salinity, and so on.
+
+  Lobc(isTvar) ==  T   T   F   T  \
+                   T   T   F   T
+
+! Input model, initial conditions, boundary conditions, and surface forcing
+! standard deviation file names, [1:Ngrids].
+
+       STDnameM == ocean_std_m.nc
+       STDnameI == ocean_std_i.nc
+       STDnameB == ocean_std_b.nc
+       STDnameF == ocean_std_f.nc
+
+! Input/output model, initial conditions, boundary conditions, and surface
+! forcing error covariance normalization factors file name, [1:Ngrids].
+
+       NRMnameM == ocean_nrm_m.nc
+       NRMnameI == ocean_nrm_i.nc
+       NRMnameB == ocean_nrm_b.nc
+       NRMnameF == ocean_nrm_f.nc
+
+! Input/output observation file name, [1:Ngrids].
+
+        OBSname == MyOBSname
+
+! Input/output Hessian eigenvectors file name, [1:Ngrids].
+
+        HSSname == ocean_hss.nc
+
+! Input/output Lanczos vectors file name, [1:Ngrids].
+
+        LCZname == ocean_lcz.nc
+
+! Output model data at observation locations file name, [1:Ngrids].
+
+        MODname == MyMODname
+
+! Output posterior error covariance matrix file name, [1:Ngrids].
+
+        ERRname == ocean_err.nc
+
+!
+!  GLOSSARY:
+!  =========
+!
+!------------------------------------------------------------------------------
+! Error covariance matrix balance operator parameters.  These parameters are
+! only used when BALANCE_OPERATOR and ZETA_ELLIPTIC are activated.
+!------------------------------------------------------------------------------
+!
+!  Nbico          Number of iterations in the biconjugate gradient algorithm
+!                 used to solve the elliptic equation for sea surface height
+!                 in the error covariance balance operator, [1:Ngrids]. We
+!                 need as many iterations are required to decrease the error
+!                 value of the reference free-surface to 1E-8 or smaller. In
+!                 some applications Nbico=200 will do the job.
+!
+!                   Warning: be aware that there are 4 arrays that are
+!                   -------  allocated with this parameter may and its
+!                            value maybe constrained by available memory:
+!
+!                   FOURDVAR(ng) % p_r2d (LBi:UBi,LBj:UBj,Nbico(ng))
+!                   FOURDVAR(ng) % r_r2d (LBi:UBi,LBj:UBj,Nbico(ng))
+!                   FOURDVAR(nd) % bp_r2d(LBi:UBi,LBj:UBj,Nbico(ng))
+!                   FOURDVAR(ng) % br_r2d(LBi:UBi,LBj:UBj,Nbico(ng))
+!
+!                   All the iterations values are needed in the backward
+!                   stepping of the adjoint.
+!
+!  dTdz_min       Minimum d(T)/d(z) above which the balanced salinity
+!                 (deltaS_b) is computed, [1:Ngrids]:
+!
+!                     deltaS_b = cff * dSdT * deltaT;    dSdT = dSdz / dTdz
+!
+!                   where cff is a coefficient that depends on the mixed-layer
+!                   depth (ml_depth):
+!
+!                     cff = 1.0 - EXP (z_r / ml_depth)
+!
+!  ml_depth       Mixed-layer depth (m; positive) used above in smoothing
+!                 coefficient (cff), [1:Ngrids].
+!
+!  LNM_depth      Level of no motion depth (m; positive) used to compute the
+!                 balanced free-surface contribution in the error covariance
+!                 balance operator. It is only relevant when LNM_flag=1,
+!                 balance(isFsur)=T, and ZETA_ELLIPTIC is NOT activated. It
+!                 is used to integrate the non-hydrostatic equation.
+!
+!  LNM_flag       Level of no motion integration flag used to used to compute
+!                 the balanced free-surface contribution:
+!
+!                   LNM_flag = 0,  integrate from local bottom to the surface
+!
+!                   LNM_flag = 1,  integrate from LNM_depth to surface or
+!                                  integrate from local bottom if shallower
+!                                  than LNM_depth
+!
+!  balance        Balance operator logical switches for state variables to
+!                 consider in the error covariance off-diagonal multivariate
+!                 constraints:
+!
+!                   balance(isSalt) = T,         salinity
+!                   balance(isFsur) = T,         free-sruface
+!                   balance(isVbar) = F,         2D momentum (ubar, vbar)
+!                   balance(isVvel) = T,         3D momentum (u, v)
+!
+!                 Guidelines:
+!
+!                   1) The salinity contribution, balance(isSalt), depends
+!                      only on temperature. Notice that temperature is used
+!                      establish the balanced part of the other state
+!                      variables.
+!
+!                   2) The free-surface contribution, balance(isFsur), depends
+!                      on salinity since we need to compute balanced density
+!                      and integrate properly using LNM_flag and LNM_depth.
+!                      This implies that balance(isSalt) needs to be TRUE too.
+!                      It is independent the 2D or 3D balance velocity terms.
+!
+!                   3) The 3D momentum, balance(isVvel), depends on salinity
+!                      since we need to compute balanced density.  This
+!                      implies that balance(isSalt) needs to be TRUE too.
+!
+!------------------------------------------------------------------------------
+!  Array modes parameter.
+!------------------------------------------------------------------------------
+!
+!  Nvct           Either eigenvector of the stabilized representer matrix to
+!                 process to computing array modes when option ARRAY_MODES is
+!                 activated. In this case, Nvct =< Ninner,
+!
+!                   Nvct=1         less important eigenvector
+!                   Nvct=Ninner    most important eigenvector
+!
+!                 or cut-off eigenvector for the clipped analysis when
+!                 the option CLIPPING is activated to remove potentially
+!                 unphysical array modes.  In this case, Nvct =< Ninner. All
+!                 the eigenvectors are ordered according to their significance,
+!                 Nvct=Ninner is the most important.
+!
+!                   Nvct:Ninner    eigenvectors will be processed
+!                   1:Nvct-1       eigenvectors will be disgarded
+!
+!------------------------------------------------------------------------------
+! Lanczos conjugate gradient algorithm parameters.
+!------------------------------------------------------------------------------
+!
+!  GradErr        Upper bound on the relative error of the gradient.
+!
+!  HevecErr       Maximum error bound on Hessian eigenvectors. Note that
+!                 even quite inaccurate eigenvectors are useful
+!                 for pre-conditioning purposes.
+!
+!  LhessianEV     Switch (T/F) to compute approximated Hessian eigenvalues
+!                 and eigenvectors.
+!
+!
+!  LhotStart      Switch (T/F) to activate hot start in weak-constraint
+!                 (W4DVAR and W4DPSAS) algorithms.
+!
+!  Lprecond       Switch (T/F) to activate preconditioning in the IS4DVAR
+!                 algorithm. Two types of Limited-Memory preconditioner (LMP)
+!                 are available Tshimanga et al., 2008): Spectral and Ritz.
+!
+!                   If Lprecond=T and Lritz=F,  Spectral LMP
+!                   If Lprecond=T and Lritz=T,  Ritz LMP
+!
+!  Lritz          Switch to activate either Ritz Limited-Memory Preconditioner
+!                 (T) or spectral Limited-Memory Preconditioner (F) to the
+!                 IS4DVAR algorithm using eigenpairs approximation for the
+!                 Hessian matrix.  The accuracy of the Hessian eigenvectors
+!                 (HevecErr) can be used to fine tune the minimization. That
+!                 is, HevecErr can be used to control number of eigenvalues
+!                 of the preconditioning Hessian matrix. See Tshimanga et al.
+!                 (2008) Q. J. R. Met. Soc. paper for details.
+!
+!  NritzEV        If preconditioning, specify number of eigenpairs to use.
+!                   If zero, use HevecErr parameter to determine the number
+!                   of converged eigenpairs.
+!
+!  NpostI         If weak constraint 4DVar (W4DPSAS or W4DVAR), set number of
+!                 iterations in the Lanczos algorithm used to estimate the
+!                 posterior analysis error covariance matrix.
+!
+!------------------------------------------------------------------------------
+! Diffusive relaxation coefficients.
+!------------------------------------------------------------------------------
+!
+! If weak constraint 4DVar and RPM_RELAXATION flag is activated, this
+! coefficients are use to relax the representer tangent lineas solution
+! to previous outer loop linearized trajectory during the Picard
+! iterations. The user may turn off relaxation on a particular variable
+! by setting the coefficient to zero.
+!
+!  tl_M2diff      2D momentum diffusion relaxation coefficient (m2/s).
+!
+!  tl_M3diff      3D momentum diffusion relaxation coefficient (m2/s).
+!
+!  tl_Tdiff       Tracers type variables diffusion relaxation coefficients
+!                 (m2/s).  NT values are expected.
+!
+!------------------------------------------------------------------------------
+! Background/model correlation parameters.
+!------------------------------------------------------------------------------
+!
+!  LdefNRM        Switch (T/F) to create a new normalization NetCDF file
+!                 for, [4,1:Ngrids]:
+!
+!                      LdefNRM(1,:)   initial conditions error covariance
+!                      LdefNRM(2,:)   model error covariance
+!                      LdefNRM(3,:)   boundary conditions error covariance
+!                      LdefNRM(4,:)   surface forcing error covariance
+!
+!                 The computation of the correlation normalization
+!                 coefficients is very expensive and needs to be computed
+!                 only once for a particular application provided that grid,
+!                 land/sea masking (if any), and decorrelation scales (see
+!                 below) remains the same.  The user can use this switch
+!                 in conjunction with the CnormM, CnormI, CnormB, CnormF
+!                 (see below) switches to compute each coefficient separately.
+!                 The normalization NetCDF only needs to be created once
+!                 and simultaneous runs can write to the same NetCDF.  If
+!                 using this approach, compute the normalization factors
+!                 with the CORRELATION CPP-option and not IS4DVAR, W4DPSAS
+!                 or W4DVAR.
+!
+!  LwrtNRM        Switch (T/F) to write out correlation normalization factors
+!                 for, [4,1:Ngrids]:
+!
+!                      LwrtNRM(1,:)   initial conditions error covariance
+!                      LwrtNRM(2,:)   model error covariance
+!                      LwrtNRM(3,:)   boundary conditions error covariance
+!                      LwrtNRM(4,:)   surface forcing error covariance
+!
+!                 If TRUE, these factors computed and written to NRMnameI,
+!                 NRMnameM, NRMnameB, and NRMnameF NetCDF file, respectively.
+!                 If FALSE, they are read from NRMname NetCDF file.
+!
+!  CnormM         Compute (T/F) model error covariance
+!                   normalization factors:
+!
+!                   CnormM(isFsur)                free-surface
+!                   CnormM(isUbar)                2D U-momentum
+!                   CnormM(isVbar)                2D V-momentum
+!                   CnormM(isUvel)                3D U-momentum
+!                   CnormM(isVvel)                3D V-momentum
+!                   CnormM(isTvar)                tracers (1:NT)
+!
+!  CnormI         Compute (T/F) initial conditions error covariance
+!                   normalization factors:
+!
+!                   CnormI(isFsur)                free-surface
+!                   CnormI(isUbar)                2D U-momentum
+!                   CnormI(isVbar)                2D V-momentum
+!                   CnormI(isUvel)                3D U-momentum
+!                   CnormI(isVvel)                3D V-momentum
+!                   CnormI(isTvar)                tracers (1:NT)
+!
+!  CnormB         Compute (T/F) open boundary conditions error covariance
+!                   normalization factors:
+!
+!                   CnormB(isFsur)                free-surface
+!                   CnormB(isUbar)                2D U-momentum
+!                   CnormB(isVbar)                2D V-momentum
+!                   CnormB(isUvel)                3D U-momentum
+!                   CnormB(isVvel)                3D V-momentum
+!                   CnormB(isTvar)                tracers (1:NT)
+!
+!  CnormF         Compute (T/F) surface forcing error covariance
+!                   normalization factors:
+!
+!                   CnormF(isTsur)                tracer flux (1:NT)
+!                   CnormF(isUstr)                wind U-stress
+!                   CnormF(isVstr)                wind V-stress
+!
+!  Nmethod        Correlation normalization method:
+!
+!                   [0] Exact, very expensive
+!                   [1] Approximated, randomization
+!
+!  Rscheme        Random number generation scheme if randomization:
+!
+!                   [1] Gaussian distributed deviates, numerical recipes
+!
+!  Nrandom        Number of iterations to compute correlation normalization
+!                 factors using the randomization approach of Fisher and
+!                 Courtier (1995). A large number is required to be
+!                 statistically meaningful and achieve zero expectation
+!                 mean and unit variance, approximately. These factors insure
+!                 that the error covariance diagonal elements are equal to
+!                 unity.
+!
+!  Hgamma         Horizontal stability and accuracy factor (< 1) used to
+!                 scale the time-step of the convolution operator below its
+!                 theoretical limit, [1:4].  Notice that four values are
+!                 needed for Hgamma to facilitate the error covariance
+!                 modeling for initial conditions (1), model (2), boundary
+!                 conditions (3), and surface forcing (4).
+!
+!  Vgamma         Vertical stability and accuracy factor (< 1) used to
+!                 scale the time-step of the convolution operator below its
+!                 theoretical limit,  [1:4].  Notice that four values are
+!                 needed for Vgamma to facilitate the error covariance
+!                 modeling for initial conditions (1), model (2), boundary
+!                 conditions (3), and surface forcing (4).
+!
+!  HdecayM        Model error covariance, [1:Ngrids],
+!                   horizontal, isotropic decorrelation scales (m):
+!
+!                   HdecayM(isFsur)               free-surface
+!                   HdecayM(isUbar)               2D U-momentum
+!                   HdecayM(isVbar)               2D V-momentum
+!                   HdecayM(isUvel)               3D U-momentum
+!                   HdecayM(isVvel)               3D V-momentum
+!                   HdecayM(isTvar)               tracers (1:NT,1:Ngrids)
+!
+!  VdecayM        Model error covariance, [1:Ngrids],
+!                   vertical, isotropic decorrelation scale (m):
+!
+!                   VdecayM(isUvel)               3D U-momentum
+!                   VdecayM(isVvel)               3D V-momentum
+!                   VdecayM(isTvar)               tracers (1:NT,1:Ngrids)
+!
+!  HdecayI        Initial conditions error covariance, [1:Ngrids],
+!                   horizontal, isotropic decorrelation scales (m):
+!
+!                   HdecayI(isFsur)               free-surface
+!                   HdecayI(isUbar)               2D U-momentum
+!                   HdecayI(isVbar)               2D V-momentum
+!                   HdecayI(isUvel)               3D U-momentum
+!                   HdecayI(isVvel)               3D V-momentum
+!                   HdecayI(isTvar)               tracers (1:NT,1:Ngrids)
+!
+!  VdecayI        Model error covariance, [1:Ngrids],
+!                   vertical, isotropic decorrelation scale (m):
+!
+!                   VdecayI(isUvel)               3D U-momentum
+!                   VdecayI(isVvel)               3D V-momentum
+!                   VdecayI(isTvar)               tracers (1:NT)
+!
+!  HdecayB        Open boundary conditions error covariance, [4,1:Ngrids],
+!                   horizontal, isotropic decorrelation scales (m):
+!
+!                   HdecayB(:,isFsur)             free-surface
+!                   HdecayB(:,isUbar)             2D U-momentum
+!                   HdecayB(:,isVbar)             2D V-momentum
+!                   HdecayB(:,isUvel)             3D U-momentum
+!                   HdecayB(:,isVvel)             3D V-momentum
+!                   HdecayB(:,isTvar)             tracers (4,1:NT,1:Ngrids)
+!
+!                   boundary index   1: west  2: south  3: east  4: north
+!
+!  VdecayB        Model error covariance, [4,1:Ngrids],
+!                   vertical, isotropic decorrelation scale (m):
+!
+!                   VdecayB(isUvel)               3D U-momentum
+!                   VdecayB(isVvel)               3D V-momentum
+!                   VdecayB(isTvar)               tracers (4,1:NT,1:Ngrids)
+!
+!                   boundary index   1: west  2: south  3: east  4: north
+!
+!  HdecayF        Surface forcing error covariance, [1:Ngrids],
+!                   horizontal, isotropic decorrelation scales (m):
+!
+!                   HdecayF(isTsur)               tracers flux (1:NT,1:Ngrids)
+!                   HdecayF(isUstr)               wind U-stress
+!                   HdecayF(isVstr)               wind V-stress
+!
+!------------------------------------------------------------------------------
+! 4DVAR adjustment switches
+!------------------------------------------------------------------------------
+!
+!  Lstflux        Logical switches (T/F) used to adjust surface tracer flux,
+!                 including active and passive tracers, [1:NT, 1:Ngrids].
+!                 These switches are used when ADJUST_STFLUX is activated.
+!
+!  Lobc           Logical switches (T/F) used to adjust state variables at
+!                 the open boundaries. A value is expected for each boundary
+!                 segment per nested grid, [1:4, 1:Ngrids].
+!
+!                 The boundary order is anticlockwise starting at the western
+!                 edge as follows:
+!
+!                    1 = western  edge
+!                    2 = southern edge
+!                    3 = eastern  edge
+!                    4 = northern edge
+!
+!                    Lobc(isFsur)               free-surface
+!                    Lobc(isUbar)               2D U-momentum
+!                    Lobc(isVbar)               2D V-momentum
+!                    Lobc(isUvel)               3D U-momentum
+!                    Lobc(isVvel)               3D V-momentum
+!                    Lobc(isTvar)               NT tracers (4,NT,Ngrids)
+!
+!                WARNING: When processing momentum, you need to activate both
+!                =======  components. If processing 2D momentum, you need to
+!                activate both free-surface and 3D-momentum at the processing
+!                boundary. The 2D momentum adjustment is computed by vertically
+!                integretating the 3D momentum increments.
+!
+!------------------------------------------------------------------------------
+!  Input/Output NetCDF files (a string with a maximum of 256 characters).
+!------------------------------------------------------------------------------
+!
+!  STDnameM       Input model error covariance
+!                   standard deviation file name.
+!
+!  STDnameI       Input initial conditions error covariance
+!                   standard deviation file name.
+!
+!  STDnameB       Input open boundary conditions error covariance
+!                   standard deviation file name.
+!
+!  STDnameF       Input surface forcing error covariance
+!                   standard deviation file name.
+!
+!  NRMnameM       Input/output model error covariance
+!                   normalization factors file name.
+!
+!  NRMnameI       Input/output initial conditions error covariance
+!                   normalization factors file name.
+!
+!  NRMnameB       Input/output open boundary conditions error covariance
+!                   normalization factors file name.
+!
+!  NRMnameF       Input/output surface forcing error covariance
+!                   normalization factors file name.
+!
+!  OBSname        Input/Output observations data file name.
+!
+!  HSSname        Input/Output Hessian eigenvectors file name.
+!
+!  LCZname        Input/output Lanczos vectors file name.
+!
+!  MODname        Output model data at observations locations file name.
+!
+!  ERRname        Output posterior error covariance matrix file name.
+!

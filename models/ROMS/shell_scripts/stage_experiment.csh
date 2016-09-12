@@ -77,40 +77,126 @@ rsync -Cavz ${ROMSDIR}/WC13/Ensemble/  ${EXPERIMENTDIR}/      || exit 1
 \cp ${DARTDIR}/models/ROMS/work/filter                 ${EXPERIMENTDIR}/. || exit 2
 \cp ${DARTDIR}/observations/ROMS/work/convert_roms_obs ${EXPERIMENTDIR}/. || exit 2
 
+# the observation file had some quirks
+
+set ROMS_OBS = Data/obs_wc13_merged_2013+07d_pp1_depthinmeters_dt5400_physonly.nc
+
+ncatted -a    units,survey_time,m,c,'days since 1900-01-01 00:00:00 GMT' \
+        -a calendar,survey_time,c,c,'gregorian' \
+        -a    units,obs_time,m,c,'days since 1900-01-01 00:00:00 GMT' \
+        -a calendar,obs_time,c,c,'gregorian' \
+        -a flag_meanings,obs_provenance,m,c,'gridded_AVISO_sea_level_anomaly_(zeta) gridded_Aquarius_SSS_(salinity) XBT_from_Met_Office_(temperature) CTD_from_Met_Office_(temperature) CTD_from_Met_Office_(salinity) ARGO_floats_(temperature) ARGO_floats_(salinity) glider_UCSD_(temperature) glider_UCSD_(salinity) blended_satellite_SST_(temperature)' \
+        ${ROMS_OBS}
+
+ncrename -a obs_type@long,long_name ${ROMS_OBS}
+
 #--------------------------------------------------------------------------
-# customize the user input 
-# ROMS_STDIN_TMP and ROMS_DAPAR_TMP templates come from the Ensemble directory.
+# customize the user input templates with things that will remain constant
+# througout the assimilation. We want to leave the *.template files with 
+# items that will change with each assimilation cycle.
+#
+# ocean.in.template and s4dvar.in.template come from the Ensemble directory.
 # The ocean.in.template and s4dvar.in.template files have hardcoded strings
 # to be replaced using the SUBSTITUTE command. These templates are copied to
 # each ROMS instance directory and modified with the values declared here.
 #--------------------------------------------------------------------------
 
-set ROMS_STDIN_TMP = ocean.in.template
-set ROMS_DAPAR_TMP = s4dvar.in.template
-set ROMS_STDIN = ocean.in
-set ROMS_DAPAR = s4dvar.in
-set ROMS_EXE = oceanM
-
-set VARNAME = varinfo.dat
-set NtileI = 4
-set NtileJ = 4
-set NCPUS = 16
-set NTIMES = 48
-set ROMS_DT = 3600.0d0
-set NRST = 24
-set TIME_REF = 19000101.0d0
-
-set ROMS_DAI = roms_dai.nc
-set ROMS_INI = roms_ini.nc
-set ROMS_RST = roms_rst.nc
-set ROMS_MOD = roms_mod.nc
-
-# There are some values that DART needs so specify
+foreach FILE ( ocean.in.template s4dvar.in.template )
+   if ( ! -e $FILE ) then
+      echo "ERROR: $FILE must exist."
+      echo "ERROR: $FILE expected to come from the Ensemble directory."
+      exit 1
+   endif
+end
 
 set ENSEMBLE_SIZE = 3
+set ROMS_STDIN = ocean.in
+set ROMS_DAPAR = s4dvar.in
+set ROMS_DAI = roms_dai.nc
+set ROMS_MOD = roms_mod_obs.nc
+set ROMS_RST = roms_rst.nc
+set ROMS_EXE = oceanM
+
+# Set DART and ROMS (static) input values.
+# There are some replacement strings left in the templates
+# that will need to be replaced after each assimilation cycle.
+# Things like DSTART and the ININAME ...
+
+$SUBSTITUTE  ocean.in.template  MyVARNAME   ../varinfo.dat
+$SUBSTITUTE  ocean.in.template  MyNtileI    4
+$SUBSTITUTE  ocean.in.template  MyNtileJ    4
+$SUBSTITUTE  ocean.in.template  MyNTIMES    48
+$SUBSTITUTE  ocean.in.template  MyDT        3600.0d0
+$SUBSTITUTE  ocean.in.template  MyNRST      24
+$SUBSTITUTE  ocean.in.template  MyTIME_REF  19000101.0d0
+$SUBSTITUTE  ocean.in.template  MyDAINAME   $ROMS_DAI
+$SUBSTITUTE  ocean.in.template  MyRSTNAME   $ROMS_RST
+$SUBSTITUTE  ocean.in.template  MyAPARNAM   $ROMS_DAPAR
+
+$SUBSTITUTE  cycle.csh.template  MySUBSTITUTE          $SUBSTITUTE
+$SUBSTITUTE  cycle.csh.template  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
+$SUBSTITUTE  cycle.csh.template  MyROMS_EXE            $ROMS_EXE
+$SUBSTITUTE  cycle.csh.template  MyROMS_STDIN          $ROMS_STDIN
+$SUBSTITUTE  cycle.csh.template  MyOBSname             $ROMS_OBS
+$SUBSTITUTE  cycle.csh.template  MyMODname             $ROMS_MOD
+$SUBSTITUTE  cycle.csh.template  MyRSTNAME             $ROMS_RST
+$SUBSTITUTE  cycle.csh.template  MyDAINAME             $ROMS_DAI
+
+$SUBSTITUTE  s4dvar.in.template  MyMODname   $ROMS_MOD
+
+$SUBSTITUTE  input.nml.template  Myens_size  $ENSEMBLE_SIZE
+$SUBSTITUTE  input.nml.template  MyDAINAME   $ROMS_DAI
 
 \cp input.nml.template input.nml
 \cp cycle.csh.template cycle.csh
+chmod u+x cycle.csh
+
+set member = 1
+while ( ${member} <= ${ENSEMBLE_SIZE} )
+
+   set dirname = `printf instance_%04d $member`
+   mkdir -p $dirname
+   cd $dirname
+
+   set ROMS_INI = `printf wc13_ini_%04d_2013_01_01.nc $member`
+
+   \cp ../ocean.in.template    $ROMS_STDIN || exit 4
+   \cp ../s4dvar.in.template   $ROMS_DAPAR || exit 4
+   \mv ../$ROMS_INI            .           || exit 4
+
+   # Set DSTART for the current ensemble.
+   # NOTE ... bc can handle the 'long' integers that happen when the
+   # reference time is 1900-01-01, the shell divide cannot.
+
+   set OCEAN_TIME = `ncdump -v ocean_time ${ROMS_INI} | grep "ocean_time =" | tail -1`
+   set TIME_SEC = `echo $OCEAN_TIME | grep -oE '[[:digit:]]+'`
+   set DSTART = `echo "scale=6; $TIME_SEC / 86400.0" | bc `
+
+   # Set ROMS standard input parameters needed in template scripts.
+
+   $SUBSTITUTE $ROMS_STDIN MyDSTART   $DSTART
+   $SUBSTITUTE $ROMS_STDIN MyININAME  $ROMS_INI
+
+   $SUBSTITUTE $ROMS_DAPAR MyOBSname  ../$ROMS_OBS
+
+   cd ..
+
+   @ member++
+end
+
+# remove any leftover ensemble members
+\rm wc13_ini_*.nc
+
+#==========================================================================
+# Then we run DART on the ensemble of new states
+#==========================================================================
+
+cat README_assumptions.txt
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 
 #--------------------------------------------------------------------------
 # put some instructions in the experiment directory and echo to screen
@@ -163,8 +249,6 @@ more that you _may_ want to change or set.
    ens_size                     = <YOUR ACTUAL ENSEMBLE SIZE>
 
 &convert_roms_obs_nml
-   roms_input_obs_file          = 'Data/wc13_obs.nc'
-   roms_mod_obs_files           = ''
    roms_mod_obs_filelist        = 'precomputed_files.txt'
    dart_output_obs_file         = 'obs_seq.out'
    locations_in_IJK             = .false.
@@ -185,85 +269,4 @@ After these changes are made, it should be possible to configure
 and run the ${EXPERIMENTDIR}/cycle.csh script.
 
 ENDOFFILE
-
-set ROMS_OBS = Data/obs_wc13_merged_2013+07d_pp1_depthinmeters_dt5400_physonly.nc
-
-ncatted -a    units,survey_time,m,c,'days since 1900-01-01 00:00:00 GMT' \
-        -a calendar,survey_time,c,c,'gregorian' \
-        -a    units,obs_time,m,c,'days since 1900-01-01 00:00:00 GMT' \
-        -a calendar,obs_time,c,c,'gregorian' \
-        -a flag_meanings,obs_provenance,m,c,'gridded_AVISO_sea_level_anomaly_(zeta) gridded_Aquarius_SSS_(salinity) XBT_from_Met_Office_(temperature) CTD_from_Met_Office_(temperature) CTD_from_Met_Office_(salinity) ARGO_floats_(temperature) ARGO_floats_(salinity) glider_UCSD_(temperature) glider_UCSD_(salinity) blended_satellite_SST_(temperature)' \
-        ${ROMS_OBS}
-
-ncrename -a obs_type@long,long_name ${ROMS_OBS}
-
-$SUBSTITUTE input.nml Myens_size            ${ENSEMBLE_SIZE}
-$SUBSTITUTE input.nml MyMODname             ${ROMS_MOD}
-$SUBSTITUTE input.nml MyDAINAME             ${ROMS_DAI}
-
-$SUBSTITUTE cycle.csh EXPERIMENT_DIRECTORY  ${EXPERIMENTDIR}
-$SUBSTITUTE cycle.csh MyROMS_EXE            ${ROMS_EXE}
-$SUBSTITUTE cycle.csh MyROMS_STDIN          ${ROMS_STDIN}
-$SUBSTITUTE cycle.csh MyDAINAME             ${ROMS_DAI}
-$SUBSTITUTE cycle.csh MyININAME             ${ROMS_INI}
-$SUBSTITUTE cycle.csh MyOBSname             ${ROMS_OBS}
-$SUBSTITUTE cycle.csh MyMODname             ${ROMS_MOD}
-
-set member = 1
-while ( ${member} <= ${ENSEMBLE_SIZE} )
-
-   set dirname = `printf instance_%04d $member`
-   mkdir -p $dirname
-   cd $dirname
-
-   set ROMS_INI = `printf wc13_ini_%04d_2013_01_01.nc $member`
-
-   \cp ../${ROMS_STDIN_TMP}    ${ROMS_STDIN} || exit 4
-   \cp ../${ROMS_DAPAR_TMP}    ${ROMS_DAPAR} || exit 4
-   \mv ../${ROMS_INI}          .             || exit 4
-
-   # Set DSTART for the current ensemble.
-   # NOTE ... bc can handle the 'long' integers that happen when the
-   # reference time is 1900-01-01, the shell divide cannot.
-
-   set OCEAN_TIME = `ncdump -v ocean_time ${ROMS_INI} | grep "ocean_time =" | tail -1`
-   set TIME_SEC = `echo $OCEAN_TIME | grep -oE '[[:digit:]]+'`
-   set DSTART = `echo "scale=6; $TIME_SEC / 86400.0" | bc `
-
-   # Set ROMS standard input parameters needed in template scripts.
-
-   $SUBSTITUTE $ROMS_STDIN MyVARNAME  ../$VARNAME
-   $SUBSTITUTE $ROMS_STDIN MyNtileI   $NtileI
-   $SUBSTITUTE $ROMS_STDIN MyNtileJ   $NtileJ
-   $SUBSTITUTE $ROMS_STDIN MyNTIMES   $NTIMES
-   $SUBSTITUTE $ROMS_STDIN MyDT       $ROMS_DT
-   $SUBSTITUTE $ROMS_STDIN MyNRST     $NRST
-   $SUBSTITUTE $ROMS_STDIN MyDSTART   $DSTART
-   $SUBSTITUTE $ROMS_STDIN MyTIME_REF $TIME_REF
-   $SUBSTITUTE $ROMS_STDIN MyININAME  $ROMS_INI
-   $SUBSTITUTE $ROMS_STDIN MyDAINAME  $ROMS_DAI
-   $SUBSTITUTE $ROMS_STDIN MyRSTNAME  $ROMS_RST
-   $SUBSTITUTE $ROMS_STDIN MyAPARNAM  $ROMS_DAPAR
-
-   $SUBSTITUTE $ROMS_DAPAR MyOBSname  $ROMS_OBS
-   $SUBSTITUTE $ROMS_DAPAR MyMODname  $ROMS_MOD
-
-   cd ..
-
-   @ member++
-end
-
-# remove any leftover ensemble members
-\rm wc13_ini_*.nc
-
-#==========================================================================
-# Then we run DART on the ensemble of new states
-#==========================================================================
-
-cat README_assumptions.txt
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
 

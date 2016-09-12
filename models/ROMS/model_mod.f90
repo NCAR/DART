@@ -59,24 +59,26 @@ use    utilities_mod, only : register_module, error_handler, do_nml_term,       
                              file_to_text, do_output, close_file,               &
                              string_to_real, string_to_logical
 
-use     obs_kind_mod, only : KIND_TEMPERATURE, KIND_SALINITY, &
-                             KIND_U_CURRENT_COMPONENT,                          &
-                             KIND_V_CURRENT_COMPONENT, KIND_SEA_SURFACE_HEIGHT, &
-                             KIND_SEA_SURFACE_PRESSURE,                         &
-                             KIND_POTENTIAL_TEMPERATURE,                        &
-                             get_raw_obs_kind_index,                            &
+use     obs_kind_mod, only : KIND_TEMPERATURE,           &
+                             KIND_SALINITY,              &
+                             KIND_U_CURRENT_COMPONENT,   &
+                             KIND_V_CURRENT_COMPONENT,   &
+                             KIND_SEA_SURFACE_HEIGHT,    &
+                             KIND_SEA_SURFACE_PRESSURE,  &
+                             KIND_POTENTIAL_TEMPERATURE, &
+                             get_raw_obs_kind_index,     &
                              get_raw_obs_kind_name
 
-use mpi_utilities_mod, only: my_task_id
+use     mpi_utilities_mod, only : my_task_id
 
-use    random_seq_mod, only: random_seq_type, init_random_seq, random_gaussian
+use        random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
-use ensemble_manager_mod,  only : ensemble_type, map_pe_to_task, get_copy_owner_index, &
+use  ensemble_manager_mod, only : ensemble_type, map_pe_to_task, get_copy_owner_index, &
                                   get_var_owner_index
 
 use distributed_state_mod, only : get_state
 
-use state_structure_mod,   only : add_domain, get_model_variable_indices, &
+use   state_structure_mod, only : add_domain, get_model_variable_indices, &
                                   get_num_variables, get_index_start, &
                                   get_num_dims, get_domain_size, get_varid_from_kind, &
                                   get_dart_vector_index, state_structure_info, &

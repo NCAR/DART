@@ -131,7 +131,6 @@
 
 &convert_roms_obs_nml
    ens_size               = 3
-   roms_input_obs_file    = 'MyMODname'
    roms_mod_obs_filelist  = 'precomputed_files.txt'
    dart_output_obs_file   = 'obs_seq.out'
    append_to_existing     = .false.

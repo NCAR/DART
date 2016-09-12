@@ -82,24 +82,27 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
    endif
 
    # sometimes we need the full name, sometimes we need it without the extension
-   set DIA_FILE = MyDAINAME
-   set OBS_FILE = MyOBSname
-   set DIA_ROOT = ${DIA_FILE}:r
-   set OBS_ROOT = $OBS_FILE}:r
+   set RST_FILE = MyRSTNAME
+   set DAI_FILE = MyDAINAME
+   set OBS_FILE = MyMODname
+   set RST_ROOT = $RST_FILE:r
+   set DAI_ROOT = $DAI_FILE:r
+   set OBS_ROOT = $OBS_FILE:r
 
-   # tag the output with the model time 
-   # Create a ROMS_POSTERIOR file that will be updated by DART.
-   # Save off a copy of the forecast as the PRIOR.
-   set OCEAN_TIME_STRING = `ncdump -v ocean_time ${DIA_FILE} | grep '^ ocean_time = '`
+   # The ROMS restart file will be treated as the DART prior.
+   # Create a ROMS POSTERIOR file that will be updated by DART and
+   # tag the output with the model time.
+
+   set OCEAN_TIME_STRING = `ncdump -v ocean_time ${DAI_FILE} | grep '^ ocean_time = '`
    set OCEAN_TIME = `echo $OCEAN_TIME_STRING | sed -e "s#[=;a-z_ ]##g"`
 
-   set ROMS_PRIOR     = `printf %s_%04d_%d.nc ${DIA_ROOT} $instance $OCEAN_TIME`
-   set ROMS_POSTERIOR = `printf roms_pos_%04d_%d.nc       $instance $OCEAN_TIME`
+   set ROMS_PRIOR     = `printf %s_%04d_%d.nc ${RST_ROOT} $instance $OCEAN_TIME`
+   set ROMS_POSTERIOR = `printf roms_posterior_%04d_%d.nc $instance $OCEAN_TIME`
    set ROMS_OBSFILE   = `printf %s_%04d_%d.nc ${OBS_ROOT} $instance $OCEAN_TIME`
 
-   \cp -v ${DIA_FILE} ${ROMS_POSTERIOR}
-   \mv -v ${DIA_FILE} ${ROMS_PRIOR}
-   \mv -v ${OBS_FILE} ${ROMS_OBSFILE}
+   \mv -v ${RST_FILE} ${ROMS_PRIOR}      || exit 1
+   \mv -v ${DAI_FILE} ${ROMS_POSTERIOR}  || exit 1
+   \mv -v ${OBS_FILE} ${ROMS_OBSFILE}    || exit 1
 
    echo
    echo "#---------------------------------------------------------------------"
@@ -122,7 +125,7 @@ end
 # a (single) ROMS input file is required to satisfy 'static_init_model()' 
 # any one will do
 
-ln -sf instance_0001/${DIA_ROOT}_????_${OCEAN_TIME}.nc MyDAINAME
+ln -sf instance_0001/roms_posterior_????_${OCEAN_TIME}.nc MyDAINAME
 
 # Collect all the ROMS_OBSFILEs into a list of input files 
 # and then convert them to a single DART observation sequence file.
@@ -136,7 +139,7 @@ ls -1 instance_*/${OBS_ROOT}*_${OCEAN_TIME}.nc  >! precomputed_files.txt
 # (make sure all instances of ROMS advanced successfully)
 # DART (filter) will modify these files in-place.
 
-ls -1 instance_*/roms_pos_????_${OCEAN_TIME}.nc  >! restart_files.txt
+ls -1 instance_*/roms_posterior_????_${OCEAN_TIME}.nc  >! restart_files.txt
 
 mpirun.lsf ./filter || exit 3
 
@@ -167,23 +170,23 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
    cd ${INSTANCE_DIRECTORY}
 
    set posterior = `head -n $instance ../restart_files.txt | tail -n 1`
-   set  filename = $posterior:t
+   set ROMS_INI = $posterior:t
 
    # use new state as starting point for next advance.
    # We want to preserve the unique posterior but want ROMS
    # to read from the (single) filename in ocean.in INIFILE
 
-   ln -sf ${filename}  MyININAME || exit 4
+   # Update the ocean.in file with the new ../new_dstart.txt DSTART value
+  
+   set DSTART = `grep DSTART ../new_dstart.txt | sed -e 's/[A-Z, ]//g'`
+ 
+   \cp ../ocean.in.template ocean.in 
+
+   MySUBSTITUTE ocean.in MyDSTART   $DSTART
+   MySUBSTITUTE ocean.in MyININAME  $ROMS_INI
 
    cd ..
 
-   # Update the ocean.in file with the new ../new_dstart.txt DSTART value
-
-   cat ../new_dstart.txt
-
-   # must either find and replace the old dstart ... or recreate using the whole 
-   # template for every assimilation cycle
-   
 end
 
 
