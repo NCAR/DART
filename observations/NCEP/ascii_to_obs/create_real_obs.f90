@@ -65,7 +65,7 @@ namelist /ncepobs_nml/ year, month, day, tot_days, max_num, select_obs,  &
         ObsBase, ADPUPA, AIRCAR, AIRCFT, SATEMP, SFCSHP, ADPSFC, SATWND, &
         obs_U, obs_V, obs_T, obs_PS, obs_QV, obs_Z, daily_file, lon1, lon2, & 
         lat1, lat2, obs_time, include_specific_humidity, &
-        include_relative_humidity, include_dewpoint
+        include_relative_humidity, include_dewpoint, include_surface_pressure
 
 ! ----------------------------------------------------------------------
 ! Select observation types using NCEP categories (when select_obs /= 0).
