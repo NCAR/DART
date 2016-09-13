@@ -130,7 +130,7 @@
 
 
 &convert_roms_obs_nml
-   ens_size               = 3
+   ens_size               = Myens_size
    roms_mod_obs_filelist  = 'precomputed_files.txt'
    dart_output_obs_file   = 'obs_seq.out'
    append_to_existing     = .false.

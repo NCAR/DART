@@ -99,7 +99,11 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
    set ROMS_PRIOR     = `printf %s_%04d_%d.nc ${RST_ROOT} $instance $OCEAN_TIME`
    set ROMS_POSTERIOR = `printf roms_posterior_%04d_%d.nc $instance $OCEAN_TIME`
    set ROMS_OBSFILE   = `printf %s_%04d_%d.nc ${OBS_ROOT} $instance $OCEAN_TIME`
+   set SAFETY         = `printf safety_%04d_%d.nc $instance $OCEAN_TIME`
 
+   # THE SAFETY FILE COPY IS NOT FOR PRODUCTION RUNS AND SHOULD BE REMOVED.
+
+   \cp -v ${DAI_FILE} ${SAFETY}          || exit 1
    \mv -v ${RST_FILE} ${ROMS_PRIOR}      || exit 1
    \mv -v ${DAI_FILE} ${ROMS_POSTERIOR}  || exit 1
    \mv -v ${OBS_FILE} ${ROMS_OBSFILE}    || exit 1
@@ -122,12 +126,12 @@ end
 \rm -f dart_log.out dart_log.nml
 
 # Because convert_roms_obs and filter need bits from the ROMS model_mod,
-# a (single) ROMS input file is required to satisfy 'static_init_model()' 
+# a (single) ROMS input file is required to satisfy 'static_init_model()'
 # any one will do
 
 ln -sf instance_0001/roms_posterior_????_${OCEAN_TIME}.nc MyDAINAME
 
-# Collect all the ROMS_OBSFILEs into a list of input files 
+# Collect all the ROMS_OBSFILEs into a list of input files
 # and then convert them to a single DART observation sequence file.
 
 ls -1 instance_*/${OBS_ROOT}*_${OCEAN_TIME}.nc  >! precomputed_files.txt
@@ -156,12 +160,12 @@ mpirun.lsf ./filter || exit 3
 \mv -v mean.nc            Posterior_mean.${OCEAN_TIME}.nc
 \mv -v obs_seq.final      obs_seq.final.${OCEAN_TIME}
 
-# what inflation file 
+# what inflation file
 
 # the input.nml:&filter_nml:restart_out_file_name specifies the base filename
 # for the updated (the posterior) model state. This base gets appended with
 # a 4-digit instance number and then ".nc" This file must be pushed back into
-# the appropriate directory. 
+# the appropriate directory.
 
 @ instance = 0
 foreach INSTANCE_DIRECTORY ( instance_???? )
@@ -177,10 +181,10 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
    # to read from the (single) filename in ocean.in INIFILE
 
    # Update the ocean.in file with the new ../new_dstart.txt DSTART value
-  
+
    set DSTART = `grep DSTART ../new_dstart.txt | sed -e 's/[A-Z, ]//g'`
- 
-   \cp ../ocean.in.template ocean.in 
+
+   \cp ../ocean.in.template ocean.in
 
    MySUBSTITUTE ocean.in MyDSTART   $DSTART
    MySUBSTITUTE ocean.in MyININAME  $ROMS_INI

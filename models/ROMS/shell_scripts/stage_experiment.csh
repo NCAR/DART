@@ -92,7 +92,7 @@ ncrename -a obs_type@long,long_name ${ROMS_OBS}
 
 #--------------------------------------------------------------------------
 # customize the user input templates with things that will remain constant
-# througout the assimilation. We want to leave the *.template files with 
+# througout the assimilation. We want to leave the *.template files with
 # items that will change with each assimilation cycle.
 #
 # ocean.in.template and s4dvar.in.template come from the Ensemble directory.
@@ -109,7 +109,7 @@ foreach FILE ( ocean.in.template s4dvar.in.template )
    endif
 end
 
-set ENSEMBLE_SIZE = 3
+set ENSEMBLE_SIZE = 32
 set ROMS_STDIN = ocean.in
 set ROMS_DAPAR = s4dvar.in
 set ROMS_DAI = roms_dai.nc
@@ -187,17 +187,6 @@ end
 # remove any leftover ensemble members
 \rm wc13_ini_*.nc
 
-#==========================================================================
-# Then we run DART on the ensemble of new states
-#==========================================================================
-
-cat README_assumptions.txt
-
-# <next few lines under version control, do not edit>
-# $URL$
-# $Revision$
-# $Date$
-
 #--------------------------------------------------------------------------
 # put some instructions in the experiment directory and echo to screen
 #--------------------------------------------------------------------------
@@ -209,7 +198,6 @@ The EXPERIMENT directory is ${EXPERIMENTDIR}
 The DART parts came from    ${DARTDIR}
 The ROMS parts came from    ${ROMSDIR}
 #--------------------------------------------------------------------------
-The following changes must be made to ocean.in:
 
     NtileI*NtileJ must equal the task count
 
@@ -224,20 +212,10 @@ The following changes must be made to ocean.in:
         DT == 3600.0d0     ---  these two will advance ROMS for 1 day
       NRST == 24           write out a restart file after 1 day
 
-   ININAME == roms_input.nc
-   VARNAME == ../varinfo.dat
-   APARNAM == ../s4dvar.in      required for writing VERIFICATION obs
-   DAINAME == roms_dai.nc
-
 #--------------------------------------------------------------------------
-The following changes must be made to s4dvar.in
-
-    OBSname == ../Data/roms_obs_in.nc     input observations
-    MODname == roms_obs_mod.nc            ROMS-computed observations
-
-#--------------------------------------------------------------------------
-The following settings MUST be made to input.nml, there are many
-more that you _may_ want to change or set.
+The following settings MUST be made to input.nml.template for the logic
+in cycle.csh to work correctly.  There are many more that you _may_ want
+to change or set to impact the performance of the assimilation.
 
 &filter_nml:
    perturb_from_single_instance = .false.     (USUALLY!)
@@ -251,22 +229,29 @@ more that you _may_ want to change or set.
 &convert_roms_obs_nml
    roms_mod_obs_filelist        = 'precomputed_files.txt'
    dart_output_obs_file         = 'obs_seq.out'
-   locations_in_IJK             = .false.
-   add_random_noise             = .true.
-   pert_amplitude               = 0.01
    append_to_existing           = .false.
+   use_precomputed_values       = .true.
+   locations_in_IJK             = .false.
 
 &model_nml
    output_state_vector          = .false.
    assimilation_period_days     = <something bigger than NTIMES*DT>
    assimilation_period_seconds  = 0
-   roms_filename                = 'roms_input.nc'
    vert_localization_coord      = 3
 
 #--------------------------------------------------------------------------
 
-After these changes are made, it should be possible to configure
-and run the ${EXPERIMENTDIR}/cycle.csh script.
+After these files are confirmed, it should be possible to
+run the ${EXPERIMENTDIR}/cycle.csh script.
 
 ENDOFFILE
+
+cat README_assumptions.txt
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

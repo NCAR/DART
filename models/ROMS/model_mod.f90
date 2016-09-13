@@ -17,8 +17,8 @@
 !> the observations already have expected values. What is required is
 !> the ability to convert -on-demand- a DART observation sequence file
 !> from the ROMS observation format. This is done with the convert_roms_obs
-!> program in observations/ROMS. 
-!> 
+!> program in observations/ROMS.
+!>
 !> If required for other obs, the model_interpolate code will
 !> need to be written and tested.
 !>
@@ -338,7 +338,7 @@ if ( .not. module_initialized ) call static_init_model
 interp_val = MISSING_R8
 istatus = 99
 
-write(string1,*)'model_interpolate should not be called.' 
+write(string1,*)'model_interpolate should not be called.'
 write(string2,*)'we are getting forward observations directly from ROMS'
 call error_handler(E_MSG,'model_interpolate:',string1,source,revision,revdate, text2=string2)
 
@@ -540,7 +540,7 @@ end subroutine init_conditions
 !>
 !> Writes the model-specific attributes to a DART 'diagnostic' netCDF file.
 !> This includes coordinate variables and some metadata, but NOT the
-!> actual DART state. 
+!> actual DART state.
 !>
 !> @param ncFileID the netCDF handle of the DART diagnostic file opened by
 !>                 assim_model_mod:init_diag_output
@@ -842,7 +842,7 @@ else
                  'nc_write_model_atts', 'z_w inq_varid '//trim(filename))
    call nc_check(nf90_put_var(ncFileID, VarID, WDEP ), &
                 'nc_write_model_atts', 'z_w put_var '//trim(filename))
-   
+
    endif
 
 ! Flush the buffer and leave netCDF file open
@@ -999,6 +999,8 @@ subroutine get_close_obs(gc, base_obs_loc, base_obs_type, &
 ! within filter_assim. In other words, these modifications will only matter within
 ! filter_assim, but will not propagate backwards to filter.
 
+!>@ TODO FIXME implement masking ...
+
 ! use the default system routine
 
 call loc_get_close_obs(gc, base_obs_loc, base_obs_type, locs, loc_kind, &
@@ -1103,7 +1105,7 @@ end function construct_file_name_in
 !> This file is then used by scripts to modify the ROMS run.
 !> The format in the time information is totally at your discretion.
 !>
-!> @param ncfile_out name of the file 
+!> @param ncfile_out name of the file
 !> @param model_time the current time of the model state
 !> @param adv_to_time the time in the future of the next assimilation.
 !>
@@ -1366,7 +1368,7 @@ call nc_check(nf90_inq_varid(ncid, 'lat_v', VarID), &
 call nc_check(nf90_get_var( ncid, VarID, VLAT), &
       'get_grid', 'get_var lat_v '//trim(roms_filename))
 
-! changing the convention so that all depths are 
+! changing the convention so that all depths are
 ! positive with 0 being at the surface.
 UDEP(:,:,:) =  abs(UDEP(:,:,:))
 VDEP(:,:,:) =  abs(VDEP(:,:,:))
@@ -1444,7 +1446,7 @@ MyLoop : do i = 1, MAX_STATE_VARIABLES
    kind_list(   i) = get_raw_obs_kind_index(dartstr)
    clamp_vals(i,1) = string_to_real(minvalstring)
    clamp_vals(i,2) = string_to_real(maxvalstring)
-   update_list( i) = string_to_logical(state_or_aux, 'NO_COPY_BACK')
+   update_list( i) = string_to_logical(state_or_aux, 'UPDATE')
 
    ngood = ngood + 1
 
@@ -1589,9 +1591,9 @@ if (present(last_time) .or. present(origin_time) .or. present(all_times)) then
       ! big_integer may overflow a 32bit integer, so declare it 64bit
       ! and parse it into an integer number of days and seconds, both
       ! of which can be 32bit. Our set_time, set_date routines need 32bit integers.
-   
+
       allocate(these_times(dimlen))
-   
+
       call nc_check(nf90_get_var( ncid, VarID, these_times), &
              'get_time_information', 'get_var '//trim(var_name)//' from '//trim(filename))
 
@@ -1606,14 +1608,14 @@ if (present(last_time) .or. present(origin_time) .or. present(all_times)) then
             all_times(i) = base_time + time_offset
          enddo
       endif
-   
+
       if (do_output() .and. debug > 0 .and. present(last_time)) then
          call print_time(last_time, str='last roms time is ',iunit=logfileunit)
          call print_time(last_time, str='last roms time is ')
          call print_date(last_time, str='last roms date is ',iunit=logfileunit)
          call print_date(last_time, str='last roms date is ')
       endif
-   
+
       deallocate(these_times)
 
    endif
@@ -1647,7 +1649,7 @@ else
    some_days    = int(offset)
    some_seconds = (offset - some_days) * (24*60*60)
 endif
-   
+
 convert_to_time_offset = set_time(some_seconds, some_days)
 
 end function convert_to_time_offset
@@ -1804,12 +1806,12 @@ end subroutine write_roms_time_information
 !>
 !> Returns the DART location given a fractional i, j, k and a specified kind
 !>
-!> @param fjloc fractional x index 
-!> @param fjloc fractional y index 
-!> @param fkloc fractional vert index 
-!> @param dart_kind 
+!> @param fjloc fractional x index
+!> @param fjloc fractional y index
+!> @param fkloc fractional vert index
+!> @param dart_kind
 !> @param locatiation location at fractional i,j,k
-!> 
+!>
 !>  Each grid cell is oriented in a counter clockwise direction
 !>  for interpolating locations.  First we interpolate in latitude
 !>  and longitude, then interpolate in height.  The hgt of each grid
@@ -1817,24 +1819,24 @@ end subroutine write_roms_time_information
 !>  we interpolte in the horizontal.  Using the 4 different heights
 !>  and lat_frac, lon_frac, hgt_frac we can do a simple trilinear
 !>  interpolation to find the location given fractional indicies.
-!> 
-!>              (i ,j+1) ----- (i+1,j+1)   hgt(1) hgt(2) hgt(3) hgt(4) 
-!>               hgt(4)         hgt(3)       |      |      |      |   
-!>                 |               |         |      *      |      |   
-!>  lon_frac _____ |       X       |         |      |      |      *  
-!>                 |               |         |             *      |   
-!>                 |               |         *             |          
-!>              (i ,j)   ----- (i+1,j)       |                       
+!>
+!>              (i ,j+1) ----- (i+1,j+1)   hgt(1) hgt(2) hgt(3) hgt(4)
+!>               hgt(4)         hgt(3)       |      |      |      |
+!>                 |               |         |      *      |      |
+!>  lon_frac _____ |       X       |         |      |      |      *
+!>                 |               |         |             *      |
+!>                 |               |         *             |
+!>              (i ,j)   ----- (i+1,j)       |
 !>               hgt(1)   |     hgt(2)             * - hgt_frac location
-!>                        | 
-!>                     lat_frac       
-!> 
+!>                        |
+!>                     lat_frac
+!>
 !>    ISTATUS : 10 - bad incoming dart_kind
 !>    ISTATUS : 11 - fkloc out of range
 !>    ISTATUS : 12 - filoc or fjloc out of range for u grid
 !>    ISTATUS : 13 - filoc or fjloc out of range for v grid
 !>    ISTATUS : 14 - filoc or fjloc out of range for rho grid
-!>    ISTATUS : 99 - initalized istatus, this should not happen 
+!>    ISTATUS : 99 - initalized istatus, this should not happen
 
 function get_dart_location_from_kind(filoc, fjloc, fkloc, dart_kind, location) result(istatus)
 real(r8),            intent(in)  :: filoc
@@ -1862,7 +1864,7 @@ endif
 
 ! check that we have a valid vertical location.
 ! allow obs above the top rho point but below the
-! surface to be considered at the top rho point.  
+! surface to be considered at the top rho point.
 ! the commented out code is the test for excluding
 ! obs above the top rho point in addition to obs
 ! below the bottom rho point.
@@ -1948,7 +1950,7 @@ else
    hgt(2) = (1.0-hgt_fract)*(mydep(iloc+1,jloc  ,vloc)) + hgt_fract*(mydep(iloc+1,jloc  ,vloc+1))
    hgt(3) = (1.0-hgt_fract)*(mydep(iloc+1,jloc+1,vloc)) + hgt_fract*(mydep(iloc+1,jloc+1,vloc+1))
    hgt(4) = (1.0-hgt_fract)*(mydep(iloc  ,jloc+1,vloc)) + hgt_fract*(mydep(iloc  ,jloc+1,vloc+1))
-   
+
    tmp_hgt(1) = (1.0-lon_fract)*hgt(1) + lon_fract*hgt(2)
    tmp_hgt(2) = (1.0-lon_fract)*hgt(4) + lon_fract*hgt(3)
 
@@ -1961,7 +1963,7 @@ location = set_location(lon_val, lat_val, hgt_val, vert_type)
 
 if (debug > 5) then
    print*,' i,j,k', filoc, fjloc, fkloc
-  
+
    print*,' lon(i  ,j  ), lat(i  ,j  ) : (', mylon(iloc  ,jloc  ),',',mylat(iloc  ,jloc  ),')'
    print*,' lon(i+1,j  ), lat(i+1,j  ) : (', mylon(iloc+1,jloc  ),',',mylat(iloc+1,jloc  ),')'
    print*,' lon(i+1,j+1), lat(i+1,j+1) : (', mylon(iloc+1,jloc+1),',',mylat(iloc+1,jloc+1),')'

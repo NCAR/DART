@@ -39,7 +39,7 @@
 <P>
 DART interface module for the ROMS model.  This page documents the details of
 the module compiled into DART that interfaces with the ROMS data in
-the state vector. 
+the state vector.
 </P>
 
 <H2>WARNING: NOT UPDATED FOR ROMS YET.  all below is from the WRF docs</H2>
@@ -65,7 +65,7 @@ documentation for more information on how to generate DART IC/restart files
 given ROMS NetCDF files.
 </P>
 <P>
-The model interface code supports ROMS configurations with multiple domains.  
+The model interface code supports ROMS configurations with multiple domains.
 Data for all
 domains is read into the DART state vector.  During the computation of the
 forward operators (getting the estimated observation values from each
@@ -74,19 +74,19 @@ which is generally the finest nest or one of multiple finer nests.
 The search stops as soon as a domain contains the observation location,
 working its way from largest number to smallest number domain, ending
 with domain 1.
-For example, in a 4 domain case the data in the state vector that came 
+For example, in a 4 domain case the data in the state vector that came
 from <em class=file>ROMSinput_d04</em> is searched first, then
-<em class=file>ROMSinput_d03</em>, <em class=file>ROMSinput_d02</em>, 
+<em class=file>ROMSinput_d03</em>, <em class=file>ROMSinput_d02</em>,
 and finally
 <em class=file>ROMSinput_d01</em>.
 The forward operator is computed from the first domain grid that
-contains the lat/lon of the observation.   
-During the assimilation phase, when the state values are adjusted based on 
-the correlations and assimilation increments, all points in all domains 
+contains the lat/lon of the observation.
+During the assimilation phase, when the state values are adjusted based on
+the correlations and assimilation increments, all points in all domains
 that are within the localization radius are adjusted, regardless of domain.
 The impact of an observation on the state depends only on the distance between
-the observation and the state vector point, and the regression coefficient 
-based on the correlation between the distributions of the ensemble of state 
+the observation and the state vector point, and the regression coefficient
+based on the correlation between the distributions of the ensemble of state
 vector points and the ensemble of observation forward operator values.
 </P>
 <P>
@@ -101,8 +101,8 @@ fields that are often included in the DART state.
 <P>
 The 16 public interfaces
 are standardized for all DART compliant models. These interfaces allow
-DART to advance the model, get the model state and metadata describing 
-this state, find state variables that are close to a given location, 
+DART to advance the model, get the model state and metadata describing
+this state, find state variables that are close to a given location,
 and do spatial interpolation for a variety of variables required in
 observational operators.
 </P>
@@ -117,89 +117,25 @@ This namelist is read from the file <em class=file>input.nml</em>.
 Namelists start with an ampersand
 '&amp;' and terminate with a slash '/'.
 Character strings that contain a '/' must be
-enclosed in quotes to prevent them from 
+enclosed in quotes to prevent them from
 prematurely terminating the namelist.
 </P>
 
 <div class=namelist>
 <pre>
 &amp;model_nml
-   default_state_variables     = .true.,
-   ROMS_state_variables         = 'NULL',
-   ROMS_state_bounds            = 'NULL',
-   num_domains                 = 1,
-   output_state_vector         = .false.,
-   calendar_type               = 3,
-   assimilation_period_seconds = 21600,
-   allow_obs_below_vol         = .false.,
-   vert_localization_coord     = 3,
-   center_search_half_length   = 500000.,
-   center_spline_grid_scale    = 10,
-   circulation_pres_level      = 80000.0,
-   circulation_radius          = 108000.0,
-   sfc_elev_max_diff           = -1.0,
-   polar                       = .false.,
-   periodic_x                  = .false.,
-   periodic_y                  = .false.,
-   scm                         = .false.  
-/
-
-# Notes for model_nml:
-# (1) vert_localization_coord must be one of:
-#     1 = model level
-#     2 = pressure
-#     3 = height
-#     4 = scale height
-# (2) see bottom of this file for explanations of polar, periodic_x, 
-#     periodic_y, and scm
-# (3) calendar = 3 is GREGORIAN, which is what ROMS uses.
-# (4) if 'default_state_variables' is .true. the model_mod.f90 code will
-#     fill the state variable table with the following ROMS vars: 
-#        U, V, W, PH, T, MU
-#     you must set it to false before you change the value 
-#     of 'ROMS_state_variables' and have it take effect.
-# (5) the format for 'ROMS_state_variables' is an array of 5 strings:
-#     ROMS netcdf variable name, dart KIND_xxx string, type string (must be 
-#     unique, will soon be obsolete, we hope), 'UPDATE', and '999' if the 
-#     array is part of all domains.  otherwise, it is a string with the domain
-#     numbers (e.g. '12' for domains 1 and 2, '13' for domains 1 and 3).
-#   example:
-# ROMS_state_variables='U','KIND_U_WIND_COMPONENT','TYPE_U','UPDATE','999',
-#                     'V','KIND_V_WIND_COMPONENT','TYPE_V','UPDATE','999',
-#                     'W','KIND_VERTICAL_VELOCITY','TYPE_W','UPDATE','999',
-#                     'T','KIND_POTENTIAL_TEMPERATURE','TYPE_T','UPDATE','999',
-#                     'PH','KIND_GEOPOTENTIAL_HEIGHT','TYPE_GZ','UPDATE','999',
-#                     'MU','KIND_PRESSURE','TYPE_MU','UPDATE','999',
-#                     'QVAPOR','KIND_VAPOR_MIXING_RATIO','TYPE_QV','UPDATE','999',
-#                     'QCLOUD','KIND_CLOUD_LIQUID_WATER','TYPE_QC','UPDATE','999',
-#                     'QRAIN','KIND_RAINWATER_MIXING_RATIO','TYPE_QR','UPDATE','999',
-#                     'U10','KIND_U_WIND_COMPONENT','TYPE_U10','UPDATE','999',
-#                     'V10','KIND_V_WIND_COMPONENT','TYPE_V10','UPDATE','999',
-#                     'T2','KIND_TEMPERATURE','TYPE_T2','UPDATE','999',
-#                     'TH2','KIND_POTENTIAL_TEMPERATURE','TYPE_TH2','UPDATE','999',
-#                     'Q2','KIND_SPECIFIC_HUMIDITY','TYPE_Q2','UPDATE','999',
-#                     'PSFC','KIND_PRESSURE','TYPE_PS','UPDATE','999',
-# (6) the format for 'ROMS_state_bounds' is an array of 4 strings:
-#     ROMS netcdf variable name, minimum value, maximum value, and either
-#     FAIL or CLAMP.  FAIL will halt the program if an out of range value
-#     is detected.  CLAMP will set out of range values to the min or max.
-#     The special string 'NULL' will map to plus or minus infinity and will
-#     not change the values.  arrays not listed in this table will not
-#     be changed as they are read or written.
-#
-#
-# polar and periodic_x are used in global ROMS.  if polar is true, the 
-# grid interpolation routines will wrap over the north and south poles.  
-# if periodic_x is true, when the east and west edges of the grid are
-# reached the interpolation will wrap.  note this is a separate issue
-# from regional models which cross the GMT line; those grids are marked
-# as having a negative offset and do not need to wrap; this flag controls
-# what happens when the edges of the grid are reached.
-
-# the scm flag is used for the 'single column model' version of ROMS.
-# it needs the periodic_x and periodic_y flags set to true, in which
-# case the X and Y directions are periodic; no collapsing of the grid
-# into a single location like the 3d-spherical polar flag implies.
+   output_state_vector          = .false.
+   assimilation_period_days     = 8
+   assimilation_period_seconds  = 0
+   roms_filename                = 'roms_input.nc'
+   vert_localization_coord      = 3
+   debug     = 1
+   variables = 'temp',   'KIND_TEMPERATURE',          'NA', 'NA', 'update',
+               'salt',   'KIND_SALINITY',            '0.0', 'NA', 'update',
+               'u',      'KIND_U_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+               'v',      'KIND_V_CURRENT_COMPONENT',  'NA', 'NA', 'update',
+               'zeta',   'KIND_SEA_SURFACE_HEIGHT'    'NA', 'NA', 'update',
+  /
 </pre>
 </div>
 
@@ -229,10 +165,10 @@ namelist item will be ignored.
 to be added to the dart state vector.  If default_state_variables
 is .true., this is ignored.  When .false., this list of array
 names controls which arrays and the order that they are added
-to the state vector.  The 5 strings are:  
+to the state vector.  The 5 strings are:
 <OL><LI>ROMS field name - must match netcdf name exactly</LI>
     <LI>DART KIND name - must match a valid DART KIND_xxx exactly</LI>
-    <LI>TYPE_NN - will hopefully be obsolete, but for now NN 
+    <LI>TYPE_NN - will hopefully be obsolete, but for now NN
        should match the field name. </LI>
     <LI>the string UPDATE.  at some future point, non-updatable
        fields may become part of the state vector. </LI>
@@ -278,11 +214,11 @@ plotting (recommended).
 
 <TR><TD> assimilation_period_seconds </TD>
     <TD> integer </TD>
-    <TD>The time (in seconds) between assimilations. 
-This is modified if necessary to be an integer 
+    <TD>The time (in seconds) between assimilations.
+This is modified if necessary to be an integer
 multiple of the underlying model timestep.
 </TD></TR>
-    
+
 <TR><TD> periodic_x </TD>
     <TD> logical </TD>
     <TD>If .true., the grid is periodic in longitude, and points above the last
@@ -313,7 +249,7 @@ periodic_y should also be .true. in this case.
 
 <TR><TD> sfc_elev_max_diff </TD>
     <TD> real(r8) </TD>
-    <TD>If > 0, the maximum difference, in meters, between an observation marked
+    <TD>If &gt; 0, the maximum difference, in meters, between an observation marked
 as a 'surface obs' as the vertical type (with the surface elevation, in
 meters, as the numerical vertical location), and the surface elevation as
 defined by the model.  Observations further away from the surface than this
@@ -323,7 +259,7 @@ test is skipped.
 
 <TR><TD> allow_obs_below_vol </TD>
     <TD> logical </TD>
-    <TD>If .false. then if an observation with a vertical coordinate 
+    <TD>If .false. then if an observation with a vertical coordinate
 of pressure or height (i.e. not a surface observation) is below the lowest 3d
 sigma level, it is outside the field volume and the interpolation routine rejects
 it.  If this is set to .true. and the observation is above the surface
@@ -333,52 +269,52 @@ downward from data values at levels 1 and 2.
 
 <TR><TD> center_search_half_length </TD>
     <TD> real(r8) </TD>
-    <TD>The model_mod now contains two schemes for searching for a vortex 
-center location.  If the <strong>old</strong> scheme is compiled in, then this 
+    <TD>The model_mod now contains two schemes for searching for a vortex
+center location.  If the <strong>old</strong> scheme is compiled in, then this
 and the center_spline_grid_scale namelist items are used. (Search code for
 'use_old_vortex'.) Half length (in meters) of a square box for searching the
 vortex center.
 </TD></TR>
-    
+
 <TR><TD> center_spline_grid_scale </TD>
     <TD> integer </TD>
-    <TD>The model_mod now contains two schemes for searching for a vortex 
-center location.  If the <strong>old</strong> scheme is compiled in, then this 
+    <TD>The model_mod now contains two schemes for searching for a vortex
+center location.  If the <strong>old</strong> scheme is compiled in, then this
 and the center_search_half_length namelist items are used.  (Search code for
 'use_old_vortex'.) Ratio of refining grid for spline-interpolation in
 determining the vortex center.
 </TD></TR>
-    
+
 <TR><TD> circulation_pres_level </TD>
     <TD> real(r8) </TD>
-    <TD>The model_mod now contains two schemes for searching for a vortex 
-center location.  If the <strong>new</strong> scheme is compiled in, then this 
+    <TD>The model_mod now contains two schemes for searching for a vortex
+center location.  If the <strong>new</strong> scheme is compiled in, then this
 and the circulation_radius namelist items are used.   (Search code for
 'use_old_vortex'.) Pressure, in pascals, of the level at which the
 circulation is computed when searching for the vortex center.
 </TD></TR>
-    
+
 <TR><TD> circulation_radius </TD>
     <TD> real(r8) </TD>
-    <TD>The model_mod now contains two schemes for searching for a vortex 
-center location.  If the <strong>new</strong> scheme is compiled in, then this 
+    <TD>The model_mod now contains two schemes for searching for a vortex
+center location.  If the <strong>new</strong> scheme is compiled in, then this
 and the circulation_pres_level namelist items are used.    (Search code for
 'use_old_vortex'.) Radius, in meters, of the circle over which the
 circulation calculation is done when searching for the vortex center.
 </TD></TR>
-    
+
 <TR><TD> vert_localization_coord </TD>
     <TD> integer </TD>
     <TD>Vertical coordinate for vertical localization.
-       <UL style="list-style: none;"> 
+       <UL style="list-style: none;">
            <LI>1 = model level</LI>
            <LI>2 = pressure (in pascals)</LI>
            <LI>3 = height (in meters)</LI>
            <LI>4 = scale height (unitless)</LI>
        </UL>
 </TD></TR>
-    
-</TBODY> 
+
+</TBODY>
 </TABLE>
 </div>
 
@@ -425,12 +361,12 @@ Remove them from your namelist to avoid errors.
 
 <TR><TD> adv_mod_command </TD>
     <TD> character(len=32) </TD>
-    <TD>OBSOLETE -- This variable was moved to the 
+    <TD>OBSOLETE -- This variable was moved to the
 <a href="ROMS_DART_utilities/dart_to_ROMS.html#Namelist">&amp;dart_to_ROMS_nml</a>
 namelist. Now an error to specify this here.
 </TD></TR>
 
-</TBODY> 
+</TBODY>
 </TABLE>
 </div>
 
@@ -539,7 +475,7 @@ This includes all nested domains.
 <A NAME="get_state_meta_data"></A>
 <br>
 <div class=routine>
-<em class=call>call get_state_meta_data (index_in, location 
+<em class=call>call get_state_meta_data (index_in, location
                           <em class=optionalcode>[,&nbsp;var_type_out,&nbsp;id_out]</em> )</em>
 <pre>
 integer,             intent(in)  :: <em class=code>index_in</em>
@@ -553,14 +489,14 @@ integer, optional,   intent(out) :: <em class=optionalcode>id_out</em>
 <!-- Description -->
 
 <P>
-Returns metadata about a given element, indexed by index_in, in the model 
-state vector. The location defines where the state variable is located 
-while the type of the variable (for instance temperature, 
-or u wind component) is returned by var_type. The integer values used to 
-indicate different variable types in var_type are themselves defined as 
+Returns metadata about a given element, indexed by index_in, in the model
+state vector. The location defines where the state variable is located
+while the type of the variable (for instance temperature,
+or u wind component) is returned by var_type. The integer values used to
+indicate different variable types in var_type are themselves defined as
 public interfaces to model_mod if required.
-The last optional argument is the ROMS domain identification number - 
-obviously this is unique to the ROMS version of this <em>required</em> 
+The last optional argument is the ROMS domain identification number -
+obviously this is unique to the ROMS version of this <em>required</em>
 routine.
 </P>
 
@@ -570,10 +506,10 @@ routine.
     <TD>Index of state vector element about which information is requested.</TD></TR>
 
 <TR><TD valign=top><em class=code>location</em></TD>
-    <TD>Returns location of indexed state variable. The location should 
-use a location_mod that is appropriate for the model domain. For 
-realistic atmospheric models, for instance, a three-dimensional 
-spherical location module that can represent height in a variety  
+    <TD>Returns location of indexed state variable. The location should
+use a location_mod that is appropriate for the model domain. For
+realistic atmospheric models, for instance, a three-dimensional
+spherical location module that can represent height in a variety
 of ways is provided. </TD></TR>
 
 <TR><TD valign=top><em class=optionalcode>var_type_out</em></TD>
@@ -609,7 +545,7 @@ integer,                intent(out) :: <em class=code>istatus</em>
 <!-- Description -->
 
 <P>
-Given model state, returns the value of observation type interpolated to a given 
+Given model state, returns the value of observation type interpolated to a given
 location by a method of the model's choosing. All observation kinds defined in
 obs_kind_mod are supported. In the case where the observational operator is not
 defined at the given location (e.g. the observation is below the model surface
@@ -659,8 +595,8 @@ type(time_type) :: <em class=code>get_model_time_step</em>
 Returns the model base time step as a time_type. For the model ROMS, it returns
 the time step used for domain 1 (usually the largest time step among all
 domains because domain 1 is the coarser grid). The time step is read from
-the ROMSinput_d01 file (used to be namelist.input). In the long run, 
-a more general extended interface may be required that specifies the models 
+the ROMSinput_d01 file (used to be namelist.input). In the long run,
+a more general extended interface may be required that specifies the models
 range of time stepping possibilities.
 </P>
 
@@ -686,7 +622,7 @@ range of time stepping possibilities.
 <!-- Description -->
 
 <P>
-Used for runtime initialization of the model. This is the first call 
+Used for runtime initialization of the model. This is the first call
 made to the model by any DART compliant assimilation routine. It reads the
 model
 namelist parameters, set the calendar type (the GREGORIAN calendar is used with
@@ -719,10 +655,10 @@ integer, intent(in) :: <em class=code>ncFileID</em>
 <!-- Description -->
 
 <P>
-Function to write model specific attributes to a netCDF file. At present, DART 
-is using the NetCDF format to output diagnostic information. This is not a 
-requirement, and models could choose to provide output in other formats. 
-This function writes the metadata associated with the model to a NetCDF file 
+Function to write model specific attributes to a netCDF file. At present, DART
+is using the NetCDF format to output diagnostic information. This is not a
+requirement, and models could choose to provide output in other formats.
+This function writes the metadata associated with the model to a NetCDF file
 opened to a file identified by ncFileID.
 </P>
 
@@ -933,7 +869,7 @@ real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
 <!-- Description -->
 
 <P>
-A local copy is kept and used during other computations in the 
+A local copy is kept and used during other computations in the
 model_mod code.
 </P>
 
@@ -963,7 +899,7 @@ type(time_type),          intent(in)    :: <em class=code> time </em>
 <!-- Description -->
 
 <P>
-This operation is not defined for the ROMS model. 
+This operation is not defined for the ROMS model.
 If called it will throw a fatal error.
 </P>
 
@@ -993,7 +929,7 @@ If called it will throw a fatal error.
 <!-- Description -->
 
 <P>
-Called when use of a model is completed to clean up storage, etc. 
+Called when use of a model is completed to clean up storage, etc.
 A stub is provided for the ROMS model.
 </P>
 
