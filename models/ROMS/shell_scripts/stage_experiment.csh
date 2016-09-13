@@ -148,7 +148,7 @@ $SUBSTITUTE  input.nml.template  Myens_size  $ENSEMBLE_SIZE
 $SUBSTITUTE  input.nml.template  MyDAINAME   $ROMS_DAI
 
 \cp input.nml.template input.nml
-\cp cycle.csh.template cycle.csh
+\mv cycle.csh.template cycle.csh
 chmod u+x cycle.csh
 
 set member = 1
