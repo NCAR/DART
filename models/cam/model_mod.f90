@@ -335,9 +335,23 @@ real(r8), allocatable :: ens_mean(:)
 ! Values will be defined in order_state_fields
 ! All fields will have entries in the TYPE_xD corresponding to their orders
 !   in state_names_Xd.  The explicitly named TYPE_s are for convenience
-integer :: TYPE_PS, TYPE_T, TYPE_U, TYPE_V, TYPE_Q, TYPE_CLDICE, TYPE_CLDLIQ,     &
-           TYPE_PHIS, TYPE_SGH, TYPE_PBLH, TYPE_TBOT, TYPE_TS, TYPE_TSOCN,        &
-           TYPE_LCWAT, TYPE_QCWAT, TYPE_EFGWORO , TYPE_FRACLDV
+integer :: TYPE_PS = MISSING_I,        &
+           TYPE_T = MISSING_I,         &
+           TYPE_U = MISSING_I,         &
+           TYPE_V = MISSING_I,         &
+           TYPE_Q = MISSING_I,         &
+           TYPE_CLDICE = MISSING_I,    &
+           TYPE_CLDLIQ = MISSING_I,    &
+           TYPE_PHIS = MISSING_I,      &
+           TYPE_SGH = MISSING_I,       &
+           TYPE_PBLH = MISSING_I,      &
+           TYPE_TBOT = MISSING_I,      &
+           TYPE_TS = MISSING_I,        &
+           TYPE_TSOCN = MISSING_I,     &
+           TYPE_LCWAT = MISSING_I,     &
+           TYPE_QCWAT = MISSING_I,     &
+           TYPE_EFGWORO  = MISSING_I,  &
+           TYPE_FRACLDV = MISSING_I
 integer, allocatable :: TYPE_0D(:), TYPE_1D(:), TYPE_2D(:), TYPE_3D(:)
 
 ! CAM3; additional types, or can TRACER handle the new ones?
@@ -1470,13 +1484,15 @@ integer :: i
 
 ! 2D fields
 dart_to_cam_kinds(KIND_SURFACE_PRESSURE) = TYPE_PS
-cam_to_dart_kinds(TYPE_PS) = KIND_SURFACE_PRESSURE
+if (TYPE_PS /= MISSING_I) cam_to_dart_kinds(TYPE_PS) = KIND_SURFACE_PRESSURE
 
 dart_to_cam_kinds(KIND_GRAV_WAVE_DRAG_EFFIC) = TYPE_EFGWORO
-cam_to_dart_kinds(TYPE_EFGWORO) = KIND_GRAV_WAVE_DRAG_EFFIC
+if (TYPE_EFGWORO /= MISSING_I) &
+   cam_to_dart_kinds(TYPE_EFGWORO) = KIND_GRAV_WAVE_DRAG_EFFIC
 
 dart_to_cam_kinds(KIND_GRAV_WAVE_STRESS_FRACTION) = TYPE_FRACLDV
-cam_to_dart_kinds(TYPE_FRACLDV) = KIND_GRAV_WAVE_STRESS_FRACTION
+if (TYPE_FRACLDV /= MISSING_I) &
+   cam_to_dart_kinds(TYPE_FRACLDV) = KIND_GRAV_WAVE_STRESS_FRACTION
 
 ! dart_to_cam_kinds(KIND_SURFACE_TEMPERATURE  ?  ) = TYPE_TS
 ! dart_to_cam_kinds(KIND_SEA_SURFACE_TEMPERATURE  ?  ) = TYPE_TSOCN
@@ -1490,12 +1506,12 @@ dart_to_cam_kinds(KIND_CLOUD_LIQUID_WATER) = TYPE_CLDLIQ
 dart_to_cam_kinds(KIND_CLOUD_ICE)          = TYPE_CLDICE
 ! dart_to_cam_kinds(KIND_CLOUD_WATER  ?  ) = TYPE_LCWAT
 
-cam_to_dart_kinds(TYPE_T)      = KIND_TEMPERATURE
-cam_to_dart_kinds(TYPE_U)      = KIND_U_WIND_COMPONENT
-cam_to_dart_kinds(TYPE_V)      = KIND_V_WIND_COMPONENT
-cam_to_dart_kinds(TYPE_Q)      = KIND_SPECIFIC_HUMIDITY
-cam_to_dart_kinds(TYPE_CLDLIQ) = KIND_CLOUD_LIQUID_WATER
-cam_to_dart_kinds(TYPE_CLDICE) = KIND_CLOUD_ICE
+if (TYPE_T /= MISSING_I) cam_to_dart_kinds(TYPE_T)      = KIND_TEMPERATURE
+if (TYPE_U /= MISSING_I) cam_to_dart_kinds(TYPE_U)      = KIND_U_WIND_COMPONENT
+if (TYPE_V /= MISSING_I) cam_to_dart_kinds(TYPE_V)      = KIND_V_WIND_COMPONENT
+if (TYPE_Q /= MISSING_I) cam_to_dart_kinds(TYPE_Q)      = KIND_SPECIFIC_HUMIDITY
+if (TYPE_CLDLIQ /= MISSING_I) cam_to_dart_kinds(TYPE_CLDLIQ) = KIND_CLOUD_LIQUID_WATER
+if (TYPE_CLDICE /= MISSING_I) cam_to_dart_kinds(TYPE_CLDICE) = KIND_CLOUD_ICE
 ! cam_to_dart_kinds(TYPE_LCWAT) = KIND_CLOUD_WATER  ?  
 
 

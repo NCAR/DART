@@ -133,15 +133,16 @@
 
 &model_nml
    output_state_vector = .false.,
-   num_moist_vars      = 6,
+   num_moist_vars      = 3,
    num_domains         = 1,
    calendar_type       = 3,
-   surf_obs            = .false.,
-   h_diab              = .true.,
-   assimilation_period_seconds =  120,
-   adv_mod_command             = "mpirun -np 1 -machinefile nfile wrf.exe",
-   vert_localization_coord     = 2,
-   center_search_size          = 25,
+   surf_obs            = .true.,
+   soil_data           = .true.,
+   h_diab              = .false.,
+   assimilation_period_seconds = 21600,
+   adv_mod_command             = './wrf.exe',
+   vert_localization_coord     = 3,
+   center_search_half_length   = 500000.,
    center_spline_grid_scale    = 10  /
 
 &location_nml

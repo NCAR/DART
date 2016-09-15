@@ -1,5 +1,0 @@
-&wrf_3dvar_tf_dart_nml
-   wrf_3dvar_file = 'qc_radr_3dvar_2002083100.dat',
-   obs_seq_out_file_name = 'obs_seq.out',
-   calendar_type = 3  /
-
