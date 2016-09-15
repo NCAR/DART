@@ -749,7 +749,7 @@ character(len=255) :: doit
    !print *, "input string length = ", len(trim(doit))
 
    shell_execute = system(doit)
-   print *, "execution returns, rc = ", shell_execute
+   !print *, "execution returns, rc = ", shell_execute
 
 end function shell_execute
 
