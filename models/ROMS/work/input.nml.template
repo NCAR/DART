@@ -235,25 +235,6 @@
   /
 
 
-&restart_file_tool_nml
-   input_file_name              = "dart.restart"
-   output_file_name             = "dart.output"
-   single_restart_file_in       = .false.
-   single_restart_file_out      = .false.
-   ens_size                     = 5
-   write_binary_restart_files   = .false.
-   overwrite_data_time          = .false.
-   new_data_days                = 0
-   new_data_secs                = 0
-   input_is_model_advance_file  = .false.
-   output_is_model_advance_file = .false.
-   overwrite_advance_time       = .false.
-   new_advance_days             = -1
-   new_advance_secs             = -1
-   gregorian_cal                = .true.
-  /
-
-
 # The times in the namelist for the obs_diag program are vectors
 # that follow the following sequence:
 # year   month   day   hour   minute   second
