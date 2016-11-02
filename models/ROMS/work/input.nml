@@ -66,7 +66,7 @@
    inf_deterministic           = .true.,                  .true.
    inf_in_file_name            = 'input_priorinf',        'input_postinf'
    inf_out_file_name           = 'output_priorinf',       'output_postinf'
-   inf_diag_file_name          = 'preassim',              'postassim',
+   inf_diag_file_name          = 'output_priorobsinfl',   'output_postobsinf',
    inf_initial                 = 1.0,                     1.0
    inf_sd_initial              = 0.6,                     0.6
    inf_damping                 = 0.9,                     0.9
@@ -130,7 +130,6 @@
    dart_output_obs_file   = 'obs_seq.out'
    append_to_existing     = .false.
    use_precomputed_values = .true.
-   locations_in_IJK       = .false.
    add_random_noise       = .false.
    pert_amplitude         = 0.01
    verbose                = 1
@@ -147,6 +146,7 @@
   /
 
 &obs_kind_nml
+   evaluate_these_obs_types = ''
    assimilate_these_obs_types =          'SATELLITE_SSH',
                                          'SATELLITE_SSS',
                                          'XBT_TEMPERATURE',
@@ -270,7 +270,7 @@
    latlim1      =   -90.0
    latlim2      =    90.0
    reg_names    = 'Earth'
-   hlevel_edges =  0.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0
+   hlevel_edges = 1.0, -10.0, -20.0, -50.0, -100.0, -200.0, -500.0, -1000.0, -2000.0, -5000.0
    print_mismatched_locs = .false.
    create_rank_histogram = .true.
    outliers_in_histogram = .true.

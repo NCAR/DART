@@ -146,6 +146,7 @@
   /
 
 &obs_kind_nml
+   evaluate_these_obs_types = ''
    assimilate_these_obs_types =          'SATELLITE_SSH',
                                          'SATELLITE_SSS',
                                          'XBT_TEMPERATURE',
@@ -269,7 +270,7 @@
    latlim1      =   -90.0
    latlim2      =    90.0
    reg_names    = 'Earth'
-   hlevel_edges =  0.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0
+   hlevel_edges = 1.0, -10.0, -20.0, -50.0, -100.0, -200.0, -500.0, -1000.0, -2000.0, -5000.0
    print_mismatched_locs = .false.
    create_rank_histogram = .true.
    outliers_in_histogram = .true.
