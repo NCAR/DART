@@ -4,7 +4,6 @@
 !
 ! $Id$
 
-
 !> program that converts ROMS observations PLUS FORWARD OPERATOR VALUES
 !> (estimated values computed during the ROMS run).  this program
 !> needs to read 1 obs input file to get the original obs value, time,
@@ -22,7 +21,7 @@ use         types_mod, only : r8, missing_r8, obstypelength
 
 use     utilities_mod, only : nc_check, initialize_utilities, finalize_utilities,  &
                               error_handler, do_nml_term, do_nml_file, nc_check,   &
-                              E_ERR, E_MSG, logfileunit, nmlfileunit,              &
+                              E_ERR, E_WARN, E_MSG, logfileunit, nmlfileunit,      &
                               find_namelist_in_file, check_namelist_read,          &
                               open_file, close_file, find_textfile_dims,           &
                               file_to_text, do_output, set_filename_list
@@ -71,18 +70,18 @@ integer, parameter :: num_copies = 1,   &   ! number of copies in sequence
 
 integer  :: iunit, io, darttype, num_input_files, rc
 integer  :: ncid, nobs, n, i, oday, osec, nobs2
-integer  :: roms_type_count
 logical  :: file_exist, first_obs
-character(len=512) :: msgstring, msgstring1
+
+character(len=512) :: string1, string2, string3
 
 integer, parameter :: MAX_TYPES = 100
-character(len=128) :: roms_types(MAX_TYPES)
+character(len=128) :: roms_type_strings(MAX_TYPES)
+integer            :: roms_type_integers(MAX_TYPES) = -1
+integer            :: dart_type_integers(MAX_TYPES) = -1
+integer            :: roms_type_count = 0
 
 ! mapping between roms type numbers and dart types.
 ! use the roms number as the index; the value is the dart kind
-! typecount is the number of string pairs they specified.
-integer :: typemap(MAX_TYPES) = -1
-integer :: typecount      ! FIXME: do we really need this?
 
 type(obs_def_type) :: obs_def
 
@@ -193,10 +192,11 @@ allocate(raw_qc(nobs))
 allocate(combined_qc(nobs))
 allocate(temp_fo(nobs))
 allocate(forw_ops(ens_size, nobs))
+allocate(lat(nobs))
+allocate(lon(nobs))
+allocate(depth(nobs))
 
 ! read in the data arrays
-!> @TODO FIXME make sure the missing values in the depth arrays are handled
-! correctly further downstream
 
 call set_missing_name('missing_value')
 
@@ -206,12 +206,9 @@ if (locations_in_IJK) then
    allocate(Zgrid(nobs))
    call getvar_real(ncid, "obs_Xgrid", Xgrid)
    call getvar_real(ncid, "obs_Ygrid", Ygrid)
-   call getvar_real(ncid, "obs_depth", Zgrid, dmiss=missing)
+   call getvar_real(ncid, "obs_Zgrid", Zgrid, dmiss=missing)
    where(Zgrid == missing) Zgrid = MISSING_R8
 else
-   allocate(lat(nobs))
-   allocate(lon(nobs))
-   allocate(depth(nobs))
    call getvar_real(ncid, "obs_lat", lat)
    call getvar_real(ncid, "obs_lon", lon)
    call getvar_real(ncid, "obs_depth", depth, dmiss=missing)
@@ -234,8 +231,8 @@ call get_time_information(roms_mod_obs_files(1), ncid, "obs_time", "datum", all_
 ! because that one is harder to parse, and will be harder for users to give
 ! us matching strings in the namelist.
 
-call get_provenance_maps(ncid, roms_type_count, roms_types)
-call get_translation_table(typemap, typecount)
+call get_provenance_maps(ncid, roms_type_count, roms_type_strings, roms_type_integers)
+call get_translation_table()
 
 ! we can close the input obs file here, and then loop over the
 ! ensemble of mod files, reading in the expected values and QCs only
@@ -260,12 +257,12 @@ do i = 1, ens_size
 
    call getdimlen(ncid, "datum", nobs2)
 
-   ! fixme check nobs vs nobs2
    if (nobs2 /= nobs) then
-      ! FIXME: add more error checks here - but at least fail if counts differ
-      call error_handler(E_ERR, 'convert_roms_obs', &
-                         'number of obs from obs file and mod file does not match', &
-                         source, revision, revdate)
+      write(string1,*)'require "datum" dimensions to be equal.'
+      write(string2,*)'"datum" dimension is ',nobs,  ' in ',trim(roms_mod_obs_files(1))
+      write(string3,*)'"datum" dimension in ',nobs2, ' in ',trim(roms_mod_obs_files(i))
+      call error_handler(E_ERR, 'convert_roms_obs', string1, &
+                 source, revision, revdate, text2=string2, text3=string3)
    endif
 
    call getvar_real(ncid, "NLmodel_value", temp_fo, dmiss=missing)
@@ -324,9 +321,9 @@ obsloop: do n = 1, nobs
 
    call convert_romstype_to_darttype(otype(n), darttype)
    if (darttype < 0) then
-      write(msgstring, *) 'Observation ', n, ' failed to convert ROMS type to DART type, skipping'
-      write(msgstring1, *) 'ROMS type value was: ', otype(n)
-      call error_handler(E_MSG, 'convert_roms_obs', msgstring, text2=msgstring1)
+      write(string1, *) 'Observation ', n, ' failed to convert ROMS type to DART type, skipping'
+      write(string2, *) 'ROMS type value was: ', otype(n)
+      call error_handler(E_MSG, 'convert_roms_obs', string1, text2=string2)
       cycle obsloop
    endif
 
@@ -334,26 +331,25 @@ obsloop: do n = 1, nobs
       rc = convert_ijk_to_latlondepth(Xgrid(n), Ygrid(n), Zgrid(n), darttype, &
                                       lon(n), lat(n), depth(n))
       if (rc /= 0) then
-         write(msgstring, *) 'Observation ', n, ' failed to convert I,J,K to lat/lon, skipping'
-         write(msgstring1, *) 'I,J,K values and return code were: ', Xgrid(n), Ygrid(n), Zgrid(n), rc
-         call error_handler(E_MSG, 'convert_roms_obs', msgstring, text2=msgstring1)
+         write(string1, *) 'Observation ', n, ' failed to convert I,J,K to lat/lon, skipping'
+         write(string2, *) 'I,J,K values and return code were: ', Xgrid(n), Ygrid(n), Zgrid(n), rc
+         call error_handler(E_MSG, 'convert_roms_obs', string1, text2=string2)
          cycle obsloop
       endif
    endif
 
+   if (depth(n) == MISSING_R8) cycle obsloop
+
    ! check the lat/lon values to see if they are ok
    if (( lat(n) >  90.0_r8 .or. lat(n) <  -90.0_r8 ) .or. &
        ( lon(n) > 360.0_r8 .or. lon(n) < -180.0_r8 )) then
-      write(msgstring, *) 'Observation ', n, ' has out-of range latitude/longitudes, skipping'
-      write(msgstring1, *) 'latitude/longitude values were: ', lat(n), lon(n)
-      call error_handler(E_MSG, 'convert_roms_obs', msgstring, text2=msgstring1)
+      write(string1, *) 'Observation ', n, ' has out-of range latitude/longitudes, skipping'
+      write(string2, *) 'latitude/longitude values were: ', lat(n), lon(n)
+      call error_handler(E_MSG, 'convert_roms_obs', string1, text2=string2)
       cycle obsloop
    endif
 
    if ( lon(n) < 0.0_r8 )  lon(n) = lon(n) + 360.0_r8
-
-   !> @TODO FIXME ... depth may be MISSING_R8 ... in that the parent variable
-   !> "obs_depth" has a 'missing_value' attribute
 
    ! extract actual time of observation in file into oday, osec.
    call get_time(time_obs, osec, oday)
@@ -376,11 +372,18 @@ obsloop: do n = 1, nobs
 
 end do obsloop
 
+deallocate(otype, oval, ovar, otim, raw_qc, combined_qc, temp_fo, forw_ops, lat, lon, depth)
+
+if (allocated(Xgrid)) deallocate(Xgrid)
+if (allocated(Ygrid)) deallocate(Ygrid)
+if (allocated(Zgrid)) deallocate(Zgrid)
 
 ! if we added any obs to the sequence, write it now.
 if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, dart_output_obs_file)
 
 call end_model()
+
+!> @TODO FIXME ... may want to write out a summary of how many observations were successfully converted.
 
 ! end of main program
 call finalize_utilities()
@@ -406,17 +409,37 @@ subroutine convert_romstype_to_darttype(roms_type, dart_type)
 integer, intent(in)  :: roms_type
 integer, intent(out) :: dart_type
 
-if (roms_type < 1 .or. roms_type > roms_type_count) then
-   call error_handler(E_ERR, 'convert_roms_obs', 'bad roms type, greater than limit', &
+integer :: i
+
+if (roms_type < 1) then
+   write(string1,*)'unknown roms integer ',roms_type
+   call error_handler(E_ERR, 'convert_romstype_to_darttype',string1, &
                       source, revision, revdate)
 endif
 
-dart_type = typemap(roms_type)
+DUMBLOOP: do i = 1,roms_type_count
+
+   if (roms_type == roms_type_integers(i)) then
+       dart_type  = dart_type_integers(i)
+       return
+   endif
+
+enddo DUMBLOOP
+
+if (roms_type > roms_type_count) then
+   call error_handler(E_ERR, 'convert_romstype_to_darttype', 'bad roms type, greater than limit', &
+                      source, revision, revdate)
+endif
+
+dart_type = dart_type_integers(roms_type)
 
 end subroutine convert_romstype_to_darttype
 
 !-----------------------------------------------------------------------
 !>
+!> ISTATUS : 0 - all went well
+!> ISTATUS : 3 - vertical index is a missing_value
+!> all other error codes inherited from model_mod:get_dart_location_from_kind()
 
 function convert_ijk_to_latlondepth(r_iloc, r_jloc, r_kloc, dart_type, lon, lat, depth)
 
@@ -433,8 +456,10 @@ integer :: dart_kind, status
 type(location_type) :: dart_location
 real(r8) :: dummy(3)
 
-!> @TODO FIXME ... r_kloc may be MISSING_R8 ... in that the parent variable
-!> "obs_depth" in the IJK world has a 'missing_value' attribute
+if (r_kloc == MISSING_R8) then
+   convert_ijk_to_latlondepth = 3
+   return 
+endif
 
 ! convert from specific obs type to a generic obs kind
 dart_kind = get_obs_kind_var_type(dart_type)
@@ -450,9 +475,8 @@ if (status /= 0) then
 endif
 
 dummy = get_location(dart_location)
-
-lon = dummy(1)
-lat = dummy(2)
+lon   = dummy(1)
+lat   = dummy(2)
 depth = dummy(3)
 
 ! things went ok
@@ -461,62 +485,172 @@ convert_ijk_to_latlondepth = 0
 end function convert_ijk_to_latlondepth
 
 !-----------------------------------------------------------------------
+!> the global attribute 'obs_provenance' relates the integer codes with
+!> the character strings that humans prefer.
+!> The character string MUST IDENTICALLY match the 
+!> input.nml:&convert_roms_obs_nml:type_translations that relate those
+!> character strings to DART observation TYPES. 
 
-subroutine get_provenance_maps(ncid, flag_count, flag_names)
+subroutine get_provenance_maps(ncid, flag_count, flag_names, flag_vals)
 
 integer,          intent(in)  :: ncid
 integer,          intent(out) :: flag_count
 character(len=*), intent(out) :: flag_names(:)
+integer,          intent(out) :: flag_vals(:)
 
-integer :: varid, start, next
-integer, allocatable :: flag_vals(:)
+integer :: io
 
 integer, parameter :: MAX_PROV_STRLEN = 1000
 character(len=MAX_PROV_STRLEN) :: provenance_str
 character(len=MAX_PROV_STRLEN) :: provenance_str2
 
-! this information also exists as an attribute on the obs_provenance named
-! 'flag_meanings' along with 'flag_values'.  the strings are different than
-! the global attributes - which one is easier to use?
+integer :: stringlength, num_newlines, pos1, pos2
+integer :: newline_pos(MAX_PROV_STRLEN)
 
-! right now the code reads both but only uses the attribute on the variable
-! and not the global attribute.
+io = nf90_get_att(ncid, NF90_GLOBAL, 'obs_provenance', provenance_str)
+call nc_check(io, 'get_provenance_maps', 'read global attribute "obs_provenance"')
 
-call nc_check(nf90_get_att(ncid, NF90_GLOBAL, 'obs_provenance', provenance_str), &
-              'convert_roms_obs', 'read global attribute "obs_provenance"')
+io = nf90_inquire_attribute(ncid, NF90_GLOBAL, 'obs_provenance', len=stringlength)
+call nc_check(io, 'get_provenance_maps', 'inquire_attribute "obs_provenance:flag_values"')
 
-call nc_check(nf90_inq_varid(ncid, 'obs_provenance', varid), &
-      'get_provenance_maps', 'inq_varid obs_provenance '//trim(roms_mod_obs_files(1)))
+if (stringlength > len(provenance_str)) then
+   write(string1,*)'GLOBAL attribute obs_provenance has length ',stringlength
+   write(string2,*)'MAX_PROV_STRLEN is only ',MAX_PROV_STRLEN
+   write(string3,*)'Must increase MAX_PROV_STRLEN and recompile.' 
+   call error_handler(E_ERR, 'get_provenance_maps', string1, &
+                         source, revision, revdate, text2=string2, text3=string3)
+endif
 
-call nc_check(nf90_inquire_attribute(ncid, varid, 'flag_values', len=flag_count), &
-              'convert_roms_obs', 'inquire_attribute "obs_provenance:flag_values"')
+io = nf90_get_att(ncid, NF90_GLOBAL, 'obs_provenance', provenance_str)
+call nc_check(io, 'get_provenance_maps', 'get_att obs_provenance '//trim(roms_mod_obs_files(1)))
 
-allocate(flag_vals(flag_count))
+! The challenge is now to parse this one long array into lines with arbitrary lengths
+! 1) count up the newline characters
+! 2) record the location of the newlines in an array
+! 3) parse
 
-call nc_check(nf90_get_att(ncid, varid, 'flag_values', flag_vals), &
-              'convert_roms_obs', 'read "obs_provenance:flag_values"')
-
-call nc_check(nf90_get_att(ncid, varid, 'flag_meanings', provenance_str2), &
-              'convert_roms_obs', 'read "obs_provenance:flag_meanings"')
-
-start=1
-do i=1, flag_count
-   next=index(provenance_str2(start:), ' ') + start - 1
-   read(provenance_str2(start:next), '(A)') flag_names(i)
-   start = next + 1
+num_newlines = 0
+do i=1, stringlength
+   if (provenance_str(i:i) == new_line('A')) then
+      num_newlines = num_newlines + 1
+      newline_pos(num_newlines) = i
+   endif
 enddo
 
+if (maxval(newline_pos) == stringlength) then
+   ! There is a newline at the end - so there is nothing to do.
+else
+   ! The last line is unterminated.
+   num_newlines = num_newlines + 1
+   newline_pos(num_newlines) = stringlength + 1
+endif
+
+pos1 = 1
+flag_count = 0
+PARSELOOP : do i=1, num_newlines
+
+   pos2 = newline_pos(i)
+
+   if (pos2 == pos1) cycle PARSELOOP ! first line may be nothing
+
+   flag_count = flag_count + 1
+
+   provenance_str2 = trim(provenance_str(pos1+1:pos2-1))
+   call get_flag_value(provenance_str2,flag_vals(flag_count))  
+   call get_flag_name( provenance_str2,flag_names(flag_count))  
+
+   pos1 = pos2
+
+enddo PARSELOOP
+
 if (verbose > 0) then
-   call error_handler(E_MSG, '', 'ROMS type strings in NetCDF file:' )
+
+   string1 = 'Dumping out the obs_provenance map as read from the global attribute:'
+   call error_handler(E_MSG, '', string1)
+
    do i=1, flag_count
-      write(msgstring, *) 'Value ', i, ' means ', '"', trim(flag_names(i)), '"'
-      call error_handler(E_MSG, '', msgstring)
+      write(string1,'(''provenance integer '',i10,'' means "'',A,''"'')')flag_vals(i),trim(flag_names(i))
+      call error_handler(E_MSG, '', string1)
    enddo
 endif
 
-deallocate(flag_vals)
-
 end subroutine get_provenance_maps
+
+!-----------------------------------------------------------------------
+!> Given a string of the form
+!>
+!>  :obs_provenance = "\n",
+!>          "    1: gridded AVISO sea level anomaly \n",
+!>          "    2: gridded Aquarius SSS \n",
+!>          "    4: XBT from Met Office \n",
+!>          "    8: CTD from Met Office \n",
+!>          "   16: ARGO floats \n",
+!>          "   32: glider UCSD \n",
+!>          "   64: gridded MODIS AQUA SCHL \n",
+!>          "  128: blended satellite SST \n",
+!>          "  256: CTD from CalCOFI \n",
+!>          "  512: HF radar current UCSD \n",
+!>          " 1024: glider La Push\n",
+!>          " 2048: CTD from GLOBEC \n",
+!>          " 4096: buoy, thermistor from Met Office \n",
+!>          " 8192: ARGO floats from Met Office \n",
+!>          "16384: glider MBARI \n",
+!>          "32768: glider temperature NSF OOI \n",
+!>          "65536: NOAA tide station sea level \n",
+!>          "all others: mixed; based on sum(unique(obs_provenance))" ;
+!>
+!> the flag value 'ARGO floats' is the integer '16'
+!> Make no assumptions about how many digits there are
+!>
+!> For the 'all others ...' assign a negative number.
+!> That number should not appear as a provenance value and so those
+!> observations will not match anything. 
+
+subroutine get_flag_value(mystring,ivalue)
+
+character(len=*), intent(in)  :: mystring
+integer,          intent(out) :: ivalue
+
+integer :: io, iend
+
+iend    =   index(mystring,':') - 1
+string1 = adjustl(mystring(1:iend))
+
+read(string1,*,iostat=io) ivalue
+
+! In at least one instance, there was no unique integer code referenced
+
+if (io /= 0) ivalue = MISSING_R8 ! this will coerce to an integer
+
+if (verbose > 1) then
+   write(string1,*)' given ['//trim(mystring)//'] the flag value is ',ivalue
+   call error_handler(E_MSG, '', string1)
+endif
+
+end subroutine get_flag_value
+
+!-----------------------------------------------------------------------
+!> Given a string of the form
+!>  6: ARGO floats temperature from Met Office 
+!> the flag name is everything beyond the colon 
+
+subroutine get_flag_name(mystring,myflag)
+
+character(len=*), intent(in)  :: mystring
+character(len=*), intent(out) :: myflag
+
+integer :: istart
+
+istart  =   index(mystring,':') + 1
+string1 = adjustl(mystring(istart:))
+myflag  = trim(string1)
+
+if (verbose > 1) then
+   write(string1,*)' given ['//trim(mystring)//'] the flag name is "'//trim(myflag)//'"'
+   call error_handler(E_MSG, '', string1)
+endif
+
+end subroutine get_flag_name
 
 !-----------------------------------------------------------------------
 
@@ -526,8 +660,8 @@ character(len=*), intent(in) :: str_to_match
 integer :: match_roms_flag
 
 do i=1, roms_type_count
-   if (str_to_match == roms_types(i)) then
-      match_roms_flag = i
+   if ( str_to_match == roms_type_strings(i)) then
+      match_roms_flag = roms_type_integers(i)
       return
    endif
 enddo
@@ -537,70 +671,107 @@ match_roms_flag = -1
 end function match_roms_flag
 
 !-----------------------------------------------------------------------
-
 !> user gives us a translation table from the namelist
 !> each pair of strings should be:
 !>    a roms string that matches the flags in the netcdf file
 !>    a dart type string like "ARGO_TEMPERATURE"
 !>
+!> integer, intent(out) :: dart_type_integers(:)
 
-subroutine get_translation_table(typemap, typecount)
+subroutine get_translation_table()
 
-integer, intent(out) :: typemap(:)
-integer, intent(out) :: typecount
+integer :: i, j, entries, romstype, darttype
 
-integer :: i, entries, maxpossible, romstype, darttype
-
-maxpossible = MAX_TYPES
 entries = 0
 
-if (verbose > 0) &
-   call error_handler(E_MSG, '', 'ROMS types map to DART Types:')
-
-parseloop: do i=1, maxpossible
+parseloop: do i=1, MAX_TYPES
    if (type_translations(1, i) == 'NULL') exit parseloop
 
-   ! type_translations(1, i) is roms name
-   ! type_translations(2, i) is dart type
+   ! type_translations(1, i) is roms name - string
+   ! type_translations(2, i) is dart type - string
 
-   ! roms number
-   romstype = match_roms_flag(type_translations(1, i))
+   ! convert strings to corresponding IDs.
+   ! there are no assumptions about the IDs other than they must be positive
+   romstype = match_roms_flag(   type_translations(1, i))
+   darttype = get_obs_kind_index(type_translations(2, i))
 
    if (romstype < 0) then
-      call error_handler(E_ERR, 'convert_roms_obs', &
+      call error_handler(E_ERR, 'get_translation_table', &
                  'unrecognized roms description: '//trim(type_translations(1, i)), &
                          source, revision, revdate)
    endif
 
-   if (romstype > MAX_TYPES) then
-      call error_handler(E_ERR, 'convert_roms_obs', &
-                 'too many roms types; increase MAX_TYPES in converter', &
-                         source, revision, revdate)
-   endif
-
-   ! dart specific type number
-   darttype = get_obs_kind_index(type_translations(2, i))
    if (darttype < 0) then
-      call error_handler(E_ERR, 'convert_roms_obs', &
+      call error_handler(E_ERR, 'get_translation_table', &
                  'unknown DART Observation TYPE: '//trim(type_translations(2, i)), &
                          source, revision, revdate)
    endif
 
-   typemap(romstype) = darttype
-   if (verbose > 0) then
-      write(msgstring, '(A10,A64,A32,A33)') 'ROMS type ', trim(roms_types(romstype)), ' creates an obs of DART type ', trim(get_obs_kind_name(darttype))
-      call error_handler(E_MSG, '', msgstring)
-   endif
+   ! Now we have to fill the dart_type_integers with the DART type in the same order
+   ! find the index of the romstype so we can stuff the darttype in the right slot
+
+   DUMBLOOP : do j = 1,roms_type_count
+
+      if (romstype == roms_type_integers(j)) then
+          dart_type_integers(j) = darttype
+          exit DUMBLOOP
+      endif
+
+   enddo DUMBLOOP
 
    entries = entries + 1
 enddo parseloop
 
 if (type_translations(2, entries+1) /= 'NULL') then
-   call error_handler(E_ERR, 'convert_roms_obs', 'roms/dart kinds table must be specified in pairs', &
+   call error_handler(E_ERR, 'get_translation_table', 'roms/dart kinds table must be specified in pairs', &
                       source, revision, revdate)
 endif
 
-typecount = entries
+! Print a report of the obs_provenance strings that match a DART type
+! i.e. the supported observations
+
+if (verbose > 0) then
+   call error_handler(E_MSG, '', '')
+   call error_handler(E_MSG, '', 'DART types that map to ROMS provenance values:')
+
+   do i = 1,roms_type_count
+      if (dart_type_integers(i) > 0) then
+   
+         write(string1,'(''DART '',i4,1x,A34,'' equates to ROMS '',i8,1x,A)') &
+            dart_type_integers(i), trim(get_obs_kind_name(dart_type_integers(i))), &
+            roms_type_integers(i), trim(roms_type_strings(i))
+    
+         call error_handler(E_MSG, '', string1)
+      endif
+   enddo
+endif
+
+! Print a report that indicates that there were obs_provenance strings not matched by
+! DART namelist 'type_translations' entries.
+
+call error_handler(E_MSG, '', '')
+call error_handler(E_MSG, '', 'ROMS provenance values that do not map to a DART type:')
+
+if (all(dart_type_integers(1:roms_type_count) > 0)) then
+   call error_handler(E_MSG, '','none - all provenance values have a DART counterpart - good.')
+   call error_handler(E_MSG, '', '')
+else
+   do i = 1,roms_type_count
+      if ( dart_type_integers(i) < 1 )  then
+         write(string1,*)'..  WARNING: provenance integer,string ',roms_type_integers(i), ',"'//trim(roms_type_strings(i))//'"'
+         write(string2,*)'WARNING: has no matching entry in the input.nml:&convert_roms_obs_nml:type_translations table.'
+         write(string3,*)'WARNING: These observations WILL BE IGNORED.'
+         call error_handler(E_MSG, '', string1, text2=string2, text3=string3)
+         call error_handler(E_MSG, '', '')
+      endif
+   enddo
+
+   write(string1,*)'At least one observation provenance does not correspond to a DART type.'
+   write(string2,*)'Specify the provenance in the input.nml:&convert_roms_obs_nml:type_translations table -or- '
+   write(string3,*)'if you want to continue, set input.nml:&utilities_nml:termlevel = 2'
+   call error_handler(E_WARN, 'convert_roms_obs:get_translation_table', string1, &
+              source, revision, revdate, text2=string2, text3=string3)
+endif
 
 end subroutine get_translation_table
 

@@ -48,7 +48,7 @@
 
 set DARTDIR = /glade/p/work/${USER}/DART/rma_roms
 set ROMSDIR = /glade/p/work/${USER}/roms/test
-set EXPERIMENTDIR = /glade/scratch/${USER}/romstest3
+set EXPERIMENTDIR = /glade/scratch/${USER}/roms_inflation_test
 set SUBSTITUTE = /glade/p/work/${USER}/roms/trunk/ROMS/Bin/substitute
 
 if (-e ${EXPERIMENTDIR} ) then
@@ -73,9 +73,11 @@ rsync -Cavz ${ROMSDIR}/WC13/Ensemble/  ${EXPERIMENTDIR}/      || exit 1
 \cp ${ROMSDIR}/WC13/timtest2/oceanG    ${EXPERIMENTDIR}/.
 
 \cp ${DARTDIR}/models/ROMS/shell_scripts/cycle.csh.template  ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/work/input.nml.template     ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/models/ROMS/work/filter                 ${EXPERIMENTDIR}/. || exit 2
-\cp ${DARTDIR}/observations/ROMS/work/convert_roms_obs ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/work/input.nml.template           ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/models/ROMS/work/filter                       ${EXPERIMENTDIR}/. || exit 2
+\cp ${DARTDIR}/observations/ROMS/work/convert_roms_obs       ${EXPERIMENTDIR}/. || exit 2
+
+echo "no preexisting inflation files" >! ${EXPERIMENTDIR}/roms_inflation_cookie
 
 # the observation file had some quirks
 
@@ -147,7 +149,7 @@ $SUBSTITUTE  s4dvar.in.template  MyMODname   $ROMS_MOD
 $SUBSTITUTE  input.nml.template  Myens_size  $ENSEMBLE_SIZE
 $SUBSTITUTE  input.nml.template  MyDAINAME   $ROMS_DAI
 
-\cp input.nml.template input.nml
+\cp ${DARTDIR}/system_simulation/final_full_precomputed_tables/final_full.$ENSEMBLE_SIZE .
 \mv cycle.csh.template cycle.csh
 chmod u+x cycle.csh
 

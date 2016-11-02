@@ -9,7 +9,7 @@
 
 &convert_roms_obs_nml
    ens_size               = 3
-   roms_mod_obs_filelist  = 'filelist.txt'
+   roms_mod_obs_filelist  = 'filelist2.txt'
    dart_output_obs_file   = 'obs_seq.out'
    append_to_existing     = .false.
    use_precomputed_values = .true.
@@ -17,18 +17,38 @@
    add_random_noise       = .false.
    pert_amplitude         = 0.01
    verbose                = 1
-   type_translations = "gridded_AVISO_SLA",            "SATELLITE_SSH",
-                       "blended_SST",                  "SATELLITE_MICROWAVE_SST",
-                       "XBT_Met_Office",               "XBT_TEMPERATURE",
-                       "CTD_temperature_Met_Office",   "CTD_TEMPERATURE",
-                       "CTD_salinity_Met_Office",      "CTD_SALINITY",
-                       "ARGO_temperature_Met_Office",  "ARGO_TEMPERATURE",
-                       "ARGO_salinity_Met_Office",     "ARGO_SALINITY",
-                       "CTD_temperature_CalCOFI",      "CTD_TEMPERATURE",
-                       "CTD_salinity_CalCOFI",         "CTD_SALINITY",
-                       "CTD_temperature_GLOBEC",       "CTD_TEMPERATURE",
-                       "CTD_salinity_GLOBEC",          "CTD_SALINITY",
- /
+   type_translations = "gridded AVISO sea level anomaly"        , "SATELLITE_SSH",
+                       "XBT temperature from Met Office"        , "XBT_TEMPERATURE",
+                       "CTD temperature from Met Office"        , "CTD_TEMPERATURE",
+                       "CTD salinity from Met Office"           , "CTD_SALINITY",
+                       "ARGO floats temperature from Met Office", "ARGO_TEMPERATURE",
+                       "ARGO floats salinity from Met Office"   , "ARGO_SALINITY",
+                       "CTD temperature from CalCOFI"           , "CTD_TEMPERATURE",
+                       "CTD salinity from CalCOFI"              , "CTD_SALINITY",
+                       "CTD temperature from GLOBEC"            , "CTD_TEMPERATURE",
+                       "CTD salinity from GLOBEC"               , "CTD_SALINITY",
+                       "gridded bob"                            , "SALINITY",
+                       "ungridded bob"                          , "TEMPERATURE",
+                       "blended satellite SST"                  , "SATELLITE_BLENDED_SST",
+  /
+
+   type_translations = "gridded AVISO sea level anomaly"  , "SATELLITE_SSH",
+                       "XBT from Met Office"              , "XBT_TEMPERATURE",
+                       "glider UCSD "                     , "GLIDER_U_CURRENT_COMPONENT",
+                       "gridded MODIS AQUA SCHL"          , "ARGO_SALINITY",
+                       "CTD from Met Office"              , "CTD_TEMPERATURE",
+                       "ARGO floats"                      , "ARGO_TEMPERATURE",
+                       "blended satellite SST"            , "SATELLITE_BLENDED_SST",
+                       "CTD from CalCOFI"                 , "CTD_SALINITY",
+                       "HF radar current UCSD"            , "HFRADAR_RADIAL_VELOCITY",
+                       "glider La Push"                   , "GLIDER_V_CURRENT_COMPONENT",
+                       "CTD from GLOBEC"                  , "SALINITY",
+                       "buoy, thermistor from Met Office" , "TEMPERATURE",
+                       "ARGO floats from Met Office"      , "FLOAT_TEMPERATURE",
+                       "gridded Aquarius SSS"             , "SATELLITE_SSS",
+                       "glider MBARI"                     , "GLIDER_SALINITY",
+                       "glider temperature NSF OOI"       , "GLIDER_TEMPERATURE",
+                       "NOAA tide station sea level"      , "SEA_SURFACE_HEIGHT",
 
 &model_nml
    roms_filename                = '../data/wc13_ini.nc'
@@ -51,11 +71,11 @@
  /
 
 &utilities_nml
+ termlevel      = 0
  module_details = .false.
- write_nml = "file"
+ write_nml      = "file"
  /
 
 &obs_sequence_nml
    write_binary_obs_sequence = .false.  
  /
-

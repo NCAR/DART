@@ -9,8 +9,8 @@
    last_obs_days         = -1
    last_obs_seconds      = -1
    output_interval       = 1
-   restart_in_file_name  = "pmo_restart_in_file_not_used"
-   restart_out_file_name = "pmo_restart_out_file_not_used"
+   restart_in_file_name  = "input_roms.nc"
+   restart_out_file_name = "output_roms.nc"
    obs_seq_in_file_name  = "obs_seq.in"
    obs_seq_out_file_name = "obs_seq.out"
    adv_ens_command       = "./DART_trying_to_advance_ROMS_not_supported.csh"
@@ -27,16 +27,11 @@
 &filter_nml
    async                    = 0
    adv_ens_command          = "./DART_trying_to_advance_ROMS_not_supported.csh"
-   perturb_from_single_instance = .false.
    ens_size                 = 3
    output_restart           = .true.
-   use_restart_list         = .true.
-   restart_list_file        = 'restart_files.txt'
-   overwrite_state_input    = .true.
+   output_restart_mean      = .true.
    obs_sequence_in_name     = "obs_seq.out"
    obs_sequence_out_name    = "obs_seq.final"
-   restart_in_file_name     = "no_restart_in"
-   restart_out_file_name    = "no_restart_out"
    init_time_days           = -1
    init_time_seconds        = -1
    first_obs_days           = -1
@@ -51,40 +46,41 @@
    num_groups               = 1
    output_forward_op_errors = .false.
    output_timestamps        = .false.
-   output_inflation         = .false.
+   output_inflation         = .true.
    trace_execution          = .true.
    silence                  = .false.
+
+   perturb_from_single_instance = .false.
    direct_netcdf_read       = .true.
    direct_netcdf_write      = .true.
+   use_restart_list         = .true.
+   restart_list_file        = 'restart_files.txt'
+   overwrite_state_input    = .true.
+   restart_in_file_name     = "no_restart_in"
+   restart_out_file_name    = "no_restart_out"
 
    inf_flavor                  = 0,                       0
-   inf_initial_from_restart    = .false.,                 .false.
-   inf_sd_initial_from_restart = .false.,                 .false.
+   inf_initial_from_restart    = .true.,                  .true.
+   inf_sd_initial_from_restart = .true.,                  .true.
    inf_output_restart          = .true.,                  .true.
    inf_deterministic           = .true.,                  .true.
-   inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics'
-   inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart'
-   inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag'
+   inf_in_file_name            = 'input_priorinf',        'input_postinf'
+   inf_out_file_name           = 'output_priorinf',       'output_postinf'
+   inf_diag_file_name          = 'preassim',              'postassim',
    inf_initial                 = 1.0,                     1.0
-   inf_sd_initial              = 0.0,                     0.0
-   inf_damping                 = 1.0,                     1.0
+   inf_sd_initial              = 0.6,                     0.6
+   inf_damping                 = 0.9,                     0.9
    inf_lower_bound             = 1.0,                     1.0
-   inf_upper_bound             = 1000000.0,               1000000.0
-   inf_sd_lower_bound          = 0.0,                     0.0
+   inf_upper_bound             = 1000.0,                  1000.0
+   inf_sd_lower_bound          = 0.6,                     0.6
   /
 
 
 &state_vector_io_nml
-   write_binary_restart_files = .false.
   /
 
 
 &smoother_nml
-   num_lags              = 0
-   start_from_restart    = .false.
-   output_restart        = .false.
-   restart_in_file_name  = 'smoother_ics'
-   restart_out_file_name = 'smoother_restart'
   /
 
 
@@ -97,7 +93,7 @@
    cutoff                          = 0.02
    sort_obs_inc                    = .false.
    spread_restoration              = .false.
-   sampling_error_correction       = .false.
+   sampling_error_correction       = .true.
    adaptive_localization_threshold = -1
    output_localization_diagnostics = .false.
    localization_diagnostics_file   = 'localization_diagnostics'
@@ -106,7 +102,6 @@
 
 
 &assim_model_nml
-   write_binary_restart_files = .true.
    netCDF_large_file_support  = .true.
   /
 
@@ -130,7 +125,7 @@
 
 
 &convert_roms_obs_nml
-   ens_size               = 3
+   ens_size               = 32
    roms_mod_obs_filelist  = 'precomputed_files.txt'
    dart_output_obs_file   = 'obs_seq.out'
    append_to_existing     = .false.
@@ -139,37 +134,39 @@
    add_random_noise       = .false.
    pert_amplitude         = 0.01
    verbose                = 1
-   type_translations = "gridded_AVISO_sea_level_anomaly_(zeta)", "SATELLITE_SSH",
-                       "gridded_Aquarius_SSS_(salinity)",        "SATELLITE_SSS",
-                       "XBT_from_Met_Office_(temperature)",      "XBT_TEMPERATURE",
-                       "CTD_from_Met_Office_(temperature)",      "CTD_TEMPERATURE",
-                       "CTD_from_Met_Office_(salinity)",         "CTD_SALINITY",
-                       "ARGO_floats_(temperature)",              "ARGO_TEMPERATURE",
-                       "ARGO_floats_(salinity)",                 "ARGO_SALINITY",
-                       "glider_UCSD_(temperature)",              "GLIDER_TEMPERATURE",
-                       "glider_UCSD_(salinity)",                 "GLIDER_SALINITY",
-                       "blended_satellite_SST_(temperature)",    "SATELLITE_MICROWAVE_SST"
+   type_translations = "gridded AVISO sea level anomaly (zeta)", "SATELLITE_SSH",
+                       "gridded Aquarius SSS (salinity)",        "SATELLITE_SSS",
+                       "XBT from Met Office (temperature)",      "XBT_TEMPERATURE",
+                       "CTD from Met Office (temperature)",      "CTD_TEMPERATURE",
+                       "CTD from Met Office (salinity)",         "CTD_SALINITY",
+                       "ARGO floats (temperature)",              "ARGO_TEMPERATURE",
+                       "ARGO floats (salinity)",                 "ARGO_SALINITY",
+                       "glider UCSD (temperature)",              "GLIDER_TEMPERATURE",
+                       "glider UCSD (salinity)",                 "GLIDER_SALINITY",
+                       "blended satellite SST (temperature)",    "SATELLITE_BLENDED_SST"
   /
 
-   type_translations = "gridded_AVISO_SLA",            "SATELLITE_SSH",
-                       "blended_SST",                  "SATELLITE_MICROWAVE_SST",
-                       "XBT_Met_Office",               "XBT_TEMPERATURE",
-                       "CTD_temperature_Met_Office",   "CTD_TEMPERATURE",
-                       "CTD_salinity_Met_Office",      "CTD_SALINITY",
-                       "ARGO_temperature_Met_Office",  "ARGO_TEMPERATURE",
-                       "ARGO_salinity_Met_Office",     "ARGO_SALINITY",
-                       "CTD_temperature_CalCOFI",      "CTD_TEMPERATURE",
-                       "CTD_salinity_CalCOFI",         "CTD_SALINITY",
-                       "CTD_temperature_GLOBEC",       "CTD_TEMPERATURE",
-                       "CTD_salinity_GLOBEC",          "CTD_SALINITY",
-
 &obs_kind_nml
-   assimilate_these_obs_types = 'ARGO_TEMPERATURE',
-                                'ARGO_SALINITY',
-                                'SATELLITE_SSH'
-   use_precomputed_FOs_these_obs_types = 'ARGO_TEMPERATURE',
+   assimilate_these_obs_types =          'SATELLITE_SSH',
+                                         'SATELLITE_SSS',
+                                         'XBT_TEMPERATURE',
+                                         'CTD_TEMPERATURE',
+                                         'CTD_SALINITY',
+                                         'ARGO_TEMPERATURE',
                                          'ARGO_SALINITY',
-                                         'SATELLITE_SSH'
+                                         'GLIDER_TEMPERATURE',
+                                         'GLIDER_SALINITY',
+                                         'SATELLITE_BLENDED_SST'
+   use_precomputed_FOs_these_obs_types = 'SATELLITE_SSH',
+                                         'SATELLITE_SSS',
+                                         'XBT_TEMPERATURE',
+                                         'CTD_TEMPERATURE',
+                                         'CTD_SALINITY',
+                                         'ARGO_TEMPERATURE',
+                                         'ARGO_SALINITY',
+                                         'GLIDER_TEMPERATURE',
+                                         'GLIDER_SALINITY',
+                                         'SATELLITE_BLENDED_SST'
   /
 
 

@@ -1,17 +1,15 @@
 #!/bin/tcsh
 #
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# DART software - Copyright 2004 - 2016 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# $Id: run_1day.csh 10638 2016-08-16 14:48:52Z nancy $
+# $Id$
 #=============================================================================
 #
 #
 #=============================================================================
 # This block of directives constitutes the preamble for the LSF queuing system
-# LSF is used on the IMAGe Linux cluster 'coral'
-# LSF is used on the IBM   'bluefire'
 #
 # the normal way to submit to the queue is:    bsub < roms_ensemble.csh
 #
@@ -35,8 +33,6 @@
 #
 #=============================================================================
 ## This block of directives constitutes the preamble for the PBS queuing system
-## PBS is used on the CGD Linux cluster 'bangkok'
-## PBS is used on the CGD Linux cluster 'calgary'
 ##
 ## the normal way to submit to the queue is:    qsub run_roms_ensemble.csh
 ##
@@ -57,6 +53,10 @@
 #PBS -o roms_ensemble.log
 #PBS -q dedicated
 #PBS -l nodes=10:ppn=2
+
+#=========================================================================
+# STEP 1: Advance the ocean ensemble ... one after another.
+#=========================================================================
 
 cd EXPERIMENT_DIRECTORY
 
@@ -120,56 +120,284 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 
 end
 
+set ensemble_size = $instance
+
+#=========================================================================
+# STEP 2: Stage the file for SAMPLING ERROR CORRECTION if needed.
+#
+# The sampling error correction is a lookup table.
+# The tables are in the DART distribution and have been staged to
+# EXPERIMENT_DIRECTORY by stage_experiment.csh
+# Each ensemble size has its own (static) file. It is only needed if
+# input.nml:&assim_tools_nml:sampling_error_correction = .true.,
+#=========================================================================
+
+# The input.nml may be modified differently for each assimilation cycle.
+# (for example, inflation files for the first cycle)
+
+\cp input.nml.template input.nml
+
+set  MYSTRING = `grep 'sampling_error_correction' input.nml`
+set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
+set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
+set SECSTRING = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
+
+if ( $SECSTRING == true ) then
+   set SAMP_ERR_FILE = final_full.${ensemble_size}
+   if (! -e  ${SAMP_ERR_FILE} ) then
+      echo "ERROR: no sampling error correction file for this ensemble size."
+      echo "ERROR: looking for ${SAMP_ERR_FILE}"
+      exit 2
+   endif
+else
+   echo "Sampling Error Correction not requested for this assimilation."
+endif
+
+#=========================================================================
+# STEP 3: prepare for DART INFLATION
+# This stages the files that contain the inflation values.
+# The inflation values change through time and should be archived.
+#
+# This file is only relevant if 'inflation' is turned on -
+# i.e. if inf_flavor(:) /= 0 AND inf_initial_from_restart = .TRUE.
+#
+# filter_nml
+# inf_flavor                  = 2,                 0,
+# inf_initial_from_restart    = .true.,            .false.,
+# inf_in_file_name            = 'input_priorinf',  'input_postinf',
+# inf_out_file_name           = 'output_priorinf', 'output_postinf',
+# inf_diag_file_name          = 'preassim',        'postassim',
+#
+# NOTICE: the archiving scripts require the names of these
+# files to be as listed above. When being archived, the filenames get a
+# unique extension (describing the assimilation time) appended to them.
+#
+# The inflation file is essentially a duplicate of the DART model state ...
+# For the purpose of this script, they are the output of a previous assimilation,
+# so they should be named something like output_priorinf_[mean,sd].SSSSS.nc
+#
+# NOTICE: inf_initial_from_restart and inf_sd_initial_from_restart are somewhat
+# problematic. During the bulk of an experiment, these should be TRUE, since
+# we want to read existing inflation files. However, the first assimilation
+# might need these to be FALSE and then subsequently be set to TRUE.
+# There is now only one way to handle this:
+#
+# 1) create a cookie file called EXPERIMENT_DIRECTORY/roms_inflation_cookie
+#    The existence of this file will cause this script to set the
+#    namelist appropriately. This script will 'eat' the cookie file
+#    to prevent this from happening for subsequent executions. If the
+#    inflation file does not exist for them, and it needs to, this script
+#    should die. The stage_experiment.csh script automatically creates a cookie
+#    file to support this option.
+#
+# The strategy is to use the LATEST (last) inflation file.
+#=========================================================================
+
+# These are used to determine IF we are doing inflation.
+
+set  MYSTRING = `grep 'inf_flavor' input.nml`
+set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
+set  PRIOR_INF = $MYSTRING[2]
+set  POSTE_INF = $MYSTRING[3]
+
+# These are used to determine if we HAVE BEEN doing inflation.
+# Do we read from a namelist or a file?
+
+set  MYSTRING = `grep 'inf_initial_from_restart' input.nml`
+set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
+set  PRIOR_TF = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
+set  POSTE_TF = `echo $MYSTRING[3] | tr '[:upper:]' '[:lower:]'`
+
+# IFF we want PRIOR inflation:
+
+if ( $PRIOR_INF > 0 ) then
+
+   if ($PRIOR_TF == false) then
+      # We are not using an existing inflation file.
+      echo "inf_flavor(1) = $PRIOR_INF, using namelist values."
+
+   else if ( -e roms_inflation_cookie ) then
+      # We want to use an existing inflation file, but this is
+      # the first assimilation so there is no existing inflation
+      # file. This is the signal we need to to coerce the namelist
+      # to have different values for this execution ONLY.
+      # Since the local namelist comes from EXPERIMENT_DIRECTORY each time, we're golden.
+
+      set PRIOR_TF = FALSE
+
+ex input.nml <<ex_end
+g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+g;inf_sd_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+wq
+ex_end
+
+   else
+
+      # Checking for a prior inflation mean file from the previous assimilation.
+
+      (ls -rt1 output_priorinf_mean.* | tail -n 1 >! latestfile) > & /dev/null
+      set nfiles = `cat latestfile | wc -l`
+
+      if ( $nfiles > 0 ) then
+         set latest = `cat latestfile`
+      #  \cp -v $latest input_priorinf_mean.nc
+         \cp -v $latest input_priorinf_mean
+      else
+         echo "ERROR: Requested PRIOR inflation but specified no incoming inflation MEAN file."
+         echo "ERROR: expected something like output_priorinf_mean.SSSSS.nc"
+         exit 2
+      endif
+
+      # Checking for a prior inflation sd file from the previous assimilation.
+
+      (ls -rt1 output_priorinf_sd.* | tail -n 1 >! latestfile) > & /dev/null
+      set nfiles = `cat latestfile | wc -l`
+
+      if ( $nfiles > 0 ) then
+         set latest = `cat latestfile`
+      #  \cp -v $latest input_priorinf_sd.nc
+         \cp -v $latest input_priorinf_sd
+      else
+         echo "ERROR: Requested PRIOR inflation but specified no incoming inflation SD file."
+         echo "ERROR: expected something like output_priorinf_sd.SSSSS.nc"
+         exit 2
+      endif
+
+   endif
+else
+   echo "Prior Inflation           not requested for this assimilation."
+endif
+
+# POSTERIOR: We look for the 'newest' and use it - IFF we need it.
+
+if ( $POSTE_INF > 0 ) then
+
+   if ($POSTE_TF == false) then
+      # We are not using an existing inflation file.
+      echo "inf_flavor(2) = $POSTE_INF, using namelist values."
+
+   else if ( -e roms_inflation_cookie ) then
+      # We want to use an existing inflation file, but this is
+      # the first assimilation so there is no existing inflation
+      # file. This is the signal we need to to coerce the namelist
+      # to have different values for this execution ONLY.
+      # Since the local namelist comes from EXPERIMENT_DIRECTORY each time, we're golden.
+
+      set POSTE_TF = FALSE
+
+ex input.nml <<ex_end
+g;inf_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+g;inf_sd_initial_from_restart ;s;= .*;= .${PRIOR_TF}., .${POSTE_TF}.,;
+wq
+ex_end
+
+   else
+
+      # Checking for a posterior inflation mean file from the previous assimilation.
+
+      (ls -rt1 output_postinf_mean.* | tail -n 1 >! latestfile) > & /dev/null
+      set nfiles = `cat latestfile | wc -l`
+
+      if ( $nfiles > 0 ) then
+         set latest = `cat latestfile`
+      #  \cp -v $latest input_postinf_mean.nc
+         \cp -v $latest input_postinf_mean
+      else
+         echo "ERROR: Requested POSTERIOR inflation but specified no incoming inflation MEAN file."
+         echo "ERROR: expected something like output_postinf_mean.SSSSS.nc"
+         exit 2
+      endif
+
+      # Checking for a posterior inflation sd file from the previous assimilation.
+
+      (ls -rt1 output_postinf_sd.* | tail -n 1 >! latestfile) > & /dev/null
+      set nfiles = `cat latestfile | wc -l`
+
+      if ( $nfiles > 0 ) then
+         set latest = `cat latestfile`
+      #  \cp -v $latest input_postinf_sd.nc
+         \cp -v $latest input_postinf_sd
+      else
+         echo "ERROR: Requested POSTERIOR inflation but specified no incoming inflation SD file."
+         echo "ERROR: expected something like output_postinf_sd.SSSSS.nc"
+         exit 2
+      endif
+
+   endif
+else
+   echo "Posterior Inflation       not requested for this assimilation."
+endif
+
+# Eat the cookie regardless
+\rm -f roms_inflation_cookie
+
 #==============================================================================
-# Then we run DART on the ensemble of new states
+# STEP 4:  Then we run DART on the ensemble of new states
 #==============================================================================
 
 # Remove the last set of DART run-time logs - if they exist.
+
 \rm -f dart_log.out dart_log.nml
 
 # Because convert_roms_obs and filter need bits from the ROMS model_mod,
-# a (single) ROMS input file is required to satisfy 'static_init_model()'
-# any one will do
+# a (single) ROMS input file is required to satisfy 'static_init_model()'.
+# Any one will do.
 
 ln -sf instance_0001/roms_posterior_????_${OCEAN_TIME}.nc MyDAINAME
 
-# Collect all the ROMS_OBSFILEs into a list of input files
-# and then convert them to a single DART observation sequence file.
+# 1) Collect all the ROMS_OBSFILEs into a list of input files
+#    and then convert them to a single DART observation sequence file.
 
 ls -1 instance_*/${OBS_ROOT}*_${OCEAN_TIME}.nc  >! precomputed_files.txt
 
 ./convert_roms_obs  || exit 2
 
 # 2) collect all the ROMS_RESTARTs into a list of input files for filter
-# The io module will error out if the file_list.txt is too short.
-# (make sure all instances of ROMS advanced successfully)
-# DART (filter) will modify these files in-place.
+#    The io module will error out if the file_list.txt is too short.
+#    (make sure all instances of ROMS advanced successfully)
+#    DART (filter) will modify these files in-place.
 
 ls -1 instance_*/roms_posterior_????_${OCEAN_TIME}.nc  >! restart_files.txt
 
 mpirun.lsf ./filter || exit 3
 
-#==============================================================================
-# Prepare for the next model advance
-#==============================================================================
+# Tag the state output with the valid time of the model state.
 
-# 1) filter will write out a 'new_dstart.txt' file with the new DSTART
-#    that must be inserted into the CENTRALDIR/ocean_wc13.in
+\mv -v PriorDiag_mean.nc         input_mean.${OCEAN_TIME}.nc
+\mv -v PriorDiag_sd.nc           input_sd.${OCEAN_TIME}.nc
+\mv -v PriorDiag_inf_mean.nc     preassim_mean.${OCEAN_TIME}.nc
+\mv -v PriorDiag_inf_sd.nc       preassim_sd.${OCEAN_TIME}.nc
+\mv -v PosteriorDiag_inf_mean.nc postassim_mean.${OCEAN_TIME}.nc
+\mv -v PosteriorDiag_inf_sd.nc   postassim_sd.${OCEAN_TIME}.nc
+\mv -v mean.nc                   output_mean.${OCEAN_TIME}.nc
+\mv -v sd.nc                     output_sd.${OCEAN_TIME}.nc
 
-\mv -v PriorDiag_sd.nc    Prior_sd.${OCEAN_TIME}.nc
-\mv -v PriorDiag_mean.nc  Prior_mean.${OCEAN_TIME}.nc
-\mv -v sd.nc              Posterior_sd.${OCEAN_TIME}.nc
-\mv -v mean.nc            Posterior_mean.${OCEAN_TIME}.nc
-\mv -v obs_seq.final      obs_seq.final.${OCEAN_TIME}
+# Tag the inflation files with the valid time of the model state.
+
+\mv -v output_priorinf_mean.nc   output_priorinf_mean.{$OCEAN_TIME}.nc
+\mv -v output_priorinf_sd.nc     output_priorinf_sd.{$OCEAN_TIME}.nc
+\mv -v output_postinf_mean.nc    output_postinf_mean.{$OCEAN_TIME}.nc
+\mv -v output_postinf_sd.nc      output_postinf_sd.{$OCEAN_TIME}.nc
+
+# Tag the observation file with the valid time of the model state.
+
+\mv -v obs_seq.final             obs_seq.final.${OCEAN_TIME}
+
+#==============================================================================
+# STEP 5: Prepare for the next model advance
+#==============================================================================
+# Rename the existing files to have their future names.
+# Sometime soon, the base filenames will not need to be changed.
+
+# 1) filter creates a 'new_dstart.txt' file with the new DSTART
+#    that must be inserted into the CENTRALDIR/ocean.in
 
 set DSTART = `grep DSTART new_dstart.txt | sed -e 's/[A-Z, ]//g'`
 
-# what inflation file
-
-# the input.nml:&filter_nml:restart_out_file_name specifies the base filename
-# for the updated (the posterior) model state. This base gets appended with
-# a 4-digit instance number and then ".nc" This file must be pushed back into
-# the appropriate directory.
+# 2) the input.nml:&filter_nml:restart_out_file_name specifies the base
+#    filename for the updated (the posterior) model state. This base gets
+#    appended with a 4-digit instance number and then ".nc"
+#    This file must be pushed back into the appropriate directory.
 
 @ instance = 0
 foreach INSTANCE_DIRECTORY ( instance_???? )
@@ -195,10 +423,9 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 
 end
 
-
 #==============================================================================
 # <next few lines under version control, do not edit>
-# $URL: https://subversion.ucar.edu/DAReS/DART/branches/rma_trunk/models/ROMS/shell_scripts/run_1day.csh $
-# $Revision: 10638 $
-# $Date: 2016-08-16 08:48:52 -0600 (Tue, 16 Aug 2016) $
+# $URL$
+# $Revision$
+# $Date$
 
