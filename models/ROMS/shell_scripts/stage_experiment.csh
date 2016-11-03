@@ -72,6 +72,7 @@ rsync -Cavz ${ROMSDIR}/WC13/Ensemble/  ${EXPERIMENTDIR}/      || exit 1
 \cp ${ROMSDIR}/WC13/timtest2/oceanM    ${EXPERIMENTDIR}/.     || exit 1
 \cp ${ROMSDIR}/WC13/timtest2/oceanG    ${EXPERIMENTDIR}/.
 
+\cp ${DARTDIR}/models/ROMS/shell_scripts/run_multiple_jobs.csh  ${EXPERIMENTDIR}/. || exit 2
 \cp ${DARTDIR}/models/ROMS/shell_scripts/cycle.csh.template  ${EXPERIMENTDIR}/. || exit 2
 \cp ${DARTDIR}/models/ROMS/work/input.nml.template           ${EXPERIMENTDIR}/. || exit 2
 \cp ${DARTDIR}/models/ROMS/work/filter                       ${EXPERIMENTDIR}/. || exit 2
@@ -144,6 +145,8 @@ $SUBSTITUTE  cycle.csh.template  MyMODname             $ROMS_MOD
 $SUBSTITUTE  cycle.csh.template  MyRSTNAME             $ROMS_RST
 $SUBSTITUTE  cycle.csh.template  MyDAINAME             $ROMS_DAI
 
+$SUBSTITUTE  run_multiple_jobs.csh  EXPERIMENT_DIRECTORY  $EXPERIMENTDIR
+
 $SUBSTITUTE  s4dvar.in.template  MyMODname   $ROMS_MOD
 
 $SUBSTITUTE  input.nml.template  Myens_size  $ENSEMBLE_SIZE
@@ -152,6 +155,7 @@ $SUBSTITUTE  input.nml.template  MyDAINAME   $ROMS_DAI
 \cp ${DARTDIR}/system_simulation/final_full_precomputed_tables/final_full.$ENSEMBLE_SIZE .
 \mv cycle.csh.template cycle.csh
 chmod u+x cycle.csh
+chmod u+x run_multiple_jobs.csh
 
 set member = 1
 while ( ${member} <= ${ENSEMBLE_SIZE} )
