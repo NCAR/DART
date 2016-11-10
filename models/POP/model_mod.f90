@@ -37,7 +37,7 @@ use      dart_pop_mod, only: set_model_time_step,                              &
                              get_pop_restart_filename
 
 use typesizes
-use netcdf 
+use netcdf
 
 implicit none
 private
@@ -72,7 +72,7 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-character(len=256) :: msgstring
+character(len=512) :: string1, string2, string3
 logical, save :: module_initialized = .false.
 
 ! Storage for a random sequence for perturbing a single initial state
@@ -88,7 +88,7 @@ integer  :: debug = 0   ! turn up for more and more debug messages
 
 ! FIXME: currently the update_dry_cell_walls namelist value DOES
 ! NOTHING.  it needs additional code to detect the cells which are
-! wet, but within 1 cell of the bottom/sides/etc.  
+! wet, but within 1 cell of the bottom/sides/etc.
 
 namelist /model_nml/  &
    output_state_vector,         &
@@ -137,7 +137,7 @@ integer :: start_index(nfields)
 ! Grid parameters - the values will be read from a
 ! standard POP namelist and filled in here.
 
-! nx, ny and nz are the size of the dipole (or irregular) grids. 
+! nx, ny and nz are the size of the dipole (or irregular) grids.
 integer :: Nx=-1, Ny=-1, Nz=-1    ! grid counts for each field
 
 ! locations of cell centers (C) and edges (G) for each axis.
@@ -173,7 +173,7 @@ END INTERFACE
 
 ! NOTE (dipole/tripole grids): since both of the dipole and tripole
 ! grids are logically rectangular we can use the same interpolation
-! scheme originally implemented for the dipole grid. Here we can 
+! scheme originally implemented for the dipole grid. Here we can
 ! interchange dipole and tripole when reading the code.
 
 ! The regular grid used for dipole interpolation divides the sphere into
@@ -182,12 +182,12 @@ END INTERFACE
 ! number of regular boxes smaller decreases the computation required for
 ! doing each interpolation but increases the static storage requirements
 ! and the initialization computation (which seems to be pretty small).
-! FIX ME: to account for various grid sizes we should dynamically 
+! FIX ME: to account for various grid sizes we should dynamically
 ! allocate these numbers.  To keep max_reg_list_num < 100 we can use:
 !    tx0.1v2 num_reg_x = num_reg_y = 900
 !    tx0.5v1 num_reg_x = num_reg_y = 180
 !    gx1v6   num_reg_x = num_reg_y = 90
-! Larger num_reg_(x,y) values require more temporary storage in 
+! Larger num_reg_(x,y) values require more temporary storage in
 ! ureg_list_lon, ureg_list_lat, treg_list_lon, treg_list_lat. For now
 ! we can use num_reg_(x,y) = 180 and max_reg_list_num = 800 to account
 ! for all of the currently implemented grid types.
@@ -197,15 +197,15 @@ integer, parameter :: num_reg_x = 180, num_reg_y = 180
 ! initializing the regular grid. Four arrays
 ! of size num_reg_x*num_reg_y*max_reg_list_num are needed. The initialization
 ! fails and returns an error if max_reg_list_num is too small. With 180 regular
-! lat lon boxes a value of 30 is sufficient for the gx3 POP grid, 80 for the 
+! lat lon boxes a value of 30 is sufficient for the gx3 POP grid, 80 for the
 ! gx1 grid, 180 for the tx0.5 grid and 800 for the tx0.1 grid.
 ! FIX ME: we should declare this at runtime depending on the grid size.
 integer, parameter :: max_reg_list_num = 800
 
 ! The dipole interpolation keeps a list of how many and which dipole quads
-! overlap each regular lon-lat box. The number for the u and t grids are 
+! overlap each regular lon-lat box. The number for the u and t grids are
 ! stored in u_dipole_num and t_dipole_num. The allocatable arrays
-! u_dipole_lon(lat)_list and t_dipole_lon(lat)_list list the longitude 
+! u_dipole_lon(lat)_list and t_dipole_lon(lat)_list list the longitude
 ! and latitude indices for the overlapping dipole quads. The entry in
 ! u_dipole_start and t_dipole_start for a given regular lon-lat box indicates
 ! where the list of dipole quads begins in the u_dipole_lon(lat)_list and
@@ -242,7 +242,7 @@ integer :: ss, dd
 !
 !   read in the grid sizes from the horiz grid file and the vert grid file
 !   horiz is netcdf, vert is ascii
-!  
+!
 !   allocate space, and read in actual grid values
 !
 !   figure out model timestep.  FIXME: from where?
@@ -279,8 +279,8 @@ model_timestep = set_model_time_step()
 
 call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
 
-write(msgstring,*)'assimilation period is ',dd,' days ',ss,' seconds'
-call error_handler(E_MSG,'static_init_model',msgstring,source,revision,revdate)
+write(string1,*)'assimilation period is ',dd,' days ',ss,' seconds'
+call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate)
 
 
 ! get data dimensions, then allocate space, then open the files
@@ -289,7 +289,7 @@ call error_handler(E_MSG,'static_init_model',msgstring,source,revision,revdate)
 call get_horiz_grid_dims(Nx, Ny)
 call get_vert_grid_dim(Nz)
 
-! Allocate space for grid variables. 
+! Allocate space for grid variables.
 allocate(ULAT(Nx,Ny), ULON(Nx,Ny), TLAT(Nx,Ny), TLON(Nx,Ny))
 allocate( KMT(Nx,Ny),  KMU(Nx,Ny))
 allocate(  HT(Nx,Ny),   HU(Nx,Ny))
@@ -345,14 +345,14 @@ subroutine init_interp()
 
 ! Initializes data structures needed for POP interpolation for
 ! either dipole or irregular grid.
-! This should be called at static_init_model time to avoid 
+! This should be called at static_init_model time to avoid
 ! having all this temporary storage in the middle of a run.
 
 integer :: i
 
 ! Determine whether this is a irregular lon-lat grid or a dipole.
 ! Do this by seeing if the lons have the same values at both
-! the first and last latitude row; this is not the case for dipole. 
+! the first and last latitude row; this is not the case for dipole.
 
 dipole_grid = .false.
 do i = 1, nx
@@ -372,8 +372,8 @@ subroutine init_dipole_interp()
 ! Build the data structure for interpolation for a dipole grid.
 
 ! Need a temporary data structure to build this.
-! These arrays keep a list of the x and y indices of dipole quads 
-! that potentially overlap the regular boxes. Need one for the u 
+! These arrays keep a list of the x and y indices of dipole quads
+! that potentially overlap the regular boxes. Need one for the u
 ! and one for the t grid.
 integer, allocatable :: ureg_list_lon(:,:,:)
 integer, allocatable :: ureg_list_lat(:,:,:)
@@ -399,7 +399,7 @@ allocate(treg_list_lat(num_reg_x, num_reg_y, max_reg_list_num))
 ! all the level numbers are N+1 or deeper will be used.
 surf_index = 1
 
-! Begin by finding the quad that contains the pole for the dipole t_grid. 
+! Begin by finding the quad that contains the pole for the dipole t_grid.
 ! To do this locate the u quad with the pole on its right boundary. This is on
 ! the row that is opposite the shifted pole and exactly follows a lon circle.
 pole_x = nx / 2;
@@ -424,11 +424,11 @@ else
    t_pole_y = u_pole_y + 1;
 endif
 
-! Loop through each of the dipole grid quads 
+! Loop through each of the dipole grid quads
 do i = 1, nx
    ! There's no wraparound in y, one box less than grid boundaries
    do j = 1, ny - 1
-      
+
       ! Only update regular boxes that contain all wet corners
       if( all_corners_wet(KIND_U_CURRENT_COMPONENT,i,j,surf_index) ) then
          ! Set up array of lons and lats for the corners of these u quads
@@ -437,11 +437,11 @@ do i = 1, nx
 
          ! Get list of regular boxes that cover this u dipole quad
          ! false indicates that for the u grid there's nothing special about pole
-         call reg_box_overlap(u_c_lons, u_c_lats, .false., reg_lon_ind, reg_lat_ind)         
-         ! Update the temporary data structures for the u quad 
+         call reg_box_overlap(u_c_lons, u_c_lats, .false., reg_lon_ind, reg_lat_ind)
+         ! Update the temporary data structures for the u quad
          call update_reg_list(u_dipole_num, ureg_list_lon, &
             ureg_list_lat, reg_lon_ind, reg_lat_ind, i, j)
-      endif 
+      endif
 
       ! Repeat for t dipole quads.
       ! Only update regular boxes that contain all wet corners
@@ -452,8 +452,8 @@ do i = 1, nx
 
          ! Is this the pole quad for the T grid?
          is_pole = (i == pole_x .and. j == t_pole_y)
-         
-         call reg_box_overlap(t_c_lons, t_c_lats, is_pole, reg_lon_ind, reg_lat_ind)         
+
+         call reg_box_overlap(t_c_lons, t_c_lats, is_pole, reg_lon_ind, reg_lat_ind)
          call update_reg_list(t_dipole_num, treg_list_lon, &
             treg_list_lat, reg_lon_ind, reg_lat_ind, i, j)
       endif
@@ -464,8 +464,8 @@ if (do_output()) write(*,*)'to determine (minimum) max_reg_list_num values for n
 if (do_output()) write(*,*)'u_dipole_num is ',maxval(u_dipole_num)
 if (do_output()) write(*,*)'t_dipole_num is ',maxval(t_dipole_num)
 
-! Invert the temporary data structure. The total number of entries will be 
-! the sum of the number of dipole cells for each regular cell. 
+! Invert the temporary data structure. The total number of entries will be
+! the sum of the number of dipole cells for each regular cell.
 u_total = sum(u_dipole_num)
 t_total = sum(t_dipole_num)
 
@@ -473,7 +473,7 @@ t_total = sum(t_dipole_num)
 allocate(u_dipole_lon_list(u_total), u_dipole_lat_list(u_total))
 allocate(t_dipole_lon_list(t_total), t_dipole_lat_list(t_total))
 
-! Fill up the long list by traversing the temporary structure. Need indices 
+! Fill up the long list by traversing the temporary structure. Need indices
 ! to keep track of where to put the next entry.
 u_index = 1
 t_index = 1
@@ -488,15 +488,15 @@ do i = 1, num_reg_x
 
       ! Copy all the close dipole quads for regular u box(i, j)
       do k = 1, u_dipole_num(i, j)
-         u_dipole_lon_list(u_index) = ureg_list_lon(i, j, k) 
-         u_dipole_lat_list(u_index) = ureg_list_lat(i, j, k) 
+         u_dipole_lon_list(u_index) = ureg_list_lon(i, j, k)
+         u_dipole_lat_list(u_index) = ureg_list_lat(i, j, k)
          u_index = u_index + 1
       enddo
-      
+
       ! Copy all the close dipoles for regular t box (i, j)
       do k = 1, t_dipole_num(i, j)
-         t_dipole_lon_list(t_index) = treg_list_lon(i, j, k) 
-         t_dipole_lat_list(t_index) = treg_list_lat(i, j, k) 
+         t_dipole_lon_list(t_index) = treg_list_lon(i, j, k)
+         t_dipole_lat_list(t_index) = treg_list_lat(i, j, k)
          t_index = t_index + 1
       enddo
 
@@ -505,12 +505,12 @@ enddo
 
 ! Confirm that the indices come out okay as debug
 if(u_index /= u_total + 1) then
-   msgstring = 'Storage indices did not balance for U grid: : contact DART developers'
-   call error_handler(E_ERR, 'init_dipole_interp', msgstring, source, revision, revdate)
+   string1 = 'Storage indices did not balance for U grid: : contact DART developers'
+   call error_handler(E_ERR, 'init_dipole_interp', string1, source, revision, revdate)
 endif
 if(t_index /= t_total + 1) then
-   msgstring = 'Storage indices did not balance for T grid: : contact DART developers'
-   call error_handler(E_ERR, 'init_dipole_interp', msgstring, source, revision, revdate)
+   string1 = 'Storage indices did not balance for T grid: : contact DART developers'
+   call error_handler(E_ERR, 'init_dipole_interp', string1, source, revision, revdate)
 endif
 
 end subroutine init_dipole_interp
@@ -566,12 +566,12 @@ subroutine reg_box_overlap(x_corners, y_corners, is_pole, reg_lon_ind, reg_lat_i
  logical,  intent(in)  :: is_pole
  integer,  intent(out) :: reg_lon_ind(2), reg_lat_ind(2)
 
-! Find a set of regular lat lon boxes that covers all of the area covered by 
-! a dipole grid qaud whose corners are given by the dimension four x_corners 
+! Find a set of regular lat lon boxes that covers all of the area covered by
+! a dipole grid qaud whose corners are given by the dimension four x_corners
 ! and y_corners arrays.  The two dimensional arrays reg_lon_ind and reg_lat_ind
 ! return the first and last indices of the regular boxes in latitude and
-! longitude respectively. These indices may wraparound for reg_lon_ind.  
-! A special computation is needed for a dipole quad that has the true north 
+! longitude respectively. These indices may wraparound for reg_lon_ind.
+! A special computation is needed for a dipole quad that has the true north
 ! pole in its interior. The logical is_pole is set to true if this is the case.
 ! This can only happen for the t grid.  If the longitude boxes overlap 0
 ! degrees, the indices returned are adjusted by adding the total number of
@@ -606,11 +606,11 @@ else
    ! right way. There is no guarantee on direction of lons in the
    ! high latitude dipole rows.
    ! All longitudes for non-pole rows have to be within 180 degrees
-   ! of one another. 
+   ! of one another.
    lon_min = minval(x_corners)
    lon_max = maxval(x_corners)
    if((lon_max - lon_min) > 180.0_r8) then
-      ! If the max longitude value is more than 180 
+      ! If the max longitude value is more than 180
       ! degrees larger than the min, then there must be wraparound.
       ! Then, find the smallest value > 180 and the largest < 180 to get range.
       lon_min = 360.0_r8
@@ -647,7 +647,7 @@ integer :: ip1
 ip1 = i + 1
 if(ip1 > nx) ip1 = 1
 
-corners(1) = x(i,   j  ) 
+corners(1) = x(i,   j  )
 corners(2) = x(ip1, j  )
 corners(3) = x(ip1, j+1)
 corners(4) = x(i,   j+1)
@@ -662,7 +662,7 @@ subroutine update_reg_list(reg_list_num, reg_list_lon, reg_list_lat, &
  integer, intent(inout) :: reg_list_num(:, :), reg_list_lon(:, :, :), reg_list_lat(:, :, :)
  integer, intent(inout) :: reg_lon_ind(2), reg_lat_ind(2)
  integer, intent(in)    :: dipole_lon_index, dipole_lat_index
- 
+
 ! Updates the data structure listing dipole quads that are in a given regular box
 integer :: ind_x, index_x, ind_y
 
@@ -674,12 +674,14 @@ do ind_x = reg_lon_ind(1), reg_lon_ind(2)
    ! Inside loop, need to go back to wraparound indices to find right box
    index_x = ind_x
    if(index_x > num_reg_x) index_x = index_x - num_reg_x
-   
+
    do ind_y = reg_lat_ind(1), reg_lat_ind(2)
       ! Make sure the list storage isn't full
       if(reg_list_num(index_x, ind_y) >= max_reg_list_num) then
-         write(msgstring,*) 'max_reg_list_num (',max_reg_list_num,') is too small ... increase'
-         call error_handler(E_ERR, 'update_reg_list', msgstring, source, revision, revdate)
+         write(string1,*) 'max_reg_list_num (',max_reg_list_num,') is too small ... increase'
+         string2 = "increase model_mod:max_reg_list_num and recompile."
+         call error_handler(E_ERR, 'update_reg_list', string1, source, revision, revdate, &
+                text2=string2)
       endif
 
       ! Increment the count
@@ -699,17 +701,15 @@ subroutine init_conditions(x)
 
 ! Returns a model state vector, x, that is some sort of appropriate
 ! initial condition for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter 
+! At present, this is only used if the namelist parameter
 ! start_from_restart is set to .false. in the program perfect_model_obs.
 
-character(len=128) :: msgstring2, msgstring3
-
-msgstring2 = "cannot run perfect_model_obs with 'start_from_restart = .false.' "
-msgstring3 = 'use pop_to_dart to generate an initial state'
+string2 = "cannot run perfect_model_obs with 'start_from_restart = .false.' "
+string3 = 'use pop_to_dart to generate an initial state'
 call error_handler(E_ERR,'init_conditions', &
                   'WARNING!!  POP model has no built-in default state', &
                   source, revision, revdate, &
-                  text2=msgstring2, text3=msgstring3)
+                  text2=string2, text3=string3)
 
 ! this code never reached - just here to avoid compiler warnings
 ! about an intent(out) variable not being set to a value.
@@ -755,17 +755,15 @@ subroutine init_time(time)
 
 ! Companion interface to init_conditions. Returns a time that is
 ! appropriate for starting up a long integration of the model.
-! At present, this is only used if the namelist parameter 
+! At present, this is only used if the namelist parameter
 ! start_from_restart is set to .false. in the program perfect_model_obs.
 
-character(len=128) :: msgstring2, msgstring3
-
-msgstring2 = "cannot run perfect_model_obs with 'start_from_restart = .false.' "
-msgstring3 = 'use pop_to_dart to generate an initial state which contains a timestamp'
+string2 = "cannot run perfect_model_obs with 'start_from_restart = .false.' "
+string3 = 'use pop_to_dart to generate an initial state which contains a timestamp'
 call error_handler(E_ERR,'init_time', &
                   'WARNING!!  POP model has no built-in default time', &
                   source, revision, revdate, &
-                  text2=msgstring2, text3=msgstring3)
+                  text2=string2, text3=string3)
 
 ! this code never reached - just here to avoid compiler warnings
 ! about an intent(out) variable not being set to a value.
@@ -785,7 +783,7 @@ subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
 ! Model interpolate will interpolate any state variable (S, T, U, V, PSURF) to
 ! the given location given a state vector. The type of the variable being
 ! interpolated is obs_type since normally this is used to find the expected
-! value of an observation at some location. The interpolated value is 
+! value of an observation at some location. The interpolated value is
 ! returned in interp_val and istatus is 0 for success.
 
 ! Local storage
@@ -804,7 +802,7 @@ if (debug > 2) call print_ranges(x)
 
 ! Let's assume failure.  Set return val to missing, then the code can
 ! just set istatus to something indicating why it failed, and return.
-! If the interpolation is good, the interp_val will be set to the 
+! If the interpolation is good, the interp_val will be set to the
 ! good value, and the last line here sets istatus to 0.
 ! make any error codes set here be in the 10s
 
@@ -820,13 +818,13 @@ lheight = loc_array(3)
 if (debug > 1) print *, 'requesting interpolation of ', obs_type, ' at ', llon, llat, lheight
 
 if( vert_is_height(location) ) then
-   ! Nothing to do 
+   ! Nothing to do
 elseif ( vert_is_surface(location) ) then
-   ! Nothing to do 
+   ! Nothing to do
 elseif (vert_is_level(location)) then
-   ! convert the level index to an actual depth 
+   ! convert the level index to an actual depth
    ind = nint(loc_array(3))
-   if ( (ind < 1) .or. (ind > size(zc)) ) then 
+   if ( (ind < 1) .or. (ind > size(zc)) ) then
       istatus = 11
       return
    else
@@ -904,17 +902,17 @@ end subroutine model_interpolate
 
 !------------------------------------------------------------------
 
-! Three different types of grids are used here. The POP dipole 
+! Three different types of grids are used here. The POP dipole
 ! grid is referred to as a dipole grid and each region is
-! referred to as a quad, short for quadrilateral. 
+! referred to as a quad, short for quadrilateral.
 ! The longitude latitude rectangular grid with possibly irregular
 ! spacing in latitude used for some POP applications and testing
-! is referred to as the irregular grid and each region is 
+! is referred to as the irregular grid and each region is
 ! called a box.
 ! Finally, a regularly spaced longitude latitude grid is used
 ! as a computational tool for interpolating from the dipole
 ! grid. This is referred to as the regular grid and each region
-! is called a box. 
+! is called a box.
 ! All grids are referenced by the index of the lower left corner
 ! of the quad or box.
 
@@ -931,7 +929,7 @@ subroutine lon_lat_interpolate(x, lon, lat, var_type, height_ind, interp_val, is
  real(r8), intent(out) :: interp_val
  integer,  intent(out) :: istatus
 
-! Subroutine to interpolate to a lon lat location given the state vector 
+! Subroutine to interpolate to a lon lat location given the state vector
 ! for that level, x. This works just on one horizontal slice.
 ! NOTE: Using array sections to pass in the x array may be inefficient on some
 ! compiler/platform setups. Might want to pass in the entire array with a base
@@ -1160,7 +1158,7 @@ subroutine lon_bounds(lon, nlons, lon_array, bot, top, fract)
 ! Given a longitude lon, the array of longitudes for grid boundaries, and the
 ! number of longitudes in the grid, returns the indices of the longitude
 ! below and above the location longitude and the fraction of the distance
-! between. It is assumed that the longitude wraps around for a global grid. 
+! between. It is assumed that the longitude wraps around for a global grid.
 ! Since longitude grids are going to be regularly spaced, this could be made more efficient.
 ! Algorithm fails for a silly grid that has only two longitudes separated by 180 degrees.
 
@@ -1187,7 +1185,7 @@ enddo
 bot = nlons
 top = 1
 dist_bot = lon_dist(lon, lon_array(bot, 1))
-dist_top = lon_dist(lon, lon_array(top, 1)) 
+dist_top = lon_dist(lon, lon_array(top, 1))
 fract = abs(dist_bot) / (abs(dist_bot) + dist_top)
 
 end subroutine lon_bounds
@@ -1205,9 +1203,9 @@ subroutine lat_bounds(lat, nlats, lat_array, bot, top, fract, istatus)
 ! Given a latitude lat, the array of latitudes for grid boundaries, and the
 ! number of latitudes in the grid, returns the indices of the latitude
 ! below and above the location latitude and the fraction of the distance
-! between. istatus is returned as 0 unless the location latitude is 
-! south of the southernmost grid point (1 returned) or north of the 
-! northernmost (2 returned). If one really had lots of polar obs would 
+! between. istatus is returned as 0 unless the location latitude is
+! south of the southernmost grid point (1 returned) or north of the
+! northernmost (2 returned). If one really had lots of polar obs would
 ! want to worry about interpolating around poles.
 
 ! Local storage
@@ -1276,7 +1274,7 @@ subroutine get_dipole_quad(lon, lat, qlons, qlats, num_inds, start_ind, &
 
 ! Given the lon and lat of a point, and a list of the
 ! indices of the quads that might contain a point at (lon, lat), determines
-! which quad contains the point.  istatus is returned as 0 if all went 
+! which quad contains the point.  istatus is returned as 0 if all went
 ! well and 1 if the point was not found to be in any of the quads.
 
 integer :: i, my_index
@@ -1309,7 +1307,7 @@ function in_quad(lon, lat, x_corners, y_corners)
  real(r8), intent(in)  :: lon, lat, x_corners(4), y_corners(4)
  logical               :: in_quad
 
-! Return in_quad true if the point (lon, lat) is in the quad with 
+! Return in_quad true if the point (lon, lat) is in the quad with
 ! the given corners.
 
 ! Do this by line tracing in latitude for now. For non-pole point, want a vertical
@@ -1376,15 +1374,15 @@ subroutine line_intercept(side_x_in, side_y, x_point_in, y_point, &
 ! Find the intercept of a vertical line from point (x_point, y_point) and
 ! a line segment with endpoints side_x and side_y.
 ! For a given side have endpoints (side_x1, side_y1) and (side_x2, side_y2)
-! so equation of segment is y = side_y1 + m(x-side_x1) for y 
+! so equation of segment is y = side_y1 + m(x-side_x1) for y
 ! between side_y1 and side_y2.
-! Intersection of vertical line and line containing side 
+! Intersection of vertical line and line containing side
 ! occurs at y = side_y1 + m(x_point - side_x1); need this
 ! y to be between side_y1 and side_y2.
 ! If the vertical line is colinear with the side but the point is not on the side, return
 ! cant_be_in_box as true. If the point is on the side, return in_box true.
 ! If the intersection of the vertical line and the side occurs at a point above
-! the given point, return 1 for intercept_above. If the intersection occurs 
+! the given point, return 1 for intercept_above. If the intersection occurs
 ! below, return 1 for intercept_below. If the vertical line does not intersect
 ! the segment, return false and 0 for all intent out arguments.
 
@@ -1406,7 +1404,7 @@ if(maxval(side_x) - minval(side_x) > 180.0_r8) then
    if(x_point < 180.0_r8) x_point = x_point + 360.0_r8
 endif
 
-! Initialize the default returns 
+! Initialize the default returns
 cant_be_in_box   = .false.
 in_box           = .false.
 intercept_above = 0
@@ -1467,7 +1465,7 @@ subroutine quad_bilinear_interp(lon_in, lat, x_corners_in, y_corners, &
 ! latitude of the 4 corners of a quadrilateral and the values at the
 ! four corners, interpolates to (lon_in, lat) which is assumed to
 ! be in the quad. This is done by bilinear interpolation, fitting
-! a function of the form a + bx + cy + dxy to the four points and 
+! a function of the form a + bx + cy + dxy to the four points and
 ! then evaluating this function at (lon, lat). The fit is done by
 ! solving the 4x4 system of equations for a, b, c, and d. The system
 ! is reduced to a 3x3 by eliminating a from the first three equations
@@ -1546,7 +1544,7 @@ interp_val = a + r(1)*lon + r(2)*lat + r(3)*lon*lat
 ! Avoid exceeding maxima or minima as stopgap for poles problem
 ! When doing bilinear interpolation in quadrangle, can get interpolated
 ! values that are outside the range of the corner values
-if(interp_val > maxval(p)) then 
+if(interp_val > maxval(p)) then
    interp_val = maxval(p)
 else if(interp_val < minval(p)) then
    interp_val = minval(p)
@@ -1575,7 +1573,7 @@ denom = deter3(m)
 ! Loop to compute the numerator for each component of r
 do i = 1, 3
    m_sub = m
-   m_sub(:, i) = v   
+   m_sub(:, i) = v
    numer = deter3(m_sub)
    r(i) = numer / denom
 enddo
@@ -1628,7 +1626,7 @@ if(lheight <= hgt_array(1)) then
    top = 1
    bot = 2
    ! NOTE: the fract definition is the relative distance from bottom to top
-   fract = 1.0_r8 
+   fract = 1.0_r8
 if (debug > 7) print *, 'above first level in height'
 if (debug > 7) print *, 'hgt_array, top, bot, fract=', hgt_array(1), top, bot, fract
    return
@@ -1758,10 +1756,10 @@ if ( .not. module_initialized ) call static_init_model
 if (debug > 5) print *, 'asking for meta data about index ', index_in
 
 if (index_in < start_index(S_index+1)) then
-   var_type = KIND_SALINITY  
+   var_type = KIND_SALINITY
    startind = start_index(S_index)
 else if (index_in < start_index(T_index+1)) then
-   var_type = KIND_POTENTIAL_TEMPERATURE  
+   var_type = KIND_POTENTIAL_TEMPERATURE
    startind = start_index(T_index)
 else if (index_in < start_index(U_index+1)) then
    var_type = KIND_U_CURRENT_COMPONENT
@@ -1769,7 +1767,7 @@ else if (index_in < start_index(U_index+1)) then
 else if (index_in < start_index(V_index+1)) then
    var_type = KIND_V_CURRENT_COMPONENT
    startind = start_index(V_index)
-else 
+else
    var_type = KIND_SEA_SURFACE_PRESSURE
    startind = start_index(PSURF_index)
 endif
@@ -1844,7 +1842,7 @@ function nc_write_model_atts( ncFileID ) result (ierr)
 !
 ! Typical sequence for adding new dimensions,variables,attributes:
 ! NF90_OPEN             ! open existing netCDF dataset
-!    NF90_redef         ! put into define mode 
+!    NF90_redef         ! put into define mode
 !    NF90_def_dim       ! define additional dimensions (if any)
 !    NF90_def_var       ! define variables: from name, type, and dims
 !    NF90_put_att       ! assign attribute values
@@ -1875,7 +1873,7 @@ integer :: ulonVarID, ulatVarID, tlonVarID, tlatVarID, ZGVarID, ZCVarID
 integer :: KMTVarID, KMUVarID
 
 ! for the prognostic variables
-integer :: SVarID, TVarID, UVarID, VVarID, PSURFVarID 
+integer :: SVarID, TVarID, UVarID, VVarID, PSURFVarID
 
 !----------------------------------------------------------------------
 ! variables for the namelist output
@@ -1887,7 +1885,7 @@ integer :: nlines, linelen
 logical :: has_pop_namelist
 
 !----------------------------------------------------------------------
-! local variables 
+! local variables
 !----------------------------------------------------------------------
 
 ! we are going to need these to record the creation date in the netCDF file.
@@ -1900,7 +1898,7 @@ integer, dimension(8) :: values      ! needed by F90 DATE_AND_TIME intrinsic
 character(len=NF90_MAX_NAME) :: str1
 
 integer :: i
-character(len=128)  :: filename
+character(len=256) :: filename
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -1916,7 +1914,7 @@ ierr = -1 ! assume things go poorly
 write(filename,*) 'ncFileID', ncFileID
 
 !-------------------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file, 
+! make sure ncFileID refers to an open netCDF file,
 ! and then put into define mode.
 !-------------------------------------------------------------------------------
 
@@ -1926,7 +1924,7 @@ call nc_check(nf90_Redef(ncFileID),'nc_write_model_atts',   'redef '//trim(filen
 
 !-------------------------------------------------------------------------------
 ! We need the dimension ID for the number of copies/ensemble members, and
-! we might as well check to make sure that Time is the Unlimited dimension. 
+! we might as well check to make sure that Time is the Unlimited dimension.
 ! Our job is create the 'model size' dimension.
 !-------------------------------------------------------------------------------
 
@@ -1938,9 +1936,9 @@ call nc_check(nf90_inq_dimid(ncid=ncFileID, name='time', dimid=  TimeDimID), &
                            'nc_write_model_atts', 'time dimid '//trim(filename))
 
 if ( TimeDimID /= unlimitedDimId ) then
-   write(msgstring,*)'Time Dimension ID ',TimeDimID, &
+   write(string1,*)'Time Dimension ID ',TimeDimID, &
              ' should equal Unlimited Dimension ID',unlimitedDimID
-   call error_handler(E_ERR,'nc_write_model_atts', msgstring, source, revision, revdate)
+   call error_handler(E_ERR,'nc_write_model_atts', string1, source, revision, revdate)
 endif
 
 !-------------------------------------------------------------------------------
@@ -1950,7 +1948,7 @@ call nc_check(nf90_def_dim(ncid=ncFileID, name='StateVariable', len=model_size, 
         dimid = StateVarDimID),'nc_write_model_atts', 'state def_dim '//trim(filename))
 
 !-------------------------------------------------------------------------------
-! Write Global Attributes 
+! Write Global Attributes
 !-------------------------------------------------------------------------------
 
 call DATE_AND_TIME(crdate,crtime,crzone,values)
@@ -1980,8 +1978,8 @@ else
 endif
 
 if (debug > 0)    print *, 'pop namelist: nlines, linelen = ', nlines, linelen
-  
-if (has_pop_namelist) then 
+
+if (has_pop_namelist) then
    allocate(textblock(nlines))
    textblock = ''
 
@@ -2021,7 +2019,7 @@ if ( output_state_vector ) then
    call nc_check(nf90_put_att(ncFileID,StateVarVarID,'valid_range',(/ 1,model_size /)),&
                  'nc_write_model_atts', 'statevariable valid_range '//trim(filename))
 
-   ! Define the actual (3D) state vector, which gets filled as time goes on ... 
+   ! Define the actual (3D) state vector, which gets filled as time goes on ...
    call nc_check(nf90_def_var(ncid=ncFileID, name='state', xtype=nf90_real, &
                  dimids=(/StateVarDimID,MemberDimID,unlimitedDimID/),varid=StateVarID),&
                  'nc_write_model_atts','state def_var '//trim(filename))
@@ -2042,14 +2040,14 @@ else
    !----------------------------------------------------------------------------
    ! Define the new dimensions IDs
    !----------------------------------------------------------------------------
-   
+
    call nc_check(nf90_def_dim(ncid=ncFileID, name='i', &
           len = Nx, dimid = NlonDimID),'nc_write_model_atts', 'i def_dim '//trim(filename))
    call nc_check(nf90_def_dim(ncid=ncFileID, name='j', &
           len = Ny, dimid = NlatDimID),'nc_write_model_atts', 'j def_dim '//trim(filename))
    call nc_check(nf90_def_dim(ncid=ncFileID, name='k', &
           len = Nz, dimid =   NzDimID),'nc_write_model_atts', 'k def_dim '//trim(filename))
-   
+
    !----------------------------------------------------------------------------
    ! Create the (empty) Coordinate Variables and the Attributes
    !----------------------------------------------------------------------------
@@ -2291,7 +2289,7 @@ end function nc_write_model_atts
 
 !------------------------------------------------------------------
 
-function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)         
+function nc_write_model_vars( ncFileID, statevec, copyindex, timeindex ) result (ierr)
  integer,                intent(in) :: ncFileID      ! netCDF file identifier
  real(r8), dimension(:), intent(in) :: statevec
  integer,                intent(in) :: copyindex
@@ -2325,7 +2323,7 @@ integer :: VarID
 
 real(r8), dimension(Nx,Ny,Nz) :: data_3d
 real(r8), dimension(Nx,Ny)    :: data_2d
-character(len=128)  :: filename
+character(len=256) :: filename
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -2341,7 +2339,7 @@ ierr = -1 ! assume things go poorly
 write(filename,*) 'ncFileID', ncFileID
 
 !-------------------------------------------------------------------------------
-! make sure ncFileID refers to an open netCDF file, 
+! make sure ncFileID refers to an open netCDF file,
 !-------------------------------------------------------------------------------
 
 call nc_check(nf90_Inquire(ncFileID,nDimensions,nVariables,nAttributes,unlimitedDimID),&
@@ -2421,7 +2419,7 @@ subroutine pert_model_state(state, pert_state, interf_provided)
 ! A model may choose to provide a NULL INTERFACE by returning
 ! .false. for the interf_provided argument. This indicates to
 ! the filter that if it needs to generate perturbed states, it
-! may do so by adding a perturbation to each model state 
+! may do so by adding a perturbation to each model state
 ! variable independently. The interf_provided argument
 ! should be returned as .true. if the model wants to do its own
 ! perturbing of states.
@@ -2475,7 +2473,7 @@ subroutine print_ranges(x)
  real(r8), intent(in) :: x(:)
 
 ! intended for debugging use = print out the data min/max for each
-! field in the state vector, along with the starting and ending 
+! field in the state vector, along with the starting and ending
 ! indices for each field.
 
 integer :: s, e
@@ -2516,9 +2514,10 @@ end subroutine print_ranges
 !------------------------------------------------------------------
 
 subroutine restart_file_to_sv(filename, state_vector, model_time)
- character(len=*), intent(in)    :: filename 
- real(r8),         intent(inout) :: state_vector(:)
- type(time_type),  intent(out)   :: model_time
+
+character(len=*), intent(in)    :: filename
+real(r8),         intent(inout) :: state_vector(:)
+type(time_type),  intent(out)   :: model_time
 
 ! Reads the current time and state variables from a POP restart
 ! file and packs them into a dart state vector.
@@ -2528,17 +2527,17 @@ real(r8) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
 integer  :: i, j, k, ivar, indx
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
-character(len=NF90_MAX_NAME) :: varname 
+character(len=NF90_MAX_NAME) :: varname
 integer :: VarID, numdims, dimlen
 integer :: ncid, iyear, imonth, iday, ihour, iminute, isecond
-character(len=256) :: myerrorstring 
+character(len=256) :: myerrorstring
 
 if ( .not. module_initialized ) call static_init_model
 
 state_vector = MISSING_R8
 
-! Check that the input file exists ... 
-! Read the time data. 
+! Check that the input file exists ...
+! Read the time data.
 ! Note from Nancy Norton as pertains time:
 ! "The time recorded in the pop2 restart files is the current time,
 ! which corresponds to the time of the XXXX_CUR variables.
@@ -2548,7 +2547,7 @@ state_vector = MISSING_R8
 ! The ihour, iminute, and isecond variables are used for internal
 ! model counting purposes, but because isecond is rounded to the nearest
 ! integer, it is possible that using ihour,iminute,isecond information
-! on the restart file to determine the exact curtime would give you a 
+! on the restart file to determine the exact curtime would give you a
 ! slightly wrong answer."
 !
 ! DART only knows about integer number of seconds, so using the rounded one
@@ -2556,8 +2555,8 @@ state_vector = MISSING_R8
 ! that takes ihour, iminute, isecond information.
 
 if ( .not. file_exist(filename) ) then
-   write(msgstring,*) 'cannot open file ', trim(filename),' for reading.'
-   call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
+   write(string1,*) 'cannot open file ', trim(filename),' for reading.'
+   call error_handler(E_ERR,'restart_file_to_sv',string1,source,revision,revdate)
 endif
 
 call nc_check( nf90_open(trim(filename), NF90_NOWRITE, ncid), &
@@ -2615,20 +2614,20 @@ do ivar=1, n3dfields
             'restart_file_to_sv', 'inquire '//trim(myerrorstring))
 
    if (numdims /= 3) then
-      write(msgstring,*) trim(myerrorstring),' does not have exactly 3 dimensions'
-      call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
+      write(string1,*) trim(myerrorstring),' does not have exactly 3 dimensions'
+      call error_handler(E_ERR,'restart_file_to_sv',string1,source,revision,revdate)
    endif
 
    do i = 1,numdims
-      write(msgstring,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
+      write(string1,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            'restart_file_to_sv', msgstring)
+            'restart_file_to_sv', string1)
 
       if (dimlen /= size(data_3d_array,i)) then
-         write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
-         call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
+         write(string1,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
+         call error_handler(E_ERR,'restart_file_to_sv',string1,source,revision,revdate)
       endif
-   enddo   
+   enddo
 
    ! Actually get the variable and stuff it into the array
 
@@ -2661,20 +2660,20 @@ do ivar=(n3dfields+1), (n3dfields+n2dfields)
             'restart_file_to_sv', 'inquire '//trim(myerrorstring))
 
    if (numdims /= 2) then
-      write(msgstring,*) trim(myerrorstring),' does not have exactly 2 dimensions'
-      call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
+      write(string1,*) trim(myerrorstring),' does not have exactly 2 dimensions'
+      call error_handler(E_ERR,'restart_file_to_sv',string1,source,revision,revdate)
    endif
 
    do i = 1,numdims
-      write(msgstring,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
+      write(string1,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            'restart_file_to_sv', msgstring)
+            'restart_file_to_sv', string1)
 
       if (dimlen /= size(data_2d_array,i)) then
-         write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
-         call error_handler(E_ERR,'restart_file_to_sv',msgstring,source,revision,revdate)
+         write(string1,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
+         call error_handler(E_ERR,'restart_file_to_sv',string1,source,revision,revdate)
       endif
-   enddo   
+   enddo
 
    ! Actually get the variable and stuff it into the array
 
@@ -2695,9 +2694,10 @@ end subroutine restart_file_to_sv
 !------------------------------------------------------------------
 
 subroutine sv_to_restart_file(state_vector, filename, statedate)
- real(r8),         intent(in) :: state_vector(:)
- character(len=*), intent(in) :: filename 
- type(time_type),  intent(in) :: statedate
+
+real(r8),         intent(in) :: state_vector(:)
+character(len=*), intent(in) :: filename
+type(time_type),  intent(in) :: statedate
 
 ! Writes the current time and state variables from a dart state
 ! vector (1d fortran array) into a POP netcdf restart file.
@@ -2709,8 +2709,8 @@ type(time_type) :: pop_time
 real(r8) :: data_2d_array(Nx,Ny), data_3d_array(Nx,Ny,Nz)
 
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimIDs
-character(len=NF90_MAX_NAME)          :: varname 
-character(len=256)                    :: myerrorstring 
+character(len=NF90_MAX_NAME)          :: varname
+character(len=256)                    :: myerrorstring
 
 integer :: i, ivar, ncid, VarID, numdims, dimlen
 
@@ -2720,13 +2720,13 @@ integer :: i, ivar, ncid, VarID, numdims, dimlen
 
 if ( .not. module_initialized ) call static_init_model
 
-! Check that the input file exists. 
-! make sure the time tag in the restart file matches 
+! Check that the input file exists.
+! make sure the time tag in the restart file matches
 ! the current time of the DART state ...
 
 if ( .not. file_exist(filename)) then
-   write(msgstring,*)trim(filename),' does not exist. FATAL error.'
-   call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate) 
+   write(string1,*)trim(filename),' does not exist. FATAL error.'
+   call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate)
 endif
 
 call nc_check( nf90_open(trim(filename), NF90_WRITE, ncid), &
@@ -2747,12 +2747,12 @@ call nc_check( nf90_get_att(ncid, NF90_GLOBAL, 'isecond', isecond), &
 pop_time = set_date(iyear, imonth, iday, ihour, iminute, isecond)
 
 if ( pop_time /= statedate ) then
-   call print_time(statedate,'DART current time',logfileunit) 
-   call print_time( pop_time,'POP  current time',logfileunit) 
-   call print_time(statedate,'DART current time') 
-   call print_time( pop_time,'POP  current time') 
-   write(msgstring,*)trim(filename),' current time /= model time. FATAL error.'
-   call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate) 
+   call print_time(statedate,'DART current time',logfileunit)
+   call print_time( pop_time,'POP  current time',logfileunit)
+   call print_time(statedate,'DART current time')
+   call print_time( pop_time,'POP  current time')
+   write(string1,*)trim(filename),' current time /= model time. FATAL error.'
+   call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate)
 endif
 
 if (do_output()) &
@@ -2774,18 +2774,18 @@ do ivar=1, n3dfields
             'sv_to_restart_file', 'inquire '//trim(myerrorstring))
 
    if (numdims /= 3) then
-      write(msgstring,*) trim(myerrorstring),' does not have exactly 3 dimensions'
-      call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
+      write(string1,*) trim(myerrorstring),' does not have exactly 3 dimensions'
+      call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate)
    endif
 
    do i = 1,numdims
-      write(msgstring,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
+      write(string1,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            'sv_to_restart_file', msgstring)
+            'sv_to_restart_file', string1)
 
       if (dimlen /= size(data_3d_array,i)) then
-         write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
-         call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
+         write(string1,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_3d_array,i)
+         call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate)
       endif
    enddo
 
@@ -2812,18 +2812,18 @@ do ivar=(n3dfields+1), (n3dfields+n2dfields)
             'sv_to_restart_file', 'inquire '//trim(myerrorstring))
 
    if (numdims /= 2) then
-      write(msgstring,*) trim(myerrorstring),' does not have exactly 2 dimensions'
-      call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
+      write(string1,*) trim(myerrorstring),' does not have exactly 2 dimensions'
+      call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate)
    endif
 
    do i = 1,numdims
-      write(msgstring,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
+      write(string1,'(''inquire dimension'',i2,A)') i,trim(myerrorstring)
       call nc_check(nf90_inquire_dimension(ncid, dimIDs(i), len=dimlen), &
-            'sv_to_restart_file', msgstring)
+            'sv_to_restart_file', string1)
 
       if (dimlen /= size(data_2d_array,i)) then
-         write(msgstring,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
-         call error_handler(E_ERR,'sv_to_restart_file',msgstring,source,revision,revdate)
+         write(string1,*) trim(myerrorstring),'dim/dimlen',i,dimlen,'not',size(data_2d_array,i)
+         call error_handler(E_ERR,'sv_to_restart_file',string1,source,revision,revdate)
       endif
    enddo
 
@@ -2860,12 +2860,12 @@ dim2 = size(data_2d_array,2)
 varname = progvarnames(varindex)
 
 if (dim1 /= Nx) then
-   write(msgstring,*)trim(varname),' 2d array dim 1 ',dim1,' /= ',Nx
-   call error_handler(E_ERR,'vector_to_2d_prog_var',msgstring,source,revision,revdate) 
+   write(string1,*)trim(varname),' 2d array dim 1 ',dim1,' /= ',Nx
+   call error_handler(E_ERR,'vector_to_2d_prog_var',string1,source,revision,revdate)
 endif
 if (dim2 /= Ny) then
-   write(msgstring,*)trim(varname),' 2d array dim 2 ',dim2,' /= ',Ny
-   call error_handler(E_ERR,'vector_to_2d_prog_var',msgstring,source,revision,revdate) 
+   write(string1,*)trim(varname),' 2d array dim 2 ',dim2,' /= ',Ny
+   call error_handler(E_ERR,'vector_to_2d_prog_var',string1,source,revision,revdate)
 endif
 
 ii = start_index(varindex)
@@ -2902,16 +2902,16 @@ dim3 = size(data_3d_array,3)
 varname = progvarnames(varindex)
 
 if (dim1 /= Nx) then
-   write(msgstring,*)trim(varname),' 3d array dim 1 ',dim1,' /= ',Nx
-   call error_handler(E_ERR,'vector_to_3d_prog_var',msgstring,source,revision,revdate) 
+   write(string1,*)trim(varname),' 3d array dim 1 ',dim1,' /= ',Nx
+   call error_handler(E_ERR,'vector_to_3d_prog_var',string1,source,revision,revdate)
 endif
 if (dim2 /= Ny) then
-   write(msgstring,*)trim(varname),' 3d array dim 2 ',dim2,' /= ',Ny
-   call error_handler(E_ERR,'vector_to_3d_prog_var',msgstring,source,revision,revdate) 
+   write(string1,*)trim(varname),' 3d array dim 2 ',dim2,' /= ',Ny
+   call error_handler(E_ERR,'vector_to_3d_prog_var',string1,source,revision,revdate)
 endif
 if (dim3 /= Nz) then
-   write(msgstring,*)trim(varname),' 3d array dim 3 ',dim3,' /= ',Nz
-   call error_handler(E_ERR,'vector_to_3d_prog_var',msgstring,source,revision,revdate) 
+   write(string1,*)trim(varname),' 3d array dim 3 ',dim3,' /= ',Nz
+   call error_handler(E_ERR,'vector_to_3d_prog_var',string1,source,revision,revdate)
 endif
 
 ii = start_index(varindex)
@@ -2994,9 +2994,9 @@ function all_corners_wet(obs_kind, lon_ind, lat_ind, hgt_ind)
  integer :: lon_ind_p1
 
 ! returns true only if all of the corners are above land
- 
+
 ! set to fail so we can return early.
-all_corners_wet = .false. 
+all_corners_wet = .false.
 
 ! Have to worry about wrapping in longitude but not in latitude
 lon_ind_p1 = lon_ind + 1
@@ -3038,8 +3038,8 @@ call nc_check(nf90_def_dim(ncid, 'i', nlon, NlonDimID),'write_grid_netcdf')
 call nc_check(nf90_def_dim(ncid, 'j', nlat, NlatDimID),'write_grid_netcdf')
 call nc_check(nf90_def_dim(ncid, 'k',   nz,   NzDimID),'write_grid_netcdf')
 
-dimids(1) = NlonDimID 
-dimids(2) = NlatDimID 
+dimids(1) = NlonDimID
+dimids(2) = NlatDimID
 
 ! define variables
 
@@ -3120,7 +3120,7 @@ if (present(dist)) dist = 1.0e9   !something big and positive (far away)
 ! Get all the potentially close obs but no dist (optional argument dist(:)
 ! is not present) This way, we are decreasing the number of distance
 ! computations that will follow.  This is a horizontal-distance operation and
-! we don't need to have the relevant vertical coordinate information yet 
+! we don't need to have the relevant vertical coordinate information yet
 ! (for obs).
 
 call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs, obs_kind, &
@@ -3179,7 +3179,7 @@ do i = 1, Nx
       rulat = -90.0_r8 + (j - 0.5_r8) * 180.0_r8 / Ny
       write(12, *) i, j, rulon, rulat
       write(13, *) i, j, rtlon, rtlat
-      ! Now add some wave pattern data 
+      ! Now add some wave pattern data
       u_val = sin(3.0_r8*(rulat + 11.0_r8)*2.0_r8*PI/360.0_r8) * &
               sin(4.0_r8*(rulon + 17.0_r8)*2.0_r8*PI/360.0_r8)
       t_val = sin(3.0_r8*(rtlat + 11.0_r8)*2.0_r8*PI/360.0_r8) * &
@@ -3262,7 +3262,7 @@ real(r8), allocatable :: reg_u_x(:), reg_t_x(:), dipole_u(:, :), dipole_t(:, :)
 module_initialized = .true.
 
 if(test_casenum == 1 .or. test_casenum == 3) then
-   ! Case 1 or 3: read in from regular grid 
+   ! Case 1 or 3: read in from regular grid
    open(unit=12, position='rewind', action='read', file='regular_grid_u')
    open(unit=13, position='rewind', action='read', file='regular_grid_t')
    open(unit=14, position='rewind', action='read', file='regular_grid_u_data')
@@ -3287,8 +3287,8 @@ endif
 read(12, *) nx, ny
 read(13, *) nx_temp, ny_temp
 if(nx /= nx_temp .or. ny /= ny_temp) then
-   write(msgstring,*)'mismatch nx,nx_temp ',nx,nx_temp,' or ny,ny_temp',ny,ny_temp
-   call error_handler(E_ERR,'test_interpolation',msgstring,source,revision,revdate)
+   write(string1,*)'mismatch nx,nx_temp ',nx,nx_temp,' or ny,ny_temp',ny,ny_temp
+   call error_handler(E_ERR,'test_interpolation',string1,source,revision,revdate)
 endif
 
 ! Allocate stuff for the first grid (the one being interpolated from)
@@ -3331,7 +3331,7 @@ call init_interp()
 ! Case 2: dipole to regular grid
 ! Case 3: regular grid to regular grid with same grid as dipole in SH
 ! Case 4: regular grid with same grid as dipole in SH to regular grid
-! Case 5: regular grid with same grid as dipole in SH to dipole 
+! Case 5: regular grid with same grid as dipole in SH to dipole
 ! Case 6: dipole to regular grid with same grid as dipole in SH
 if(test_casenum == 1 .or. test_casenum == 5) then
    ! Output to dipole grid
@@ -3358,8 +3358,8 @@ endif
 read(22, *) dnx, dny
 read(23, *) dnx_temp, dny_temp
 if(dnx /= dnx_temp .or. dny /= dny_temp) then
-   write(msgstring,*)'mismatch dnx,dnx_temp ',dnx,dnx_temp,' or dny,dny_temp',dny,dny_temp
-   call error_handler(E_ERR,'test_interpolation',msgstring,source,revision,revdate)
+   write(string1,*)'mismatch dnx,dnx_temp ',dnx,dnx_temp,' or dny,dny_temp',dny,dny_temp
+   call error_handler(E_ERR,'test_interpolation',string1,source,revision,revdate)
 endif
 
 allocate(dulon(dnx, dny), dulat(dnx, dny), dtlon(dnx, dny), dtlat(dnx, dny))
@@ -3383,9 +3383,9 @@ do imain = 1, dnx
          KIND_U_CURRENT_COMPONENT, height_ind, dipole_u(imain, jmain), istatus)
 
       if ( istatus /= 0 ) then
-         write(msgstring,'(''cell'',i4,i4,1x,f12.8,1x,f12.8,'' U interp failed - code '',i4)') &
+         write(string1,'(''cell'',i4,i4,1x,f12.8,1x,f12.8,'' U interp failed - code '',i4)') &
               imain, jmain, dulon(imain, jmain), dulat(imain, jmain), istatus
-         call error_handler(E_MSG,'test_interpolation',msgstring,source,revision,revdate)
+         call error_handler(E_MSG,'test_interpolation',string1,source,revision,revdate)
       endif
 
       write(24, *) dulon(imain, jmain), dulat(imain, jmain), dipole_u(imain, jmain)
@@ -3396,9 +3396,9 @@ do imain = 1, dnx
          KIND_POTENTIAL_TEMPERATURE, height_ind, dipole_t(imain, jmain), istatus)
 
       if ( istatus /= 0 ) then
-         write(msgstring,'(''cell'',i4,i4,1x,f12.8,1x,f12.8,'' T interp failed - code '',i4)') &
+         write(string1,'(''cell'',i4,i4,1x,f12.8,1x,f12.8,'' T interp failed - code '',i4)') &
               imain,jmain, dtlon(imain, jmain), dtlat(imain, jmain), istatus
-         call error_handler(E_MSG,'test_interpolation',msgstring,source,revision,revdate)
+         call error_handler(E_MSG,'test_interpolation',string1,source,revision,revdate)
       endif
 
       write(25, *) dtlon(imain, jmain), dtlat(imain, jmain), dipole_t(imain, jmain)
@@ -3471,15 +3471,15 @@ subroutine do_interp(x, base_offset, hgt_bot, hgt_top, hgt_fract, &
  integer,   intent(in) :: obs_type
  real(r8), intent(out) :: interp_val
  integer,  intent(out) :: istatus
- 
-! do a 2d horizontal interpolation for the value at the bottom level, 
-! then again for the top level, then do a linear interpolation in the 
+
+! do a 2d horizontal interpolation for the value at the bottom level,
+! then again for the top level, then do a linear interpolation in the
 ! vertical to get the final value.
 
 integer  :: offset
 real(r8) :: bot_val, top_val
 
-! Find the base location for the bottom height and interpolate horizontally 
+! Find the base location for the bottom height and interpolate horizontally
 !  on this level.  Do bottom first in case it is below the ocean floor; can
 !  avoid the second horizontal interpolation.
 offset = base_offset + (hgt_bot - 1) * nx * ny
@@ -3492,7 +3492,7 @@ if(istatus /= 0) return
 if (debug > 6) &
    print *, 'bot_val = ', bot_val
 
-! Find the base location for the top height and interpolate horizontally 
+! Find the base location for the top height and interpolate horizontally
 !  on this level.
 offset = base_offset + (hgt_top - 1) * nx * ny
 if (debug > 6) &
@@ -3525,14 +3525,14 @@ subroutine insitu_temp(potemp, s, lpres, insitu_t)
 ! potential temp, salinity, local pressure in decibars, and you get
 ! back in-situ temperature (called sensible temperature in the atmosphere;
 ! what a thermometer would measure).  the original (F77 fixed format) code
-! had a computed goto which is deprecated/obsolete.  i replaced it with 
+! had a computed goto which is deprecated/obsolete.  i replaced it with
 ! a set of 'if() then else if()' lines.  i did try to not alter the original
 ! code so much it wasn't recognizable anymore.
 !
 !  aliciak note: rp = 0 and press = local pressure as function of depth
 !  will return potemp given temp.
-!  the trick here that if you make rp = local pressure and press = 0.0, 
-!  and put potemp in the "temp" variable , it will return insitu temp in the 
+!  the trick here that if you make rp = local pressure and press = 0.0,
+!  and put potemp in the "temp" variable , it will return insitu temp in the
 !  potemp variable.
 
 ! an example figure of the relationship of potential temp and in-situ temp
@@ -3542,7 +3542,7 @@ subroutine insitu_temp(potemp, s, lpres, insitu_t)
 !     title:
 !     *****
 
-!       insitu_temp  -- calculate sensible (in-situ) temperature from 
+!       insitu_temp  -- calculate sensible (in-situ) temperature from
 !                       local pressure, salinity, and potential temperature
 
 !     purpose:
@@ -3596,11 +3596,11 @@ real(r8) :: dp,p,q,r1,r2,r3,r4,r5,s1,t,x
                t = t + 0.5_r8 * x
                q = x
                p = p + 0.5_r8 * dp
-          
+
             else if (j == 2) then
                t = t + 0.29298322_r8 * (x-q)
                q = 0.58578644_r8 * x + 0.121320344_r8 * q
-   
+
             else if (j == 3) then
                t = t + 1.707106781_r8 * (x-q)
                q = 3.414213562_r8*x - 4.121320344_r8*q
@@ -3610,7 +3610,7 @@ real(r8) :: dp,p,q,r1,r2,r3,r4,r5,s1,t,x
                t = t + (x - 2.0_r8 * q) / 6.0_r8
 
             endif
-   
+
          enddo ! j loop
       enddo ! i loop
 
@@ -3635,18 +3635,18 @@ subroutine dpth2pres(nd, depth, pressure)
 
 !  description:
 !  this function computes pressure in bars from depth in meters
-!  using a mean density derived from depth-dependent global 
-!  average temperatures and salinities from levitus 1994, and 
+!  using a mean density derived from depth-dependent global
+!  average temperatures and salinities from levitus 1994, and
 !  integrating using hydrostatic balance.
-! 
+!
 !  references:
-! 
-!  levitus, s., r. burgett, and t.p. boyer, world ocean atlas 
+!
+!  levitus, s., r. burgett, and t.p. boyer, world ocean atlas
 !  volume 3: salinity, noaa atlas nesdis 3, us dept. of commerce, 1994.
-! 
+!
 !  levitus, s. and t.p. boyer, world ocean atlas 1994, volume 4:
 !  temperature, noaa atlas nesdis 4, us dept. of commerce, 1994.
-! 
+!
 !  dukowicz, j. k., 2000: reduction of pressure and pressure
 !  gradient errors in ocean simulations, j. phys. oceanogr., submitted.
 
@@ -3655,7 +3655,7 @@ subroutine dpth2pres(nd, depth, pressure)
 !  depth  - depth in meters. no units check is made
 
 !  output parameters:
-!  pressure - pressure in bars 
+!  pressure - pressure in bars
 
 !  local variables & parameters:
 integer :: n
