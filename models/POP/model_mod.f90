@@ -114,8 +114,8 @@ integer, parameter :: VAR_UPDATE_INDEX = 3
 
 ! things which can/should be in the model_nml
 logical  :: output_state_vector = .true.
-integer  :: assimilation_period_days = 1
-integer  :: assimilation_period_seconds = 0
+integer  :: assimilation_period_days = -1
+integer  :: assimilation_period_seconds = -1
 real(r8) :: model_perturbation_amplitude = 0.2
 logical  :: update_dry_cell_walls = .false.
 character(len=vtablenamelength) :: model_state_variables(max_state_variables * num_state_table_columns ) = ' '
@@ -298,7 +298,7 @@ if (do_output()) write(     *     , nml=model_nml)
 ! Set the time step ... causes POP namelists to be read.
 ! Ensures model_timestep is multiple of 'ocean_dynamics_timestep'
 
-model_timestep = set_model_time_step()
+model_timestep = set_model_time_step(assimilation_period_seconds, assimilation_period_days)
 
 call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
 
