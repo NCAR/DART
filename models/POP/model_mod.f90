@@ -80,8 +80,8 @@ type(random_seq_type) :: random_seq
 
 ! things which can/should be in the model_nml
 logical  :: output_state_vector = .true.
-integer  :: assimilation_period_days = 1
-integer  :: assimilation_period_seconds = 0
+integer  :: assimilation_period_days = -1
+integer  :: assimilation_period_seconds = -1
 real(r8) :: model_perturbation_amplitude = 0.2
 logical  :: update_dry_cell_walls = .false.
 integer  :: debug = 0   ! turn up for more and more debug messages
@@ -271,17 +271,15 @@ call error_handler(E_MSG,'static_init_model','model_nml values are',' ',' ',' ')
 if (do_output()) write(logfileunit, nml=model_nml)
 if (do_output()) write(     *     , nml=model_nml)
 
-
 ! Set the time step ... causes POP namelists to be read.
 ! Ensures model_timestep is multiple of 'ocean_dynamics_timestep'
 
-model_timestep = set_model_time_step()
+model_timestep = set_model_time_step(assimilation_period_seconds, assimilation_period_days)
 
 call get_time(model_timestep,ss,dd) ! set_time() assures the seconds [0,86400)
 
 write(string1,*)'assimilation period is ',dd,' days ',ss,' seconds'
 call error_handler(E_MSG,'static_init_model',string1,source,revision,revdate)
-
 
 ! get data dimensions, then allocate space, then open the files
 ! and actually fill in the arrays.
@@ -788,10 +786,9 @@ subroutine model_interpolate(x, location, obs_type, interp_val, istatus)
 
 ! Local storage
 real(r8)       :: loc_array(3), llon, llat, lheight
-integer        :: base_offset, offset, ind
+integer        :: base_offset, ind
 integer        :: hgt_bot, hgt_top
 real(r8)       :: hgt_fract
-real(r8)       :: top_val, bot_val
 integer        :: hstatus
 logical        :: convert_to_ssh
 
@@ -3420,7 +3417,6 @@ subroutine compute_temperature(x, llon, llat, lheight, interp_val, istatus)
 
 integer  :: hstatus, hgt_bot, hgt_top
 real(r8) :: hgt_fract, salinity_val, potential_temp, pres_val
-real(r8) :: pres_bot, pres_top
 
 interp_val = MISSING_R8
 istatus = 99

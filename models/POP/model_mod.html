@@ -435,14 +435,24 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
                        example.</TD></TR>
 
 <TR><!--contents--><TD valign=top>assimilation_period_days</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;1]</em></TD>
+    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;-1]</em></TD>
     <!--descript--><TD valign=top>The number of days to advance the model for each assimilation.
+                       If both <em class=code>assimilation_period_days</em> and 
+                       <em class=code>assimilation_period_seconds</em> are &le; 0; the value of
+                       the POP namelist variables <em class=code>restart_freq</em> and
+                       <em class=code>restart_freq_opt</em> are used to determine the 
+                       assimilation period. WARNING: in the CESM framework, 
+                       the <em class=code>restart_freq</em> is set to a value that is not 
+                       useful so DART defaults to 1 day - even if you are using POP in 
+                       the LANL framework. 
                        </TD></TR>
 
 <TR><!--contents--><TD valign=top>assimilation_period_seconds</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;0]</em></TD>
+    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;-1]</em></TD>
     <!--descript--><TD valign=top>In addition to <em class=code>assimilation_period_days</em>, 
-                    the number of seconds to advance the model for each assimilation.
+                       the number of seconds to advance the model for each assimilation.
+                       Make sure you read the description of 
+                       <em class=code>assimilation_period_days</em>
                        </TD></TR>
 
 <TR><!--contents--><TD valign=top>model_perturbation_amplitude</TD>
