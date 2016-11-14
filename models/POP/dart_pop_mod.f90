@@ -13,7 +13,7 @@ use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, 
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
                              register_module, error_handler, nc_check, &
                              find_namelist_in_file, check_namelist_read, &
-                             E_ERR, E_MSG, find_textfile_dims, &
+                             E_ERR, E_WARN, E_MSG, find_textfile_dims, &
                              logfileunit
 
 use typesizes
@@ -432,9 +432,21 @@ endif
 
 if ( trim(stop_option) == 'nday' ) then
    stop_count = days
+elseif ( trim(stop_option) == 'nyear' ) then
+   if (days > 365) then
+      stop_count = days/365   ! relying on integer arithmetic
+   else
+      ! CESM totally ignores this value
+      write(string1,*)'POP time_manager_nml:stop_option,stop_count are ',trim(stop_option),stop_count
+      write(string2,*)'DART wants to advance ',days,' "days"'
+      write(string3,*)'Unable to reconcile; using original stop_option,stop_count.'
+      call error_handler(E_WARN,'write_pop_namelist', string1, &
+                 source, revision, revdate, text2=string2)
+      continue
+   endif
 else
    call error_handler(E_ERR,'write_pop_namelist', &
-              'stop_option must be "nday"', source, revision, revdate)
+              'stop_option must be "nday" or "nyear"', source, revision, revdate)
 endif
 
 iunit = open_file('pop_in.DART',form='formatted',action='rewind')
