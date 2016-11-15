@@ -13,7 +13,7 @@ use time_manager_mod, only : time_type, get_date, set_date, get_time, set_time, 
 use    utilities_mod, only : get_unit, open_file, close_file, file_exist, &
                              register_module, error_handler, nc_check, &
                              find_namelist_in_file, check_namelist_read, &
-                             E_ERR, E_MSG, find_textfile_dims, &
+                             E_ERR, E_WARN, E_MSG, find_textfile_dims, &
                              logfileunit
 
 use typesizes
@@ -261,14 +261,13 @@ end subroutine initialize_module
 
 
 !------------------------------------------------------------------
+!> Read the lon, lat grid size from the restart netcdf file.
+!> The actual grid file is a binary file with no header information.
+!>
+!> The file name comes from module storage ... namelist.
 
 
 subroutine get_horiz_grid_dims(Nx, Ny)
-
-! Read the lon, lat grid size from the restart netcdf file.
-! The actual grid file is a binary file with no header information.
-!
-! The file name comes from module storage ... namelist.
 
 integer, intent(out) :: Nx   ! Number of Longitudes
 integer, intent(out) :: Ny   ! Number of Latitudes
@@ -319,12 +318,11 @@ end subroutine get_horiz_grid_dims
 
 
 !------------------------------------------------------------------
+!> count the number of lines in the ascii file to figure out max
+!> number of vert blocks.
 
 
 subroutine get_vert_grid_dim(Nz)
-
-! count the number of lines in the ascii file to figure out max
-! number of vert blocks.
 
 integer, intent(out) :: Nz
 
@@ -338,15 +336,15 @@ end subroutine get_vert_grid_dim
 
 
 !------------------------------------------------------------------
+!> the initialize_module ensures that the pop namelists are read and
+!> the DART time manager gets the pop calendar setting.
+!>
+!> Then, the DART time manager is queried to return what it knows ...
 
 
 subroutine get_pop_calendar(calstring)
 
-! the initialize_module ensures that the pop namelists are read and
-! the DART time manager gets the pop calendar setting.
-!
-! Then, the DART time manager is queried to return what it knows ...
-!
+
 character(len=*), INTENT(OUT) :: calstring
 
 if ( .not. module_initialized ) call initialize_module
@@ -357,13 +355,12 @@ end subroutine get_pop_calendar
 
 
 !------------------------------------------------------------------
+!> the initialize_module ensures that the pop namelists are read.
+!> The restart times in the pop_in&restart_nml are used to define
+!> appropriate assimilation timesteps.
 
 
 function set_model_time_step(seconds,days)
-
-! the initialize_module ensures that the pop namelists are read.
-! The restart times in the pop_in&restart_nml are used to define
-! appropriate assimilation timesteps.
 
 integer, intent(in) :: seconds ! input.nml assimilation_period_seconds
 integer, intent(in) :: days    ! input.nml assimilation_period_days
@@ -439,9 +436,21 @@ endif
 
 if ( trim(stop_option) == 'nday' ) then
    stop_count = days
+elseif ( trim(stop_option) == 'nyear' ) then
+   if (days > 365) then
+      stop_count = days/365   ! relying on integer arithmetic
+   else
+      ! CESM totally ignores this value
+      write(string1,*)'POP time_manager_nml:stop_option,stop_count are ',trim(stop_option),stop_count
+      write(string2,*)'DART wants to advance ',days,' "days"'
+      write(string3,*)'Unable to reconcile; using original stop_option,stop_count.'
+      call error_handler(E_WARN,'write_pop_namelist', string1, &
+                 source, revision, revdate, text2=string2)
+      continue
+   endif
 else
    call error_handler(E_ERR,'write_pop_namelist', &
-              'stop_option must be "nday"', source, revision, revdate)
+              'stop_option must be "nday" or "nyear"', source, revision, revdate)
 endif
 
 iunit = open_file('pop_in.DART',form='formatted',action='rewind')
@@ -453,11 +462,10 @@ end subroutine write_pop_namelist
 
 
 !------------------------------------------------------------------
+!> Open and read the binary grid file
 
 
 subroutine read_horiz_grid(nx, ny, ULAT, ULON, TLAT, TLON)
-
-! Open and read the binary grid file
 
 integer,                    intent(in)  :: nx, ny
 real(r8), dimension(nx,ny), intent(out) :: ULAT, ULON, TLAT, TLON
@@ -523,11 +531,10 @@ end subroutine read_horiz_grid
 
 
 !------------------------------------------------------------------
+!> mimic POP grid.F90:calc_tpoints(), but for one big block.
 
 
 subroutine calc_tpoints(nx, ny, ULAT, ULON, TLAT, TLON)
-
-! mimic POP grid.F90:calc_tpoints(), but for one big block.
 
 integer,                    intent( in) :: nx, ny
 real(r8), dimension(nx,ny), intent( in) :: ULAT, ULON
@@ -640,11 +647,10 @@ end subroutine calc_tpoints
 
 
 !------------------------------------------------------------------
+!> Open and read the binary topography file
 
 
 subroutine read_topography(nx, ny, KMT, KMU)
-
-! Open and read the binary topography file
 
 integer,                   intent(in)  :: nx, ny
 integer, dimension(nx,ny), intent(out) :: KMT, KMU
@@ -670,7 +676,6 @@ open( topo_unit, file=trim(topography_file), form='unformatted', convert=convers
             access='direct', recl=reclength, status='old', action='read' )
 read( topo_unit, rec=1) KMT
 close(topo_unit)
-
 
 ! the equation numbered 3.2 on page 15 of this document:
 !  http://www.cesm.ucar.edu/models/cesm1.0/pop2/doc/sci/POPRefManual.pdf
@@ -705,12 +710,11 @@ end subroutine read_topography
 
 
 !------------------------------------------------------------------
+!> Open and read the ASCII vertical grid information
 
 
 subroutine read_vert_grid(nz, ZC, ZG)
 
-! Open and read the ASCII vertical grid information
-!
 ! The vert grid file is in ascii, with either 3 columns/line
 !    cell thickness(in cm)   cell center(in m)   cell bottom(in m)
 ! or it can contain 2 columns/line
@@ -780,9 +784,12 @@ enddo
 
 end subroutine read_vert_grid
 
+
 !------------------------------------------------------------------
 
+
 subroutine get_pop_restart_filename( filename )
+
 character(len=*), intent(out) :: filename
 
 if ( .not. module_initialized ) call initialize_module
@@ -791,9 +798,12 @@ filename   = trim(ic_filename)
 
 end subroutine get_pop_restart_filename
 
+
 !------------------------------------------------------------------
 
+
 subroutine set_binary_file_conversion(convertstring)
+
 character(len=*), intent(in) :: convertstring
 
 if ( .not. module_initialized ) call initialize_module
@@ -802,7 +812,9 @@ conversion = convertstring
 
 end subroutine set_binary_file_conversion
 
+
 !------------------------------------------------------------------
+
 
 end module dart_pop_mod
 

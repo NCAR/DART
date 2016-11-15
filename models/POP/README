@@ -1,8 +1,16 @@
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
+# DART software - Copyright 2004 - 2016 UCAR. This open source software is
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
+
+10 Nov 2016 -  TJH
+
+I no longer have access to the LANL version of POP and cannot test these
+interfaces. The scripts to advance LANL/POP will surely change. There is
+one area that may be impacted by reading/writing netCDF directly. Since
+we no longer have a 'dart_to_pop' executable, the communication of the
+'advance_to_time' to the updated POP &time_manager_nml is untested.
 
 30 June 2010 - TJH
 

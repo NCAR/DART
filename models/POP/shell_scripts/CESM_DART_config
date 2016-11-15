@@ -183,8 +183,6 @@ else
    exit -99
 fi
 
-${COPY} ${DARTROOT}/models/POP/work/pop_to_dart       ${EXEROOT}
-${COPY} ${DARTROOT}/models/POP/work/dart_to_pop       ${EXEROOT}
 ${COPY} ${DARTROOT}/models/POP/work/filter            ${EXEROOT}
 ${COPY} ${DARTROOT}/models/POP/work/perfect_model_obs ${EXEROOT}
 

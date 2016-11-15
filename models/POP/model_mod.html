@@ -36,16 +36,15 @@
 
 <H2>Overview</H2>
 
-<P>The <strong>Parallel Ocean Program (POP)</strong> may now be used with the 
+<P>The <strong>Parallel Ocean Program (POP)</strong> may be used with the 
    <strong>Data Assimilation Research Testbed (DART)</strong>.
    Both main variants - <a href="http://climate.lanl.gov/Models/POP/">LANL POP</a> and
    <a href="http://www.cesm.ucar.edu/models/cesm1.0/pop2/">CESM1.0 POP2</a> have been 
-   tested. At present (July 2010), we are assimilating salinity and temperature 
-   observations from the World Ocean Database (2005) with the intention of switching
-   to the World Ocean Database (2009) as needed.
+   tested. We are assimilating salinity and temperature 
+   observations from either the World Ocean Database (2005) or (2009).
    <br />
    <br />
-   The following POP variables are extracted from the POP netCDF restart files and
+   The following POP variables are extracted from the POP <strong>netCDF</strong> restart files and
    are conveyed to DART:
    <em class=code>SALT_CUR</em>,
    <em class=code>TEMP_CUR</em>,
@@ -107,6 +106,7 @@
 
 <div class=indent1>
    <h2><a href="http://climate.lanl.gov/Models/POP/">LANL POP</a></h2>
+   <h3>Has not been tested with this version of DART and must be verified.</h3>
    <P>
       is invoked the same way as any other high-order model.
       <b>Important</b>: This interface was tested with the LANL/POP 2_0_1 version 
@@ -157,7 +157,7 @@
       <br />
       <br />
       On our machine, with the openmpi framework, it is necessary to specify 
-      <em class=file>input.nml</em><em class=code>:&amp;mpi_utilities_nml:reverse_task_layout = .true.,</em >
+      <em class=file>input.nml</em><em class=code>:&amp;mpi_utilities_nml:reverse_task_layout = .true.,</em>
       to be able to simultaneously run (2) MPI programs on the same set of nodes.
    </P>
 </div> 
@@ -175,62 +175,9 @@
 <a name="conversions"></a>
 <div class=indent1>
    <h3>Converting between DART files and POP restart files.</h3>
-   <P>Only POP netCDF format restart files are supported. Yes, really.
-      It gets better.
-      Since the POP restart files do not have the actual grid information
-      in them, that information must be read from binary files (for the horizontal)
-      and an ascii file (for the vertical). Since I'm always working on both
-      big- and little-endian machines, I have a devil of a time keeping my
-      binary files straight. 
-      All of DART/POP is predicated on using pointer files to contain the 
-      names of the POP restart netCDF files. It turns out to be really
-      useful to dereference the pointer file and link the result to a presumed 
-      name for use by the program unit. Otherwise, we were endlessly mucking about
-      with trying to dynamically change namelists, etc. in our scripts. Ugly.
-      <br />
-      <br />
-      There are two programs and one module:
+   <P><strong>Is not needed.</strong>
+      DART natively reads and writes netCDF files.
    </P>
-   <table width="100%" cellpadding="10">
-   <tr><td valign="top"><a href="pop_to_dart.html">pop_to_dart.f90</a></td>
-       <td>converts the POP restart file <em class=file>pop.r.nc</em> into a 
-       DART-compatible file normally called <em class=file>dart_ics</em>&nbsp;.
-       There must also be a <em class=file>pop_in</em> namelist for POP
-       (since this specifies the names of the grid files). 
-       We usually wind up linking the dereferenced
-       pointer file name to a static name that is used by DART.
-       To that end, <em class=file>rpointer.ocn.restart</em> points to 
-       <em class=file>pop.r.nc</em> for this program.
-       </td>
-   </tr>
-   <tr><td valign="top"><a href="dart_to_pop.html">dart_to_pop.f90</a></td>
-       <td>inserts the DART output into an existing POP restart netCDF file by
-       overwriting the 
-       <em class=code>SALT_CUR</em>,
-       <em class=code>TEMP_CUR</em>,
-       <em class=code>UVEL_CUR</em>,
-       <em class=code>VVEL_CUR</em>, and 
-       <em class=code>PSURF_CUR</em> variables in the POP restart netCDF file.
-       There are two different types of DART output files, so there is a namelist
-       option to specify if the DART file has two time records or just one 
-       (if there are two, the first one is the 'advance_to' time, followed 
-       by the 'valid_time' of the ensuing state). <em class=program>dart_to_pop</em>
-       requires the POP restart file have a name of <em class=file>pop.r.nc</em>,
-       the POP input namelist <em class=file>pop_in</em> must exist, as do the
-       geometry files specified by <em class=file>pop_in</em>.
-       If the DART file contains an 'advance_to' time, 
-       <em class=program>dart_to_pop</em> creates a new 
-       <em class=code>&amp;time_manager_nml</em> for POP in a file called
-       <em class=file>pop_in.DART</em> which can be used to control the
-       length of the POP integration.
-       </td>
-   </tr>
-   <tr><td valign="top"><A href="dart_pop_mod.html">dart_pop_mod.f90</a></td>
-       <td>is the module containing many support routines that are used by
-       both <em class=program>pop_to_dart</em>, <em class=program>dart_to_pop</em>,
-       and the POP&nbsp;<em class=program>model_mod</em>.
-      </td></tr>
-   </table>
 </div>
 
 <a name="InitialEnsemble"></a>
@@ -239,48 +186,14 @@
    <P>
       Creating the initial ensemble of ocean states is an area of active research.
       The POP model cannot take one single model state and generate its own 
-      ensemble (typically done with <a href="#pert_model_state">pert_model_state</a>).
+      ensemble (typically done with <a href="#pert_model_copies">pert_model_copies</a>).
       <br />
       <br />
       The ensemble has to come from 'somewhere else'. 
       At present, it may be sufficient to use a climatological ensemble; e.g., 
       using the POP restarts for '1 January 00Z' from 50 consecutive years 
       from a hindcast experiment.
-      <br />
-      <br />
-      There is a <em class=program>shell_scripts/MakeInitialEnsemble.csh</em> 
-      script that is intended to demonstrate how to convert a set of POP netCDF 
-      restart files into a set of DART files that have a consistent timestamp. 
-      If you simply convert each POP file to a DART file using 
-      <em class=program>dart_to_pop</em>, each DART file will have a 'valid&nbsp;time'
-      that reflects the POP time of that state - instead of an ensemble of states
-      reflecting one single time. The
-      <a href="../../../utilities/restart_file_utility.f90">restart_file_utility</a> 
-      can be used to overwrite the timestep in the header of each DART initial 
-      conditions file. The namelist for this program must look something like:
    </P>
-   <pre>
-   &amp;restart_file_tool_nml
-     input_file_name              = "dart_input",
-     output_file_name             = "dart_output",
-     ens_size                     = 1,
-     single_restart_file_in       = .true.,
-     single_restart_file_out      = .true.,
-     write_binary_restart_files   = .true.,
-     overwrite_data_time          = <em class=changed>.true.</em>,
-     new_data_days                = <em class=changed>145731</em>,
-     new_data_secs                = <em class=changed>0</em>,
-     input_is_model_advance_file  = .false.,
-     output_is_model_advance_file = .false.,
-     overwrite_advance_time       = .false.,
-     new_advance_days             = -1,
-     new_advance_secs             = -1,
-     gregorian_cal                = .true.  /</pre>
-   <P>
-      The time of days&nbsp;=&nbsp;<em class=changed>145731</em> 
-      seconds&nbsp;=&nbsp;<em class=changed>0</em> relates to 00Z&nbsp;1&nbsp;Jan&nbsp;2000 in the DART world.
-      <br />
-      <br />
       BTW - Experience has shown that having a paired (unique) atmospheric forcing 
       maintains the ensemble spread better than simply forcing all the ocean 
       ensemble members with one single atmospheric state.
@@ -399,11 +312,22 @@
 '&amp;' and terminating with a slash '/' for all our namelist input.
 Consider yourself forewarned that character strings that contain a '/' must be
 enclosed in quotes to prevent them from prematurely terminating the namelist.
+The variables and their default values are listed here:
 </P>
 <div class=namelist><pre>
-<em class=call>namelist /model_nml/ </em> output_state_vector, &amp;
-          assimilation_period_days, assimilation_period_seconds, &amp;
-          model_perturbation_amplitude, debug
+&amp;model_nml
+   assimilation_period_days     = -1
+   assimilation_period_seconds  = -1
+   model_perturbation_amplitude = 0.2
+   output_state_vector          = .false.
+   binary_grid_file_format      = 'big_endian'
+   debug                        = 0,
+   model_state_variables        = 'SALT_CUR ', 'KIND_SALINITY             ', 'UPDATE',
+                                  'TEMP_CUR ', 'KIND_POTENTIAL_TEMPERATURE', 'UPDATE',
+                                  'UVEL_CUR ', 'KIND_U_CURRENT_COMPONENT  ', 'UPDATE',
+                                  'VVEL_CUR ', 'KIND_V_CURRENT_COMPONENT  ', 'UPDATE',
+                                  'PSURF_CUR', 'KIND_SEA_SURFACE_PRESSURE ', 'UPDATE'
+  /
 </pre>
 </div>
 
@@ -423,22 +347,11 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
     <TH align=left>Type        </TH>
     <TH align=left>Description </TH></TR>
 
-
-<TR><!--contents--><TD valign=top>output_state_vector</TD>
-    <!--  type  --><TD valign=top>logical <em class=units>[default:&nbsp;.true.]</em></TD>
-    <!--descript--><TD valign=top>The switch to determine the form of the state vector in the
-                       output netCDF files. If <em class=code>.true.</em> 
-                       the state vector will be output exactly as DART uses it 
-                       ... one long array.  If <em class=code>.false.</em>, 
-                       the state vector is parsed into prognostic variables and 
-                       output that way -- much easier to use with 'ncview', for
-                       example.</TD></TR>
-
 <TR><!--contents--><TD valign=top>assimilation_period_days</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;-1]</em></TD>
+    <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD valign=top>The number of days to advance the model for each assimilation.
                        If both <em class=code>assimilation_period_days</em> and 
-                       <em class=code>assimilation_period_seconds</em> are &le; 0; the value of
+                       <em class=code>assimilation_period_seconds</em> are&nbsp;&le;&nbsp;0; the value of
                        the POP namelist variables <em class=code>restart_freq</em> and
                        <em class=code>restart_freq_opt</em> are used to determine the 
                        assimilation period. WARNING: in the CESM framework, 
@@ -448,7 +361,7 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
                        </TD></TR>
 
 <TR><!--contents--><TD valign=top>assimilation_period_seconds</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;-1]</em></TD>
+    <!--  type  --><TD valign=top>integer</TD>
     <!--descript--><TD valign=top>In addition to <em class=code>assimilation_period_days</em>, 
                        the number of seconds to advance the model for each assimilation.
                        Make sure you read the description of 
@@ -456,7 +369,7 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
                        </TD></TR>
 
 <TR><!--contents--><TD valign=top>model_perturbation_amplitude</TD>
-    <!--  type  --><TD valign=top>real(r8) <em class=units>[default:&nbsp;0.2]</em></TD>
+    <!--  type  --><TD valign=top>real(r8)</TD>
     <!--descript--><TD valign=top> Reserved for future use.
                   <!-- The amount of noise to add when trying to perturb a single
                        state vector to create an ensemble. Only used when 
@@ -467,8 +380,27 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
                        of a gaussian distribution with the mean at the value of 
                        the state vector element. --> </TD></TR> 
 
+<TR><!--contents--><TD valign=top>output_state_vector</TD>
+    <!--  type  --><TD valign=top>logical</TD>
+    <!--descript--><TD valign=top>The switch to determine the form of the state vector in the
+                       diagnostic output netCDF files. If <em class=code>.true.</em> 
+                       the state vector will be output exactly as DART uses it 
+                       ... one long array.  If <em class=code>.false.</em>, 
+                       the state vector is parsed into prognostic variables and 
+                       output that way -- much easier to use with 'ncview', for
+                       example.</TD></TR>
+
+<TR><!--contents--><TD valign=top>binary_grid_file_format</TD>
+    <!--  type  --><TD valign=top>character(len=32)</em></TD>
+    <!--descript--><TD valign=top>The POP grid files are in a binary format.
+                       Valid values are 'native', 'big_endian', or 'little_endian'.
+                       Modern versions of Fortran allow you to specify the endianness
+                       of the file you wish to read when they are opened as opposed to
+                       needing to set a compiler switch or environment variable. 
+                       </TD></TR>
+
 <TR><!--contents--><TD valign=top>debug</TD>
-    <!--  type  --><TD valign=top>integer <em class=units>[default:&nbsp;0]</em></TD>
+    <!--  type  --><TD valign=top>integer</em></TD>
     <!--descript--><TD valign=top>The switch to specify the run-time verbosity.
                        <em class=code>0</em> is as quiet as it gets.
                        <em class=code>&gt; 1</em> provides more run-time messages.
@@ -476,18 +408,29 @@ enclosed in quotes to prevent them from prematurely terminating the namelist.
                        All values above 0 will also write a netCDF file of the grid 
                        information and perform a grid interpolation test.</TD></TR>
 
+<TR><!--contents--><TD valign=top>model_state_variables</TD>
+    <!--  type  --><TD valign=top>character(:,3)</em></TD>
+    <!--descript--><TD valign=top>Strings that associate POP variables with a DART kind 
+                       and whether or not to write the updated values to the restart files.
+                       These variables will be read from the POP restart file and modified 
+                       by the assimilation. Some (perhaps all) will be used by the forward 
+                       observation operators. If the 3rd column is 'UPDATE', the output 
+                       files will have the modified (assimilated,posterior) values. 
+                       If the 3rd column is 'NO_COPY_BACK', that variable will not be 
+                       written to the restart files. <strong>The DART diagnostic files will
+                       always have the (modified) posterior values.</strong> Diagnostic 
+                       variables that are useful for the calculation of the forward 
+                       observation operator but have no impact on the forecast trajectory 
+                       of the model could have a value of 'NO_COPY_BACK'.
+                       The DART kind must be one found in the 
+                       <em class=file>DART/obs_kind/obs_kind_mod.f90</em> AFTER it gets 
+                       built by <em class=program>preprocess</em>. Most of the ocean 
+                       observation kinds are specified by
+                       <em class=file>DART/obs_def/obs_def_ocean_mod.f90</em>, 
+                       so it should be specified in the
+                       <em class=code>&amp;preprocess_nml:input_files</em> variable.
+                       </TD></TR>
 </TABLE>
-
-<H3 class=indent1>Example</H3>
-
-<pre>
-&amp;model_nml
-   assimilation_period_days     = 1, 
-   assimilation_period_seconds  = 0, 
-   model_perturbation_amplitude = 0.2, 
-   output_state_vector          = .false.,
-   debug                        = 0   /
-</pre>
 
 </div>
 <br />
@@ -639,11 +582,14 @@ Each module has its own discussion of their routines.
 <TR><TD>&nbsp;</TD><TD><A HREF="#init_conditions">init_conditions</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_atts">nc_write_model_atts</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#nc_write_model_vars">nc_write_model_vars</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_state">pert_model_state</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#pert_model_copies">pert_model_copies</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_maxdist_init">get_close_maxdist_init</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs_init">get_close_obs_init</A></TD></TR>
 <TR><TD>&nbsp;</TD><TD><A HREF="#get_close_obs">get_close_obs</A></TD></TR>
-<TR><TD>&nbsp;</TD><TD><A HREF="#ens_mean_for_model">ens_mean_for_model</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#query_vert_localization_coord">query_vert_localization_coord</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#vert_convert">vert_convert</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#read_model_time">read_model_time</A></TD></TR>
+<TR><TD>&nbsp;</TD><TD><A HREF="#write_model_time">write_model_time</A></TD></TR>
 </TABLE>
 
 <h3 class=indent1>Unique Interface Routines</h3>
@@ -1162,21 +1108,23 @@ parsed into prognostic variables before being written.
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
 
-<A NAME="pert_model_state"></A>
+<A NAME="pert_model_copies"></A>
 <br />
 <div class=routine>
-<em class=call>call pert_model_state(state, pert_state, interf_provided)</em>
+<em class=call>call pert_model_copies(state_ens_handle, ens_size, pert_amp, interf_provided)</em>
 <pre>
-real(r8), dimension(:), intent(in)  :: <em class=code>state</em>
-real(r8), dimension(:), intent(out) :: <em class=code>pert_state</em>
-logical,                intent(out) :: <em class=code>interf_provided</em>
+type(ensemble_type), intent(inout) :: state_ens_handle
+integer,             intent(in)    :: ens_size
+real(r8),            intent(in)    :: pert_amp
+logical,             intent(out)   :: interf_provided
 </pre>
 </div>
 
 <div class=indent1> <!-- Description -->
 <P>
-Given a model state, <em class=code>pert_model_state</em> produces a 
-perturbed model state. This is used to generate ensemble initial conditions 
+<strong>This routine does not work with POP.</strong>
+Given a handle to an ensemble of model states, <em class=code>pert_model_copies</em> produces an 
+ensemble of perturbed model states. This is used to generate ensemble initial conditions 
 perturbed around some control trajectory state when one is preparing to 
 spin-up ensembles.  Since the DART state vector for the POP model 
 contains both 'wet' and 'dry' cells, it is imperative to provide an 
@@ -1197,11 +1145,14 @@ This is determined by setting
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>state</em></TD>
-    <TD>State vector to be perturbed.</TD></TR>
+<TR><TD valign=top><em class=code>state_ens_handle</em></TD>
+    <TD>the handle to the ensemble of state vectors to be perturbed.</TD></TR>
 
-<TR><TD valign=top><em class=code>pert_state</em></TD>
-    <TD>The perturbed state vector.</TD></TR>
+<TR><TD valign=top><em class=code>ens_size</em></TD>
+    <TD>The number of ensemble members desired.</TD></TR>
+
+<TR><TD valign=top><em class=code>pert_amp</em></TD>
+    <TD>not used, since we have no viable method for perturbing POP.</TD></TR>
 
 <TR><TD valign=top><em class=code>interf_provided&nbsp;&nbsp;&nbsp;</em></TD>
     <TD>Because of the 'wet/dry' issue discussed above, this is always 
@@ -1333,13 +1284,13 @@ in the namelist with the variable "vert_localization_coord".
 <br />
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
-
-<A NAME="ens_mean_for_model"></A>
+<!-- @todo FIXME totally incomplete -->
+<A NAME="query_vert_localization_coord"></A>
 <br />
-<div class="routine">
-<em class=call>call ens_mean_for_model(ens_mean)</em>
+<div class=routine>
+<em class=call>coordinate_system = query_vert_localization_coord( )</em>
 <pre>
-real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
+integer :: <em class=code>query_vert_localization_coord</em>
 </pre>
 </div>
 
@@ -1347,28 +1298,139 @@ real(r8), dimension(:), intent(in) :: <em class=code>ens_mean</em>
 <!-- Description -->
 
 <P>
-<em class=code>ens_mean_for_model</em>
-normally saves a copy of the ensemble mean to module-local storage.
-This is a NULL_INTERFACE for the POP model. At present there is
-no application which requires module-local storage of the ensemble mean.
-No storage is allocated.
+Defines the vertical coordinate system to be used by assim_tools_mod.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
 
-<TR><TD valign=top><em class=code>ens_mean</em></TD>
-    <TD>State vector containing the ensemble mean.</TD></TR>
+<TR><TD valign=top><em class=code>coordinate_system</em></TD>
+    <TD>The length of the model state vector.</TD></TR>
 
 </TABLE>
 
 </div>
 <br />
 
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+<!-- @todo FIXME totally incomplete -->
+<A NAME="vert_convert"></A>
+<br />
+<div class=routine>
+<em class=call>call vert_convert(state_handle, location, obs_kind, istatus)</em>
+<pre>
+type(ensemble_type), intent(in)  :: <em class=code>state_handle</em>
+type(location_type), intent(in)  :: <em class=code>location</em>
+integer,             intent(in)  :: <em class=code>obs_kind</em>
+integer,             intent(out) :: <em class=code>istatus</em>
+</pre>
+</div>
 
+<div class=indent1>
+<!-- Description -->
 
-<div class="top">[<a href="#">top</a>]</div><hr />
-<H3 class=indent1>Unique Interface Routines</H3>
+<P>
+This subroutine converts a given ob/state vertical coordinate to
+the vertical localization coordinate type requested through the 
+model_mod namelist.
+POP has a default vertical coordinate system of 'height'. 
+</P>
 
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>state_handle</em></TD>
+    <TD>The handle to the ensemble of model states.</TD></TR>
+
+<TR><TD valign=top><em class=code>location</em></TD>
+    <TD>The 3D location and vertical coordinate system of interest.
+        The <em class=code>location_ type</em> comes from
+        <em class=file>DART/location/threed_sphere/location_mod.f90</em>.
+        Note that the lat/lon are specified in degrees by the user but are converted
+        to radians internally.</TD></TR>
+
+<TR><TD valign=top><em class=code>obs_kind</em></TD>
+    <TD>Kind associated with candidate locations.</TD></TR>
+
+<TR><TD valign=top><em class=code>istatus</em></TD>
+    <TD>Integer flag indicating the success of the conversion.
+       <br />success == 0, failure == anything else</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+<!-- @todo FIXME totally incomplete -->
+<A NAME="read_model_time"></A>
+<br />
+<div class=routine>
+<em class=call>model_time = read_model_time(filename)</em>
+<pre>
+character(len=*), intent(in) :: <em class=code>filename</em>
+type(time_type) :: <em class=code>model_time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Reads the valid time of the model state contained in <em class=code>filename</em>.
+Since each model may store the time in their own manner, each model must supply their
+own routine to read it.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>filename</em></TD>
+    <TD>The name of the netCDF file containing the valid time of the model state.</TD></TR>
+
+<TR><TD valign=top><em class=code>model_time</em></TD>
+    <TD>The time - in DART's own derived type (seconds and days since 1601-01-01 00:00:00)</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--===================== DESCRIPTION OF A ROUTINE =====================-->
+<A NAME="write_model_time"></A>
+<br />
+<div class=routine>
+<em class=call>call write_model_time(ncid, dart_time)</em>
+<pre>
+integer,         intent(in) :: <em class=code>ncid</em>
+type(time_type), intent(in) :: <em class=code>dart_time</em>
+</pre>
+</div>
+
+<div class=indent1>
+<!-- Description -->
+
+<P>
+Writes the time to a netCDF file. For POP, this is actually a 'pass-through' to a routine of the same name in 
+<a href='../../../io/dart_time_io_mod.f90'>io/dart_time_io_mod.f90</a>  
+which will write variables <em class=code>dart_days</em> and
+<em class=code>dart_seconds</em> to the netCDF file if they do 
+not already exist.
+</P>
+
+<TABLE width=100% border=0 summary="" cellpadding=3>
+
+<TR><TD valign=top><em class=code>ncid</em></TD>
+    <TD>The netCDF ID of the file to receive the model time.</TD></TR>
+
+<TR><TD valign=top><em class=code>dart_time</em></TD>
+    <TD>The time - in DART's own derived type (seconds and days since 1601-01-01 00:00:00)</TD></TR>
+
+</TABLE>
+
+</div>
+<br />
+
+<!--==================================================================-->
+<H3 class=indent1>Optional Public Interface Routines</H3>
+<!--==================================================================-->
 
 
 <!--===================== DESCRIPTION OF A ROUTINE =====================-->
@@ -1431,11 +1493,11 @@ type(time_type),        intent(out)   :: <em class=code>model_time</em>
 
 <P>
    <em class=code>restart_file_to_sv</em>
-   Reads <em class=code>SALT_CUR</em>, <em class=code>TEMP_CUR</em>,
-         <em class=code>UVEL_CUR</em>, <em class=code>VVEL_CUR</em>, and 
-         <em class=code>PSURF_CUR</em> from a POP netCDF format restart 
-   file and packs them into a DART state vector. The DART vector is simply 
-   a 1D vector that includes all the 'dry' cells as well as the 'wet' ones.
+   Reads the list of variables specified in
+   <em class=file>input.nml</em><em class=routine>&amp:model_nml:model_state_variables</em> 
+   from a POP netCDF format restart file and packs them into a DART state 
+   vector.  The DART vector is simply a 1D vector that includes all the 
+   'dry' cells as well as the 'wet' ones.
 </P>
 
 <TABLE width=100% border=0 summary="" cellpadding=3>
@@ -1447,10 +1509,10 @@ type(time_type),        intent(out)   :: <em class=code>model_time</em>
     <TD>The 1D array to be used by DART.</TD></TR>
 
 <TR><TD valign=top><em class=code>model_time</em></TD>
-    <TD>the 1D array containing the concatenated SALT,TEMP,UVEL,VVEL,PSURF variables.
-    To save storage, it is possible to modify the definition of <em class=code>r8</em>
-    in <em class=file>DART/common/types_mod.f90</em> to be the same as that
-    of <em class=code>r4</em>.
+    <TD>the 1D array containing the concatenated POP variables.
+    To save storage, it is possible to modify the definition of 
+    <em class=code>r8</em> in <em class=file>DART/common/types_mod.f90</em> 
+    to be the same as that of <em class=code>r4</em>.
     </TD></TR>
 
 </TABLE>
@@ -1476,9 +1538,10 @@ type(time_type),        intent(in) :: <em class=code>statedate</em>
 
 <P>
 <em class=code>sv_to_restart_file</em>
-updates the SALT_CUR, TEMP_CUR, UVEL_CUR, VVEL_CUR, and PSURF_CUR variables
-in the POP netCDF-format restart file with values from 
-the DART vector <em class=code>state_vector</em>. The time in the
+updates the  variables specified in 
+<em class=file>input.nml</em><em class=routine>&amp:model_nml:model_state_variables</em> 
+in the POP netCDF-format restart file with values from the DART 
+vector <em class=code>state_vector</em>. The time in the
 file must match the <em class=code>statedate</em>.
 </P>
 
@@ -1675,7 +1738,7 @@ dynamical timestep declared by ????
 <br />
 <br />
 Provide a better mechanism for generating a set of perturbed initial 
-conditions - <em class=code>pert_model_state()</em> 
+conditions - <em class=code>pert_model_copies()</em> 
 </P>
 
 <!--==================================================================-->
