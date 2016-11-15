@@ -238,8 +238,11 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
       obs_time = base_time + set_time(int(granule%Time(icol, irow)))
       call get_time(obs_time, seconds, days)
      
+      ! avoid -9999 in the starting vertical level
+      istart = granule%nBestStd(icol, irow)
+      if (istart < 1) goto 100   ! skip vert_T_loop
 
-      vert_T_loop: do ivert=granule%nBestStd(icol, irow), temperature_top_index
+      vert_T_loop: do ivert=istart, temperature_top_index
 
          tqc = 0   ! if we get here, the quality control is 'best' == 0
 
@@ -281,7 +284,12 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
  
       enddo vert_T_loop
 
+100   continue
+
+      ! avoid -9999 in the starting vertical layer
       istart = granule%nSurfStd(icol, irow)
+      if (istart < 1) goto 200  !skip vert_Q_loop
+
       vert_Q_loop:  do ivert=istart,humidity_top_index
 
          if (granule%Qual_H2O(icol, irow) > 0) exit vert_Q_loop
@@ -329,6 +337,8 @@ rowloop:  do irow=1,AIRS_RET_GEOTRACK
          obs_num = obs_num + 1
  
       enddo vert_Q_loop
+
+200   continue
 
    enddo colloop
 enddo rowloop
