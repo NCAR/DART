@@ -377,10 +377,10 @@ mpirun.lsf ./filter || exit 3
 
 # Tag the inflation files with the valid time of the model state.
 
-\mv -v output_priorinf_mean.nc   output_priorinf_mean.{$OCEAN_TIME}.nc
-\mv -v output_priorinf_sd.nc     output_priorinf_sd.{$OCEAN_TIME}.nc
-\mv -v output_postinf_mean.nc    output_postinf_mean.{$OCEAN_TIME}.nc
-\mv -v output_postinf_sd.nc      output_postinf_sd.{$OCEAN_TIME}.nc
+\mv -v output_priorinf_mean.nc   output_priorinf_mean.${OCEAN_TIME}.nc
+\mv -v output_priorinf_sd.nc     output_priorinf_sd.${OCEAN_TIME}.nc
+\mv -v output_postinf_mean.nc    output_postinf_mean.${OCEAN_TIME}.nc
+\mv -v output_postinf_sd.nc      output_postinf_sd.${OCEAN_TIME}.nc
 
 # Tag the observation file with the valid time of the model state.
 
