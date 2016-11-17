@@ -27,9 +27,9 @@
   /
 
 &filter_nml
-   async                    = 4
+   async                    = 0
    adv_ens_command          = 'no_CESM_advance_script'
-   ens_size                 =  23
+   ens_size                 =  30
    obs_sequence_in_name     = 'obs_seq.out'
    obs_sequence_out_name    = 'obs_seq.final'
    init_time_days           = -1
@@ -48,7 +48,7 @@
    silence                  = .false.
    output_restart           = .true.
    output_restart_mean      = .true.
-   num_output_state_members = 10
+   num_output_state_members = 30
    perturb_from_single_instance = .false.
    direct_netcdf_read       = .true.
    direct_netcdf_write      = .true.
@@ -58,7 +58,7 @@
    restart_in_file_name     = 'no_restart_in'
    restart_out_file_name    = 'no_restart_out'
 
-   inf_flavor                  = 2,                       2
+   inf_flavor                  = 0,                       0
    inf_initial_from_restart    = .true.,                  .true.
    inf_sd_initial_from_restart = .true.,                  .true.
    inf_output_restart          = .true.,                  .true.
