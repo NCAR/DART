@@ -1368,12 +1368,8 @@ call nc_check(nf90_inq_varid(ncid, 'lat_v', VarID), &
 call nc_check(nf90_get_var( ncid, VarID, VLAT), &
       'get_grid', 'get_var lat_v '//trim(roms_filename))
 
-! changing the convention so that all depths are
-! positive with 0 being at the surface.
-UDEP(:,:,:) =  abs(UDEP(:,:,:))
-VDEP(:,:,:) =  abs(VDEP(:,:,:))
-TDEP(:,:,:) =  abs(TDEP(:,:,:))
-WDEP(:,:,:) =  abs(WDEP(:,:,:))
+! Be aware that all the depths are negative values.
+! The surface of the ocean is 0.0, the deepest is a big negative value.
 
 if (do_output() .and. debug > 0) then
     write(string1,*)'    min/max ULON ',minval(ULON), maxval(ULON)
@@ -1806,7 +1802,7 @@ end subroutine write_roms_time_information
 !>
 !> Returns the DART location given a fractional i, j, k and a specified kind
 !>
-!> @param fjloc fractional x index
+!> @param filoc fractional x index
 !> @param fjloc fractional y index
 !> @param fkloc fractional vert index
 !> @param dart_kind
@@ -1816,7 +1812,7 @@ end subroutine write_roms_time_information
 !>  for interpolating locations.  First we interpolate in latitude
 !>  and longitude, then interpolate in height.  The hgt of each grid
 !>  cell can very on each interpolation, so we have to be careful how
-!>  we interpolte in the horizontal.  Using the 4 different heights
+!>  we interpolate in the horizontal.  Using the 4 different heights
 !>  and lat_frac, lon_frac, hgt_frac we can do a simple trilinear
 !>  interpolation to find the location given fractional indicies.
 !>

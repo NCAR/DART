@@ -214,8 +214,6 @@ else
    call getvar_real(ncid, "obs_depth", depth, dmiss=missing)
    where(depth == missing)
        depth = MISSING_R8
-   elsewhere
-       depth = abs(depth)
    end where
 endif
 
