@@ -109,7 +109,7 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
    # Check for successful completion - log file should NOT have something like:
    # Blowing-up: Saving latest model state into  RESTART file
    grep -i blow log_$instance.txt > /dev/null
-   if ($status != 0) then
+   if ($status == 0) then
       echo "ROMS instance $instance FAILED."
       echo "ROMS instance $instance FAILED."
       echo "ROMS instance $instance FAILED."

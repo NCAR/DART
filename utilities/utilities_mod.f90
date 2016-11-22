@@ -195,7 +195,7 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-character(len=512) :: msgstring
+character(len=512) :: msgstring1, msgstring2, msgstring3
 
 !----------------------------------------------------------------
 ! Namelist input with default values
@@ -948,8 +948,6 @@ end subroutine error_handler
    integer           :: nc, rc, rlen
    logical           :: open, use_recl
    character(len=32) :: format, pos, act, stat, acc, conversion, recl, del
-   character(len=128) :: msgstring1, msgstring2
-
 
    if ( .not. module_initialized ) call initialize_utilities
 
@@ -1080,11 +1078,11 @@ end subroutine error_handler
    endif
 
    if (rc /= 0) then
-      write(msgstring, *)'Cannot open file "'//trim(fname)//'" for '//trim(act)
-      write(msgstring1,*)'File may not exist or permissions may prevent the requested operation'
-      write(msgstring2,*)'Error code was ', rc
-      call error_handler(E_ERR, 'open_file: ', msgstring, source, revision, revdate, &
-                         text2=msgstring1, text3=msgstring2)
+      write(msgstring1, *)'Cannot open file "'//trim(fname)//'" for '//trim(act)
+      write(msgstring2,*)'File may not exist or permissions may prevent the requested operation'
+      write(msgstring3,*)'Error code was ', rc
+      call error_handler(E_ERR, 'open_file: ', msgstring1, source, revision, revdate, &
+                         text2=msgstring2, text3=msgstring3)
    endif
 
    end function open_file
@@ -1338,8 +1336,8 @@ if ( .not. module_initialized ) call initialize_utilities
 
 inquire (unit=iunit, opened=open, iostat=ios)
 if ( ios /= 0 ) then
-   write(msgstring,*)'Unable to determine status of file unit ', iunit
-   call error_handler(E_MSG, 'close_file: ', msgstring, source, revision, revdate)
+   write(msgstring1,*)'Unable to determine status of file unit ', iunit
+   call error_handler(E_MSG, 'close_file: ', msgstring1, source, revision, revdate)
 endif
 
 if (open) close(iunit)
@@ -1393,15 +1391,15 @@ if(file_exist(trim(namelist_file_name))) then
       read(iunit, '(A)', iostat = io) nml_string
       if(io /= 0) then
          ! No values for this namelist; error
-         write(msgstring, *) 'Namelist entry &', nml_name, ' must exist in ', namelist_file_name
+         write(msgstring1, *) 'Namelist entry &', nml_name, ' must exist in ', namelist_file_name
          ! Can't write to logfile if it hasn't yet been opened
          if(write_to_logfile) then
-            call error_handler(E_ERR, 'find_namelist_in_file', msgstring, &
+            call error_handler(E_ERR, 'find_namelist_in_file', msgstring1, &
                source, revision, revdate)
          else
             write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
             write(*, *) 'Error is in subroutine find_namelist_in_file'
-            write(*, *) msgstring
+            write(*, *) msgstring1
             write(*,*)'  ',trim(source)
             write(*,*)'  ',trim(revision)
             write(*,*)'  ',trim(revdate)
@@ -1421,14 +1419,14 @@ if(file_exist(trim(namelist_file_name))) then
    end do
 else
    ! No namelist_file_name file is an error
-   write(msgstring, *) 'Namelist input file: ', namelist_file_name, ' must exist.'
+   write(msgstring1, *) 'Namelist input file: ', namelist_file_name, ' must exist.'
    if(write_to_logfile) then
-      call error_handler(E_ERR, 'find_namelist_in_file', msgstring, &
+      call error_handler(E_ERR, 'find_namelist_in_file', msgstring1, &
          source, revision, revdate)
    else
       write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
       write(*, *) 'Error is in subroutine find_namelist_in_file'
-      write(*, *) msgstring
+      write(*, *) msgstring1
       write(*,*)'  ',trim(source)
       write(*,*)'  ',trim(revision)
       write(*,*)'  ',trim(revdate)
@@ -1472,14 +1470,14 @@ else
    ! A failure in this read means that the namelist started but never terminated
    ! Result was falling off the end, so backspace followed by read fails
    if(io /= 0) then
-      write(msgstring, *) 'Namelist ', trim(nml_name), ' started but never terminated'
+      write(msgstring1, *) 'Namelist ', trim(nml_name), ' started but never terminated'
       if(write_to_logfile) then
-         call error_handler(E_ERR, 'check_namelist_read', msgstring, &
+         call error_handler(E_ERR, 'check_namelist_read', msgstring1, &
             source, revision, revdate)
       else
          write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
          write(*, *) 'Error is in subroutine check_namelist_read'
-         write(*, *) msgstring
+         write(*, *) msgstring1
          write(*,*)'  ',trim(source)
          write(*,*)'  ',trim(revision)
          write(*,*)'  ',trim(revdate)
@@ -1487,14 +1485,14 @@ else
       endif
    else
       ! Didn't fall off end so bad entry in the middle of namelist
-      write(msgstring, *) 'INVALID NAMELIST ENTRY: ', trim(nml_string), ' in namelist ', trim(nml_name)
+      write(msgstring1, *) 'INVALID NAMELIST ENTRY: ', trim(nml_string), ' in namelist ', trim(nml_name)
       if(write_to_logfile) then
-         call error_handler(E_ERR, 'check_namelist_read', msgstring, &
+         call error_handler(E_ERR, 'check_namelist_read', msgstring1, &
             source, revision, revdate)
       else
          write(*, *) 'FATAL ERROR before logfile initialization in utilities_mod'
          write(*, *) 'Error is in subroutine check_namelist_read'
-         write(*, *) msgstring
+         write(*, *) msgstring1
          write(*,*)'  ',trim(source)
          write(*,*)'  ',trim(revision)
          write(*,*)'  ',trim(revdate)
@@ -1727,7 +1725,7 @@ integer                         :: set_filename_list
 
 integer :: fileindex, max_num_input_files
 logical :: from_file
-character(len=32) :: fsource
+character(len=64) :: fsource
 
 ! here's the logic:
 ! if the user specifies neither name_array nor listname, error
@@ -1774,8 +1772,10 @@ do fileindex = 1, max_num_input_files
 
    if (name_array(fileindex) == '') then
       if (fileindex == 1) then
-         call error_handler(E_ERR, caller_name, &
-             'found no '//trim(fsource), source,revision,revdate)
+         write(msgstring2,*)'reading file # ',fileindex
+         write(msgstring3,*)'reading file name "'//trim(name_array(fileindex))//'"'
+         call error_handler(E_ERR, caller_name, 'found no '//trim(fsource), &
+                    source,revision,revdate,text2=msgstring2,text3=msgstring3)
       endif
 
       ! at the end of the list. return how many filenames were found, 
@@ -1794,8 +1794,8 @@ enddo
 
 if (from_file) then
    if (get_next_filename(listname, max_num_input_files+1) /= '') then
-      write(msgstring, *) 'cannot specify more than ',max_num_input_files,' filenames in the list file'
-      call error_handler(E_ERR, caller_name, msgstring, source,revision,revdate)
+      write(msgstring1, *) 'cannot specify more than ',max_num_input_files,' filenames in the list file'
+      call error_handler(E_ERR, caller_name, msgstring1, source,revision,revdate)
    endif
 endif
 
@@ -2150,10 +2150,10 @@ select case (ucase_instring)
    case default 
       ! we can't give any context here for where it was
       ! being called, but if it isn't true or false, error out.
-      msgstring = '.TRUE., TRUE, T or .FALSE., FALSE, F are valid values'         
+      msgstring1 = '.TRUE., TRUE, T or .FALSE., FALSE, F are valid values'         
       call error_handler(E_ERR,'string_to_logical', &
                  'Cannot parse true or false value from string: "'//trim(inputstring)//'"', &
-                  source, revision, revdate, text2=msgstring)
+                  source, revision, revdate, text2=msgstring1)
 end select
 
 end function string_to_logical
