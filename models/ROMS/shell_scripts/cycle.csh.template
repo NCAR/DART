@@ -106,9 +106,9 @@ foreach INSTANCE_DIRECTORY ( instance_???? )
 
    mpirun.lsf ../MyROMS_EXE MyROMS_STDIN >& log_$instance.txt
 
-   # Check for successful completion - log file should have something like:
-   # ROMS/TOMS: DONE... Tuesday - April 26, 2016 -  7:34:13 PM
-   grep "ROMS/TOMS: DONE" log_$instance.txt > /dev/null
+   # Check for successful completion - log file should NOT have something like:
+   # Blowing-up: Saving latest model state into  RESTART file
+   grep -i blow log_$instance.txt > /dev/null
    if ($status != 0) then
       echo "ROMS instance $instance FAILED."
       echo "ROMS instance $instance FAILED."

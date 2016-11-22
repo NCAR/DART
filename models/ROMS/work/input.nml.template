@@ -59,7 +59,7 @@
    restart_in_file_name     = "no_restart_in"
    restart_out_file_name    = "no_restart_out"
 
-   inf_flavor                  = 2,                       0
+   inf_flavor                  = 0,                       0
    inf_initial_from_restart    = .true.,                  .true.
    inf_sd_initial_from_restart = .true.,                  .true.
    inf_output_restart          = .true.,                  .true.

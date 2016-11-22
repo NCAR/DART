@@ -46,9 +46,9 @@
 #         because that's where I built my ROMS and I'm using the
 #         default forcing/data files.
 
-set DARTDIR = /glade/p/work/${USER}/DART/rma_roms
+set DARTDIR = /glade/p/work/${USER}/DART/rma_trunk
 set ROMSDIR = /glade/p/work/${USER}/roms/test
-set EXPERIMENTDIR = /glade/scratch/${USER}/roms_inflation_test
+set EXPERIMENTDIR = /glade/scratch/${USER}/roms_cycling_test
 set SUBSTITUTE = /glade/p/work/${USER}/roms/trunk/ROMS/Bin/substitute
 
 if (-e ${EXPERIMENTDIR} ) then
