@@ -21,7 +21,6 @@
 !>
 !> subsequently modified by the DART team.
 !>
-!> \todo
 !> @todo really check the land masking and _FillValue processing
 !----------------------------------------------------------------
 
@@ -97,7 +96,8 @@ public ::  restart_file_to_sv,         &
            get_model_restart_filename, &
            get_time_from_namelist,     &
            write_model_time,           &
-           print_variable_ranges
+           print_variable_ranges,      &
+           is_dry_land
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -149,9 +149,6 @@ integer :: nfields   ! This is the number of variables in the DART state vector.
 !> a netCDF file is stored here as well as all the information about where
 !> the variable is stored in the DART state vector.
 !> @todo FIXME ... do we need numvertical as opposed to ZonHalf ...
-!>
-!> @todo FIXME ... add a field for what kind of mask to use
-!>
 
 type progvartype
    private
@@ -213,6 +210,10 @@ integer(i2), allocatable :: mask_rho(:,:), &
                             mask_psi(:,:), &
                               mask_u(:,:), &
                               mask_v(:,:)
+
+integer(i2), parameter :: LAND  = 0_i2
+integer(i2), parameter :: WATER = 1_i2
+
 
 real(r8)        :: ocean_dynamics_timestep = 900.0_r4
 type(time_type) :: model_timestep
@@ -326,10 +327,11 @@ integer, optional,   intent(out) :: var_type
 
 ! Local variables
 
-integer  :: nxp, nzp, iloc, vloc, nf, n,nyp,jloc
+integer  :: iloc, vloc, nf, n, jloc
 integer  :: myindx
 integer  :: ivar
 real(r8) :: depth
+logical  :: dry_land
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -345,10 +347,6 @@ FindIndex : do n = 1,nfields
     endif
 enddo FindIndex
 
-if (present(var_type)) then
-   var_type = progvar(nf)%dart_kind
-endif
-
 if( myindx == -1 ) then
      write(string1,*) 'Problem, cannot find base_offset, index_in is: ', index_in
      call error_handler(E_ERR,'get_state_meta_data:',string1,source,revision,revdate)
@@ -356,22 +354,53 @@ endif
 
 ! Now that we know the variable, find the cell or edge
 
-if (     progvar(nf)%numxi /= MISSING_I .AND. progvar(nf)%numeta /= MISSING_I ) then
-   nyp = progvar(nf)%numxi
-   nxp = progvar(nf)%numeta
+if ( progvar(nf)%numxi /= MISSING_I .AND. progvar(nf)%numeta /= MISSING_I ) then
+   continue
 else
-     write(string1,*) 'ERROR, ',trim(progvar(nf)%varname),' is not defined on xi or eta'
-     call error_handler(E_ERR,'get_state_meta_data:',string1,source,revision,revdate)
+   write(string1,*) 'ERROR, ',trim(progvar(nf)%varname),' is not defined on xi or eta'
+   call error_handler(E_ERR,'get_state_meta_data:',string1,source,revision,revdate)
 endif
 
 call get_state_indices(progvar(nf)%dart_kind, myindx, iloc, jloc, vloc)
 
-nzp  = progvar(nf)%numvertical
-if(nzp==1) then
-  depth=0.0
-else
-  depth= ZC(iloc,jloc,vloc)
+dry_land = is_dry_land(nf, iloc, jloc)
+
+if (present(var_type)) then
+   if (dry_land) then
+      var_type = KIND_DRY_LAND
+   else
+      var_type = progvar(nf)%dart_kind
+   endif
 endif
+
+if (dry_land) then
+   depth = MISSING_R8
+else
+   if (progvar(nf)%numvertical == 1) then
+      depth =0.0
+   else
+      depth = ZC(iloc,jloc,vloc)
+   endif
+endif
+
+! TJH DEBUG BLOCK START -----------------
+! index_in = 36000001 is a V current in my test configuration
+if (do_output() .and. index_in == 36000001 ) then
+   write(*,*)
+   write(*,*)'index_in           is ', index_in
+   write(*,*)'local index        is ', myindx
+   write(*,*)'iloc               is ', iloc
+   write(*,*)'jloc               is ', jloc
+   write(*,*)'vloc               is ', vloc
+   write(*,*)'depth              is ', depth
+   write(*,*)'ZC(iloc,jloc,vloc) is ', ZC(iloc,jloc,vloc)
+   write(*,*)'mask_v(iloc,jloc)  is ', mask_v(iloc,jloc)
+   write(*,*)'LAND               is ', LAND
+   write(*,*)'WATER              is ', WATER
+   write(*,*)'dry_land           is ', dry_land
+   write(*,*)
+endif
+! TJH DEBUG BLOCK STOP -----------------
 
 ivar = get_progvar_index_from_kind(progvar(nf)%dart_kind)
 
@@ -486,24 +515,29 @@ endif
 ! enddo
 
 if(progvar(ivar)%kind_string == 'KIND_U_CURRENT_COMPONENT') then
-   call get_reg_box_indices(llon, llat, ULON, ULAT, x_ind, y_ind)
-   ! Getting corners for accurate interpolation
+   call get_reg_box_indices(llon, llat, ULON, ULAT, x_ind, y_ind, istatus)
+   if (istatus /= 0) return
+
    call get_quad_corners(ULON, x_ind, y_ind, x_corners)
    call get_quad_corners(ULAT, x_ind, y_ind, y_corners)
+
 elseif (progvar(ivar)%kind_string == 'KIND_V_CURRENT_COMPONENT') then
-   call get_reg_box_indices(llon, llat, VLON, VLAT, x_ind, y_ind)
-   ! Getting corners for accurate interpolation
+   call get_reg_box_indices(llon, llat, VLON, VLAT, x_ind, y_ind, istatus)
+   if (istatus /= 0) return
+
    call get_quad_corners(VLON, x_ind, y_ind, x_corners)
    call get_quad_corners(VLAT, x_ind, y_ind, y_corners)
+
 else
-   call get_reg_box_indices(llon, llat, TLON, TLAT, x_ind, y_ind)
-   ! Getting corners for accurate interpolation
+   call get_reg_box_indices(llon, llat, TLON, TLAT, x_ind, y_ind, istatus)
+   if (istatus /= 0) return
+
    call get_quad_corners(TLON, x_ind, y_ind, x_corners)
    call get_quad_corners(TLAT, x_ind, y_ind, y_corners)
 endif
 
-lon_bot=x_ind
-lat_bot=y_ind
+lon_bot = x_ind
+lat_bot = y_ind
 
 ! Find the indices to get the values for interpolating
 lat_top = lat_bot + 1
@@ -1592,7 +1626,7 @@ hor_dist = 1.0e9_r8
 
 if ( .not. module_initialized ) call static_init_model
 
-! Initialize variables to missing status
+! Initialize variables to MISSING status
 
 base_obs_kind = base_obs_type ! because it really is a KIND
 
@@ -2169,6 +2203,35 @@ end subroutine print_variable_ranges
 
 
 !-----------------------------------------------------------------------
+!> returns true if this location is land.
+
+function is_dry_land(ivar, lon_index, lat_index)
+
+integer, intent(in) :: ivar
+integer, intent(in) :: lon_index, lat_index
+logical             :: is_dry_land
+
+if ( .not. module_initialized ) call static_init_model
+
+is_dry_land = .TRUE. ! start out thinking everything is dry.
+
+select case ( trim(progvar(ivar)%mask) )
+   case ('mask_u')
+      if (mask_u(  lon_index, lat_index) /= WATER) return
+   case ('mask_v')
+      if (mask_v(  lon_index, lat_index) /= WATER) return
+   case ('mask_rho')
+      if (mask_rho(lon_index, lat_index) /= WATER) return
+   case ('mask_psi')
+      if (mask_psi(lon_index, lat_index) /= WATER) return
+end select
+
+is_dry_land = .FALSE.
+
+end function is_dry_land
+
+
+!-----------------------------------------------------------------------
 ! The remaining (private) interfaces come last.
 ! None of the private interfaces need to call static_init_model()
 !-----------------------------------------------------------------------
@@ -2253,9 +2316,6 @@ integer  :: k,ncid, VarID, stat
 real(r8) :: dzt0(Nx,Ny)
 real(r8) :: s_rho(Ns_rho), Cs_r(Ns_rho), SSH(Nx,Ny)
 
-integer(i2), parameter :: LAND  = 0_i2
-integer(i2), parameter :: WATER = 1_i2
-
 if (debug > 1) then
    write(string1,*)'..  NX is ',Nx
    write(string2,*)'NY is ',Ny
@@ -2279,7 +2339,7 @@ if (.not. allocated(ANGL)) allocate(ANGL(Nxi_rho,Neta_rho))
 
 if (.not. allocated(ZC))   allocate(  ZC(Nx,Ny,Nz))
 
-!> todo are PM, PN used for anything?
+!> @todo are PM, PN used for anything?
 
 if (.not. allocated(PM))   allocate(  PM(Nx,Ny))
 if (.not. allocated(PN))   allocate(  PN(Nx,Ny))
@@ -2527,7 +2587,7 @@ end subroutine verify_variables
 !>
 !> matches variable name in bounds table to assign
 !> the bounds if they exist.  otherwise sets the bounds
-!> to missing_r8 which means they are unbounded.
+!> to MISSING_r8 which means they are unbounded.
 !> @todo FIXME the roms_state_bounds module variable that specifies the
 !>       bounds is not actually set nor checked nor ... so all variables
 !>       are unbounded.
@@ -2564,14 +2624,14 @@ do while ( trim(bounds_table(1,n)) /= 'NULL' .and. trim(bounds_table(1,n)) /= ''
         if ( bound /= 'NULL' .and. bound /= '' ) then
              read(bound,'(d16.8)') lower_bound
         else
-             lower_bound = missing_r8
+             lower_bound = MISSING_r8
         endif
 
         bound = trim(bounds_table(3,n))
         if ( bound /= 'NULL' .and. bound /= '' ) then
              read(bound,'(d16.8)') upper_bound
         else
-             upper_bound = missing_r8
+             upper_bound = MISSING_r8
         endif
 
         ! How do we want to handle out of range values?
@@ -2610,7 +2670,7 @@ enddo !n
 ! back to the model restart file.
 
 progvar(ivar)%clamping = .false.
-progvar(ivar)%range = missing_r8
+progvar(ivar)%range = MISSING_r8
 progvar(ivar)%out_of_range_fail = .false.  ! should be unused so setting shouldn't matter
 
 return
@@ -3170,7 +3230,7 @@ if (dimsize == 1) then
    endif
 
    ! is lower bound set
-   if ( range(1) /= missing_r8 ) then
+   if ( range(1) /= MISSING_r8 ) then
 
       if ( out_of_range_fail ) then
          if ( minval(array_1d) < range(1) ) then
@@ -3187,7 +3247,7 @@ if (dimsize == 1) then
    endif ! min range set
 
    ! is upper bound set
-   if ( range(2) /= missing_r8 ) then
+   if ( range(2) /= MISSING_r8 ) then
 
       if ( out_of_range_fail ) then
          if ( maxval(array_1d) > range(2) ) then
@@ -3214,7 +3274,7 @@ else if (dimsize == 2) then
    endif
 
    ! is lower bound set
-   if ( range(1) /= missing_r8 ) then
+   if ( range(1) /= MISSING_r8 ) then
 
       if ( out_of_range_fail ) then
          if ( minval(array_2d) < range(1) ) then
@@ -3231,7 +3291,7 @@ else if (dimsize == 2) then
    endif ! min range set
 
    ! is upper bound set
-   if ( range(2) /= missing_r8 ) then
+   if ( range(2) /= MISSING_r8 ) then
 
       if ( out_of_range_fail ) then
          if ( maxval(array_2d) > range(2) ) then
@@ -3258,7 +3318,7 @@ else if (dimsize == 3) then
    endif
 
    ! is lower bound set
-   if ( range(1) /= missing_r8 ) then
+   if ( range(1) /= MISSING_r8 ) then
 
       if ( out_of_range_fail ) then
          if ( minval(array_3d) < range(1) ) then
@@ -3275,7 +3335,7 @@ else if (dimsize == 3) then
    endif ! min range set
 
    ! is upper bound set
-   if ( range(2) /= missing_r8 ) then
+   if ( range(2) /= MISSING_r8 ) then
 
       if ( out_of_range_fail ) then
          if ( maxval(array_3d) > range(2) ) then
@@ -3473,14 +3533,14 @@ llv_loc = get_location(location)
 
 ! the routines below will use zin as the incoming vertical value
 ! and zout as the new outgoing one.  start out assuming failure
-! (zout = missing) and wait to be pleasantly surprised when it works.
+! (zout = MISSING) and wait to be pleasantly surprised when it works.
 zin     = llv_loc(3)
-zout    = missing_r8
+zout    = MISSING_r8
 
-! if the vertical is missing to start with, return it the same way
+! if the vertical is MISSING to start with, return it the same way
 ! with the requested type as out.
-if (zin == missing_r8) then
-   location = set_location(llv_loc(1),llv_loc(2),missing_r8,ztypeout)
+if (zin == MISSING_r8) then
+   location = set_location(llv_loc(1),llv_loc(2),MISSING_r8,ztypeout)
    return
 endif
 
@@ -3517,7 +3577,7 @@ end select   ! outgoing vert type
 location = set_location(llv_loc(1),llv_loc(2),zout,ztypeout)
 
 ! Set successful return code only if zout has good value
-if(zout /= missing_r8) istatus = 0
+if(zout /= MISSING_r8) istatus = 0
 
 end subroutine vert_convert
 
@@ -3586,18 +3646,18 @@ ivar = get_progvar_index_from_kind(var_type)
 
    ! Is this on the U or T grid?
    if(progvar(ivar)%kind_string == 'KIND_U_CURRENT_COMPONENT') then
-      call get_reg_box_indices(lon, lat, ULON, ULAT, x_ind, y_ind)
-      ! Getting corners for accurate interpolation
+      call get_reg_box_indices(lon, lat, ULON, ULAT, x_ind, y_ind, istatus)
+      if (istatus /= 0) return
       call get_quad_corners(ULON, x_ind, y_ind, x_corners)
       call get_quad_corners(ULAT, x_ind, y_ind, y_corners)
    elseif (progvar(ivar)%kind_string == 'KIND_V_CURRENT_COMPONENT') then
-      call get_reg_box_indices(lon, lat, VLON, VLAT, x_ind, y_ind)
-      ! Getting corners for accurate interpolation
+      call get_reg_box_indices(lon, lat, VLON, VLAT, x_ind, y_ind, istatus)
+      if (istatus /= 0) return
       call get_quad_corners(VLON, x_ind, y_ind, x_corners)
       call get_quad_corners(VLAT, x_ind, y_ind, y_corners)
    else
-      call get_reg_box_indices(lon, lat, TLON, TLAT, x_ind, y_ind)
-      ! Getting corners for accurate interpolation
+      call get_reg_box_indices(lon, lat, TLON, TLAT, x_ind, y_ind, istatus)
+      if (istatus /= 0) return
       call get_quad_corners(TLON, x_ind, y_ind, x_corners)
       call get_quad_corners(TLAT, x_ind, y_ind, y_corners)
    endif
@@ -3676,7 +3736,7 @@ real(r8)   :: tp(Nz), zz(Nz)
 tp   = 0.0_r8
 iidd = 0
 
-! if the lonid, latid is a missing_r8, then the id is a land point
+! if the lonid, latid is a MISSING_r8, then the id is a land point
 ! and no interpolation is possible. Just return a MISSING_R8 value.
 
 do i=1,Nz
@@ -3726,7 +3786,7 @@ end subroutine vert_interpolate
 !> @param x the (contiguous) portion of the DART state vector for the variable of interest
 !> @param var_type the DART KIND of interest.
 !>
-!> @ todo FIXME Johnny may have a better way to do this if everything stays
+!> @todo FIXME Johnny may have a better way to do this if everything stays
 !>        rectangular. (i.e. not squeezing out the dry columns)
 
 function get_val(lon_index, lat_index, level_index, x, var_type)
@@ -3944,7 +4004,7 @@ end subroutine quad_bilinear_interp
 !>
 !> Solves rank 3 linear system mr = v for r using Cramer's rule.
 !>
-!> @ todo This isn't the best choice for speed or numerical stability so
+!> @todo This isn't the best choice for speed or numerical stability so
 !> might want to replace this at some point.
 !>
 
@@ -4000,7 +4060,7 @@ end function deter3
 !> @param y_ind the 'y' (latitude) index of the location of interest.
 !>
 !> @todo FIXME should this really error out or silently fail?
-!> At this point it may silently fail.
+!> At this point it DOES silently fail.
 !>
 !> ROMS has a structured horizontal grid.
 !>
@@ -4013,7 +4073,7 @@ end function deter3
 !> bjchoi 2014/08/07
 !-------------------------------------------------------------
 
-subroutine get_reg_box_indices(lon, lat, LON_al, LAT_al, x_ind, y_ind)
+subroutine get_reg_box_indices(lon, lat, LON_al, LAT_al, x_ind, y_ind, istatus)
 
 real(r8), intent(in)  :: lon
 real(r8), intent(in)  :: lat
@@ -4021,6 +4081,7 @@ real(r8), intent(in)  :: LON_al(:,:)
 real(r8), intent(in)  :: LAT_al(:,:)
 integer,  intent(out) :: x_ind
 integer,  intent(out) :: y_ind
+integer,  intent(out) :: istatus
 
 real(r8),allocatable  :: boxLON(:,:), boxLAT(:,:)
 integer               :: i, j, ii, jj, Nx, Ny, nxbox, nybox
@@ -4030,6 +4091,11 @@ real(r8),allocatable  :: rtemp(:)
 integer, allocatable  :: itemp(:),jtemp(:)
 integer               :: t, loc1
 integer               :: min_location(1) ! stupid parser
+
+real(r8) :: part1, part2
+real(r8) :: latrad
+
+istatus = 3 ! FAIL
 
 ! Divide the model grid cells into a group of boxes.
 ! For example, divide the model domain into 47 x 70 subdomains (or boxes).
@@ -4047,6 +4113,10 @@ allocate( boxLAT(nxbox,nybox) )
 allocate( rtemp(Nx*Ny) )
 allocate( itemp(Nx*Ny) )
 allocate( jtemp(Nx*Ny) )
+
+rtemp = huge(rtemp)   ! ultimately want the minimum value
+itemp = -1            ! should not matter
+jtemp = -1            ! should not matter
 
 do ii = 1, nxbox-1
   do jj = 1, nybox-1
@@ -4075,23 +4145,40 @@ jj = nybox
 j = (num_cell/2) + (jj-1)*num_cell
 if (j .GT. Ny) j = Ny
 
+!> @todo boxLON(nxbox,nybox) and boxLAT(nxbox,nybox) are not getting set
+!> TJH          37          17   302.859687426721        52.1531690036829     
+!> TJH          37          18   301.879518471865        53.1934976695757     
+!> TJH          37          19   1.797693134862316E+308  1.797693134862316E+308
+
+!> @todo hardcode a fix for now - I know this is not correct with tilted domains
+boxLon(nxbox,nybox) = boxLon(nxbox,nybox-1) - &
+                     (boxLon(nxbox,nybox-1) - boxLon(nxbox,nybox-2))
+boxLat(nxbox,nybox) = boxLat(nxbox,nybox-1) + &
+                     (boxLat(nxbox,nybox-1) - boxLat(nxbox,nybox-2))
+
+!TJH: these have no need to be inside the loops.
+
+latrad = lat*DEG2RAD
+part1  = 111.41288_r8 * cos(latrad)
+part2  =   0.09350_r8 * cos(3.0_r8 * latrad) + &
+           0.00012_r8 * cos(5.0_r8 * latrad)
+
 ! find the box which the obs data belongs to
-t=0
+t = 0
 do ii=1,nxbox
- do jj=1,nybox
-    t=t+1
-    lon_dif = (lon - boxLON(ii,jj))*111.41288*cos(lat*DEG2RAD) - &
-                 0.09350 * cos(3.0 * lat*DEG2RAD) + &
-                 0.00012 * cos(5.0 * lat*DEG2RAD)
-    lat_dif = (lat - boxLat(ii,jj))*111.13295
-    rtemp(t) = sqrt(lon_dif*lon_dif+lat_dif*lat_dif)
+do jj=1,nybox
+!   write(*,*)'TJH', nxbox, nybox, ii, jj, boxLON(ii,jj), boxLAT(ii,jj)
+    lon_dif = (lon - boxLON(ii,jj)) * part1 - part2
+    lat_dif = (lat - boxLat(ii,jj))*111.13295_r8
+    t = t+1
+    rtemp(t) = sqrt(lon_dif*lon_dif + lat_dif*lat_dif)
     itemp(t) = ii
     jtemp(t) = jj
- enddo
+enddo
 enddo
 
 ! find minium distance
-min_location = minloc(rtemp)
+min_location = minloc(rtemp(1:t))
 loc_box = min_location(1)
 
 ! locate the box which contains the obs data (ii, jj)
@@ -4099,33 +4186,44 @@ loc_box = min_location(1)
 ! the neighboring 4 model grid points are within this range.
 ii = itemp(loc_box)
 jj = jtemp(loc_box)
-i_start = max((ii-1)*num_cell - num_cell/2, 1) ! span 2 cells
+i_start = max((ii-1)*num_cell - num_cell/2, 1) !
 i_end   = min(    ii*num_cell + num_cell/2,Nx) ! span 2 cells
 j_start = max((jj-1)*num_cell - num_cell/2, 1)
 j_end   = min(    jj*num_cell + num_cell/2,Ny)
 
 ! now, calculate the distance between the obs and close candiate points
-t=0
+
+rtemp = huge(rtemp)   ! ultimately want the minimum value
+itemp = -1            ! should not matter
+jtemp = -1            ! should not matter
+t     = 0
+
 do i=i_start,i_end
- do j=j_start,j_end
-    t=t+1
-    lon_dif = (lon - LON_al(i,j))*111.41288*cos(lat*DEG2RAD) - &
-              0.09350 * cos(3.0 * lat*DEG2RAD) + &
-              0.00012 * cos(5.0 * lat*DEG2RAD)
-    lat_dif = (lat - Lat_al(i,j))*111.13295
-    rtemp(t) = sqrt(lon_dif*lon_dif+lat_dif*lat_dif)
+do j=j_start,j_end
+    lon_dif = (lon - LON_al(i,j)) * part1 - part2
+    lat_dif = (lat - Lat_al(i,j))*111.13295_r8
+    t = t+1
+    rtemp(t) = sqrt(lon_dif*lon_dif + lat_dif*lat_dif)
     itemp(t) = i
     jtemp(t) = j
-  enddo
+enddo
 enddo
 
 !find minimum distances
-min_location = minloc(rtemp)
+min_location = minloc(rtemp(1:t))
 loc1 = min_location(1)
 
 !> @todo FIXME dies here with bounds checking turned on and you attempt
 !>       to interpolate something outside the domain. This WHOLE ROUTINE
 !>       can be replaced with something similar from POP.
+
+if ( (jtemp(loc1)+1) > size(LON_al,2) ) then
+   write(string1,*)'ERROR in finding matching grid point for'
+   write(string2,*)'longitude ',lon,' latitude ',lat
+   write(string3,*)'jtemp(loc1)+1 ',jtemp(loc1)+1,' is > size(LON_al,2) ',size(LON_al,2)
+   call error_handler(E_ERR,'get_reg_box_indices:', string1, &
+              source, revision, revdate, text2=string2, text3=string3)
+endif
 
 !check point location
 tp1 = checkpoint(LON_al(itemp(loc1)  ,jtemp(loc1)  ), &
@@ -4139,29 +4237,44 @@ tp2 = checkpoint(LON_al(itemp(loc1)  ,jtemp(loc1)  ), &
                  LAT_al(itemp(loc1)  ,jtemp(loc1)+1),lon,lat)
 
 if(     (tp1  > 0.0_r8) .and. (tp2  > 0.0_r8)) then
-      x_ind=itemp(loc1)-1
-      y_ind=jtemp(loc1)
+      x_ind   =itemp(loc1)-1
+      y_ind   =jtemp(loc1)
+      istatus = 0
+
 elseif( (tp1  > 0.0_r8) .and. (tp2  < 0.0_r8)) then
-      x_ind=itemp(loc1)
-      y_ind=jtemp(loc1)
+      x_ind   =itemp(loc1)
+      y_ind   =jtemp(loc1)
+      istatus = 0
+
 elseif( (tp1  < 0.0_r8) .and. (tp2  > 0.0_r8)) then
-      x_ind=itemp(loc1)-1
-      y_ind=jtemp(loc1)-1
+      x_ind   =itemp(loc1)-1
+      y_ind   =jtemp(loc1)-1
+      istatus = 0
+
 elseif( (tp1  < 0.0_r8) .and. (tp2  < 0.0_r8)) then
-      x_ind=itemp(loc1)
-      y_ind=jtemp(loc1)-1
+      x_ind   =itemp(loc1)
+      y_ind   =jtemp(loc1)-1
+      istatus = 0
+
 elseif( (tp1 == 0.0_r8) .and. (tp2  > 0.0_r8)) then
-      x_ind=itemp(loc1)-1
-      y_ind=jtemp(loc1)
+      x_ind   =itemp(loc1)-1
+      y_ind   =jtemp(loc1)
+      istatus = 0
+
 elseif( (tp1 == 0.0_r8) .and. (tp2  < 0.0_r8)) then
-      x_ind=itemp(loc1)
-      y_ind=jtemp(loc1)
+      x_ind   =itemp(loc1)
+      y_ind   =jtemp(loc1)
+      istatus = 0
+
 elseif( (tp1  > 0.0_r8) .and. (tp2 == 0.0_r8)) then
-      x_ind=itemp(loc1)
-      y_ind=jtemp(loc1)
+      x_ind   =itemp(loc1)
+      y_ind   =jtemp(loc1)
+      istatus = 0
+
 elseif( (tp1  < 0.0_r8) .and. (tp2 == 0.0_r8)) then
-      x_ind=itemp(loc1)-1
-      y_ind=jtemp(loc1)-1
+      x_ind   =itemp(loc1)-1
+      y_ind   =jtemp(loc1)-1
+      istatus = 0
 else
    write(string1,*)'ERROR in finding matching grid point for'
    write(string2,*)'longitude ',lon
@@ -4170,14 +4283,21 @@ else
               source, revision, revdate, text2=string2, text3=string3)
 endif
 
-if (do_output() .and. debug > 0) then
+if ( x_ind < 1 .or. y_ind < 1 ) then
+   write(string1,*)'WARNING. Cannot be correct. Matching grid point for'
+   write(string2,*)'longitude ',lon,' is index ',x_ind
+   write(string3,*)'latitude  ',lat,' is index ',y_ind
+   call error_handler(E_MSG,'get_reg_box_indices:', string1, &
+              source, revision, revdate, text2=string2, text3=string3)
+      istatus = 2
+endif
 
+if (do_output() .and. debug > 1) then
    write(string1,*)'checking'
    write(string2,*)'longitude ',lon,' is index ',x_ind
    write(string3,*)'latitude  ',lat,' is index ',y_ind
    call error_handler(E_MSG,'get_reg_box_indices:', string1, &
               source, revision, revdate, text2=string2, text3=string3)
-
 endif
 
 deallocate(boxLON, boxLAT)
@@ -4285,7 +4405,7 @@ elseif((tp1  < 0.0_r8) .and. (tp2 == 0.0_r8)) then
    x_ind = itemp(loc1)-1
    y_ind = jtemp(loc1)-1
 else
-   write(string1,*)'ERROR in finding matching grid point for'
+   write(string1,*)'UNABLE to finding matching grid point for'
    write(string2,*)'longitude ',lon
    write(string3,*)'latitude  ',lat
    call error_handler(E_MSG,'get_reg_box_indices:', string1, &
@@ -4346,7 +4466,7 @@ real(r8), intent(out) :: corners(4)
 integer :: ip1
 
 ! Note that corners go counterclockwise around the quad.
-! @todo FIXME Have to worry about wrapping in longitude but not in latitude
+!> @todo FIXME Have to worry about wrapping in longitude but not in latitude
 
 ip1 = i + 1
 !if(ip1 > nx) ip1 = 1

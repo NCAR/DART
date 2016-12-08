@@ -495,11 +495,13 @@ write(iunit,'(''interptest = [ ... '')')
 allocate(lon(nlon), lat(nlat), vert(nvert), field(nlon,nlat,nvert))
 nfailed = 0
 nland = 0
+field = MISSING_R8
 
-do ilon = 1, nlon
+LONLOOP: do ilon = 1, nlon
    lon(ilon) = interp_test_lonrange(1) + real(ilon-1,r8) * interp_test_dlon
-   do jlat = 1, nlat
+LATLOOP: do jlat = 1, nlat
       lat(jlat) = interp_test_latrange(1) + real(jlat-1,r8) * interp_test_dlat
+
       do kvert = 1, nvert
          vert(kvert) = interp_test_vertrange(1) + real(kvert-1,r8) * interp_test_dvert
 
@@ -524,8 +526,8 @@ do ilon = 1, nlon
          endif
 
       enddo
-   end do
-end do
+   enddo LATLOOP
+enddo LONLOOP
 
 write(iunit,'(''];'')')
 write(iunit,'(''datmat = reshape(interptest,nvert,nlat,nlon);'')')
