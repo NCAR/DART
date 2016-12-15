@@ -84,11 +84,13 @@ logical :: fail_on_missing_field = .true.    ! or .false.
 logical :: do_all_numeric_fields = .true.    ! or .false.
 character(len=128) :: fieldnames(1000) = ''  ! something large
 character(len=128) :: fieldlist_file = ''
+logical :: silence_on_same = .false.         ! say nothing if fields same
 
 ! fieldnames here?
 namelist /compare_states_nml/  debug, fail_on_missing_field, &
                                do_all_numeric_fields,        &
-                               fieldnames, fieldlist_file
+                               fieldnames, fieldlist_file,   &
+                               silence_on_same
 
 ! main code here
  
@@ -309,8 +311,10 @@ fieldloop : do i=1, 100000
    end select
 
    ! announce what we're about to do
-   write(msgstring, *) 'checking equality of: ', trim(tmpstring)
-   call error_handler(E_MSG, 'compare_states', msgstring)
+   if (.not. silence_on_same) then
+      write(msgstring, *) 'checking equality of: ', trim(tmpstring)
+      call error_handler(E_MSG, 'compare_states', msgstring)
+   endif
 
    ! allocate right dim array
    ! read/write and then deallocate
@@ -433,6 +437,10 @@ fieldloop : do i=1, 100000
      end select
      ! common reporting code for integers
      if (nitems > 0) then
+        if (silence_on_same) then  ! we haven't said what field we're working on yet
+           write(msgstring, *) 'checking equality of: ', trim(tmpstring)
+           call error_handler(E_MSG, 'compare_states', msgstring)
+        endif
         write(msgstring, *) 'arrays differ in ', nitems, ' places'
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
         write(msgstring, *) 'min/max file1: ', imin1, imax1
@@ -441,7 +449,7 @@ fieldloop : do i=1, 100000
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
         write(msgstring, *) 'delta min/max: ', idelmin, idelmax
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
-     else
+     else if (.not. silence_on_same) then
         write(msgstring, *) 'arrays same'
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
         write(msgstring, *) 'min/max value: ', imin1, imax1
@@ -563,6 +571,10 @@ fieldloop : do i=1, 100000
 
      ! common reporting code for reals
      if (nitems > 0) then
+        if (silence_on_same) then  ! we haven't said what field we're working on yet
+           write(msgstring, *) 'checking equality of: ', trim(tmpstring)
+           call error_handler(E_MSG, 'compare_states', msgstring)
+        endif
         write(msgstring, *) 'arrays differ in ', nitems, ' places'
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
         write(msgstring, *) 'min/max file1: ', min1, max1
@@ -571,7 +583,7 @@ fieldloop : do i=1, 100000
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
         write(msgstring, *) 'delta min/max: ', delmin, delmax
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
-     else
+     else if (.not. silence_on_same) then
         write(msgstring, *) 'arrays same'
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
         write(msgstring, *) 'min/max value: ', min1, max1

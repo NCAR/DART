@@ -108,10 +108,9 @@ end subroutine static_init_smoother
 
 !-------------------------------------------------------------------------
 
-subroutine init_smoother(ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
+subroutine init_smoother(ens_handle)
 
 type(ensemble_type), intent(inout) :: ens_handle
-integer,             intent(in) :: POST_INF_COPY, POST_INF_SD_COPY
 
 logical :: allow_missing
 
@@ -125,7 +124,7 @@ allow_missing = get_missing_ok_status()
 ! NOTE: Using ens_handle here (not lag_handle) so it doesn't die for 0 lag choice
 if(num_lags > 0) call adaptive_inflate_init(lag_inflate, 0, .false., .false., .false., &
    .true., 'no_lag_inflate', 'no_lag_inflate', 'no_lag_inflate', 1.0_r8, 0.0_r8,       &
-   1.0_r8, 1.0_r8, 0.0_r8, ens_handle, POST_INF_COPY, POST_INF_SD_COPY, allow_missing, "Lag")
+   1.0_r8, 1.0_r8, 0.0_r8, ens_handle, allow_missing, "Lag")
 
 end subroutine init_smoother
 

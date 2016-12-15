@@ -33,7 +33,8 @@ public :: update_inflation,           adaptive_inflate_end,          do_obs_infl
           log_inflation_info,         get_minmax_task_zero,          mean_from_restart,  &
           sd_from_restart,            get_inflation_in_filename,     get_inflation_out_filename,  &
           output_inf_restart,         get_inflate_mean,              get_inflate_sd,     &
-          get_is_prior,               get_is_posterior,              do_ss_inflate
+          get_is_prior,               get_is_posterior,              do_ss_inflate,      &
+          do_rtps_inflate
 
 
 ! version controlled file description for error handling, do not edit
@@ -177,7 +178,8 @@ function do_ss_inflate(inflation)
 type(adaptive_inflate_type), intent(in) :: inflation
 logical :: do_ss_inflate
 
-if (do_single_ss_inflate(inflation) .or. do_varying_ss_inflate(inflation)) then
+if (do_single_ss_inflate(inflation) .or. do_varying_ss_inflate(inflation) .or. &
+    do_rtps_inflate(inflation)) then
    do_ss_inflate = .true.
 else
    do_ss_inflate = .false.
@@ -189,7 +191,7 @@ end function do_ss_inflate
 subroutine adaptive_inflate_init(inflate_handle, inf_flavor, mean_from_restart, &
    sd_from_restart, output_restart, deterministic, in_file_name, out_file_name, &
    diag_file_name, inf_initial, sd_initial, inf_lower_bound, inf_upper_bound, &
-   sd_lower_bound, ens_handle, ss_inflate_index, ss_inflate_sd_index, missing_ok, label)
+   sd_lower_bound, ens_handle, missing_ok, label)
 
 ! Initializes an adaptive_inflate_type 
 
@@ -206,7 +208,6 @@ real(r8),                    intent(in)    :: inf_initial, sd_initial
 real(r8),                    intent(in)    :: inf_lower_bound, inf_upper_bound
 real(r8),                    intent(in)    :: sd_lower_bound
 type(ensemble_type),         intent(inout) :: ens_handle
-integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
 logical,                     intent(in)    :: missing_ok
 character(len = *),          intent(in)    :: label
 
@@ -325,12 +326,10 @@ end subroutine adaptive_inflate_init
 
 !------------------------------------------------------------------
 ! For obs_space_inflation the restart file is written out here.
-subroutine adaptive_inflate_end(inflate_handle, state_ens_handle, ss_inflate_index, &
-   ss_inflate_sd_index)
+subroutine adaptive_inflate_end(inflate_handle, state_ens_handle)
 
 type(adaptive_inflate_type), intent(in)    :: inflate_handle
 type(ensemble_type),         intent(inout) :: state_ens_handle
-integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
 
 integer :: restart_unit, io
 
@@ -397,6 +396,19 @@ do_single_ss_inflate = (inflate_handle%inflation_flavor == 3)
 
 end function do_single_ss_inflate
 
+!------------------------------------------------------------------
+
+function do_rtps_inflate(inflate_handle)
+
+! Returns true if this inflation type indicates posterior relaxion-to-prior-spread
+! (whitaker & Hamill, 2012)
+
+logical                                 :: do_rtps_inflate
+type(adaptive_inflate_type), intent(in) :: inflate_handle
+
+do_rtps_inflate = (inflate_handle%inflation_flavor == 4)
+
+end function do_rtps_inflate
 
 !------------------------------------------------------------------
 
@@ -524,7 +536,7 @@ end subroutine output_inflate_diagnostics
 
 !------------------------------------------------------------------
 
-subroutine inflate_ens(inflate_handle, ens, mean, inflate, var_in)
+subroutine inflate_ens(inflate_handle, ens, mean, inflate, var_in, fsprd, asprd)
 
 ! Inflates subset of ensemble members given mean and inflate
 ! Selects between deterministic and stochastic inflation
@@ -533,6 +545,7 @@ type(adaptive_inflate_type), intent(inout) :: inflate_handle
 real(r8),                    intent(inout) :: ens(:)
 real(r8),                    intent(in)    :: mean, inflate
 real(r8), optional,          intent(in)    :: var_in
+real(r8), optional,          intent(in)    :: fsprd, asprd
 
 integer  :: i, ens_size
 real(r8) :: rand_sd, var, sd_inflate
@@ -545,12 +558,25 @@ if (inflate_handle%allow_missing_in_clm) then
 endif
 
 if(inflate_handle%deterministic) then
-   ! Just spread the ensemble out linearly for deterministic
-   ! Following line can lead to inflation of 1.0 changing ens on some compilers
-   !!! ens = (ens - mean) * sqrt(inflate) + mean
-   ! Following gives 1.0 inflation having no impact on known compilers
-   sd_inflate = sqrt(inflate) 
-   ens = ens * sd_inflate + mean * (1.0_r8 - sd_inflate)
+
+   if ( do_rtps_inflate(inflate_handle)) then
+      if ( .not. present(fsprd) .or. .not. present(asprd)) then 
+         write(msgstring, *) 'missing arguments for RTPS inflation, should not happen'
+         call error_handler(E_ERR,'inflate_ens',msgstring,source,revision,revdate) 
+      endif 
+      ! only inflate if spreads are > 0
+      if ( asprd .gt. 0.0_r8 .and. fsprd .gt. 0.0_r8) &
+          ens = mean + (ens-mean) * ( inflate*((fsprd-asprd)/asprd) + 1.0_r8 )
+   else 
+
+      ! Spread the ensemble out linearly for deterministic
+      ! Following line can lead to inflation of 1.0 changing ens on some compilers
+      !!! ens = (ens - mean) * sqrt(inflate) + mean
+      ! Following gives 1.0 inflation having no impact on known compilers
+      sd_inflate = sqrt(inflate) 
+      ens = ens * sd_inflate + mean * (1.0_r8 - sd_inflate)
+
+   endif
 
 else
    ! Use a stochastic algorithm to spread out.
@@ -919,6 +945,9 @@ select case(inflation_handle%inflation_flavor)
       akind = ' state-space '
    case (3)
       sadapt = ' spatially-constant,'
+      akind = ' state-space'
+   case (4)
+      sadapt = ' spatially-varying relaxation-to-prior-spread,'
       akind = ' state-space'
    case default
       write(msgstring, *) 'Illegal inflation value for ', label

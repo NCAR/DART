@@ -1034,7 +1034,7 @@ real(r8)            :: mod_sfc_elevation
 real(r8) :: x_ill(ens_size), x_iul(ens_size), x_ilr(ens_size), x_iur(ens_size), ugrid(ens_size), vgrid(ens_size)
 real(r8) :: x_ugrid_1(ens_size), x_ugrid_2(ens_size), x_ugrid_3(ens_size), x_ugrid_4(ens_size)
 real(r8) :: x_vgrid_1(ens_size), x_vgrid_2(ens_size), x_vgrid_3(ens_size), x_vgrid_4(ens_size)
-integer  :: e, count, uk !< index varibles for loop
+integer  :: e, kcount, uk !< index variables for loop
 real(r8) :: failedcopies(ens_size)
 integer, allocatable  :: uniquek(:)
 integer  :: ksort(ens_size)
@@ -1328,26 +1328,11 @@ else
    enddo
 
    ! Set a working integer k value -- if (int(zloc) < 1), then k = 1
-   k = max(1,int(zloc)) !HK k is now ensemble size
+   k = max(1,int(zloc))  ! k is an ensemble-sized array 
 
-
-   ! Find the unique k values
-   ksort = sort(k)
-
-   count = 1
-   do e = 2, ens_size
-       if ( ksort(e) /= ksort(e-1) ) count = count + 1
-   enddo
-
-   allocate(uniquek(count))
- 
-   uk = 1
-   do e = 1, ens_size
-      if ( all(uniquek /= k(e)) ) then
-         uniquek(uk) = k(e)
-         uk = uk + 1
-      endif
-   enddo
+   kcount = count_unique_vals(k)
+   allocate(uniquek(kcount))
+   call keep_unique_vals(k, uniquek)
 
    ! The big horizontal interp loop below computes the data values in the level
    ! below and above the actual location, and then does a separate vertical
@@ -1482,7 +1467,7 @@ else
             call toGrid(xloc_u,i_u,dx_u,dxm_u)
             call toGrid(yloc_v,j_v,dy_v,dym_v)
 
-            do uk = 1, count ! for the different ks
+            do uk = 1, kcount ! for the different ks
 
                ! Check to make sure retrieved integer gridpoints are in valid range
                if ( boundsCheck( i_u, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_u) .and. &
@@ -1637,7 +1622,7 @@ else
 
          if ( wrf%dom(id)%type_t >= 0 ) then
 
-            do uk = 1, count ! for the different ks
+            do uk = 1, kcount ! for the different ks
 
                ! Check to make sure retrieved integer gridpoints are in valid range
                if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -1731,7 +1716,7 @@ else
 
          if ( wrf%dom(id)%type_t >= 0 ) then
 
-            do uk = 1, count
+            do uk = 1, kcount
 
             ! Check to make sure retrieved integer gridpoints are in valid range
             if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -1794,7 +1779,7 @@ else
    ! 1.d Density (Rho)
    elseif (obs_kind == KIND_DENSITY) then
 
-      do uk = 1, count ! for the different ks
+      do uk = 1, kcount ! for the different ks
 
       ! Check to make sure retrieved integer gridpoints are in valid range
       if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -1846,11 +1831,21 @@ else
    elseif ( obs_kind == KIND_VERTICAL_VELOCITY ) then
 
       ! Adjust zloc for staggered ZNW grid (or W-grid, as compared to ZNU or M-grid)
+      ! and recompute unique K values.
       zloc = zloc + 0.5_r8
-      k = max(1,int(zloc))  !> @todo what should you do with this?
 
-     call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_handle )
-     if (all(fld == missing_r8)) goto 200
+      ! Reset a working integer k value -- if (int(zloc) < 1), then k = 1
+      k = max(1,int(zloc))  ! k is an ensemble-sized array 
+
+      kcount = count_unique_vals(k)
+      if (kcount /= size(uniquek)) then
+         deallocate(uniquek)
+         allocate(uniquek(kcount))
+      endif
+      call keep_unique_vals(k, uniquek)
+
+      call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_handle )
+      if (all(fld == missing_r8)) goto 200
 
     !-----------------------------------------------------
    ! 1.f Specific Humidity (SH, SH2)
@@ -1864,7 +1859,7 @@ else
          ! First confirm that vapor mixing ratio is in the DART state vector
          if ( wrf%dom(id)%type_qv >= 0 ) then
 
-            UNIQUEK_LOOP: do uk = 1, count ! for the different ks
+            UNIQUEK_LOOP: do uk = 1, kcount ! for the different ks
 
                ! Check to make sure retrieved integer gridpoints are in valid range
                if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -1974,7 +1969,7 @@ else
             ! This is for the 3D pressure field -- surface pressure later
       if(.not. surf_var) then
 
-         do uk = 1, count
+         do uk = 1, kcount
 
          ! Check to make sure retrieved integer gridpoints are in valid range
          if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -2065,7 +2060,7 @@ else
    else if ( obs_kind == KIND_VORTEX_LAT  .or. obs_kind == KIND_VORTEX_LON .or. &
              obs_kind == KIND_VORTEX_PMIN .or. obs_kind == KIND_VORTEX_WMAX ) then
 
-      do uk = 1, count ! for the different ks
+      do uk = 1, kcount ! for the different ks
 
       ! Check to make sure retrieved integer gridpoints are in valid range
       if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
@@ -2632,50 +2627,19 @@ else
          zloc = zloc + 0.5_r8
          k = max(1,int(zloc))  ! Only 1 value of k across the ensemble?
 
-         ! Check to make sure retrieved integer gridpoints are in valid range
-         if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_gz ) .and. &
-              boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_gz ) .and. &
-              boundsCheck( k(1), .false.,                id, dim=3, type=wrf%dom(id)%type_gz ) ) then
-            
-            call getCorners(i, j, id, wrf%dom(id)%type_gz, ll, ul, lr, ur, rc )
-            if ( rc .ne. 0 ) &
-                 print*, 'model_mod.f90 :: model_interpolate :: getCorners GZ rc = ', rc
-            
-            ! Interpolation for GZ field at level k
-            ill = get_dart_vector_index(ll(1), ll(2), k(1), domain_id(id), wrf%dom(id)%type_gz)
-            iul = get_dart_vector_index(ul(1), ul(2), k(1), domain_id(id), wrf%dom(id)%type_gz)
-            ilr = get_dart_vector_index(lr(1), lr(2), k(1), domain_id(id), wrf%dom(id)%type_gz)
-            iur = get_dart_vector_index(ur(1), ur(2), k(1), domain_id(id), wrf%dom(id)%type_gz)
-
-            x_ill = get_state(ill, state_handle)
-            x_iul = get_state(iul, state_handle)
-            x_iur = get_state(iur, state_handle)
-            x_ilr = get_state(ilr, state_handle)
-
-            fld(1,:) = ( dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur ) + &
-                       dym*( dxm*wrf%dom(id)%phb(ll(1), ll(2), k)   + &
-                             dx *wrf%dom(id)%phb(lr(1), lr(2), k) ) + &
-                       dy *( dxm*wrf%dom(id)%phb(ul(1), ul(2), k)   + &
-                             dx *wrf%dom(id)%phb(ur(1), ur(2), k) ) )  / gravity
-            
-            ! Interpolation for GZ field at level k+1
-            ill = get_dart_vector_index(ll(1), ll(2), k(1)+1, domain_id(id), wrf%dom(id)%type_gz)
-            iul = get_dart_vector_index(ul(1), ul(2), k(1)+1, domain_id(id), wrf%dom(id)%type_gz)
-            ilr = get_dart_vector_index(lr(1), lr(2), k(1)+1, domain_id(id), wrf%dom(id)%type_gz)
-            iur = get_dart_vector_index(ur(1), ur(2), k(1)+1, domain_id(id), wrf%dom(id)%type_gz)
-
-            x_ill = get_state(ill, state_handle)
-            x_iul = get_state(iul, state_handle)
-            x_iur = get_state(iur, state_handle)
-            x_ilr = get_state(ilr, state_handle)
-
-            fld(2, :) = ( dym*( dxm*x_ill + dx*x_ilr ) + dy*( dxm*x_iul + dx*x_iur ) + &
-                       dym*( dxm*wrf%dom(id)%phb(ll(1), ll(2), k(1)+1)   + &
-                             dx *wrf%dom(id)%phb(lr(1), lr(2), k(1)+1) ) + &
-                       dy *( dxm*wrf%dom(id)%phb(ul(1), ul(2), k(1)+1)   + &
-                             dx *wrf%dom(id)%phb(ur(1), ur(2), k(1)+1) ) )  / gravity
-   
+         kcount = count_unique_vals(k)
+         if (kcount /= size(uniquek)) then
+            deallocate(uniquek)
+            allocate(uniquek(kcount))
          endif
+         call keep_unique_vals(k, uniquek)
+
+         call simple_interp_distrib(fld, wrf, id, i, j, k, obs_kind, dxm, dx, dy, dym, uniquek, ens_size, state_handle)
+         if (all(fld == missing_r8)) goto 200
+
+         ! divide values by gravity to get height
+         fld(:,:) = fld(:,:) / gravity
+
       endif
 
      !-----------------------------------------------------
@@ -2698,9 +2662,9 @@ else
          ! Interpolation for the HGT field -- HGT is NOT part of state vector x, but rather
          !   in the associated domain meta data
          fld(1, :) = dym*( dxm*wrf%dom(id)%hgt(ll(1), ll(2)) + &
-                         dx*wrf%dom(id)%hgt(lr(1), lr(2)) ) + &
-                   dy*( dxm*wrf%dom(id)%hgt(ul(1), ul(2)) + &
-                         dx*wrf%dom(id)%hgt(ur(1), ur(2)) )
+                            dx*wrf%dom(id)%hgt(lr(1), lr(2)) ) + &
+                      dy*( dxm*wrf%dom(id)%hgt(ul(1), ul(2)) + &
+                            dx*wrf%dom(id)%hgt(ur(1), ur(2)) )
 
       endif
 
@@ -2751,6 +2715,7 @@ else
       istatus = 3
       if (debug) print*, 'unrecognized obs KIND, value = ', obs_kind
       deallocate(v_h, v_p)
+      if (allocated(uniquek)) deallocate(uniquek)
       return
 
    endif
@@ -4946,105 +4911,101 @@ subroutine get_model_pressure_profile_distrib(i,j,dx,dy,dxm,dym,n,id,v_p, state_
 ! Calculate the full model pressure profile on half (mass) levels,
 ! horizontally interpolated at the observation location.
 
-integer,  intent(in)  :: i,j,n,id
-real(r8), intent(in)  :: dx,dy,dxm,dym
-integer, intent(in)   :: ens_size
-real(r8), intent(out) :: v_p(0:n, ens_size)
+integer,             intent(in)  :: i,j,n,id
+real(r8),            intent(in)  :: dx,dy,dxm,dym
+integer,             intent(in)  :: ens_size
+real(r8),            intent(out) :: v_p(0:n, ens_size)
 type(ensemble_type), intent(in)  :: state_handle
-integer e !< for ensemble loop
 
-integer, dimension(2) :: ll, lr, ul, ur
-integer(i8)           :: ill, ilr, iul, iur
-integer               :: k, rc
-real(r8), allocatable :: pres1(:), pres2(:), pres3(:), pres4(:)
-logical  :: debug = .false.
+integer     :: e !< for ensemble loop
+integer     :: ll(2), lr(2), ul(2), ur(2)
+integer(i8) :: ill, ilr, iul, iur
+integer     :: k, rc
+real(r8)    :: pres1(ens_size), pres2(ens_size), pres3(ens_size), pres4(ens_size)
+real(r8)    :: x_ill(ens_size), x_ilr(ens_size), x_iul(ens_size), x_iur(ens_size)
+real(r8)    :: lev2_ill(ens_size), lev2_ilr(ens_size), lev2_iul(ens_size), lev2_iur(ens_size)
+logical     :: debug = .false.
+logical     :: need_level_2
 
-!HK 
-real(r8), allocatable :: x_ill(:), x_ilr(:), x_iul(:), x_iur(:)
-
-allocate(pres1(ens_size), pres2(ens_size), pres3(ens_size), pres4(ens_size))
-allocate(x_ill(ens_size), x_ilr(ens_size), x_iul(ens_size), x_iur(ens_size))
-
-if ( boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .and. &
-     boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) then
-
-   call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
-   if ( rc .ne. 0 ) &
-        print*, 'model_mod.f90 :: get_model_pressure_profile :: getCorners rc = ', rc
+if ( .not. boundsCheck( i, wrf%dom(id)%periodic_x, id, dim=1, type=wrf%dom(id)%type_t ) .or. &
+     .not. boundsCheck( j, wrf%dom(id)%polar,      id, dim=2, type=wrf%dom(id)%type_t ) ) then
+   v_p(:,:) = missing_r8
+   return
+endif
 
 
-   do k=1,n
-      pres1 = model_pressure_t_distrib(ll(1), ll(2), k,id,state_handle, ens_size)
-      pres2 = model_pressure_t_distrib(lr(1), lr(2), k,id,state_handle, ens_size)
-      pres3 = model_pressure_t_distrib(ul(1), ul(2), k,id,state_handle, ens_size)
-      pres4 = model_pressure_t_distrib(ur(1), ur(2), k,id,state_handle, ens_size)
+call getCorners(i, j, id, wrf%dom(id)%type_t, ll, ul, lr, ur, rc )
+if ( rc .ne. 0 ) &
+     print*, 'model_mod.f90 :: get_model_pressure_profile :: getCorners rc = ', rc
 
-      v_p(k, :) = interp_4pressure_distrib(pres1, pres2, pres3, pres4, dx, dxm, dy, dym, ens_size)
-   enddo
+! if we don't have the surface pressure in the state, we need
+! level 2 of the pressure to extrapolate below level 1.
+need_level_2 = (wrf%dom(id)%type_ps < 0)
 
+! compute the pressure profile from levels 1 to N
+do k=1,n
+   pres1 = model_pressure_t_distrib(ll(1), ll(2), k,id,state_handle, ens_size)
+   pres2 = model_pressure_t_distrib(lr(1), lr(2), k,id,state_handle, ens_size)
+   pres3 = model_pressure_t_distrib(ul(1), ul(2), k,id,state_handle, ens_size)
+   pres4 = model_pressure_t_distrib(ur(1), ur(2), k,id,state_handle, ens_size)
 
-   if (debug) &
-        print*, 'model_mod.f90 :: get_model_pressure_profile :: n, v_p() ', n, v_p(1:n, :)
-
-   if ( wrf%dom(id)%type_ps >= 0 ) then
-
-      ill = get_dart_vector_index(ll(1), ll(2), 1, domain_id(id), wrf%dom(id)%type_ps)
-      ilr = get_dart_vector_index(lr(1), lr(2), 1, domain_id(id), wrf%dom(id)%type_ps)
-      iul = get_dart_vector_index(ul(1), ul(2), 1, domain_id(id), wrf%dom(id)%type_ps)
-      iur = get_dart_vector_index(ur(1), ur(2), 1, domain_id(id), wrf%dom(id)%type_ps)
-
-      x_ill = get_state(ill, state_handle)
-      x_ilr = get_state(ilr, state_handle)
-      x_iul = get_state(iul, state_handle)
-      x_iur = get_state(iur, state_handle)
-
-      ! I'm not quite sure where this comes from, but I will trust them on it....
-      ! Do you have to do this per ensemble?
-      !> @todo This is messy
-      do e = 1,ens_size
-
-         if ( x_ill(e) /= 0.0_r8 .and. x_ilr(e) /= 0.0_r8 .and. x_iul(e) /= 0.0_r8 .and. &
-              x_iur(e) /= 0.0_r8 ) then
-
-            v_p(0,e:e) = interp_4pressure_distrib(x_ill(e:e), x_ilr(e:e), x_iul(e:e), x_iur(e:e), dx, dxm, dy, dym, 1)
-
-         else
-
-            ! HK I think this is a bug, you are just  going to grab the first copy - is this fixed?
-            ! in each iteration of the loop
-            call error_handler(E_WARN, 'model_mod.f90 check for correctness', 'Helen')
-            pres1 = model_pressure_t_distrib(ll(1), ll(2), 2,id,state_handle, ens_size)
-            pres2 = model_pressure_t_distrib(lr(1), lr(2), 2,id,state_handle, ens_size)
-            pres3 = model_pressure_t_distrib(ul(1), ul(2), 2,id,state_handle, ens_size)
-            pres4 = model_pressure_t_distrib(ur(1), ur(2), 2,id,state_handle, ens_size)
-
-            v_p(0,e:e) = interp_4pressure_distrib(pres1(e:e), pres2(e:e), pres3(e:e), pres4(e:e), dx, dxm, dy, dym, 1, &
-                  extrapolate=.true., edgep=v_p(1,e))
-
-         endif
-
-      enddo
-
-   else
-
-      pres1 = model_pressure_t_distrib(ll(1), ll(2), 2,id,state_handle, ens_size)
-      pres2 = model_pressure_t_distrib(lr(1), lr(2), 2,id,state_handle, ens_size)
-      pres3 = model_pressure_t_distrib(ul(1), ul(2), 2,id,state_handle, ens_size)
-      pres4 = model_pressure_t_distrib(ur(1), ur(2), 2,id,state_handle, ens_size)
-
-      v_p(0,:) = interp_4pressure_distrib(pres1, pres2, pres3, pres4, dx, dxm, dy, dym, ens_size, &
-              extrapolate=.true., edgep=v_p(1,:))
-
+   ! if we need to extrapolate later, save level 2 corners since we have them now.
+   if (k==2 .and. need_level_2) then
+      lev2_ill(:) = pres1(:)
+      lev2_ilr(:) = pres2(:)
+      lev2_iul(:) = pres3(:)
+      lev2_iur(:) = pres4(:)
    endif
 
-   if (debug) &
-        print*, 'model_mod.f90 :: get_model_pressure_profile :: v_p(0) ', v_p(0, :)
+   v_p(k, :) = interp_4pressure_distrib(pres1, pres2, pres3, pres4, dx, dxm, dy, dym, ens_size)
+enddo
+
+
+if (debug) &
+     print*, 'model_mod.f90 :: get_model_pressure_profile :: n, v_p() ', n, v_p(1:n, :)
+
+! interpolate surface pressure for the first entry (index 0) in the v_p() array.
+! if the surface pressure field (ps) is in the state vector, use it.
+! otherwise try to extrapolate down from pressure levels 1 and 2.
+
+if ( wrf%dom(id)%type_ps >= 0 ) then
+
+   ill = get_dart_vector_index(ll(1), ll(2), 1, domain_id(id), wrf%dom(id)%type_ps)
+   ilr = get_dart_vector_index(lr(1), lr(2), 1, domain_id(id), wrf%dom(id)%type_ps)
+   iul = get_dart_vector_index(ul(1), ul(2), 1, domain_id(id), wrf%dom(id)%type_ps)
+   iur = get_dart_vector_index(ur(1), ur(2), 1, domain_id(id), wrf%dom(id)%type_ps)
+
+   x_ill = get_state(ill, state_handle)
+   x_ilr = get_state(ilr, state_handle)
+   x_iul = get_state(iul, state_handle)
+   x_iur = get_state(iur, state_handle)
+
+   ! we could check minval at the start and if 0, die then.
+   ! this test could be expensive.
+   if ( any(x_ill(:) == 0.0_r8) .or. &
+        any(x_ilr(:) == 0.0_r8) .or. &
+        any(x_iul(:) == 0.0_r8) .or. &
+        any(x_iur(:) == 0.0_r8) ) then
+
+      call error_handler(E_ERR, 'get_model_pressure_profile_distrib:', &
+            "unexpectedly found 0s in the surface pressure field", &
+             source, revision, revdate)
+      
+   endif
+
+   v_p(0,:) = interp_4pressure_distrib(x_ill(:), x_ilr(:), x_iul(:), x_iur(:), dx, dxm, dy, dym, 1)
+
 else
-   v_p(:,:) = missing_r8
+
+   ! surface pressure is not in the state vector.  extrapolate from levels 1 and 2 of the MU field.
+
+   v_p(0,:) = interp_4pressure_distrib(lev2_ill(:), lev2_ilr(:), lev2_iul(:), lev2_iur(:), dx, dxm, dy, dym, 1, &
+                                       extrapolate=.true., edgep=v_p(1,:))
 
 endif
 
-deallocate(pres1, pres2, pres3, pres4, x_ill, x_ilr, x_iul, x_iur)
+if (debug) &
+     print*, 'model_mod.f90 :: get_model_pressure_profile :: v_p(0) ', v_p(0, :)
 
 end subroutine get_model_pressure_profile_distrib
 
@@ -6885,7 +6846,7 @@ type(get_close_type),        intent(in)     :: gc
 type(location_type),         intent(inout)  :: base_obs_loc, obs_loc(:)
 integer,                     intent(in)     :: base_obs_kind, obs_kind(:)
 integer,                     intent(out)    :: num_close, close_ind(:)
-real(r8),                    intent(out)    :: dist(:)
+real(r8), optional,          intent(out)    :: dist(:)
 
 integer                :: t_ind, istatus1, istatus2, k
 integer                :: base_which, local_obs_which
@@ -6948,10 +6909,12 @@ if (istatus1 == 0) then
        ! Compute distance - set distance to a very large value if vert coordinate is missing
       ! or vert_convert returned error (istatus2=1)
       local_obs_array = get_location(local_obs_loc)
-      if (((.not. horiz_dist_only).and.(local_obs_array(3) == missing_r8)).or.(istatus2 == 1)) then
-         dist(k) = 1.0e9
-      else
-         dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
+      if (present(dist)) then
+         if (((.not. horiz_dist_only).and.(local_obs_array(3) == missing_r8)).or.(istatus2 == 1)) then
+            dist(k) = 1.0e9
+         else
+            dist(k) = get_dist(base_obs_loc, local_obs_loc, base_obs_kind, obs_kind(t_ind))
+         endif
       endif
 
       !print*, 'k ', k, 'rank ', my_task_id()
@@ -7927,6 +7890,13 @@ row = row+1
 default_table(:,row) = (/ 'MU           ', &
                           'KIND_PRESSURE', &
                           'TYPE_MU      ', &
+                          'UPDATE       ', &
+                          '999          '  /)
+
+row = row+1
+default_table(:,row) = (/ 'PS           ', &
+                          'KIND_SURFACE_PRESSURE', &
+                          'TYPE_PS      ', &
                           'UPDATE       ', &
                           '999          '  /)
 
@@ -8909,15 +8879,18 @@ else if( ( obs_kind == KIND_SPECIFIC_DIFFERENTIAL_PHASE ) .and. ( wrf%dom(id)%ty
 else if ( ( obs_kind == KIND_VAPOR_MIXING_RATIO )         .and. ( wrf%dom(id)%type_qv >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_qv
-else if ( ( obs_kind == KIND_TEMPERATURE )                  .and. ( wrf%dom(id)%type_t >= 0 ) ) then
+else if ( ( obs_kind == KIND_TEMPERATURE )                .and. ( wrf%dom(id)%type_t >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_t
-else if ( ( obs_kind == KIND_POTENTIAL_TEMPERATURE )        .and. ( wrf%dom(id)%type_t >= 0 ) ) then
+else if ( ( obs_kind == KIND_POTENTIAL_TEMPERATURE )      .and. ( wrf%dom(id)%type_t >= 0 ) ) then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_t
-else if ( ( obs_kind == KIND_SKIN_TEMPERATURE )              .and. ( wrf%dom(id)%type_tsk >= 0 ) )then
+else if ( ( obs_kind == KIND_SKIN_TEMPERATURE )           .and. ( wrf%dom(id)%type_tsk >= 0 ) )then
    part_of_state_vector = .true.
    wrf_type = wrf%dom(id)%type_tsk
+else if ( ( obs_kind == KIND_GEOPOTENTIAL_HEIGHT )        .and. ( wrf%dom(id)%type_gz >= 0 ) )then
+   part_of_state_vector = .true.
+   wrf_type = wrf%dom(id)%type_gz
 else
    call error_handler(E_MSG, 'obs_kind_in_state_vector', &
       'obs_kind "'//trim(get_raw_obs_kind_name(obs_kind))//'" is not in state vector', &
@@ -9053,6 +9026,76 @@ call nc_check( nf90_put_var(ncid, var_id, timestring), &
                'write_model_time', 'put_var Times' )
 
 end subroutine write_model_time
+
+!--------------------------------------------------------------------
+
+!> this routine computes the number of unique values in arrayin
+
+function count_unique_vals(arrayin)
+
+integer, intent(in)  :: arrayin(:)
+integer              :: count_unique_vals
+
+integer :: insize, sorted(size(arrayin))
+integer :: i, sizeout
+
+! count the unique values and sort them
+insize = size(arrayin)
+
+sorted = sort(arrayin)
+
+sizeout = 1
+do i = 2, insize
+   if ( sorted(i) /= sorted(i-1) ) sizeout = sizeout + 1
+enddo
+
+count_unique_vals = sizeout
+
+end function count_unique_vals
+
+!--------------------------------------------------------------------
+
+!> caller must allocate the right size (see count_unique_vals())
+!> and then this routine returns the unique items from the arrayin
+!> in arrayout, sorted if that's useful.
+
+subroutine keep_unique_vals(arrayin, arrayout)
+
+integer, intent(in)  :: arrayin(:)
+integer, intent(out) :: arrayout(:)
+
+integer :: insize, sorted(size(arrayin))
+integer :: i, nextu, itemcount
+integer :: outsize, numuniq
+
+! count the unique values and sort them
+insize = size(arrayin)
+outsize = size(arrayout)
+
+sorted = sort(arrayin)
+
+numuniq = 1
+do i = 2, insize
+   if ( sorted(i) /= sorted(i-1) ) numuniq = numuniq + 1
+enddo
+
+if(numuniq /= outsize) then
+   call error_handler(E_ERR, 'keep_unique_vals:', &
+          'output array must match number of unique values in input array', &
+          source, revision, revdate)
+endif
+
+arrayout(1) = sorted(1)
+
+nextu = 2
+do i = 2, insize
+   if ( sorted(i) /= sorted(i-1) ) then
+      arrayout(nextu) = sorted(i)
+      nextu = nextu + 1
+   endif
+enddo
+
+end subroutine keep_unique_vals
 
 !--------------------------------------------------------------------
 

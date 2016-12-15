@@ -3,6 +3,7 @@
   fieldnames = '', 
   fieldlist_file = '',
   fail_on_missing_field = .true.,
+  silence_on_same = .false.,
   debug = .false., 
 /
 

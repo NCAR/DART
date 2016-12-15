@@ -285,7 +285,7 @@ end subroutine model_interpolate
 !> @TODO state_handle shouldn't be needed here - IF we can prohibit
 !> this routine from using the mean to do vertical conversions.
 
-!> @todo state_loc is state vector size, do we care?
+!> @TODO state_loc is state vector size, do we care?
 !> all tasks store locations for the entire state vector
 !> not just the locations we have.  it could be computed 
 !> on demand.

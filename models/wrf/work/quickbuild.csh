@@ -86,45 +86,29 @@ endif
 # Build the MPI-enabled target(s) 
 #----------------------------------------------------------------------
 
-\rm -f filter wakeup_filter
+\rm -f *.o *.mod 
 
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_filter"
-csh   mkmf_filter -mpi
-make
+set MPI_ENABLED = "filter wakeup_filter verify inflate perturb"
 
-if ($status != 0) then
+foreach TARGET ( $MPI_ENABLED )
+
+   \rm -f $TARGET
+
+   set MPROG = mkmf_${TARGET}
+
+   @ n = $n + 1
    echo
-   echo "If this died in mpi_utilities_mod, see code comment"
-   echo "in mpi_utilities_mod.f90 starting with 'BUILD TIP' "
-   echo
-   exit $n
-endif
+   echo "---------------------------------------------------"
+   echo "${MODEL} build number ${n} is ${TARGET}" 
+   \rm -f ${TARGET}
+   csh $MPROG -mpi || exit $n
+   make            || exit $n
+end
 
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_wakeup_filter"
-csh  mkmf_wakeup_filter -mpi
-make || exit $n
-
-@ n = $n + 1
-echo
-echo "---------------------------------------------------"
-echo "build number $n is mkmf_perfect_model_obs"
-csh  mkmf_perfect_model_obs -mpi
-make || exit $n
-
-\rm -f *.o *.mod
+\rm -f *.o *.mod 
 \rm -f input.nml*_default
 
-echo
-echo 'time to run filter here:'
-echo ' for lsf run "bsub < runme_filter"'
-echo ' for pbs run "qsub runme_filter"'
-echo ' for lam-mpi run "lamboot" once, then "runme_filter"'
+echo "All MPI-enabled targets built"
 
 exit 0
 
