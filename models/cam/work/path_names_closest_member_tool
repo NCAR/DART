@@ -16,6 +16,4 @@ reg_factor/reg_factor_mod.f90
 sort/sort_mod.f90
 time_manager/time_manager_mod.f90
 utilities/closest_member_tool.f90
-utilities/obs_impact_mod.f90
-utilities/parse_args_mod.f90
 utilities/utilities_mod.f90

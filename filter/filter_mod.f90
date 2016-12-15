@@ -48,7 +48,7 @@ use ensemble_manager_mod,  only : init_ensemble_manager, end_ensemble_manager,  
                                   get_single_copy, put_single_copy, deallocate_single_copy
 use adaptive_inflate_mod,  only : adaptive_inflate_end, do_varying_ss_inflate,                &
                                   do_single_ss_inflate, inflate_ens, adaptive_inflate_init,   &
-                                  do_obs_inflate, do_rtps_inflate, adaptive_inflate_type,     &
+                                  do_obs_inflate, adaptive_inflate_type,                      &
                                   output_inflate_diagnostics, log_inflation_info, &
                                   get_minmax_task_zero
 use mpi_utilities_mod,     only : my_task_id, task_sync, broadcast_send, broadcast_recv,      &
@@ -77,42 +77,16 @@ use copies_on_off_mod, only : ENS_MEAN_COPY, ENS_SD_COPY, PRIOR_INF_COPY, &
                               PRIOR_INF_SD_COPY,POST_INF_COPY, POST_INF_SD_COPY, &
                               SPARE_PRIOR_MEAN, SPARE_PRIOR_SPREAD, SPARE_PRIOR_INF_MEAN, &
                               SPARE_PRIOR_INF_SPREAD, SPARE_POST_INF_MEAN, &
-                              SPARE_POST_INF_SPREAD, query_copy_present, COPY_NOT_PRESENT
+                              SPARE_POST_INF_SPREAD, query_copy_present
 
 !------------------------------------------------------------------------------
 
 implicit none
 private
 
-public :: filter_main, &
-          filter_initialize_modules_used, &
-          filter_generate_copy_meta_data, &
-          filter_setup_obs_sequence, &
+public :: filter_sync_keys_time, &
           filter_set_initial_time, &
-          filter_set_window_time, &
-          filter_ensemble_inflate, &
-          obs_space_diagnostics, &
-          filter_sync_keys_time, &
-          broadcast_time_across_copy_owners, &
-          set_trace, &
-          trace_message, &
-          timestamp_message, &
-          print_ens_time, &
-          print_obs_time, &
-          verbose_forward_op_output, &
-          create_ensemble_from_single_file, &
-          perturb_copies_task_bitwise, &
-          set_time_on_extra_copies, &
-          store_prior, &
-          store_posterior, &
-          set_state_copies, &
-          test_obs_copies, &
-          get_obs_copy_index, &
-          get_obs_prior_index, &
-          get_obs_qc_index, &
-          get_obs_dartqc_index, &
-          get_blank_qc_index
-
+          filter_main
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -181,8 +155,7 @@ character(len = 129) :: obs_sequence_in_name  = "obs_seq.out",    &
 !                  == './advance_model.csh'    -> advance ensemble using a script
 
 ! Inflation namelist entries follow, first entry for prior, second for posterior
-! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space,
-! 4: relaxation-to-prior-spread, Whitaker/Hamill (2012)
+! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
 integer              :: inf_flavor(2)             = 0
 logical              :: inf_initial_from_restart(2)    = .false.
 logical              :: inf_sd_initial_from_restart(2) = .false.
@@ -302,8 +275,8 @@ ds = do_smoothing()
 
 ! Make sure inflation options are legal
 do i = 1, 2
-   if(inf_flavor(i) < 0 .or. inf_flavor(i) > 4) then
-      write(msgstring, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3 or 4 '
+   if(inf_flavor(i) < 0 .or. inf_flavor(i) > 3) then
+      write(msgstring, *) 'inf_flavor=', inf_flavor(i), ' Must be 0, 1, 2, 3 '
       call error_handler(E_ERR,'filter_main', msgstring, source, revision, revdate)
    endif
    if(inf_damping(i) < 0.0_r8 .or. inf_damping(i) > 1.0_r8) then
@@ -312,53 +285,24 @@ do i = 1, 2
    endif
 end do
 
-! Observation space inflation not currently supported
-if(inf_flavor(1) == 1 .or. inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
-   'observation space inflation (type 1) not currently supported', source, revision, revdate, &
-   text2='contact DART developers if you are interested in using it.')
-
-! Relaxation-to-prior-spread (RTPS) is only an option for posterior inflation
-if(inf_flavor(1) == 4) call error_handler(E_ERR, 'filter_main', &
-   'RTPS inflation (type 4) only supported for Posterior inflation', source, revision, revdate)
-
-! RTPS needs a single parameter from namelist: inf_initial(2).  
-! Do not read in any files.  Also, no damping.  but warn the user if they try to set different
-! values in the namelist.
-if ( inf_flavor(2) == 4 ) then 
-   if (inf_initial_from_restart(2) .or. inf_sd_initial_from_restart(2)) &
-      call error_handler(E_MSG, 'filter_main', 'RTPS inflation (type 4) overrides posterior inflation restart file with value in namelist', &
-         text2='posterior inflation standard deviation value not used in RTPS')
-   inf_initial_from_restart(2) = .false.    ! Get parameter from namelist inf_initial(2), not from file
-   inf_sd_initial_from_restart(2) = .false. ! inf_sd not used in this algorithm
-
-   if (.not. inf_deterministic(2)) &
-      call error_handler(E_MSG, 'filter_main', 'RTPS inflation (type 4) overrides posterior inf_deterministic with .true.')
-   inf_deterministic(2) = .true.            ! this algorithm is deterministic
-
-   if (inf_damping(2) /= 1.0_r8) &
-      call error_handler(E_MSG, 'filter_main', 'RTPS inflation (type 4) disables posterior inf_damping')
-   inf_damping(2) = 1.0_r8                  ! no damping
-endif 
+! Observation space inflation for posterior not currently supported
+if(inf_flavor(2) == 1) call error_handler(E_ERR, 'filter_main', &
+   'Posterior observation space inflation (type 1) not supported', source, revision, revdate)
 
 call trace_message('Before initializing inflation')
 
 ! Initialize the adaptive inflation module
-!> @todo FIXME: removed the index values for copies below (PRIOR/POST_INF_{SD}_COPY) 
-!> because they aren't used in the init or end routines.  and that works out well because
-!> they have not yet been initialized at this point.  bonus is we shorten the extra long
-!> parameter list for this routine.
-
 call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
    inf_sd_initial_from_restart(1), inf_output_restart(1), inf_deterministic(1),       &
    inf_in_file_name(1), inf_out_file_name(1), inf_diag_file_name(1), inf_initial(1),  &
    inf_sd_initial(1), inf_lower_bound(1), inf_upper_bound(1), inf_sd_lower_bound(1),  &
-   state_ens_handle, allow_missing, 'Prior')
+   state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, allow_missing, 'Prior')
 
 call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart(2),  &
    inf_sd_initial_from_restart(2), inf_output_restart(2), inf_deterministic(2),       &
    inf_in_file_name(2), inf_out_file_name(2), inf_diag_file_name(2), inf_initial(2),  &
    inf_sd_initial(2), inf_lower_bound(2), inf_upper_bound(2), inf_sd_lower_bound(2),  &
-   state_ens_handle, allow_missing, 'Posterior')
+   state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY, allow_missing, 'Posterior')
 
 if (do_output()) then
    if (inf_flavor(1) > 0 .and. inf_damping(1) < 1.0_r8) then
@@ -428,7 +372,7 @@ call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time
 ! Moved this. Not doing anything with it, but when we do it should be before the read
 ! Read in or initialize smoother restarts as needed
 if(ds) then
-   call init_smoother(state_ens_handle)
+   call init_smoother(state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
    call smoother_read_restart(state_ens_handle, ens_size, model_size, time1, init_time_days)
 endif
 
@@ -646,11 +590,6 @@ AdvanceTime : do
       call trace_message('After  prior inflation damping and prep')
    endif
 
-   !> @todo FIXME: is this needed?  i think it gets done in store_prior(), so i think no.
-   ! if relaxation-to-prior-spread inflation, save the prior spread in SPARE_PRIOR_SPREAD
-   !if ( do_rtps_inflate(post_inflate) ) &
-   !   call compute_copy_mean_sd(ens_handle, 1, ens_size, ENS_MEAN_COPY, SPARE_PRIOR_SPREAD)
-
    call     trace_message('Before computing prior observation values')
    call timestamp_message('Before computing prior observation values')
 
@@ -756,8 +695,7 @@ AdvanceTime : do
 
 !-------- Test of posterior inflate ----------------
 
-   if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate) .or. &
-      do_rtps_inflate(post_inflate)) then
+   if(do_single_ss_inflate(post_inflate) .or. do_varying_ss_inflate(post_inflate)) then
 
       call trace_message('Before posterior inflation damping and prep')
       !call test_state_copies(state_ens_handle, 'before_test_of_inflation')
@@ -768,14 +706,9 @@ AdvanceTime : do
             inf_damping(2) * (state_ens_handle%copies(POST_INF_COPY, :) - 1.0_r8) 
       endif
 
-      if (do_rtps_inflate(post_inflate)) then   
-         call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY, &
-                                      SPARE_PRIOR_SPREAD, ENS_SD_COPY)
-      else
-         call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY)
-      endif
+    call filter_ensemble_inflate(state_ens_handle, POST_INF_COPY, post_inflate, ENS_MEAN_COPY)
 
-      !call test_state_copies(state_ens_handle, 'after_test_of_inflation')
+    !call test_state_copies(state_ens_handle, 'after_test_of_inflation')
 
       ! Recompute the mean or the mean and spread as required for diagnostics
       call compute_copy_mean_sd(state_ens_handle, 1, ens_size, ENS_MEAN_COPY, ENS_SD_COPY)
@@ -922,8 +855,8 @@ call trace_message('Before writing inflation restart files if required')
 
 ! Output the restart for the adaptive inflation parameters
 
-call adaptive_inflate_end(prior_inflate, state_ens_handle)
-call adaptive_inflate_end(post_inflate, state_ens_handle)
+call adaptive_inflate_end(prior_inflate, state_ens_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
+call adaptive_inflate_end(post_inflate, state_ens_handle, POST_INF_COPY, POST_INF_SD_COPY)
 call trace_message('After  writing inflation restart files if required')
 
 ! Output a restart file if requested
@@ -1352,13 +1285,11 @@ end subroutine filter_set_window_time
 
 !-------------------------------------------------------------------------
 
-subroutine filter_ensemble_inflate(ens_handle, inflate_copy, inflate, ENS_MEAN_COPY, &
-                                   SPARE_PRIOR_SPREAD, ENS_SD_COPY)
+subroutine filter_ensemble_inflate(ens_handle, inflate_copy, inflate, ENS_MEAN_COPY)
 
 type(ensemble_type),         intent(inout) :: ens_handle
 integer,                     intent(in)    :: inflate_copy, ENS_MEAN_COPY
 type(adaptive_inflate_type), intent(inout) :: inflate
-integer, optional,           intent(in)    :: SPARE_PRIOR_SPREAD, ENS_SD_COPY
 
 integer :: j, group, grp_bot, grp_top, grp_size
 
@@ -1374,25 +1305,10 @@ do group = 1, num_groups
    ! Compute the mean for this group
    call compute_copy_mean(ens_handle, grp_bot, grp_top, ENS_MEAN_COPY)
 
-   if ( do_rtps_inflate(inflate)) then 
-      if ( present(SPARE_PRIOR_SPREAD) .and. present(ENS_SD_COPY)) then 
-         write(msgstring, *) ' doing RTPS inflation'
-         call error_handler(E_MSG,'filter_ensemble_inflate',msgstring,source,revision,revdate)
-         do j = 1, ens_handle%my_num_vars 
-            call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
-               ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j), 0.0_r8, &
-               ens_handle%copies(SPARE_PRIOR_SPREAD, j), ens_handle%copies(ENS_SD_COPY, j)) 
-         end do 
-      else 
-         write(msgstring, *) 'internal error: missing arguments for RTPS inflation, should not happen'
-         call error_handler(E_ERR,'filter_ensemble_inflate',msgstring,source,revision,revdate)
-      endif 
-   else 
-      do j = 1, ens_handle%my_num_vars
-         call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
-            ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j))
-      end do
-   endif
+   do j = 1, ens_handle%my_num_vars
+      call inflate_ens(inflate, ens_handle%copies(grp_bot:grp_top, j), &
+         ens_handle%copies(ENS_MEAN_COPY, j), ens_handle%copies(inflate_copy, j))
+   end do
 end do
 
 end subroutine filter_ensemble_inflate
@@ -1629,7 +1545,7 @@ if (.not. do_output()) return
 if (present(label)) then
    call error_handler(E_MSG,trim(label),trim(msg))
 else
-   call error_handler(E_MSG,' trace:',trim(msg))
+   call error_handler(E_MSG,'filter trace:',trim(msg))
 endif
 
 end subroutine trace_message
@@ -1669,8 +1585,8 @@ if (trace_level <= 0) return
 if (do_output()) then
    if (get_my_num_copies(ens_handle) < 1) return
    call get_ensemble_time(ens_handle, 1, mtime)
-   call print_time(mtime, ' trace: '//msg, logfileunit)
-   call print_time(mtime, ' trace: '//msg)
+   call print_time(mtime, ' filter trace: '//msg, logfileunit)
+   call print_time(mtime, ' filter trace: '//msg)
 endif
 
 end subroutine print_ens_time
@@ -1695,8 +1611,8 @@ if (do_output()) then
    call get_obs_from_key(seq, key, obs)
    call get_obs_def(obs, obs_def)
    mtime = get_obs_def_time(obs_def)
-   call print_time(mtime, ' trace: '//msg, logfileunit)
-   call print_time(mtime, ' trace: '//msg)
+   call print_time(mtime, ' filter trace: '//msg, logfileunit)
+   call print_time(mtime, ' filter trace: '//msg)
    call destroy_obs(obs)
 endif
 
@@ -1932,14 +1848,6 @@ elseif (skip_diag_files() .and. num_output_state_members > 0) then
    SPARE_POST_INF_MEAN    = ens_size + 7
    SPARE_POST_INF_SPREAD  = ens_size + 8
    num_extras = num_extras + 2
-endif
-
-if (inf_flavor(2) == 4 .and. SPARE_PRIOR_SPREAD == COPY_NOT_PRESENT) then
-   ! the RTPS version of inflation needs the prior spread to compute the
-   ! inflation value.  if other options haven't already turned this copy on, 
-   ! do it here.
-   SPARE_PRIOR_SPREAD = ens_size + num_extras + 1
-   num_extras = num_extras + 1
 endif
 
 end subroutine set_state_copies

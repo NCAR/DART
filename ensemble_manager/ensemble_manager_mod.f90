@@ -1400,8 +1400,6 @@ endif
 num_copies = end_copy - start_copy + 1
 
 MYLOOP : do i = 1, ens_handle%my_num_vars
-   ! FIXME: test for allow_missing_in_state() first?  this any() could be expensive.
-   ! ditto for same test in subsequent routines as well
    if (any(ens_handle%copies(start_copy:end_copy, i) == MISSING_R8)) then
       ens_handle%copies(mean_copy, i) = MISSING_R8
    else
@@ -1486,7 +1484,6 @@ MYLOOP : do i = 1, ens_handle%my_num_vars
    else
       ens_handle%copies(mean_copy, i) = sum(ens_handle%copies(start_copy:end_copy, i)) / num_copies
       if (num_copies >= 2) then
-!print *, 'compute_copy_mean_var : ',  num_copies, ens_handle%copies(mean_copy, i)
          ens_handle%copies( var_copy, i) = (sum((ens_handle%copies(start_copy:end_copy, i) - &
             ens_handle%copies(mean_copy, i))**2) / (num_copies - 1))
       else

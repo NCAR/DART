@@ -428,7 +428,7 @@ integer :: funit
 if (module_initialized) return
 
 module_initialized = .true.
-call register_module(source,revision,revdate)
+call register_module(id)
 
 ! Read the namelist entry
 call find_namelist_in_file("input.nml", "obs_impact_tool_nml", funit)

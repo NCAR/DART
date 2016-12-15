@@ -1,6 +1,5 @@
 &obs_kind_nml
-   assimilate_these_obs_types          = 'null',
-   evaluate_these_obs_types            = 'null',
-   use_precomputed_FOs_these_obs_types = 'null'
+   assimilate_these_obs_types = 'null',
+   evaluate_these_obs_types   = 'null'  
 /
 

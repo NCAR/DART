@@ -44,7 +44,7 @@ use xyz_location_mod, only : xyz_location_type, xyz_get_close_maxdist_init,    &
                              xyz_get_close_obs_init, xyz_get_close_obs_destroy, &
                              xyz_find_nearest
 
-use    utilities_mod, only : register_module, error_handler, E_ALLMSG,         &
+use    utilities_mod, only : register_module, error_handler,                   &
                              E_ERR, E_WARN, E_MSG, logfileunit, get_unit,      &
                              nc_check, do_output, to_upper, nmlfileunit,       &
                              find_namelist_in_file, check_namelist_read,       &
@@ -110,6 +110,7 @@ private
 ! these routines must be public and you cannot change
 ! the arguments - they will be called *from* the DART code.
 public :: get_model_size,                 &
+          get_num_vars,                   &
           adv_1step,                      &
           get_state_meta_data,    &
           model_interpolate,      &
@@ -956,7 +957,7 @@ integer,             intent(out) :: istatus(ens_size)
 
 ! local storage
 
-type(location_type) :: location_tmp(1)  ! was ens_size before, now a single value but still array
+type(location_type) :: location_tmp(ens_size)
 integer  :: ivar, obs_kind
 integer  :: tvars(3)
 integer  :: cellid
@@ -964,7 +965,6 @@ logical  :: goodkind
 real(r8) :: lpres(ens_size), values(3, ens_size), loc_array(3, ens_size)
 real(r8) :: llv(3)    ! lon/lat/vert
 integer  :: e, verttype
-character(len=obstypelength) :: kindstring
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -976,30 +976,26 @@ istatus      = 0          ! must be positive (and integer)
 obs_kind = obs_type
 
 ! write the location information into a string for error messages and debugging
-! and same with obs kind
 call write_location(0,location,charstring=locstring)
-kindstring = get_raw_obs_kind_name(obs_kind)
 
 llv = get_location(location)
 verttype = nint(query_location(location))
 
-if (debug > 10) then
-   write(string2, *) 'Requesting interpolation for obs_kind ', trim(kindstring), ' at ', trim(locstring)
-   call error_handler(E_ALLMSG, 'model_interpolate', string2, source, revision, revdate)
-endif
+if (debug > 10) &
+print *, 'task ', my_task_id(), ' model_interpolate: obs_kind', obs_kind,' at', trim(locstring)
 
 ! Reject obs if the station height is far way from the model terrain.
-! HK is this the same across the ensemble?  nsc: yes.
-if(vert_is_surface(location) .and. sfc_elev_max_diff >= 0) then
-   cellid = find_closest_cell_center(llv(2), llv(1))
-   if (cellid < 1) then
-      if(debug > 0) print *, 'closest cell center for lat/lon: ', llv(1), llv(2), cellid
-      goto 100
-   endif
-   if(abs(llv(3) - zGridFace(1,cellid)) > sfc_elev_max_diff) then
-      istatus = 12
-      goto 100
-   endif
+! HK is this the same across the ensemble?
+if(vert_is_surface(location).and. sfc_elev_max_diff >= 0) then
+      cellid = find_closest_cell_center(llv(2), llv(1))
+      if (cellid < 1) then
+         if(debug > 0) print *, 'closest cell center for lat/lon: ', llv(1), llv(2), cellid
+         goto 100
+      endif
+      if(abs(loc_array(3, 1) - zGridFace(1,cellid)) > sfc_elev_max_diff) then
+         istatus = 12
+         goto 100
+      endif
 endif
 
 
@@ -1035,6 +1031,8 @@ else
          goodkind = .true.
       case (KIND_SPECIFIC_HUMIDITY)
          goodkind = .true.
+      case (KIND_PRECIPITABLE_WATER) 
+         goodkind = .true.
       case (KIND_U_WIND_COMPONENT,KIND_V_WIND_COMPONENT)
          ! if the reconstructed winds at the cell centers aren't there,
          ! we can use the edge normal winds, if the user allows it.
@@ -1068,6 +1066,8 @@ if ((obs_kind == KIND_U_WIND_COMPONENT .or. &
       ! return V
       call compute_u_with_rbf(state_handle, ens_size, location, .FALSE., expected_obs, istatus)
    endif
+   if (debug > 11) print *, 'model_interpolate: u_with_rbf ', obs_kind, istatus, expected_obs
+   if (all(istatus /= 0)) goto 100   ! if everyone has failed, we can exit
 
 else if (obs_kind == KIND_TEMPERATURE) then
    ! need to get potential temp, pressure, qv here, but can
@@ -1077,99 +1077,122 @@ else if (obs_kind == KIND_TEMPERATURE) then
    tvars(3) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
 
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 3, tvars, values, istatus)
-   if (debug > 14) print *, 'called compute temp, kind, val, istatus: ', obs_kind, expected_obs, istatus
+   where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
+   if (all(istatus /= 0)) goto 100
 
    ! convert pot_temp, density, vapor mixing ratio into sensible temperature
-   ! unlike most routines, istatus is an intent(in) here and it skips the computation
-   ! for things already marked as failed, and returns missing_r8 for those
    expected_obs(:) = theta_to_tk(ens_size, values(1, :), values(2, :), values(3, :), istatus(:))
+   where (istatus /= 0) expected_obs = missing_r8
+
+   if (debug > 10) &
+      print *, 'model_interpolate: TEMPERATURE ', istatus, expected_obs, trim(locstring)
 
 else if (obs_kind == KIND_PRESSURE) then
    call  compute_pressure_at_loc(state_handle, ens_size, location, expected_obs, istatus)
 
+   if (debug > 10) &
+      print *, 'model_interpolate: PRESSURE ', istatus, expected_obs, trim(locstring)
+
+   if (all(istatus /= 0)) goto 100
+
 else if (obs_kind == KIND_GEOPOTENTIAL_HEIGHT) then
    location_tmp = location
-   call convert_vert_distrib(state_handle, 1, location_tmp, obs_kind, VERTISHEIGHT, istatus)
+   call convert_vert_distrib(state_handle, ens_size, location_tmp, KIND_GEOPOTENTIAL_HEIGHT, VERTISHEIGHT, istatus)
+   where (istatus /= 0) expected_obs = MISSING_R8
 
    do e = 1, ens_size
-      if(istatus(e) == 0) then 
-         expected_obs(e) = query_location(location_tmp(1), 'VLOC')
-      else
-         expected_obs = MISSING_R8
-      endif
+     if(istatus(e) == 0) expected_obs(e) = query_location(location_tmp(e), 'VLOC')
    enddo
 
-else if (obs_kind == KIND_SURFACE_ELEVATION) then
-   location_tmp = set_location(llv(1), llv(2), 1.0_r8, VERTISLEVEL)
-   call convert_vert_distrib(state_handle, 1, location_tmp, obs_kind, VERTISHEIGHT, istatus)
-
-   do e = 1, ens_size
-      if (istatus(e) == 0) then
-         expected_obs(e) = query_location(location_tmp(1), 'VLOC')
-      else
-         expected_obs(e) = MISSING_R8
-      endif
-   enddo
-
-else if (obs_kind == KIND_SURFACE_PRESSURE) then
-   tvars(1) = ivar
-   location_tmp(1) = set_location(llv(1),llv(2),1.0_r8,VERTISSURFACE)
-   call compute_scalar_with_barycentric(state_handle, ens_size, location_tmp(1), 1, tvars, values, istatus)
-
-   where (istatus == 0)
-      expected_obs = values(1, :)
-   elsewhere
-      expected_obs = missing_r8
-   endwhere
-   
 else if (obs_kind == KIND_VAPOR_MIXING_RATIO) then
-   tvars(1) = ivar 
-   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
-
-   ! Don't accept negative moisture.  can't use where and max() together?
-   do e = 1, ens_size
-      if (istatus(e) == 0) then
-         expected_obs(e) = max(values(1, e), 0.0_r8)
-      else
-         expected_obs(e) = missing_r8 
-      endif
-   enddo
-
-else if (obs_kind == KIND_SPECIFIC_HUMIDITY) then
-   
    tvars(1) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
+   expected_obs = values(1, :)
+   where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
+   if ( all(istatus /= 0 ) ) goto 100
+
+   ! Don't accept negative moisture
+   do e = 1, ens_size
+      if(istatus(e) == 0) expected_obs(e) = max(values(1, e),0.0_r8)
+   enddo
+
+   if (debug > 10) &
+      print *, 'model_interpolate: VAPOR_MIXING_RATIO', istatus, expected_obs, trim(locstring)
+
+else if (obs_kind == KIND_SPECIFIC_HUMIDITY) then
+   tvars(1) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
+   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
+   expected_obs = values(1, :)
+   where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
+   if ( all(istatus /= 0 ) ) goto 100
 
    ! compute vapor pressure, then: sh = vp / (1.0 + vp)
    do e = 1, ens_size
       if (istatus(e) == 0) then
-         if (values(1, e) >= 0.0_r8) then
-            expected_obs(e) = values(1, e) / (1.0 + values(1, e))
+         if (expected_obs(e) >= 0.0_r8) then
+            expected_obs(e) = expected_obs(e) / (1.0 + expected_obs(e))
          else
             expected_obs(e) = 1.0e-12_r8  
          endif
-      else
-         expected_obs(e) = missing_r8
       endif 
    enddo
 
+   if (debug > 10) &
+      print *, 'model_interpolate: SH ', istatus, expected_obs, trim(locstring)
+
+else if (obs_kind == KIND_SURFACE_ELEVATION) then
+   do e = 1, ens_size
+      location_tmp(e) = set_location(llv(1),llv(2),1.0_r8,VERTISLEVEL)
+   enddo
+   ! why do you have to call vert_convert for surface?
+   call convert_vert_distrib(state_handle, ens_size, location_tmp, KIND_SURFACE_ELEVATION, VERTISHEIGHT, istatus)
+   where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
+   if ( all(istatus /= 0 ) ) goto 100
+
+   do e = 1, ens_size
+      if (istatus(e) /= 0) then
+         expected_obs(e) = MISSING_R8
+      else
+         expected_obs(e) = query_location(location_tmp(e), 'VLOC')
+      endif
+   enddo
+   if (debug > 10) &
+      print *, 'model_interpolate: SURFACE_ELEVATION', istatus, expected_obs, trim(locstring)
+
+!> @todo check againt trunk, it does KIND_PRECIPITABLE_WATER and KIND_SURFACE_PRESSURE in the same if
+!> statement
+else if (obs_kind == KIND_PRECIPITABLE_WATER) then
+   tvars(1) = ivar
+   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
+   expected_obs = values(1, :)
+   where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
+   if ( all(istatus /= 0) ) goto 100
+
+else if (obs_kind == KIND_SURFACE_PRESSURE) then
+   tvars(1) = ivar
+   do e = 1, ens_size
+      location_tmp(e) = set_location(llv(1),llv(2),1.0_r8,VERTISSURFACE)
+   enddo
+   call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
+   expected_obs = values(1, :)
+   where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
+   if ( all(istatus /= 0) ) goto 100
+   if (debug > 10) &
+      print *, 'model_interpolate: SURFACE_PRESSURE', istatus, expected_obs, trim(locstring)
+  
 else
    ! direct interpolation, kind is in the state vector
 
    tvars(1) = ivar
    call compute_scalar_with_barycentric(state_handle, ens_size, location, 1, tvars, values, istatus)
-   where (istatus == 0)
-      expected_obs = values(1, :)
-   elsewhere
-      expected_obs = missing_r8 
-   endwhere
+   expected_obs = values(1, :)
+   where (istatus /= 0) expected_obs = missing_r8   ! FIXME: this might not be necessary
+   if ( all(istatus /= 0) ) goto 100
+
+   if (debug > 10) &
+       print *, 'model_interpolate: generic interpolation: ', obs_kind, istatus, expected_obs
 
 endif
-
-if (debug > 10) &
-   print *, 'task ', my_task_id(), ' model_interpolate: obs_kind ', trim(kindstring), ' at ', trim(locstring)
-
-
 
 ! Reject obs above a user specified pressure level.
 ! this is expensive - only do it if users want to reject observations
@@ -1180,6 +1203,7 @@ if (highest_obs_pressure_mb > 0.0) then
       ! Exclude from assimilation the obs above a user specified level
       expected_obs = MISSING_R8
       istatus = 201
+      ! goto 100
    end where
 
    if (debug > 10) then
@@ -1201,20 +1225,20 @@ do e = 1, ens_size
       write(string2,*) 'member ',e,' obs_kind', obs_kind,' value = ', expected_obs(e), ' istatus = ', istatus(e)
       write(string3,*) 'at location ', trim(locstring)
 
-   if (istatus(e) /= 0 .and. expected_obs(e) /= MISSING_R8) then
-      write(string1,*) 'interp routine returned a bad status but not a MISSING_R8 value'
+      if (istatus(e) /= 0 .and. expected_obs(e) /= MISSING_R8) then
+         write(string1,*) 'interp routine returned a bad status but not a MISSING_R8 value'
       else
-      write(string1,*) 'interp routine returned a good status but set value to MISSING_R8'
-   endif
+         write(string1,*) 'interp routine returned a good status but set value to MISSING_R8'
+      endif
 
       call error_handler(E_ERR,'model_interpolate', string1, source,revision,revdate, &
                          text2=string2, text3=string3)
    endif
 
    if (debug > 10) then
-      write(string2,*) 'Completed for member ', e,' obs_kind ', trim(kindstring),' expected_obs = ', expected_obs(e)
+      write(string2,*) 'Completed for member ',e,' obs_kind', obs_kind,' expected_obs = ', expected_obs(e)
       write(string3,*) 'istatus = ', istatus(e), ' at ', trim(locstring)
-      call error_handler(E_ALLMSG, 'model_interpolate', string2, source, revision, revdate, text2=string3)
+      call error_handler(E_MSG, 'model_interpolate', string2, source, revision, revdate, text2=string3)
    endif
 enddo
 
@@ -1944,7 +1968,6 @@ get_model_time_step = model_timestep
 
 end function get_model_time_step
 
-
 !------------------------------------------------------------------
 
 subroutine end_model()
@@ -2350,8 +2373,8 @@ subroutine adv_1step(x, time)
 ! are used (the model will only be advanced as a separate
 ! model-specific executable), this can be a NULL INTERFACE.
 
-real(r8),        intent(inout) :: x(:)
-type(time_type), intent(in)    :: time
+real(r8),            intent(inout) :: x(:)
+type(time_type),     intent(in)    :: time
 
 if ( .not. module_initialized ) call static_init_model
 
@@ -4487,9 +4510,9 @@ end function get_index_from_varname
 
 subroutine compute_pressure_at_loc(state_handle, ens_size, location, ploc, istatus)
 
-type(ensemble_type), intent(in)  :: state_handle
-integer,             intent(in)  :: ens_size
-type(location_type), intent(in)  :: location
+type(ensemble_type), intent(in) :: state_handle
+integer,             intent(in) :: ens_size
+type(location_type), intent(in) :: location
 real(r8),            intent(out) :: ploc(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
@@ -4499,6 +4522,7 @@ integer,             intent(out) :: istatus(ens_size)
 
 real(r8), dimension(3) :: llv, llv_new      ! lon/lat/vert
 real(r8), dimension(3, ens_size) :: values
+real(r8), dimension(ens_size)    :: tk
 type(location_type), dimension(ens_size) :: new_location
 integer :: ivars(3)
 integer :: e ! loop index
@@ -4510,10 +4534,13 @@ ploc = MISSING_R8
 llv = get_location(location)
 
 if(vert_is_pressure(location)) then
-   ploc(:) = llv(3)
+   do e = 1, ens_size
+      ploc(e) = llv(3)
+   enddo
 
 else if(vert_is_height(location) .or. vert_is_level(location)) then
    new_location = location
+
    ! FIXME: pick a hardcoded obs_kind for this call.
    call convert_vert_distrib(state_handle, ens_size, new_location, KIND_TEMPERATURE, VERTISPRESSURE, istatus)
 
@@ -4533,13 +4560,11 @@ else if(vert_is_surface(location)) then
    ivars(2) = get_progvar_index_from_kind(KIND_DENSITY)
    ivars(3) = get_progvar_index_from_kind(KIND_VAPOR_MIXING_RATIO)
 
-   ! shouldn't this be 1 and not ens_size
    call compute_scalar_with_barycentric (state_handle, ens_size, new_location(1), 3, ivars, values, istatus)
-   if ( all(istatus /= 0) ) return
+   if ( all(istatus/= 0) ) return
 
    ! Convert surface theta, rho, qv into pressure
-   ! istatus is an intent(in) and returns ploc = missing for bad istatus
-   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), ploc(:), istatus(:) )
+   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), ploc(:), tk(:), istatus(:) )
 
 else if(vert_is_undef(location)) then    ! not error, but no exact vert loc either
    ploc(:) = 200100.0_r8    ! this is an unrealistic pressure value to indicate no known pressure.
@@ -4595,9 +4620,8 @@ integer,                intent(out)   :: istatus(ens_size)
 real(r8), dimension(3, ens_size) :: llv_loc
 real(r8), dimension(3,ens_size)  :: zk_mid, values, fract, fdata
 integer,  dimension(3,ens_size)  :: k_low, k_up
-integer,  dimension(ens_size)    :: temp_istatus
 real(r8), dimension(ens_size)    :: zin, zout
-real(r8), dimension(ens_size)    :: fullp, surfp
+real(r8), dimension(ens_size)    :: tk, fullp, surfp
 type(location_type), dimension(ens_size) :: surfloc
 
 real(r8) :: weights(3)
@@ -4615,7 +4639,7 @@ weights = 0.0_r8
 ! first off, check if ob is identity ob.  if so get_state_meta_data() will
 ! have returned location information already in the requested vertical type.
 if (obs_kind < 0) then
-   call get_state_meta_data(state_handle, int(obs_kind,i8), location(1)) ! will be the same across the ensemble
+   call get_state_meta_data(state_handle, int(obs_kind,i8),location(1)) ! will be the same across the ensemble
    location(:) = location(1)
    istatus(:) = 0
    return
@@ -4629,7 +4653,7 @@ if ((ztypein == ztypeout) .or. (ztypein == VERTISUNDEF)) then
    istatus = 0
    return
 else
-   if ((debug > 9) .and. do_output()) then
+   if (debug > 9) then
       write(string1,'(A,3X,2I3)') 'ztypein, ztypeout:',ztypein,ztypeout
       call error_handler(E_MSG, 'convert_vert_distrib',string1,source, revision, revdate)
    endif
@@ -4684,7 +4708,7 @@ select case (ztypeout)
       endif
    enddo
 
-   if ((debug > 9) .and. do_output()) then
+   if (debug > 11) then
       write(string2,'("Zk for member 1:", 3F8.2," => ",F8.2)') zk_mid(:,1),zout(1)
       call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
    endif
@@ -4710,9 +4734,8 @@ select case (ztypeout)
    if( all(istatus /= 0) ) return
 
    ! Convert theta, rho, qv into pressure
-   ! istatus is an intent(in) and returns ploc = missing for bad istatus
-   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), zout(:), istatus(:))
-   if ((debug > 9) .and. do_output()) then
+   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), zout(:), tk(:), istatus(:))
+   if (debug > 10) then
       write(string2,'("zout_in_p, theta, rho, qv, ier:",3F10.2,F15.10,I3)') zout(1), values(1:3,1),istatus(1)
       call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
    endif
@@ -4722,7 +4745,7 @@ select case (ztypeout)
    ! ------------------------------------------------------------
    case (VERTISHEIGHT)
 
-   call find_triangle (location(1), n, c, weights, istatus(1))  ! FIXME do we need to test for failure here?
+   call find_triangle (location(1), n, c, weights, istatus(1))
    call find_vert_indices (state_handle, ens_size, location(1), n, c, k_low, k_up, fract, istatus)
    if( all(istatus /= 0) ) return
 
@@ -4750,9 +4773,6 @@ select case (ztypeout)
    case (VERTISSCALEHEIGHT)
 
    ! Scale Height is defined here as: -log(pressure / surface_pressure)
-   ! some shortcuts here are possible.
-   !  1) if vert is surface, scale height = 1 by definition
-   !  2) if vert is pressure, we don't need to compute it again.  use the location value.
 
    ! Need to get base offsets for the potential temperature, density, and water
    ! vapor mixing fields in the state vector
@@ -4762,38 +4782,35 @@ select case (ztypeout)
 
    ! Get theta, rho, qv at the interpolated location
    call compute_scalar_with_barycentric (state_handle, ens_size, location(1), 3, ivars, values, istatus)
-   if (all(istatus /= 0)) return
+   !if (istatus /= 0) return
 
    ! Convert theta, rho, qv into pressure
-   ! istatus is an intent(in) and returns ploc = missing for bad istatus
-   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), fullp(:), istatus(:))
-   if ((debug > 9) .and. do_output()) then
+   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), fullp(:), tk(:), istatus(:))
+   if (debug > 9) then
       write(string2,'("zout_full_pressure, theta, rho, qv:",3F10.2,F15.10)') fullp, values(1:3,1)
       call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
    endif
 
    ! Get theta, rho, qv at the surface corresponding to the interpolated location
    surfloc(1) = set_location(llv_loc(1, 1), llv_loc(2, 1), 1.0_r8, VERTISLEVEL)
-   call compute_scalar_with_barycentric (state_handle, ens_size, surfloc(1), 3, ivars, values, temp_istatus)
-   where (istatus == 0) istatus = temp_istatus
+   call compute_scalar_with_barycentric (state_handle, ens_size, surfloc(1), 3, ivars, values, istatus)
    if( all(istatus /= 0) ) return
 
    ! Convert surface theta, rho, qv into pressure
-   ! istatus is an intent(in) and returns ploc = missing for bad istatus
-   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), surfp(:), istatus(:))
-   if ((debug > 9) .and. do_output()) then
+   call compute_full_pressure(ens_size, values(1, :), values(2, :), values(3, :), surfp(:), tk(:), istatus(:))
+   if (debug > 9) then
       write(string2,'("zout_surf_pressure, theta, rho, qv:",3F10.2,F15.10)') surfp, values(1:3,1)
       call error_handler(E_MSG, 'convert_vert_distrib',string2,source, revision, revdate)
    endif
 
    ! and finally, convert into scale height
-   where (surfp /= 0.0_r8 .and. istatus == 0)
+   where (surfp /= 0.0_r8)
       zout = -log(fullp / surfp)
    else where
       zout = MISSING_R8
    end where
 
-   if ((debug > 9) .and. do_output()) then
+   if (debug > 9) then
       write(string2,'("zout_in_pressure:",F10.2)') zout
       call error_handler(E_MSG, 'vert_convert',string2,source, revision, revdate)
    endif
@@ -5130,13 +5147,13 @@ if(verttype == VERTISPRESSURE ) then
    call get_index_range(KIND_VAPOR_MIXING_RATIO, qv_base_offset)
 
    do i=1, nc
-      call find_pressure_bounds(state_handle, ens_size, vert_array, ids(i), nVertLevels, &
+      call find_pressure_bounds(state_handle, vert_array, ids(i), nVertLevels, &
             pt_base_offset, density_base_offset, qv_base_offset,  &
             lower(i, :), upper(i, :), fract(i, :), ier)
-      !if(debug > 9 .and. my_task_id() == 0) print '(A,5I5,F10.4)', &
+      !if(debug > 9) print '(A,5I5,F10.4)', &
       !   '    after find_pressure_bounds: ier, i, cellid, lower, upper, fract = ', &
       !      ier, i, ids(i), lower(i, :), upper(i, :), fract(i, :)
-      !if(debug > 5 .and. ier(e) /= 0 .and. my_task_id() == 0) print '(A,4I5,F10.4,I3,F10.4)', &
+      !if(debug > 5 .and. ier(e) /= 0) print '(A,4I5,F10.4,I3,F10.4)', &
       !'fail in find_pressure_bounds: ier, nc, i, id, vert, lower, fract: ', &
       !   ier, nc, i, ids(i), vert_array, lower(i, :), fract(i, :)
 
@@ -5197,7 +5214,7 @@ end subroutine find_vert_level
 
 !------------------------------------------------------------------
 
-subroutine find_pressure_bounds(state_handle, ens_size, p, cellid, nbounds, &
+subroutine find_pressure_bounds(state_handle, p, cellid, nbounds, &
    pt_base_offset, density_base_offset, qv_base_offset, &
    lower, upper, fract, ier)
 
@@ -5208,21 +5225,24 @@ subroutine find_pressure_bounds(state_handle, ens_size, p, cellid, nbounds, &
 ! and water vapor grids.
 
 type(ensemble_type), intent(in) :: state_handle
-integer,     intent(in)  :: ens_size 
-real(r8),    intent(in)  :: p(ens_size) ! ens_size
+real(r8),    intent(in)  :: p(:) ! ens_size
 integer,     intent(in)  :: cellid
 integer,     intent(in)  :: nbounds ! number of vertical levels?
 integer(i8), intent(in)  :: pt_base_offset, density_base_offset, qv_base_offset
-integer,     intent(out) :: lower(ens_size), upper(ens_size) ! ens_size
-real(r8),    intent(out) :: fract(ens_size) ! ens_size
-integer,     intent(out) :: ier(ens_size) ! ens_size
+integer,     intent(out) :: lower(:), upper(:) ! ens_size
+real(r8),    intent(out) :: fract(:) ! ens_size
+integer,     intent(out) :: ier(:) ! ens_size
 
-integer  :: i, j, ier2
+integer  :: i, ier2
 real(r8) :: pr
-real(r8) :: pressure(nbounds, ens_size)
-integer  :: e
-integer :: temp_ier(ens_size)
-logical :: found_level(ens_size)
+real(r8), allocatable :: pressure(:, :)
+integer  :: ens_size, e
+integer, allocatable :: temp_ier(:)
+logical, allocatable :: found_level(:)
+
+ens_size = size(p)
+
+allocate(pressure(nbounds, ens_size), temp_ier(ens_size), found_level(ens_size))
 
 ! Initialize to bad values so unset returns will be caught.
 fract = -1.0_r8
@@ -5232,38 +5252,46 @@ upper = -1
 ier = 0
 
 ! Find the lowest pressure
-call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
+call get_interp_pressure(state_handle, pt_base_offset, density_base_offset, &
    qv_base_offset, cellid, 1, nbounds, pressure(1, :), temp_ier)
-
-where (temp_ier /= 0) ier = temp_ier
 if(debug > 11) print *, 'find_pressure_bounds: find the lowest p, ier at k=1 ', pressure(1,:), ier
 
+do e = 1, ens_size
+   if(temp_ier(e) /= 0) ier(e) = temp_ier(e)
+enddo
+
 ! Get the highest pressure level
-call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
+call get_interp_pressure(state_handle, pt_base_offset, density_base_offset, &
    qv_base_offset, cellid, nbounds, nbounds, pressure(nbounds, :), temp_ier)
 
-where (temp_ier /= 0) ier = temp_ier
 if(debug > 11) print *, 'find_pressure_bounds: find the highest p, ier at k= ', nbounds, pressure(nbounds,:), ier
+!if(ier /= 0) return
+do e = 1, ens_size
+   if(temp_ier(e) /= 0) ier(e) = temp_ier(e)
+enddo
 
 ! Check for out of the column range
 do e = 1, ens_size
       if(p(e) > pressure(1, e)) ier(e) = 88
       if(p(e) < pressure(nbounds, e)) ier(e) = 888
 enddo
-if(all(ier /= 0)) return
+if(any(ier /= 0)) return
 
 ! Loop through the rest of the column from the bottom up
 found_level(:) = .false.
 
 do i = 2, nbounds ! You have already done nbounds?
-   call get_interp_pressure(state_handle, ens_size, pt_base_offset, density_base_offset, &
+   call get_interp_pressure(state_handle, pt_base_offset, density_base_offset, &
       qv_base_offset, cellid, i, nbounds, pressure(i, :), temp_ier)
-   where (temp_ier /= 0) ier = temp_ier
-   if(debug > 11) print *, 'find_pressure_bounds: find p, ier at k= ', i, pressure(i,:), ier
+   do e = 1, ens_size
+      if(temp_ier(e) /= 0) ier(e) = temp_ier(e)
+   enddo
 
+if(debug > 11) print *, 'find_pressure_bounds: find p, ier at k= ', i, pressure(i,:), ier
+   !if (ier /= 0) return
    do e = 1, ens_size
       ! Check if pressure at lower level is higher than at upper level.
-      if (ier(e) /= 0) cycle  ! but skip ensemble members who have already failed
+      !if (ier(e) /= 0) return
       if(pressure(i, e) > pressure(i-1, e)) then
          if ((debug > 0) .and. do_output()) then
             write(string1, *) 'lower pressure larger than upper pressure at cellid',  cellid
@@ -5285,7 +5313,7 @@ do i = 2, nbounds ! You have already done nbounds?
       endif
 
       ! Is pressure between i-1 and i level?
-      if (.not. found_level(e) .and. ier(e) == 0) then
+      if (found_level(e) .eqv. .false. .and. ier(e) == 0) then
          if(p(e) > pressure(i, e)) then
             found_level(e) = .true.
             lower(e) = i - 1
@@ -5320,6 +5348,8 @@ do i = 2, nbounds ! You have already done nbounds?
    enddo
 enddo
 
+deallocate(found_level)
+
 ! The following is no longer true with the ensemble version:
 ! should never get here because pressures above and below the column
 ! were tested for at the start of this routine.  if you get here
@@ -5330,25 +5360,26 @@ end subroutine find_pressure_bounds
 
 !------------------------------------------------------------------
 
-subroutine get_interp_pressure(state_handle, ens_size, pt_offset, density_offset, qv_offset, &
-   cellid, lev, nlevs, pressure, ier, debug)
+subroutine get_interp_pressure(state_handle, pt_offset, density_offset, qv_offset, &
+   cellid, lev, nlevs, pressure, ier)
 
 ! Finds the value of pressure at a given point at model level lev
 
 type(ensemble_type), intent(in) :: state_handle
-integer,      intent(in)  :: ens_size
 integer(i8),  intent(in)  :: pt_offset, density_offset, qv_offset
 integer,      intent(in)  :: cellid
 integer,      intent(in)  :: lev, nlevs
-real(r8),     intent(out) :: pressure(ens_size)
-integer,      intent(out) :: ier(ens_size)
-logical,      intent(in), optional :: debug
+real(r8),     intent(out) :: pressure(:)
+integer,      intent(out) :: ier(:)
 
 integer  :: offset
 !real(r8) :: pt, density, qv, tk
-real(r8) :: pt(ens_size), density(ens_size), qv(ens_size)
-integer :: e
+real(r8), allocatable :: pt(:), density(:), qv(:), tk(:)
+integer :: ens_size, e
 
+ens_size = size(pressure) 
+
+allocate(pt(ens_size), density(ens_size), qv(ens_size), tk(ens_size))
 if(debug > 11) print*, 'get_interp_pressure for k = ',lev
 
 ! Get the values of potential temperature, density, and vapor
@@ -5375,13 +5406,14 @@ do e = 1, ens_size
 enddo
 
 ! Convert theta, rho, qv into pressure
-! istatus is an intent(in) and returns ploc = missing for bad istatus
-call compute_full_pressure(ens_size, pt(:), density(:), qv(:), pressure(:), ier(:)) 
+call compute_full_pressure(ens_size, pt(:), density(:), qv(:), pressure(:), tk(:), ier) !HK where is tk used?
 
 if((debug > 11) .and. do_output()) then
-      write(*,*) 'get_interp_pressure: cellid, lev', cellid, lev
-    write(*,*) 'get_interp_pressure: pt,rho,qv,p', pt, density, qv, pressure
+    write(*,*) 'get_interp_pressure: cellid, lev', cellid, lev
+    write(*,*) 'get_interp_pressure: pt,rho,qv,p,tk', pt, density, qv, pressure, tk
 endif
+
+deallocate(pt, density, qv, tk)
 
 end subroutine get_interp_pressure
 
@@ -5476,7 +5508,7 @@ if (any(abs(weights) < roundoff)) then
    where (abs(weights) < roundoff) weights = 0.0_r8
    where (abs(1.0_r8 - abs(weights)) < roundoff) weights = 1.0_r8
 endif
-if (debug > 10 .and. abs(sum(weights)-1.0_r8) > roundoff) &
+if(abs(sum(weights)-1.0_r8) > roundoff) &
    print *, 'fail in get_barycentric_weights: sum(weights) = ',sum(weights)
 !end FIXME section
 
@@ -5489,10 +5521,10 @@ subroutine compute_scalar_with_barycentric(state_handle, ens_size, loc, n, ival,
 
 type(ensemble_type), intent(in)  :: state_handle
 integer,             intent(in)  :: ens_size
-type(location_type), intent(in)  :: loc 
+type(location_type), intent(in)  :: loc !(ens_size)
 integer,             intent(in)  :: n
 integer,             intent(in)  :: ival(n)
-real(r8),            intent(out) :: dval(n, ens_size)
+real(r8),            intent(out) :: dval(:, :)
 integer,             intent(out) :: ier(ens_size)
 
 real(r8), dimension(3, ens_size) :: fract, lowval, uppval, fdata
@@ -5521,16 +5553,14 @@ do k=1, n
    ! c(3) are the cell ids
    do e = 1, ens_size !> @todo Do you really need to loop around ens_size?
 
-      ! FIXME: do we need to test for ier /= 0 and cycle first?
-      if (ier(e) /= 0) cycle
-
       do i = 1, nc
+!        lowval(i) = x(index1 + (c(i)-1) * nvert + lower(i)-1)
          lowval(i,:) =  (get_state(index1 + (c(i)-1)*nvert + lower(i, e)-1, state_handle))
 
-         uppval(i,:) =  (get_state(index1 + (c(i)-1)*nvert + upper(i, e)-1, state_handle))
+!        uppval(i) = x(index1 + (c(i)-1) * nvert + upper(i)-1)
+         uppval(i,:) =  (get_state(index1 + (c(i)-1) * nvert + upper(i, e)-1, state_handle))
 
          fdata(i, e) = lowval(i, e)*(1.0_r8 - fract(i, e)) + uppval(i, e)*fract(i, e)
-
 !        if((debug > 9) .and. do_output()) &
 !        print '(A,I2,A,I2,5f12.5)','compute_scalar_with_barycentric: nv=',k,' ic =',i, &
 !                                  lowval(i),uppval(i),fdata(i),fract(i),weights(i)
@@ -5539,6 +5569,7 @@ do k=1, n
       ! now have vertically interpolated values at cell centers.
       ! use weights to compute value at interp point.
       dval(k, e) = sum(weights(1:nc) * fdata(1:nc, e))
+      !if(debug > 11) print *, 'compute_scalar_with_barycentric: k, e, dval(k,e) = ', k, e, dval(k,e)
 
    enddo
 
@@ -5549,12 +5580,14 @@ end subroutine compute_scalar_with_barycentric
 !------------------------------------------------------------
 
 subroutine find_triangle(loc, nc, c, weights, ier)
+!find_triangle_vert_indices (state_handle, loc, nc, c, lower, upper, fract, weights, ier)
 
-type(location_type), intent(in)  :: loc 
+!type(ensemble_type), intent(in)  :: state_handle
+type(location_type), intent(in)  :: loc !(:) ! ens_size
 integer,             intent(out) :: nc
-integer,             intent(out) :: c(:) 
+integer,             intent(out) :: c(:) ! single value - cell id
 real(r8),            intent(out) :: weights(:)
-integer,             intent(out) :: ier 
+integer,             intent(out) :: ier !(:) ! ens_size
 
 ! compute the values at the correct vertical level for each
 ! of the 3 cell centers defining a triangle that encloses the
@@ -5714,27 +5747,31 @@ integer,             intent(out) :: ier(:) ! ens_size
 integer :: e
 
 ! initialization
-lower = MISSING_R8
-upper = MISSING_R8
-fract = 0.0_r8
+  lower = MISSING_R8
+  upper = MISSING_R8
+  fract = 0.0_r8
 
 ! need vert index for the vertical level
 call find_vert_level(state_handle, ens_size, loc, nc, c, .true., lower, upper, fract, ier)
 
-if ((debug > 9) .and. do_output()) then
-   write(string3,*) ' triangle = ',c(1:nc), ' vert_index = ',lower(1:nc, 1)+fract(1:nc, 1)
+if (debug > 11) then
+   write(string3,*) 'ier = ',ier !(1), ' triangle = ',c(1:nc), ' vert_index = ',lower(1:nc, 1)+fract(1:nc, 1)
    call error_handler(E_MSG, 'find_vert_indices', string3, source, revision, revdate)
+endif
 
+if (debug > 11) then
    do e = 1, ens_size
-      if(ier(e) /= 0) then   
-         print *, 'find_vert_indices: e = ', e, ' nc = ', nc, ' ier = ', ier(e)
-         print *, 'find_vert_indices: c = ', c
-         print *, 'find_vert_indices: lower = ', lower(1:nc, e)
-         print *, 'find_vert_indices: upper = ', upper(1:nc, e)
-         print *, 'find_vert_indices: fract = ', fract(1:nc, e)
-      endif
+   if(ier(e) /= 0) then   
+      print *, 'find_vert_indices: e = ', e, ' nc = ', nc, ' ier = ', ier(e)
+      print *, 'find_vert_indices: c = ', c
+      print *, 'find_vert_indices: lower = ', lower(1:nc, e)
+      print *, 'find_vert_indices: upper = ', upper(1:nc, e)
+      print *, 'find_vert_indices: fract = ', fract(1:nc, e)
+   endif
    enddo
 endif
+
+if (all(ier /= 0)) return
 
 end subroutine find_vert_indices
 
@@ -5769,7 +5806,7 @@ integer     :: verttype, lower(listsize, ens_size), upper(listsize, ens_size), n
 integer :: e ! loop index
 
 ! Initialization
-ier = 0
+ier  = 0
 uval = MISSING_R8
 
 ! FIXME: make this cache the last value and if the location is
@@ -6057,7 +6094,7 @@ call xyz_find_nearest(cc_gc, pointloc, cell_locs, closest_cell, rc)
 
 ! decide what to do if we don't find anything.
 if (rc /= 0 .or. closest_cell < 0) then
-   if ((debug > 8) .and. do_output()) &
+   if (debug > 8) &
        print *, 'cannot find nearest cell to lon, lat: ', lon, lat
    find_closest_cell_center = -1
    return
@@ -7006,18 +7043,19 @@ real(r8), dimension(ens_size) :: theta_to_tk          ! sensible temperature [K]
 ! Local variables
 real(r8), dimension(ens_size) :: theta_m    ! potential temperature modified by qv
 real(r8), dimension(ens_size) :: exner      ! exner function
-real(r8), dimension(ens_size) :: qv_notneg  ! qv >= 0
+real(r8), dimension(ens_size) :: qv_nonzero ! qv >= 0
 
-qv_notneg = max(qv,0.0_r8)
+qv_nonzero = max(qv,0.0_r8)
+theta_to_tk = missing_r8
 
 where (istatus_in == 0)
-   theta_m = (1.0_r8 + 1.61_r8 * qv_notneg)*theta
+   theta_m = (1.0_r8 + 1.61_r8 * qv_nonzero)*theta
+   
+   !theta_m = (1.0_r8 + 1.61_r8 * (max(qv, 0.0_r8)))*theta
    exner = ( (rgas/p0) * (rho*theta_m) )**rcv
    
    ! Temperature [K]
    theta_to_tk = theta * exner
-elsewhere
-   theta_to_tk = MISSING_R8
 endwhere
 
 end function theta_to_tk
@@ -7025,7 +7063,7 @@ end function theta_to_tk
 
 !------------------------------------------------------------------
 
-subroutine compute_full_pressure(ens_size, theta, rho, qv, pressure, istatus_in)
+subroutine compute_full_pressure(ens_size, theta, rho, qv, pressure, tk, istatus_in)
 
 ! Compute full pressure from the equation of state.
 ! since it has to compute sensible temp along the way,
@@ -7038,18 +7076,19 @@ real(r8), dimension(ens_size), intent(in)  :: theta    ! potential temperature [
 real(r8), dimension(ens_size), intent(in)  :: rho      ! dry density
 real(r8), dimension(ens_size), intent(in)  :: qv       ! water vapor mixing ratio [kg/kg]
 real(r8), dimension(ens_size), intent(out) :: pressure ! full pressure [Pa]
+real(r8), dimension(ens_size), intent(out) :: tk       ! return sensible temperature to caller
 integer,  dimension(ens_size), intent(in)  :: istatus_in
 
 ! Local variables
-real(r8), dimension(ens_size) :: qv_notneg, tk
+real(r8), dimension(ens_size) :: qv_nonzero
 
-tk = theta_to_tk(ens_size, theta, rho, qv, istatus_in)
-qv_notneg = max(qv,0.0_r8)
+pressure = missing_r8
+qv_nonzero = max(qv,0.0_r8)
+tk = theta_to_tk(ens_size, theta, rho, qv_nonzero, istatus_in)
 
+!tk = theta_to_tk(theta, rho, max(qv,0.0_r8))
 where (istatus_in == 0)
-   pressure = rho * rgas * tk * (1.0_r8 + 1.61_r8 * qv_notneg)
-elsewhere
-   pressure = missing_r8
+   pressure = rho * rgas * tk * (1.0_r8 + 1.61_r8 * qv)
 end where
 !if ((debug > 9) .and. do_output()) print *, 't,r,q,p,tk =', theta, rho, qv, pressure, tk
 

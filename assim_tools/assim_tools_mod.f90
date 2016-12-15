@@ -10,14 +10,12 @@ module assim_tools_mod
 !> \defgroup assim_tools assim_tools_mod
 !> 
 !> @{
-use      types_mod,       only : r8, i8, digits12, PI, missing_r8, obstypelength
+use      types_mod,       only : r8, i8, digits12, PI, missing_r8
 use  utilities_mod,       only : file_exist, get_unit, check_namelist_read, do_output,    &
                                  find_namelist_in_file, register_module, error_handler,   &
                                  E_ERR, E_MSG, nmlfileunit, do_nml_file, do_nml_term,     &
                                  open_file, close_file, timestamp
-
 use       sort_mod,       only : index_sort 
-
 use random_seq_mod,       only : random_seq_type, random_gaussian, init_random_seq,       &
                                  random_uniform
 
@@ -34,8 +32,6 @@ use         obs_kind_mod, only : get_num_obs_kinds, get_obs_kind_index,         
 use       cov_cutoff_mod, only : comp_cov_factor
 
 use       reg_factor_mod, only : comp_reg_factor
-
-use       obs_impact_mod, only : allocate_impact_table, read_impact_table, free_impact_table
 
 use         location_mod, only : location_type, get_close_type, get_close_obs_destroy,    &
                                  operator(==), set_location_missing, write_location,      &
@@ -97,12 +93,6 @@ character(len = 255)   :: msgstring, msgstring2, msgstring3
 logical                :: first_get_correction = .true.
 real(r8)               :: exp_true_correl(200), alpha(200)
 
-! if adjust_obs_impact is true, read in triplets from the ascii file
-! and fill this 2d impact table.  it should be allocated for both
-! kinds and types, 0-N for kinds, 1-N for types, with a type offset
-! computed somehow.
-real(r8), allocatable  :: obs_impact_table(:,:)
-
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
    "$URL$"
@@ -135,15 +125,12 @@ real(r8) :: adaptive_cutoff_floor           = 0.0_r8
 integer  :: print_every_nth_obs             = 0
 
 ! since this is in the namelist, it has to have a fixed size.
-! the arrays are initialized to a known value before the namelist
-! is read in.  obstypelength is fixed by the fortran standard for
-! the max parameter identifier length.
-integer, parameter           :: MAX_ITEMS = 500
-character(len=obstypelength) :: special_localization_obs_types(MAX_ITEMS) = ''
-real(r8)                     :: special_localization_cutoffs(MAX_ITEMS) = MISSING_R8
+integer, parameter   :: MAX_ITEMS = 300
+character(len = 129) :: special_localization_obs_types(MAX_ITEMS)
+real(r8)             :: special_localization_cutoffs(MAX_ITEMS)
 
 logical              :: output_localization_diagnostics = .false.
-character(len = 256) :: localization_diagnostics_file = "localization_diagnostics"
+character(len = 129) :: localization_diagnostics_file = "localization_diagnostics"
 
 ! Following only relevant for filter_kind = 8
 logical  :: rectangular_quadrature          = .true.
@@ -154,15 +141,6 @@ logical  :: gaussian_likelihood_tails       = .false.
 ! Most of the time, if a MISSING_R8 is encountered, DART should die.
 ! CLM and POP (more?) should have allow_missing_in_clm = .true.
 logical  :: allow_missing_in_clm = .false.
-
-! False by default; if true, expect to read in an ascii table
-! to adjust the impact of obs on other state vector and obs values.
-! for now, remove the 'allow_any_impact_values' flag from the namelist.
-! only 0 and 1 are valid values with the defaults. 
-logical            :: adjust_obs_impact  = .false.
-character(len=256) :: obs_impact_filename = ''
-logical            :: allow_any_impact_values = .false.
-
 
 ! Not in the namelist; this var disables the experimental
 ! linear and spherical case code in the adaptive localization 
@@ -178,8 +156,7 @@ namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails, &
    output_localization_diagnostics, localization_diagnostics_file,         &
    special_localization_obs_types, special_localization_cutoffs,           &
-   allow_missing_in_clm, adjust_obs_impact, obs_impact_filename,           &
-   close_obs_caching, allow_missing_in_clm, distribute_mean
+   allow_missing_in_clm, distribute_mean
 
 !============================================================================
 
@@ -271,17 +248,6 @@ if (has_special_cutoffs .and. close_obs_caching) then
    close_obs_caching = .false.
 endif
 
-if (adjust_obs_impact) then
-   call allocate_impact_table(obs_impact_table)
-   call read_impact_table(obs_impact_filename, obs_impact_table, allow_any_impact_values)
- 
-   ! right now, this factor is applied to the cov_factor.
-   ! FIXME: if it is moved to be applied to the distances, then we
-   ! have to turn of close obs caching (just like the special cutoff case)
-   ! so that the adjusted distances aren't reused for different pairs of
-   ! obs types and state vector kinds.
-endif
-
 if (do_output()) then
    write(msgstring, '(A,F18.6)') 'The cutoff namelist value is ', cutoff
    call error_handler(E_MSG,'assim_tools_init:', msgstring)
@@ -354,7 +320,7 @@ integer,                     intent(in)    :: OBS_PRIOR_VAR_START, OBS_PRIOR_VAR
 logical,                     intent(in)    :: inflate_only
 
 real(r8) :: obs_prior(ens_size), obs_inc(ens_size), increment(ens_size)
-real(r8) :: reg_factor, impact_factor
+real(r8) :: reg_factor
 real(r8) :: net_a(num_groups), reg_coef(num_groups), correl(num_groups)
 real(r8) :: cov_factor, obs(1), obs_err_var, my_inflate, my_inflate_sd
 real(r8) :: varying_ss_inflate, varying_ss_inflate_sd
@@ -446,6 +412,11 @@ if (sort_obs_inc) then
    endif
 endif
 
+!GSR open the dignostics file
+if(output_localization_diagnostics .and. my_task_id() == 0) then
+  localization_unit = open_file(localization_diagnostics_file, action = 'append')
+endif
+
 ! For performance, make local copies of these settings which
 ! are really in the inflate derived type.
 local_single_ss_inflate  = do_single_ss_inflate(inflate)
@@ -455,34 +426,12 @@ local_obs_inflate        = do_obs_inflate(inflate)
 ! Default to printing nothing
 nth_obs = -1
 
-! Divide ensemble into num_groups groups.
-! make sure the number of groups and ensemble size result in 
-! at least 2 members in each group (to avoid divide by 0) and 
-! that the groups all have the same number of members.
+! Divide ensemble into num_groups groups
 grp_size = ens_size / num_groups
-if (grp_size * num_groups /= ens_size) then
-   write(msgstring,  *) 'The number of ensemble members must divide into the number of groups evenly.'
-   write(msgstring2, *) 'Ensemble size = ', ens_size, '  Number of groups = ', num_groups
-   write(msgstring3, *) 'Change number of groups or ensemble size to avoid remainders.'
-   call error_handler(E_ERR,'filter_assim:', msgstring, source, revision, revdate, &
-                         text2=msgstring2,text3=msgstring3)
-endif
-if (grp_size < 2) then
-   write(msgstring,  *) 'There must be at least 2 ensemble members in each group.'
-   write(msgstring2, *) 'Ensemble size = ', ens_size, '  Number of groups = ', num_groups
-   write(msgstring3, *) 'results in < 2 members/group.  Decrease number of groups or increase ensemble size'
-   call error_handler(E_ERR,'filter_assim:', msgstring, source, revision, revdate, &
-                         text2=msgstring2,text3=msgstring3)
-endif
 do group = 1, num_groups
    grp_beg(group) = (group - 1) * grp_size + 1
    grp_end(group) = grp_beg(group) + grp_size - 1
 enddo
-
-!GSR open the dignostics file
-if(output_localization_diagnostics .and. my_task_id() == 0) then
-  localization_unit = open_file(localization_diagnostics_file, action = 'append')
-endif
 
 ! Put initial value of state space inflation in copy normally used for SD
 ! This is to avoid weird storage footprint in filter
@@ -515,8 +464,6 @@ call init_obs(observation, get_num_copies(obs_seq), get_num_qc(obs_seq))
 call get_my_obs_loc(ens_handle, obs_ens_handle, obs_seq, keys, my_obs_loc, my_obs_kind, my_obs_type)
 
 if (.not. lanai_bitwise) then
-   if (print_timestamps > 0) call timestamp('filter_assim: Before vertical conversion ', pos="brief")
-
    ! convert the verical of all my observations to the localization coordinate
    ! this may not be bitwise with Lanai because of a different number of set_location calls
    do i = 1, obs_ens_handle%my_num_vars
@@ -526,8 +473,6 @@ if (.not. lanai_bitwise) then
          if (vstatus /= 0) obs_ens_handle%copies(OBS_GLOBAL_QC_COPY, i) = DARTQC_FAILED_VERT_CONVERT
       endif
    enddo
-
-   if (print_timestamps > 0) call timestamp('filter_assim: After  vertical conversion ', pos="brief")
 endif
 
 ! Get info on my number and indices for state
@@ -688,14 +633,14 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                   
                   ! If this is inflate_only (i.e. posterior) remove impact of this obs.
                   ! This is simulating independent observation by removing its impact.
-                  if (inflate_only .and. &
+                  if(inflate_only .and. &
                         ens_var_deflate               > small .and. &
                         obs_err_var                   > small .and. & 
                         obs_err_var - ens_var_deflate > small ) then 
-                        r_var  = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
-                        r_mean = r_var * (ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
+                     r_var = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
+                     r_mean = r_var *(ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
                   else
-                     r_var  = ens_var_deflate
+                     r_var = ens_var_deflate
                      r_mean = ens_obs_mean
                   endif
 
@@ -705,6 +650,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                endif
             end do
          endif SINGLE_SS_INFLATE
+
       endif IF_QC_IS_OKAY
 
       !Broadcast the info from this obs to all other processes
@@ -821,9 +767,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
 
    cutoff_rev = cutoff_orig
 
-! FIXME: do we cull the impact obs first?  if so, do them either here
-! or BETTER -- in the count_close routine.
-
    ! For adaptive localization, need number of other obs close to the chosen observation
    if(adaptive_localization_threshold > 0) then
 
@@ -874,6 +817,7 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       endif
 
    else if (output_localization_diagnostics) then
+
       ! if you aren't adapting but you still want to know how many obs are within the
       ! localization radius, set the diag output.  this could be large, use carefully.
 
@@ -895,7 +839,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    ! Now everybody updates their close states
    ! Find state variables on my process that are close to observation being assimilated
    if (.not. close_obs_caching) then
-      call get_close_obs(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
+
+       call get_close_obs(gc_state, base_obs_loc, base_obs_type, my_state_loc, my_state_kind, &
          num_close_states, close_state_ind, close_state_dist, ens_handle)
    else
       if (base_obs_loc == last_base_states_loc) then
@@ -926,12 +871,9 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
    STATE_UPDATE: do j = 1, num_close_states
       state_index = close_state_ind(j)
 
-      ! this, for performance reasons.  it won't warn you if there are missing
-      ! values when you don't expect them, but it also won't do the any() unless
-      ! the namelist says you might expect to see them.
       if ( allow_missing_in_clm ) then
          ! Some models can take evasive action if one or more of the ensembles have
-         ! a missing value. Generally means 'do nothing' (as opposed to DIE) 
+         ! a missing value. Generally means 'do nothing' (as opposed to DIE)
          missing_in_state = any(ens_handle%copies(1:ens_size, state_index) == MISSING_R8)
          if ( missing_in_state ) cycle STATE_UPDATE
       endif
@@ -950,15 +892,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
       cov_factor = comp_cov_factor(close_state_dist(j), cutoff_rev, &
          base_obs_loc, base_obs_type, my_state_loc(state_index), my_state_kind(state_index))
 
-      ! if external impact factors supplied, factor them in here
-      ! FIXME: this would execute faster for 0.0 impact factors if
-      ! we check for that before calling comp_cov_factor.  but it makes
-      ! the logic more complicated - this is cleaner if we do it after.
-      if (adjust_obs_impact) then
-         impact_factor = obs_impact_table(base_obs_type, my_state_kind(state_index))
-         cov_factor = cov_factor * impact_factor
-      endif
-
       ! If no weight is indicated, no more to do with this state variable
       if(cov_factor <= 0.0_r8) cycle STATE_UPDATE
 
@@ -969,13 +902,11 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          ! Do update of state, correl only needed for varying ss inflate
          if(local_varying_ss_inflate .and. varying_ss_inflate > 0.0_r8 .and. &
             varying_ss_inflate_sd > 0.0_r8) then
-
             call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
                obs_prior_var(group), obs_inc(grp_bot:grp_top), &
                ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
                increment(grp_bot:grp_top), reg_coef(group), net_a(group), correl(group))
          else
-
             call update_from_obs_inc(obs_prior(grp_bot:grp_top), obs_prior_mean(group), &
                obs_prior_var(group), obs_inc(grp_bot:grp_top), &
                ens_handle%copies(grp_bot:grp_top, state_index), grp_size, &
@@ -1025,14 +956,14 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                endif
                   
                ! If this is inflate only (i.e. posterior) remove impact of this obs.
-               if (inflate_only .and. &
+               if(inflate_only .and. &
                      ens_var_deflate               > small .and. &
                      obs_err_var                   > small .and. & 
                      obs_err_var - ens_var_deflate > small ) then 
-                     r_var  = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
-                     r_mean = r_var * (ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
+                  r_var  = 1.0_r8 / (1.0_r8 / ens_var_deflate - 1.0_r8 / obs_err_var)
+                  r_mean = r_var *(ens_obs_mean / ens_var_deflate - obs(1) / obs_err_var)
                else
-                  r_var  = ens_var_deflate
+                  r_var = ens_var_deflate
                   r_mean = ens_obs_mean
                endif
 
@@ -1053,8 +984,8 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
                endif
             endif
             if (do_adapt_inf_update) then   
-            ens_handle%copies(ENS_INF_COPY, state_index) = varying_ss_inflate
-            ens_handle%copies(ENS_INF_SD_COPY, state_index) = varying_ss_inflate_sd
+               ens_handle%copies(ENS_INF_COPY, state_index) = varying_ss_inflate
+               ens_handle%copies(ENS_INF_SD_COPY, state_index) = varying_ss_inflate_sd
             endif
          end do GroupInflate
       endif
@@ -1079,16 +1010,6 @@ SEQUENTIAL_OBS: do i = 1, obs_ens_handle%num_vars
          ! Compute the distance and the covar_factor
          cov_factor = comp_cov_factor(close_obs_dist(j), cutoff_rev, &
             base_obs_loc, base_obs_type, my_obs_loc(obs_index), my_obs_kind(obs_index))
-
-         ! if external impact factors supplied, factor them in here
-         ! FIXME: this would execute faster for 0.0 impact factors if
-         ! we check for that before calling comp_cov_factor.  but it makes
-         ! the logic more complicated - this is cleaner if we do it after.
-         if (adjust_obs_impact) then
-            impact_factor = obs_impact_table(base_obs_type, my_obs_kind(obs_index))
-            cov_factor = cov_factor * impact_factor
-         endif
-
          if(cov_factor <= 0.0_r8) cycle OBS_UPDATE
 
          ! Loop through and update ensemble members in each group
