@@ -4071,6 +4071,9 @@ end function deter3
 !> (2)after we find the box which is closest to the given point,
 !>    we can calculate distances to the cells within the box.
 !> bjchoi 2014/08/07
+!>
+!> @todo This WHOLE ROUTINE can be replaced with something similar 
+!>       (and much faster) from POP.
 !-------------------------------------------------------------
 
 subroutine get_reg_box_indices(lon, lat, LON_al, LAT_al, x_ind, y_ind, istatus)
@@ -4110,9 +4113,12 @@ nybox = ceiling( float(Ny) / num_cell )
 ! boxLON and boxLAT
 allocate( boxLON(nxbox,nybox) )
 allocate( boxLAT(nxbox,nybox) )
-allocate( rtemp(Nx*Ny) )
-allocate( itemp(Nx*Ny) )
-allocate( jtemp(Nx*Ny) )
+
+! Temporary variables that are only used on the space of the boxes (nxbox*nybox)
+! or the space of 4 boxes ((2*num_cell+1)*(2*num_cell+1))
+allocate( rtemp(max(nxbox*nybox,(2*num_cell+1)*(2*num_cell+1))) )
+allocate( itemp(max(nxbox*nybox,(2*num_cell+1)*(2*num_cell+1))) )
+allocate( jtemp(max(nxbox*nybox,(2*num_cell+1)*(2*num_cell+1))) )
 
 rtemp = huge(rtemp)   ! ultimately want the minimum value
 itemp = -1            ! should not matter
@@ -4144,17 +4150,8 @@ enddo
 jj = nybox
 j = (num_cell/2) + (jj-1)*num_cell
 if (j .GT. Ny) j = Ny
-
-!> @todo boxLON(nxbox,nybox) and boxLAT(nxbox,nybox) are not getting set
-!> TJH          37          17   302.859687426721        52.1531690036829     
-!> TJH          37          18   301.879518471865        53.1934976695757     
-!> TJH          37          19   1.797693134862316E+308  1.797693134862316E+308
-
-!> @todo hardcode a fix for now - I know this is not correct with tilted domains
-boxLon(nxbox,nybox) = boxLon(nxbox,nybox-1) - &
-                     (boxLon(nxbox,nybox-1) - boxLon(nxbox,nybox-2))
-boxLat(nxbox,nybox) = boxLat(nxbox,nybox-1) + &
-                     (boxLat(nxbox,nybox-1) - boxLat(nxbox,nybox-2))
+boxLON(ii,jj) = LON_al(i,j)
+boxLAT(ii,jj) = LAT_al(i,j)
 
 !TJH: these have no need to be inside the loops.
 
@@ -4167,7 +4164,6 @@ part2  =   0.09350_r8 * cos(3.0_r8 * latrad) + &
 t = 0
 do ii=1,nxbox
 do jj=1,nybox
-!   write(*,*)'TJH', nxbox, nybox, ii, jj, boxLON(ii,jj), boxLAT(ii,jj)
     lon_dif = (lon - boxLON(ii,jj)) * part1 - part2
     lat_dif = (lat - boxLat(ii,jj))*111.13295_r8
     t = t+1
@@ -4186,10 +4182,10 @@ loc_box = min_location(1)
 ! the neighboring 4 model grid points are within this range.
 ii = itemp(loc_box)
 jj = jtemp(loc_box)
-i_start = max((ii-1)*num_cell - num_cell/2, 1) !
-i_end   = min(    ii*num_cell + num_cell/2,Nx) ! span 2 cells
-j_start = max((jj-1)*num_cell - num_cell/2, 1)
-j_end   = min(    jj*num_cell + num_cell/2,Ny)
+i_start = max(ii*num_cell - num_cell, 1) !
+i_end   = min(ii*num_cell + num_cell,Nx) ! span 2 cells
+j_start = max(jj*num_cell - num_cell, 1)
+j_end   = min(jj*num_cell + num_cell,Ny)
 
 ! now, calculate the distance between the obs and close candiate points
 
@@ -4212,68 +4208,63 @@ enddo
 !find minimum distances
 min_location = minloc(rtemp(1:t))
 loc1 = min_location(1)
+ii = itemp(loc1)
+jj = jtemp(loc1)
 
-!> @todo FIXME dies here with bounds checking turned on and you attempt
-!>       to interpolate something outside the domain. This WHOLE ROUTINE
-!>       can be replaced with something similar from POP.
-
-if ( (jtemp(loc1)+1) > size(LON_al,2) ) then
-   write(string1,*)'ERROR in finding matching grid point for'
-   write(string2,*)'longitude ',lon,' latitude ',lat
-   write(string3,*)'jtemp(loc1)+1 ',jtemp(loc1)+1,' is > size(LON_al,2) ',size(LON_al,2)
-   call error_handler(E_ERR,'get_reg_box_indices:', string1, &
-              source, revision, revdate, text2=string2, text3=string3)
+if ( ii == 1 .or. ii == Nx .or. jj == 1 .or. jj == Ny ) then
+   istatus = 1
+   return
 endif
 
-!check point location
-tp1 = checkpoint(LON_al(itemp(loc1)  ,jtemp(loc1)  ), &
-                 LAT_al(itemp(loc1)  ,jtemp(loc1)  ), &
-                 LON_al(itemp(loc1)+1,jtemp(loc1)+1), &
-                 LAT_al(itemp(loc1)+1,jtemp(loc1)+1),lon,lat)
+!check point quadrant. ii,jj are the bottom left indices of the 4 interpolation pts 
+tp1 = checkpoint(LON_al(ii  ,jj  ), &
+                 LAT_al(ii  ,jj  ), &
+                 LON_al(ii+1,jj  ), &
+                 LAT_al(ii+1,jj  ),lon,lat)
 
-tp2 = checkpoint(LON_al(itemp(loc1)  ,jtemp(loc1)  ), &
-                 LAT_al(itemp(loc1)  ,jtemp(loc1)  ), &
-                 LON_al(itemp(loc1)  ,jtemp(loc1)+1), &
-                 LAT_al(itemp(loc1)  ,jtemp(loc1)+1),lon,lat)
+tp2 = checkpoint(LON_al(ii  ,jj  ), &
+                 LAT_al(ii  ,jj  ), &
+                 LON_al(ii  ,jj+1), &
+                 LAT_al(ii  ,jj+1),lon,lat)
 
 if(     (tp1  > 0.0_r8) .and. (tp2  > 0.0_r8)) then
-      x_ind   =itemp(loc1)-1
-      y_ind   =jtemp(loc1)
+      x_ind   =ii-1
+      y_ind   =jj
       istatus = 0
 
 elseif( (tp1  > 0.0_r8) .and. (tp2  < 0.0_r8)) then
-      x_ind   =itemp(loc1)
-      y_ind   =jtemp(loc1)
+      x_ind   =ii
+      y_ind   =jj
       istatus = 0
 
 elseif( (tp1  < 0.0_r8) .and. (tp2  > 0.0_r8)) then
-      x_ind   =itemp(loc1)-1
-      y_ind   =jtemp(loc1)-1
+      x_ind   =ii-1
+      y_ind   =jj-1
       istatus = 0
 
 elseif( (tp1  < 0.0_r8) .and. (tp2  < 0.0_r8)) then
-      x_ind   =itemp(loc1)
-      y_ind   =jtemp(loc1)-1
+      x_ind   =ii
+      y_ind   =jj-1
       istatus = 0
 
 elseif( (tp1 == 0.0_r8) .and. (tp2  > 0.0_r8)) then
-      x_ind   =itemp(loc1)-1
-      y_ind   =jtemp(loc1)
+      x_ind   =ii-1
+      y_ind   =jj
       istatus = 0
 
 elseif( (tp1 == 0.0_r8) .and. (tp2  < 0.0_r8)) then
-      x_ind   =itemp(loc1)
-      y_ind   =jtemp(loc1)
+      x_ind   =ii
+      y_ind   =jj
       istatus = 0
 
 elseif( (tp1  > 0.0_r8) .and. (tp2 == 0.0_r8)) then
-      x_ind   =itemp(loc1)
-      y_ind   =jtemp(loc1)
+      x_ind   =ii
+      y_ind   =jj
       istatus = 0
 
 elseif( (tp1  < 0.0_r8) .and. (tp2 == 0.0_r8)) then
-      x_ind   =itemp(loc1)-1
-      y_ind   =jtemp(loc1)-1
+      x_ind   =ii-1
+      y_ind   =jj-1
       istatus = 0
 else
    write(string1,*)'ERROR in finding matching grid point for'
@@ -4289,7 +4280,7 @@ if ( x_ind < 1 .or. y_ind < 1 ) then
    write(string3,*)'latitude  ',lat,' is index ',y_ind
    call error_handler(E_MSG,'get_reg_box_indices:', string1, &
               source, revision, revdate, text2=string2, text3=string3)
-      istatus = 2
+   istatus = 2
 endif
 
 if (do_output() .and. debug > 1) then
