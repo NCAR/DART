@@ -80,7 +80,8 @@ rsync -Cavz ${ROMSDIR}/WC13/Ensemble/  ${EXPERIMENTDIR}/      || exit 1
 
 echo "no preexisting inflation files" >! ${EXPERIMENTDIR}/roms_inflation_cookie
 
-# the observation file had some quirks
+# THIS PARTICULAR observation file had some quirks.
+# These changes should not be needed in general.
 
 set ROMS_OBS = Data/obs_wc13_merged_2013+07d_pp1_depthinmeters_dt5400_physonly.nc
 
@@ -88,10 +89,7 @@ ncatted -a    units,survey_time,m,c,'days since 1900-01-01 00:00:00 GMT' \
         -a calendar,survey_time,c,c,'gregorian' \
         -a    units,obs_time,m,c,'days since 1900-01-01 00:00:00 GMT' \
         -a calendar,obs_time,c,c,'gregorian' \
-        -a flag_meanings,obs_provenance,m,c,'gridded_AVISO_sea_level_anomaly_(zeta) gridded_Aquarius_SSS_(salinity) XBT_from_Met_Office_(temperature) CTD_from_Met_Office_(temperature) CTD_from_Met_Office_(salinity) ARGO_floats_(temperature) ARGO_floats_(salinity) glider_UCSD_(temperature) glider_UCSD_(salinity) blended_satellite_SST_(temperature)' \
         ${ROMS_OBS}
-
-ncrename -a obs_type@long,long_name ${ROMS_OBS}
 
 #--------------------------------------------------------------------------
 # customize the user input templates with things that will remain constant
