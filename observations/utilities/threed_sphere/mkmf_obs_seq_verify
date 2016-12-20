@@ -12,8 +12,7 @@
 exit $status
 
 # <next few lines under version control, do not edit>
-# $URL:
-# http://subversion.ucar.edu/DAReS/DART/trunk/models/wrf/work/mkmf_obs_seq_verify $
+# $URL$
 # $Revision$
 # $Date$
 

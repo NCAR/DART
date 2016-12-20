@@ -4,7 +4,7 @@
 # provided by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: CESM_DART_config 7742 2015-03-20 00:17:16Z thoar $
+# DART $Id$
 
 # ---------------------
 # Purpose
@@ -353,7 +353,7 @@ cat DART_instructions.txt
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: https://subversion.ucar.edu/DAReS/DART/trunk/models/cam/shell_scripts/CESM_DART_config $
-# $Revision: 7742 $
-# $Date: 2015-03-19 18:17:16 -0600 (Thu, 19 Mar 2015) $
+# $URL$
+# $Revision$
+# $Date$
 
