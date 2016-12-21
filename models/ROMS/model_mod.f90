@@ -31,14 +31,14 @@ use        types_mod, only : r4, r8, digits12, SECPERDAY, DEG2RAD, rad2deg, PI, 
                              MISSING_I, MISSING_R4, MISSING_R8, i4, i8
 
 use time_manager_mod, only : time_type, set_time, set_date, get_date, get_time, &
-                             print_time, print_date,set_calendar_type,          &
+                             print_time, print_date, set_calendar_type,         &
                              operator(*),  operator(+), operator(-),            &
                              operator(>),  operator(<), operator(/),            &
                              operator(/=), operator(<=)
 
 use     location_mod, only : location_type, get_dist, get_close_maxdist_init,   &
                              get_close_obs_init, set_location,                  &
-                             get_location, vert_is_height,write_location,      &
+                             get_location, vert_is_height, write_location,      &
                              set_location_missing,query_location,               &
                              vert_is_level, vert_is_surface,                    &
                              loc_get_close_obs => get_close_obs, get_close_type,&
@@ -3044,7 +3044,7 @@ type(time_type), optional, intent(out) :: last_time
 
 integer :: ios, VarID, dimlen
 character(len=256) :: unitstring
-character(len=256) :: calendarstring
+character(len=256) :: ocean_time_calendar, dstart_calendar
 
 integer :: year, month, day, hour, minute, second
 real(digits12), allocatable :: ocean_time(:)
@@ -3079,18 +3079,18 @@ if (present(last_time)) then
 
    call nc_check(nf90_get_att(ncid, VarID, 'units', unitstring), &
           'find_time_dimension', 'get_att ocean_time units '//trim(filename))
-   call nc_check(nf90_get_att(ncid, VarID, 'calendar', calendarstring), &
+   call nc_check(nf90_get_att(ncid, VarID, 'calendar', ocean_time_calendar), &
           'find_time_dimension', 'get_att ocean_time units '//trim(filename))
 
-   if ((trim(calendarstring) /= 'julian') .and. &
-       (trim(calendarstring) /= 'gregorian')) then
+   if ((trim(ocean_time_calendar) /= 'julian') .and. &
+       (trim(ocean_time_calendar) /= 'gregorian')) then
       write(string1,*)'expecting ocean_time calendar of "julian" or "gregorian"'
-      write(string2,*)'got '//trim(calendarstring)
+      write(string2,*)'got '//trim(ocean_time_calendar)
       call error_handler(E_ERR,'find_time_dimension:', string1, &
-                source, revision, revdate, text2=string2, text3=string3)
+                source, revision, revdate, text2=string2)
    endif
 
-   call set_calendar_type( trim(calendarstring) )
+   call set_calendar_type( trim(ocean_time_calendar) )
 
    if (unitstring(1:13) /= 'seconds since') then
       write(string1,*)'expecting ocean_time units of "seconds since ..."'
@@ -3131,23 +3131,29 @@ if (present(last_time)) then
    call nc_check(nf90_get_var( ncid, VarID, dstart), &
           'find_time_dimension', 'get_var dstart from '//trim(filename))
 
+   ios = nf90_get_att(ncid, VarID, 'calendar', dstart_calendar)
+   if (ios == NF90_NOERR) then
+      if ((trim(dstart_calendar) /= 'julian') .and. &
+          (trim(dstart_calendar) /= 'gregorian')) then
+         write(string1,*)'expecting dstart calendar of "julian" or "gregorian"'
+         write(string2,*)'got '//trim(dstart_calendar)
+         call error_handler(E_ERR,'find_time_dimension:', string1, &
+                   source, revision, revdate, text2=string2)
+      endif
+      call set_calendar_type( trim(dstart_calendar) )
+   else
+      write(string1,*)'dstart has no calendar, using the ocean_time:calendar'
+      call error_handler(E_MSG,'find_time_dimension:', string1, &
+                source, revision, revdate)
+   endif
+
    call nc_check(nf90_get_att(ncid, VarID, 'units', unitstring), &
-          'find_time_dimension', 'get_att dstart units '//trim(filename))
-   call nc_check(nf90_get_att(ncid, VarID, 'calendar', calendarstring), &
           'find_time_dimension', 'get_att dstart units '//trim(filename))
 
    if (unitstring(1:10) /= 'days since') then
       write(string1,*)'expecting dstart units of "days since ..."'
       write(string2,*)'got '//trim(unitstring)
       write(string3,*)'Cannot proceed. Stopping.'
-      call error_handler(E_ERR,'find_time_dimension:', string1, &
-                source, revision, revdate, text2=string2, text3=string3)
-   endif
-
-   if ((trim(calendarstring) /= 'julian') .and. &
-       (trim(calendarstring) /= 'gregorian')) then
-      write(string1,*)'expecting ocean_time calendar of "julian" or "gregorian"'
-      write(string2,*)'got '//trim(calendarstring)
       call error_handler(E_ERR,'find_time_dimension:', string1, &
                 source, revision, revdate, text2=string2, text3=string3)
    endif
