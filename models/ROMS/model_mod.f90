@@ -555,7 +555,9 @@ endif
 !write(*,*)'model_mod: obs loc vs. model loc ', llon, llat, TLON(x_ind,y_ind),TLAT(x_ind,y_ind)
 
 ! If any of these fail, we can exit (fail) immediately.
-! The interp_val and istatus values are initially set to a failed value, so just use those.
+! The interp_val is initially set to a failed value, so just use it.
+! Must reset istatus as it currently has a good value from get_reg_box_indices().
+istatus = 99
 
 call vert_interpolate(x(base_offset:top_offset),lon_bot,lat_bot,obs_kind,lheight, p(1))
 if (p(1) == MISSING_R8) return
