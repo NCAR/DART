@@ -1,0 +1,7 @@
+&dart_to_nogaps_nml
+   dart_to_nogaps_input_file = 'dart_old_vector',
+   nogaps_restart_filename   = 'specfiles/shist000000',
+   dart_data_time_filename   = 'dart_data.time',
+   advance_time_present      = .TRUE.
+   /
+

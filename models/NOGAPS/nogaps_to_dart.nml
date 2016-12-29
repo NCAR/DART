@@ -1,0 +1,6 @@
+&nogaps_to_dart_nml
+   nogaps_restart_filename    = 'specfiles/shist000000',
+   nogaps_data_time_filename  = 'CRDATE.dat',
+   nogaps_to_dart_output_file = 'dart_new_vector',
+   /
+
