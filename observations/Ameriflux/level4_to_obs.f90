@@ -144,7 +144,6 @@ prev_time = set_time(0, 0)
 
 write(string1, *) 'tower located at lat, lon, elev  =', latitude, longitude, elevation
 write(string2, *) 'flux observations taken at       =', flux_height,'m'
-
 if (verbose) call error_handler(E_MSG,'level4_to_obs',string1,text2=string2)
 
 ! check the lat/lon values to see if they are ok
@@ -263,7 +262,7 @@ obsloop: do iline = 2,nlines
       oerr = 10.0_r8 + abs(tower%h)*0.22_r8
       qc   = real(tower%hQC,r8)
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%h, &
-                         TOWER_LATENT_HEAT_FLUX, oerr, oday, osec, qc, obs)
+                         TOWER_SENSIBLE_HEAT_FLUX, oerr, oday, osec, qc, obs)
       call add_obs_to_seq(obs_seq, obs, tower%time_obs, prev_obs, prev_time, first_obs)
    endif
 
@@ -271,7 +270,7 @@ obsloop: do iline = 2,nlines
       oerr = 10.0_r8 + abs(tower%le)*0.32_r8
       qc   = real(tower%leQC,r8)
       call create_3d_obs(latitude, longitude, flux_height, VERTISHEIGHT, tower%le, &
-                         TOWER_SENSIBLE_HEAT_FLUX, oerr, oday, osec, qc, obs)
+                         TOWER_LATENT_HEAT_FLUX, oerr, oday, osec, qc, obs)
       call add_obs_to_seq(obs_seq, obs, tower%time_obs, prev_obs, prev_time, first_obs)
    endif
 
@@ -781,7 +780,7 @@ end program level4_to_obs
 ! - Rg_fqc         : global radiation quality flags:
 !                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
 !                    (Refer to Reichstein et al. 2005 Global Change Biology )
-! - Ta_f           : air temperature filled [C]
+! - Ta_f           : air temperature filled [°C]
 ! - Ta_fqc         : air temperature quality flags:
 !                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
 !                    (Refer to Reichstein et al. 2005 Global Change Biology )
@@ -789,7 +788,7 @@ end program level4_to_obs
 ! - VPD_fqc        : vapour pressure deficit quality flags:
 !                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
 !                    (Refer to Reichstein et al. 2005 Global Change Biology )
-! - Ts_f           : soil temperature filled [C]
+! - Ts_f           : soil temperature filled [°C]
 ! - Ts_fqc         : soil temperature quality flags:
 !                    0 = original, 1 = A (most reliable), 2 = B (medium), 3 = C (least reliable).
 !                    (Refer to Reichstein et al. 2005 Global Change Biology )
