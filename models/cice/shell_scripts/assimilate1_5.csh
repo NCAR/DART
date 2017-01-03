@@ -62,27 +62,35 @@ setenv EXEROOT        `./xmlquery EXEROOT     -value`
 setenv RUNDIR         `./xmlquery RUNDIR      -value`
 setenv archive        `./xmlquery DOUT_S_ROOT -value`
 
+# Check to make sure we are running what we are supporting
+
+if ( $ICE_COMPONENT != 'cice' ) then
+   echo "ERROR: This assimilate.csh file is specifically for _CICE_."
+   echo "ERROR: the ice component for this case is _${ICE_COMPONENT}_"
+   exit 1
+endif
+
 cd ${RUNDIR}
 
 #-------------------------------------------------------------------------
-# Determine time of model state ... from file name of first member
-# of the form "./${CASE}.cice_${ensemble_member}.r.2000-01-06-00000.nc"
+# Determine time of model state ... from the last coupler restart file name
+# of the form "./${CASE}.cpl.r.YYYY-MM-DD-SSSSS.nc"
 #
 # Piping stuff through 'bc' strips off any preceeding zeros.
 #-------------------------------------------------------------------------
 
-set FILE = `head -n 1 rpointer.ice_0001`
+set FILE = `ls -1 $CASE.cpl.r.*.nc | tail -n 1`
 set FILE = $FILE:r
-set ICE_DATE_EXT = `echo $FILE:e`
-set ICE_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
-set ICE_YEAR     = `echo $ICE_DATE[1] | bc`
-set ICE_MONTH    = `echo $ICE_DATE[2] | bc`
-set ICE_DAY      = `echo $ICE_DATE[3] | bc`
-set ICE_SECONDS  = `echo $ICE_DATE[4] | bc`
-set ICE_HOUR     = `echo $ICE_DATE[4] / 3600 | bc`
+set CPL_DATE_EXT = `echo $FILE:e`
+set CPL_DATE     = `echo $FILE:e | sed -e "s#-# #g"`
+set CPL_YEAR     = `echo $CPL_DATE[1] | bc`
+set CPL_MONTH    = `echo $CPL_DATE[2] | bc`
+set CPL_DAY      = `echo $CPL_DATE[3] | bc`
+set CPL_SECONDS  = `echo $CPL_DATE[4] | bc`
+set CPL_HOUR     = `echo $CPL_DATE[4] / 3600 | bc`
 
-echo "valid time of model is $ICE_YEAR $ICE_MONTH $ICE_DAY $ICE_SECONDS (seconds)"
-echo "valid time of model is $ICE_YEAR $ICE_MONTH $ICE_DAY $ICE_HOUR (hours)"
+echo "valid time of model is $CPL_YEAR $CPL_MONTH $CPL_DAY $CPL_SECONDS (seconds)"
+echo "valid time of model is $CPL_YEAR $CPL_MONTH $CPL_DAY $CPL_HOUR (hours)"
 
 #-------------------------------------------------------------------------
 # Create temporary working directory for the assimilation and go there
@@ -105,14 +113,14 @@ cd $temp_dir
 # Make sure the file name structure matches the obs you will be using.
 # PERFECT model obs output appends .perfect to the filenames
 
-set YYYYMM   = `printf %04d%02d                ${ICE_YEAR} ${ICE_MONTH}`
+set YYYYMM   = `printf %04d%02d                ${CPL_YEAR} ${CPL_MONTH}`
 if (! -d ${BASEOBSROOT}/${YYYYMM}) then
    echo "CESM+DART requires 6 hourly obs_seq files in directories of the form YYYYMM"
    echo "The directory ${BASEOBSROOT}/${YYYYMM} is not found.  Exiting"
-   exit -10
+   exit 2
 endif
 
-set OBSFNAME = `printf obs_seq.%04d-%02d-%02d-%05d ${ICE_YEAR} ${ICE_MONTH} ${ICE_DAY} ${ICE_SECONDS}`
+set OBSFNAME = `printf obs_seq.%04d-%02d-%02d-%05d ${CPL_YEAR} ${CPL_MONTH} ${CPL_DAY} ${CPL_SECONDS}`
 
 set OBS_FILE = ${BASEOBSROOT}/${YYYYMM}/${OBSFNAME}
 
@@ -121,7 +129,7 @@ if (  -e   ${OBS_FILE} ) then
 else
    echo "ERROR ... no observation file ${OBS_FILE}"
    echo "ERROR ... no observation file ${OBS_FILE}"
-   exit -1
+   exit 2
 endif
 
 #=========================================================================
@@ -132,19 +140,16 @@ echo "`date` -- BEGIN COPY BLOCK"
 
 if (  -e   ${CASEROOT}/input.nml ) then
    ${COPY} ${CASEROOT}/input.nml .
-   # TODO FIXME ... ripping out comments? not needed.
-#  sed -e "/#/d;/^\!/d;/^[ ]*\!/d" ${CASEROOT}/input.nml >! input.nml  || exit 39
-
 else
    echo "ERROR ... DART required file ${CASEROOT}/input.nml not found ... ERROR"
    echo "ERROR ... DART required file ${CASEROOT}/input.nml not found ... ERROR"
-   exit -2
+   exit 2
 endif
 
 echo "`date` -- END COPY BLOCK"
 
 # If possible, use the round-robin approach to deal out the tasks.
-# Since the ensemble manager is not used by dart_to_ice,
+# Since the ensemble manager is not used by dart_to_cice,
 # it is OK to set it here and have it used by all routines.
 
 if ($?TASKS_PER_NODE) then
@@ -152,7 +157,7 @@ if ($?TASKS_PER_NODE) then
       ${COPY} input.nml input.nml.$$
       sed -e "s#layout.*#layout = 2#" \
           -e "s#tasks_per_node.*#tasks_per_node = $TASKS_PER_NODE#" \
-          input.nml.$$ >! input.nml || exit 40
+          input.nml.$$ >! input.nml || exit 3
       ${REMOVE} input.nml.$$
    endif
 endif
@@ -180,14 +185,14 @@ if ( $SECSTRING == true ) then
    else
       echo "ERROR: no sampling error correction file for this ensemble size."
       echo "ERROR: looking for ${SAMP_ERR_FILE}"
-      exit -3
+      exit 2
    endif
 else
    echo "Sampling Error Correction not requested for this assimilation."
 endif
 
 #=========================================================================
-# Block 3: DART INFLATION
+# Block 3: DART_INFLATION
 # This stages the files that contain the inflation values.
 # The inflation values change through time and should be archived.
 #
@@ -197,30 +202,25 @@ endif
 # filter_nml
 # inf_flavor                  = 2,                       0,
 # inf_initial_from_restart    = .true.,                  .false.,
-# inf_in_file_name            = 'prior_inflate_ics',     'post_inflate_ics',
-# inf_out_file_name           = 'prior_inflate_restart', 'post_inflate_restart',
-# inf_diag_file_name          = 'prior_inflate_diag',    'post_inflate_diag',
+# inf_in_file_name            = 'prior_inflation_input',  'posterior_inflation_input',
+# inf_out_file_name           = 'prior_inflation_output', 'posterior_inflation_output',
+# inf_diag_file_name          = 'prior_obs_infl_out',     'posterior_obs_infl_out',
 #
-# NOTICE: the archiving scripts more or less require the names of these
+# NOTICE: the archiving scripts require the names of these
 # files to be as listed above. When being archived, the filenames get a
 # unique extension (describing the assimilation time) appended to them.
 #
 # The inflation file is essentially a duplicate of the DART model state ...
 # For the purpose of this script, they are the output of a previous assimilation,
-# so they should be named something like prior_inflate_restart.YYYY-MM-DD-SSSSS
+# so they should be named something like prior_inflate_output.YYYY-MM-DD-SSSSS
 #
 # NOTICE: inf_initial_from_restart and inf_sd_initial_from_restart are somewhat
 # problematic. During the bulk of an experiment, these should be TRUE, since
 # we want to read existing inflation files. However, the first assimilation
 # might need these to be FALSE and then subsequently be set to TRUE.
-# There are two ways to handle this:
+# There is now only one way to handle this:
 #
-# 1) Create the initial files offline (perhaps with 'fill_inflation_restart')
-#    and stage them with the appropriate names in the RUNDIR.
-#    You must manually remove the ice_inflation_cookie file
-#    from the RUNDIR in this case.
-#    - OR -
-# 2) create a cookie file called RUNDIR/ice_inflation_cookie
+# 1) create a cookie file called RUNDIR/cice_inflation_cookie
 #    The existence of this file will cause this script to set the
 #    namelist appropriately. This script will 'eat' the cookie file
 #    to prevent this from happening for subsequent executions. If the
@@ -250,20 +250,14 @@ set  POSTE_TF = `echo $MYSTRING[3] | tr '[:upper:]' '[:lower:]'`
 set  MYSTRING = `grep 'inf_in_file_name' input.nml`
 set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
 set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
-set  PRIOR_INF_IFNAME = $MYSTRING[2]
-set  POSTE_INF_IFNAME = $MYSTRING[3]
+set  PRIOR_INF_IFBASE = $MYSTRING[2]
+set  POSTE_INF_IFBASE = $MYSTRING[3]
 
 set  MYSTRING = `grep 'inf_out_file_name' input.nml`
 set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
 set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
-set  PRIOR_INF_OFNAME = $MYSTRING[2]
-set  POSTE_INF_OFNAME = $MYSTRING[3]
-
-set  MYSTRING = `grep 'inf_diag_file_name' input.nml`
-set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
-set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
-set  PRIOR_INF_DIAG = $MYSTRING[2]
-set  POSTE_INF_DIAG = $MYSTRING[3]
+set  PRIOR_INF_OFBASE = $MYSTRING[2]
+set  POSTE_INF_OFBASE = $MYSTRING[3]
 
 # IFF we want PRIOR inflation:
 
@@ -273,7 +267,7 @@ if ( $PRIOR_INF > 0 ) then
       # we are not using an existing inflation file.
       echo "inf_flavor(1) = $PRIOR_INF, using namelist values."
 
-   else if ( -e ../ice_inflation_cookie ) then
+   else if ( -e ../cice_inflation_cookie ) then
       # We want to use an existing inflation file, but this is
       # the first assimilation so there is no existing inflation
       # file. This is the signal we need to to coerce the namelist
@@ -289,18 +283,36 @@ wq
 ex_end
 
    else
-      # Look for the output from the previous assimilation
-      (ls -rt1 ../ice_${PRIOR_INF_OFNAME}.* | tail -n 1 >! latestfile) > & /dev/null
+
+      # Look for inflation files from the previous assimilation
+      # This is really ugly- sorry.
+      
+      # Checking for a prior inflation mean file to use
+      
+      (ls -rt1 ../cice.${PRIOR_INF_OFBASE}_mean.* | tail -n 1 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
 
-      # If one exists, use it as input for this assimilation
       if ( $nfiles > 0 ) then
          set latest = `cat latestfile`
-         ${LINK} $latest ${PRIOR_INF_IFNAME}
+         ${LINK} $latest ${PRIOR_INF_IFBASE}_mean.nc
       else
-         echo "ERROR: Requested PRIOR inflation but specified no incoming inflation file."
-         echo "ERROR: expected something like ../ice_${PRIOR_INF_OFNAME}.YYYY-MM-DD-SSSSS"
-         exit -4
+         echo "ERROR: Requested PRIOR inflation but specified no incoming inflation MEAN file."
+         echo "ERROR: expected something like ../cice.${PRIOR_INF_OFBASE}_mean.YYYY-MM-DD-SSSSS.nc"
+         exit 2
+      endif
+
+      # Checking for a prior inflation sd file to use
+
+      (ls -rt1 ../cice.${PRIOR_INF_OFBASE}_sd.* | tail -n 1 >! latestfile) > & /dev/null
+      set nfiles = `cat latestfile | wc -l`
+
+      if ( $nfiles > 0 ) then
+         set latest = `cat latestfile`
+         ${LINK} $latest ${PRIOR_INF_IFBASE}_sd.nc
+      else
+         echo "ERROR: Requested PRIOR inflation but specified no incoming inflation SD file."
+         echo "ERROR: expected something like ../cice.${PRIOR_INF_OFBASE}_sd.YYYY-MM-DD-SSSSS.nc"
+         exit 2
       endif
 
    endif
@@ -316,7 +328,7 @@ if ( $POSTE_INF > 0 ) then
       # we are not using an existing inflation file.
       echo "inf_flavor(2) = $POSTE_INF, using namelist values."
 
-   else if ( -e ../ice_inflation_cookie ) then
+   else if ( -e ../cice_inflation_cookie ) then
       # We want to use an existing inflation file, but this is
       # the first assimilation so there is no existing inflation
       # file. This is the signal we need to to coerce the namelist
@@ -332,73 +344,61 @@ wq
 ex_end
 
    else
-      # Look for the output from the previous assimilation
-      (ls -rt1 ../ice_${POSTE_INF_OFNAME}.* | tail -n 1 >! latestfile) > & /dev/null
+
+      # Look for inflation files from the previous assimilation
+      # This is really ugly- sorry.
+
+      # Checking for a posterior inflation mean file to use
+      
+      (ls -rt1 ../cice.${POSTE_INF_OFBASE}_mean.* | tail -n 1 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
 
-      # If one exists, use it as input for this assimilation
       if ( $nfiles > 0 ) then
          set latest = `cat latestfile`
-         ${LINK} $latest ${POSTE_INF_IFNAME}
+         ${LINK} $latest ${POSTE_INF_IFBASE}_mean.nc
       else
-         echo "ERROR: Requested POSTERIOR inflation but specified no incoming inflation file."
-         echo "ERROR: expected something like ../ice_${POSTE_INF_OFNAME}.YYYY-MM-DD-SSSSS"
-         exit -5
+         echo "ERROR: Requested POSTERIOR inflation but specified no incoming inflation MEAN file."
+         echo "ERROR: expected something like ../cice.${POSTE_INF_OFBASE}_mean.YYYY-MM-DD-SSSSS.nc"
+         exit 2
       endif
+
+      # Checking for a posterior inflation sd file to use
+
+      (ls -rt1 ../cice.${POSTE_INF_OFBASE}_sd.* | tail -n 1 >! latestfile) > & /dev/null
+      set nfiles = `cat latestfile | wc -l`
+
+      if ( $nfiles > 0 ) then
+         set latest = `cat latestfile`
+         ${LINK} $latest ${POSTE_INF_IFBASE}_sd.nc
+      else
+         echo "ERROR: Requested POSTERIOR inflation but specified no incoming inflation SD file."
+         echo "ERROR: expected something like ../cice.${POSTE_INF_OFBASE}_sd.YYYY-MM-DD-SSSSS.nc"
+         exit 2
+      endif
+
    endif
 else
    echo "Posterior Inflation       not requested for this assimilation."
 endif
 
 # Eat the cookie regardless
-${REMOVE} ../ice_inflation_cookie
+${REMOVE} ../cice_inflation_cookie
 
 #=========================================================================
-# Block 4: filter has the ability to directly modify the cice restart files -
-#          i.e. it creates the posterior IN-PLACE..
-#          We usually want a prior estimate, so we have to save a copy of the
-#          input files before we feed them to filter. 
+# Block 4: Create a set of restart files before DART has modified anything.
 #
-# At the end of the block, we have DART initial condition files  filter_ics.[1-N]
-# that icee from pointer files ../rpointer.ice_[1-N]
+#   filter has the ability to directly modify the cice restart files
+#   i.e. it creates the posterior IN-PLACE.
+#   We usually want a prior estimate, so we have to save a copy of the
+#   input files before we feed them to filter. If we saved every
+#   restart, the directory gets polluted pretty fast, so we overwrite 
+#   the same filenames over and over. The timestamps IN the file can 
+#   confirm the valid time of the model state.
 #
-# REQUIRED DART namelist settings:
-# &filter_nml:           restart_list_file       = 'cice_restarts.txt'
-#                        direct_netcdf_read      = .true.
-#                        direct_netcdf_write     = .true.
-#                        restart_out_file_name   = 'cice_out.r'
-#
-## TODO FIXME ... this whole section
-#
-# &ensemble_manager_nml: single_restart_file_in  = '.false.'
-# &ice_to_dart_nml:      ice_to_dart_output_file = 'dart_ics',
-# &dart_to_ice_nml:      dart_to_ice_input_file  = 'dart_restart',
-#                        advance_time_present    = .false.
-#
-# NOTE: when starting an OSSE by perturbing a single file, use
-# &filter_nml
-#   start_from_restart        = .false.,
-#   output_restart            = .true.,
-#   restart_in_file_name      = "filter_ics.0001",
-#   restart_out_file_name     = "filter_restart", 
-# &ensemble_manager_nml
-#   single_restart_file_in    = .true.,
-#   single_restart_file_out   = .false.,
-# &model_nml
-#   pert_names          = 'T'
-#   pert_sd             = 1.0e-11,
-#   pert_base_vals      = -888888.0d0,
+#   At this time we also create a list of files we want to read/modify.
 #=========================================================================
 
-echo "`date` -- BEGIN ICE-TO-DART"
-
-# Check to make sure we are running what we are supporting
-
-if ( $ICE_COMPONENT == 'cice' ) then
-
-else
-  # TODO error out if we
-endif
+echo "`date` -- BEGIN CREATING SAFETY FILES"
 
 # create the list of restart files by dereferencing the pointer files. 
 # While we are at it, we have to account for the fact they are 1 dir up.
@@ -415,6 +415,7 @@ while ( ${member} <= ${ensemble_size} )
 
    set MYFILE = `head -n 1 $POINTER_FILE`
    set ICE_FILENAME = `echo $MYFILE:t`
+
    echo "../"${ICE_FILENAME} >> cice_restarts.txt
 
    ${COPY} ../${ICE_FILENAME} ${SAFETY_FILE} &
@@ -424,17 +425,35 @@ end
 
 wait
 
-echo "`date` -- END ICE-TO-DART for all ${ensemble_size} members."
+echo "`date` -- END CREATING SAFETY FILES for all ${ensemble_size} members."
 
 #=========================================================================
 # Block 5: Actually run the assimilation.
+#
+# &ensemble_manager_nml: single_restart_file_in  = '.false.'
+# &dart_to_cice_nml:     dart_to_cice_input_file = 'dart_restart.nc',
+#
+# NOTE: when starting an OSSE by perturbing a single file, use
+# &filter_nml
+#   TJH perturb_from_single ....        = .false.,
+#   output_restart            = .true.,
+#   restart_in_file_name      = "filter_ics.0001",
+#   restart_out_file_name     = "filter_restart", 
+#   TJH what other settings are correct for this ... 
+#   TJH should this part be here or in the model_mod.html ...
+#
+# &ensemble_manager_nml
+#   single_restart_file_in    = .true.,
+#   single_restart_file_out   = .false.,
+# &model_nml
+#   pert_names          = 'T'
+#   pert_sd             = 1.0e-11,
+#   pert_base_vals      = -888888.0d0,
 # Will result in a set of files : 'filter_restart.xxxx'
 #
-# DART namelist settings required:
+# REQUIRED DART namelist settings:
 # &filter_nml:           async                   = 0,
 # &filter_nml:           adv_ens_command         = "no_advance_script",
-# &filter_nml:           restart_in_file_name    = 'filter_ics'
-# &filter_nml:           restart_out_file_name   = 'filter_restart'
 # &filter_nml:           obs_sequence_in_name    = 'obs_seq.out'
 # &filter_nml:           obs_sequence_out_name   = 'obs_seq.final'
 # &filter_nml:           init_time_days          = -1,
@@ -446,6 +465,11 @@ echo "`date` -- END ICE-TO-DART for all ${ensemble_size} members."
 # &ensemble_manager_nml: single_restart_file_in  = .false.
 # &ensemble_manager_nml: single_restart_file_out = .false.
 #
+# &filter_nml:           direct_netcdf_read      = .true.
+#                        direct_netcdf_write     = .true.
+#                        use_restart_list        = .true.
+#                        overwrite_state_input   = .true.
+#                        restart_list_file       = 'cice_restarts.txt'
 #=========================================================================
 
 # The cice model_mod.f90:static_init_model() has a hardcoded 'cice.r.nc'
@@ -457,26 +481,24 @@ ln -sf ../ice_in_0001  cice_in
 ln -sf ../drv_in       drv_in
 
 echo "`date` -- BEGIN FILTER"
-${LAUNCHCMD} ${EXEROOT}/filter || exit -7
+${LAUNCHCMD} ${EXEROOT}/filter || exit 5
 echo "`date` -- END FILTER"
 
-# tag the output with the current model date
+# 1) rename DART files to reflect current date and component
+# 2) move to RUNDIR so they get archived and the DART_INFLATION block works next cycle
 
-foreach FILE ( prior_member????.nc     \
-               Prior_Diag.nc           \
-               Posterior_Diag.nc       \
-               PriorDiag_sd.nc         \
-               PriorDiag_mean.nc       \
-               PriorDiag_sd.nc         \
-               PriorDiag_inf_mean.nc   \
-               PriorDiag_inf_sd.nc     \
-               mean.nc sd.nc dart_log* \
-               obs_seq.final )
+foreach FILE ( input_mean.nc    input_sd.nc     \
+               output_mean.nc   output_sd.nc    \
+               dart_log*        obs_seq.final   \
+               ${PRIOR_INF_OFBASE}_mean.nc ${PRIOR_INF_OFBASE}_sd.nc \
+               ${POSTE_INF_OFBASE}_mean.nc ${POSTE_INF_OFBASE}_sd.nc )
 
    if ( -e $FILE ) then
       set  FEXT = $FILE:e
       set FBASE = $FILE:r
-      ${MOVE} $FILE ${FBASE}.${ICE_DATE_EXT}.${FEXT}
+      ${MOVE} $FILE ../cice.${FBASE}.${CPL_DATE_EXT}.${FEXT}
+   else
+      echo "$FILE does not exist, no need to take action."
    endif
 
 end
@@ -484,20 +506,7 @@ end
 # Copy obs_seq.final files to a place that won't be archived,
 # so that they don't need to be retrieved from the HPSS.
 if (! -d ../../Obs_seqs) mkdir ../../Obs_seqs
-${COPY} obs_seq.${ICE_DATE_EXT}.final ../../Obs_seqs &
-
-# Accommodate any possible inflation files
-# 1) rename file to reflect current date
-# 2) move to RUNDIR so the DART INFLATION BLOCK works next time and
-#    that they can get archived.
-
-foreach FILE ( ${PRIOR_INF_OFNAME} ${POSTE_INF_OFNAME} ${PRIOR_INF_DIAG} ${POSTE_INF_DIAG} )
-   if ( -e ${FILE} ) then
-      ${MOVE} ${FILE} ../ice_${FILE}.${ICE_DATE_EXT}
-   else
-      echo "No ${FILE} for ${ICE_DATE_EXT}"
-   endif
-end
+${COPY} ../cice.obs_seq.${CPL_DATE_EXT}.final ../../Obs_seqs &
 
 # Handle localization_diagnostics_files
 set MYSTRING = `grep 'localization_diagnostics_file' input.nml`
@@ -505,7 +514,7 @@ set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
 set MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
 set loc_diag = $MYSTRING[2]
 if (-f $loc_diag) then
-   $MOVE $loc_diag ../ice_${loc_diag}.${ICE_DATE_EXT}
+   $MOVE $loc_diag ../cice.${loc_diag}.${CPL_DATE_EXT}
 endif
 
 # Handle regression diagnostics
@@ -514,16 +523,21 @@ set MYSTRING = `echo $MYSTRING | sed -e "s#[=,']# #g"`
 set MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
 set reg_diag = $MYSTRING[2]
 if (-f $reg_diag) then
-   $MOVE $reg_diag ../ice_${reg_diag}.${ICE_DATE_EXT}
+   $MOVE $reg_diag ../cice.${reg_diag}.${CPL_DATE_EXT}
 endif
 
 #=========================================================================
-# Block 6: Update the ice restart files ... simultaneously ...
+# Block 6: 
+# The filter settings update the cice netcdf files directly - BUT -
+# they need to be rebalanced before being used. The rebalancing is done
+# by the dart_to_cice program.
 # Each member will do its job in its own directory.
 # Block 7: The ice files have now been updated, move them into position.
+# >@ TODO FIXME ... rename 'dart_to_cice' to 'rebalance_cice' or something
+# more accurate.
 #=========================================================================
 
-echo "`date` -- BEGIN DART-TO-ICE"
+echo "`date` -- BEGIN DART-TO-CICE"
 set member = 1
 while ( $member <= $ensemble_size )
 
@@ -537,7 +551,7 @@ while ( $member <= $ensemble_size )
 
    set ICE_FILENAME = `head -n $member ../cice_restarts.txt | tail -n 1`
 
-   ${LINK} ../${ICE_FILENAME} dart_restart.nc || exit -9
+   ${LINK} ../${ICE_FILENAME} dart_restart.nc || exit 6
    ${LINK} ../input.nml .
 
    echo "starting dart_to_ice for member ${member} at "`date`
@@ -552,12 +566,12 @@ wait
 
 set nsuccess = `fgrep 'Finished ... at YYYY' member*/output.[0-9]*.dart_to_ice | wc -l`
 if (${nsuccess} != ${ensemble_size}) then
-   echo "ERROR ... DART died in 'dart_to_ice' ... ERROR"
-   echo "ERROR ... DART died in 'dart_to_ice' ... ERROR"
-   exit -8
+   echo "ERROR ... DART died in 'dart_to_cice' ... ERROR"
+   echo "ERROR ... DART died in 'dart_to_cice' ... ERROR"
+   exit 2
 endif
 
-echo "`date` -- END DART-TO-ICE for all ${ensemble_size} members."
+echo "`date` -- END DART-TO-CICE for all ${ensemble_size} members."
 
 #-------------------------------------------------------------------------
 # Cleanup

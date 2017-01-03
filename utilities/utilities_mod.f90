@@ -997,9 +997,9 @@ end subroutine error_handler
 
           case default
              ! if the user specifies an action, make sure it is a valid one.
-             call error_handler(E_ERR, 'open_file ', &
-                                'unrecognized action, "'//trim(action)//'"; valid values: "read", "write", "append"', &
-                                source, revision, revdate)
+             write(msgstring1,*) 'opening file "'//trim(fname)//'"'
+             write(msgstring2,*) 'unrecognized action, "'//trim(action)//'"; valid values: "read", "write", "append"'
+             call error_handler(E_ERR, 'open_file', msgstring1, source, revision, revdate, text2=msgstring2)
        end select
    endif
 
@@ -1032,8 +1032,9 @@ end subroutine error_handler
    ! depending on the compiler.
    if (present(convert)) then 
       if (format == 'FORMATTED') then
-         call error_handler(E_ERR, 'open_file ', 'cannot specify binary conversion on a formatted file', &
-                            source, revision, revdate)
+         write(msgstring1,*) 'opening file "'//trim(fname)//'"'
+         write(msgstring2,*) 'cannot specify binary conversion on a formatted file'
+         call error_handler(E_ERR, 'open_file ', msgstring1, source, revision, revdate, text2=msgstring2)
       endif
       conversion = convert
    endif
@@ -1041,8 +1042,9 @@ end subroutine error_handler
    ! string delimiters only apply to ascii files
    if (present(delim)) then
       if (format /= 'FORMATTED') then
-         call error_handler(E_ERR, 'open_file ', 'cannot specify a delimiter on an unformatted file', &
-                            source, revision, revdate)
+         write(msgstring1,*) 'opening file "'//trim(fname)//'"'
+         write(msgstring2,*) 'cannot specify a delimiter on an unformatted file'
+         call error_handler(E_ERR, 'open_file ', msgstring1, source, revision, revdate, text2=msgstring2)
       endif
       del = delim
    endif

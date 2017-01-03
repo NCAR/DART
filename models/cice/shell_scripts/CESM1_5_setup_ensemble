@@ -46,13 +46,13 @@ setenv num_instances  3
 #                 CESM executables will be built.  Medium amount of space
 #                 needed, generally on a scratch partition.
 # archdir         Defines the location of the CESM short-term archive directories.
-#                 Requires large amounts of disk space, may be on a scratch partition if
-#                 the long-term archiver is invoked to move these files to permanent storage.
-#                 Files will remain here until the long-term archiver moves it to permanent storage.
+#                 Requires large amounts of disk space. Files will remain here 
+#                 until the long-term archiver moves them to permanent storage.
 # dartroot        Location of the root of _your_ DART installation
-# baseobsdir      Part of the directory name containing the obs_seq.out files to be used in the 
-#                 assimilation. The year, month, and filename will be provided in assimilate.csh.
-#                 Will be inherited by CESM#_#_DART_config and inserted into assimilate.csh
+# baseobsdir      Part of the directory name containing the obs_seq.out files to 
+#                 be used in the assimilation. The year, month, and filename will 
+#                 be provided in assimilate.csh.  Will be inherited by 
+#                 CESM#_#_DART_config and inserted into assimilate.csh
 # ==============================================================================
 
 setenv project      P86850054
@@ -113,7 +113,7 @@ if ( ${caseroot} == `pwd` ) then
    echo "ERROR: the setup script should not be located in the caseroot"
    echo "directory, because all files in the caseroot dir will be removed"
    echo "before creating the new case.  move the script to a safer place."
-   exit 11
+   exit 4
 endif
 
 echo "removing old files from ${caseroot}"
@@ -143,12 +143,12 @@ if (   -e ${dartroot}/models/cice/shell_scripts/CESM1_5_DART_config ) then
    sed -e "s#BOGUS_DART_ROOT_STRING#${dartroot}#" \
        -e "s#BOGUS_DART_OBS_STRING#${baseobsdir}#" \
           ${dartroot}/models/cice/shell_scripts/CESM1_5_DART_config \
-           >! ${caseroot}/CESM_DART_config  || exit 20
+           >! ${caseroot}/CESM_DART_config  || exit 5
    chmod 755  ${caseroot}/CESM_DART_config
 else
    echo "ERROR: the script to configure for data assimilation is not available."
    echo "       ${dartroot}/models/cice/shell_scripts/CESM1_5_DART_config MUST exist."
-   exit 21
+   exit 5
 endif
 
 # ==============================================================================
@@ -191,7 +191,7 @@ set stream_year_last  = 2000
 ./xmlchange RESUBMIT=0
 
 ./xmlchange JOB_QUEUE=small
-./xmlchange JOB_WALLCLOCK_TIME=1:00 
+./xmlchange JOB_WALLCLOCK_TIME=0:10 
 ./xmlchange -subgroup st_archive JOB_WALLCLOCK_TIME=1:30 
 
 ./xmlchange DATM_MODE=CPLHIST3HrWx
@@ -222,42 +222,21 @@ set stream_year_last  = 2000
 
 @ nodes_per_instance = 2
 
-@ atm_tasks = $ptile * $nodes_per_instance * $num_instances
-@ lnd_tasks = $ptile * $nodes_per_instance * $num_instances
-@ ice_tasks = $ptile * $nodes_per_instance * $num_instances
-@ ocn_tasks = $ptile * $nodes_per_instance
 @ cpl_tasks = $ptile * $nodes_per_instance
+@ atm_tasks = $ptile * $nodes_per_instance * $num_instances
+@ lnd_tasks = $ptile * $nodes_per_instance
+@ ocn_tasks = $ptile * $nodes_per_instance * $num_instances
+@ ice_tasks = $ptile * $nodes_per_instance * $num_instances
+@ glc_tasks = $ptile * $nodes_per_instance
+@ rof_tasks = $ptile * $nodes_per_instance
 @ wav_tasks = $ptile * $nodes_per_instance
 @ esp_tasks = $ptile * $nodes_per_instance
 
-# # TJH determine glacier
-# set glacier = CISM2P
-# # CESM1_5_beta03: CISM1 (the default) can only handle 1 task per member.
-# if ($glacier == 'CISM1' || $glacier == 'CISM2S') then
-#     @ glc_tasks = $num_instances
-# else if ($glacier == 'CISM2P') then
-#     @ glc_tasks = $ptile * $nodes_per_instance * $num_instances
-# else
-#    # @ glc_tasks = 1   Exercised in ATM_spinup5, which failed to run in some MCT mapping routine.
-#     @ glc_tasks = $ptile * $nodes_per_instance
-# endif
-# 
-# # TJH determine river_runoff
-# set river_runoff = bob
-# if ($river_runoff == 'RTM' || $river_runoff == 'MOSART') then
-#    @ rof_tasks = $ptile * $nodes_per_instance * $num_instances
-# else
-#    @ rof_tasks = $ptile * $nodes_per_instance
-# endif
-
-@ glc_tasks = $ptile * $nodes_per_instance
-@ rof_tasks = $ptile * $nodes_per_instance
-
 ./xmlchange ROOTPE_CPL=0,NTHRDS_CPL=$nthreads,NTASKS_CPL=$cpl_tasks
-./xmlchange ROOTPE_ICE=0,NTHRDS_ICE=$nthreads,NTASKS_ICE=$ice_tasks,NINST_ICE=$num_instances
 ./xmlchange ROOTPE_ATM=0,NTHRDS_ATM=$nthreads,NTASKS_ATM=$atm_tasks,NINST_ATM=$num_instances
-./xmlchange ROOTPE_OCN=0,NTHRDS_OCN=$nthreads,NTASKS_OCN=$ocn_tasks,NINST_OCN=$num_instances
 ./xmlchange ROOTPE_LND=0,NTHRDS_LND=$nthreads,NTASKS_LND=$lnd_tasks,NINST_LND=1
+./xmlchange ROOTPE_OCN=0,NTHRDS_OCN=$nthreads,NTASKS_OCN=$ocn_tasks,NINST_OCN=$num_instances
+./xmlchange ROOTPE_ICE=0,NTHRDS_ICE=$nthreads,NTASKS_ICE=$ice_tasks,NINST_ICE=$num_instances
 ./xmlchange ROOTPE_GLC=0,NTHRDS_GLC=$nthreads,NTASKS_GLC=$glc_tasks,NINST_GLC=1
 ./xmlchange ROOTPE_ROF=0,NTHRDS_ROF=$nthreads,NTASKS_ROF=$rof_tasks,NINST_ROF=1
 ./xmlchange ROOTPE_WAV=0,NTHRDS_WAV=$nthreads,NTASKS_WAV=$wav_tasks,NINST_WAV=1
@@ -268,7 +247,8 @@ set stream_year_last  = 2000
 
 ./xmlchange DATA_ASSIMILATION=FALSE
 
-./case.setup
+./case.setup || exit 2
+
 echo "case setup finished"
 
 # Customize the user namelists and text stream files for each instance (aka ensemble member)
@@ -335,7 +315,7 @@ end
 
 ./preview_namelists
 
-./case.build
+./case.build || exit 3
 
 # ==============================================================================
 # What to do next

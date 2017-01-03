@@ -18,7 +18,7 @@
             doma_mask     mask
          </variableNames>
          <filePath>
-            /glade/p/image/RDA_strawman/DATM_ensembles/annual
+            /glade/p/rda/data/ds199.1
          </filePath>
          <fileNames>
           CAM_DATM.cpl_NINST.ha2x1dx6h.RUNYEAR.nc
@@ -32,7 +32,7 @@
             a2x6h_Faxa_snowl     snowl
          </variableNames>
          <filePath>
-            /glade/p/image/RDA_strawman/DATM_ensembles/annual
+            /glade/p/rda/data/ds199.1
          </filePath>
          <tInterpAlgo>
             nearest

@@ -13,21 +13,16 @@
 # This script integrates DART with a pre-existing CESM multi-instance case.
 # It must be run from a valid CASEROOT directory and some environment variables
 # must be set (as in CESM#_#_setup_YYY). If the case was created
-# using one of the DART scripts, this script should be staged in the
+# using one of the DART scripts, a copy of this script  be staged in the
 # CASEROOT directory automatically, and DARTROOT is set at that time.
 #
-# CAM is the only active model component.
-# CESM starts and stops to allow for CAM to assimilate every 6 hours.
+# CICE is the only active model component.
+# CESM starts and stops to allow for CICE to assimilate every 24 hours.
 #
 # This script will build the DART executables if they are not found.
 #
-# There are many CESM binary files in big-endian format, and DART reads
-# some of them, so you MUST compile DART accordingly e.g.,
-# ifort -convert big_endian
-# Contact dart@ucar.edu if you want to use another compiler.
-#
 # ---------------------
-# How to set up the script
+# How to configure this script
 # ---------------------
 #
 # -- Ensure DARTROOT references a valid DART directory.
@@ -37,7 +32,7 @@
 #       sampling error correction
 # -- Run this script.
 # -- Edit the DART input.nml that appears in the ${CASEROOT} directory.
-# -- Submit the job using ${CASEROOT}/${CASE}.submit
+# -- Submit the job using ${CASEROOT}/case.submit
 #
 # ==============================================================================
 # Get the environment of the case - defines number of instances/ensemble size ...
@@ -49,12 +44,21 @@ if ( ! -e ./xmlquery ) then
    exit -1
 endif
 
-setenv CASE      `./xmlquery CASE           -value`
-setenv CASEROOT  `./xmlquery CASEROOT       -value`
-setenv COMPSET   `./xmlquery COMPSET        -value`
-setenv EXEROOT   `./xmlquery EXEROOT        -value`
-setenv RUNDIR    `./xmlquery RUNDIR         -value`
-setenv NINST_ICE `./xmlquery NINST_ICE      -value`
+setenv CASE          `./xmlquery CASE       -value`
+setenv CASEROOT      `./xmlquery CASEROOT   -value`
+setenv COMPSET       `./xmlquery COMPSET    -value`
+setenv EXEROOT       `./xmlquery EXEROOT    -value`
+setenv RUNDIR        `./xmlquery RUNDIR     -value`
+setenv NINST_ICE     `./xmlquery NINST_ICE  -value`
+setenv ICE_COMPONENT `./xmlquery COMP_ICE   -value`
+
+# Check to make sure we are running what we are supporting
+
+if ( $ICE_COMPONENT != 'cice' ) then
+   echo "ERROR: This configuration file is specifically for _CICE_."
+   echo "ERROR: the ice component for this case is _${ICE_COMPONENT}_"
+   exit 1
+endif
 
 set num_instances = $NINST_ICE
 
@@ -62,9 +66,10 @@ set num_instances = $NINST_ICE
 ./xmlchange DATA_ASSIMILATION_CYCLES=1
 ./xmlchange DATA_ASSIMILATION_SCRIPT=${CASEROOT}/assimilate.csh
 
-# DARTROOT is set by the DART CESM_configure scripts. Under certain
-# situations, you may need to set this manually. It should reference the
-# base portion of the DART code tree.
+# BOGUS_DART_ROOT_STRING and BOGUS_DART_OBS_STRING are replaced by useful
+# values by the CESM_configure script.
+# It should reference the
+# base portion of the DART code tree. 
 
 setenv DARTROOT  BOGUS_DART_ROOT_STRING
 setenv OBSROOT   BOGUS_DART_OBS_STRING
@@ -257,6 +262,24 @@ chmod 0755 update_dart_namelists
 ./update_dart_namelists || exit -9
 
 #=========================================================================
+# things to think about as pertains archiving.
+#=========================================================================
+#
+# The env_archive.xml file does not natively support the cice archiving
+# and must be changed and augmented
+#
+# Existing:
+#  <file_extension regex_suffix="cam_\w*pr\w*inflate_restart\w*">
+#  <file_extension regex_suffix="cam_\w*po\w*inflate_restart\w*">
+#  <file_extension regex_suffix="clm_\w*pr\w*inflate_restart\w*">
+#  <file_extension regex_suffix="clm_\w*po\w*inflate_restart\w*">
+#  <file_extension regex_suffix="pop_\w*pr\w*inflate_restart\w*">
+#  <file_extension regex_suffix="pop_\w*po\w*inflate_restart\w*">
+#
+# Proposed .... TBD
+
+
+#=========================================================================
 # Stage the files needed for SAMPLING ERROR CORRECTION - even if not
 # initially requested. The file is static, small, and may be needed later.
 #
@@ -326,7 +349,7 @@ endif
 # file from the RUNDIR directory.
 
 if ( $num_instances > 1 ) then
-   date >! ${RUNDIR}/ice_inflation_cookie
+   date >! ${RUNDIR}/cice_inflation_cookie
 endif
 
 # ==============================================================================
