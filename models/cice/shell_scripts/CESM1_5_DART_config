@@ -55,8 +55,8 @@ setenv ICE_COMPONENT `./xmlquery COMP_ICE   -value`
 # Check to make sure we are running what we are supporting
 
 if ( $ICE_COMPONENT != 'cice' ) then
-   echo "ERROR: This configuration file is specifically for _CICE_."
-   echo "ERROR: the ice component for this case is _${ICE_COMPONENT}_"
+   echo 'ERROR: This configuration file is specifically for "cice".'
+   echo 'ERROR: the ice component for this case is "'${ICE_COMPONENT}'".'
    exit 1
 endif
 

@@ -65,8 +65,8 @@ setenv archive        `./xmlquery DOUT_S_ROOT -value`
 # Check to make sure we are running what we are supporting
 
 if ( $ICE_COMPONENT != 'cice' ) then
-   echo "ERROR: This assimilate.csh file is specifically for _CICE_."
-   echo "ERROR: the ice component for this case is _${ICE_COMPONENT}_"
+   echo 'ERROR: This assimilate.csh file is specifically for "cice".'
+   echo 'ERROR: the ice component for this case is "'${ICE_COMPONENT}'".'
    exit 1
 endif
 
@@ -430,25 +430,8 @@ echo "`date` -- END CREATING SAFETY FILES for all ${ensemble_size} members."
 #=========================================================================
 # Block 5: Actually run the assimilation.
 #
-# &ensemble_manager_nml: single_restart_file_in  = '.false.'
-# &dart_to_cice_nml:     dart_to_cice_input_file = 'dart_restart.nc',
+# TODO FIXME ... this whole section
 #
-# NOTE: when starting an OSSE by perturbing a single file, use
-# &filter_nml
-#   TJH perturb_from_single ....        = .false.,
-#   output_restart            = .true.,
-#   restart_in_file_name      = "filter_ics.0001",
-#   restart_out_file_name     = "filter_restart", 
-#   TJH what other settings are correct for this ... 
-#   TJH should this part be here or in the model_mod.html ...
-#
-# &ensemble_manager_nml
-#   single_restart_file_in    = .true.,
-#   single_restart_file_out   = .false.,
-# &model_nml
-#   pert_names          = 'T'
-#   pert_sd             = 1.0e-11,
-#   pert_base_vals      = -888888.0d0,
 # Will result in a set of files : 'filter_restart.xxxx'
 #
 # REQUIRED DART namelist settings:
