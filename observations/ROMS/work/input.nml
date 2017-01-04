@@ -13,7 +13,6 @@
    dart_output_obs_file   = 'obs_seq.out'
    append_to_existing     = .false.
    use_precomputed_values = .true.
-   locations_in_IJK       = .false.
    add_random_noise       = .false.
    pert_amplitude         = 0.01
    verbose                = 1

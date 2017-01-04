@@ -55,30 +55,45 @@ files to a DART observation sequence file that does not have the precomputed FOs
 
 <P>
 The ROMS verification observation files <strong>must</strong> contain
-the following variables:
+the <strong>obs_provenance as a global attribute</strong> and the following variables:
 </P>
 <ul>
-   <li>either <em class=green>obs_Xgrid, obs_Ygrid, obs_depth</em> -or-
-              <em class=green>obs_lat, obs_long, obs_depth</em></li>
+   <li><em class=green>obs_lat, obs_lon, obs_depth</em></li>
    <li><em class=green>obs_value</em></li>
    <li><em class=green>obs_error</em></li>
-   <li><em class=green>obs_type</em></li>
    <li><em class=green>obs_time</em></li>
    <li><em class=green>NLmodel_value</em></li>
    <li><em class=green>obs_scale</em></li>
-   <li><em class=green>obs_provenance</em> which must have <br />
-       <em class=green>obs_provenance:flag_values</em>, and <br />
-       <em class=green>obs_provenance:flag_meanings</em> attributes.</li>
+   <li><em class=green>obs_provenance</em></li>
 </ul>
+<P>Note that the 
+   <em class=green>obs_provenance:flag_values</em>, and 
+   <em class=green>obs_provenance:flag_meanings</em> 
+   attributes are totally ignored - those relationships are specified by the
+   global attribute <strong>obs_provenance</strong>.
+</P>
+
+<P>Locations only specified by <em class=green>obs_Xgrid, obs_Ygrid, obs_depth</em> 
+are <strong>not</strong> supported.
+</P>
 
 <P>
 The conversion of a (set of) ROMS verification observations requires metadata to
-coordinate the relationship of the ROMS observation provenance to a DART observation TYPE.
-ROMS provides significant flexibility when specifying the observation provenance and it
-is simply impractical for DART to try to support all of them. 
-An example of the current practice is described in the <a href="#Programs">PROGRAMS</a>
-section below.
+coordinate the relationship of the ROMS observation provenance to a DART observation 
+TYPE.  ROMS provides significant flexibility when specifying the observation 
+provenance and it is simply impractical for DART to try to support all of them. 
+An example of the current practice is described in the 
+<a href="#Programs">PROGRAMS</a> section below.
+<br/>
+<br/>
+<strong>Important:</strong> <em class=program>filter</em> and 
+<em class=program>perfect_model_obs</em> must also be informed which DART 
+observation types use precomputed forward operators.  This is done by 
+setting the <em class=file>input.nml</em><em class=program>&amp;obs_kind_nml</em> 
+namelist. An example is shown at the end of the 
+<a href="#obs_kind_section">PROGRAMS</a> section below.
 </P>
+
 
 <!--==================== DESCRIPTION OF A NAMELIST =====================-->
 
@@ -98,13 +113,11 @@ prematurely terminating the namelist.
 <pre>
 &amp;convert_roms_obs_nml
    ens_size               = 1
-   roms_input_obs_file    = 'roms_obs.nc'
    roms_mod_obs_files     = ''
    roms_mod_obs_filelist  = 'filelist.txt'
    dart_output_obs_file   = 'obs_seq.out'
    append_to_existing     = .false.
    use_precomputed_values = .true.
-   locations_in_IJK       = .false.
    add_random_noise       = .false.
    pert_amplitude         = 0.01
    verbose                = 0
@@ -133,12 +146,6 @@ be found when creating the expected obs values.  This must
 match the number of ROMS "mod" files listed in either the
 'roms_mod_obs_files' or 'roms_mod_obs_filelist' namelist
 items.  It is an error if they are not the same length.
-</TD></TR>
-
-<TR><TD> roms_input_obs_file </TD>
-    <TD> character(len=256) </TD>
-    <TD> The file with the original obs definitions.
-         Contrast with the "mod" files.
 </TD></TR>
 
 <TR><TD> roms_mods_obs_files </TD>
@@ -186,14 +193,6 @@ If .false. the new observations overwrite the existing file.
          DART files having the instrument values only.
 </TD></TR>
 
-<TR><TD> locations_in_IJK </TD>
-    <TD> logical </TD>
-    <TD> Observation location information can exist in the
-'roms_input_obs_file' as either fractional grid indices I,J,K
-or as 'obs_lat', 'obs_lon'.  If this flag is .true., the
-I,J,K indices will be read.
-</TD></TR>
-
 <TR><TD> add_random_noise </TD>
     <TD> logical </TD>
     <TD> Almost always should be .false. . The exception is
@@ -204,7 +203,7 @@ operator values (since they are computed by ROMS), we can
 add gaussian noise here to give them perturbed values.
 This should be set as well as the 
 "perturb_from_single_instance = .true."
-namelist in the &amp;filter_nml namelist.
+namelist in the <em class=program>&amp;filter_nml</em> namelist.
 After the first cycle, both these should be set back
 to .false. .
 </TD></TR>
@@ -227,10 +226,9 @@ the conversion.
     <TD> A set of strings which control the mapping of ROMS
 observation types to DART observation types.  These should
 be specified in pairs.  The first column should be a string
-that occurs in the 'roms_input_obs_file' in the attribute
-'flag_meanings' on the 'obs_provenance' variable.
-Note that this information also occurs as a global variable
-in the same file; this information is currently ignored.
+that occurs in the global attribute '<em class=mono>obs_provenance</em>'.
+Note that the <em class=mono>obs_provenance:flag_values</em> and 
+<em class=mono>obs_provenance:flag_meanings</em> attributes are ignored.
 The second column should be a DART specific obs type that
 is found in <em class=file>DART/obs_kind/obs_kind_mod.f90</em>, 
 which is created by the DART <em class=program>preprocess</em> program.
@@ -270,100 +268,136 @@ The origin of the input observation files used by ROMS are completely unknown to
 <P>
 Only <em class=program>convert_roms_obs</em> will be discussed here. 
 
-The ROMS input netCDF file(s) must have an <em class=mono>obs_provenance</em> 
-variable with at least the following attributes:
+<P> The <strong>global attribute</strong> <em class=mono>obs_provenance</em> 
+is used to relate the observation provenance to DART observation TYPES. 
+The ROMS 'MODname' netCDF file(s) must have both the <em class=mono>obs_provenance</em>
+variable and a <em class=mono>obs_provenance</em> <strong>global attribute</strong>.
+The <strong>exact</strong> strings must be repeated in the DART 
+<em class=program>convert_roms_obs_nml</em>:<em class=code>type_translations</em> 
+variable to be able to convert from the integer value of the obs_provenance to
+th DART type in the following example:
+</P>
+<em class=unix>ncdump -h roms_mod_obs.nc</em> (the output has been pruned for clarity)
 </P>
 
 <pre>
-	int obs_provenance(datum) ;
-		obs_provenance:flag_values = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 ;
-		obs_provenance:flag_meanings = "gridded_AVISO_SLA blended_SST XBT_Met_Office CTD_temperature_Met_Office CTD_salinity_Met_Office ARGO_temperature_Met_Office ARGO_salinity_Met_Office CTD_temperature_CalCOFI CTD_salinity_CalCOFI CTD_temperature_GLOBEC CTD_salinity_GLOBEC" ;
+netcdf roms_mod_obs {
+dimensions:
+        record = 2 ;
+        survey = 5376 ;
+        state_var = 8 ;
+        datum = 2407217 ;
+variables:
+        <em>{snip}</em>
+        int obs_provenance(datum) ;
+                <del>obs_provenance:long_name = "observation origin" ;
+                obs_provenance:flag_values = 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ;</del>
+        double obs_time(datum) ;
+                obs_time:long_name = "time of observation" ;
+                obs_time:units = "days since 1900-01-01 00:00:00 GMT" ;
+                obs_time:calendar = "gregorian" ;
+        double obs_lon(datum) ;
+                obs_lon:long_name = "observation longitude" ;
+                obs_lon:units = "degrees_east" ;
+        double obs_lat(datum) ;
+                obs_lat:long_name = "observation latitude" ;
+                obs_lat:units = "degrees_north" ;
+        double obs_depth(datum) ;
+                obs_depth:long_name = "ROMS internal depth of observation variable" ;
+                obs_depth:units = "meters or fractional z-levels" ;
+                obs_depth:negative_value = "downwards" ;
+                obs_depth:missing_value = 1.e+37 ;
+        double obs_error(datum) ;
+                obs_error:long_name = "observation error covariance" ;
+        double obs_value(datum) ;
+                obs_value:long_name = "observation value" ;
+        double obs_scale(datum) ;
+                obs_scale:long_name = "observation screening/normalization scale" ;
+                obs_scale:_FillValue = 0. ;
+        double NLmodel_value(datum) ;
+                NLmodel_value:long_name = "nonlinear model at observation locations" ;
+                NLmodel_value:_FillValue = 1.e+37 ;
+        <em>{snip}</em>
+     :obs_provenance = "\n",
+             "1: gridded AVISO sea level anomaly (zeta)\n",
+             "2: gridded Aquarius SSS (salinity)\n",
+             "3: XBT from Met Office (temperature)\n",
+             "4: CTD from Met Office (temperature)\n",
+             "5: CTD from Met Office (salinity)\n",
+             "6: ARGO floats (temperature)\n",
+             "7: ARGO floats (salinity)\n",
+             "8: glider UCSD (temperature)\n",
+             "9: glider UCSD (salinity)\n",
+             "10: blended satellite SST (temperature)" ;
+        <em>{snip}</em>
 </pre>
 
-<P>The <em class=mono>flag_meanings</em> attribute is used to relate observation provenance to DART observation TYPES by <strong>exactly</strong> specifying the character strings as in the following example:
+<P>Note the integer values that start the obs_provenance strings are used to 
+interpret the integer contents of the obs_provenance variable. They need not 
+be consecutive, nor in any particular order, but they must not appear more 
+than once.
+<br />
+<br />
+The following is the relevent section of the DART <em class=file>input.nml</em>:
 </P>
-
 <pre>
-# the roms_input_obs_file should be the same as the first item in the precomputed_files.txt
 &amp;convert_roms_obs_nml
-   ens_size               = 3
-   roms_input_obs_file    = '../data/wc13_obs.nc'
+   ens_size               = 32
    roms_mod_obs_filelist  = 'precomputed_files.txt'
    dart_output_obs_file   = 'obs_seq.out'
    append_to_existing     = .false.
    use_precomputed_values = .true.
-   locations_in_IJK       = .false.
    add_random_noise       = .false.
-   pert_amplitude         = 0.01
    verbose                = 1
-   type_translations = "gridded_AVISO_SLA",            "SATELLITE_SSH",
-                       "blended_SST",                  "SATELLITE_MICROWAVE_SST",
-                       "XBT_Met_Office",               "XBT_TEMPERATURE",
-                       "CTD_temperature_Met_Office",   "CTD_TEMPERATURE",
-                       "CTD_salinity_Met_Office",      "CTD_SALINITY",
-                       "ARGO_temperature_Met_Office",  "ARGO_TEMPERATURE",
-                       "ARGO_salinity_Met_Office",     "ARGO_SALINITY",
-                       "CTD_temperature_CalCOFI",      "CTD_TEMPERATURE",
-                       "CTD_salinity_CalCOFI",         "CTD_SALINITY",
-                       "CTD_temperature_GLOBEC",       "CTD_TEMPERATURE",
-                       "CTD_salinity_GLOBEC",          "CTD_SALINITY",
- /
+   type_translations = "gridded AVISO sea level anomaly (zeta)", "SATELLITE_SSH",
+                       "gridded Aquarius SSS (salinity)",        "SATELLITE_SSS",
+                       "XBT from Met Office (temperature)",      "XBT_TEMPERATURE",
+                       "CTD from Met Office (temperature)",      "CTD_TEMPERATURE",
+                       "CTD from Met Office (salinity)",         "CTD_SALINITY",
+                       "ARGO floats (temperature)",              "ARGO_TEMPERATURE",
+                       "ARGO floats (salinity)",                 "ARGO_SALINITY",
+                       "glider UCSD (temperature)",              "GLIDER_TEMPERATURE",
+                       "glider UCSD (salinity)",                 "GLIDER_SALINITY",
+                       "blended satellite SST (temperature)",    "SATELLITE_BLENDED_SST"
+  /
 </pre>
 
 <P>A complete list of DART observation TYPES is available in <a href="../../obs_def/obs_def_ocean_mod.f90">obs_def_ocean_mod.f90</a>
 </P>
 
-<!-- P>
-There are currently converters for these data types:</P>
-<TABLE border=0 cellpadding=3 summary="">
-<TBODY valign=top>
-<TR> <TD> ACARS aircraft T,U,V,Q data </TD>  <TD> convert_madis_acars    </TD>
-<TR> <TD> Marine surface data         </TD>  <TD> convert_madis_marine   </TD>
-<TR> <TD> Mesonet surface data        </TD>  <TD> convert_madis_mesonet  </TD>
-<TR> <TD> Metar data                  </TD>  <TD> convert_madis_metar    </TD>
-<TR> <TD> Wind Profiler data          </TD>  <TD> convert_madis_profiler </TD>
-<TR> <TD> Rawinsonde/Radiosonde data  </TD>  <TD> convert_madis_rawin    </TD>
-<TR> <TD> Satellite Wind data         </TD>  <TD> convert_madis_satwnd   </TD>
-</TABLE>
+<A NAME="obs_kind_section"></A>
 <P>
-Example data files are in the <em class=file>data</em> directory.
-Example scripts for converting batches of these files are
-in the <em class=file>shell_scripts</em> directory.  
-These are <em>NOT</em> intended to be turnkey scripts; they will
-certainly need to be customized for your use.  There are comments
-at the top of the scripts saying what options they include, and
-should be commented enough to indicate where changes will be
-likely to need to be made.
+Any or all of the DART observation types that appear in the second column of 
+<em class=mono>type_translations</em> must also be designated as 
+observations that have precomputed forward operators. This is done by 
+setting the <em class=file>input.nml</em><em class=program>&amp;obs_kind_nml</em> 
+namelist as follows:
 </P>
-<P>Several converters have compile-time choices
-for outputting various types of moist variables.
-Check the source code for more details.
-Some converters also read multiple T/F strings
-from the console (standard input) to control at
-run-time what types of observations to convert.
-Again, check the source code for more details.
-</P>
-<P>Each converter has hard-coded input and output filenames:</P>
-<TABLE border=0 cellpadding=5 summary="input/output filenames">
-<TBODY valign=top>
-<TR> <TD>convert_madis_acars:   </TD> <TD> acars_input.nc    </TD> <TD> obs_seq.acars    </TD>
-<TR> <TD>convert_madis_marine:  </TD> <TD> marine_input.nc   </TD> <TD> obs_seq.marine   </TD>
-<TR> <TD>convert_madis_mesonet: </TD> <TD> mesonet_input.nc  </TD> <TD> obs_seq.mesonet  </TD>
-<TR> <TD>convert_madis_metar:   </TD> <TD> metar_input.nc    </TD> <TD> obs_seq.metar    </TD>
-<TR> <TD>convert_madis_profiler:</TD> <TD> profiler_input.nc </TD> <TD> obs_seq.profiler </TD>
-<TR> <TD>convert_madis_rawin:   </TD> <TD> rawin_input.nc    </TD> <TD> obs_seq.rawin    </TD>
-<TR> <TD>convert_madis_satwnd:  </TD> <TD> satwnd_input.nc   </TD> <TD> obs_seq.satwnd   </TD>
-</TABLE>
 
-<P>The expected usage pattern is that a script will copy,
-rename, or make a symbolic link from the actual input file
-(which often contains a timestamp in the name) to the fixed input 
-name before conversion, and move the output file to an
-appropriate filename before the next invocation of the converter.  
-If an existing observation sequence file of the same output name is 
-found when the converter is run again, it will open that file and append
-the next set of observations to it.
-</P -->
+<pre>
+&amp;obs_kind_nml
+   assimilate_these_obs_types =          'SATELLITE_SSH',
+                                         'SATELLITE_SSS',
+                                         'XBT_TEMPERATURE',
+                                         'CTD_TEMPERATURE',
+                                         'CTD_SALINITY',
+                                         'ARGO_TEMPERATURE',
+                                         'ARGO_SALINITY',
+                                         'GLIDER_TEMPERATURE',
+                                         'GLIDER_SALINITY',
+                                         'SATELLITE_BLENDED_SST'
+   use_precomputed_FOs_these_obs_types = 'SATELLITE_SSH',
+                                         'SATELLITE_SSS',
+                                         'XBT_TEMPERATURE',
+                                         'CTD_TEMPERATURE',
+                                         'CTD_SALINITY',
+                                         'ARGO_TEMPERATURE',
+                                         'ARGO_SALINITY',
+                                         'GLIDER_TEMPERATURE',
+                                         'GLIDER_SALINITY',
+                                         'SATELLITE_BLENDED_SST'
+  /
+</pre>
 
 <!--==================================================================-->
 <!-- Describe the bugs.                                               -->
@@ -392,10 +426,7 @@ none
         use the first file and ignore the <em class=green>roms_obs_file</em>.</li>
     <li>extend the <em class=green>type_translations</em> table to be able to
         support a superset of obs_provenance-to-DART_TYPE relationships.</li>
-    <li>could remove the <em class=green>locations_in_IJK</em> variable by simply
-        checking if the <em class=green>obs_lon, obs_lat</em> variables exist.
-        If <em class=green>obs_lon, obs_lat</em> exist, they should be used;
-        if not, try the IJK method.
+    <li>support the ability to use the IJK locations. 
         </li>
 </OL>
 

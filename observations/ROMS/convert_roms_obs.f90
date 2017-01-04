@@ -51,7 +51,7 @@ use obs_utilities_mod, only : getvar_real, add_obs_to_seq, &
 use    random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 use         model_mod, only : static_init_model, end_model, &
-                              get_time_information, get_dart_location_from_kind
+                              get_time_information, get_location_from_ijk
 
 use           netcdf
 
@@ -75,10 +75,10 @@ logical  :: file_exist, first_obs
 character(len=512) :: string1, string2, string3
 
 integer, parameter :: MAX_TYPES = 100
-character(len=128) :: roms_type_strings(MAX_TYPES)
-integer            :: roms_type_integers(MAX_TYPES) = -1
+character(len=128) :: roms_prov_strings(MAX_TYPES)
+integer            :: roms_prov_integers(MAX_TYPES) = -1
 integer            :: dart_type_integers(MAX_TYPES) = -1
-integer            :: roms_type_count = 0
+integer            :: roms_prov_count = 0
 
 ! mapping between roms type numbers and dart types.
 ! use the roms number as the index; the value is the dart kind
@@ -88,7 +88,7 @@ type(obs_def_type) :: obs_def
 real(r8), allocatable :: lat(:), lon(:), depth(:), ovar(:),  &
                          oval(:), raw_qc(:), combined_qc(:), &
                          temp_fo(:), forw_ops(:,:)
-integer, allocatable  :: otype(:)
+integer, allocatable  :: oprov(:)
 real(r8) :: missing
 
 ! roms grid in i,j,k space - needs model_mod routine to convert
@@ -118,26 +118,23 @@ real(r8) :: pert_amplitude                            = 0.01
 integer  :: verbose                                   = 0
 character(len=256) :: type_translations(2, MAX_TYPES) = 'NULL'
 
-!> @TODO: FIXME -
+!>@todo FIXME -
 !> we could get the ens size from the number of input files
 !> but we can also ask users to tell us how many should be there
 !> so we can error out if the counts don't match.
 
-!> @TODO: FIXME -
+!>@todo FIXME -
 !> TJH: I vote to remove the roms_obs_files() mechanism since roms_mod_obs_filelist
 !> is so much more flexible. The roms_obs_files variable just mucks up the 
 !> namelist print and log files.
 
-!> @TODO: FIXME -
+!>@todo FIXME -
 !> TJH: The type_translations table is currently implemented as an explicit
 !> set of type translations ... it _could_ be made to exist as a superset with
 !> multiple ROMS variants that relate to the same DART TYPE. hernan and tim
 !> prefer the superset, Chris and Nancy prefer the subset ... Andy?
 
-!> @TODO: FIXME -
-!> TJH: could remove the locations_in_IJK variable by simply checking 
-!> if the obs_lon,obs_lat variables exist. 
-!> If they do exist, use them; if not - try the IJK method.
+!>@todo support the ability to specify locations_in_IJK
 
 namelist /convert_roms_obs_nml/ &
    ens_size, &
@@ -146,7 +143,6 @@ namelist /convert_roms_obs_nml/ &
    dart_output_obs_file, &
    append_to_existing, &
    use_precomputed_values, &
-   locations_in_IJK, &
    add_random_noise, &
    pert_amplitude, &
    verbose, &
@@ -167,6 +163,13 @@ call check_namelist_read(iunit, io, 'convert_roms_obs_nml')
 if (do_nml_file()) write(nmlfileunit, nml=convert_roms_obs_nml)
 if (do_nml_term()) write(     *     , nml=convert_roms_obs_nml)
 
+if (locations_in_IJK) then
+   write(string1,*)'Using locations in IJK is currently unsupported.'
+   write(string2,*)'The routine to convert from IJK to lat-lon-depth is not finished.'
+   call error_handler(E_ERR, 'convert_roms_obs', string1, &
+              source, revision, revdate, text2=string2)
+endif
+
 ! when set_filename_list() returns, roms_mod_obs_files contains the file list
 ! whether they were specified directly in the namelist or in a separate file.
 num_input_files = set_filename_list(roms_mod_obs_files, roms_mod_obs_filelist, 'convert_roms_obs')
@@ -184,7 +187,7 @@ call nc_check( nf90_open(roms_mod_obs_files(1), nf90_nowrite, ncid), &
 
 call getdimlen(ncid, "datum", nobs)
 
-allocate(otype(nobs))
+allocate(oprov(nobs))
 allocate(oval(nobs))
 allocate(ovar(nobs))
 allocate(otim(nobs))
@@ -219,7 +222,7 @@ endif
 
 call getvar_real(ncid, "obs_value", oval)
 call getvar_real(ncid, "obs_error", ovar)  ! already squared, so variance not stddev
-call getvar_int( ncid, "obs_type", otype)
+call getvar_int( ncid, "obs_provenance", oprov)
 
 ! these come back as dart time types
 call get_time_information(roms_mod_obs_files(1), ncid, "obs_time", "datum", all_times=otim)
@@ -229,7 +232,7 @@ call get_time_information(roms_mod_obs_files(1), ncid, "obs_time", "datum", all_
 ! because that one is harder to parse, and will be harder for users to give
 ! us matching strings in the namelist.
 
-call get_provenance_maps(ncid, roms_type_count, roms_type_strings, roms_type_integers)
+call get_provenance_maps(ncid, roms_prov_count, roms_prov_strings, roms_prov_integers)
 call get_translation_table()
 
 ! we can close the input obs file here, and then loop over the
@@ -317,10 +320,10 @@ obsloop: do n = 1, nobs
       call print_date(time_obs, str='obs date is ')
    endif
 
-   call convert_romstype_to_darttype(otype(n), darttype)
+   call convert_romstype_to_darttype(oprov(n), darttype)
    if (darttype < 0) then
       write(string1, *) 'Observation ', n, ' failed to convert ROMS type to DART type, skipping'
-      write(string2, *) 'ROMS type value was: ', otype(n)
+      write(string2, *) 'ROMS provenance value was: ', oprov(n)
       call error_handler(E_MSG, 'convert_roms_obs', string1, text2=string2)
       cycle obsloop
    endif
@@ -370,7 +373,7 @@ obsloop: do n = 1, nobs
 
 end do obsloop
 
-deallocate(otype, oval, ovar, otim, raw_qc, combined_qc, temp_fo, forw_ops, lat, lon, depth)
+deallocate(oprov, oval, ovar, otim, raw_qc, combined_qc, temp_fo, forw_ops, lat, lon, depth)
 
 if (allocated(Xgrid)) deallocate(Xgrid)
 if (allocated(Ygrid)) deallocate(Ygrid)
@@ -381,7 +384,7 @@ if ( get_num_obs(obs_seq) > 0 )  call write_obs_seq(obs_seq, dart_output_obs_fil
 
 call end_model()
 
-!> @TODO FIXME ... may want to write out a summary of how many observations were successfully converted.
+!>@todo ... write out a summary of how many observations were successfully converted.
 
 ! end of main program
 call finalize_utilities()
@@ -402,34 +405,34 @@ contains
 !> column should be 'COMMON_CODE' like most of the others.  it also must
 !> be a fortran comment, so lines start with !
 
-subroutine convert_romstype_to_darttype(roms_type, dart_type)
+subroutine convert_romstype_to_darttype(roms_prov, dart_type)
 
-integer, intent(in)  :: roms_type
+integer, intent(in)  :: roms_prov
 integer, intent(out) :: dart_type
 
 integer :: i
 
-if (roms_type < 1) then
-   write(string1,*)'unknown roms integer ',roms_type
+if (roms_prov < 1) then
+   write(string1,*)'unknown roms provenance integer ',roms_prov
    call error_handler(E_ERR, 'convert_romstype_to_darttype',string1, &
                       source, revision, revdate)
 endif
 
-DUMBLOOP: do i = 1,roms_type_count
+DUMBLOOP: do i = 1,roms_prov_count
 
-   if (roms_type == roms_type_integers(i)) then
+   if (roms_prov == roms_prov_integers(i)) then
        dart_type  = dart_type_integers(i)
        return
    endif
 
 enddo DUMBLOOP
 
-if (roms_type > roms_type_count) then
+if (roms_prov > roms_prov_count) then
    call error_handler(E_ERR, 'convert_romstype_to_darttype', 'bad roms type, greater than limit', &
                       source, revision, revdate)
 endif
 
-dart_type = dart_type_integers(roms_type)
+dart_type = dart_type_integers(roms_prov)
 
 end subroutine convert_romstype_to_darttype
 
@@ -437,7 +440,7 @@ end subroutine convert_romstype_to_darttype
 !>
 !> ISTATUS : 0 - all went well
 !> ISTATUS : 3 - vertical index is a missing_value
-!> all other error codes inherited from model_mod:get_dart_location_from_kind()
+!> all other error codes inherited from model_mod:get_location_from_ijk()
 
 function convert_ijk_to_latlondepth(r_iloc, r_jloc, r_kloc, dart_type, lon, lat, depth)
 
@@ -465,7 +468,7 @@ dart_kind = get_obs_kind_var_type(dart_type)
 ! if we didn't get lats/lons directly, call the ROMS model_mod code
 ! to convert the grid indices into lat/lon/depth
 
-status = get_dart_location_from_kind(r_iloc, r_jloc, r_kloc, dart_kind, dart_location)
+status = get_location_from_ijk(r_iloc, r_jloc, r_kloc, dart_kind, dart_location)
 
 if (status /= 0) then
    convert_ijk_to_latlondepth = status
@@ -657,9 +660,9 @@ function match_roms_flag(str_to_match)
 character(len=*), intent(in) :: str_to_match
 integer :: match_roms_flag
 
-do i=1, roms_type_count
-   if ( str_to_match == roms_type_strings(i)) then
-      match_roms_flag = roms_type_integers(i)
+do i=1, roms_prov_count
+   if ( str_to_match == roms_prov_strings(i)) then
+      match_roms_flag = roms_prov_integers(i)
       return
    endif
 enddo
@@ -708,9 +711,9 @@ parseloop: do i=1, MAX_TYPES
    ! Now we have to fill the dart_type_integers with the DART type in the same order
    ! find the index of the romstype so we can stuff the darttype in the right slot
 
-   DUMBLOOP : do j = 1,roms_type_count
+   DUMBLOOP : do j = 1,roms_prov_count
 
-      if (romstype == roms_type_integers(j)) then
+      if (romstype == roms_prov_integers(j)) then
           dart_type_integers(j) = darttype
           exit DUMBLOOP
       endif
@@ -732,12 +735,12 @@ if (verbose > 0) then
    call error_handler(E_MSG, '', '')
    call error_handler(E_MSG, '', 'DART types that map to ROMS provenance values:')
 
-   do i = 1,roms_type_count
+   do i = 1,roms_prov_count
       if (dart_type_integers(i) > 0) then
    
          write(string1,'(''DART '',i4,1x,A34,'' equates to ROMS '',i8,1x,A)') &
             dart_type_integers(i), trim(get_obs_kind_name(dart_type_integers(i))), &
-            roms_type_integers(i), trim(roms_type_strings(i))
+            roms_prov_integers(i), trim(roms_prov_strings(i))
     
          call error_handler(E_MSG, '', string1)
       endif
@@ -750,13 +753,13 @@ endif
 call error_handler(E_MSG, '', '')
 call error_handler(E_MSG, '', 'ROMS provenance values that do not map to a DART type:')
 
-if (all(dart_type_integers(1:roms_type_count) > 0)) then
+if (all(dart_type_integers(1:roms_prov_count) > 0)) then
    call error_handler(E_MSG, '','none - all provenance values have a DART counterpart - good.')
    call error_handler(E_MSG, '', '')
 else
-   do i = 1,roms_type_count
+   do i = 1,roms_prov_count
       if ( dart_type_integers(i) < 1 )  then
-         write(string1,*)'..  WARNING: provenance integer,string ',roms_type_integers(i), ',"'//trim(roms_type_strings(i))//'"'
+         write(string1,*)'..  WARNING: provenance integer,string ',roms_prov_integers(i), ',"'//trim(roms_prov_strings(i))//'"'
          write(string2,*)'WARNING: has no matching entry in the input.nml:&convert_roms_obs_nml:type_translations table.'
          write(string3,*)'WARNING: These observations WILL BE IGNORED.'
          call error_handler(E_MSG, '', string1, text2=string2, text3=string3)

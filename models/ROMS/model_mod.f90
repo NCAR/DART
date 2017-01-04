@@ -118,7 +118,7 @@ public :: get_model_size,                &
           get_close_obs
 
 public :: get_time_information,          &
-          get_dart_location_from_kind
+          get_location_from_ijk
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -1800,7 +1800,7 @@ end subroutine write_roms_time_information
 
 !-----------------------------------------------------------------------
 !>
-!> Returns the DART location given a fractional i, j, k and a specified kind
+!> Returns the lat,lon,depth given a fractional i,j,k and a specified kind
 !>
 !> @param filoc fractional x index
 !> @param fjloc fractional y index
@@ -1834,7 +1834,7 @@ end subroutine write_roms_time_information
 !>    ISTATUS : 14 - filoc or fjloc out of range for rho grid
 !>    ISTATUS : 99 - initalized istatus, this should not happen
 
-function get_dart_location_from_kind(filoc, fjloc, fkloc, dart_kind, location) result(istatus)
+function get_location_from_ijk(filoc, fjloc, fkloc, dart_kind, location) result(istatus)
 real(r8),            intent(in)  :: filoc
 real(r8),            intent(in)  :: fjloc
 real(r8),            intent(in)  :: fkloc
@@ -1848,6 +1848,11 @@ real(r8) :: lon_fract, lat_fract, hgt_fract
 real(r8) :: lon_val, lat_val, hgt_val, tmp_hgt(2), hgt(4)
 real(r8), pointer :: mylon(:,:), mylat(:,:), mydep(:,:,:)
 logical, save :: first_time = .true.
+
+
+write(string1,*)'Routine not finished.'
+call error_handler(E_ERR, 'get_location_from_ijk:', string1, &
+                      source, revision, revdate)
 
 ! start out assuming bad istatus
 istatus  = 99
@@ -1883,7 +1888,7 @@ my_kind = get_kind_index(domain_id,var_id)
 if (my_kind==KIND_U_CURRENT_COMPONENT) then
    write(string1,*)'Not interpolating ', get_raw_obs_kind_name(my_kind), ' at the moment.'
    write(string2,*)'Need to check that we are using the right grid for location interpolation'
-   call error_handler(E_ERR, 'get_dart_location_from_kind:', string1, &
+   call error_handler(E_ERR, 'get_location_from_ijk:', string1, &
                       source, revision, revdate, text2=string2)
    if (filoc < 1 .or. filoc > Nxi_u-1 .or. &
        fjloc < 1 .or. fjloc > Neta_u-1 ) then
@@ -1897,7 +1902,7 @@ if (my_kind==KIND_U_CURRENT_COMPONENT) then
 elseif (my_kind==KIND_V_CURRENT_COMPONENT) then
    write(string1,*)'Not interpolating ', get_raw_obs_kind_name(my_kind), ' at the moment.'
    write(string2,*)'Need to check that we are using the right grid for location interpolation'
-   call error_handler(E_ERR, 'get_dart_location_from_kind:', string1, &
+   call error_handler(E_ERR, 'get_location_from_ijk:', string1, &
                       source, revision, revdate, text2=string2)
    if (filoc < 1 .or. filoc > Nxi_v-1 .or. &
        fjloc < 1 .or. fjloc > Neta_v-1 ) then
@@ -1911,6 +1916,17 @@ elseif (my_kind==KIND_V_CURRENT_COMPONENT) then
 else  ! Everything else is assumed to be on the rho points
    if (filoc < 1 .or. filoc > Nxi_rho-1 .or. &
        fjloc < 1 .or. fjloc > Neta_rho-1 ) then
+
+     write(*,*)
+     write(*,*)'filoc, Nxi_rho-1       = ',filoc, Nxi_rho-1
+     write(*,*)'fjloc, Neta_rho-1      = ',fjloc, Neta_rho-1
+     write(*,*)'fkloc, vloc, hgt_fract = ',fkloc,vloc,hgt_fract
+
+     write(logfileunit,*)
+     write(logfileunit,*)'filoc, Nxi_rho-1     = ',filoc, Nxi_rho-1
+     write(logfileunit,*)'fjloc, Neta_rho-1    = ',fjloc, Neta_rho-1
+     write(logfileunit,*)'fkloc,vloc,hgt_fract = ',fkloc,vloc,hgt_fract
+
      istatus = 14
      location = set_location_missing()
      return
@@ -1987,7 +2003,7 @@ if (debug > 5) then
    print*,' WDEP(i+1, j  , k+1)', WDEP(iloc+1, jloc  , vloc+1)
 endif
 
-end function get_dart_location_from_kind
+end function get_location_from_ijk
 
 
 !===================================================================

@@ -27,7 +27,7 @@ use          obs_kind_mod, only : get_raw_obs_kind_name
 
 use  ensemble_manager_mod, only : ensemble_type
 
-use             model_mod, only : model_interpolate, get_dart_location_from_kind
+use             model_mod, only : model_interpolate, get_location_from_ijk
 
 use netcdf
 
@@ -155,7 +155,7 @@ do i = 1, NI
       do k = 1, NK
          dk(k) = interp_test_krange(1) + real(k-1,r8) * interp_test_dk
          
-         ios_out = get_dart_location_from_kind(di(i), dj(j), dk(k), mykindindex, loc)
+         ios_out = get_location_from_ijk(di(i), dj(j), dk(k), mykindindex, loc)
 
          my_loc = get_location(loc) 
 
@@ -329,16 +329,16 @@ real(r8) :: my_loc(3)
 num_passed = 0
 
 vertcoord = get_location_index(vertcoord_string)
-ios_out   = get_dart_location_from_kind(ival, jval, kval, mykindindex, loc)
+ios_out   = get_location_from_ijk(ival, jval, kval, mykindindex, loc)
 my_loc    = get_location(loc) 
 
 if (ios_out == 0 ) then
    if (do_output() ) &
-      write(*,*) 'get_dart_location_from_kind SUCCESS lat,lon,lev', my_loc(1),my_loc(2),my_loc(3)
+      write(*,*) 'test_interpolate_single SUCCESS lat,lon,lev', my_loc(1),my_loc(2),my_loc(3)
    num_passed = num_passed + 1
 else
    if (do_output() ) &
-      write(*,*) 'get_dart_location_from_kind ERROR with error code : ', ios_out
+      write(*,*) 'test_interpolate_single ERROR with error code : ', ios_out
 endif
 
 end function test_interpolate_single
