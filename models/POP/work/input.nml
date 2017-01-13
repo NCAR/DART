@@ -1,9 +1,7 @@
-&state_space_diag_nml
-  /
 
 &perfect_model_obs_nml
    start_from_restart    = .true.
-   output_restart        = .true.
+   output_restarts       = .false.
    async                 = 0
    init_time_days        = -1
    init_time_seconds     = -1
@@ -13,8 +11,8 @@
    last_obs_seconds      = -1
    output_interval       = 1
    trace_execution       = .false.
-   restart_in_file_name  = 'perfect_ics'
-   restart_out_file_name = 'perfect_restart'
+   restart_in_file_names  = 'perfect_ics'
+   restart_out_file_names = 'perfect_restart'
    obs_seq_in_file_name  = 'obs_seq.in'
    obs_seq_out_file_name = 'obs_seq.perfect'
    adv_ens_command       = 'no_CESM_advance_script'
@@ -22,50 +20,42 @@
    output_forward_op_errors = .false.
    print_every_nth_obs   = -1
    silence               = .false.
-   direct_netcdf_read    = .true.
-   direct_netcdf_write   = .true.
   /
 
 &filter_nml
-   async                    = 0
+   async                    = 4
    adv_ens_command          = 'no_CESM_advance_script'
-   ens_size                 =  30
+   ens_size                 =  23
    obs_sequence_in_name     = 'obs_seq.out'
    obs_sequence_out_name    = 'obs_seq.final'
+   input_restart_file_list  = "restarts_in.txt"
+   output_restart_file_list = "restarts_out.txt"
    init_time_days           = -1
    init_time_seconds        = -1
    first_obs_days           = -1
    first_obs_seconds        = -1
    last_obs_days            = -1
    last_obs_seconds         = -1
+   num_output_state_members = 10,
    num_output_obs_members   = 10
    output_interval          = 1
    num_groups               = 1
    output_forward_op_errors = .false.
    output_timestamps        = .false.
-   output_inflation         = .true.
    trace_execution          = .false.
    silence                  = .false.
-   output_restart           = .true.
-   output_restart_mean      = .true.
-   num_output_state_members = 30
-   perturb_from_single_instance = .false.
-   direct_netcdf_read       = .true.
-   direct_netcdf_write      = .true.
-   use_restart_list         = .true.
-   restart_list_file        = 'restart_files.txt'
-   overwrite_state_input    = .true.
-   restart_in_file_name     = 'no_restart_in'
-   restart_out_file_name    = 'no_restart_out'
+
+   stages_to_write          = 'preassim', 'postassim', 'output'
+   output_restarts          = .true.
+   output_mean              = .true.
+   output_sd                = .true.
+   write_all_stages_at_end  = .true.
 
    inf_flavor                  = 0,                       0
-   inf_initial_from_restart    = .true.,                  .true.
-   inf_sd_initial_from_restart = .true.,                  .true.
+   inf_initial_from_restart    = .false.,                  .true.
+   inf_sd_initial_from_restart = .false.,                  .true.
    inf_output_restart          = .true.,                  .true.
    inf_deterministic           = .true.,                  .true.
-   inf_in_file_name            = 'input_priorinf',        'input_postinf'
-   inf_out_file_name           = 'output_priorinf',       'output_postinf'
-   inf_diag_file_name          = 'output_priorobsinfl',   'output_postobsinf'
    inf_initial                 = 1.0,                     1.0
    inf_sd_initial              = 0.6,                     0.6
    inf_damping                 = 0.9,                     0.9
@@ -76,8 +66,7 @@
 
 
 &state_vector_io_nml
-  /
-
+/
 
 &smoother_nml
    num_lags              = 0
@@ -339,8 +328,3 @@
    interp_test_dvert     = 2000.0
    interp_test_vertcoord = 'VERTISHEIGHT'
   /
-
-&io_filenames_nml
-  restart_in_stub = 'pop.r.'
-  /
-

@@ -44,6 +44,12 @@ foreach TARGET ( mkmf_* )
    switch ( $TARGET )
    case mkmf_preprocess:
       breaksw
+   case mkmf_integrate_model:
+      breaksw
+   case mkmf_restart_file_tool:
+      breaksw
+   case mkmf_closest_member_tool:
+      breaksw
    default:
       @ n = $n + 1
       echo

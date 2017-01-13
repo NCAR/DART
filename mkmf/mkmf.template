@@ -80,7 +80,7 @@ LD = gfortran
 # uncomment the following line and set value to where lib and include
 # are found for the netcdf files that match this compiler.
 #
-# NETCDF = /opt/local
+NETCDF = /opt/local
 
 INCS = -I$(NETCDF)/include
 LIBS = -L$(NETCDF)/lib -lnetcdff -lnetcdf

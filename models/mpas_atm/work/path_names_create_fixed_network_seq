@@ -4,7 +4,6 @@ cov_cutoff/cov_cutoff_mod.f90
 distributed/distributed_state_mod.f90
 distributed/null_win_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
-io/copies_on_off_mod.f90
 io/dart_time_io_mod.f90
 io/state_structure_mod.f90
 location/threed_cartesian/xyz_location_mod.f90

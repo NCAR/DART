@@ -4,12 +4,11 @@
 !
 ! $Id$
 
-! HK This is just turning in to filter.
 program perfect_model_obs
 
 ! Program to build an obs_sequence file from simulated observations.
 
-use        types_mod,     only : r8, i8, metadatalength
+use        types_mod,     only : r8, i8, metadatalength, MAX_NUM_DOMS
 use    utilities_mod,     only : initialize_utilities, register_module, error_handler, &
                                  find_namelist_in_file, check_namelist_read,           &
                                  E_ERR, E_MSG, E_DBG, nmlfileunit, timestamp,          &
@@ -49,11 +48,14 @@ use           filter_mod, only : filter_set_initial_time, filter_sync_keys_time
 use state_vector_io_mod,   only : state_vector_io_init, &
                                   read_state, write_state
 
-use io_filenames_mod,      only : io_filenames_init, file_info_type
+use io_filenames_mod,      only : io_filenames_init, file_info_type, file_info_dump, &
+                                  combine_file_info, set_file_metadata,  &
+                                  set_io_copy_flag, check_file_info_variable_shape, &
+                                  READ_COPY, WRITE_COPY
 
 use quality_control_mod,   only : set_input_qc, initialize_qc
 
-use ensemble_manager_mod,    only : set_num_extra_copies ! should this be through ensemble_manager?
+use ensemble_manager_mod,  only : set_num_extra_copies ! should this be through ensemble_manager?
 use distributed_state_mod, only : create_state_window, free_state_window
 
 use forward_operator_mod, only : get_expected_obs_distrib_state
@@ -69,8 +71,9 @@ character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
 ! Module storage for message output
-character(len=129) :: msgstring
+character(len=512) :: msgstring
 integer            :: trace_level, timestamp_level
+
 
 !-----------------------------------------------------------------------------
 ! Namelist with default values
@@ -81,6 +84,7 @@ integer  :: async              = 0
 logical  :: trace_execution    = .false.
 logical  :: output_timestamps  = .false.
 logical  :: silence            = .false.
+
 ! if init_time_days and seconds are negative initial time is 0, 0
 ! for no restart or comes from restart if restart exists
 integer  :: init_time_days     = 0
@@ -97,28 +101,23 @@ logical  :: output_forward_op_errors = .false.
 integer  :: tasks_per_model_advance = 1
 integer  :: output_interval = 1
 integer  :: print_every_nth_obs = 0
-logical  :: direct_netcdf_read = .false.
-logical  :: direct_netcdf_write = .false.
 
-character(len = 129) :: restart_in_file_name  = 'perfect_ics',     &
-                        restart_out_file_name = 'perfect_restart', &
-                        obs_seq_in_file_name  = 'obs_seq.in',      &
-                        obs_seq_out_file_name = 'obs_seq.out',     &
-                        adv_ens_command       = './advance_model.csh'
+character(len=256) :: restart_in_file_names(MAX_NUM_DOMS)  = 'null',            &
+                      restart_out_file_names(MAX_NUM_DOMS) = 'null',            &
+                      obs_seq_in_file_name                 = 'obs_seq.in',      &
+                      obs_seq_out_file_name                = 'obs_seq.out',     &
+                      adv_ens_command                      = './advance_model.csh'
 
-
-namelist /perfect_model_obs_nml/ start_from_restart, output_restart, async,         &
+namelist /perfect_model_obs_nml/ start_from_restart, async, output_restart,         &
                                  init_time_days, init_time_seconds,                 &
                                  first_obs_days, first_obs_seconds,                 &
                                  last_obs_days,  last_obs_seconds, output_interval, &
-                                 restart_in_file_name, restart_out_file_name,       &
                                  obs_seq_in_file_name, obs_seq_out_file_name,       &
                                  adv_ens_command, tasks_per_model_advance,          & 
                                  obs_window_days, obs_window_seconds, silence,      &
                                  trace_execution, output_timestamps,                &
                                  print_every_nth_obs, output_forward_op_errors,     &
-                                 direct_netcdf_read, direct_netcdf_write
-
+                                 restart_in_file_names, restart_out_file_names
 
 !------------------------------------------------------------------------------
 
@@ -163,10 +162,14 @@ integer                 :: global_obs_num
 
 type(time_type)      :: time1
 integer              :: secs, days
-character*20         :: task_str ! string to hold the task number
+character(len=20)    :: task_str ! string to hold the task number
 integer              :: ens_size = 1 ! This is to avoid magic number 1s
 integer              :: copy_indices(1) = 1
-type(file_info_type) :: file_info ! handle for filenames
+type(file_info_type) :: file_info_input
+type(file_info_type) :: file_info_output
+
+character(len=256), allocatable :: restart_in_files(:), restart_out_files(:)
+integer :: nfilesin, nfilesout
 
 ! Initialize all modules used that require it
 call perfect_initialize_modules_used()
@@ -192,7 +195,7 @@ nth_obs = -1
 call trace_message('Before setting up space for observations')
 call timestamp_message('Before setting up space for observations')
 
-! FIX ME JH: copies and qc should be set using the meta data strings not hard
+!>@todo FIXME: copies and qc should be set using the meta data strings not hard
 ! coded. 
 
 ! Find out how many data copies are in the obs_sequence 
@@ -243,14 +246,36 @@ call init_ensemble_manager(ens_handle, ens_size, model_size, 1)
 call set_num_extra_copies(ens_handle, 0)
 
 ! Initialize file names:
-file_info = io_filenames_init(ens_handle, .true., .true., restart_in_file_name, restart_out_file_name, output_restart, direct_netcdf_read, direct_netcdf_write)
+
+call parse_filenames(restart_in_file_names,  restart_in_files,  nfilesin)
+call parse_filenames(restart_out_file_names, restart_out_files, nfilesout)
+
+if (nfilesin == 0 .or. nfilesout == 0 ) then
+   msgstring = 'nfiles == 0, must specify a restart_in_file_names and '//&
+               'restart_out_file_names'
+   call error_handler(E_ERR,'perfect_main',msgstring,source,revision,revdate)
+endif
+
+file_info_input  = io_filenames_init(1, single_file=.false.)
+call set_file_metadata(file_info_input, 1, restart_in_files, 'pmo initial condition')
+call set_io_copy_flag( file_info_input, 1, READ_COPY) 
+
+file_info_output = io_filenames_init(1, single_file=.false.)
+call set_file_metadata(file_info_output, 1, restart_out_files, 'pmo restart')
+call set_io_copy_flag( file_info_output, 1, WRITE_COPY) 
+call check_file_info_variable_shape(file_info_output, ens_handle)
+
+if (trace_execution) then
+   call file_info_dump(file_info_input,'pmo:file_info_input')
+   call file_info_dump(file_info_output,'pmo:file_info_output')
+endif
 
 ! Set a time type for initial time if namelist inputs are not negative
 call filter_set_initial_time(init_time_days, init_time_seconds, time1, read_time_from_file)
 
 if (start_from_restart) then
 
-   call read_state(ens_handle, file_info, read_time_from_file, time1)
+   call read_state(ens_handle, file_info_input, read_time_from_file, time1)
 
 else ! model spin up
 
@@ -275,6 +300,7 @@ call trace_message('After reading in ensemble restart file')
 ! Create window for forward operators
 call create_state_window(ens_handle)
 
+!>@todo FIXME this block must be supported in the single file loop with time dimension
 call trace_message('Before initializing output diagnostic file')
 state_meta(1) = 'true state'
 ! Set up output of truth for state
@@ -366,7 +392,7 @@ AdvanceTime: do
       call all_copies_to_all_vars(ens_handle)
 
       if (ens_handle%my_pe == 0) call advance_state(ens_handle, 1, next_ens_time, async, &
-         adv_ens_command, tasks_per_model_advance)
+                    adv_ens_command, tasks_per_model_advance, file_info_output, file_info_input)
 
       call all_vars_to_all_copies(ens_handle)
       deallocate(ens_handle%vars)
@@ -391,8 +417,7 @@ AdvanceTime: do
 
    ! for multi-core runs, each core needs to store the forward operator and the qc value
    call init_ensemble_manager(fwd_op_ens_handle, ens_size, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
-   call init_ensemble_manager(qc_ens_handle, ens_size, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
-
+   call init_ensemble_manager(    qc_ens_handle, ens_size, int(num_obs_in_set,i8), 1, transpose_type_in = 2)
 
    ! Allocate storage for observation keys for this part of sequence
    allocate(keys(num_obs_in_set))
@@ -467,7 +492,7 @@ AdvanceTime: do
 
    ! collect on task 0 and load up the obs_sequence
    call all_copies_to_all_vars(fwd_op_ens_handle)
-   call all_copies_to_all_vars(qc_ens_handle)
+   call all_copies_to_all_vars(    qc_ens_handle)
 
    ! Task 0 loads up the obs_sequence
    if(my_task_id() == 0) then
@@ -544,7 +569,9 @@ call trace_message('After  writing output sequence file')
 
 ! Output a restart file if requested
 call trace_message('Before writing state restart file if requested')
-call write_state(ens_handle, file_info)
+if(output_restart) then
+   call write_state(ens_handle, file_info_output)
+endif
 call trace_message('After  writing state restart file if requested')
 
 call trace_message('Before ensemble and obs memory cleanup')
@@ -720,6 +747,30 @@ else
 endif
 
 end subroutine perfect_set_initial_time
+
+!-------------------------------------------------------------------------
+
+subroutine parse_filenames(file_array, files_out, nfiles)
+character(len=*), intent(in)  :: file_array(:)
+integer,          intent(out) :: nfiles
+character(len=*), allocatable, intent(out) :: files_out(:)
+integer :: i
+
+! count the number of valid files
+nfiles = 0
+do i = 1, size(file_array(:),1)
+   if ( file_array(i) == 'null' ) exit
+   nfiles = nfiles + 1 
+enddo
+
+! allocate and set output file list
+allocate(files_out(nfiles))
+do i = 1, nfiles
+   files_out(i) = file_array(i)
+enddo
+
+end subroutine parse_filenames
+
 
 end program perfect_model_obs
 

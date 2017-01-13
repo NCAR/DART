@@ -133,7 +133,6 @@ public ::  get_model_size,                &
            model_interpolate,             &
            vert_convert,                  &
            query_vert_localization_coord, &
-           construct_file_name_in,        &
            read_model_time,               &
            write_model_time,              &
            convert_base_obs_location !HK
@@ -8937,32 +8936,6 @@ integer :: query_vert_localization_coord
 query_vert_localization_coord = vert_localization_coord
 
 end function query_vert_localization_coord
-
-!--------------------------------------------------------------------
-!> construct restart file name for reading
-!> model time for CESM format?
-function construct_file_name_in(stub, domain, copy)
-
-character(len=256), intent(in) :: stub
-integer,            intent(in) :: domain
-integer,            intent(in) :: copy
-character(len=256) :: construct_file_name_in
-
-!write(construct_file_name, '(A, i2.2, A, i2.2, A)') TRIM(stub), domain, '.', copy, '.nc'
-
-if (copy < 10) then
-   write(construct_file_name_in, '(A, i1.1, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
-else
-   write(construct_file_name_in, '(A, i2.2, A, i2.2)') TRIM(stub), copy, '/wrfinput_d', domain
-endif
-
-!if (copy < 10) then
-!   write(construct_file_name_in, '(A, A, i1.1, A)') TRIM(stub), '_', copy, '.nc'
-!else
-!   write(construct_file_name_in, '(A, A, i2.2, A)') TRIM(stub), '_', copy, '.nc'
-!endif
-
-end function construct_file_name_in
 
 !--------------------------------------------------------------------
 !> read the time from the input file

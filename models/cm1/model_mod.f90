@@ -78,7 +78,6 @@ public :: static_init_model,             &
           get_close_obs,                 &
           query_vert_localization_coord, &
           vert_convert,                  &
-          construct_file_name_in,        &
           read_model_time,               &
           write_model_time
 
@@ -1783,34 +1782,6 @@ integer :: query_vert_localization_coord
 query_vert_localization_coord = 0
 
 end function query_vert_localization_coord
-
-!--------------------------------------------------------------------
-
-!> construct restart file name for reading
-
-function construct_file_name_in(stub, domain, copy)
-
-character(len=*),   intent(in) :: stub
-integer,            intent(in) :: domain
-integer,            intent(in) :: copy
-character(len=1024)            :: construct_file_name_in
-
-! FIXME:
-! CM1 filenames look like: cm1out_rst_000001.nc, cm1out_rst_000002.nc 
-! where the number is the timestep.  we have to add some setting for
-! the ensemble member - either a subdirectory, or ?
-
-if ( .not. module_initialized ) call static_init_model()
-
-write(construct_file_name_in, '(A, i1.2, A)') 'RESTART_m', copy, '_'//TRIM(stub)//'.nc'
-
-if ((debug > 0) .and. do_output()) then
-   write(string1, *) 'filename in :' , trim(construct_file_name_in)
-   call say(string1)
-endif
-
-end function construct_file_name_in
-
 
 !--------------------------------------------------------------------
 

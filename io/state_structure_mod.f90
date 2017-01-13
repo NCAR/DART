@@ -7,6 +7,7 @@
 !-------------------------------------------------------------------------------
 
 module state_structure_mod
+
 !> \defgroup state_structure_mod state_structure_mod
 !> @{ @brief Contains the stucture of the state vector and routines to access this structure
 !> 
@@ -63,7 +64,7 @@ use utilities_mod, only : E_ERR, error_handler, nc_check, do_output
 use  obs_kind_mod, only : get_raw_obs_kind_name, get_raw_obs_kind_index
 
 use     types_mod, only : r8, r4, i8, digits12, MISSING_R8, MISSING_R4, MISSING_I, &
-                          obstypelength
+                          obstypelength, MAX_NUM_DOMS
 
 use      sort_mod, only : index_sort
 
@@ -120,6 +121,8 @@ public :: add_domain,                 &
           state_structure_info
 
 ! diagnostic files
+!>@todo FIXME these routines are deprecated because we are no supporting 'diagnostic' 
+!> files, but they will likely be useful for the single file (multiple member) input.
 public :: create_diagnostic_structure, &
           end_diagnostic_structure
 
@@ -134,8 +137,7 @@ character(len=512) :: string1, string2, string3
 !-------------------------------------------------------------------------------
 ! global variables
 !-------------------------------------------------------------------------------
-integer, parameter :: max_num_domains = 10
-integer, parameter :: diagnostic_domain = max_num_domains + 1 ! Need to separate this from state
+integer, parameter :: diagnostic_domain = MAX_NUM_DOMS + 1 ! Need to separate this from state
 
 !-------------------------------------------------------------------------------
 ! Describes information pertaining to the IO portion of the variable information
@@ -245,13 +247,13 @@ type state_type
    ! domains or separate files
    integer           :: num_domains = 0
    ! number of domains + 1 for diagnostic domain
-   type(domain_type) :: domain(max_num_domains + 1)
+   type(domain_type) :: domain(MAX_NUM_DOMS + 1)
 
    ! size of the state vector
    integer(i8) :: model_size = 0_i8
 
    !>@todo is this different to character(len=128) :: name?  Redundant?
-   !character(len=1024)  :: domain_name(max_num_domains)
+   !character(len=1024)  :: domain_name(MAX_NUM_DOMS)
 end type state_type
 
 !-------------------------------------------------------------------------------
@@ -268,6 +270,7 @@ logical :: diagnostic_initialized = .false.
 ! debug flag for get_state_indices
 logical :: debug = .false.
 
+!>@todo ultimately only support blank and from_file ... models that currently do not start from netCDF can easily be made to start from netCDF because the nc_write_model_vars() functions already exist ... Tim thinks this is easy.
 interface add_domain
    module procedure add_domain_blank
    module procedure add_domain_from_file
@@ -298,6 +301,7 @@ end interface
 
 contains
 
+
 !-------------------------------------------------------------------------------
 !> Given an info_file, reads in a list var_names(num_vars) 
 !> into the state_strucutre. 
@@ -305,7 +309,8 @@ contains
 !> Returns a dom_id that can be used to harvest information of a particular domain
 !>
 !> Does this need to be a function or a subroutine?
-!-------------------------------------------------------------------------------
+
+
 function add_domain_from_file(info_file, num_vars, var_names, kind_list, clamp_vals, update_list) result(dom_id)
 
 character(len=*), intent(in) :: info_file
@@ -352,12 +357,14 @@ if ( present(update_list) ) call set_update_list(dom_id, num_vars, update_list)
 
 end function add_domain_from_file
 
+
 !-------------------------------------------------------------------------------
 !> Defines a skeleton structure for the state structure.  Dimension can be
 !> added to variables with add_dimension_to_variable.
 !>
 !> Returns a dom_id that can be used to harvest information of a particular domain
-!-------------------------------------------------------------------------------
+
+
 function add_domain_from_spec(num_vars, var_names, kind_list, clamp_vals, update_list) result(dom_id)
 
 integer,          intent(in) :: num_vars
@@ -394,9 +401,11 @@ if ( present(update_list) ) call set_update_list(dom_id, num_vars, update_list)
 
 end function add_domain_from_spec
 
+
 !-------------------------------------------------------------------------------
 !> Add a blank domain - one variable called state, length = domain_size
-!-------------------------------------------------------------------------------
+
+
 function add_domain_blank(domain_size) result(dom_id)
 
 integer(i8), intent(in) :: domain_size
@@ -449,9 +458,11 @@ state%domain(dom_id)%variable(1)%io_info%xtype = NF90_DOUBLE
 
 end function add_domain_blank
 
+
 !-------------------------------------------------------------------------------
 !> Load metadata from netcdf file info state_strucutre
-!-------------------------------------------------------------------------------
+
+
 subroutine load_state_variable_info(domain)
 
 type(domain_type), intent(inout) :: domain
@@ -483,9 +494,11 @@ call nc_check(ret, 'load_state_variable_info nf90_close', trim(nc_filename))
 
 end subroutine load_state_variable_info
 
+
 !-------------------------------------------------------------------------------
 !> Load netcdf variable ids
-!-------------------------------------------------------------------------------
+
+
 subroutine load_variable_ids(ncfile, domain)
 
 integer,           intent(in)    :: ncfile ! netdcf file id - should this be part of the domain handle?
@@ -554,7 +567,7 @@ do ivar = 1, num_vars
    enddo
 
    ! subtract the unlimited dimension if it exists
-   !> @todo : how to handle models with multiple unlimited dimensions?
+   !>@todo : how to handle models with multiple unlimited dimensions?
    !>         nf90_inquire returns the first unlimited dimension id  which
    !>         is the slowest varying dimension.  For now am assuming that
    !>         there can only be one unlimited dimension. Just subtract 
@@ -788,9 +801,11 @@ call nc_check(ret, 'load_common_cf_conventions nf90_close', trim(ncFilename))
 
 end subroutine load_common_cf_conventions
 
+
 !-------------------------------------------------------------------------------
 !> Returns the number of domains being used in the state structure
-!-------------------------------------------------------------------------------
+
+
 function get_num_domains()
 
 integer :: get_num_domains
@@ -799,9 +814,11 @@ get_num_domains = state%num_domains
 
 end function get_num_domains
 
+
 !-------------------------------------------------------------------------------
 !> Returns the number of elements in the domain
-!-------------------------------------------------------------------------------
+
+
 function get_domain_size(dom_id)
 
 integer, intent(in) :: dom_id
@@ -813,9 +830,11 @@ get_domain_size = state%domain(dom_id)%dom_size
 
 end function get_domain_size
 
+
 !-------------------------------------------------------------------------------
 !> Returns the number of variables in the domain
-!-------------------------------------------------------------------------------
+
+
 function get_num_variables(dom_id)
 
 integer, intent(in) :: dom_id ! domain
@@ -827,9 +846,11 @@ get_num_variables = state%domain(dom_id)%num_variables
 
 end function get_num_variables
 
+
 !-------------------------------------------------------------------------------
 !> Returns the size of a variable in a specific domain
-!-------------------------------------------------------------------------------
+
+
 function get_variable_size(dom_id, ivar)
 
 integer, intent(in) :: dom_id ! domain
@@ -850,9 +871,11 @@ get_variable_size = state%domain(dom_id)%variable(ivar)%var_size
 
 end function get_variable_size
 
+
 !-------------------------------------------------------------------------------
 !> Returns the number of dimensions for a variable
-!-------------------------------------------------------------------------------
+
+
 function get_num_dims(dom_id, ivar)
 
 integer, intent(in) :: dom_id ! domain
@@ -863,9 +886,11 @@ get_num_dims = state%domain(dom_id)%variable(ivar)%numdims
 
 end function get_num_dims
 
+
 !-------------------------------------------------------------------------------
 !> Return and array containing the dimension lengths, excluding the UNLIMITED dim
-!-------------------------------------------------------------------------------
+
+
 function get_dim_lengths(dom_id, ivar)
 
 integer, intent(in) :: dom_id ! domain
@@ -880,9 +905,11 @@ get_dim_lengths(1:num_dims) = state%domain(dom_id)%variable(ivar)%dimlens(1:num_
 
 end function get_dim_lengths
 
+
 !-------------------------------------------------------------------------------
 !> Returns the variable name
-!-------------------------------------------------------------------------------
+
+
 function get_variable_name(dom_id, ivar)
 
 integer, intent(in) :: dom_id ! domain
@@ -893,10 +920,12 @@ get_variable_name = state%domain(dom_id)%variable(ivar)%varname
 
 end function get_variable_name
 
+
 !-------------------------------------------------------------------------------
 ! Should you even use this?
-!>@ todo no corresponding 'get', no way to check if it worked, is new_varid valid?
-!-------------------------------------------------------------------------------
+!>@todo no corresponding 'get', no way to check if it worked, is new_varid valid?
+
+
 subroutine set_var_id(dom_id, ivar, new_varid)
 
 integer, intent(in) :: dom_id ! domain
@@ -907,9 +936,11 @@ state%domain(dom_id)%variable(ivar)%io_info%netcdf_id = new_varid
 
 end subroutine set_var_id
 
+
 !-------------------------------------------------------------------------------
 !> Returns the dimension name
-!-------------------------------------------------------------------------------
+
+
 function get_dim_name(dom_id, ivar, jdim)
 
 integer, intent(in) :: dom_id ! domain
@@ -921,9 +952,11 @@ get_dim_name = state%domain(dom_id)%variable(ivar)%dimname(jdim)
 
 end function get_dim_name
 
+
 !-------------------------------------------------------------------------------
 !> Return dimension length
-!-------------------------------------------------------------------------------
+
+
 function get_dim_length(dom_id, ivar, jdim)
 
 integer, intent(in) :: dom_id ! domain
@@ -935,10 +968,12 @@ get_dim_length = state%domain(dom_id)%variable(ivar)%dimlens(jdim)
 
 end function get_dim_length
 
+
 !-------------------------------------------------------------------------------
 !> Return the number of dimensions in a domain
 !> Repeat dimensions are allowed
-!-------------------------------------------------------------------------------
+
+
 function get_domain_num_dims(dom_id)
 
 integer, intent(in) :: dom_id ! domain identifier
@@ -957,9 +992,11 @@ enddo
 
 end function get_domain_num_dims
 
+
 !-------------------------------------------------------------------------------
 !> Return the number of unique dimensions
-!-------------------------------------------------------------------------------
+
+
 function get_io_num_unique_dims(dom_id)
 
 integer, intent(in) :: dom_id ! domain identifier
@@ -969,9 +1006,11 @@ get_io_num_unique_dims = state%domain(dom_id)%num_unique_dims
 
 end function get_io_num_unique_dims
 
+
 !-------------------------------------------------------------------------------
 !> Return the unique dimension names
-!-------------------------------------------------------------------------------
+
+
 function get_io_unique_dim_name(dom_id, ivar)
 
 integer, intent(in) :: dom_id ! domain identifier
@@ -982,9 +1021,11 @@ get_io_unique_dim_name = state%domain(dom_id)%unique_dim_names(ivar)
 
 end function get_io_unique_dim_name
 
+
 !-------------------------------------------------------------------------------
 !> Return the unique dimension lengths
-!-------------------------------------------------------------------------------
+
+
 function get_io_unique_dim_length(dom_id, ivar)
 
 integer, intent(in) :: dom_id ! domain identifier
@@ -995,9 +1036,11 @@ get_io_unique_dim_length = state%domain(dom_id)%unique_dim_length(ivar)
 
 end function get_io_unique_dim_length
 
+
 !-------------------------------------------------------------------------------
 !> Returns the starting dart index for variable
-!-------------------------------------------------------------------------------
+
+
 function get_index_start_from_varname(dom_id, varname)
 
 integer,          intent(in) :: dom_id
@@ -1012,9 +1055,11 @@ get_index_start_from_varname = state%domain(dom_id)%variable(var_id)%index_start
 
 end function get_index_start_from_varname
 
+
 !-------------------------------------------------------------------------------
 !> Returns the starting dart index for variable
-!-------------------------------------------------------------------------------
+
+
 function get_index_start_from_varid(dom_id, ivar)
 
 integer, intent(in) :: dom_id
@@ -1025,9 +1070,11 @@ get_index_start_from_varid = state%domain(dom_id)%variable(ivar)%index_start
 
 end function get_index_start_from_varid
 
+
 !-------------------------------------------------------------------------------
 !> Returns the starting dart index for variable
-!-------------------------------------------------------------------------------
+
+
 function get_index_end_from_varname(dom_id, varname)
 
 integer,          intent(in) :: dom_id
@@ -1042,9 +1089,11 @@ get_index_end_from_varname = state%domain(dom_id)%variable(var_id)%index_end
 
 end function get_index_end_from_varname
 
+
 !-------------------------------------------------------------------------------
 !> Returns the ending dart index for variable
-!-------------------------------------------------------------------------------
+
+
 function get_index_end_from_varid(dom_id, ivar)
 
 integer, intent(in) :: dom_id
@@ -1055,9 +1104,11 @@ get_index_end_from_varid= state%domain(dom_id)%variable(ivar)%index_end
 
 end function get_index_end_from_varid
 
+
 !-------------------------------------------------------------------------------
 !> Return unlimited dimension id
-!-------------------------------------------------------------------------------
+
+
 function get_unlimited_dimid(dom_id)
 
 integer, intent(in) :: dom_id
@@ -1067,10 +1118,12 @@ get_unlimited_dimid = state%domain(dom_id)%unlimDimId
 
 end function get_unlimited_dimid
 
+
 !-------------------------------------------------------------------------------
 !> Adding space for an unlimited dimension in the dimesion arrays
 !> The unlimited dimension needs to be last in the list for def_var
-!-------------------------------------------------------------------------------
+
+
 subroutine add_time_unlimited(unlimited_dimId)
 
 integer, intent(in)  :: unlimited_dimId
@@ -1079,9 +1132,11 @@ call error_handler(E_ERR, 'add_time_unlimited', 'does not exist')
 
 end subroutine add_time_unlimited
 
+
 !-------------------------------------------------------------------------------
 !> Returns the number of variables below start_var
-!-------------------------------------------------------------------------------
+
+
 function get_sum_variables_below(start_var, dom_id)
 
 integer, intent(in) :: start_var
@@ -1104,9 +1159,11 @@ enddo
 
 end function get_sum_variables_below
 
+
 !-------------------------------------------------------------------------------
 !> Returns the number of elements in range of start_var and end_var
-!-------------------------------------------------------------------------------
+
+
 function get_sum_variables(start_var, end_var, dom_id)
 
 integer, intent(in) :: start_var, end_var
@@ -1124,9 +1181,11 @@ enddo
 
 end function get_sum_variables
 
+
 !-------------------------------------------------------------------------------
 !> Given a dart state index, return the iloc, jloc, kloc location of the local variable
-!-------------------------------------------------------------------------------
+
+
 subroutine get_model_variable_indices(index_in, iloc, jloc, kloc, var_id,  dom_id, kind_index, kind_string)
 
 integer(i8),      intent(in)  :: index_in
@@ -1229,9 +1288,11 @@ deallocate(dsize)
 
 end subroutine get_model_variable_indices
 
+
 !-------------------------------------------------------------------------------
 !> Returns the dart index from local variable indices
-!-------------------------------------------------------------------------------
+
+
 function get_dart_vector_index(iloc, jloc, kloc, dom_id, var_id)
 
 integer, intent(in) :: iloc, jloc, kloc
@@ -1261,12 +1322,14 @@ endif
 
 end function get_dart_vector_index
 
+
 !-------------------------------------------------------------------------------
 !> Set clamping bounds for domain variables.
 !>   missing_r8 values are used to set no-clamping
 !>   clamp_vals(ivar,1) must be the minimum value
 !>   clamp_vals(ivar,2) must be the maximum value
-!-------------------------------------------------------------------------------
+
+
 subroutine set_clamping(dom_id, num_vars, clamp_vals)
 
 integer,  intent(in) :: dom_id
@@ -1294,9 +1357,11 @@ enddo
 
 end subroutine set_clamping
 
+
 !-------------------------------------------------------------------------------
 !> Return clamping maximum for a given variable
-!-------------------------------------------------------------------------------
+
+
 function get_io_clamping_maxval(dom_id, var_id)
 
 integer, intent(in) :: dom_id
@@ -1307,9 +1372,11 @@ get_io_clamping_maxval= state%domain(dom_id)%variable(var_id)%io_info%maxvalue
 
 end function get_io_clamping_maxval
 
+
 !-------------------------------------------------------------------------------
 !> Return clamping minimum for a given variable
-!-------------------------------------------------------------------------------
+
+
 function get_io_clamping_minval(dom_id, var_id)
 
 integer, intent(in) :: dom_id
@@ -1320,9 +1387,11 @@ get_io_clamping_minval= state%domain(dom_id)%variable(var_id)%io_info%minvalue
 
 end function get_io_clamping_minval
 
+
 !-------------------------------------------------------------------------------
 !> Returns whether a variable should be clamped or not
-!-------------------------------------------------------------------------------
+
+
 function do_io_clamping(dom_id, var_id)
 
 integer, intent(in) :: dom_id ! domain identifier
@@ -1333,13 +1402,15 @@ do_io_clamping = state%domain(dom_id)%variable(var_id)%io_info%clamping
 
 end function do_io_clamping
 
+
 !-------------------------------------------------------------------------------
 !> Used to add dimensions to a variable.
 !> This allows the model to add meta data to state structure so a netcdf restart 
 !> can be created which has the T,U,V etc. from a cold start (no existing netcdf
 !> info file) e.g. the bgrid model. The number of variables has already been given 
 !> in add_domain_from_spec.
-!-------------------------------------------------------------------------------
+
+
 subroutine add_dimension_to_variable(dom_id, var_id, dim_name, dim_size)
 
 integer,          intent(in) :: dom_id
@@ -1375,8 +1446,9 @@ end subroutine add_dimension_to_variable
 
 
 !-------------------------------------------------------------------------------
-! Finalize routine when using add_domain_from_spec
-!-------------------------------------------------------------------------------
+!> Finalize routine when using add_domain_from_spec
+
+
 subroutine finished_adding_domain(dom_id)
 
 integer, intent(in) :: dom_id ! domain identifier
@@ -1396,7 +1468,7 @@ endif
 
 state%domain(dom_id)%num_unique_dims = get_domain_num_dims(dom_id)
 
-!> @todo sort by character to get unique dimensions. nancy has already written this, use and test
+!>@todo sort by character to get unique dimensions. nancy has already written this, use and test
 
 allocate(state%domain(dom_id)%unique_dim_names(get_domain_num_dims(dom_id)))
 allocate(state%domain(dom_id)%unique_dim_length(get_domain_num_dims(dom_id)))
@@ -1436,12 +1508,13 @@ enddo
 state%model_size = state%model_size + get_domain_size(dom_id)
 
 end subroutine finished_adding_domain
+
  
 !-------------------------------------------------------------------------------
 !> Print information in the state structure
-!-------------------------------------------------------------------------------
+!>@todo rename to print_domain_info or something
+
 subroutine state_structure_info(dom_id)
-!>@ todo rename to print_domain_info or something
 
 integer, intent(in) :: dom_id ! domain identifier
 
@@ -1551,9 +1624,11 @@ enddo
 
 end subroutine state_structure_info
 
+
 !-------------------------------------------------------------------------------
 !> Set DART kinds for domain variables
-!-------------------------------------------------------------------------------
+
+
 subroutine set_dart_kinds(dom_id, num_vars, kind_list)
 
 integer, intent(in) :: dom_id
@@ -1569,9 +1644,11 @@ enddo
 
 end subroutine set_dart_kinds
 
+
 !-------------------------------------------------------------------------------
 !> Returns the variable dart kind index
-!-------------------------------------------------------------------------------
+
+
 function get_kind_index(dom_id, var_id)
 
 integer, intent(in) :: dom_id ! domain
@@ -1582,9 +1659,11 @@ get_kind_index = state%domain(dom_id)%variable(var_id)%dart_kind
 
 end function get_kind_index
 
+
 !-------------------------------------------------------------------------------
 !> Returns the variable dart kind string
-!-------------------------------------------------------------------------------
+
+
 function get_kind_string(dom_id, var_id)
 
 integer, intent(in) :: dom_id ! domain
@@ -1595,9 +1674,11 @@ get_kind_string = state%domain(dom_id)%variable(var_id)%kind_string
 
 end function get_kind_string
 
+
 !-------------------------------------------------------------------------------
 !> Return variable id given a domain number and variable name
-!-------------------------------------------------------------------------------
+
+
 function get_varid_from_varname(dom_id, varname) result(var_id)
 
 integer,          intent(in) :: dom_id
@@ -1618,9 +1699,11 @@ enddo
 
 end function get_varid_from_varname
 
+
 !-------------------------------------------------------------------------------
 !> Return variable id given a dart kind index
-!-------------------------------------------------------------------------------
+
+
 function get_varid_from_kind(dom_id, dart_kind_index) result(var_id)
 
 integer, intent(in)  :: dom_id
@@ -1651,9 +1734,11 @@ enddo
 
 end function get_varid_from_kind
 
+
 !-------------------------------------------------------------------------------
 !> Return a list of variable ids in a domain that match a given dart kind index
-!-------------------------------------------------------------------------------
+
+
 subroutine get_varids_from_kind(dom_id, dart_kind_index, varid_table)
 
 integer, intent(in)  :: dom_id
@@ -1685,10 +1770,12 @@ enddo
 
 end subroutine get_varids_from_kind
 
+
 !-------------------------------------------------------------------------------
 !> Set update information for domain variables
 !>   UPDATE, NO_COPY_BACK
-!-------------------------------------------------------------------------------
+
+
 subroutine set_update_list(dom_id, num_vars, update_var_list)
 
 integer, intent(in) :: dom_id
@@ -1699,9 +1786,11 @@ state%domain(dom_id)%variable(:)%io_info%update = update_var_list
 
 end subroutine set_update_list
 
+
 !-------------------------------------------------------------------------------
 !> Returns the number of dimensions for a variable
-!-------------------------------------------------------------------------------
+
+
 function get_io_num_dims(dom_id, ivar)
 
 integer, intent(in) :: dom_id ! domain
@@ -1712,9 +1801,11 @@ get_io_num_dims = state%domain(dom_id)%variable(ivar)%io_info%io_numdims
 
 end function get_io_num_dims
 
+
 !-------------------------------------------------------------------------------
 !> Return an array of netcdf dimension ids
-!-------------------------------------------------------------------------------
+
+
 function get_io_dim_ids(dom_id, ivar)
 
 integer, intent(in) :: dom_id ! domain
@@ -1728,9 +1819,11 @@ get_io_dim_ids = state%domain(dom_id)%variable(ivar)%io_info%io_dimIds(1:num_dim
 
 end function get_io_dim_ids
 
+
 !-------------------------------------------------------------------------------
 !> Return and array containing the dimension lengths
-!-------------------------------------------------------------------------------
+
+
 function get_io_dim_lengths(dom_id, ivar)
 
 integer, intent(in) :: dom_id ! domain
@@ -1744,9 +1837,11 @@ get_io_dim_lengths = state%domain(dom_id)%variable(ivar)%dimlens(1:num_dims)
 
 end function get_io_dim_lengths
 
+
 !-------------------------------------------------------------------------------
 !> Returns whether a variable should be updated or not
-!-------------------------------------------------------------------------------
+
+
 function do_io_update(dom_id, var_id)
 
 integer, intent(in) :: dom_id ! domain identifier
@@ -1757,9 +1852,11 @@ do_io_update = state%domain(dom_id)%variable(var_id)%io_info%update
 
 end function do_io_update
 
+
 !-------------------------------------------------------------------------------
 !> Returns number of variables that match a dart kind index within a domain
-!-------------------------------------------------------------------------------
+
+
 function get_num_varids_from_kind(dom_id, dart_kind_index) result(num_found)
 
 integer, intent(in) :: dom_id
@@ -1778,9 +1875,11 @@ enddo
 
 end function get_num_varids_from_kind
 
+
 !-------------------------------------------------------------------------------
 !> Return units of a variable if it exist
-!-------------------------------------------------------------------------------
+
+
 function get_units(dom_id, var_id)
 
 integer, intent(in) :: dom_id
@@ -1791,9 +1890,11 @@ get_units = state%domain(dom_id)%variable(var_id)%io_info%units
 
 end function get_units
 
+
 !-------------------------------------------------------------------------------
 !> Return long_name of a variable if it exist
-!-------------------------------------------------------------------------------
+
+
 function get_long_name(dom_id, var_id)
 
 integer, intent(in) :: dom_id
@@ -1804,9 +1905,11 @@ get_long_name = state%domain(dom_id)%variable(var_id)%io_info%long_name
 
 end function get_long_name
 
+
 !-------------------------------------------------------------------------------
 !> Return short_name of a variable if it exist
-!-------------------------------------------------------------------------------
+
+
 function get_short_name(dom_id, var_id)
 
 integer, intent(in) :: dom_id
@@ -1817,9 +1920,11 @@ get_short_name = state%domain(dom_id)%variable(var_id)%io_info%short_name
 
 end function get_short_name
 
+
 !-------------------------------------------------------------------------------
 !> Return if a variable has a missing value
-!-------------------------------------------------------------------------------
+
+
 function get_has_missing_value(dom_id, var_id)
 
 integer, intent(in) :: dom_id
@@ -1830,9 +1935,11 @@ get_has_missing_value = state%domain(dom_id)%variable(var_id)%io_info%has_missin
 
 end function get_has_missing_value
 
+
 !-------------------------------------------------------------------------------
-!> Return xtype of a variable
-!-------------------------------------------------------------------------------
+!> Return netCDF type of a variable (aka 'xtype')
+
+
 function get_xtype(dom_id, var_id)
 
 integer, intent(in) :: dom_id
@@ -1843,9 +1950,11 @@ get_xtype = state%domain(dom_id)%variable(var_id)%io_info%xtype
 
 end function get_xtype
 
+
 !-------------------------------------------------------------------------------
-!> Return missingR8 value of a variable if it exist
-!-------------------------------------------------------------------------------
+!> Return netCDF missing value of a 64bit real - if the variable has a missing value
+
+
 subroutine get_missing_value_r8(dom_id, var_id, missing_value_r8)
 
 integer,  intent(in)  :: dom_id
@@ -1856,9 +1965,11 @@ missing_value_r8 = state%domain(dom_id)%variable(var_id)%io_info%missingR8
 
 end subroutine get_missing_value_r8
 
+
 !-------------------------------------------------------------------------------
-!> Return missingR4 value of a variable if it exist
-!-------------------------------------------------------------------------------
+!> Return netCDF missing value of a 32bit real - if the variable has a missing value
+
+
 subroutine get_missing_value_r4(dom_id, var_id, missing_value_r4)
 
 integer,  intent(in)  :: dom_id
@@ -1869,9 +1980,11 @@ missing_value_r4 = state%domain(dom_id)%variable(var_id)%io_info%missingR4
 
 end subroutine get_missing_value_r4
 
+
 !-------------------------------------------------------------------------------
-!> Return missingINT value of a variable if it exist
-!-------------------------------------------------------------------------------
+!> Return netCDF missing value of a 32bit integer - if the variable has a missing value
+
+
 subroutine get_missing_value_int(dom_id, var_id, missing_value_int)
 
 integer, intent(in)  :: dom_id
@@ -1882,9 +1995,11 @@ missing_value_int = state%domain(dom_id)%variable(var_id)%io_info%missingINT
 
 end subroutine get_missing_value_int
 
+
 !-------------------------------------------------------------------------------
 !> Return spvalR8 value of a variable if it exist
-!-------------------------------------------------------------------------------
+
+
 subroutine get_spval_r8(dom_id, var_id, spval_r8)
 
 integer,  intent(in)  :: dom_id
@@ -1895,9 +2010,11 @@ spval_r8 = state%domain(dom_id)%variable(var_id)%io_info%spvalR8
 
 end subroutine get_spval_r8
 
+
 !-------------------------------------------------------------------------------
 !> Return spvalR4 value of a variable if it exist
-!-------------------------------------------------------------------------------
+
+
 subroutine get_spval_r4(dom_id, var_id, spval_r4)
 
 integer,  intent(in)  :: dom_id
@@ -1908,9 +2025,11 @@ spval_r4 = state%domain(dom_id)%variable(var_id)%io_info%spvalR4
 
 end subroutine get_spval_r4
 
+
 !-------------------------------------------------------------------------------
 !> Return spvalINT value of a variable if it exist
-!-------------------------------------------------------------------------------
+
+
 subroutine get_spval_int(dom_id, var_id, spval_int)
 
 integer, intent(in)  :: dom_id
@@ -1921,9 +2040,11 @@ spval_int = state%domain(dom_id)%variable(var_id)%io_info%spvalINT
 
 end subroutine get_spval_int
 
+
 !-------------------------------------------------------------------------------
 !> Return offset of a variable if it exists
-!-------------------------------------------------------------------------------
+
+
 function get_add_offset(dom_id, var_id)
 
 integer, intent(in) :: dom_id
@@ -1934,9 +2055,11 @@ get_add_offset = state%domain(dom_id)%variable(var_id)%io_info%add_offset
 
 end function get_add_offset
 
+
 !-------------------------------------------------------------------------------
 !> Return scale factor of a variable if it exists
-!-------------------------------------------------------------------------------
+
+
 function get_scale_factor(dom_id, var_id)
 
 integer, intent(in) :: dom_id
@@ -1951,17 +2074,20 @@ end function get_scale_factor
 !-------------------------------------------------------------------------------
 !> Assert that adding a domain will not cause the maximum number of domains
 !> to be exceeded.
+
+
 subroutine assert_below_max_num_domains()
 
-if (state%num_domains + 1 > max_num_domains) then
+if (state%num_domains + 1 > MAX_NUM_DOMS) then
    write(string1,*)'requesting to add domain #',state%num_domains + 1
-   write(string2,*)'maximum number of domains is ',max_num_domains
-   write(string3,*)'increase "max_num_domains" and recompile'
+   write(string2,*)'maximum number of domains is ',MAX_NUM_DOMS
+   write(string3,*)'increase "MAX_NUM_DOMS" in the common/types_mod.f90 and recompile'
    call error_handler(E_ERR, 'assert_below_max_num_domains', string1, &
               source, revision, revdate, text2=string2, text3=string3)
 endif
 
 end subroutine assert_below_max_num_domains
+
 
 !-------------------------------------------------------------------------------
 !> Transform the state type to a domain that can be used to write diagnostic 
@@ -1969,13 +2095,14 @@ end subroutine assert_below_max_num_domains
 !> One domain for the whole state. If there is more than one domain:
 !>   Need to change variable names
 !>   Need to change dimension names
-!-------------------------------------------------------------------------------
+
+
 function create_diagnostic_structure() result (diag_id)
 
 integer :: diag_id
 
 integer :: i, j, k, var ! loop variables
-character(len = 8)   :: dom_str = ''
+character(len=8)   :: dom_str = ''
 
 diag_id = diagnostic_domain
 
@@ -2016,8 +2143,12 @@ enddo
 state%domain(diag_id)%dom_size = sum(state%domain(1:state%num_domains)%dom_size)
 
 end function create_diagnostic_structure
+
+
 !-------------------------------------------------------------------------------
 !> Clean up the diagnostic structure
+
+
 subroutine end_diagnostic_structure()
 
 if (diagnostic_initialized) then
@@ -2031,7 +2162,10 @@ endif
 
 end subroutine end_diagnostic_structure
 
+
 !-------------------------------------------------------------------------------
+!>
+
 
 subroutine check_domain_id(dom_id, message)
 integer,          intent(in) :: dom_id

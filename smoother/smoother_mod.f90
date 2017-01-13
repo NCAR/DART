@@ -19,16 +19,13 @@ use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager, all_vars_
                                  all_copies_to_all_vars, get_copy, map_task_to_pe
 use time_manager_mod,     only : time_type, operator(==), print_time
 
-use state_space_diag_mod, only : netcdf_file_type, init_diag_output, aoutput_diagnostics
-!use assim_model_mod,      only : netcdf_file_type, init_diag_output, aoutput_diagnostics
+use state_space_diag_mod, only : netcdf_file_type
 
 use assim_tools_mod,      only : filter_assim, get_missing_ok_status
 use obs_sequence_mod,     only : obs_sequence_type
 use adaptive_inflate_mod, only : adaptive_inflate_type, adaptive_inflate_init, &
                                  do_varying_ss_inflate, do_single_ss_inflate
-use state_vector_io_mod, only : read_ensemble_restart, &
-                                 write_ensemble_restart
-use io_filenames_mod,    only : file_info_type
+use io_filenames_mod,     only : file_info_type
 
 implicit none
 private
@@ -118,14 +115,17 @@ logical :: allow_missing
 ! static_init_smoother initializes module and read namelist
 if ( .not. module_initialized ) call static_init_smoother()
 
+write(errstring, *)'Smoother is under construction for this version'
+call error_handler(E_ERR,'init_smoother',errstring,source,revision,revdate)
+
 ! find out if it is ok to have missing values in the state vector
 allow_missing = get_missing_ok_status()
 
 ! Initialize a null adaptive_inflate type since inflation is not done at lags
 ! NOTE: Using ens_handle here (not lag_handle) so it doesn't die for 0 lag choice
-if(num_lags > 0) call adaptive_inflate_init(lag_inflate, 0, .false., .false., .false., &
-   .true., 'no_lag_inflate', 'no_lag_inflate', 'no_lag_inflate', 1.0_r8, 0.0_r8,       &
-   1.0_r8, 1.0_r8, 0.0_r8, ens_handle, POST_INF_COPY, POST_INF_SD_COPY, allow_missing, "Lag")
+if(num_lags > 0) call adaptive_inflate_init(lag_inflate, 0, .false., .false., &
+   .false. ,.true., 1.0_r8, 0.0_r8,       &
+   1.0_r8, 1.0_r8, 0.0_r8, ens_handle, allow_missing, "Lag")
 
 end subroutine init_smoother
 
@@ -318,14 +318,16 @@ if (output_inflation) then
    state_meta(num_state_copies) = 'inflation sd'
 endif
 
-! Set up diagnostic output for model state, if output is desired
-do i = 1, num_lags
-   ! Generate file name and metadata for lag i output
-   write(file_name, '("Lag_", i5.5, "_Diag")') i
-   write(meta_data_string, '("lag ", i5.5, " state")') i
-   SmootherStateUnit(i) = init_diag_output(file_name, meta_data_string, &
-      num_state_copies, state_meta)
-end do
+!>@todo FIXME JPH: No longer writting diagnostic files.  Need to handle
+!>                 writting out smoother information.
+! ! Set up diagnostic output for model state, if output is desired
+! do i = 1, num_lags
+!    ! Generate file name and metadata for lag i output
+!    write(file_name, '("Lag_", i5.5, "_Diag")') i
+!    write(meta_data_string, '("lag ", i5.5, " state")') i
+!    SmootherStateUnit(i) = init_diag_output(file_name, meta_data_string, &
+!       num_state_copies, state_meta)
+! end do
 
 end subroutine smoother_gen_copy_meta_data
 
@@ -359,7 +361,8 @@ if (.not. output_restart) return
 do i = 1, num_current_lags
    smoother_index = next_index(i)
    write(file_name, '("Lag_", I5.5, "_", A)') i, trim(restart_out_file_name)
-   call write_ensemble_restart(lag_handle(smoother_index), file_info, file_name, start_copy, end_copy)
+   !>@todo FIXME JPH: Need to write out smoother restarts
+   !call write_ensemble_restart(lag_handle(smoother_index), file_info, file_name, start_copy, end_copy)
    !write(errstring, '(A,I4,A,I4)') 'writing restart file ', i, ' from cycle number', smoother_index
    !call error_handler(E_MSG, 'smoother_write_restart', errstring)
 end do

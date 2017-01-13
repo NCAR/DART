@@ -214,9 +214,6 @@
    write_binary_restart_files = .false.,
    /
 
-&io_filenames_nml
-/
-
 &model_mod_check_nml
    verbose               = .false.
    test1thru             = 5
@@ -227,9 +224,6 @@
    interp_test_dx        = 0.1
    /
  
-&state_space_diag_nml
-/
-
 &quality_control_nml
    input_qc_threshold       =  3.0,
    outlier_threshold        = -1.0,

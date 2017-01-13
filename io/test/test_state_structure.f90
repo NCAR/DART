@@ -202,6 +202,9 @@ namelist /test_state_structure_nml/  debug
 ! initialize the dart libs
 call initialize_module()
 
+call error_handler(E_ERR,'test_state_structure ',&
+                   'Has not been tested yet with new naming conventions.',source,revision,revdate)
+
 call initialize_domains()
 
 did1 = add_domain(int(b1sz,i8))

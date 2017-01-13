@@ -74,7 +74,6 @@ public :: get_model_size,                &
           get_close_obs,                 &
           query_vert_localization_coord, &
           vert_convert,                  &
-          construct_file_name_in,        &
           read_model_time,               &
           write_model_time
 
@@ -3654,26 +3653,6 @@ if (debug > 2 .and. do_output()) then
 endif
 
 end subroutine dpth2pres
-
-
-!--------------------------------------------------------------------
-!> construct restart file name for reading
-
-
-function construct_file_name_in(stub, domain, copy)
-
-character(len=*),   intent(in) :: stub
-integer,            intent(in) :: domain
-integer,            intent(in) :: copy
-character(len=256) :: construct_file_name_in
-
-! stub is found in input.nml io_filename_nml
-! restart files typically are of the form
-! pop.r0001.nc
-write(construct_file_name_in, '(A, i4.4, A)') trim(stub), copy, ".nc"
-
-
-end function construct_file_name_in
 
 
 !--------------------------------------------------------------------

@@ -128,8 +128,7 @@ public :: get_gridsize,                 &
           compute_gridcell_value,       &
           gridcell_components,          &
           DART_get_var,                 &
-          get_model_time,               &
-          construct_file_name_in
+          get_model_time
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -1996,25 +1995,6 @@ call loc_get_close_obs(gc, base_obs_loc, base_obs_kind, obs_loc, obs_kind, &
                           num_close, close_ind, dist)
 
 end subroutine get_close_obs
-
-
-!--------------------------------------------------------------------
-! New RMA rountines
-!--------------------------------------------------------------------
-!> construct restart file name for reading
-!> model time for CESM format?
-function construct_file_name_in(stub, domain, copy)
-
-character(len=256), intent(in) :: stub
-integer,            intent(in) :: domain
-integer,            intent(in) :: copy
-character(len=256) :: construct_file_name_in
-
-write(construct_file_name_in, '(A, i4.4)') TRIM(stub), copy
-
-end function construct_file_name_in
-
-
 
 function read_model_time(filename)
 !------------------------------------------------------------------

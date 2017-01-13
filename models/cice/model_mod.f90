@@ -133,7 +133,6 @@ public :: get_model_size,                &
           get_close_obs,                 &
           query_vert_localization_coord, &
           vert_convert,                  &
-          construct_file_name_in,        &
           read_model_time,               &
           write_model_time
 
@@ -3349,23 +3348,6 @@ end subroutine test_interpolation
 !CMB eliminated compute_temperature, insitu_temp, dpth2pres, and do_interp
 ! which are not needed for cice
 !------------------------------------------------------------------
-
-!--------------------------------------------------------------------
-!> construct restart file name for reading
-!CMB no change
-function construct_file_name_in(stub, domain, copy)
-
-character(len=256), intent(in) :: stub
-integer,            intent(in) :: domain
-integer,            intent(in) :: copy
-character(len=256) :: construct_file_name_in
-
-! stub is found in input.nml io_filename_nml
-! restart files typically are of the form
-! cice.r0001.nc
-write(construct_file_name_in, '(A, A)') trim(stub), ".nc"
-
-end function construct_file_name_in
 
 !--------------------------------------------------------------------
 !CMB changed heavily

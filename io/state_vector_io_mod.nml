@@ -1,5 +1,4 @@
 &state_vector_io_nml
-   limit_mem                  = HUGE(1_i4),
-   single_precision_output    = .false.,
-   write_binary_restart_files = .false.
+   limit_mem                  = 2100000000
+   single_precision_output    = .false.
 /

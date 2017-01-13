@@ -4,15 +4,17 @@
 !
 ! $Id$
 
+module distributed_state_mod
+
+!> \defgroup distrib_state distributed_state_mod
+!> @{
+!>
 !> Allows a distributed state, or a var complete state
 !> for the forward operator or the mean state
 !> Note that there are two window modules that can be compiled:
 !>    no_cray_win_mod.f90 does not use cray pointers
 !>    cray_win_mod.f90 uses cray pointers
-module distributed_state_mod
 
-!> \defgroup distrib_state distributed_state_mod
-!> @{
 use mpi_utilities_mod,    only : my_task_id, &
                                  get_from_fwd, get_from_mean
 use types_mod,            only : r8, i8

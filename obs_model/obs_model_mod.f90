@@ -12,10 +12,7 @@ use utilities_mod,        only : register_module, error_handler,     &
 use assim_model_mod,      only : aget_closest_state_time_to,         &
                                  get_model_time_step,  adv_1step
 
-
-use state_vector_io_mod,  only : aread_state_restart, open_restart_write, &
-                                 open_restart_read, awrite_state_restart, close_restart
-
+use state_vector_io_mod,  only : read_state, write_state
 
 use obs_sequence_mod,     only : obs_sequence_type, obs_type,  &
                                  get_obs_def, init_obs, destroy_obs, get_num_copies, &
@@ -30,6 +27,7 @@ use ensemble_manager_mod, only : get_ensemble_time, ensemble_type, map_task_to_p
                                  prepare_to_update_vars
 use mpi_utilities_mod,    only : my_task_id, task_sync, block_task, &
                                  sum_across_tasks, shell_execute, my_task_id
+use io_filenames_mod,     only : file_info_type
 
 implicit none
 private
@@ -46,18 +44,10 @@ logical :: module_initialized  = .false.
 integer :: print_timestamps    = 0
 integer :: print_trace_details = 0
 
-! how to write out the state vector for the model_advance
-! generally you want this to be binary for speed/accuracy.
-! however in cases of needing to see what's going on, ascii
-! can be nice.  note that this is independent of the setting
-! for binary/ascii for restart/ic files.  these model advance
-! files are never seen by the user if all is working as expected.
-character(len=16) :: write_format = 'unformatted'
-
 logical :: debug = .false.   ! set to true to get more status msgs
 
 ! Module storage for writing error messages
-character(len = 129) :: errstring, errstring1, errstring2
+character(len=512) :: errstring, errstring1, errstring2
 
 contains
 
@@ -299,7 +289,7 @@ end subroutine move_ahead
 !------------------------------------------------------------------------------
 
 subroutine advance_state(ens_handle, ens_size, target_time, async, adv_ens_command, &
-                         tasks_per_model_advance)
+                         tasks_per_model_advance, file_info_output, file_info_input)
 
 ! Advances all ensemble copies of the state to the target_time.  Note that 
 ! there may be more than ens_size copies in the ens_handle storage. Copies other
@@ -308,11 +298,13 @@ subroutine advance_state(ens_handle, ens_size, target_time, async, adv_ens_comma
 implicit none
 
 ! ens_size is the number of ensembles that are model state and need to be advanced
-type(ensemble_type), intent(inout) :: ens_handle
-type(time_type),     intent(in)    :: target_time
-integer,             intent(in)    :: ens_size, async
-character(len=*),    intent(in)    :: adv_ens_command
-integer,             intent(in)    :: tasks_per_model_advance
+type(ensemble_type),  intent(inout) :: ens_handle
+type(time_type),      intent(in)    :: target_time
+integer,              intent(in)    :: ens_size, async
+character(len=*),     intent(in)    :: adv_ens_command
+integer,              intent(in)    :: tasks_per_model_advance
+type(file_info_type), intent(in)    :: file_info_output
+type(file_info_type), intent(in)    :: file_info_input
 
 character(len = 129), dimension(ens_handle%num_copies) :: ic_file_name, ud_file_name 
 character(len = 129)                                   :: control_file_name
@@ -321,9 +313,9 @@ character(len = 129)                                   :: system_string
 
 type(time_type) :: time_step, ens_time
 integer         :: is1, is2, id1, id2, my_num_state_copies, global_ens_index
-integer         :: i, control_unit, ic_file_unit, ud_file_unit, rc
+integer         :: i, control_unit, rc
 integer         :: need_advance, any_need_advance
-
+logical         :: read_time_from_file = .true.
 
 ! Initialize if needed
 if(.not. module_initialized) then
@@ -388,16 +380,13 @@ ENSEMBLE_MEMBERS: do i = 1, ens_handle%my_num_copies
             source,revision,revdate)
       endif
 
+      !>@todo FIXME write the netCDF restart names into the control file
       ! Create file names for input and output state files for this copy
-      write(ic_file_name(i), '("assim_model_state_ic.", i4.4)') global_ens_index
-      write(ud_file_name(i), '("assim_model_state_ud.", i4.4)') global_ens_index
-
+!     write(ic_file_name(i), '("assim_model_state_ic.", i4.4)') global_ens_index
+!     write(ud_file_name(i), '("assim_model_state_ud.", i4.4)') global_ens_index
 
       ! Open a restart file and write state following a target time
-      ! Force writing to binary to have bit-wise reproducing advances
-      ic_file_unit = open_restart_write(trim(ic_file_name(i)), write_format)
-      call awrite_state_restart(ens_handle%time(i), ens_handle%vars(:, i), ic_file_unit, target_time)
-      call close_restart(ic_file_unit)
+      call write_state(ens_handle, file_info_output)
 
    endif
 
@@ -432,8 +421,8 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
          ! if it needs to create unique filenames for its own use.
          do i = 1, my_num_state_copies
             write(control_unit, '(i5)') ens_handle%my_copies(i)
-            write(control_unit, '(a)' ) trim(ic_file_name(i))
-            write(control_unit, '(a)' ) trim(ud_file_name(i))
+            write(control_unit, '(a)' ) trim(ic_file_name(i)) !>@todo netCDF
+            write(control_unit, '(a)' ) trim(ud_file_name(i)) !>@todo netCDF
          end do
          close(control_unit)
    
@@ -517,11 +506,7 @@ SHELL_ADVANCE_METHODS: if(async /= 0) then
    ! NOTE: if async 2 and we add support for tasks_per_model_advance, then we need
    ! another sync here before trying to read in from a task which might not have been
    ! the one which advanced it.
-   do i = 1, my_num_state_copies
-      ud_file_unit = open_restart_read(trim(ud_file_name(i)))
-      call aread_state_restart(ens_handle%time(i), ens_handle%vars(:, i), ud_file_unit)
-      call close_restart(ud_file_unit)
-   end do
+   call read_state(ens_handle, file_info_input, read_time_from_file, ens_time)
 
 end if SHELL_ADVANCE_METHODS
 

@@ -50,8 +50,12 @@
 /
 
 &state_space_diag_nml
-   make_diagnostic_files = .false.
-   single_file = .true.
+   stages_to_write          = 'input','preassim','postassim','output'
+   num_output_state_members = 100
+   output_restarts          = .true.
+   output_mean              = .true.
+   output_sd                = .true.
+   output_inflation         = .true.
 /
 
 &test_state_structure_nml

@@ -96,9 +96,10 @@ echo "Running DART test on $host"
 if ( 1 == 1 ) then
 foreach MODEL ( \
   bgrid_solo \
-  cam \
+  cam-fv \
   cice \
   cm1 \
+  lorenz_63 \
   lorenz_96 \
   mpas_atm \
   POP \

@@ -25,15 +25,16 @@ use mpi_utilities_mod,    only : my_task_id, send_to, receive_from, reduce_min_m
 implicit none
 private
 
-public :: update_inflation,           adaptive_inflate_end,          do_obs_inflate,     &
+public :: update_inflation,                                          do_obs_inflate,     &
           do_varying_ss_inflate,      do_single_ss_inflate,          inflate_ens,        &
-          adaptive_inflate_init,      adaptive_inflate_type,         get_inflate,        &
-          get_sd,                     set_inflate,                   set_sd,             &
-          output_inflate_diagnostics, deterministic_inflate,         solve_quadratic,    &
+          adaptive_inflate_init,      adaptive_inflate_type,                             &
+                                      deterministic_inflate,         solve_quadratic,    &
           log_inflation_info,         get_minmax_task_zero,          mean_from_restart,  &
-          sd_from_restart,            get_inflation_in_filename,     get_inflation_out_filename,  &
+          sd_from_restart,                                                               &
           output_inf_restart,         get_inflate_mean,              get_inflate_sd,     &
-          get_is_prior,               get_is_posterior,              do_ss_inflate
+          get_is_prior,               get_is_posterior,              do_ss_inflate,      &
+          set_inflation_mean_copy,    set_inflation_sd_copy,         get_inflation_mean_copy, &
+          get_inflation_sd_copy
 
 
 ! version controlled file description for error handling, do not edit
@@ -53,9 +54,11 @@ character(len=128), parameter :: revdate  = "$Date$"
 type adaptive_inflate_type
    private
    ! Flavor can be 0:none, 1:obs_inflate, 2:varying_ss_inflate, 3:single_ss_inflate
-   integer               :: inflation_flavor, obs_diag_unit
-   logical               :: output_restart, deterministic
-   character(len = 129)  :: in_file_name, out_file_name, diag_file_name
+   ! Deprecating 1:obs_inflate, there is concerns how the observation space inflation
+   ! is happening. JPH.
+   integer               :: inflation_flavor
+   logical               :: output_restart = .false.
+   logical               :: deterministic
    real(r8)              :: inflate, sd, sd_lower_bound, inf_lower_bound, inf_upper_bound
    ! Include a random sequence type in case non-deterministic inflation is used
    type(random_seq_type) :: ran_seq
@@ -65,10 +68,12 @@ type adaptive_inflate_type
    logical               :: sd_from_restart
    logical               :: prior = .false.
    logical               :: posterior = .false.
+   integer               :: input_mean_copy = -1 !>todo NO_COPY_PRESENT
+   integer               :: input_sd_copy   = -1
 end type adaptive_inflate_type
 
 ! Module storage for writing error messages
-character(len = 255) :: msgstring
+character(len=512) :: msgstring, msgstring2
 
 ! Flag indicating whether module has been initialized
 logical :: initialized = .false.
@@ -107,26 +112,6 @@ type(adaptive_inflate_type) :: inflation
 logical :: output_inf_restart
 
 output_inf_restart = inflation%output_restart
-
-end function output_inf_restart
-
-!------------------------------------------------------------------
-function get_inflation_in_filename(inflation)
-
-type(adaptive_inflate_type) :: inflation
-character(len = 129)  :: get_inflation_in_filename
-
-get_inflation_in_filename = inflation%in_file_name
-
-end function
-
-!------------------------------------------------------------------
-function get_inflation_out_filename(inflation)
-
-type(adaptive_inflate_type) :: inflation
-character(len = 129)  :: get_inflation_out_filename
-
-get_inflation_out_filename = inflation%out_file_name
 
 end function
 
@@ -187,9 +172,9 @@ end function do_ss_inflate
 !------------------------------------------------------------------
 
 subroutine adaptive_inflate_init(inflate_handle, inf_flavor, mean_from_restart, &
-   sd_from_restart, output_restart, deterministic, in_file_name, out_file_name, &
-   diag_file_name, inf_initial, sd_initial, inf_lower_bound, inf_upper_bound, &
-   sd_lower_bound, ens_handle, ss_inflate_index, ss_inflate_sd_index, missing_ok, label)
+   sd_from_restart, output_inflation, deterministic, & 
+   inf_initial, sd_initial, inf_lower_bound, inf_upper_bound, &
+   sd_lower_bound, ens_handle, missing_ok, label)
 
 ! Initializes an adaptive_inflate_type 
 
@@ -197,21 +182,14 @@ type(adaptive_inflate_type), intent(inout) :: inflate_handle
 integer,                     intent(in)    :: inf_flavor
 logical,                     intent(in)    :: mean_from_restart
 logical,                     intent(in)    :: sd_from_restart
-logical,                     intent(in)    :: output_restart
+logical,                     intent(in)    :: output_inflation
 logical,                     intent(in)    :: deterministic
-character(len = *),          intent(in)    :: in_file_name
-character(len = *),          intent(in)    :: out_file_name
-character(len = *),          intent(in)    :: diag_file_name
 real(r8),                    intent(in)    :: inf_initial, sd_initial
 real(r8),                    intent(in)    :: inf_lower_bound, inf_upper_bound
 real(r8),                    intent(in)    :: sd_lower_bound
 type(ensemble_type),         intent(inout) :: ens_handle
-integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
 logical,                     intent(in)    :: missing_ok
 character(len = *),          intent(in)    :: label
-
-character(len = 128) :: rsread, nmread
-integer  :: restart_unit, io
 
 ! Record the module version if this is first initialize call
 if(.not. initialized) then
@@ -226,44 +204,10 @@ if(.not. deterministic) then
    call init_random_seq(inflate_handle%ran_seq, my_task_id()+1)
 endif
 
-! more information for users to document what they selected in the nml:
-! if flavor > 0, look at read_from_restart for both mean and sd.
-! print the actual value used if from namelist, or say
-! what restart file is used if reading from file.
-if (inf_flavor > 0) then
-   if (mean_from_restart .and. sd_from_restart) then 
-      rsread = 'both mean and sd read from this restart file: ' // trim(in_file_name)
-      call error_handler(E_MSG, trim(label) // ' inflation:', trim(rsread), &
-         source, revision, revdate)
-   else if (mean_from_restart) then
-      rsread = 'mean read from this restart file: ' // trim(in_file_name)
-      write(nmread, '(A, F12.6)') 'sd read from namelist as ', sd_initial
-      call error_handler(E_MSG, trim(label) // ' inflation:', trim(rsread), &
-         source, revision, revdate)
-      call error_handler(E_MSG, trim(label) // ' inflation:', trim(nmread), &
-         source, revision, revdate)
-   else if (sd_from_restart) then
-      write(nmread, '(A, F12.6)') 'mean read from namelist as ', inf_initial
-      rsread = 'sd read from this restart file: ' // trim(in_file_name)
-      call error_handler(E_MSG, trim(label) // ' inflation:', trim(nmread), &
-         source, revision, revdate)
-      call error_handler(E_MSG, trim(label) // ' inflation:', trim(rsread), &
-         source, revision, revdate)
-   else
-      write(nmread, '(A, F12.6, 1X, F12.6)') 'mean and sd read from namelist as ', &
-         inf_initial, sd_initial
-      call error_handler(E_MSG, trim(label) // ' inflation:', trim(nmread), &
-         source, revision, revdate)
-   endif
-endif
-
 ! Load up the structure first to keep track of all details of this inflation type
 inflate_handle%inflation_flavor   = inf_flavor
-inflate_handle%output_restart     = output_restart
+inflate_handle%output_restart     = output_inflation
 inflate_handle%deterministic      = deterministic
-inflate_handle%in_file_name       = in_file_name
-inflate_handle%out_file_name      = out_file_name
-inflate_handle%diag_file_name     = diag_file_name
 inflate_handle%inflate            = inf_initial
 inflate_handle%sd                 = sd_initial
 inflate_handle%inf_lower_bound    = inf_lower_bound
@@ -275,9 +219,6 @@ inflate_handle%sd_from_restart    = sd_from_restart
 ! Prior and posterior are intialized to false
 if (trim(label)=='Prior') inflate_handle%prior = .true.
 if (trim(label)=='Posterior') inflate_handle%posterior = .true.
-
-! Set obs_diag unit to -1 indicating it has not been opened yet
-inflate_handle%obs_diag_unit = -1
 
 ! Cannot support non-determistic inflation and an inf_lower_bound < 1
 if(.not. deterministic .and. inf_lower_bound < 1.0_r8) then
@@ -295,68 +236,16 @@ inflate_handle%minmax_sd(:)   = missing_r8
 ! Read type 1 (observation space inflation)
 if(inf_flavor == 1) then
 
-   ! Initialize observation space inflation values from restart files
-   ! Only single values for inflation, inflation_sd (not arrays)
-   if(mean_from_restart .or. sd_from_restart) then
-      ! Open the file
-      restart_unit = open_file(in_file_name, form='formatted', action='read')
-      read(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
-      if (io /= 0) then
-         write(msgstring, *) 'unable to read inflation restart values from ', &
-                              trim(in_file_name)
-         call error_handler(E_ERR, 'adaptive_inflate_init', &
-            msgstring, source, revision, revdate)
-      endif
-      call close_file(restart_unit)
-   endif
-
-
-   ! If using the namelist values, set (or overwrite) them here.
-   if (.not. mean_from_restart) inflate_handle%inflate = inf_initial
-   if (.not.   sd_from_restart) inflate_handle%sd      = sd_initial
-
-   inflate_handle%minmax_mean(:) = inflate_handle%inflate
-   inflate_handle%minmax_sd(:)   = inflate_handle%sd
+   write(msgstring,  *) 'No longer supporting observation space inflation ', &
+                        '(i.e. inf_flavor = 1).'
+   write(msgstring2, *) 'Please contact dart@ucar.edu if you would like to use ', &
+                        'observation space inflation'
+   call error_handler(E_ERR, 'adaptive_inflate_init', &
+      msgstring, source, revision, revdate, text2=msgstring2)
 
 endif
 
 end subroutine adaptive_inflate_init
-
-
-!------------------------------------------------------------------
-! For obs_space_inflation the restart file is written out here.
-subroutine adaptive_inflate_end(inflate_handle, state_ens_handle, ss_inflate_index, &
-   ss_inflate_sd_index)
-
-type(adaptive_inflate_type), intent(in)    :: inflate_handle
-type(ensemble_type),         intent(inout) :: state_ens_handle
-integer,                     intent(in)    :: ss_inflate_index, ss_inflate_sd_index
-
-integer :: restart_unit, io
-
-! Flavor 1 is observation space, write its restart directly
-if(do_obs_inflate(inflate_handle) .and. inflate_handle%output_restart) then
-
-   ! Open the restart file
-   if (my_task_id() == 0) then
-      restart_unit = open_file(inflate_handle%out_file_name, &
-                              form = 'formatted', action='write')
-      write(restart_unit, *, iostat = io) inflate_handle%inflate, inflate_handle%sd
-         if (io /= 0) then
-            write(msgstring, *) 'unable to write into inflation restart file ', &
-                              trim(inflate_handle%out_file_name)
-            call error_handler(E_ERR, 'adaptive_inflate_end', &
-               msgstring, source, revision, revdate)
-         endif
-      call close_file(restart_unit)
-   endif
-
-endif
-
-! Need to close diagnostic files for observation space if in use
-if(inflate_handle%obs_diag_unit > -1) call close_file(inflate_handle%obs_diag_unit)
-   
-end subroutine adaptive_inflate_end
 
 !------------------------------------------------------------------
 
@@ -368,6 +257,13 @@ logical                                 :: do_obs_inflate
 type(adaptive_inflate_type), intent(in) :: inflate_handle
 
 do_obs_inflate = (inflate_handle%inflation_flavor == 1)
+
+if (do_obs_inflate) then
+  write(msgstring,  *) 'observation space inflation not suppported (i.e. inf_flavor = 1)'
+  write(msgstring2, *) 'please contact dart if you would like to use this functionality'
+  call error_handler(E_ERR, 'do_obs_inflate', &
+     msgstring, source, revision, revdate, text2=msgstring2)
+endif
 
 end function do_obs_inflate
 
@@ -410,117 +306,6 @@ type(adaptive_inflate_type), intent(in) :: inflate_handle
 deterministic_inflate = inflate_handle%deterministic
 
 end function deterministic_inflate
-
-!------------------------------------------------------------------
-
-function get_inflate(inflate_handle)
-
-! The single real value inflate contains the obs_space inflation value
-! when obs_space inflation is in use and this retrieves it.
-
-real(r8)                                :: get_inflate
-type(adaptive_inflate_type), intent(in) :: inflate_handle
-
-if(do_obs_inflate(inflate_handle)) then
-   get_inflate = inflate_handle%inflate
-else
-   write(msgstring, *) 'This routine can only be used with obs_space inflation'
-   call error_handler(E_ERR, 'get_inflate', msgstring, source, revision, revdate)
-endif
-
-end function get_inflate
-
-!------------------------------------------------------------------
-
-function get_sd(inflate_handle)
-
-! The single real value inflate_sd contains the obs_space inflate_sd value
-! when obs_space inflation is in use and this retrieves it.
-
-real(r8)                                :: get_sd
-type(adaptive_inflate_type), intent(in) :: inflate_handle
-
-if(do_obs_inflate(inflate_handle)) then
-   get_sd = inflate_handle%sd
-else
-   write(msgstring, *) 'This routine can only be used with obs_space inflation'
-   call error_handler(E_ERR, 'get_sd', msgstring, source, revision, revdate)
-endif
-
-end function get_sd
-
-!------------------------------------------------------------------
-
-subroutine set_inflate(inflate_handle, inflate)
-
-! The single real value inflate contains the obs_space inflation value
-! when obs_space inflation is in use and this sets it.
-
-type(adaptive_inflate_type), intent(inout) :: inflate_handle
-real(r8),                    intent(in)    :: inflate
-
-if(do_obs_inflate(inflate_handle)) then
-   inflate_handle%inflate = inflate
-else
-   write(msgstring, *) 'This routine can only be used with obs_space inflation'
-   call error_handler(E_ERR, 'set_inflate', msgstring, source, revision, revdate)
-endif
-
-end subroutine set_inflate
-
-!------------------------------------------------------------------
-
-subroutine set_sd(inflate_handle, sd)
-
-! The single real value inflate_sd contains the obs_space inflate_sd value
-! when obs_space inflation is in use and this sets it.
-
-type(adaptive_inflate_type), intent(inout) :: inflate_handle
-real(r8),                    intent(in)    :: sd
-
-if(do_obs_inflate(inflate_handle)) then
-   inflate_handle%sd = sd
-else
-   write(msgstring, *) 'This routine can only be used with obs_space inflation'
-   call error_handler(E_ERR, 'set_sd', msgstring, source, revision, revdate)
-endif
-
-end subroutine set_sd
-
-!------------------------------------------------------------------
-
-subroutine output_inflate_diagnostics(inflate_handle, time)
-
-type(adaptive_inflate_type), intent(inout) :: inflate_handle
-type(time_type),             intent(in)    :: time
-
-integer :: days, seconds
-
-! Diagnostics for state space inflate are done by the filter on the state-space
-! netcdf diagnostic files. Here, need to do initial naive ascii dump for obs space.
-! Values can come from storage in this module directly.
-
-! Only need to do something if obs_space
-if(do_obs_inflate(inflate_handle)) then
-   ! If unit is -1, it hasn't been opened yet, do it.
-   if(inflate_handle%obs_diag_unit == -1) then
-      ! Open the file
-      inflate_handle%obs_diag_unit = open_file(inflate_handle%diag_file_name, &
-                                               form='formatted', action='write')
-   endif
-
-   ! Get the time in days and seconds
-   call get_time(time, seconds, days)
-   ! Write out the time followed by the values
-   write(inflate_handle%obs_diag_unit, *) days, seconds, inflate_handle%inflate, &
-      inflate_handle%sd
-
-   ! This code intentionally does not close the file handle because
-   ! this routine will be called multiple times.  It is closed in the
-   ! adaptive_inflate_end routine.
-endif
-
-end subroutine output_inflate_diagnostics
 
 !------------------------------------------------------------------
 
@@ -1005,6 +790,47 @@ endif
 endif
 
 end subroutine get_minmax_task_zero
+
+!-----------------------------------------------------------------------
+
+subroutine set_inflation_mean_copy(inflation_handle, c)
+type(adaptive_inflate_type), intent(inout) :: inflation_handle
+integer,                     intent(in)    :: c
+
+inflation_handle%input_mean_copy = c
+
+end subroutine set_inflation_mean_copy
+
+!-----------------------------------------------------------------------
+
+subroutine set_inflation_sd_copy(inflation_handle, c)
+type(adaptive_inflate_type), intent(inout) :: inflation_handle
+integer,                     intent(in)    :: c
+
+inflation_handle%input_sd_copy = c
+
+end subroutine set_inflation_sd_copy
+
+!-----------------------------------------------------------------------
+
+function get_inflation_mean_copy(inflation_handle) result (c)
+type(adaptive_inflate_type), intent(in) :: inflation_handle
+integer :: c
+
+c = inflation_handle%input_mean_copy
+
+end function get_inflation_mean_copy
+
+!-----------------------------------------------------------------------
+
+function get_inflation_sd_copy(inflation_handle) result (c)
+type(adaptive_inflate_type), intent(in) :: inflation_handle
+integer :: c
+
+c = inflation_handle%input_sd_copy
+
+end function get_inflation_sd_copy
+
 
 !========================================================================
 ! end module adaptive_inflate_mod

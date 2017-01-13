@@ -21,6 +21,7 @@ public :: SECPERDAY
 public :: t_kelvin, es_alpha, es_beta, es_gamma, gas_constant_v, gas_constant
 public :: L_over_Rv, ps0, earth_radius, gravity
 public :: metadatalength, obstypelength, varnamelength, vtablenamelength
+public :: MAX_NUM_DOMS
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -39,6 +40,8 @@ integer, parameter :: obstypelength    = 31 ! because of variable name limits.
                                             ! use this for obs types/kinds
 integer, parameter :: vtablenamelength = 64 ! use this for the model_mod variable table items
                                            
+integer, parameter :: MAX_NUM_DOMS     = 10 ! max num domains. this is arbitrarily 
+                                            ! based on WRF's maximum number of domains
 
 !----------------------------------------------------------------------------
 ! Attributes for variable kinds -- declaring sizes explicitly means we know
@@ -73,6 +76,7 @@ integer, parameter :: i8 = SELECTED_INT_KIND(13)
 ! real precision:
 integer, parameter :: r4 = SELECTED_REAL_KIND(6,30)
 integer, parameter :: r8 = SELECTED_REAL_KIND(12)   ! real r8
+! integer, parameter :: r8 = r4                       ! alias r8 to r4
 
 ! complex precision:
 integer, parameter :: c4 = SELECTED_REAL_KIND(6,30)
@@ -80,7 +84,6 @@ integer, parameter :: c8 = SELECTED_REAL_KIND(12)
 
 ! TO RUN WITH REDUCED PRECISION REALS (and use correspondingly less memory)
 ! comment OUT the r8 definition above and use this one:
-! integer, parameter :: r8 = r4                       ! alias r8 to r4
 
 
 ! 'digits12' is reserved for real variables that MUST retain 64 bits of

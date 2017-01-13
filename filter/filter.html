@@ -701,50 +701,49 @@ prematurely terminating the namelist.
 <div class=namelist>
 <pre>
 &amp;filter_nml
-   async                    = 0,
-   adv_ens_command          = "./advance_model.csh",
-   ens_size                 = 20,
-   start_from_restart       = .false.,
-   output_restart           = .false.,
-   obs_sequence_in_name     = "obs_seq.out",
-   obs_sequence_out_name    = "obs_seq.final",
-   restart_in_file_name     = "filter_ics",
-   restart_out_file_name    = "filter_restart",
-   init_time_days           = 0,
-   init_time_seconds        = 0,
-   first_obs_days           = -1,
-   first_obs_seconds        = -1,
-   last_obs_days            = -1,
-   last_obs_seconds         = -1,
-   num_output_state_members = 0,
-   num_output_obs_members   = 0,
-   output_interval          = 1,
-   num_groups               = 1,
-   input_qc_threshold       =  3.0,
-   outlier_threshold        = -1.0,
-   enable_special_outlier_code = .false.,
-   output_forward_op_errors = .false.,
-   output_restart_mean      = .false.,
-   output_timestamps        = .false.,
-   output_inflation         = .true.,
-   trace_execution          = .false.,
-   silence                  = .false.,
+   async                        = 0,
+   adv_ens_command              = "./advance_model.csh",
+   ens_size                     = 20,
+   stages_to_write              = 'output'
+   output_restarts              = .true.,
+   output_mean                  = .true.,
+   output_sd                    = .true.,
+   single_file_in               = .false.,
+   single_file_out              = .false.,
+   input_restart_file_list      = 'null'
+   output_restart_file_list     = 'null',
+   obs_sequence_in_name         = "obs_seq.out",
+   obs_sequence_out_name        = "obs_seq.final",
+   init_time_days               = 0,
+   init_time_seconds            = 0,
+   first_obs_days               = -1,
+   first_obs_seconds            = -1,
+   last_obs_days                = -1,
+   last_obs_seconds             = -1,
+   num_output_state_members     = 0,
+   num_output_obs_members       = 0,
+   output_interval              = 1,
+   num_groups                   = 1,
+   output_forward_op_errors     = .false.,
+   output_timestamps            = .false.,
+   trace_execution              = .false.,
+   silence                      = .false.,
+   distributed_state            = .true.,
+   write_all_stages_at_end      = .false. 
+   perturb_from_single_instance = .false.,
+   perturbation_amplitude       = 0.2,
 
-   inf_flavor                  = 0,                       0,
-   inf_initial_from_restart    = .false.,                 .false.,
-   inf_sd_initial_from_restart = .false.,                 .false.,
-   inf_output_restart          = .false.,                 .false.,
-   inf_deterministic           = .true.,                  .true.,
-   inf_in_file_name            = 'not_initialized',       'not_initialized',
-   inf_out_file_name           = 'not_initialized',       'not_initialized',
-   inf_diag_file_name          = 'not_initialized',       'not_initialized',
-   inf_initial                 = 1.0,                     1.0,
-   inf_sd_initial              = 0.0,                     0.0,
-   inf_damping                 = 1.0,                     1.0,
-   inf_lower_bound             = 1.0,                     1.0,
-   inf_upper_bound             = 1000000.0,               1000000.0,
-   inf_sd_lower_bound          = 0.0,                     0.0
-/
+   inf_flavor                   = 0,                       0,
+   inf_initial_from_restart     = .false.,                 .false.,
+   inf_sd_initial_from_restart  = .false.,                 .false.,
+   inf_deterministic            = .true.,                  .true.,
+   inf_initial                  = 1.0,                     1.0,
+   inf_sd_initial               = 0.0,                     0.0,
+   inf_damping                  = 1.0,                     1.0,
+   inf_lower_bound              = 1.0,                     1.0,
+   inf_upper_bound              = 1000000.0,               1000000.0,
+   inf_sd_lower_bound           = 0.0,                     0.0
+ /
 </pre>
 </div>
 
@@ -755,7 +754,7 @@ prematurely terminating the namelist.
 Particular options to be aware of are:
 async, ens_size, cutoff (localization radius), inflation flavor, outlier_threshold,
 restart filenames (including inflation), obs_sequence_in_name, horiz_dist_only,
-binary or ascii controls for state vector and observation sequence file formats.
+binary or ascii controls for observation sequence file formats.
 Some of these important items are located in other namelists, but all are in the
 same input.nml file.
 </P>
@@ -784,6 +783,7 @@ being for the posterior inflation.
           <LI>2 is shell command</LI>
           <LI>4 is mpi-job script</LI>
          </UL>
+    Ignored if filter is not controlling the model advance.
  </TD></TR>
 
 <TR><TD>adv_ens_command</TD>
@@ -796,15 +796,53 @@ being for the posterior inflation.
     <TD>Size of ensemble.
  </TD></TR>
 
-<TR><TD>start_from_restart</TD>
-    <TD>logical</TD>
-    <TD>True means start from a restart file, false means 
-        perturb a single state vector in restart file. 
+<TR><TD>stages_to_write</TD>
+    <TD>character(len=10) dimension(4)</TD>
+    <TD>Controls diagnostic and restart output.  Valid values are 'input',
+     'preassim', 'postassim', and 'output'.  
  </TD></TR>
 
-<TR><TD>output_restart</TD>
+<TR><TD>output_restarts</TD>
     <TD>logical</TD>
-    <TD>True means output a restart file. 
+    <TD>True means output all ensemble members in the 'output' stage, and
+     output 'num_output_state_members' in the 'preassim' and 'postassim' 
+     diagnostic stages.
+ </TD></TR>
+
+<TR><TD>output_mean</TD>
+    <TD>logical</TD>
+    <TD>True means output the ensemble mean in any stage that is enabled.
+ </TD></TR>
+
+<TR><TD>output_sd</TD>
+    <TD>logical</TD>
+    <TD>True means output the ensemble standard deviation in any stage that is enabled.
+ </TD></TR>
+
+<TR><TD>single_file_in</TD>
+    <TD>logical</TD>
+    <TD>True means all ensemble members are read from a single NetCDF file.  False means
+    each member is in a separate file.  CURRENTLY NOT SUPPORTED - only multiple files
+    can be used.
+ </TD></TR>
+
+<TR><TD>single_file_out</TD>
+    <TD>logical</TD>
+    <TD>True means all ensemble members are written to a single NetCDF file.  False means
+    each member is output in a separate file.  CURRENTLY NOT SUPPORTED - only multiple files
+    can be used.
+ </TD></TR>
+
+<TR><TD>input_restart_file_list</TD>
+    <TD>character(len=256) dimension(10)</TD>
+    <TD>A list of files, one per domain.  Each file must be a text file containing
+    the names of the NetCDF files to open, one per ensemble member, one per line.
+ </TD></TR>
+
+<TR><TD>output_restart_file_list</TD>
+    <TD>character(len=256) dimension(10)</TD>
+    <TD>A list of files, one per domain.  Each file must be a text file containing
+    the names of the NetCDF files to open, one per ensemble member, one per line.
  </TD></TR>
 
 <TR><TD>obs_sequence_in_name</TD>
@@ -815,16 +853,6 @@ being for the posterior inflation.
 <TR><TD>obs_sequence_out_name</TD>
     <TD>character(len=129)</TD>
     <TD>File name to which to write output observation sequence. 
- </TD></TR>
-
-<TR><TD>restart_in_file_name</TD>
-    <TD>character(len=129)</TD>
-    <TD>File containing state restart vectors. 
- </TD></TR>
-
-<TR><TD>restart_out_file_name</TD>
-    <TD>character(len=129)</TD>
-    <TD>File to which to write restart state vectors. 
  </TD></TR>
 
 <TR><TD>init_time_days</TD>
@@ -866,7 +894,7 @@ being for the posterior inflation.
 <TR><TD>num_output_state_members</TD>
     <TD>integer</TD>
     <TD>Number of ensemble members to be included in the state 
-        diagnostic output.
+        diagnostic output for stages 'preassim' and 'postassim'.
  </TD></TR>
 
 <TR><TD>num_output_obs_members</TD>
@@ -884,33 +912,6 @@ being for the posterior inflation.
 <TR><TD>num_groups</TD>
     <TD>integer</TD>
     <TD>Number of groups for hierarchical filter.
- </TD></TR>
-
-<TR><TD>outlier_threshold</TD>
-    <TD>real(r8)</TD>
-    <TD>Reject observation if prior mean is more than this many 
-        standard deviations from observation. Negative means no check. 
- </TD></TR>
-
-<TR><TD>enable_special_outlier_code</TD>
-    <TD>logical</TD>
-    <TD>If true call a subroutine which can be customized by the user to do 
-more elaborate outlier thresholding tests.  See <em class=code>failed_outlier()
-</em> near the bottom of <em class=file>filter.f90</em> for where to add the 
-custom code, and for commented out examples of possible tests.  Turning this
-flag on and off allows comparisons to be made between the default outlier
-threshold code and any custom settings without having to recompile the code.
-To change the outlier behavior you will have to add code in
-<em class=file>DART/filter/filter.f90</em> and recompile your executables.
-As distributed, turning this flag on and off will make no difference in the
-results.
- </TD></TR>
-
-<TR><TD>input_qc_threshold</TD>
-    <TD>real(r8)</TD>
-    <TD>Reject observation if incoming QC value exceeds this value.
-        Incoming observations usually have a QC value provided with
-        the dataset, e.g. NCEP obs include an incoming data QC.  
  </TD></TR>
 
 <TR><TD>output_forward_op_errors</TD>
@@ -931,26 +932,10 @@ observation sequence file and a small number of ensemble members to diagnose
 forward operator problems.
  </TD></TR>
 
-<TR><TD>output_restart_mean</TD>
-    <TD>logical</TD>
-    <TD>True means output a restart file which contains the ensemble mean.  
-The file name will be the value of the namelist item
-<em class=code>&amp;filter_nml::restart_out_file_name</em>
-with the string <em class=code>.mean</em> appended.  Even if 
-<em class=code>&amp;ensemble_manager_nml::single_restart_file_out</em>
-is true the mean data will be written to a separate file.
- </TD></TR>
-
 <TR><TD>output_timestamps</TD>
     <TD>logical</TD>
     <TD>True means write timing information to the log before and after 
         the model advance and the observation assimilation phases.
- </TD></TR>
-
-<TR><TD>output_inflation</TD>
-    <TD>logical</TD>
-    <TD>True means output inflation values in the prior and posterior
-        diagnostic files.  False omits them.
  </TD></TR>
 
 <TR><TD>trace_execution</TD>
@@ -967,6 +952,36 @@ is true the mean data will be written to a separate file.
         if the execution time becomes dominated by the volume of output. 
  </TD></TR>
 
+<TR><TD>distributed_state</TD>
+    <TD>logical</TD>
+    <TD>True means the ensemble data is distributed across all tasks as it
+        is read in, so a single task never has to have enough memory to store
+        the data for an ensemble member.  Large models should always set this
+        to .true., while for small models it may be faster to set this to .false.
+ </TD></TR>
+
+<TR><TD>write_all_stages_at_end</TD>
+    <TD>logical</TD>
+    <TD>For most cases this should be .false. and data will be output as it is
+        generated for the 'preassim', 'postassim' diagnostics, and then restart
+        data will be output at the end.  However, if I/O time dominates the runtime,
+        setting this to .true. will store the data and it can all be written in parallel
+        at the end of the execution.  This will require slightly more memory at
+        runtime, but can lower the cost of the job significantly in some cases.
+ </TD></TR>
+
+<TR><TD>perturb_from_single_instance</TD>
+    <TD>logical</TD>
+    <TD>False means start from an ensemble-sized set of restart files, true means 
+        perturb a single state vector from one restart file. 
+ </TD></TR>
+
+<TR><TD>perturbation_amplitude</TD>
+    <TD>real(r8)</TD>
+    <TD>Standard deviation for the gaussian noise added when generating
+        perturbed ensemble members.  Ignored if 'perturb_from_single_instance' is false.
+ </TD></TR>
+
 <TR><TD colspan=3>All subsequent variables are arrays of length 2.<br />
                   The first element is for the prior, the second element is 
                   for the posterior.
@@ -977,7 +992,6 @@ is true the mean data will be written to a separate file.
     <TD>Inflation flavor for [prior, posterior]
         <UL>
          <LI>0 = none</LI>
-         <LI>1 = obs_space</LI>
          <LI>2 = spatially-varying state space</LI>
          <LI>3 = spatially-fixed state space </LI>
         </UL>
@@ -1002,27 +1016,6 @@ is true the mean data will be written to a separate file.
 <TR><TD>inf_deterministic</TD>
     <TD>logical array dimension(2)</TD>
     <TD>True means deterministic inflation, false means stochastic. 
- </TD></TR>
-
-<TR><TD>inf_output_restart</TD>
-    <TD>logical array dimension(2)</TD>
-    <TD>Output an inflation restart file if true. 
- </TD></TR>
-
-<TR><TD>inf_in_file_name</TD>
-    <TD>character(len=129) dimension(2)</TD>
-    <TD>Filename to read inflation restart values from. 
- </TD></TR>
-
-<TR><TD>inf_out_file_name</TD>
-    <TD>character(len=129) dimension(2)</TD>
-    <TD>Filename to write inflation restart values into.
- </TD></TR>
-
-<TR><TD>inf_diag_file_name</TD>
-    <TD>character(len=129) dimension(2)</TD>
-    <TD>Filename to write output diagnostics for observation 
-        space inflation into. 
  </TD></TR>
 
 <TR><TD>inf_initial</TD>
@@ -1065,55 +1058,13 @@ unchanged.
         If using a negative value for <em class=code>sd_initial</em> 
         this should also be negative to preserve the setting.
  </TD></TR>
-
+ 
 </TBODY> 
 </TABLE>
 </div>
 
 <br />
 <br />
-
-<H4 class=indent1>Deprecated or Obsolete namelist variables</H4>
-<P>The following table contains the deprecated or obsolete namelist variables.
-   If only deprecated, the values will have no effect.  If obsolete,
-   it is a FATAL ERROR to have these in the namelist.
-</P>
-
-<div>
-<TABLE border=0 cellpadding=3 width=100% summary='deprecated namelist items'>
-<THEAD align=left>
-<TR><TH>Contents    </TH>
-    <TH>Type        </TH>
-    <TH>Description </TH></TR>
-</THEAD>
-
-<TBODY valign=top>
-<TR><TD>output_state_ens_mean</TD>
-    <TD><b>obsolete</b></TD>
-    <TD>The ensemble mean is now always in the state diagnostic output.
- </TD></TR>
-
-<TR><TD>output_state_ens_spread</TD>
-    <TD><b>obsolete</b></TD>
-    <TD>The ensemble spread is now always in the state diagnostic output.
- </TD></TR>
-
-<TR><TD>output_obs_ens_mean</TD>
-    <TD><b>obsolete</b></TD>
-    <TD>The ensemble mean is now always in the output observation sequence file.
- </TD></TR>
-
-<TR><TD>output_obs_ens_spread</TD>
-    <TD><b>obsolete</b></TD>
-    <TD>The ensemble spread is now always in the output observation sequence file.
- </TD></TR>
-
-<TR><TD>inf_start_from_restart</TD>
-    <TD><b>obsolete</b></TD>
-    <TD>The mean and standard deviation now have separate namelist controls.
- </TD></TR>
-</TBODY>
-</TABLE>
 
 </div>
 

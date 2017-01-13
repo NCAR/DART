@@ -4,10 +4,18 @@
 !
 ! $Id$
 
-program integrate_model
+!> @todo FIXME:  i think this program needs to have 2 restart lists,
+!> one for input, one for output, and possibly an array of ensemble
+!> numbers (not sure about that), which it then uses the read_state()
+!> and write_state() routines to get and put the data after the
+!> model advances.
+
+
 
 ! Program to integrate assimilation model forward for asynchronous filter
 ! execution.
+
+program integrate_model
 
 use time_manager_mod,    only : time_type, operator(<), print_time
 use utilities_mod,       only : register_module,  &
@@ -22,8 +30,11 @@ use ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, &
 use mpi_utilities_mod,    only : initialize_mpi_utilities, finalize_mpi_utilities, &
                                  task_count, iam_task0
 
-use state_vector_io_mod,  only : open_restart_read, open_restart_write, close_restart, &
-                                 awrite_state_restart, aread_state_restart
+use state_vector_io_mod,  only : read_state, write_state
+
+use io_filenames_mod,     only : file_info_type, io_filenames_init, set_io_copy_flag,  &
+                                 set_file_metadata, READ_COPY, WRITE_COPY, &
+                                 get_restart_filename, get_stage_metadata
 
 use types_mod,            only : i8
 
@@ -39,6 +50,8 @@ type(ensemble_type) :: ens_handle
 type(time_type)     :: target_time
 integer             :: iunit, rc
 integer(i8)         :: model_size
+
+type(file_info_type) :: input_file_info, output_file_info
 
 ! to overwrite the target time, set these to something >= 0
 integer :: target_days = -1, target_seconds = -1
@@ -62,20 +75,15 @@ logical :: is_model_advance_file = .true.
 logical             :: trace_execution = .false.
 character(len=128)  :: errstring
 
-! for speed, accuracy - write model_advance files in binary
-! both ways.  for debugging make this 'formatted' instead
-! of 'unformatted' and you can see what's in the ud file.
-character(len = 32) :: advance_restart_format = 'unformatted'
-
 ! Input and output filenames are hardcoded at this point.
-character(len = 132) :: ic_file_name = "temp_ic", ud_file_name = "temp_ud"
+character(len = 132) :: ic_file_name = "temp_ic.nc", ud_file_name = "temp_ud.nc"
 
 ! to enable the use of the namelist, change this to .true. and recompile.
 logical :: use_namelist = .false.
 
 ! only read in if use_namelist is .true. -- ignored otherwise.
 namelist /integrate_model_nml/ &
-   ic_file_name, ud_file_name, advance_restart_format, &
+   ic_file_name, ud_file_name, &
    trace_execution, is_model_advance_file, target_days, target_seconds
 
 
@@ -123,47 +131,39 @@ model_size = get_model_size()
 call init_ensemble_manager(ens_handle, num_copies=1, num_vars=model_size, transpose_type_in = 2)
 call prepare_to_write_to_vars(ens_handle)
 
-if (iam_task0()) then
    !------------------- Read restart from file ----------------------
+   
+   input_file_info = io_filenames_init(1, single_file=.false.)
+   call set_file_metadata(input_file_info, 1, 'temp', 'ic', 'initial condition')
+   call set_io_copy_flag( input_file_info, 1, READ_COPY) 
+   
+   ic_file_name = get_restart_filename(get_stage_metadata(input_file_info),1,1)
    if (trace_execution) write(*,*) 'ready to open input restart file ', trim(ic_file_name)
-
-   iunit = open_restart_read(ic_file_name)
-
-   if (trace_execution) write(*,*) 'opened, iunit = ', iunit
-
-   ! Read in the target time - could make a namelist item that overrides this.
-   call aread_state_restart(ens_handle%time(1), ens_handle%vars(:, 1), iunit, target_time)
+   call read_state(ens_handle, input_file_info, .true., target_time)
 
    if (trace_execution) write(*,*) 'time of data, advance-to are:'
    if (trace_execution) call print_time(ens_handle%time(1))
    if (trace_execution) call print_time(target_time)
 
-   call close_restart(iunit)
    !-----------------  Restart read in --------------------------------
 
    ! Advance this state to the target time
    ! If the model time is past the obs set time, just need to skip
    if (trace_execution) write(*,*) 'calling advance_state if needed'
 
+   output_file_info = io_filenames_init(1, single_file=.false.)
+   call set_file_metadata(output_file_info, 1, 'temp', 'ud', 'advanced member')
+   call set_io_copy_flag( output_file_info, 1, WRITE_COPY) 
+
    if(ens_handle%time(1) < target_time) &
-      call advance_state(ens_handle, ens_size=1, target_time=target_time, &
-         async=0, adv_ens_command='', tasks_per_model_advance=1)
+      call advance_state(ens_handle, 1, target_time, 0, '', 1, input_file_info, output_file_info)
 
    ! Output the restart file if requested; Force to binary for bitwise reproducing
    ! use in filter and perfect_model obs with shell advance options
+   ud_file_name = get_restart_filename(get_stage_metadata(output_file_info),1,1)
    if (trace_execution) write(*,*) 'ready to open output restart file ', trim(ud_file_name)
 
-   iunit = open_restart_write(ud_file_name, advance_restart_format)
-
-   if (trace_execution) write(*,*) 'opened, iunit = ', iunit
-
-   call awrite_state_restart(ens_handle%time(1), ens_handle%vars(:, 1), iunit)
-
-   if (trace_execution) write(*,*) 'time of data after advance:'
-   if (trace_execution) call print_time(ens_handle%time(1))
-
-   call close_restart(iunit)
-endif
+   call write_state(ens_handle, output_file_info)
 
 if (trace_execution) write(*,*) 'end of integrate_model executable'
 call finalize_mpi_utilities()

@@ -9,6 +9,10 @@
 
 program filter
 
+!> \mainpage filter Main DART Ensemble Filtering Program
+!> @{ \brief routine to perform ensemble filtering
+!>
+
 use mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
 use        filter_mod, only : filter_main
 
@@ -21,6 +25,8 @@ call initialize_mpi_utilities('Filter')
 call filter_main()
 
 call finalize_mpi_utilities()
+
+!> @}
 
 end program filter
 

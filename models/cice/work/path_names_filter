@@ -11,7 +11,6 @@ filter/filter.f90
 filter/filter_mod.f90
 io/state_vector_io_mod.f90
 io/io_filenames_mod.f90
-io/copies_on_off_mod.f90
 io/state_structure_mod.f90
 io/state_space_diag_mod.f90
 io/dart_time_io_mod.f90

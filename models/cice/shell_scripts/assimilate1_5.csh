@@ -245,20 +245,6 @@ set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
 set  PRIOR_TF = `echo $MYSTRING[2] | tr '[:upper:]' '[:lower:]'`
 set  POSTE_TF = `echo $MYSTRING[3] | tr '[:upper:]' '[:lower:]'`
 
-# its a little tricky to remove both styles of quotes from the string.
-
-set  MYSTRING = `grep 'inf_in_file_name' input.nml`
-set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
-set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
-set  PRIOR_INF_IFBASE = $MYSTRING[2]
-set  POSTE_INF_IFBASE = $MYSTRING[3]
-
-set  MYSTRING = `grep 'inf_out_file_name' input.nml`
-set  MYSTRING = `echo $MYSTRING | sed -e "s#[=,'\.]# #g"`
-set  MYSTRING = `echo $MYSTRING | sed -e 's#"# #g'`
-set  PRIOR_INF_OFBASE = $MYSTRING[2]
-set  POSTE_INF_OFBASE = $MYSTRING[3]
-
 # IFF we want PRIOR inflation:
 
 if ( $PRIOR_INF > 0 ) then
@@ -289,29 +275,29 @@ ex_end
       
       # Checking for a prior inflation mean file to use
       
-      (ls -rt1 ../cice.${PRIOR_INF_OFBASE}_mean.* | tail -n 1 >! latestfile) > & /dev/null
+      (ls -rt1 ../cice.output_priorinf_mean.* | tail -n 1 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
 
       if ( $nfiles > 0 ) then
          set latest = `cat latestfile`
-         ${LINK} $latest ${PRIOR_INF_IFBASE}_mean.nc
+         ${LINK} $latest input_priorinf_mean.nc
       else
          echo "ERROR: Requested PRIOR inflation but specified no incoming inflation MEAN file."
-         echo "ERROR: expected something like ../cice.${PRIOR_INF_OFBASE}_mean.YYYY-MM-DD-SSSSS.nc"
+         echo "ERROR: expected something like ../cice.output_priorinf_mean.YYYY-MM-DD-SSSSS.nc"
          exit 2
       endif
 
       # Checking for a prior inflation sd file to use
 
-      (ls -rt1 ../cice.${PRIOR_INF_OFBASE}_sd.* | tail -n 1 >! latestfile) > & /dev/null
+      (ls -rt1 ../cice.output_priorinf_sd.* | tail -n 1 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
 
       if ( $nfiles > 0 ) then
          set latest = `cat latestfile`
-         ${LINK} $latest ${PRIOR_INF_IFBASE}_sd.nc
+         ${LINK} $latest input_priorinf_sd.nc
       else
          echo "ERROR: Requested PRIOR inflation but specified no incoming inflation SD file."
-         echo "ERROR: expected something like ../cice.${PRIOR_INF_OFBASE}_sd.YYYY-MM-DD-SSSSS.nc"
+         echo "ERROR: expected something like ../cice.input_priorinf_sd.YYYY-MM-DD-SSSSS.nc"
          exit 2
       endif
 
@@ -350,29 +336,29 @@ ex_end
 
       # Checking for a posterior inflation mean file to use
       
-      (ls -rt1 ../cice.${POSTE_INF_OFBASE}_mean.* | tail -n 1 >! latestfile) > & /dev/null
+      (ls -rt1 ../cice.output_postinf_mean.* | tail -n 1 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
 
       if ( $nfiles > 0 ) then
          set latest = `cat latestfile`
-         ${LINK} $latest ${POSTE_INF_IFBASE}_mean.nc
+         ${LINK} $latest input_postinf_mean.nc
       else
          echo "ERROR: Requested POSTERIOR inflation but specified no incoming inflation MEAN file."
-         echo "ERROR: expected something like ../cice.${POSTE_INF_OFBASE}_mean.YYYY-MM-DD-SSSSS.nc"
+         echo "ERROR: expected something like ../cice.output_postinf_mean.YYYY-MM-DD-SSSSS.nc"
          exit 2
       endif
 
       # Checking for a posterior inflation sd file to use
 
-      (ls -rt1 ../cice.${POSTE_INF_OFBASE}_sd.* | tail -n 1 >! latestfile) > & /dev/null
+      (ls -rt1 ../cice.output_postinf_sd.* | tail -n 1 >! latestfile) > & /dev/null
       set nfiles = `cat latestfile | wc -l`
 
       if ( $nfiles > 0 ) then
          set latest = `cat latestfile`
-         ${LINK} $latest ${POSTE_INF_IFBASE}_sd.nc
+         ${LINK} $latest input_postinf_sd.nc
       else
          echo "ERROR: Requested POSTERIOR inflation but specified no incoming inflation SD file."
-         echo "ERROR: expected something like ../cice.${POSTE_INF_OFBASE}_sd.YYYY-MM-DD-SSSSS.nc"
+         echo "ERROR: expected something like ../cice.output_postinf_sd.YYYY-MM-DD-SSSSS.nc"
          exit 2
       endif
 
@@ -430,9 +416,7 @@ echo "`date` -- END CREATING SAFETY FILES for all ${ensemble_size} members."
 #=========================================================================
 # Block 5: Actually run the assimilation.
 #
-# TODO FIXME ... this whole section
-#
-# Will result in a set of files : 'filter_restart.xxxx'
+# >@todo FIXME ... this whole section
 #
 # REQUIRED DART namelist settings:
 # &filter_nml:           async                   = 0,
@@ -445,14 +429,11 @@ echo "`date` -- END CREATING SAFETY FILES for all ${ensemble_size} members."
 # &filter_nml:           first_obs_seconds       = -1,
 # &filter_nml:           last_obs_days           = -1,
 # &filter_nml:           last_obs_seconds        = -1,
-# &ensemble_manager_nml: single_restart_file_in  = .false.
-# &ensemble_manager_nml: single_restart_file_out = .false.
 #
-# &filter_nml:           direct_netcdf_read      = .true.
-#                        direct_netcdf_write     = .true.
-#                        use_restart_list        = .true.
-#                        overwrite_state_input   = .true.
-#                        restart_list_file       = 'cice_restarts.txt'
+# &filter_nml: input_restart_file_list  = "cice_restarts.txt"
+# &filter_nml: output_restart_file_list = "cice_restarts.txt"
+# &filter_nml: output_restarts          = .true.
+# &filter_nml: stages_to_write          = 'output'
 #=========================================================================
 
 # The cice model_mod.f90:static_init_model() has a hardcoded 'cice.r.nc'
@@ -470,11 +451,11 @@ echo "`date` -- END FILTER"
 # 1) rename DART files to reflect current date and component
 # 2) move to RUNDIR so they get archived and the DART_INFLATION block works next cycle
 
-foreach FILE ( input_mean.nc    input_sd.nc     \
-               output_mean.nc   output_sd.nc    \
-               dart_log*        obs_seq.final   \
-               ${PRIOR_INF_OFBASE}_mean.nc ${PRIOR_INF_OFBASE}_sd.nc \
-               ${POSTE_INF_OFBASE}_mean.nc ${POSTE_INF_OFBASE}_sd.nc )
+foreach FILE ( input_*mean.nc   input_*sd.nc   \
+               preassim_*nc     \
+               postassim_*.nc   \
+               output_*mean.nc  output_*sd.nc  \
+               dart_log*        obs_seq.final )
 
    if ( -e $FILE ) then
       set  FEXT = $FILE:e
@@ -516,7 +497,7 @@ endif
 # by the dart_to_cice program.
 # Each member will do its job in its own directory.
 # Block 7: The ice files have now been updated, move them into position.
-# >@ TODO FIXME ... rename 'dart_to_cice' to 'rebalance_cice' or something
+# >@todo FIXME ... rename 'dart_to_cice' to 'rebalance_cice' or something
 # more accurate.
 #=========================================================================
 

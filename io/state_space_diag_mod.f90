@@ -4,8 +4,8 @@
 !
 ! $Id$
 
-
 module state_space_diag_mod
+
 !> \defgroup state_space_diag_mod state_space_diag_mod
 !> Diagnostic file creation, writing, and closing.
 !>
@@ -43,12 +43,6 @@ module state_space_diag_mod
 !>      the run time of filter is in transposing and reading/writing
 !>      restart files.
 !>          * This is only for ONE timestep runs. - filter must have the output_interval = 1
-!>          * If num_ouput_state_members = 0 the prior mean, sd, inf, inf_sd
-!>            copies are kept and written out at the end of filter
-!>            at the same time as the restart files. (same transpose)
-!>          * If num_output_state_members > 0 then filter_state_space_diagnostics
-!>            calls filter_write_restart_direct to write out the prior output state members
-!>            and the mean, sd, inf, inf_sd.
 !>
 !>  A large amount of code in this module was moved from assim_model_mod and smoother_mod.
 !>  Some routines are only used by the program rms_diag.f90. It is believed that this program
@@ -72,14 +66,10 @@ use adaptive_inflate_mod, only : adaptive_inflate_type
 use mpi_utilities_mod,    only : my_task_id, broadcast_flag
 use utilities_mod,        only : error_handler, E_MSG, E_ERR, E_DBG, E_WARN, get_unit, &
                                  file_to_text, find_textfile_dims, nc_check, &
-                                 do_nml_file, do_nml_term, nmlfileunit, &
-                                 find_namelist_in_file, check_namelist_read, &
-                                 register_module
+                                 register_module, to_upper
 use adaptive_inflate_mod, only : do_varying_ss_inflate, do_single_ss_inflate, &
                                  get_is_prior, get_is_posterior
-use io_filenames_mod,     only : file_info_type
-use state_vector_io_mod,  only : setup_read_write, end_read_write, turn_write_copy_off, &
-                                 turn_write_copy_on, filter_write_restart_direct
+use io_filenames_mod,     only : file_info_type, stage_metadata_type, get_stage_metadata
 
 use state_structure_mod, only : get_num_domains, create_diagnostic_structure, &
                                 get_num_variables, get_num_dims, set_var_id, &
@@ -91,16 +81,13 @@ use netcdf
 use typeSizes ! Part of netcdf?
 
 implicit none
-
 private
 
-public :: filter_state_space_diagnostics, &
+public :: init_state_space_diag, &
           netcdf_file_type, &
           init_diag_output, &
           aoutput_diagnostics, &
-          finalize_diag_output, &
-          skip_diag_files
-
+          finalize_diag_output
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -108,7 +95,10 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-!----------------------------------------------------------------
+!>@todo some of the routines in here are not currently being used but will be useful for 
+!>      reading in single file input.
+
+!-------------------------------------------------------------------------------
 !> output (netcdf) file descriptor (diagnostic file handle)
 !> basically, we want to keep a local mirror of the unlimited dimension
 !> coordinate variable (i.e. time) because dynamically querying it
@@ -129,221 +119,44 @@ type netcdf_file_type
    integer :: diag_id = -1  ! to access state_structure
 end type netcdf_file_type
 
-
 logical :: module_initialized = .false.
 
-! Global storage for error string output
-character(len = 129)  :: msgstring
+! Global storage for error/message string output
+character(len=512)  :: msgstring
 
 
-!-------------------------------------------------------------
-
-
-! Namelist Options:
-! single_file = .true.  All copies all time steps in one file
-! single_file = .false. One copy per file. All time steps in one file (not implemented)
-logical :: single_file = .true.
-
-! make_diagnostic_files = .false. is intended for use with single time step, large models
-logical :: make_diagnostic_files = .true.
-
-!> @todo This needs to be in state_vector_io_mod namelist.
-!> Can we have large file support as the default?
-logical  :: netCDF_large_file_support  = .true.
-
-namelist /state_space_diag_nml/ single_file, make_diagnostic_files, netCDF_large_file_support
+!-------------------------------------------------------------------------------
 
 contains
 
-!-----------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> Initialize the state_space_diagnostic module
-!> Read the namelist
+
+
 subroutine init_state_space_diag()
 
-integer :: iunit, io
+integer :: iunit
 
 if (module_initialized) return
 
 ! Print module information
 call register_module(source, revision, revdate)
 
-! Read the namelist 
-call find_namelist_in_file("input.nml", "state_space_diag_nml", iunit)
-read(iunit, nml = state_space_diag_nml, iostat = io)
-call check_namelist_read(iunit, io, "state_space_diag_nml")
-
-! Output the namelist values if requested
-if (do_nml_file()) write(nmlfileunit, nml=state_space_diag_nml)
-if (do_nml_term()) write(     *     , nml=state_space_diag_nml)
-
 module_initialized = .true.
 
 end subroutine init_state_space_diag
 
-!-----------------------------------------------------------
-!> Accessor for filter to test whether diagnostic files
-!> are in use. This is used in filter_mod in set_state_copies.
-function skip_diag_files()
 
-logical :: skip_diag_files
-
-if (.not. module_initialized) call init_state_space_diag()
-
-skip_diag_files = .not. make_diagnostic_files
-
-end function
-
-!-----------------------------------------------------------
-!> Several options for diagnostic files:
-!>  * model_mod writes the diagnostic file (all copies, all output time steps in one file)
-!>  * dart writes the diagnostic file (all copies, all output time steps in one file)
-!>  * dart writes the diagnostic files (one copy, all timesteps per file)
-!>  * Single timestep runs:
-!>       - If num_output_state_members is 0, the prior ENS_MEAN_COPY, ENS_SD_COPY, INF_COPY, INF_SD_COPY
-!>         are saved until the end.  This is for large models to reduce IO (transpose time).
-subroutine filter_state_space_diagnostics(file_info, curr_ens_time, out_unit, ens_handle, model_size, &
-            num_output_state_members, output_state_mean_index, output_state_spread_index, &
-           output_inflation, ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY)
-
-type(file_info_type),        intent(in)    :: file_info
-type(time_type),             intent(in)    :: curr_ens_time
-type(netcdf_file_type),      intent(inout) :: out_unit
-type(ensemble_type),         intent(inout) :: ens_handle
-integer(i8),                 intent(in)    :: model_size ! why do we pass this in?
-integer,                     intent(in)    :: num_output_state_members
-integer,                     intent(in)    :: output_state_mean_index, output_state_spread_index
-type(adaptive_inflate_type), intent(in)    :: inflate
-! These values depend on prior vs. posterior. You could alter the arguements to this routine,
-! check the inflation handle for prior vs. posterior and use copies_on_off_mod to get these copy
-! numbers.
-integer,                     intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, INF_COPY, INF_SD_COPY
-logical,                     intent(in)    :: output_inflation
-
-if (.not. module_initialized) call init_state_space_diag()
-
-if (make_diagnostic_files) then
-
-   if (single_file) then
-
-      call write_single_diagnostic_file(curr_ens_time, out_unit, ens_handle, model_size, &
-         num_output_state_members, output_state_mean_index, output_state_spread_index, &
-           output_inflation, ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY)
-
-   else  ! one file per copy. multiple time steps 1 copy per file.
-
-      call error_handler(E_ERR, 'filter_state_space_diagnostics', ' 1 copy per file no code yet', source,revision,revdate)
-
-   endif ! single vs. multiple files
-
-else ! Not making diagnostic files - need to write PRIOR diag copies if needed.
-
-   ! If num_output_state_members > 0 then we need to stop and do IO.
-   ! If num_output_state_members = 0 we keep the mean, sd, inf, inf_sd as extra copies and
-   ! write them in the same transpose_write as the restart files.
-   if (get_is_prior(inflate) .and. num_output_state_members > 0) then
-      call large_model_prior_diag(ens_handle, file_info, num_output_state_members, &
-             ENS_MEAN_COPY, ENS_SD_COPY, INF_COPY, INF_SD_COPY, output_inflation)
-   endif
-
-endif
-
-end subroutine filter_state_space_diagnostics
-
-!------------------------------------------------------------------
-! Model_mod writing diagnostic files
-!------------------------------------------------------------------
-!> The whole state vector is made avaible to the model_mod.
-!> Only task zero calls aoutput diagnostics.
-subroutine write_single_diagnostic_file(curr_ens_time, out_unit, ens_handle, model_size, &
-            num_output_state_members, output_state_mean_index, output_state_spread_index, &
-           output_inflation, ENS_MEAN_COPY, ENS_SD_COPY, inflate, INF_COPY, INF_SD_COPY)
-
-type(time_type),             intent(in)    :: curr_ens_time
-type(netcdf_file_type),      intent(inout) :: out_unit
-type(ensemble_type),         intent(inout) :: ens_handle
-integer(i8),                 intent(in)    :: model_size ! why do we pass this in?
-integer,                     intent(in)    :: num_output_state_members
-integer,                     intent(in)    :: output_state_mean_index, output_state_spread_index
-type(adaptive_inflate_type), intent(in)    :: inflate
-! These values depend on prior vs. posterior. You could alter the arguements to this routine,
-! check the inflation handle for prior vs. posterior and use copies_on_off_mod to get these copy
-! numbers.
-integer,                     intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, INF_COPY, INF_SD_COPY
-logical,                     intent(in)    :: output_inflation
-
-real(r8), allocatable  :: temp_ens(:)
-type(time_type)        :: temp_time
-integer                :: ens_offset, j
-
-! Assumes that mean and spread have already been computed
-if (.not. get_allow_transpose(ens_handle)) allocate(ens_handle%vars(ens_handle%num_vars, ens_handle% my_num_copies))
-call all_copies_to_all_vars(ens_handle)
-
-! task 0 needs some space
-if (my_task_id() == 0) then
-   allocate(temp_ens(model_size))
-else
-   allocate(temp_ens(1))
-endif
-
-! Output ensemble mean
-call get_copy(map_task_to_pe(ens_handle, 0), ens_handle, ENS_MEAN_COPY, temp_ens)
-if(my_task_id() == 0) call aoutput_diagnostics(out_unit, curr_ens_time, temp_ens,  &
-   output_state_mean_index)
-
-! Output ensemble spread
-call get_copy(map_task_to_pe(ens_handle, 0), ens_handle, ENS_SD_COPY, temp_ens)
-if(my_task_id() == 0) call aoutput_diagnostics(out_unit, curr_ens_time, temp_ens, &
-   output_state_spread_index)
-
-! Compute the offset for copies of the ensemble
-ens_offset = 2
-
-! Output state diagnostics as required: NOTE: Prior has been inflated
-do j = 1, num_output_state_members
-   ! Get this state copy to task 0; then output it
-   call get_copy(map_task_to_pe(ens_handle, 0), ens_handle, j, temp_ens, temp_time)
-   if(my_task_id() == 0) call aoutput_diagnostics( out_unit, temp_time, temp_ens, ens_offset + j)
-end do
-
-! Unless specifically asked not to, output inflation
-if (output_inflation) then
-   ! Output the spatially varying inflation if used
-   if(do_varying_ss_inflate(inflate) .or. do_single_ss_inflate(inflate)) then
-      call get_copy(map_task_to_pe(ens_handle, 0), ens_handle, INF_COPY, temp_ens)
-   else
-      ! Output inflation value as 1 if not in use (no inflation)
-      temp_ens = 1.0_r8
-   endif
-
-   if(my_task_id() == 0) call aoutput_diagnostics(out_unit,  curr_ens_time, temp_ens, &
-   ens_offset + num_output_state_members + 1)
-
-   if(do_varying_ss_inflate(inflate) .or. do_single_ss_inflate(inflate)) then
-      call get_copy(map_task_to_pe(ens_handle, 0), ens_handle, INF_SD_COPY, temp_ens)
-   else
-      ! Output inflation sd as 0 if not in use
-      temp_ens = 0.0_r8
-   endif
-
-   if(my_task_id() == 0) call aoutput_diagnostics(out_unit, curr_ens_time, temp_ens, &
-      ens_offset + num_output_state_members + 2)
-
-endif
-
-deallocate(temp_ens)
-if (.not. get_allow_transpose(ens_handle)) deallocate(ens_handle%vars)
-
-
-end subroutine write_single_diagnostic_file
-
-!------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 ! DART writing diagnostic files
-!------------------------------------------------------------------
+!-------------------------------------------------------------------------------
 !> Write state to the last time slice of a file
 !> This routine is called from aoutput_diagnostics if the model_mod
 !> nc_write_model_vars has returned 
 !> model_mod_will_write_state_varaibles = .false.
+
+
 subroutine dart_nc_write_model_vars(out_unit, model_state, copyindex, timeindex)
 
 type(netcdf_file_type), intent(in) :: out_unit
@@ -384,7 +197,8 @@ enddo
 
 end subroutine dart_nc_write_model_vars
 
-!-----------------------------------------------------------
+
+!-------------------------------------------------------------------------------
 !> Called if the model_mod is NOT going to write the state variables to
 !> the diagnostic file.
 !> This routine defines the state variables in the diagFile
@@ -393,6 +207,8 @@ end subroutine dart_nc_write_model_vars
 !>   variable(dim1, dim2, ...,  copy, time)
 !> If there are multiple domains the variables and dimensions are
 !> given the suffix _d0*, where * is the domain number.
+
+
 subroutine dart_nc_write_model_atts(diagFile)
 
 type(netcdf_file_type), intent(inout) :: diagFile
@@ -435,7 +251,7 @@ if(my_task_id()==0) then
 
       do j = 1, ndims
          ret = nf90_def_dim(diagFile%ncid, get_dim_name(diag_id, i, j), get_dim_length(diag_id, i, j), dummy)
-         !> @todo if we already have a unique names we can take this test out
+         !>@todo if we already have a unique names we can take this test out
          if(ret /= NF90_NOERR .and. ret /= NF90_ENAMEINUSE) then
             call nc_check(ret, 'dart_nc_write_model_atts', 'defining dimensions')
          endif
@@ -468,41 +284,42 @@ endif
 
 end subroutine dart_nc_write_model_atts
 
-!------------------------------------------------------------------
-!> Writing prior_diag copies. Intended only for large model single time 
-!> step runs. Only need to output state netcdf files if this is the prior
-!> and num_output_state_members > 0. If this is single time step and the
-!> posterior, then the output members are the restart files.
-subroutine large_model_prior_diag(ens_handle, file_info, num_output_state_members, &
-             ENS_MEAN_COPY, ENS_SD_COPY, INF_COPY, INF_SD_COPY, output_inflation)
+!-------------------------------------------------------------------------------
+!>
 
-type(ensemble_type),  intent(inout) :: ens_handle
-type(file_info_type), intent(in)    :: file_info
-integer,              intent(in)    :: num_output_state_members
-integer,              intent(in)    :: ENS_MEAN_COPY, ENS_SD_COPY, INF_COPY, INF_SD_COPY
-logical,              intent(in)    :: output_inflation
 
-if (num_output_state_members > 0 ) then
-   call setup_read_write(ens_handle%num_copies)
-   call turn_write_copy_on(1, num_output_state_members)
-   call turn_write_copy_on(ENS_MEAN_COPY)
-   call turn_write_copy_on(ENS_SD_COPY)
-   if (output_inflation) then
-      call turn_write_copy_on(INF_COPY)
-      call turn_write_copy_on(INF_SD_COPY)
-   endif
-   call filter_write_restart_direct(ens_handle, file_info%restart_files_out_prior)
-   call end_read_write()
+function finalize_diag_output(ncFileID) result(ierr)
+
+type(netcdf_file_type), intent(inout) :: ncFileID
+integer             :: ierr
+
+if (.not. module_initialized) call init_state_space_diag()
+
+ierr = 0
+
+if (my_task_id()==0) then
+   ierr = NF90_close(ncFileID%ncid)
+   if(associated(ncFileID%rtimes)) deallocate(ncFileID%rtimes, ncFileID%times )
 endif
 
-end subroutine large_model_prior_diag
+call end_diagnostic_structure()
 
-!-----------------------------------------------------------
+ncFileID%fname     = "notinuse"
+ncFileID%ncid      = -1
+ncFileID%Ntimes    = -1
+ncFileID%NtimesMax = -1
+
+end function finalize_diag_output
+
+
+!-------------------------------------------------------------------------------
 ! Routines that were in assim_model_mod.
-!-----------------------------------------------------------
+!-------------------------------------------------------------------------------
 !> Creates a diagnostic file(s).
 !> Calls the model for any model specific attributes to be written
 !> Leaves the diagnostic file open and passes out a handle: ncFileID (netcdf_file_type)
+
+
 function init_diag_output(FileName, global_meta_data, &
                   copies_of_field_per_time, meta_data_per_copy, lagID) result(ncFileID)
 ! Typical sequence:
@@ -546,302 +363,209 @@ logical :: local_model_mod_will_write_state_variables
 character(len=129), allocatable, dimension(:) :: textblock
 
 if (.not. module_initialized) call init_state_space_diag()
-if (.not. make_diagnostic_files) return
 
-if (single_file) then
-
-   if (my_task_id() == 0) then
-      if(.not. byteSizesOK()) then
-          call error_handler(E_ERR,'init_diag_output', &
-         'Compiler does not support required kinds of variables.',source,revision,revdate) 
-      end if
-      
-      metadata_length = LEN(meta_data_per_copy(1))
-      
-      if ( netCDF_large_file_support ) then
-         createmode = NF90_64BIT_OFFSET
-      else
-         createmode = NF90_SHARE
-      endif
-      
-      ! Create the file
-      ncFileID%fname = trim(adjustl(FileName))//".nc"
-      call nc_check(nf90_create(path = trim(ncFileID%fname), cmode = createmode, ncid = ncFileID%ncid), &
-                    'init_diag_output', 'create '//trim(ncFileID%fname))
-      
-      write(msgstring,*)trim(ncFileID%fname), ' is ncFileID ',ncFileID%ncid
+if (my_task_id() == 0) then
+   if(.not. byteSizesOK()) then
+       call error_handler(E_ERR,'init_diag_output', &
+      'Compiler does not support required kinds of variables.',source,revision,revdate) 
+   end if
+   
+   metadata_length = LEN(meta_data_per_copy(1))
+   
+   ! NetCDF large file support
+   createmode = NF90_64BIT_OFFSET
+   
+   ! Create the file
+   ncFileID%fname = trim(adjustl(FileName))//".nc"
+   call nc_check(nf90_create(path = trim(ncFileID%fname), cmode = createmode, ncid = ncFileID%ncid), &
+                 'init_diag_output', 'create '//trim(ncFileID%fname))
+   
+   write(msgstring,*)trim(ncFileID%fname), ' is ncFileID ',ncFileID%ncid
+   call error_handler(E_MSG,'init_diag_output',msgstring,source,revision,revdate)
+   
+   ! Define the dimensions
+   call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
+                 name="metadatalength", len = metadata_length,        dimid = metadataDimID), &
+                 'init_diag_output', 'def_dim metadatalength '//trim(ncFileID%fname))
+   
+   call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
+                 name="locationrank",   len = LocationDims,           dimid = LocationDimID), &
+                 'init_diag_output', 'def_dim locationrank '//trim(ncFileID%fname))
+   
+   call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
+                 name="copy",           len = copies_of_field_per_time, dimid = MemberDimID), &
+                 'init_diag_output', 'def_dim copy '//trim(ncFileID%fname))
+   
+   call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
+                 name="time",           len = nf90_unlimited,         dimid = TimeDimID), &
+                 'init_diag_output', 'def_dim time '//trim(ncFileID%fname))
+   
+   !----------------------------------------------------------------------------
+   ! Find dimensions of namelist file ... will save it as a variable.
+   !----------------------------------------------------------------------------
+   
+   ! All DART programs require input.nml, so it is unlikely this can fail, but
+   ! still check and in this case, error out if not found.
+   call find_textfile_dims("input.nml", nlines, linelen)
+   if (nlines <= 0 .or. linelen <= 0) then
+      call error_handler(E_MSG,'init_diag_output', &
+                         'cannot open/read input.nml to save in diagnostic file', &
+                         source,revision,revdate)
+   endif
+   
+   allocate(textblock(nlines))
+   textblock = ''
+   
+   call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
+                 name="NMLlinelen", len = LEN(textblock(1)), dimid = linelenDimID), &
+                 'init_diag_output', 'def_dim NMLlinelen '//trim(ncFileID%fname))
+   
+   call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
+                 name="NMLnlines", len = nlines, dimid = nlinesDimID), &
+                 'init_diag_output', 'def_dim NMLnlines '//trim(ncFileID%fname))
+   
+   !----------------------------------------------------------------------------
+   ! Write Global Attributes 
+   !----------------------------------------------------------------------------
+   
+   call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "title", global_meta_data), &
+                 'init_diag_output', 'put_att title '//trim(ncFileID%fname))
+   call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_source", source ), &
+                 'init_diag_output', 'put_att assim_model_source '//trim(ncFileID%fname))
+   call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revision", revision ), &
+                 'init_diag_output', 'put_att assim_model_revision '//trim(ncFileID%fname))
+   call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revdate", revdate ), &
+                 'init_diag_output', 'put_att assim_model_revdate '//trim(ncFileID%fname))
+   
+   if (present(lagID)) then
+      call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "lag", lagID ), &
+                    'init_diag_output', 'put_att lag '//trim(ncFileID%fname))
+   
+      write(*,*)'init_diag_output detected Lag is present'
+   
+   endif 
+   
+   !----------------------------------------------------------------------------
+   ! Create variables and attributes.
+   ! The locations are part of the model (some models have multiple grids).
+   ! They are written by model_mod:nc_write_model_atts
+   !----------------------------------------------------------------------------
+   
+   !    Copy ID
+   call nc_check(nf90_def_var(ncid=ncFileID%ncid, name="copy", xtype=nf90_int, &
+                 dimids=MemberDimID, varid=MemberVarID), 'init_diag_output', 'def_var copy')
+   call nc_check(nf90_put_att(ncFileID%ncid, MemberVarID, "long_name", "ensemble member or copy"), &
+                 'init_diag_output', 'long_name')
+   call nc_check(nf90_put_att(ncFileID%ncid, MemberVarID, "units",     "nondimensional"), &
+                 'init_diag_output', 'units')
+   call nc_check(nf90_put_att(ncFileID%ncid, MemberVarID, "valid_range", &
+                 (/ 1, copies_of_field_per_time /)), 'init_diag_output', 'put_att valid_range')
+   
+   
+   !    Metadata for each Copy
+   call nc_check(nf90_def_var(ncid=ncFileID%ncid,name="CopyMetaData", xtype=nf90_char,    &
+                 dimids = (/ metadataDimID, MemberDimID /),  varid=metadataVarID), &
+                 'init_diag_output', 'def_var CopyMetaData')
+   call nc_check(nf90_put_att(ncFileID%ncid, metadataVarID, "long_name",       &
+                 "Metadata for each copy/member"), 'init_diag_output', 'put_att long_name')
+   
+   !    input namelist 
+   call nc_check(nf90_def_var(ncid=ncFileID%ncid,name="inputnml", xtype=nf90_char,    &
+                 dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
+                 'init_diag_output', 'def_var inputnml')
+   call nc_check(nf90_put_att(ncFileID%ncid, nmlVarID, "long_name",       &
+                 "input.nml contents"), 'init_diag_output', 'put_att input.nml')
+   
+   !    Time -- the unlimited dimension
+   call nc_check(nf90_def_var(ncFileID%ncid, name="time", xtype=nf90_double, dimids=TimeDimID, &
+                 varid =TimeVarID), 'init_diag_output', 'def_var time' )
+   i = nc_write_calendar_atts(ncFileID, TimeVarID)     ! comes from time_manager_mod
+   if ( i /= 0 ) then
+      write(msgstring, *)'nc_write_calendar_atts  bombed with error ', i
       call error_handler(E_MSG,'init_diag_output',msgstring,source,revision,revdate)
-      
-      ! Define the dimensions
-      call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
-                    name="metadatalength", len = metadata_length,        dimid = metadataDimID), &
-                    'init_diag_output', 'def_dim metadatalength '//trim(ncFileID%fname))
-      
-      call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
-                    name="locationrank",   len = LocationDims,           dimid = LocationDimID), &
-                    'init_diag_output', 'def_dim locationrank '//trim(ncFileID%fname))
-      
-      call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
-                    name="copy",           len=copies_of_field_per_time, dimid = MemberDimID), &
-                    'init_diag_output', 'def_dim copy '//trim(ncFileID%fname))
-      
-      call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
-                    name="time",           len = nf90_unlimited,         dimid = TimeDimID), &
-                    'init_diag_output', 'def_dim time '//trim(ncFileID%fname))
-      
-      !-------------------------------------------------------------------------------
-      ! Find dimensions of namelist file ... will save it as a variable.
-      !-------------------------------------------------------------------------------
-      
-      ! All DART programs require input.nml, so it is unlikely this can fail, but
-      ! still check and in this case, error out if not found.
-      call find_textfile_dims("input.nml", nlines, linelen)
-      if (nlines <= 0 .or. linelen <= 0) then
-         call error_handler(E_MSG,'init_diag_output', &
-                            'cannot open/read input.nml to save in diagnostic file', &
-                            source,revision,revdate)
-      endif
-      
-      allocate(textblock(nlines))
-      textblock = ''
-      
-      call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
-                    name="NMLlinelen", len = LEN(textblock(1)), dimid = linelenDimID), &
-                    'init_diag_output', 'def_dim NMLlinelen '//trim(ncFileID%fname))
-      
-      call nc_check(nf90_def_dim(ncid=ncFileID%ncid, &
-                    name="NMLnlines", len = nlines, dimid = nlinesDimID), &
-                    'init_diag_output', 'def_dim NMLnlines '//trim(ncFileID%fname))
-      
-      !-------------------------------------------------------------------------------
-      ! Write Global Attributes 
-      !-------------------------------------------------------------------------------
-      
-      call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "title", global_meta_data), &
-                    'init_diag_output', 'put_att title '//trim(ncFileID%fname))
-      call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_source", source ), &
-                    'init_diag_output', 'put_att assim_model_source '//trim(ncFileID%fname))
-      call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revision", revision ), &
-                    'init_diag_output', 'put_att assim_model_revision '//trim(ncFileID%fname))
-      call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "assim_model_revdate", revdate ), &
-                    'init_diag_output', 'put_att assim_model_revdate '//trim(ncFileID%fname))
-      
-      if (present(lagID)) then
-         call nc_check(nf90_put_att(ncFileID%ncid, NF90_GLOBAL, "lag", lagID ), &
-                       'init_diag_output', 'put_att lag '//trim(ncFileID%fname))
-      
-         write(*,*)'init_diag_output detected Lag is present'
-      
-      endif 
-      
-      !-------------------------------------------------------------------------------
-      ! Create variables and attributes.
-      ! The locations are part of the model (some models have multiple grids).
-      ! They are written by model_mod:nc_write_model_atts
-      !-------------------------------------------------------------------------------
-      
-      !    Copy ID
-      call nc_check(nf90_def_var(ncid=ncFileID%ncid, name="copy", xtype=nf90_int, &
-                    dimids=MemberDimID, varid=MemberVarID), 'init_diag_output', 'def_var copy')
-      call nc_check(nf90_put_att(ncFileID%ncid, MemberVarID, "long_name", "ensemble member or copy"), &
-                    'init_diag_output', 'long_name')
-      call nc_check(nf90_put_att(ncFileID%ncid, MemberVarID, "units",     "nondimensional"), &
-                    'init_diag_output', 'units')
-      call nc_check(nf90_put_att(ncFileID%ncid, MemberVarID, "valid_range", &
-                    (/ 1, copies_of_field_per_time /)), 'init_diag_output', 'put_att valid_range')
-      
-      
-      !    Metadata for each Copy
-      call nc_check(nf90_def_var(ncid=ncFileID%ncid,name="CopyMetaData", xtype=nf90_char,    &
-                    dimids = (/ metadataDimID, MemberDimID /),  varid=metadataVarID), &
-                    'init_diag_output', 'def_var CopyMetaData')
-      call nc_check(nf90_put_att(ncFileID%ncid, metadataVarID, "long_name",       &
-                    "Metadata for each copy/member"), 'init_diag_output', 'put_att long_name')
-      
-      !    input namelist 
-      call nc_check(nf90_def_var(ncid=ncFileID%ncid,name="inputnml", xtype=nf90_char,    &
-                    dimids = (/ linelenDimID, nlinesDimID /),  varid=nmlVarID), &
-                    'init_diag_output', 'def_var inputnml')
-      call nc_check(nf90_put_att(ncFileID%ncid, nmlVarID, "long_name",       &
-                    "input.nml contents"), 'init_diag_output', 'put_att input.nml')
-      
-      !    Time -- the unlimited dimension
-      call nc_check(nf90_def_var(ncFileID%ncid, name="time", xtype=nf90_double, dimids=TimeDimID, &
-                    varid =TimeVarID), 'init_diag_output', 'def_var time' )
-      i = nc_write_calendar_atts(ncFileID, TimeVarID)     ! comes from time_manager_mod
-      if ( i /= 0 ) then
-         write(msgstring, *)'nc_write_calendar_atts  bombed with error ', i
-         call error_handler(E_MSG,'init_diag_output',msgstring,source,revision,revdate)
-      endif
-      
-      ! Create the time "mirror" with a static length. There is another routine
-      ! to increase it if need be. For now, just pick something.
-      ncFileID%Ntimes    = 0
-      ncFileID%NtimesMAX = 1000
-      allocate(ncFileID%rtimes(ncFileID%NtimesMAX), ncFileID%times(ncFileID%NtimesMAX) )
-      
-      !-------------------------------------------------------------------------------
-      ! Leave define mode so we can fill
-      !-------------------------------------------------------------------------------
-      call nc_check(nf90_enddef(ncFileID%ncid), 'init_diag_output', 'enddef '//trim(ncFileID%fname))
-      
-      !-------------------------------------------------------------------------------
-      ! Fill the coordinate variables.
-      ! Write the input namelist as a netCDF variable.
-      ! The time variable is filled as time progresses.
-      !-------------------------------------------------------------------------------
-      
-      call nc_check(nf90_put_var(ncFileID%ncid, MemberVarID, (/ (i,i=1,copies_of_field_per_time) /) ), &
-                    'init_diag_output', 'put_var MemberVarID')
-      call nc_check(nf90_put_var(ncFileID%ncid, metadataVarID, meta_data_per_copy ), &
-                    'init_diag_output', 'put_var metadataVarID')
-       
-      call file_to_text("input.nml", textblock)
-      
-      call nc_check(nf90_put_var(ncFileID%ncid, nmlVarID, textblock ), &
-                    'init_diag_output', 'put_var nmlVarID')
-      
-      deallocate(textblock)
-      
-      !-------------------------------------------------------------------------------
-      ! sync to disk, but leave open
-      !-------------------------------------------------------------------------------
-      
-      call nc_check(nf90_sync(ncFileID%ncid), 'init_diag_output', 'sync '//trim(ncFileID%fname))               
-      !-------------------------------------------------------------------------------
-      ! Define the model-specific components
-      !-------------------------------------------------------------------------------
-      
-      i =  nc_write_model_atts( ncFileID%ncid, local_model_mod_will_write_state_variables)
-      if ( i /= 0 ) then
-         write(msgstring, *)'nc_write_model_atts  bombed with error ', i
-         call error_handler(E_MSG,'init_diag_output',msgstring,source,revision,revdate)
-      endif
-
-      if ( .not. local_model_mod_will_write_state_variables ) then
-         call dart_nc_write_model_atts(ncFileID)
-      endif
-      
-      !-------------------------------------------------------------------------------
-      ! sync again, but still leave open
-      !-------------------------------------------------------------------------------
-      
-      call nc_check(nf90_sync(ncFileID%ncid), 'init_diag_output', 'sync '//trim(ncFileID%fname))               
-   !-------------------------------------------------------------------------------
+   endif
+   
+   ! Create the time "mirror" with a static length. There is another routine
+   ! to increase it if need be. For now, just pick something.
+   ncFileID%Ntimes    = 0
+   ncFileID%NtimesMAX = 1000
+   allocate(ncFileID%rtimes(ncFileID%NtimesMAX), ncFileID%times(ncFileID%NtimesMAX) )
+   
+   !----------------------------------------------------------------------------
+   ! Leave define mode so we can fill
+   !----------------------------------------------------------------------------
+   
+   call nc_check(nf90_enddef(ncFileID%ncid), 'init_diag_output', 'enddef '//trim(ncFileID%fname))
+   
+   !----------------------------------------------------------------------------
+   ! Fill the coordinate variables.
+   ! Write the input namelist as a netCDF variable.
+   ! The time variable is filled as time progresses.
+   !----------------------------------------------------------------------------
+   
+   call nc_check(nf90_put_var(ncFileID%ncid, MemberVarID, (/ (i,i=1,copies_of_field_per_time) /) ), &
+                 'init_diag_output', 'put_var MemberVarID')
+   call nc_check(nf90_put_var(ncFileID%ncid, metadataVarID, meta_data_per_copy ), &
+                 'init_diag_output', 'put_var metadataVarID')
+    
+   call file_to_text("input.nml", textblock)
+   
+   call nc_check(nf90_put_var(ncFileID%ncid, nmlVarID, textblock ), &
+                 'init_diag_output', 'put_var nmlVarID')
+   
+   deallocate(textblock)
+   
+   !----------------------------------------------------------------------------
+   ! sync to disk, but leave open
+   !----------------------------------------------------------------------------
+   
+   call nc_check(nf90_sync(ncFileID%ncid), 'init_diag_output', 'sync '//trim(ncFileID%fname))               
+   !----------------------------------------------------------------------------
+   ! Define the model-specific components
+   !----------------------------------------------------------------------------
+   
+   i =  nc_write_model_atts( ncFileID%ncid, local_model_mod_will_write_state_variables)
+   if ( i /= 0 ) then
+      write(msgstring, *)'nc_write_model_atts  bombed with error ', i
+      call error_handler(E_MSG,'init_diag_output',msgstring,source,revision,revdate)
    endif
 
-   ! Broadcast the value of model_mod_will_write_state_variables to every task
-   ! This keeps track of whether the model_mod or dart code will write state_variables.
-   call broadcast_flag(local_model_mod_will_write_state_variables, 0)
-   ncFileID%model_mod_will_write_state_variables = local_model_mod_will_write_state_variables
-
-else ! multiple files
-
-    call init_diag_one_copy_per_file()
-
+   if ( .not. local_model_mod_will_write_state_variables ) then
+      call dart_nc_write_model_atts(ncFileID)
+   endif
+   
+   !----------------------------------------------------------------------------
+   ! sync again, but still leave open
+   !----------------------------------------------------------------------------
+   
+   call nc_check(nf90_sync(ncFileID%ncid), 'init_diag_output', 'sync '//trim(ncFileID%fname))               
+!-------------------------------------------------------------------------------
 endif
+
+! Broadcast the value of model_mod_will_write_state_variables to every task
+! This keeps track of whether the model_mod or dart code will write state_variables.
+call broadcast_flag(local_model_mod_will_write_state_variables, 0)
+ncFileID%model_mod_will_write_state_variables = local_model_mod_will_write_state_variables
 
 end function init_diag_output
 
-!--------------------------------------------------------------------------------
-subroutine init_diag_one_copy_per_file()
 
-    call error_handler(E_ERR, 'init_diag_output', 'no code yet', source,revision,revdate)
-
-end subroutine init_diag_one_copy_per_file
-
-!--------------------------------------------------------------------------------
-function finalize_diag_output(ncFileID) result(ierr)
-
-type(netcdf_file_type), intent(inout) :: ncFileID
-integer             :: ierr
-
-if (.not. module_initialized) call init_state_space_diag()
-
-ierr = 0
-if (.not. make_diagnostic_files) return
-
-if (single_file .and. my_task_id()==0) then
-   ierr = NF90_close(ncFileID%ncid)
-   if(associated(ncFileID%rtimes)) deallocate(ncFileID%rtimes, ncFileID%times )
-endif
-
-call end_diagnostic_structure()
-
-ncFileID%fname     = "notinuse"
-ncFileID%ncid      = -1
-ncFileID%Ntimes    = -1
-ncFileID%NtimesMax = -1
-
-end function finalize_diag_output
-
-!--------------------------------------------------------------------------
-! Initializes a model state diagnostic file for input. A file id is
-! returned which for now is just an integer unit number.
-! ONLY USED BY RMS_DIAG - can we remove this?
-function init_diag_input(file_name, global_meta_data, model_size, copies_of_field_per_time)
-
-integer :: init_diag_input, io
-character(len = *), intent(in)  :: file_name
-character(len = *), intent(out) :: global_meta_data
-integer,            intent(out) :: model_size, copies_of_field_per_time
-
-if (.not. module_initialized) call init_state_space_diag()
-
-init_diag_input = get_unit()
-open(unit = init_diag_input, file = file_name, action = 'read', iostat = io)
-if (io /= 0) then
-   write(msgstring,*) 'unable to open diag input file ', trim(file_name), ' for reading'
-   call error_handler(E_ERR,'init_diag_input',msgstring,source,revision,revdate)
-endif
-
-! Read meta data
-read(init_diag_input, *, iostat = io) global_meta_data
-if (io /= 0) then
-   write(msgstring,*) 'unable to read expected character string from diag input file ', &
-                       trim(file_name), ' for global_meta_data'
-   call error_handler(E_ERR,'init_diag_input',msgstring,source,revision,revdate)
-endif
-
-! Read the model size
-read(init_diag_input, *, iostat = io) model_size
-if (io /= 0) then
-   write(msgstring,*) 'unable to read expected integer from diag input file ', &
-                       trim(file_name), ' for model_size'
-   call error_handler(E_ERR,'init_diag_input',msgstring,source,revision,revdate)
-endif
-
-! Read the number of copies of field per time
-read(init_diag_input, *, iostat = io) copies_of_field_per_time
-if (io /= 0) then
-   write(msgstring,*) 'unable to read expected integer from diag input file ', &
-                       trim(file_name), ' for copies_of_field_per_time'
-   call error_handler(E_ERR,'init_diag_input',msgstring,source,revision,revdate)
-endif
-
-end function init_diag_input
+!-------------------------------------------------------------------------------
+!> Outputs the "state" to the supplied netCDF file.
+!>
+!> the time, and an optional index saying which
+!> copy of the metadata this state is associated with.
+!>
+!> ncFileID       the netCDF file identifier
+!> model_time     the time associated with the state vector
+!> model_state    the copy of the state vector
+!> copy_index     which copy of the state vector (ensemble member ID)
+!>
+!> Note -- the contents of ncFileId may be modified -- the time mirror needs
+!> to track the state of the netCDF file. This must be "inout".
 
 
-!-------------------------------------------------------------------
 subroutine aoutput_diagnostics(ncFileID, model_time, model_state, copy_index)
-! Outputs the "state" to the supplied netCDF file.
-!
-! the time, and an optional index saying which
-! copy of the metadata this state is associated with.
-!
-! ncFileID       the netCDF file identifier
-! model_time     the time associated with the state vector
-! model_state    the copy of the state vector
-! copy_index     which copy of the state vector (ensemble member ID)
-!
-! TJH 28 Aug 2002 original netCDF implementation 
-! TJH  7 Feb 2003 [created time_manager_mod:nc_get_tindex] 
-!     substantially modified to handle time in a much better manner
-! TJH 24 Jun 2003 made model_mod do all the netCDF writing.
-!                 Still need an error handler for nc_write_model_vars
-!      
-! Note -- ncFileId may be modified -- the time mirror needs to
-! track the state of the netCDF file. This must be "inout".
 
 type(netcdf_file_type), intent(inout) :: ncFileID
 type(time_type),   intent(in) :: model_time
@@ -852,7 +576,6 @@ integer :: i, timeindex, copyindex
 integer :: is1,id1
 
 if (.not. module_initialized) call init_state_space_diag()
-if (.not. make_diagnostic_files) return
 
 if (.not. present(copy_index) ) then     ! we are dependent on the fact
    copyindex = 1                         ! there is a copyindex == 1
@@ -886,37 +609,28 @@ endif
 end subroutine aoutput_diagnostics
 
 
+!-------------------------------------------------------------------------------
+!> We need to compare the time of the current assim_model to the
+!> netcdf time coordinate variable (the unlimited dimension).
+!> If they are the same, no problem ...
+!> If it is earlier, we need to find the right index and insert ...
+!> If it is the "future", we need to add another one ...
+!> If it is in the past but does not match any we have, we're in trouble.
+!> The new length of the "time" variable is returned.
+!>
+!> A "times" array has been added to mirror the times that are stored
+!> in the netcdf time coordinate variable. While somewhat unpleasant, it
+!> is SUBSTANTIALLY faster than reading the netcdf time variable at every
+!> turn -- which caused a geometric or exponential increase in overall 
+!> netcdf I/O. (i.e. this was really bad)
+!>
+!> The time mirror is maintained as a time_type, so the comparison with
+!> the state time uses the operators for the time_type. The netCDF file,
+!> however, has time units of a different convention. The times are
+!> converted only when appending to the time coordinate variable.    
 
-!------------------------------------------------------------------------
+
 function nc_get_tindex(ncFileID, statetime) result(timeindex)
-! We need to compare the time of the current assim_model to the
-! netcdf time coordinate variable (the unlimited dimension).
-! If they are the same, no problem ...
-! If it is earlier, we need to find the right index and insert ...
-! If it is the "future", we need to add another one ...
-! If it is in the past but does not match any we have, we're in trouble.
-! The new length of the "time" variable is returned.
-! 
-! This REQUIRES that "time" is a coordinate variable AND it is the
-! unlimited dimension. If not ... bad things happen.
-!
-! TJH  7 Feb 2003
-!
-! Revision by TJH 24 Nov 2003:
-! A new array "times" has been added to mirror the times that are stored
-! in the netcdf time coordinate variable. While somewhat unpleasant, it
-! is SUBSTANTIALLY faster than reading the netcdf time variable at every
-! turn -- which caused a geometric or exponential increase in overall 
-! netcdf I/O. (i.e. this was really bad)
-!
-! The time mirror is maintained as a time_type, so the comparison with
-! the state time uses the operators for the time_type. The netCDF file,
-! however, has time units of a different convention. The times are
-! converted only when appending to the time coordinate variable.    
-!
-! Revision by TJH 4 June 2004:
-! Implementing a "file type" for output that contains a unique time
-! mirror for each file.
 
 type(netcdf_file_type), intent(inout) :: ncFileID
 type(time_type), intent(in) :: statetime
@@ -1060,14 +774,64 @@ endif
 end function nc_get_tindex
 
 
-!------------------------------------------------------------------------
-! The current time is appended to the "time" coordinate variable.
-! The new length of the "time" variable is returned.
-! 
-! This REQUIRES that "time" is a coordinate variable AND it is the
-! unlimited dimension. If not ... bad things happen.
-!
-! TJH Wed Aug 28 15:40:25 MDT 2002
+!-------------------------------------------------------------------------------
+!> Initializes a model state diagnostic file for input. A file id is
+!> returned which for now is just an integer unit number.
+!>@todo ONLY USED BY RMS_DIAG - can we remove this?
+!>        YES we agreed this can be removed JPH, TJH & NSC
+
+
+function init_diag_input(file_name, global_meta_data, model_size, copies_of_field_per_time)
+
+integer :: init_diag_input, io
+character(len=*), intent(in)  :: file_name
+character(len=*), intent(out) :: global_meta_data
+integer,            intent(out) :: model_size, copies_of_field_per_time
+
+if (.not. module_initialized) call init_state_space_diag()
+
+init_diag_input = get_unit()
+open(unit = init_diag_input, file = file_name, action = 'read', iostat = io)
+if (io /= 0) then
+   write(msgstring,*) 'unable to open diag input file ', trim(file_name), ' for reading'
+   call error_handler(E_ERR,'init_diag_input',msgstring,source,revision,revdate)
+endif
+
+! Read meta data
+read(init_diag_input, *, iostat = io) global_meta_data
+if (io /= 0) then
+   write(msgstring,*) 'unable to read expected character string from diag input file ', &
+                       trim(file_name), ' for global_meta_data'
+   call error_handler(E_ERR,'init_diag_input',msgstring,source,revision,revdate)
+endif
+
+! Read the model size
+read(init_diag_input, *, iostat = io) model_size
+if (io /= 0) then
+   write(msgstring,*) 'unable to read expected integer from diag input file ', &
+                       trim(file_name), ' for model_size'
+   call error_handler(E_ERR,'init_diag_input',msgstring,source,revision,revdate)
+endif
+
+! Read the number of copies of field per time
+read(init_diag_input, *, iostat = io) copies_of_field_per_time
+if (io /= 0) then
+   write(msgstring,*) 'unable to read expected integer from diag input file ', &
+                       trim(file_name), ' for copies_of_field_per_time'
+   call error_handler(E_ERR,'init_diag_input',msgstring,source,revision,revdate)
+endif
+
+end function init_diag_input
+
+
+!-------------------------------------------------------------------------------
+!> The current time is appended to the "time" coordinate variable.
+!> The new length of the "time" variable is returned.
+!>
+!> This REQUIRES that "time" is a coordinate variable AND it is the
+!> unlimited dimension. If not ... bad things happen.
+
+
 function nc_append_time(ncFileID, time) result(lngth)
 
 type(netcdf_file_type), intent(inout) :: ncFileID
@@ -1082,7 +846,6 @@ real(digits12) :: realtime         ! gets promoted to nf90_double ...
 character(len=NF90_MAX_NAME)          :: varname
 integer                               :: xtype, ndims, nAtts
 integer, dimension(NF90_MAX_VAR_DIMS) :: dimids
-character(len=129)                    :: msgstring
 
 type(time_type), allocatable, dimension(:) :: temptime   ! only to reallocate mirror
 real(digits12),  allocatable, dimension(:) :: tempRtime  ! only to reallocate mirror
@@ -1155,29 +918,21 @@ call error_handler(E_DBG,'nc_append_time',msgstring,source,revision,revdate)
 end function nc_append_time
 
 
-!------------------------------------------------------------------------
-! Need this to follow conventions for netCDF output files.
+!-------------------------------------------------------------------------------
+!> routine to be closer to CF convention
+
+
 function nc_write_calendar_atts(ncFileID, TimeVarID) result(ierr)
 
 type(netcdf_file_type), intent(in) :: ncFileID
 integer,                intent(in) :: TimeVarID
 integer                            :: ierr
 
-!integer  :: unlimitedDimID, length
-integer  :: ncid
-!character(len=NF90_MAX_NAME) :: varname
+integer :: ncid
 
 ierr = 0
 
 ncid = ncFileID%ncid
-
-!call check(NF90_Sync(ncid))    
-!call check(NF90_Inquire_Dimension(ncid, unlimitedDimID, varname, length))
-!
-!if ( TimeVarID /= unlimitedDimID ) then
-!   call error_handler(E_ERR,'nc_write_calendar_atts',&
-!      'unlimited dimension is not time', source,revision,revdate)
-!endif
 
 call nc_check(nf90_put_att(ncid, TimeVarID, "long_name", "time"), &
               'nc_write_calendar_atts', 'put_att long_name '//trim(ncFileID%fname))
@@ -1208,39 +963,21 @@ case default
 end select
 
 end function nc_write_calendar_atts
-!------------------------------------------------------------------------
 
 
+!-------------------------------------------------------------------------------
+!> Returns the meta data associated with each copy of data in
+!> a diagnostic input file. Should be called immediately after 
+!> function init_diag_input.
+!>@todo This is only used by the program rms_diag.f90 - can we just remove this?
+!>        YES we agreed this can be removed JPH, TJH & NSC
 
-
-
-
-
-!------------------------------------------------------------------------
-!------------------------------------------------------------------------
-!------------------------------------------------------------------------
-!
-!
-!                        Routines to remove
-!
-!
-!------------------------------------------------------------------------
-!------------------------------------------------------------------------
-!------------------------------------------------------------------------
-! This is only used by the program rms_diag.f90 - can we just remove this?
 subroutine get_diag_input_copy_meta_data(file_id, model_size_out, num_copies, &
    location, meta_data_per_copy)
-!-------------------------------------------------------------------------
-!
-! Returns the meta data associated with each copy of data in
-! a diagnostic input file. Should be called immediately after 
-! function init_diag_input.
-
-implicit none
 
 integer, intent(in) :: file_id, model_size_out, num_copies
 type(location_type), intent(out) :: location(model_size_out)
-character(len = *) :: meta_data_per_copy(num_copies)
+character(len=*) :: meta_data_per_copy(num_copies)
 
 character(len=129) :: header
 integer :: i, j, io
@@ -1276,67 +1013,5 @@ end do
 
 end subroutine get_diag_input_copy_meta_data
 
-subroutine ainput_diagnostics(file_id, model_time, model_state, copy_index)
-!------------------------------------------------------------------
-!
-! Reads in diagnostic state output from file_id for copy_index
-! copy. Need to make this all more rigorously enforced.
-
-implicit none
-
-integer,         intent(in)    :: file_id
-type(time_type), intent(inout) :: model_time
-real(r8),        intent(inout) :: model_state(:)
-integer,         intent(out)   :: copy_index
-
-character(len=5)   :: header
-
-! Read in the time
-model_time = read_time(file_id)
-
-! Read in the copy index
-read(file_id, *) header
-if(header /= 'fcopy')  then
-   write(msgstring,*)'expected "copy", got ',header
-   call error_handler(E_ERR,'ainput_diagnostics', msgstring, source, revision, revdate)
-endif
-
-read(file_id, *) copy_index
-
-! Read in the state vector
-read(file_id, *) model_state
-
-end subroutine ainput_diagnostics
-
-!-----------------------------------------------------------
-! Sets the state vector part of an assim_model_type
-subroutine set_model_state_vector(assim_model, state)
-
-type(assim_model_type), intent(inout) :: assim_model
-real(r8),               intent(in)    :: state(:)
-
-! Check the size for now
-if(size(state) /= get_model_size()) then
-   write(msgstring,*)'state vector has length ',size(state), &
-                     ' model size (',get_model_size(),') does not match.'
-   call error_handler(E_ERR,'set_model_state_vector', msgstring, source, revision, revdate)
-endif
-
-assim_model%state_vector = state
-
-end subroutine set_model_state_vector
-
-! Sets the time in an assim_model type
-!-----------------------------------------------------------------------
-subroutine set_model_time(assim_model, time)
-
-type(assim_model_type), intent(inout) :: assim_model
-type(time_type),        intent(in)    :: time
-
-assim_model%time = time
-
-end subroutine set_model_time
-
-!-----------------------------------------------------------
-end module state_space_diag_mod
 !> @}
+end module state_space_diag_mod

@@ -1,21 +1,18 @@
-&state_space_diag_nml
-/
-
 &perfect_model_obs_nml
    async                  = 2,
    adv_ens_command        = "./advance_model.csh",
    obs_seq_in_file_name   = "obs_seq.in",
    obs_seq_out_file_name  = "obs_seq.out",
-   start_from_restart       = .true.,
+   start_from_restart     = .true.,
    output_restart         = .true.,
-   restart_in_file_name   = "perfect_ic_old",
-   restart_out_file_name  = "perfect_ic_new",
-   init_time_days           = -1,
-   init_time_seconds        = -1,
-   first_obs_days           = -1,
-   first_obs_seconds        = -1,
-   last_obs_days            = -1,
-   last_obs_seconds         = -1,
+   restart_in_file_names  = "perfect_ics.nc"
+   restart_out_file_names = "perfect_restart.nc"
+   init_time_days         = -1,
+   init_time_seconds      = -1,
+   first_obs_days         = -1,
+   first_obs_seconds      = -1,
+   last_obs_days          = -1,
+   last_obs_seconds       = -1,
    output_interval        = 1
 /
 
@@ -27,8 +24,8 @@
    output_restart           = .true.
    obs_sequence_in_name     = "obs_seq.1800obs"
    obs_sequence_out_name    = "obs_seq.final"
-   restart_in_file_name     = "filter_ics"
-   restart_out_file_name    = "filter_restart"
+   input_restart_file_list  = "restarts_in.txt"
+   output_restart_file_list = "restarts_out.txt"
    init_time_days           = -1
    init_time_seconds        = -1
    first_obs_days           = -1
@@ -38,32 +35,35 @@
    num_output_state_members = 0
    num_output_obs_members   = 96
    output_interval          = 1
-   num_groups               = 1
-   input_qc_threshold       =  3.0
-   outlier_threshold        =  3.0
-   output_forward_op_errors = .true.
+   output_forward_op_errors = .false.
    output_timestamps        = .false.
    output_inflation         = .true.
    trace_execution          = .false.
    silence                  = .false.
 
+   stages_to_write          = 'preassim', 'postassim', 'output'
+   output_restarts          = .true.
+   output_mean              = .true.
+   output_sd                = .true.
+   write_all_stages_at_end  = .false.
+
    inf_flavor                  = 2,                       0,
    inf_initial_from_restart    = .false.,                .false.,
    inf_sd_initial_from_restart = .false.,                .false.,
-   inf_output_restart          = .true.,                  .true.,
    inf_deterministic           = .true.,                  .true.,
-   inf_in_file_name            = 'prior_inflate_ics',    'prior_inflate_ics',
-   inf_out_file_name           = 'prior_inflate_restart','prior_inflate_restart',
-   inf_diag_file_name          = 'prior_inf_diag',       'post_inf_diag',
    inf_initial                 = 1.0,                     1.0,
    inf_sd_initial              = 0.6,                     0.6,
    inf_damping                 = 0.9,                     0.9,
    inf_lower_bound             = 1.0,                     1.0,
    inf_upper_bound             = 1000.0,                  1000.0,
    inf_sd_lower_bound          = 0.6,                      0.6
-   direct_netcdf_read = .true.
-   direct_netcdf_write = .true.
   /
+
+&quality_control_nml
+  input_qc_threshold = 3,
+  outlier_threshold  = 3,
+  enable_special_outlier_code = .false.
+/
 
 &state_vector_io_nml
    single_precision_output    = .false.,
@@ -394,12 +394,6 @@
    use_zero_error_obs    = .false.
    verbose               = .true.
   /
-
-
-&io_filenames_nml
- restart_in_stub = 'mpas_model', 
- restart_out_stub = 'filter_restart'
-/
 
 &obs_common_subset_nml
    num_to_compare_at_once = 2

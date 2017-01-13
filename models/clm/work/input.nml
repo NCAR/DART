@@ -343,14 +343,6 @@
    /
 
 &state_vector_io_nml
-   write_binary_restart_files = .true.
-/
-
-&io_filenames_nml
-   rpointer      = .true.
-   rpointer_file = 'restart_files.txt', 
-                   'history_files.txt', 
-                   'history_vector_files.txt'
 /
 
 &quality_control_nml

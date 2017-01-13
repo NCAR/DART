@@ -68,6 +68,9 @@ direct_netcdf_read, direct_netcdf_write, restart_list_file, use_restart_list
 ! initialize the dart libs
 call initialize_module()
 
+call error_handler(E_ERR,'test_read_write_restarts ',&
+                   'Has not been tested yet with new naming conventions.',source,revision,revdate)
+
 ! Read back the namelist entry
 call find_namelist_in_file("input.nml", "test_read_write_restarts_nml", iunit)
 read(iunit, nml = test_read_write_restarts_nml, iostat = io)

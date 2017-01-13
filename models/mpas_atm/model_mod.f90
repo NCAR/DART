@@ -127,7 +127,6 @@ public :: get_model_size,                 &
           get_close_obs,          &
           query_vert_localization_coord,  &
           vert_convert,           &
-          construct_file_name_in,         &
           read_model_time,                 &
           write_model_time
 
@@ -7103,24 +7102,6 @@ integer :: query_vert_localization_coord
 query_vert_localization_coord = vert_localization_coord
 
 end function query_vert_localization_coord
-
-!--------------------------------------------------------------------
-!> construct restart file name for reading
-!> model time for CESM format?
-function construct_file_name_in(stub, domain, copy)
-
-character(len=256), intent(in) :: stub
-integer,            intent(in) :: domain
-integer,            intent(in) :: copy
-character(len=256) :: construct_file_name_in
-
-if (copy < 10) then
-   write(construct_file_name_in, '(A, i1.1, A, A)') TRIM(stub), copy, "/", trim(model_analysis_filename)
-else
-   write(construct_file_name_in, '(A, i2.2, A, A)') TRIM(stub), copy, "/", trim(model_analysis_filename)
-endif
-
-end function construct_file_name_in
 
 !--------------------------------------------------------------------
 !> read the time from the input file

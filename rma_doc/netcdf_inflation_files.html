@@ -25,35 +25,34 @@
 </tr>
 </table>
 
-The filter_nml namelist controls whether state IO is directly from netcdf files or from dart format
-files. If direct_netcdf_read/write = .true. Then filter will read/write the model state from netcdf files
-and also read/write inflation from netcdf files.
+The filter_nml now read restart and inflation files directly from NetCDF files 
 <p>
-Netcdf inflation files are no longer special files.
-DART format inflation files are always 2 copies in one file (mean and standard devation). Taking away this
-special status of inflation files has the advantage that all copies (restarts, ensemble mean, ensemble
-standard deviation, inflation mean, inflation sd, etc.) can all be treated the same for IO purposes. Since there
-are two inflation files when reading/writing netcdf the filenames are different to DART format restart files.
+Netcdf inflation files are no longer special files.  DART format inflation 
+files were always 2 copies in one file (mean and standard devation). Taking 
+away this special status of inflation files has the advantage that all copies 
+(restarts, ensemble mean, ensemble standard deviation, inflation mean, 
+inflation sd, etc.) can all be treated the same for IO purposes. Since there
+are two inflation files when reading/writing netcdf the filenames are different
+to DART format restart files.
 
 <p>
-The names of the netcdf inflation files are constructed from filter_nml options as follows:
+The names of the netcdf inflation files are now fixed.
 <p>
 <b>Input inflation file names</b><p>
 The filter_nml option:<p>
 <code>inf_in_file_name = prior_inflation_ics,   post_inflation_ics</code>
 <p>
-means for 1 domain filter is expecting to read:
+has been <b>deprecated</b> and for 1 domain filter is expecting to read:
 <p>
-prior_inflation_mean_ics<br>
-prior_inflation_sd_ics
+input_{priorinf,postinf}_mean.nc<br>
+input_{priorinf,postinf}_sd.nc
 <P>
-For multiple domains (or with add_domain_extension = .true.) filter is expecting to
-read:
+For multiple domains filter is expecting to read:
 <p>
-prior_inflation_ics_mean_d01<br>
-prior_inflation_ics_sd_d01<br>
-prior_inflation_ics_mean_d02<br>
-prior_inflation_ics_sd_d02<br>
+input_{priorinf,postinf}_mean_d01.nc<br>
+input_{priorinf,postinf}_sd_d01.nc<br>
+input_{priorinf,postinf}_mean_d02.nc<br>
+input_{priorinf,postinf}_sd_d02.nc
 <P>
 where d0* is the domain number.
 <p>
@@ -61,13 +60,12 @@ where d0* is the domain number.
 The filter_nml option:<p>
 <code>inf_out_file_name = prior_inflation_restart,    post_inflation_restart</code>
 <p>
-means for 1 domain filter is expecting to write:
+has been <b>deprecated</b> and for 1 domain filter is expecting to read:
 <p>
-prior_inflation_restart_mean<br>
-prior_inflation_restart_sd
+output_{priorinf,postinf}_mean.nc<br>
+output_{priorinf,postinf}_sd.nc
 <P>
-For multiple domains (or with add_domain_extension = .true.) filter is expecting to
-write:
+For multiple domains filter is expecting to write:
 <p>
 prior_inflation_restart_mean_d01<br>
 prior_inflation_restart_sd_d01<br>

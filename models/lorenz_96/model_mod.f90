@@ -46,7 +46,6 @@ public :: get_model_size, &
           model_interpolate, &
           query_vert_localization_coord, &
           vert_convert, &
-          construct_file_name_in, &
           pert_model_copies, &
           read_model_time, &
           write_model_time
@@ -246,7 +245,7 @@ integer,              intent(in) :: itype
 real(r8),            intent(out) :: expected_obs(ens_size)
 integer,             intent(out) :: istatus(ens_size)
 
-integer(i8) :: lower_index, upper_index, i
+integer(i8) :: lower_index, upper_index
 real(r8) :: lctn, lctnfrac
 real(r8) :: x_lower(ens_size) !< the lower piece of state vector
 real(r8) :: x_upper(ens_size) !< the upper piece of state vector
@@ -282,7 +281,7 @@ end subroutine model_interpolate
 
 !------------------------------------------------------------------
 
-!> @TODO state_handle shouldn't be needed here - IF we can prohibit
+!> @todo state_handle shouldn't be needed here - IF we can prohibit
 !> this routine from using the mean to do vertical conversions.
 
 !> @todo state_loc is state vector size, do we care?
@@ -355,28 +354,13 @@ end subroutine pert_model_copies
 
 !--------------------------------------------------------------------
 
-!> construct restart file name for reading
-
-function construct_file_name_in(basename, domain, copy)
-
-character(len=512), intent(in) :: basename
-integer,            intent(in) :: domain
-integer,            intent(in) :: copy
-character(len=1024)            :: construct_file_name_in
-
-write(construct_file_name_in, '(A, i4.4)') TRIM(basename), copy
-
-end function construct_file_name_in
-
-!--------------------------------------------------------------------
-
 !> pass the vertical localization coordinate to assim_tools_mod
 
 function query_vert_localization_coord()
 
 integer :: query_vert_localization_coord
 
-!> @TODO should define some parameters including something
+!> @todo should define some parameters including something
 !> like HAS_NO_VERT for this use.
 
 query_vert_localization_coord = -1
@@ -420,7 +404,7 @@ end subroutine get_close_obs
 
 !------------------------------------------------------------------
 
-!> @TODO can we replace most of this with:
+!> @todo can we replace most of this with:
 !> 
 !> call put_standard_attributes()
 !> call put_my_model_name("Lorenz_96")

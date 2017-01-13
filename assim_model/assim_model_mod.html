@@ -67,58 +67,9 @@
 <div class="top">[<a href="#">top</a>]</div><hr />
 <H2>NAMELIST</H2>
 <P>
-This namelist is read from the file <em class=file>input.nml</em>.
-Namelists start with an ampersand
-'&amp;' and terminate with a slash '/'.
-Character strings that contain a '/' must be
-enclosed in quotes to prevent them from 
-prematurely terminating the namelist.
+This module does not have a namelist.
 </P>
 
-<div class=namelist>
-<pre>
-&amp;assim_model_nml
-   write_binary_restart_files = .true.,
-   netCDF_large_file_support  = .false.
-  /
-</pre>
-</div>
-
-<br />
-<br />
-
-<div>
-<TABLE border=0 cellpadding=10 width=100% summary='namelist description'>
-<THEAD align=left>
-<TR><TH> Item </TH>
-    <TH> Type </TH>
-    <TH> Description </TH> </TR>
-</THEAD>
-
-<TBODY valign=top>
-<TR><TD>write_binary_restart_files</TD>
-    <TD>logical</TD>
-    <TD> Write output state restart files in binary format (true)
-         or ascii (false).</TD>
-</TR>
-<TR><TD>netCDF_large_file_support</TD>
-    <TD>logical</TD>
-    <TD> Use the netCDF Large File Support (LFS) format that enables individual records
-        (i.e. all the information that has the same 'unlimited' record value) 
-        to exceed 2GB.  The only downside to using this flag is compatibility 
-        with some netCDF software. Some (but not all) software is not built 
-        with 'LFS' support.  Note it is, and has been, possible to create netCDF 
-        <strong>files</strong> larger than 2GB with a value of 
-        <em>.false</em> - which is compatible with the historical netCDF format. 
-        It is only necessary to use a value of <em>.true.</em> if the state vector 
-        is very large and you are outputting a large number of ensembles. 
-        Default is .false.</TD></TR>
-</TBODY> 
-</TABLE>
-</div>
-
-<br />
-<br />
 
 <!--==================================================================-->
 

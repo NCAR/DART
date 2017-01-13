@@ -46,8 +46,8 @@ use mpi_utilities_mod,    only : my_task_id, broadcast_send, broadcast_recv,    
                                  sum_across_tasks, task_count
 
 use adaptive_inflate_mod, only : do_obs_inflate,  do_single_ss_inflate,                   &
-                                 do_varying_ss_inflate, get_inflate, set_inflate,         &
-                                 get_sd, set_sd, update_inflation,                        &
+                                 do_varying_ss_inflate,                                   &
+                                 update_inflation,                                        &
                                  inflate_ens, adaptive_inflate_type,                      &
                                  deterministic_inflate, solve_quadratic
 
@@ -150,13 +150,17 @@ logical  :: only_area_adapt  = .true.
 ! Option to distribute the mean.
 logical  :: distribute_mean  = .true.
 
+! Lanai bitwise. This is for unit testing and runs much slower.
+! Only use for when testing against the non-rma trunk.
+logical  :: lanai_bitwise = .false.
+
 namelist / assim_tools_nml / filter_kind, cutoff, sort_obs_inc, &
    spread_restoration, sampling_error_correction,                          & 
    adaptive_localization_threshold, adaptive_cutoff_floor,                 &
    print_every_nth_obs, rectangular_quadrature, gaussian_likelihood_tails, &
    output_localization_diagnostics, localization_diagnostics_file,         &
    special_localization_obs_types, special_localization_cutoffs,           &
-   allow_missing_in_clm, distribute_mean
+   allow_missing_in_clm, distribute_mean, close_obs_caching, lanai_bitwise
 
 !============================================================================
 
@@ -373,16 +377,12 @@ logical :: local_varying_ss_inflate
 logical :: local_obs_inflate
 
 ! HK observation location conversion
-logical  :: lanai_bitwise
 real(r8) :: vert_obs_loc_in_localization_coord
 
 !HK timing
 ! double precision :: start, finish
 
 integer :: vstatus !< for vertical conversion status. Can we just smash the dart qc instead?
-
-!HK debug
-lanai_bitwise = .false.
 
 ! we are going to read/write the copies array
 call prepare_to_update_copies(ens_handle)
@@ -443,12 +443,6 @@ if(local_single_ss_inflate) then
    my_inflate    = ens_handle%copies(ENS_INF_COPY,    1)
    my_inflate_sd = ens_handle%copies(ENS_INF_SD_COPY, 1)
 end if
-
-! For obs space inflation, single value comes from storage in adaptive_inflate_mod
-if(local_obs_inflate) then
-   my_inflate    = get_inflate(inflate)
-   my_inflate_sd = get_sd(inflate)
-endif
 
 ! Get info on my number and indices for obs
 my_num_obs = get_my_num_vars(obs_ens_handle)
@@ -1053,12 +1047,6 @@ if(local_single_ss_inflate) then
    ens_handle%copies(ENS_INF_COPY, :) = my_inflate
    ens_handle%copies(ENS_INF_SD_COPY, :) = my_inflate_sd
 end if
-
-! Everybody needs to store the latest value for obs_inflate
-if(local_obs_inflate) then
-   call set_inflate(inflate, my_inflate)
-   call set_sd(inflate, my_inflate_sd)
-endif
 
 ! Free up the storage
 call destroy_obs(observation)

@@ -243,8 +243,7 @@ ex_end
 
       if ( $nfiles > 0 ) then
          set latest = `cat latestfile`
-      #  \cp -v $latest input_priorinf_mean.nc
-         \cp -v $latest input_priorinf_mean
+         \ln -vs $latest input_priorinf_mean.nc
       else
          echo "ERROR: Requested PRIOR inflation but specified no incoming inflation MEAN file."
          echo "ERROR: expected something like output_priorinf_mean.SSSSS.nc"
@@ -258,8 +257,7 @@ ex_end
 
       if ( $nfiles > 0 ) then
          set latest = `cat latestfile`
-      #  \cp -v $latest input_priorinf_sd.nc
-         \cp -v $latest input_priorinf_sd
+         \ln -vs $latest input_priorinf_sd.nc
       else
          echo "ERROR: Requested PRIOR inflation but specified no incoming inflation SD file."
          echo "ERROR: expected something like output_priorinf_sd.SSSSS.nc"
@@ -303,8 +301,7 @@ ex_end
 
       if ( $nfiles > 0 ) then
          set latest = `cat latestfile`
-      #  \cp -v $latest input_postinf_mean.nc
-         \cp -v $latest input_postinf_mean
+         \ln -vs $latest input_postinf_mean.nc
       else
          echo "ERROR: Requested POSTERIOR inflation but specified no incoming inflation MEAN file."
          echo "ERROR: expected something like output_postinf_mean.SSSSS.nc"
@@ -318,8 +315,7 @@ ex_end
 
       if ( $nfiles > 0 ) then
          set latest = `cat latestfile`
-      #  \cp -v $latest input_postinf_sd.nc
-         \cp -v $latest input_postinf_sd
+         \ln -vs $latest input_postinf_sd.nc
       else
          echo "ERROR: Requested POSTERIOR inflation but specified no incoming inflation SD file."
          echo "ERROR: expected something like output_postinf_sd.SSSSS.nc"
@@ -364,23 +360,24 @@ ls -1 instance_*/roms_posterior_????_${OCEAN_TIME}.nc  >! restart_files.txt
 
 mpirun.lsf ./filter || exit 3
 
-# Tag the state output with the valid time of the model state.
+# Tag the output with the valid time of the model state.
 
-\mv -v PriorDiag_mean.nc         input_mean.${OCEAN_TIME}.nc
-\mv -v PriorDiag_sd.nc           input_sd.${OCEAN_TIME}.nc
-\mv -v PriorDiag_inf_mean.nc     preassim_mean.${OCEAN_TIME}.nc
-\mv -v PriorDiag_inf_sd.nc       preassim_sd.${OCEAN_TIME}.nc
-\mv -v PosteriorDiag_inf_mean.nc postassim_mean.${OCEAN_TIME}.nc
-\mv -v PosteriorDiag_inf_sd.nc   postassim_sd.${OCEAN_TIME}.nc
-\mv -v mean.nc                   output_mean.${OCEAN_TIME}.nc
-\mv -v sd.nc                     output_sd.${OCEAN_TIME}.nc
+foreach FILE ( input_*mean.nc input_*sd.nc \
+               preassim_*mean.nc preassim_*sd.nc \
+               preassim_member_????.nc \
+               postassim_*mean.nc postassim_*sd.nc \
+               postassim_member_????.nc \
+               output_*mean.nc output_*sd.nc )
 
-# Tag the inflation files with the valid time of the model state.
+   if (  -e $FILE ) then
+      set FEXT  = $FILE:e
+      set FBASE = $FILE:r
+      \mv -v $FILE ${FBASE}.${OCEAN_TIME}.${FEXT}
+   else
+      echo "$FILE does not exist, no need to take action."
+   endif
 
-\mv -v output_priorinf_mean.nc   output_priorinf_mean.${OCEAN_TIME}.nc
-\mv -v output_priorinf_sd.nc     output_priorinf_sd.${OCEAN_TIME}.nc
-\mv -v output_postinf_mean.nc    output_postinf_mean.${OCEAN_TIME}.nc
-\mv -v output_postinf_sd.nc      output_postinf_sd.${OCEAN_TIME}.nc
+end
 
 # Tag the observation file with the valid time of the model state.
 

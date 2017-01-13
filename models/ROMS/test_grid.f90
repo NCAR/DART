@@ -42,8 +42,8 @@ use   state_vector_io_mod, only : state_vector_io_init,    &
 
 use            filter_mod, only : filter_set_initial_time
 
-use      io_filenames_mod, only : io_filenames_init, file_info_type,        &
-                                  get_input_file, get_output_file
+use      io_filenames_mod, only : io_filenames_init, file_info_type, get_restart_filename, &
+                                  stage_metadata_type, get_stage_metadata
 
 use             model_mod, only : static_init_model, get_model_size, &
                                   get_state_meta_data,       &
@@ -95,8 +95,10 @@ namelist /test_grid_nml/ x_ind,                                    &
 ! io variables
 integer :: iunit, io
 integer :: ios_out
-type(file_info_type) :: file_info
+type(file_info_type) :: input_file_info, output_file_info
+type(stage_metadata_type) :: stage_info
 logical              :: read_time_from_file = .true.
+
 
 ! model state variables
 type(ensemble_type) :: ens_handle
@@ -157,19 +159,21 @@ model_time  = set_time(21600, 149446)   ! 06Z 4 March 2010
 call init_ensemble_manager(ens_handle, num_ens, model_size)
 
 ! Reading netcdf restart file:
-file_info = io_filenames_init(ens_handle, .false., .false., restart_in_file_name, restart_out_file_name, output_restart=.true., netcdf_read=.true., netcdf_write=.true.)
-
+input_file_info = io_filenames_init(num_ens, .false., root_name='input')
+output_file_info = io_filenames_init(num_ens, .false., root_name='output')
 
 
 !----------------------------------------------------------------------
 ! Open a test netcdf initial conditions file.
 !----------------------------------------------------------------------
-if ( do_output() ) write(*,*) 'Reading File : ', trim( get_input_file(file_info%restart_files_in, mem, domain=dom) )
-call read_state(ens_handle, file_info,  read_time_from_file, time1)
+stage_info = get_stage_metadata(input_file_info)
+if ( do_output() ) write(*,*) 'Reading File : ', trim( get_restart_filename(stage_info, mem, domain=dom) )
+call read_state(ens_handle, input_file_info,  read_time_from_file, time1)
 model_time = time1
 
-if ( do_output() ) write(*,*) 'Writing File : ', trim( get_output_file(file_info%restart_files_out, mem, domain=dom) )
-call write_state(ens_handle, file_info)
+stage_info = get_stage_metadata(output_file_info)
+if ( do_output() ) write(*,*) 'Writing File : ', trim( get_restart_filename(stage_info, mem, domain=dom) )
+call write_state(ens_handle, output_file_info)
 
 write(*,*) 
 call print_date( model_time,' test_grid:model date')

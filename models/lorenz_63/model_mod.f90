@@ -49,7 +49,6 @@ public :: get_model_size, &
           get_close_maxdist_init, &
           get_close_obs_init, &
           get_close_obs, &
-          construct_file_name_in, &
           vert_convert, &
           query_vert_localization_coord, &
           read_model_time, &
@@ -755,21 +754,6 @@ integer,             intent(out) :: istatus
 istatus = 0
 
 end subroutine vert_convert
-
-!--------------------------------------------------------------------
-
-!> construct restart file name for reading
-
-function construct_file_name_in(basename, domain, copy)
-
-character(len=512), intent(in) :: basename
-integer,            intent(in) :: domain
-integer,            intent(in) :: copy
-character(len=1024)            :: construct_file_name_in
-
-write(construct_file_name_in, '(A, i4.4, A)') TRIM(basename), copy, '.nc'
-
-end function construct_file_name_in
 
 !--------------------------------------------------------------------
 

@@ -6,6 +6,9 @@
 
 !> This module is used to wrap around the basic portions of existing dynamical models to
 !> add capabilities needed by the standard assimilation methods.
+!>
+!>@todo FIXME explore redundant routines , especially 'diagnostic' ones
+
 module assim_model_mod
 
 use    types_mod, only : r8, digits12
@@ -13,12 +16,7 @@ use location_mod, only : location_type
 use time_manager_mod, only : time_type,                                            &
                              operator(<), operator(>), operator(+), operator(-),   &
                              operator(/), operator(*), operator(==), operator(/=)
-use utilities_mod, only : register_module, error_handler,                          &
-                          E_ERR, E_WARN, E_MSG, E_DBG, nmlfileunit,                &
-                          dump_unit_attributes, find_namelist_in_file,             &
-                          check_namelist_read, do_nml_file, do_nml_term,           &
-                          set_output,                                              &
-                          ascii_file_format, set_output
+use utilities_mod, only : register_module
 use     model_mod, only : get_model_size, static_init_model, get_state_meta_data,  &
                           get_model_time_step, init_conditions,                    &
                           init_time, adv_1step, end_model,                         &

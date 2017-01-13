@@ -10,8 +10,8 @@
    last_obs_seconds      = -1
    output_interval       = 1
    trace_execution       = .false.
-   restart_in_file_name  = "input_cice.nc"
-   restart_out_file_name = "output_cice.nc"
+   restart_in_file_names  = "cice.r.nc"
+   restart_out_file_names = "perfect_restart.nc"
    obs_seq_in_file_name  = "obs_seq.in"
    obs_seq_out_file_name = "obs_seq.perfect"
    adv_ens_command       = "no_advance_script"
@@ -20,16 +20,12 @@
    output_forward_op_errors = .false.
    print_every_nth_obs   = -1
    silence               = .false.
-   direct_netcdf_read    = .true.
-   direct_netcdf_write   = .true.
    /
 
 &filter_nml
    async                    = 0
    adv_ens_command          = "no_advance_script"
    ens_size                 =  3
-   output_restart           = .true.
-   output_restart_mean      = .true.
    obs_sequence_in_name     = "obs_seq.out"
    obs_sequence_out_name    = "obs_seq.final"
    init_time_days           = -1
@@ -38,36 +34,26 @@
    first_obs_seconds        = -1
    last_obs_days            = -1
    last_obs_seconds         = -1
-   num_output_state_members = 3
    num_output_obs_members   = 3
    output_interval          = 1
    num_groups               = 1
    output_forward_op_errors = .false.
    output_timestamps        = .true.
-   output_inflation         = .true.
    trace_execution          = .true.
    silence                  = .false.
 
-   direct_netcdf_read           = .true.
-   direct_netcdf_write          = .true.
-   use_restart_list             = .true.
-   overwrite_state_input        = .true.
-   restart_list_file            = 'cice_restarts.txt'
-   restart_in_file_name         = "not_used_if_use_restart_list_is_true"
-   restart_out_file_name        = "not_used_if_overwrite_state_input_is_true"
-   single_restart_file_in       = .false.
-   single_restart_file_out      = .false.
-   perturb_from_single_instance = .false.
-   perturbation_amplitude       = 0.2
+   input_restart_file_list  = "cice_restarts.txt"
+   output_restart_file_list = "cice_restarts.txt"
+   stages_to_write          = 'input', 'preassim', 'output'
+   output_restarts          = .true.
+   output_mean              = .true.
+   output_sd                = .true.
+   write_all_stages_at_end  = .false.
+   num_output_state_members = 3
 
    inf_flavor                  = 0,                       0
-   inf_initial_from_restart    = .true.,                  .true.
-   inf_sd_initial_from_restart = .true.,                  .true.
-   inf_output_restart          = .true.,                  .true.
-   inf_deterministic           = .true.,                  .true.
-   inf_in_file_name            = 'input_priorinf',        'input_postinf'
-   inf_out_file_name           = 'output_priorinf',       'output_postinf'
-   inf_diag_file_name          = 'output_priorobsinfl',   'output_postobsinf'
+   inf_initial_from_restart    = .false.,                 .false.
+   inf_sd_initial_from_restart = .false.,                 .false.
    inf_initial                 = 1.0,                     1.0
    inf_sd_initial              = 0.6,                     0.6
    inf_damping                 = 0.9,                     0.9
@@ -77,6 +63,7 @@
    /
 
 # The filenames as determined on 19 Aug 2016
+# The input and output member names can be overridden
 # {input,preassim,postassim,output}_0001[_dom].nc
 # {input,preassim,postassim,output}_mean[_dom].nc
 # {input,preassim,postassim,output}_sd[_dom].nc
@@ -149,23 +136,13 @@
    /
 
 
-&assim_model_nml
-   netCDF_large_file_support  = .true.
-   /
-
-
-# Each variable must have 6 entries.
-# 1: variable name
-# 2: DART KIND
-# 3: minimum value - as a character string - if none, use 'NA'
-# 4: maximum value - as a character string - if none, use 'NA'
-# 5: what file contains the variable - 'restart', 'history'  file'
-# 6: does the variable get updated in the restart file or not ...
-#    only variables from restart files may be updated.
+# Each variable must have 3 entries.
+# 1: the netCDF variable name
+# 2: the DART KIND
+# 3: does the variable get updated in the restart file or not ...
 #    'UPDATE' =>        update the variable in the restart file
 #    'NO_COPY_BACK' => do not update the variable in the restart file
 #    all these variables will be updated INTERNALLY IN DART
-#    only variables marked '.r', 'UPDATE' will be modified for CLM.
 
 &model_nml
    assimilation_period_days     = 1
@@ -226,7 +203,6 @@
    ens_size                     = 1
    single_restart_file_in       = .true.
    single_restart_file_out      = .true.
-   write_binary_restart_files   = .true.
    overwrite_data_time          = .false.
    new_data_days                = -1
    new_data_secs                = -1
@@ -332,7 +308,6 @@
 
 
 &state_vector_io_nml
-   write_binary_restart_files = .true.
    /
 
 
@@ -341,8 +316,4 @@
    outlier_threshold        = 3.0
    /
 
-
-&state_space_diag_nml
-   make_diagnostic_files = .false.
-   /
 

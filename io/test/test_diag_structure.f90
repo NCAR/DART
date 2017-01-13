@@ -29,6 +29,12 @@ use assert_mod,          only : assert_equal, assert_greater, assert_not_equal
 
 implicit none
 
+! version controlled file description for error handling, do not edit
+character(len=256), parameter :: source   = &
+   "$URL$"
+character(len=32 ), parameter :: revision = "$Revision$"
+character(len=128), parameter :: revdate  = "$Date$"
+
 integer :: diag_id, domain_id
 integer(i8) :: model_size, m
 integer :: i, j, n
@@ -136,3 +142,9 @@ call assert_not_equal(i, 21, 'not reached max_num_domains')
 !-----------------------------------------------------------------------------
 
 end program test_diag_structure
+
+! <next few lines under version control, do not edit>
+! $URL$
+! $Id$
+! $Revision$
+! $Date$

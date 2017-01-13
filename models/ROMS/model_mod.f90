@@ -112,7 +112,6 @@ public :: get_model_size,                &
           get_close_obs_init,            &
           query_vert_localization_coord, &
           vert_convert,                  &
-          construct_file_name_in,        &
           write_model_time,              &
           read_model_time,               &
           get_close_obs
@@ -1069,33 +1068,6 @@ integer,             intent(out) :: istatus
 istatus = 0
 
 end subroutine vert_convert
-
-
-!--------------------------------------------------------------------
-!>
-!> construct restart file name for reading
-!>
-!> @param stub stub of restart file
-!> @param domain for multiple domains in your state
-!> @param copy copy number in ensemble handle
-!>
-
-function construct_file_name_in(stub, domain, copy)
-
-character(len=256), intent(in) :: stub
-integer,            intent(in) :: domain
-integer,            intent(in) :: copy
-character(len=256) :: construct_file_name_in
-
-! stub is found in input.nml io_filename_nml
-
-!>@ TODO FIXME : JPH. Need to construct filename properly!!!!
-!>@ TODO FIXME : TJH. I'd like to make calling this to be an error.
-! should support the use of the input file list and that's all.
-
-write(construct_file_name_in, '(A)') trim(stub)
-
-end function construct_file_name_in
 
 
 !-----------------------------------------------------------------------

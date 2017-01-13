@@ -183,7 +183,7 @@ call init_random_seq(my_rand)
 call static_init_model()
 
 call nc_check( nf90_open(roms_mod_obs_files(1), nf90_nowrite, ncid), &
-               'convert_roms_obs', 'opening file '//trim(roms_mod_obs_files(1)))
+               'convert_roms_obs', 'opening first file "'//trim(roms_mod_obs_files(1))//'"')
 
 call getdimlen(ncid, "datum", nobs)
 
@@ -253,8 +253,10 @@ call set_missing_name('_FillValue')
 
 do i = 1, ens_size
 
+   write(string1,'(''opening file '',i3,'' "'',A,''"'')')i,trim(roms_mod_obs_files(i))
+
    call nc_check( nf90_open(roms_mod_obs_files(i), nf90_nowrite, ncid), &
-                  'convert_roms_obs', 'opening file '//trim(roms_mod_obs_files(i)))
+                  'convert_roms_obs', string1)
 
    call getdimlen(ncid, "datum", nobs2)
 

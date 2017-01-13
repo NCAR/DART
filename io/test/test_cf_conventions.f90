@@ -7,24 +7,21 @@
 program test_cf_conventions
 
 use             types_mod, only : r4, r8, i8, metadatalength, MISSING_R8 
-use         utilities_mod, only : register_module, error_handler, E_MSG
-use  adaptive_inflate_mod, only : adaptive_inflate_end, adaptive_inflate_init, &
+use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR
+use  adaptive_inflate_mod, only : adaptive_inflate_init, &
                                   adaptive_inflate_type
-use     mpi_utilities_mod, only : initialize_mpi_utilities, finalize_mpi_utilities
-use       assim_model_mod, only : static_init_assim_model, get_model_size
+use     mpi_utilities_mod, only : initialize_mpi_utilities, &
+                                  finalize_mpi_utilities
+use       assim_model_mod, only : static_init_assim_model, &
+                                  get_model_size
 use   state_vector_io_mod, only : read_state, write_state
-use  ensemble_manager_mod, only : init_ensemble_manager, ensemble_type, set_num_extra_copies
-use      io_filenames_mod, only : io_filenames_init, end_io_filenames, file_info_type, &
+use  ensemble_manager_mod, only : init_ensemble_manager, &
+                                  ensemble_type, &
+                                  set_num_extra_copies
+use      io_filenames_mod, only : io_filenames_init, &
+                                  io_filenames_finalize, &
+                                  file_info_type, &
                                   get_output_file
-use     copies_on_off_mod, only : ENS_MEAN_COPY, ENS_SD_COPY, &
-                                  PRIOR_INF_COPY, PRIOR_INF_SD_COPY, &
-                                  POST_INF_COPY, POST_INF_SD_COPY, &
-                                  SPARE_PRIOR_MEAN, SPARE_PRIOR_SPREAD, &
-                                  SPARE_PRIOR_INF_MEAN, SPARE_PRIOR_INF_SPREAD, &
-                                  SPARE_POST_INF_MEAN, SPARE_POST_INF_SPREAD
-use state_space_diag_mod,  only : filter_state_space_diagnostics, netcdf_file_type, &
-                                  init_diag_output, finalize_diag_output,           &
-                                  skip_diag_files
 use   state_structure_mod, only : get_xtype,             &
                                   get_units,             &
                                   get_long_name,         &
@@ -34,7 +31,8 @@ use   state_structure_mod, only : get_xtype,             &
                                   get_missing_value,     &
                                   get_add_offset,        &
                                   get_scale_factor
-use      time_manager_mod, only : time_type, set_time
+use      time_manager_mod, only : time_type, &
+                                  set_time
 use            filter_mod, only : filter_set_initial_time
 use            assert_mod, only : assert_equal
 
@@ -51,7 +49,8 @@ character(len=128), parameter :: revdate  = "$Date: 2016-01-20 10:26:41 -0700 (W
 logical, save :: module_initialized = .false.
 
 type(ensemble_type)         :: ens_handle
-type(file_info_type)        :: file_info
+type(file_info_type)        :: file_info_input
+type(file_info_type)        :: file_info_output
 type(time_type)             :: time1
 type(adaptive_inflate_type) :: prior_inflate_handle, post_inflate_handle
 type(netcdf_file_type)      :: PriorStateUnit_handle, PosteriorStateUnit_handle
@@ -82,6 +81,9 @@ blank_string = ' '
 ! initialize the dart libs
 call initialize_module()
 
+call error_handler(E_ERR,'test_cf_conventions ',&
+                   'Has not been tested yet with new naming conventions.',source,revision,revdate)
+
 model_size = get_model_size()
 
 write(*,*) " model size : ", model_size
@@ -98,25 +100,27 @@ call filter_set_initial_time(0,0,time1,read_time_from_file)
 call initialize_copy_numbers(ens_size)
 call initialize_adaptive_inflate(ens_handle, prior_inflate_handle, post_inflate_handle)
 call initialize_diagnostics(PriorStateUnit_handle, PosteriorStateUnit_handle)
-file_info = initialize_filenames(ens_handle, overwrite_state_input=.false.)
+
+file_info_input  = initialize_filenames(ens_handle, overwrite_state_input=.false.)
+file_info_output = initialize_filenames(ens_handle, overwrite_state_input=.false.)
 
 curr_ens_time = set_time(0, 0)
 
 ! read in restarts
-call read_state(ens_handle, file_info, read_time_from_file, time1)
+call read_state(ens_handle, file_info_input, read_time_from_file, time1)
 
 ! If needed, store copies(mean, sd, inf_mean, inf_sd) that would have
 ! gone in Prior_Diag.nc and write them at the end.
 call store_prior(ens_handle)
 
-call filter_state_space_diagnostics(file_info, curr_ens_time, PriorStateUnit_handle, ens_handle, &
-      model_size, num_output_state_members, &
-      output_state_mean_index, output_state_spread_index, output_inflation,&
-      ENS_MEAN_COPY, ENS_SD_COPY, &
-      prior_inflate_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
+!call filter_state_space_diagnostics(file_info_input, curr_ens_time, PriorStateUnit_handle, ens_handle, &
+!      model_size, num_output_state_members, &
+!      output_state_mean_index, output_state_spread_index, output_inflation,&
+!      ENS_MEAN_COPY, ENS_SD_COPY, &
+!      prior_inflate_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
 
 ! write out all files possible including restarts, mean, sd, and prior/posterior inflation files
-call write_state(ens_handle, file_info, prior_inflate_handle, post_inflate_handle, skip_diag_files())
+call write_state(ens_handle, file_info_output, prior_inflate_handle, post_inflate_handle)
 
 write(*,*)' '
 write(*,*)'======================================================================'
@@ -247,11 +251,12 @@ write(*,*)' '
 !>              clamping data to files that have global attributes for clamping.
 ! call exit(0)
 ! 
-! call end_io_filenames(file_info)
+ call io_filenames_finalize(file_info_input)
+ call io_filenames_finalize(file_info_output)
 ! file_info = initialize_filenames(ens_handle, overwrite_state_input=.true.)
 ! 
 ! ! write out all files possible including restarts, mean, sd, and prior/posterior inflation files
-! call write_state(ens_handle, file_info, prior_inflate_handle, post_inflate_handle, skip_diag_files())
+! call write_state(ens_handle, file_info, prior_inflate_handle, post_inflate_handle)
 
 ! finalize test_cf_conventions
 call error_handler(E_MSG,'test_cf_conventions','Finished successfully.',source,revision,revdate)
@@ -276,6 +281,7 @@ end subroutine initialize_module
 !----------------------------------------------------------------------
 
 function initialize_filenames(ensemble_handle, overwrite_state_input) result(file_handle)
+
 type(ensemble_type), intent(inout) :: ensemble_handle
 logical,             intent(in)    :: overwrite_state_input
 type(file_info_type) :: file_handle
@@ -298,10 +304,8 @@ character(len=129) :: restart_out_file_name = "cf_test_out"
 logical :: direct_netcdf_read  = .true.
 logical :: direct_netcdf_write = .true.
 
-file_handle = io_filenames_init(ensemble_handle, single_restart_file_in, single_restart_file_out, &
-                restart_in_file_name, restart_out_file_name, output_restart, direct_netcdf_read, &
-                direct_netcdf_write, output_restart_mean, add_domain_extension, use_restart_list, &
-                restart_list_file, overwrite_state_input, inf_in_file_name, inf_out_file_name)
+file_handle = io_filenames_init(ensemble_handle, single_restart_file_in, &
+                restart_list_file, 'root_name', .true.)
 
 end function initialize_filenames
 
@@ -313,28 +317,23 @@ type(adaptive_inflate_type), intent(inout) :: prior_inflate, post_inflate
 
 ! Inflation namelist entries follow, first entry for prior, second for posterior
 ! inf_flavor is 0:none, 1:obs space, 2: varying state space, 3: fixed state_space
-integer              :: inf_flavor(2)             = 2
-logical              :: inf_initial_from_restart(2)    = .false.
-logical              :: inf_sd_initial_from_restart(2) = .false.
+integer            :: inf_flavor(2)             = 2
+logical            :: inf_initial_from_restart(2)    = .false.
+logical            :: inf_sd_initial_from_restart(2) = .false.
+logical            :: inf_output_restart(2)     = .true.
+logical            :: inf_deterministic(2)      = .true.
 
-! old way
-logical              :: inf_output_restart(2)     = .true.
-! new way
-!logical              :: inf_output_prior(2) = .false. ! mean sd
-!logical              :: inf_output_post(2)  = .false. ! mean sd
+character(len=129) :: inf_in_file_name(2)       = 'inf_in',    &
+                      inf_out_file_name(2)      = 'inf_out',   &
+                      inf_diag_file_name(2)     = 'inf_diag'
 
-logical              :: inf_deterministic(2)      = .true.
-character(len = 129) :: inf_in_file_name(2)       = 'inf_in',    &
-                        inf_out_file_name(2)      = 'inf_out',   &
-                        inf_diag_file_name(2)     = 'inf_diag'
-real(r8)             :: inf_initial(2)            = 1.0_r8
-real(r8)             :: inf_sd_initial(2)         = 0.0_r8
-!real(r8)             :: inf_damping(2)            = 1.0_r8
-real(r8)             :: inf_lower_bound(2)        = 1.0_r8
-real(r8)             :: inf_upper_bound(2)        = 1000000.0_r8
-real(r8)             :: inf_sd_lower_bound(2)     = 0.0_r8
+real(r8)           :: inf_initial(2)            = 1.0_r8
+real(r8)           :: inf_sd_initial(2)         = 0.0_r8
+real(r8)           :: inf_lower_bound(2)        = 1.0_r8
+real(r8)           :: inf_upper_bound(2)        = 1000000.0_r8
+real(r8)           :: inf_sd_lower_bound(2)     = 0.0_r8
 
-logical              :: allow_missing             = .false.
+logical            :: allow_missing             = .false.
 
 inf_out_file_name(1) = 'inf_out1'
 inf_out_file_name(2) = 'inf_out2'
@@ -342,18 +341,18 @@ inf_out_file_name(2) = 'inf_out2'
 ! Initialize the adaptive inflation module
 call adaptive_inflate_init(prior_inflate, inf_flavor(1), inf_initial_from_restart(1), &
    inf_sd_initial_from_restart(1), inf_output_restart(1), inf_deterministic(1),       &
-   inf_in_file_name(1), inf_out_file_name(1), inf_diag_file_name(1), inf_initial(1),  &
+   inf_initial(1),  &
    inf_sd_initial(1), inf_lower_bound(1), inf_upper_bound(1), inf_sd_lower_bound(1),  &
    ensemble_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY, allow_missing, 'Prior')
 
 call adaptive_inflate_init(post_inflate, inf_flavor(2), inf_initial_from_restart(2),  &
    inf_sd_initial_from_restart(2), inf_output_restart(2), inf_deterministic(2),       &
-   inf_in_file_name(2), inf_out_file_name(2), inf_diag_file_name(2), inf_initial(2),  &
+   inf_initial(2),  &
    inf_sd_initial(2), inf_lower_bound(2), inf_upper_bound(2), inf_sd_lower_bound(2),  &
    ensemble_handle, POST_INF_COPY, POST_INF_SD_COPY, allow_missing, 'Posterior')
 
-call adaptive_inflate_end(prior_inflate, ensemble_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
-call adaptive_inflate_end(post_inflate,  ensemble_handle, POST_INF_COPY, POST_INF_SD_COPY)
+!call adaptive_inflate_end(prior_inflate, ensemble_handle, PRIOR_INF_COPY, PRIOR_INF_SD_COPY)
+!call adaptive_inflate_end(post_inflate,  ensemble_handle, POST_INF_COPY, POST_INF_SD_COPY)
 
 end subroutine initialize_adaptive_inflate
 

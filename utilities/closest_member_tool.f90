@@ -4,11 +4,18 @@
 !
 ! $Id$
 
+!>@todo FIXME changed so it compiles, but this IS NOT WORKING CODE YET
+!> it needs to read in an ensemble (perhaps become an mpi program)
+!> and do all ensemble members at the same time - also handle the
+!> layout when only part of a state vector is on a single task.
+!> would have to do a reduce to add up the total differences.
+
 program closest_member_tool
 
 ! Program to overwrite the time on each ensemble in a restart file.
 
-use types_mod,         only : r8, i8, obstypelength
+use types_mod,         only : r8, i8, obstypelength, MAX_NUM_DOMS
+
 use time_manager_mod,  only : time_type, set_time_missing,               &
                               operator(/=), print_time
  
@@ -27,12 +34,15 @@ use  sort_mod,         only : index_sort
 use assim_model_mod,   only : static_init_assim_model, get_model_size,   &
                               get_state_meta_data
 
-use state_vector_io_mod, only : aread_state_restart, open_restart_read, close_restart
+use state_vector_io_mod, only : read_state, write_state
+
+use io_filenames_mod,    only : file_info_type, io_filenames_init
 
 use mpi_utilities_mod, only : initialize_mpi_utilities, task_count,     &
                               finalize_mpi_utilities
 
-use ensemble_manager_mod, only : ensemble_type
+use ensemble_manager_mod, only : ensemble_type, init_ensemble_manager
+!>@todo needs to destroy ensemble before the end of the program
 
 implicit none
 
@@ -42,8 +52,8 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-integer               :: iunit, model_size, io, ens, i, j, kindindex
-integer(i8)           :: ii
+integer               :: iunit, io, ens, i, j, kindindex
+integer(i8)           :: ii, model_size
 integer, allocatable  :: index_list(:)
 character(len = 128)  :: ifile, msgstring, msgstring1
 real(r8), allocatable :: mean(:), member(:), diffs(:)
@@ -53,6 +63,8 @@ type(location_type)   :: loc
 integer               :: num_kinds, stype
 type(time_type)       :: mean_time, member_time, mean_advance_time, advance_time
 integer, parameter    :: max_list_len = 500
+type(file_info_type)  :: ens_file_info, mean_file_info
+
 
 character(len=64)     :: method_name(4) = (/     &
    "Simple Difference    ", &
@@ -63,12 +75,13 @@ character(len=64)     :: method_name(4) = (/     &
 !----------------------------------------------------------------
 ! These variables are namelist-controllable.
 !
-character(len = 128) :: input_file_name        = "filter_restart"
-character(len = 128) :: output_file_name       = "closest_restart"
 integer              :: ens_size               = 1
-logical              :: single_restart_file_in = .true.
 integer              :: difference_method      = 4
+logical              :: single_restart_file_in = .false.
 character(len = obstypelength) :: use_only_kinds(max_list_len) = ''
+character(len=256) :: input_restart_file_list(MAX_NUM_DOMS)  = 'null'
+character(len=256) :: mean_restart_file_list(MAX_NUM_DOMS)  = 'null'
+character(len=256) :: output_file_name
 
 !----------------------------------------------------------------
 ! different methods to compute 'distance' from mean:
@@ -81,7 +94,8 @@ character(len = obstypelength) :: use_only_kinds(max_list_len) = ''
 !----------------------------------------------------------------
 
 namelist /closest_member_tool_nml/  &
-   input_file_name,              &
+   input_restart_file_list,      &
+   mean_restart_file_list,       &
    output_file_name,             &
    ens_size,                     &
    single_restart_file_in,       &
@@ -89,14 +103,8 @@ namelist /closest_member_tool_nml/  &
    use_only_kinds         
 
 
-logical :: input_is_model_advance_file  = .false.
-! FIXME: could add this to namelist:
-!      input_is_model_advance_file 
-! right now we don't output model_advance means, so for now
-! it stays out.  but if you did have the mean, you could
-! use this tool on it.
+type(ensemble_type) :: ens_handle, mean_ens_handle
 
-type(ensemble_type) :: ens_handle ! dummy so you can call get_state_meta_data
 !> @todo seems like you are using get_state_meta_data just so you can get the kinds.
 !> WRF and MPAS will be doing the vertical conversion also.
 
@@ -106,6 +114,10 @@ type(ensemble_type) :: ens_handle ! dummy so you can call get_state_meta_data
 
 ! This program should only be run with a single process
 call initialize_mpi_utilities('closest_member_tool')
+
+call error_handler(E_ERR,'closest_member_tool','Tool not working. Please contact '//&
+                         'dart@ucar.edu if you would like to use this tool.',  &
+                          source,revision,revdate)
 
 if(task_count() > 1) &
    call error_handler(E_ERR,'closest_member_tool','Only use single process', &
@@ -135,6 +147,9 @@ write(msgstring, *) 'Computing difference using method: '//trim(method_name(diff
 call error_handler(E_MSG,'',msgstring)
 
 ! make space for the mean and a single member, plus place to sort list for output
+call init_ensemble_manager(ens_handle, ens_size, model_size)
+call init_ensemble_manager(mean_ens_handle, 1, model_size)
+
 allocate(mean(model_size), member(model_size))
 allocate(index_list(ens_size), diffs(ens_size))
 
@@ -186,15 +201,12 @@ member_time       = set_time_missing()
 mean_advance_time = set_time_missing()
 mean_advance_time = set_time_missing()
 
-! read in the mean - always in a separate file
-iunit = open_restart_read(trim(input_file_name)//'.mean')
-! Read in the advance time if present
-if (input_is_model_advance_file) then
-   call aread_state_restart(mean_time, mean, iunit, mean_advance_time)
-else
-   call aread_state_restart(mean_time, mean, iunit)
-endif
-call close_restart(iunit)
+! read in the ensemble and the mean - always in a separate file
+ens_file_info = io_filenames_init(ens_size, .false., restart_list=input_restart_file_list)
+mean_file_info = io_filenames_init(1, .false., root_name='input')
+
+call read_state(ens_handle, ens_file_info, .false., member_time)
+call read_state(mean_ens_handle, mean_file_info, .false., mean_time)
 
 ! if we are not processing all kinds of state vector items, set up a mask
 ! for the kinds we are.  do this once at the start so we don't replicate
@@ -231,21 +243,26 @@ else
    useindex(:) = .true.
 endif
 
+!>@todo FIXME:  do we need 2 versions?  a distributed one where we compute the local diffs
+!> and then reduce to get the sum to figure out the smallest diff?  and a non-distributed, non-mpi
+!> version where we have the entire state on a single task (one member at a time or the entire
+!> ensemble?) and do the work in a non-mpi executable?
+
 ! either loop over individual files or open a single file and read a member
 ! at a time.  same functionality; where the file open/close happens differs.
 if (single_restart_file_in) then
 
    ! One restart file - open once and loop on the read
 
-   iunit = open_restart_read(trim(input_file_name))
+   !#! iunit = open_restart_read(trim(input_file_name))
 
    ! Read in the advance time if present
    do ens=1, ens_size
-      if (input_is_model_advance_file) then
-         call aread_state_restart(member_time, member, iunit, advance_time)
-      else
-         call aread_state_restart(member_time, member, iunit)
-      endif
+      !#! if (input_is_model_advance_file) then
+         !#! call aread_state_restart(member_time, member, iunit, advance_time)
+      !#! else
+         !#! call aread_state_restart(member_time, member, iunit)
+      !#! endif
 
       if (mean_time /= member_time) then
          call print_time(mean_time, "time of ensemble mean data")
@@ -261,23 +278,23 @@ if (single_restart_file_in) then
       !------------------- Compute difference    -----------------------
 
    enddo
-   call close_restart(iunit)
+   !#! call close_restart(iunit)
 
 else
    do ens=1, ens_size
  
       ! add member number as a suffix: e.g. base.0000
-      write(ifile, "(a,a,i4.4)") trim(input_file_name), '.', ens
+      write(ifile, "(a,a,i4.4)") trim(input_restart_file_list(1)), '.', ens
 
       !------------------- Read restart from file ----------------------
-      iunit = open_restart_read(ifile)
+      !#! iunit = open_restart_read(ifile)
       ! Read in the advance time if present
-      if (input_is_model_advance_file) then
-         call aread_state_restart(member_time, member, iunit, advance_time)
-      else
-         call aread_state_restart(member_time, member, iunit)
-      endif
-      call close_restart(iunit)
+      !#! if (input_is_model_advance_file) then
+      !#!    call aread_state_restart(member_time, member, iunit, advance_time)
+      !#! else
+      !#!    call aread_state_restart(member_time, member, iunit)
+      !#! endif
+      !#! call close_restart(iunit)
       !------------------- Read restart from file ----------------------
       
       if (mean_time /= member_time) then
@@ -322,7 +339,7 @@ iunit = open_file(output_file_name, 'formatted', 'write')
 if (single_restart_file_in) then
    write(iunit, "(I4)") index_list(1)
 else
-   write(iunit, "(A,A,I4.4)") trim(input_file_name), '.', index_list(1)
+   write(iunit, "(A,A,I4.4)") trim(input_restart_file_list(1)), '.', index_list(1)
 endif
 
 call close_file(iunit)
@@ -344,9 +361,9 @@ call finalize_mpi_utilities()   ! now closes log file, too
 contains
 
 function compute_diff(target, candidate, arraysize)
- real(r8), intent(in) :: target(:)
- real(r8), intent(in) :: candidate(:)
- integer,  intent(in) :: arraysize
+ real(r8),    intent(in) :: target(:)
+ real(r8),    intent(in) :: candidate(:)
+ integer(i8), intent(in) :: arraysize
 
  real(r8) :: compute_diff
 

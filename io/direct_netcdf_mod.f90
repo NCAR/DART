@@ -5,6 +5,7 @@
 ! $Id$
 
 module direct_netcdf_mod
+
 !> \defgroup direct_netcdf_mod direct_netcdf_mod
 !> @{ \brief Routines for the limited transpose.
 !>
@@ -51,7 +52,7 @@ module direct_netcdf_mod
 !>  * dart_index coming out of the subroutines is where the domain ends.
 !>  * The domain is contiguous in the state_vector.
 !>
-!> Note there was a <code>limit_procs</code> in the limited transpose. This was removed in
+!> There was a <code>limit_procs</code> in the limited transpose - removed in
 !> svn commit 9456.
 
 use types_mod,            only : r4, r8, i4, MISSING_R8, MISSING_R4, MISSING_I
@@ -77,15 +78,12 @@ use state_structure_mod,  only : get_num_variables, get_sum_variables,  &
                                  set_var_id, get_domain_size, do_io_update, &
                                  get_units, get_long_name, get_short_name, &
                                  get_has_missing_value, get_FillValue, &
-                                 get_missing_value, get_add_offset, get_scale_factor, &
-                                 get_xtype, get_num_domains
+                                 get_missing_value, get_add_offset, &
+                                 get_scale_factor, get_xtype, get_num_domains
 
-use io_filenames_mod,     only : get_input_file, get_output_file, restart_names_type, &
-                                 get_file_description
-
-use copies_on_off_mod,    only : query_read_copy, query_write_copy, &
-                                 is_inflation_copy, is_mean_copy, is_sd_copy, &
-                                 is_ensemble_copy
+use io_filenames_mod,     only : get_restart_filename, copy_has_units, &
+                                 stage_metadata_type, get_file_description, &
+                                 copy_is_clamped, query_read_copy, query_write_copy
 
 use model_mod,            only : write_model_time
 
@@ -93,7 +91,9 @@ use netcdf
 
 implicit none
 private
-public :: read_transpose, transpose_write, &
+
+public :: read_transpose, &
+          transpose_write, &
           read_variables
 
 ! version controlled file description for error handling, do not edit
@@ -102,67 +102,73 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-! Limit_mem is a namelist item in state_vector_io_mod.
-
 integer :: ret !< netcdf return code
 
 character(len=512) :: msgstring
 
 contains
 
+
 !-------------------------------------------------
-! Limited transpose code
-! There are two versions of the limited transpose code:
-!   * Single processor (no memory limit is applied)
-!   * Multi processor (memory limit applied)
-!-------------------------------------------------
+!> Limited transpose code
+!> There are two versions of the limited transpose code:
+!>   * Single processor (no memory limit is applied)
+!>   * Multi processor (memory limit applied)
+
+
 subroutine read_transpose(state_ens_handle, name_handle, domain, dart_index, limit_mem)
 
-type(ensemble_type),      intent(inout) :: state_ens_handle
-type(restart_names_type), intent(in)    :: name_handle
-integer,                  intent(in)    :: domain
-integer,                  intent(inout) :: dart_index !< This is for mulitple domains
-integer,                  intent(in)    :: limit_mem !< How many state elements you can read at once
+type(ensemble_type),       intent(inout) :: state_ens_handle
+type(stage_metadata_type), intent(in)    :: name_handle
+integer,                   intent(in)    :: domain
+integer,                   intent(inout) :: dart_index !< This is for multiple domains
+integer,                   intent(in)    :: limit_mem  !< How many state elements you can read at once
 
 if (task_count() == 1) then
    call read_transpose_single_task(state_ens_handle, name_handle, domain, dart_index)
-else ! multi task
+else
    call read_transpose_multi_task(state_ens_handle, name_handle, domain, dart_index, limit_mem)
 endif
 
 end subroutine read_transpose
+
+
 !-------------------------------------------------
+!>
 
-subroutine transpose_write(state_ens_handle, name_handle, domain, dart_index, limit_mem, write_single_precision)
 
-type(ensemble_type),      intent(inout) :: state_ens_handle
-type(restart_names_type), intent(in)    :: name_handle
-integer,                  intent(in)    :: domain
-integer,                  intent(inout) :: dart_index
-integer,                  intent(in)    :: limit_mem !< How many state elements you can write at once
-logical,                  intent(in)    :: write_single_precision
+subroutine transpose_write(state_ens_handle, name_handle, domain, &
+                     dart_index, limit_mem, write_single_precision)
+
+type(ensemble_type),       intent(inout) :: state_ens_handle
+type(stage_metadata_type), intent(in)    :: name_handle
+integer,                   intent(in)    :: domain
+integer,                   intent(inout) :: dart_index
+integer,                   intent(in)    :: limit_mem !< How many state elements you can write at once
+logical,                   intent(in)    :: write_single_precision
 
 if (task_count() == 1) then
-   call transpose_write_single_task(state_ens_handle, name_handle, domain, dart_index, write_single_precision)
-else ! multi task
-   call transpose_write_multi_task(state_ens_handle, name_handle, domain, dart_index, limit_mem, write_single_precision)
+   call transpose_write_single_task(state_ens_handle, name_handle, domain, &
+                                    dart_index, write_single_precision)
+else
+   call transpose_write_multi_task(state_ens_handle, name_handle, domain, &
+                                   dart_index, limit_mem, write_single_precision)
 endif
 
 end subroutine transpose_write
 
-!-------------------------------------------------
 
-!-------------------------------------------------
-! Single processor
 !-------------------------------------------------
 !> Single processor version of read_transpose.  Reads ens_size whole vectors from
 !> netcdf files and fills up a row of %copies for each file.
+
+
 subroutine read_transpose_single_task(state_ens_handle, name_handle, domain, dart_index)
 
 type(ensemble_type),      intent(inout) :: state_ens_handle
-type(restart_names_type), intent(in)    :: name_handle
+type(stage_metadata_type), intent(in)   :: name_handle
 integer,                  intent(in)    :: domain
-integer,                  intent(inout) :: dart_index !< This is for mulitple domains
+integer,                  intent(inout) :: dart_index !< This is for multiple domains
 
 real(r8), allocatable :: vector(:)
 
@@ -185,8 +191,8 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
    start_var = 1 ! read first variable first
 
    ! open netcdf file
-   if (query_read_copy(copy)) then
-      netcdf_filename = get_input_file(name_handle, copy, domain)
+   if (query_read_copy(name_handle, copy)) then
+      netcdf_filename = get_restart_filename(name_handle, copy, domain)
       ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
       call nc_check(ret, 'read_transpose_single_task: opening', netcdf_filename)
    endif
@@ -195,7 +201,7 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
 
    ending_point = starting_point + block_size -1
 
-   if (query_read_copy(copy)) then
+   if (query_read_copy(name_handle, copy)) then
       call read_variables(ncfile, vector, 1, get_num_variables(domain), domain)
       ! close netcdf file
       ret = nf90_close(ncfile)
@@ -214,17 +220,21 @@ dart_index = starting_point
 deallocate(vector)
 
 end subroutine read_transpose_single_task
-!-------------------------------------------------
 
+
+!-------------------------------------------------
 !> Single processor version of transpose write.  Takes copies array one row
 !> at a time and writes copy to a netcdf file.
-subroutine transpose_write_single_task(state_ens_handle, name_handle, domain, dart_index, write_single_precision)
 
-type(ensemble_type),      intent(inout) :: state_ens_handle
-type(restart_names_type), intent(in)    :: name_handle
-integer,                  intent(in)    :: domain
-integer,                  intent(inout) :: dart_index
-logical,                  intent(in)    :: write_single_precision
+
+subroutine transpose_write_single_task(state_ens_handle, name_handle, domain, &
+                     dart_index, write_single_precision)
+
+type(ensemble_type),       intent(inout) :: state_ens_handle
+type(stage_metadata_type), intent(in)    :: name_handle
+integer,                   intent(in)    :: domain
+integer,                   intent(inout) :: dart_index
+logical,                   intent(in)    :: write_single_precision
 
 integer :: ncfile_out !< netcdf output file handle
 character(len=256) :: netcdf_filename_out
@@ -234,10 +244,12 @@ real(r8), allocatable :: vector(:)
 integer :: block_size
 integer :: starting_point, ending_point
 integer :: copy
-integer :: start_var
+integer :: start_var, end_var
 
 type(time_type) :: dart_time
 integer :: time_owner, time_owner_index
+
+logical :: clamp_vars
 
 ! need to read into a tempory array to fill with one copies
 allocate(vector(get_domain_size(domain)))
@@ -252,8 +264,8 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
    start_var = 1 ! read first variable first
 
    ! open netcdf file
-   if (query_write_copy(copy)) then
-      netcdf_filename_out = get_output_file(name_handle, copy, domain)
+   if (query_write_copy(name_handle, copy)) then
+      netcdf_filename_out = get_restart_filename(name_handle, copy, domain)
 
       if(file_exist(netcdf_filename_out)) then
          ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
@@ -275,16 +287,20 @@ COPIES: do copy = 1, state_ens_handle%my_num_copies
 
    ending_point = starting_point + block_size -1
 
-   if (query_write_copy(copy)) then
+   if (query_write_copy(name_handle, copy)) then
 
       vector = state_ens_handle%copies(copy, starting_point:ending_point)
 
-      if (copy <= state_ens_handle%num_copies - state_ens_handle%num_extras) then
-         ! actual copy, may need clamping
-         call write_variables_clamp(ncfile_out, vector, 1, get_num_variables(domain), domain)
-      else ! extra copy, don't clamp
-         call write_variables(ncfile_out, vector, 1, get_num_variables(domain), domain)
-      endif
+      ! for a single task the end var will always be the last element.
+      ! do not need to limit memory since the entire state is all on 
+      ! a single processor.
+      end_var = get_num_variables(domain)
+
+      ! actual copy, may need clamping
+      clamp_vars = copy_is_clamped(name_handle, copy)
+
+      call write_variables(ncfile_out, vector, start_var, end_var, domain, clamp_vars)
+
       ! close netcdf file
       ret = nf90_close(ncfile_out)
       call nc_check(ret, 'transpose_write closing', netcdf_filename_out)
@@ -303,19 +319,22 @@ end subroutine transpose_write_single_task
 
 
 !-------------------------------------------------
-! Mulitple tasks
+! Multiple tasks
 !-------------------------------------------------
 !> Read in variables from model restart file and transpose so that every processor
 !> has all copies of a subset of state variables (fill state_ens_handle%copies)
 !> Read and transpose data according to the memory limit imposed by
 !> limit_mem. Note limit_mem cannot be smaller than a variable.
-subroutine read_transpose_multi_task(state_ens_handle, name_handle, domain, dart_index, limit_mem)
 
-type(ensemble_type),      intent(inout) :: state_ens_handle
-type(restart_names_type), intent(in)    :: name_handle
-integer,                  intent(in)    :: domain
-integer,                  intent(inout) :: dart_index !< This is for mulitple domains
-integer,                  intent(in)    :: limit_mem !< How many state elements you can read at once
+
+subroutine read_transpose_multi_task(state_ens_handle, name_handle, domain, &
+                dart_index, limit_mem)
+
+type(ensemble_type),       intent(inout) :: state_ens_handle
+type(stage_metadata_type), intent(in)    :: name_handle
+integer,                   intent(in)    :: domain
+integer,                   intent(inout) :: dart_index !< This is for multiple domains
+integer,                   intent(in)    :: limit_mem !< How many state elements you can read at once
 
 integer :: i
 integer :: start_var, end_var !< start/end variables in a read block
@@ -371,9 +390,8 @@ COPIES: do c = 1, ens_size
    ! on the readers?
    if (is_reader) then
 
-      if (query_read_copy(my_copy)) then
-         netcdf_filename = get_input_file(name_handle, my_copy, domain)
-         !print*, 'opening netcdf_filename ', trim(netcdf_filename)
+      if (query_read_copy(name_handle, my_copy)) then
+         netcdf_filename = get_restart_filename(name_handle, my_copy, domain)
          ret = nf90_open(netcdf_filename, NF90_NOWRITE, ncfile)
          call nc_check(ret, 'read_transpose opening', netcdf_filename)
       endif
@@ -386,11 +404,10 @@ COPIES: do c = 1, ens_size
 
       ! calculate how many variables will be read
       end_var = calc_end_var(start_var, domain, limit_mem)
-      if ((my_task_id() == 0) .and. (c == 1)) print*, 'start_var, end_var', start_var, end_var
       block_size = get_sum_variables(start_var, end_var, domain)
 
       if (is_reader) then
-         if (query_read_copy(my_copy)) then
+         if (query_read_copy(name_handle, my_copy)) then
 
             allocate(var_block(block_size))
             call read_variables(ncfile, var_block, start_var, end_var, domain)
@@ -416,7 +433,7 @@ COPIES: do c = 1, ens_size
 
             RECEIVE_FROM_EACH: do sending_pe = send_start, send_end
 
-               if (query_read_copy(sending_pe + copies_read + 1)) then
+               if (query_read_copy(name_handle, sending_pe + copies_read + 1)) then
 
                   if(sending_pe == recv_pe) then ! just copy
                      state_ens_handle%copies(ensemble_member, starting_point:ending_point ) = &
@@ -437,7 +454,7 @@ COPIES: do c = 1, ens_size
 
          elseif (is_reader) then ! sending
 
-            if (query_read_copy(my_copy)) then
+            if (query_read_copy(name_handle, my_copy)) then
 
                call send_variables_from_read(state_ens_handle, recv_pe, i, elm_count, block_size, var_block)
 
@@ -450,7 +467,7 @@ COPIES: do c = 1, ens_size
       start_var = end_var + 1
 
       if (is_reader) then
-         if (query_read_copy(my_copy)) deallocate(var_block)
+         if (query_read_copy(name_handle, my_copy)) deallocate(var_block)
       endif
 
    enddo VARIABLE_LOOP
@@ -460,7 +477,7 @@ COPIES: do c = 1, ens_size
 
    ! close netcdf file
    if (is_reader) then
-      if (query_read_copy(my_copy)) then
+      if (query_read_copy(name_handle, my_copy)) then
          ret = nf90_close(ncfile)
          call nc_check(ret, 'read_transpose closing', netcdf_filename)
       endif
@@ -472,20 +489,24 @@ dart_index = starting_point
 
 end subroutine read_transpose_multi_task
 
+
 !-------------------------------------------------
 !> Transpose from state_ens_handle%copies to the writers according to 
 !> the memory limit imposed by limit_mem.
 !> 
 !> This is assuming round-robin layout of state on procesors (distribution type 1
 !> in the ensemble handle).
-subroutine transpose_write_multi_task(state_ens_handle, name_handle, domain, dart_index, limit_mem, write_single_precision)
 
-type(ensemble_type),      intent(inout) :: state_ens_handle
-type(restart_names_type), intent(in)    :: name_handle
-integer,                  intent(in)    :: domain
-integer,                  intent(inout) :: dart_index
-integer,                  intent(in)    :: limit_mem !< How many state elements you can read at once
-logical,                  intent(in)    :: write_single_precision
+
+subroutine transpose_write_multi_task(state_ens_handle, name_handle, domain, &
+                dart_index, limit_mem, write_single_precision)
+
+type(ensemble_type),       intent(inout) :: state_ens_handle
+type(stage_metadata_type), intent(in)    :: name_handle
+integer,                   intent(in)    :: domain
+integer,                   intent(inout) :: dart_index
+integer,                   intent(in)    :: limit_mem !< How many state elements you can read at once
+logical,                   intent(in)    :: write_single_precision
 
 integer :: i
 integer :: start_var, end_var !< start/end variables in a read block
@@ -515,7 +536,7 @@ integer :: num_state_variables
 type(time_type) :: dart_time
 integer :: time_owner, time_owner_index
 
-logical :: is_writer
+logical :: is_writer, clamp_vars
 
 ens_size = state_ens_handle%num_copies ! have the extras incase you want to read inflation restarts
 my_pe = state_ens_handle%my_pe
@@ -542,8 +563,8 @@ COPIES : do c = 1, ens_size
 
    ! writers open netcdf output file. This is a copy of the input file
    if (is_writer) then
-      if ( query_write_copy(my_copy)) then
-         netcdf_filename_out = get_output_file(name_handle, my_copy, domain)
+      if ( query_write_copy(name_handle, my_copy)) then
+         netcdf_filename_out = get_restart_filename(name_handle, my_copy, domain)
 
          if(file_exist(netcdf_filename_out)) then
             ret = nf90_open(netcdf_filename_out, NF90_WRITE, ncfile_out)
@@ -556,7 +577,8 @@ COPIES : do c = 1, ens_size
             call get_copy_owner_index(my_copy, time_owner, time_owner_index)
             call get_ensemble_time(state_ens_handle, time_owner_index, dart_time)
 
-            ncfile_out = create_and_open_state_output(name_handle, domain, my_copy, dart_time, write_single_precision)
+            ncfile_out = create_and_open_state_output(name_handle, domain, my_copy, &
+                            dart_time, write_single_precision)
          endif
       endif
 
@@ -567,11 +589,10 @@ COPIES : do c = 1, ens_size
 
       ! calculate how many variables will be sent to writer
       end_var = calc_end_var(start_var, domain, limit_mem)
-      if ((my_task_id() == 0) .and. (c == 1 )) print*, 'start_var, end_var', start_var, end_var
       block_size = get_sum_variables(start_var, end_var, domain)
 
       if (is_writer) then
-         if (query_write_copy(my_copy)) then
+         if (query_write_copy(name_handle, my_copy)) then
             allocate(var_block(block_size))
          endif
       endif
@@ -589,7 +610,7 @@ COPIES : do c = 1, ens_size
 
          if (my_pe /= sending_pe ) then ! post recieves
 
-            if (query_write_copy(my_copy)) then
+            if (query_write_copy(name_handle, my_copy)) then
                call recv_variables_to_write(state_ens_handle, sending_pe, i, elm_count, block_size, var_block)
             endif
 
@@ -599,7 +620,7 @@ COPIES : do c = 1, ens_size
 
             do recv_pe = recv_start, recv_end ! no if statement because everyone sends
 
-               if (query_write_copy(recv_pe + copies_written + 1)) then
+               if (query_write_copy(name_handle, recv_pe + copies_written + 1)) then
 
                   if ( recv_pe /= my_pe ) then
                      call send_variables_to_write(state_ens_handle, recv_pe, ensemble_member, starting_point, ending_point)
@@ -621,13 +642,10 @@ COPIES : do c = 1, ens_size
       enddo SENDING_PE_LOOP
 
       if (is_writer) then ! I am a writer
-         if ( query_write_copy(my_copy)) then
+         if ( query_write_copy(name_handle, my_copy)) then
             !var_block = MISSING_R8  ! if you want to create a file for bitwise testing
-            if (my_copy <= state_ens_handle%num_copies - state_ens_handle%num_extras) then ! actual copy, may need clamping
-               call write_variables_clamp(ncfile_out, var_block, start_var, end_var, domain)
-            else ! extra copy, don't clamp
-               call write_variables(ncfile_out, var_block, start_var, end_var, domain)
-            endif
+            clamp_vars = copy_is_clamped(name_handle, my_copy)
+            call write_variables(ncfile_out, var_block, start_var, end_var, domain, clamp_vars)
             deallocate(var_block)
          endif
       endif
@@ -641,7 +659,7 @@ COPIES : do c = 1, ens_size
 
    ! close netcdf file
    if (is_writer) then 
-      if (query_write_copy(my_copy)) then
+      if (query_write_copy(name_handle, my_copy)) then
          ret = nf90_close(ncfile_out)
          call nc_check(ret, 'transpose_write', 'closing')
       endif
@@ -653,24 +671,23 @@ dart_index = starting_point
 
 end subroutine transpose_write_multi_task
 
-!-------------------------------------------------------------------------------
 
 !-------------------------------------------------------------------------------
-!> Check a variable for out of bounds and clamp or fail if needed
-!-------------------------------------------------------------------------------
-function clamp_variable(dom_id, var_index, variable)
+!> Check a variable for out of bounds and clamp or fail if needed.
+!> If the variable has clamping limits, this routine returns .TRUE. 
+!> If the variable is unbounded, this routine returns .FALSE.
+!> The return value is not an indication of whether or not the values have 
+!> actually been modified.
+
+
+subroutine clamp_variable(dom_id, var_index, variable)
 
 integer,     intent(in) :: dom_id ! domain id
 integer,     intent(in) :: var_index ! variable index
 real(r8), intent(inout) :: variable(:) ! variable
 
-logical :: clamp_variable
-
 real(r8) :: minclamp, maxclamp
 character(len=NF90_MAX_NAME) :: varname ! for debugging only
-
-! assume the variable will not be clamped
-clamp_variable = .false.
 
 ! is lower bound set
 minclamp = get_io_clamping_minval(dom_id, var_index)
@@ -691,7 +708,6 @@ if ( minclamp /= missing_r8 ) then
       !>@todo FIXME : if allow_missing_in_state then we need to be careful
       !>              not to clamp missing values
       variable = max(minclamp, variable)
-      clamp_variable = .true.
    endif
 endif ! min range set
 
@@ -707,18 +723,19 @@ if ( maxclamp /= missing_r8 ) then
                    source,revision,revdate, text2=msgstring)
 
       variable = min(maxclamp, variable)
-      clamp_variable = .true.
    endif
 endif ! max range set
 
-end function clamp_variable
+end subroutine clamp_variable
+
 
 !-------------------------------------------------------------------------------
 !> Read in variables from start_var to end_var
-!> FIXME: At the moment, this code is assuming that the variables in the state start
+!>@todo FIXME: At the moment, this code is assuming that the variables in the state start
 !> at (1,1,1) and that the whole variable is read. This is not the case for 
-!> Tiegcm and CLM.  
-!-------------------------------------------------------------------------------
+!> TIEGCM and CLM.  
+
+
 subroutine read_variables(ncfile_in, var_block, start_var, end_var, domain)
 
 integer,  intent(in)    :: ncfile_in
@@ -759,20 +776,24 @@ enddo
 
 end subroutine read_variables
 
+
 !-------------------------------------------------------------------------------
 !> Write variables from start_var to end_var no clamping
-!-------------------------------------------------------------------------------
-subroutine write_variables(ncfile_out, var_block, start_var, end_var, domain)
+
+
+subroutine write_variables(ncfile_out, var_block, start_var, end_var, domain, do_file_clamping)
 
 integer,  intent(in)    :: ncfile_out
 real(r8), intent(inout) :: var_block(:)
 integer,  intent(in)    :: start_var
 integer,  intent(in)    :: end_var
 integer,  intent(in)    :: domain 
+logical,  intent(in)    :: do_file_clamping 
 
 integer :: start_in_var_block, end_in_var_block
 integer, allocatable :: dims(:)
 integer :: i, ret, var_id, var_size
+logical :: clamped
 
 start_in_var_block = 1
 do i = start_var, end_var
@@ -780,7 +801,15 @@ do i = start_var, end_var
    var_size = get_variable_size(domain, i)
    end_in_var_block = start_in_var_block + var_size - 1
    
-   if ( do_io_update(domain, i ) ) then
+   ! Some diagnostic variables do not need to be  updated.  
+   ! This information is stored in the state structure and 
+   ! set by the model.
+   if ( do_io_update(domain, i) ) then
+      ! diagnostic files do not get clamped but restart may be clamped
+      if ( do_io_clamping(domain, i) .and. do_file_clamping) then
+         call clamp_variable(domain, i, var_block(start_in_var_block:end_in_var_block))
+      endif
+
       ! number of dimensions and length of each
       allocate(dims(get_io_num_dims(domain, i)))
 
@@ -801,53 +830,6 @@ enddo
 
 end subroutine write_variables
 
-!-------------------------------------------------------------------------------
-!> Write variables from start_var to end_var for actual ensemble members
-!-------------------------------------------------------------------------------
-subroutine write_variables_clamp(ncfile_out, var_block, start_var, end_var, domain)
-
-integer,  intent(in) :: ncfile_out
-real(r8), intent(inout) :: var_block(:)
-integer,  intent(in) :: start_var
-integer,  intent(in) :: end_var
-integer,  intent(in) :: domain 
-
-integer :: start_in_var_block, end_in_var_block
-integer, allocatable :: dims(:)
-integer :: i, ret, var_id, var_size
-logical :: clamped
-
-start_in_var_block = 1
-do i = start_var, end_var
-
-   var_size = get_variable_size(domain, i)
-   end_in_var_block = start_in_var_block + var_size - 1
-
-   if ( do_io_update(domain, i ) ) then
-      ! check whether you have to do anything to the variable, clamp or fail
-      if ( do_io_clamping(domain, i) ) then
-         clamped = clamp_variable(domain, i, var_block(start_in_var_block:end_in_var_block))
-      endif
-
-      ! number of dimensions and length of each
-      allocate(dims(get_io_num_dims(domain, i)))
-
-      dims = get_io_dim_lengths(domain, i)
-
-      ret = nf90_inq_varid(ncfile_out, get_variable_name(domain, i), var_id)
-      call nc_check(ret, 'write_variables_clamp', 'getting variable id')
-
-      ret = nf90_put_var(ncfile_out, var_id, var_block(start_in_var_block:end_in_var_block), count=dims)
-      call nc_check(ret, 'write_variables_clamp', 'writing')
-
-      deallocate(dims)
-   endif
-
-   start_in_var_block = start_in_var_block + var_size
-
-enddo
-
-end subroutine write_variables_clamp
 
 !-------------------------------------------------------------------------------
 !> Create the output files
@@ -855,11 +837,13 @@ end subroutine write_variables_clamp
 !> A 'blank' domain is one variable called state, with dimension = model size.
 !> It is used when the model has not suppled any netdcf info but 
 !>     direct_netcdf_write = .true.
-!>@todo The file is not closed here.
-!-------------------------------------------------------------------------------
-function create_and_open_state_output(ens_name_handle, dom_id, copy_number, dart_time, single_precision_output) result(ncfile_out)
+!> The file is intentionally left OPEN.
 
-type(restart_names_type), intent(in) :: ens_name_handle
+
+function create_and_open_state_output(name_handle, dom_id, copy_number, &
+                dart_time, single_precision_output) result(ncfile_out)
+
+type(stage_metadata_type), intent(in) :: name_handle
 integer,                  intent(in) :: dom_id !< domain
 integer,                  intent(in) :: copy_number
 type(time_type),          intent(in) :: dart_time
@@ -877,7 +861,7 @@ integer :: dimids(NF90_MAX_VAR_DIMS)
 
 character(len=NF90_MAX_NAME) :: filename
 
-filename = get_output_file(ens_name_handle, copy_number, dom_id)
+filename = get_restart_filename(name_handle, copy_number, dom_id)
 
 write(msgstring,*) 'Creating output file ', trim(filename)
 call error_handler(E_ALLMSG,'create_and_open_state_output:', msgstring)
@@ -888,7 +872,7 @@ ret = nf90_create(filename, create_mode, ncfile_out)
 call nc_check(ret, 'create_and_open_state_output: creating', trim(filename))
 
 ! filename discription
-call nc_write_file_information(ncfile_out, filename, get_file_description(ens_name_handle, copy_number, dom_id))
+call nc_write_file_information(ncfile_out, filename, get_file_description(name_handle, copy_number, dom_id))
 
 ! revision information
 call nc_write_revision_info(ncfile_out)
@@ -899,9 +883,10 @@ call nc_write_global_att_clamping(ncfile_out, copy_number, dom_id, from_scratch=
 ! define dimensions, loop around unique dimensions
 do i = 1, get_io_num_unique_dims(dom_id)
    ret = nf90_def_dim(ncfile_out, get_io_unique_dim_name(dom_id, i), get_io_unique_dim_length(dom_id, i), new_dimid)
-   !> @todo if we already have a unique names we can take this test out
+   !>@todo if we already have a unique names we can take this test out
    if(ret /= NF90_NOERR .and. ret /= NF90_ENAMEINUSE) then
-      call nc_check(ret, 'create_and_open_state_output', 'defining dimensions')
+      call nc_check(ret, 'create_and_open_state_output', &
+              'defining dimensions'//trim(get_io_unique_dim_name(dom_id, i)))
    endif
 enddo
 
@@ -933,7 +918,8 @@ do i = 1, get_num_variables(dom_id) ! loop around state variables
    !variable_ids(i, dom_id) = new_varid
    call set_var_id(dom_id, i, new_varid)
 
-   call nc_write_attributes(ncfile_out, filename, new_varid, dom_id, i, copy_number)
+   call nc_write_attributes(name_handle, ncfile_out, filename, new_varid, &
+                            dom_id, i, copy_number)
 
 enddo
 
@@ -944,10 +930,15 @@ call write_model_time(ncfile_out, dart_time)
 
 end function create_and_open_state_output
 
+
 !-------------------------------------------------
 !> Write model attributes if they exist
-subroutine nc_write_attributes(ncFileID, filename, ncVarID, domid, varid, copy_number)
+!>@todo repurpose for single file I/O
 
+
+subroutine nc_write_attributes(name_handle, ncFileID, filename, ncVarID, domid, varid, copy_number)
+
+type(stage_metadata_type), intent(in) :: name_handle
 integer,          intent(in) :: ncFileID
 character(len=*), intent(in) :: filename
 integer,          intent(in) :: ncVarID
@@ -966,31 +957,23 @@ if ( get_short_name(domid, varid) /= ' ' ) then
 endif
 
 ! attributes that are only restart files
-if ( is_ensemble_copy(copy_number) ) then
+if ( copy_is_clamped(name_handle, copy_number) ) then
    call  nc_write_variable_att_clamping(ncFileID, filename, ncVarID, domid, varid)
-endif 
-
-! attributes plus an extra note about clamping for mean and sd files 
-if ( is_mean_copy(copy_number) ) then
-   call  nc_write_variable_att_clamping(ncFileID, filename, ncVarID, domid, varid)
-   write(msgstring,'(A)') 'mean computed prior to clamping'
+   write(msgstring,'(2A)') trim(get_file_description(name_handle, copy_number, domid)), '[clamped]'
    call nc_check(nf90_put_att(ncFileID,NF90_GLOBAL,'DART_note',msgstring),&
-                   'nc_write_attributes','note in : '//trim(filename))
+                    'nc_write_attributes','note in : '//trim(filename))
+else
+   write(msgstring,'( A)') trim(get_file_description(name_handle, copy_number, domid))
+   call nc_check(nf90_put_att(ncFileID,NF90_GLOBAL,'DART_note',msgstring),&
+                    'nc_write_attributes','note in : '//trim(filename))
 endif
 
-if ( is_sd_copy(copy_number) ) then
-   call  nc_write_variable_att_clamping(ncFileID, filename, ncVarID, domid, varid)
-   write(msgstring,'(A)') 'sd computed prior to clamping'
-   call nc_check(nf90_put_att(ncFileID,NF90_GLOBAL,'DART_note',msgstring),&
-                   'nc_write_attributes','note in :'//trim(filename))
-endif
-
-! attributes that are only important for inflation copies
-if( is_inflation_copy(copy_number) ) then 
-   call nc_check(nf90_put_att(ncFileID,ncVarID,'units','unitless'),&
+! attributes for variables without units such as inflation and sd
+if( copy_has_units(name_handle, copy_number) ) then 
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'units',get_units(domid, varid)),&
                 'nc_write_attributes','units in :'//trim(filename))
 else if ( get_units(domid, varid) /= ' ' ) then
-   call nc_check(nf90_put_att(ncFileID,ncVarID,'units',get_units(domid, varid)),&
+   call nc_check(nf90_put_att(ncFileID,ncVarID,'units','unitless'),&
                 'nc_write_attributes','units in :'//trim(filename))
 endif
      
@@ -1019,12 +1002,15 @@ if (get_add_offset(domid, varid) /= MISSING_R8) then
                 'nc_write_attributes','add_offset '//trim(filename))
 endif
 
+!>@todo FIXME: put clamping values with min_val, max_val, valid_range, or whatever the proper CF-range
+
 end subroutine nc_write_attributes
+
 
 !-------------------------------------------------
 !> Write global clamping attributes to files that already exist
+!>@todo FIXME ? use derived type for copy number and get long name
 
-!>@todo FIXME : use derived type for copy number and get long name
 
 subroutine nc_write_file_information(ncFileID, filename, description)
 
@@ -1037,8 +1023,11 @@ call nc_check(nf90_put_att(ncFileID,NF90_GLOBAL,'DART_file_information',descript
 
 end subroutine nc_write_file_information
 
+
 !-------------------------------------------------
 !> Write clamping to variable attributes to files created from scratch
+
+
 subroutine nc_write_variable_att_clamping(ncFileID, filename, ncVarID, domid, varid)
 
 integer,          intent(in) :: ncFileID
@@ -1067,11 +1056,13 @@ if ( do_io_clamping(domid, varid) ) then
 
 endif
 
-
 end subroutine nc_write_variable_att_clamping
+
 
 !-------------------------------------------------
 !> Write global clamping attributes for variables that have clamping
+!>@todo FIXME check to see if this has a performance impact.
+
 
 subroutine nc_write_global_att_clamping(ncFileID, copy, domid, from_scratch)
 
@@ -1093,35 +1084,36 @@ endif
 
 if (need_netcdf_def_mode) call nc_check(nf90_Redef(ncFileID),'nc_write_global_att_clamping',   'redef ')
 
-   if ( (is_ensemble_copy(copy)) .or. &
-        (is_mean_copy(copy)) ) then
-      
-   do ivar = 1,get_num_variables(domid)
-      if ( do_io_clamping(domid, ivar) ) then
-   
-        write(clamp_min,*)  'NA'
-        write(clamp_max,*)  'NA'
-        
-        clamp_val = get_io_clamping_maxval(domid, ivar)
-        if ( clamp_val /= MISSING_R8 ) write(clamp_max,*)  clamp_val
-        
-        clamp_val = get_io_clamping_minval(domid, ivar)
-        if ( clamp_val /= MISSING_R8 ) write(clamp_min,*)  clamp_val
-        
-        write(msgstring,'(''min_val = '',A15,'' , max val = '',A15)') trim(clamp_min), trim(clamp_max)
-        write(att_name,'(2A)')  'DART_clamp_', trim(get_variable_name(domid, ivar))
-        call nc_check(nf90_put_att(ncFileID,NF90_GLOBAL,att_name, msgstring), &
-                   'nc_write_global_att_clamping','DART_clamping_range')
-      endif
-   enddo
-endif
+do ivar = 1,get_num_variables(domid)
+   if ( do_io_clamping(domid, ivar) ) then
+
+     write(clamp_min,*)  'NA'
+     write(clamp_max,*)  'NA'
+     
+     clamp_val = get_io_clamping_maxval(domid, ivar)
+     if ( clamp_val /= MISSING_R8 ) write(clamp_max,*)  clamp_val
+     
+     clamp_val = get_io_clamping_minval(domid, ivar)
+     if ( clamp_val /= MISSING_R8 ) write(clamp_min,*)  clamp_val
+     
+     write(msgstring,'(''min_val = '',A15,'' , max val = '',A15)') trim(clamp_min), trim(clamp_max)
+     write(att_name,'(2A)')  'DART_clamp_', trim(get_variable_name(domid, ivar))
+     call nc_check(nf90_put_att(ncFileID,NF90_GLOBAL,att_name, msgstring), &
+                'nc_write_global_att_clamping','DART_clamping_range')
+   endif
+enddo
 
 if (need_netcdf_def_mode) call nc_check(nf90_enddef(ncFileID), 'nc_write_global_att_clamping', 'end define mode')
 
 end subroutine nc_write_global_att_clamping
 
+
 !-------------------------------------------------
 !> Write revision information
+!>@todo this should only be done for _new_ files that DART creates - performance issue
+!>@todo this will change when we move to GIT
+
+
 subroutine nc_write_revision_info(ncFileID)
 
 integer,          intent(in) :: ncFileID
@@ -1150,8 +1142,11 @@ call nc_check(nf90_put_att(ncFileID, NF90_GLOBAL, 'DART_revdate' ,revdate ), &
 
 end subroutine nc_write_revision_info
 
+
 !-------------------------------------------------
 !> Write model integer missing_value/_FillValue attributes if they exist
+
+
 subroutine nc_write_missing_value_int(ncFileID, filename, ncVarID, domid, varid)
 
 integer,          intent(in) :: ncFileID
@@ -1175,8 +1170,11 @@ endif
 
 end subroutine nc_write_missing_value_int
 
+
 !-------------------------------------------------
 !> Write model r4 missing_value/_FillValue attributes if they exist
+
+
 subroutine nc_write_missing_value_r4(ncFileID, filename, ncVarID, domid, varid)
 
 integer,          intent(in) :: ncFileID
@@ -1200,8 +1198,11 @@ endif
 
 end subroutine nc_write_missing_value_r4
 
+
 !-------------------------------------------------
 !> Write model r8 missing_value/_FillValue attributes if they exist
+
+
 subroutine nc_write_missing_value_r8(ncFileID, filename, ncVarID, domid, varid)
 
 integer,          intent(in) :: ncFileID
@@ -1225,8 +1226,11 @@ endif
 
 end subroutine nc_write_missing_value_r8
 
+
 !-------------------------------------------------
 !> Calculate how many variables to read in one go.
+
+
 function calc_end_var(start_var, domain, limit_mem)
 
 integer              :: calc_end_var !< end variable index
@@ -1280,8 +1284,11 @@ deallocate(num_elements)
 
 end function calc_end_var
 
+
 !-------------------------------------------------
 !> Find pes for loop indices
+
+
 subroutine get_pe_loops(ens_size, recv_start, recv_end, send_start, send_end)
 
 integer, intent(in)    :: ens_size
@@ -1304,10 +1311,11 @@ endif
 
 end subroutine get_pe_loops
 
+
 !--------------------------------------------------------
 !--------------------------------------------------------
 ! Routines that are making the assumption that the ensemble
-! distribution is round-robin (disrtibution type 1)
+! distribution is round-robin (distribution type 1)
 !------------------------------------------------------
 !--------------------------------------------------------
 !> Send elements of variables to a processor. This routine must be called
@@ -1315,13 +1323,15 @@ end subroutine get_pe_loops
 !> The data on the sender are non-contiguous with a stride of task_count. The
 !> start is different depending on which pe is the recv and which variables 
 !> are being sent (these are calculated in the calling routine).
-!> The data on the reciever are contiguous (it is the %copies array)
+!> The data on the receiver are contiguous (it is the %copies array)
+
+
 subroutine send_variables_from_read(state_ens_handle, recv_pe, start, elm_count, block_size, variable_block)
 
 type(ensemble_type), intent(in) :: state_ens_handle
 integer,             intent(in) :: recv_pe ! receiving pe
 integer,             intent(in) :: start ! start in variable block on sender.
-integer,             intent(in) :: elm_count ! how many elemets
+integer,             intent(in) :: elm_count ! how many elements
 integer,             intent(in) :: block_size ! size of info on sender - the receiver only
                                               ! gets part of this.
 real(r8),            intent(in) :: variable_block(block_size) ! variable info
@@ -1330,7 +1340,7 @@ real(r8), allocatable :: buffer(:) ! for making send array contiguous
 
 if (state_ens_handle%distribution_type == 1) then
 
-   ! MPI vector data type or packing should be used here.
+   !>@todo MPI vector data type or packing could/should be used here?
    allocate(buffer(elm_count))
    buffer = variable_block(start:elm_count*task_count():task_count())
    call send_to(map_pe_to_task(state_ens_handle, recv_pe), &
@@ -1345,6 +1355,7 @@ endif
 
 end subroutine send_variables_from_read
 
+
 !--------------------------------------------------------
 !> Send the data from a pe to a writer.
 !> Note this may be 1 variable or many.  Start is the start index in %copies
@@ -1354,7 +1365,10 @@ end subroutine send_variables_from_read
 !> finish = ens_handle%my_num_vars  (on sending pe)
 !> This routine must be called with a corresponding 'recv_variables_to_write.'
 !> The data on the sender is non-contiguous since it is a ROW of %copies.
-subroutine send_variables_to_write(state_ens_handle, recv_pe, ensemble_member, start, finish)
+
+
+subroutine send_variables_to_write(state_ens_handle, recv_pe, &
+                ensemble_member, start, finish)
 
 type(ensemble_type), intent(in) :: state_ens_handle
 integer,             intent(in) :: recv_pe ! receiving pe
@@ -1380,15 +1394,19 @@ endif
 
 end subroutine send_variables_to_write
 
+
 !--------------------------------------------------------
-!> Receieve data from a reader. Start and finish are the local indicies
+!> Receive data from a reader. Start and finish are the local indicies
 !> in the %copies array for the data being received.
 !> If all variables are transposed at once, 
 !> start = 1, 
 !> finish = ens_handle%my_num_vars  (on receiveing pe)
 !> This routine must be called with a corresponding 'send_variables_from_read'.
 !> The data on the sender is non-contiguous since it is a ROW of %copies.
-subroutine recv_variables_from_read(state_ens_handle, recv_pe, ensemble_member, start, finish)
+
+
+subroutine recv_variables_from_read(state_ens_handle, recv_pe, &
+                ensemble_member, start, finish)
 
 type(ensemble_type), intent(inout) :: state_ens_handle
 integer,             intent(in)    :: recv_pe ! receiving pe
@@ -1414,6 +1432,7 @@ endif
 
 end subroutine recv_variables_from_read
 
+
 !--------------------------------------------------------
 !> Receive data to write/collect. The data is put non-contiguously into
 !> variable_block.  Variable_block is the block of data writen to a 
@@ -1422,17 +1441,20 @@ end subroutine recv_variables_from_read
 !> calling code. The stride is task_count() since we are assuming a round robin 
 !> distribution of state vector onto processors.
 !> This routine must be called with a corresponding 'send_variables_to_write'
-subroutine recv_variables_to_write(state_ens_handle, sending_pe, start, elm_count, block_size, variable_block)
+
+
+subroutine recv_variables_to_write(state_ens_handle, sending_pe, start, &
+                elm_count, block_size, variable_block)
 
 type(ensemble_type), intent(in)    :: state_ens_handle
-integer,             intent(in)    :: sending_pe ! sending_pe
-integer,             intent(in)    :: start ! start in vars array on reciever.
-integer,             intent(in)    :: elm_count ! how many elemets
-integer,             intent(in)    :: block_size ! size of info on sender - the receiver only
-                                              ! gets part of this.
-real(r8),            intent(inout) :: variable_block(block_size) ! variable info
+integer,             intent(in)    :: sending_pe !> sending_pe
+integer,             intent(in)    :: start !> start in vars array on receiver.
+integer,             intent(in)    :: elm_count !> how many elements
+integer,             intent(in)    :: block_size !> size of info on sender - the receiver only
+                                              !> gets part of this.
+real(r8),            intent(inout) :: variable_block(block_size) !> variable info
 
-real(r8), allocatable :: buffer(:) ! for making send array contiguous
+real(r8), allocatable :: buffer(:) !> for making send array contiguous
 
 if (state_ens_handle%distribution_type == 1) then
 
@@ -1449,8 +1471,8 @@ else
 
 endif
 
-
 end subroutine recv_variables_to_write
+
 
 !--------------------------------------------------------
 !> Calculate number of elements going to the receiving pe (read_transpose)
@@ -1460,7 +1482,9 @@ end subroutine recv_variables_to_write
 !> be 1 variable or all variables depending on limit_mem.
 !> start_rank is the pe that owns the 1st element of the 1st variable in 
 !> the variable_block.
-!> This should go in ensemble manager. 
+!>@todo FIXME ? This should go in ensemble manager. 
+
+
 function num_elements_on_pe(pe, start_rank, block_size) result(elm_count)
 
 integer, intent(in) :: pe
@@ -1479,8 +1503,11 @@ if ( pe < (start_rank + remainder - task_count() )) elm_count = elm_count + 1
 
 end function num_elements_on_pe
 
+
 !--------------------------------------------------------
 !> Give the rank of the processor that owns the start of a variable
+
+
 function get_start_rank(variable, domain)
 
 integer, intent(in) :: variable
@@ -1492,10 +1519,13 @@ get_start_rank = mod(get_sum_variables_below(variable, domain), task_count())
 
 end function get_start_rank
 
+
 !-------------------------------------------------------
 !> Find i, the start point in var_block for a given recv_pe
 !> This is assuming round robin. - will have to query the 
 !> ensemble manager to find this for different disrtibutions
+
+
 function find_start_point(recv_pe, start_rank)
 
 integer, intent(in)  :: recv_pe !< the receiver

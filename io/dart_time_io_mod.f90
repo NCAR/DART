@@ -5,11 +5,13 @@
 ! $Id$
 
 module dart_time_io_mod
+
 !> \defgroup dart_time_io_mod dart_time_io_mod
 !> Netcdf reading and writing dart model time.
 !> Temporary module for dart time.
-!> @todo should this go in state_vector_io_mod or io_filename_mod?
+!>@todo should this go in state_vector_io_mod or io_filename_mod?
 !> @{
+
 use types_mod,        only : r8, i8
 use time_manager_mod, only : time_type, set_time, get_time
 use utilities_mod,    only : nc_check
@@ -17,15 +19,18 @@ use utilities_mod,    only : nc_check
 use typeSizes
 use netcdf
 
+implicit none
 private
 
 public :: read_model_time, write_model_time
 
 contains
 
+
 !--------------------------------------------------------------------
 !> read the dart time from the input file
-!--------------------------------------------------------------------
+
+
 function read_model_time(filename)
 
 character(len=*), intent(in) :: filename
@@ -60,8 +65,11 @@ call nc_check( nf90_close(ncid) , 'read_model_time closing : ', filename)
 
 end function read_model_time
 
+
 !--------------------------------------------------------------------
 !> Write dart time to a netcdf file
+
+
 subroutine write_model_time(ncid, dart_time)
 
 integer,             intent(in) :: ncid
@@ -87,8 +95,9 @@ if (ret /= NF90_NOERR) then
    call nc_check( nf90_put_att(ncid, dart_daysVarID, "calendar", "no calendar"), &
                   "write_model_time", "dart_days calendar")
 
-   call nc_check( nf90_put_att(ncid, dart_daysVarID, "units", "days since 0000-00-00 00:00:00"), &
-                  "write_model_time", "dart_days units")
+   call nc_check( nf90_put_att(ncid, dart_daysVarID, "units", &
+            "days since 0000-00-00 00:00:00"), "write_model_time", &
+            "dart_days units")
 endif
 
 ! define seconds if it does not exist

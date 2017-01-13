@@ -12,7 +12,7 @@
 
 program model_mod_check
 
-use             types_mod, only : r8, i8, missing_r8, metadatalength
+use             types_mod, only : r8, i8, missing_r8, metadatalength, MAX_NUM_DOMS
 
 use         utilities_mod, only : register_module, error_handler, E_MSG, E_ERR, &
                                   initialize_utilities, finalize_utilities,     &
@@ -31,9 +31,6 @@ use      obs_sequence_mod, only : static_init_obs_sequence
 
 use       assim_model_mod, only : static_init_assim_model
 
-use  state_space_diag_mod, only : aoutput_diagnostics, init_diag_output,        &
-                                  finalize_diag_output, netcdf_file_type
-
 use      time_manager_mod, only : time_type, set_calendar_type, GREGORIAN,      &
                                   set_time, print_time, print_date, operator(-)
 
@@ -47,7 +44,11 @@ use   state_structure_mod, only : get_num_domains
 use            filter_mod, only : filter_set_initial_time
 
 use      io_filenames_mod, only : io_filenames_init, file_info_type,        &
-                                  get_input_file, get_output_file
+                                  stage_metadata_type, get_stage_metadata, &
+                                  get_restart_filename, &
+                                  set_member_file_metadata, &
+                                  set_io_copy_flag, READ_COPY, WRITE_COPY
+                                  
 
 use             model_mod, only : static_init_model, get_model_size, &
                                   get_state_meta_data,       &
@@ -91,8 +92,8 @@ real(r8)               :: interp_test_dz = missing_r8
 real(r8), dimension(2) :: interp_test_xrange = (/ missing_r8, missing_r8 /)
 real(r8), dimension(2) :: interp_test_yrange = (/ missing_r8, missing_r8 /)
 real(r8), dimension(2) :: interp_test_zrange = (/ missing_r8, missing_r8 /)
-character(len = 129)   :: restart_in_file_name  = 'input'
-character(len = 129)   :: restart_out_file_name = 'output'
+character(len=256)       :: input_restart_list(MAX_NUM_DOMS)  = 'null'
+character(len=256)       :: output_restart_list(MAX_NUM_DOMS) = 'null'
 
 namelist /model_mod_check_nml/ x_ind, num_ens,                         &
                                loc_of_interest, kind_of_interest,      &
@@ -104,12 +105,13 @@ namelist /model_mod_check_nml/ x_ind, num_ens,                         &
                                interp_test_dz, interp_test_zrange,     &
                                interp_test_vertcoord,                  &
                                verbose, test1thru,                     &
-                               restart_in_file_name, restart_out_file_name
+                               input_restart_list, output_restart_list
 
 ! io variables
 integer :: iunit, io
 integer, allocatable :: ios_out(:)
-type(file_info_type) :: file_info
+type(file_info_type) :: file_info_input, file_info_output
+type(stage_metadata_type) :: input_restart_files, output_restart_files
 logical              :: read_time_from_file = .true.
 
 ! model state variables
@@ -184,29 +186,37 @@ model_time  = set_time(21600, 149446)   ! 06Z 4 March 2010
 ! Set up the ensemble storage and read in the restart file
 call init_ensemble_manager(ens_handle, num_ens, model_size)
 
-! Reading netcdf restart file:
-file_info = io_filenames_init(ens_handle, .false., .false., restart_in_file_name, restart_out_file_name, output_restart=.true., netcdf_read=.true., netcdf_write=.true.)
+! Reading/writing netcdf restart files:
+file_info_input  = io_filenames_init(num_ens, single_file = .false., &
+                                     restart_list = input_restart_list)
+call set_member_file_metadata(file_info_input, num_ens, my_copy_start=1)  
+call set_io_copy_flag(file_info_input, 1, num_ens, READ_COPY)
 
-
+file_info_output = io_filenames_init(num_ens, single_file = .false., &
+                                     restart_list = output_restart_list)
+call set_member_file_metadata(file_info_output, num_ens, my_copy_start=1)  
+call set_io_copy_flag(file_info_output, 1, num_ens, WRITE_COPY)
 
 !----------------------------------------------------------------------
 ! Open a test netcdf initial conditions file.
 !----------------------------------------------------------------------
+input_restart_files = get_stage_metadata(file_info_input)
 num_domains = get_num_domains()
 do idom = 1, num_domains
    do imem = 1, num_ens
-      if ( do_output() ) write(*,*) 'Reading File : ', trim( get_input_file(file_info%restart_files_in, imem, domain=idom) )
+      if ( do_output() ) write(*,*) 'Reading File : ', trim( get_restart_filename(input_restart_files, imem, domain=idom) )
    enddo
 enddo
-call read_state(ens_handle, file_info,  read_time_from_file, time1)
+call read_state(ens_handle, file_info_input,  read_time_from_file, time1)
 model_time = time1
 
+output_restart_files = get_stage_metadata(file_info_output)
 do idom = 1, num_domains
    do imem = 1, num_ens
-      if ( do_output() ) write(*,*) 'Writing File : ', trim( get_output_file(file_info%restart_files_out, imem, domain=idom) )
+      if ( do_output() ) write(*,*) 'Writing File : ', trim( get_restart_filename(output_restart_files, imem, domain=idom) )
    enddo
 enddo
-call write_state(ens_handle, file_info)
+call write_state(ens_handle, file_info_output)
 
 write(*,*) 
 call print_date( model_time,' model_mod_check:model date')

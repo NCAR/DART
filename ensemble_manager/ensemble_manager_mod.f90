@@ -115,7 +115,8 @@ logical  :: use_var2copy_rec_loop  = .true.
 ! namelist with default values
 
 ! Complain if unneeded transposes are done
-logical  :: flag_unneeded_transposes = .false.
+!>@todo remove all things related to this
+! logical  :: flag_unneeded_transposes = .false.
 ! Communication configuration:
 !  1 = usual default, 2 - 4 are valid and depend on the machine, ensemble count, and task count
 integer  :: communication_configuration = 1
@@ -126,7 +127,7 @@ logical  :: debug = .false.
 
 namelist / ensemble_manager_nml / communication_configuration, &
                                   layout, tasks_per_node,  &
-                                  debug, flag_unneeded_transposes
+                                  debug
                                   
 !-----------------------------------------------------------------
 

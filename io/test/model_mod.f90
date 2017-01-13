@@ -57,7 +57,6 @@ public :: get_model_size,         &
           get_close_obs,          &
           query_vert_localization_coord, &
           vert_convert, &
-          construct_file_name_in, &
           read_model_time, &
           write_model_time
 
@@ -691,28 +690,15 @@ istatus = 0
 end subroutine vert_convert
 
 !--------------------------------------------------------------------
-!> construct restart file name for reading
-function construct_file_name_in(stub, domain, copy)
-
-character(len=512), intent(in) :: stub
-integer,            intent(in) :: domain
-integer,            intent(in) :: copy
-character(len=1024)            :: construct_file_name_in
-
-write(construct_file_name_in, '(A, i4.4, A)') trim(stub), copy, ".nc"
-
-end function construct_file_name_in
-
-!--------------------------------------------------------------------
 !> read the time from the input file
 !> Stolen from pop model_mod.f90 restart_to_sv
+
 function read_model_time(filename)
 
-character(len=1024) :: filename
-type(time_type) :: read_model_time
+character(len=*), intent(in) :: filename
+type(time_type)              :: read_model_time
 
 read_model_time = set_time_missing()
-
 
 end function read_model_time
 
