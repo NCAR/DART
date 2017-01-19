@@ -82,13 +82,15 @@ integer :: iunit, io
 logical :: debug = .false.                   ! or .true.
 logical :: fail_on_missing_field = .true.    ! or .false.
 logical :: do_all_numeric_fields = .true.    ! or .false.
+logical :: only_report_differences = .true.  ! or .false.
 character(len=128) :: fieldnames(1000) = ''  ! something large
 character(len=128) :: fieldlist_file = ''
 
 ! fieldnames here?
 namelist /compare_states_nml/  debug, fail_on_missing_field, &
                                do_all_numeric_fields,        &
-                               fieldnames, fieldlist_file
+                               fieldnames, fieldlist_file,   &
+                               only_report_differences
 
 ! main code here
  
@@ -441,7 +443,7 @@ fieldloop : do i=1, 100000
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
         write(msgstring, *) 'delta min/max: ', idelmin, idelmax
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
-     else
+     else if (.not. only_report_differences) then
         write(msgstring, *) 'arrays same'
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
         write(msgstring, *) 'min/max value: ', imin1, imax1
@@ -571,7 +573,7 @@ fieldloop : do i=1, 100000
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
         write(msgstring, *) 'delta min/max: ', delmin, delmax
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
-     else
+     else if (.not. only_report_differences) then
         write(msgstring, *) 'arrays same'
         call error_handler(E_MSG, 'compare_states', msgstring, source, revision, revdate)
         write(msgstring, *) 'min/max value: ', min1, max1
