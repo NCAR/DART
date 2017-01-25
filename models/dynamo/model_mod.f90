@@ -16,7 +16,7 @@ use     location_mod, only : location_type, set_location, get_location, &
 
 use    utilities_mod, only : register_module, error_handler, E_ERR, E_MSG, nmlfileunit, &
                              do_output, find_namelist_in_file, check_namelist_read,     &
-                             do_nml_file, do_nml_term
+                             do_nml_file, do_nml_term, open_file, close_file
 use random_seq_mod, only :    random_seq_type, init_random_seq, random_uniform, random_gaussian
 use    mpi_utilities_mod, only : my_task_id
 
@@ -56,21 +56,24 @@ real(r8) ::  sigma = 10.0_r8
 real(r8) ::      r = 28.0_r8
 real(r8) ::      b = 8.0_r8 / 3.0_r8
 real(r8) :: deltat = 0.01_r8
-real(r8) :: our_time = 0.0_r8
-real(r8) :: obs_loc(nobs), x_obs(nobs), obs_x(nobs), dobsdx(nobs)
-integer :: counter = 0
-type(random_seq_type), save :: sr
 integer  :: time_step_days = 1
 integer  :: time_step_seconds = 0
-logical :: perfect_model = .FALSE.
+character(len=256) :: obsval_filename = '../data/obsval.dat'
 
-namelist /model_nml/ sigma, r, b, deltat, time_step_days, time_step_seconds
+namelist /model_nml/ sigma, r, b, deltat, &
+       time_step_days, time_step_seconds, obsval_filename
+
 !---------------------------------------------------------------
-
 ! Define the location of the state variables in module storage
+
 type(location_type) :: state_loc(model_size)
 type(time_type)     :: time_step
+type(random_seq_type), save :: sr
+real(r8) :: our_time = 0.0_r8
+integer  :: counter = 0
+logical  :: perfect_model = .FALSE.
 
+real(r8) :: obs_loc(nobs), x_obs(nobs), obs_x(nobs), dobsdx(nobs)
 
 contains
 
@@ -100,12 +103,12 @@ if (do_nml_file()) write(nmlfileunit, nml=model_nml)
 if (do_nml_term()) write(     *     , nml=model_nml)
 
 ! Define the locations of the model state variables
-open(99,file='../dynamo/obsval.dat')
+iunit = open_file(obsval_filename,form='formatted')
 do i = 1, model_size
-   read(99,*) x_loc
+   read(iunit,*) x_loc
    state_loc(i) =  set_location(x_loc)
 end do
-close(99)
+call close_file(iunit)
 
 ! The time_step in terms of a time type must also be initialized. Need
 ! to determine appropriate non-dimensionalization conversion for L93
