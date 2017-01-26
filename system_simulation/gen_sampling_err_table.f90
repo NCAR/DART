@@ -12,7 +12,7 @@
 !> this version is a sparse array - the ens_index array lists the ensemble
 !> sizes that have been computed, using the unlimited dimension.  to generate
 !> a new ensemble size, it can be added at the end of the existing arrays.
-!>`
+!>
 !> the initial table has the 40 sizes that the previous release of DART
 !> came with.  to generate other ensemble sizes, run this program with
 !> the desired ensemble sizes listed in the namelist.
@@ -64,8 +64,7 @@ integer  :: bin_count(0:nentries+1)
 
 integer, allocatable :: index_array(:)
 
-integer  :: ncid, num_ens, esize, next_slot
-integer  :: count_id, corrmean_id, alpha_id, index_id
+integer  :: ncid, num_ens, esize, this_slot
 integer  :: iunit, io
 
 character(len=512) :: msgstring
@@ -104,23 +103,21 @@ if (num_ens < 1) then
 endif
 
 if (file_exist(output_filename)) then
-   ncid = setup_to_append_output_file(nentries, num_samples, count_id, corrmean_id, alpha_id, index_id, next_slot)
+   ncid = setup_to_append_output_file(nentries, num_samples, this_slot)
 else
-   ncid = create_output_file(nentries, num_samples, count_id, corrmean_id, alpha_id, index_id, next_slot)
+   ncid = create_output_file(nentries, num_samples, this_slot)
 endif
 
-call validate_list(ncid, index_id, next_slot-1, index_array, num_ens, ens_sizes)
+call validate_list(ncid, this_slot, index_array, num_ens, ens_sizes)
 
 do esize=1, num_ens
 
-   call compute_table(ens_sizes(esize), nentries, bin_count, true_correl_mean, alpha)
-   call addto_output_file(ncid, next_slot, &
-                          count_id, bin_count(1:nentries), &
-                          corrmean_id, true_correl_mean, &
-                          alpha_id, alpha, &
-                          index_id, ens_sizes(esize))
+   this_slot = this_slot + 1
 
-   next_slot = next_slot + 1
+   call compute_table(ens_sizes(esize), nentries, bin_count, true_correl_mean, alpha)
+   call addto_output_file(ncid, this_slot, bin_count(1:nentries), true_correl_mean, &
+                          alpha, ens_sizes(esize))
+
 enddo
 
 call close_output_file(ncid)
@@ -307,16 +304,12 @@ end subroutine sample_mean_var
 ! netcdf i/o routines
 !----------------------------------------------------------------
 
-!> create a netcdf file and add some global attributes
+!> create a new netcdf file and add some global attributes
 
-function create_output_file(nentries, num_samples, count_id, corrmean_id, alpha_id, index_id, unlimlenp1)
+function create_output_file(nentries, num_samples, unlimlen)
 integer, intent(in)  :: nentries
 integer, intent(in)  :: num_samples
-integer, intent(out) :: count_id
-integer, intent(out) :: corrmean_id
-integer, intent(out) :: alpha_id
-integer, intent(out) :: index_id
-integer, intent(out) :: unlimlenp1
+integer, intent(out) :: unlimlen
 
 integer :: create_output_file
 
@@ -333,10 +326,10 @@ call nc_check(rc, 'create_output_file', 'adding global attribute "bin_info"')
 rc = nf90_put_att(fid, NF90_GLOBAL, 'num_samples', num_samples)
 call nc_check(rc, 'create_output_file', 'adding global attribute "num_samples"')
 
-call setup_output_file(fid, count_id, corrmean_id, alpha_id, index_id)
+call setup_output_file(fid)
 
-! unlimited dim initially empty, the next to be added is going to be 1
-unlimlenp1 = 1
+! unlimited dim initially empty
+unlimlen = 0
 
 create_output_file = fid
 
@@ -346,14 +339,10 @@ end function create_output_file
 
 !> open an existing file and prepare to append to it
 
-function setup_to_append_output_file(nentries, num_samples, count_id, corrmean_id, alpha_id, index_id, unlimlenp1)
+function setup_to_append_output_file(nentries, num_samples, unlimlen)
 integer, intent(in)  :: nentries
 integer, intent(in)  :: num_samples
-integer, intent(out) :: count_id
-integer, intent(out) :: corrmean_id
-integer, intent(out) :: alpha_id
-integer, intent(out) :: index_id
-integer, intent(out) :: unlimlenp1
+integer, intent(out) :: unlimlen
 
 integer :: setup_to_append_output_file
 
@@ -383,16 +372,8 @@ if (nsamp /= num_samples) then
                       source, revision, revdate, text2=msgstring)
 endif
 
-call get_sec_var_id(fid, 'count',          count_id)
-call get_sec_var_id(fid, 'true_corr_mean', corrmean_id)
-call get_sec_var_id(fid, 'alpha',          alpha_id)
-call get_sec_var_id(fid, 'ens_index',      index_id)
-
-! and finally, get the current size of the unlimited dimension and add 1
-! this will be the next open slot for the unlimited dimension.
-call get_sec_dim_info(fid, 'ens', l1=unlimlenp1)
-unlimlenp1 = unlimlenp1 + 1
-
+! get the current size of the unlimited dimension 
+call get_sec_dim_info(fid, 'ens', l1=unlimlen)
 
 setup_to_append_output_file = fid
 
@@ -401,25 +382,22 @@ end function setup_to_append_output_file
 !----------------------------------------------------------------
 
 ! define 2 dims and 4 arrays in output file
-! counts on knowing global info
-! returns 3 handles to use for the 3 arrays
 
-subroutine setup_output_file(ncid, id1, id2, id3, id4)
+subroutine setup_output_file(ncid)
 
 integer, intent(in)  :: ncid
-integer, intent(out) :: id1, id2, id3, id4
 
-integer :: rc
+integer :: rc, id
 integer :: nbinsDimID, nensDimID
 
 call setup_sec_dim(ncid, 'bins', nentries, nbinsDimID)
 call setup_sec_unlimdim(ncid, 'ens', nensDimID)
 
-call setup_sec_data_int (ncid, 'count',          nbinsDimID, nensDimID, id1)
-call setup_sec_data_real(ncid, 'true_corr_mean', nbinsDimID, nensDimID, id2)
-call setup_sec_data_real(ncid, 'alpha',          nbinsDimID, nensDimID, id3)
+call setup_sec_data_int (ncid, 'count',          nbinsDimID, nensDimID, id)
+call setup_sec_data_real(ncid, 'true_corr_mean', nbinsDimID, nensDimID, id)
+call setup_sec_data_real(ncid, 'alpha',          nbinsDimID, nensDimID, id)
 
-call setup_sec_data_int1d (ncid, 'ens_index',                nensDimID, id4)
+call setup_sec_data_int1d (ncid, 'ens_index',                nensDimID, id)
 
 rc = nf90_enddef(ncid)
 call nc_check(rc, 'setup_output_file', 'enddef')
@@ -428,25 +406,21 @@ end subroutine setup_output_file
 
 !----------------------------------------------------------------
 
-! write 3 arrays to file
+! write 3 arrays and an integer to output file
 
-subroutine addto_output_file(ncid, slot, id1, a1, id2, a2, id3, a3, id4, a4)
+subroutine addto_output_file(ncid, slot, count_data, corrmean_data, alpha_data, index_num)
 
 integer,  intent(in)  :: ncid
 integer,  intent(in)  :: slot
-integer,  intent(in)  :: id1
-integer,  intent(in)  :: a1(:)
-integer,  intent(in)  :: id2
-real(r8), intent(in)  :: a2(:)
-integer,  intent(in)  :: id3
-real(r8), intent(in)  :: a3(:)
-integer,  intent(in)  :: id4
-integer,  intent(in)  :: a4
+integer,  intent(in)  :: count_data(:)
+real(r8), intent(in)  :: corrmean_data(:)
+real(r8), intent(in)  :: alpha_data(:)
+integer,  intent(in)  :: index_num
 
-call write_sec_data_int   (ncid, slot, 'count',          id1, a1)
-call write_sec_data_real  (ncid, slot, 'true_corr_mean', id2, a2)
-call write_sec_data_real  (ncid, slot, 'alpha',          id3, a3)
-call write_sec_data_int1d (ncid, slot, 'ens_index',      id4, a4)
+call write_sec_data_int  (ncid, slot, 'count',          count_data)
+call write_sec_data_real (ncid, slot, 'true_corr_mean', corrmean_data)
+call write_sec_data_real (ncid, slot, 'alpha',          alpha_data)
+call write_sec_data_int1d(ncid, slot, 'ens_index',      index_num)
 
 end subroutine addto_output_file
 
@@ -563,15 +537,17 @@ end subroutine setup_sec_data_real
 
 !----------------------------------------------------------------
 
-subroutine write_sec_data_int(ncid, col, c1, id1, a1)
+subroutine write_sec_data_int(ncid, col, c1, a1)
 
 integer,          intent(in) :: ncid
 integer,          intent(in) :: col
 character(len=*), intent(in) :: c1
-integer,          intent(in) :: id1
 integer,          intent(in) :: a1(:)
 
-integer :: rc
+integer :: rc, id1
+
+rc = nf90_inq_varid(ncid, c1, id1)
+call nc_check(rc, 'write_sec_data', 'querying variable '//trim(c1))
 
 rc = nf90_put_var(ncid, id1, a1, start=(/ 1, col /), count=(/ size(a1), 1 /) )
 call nc_check(rc, 'write_sec_data', 'writing variable "'//trim(c1)//'"')
@@ -580,15 +556,17 @@ end subroutine write_sec_data_int
 
 !----------------------------------------------------------------
 
-subroutine write_sec_data_int1d(ncid, col, c1, id1, a1)
+subroutine write_sec_data_int1d(ncid, col, c1, a1)
 
 integer,          intent(in) :: ncid
 integer,          intent(in) :: col
 character(len=*), intent(in) :: c1
-integer,          intent(in) :: id1
 integer,          intent(in) :: a1
 
-integer :: rc
+integer :: rc, id1
+
+rc = nf90_inq_varid(ncid, c1, id1)
+call nc_check(rc, 'write_sec_data', 'querying variable '//trim(c1))
 
 rc = nf90_put_var(ncid, id1, a1, start=(/ col /))
 call nc_check(rc, 'write_sec_data', 'writing variable "'//trim(c1)//'"')
@@ -597,14 +575,16 @@ end subroutine write_sec_data_int1d
 
 !----------------------------------------------------------------
 
-subroutine write_sec_data_real(ncid, col, c1, id1, a1) 
+subroutine write_sec_data_real(ncid, col, c1, a1) 
 integer,          intent(in) :: ncid
 integer,          intent(in) :: col
 character(len=*), intent(in) :: c1
-integer,          intent(in) :: id1
 real(r8),         intent(in) :: a1(:)
 
-integer :: rc
+integer :: rc, id1
+
+rc = nf90_inq_varid(ncid, c1, id1)
+call nc_check(rc, 'write_sec_data', 'querying variable '//trim(c1))
 
 rc = nf90_put_var(ncid, id1, a1, start=(/ 1, col /), count=(/ size(a1), 1 /) )
 call nc_check(rc, 'write_sec_data', 'writing variable "'//trim(c1)//'"')
@@ -613,15 +593,17 @@ end subroutine write_sec_data_real
 
 !----------------------------------------------------------------
 
-subroutine read_sec_data_int(ncid, col, c1, id1, a1)
+subroutine read_sec_data_int(ncid, col, c1, a1)
 
 integer,          intent(in)  :: ncid
 integer,          intent(in)  :: col
 character(len=*), intent(in)  :: c1
-integer,          intent(in)  :: id1
 integer,          intent(out) :: a1(:)
 
-integer :: rc
+integer :: rc, id1
+
+rc = nf90_inq_varid(ncid, c1, id1)
+call nc_check(rc, 'read_sec_data', 'querying variable '//trim(c1))
 
 rc = nf90_get_var(ncid, id1, a1, start=(/ 1, col /), count=(/ size(a1), 1 /) )
 call nc_check(rc, 'read_sec_data', 'reading variable "'//trim(c1)//'"')
@@ -630,14 +612,16 @@ end subroutine read_sec_data_int
 
 !----------------------------------------------------------------
 
-subroutine read_sec_data_real(ncid, col, c1, id1, a1) 
+subroutine read_sec_data_real(ncid, col, c1, a1) 
 integer,          intent(in)  :: ncid
 integer,          intent(in)  :: col
 character(len=*), intent(in)  :: c1
-integer,          intent(in)  :: id1
 real(r8),         intent(out) :: a1(:)
 
-integer :: rc
+integer :: rc, id1
+
+rc = nf90_inq_varid(ncid, c1, id1)
+call nc_check(rc, 'read_sec_data', 'querying variable '//trim(c1))
 
 rc = nf90_get_var(ncid, id1, a1, start=(/ 1, col /), count=(/ size(a1), 1 /) )
 call nc_check(rc, 'read_sec_data', 'reading variable "'//trim(c1)//'"')
@@ -667,24 +651,6 @@ if (present(l1)) l1 = ll1
 if (present(id1)) id1 = lid1
 
 end subroutine get_sec_dim_info
-
-
-!----------------------------------------------------------------
-
-! retrieve the variable id
-
-subroutine get_sec_var_id(ncid, c1, id1)
-
-integer,           intent(in)  :: ncid
-character(len=*),  intent(in)  :: c1
-integer,           intent(out) :: id1
-
-integer :: rc
-
-rc = nf90_inq_varid(ncid, c1, id1)
-call nc_check(rc, 'get_sec_var_id', 'querying variable '//trim(c1))
-
-end subroutine get_sec_var_id
 
 
 !----------------------------------------------------------------
@@ -725,9 +691,8 @@ end function valid_entries
 ! and none of the new ens_sizes() values are already in the list.
 ! any errors here are fatal.
 
-subroutine validate_list(fid, indx_id, current_size, index_array, num_ens, ens_sizes)
+subroutine validate_list(fid, current_size, index_array, num_ens, ens_sizes)
 integer,              intent(in) :: fid
-integer,              intent(in) :: indx_id
 integer,              intent(in) :: current_size
 integer, allocatable, intent(out) :: index_array(:)
 integer,              intent(in) :: num_ens
@@ -750,7 +715,7 @@ endif
 
 ! allocate it large enough to hold the eventual output size
 allocate(index_array(current_size+num_ens))
-call read_sec_data_int(fid, current_size, 'ens_index', indx_id, index_array(1:current_size))
+call read_sec_data_int(fid, current_size, 'ens_index', index_array(1:current_size))
 
 do i = 1, current_size
    do j = 1, num_ens
