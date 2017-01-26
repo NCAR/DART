@@ -12,7 +12,7 @@
 !> this version is a sparse array - the ens_index array lists the ensemble
 !> sizes that have been computed, using the unlimited dimension.  to generate
 !> a new ensemble size, it can be added at the end of the existing arrays.
-
+!>`
 !> the initial table has the 40 sizes that the previous release of DART
 !> came with.  to generate other ensemble sizes, run this program with
 !> the desired ensemble sizes listed in the namelist.
@@ -20,26 +20,6 @@
 !> and if one already exists, it will be appended to instead of
 !> created from scratch.
 
-!> this takes an excessive amount of time to compute for large numbers
-!> of ensemble members.  it needs a couple changes - first, it could
-!> be made an mpi program and compute different ensemble sizes in parallel
-!> or, we could create the output only if it doesn't already exist, and
-!> have it fill in specific ensemble sizes so we could generate the final
-!> output file with multiple runs of this executable.
-!>
-!> add a namelist for min, max, or explicit ensemble size lists
-!> for an 'insert a single size into an existing array' version
-!> might need additional namelist values for min/max overall if making
-!> the file for the first time, and setting the data for the array to
-!> undefined.
-!>
-!> nothing to prevent this from doing both - making it an mpi program
-!> and also insert into an existing table.
-!>
-!> code should look at nbins (which i think it already does) so that 200
-!> is never hardcoded.  the SEC table could then have more or fewer entries
-!> for each ensemble size.
-!>
 
 program gen_sampling_err_table
 
