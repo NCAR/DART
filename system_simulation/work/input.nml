@@ -6,3 +6,8 @@
    ens_size        = 80,
    output_filename = "final_full",
    /
+
+&gen_sampling_error_table_nml
+   ens_sizes = 6
+   debug = .false.
+   /
