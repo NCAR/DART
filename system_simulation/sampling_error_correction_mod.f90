@@ -9,9 +9,9 @@
 !>   in Ensemble Kalman Filter Data Assimilation. 
 !> Submitted for publication, Jan 2011.  Contact author.
 
-!> read the entry for a single ensemble_size and print out the
-!> two values, true_correl_mean and alpha.   mostly as a test for
-!> accuracy, but also example code for assim_tools to use.
+!> query the needed table sizes, and read in the values for any
+!> given ensemble size.  the two arrays of values returned are
+!> the true_correl_mean and alpha. 
 
 module sampling_error_correction_mod
 
