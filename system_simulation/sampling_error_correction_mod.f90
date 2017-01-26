@@ -13,7 +13,7 @@
 !> two values, true_correl_mean and alpha.   mostly as a test for
 !> accuracy, but also example code for assim_tools to use.
 
-program read_sampling_err_table
+module sampling_error_correction_mod
 
 use types_mod,      only : r8
 use utilities_mod,  only : error_handler, E_ERR, nc_check,      &
@@ -22,6 +22,11 @@ use utilities_mod,  only : error_handler, E_ERR, nc_check,      &
 use netcdf
 
 implicit none
+private
+
+public :: get_sampling_error_table_size, &
+          read_sampling_error_correction
+
 
 ! version controlled file description for error handling, do not edit
 character(len=256), parameter :: source   = &
@@ -34,25 +39,59 @@ character(len=128), parameter :: revdate  = "$Date$"
 !character(len=128) :: input_filename = 'sampling_error_correction_table.nc'
 character(len=128) :: input_filename = 'sec.nc'
 
-real(r8), allocatable :: true_correl_mean(:), alpha(:)
+! module globals - nentries is the number of values per ensemble size,
+! nens is how many different ensemble sizes this file contains.
 
-integer :: i, ncid, requested_ens_size
-integer :: nentries, nens, indx
+logical :: module_initialized = .false.
+integer :: nentries = -1
+integer :: nens = -1
 
 character(len=512) :: msgstring, msgstring1
 
-!
-! start of executable code
-!
+contains
 
-call initialize_utilities('read_sampling_err_table')
+!----------------------------------------------------------------
 
-print *, 'Enter ensemble size: '
-read *, requested_ens_size
+subroutine init_sampling_error_correction()
 
-ncid = open_input_file()
+integer :: ncid
+
+if (module_initialized) return
+
+ncid = open_input_file(input_filename)
 
 call read_input_info(ncid, nentries, nens)
+
+call close_input_file(ncid, input_filename)
+
+module_initialized = .true.
+
+end subroutine init_sampling_error_correction
+
+!----------------------------------------------------------------
+
+function get_sampling_error_table_size()
+
+integer :: get_sampling_error_table_size
+
+if (.not. module_initialized) call init_sampling_error_correction()
+
+get_sampling_error_table_size = nentries
+
+end function get_sampling_error_table_size
+
+!----------------------------------------------------------------
+
+subroutine read_sampling_error_correction(requested_ens_size, true_correl_mean, alpha)
+
+integer,  intent(in) :: requested_ens_size
+real(r8), intent(out) :: true_correl_mean(:), alpha(:)
+
+integer :: ncid, indx
+
+if (.not. module_initialized) call init_sampling_error_correction()
+
+ncid = open_input_file(input_filename)
 
 indx = lookup_ens_index(ncid, nens, requested_ens_size)
 
@@ -60,37 +99,34 @@ if (indx < 0) then
    write(msgstring, *) 'file "'//trim(input_filename)//'" does not contain a entry for ensemble size ', &
                         requested_ens_size
    write(msgstring1, *) 'You can add one to the existing file with the "gen_sampling_err_table" program'
-   call error_handler(E_ERR, 'read_sampling_err_table:', 'unsupported ensemble size requested', &
+   call error_handler(E_ERR, 'read_sampling_error_correction:', 'unsupported ensemble size requested', &
                       source, revision, revdate, text2=msgstring, text3=msgstring1)
 endif
 
-allocate(true_correl_mean(nentries), alpha(nentries))
+if (size(true_correl_mean(:)) /= nentries .or. &
+    size(alpha(:)) /= nentries) then
+   write(msgstring, *) 'one or both arrays "true_correl_mean" and "alpha" are not allocated correctly'
+   write(msgstring1, *) 'they must be size ', nentries, ' but are ', size(true_correl_mean), ' and ', size(alpha)
+   call error_handler(E_ERR, 'read_sampling_error_correction:', 'error in output array size', &
+                      source, revision, revdate, text2=msgstring, text3=msgstring1)
+endif
 
 call read_input_file(ncid, indx, true_correl_mean, alpha)
 
-print *, 'true correlation means, and alphas: '
-do i=1, nentries
-   print *, i, true_correl_mean(i), alpha(i)
-enddo
+call close_input_file(ncid, input_filename)
 
-call close_input_file(ncid)
-
-call finalize_utilities()
-
-! end of main program
-
-contains
+end subroutine read_sampling_error_correction
 
 !----------------------------------------------------------------
 
 !----------------------------------------------------------------
-! main netcdf i/o routines
+! support routines below
 !----------------------------------------------------------------
 
 !----------------------------------------------------------------
 
-function open_input_file()
-
+function open_input_file(input_filename)
+character(len=*), intent(in) :: input_filename
 integer :: open_input_file
 
 integer :: rc, ncid
@@ -173,9 +209,10 @@ end subroutine read_input_file
 
 !----------------------------------------------------------------
 
-subroutine close_input_file(ncid)
+subroutine close_input_file(ncid, input_filename)
 
 integer, intent(in) :: ncid
+character(len=*), intent(in) :: input_filename
 
 integer :: rc
 
@@ -262,8 +299,8 @@ end subroutine read_sec_data_real
 
 !----------------------------------------------------------------
 
+end module sampling_error_correction_mod
 
-end program read_sampling_err_table
 
 ! <next few lines under version control, do not edit>
 ! $URL$
