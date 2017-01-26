@@ -1,3 +1,12 @@
+
+&gen_sampling_error_table_nml
+   ens_sizes = 5, 6, 7, 8, 9, 10, 12, 14, 15, 16, 18, 20,
+              22, 24, 28, 30, 32, 36, 40, 44, 48, 49, 50,
+              52, 56, 60, 64, 70, 72, 80, 84, 88, 90, 96,
+              100, 120, 140, 160, 180, 200
+   debug = .false.
+   /
+
 &utilities_nml
    module_details = .false.
    /
@@ -5,9 +14,4 @@
 &full_error_nml
    ens_size        = 80,
    output_filename = "final_full",
-   /
-
-&gen_sampling_error_table_nml
-   ens_sizes = 6
-   debug = .false.
    /

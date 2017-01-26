@@ -5,9 +5,9 @@
 ! $Id$
 
 !> Correct covariances for fixed ensemble sizes.
-!> See Anderson, J. L., 2011: Localization and Sampling Error Correction
-!>   in Ensemble Kalman Filter Data Assimilation. 
-!> Submitted for publication, Jan 2011.  Contact author.
+!> Ref: Anderson, J., 2012: 
+!> Localization and Sampling Error Correction in Ensemble Kalman Filter Data Assimilation.
+!> Mon. Wea. Rev., 140, 2359-2371, doi: 10.1175/MWR-D-11-00013.1. 
 
 !> query the needed table sizes, and read in the values for any
 !> given ensemble size.  the two arrays of values returned are
@@ -16,8 +16,7 @@
 module sampling_error_correction_mod
 
 use types_mod,      only : r8
-use utilities_mod,  only : error_handler, E_ERR, nc_check,      &
-                           initialize_utilities, finalize_utilities
+use utilities_mod,  only : error_handler, E_ERR, nc_check
 
 use netcdf
 
@@ -34,10 +33,8 @@ character(len=256), parameter :: source   = &
 character(len=32 ), parameter :: revision = "$Revision$"
 character(len=128), parameter :: revdate  = "$Date$"
 
-
-! FIXME: change this before release
-!character(len=128) :: input_filename = 'sampling_error_correction_table.nc'
-character(len=128) :: input_filename = 'sec.nc'
+! Using hardcoded filename for ease of scripting.
+character(len=128) :: input_filename = 'sampling_error_correction_table.nc'
 
 ! module globals - nentries is the number of values per ensemble size,
 ! nens is how many different ensemble sizes this file contains.
@@ -51,6 +48,7 @@ character(len=512) :: msgstring, msgstring1
 contains
 
 !----------------------------------------------------------------
+!>
 
 subroutine init_sampling_error_correction()
 
@@ -69,6 +67,7 @@ module_initialized = .true.
 end subroutine init_sampling_error_correction
 
 !----------------------------------------------------------------
+!>
 
 function get_sampling_error_table_size()
 
@@ -81,6 +80,7 @@ get_sampling_error_table_size = nentries
 end function get_sampling_error_table_size
 
 !----------------------------------------------------------------
+!>
 
 subroutine read_sampling_error_correction(requested_ens_size, true_correl_mean, alpha)
 
@@ -118,35 +118,32 @@ call close_input_file(ncid, input_filename)
 end subroutine read_sampling_error_correction
 
 !----------------------------------------------------------------
-
-!----------------------------------------------------------------
 ! support routines below
 !----------------------------------------------------------------
 
-!----------------------------------------------------------------
-
 function open_input_file(input_filename)
+
 character(len=*), intent(in) :: input_filename
 integer :: open_input_file
 
 integer :: rc, ncid
 
 rc = nf90_open(input_filename, NF90_NOWRITE, ncid)
-call nc_check(rc, 'open_input_file', 'creating '//trim(input_filename))
+call nc_check(rc, 'open_input_file', 'opening "'//trim(input_filename)//'"')
 
 open_input_file = ncid
 
 end function open_input_file
 
 !----------------------------------------------------------------
-
-! get the 2 dims - number of entries for any given ensemble size,
-! and valid ranges of ensemble sizes.
+!> get the 2 dims - number of entries for any given ensemble size,
+!> and number of supported ensemble sizes.
 
 subroutine read_input_info(ncid, nbins, nens)
 
 integer, intent(in)  :: ncid
-integer, intent(out) :: nbins, nens
+integer, intent(out) :: nbins
+integer, intent(out) :: nens
 
 call get_sec_dim(ncid, 'bins', nbins)
 call get_sec_dim(ncid, 'ens',  nens)
@@ -154,13 +151,15 @@ call get_sec_dim(ncid, 'ens',  nens)
 end subroutine read_input_info
 
 !----------------------------------------------------------------
+!>
 
 function lookup_ens_index(ncid, num_ens, requested_ens_size)
+
 integer, intent(in) :: ncid
 integer, intent(in) :: num_ens
 integer, intent(in) :: requested_ens_size
-integer :: lookup_ens_index
 
+integer :: lookup_ens_index
 integer :: i, indx, id
 integer, allocatable :: index_array(:)
 
@@ -183,8 +182,7 @@ deallocate(index_array)
 end function lookup_ens_index
 
 !----------------------------------------------------------------
-
-! read 2 arrays
+!> read the true correlation and correction arrays 
 
 subroutine read_input_file(ncid, col, a1, a2)
 
@@ -208,28 +206,22 @@ call read_sec_data_real(ncid, col, c2, id2, a2)
 end subroutine read_input_file
 
 !----------------------------------------------------------------
+!>
 
 subroutine close_input_file(ncid, input_filename)
 
-integer, intent(in) :: ncid
+integer,          intent(in) :: ncid
 character(len=*), intent(in) :: input_filename
 
 integer :: rc
 
 rc = nf90_close(ncid)
-call nc_check(rc, 'close_input_file', 'closing '//trim(input_filename))
+call nc_check(rc, 'close_input_file', 'closing "'//trim(input_filename)//'"')
 
 end subroutine close_input_file
 
 !----------------------------------------------------------------
-
-!----------------------------------------------------------------
-! helper routines for above code
-!----------------------------------------------------------------
-
-!----------------------------------------------------------------
-
-! retrieve a dimension
+!> retrieve dimension for sampling error correction
 
 subroutine get_sec_dim(ncid, c1, n1)
 
@@ -240,16 +232,15 @@ integer,          intent(out) :: n1
 integer :: rc, id1
 
 rc = nf90_inq_dimid(ncid, c1, id1)
-call nc_check(rc, 'get_sec_dim', 'querying dimension '//trim(c1))
+call nc_check(rc, 'get_sec_dim', 'inq_dimid "'//trim(c1)//'"')
 
 rc = nf90_inquire_dimension(ncid, id1, len=n1)
-call nc_check(rc, 'get_sec_dim', 'querying dimension '//trim(c1))
+call nc_check(rc, 'get_sec_dim', 'inquire_dimension "'//trim(c1)//'"')
 
 end subroutine get_sec_dim
 
 !----------------------------------------------------------------
-
-! given a name, return id for a 2d real array
+!> given a variable name, return variable id
 
 subroutine query_sec_data(ncid, c1, id1)
 
@@ -260,11 +251,12 @@ integer,          intent(out) :: id1
 integer :: rc
 
 rc = nf90_inq_varid(ncid, name=c1, varid=id1)
-call nc_check(rc, 'query_sec_data', 'querying variable '//trim(c1))
+call nc_check(rc, 'query_sec_data', 'querying variable "'//trim(c1)//'"')
 
 end subroutine query_sec_data
 
 !----------------------------------------------------------------
+!>
 
 subroutine read_sec_data_int(ncid, col, c1, id1, a1)
 
@@ -277,13 +269,15 @@ integer,          intent(out) :: a1(:)
 integer :: rc
 
 rc = nf90_get_var(ncid, id1, a1, start=(/ 1, col /), count=(/ size(a1), 1 /) )
-call nc_check(rc, 'read_sec_data', 'reading variable "'//trim(c1)//'"')
+call nc_check(rc, 'read_sec_data_int', 'reading variable "'//trim(c1)//'"')
 
 end subroutine read_sec_data_int
 
 !----------------------------------------------------------------
+!>
 
 subroutine read_sec_data_real(ncid, col, c1, id1, a1) 
+
 integer,          intent(in)  :: ncid
 integer,          intent(in)  :: col
 character(len=*), intent(in)  :: c1
@@ -293,7 +287,7 @@ real(r8),         intent(out) :: a1(:)
 integer :: rc
 
 rc = nf90_get_var(ncid, id1, a1, start=(/ 1, col /), count=(/ size(a1), 1 /) )
-call nc_check(rc, 'read_sec_data', 'reading variable "'//trim(c1)//'"')
+call nc_check(rc, 'read_sec_data_real', 'reading variable "'//trim(c1)//'"')
 
 end subroutine read_sec_data_real
 

@@ -5,9 +5,9 @@
 ! $Id$
 
 !> Correct covariances for fixed ensemble sizes.
-!> See Anderson, J. L., 2011: Localization and Sampling Error Correction
-!>   in Ensemble Kalman Filter Data Assimilation. 
-!> Submitted for publication, Jan 2011.  Contact author.
+!> Ref: Anderson, J., 2012: 
+!> Localization and Sampling Error Correction in Ensemble Kalman Filter Data Assimilation.
+!> Mon. Wea. Rev., 140, 2359-2371, doi: 10.1175/MWR-D-11-00013.1. 
 
 !> this version is a sparse array - the ens_index array lists the ensemble
 !> sizes that have been computed, using the unlimited dimension.  to generate
@@ -28,8 +28,7 @@ use utilities_mod,  only : error_handler, E_ERR, nc_check, file_exist,  &
                            initialize_utilities, finalize_utilities, &
                            find_namelist_in_file, check_namelist_read, &
                            do_nml_file, do_nml_term, nmlfileunit
-use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &          
-                           twod_gaussians, random_uniform
+use random_seq_mod, only : random_seq_type, init_random_seq, twod_gaussians
 
 use netcdf
 
@@ -43,14 +42,9 @@ character(len=128), parameter :: revdate  = "$Date$"
 
 
 integer, parameter :: num_times   = 1
-! FIXME BEFORE COMMITTING, 1 of 2:
-integer, parameter :: num_samples = 100000  ! for developement/debugging
-!integer, parameter :: num_samples = 100000000   ! real value which should be used
+integer, parameter :: num_samples = 100000000 ! large number for statistical rigor
 
-! FIXME BEFORE COMMITTING, 2 of 2:
-!character(len=128) :: output_filename = 'sampling_error_correction_table.nc'
-! for debugging, make this short:
-character(len=128) :: output_filename = 'sec.nc'
+character(len=128) :: output_filename = 'sampling_error_correction_table.nc'
 integer, parameter :: nentries = 200
 
 integer, parameter :: MAX_LIST_LEN = 500
@@ -130,20 +124,19 @@ call finalize_utilities()
 contains
 
 !----------------------------------------------------------------
-! main computational routine
-!----------------------------------------------------------------
+!> main computational routine
 
 subroutine compute_table(this_size, nentries, bin_count, true_correl_mean, alpha)
+
 integer,  intent(in)  :: this_size
 integer,  intent(in)  :: nentries
 integer,  intent(out) :: bin_count(0:nentries+1)
 real(r8), intent(out) :: true_correl_mean(nentries)
 real(r8), intent(out) :: alpha(nentries)
 
-
 real(r8), allocatable  :: pairs(:,:), temp(:)
 
-real(r8) :: zero_2(2) = 0.0, cov(2, 2)
+real(r8) :: zero_2(2) = 0.0_r8, cov(2, 2)
 real(r8) :: t_correl, sample_correl, beta
 real(r8) :: s_mean(2), s_var(2), reg_mean, reg_sd, t_sd1, t_sd2
 real(r8) :: tcorrel_sum(nentries), reg_sum(nentries), reg_2_sum(nentries)
@@ -199,6 +192,7 @@ do j = 1, num_samples
 
       ! Keep a sum of the sample_correl and squared to compute standard deviation
       tcorrel_sum(bin_num) = tcorrel_sum(bin_num) + t_correl
+
       !-----------------
       ! Also interested in finding out what the spurious variance reduction factor is
       ! First need to compute sample s.d. for the obs and unobs variable
@@ -258,8 +252,7 @@ deallocate(pairs, temp)
 end subroutine
 
 !----------------------------------------------------------------
-! stat routines
-!----------------------------------------------------------------
+!> stat routines
 
 subroutine comp_correl(ens, n, correl)
 
@@ -268,7 +261,6 @@ real(r8), intent(in)  :: ens(2, n)
 real(r8), intent(out) :: correl
 
 real(r8) :: sum_x, sum_y, sum_xy, sum_x2, sum_y2
-
 
 sum_x  = sum(ens(2, :))
 sum_y  = sum(ens(1, :))
@@ -284,6 +276,7 @@ correl = (n * sum_xy - sum_x * sum_y) / &
 end subroutine comp_correl
 
 !----------------------------------------------------------------
+!>
 
 subroutine sample_mean_var(x, n, mean, var)
 
@@ -302,11 +295,12 @@ end subroutine sample_mean_var
 
 !----------------------------------------------------------------
 ! netcdf i/o routines
-!----------------------------------------------------------------
 
+!----------------------------------------------------------------
 !> create a new netcdf file and add some global attributes
 
 function create_output_file(nentries, num_samples, unlimlen)
+
 integer, intent(in)  :: nentries
 integer, intent(in)  :: num_samples
 integer, intent(out) :: unlimlen
@@ -317,7 +311,7 @@ integer :: rc, fid
 
 
 rc = nf90_create(output_filename, NF90_CLOBBER, fid)
-call nc_check(rc, 'create_output_file', 'creating '//trim(output_filename))
+call nc_check(rc, 'create_output_file', 'creating "'//trim(output_filename)//'"')
 
 write(msgstring, *) 'each ensemble size entry has ', nentries, ' bins'
 rc = nf90_put_att(fid, NF90_GLOBAL, 'bin_info', trim(msgstring))
@@ -325,6 +319,21 @@ call nc_check(rc, 'create_output_file', 'adding global attribute "bin_info"')
 
 rc = nf90_put_att(fid, NF90_GLOBAL, 'num_samples', num_samples)
 call nc_check(rc, 'create_output_file', 'adding global attribute "num_samples"')
+
+rc = nf90_put_att(fid, NF90_GLOBAL, 'title', 'Sampling Error Corrections for fixed ensemble sizes.' )
+call nc_check(rc, 'create_output_file', 'adding global attribute "title"')
+
+msgstring = 'Anderson, J., 2012: Localization and Sampling Error Correction &
+     &in Ensemble Kalman Filter Data Assimilation. Mon. Wea. Rev., 140, 2359-2371, &
+     &doi: 10.1175/MWR-D-11-00013.1. '
+
+rc = nf90_put_att(fid, NF90_GLOBAL, 'reference', msgstring)
+call nc_check(rc, 'create_output_file', 'adding global attribute "reference"')
+
+msgstring = '$Id$'
+rc = nf90_put_att(fid, NF90_GLOBAL, 'version', msgstring)
+call nc_check(rc, 'create_output_file', 'adding global attribute "version"')
+
 
 call setup_output_file(fid)
 
@@ -336,10 +345,10 @@ create_output_file = fid
 end function create_output_file
 
 !----------------------------------------------------------------
-
 !> open an existing file and prepare to append to it
 
 function setup_to_append_output_file(nentries, num_samples, unlimlen)
+
 integer, intent(in)  :: nentries
 integer, intent(in)  :: num_samples
 integer, intent(out) :: unlimlen
@@ -350,7 +359,7 @@ integer :: rc, fid, nbins, nsamp
 
 ! for netcdf, write means update 
 rc = nf90_open(output_filename, NF90_WRITE, fid)
-call nc_check(rc, 'setup_to_append_output_file', 'opening '//trim(output_filename))
+call nc_check(rc, 'setup_to_append_output_file', 'opening "'//trim(output_filename)//'"')
 
 ! before we start to update this file, make sure nbins and nentries
 ! match the existing values in the file.
@@ -365,7 +374,7 @@ endif
 ! also make sure num_samples matches
   
 rc = nf90_get_att(fid, NF90_GLOBAL, 'num_samples', nsamp)
-call nc_check(rc, 'open_input_file', 'getting global attribute "num_samples"')
+call nc_check(rc, 'setup_to_append_output_file', 'getting global attribute "num_samples"')
 if (nsamp /= num_samples) then
    write(msgstring, *) 'existing file uses ', nsamp, ' samples, the program has ', num_samples, ' samples.'
    call error_handler(E_ERR, 'setup_to_append_output_file', 'existing file used a different number of samples', &
@@ -380,8 +389,7 @@ setup_to_append_output_file = fid
 end function setup_to_append_output_file
 
 !----------------------------------------------------------------
-
-! define 2 dims and 4 arrays in output file
+!> define 2 dims and 4 arrays in output file
 
 subroutine setup_output_file(ncid)
 
@@ -405,8 +413,7 @@ call nc_check(rc, 'setup_output_file', 'enddef')
 end subroutine setup_output_file
 
 !----------------------------------------------------------------
-
-! write 3 arrays and an integer to output file
+!> write 3 arrays and an integer to output file
 
 subroutine addto_output_file(ncid, slot, count_data, corrmean_data, alpha_data, index_num)
 
@@ -425,6 +432,7 @@ call write_sec_data_int1d(ncid, slot, 'ens_index',      index_num)
 end subroutine addto_output_file
 
 !----------------------------------------------------------------
+!>
 
 subroutine close_output_file(ncid)
 
@@ -441,14 +449,7 @@ call nc_check(rc, 'close_output_file', 'closing '//trim(output_filename))
 end subroutine close_output_file
 
 !----------------------------------------------------------------
-
-!----------------------------------------------------------------
-! helper routines for above code
-!----------------------------------------------------------------
-
-!----------------------------------------------------------------
-
-! define a dimension with name and a length and return the id
+!> define a dimension with name and a length and return the id
 
 subroutine setup_sec_dim(ncid, c1, n1, id1)
 
@@ -460,13 +461,12 @@ integer,          intent(out) :: id1
 integer :: rc
 
 rc = nf90_def_dim(ncid, name=c1, len=n1, dimid=id1)
-call nc_check(rc, 'setup_sec_dim', 'adding dimension '//trim(c1))
+call nc_check(rc, 'setup_sec_dim', 'adding dimension "'//trim(c1)//'"')
 
 end subroutine setup_sec_dim
 
 !----------------------------------------------------------------
-
-! define an unlimited dimension and return the id
+!> define an unlimited dimension and return the id
 
 subroutine setup_sec_unlimdim(ncid, c1, id1)
 
@@ -477,13 +477,13 @@ integer,          intent(out) :: id1
 integer :: rc
 
 rc = nf90_def_dim(ncid, name=c1, len=NF90_UNLIMITED, dimid=id1)
-call nc_check(rc, 'setup_sec_unlimdim', 'adding dimension '//trim(c1))
+call nc_check(rc, 'setup_sec_unlimdim', 'adding dimension "'//trim(c1)//'"')
 
 end subroutine setup_sec_unlimdim
 
 !----------------------------------------------------------------
-
-! given a name, return id for a 2d integer array
+!> given a netCDF file ID, variable name, and 2 dimension IDs,
+!> create an integer variable and return the variable id
 
 subroutine setup_sec_data_int(ncid, c1, d1, d2, id1)
 
@@ -495,13 +495,13 @@ integer,          intent(out) :: id1
 integer :: rc
 
 rc = nf90_def_var(ncid, name=c1, xtype=nf90_int, dimids=(/ d1, d2 /), varid=id1)
-call nc_check(rc, 'setup_sec_data', 'defining variable '//trim(c1))
+call nc_check(rc, 'setup_sec_data_int', 'defining variable "'//trim(c1)//'"')
 
 end subroutine setup_sec_data_int
 
 !----------------------------------------------------------------
-
-! given a name, return id for a 1d integer array
+!> given a netCDF file ID, variable name, and a dimension ID,
+!> create an integer variable and return the variable id
 
 subroutine setup_sec_data_int1d(ncid, c1, d1, id1)
 
@@ -513,13 +513,13 @@ integer,          intent(out) :: id1
 integer :: rc
 
 rc = nf90_def_var(ncid, name=c1, xtype=nf90_int, dimids=(/ d1 /), varid=id1)
-call nc_check(rc, 'setup_sec_data', 'defining variable '//trim(c1))
+call nc_check(rc, 'setup_sec_data_int1d', 'defining variable "'//trim(c1)//'"')
 
 end subroutine setup_sec_data_int1d
 
 !----------------------------------------------------------------
-
-! given a name, return id for a 2d real array
+!> given a netCDF file ID, variable name, and 2 dimension IDs,
+!> create a 2D real variable and return the variable id
 
 subroutine setup_sec_data_real(ncid, c1, d1, d2, id1)
 
@@ -531,11 +531,12 @@ integer,          intent(out) :: id1
 integer :: rc
 
 rc = nf90_def_var(ncid, name=c1, xtype=nf90_double, dimids=(/ d1, d2 /), varid=id1)
-call nc_check(rc, 'setup_sec_data', 'defining variable '//trim(c1))
+call nc_check(rc, 'setup_sec_data_real', 'defining variable "'//trim(c1)//'"')
 
 end subroutine setup_sec_data_real
 
 !----------------------------------------------------------------
+!>
 
 subroutine write_sec_data_int(ncid, col, c1, a1)
 
@@ -547,10 +548,10 @@ integer,          intent(in) :: a1(:)
 integer :: rc, id1
 
 rc = nf90_inq_varid(ncid, c1, id1)
-call nc_check(rc, 'write_sec_data', 'querying variable '//trim(c1))
+call nc_check(rc, 'write_sec_data_int', 'querying variable "'//trim(c1)//'"')
 
 rc = nf90_put_var(ncid, id1, a1, start=(/ 1, col /), count=(/ size(a1), 1 /) )
-call nc_check(rc, 'write_sec_data', 'writing variable "'//trim(c1)//'"')
+call nc_check(rc, 'write_sec_data_int', 'writing variable "'//trim(c1)//'"')
 
 end subroutine write_sec_data_int
 
@@ -566,16 +567,17 @@ integer,          intent(in) :: a1
 integer :: rc, id1
 
 rc = nf90_inq_varid(ncid, c1, id1)
-call nc_check(rc, 'write_sec_data', 'querying variable '//trim(c1))
+call nc_check(rc, 'write_sec_data_int1d', 'querying variable "'//trim(c1)//'"')
 
 rc = nf90_put_var(ncid, id1, a1, start=(/ col /))
-call nc_check(rc, 'write_sec_data', 'writing variable "'//trim(c1)//'"')
+call nc_check(rc, 'write_sec_data_int1d', 'writing variable "'//trim(c1)//'"')
 
 end subroutine write_sec_data_int1d
 
 !----------------------------------------------------------------
 
 subroutine write_sec_data_real(ncid, col, c1, a1) 
+
 integer,          intent(in) :: ncid
 integer,          intent(in) :: col
 character(len=*), intent(in) :: c1
@@ -584,10 +586,10 @@ real(r8),         intent(in) :: a1(:)
 integer :: rc, id1
 
 rc = nf90_inq_varid(ncid, c1, id1)
-call nc_check(rc, 'write_sec_data', 'querying variable '//trim(c1))
+call nc_check(rc, 'write_sec_data_real', 'querying variable "'//trim(c1)//'"')
 
 rc = nf90_put_var(ncid, id1, a1, start=(/ 1, col /), count=(/ size(a1), 1 /) )
-call nc_check(rc, 'write_sec_data', 'writing variable "'//trim(c1)//'"')
+call nc_check(rc, 'write_sec_data_real', 'writing variable "'//trim(c1)//'"')
 
 end subroutine write_sec_data_real
 
@@ -603,16 +605,18 @@ integer,          intent(out) :: a1(:)
 integer :: rc, id1
 
 rc = nf90_inq_varid(ncid, c1, id1)
-call nc_check(rc, 'read_sec_data', 'querying variable '//trim(c1))
+call nc_check(rc, 'read_sec_data_int', 'querying variable "'//trim(c1)//'"')
 
 rc = nf90_get_var(ncid, id1, a1, start=(/ 1, col /), count=(/ size(a1), 1 /) )
-call nc_check(rc, 'read_sec_data', 'reading variable "'//trim(c1)//'"')
+call nc_check(rc, 'read_sec_data_int', 'reading variable "'//trim(c1)//'"')
 
 end subroutine read_sec_data_int
 
 !----------------------------------------------------------------
+!>
 
 subroutine read_sec_data_real(ncid, col, c1, a1) 
+
 integer,          intent(in)  :: ncid
 integer,          intent(in)  :: col
 character(len=*), intent(in)  :: c1
@@ -621,16 +625,15 @@ real(r8),         intent(out) :: a1(:)
 integer :: rc, id1
 
 rc = nf90_inq_varid(ncid, c1, id1)
-call nc_check(rc, 'read_sec_data', 'querying variable '//trim(c1))
+call nc_check(rc, 'read_sec_data_real', 'querying variable "'//trim(c1)//'"')
 
 rc = nf90_get_var(ncid, id1, a1, start=(/ 1, col /), count=(/ size(a1), 1 /) )
-call nc_check(rc, 'read_sec_data', 'reading variable "'//trim(c1)//'"')
+call nc_check(rc, 'read_sec_data_real', 'reading variable "'//trim(c1)//'"')
 
 end subroutine read_sec_data_real
 
 !----------------------------------------------------------------
-
-! retrieve either the length of a dimension, the dim id, or both
+!> retrieve either the length of a dimension, the dim id, or both
 
 subroutine get_sec_dim_info(ncid, c1, l1, id1)
 
@@ -642,26 +645,26 @@ integer, optional, intent(out) :: id1
 integer :: rc, ll1, lid1
 
 rc = nf90_inq_dimid(ncid, c1, lid1)
-call nc_check(rc, 'get_sec_dim_info', 'querying dimension '//trim(c1))
+call nc_check(rc, 'get_sec_dim_info', 'inq_dimid "'//trim(c1)//'"')
 
 rc = nf90_inquire_dimension(ncid, lid1, len=ll1)
-call nc_check(rc, 'get_sec_dim_info', 'querying dimension '//trim(c1))
+call nc_check(rc, 'get_sec_dim_info', 'inquire_dimension "'//trim(c1)//'"')
 
 if (present(l1)) l1 = ll1
 if (present(id1)) id1 = lid1
 
 end subroutine get_sec_dim_info
 
-
 !----------------------------------------------------------------
 ! misc utility routines
-!----------------------------------------------------------------
 
-! figure out the list length.  -1 means no entries; a minimum
-! valid value can be specfied and is a fatal error if an entry
-! is below the threshold.
+!----------------------------------------------------------------
+!> figure out the list length.  -1 means no entries; a minimum
+!> valid value can be specfied and is a fatal error if an entry
+!> is below the threshold.
 
 function valid_entries(list, min_valid)
+
 integer, intent(in) :: list(:)
 integer, intent(in) :: min_valid
 integer :: valid_entries
@@ -673,8 +676,9 @@ do i=1, MAX_LIST_LEN
    if (list(i) == UNSET) exit
 
    if (list(i) < min_valid) then
-      write(msgstring, *) 'minimum valid value is ', min_valid
-      call error_handler(E_ERR, 'valid_entries', 'illegal value found in list', &
+      write(msgstring, *) 'minimum valid ensemble size is ', min_valid
+      call error_handler(E_ERR, 'valid_entries', &
+                 'illegal ensemble size found in namelist variable "ens_size"', &
                          source, revision, revdate, text2=msgstring)
    endif
 
@@ -686,12 +690,12 @@ valid_entries = val
 end function valid_entries
 
 !----------------------------------------------------------------
-
-! if this routine returns, index_array is allocated and filled
-! and none of the new ens_sizes() values are already in the list.
-! any errors here are fatal.
+!> if this routine returns, index_array is allocated and filled
+!> and none of the new ens_sizes() values are already in the list.
+!> any errors here are fatal.
 
 subroutine validate_list(fid, current_size, index_array, num_ens, ens_sizes)
+
 integer,              intent(in) :: fid
 integer,              intent(in) :: current_size
 integer, allocatable, intent(out) :: index_array(:)
@@ -712,6 +716,7 @@ endif
 ! ok, there's an existing list.  make sure there are no
 ! replicated sizes.  we could skip or replace them, but for
 ! now it's an error to respecify an existing size.
+!> @todo I'd prefer to just skip them -- Tim
 
 ! allocate it large enough to hold the eventual output size
 allocate(index_array(current_size+num_ens))
@@ -720,7 +725,8 @@ call read_sec_data_int(fid, current_size, 'ens_index', index_array(1:current_siz
 do i = 1, current_size
    do j = 1, num_ens
       if (index_array(i) == ens_sizes(j)) then
-         write(msgstring, *) 'existing index ', i, ' and new list index ', j, ' both have ensemble size ', index_array(i)
+         write(msgstring, *) 'existing index ', i, ' and new list index ', j,&
+                      ' both have ensemble size ', index_array(i)
          call error_handler(E_ERR, 'validate list', 'duplicate ensemble size found', &
                             source, revision, revdate, text2=msgstring)
       endif

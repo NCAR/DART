@@ -5,9 +5,9 @@
 ! $Id$
 
 !> Correct covariances for fixed ensemble sizes.
-!> See Anderson, J. L., 2011: Localization and Sampling Error Correction
-!>   in Ensemble Kalman Filter Data Assimilation. 
-!> Submitted for publication, Jan 2011.  Contact author.
+!> Ref: Anderson, J., 2012: 
+!> Localization and Sampling Error Correction in Ensemble Kalman Filter Data Assimilation.
+!> Mon. Wea. Rev., 140, 2359-2371, doi: 10.1175/MWR-D-11-00013.1. 
 
 !> read the entry for a single ensemble_size and print out the
 !> two values, true_correl_mean and alpha.   mostly as a test for
@@ -50,9 +50,10 @@ table_size = get_sampling_error_table_size()
 
 allocate(true_correl_mean(table_size), alpha(table_size))
 
+print *, 'Reading sampling error correction factors for ensemble size of ',requested_ens_size
 call read_sampling_error_correction(requested_ens_size, true_correl_mean, alpha)
 
-print *, 'true correlation means, and alphas read from file: '
+print *, 'bin, true correlation, and alphas read from database: '
 do i=1, table_size
    print *, i, true_correl_mean(i), alpha(i)
 enddo
