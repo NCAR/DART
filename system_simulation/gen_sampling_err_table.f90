@@ -23,7 +23,7 @@
 
 program gen_sampling_err_table
 
-use types_mod,      only : r8
+use types_mod,      only : r8, MISSING_I
 use utilities_mod,  only : error_handler, E_ERR, nc_check, file_exist,  &
                            initialize_utilities, finalize_utilities, &
                            find_namelist_in_file, check_namelist_read, &
@@ -58,7 +58,7 @@ integer  :: bin_count(0:nentries+1)
 
 integer, allocatable :: index_array(:)
 
-integer  :: ncid, num_ens, esize, this_slot
+integer  :: ncid, num_ens, add_ens, esize, current_count
 integer  :: iunit, io
 
 character(len=512) :: msgstring
@@ -87,32 +87,62 @@ call check_namelist_read(iunit, io, "gen_sampling_error_table_nml")
 if (do_nml_file()) write(nmlfileunit, nml=gen_sampling_error_table_nml)
 if (do_nml_term()) write(     *     , nml=gen_sampling_error_table_nml)
 
+! blank line to make it easier to see messages 
+call error_handler(E_MSG, '', '')
 
-call init_random_seq(ran_id)
-
-num_ens = valid_entries(ens_sizes, 3)
+! check that the ensemble sizes are all good - 3 is the minimum size accepted
+! and there is no max limit.  returns the number of values found
+num_ens = valid_entries(ens_sizes, 3, MISSING_I, 'namelist variable "ens_size"')
 if (num_ens < 1) then
-   call error_handler(E_ERR, 'gen_sampling_err_table', 'no valid ensemble sizes specified', &
+   call error_handler(E_ERR, 'gen_sampling_err_table:', 'no valid ensemble sizes specified', &
              source, revision, revdate, text2='check values of namelist item "ens_sizes"')
 endif
 
 if (file_exist(output_filename)) then
-   ncid = setup_to_append_output_file(nentries, num_samples, this_slot)
+   ncid = setup_to_append_output_file(nentries, num_samples, current_count)
 else
-   ncid = create_output_file(nentries, num_samples, this_slot)
+   ncid = create_output_file(nentries, num_samples, current_count)
 endif
 
-call validate_list(ncid, this_slot, index_array, num_ens, ens_sizes)
+! add the new values to an existing list, if present, remove values that 
+! already exist or are repeated in the list.  add_ens returns with the actual
+! number of new ensemble sizes which need to be computed and the ens_sizes
+! array has been updated to remove duplicates.
 
-do esize=1, num_ens
+! save original value and tell user if we're avoiding duplicates or
+! existing values in file.
 
-   this_slot = this_slot + 1
+call merge_lists(ncid, current_count, index_array, num_ens, ens_sizes, add_ens)
 
-   call compute_table(ens_sizes(esize), nentries, bin_count, true_correl_mean, alpha)
-   call addto_output_file(ncid, this_slot, bin_count(1:nentries), true_correl_mean, &
-                          alpha, ens_sizes(esize))
+if (add_ens <= 0) then
 
-enddo
+   call error_handler(E_MSG, 'gen_sampling_err_table:', &
+             'no new ensemble sizes specified, nothing to do.', &
+             source, revision, revdate, text2='all sizes specified already exist in output file')
+
+else
+   if (num_ens /= add_ens) then
+      write(msgstring, *) num_ens-add_ens, ' "ens_sizes" entries ignored; either duplicate values'
+      call error_handler(E_MSG, 'gen_sampling_err_table:', msgstring, &
+             source, revision, revdate, &
+             text2='in namelist, or ensemble size already exists in output file')
+      call error_handler(E_MSG, '', '')  ! blank line
+   endif
+
+
+   do esize=current_count+1, current_count+add_ens
+      ! seed the generator with the ensemble size so the results are
+      ! completely reproducible.
+      call init_random_seq(ran_id, index_array(esize))
+   
+      call compute_table(index_array(esize), nentries, bin_count, true_correl_mean, alpha)
+      call addto_output_file(ncid, esize, bin_count(1:nentries), true_correl_mean, &
+                             alpha, index_array(esize))
+   
+      call sync_output_file(ncid)
+   
+   enddo
+endif
 
 call close_output_file(ncid)
 
@@ -145,7 +175,9 @@ integer  :: i, j, k, bin_num
 
 character(len=64) :: context = 'bin, count, mean, alpha'
 
-write(*,*) 'computing for ensemble size of ', this_size
+write(msgstring, *) 'computing sampling error correction table for ensemble size of ', this_size
+call error_handler(E_MSG, '', msgstring)
+
 allocate(pairs(2, this_size), temp(this_size))
 
 bin_count   = 0
@@ -222,10 +254,6 @@ do i = 1, nentries
    ! must have at least 2 counts to compute a std dev
    if(bin_count(i) <= 1) then
       write(msgstring, *) 'Bin ', i, ' has ', bin_count(i), ' counts'
-      call error_handler(E_MSG, 'compute_table', msgstring) 
-      cycle
-      !>@todo is this dead code
-      write(msgstring, *) 'Bin ', i, ' has ', bin_count(i), ' counts'
       call error_handler(E_ERR, 'compute_table', msgstring, &
          source, revision, revdate, text2='All bins must have at least 2 counts')
    endif
@@ -239,7 +267,7 @@ do i = 1, nentries
       alpha(i) = 1.0_r8
    else
       !!!beta = reg_mean**2 / reg_sd**2
-   ! Correct for bias in the standard deviation for very small ensembles, too 
+      ! Correct for bias in the standard deviation for very small ensembles, too 
       beta = reg_mean**2 / (reg_sd**2 * (1.0_r8 + 1.0_r8 / this_size))
       alpha(i) = beta / (1.0_r8 + beta)
    endif
@@ -249,13 +277,12 @@ do i = 1, nentries
       call error_handler(E_MSG, context, msgstring) 
    endif
 
+! original code had ascii output in a text file, using this format:
 !      write(iunit, 10)   i, bin_count(i), true_correl_mean(i), alpha(i)
 ! 10 format (I4,I9,2G25.14)
+
 enddo
 
-!>@todo FIXME ... not sure what this actually prints out- in at least one case
-!> the bin_count was > 0 ... yet the last two columns are hardcoded zeros.
-! print out just to stdout how many counts, if any, fell beyond bin 'nentries'
 if (debug) then
    write(msgstring,*) nentries+1, bin_count(nentries+1), 0.0_r8, 0.0_r8
    call error_handler(E_MSG, context, msgstring) 
@@ -326,22 +353,18 @@ integer :: rc, fid
 rc = nf90_create(output_filename, NF90_CLOBBER, fid)
 call nc_check(rc, 'create_output_file', 'creating "'//trim(output_filename)//'"')
 
-rc = nf90_put_att(fid, NF90_GLOBAL, 'num_samples', num_samples)
-call nc_check(rc, 'create_output_file', 'adding global attribute "num_samples"')
+call set_global_int_att(fid, 'num_samples', num_samples)
 
-rc = nf90_put_att(fid, NF90_GLOBAL, 'title', 'Sampling Error Corrections for fixed ensemble sizes.' )
-call nc_check(rc, 'create_output_file', 'adding global attribute "title"')
+call set_global_char_att(fid, 'title', 'Sampling Error Corrections for fixed ensemble sizes.' )
 
 msgstring = 'Anderson, J., 2012: Localization and Sampling Error Correction &
      &in Ensemble Kalman Filter Data Assimilation. Mon. Wea. Rev., 140, 2359-2371, &
      &doi: 10.1175/MWR-D-11-00013.1. '
 
-rc = nf90_put_att(fid, NF90_GLOBAL, 'reference', msgstring)
-call nc_check(rc, 'create_output_file', 'adding global attribute "reference"')
+call set_global_char_att(fid, 'reference', msgstring)
 
 msgstring = '$Id$'
-rc = nf90_put_att(fid, NF90_GLOBAL, 'version', msgstring)
-call nc_check(rc, 'create_output_file', 'adding global attribute "version"')
+call set_global_char_att(fid, 'version', msgstring)
 
 
 call setup_output_file(fid)
@@ -407,19 +430,21 @@ subroutine setup_output_file(ncid)
 
 integer, intent(in)  :: ncid
 
-integer :: rc, id
+integer :: rc
 integer :: nbinsDimID, nensDimID
 
 call setup_sec_dim(ncid, 'bins', nentries, nbinsDimID)
 call setup_sec_unlimdim(ncid, 'ens_sizes', nensDimID)
 
-call setup_sec_data_int (ncid, 'count',          nbinsDimID, nensDimID, id, &
-         'description','number of samples in each bin')
-call setup_sec_data_real(ncid, 'true_corr_mean', nbinsDimID, nensDimID, id)
-call setup_sec_data_real(ncid, 'alpha',          nbinsDimID, nensDimID, id, &
-         'description','sampling error correction factors')
-call setup_sec_data_int1d (ncid, 'ens_sizes',                nensDimID, id, &
-         'description','ensemble size used for calculation')
+call setup_sec_data_int (ncid, 'count', nbinsDimID, nensDimID)
+call set_var_char_att(ncid, 'count', 'description','number of samples in each bin')
+
+call setup_sec_data_real(ncid, 'true_corr_mean', nbinsDimID, nensDimID)
+call setup_sec_data_real(ncid, 'alpha',          nbinsDimID, nensDimID)
+call set_var_char_att(ncid, 'alpha', 'description','sampling error correction factors')
+
+call setup_sec_data_int1d (ncid, 'ens_sizes', nensDimID)
+call set_var_char_att(ncid, 'ens_sizes', 'description','ensemble size used for calculation')
 
 rc = nf90_enddef(ncid)
 call nc_check(rc, 'setup_output_file', 'enddef')
@@ -448,14 +473,25 @@ end subroutine addto_output_file
 !----------------------------------------------------------------
 !>
 
-subroutine close_output_file(ncid)
+subroutine sync_output_file(ncid)
 
 integer, intent(in) :: ncid
 
 integer :: rc
 
 rc = nf90_sync(ncid)
-call nc_check(rc, 'close_output_file', 'syncing '//trim(output_filename))
+call nc_check(rc, 'sync_output_file', 'syncing '//trim(output_filename))
+
+end subroutine sync_output_file
+
+!----------------------------------------------------------------
+!>
+
+subroutine close_output_file(ncid)
+
+integer, intent(in) :: ncid
+
+integer :: rc
 
 rc = nf90_close(ncid)
 call nc_check(rc, 'close_output_file', 'closing '//trim(output_filename))
@@ -497,79 +533,52 @@ end subroutine setup_sec_unlimdim
 
 !----------------------------------------------------------------
 !> given a netCDF file ID, variable name, and 2 dimension IDs,
-!> create an integer variable and return the variable id
+!> create a 2d integer variable 
 
-subroutine setup_sec_data_int(ncid, c1, d1, d2, id1, attname, attvalue)
+subroutine setup_sec_data_int(ncid, c1, d1, d2)
 
 integer,                    intent(in)  :: ncid
 character(len=*),           intent(in)  :: c1
 integer,                    intent(in)  :: d1, d2
-integer,                    intent(out) :: id1
-character(len=*), optional, intent(in)  :: attname
-character(len=*), optional, intent(in)  :: attvalue
 
-integer :: rc
+integer :: rc, id1
 
 rc = nf90_def_var(ncid, name=c1, xtype=nf90_int, dimids=(/ d1, d2 /), varid=id1)
 call nc_check(rc, 'setup_sec_data_int', 'defining variable "'//trim(c1)//'"')
-
-if (present(attname) .and. present(attvalue)) then
-   msgstring = 'adding attribute "'//trim(attname)//'" to "'//trim(c1)//'"'
-   rc = nf90_put_att(ncid, id1, trim(attname), trim(attvalue))
-   call nc_check(rc, 'setup_sec_data_int', msgstring)
-endif
 
 end subroutine setup_sec_data_int
 
 !----------------------------------------------------------------
 !> given a netCDF file ID, variable name, and a dimension ID,
-!> create an integer variable and return the variable id
+!> create an integer variable
 
-subroutine setup_sec_data_int1d(ncid, c1, d1, id1, attname, attvalue)
+subroutine setup_sec_data_int1d(ncid, c1, d1)
 
 integer,                    intent(in)  :: ncid
 character(len=*),           intent(in)  :: c1
 integer,                    intent(in)  :: d1
-integer,                    intent(out) :: id1
-character(len=*), optional, intent(in)  :: attname
-character(len=*), optional, intent(in)  :: attvalue
 
-integer :: rc
+integer :: rc, id1
 
 rc = nf90_def_var(ncid, name=c1, xtype=nf90_int, dimids=(/ d1 /), varid=id1)
 call nc_check(rc, 'setup_sec_data_int1d', 'defining variable "'//trim(c1)//'"')
-
-if (present(attname) .and. present(attvalue)) then
-   msgstring = 'adding attribute "'//trim(attname)//'" to "'//trim(c1)//'"'
-   rc = nf90_put_att(ncid, id1, trim(attname), trim(attvalue))
-   call nc_check(rc, 'setup_sec_data_int1d', msgstring)
-endif
 
 end subroutine setup_sec_data_int1d
 
 !----------------------------------------------------------------
 !> given a netCDF file ID, variable name, and 2 dimension IDs,
-!> create a 2D real variable and return the variable id
+!> create a 2D real variable
 
-subroutine setup_sec_data_real(ncid, c1, d1, d2, id1, attname, attvalue)
+subroutine setup_sec_data_real(ncid, c1, d1, d2)
 
 integer,                    intent(in)  :: ncid
 character(len=*),           intent(in)  :: c1
 integer,                    intent(in)  :: d1, d2
-integer,                    intent(out) :: id1
-character(len=*), optional, intent(in)  :: attname
-character(len=*), optional, intent(in)  :: attvalue
 
-integer :: rc
+integer :: rc, id1
 
 rc = nf90_def_var(ncid, name=c1, xtype=nf90_double, dimids=(/ d1, d2 /), varid=id1)
 call nc_check(rc, 'setup_sec_data_real', 'defining variable "'//trim(c1)//'"')
-
-if (present(attname) .and. present(attvalue)) then
-   msgstring = 'adding attribute "'//trim(attname)//'" to "'//trim(c1)//'"'
-   rc = nf90_put_att(ncid, id1, trim(attname), trim(attvalue))
-   call nc_check(rc, 'setup_sec_data_real', msgstring)
-endif
 
 end subroutine setup_sec_data_real
 
@@ -694,17 +703,73 @@ if (present(id1)) id1 = lid1
 end subroutine get_sec_dim_info
 
 !----------------------------------------------------------------
+!> set a character attribute on a variable
+
+subroutine set_var_char_att(fid, varname, attname, attvalue)
+
+integer,          intent(in) :: fid
+character(len=*), intent(in) :: varname
+character(len=*), intent(in) :: attname
+character(len=*), intent(in) :: attvalue
+
+integer :: rc, id1
+
+rc = nf90_inq_varid(fid, varname, id1)
+call nc_check(rc, 'set_var_char_att', 'inquiring variable id "'//trim(varname)//'"')
+
+rc = nf90_put_att(fid, id1, attname, attvalue)
+call nc_check(rc, 'set_var_char_att', 'adding attribute "'//trim(attname)//'" to variable "'//&
+                                      trim(varname)//'"')
+
+end subroutine set_var_char_att
+
+!----------------------------------------------------------------
+!> set a global character attribute 
+
+subroutine set_global_char_att(fid, attname, attvalue)
+
+integer,          intent(in) :: fid
+character(len=*), intent(in) :: attname
+character(len=*), intent(in) :: attvalue
+
+integer :: rc
+
+rc = nf90_put_att(fid, NF90_GLOBAL, attname, attvalue)
+call nc_check(rc, 'set_global_char_att', 'adding global attribute "'//trim(attname)//'"')
+
+end subroutine set_global_char_att
+
+!----------------------------------------------------------------
+!> set a global integer attribute 
+
+subroutine set_global_int_att(fid, attname, attvalue)
+
+integer,          intent(in) :: fid
+character(len=*), intent(in) :: attname
+integer,          intent(in) :: attvalue
+
+integer :: rc
+
+rc = nf90_put_att(fid, NF90_GLOBAL, attname, attvalue)
+call nc_check(rc, 'set_global_int_att', 'adding global attribute "'//trim(attname)//'"')
+
+end subroutine set_global_int_att
+
+!----------------------------------------------------------------
 ! misc utility routines
 
 !----------------------------------------------------------------
 !> figure out the list length.  -1 means no entries; a minimum
 !> valid value can be specfied and is a fatal error if an entry
 !> is below the threshold.
+!>@todo FIXME this belongs in the utilities module
 
-function valid_entries(list, min_valid)
+function valid_entries(list, min_valid, max_valid, where)
 
-integer, intent(in) :: list(:)
-integer, intent(in) :: min_valid
+integer,          intent(in) :: list(:)
+integer,          intent(in) :: min_valid
+integer,          intent(in) :: max_valid
+character(len=*), intent(in) :: where
 integer :: valid_entries
 
 integer :: i, val
@@ -713,11 +778,18 @@ val = -1
 do i=1, MAX_LIST_LEN
    if (list(i) == UNSET) exit
 
-   if (list(i) < min_valid) then
-      write(msgstring, *) 'minimum valid ensemble size is ', min_valid
+   if (min_valid /= MISSING_I .and. list(i) < min_valid) then
+      write(msgstring, *) 'minimum valid value is ', min_valid
       call error_handler(E_ERR, 'valid_entries', &
-                'illegal ensemble size found in namelist variable "ens_sizes"', &
-                source, revision, revdate, text2=msgstring)
+                 'illegal value found in '//trim(where), &
+                 source, revision, revdate, text2=msgstring)
+   endif
+
+   if (max_valid /= MISSING_I .and. list(i) > max_valid) then
+      write(msgstring, *) 'maximum valid value is ', max_valid
+      call error_handler(E_ERR, 'valid_entries', &
+                 'illegal value found in '//trim(where), &
+                 source, revision, revdate, text2=msgstring)
    endif
 
    val = i
@@ -729,52 +801,98 @@ end function valid_entries
 
 !----------------------------------------------------------------
 !> if this routine returns, index_array is allocated and filled
-!> and none of the new ens_sizes() values are already in the list.
-!> any errors here are fatal.
+!> with all ensemble sizes.  num_add_ens is the number of new
+!> ensemble sizes that must be computed.  duplicates and existing
+!> values are removed from the list.
 
-subroutine validate_list(fid, current_size, index_array, num_ens, ens_sizes)
+subroutine merge_lists(fid, current_size, index_array, num_new_ens, ens_sizes, num_add_ens)
 
-integer,              intent(in) :: fid
-integer,              intent(in) :: current_size
-integer, allocatable, intent(out) :: index_array(:)
-integer,              intent(in) :: num_ens
-integer,              intent(in) :: ens_sizes(:)
+integer,              intent(in)    :: fid
+integer,              intent(in)    :: current_size
+integer, allocatable, intent(out)   :: index_array(:)
+integer,              intent(in)    :: num_new_ens
+integer,              intent(inout) :: ens_sizes(:)
+integer,              intent(out)   :: num_add_ens
 
-integer :: i, j
+integer :: num_ens
 
-! if there's no existing list, no chance of duplicated values.
-! just copy over the requested size list and return.
+! allocate list large enough to hold the max possible output size
+! and read any existing entries.
+allocate(index_array(current_size+num_new_ens))
 
-if (current_size == 0) then
-   allocate(index_array(num_ens))
-   index_array(:) = ens_sizes(1:num_ens)
-   return
-endif
+if (current_size > 0) &
+   call read_sec_data_int(fid, 1, 'ens_sizes', index_array(1:current_size))
 
-! ok, there's an existing list.  make sure there are no
-! replicated sizes.  we could skip or replace them, but for
-! now it's an error to respecify an existing size.
-!> @todo I'd prefer to just skip them -- Tim
+! add new values to end of list and look for dups. 
 
-! allocate it large enough to hold the eventual output size
-allocate(index_array(current_size+num_ens))
-call read_sec_data_int(fid, current_size, 'ens_sizes', index_array(1:current_size))
+if (num_new_ens > 0) &
+   index_array(current_size+1:current_size+num_new_ens) = ens_sizes(1:num_new_ens)
 
-do i = 1, current_size
-   do j = 1, num_ens
-      if (index_array(i) == ens_sizes(j)) then
-         write(msgstring, *) 'existing index ', i, ' and new list index ', j,&
-                      ' both have ensemble size ', index_array(i)
-         call error_handler(E_ERR, 'validate list', 'duplicate ensemble size found', &
-                   source, revision, revdate, text2=msgstring)
-      endif
+! total list length
+num_ens = current_size + num_new_ens
+
+! this value will get updated if there are duplicates
+! in the list or items already in the existing file.
+call remove_dups(num_ens, index_array)
+
+! return the count of new items to be computed
+num_add_ens = num_ens - current_size
+
+end subroutine merge_lists
+
+!----------------------------------------------------------------
+!> given a list and a count, remove any replicated values from the
+!> list and update the count.   
+!>@todo FIXME this belongs in a utilities module
+
+subroutine remove_dups(num_vals, val_list)
+
+integer, intent(inout) :: num_vals
+integer, intent(inout) :: val_list(:)
+
+integer :: i, j, k, newlen, next_slot
+integer, allocatable :: new_list(:)
+
+! empty list, nothing to do
+if (num_vals == 0) return
+
+! allocate enough temp space to fit a list with no duplicates
+allocate(new_list(num_vals))
+
+! iterate the input list and copy unique values to the temp list
+
+next_slot = 0
+outerloop: do i = 1, num_vals
+   do j = 1, next_slot
+      if (val_list(i) == new_list(j)) cycle outerloop
    enddo
-enddo
+   next_slot = next_slot + 1
+   new_list(next_slot) = val_list(i)
+enddo outerloop
 
-! add the new sizes to the end of the list and return
-index_array(current_size+1:current_size+num_ens) = ens_sizes(1:num_ens)
+! return values back into original list.
+! guarenteed to be same size or shorter.
+num_vals = next_slot
+val_list(1:next_slot) = new_list(1:next_slot)
 
-end subroutine validate_list
+deallocate(new_list)
+
+end subroutine remove_dups
+
+!----------------------------------------------------------------
+!> debugging routine
+
+subroutine dump_list(count, list, label)
+
+integer,          intent(in) :: count
+integer,          intent(in) :: list(:)
+character(len=*), intent(in) :: label
+
+print *, 'dump_list: '//trim(label)
+print *, ' len=', count
+print *, ' values=', list(1:count)
+
+end subroutine dump_list
 
 !----------------------------------------------------------------
 
