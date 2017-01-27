@@ -19,9 +19,8 @@ program obs_sampling_err
 !      Need to add this uncertainty into the sample to avoid loss of
 !      variance (see also full_error.f90 which does this for regression).
 
-use types_mod
-use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &          
-   twod_gaussians, random_uniform
+use      types_mod, only : r8, digits12
+use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian
 
 implicit none
 
@@ -74,7 +73,7 @@ do k = 1, 200
       ! Generate a random sample of size ens_size with ratio for variance
       do j = 1, ens_size
          sample(j) = random_gaussian(ran_id, 0.0_r8, ratio)
-      end do
+      enddo
       
       ! Compute the sample mean and variance
       call sample_mean_var(sample, ens_size, s_mean, s_var)
@@ -100,7 +99,7 @@ do k = 1, 200
       s_obs_weight_sum = s_obs_weight_sum + s_obs_weight
       s_obs_weight2_sum = s_obs_weight2_sum + s_obs_weight**2
    
-   end do
+   enddo
    
    ! Output the mean stats
    u_var_mean = u_var_sum / sample_size
@@ -120,28 +119,28 @@ do k = 1, 200
    write(*, *) 'mad ', mad_mean, mad_mean / sqrt(s_var_mean)
    write(*, *) 'sd_mean ', sd_mean, sqrt(s_var_mean), sd_mean / sqrt(s_var_mean)
 
-end do
+enddo
 
-end program obs_sampling_err
-
+!----------------------------------------------------------------
+contains
 !----------------------------------------------------------------
 
 subroutine sample_mean_var(x, n, mean, var)
 
-implicit none
+integer,        intent(in) :: n
+real(digits12), intent(in) :: x(n)
+real(digits12), intent(out) :: mean, var
 
-integer, intent(in) :: n
-double precision, intent(in) :: x(n)
-double precision, intent(out) :: mean, var
+real(digits12) :: sx, s_x2
 
-double precision :: sx, s_x2
-
-sx = sum(x)
+sx   = sum(x)
 s_x2 = sum(x * x)
 mean = sx / n
-var = (s_x2 - sx**2 / n) / (n - 1)
+var  = (s_x2 - sx**2 / n) / (n - 1)
 
 end subroutine sample_mean_var
+
+end program obs_sampling_err
 
 ! <next few lines under version control, do not edit>
 ! $URL$

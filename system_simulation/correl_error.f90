@@ -6,9 +6,8 @@
 
 program correl_error
 
-use types_mod
-use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &          
-   twod_gaussians, random_uniform
+use      types_mod, only : r8
+use random_seq_mod, only : random_seq_type, init_random_seq, twod_gaussians 
 
 implicit none
 
@@ -40,83 +39,78 @@ do lji = 4, 48, 4
    !!!ens_size = 20
    !!!ens_size = 128
 
+   allocate(pairs(2, ens_size), obs_inc(ens_size), unobs_inc(ens_size), new_unobs(ens_size))
+   write(*, *) 'stats for ensemble size ', ens_size
+   ! Loop through real correlations every 0.05
+   !!!do j = 0, 50
+   do j = 0, 0
+      ! Loop through a large number of samples to get mean
+      correl_mean  = 0.0_r8
+      correl_mean2 = 0.0_r8
+      ratio_mean   = 0.0_r8
+      ratio_mean2  = 0.0_r8
+      do k = 1, sample_size
+         t_correl = j * 0.02_r8
 
-allocate(pairs(2, ens_size), obs_inc(ens_size), unobs_inc(ens_size), new_unobs(ens_size))
-write(*, *) 'stats for ensemble size ', ens_size
-! Loop through real correlations every 0.05
-!!!do j = 0, 50
-do j = 0, 0
-   ! Loop through a large number of samples to get mean
-   correl_mean  = 0.0_r8
-   correl_mean2 = 0.0_r8
-   ratio_mean   = 0.0_r8
-   ratio_mean2  = 0.0_r8
-   do k = 1, sample_size
-      t_correl = j * 0.02_r8
+         ! Generate the covariance matrix for this correlation
+         cov(1, 1) = 1.0;    cov(2, 2) = 1.0_r8
+         cov(1, 2) = t_correl; cov(2, 1) = t_correl
 
-      ! Generate the covariance matrix for this correlation
-      cov(1, 1) = 1.0;    cov(2, 2) = 1.0_r8
-      cov(1, 2) = t_correl; cov(2, 1) = t_correl
-   
-      ! Loop to generate an ensemble size sample from this correl
-      ! Generate a random sample of size ens_size from something with this correlation
-      do i = 1, ens_size
-         call twod_gaussians(ran_id, zero_2, cov, pairs(:, i))
-      end do
-   
-      ! Compute the sample correlation
-      call comp_correl(pairs, ens_size, sample_correl)
-   
-      ! Keep a sum of the sample_correl
-      correl_mean = correl_mean + abs(sample_correl)
-      correl_mean2 = correl_mean2 + sample_correl**2
+         ! Loop to generate an ensemble size sample from this correl
+         ! Generate a random sample of size ens_size from something with this correlation
+         do i = 1, ens_size
+            call twod_gaussians(ran_id, zero_2, cov, pairs(:, i))
+         enddo
 
+         ! Compute the sample correlation
+         call comp_correl(pairs, ens_size, sample_correl)
 
-      !-----------------
-      ! Also interested in finding out what the spurious variance reduction factor is
-      ! First need to compute sample s.d. for the obs and unobs variable
-      do i = 1, 2
-         call sample_mean_var(pairs(i, :), ens_size, s_mean(i), s_var(i))
-      end do
-      ! Next, compute the increments for obs variable given reduction in s.d. by a
-      a = 0.0_r8
-      do i = 1, ens_size
-         obs_inc(i) = (a - 1.0_r8) * (pairs(1, i) - s_mean(1))
-      end do
+         ! Keep a sum of the sample_correl
+         correl_mean = correl_mean + abs(sample_correl)
+         correl_mean2 = correl_mean2 + sample_correl**2
 
-      ! Regress these onto the unobserved variable
-      do i = 1, ens_size
-         unobs_inc(i) = sample_correl * sqrt(s_var(2) / s_var(1)) * obs_inc(i)
-         new_unobs(i) = pairs(2, i) + unobs_inc(i)
-      end do
+         !-----------------
+         ! Also interested in finding out what the spurious variance reduction factor is
+         ! First need to compute sample s.d. for the obs and unobs variable
+         do i = 1, 2
+            call sample_mean_var(pairs(i, :), ens_size, s_mean(i), s_var(i))
+         enddo
+         ! Next, compute the increments for obs variable given reduction in s.d. by a
+         a = 0.0_r8
+         do i = 1, ens_size
+            obs_inc(i) = (a - 1.0_r8) * (pairs(1, i) - s_mean(1))
+         enddo
 
-      ! Now compute the updated variance
-      call sample_mean_var(new_unobs, ens_size, new_mean, new_var)
+         ! Regress these onto the unobserved variable
+         do i = 1, ens_size
+            unobs_inc(i) = sample_correl * sqrt(s_var(2) / s_var(1)) * obs_inc(i)
+            new_unobs(i) = pairs(2, i) + unobs_inc(i)
+         enddo
 
-      !write(*, *) 'old and new var ', s_var(2), new_var
-      !write(*, *) 'old and new sd ', sqrt(s_var(2)), sqrt(new_var)
-      !write(*, *) 'unobs sd ratio ', sqrt(new_var) / sqrt(s_var(2))
-      ratio_mean  = ratio_mean  +  sqrt(new_var) / sqrt(s_var(2))
-      ratio_mean2 = ratio_mean2 + (sqrt(new_var) / sqrt(s_var(2)))**2
+         ! Now compute the updated variance
+         call sample_mean_var(new_unobs, ens_size, new_mean, new_var)
 
-      !-----------------
-      
-      
+         !write(*, *) 'old and new var ', s_var(2), new_var
+         !write(*, *) 'old and new sd ', sqrt(s_var(2)), sqrt(new_var)
+         !write(*, *) 'unobs sd ratio ', sqrt(new_var) / sqrt(s_var(2))
+         ratio_mean  = ratio_mean  +  sqrt(new_var) / sqrt(s_var(2))
+         ratio_mean2 = ratio_mean2 + (sqrt(new_var) / sqrt(s_var(2)))**2
 
+         !-----------------
 
-   end do
-   correl_mean = correl_mean / sample_size
-   correl_sd = sqrt((correl_mean2 - sample_size * correl_mean**2) / (sample_size - 1))
-   write(*, *) t_correl, correl_mean, correl_sd
-   ratio_mean = ratio_mean / sample_size
-   ratio_sd = sqrt((ratio_mean2 - sample_size * ratio_mean**2) / (sample_size - 1))
-   write(*, *) 'ratio mean ', ratio_mean, (1 - ratio_mean) / (1.0 - a)
-   expected_ratio = 1.0 - ((1.0 - a) * t_correl)
-   write(44, 11) ens_size, t_correl, ratio_mean, ratio_sd, correl_mean, correl_sd
-   11 format(i8, 6(1x, f10.5))
-end do
-deallocate(pairs, obs_inc, unobs_inc, new_unobs)
-end do
+      enddo
+      correl_mean = correl_mean / sample_size
+      correl_sd = sqrt((correl_mean2 - sample_size * correl_mean**2) / (sample_size - 1))
+      write(*, *) t_correl, correl_mean, correl_sd
+      ratio_mean = ratio_mean / sample_size
+      ratio_sd = sqrt((ratio_mean2 - sample_size * ratio_mean**2) / (sample_size - 1))
+      write(*, *) 'ratio mean ', ratio_mean, (1 - ratio_mean) / (1.0 - a)
+      expected_ratio = 1.0 - ((1.0 - a) * t_correl)
+      write(44, 11) ens_size, t_correl, ratio_mean, ratio_sd, correl_mean, correl_sd
+      11 format(i8, 6(1x, f10.5))
+   enddo
+   deallocate(pairs, obs_inc, unobs_inc, new_unobs)
+enddo
 
 contains
 

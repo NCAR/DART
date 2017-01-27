@@ -146,7 +146,7 @@ integer, intent(out) :: nbins
 integer, intent(out) :: nens
 
 call get_sec_dim(ncid, 'bins', nbins)
-call get_sec_dim(ncid, 'ens',  nens)
+call get_sec_dim(ncid, 'ens_sizes',  nens)
 
 end subroutine read_input_info
 
@@ -165,8 +165,8 @@ integer, allocatable :: index_array(:)
 
 allocate(index_array(num_ens))
 
-call query_sec_data(ncid, 'ens_index', id)
-call read_sec_data_int(ncid, 1, 'ens_index', id, index_array)
+call query_sec_data(ncid, 'ens_sizes', id)
+call read_sec_data_int(ncid, 1, 'ens_sizes', id, index_array)
 
 indx = -1
 do i=1, num_ens

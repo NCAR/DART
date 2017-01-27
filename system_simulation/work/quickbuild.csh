@@ -8,6 +8,8 @@
 #
 # This script compiles all executables in this directory.
 
+\rm -f *.o *.mod 
+
 set MODEL = "system_simulation"
 
 @ n = 0

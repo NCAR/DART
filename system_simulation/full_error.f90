@@ -14,13 +14,13 @@ program full_error
 ! This version of the program reads the ensemble size and base filename
 ! for the output from a namelist.
 
-use types_mod,      only : r8
-use utilities_mod,  only : open_file, close_file, error_handler,       &
+use      types_mod, only : r8
+use  utilities_mod, only : open_file, close_file, error_handler,       &
                            find_namelist_in_file, check_namelist_read, &
                            do_nml_file, do_nml_term, nmlfileunit,      &
                            initialize_utilities, finalize_utilities, E_ERR
-use random_seq_mod, only : random_seq_type, init_random_seq, random_gaussian, &          
-                           twod_gaussians, random_uniform
+use random_seq_mod, only : random_seq_type, init_random_seq, &          
+                           twod_gaussians
 
 implicit none
 
@@ -39,7 +39,7 @@ integer, parameter :: num_samples = 100000000
 ! namelist items
 
 integer            :: ens_size = 80
-character(len=128) :: output_filename = 'final_full'
+character(len=256) :: output_filename = 'final_full'
 
 namelist /full_error_nml/ ens_size, output_filename
 
@@ -48,15 +48,16 @@ type (random_seq_type) :: ran_id
 real(r8), allocatable  :: pairs(:,:), temp(:)
 
 real(r8) :: zero_2(2) = 0.0, cov(2, 2)
-real(r8) :: t_correl, correl_mean, sample_correl, alpha, beta
+real(r8) :: t_correl, sample_correl, alpha, beta
 real(r8) :: s_mean(2), s_var(2), reg_mean, reg_sd, t_sd1, t_sd2, true_correl_mean
 real(r8) :: tcorrel_sum(201), reg_sum(201), reg_2_sum(201)
 
 integer  :: i, j, k, bin_num, bin_count(201)
 integer  :: iunit, io
 
-character(len=132) :: outname, errstring
 character(len=16)  :: formstring
+character(len=256) :: outname
+character(len=512) :: errstring
 
 !
 ! start of executable code
@@ -107,7 +108,7 @@ do j = 1, num_samples
       ! Generate a random sample of size ens_size from something with this correlation
       do i = 1, ens_size
          call twod_gaussians(ran_id, zero_2, cov, pairs(:, i))
-      end do
+      enddo
    
       ! Compute the sample correlation
       call comp_correl(pairs, ens_size, sample_correl)
@@ -123,7 +124,7 @@ do j = 1, num_samples
       do i = 1, 2
          temp = pairs(i, :)
          call sample_mean_var(temp, ens_size, s_mean(i), s_var(i))
-      end do
+      enddo
 
       !-----------------
       reg_sum(bin_num) = reg_sum(bin_num) + t_correl * sqrt(s_var(2) / s_var(1))
@@ -131,8 +132,8 @@ do j = 1, num_samples
 
       bin_count(bin_num) = bin_count(bin_num) + 1
 
-   end do
-end do
+   enddo
+enddo
 
 ! make the size of the integer output .X, .XX, .XXX, etc
 ! depending on the number of decimal digits in the value.
@@ -181,7 +182,7 @@ do i = 1, 200
 
    write(*, *) 'bin, count, mean ', i, bin_count(i), true_correl_mean, alpha
    write(iunit, 10)   i, bin_count(i), true_correl_mean, alpha
-end do
+enddo
 
 10 format (I4,I9,2G25.14)
 

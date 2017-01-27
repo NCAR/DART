@@ -9,7 +9,7 @@
 !> Localization and Sampling Error Correction in Ensemble Kalman Filter Data Assimilation.
 !> Mon. Wea. Rev., 140, 2359-2371, doi: 10.1175/MWR-D-11-00013.1. 
 
-!> this version is a sparse array - the ens_index array lists the ensemble
+!> this version is a sparse array - the ens_sizes array lists the ensemble
 !> sizes that have been computed, using the unlimited dimension.  to generate
 !> a new ensemble size, it can be added at the end of the existing arrays.
 !>
@@ -27,7 +27,7 @@ use types_mod,      only : r8
 use utilities_mod,  only : error_handler, E_ERR, nc_check, file_exist,  &
                            initialize_utilities, finalize_utilities, &
                            find_namelist_in_file, check_namelist_read, &
-                           do_nml_file, do_nml_term, nmlfileunit
+                           do_nml_file, do_nml_term, nmlfileunit, E_MSG
 use random_seq_mod, only : random_seq_type, init_random_seq, twod_gaussians
 
 use netcdf
@@ -47,7 +47,7 @@ integer, parameter :: num_samples = 100000000 ! large number for statistical rig
 character(len=128) :: output_filename = 'sampling_error_correction_table.nc'
 integer, parameter :: nentries = 200
 
-integer, parameter :: MAX_LIST_LEN = 500
+integer, parameter :: MAX_LIST_LEN = 200
 integer, parameter :: UNSET = -1
 
 
@@ -93,7 +93,7 @@ call init_random_seq(ran_id)
 num_ens = valid_entries(ens_sizes, 3)
 if (num_ens < 1) then
    call error_handler(E_ERR, 'gen_sampling_err_table', 'no valid ensemble sizes specified', &
-                      source, revision, revdate, text2='check values of namelist item "ens_sizes"')
+             source, revision, revdate, text2='check values of namelist item "ens_sizes"')
 endif
 
 if (file_exist(output_filename)) then
@@ -143,6 +143,7 @@ real(r8) :: tcorrel_sum(nentries), reg_sum(nentries), reg_2_sum(nentries)
 
 integer  :: i, j, k, bin_num
 
+character(len=64) :: context = 'bin, count, mean, alpha'
 
 write(*,*) 'computing for ensemble size of ', this_size
 allocate(pairs(2, this_size), temp(this_size))
@@ -173,7 +174,7 @@ do j = 1, num_samples
       ! Generate a random sample of size ens_size from something with this correlation
       do i = 1, this_size
          call twod_gaussians(ran_id, zero_2, cov, pairs(:, i))
-      end do
+      enddo
    
       ! Compute the sample correlation
       call comp_correl(pairs, this_size, sample_correl)
@@ -199,7 +200,7 @@ do j = 1, num_samples
       do i = 1, 2
          temp = pairs(i, :)
          call sample_mean_var(temp, this_size, s_mean(i), s_var(i))
-      end do
+      enddo
 
       !-----------------
       reg_sum(bin_num) = reg_sum(bin_num) + t_correl * sqrt(s_var(2) / s_var(1))
@@ -207,20 +208,25 @@ do j = 1, num_samples
 
       bin_count(bin_num) = bin_count(bin_num) + 1
 
-   end do
-end do
+   enddo
+enddo
 
 ! print out just to stdout how many counts, if any, fell below bin 0
-if (debug) write(*, *) 'bin, count, mean, alpha ', 0, bin_count(0), 0, 0
+if (debug) then
+   write(msgstring,*) 0, bin_count(0), 0.0_r8, 0.0_r8
+   call error_handler(E_MSG, context, msgstring) 
+endif
 
 ! always generate exactly 'nentries' entries in the output file
 do i = 1, nentries
    ! must have at least 2 counts to compute a std dev
    if(bin_count(i) <= 1) then
-      write(*, *) 'Bin ', i, ' has ', bin_count(i), ' counts'
-      cycle
       write(msgstring, *) 'Bin ', i, ' has ', bin_count(i), ' counts'
-      call error_handler(E_ERR,'gen_sampling_err_table', msgstring, &
+      call error_handler(E_MSG, 'compute_table', msgstring) 
+      cycle
+      !>@todo is this dead code
+      write(msgstring, *) 'Bin ', i, ' has ', bin_count(i), ' counts'
+      call error_handler(E_ERR, 'compute_table', msgstring, &
          source, revision, revdate, text2='All bins must have at least 2 counts')
    endif
    
@@ -238,13 +244,22 @@ do i = 1, nentries
       alpha(i) = beta / (1.0_r8 + beta)
    endif
 
-   if (debug) write(*, *) 'bin, count, mean, alpha ', i, bin_count(i), true_correl_mean(i), alpha(i)
-!      write(iunit, 10)   i, bin_count(i), true_correl_mean(i), alpha(i)
-10 format (I4,I9,2G25.14)
-end do
+   if (debug) then
+      write(msgstring,*) i, bin_count(i), true_correl_mean(i), alpha(i)
+      call error_handler(E_MSG, context, msgstring) 
+   endif
 
+!      write(iunit, 10)   i, bin_count(i), true_correl_mean(i), alpha(i)
+! 10 format (I4,I9,2G25.14)
+enddo
+
+!>@todo FIXME ... not sure what this actually prints out- in at least one case
+!> the bin_count was > 0 ... yet the last two columns are hardcoded zeros.
 ! print out just to stdout how many counts, if any, fell beyond bin 'nentries'
-if (debug) write(*, *) 'bin, count, mean, alpha ', nentries+1, bin_count(nentries+1), 0, 0
+if (debug) then
+   write(msgstring,*) nentries+1, bin_count(nentries+1), 0.0_r8, 0.0_r8
+   call error_handler(E_MSG, context, msgstring) 
+endif
 
 deallocate(pairs, temp)
 
@@ -306,16 +321,10 @@ integer, intent(in)  :: num_samples
 integer, intent(out) :: unlimlen
 
 integer :: create_output_file
-
 integer :: rc, fid
-
 
 rc = nf90_create(output_filename, NF90_CLOBBER, fid)
 call nc_check(rc, 'create_output_file', 'creating "'//trim(output_filename)//'"')
-
-write(msgstring, *) 'each ensemble size entry has ', nentries, ' bins'
-rc = nf90_put_att(fid, NF90_GLOBAL, 'bin_info', trim(msgstring))
-call nc_check(rc, 'create_output_file', 'adding global attribute "bin_info"')
 
 rc = nf90_put_att(fid, NF90_GLOBAL, 'num_samples', num_samples)
 call nc_check(rc, 'create_output_file', 'adding global attribute "num_samples"')
@@ -367,8 +376,9 @@ call nc_check(rc, 'setup_to_append_output_file', 'opening "'//trim(output_filena
 call get_sec_dim_info(fid, 'bins', l1=nbins)
 if (nbins /= nentries) then
    write(msgstring, *) 'existing file has ', nbins, ' bins, the program has ', nentries, ' bins.'
-   call error_handler(E_ERR, 'setup_to_append_output_file', 'existing file used a different bin size', &
-                      source, revision, revdate, text2=msgstring)
+   call error_handler(E_ERR, 'setup_to_append_output_file', &
+             'existing file used a different bin size', &
+             source, revision, revdate, text2=msgstring)
 endif
 
 ! also make sure num_samples matches
@@ -376,13 +386,15 @@ endif
 rc = nf90_get_att(fid, NF90_GLOBAL, 'num_samples', nsamp)
 call nc_check(rc, 'setup_to_append_output_file', 'getting global attribute "num_samples"')
 if (nsamp /= num_samples) then
-   write(msgstring, *) 'existing file uses ', nsamp, ' samples, the program has ', num_samples, ' samples.'
-   call error_handler(E_ERR, 'setup_to_append_output_file', 'existing file used a different number of samples', &
-                      source, revision, revdate, text2=msgstring)
+   write(msgstring, *) 'existing file uses ', nsamp, ' samples, the program has ', &
+                       num_samples, ' samples.'
+   call error_handler(E_ERR, 'setup_to_append_output_file', &
+             'existing file used a different number of samples', &
+             source, revision, revdate, text2=msgstring)
 endif
 
 ! get the current size of the unlimited dimension 
-call get_sec_dim_info(fid, 'ens', l1=unlimlen)
+call get_sec_dim_info(fid, 'ens_sizes', l1=unlimlen)
 
 setup_to_append_output_file = fid
 
@@ -399,13 +411,15 @@ integer :: rc, id
 integer :: nbinsDimID, nensDimID
 
 call setup_sec_dim(ncid, 'bins', nentries, nbinsDimID)
-call setup_sec_unlimdim(ncid, 'ens', nensDimID)
+call setup_sec_unlimdim(ncid, 'ens_sizes', nensDimID)
 
-call setup_sec_data_int (ncid, 'count',          nbinsDimID, nensDimID, id)
+call setup_sec_data_int (ncid, 'count',          nbinsDimID, nensDimID, id, &
+         'description','number of samples in each bin')
 call setup_sec_data_real(ncid, 'true_corr_mean', nbinsDimID, nensDimID, id)
-call setup_sec_data_real(ncid, 'alpha',          nbinsDimID, nensDimID, id)
-
-call setup_sec_data_int1d (ncid, 'ens_index',                nensDimID, id)
+call setup_sec_data_real(ncid, 'alpha',          nbinsDimID, nensDimID, id, &
+         'description','sampling error correction factors')
+call setup_sec_data_int1d (ncid, 'ens_sizes',                nensDimID, id, &
+         'description','ensemble size used for calculation')
 
 rc = nf90_enddef(ncid)
 call nc_check(rc, 'setup_output_file', 'enddef')
@@ -427,7 +441,7 @@ integer,  intent(in)  :: index_num
 call write_sec_data_int  (ncid, slot, 'count',          count_data)
 call write_sec_data_real (ncid, slot, 'true_corr_mean', corrmean_data)
 call write_sec_data_real (ncid, slot, 'alpha',          alpha_data)
-call write_sec_data_int1d(ncid, slot, 'ens_index',      index_num)
+call write_sec_data_int1d(ncid, slot, 'ens_sizes',      index_num)
 
 end subroutine addto_output_file
 
@@ -485,17 +499,25 @@ end subroutine setup_sec_unlimdim
 !> given a netCDF file ID, variable name, and 2 dimension IDs,
 !> create an integer variable and return the variable id
 
-subroutine setup_sec_data_int(ncid, c1, d1, d2, id1)
+subroutine setup_sec_data_int(ncid, c1, d1, d2, id1, attname, attvalue)
 
-integer,          intent(in)  :: ncid
-character(len=*), intent(in)  :: c1
-integer,          intent(in)  :: d1, d2
-integer,          intent(out) :: id1
+integer,                    intent(in)  :: ncid
+character(len=*),           intent(in)  :: c1
+integer,                    intent(in)  :: d1, d2
+integer,                    intent(out) :: id1
+character(len=*), optional, intent(in)  :: attname
+character(len=*), optional, intent(in)  :: attvalue
 
 integer :: rc
 
 rc = nf90_def_var(ncid, name=c1, xtype=nf90_int, dimids=(/ d1, d2 /), varid=id1)
 call nc_check(rc, 'setup_sec_data_int', 'defining variable "'//trim(c1)//'"')
+
+if (present(attname) .and. present(attvalue)) then
+   msgstring = 'adding attribute "'//trim(attname)//'" to "'//trim(c1)//'"'
+   rc = nf90_put_att(ncid, id1, trim(attname), trim(attvalue))
+   call nc_check(rc, 'setup_sec_data_int', msgstring)
+endif
 
 end subroutine setup_sec_data_int
 
@@ -503,17 +525,25 @@ end subroutine setup_sec_data_int
 !> given a netCDF file ID, variable name, and a dimension ID,
 !> create an integer variable and return the variable id
 
-subroutine setup_sec_data_int1d(ncid, c1, d1, id1)
+subroutine setup_sec_data_int1d(ncid, c1, d1, id1, attname, attvalue)
 
-integer,          intent(in)  :: ncid
-character(len=*), intent(in)  :: c1
-integer,          intent(in)  :: d1
-integer,          intent(out) :: id1
+integer,                    intent(in)  :: ncid
+character(len=*),           intent(in)  :: c1
+integer,                    intent(in)  :: d1
+integer,                    intent(out) :: id1
+character(len=*), optional, intent(in)  :: attname
+character(len=*), optional, intent(in)  :: attvalue
 
 integer :: rc
 
 rc = nf90_def_var(ncid, name=c1, xtype=nf90_int, dimids=(/ d1 /), varid=id1)
 call nc_check(rc, 'setup_sec_data_int1d', 'defining variable "'//trim(c1)//'"')
+
+if (present(attname) .and. present(attvalue)) then
+   msgstring = 'adding attribute "'//trim(attname)//'" to "'//trim(c1)//'"'
+   rc = nf90_put_att(ncid, id1, trim(attname), trim(attvalue))
+   call nc_check(rc, 'setup_sec_data_int1d', msgstring)
+endif
 
 end subroutine setup_sec_data_int1d
 
@@ -521,17 +551,25 @@ end subroutine setup_sec_data_int1d
 !> given a netCDF file ID, variable name, and 2 dimension IDs,
 !> create a 2D real variable and return the variable id
 
-subroutine setup_sec_data_real(ncid, c1, d1, d2, id1)
+subroutine setup_sec_data_real(ncid, c1, d1, d2, id1, attname, attvalue)
 
-integer,          intent(in)  :: ncid
-character(len=*), intent(in)  :: c1
-integer,          intent(in)  :: d1, d2
-integer,          intent(out) :: id1
+integer,                    intent(in)  :: ncid
+character(len=*),           intent(in)  :: c1
+integer,                    intent(in)  :: d1, d2
+integer,                    intent(out) :: id1
+character(len=*), optional, intent(in)  :: attname
+character(len=*), optional, intent(in)  :: attvalue
 
 integer :: rc
 
 rc = nf90_def_var(ncid, name=c1, xtype=nf90_double, dimids=(/ d1, d2 /), varid=id1)
 call nc_check(rc, 'setup_sec_data_real', 'defining variable "'//trim(c1)//'"')
+
+if (present(attname) .and. present(attvalue)) then
+   msgstring = 'adding attribute "'//trim(attname)//'" to "'//trim(c1)//'"'
+   rc = nf90_put_att(ncid, id1, trim(attname), trim(attvalue))
+   call nc_check(rc, 'setup_sec_data_real', msgstring)
+endif
 
 end subroutine setup_sec_data_real
 
@@ -678,8 +716,8 @@ do i=1, MAX_LIST_LEN
    if (list(i) < min_valid) then
       write(msgstring, *) 'minimum valid ensemble size is ', min_valid
       call error_handler(E_ERR, 'valid_entries', &
-                 'illegal ensemble size found in namelist variable "ens_size"', &
-                         source, revision, revdate, text2=msgstring)
+                'illegal ensemble size found in namelist variable "ens_sizes"', &
+                source, revision, revdate, text2=msgstring)
    endif
 
    val = i
@@ -720,7 +758,7 @@ endif
 
 ! allocate it large enough to hold the eventual output size
 allocate(index_array(current_size+num_ens))
-call read_sec_data_int(fid, current_size, 'ens_index', index_array(1:current_size))
+call read_sec_data_int(fid, current_size, 'ens_sizes', index_array(1:current_size))
 
 do i = 1, current_size
    do j = 1, num_ens
@@ -728,7 +766,7 @@ do i = 1, current_size
          write(msgstring, *) 'existing index ', i, ' and new list index ', j,&
                       ' both have ensemble size ', index_array(i)
          call error_handler(E_ERR, 'validate list', 'duplicate ensemble size found', &
-                            source, revision, revdate, text2=msgstring)
+                   source, revision, revdate, text2=msgstring)
       endif
    enddo
 enddo
