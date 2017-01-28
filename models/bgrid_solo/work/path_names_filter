@@ -18,8 +18,8 @@ location/threed_sphere/location_mod.f90
 models/bgrid_solo/fms_src/atmos_bgrid/driver/solo/atmosphere.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_advection.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_conserve_energy.f90
-models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core_driver.f90
+models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_core.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_horiz_adjust.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_horiz_diff.f90
 models/bgrid_solo/fms_src/atmos_bgrid/model/bgrid_sponge.f90
@@ -42,8 +42,8 @@ models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_tracer_driver.f90
 models/bgrid_solo/fms_src/atmos_shared/tracer_driver/atmos_tracer_utilities.f90
 models/bgrid_solo/fms_src/atmos_shared/vert_advection/vert_advection.f90
 models/bgrid_solo/fms_src/shared/constants/constants.f90
-models/bgrid_solo/fms_src/shared/fft/fft.F90
 models/bgrid_solo/fms_src/shared/fft/fft99.f90
+models/bgrid_solo/fms_src/shared/fft/fft.F90
 models/bgrid_solo/fms_src/shared/field_manager/field_manager.F90
 models/bgrid_solo/fms_src/shared/field_manager/parse.inc
 models/bgrid_solo/fms_src/shared/fms/fms.f90
@@ -63,5 +63,8 @@ random_seq/random_seq_mod.f90
 reg_factor/reg_factor_mod.f90
 smoother/smoother_mod.f90
 sort/sort_mod.f90
+system_simulation/sampling_error_correction_mod.f90
 time_manager/time_manager_mod.f90
+utilities/obs_impact_mod.f90
+utilities/parse_args_mod.f90
 utilities/utilities_mod.f90

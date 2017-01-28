@@ -8,7 +8,6 @@ distributed/null_win_mod.f90
 ensemble_manager/ensemble_manager_mod.f90
 filter/filter_mod.f90
 forward_operator/forward_operator_mod.f90
-forward_operator/forward_operator_mod.f90
 io/dart_time_io_mod.f90
 io/direct_netcdf_mod.f90
 io/io_filenames_mod.f90
@@ -29,5 +28,8 @@ random_seq/random_seq_mod.f90
 reg_factor/reg_factor_mod.f90
 smoother/smoother_mod.f90
 sort/sort_mod.f90
+system_simulation/sampling_error_correction_mod.f90
 time_manager/time_manager_mod.f90
+utilities/obs_impact_mod.f90
+utilities/parse_args_mod.f90
 utilities/utilities_mod.f90
