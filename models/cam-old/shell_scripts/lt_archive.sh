@@ -1,4 +1,9 @@
 #!/bin/bash 
+#
+# This code may (or may not) be part of the CESM distribution,
+# So it is not protected by the DART copyright agreement.
+#
+# DART $Id$
 
 msls () {
 
@@ -274,5 +279,8 @@ if [ "$mode" == "copy_dirs_sshscp" ]; then
 
 fi  # if copy_dirs
 
-
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

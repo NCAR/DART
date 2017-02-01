@@ -1,10 +1,17 @@
 #!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 #***********************************************************************************
 # Tarkeshwar Singh
 # July 2014
 # tarkphysics87@gmail.com
 
-# perpose :  prepare all initial conditions and submit filter run 
+# purpose :  prepare all initial conditions and submit filter run 
 #
 #***********************************************************************************
 # Set alias
@@ -158,4 +165,11 @@ foreach file (`cat $obs_seq_list`)
 
   #************************************************************************************************
 end  # loop $file
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

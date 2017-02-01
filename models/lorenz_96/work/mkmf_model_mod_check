@@ -1,10 +1,10 @@
 #!/bin/csh
 #
-# DART software - Copyright 2004 - 2013 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: mkmf_model_mod_check 9181 2015-12-03 20:56:54Z hendric $
+# DART $Id$
 #
 # usage: mkmf_model_mod_check [ -mpi | -nompi ]
 #
@@ -70,7 +70,7 @@ rm -f path_names_model_mod_check.back
 exit $status
 
 # <next few lines under version control, do not edit>
-# $URL: https://proxy.subversion.ucar.edu/DAReS/DART/branches/rma_trunk_mmc_fix/models/wrf/work/mkmf_model_mod_check $
-# $Revision: 9181 $
-# $Date: 2015-12-03 13:56:54 -0700 (Thu, 03 Dec 2015) $
+# $URL$
+# $Revision$
+# $Date$
 

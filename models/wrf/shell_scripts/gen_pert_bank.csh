@@ -1,6 +1,12 @@
 #!/bin/csh
-###########################################################################
 #
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
+###########################################################################
 # utility to save a set of perturbations generated from WRFDA CV3 option
 #
 # provide the following:
@@ -9,7 +15,6 @@
 # ensemble size
 # list of perturbed variables
 # wrfda executable and be.dat
-#
 ###########################################################################
 
   set datea = 2010061006 # need to start from a known valid date matching the wrfinput_d01 date
@@ -121,5 +126,10 @@ EOF
     @ n++
   end
 
-exit(0) 
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

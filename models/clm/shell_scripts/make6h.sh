@@ -1,17 +1,16 @@
 #!/bin/bash
 #
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# $Id$
+
 # This version splits files into chunks that are compatible with the
 # Flux Tower forward operator, which relies on using the CLM *.h1.* 
 # history file with timestamps that do not actually include the time
 # used in the filename.  
 # 
-
-# DART software - Copyright 2004 - 2011 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
-# http://www.image.ucar.edu/DAReS/DART/DART_download
-#
-# $Id$
-
 # set the first and last days to be split.  can roll over
 # month and year boundaries now! note that for the last day
 # the data from the following day must be available.

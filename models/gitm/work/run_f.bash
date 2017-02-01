@@ -1,9 +1,13 @@
 #!/bin/bash
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 noe=$1 #number of ensemble members
 nop=$2 #number of processors the filter can run on
-
-
 
 
 rm hf #if there are hf's from old runs
@@ -132,3 +136,9 @@ cat hf
     if [ -d $filterhome ] ; then
 	rm -r $filterhome
     fi
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

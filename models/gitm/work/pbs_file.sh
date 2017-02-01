@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# DART $Id$
+#
 #PBS -S /bin/bash
 #PBS -N dart_test_tec
 #PBS -l procs=21,pmem=1000mb,walltime=1:00:00
@@ -166,3 +169,9 @@ echo 'pbs_file.sh: past-f' `date`
 ./obs_diag > obs_diag.out || exit 8
 
 echo 'pbs_file.sh: past-od' `date`
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

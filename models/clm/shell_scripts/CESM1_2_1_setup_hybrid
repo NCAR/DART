@@ -1,10 +1,10 @@
 #!/bin/csh -f
 #
-# DART software - Copyright 2004 - 2013 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: CESM1_2_1_setup_hybrid 9010 2015-11-05 22:39:22Z thoar $
+# DART $Id$
 
 #*******************************************************************************
 #
@@ -1070,7 +1070,7 @@ echo ""
 exit 0
 
 # <next few lines under version control, do not edit>
-# $URL: https://proxy.subversion.ucar.edu/DAReS/DART/trunk/models/clm/shell_scripts/CESM1_2_1_setup_hybrid $
-# $Revision: 9010 $
-# $Date: 2015-11-05 15:39:22 -0700 (Thu, 05 Nov 2015) $
+# $URL$
+# $Revision$
+# $Date$
 

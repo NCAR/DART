@@ -1,4 +1,10 @@
-#!/bin/tcsh
+#!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 # Test whether the default MPI (MPICH2) is necessary for filter to hang.
 #
@@ -30,4 +36,10 @@ else
    echo "Not copying executables anywhere"
 endif
 
-exit
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

@@ -1,4 +1,11 @@
 #!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 #****************************************************************************
 # Set control variables for assimilation
 # It will be used by job.csh and run_lmdz.csh 
@@ -35,3 +42,11 @@ set DART_ics          = /home/tk/WORK/DART/monsoon_360x180x19/ENSEMBLES/clim_fnl
 set LMDZ_DEF_PATH     = /home/tk/WORK/DART/monsoon_360x180x19/LMDZ_init
 set OBS_PATH          = /home/tarkesh/DART/lanai/observations/NCEP/ascii_to_obs/obs_seq2010/ 
 set DART_restarts_ics = /home/tk/WORK/DART/monsoon_360x180x19/FILTER_RUN/NCEP/EXP1/OUTPUT_20100928
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

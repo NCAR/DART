@@ -1,4 +1,10 @@
 #!/bin/bash
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 # KDR This is a copy of /glade/p/image/Observations/ACARS/progs/make6h.sh, 
 #     adapted for SABER.  This script needs 
@@ -184,4 +190,9 @@ while (( t <= totaltimes)) ; do
 done
 
 exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

@@ -1,9 +1,14 @@
-#! /bin/csh -f
+#!/bin/csh -f
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 #----------------------------------------------------------------------
 # This was written by Yongfei Zhang to explore running a single
 # instance of the development version of CESM ... cesm1_5_beta06c
-# DART $Id$
 #----------------------------------------------------------------------
 
 set myname = "yfzhang"
@@ -76,6 +81,12 @@ set stream_year_last  = 2000
 ./case.setup
 echo "case setup finished"
 
-
 ./case.build
-  
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

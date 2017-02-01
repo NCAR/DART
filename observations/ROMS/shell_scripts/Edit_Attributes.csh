@@ -1,4 +1,10 @@
 #!/bin/csh
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 set BASE = /glade/p/work/thoar/roms/test/WC13/OldData/ 
 
@@ -15,3 +21,11 @@ ncatted -a    units,survey_time,m,c,'days since 1900-01-01 00:00:00 GMT' \
         ${FILE}
 
 end
+
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

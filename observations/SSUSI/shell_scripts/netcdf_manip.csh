@@ -1,12 +1,12 @@
 #!/bin/csh
 #
-# A set of examples on how to simply tweak existing netCDF files.
-#
-# DART software - Copyright 2004 - 2013 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
+
+# A set of examples on how to simply tweak existing netCDF files.
 
 set fname = input_file.nc
 

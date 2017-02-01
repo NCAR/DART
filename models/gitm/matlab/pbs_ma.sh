@@ -1,4 +1,7 @@
 #!/bin/sh
+#
+# DART $Id$
+#
 #PBS -S /bin/sh
 #PBS -N dart_test_tec_ma
 #PBS -l nodes=1:ppn=1,pmem=1000mb,walltime=30:00
@@ -35,3 +38,9 @@ cd -
 echo 'pbs_ma.sh: past pGITM, starting matlab'
 
 matlab -nodesktop -r "plot_champ('"$hd"/../..','"$truth_run_gitm"','"$pbs_file_t"','"$middle_run_gitm"','"$pbs_file_m"','"$wd/work"','"$pbs_file_d"')" || exit 5
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

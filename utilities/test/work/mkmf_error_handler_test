@@ -1,11 +1,11 @@
 #!/bin/csh
 #
-# DART software - Copyright 2004 - 2013 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
-# DART $Id: mkmf_error_handler_test 9456 2016-01-07 19:04:21Z hkershaw $
-#
+# DART $Id$
+
 # usage: mkmf_error_handler_test [ -mpi | -nompi ]
 #
 # without any args, builds error_handler_test without mpi libraries, and it will run
@@ -57,3 +57,9 @@ rm -f path_names_error_handler_test.back
         -a "../../.." ${wrapper_arg} path_names_error_handler_test
 
 exit $status
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

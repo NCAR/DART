@@ -702,3 +702,8 @@ bind $modelHeightFrame <Leave> { clearTip $statusBar }
 # END BINDINGS
 ##############################
 
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

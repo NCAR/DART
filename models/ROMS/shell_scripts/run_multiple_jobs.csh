@@ -1,13 +1,17 @@
 #!/bin/csh
 #
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+
 # This utility will launch a series of dependent jobs for the LSF scheduler to
 # accomodate a cycling experiment. Multiple jobs get queued, but only run if
 # the previous job completes successfully.
 #
-# This utility is designed to be run interactively and requires knowledge of 
+# This utility is designed to be run interactively and requires knowledge of
 # the EXPERIMENT DIRECTORY, a job name, and how many jobs to submit.
-#
-###########################################################################
 
 set jobname = roms_dart
 set njobs = 4
@@ -57,5 +61,10 @@ while ( $n <= $njobs )
   @ n++
 end
 
-exit 0 
+exit 0
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

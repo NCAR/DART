@@ -1,4 +1,8 @@
 #!/bin/sh
+#
+# DART $Id$
+# from Alexey Morozov
+#
 #PBS -S /bin/sh
 #PBS -N dart_test_tec_py
 #PBS -l nodes=1:ppn=1,pmem=1000mb,walltime=30:00
@@ -31,5 +35,8 @@ echo 'pbs_py.sh: past pGITM, starting python'
 
 python plot_tec.py $fn_gitm/data/${fn_gitm_type}_t $fn_gps $sim || exit 3
 
-# DART $Id$
-# from Alexey Morozov
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

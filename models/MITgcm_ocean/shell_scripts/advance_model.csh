@@ -1,11 +1,11 @@
 #!/bin/tcsh
 #
-# DART software - Copyright 2004 - 2013 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
-#
+
 # This script has 4 logical 'blocks':
 # 1) creates a clean, temporary directory in which to run a model instance 
 #    and copies the necessary files into the temporary directory

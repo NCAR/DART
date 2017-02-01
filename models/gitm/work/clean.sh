@@ -1,4 +1,12 @@
 #!/bin/bash
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
+#
+# From Alexey Morozov
 
 # This script assumes we are in the work dirctory.
 # It spins up noe=$1 (1st argument to the script) ensemble members +
@@ -206,4 +214,9 @@ do
  cd ..
 
 done
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

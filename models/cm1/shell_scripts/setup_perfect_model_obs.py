@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 #
-# DART software - Copyright 2004 - 2015 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 #
 # CREDIT: This script was donated to DART by Luke Madaus during his time
 # at the University of Washington. Thanks Luke!
-#
-# DART $Id$
 #
 # Modified for Python (Sept. 2015) Luke Madaus, University of Washington
 #-----------------------------------------------------------------------------

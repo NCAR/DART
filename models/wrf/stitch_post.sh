@@ -1,6 +1,13 @@
 #!/bin/bash  
+#
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
+# http://www.image.ucar.edu/DAReS/DART/DART_download
+#
+# DART $Id$
 
 #Aim: stitch together filter output to make diagnostic files
+
 module load nco
 
 echo -n "starting time "
@@ -48,4 +55,9 @@ done
 ncpdq -O -a time,copy Posterior_Diag.nc Posterior_Diag.nc
 echo -n "finished " 
 date +"%T"
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
 

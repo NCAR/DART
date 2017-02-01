@@ -1,6 +1,6 @@
 #!/bin/csh -f
 #
-# svn $Id$
+# DART $Id$
 #######################################################################
 # Copyright (c) 2002-2016 The ROMS/TOMS Group                         #
 #   Licensed under a MIT/X style license                              #
@@ -137,3 +137,9 @@ while ( $i <= $Esize )
 
  @ i += 1
 end
+
+# <next few lines under version control, do not edit>
+# $URL$
+# $Revision$
+# $Date$
+

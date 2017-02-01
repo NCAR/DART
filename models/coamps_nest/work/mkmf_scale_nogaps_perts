@@ -1,12 +1,11 @@
 #!/bin/csh
 #
-# DART software - Copyright 2004 - 2013 UCAR. This open source software is
-# provided by UCAR, "as is", without charge, subject to all terms of use at
+# DART software - Copyright UCAR. This open source software is provided
+# by UCAR, "as is", without charge, subject to all terms of use at
 # http://www.image.ucar.edu/DAReS/DART/DART_download
 #
 # DART $Id$
  
-
 # usage: mkmf_scale_nogaps_perts [ -mpi | -nompi ]
 #  without any args, builds filter without mpi libraries, and it will run
 #  as a normal executable. if -mpi is given, it will be compiled with the mpi
